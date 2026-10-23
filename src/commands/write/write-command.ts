@@ -24,6 +24,7 @@ import {
 	writeDocumentShape,
 } from "./write-document.js";
 import { WriteLog } from "./write-log.js";
+import { refreshAgentRules } from "./refresh-agent-rules.js";
 
 const WatchOption = {
 	name: "watch",
@@ -97,6 +98,7 @@ registerCommand(
 			);
 			if (targets.isErr()) return targets;
 			const json = Boolean(line.options.json);
+			await refreshAgentRules(accessor, json);
 			return line.options.watch
 				? this.watch(accessor, targets.value.configs, json)
 				: this.writeOnce(accessor, targets.value, json);

@@ -26,8 +26,7 @@ export class InitPlanBuilder {
 		writesProjectFile: boolean;
 	}[] = [];
 	private agentFile: PlannedFile | undefined;
-	private agentStep: string | undefined;
-	private claudeImport: PlannedFile | undefined;
+	private agentImports: readonly PlannedFile[] = [];
 	private hookFiles: readonly PlannedFile[] = [];
 	private toolManifest: PlannedFile | undefined;
 	private readonly templateFiles: PlannedFile[] = [];
@@ -64,11 +63,10 @@ export class InitPlanBuilder {
 		});
 	}
 
-	/** `claudeImport`: also write the `CLAUDE.md` that points Claude Code at the agent file. */
-	addAgentFile(file: AgentFile, claudeImport = false): void {
+	/** `imports`: the files of the agents that read their own, pointed at the agent file. */
+	addAgentFile(file: AgentFile, imports: readonly PlannedFile[] = []): void {
 		this.agentFile = file.planned;
-		this.agentStep = file.nextStep;
-		this.claudeImport = claudeImport ? AgentFile.CLAUDE_IMPORT : undefined;
+		this.agentImports = imports;
 	}
 
 	addAgentHook(hooks: AgentHooks): void {
@@ -163,7 +161,7 @@ export class InitPlanBuilder {
 				...written,
 				...this.templateFiles,
 				...(this.agentFile ? [this.agentFile] : []),
-				...(this.claudeImport ? [this.claudeImport] : []),
+				...this.agentImports,
 				...this.hookFiles,
 				...(this.toolManifest ? [this.toolManifest] : []),
 			],
@@ -186,10 +184,7 @@ export class InitPlanBuilder {
 				...(this.fromHere("") && { directory: this.fromHere("") }),
 				setup: [...this.setup],
 				run: [...this.run],
-				edits: [
-					...(this.agentStep ? [this.agentStep] : []),
-					...this.edits,
-				],
+				edits: [...this.edits],
 			},
 		});
 	}

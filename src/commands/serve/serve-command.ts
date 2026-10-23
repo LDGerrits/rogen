@@ -35,6 +35,7 @@ import {
 	ServeReporter,
 	serveLineShape,
 } from "./serve-log.js";
+import { refreshAgentRules } from "../write/refresh-agent-rules.js";
 
 const AddressOption = {
 	name: "address",
@@ -135,6 +136,7 @@ registerCommand(
 			const stopChecks = new AbortController();
 			void shutdown.p.then(() => stopChecks.abort());
 			try {
+				await refreshAgentRules(accessor, Boolean(line.options.json));
 				const plan = await serveService.prepare({
 					signal: stopChecks.signal,
 					refs: line.positionals,

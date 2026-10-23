@@ -131,14 +131,14 @@ const InitOptions = [
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether to add Rogen's rules for coding agents to the agent file. Added when not given.",
+			"Whether to add Rogen's rules for coding agents to the agent file. Added when not given, and imported into CLAUDE.md and GEMINI.md. Alone, in a project that has a config, it adds them there.",
 	},
 	{
 		name: "agent-hook",
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether to add the hook that reports Rogen warnings to the coding agents found. Not added when not given.",
+			"Whether to add the hook that reports Rogen warnings to the coding agents found. Not added when not given. Alone, in a project that has a config, it adds it there.",
 	},
 ] as const;
 
@@ -172,7 +172,7 @@ registerCommand(
 				metadata: {
 					summary: "Writes a starting default.rogen.json",
 					description:
-						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, as 'rojo init' does. It starts projects and never changes a config that exists: where one is, it fails and writes nothing. To change a config, edit the .rogen.json and run 'rogen check'.",
+						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, as 'rojo init' does. It starts projects and never changes a config that exists: where one is, it fails and writes nothing, unless --agent-rules or --agent-hook is all that is given, which add only the agent files. To change a config, edit the .rogen.json and run 'rogen check'.",
 					args: [
 						{
 							name: "path",

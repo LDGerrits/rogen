@@ -124,6 +124,9 @@ export interface InitService {
 		onWritten: (written: InitWritten) => void,
 		dryRun?: boolean
 	): Promise<Result<void, Error>>;
+
+	/** Brings the Rogen block of the agent files of `folder`, and of the folders above it up to the repository root, to this version's, and returns the files it rewrote. A file without the block is never touched. */
+	refreshAgentRules(folder: string): Promise<string[]>;
 }
 
 export const InitService = createServiceIdentifier<InitService>("initService");

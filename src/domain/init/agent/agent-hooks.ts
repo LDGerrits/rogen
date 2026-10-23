@@ -1,12 +1,7 @@
 import { PlannedFile } from "../../toolchain/toolchain.js";
 import { DOCS_URL } from "../../../platform/product/product-service.js";
 import { hookScript } from "./hook-script.js";
-import {
-	CLAUDE_SETTINGS_FILE,
-	HOOK_SCRIPT_FILE,
-	CodingAgent,
-	withHook,
-} from "./coding-agent.js";
+import { HOOK_SCRIPT_FILE, CodingAgent, withHook } from "./coding-agent.js";
 
 export interface AgentInUse {
 	readonly agent: CodingAgent;
@@ -48,10 +43,10 @@ export class AgentHooks {
 		return this.state.inUse.length > 0;
 	}
 
-	/** Whether Claude Code is one of the agents in use here. */
-	get usesClaudeCode(): boolean {
+	/** Whether the agent whose settings live in `settingsFile` is in use here. */
+	uses(settingsFile: string): boolean {
 		return this.state.inUse.some(
-			({ agent }) => agent.settingsFile === CLAUDE_SETTINGS_FILE
+			({ agent }) => agent.settingsFile === settingsFile
 		);
 	}
 

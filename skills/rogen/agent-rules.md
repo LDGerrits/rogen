@@ -22,5 +22,5 @@ This repo uses Rogen. Each `*.rogen.json` generates the Rojo project file beside
 - Other commands read the `*.rogen.json` files of the current folder; run them there, or name the config: `rogen write projects/game`.
 - After you add, move or rename a folder, run `rogen write`: Rojo, luau-lsp and `rbxtsc` see only the folders the project file lists. `rogen serve` writes on its own.
 - To sync to Studio, run `rogen serve --json` in the background and keep it running; it rewrites on every change. `rogen help serve` explains its lines.
-- `rogen help <command> --json` lists a command's flags and the shape of its `--json` output.
+- `rogen doc <topic>` prints `routing`, `config`, `layout` or `output` for the installed Rogen. `rogen help <command> --json` lists a command's flags and the shape of its `--json` output.
 <!-- /rogen -->

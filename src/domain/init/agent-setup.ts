@@ -2,9 +2,19 @@ import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { AgentFile } from "./agent/agent-file.js";
 import { AgentHooks } from "./agent/agent-hooks.js";
+import {
+	CLAUDE_SETTINGS_FILE,
+	GEMINI_SETTINGS_FILE,
+} from "./agent/coding-agent.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
 import { Setup } from "./setup.js";
+
+/** The agents that read a file of their own in place of `AGENTS.md`. */
+const OWN_FILES = [
+	{ fileName: "CLAUDE.md", settingsFile: CLAUDE_SETTINGS_FILE },
+	{ fileName: "GEMINI.md", settingsFile: GEMINI_SETTINGS_FILE },
+] as const;
 
 interface AgentChoices {
 	readonly rules: boolean;
@@ -36,7 +46,11 @@ export class AgentSetup implements Setup<AgentChoices> {
 		if (rules)
 			builder.addAgentFile(
 				this.agentFile,
-				this.hooks.usesClaudeCode && !this.agentFile.hasClaudeFile
+				this.agentFile.imports(
+					OWN_FILES.filter(({ settingsFile }) =>
+						this.hooks.uses(settingsFile)
+					).map(({ fileName }) => fileName)
+				)
 			);
 		if (hook) builder.addAgentHook(this.hooks);
 		builder.addSummary(
@@ -48,6 +62,10 @@ export class AgentSetup implements Setup<AgentChoices> {
 				...(hook ? [`hook for ${this.hooks.agents.join(", ")}`] : []),
 			].join(", ") || "none"
 		);
+		if (this.agentFile.hasBlock && this.questions.choices.agentRules)
+			builder.addNote(
+				`Rogen's rules are in ${this.agentFile.blockFileName} already. A 'rogen write' keeps them current.`
+			);
 		for (const note of this.hooks.notes) builder.addNote(note);
 	}
 }
