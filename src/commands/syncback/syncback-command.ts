@@ -30,7 +30,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
-import { BuildLog } from "../build/build-log.js";
+import { OutcomeLog } from "../write/outcome-log.js";
 import {
 	SyncbackOutcome,
 	syncbackDocument,
@@ -225,7 +225,7 @@ registerCommand(
 					),
 					failure ?? stopped
 				);
-			new BuildLog(logService, cwd).report(
+			new OutcomeLog(logService, cwd).report(
 				build,
 				selection.value.home,
 				"syncback",

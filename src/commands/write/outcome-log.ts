@@ -184,7 +184,7 @@ export interface BuiltFile {
 	readonly failed: boolean;
 }
 
-export class BuildLog {
+export class OutcomeLog {
 	constructor(
 		private readonly logService: LogService,
 		private readonly cwd: string

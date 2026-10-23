@@ -23,16 +23,30 @@ import {
 } from "../../platform/environment/args.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { BuildLog } from "./build-log.js";
-import { BuildWatch } from "./build-watch.js";
+import { OutputShape } from "../../platform/output/output-shape.js";
+import { OutcomeLog } from "../write/outcome-log.js";
 import {
-	buildDocument,
-	buildDocumentShape,
-	buildLineShape,
+	buildRojoEntryShape,
+	reportRojo,
+	reportRojoBesideFailure,
 	rojoEntry,
-} from "./build-document.js";
+} from "../write/report-rojo.js";
+import {
+	configsDocument,
+	watchLineShape,
+	writeEntryShape,
+} from "../write/write-document.js";
+import { WriteWatch } from "../write/write-watch.js";
 import { BuildStep } from "./build-step.js";
-import { reportRojo, reportRojoBesideFailure } from "./report-rojo.js";
+
+const S = OutputShape;
+
+/** The document of `build --json`. */
+const buildDocumentShape = S.object({
+	changed: S.boolean,
+	configs: S.array(writeEntryShape),
+	rojo: S.optional(buildRojoEntryShape),
+});
 
 const OutputOption = {
 	name: "output",
@@ -79,7 +93,7 @@ registerCommand(
 					options: BuildOptions,
 					output: {
 						document: buildDocumentShape,
-						lines: buildLineShape,
+						lines: watchLineShape,
 					},
 					effects: ["writesFiles", "runsProcesses"],
 					longRunningWith: "watch",
@@ -121,7 +135,7 @@ registerCommand(
 				const store = new DisposableStore();
 				const shutdown = this.untilShutdown(accessor, store);
 				try {
-					return await new BuildWatch(
+					return await new WriteWatch(
 						accessor,
 						line.positionals,
 						Boolean(line.options.json),
@@ -169,7 +183,7 @@ registerCommand(
 				return this.printJson(
 					logService,
 					{
-						...buildDocument(run.outcomes, cwd),
+						...configsDocument(run.outcomes, cwd),
 						rojo: rojoEntry(
 							{
 								command: "build",
@@ -182,7 +196,7 @@ registerCommand(
 					},
 					failure ?? rojoFailure
 				);
-			new BuildLog(logService, cwd).report(
+			new OutcomeLog(logService, cwd).report(
 				run,
 				selection.value.home,
 				"build",

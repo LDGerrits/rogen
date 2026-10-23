@@ -24,7 +24,7 @@ import {
 } from "./watch-log.js";
 
 /** `rogen build --watch`, `rogen write --watch` and `rogen sourcemap --watch`: builds, then rebuilds whenever sources or configs change, and runs Rojo after each write when asked to. */
-export class BuildWatch {
+export class WriteWatch {
 	constructor(
 		private readonly accessor: ServicesAccessor,
 		private readonly refs: readonly string[],

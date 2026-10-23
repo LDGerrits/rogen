@@ -1,18 +1,14 @@
 import { ConfigOutcome } from "../../domain/write/write.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
-import {
-	RojoEntry,
-	buildDocument,
-	buildEntryShape,
-	rojoEntryShape,
-} from "../build/build-document.js";
+import { RojoEntry, rojoEntryShape } from "../write/report-rojo.js";
+import { configsDocument, writeEntryShape } from "../write/write-document.js";
 
 const S = OutputShape;
 
 /** The document of `upload --json`. */
 export const uploadDocumentShape = S.object({
 	changed: S.boolean,
-	configs: S.array(buildEntryShape),
+	configs: S.array(writeEntryShape),
 	rojo: rojoEntryShape("upload"),
 });
 
@@ -21,5 +17,5 @@ export function uploadDocument(
 	cwd: string,
 	rojo: RojoEntry
 ) {
-	return { ...buildDocument(builds, cwd), rojo };
+	return { ...configsDocument(builds, cwd), rojo };
 }

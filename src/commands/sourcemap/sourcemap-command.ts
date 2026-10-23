@@ -28,10 +28,10 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { BuildLog } from "../build/build-log.js";
-import { rojoEntry } from "../build/build-document.js";
-import { BuildWatch } from "../build/build-watch.js";
-import { reportRojo, reportRojoBesideFailure } from "../build/report-rojo.js";
+import { OutcomeLog } from "../write/outcome-log.js";
+import { rojoEntry } from "../write/report-rojo.js";
+import { WriteWatch } from "../write/write-watch.js";
+import { reportRojo, reportRojoBesideFailure } from "../write/report-rojo.js";
 import {
 	sourcemapDocument,
 	sourcemapDocumentShape,
@@ -143,7 +143,7 @@ registerCommand(
 				const store = new DisposableStore();
 				const shutdown = this.untilShutdown(accessor, store);
 				try {
-					return await new BuildWatch(
+					return await new WriteWatch(
 						accessor,
 						line.positionals,
 						Boolean(json),
@@ -222,14 +222,14 @@ registerCommand(
 					),
 					failure ?? rojoFailure
 				);
-			const buildLog = new BuildLog(logService, cwd);
+			const outcomeLog = new OutcomeLog(logService, cwd);
 			if (printed)
 				for (const one of build.outcomes)
-					buildLog.diagnostics(
+					outcomeLog.diagnostics(
 						[...one.warnings, ...one.errors],
 						one.file
 					);
-			else buildLog.report(build, selection.value.home, "sourcemap");
+			else outcomeLog.report(build, selection.value.home, "sourcemap");
 			if (plan && ran?.isOk()) {
 				const { messages, failure: runFailure } = ran.value;
 				(runFailure ? reportRojoBesideFailure : reportRojo)(

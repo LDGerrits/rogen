@@ -2,7 +2,7 @@ import { UsageError } from "../../base/errors.js";
 import { Result } from "../../base/result.js";
 import { ConfigSelection } from "../../domain/config/config-service.js";
 import { ResolvedConfig } from "../../domain/config/resolved-config.js";
-import { RojoTarget } from "./build-document.js";
+import { RojoTarget } from "./report-rojo.js";
 
 /** One run of Rojo on one project. */
 export interface RojoPlan {

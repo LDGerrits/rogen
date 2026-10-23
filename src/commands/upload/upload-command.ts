@@ -19,9 +19,9 @@ import {
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { BuildLog } from "../build/build-log.js";
-import { rojoEntry } from "../build/build-document.js";
-import { reportRojo, reportRojoBesideFailure } from "../build/report-rojo.js";
+import { OutcomeLog } from "../write/outcome-log.js";
+import { rojoEntry } from "../write/report-rojo.js";
+import { reportRojo, reportRojoBesideFailure } from "../write/report-rojo.js";
 import { uploadDocument, uploadDocumentShape } from "./upload-document.js";
 
 const AssetIdOption = {
@@ -157,7 +157,7 @@ registerCommand(
 					),
 					failure ?? rojoFailure
 				);
-			new BuildLog(logService, cwd).report(
+			new OutcomeLog(logService, cwd).report(
 				build,
 				selection.value.home,
 				"upload"

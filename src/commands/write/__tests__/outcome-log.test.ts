@@ -18,7 +18,7 @@ import {
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { LogLevel } from "../../../platform/log/log-service.js";
 import { mockConfig } from "../../../domain/config/__tests__/mock-config-service.js";
-import { BuildLog } from "../build-log.js";
+import { OutcomeLog } from "../outcome-log.js";
 
 const cwd = path.resolve("/repo");
 
@@ -27,7 +27,7 @@ const matchFile = path.join(cwd, "match", "default.rogen.json");
 const debugLines = (dir: string, summary: WriteSummary): string[] => {
 	const logService = new MockLogService();
 	logService.setLevel(LogLevel.Debug);
-	new BuildLog(logService, dir).outcome(builtOf(summary), []);
+	new OutcomeLog(logService, dir).outcome(builtOf(summary), []);
 	return logService.texts("debug");
 };
 
@@ -64,7 +64,7 @@ const summaryOf = (overrides: Partial<WriteSummary> = {}): WriteSummary => ({
 const describeBuild = (summary: WriteSummary, dir: string) =>
 	debugLines(dir, summary);
 
-describe("BuildLog build lines", () => {
+describe("OutcomeLog build lines", () => {
 	it("should name each source path relative to the working directory", () => {
 		expect(
 			describeBuild(
@@ -128,7 +128,7 @@ describe("BuildLog build lines", () => {
 	});
 });
 
-describe("BuildLog.outcome", () => {
+describe("OutcomeLog.outcome", () => {
 	const error = errorDiagnostic("x.err", { resource: "/repo/a" }, "bad.");
 
 	const lines = (
@@ -137,7 +137,7 @@ describe("BuildLog.outcome", () => {
 		note?: string
 	) => {
 		const logService = new MockLogService();
-		new BuildLog(logService, cwd).outcome(build, diagnostics, {
+		new OutcomeLog(logService, cwd).outcome(build, diagnostics, {
 			notes: [note],
 		});
 		return logService.entries.map(({ kind, text }) => [kind, text]);
@@ -187,7 +187,7 @@ describe("BuildLog.outcome", () => {
 	});
 });
 
-describe("BuildLog report", () => {
+describe("OutcomeLog report", () => {
 	const configNamed = (label: string) =>
 		mockConfig({
 			name: label,
@@ -196,7 +196,7 @@ describe("BuildLog report", () => {
 
 	const report = (builds: readonly ConfigOutcome[]) => {
 		const logService = new MockLogService();
-		new BuildLog(logService, cwd).report(new WriteRun(builds));
+		new OutcomeLog(logService, cwd).report(new WriteRun(builds));
 		return logService.entries
 			.filter(({ kind }) => kind === "error" || kind === "success")
 			.map(({ text }) => text);
@@ -219,7 +219,7 @@ describe("BuildLog report", () => {
 	it("should report a config that only a check built as one that would be written, and close with a check", () => {
 		const logService = new MockLogService();
 
-		new BuildLog(logService, cwd).report(
+		new OutcomeLog(logService, cwd).report(
 			new WriteRun([
 				builtOf(summaryOf(), "wouldWrite", configNamed("a")),
 			]),
@@ -247,7 +247,7 @@ describe("BuildLog report", () => {
 
 		const entries = () => {
 			const logService = new MockLogService();
-			new BuildLog(logService, cwd).report(
+			new OutcomeLog(logService, cwd).report(
 				new WriteRun([
 					builtOf(summaryOf(), "wrote", twin("lobby")),
 					builtOf(summaryOf(), "wrote", twin("arena")),
@@ -291,7 +291,7 @@ describe("BuildLog report", () => {
 	describe("errors", () => {
 		const all = (builds: readonly ConfigOutcome[]) => {
 			const logService = new MockLogService();
-			new BuildLog(logService, cwd).report(new WriteRun(builds));
+			new OutcomeLog(logService, cwd).report(new WriteRun(builds));
 			return logService.entries
 				.filter(({ kind }) => kind !== "intro")
 				.map(({ kind, text }) => `${kind}: ${text}`);
@@ -364,7 +364,7 @@ describe("BuildLog report", () => {
 	});
 });
 
-describe("BuildLog report, warnings", () => {
+describe("OutcomeLog report, warnings", () => {
 	const configNamed = (label: string) =>
 		mockConfig({
 			name: label,
@@ -386,7 +386,7 @@ describe("BuildLog report, warnings", () => {
 
 	const all = (builds: readonly ConfigOutcome[]) => {
 		const logService = new MockLogService();
-		new BuildLog(logService, cwd).report(new WriteRun(builds));
+		new OutcomeLog(logService, cwd).report(new WriteRun(builds));
 		return logService.entries
 			.filter(({ kind }) => kind !== "intro")
 			.map(({ kind, text }) => `${kind}: ${text}`);
@@ -474,10 +474,10 @@ describe("BuildLog report, warnings", () => {
 	});
 });
 
-describe("BuildLog report, closing line", () => {
+describe("OutcomeLog report, closing line", () => {
 	const closing = (warnings: number) => {
 		const logService = new MockLogService();
-		new BuildLog(logService, cwd).report(
+		new OutcomeLog(logService, cwd).report(
 			new WriteRun([
 				new WrittenConfig(
 					mockConfig(),
@@ -511,7 +511,7 @@ describe("BuildLog report, closing line", () => {
 
 	it("should name what Rojo built in place of the count", () => {
 		const logService = new MockLogService();
-		new BuildLog(logService, cwd).report(
+		new OutcomeLog(logService, cwd).report(
 			new WriteRun([
 				new WrittenConfig(
 					mockConfig(),
@@ -532,7 +532,7 @@ describe("BuildLog report, closing line", () => {
 
 	it("should claim nothing when Rojo failed", () => {
 		const logService = new MockLogService();
-		new BuildLog(logService, cwd).report(
+		new OutcomeLog(logService, cwd).report(
 			new WriteRun([
 				new WrittenConfig(
 					mockConfig(),
@@ -552,7 +552,7 @@ describe("BuildLog report, closing line", () => {
 	});
 });
 
-describe("BuildLog.diagnostics", () => {
+describe("OutcomeLog.diagnostics", () => {
 	const warnings = (count: number, code = "route.unrouted") =>
 		Array.from({ length: count }, (_, n) =>
 			warningDiagnostic(
@@ -564,7 +564,7 @@ describe("BuildLog.diagnostics", () => {
 
 	const printed = (diagnostics: readonly Diagnostic[]) => {
 		const logService = new MockLogService();
-		new BuildLog(logService, cwd).diagnostics(
+		new OutcomeLog(logService, cwd).diagnostics(
 			diagnostics,
 			"/repo/default.rogen.json"
 		);
@@ -630,11 +630,11 @@ describe("BuildLog.diagnostics", () => {
 	});
 });
 
-describe("BuildLog report, when quiet", () => {
+describe("OutcomeLog report, when quiet", () => {
 	const quietly = () => {
 		const logService = new MockLogService();
 		logService.setLevel(LogLevel.Error);
-		new BuildLog(logService, cwd).report(
+		new OutcomeLog(logService, cwd).report(
 			new WriteRun([
 				new WrittenConfig(
 					mockConfig(),

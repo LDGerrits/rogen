@@ -2,7 +2,7 @@ import { Result, ok } from "../../base/result.js";
 import { UsageError } from "../../base/errors.js";
 import { ConfigSelection } from "../../domain/config/config-service.js";
 import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
-import { RojoPlan, RojoStep } from "./rojo-step.js";
+import { RojoPlan, RojoStep } from "../write/rojo-step.js";
 
 /** Rojo's build into the place, model or plugin `-o` or `-p` names. */
 export class BuildStep implements RojoStep {

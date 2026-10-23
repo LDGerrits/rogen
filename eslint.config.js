@@ -55,14 +55,7 @@ const modules = {
 	},
 	// A command's own file is imported only by the composition root, for its side effect.
 	commands: {
-		build: [
-			"build-log",
-			"build-document",
-			"build-watch",
-			"report-rojo",
-			"rojo-step",
-			"watch-log",
-		],
+		build: [],
 		check: [],
 		"fmt-project": [],
 		help: [],
@@ -73,7 +66,14 @@ const modules = {
 		syncback: [],
 		upload: [],
 		where: [],
-		write: [],
+		write: [
+			"outcome-log",
+			"report-rojo",
+			"rojo-step",
+			"watch-log",
+			"write-document",
+			"write-watch",
+		],
 	},
 };
 

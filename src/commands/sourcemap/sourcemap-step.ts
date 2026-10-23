@@ -2,7 +2,7 @@ import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { ConfigSelection } from "../../domain/config/config-service.js";
 import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
-import { RojoPlan, RojoStep } from "../build/rojo-step.js";
+import { RojoPlan, RojoStep } from "../write/rojo-step.js";
 
 export interface SourcemapFlags {
 	readonly output: string | undefined;

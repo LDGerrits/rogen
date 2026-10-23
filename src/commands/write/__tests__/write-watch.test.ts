@@ -1,6 +1,6 @@
 import { jest } from "@jest/globals";
-import "../build-command.js";
-import "../../write/write-command.js";
+import "../../build/build-command.js";
+import "../write-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { DeferredPromise } from "../../../base/async.js";
 import { ResultError } from "../../../base/result.js";

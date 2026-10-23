@@ -2,18 +2,18 @@ import { relativeTo } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
 import { WriteRun, isWritten } from "../../domain/write/write.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { BuildLog } from "../build/build-log.js";
+import { OutcomeLog } from "../write/outcome-log.js";
 import { isPlain } from "./write-document.js";
 
 /** What `rogen write` says: a line for each config and each project file it left alone, then how many it wrote. */
 export class WriteLog {
-	private readonly buildLog: BuildLog;
+	private readonly outcomeLog: OutcomeLog;
 
 	constructor(
 		private readonly logService: LogService,
 		private readonly cwd: string
 	) {
-		this.buildLog = new BuildLog(logService, cwd);
+		this.outcomeLog = new OutcomeLog(logService, cwd);
 	}
 
 	report(
@@ -21,17 +21,17 @@ export class WriteLog {
 		home: string,
 		plainProjects: readonly string[]
 	): void {
-		this.buildLog.begin("write", [], home);
+		this.outcomeLog.begin("write", [], home);
 		for (const { build, warnings, errors } of run.shares) {
 			const diagnostics = [...warnings.fresh, ...errors.fresh];
 			if (isPlain(build)) {
 				this.plain(build.file);
-				this.buildLog.diagnostics(diagnostics, build.file);
+				this.outcomeLog.diagnostics(diagnostics, build.file);
 			} else
-				this.buildLog.outcome(build, diagnostics, {
+				this.outcomeLog.outcome(build, diagnostics, {
 					notes: [
-						this.buildLog.sameAs("errors", errors.sameAs),
-						this.buildLog.sameAs("warnings", warnings.sameAs),
+						this.outcomeLog.sameAs("errors", errors.sameAs),
+						this.outcomeLog.sameAs("warnings", warnings.sameAs),
 					],
 				});
 		}

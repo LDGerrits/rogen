@@ -23,12 +23,12 @@ import {
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { BuildLog } from "../build/build-log.js";
+import { OutcomeLog } from "../write/outcome-log.js";
 import {
-	BuildEntry,
-	buildDocument,
-	buildEntryShape,
-} from "../build/build-document.js";
+	WriteEntry,
+	configsDocument,
+	writeEntryShape,
+} from "../write/write-document.js";
 
 const S = OutputShape;
 
@@ -64,7 +64,7 @@ export const initDocumentShape = S.object({
 		)
 	),
 	error: S.optional(errorShape),
-	built: S.optional(S.array(buildEntryShape)),
+	built: S.optional(S.array(writeEntryShape)),
 	notes: S.optional(S.array(S.string)),
 	warnings: S.optional(S.array(diagnosticShape)),
 	nextSteps: S.optional(
@@ -140,7 +140,7 @@ export interface InitReporter {
 }
 
 export class InitLog implements InitReporter {
-	private readonly buildLog: BuildLog;
+	private readonly outcomeLog: OutcomeLog;
 	/** Where the plan's folder lies from the folder the user ran in, which its file names are shown after. */
 	private within = "";
 
@@ -149,7 +149,7 @@ export class InitLog implements InitReporter {
 		private readonly cwd: string,
 		private readonly dryRun = false
 	) {
-		this.buildLog = new BuildLog(logService, cwd);
+		this.outcomeLog = new OutcomeLog(logService, cwd);
 	}
 
 	private shown(name: string): string {
@@ -227,7 +227,7 @@ export class InitLog implements InitReporter {
 
 	done(plan: InitPlan, run: WriteRun): Result<void, Error> {
 		for (const build of run.outcomes)
-			this.buildLog.outcome(build, foundBy(build));
+			this.outcomeLog.outcome(build, foundBy(build));
 		const files = plural(plan.files.length, "file");
 		if (run.errors.length > 0) {
 			this.logService.outro(
@@ -267,7 +267,7 @@ interface InitDocument {
 	}[];
 	readonly decided?: readonly InitDecision[];
 	readonly error?: ErrorJson;
-	readonly built?: readonly BuildEntry[];
+	readonly built?: readonly WriteEntry[];
 	readonly notes?: readonly string[];
 	readonly warnings?: readonly DiagnosticJson[];
 	readonly nextSteps?: NextSteps;
@@ -351,7 +351,7 @@ export class InitJsonLog implements InitReporter {
 	}
 
 	done(plan: InitPlan, run: WriteRun): Result<void, Error> {
-		const built = buildDocument(run.outcomes, this.cwd, foundBy);
+		const built = configsDocument(run.outcomes, this.cwd, foundBy);
 		const written = this.writtenSoFar();
 		return this.print(
 			{

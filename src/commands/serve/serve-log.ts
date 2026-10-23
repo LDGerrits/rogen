@@ -14,9 +14,9 @@ import { RojoServer, ServerInfo } from "../../domain/runner/rojo-server.js";
 import { WatchUpdate } from "../../domain/watch/watch-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
-import { watchLineShapes } from "../build/build-document.js";
-import { reportServerOutput } from "../build/report-rojo.js";
-import { WatchJsonLog, WatchLog } from "../build/watch-log.js";
+import { watchLineShapes } from "../write/write-document.js";
+import { reportServerOutput } from "../write/report-rojo.js";
+import { WatchJsonLog, WatchLog } from "../write/watch-log.js";
 import {
 	diagnosticShape,
 	diagnosticToJson,

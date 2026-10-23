@@ -1,12 +1,11 @@
 import { ConfigOutcome } from "../../domain/write/write.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
+import { RojoEntry, rojoEntryShape } from "../write/report-rojo.js";
 import {
-	RojoEntry,
-	buildDocument,
-	buildEntryShape,
-	rojoEntryShape,
+	configsDocument,
 	watchLineShapes,
-} from "../build/build-document.js";
+	writeEntryShape,
+} from "../write/write-document.js";
 
 const S = OutputShape;
 
@@ -15,7 +14,7 @@ const sourcemapEntryShape = rojoEntryShape("sourcemap");
 /** The document of `sourcemap --json`. */
 export const sourcemapDocumentShape = S.object({
 	changed: S.boolean,
-	configs: S.array(buildEntryShape),
+	configs: S.array(writeEntryShape),
 	rojo: sourcemapEntryShape,
 });
 
@@ -32,7 +31,7 @@ export function sourcemapDocument(
 	cwd: string,
 	rojo: RojoEntry
 ) {
-	const built = buildDocument(builds, cwd);
+	const built = configsDocument(builds, cwd);
 	return {
 		changed: built.changed || rojo.outcome === "built",
 		configs: built.configs,

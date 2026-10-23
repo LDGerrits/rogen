@@ -18,9 +18,10 @@ import {
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { RojoCommandRun } from "../../domain/runner/rojo-command-service.js";
 import { Result } from "../../base/result.js";
-import { RojoTarget, buildEntry, rojoEntry } from "./build-document.js";
+import { RojoTarget, rojoEntry } from "./report-rojo.js";
+import { writeEntry } from "./write-document.js";
 import { reportRojo, reportRojoBesideFailure } from "./report-rojo.js";
-import { BuildLog } from "./build-log.js";
+import { OutcomeLog } from "./outcome-log.js";
 
 interface WatchChange {
 	readonly sourceFiles: number;
@@ -108,18 +109,18 @@ export interface WatchReporter {
 }
 
 export class WatchLog implements WatchReporter {
-	protected readonly buildLog: BuildLog;
+	protected readonly outcomeLog: OutcomeLog;
 
 	constructor(
 		protected readonly logService: LogService,
 		protected readonly cwd: string,
 		private readonly command = "watch"
 	) {
-		this.buildLog = new BuildLog(logService, cwd);
+		this.outcomeLog = new OutcomeLog(logService, cwd);
 	}
 
 	begin(configs: readonly ResolvedConfig[], home?: string): void {
-		this.buildLog.begin(
+		this.outcomeLog.begin(
 			this.command,
 			configs.map(({ file }) => configPath(this.cwd, file)),
 			home
@@ -175,7 +176,7 @@ export class WatchLog implements WatchReporter {
 				this.logService.info(`${name} removed. No longer building it.`);
 				return;
 			case "broken":
-				this.buildLog.diagnostics(notice.errors, notice.file);
+				this.outcomeLog.diagnostics(notice.errors, notice.file);
 				this.logService.error(
 					notice.keptLastValid
 						? `Still building from the last valid ${name}.`
@@ -193,7 +194,7 @@ export class WatchLog implements WatchReporter {
 			build.file,
 			unreported.filter((diagnostic) => !isError(diagnostic))
 		);
-		this.buildLog.outcome(
+		this.outcomeLog.outcome(
 			build,
 			[...warnings.fresh, ...unreported.filter(isError)],
 			{
@@ -201,7 +202,7 @@ export class WatchLog implements WatchReporter {
 					repeatedFailure
 						? "same errors as before"
 						: counted(repeated, "as before"),
-					this.buildLog.sameAs("warnings", warnings.sameAs),
+					this.outcomeLog.sameAs("warnings", warnings.sameAs),
 					counted(fixed, "fixed"),
 				],
 			}
@@ -233,7 +234,7 @@ export class PrintedWatchLog extends WatchLog {
 	override update({ notices, reports }: WatchUpdate): void {
 		for (const notice of notices) this.notice(notice);
 		for (const { build, unreported } of reports)
-			this.buildLog.diagnostics(unreported, build.file);
+			this.outcomeLog.diagnostics(unreported, build.file);
 	}
 }
 
@@ -250,7 +251,7 @@ export class WatchJsonLog implements WatchReporter {
 	update(update: WatchUpdate): void {
 		update.notices.forEach((notice) => this.notice(notice));
 		for (const { build } of update.reports)
-			this.line({ build: buildEntry(build, this.cwd) });
+			this.line({ build: writeEntry(build, this.cwd) });
 	}
 
 	error(error: Error): void {

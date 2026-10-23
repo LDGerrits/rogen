@@ -17,9 +17,12 @@ import {
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { buildLineShape } from "../build/build-document.js";
-import { BuildWatch } from "../build/build-watch.js";
-import { writeDocument, writeDocumentShape } from "./write-document.js";
+import { WriteWatch } from "../write/write-watch.js";
+import {
+	watchLineShape,
+	writeDocument,
+	writeDocumentShape,
+} from "./write-document.js";
 import { WriteLog } from "./write-log.js";
 
 const WatchOption = {
@@ -68,7 +71,7 @@ registerCommand(
 					options: WriteOptions,
 					output: {
 						document: writeDocumentShape,
-						lines: buildLineShape,
+						lines: watchLineShape,
 					},
 					effects: ["writesFiles"],
 					unknownWordOffer: "To write a project file",
@@ -107,7 +110,7 @@ registerCommand(
 			const store = new DisposableStore();
 			const shutdown = this.untilShutdown(accessor, store);
 			try {
-				return await new BuildWatch(
+				return await new WriteWatch(
 					accessor,
 					this.watchedRefs(configs),
 					json,
