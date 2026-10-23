@@ -57,7 +57,9 @@ Rogen writes the Rojo project file from the folders and names under each `.rogen
 
 The block asks an agent to run `rogen check <paths>` after it adds, moves or renames files. That depends on the agent remembering, and a clean result still costs a tool call.
 
-[`rogen check`](/docs/v2/cli#check-path) prints the diagnostics about the paths it is given, and nothing else, and exits 1 when there are any. A hook that runs when the agent is about to end its turn can use that to report only what the agent's own changes caused. The script below collects the changed files from git (modified, renamed and untracked, but not deleted), runs `rogen check` on them, and reports each line it hasn't reported earlier in the session. It is a Node script with no dependencies, so it runs wherever Rogen does, Windows included. It runs the Rogen in the project's `node_modules/.bin`, else the one on the `PATH`. The agent gets the report as its next prompt and continues its turn.
+[`rogen check`](/docs/v2/cli#check-path) prints the diagnostics about the paths it is given, and nothing else, and exits 1 when there are any. A hook that runs when the agent is about to end its turn can use that to report only what the agent's own changes caused.
+
+The script below collects the changed files from git (modified, renamed and untracked, but not deleted), runs `rogen check` on them, and reports each line it hasn't reported earlier in the session. It is a Node script with no dependencies, so it runs wherever Rogen does, Windows included. It runs the Rogen in the project's `node_modules/.bin`, else the one on the `PATH`. The agent gets the report as its next prompt and continues its turn.
 
 It is one script for every agent that has a hook for the end of a turn. They agree on the payload (a JSON object on stdin with the session id and the working directory) and on the reply (`{"decision": "block", "reason": …}` on stdout, which becomes the next prompt). Only Cursor differs, and takes `cursor` as the script's first argument to reply with `followup_message`.
 

@@ -9,7 +9,11 @@ A **build** writes the **project file** of one config: a Rojo project file, besi
 
 ## Output
 
-A config named `X.rogen.json` writes `X.project.json` beside it, the way Rojo names project files, and `default.rogen.json` writes `default.project.json`. A second project, such as a Darklua build or a release without the specs, is a second complete config with its own project file. See [Configuration](/docs/v2/configuration#more-files). The project file is a plain Rojo project file: Rogen's keys are gone, your `tree` has the routed nodes merged in, paths are relative to the file, and it is formatted as `rojo fmt-project` formats it. `default.project.json` carries `name` only when the config sets one. Rojo names the project after its folder otherwise. Every other project file carries a `name`, the config's or the file's stem, since Rojo can't open a project file without one.
+A config named `X.rogen.json` writes `X.project.json` beside it, the way Rojo names project files, and `default.rogen.json` writes `default.project.json`. A second project, such as a Darklua build or a release without the specs, is a second complete config with its own project file. See [Configuration](/docs/v2/configuration#more-files).
+
+The project file is a plain Rojo project file: Rogen's keys are gone, your `tree` has the routed nodes merged in, paths are relative to the file, and it is formatted as `rojo fmt-project` formats it.
+
+`default.project.json` carries `name` only when the config sets one. Rojo names the project after its folder otherwise. Every other project file carries a `name`, the config's or the file's stem, since Rojo can't open a project file without one.
 
 Every other Rojo key in the config (`servePort`, `servePlaceIds`, `globIgnorePaths` and the rest) is copied across, so the tools that read the file see them.
 
@@ -74,7 +78,13 @@ Rogen writes the project files, and `build -o` has Rojo make a place or model fi
 rogen build -o game.rbxl
 ```
 
-It writes the project file first and then runs the Rojo your tool manager's file (`rokit.toml`, `aftman.toml` or `foreman.toml`) pins on it, so the place always matches the file. Name another config to build that one: a place that differs from your default build, such as one with the specs in it or without the dev packages, is a second config file, built with `rogen build release -o game.rbxl`. See [Testing](/docs/v2/testing). `-p Tool.rbxm` builds a plugin into Roblox's plugins folder, and `rogen upload` uploads the place. `rogen build` needs `-o` or `-p`, as `rojo build` does; to write the project files without building, run `rogen write`, and `rojo build default.project.json -o game.rbxl` after it works the same.
+It writes the project file first and then runs the Rojo your tool manager's file (`rokit.toml`, `aftman.toml` or `foreman.toml`) pins on it, so the place always matches the file.
+
+Name another config to build that one: a place that differs from your default build, such as one with the specs in it or without the dev packages, is a second config file, built with `rogen build release -o game.rbxl`. See [Testing](/docs/v2/testing).
+
+`-p Tool.rbxm` builds a plugin into Roblox's plugins folder, and `rogen upload` uploads the place.
+
+`rogen build` needs `-o` or `-p`, as `rojo build` does; to write the project files without building, run `rogen write`, and `rojo build default.project.json -o game.rbxl` after it works the same.
 
 With [Darklua](/docs/v2/setups/darklua) or roblox-ts, run the compiler first, so the place holds the compiled code the `compiledPath` points at.
 

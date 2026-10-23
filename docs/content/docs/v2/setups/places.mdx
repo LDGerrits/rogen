@@ -72,7 +72,11 @@ cp -r place/game place/lobby
 mkdir src/lobby
 ```
 
-In `lobby.rogen.json`, set `"name": "lobby"`, `"sourcePaths": ["src/common", "src/lobby"]` and each `place/game` in the `tree` to `place/lobby`. Rogen refuses a copy that is still the same as `game.rogen.json` ([`config.identicalConfig`](/docs/v2/diagnostics#config-identicalconfig)). The other keys are yours to change: `servePlaceIds`, and anything the lobby mounts that the first place doesn't. `rogen init lobby` does not do this: like `rojo init`, it starts a separate project in `lobby/`. With Darklua, copy `game.dist.rogen.json` and `game.release.rogen.json` the same way (see [Darklua with Places](/docs/v2/setups/darklua#darklua-with-places)). `.vscode/settings.json` keeps reading the first place until you change its name (see [Open the Editor](#open-the-editor)).
+In `lobby.rogen.json`, set `"name": "lobby"`, `"sourcePaths": ["src/common", "src/lobby"]` and each `place/game` in the `tree` to `place/lobby`. Rogen refuses a copy that is still the same as `game.rogen.json` ([`config.identicalConfig`](/docs/v2/diagnostics#config-identicalconfig)). The other keys are yours to change: `servePlaceIds`, and anything the lobby mounts that the first place doesn't.
+
+`rogen init lobby` does not do this: like `rojo init`, it starts a separate project in `lobby/`.
+
+With Darklua, copy `game.dist.rogen.json` and `game.release.rogen.json` the same way (see [Darklua with Places](/docs/v2/setups/darklua#darklua-with-places)). `.vscode/settings.json` keeps reading the first place until you change its name (see [Open the Editor](#open-the-editor)).
 
 ```
 game.rogen.json
@@ -148,7 +152,11 @@ rogen sourcemap game -o sourcemap.json && luau-lsp analyze --definitions=@roblox
 rogen sourcemap lobby -o sourcemap.json && luau-lsp analyze --definitions=@roblox=<types.d.luau> --sourcemap=sourcemap.json src/common src/lobby
 ```
 
-`rogen check` and `rogen where` find a file's config in the folders at and above it: its default config, else the root-level `.rogen.json` files whose source paths hold it. `rogen check src/game/Main.server.luau` checks the file against `game`, and `rogen check src/common/Net.luau` against every place, printing a shared diagnostic once; `rogen where src/common/Net.luau` prints one answer, or one for each place when they place it differently. To check a place whole, name its config: `rogen check game.rogen.json` and `rogen where game.rogen.json`. A folder-per-place project is covered from the root by path, as `rogen check projects/lobby/src/Lobby/Server/LobbyService.ts`; a path that no config covers, such as a file in `projects/common`, gets a note and is skipped, so check it through a place (`rogen check projects/lobby`):
+`rogen check` and `rogen where` find a file's config in the folders at and above it: its default config, else the root-level `.rogen.json` files whose source paths hold it.
+
+`rogen check src/game/Main.server.luau` checks the file against `game`, and `rogen check src/common/Net.luau` against every place, printing a shared diagnostic once; `rogen where src/common/Net.luau` prints one answer, or one for each place when they place it differently. To check a place whole, name its config: `rogen check game.rogen.json` and `rogen where game.rogen.json`.
+
+A folder-per-place project is covered from the root by path, as `rogen check projects/lobby/src/Lobby/Server/LobbyService.ts`; a path that no config covers, such as a file in `projects/common`, gets a note and is skipped, so check it through a place (`rogen check projects/lobby`):
 
 ```
 note: projects/common/src/Net/Types.ts: no config at or above it reads it.

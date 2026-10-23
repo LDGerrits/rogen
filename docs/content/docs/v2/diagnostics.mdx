@@ -83,7 +83,19 @@ default.rogen.json:5:2 - error: "extends" was removed. Config files don't read e
 default.rogen.json:6:2 - error: "syncPath" was removed. It is called compiledPath now, inside the rogen block. (config.removedField)
 ```
 
-Remove the key and do what the message says. `rootDirs` is now `sourcePaths`, and `syncDir` and `syncPath` are `compiledPath` inside the `rogen` block. `projects`, `modes` and `extends` are gone: a second output is a second complete `<name>.rogen.json` that repeats the keys it needs and changes the ones that differ, and `mode` is a file you name (`rogen write <name>`). `serveProject` is gone: `rogen serve` serves `default.rogen.json`, or the file you name. `placePaths` is gone: a place is a folder with its own `default.rogen.json`, served by naming it (`rogen serve places/lobby`). `template` is gone: write its `tree` and its other keys in `default.rogen.json`. `outFile` is gone: Rogen writes `default.project.json` beside `default.rogen.json`. `exclude` is `globIgnorePaths`, which also leaves out a mount it ignores. For `variants` and `conflicts`, a file that replaces another goes in a later source path, which wins a clash, and sets that exclude each other are a complete file each. For `server`, `rogen serve` starts Rojo, and serving with Argon is described in [Studio](/docs/v2/studio#serve-with-argon). See [Configuration](/docs/v2/configuration#removed-keys), [Migrating from v1](/docs/v2/migrating-from-v1) and [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
+Remove the key and do what the message says.
+
+- `rootDirs` is now `sourcePaths`, and `syncDir` and `syncPath` are `compiledPath` inside the `rogen` block.
+- `projects`, `modes` and `extends` are gone: a second output is a second complete `<name>.rogen.json` that repeats the keys it needs and changes the ones that differ, and `mode` is a file you name (`rogen write <name>`).
+- `serveProject` is gone: `rogen serve` serves `default.rogen.json`, or the file you name.
+- `placePaths` is gone: a place is a folder with its own `default.rogen.json`, served by naming it (`rogen serve places/lobby`).
+- `template` is gone: write its `tree` and its other keys in `default.rogen.json`.
+- `outFile` is gone: Rogen writes `default.project.json` beside `default.rogen.json`.
+- `exclude` is `globIgnorePaths`, which also leaves out a mount it ignores.
+- For `variants` and `conflicts`, a file that replaces another goes in a later source path, which wins a clash, and sets that exclude each other are a complete file each.
+- For `server`, `rogen serve` starts Rojo, and serving with Argon is described in [Studio](/docs/v2/studio#serve-with-argon).
+
+See [Configuration](/docs/v2/configuration#removed-keys), [Migrating from v1](/docs/v2/migrating-from-v1) and [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
 
 ### `config.duplicateSourcePath` [#config-duplicatesourcepath]
 
@@ -221,7 +233,11 @@ Rename the file to the spelling suggested, or move the `@key` to the end of the 
 
 ### `route.dotRoute` [#route-dotroute]
 
-Warning. A route key is written after a dot, where only `@` routes, so it routes nothing: a dot-file like `.server`, which isn't a marker, a dot-folder like `.server/`, which isn't a routing folder, or a dot part of a name like `Types.shared.luau` or `Net.server/`, which stays in the name. What it names falls through to the route above it, or `*`. The key matches in any letter case, so `.SERVER/` and `Types.SHARED.luau` warn too. Rojo's `.server` and `.client` at the end of a script still route and are never reported, but only in lower case (Rojo reads `Boot.Server.luau` as a ModuleScript named `Boot.Server`, so Rogen suggests `Boot.server.luau`), and only on a script: a data file or model has no script class, so `Config.server.json` is named `Config.server` and warns.
+Warning. A route key is written after a dot, where only `@` routes, so it routes nothing: a dot-file like `.server`, which isn't a marker, a dot-folder like `.server/`, which isn't a routing folder, or a dot part of a name like `Types.shared.luau` or `Net.server/`, which stays in the name.
+
+What it names falls through to the route above it, or `*`. The key matches in any letter case, so `.SERVER/` and `Types.SHARED.luau` warn too.
+
+Rojo's `.server` and `.client` at the end of a script still route and are never reported, but only in lower case (Rojo reads `Boot.Server.luau` as a ModuleScript named `Boot.Server`, so Rogen suggests `Boot.server.luau`), and only on a script: a data file or model has no script class, so `Config.server.json` is named `Config.server` and warns.
 
 ```
 default.rogen.json - warning: 2 names write a route key after a dot, where only "@" routes, so they route nothing: (route.dotRoute)
@@ -854,7 +870,13 @@ Pin the tool, or fix the install the quoted line points at. Running `rojo --vers
 
 ### `serve.portTaken` [#serve-porttaken]
 
-Error. Another process holds the port a config would be served on. When it's a Rojo server, the message names the project it serves, and the file `rogen serve` started it for when one did. A server that another `rogen serve` started for the same project file isn't an error: `rogen serve` leaves it running. A server that a `rogen serve` started for another file is one, in this folder or another, such as a second place on the same port: stop it, give this one a `servePort`, or pass a free port with `--port`, since a second place is served from a second terminal. A server that no `rogen serve` started, such as a `rojo serve` you ran yourself or an Argon server, is one too, even if it serves a project of the same name: the message says another process holds the port. Stop it, or give this one another port.
+Error. Another process holds the port a config would be served on. When it's a Rojo server, the message names the project it serves, and the file `rogen serve` started it for when one did.
+
+A server that another `rogen serve` started for the same project file isn't an error: `rogen serve` leaves it running.
+
+A server that a `rogen serve` started for another file is one, in this folder or another, such as a second place on the same port: stop it, give this one a `servePort`, or pass a free port with `--port`, since a second place is served from a second terminal.
+
+A server that no `rogen serve` started, such as a `rojo serve` you ran yourself or an Argon server, is one too, even if it serves a project of the same name: the message says another process holds the port. Stop it, or give this one another port.
 
 ```
 places/arena/default.rogen.json - error: Port 34872 is taken by Rojo serving lobby, which rogen serve started for places/lobby/default.rogen.json, so places/arena/default.rogen.json can't be served there. Stop it, set a servePort in places/arena/default.rogen.json, or run 'rogen serve places/arena --port <port>'. (serve.portTaken)
@@ -948,7 +970,22 @@ Remove the node from the `tree` of the `.rogen.json`, or put the instance back i
 
 ### `syncback.unplaced` [#syncback-unplaced]
 
-Warning. The place holds an instance that no folder of the project can take, so syncback left it out. A new instance is written where routing would place a file for it, in the style of the nearest files; this is the case where nothing decides: no route puts files where its parent is, two routes do, the project has several source paths and no file beside it says which, or as many files beside it lie in each of two folders of one style. It is also how syncback lists what it can't write: an instance where an ignore glob would put it, a property set on a folder that no one folder of the project is, a property set on a node that only routing made (the `tree` has none), a copy of an init script edited differently from another copy of it, or deleted while another was edited (the edit is written), and a change Rojo itself can't sync back (a `.json` or `.toml` module). The message says why.
+Warning. The place holds an instance that no folder of the project can take, so syncback left it out. A new instance is written where routing would place a file for it, in the style of the nearest files; this is the case where nothing decides:
+
+- no route puts files where its parent is
+- two routes do
+- the project has several source paths and no file beside it says which
+- as many files beside it lie in each of two folders of one style
+
+It is also how syncback lists what it can't write:
+
+- an instance where an ignore glob would put it
+- a property set on a folder that no one folder of the project is
+- a property set on a node that only routing made (the `tree` has none)
+- a copy of an init script edited differently from another copy of it, or deleted while another was edited (the edit is written)
+- a change Rojo itself can't sync back (a `.json` or `.toml` module)
+
+The message says why.
 
 ```
 default.rogen.json - warning: ServerScriptService/Inventory/Mail is in the place and no folder of the project can take it, so it was left out: files beside it are in more than one place, as many in each: src/Inventory/Server, lib/Inventory/Server. (syncback.unplaced)
