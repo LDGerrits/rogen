@@ -26,7 +26,7 @@ export const skippedPathShape = OutputShape.named(
 	})
 );
 
-export function skippedPathToJson(
+function skippedPathToJson(
 	{ path, reason, config }: SkippedPath,
 	cwd: string
 ): SkippedPathJson {
