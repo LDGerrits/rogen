@@ -7,10 +7,11 @@
 	</a>
 </p>
 <h1 align="center">Rogen</h1>
-<p align="center"><strong>Organize your Roblox game by feature.</strong></p>
 <p align="center">
-	Rogen is a superset of Rojo that generates Rojo project files.
-	With file-system routing, the name of a folder or file decides where its code goes.
+	<strong>Rojo with file-system routing. Professional-grade architecture for Roblox codebases.</strong>
+</p>
+<p align="center">
+	Rogen is a superset of Rojo that generates Rojo project files from your file system. Put code in a <code>Server</code> or <code>Client</code> folder, or add <code>@Server</code> to a file's name, and Rogen sends it to the right place.
 </p>
 <p align="center">
 	<a href="https://www.npmjs.com/package/@ldgerrits/rogen"><img alt="Latest release" src="https://img.shields.io/npm/v/@ldgerrits/rogen?style=flat-square&label=latest%20release" /></a>
@@ -23,12 +24,16 @@
 
 ## Why Rogen?
 
-- **Organize by feature** — The inventory's code sits in `src/Inventory`, from server to client. You and your coding agents find the whole feature in one place.
-- **Multi-place games** — Write shared code once and use it in every place. A place can still replace any file with its own.
-- **Still Rojo** — Rogen runs the Rojo commands you use, with the same flags. One tool, nothing to relearn.
-- **Folders only you see** — Wrap a folder name in parentheses, like `(Combat)`, to group features without adding a level in the game. Tidy up as much as you like, and every `require` keeps working.
-- **Delete a feature in one step** — Delete `src/Shop`, and its code leaves every service it reached. No hunting through each side's folder.
-- **Boundaries a linter can check** — Every path names its feature, so a lint rule can stop one feature from requiring another. The docs have [rules for ESLint and Lute](https://rogen-playfully.vercel.app/docs/v2/architectures#enforcing-the-rules).
+- **Organize by feature** — Group all code, UI, and assets for a specific feature in one place. This gives you high cohesion, better scalability, fewer merge conflicts, and makes a feature simple to maintain or delete.
+- **Enforce boundaries** — Keep coupling low with a linter. Every path names its feature, so a lint rule can stop one feature from requiring another.
+- **Multi-place games** — Write shared code once and use it in every place. When one place needs something different, add a file with the same name, and that place uses it instead.
+- **Still Rojo** — Rogen runs the Rojo commands you use, with the same flags. One tool, and nothing to relearn.
+
+## Built for agents
+
+When an agent works on a feature, everything it needs is in one folder, from server to client. It spends its context on your task instead of searching the codebase.
+
+Running several agents? Give each one a feature. A lint rule catches any agent that makes one feature require another, and there's no shared project file to conflict on.
 
 ## Example
 
@@ -94,7 +99,7 @@ Yes. Run `rogen write --watch` and serve with Argon.
 
 #### Can I use Rogen in an existing Rojo project?
 
-Yes. Run `rogen init` to move it to Rogen. See [Coming from Rojo](https://rogen-playfully.vercel.app/docs/v2/coming-from-rojo).
+Yes. Run `rogen init` to move it to Rogen.
 
 ## Contributing
 
