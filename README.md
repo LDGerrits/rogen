@@ -26,6 +26,9 @@
 - **Organize by feature** — The inventory's code sits in `src/Inventory`, from server to client. You and your coding agents find the whole feature in one place.
 - **Multi-place games** — Write shared code once and use it in every place. A place can still replace any file with its own.
 - **Still Rojo** — Rogen runs the Rojo commands you use, with the same flags. One tool, nothing to relearn.
+- **Folders only you see** — Wrap a folder name in parentheses, like `(Combat)`, to group features without adding a level in the game. Tidy up as much as you like, and every `require` keeps working.
+- **Delete a feature in one step** — Delete `src/Shop`, and its code leaves every service it reached. No hunting through each side's folder.
+- **Boundaries a linter can check** — Every path names its feature, so a lint rule can stop one feature from requiring another. The docs have [rules for ESLint and Lute](https://rogen-playfully.vercel.app/docs/v2/architectures#enforcing-the-rules).
 
 ## Example
 
@@ -40,13 +43,14 @@
     "routes": {
       "Server": "ServerScriptService",
       "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared"
+      "Shared": "ReplicatedStorage/Shared",
+      "*": "ReplicatedStorage/Shared"
     }
   }
 }
 ```
 
-A folder or an `@` suffix named after a route sends its code there:
+A folder or an `@` suffix named after a route sends its code there. The `*` route takes every file that matches no other:
 
 | In `src/Inventory`                | Goes to                                        |
 | --------------------------------- | ---------------------------------------------- |
@@ -54,6 +58,7 @@ A folder or an `@` suffix named after a route sends its code there:
 | `Client/InventoryController.luau` | `StarterPlayer/StarterPlayerScripts/Inventory` |
 | `Shared/InventoryTypes.luau`      | `ReplicatedStorage/Shared/Inventory`           |
 | `Save@Server.luau`                | `ServerScriptService/Inventory`                |
+| `InventoryConfig.luau`            | `ReplicatedStorage/Shared/Inventory`           |
 
 The routes are yours to change. Add `"Gui": "StarterGui"`, and a `Gui` folder or a `@Gui` suffix sends code to StarterGui.
 
