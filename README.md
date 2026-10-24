@@ -19,13 +19,13 @@
 
 ---
 
-With Rogen, a feature's server, client and shared code live in one folder, such as `src/Inventory`. Rogen generates the Rojo project file from the folder names. You run Rojo's commands through Rogen, with the same flags. It works with Luau and roblox-ts.
+With Rogen, a feature's server, client and shared code live in one folder. Rogen builds on Rojo and takes the same commands and flags.
 
 ## Why Rogen?
 
-- **One folder per feature** - `src/Inventory` holds all of Inventory. You add, move or delete a feature in one place.
-- **No config per feature** - Add a feature folder and Rogen adds it to the project file.
-- **Still Rojo** - Same commands, flags and Studio plugin. The project file Rogen generates builds with plain Rojo.
+- **Organized by feature** - All of Inventory is in `src/Inventory`. People and coding agents find a whole feature in one folder.
+- **Still Rojo** - Rogen writes a plain Rojo project file and syncs through Rojo's Studio plugin. Rojo and Argon can serve that file without Rogen.
+- **See where code lands** - `rogen where` prints where a file ends up in the game and the line to require it.
 
 ## Example
 
@@ -45,7 +45,7 @@ With Rogen, a feature's server, client and shared code live in one folder, such 
 }
 ```
 
-`src/Inventory/Server/InventoryService.luau` ends up in `ServerScriptService/Inventory/InventoryService`, and `src/Inventory/Client` in `StarterPlayer/StarterPlayerScripts/Inventory`.
+`src/Inventory/Server/InventoryService.luau` ends up in `ServerScriptService/Inventory/InventoryService`. A suffix works too: `src/Inventory/Save@Server.luau` ends up in `ServerScriptService/Inventory/Save`.
 
 ## Installation
 
@@ -87,4 +87,4 @@ Read the [contributing guide](CONTRIBUTING.md) before you open a pull request.
 
 ## License
 
-Rogen is [MIT licensed](LICENSE.md). You can [sponsor its development](https://github.com/sponsors/LDGerrits).
+Rogen is [MIT licensed](LICENSE.md). If Rogen helps you, star the repo or [sponsor its development](https://github.com/sponsors/LDGerrits).
