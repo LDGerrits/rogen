@@ -88,7 +88,7 @@ Yes. Run `rogen write --watch` and serve with Argon.
 
 #### Does Rogen work with several places?
 
-Yes. Each place has its own config, which lists the shared folder and then its own. When both have the same file, the place's version wins. The arena can have its own `Damage.luau`, while every other place uses the shared one. See [Several Places](https://rogen-playfully.vercel.app/docs/v2/setups/places).
+Yes, and each place can replace any shared file with its own. A place's config lists the shared folder and then its own. The arena can have its own `Damage.luau`, while every other place uses the shared one. See [Several Places](https://rogen-playfully.vercel.app/docs/v2/setups/places).
 
 #### Can I use Rogen in an existing Rojo project?
 
