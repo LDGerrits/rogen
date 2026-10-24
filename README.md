@@ -31,17 +31,18 @@
 
 `default.rogen.json` has the same fields as a Rojo project file, plus a `rogen` block:
 
+<!-- prettier-ignore -->
 ```json
 {
-	"name": "Game",
-	"tree": { "$className": "DataModel" },
-	"rogen": {
-		"routes": {
-			"Server": "ServerScriptService",
-			"Client": "StarterPlayer/StarterPlayerScripts",
-			"Shared": "ReplicatedStorage/Shared"
-		}
-	}
+  "name": "Game",
+  "tree": { "$className": "DataModel" },
+  "rogen": {
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared"
+    }
+  }
 }
 ```
 
