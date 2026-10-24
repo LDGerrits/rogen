@@ -23,9 +23,9 @@ With Rogen, each feature's server, client and shared code lives in one folder. Y
 
 ## Why Rogen?
 
-- **Organize by feature** — The inventory's code sits in `src/Inventory`, from server to client. Open one folder to see the whole feature.
-- **Made for coding agents** — Coding agents get the context they need to work with Rogen. The CLI is built for them as much as for you.
-- **Still Rojo** — Rogen writes a standard Rojo project file and runs Rojo with your flags. Nothing to relearn.
+- **Organize by feature** — The inventory's code sits in `src/Inventory`, from server to client. You and your coding agents find the whole feature in one place.
+- **Multi-place games** — Write shared code once and use it in every place. A place can still replace any file with its own.
+- **Still Rojo** — Rogen runs the Rojo commands you use, with the same flags. One tool, nothing to relearn.
 
 ## Example
 
