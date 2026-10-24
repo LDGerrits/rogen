@@ -23,9 +23,9 @@ With Rogen, a feature's server, client and shared code live in one folder. Rogen
 
 ## Why Rogen?
 
-- **Organized by feature** - All of Inventory is in `src/Inventory`. People and coding agents find a whole feature in one folder.
-- **Still Rojo** - Rogen writes a plain Rojo project file and syncs through Rojo's Studio plugin. Rojo and Argon can serve that file without Rogen.
-- **See where code lands** - `rogen where` prints where a file ends up in the game and the line to require it.
+- **Organized by feature** - People and coding agents find all related code in one folder.
+- **Scales with your game** - Each feature stays in its own folder as the game grows. Rogen adds new folders to the project file for you.
+- **Still Rojo** - Same commands, flags and Studio plugin. The project file Rogen generates builds with plain Rojo.
 
 ## Example
 
