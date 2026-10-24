@@ -9,25 +9,23 @@
 	<a href="https://www.npmjs.com/package/@ldgerrits/rogen"><img alt="npm" src="https://img.shields.io/npm/v/@ldgerrits/rogen?style=flat-square" /></a>
 	<a href="https://github.com/LDGerrits/rogen/actions/workflows/test.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/LDGerrits/rogen/test.yml?style=flat-square&label=build" /></a>
 	<a href="LICENSE.md"><img alt="License" src="https://img.shields.io/github/license/LDGerrits/rogen?style=flat-square" /></a>
-	<a href="https://discord.com/channels/385151591524597761/1503801029232295996"><img alt="Discord" src="https://img.shields.io/badge/discord-chat-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
-	<a href="https://rogen-playfully.vercel.app/docs/v2"><img alt="Documentation" src="https://img.shields.io/badge/docs-rogen-blueviolet?style=flat-square" /></a>
 	<a href="https://github.com/LDGerrits/rogen/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/LDGerrits/rogen?style=flat-square&logo=github" /></a>
 	<br />
 	<a href="https://luau.org"><img alt="Luau" src="https://img.shields.io/badge/Luau-00A2FF?style=flat-square&logo=luau&logoColor=white" /></a>
 	<a href="https://roblox-ts.com"><img alt="roblox-ts" src="https://img.shields.io/badge/roblox--ts-3178C6?style=flat-square&logo=typescript&logoColor=white" /></a>
+	<a href="https://rogen-playfully.vercel.app/docs/v2"><img alt="Documentation" src="https://img.shields.io/badge/docs-rogen-blueviolet?style=flat-square" /></a>
+	<a href="https://discord.com/channels/385151591524597761/1503801029232295996"><img alt="Discord" src="https://img.shields.io/badge/discord-chat-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
 </p>
 
 ---
 
-**Rogen** is a superset of Rojo that generates Rojo project files. In a Rojo project, the folders in your repository mirror the game: server code in one tree, client code in another and shared code in a third. With Rogen, a feature's server, client and shared code live in one folder, and Rogen generates the project file that maps each part to its service.
-
-You run Rojo's commands through Rogen, with the same flags. It works with Luau and roblox-ts.
+With Rogen, a feature's server, client and shared code live in one folder, such as `src/Inventory`. Rogen generates the Rojo project file from the folder names. You run Rojo's commands through Rogen, with the same flags. It works with Luau and roblox-ts.
 
 ## Why Rogen?
 
 - **One folder per feature** - `src/Inventory` holds all of Inventory. You add, move or delete a feature in one place.
-- **Still Rojo** - The generated `default.project.json` is a Rojo project file. Rojo and its tools read it like any other.
-- **Same commands** - `rogen serve`, `rogen build` and the rest take Rojo's flags.
+- **No config per feature** - Add a feature folder and Rogen adds it to the project file.
+- **Still Rojo** - Same commands, flags and Studio plugin. The project file Rogen generates builds with plain Rojo.
 
 ## Example
 
