@@ -31,28 +31,29 @@
 
 `default.rogen.json` has the same fields as a Rojo project file, plus a `rogen` block:
 
+<!-- prettier-ignore -->
 ```json
 {
-	"name": "Game",
-	"tree": { "$className": "DataModel" },
-	"rogen": {
-		"routes": {
-			"Server": "ServerScriptService",
-			"Client": "StarterPlayer/StarterPlayerScripts",
-			"Shared": "ReplicatedStorage/Shared"
-		}
-	}
+  "name": "Game",
+  "tree": { "$className": "DataModel" },
+  "rogen": {
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared"
+    }
+  }
 }
 ```
 
 A folder or an `@` suffix named after a route sends its code there:
 
-| File                                            | In the game                                                        |
-| ----------------------------------------------- | ------------------------------------------------------------------ |
-| `src/Inventory/Server/InventoryService.luau`    | `ServerScriptService/Inventory/InventoryService`                   |
-| `src/Inventory/Client/InventoryController.luau` | `StarterPlayer/StarterPlayerScripts/Inventory/InventoryController` |
-| `src/Inventory/Shared/InventoryTypes.luau`      | `ReplicatedStorage/Shared/Inventory/InventoryTypes`                |
-| `src/Inventory/Save@Server.luau`                | `ServerScriptService/Inventory/Save`                               |
+| In `src/Inventory`                | Goes to                                        |
+| --------------------------------- | ---------------------------------------------- |
+| `Server/InventoryService.luau`    | `ServerScriptService/Inventory`                |
+| `Client/InventoryController.luau` | `StarterPlayer/StarterPlayerScripts/Inventory` |
+| `Shared/InventoryTypes.luau`      | `ReplicatedStorage/Shared/Inventory`           |
+| `Save@Server.luau`                | `ServerScriptService/Inventory`                |
 
 The routes are yours to change. Add `"Gui": "StarterGui"`, and a `Gui` folder or a `@Gui` suffix sends code to StarterGui.
 
