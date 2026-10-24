@@ -29,7 +29,7 @@ With Rogen, each feature's server, client and shared code lives in one folder. Y
 
 ## Example
 
-`default.rogen.json` is a Rojo project file with a `rogen` block. Its routes map each kind of folder to a service:
+`default.rogen.json` has the same fields as a Rojo project file, plus a `rogen` block:
 
 ```json
 {
@@ -45,7 +45,16 @@ With Rogen, each feature's server, client and shared code lives in one folder. Y
 }
 ```
 
-`src/Inventory/Server/InventoryService.luau` ends up in `ServerScriptService/Inventory/InventoryService`. A suffix works too: `src/Inventory/Save@Server.luau` ends up in `ServerScriptService/Inventory/Save`.
+A folder or an `@` suffix named after a route sends its code there:
+
+| File                                            | In the game                                                        |
+| ----------------------------------------------- | ------------------------------------------------------------------ |
+| `src/Inventory/Server/InventoryService.luau`    | `ServerScriptService/Inventory/InventoryService`                   |
+| `src/Inventory/Client/InventoryController.luau` | `StarterPlayer/StarterPlayerScripts/Inventory/InventoryController` |
+| `src/Inventory/Shared/InventoryTypes.luau`      | `ReplicatedStorage/Shared/Inventory/InventoryTypes`                |
+| `src/Inventory/Save@Server.luau`                | `ServerScriptService/Inventory/Save`                               |
+
+The routes are yours to change. Add `"Gui": "StarterGui"`, and a `Gui` folder or a `@Gui` suffix sends code to StarterGui.
 
 ## Installation
 
@@ -76,6 +85,10 @@ Yes. You run everything through Rogen, and Rogen uses Rojo to do it.
 #### Does Rogen work with Argon?
 
 Yes. Run `rogen write --watch` and serve with Argon.
+
+#### Does Rogen work with several places?
+
+Yes. Each place has its own config, which lists the shared folder and then its own. When both have the same file, the place's version wins. The arena can have its own `Damage.luau`, while every other place uses the shared one. See [Several Places](https://rogen-playfully.vercel.app/docs/v2/setups/places).
 
 #### Can I use Rogen in an existing Rojo project?
 
