@@ -26,6 +26,10 @@
 - **Organize by feature** — The inventory's code sits in `src/Inventory`, from server to client. You and your coding agents find the whole feature in one place.
 - **Multi-place games** — Write shared code once and use it in every place. A place can still replace any file with its own.
 - **Still Rojo** — Rogen runs the Rojo commands you use, with the same flags. One tool, nothing to relearn.
+- **No project file to edit** — In plain Rojo, each feature needs a node in every service its code reaches. Rogen writes them from your folders, and `rogen serve` keeps them current.
+- **From file to instance and back** — `rogen where` shows where a file lands and how to `require` it, even before you create it. Paste a Studio error line into `rogen where`, and it prints the file to open.
+- **Mistakes caught before you playtest** — Rogen warns when a misspelled `Sever` folder leaves its files out of the game, or a `Server` folder inside `Shared` would ship its code to every client.
+- **Rules for coding agents** — `rogen init` adds Rogen's rules to `AGENTS.md`, and Rogen keeps them current. [In our tests](https://rogen-playfully.vercel.app/docs/v2/agents#what-we-measured), agents left the project file stale in 12 of 20 runs without them, and in none with them.
 
 ## Example
 
@@ -90,6 +94,18 @@ Yes. Run `rogen write --watch` and serve with Argon.
 #### Can I use Rogen in an existing Rojo project?
 
 Yes. Run `rogen init` to move it to Rogen. See [Coming from Rojo](https://rogen-playfully.vercel.app/docs/v2/coming-from-rojo).
+
+#### Do my requires change?
+
+Only for files you move. Moving a file into a feature folder changes its path in the game, and Rogen doesn't check requires. Run `rogen where` on a moved file to see the `require` that reaches it now.
+
+#### Does my team need Rogen?
+
+Yes, by default. `rogen init` keeps the project file out of git, so a fresh clone needs `rogen write` before Rojo can read it. If you commit the file (remove `*.project.json` from `.gitignore`), a teammate without Rogen can serve and build with Rojo. They need Rogen only to add a feature folder or an `@` file.
+
+#### Can I go back to Rojo?
+
+Yes. The project file Rogen writes is a complete Rojo project. Remove `*.project.json` from `.gitignore` and commit the file. Rojo then serves it as it is. From then on, a new feature folder needs a node you write yourself.
 
 ## Contributing
 
