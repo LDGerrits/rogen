@@ -24,9 +24,9 @@
 
 ## Why Rogen?
 
-- **Organize by feature** — Group all code, UI, and assets for a specific feature in one place. This gives you high cohesion, better scalability, fewer merge conflicts, and makes a feature simple to maintain or delete.
-- **Enforce boundaries** — Keep coupling low with a linter. Every path names its feature, so a lint rule can stop one feature from requiring another.
-- **Multi-place games** — Write shared code once and use it in every place. When one place needs something different, add a file with the same name, and that place uses it instead.
+- **Organize by feature** — Group all code, UI, and assets for a specific feature in one place. This gives you high cohesion, better scalability, fewer merge conflicts, and features that are simple to maintain or delete.
+- **Enforce boundaries** — Keep coupling low with a linter. Every path names its feature, so a [lint rule](https://rogen-playfully.vercel.app/docs/v2/architectures#enforcing-the-rules) can stop one feature from requiring another.
+- **Multi-place games** — Write shared code once and use it in every place. When one place needs something different, add a file with the same name to that place's folder, and it overwrites the shared one there.
 - **Still Rojo** — Rogen runs the Rojo commands you use, with the same flags. One tool, and nothing to relearn.
 
 ## Built for agents
@@ -89,17 +89,17 @@ rogen check                # Print warnings and errors, and exit 1 on any
 
 ## FAQ
 
-#### Do I still need Rojo?
+#### Does Rogen replace Rojo?
 
-Yes. You run everything through Rogen, and Rogen uses Rojo to do it.
+Yes and no. You run `rogen` instead of `rojo`, but Rojo still does the syncing and building underneath. Its Studio plugin stays installed too.
 
 #### Does Rogen work with Argon?
 
-Yes. Run `rogen write --watch` and serve with Argon.
+Yes, for syncing your files into Studio. Run `rogen write --watch` and serve with Argon. To bring Studio changes back, save the place and run `rogen syncback --input game.rbxl`. With Rojo, it's one command: `rogen serve` keeps the project file current and serves it.
 
 #### Can I use Rogen in an existing Rojo project?
 
-Yes. Run `rogen init` to move it to Rogen.
+Yes. Run `rogen init` to move it to Rogen. See [Coming from Rojo](https://rogen-playfully.vercel.app/docs/v2/coming-from-rojo).
 
 ## Contributing
 
