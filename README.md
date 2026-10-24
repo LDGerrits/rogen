@@ -19,13 +19,13 @@
 
 ---
 
-With Rogen, a feature's server, client and shared code live in one folder. Rogen builds on Rojo and takes the same commands and flags.
+With Rogen, a feature's server, client and shared code live in one folder. The rest is Rojo.
 
 ## Why Rogen?
 
-- **Organized by feature** - People and coding agents find all related code in one folder.
-- **Scales with your game** - Each feature stays in its own folder as the game grows. Rogen adds new folders to the project file for you.
-- **Still Rojo** - Same commands, flags and Studio plugin. The project file Rogen generates builds with plain Rojo.
+- **Organize by feature** - The inventory's server, client and shared code sit together in `src/Inventory`. People and coding agents read one folder to understand the feature.
+- **Made for coding agents** - "Work in `src/Inventory`" is a complete instruction. Commands take `--json`, and `rogen init` writes Rogen's rules to your `AGENTS.md`.
+- **Still Rojo** - `rogen serve` is `rojo serve`, with the same flags. Rogen syncs through Rojo's Studio plugin and writes a standard Rojo project file.
 
 ## Example
 
@@ -83,8 +83,8 @@ Yes. Run `rogen init` to move it to Rogen. See [Coming from Rojo](https://rogen-
 
 ## Contributing
 
-Read the [contributing guide](CONTRIBUTING.md) before you open a pull request.
+Read the [contributing guide](CONTRIBUTING.md) before you open a pull request. You can also star the repo or [sponsor its development](https://github.com/sponsors/LDGerrits).
 
 ## License
 
-Rogen is [MIT licensed](LICENSE.md). If Rogen helps you, star the repo or [sponsor its development](https://github.com/sponsors/LDGerrits).
+Rogen is [MIT licensed](LICENSE.md).
