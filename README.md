@@ -1,65 +1,99 @@
-<div>&nbsp;</div>
-
-<div align="center">
-	<img src="https://raw.githubusercontent.com/LDGerrits/rogen/main/docs/public/icon.png" alt="Rogen" width="100" />
-</div>
-
-<div align="center">
-    <a href="https://rogen-playfully.vercel.app"><strong>documentation</strong></a>
-</div>
+<p align="center">
+	<a href="https://rogen-playfully.vercel.app">
+		<img src="https://raw.githubusercontent.com/LDGerrits/rogen/main/docs/public/icon.png" alt="Rogen logo" width="100" />
+	</a>
+</p>
+<h1 align="center">Rogen</h1>
+<p align="center">Rogen is a superset of Rojo that generates Rojo project files.</p>
+<p align="center">
+	<a href="https://www.npmjs.com/package/@ldgerrits/rogen"><img alt="npm" src="https://img.shields.io/npm/v/@ldgerrits/rogen?style=flat-square" /></a>
+	<a href="https://github.com/LDGerrits/rogen/actions/workflows/test.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/LDGerrits/rogen/test.yml?style=flat-square&label=build" /></a>
+	<a href="LICENSE.md"><img alt="License" src="https://img.shields.io/github/license/LDGerrits/rogen?style=flat-square" /></a>
+	<a href="https://github.com/LDGerrits/rogen/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/LDGerrits/rogen?style=flat-square&logo=github" /></a>
+	<br />
+	<a href="https://luau.org"><img alt="Luau" src="https://img.shields.io/badge/Luau-00A2FF?style=flat-square&logo=luau&logoColor=white" /></a>
+	<a href="https://roblox-ts.com"><img alt="roblox-ts" src="https://img.shields.io/badge/roblox--ts-3178C6?style=flat-square&logo=typescript&logoColor=white" /></a>
+	<a href="https://rogen-playfully.vercel.app/docs/v2"><img alt="Documentation" src="https://img.shields.io/badge/docs-rogen-blueviolet?style=flat-square" /></a>
+	<a href="https://discord.com/channels/385151591524597761/1503801029232295996"><img alt="Discord" src="https://img.shields.io/badge/discord-chat-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
+</p>
 
 ---
 
-<div align="center">
-    A CLI tool that enables feature-based architecture for Roblox
-</div>
+With Rogen, each feature's server, client and shared code lives in one folder. Your codebase stays easy to understand as your game grows. Everything you do with Rojo still works, from live sync to building places.
 
-Rogen lets you organise Roblox code **by feature** instead of by environment. One feature folder holds its server, client and shared code, and Rogen writes the Rojo project file that places each script in the service where it runs. Rojo or Argon syncs it into Studio.
+## Why Rogen?
 
+- **Organize by feature** — The inventory's code sits in `src/Inventory`, from server to client. You and your coding agents find the whole feature in one place.
+- **Multi-place games** — Write shared code once and use it in every place. A place can still replace any file with its own.
+- **Still Rojo** — Rogen runs the Rojo commands you use, with the same flags. One tool, nothing to relearn.
+
+## Example
+
+`default.rogen.json` has the same fields as a Rojo project file, plus a `rogen` block:
+
+```json
+{
+	"name": "Game",
+	"tree": { "$className": "DataModel" },
+	"rogen": {
+		"routes": {
+			"Server": "ServerScriptService",
+			"Client": "StarterPlayer/StarterPlayerScripts",
+			"Shared": "ReplicatedStorage/Shared"
+		}
+	}
+}
 ```
-src/Inventory/Server/InventoryService.luau    ->  ServerScriptService/Inventory/InventoryService
-src/Inventory/Client/InventoryController.luau ->  StarterPlayer/StarterPlayerScripts/Inventory/InventoryController
-src/Inventory/InventoryTypes.luau             ->  ReplicatedStorage/Shared/Inventory/InventoryTypes
-```
 
-## Features
+A folder or an `@` suffix named after a route sends its code there:
 
-- **Feature folders:** A feature's server, client and shared code live in one folder, named after what it does in your game.
-- **Routes:** Declare where each kind of code goes. A file can also pick its place with a folder, a marker file or an `@` suffix (`Save@server.luau`).
-- **A Rojo superset:** `default.rogen.json` is a Rojo project file with a `rogen` block added, so Rojo's keys and docs still apply. A plain Rojo project runs under Rogen's commands as it is, and the commands take Rojo's names and flags. See [Coming from Rojo](https://rogen-playfully.vercel.app/docs/v2/coming-from-rojo).
-- **Several outputs and places:** `dist.rogen.json` writes `dist.project.json`, such as a Darklua build or a release without the specs. A repository with several places gives each place a folder and a `default.rogen.json` of its own.
-- **Shared code:** List several source paths. The later one wins a clash, so shared code can be overridden.
-- **Watch mode:** `rogen serve` writes again as files change, reloads when the config does, and starts Rojo.
-- **Toolchains:** Luau, roblox-ts and Darklua. `rogen init` finds them and writes them into the config; Darklua's own `.darklua.json` stays yours.
-- **Made for agents:** `--json` on every command, `rogen help --json`, and `rogen init` adds the rules to your `AGENTS.md`. See [Working with agents](https://rogen-playfully.vercel.app/docs/v2/agents).
+| File                                            | In the game                                                        |
+| ----------------------------------------------- | ------------------------------------------------------------------ |
+| `src/Inventory/Server/InventoryService.luau`    | `ServerScriptService/Inventory/InventoryService`                   |
+| `src/Inventory/Client/InventoryController.luau` | `StarterPlayer/StarterPlayerScripts/Inventory/InventoryController` |
+| `src/Inventory/Shared/InventoryTypes.luau`      | `ReplicatedStorage/Shared/Inventory/InventoryTypes`                |
+| `src/Inventory/Save@Server.luau`                | `ServerScriptService/Inventory/Save`                               |
 
-## Getting started
+The routes are yours to change. Add `"Gui": "StarterGui"`, and a `Gui` folder or a `@Gui` suffix sends code to StarterGui.
+
+## Installation
 
 ```bash
+rokit add ldgerrits/rogen
 rogen init
-rogen serve
+rokit install
 ```
 
-`rogen init` writes a starting config and prints the commands your setup needs. `rogen serve` writes the project file, starts Rojo and writes again on changes.
+`rogen init` pins Rojo in `rokit.toml`, and `rokit install` fetches it. New to Rojo? Also run `rogen plugin install` to add its Studio plugin. Prefer npm? Run `npm i @ldgerrits/rogen` and use `npx rogen`.
 
-| Command                              | What it does                                                             |
-| ------------------------------------ | ------------------------------------------------------------------------ |
-| `rogen write`                        | Writes the project file of every config, such as `default.project.json`. |
-| `rogen build`, `sourcemap`, `upload` | Write the project file, then run Rojo's command of the same name.        |
-| `rogen where <file>`                 | Prints where a file lands in the game, and why.                          |
-| `rogen check`                        | Prints the diagnostics, and exits 1 when there are any.                  |
+## Usage
 
-Read the [documentation](https://rogen-playfully.vercel.app) for routing, the other commands and every setup.
+```bash
+rogen serve                # Serve with Rojo and update the project file on changes
+rogen build -o game.rbxl   # Update the project file, then build a place with Rojo
+rogen check                # Print warnings and errors, and exit 1 on any
+```
 
-## Support
+`sourcemap`, `upload`, `syncback` and `plugin` take Rojo's flags too. See the [documentation](https://rogen-playfully.vercel.app/docs/v2) for every command.
 
-Rogen is free and MIT. If it is useful to you or your studio, you can [sponsor its development](https://github.com/sponsors/LDGerrits).
+## FAQ
+
+#### Do I still need Rojo?
+
+Yes. You run everything through Rogen, and Rogen uses Rojo to do it.
+
+#### Does Rogen work with Argon?
+
+Yes. Run `rogen write --watch` and serve with Argon.
+
+#### Can I use Rogen in an existing Rojo project?
+
+Yes. Run `rogen init` to move it to Rogen. See [Coming from Rojo](https://rogen-playfully.vercel.app/docs/v2/coming-from-rojo).
 
 ## Contributing
 
-Pull requests are welcome!
-Read the [contribution guidelines](CONTRIBUTING.md) to set up your local environment, run tests, and submit code changes.
+Read the [contributing guide](CONTRIBUTING.md) before you open a pull request. You can also star the repo or [sponsor its development](https://github.com/sponsors/LDGerrits).
 
 ## License
 
-See the [licence](LICENSE.md) for details.
+Rogen is [MIT licensed](LICENSE.md).
