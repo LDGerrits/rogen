@@ -63,6 +63,13 @@ Wrote 4 files.
 
 ```json title="default.rogen.json"
 {
+	"sourcePaths": ["src"],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared"
+	},
+	"compiledPath": "out",
 	"tree": {
 		"$className": "DataModel",
 		"ReplicatedStorage": {
@@ -74,14 +81,7 @@ Wrote 4 files.
 				}
 			}
 		}
-	},
-	"sourcePaths": ["src"],
-	"routes": {
-		"server": "ServerScriptService",
-		"client": "StarterPlayer/StarterPlayerScripts",
-		"shared": "ReplicatedStorage/shared"
-	},
-	"compiledPath": "out"
+	}
 }
 ```
 

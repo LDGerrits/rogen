@@ -230,7 +230,7 @@ describe("CoreConfigService", () => {
 				"/repo/default.rogen.json",
 				`{
 	"name": "B",
-	"modes": {}
+	"bogus": {}
 }`
 			);
 			const reload = await selection.reload(["/repo/default.rogen.json"]);
@@ -238,7 +238,7 @@ describe("CoreConfigService", () => {
 			expect(resolved(0)?.projectName).toBe("A");
 			expect(errors(0)).toMatchObject([
 				{
-					code: "config.removedField",
+					code: "config.unknownField",
 					position: { line: 3, column: 2 },
 				},
 			]);

@@ -196,11 +196,8 @@ function unknownOption(
 	{ name, rawName }: OptionToken,
 	options: readonly OptionDescriptor[],
 	owners: readonly string[],
-	command: string | undefined,
-	formerOptions: Readonly<Record<string, string>>
+	command: string | undefined
 ): UsageError {
-	const former = formerOptions[rawName];
-	if (former) return new UsageError(`'${rawName}' is gone.`, former);
 	const help = command
 		? `Run 'rogen ${HELP_COMMAND} ${command}' to see what ${command} accepts.`
 		: `Run 'rogen ${HELP_COMMAND}' to see the commands.`;
@@ -233,8 +230,7 @@ function findOptionProblem(
 	tokens: NonNullable<Token>,
 	options: readonly OptionDescriptor[],
 	ownersOf: (name: string, negated: boolean) => string[],
-	command: string | undefined,
-	formerOptions: Readonly<Record<string, string>>
+	command: string | undefined
 ): UsageError | undefined {
 	for (const token of tokens) {
 		if (token.kind !== "option") continue;
@@ -244,8 +240,7 @@ function findOptionProblem(
 				token,
 				options,
 				ownersOf(token.name, isNegated(token)),
-				command,
-				formerOptions
+				command
 			);
 		}
 		if (
@@ -279,11 +274,7 @@ function findOptionProblem(
 export function parseArgs(
 	args: string[],
 	optionsFor: (command?: string) => readonly OptionDescriptor[],
-	commands: readonly string[],
-	/** What a command says of an option it no longer takes, by the name as typed: `--yes`. */
-	formerOptionsFor: (
-		command: string
-	) => Readonly<Record<string, string>> = () => ({})
+	commands: readonly string[]
 ): Result<ParsedCli, Error> {
 	try {
 		const allOptions = optionsFor();
@@ -334,8 +325,7 @@ export function parseArgs(
 				tokens,
 				optionsFor(names),
 				ownersOf,
-				positionals.length > 0 ? names : undefined,
-				formerOptionsFor(names)
+				positionals.length > 0 ? names : undefined
 			);
 			if (problem) return err(problem);
 		}

@@ -37,14 +37,6 @@ written:
 default.rogen.json:
 {
   "name": "my-game",
-  "tree": {
-    "$className": "DataModel",
-    "Workspace": {
-      "$properties": {
-        "Gravity": 50
-      }
-    }
-  },
   "sourcePaths": [
     "src"
   ],
@@ -52,6 +44,14 @@ default.rogen.json:
     "Server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
     "Shared": "ReplicatedStorage/Shared"
+  },
+  "tree": {
+    "$className": "DataModel",
+    "Workspace": {
+      "$properties": {
+        "Gravity": 50
+      }
+    }
   }
 }
 

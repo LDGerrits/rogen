@@ -12,8 +12,6 @@
 		["build", "-c", "default.rogen.json"],
 				["where", "--all"],
 		["init", "--no-input"],
-		["build", "--deny-warnings"],
-		["check", "--deny-warnings", "--json"],
 		["build", "--yes"],
 		["build", "--all", "--json"]
 	],

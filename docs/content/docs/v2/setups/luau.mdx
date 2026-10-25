@@ -82,17 +82,17 @@ The sample is Rogen's version of what `rojo init` writes, and `init` describes i
 
 ```json title="default.rogen.json"
 {
-	"tree": {
-		"$className": "DataModel",
-		"Lighting": { "$path": "place/Lighting" },
-		"SoundService": { "$path": "place/SoundService" },
-		"Workspace": { "$path": "place/Workspace" }
-	},
 	"sourcePaths": ["src"],
 	"routes": {
 		"Server": "ServerScriptService",
 		"Client": "StarterPlayer/StarterPlayerScripts",
 		"Shared": "ReplicatedStorage/Shared"
+	},
+	"tree": {
+		"$className": "DataModel",
+		"Lighting": { "$path": "place/Lighting" },
+		"SoundService": { "$path": "place/SoundService" },
+		"Workspace": { "$path": "place/Workspace" }
 	}
 }
 ```

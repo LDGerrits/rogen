@@ -131,10 +131,10 @@ describe("ProjectSetup plan", () => {
 		);
 
 		expect(Object.keys(JSON.parse(files[0].content))).toEqual([
-			"tree",
 			"sourcePaths",
 			"routes",
 			"compiledPath",
+			"tree",
 		]);
 	});
 

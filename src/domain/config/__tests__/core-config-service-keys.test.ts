@@ -159,25 +159,6 @@ describe("CoreConfigService", () => {
 			expect(resolved(0)?.compiledPath).toBe("/repo/out");
 		});
 
-		it("should refuse a rogen block, at its key", async () => {
-			await write(
-				"/repo/default.rogen.json",
-				`{
-	"name": "Game",
-	"rogen": { "routes": { "server": "ServerScriptService" } }
-}`
-			);
-
-			await start();
-
-			expect(errors(0)).toMatchObject([
-				{
-					code: "config.removedField",
-					position: { line: 3, column: 2 },
-				},
-			]);
-		});
-
 		it("should leave Rogen's keys out of the project", async () => {
 			await write("/repo/default.rogen.json", {
 				name: "Game",

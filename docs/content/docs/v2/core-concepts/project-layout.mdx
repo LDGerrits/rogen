@@ -131,13 +131,13 @@ To keep the swap out of the default project, give the project that wants it a co
 ```json title="mock.rogen.json"
 {
 	"name": "Game",
-	"tree": { "$className": "DataModel" },
 	"sourcePaths": ["src", "dev"],
 	"routes": {
 		"Server": "ServerScriptService",
 		"Client": "StarterPlayer/StarterPlayerScripts",
 		"Shared": "ReplicatedStorage/Shared"
-	}
+	},
+	"tree": { "$className": "DataModel" }
 }
 ```
 

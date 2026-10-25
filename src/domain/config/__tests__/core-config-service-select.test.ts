@@ -133,7 +133,7 @@ describe("CoreConfigService", () => {
 
 		it("should put a broken config's errors on its own entry only", async () => {
 			await write("/repo/a/default.rogen.json", {});
-			await write("/repo/b/default.rogen.json", { modes: {} });
+			await write("/repo/b/default.rogen.json", { bogus: {} });
 
 			await start({ names: ["a", "b"] });
 
@@ -143,7 +143,7 @@ describe("CoreConfigService", () => {
 			]);
 			expect(errors(1)).toMatchObject([
 				{
-					code: "config.removedField",
+					code: "config.unknownField",
 					resource: "/repo/b/default.rogen.json",
 					position: { line: 1, column: 2 },
 				},
@@ -195,7 +195,7 @@ describe("CoreConfigService", () => {
 
 		it("should fail with the errors of every broken config", async () => {
 			await write("/repo/a/default.rogen.json", {});
-			await write("/repo/b/default.rogen.json", { modes: {} });
+			await write("/repo/b/default.rogen.json", { bogus: {} });
 			await write("/repo/c/default.rogen.json", "{ nope");
 			await start({ names: ["a", "b", "c"] });
 
@@ -209,7 +209,7 @@ describe("CoreConfigService", () => {
 		it("should fail for a config that is broken now but has a last valid version", async () => {
 			await write("/repo/default.rogen.json", {});
 			await start();
-			await write("/repo/default.rogen.json", { modes: {} });
+			await write("/repo/default.rogen.json", { bogus: {} });
 			await selection.reload(["/repo/default.rogen.json"]);
 
 			expect(selection.requireValid().isErr()).toBe(true);

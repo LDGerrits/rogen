@@ -14,9 +14,6 @@ rojo = "rojo-rbx/rojo@7.7.1"
 
 default.rogen.json:
 {
-  "tree": {
-    "$className": "DataModel"
-  },
   "sourcePaths": [
     "src"
   ],
@@ -24,5 +21,8 @@ default.rogen.json:
     "Server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
     "Shared": "ReplicatedStorage/Shared"
+  },
+  "tree": {
+    "$className": "DataModel"
   }
 }

@@ -149,7 +149,7 @@ describe("watch", () => {
 			await settle();
 			logService.clear();
 
-			await write("/repo/default.rogen.json", { extends: "base" });
+			await write("/repo/default.rogen.json", { bogus: "base" });
 			await settle();
 
 			expect(
@@ -161,7 +161,7 @@ describe("watch", () => {
 					keptLastValid: true,
 					diagnostics: [
 						expect.objectContaining({
-							code: "config.removedField",
+							code: "config.unknownField",
 						}),
 					],
 				},
@@ -325,7 +325,7 @@ describe("watch", () => {
 		});
 
 		it("should refuse to start when a config is invalid", async () => {
-			await write("/repo/default.rogen.json", { extends: "base" });
+			await write("/repo/default.rogen.json", { bogus: "base" });
 			const watch = jest.spyOn(watcher, "watch");
 
 			const result = await startWatch();

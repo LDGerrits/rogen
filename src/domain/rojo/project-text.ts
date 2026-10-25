@@ -137,7 +137,7 @@ export class ProjectText {
 		return ProjectText.print(ProjectText.file({ ...file }, []), "");
 	}
 
-	/** A config as text: Rojo's keys in Rojo's order, then `rogenKeys` in the order given, then any other key. */
+	/** A config as text: Rojo's keys in Rojo's order with `rogenKeys` in the order given before the `tree`, then any other key. */
 	static ofConfig(
 		config: Record<string, unknown>,
 		rogenKeys: readonly string[],
@@ -155,8 +155,14 @@ export class ProjectText {
 		rogenKeys: readonly string[],
 		written?: WrittenTree
 	): Ordered {
+		const tree = FILE_KEYS.indexOf("tree");
+		const listed = [
+			...FILE_KEYS.slice(0, tree),
+			...rogenKeys,
+			...FILE_KEYS.slice(tree),
+		];
 		const entries: [string, unknown][] = [];
-		for (const key of FILE_KEYS)
+		for (const key of listed)
 			if (key in all)
 				entries.push([
 					key,
@@ -164,9 +170,6 @@ export class ProjectText {
 						? written.printed(all[key])
 						: ProjectText.fileValue(key, all[key]),
 				]);
-		for (const key of rogenKeys)
-			if (key in all) entries.push([key, all[key]]);
-		const listed = [...FILE_KEYS, ...rogenKeys];
 		for (const key of Object.keys(all))
 			if (!listed.includes(key)) entries.push([key, all[key]]);
 		return new Ordered(entries);

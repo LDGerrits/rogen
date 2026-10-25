@@ -31,9 +31,6 @@ written:
 
 default.rogen.json:
 {
-  "tree": {
-    "$className": "DataModel"
-  },
   "sourcePaths": [
     "src"
   ],
@@ -41,15 +38,15 @@ default.rogen.json:
     "Server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
     "Shared": "ReplicatedStorage/Shared"
+  },
+  "tree": {
+    "$className": "DataModel"
   }
 }
 
 dist.rogen.json:
 {
   "name": "project",
-  "tree": {
-    "$className": "DataModel"
-  },
   "sourcePaths": [
     "src"
   ],
@@ -58,7 +55,10 @@ dist.rogen.json:
     "Client": "StarterPlayer/StarterPlayerScripts",
     "Shared": "ReplicatedStorage/Shared"
   },
-  "compiledPath": "dist"
+  "compiledPath": "dist",
+  "tree": {
+    "$className": "DataModel"
+  }
 }
 
 $ rojo sourcemap default.project.json

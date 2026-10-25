@@ -693,7 +693,7 @@ describe("where command", () => {
 
 		it("should print the errors of a config that doesn't load", async () => {
 			await writeConfig("default.rogen.json", {
-				extends: "base",
+				bogus: "base",
 				routes: ROUTES,
 			});
 
@@ -710,7 +710,7 @@ describe("where command", () => {
 			expect(diagnostics).toMatchObject([
 				{
 					file: "/repo/default.rogen.json",
-					code: "config.removedField",
+					code: "config.unknownField",
 				},
 			]);
 		});

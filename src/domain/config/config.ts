@@ -73,12 +73,6 @@ export const DEFAULT_CONFIG_FILE_NAMES: readonly string[] = [
 export const isDefaultConfigFileName = (fileName: string): boolean =>
 	DEFAULT_CONFIG_FILE_NAMES.includes(fileName);
 
-/** The names a folder's config had before configs were named for the project file they write. */
-export const LEGACY_CONFIG_FILE_NAMES: readonly string[] = [
-	"rogen.json",
-	"rogen.jsonc",
-];
-
 /** What `rogen syncback` writes beside a config while it runs: the project file Rojo reads, and the folder it writes new instances into. */
 export const SYNCBACK_FILES = {
 	project: "rogen-syncback.project.json",
@@ -112,7 +106,7 @@ export const isProjectFileConfig = (file: string): boolean =>
 export const isDefaultProjectFile = (file: string): boolean =>
 	DEFAULT_PROJECT_FILES.includes(path.basename(file));
 
-/** Rogen's keys, in the order `rogen fmt-project` writes them after Rojo's. */
+/** Rogen's keys, in the order `rogen fmt-project` writes them, before the `tree`. */
 export const ROGEN_KEYS: readonly (keyof RogenKeys)[] = [
 	"sourcePaths",
 	"routes",

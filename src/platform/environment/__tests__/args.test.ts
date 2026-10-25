@@ -54,16 +54,7 @@ const optionsFor = (command?: string) =>
 
 const commands = ["build", "watch", "help", "init"];
 
-const formerOptionsFor = (command: string): Record<string, string> =>
-	command === "init"
-		? {
-				"--force": "Use --assume.",
-				"-f": "Use --assume.",
-			}
-		: {};
-
-const parse = (argv: string[]) =>
-	parseArgs(argv, optionsFor, commands, formerOptionsFor);
+const parse = (argv: string[]) => parseArgs(argv, optionsFor, commands);
 
 const values = (argv: string[]) => parse(argv).unwrap().line.options;
 
@@ -149,27 +140,6 @@ describe("parseArgs", () => {
 			true,
 			true,
 		]);
-	});
-
-	it("should say a former option is gone, and what replaces it", () => {
-		const long = parse(["init", "--force"]);
-		const short = parse(["init", "-f"]);
-
-		expect(long.isErr() && long.error).toMatchObject({
-			reason: "'--force' is gone.",
-			hint: "Use --assume.",
-		});
-		expect(short.isErr() && short.error).toMatchObject({
-			reason: "'-f' is gone.",
-		});
-	});
-
-	it("should call a former option unknown on another command", () => {
-		const result = parse(["build", "--force"]);
-
-		expect(result.isErr() && result.error.message).toContain(
-			"Unknown option '--force'."
-		);
 	});
 
 	it("should leave an alias unknown on a command that has no such option", () => {

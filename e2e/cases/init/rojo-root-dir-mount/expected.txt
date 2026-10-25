@@ -22,10 +22,6 @@ written:
 default.rogen.json:
 {
   "name": "my-game",
-  "tree": {
-    "$className": "DataModel",
-    "ReplicatedStorage": {}
-  },
   "sourcePaths": [
     "src"
   ],
@@ -34,6 +30,10 @@ default.rogen.json:
     "Client": "StarterPlayer/StarterPlayerScripts",
     "Shared": "ReplicatedStorage/Shared",
     "*": "ReplicatedStorage/Common"
+  },
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {}
   }
 }
 

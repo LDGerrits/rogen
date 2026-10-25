@@ -19,9 +19,6 @@ written:
 
 default.rogen.json:
 {
-  "tree": {
-    "$className": "DataModel"
-  },
   "sourcePaths": [
     "src"
   ],
@@ -29,6 +26,9 @@ default.rogen.json:
     "Server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
     "Shared": "ReplicatedStorage/Shared"
+  },
+  "tree": {
+    "$className": "DataModel"
   }
 }
 

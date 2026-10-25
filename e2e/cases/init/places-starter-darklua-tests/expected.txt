@@ -70,6 +70,16 @@ written:
 game.dist.rogen.json:
 {
   "name": "game",
+  "sourcePaths": [
+    "src/common",
+    "src/game"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared"
+  },
+  "compiledPath": "dist",
   "tree": {
     "$className": "DataModel",
     "Lighting": {
@@ -81,7 +91,12 @@ game.dist.rogen.json:
     "Workspace": {
       "$path": "place/game/Workspace"
     }
-  },
+  }
+}
+
+game.release.rogen.json:
+{
+  "name": "game",
   "sourcePaths": [
     "src/common",
     "src/game"
@@ -91,12 +106,7 @@ game.dist.rogen.json:
     "Client": "StarterPlayer/StarterPlayerScripts",
     "Shared": "ReplicatedStorage/Shared"
   },
-  "compiledPath": "dist"
-}
-
-game.release.rogen.json:
-{
-  "name": "game",
+  "compiledPath": "dist",
   "tree": {
     "$className": "DataModel",
     "Lighting": {
@@ -111,7 +121,12 @@ game.release.rogen.json:
   },
   "globIgnorePaths": [
     "**/*.spec.luau"
-  ],
+  ]
+}
+
+game.rogen.json:
+{
+  "name": "game",
   "sourcePaths": [
     "src/common",
     "src/game"
@@ -121,12 +136,6 @@ game.release.rogen.json:
     "Client": "StarterPlayer/StarterPlayerScripts",
     "Shared": "ReplicatedStorage/Shared"
   },
-  "compiledPath": "dist"
-}
-
-game.rogen.json:
-{
-  "name": "game",
   "tree": {
     "$className": "DataModel",
     "Lighting": {
@@ -138,14 +147,5 @@ game.rogen.json:
     "Workspace": {
       "$path": "place/game/Workspace"
     }
-  },
-  "sourcePaths": [
-    "src/common",
-    "src/game"
-  ],
-  "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared"
   }
 }

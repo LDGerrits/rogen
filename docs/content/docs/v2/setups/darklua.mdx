@@ -33,19 +33,19 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
     ```json title="dist.rogen.json"
     {
     	"name": "Game",
-    	"tree": {
-    		"$className": "DataModel",
-    		"Lighting": { "$path": "place/Lighting" },
-    		"SoundService": { "$path": "place/SoundService" },
-    		"Workspace": { "$path": "place/Workspace" }
-    	},
     	"sourcePaths": ["src"],
     	"routes": {
     		"Server": "ServerScriptService",
     		"Client": "StarterPlayer/StarterPlayerScripts",
     		"Shared": "ReplicatedStorage/Shared"
     	},
-    	"compiledPath": "dist"
+    	"compiledPath": "dist",
+    	"tree": {
+    		"$className": "DataModel",
+    		"Lighting": { "$path": "place/Lighting" },
+    		"SoundService": { "$path": "place/SoundService" },
+    		"Workspace": { "$path": "place/Workspace" }
+    	}
     }
     ```
 
@@ -57,6 +57,13 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
     ```json title="dist.rogen.json"
     {
     	"name": "Game",
+    	"sourcePaths": ["src"],
+    	"routes": {
+    		"server": "ServerScriptService",
+    		"client": "StarterPlayer/StarterPlayerScripts",
+    		"shared": "ReplicatedStorage/shared"
+    	},
+    	"compiledPath": "dist",
     	"tree": {
     		"$className": "DataModel",
     		"ReplicatedStorage": {
@@ -68,14 +75,7 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
     				}
     			}
     		}
-    	},
-    	"sourcePaths": ["src"],
-    	"routes": {
-    		"server": "ServerScriptService",
-    		"client": "StarterPlayer/StarterPlayerScripts",
-    		"shared": "ReplicatedStorage/shared"
-    	},
-    	"compiledPath": "dist"
+    	}
     }
     ```
   </Tab>

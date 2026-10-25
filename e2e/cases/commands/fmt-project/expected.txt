@@ -17,18 +17,18 @@ written:
 default.rogen.json:
 {
   "name": "Game",
-  "tree": {
-    "$className": "DataModel",
-    "ReplicatedStorage": {
-      "$className": "ReplicatedStorage"
-    }
-  },
-  "servePort": 34873,
   "sourcePaths": [
     "src"
   ],
   "routes": {
     "server": "ServerScriptService",
     "*": "ReplicatedStorage"
-  }
+  },
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage"
+    }
+  },
+  "servePort": 34873
 }

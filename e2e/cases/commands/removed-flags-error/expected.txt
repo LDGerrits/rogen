@@ -58,22 +58,6 @@ exit 2
 stderr:
   error: Unknown option '--no-input'. Run 'rogen help init' to see what init accepts.
 
-$ rogen build --deny-warnings
-exit 2
-stderr:
-  error: '--deny-warnings' is gone. Run 'rogen check', which exits 1 on any diagnostic, warnings included.
-
-$ rogen check --deny-warnings --json
-exit 2
-stdout:
-  {
-    "error": {
-      "kind": "usage",
-      "message": "Unknown option '--deny-warnings'.",
-      "hint": "Run 'rogen help check' to see what check accepts."
-    }
-  }
-
 $ rogen build --yes
 exit 2
 stderr:

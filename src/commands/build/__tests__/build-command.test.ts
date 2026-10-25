@@ -340,7 +340,7 @@ describe("build command", () => {
 		const logService = new MockLogService();
 		const entry = brokenEntry([
 			errorDiagnostic(
-				"config.removedField",
+				"config.unknownField",
 				{ resource: "/repo/default.rogen.json" },
 				"boom."
 			),
@@ -352,7 +352,7 @@ describe("build command", () => {
 		expect(logService.lines).toEqual([
 			"intro: rogen build · default.rogen.json",
 			"error: default.rogen.json · not loaded",
-			"diagnosticError: /repo/default.rogen.json - error: boom. (config.removedField)",
+			"diagnosticError: /repo/default.rogen.json - error: boom. (config.unknownField)",
 			expect.stringMatching(/^outro: .*fail/),
 		]);
 	});
@@ -537,7 +537,7 @@ describe("build command", () => {
 		it("should print a config that doesn't load as an entry that wasn't written", async () => {
 			const entry = brokenEntry([
 				errorDiagnostic(
-					"config.removedField",
+					"config.unknownField",
 					{ resource: "/repo/default.rogen.json" },
 					"boom."
 				),
@@ -559,7 +559,7 @@ describe("build command", () => {
 						outcome: "notWritten",
 						diagnostics: [
 							expect.objectContaining({
-								code: "config.removedField",
+								code: "config.unknownField",
 							}),
 						],
 					},

@@ -85,23 +85,8 @@ describe("ConfigDiscovery", () => {
 			);
 		});
 
-		it.each(["rogen.json", "rogen.jsonc"])(
-			"should tell a folder holding only %s to rename it",
-			async (name) => {
-				await fs.writeFile(`/repo/${name}`, "{}");
-
-				const result = await discovery.discover([]);
-
-				expect(errorOf(result)).toBeInstanceOf(ProjectError);
-				expect(errorOf(result).message).toBe(
-					`${name} in /repo is not read any more: a config is named for the project file it writes. Rename it to default.rogen.json.`
-				);
-			}
-		);
-
-		it("should name the stale config a registered check finds, in place of the rename advice", async () => {
+		it("should name the stale config a registered check finds", async () => {
 			await fs.writeFile("/repo/.rogen.json", "{}");
-			await fs.writeFile("/repo/rogen.json", "{}");
 			discovery.registerFolderCheck(async (folder) => [
 				errorDiagnostic(
 					"stale",

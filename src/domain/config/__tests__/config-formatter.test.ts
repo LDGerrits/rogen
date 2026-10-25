@@ -24,7 +24,7 @@ describe("ConfigFormatter", () => {
 		formatter = new ConfigFormatter(fs);
 	});
 
-	it("should write Rojo's keys first and Rogen's after in order, with two-space indentation and no trailing newline", async () => {
+	it("should write Rogen's keys in order after the name and before the tree, with two-space indentation and no trailing newline", async () => {
 		await fs.writeFile("/repo/default.rogen.json", TABBED);
 
 		const result = await format();
@@ -34,13 +34,6 @@ describe("ConfigFormatter", () => {
 			[
 				"{",
 				'  "name": "Game",',
-				'  "tree": {',
-				'    "$className": "DataModel",',
-				'    "ReplicatedStorage": {',
-				'      "$className": "ReplicatedStorage"',
-				"    }",
-				"  },",
-				'  "servePort": 34873,',
 				'  "sourcePaths": [',
 				'    "src"',
 				"  ],",
@@ -48,7 +41,14 @@ describe("ConfigFormatter", () => {
 				'    "server": "ServerScriptService",',
 				'    "*": "ReplicatedStorage"',
 				"  },",
-				'  "compiledPath": "out"',
+				'  "compiledPath": "out",',
+				'  "tree": {',
+				'    "$className": "DataModel",',
+				'    "ReplicatedStorage": {',
+				'      "$className": "ReplicatedStorage"',
+				"    }",
+				"  },",
+				'  "servePort": 34873',
 				"}",
 			].join("\n")
 		);

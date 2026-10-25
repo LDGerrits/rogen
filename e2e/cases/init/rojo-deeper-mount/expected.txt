@@ -18,12 +18,6 @@ written:
 default.rogen.json:
 {
   "name": "my-game",
-  "tree": {
-    "$className": "DataModel",
-    "ServerScriptService": {
-      "Admin": { "$path": "src/server/Admin" }
-    }
-  },
   "sourcePaths": [
     "src"
   ],
@@ -31,6 +25,12 @@ default.rogen.json:
     "Server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
     "Shared": "ReplicatedStorage/Shared"
+  },
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "Admin": { "$path": "src/server/Admin" }
+    }
   }
 }
 

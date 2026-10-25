@@ -114,6 +114,15 @@ For more help, check out [the Rogen documentation](https://rogen-playfully.verce
 default.rogen.json:
 {
   "name": "project",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared"
+  },
+  "compiledPath": "out",
   "tree": {
     "$className": "DataModel",
     "Lighting": {
@@ -136,16 +145,7 @@ default.rogen.json:
     "Workspace": {
       "$path": "place/Workspace"
     }
-  },
-  "sourcePaths": [
-    "src"
-  ],
-  "routes": {
-    "server": "ServerScriptService",
-    "client": "StarterPlayer/StarterPlayerScripts",
-    "shared": "ReplicatedStorage/shared"
-  },
-  "compiledPath": "out"
+  }
 }
 
 src/Greeter/client/Greeter.client.ts:

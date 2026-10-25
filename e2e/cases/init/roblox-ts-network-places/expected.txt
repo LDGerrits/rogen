@@ -46,6 +46,16 @@ written:
 projects/game/default.rogen.json:
 {
   "name": "game",
+  "sourcePaths": [
+    "../common/src",
+    "src"
+  ],
+  "routes": {
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared"
+  },
+  "compiledPath": "out",
   "tree": {
     "$className": "DataModel",
     "Lighting": {
@@ -72,17 +82,7 @@ projects/game/default.rogen.json:
     "Workspace": {
       "$path": "place/Workspace"
     }
-  },
-  "sourcePaths": [
-    "../common/src",
-    "src"
-  ],
-  "routes": {
-    "server": "ServerScriptService",
-    "client": "StarterPlayer/StarterPlayerScripts",
-    "shared": "ReplicatedStorage/shared"
-  },
-  "compiledPath": "out"
+  }
 }
 
 projects/game/out/common/src/Greeter/shared/Greeting.luau:

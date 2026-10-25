@@ -268,7 +268,7 @@ describe("domain/rojo/project-text", () => {
 
 			const keysOf = (text: string) => Object.keys(JSON.parse(text));
 
-			it("should write Rojo's keys first, then the given keys in their order, then any other", () => {
+			it("should write the given keys in their order before the tree, then any other key", () => {
 				const text = ProjectText.ofConfig(
 					{
 						other: 1,
@@ -284,11 +284,11 @@ describe("domain/rojo/project-text", () => {
 
 				expect(keysOf(text)).toEqual([
 					"$schema",
-					"tree",
-					"globIgnorePaths",
 					"sourcePaths",
 					"routes",
 					"compiledPath",
+					"tree",
+					"globIgnorePaths",
 					"other",
 				]);
 			});

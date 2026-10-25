@@ -1,6 +1,0 @@
-$ rogen write
-exit 1
-stdout: (not shown)
-stderr:
-  error: default.rogen.json · not loaded
-  default.rogen.json:3:2 - error: "placePaths" was removed. A place is a folder with its own complete default.rogen.json. Name the place: rogen serve places/lobby (config.removedField)

@@ -53,6 +53,16 @@ written:
 game/game.dist.rogen.json:
 {
   "name": "game",
+  "sourcePaths": [
+    "src/common",
+    "src/game"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared"
+  },
+  "compiledPath": "dist",
   "tree": {
     "$className": "DataModel",
     "Lighting": {
@@ -64,22 +74,21 @@ game/game.dist.rogen.json:
     "Workspace": {
       "$path": "place/game/Workspace"
     }
-  },
-  "sourcePaths": [
-    "src/common",
-    "src/game"
-  ],
-  "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared"
-  },
-  "compiledPath": "dist"
+  }
 }
 
 game/game.rogen.json:
 {
   "name": "game",
+  "sourcePaths": [
+    "src/common",
+    "src/game"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared"
+  },
   "tree": {
     "$className": "DataModel",
     "Lighting": {
@@ -91,15 +100,6 @@ game/game.rogen.json:
     "Workspace": {
       "$path": "place/game/Workspace"
     }
-  },
-  "sourcePaths": [
-    "src/common",
-    "src/game"
-  ],
-  "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared"
   }
 }
 

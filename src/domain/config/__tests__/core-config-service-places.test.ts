@@ -86,23 +86,6 @@ describe("CoreConfigService places", () => {
 		expect(resolved()?.project.servePort).toBeUndefined();
 	});
 
-	it("should say a config at the root no longer lists places", async () => {
-		await write("/repo/default.rogen.json", {
-			name: "Game",
-			placePaths: ["places/*"],
-		});
-		await start();
-
-		expect(errors()).toMatchObject([
-			{
-				code: "config.removedField",
-				message: expect.stringContaining(
-					"A place is a folder with its own complete default.rogen.json. Name the place: rogen serve places/lobby"
-				),
-			},
-		]);
-	});
-
 	it("should not read a config in the folders below the one it selected", async () => {
 		await write("/repo/default.rogen.json", { name: "Root" });
 		await start();

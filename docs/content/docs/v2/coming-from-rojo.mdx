@@ -36,12 +36,12 @@ Every Rojo key (`name`, `tree`, `servePort`, `globIgnorePaths`, `syncRules` and 
 ```json title="default.rogen.json"
 {
 	"name": "my-game",
-	"tree": { "$className": "DataModel" },
 	"routes": {
 		"Server": "ServerScriptService",
 		"Client": "StarterPlayer/StarterPlayerScripts",
 		"Shared": "ReplicatedStorage/Shared"
-	}
+	},
+	"tree": { "$className": "DataModel" }
 }
 ```
 
@@ -84,17 +84,17 @@ rogen init
 ```json title="default.rogen.json"
 {
 	"name": "my-game",
-	"tree": {
-		"$className": "DataModel",
-		"ReplicatedStorage": {},
-		"ServerScriptService": {},
-		"StarterPlayer": { "StarterPlayerScripts": {} }
-	},
 	"sourcePaths": ["src"],
 	"routes": {
 		"Shared": "ReplicatedStorage/Shared",
 		"Server": "ServerScriptService/Server",
 		"Client": "StarterPlayer/StarterPlayerScripts/Client"
+	},
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {},
+		"ServerScriptService": {},
+		"StarterPlayer": { "StarterPlayerScripts": {} }
 	}
 }
 ```

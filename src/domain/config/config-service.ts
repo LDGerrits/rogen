@@ -188,7 +188,7 @@ export interface ConfigService {
 	): Promise<Result<CoveredTargets, Error>>;
 	/** Loads one config file as `select` would, outside any selection. */
 	read(file: string): Promise<ConfigEntry>;
-	/** Rewrites one config file in Rojo's formatting, Rogen's keys after Rojo's; whether the file changed. A file with comments is left as it is, and so is a file that doesn't load as JSON. */
+	/** Rewrites one config file in Rojo's formatting, Rogen's keys before the tree; whether the file changed. A file with comments is left as it is, and so is a file that doesn't load as JSON. */
 	format(file: string): Promise<Result<boolean, Diagnostic[]>>;
 	/** Runs `check` on every config file that is read, and on what a file holds that fails to load; what it returns is added to that file's errors. Dispose the result to remove it. */
 	registerFileCheck(check: ConfigFileCheck): Disposable;

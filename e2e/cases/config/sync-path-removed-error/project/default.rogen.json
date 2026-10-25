@@ -1,5 +1,0 @@
-{
-	"syncPath": "out",
-	"sourcePaths": ["src"],
-	"routes": { "*": "ReplicatedStorage" }
-}

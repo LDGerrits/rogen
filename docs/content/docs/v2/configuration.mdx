@@ -24,6 +24,13 @@ A folder's **config** is `default.rogen.json` (or `default.rogen.jsonc`), a Rojo
   <Tab value="roblox-ts">
     ```json title="default.rogen.json"
     {
+    	"sourcePaths": ["src"],
+    	"routes": {
+    		"server": "ServerScriptService",
+    		"client": "StarterPlayer/StarterPlayerScripts",
+    		"shared": "ReplicatedStorage/shared"
+    	},
+    	"compiledPath": "out",
     	"tree": {
     		"$className": "DataModel",
     		"ReplicatedStorage": {
@@ -36,14 +43,7 @@ A folder's **config** is `default.rogen.json` (or `default.rogen.jsonc`), a Rojo
     			}
     		}
     	},
-    	"globIgnorePaths": ["**/*.spec.ts"],
-    	"sourcePaths": ["src"],
-    	"routes": {
-    		"server": "ServerScriptService",
-    		"client": "StarterPlayer/StarterPlayerScripts",
-    		"shared": "ReplicatedStorage/shared"
-    	},
-    	"compiledPath": "out"
+    	"globIgnorePaths": ["**/*.spec.ts"]
     }
     ```
   </Tab>
@@ -97,7 +97,7 @@ Rojo's keys. Rogen passes each to the project file as it is, except `globIgnoreP
 | `emitLegacyScripts` | Whether Rojo makes `Script` and `LocalScript` instances for `.server` and `.client` files, rather than a run context. |
 | `syncbackRules` | Rojo's syncback rules. |
 
-A key on neither list is an error, since Rojo rejects a project file with a key it doesn't know ([`config.unknownField`](/docs/v2/diagnostics#config-unknownfield)). A wrong type is an error.
+A key on neither list is an error, since Rojo rejects a project file with a key it doesn't know ([`config.unknownField`](/docs/v2/diagnostics#config-unknownfield)). A wrong type is an error. A config with the keys of Rogen 1, such as `source` or `aliases`, is an error that links to [Migrating from v1](/docs/v2/migrating-from-v1).
 
 ---
 
@@ -116,38 +116,38 @@ A second project is a second complete config. `X.rogen.json` writes `X.project.j
 ```json title="default.rogen.json"
 {
 	"name": "Game",
+	"sourcePaths": ["src", "dev"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
 	"tree": {
 		"$className": "DataModel",
 		"ReplicatedStorage": { "DevPackages": { "$path": "DevPackages" } }
-	},
-	"sourcePaths": ["src", "dev"],
-	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
+	}
 }
 ```
 
 ```json title="dist.rogen.json"
 {
 	"name": "Game",
+	"sourcePaths": ["src", "dev"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
+	"compiledPath": "dist",
 	"tree": {
 		"$className": "DataModel",
 		"ReplicatedStorage": { "DevPackages": { "$path": "DevPackages" } }
-	},
-	"sourcePaths": ["src", "dev"],
-	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
-	"compiledPath": "dist"
+	}
 }
 ```
 
 ```json title="release.rogen.json"
 {
 	"name": "Game",
+	"sourcePaths": ["src"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
 	"globIgnorePaths": ["DevPackages/**", "**/*.spec.luau"],
 	"tree": {
 		"$className": "DataModel",
 		"ReplicatedStorage": { "DevPackages": { "$path": "DevPackages" } }
-	},
-	"sourcePaths": ["src"],
-	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
+	}
 }
 ```
 
@@ -162,12 +162,12 @@ A second project is a second complete config. `X.rogen.json` writes `X.project.j
 ```json title="test.rogen.json"
 {
 	"name": "Game",
+	"sourcePaths": ["src", "tests"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
 	"tree": {
 		"$className": "DataModel",
 		"ReplicatedStorage": { "TestEZ": { "$path": "Packages/TestEZ" } }
-	},
-	"sourcePaths": ["src", "tests"],
-	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
+	}
 }
 ```
 
@@ -191,13 +191,13 @@ Name a place to run a command on it: `rogen serve lobby`, or `rogen serve projec
 
 ```json title="default.rogen.json"
 {
+	"routes": { "*": "ReplicatedStorage/Shared" },
 	"tree": {
 		"$className": "DataModel",
 		"ReplicatedStorage": {
 			"Packages": { "$path": { "optional": "Packages" } }
 		}
-	},
-	"routes": { "*": "ReplicatedStorage/Shared" }
+	}
 }
 ```
 
@@ -245,28 +245,6 @@ Rogen writes the rules to each project file, moved with the files they take: a p
 With `emitLegacyScripts: false`, Rogen also writes a `legacyClientScript` rule for each `.client` script a route puts in `StarterPlayerScripts` or `StarterCharacterScripts`, after yours, so they stay LocalScripts. It can't for an `init.client` script, which Rojo reads without rules ([`tree.runContextTarget`](/docs/v2/diagnostics#tree-runcontexttarget)).
 
 A project file with `syncRules` is for Rojo alone: Argon rejects it. Without `syncRules`, the files Rogen writes load in Argon too. That includes the file of a project that sets `emitLegacyScripts: false` with routes into those containers.
-
-## Removed Keys
-
-A config is one project file's description, so these keys are gone. Each is an error that names its replacement.
-
-| Key | Replacement |
-|---|---|
-| `extends` | None: configs don't read each other. A second output is a [second complete file](#more-files). |
-| `projects` | A second complete `<name>.rogen.json` for each entry. |
-| `serveProject` | `rogen serve dist` serves the file you name; a bare `rogen serve` serves `default.rogen.json`. |
-| `placePaths` | A [place](/docs/v2/setups/places) is a folder with its own `default.rogen.json`. Name it: `rogen serve places/lobby`. |
-| `template` | Write the tree inline: move the template's `tree` and its other keys into `default.rogen.json`. |
-| `outFile` | Rogen writes `default.project.json` beside `default.rogen.json`. |
-| `exclude` | `globIgnorePaths`, which also leaves out a mount it ignores. |
-| `rootDirs` | `sourcePaths`. |
-| `syncDir`, `syncPath` | `compiledPath`. |
-| `modes`, `mode` | A second complete file with the keys the mode set. |
-| `variants`, `conflicts` | None. A file that replaces another goes in a later source path; sets that exclude each other are a file each. |
-| `server` | None: `rogen serve` starts Rojo. |
-| `rogen` | Its keys, at the top level. |
-
-A file named `rogen.json` is not read: rename it `default.rogen.json`. `-o` no longer names the project file, as it did with `outFile`: on `build` it names the place file Rojo builds. A `.rogen.json` with the keys of a Rogen 1 config, such as `source` or `aliases`, is an error that links to [Migrating from v1](/docs/v2/migrating-from-v1).
 
 ## Diagnostics
 
