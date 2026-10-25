@@ -8,38 +8,22 @@ export function Agents() {
 
 				<div className="flex flex-col items-start text-left mb-16">
 					<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-						Built for you and your agents
+						Built for agents
 					</h2>
 					<p className="text-gray-400 max-w-xl tracking-tight text-lg">
 						People and coding agents read the layout the same way.
 					</p>
 				</div>
 
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
 					{[
 						{
-							title: "One folder, one feature",
-							desc: "Point an agent at a feature folder and it has all the context it needs.",
+							title: "One feature, one folder",
+							desc: "When an agent works on a feature, everything it needs is in one folder, from server to client. It spends its context on your task instead of searching the codebase.",
 						},
 						{
-							title: "A small blast radius",
-							desc: "A change inside one feature can only break that feature, and the file list tells you which one.",
-						},
-						{
-							title: "Boundaries a linter checks",
-							desc: "Rules like “features don't require each other” are rules about paths, so a linter can enforce them.",
-						},
-						{
-							title: "Placement is declared",
-							desc: "Where a file ends up comes from a short routes map, not a convention the agent has to guess.",
-						},
-						{
-							title: "No generated file to break",
-							desc: "Rogen rewrites the project file on every write, so nobody, human or agent, edits it by hand.",
-						},
-						{
-							title: "It checks its own work",
-							desc: "rogen where shows where a file lands and why, and rogen check says what to fix.",
+							title: "Several agents at once",
+							desc: "Give each agent a feature. A lint rule catches any agent that makes one feature require another, and there's no shared project file to conflict on.",
 						},
 					].map((point, i) => (
 						<div

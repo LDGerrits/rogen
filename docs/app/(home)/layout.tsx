@@ -3,14 +3,7 @@
 import type { ReactNode } from "react";
 import { HomeLayout } from "fumadocs-ui/layouts/home";
 import { baseOptions } from "@/lib/layout.shared";
-import { BookText, History, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
-import {
-	NavbarMenu,
-	NavbarMenuContent,
-	NavbarMenuLink,
-	NavbarMenuTrigger,
-} from "fumadocs-ui/layouts/home/navbar";
 import { RiTwitterXLine } from "react-icons/ri";
 import { FaDiscord, FaGithub } from "react-icons/fa";
 
@@ -27,51 +20,11 @@ export default function Layout({ children }: { children: ReactNode }) {
 	return (
 		<HomeLayout
 			{...base}
-			themeSwitch={{ enabled: false }}
 			links={[
 				{
 					text: "Docs",
 					url: "/docs/v2",
 					active: "nested-url",
-				},
-				{
-					type: "custom",
-					on: "nav",
-					children: (
-						<NavbarMenu>
-							<NavbarMenuTrigger className="flex items-center gap-1">
-								Versions
-								<ChevronDown className="w-4 h-4 opacity-50" />
-							</NavbarMenuTrigger>
-							<NavbarMenuContent>
-								<NavbarMenuLink href="/docs/v2">
-									<BookText className="mr-3 h-5 w-5 text-white" />
-									<div className="flex flex-col">
-										<span className="font-medium text-white">
-											Rogen v2 (latest)
-										</span>
-										<span className="text-sm text-muted-foreground">
-											Documentation for the latest version
-											of Rogen
-										</span>
-									</div>
-								</NavbarMenuLink>
-
-								<NavbarMenuLink href="/docs/v1">
-									<History className="mr-3 h-5 w-5 opacity-50" />
-									<div className="flex flex-col">
-										<span className="font-medium opacity-50">
-											Rogen v1
-										</span>
-										<span className="text-sm opacity-50">
-											Documentation for the previous
-											version
-										</span>
-									</div>
-								</NavbarMenuLink>
-							</NavbarMenuContent>
-						</NavbarMenu>
-					),
 				},
 				{
 					type: "custom",

@@ -1,5 +1,16 @@
 import Link from "next/link";
 
+const CONFIG = `{
+  "name": "Game",
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "tree": { "$className": "DataModel" }
+}`;
+
 export function Routing() {
 	return (
 		<section id="routing" className="py-24 px-6 relative">
@@ -11,30 +22,73 @@ export function Routing() {
 						How routing works
 					</h2>
 					<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-						You declare the routes in your config, and a file can
-						pick one up in three ways.
+						<code className="text-gray-300">
+							default.rogen.json
+						</code>{" "}
+						is a Rojo project file with three more keys. Many
+						projects need only{" "}
+						<code className="text-gray-300">routes</code>.
 					</p>
+				</div>
+
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 text-left">
+					<div className="bg-[#050505] rounded-xl border border-white/10 overflow-hidden flex flex-col shadow-2xl">
+						<div className="bg-[#0a0a0a] px-4 py-3 border-b border-white/10">
+							<span className="text-xs font-mono text-gray-400 tracking-wide">
+								default.rogen.json
+							</span>
+						</div>
+						<pre className="p-6 font-mono text-sm leading-7 text-gray-300 overflow-x-auto">
+							{CONFIG}
+						</pre>
+					</div>
+
+					<div className="flex flex-col justify-center gap-6 p-8 rounded-xl glass-card cursor-default">
+						<p className="text-gray-300 leading-relaxed">
+							A folder or an <code className="text-white">@</code>{" "}
+							suffix named after a route sends its code there. The{" "}
+							<code className="text-white">*</code> route takes
+							every file that matches no other.
+						</p>
+						<p className="text-gray-400 leading-relaxed">
+							The routes are yours to change. Add{" "}
+							<code className="text-gray-300">
+								&quot;Gui&quot;: &quot;StarterGui&quot;
+							</code>
+							, and a <code className="text-gray-300">Gui</code>{" "}
+							folder or a{" "}
+							<code className="text-gray-300">@Gui</code> suffix
+							sends code to StarterGui.
+						</p>
+						<p className="text-gray-400 leading-relaxed">
+							Rogen writes the{" "}
+							<code className="text-gray-300">
+								default.project.json
+							</code>{" "}
+							that Rojo reads from it.
+						</p>
+					</div>
 				</div>
 
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
 					{[
 						{
 							title: "Routing Folders",
-							desc: "Name a folder after a route and everything inside goes to that service. The folder itself disappears.",
-							example: "Inventory/Server/Save.luau",
+							desc: "Name a folder after a route and everything inside goes to its target. The folder itself disappears.",
+							example: "Inventory/Server/InventoryService.luau",
+							result: "ServerScriptService/Inventory/InventoryService",
+						},
+						{
+							title: "The @ Sign",
+							desc: "Add @ and a route to the end of a file's name to send just that file. A module stays a module.",
+							example: "Inventory/Save@Server.luau",
 							result: "ServerScriptService/Inventory/Save",
 						},
 						{
 							title: "Marker Files",
-							desc: "Drop an empty file named after a route into a folder, and the whole folder moves with its name intact.",
-							example: "AntiCheat/.server",
+							desc: "Add a file named @ and a route, such as @Server, to a folder, and the whole folder goes there under its own name.",
+							example: "AntiCheat/@Server",
 							result: "ServerScriptService/AntiCheat/…",
-						},
-						{
-							title: "The @ Sign",
-							desc: "Add @ and a route to the end of a name to send just that one file. A module stays a module.",
-							example: "Combat/CombatService@server.luau",
-							result: "ServerScriptService/Combat/CombatService",
 						},
 					].map((rule, i) => (
 						<div
