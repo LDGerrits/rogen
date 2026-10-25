@@ -100,14 +100,23 @@ const studio: Row[] = [
 	{ name: "ReplicatedStorage", level: 0, kind: "replicated" },
 	{ name: "Shared", level: 1, kind: "folder" },
 	{ name: "Inventory", level: 2, kind: "folder" },
-	...instances(["InventoryTypes", "ItemCatalog", "ItemIcons"], 3),
+	...instances(
+		[
+			"InventoryTypes",
+			"ItemCatalog",
+			"ItemIcons",
+			"UI/InventoryHud",
+			"UI/ItemSlot",
+		],
+		3
+	),
 	{ name: "ServerScriptService", level: 0, kind: "server", mt: true },
 	{ name: "Inventory", level: 1, kind: "folder" },
 	...instances(["InventoryService", "InventoryStore"], 2),
 	{ name: "StarterPlayer", level: 0, kind: "player", mt: true },
 	{ name: "StarterPlayerScripts", level: 1, kind: "player" },
 	{ name: "Inventory", level: 2, kind: "folder" },
-	...instances(["InventoryController", "UI/InventoryHud", "UI/ItemSlot"], 3),
+	...instances(["InventoryController", "InventoryInput"], 3),
 ];
 
 const views: Record<ViewState, { label: string; desc: string; disk: Row[] }> = {
@@ -118,13 +127,14 @@ const views: Record<ViewState, { label: string; desc: string; disk: Row[] }> = {
 			{ name: "src", level: 0, kind: "root" },
 			{ name: "Inventory", level: 1, kind: "feature" },
 			{ name: "UI", level: 2, kind: "subfolder" },
-			{ name: "InventoryHud@Client.luau", level: 3, kind: "script" },
-			{ name: "ItemSlot@Client.luau", level: 3, kind: "script" },
+			{ name: "InventoryHud.luau", level: 3, kind: "script" },
+			{ name: "ItemSlot.luau", level: 3, kind: "script" },
 			{
 				name: "InventoryController@Client.luau",
 				level: 2,
 				kind: "script",
 			},
+			{ name: "InventoryInput@Client.luau", level: 2, kind: "script" },
 			{ name: "InventoryService@Server.luau", level: 2, kind: "script" },
 			{ name: "InventoryStore@Server.luau", level: 2, kind: "script" },
 			{ name: "InventoryTypes.luau", level: 2, kind: "script" },
@@ -138,11 +148,12 @@ const views: Record<ViewState, { label: string; desc: string; disk: Row[] }> = {
 		disk: [
 			{ name: "src", level: 0, kind: "root" },
 			{ name: "Inventory", level: 1, kind: "feature" },
+			{ name: "UI", level: 2, kind: "subfolder" },
+			{ name: "InventoryHud.luau", level: 3, kind: "script" },
+			{ name: "ItemSlot.luau", level: 3, kind: "script" },
 			{ name: "Client", level: 2, kind: "routing" },
-			{ name: "UI", level: 3, kind: "subfolder" },
-			{ name: "InventoryHud.luau", level: 4, kind: "script" },
-			{ name: "ItemSlot.luau", level: 4, kind: "script" },
 			{ name: "InventoryController.luau", level: 3, kind: "script" },
+			{ name: "InventoryInput.luau", level: 3, kind: "script" },
 			{ name: "Server", level: 2, kind: "routing" },
 			{ name: "InventoryService.luau", level: 3, kind: "script" },
 			{ name: "InventoryStore.luau", level: 3, kind: "script" },
