@@ -8,3 +8,12 @@ export const gitConfig = {
 	repo: "rogen",
 	branch: "main",
 };
+
+export const socials = {
+	github: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,
+	discord:
+		"https://discord.com/channels/385151591524597761/1503801029232295996",
+	twitter: "https://x.com/playfullygames",
+	devforum:
+		"https://devforum.roblox.com/t/rogen-feature-based-folder-structures-with-rojo-an-automatic-tool-for-luau-and-roblox-ts/4625829?u=clinkety",
+};
