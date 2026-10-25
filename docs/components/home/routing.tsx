@@ -86,7 +86,7 @@ export function Routing() {
 						},
 						{
 							title: "Marker Files",
-							desc: "Put a file named after a route, with an @ in front, in a folder, and the whole folder goes there with its name.",
+							desc: "Add a file named @ and a route, such as @Server, to a folder, and the whole folder goes there under its own name.",
 							example: "AntiCheat/@Server",
 							result: "ServerScriptService/AntiCheat/…",
 						},
