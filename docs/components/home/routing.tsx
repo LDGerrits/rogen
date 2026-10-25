@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import type { IconType } from "react-icons";
 import {
 	FaFolderOpen,
@@ -101,17 +101,6 @@ function studioTree(
 	return rows;
 }
 
-const CONFIG = `{
-  "name": "Game",
-  "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared",
-    "*": "ReplicatedStorage/Shared"
-  },
-  "tree": { "$className": "DataModel" }
-}`;
-
 const views: Record<
 	ViewState,
 	{ label: string; desc: string; disk: Row[]; studio: Row[] }
@@ -128,11 +117,10 @@ const views: Record<
 			{ name: "InventoryService.luau", level: 3, kind: "script" },
 			{ name: "Shared", level: 2, kind: "routing" },
 			{ name: "InventoryTypes.luau", level: 3, kind: "script" },
-			{ name: "InventoryConfig.luau", level: 2, kind: "script" },
 		],
 		studio: studioTree(
 			"Inventory",
-			["InventoryConfig", "InventoryTypes"],
+			["InventoryTypes"],
 			["InventoryService"],
 			["InventoryController"]
 		),
@@ -194,28 +182,6 @@ function Tree({ rows }: { rows: Row[] }) {
 	);
 }
 
-function Panel({
-	icon,
-	title,
-	children,
-}: {
-	icon: ReactNode;
-	title: string;
-	children: ReactNode;
-}) {
-	return (
-		<div className="flex-1 bg-[#050505] rounded-xl border border-white/10 overflow-hidden z-10 flex flex-col shadow-2xl">
-			<div className="bg-[#0a0a0a] px-4 py-3 flex items-center gap-3 border-b border-white/10">
-				{icon}
-				<span className="text-xs font-mono text-gray-400 tracking-wide">
-					{title}
-				</span>
-			</div>
-			{children}
-		</div>
-	);
-}
-
 export function Routing() {
 	const [activeView, setActiveView] = useState<ViewState>("folders");
 	const view = views[activeView];
@@ -225,12 +191,14 @@ export function Routing() {
 			<div className="max-w-6xl mx-auto relative z-10">
 				<div className="absolute top-20 left-30 w-100 h-100 bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
 
-				<div className="flex flex-col items-start text-left mb-16">
+				<div className="flex flex-col items-start text-left mb-12">
 					<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
 						How routing works
 					</h2>
 					<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-						Declare your routes in{" "}
+						Declare routes such as{" "}
+						<code className="text-gray-300">Server</code> and{" "}
+						<code className="text-gray-300">Client</code> in{" "}
 						<code className="text-gray-300">
 							default.rogen.json
 						</code>
@@ -238,51 +206,40 @@ export function Routing() {
 					</p>
 				</div>
 
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 text-left">
-					<Panel
-						icon={<FaFileAlt className="text-gray-500 text-sm" />}
-						title="default.rogen.json"
-					>
-						<pre className="p-6 font-mono text-sm leading-7 text-gray-300 overflow-x-auto">
-							{CONFIG}
-						</pre>
-						<p className="px-6 pb-6 text-sm text-gray-500">
-							<code className="text-gray-300">*</code> takes every
-							file that no other route matches.
-						</p>
-					</Panel>
-
-					<div className="flex flex-col gap-3">
+				<div className="w-full flex justify-start mb-4 relative z-20">
+					<div className="flex p-1 bg-[#0a0a0a] border border-white/10 rounded-lg shadow-2xl backdrop-blur-md">
 						{(Object.keys(views) as ViewState[]).map((id) => (
 							<button
 								key={id}
 								onClick={() => setActiveView(id)}
-								className={`flex flex-col items-start text-left p-6 rounded-xl border transition-all duration-200 ${
+								className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
 									activeView === id
-										? "bg-white/5 border-white/30"
-										: "bg-[#0a0a0a]/60 border-white/10 hover:border-white/20"
+										? "bg-white/10 text-white shadow-sm"
+										: "text-gray-500 hover:text-gray-300 hover:bg-white/5"
 								}`}
 							>
-								<span className="text-base font-semibold text-white mb-1">
-									{views[id].label}
-								</span>
-								<span className="text-sm text-gray-400 leading-relaxed">
-									{views[id].desc}
-								</span>
+								{views[id].label}
 							</button>
 						))}
 					</div>
 				</div>
 
+				<p className="text-gray-400 text-sm leading-relaxed max-w-2xl mb-8 min-h-12">
+					{view.desc}
+				</p>
+
 				<div className="w-full flex flex-col md:flex-row items-stretch justify-start gap-4 relative text-left">
-					<Panel
-						icon={<FaTerminal className="text-gray-500 text-sm" />}
-						title="FILE SYSTEM"
-					>
+					<div className="flex-1 bg-[#050505] rounded-xl border border-white/10 overflow-hidden z-10 flex flex-col shadow-2xl">
+						<div className="bg-[#0a0a0a] px-4 py-3 flex items-center gap-3 border-b border-white/10">
+							<FaTerminal className="text-gray-500 text-sm" />
+							<span className="text-xs font-mono text-gray-400 tracking-wide uppercase">
+								File System
+							</span>
+						</div>
 						<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto min-h-80">
 							<Tree rows={view.disk} />
 						</div>
-					</Panel>
+					</div>
 
 					<div className="flex items-center justify-center z-20 py-4 md:py-0 px-4 md:px-6">
 						<svg
@@ -302,14 +259,17 @@ export function Routing() {
 						</svg>
 					</div>
 
-					<Panel
-						icon={<SiRoblox className="text-gray-400 text-sm" />}
-						title="ROBLOX STUDIO"
-					>
+					<div className="flex-1 bg-[#050505] rounded-xl border border-white/10 overflow-hidden z-10 flex flex-col shadow-2xl">
+						<div className="bg-[#0a0a0a] px-4 py-3 flex items-center gap-3 border-b border-white/10">
+							<SiRoblox className="text-gray-400 text-sm" />
+							<span className="text-xs font-mono text-gray-400 tracking-wide uppercase">
+								Roblox Studio
+							</span>
+						</div>
 						<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto min-h-80">
 							<Tree rows={view.studio} />
 						</div>
-					</Panel>
+					</div>
 				</div>
 
 				<Link

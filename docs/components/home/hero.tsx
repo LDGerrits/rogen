@@ -16,7 +16,8 @@ export function Hero() {
 
 				<p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed tracking-tight mb-10">
 					Rogen is a superset of Rojo that generates Rojo project
-					files from your file system.
+					files from your folders, so you can organize your game by
+					feature.
 				</p>
 
 				<div className="flex flex-col sm:flex-row gap-4 mb-6 w-full sm:w-auto">
