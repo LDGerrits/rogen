@@ -1,5 +1,4 @@
 import { JsonStructure } from "../../base/json-structure.js";
-import { ROGEN_BLOCK } from "./config.js";
 
 const node: JsonStructure = {
 	type: "object",
@@ -62,6 +61,6 @@ export const configStructure: JsonStructure = {
 	type: "object",
 	properties: {
 		...rojoFields,
-		[ROGEN_BLOCK]: { type: "object", properties: rogenFields },
+		...rogenFields,
 	},
 };

@@ -2,14 +2,12 @@
 	"globIgnorePaths": [
 		"**/*.spec.luau"
 	],
-	"rogen": {
-		"sourcePaths": [
-			"../src"
-		],
-		"routes": {
-			"server": "ServerScriptService",
-			"client": "StarterPlayer/StarterPlayerScripts",
-			"*": "ReplicatedStorage/shared"
-		}
+	"sourcePaths": [
+		"../src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"*": "ReplicatedStorage/shared"
 	}
 }

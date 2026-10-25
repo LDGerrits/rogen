@@ -125,9 +125,9 @@ describe("CoreInitService", () => {
 			const config = plan?.files.find(
 				({ fileName }) => fileName === "default.rogen.json"
 			);
-			expect(
-				JSON.parse(config?.content ?? "{}").rogen?.routes
-			).toHaveProperty("server");
+			expect(JSON.parse(config?.content ?? "{}").routes).toHaveProperty(
+				"server"
+			);
 		});
 
 		it("should take every default without asking when it may not ask, even in a terminal", async () => {

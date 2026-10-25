@@ -38,6 +38,7 @@ describe("CoreConfigService", () => {
 			"projects",
 			"serveProject",
 			"placePaths",
+			"rogen",
 		])("should say %s was removed", async (field) => {
 			await write("/repo/default.rogen.json", { [field]: "x" });
 
@@ -86,9 +87,9 @@ describe("CoreConfigService", () => {
 			).toEqual([true, true]);
 		});
 
-		it("should say syncPath was removed inside the rogen block too", async () => {
+		it("should name compiledPath as what replaces syncPath", async () => {
 			await write("/repo/default.rogen.json", {
-				rogen: { syncPath: "out" },
+				syncPath: "out",
 			});
 
 			await start();
@@ -97,7 +98,7 @@ describe("CoreConfigService", () => {
 				{
 					code: "config.removedField",
 					message: expect.stringContaining(
-						"It is called compiledPath now, inside the rogen block."
+						"It is called compiledPath now."
 					),
 				},
 			]);

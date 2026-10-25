@@ -1,8 +1,6 @@
 {
 	// the name
 	"name": "Game",
-	"rogen": {
-		"sourcePaths": ["src"],
-		"routes": { "*": "ReplicatedStorage" }
-	}
+	"sourcePaths": ["src"],
+	"routes": { "*": "ReplicatedStorage" }
 }

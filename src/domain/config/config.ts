@@ -7,18 +7,15 @@ import {
 	projectFileName,
 } from "../rojo/rojo-project.js";
 
-/** The key that holds Rogen's own keys; the top level is Rojo's. */
-export const ROGEN_BLOCK = "rogen";
-
-/** The keys Rogen adds to a Rojo project file, which sit in the `rogen` block. */
+/** The keys Rogen adds to a Rojo project file, beside Rojo's. */
 export interface RogenKeys {
 	readonly sourcePaths?: string[];
 	readonly routes?: Record<string, string>;
 	readonly compiledPath?: string;
 }
 
-/** What a `.rogen.json` holds: a Rojo project file, plus a `rogen` block of the keys Rogen reads. */
-export interface RogenConfig {
+/** What a `.rogen.json` holds: a Rojo project file, plus the keys Rogen reads. */
+export interface RogenConfig extends RogenKeys {
 	readonly name?: string;
 	readonly tree?: RojoNode;
 	readonly servePort?: number;
@@ -32,19 +29,18 @@ export interface RogenConfig {
 	readonly globIgnorePaths?: string[];
 	readonly syncRules?: unknown[];
 	readonly syncbackRules?: Record<string, unknown>;
-	readonly rogen?: RogenKeys;
 }
 
 interface ConfigValues {
 	getValue<T>(section?: string | readonly string[]): T | undefined;
 }
 
-/** A key of the `rogen` block. */
+/** One of Rogen's keys. */
 export function fieldOf<K extends keyof RogenKeys>(
 	values: ConfigValues,
 	key: K
 ): RogenKeys[K] {
-	return values.getValue<RogenKeys[K]>(["rogen", key]);
+	return values.getValue<RogenKeys[K]>(key);
 }
 
 const CONFIG_FILE_PATTERN = /^(.+)\.rogen\.jsonc?$/;
@@ -116,12 +112,15 @@ export const isProjectFileConfig = (file: string): boolean =>
 export const isDefaultProjectFile = (file: string): boolean =>
 	DEFAULT_PROJECT_FILES.includes(path.basename(file));
 
-/** The keys of the `rogen` block, in the order `rogen fmt-project` writes them. */
+/** Rogen's keys, in the order `rogen fmt-project` writes them after Rojo's. */
 export const ROGEN_KEYS: readonly (keyof RogenKeys)[] = [
 	"sourcePaths",
 	"routes",
 	"compiledPath",
 ];
+
+export const isRogenKey = (key: string): boolean =>
+	(ROGEN_KEYS as readonly string[]).includes(key);
 
 /** A config as `rogen fmt-project` writes it, so the first format changes nothing. */
 function configText(

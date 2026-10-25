@@ -9,9 +9,7 @@
 		"src"
 	],
 	"syncDir": "dist",
-	"rogen": {
-		"routes": {
-			"*": "ReplicatedStorage/shared"
-		}
+	"routes": {
+		"*": "ReplicatedStorage/shared"
 	}
 }

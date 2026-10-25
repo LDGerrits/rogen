@@ -3,5 +3,4 @@ exit 1
 stdout: (not shown)
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:2:2 - error: "syncPath" was removed. It is called compiledPath now, inside the rogen block. (config.removedField)
-  default.rogen.json:6:3 - error: "syncPath" was removed. It is called compiledPath now, inside the rogen block. (config.removedField)
+  default.rogen.json:2:2 - error: "syncPath" was removed. It is called compiledPath now. (config.removedField)

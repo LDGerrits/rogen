@@ -8,17 +8,15 @@
 			}
 		}
 	},
-	"rogen": {
-		"sourcePaths": [
-			"src",
-			"tests"
-		],
-		"routes": {
-			"server": "ServerStorage",
-			"client": "StarterPlayer/StarterPlayerScripts",
-			"shared": "ReplicatedStorage/shared",
-			"*": "ReplicatedStorage/shared",
-			"spec": "ServerScriptService/Specs"
-		}
+	"sourcePaths": [
+		"src",
+		"tests"
+	],
+	"routes": {
+		"server": "ServerStorage",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared",
+		"spec": "ServerScriptService/Specs"
 	}
 }

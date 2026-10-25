@@ -66,17 +66,15 @@ default.rogen.json:
       "$path": "place/Workspace"
     }
   },
-  "rogen": {
-    "sourcePaths": [
-      "src"
-    ],
-    "routes": {
-      "server": "ServerScriptService",
-      "client": "StarterPlayer/StarterPlayerScripts",
-      "shared": "ReplicatedStorage/shared"
-    },
-    "compiledPath": "out"
-  }
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared"
+  },
+  "compiledPath": "out"
 }
 
 out/Greeter/server/Greeter.server.luau:

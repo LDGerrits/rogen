@@ -5,20 +5,18 @@ description: Every key of a .rogen.json file, the Rojo project file that also sa
 
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-A folder's **config** is `default.rogen.json` (or `default.rogen.jsonc`), a Rojo project file with one more key, `rogen`. Rojo's own keys stay at the top level and keep their meaning. The `rogen` block holds Rogen's three: `sourcePaths` says where your code is, `routes` where it goes, and `compiledPath` where Rojo reads it from. Rogen writes Rojo's keys, with the routed nodes merged into the tree, to `default.project.json` beside the config. Comments and trailing commas are fine.
+A folder's **config** is `default.rogen.json` (or `default.rogen.jsonc`), a Rojo project file with three more keys. Rojo's own keys keep their meaning. Rogen's sit beside them: `sourcePaths` says where your code is, `routes` where it goes, and `compiledPath` where Rojo reads it from. Rogen writes Rojo's keys, with the routed nodes merged into the tree, to `default.project.json` beside the config. Comments and trailing commas are fine.
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
     ```json title="default.rogen.json"
     {
     	"globIgnorePaths": ["**/*.spec.luau"],
-    	"rogen": {
-    		"sourcePaths": ["src"],
-    		"routes": {
-    			"Server": "ServerScriptService",
-    			"Client": "StarterPlayer/StarterPlayerScripts",
-    			"Shared": "ReplicatedStorage/Shared"
-    		}
+    	"sourcePaths": ["src"],
+    	"routes": {
+    		"Server": "ServerScriptService",
+    		"Client": "StarterPlayer/StarterPlayerScripts",
+    		"Shared": "ReplicatedStorage/Shared"
     	}
     }
     ```
@@ -39,15 +37,13 @@ A folder's **config** is `default.rogen.json` (or `default.rogen.jsonc`), a Rojo
     		}
     	},
     	"globIgnorePaths": ["**/*.spec.ts"],
-    	"rogen": {
-    		"sourcePaths": ["src"],
-    		"routes": {
-    			"server": "ServerScriptService",
-    			"client": "StarterPlayer/StarterPlayerScripts",
-    			"shared": "ReplicatedStorage/shared"
-    		},
-    		"compiledPath": "out"
-    	}
+    	"sourcePaths": ["src"],
+    	"routes": {
+    		"server": "ServerScriptService",
+    		"client": "StarterPlayer/StarterPlayerScripts",
+    		"shared": "ReplicatedStorage/shared"
+    	},
+    	"compiledPath": "out"
     }
     ```
   </Tab>
@@ -77,7 +73,7 @@ A Rojo command writes **only the project file of the config it runs**. `rogen se
 
 ## Fields
 
-Rogen's keys, all inside the `rogen` block:
+Rogen's keys:
 
 | Field | Default | What it does |
 |---|---|---|
@@ -85,7 +81,7 @@ Rogen's keys, all inside the `rogen` block:
 | `routes` | none | Route keys and their targets, like `"Service/Folder"`. Only declared keys route. Without it, nothing is routed and no source path is scanned. See [Routing](/docs/v2/core-concepts/routing). |
 | `compiledPath` | none | The folder Rojo syncs from, usually your compiler's output. See [Compiled Path](/docs/v2/core-concepts/output#compiled-path). |
 
-Rojo's keys, at the top level. Rogen passes each to the project file as it is, except `globIgnorePaths` and `syncRules`, which it also reads. [Rojo's project format](https://rojo.space/docs/v7/project-format/) documents all of them; this table says only what Rogen does with each:
+Rojo's keys. Rogen passes each to the project file as it is, except `globIgnorePaths` and `syncRules`, which it also reads. [Rojo's project format](https://rojo.space/docs/v7/project-format/) documents all of them; this table says only what Rogen does with each:
 
 | Field | What Rogen does with it |
 |---|---|
@@ -101,7 +97,7 @@ Rojo's keys, at the top level. Rogen passes each to the project file as it is, e
 | `emitLegacyScripts` | Whether Rojo makes `Script` and `LocalScript` instances for `.server` and `.client` files, rather than a run context. |
 | `syncbackRules` | Rojo's syncback rules. |
 
-A key on neither list is an error, since Rojo rejects a project file with a key it doesn't know ([`config.unknownField`](/docs/v2/diagnostics#config-unknownfield)); a Rogen key outside the block is an error that says where it goes ([`config.rogenKeyOutsideBlock`](/docs/v2/diagnostics#config-rogenkeyoutsideblock)). A wrong type is an error.
+A key on neither list is an error, since Rojo rejects a project file with a key it doesn't know ([`config.unknownField`](/docs/v2/diagnostics#config-unknownfield)). A wrong type is an error.
 
 ---
 
@@ -124,10 +120,8 @@ A second project is a second complete config. `X.rogen.json` writes `X.project.j
 		"$className": "DataModel",
 		"ReplicatedStorage": { "DevPackages": { "$path": "DevPackages" } }
 	},
-	"rogen": {
-		"sourcePaths": ["src", "dev"],
-		"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
-	}
+	"sourcePaths": ["src", "dev"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
 }
 ```
 
@@ -138,11 +132,9 @@ A second project is a second complete config. `X.rogen.json` writes `X.project.j
 		"$className": "DataModel",
 		"ReplicatedStorage": { "DevPackages": { "$path": "DevPackages" } }
 	},
-	"rogen": {
-		"sourcePaths": ["src", "dev"],
-		"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
-		"compiledPath": "dist"
-	}
+	"sourcePaths": ["src", "dev"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
+	"compiledPath": "dist"
 }
 ```
 
@@ -154,10 +146,8 @@ A second project is a second complete config. `X.rogen.json` writes `X.project.j
 		"$className": "DataModel",
 		"ReplicatedStorage": { "DevPackages": { "$path": "DevPackages" } }
 	},
-	"rogen": {
-		"sourcePaths": ["src"],
-		"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
-	}
+	"sourcePaths": ["src"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
 }
 ```
 
@@ -176,10 +166,8 @@ A second project is a second complete config. `X.rogen.json` writes `X.project.j
 		"$className": "DataModel",
 		"ReplicatedStorage": { "TestEZ": { "$path": "Packages/TestEZ" } }
 	},
-	"rogen": {
-		"sourcePaths": ["src", "tests"],
-		"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
-	}
+	"sourcePaths": ["src", "tests"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
 }
 ```
 
@@ -209,7 +197,7 @@ Name a place to run a command on it: `rogen serve lobby`, or `rogen serve projec
 			"Packages": { "$path": { "optional": "Packages" } }
 		}
 	},
-	"rogen": { "routes": { "*": "ReplicatedStorage/Shared" } }
+	"routes": { "*": "ReplicatedStorage/Shared" }
 }
 ```
 
@@ -271,13 +259,14 @@ A config is one project file's description, so these keys are gone. Each is an e
 | `template` | Write the tree inline: move the template's `tree` and its other keys into `default.rogen.json`. |
 | `outFile` | Rogen writes `default.project.json` beside `default.rogen.json`. |
 | `exclude` | `globIgnorePaths`, which also leaves out a mount it ignores. |
-| `rootDirs` | `sourcePaths`, inside the `rogen` block. |
-| `syncDir`, `syncPath` | `compiledPath`, inside the `rogen` block. |
+| `rootDirs` | `sourcePaths`. |
+| `syncDir`, `syncPath` | `compiledPath`. |
 | `modes`, `mode` | A second complete file with the keys the mode set. |
 | `variants`, `conflicts` | None. A file that replaces another goes in a later source path; sets that exclude each other are a file each. |
 | `server` | None: `rogen serve` starts Rojo. |
+| `rogen` | Its keys, at the top level. |
 
-`sourcePaths`, `routes` and `compiledPath` at the top level are an error as well, and the message says to move them into the `rogen` block. A file named `rogen.json` is not read: rename it `default.rogen.json` and move its Rogen keys into a `rogen` block. `-o` no longer names the project file, as it did with `outFile`: on `build` it names the place file Rojo builds. A `.rogen.json` with the keys of a Rogen 1 config, such as `source` or `aliases`, is an error that links to [Migrating from v1](/docs/v2/migrating-from-v1).
+A file named `rogen.json` is not read: rename it `default.rogen.json`. `-o` no longer names the project file, as it did with `outFile`: on `build` it names the place file Rojo builds. A `.rogen.json` with the keys of a Rogen 1 config, such as `source` or `aliases`, is an error that links to [Migrating from v1](/docs/v2/migrating-from-v1).
 
 ## Diagnostics
 

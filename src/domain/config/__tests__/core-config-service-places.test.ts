@@ -20,7 +20,8 @@ describe("CoreConfigService places", () => {
 		await fs.createDirectory("/repo/places/lobby/src");
 		await write("/repo/places/lobby/default.rogen.json", {
 			name: "Lobby",
-			rogen: { sourcePaths: ["../shared/src", "src"], routes: ROUTES },
+			sourcePaths: ["../shared/src", "src"],
+			routes: ROUTES,
 		});
 	});
 
@@ -49,7 +50,7 @@ describe("CoreConfigService places", () => {
 		await write("/repo/default.rogen.json", {
 			name: "Root",
 			globIgnorePaths: ["**/*.spec.luau"],
-			rogen: { routes: { "*": "Workspace" } },
+			routes: { "*": "Workspace" },
 		});
 		await lobby();
 
@@ -66,7 +67,7 @@ describe("CoreConfigService places", () => {
 			servePlaceIds: [1],
 			placeId: 2,
 			gameId: 3,
-			rogen: { routes: ROUTES },
+			routes: ROUTES,
 		});
 		await lobby();
 
@@ -138,10 +139,8 @@ describe("CoreConfigService selectCovering", () => {
 		for (const name of ["lobby", "arena"])
 			await write(`/repo/places/${name}/default.rogen.json`, {
 				name,
-				rogen: {
-					sourcePaths: ["../shared/src", "src"],
-					routes: ROUTES,
-				},
+				sourcePaths: ["../shared/src", "src"],
+				routes: ROUTES,
 			});
 		await start();
 	});
@@ -236,7 +235,7 @@ describe("CoreConfigService coversOf", () => {
 		await fs.createDirectory("/repo/tools");
 		await write("/repo/default.rogen.json", {
 			name: "Game",
-			rogen: { routes: ROUTES },
+			routes: ROUTES,
 		});
 		await write("/repo/src/pkg/default.project.json", { name: "Pkg" });
 		await write("/repo/tools/default.project.json", { name: "Tools" });
@@ -290,7 +289,8 @@ describe("CoreConfigService coversOf named configs", () => {
 	const place = (name: string, sourcePaths: string[]) =>
 		write(`/repo/${name}.rogen.json`, {
 			name,
-			rogen: { sourcePaths, routes: ROUTES },
+			sourcePaths,
+			routes: ROUTES,
 		});
 
 	beforeEach(async () => {
@@ -341,7 +341,7 @@ describe("CoreConfigService coversOf named configs", () => {
 	});
 
 	it("should keep a config that is broken, since its source paths can't be told", async () => {
-		await write("/repo/lobby.rogen.json", { rogen: { routes: 3 } });
+		await write("/repo/lobby.rogen.json", { routes: 3 });
 
 		expect(await filesOf("/repo/src/game/Main.luau")).toEqual([
 			"/repo/game.rogen.json",

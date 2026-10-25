@@ -1,7 +1,5 @@
 {
 	"name": "Lobby",
-	"rogen": {
-		"sourcePaths": ["src"],
-		"routes": { "*": "ReplicatedStorage" }
-	}
+	"sourcePaths": ["src"],
+	"routes": { "*": "ReplicatedStorage" }
 }

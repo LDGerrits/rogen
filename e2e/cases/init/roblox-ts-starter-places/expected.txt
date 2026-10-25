@@ -126,18 +126,16 @@ projects/game/default.rogen.json:
       "$path": "place/Workspace"
     }
   },
-  "rogen": {
-    "sourcePaths": [
-      "../common/src",
-      "src"
-    ],
-    "routes": {
-      "server": "ServerScriptService",
-      "client": "StarterPlayer/StarterPlayerScripts",
-      "shared": "ReplicatedStorage/shared"
-    },
-    "compiledPath": "out"
-  }
+  "sourcePaths": [
+    "../common/src",
+    "src"
+  ],
+  "routes": {
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared"
+  },
+  "compiledPath": "out"
 }
 
 projects/game/src/Game/server/Game.server.ts:

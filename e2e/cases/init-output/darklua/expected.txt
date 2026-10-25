@@ -37,15 +37,13 @@ default.rogen.json:
   "tree": {
     "$className": "DataModel"
   },
-  "rogen": {
-    "sourcePaths": [
-      "src"
-    ],
-    "routes": {
-      "Server": "ServerScriptService",
-      "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared"
-    }
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared"
   }
 }
 
@@ -55,17 +53,15 @@ dist.rogen.json:
   "tree": {
     "$className": "DataModel"
   },
-  "rogen": {
-    "sourcePaths": [
-      "src"
-    ],
-    "routes": {
-      "Server": "ServerScriptService",
-      "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared"
-    },
-    "compiledPath": "dist"
-  }
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared"
+  },
+  "compiledPath": "dist"
 }
 
 $ rojo sourcemap default.project.json

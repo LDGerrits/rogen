@@ -72,14 +72,12 @@ The routes `rogen init` writes are enough:
 
 ```json title="default.rogen.json"
 {
-	"rogen": {
-		"sourcePaths": ["src"],
-		"routes": {
-			"Server": "ServerScriptService",
-			"Client": "StarterPlayer/StarterPlayerScripts",
-			"Shared": "ReplicatedStorage/Shared",
-			"*": "ReplicatedStorage/Shared"
-		}
+	"sourcePaths": ["src"],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
 	}
 }
 ```

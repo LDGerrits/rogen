@@ -24,15 +24,13 @@ default.rogen.json:
       "Admin": { "$path": "src/server/Admin" }
     }
   },
-  "rogen": {
-    "sourcePaths": [
-      "src"
-    ],
-    "routes": {
-      "Server": "ServerScriptService",
-      "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared"
-    }
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared"
   }
 }
 

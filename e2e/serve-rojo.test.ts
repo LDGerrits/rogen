@@ -112,11 +112,9 @@ describeWithRojo("end to end serve", () => {
 			serve.dir,
 			"default.rogen.json",
 			config(serve.port, {
-				rogen: {
-					routes: {
-						server: "ServerScriptService",
-						client: "StarterPlayer/StarterPlayerScripts",
-					},
+				routes: {
+					server: "ServerScriptService",
+					client: "StarterPlayer/StarterPlayerScripts",
 				},
 			})
 		);
@@ -214,10 +212,8 @@ describeWithRojo("end to end serve", () => {
 				JSON.stringify({
 					name: folder,
 					tree: { $className: "DataModel" },
-					rogen: {
-						sourcePaths: ["../shared/src", "src"],
-						routes: { "*": "Workspace" },
-					},
+					sourcePaths: ["../shared/src", "src"],
+					routes: { "*": "Workspace" },
 				})
 			);
 			writeProjectFile(serve.dir, `places/${folder}/src/A.luau`);
@@ -324,7 +320,7 @@ describeWithRojo("end to end serve", () => {
 			JSON.stringify({
 				servePort: serve.port,
 				tree: { $className: "DataModel" },
-				rogen: { routes: { "*": "ReplicatedStorage" } },
+				routes: { "*": "ReplicatedStorage" },
 			})
 		);
 
@@ -508,7 +504,7 @@ describeWithRojo("end to end serve", () => {
 		writeProjectFile(
 			serve.dir,
 			"dist.rogen.json",
-			config(serve.port, { rogen: { compiledPath: "dist" } })
+			config(serve.port, { compiledPath: "dist" })
 		);
 		const first = serve.start();
 		await eventually(() => {

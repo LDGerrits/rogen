@@ -1,22 +1,13 @@
 import net from "net";
 import { RunningRogen, bundleCli, createProject } from "./harness.js";
 
-export const config = (
-	port: number,
-	{
-		rogen,
-		...extra
-	}: { rogen?: Record<string, unknown>; [key: string]: unknown } = {}
-) =>
+export const config = (port: number, fields: Record<string, unknown> = {}) =>
 	JSON.stringify({
 		name: "Game",
 		servePort: port,
 		tree: { $className: "DataModel" },
-		...extra,
-		rogen: {
-			routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
-			...rogen,
-		},
+		routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
+		...fields,
 	});
 
 /** A Rojo project file that serves on `port`. */

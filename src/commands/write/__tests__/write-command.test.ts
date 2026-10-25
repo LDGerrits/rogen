@@ -19,7 +19,8 @@ const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 const named = (name: string) =>
 	JSON.stringify({
 		name,
-		rogen: { sourcePaths: ["src"], routes: { "*": "ReplicatedStorage" } },
+		sourcePaths: ["src"],
+		routes: { "*": "ReplicatedStorage" },
 	});
 
 const config = named("Game");
@@ -135,10 +136,8 @@ describe("write command", () => {
 				abs("lobby.rogen.json"),
 				JSON.stringify({
 					name: "Lobby",
-					rogen: {
-						sourcePaths: ["bad"],
-						routes: { "*": "ReplicatedStorage" },
-					},
+					sourcePaths: ["bad"],
+					routes: { "*": "ReplicatedStorage" },
 				})
 			);
 			const { run } = commandHarness({ fs });

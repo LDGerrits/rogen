@@ -71,10 +71,8 @@ describe("serve command", () => {
 		await memFs.writeFile(
 			"/repo/default.rogen.json",
 			JSON.stringify({
-				rogen: {
-					sourcePaths: ["src"],
-					routes: { "*": "ReplicatedStorage" },
-				},
+				sourcePaths: ["src"],
+				routes: { "*": "ReplicatedStorage" },
 			})
 		);
 		watcher = new MemoryWatcher(memFs, new NullLogService());
@@ -390,10 +388,8 @@ describe("serve command", () => {
 				"/repo/default.rogen.json",
 				JSON.stringify({
 					servePort,
-					rogen: {
-						sourcePaths: ["src"],
-						routes: { "*": "ReplicatedStorage" },
-					},
+					sourcePaths: ["src"],
+					routes: { "*": "ReplicatedStorage" },
 				})
 			);
 			await settle();
@@ -621,10 +617,8 @@ describe("serve command", () => {
 		await memFs.writeFile(
 			"/repo/lobby/default.rogen.json",
 			JSON.stringify({
-				rogen: {
-					sourcePaths: ["../src"],
-					routes: { "*": "Workspace" },
-				},
+				sourcePaths: ["../src"],
+				routes: { "*": "Workspace" },
 			})
 		);
 
@@ -638,10 +632,8 @@ describe("serve command", () => {
 		await memFs.writeFile(
 			"/repo/lobby/default.rogen.json",
 			JSON.stringify({
-				rogen: {
-					sourcePaths: ["../src"],
-					routes: { "*": "Workspace" },
-				},
+				sourcePaths: ["../src"],
+				routes: { "*": "Workspace" },
 			})
 		);
 
@@ -668,10 +660,8 @@ describe("serve command", () => {
 			"/repo/lobby/default.rogen.json",
 			JSON.stringify({
 				servePort: 40001,
-				rogen: {
-					sourcePaths: ["../src"],
-					routes: { "*": "Workspace" },
-				},
+				sourcePaths: ["../src"],
+				routes: { "*": "Workspace" },
 			})
 		);
 
@@ -690,12 +680,10 @@ describe("serve command", () => {
 		await memFs.writeFile(
 			"/repo/default.rogen.json",
 			JSON.stringify({
-				rogen: {
-					sourcePaths: ["src"],
-					routes: {
-						server: "ServerScriptService",
-						client: "StarterPlayer/StarterPlayerScripts",
-					},
+				sourcePaths: ["src"],
+				routes: {
+					server: "ServerScriptService",
+					client: "StarterPlayer/StarterPlayerScripts",
 				},
 			})
 		);

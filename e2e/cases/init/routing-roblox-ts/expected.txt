@@ -33,17 +33,15 @@ default.rogen.json:
       }
     }
   },
-  "rogen": {
-    "sourcePaths": [
-      "src"
-    ],
-    "routes": {
-      "server": "ServerScriptService",
-      "client": "StarterPlayer/StarterPlayerScripts",
-      "shared": "ReplicatedStorage/shared"
-    },
-    "compiledPath": "out"
-  }
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared"
+  },
+  "compiledPath": "out"
 }
 
 $ rojo sourcemap default.project.json

@@ -1,15 +1,13 @@
 {
 	"name": "Inventory",
-	"rogen": {
-		"sourcePaths": [
-			"src"
-		],
-		"routes": {
-			"server": "ServerScriptService",
-			"client": "StarterPlayer/StarterPlayerScripts",
-			"shared": "ReplicatedStorage/shared",
-			"*": "ReplicatedStorage/shared"
-		},
-		"compiledPath": "dist"
-	}
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	},
+	"compiledPath": "dist"
 }

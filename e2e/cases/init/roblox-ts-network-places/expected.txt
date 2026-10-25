@@ -73,18 +73,16 @@ projects/game/default.rogen.json:
       "$path": "place/Workspace"
     }
   },
-  "rogen": {
-    "sourcePaths": [
-      "../common/src",
-      "src"
-    ],
-    "routes": {
-      "server": "ServerScriptService",
-      "client": "StarterPlayer/StarterPlayerScripts",
-      "shared": "ReplicatedStorage/shared"
-    },
-    "compiledPath": "out"
-  }
+  "sourcePaths": [
+    "../common/src",
+    "src"
+  ],
+  "routes": {
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared"
+  },
+  "compiledPath": "out"
 }
 
 projects/game/out/common/src/Greeter/shared/Greeting.luau:

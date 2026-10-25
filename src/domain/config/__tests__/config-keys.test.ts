@@ -19,6 +19,7 @@ describe("domain/config/config-keys", () => {
 			"rootDirs",
 			"syncDir",
 			"syncPath",
+			"rogen",
 		])("should say %s was removed and what to do instead", (key) => {
 			expect(check(key)).toMatchObject([
 				{
@@ -26,6 +27,10 @@ describe("domain/config/config-keys", () => {
 					message: expect.stringContaining(`"${key}" was removed.`),
 				},
 			]);
+		});
+
+		it("should say a rogen block's keys go at the top level", () => {
+			expect(check("rogen")[0].message).toContain("top level");
 		});
 
 		it("should say how to serve with Argon for server", () => {
@@ -51,7 +56,7 @@ describe("domain/config/config-keys", () => {
 		});
 	});
 
-	describe("ConfigKeys.checkBlock", () => {
+	describe("ConfigKeys.check of a key Rogen doesn't know", () => {
 		const location = {
 			resource: "/repo/default.rogen.json",
 			position: { line: 3, column: 5 },
@@ -60,14 +65,13 @@ describe("domain/config/config-keys", () => {
 		it.each(["outDir", "outputPath"])(
 			"should offer compiledPath for %s, the usual try for it",
 			(key) => {
-				const [diagnostic] = ConfigKeys.checkBlock(
-					[key],
-					() => location
-				);
+				const [diagnostic] = ConfigKeys.check([key], () => location);
 
 				expect(diagnostic).toMatchObject({
 					code: "config.unknownField",
-					message: `"${key}" is not one of Rogen's keys. Did you mean "compiledPath"?`,
+					message: expect.stringContaining(
+						'Did you mean "compiledPath"?'
+					),
 					fixes: [
 						{ replace: { from: `"${key}"`, to: '"compiledPath"' } },
 					],
@@ -75,8 +79,8 @@ describe("domain/config/config-keys", () => {
 			}
 		);
 
-		it("should not offer compiledPath when the block has it already", () => {
-			const diagnostics = ConfigKeys.checkBlock(
+		it("should not offer compiledPath when the file has it already", () => {
+			const diagnostics = ConfigKeys.check(
 				["compiledPath", "outDir"],
 				() => location
 			);

@@ -110,7 +110,7 @@ Symlinks and Windows junctions inside a source path are followed, which is handy
 Several source paths merge into one tree, and the later one wins any clash. Source paths can't nest, and one that doesn't exist yet only gets a warning until it appears.
 
 ```json title="default.rogen.json"
-{ "rogen": { "sourcePaths": ["core", "game"] } }
+{ "sourcePaths": ["core", "game"] }
 ```
 
 ## Replacing a File
@@ -118,7 +118,7 @@ Several source paths merge into one tree, and the later one wins any clash. Sour
 Put the replacement in a later source path. When two source paths give one instance, the last one wins, and Rogen says nothing about it. This swaps in a mock `Analytics`:
 
 ```json title="default.rogen.json"
-{ "rogen": { "sourcePaths": ["src", "dev"] } }
+{ "sourcePaths": ["src", "dev"] }
 ```
 
 ```
@@ -132,13 +132,11 @@ To keep the swap out of the default project, give the project that wants it a co
 {
 	"name": "Game",
 	"tree": { "$className": "DataModel" },
-	"rogen": {
-		"sourcePaths": ["src", "dev"],
-		"routes": {
-			"Server": "ServerScriptService",
-			"Client": "StarterPlayer/StarterPlayerScripts",
-			"Shared": "ReplicatedStorage/Shared"
-		}
+	"sourcePaths": ["src", "dev"],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared"
 	}
 }
 ```

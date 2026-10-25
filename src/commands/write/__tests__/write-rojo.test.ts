@@ -76,13 +76,11 @@ describeWithRojo("write command against Rojo", () => {
 		write(
 			"default.rogen.json",
 			JSON.stringify({
-				rogen: {
-					sourcePaths: ["src"],
-					routes: {
-						server: "ServerScriptService",
-						client: "StarterPlayer/StarterPlayerScripts",
-						"*": "ReplicatedStorage",
-					},
+				sourcePaths: ["src"],
+				routes: {
+					server: "ServerScriptService",
+					client: "StarterPlayer/StarterPlayerScripts",
+					"*": "ReplicatedStorage",
 				},
 			})
 		);
@@ -108,7 +106,7 @@ describeWithRojo("write command against Rojo", () => {
 		for (const folder of ["lobby", "arena"])
 			write(
 				`${folder}/default.rogen.json`,
-				JSON.stringify({ rogen: { sourcePaths: ["../src"], routes } })
+				JSON.stringify({ sourcePaths: ["../src"], routes })
 			);
 
 		expect((await runWrite(["lobby"])).isOk()).toBe(true);
@@ -140,10 +138,8 @@ describeWithRojo("write command against Rojo", () => {
 			"default.rogen.json",
 			JSON.stringify({
 				globIgnorePaths: ["src/Combat/Other.luau"],
-				rogen: {
-					sourcePaths: ["src"],
-					routes: { server: "ServerScriptService", "*": "Workspace" },
-				},
+				sourcePaths: ["src"],
+				routes: { server: "ServerScriptService", "*": "Workspace" },
 			})
 		);
 

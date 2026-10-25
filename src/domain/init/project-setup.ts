@@ -560,17 +560,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const config: RogenConfig = {
 			...((choices.scaffold || places) && { name }),
 			...tree.fields,
-			...((routes || defaultCompiledPath) && {
-				rogen: {
-					...(routes && {
-						sourcePaths: [...sourcePaths],
-						routes,
-					}),
-					...(defaultCompiledPath && {
-						compiledPath: defaultCompiledPath,
-					}),
-				},
-			}),
+			...(routes && { sourcePaths: [...sourcePaths], routes }),
+			...(defaultCompiledPath && { compiledPath: defaultCompiledPath }),
 		};
 		const written =
 			choices.tree.kind === "lift"

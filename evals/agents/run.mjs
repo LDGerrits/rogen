@@ -108,7 +108,7 @@ function fixture(layout) {
 		for (const [file, text] of Object.entries(files))
 			fs.writeFileSync(path.join(feature, file), text);
 		editJson(path.join(dir, "default.rogen.json"), (json) => {
-			json.rogen.routes = {
+			json.routes = {
 				server: "ServerScriptService",
 				client: "StarterPlayer/StarterPlayerScripts",
 				shared: "ReplicatedStorage/Shared",
@@ -142,7 +142,7 @@ function prepare(layout, condition, dir) {
 		fs.writeFileSync(path.join(dir, "CLAUDE.md"), "@AGENTS.md\n");
 	if (condition === "fallback") {
 		editJson(path.join(dir, "default.rogen.json"), (json) => {
-			json.rogen.routes["*"] = "ReplicatedStorage/Shared";
+			json.routes["*"] = "ReplicatedStorage/Shared";
 		});
 		rogen(dir, "write", "-q");
 	}

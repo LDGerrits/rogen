@@ -1,11 +1,9 @@
 {
-	"rogen": {
-		"sourcePaths": [
-			"src"
-		],
-		"routes": {
-			"*": "ReplicatedStorage"
-		},
-		"compiledPath": null
-	}
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"*": "ReplicatedStorage"
+	},
+	"compiledPath": null
 }

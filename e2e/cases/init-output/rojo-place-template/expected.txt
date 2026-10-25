@@ -91,15 +91,13 @@ default.rogen.json:
       }
     }
   },
-  "rogen": {
-    "sourcePaths": [
-      "src"
-    ],
-    "routes": {
-      "Shared": "ReplicatedStorage/Shared",
-      "Server": "ServerScriptService",
-      "Client": "StarterPlayer/StarterPlayerScripts"
-    }
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Shared": "ReplicatedStorage/Shared",
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts"
   }
 }
 

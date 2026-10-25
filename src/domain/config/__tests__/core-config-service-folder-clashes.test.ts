@@ -16,7 +16,8 @@ const config = (
 	name,
 	tree: { $className: "DataModel" },
 	...more,
-	rogen: { routes: ROUTES, ...rogen },
+	routes: ROUTES,
+	...rogen,
 });
 
 const codes = (index: number) => errors(index).map(({ code }) => code);

@@ -2,11 +2,9 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { ConfigFormatter } from "../config-formatter.js";
 
 const TABBED = `{
-	"rogen": {
-		"compiledPath": "out",
-		"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
-		"sourcePaths": ["src"]
-	},
+	"compiledPath": "out",
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
+	"sourcePaths": ["src"],
 	"name": "Game",
 	"tree": { "ReplicatedStorage": { "$className": "ReplicatedStorage" }, "$className": "DataModel" },
 	"servePort": 34873
@@ -26,7 +24,7 @@ describe("ConfigFormatter", () => {
 		formatter = new ConfigFormatter(fs);
 	});
 
-	it("should write Rojo's keys first and the rogen block after with its keys in order, with two-space indentation and no trailing newline", async () => {
+	it("should write Rojo's keys first and Rogen's after in order, with two-space indentation and no trailing newline", async () => {
 		await fs.writeFile("/repo/default.rogen.json", TABBED);
 
 		const result = await format();
@@ -43,16 +41,14 @@ describe("ConfigFormatter", () => {
 				"    }",
 				"  },",
 				'  "servePort": 34873,',
-				'  "rogen": {',
-				'    "sourcePaths": [',
-				'      "src"',
-				"    ],",
-				'    "routes": {',
-				'      "server": "ServerScriptService",',
-				'      "*": "ReplicatedStorage"',
-				"    },",
-				'    "compiledPath": "out"',
-				"  }",
+				'  "sourcePaths": [',
+				'    "src"',
+				"  ],",
+				'  "routes": {',
+				'    "server": "ServerScriptService",',
+				'    "*": "ReplicatedStorage"',
+				"  },",
+				'  "compiledPath": "out"',
 				"}",
 			].join("\n")
 		);
@@ -61,7 +57,7 @@ describe("ConfigFormatter", () => {
 	it("should name a config after its folder when it has no name, as Rojo does a project file", async () => {
 		await fs.writeFile(
 			"/repo/default.rogen.json",
-			'{"rogen":{"sourcePaths":["src"]}}'
+			'{"sourcePaths":["src"]}'
 		);
 
 		await format();
@@ -70,7 +66,7 @@ describe("ConfigFormatter", () => {
 			JSON.parse(await fs.readFile("/repo/default.rogen.json"))
 		).toEqual({
 			name: "repo",
-			rogen: { sourcePaths: ["src"] },
+			sourcePaths: ["src"],
 		});
 	});
 

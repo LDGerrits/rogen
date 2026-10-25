@@ -1,8 +1,6 @@
 {
-	"rogen": {
-		"routes": {
-			"Server": "ServerScriptService",
-			"*": "ReplicatedStorage/Shared"
-		}
+	"routes": {
+		"Server": "ServerScriptService",
+		"*": "ReplicatedStorage/Shared"
 	}
 }

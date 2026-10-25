@@ -4,8 +4,6 @@
 		"$className": "DataModel",
 		"Workspace": { "$path": "place/lobby/Workspace" }
 	},
-	"rogen": {
-		"sourcePaths": ["src/lobby"],
-		"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
-	}
+	"sourcePaths": ["src/lobby"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
 }

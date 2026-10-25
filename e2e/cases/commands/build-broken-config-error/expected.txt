@@ -3,7 +3,7 @@ exit 1
 stdout: (not shown)
 stderr:
   error: broken/default.rogen.json · not loaded
-  broken/default.rogen.json:4:39 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+  broken/default.rogen.json:3:38 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
 
 $ rogen write broken --json
 exit 1
@@ -18,8 +18,8 @@ stdout:
         "diagnostics": [
           {
             "file": "<dir>/broken/default.rogen.json",
-            "line": 4,
-            "column": 39,
+            "line": 3,
+            "column": 38,
             "severity": "error",
             "code": "config.invalidSyntax",
             "message": "invalid JSONC: expected '}'.",

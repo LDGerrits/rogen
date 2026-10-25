@@ -27,20 +27,17 @@ import {
 	ServerReadyEvent,
 } from "../serve-service.js";
 
-type Fields = { rogen?: Record<string, unknown>; [key: string]: unknown };
+type Fields = Record<string, unknown>;
 
-const config = ({ rogen, ...extra }: Fields = {}) =>
+const config = (fields: Fields = {}) =>
 	JSON.stringify({
-		...extra,
-		rogen: {
-			sourcePaths: ["src"],
-			routes: { "*": "ReplicatedStorage" },
-			...rogen,
-		},
+		sourcePaths: ["src"],
+		routes: { "*": "ReplicatedStorage" },
+		...fields,
 	});
 
-const place = ({ rogen, ...fields }: Fields = {}) =>
-	config({ ...fields, rogen: { sourcePaths: ["../src"], ...rogen } });
+const place = (fields: Fields = {}) =>
+	config({ sourcePaths: ["../src"], ...fields });
 
 const rojoInfo = (project: string) => ({
 	projectName: project,
@@ -165,7 +162,7 @@ describe("CoreServeService", () => {
 		it("should watch a config named from another folder on its own", async () => {
 			await memFs.writeFile(
 				"/elsewhere/lobby/default.rogen.json",
-				config({ rogen: { sourcePaths: ["/repo/src"] } })
+				config({ sourcePaths: ["/repo/src"] })
 			);
 
 			const servePlan = await plan({ refs: ["/elsewhere/lobby"] });
@@ -268,7 +265,7 @@ describe("CoreServeService", () => {
 		it("should name the config another serve started on the port", async () => {
 			await memFs.writeFile(
 				"/repo/dist.rogen.json",
-				config({ name: "repo", rogen: { compiledPath: "dist" } })
+				config({ name: "repo", compiledPath: "dist" })
 			);
 			await memFs.writeFile(
 				...recordFile(34872, "repo", "/repo/default.project.json", {
@@ -755,12 +752,10 @@ describe("CoreServeService", () => {
 			await memFs.writeFile(
 				"/repo/default.rogen.json",
 				config({
-					rogen: {
-						routes: {
-							server: "ServerScriptService",
-							client: "StarterPlayer/StarterPlayerScripts",
-							"*": "ReplicatedStorage",
-						},
+					routes: {
+						server: "ServerScriptService",
+						client: "StarterPlayer/StarterPlayerScripts",
+						"*": "ReplicatedStorage",
 					},
 				})
 			);
@@ -1005,12 +1000,10 @@ describe("CoreServeService", () => {
 				await memFs.writeFile("/repo/src/X/@server", "");
 				await memFs.writeFile("/repo/src/X/@client", "");
 				await replaceWithLobby(34900, {
-					rogen: {
-						routes: {
-							server: "ServerScriptService",
-							client: "StarterPlayer/StarterPlayerScripts",
-							"*": "ReplicatedStorage",
-						},
+					routes: {
+						server: "ServerScriptService",
+						client: "StarterPlayer/StarterPlayerScripts",
+						"*": "ReplicatedStorage",
 					},
 				});
 				await settle();

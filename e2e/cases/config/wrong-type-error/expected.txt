@@ -4,5 +4,5 @@ stdout: (not shown)
 stderr:
   error: default.rogen.json · not loaded
   default.rogen.json:3:3 - error: "globIgnorePaths[0]": expected a string, found a number. (config.wrongType)
-  default.rogen.json:8:4 - error: "rogen.sourcePaths[1]": expected a string, found a number. (config.wrongType)
-  default.rogen.json:11:9 - error: "rogen.routes.*": expected a string, found a number. (config.wrongType)
+  default.rogen.json:7:3 - error: "sourcePaths[1]": expected a string, found a number. (config.wrongType)
+  default.rogen.json:10:8 - error: "routes.*": expected a string, found a number. (config.wrongType)

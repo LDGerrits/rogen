@@ -8,4 +8,4 @@ stderr:
   default.rogen.json:4:2 - error: "outFile" was removed. Rogen writes default.project.json beside default.rogen.json. (config.removedField)
   default.rogen.json:5:2 - error: "exclude" was removed. "globIgnorePaths" keeps files out of routing, leaves out a mount of the tree that it ignores, and Rogen writes it for Rojo. (config.removedField)
   default.rogen.json:8:2 - error: "rootDirs" was removed. It is called "sourcePaths" now. (config.removedField)
-  default.rogen.json:11:2 - error: "syncDir" was removed. It is called compiledPath now, inside the rogen block. (config.removedField)
+  default.rogen.json:11:2 - error: "syncDir" was removed. It is called compiledPath now. (config.removedField)

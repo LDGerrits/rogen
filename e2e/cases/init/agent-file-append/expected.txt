@@ -23,7 +23,7 @@ This repo uses Rogen. Each `*.rogen.json` generates the Rojo project file beside
 ### Placing code
 
 - Name new files like their neighbours: same folders, `@` suffixes and casing. Run `rogen where <path>` to see where a file lands and how to require it.
-- A folder or `@` suffix named after a key in `rogen.routes` routes its contents: `Shop/Server/`, `Save@Server.luau`.
+- A folder or `@` suffix named after a key in `routes` routes its contents: `Shop/Server/`, `Save@Server.luau`.
 - The outermost route wins, so `Shared/Server/Save.luau` ships to clients. Keep server-only code under a server route.
 - In roblox-ts, import by relative path.
 
@@ -47,14 +47,12 @@ default.rogen.json:
   "tree": {
     "$className": "DataModel"
   },
-  "rogen": {
-    "sourcePaths": [
-      "src"
-    ],
-    "routes": {
-      "Server": "ServerScriptService",
-      "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared"
-    }
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared"
   }
 }

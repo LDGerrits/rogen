@@ -13,7 +13,7 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 - **Feature folder**: A folder inside a source path that holds everything for one gameplay feature, whichever service each file ends up in. See [Routing](/docs/v2/core-concepts/routing#routing-folders).
 
-- **Compiled path**: The folder Rojo syncs from, set as `rogen.compiledPath`: your compiler's output (`out` for roblox-ts, `dist` for Darklua). Each config file sets its own. See [Output and Sync](/docs/v2/core-concepts/output#compiled-path).
+- **Compiled path**: The folder Rojo syncs from, set as `compiledPath`: your compiler's output (`out` for roblox-ts, `dist` for Darklua). Each config file sets its own. See [Output and Sync](/docs/v2/core-concepts/output#compiled-path).
 
 - **Tree**: The instance tree in a `.rogen.json`, as in any Rojo project file, that Rogen merges its generated nodes into. See [Configuration](/docs/v2/configuration#tree).
 
@@ -71,6 +71,6 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 ## Configuration
 
-- **Config**: A `.rogen.json` file (or `.rogen.jsonc`): a Rojo project file whose top level is Rojo's keys, plus one `rogen` block holding `sourcePaths`, `routes` and `compiledPath`. Every path in it is relative to the file, and no file reads another. See [Configuration](/docs/v2/configuration).
+- **Config**: A `.rogen.json` file (or `.rogen.jsonc`): a Rojo project file plus Rogen's keys, `sourcePaths`, `routes` and `compiledPath`. Every path in it is relative to the file, and no file reads another. See [Configuration](/docs/v2/configuration).
 
 - **Legacy config**: A config written for Rogen 1, which v2 doesn't read. A `default.rogen.json` with v1's keys is an error that links to the [migration page](/docs/v2/migrating-from-v1).

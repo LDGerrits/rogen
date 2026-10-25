@@ -3,11 +3,9 @@
 	"placePaths": [
 		"places/*"
 	],
-	"rogen": {
-		"routes": {
-			"server": "ServerScriptService",
-			"client": "StarterPlayer/StarterPlayerScripts",
-			"*": "ReplicatedStorage/Shared"
-		}
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"*": "ReplicatedStorage/Shared"
 	}
 }

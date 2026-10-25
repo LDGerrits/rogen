@@ -58,7 +58,8 @@ describe("TreePlan", () => {
 				tree: { $className: "DataModel", Workspace: { Map: {} } },
 				servePort: 34872,
 				globIgnorePaths: ["**/*.spec.luau"],
-				rogen: { sourcePaths: ["src"], routes: LUAU_ROUTES },
+				sourcePaths: ["src"],
+				routes: LUAU_ROUTES,
 			});
 			expect(files.notes).toEqual([
 				"Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every write.",
@@ -172,7 +173,7 @@ describe("TreePlan", () => {
 			it("should write routes that put each folder where the project file had it", async () => {
 				const files = await planDerived(tree);
 
-				expect(configOf(files).rogen?.routes).toEqual({
+				expect(configOf(files).routes).toEqual({
 					Server: "ServerScriptService/Server",
 					Shared: "ReplicatedStorage/Shared",
 					Client: "StarterPlayer/StarterPlayerScripts/Client",
@@ -219,9 +220,9 @@ describe("TreePlan", () => {
 						Two: { $path: "src/Lib" },
 					},
 				});
-				expect(
-					Object.keys(configOf(files).rogen!.routes!)
-				).not.toContain("Lib");
+				expect(Object.keys(configOf(files).routes!)).not.toContain(
+					"Lib"
+				);
 			});
 
 			it("should keep a mounted file in the tree", async () => {
@@ -255,9 +256,9 @@ describe("TreePlan", () => {
 					ServerScriptService: { Server: { $path: "src/server" } },
 					ReplicatedStorage: {},
 				});
-				expect(
-					Object.keys(configOf(files).rogen!.routes!)
-				).not.toContain("mount:server");
+				expect(Object.keys(configOf(files).routes!)).not.toContain(
+					"mount:server"
+				);
 				expect(files.notes).toContain(
 					"Kept ServerScriptService/Server in the tree as a $path mount, since its folder holds an init file, which Rojo reads as the instance of the folder itself and a route can't."
 				);
@@ -465,7 +466,7 @@ describe("TreePlan", () => {
 				existingFiles: new Set(["default.project.json"]),
 			}).unwrap();
 
-			expect(configOf(files).rogen?.routes).toMatchObject({
+			expect(configOf(files).routes).toMatchObject({
 				server: "ServerScriptService/TS",
 			});
 		});

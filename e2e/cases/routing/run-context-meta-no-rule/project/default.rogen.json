@@ -1,1 +1,1 @@
-{ "tree": { "$className": "DataModel" }, "emitLegacyScripts": false, "rogen": { "sourcePaths": ["src"], "routes": { "client": "StarterPlayer/StarterPlayerScripts", "*": "ReplicatedStorage" } } }
+{ "tree": { "$className": "DataModel" }, "emitLegacyScripts": false, "sourcePaths": ["src"], "routes": { "client": "StarterPlayer/StarterPlayerScripts", "*": "ReplicatedStorage" } }

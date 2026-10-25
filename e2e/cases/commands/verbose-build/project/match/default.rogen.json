@@ -1,11 +1,9 @@
 {
-	"rogen": {
-		"sourcePaths": [
-			"../src",
-			"lib"
-		],
-		"routes": {
-			"server": "ServerScriptService"
-		}
+	"sourcePaths": [
+		"../src",
+		"lib"
+	],
+	"routes": {
+		"server": "ServerScriptService"
 	}
 }

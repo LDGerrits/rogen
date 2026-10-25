@@ -124,18 +124,12 @@ describe("build command", () => {
 	});
 
 	describe("with several configs in the folder", () => {
-		const config = ({
-			rogen,
-			...extra
-		}: { rogen?: Record<string, unknown>; [key: string]: unknown } = {}) =>
+		const config = (fields: Record<string, unknown> = {}) =>
 			JSON.stringify({
 				name: "Game",
-				...extra,
-				rogen: {
-					sourcePaths: ["src"],
-					routes: { "*": "ReplicatedStorage" },
-					...rogen,
-				},
+				sourcePaths: ["src"],
+				routes: { "*": "ReplicatedStorage" },
+				...fields,
 			});
 
 		beforeEach(async () => {
@@ -143,7 +137,7 @@ describe("build command", () => {
 			await fs.writeFile(abs("default.rogen.json"), config());
 			await fs.writeFile(
 				abs("dist.rogen.json"),
-				config({ rogen: { compiledPath: "dist" } })
+				config({ compiledPath: "dist" })
 			);
 		});
 
@@ -205,10 +199,8 @@ describe("build command", () => {
 		await fs.writeFile(
 			abs("default.rogen.json"),
 			JSON.stringify({
-				rogen: {
-					sourcePaths: ["bad"],
-					routes: { "*": "ReplicatedStorage" },
-				},
+				sourcePaths: ["bad"],
+				routes: { "*": "ReplicatedStorage" },
 			})
 		);
 		const { run } = harness({ fs });
