@@ -3,13 +3,11 @@ import type { IconType } from "react-icons";
 import { FaCube, FaFileCode, FaFolder, FaFolderOpen } from "react-icons/fa";
 import { Reveal } from "./reveal";
 
-const rojoVerbs = [
-	"serve",
-	"build",
-	"sourcemap",
-	"upload",
-	"syncback",
-	"plugin",
+const rojoCommands: readonly (readonly [string, string])[] = [
+	["serve", ""],
+	["build", "-o game.rbxl"],
+	["sourcemap", "-o sourcemap.json"],
+	["syncback", "--input game.rbxl"],
 ];
 
 type TreeKind = "feature" | "open" | "folder" | "file" | "asset";
@@ -116,7 +114,7 @@ export function Features() {
 									you remove a feature by deleting its folder.
 								</p>
 								<CardLink href="/docs/v2/architectures">
-									Compare architectures
+									See suggested architectures
 								</CardLink>
 							</div>
 							<div className="border-t border-white/[0.06] bg-ink/60 p-8 font-mono text-[13px] leading-8 text-stone-500 md:w-1/2 md:border-t-0 md:border-l md:p-10">
@@ -204,19 +202,34 @@ export function Features() {
 									Coming from Rojo
 								</CardLink>
 							</div>
-							<ul className="flex flex-wrap gap-2 md:max-w-sm md:justify-end">
-								{rojoVerbs.map((verb) => (
-									<li
-										key={verb}
-										className="rounded-full border border-white/[0.08] bg-ink/70 px-4 py-2 font-mono text-[13px] text-stone-300"
-									>
-										<span className="text-stone-600">
-											rogen{" "}
-										</span>
-										{verb}
-									</li>
-								))}
-							</ul>
+							<div className="w-full overflow-hidden rounded-2xl border border-white/[0.08] bg-ink md:max-w-md">
+								<div className="flex items-center gap-1.5 border-b border-white/[0.06] px-4 py-3">
+									<span className="size-2.5 rounded-full bg-white/10" />
+									<span className="size-2.5 rounded-full bg-white/10" />
+									<span className="size-2.5 rounded-full bg-white/10" />
+								</div>
+								<pre className="overflow-x-auto p-5 font-mono text-[13px] leading-7">
+									{rojoCommands.map(([verb, flags]) => (
+										<div key={verb}>
+											<span className="select-none text-stone-600">
+												${" "}
+											</span>
+											<span className="text-brand">
+												rogen
+											</span>{" "}
+											<span className="text-paper">
+												{verb}
+											</span>
+											{flags && (
+												<span className="text-stone-500">
+													{" "}
+													{flags}
+												</span>
+											)}
+										</div>
+									))}
+								</pre>
+							</div>
 						</div>
 					</Reveal>
 				</div>

@@ -8,12 +8,9 @@ export function Cta() {
 			<div className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-[28rem] bg-[radial-gradient(ellipse_50%_60%_at_50%_100%,rgb(240_105_58/0.12),transparent_70%)]" />
 
 			<Reveal className="mx-auto flex max-w-4xl flex-col items-center text-center">
-				<h2 className="text-5xl font-semibold leading-[0.95] tracking-[-0.045em] text-paper md:text-6xl">
-					Start in two commands
+				<h2 className="mb-10 text-5xl font-semibold leading-[0.95] tracking-[-0.045em] text-paper md:text-6xl">
+					Get started
 				</h2>
-				<p className="mt-5 mb-10 text-lg text-stone-400">
-					Works in a new project or an existing Rojo one.
-				</p>
 
 				<InstallCommand center />
 
