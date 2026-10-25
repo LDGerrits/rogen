@@ -454,7 +454,7 @@ function put(
 	return l;
 }
 
-/** Runs the routing story inside `root`: a pinned stage, mini-scenes on small screens, or a static end state. */
+/** Runs the routing story inside `root`: a pinned stage, or mini-scenes on small screens. With reduced motion each step jumps to its end. */
 export function mountStory(root: HTMLElement) {
 	const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 	const stageEl = root.querySelector<HTMLElement>(".stage")!;
@@ -1072,28 +1072,22 @@ export function mountStory(root: HTMLElement) {
 	let stepPx = 600;
 	const pagePad = () => Math.max(20, Math.min(64, innerWidth * 0.045));
 
-	function planMain(staticMode: boolean) {
+	function planMain() {
 		const vh = innerHeight;
 		const cbW = root.clientWidth;
-		const tall = staticMode || vh >= 760;
+		const tall = vh >= 760;
 		const met = tall ? MET.normal : MET.compact;
 		const pad = tall ? 24 : 12;
 		const gap = tall ? 24 : 12;
 		const cardW = Math.ceil(met.padX * 2 + 62 * charW(met.fs) + 4);
 		const side = cbW >= 300 + 24 + cardW;
-		const capVariant = staticMode
-			? "list"
-			: side
-				? "side"
-				: tall
-					? "top bar"
-					: "top short";
+		const capVariant = side ? "side" : tall ? "top bar" : "top short";
 		fillCaption(mainView, capVariant);
 		mainView.cap!.style.width = (side ? 300 : cbW) + "px";
 		const capH = mainView.cap!.offsetHeight;
 		const cardH = met.tabH + met.bcH + 2 * met.padY + 9 * met.lh;
 		const band = side ? Math.max(cardH, capH) : capH + 8 + cardH;
-		const avail = staticMode ? 1e4 : vh - 2 * pad - gap - band;
+		const avail = vh - 2 * pad - gap - band;
 		let pick: { vb: ViewBox; s: number } | null = null;
 		for (const [name, floor] of [
 			["full", 0.8],
@@ -1110,9 +1104,7 @@ export function mountStory(root: HTMLElement) {
 		if (!pick) return null;
 		const sw = pick.vb[2] * pick.s;
 		const sh = pick.vb[3] * pick.s;
-		const top = staticMode
-			? pad
-			: Math.max(pad, (vh - sh - gap - band) / 2);
+		const top = Math.max(pad, (vh - sh - gap - band) / 2);
 		const scene = { x: (cbW - sw) / 2, y: top };
 		const sssRight =
 			scene.x +
@@ -1130,7 +1122,7 @@ export function mountStory(root: HTMLElement) {
 			s: pick.s,
 			card: { x: cardX, y: cardY, w: cardW, variant: "main" as const },
 			bandTop,
-			h: staticMode ? bandTop + band + pad : vh,
+			h: vh,
 		};
 	}
 
@@ -1215,13 +1207,13 @@ export function mountStory(root: HTMLElement) {
 
 	function setMode() {
 		const small = innerWidth < 600 || innerHeight < 600;
-		let m = reduced ? "static" : small ? "mini" : "pinned";
+		const mini = reduced ? "static-mini" : "mini";
+		let m = small ? mini : "pinned";
 		let plan: ReturnType<typeof planMain> = null;
-		if (m !== "mini") {
-			plan = planMain(m === "static");
-			if (!plan) m = reduced ? "static-mini" : "mini";
+		if (m === "pinned") {
+			plan = planMain();
+			if (!plan) m = mini;
 		}
-		if (reduced && m === "static" && small) m = "static-mini";
 		root.dataset.mode = m.endsWith("mini") ? "mini" : m;
 		mode = m;
 		if (m.endsWith("mini")) {
@@ -1231,18 +1223,12 @@ export function mountStory(root: HTMLElement) {
 		} else if (plan) {
 			applyMain(plan);
 			stepPx = Math.max(480, Math.min(900, innerHeight * 0.75));
-			root.style.height =
-				m === "pinned" ? 4 * stepPx + innerHeight + "px" : "";
+			root.style.height = 4 * stepPx + innerHeight + "px";
 		}
 	}
 
 	function onScroll() {
 		if (!mode) return;
-		if (mode === "static") {
-			renderView(mainView, 4);
-			captionAt(mainView, 4);
-			return;
-		}
 		if (mode === "static-mini") {
 			minis?.forEach((view) => renderView(view, view.mi + 1));
 			return;
@@ -1267,6 +1253,12 @@ export function mountStory(root: HTMLElement) {
 			0,
 			Math.min(4, -root.getBoundingClientRect().top / stepPx)
 		);
+		if (reduced) {
+			const step = Math.min(3, Math.floor(P));
+			renderView(mainView, step + 1);
+			captionAt(mainView, step);
+			return;
+		}
 		renderView(mainView, P);
 		captionAt(mainView, P);
 	}

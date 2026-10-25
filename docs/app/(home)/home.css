@@ -823,7 +823,7 @@ body:has(.home) {
 }
 
 /* the story: a pinned stage with the scene above a band holding the caption and the editor card;
-   four mini-scenes on small screens; one static stage with reduced motion. Layout is set in px by script. */
+   four mini-scenes on small screens. Layout is set in px by script. */
 .home .story {
 	position: relative;
 	margin-top: var(--s6);
@@ -832,10 +832,6 @@ body:has(.home) {
 	position: sticky;
 	top: 0;
 	height: 100vh;
-}
-.home .story[data-mode="static"] .stage {
-	position: relative;
-	height: auto;
 }
 .home .story[data-mode="mini"] .stage {
 	display: none;
@@ -1209,12 +1205,6 @@ body:has(.home) {
 .home .cap.side .ci.on .ln {
 	grid-template-rows: 1fr;
 	opacity: 1;
-}
-.home .cap.list .ci {
-	margin-bottom: 14px;
-}
-.home .cap.list .ci .k {
-	color: var(--t-s);
 }
 /* mini-scenes */
 .home .minis > li + li {
