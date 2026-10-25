@@ -37,7 +37,7 @@ Running several agents? Give each one a feature. A lint rule catches any agent t
 
 ## Example
 
-`default.rogen.json` is a Rojo project file with three more keys. Most projects need only `routes`:
+`default.rogen.json` is a Rojo project file with three more keys. Many projects need only `routes`:
 
 <!-- prettier-ignore -->
 ```json
