@@ -1,54 +1,62 @@
 import Link from "next/link";
+import { Reveal } from "./reveal";
+
+const points = [
+	{
+		title: "One feature, one folder",
+		desc: "When an agent works on a feature, everything it needs is in one folder, from server to client. It spends its context on your task instead of searching the codebase.",
+	},
+	{
+		title: "Several agents at once",
+		desc: "Give each agent a feature. A lint rule catches any agent that makes one feature require another, and they never fight over a shared project file.",
+	},
+];
 
 export function Agents() {
 	return (
-		<section id="agents" className="py-24 px-6 relative">
-			<div className="max-w-6xl mx-auto relative z-10">
-				<div className="absolute top-20 right-50 w-100 h-100 bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 translate-x-1/2 -translate-y-1/2" />
-
-				<div className="flex flex-col items-end text-right mb-16">
-					<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+		<section id="agents" className="relative px-6 py-24 lg:py-32">
+			<div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-12 lg:gap-8">
+				<Reveal className="flex flex-col items-end text-right lg:order-2 lg:col-span-5 lg:col-start-8">
+					<h2 className="text-3xl font-semibold tracking-[-0.03em] text-paper md:text-5xl">
 						Built for agents
 					</h2>
-					<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-						People and coding agents read the layout the same way.
+					<p className="mt-5 max-w-sm text-lg leading-relaxed text-stone-400">
+						Coding agents find their way around a feature folder as
+						easily as you do.
 					</p>
-				</div>
-
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-					{[
-						{
-							title: "One feature, one folder",
-							desc: "When an agent works on a feature, everything it needs is in one folder, from server to client. It spends its context on your task instead of searching the codebase.",
-						},
-						{
-							title: "Several agents at once",
-							desc: "Give each agent a feature. A lint rule catches any agent that makes one feature require another, and there's no shared project file to conflict on.",
-						},
-					].map((point, i) => (
-						<div
-							key={i}
-							className="glass-card flex flex-col items-start p-8 rounded-xl cursor-default"
-						>
-							<h3 className="text-base font-semibold text-white mb-2">
-								{point.title}
-							</h3>
-							<p className="text-gray-400 text-sm leading-relaxed">
-								{point.desc}
-							</p>
-						</div>
-					))}
-				</div>
-
-				<div className="mt-10 flex justify-end">
 					<Link
 						href="/docs/v2/agents"
-						className="text-gray-400 hover:text-white transition-colors text-sm font-medium inline-flex items-center gap-1"
+						className="group mt-8 inline-flex items-center gap-1.5 text-sm font-medium text-stone-400 transition-colors duration-300 hover:text-paper"
 					>
-						Working with agents{" "}
-						<span className="font-serif">→</span>
+						Working with agents
+						<span className="transition-transform duration-500 ease-out-expo group-hover:translate-x-1">
+							→
+						</span>
 					</Link>
-				</div>
+				</Reveal>
+
+				<Reveal className="lg:order-1 lg:col-span-6">
+					<ol>
+						{points.map((point, i) => (
+							<li
+								key={point.title}
+								className="grid grid-cols-[3rem_1fr] gap-4 border-t border-white/[0.08] py-8 last:border-b"
+							>
+								<span className="pt-1 font-mono text-xs tracking-[0.14em] text-brand">
+									{String(i + 1).padStart(2, "0")}
+								</span>
+								<div>
+									<h3 className="text-xl font-semibold tracking-[-0.02em] text-paper">
+										{point.title}
+									</h3>
+									<p className="mt-3 max-w-[52ch] text-[15px] leading-relaxed text-stone-400">
+										{point.desc}
+									</p>
+								</div>
+							</li>
+						))}
+					</ol>
+				</Reveal>
 			</div>
 		</section>
 	);

@@ -1,17 +1,34 @@
+import type { Metadata } from "next";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import "./global.css";
-import { Inter } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 
-const inter = Inter({
+const geistSans = Geist({
 	subsets: ["latin"],
+	variable: "--font-geist-sans",
 });
+
+const geistMono = Geist_Mono({
+	subsets: ["latin"],
+	variable: "--font-geist-mono",
+});
+
+export const metadata: Metadata = {
+	metadataBase: new URL("https://rogen-playfully.vercel.app"),
+	title: {
+		default: "Rogen - Professional-grade architecture for Roblox",
+		template: "%s | Rogen",
+	},
+	description:
+		"Rogen is a superset of Rojo that generates Rojo project files from your folders. You organize your game by feature, and Rogen puts each file in the right place.",
+};
 
 export default function Layout({ children }: LayoutProps<"/">) {
 	return (
 		<html
 			lang="en"
-			className={`${inter.className} dark`}
+			className={`${geistSans.variable} ${geistMono.variable} dark`}
 			suppressHydrationWarning
 		>
 			<body className="flex flex-col min-h-screen">

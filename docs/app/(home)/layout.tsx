@@ -46,8 +46,8 @@ export default function Layout({ children }: { children: ReactNode }) {
 								className="group relative flex items-center justify-center p-2 rounded-md hover:bg-muted/30 transition-colors"
 								aria-label="GitHub"
 							>
-								<FaGithub className="h-4 w-4 text-white group-hover:text-gray-300" />
-								<span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-all">
+								<FaGithub className="h-4 w-4 text-stone-400 group-hover:text-paper" />
+								<span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-ink-card px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-all">
 									GitHub
 								</span>
 							</motion.a>
@@ -69,8 +69,8 @@ export default function Layout({ children }: { children: ReactNode }) {
 								className="group relative flex items-center justify-center p-2 rounded-md hover:bg-muted/30 transition-colors"
 								aria-label="Discord"
 							>
-								<FaDiscord className="h-4 w-4 text-white group-hover:text-indigo-300" />
-								<span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-all">
+								<FaDiscord className="h-4 w-4 text-stone-400 group-hover:text-paper" />
+								<span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-ink-card px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-all">
 									Discord
 								</span>
 							</motion.a>
@@ -92,8 +92,8 @@ export default function Layout({ children }: { children: ReactNode }) {
 								className="group relative flex items-center justify-center p-2 rounded-md hover:bg-muted/30 transition-colors"
 								aria-label="Twitter"
 							>
-								<RiTwitterXLine className="h-4 w-4 text-white group-hover:text-sky-300" />
-								<span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-all">
+								<RiTwitterXLine className="h-4 w-4 text-stone-400 group-hover:text-paper" />
+								<span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-ink-card px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-all">
 									Twitter
 								</span>
 							</motion.a>

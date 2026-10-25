@@ -2,13 +2,59 @@
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
 
-html.dark {
-	--background: 0 0% 1.2%;
-	--fd-background: 0 0% 1.2%;
+@theme {
+	--font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+	--font-mono:
+		var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+
+	--color-ink: #0c0b0a;
+	--color-ink-raised: #131210;
+	--color-ink-card: #181614;
+	--color-paper: #f3f0eb;
+	--color-brand: #f0693a;
+
+	--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+	--ease-snap: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dark {
+	--color-fd-background: #0c0b0a;
+	--color-fd-foreground: #ece8e2;
+	--color-fd-muted: #1a1816;
+	--color-fd-muted-foreground: #a8a29e;
+	--color-fd-popover: #141210;
+	--color-fd-popover-foreground: #ece8e2;
+	--color-fd-card: #131210;
+	--color-fd-card-foreground: #f3f0eb;
+	--color-fd-border: rgb(255 248 240 / 0.08);
+	--color-fd-primary: #f0693a;
+	--color-fd-primary-foreground: #0c0b0a;
+	--color-fd-secondary: #1a1816;
+	--color-fd-secondary-foreground: #ece8e2;
+	--color-fd-accent: rgb(255 248 240 / 0.06);
+	--color-fd-accent-foreground: #f3f0eb;
+	--color-fd-ring: #f0693a;
+}
+
+.dark #nd-sidebar {
+	--color-fd-muted: #1a1816;
+	--color-fd-secondary: #1f1d1a;
+	--color-fd-muted-foreground: #b5afa8;
 }
 
 body {
-	background-color: #030303 !important;
+	background-color: var(--color-ink);
+}
+
+h1,
+h2,
+h3 {
+	text-wrap: balance;
+}
+
+::selection {
+	background-color: rgb(240 105 58 / 0.3);
+	color: var(--color-paper);
 }
 
 html {
@@ -18,4 +64,33 @@ html {
 html > body[data-scroll-locked] {
 	margin-right: 0px !important;
 	--removed-body-scroll-bar-size: 0px !important;
+}
+
+.grain {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 50;
+	opacity: 0.035;
+	background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.surface {
+	background-color: var(--color-ink-card);
+	border: 1px solid rgb(255 248 240 / 0.07);
+	transition:
+		border-color 0.4s var(--ease-snap),
+		transform 0.4s var(--ease-snap),
+		background-color 0.4s var(--ease-snap);
+}
+
+.surface-interactive:hover {
+	border-color: rgb(255 248 240 / 0.16);
+	transform: translateY(-3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.surface-interactive:hover {
+		transform: none;
+	}
 }
