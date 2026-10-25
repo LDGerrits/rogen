@@ -122,7 +122,7 @@ const studio: Row[] = [
 const views: Record<ViewState, { label: string; desc: string; disk: Row[] }> = {
 	suffixes: {
 		label: "@ suffixes",
-		desc: "Add @ and a route to a file's name to send just that file. Files without one go to the * route.",
+		desc: "Mark only the files that belong on one side. Everything else goes to ReplicatedStorage through the * route.",
 		disk: [
 			{ name: "src", level: 0, kind: "root" },
 			{ name: "Inventory", level: 1, kind: "feature" },
@@ -144,7 +144,7 @@ const views: Record<ViewState, { label: string; desc: string; disk: Row[] }> = {
 	},
 	folders: {
 		label: "Routing folders",
-		desc: "Name a folder after a route, and everything inside goes to its target. The folder itself disappears.",
+		desc: "Put files in a Client or Server folder. In Studio, that folder disappears and its files sit directly in the feature's folder.",
 		disk: [
 			{ name: "src", level: 0, kind: "root" },
 			{ name: "Inventory", level: 1, kind: "feature" },
@@ -270,15 +270,20 @@ export function Routing() {
 							How routing works
 						</h2>
 						<p className="mt-5 max-w-md text-lg leading-relaxed text-stone-400">
-							A folder or an{" "}
+							Each route points to a place in your game. Add{" "}
 							<code className="font-mono text-[0.9em] text-brand">
-								@
+								@Server
 							</code>{" "}
-							suffix named after a route sends its code there. The{" "}
+							to a file&apos;s name or put it in a{" "}
+							<code className="font-mono text-[0.9em] text-brand">
+								Server
+							</code>{" "}
+							folder, and it goes to ServerScriptService. Files
+							without a route go to{" "}
 							<code className="font-mono text-[0.9em] text-brand">
 								*
-							</code>{" "}
-							route takes every file that matches no other.
+							</code>
+							.
 						</p>
 					</Reveal>
 					<Reveal

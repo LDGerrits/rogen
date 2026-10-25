@@ -34,7 +34,7 @@ export function Hero() {
 					className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.18em] text-stone-500"
 				>
 					<span className="size-1.5 rounded-full bg-brand" />
-					Rojo, with file-system routing
+					Rojo with file-system routing
 				</motion.p>
 
 				<motion.h1
@@ -69,8 +69,9 @@ export function Hero() {
 					>
 						<p className="max-w-[44ch] text-lg leading-relaxed text-stone-400 md:text-xl">
 							Rogen is a superset of Rojo that generates Rojo
-							project files from your folders, so you can organize
-							your game by feature.
+							project files from your folders. You organize your
+							game by feature, and Rogen puts each file in the
+							right place.
 						</p>
 						<Link
 							href="/docs/v2/installation"

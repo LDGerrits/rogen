@@ -49,7 +49,7 @@ export function Testimonials() {
 			<div className="mx-auto max-w-6xl">
 				<Reveal className="mb-14 flex flex-col items-start text-left">
 					<h2 className="font-mono text-xs uppercase tracking-[0.18em] text-stone-500">
-						Top developers use Rogen
+						Used by Roblox studios
 					</h2>
 				</Reveal>
 

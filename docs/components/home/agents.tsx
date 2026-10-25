@@ -8,7 +8,7 @@ const points = [
 	},
 	{
 		title: "Several agents at once",
-		desc: "Give each agent a feature. A lint rule catches any agent that makes one feature require another, and there's no shared project file to conflict on.",
+		desc: "Give each agent a feature. A lint rule catches any agent that makes one feature require another, and they never fight over a shared project file.",
 	},
 ];
 
@@ -21,7 +21,8 @@ export function Agents() {
 						Built for agents
 					</h2>
 					<p className="mt-5 max-w-sm text-lg leading-relaxed text-stone-400">
-						People and coding agents read the layout the same way.
+						Coding agents find their way around a feature folder as
+						easily as you do.
 					</p>
 					<Link
 						href="/docs/v2/agents"

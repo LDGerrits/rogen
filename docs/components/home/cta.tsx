@@ -40,7 +40,7 @@ export function Cta() {
 					<code className="font-mono text-[0.9em] text-stone-200">
 						rogen init
 					</code>{" "}
-					sets up a new project or moves an existing Rojo one.
+					sets up a new project or converts an existing Rojo one.
 				</p>
 
 				<div className="mb-10 flex w-full flex-col items-stretch justify-center gap-4 md:flex-row">

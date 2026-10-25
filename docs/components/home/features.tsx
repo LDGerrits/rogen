@@ -110,11 +110,10 @@ export function Features() {
 									Organize by feature
 								</h3>
 								<p className="mt-4 grow leading-relaxed text-stone-400">
-									Group all code, UI, and assets for a
-									specific feature in one place. This gives
-									you high cohesion, better scalability, fewer
-									merge conflicts, and features that are
-									simple to maintain or delete.
+									Keep everything a feature needs in one
+									folder, from its server code to its UI and
+									assets. You find it all in one place, and
+									you remove a feature by deleting its folder.
 								</p>
 								<CardLink href="/docs/v2/architectures">
 									Compare architectures
@@ -153,9 +152,9 @@ export function Features() {
 								Enforce boundaries
 							</h3>
 							<p className="mt-3 grow text-[15px] leading-relaxed text-stone-400">
-								Keep coupling low with a linter. Every path
-								names its feature, so a lint rule can stop one
-								feature from requiring another.
+								Every require path includes the name of its
+								feature, so a lint rule can stop one feature
+								from reaching into another.
 							</p>
 							<CardLink href="/docs/v2/architectures#enforcing-the-rules">
 								See the lint rule
@@ -171,10 +170,10 @@ export function Features() {
 							</h3>
 							<p className="mt-3 grow text-[15px] leading-relaxed text-stone-400">
 								Write shared code once and use it in every
-								place. When one place needs something different,
-								add a file with the same name to that
-								place&apos;s folder, and it overwrites the
-								shared one there.
+								place. When one place needs its own version of a
+								file, put a file with the same name in that
+								place&apos;s folder, and it replaces the shared
+								one.
 							</p>
 							<CardLink href="/docs/v2/setups/places">
 								Set up places
@@ -190,9 +189,16 @@ export function Features() {
 									Still Rojo
 								</h3>
 								<p className="mt-3 text-[15px] leading-relaxed text-stone-400">
-									Rogen runs the Rojo commands you use, with
-									the same flags. One tool, and nothing to
-									relearn.
+									Run{" "}
+									<code className="font-mono text-[0.9em] text-stone-300">
+										rogen serve
+									</code>{" "}
+									where you ran{" "}
+									<code className="font-mono text-[0.9em] text-stone-300">
+										rojo serve
+									</code>
+									, with the same flags. Rojo still does the
+									syncing and building underneath.
 								</p>
 								<CardLink href="/docs/v2/coming-from-rojo">
 									Coming from Rojo
