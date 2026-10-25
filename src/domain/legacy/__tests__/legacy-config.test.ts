@@ -27,8 +27,8 @@ describe("LegacyConfig", () => {
 			).toBe(false);
 		});
 
-		it("should not take a route, a tree node or a project named build or output for a Rogen 1 mode", () => {
-			for (const key of ["routes", "tree", "projects"])
+		it("should not take a route or a tree node named build or output for a Rogen 1 mode", () => {
+			for (const key of ["routes", "tree"])
 				expect(
 					LegacyConfig.detects({
 						sourcePaths: ["src"],
@@ -80,7 +80,7 @@ describe("LegacyConfig", () => {
 			await fs.createDirectory("/repo");
 		});
 
-		it.each([".rogen.json", "rogen.json", "game.rogen.jsonc"])(
+		it.each([".rogen.json", "game.rogen.jsonc"])(
 			"should point to the migration page for a v1 %s",
 			async (name) => {
 				await fs.writeFile(

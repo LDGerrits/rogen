@@ -33,6 +33,14 @@ written:
 default.rogen.json:
 {
   "name": "my-game",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Shared": "ReplicatedStorage/Shared",
+    "Server": "ServerScriptService/Server",
+    "Client": "StarterPlayer/StarterPlayerScripts/Client"
+  },
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {},
@@ -44,16 +52,6 @@ default.rogen.json:
       "$properties": {
         "FilteringEnabled": true
       }
-    }
-  },
-  "rogen": {
-    "sourcePaths": [
-      "src"
-    ],
-    "routes": {
-      "Shared": "ReplicatedStorage/Shared",
-      "Server": "ServerScriptService/Server",
-      "Client": "StarterPlayer/StarterPlayerScripts/Client"
     }
   }
 }

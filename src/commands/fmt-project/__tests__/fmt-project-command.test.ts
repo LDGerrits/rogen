@@ -8,7 +8,8 @@ import "../fmt-project-command.js";
 
 const CONFIG = JSON.stringify({
 	name: "Game",
-	rogen: { sourcePaths: ["src"], routes: { "*": "ReplicatedStorage" } },
+	sourcePaths: ["src"],
+	routes: { "*": "ReplicatedStorage" },
 });
 
 describe("fmt-project command", () => {
@@ -38,7 +39,7 @@ describe("fmt-project command", () => {
 					await harness.fs.readFile("/repo/default.rogen.json")
 				)
 			)
-		).toEqual(["name", "rogen"]);
+		).toEqual(["name", "sourcePaths", "routes"]);
 	});
 
 	it("should say nothing when the file is already formatted", async () => {
@@ -59,10 +60,8 @@ describe("fmt-project command", () => {
 			"/repo/places/lobby/default.rogen.json",
 			JSON.stringify({
 				name: "Lobby",
-				rogen: {
-					sourcePaths: ["src"],
-					routes: { "*": "ReplicatedStorage" },
-				},
+				sourcePaths: ["src"],
+				routes: { "*": "ReplicatedStorage" },
 			})
 		);
 

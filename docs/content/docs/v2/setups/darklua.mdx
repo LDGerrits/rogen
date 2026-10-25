@@ -24,7 +24,7 @@ This guide assumes Darklua reads `src` and writes `dist`. With roblox-ts, it rea
 
 Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua processes your code. With `--darklua` and no `.darklua.json`, it writes one, writes Darklua's pin into your tool manager's file next to Rojo's (you run `rokit install` to get it) unless that file already pins it or `darklua --version` already runs, and lists the compiled path in the `.gitignore` it creates. It never edits a `.gitignore` that exists: if that one doesn't list the compiled path, `init` tells you the line to add.
 
-`init` writes `dist.rogen.json` for a new project only. To add Darklua to one you already set up, copy `default.rogen.json` to `dist.rogen.json`, give it a `name` (a file other than `default` needs one) and add `"compiledPath": "dist"` to its `rogen` block, then write `.darklua.json` yourself. A change to `routes` or `tree` goes into both files: see [More Files](/docs/v2/configuration#more-files).
+`init` writes `dist.rogen.json` for a new project only. To add Darklua to one you already set up, copy `default.rogen.json` to `dist.rogen.json`, give it a `name` (a file other than `default` needs one) and add `"compiledPath": "dist"`, then write `.darklua.json` yourself. A change to `routes` or `tree` goes into both files: see [More Files](/docs/v2/configuration#more-files).
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
@@ -33,20 +33,18 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
     ```json title="dist.rogen.json"
     {
     	"name": "Game",
+    	"sourcePaths": ["src"],
+    	"routes": {
+    		"Server": "ServerScriptService",
+    		"Client": "StarterPlayer/StarterPlayerScripts",
+    		"Shared": "ReplicatedStorage/Shared"
+    	},
+    	"compiledPath": "dist",
     	"tree": {
     		"$className": "DataModel",
     		"Lighting": { "$path": "place/Lighting" },
     		"SoundService": { "$path": "place/SoundService" },
     		"Workspace": { "$path": "place/Workspace" }
-    	},
-    	"rogen": {
-    		"sourcePaths": ["src"],
-    		"routes": {
-    			"Server": "ServerScriptService",
-    			"Client": "StarterPlayer/StarterPlayerScripts",
-    			"Shared": "ReplicatedStorage/Shared"
-    		},
-    		"compiledPath": "dist"
     	}
     }
     ```
@@ -59,6 +57,13 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
     ```json title="dist.rogen.json"
     {
     	"name": "Game",
+    	"sourcePaths": ["src"],
+    	"routes": {
+    		"server": "ServerScriptService",
+    		"client": "StarterPlayer/StarterPlayerScripts",
+    		"shared": "ReplicatedStorage/shared"
+    	},
+    	"compiledPath": "dist",
     	"tree": {
     		"$className": "DataModel",
     		"ReplicatedStorage": {
@@ -70,15 +75,6 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
     				}
     			}
     		}
-    	},
-    	"rogen": {
-    		"sourcePaths": ["src"],
-    		"routes": {
-    			"server": "ServerScriptService",
-    			"client": "StarterPlayer/StarterPlayerScripts",
-    			"shared": "ReplicatedStorage/shared"
-    		},
-    		"compiledPath": "dist"
     	}
     }
     ```
@@ -147,11 +143,9 @@ If Darklua should process your code only for a release, serve the source while y
 ```json title="release.rogen.json"
 {
 	"name": "Game",
-	"rogen": {
-		"sourcePaths": ["src"],
-		"routes": { "Server": "ServerScriptService", "*": "ReplicatedStorage/Shared" },
-		"compiledPath": "dist"
-	}
+	"sourcePaths": ["src"],
+	"routes": { "Server": "ServerScriptService", "*": "ReplicatedStorage/Shared" },
+	"compiledPath": "dist"
 }
 ```
 
@@ -169,11 +163,9 @@ A repository with [several places](/docs/v2/setups/places) gives each place its 
 ```json title="game.dist.rogen.json"
 {
 	"name": "game",
-	"rogen": {
-		"sourcePaths": ["src/common", "src/game"],
-		"routes": { "Server": "ServerScriptService", "*": "ReplicatedStorage/Shared" },
-		"compiledPath": "dist"
-	}
+	"sourcePaths": ["src/common", "src/game"],
+	"routes": { "Server": "ServerScriptService", "*": "ReplicatedStorage/Shared" },
+	"compiledPath": "dist"
 }
 ```
 

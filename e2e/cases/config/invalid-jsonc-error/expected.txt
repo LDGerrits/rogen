@@ -3,4 +3,4 @@ exit 1
 stdout: (not shown)
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:5:1 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+  default.rogen.json:4:1 - error: invalid JSONC: expected '}'. (config.invalidSyntax)

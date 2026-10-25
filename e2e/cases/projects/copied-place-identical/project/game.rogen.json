@@ -1,7 +1,5 @@
 {
 	"name": "Game",
-	"rogen": {
-		"sourcePaths": ["src"],
-		"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
-	}
+	"sourcePaths": ["src"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
 }

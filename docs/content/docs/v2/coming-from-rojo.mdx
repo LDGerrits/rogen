@@ -5,7 +5,7 @@ description: Move a hand-written Rojo project to Rogen, then reorganise it by fe
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 
-Rogen covers what `rojo` does for a project: `init`, `build`, `serve`, `sourcemap`, `upload`, `plugin`, `syncback` and `fmt-project`. A `default.rogen.json` is a project file with a `rogen` block, so Rojo's keys keep their meaning.
+Rogen covers what `rojo` does for a project: `init`, `build`, `serve`, `sourcemap`, `upload`, `plugin`, `syncback` and `fmt-project`. A `default.rogen.json` is a project file with Rogen's keys beside Rojo's, so Rojo's keys keep their meaning.
 
 What changes for a Rojo user:
 
@@ -25,25 +25,23 @@ Rogen picks a file the way Rojo does: a bare command reads the current folder on
 
 ## The Move
 
-The move is one step: rename your project file and add a `rogen` block.
+The move is one step: rename your project file and add `routes`.
 
 ```bash
 git mv default.project.json default.rogen.json
 ```
 
-Every Rojo key (`name`, `tree`, `servePort`, `globIgnorePaths`, `syncRules` and the rest) keeps its meaning at the top level. With no `rogen` block, `rogen write` writes the file back as `default.project.json`, tree untouched, and only warns ([`scan.unmountedSource`](/docs/v2/diagnostics#scan-unmountedsource)) when `src` holds files the tree doesn't mount, saying to add `routes` to place them or to mount the folder with `$path`. Add the block when you want Rogen to place files by their folders:
+Every Rojo key (`name`, `tree`, `servePort`, `globIgnorePaths`, `syncRules` and the rest) keeps its meaning. With no `routes`, `rogen write` writes the file back as `default.project.json`, tree untouched, and only warns ([`scan.unmountedSource`](/docs/v2/diagnostics#scan-unmountedsource)) when `src` holds files the tree doesn't mount, saying to add `routes` to place them or to mount the folder with `$path`. Add `routes` when you want Rogen to place files by their folders:
 
 ```json title="default.rogen.json"
 {
 	"name": "my-game",
-	"tree": { "$className": "DataModel" },
-	"rogen": {
-		"routes": {
-			"Server": "ServerScriptService",
-			"Client": "StarterPlayer/StarterPlayerScripts",
-			"Shared": "ReplicatedStorage/Shared"
-		}
-	}
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared"
+	},
+	"tree": { "$className": "DataModel" }
 }
 ```
 
@@ -86,19 +84,17 @@ rogen init
 ```json title="default.rogen.json"
 {
 	"name": "my-game",
+	"sourcePaths": ["src"],
+	"routes": {
+		"Shared": "ReplicatedStorage/Shared",
+		"Server": "ServerScriptService/Server",
+		"Client": "StarterPlayer/StarterPlayerScripts/Client"
+	},
 	"tree": {
 		"$className": "DataModel",
 		"ReplicatedStorage": {},
 		"ServerScriptService": {},
 		"StarterPlayer": { "StarterPlayerScripts": {} }
-	},
-	"rogen": {
-		"sourcePaths": ["src"],
-		"routes": {
-			"Shared": "ReplicatedStorage/Shared",
-			"Server": "ServerScriptService/Server",
-			"Client": "StarterPlayer/StarterPlayerScripts/Client"
-		}
 	}
 }
 ```
@@ -194,7 +190,7 @@ In a folder Rogen routes, these differ from what Rojo does with the same files. 
 
 In a folder with a `default.project.json` and no `default.rogen.json`, Rogen's commands run on the project file as it is: `rogen sourcemap`, `rogen serve` and `rogen build -o game.rbxl` do what `rojo` does there, `check` and `where` read the tree, and `write` lists the project file and leaves it alone. So `rogen` can stand in for `rojo` in a Rojo repo you have not moved, and `rogen init` moves it when you want routes.
 
-Rogen replaces the project file you wrote, and Rojo's commands that read it keep working on the one Rogen writes. Your `default.rogen.json` is that file with a `rogen` block (`sourcePaths`, `routes` and `compiledPath`), so Rojo's own keys (`servePort`, `servePlaceIds`, `globIgnorePaths` and the rest) work in it as they did.
+Rogen replaces the project file you wrote, and Rojo's commands that read it keep working on the one Rogen writes. Your `default.rogen.json` is that file plus Rogen's keys (`sourcePaths`, `routes` and `compiledPath`), so Rojo's own keys (`servePort`, `servePlaceIds`, `globIgnorePaths` and the rest) work in it as they did.
 
 - **`rojo serve`** still serves the project file. `rogen serve` writes it first, starts the server for you and writes again as files change; see [Studio](/docs/v2/studio) for the plugin settings.
 - **`rojo build`** makes a place or model file from it, and needs `--output` or `--plugin`; its `--watch` rebuilds as files change. `rogen build -o game.rbxl` writes the project file and runs it for you, and needs `-o` or `-p` as well; `rogen build --watch` writes the project file and rebuilds as files change. `rogen write` writes the project file alone. See [Place Files](/docs/v2/core-concepts/output#place-files).

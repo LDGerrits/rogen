@@ -468,7 +468,7 @@ A flag with a value that doesn't fit is a `usage` [error](#errors) whose `hint` 
 
 ### `fmt-project [project…]`
 
-Formats the `default.rogen.json` of the working directory, or the projects you name, the way `rojo fmt-project` formats a project file: two-space indentation, no trailing newline, Rojo's keys first in Rojo's order, then the `rogen` block with `sourcePaths`, `routes` and `compiledPath`, then any other key. The children of the `tree` are sorted. It prints `formatted <file>` for each file it changed.
+Formats the `default.rogen.json` of the working directory, or the projects you name, the way `rojo fmt-project` formats a project file: two-space indentation, no trailing newline, Rojo's keys in Rojo's order with Rogen's (`sourcePaths`, `routes`, `compiledPath`) between `name` and `tree`, then any other key. The children of the `tree` are sorted. It prints `formatted <file>` for each file it changed.
 
 Numbers in `$properties` and `$attributes` are written as Rojo writes them: a bare number is a float (`65.0`), and a typed value follows its type (`Vector3` and `Color3` hold floats, `Int32`, `Enum` and `BrickColor` whole numbers, a `UDim` a float scale and a whole offset).
 

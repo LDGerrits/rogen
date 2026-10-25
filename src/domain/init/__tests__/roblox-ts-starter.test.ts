@@ -208,7 +208,7 @@ describe("a new roblox-ts project", () => {
 			const config = configOf(await plan());
 
 			expect(config.name).toBe("my-game");
-			expect(config.rogen?.compiledPath).toBe("out");
+			expect(config.compiledPath).toBe("out");
 			expect(config.tree.ReplicatedStorage.rbxts_include).toMatchObject({
 				$path: "include",
 				node_modules: { "@rbxts": { $path: "node_modules/@rbxts" } },

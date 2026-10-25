@@ -166,31 +166,6 @@ describe("CommandRegistry", () => {
 		});
 	});
 
-	describe("getFormerOptions", () => {
-		const formerly = (
-			id: string,
-			formerOptions: Record<string, string>
-		) => ({
-			...command(id),
-			metadata: { summary: id, description: id, formerOptions },
-		});
-
-		it("should give what the command says of its former options, and nothing of another's", () => {
-			store.add(
-				registry.registerCommand(
-					formerly("a", { "--old": "Use --new." })
-				)
-			);
-			store.add(registry.registerCommand(command("b")));
-
-			expect(registry.getFormerOptions("a")).toEqual({
-				"--old": "Use --new.",
-			});
-			expect(registry.getFormerOptions("b")).toEqual({});
-			expect(registry.getFormerOptions("none")).toEqual({});
-		});
-	});
-
 	describe("registerCommand option validation", () => {
 		it("should throw when a short flag is already bound to another option", () => {
 			const clash: OptionDescriptor = {

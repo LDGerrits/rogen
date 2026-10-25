@@ -104,10 +104,6 @@ registerCommand(
 					formerCommands: {
 						watch: "'rogen watch' is now 'rogen write --watch'.",
 					},
-					formerOptions: {
-						"--deny-warnings":
-							"Run 'rogen check', which exits 1 on any diagnostic, warnings included.",
-					},
 					examples: [
 						"rogen build -o game.rbxl",
 						"rogen build places/lobby -o lobby.rbxl",

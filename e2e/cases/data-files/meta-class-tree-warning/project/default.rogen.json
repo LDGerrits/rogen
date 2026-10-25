@@ -8,13 +8,11 @@
 			}
 		}
 	},
-	"rogen": {
-		"sourcePaths": [
-			"src"
-		],
-		"routes": {
-			"server": "ServerScriptService",
-			"*": "ReplicatedStorage/shared"
-		}
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"*": "ReplicatedStorage/shared"
 	}
 }

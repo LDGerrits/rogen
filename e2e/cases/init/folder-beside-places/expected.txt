@@ -83,6 +83,15 @@ written:
 game.rogen.json:
 {
   "name": "game",
+  "sourcePaths": [
+    "src/common",
+    "src/game"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared"
+  },
   "tree": {
     "$className": "DataModel",
     "Lighting": {
@@ -94,22 +103,19 @@ game.rogen.json:
     "Workspace": {
       "$path": "place/game/Workspace"
     }
-  },
-  "rogen": {
-    "sourcePaths": [
-      "src/common",
-      "src/game"
-    ],
-    "routes": {
-      "Server": "ServerScriptService",
-      "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared"
-    }
   }
 }
 
 lobby/default.rogen.json:
 {
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared"
+  },
   "tree": {
     "$className": "DataModel",
     "Lighting": {
@@ -120,16 +126,6 @@ lobby/default.rogen.json:
     },
     "Workspace": {
       "$path": "place/Workspace"
-    }
-  },
-  "rogen": {
-    "sourcePaths": [
-      "src"
-    ],
-    "routes": {
-      "Server": "ServerScriptService",
-      "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared"
     }
   }
 }

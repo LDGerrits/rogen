@@ -86,11 +86,8 @@ describe("init for several places", () => {
 
 			expect(config.name).toBe("game");
 			expect(config.tree).toMatchObject({ $className: "DataModel" });
-			expect(config.rogen.sourcePaths).toEqual([
-				"src/common",
-				"src/game",
-			]);
-			expect(config.rogen.routes).toHaveProperty("Server");
+			expect(config.sourcePaths).toEqual(["src/common", "src/game"]);
+			expect(config.routes).toHaveProperty("Server");
 			expect(config).not.toHaveProperty("servePort");
 		});
 
@@ -254,9 +251,7 @@ describe("init for several places", () => {
 						"game.release.rogen.json",
 					])
 				);
-				expect(
-					jsonOf(result, "game.dist.rogen.json").rogen
-				).toMatchObject({
+				expect(jsonOf(result, "game.dist.rogen.json")).toMatchObject({
 					sourcePaths: ["src/common", "src/game"],
 					compiledPath: "dist",
 				});
@@ -325,8 +320,7 @@ describe("init for several places", () => {
 				names(result).filter((name) => name.startsWith("places/"))
 			).toEqual([]);
 			expect(
-				jsonOf(result, "projects/game/default.rogen.json").rogen
-					.sourcePaths
+				jsonOf(result, "projects/game/default.rogen.json").sourcePaths
 			).toEqual(["../common/src", "src"]);
 		});
 
@@ -393,7 +387,7 @@ describe("init for several places", () => {
 				"projects/game/default.rogen.json"
 			);
 
-			expect(config.rogen.compiledPath).toBe("out");
+			expect(config.compiledPath).toBe("out");
 			expect(config.tree.ReplicatedStorage.rbxts_include).toMatchObject({
 				$path: { optional: "include" },
 				node_modules: {
@@ -489,7 +483,7 @@ describe("init for several places", () => {
 				"game.rogen.json",
 				JSON.stringify({
 					name: "game",
-					rogen: { sourcePaths: ["src/common", "src/game"] },
+					sourcePaths: ["src/common", "src/game"],
 				})
 			);
 			await fileSystem.createDirectory(

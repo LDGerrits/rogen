@@ -37,21 +37,19 @@ Running several agents? Give each one a feature. A lint rule catches any agent t
 
 ## Example
 
-`default.rogen.json` has the same fields as a Rojo project file, plus a `rogen` block:
+`default.rogen.json` is a Rojo project file with three more keys. Many projects need only `routes`:
 
 <!-- prettier-ignore -->
 ```json
 {
   "name": "Game",
-  "tree": { "$className": "DataModel" },
-  "rogen": {
-    "routes": {
-      "Server": "ServerScriptService",
-      "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared",
-      "*": "ReplicatedStorage/Shared"
-    }
-  }
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "tree": { "$className": "DataModel" }
 }
 ```
 

@@ -15,11 +15,10 @@ import { FailedConfigFile } from "../config/config-service.js";
 export class LegacyConfig {
 	static readonly MIGRATION_URL = `${DOCS_URL}/migrating-from-v1`;
 
-	private static readonly FILE_NAME = /^(.*\.)?rogen\.jsonc?$/;
+	private static readonly FILE_NAME = /\.rogen\.jsonc?$/;
 	private static readonly KEYS = ["source", "aliases"];
 	private static readonly MODE_KEYS = ["output", "build"];
-	private static readonly NAME_MAPS = ["routes", "tree", "projects"];
-	private static readonly BETA_NAME_MAPS = ["variants", "modes"];
+	private static readonly NAME_MAPS = ["routes", "tree"];
 
 	static detects(value: unknown): boolean {
 		if (typeof value !== "object" || value === null) return false;
@@ -31,7 +30,7 @@ export class LegacyConfig {
 		);
 	}
 
-	/** The v1 configs of a folder: `.rogen.json`, `rogen.json` and any `*.rogen.json`, by what they hold. */
+	/** The v1 configs of a folder: `.rogen.json` and any `*.rogen.json`, by what they hold. */
 	static async find(
 		folder: string,
 		files: FileReader
@@ -65,10 +64,7 @@ export class LegacyConfig {
 	}
 
 	private static isNameMap(key: string): boolean {
-		return (
-			LegacyConfig.NAME_MAPS.includes(key) ||
-			LegacyConfig.BETA_NAME_MAPS.includes(key)
-		);
+		return LegacyConfig.NAME_MAPS.includes(key);
 	}
 
 	private static isMode(field: unknown): boolean {

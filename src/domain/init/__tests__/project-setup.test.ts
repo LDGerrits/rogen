@@ -119,7 +119,7 @@ describe("ProjectSetup plan", () => {
 	it("should write the starting routes explicitly", async () => {
 		const config = configOf(await plan(luau));
 
-		expect(config.rogen?.routes).toEqual(LUAU_ROUTES);
+		expect(config.routes).toEqual(LUAU_ROUTES);
 	});
 
 	it("should write fields in pipeline order", async () => {
@@ -131,13 +131,10 @@ describe("ProjectSetup plan", () => {
 		);
 
 		expect(Object.keys(JSON.parse(files[0].content))).toEqual([
-			"tree",
-			"rogen",
-		]);
-		expect(Object.keys(JSON.parse(files[0].content).rogen)).toEqual([
 			"sourcePaths",
 			"routes",
 			"compiledPath",
+			"tree",
 		]);
 	});
 
@@ -164,7 +161,7 @@ describe("ProjectSetup plan", () => {
 		const config = configOf(await plan(luau));
 
 		expect(config.tree).toEqual({ $className: "DataModel" });
-		expect(config.rogen?.compiledPath).toBeUndefined();
+		expect(config.compiledPath).toBeUndefined();
 		expect(config.name).toBeUndefined();
 	});
 
@@ -177,7 +174,7 @@ describe("ProjectSetup plan", () => {
 		);
 
 		expect(files.configs).toEqual(["default.rogen.json"]);
-		expect(configOf(files).rogen?.compiledPath).toBe("build");
+		expect(configOf(files).compiledPath).toBe("build");
 	});
 
 	describe("language and darklua", () => {
@@ -204,28 +201,28 @@ describe("ProjectSetup plan", () => {
 			const files = await planFor("luau", false);
 
 			expect(files.configs).toEqual(["default.rogen.json"]);
-			expect(configOf(files).rogen?.compiledPath).toBeUndefined();
+			expect(configOf(files).compiledPath).toBeUndefined();
 		});
 
 		it("should leave the description of luau with darklua pointing at the source", async () => {
 			const files = await planFor("luau", true);
 
 			expect(files.configs).toEqual(["default.rogen.json"]);
-			expect(configOf(files).rogen?.compiledPath).toBeUndefined();
+			expect(configOf(files).compiledPath).toBeUndefined();
 		});
 
 		it("should write one config with the outDir for roblox-ts", async () => {
 			const files = await planFor("roblox-ts", false);
 
 			expect(files.configs).toEqual(["default.rogen.json"]);
-			expect(configOf(files).rogen?.compiledPath).toBe("build");
+			expect(configOf(files).compiledPath).toBe("build");
 		});
 
 		it("should leave the description of roblox-ts with darklua pointing at the compiled output", async () => {
 			const files = await planFor("roblox-ts", true);
 
 			expect(files.configs).toEqual(["default.rogen.json"]);
-			expect(configOf(files).rogen?.compiledPath).toBe("build");
+			expect(configOf(files).compiledPath).toBe("build");
 			expect(files.nextSteps.run).toEqual([
 				"rbxtsc -w",
 				"darklua process build dist --watch",
@@ -319,7 +316,7 @@ describe("ProjectSetup plan", () => {
 					...choices,
 				},
 			}).unwrap();
-			return configOf(files).rogen?.routes;
+			return configOf(files).routes;
 		};
 
 		it("should write the standard routes with capitalised keys for luau", async () => {
@@ -389,10 +386,7 @@ describe("ProjectSetup plan", () => {
 		it("should write the chosen source paths", async () => {
 			const files = await planChoices({ sourcePaths: ["src", "shared"] });
 
-			expect(configOf(files).rogen?.sourcePaths).toEqual([
-				"src",
-				"shared",
-			]);
+			expect(configOf(files).sourcePaths).toEqual(["src", "shared"]);
 		});
 
 		it("should tell roblox-ts to compile the source path chosen when it is not the one it compiles", async () => {
@@ -412,7 +406,7 @@ describe("ProjectSetup plan", () => {
 				compiledPath: "lib",
 			});
 
-			expect(configOf(files).rogen?.compiledPath).toBe("lib");
+			expect(configOf(files).compiledPath).toBe("lib");
 		});
 
 		it("should write optional mounts as optional paths", async () => {
@@ -454,7 +448,7 @@ describe("ProjectSetup plan", () => {
 				compiledPath: undefined,
 			});
 
-			expect(configOf(files).rogen?.compiledPath).toBeUndefined();
+			expect(configOf(files).compiledPath).toBeUndefined();
 		});
 	});
 
@@ -662,13 +656,11 @@ describe("ProjectSetup plan, second config files", () => {
 		expect(contentOf(planned, "dist.rogen.json")).toMatchObject({
 			name: "my-game",
 			tree: configOf(planned).tree,
-			rogen: {
-				sourcePaths: ["src"],
-				routes: LUAU_ROUTES,
-				compiledPath: "dist",
-			},
+			sourcePaths: ["src"],
+			routes: LUAU_ROUTES,
+			compiledPath: "dist",
 		});
-		expect(configOf(planned).rogen?.compiledPath).toBeUndefined();
+		expect(configOf(planned).compiledPath).toBeUndefined();
 	});
 
 	it("should build only the default config after writing", async () => {
@@ -685,10 +677,8 @@ describe("ProjectSetup plan, second config files", () => {
 			)
 		);
 
-		expect(configOf(planned).rogen?.compiledPath).toBe("build");
-		expect(contentOf(planned, "dist.rogen.json").rogen.compiledPath).toBe(
-			"dist"
-		);
+		expect(configOf(planned).compiledPath).toBe("build");
+		expect(contentOf(planned, "dist.rogen.json").compiledPath).toBe("dist");
 	});
 
 	it("should write no second file without Darklua or a test runner", async () => {
@@ -704,7 +694,8 @@ describe("ProjectSetup plan, second config files", () => {
 		expect(contentOf(planned, "release.rogen.json")).toMatchObject({
 			name: "my-game",
 			globIgnorePaths: ["**/*.spec.luau"],
-			rogen: { sourcePaths: ["src"], routes: LUAU_ROUTES },
+			sourcePaths: ["src"],
+			routes: LUAU_ROUTES,
 		});
 		expect(configOf(planned)).not.toHaveProperty("globIgnorePaths");
 	});
@@ -712,9 +703,9 @@ describe("ProjectSetup plan, second config files", () => {
 	it("should have release read the folder Darklua writes", async () => {
 		const planned = await plan({ ...darkluaLuau, testRunner: "Jest" });
 
-		expect(
-			contentOf(planned, "release.rogen.json").rogen.compiledPath
-		).toBe("dist");
+		expect(contentOf(planned, "release.rogen.json").compiledPath).toBe(
+			"dist"
+		);
 	});
 
 	it("should have release read the compiler's folder without Darklua", async () => {
@@ -727,7 +718,7 @@ describe("ProjectSetup plan, second config files", () => {
 
 		expect(contentOf(planned, "release.rogen.json")).toMatchObject({
 			globIgnorePaths: ["**/*.spec.ts"],
-			rogen: { compiledPath: "build" },
+			compiledPath: "build",
 		});
 	});
 

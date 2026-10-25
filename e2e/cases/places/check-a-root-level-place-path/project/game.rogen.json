@@ -1,11 +1,9 @@
 {
 	"name": "Game",
-	"rogen": {
-		"sourcePaths": ["src/common", "src/game"],
-		"routes": {
-			"server": "ServerScriptService",
-			"client": "StarterPlayer/StarterPlayerScripts",
-			"*": "ReplicatedStorage/Shared"
-		}
+	"sourcePaths": ["src/common", "src/game"],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"*": "ReplicatedStorage/Shared"
 	}
 }

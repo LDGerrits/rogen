@@ -25,12 +25,12 @@ import { SYNC_RULE_FIELDS, SyncRules } from "../rojo/sync-rules.js";
 import { ConfigFile } from "../../platform/config/config-file.js";
 import {
 	DEFAULT_PROJECT,
-	ROGEN_BLOCK,
 	configStem,
 	defaultSourcePaths,
 	fieldOf,
 	isDefaultProjectFile,
 	isProjectFileConfig,
+	isRogenKey,
 	sourcePathOverlap,
 } from "./config.js";
 import { DeclaredKeys } from "./declared-keys.js";
@@ -119,7 +119,7 @@ export class ConfigValidator {
 	private readProject(): RojoProject<ParsedProjectFile> {
 		const rojo = Object.fromEntries(
 			Object.entries(this.config.model.contents).filter(
-				([key]) => key !== "$schema" && key !== ROGEN_BLOCK
+				([key]) => key !== "$schema" && !isRogenKey(key)
 			)
 		);
 		return new RojoProject<ParsedProjectFile>({
@@ -193,7 +193,7 @@ export class ConfigValidator {
 	private checkRoutes(): Map<string, Target> {
 		const targets = new Map<string, Target>();
 		for (const [key, text] of Object.entries(this.routes)) {
-			const location = this.locate(ROGEN_BLOCK, "routes", key);
+			const location = this.locate("routes", key);
 			if (key !== DeclaredKeys.FALLBACK_ROUTE) {
 				if (DeclaredKeys.isName(key)) this.claim(key, location);
 				else {
@@ -235,17 +235,13 @@ export class ConfigValidator {
 		if (!routed && fieldOf(this.config.model, "sourcePaths") !== undefined)
 			this.problems.error(
 				"config.sourcePathsWithoutRoutes",
-				this.locate(ROGEN_BLOCK, "sourcePaths"),
+				this.locate("sourcePaths"),
 				'"sourcePaths" lists what routes scan, but the config declares no routes. Add "routes", or remove "sourcePaths".'
 			);
 		this.sourcePaths.forEach((sourcePath, index) => {
 			const overlap = sourcePathOverlap(this.sourcePaths, index);
 			if (!overlap) return;
-			const location = this.locate(
-				ROGEN_BLOCK,
-				"sourcePaths",
-				String(index)
-			);
+			const location = this.locate("sourcePaths", String(index));
 			if (overlap.kind === "duplicate") {
 				this.problems.error(
 					"config.duplicateSourcePath",
@@ -271,7 +267,7 @@ export class ConfigValidator {
 			if (!inside && !isInside(sourcePath, compiledPath)) continue;
 			this.problems.error(
 				"config.compiledPathOverlapsSourcePath",
-				this.locate(ROGEN_BLOCK, "compiledPath"),
+				this.locate("compiledPath"),
 				`the compiled path "${compiledPath}" ${inside ? "is inside" : "contains"} source path "${sourcePath}", so Rogen would read what the tools write as source. Set "compiledPath" to a folder outside the source paths.`
 			);
 			break;

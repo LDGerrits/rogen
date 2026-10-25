@@ -31,6 +31,15 @@ written:
 
 default.rogen.json:
 {
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared"
+  },
+  "compiledPath": "dist-ts",
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
@@ -48,17 +57,6 @@ default.rogen.json:
         }
       }
     }
-  },
-  "rogen": {
-    "sourcePaths": [
-      "src"
-    ],
-    "routes": {
-      "server": "ServerScriptService",
-      "client": "StarterPlayer/StarterPlayerScripts",
-      "shared": "ReplicatedStorage/shared"
-    },
-    "compiledPath": "dist-ts"
   }
 }
 

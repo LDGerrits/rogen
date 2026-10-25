@@ -1,4 +1,4 @@
 {
 	"name": "Dist",
-	"rogen": { "routes": { "*": "ReplicatedStorage" } }
+	"routes": { "*": "ReplicatedStorage" }
 }

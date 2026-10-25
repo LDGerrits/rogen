@@ -1,1 +1,1 @@
-{ "tree": { "$className": "DataModel" }, "rogen": { "sourcePaths": ["src"], "routes": { "*": "ReplicatedStorage" } } }
+{ "tree": { "$className": "DataModel" }, "sourcePaths": ["src"], "routes": { "*": "ReplicatedStorage" } }

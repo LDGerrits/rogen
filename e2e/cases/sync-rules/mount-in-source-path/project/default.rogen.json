@@ -9,9 +9,7 @@
 			"Vendor": { "$path": "src/Vendor" }
 		}
 	},
-	"rogen": {
-		"sourcePaths": ["src"],
-		"routes": { "*": "ReplicatedStorage/shared" },
-		"compiledPath": "out"
-	}
+	"sourcePaths": ["src"],
+	"routes": { "*": "ReplicatedStorage/shared" },
+	"compiledPath": "out"
 }

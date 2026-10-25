@@ -1,7 +1,5 @@
 {
 	"name": "Game",
-	"rogen": {
-		"sourcePaths": ["src"],
-		"routes": { "*": "ReplicatedStorage/Shared" }
-	}
+	"sourcePaths": ["src"],
+	"routes": { "*": "ReplicatedStorage/Shared" }
 }

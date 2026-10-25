@@ -83,15 +83,13 @@ written:
 
 default.rogen.json:
 {
+  "sourcePaths": [
+    "lib"
+  ],
+  "routes": {
+    "Server": "ServerScriptService"
+  },
   "tree": {
     "$className": "DataModel"
-  },
-  "rogen": {
-    "sourcePaths": [
-      "lib"
-    ],
-    "routes": {
-      "Server": "ServerScriptService"
-    }
   }
 }

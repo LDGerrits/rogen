@@ -7,8 +7,8 @@ exit 1
 stdout: (not shown)
 stderr:
   error: broken/default.rogen.json · not loaded
-  broken/default.rogen.json:1:12 - error: invalid JSONC: expected a value. (config.invalidSyntax)
-  broken/default.rogen.json:1:12 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+  broken/default.rogen.json:1:13 - error: invalid JSONC: expected a value. (config.invalidSyntax)
+  broken/default.rogen.json:1:13 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
 
 $ rogen build ok -o game.rbxl
 exit 0
@@ -22,8 +22,8 @@ exit 1
 stderr:
   rogen build · broken/default.rogen.json
   error: broken/default.rogen.json · not loaded
-  broken/default.rogen.json:1:12 - error: invalid JSONC: expected a value. (config.invalidSyntax)
-  broken/default.rogen.json:1:12 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+  broken/default.rogen.json:1:13 - error: invalid JSONC: expected a value. (config.invalidSyntax)
+  broken/default.rogen.json:1:13 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
   write failed.
 
 $ rogen build ok
@@ -57,8 +57,8 @@ stdout:
 $ rogen where broken
 exit 1
 stderr:
-  broken/default.rogen.json:1:12 - error: invalid JSONC: expected a value. (config.invalidSyntax)
-  broken/default.rogen.json:1:12 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+  broken/default.rogen.json:1:13 - error: invalid JSONC: expected a value. (config.invalidSyntax)
+  broken/default.rogen.json:1:13 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
 
 $ rogen where --nope
 exit 2
@@ -68,8 +68,8 @@ stderr:
 $ rogen serve broken
 exit 1
 stderr:
-  broken/default.rogen.json:1:12 - error: invalid JSONC: expected a value. (config.invalidSyntax)
-  broken/default.rogen.json:1:12 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+  broken/default.rogen.json:1:13 - error: invalid JSONC: expected a value. (config.invalidSyntax)
+  broken/default.rogen.json:1:13 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
 
 $ rogen serve ok --port abc
 exit 2
@@ -81,8 +81,8 @@ exit 1
 stderr:
   rogen syncback · broken/default.rogen.json
   error: broken/default.rogen.json · not loaded
-  broken/default.rogen.json:1:12 - error: invalid JSONC: expected a value. (config.invalidSyntax)
-  broken/default.rogen.json:1:12 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+  broken/default.rogen.json:1:13 - error: invalid JSONC: expected a value. (config.invalidSyntax)
+  broken/default.rogen.json:1:13 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
   write failed.
 
 $ rogen syncback ok
@@ -95,8 +95,8 @@ exit 1
 stderr:
   rogen upload · broken/default.rogen.json
   error: broken/default.rogen.json · not loaded
-  broken/default.rogen.json:1:12 - error: invalid JSONC: expected a value. (config.invalidSyntax)
-  broken/default.rogen.json:1:12 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+  broken/default.rogen.json:1:13 - error: invalid JSONC: expected a value. (config.invalidSyntax)
+  broken/default.rogen.json:1:13 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
   write failed.
 
 $ rogen upload ok
@@ -153,17 +153,15 @@ written:
 
 fresh/default.rogen.json:
 {
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared"
+  },
   "tree": {
     "$className": "DataModel"
-  },
-  "rogen": {
-    "sourcePaths": [
-      "src"
-    ],
-    "routes": {
-      "Server": "ServerScriptService",
-      "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared"
-    }
   }
 }

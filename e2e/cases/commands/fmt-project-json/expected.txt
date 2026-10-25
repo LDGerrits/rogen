@@ -32,20 +32,18 @@ written:
 default.rogen.json:
 {
   "name": "Game",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "server": "ServerScriptService",
+    "*": "ReplicatedStorage"
+  },
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
       "$className": "ReplicatedStorage"
     }
   },
-  "servePort": 34873,
-  "rogen": {
-    "sourcePaths": [
-      "src"
-    ],
-    "routes": {
-      "server": "ServerScriptService",
-      "*": "ReplicatedStorage"
-    }
-  }
+  "servePort": 34873
 }

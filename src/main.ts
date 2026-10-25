@@ -151,12 +151,9 @@ class RogenMain {
 		);
 		const rawArgs = process.argv.slice(2);
 		const parse = (args: string[]) =>
-			parseArgs(
-				args,
-				(command) => commandRegistry.getOptions(command),
-				[...commandRegistry.getCommands().keys()],
-				(command) => commandRegistry.getFormerOptions(command)
-			);
+			parseArgs(args, (command) => commandRegistry.getOptions(command), [
+				...commandRegistry.getCommands().keys(),
+			]);
 		const argsResult = parse(rawArgs);
 
 		const json = hasFlag(rawArgs, JsonOption);

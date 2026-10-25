@@ -70,10 +70,8 @@ describe("domain/config/config", () => {
 	describe("fieldOf", () => {
 		const values = {
 			getValue: <T>(section?: string | readonly string[]) =>
-				(Array.isArray(section) &&
-				section.join(".") === "rogen.compiledPath"
-					? "dist"
-					: undefined) as T | undefined,
+				(section === "compiledPath" ? "dist" : undefined) as
+					T | undefined,
 		};
 
 		it("should read a field the values hold, as the config declares it", () => {

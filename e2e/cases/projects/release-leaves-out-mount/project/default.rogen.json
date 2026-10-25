@@ -11,16 +11,14 @@
 			}
 		}
 	},
-	"rogen": {
-		"sourcePaths": [
-			"src",
-			"dev"
-		],
-		"routes": {
-			"server": "ServerScriptService",
-			"client": "StarterPlayer/StarterPlayerScripts",
-			"shared": "ReplicatedStorage/shared",
-			"*": "ReplicatedStorage/shared"
-		}
+	"sourcePaths": [
+		"src",
+		"dev"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
 	}
 }

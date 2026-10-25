@@ -14,11 +14,7 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { ConfigKeys } from "./config-keys.js";
-import {
-	ROGEN_BLOCK,
-	isConfigFileName,
-	isProjectFileConfig,
-} from "./config.js";
+import { isConfigFileName, isProjectFileConfig } from "./config.js";
 import { FolderConfig, folderClashes } from "./folder-clashes.js";
 import { configStructure } from "./config-structure.js";
 import { ConfigFileCheck } from "./config-service.js";
@@ -104,26 +100,13 @@ export class ConfigLoader {
 	private resolve(config: ConfigFile): LoadedConfig {
 		const { file } = config;
 		const value = config.model.contents;
-		const block =
-			config.model.getValue<Record<string, unknown>>(ROGEN_BLOCK);
-		const keys = [
-			...ConfigKeys.check(
-				config.model.keys,
-				(key): DiagnosticLocation => ({
-					resource: file,
-					position: config.positionOfKey(key),
-				}),
-				true,
-				(key) => config.entryOf(key)
-			),
-			...ConfigKeys.checkBlock(
-				Object.keys(block ?? {}),
-				(key): DiagnosticLocation => ({
-					resource: file,
-					position: config.positionOfKey(key, [ROGEN_BLOCK]),
-				})
-			),
-		];
+		const keys = ConfigKeys.check(
+			config.model.keys,
+			(key): DiagnosticLocation => ({
+				resource: file,
+				position: config.positionOfKey(key),
+			})
+		);
 		if (keys.length > 0)
 			return { files: [file], value, resolved: err(keys) };
 		return {

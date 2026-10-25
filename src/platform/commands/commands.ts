@@ -98,8 +98,6 @@ interface CommandMetadata<
 	readonly longRunningWith?: string;
 	/** What to say of a first word that was a command and now is a flag or another command, by that word. */
 	readonly formerCommands?: Readonly<Record<string, string>>;
-	/** What to say of an option this command used to take, by the name as typed (`--yes`, `-y`): what replaces it. */
-	readonly formerOptions?: Readonly<Record<string, string>>;
 }
 
 export interface CommandRegistry {
@@ -108,8 +106,6 @@ export interface CommandRegistry {
 	getCommand(id: string): Command | undefined;
 	getCommands(): ReadonlyMap<string, Command>;
 	getOptions(commandId?: string): readonly OptionDescriptor[];
-	/** What a command says of the options it used to take, by the name as typed. */
-	getFormerOptions(commandId: string): Readonly<Record<string, string>>;
 }
 
 function sameOption(a: OptionDescriptor, b: OptionDescriptor): boolean {
@@ -168,10 +164,6 @@ class CoreCommandRegistry implements CommandRegistry {
 
 	getCommands(): ReadonlyMap<string, Command> {
 		return new Map(this.commands);
-	}
-
-	getFormerOptions(commandId: string): Readonly<Record<string, string>> {
-		return this.commands.get(commandId)?.metadata.formerOptions ?? {};
 	}
 
 	getOptions(commandId?: string): readonly OptionDescriptor[] {

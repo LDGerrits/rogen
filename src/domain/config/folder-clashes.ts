@@ -1,10 +1,9 @@
 import path from "path";
-import { isObject, isSameJson } from "../../base/objects.js";
+import { isSameJson } from "../../base/objects.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { ROGEN_BLOCK } from "./config.js";
 import { ResolvedConfig } from "./resolved-config.js";
 
 /** One config of a folder as it loaded. */
@@ -16,12 +15,8 @@ export interface FolderConfig {
 
 /** What a config says apart from its name and source paths, so two configs that differ in routes, tree or any other key are two outputs. */
 function otherKeys(value: Readonly<Record<string, unknown>> | undefined) {
-	const { name: _name, [ROGEN_BLOCK]: block, ...rest } = value ?? {};
-	if (!isObject(block)) return rest;
-	const { sourcePaths: _sourcePaths, ...others } = block;
-	return Object.keys(others).length > 0
-		? { ...rest, [ROGEN_BLOCK]: others }
-		: rest;
+	const { name: _name, sourcePaths: _sourcePaths, ...rest } = value ?? {};
+	return rest;
 }
 
 const sourcesOf = (config: ResolvedConfig): string[] =>

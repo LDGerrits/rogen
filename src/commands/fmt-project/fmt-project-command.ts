@@ -68,7 +68,7 @@ registerCommand(
 					summary:
 						"Formats a .rogen.json the way 'rojo fmt-project' does",
 					description:
-						"Formats default.rogen.json, or the config you name, as 'rojo fmt-project' formats a project file, Rojo's keys first and Rogen's after. A file with comments fails.",
+						"Formats default.rogen.json, or the config you name, as 'rojo fmt-project' formats a project file, with Rogen's keys before the tree. A file with comments fails.",
 					args: ConfigArguments,
 					options: FmtProjectOptions,
 					output: { document: FmtProjectOutput },

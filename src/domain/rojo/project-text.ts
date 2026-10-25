@@ -20,7 +20,6 @@ const FILE_KEYS = [
 	"globIgnorePaths",
 	"syncbackRules",
 	"syncRules",
-	"rogen",
 ];
 
 /** The keys of a sync rule, in the order Rojo writes them. */
@@ -138,7 +137,7 @@ export class ProjectText {
 		return ProjectText.print(ProjectText.file({ ...file }, []), "");
 	}
 
-	/** A config as text: Rojo's keys in Rojo's order, then the `rogen` block with `rogenKeys` in the order given, then any other key. */
+	/** A config as text: Rojo's keys in Rojo's order with `rogenKeys` in the order given before the `tree`, then any other key. */
 	static ofConfig(
 		config: Record<string, unknown>,
 		rogenKeys: readonly string[],
@@ -156,19 +155,23 @@ export class ProjectText {
 		rogenKeys: readonly string[],
 		written?: WrittenTree
 	): Ordered {
+		const tree = FILE_KEYS.indexOf("tree");
+		const listed = [
+			...FILE_KEYS.slice(0, tree),
+			...rogenKeys,
+			...FILE_KEYS.slice(tree),
+		];
 		const entries: [string, unknown][] = [];
-		for (const key of FILE_KEYS)
+		for (const key of listed)
 			if (key in all)
 				entries.push([
 					key,
 					key === "tree" && written
 						? written.printed(all[key])
-						: key === "rogen" && isObject(all[key])
-							? ProjectText.inOrder(all[key], rogenKeys)
-							: ProjectText.fileValue(key, all[key]),
+						: ProjectText.fileValue(key, all[key]),
 				]);
 		for (const key of Object.keys(all))
-			if (!FILE_KEYS.includes(key)) entries.push([key, all[key]]);
+			if (!listed.includes(key)) entries.push([key, all[key]]);
 		return new Ordered(entries);
 	}
 

@@ -20,29 +20,25 @@ The two differ by a `globIgnorePaths` entry, so each is its own config file: `de
 ```json title="default.rogen.json"
 {
 	"name": "Game",
-	"tree": { "$className": "DataModel" },
-	"rogen": {
-		"routes": {
-			"Server": "ServerScriptService",
-			"Client": "StarterPlayer/StarterPlayerScripts",
-			"Shared": "ReplicatedStorage/Shared"
-		}
-	}
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared"
+	},
+	"tree": { "$className": "DataModel" }
 }
 ```
 
 ```json title="release.rogen.json"
 {
 	"name": "Game",
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared"
+	},
 	"tree": { "$className": "DataModel" },
-	"globIgnorePaths": ["**/*.spec.luau"],
-	"rogen": {
-		"routes": {
-			"Server": "ServerScriptService",
-			"Client": "StarterPlayer/StarterPlayerScripts",
-			"Shared": "ReplicatedStorage/Shared"
-		}
-	}
+	"globIgnorePaths": ["**/*.spec.luau"]
 }
 ```
 

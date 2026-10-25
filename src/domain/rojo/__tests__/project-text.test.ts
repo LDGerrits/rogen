@@ -268,15 +268,13 @@ describe("domain/rojo/project-text", () => {
 
 			const keysOf = (text: string) => Object.keys(JSON.parse(text));
 
-			it("should write Rojo's keys first, then the rogen block with its keys in the order given, then any other", () => {
+			it("should write the given keys in their order before the tree, then any other key", () => {
 				const text = ProjectText.ofConfig(
 					{
 						other: 1,
-						rogen: {
-							compiledPath: "out",
-							routes: {},
-							sourcePaths: ["src"],
-						},
+						compiledPath: "out",
+						routes: {},
+						sourcePaths: ["src"],
 						globIgnorePaths: [],
 						tree: {},
 						$schema: "s",
@@ -286,15 +284,12 @@ describe("domain/rojo/project-text", () => {
 
 				expect(keysOf(text)).toEqual([
 					"$schema",
-					"tree",
-					"globIgnorePaths",
-					"rogen",
-					"other",
-				]);
-				expect(Object.keys(JSON.parse(text).rogen)).toEqual([
 					"sourcePaths",
 					"routes",
 					"compiledPath",
+					"tree",
+					"globIgnorePaths",
+					"other",
 				]);
 			});
 
@@ -315,14 +310,12 @@ describe("domain/rojo/project-text", () => {
 			it("should leave the order of routes and the values of Rogen's keys as they are", () => {
 				const text = ProjectText.ofConfig(
 					{
-						rogen: {
-							routes: { server: "A", "*": "B", client: "C" },
-						},
+						routes: { server: "A", "*": "B", client: "C" },
 					},
 					ROGEN
 				);
 
-				expect(Object.keys(JSON.parse(text).rogen.routes)).toEqual([
+				expect(Object.keys(JSON.parse(text).routes)).toEqual([
 					"server",
 					"*",
 					"client",

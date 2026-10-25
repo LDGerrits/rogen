@@ -36,13 +36,11 @@ v1 added a wrapper folder under each service (`ServerScriptService/server`, `Rep
 
 ```json title="default.rogen.json"
 {
-	"rogen": {
-		"routes": {
-			"server": "ServerScriptService/server",
-			"client": "StarterPlayer/StarterPlayerScripts/client",
-			"shared": "ReplicatedStorage/shared",
-			"*": "ReplicatedStorage/shared"
-		}
+	"routes": {
+		"server": "ServerScriptService/server",
+		"client": "StarterPlayer/StarterPlayerScripts/client",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
 	}
 }
 ```
@@ -107,20 +105,16 @@ v2: src/Teleport/Teleport.luau, dev/Teleport/Teleport.luau (the dev source path)
 ```json title="default.rogen.json"
 {
 	"name": "Game",
-	"rogen": {
-		"sourcePaths": ["src", "dev"],
-		"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
-	}
+	"sourcePaths": ["src", "dev"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
 }
 ```
 
 ```json title="release.rogen.json"
 {
 	"name": "Game",
-	"rogen": {
-		"sourcePaths": ["src"],
-		"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
-	}
+	"sourcePaths": ["src"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
 }
 ```
 
@@ -163,14 +157,12 @@ Mount the folder in the [tree](/docs/v2/configuration#tree) as a plain `$path`, 
 ```json title="default.rogen.json"
 {
 	"name": "my-game",
+	"routes": { "*": "ReplicatedStorage/Shared" },
 	"tree": {
 		"$className": "DataModel",
 		"ReplicatedStorage": {
 			"Roact": { "$path": "src/Vendor/Roact" }
 		}
-	},
-	"rogen": {
-		"routes": { "*": "ReplicatedStorage/Shared" }
 	}
 }
 ```
@@ -195,16 +187,14 @@ A v1 mode changed which files a build had and where Rojo read them. In v2 it is 
 ```json title="dist.rogen.json"
 {
 	"name": "Game",
-	"rogen": {
-		"sourcePaths": ["src"],
-		"routes": {
-			"Server": "ServerScriptService",
-			"Client": "StarterPlayer/StarterPlayerScripts",
-			"Shared": "ReplicatedStorage/Shared",
-			"*": "ReplicatedStorage/Shared"
-		},
-		"compiledPath": "dist"
-	}
+	"sourcePaths": ["src"],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"compiledPath": "dist"
 }
 ```
 
@@ -217,13 +207,13 @@ A repo that built several places from one config becomes a [folder per place](/d
 | v1 | v2 |
 |---|---|
 | `.rogen.json`, or the first `*.rogen.json` | `default.rogen.json` (or `default.rogen.jsonc`) in a folder, and `<name>.rogen.json` for a second output; `init` writes the default |
-| `source` | `sourcePaths`, inside the `rogen` block |
+| `source` | `sourcePaths` |
 | modes (`luau`, `ts`, `darklua`, custom) | a second complete file, `<name>.rogen.json`, that repeats the keys and changes the ones that differ |
-| a mode's `build` | `compiledPath`, inside the `rogen` block of the file for that mode |
+| a mode's `build` | `compiledPath`, in the file for that mode |
 | a mode's `output` | removed. Rogen writes `<name>.project.json` beside `<name>.rogen.json` |
 | `tags` at the root and in modes | removed. An overlay source path that only the config files wanting those files list, or `globIgnorePaths` |
 | `globIgnorePaths` | `globIgnorePaths`, Rojo's own key, which Rogen also writes to the project file |
-| `aliases` and built-in service keywords | `routes`, inside the `rogen` block. Only declared keys route |
+| `aliases` and built-in service keywords | `routes`. Only declared keys route |
 | `casing`, `unwrap` | route targets as paths |
 | `verbatim` | removed; nothing routes by accident |
 | `project`, or the legacy `template` | `tree`, written inline in `default.rogen.json` |
@@ -244,8 +234,8 @@ A repo that built several places from one config becomes a [folder per place](/d
 | v1 | v2 |
 |---|---|
 | `-m, --mode <mode>` | removed. Name a file: `rogen build release -o game.rbxl`, `rogen serve dist` |
-| `-b, --build <path>` | removed. Set `compiledPath` in the `rogen` block |
-| `-s, --source <path>` | removed. Set `sourcePaths` in the `rogen` block |
+| `-b, --build <path>` | removed. Set `compiledPath` in the config |
+| `-s, --source <path>` | removed. Set `sourcePaths` in the config |
 | `-o, --output <path>` | not the same. Rogen writes the project file beside the `.rogen.json`; `rogen build -o game.rbxl` has Rojo build a place file from it |
 | `-p, --project <path>` | removed. Set `tree` in `default.rogen.json`. `-p` now builds a plugin: `rogen build -p Tool.rbxm` |
 | `-t, --tag <tag>` | removed. Name the file whose `sourcePaths` list the overlay |
@@ -255,21 +245,4 @@ A repo that built several places from one config becomes a [folder per place](/d
 	In v1, `-v` printed the version. In v2 it's `--verbose`, and `-V` prints the version, as in Rojo, Wally and Selene. A bare `rogen` prints usage instead of building. Check any scripts that call Rogen.
 </Callout>
 
-v2 also adds `rogen where`, `rogen check`, `--json`, JSONC configs, Rojo's keys in the config, and diagnostics with a file and position. See the [CLI](/docs/v2/cli) and [Configuration](/docs/v2/configuration) reference. The keys that v2 itself removed along the way are listed under [Removed Keys](/docs/v2/configuration#removed-keys).
-
-## From a Pre-release v2 Config
-
-A `rogen.json` from a pre-release of v2 is not read either: Rogen says to rename it to `default.rogen.json`. Rogen's keys moved into one `rogen` block, and the keys that selected or multiplied outputs are gone.
-
-| Pre-release | Now |
-|---|---|
-| `rogen.json` | `default.rogen.json` (or `.jsonc`). `X.rogen.json` writes `X.project.json` beside it |
-| `sourcePaths`, `routes` at the top level | the same keys inside `"rogen": { ... }`. Rojo's keys stay at the top level |
-| `syncPath`, `syncDir` | `compiledPath`, inside the `rogen` block |
-| `projects` | a second complete `<name>.rogen.json` per project, repeating `name`, `routes` and `tree` |
-| `serveProject` | removed. `rogen serve dist` names the file to serve; a bare `rogen serve` serves `default` |
-| `placePaths` | removed. A place is a folder with its own complete `default.rogen.json`, served by naming it: `rogen serve places/lobby` |
-| `extends` | removed. Files do not read each other: repeat the keys in each file |
-| a place's ports, computed from its index | removed. Rogen writes and chooses no port; a second place served at once takes `--port` |
-
-A config that still has one of these keys is an error that names its replacement ([`config.removedField`](/docs/v2/diagnostics#config-removedfield), [`config.rogenKeyOutsideBlock`](/docs/v2/diagnostics#config-rogenkeyoutsideblock)).
+v2 also adds `rogen where`, `rogen check`, `--json`, JSONC configs, Rojo's keys in the config, and diagnostics with a file and position. See the [CLI](/docs/v2/cli) and [Configuration](/docs/v2/configuration) reference.

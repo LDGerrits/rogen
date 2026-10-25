@@ -9,12 +9,10 @@ written:
 places/lobby/default.rogen.json:
 {
   "name": "Lobby",
-  "rogen": {
-    "sourcePaths": [
-      "src"
-    ],
-    "routes": {
-      "*": "ReplicatedStorage"
-    }
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "*": "ReplicatedStorage"
   }
 }

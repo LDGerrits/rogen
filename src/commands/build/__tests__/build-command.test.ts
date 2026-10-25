@@ -124,18 +124,12 @@ describe("build command", () => {
 	});
 
 	describe("with several configs in the folder", () => {
-		const config = ({
-			rogen,
-			...extra
-		}: { rogen?: Record<string, unknown>; [key: string]: unknown } = {}) =>
+		const config = (fields: Record<string, unknown> = {}) =>
 			JSON.stringify({
 				name: "Game",
-				...extra,
-				rogen: {
-					sourcePaths: ["src"],
-					routes: { "*": "ReplicatedStorage" },
-					...rogen,
-				},
+				sourcePaths: ["src"],
+				routes: { "*": "ReplicatedStorage" },
+				...fields,
 			});
 
 		beforeEach(async () => {
@@ -143,7 +137,7 @@ describe("build command", () => {
 			await fs.writeFile(abs("default.rogen.json"), config());
 			await fs.writeFile(
 				abs("dist.rogen.json"),
-				config({ rogen: { compiledPath: "dist" } })
+				config({ compiledPath: "dist" })
 			);
 		});
 
@@ -205,10 +199,8 @@ describe("build command", () => {
 		await fs.writeFile(
 			abs("default.rogen.json"),
 			JSON.stringify({
-				rogen: {
-					sourcePaths: ["bad"],
-					routes: { "*": "ReplicatedStorage" },
-				},
+				sourcePaths: ["bad"],
+				routes: { "*": "ReplicatedStorage" },
 			})
 		);
 		const { run } = harness({ fs });
@@ -348,7 +340,7 @@ describe("build command", () => {
 		const logService = new MockLogService();
 		const entry = brokenEntry([
 			errorDiagnostic(
-				"config.removedField",
+				"config.unknownField",
 				{ resource: "/repo/default.rogen.json" },
 				"boom."
 			),
@@ -360,7 +352,7 @@ describe("build command", () => {
 		expect(logService.lines).toEqual([
 			"intro: rogen build · default.rogen.json",
 			"error: default.rogen.json · not loaded",
-			"diagnosticError: /repo/default.rogen.json - error: boom. (config.removedField)",
+			"diagnosticError: /repo/default.rogen.json - error: boom. (config.unknownField)",
 			expect.stringMatching(/^outro: .*fail/),
 		]);
 	});
@@ -545,7 +537,7 @@ describe("build command", () => {
 		it("should print a config that doesn't load as an entry that wasn't written", async () => {
 			const entry = brokenEntry([
 				errorDiagnostic(
-					"config.removedField",
+					"config.unknownField",
 					{ resource: "/repo/default.rogen.json" },
 					"boom."
 				),
@@ -567,7 +559,7 @@ describe("build command", () => {
 						outcome: "notWritten",
 						diagnostics: [
 							expect.objectContaining({
-								code: "config.removedField",
+								code: "config.unknownField",
 							}),
 						],
 					},

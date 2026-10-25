@@ -3,13 +3,11 @@
 		{ "pattern": "src/*.module", "use": "moduleScript", "suffix": ".module" },
 		{ "pattern": "*.note", "use": "text", "suffix": ".note" }
 	],
-	"rogen": {
-		"sourcePaths": [
-			"src"
-		],
-		"routes": {
-			"*": "ReplicatedStorage/shared"
-		},
-		"compiledPath": "out"
-	}
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"*": "ReplicatedStorage/shared"
+	},
+	"compiledPath": "out"
 }

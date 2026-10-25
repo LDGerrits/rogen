@@ -48,6 +48,14 @@ written:
 
 newproj/default.rogen.json:
 {
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared"
+  },
   "tree": {
     "$className": "DataModel",
     "Lighting": {
@@ -58,16 +66,6 @@ newproj/default.rogen.json:
     },
     "Workspace": {
       "$path": "place/Workspace"
-    }
-  },
-  "rogen": {
-    "sourcePaths": [
-      "src"
-    ],
-    "routes": {
-      "Server": "ServerScriptService",
-      "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared"
     }
   }
 }

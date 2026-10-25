@@ -40,7 +40,7 @@ A config can say which places the server is for, with `servePlaceIds`, as a Rojo
 {
 	"name": "Game",
 	"servePlaceIds": [1818],
-	"rogen": { "routes": { "*": "ReplicatedStorage" } }
+	"routes": { "*": "ReplicatedStorage" }
 }
 ```
 
@@ -61,10 +61,8 @@ Each [place](/docs/v2/setups/places) is served by naming it, and a second place 
 	"name": "Lobby",
 	"servePort": 34872,
 	"servePlaceIds": [1818],
-	"rogen": {
-		"sourcePaths": ["../shared/src", "src"],
-		"routes": { "*": "ReplicatedStorage" }
-	}
+	"sourcePaths": ["../shared/src", "src"],
+	"routes": { "*": "ReplicatedStorage" }
 }
 ```
 

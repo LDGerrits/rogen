@@ -12,7 +12,7 @@ import { ProjectText } from "../rojo/project-text.js";
 import { configStructure } from "./config-structure.js";
 import { ROGEN_KEYS } from "./config.js";
 
-/** Writes a `default.rogen.json` the way `rojo fmt-project` writes a project file, and Rogen's keys after Rojo's. */
+/** Writes a `default.rogen.json` the way `rojo fmt-project` writes a project file, with Rogen's keys before the `tree`. */
 export class ConfigFormatter {
 	private readonly documents = new JsoncDocumentReader({
 		codePrefix: "config",

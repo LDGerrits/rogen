@@ -104,13 +104,11 @@ const available = gitPath !== "";
 		write(
 			"default.rogen.json",
 			JSON.stringify({
-				rogen: {
-					sourcePaths: ["src"],
-					routes: {
-						Server: "ServerScriptService",
-						Shared: "ReplicatedStorage/Shared",
-						"*": "ReplicatedStorage/Shared",
-					},
+				sourcePaths: ["src"],
+				routes: {
+					Server: "ServerScriptService",
+					Shared: "ReplicatedStorage/Shared",
+					"*": "ReplicatedStorage/Shared",
 				},
 			})
 		);
@@ -186,12 +184,10 @@ const available = gitPath !== "";
 				`${place}.rogen.json`,
 				JSON.stringify({
 					name: place,
-					rogen: {
-						sourcePaths: ["src/common", `src/${place}`],
-						routes: {
-							Server: "ServerScriptService",
-							"*": "ReplicatedStorage/Shared",
-						},
+					sourcePaths: ["src/common", `src/${place}`],
+					routes: {
+						Server: "ServerScriptService",
+						"*": "ReplicatedStorage/Shared",
 					},
 				})
 			);
@@ -271,7 +267,8 @@ const available = gitPath !== "";
 			"places/lobby/default.rogen.json",
 			JSON.stringify({
 				name: "Lobby",
-				rogen: { sourcePaths: ["../shared/src", "src"], routes },
+				sourcePaths: ["../shared/src", "src"],
+				routes,
 			})
 		);
 		git("add", "-A");

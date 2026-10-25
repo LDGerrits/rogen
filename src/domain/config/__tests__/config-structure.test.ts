@@ -5,8 +5,6 @@ import { ROGEN_KEYS } from "../config.js";
 
 describe("domain/config/config-structure", () => {
 	describe("configStructure", () => {
-		const block = configStructure.properties!.rogen;
-
 		const ROJO_FIELDS = [
 			"$schema",
 			"name",
@@ -24,17 +22,11 @@ describe("domain/config/config-structure", () => {
 			"syncbackRules",
 		];
 
-		it("types Rojo's keys and one block for Rogen's", () => {
+		it("types Rojo's keys and Rogen's beside them", () => {
 			expect(Object.keys(configStructure.properties!).sort()).toEqual(
-				[...ROJO_FIELDS, "rogen"].sort()
+				[...ROJO_FIELDS, ...ROGEN_KEYS].sort()
 			);
 			expect([...rojoKeys].sort()).toEqual([...ROJO_FIELDS].sort());
-		});
-
-		it("types the keys of ROGEN_KEYS in the rogen block", () => {
-			expect(Object.keys(block.properties!).sort()).toEqual(
-				[...ROGEN_KEYS].sort()
-			);
 		});
 
 		it.each(["help/config.md", "docs/content/docs/v2/configuration.mdx"])(
@@ -63,6 +55,7 @@ describe("domain/config/config-structure", () => {
 			"outFile",
 			"projects",
 			"serveProject",
+			"rogen",
 		])("does not type the unsupported key %s", (key) => {
 			expect(configStructure.properties![key]).toBeUndefined();
 		});

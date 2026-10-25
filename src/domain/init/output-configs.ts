@@ -23,16 +23,11 @@ export interface OutputSettings {
 /** The second outputs of a project, each a complete copy of the default with the keys that differ. */
 export class OutputConfigs {
 	static of(base: RogenConfig, settings: OutputSettings): OutputConfig[] {
-		const routed = base.rogen?.sourcePaths !== undefined;
+		const routed = base.sourcePaths !== undefined;
 		const copy = (compiledPath: string | undefined): RogenConfig => ({
 			...base,
 			name: base.name ?? settings.name,
-			...(routed && {
-				rogen: {
-					...base.rogen,
-					...(compiledPath && { compiledPath }),
-				},
-			}),
+			...(routed && compiledPath && { compiledPath }),
 		});
 		const { processedPath, releasePath, releaseIgnore } = settings;
 		return [

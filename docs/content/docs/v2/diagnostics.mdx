@@ -47,55 +47,20 @@ Wrap the fields in `{ }`. See [Configuration](/docs/v2/configuration#fields).
 Error. A field holds the wrong kind of value, such as a string where `sourcePaths` needs an array.
 
 ```
-default.rogen.json:2:14 - error: "rogen.sourcePaths": expected an array, found a string. (config.wrongType)
+default.rogen.json:2:17 - error: "sourcePaths": expected an array, found a string. (config.wrongType)
 ```
 
 Give the field the type the message names. `null` is never a value in a `.rogen.json`, and it removes nothing: leave the key out, or ignore the folder a mount points at with `globIgnorePaths`. A node of the `tree` must be an object, so `"DevPackages": null` there gets the same error. See [Configuration](/docs/v2/configuration#fields).
 
 ### `config.unknownField` [#config-unknownfield]
 
-Error. The config has a key that is neither one of Rojo's nor one of Rogen's, often a typo or a key from Rogen 1. Rojo refuses a project file with a key it doesn't know, so Rogen leaves the written file as it was. The top level of the file is Rojo's project format and the `rogen` block holds Rogen's three keys, so an unknown key in either gets this error; one inside the block gets a suggestion when a name is close. A `$` key of a node in the `tree` that is not one of Rojo's fields, such as `$clasName`, gets the same error, unless it holds an object, which Rojo reads as a child.
+Error. The config has a key that is neither one of Rojo's nor one of Rogen's, often a typo or a key from Rogen 1. Rojo refuses a project file with a key it doesn't know, so Rogen leaves the written file as it was. A key close to one of Rojo's or Rogen's gets a suggestion. A `$` key of a node in the `tree` that is not one of Rojo's fields, such as `$clasName`, gets the same error, unless it holds an object, which Rojo reads as a child.
 
 ```
-default.rogen.json:4:2 - error: "exlude" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know. (config.unknownField)
-default.rogen.json:6:14 - error: "sourcePath" is not one of Rogen's keys. Did you mean "sourcePaths"? (config.unknownField)
+default.rogen.json:5:2 - error: "sourcePath" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know. Did you mean "sourcePaths"? (config.unknownField)
 ```
 
 A field of a sync rule that a rule does not have gets the same code as a warning, since Rojo ignores it and the rule then reads differently from what was meant. Rename the key to the one suggested, or remove it. A config with v1 keys also gets [`legacy.config`](#legacy-config). See [Configuration](/docs/v2/configuration).
-
-### `config.rogenKeyOutsideBlock` [#config-rogenkeyoutsideblock]
-
-Error. A key of Rogen (`sourcePaths`, `routes` or `compiledPath`) sits at the top level of the config. The top level is Rojo's, so Rogen's keys go in the `rogen` block. A key inside the block that isn't Rogen's gets [`config.unknownField`](#config-unknownfield).
-
-```
-default.rogen.json:2:2 - error: "routes" is one of Rogen's keys, and the top level of the file is Rojo's. Move it into "rogen": { ... }. (config.rogenKeyOutsideBlock)
-```
-
-Move the key into `"rogen": { ... }`. When it is the only Rogen key and the file has no block yet, the error carries the replacement. See [Configuration](/docs/v2/configuration#fields).
-
-### `config.removedField` [#config-removedfield]
-
-Error. The config has a key that Rogen removed or renamed. The error is at the key, and the message says what to do instead.
-
-```
-default.rogen.json:4:2 - error: "projects" was removed. Write <name>.rogen.json as a complete file with the keys that differ. (config.removedField)
-default.rogen.json:5:2 - error: "extends" was removed. Config files don't read each other. Write a second complete <name>.rogen.json with the keys that differ. (config.removedField)
-default.rogen.json:6:2 - error: "syncPath" was removed. It is called compiledPath now, inside the rogen block. (config.removedField)
-```
-
-Remove the key and do what the message says.
-
-- `rootDirs` is now `sourcePaths`, and `syncDir` and `syncPath` are `compiledPath` inside the `rogen` block.
-- `projects`, `modes` and `extends` are gone: a second output is a second complete `<name>.rogen.json` that repeats the keys it needs and changes the ones that differ, and `mode` is a file you name (`rogen write <name>`).
-- `serveProject` is gone: `rogen serve` serves `default.rogen.json`, or the file you name.
-- `placePaths` is gone: a place is a folder with its own `default.rogen.json`, served by naming it (`rogen serve places/lobby`).
-- `template` is gone: write its `tree` and its other keys in `default.rogen.json`.
-- `outFile` is gone: Rogen writes `default.project.json` beside `default.rogen.json`.
-- `exclude` is `globIgnorePaths`, which also leaves out a mount it ignores.
-- For `variants` and `conflicts`, a file that replaces another goes in a later source path, which wins a clash, and sets that exclude each other are a complete file each.
-- For `server`, `rogen serve` starts Rojo, and serving with Argon is described in [Studio](/docs/v2/studio#serve-with-argon).
-
-See [Configuration](/docs/v2/configuration#removed-keys), [Migrating from v1](/docs/v2/migrating-from-v1) and [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
 
 ### `config.duplicateSourcePath` [#config-duplicatesourcepath]
 

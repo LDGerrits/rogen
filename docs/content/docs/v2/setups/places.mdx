@@ -40,19 +40,17 @@ The place's config lists the shared folder and its own, in full, and sets its ow
 ```json title="game.rogen.json"
 {
 	"name": "game",
+	"sourcePaths": ["src/common", "src/game"],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared"
+	},
 	"tree": {
 		"$className": "DataModel",
 		"Lighting": { "$path": "place/game/Lighting" },
 		"SoundService": { "$path": "place/game/SoundService" },
 		"Workspace": { "$path": "place/game/Workspace" }
-	},
-	"rogen": {
-		"sourcePaths": ["src/common", "src/game"],
-		"routes": {
-			"Server": "ServerScriptService",
-			"Client": "StarterPlayer/StarterPlayerScripts",
-			"Shared": "ReplicatedStorage/Shared"
-		}
 	}
 }
 ```

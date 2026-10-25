@@ -15,7 +15,6 @@ import {
 	DEFAULT_CONFIG_FILE_NAMES,
 	DEFAULT_PROJECT,
 	DEFAULT_PROJECT_FILES,
-	LEGACY_CONFIG_FILE_NAMES,
 	configStem,
 	isConfigFileName,
 	isDefaultConfigFileName,
@@ -284,12 +283,6 @@ export class ConfigDiscovery {
 					)
 					.join("\n")
 			);
-		for (const name of LEGACY_CONFIG_FILE_NAMES)
-			if (await this.fileSystemService.isFile(path.join(directory, name)))
-				return new ProjectError(
-					`${name} in ${directory} is not read any more: a config is named for the project file it writes.`,
-					`Rename it to ${DEFAULT_CONFIG_FILE}.`
-				);
 		const others = (await this.list(directory)).map((file) =>
 			path.basename(file)
 		);

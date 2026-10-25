@@ -2,15 +2,13 @@
 	"globIgnorePaths": [
 		"../src/Skip"
 	],
-	"rogen": {
-		"sourcePaths": [
-			"../src"
-		],
-		"routes": {
-			"server": "ServerScriptService",
-			"client": "StarterPlayer/StarterPlayerScripts",
-			"shared": "ReplicatedStorage/shared",
-			"*": "ReplicatedStorage/shared"
-		}
+	"sourcePaths": [
+		"../src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
 	}
 }

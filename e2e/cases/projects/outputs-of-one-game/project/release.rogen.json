@@ -1,8 +1,6 @@
 {
 	"name": "Game",
 	"globIgnorePaths": ["dev/**"],
-	"rogen": {
-		"sourcePaths": ["src"],
-		"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
-	}
+	"sourcePaths": ["src"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
 }

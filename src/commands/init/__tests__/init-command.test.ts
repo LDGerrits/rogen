@@ -504,8 +504,8 @@ describe("init command", () => {
 
 			expect(result.isOk()).toBe(true);
 			const config = await readJson("default.rogen.json");
-			expect(config.rogen.sourcePaths).toEqual(["lib"]);
-			expect(Object.keys(config.rogen.routes)).not.toContain("Client");
+			expect(config.sourcePaths).toEqual(["lib"]);
+			expect(Object.keys(config.routes)).not.toContain("Client");
 			expect(await exists("AGENTS.md")).toBe(false);
 			const { decided } = JSON.parse(logService.entries[0].text);
 			expect(decided.map(({ flag }: { flag: string }) => flag)).toEqual([
@@ -725,7 +725,7 @@ describe("init command", () => {
 			await runInit(prompts);
 
 			const config = await readJson("default.rogen.json");
-			expect(config.rogen.sourcePaths).toEqual(["src", "lib"]);
+			expect(config.sourcePaths).toEqual(["src", "lib"]);
 			expect(config).not.toHaveProperty("projects");
 		});
 

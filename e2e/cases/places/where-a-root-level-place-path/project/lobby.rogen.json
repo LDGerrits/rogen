@@ -1,11 +1,9 @@
 {
 	"name": "Lobby",
-	"rogen": {
-		"sourcePaths": ["src/common", "src/lobby"],
-		"routes": {
-			"server": "ServerScriptService",
-			"client": "StarterGui",
-			"*": "ReplicatedStorage/Shared"
-		}
+	"sourcePaths": ["src/common", "src/lobby"],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterGui",
+		"*": "ReplicatedStorage/Shared"
 	}
 }

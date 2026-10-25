@@ -46,6 +46,14 @@ written:
 
 default.rogen.json:
 {
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared"
+  },
   "tree": {
     "$className": "DataModel",
     "Lighting": {
@@ -56,16 +64,6 @@ default.rogen.json:
     },
     "Workspace": {
       "$path": "place/Workspace"
-    }
-  },
-  "rogen": {
-    "sourcePaths": [
-      "src"
-    ],
-    "routes": {
-      "Server": "ServerScriptService",
-      "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared"
     }
   }
 }
@@ -73,6 +71,15 @@ default.rogen.json:
 dist.rogen.json:
 {
   "name": "project",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared"
+  },
+  "compiledPath": "dist",
   "tree": {
     "$className": "DataModel",
     "Lighting": {
@@ -84,16 +91,5 @@ dist.rogen.json:
     "Workspace": {
       "$path": "place/Workspace"
     }
-  },
-  "rogen": {
-    "sourcePaths": [
-      "src"
-    ],
-    "routes": {
-      "Server": "ServerScriptService",
-      "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared"
-    },
-    "compiledPath": "dist"
   }
 }

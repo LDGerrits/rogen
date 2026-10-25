@@ -5,10 +5,8 @@
 		"src/Vendor/**",
 		"!src/Vendor/Keep.luau"
 	],
-	"rogen": {
-		"sourcePaths": ["src"],
-		"routes": {
-			"*": "ReplicatedStorage"
-		}
+	"sourcePaths": ["src"],
+	"routes": {
+		"*": "ReplicatedStorage"
 	}
 }
