@@ -1,4 +1,105 @@
+"use client";
+
 import Link from "next/link";
+import { useState, type ReactNode } from "react";
+import type { IconType } from "react-icons";
+import {
+	FaFolderOpen,
+	FaFileCode,
+	FaFolder,
+	FaBox,
+	FaServer,
+	FaFileAlt,
+	FaTerminal,
+	FaUser,
+} from "react-icons/fa";
+import { SiRoblox } from "react-icons/si";
+
+type ViewState = "folders" | "at" | "markers";
+
+interface Row {
+	readonly name: string;
+	readonly level: number;
+	readonly kind:
+		| "root"
+		| "feature"
+		| "routing"
+		| "script"
+		| "marker"
+		| "replicated"
+		| "server"
+		| "player"
+		| "folder"
+		| "instance";
+	readonly mt?: boolean;
+}
+
+const rowStyles: Record<
+	Row["kind"],
+	{ icon: IconType; iconClass: string; textClass?: string; dim?: boolean }
+> = {
+	root: { icon: FaFolder, iconClass: "text-gray-600" },
+	feature: {
+		icon: FaFolderOpen,
+		iconClass: "text-white",
+		textClass: "text-white font-medium",
+	},
+	routing: { icon: FaFolder, iconClass: "text-gray-500", dim: true },
+	script: { icon: FaFileCode, iconClass: "text-white" },
+	marker: { icon: FaFileAlt, iconClass: "text-gray-500", dim: true },
+	replicated: { icon: FaBox, iconClass: "text-gray-600" },
+	server: { icon: FaServer, iconClass: "text-gray-600" },
+	player: { icon: FaUser, iconClass: "text-gray-600" },
+	folder: {
+		icon: FaFolder,
+		iconClass: "text-white",
+		textClass: "text-white font-medium",
+	},
+	instance: { icon: FaFileAlt, iconClass: "text-gray-400" },
+};
+
+function studioTree(
+	feature: string,
+	shared: string[],
+	server: string[],
+	client: string[]
+): Row[] {
+	const rows: Row[] = [];
+	if (shared.length > 0) {
+		rows.push(
+			{ name: "ReplicatedStorage", level: 0, kind: "replicated" },
+			{ name: "Shared", level: 1, kind: "folder" },
+			{ name: feature, level: 2, kind: "folder" },
+			...shared.map((name): Row => ({ name, level: 3, kind: "instance" }))
+		);
+	}
+	if (server.length > 0) {
+		rows.push(
+			{
+				name: "ServerScriptService",
+				level: 0,
+				kind: "server",
+				mt: rows.length > 0,
+			},
+			{ name: feature, level: 1, kind: "folder" },
+			...server.map((name): Row => ({ name, level: 2, kind: "instance" }))
+		);
+	}
+	if (client.length > 0) {
+		rows.push(
+			{
+				name: "StarterPlayer",
+				level: 0,
+				kind: "player",
+				mt: rows.length > 0,
+			},
+			{ name: "StarterPlayerScripts", level: 1, kind: "player" },
+			{ name: feature, level: 2, kind: "folder" },
+			...client.map((name): Row => ({ name, level: 3, kind: "instance" }))
+		);
+	}
+	return rows;
+}
 
 const CONFIG = `{
   "name": "Game",
@@ -11,7 +112,114 @@ const CONFIG = `{
   "tree": { "$className": "DataModel" }
 }`;
 
+const views: Record<
+	ViewState,
+	{ label: string; desc: string; disk: Row[]; studio: Row[] }
+> = {
+	folders: {
+		label: "Routing Folders",
+		desc: "Name a folder after a route, and everything inside goes to its target. The folder itself disappears.",
+		disk: [
+			{ name: "src", level: 0, kind: "root" },
+			{ name: "Inventory", level: 1, kind: "feature" },
+			{ name: "Client", level: 2, kind: "routing" },
+			{ name: "InventoryController.luau", level: 3, kind: "script" },
+			{ name: "Server", level: 2, kind: "routing" },
+			{ name: "InventoryService.luau", level: 3, kind: "script" },
+			{ name: "Shared", level: 2, kind: "routing" },
+			{ name: "InventoryTypes.luau", level: 3, kind: "script" },
+			{ name: "InventoryConfig.luau", level: 2, kind: "script" },
+		],
+		studio: studioTree(
+			"Inventory",
+			["InventoryConfig", "InventoryTypes"],
+			["InventoryService"],
+			["InventoryController"]
+		),
+	},
+	at: {
+		label: "The @ Sign",
+		desc: "Add @ and a route to a file's name to send just that file. A module stays a module.",
+		disk: [
+			{ name: "src", level: 0, kind: "root" },
+			{ name: "Combat", level: 1, kind: "feature" },
+			{ name: "CombatController@Client.luau", level: 2, kind: "script" },
+			{ name: "CombatService@Server.luau", level: 2, kind: "script" },
+			{ name: "CombatTypes.luau", level: 2, kind: "script" },
+		],
+		studio: studioTree(
+			"Combat",
+			["CombatTypes"],
+			["CombatService"],
+			["CombatController"]
+		),
+	},
+	markers: {
+		label: "Marker Files",
+		desc: "Add a file named @ and a route, such as @Server, to a folder, and the whole folder goes there under its own name.",
+		disk: [
+			{ name: "src", level: 0, kind: "root" },
+			{ name: "AntiCheat", level: 1, kind: "feature" },
+			{ name: "@Server", level: 2, kind: "marker" },
+			{ name: "AntiCheatService.luau", level: 2, kind: "script" },
+			{ name: "Monitor.luau", level: 2, kind: "script" },
+		],
+		studio: studioTree(
+			"AntiCheat",
+			[],
+			["AntiCheatService", "Monitor"],
+			[]
+		),
+	},
+};
+
+function Tree({ rows }: { rows: Row[] }) {
+	return (
+		<>
+			{rows.map((row, i) => {
+				const style = rowStyles[row.kind];
+				const Icon = style.icon;
+				return (
+					<div
+						key={i}
+						className={`flex items-center gap-2 ${style.dim ? "opacity-50" : ""} ${row.mt ? "mt-3" : ""}`}
+						style={{ marginLeft: `${row.level * 16}px` }}
+					>
+						<Icon className={style.iconClass} />{" "}
+						<span className={style.textClass}>{row.name}</span>
+					</div>
+				);
+			})}
+		</>
+	);
+}
+
+function Panel({
+	icon,
+	title,
+	children,
+}: {
+	icon: ReactNode;
+	title: string;
+	children: ReactNode;
+}) {
+	return (
+		<div className="flex-1 bg-[#050505] rounded-xl border border-white/10 overflow-hidden z-10 flex flex-col shadow-2xl">
+			<div className="bg-[#0a0a0a] px-4 py-3 flex items-center gap-3 border-b border-white/10">
+				{icon}
+				<span className="text-xs font-mono text-gray-400 tracking-wide">
+					{title}
+				</span>
+			</div>
+			{children}
+		</div>
+	);
+}
+
 export function Routing() {
+	const [activeView, setActiveView] = useState<ViewState>("folders");
+	const view = views[activeView];
+
 	return (
 		<section id="routing" className="py-24 px-6 relative">
 			<div className="max-w-6xl mx-auto relative z-10">
@@ -22,95 +230,86 @@ export function Routing() {
 						How routing works
 					</h2>
 					<p className="text-gray-400 max-w-xl tracking-tight text-lg">
+						Declare your routes in{" "}
 						<code className="text-gray-300">
 							default.rogen.json
-						</code>{" "}
-						is a Rojo project file with three more keys. Many
-						projects need only{" "}
-						<code className="text-gray-300">routes</code>.
+						</code>
+						, then name a folder or a file after one.
 					</p>
 				</div>
 
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 text-left">
-					<div className="bg-[#050505] rounded-xl border border-white/10 overflow-hidden flex flex-col shadow-2xl">
-						<div className="bg-[#0a0a0a] px-4 py-3 border-b border-white/10">
-							<span className="text-xs font-mono text-gray-400 tracking-wide">
-								default.rogen.json
-							</span>
-						</div>
+					<Panel
+						icon={<FaFileAlt className="text-gray-500 text-sm" />}
+						title="default.rogen.json"
+					>
 						<pre className="p-6 font-mono text-sm leading-7 text-gray-300 overflow-x-auto">
 							{CONFIG}
 						</pre>
-					</div>
+						<p className="px-6 pb-6 text-sm text-gray-500">
+							<code className="text-gray-300">*</code> takes every
+							file that no other route matches.
+						</p>
+					</Panel>
 
-					<div className="flex flex-col justify-center gap-6 p-8 rounded-xl glass-card cursor-default">
-						<p className="text-gray-300 leading-relaxed">
-							A folder or an <code className="text-white">@</code>{" "}
-							suffix named after a route sends its code there. The{" "}
-							<code className="text-white">*</code> route takes
-							every file that matches no other.
-						</p>
-						<p className="text-gray-400 leading-relaxed">
-							The routes are yours to change. Add{" "}
-							<code className="text-gray-300">
-								&quot;Gui&quot;: &quot;StarterGui&quot;
-							</code>
-							, and a <code className="text-gray-300">Gui</code>{" "}
-							folder or a{" "}
-							<code className="text-gray-300">@Gui</code> suffix
-							sends code to StarterGui.
-						</p>
-						<p className="text-gray-400 leading-relaxed">
-							Rogen writes the{" "}
-							<code className="text-gray-300">
-								default.project.json
-							</code>{" "}
-							that Rojo reads from it.
-						</p>
+					<div className="flex flex-col gap-3">
+						{(Object.keys(views) as ViewState[]).map((id) => (
+							<button
+								key={id}
+								onClick={() => setActiveView(id)}
+								className={`flex flex-col items-start text-left p-6 rounded-xl border transition-all duration-200 ${
+									activeView === id
+										? "bg-white/5 border-white/30"
+										: "bg-[#0a0a0a]/60 border-white/10 hover:border-white/20"
+								}`}
+							>
+								<span className="text-base font-semibold text-white mb-1">
+									{views[id].label}
+								</span>
+								<span className="text-sm text-gray-400 leading-relaxed">
+									{views[id].desc}
+								</span>
+							</button>
+						))}
 					</div>
 				</div>
 
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-					{[
-						{
-							title: "Routing Folders",
-							desc: "Name a folder after a route and everything inside goes to its target. The folder itself disappears.",
-							example: "Inventory/Server/InventoryService.luau",
-							result: "ServerScriptService/Inventory/InventoryService",
-						},
-						{
-							title: "The @ Sign",
-							desc: "Add @ and a route to the end of a file's name to send just that file. A module stays a module.",
-							example: "Inventory/Save@Server.luau",
-							result: "ServerScriptService/Inventory/Save",
-						},
-						{
-							title: "Marker Files",
-							desc: "Add a file named @ and a route, such as @Server, to a folder, and the whole folder goes there under its own name.",
-							example: "AntiCheat/@Server",
-							result: "ServerScriptService/AntiCheat/…",
-						},
-					].map((rule, i) => (
-						<div
-							key={i}
-							className="flex flex-col items-start h-full p-8 rounded-xl glass-card cursor-default"
-						>
-							<h3 className="text-base font-semibold text-white mb-2">
-								{rule.title}
-							</h3>
-							<p className="text-gray-400 text-sm mb-8 grow leading-relaxed">
-								{rule.desc}
-							</p>
-							<div className="mt-auto flex flex-col items-start gap-2 w-full font-mono text-xs">
-								<code className="inline-block text-gray-300 bg-[#0a0a0a] border border-white/10 px-4 py-3 rounded-md">
-									{rule.example}
-								</code>
-								<code className="inline-block text-gray-500 px-4">
-									→ {rule.result}
-								</code>
-							</div>
+				<div className="w-full flex flex-col md:flex-row items-stretch justify-start gap-4 relative text-left">
+					<Panel
+						icon={<FaTerminal className="text-gray-500 text-sm" />}
+						title="FILE SYSTEM"
+					>
+						<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto min-h-80">
+							<Tree rows={view.disk} />
 						</div>
-					))}
+					</Panel>
+
+					<div className="flex items-center justify-center z-20 py-4 md:py-0 px-4 md:px-6">
+						<svg
+							className="text-gray-500 md:rotate-0 rotate-90"
+							fill="none"
+							height="32"
+							shapeRendering="geometricPrecision"
+							stroke="currentColor"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth="1"
+							viewBox="0 0 24 24"
+							width="32"
+						>
+							<path d="M5 12h14"></path>
+							<path d="M12 5l7 7-7 7"></path>
+						</svg>
+					</div>
+
+					<Panel
+						icon={<SiRoblox className="text-gray-400 text-sm" />}
+						title="ROBLOX STUDIO"
+					>
+						<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto min-h-80">
+							<Tree rows={view.studio} />
+						</div>
+					</Panel>
 				</div>
 
 				<Link
