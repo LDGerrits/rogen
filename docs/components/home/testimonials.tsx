@@ -34,7 +34,7 @@ function Attribution({ testimonial }: { testimonial: Testimonial }) {
 					href={testimonial.url}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="underline decoration-white/20 underline-offset-4 transition-colors duration-300 hover:text-paper hover:decoration-brand"
+					className="underline decoration-white/20 underline-offset-4 transition-colors duration-200 hover:text-paper hover:decoration-stone-400"
 				>
 					{testimonial.company}
 				</a>
@@ -45,10 +45,10 @@ function Attribution({ testimonial }: { testimonial: Testimonial }) {
 
 export function Testimonials() {
 	return (
-		<section className="relative px-6 pt-8 pb-24 lg:pt-12 lg:pb-32">
+		<section className="px-6 pb-24 lg:pb-32">
 			<div className="mx-auto max-w-6xl">
-				<Reveal className="mb-14 flex flex-col items-start text-left">
-					<h2 className="font-mono text-xs uppercase tracking-[0.18em] text-stone-500">
+				<Reveal className="mb-12 flex flex-col items-start border-t border-rule pt-8 text-left">
+					<h2 className="font-medium text-stone-500">
 						Used by Roblox studios
 					</h2>
 				</Reveal>
@@ -56,18 +56,16 @@ export function Testimonials() {
 				<div className="grid gap-14 lg:grid-cols-12 lg:items-end lg:gap-8">
 					<Reveal className="lg:col-span-8">
 						<figure>
-							<blockquote className="text-3xl font-medium leading-[1.15] tracking-[-0.03em] text-paper md:text-5xl">
-								<span className="text-brand">“</span>
-								{featured.quote}
-								<span className="text-brand">”</span>
+							<blockquote className="-indent-[0.4em] text-3xl leading-[1.1] font-semibold tracking-[-0.035em] text-paper md:text-5xl">
+								“{featured.quote}”
 							</blockquote>
 							<Attribution testimonial={featured} />
 						</figure>
 					</Reveal>
 
 					<Reveal className="lg:col-span-4" delay={0.1}>
-						<figure className="border-l border-white/10 pl-8">
-							<blockquote className="text-xl leading-snug tracking-[-0.015em] text-stone-300">
+						<figure className="border-l border-rule pl-8">
+							<blockquote className="-indent-[0.4em] text-xl leading-snug tracking-[-0.015em] text-stone-300">
 								“{secondary.quote}”
 							</blockquote>
 							<Attribution testimonial={secondary} />

@@ -1,18 +1,27 @@
-"use client";
-
 import type { ReactNode } from "react";
+import type { IconType } from "react-icons";
 import { HomeLayout } from "fumadocs-ui/layouts/home";
 import { baseOptions } from "@/lib/layout.shared";
-import { motion } from "framer-motion";
 import { RiTwitterXLine } from "react-icons/ri";
 import { FaDiscord, FaGithub } from "react-icons/fa";
 
-const SOCIALS = {
-	Github: "https://github.com/LDGerrits/rogen",
-	Discord:
-		"https://discord.com/channels/385151591524597761/1503801029232295996",
-	X: "https://x.com/playfullygames",
-};
+const socials: readonly { label: string; url: string; icon: IconType }[] = [
+	{
+		label: "GitHub",
+		url: "https://github.com/LDGerrits/rogen",
+		icon: FaGithub,
+	},
+	{
+		label: "Discord",
+		url: "https://discord.com/channels/385151591524597761/1503801029232295996",
+		icon: FaDiscord,
+	},
+	{
+		label: "Twitter",
+		url: "https://x.com/playfullygames",
+		icon: RiTwitterXLine,
+	},
+];
 
 export default function Layout({ children }: { children: ReactNode }) {
 	const base = baseOptions();
@@ -20,6 +29,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 	return (
 		<HomeLayout
 			{...base}
+			className="home"
 			links={[
 				{
 					text: "Docs",
@@ -29,74 +39,20 @@ export default function Layout({ children }: { children: ReactNode }) {
 				{
 					type: "custom",
 					children: (
-						<div className="flex items-center gap-3 ml-4">
-							<motion.a
-								href={SOCIALS.Github}
-								target="_blank"
-								rel="noopener noreferrer"
-								whileHover={{ scale: 1.15 }}
-								whileTap={{ scale: 0.95 }}
-								initial={{ opacity: 0, y: -4 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{
-									type: "spring",
-									stiffness: 300,
-									damping: 20,
-								}}
-								className="group relative flex items-center justify-center p-2 rounded-md hover:bg-muted/30 transition-colors"
-								aria-label="GitHub"
-							>
-								<FaGithub className="h-4 w-4 text-stone-400 group-hover:text-paper" />
-								<span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-ink-card px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-all">
-									GitHub
-								</span>
-							</motion.a>
-
-							<motion.a
-								href={SOCIALS.Discord}
-								target="_blank"
-								rel="noopener noreferrer"
-								whileHover={{ scale: 1.15 }}
-								whileTap={{ scale: 0.95 }}
-								initial={{ opacity: 0, y: -4 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{
-									type: "spring",
-									stiffness: 300,
-									damping: 20,
-									delay: 0.05,
-								}}
-								className="group relative flex items-center justify-center p-2 rounded-md hover:bg-muted/30 transition-colors"
-								aria-label="Discord"
-							>
-								<FaDiscord className="h-4 w-4 text-stone-400 group-hover:text-paper" />
-								<span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-ink-card px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-all">
-									Discord
-								</span>
-							</motion.a>
-
-							<motion.a
-								href={SOCIALS.X}
-								target="_blank"
-								rel="noopener noreferrer"
-								whileHover={{ scale: 1.15 }}
-								whileTap={{ scale: 0.95 }}
-								initial={{ opacity: 0, y: -4 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{
-									type: "spring",
-									stiffness: 300,
-									damping: 20,
-									delay: 0.1,
-								}}
-								className="group relative flex items-center justify-center p-2 rounded-md hover:bg-muted/30 transition-colors"
-								aria-label="Twitter"
-							>
-								<RiTwitterXLine className="h-4 w-4 text-stone-400 group-hover:text-paper" />
-								<span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-ink-card px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-all">
-									Twitter
-								</span>
-							</motion.a>
+						<div className="ml-4 flex items-center gap-1">
+							{socials.map(({ label, url, icon: Icon }) => (
+								<a
+									key={label}
+									href={url}
+									target="_blank"
+									rel="noopener noreferrer"
+									title={label}
+									aria-label={label}
+									className="grid size-8 place-items-center text-stone-500 transition-colors duration-200 hover:text-paper"
+								>
+									<Icon className="size-4" />
+								</a>
+							))}
 						</div>
 					),
 				},

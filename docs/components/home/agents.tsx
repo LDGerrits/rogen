@@ -14,10 +14,10 @@ const points = [
 
 export function Agents() {
 	return (
-		<section id="agents" className="relative px-6 py-24 lg:py-32">
+		<section id="agents" className="px-6 py-24 lg:py-32">
 			<div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-12 lg:gap-8">
 				<Reveal className="flex flex-col items-end text-right lg:order-2 lg:col-span-5 lg:col-start-8">
-					<h2 className="text-3xl font-semibold tracking-[-0.03em] text-paper md:text-5xl">
+					<h2 className="text-4xl leading-[1] font-bold tracking-[-0.04em] text-paper md:text-6xl">
 						Built for agents
 					</h2>
 					<p className="mt-5 max-w-sm text-lg leading-relaxed text-stone-400">
@@ -26,36 +26,31 @@ export function Agents() {
 					</p>
 					<Link
 						href="/docs/v2/agents"
-						className="group mt-8 inline-flex items-center gap-1.5 text-sm font-medium text-stone-400 transition-colors duration-300 hover:text-paper"
+						className="group mt-8 inline-flex items-center gap-1.5 text-sm font-medium text-stone-300 underline decoration-transparent underline-offset-4 transition-colors duration-200 hover:text-paper hover:decoration-stone-500"
 					>
 						Working with agents
-						<span className="transition-transform duration-500 ease-out-expo group-hover:translate-x-1">
+						<span className="transition-transform duration-300 ease-out-expo group-hover:translate-x-0.5">
 							→
 						</span>
 					</Link>
 				</Reveal>
 
 				<Reveal className="lg:order-1 lg:col-span-6">
-					<ol>
-						{points.map((point, i) => (
+					<ul>
+						{points.map((point) => (
 							<li
 								key={point.title}
-								className="grid grid-cols-[3rem_1fr] gap-4 border-t border-white/[0.08] py-8 last:border-b"
+								className="border-t border-rule py-8 last:border-b"
 							>
-								<span className="pt-1 font-mono text-xs tracking-[0.14em] text-brand">
-									{String(i + 1).padStart(2, "0")}
-								</span>
-								<div>
-									<h3 className="text-xl font-semibold tracking-[-0.02em] text-paper">
-										{point.title}
-									</h3>
-									<p className="mt-3 max-w-[52ch] text-[15px] leading-relaxed text-stone-400">
-										{point.desc}
-									</p>
-								</div>
+								<h3 className="text-xl font-semibold tracking-[-0.02em] text-paper md:text-2xl">
+									{point.title}
+								</h3>
+								<p className="mt-3 max-w-[52ch] text-[15px] leading-relaxed text-stone-400">
+									{point.desc}
+								</p>
 							</li>
 						))}
-					</ol>
+					</ul>
 				</Reveal>
 			</div>
 		</section>

@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import "./global.css";
-import { Geist, Geist_Mono } from "next/font/google";
+import {
+	Geist,
+	Geist_Mono,
+	JetBrains_Mono,
+	Schibsted_Grotesk,
+} from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = Geist({
@@ -12,6 +17,16 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
 	subsets: ["latin"],
 	variable: "--font-geist-mono",
+});
+
+const schibsted = Schibsted_Grotesk({
+	subsets: ["latin"],
+	variable: "--font-schibsted",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+	subsets: ["latin"],
+	variable: "--font-jetbrains-mono",
 });
 
 export const metadata: Metadata = {
@@ -28,7 +43,7 @@ export default function Layout({ children }: LayoutProps<"/">) {
 	return (
 		<html
 			lang="en"
-			className={`${geistSans.variable} ${geistMono.variable} dark`}
+			className={`${geistSans.variable} ${geistMono.variable} ${schibsted.variable} ${jetbrainsMono.variable} dark`}
 			suppressHydrationWarning
 		>
 			<body className="flex flex-col min-h-screen">

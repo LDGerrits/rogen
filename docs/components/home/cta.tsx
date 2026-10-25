@@ -4,25 +4,24 @@ import { Reveal } from "./reveal";
 
 export function Cta() {
 	return (
-		<section className="relative isolate overflow-hidden border-t border-white/[0.06] px-6 py-24 lg:py-32">
-			<div className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-[28rem] bg-[radial-gradient(ellipse_50%_60%_at_50%_100%,rgb(240_105_58/0.12),transparent_70%)]" />
-
-			<Reveal className="mx-auto flex max-w-4xl flex-col items-center text-center">
-				<h2 className="mb-10 text-5xl font-semibold leading-[0.95] tracking-[-0.045em] text-paper md:text-6xl">
+		<section className="border-t border-rule bg-ink-raised px-6 py-24 lg:py-32">
+			<Reveal className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-12 lg:items-end lg:gap-8">
+				<h2 className="text-5xl leading-[0.95] font-bold tracking-[-0.045em] text-paper md:text-7xl lg:order-2 lg:col-span-6 lg:col-start-7 lg:text-right">
 					Get started
 				</h2>
 
-				<InstallCommand center />
-
-				<Link
-					href="/docs/v2/installation"
-					className="group mt-10 inline-flex items-center gap-1.5 text-sm font-medium text-stone-400 transition-colors duration-300 hover:text-paper"
-				>
-					Read the setup guide
-					<span className="transition-transform duration-500 ease-out-expo group-hover:translate-x-1">
-						→
-					</span>
-				</Link>
+				<div className="flex flex-col items-start gap-8 lg:order-1 lg:col-span-5">
+					<InstallCommand />
+					<Link
+						href="/docs/v2/installation"
+						className="group inline-flex items-center gap-1.5 text-sm font-medium text-stone-300 underline decoration-transparent underline-offset-4 transition-colors duration-200 hover:text-paper hover:decoration-stone-500"
+					>
+						Read the setup guide
+						<span className="transition-transform duration-300 ease-out-expo group-hover:translate-x-0.5">
+							→
+						</span>
+					</Link>
+				</div>
 			</Reveal>
 		</section>
 	);

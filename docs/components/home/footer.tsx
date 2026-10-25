@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export function Footer() {
 	return (
-		<footer className="py-12 px-6 border-t border-white/[0.06] relative z-10">
+		<footer className="border-t border-rule px-6 py-14">
 			<div className="max-w-6xl mx-auto">
 				<div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8">
 					<div className="md:col-span-2 flex flex-col h-full">
@@ -15,7 +15,7 @@ export function Footer() {
 								height={20}
 								className="w-5 h-5 object-contain"
 							/>
-							<span className="text-xl font-bold text-paper tracking-tighter">
+							<span className="text-xl font-bold tracking-[-0.03em] text-paper">
 								Rogen
 							</span>
 						</div>
@@ -34,7 +34,7 @@ export function Footer() {
 							<li>
 								<Link
 									href="/docs/v2"
-									className="text-stone-500 hover:text-paper transition-colors duration-300"
+									className="text-stone-500 hover:text-paper transition-colors duration-200"
 								>
 									Docs
 								</Link>
@@ -42,7 +42,7 @@ export function Footer() {
 							<li>
 								<Link
 									href="/docs/v2/installation"
-									className="text-stone-500 hover:text-paper transition-colors duration-300"
+									className="text-stone-500 hover:text-paper transition-colors duration-200"
 								>
 									Quick Start
 								</Link>
@@ -50,7 +50,7 @@ export function Footer() {
 							<li>
 								<Link
 									href="/docs/v2/architectures"
-									className="text-stone-500 hover:text-paper transition-colors duration-300"
+									className="text-stone-500 hover:text-paper transition-colors duration-200"
 								>
 									Architectures
 								</Link>
@@ -68,7 +68,7 @@ export function Footer() {
 									href="https://github.com/LDGerrits/rogen"
 									target="_blank"
 									rel="noopener noreferrer"
-									className="text-stone-500 hover:text-paper transition-colors duration-300"
+									className="text-stone-500 hover:text-paper transition-colors duration-200"
 								>
 									GitHub
 								</a>
@@ -78,7 +78,7 @@ export function Footer() {
 									href="https://discord.com/channels/385151591524597761/1503801029232295996"
 									target="_blank"
 									rel="noopener noreferrer"
-									className="text-stone-500 hover:text-paper transition-colors duration-300"
+									className="text-stone-500 hover:text-paper transition-colors duration-200"
 								>
 									Discord
 								</a>
@@ -88,7 +88,7 @@ export function Footer() {
 									href="https://devforum.roblox.com/t/rogen-feature-based-folder-structures-with-rojo-an-automatic-tool-for-luau-and-roblox-ts/4625829?u=clinkety"
 									target="_blank"
 									rel="noopener noreferrer"
-									className="text-stone-500 hover:text-paper transition-colors duration-300"
+									className="text-stone-500 hover:text-paper transition-colors duration-200"
 								>
 									DevForum
 								</a>

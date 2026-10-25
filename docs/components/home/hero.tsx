@@ -1,81 +1,143 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { FaFileCode } from "react-icons/fa";
+import { Fragment } from "react";
+import { FaFileCode, FaFolderOpen } from "react-icons/fa";
 import { SiTypescript } from "react-icons/si";
 import { InstallCommand } from "./install-command";
 import { easeOutExpo } from "./reveal";
 
+const routed: readonly (readonly [string, string, string])[] = [
+	[
+		"InventoryService@Server.luau",
+		"ServerScriptService",
+		"/Inventory/InventoryService",
+	],
+	[
+		"InventoryController@Client.luau",
+		"StarterPlayer",
+		"/StarterPlayerScripts/Inventory/InventoryController",
+	],
+	["ItemCatalog.luau", "ReplicatedStorage", "/Shared/Inventory/ItemCatalog"],
+];
+
+function FileName({ name }: { name: string }) {
+	const parts = /^(.+)(@\w+)(\.\w+)$/.exec(name);
+	if (!parts) return name;
+	return (
+		<>
+			{parts[1]}
+			<span className="text-brand">{parts[2]}</span>
+			{parts[3]}
+		</>
+	);
+}
+
+function Path({ path }: { path: string }) {
+	return path.split("/").map((part, i) => (
+		<Fragment key={i}>
+			{i > 0 && (
+				<>
+					/<wbr />
+				</>
+			)}
+			{part}
+		</Fragment>
+	));
+}
+
+function RouteList() {
+	return (
+		<div className="rounded-[4px] border border-rule bg-ink-raised font-mono text-[13px]">
+			<div className="flex items-center gap-2.5 border-b border-rule px-5 py-3 text-stone-400">
+				<FaFolderOpen className="text-stone-500" />
+				src/Inventory
+			</div>
+			<ul>
+				{routed.map(([file, service, rest]) => (
+					<li
+						key={file}
+						className="border-b border-rule px-5 py-4 last:border-b-0 sm:whitespace-nowrap"
+					>
+						<div className="text-paper">
+							<FileName name={file} />
+						</div>
+						<div className="mt-1 text-stone-500">
+							<span className="select-none text-stone-600">
+								→{" "}
+							</span>
+							<span className="text-stone-300">{service}</span>
+							<Path path={rest} />
+						</div>
+					</li>
+				))}
+			</ul>
+		</div>
+	);
+}
+
 export function Hero() {
 	const reduced = useReducedMotion();
 	const item = {
-		hidden: reduced ? {} : { opacity: 0, y: 30, filter: "blur(8px)" },
+		hidden: reduced ? {} : { opacity: 0, y: 14 },
 		visible: {
 			opacity: 1,
 			y: 0,
-			filter: "blur(0px)",
-			transition: { duration: 0.8, ease: easeOutExpo },
+			transition: { duration: 0.7, ease: easeOutExpo },
 		},
 	};
 
 	return (
-		<section className="relative isolate flex min-h-[calc(100dvh-3.5rem)] flex-col px-6 pt-20 pb-14 md:pt-28 md:pb-20">
-			<div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_60%_50%_at_20%_35%,rgb(255_248_240/0.06),transparent_70%)]" />
-			<div className="pointer-events-none absolute -top-40 right-0 -z-10 h-[36rem] w-[36rem] rounded-full bg-brand opacity-[0.07] blur-[140px]" />
-
+		<section className="border-b border-rule px-6 pt-20 pb-20 md:pt-28 md:pb-24">
 			<motion.div
-				className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-between gap-16"
+				className="mx-auto w-full max-w-6xl"
 				initial="hidden"
 				animate="visible"
-				transition={{ staggerChildren: 0.12, delayChildren: 0.1 }}
+				transition={{ staggerChildren: 0.08 }}
 			>
 				<motion.p
 					variants={item}
-					className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.18em] text-stone-500"
+					className="text-lg font-medium text-stone-400 md:text-xl"
 				>
-					<span className="size-1.5 rounded-full bg-brand" />
 					Rojo with file-system routing
 				</motion.p>
 
 				<motion.h1
 					variants={item}
-					className="text-[clamp(3rem,7.6vw,7.5rem)] font-semibold leading-[0.92] tracking-[-0.045em] text-paper"
+					className="mt-5 text-[clamp(3rem,7.4vw,7.25rem)] leading-[0.94] font-bold tracking-[-0.045em] text-paper"
 				>
 					Professional-grade
-					<br />
-					<span className="text-stone-400">architecture</span> for
-					Roblox
+					<br className="hidden md:block" /> architecture for Roblox
 				</motion.h1>
 
-				<div className="grid gap-10 md:grid-cols-12 md:items-end">
-					<motion.div
-						variants={item}
-						className="order-2 flex items-center gap-5 font-mono text-xs uppercase tracking-[0.14em] text-stone-500 md:order-1 md:col-span-5"
-					>
-						<span className="flex items-center gap-2">
-							<FaFileCode className="text-stone-400" />
-							Luau
-						</span>
-						<span className="h-3 w-px bg-white/10" />
-						<span className="flex items-center gap-2">
-							<SiTypescript className="text-stone-400" />
-							roblox-ts
-						</span>
-					</motion.div>
-
-					<motion.div
-						variants={item}
-						className="order-1 flex flex-col items-start gap-8 md:order-2 md:col-span-6 md:col-start-7"
-					>
-						<p className="max-w-[44ch] text-lg leading-relaxed text-stone-400 md:text-xl">
+				<motion.div
+					variants={item}
+					className="mt-16 grid gap-12 border-t border-rule pt-12 md:mt-20 lg:grid-cols-12 lg:gap-8"
+				>
+					<div className="flex flex-col items-start gap-10 lg:col-span-5">
+						<p className="max-w-[40ch] text-lg leading-relaxed text-stone-400">
 							Rogen is a superset of Rojo that generates Rojo
 							project files from your folders. You organize your
 							game by feature, and Rogen puts each file in the
 							right place.
 						</p>
 						<InstallCommand />
-					</motion.div>
-				</div>
+						<div className="flex items-center gap-5 text-sm text-stone-500">
+							<span className="flex items-center gap-2">
+								<FaFileCode />
+								Luau
+							</span>
+							<span className="flex items-center gap-2">
+								<SiTypescript />
+								roblox-ts
+							</span>
+						</div>
+					</div>
+
+					<div className="min-w-0 lg:col-span-7 lg:col-start-6">
+						<RouteList />
+					</div>
+				</motion.div>
 			</motion.div>
 		</section>
 	);

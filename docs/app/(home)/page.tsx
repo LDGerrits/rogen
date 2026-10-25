@@ -8,8 +8,7 @@ import { Testimonials } from "@/components/home/testimonials";
 
 export default function HomePage() {
 	return (
-		<div className="relative min-h-screen w-full overflow-hidden bg-ink font-sans text-stone-300">
-			<div className="grain" aria-hidden />
+		<div className="relative min-h-screen w-full overflow-hidden bg-ink text-stone-300">
 			<Hero />
 			<Features />
 			<Routing />

@@ -208,12 +208,10 @@ function Panel({
 	rows: Row[];
 }) {
 	return (
-		<div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.07] bg-ink">
-			<div className="flex items-center gap-3 border-b border-white/[0.06] px-5 py-3.5">
-				<Icon className="text-sm text-stone-500" />
-				<span className="font-mono text-[11px] uppercase tracking-[0.16em] text-stone-500">
-					{title}
-				</span>
+		<div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[4px] border border-rule bg-ink">
+			<div className="flex items-center gap-2.5 border-b border-rule px-5 py-3 text-[13px] text-stone-400">
+				<Icon className="text-stone-500" />
+				{title}
 			</div>
 			<div className="overflow-x-auto whitespace-nowrap p-6 font-mono text-[13px] leading-7 text-stone-400">
 				<Tree rows={rows} />
@@ -224,8 +222,8 @@ function Panel({
 
 function Config() {
 	return (
-		<div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-ink">
-			<div className="border-b border-white/[0.06] px-5 py-3.5 font-mono text-[11px] uppercase tracking-[0.16em] text-stone-500">
+		<div className="overflow-hidden rounded-[4px] border border-rule bg-ink">
+			<div className="border-b border-rule px-5 py-3 font-mono text-[12.5px] text-stone-400">
 				default.rogen.json
 			</div>
 			<pre className="overflow-x-auto p-6 font-mono text-[12.5px] leading-6 text-stone-500">
@@ -261,12 +259,12 @@ export function Routing() {
 	return (
 		<section
 			id="routing"
-			className="relative border-y border-white/[0.06] bg-ink-raised px-6 py-24 lg:py-32"
+			className="border-y border-rule bg-ink-raised px-6 py-24 lg:py-32"
 		>
 			<div className="mx-auto max-w-6xl">
 				<div className="mb-14 grid gap-10 lg:grid-cols-12 lg:items-center">
 					<Reveal className="flex min-w-0 flex-col items-start text-left lg:col-span-5">
-						<h2 className="text-3xl font-semibold tracking-[-0.03em] text-paper md:text-5xl">
+						<h2 className="text-4xl leading-[1] font-bold tracking-[-0.04em] text-paper md:text-6xl">
 							How routing works
 						</h2>
 						<p className="mt-5 max-w-md text-lg leading-relaxed text-stone-400">
@@ -306,15 +304,15 @@ export function Routing() {
 				</div>
 
 				<Reveal>
-					<div className="mb-5 inline-flex flex-wrap gap-1 rounded-full border border-white/[0.07] bg-ink p-1">
+					<div className="mb-6 flex flex-wrap gap-7 border-b border-rule">
 						{(Object.keys(views) as ViewState[]).map((id) => (
 							<button
 								key={id}
 								onClick={() => setActiveView(id)}
-								className={`rounded-full px-5 py-2.5 text-sm font-medium transition-colors duration-300 ${
+								className={`-mb-px border-b-2 pb-3 font-medium transition-colors duration-200 ${
 									activeView === id
-										? "bg-paper text-ink"
-										: "text-stone-500 hover:text-paper"
+										? "border-paper text-paper"
+										: "border-transparent text-stone-500 hover:text-stone-300"
 								}`}
 							>
 								{views[id].label}
@@ -332,8 +330,8 @@ export function Routing() {
 							title="File system"
 							rows={view.disk}
 						/>
-						<div className="flex items-center justify-center text-stone-600 md:px-5">
-							<span className="rotate-90 font-mono text-lg md:rotate-0">
+						<div className="flex items-center justify-center text-stone-600 md:px-4">
+							<span className="rotate-90 text-lg md:rotate-0">
 								→
 							</span>
 						</div>
@@ -346,10 +344,10 @@ export function Routing() {
 
 					<Link
 						href="/docs/v2/core-concepts/routing"
-						className="group mt-10 inline-flex items-center gap-1.5 text-sm font-medium text-stone-400 transition-colors duration-300 hover:text-paper"
+						className="group mt-10 inline-flex items-center gap-1.5 text-sm font-medium text-stone-300 underline decoration-transparent underline-offset-4 transition-colors duration-200 hover:text-paper hover:decoration-stone-500"
 					>
 						Read the routing guide
-						<span className="transition-transform duration-500 ease-out-expo group-hover:translate-x-1">
+						<span className="transition-transform duration-300 ease-out-expo group-hover:translate-x-0.5">
 							→
 						</span>
 					</Link>
