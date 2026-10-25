@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Reveal } from "./reveal";
 import { useState } from "react";
 import type { IconType } from "react-icons";
 import {
@@ -36,26 +37,34 @@ interface Row {
 
 const rowStyles: Record<
 	Row["kind"],
-	{ icon: IconType; iconClass: string; textClass?: string; dim?: boolean }
+	{ icon: IconType; iconClass: string; textClass?: string }
 > = {
-	root: { icon: FaFolder, iconClass: "text-gray-600" },
+	root: { icon: FaFolder, iconClass: "text-stone-600" },
 	feature: {
 		icon: FaFolderOpen,
-		iconClass: "text-white",
-		textClass: "text-white font-medium",
+		iconClass: "text-paper",
+		textClass: "text-paper font-medium",
 	},
-	routing: { icon: FaFolder, iconClass: "text-gray-500", dim: true },
-	script: { icon: FaFileCode, iconClass: "text-white" },
-	marker: { icon: FaFileAlt, iconClass: "text-gray-500", dim: true },
-	replicated: { icon: FaBox, iconClass: "text-gray-600" },
-	server: { icon: FaServer, iconClass: "text-gray-600" },
-	player: { icon: FaUser, iconClass: "text-gray-600" },
+	routing: {
+		icon: FaFolder,
+		iconClass: "text-brand/70",
+		textClass: "text-brand",
+	},
+	script: { icon: FaFileCode, iconClass: "text-stone-400" },
+	marker: {
+		icon: FaFileAlt,
+		iconClass: "text-brand/70",
+		textClass: "text-brand",
+	},
+	replicated: { icon: FaBox, iconClass: "text-stone-600" },
+	server: { icon: FaServer, iconClass: "text-stone-600" },
+	player: { icon: FaUser, iconClass: "text-stone-600" },
 	folder: {
 		icon: FaFolder,
-		iconClass: "text-white",
-		textClass: "text-white font-medium",
+		iconClass: "text-paper",
+		textClass: "text-paper font-medium",
 	},
-	instance: { icon: FaFileAlt, iconClass: "text-gray-400" },
+	instance: { icon: FaFileAlt, iconClass: "text-stone-500" },
 };
 
 function studioTree(
@@ -161,6 +170,19 @@ const views: Record<
 	},
 };
 
+function Name({ row, className }: { row: Row; className?: string }) {
+	const parts =
+		row.kind === "script" ? /^(.+)(@\w+)(\.\w+)$/.exec(row.name) : null;
+	if (!parts) return <span className={className}>{row.name}</span>;
+	return (
+		<span className={className}>
+			{parts[1]}
+			<span className="text-brand">{parts[2]}</span>
+			{parts[3]}
+		</span>
+	);
+}
+
 function Tree({ rows }: { rows: Row[] }) {
 	return (
 		<>
@@ -170,15 +192,39 @@ function Tree({ rows }: { rows: Row[] }) {
 				return (
 					<div
 						key={i}
-						className={`flex items-center gap-2 ${style.dim ? "opacity-50" : ""} ${row.mt ? "mt-3" : ""}`}
-						style={{ marginLeft: `${row.level * 16}px` }}
+						className={`flex items-center gap-2.5 ${row.mt ? "mt-3" : ""}`}
+						style={{ marginLeft: `${row.level * 18}px` }}
 					>
-						<Icon className={style.iconClass} />{" "}
-						<span className={style.textClass}>{row.name}</span>
+						<Icon className={style.iconClass} />
+						<Name row={row} className={style.textClass} />
 					</div>
 				);
 			})}
 		</>
+	);
+}
+
+function Panel({
+	icon: Icon,
+	title,
+	rows,
+}: {
+	icon: IconType;
+	title: string;
+	rows: Row[];
+}) {
+	return (
+		<div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.07] bg-ink">
+			<div className="flex items-center gap-3 border-b border-white/[0.06] px-5 py-3.5">
+				<Icon className="text-sm text-stone-500" />
+				<span className="font-mono text-[11px] uppercase tracking-[0.16em] text-stone-500">
+					{title}
+				</span>
+			</div>
+			<div className="min-h-80 overflow-x-auto whitespace-nowrap p-6 font-mono text-[13px] leading-8 text-stone-400">
+				<Tree rows={rows} />
+			</div>
+		</div>
 	);
 }
 
@@ -187,97 +233,81 @@ export function Routing() {
 	const view = views[activeView];
 
 	return (
-		<section id="routing" className="py-24 px-6 relative">
-			<div className="max-w-6xl mx-auto relative z-10">
-				<div className="absolute top-20 left-30 w-100 h-100 bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
-
-				<div className="flex flex-col items-start text-left mb-12">
-					<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+		<section
+			id="routing"
+			className="relative border-y border-white/[0.06] bg-ink-raised px-6 py-24 lg:py-32"
+		>
+			<div className="mx-auto max-w-6xl">
+				<Reveal className="mb-12 flex flex-col items-start text-left">
+					<h2 className="text-3xl font-semibold tracking-[-0.03em] text-paper md:text-5xl">
 						How routing works
 					</h2>
-					<p className="text-gray-400 max-w-xl tracking-tight text-lg">
+					<p className="mt-5 max-w-xl text-lg leading-relaxed text-stone-400">
 						Declare routes such as{" "}
-						<code className="text-gray-300">Server</code> and{" "}
-						<code className="text-gray-300">Client</code> in{" "}
-						<code className="text-gray-300">
+						<code className="font-mono text-[0.9em] text-stone-200">
+							Server
+						</code>{" "}
+						and{" "}
+						<code className="font-mono text-[0.9em] text-stone-200">
+							Client
+						</code>{" "}
+						in{" "}
+						<code className="font-mono text-[0.9em] text-stone-200">
 							default.rogen.json
 						</code>
 						, then name a folder or a file after one.
 					</p>
-				</div>
+				</Reveal>
 
-				<div className="w-full flex justify-start mb-4 relative z-20">
-					<div className="flex p-1 bg-[#0a0a0a] border border-white/10 rounded-lg shadow-2xl backdrop-blur-md">
+				<Reveal>
+					<div className="mb-5 inline-flex flex-wrap gap-1 rounded-full border border-white/[0.07] bg-ink p-1">
 						{(Object.keys(views) as ViewState[]).map((id) => (
 							<button
 								key={id}
 								onClick={() => setActiveView(id)}
-								className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+								className={`rounded-full px-5 py-2.5 text-sm font-medium transition-colors duration-300 ${
 									activeView === id
-										? "bg-white/10 text-white shadow-sm"
-										: "text-gray-500 hover:text-gray-300 hover:bg-white/5"
+										? "bg-paper text-ink"
+										: "text-stone-500 hover:text-paper"
 								}`}
 							>
 								{views[id].label}
 							</button>
 						))}
 					</div>
-				</div>
 
-				<p className="text-gray-400 text-sm leading-relaxed max-w-2xl mb-8 min-h-12">
-					{view.desc}
-				</p>
+					<p className="mb-8 min-h-12 max-w-2xl text-[15px] leading-relaxed text-stone-400">
+						{view.desc}
+					</p>
 
-				<div className="w-full flex flex-col md:flex-row items-stretch justify-start gap-4 relative text-left">
-					<div className="flex-1 bg-[#050505] rounded-xl border border-white/10 overflow-hidden z-10 flex flex-col shadow-2xl">
-						<div className="bg-[#0a0a0a] px-4 py-3 flex items-center gap-3 border-b border-white/10">
-							<FaTerminal className="text-gray-500 text-sm" />
-							<span className="text-xs font-mono text-gray-400 tracking-wide uppercase">
-								File System
+					<div className="flex flex-col items-stretch gap-3 md:flex-row md:gap-0">
+						<Panel
+							icon={FaTerminal}
+							title="File system"
+							rows={view.disk}
+						/>
+						<div className="flex items-center justify-center text-stone-600 md:px-5">
+							<span className="rotate-90 font-mono text-lg md:rotate-0">
+								→
 							</span>
 						</div>
-						<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto min-h-80">
-							<Tree rows={view.disk} />
-						</div>
+						<Panel
+							icon={SiRoblox}
+							title="Roblox Studio"
+							rows={view.studio}
+						/>
 					</div>
 
-					<div className="flex items-center justify-center z-20 py-4 md:py-0 px-4 md:px-6">
-						<svg
-							className="text-gray-500 md:rotate-0 rotate-90"
-							fill="none"
-							height="32"
-							shapeRendering="geometricPrecision"
-							stroke="currentColor"
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							strokeWidth="1"
-							viewBox="0 0 24 24"
-							width="32"
-						>
-							<path d="M5 12h14"></path>
-							<path d="M12 5l7 7-7 7"></path>
-						</svg>
-					</div>
-
-					<div className="flex-1 bg-[#050505] rounded-xl border border-white/10 overflow-hidden z-10 flex flex-col shadow-2xl">
-						<div className="bg-[#0a0a0a] px-4 py-3 flex items-center gap-3 border-b border-white/10">
-							<SiRoblox className="text-gray-400 text-sm" />
-							<span className="text-xs font-mono text-gray-400 tracking-wide uppercase">
-								Roblox Studio
-							</span>
-						</div>
-						<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto min-h-80">
-							<Tree rows={view.studio} />
-						</div>
-					</div>
-				</div>
-
-				<Link
-					href="/docs/v2/core-concepts/routing"
-					className="mt-10 text-gray-400 hover:text-white transition-colors text-sm font-medium inline-flex items-center gap-1"
-				>
-					Read how routing works <span className="font-serif">→</span>
-				</Link>
+					<Link
+						href="/docs/v2/core-concepts/routing"
+						className="group mt-10 inline-flex items-center gap-1.5 text-sm font-medium text-stone-400 transition-colors duration-300 hover:text-paper"
+					>
+						Read how routing works
+						<span className="transition-transform duration-500 ease-out-expo group-hover:translate-x-1">
+							→
+						</span>
+					</Link>
+				</Reveal>
 			</div>
 		</section>
 	);

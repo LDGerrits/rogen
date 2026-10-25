@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export function Footer() {
 	return (
-		<footer className="py-12 px-6 border-t border-white/5 relative z-10">
+		<footer className="py-12 px-6 border-t border-white/[0.06] relative z-10">
 			<div className="max-w-6xl mx-auto">
 				<div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8">
 					<div className="md:col-span-2 flex flex-col h-full">
@@ -15,26 +15,26 @@ export function Footer() {
 								height={20}
 								className="w-5 h-5 object-contain"
 							/>
-							<span className="text-xl font-bold text-white tracking-tighter">
+							<span className="text-xl font-bold text-paper tracking-tighter">
 								Rogen
 							</span>
 						</div>
 						<div className="mt-auto pt-6">
-							<p className="text-gray-600 text-xs">
+							<p className="text-stone-600 text-xs">
 								{new Date().getFullYear()} L.D. Gerrits
 							</p>
 						</div>
 					</div>
 
 					<div>
-						<h4 className="text-white font-medium mb-4 text-sm">
+						<h4 className="text-paper font-medium mb-4 text-sm">
 							Resources
 						</h4>
 						<ul className="space-y-3 text-sm">
 							<li>
 								<Link
 									href="/docs/v2"
-									className="text-gray-500 hover:text-white transition-colors"
+									className="text-stone-500 hover:text-paper transition-colors duration-300"
 								>
 									Docs
 								</Link>
@@ -42,7 +42,7 @@ export function Footer() {
 							<li>
 								<Link
 									href="/docs/v2/installation"
-									className="text-gray-500 hover:text-white transition-colors"
+									className="text-stone-500 hover:text-paper transition-colors duration-300"
 								>
 									Quick Start
 								</Link>
@@ -50,7 +50,7 @@ export function Footer() {
 							<li>
 								<Link
 									href="/docs/v2/architectures"
-									className="text-gray-500 hover:text-white transition-colors"
+									className="text-stone-500 hover:text-paper transition-colors duration-300"
 								>
 									Architectures
 								</Link>
@@ -59,7 +59,7 @@ export function Footer() {
 					</div>
 
 					<div>
-						<h4 className="text-white font-medium mb-4 text-sm">
+						<h4 className="text-paper font-medium mb-4 text-sm">
 							Links
 						</h4>
 						<ul className="space-y-3 text-sm">
@@ -68,7 +68,7 @@ export function Footer() {
 									href="https://github.com/LDGerrits/rogen"
 									target="_blank"
 									rel="noopener noreferrer"
-									className="text-gray-500 hover:text-white transition-colors"
+									className="text-stone-500 hover:text-paper transition-colors duration-300"
 								>
 									GitHub
 								</a>
@@ -78,7 +78,7 @@ export function Footer() {
 									href="https://discord.com/channels/385151591524597761/1503801029232295996"
 									target="_blank"
 									rel="noopener noreferrer"
-									className="text-gray-500 hover:text-white transition-colors"
+									className="text-stone-500 hover:text-paper transition-colors duration-300"
 								>
 									Discord
 								</a>
@@ -88,7 +88,7 @@ export function Footer() {
 									href="https://devforum.roblox.com/t/rogen-feature-based-folder-structures-with-rojo-an-automatic-tool-for-luau-and-roblox-ts/4625829?u=clinkety"
 									target="_blank"
 									rel="noopener noreferrer"
-									className="text-gray-500 hover:text-white transition-colors"
+									className="text-stone-500 hover:text-paper transition-colors duration-300"
 								>
 									DevForum
 								</a>

@@ -23,7 +23,7 @@ export function PreviewArrow() {
 	return (
 		<div className="flex items-center justify-center z-20 py-4 md:py-0 px-2 md:px-6">
 			<svg
-				className="text-gray-500 md:rotate-0 rotate-90"
+				className="text-stone-500 md:rotate-0 rotate-90"
 				fill="none"
 				height="32"
 				stroke="currentColor"
@@ -42,14 +42,14 @@ export function PreviewArrow() {
 
 export function SystemWindow({ children }: { children: ReactNode }) {
 	return (
-		<div className="flex-1 bg-[#050505] rounded-xl border border-white/10 overflow-hidden flex flex-col shadow-2xl transition-all">
-			<div className="bg-[#0a0a0a] px-4 py-3 flex items-center gap-3 border-b border-white/10">
-				<FaTerminal className="text-gray-500 text-sm" />
-				<span className="text-xs font-mono text-gray-400 tracking-wide uppercase">
+		<div className="flex-1 bg-ink rounded-2xl border border-white/[0.07] overflow-hidden flex flex-col">
+			<div className="bg-ink-raised px-5 py-3.5 flex items-center gap-3 border-b border-white/[0.06]">
+				<FaTerminal className="text-stone-500 text-sm" />
+				<span className="text-[11px] font-mono text-stone-500 tracking-[0.16em] uppercase">
 					File System
 				</span>
 			</div>
-			<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto min-h-30">
+			<div className="p-6 font-mono text-sm leading-8 text-stone-400 whitespace-nowrap overflow-x-auto min-h-30">
 				{children}
 			</div>
 		</div>
@@ -58,14 +58,14 @@ export function SystemWindow({ children }: { children: ReactNode }) {
 
 export function StudioWindow({ children }: { children: ReactNode }) {
 	return (
-		<div className="flex-1 bg-[#050505] rounded-xl border border-white/10 overflow-hidden flex flex-col shadow-2xl transition-all">
-			<div className="bg-[#0a0a0a] px-4 py-3 flex items-center gap-3 border-b border-white/10">
-				<SiRoblox className="text-gray-400 text-sm" />
-				<span className="text-xs font-mono text-gray-400 tracking-wide uppercase">
+		<div className="flex-1 bg-ink rounded-2xl border border-white/[0.07] overflow-hidden flex flex-col">
+			<div className="bg-ink-raised px-5 py-3.5 flex items-center gap-3 border-b border-white/[0.06]">
+				<SiRoblox className="text-stone-400 text-sm" />
+				<span className="text-[11px] font-mono text-stone-500 tracking-[0.16em] uppercase">
 					Roblox Studio
 				</span>
 			</div>
-			<div className="p-6 font-mono text-sm leading-8 text-gray-400 whitespace-nowrap overflow-x-auto min-h-30">
+			<div className="p-6 font-mono text-sm leading-8 text-stone-400 whitespace-nowrap overflow-x-auto min-h-30">
 				{children}
 			</div>
 		</div>
@@ -91,11 +91,11 @@ export function TreeFolder({
 			style={{ marginLeft: `${level * 16}px` }}
 		>
 			{open ? (
-				<FaFolderOpen className="text-white" />
+				<FaFolderOpen className="text-paper" />
 			) : (
-				<FaFolder className="text-gray-600" />
+				<FaFolder className="text-stone-600" />
 			)}
-			<span className={highlight ? "text-white font-medium" : ""}>
+			<span className={highlight ? "text-paper font-medium" : ""}>
 				{name}
 			</span>
 		</div>
@@ -117,11 +117,11 @@ export function TreeFile({
 			style={{ marginLeft: `${level * 16}px` }}
 		>
 			{marker ? (
-				<FaFileAlt className="text-gray-500" />
+				<FaFileAlt className="text-stone-500" />
 			) : (
-				<FaFileCode className="text-white" />
+				<FaFileCode className="text-paper" />
 			)}
-			<span className={marker ? "text-gray-400" : "text-gray-300"}>
+			<span className={marker ? "text-stone-400" : "text-stone-300"}>
 				{name}
 			</span>
 		</div>
@@ -148,7 +148,7 @@ export function TreeService({
 			className={`flex items-center gap-2 ${mt ? "mt-3" : ""}`}
 			style={{ marginLeft: `${level * 16}px` }}
 		>
-			<Icon className="text-gray-600" />
+			<Icon className="text-stone-600" />
 			<span>{name}</span>
 		</div>
 	);
@@ -166,8 +166,8 @@ export function StudioFile({
 			className={`flex items-center gap-2`}
 			style={{ marginLeft: `${level * 16}px` }}
 		>
-			<FaFileAlt className="text-gray-400" />
-			<span className="text-gray-400">{name}</span>
+			<FaFileAlt className="text-stone-400" />
+			<span className="text-stone-400">{name}</span>
 		</div>
 	);
 }

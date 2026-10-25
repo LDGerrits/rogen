@@ -1,17 +1,23 @@
 import { RootProvider } from "fumadocs-ui/provider/next";
 import "./global.css";
-import { Inter } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 
-const inter = Inter({
+const geistSans = Geist({
 	subsets: ["latin"],
+	variable: "--font-geist-sans",
+});
+
+const geistMono = Geist_Mono({
+	subsets: ["latin"],
+	variable: "--font-geist-mono",
 });
 
 export default function Layout({ children }: LayoutProps<"/">) {
 	return (
 		<html
 			lang="en"
-			className={`${inter.className} dark`}
+			className={`${geistSans.variable} ${geistMono.variable} dark`}
 			suppressHydrationWarning
 		>
 			<body className="flex flex-col min-h-screen">

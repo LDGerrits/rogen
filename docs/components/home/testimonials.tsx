@@ -1,63 +1,78 @@
-import { FaQuoteLeft } from "react-icons/fa";
+import { Reveal } from "./reveal";
+
+interface Testimonial {
+	readonly quote: string;
+	readonly author: string;
+	readonly role: string;
+	readonly company: string;
+	readonly url: string;
+}
+
+const featured: Testimonial = {
+	quote: "Spent the last couple days refactoring Lua Learning to use Rogen. I love it",
+	author: "Zack (boatbomber) Williams",
+	role: "CEO",
+	company: "Torpedo Software",
+	url: "https://www.torpedosoftware.llc",
+};
+
+const secondary: Testimonial = {
+	quote: "It has been a game changer for my team and I",
+	author: "Acecateer",
+	role: "Technical Director",
+	company: "Wonder Works Studio",
+	url: "https://wonderworks.gg",
+};
+
+function Attribution({ testimonial }: { testimonial: Testimonial }) {
+	return (
+		<figcaption className="mt-8 text-sm">
+			<div className="font-medium text-paper">{testimonial.author}</div>
+			<div className="mt-1 text-stone-500">
+				{testimonial.role},{" "}
+				<a
+					href={testimonial.url}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="underline decoration-white/20 underline-offset-4 transition-colors duration-300 hover:text-paper hover:decoration-brand"
+				>
+					{testimonial.company}
+				</a>
+			</div>
+		</figcaption>
+	);
+}
 
 export function Testimonials() {
 	return (
-		<section className="py-24 px-6 relative">
-			<div className="max-w-6xl mx-auto relative z-10">
-				<div className="absolute top-20 left-30 w-100 h-100 bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
-
-				<div className="flex flex-col items-start text-left mb-16">
-					<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+		<section className="relative px-6 pt-8 pb-24 lg:pt-12 lg:pb-32">
+			<div className="mx-auto max-w-6xl">
+				<Reveal className="mb-14 flex flex-col items-start text-left">
+					<h2 className="font-mono text-xs uppercase tracking-[0.18em] text-stone-500">
 						Top developers use Rogen
 					</h2>
-					<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-						Here&apos;s what they have to say.
-					</p>
-				</div>
+				</Reveal>
 
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left">
-					{[
-						{
-							quote: "It has been a game changer for my team and I",
-							author: "Acecateer",
-							role: "Technical Director",
-							company: "Wonder Works Studio",
-							url: "https://wonderworks.gg",
-						},
-						{
-							quote: "Spent the last couple days refactoring Lua Learning to use Rogen. I love it",
-							author: "Zack (boatbomber) Williams",
-							role: "CEO",
-							company: "Torpedo Software",
-							url: "https://www.torpedosoftware.llc",
-						},
-					].map((testimonial, i) => (
-						<div
-							key={i}
-							className="p-8 rounded-xl glass-card flex flex-col items-start justify-between border-l-2 hover:border-l-white border-l-transparent cursor-default"
-						>
-							<FaQuoteLeft className="text-white/10 text-xl mb-4" />
-							<p className="text-gray-300 text-[15px] mb-8 leading-relaxed">
-								&quot;{testimonial.quote}&quot;
-							</p>
-							<div>
-								<div className="text-white font-medium text-sm">
-									{testimonial.author}
-								</div>
-								<div className="text-gray-500 text-xs mt-1">
-									{testimonial.role},{" "}
-									<a
-										href={testimonial.url}
-										target="_blank"
-										rel="noopener noreferrer"
-										className="underline decoration-white/20 underline-offset-2 hover:text-white hover:decoration-white/60 transition-colors"
-									>
-										{testimonial.company}
-									</a>
-								</div>
-							</div>
-						</div>
-					))}
+				<div className="grid gap-14 lg:grid-cols-12 lg:items-end lg:gap-8">
+					<Reveal className="lg:col-span-8">
+						<figure>
+							<blockquote className="text-3xl font-medium leading-[1.15] tracking-[-0.03em] text-paper md:text-5xl">
+								<span className="text-brand">“</span>
+								{featured.quote}
+								<span className="text-brand">”</span>
+							</blockquote>
+							<Attribution testimonial={featured} />
+						</figure>
+					</Reveal>
+
+					<Reveal className="lg:col-span-4" delay={0.1}>
+						<figure className="border-l border-white/10 pl-8">
+							<blockquote className="text-xl leading-snug tracking-[-0.015em] text-stone-300">
+								“{secondary.quote}”
+							</blockquote>
+							<Attribution testimonial={secondary} />
+						</figure>
+					</Reveal>
 				</div>
 			</div>
 		</section>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { FaCopy } from "react-icons/fa";
+import { Reveal } from "./reveal";
 
 const installs = [
 	{
@@ -27,45 +28,56 @@ export function Cta() {
 	};
 
 	return (
-		<section className="py-24 px-6">
-			<div className="max-w-4xl mx-auto text-center relative flex flex-col items-center">
-				<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+		<section className="relative isolate overflow-hidden border-t border-white/[0.06] px-6 py-28 lg:py-40">
+			<div className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-[32rem] bg-[radial-gradient(ellipse_50%_60%_at_50%_100%,rgb(240_105_58/0.12),transparent_70%)]" />
+
+			<Reveal className="mx-auto flex max-w-4xl flex-col items-center text-center">
+				<h2 className="text-5xl font-semibold leading-[0.95] tracking-[-0.045em] text-paper md:text-7xl">
 					Upgrade your codebase
 				</h2>
-				<p className="text-gray-400 mb-10 tracking-tight text-lg">
+				<p className="mt-6 mb-12 text-lg text-stone-400">
 					Install it with Rokit or npm, and{" "}
-					<code className="text-gray-300">rogen init</code> sets up
-					your project.
+					<code className="font-mono text-[0.9em] text-stone-200">
+						rogen init
+					</code>{" "}
+					sets up your project.
 				</p>
 
-				<div className="w-full flex flex-col md:flex-row items-stretch justify-center gap-4 mb-6">
+				<div className="mb-10 flex w-full flex-col items-stretch justify-center gap-4 md:flex-row">
 					{installs.map(({ id, label, lines }) => (
 						<div
 							key={id}
-							className="w-full max-w-md text-left bg-[#0a0a0a] border border-white/10 rounded-lg p-4 shadow-2xl relative group"
+							className="surface w-full max-w-md rounded-2xl text-left"
 						>
-							<div className="flex justify-between items-center mb-2">
-								<span className="text-xs text-gray-500 font-mono uppercase tracking-wider">
+							<div className="flex items-center justify-between border-b border-white/[0.06] py-2 pr-2 pl-5">
+								<span className="font-mono text-[11px] uppercase tracking-[0.16em] text-stone-500">
 									{label}
 								</span>
 								<button
 									onClick={() =>
 										handleCopy(lines.join("\n"), id)
 									}
-									className="h-8 w-16 flex items-center justify-center text-gray-500 hover:text-white transition-colors -mr-2 rounded-md hover:bg-white/10"
+									className="flex h-9 min-w-16 items-center justify-center rounded-full px-3 text-stone-500 transition-colors duration-300 hover:bg-white/[0.06] hover:text-paper"
 									title="Copy to clipboard"
 								>
 									{copiedId === id ? (
-										<span className="text-xs font-sans text-white leading-none">
+										<span className="text-xs font-medium text-paper">
 											Copied!
 										</span>
 									) : (
-										<FaCopy size={14} />
+										<FaCopy size={13} />
 									)}
 								</button>
 							</div>
-							<pre className="font-mono text-sm text-white leading-7">
-								{lines.join("\n")}
+							<pre className="p-5 font-mono text-sm leading-7 text-paper">
+								{lines.map((line) => (
+									<div key={line}>
+										<span className="select-none text-stone-600">
+											${" "}
+										</span>
+										{line}
+									</div>
+								))}
 							</pre>
 						</div>
 					))}
@@ -73,11 +85,14 @@ export function Cta() {
 
 				<Link
 					href="/docs/v2/installation"
-					className="text-gray-400 hover:text-white transition-colors text-sm font-medium flex items-center gap-1"
+					className="group inline-flex items-center gap-1.5 text-sm font-medium text-stone-400 transition-colors duration-300 hover:text-paper"
 				>
-					Read the setup guide <span className="font-serif">→</span>
+					Read the setup guide
+					<span className="transition-transform duration-500 ease-out-expo group-hover:translate-x-1">
+						→
+					</span>
 				</Link>
-			</div>
+			</Reveal>
 		</section>
 	);
 }

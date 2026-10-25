@@ -1,82 +1,200 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { FaFolder, FaShieldAlt, FaClone, FaTerminal } from "react-icons/fa";
+import { FaFolder, FaFolderOpen, FaFileCode } from "react-icons/fa";
+import { Reveal } from "./reveal";
 
-interface Reason {
-	readonly title: string;
-	readonly desc: string;
-	readonly icon: ReactNode;
-	readonly link?: { readonly href: string; readonly text: string };
+const rojoVerbs = [
+	"serve",
+	"build",
+	"sourcemap",
+	"upload",
+	"syncback",
+	"plugin",
+];
+
+const featureTree: {
+	name: string;
+	level: number;
+	kind: "feature" | "open" | "route" | "file";
+}[] = [
+	{ name: "Combat", level: 0, kind: "feature" },
+	{ name: "Inventory", level: 0, kind: "open" },
+	{ name: "Client", level: 1, kind: "route" },
+	{ name: "InventoryController.luau", level: 2, kind: "file" },
+	{ name: "Server", level: 1, kind: "route" },
+	{ name: "InventoryService.luau", level: 2, kind: "file" },
+	{ name: "Shared", level: 1, kind: "route" },
+	{ name: "InventoryTypes.luau", level: 2, kind: "file" },
+	{ name: "Shop", level: 0, kind: "feature" },
+];
+
+function CardLink({ href, children }: { href: string; children: string }) {
+	return (
+		<Link
+			href={href}
+			className="group mt-8 inline-flex items-center gap-1.5 text-sm font-medium text-stone-400 transition-colors duration-300 hover:text-paper"
+		>
+			{children}
+			<span className="transition-transform duration-500 ease-out-expo group-hover:translate-x-1">
+				→
+			</span>
+		</Link>
+	);
 }
 
-const reasons: readonly Reason[] = [
-	{
-		title: "Organize by feature",
-		desc: "Group all code, UI, and assets for a specific feature in one place. This gives you high cohesion, better scalability, fewer merge conflicts, and features that are simple to maintain or delete.",
-		icon: <FaFolder className="text-white" />,
-		link: { href: "/docs/v2/architectures", text: "Compare architectures" },
-	},
-	{
-		title: "Enforce boundaries",
-		desc: "Keep coupling low with a linter. Every path names its feature, so a lint rule can stop one feature from requiring another.",
-		icon: <FaShieldAlt className="text-white" />,
-		link: {
-			href: "/docs/v2/architectures#enforcing-the-rules",
-			text: "See the lint rule",
-		},
-	},
-	{
-		title: "Multi-place games",
-		desc: "Write shared code once and use it in every place. When one place needs something different, add a file with the same name to that place's folder, and it overwrites the shared one there.",
-		icon: <FaClone className="text-white" />,
-		link: { href: "/docs/v2/setups/places", text: "Set up places" },
-	},
-	{
-		title: "Still Rojo",
-		desc: "Rogen runs the Rojo commands you use, with the same flags. One tool, and nothing to relearn.",
-		icon: <FaTerminal className="text-white" />,
-		link: { href: "/docs/v2/coming-from-rojo", text: "Coming from Rojo" },
-	},
-];
+function Index({ n }: { n: string }) {
+	return (
+		<span className="font-mono text-xs tracking-[0.14em] text-stone-600">
+			{n}
+		</span>
+	);
+}
 
 export function Features() {
 	return (
-		<section id="features" className="py-24 px-6 relative">
-			<div className="max-w-6xl mx-auto relative z-10">
-				<div className="absolute top-20 right-55 w-100 h-100 bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 translate-x-1/2 -translate-y-1/2" />
-
-				<div className="flex flex-col items-end text-right mb-16">
-					<h2 className="text-3xl md:text-5xl font-bold text-white tracking-tight">
+		<section id="features" className="relative px-6 py-24 lg:py-32">
+			<div className="mx-auto max-w-6xl">
+				<Reveal className="mb-14 flex flex-col items-end text-right lg:mb-20">
+					<p className="mb-5 font-mono text-xs uppercase tracking-[0.18em] text-stone-500">
 						Why Rogen?
+					</p>
+					<h2 className="max-w-[16ch] text-4xl font-semibold leading-[1.02] tracking-[-0.035em] text-paper md:text-6xl">
+						One folder per feature, from server to client
 					</h2>
-				</div>
+				</Reveal>
 
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-					{reasons.map((reason, i) => (
-						<div
-							key={i}
-							className="glass-card flex flex-col items-start p-8 rounded-xl cursor-default"
-						>
-							<div className="mb-6 h-6 flex items-center justify-start text-xl w-full">
-								{reason.icon}
+				<div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
+					<Reveal className="lg:col-span-2 lg:row-span-2">
+						<div className="surface flex h-full flex-col overflow-hidden rounded-3xl md:flex-row">
+							<div className="flex flex-col p-8 md:w-1/2 md:p-10">
+								<Index n="01" />
+								<h3 className="mt-6 text-2xl font-semibold tracking-[-0.02em] text-paper md:text-3xl">
+									Organize by feature
+								</h3>
+								<p className="mt-4 grow leading-relaxed text-stone-400">
+									Group all code, UI, and assets for a
+									specific feature in one place. This gives
+									you high cohesion, better scalability, fewer
+									merge conflicts, and features that are
+									simple to maintain or delete.
+								</p>
+								<CardLink href="/docs/v2/architectures">
+									Compare architectures
+								</CardLink>
 							</div>
-							<h3 className="text-base font-semibold text-white mb-2">
-								{reason.title}
-							</h3>
-							<p className="text-gray-400 text-sm leading-relaxed grow">
-								{reason.desc}
-							</p>
-							{reason.link && (
-								<Link
-									href={reason.link.href}
-									className="mt-6 text-gray-400 hover:text-white transition-colors text-sm font-medium inline-flex items-center gap-1"
-								>
-									{reason.link.text}{" "}
-									<span className="font-serif">→</span>
-								</Link>
-							)}
+							<div className="border-t border-white/[0.06] bg-ink/60 p-8 font-mono text-[13px] leading-8 text-stone-500 md:w-1/2 md:border-t-0 md:border-l md:p-10">
+								<div className="mb-2 text-stone-600">src/</div>
+								{featureTree.map((row) => {
+									const Icon =
+										row.kind === "file"
+											? FaFileCode
+											: row.kind === "open"
+												? FaFolderOpen
+												: FaFolder;
+									return (
+										<div
+											key={`${row.level}-${row.name}`}
+											className="flex items-center gap-2 whitespace-nowrap"
+											style={{
+												paddingLeft: `${row.level * 18}px`,
+											}}
+										>
+											<Icon
+												className={
+													row.kind === "route"
+														? "text-brand/70"
+														: row.kind === "open"
+															? "text-paper"
+															: "text-stone-600"
+												}
+											/>
+											<span
+												className={
+													row.kind === "open"
+														? "text-paper"
+														: row.kind === "route"
+															? "text-stone-300"
+															: row.kind ===
+																  "file"
+																? "text-stone-400"
+																: undefined
+												}
+											>
+												{row.name}
+											</span>
+										</div>
+									);
+								})}
+							</div>
 						</div>
-					))}
+					</Reveal>
+
+					<Reveal delay={0.08}>
+						<div className="surface surface-interactive flex h-full flex-col rounded-3xl p-8">
+							<Index n="02" />
+							<h3 className="mt-6 text-xl font-semibold tracking-[-0.02em] text-paper">
+								Enforce boundaries
+							</h3>
+							<p className="mt-3 grow text-[15px] leading-relaxed text-stone-400">
+								Keep coupling low with a linter. Every path
+								names its feature, so a lint rule can stop one
+								feature from requiring another.
+							</p>
+							<CardLink href="/docs/v2/architectures#enforcing-the-rules">
+								See the lint rule
+							</CardLink>
+						</div>
+					</Reveal>
+
+					<Reveal delay={0.16}>
+						<div className="surface surface-interactive flex h-full flex-col rounded-3xl p-8">
+							<Index n="03" />
+							<h3 className="mt-6 text-xl font-semibold tracking-[-0.02em] text-paper">
+								Multi-place games
+							</h3>
+							<p className="mt-3 grow text-[15px] leading-relaxed text-stone-400">
+								Write shared code once and use it in every
+								place. When one place needs something different,
+								add a file with the same name to that
+								place&apos;s folder, and it overwrites the
+								shared one there.
+							</p>
+							<CardLink href="/docs/v2/setups/places">
+								Set up places
+							</CardLink>
+						</div>
+					</Reveal>
+
+					<Reveal className="lg:col-span-3">
+						<div className="flex flex-col gap-8 rounded-3xl border border-brand/15 bg-[linear-gradient(110deg,rgb(240_105_58/0.07),transparent_55%)] p-8 md:flex-row md:items-center md:justify-between md:p-10">
+							<div className="max-w-md">
+								<Index n="04" />
+								<h3 className="mt-6 text-xl font-semibold tracking-[-0.02em] text-paper">
+									Still Rojo
+								</h3>
+								<p className="mt-3 text-[15px] leading-relaxed text-stone-400">
+									Rogen runs the Rojo commands you use, with
+									the same flags. One tool, and nothing to
+									relearn.
+								</p>
+								<CardLink href="/docs/v2/coming-from-rojo">
+									Coming from Rojo
+								</CardLink>
+							</div>
+							<ul className="flex flex-wrap gap-2 md:max-w-sm md:justify-end">
+								{rojoVerbs.map((verb) => (
+									<li
+										key={verb}
+										className="rounded-full border border-white/[0.08] bg-ink/70 px-4 py-2 font-mono text-[13px] text-stone-300"
+									>
+										<span className="text-stone-600">
+											rogen{" "}
+										</span>
+										{verb}
+									</li>
+								))}
+							</ul>
+						</div>
+					</Reveal>
 				</div>
 			</div>
 		</section>
