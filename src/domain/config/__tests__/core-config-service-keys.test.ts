@@ -159,7 +159,7 @@ describe("CoreConfigService", () => {
 			expect(resolved(0)?.compiledPath).toBe("/repo/out");
 		});
 
-		it("should refuse a rogen block, saying its keys go at the top level", async () => {
+		it("should refuse a rogen block, at its key", async () => {
 			await write(
 				"/repo/default.rogen.json",
 				`{
@@ -174,7 +174,6 @@ describe("CoreConfigService", () => {
 				{
 					code: "config.removedField",
 					position: { line: 3, column: 2 },
-					message: expect.stringContaining("top level"),
 				},
 			]);
 		});

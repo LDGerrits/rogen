@@ -1,6 +1,6 @@
 import { failureReason } from "../../base/errors.js";
 import { JsonStructure } from "../../base/json-structure.js";
-import { JsoncNode, parse, parseJsoncSpans } from "../../base/jsonc.js";
+import { JsoncNode, parse } from "../../base/jsonc.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -17,13 +17,8 @@ export interface ConfigFile {
 	readonly model: ConfigModel;
 	/** Where the value at `section` starts in the file, for pointing a diagnostic at it. */
 	positionOf(section: ConfigSection): DiagnosticPosition | undefined;
-	/** Where the key starts in the object at `within`, the top level by default. */
-	positionOfKey(
-		key: string,
-		within?: ConfigSection
-	): DiagnosticPosition | undefined;
-	/** The text of a top-level entry, from its key to the end of its value. */
-	entryOf(key: string): string | undefined;
+	/** Where a top-level key starts. */
+	positionOfKey(key: string): DiagnosticPosition | undefined;
 }
 
 /** Why a config file didn't load: it couldn't be read at all, or what it holds is wrong. */
@@ -94,26 +89,16 @@ export class ConfigFileReader {
 			file,
 			model: new ConfigModel(value),
 			positionOf: (section) => positionIn(root, section),
-			positionOfKey: (key, within = []) => {
-				const parent = nodeAt(root, within);
+			positionOfKey: (key) => {
 				const property =
-					parent?.kind === "object"
-						? [...parent.properties]
+					root.kind === "object"
+						? [...root.properties]
 								.reverse()
 								.find(({ name }) => name === key)
 						: undefined;
 				return (
 					property && { line: property.line, column: property.column }
 				);
-			},
-			entryOf: (key) => {
-				const spans = parseJsoncSpans(text);
-				const entry = spans?.root.properties
-					?.filter(({ name }) => name === key)
-					.at(-1);
-				return spans && entry
-					? spans.text.slice(entry.start, entry.value.end)
-					: undefined;
 			},
 		});
 	}

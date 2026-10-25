@@ -1,4 +1,4 @@
-import { closestMatch } from "../../base/strings.js";
+import { closestMatch, joinedWithAnd } from "../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
@@ -34,7 +34,7 @@ const removedFields: Readonly<Record<string, string>> = {
 	rootDirs: 'It is called "sourcePaths" now.',
 	syncDir: advisedCompiledPath,
 	syncPath: advisedCompiledPath,
-	rogen: 'Rogen\'s keys sit at the top level, beside Rojo\'s: move "sourcePaths", "routes" and "compiledPath" out of the block.',
+	rogen: `Rogen's keys sit at the top level, beside Rojo's: move ${joinedWithAnd(ROGEN_KEYS.map((key) => `"${key}"`))} out of the block.`,
 };
 
 /** The names people try for a Rogen key first. */
@@ -63,9 +63,7 @@ export class ConfigKeys {
 	/** A removed key, or one neither Rojo's nor Rogen's, which Rojo would reject in the written file. */
 	static check(
 		keys: readonly string[],
-		locationOf: (key: string) => DiagnosticLocation,
-		/** Whether `locationOf` points at the key, which a replacement needs, and not at its value. */
-		atKey = true
+		locationOf: (key: string) => DiagnosticLocation
 	): Diagnostic[] {
 		const errors: Diagnostic[] = [];
 		for (const key of keys) {
@@ -89,7 +87,7 @@ export class ConfigKeys {
 					"config.unknownField",
 					location,
 					`"${key}" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know.${suggestion ? ` Did you mean "${suggestion}"?` : ""}`,
-					suggestion && atKey
+					suggestion
 						? replaceFixes(
 								location,
 								JSON.stringify(key),

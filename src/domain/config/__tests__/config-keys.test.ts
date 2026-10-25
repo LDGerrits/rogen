@@ -3,8 +3,7 @@ import { ConfigKeys } from "../config-keys.js";
 describe("domain/config/config-keys", () => {
 	describe("ConfigKeys.check", () => {
 		const location = { resource: "/repo/default.rogen.json" };
-		const check = (key: string) =>
-			ConfigKeys.check([key], () => location, false);
+		const check = (key: string) => ConfigKeys.check([key], () => location);
 
 		it.each([
 			"modes",
@@ -54,10 +53,8 @@ describe("domain/config/config-keys", () => {
 		it("should accept $schema as one of Rojo's keys", () => {
 			expect(check("$schema")).toEqual([]);
 		});
-	});
 
-	describe("ConfigKeys.check of a key Rogen doesn't know", () => {
-		const location = {
+		const keyLocation = {
 			resource: "/repo/default.rogen.json",
 			position: { line: 3, column: 5 },
 		};
@@ -65,7 +62,7 @@ describe("domain/config/config-keys", () => {
 		it.each(["outDir", "outputPath"])(
 			"should offer compiledPath for %s, the usual try for it",
 			(key) => {
-				const [diagnostic] = ConfigKeys.check([key], () => location);
+				const [diagnostic] = ConfigKeys.check([key], () => keyLocation);
 
 				expect(diagnostic).toMatchObject({
 					code: "config.unknownField",
@@ -82,7 +79,7 @@ describe("domain/config/config-keys", () => {
 		it("should not offer compiledPath when the file has it already", () => {
 			const diagnostics = ConfigKeys.check(
 				["compiledPath", "outDir"],
-				() => location
+				() => keyLocation
 			);
 
 			expect(diagnostics[0].message).not.toContain("compiledPath");
