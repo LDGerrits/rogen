@@ -14,6 +14,7 @@ const reasons: readonly Reason[] = [
 		title: "Organize by feature",
 		desc: "Group all code, UI, and assets for a specific feature in one place. This gives you high cohesion, better scalability, fewer merge conflicts, and features that are simple to maintain or delete.",
 		icon: <FaFolder className="text-white" />,
+		link: { href: "/docs/v2/architectures", text: "Compare architectures" },
 	},
 	{
 		title: "Enforce boundaries",

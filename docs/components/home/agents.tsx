@@ -4,9 +4,9 @@ export function Agents() {
 	return (
 		<section id="agents" className="py-24 px-6 relative">
 			<div className="max-w-6xl mx-auto relative z-10">
-				<div className="absolute top-20 left-30 w-100 h-100 bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
+				<div className="absolute top-20 right-50 w-100 h-100 bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 translate-x-1/2 -translate-y-1/2" />
 
-				<div className="flex flex-col items-start text-left mb-16">
+				<div className="flex flex-col items-end text-right mb-16">
 					<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
 						Built for agents
 					</h2>
@@ -40,12 +40,15 @@ export function Agents() {
 					))}
 				</div>
 
-				<Link
-					href="/docs/v2/agents"
-					className="mt-10 text-gray-400 hover:text-white transition-colors text-sm font-medium inline-flex items-center gap-1"
-				>
-					Working with agents <span className="font-serif">→</span>
-				</Link>
+				<div className="mt-10 flex justify-end">
+					<Link
+						href="/docs/v2/agents"
+						className="text-gray-400 hover:text-white transition-colors text-sm font-medium inline-flex items-center gap-1"
+					>
+						Working with agents{" "}
+						<span className="font-serif">→</span>
+					</Link>
+				</div>
 			</div>
 		</section>
 	);

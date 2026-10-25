@@ -4,9 +4,9 @@ export function Testimonials() {
 	return (
 		<section className="py-24 px-6 relative">
 			<div className="max-w-6xl mx-auto relative z-10">
-				<div className="absolute top-20 right-50 w-100 h-100 bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 translate-x-1/2 -translate-y-1/2" />
+				<div className="absolute top-20 left-30 w-100 h-100 bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
 
-				<div className="flex flex-col items-end text-right mb-16">
+				<div className="flex flex-col items-start text-left mb-16">
 					<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
 						Top developers use Rogen
 					</h2>
@@ -20,12 +20,16 @@ export function Testimonials() {
 						{
 							quote: "It has been a game changer for my team and I",
 							author: "Acecateer",
-							role: "Technical Director, Wonder Works Studio",
+							role: "Technical Director",
+							company: "Wonder Works Studio",
+							url: "https://wonderworks.gg",
 						},
 						{
 							quote: "Spent the last couple days refactoring Lua Learning to use Rogen. I love it",
 							author: "Zack (boatbomber) Williams",
-							role: "CEO, Torpedo Software",
+							role: "CEO",
+							company: "Torpedo Software",
+							url: "https://www.torpedosoftware.llc",
 						},
 					].map((testimonial, i) => (
 						<div
@@ -41,7 +45,15 @@ export function Testimonials() {
 									{testimonial.author}
 								</div>
 								<div className="text-gray-500 text-xs mt-1">
-									{testimonial.role}
+									{testimonial.role},{" "}
+									<a
+										href={testimonial.url}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="underline decoration-white/20 underline-offset-2 hover:text-white hover:decoration-white/60 transition-colors"
+									>
+										{testimonial.company}
+									</a>
 								</div>
 							</div>
 						</div>

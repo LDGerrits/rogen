@@ -8,23 +8,16 @@ export function Hero() {
 			<div className="relative z-10 w-full max-w-5xl mx-auto flex flex-col items-center text-center">
 				<div className="absolute top-1/2 left-1/2 w-125 h-125 bg-white opacity-[0.15] blur-[100px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
 
-				<h1 className="text-5xl md:text-7xl lg:text-[96px] font-bold tracking-tighter text-white leading-[1.02] mb-8">
-					Rojo with
+				<h1 className="text-5xl md:text-7xl lg:text-[88px] font-bold tracking-tighter text-white leading-[1.02] mb-8">
+					Professional-grade
 					<br />
-					file-system routing
+					architecture for Roblox
 				</h1>
 
-				<p className="text-xl md:text-2xl text-gray-300 max-w-2xl mx-auto leading-relaxed tracking-tight mb-4">
-					Professional-grade architecture for Roblox codebases.
-				</p>
-
-				<p className="text-base md:text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed tracking-tight mb-10">
+				<p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed tracking-tight mb-10">
 					Rogen is a superset of Rojo that generates Rojo project
-					files from your file system. Put code in a{" "}
-					<code className="text-gray-300">Server</code> or{" "}
-					<code className="text-gray-300">Client</code> folder, or add{" "}
-					<code className="text-gray-300">@Server</code> to a file’s
-					name, and Rogen sends it to the right place.
+					files from your folders, so you can organize your game by
+					feature.
 				</p>
 
 				<div className="flex flex-col sm:flex-row gap-4 mb-6 w-full sm:w-auto">

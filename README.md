@@ -70,10 +70,9 @@ The routes are yours to change. Add `"Gui": "StarterGui"`, and a `Gui` folder or
 ```bash
 rokit add ldgerrits/rogen
 rogen init
-rokit install
 ```
 
-`rogen init` pins Rojo in `rokit.toml`, and `rokit install` fetches it. New to Rojo? Also run `rogen plugin install` to add its Studio plugin. Prefer npm? Run `npm i @ldgerrits/rogen` and use `npx rogen`.
+`rogen init` pins Rojo in `rokit.toml` and tells you to run `rokit install` to fetch it. New to Rojo? Also run `rogen plugin install` to add its Studio plugin. Prefer npm? Run `npm i @ldgerrits/rogen` and use `npx rogen`.
 
 ## Usage
 

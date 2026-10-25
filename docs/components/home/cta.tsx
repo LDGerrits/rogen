@@ -8,7 +8,7 @@ const installs = [
 	{
 		id: "rokit",
 		label: "Rokit",
-		lines: ["rokit add ldgerrits/rogen", "rogen init", "rokit install"],
+		lines: ["rokit add ldgerrits/rogen", "rogen init"],
 	},
 	{
 		id: "npm",
