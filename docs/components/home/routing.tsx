@@ -265,7 +265,7 @@ export function Routing() {
 		>
 			<div className="mx-auto max-w-6xl">
 				<div className="mb-14 grid gap-10 lg:grid-cols-12 lg:items-center">
-					<Reveal className="flex flex-col items-start text-left lg:col-span-5">
+					<Reveal className="flex min-w-0 flex-col items-start text-left lg:col-span-5">
 						<h2 className="text-3xl font-semibold tracking-[-0.03em] text-paper md:text-5xl">
 							How routing works
 						</h2>
@@ -287,7 +287,7 @@ export function Routing() {
 						</p>
 					</Reveal>
 					<Reveal
-						className="lg:col-span-6 lg:col-start-7"
+						className="min-w-0 lg:col-span-6 lg:col-start-7"
 						delay={0.08}
 					>
 						<Config />

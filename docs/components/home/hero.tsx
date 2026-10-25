@@ -1,9 +1,9 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import Link from "next/link";
 import { FaFileCode } from "react-icons/fa";
 import { SiTypescript } from "react-icons/si";
+import { InstallCommand } from "./install-command";
 import { easeOutExpo } from "./reveal";
 
 export function Hero() {
@@ -73,15 +73,7 @@ export function Hero() {
 							game by feature, and Rogen puts each file in the
 							right place.
 						</p>
-						<Link
-							href="/docs/v2/installation"
-							className="group inline-flex min-h-12 items-center gap-3 rounded-full bg-paper py-3.5 pr-5 pl-7 text-sm font-semibold text-ink transition-[transform,box-shadow] duration-500 ease-out-expo hover:-translate-y-0.5 hover:shadow-[0_10px_40px_-10px_rgb(240_105_58/0.6)] active:translate-y-0 active:scale-[0.98]"
-						>
-							Get started
-							<span className="grid size-6 place-items-center rounded-full bg-ink text-paper transition-transform duration-500 ease-out-expo group-hover:translate-x-0.5">
-								→
-							</span>
-						</Link>
+						<InstallCommand />
 					</motion.div>
 				</div>
 			</motion.div>
