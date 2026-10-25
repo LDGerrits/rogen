@@ -7,10 +7,11 @@
 	</a>
 </p>
 <h1 align="center">Rogen</h1>
-<p align="center"><strong>Organize your Roblox game by feature.</strong></p>
 <p align="center">
-	Rogen is a superset of Rojo that generates Rojo project files.
-	With file-system routing, the name of a folder or file decides where its code goes.
+	<strong>Rojo with file-system routing. Professional-grade architecture for Roblox codebases.</strong>
+</p>
+<p align="center">
+	Rogen is a superset of Rojo that generates Rojo project files from your file system. Put code in a <code>Server</code> or <code>Client</code> folder, or add <code>@Server</code> to a file's name, and Rogen sends it to the right place.
 </p>
 <p align="center">
 	<a href="https://www.npmjs.com/package/@ldgerrits/rogen"><img alt="Latest release" src="https://img.shields.io/npm/v/@ldgerrits/rogen?style=flat-square&label=latest%20release" /></a>
@@ -23,9 +24,16 @@
 
 ## Why Rogen?
 
-- **Organize by feature** — The inventory's code sits in `src/Inventory`, from server to client. You and your coding agents find the whole feature in one place.
-- **Multi-place games** — Write shared code once and use it in every place. A place can still replace any file with its own.
-- **Still Rojo** — Rogen runs the Rojo commands you use, with the same flags. One tool, nothing to relearn.
+- **Organize by feature** — Group all code, UI, and assets for a specific feature in one place. This gives you high cohesion, better scalability, fewer merge conflicts, and features that are simple to maintain or delete.
+- **Enforce boundaries** — Keep coupling low with a linter. Every path names its feature, so a [lint rule](https://rogen-playfully.vercel.app/docs/v2/architectures#enforcing-the-rules) can stop one feature from requiring another.
+- **Multi-place games** — Write shared code once and use it in every place. When one place needs something different, add a file with the same name to that place's folder, and it overwrites the shared one there.
+- **Still Rojo** — Rogen runs the Rojo commands you use, with the same flags. One tool, and nothing to relearn.
+
+## Built for agents
+
+When an agent works on a feature, everything it needs is in one folder, from server to client. It spends its context on your task instead of searching the codebase.
+
+Running several agents? Give each one a feature. A lint rule catches any agent that makes one feature require another, and there's no shared project file to conflict on.
 
 ## Example
 
@@ -40,13 +48,14 @@
     "routes": {
       "Server": "ServerScriptService",
       "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared"
+      "Shared": "ReplicatedStorage/Shared",
+      "*": "ReplicatedStorage/Shared"
     }
   }
 }
 ```
 
-A folder or an `@` suffix named after a route sends its code there:
+A folder or an `@` suffix named after a route sends its code there. The `*` route takes every file that matches no other:
 
 | In `src/Inventory`                | Goes to                                        |
 | --------------------------------- | ---------------------------------------------- |
@@ -54,6 +63,7 @@ A folder or an `@` suffix named after a route sends its code there:
 | `Client/InventoryController.luau` | `StarterPlayer/StarterPlayerScripts/Inventory` |
 | `Shared/InventoryTypes.luau`      | `ReplicatedStorage/Shared/Inventory`           |
 | `Save@Server.luau`                | `ServerScriptService/Inventory`                |
+| `InventoryConfig.luau`            | `ReplicatedStorage/Shared/Inventory`           |
 
 The routes are yours to change. Add `"Gui": "StarterGui"`, and a `Gui` folder or a `@Gui` suffix sends code to StarterGui.
 
@@ -79,13 +89,13 @@ rogen check                # Print warnings and errors, and exit 1 on any
 
 ## FAQ
 
-#### Do I still need Rojo?
+#### Does Rogen replace Rojo?
 
-Yes. You run everything through Rogen, and Rogen uses Rojo to do it.
+Yes and no. You run `rogen` instead of `rojo`, but Rojo still does the syncing and building underneath. Its Studio plugin stays installed too.
 
 #### Does Rogen work with Argon?
 
-Yes. Run `rogen write --watch` and serve with Argon.
+Yes, for syncing your files into Studio. Run `rogen write --watch` and serve with Argon. To bring Studio changes back, save the place and run `rogen syncback --input game.rbxl`. With Rojo, it's one command: `rogen serve` keeps the project file current and serves it.
 
 #### Can I use Rogen in an existing Rojo project?
 

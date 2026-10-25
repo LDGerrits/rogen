@@ -148,10 +148,10 @@ after    src/Inventory/Server/InventoryService.luau  ->  ServerScriptService/Ser
 Every `require` that reached the file by instance path now points at nothing, and Rogen doesn't check requires, so a broken one shows up when the game runs. Move a feature, ask where its files land, and update the requires that reach them:
 
 ```bash
-rogen where src/Inventory
+rogen where --verbose src/Inventory
 ```
 
-`where` prints each file's instance path and the `require` that reaches it. When the requires are right, move the next feature.
+`where` prints each file's instance path, and `--verbose` adds the `require` that reaches each module. A file you name gets its `require` without the flag. When the requires are right, move the next feature.
 
 Hiding a folder with `(Name)/`, or a file with a `^` prefix, drops folders from the path (see [Hoisted Names](/docs/v2/core-concepts/routing#hoisted-names)). It keeps a path only when the folder you add is the only difference, which a by-type layout rarely allows. Plan to update the requires.
 
