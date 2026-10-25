@@ -332,7 +332,7 @@ export function Routing() {
 						href="/docs/v2/core-concepts/routing"
 						className="group mt-10 inline-flex items-center gap-1.5 text-sm font-medium text-stone-400 transition-colors duration-300 hover:text-paper"
 					>
-						Read how routing works
+						Read the routing guide
 						<span className="transition-transform duration-500 ease-out-expo group-hover:translate-x-1">
 							→
 						</span>

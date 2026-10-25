@@ -33,14 +33,14 @@ export function Cta() {
 
 			<Reveal className="mx-auto flex max-w-4xl flex-col items-center text-center">
 				<h2 className="text-5xl font-semibold leading-[0.95] tracking-[-0.045em] text-paper md:text-7xl">
-					Upgrade your codebase
+					Start in two commands
 				</h2>
 				<p className="mt-6 mb-12 text-lg text-stone-400">
-					Install it with Rokit or npm, and{" "}
+					Install with Rokit or npm.{" "}
 					<code className="font-mono text-[0.9em] text-stone-200">
 						rogen init
 					</code>{" "}
-					sets up your project.
+					sets up a new project or moves an existing Rojo one.
 				</p>
 
 				<div className="mb-10 flex w-full flex-col items-stretch justify-center gap-4 md:flex-row">
