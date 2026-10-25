@@ -42,14 +42,14 @@ export function PreviewArrow() {
 
 export function SystemWindow({ children }: { children: ReactNode }) {
 	return (
-		<div className="flex-1 bg-ink rounded-2xl border border-white/[0.07] overflow-hidden flex flex-col">
-			<div className="bg-ink-raised px-5 py-3.5 flex items-center gap-3 border-b border-white/[0.06]">
+		<div className="flex-1 bg-fd-card dark:bg-ink rounded-2xl border border-black/[0.08] dark:border-white/[0.07] overflow-hidden flex flex-col">
+			<div className="bg-fd-muted dark:bg-ink-raised px-5 py-3.5 flex items-center gap-3 border-b border-black/[0.06] dark:border-white/[0.06]">
 				<FaTerminal className="text-stone-500 text-sm" />
 				<span className="text-[11px] font-mono text-stone-500 tracking-[0.16em] uppercase">
 					File System
 				</span>
 			</div>
-			<div className="p-6 font-mono text-sm leading-8 text-stone-400 whitespace-nowrap overflow-x-auto min-h-30">
+			<div className="p-6 font-mono text-sm leading-8 text-stone-600 dark:text-stone-400 whitespace-nowrap overflow-x-auto min-h-30">
 				{children}
 			</div>
 		</div>
@@ -58,14 +58,14 @@ export function SystemWindow({ children }: { children: ReactNode }) {
 
 export function StudioWindow({ children }: { children: ReactNode }) {
 	return (
-		<div className="flex-1 bg-ink rounded-2xl border border-white/[0.07] overflow-hidden flex flex-col">
-			<div className="bg-ink-raised px-5 py-3.5 flex items-center gap-3 border-b border-white/[0.06]">
+		<div className="flex-1 bg-fd-card dark:bg-ink rounded-2xl border border-black/[0.08] dark:border-white/[0.07] overflow-hidden flex flex-col">
+			<div className="bg-fd-muted dark:bg-ink-raised px-5 py-3.5 flex items-center gap-3 border-b border-black/[0.06] dark:border-white/[0.06]">
 				<SiRoblox className="text-stone-400 text-sm" />
 				<span className="text-[11px] font-mono text-stone-500 tracking-[0.16em] uppercase">
 					Roblox Studio
 				</span>
 			</div>
-			<div className="p-6 font-mono text-sm leading-8 text-stone-400 whitespace-nowrap overflow-x-auto min-h-30">
+			<div className="p-6 font-mono text-sm leading-8 text-stone-600 dark:text-stone-400 whitespace-nowrap overflow-x-auto min-h-30">
 				{children}
 			</div>
 		</div>
@@ -91,11 +91,17 @@ export function TreeFolder({
 			style={{ marginLeft: `${level * 16}px` }}
 		>
 			{open ? (
-				<FaFolderOpen className="text-paper" />
+				<FaFolderOpen className="text-stone-900 dark:text-paper" />
 			) : (
-				<FaFolder className="text-stone-600" />
+				<FaFolder className="text-stone-400 dark:text-stone-600" />
 			)}
-			<span className={highlight ? "text-paper font-medium" : ""}>
+			<span
+				className={
+					highlight
+						? "text-stone-900 dark:text-paper font-medium"
+						: ""
+				}
+			>
 				{name}
 			</span>
 		</div>
@@ -119,9 +125,15 @@ export function TreeFile({
 			{marker ? (
 				<FaFileAlt className="text-stone-500" />
 			) : (
-				<FaFileCode className="text-paper" />
+				<FaFileCode className="text-stone-900 dark:text-paper" />
 			)}
-			<span className={marker ? "text-stone-400" : "text-stone-300"}>
+			<span
+				className={
+					marker
+						? "text-stone-500 dark:text-stone-400"
+						: "text-stone-800 dark:text-stone-300"
+				}
+			>
 				{name}
 			</span>
 		</div>
@@ -148,7 +160,7 @@ export function TreeService({
 			className={`flex items-center gap-2 ${mt ? "mt-3" : ""}`}
 			style={{ marginLeft: `${level * 16}px` }}
 		>
-			<Icon className="text-stone-600" />
+			<Icon className="text-stone-400 dark:text-stone-600" />
 			<span>{name}</span>
 		</div>
 	);
@@ -166,8 +178,8 @@ export function StudioFile({
 			className={`flex items-center gap-2`}
 			style={{ marginLeft: `${level * 16}px` }}
 		>
-			<FaFileAlt className="text-stone-400" />
-			<span className="text-stone-400">{name}</span>
+			<FaFileAlt className="text-stone-500 dark:text-stone-400" />
+			<span className="text-stone-600 dark:text-stone-400">{name}</span>
 		</div>
 	);
 }

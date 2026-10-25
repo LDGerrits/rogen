@@ -21,7 +21,7 @@ export function baseOptions(): BaseLayoutProps {
 			),
 		},
 		githubUrl: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,
-		themeSwitch: { enabled: false },
+		themeSwitch: { mode: "light-dark-system" },
 		links: [
 			{
 				type: "icon",

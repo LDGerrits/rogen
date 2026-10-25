@@ -17,6 +17,31 @@
 	--ease-snap: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+:root {
+	--color-fd-background: #f7f5f1;
+	--color-fd-foreground: #1c1917;
+	--color-fd-muted: #efebe5;
+	--color-fd-muted-foreground: #6b645d;
+	--color-fd-popover: #fdfcfa;
+	--color-fd-popover-foreground: #1c1917;
+	--color-fd-card: #fdfcfa;
+	--color-fd-card-foreground: #1c1917;
+	--color-fd-border: rgb(28 25 23 / 0.1);
+	--color-fd-primary: #c2410c;
+	--color-fd-primary-foreground: #fdfcfa;
+	--color-fd-secondary: #efebe5;
+	--color-fd-secondary-foreground: #1c1917;
+	--color-fd-accent: rgb(28 25 23 / 0.05);
+	--color-fd-accent-foreground: #1c1917;
+	--color-fd-ring: #c2410c;
+}
+
+#nd-sidebar {
+	--color-fd-muted: #ebe6df;
+	--color-fd-secondary: #f1ede7;
+	--color-fd-muted-foreground: #5f5852;
+}
+
 .dark {
 	--color-fd-background: #0c0b0a;
 	--color-fd-foreground: #ece8e2;
@@ -43,7 +68,7 @@
 }
 
 body {
-	background-color: var(--color-ink);
+	background-color: var(--color-fd-background);
 }
 
 h1,
@@ -54,7 +79,6 @@ h3 {
 
 ::selection {
 	background-color: rgb(240 105 58 / 0.3);
-	color: var(--color-paper);
 }
 
 html {
