@@ -85,7 +85,7 @@ export function Footer() {
 							</li>
 							<li>
 								<a
-									href="https://devforum.roblox.com/"
+									href="https://devforum.roblox.com/t/rogen-feature-based-folder-structures-with-rojo-an-automatic-tool-for-luau-and-roblox-ts/4625829?u=clinkety"
 									target="_blank"
 									rel="noopener noreferrer"
 									className="text-gray-500 hover:text-white transition-colors"

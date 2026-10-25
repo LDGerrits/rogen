@@ -1,13 +1,42 @@
 import Link from "next/link";
-import {
-	FaFolder,
-	FaMapSigns,
-	FaFileCode,
-	FaClone,
-	FaSyncAlt,
-	FaLayerGroup,
-	FaSitemap,
-} from "react-icons/fa";
+import type { ReactNode } from "react";
+import { FaFolder, FaShieldAlt, FaClone, FaTerminal } from "react-icons/fa";
+
+interface Reason {
+	readonly title: string;
+	readonly desc: string;
+	readonly icon: ReactNode;
+	readonly link?: { readonly href: string; readonly text: string };
+}
+
+const reasons: readonly Reason[] = [
+	{
+		title: "Organize by feature",
+		desc: "Group all code, UI, and assets for a specific feature in one place. This gives you high cohesion, better scalability, fewer merge conflicts, and features that are simple to maintain or delete.",
+		icon: <FaFolder className="text-white" />,
+	},
+	{
+		title: "Enforce boundaries",
+		desc: "Keep coupling low with a linter. Every path names its feature, so a lint rule can stop one feature from requiring another.",
+		icon: <FaShieldAlt className="text-white" />,
+		link: {
+			href: "/docs/v2/architectures#enforcing-the-rules",
+			text: "See the lint rule",
+		},
+	},
+	{
+		title: "Multi-place games",
+		desc: "Write shared code once and use it in every place. When one place needs something different, add a file with the same name to that place's folder, and it overwrites the shared one there.",
+		icon: <FaClone className="text-white" />,
+		link: { href: "/docs/v2/setups/places", text: "Set up places" },
+	},
+	{
+		title: "Still Rojo",
+		desc: "Rogen runs the Rojo commands you use, with the same flags. One tool, and nothing to relearn.",
+		icon: <FaTerminal className="text-white" />,
+		link: { href: "/docs/v2/coming-from-rojo", text: "Coming from Rojo" },
+	},
+];
 
 export function Features() {
 	return (
@@ -16,86 +45,37 @@ export function Features() {
 				<div className="absolute top-20 right-55 w-100 h-100 bg-white opacity-[0.05] blur-[80px] rounded-full pointer-events-none -z-10 translate-x-1/2 -translate-y-1/2" />
 
 				<div className="flex flex-col items-end text-right mb-16">
-					<h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-						Organize code by feature
+					<h2 className="text-3xl md:text-5xl font-bold text-white tracking-tight">
+						Why Rogen?
 					</h2>
-					<p className="text-gray-400 max-w-xl tracking-tight text-lg">
-						Everything about one part of your game, in one place.
-					</p>
 				</div>
 
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-					{[
-						{
-							title: "Feature Folders",
-							desc: "Everything a feature needs sits in one folder, named after what it does in your game.",
-							icon: <FaFolder className="text-white" />,
-						},
-						{
-							title: "Declared Routes",
-							desc: "A short map in your config says where each route goes, so Rogen never has to guess.",
-							icon: <FaMapSigns className="text-white" />,
-						},
-						{
-							title: "Replace a File",
-							desc: "List a later source path and its files replace the ones in an earlier one, without touching a single require.",
-							icon: <FaClone className="text-white" />,
-						},
-						{
-							title: "A Rojo Project File",
-							desc: "A .rogen.json takes Rojo's project-file keys plus three of Rogen's, and Rogen writes the .project.json Rojo reads from it.",
-							icon: <FaFileCode className="text-white" />,
-						},
-						{
-							title: "Luau, roblox-ts and Darklua",
-							desc: "rogen init detects your toolchain and writes a config to match.",
-							icon: <FaLayerGroup className="text-white" />,
-						},
-						{
-							title: "Watch and Diagnostics",
-							desc: "Rogen writes again as you work, picks up config edits on the fly, and points every error at a file and line.",
-							icon: <FaSyncAlt className="text-white" />,
-						},
-					].map((feature, i) => (
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+					{reasons.map((reason, i) => (
 						<div
 							key={i}
 							className="glass-card flex flex-col items-start p-8 rounded-xl cursor-default"
 						>
 							<div className="mb-6 h-6 flex items-center justify-start text-xl w-full">
-								{feature.icon}
+								{reason.icon}
 							</div>
 							<h3 className="text-base font-semibold text-white mb-2">
-								{feature.title}
+								{reason.title}
 							</h3>
-							<p className="text-gray-400 text-sm leading-relaxed">
-								{feature.desc}
+							<p className="text-gray-400 text-sm leading-relaxed grow">
+								{reason.desc}
 							</p>
+							{reason.link && (
+								<Link
+									href={reason.link.href}
+									className="mt-6 text-gray-400 hover:text-white transition-colors text-sm font-medium inline-flex items-center gap-1"
+								>
+									{reason.link.text}{" "}
+									<span className="font-serif">→</span>
+								</Link>
+							)}
 						</div>
 					))}
-
-					<Link
-						href="/docs/v2/architectures"
-						className="glass-card md:col-span-3 flex flex-col md:flex-row md:items-center gap-6 p-8 rounded-xl"
-					>
-						<div className="h-6 flex items-center text-xl">
-							<FaSitemap className="text-white" />
-						</div>
-						<div className="grow">
-							<h3 className="text-base font-semibold text-white mb-2">
-								Any Architecture
-							</h3>
-							<p className="text-gray-400 text-sm leading-relaxed">
-								Feature folders, VS Code-style layers, or ECS
-								with Jecs or Matter. Pick the layout that suits
-								your game and let a linter keep its import rules
-								honest.
-							</p>
-						</div>
-						<span className="text-gray-400 text-sm font-medium flex items-center gap-1">
-							Compare architectures{" "}
-							<span className="font-serif">→</span>
-						</span>
-					</Link>
 				</div>
 			</div>
 		</section>

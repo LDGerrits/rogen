@@ -1,31 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { FaCopy } from "react-icons/fa";
+
+const installs = [
+	{
+		id: "rokit",
+		label: "Rokit",
+		lines: ["rokit add ldgerrits/rogen", "rogen init", "rokit install"],
+	},
+	{
+		id: "npm",
+		label: "npm",
+		lines: ["npm i @ldgerrits/rogen", "npx rogen init"],
+	},
+];
 
 export function Cta() {
 	const [copiedId, setCopiedId] = useState<string | null>(null);
-	const [version, setVersion] = useState<string>("2.0.0");
-
-	useEffect(() => {
-		let isMounted = true;
-
-		fetch("https://api.github.com/repos/LDGerrits/rogen/releases/latest")
-			.then((res) => res.json())
-			.then((data) => {
-				if (isMounted && data.tag_name) {
-					setVersion(data.tag_name.replace(/^v/, ""));
-				}
-			})
-			.catch((err) =>
-				console.error("Failed to fetch latest Rogen version", err)
-			);
-
-		return () => {
-			isMounted = false;
-		};
-	}, []);
 
 	const handleCopy = (text: string, id: string) => {
 		navigator.clipboard.writeText(text);
@@ -40,62 +33,42 @@ export function Cta() {
 					Upgrade your codebase
 				</h2>
 				<p className="text-gray-400 mb-10 tracking-tight text-lg">
-					Install it with Rokit or npm.
+					Install it with Rokit or npm, and{" "}
+					<code className="text-gray-300">rogen init</code> sets up
+					your project.
 				</p>
 
-				<div className="w-full flex flex-col md:flex-row items-center justify-center gap-4 mb-6">
-					<div className="w-full max-w-md text-left bg-[#0a0a0a] border border-white/10 rounded-lg p-4 shadow-2xl relative group">
-						<div className="text-xs text-gray-500 mb-2 font-mono uppercase tracking-wider">
-							rokit.toml
+				<div className="w-full flex flex-col md:flex-row items-stretch justify-center gap-4 mb-6">
+					{installs.map(({ id, label, lines }) => (
+						<div
+							key={id}
+							className="w-full max-w-md text-left bg-[#0a0a0a] border border-white/10 rounded-lg p-4 shadow-2xl relative group"
+						>
+							<div className="flex justify-between items-center mb-2">
+								<span className="text-xs text-gray-500 font-mono uppercase tracking-wider">
+									{label}
+								</span>
+								<button
+									onClick={() =>
+										handleCopy(lines.join("\n"), id)
+									}
+									className="h-8 w-16 flex items-center justify-center text-gray-500 hover:text-white transition-colors -mr-2 rounded-md hover:bg-white/10"
+									title="Copy to clipboard"
+								>
+									{copiedId === id ? (
+										<span className="text-xs font-sans text-white leading-none">
+											Copied!
+										</span>
+									) : (
+										<FaCopy size={14} />
+									)}
+								</button>
+							</div>
+							<pre className="font-mono text-sm text-white leading-7">
+								{lines.join("\n")}
+							</pre>
 						</div>
-						<div className="font-mono text-sm text-white flex justify-between items-center">
-							<span>
-								rogen = &quot;ldgerrits/rogen@{version}&quot;
-							</span>
-							<button
-								onClick={() =>
-									handleCopy(
-										`rogen = "ldgerrits/rogen@${version}"`,
-										"rokit"
-									)
-								}
-								className="h-8 w-16 flex items-center justify-center text-gray-500 hover:text-white transition-colors -mr-2 rounded-md hover:bg-white/10"
-								title="Copy to clipboard"
-							>
-								{copiedId === "rokit" ? (
-									<span className="text-xs font-sans text-white leading-none">
-										Copied!
-									</span>
-								) : (
-									<FaCopy size={14} />
-								)}
-							</button>
-						</div>
-					</div>
-
-					<div className="w-full max-w-md text-left bg-[#0a0a0a] border border-white/10 rounded-lg p-4 shadow-2xl relative group">
-						<div className="text-xs text-gray-500 mb-2 font-mono uppercase tracking-wider">
-							Terminal
-						</div>
-						<div className="font-mono text-sm text-white flex justify-between items-center">
-							<span>npm i @ldgerrits/rogen</span>
-							<button
-								onClick={() =>
-									handleCopy("npm i @ldgerrits/rogen", "npm")
-								}
-								className="h-8 w-16 flex items-center justify-center text-gray-500 hover:text-white transition-colors -mr-2 rounded-md hover:bg-white/10"
-								title="Copy to clipboard"
-							>
-								{copiedId === "npm" ? (
-									<span className="text-xs font-sans text-white leading-none">
-										Copied!
-									</span>
-								) : (
-									<FaCopy size={14} />
-								)}
-							</button>
-						</div>
-					</div>
+					))}
 				</div>
 
 				<Link

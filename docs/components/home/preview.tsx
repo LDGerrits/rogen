@@ -115,10 +115,11 @@ const views: Record<
 			{ name: "InventoryService.luau", level: 3, kind: "script" },
 			{ name: "Shared", level: 2, kind: "routing" },
 			{ name: "InventoryTypes.luau", level: 3, kind: "script" },
+			{ name: "InventoryConfig.luau", level: 2, kind: "script" },
 		],
 		studio: studioTree(
 			"Inventory",
-			["InventoryTypes"],
+			["InventoryConfig", "InventoryTypes"],
 			["InventoryService"],
 			["InventoryController"]
 		),
@@ -128,8 +129,8 @@ const views: Record<
 		disk: [
 			{ name: "src", level: 0, kind: "root" },
 			{ name: "Combat", level: 1, kind: "feature" },
-			{ name: "CombatController@client.luau", level: 2, kind: "script" },
-			{ name: "CombatService@server.luau", level: 2, kind: "script" },
+			{ name: "CombatController@Client.luau", level: 2, kind: "script" },
+			{ name: "CombatService@Server.luau", level: 2, kind: "script" },
 			{ name: "CombatTypes.luau", level: 2, kind: "script" },
 		],
 		studio: studioTree(
@@ -144,7 +145,7 @@ const views: Record<
 		disk: [
 			{ name: "src", level: 0, kind: "root" },
 			{ name: "AntiCheat", level: 1, kind: "feature" },
-			{ name: ".server", level: 2, kind: "marker" },
+			{ name: "@Server", level: 2, kind: "marker" },
 			{ name: "AntiCheatService.luau", level: 2, kind: "script" },
 			{ name: "Monitor.luau", level: 2, kind: "script" },
 		],
