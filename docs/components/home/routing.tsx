@@ -1,22 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { Reveal } from "./reveal";
 import { useState } from "react";
 import type { IconType } from "react-icons";
 import {
-	FaFolderOpen,
+	FaBox,
+	FaCube,
+	FaFileAlt,
 	FaFileCode,
 	FaFolder,
-	FaBox,
+	FaFolderOpen,
 	FaServer,
-	FaFileAlt,
 	FaTerminal,
 	FaUser,
 } from "react-icons/fa";
 import { SiRoblox } from "react-icons/si";
+import { Reveal } from "./reveal";
 
-type ViewState = "folders" | "at" | "markers";
+type ViewState = "suffixes" | "folders";
 
 interface Row {
 	readonly name: string;
@@ -25,8 +26,9 @@ interface Row {
 		| "root"
 		| "feature"
 		| "routing"
+		| "subfolder"
 		| "script"
-		| "marker"
+		| "asset"
 		| "replicated"
 		| "server"
 		| "player"
@@ -50,12 +52,13 @@ const rowStyles: Record<
 		iconClass: "text-brand/70",
 		textClass: "text-brand",
 	},
-	script: { icon: FaFileCode, iconClass: "text-stone-400" },
-	marker: {
-		icon: FaFileAlt,
-		iconClass: "text-brand/70",
-		textClass: "text-brand",
+	subfolder: {
+		icon: FaFolder,
+		iconClass: "text-stone-500",
+		textClass: "text-stone-300",
 	},
+	script: { icon: FaFileCode, iconClass: "text-stone-500" },
+	asset: { icon: FaCube, iconClass: "text-stone-500" },
 	replicated: { icon: FaBox, iconClass: "text-stone-600" },
 	server: { icon: FaServer, iconClass: "text-stone-600" },
 	player: { icon: FaUser, iconClass: "text-stone-600" },
@@ -67,106 +70,86 @@ const rowStyles: Record<
 	instance: { icon: FaFileAlt, iconClass: "text-stone-500" },
 };
 
-function studioTree(
-	feature: string,
-	shared: string[],
-	server: string[],
-	client: string[]
-): Row[] {
+const routes: readonly (readonly [string, string])[] = [
+	["Server", "ServerScriptService"],
+	["Client", "StarterPlayer/StarterPlayerScripts"],
+	["Shared", "ReplicatedStorage/Shared"],
+	["*", "ReplicatedStorage/Shared"],
+];
+
+/** Instances under one service; a path such as `UI/ItemSlot` nests in a folder. */
+function instances(paths: readonly string[], level: number): Row[] {
 	const rows: Row[] = [];
-	if (shared.length > 0) {
-		rows.push(
-			{ name: "ReplicatedStorage", level: 0, kind: "replicated" },
-			{ name: "Shared", level: 1, kind: "folder" },
-			{ name: feature, level: 2, kind: "folder" },
-			...shared.map((name): Row => ({ name, level: 3, kind: "instance" }))
-		);
-	}
-	if (server.length > 0) {
-		rows.push(
-			{
-				name: "ServerScriptService",
-				level: 0,
-				kind: "server",
-				mt: rows.length > 0,
-			},
-			{ name: feature, level: 1, kind: "folder" },
-			...server.map((name): Row => ({ name, level: 2, kind: "instance" }))
-		);
-	}
-	if (client.length > 0) {
-		rows.push(
-			{
-				name: "StarterPlayer",
-				level: 0,
-				kind: "player",
-				mt: rows.length > 0,
-			},
-			{ name: "StarterPlayerScripts", level: 1, kind: "player" },
-			{ name: feature, level: 2, kind: "folder" },
-			...client.map((name): Row => ({ name, level: 3, kind: "instance" }))
-		);
+	const folders = new Set<string>();
+	for (const path of paths) {
+		const [folder, name] = path.split("/");
+		if (name === undefined) {
+			rows.push({ name: folder, level, kind: "instance" });
+			continue;
+		}
+		if (!folders.has(folder)) {
+			folders.add(folder);
+			rows.push({ name: folder, level, kind: "subfolder" });
+		}
+		rows.push({ name, level: level + 1, kind: "instance" });
 	}
 	return rows;
 }
 
-const views: Record<
-	ViewState,
-	{ label: string; desc: string; disk: Row[]; studio: Row[] }
-> = {
+const studio: Row[] = [
+	{ name: "ReplicatedStorage", level: 0, kind: "replicated" },
+	{ name: "Shared", level: 1, kind: "folder" },
+	{ name: "Inventory", level: 2, kind: "folder" },
+	...instances(["InventoryTypes", "ItemCatalog", "ItemIcons"], 3),
+	{ name: "ServerScriptService", level: 0, kind: "server", mt: true },
+	{ name: "Inventory", level: 1, kind: "folder" },
+	...instances(["InventoryService", "InventoryStore"], 2),
+	{ name: "StarterPlayer", level: 0, kind: "player", mt: true },
+	{ name: "StarterPlayerScripts", level: 1, kind: "player" },
+	{ name: "Inventory", level: 2, kind: "folder" },
+	...instances(["InventoryController", "UI/InventoryHud", "UI/ItemSlot"], 3),
+];
+
+const views: Record<ViewState, { label: string; desc: string; disk: Row[] }> = {
+	suffixes: {
+		label: "@ suffixes",
+		desc: "Add @ and a route to a file's name to send just that file. Files without one go to the * route.",
+		disk: [
+			{ name: "src", level: 0, kind: "root" },
+			{ name: "Inventory", level: 1, kind: "feature" },
+			{ name: "UI", level: 2, kind: "subfolder" },
+			{ name: "InventoryHud@Client.luau", level: 3, kind: "script" },
+			{ name: "ItemSlot@Client.luau", level: 3, kind: "script" },
+			{
+				name: "InventoryController@Client.luau",
+				level: 2,
+				kind: "script",
+			},
+			{ name: "InventoryService@Server.luau", level: 2, kind: "script" },
+			{ name: "InventoryStore@Server.luau", level: 2, kind: "script" },
+			{ name: "InventoryTypes.luau", level: 2, kind: "script" },
+			{ name: "ItemCatalog.luau", level: 2, kind: "script" },
+			{ name: "ItemIcons.rbxm", level: 2, kind: "asset" },
+		],
+	},
 	folders: {
-		label: "Routing Folders",
+		label: "Routing folders",
 		desc: "Name a folder after a route, and everything inside goes to its target. The folder itself disappears.",
 		disk: [
 			{ name: "src", level: 0, kind: "root" },
 			{ name: "Inventory", level: 1, kind: "feature" },
 			{ name: "Client", level: 2, kind: "routing" },
+			{ name: "UI", level: 3, kind: "subfolder" },
+			{ name: "InventoryHud.luau", level: 4, kind: "script" },
+			{ name: "ItemSlot.luau", level: 4, kind: "script" },
 			{ name: "InventoryController.luau", level: 3, kind: "script" },
 			{ name: "Server", level: 2, kind: "routing" },
 			{ name: "InventoryService.luau", level: 3, kind: "script" },
-			{ name: "Shared", level: 2, kind: "routing" },
-			{ name: "InventoryTypes.luau", level: 3, kind: "script" },
+			{ name: "InventoryStore.luau", level: 3, kind: "script" },
+			{ name: "InventoryTypes.luau", level: 2, kind: "script" },
+			{ name: "ItemCatalog.luau", level: 2, kind: "script" },
+			{ name: "ItemIcons.rbxm", level: 2, kind: "asset" },
 		],
-		studio: studioTree(
-			"Inventory",
-			["InventoryTypes"],
-			["InventoryService"],
-			["InventoryController"]
-		),
-	},
-	at: {
-		label: "The @ Sign",
-		desc: "Add @ and a route to a file's name to send just that file. A module stays a module.",
-		disk: [
-			{ name: "src", level: 0, kind: "root" },
-			{ name: "Combat", level: 1, kind: "feature" },
-			{ name: "CombatController@Client.luau", level: 2, kind: "script" },
-			{ name: "CombatService@Server.luau", level: 2, kind: "script" },
-			{ name: "CombatTypes.luau", level: 2, kind: "script" },
-		],
-		studio: studioTree(
-			"Combat",
-			["CombatTypes"],
-			["CombatService"],
-			["CombatController"]
-		),
-	},
-	markers: {
-		label: "Marker Files",
-		desc: "Add a file named @ and a route, such as @Server, to a folder, and the whole folder goes there under its own name.",
-		disk: [
-			{ name: "src", level: 0, kind: "root" },
-			{ name: "AntiCheat", level: 1, kind: "feature" },
-			{ name: "@Server", level: 2, kind: "marker" },
-			{ name: "AntiCheatService.luau", level: 2, kind: "script" },
-			{ name: "Monitor.luau", level: 2, kind: "script" },
-		],
-		studio: studioTree(
-			"AntiCheat",
-			[],
-			["AntiCheatService", "Monitor"],
-			[]
-		),
 	},
 };
 
@@ -195,7 +178,7 @@ function Tree({ rows }: { rows: Row[] }) {
 						className={`flex items-center gap-2.5 ${row.mt ? "mt-3" : ""}`}
 						style={{ marginLeft: `${row.level * 18}px` }}
 					>
-						<Icon className={style.iconClass} />
+						<Icon className={`shrink-0 ${style.iconClass}`} />
 						<Name row={row} className={style.textClass} />
 					</div>
 				);
@@ -221,15 +204,47 @@ function Panel({
 					{title}
 				</span>
 			</div>
-			<div className="min-h-80 overflow-x-auto whitespace-nowrap p-6 font-mono text-[13px] leading-8 text-stone-400">
+			<div className="overflow-x-auto whitespace-nowrap p-6 font-mono text-[13px] leading-7 text-stone-400">
 				<Tree rows={rows} />
 			</div>
 		</div>
 	);
 }
 
+function Config() {
+	return (
+		<div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-ink">
+			<div className="border-b border-white/[0.06] px-5 py-3.5 font-mono text-[11px] uppercase tracking-[0.16em] text-stone-500">
+				default.rogen.json
+			</div>
+			<pre className="overflow-x-auto p-6 font-mono text-[12.5px] leading-6 text-stone-500">
+				{"{\n"}
+				{'  "name": '}
+				<span className="text-stone-300">&quot;Game&quot;</span>
+				{",\n"}
+				{'  "routes": {\n'}
+				{routes.map(([key, target], i) => (
+					<span key={key}>
+						{"    "}
+						<span className="text-brand">&quot;{key}&quot;</span>
+						{": "}
+						<span className="text-stone-300">
+							&quot;{target}&quot;
+						</span>
+						{i < routes.length - 1 ? ",\n" : "\n"}
+					</span>
+				))}
+				{"  },\n"}
+				{'  "tree": { "$className": '}
+				<span className="text-stone-300">&quot;DataModel&quot;</span>
+				{" }\n}"}
+			</pre>
+		</div>
+	);
+}
+
 export function Routing() {
-	const [activeView, setActiveView] = useState<ViewState>("folders");
+	const [activeView, setActiveView] = useState<ViewState>("suffixes");
 	const view = views[activeView];
 
 	return (
@@ -238,26 +253,30 @@ export function Routing() {
 			className="relative border-y border-white/[0.06] bg-ink-raised px-6 py-24 lg:py-32"
 		>
 			<div className="mx-auto max-w-6xl">
-				<Reveal className="mb-12 flex flex-col items-start text-left">
-					<h2 className="text-3xl font-semibold tracking-[-0.03em] text-paper md:text-5xl">
-						How routing works
-					</h2>
-					<p className="mt-5 max-w-xl text-lg leading-relaxed text-stone-400">
-						Declare routes such as{" "}
-						<code className="font-mono text-[0.9em] text-stone-200">
-							Server
-						</code>{" "}
-						and{" "}
-						<code className="font-mono text-[0.9em] text-stone-200">
-							Client
-						</code>{" "}
-						in{" "}
-						<code className="font-mono text-[0.9em] text-stone-200">
-							default.rogen.json
-						</code>
-						, then name a folder or a file after one.
-					</p>
-				</Reveal>
+				<div className="mb-14 grid gap-10 lg:grid-cols-12 lg:items-center">
+					<Reveal className="flex flex-col items-start text-left lg:col-span-5">
+						<h2 className="text-3xl font-semibold tracking-[-0.03em] text-paper md:text-5xl">
+							How routing works
+						</h2>
+						<p className="mt-5 max-w-md text-lg leading-relaxed text-stone-400">
+							A folder or an{" "}
+							<code className="font-mono text-[0.9em] text-brand">
+								@
+							</code>{" "}
+							suffix named after a route sends its code there. The{" "}
+							<code className="font-mono text-[0.9em] text-brand">
+								*
+							</code>{" "}
+							route takes every file that matches no other.
+						</p>
+					</Reveal>
+					<Reveal
+						className="lg:col-span-6 lg:col-start-7"
+						delay={0.08}
+					>
+						<Config />
+					</Reveal>
+				</div>
 
 				<Reveal>
 					<div className="mb-5 inline-flex flex-wrap gap-1 rounded-full border border-white/[0.07] bg-ink p-1">
@@ -276,7 +295,7 @@ export function Routing() {
 						))}
 					</div>
 
-					<p className="mb-8 min-h-12 max-w-2xl text-[15px] leading-relaxed text-stone-400">
+					<p className="mb-8 max-w-2xl text-[15px] leading-relaxed text-stone-400">
 						{view.desc}
 					</p>
 
@@ -294,7 +313,7 @@ export function Routing() {
 						<Panel
 							icon={SiRoblox}
 							title="Roblox Studio"
-							rows={view.studio}
+							rows={studio}
 						/>
 					</div>
 

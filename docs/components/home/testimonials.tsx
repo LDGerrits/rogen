@@ -9,19 +9,19 @@ interface Testimonial {
 }
 
 const featured: Testimonial = {
-	quote: "Spent the last couple days refactoring Lua Learning to use Rogen. I love it",
-	author: "Zack (boatbomber) Williams",
-	role: "CEO",
-	company: "Torpedo Software",
-	url: "https://www.torpedosoftware.llc",
-};
-
-const secondary: Testimonial = {
 	quote: "It has been a game changer for my team and I",
 	author: "Acecateer",
 	role: "Technical Director",
 	company: "Wonder Works Studio",
 	url: "https://wonderworks.gg",
+};
+
+const secondary: Testimonial = {
+	quote: "Spent the last couple days refactoring Lua Learning to use Rogen. I love it",
+	author: "Zack (boatbomber) Williams",
+	role: "CEO",
+	company: "Torpedo Software",
+	url: "https://www.torpedosoftware.llc",
 };
 
 function Attribution({ testimonial }: { testimonial: Testimonial }) {

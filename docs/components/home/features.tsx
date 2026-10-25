@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { FaFolder, FaFolderOpen, FaFileCode } from "react-icons/fa";
+import type { IconType } from "react-icons";
+import { FaCube, FaFileCode, FaFolder, FaFolderOpen } from "react-icons/fa";
 import { Reveal } from "./reveal";
 
 const rojoVerbs = [
@@ -11,21 +12,59 @@ const rojoVerbs = [
 	"plugin",
 ];
 
-const featureTree: {
-	name: string;
-	level: number;
-	kind: "feature" | "open" | "route" | "file";
-}[] = [
+type TreeKind = "feature" | "open" | "folder" | "file" | "asset";
+
+const featureTree: { name: string; level: number; kind: TreeKind }[] = [
 	{ name: "Combat", level: 0, kind: "feature" },
 	{ name: "Inventory", level: 0, kind: "open" },
-	{ name: "Client", level: 1, kind: "route" },
-	{ name: "InventoryController.luau", level: 2, kind: "file" },
-	{ name: "Server", level: 1, kind: "route" },
-	{ name: "InventoryService.luau", level: 2, kind: "file" },
-	{ name: "Shared", level: 1, kind: "route" },
-	{ name: "InventoryTypes.luau", level: 2, kind: "file" },
+	{ name: "UI", level: 1, kind: "folder" },
+	{ name: "InventoryHud@Client.luau", level: 2, kind: "file" },
+	{ name: "ItemSlot@Client.luau", level: 2, kind: "file" },
+	{ name: "InventoryController@Client.luau", level: 1, kind: "file" },
+	{ name: "InventoryService@Server.luau", level: 1, kind: "file" },
+	{ name: "InventoryTypes.luau", level: 1, kind: "file" },
+	{ name: "ItemIcons.rbxm", level: 1, kind: "asset" },
 	{ name: "Shop", level: 0, kind: "feature" },
 ];
+
+const treeStyles: Record<
+	TreeKind,
+	{ icon: IconType; iconClass: string; textClass: string }
+> = {
+	feature: { icon: FaFolder, iconClass: "text-stone-600", textClass: "" },
+	open: {
+		icon: FaFolderOpen,
+		iconClass: "text-paper",
+		textClass: "text-paper",
+	},
+	folder: {
+		icon: FaFolder,
+		iconClass: "text-stone-500",
+		textClass: "text-stone-300",
+	},
+	file: {
+		icon: FaFileCode,
+		iconClass: "text-stone-500",
+		textClass: "text-stone-400",
+	},
+	asset: {
+		icon: FaCube,
+		iconClass: "text-stone-500",
+		textClass: "text-stone-400",
+	},
+};
+
+function TreeName({ name }: { name: string }) {
+	const parts = /^(.+)(@\w+)(\.\w+)$/.exec(name);
+	if (!parts) return name;
+	return (
+		<>
+			{parts[1]}
+			<span className="text-brand">{parts[2]}</span>
+			{parts[3]}
+		</>
+	);
+}
 
 function CardLink({ href, children }: { href: string; children: string }) {
 	return (
@@ -84,12 +123,8 @@ export function Features() {
 							<div className="border-t border-white/[0.06] bg-ink/60 p-8 font-mono text-[13px] leading-8 text-stone-500 md:w-1/2 md:border-t-0 md:border-l md:p-10">
 								<div className="mb-2 text-stone-600">src/</div>
 								{featureTree.map((row) => {
-									const Icon =
-										row.kind === "file"
-											? FaFileCode
-											: row.kind === "open"
-												? FaFolderOpen
-												: FaFolder;
+									const style = treeStyles[row.kind];
+									const Icon = style.icon;
 									return (
 										<div
 											key={`${row.level}-${row.name}`}
@@ -99,27 +134,10 @@ export function Features() {
 											}}
 										>
 											<Icon
-												className={
-													row.kind === "route"
-														? "text-brand/70"
-														: row.kind === "open"
-															? "text-paper"
-															: "text-stone-600"
-												}
+												className={`shrink-0 ${style.iconClass}`}
 											/>
-											<span
-												className={
-													row.kind === "open"
-														? "text-paper"
-														: row.kind === "route"
-															? "text-stone-300"
-															: row.kind ===
-																  "file"
-																? "text-stone-400"
-																: undefined
-												}
-											>
-												{row.name}
+											<span className={style.textClass}>
+												<TreeName name={row.name} />
 											</span>
 										</div>
 									);
