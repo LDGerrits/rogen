@@ -121,7 +121,7 @@ const studio: Row[] = [
 
 const views: Record<ViewState, { label: string; desc: string; disk: Row[] }> = {
 	suffixes: {
-		label: "@ suffixes",
+		label: "Route by name",
 		desc: "Mark only the files that belong on one side. Everything else goes to ReplicatedStorage through the * route.",
 		disk: [
 			{ name: "src", level: 0, kind: "root" },
@@ -143,7 +143,7 @@ const views: Record<ViewState, { label: string; desc: string; disk: Row[] }> = {
 		],
 	},
 	folders: {
-		label: "Routing folders",
+		label: "Route by folder",
 		desc: "Put files in a Client or Server folder. In Studio, that folder disappears and its files sit directly in the feature's folder.",
 		disk: [
 			{ name: "src", level: 0, kind: "root" },
@@ -270,7 +270,7 @@ export function Routing() {
 							How routing works
 						</h2>
 						<p className="mt-5 max-w-md text-lg leading-relaxed text-stone-400">
-							Each route points to a place in your game. Add{" "}
+							You choose the routes and where each one points. Add{" "}
 							<code className="font-mono text-[0.9em] text-brand">
 								@Server
 							</code>{" "}
@@ -291,6 +291,17 @@ export function Routing() {
 						delay={0.08}
 					>
 						<Config />
+						<p className="mt-4 text-sm leading-relaxed text-stone-500">
+							Add your own, such as{" "}
+							<code className="font-mono text-[0.9em] text-stone-300">
+								&quot;Gui&quot;: &quot;StarterGui&quot;
+							</code>
+							, and{" "}
+							<code className="font-mono text-[0.9em] text-brand">
+								@Gui
+							</code>{" "}
+							sends a file to StarterGui.
+						</p>
 					</Reveal>
 				</div>
 
@@ -311,7 +322,7 @@ export function Routing() {
 						))}
 					</div>
 
-					<p className="mb-8 max-w-2xl text-[15px] leading-relaxed text-stone-400">
+					<p className="mb-8 max-w-3xl text-[15px] leading-relaxed text-stone-400">
 						{view.desc}
 					</p>
 
