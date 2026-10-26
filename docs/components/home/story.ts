@@ -194,13 +194,13 @@ const SCENES: Record<string, SceneSpec> = {
 	},
 	compact: {
 		m: "compact",
-		w: 560,
+		w: 610,
 		h: 470,
 		disk: [0, 0, 270, 210],
-		explorer: [340, 0, 220, 242],
-		editor: [0, 258, 560, 212],
+		explorer: [390, 0, 220, 242],
+		editor: [0, 258, 610, 212],
 		lane1: 276,
-		lane2: 326,
+		lane2: 370,
 	},
 	mini1: { m: "mini", w: 326, h: 212, disk: [28, 0, 270, 212] },
 	mini2: {
@@ -244,12 +244,15 @@ const EASE: Record<Ease, (t: number) => number> = {
 };
 
 // g runs 0..4 over the story; each state is its track's eased progress. A step's tracks
-// are stretched to end at 90% of it, so no stretch of scrolling goes by with nothing moving.
+// are fitted into its first 65%, so each step ends on a still picture that holds while you scroll.
+const PLAY = 0.65;
+// Where each step's finished picture sits, in steps: the scroll comes to rest there.
+const REST = (PLAY + 1) / 2;
 const stateAt = (g: number) => {
 	const S: State = {};
 	STEPS.forEach((st, i) => {
 		const t = clamp(g - i);
-		const fit = 0.9 / Math.max(...st.tracks.map((tr) => tr[2]));
+		const fit = PLAY / Math.max(...st.tracks.map((tr) => tr[2]));
 		st.tracks.forEach(([k, a, b, e]) => {
 			S[k] = EASE[e](clamp((t - a * fit) / ((b - a) * fit)));
 		});
@@ -492,8 +495,10 @@ function makeScene(name: string): Scene {
 			sx = o(svc.li.querySelector<HTMLElement>(".nm")).x;
 		}
 		if (C.editor && C.disk) {
-			const lane1 = C.lane1!;
-			const lane2 = C.lane2!;
+			// The lanes run right of the default.project.json tab, so the lines never cross it.
+			const tab = q(".ed-bar .t2")!;
+			const lane1 = Math.max(C.lane1!, o(tab).x + tab.offsetWidth + 16);
+			const lane2 = Math.max(C.lane2!, lane1 + 24);
 			const r1 = codeY(".p-ed .routes", 1);
 			const r2 = codeY(".p-ed .proj", 2);
 			const kx = o(q(".p-ed .key")).x;
@@ -532,11 +537,8 @@ function makeScene(name: string): Scene {
 				],
 				off: ke + 6 - (kx - 21),
 			};
-			next.rojo = [
-				lane2 - 8,
-				(C.disk[1] + C.disk[3] + C.editor[1]) / 2,
-				true,
-			];
+			// The Rojo label sits under the wire where it leaves the project file, clear of both lanes.
+			next.rojo = [ke + 14, r2 + 13, false];
 		}
 		if (C.strip && C.routes) {
 			const r1 = q(".p-routes [data-r1]")!;
@@ -739,7 +741,6 @@ export function mountStory(root: HTMLElement) {
 	const pin = root.querySelector<HTMLElement>(".pin")!;
 	const odo = root.querySelector<HTMLElement>("[data-odo]")!;
 	odo.innerHTML = `<span>${STEPS.map((_, i) => num(i)).join("</span><span>")}</span>`;
-	let fitScale = 1;
 	let mode = "";
 	let per = 400;
 	const short = () => innerHeight < 760;
@@ -794,8 +795,7 @@ export function mountStory(root: HTMLElement) {
 		}
 		main.measure();
 		const s = scale(name);
-		fitScale = s;
-		lean(0);
+		main.el.style.transform = s < 1 ? `scale(${s.toFixed(4)})` : "";
 		return true;
 	};
 	const miniProgress = (v: HTMLElement) => {
@@ -804,22 +804,15 @@ export function mountStory(root: HTMLElement) {
 		const h = Math.min(r.height, 0.7 * vh);
 		return clamp((vh - h - r.top) / Math.max(0.85 * vh - h, 200));
 	};
-	// The stage leans with the scroll speed and settles back as the spring comes to rest.
-	const lean = (v: number) => {
-		if (!main) return;
-		const y = clamp(-v * 6, -12, 12);
-		main.el.style.transform = `translateY(${y.toFixed(1)}px) scale(${fitScale.toFixed(4)})`;
-	};
 	const draw = (g: number) => {
-		// The big step number rolls over across each step boundary, from 15% before it to 15% after.
-		const h = g + 0.15;
+		// The big step number rolls over across each step boundary, from 10% before it to 10% after.
+		const h = g + 0.1;
 		const m = Math.floor(h);
-		const roll = m - 1 + EASE.io(clamp((h - m) / 0.3));
+		const roll = m - 1 + EASE.io(clamp((h - m) / 0.2));
 		odo.style.setProperty(
 			"--g",
 			clamp(roll, 0, STEPS.length - 1).toFixed(4)
 		);
-		lean(speed);
 		main!.paint(stateAt(g));
 		captions(g);
 		field.style.setProperty("--drift", (g * 120).toFixed(1));
@@ -887,7 +880,7 @@ export function mountStory(root: HTMLElement) {
 		const go = () => {
 			if (mode !== "pinned") return;
 			scrollTo({
-				top: start() + i * per + (i ? 2 : 0),
+				top: start() + (i + REST) * per,
 				behavior: reduce ? "auto" : "smooth",
 			});
 		};
@@ -895,8 +888,20 @@ export function mountStory(root: HTMLElement) {
 		return go;
 	});
 
+	// When the scroll stops inside the story, it eases to the nearest finished picture.
+	let idle = 0;
+	const settle = () => {
+		if (mode !== "pinned") return;
+		const g = (scrollY - start()) / per;
+		if (g < 0.15 || g > STEPS.length - 0.05) return;
+		const n = clamp(Math.round(g - REST), 0, STEPS.length - 1);
+		if (Math.abs(g - (n + REST)) * per < 2) return;
+		scrollTo({ top: start() + (n + REST) * per, behavior: "smooth" });
+	};
 	let frame = 0;
 	const onScroll = () => {
+		clearTimeout(idle);
+		idle = window.setTimeout(settle, 160);
 		if (frame) return;
 		frame = requestAnimationFrame(() => {
 			frame = 0;
@@ -919,6 +924,7 @@ export function mountStory(root: HTMLElement) {
 		cancelAnimationFrame(frame);
 		cancelAnimationFrame(resize);
 		cancelAnimationFrame(spring);
+		clearTimeout(idle);
 		stepEls.forEach((el, i) =>
 			el.querySelector("button")!.removeEventListener("click", jumps[i])
 		);
