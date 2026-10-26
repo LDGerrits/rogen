@@ -119,7 +119,7 @@ stdout:
       },
       {
         "name": "init",
-        "summary": "Writes a starting default.rogen.json",
+        "summary": "Starts a project with a default.rogen.json",
         "args": [
           {
             "name": "path",
@@ -248,7 +248,7 @@ stdout:
       },
       {
         "name": "serve",
-        "summary": "Writes, serves with Rojo, and rewrites on changes",
+        "summary": "Serves with Rojo, and rewrites the project file on changes",
         "args": [
           {
             "name": "project",
@@ -601,7 +601,7 @@ exit 0
 stdout:
   {
     "code": "route.strayAt",
-    "text": "route.strayAt\n\nWarning. A name, folder or marker file has an `@` that doesn't route, so the `@` stays in the instance name. Either it nearly spells a declared route key (a typo or a wrong case), or it spells one but isn't at the end of the name (`Report@server.bak.luau`). An `@` that is nowhere near a route key, as in a package name like `@rbxts`, isn't reported.\n\n  default.rogen.json - warning: 2 names have an \"@\" that routes nowhere, so they are read as ordinary names: (route.strayAt)\n    src/Inventory/Load@SERVER.luau (did you mean \"@server\"?)\n    src/Inventory/Report@server.bak.luau (\"@server\" must end the name)\n\nRename the file to the spelling suggested, or move the `@key` to the end of the name. In `--json`, `fixes` holds the rename when exactly one key is closest. See The `@` Sign (https://rogen-playfully.vercel.app/docs/v2/core-concepts/routing#the--sign).",
+    "text": "route.strayAt\n\nWarning. A name, folder or marker file has an `@` that doesn't route, so the `@` stays in the instance name. This happens in two cases:\n\n- The text after the `@` nearly spells a declared route key, with a typo or the wrong letter case.\n- The text spells a route key, but it isn't at the end of the name, as in `Report@server.bak.luau`.\n\n  warning: 2 names have an \"@\" that routes nowhere, so they are read as ordinary names: (route.strayAt)\n    src/Inventory/Load@SERVER.luau (did you mean \"@server\"?)\n    src/Inventory/Report@server.bak.luau (\"@server\" must end the name)\n\nRename the file to the spelling that the message suggests, or move the `@key` to the end of the name. In `--json`, `fixes` holds the rename when exactly one key is closest.\n\nRogen doesn't report an `@` that is nowhere near a route key, such as the `@` in a package name like `@rbxts`. See The `@` Suffix (https://rogen-playfully.vercel.app/docs/v2/core-concepts/routing/names#the--suffix).",
     "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat"
   }
 

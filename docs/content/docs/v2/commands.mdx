@@ -1,0 +1,31 @@
+---
+title: Commands
+description: Rojo's commands through Rogen, and Rogen's own
+---
+
+Rogen runs Rojo's commands with Rojo's flags. Each one writes the project file first, so Rojo always reads what your config says:
+
+| Command | What it does |
+|---|---|
+| `rogen serve` | Serves the project with Rojo, and writes it again on every change |
+| `rogen build` | Builds a place (`-o game.rbxl`) or a plugin (`-p`) |
+| `rogen upload` | Builds the project and uploads it to Roblox |
+| `rogen sourcemap` | Writes a sourcemap for luau-lsp and other tools |
+| `rogen syncback` | Brings changes made in a place file back into your source files |
+| `rogen fmt-project` | Formats the config |
+| `rogen plugin install` | Installs Rojo's Studio plugin, matching the Rojo your project pins |
+
+In a folder with a plain `default.project.json` and no config, these commands run on that file as Rojo would, and write nothing.
+
+Rogen's own commands:
+
+| Command | What it does |
+|---|---|
+| `rogen init` | Starts a project |
+| `rogen write` | Writes the project file, and with `--watch` on every change |
+| `rogen check` | Prints every error and warning |
+| `rogen where` | Prints where a file lands in the game, and how to require it |
+| `rogen help` | Prints a command's flags, or what a [diagnostic](/docs/v2/diagnostics) code means |
+| `rogen doc` | Opens these docs, or prints a topic offline |
+
+To sync with Argon or another tool instead of Rojo, run `rogen write --watch` beside it. `rogen help <command>` lists every flag.

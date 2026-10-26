@@ -92,7 +92,7 @@ registerCommand(
 				metadata: {
 					summary: "Writes the project file, then builds with Rojo",
 					description:
-						"Writes the project file of default.rogen.json here, or of the config you name, beside it (dist.rogen.json writes dist.project.json), then builds a place, model or plugin from it with Rojo, as 'rojo build' does: -o or -p is required. To write the project file only, run 'rogen write'.",
+						"Writes the project file, then builds a place, model or plugin from it with Rojo, as 'rojo build' does. Give -o or -p. To write only the project file, run 'rogen write'.",
 					args: ProjectArgument,
 					options: BuildOptions,
 					output: {

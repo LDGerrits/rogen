@@ -91,3 +91,115 @@ html > body[data-scroll-locked] {
 	margin-right: 0px !important;
 	--removed-body-scroll-bar-size: 0px !important;
 }
+
+/* RouteFigure: the home page's routing panes, in each service's colour */
+.route-fig {
+	--t-s: #c43a2b;
+	--t-c: #8c5f00;
+	--t-r: #0a7b67;
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 16px;
+	margin: 24px 0;
+	font: 400 13px/22px var(--font-mono);
+}
+.dark .route-fig {
+	--t-s: #ff6b5b;
+	--t-c: #ffcc4d;
+	--t-r: #5be3c8;
+}
+.route-fig.solo {
+	grid-template-columns: minmax(0, 1fr);
+	max-width: calc(50% - 8px);
+	min-width: min(100%, 320px);
+}
+@media (max-width: 640px) {
+	.route-fig,
+	.route-fig.solo {
+		max-width: none;
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+.route-fig .rf-pane {
+	min-width: 0;
+	background: var(--color-fd-card);
+	border: 1px solid var(--color-fd-border);
+	border-radius: 8px;
+	box-shadow: 0 1px 3px rgb(16 38 43 / 0.05);
+	overflow: hidden;
+}
+.route-fig .rf-head {
+	height: 34px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 16px;
+	padding: 0 14px;
+	background: var(--color-fd-muted);
+	border-bottom: 1px solid var(--color-fd-border);
+	font: 500 11px/1 var(--font-mono);
+	color: var(--color-fd-muted-foreground);
+	white-space: nowrap;
+}
+.route-fig .rf-head b {
+	font-weight: 500;
+	font-size: 12px;
+	color: var(--color-fd-foreground);
+}
+.route-fig .rf-head span {
+	letter-spacing: 0.09em;
+	text-transform: uppercase;
+}
+.route-fig ul {
+	list-style: none;
+	margin: 0;
+	padding: 10px 14px 14px;
+	color: var(--color-fd-muted-foreground);
+	overflow-x: auto;
+}
+.route-fig li {
+	height: 22px;
+	white-space: nowrap;
+}
+.route-fig .rf-tree .b {
+	color: var(--color-fd-foreground);
+}
+.route-fig .g {
+	white-space: pre;
+	opacity: 0.6;
+}
+.route-fig .c-s {
+	color: var(--t-s);
+}
+.route-fig .c-c {
+	color: var(--t-c);
+}
+.route-fig .c-r {
+	color: var(--t-r);
+}
+.route-fig .rf-xt li {
+	display: flex;
+	align-items: center;
+	padding-left: calc(var(--d, 0) * 16px);
+}
+.route-fig .ic {
+	flex: none;
+	width: 16px;
+	height: 16px;
+	margin-right: 7px;
+}
+.route-fig .k-s {
+	--hc: var(--t-s);
+}
+.route-fig .k-c {
+	--hc: var(--t-c);
+}
+.route-fig .k-r {
+	--hc: var(--t-r);
+}
+.route-fig .svc .ic {
+	color: var(--hc);
+}
+.route-fig .svc .nm {
+	color: var(--color-fd-foreground);
+}

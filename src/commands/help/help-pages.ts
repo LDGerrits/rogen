@@ -169,19 +169,23 @@ function formatHelp(
 			command.metadata.summary,
 		]);
 	return [
-		formatSections("rogen", "Feature-based architecture for Roblox", [
-			["USAGE", [`${INDENT}rogen [OPTIONS] <SUBCOMMAND>`]],
+		formatSections(
+			"rogen",
+			"A superset of Rojo that generates Rojo project files from your file system",
 			[
-				"OPTIONS",
-				formatColumns(
-					sortedOptions(globalOptions).map((option) =>
-						formatOption(option, "long")
-					)
-				),
-			],
-			["SUBCOMMANDS", formatColumns(subcommands)],
-			["EXAMPLES", ROOT_EXAMPLES.map((line) => `${INDENT}${line}`)],
-		]),
+				["USAGE", [`${INDENT}rogen [OPTIONS] <SUBCOMMAND>`]],
+				[
+					"OPTIONS",
+					formatColumns(
+						sortedOptions(globalOptions).map((option) =>
+							formatOption(option, "long")
+						)
+					),
+				],
+				["SUBCOMMANDS", formatColumns(subcommands)],
+				["EXAMPLES", ROOT_EXAMPLES.map((line) => `${INDENT}${line}`)],
+			]
+		),
 		"",
 		...wrapped(
 			"Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.",

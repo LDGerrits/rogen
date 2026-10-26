@@ -2,23 +2,21 @@
 	"title": "Rogen v2",
 	"root": true,
 	"pages": [
-		"---Overview---",
 		"index",
-		"core-concepts",
 		"---Getting Started---",
 		"installation",
-		"setups",
+		"new-game",
+		"---Routing---",
+		"core-concepts/routing/index",
+		"core-concepts/routing/folders",
+		"core-concepts/routing/names",
+		"core-concepts/routing/skipping-folders",
 		"---Guides---",
-		"architectures",
 		"agents",
-		"studio",
-		"testing",
-		"coming-from-rojo",
 		"migrating-from-v1",
 		"---Reference---",
-		"configuration",
-		"cli",
-		"diagnostics",
-		"glossary"
+		"commands",
+		"config",
+		"diagnostics"
 	]
 }

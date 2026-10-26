@@ -99,7 +99,7 @@ registerCommand(
 					output: { document: syncbackDocumentShape },
 					effects: ["writesFiles", "runsProcesses"],
 					exitCodes: {
-						"2": "also a run with no terminal that was not given -y, --non-interactive or --dry-run",
+						"2": "the command line is wrong, or a run with no terminal got neither --non-interactive nor --dry-run",
 					},
 					examples: [
 						"rogen syncback --input game.rbxl --dry-run",

@@ -39,7 +39,7 @@ const WriteArguments = [
 	{
 		name: "project",
 		description:
-			"A folder, a .rogen.json file, or the name of a file here. A name such as dist stands for dist.rogen.json. Every .rogen.json of the working directory when none is given.",
+			"A folder, a .rogen.json file, or a name such as dist for dist.rogen.json. Without one: every .rogen.json here.",
 		isOptional: true,
 		isVariadic: true,
 	},

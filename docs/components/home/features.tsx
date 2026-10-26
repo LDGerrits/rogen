@@ -186,10 +186,7 @@ export function Features() {
 							so a lint rule can stop one feature from reaching
 							into another.
 						</p>
-						<MoreLink
-							href="/docs/v2/architectures#enforcing-the-rules"
-							dl={180}
-						>
+						<MoreLink href="/docs/v2/architectures" dl={180}>
 							See the lint rule
 						</MoreLink>
 						<Boundaries />

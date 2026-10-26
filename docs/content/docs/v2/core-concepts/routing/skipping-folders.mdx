@@ -1,0 +1,49 @@
+---
+title: Skipping Folders
+description: Place a file higher in the game than it sits on disk
+---
+
+## Hoisted Names
+
+A name that starts with `^` lands directly at its route's target, without the folders in between. Roblox reads some instances only there, such as `Animate` in `StarterCharacterScripts`. With a `Character` route to `StarterPlayer/StarterCharacterScripts`:
+
+<RouteFigure
+	disk={`
+  src/
+    Player/
+      @Character
+      ^Animate.client.luau
+      Sprint.client.luau
+`}
+	studio={`
+  StarterPlayer
+    StarterCharacterScripts
+      Animate
+      Player/
+        Sprint
+`}
+/>
+
+## Invisible Folders
+
+A folder named in parentheses groups files on disk and leaves no folder in the game:
+
+<RouteFigure
+	disk={`
+  src/
+    Shop/
+      Client/
+        (Ui)/
+          Button.luau
+          Icon.luau
+        ShopController.luau
+`}
+	studio={`
+  StarterPlayer
+    StarterPlayerScripts
+      Shop/
+        Button
+        Icon
+        ShopController
+`}
+/>

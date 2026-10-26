@@ -78,7 +78,6 @@ registerCommand(
 					output: { document: uploadDocumentShape },
 					effects: ["writesFiles", "runsProcesses"],
 					exitCodes: {
-						"1": "the project has errors, or Rojo failed",
 						"2": "the command line is wrong, or Rojo refused it",
 					},
 					examples: [

@@ -1,0 +1,77 @@
+---
+title: How Routing Works
+description: Name a folder or file after a route, and Rogen puts it where the route points
+---
+
+Your config's `routes` name the places your code can go in the game:
+
+```json title="default.rogen.json"
+{
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	}
+}
+```
+
+A route's name in a file's path sends the file there. A `Server/` folder sends everything inside it, and `@Client` at the end of a name sends one file:
+
+<RouteFigure
+	disk={`
+  src/
+    Shop/
+      Server/
+        ShopService.luau
+      Shared/
+        Prices.luau
+      ShopUi@Client.luau
+`}
+	studio={`
+  ReplicatedStorage
+    Shared/
+      Shop/
+        Prices
+  ServerScriptService
+    Shop/
+      ShopService
+  StarterPlayer
+    StarterPlayerScripts
+      Shop/
+        ShopUi
+`}
+/>
+
+Everything else in the path stays, so `Shop` shows up under each service. [Routing Folders](/docs/v2/core-concepts/routing/folders) and [Routing by Name](/docs/v2/core-concepts/routing/names) show each way to route in full, and [Skipping Folders](/docs/v2/core-concepts/routing/skipping-folders) how to leave a folder out.
+
+## The Outermost Route Wins
+
+A route inside another route is an ordinary folder. Server code under `Shared/` ships to every client, and Rogen warns about it:
+
+<RouteFigure
+	disk={`
+  src/
+    Shared/
+      Server/
+        Datastore.luau
+`}
+	studio={`
+  ReplicatedStorage
+    Shared/
+      Server/
+        Datastore
+`}
+/>
+
+## Files Without a Route
+
+The `*` route takes every file that no other route matches, so `src/Shop/Prices.luau` lands in `ReplicatedStorage/Shared/Shop`. Without `*`, Rogen leaves such a file out and warns about it, so a server file that forgets its route never reaches clients. That suits a project where every file names its side.
+
+## Check Where a File Lands
+
+```
+$ rogen where src/Shop/Server/ShopService.luau
+src/Shop/Server/ShopService.luau -> ServerScriptService/Shop/ShopService · route Server (folder)
+  require(game:GetService("ServerScriptService").Shop.ShopService)
+```

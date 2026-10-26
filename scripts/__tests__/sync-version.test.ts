@@ -40,6 +40,14 @@ describe("scripts/sync-version", () => {
 			expect(read(INSTALL_FILE)).toContain("ldgerrits/rogen@2.0.0");
 		});
 
+		it("should move install docs that name a pre-release to the next pre-release", () => {
+			write(INSTALL_FILE, 'rogen = "ldgerrits/rogen@2.0.0-beta.1"\n');
+			expect(syncVersion(root, "2.0.0-beta.2")).toEqual([INSTALL_FILE]);
+			expect(read(INSTALL_FILE)).toContain(
+				"ldgerrits/rogen@2.0.0-beta.2"
+			);
+		});
+
 		it("should move every version a file names", () => {
 			write(
 				INSTALL_FILE,

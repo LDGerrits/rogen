@@ -2,7 +2,7 @@ $ rogen help --quiet
 exit 0
 stdout:
   rogen
-  Feature-based architecture for Roblox
+  A superset of Rojo that generates Rojo project files from your file system
   
   USAGE:
       rogen [OPTIONS] <SUBCOMMAND>
@@ -21,9 +21,9 @@ stdout:
       doc            Opens the documentation, or prints one topic offline
       fmt-project    Formats a .rogen.json the way 'rojo fmt-project' does
       help           Prints usage, a command's details, or what a code means
-      init           Writes a starting default.rogen.json
+      init           Starts a project with a default.rogen.json
       plugin         Installs or removes Rojo's Studio plugin
-      serve          Writes, serves with Rojo, and rewrites on changes
+      serve          Serves with Rojo, and rewrites the project file on changes
       sourcemap      Writes the project file, then a sourcemap with Rojo
       syncback       Brings a place file's changes back into the source files
       upload         Writes the project file, then uploads it with Rojo

@@ -140,7 +140,7 @@ describe("help command", () => {
 			]);
 			expect(printed().split("\n").slice(0, 2)).toEqual([
 				"rogen",
-				"Feature-based architecture for Roblox",
+				"A superset of Rojo that generates Rojo project files from your file system",
 			]);
 			expect(section(printed(), "USAGE")).toEqual([
 				"    rogen [OPTIONS] <SUBCOMMAND>",
@@ -209,7 +209,7 @@ describe("help command", () => {
 				)
 			).toEqual([]);
 			expect(lines).toContain(
-				'  default.rogen.json - warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)'
+				'  warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)'
 			);
 		});
 

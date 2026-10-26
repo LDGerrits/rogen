@@ -37,4 +37,4 @@ A run passes when all four of these hold:
 
 The script also records where each new file landed and which Rogen commands the agent ran.
 
-`results.json` and the transcripts go into a temporary folder; the script prints its path. Results go stale with every model and every release, so summarise them, with the date, model and Rogen version, in the "What we measured" section of `docs/content/docs/v2/agents.mdx`, rather than committing them.
+`results.json` and the transcripts go into a temporary folder; the script prints its path. Results go stale with every model and every release, so summarise them, with the date, model and Rogen version, in the pull request that changes the rules, rather than committing them.
