@@ -1,0 +1,56 @@
+---
+title: Routing Folders
+description: Group code by feature, with one folder per side.
+---
+
+A folder named after a route key sends everything inside it to that route's target. Give each feature a folder, and inside it one routing folder for each side it runs on:
+
+<PreviewGroup>
+	<SystemWindow>
+		<TreeFolder name="src" open />
+		<TreeFolder name="Combat" level={1} open highlight />
+		<TreeFolder name="Client" level={2} dim />
+		<TreeFile name="CombatController.luau" level={3} />
+		<TreeFolder name="Server" level={2} dim />
+		<TreeFile name="DamageService.luau" level={3} />
+		<TreeFolder name="Shared" level={2} dim />
+		<TreeFile name="Weapons.luau" level={3} />
+		<TreeFolder name="Data" level={1} open highlight />
+		<TreeFolder name="Server" level={2} dim />
+		<TreeFile name="PlayerData.luau" level={3} />
+		<TreeFolder name="Shop" level={1} open highlight />
+		<TreeFolder name="Client" level={2} dim />
+		<TreeFile name="ShopUi.luau" level={3} />
+		<TreeFolder name="Shared" level={2} dim />
+		<TreeFile name="Prices.luau" level={3} />
+	</SystemWindow>
+
+    <PreviewArrow />
+
+    <StudioWindow>
+    	<TreeService name="ReplicatedStorage" type="replicated" />
+    	<TreeFolder name="Shared" level={1} />
+    	<TreeFolder name="Combat" level={2} highlight />
+    	<StudioFile name="Weapons" level={3} />
+    	<TreeFolder name="Shop" level={2} highlight />
+    	<StudioFile name="Prices" level={3} />
+
+    	<TreeService name="ServerScriptService" type="server" mt />
+    	<TreeFolder name="Combat" level={1} highlight />
+    	<StudioFile name="DamageService" level={2} />
+    	<TreeFolder name="Data" level={1} highlight />
+    	<StudioFile name="PlayerData" level={2} />
+
+    	<TreeService name="StarterPlayer" type="player" mt />
+    	<TreeService name="StarterPlayerScripts" type="player" level={1} />
+    	<TreeFolder name="Combat" level={2} highlight />
+    	<StudioFile name="CombatController" level={3} />
+    	<TreeFolder name="Shop" level={2} highlight />
+    	<StudioFile name="ShopUi" level={3} />
+    </StudioWindow>
+
+</PreviewGroup>
+
+The routing folders disappear, and each feature folder appears under every service it runs in. `Data` runs only on the server, so it has only a `Server/` folder.
+
+Everything about combat sits in `src/Combat`, so changing it means opening one folder. In the game, code finds the other parts by their path there, as in `require(ReplicatedStorage.Shared.Combat.Weapons)`.
