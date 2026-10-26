@@ -1,8 +1,8 @@
 <p align="center">
 	<a href="https://rogen-playfully.vercel.app">
 		<picture>
-			<source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/LDGerrits/rogen/main/docs/public/icon.png" />
-			<img src="https://raw.githubusercontent.com/LDGerrits/rogen/main/docs/public/icon-dark.png" alt="Rogen logo" width="100" />
+			<source media="(prefers-color-scheme: dark)" srcset="docs/public/icon.png" />
+			<img src="docs/public/icon-dark.png" alt="Rogen logo" width="100" />
 		</picture>
 	</a>
 </p>
@@ -37,7 +37,7 @@ Running several agents? Give each one a feature. A lint rule catches any agent t
 
 ## Example
 
-`default.rogen.json` is a Rojo project file with three more keys. Many projects need only `routes`:
+`default.rogen.json` is a Rojo project file with `routes` added. The `tree` is the base: put in it what folder names can't say, such as your packages, and Rogen adds every routed file to it:
 
 <!-- prettier-ignore -->
 ```json
@@ -49,7 +49,12 @@ Running several agents? Give each one a feature. A lint rule catches any agent t
     "Shared": "ReplicatedStorage/Shared",
     "*": "ReplicatedStorage/Shared"
   },
-  "tree": { "$className": "DataModel" }
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Packages": { "$path": "Packages" }
+    }
+  }
 }
 ```
 
