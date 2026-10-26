@@ -1,8 +1,8 @@
 <p align="center">
-	<a href="https://rogen-playfully.vercel.app">
+	<a href="https://rogen-roblox.vercel.app">
 		<picture>
-			<source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/LDGerrits/rogen/main/docs/public/icon.png" />
-			<img src="https://raw.githubusercontent.com/LDGerrits/rogen/main/docs/public/icon-dark.png" alt="Rogen logo" width="160" />
+			<source media="(prefers-color-scheme: dark)" srcset="docs/public/icon.png" />
+			<img src="docs/public/icon-dark.png" alt="Rogen logo" width="160" />
 		</picture>
 	</a>
 </p>
@@ -14,8 +14,8 @@
 	Rogen is a superset of Rojo that generates Rojo project files from your file system. Put code in a <code>Server</code> or <code>Client</code> folder, or add <code>@Server</code> to a file's name, and Rogen sends it to the right place.
 </p>
 <p align="center">
-	<a href="https://www.npmjs.com/package/@ldgerrits/rogen"><img alt="Latest release" src="https://img.shields.io/npm/v/@ldgerrits/rogen?style=flat-square&label=latest%20release" /></a>
-	<a href="https://rogen-playfully.vercel.app/docs/v2"><img alt="Documentation" src="https://img.shields.io/badge/docs-website-blueviolet?style=flat-square" /></a>
+	<a href="https://www.npmjs.com/package/@ldgerrits/rogen"><img alt="Beta release" src="https://img.shields.io/npm/v/@ldgerrits/rogen/next?style=flat-square&label=beta" /></a>
+	<a href="https://rogen-roblox.vercel.app/docs/v2"><img alt="Documentation" src="https://img.shields.io/badge/docs-website-blueviolet?style=flat-square" /></a>
 	<a href="https://discord.com/channels/385151591524597761/1503801029232295996"><img alt="Discord" src="https://img.shields.io/badge/discord-chat-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
 	<a href="https://github.com/LDGerrits/rogen/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/LDGerrits/rogen?style=flat-square&logo=github" /></a>
 	<a href="https://luau.org"><img alt="Luau" src="https://img.shields.io/badge/Luau-00A2FF?style=flat-square&logo=luau&logoColor=white" /></a>
@@ -25,7 +25,7 @@
 ## Why Rogen?
 
 - **Organize by feature** — Group all code, UI, and assets for a specific feature in one place. This gives you high cohesion, better scalability, fewer merge conflicts, and features that are simple to maintain or delete.
-- **Enforce boundaries** — Keep coupling low with a linter. Every path names its feature, so a [lint rule](https://rogen-playfully.vercel.app/docs/v2/architectures) can stop one feature from requiring another.
+- **Enforce boundaries** — Keep coupling low with a linter. Every path names its feature, so a [lint rule](https://rogen-roblox.vercel.app/docs/v2/architectures) can stop one feature from requiring another.
 - **Multi-place games** — Write shared code once and use it in every place. When one place needs something different, add a file with the same name to that place's folder, and it overwrites the shared one there.
 - **Still Rojo** — Rogen runs the Rojo commands you use, with the same flags. One tool, and nothing to relearn.
 
@@ -37,19 +37,24 @@ Running several agents? Give each one a feature. A lint rule catches any agent t
 
 ## Example
 
-`default.rogen.json` is a Rojo project file with three more keys. Many projects need only `routes`:
+`default.rogen.json` is a Rojo project file with `routes` added. The `tree` is the base: put in it what folder names can't say, such as your packages, and Rogen adds every routed file to it:
 
 <!-- prettier-ignore -->
 ```json
 {
-  "name": "Game",
+  "name": "my-game",
   "routes": {
     "Server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
     "Shared": "ReplicatedStorage/Shared",
     "*": "ReplicatedStorage/Shared"
   },
-  "tree": { "$className": "DataModel" }
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Packages": { "$path": "Packages" }
+    }
+  }
 }
 ```
 
@@ -68,11 +73,11 @@ The routes are yours to change. Add `"Gui": "StarterGui"`, and a `Gui` folder or
 ## Installation
 
 ```bash
-rokit add ldgerrits/rogen
+rokit add ldgerrits/rogen@2.0.0-beta.1
 rogen init
 ```
 
-`rogen init` pins Rojo in `rokit.toml` and tells you to run `rokit install` to fetch it. New to Rojo? Also run `rogen plugin install` to add its Studio plugin. Prefer npm? Run `npm i @ldgerrits/rogen` and use `npx rogen`.
+`rogen init` pins Rojo in `rokit.toml` and tells you to run `rokit install` to fetch it. New to Rojo? Also run `rogen plugin install` to add its Studio plugin. Prefer npm? Run `npm i @ldgerrits/rogen@next` and use `npx rogen`.
 
 ## Usage
 
@@ -82,7 +87,7 @@ rogen build -o game.rbxl   # Update the project file, then build a place with Ro
 rogen check                # Print warnings and errors, and exit 1 on any
 ```
 
-`sourcemap`, `upload`, `syncback` and `plugin` take Rojo's flags too. See the [documentation](https://rogen-playfully.vercel.app/docs/v2) for every command.
+`sourcemap`, `upload`, `syncback` and `plugin` take Rojo's flags too. See the [documentation](https://rogen-roblox.vercel.app/docs/v2) for every command.
 
 ## FAQ
 
@@ -96,7 +101,7 @@ Yes, for syncing your files into Studio. Run `rogen write --watch` and serve wit
 
 #### Can I use Rogen in an existing Rojo project?
 
-Yes. Run `rogen init` to move it to Rogen. See [Coming from Rojo](https://rogen-playfully.vercel.app/docs/v2/coming-from-rojo).
+Yes. Run `rogen init` to move it to Rogen. See [Coming from Rojo](https://rogen-roblox.vercel.app/docs/v2/coming-from-rojo).
 
 ## Contributing
 

@@ -2,7 +2,7 @@ $ rogen doc --json
 exit 0
 stdout:
   {
-    "url": "https://rogen-playfully.vercel.app/docs/v2",
+    "url": "https://rogen-roblox.vercel.app/docs/v2",
     "topics": [
       "routing",
       "config",

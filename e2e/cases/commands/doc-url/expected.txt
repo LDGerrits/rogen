@@ -1,4 +1,4 @@
 $ rogen doc
 exit 0
 stdout:
-  https://rogen-playfully.vercel.app/docs/v2
+  https://rogen-roblox.vercel.app/docs/v2

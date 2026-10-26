@@ -4,6 +4,9 @@ import path from "path";
 import { VERSIONED_FILES, syncVersion } from "../sync-version.js";
 
 const INSTALL_FILE = "docs/content/docs/v2/installation.mdx";
+const HOME_FILE = "docs/components/home/install-command.tsx";
+const README = "README.md";
+const ALL_FILES = [INSTALL_FILE, HOME_FILE, README];
 const REPO_ROOT = path.resolve(import.meta.dirname, "../..");
 
 describe("scripts/sync-version", () => {
@@ -22,6 +25,8 @@ describe("scripts/sync-version", () => {
 		beforeEach(() => {
 			root = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-version-"));
 			write(INSTALL_FILE, 'rogen = "ldgerrits/rogen@2.0.0"\n');
+			write(HOME_FILE, 'command: "rokit add ldgerrits/rogen@2.0.0" },\n');
+			write(README, "rokit add ldgerrits/rogen@2.0.0\n");
 		});
 
 		afterEach(() => {
@@ -29,10 +34,12 @@ describe("scripts/sync-version", () => {
 		});
 
 		it("should move every file to a stable release", () => {
-			expect(syncVersion(root, "2.1.0")).toEqual([INSTALL_FILE]);
+			expect(syncVersion(root, "2.1.0")).toEqual(ALL_FILES);
 			expect(read(INSTALL_FILE)).toBe(
 				'rogen = "ldgerrits/rogen@2.1.0"\n'
 			);
+			expect(read(HOME_FILE)).toContain('ldgerrits/rogen@2.1.0"');
+			expect(read(README)).toBe("rokit add ldgerrits/rogen@2.1.0\n");
 		});
 
 		it("should keep the install docs on the stable release for a pre-release", () => {
@@ -43,6 +50,7 @@ describe("scripts/sync-version", () => {
 		it("should move install docs that name a pre-release to the next pre-release", () => {
 			write(INSTALL_FILE, 'rogen = "ldgerrits/rogen@2.0.0-beta.1"\n');
 			expect(syncVersion(root, "2.0.0-beta.2")).toEqual([INSTALL_FILE]);
+			expect(read(README)).toContain("ldgerrits/rogen@2.0.0\n");
 			expect(read(INSTALL_FILE)).toContain(
 				"ldgerrits/rogen@2.0.0-beta.2"
 			);

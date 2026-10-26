@@ -91,7 +91,7 @@ stdout:
             "severity": "warning",
             "code": "tree.instanceClash",
             "message": "becomes \"ReplicatedStorage/Shared/Net/Types\", as <dir>/src/Net/Types.luau does, which takes its place. Rename one of them to keep both.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#tree-instanceclash",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#tree-instanceclash",
             "related": [
               {
                 "file": "<dir>/src/Net/Types.luau",

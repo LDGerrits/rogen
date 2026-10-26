@@ -18,6 +18,16 @@ export const VERSIONED_FILES: readonly VersionedFile[] = [
 		pattern: /(ldgerrits\/rogen@)([^"]+)(")/g,
 		stableOnly: true,
 	},
+	{
+		path: "docs/components/home/install-command.tsx",
+		pattern: /(ldgerrits\/rogen@)([^"]+)(")/g,
+		stableOnly: true,
+	},
+	{
+		path: "README.md",
+		pattern: /(ldgerrits\/rogen@)(\d[^\s`"]*)()/g,
+		stableOnly: true,
+	},
 ];
 
 /**

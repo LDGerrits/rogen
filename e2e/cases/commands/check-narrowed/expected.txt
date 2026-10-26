@@ -14,7 +14,7 @@ stdout:
         "severity": "error",
         "code": "route.ignoredAt",
         "message": "\"@server\" does nothing here, because the \"shared\" route already governs this file. Remove it, or move the file out of the \"shared\" route's files.",
-        "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-ignoredat"
+        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-ignoredat"
       }
     ]
   }

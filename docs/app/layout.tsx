@@ -1,17 +1,20 @@
 import type { Metadata } from "next";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import "./global.css";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { Analytics } from "@vercel/analytics/next";
 import { siteDescription, siteUrl } from "@/lib/shared";
 
-const geistSans = Geist({
-	subsets: ["latin"],
+// Self-hosted, so a build never depends on fetching from Google Fonts.
+const geistSans = localFont({
+	src: "./fonts/geist.woff2",
+	weight: "100 900",
 	variable: "--font-geist-sans",
 });
 
-const geistMono = Geist_Mono({
-	subsets: ["latin"],
+const geistMono = localFont({
+	src: "./fonts/geist-mono.woff2",
+	weight: "100 900",
 	variable: "--font-geist-mono",
 });
 
