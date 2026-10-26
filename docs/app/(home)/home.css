@@ -722,6 +722,12 @@ body:has(.home) {
 .home .head-r {
 	grid-column: 6 / span 7;
 }
+/* a display heading in the right half ends on the right margin; text under it stays left-aligned */
+.home .head-r h2,
+.home .ag-head h2 {
+	margin-left: auto;
+	text-align: right;
+}
 .home .head-l {
 	grid-column: 1 / span 7;
 }
@@ -1877,6 +1883,7 @@ body:has(.home) {
 }
 .home .start .st {
 	grid-column: 8 / span 5;
+	text-align: right;
 }
 .home .start h2 {
 	font-size: clamp(48px, 6vw, 88px);
@@ -2056,6 +2063,11 @@ body:has(.home) {
 	.home .wires {
 		display: none;
 	}
+	.home .head-r h2,
+	.home .ag-head h2 {
+		margin-left: 0;
+		text-align: left;
+	}
 	.home .ag-head .lede {
 		grid-row: 2;
 		margin-top: var(--s3);
@@ -2070,6 +2082,7 @@ body:has(.home) {
 	.home .start .st {
 		margin-bottom: var(--s4);
 		order: -1;
+		text-align: left;
 	}
 	.home .fb {
 		margin-bottom: var(--s4);
