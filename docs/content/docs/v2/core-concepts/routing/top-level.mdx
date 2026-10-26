@@ -1,32 +1,24 @@
 ---
 title: Top-Level Instances
-description: Put an instance directly at a route's target, or group files on disk without a folder in the game.
+description: Put an instance directly at a route's target, or group files without a folder in the game.
 ---
-
-A file lands at its route's target, inside every folder above it. Two kinds of names change that.
 
 ## Hoisted Names
 
-A name that starts with `^` lands directly at its route's target, without the folders in between. Use it for an instance that Roblox reads only at the top of a container, such as an `Animate` script in `StarterCharacterScripts`. With the route `"Character": "StarterPlayer/StarterCharacterScripts"`:
+A name that starts with `^` lands directly at its route's target, without the folders in between. Roblox reads some instances only there, such as `Animate` in `StarterCharacterScripts`:
 
 | On disk | In the game |
 |---|---|
-| `src/Player/@Character` | the marker, which routes the folder |
+| `src/Player/@Character` | nothing |
 | `src/Player/^Animate.client.luau` | `StarterPlayer/StarterCharacterScripts/Animate` |
 | `src/Player/Sprint.client.luau` | `StarterPlayer/StarterCharacterScripts/Player/Sprint` |
 
-- The target stays whole. `^` drops folders on disk, never the ones the target names, so with the target `ReplicatedStorage/Shared` the file stays in `Shared`.
-- A folder takes it too: `^Hud/` puts `Hud` at the target, with its contents inside.
-- The `^` comes off the name, so `^Animate.client.luau` is `Animate`. Its meta file is `^Animate.meta.json`.
-- An init script is its folder, so `^init.luau` is an error. Put the `^` on the folder.
-- Shells treat `^` specially, so quote it: `touch '^Animate.client.luau'`.
+A folder takes `^` too. Quote it in a shell: `touch '^Animate.client.luau'`.
 
 ## Invisible Folders
 
-A folder named in parentheses groups files on disk and leaves no folder in the game. Its contents land where the folder would have been:
+A folder named in parentheses groups files on disk and leaves no folder in the game:
 
 | On disk | In the game |
 |---|---|
 | `src/Shop/Client/(Ui)/Button.luau` | `StarterPlayer/StarterPlayerScripts/Shop/Button` |
-
-`(Server)/` is still a routing folder. `(^Name)/` puts its contents directly at the target.

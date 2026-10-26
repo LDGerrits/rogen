@@ -3,7 +3,7 @@ title: Routing
 description: How Rogen decides where each file lands in the game.
 ---
 
-Rogen reads your folder and file names and decides where each file lands in the game. A **route** connects a name, the **route key**, to a **target**, a place in the game such as `ServerScriptService`. You declare routes in your [config](/docs/v2/config):
+Rogen places each file by its folder and file names. The `routes` in your [config](/docs/v2/config) map each **route key** to a **target** in the game:
 
 ```json title="default.rogen.json"
 {
@@ -15,11 +15,11 @@ Rogen reads your folder and file names and decides where each file lands in the 
 }
 ```
 
-`rogen init` writes these three. Nothing is built in, so a route exists only once you declare it.
+`rogen init` writes these three. Add your own the same way, such as `"Character": "StarterPlayer/StarterCharacterScripts"`.
 
 ## Routing Folders
 
-Name a folder after a route key, and everything inside it goes to that route's target. Give each feature a **feature folder**, and inside it one routing folder per side:
+A folder named after a route key sends everything inside it to that route's target. Give each feature a folder, with one routing folder per side:
 
 <PreviewGroup>
 	<SystemWindow>
@@ -53,17 +53,33 @@ Name a folder after a route key, and everything inside it goes to that route's t
 
 </PreviewGroup>
 
-The routing folder disappears, and the feature folder stays, so `Shop` appears under each service. This is the layout we recommend.
+The routing folder disappears, and the feature folder stays. A key's first letter matches either case, so roblox-ts's lowercase `server/` works too.
 
-roblox-ts projects use lowercase keys, such as `server`. The first letter of a key matches either case, so `Server/` and `server/` both work.
+## Nested Routes
 
-## Add a Route
+The outermost route wins. A `Server/` folder inside `Shared/` is an ordinary folder, so its code ships to every client:
 
-Add a key and a target. With `"Character": "StarterPlayer/StarterCharacterScripts"`, a `Character/` folder sends its scripts to `StarterCharacterScripts`. A target starts at a service, and [Config](/docs/v2/config#targets) lists the rules.
+| On disk | In the game |
+|---|---|
+| `src/Shared/Server/Datastore.luau` | `ReplicatedStorage/Shared/Server/Datastore` |
+
+Rogen warns when this happens.
+
+## Files Outside Every Route
+
+Rogen leaves out a file that no route covers, and warns about it. It never guesses a side, so server code can't reach clients by accident.
+
+To send those files somewhere instead, declare the fallback route `*`:
+
+```json
+"*": "ReplicatedStorage/Shared"
+```
+
+A server file that forgets its route then ships to clients without a warning, so declare `*` only when most of your code runs on both sides.
 
 ## See Where a File Lands
 
-`rogen where` prints where a file lands, which route placed it, and how to require it:
+`rogen where` works before the file exists:
 
 ```
 $ rogen where src/Shop/Server/ShopService.luau
@@ -71,15 +87,9 @@ src/Shop/Server/ShopService.luau -> ServerScriptService/Shop/ShopService · rout
   require(game:GetService("ServerScriptService").Shop.ShopService)
 ```
 
-It works before the file exists, so you can check a name before you create it.
-
 ## Other Ways to Route
 
-Routing folders cover most code. The other pages cover the rest:
-
-| To | Use | See |
-|---|---|---|
-| Route one file without a folder | `@` at the end of its name: `Save@Server.luau` | [Routing by Name](/docs/v2/core-concepts/routing/names) |
-| Route a whole folder without renaming it | An empty marker file: `@Server` | [Routing by Name](/docs/v2/core-concepts/routing/names#marker-files) |
-| Know where a file inside another route goes | The outermost route | [Nested and Missing Routes](/docs/v2/core-concepts/routing/nested-and-missing) |
-| Put an instance at the top of a service | `^` at the start of its name: `^Animate.client.luau` | [Top-Level Instances](/docs/v2/core-concepts/routing/top-level) |
+| To | Use |
+|---|---|
+| Route one file or folder by its name | [`Save@Server.luau`, a marker file, or `.server`](/docs/v2/core-concepts/routing/names) |
+| Put an instance at the top of its target | [`^Animate.client.luau`](/docs/v2/core-concepts/routing/top-level) |

@@ -3,20 +3,18 @@ title: Config
 description: The keys Rogen adds to a Rojo project file.
 ---
 
-A folder's config is `default.rogen.json`, a Rojo project file with three more keys. Rojo's own keys, such as `name`, `tree` and `globIgnorePaths`, keep the meaning that [Rojo's project format](https://rojo.space/docs/v7/project-format/) gives them. Rogen writes them, with the routed files merged into the `tree`, to `default.project.json` beside the config. Edit the `.rogen.json`, because `rogen write` overwrites the project file. Comments and trailing commas are allowed.
+A config, `default.rogen.json`, is a Rojo project file with three more keys. Rogen writes it, with your routed files added to the `tree`, to `default.project.json`. Edit the `.rogen.json`: `rogen write` overwrites the project file. Rojo's own keys work as [Rojo documents them](https://rojo.space/docs/v7/project-format/).
 
 | Key | Default | What it does |
 |---|---|---|
-| `routes` | none | Route keys and their targets. Without it, nothing is routed. See [Routing](/docs/v2/core-concepts/routing). |
-| `sourcePaths` | `["src"]` | The folders Rogen reads, relative to the config. A file in a later folder replaces one at the same path in an earlier folder. |
-| `compiledPath` | none | The folder Rojo syncs from when a compiler such as roblox-ts or Darklua writes your code somewhere else. |
+| `routes` | none | [Route keys](/docs/v2/core-concepts/routing) and their targets. |
+| `sourcePaths` | `["src"]` | The folders Rogen reads. A later folder's file replaces an earlier one's at the same path. |
+| `compiledPath` | none | Where a compiler such as roblox-ts or Darklua writes your code, for Rojo to sync from. |
 
-A config named `X.rogen.json` writes `X.project.json`. It must set `name`, because Rojo can't read a project file other than `default.project.json` without one.
-
-## Route Keys
-
-A route key is letters and digits, starting with a letter. The key `*` is the [fallback route](/docs/v2/core-concepts/routing/nested-and-missing#the-fallback-route). Two keys that differ only in the case of their first letter are an error.
+A route key is letters and digits, starting with a letter, or `*` for the [fallback route](/docs/v2/core-concepts/routing#files-outside-every-route).
 
 ## Targets
 
-A target is a path that starts at a service. `"ServerScriptService"` puts files at the service's root, and `"ReplicatedStorage/Shared"` puts them in a `Shared` folder. The first segment has to be a service that Rogen supports, such as `ServerScriptService`, `ReplicatedStorage`, `ReplicatedFirst`, `StarterPlayer`, `StarterGui` or `TextChatService`, which catches typos. Write `StarterPlayer/StarterPlayerScripts` in full, because Rogen doesn't know a service's children.
+A target starts with a service, such as `"ServerScriptService"`, and may add folders, such as `"ReplicatedStorage/Shared"`. Write `StarterPlayer/StarterPlayerScripts` in full, because Rogen doesn't know a service's children.
+
+A second config, `X.rogen.json`, writes `X.project.json` and needs its own `name`.
