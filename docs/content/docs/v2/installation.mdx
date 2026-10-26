@@ -1,148 +1,50 @@
 ---
 title: Installation
-description: Install Rogen and start a project
+description: Install Rogen, and the Rojo that syncs for it
 ---
 
-import { Callout } from "fumadocs-ui/components/callout";
-import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
 
-You can install Rogen with **Rokit** or **npm**.
-
-<Callout type="info">
-	Rogen only writes the project file. The syncing is done by
-	[Rojo](https://github.com/rojo-rbx/rojo), so you'll need it too, with its
-	Studio plugin.
-
-	- In a new project, `rogen init` writes Rojo's pin into your tool manager's
-	  file (`rokit.toml`, `aftman.toml` or `foreman.toml`, else a new
-	  `rokit.toml`) and installs nothing. Run `rokit install` (or `aftman
-	  install`, `foreman install`), then `rogen plugin install`.
-	- With no manager on the machine, `init` prints the Rokit installer's
-	  command for you to run.
-	- In a project that has a config, `init` does not run. Pin Rojo with your
-	  manager (`rokit add rojo-rbx/rojo`, or `aftman add rojo-rbx/rojo`;
-	  Foreman has no add command, so add it to `foreman.toml`), install it, and
-	  run `rogen plugin install`.
-	- `rogen serve` starts the Rojo your project pins, else the one on the
-	  PATH, and checks its version first: sync rules need Rojo 7.5.0 or newer.
-	- To use Argon instead, run `rogen write --watch` and `argon serve`.
-</Callout>
+Rogen writes the Rojo project file, and [Rojo](https://rojo.space) syncs it into Studio, so a project needs both. Install Rogen with **Rokit** or **npm**:
 
 <Tabs items={["Rokit", "npm"]}>
   <Tab value="Rokit">
-    <Steps>
-      <Step>
-        ### Add Rogen to Rokit
+    Add Rogen to your `rokit.toml`:
 
-        Add Rogen to your `rokit.toml`:
+    ```toml title="rokit.toml"
+    [tools]
+    rogen = "ldgerrits/rogen@2.0.0-beta.1"
+    ```
 
-        ```toml title="rokit.toml"
-        [tools]
-        rogen = "ldgerrits/rogen@2.0.0"
-        ```
+    Then install it, and check that it runs:
 
-      </Step>
-
-      <Step>
-        ### Install
-
-        ```bash
-        rokit install
-        ```
-
-      </Step>
-
-      <Step>
-        ### Check It Works
-
-        ```bash
-        rogen --version
-        ```
-
-        If this prints a version number, you're set.
-
-      </Step>
-    </Steps>
+    ```bash
+    rokit install
+    rogen --version
+    ```
 
   </Tab>
 
   <Tab value="npm">
-    <Steps>
-      <Step>
-        ### Install
+    ```bash
+    npm i @ldgerrits/rogen@next
+    npx rogen --version
+    ```
 
-        Add Rogen to your project:
-
-        ```bash
-        npm i @ldgerrits/rogen
-        ```
-
-      </Step>
-
-      <Step>
-        ### Check It Works
-
-        Run the local install through `npx`:
-
-        ```bash
-        npx rogen --version
-        ```
-
-        If this prints a version number, you're set.
-
-      </Step>
-    </Steps>
+    Run every `rogen` command on these pages through `npx`.
 
   </Tab>
 </Tabs>
 
+## Rojo
+
+For a new game, `rogen init` pins Rojo for you, as [Creating a New Game](/docs/v2/new-game) shows. In an existing project, pin Rojo 7.5.0 or newer with your tool manager, then install the Studio plugin that matches it:
+
+```bash
+rokit add rojo-rbx/rojo
+rogen plugin install
+```
+
 ## Updates
 
-Rogen tells you when a newer stable release is out, with one line on stderr after a command run in a terminal, and says which pin or `npm` command to change. To stop it, set `ROGEN_NO_UPDATE_CHECK=1` or `NO_UPDATE_NOTIFIER=1`. It reads GitHub's list of releases once a day.
-
-## Quick Start
-
-In an empty folder, four steps take you to a game in Studio:
-
-<Steps>
-  <Step>
-    ### Set Up
-
-    ```bash
-    rogen init
-    ```
-
-    Answer the one or two questions it asks (the language in an empty folder, one place or several), then press Enter at the summary. It writes the project and a small sample game, and pins Rojo in your tool manager's file. It installs nothing itself.
-
-  </Step>
-
-  <Step>
-    ### Install Rojo
-
-    ```bash
-    rokit install
-    rogen plugin install
-    ```
-
-    Use `aftman install` or `foreman install` if that is your manager. The second command installs Rojo's Studio plugin.
-
-  </Step>
-
-  <Step>
-    ### Serve
-
-    ```bash
-    rogen serve
-    ```
-
-  </Step>
-
-  <Step>
-    ### Connect
-
-    In Studio, press Connect in the Rojo plugin. The sample's three scripts print their greeting.
-  </Step>
-</Steps>
-
-Nothing else is needed for Luau. roblox-ts and Darklua have a compiler to run beside `rogen serve`, which `init` prints.
+After a command run in a terminal, Rogen prints one line when a newer stable release is out, with the pin or `npm` command to change. Set `ROGEN_NO_UPDATE_CHECK=1` to turn it off.

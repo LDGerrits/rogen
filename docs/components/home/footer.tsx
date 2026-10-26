@@ -5,7 +5,7 @@ import { delay } from "./more-link";
 
 const resources = [
 	{ text: "Docs", url: "/docs/v2" },
-	{ text: "Quick Start", url: "/docs/v2/installation" },
+	{ text: "Quick Start", url: "/docs/v2/new-game" },
 	{ text: "Architectures", url: "/docs/v2/architectures" },
 ];
 

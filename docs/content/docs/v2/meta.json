@@ -2,14 +2,17 @@
 	"title": "Rogen v2",
 	"root": true,
 	"pages": [
-		"---Overview---",
+		"---Getting Started---",
 		"index",
 		"installation",
+		"new-game",
+		"---Core Concepts---",
 		"core-concepts/routing",
 		"---Guides---",
 		"agents",
 		"migrating-from-v1",
 		"---Reference---",
+		"commands",
 		"config",
 		"diagnostics"
 	]

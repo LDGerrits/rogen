@@ -1,0 +1,57 @@
+---
+title: Creating a New Game
+description: Start a game with Rogen and sync it into Studio
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+<Steps>
+
+<Step>
+### Create the Project
+
+In an empty folder, run:
+
+```bash
+rogen init
+```
+
+It asks for the language, Luau or roblox-ts, and whether the game has one place or several. It writes the config, a small sample game, and a pin for Rojo in your tool manager's file, such as `rokit.toml`.
+
+</Step>
+
+<Step>
+### Install Rojo
+
+```bash
+rokit install
+rogen plugin install
+```
+
+Use `aftman install` or `foreman install` if that is your tool manager. The second command installs Rojo's Studio plugin.
+
+</Step>
+
+<Step>
+### Sync Into Studio
+
+```bash
+rogen serve
+```
+
+In Studio, open the Rojo plugin and press **Connect**. The sample's scripts print their greeting. In roblox-ts, also run the compiler that `init` prints.
+
+</Step>
+
+<Step>
+### Build a Place File
+
+```bash
+rogen build -o game.rbxl
+```
+
+</Step>
+
+</Steps>
+
+`rogen upload` publishes the game to Roblox, as `rojo upload` does. Next, read [Routing](/docs/v2/core-concepts/routing) to see where your files land.

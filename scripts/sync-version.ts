@@ -8,7 +8,7 @@ export interface VersionedFile {
 	readonly path: string;
 	/** Matches every version in the file, with the text before and after it. */
 	readonly pattern: RegExp;
-	/** The install docs keep pointing at the latest stable release while a pre-release is out. */
+	/** The install docs keep pointing at the latest stable release while a pre-release is out, and follow pre-releases until there is one. */
 	readonly stableOnly: boolean;
 }
 
@@ -32,7 +32,10 @@ export function syncVersion(root: string, version: string): string[] {
 		const text = fs.readFileSync(target, "utf8");
 		if (!text.match(file.pattern))
 			throw new Error(`${file.path} no longer names a version.`);
-		if (prerelease && file.stableOnly) continue;
+		const pinsStable = [...text.matchAll(file.pattern)].every(
+			(match) => !match[2].includes("-")
+		);
+		if (prerelease && file.stableOnly && pinsStable) continue;
 
 		const next = text.replace(file.pattern, `$1${version}$3`);
 		if (next === text) continue;
