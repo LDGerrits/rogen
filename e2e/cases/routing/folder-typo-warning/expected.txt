@@ -24,7 +24,7 @@ stdout:
             "severity": "warning",
             "code": "route.folderTypo",
             "message": "did you mean \"Server\"?",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-foldertypo",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-foldertypo",
             "fixes": [
               {
                 "rename": {
@@ -39,7 +39,7 @@ stdout:
             "severity": "warning",
             "code": "route.folderTypo",
             "message": "did you mean \"Server\"?",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-foldertypo",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-foldertypo",
             "fixes": [
               {
                 "rename": {
@@ -54,7 +54,7 @@ stdout:
             "severity": "warning",
             "code": "route.folderTypo",
             "message": "did you mean \"Server\"?",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-foldertypo",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-foldertypo",
             "fixes": [
               {
                 "rename": {

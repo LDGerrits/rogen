@@ -63,7 +63,7 @@ stdout:
           "severity": "error",
           "code": "rojo.commandFailed",
           "message": "'rojo build' failed (exit code 1): failed to create file `missing/game.rbxlx`: No such file or directory (os error 2)",
-          "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#rojo-commandfailed"
+          "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#rojo-commandfailed"
         }
       ]
     }

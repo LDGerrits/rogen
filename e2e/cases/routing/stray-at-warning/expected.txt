@@ -24,7 +24,7 @@ stdout:
             "severity": "warning",
             "code": "route.strayAt",
             "message": "did you mean \"@server\"?",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
             "fixes": [
               {
                 "rename": {
@@ -39,14 +39,14 @@ stdout:
             "severity": "warning",
             "code": "route.strayAt",
             "message": "\"@server\" must end the name",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat"
           },
           {
             "file": "<dir>/src/Inventory/Save@sever.luau",
             "severity": "warning",
             "code": "route.strayAt",
             "message": "did you mean \"@server\"?",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
             "fixes": [
               {
                 "rename": {
@@ -61,7 +61,7 @@ stdout:
             "severity": "warning",
             "code": "route.strayAt",
             "message": "did you mean \"@client\"?",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
             "fixes": [
               {
                 "rename": {

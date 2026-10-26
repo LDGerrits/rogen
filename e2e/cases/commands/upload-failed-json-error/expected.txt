@@ -27,7 +27,7 @@ stdout:
           "severity": "error",
           "code": "rojo.commandFailed",
           "message": "'rojo upload' failed (exit code 1): --universe_id must be provided to use the Open Cloud API",
-          "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#rojo-commandfailed"
+          "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#rojo-commandfailed"
         }
       ]
     }

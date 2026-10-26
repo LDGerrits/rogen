@@ -1,7 +1,7 @@
 import { createServiceIdentifier } from "../instantiation/instantiation.js";
 
 /** Where this release's documentation lives; every link the CLI prints starts here. */
-export const DOCS_URL = "https://rogen-playfully.vercel.app/docs/v2";
+export const DOCS_URL = "https://rogen-roblox.vercel.app/docs/v2";
 
 export const REPOSITORY = "LDGerrits/rogen";
 

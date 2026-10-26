@@ -15,7 +15,7 @@ stdout:
         "severity": "warning",
         "code": "route.strayAt",
         "message": "did you mean \"@server\"?",
-        "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
         "fixes": [
           {
             "rename": {

@@ -27,7 +27,7 @@ stdout:
             "severity": "warning",
             "code": "route.dotRoute",
             "message": "write \"@server\"",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
@@ -42,7 +42,7 @@ stdout:
             "severity": "warning",
             "code": "route.dotRoute",
             "message": "write \"@server\"",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
@@ -57,7 +57,7 @@ stdout:
             "severity": "warning",
             "code": "route.dotRoute",
             "message": "write \"@server\"",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
@@ -72,7 +72,7 @@ stdout:
             "severity": "warning",
             "code": "route.dotRoute",
             "message": "write \"Config@server.json\"",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
@@ -87,7 +87,7 @@ stdout:
             "severity": "warning",
             "code": "route.dotRoute",
             "message": "write \"Types@shared.luau\"",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
@@ -102,7 +102,7 @@ stdout:
             "severity": "warning",
             "code": "route.dotRoute",
             "message": "write \"Net@shared\"",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
@@ -117,7 +117,7 @@ stdout:
             "severity": "warning",
             "code": "route.dotRoute",
             "message": "write \"Start.server.luau\"",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {

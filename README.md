@@ -1,5 +1,5 @@
 <p align="center">
-	<a href="https://rogen-playfully.vercel.app">
+	<a href="https://rogen-roblox.vercel.app">
 		<picture>
 			<source media="(prefers-color-scheme: dark)" srcset="docs/public/icon.png" />
 			<img src="docs/public/icon-dark.png" alt="Rogen logo" width="100" />
@@ -15,7 +15,7 @@
 </p>
 <p align="center">
 	<a href="https://www.npmjs.com/package/@ldgerrits/rogen"><img alt="Beta release" src="https://img.shields.io/npm/v/@ldgerrits/rogen/next?style=flat-square&label=beta" /></a>
-	<a href="https://rogen-playfully.vercel.app/docs/v2"><img alt="Documentation" src="https://img.shields.io/badge/docs-website-blueviolet?style=flat-square" /></a>
+	<a href="https://rogen-roblox.vercel.app/docs/v2"><img alt="Documentation" src="https://img.shields.io/badge/docs-website-blueviolet?style=flat-square" /></a>
 	<a href="https://discord.com/channels/385151591524597761/1503801029232295996"><img alt="Discord" src="https://img.shields.io/badge/discord-chat-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
 	<a href="https://github.com/LDGerrits/rogen/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/LDGerrits/rogen?style=flat-square&logo=github" /></a>
 	<a href="https://luau.org"><img alt="Luau" src="https://img.shields.io/badge/Luau-00A2FF?style=flat-square&logo=luau&logoColor=white" /></a>
@@ -25,7 +25,7 @@
 ## Why Rogen?
 
 - **Organize by feature** — Group all code, UI, and assets for a specific feature in one place. This gives you high cohesion, better scalability, fewer merge conflicts, and features that are simple to maintain or delete.
-- **Enforce boundaries** — Keep coupling low with a linter. Every path names its feature, so a [lint rule](https://rogen-playfully.vercel.app/docs/v2/architectures) can stop one feature from requiring another.
+- **Enforce boundaries** — Keep coupling low with a linter. Every path names its feature, so a [lint rule](https://rogen-roblox.vercel.app/docs/v2/architectures) can stop one feature from requiring another.
 - **Multi-place games** — Write shared code once and use it in every place. When one place needs something different, add a file with the same name to that place's folder, and it overwrites the shared one there.
 - **Still Rojo** — Rogen runs the Rojo commands you use, with the same flags. One tool, and nothing to relearn.
 
@@ -87,7 +87,7 @@ rogen build -o game.rbxl   # Update the project file, then build a place with Ro
 rogen check                # Print warnings and errors, and exit 1 on any
 ```
 
-`sourcemap`, `upload`, `syncback` and `plugin` take Rojo's flags too. See the [documentation](https://rogen-playfully.vercel.app/docs/v2) for every command.
+`sourcemap`, `upload`, `syncback` and `plugin` take Rojo's flags too. See the [documentation](https://rogen-roblox.vercel.app/docs/v2) for every command.
 
 ## FAQ
 
@@ -101,7 +101,7 @@ Yes, for syncing your files into Studio. Run `rogen write --watch` and serve wit
 
 #### Can I use Rogen in an existing Rojo project?
 
-Yes. Run `rogen init` to move it to Rogen. See [Coming from Rojo](https://rogen-playfully.vercel.app/docs/v2/coming-from-rojo).
+Yes. Run `rogen init` to move it to Rogen. See [Coming from Rojo](https://rogen-roblox.vercel.app/docs/v2/coming-from-rojo).
 
 ## Contributing
 

@@ -5,22 +5,23 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"homepage": "https://rogen-playfully.vercel.app/",
+	"homepage": "https://rogen-roblox.vercel.app/",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/LDGerrits/rogen.git"
 	},
 	"keywords": [
-		"CLI",
 		"roblox",
 		"rojo",
 		"luau",
 		"roblox-ts",
-		"feature-based",
-		"feature-driven",
-		"feature-sliced",
-		"feature-slices",
-		"domain-driven"
+		"roblox-studio",
+		"feature-based-architecture",
+		"vertical-slice-architecture",
+		"folder-structure",
+		"file-based-routing",
+		"sync",
+		"cli"
 	],
 	"author": "ldgerrits",
 	"license": "MIT",
@@ -29,7 +30,7 @@
 		"docs"
 	],
 	"files": [
-		"dist",
+		"dist/bundle.cjs",
 		"README.md",
 		"LICENSE.md"
 	],

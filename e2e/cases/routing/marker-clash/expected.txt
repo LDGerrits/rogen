@@ -21,7 +21,7 @@ stdout:
             "severity": "error",
             "code": "route.markerClash",
             "message": "\"@client\" and \"@server\" route this folder to different places, and nothing decides between them. Keep one.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-markerclash"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-markerclash"
           }
         ]
       }

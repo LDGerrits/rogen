@@ -65,7 +65,7 @@ stdout:
           "severity": "error",
           "code": "rojo.commandFailed",
           "message": "'rojo sourcemap' failed (exit code 1): failed to create file `missing/sourcemap.json`: No such file or directory (os error 2)",
-          "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#rojo-commandfailed"
+          "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#rojo-commandfailed"
         }
       ]
     }

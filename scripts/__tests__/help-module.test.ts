@@ -32,7 +32,7 @@ describe("scripts/help-module", () => {
 				[
 					"route.strayAt",
 					"",
-					"Warning. See `legacy.config` and Routing (https://rogen-playfully.vercel.app/docs/v2/core-concepts/routing#matching).",
+					"Warning. See `legacy.config` and Routing (https://rogen-roblox.vercel.app/docs/v2/core-concepts/routing#matching).",
 					"",
 					"  src/A@sever.luau - warning: …",
 				].join("\n")

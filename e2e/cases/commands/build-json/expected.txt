@@ -30,28 +30,28 @@ stdout:
             "severity": "warning",
             "code": "route.unrouted",
             "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/Util.spec.luau",
             "severity": "warning",
             "code": "route.unrouted",
             "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/client/Hud.client.luau",
             "severity": "warning",
             "code": "route.unrouted",
             "message": "matched no route, so it is left out. Move it into <dir>/src/client/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/match/lib/Signal.luau",
             "severity": "warning",
             "code": "route.unrouted",
             "message": "matched no route, so it is left out. Move it into <dir>/match/lib/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-unrouted"
           }
         ]
       }

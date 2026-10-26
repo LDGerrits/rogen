@@ -23,7 +23,7 @@ stdout:
             "severity": "error",
             "code": "config.invalidSyntax",
             "message": "invalid JSONC: expected '}'.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-invalidsyntax"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#config-invalidsyntax"
           }
         ]
       }

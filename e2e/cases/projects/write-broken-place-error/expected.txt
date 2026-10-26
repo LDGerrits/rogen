@@ -34,7 +34,7 @@ stdout:
             "severity": "error",
             "code": "config.invalidSyntax",
             "message": "invalid JSONC: expected a property name.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-invalidsyntax"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#config-invalidsyntax"
           },
           {
             "file": "<dir>/lobby.rogen.json",
@@ -43,7 +43,7 @@ stdout:
             "severity": "error",
             "code": "config.invalidSyntax",
             "message": "invalid JSONC: expected a value.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-invalidsyntax"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#config-invalidsyntax"
           },
           {
             "file": "<dir>/lobby.rogen.json",
@@ -52,7 +52,7 @@ stdout:
             "severity": "error",
             "code": "config.invalidSyntax",
             "message": "invalid JSONC: expected '}'.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-invalidsyntax"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#config-invalidsyntax"
           }
         ]
       }

@@ -14,7 +14,7 @@ stdout:
         "severity": "warning",
         "code": "scan.emptyName",
         "message": "has no name once its suffix is taken off, so it becomes an instance with an empty name. Put a name before the suffix, as in Name.server.luau.",
-        "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#scan-emptyname"
+        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#scan-emptyname"
       }
     ]
   }
