@@ -18,7 +18,8 @@ A Rogen config is a Rojo project file with `routes` added. The `tree` is the bas
 	"routes": {
 		"Server": "ServerScriptService",
 		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared"
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
 	},
 	"tree": {
 		"$className": "DataModel",
@@ -29,7 +30,7 @@ A Rogen config is a Rojo project file with `routes` added. The `tree` is the bas
 }
 ```
 
-A folder named after a route sends its files there, so `src/Inventory/Server/InventoryService.luau` lands in `ServerScriptService/Inventory`. Rogen writes `default.project.json` from the config, and Rojo serves, builds and syncs your game as before. `rogen serve` and `rogen build` take Rojo's flags, and a project without a config works as it did.
+A folder named after a route sends its files there, so `src/Inventory/Server/InventoryService.luau` lands in `ServerScriptService/Inventory`. The `*` route takes every file that no other route matches. Rogen writes `default.project.json` from the config, and Rojo serves, builds and syncs your game as before. `rogen serve` and `rogen build` take Rojo's flags, and a project without a config works as it did.
 
 ## Next Steps
 
