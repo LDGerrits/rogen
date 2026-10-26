@@ -10,6 +10,7 @@ import {
 	TreeService,
 	StudioFile,
 } from "./file-tree-preview";
+import { RouteFigure } from "./route-figure";
 
 export function getMDXComponents(components?: MDXComponents) {
 	return {
@@ -23,6 +24,7 @@ export function getMDXComponents(components?: MDXComponents) {
 		TreeFile,
 		TreeService,
 		StudioFile,
+		RouteFigure,
 	} satisfies MDXComponents;
 }
 
