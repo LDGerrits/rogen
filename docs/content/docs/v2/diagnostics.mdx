@@ -847,7 +847,7 @@ These diagnostics come from `rogen init`, which starts projects and lifts a hand
 Error. The folder already has a `.rogen.json` or `.rogen.jsonc`, either `default` or named. `init` never overwrites or changes a config, so it stops and writes nothing. The exception is when `--agent-rules` or `--agent-hook` are the only flags. Then `init` adds only the agent files.
 
 ```
-error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'; for a new place, copy a config and edit the copy. To add the agent rules or the agent hook to this project, run 'rogen init --agent-rules' or 'rogen init --agent-hook'; to set Rojo up, see https://rogen-playfully.vercel.app/docs/v2/installation. (init.configExists)
+error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'; for a new place, copy a config and edit the copy. To add the agent rules or the agent hook to this project, run 'rogen init --agent-rules' or 'rogen init --agent-hook'; to set Rojo up, see https://rogen-roblox.vercel.app/docs/v2/installation. (init.configExists)
 ```
 
 To change the config, edit it and run `rogen check`. For a new place, copy a config and edit the copy. To add the agent rules or the agent hook later, run `rogen init --agent-rules` or `rogen init --agent-hook`. See [Working with agents](/docs/v2/agents#add-the-rules). To set up Rojo, see [Installation](/docs/v2/installation).
@@ -914,8 +914,8 @@ These diagnostics come from `rogen serve` and the Rojo server that it starts.
 Error. `rogen serve` found no Rojo. No `rokit.toml`, `aftman.toml` or `foreman.toml` in the folder or above pins it, and it isn't on the PATH. `serve` starts only Rojo, so a pinned Argon doesn't count. If Argon is pinned, the message says so.
 
 ```
-error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-playfully.vercel.app/docs/v2/installation. (serve.noServer)
-error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. Argon is pinned, but rogen serve only starts Rojo: run 'rogen write --watch' to keep the project files current, and 'argon serve' to serve them. To set Rojo up by hand, see https://rogen-playfully.vercel.app/docs/v2/installation. (serve.noServer)
+error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation. (serve.noServer)
+error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. Argon is pinned, but rogen serve only starts Rojo: run 'rogen write --watch' to keep the project files current, and 'argon serve' to serve them. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation. (serve.noServer)
 ```
 
 Pin Rojo with your toolchain manager, then install Rojo's Studio plugin with `rogen plugin install`:
@@ -941,7 +941,7 @@ Run the manager's install command: `rokit install`, `aftman install` or `foreman
 Error. `<tool> --version` failed, so Rojo can't start. Rogen runs that command before it writes. The message ends with the first line that Rojo printed.
 
 ```
-error: 'rojo --version' failed, so Rojo can't start: Failed to find tool 'rojo' in any project manifest file. If Rojo isn't pinned yet, run 'rokit add rojo-rbx/rojo'. To set Rojo up by hand, see https://rogen-playfully.vercel.app/docs/v2/installation. (serve.serverFailed)
+error: 'rojo --version' failed, so Rojo can't start: Failed to find tool 'rojo' in any project manifest file. If Rojo isn't pinned yet, run 'rokit add rojo-rbx/rojo'. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation. (serve.serverFailed)
 ```
 
 Pin the tool, or fix the install that the quoted line points at. To see the full output, run `rojo --version` yourself.
@@ -1104,7 +1104,7 @@ This diagnostic comes from a config written for Rogen 1.
 Error. A `.rogen.json` has keys from Rogen 1, such as `source`, `aliases` or a mode. It is a v1 config, which v2 doesn't read.
 
 ```
-error: this looks like a config for Rogen 1, which v2 doesn't read. See https://rogen-playfully.vercel.app/docs/v2/migrating-from-v1 to migrate it. (legacy.config)
+error: this looks like a config for Rogen 1, which v2 doesn't read. See https://rogen-roblox.vercel.app/docs/v2/migrating-from-v1 to migrate it. (legacy.config)
 ```
 
 Rewrite the config in the v2 format. See [Migrating from v1](/docs/v2/migrating-from-v1).

@@ -1,6 +1,6 @@
 # Rogen documentation
 
-The site at https://rogen-playfully.vercel.app, built with [Next.js](https://nextjs.org) and [Fumadocs](https://fumadocs.dev).
+The site at https://rogen-roblox.vercel.app, built with [Next.js](https://nextjs.org) and [Fumadocs](https://fumadocs.dev).
 
 ## Run it
 

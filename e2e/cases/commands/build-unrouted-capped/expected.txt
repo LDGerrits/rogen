@@ -29,84 +29,84 @@ stdout:
             "severity": "warning",
             "code": "route.unrouted",
             "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F02.luau",
             "severity": "warning",
             "code": "route.unrouted",
             "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F03.luau",
             "severity": "warning",
             "code": "route.unrouted",
             "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F04.luau",
             "severity": "warning",
             "code": "route.unrouted",
             "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F05.luau",
             "severity": "warning",
             "code": "route.unrouted",
             "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F06.luau",
             "severity": "warning",
             "code": "route.unrouted",
             "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F07.luau",
             "severity": "warning",
             "code": "route.unrouted",
             "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F08.luau",
             "severity": "warning",
             "code": "route.unrouted",
             "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F09.luau",
             "severity": "warning",
             "code": "route.unrouted",
             "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F10.luau",
             "severity": "warning",
             "code": "route.unrouted",
             "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F11.luau",
             "severity": "warning",
             "code": "route.unrouted",
             "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F12.luau",
             "severity": "warning",
             "code": "route.unrouted",
             "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-unrouted"
           }
         ]
       }

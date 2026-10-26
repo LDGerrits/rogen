@@ -1,18 +1,18 @@
 import type { ReactNode } from "react";
-import { JetBrains_Mono, Sora } from "next/font/google";
+import localFont from "next/font/local";
 import { LANG_SCRIPT } from "@/components/home/lang-script";
 import { Nav } from "@/components/home/nav";
 import "./home.css";
 
-const sora = Sora({
-	subsets: ["latin"],
-	weight: ["400", "600"],
+const sora = localFont({
+	src: "../fonts/sora.woff2",
+	weight: "100 800",
 	variable: "--font-sora",
 });
 
-const jetbrainsMono = JetBrains_Mono({
-	subsets: ["latin"],
-	weight: ["400", "500"],
+const jetbrainsMono = localFont({
+	src: "../fonts/jetbrains-mono.woff2",
+	weight: "100 800",
 	variable: "--font-jetbrains-mono",
 });
 

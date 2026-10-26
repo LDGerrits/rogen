@@ -587,7 +587,7 @@ describe("CoreInitService", () => {
 				CODEX,
 			]);
 			expect(plan?.notes).toEqual([
-				".claude/settings.json isn't plain JSON, so it was left alone. Register .agents/hooks/rogen-check.mjs in it by hand: https://rogen-playfully.vercel.app/docs/v2/agents",
+				".claude/settings.json isn't plain JSON, so it was left alone. Register .agents/hooks/rogen-check.mjs in it by hand: https://rogen-roblox.vercel.app/docs/v2/agents",
 			]);
 		});
 
@@ -598,7 +598,7 @@ describe("CoreInitService", () => {
 
 			expect(names(plan)).not.toContain(SCRIPT);
 			expect(plan?.notes).toEqual([
-				".claude/settings.json isn't plain JSON, so it was left alone. Register .agents/hooks/rogen-check.mjs in it by hand: https://rogen-playfully.vercel.app/docs/v2/agents",
+				".claude/settings.json isn't plain JSON, so it was left alone. Register .agents/hooks/rogen-check.mjs in it by hand: https://rogen-roblox.vercel.app/docs/v2/agents",
 			]);
 		});
 

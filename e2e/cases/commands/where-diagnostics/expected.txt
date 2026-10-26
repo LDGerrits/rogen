@@ -38,7 +38,7 @@ stdout:
             "severity": "warning",
             "code": "route.strayAt",
             "message": "did you mean \"@server\"?",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
             "fixes": [
               {
                 "rename": {
@@ -69,7 +69,7 @@ stdout:
             "severity": "warning",
             "code": "tree.deadScript",
             "message": "a Script never runs in ReplicatedStorage",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#tree-deadscript"
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#tree-deadscript"
           }
         ]
       },
@@ -93,7 +93,7 @@ stdout:
             "severity": "warning",
             "code": "route.strayAt",
             "message": "did you mean \"@server\"?",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
             "fixes": [
               {
                 "rename": {
