@@ -2,7 +2,7 @@
 	<a href="https://rogen-playfully.vercel.app">
 		<picture>
 			<source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/LDGerrits/rogen/main/docs/public/icon.png" />
-			<img src="https://raw.githubusercontent.com/LDGerrits/rogen/main/docs/public/icon-dark.png" alt="Rogen logo" width="100" />
+			<img src="https://raw.githubusercontent.com/LDGerrits/rogen/main/docs/public/icon-dark.png" alt="Rogen logo" width="160" />
 		</picture>
 	</a>
 </p>
