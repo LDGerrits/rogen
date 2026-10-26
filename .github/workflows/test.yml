@@ -4,7 +4,6 @@ on:
     push:
         branches:
             - main
-            - refactor
     pull_request:
 
 permissions:
