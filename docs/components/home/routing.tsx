@@ -41,7 +41,7 @@ function Config() {
 					{': "DataModel" }\n}'}
 				</pre>
 			</div>
-			<p className="small">
+			<p className="note">
 				Add your own, such as{" "}
 				<code>&quot;Gui&quot;: &quot;StarterGui&quot;</code>, and{" "}
 				<code>@Gui</code> sends a file to StarterGui.
@@ -55,30 +55,26 @@ export function Routing() {
 		<section className="sec alt" aria-labelledby="route-h">
 			<div className="wrap">
 				<div className="cols r-head">
-					<div className="head-l">
-						<h2 id="route-h" className="rv">
-							How routing works
-						</h2>
-						<p className="rv" style={delay(80)}>
-							You choose the routes and where each one points. Add{" "}
-							<code>@Server</code>
-							{" to a file's name or put it in a "}
-							<code>Server</code> folder, and it goes to
-							ServerScriptService. Files without a route go to{" "}
-							<code>*</code>.
-						</p>
-						<MoreLink
-							href="/docs/v2/core-concepts/routing"
-							dl={140}
-						>
+					<h2 id="route-h" className="rv">
+						How routing works
+					</h2>
+					<p className="rv" style={delay(80)}>
+						You choose the routes and where each one points. Add{" "}
+						<code>@Server</code>
+						{" to a file's name or put it in a "}
+						<code>Server</code> folder, and it goes to
+						ServerScriptService. Files without a route go to{" "}
+						<code>*</code>.
+					</p>
+				</div>
+				<RouteViews
+					config={<Config />}
+					guide={
+						<MoreLink href="/docs/v2/core-concepts/routing">
 							Read the routing guide
 						</MoreLink>
-					</div>
-					<div className="conf rv" style={delay(80)}>
-						<Config />
-					</div>
-				</div>
-				<RouteViews />
+					}
+				/>
 			</div>
 		</section>
 	);

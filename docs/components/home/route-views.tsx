@@ -122,8 +122,20 @@ function Rows({ rows }: { rows: Row[] }) {
 	));
 }
 
-/** The Route by name / Route by folder toggle and the on-disk and Studio panels. */
-export function RouteViews() {
+const legend: [Colour, string][] = [
+	["s", "Server"],
+	["c", "Client"],
+	["r", "Shared and *"],
+];
+
+/** The config beside the Route by name / Route by folder toggle and the on-disk and Studio panels. */
+export function RouteViews({
+	config,
+	guide,
+}: {
+	config: ReactNode;
+	guide: ReactNode;
+}) {
 	const [view, setView] = useState<ViewId>("name");
 	const [shown, setShown] = useState<ViewId>("name");
 	const [entering, setEntering] = useState(false);
@@ -180,9 +192,10 @@ export function RouteViews() {
 	const swapping = shown !== view || entering;
 
 	return (
-		<div className="views">
-			<div className="cols views-top">
-				<div className="vt rv">
+		<div className="bench rv" style={delay(120)}>
+			<div className="b-conf">{config}</div>
+			<div className="b-main">
+				<div className="b-top">
 					<div
 						ref={toggle}
 						className="toggle"
@@ -211,42 +224,37 @@ export function RouteViews() {
 						{views[view].desc}
 					</p>
 				</div>
+				<div className="b-trees">
+					<div className="panel src">
+						<div className="ph">
+							<b>src/Inventory</b>
+							<span>on disk</span>
+						</div>
+						<div className={`rows${swapping ? " swap" : ""}`}>
+							<Rows rows={views[shown].rows} />
+						</div>
+					</div>
+					<div className="panel dst">
+						<div className="ph">
+							<b>Roblox Studio</b>
+							<span>same for both</span>
+						</div>
+						<div className="rows">
+							<Rows rows={studio} />
+						</div>
+					</div>
+				</div>
 			</div>
-			<div className="cols board rv" style={delay(80)}>
-				<div className="panel src">
-					<div className="ph">
-						<b>src/Inventory</b>
-						<span>on disk</span>
-					</div>
-					<div className={`rows${swapping ? " swap" : ""}`}>
-						<Rows rows={views[shown].rows} />
-					</div>
-				</div>
-				<div className="via" aria-hidden="true">
-					<svg viewBox="0 0 120 40" fill="none">
-						<path
-							className="dash"
-							d="M4 20H104"
-							strokeOpacity=".45"
-							strokeWidth="1.5"
-							strokeDasharray="4 6"
-						/>
-						<path
-							className="head"
-							d="M100 13 112 20 100 27"
-							strokeWidth="2"
-						/>
-					</svg>
-				</div>
-				<div className="panel dst">
-					<div className="ph">
-						<b>Result in Roblox Studio</b>
-						<span>same for both views</span>
-					</div>
-					<div className="rows">
-						<Rows rows={studio} />
-					</div>
-				</div>
+			<div className="b-foot">
+				<ul className="legend" aria-label="Route colours">
+					{legend.map(([colour, label]) => (
+						<li key={colour}>
+							<i className={`dia ${colour}`} />
+							{label}
+						</li>
+					))}
+				</ul>
+				{guide}
 			</div>
 		</div>
 	);

@@ -762,22 +762,14 @@ body:has(.home) {
 .home .r-head {
 	align-items: start;
 }
-.home .r-head .head-l {
-	grid-column: 1 / span 5;
-}
-.home .r-head .head-l p {
-	margin-top: var(--s3);
-	font-size: clamp(16px, 1.25vw, 18px);
-	max-width: 34em;
-}
-.home .r-head .head-l .link {
-	margin-top: var(--s3);
-}
 .home .r-head h2 {
+	grid-column: 1 / span 5;
 	font-size: clamp(32px, 3.4vw, 48px);
 }
-.home .conf {
-	grid-column: 8 / span 5;
+.home .r-head p {
+	grid-column: 7 / span 6;
+	font-size: clamp(16px, 1.25vw, 18px);
+	max-width: 34em;
 }
 .home .codebox {
 	background: var(--deep);
@@ -804,21 +796,70 @@ body:has(.home) {
 .home .codebox .k {
 	color: var(--ink);
 }
-.home .conf .small {
-	margin-top: var(--s2);
+
+/* the bench: config on the left; toggle and both trees on the right; legend and guide below */
+.home .bench {
+	margin-top: var(--s6);
+	display: grid;
+	grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+	background: var(--deep);
+	border-radius: 8px;
+	box-shadow: inset 0 0 0 1px var(--line);
+}
+.home .b-conf {
+	border-right: 1px solid var(--line);
+	min-width: 0;
+}
+.home .bench .codebox {
+	background: none;
+	border-radius: 0;
+	box-shadow: none;
+}
+.home .bench .note {
+	margin: 0 var(--s3) var(--s3);
+	padding: var(--s2) var(--s3);
+	border-left: 2px solid var(--acc-2);
+	background: color-mix(in srgb, var(--acc) 8%, transparent);
 	font-size: 14px;
+	color: var(--ink-2);
+}
+.home .b-main {
+	min-width: 0;
+}
+.home .b-top {
+	padding: var(--s3);
+	border-bottom: 1px solid var(--line);
+}
+.home .b-trees {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.home .b-trees .panel + .panel {
+	border-left: 1px solid var(--line);
+}
+.home .b-foot {
+	grid-column: 1 / -1;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--s2) var(--s4);
+	padding: var(--s2) var(--s3);
+	border-top: 1px solid var(--line);
+}
+.home .legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--s1) var(--s3);
+	list-style: none;
+	font: 500 12px/1 var(--mono);
+	letter-spacing: 0.04em;
 	color: var(--ink-3);
 }
-
-/* route by name or folder */
-.home .views {
-	margin-top: var(--s7);
-}
-.home .views-top {
-	align-items: end;
-}
-.home .views-top .vt {
-	grid-column: 1 / span 7;
+.home .legend li {
+	display: flex;
+	align-items: center;
+	gap: 8px;
 }
 .home .toggle {
 	position: relative;
@@ -875,39 +916,10 @@ body:has(.home) {
 	max-width: 40em;
 	min-height: 3.2em;
 }
-.home .board {
-	margin-top: var(--s4);
-	align-items: start;
-}
 .home .panel {
-	background: var(--deep);
-	border-radius: 6px;
-	box-shadow: inset 0 0 0 1px var(--line);
 	padding: var(--s3);
-}
-.home .panel.src {
-	grid-column: 1 / span 5;
-}
-.home .panel.dst {
-	grid-column: 8 / span 5;
-}
-.home .via {
-	grid-column: 6 / span 2;
-	align-self: stretch;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-.home .via svg {
-	width: 100%;
-	max-width: 120px;
-	height: auto;
-}
-.home .via .dash {
-	stroke: var(--ink-3);
-}
-.home .via .head {
-	stroke: var(--ink);
+	min-width: 0;
+	overflow-x: auto;
 }
 .home .panel .ph {
 	display: flex;
@@ -1172,15 +1184,15 @@ body:has(.home) {
 	.home .cmds {
 		margin-top: var(--s4);
 	}
-	.home .conf {
-		margin-top: var(--s5);
+	.home .r-head p {
+		margin-top: var(--s3);
 	}
-	.home .via {
-		padding: var(--s2) 0;
+	.home .bench {
+		grid-template-columns: minmax(0, 1fr);
 	}
-	.home .via svg {
-		transform: rotate(90deg);
-		max-width: 64px;
+	.home .b-conf {
+		border-right: 0;
+		border-bottom: 1px solid var(--line);
 	}
 	.home .ag-txt {
 		margin-top: var(--s5);
@@ -1204,6 +1216,13 @@ body:has(.home) {
 	}
 }
 @media (max-width: 600px) {
+	.home .b-trees {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.home .b-trees .panel + .panel {
+		border-left: 0;
+		border-top: 1px solid var(--line);
+	}
 	.home .nav-r,
 	.home .nav ul {
 		gap: 0;
