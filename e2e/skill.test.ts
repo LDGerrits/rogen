@@ -20,7 +20,7 @@ describe("agent rules", () => {
 			/````md title="AGENTS\.md"\n([\s\S]*?)\n````/
 		);
 
-		expect(snippet?.[1]).toBe(block(read("skills/rogen/agent-rules.md")));
+		expect(snippet?.[1]).toBe(read("skills/rogen/agent-rules.md").trimEnd());
 	});
 
 	it("should be what the setup skill tells an agent to add", () => {
