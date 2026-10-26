@@ -1,40 +1,27 @@
 import type { CSSProperties } from "react";
+import { L, Name } from "./inventory";
 import { delay, MoreLink } from "./more-link";
 
 type Dot = "o" | "s" | "c" | "r";
 
-const tree: {
-	depth: number;
-	dot: Dot;
-	name: string;
-	route?: string;
-	ext?: string;
-	cls?: string;
-}[] = [
-	{ depth: 1, dot: "o", name: "Combat/" },
-	{ depth: 1, dot: "o", name: "Inventory/", cls: "on" },
-	{ depth: 2, dot: "r", name: "UI/", cls: "f" },
-	{ depth: 3, dot: "r", name: "InventoryHud.luau", cls: "f" },
-	{ depth: 3, dot: "r", name: "ItemSlot.luau", cls: "f" },
-	{
-		depth: 2,
-		dot: "c",
-		name: "InventoryController",
-		route: "@Client",
-		ext: ".luau",
-		cls: "f",
-	},
-	{
-		depth: 2,
-		dot: "s",
-		name: "InventoryService",
-		route: "@Server",
-		ext: ".luau",
-		cls: "f",
-	},
-	{ depth: 2, dot: "r", name: "InventoryTypes.luau", cls: "f" },
-	{ depth: 2, dot: "r", name: "ItemIcons.rbxm", cls: "f" },
-	{ depth: 1, dot: "o", name: "Shop/" },
+// [Luau name, roblox-ts name, depth, marker, class]
+const tree: [string, string, number, Dot, string?][] = [
+	["Combat/", "combat/", 1, "o"],
+	["Inventory/", "inventory/", 1, "o", "on"],
+	["UI/", "ui/", 2, "r", "f"],
+	["InventoryHud.luau", "InventoryHud.tsx", 3, "r", "f"],
+	["ItemSlot.luau", "ItemSlot.tsx", 3, "r", "f"],
+	[
+		"InventoryController@Client.luau",
+		"inventoryController@client.ts",
+		2,
+		"c",
+		"f",
+	],
+	["InventoryService@Server.luau", "inventoryService@server.ts", 2, "s", "f"],
+	["InventoryTypes.luau", "inventoryTypes.ts", 2, "r", "f"],
+	["ItemIcons.rbxm", "itemIcons.ts", 2, "r", "f"],
+	["Shop/", "shop/", 1, "o"],
 ];
 
 const commands = [
@@ -47,9 +34,12 @@ const commands = [
 const depth = (d: number) => ({ "--d": d }) as CSSProperties;
 
 const requires: [from: string, to: string, ok: boolean, note: string][] = [
-	["Inventory/", "Inventory/", true, "same feature"],
-	["Combat/", "Inventory/", false, "lint error"],
+	["Inventory", "Inventory", true, "same feature"],
+	["Combat", "Inventory", false, "lint error"],
 ];
+const folder = (name: string) => (
+	<L luau={`${name}/`} ts={`${name.toLowerCase()}/`} />
+);
 
 function Boundaries() {
 	return (
@@ -65,9 +55,9 @@ function Boundaries() {
 						className={ok ? "ok" : "no"}
 						aria-label={`${from} requires ${to}: ${note}`}
 					>
-						<code>{from}</code>
+						<code>{folder(from)}</code>
 						<i aria-hidden="true">{ok ? "→" : "✕"}</i>
-						<code>{to}</code>
+						<code>{folder(to)}</code>
 						<em>{note}</em>
 					</li>
 				))}
@@ -86,8 +76,12 @@ function Places() {
 			<div className="places">
 				<div className="pl shared">
 					<b>shared/</b>
-					<span>InventoryTypes.luau</span>
-					<span>ItemCatalog.luau</span>
+					<span>
+						<L luau="InventoryTypes.luau" ts="inventoryTypes.ts" />
+					</span>
+					<span>
+						<L luau="ItemCatalog.luau" ts="itemCatalog.ts" />
+					</span>
 				</div>
 				<div className="pl">
 					<b>lobby/</b>
@@ -95,7 +89,9 @@ function Places() {
 				</div>
 				<div className="pl">
 					<b>arena/</b>
-					<span className="ov">ItemCatalog.luau</span>
+					<span className="ov">
+						<L luau="ItemCatalog.luau" ts="itemCatalog.ts" />
+					</span>
 					<em>replaces the shared one</em>
 				</div>
 			</div>
@@ -137,24 +133,35 @@ export function Features() {
 							aria-label="Example feature folder"
 						>
 							<div className="hd">src/</div>
-							{tree.map((row) => (
+							{tree.map(([luau, ts, d, dot, cls]) => (
 								<div
-									key={row.name}
-									className={row.cls}
-									style={depth(row.depth)}
+									key={luau}
+									className={cls}
+									style={depth(d)}
 								>
-									<i className={`dia ${row.dot}`} />
-									{row.route ? (
-										<span>
-											{row.name}
-											<span className={`c-${row.dot}`}>
-												{row.route}
-											</span>
-											{row.ext}
-										</span>
-									) : (
-										row.name
-									)}
+									<i className={`dia ${dot}`} />
+									<L
+										luau={
+											<Name
+												name={luau}
+												colour={
+													dot === "o"
+														? undefined
+														: dot
+												}
+											/>
+										}
+										ts={
+											<Name
+												name={ts}
+												colour={
+													dot === "o"
+														? undefined
+														: dot
+												}
+											/>
+										}
+									/>
 								</div>
 							))}
 						</div>

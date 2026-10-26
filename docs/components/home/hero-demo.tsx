@@ -3,8 +3,10 @@
 import { useEffect, useRef, type CSSProperties } from "react";
 import { glyphs } from "./explorer";
 import { disk, Name, studio, StudioIcon } from "./inventory";
+import { getLang, onLang, type Lang } from "./lang";
 
-const depths = disk.map((row) => row[1]);
+// Both languages are in the page; the stylesheet shows the current one, so it is right before the page runs.
+const LANGS: Lang[] = ["luau", "ts"];
 
 // The order the highlight visits the files in.
 const cycle = [
@@ -65,11 +67,12 @@ export function HeroDemo() {
 			wires.setAttribute("viewBox", `0 0 ${s.width} ${s.height}`);
 			wires.innerHTML = cycle
 				.map((k) => {
+					const shown = `[data-only="${getLang()}"]`;
 					const from = win
-						.querySelector(`.tree [data-k="${k}"] .nm`)!
+						.querySelector(`.tree${shown} [data-k="${k}"] .nm`)!
 						.getBoundingClientRect();
 					const row = win.querySelector<HTMLElement>(
-						`.xt [data-k="${k}"]`
+						`.xt${shown} [data-k="${k}"]`
 					)!;
 					const to = row
 						.querySelector(".ic")!
@@ -134,6 +137,7 @@ export function HeroDemo() {
 		draw();
 		document.fonts?.ready.then(draw);
 		addEventListener("resize", draw);
+		const offLang = onLang(draw);
 		const io = new IntersectionObserver(([e]) => {
 			visible = e.isIntersecting;
 			if (visible) next();
@@ -147,6 +151,7 @@ export function HeroDemo() {
 			clearTimeout(timer);
 			io.disconnect();
 			removeEventListener("resize", draw);
+			offLang();
 			hoverable.forEach((el) => {
 				el.removeEventListener("mouseenter", enter);
 				el.removeEventListener("mouseleave", leave);
@@ -208,44 +213,62 @@ export function HeroDemo() {
 						<b>src/</b>
 						<span>On disk</span>
 					</div>
-					<ul className="tree">
-						{disk.map(([name, depth, key, colour], i) => (
-							<li
-								key={name}
-								data-k={key}
-								className={
-									[!key && "b", colour && `k-${colour}`]
-										.filter(Boolean)
-										.join(" ") || undefined
-								}
-							>
-								<span className="band" />
-								<span className="g">{glyphs(depths, i)}</span>
-								<Name name={name} colour={colour} />
-							</li>
-						))}
-					</ul>
+					{LANGS.map((lang) => (
+						<ul key={lang} className="tree" data-only={lang}>
+							{disk[lang].map(
+								([name, depth, key, colour], i, rows) => (
+									<li
+										key={name}
+										data-k={key}
+										className={
+											[
+												!key && "b",
+												colour && `k-${colour}`,
+											]
+												.filter(Boolean)
+												.join(" ") || undefined
+										}
+									>
+										<span className="band" />
+										<span className="g">
+											{glyphs(
+												rows.map((row) => row[1]),
+												i
+											)}
+										</span>
+										<Name name={name} colour={colour} />
+									</li>
+								)
+							)}
+						</ul>
+					))}
 				</div>
 				<div className="side">
 					<div className="pane-h">
 						<b>Explorer</b>
 						<span>Roblox Studio</span>
 					</div>
-					<ul className="xt">
-						{studio.map(([key, name, depth, icon, colour], i) => (
-							<li
-								key={i}
-								data-k={key || undefined}
-								data-c={colour}
-								className={`x k-${colour}${icon === "svc" ? " svc" : " arr"}`}
-								style={{ "--d": depth } as CSSProperties}
-							>
-								<span className="band" />
-								<StudioIcon icon={icon} />
-								<span className="nm">{name}</span>
-							</li>
-						))}
-					</ul>
+					{LANGS.map((lang) => (
+						<ul key={lang} className="xt" data-only={lang}>
+							{studio[lang].map(
+								([key, name, depth, icon, colour], i) => (
+									<li
+										key={i}
+										data-k={key || undefined}
+										data-c={colour}
+										className={`x k-${colour}${icon === "svc" ? " svc" : " arr"}`}
+										style={
+											{ "--d": depth } as CSSProperties
+										}
+									>
+										<span className="band" />
+										<StudioIcon icon={icon} />
+										<span className="nm">{name}</span>
+									</li>
+								)
+							)}
+						</ul>
+					))}
 				</div>
 				<svg className="wires" data-wires="" aria-hidden="true" />
 			</div>

@@ -1,5 +1,6 @@
 import { HeroDemo } from "./hero-demo";
 import { InstallCommand } from "./install-command";
+import { LangSwitch } from "./lang-switch";
 
 export function Hero() {
 	return (
@@ -23,9 +24,7 @@ export function Hero() {
 					</div>
 					<div className="hero-copy">
 						<InstallCommand className="in-4" />
-						<p className="langs in-5">
-							<b>Luau</b> · <b>roblox-ts</b>
-						</p>
+						<LangSwitch className="in-5" />
 					</div>
 				</div>
 				<HeroDemo />

@@ -1,3 +1,4 @@
+import { L } from "./inventory";
 import { delay, MoreLink } from "./more-link";
 import { RouteViews } from "./route-views";
 import { RoutingStory } from "./routing-story";
@@ -12,11 +13,15 @@ export function Routing() {
 					</h2>
 					<p className="rv" style={delay(80)}>
 						You choose the routes and where each one points. Add{" "}
-						<code>@Server</code>
+						<code>
+							<L luau="@Server" ts="@server" />
+						</code>
 						{" to a file's name or put it in a "}
-						<code>Server</code> folder, and it goes to
-						ServerScriptService. Files without a route go to{" "}
-						<code>*</code>.
+						<code>
+							<L luau="Server" ts="server" />
+						</code>{" "}
+						folder, and it goes to ServerScriptService. Files
+						without a route go to <code>*</code>.
 					</p>
 				</div>
 			</div>

@@ -1,7 +1,8 @@
 import { iconSvg, type Icon } from "./explorer";
+import type { Lang } from "./lang-script";
 
 /*
- * The routing story: one file, InventoryService@Server.luau, goes from disk through
+ * The routing story: one file, InventoryService@Server.luau or its roblox-ts twin, goes from disk through
  * the routes and the project file into the Studio Explorer as the reader scrolls.
  * Each step has tracks, [state, from, to, easing] as fractions of the step's scroll.
  */
@@ -9,10 +10,78 @@ type Ease = "io" | "out";
 type Track = [state: string, from: number, to: number, ease: Ease];
 type State = Record<string, number>;
 
-const STEPS: { kicker: string; line: string; tracks: Track[] }[] = [
+// The words of the story in one language: the file that travels, its route and where it lands.
+interface Words {
+	feature: string;
+	file: string;
+	suffix: string;
+	ext: string;
+	disk: string[];
+	routes: [key: string, target: string][];
+	path: string;
+	shared: string;
+}
+const WORDS: Record<Lang, Words> = {
+	luau: {
+		feature: "Inventory",
+		file: "InventoryService",
+		suffix: "@Server",
+		ext: ".luau",
+		disk: [
+			"UI/",
+			"InventoryController@Client.luau",
+			"InventoryInput@Client.luau",
+			"InventoryService@Server.luau",
+			"InventoryStore@Server.luau",
+			"InventoryTypes.luau",
+			"ItemCatalog.luau",
+			"ItemIcons.rbxm",
+		],
+		routes: [
+			["Server", "ServerScriptService"],
+			["Client", "StarterPlayer/StarterPlayerScripts"],
+			["Shared", "ReplicatedStorage/Shared"],
+			["*", "ReplicatedStorage/Shared"],
+		],
+		path: "src/Inventory/InventoryService@Server.luau",
+		shared: "Shared",
+	},
+	// roblox-ts: lowercase keys and folders, camelCase modules; Rojo reads the compiled .luau in out/.
+	ts: {
+		feature: "inventory",
+		file: "inventoryService",
+		suffix: "@server",
+		ext: ".ts",
+		disk: [
+			"ui/",
+			"inventoryController@client.ts",
+			"inventoryInput@client.ts",
+			"inventoryService@server.ts",
+			"inventoryStore@server.ts",
+			"inventoryTypes.ts",
+			"itemCatalog.ts",
+			"itemIcons.ts",
+		],
+		routes: [
+			["server", "ServerScriptService"],
+			["client", "StarterPlayer/StarterPlayerScripts"],
+			["shared", "ReplicatedStorage/shared"],
+			["*", "ReplicatedStorage/shared"],
+		],
+		path: "out/inventory/inventoryService@server.luau",
+		shared: "shared",
+	},
+};
+// The language of the mounted story; mountStory sets it before building anything.
+let W = WORDS.luau;
+// The row that travels.
+const FILE = 3;
+
+const STEPS: { kicker: string; line: () => string; tracks: Track[] }[] = [
 	{
 		kicker: "On disk",
-		line: '<span class="cpath">src/<wbr>Inventory/<wbr>InventoryService<span class="fi">@Server</span>.luau</span>',
+		line: () =>
+			`<span class="cpath">src/<wbr>${W.feature}/<wbr>${W.file}<span class="fi">${W.suffix}</span>${W.ext}</span>`,
 		tracks: [
 			["walk", 0, 0.5, "io"],
 			["found", 0.5, 0.7, "out"],
@@ -20,7 +89,8 @@ const STEPS: { kicker: string; line: string; tracks: Track[] }[] = [
 	},
 	{
 		kicker: "Your routes",
-		line: '<code class="pill">"Server": "ServerScriptService"</code>',
+		line: () =>
+			`<code class="pill">"${W.routes[0][0]}": "ServerScriptService"</code>`,
 		tracks: [
 			["tagIn", 0, 0.12, "out"],
 			["trail", 0.12, 0.8, "io"],
@@ -29,7 +99,8 @@ const STEPS: { kicker: string; line: string; tracks: Track[] }[] = [
 	},
 	{
 		kicker: "What Rogen writes",
-		line: "<span><code>rogen serve</code> writes this for you, in the file Rojo reads.</span>",
+		line: () =>
+			"<span><code>rogen serve</code> writes this for you, in the file Rojo reads.</span>",
 		tracks: [
 			["tab", 0, 0.12, "out"],
 			["gap", 0.12, 0.3, "io"],
@@ -39,7 +110,8 @@ const STEPS: { kicker: string; line: string; tracks: Track[] }[] = [
 	},
 	{
 		kicker: "Roblox Studio",
-		line: '<span class="cpath">ServerScriptService/<wbr>Inventory/<wbr>InventoryService</span>',
+		line: () =>
+			`<span class="cpath">ServerScriptService/<wbr>${W.feature}/<wbr>${W.file}</span>`,
 		tracks: [
 			["source", 0, 0.1, "out"],
 			["lift", 0.1, 0.2, "out"],
@@ -50,41 +122,22 @@ const STEPS: { kicker: string; line: string; tracks: Track[] }[] = [
 	},
 ];
 
-const DISK = [
-	"UI/",
-	"InventoryController@Client.luau",
-	"InventoryInput@Client.luau",
-	"InventoryService@Server.luau",
-	"InventoryStore@Server.luau",
-	"InventoryTypes.luau",
-	"ItemCatalog.luau",
-	"ItemIcons.rbxm",
-];
-// The row that travels.
-const FILE = 3;
-const ROUTES = [
-	["Server", "ServerScriptService"],
-	["Client", "StarterPlayer/StarterPlayerScripts"],
-	["Shared", "ReplicatedStorage/Shared"],
-	["*", "ReplicatedStorage/Shared"],
-];
-
 // The project-file excerpt; i is the indent unit, wrap splits the "optional" value onto its own line.
 const project = (i: string, wrap = false) => ({
 	head: [
-		`"<span class="feat">Inventory</span>": {`,
+		`"<span class="feat">${W.feature}</span>": {`,
 		`${i}<span class="k">"$className"</span>: "Folder",`,
 	],
-	key: `${i}<span class="q">"</span><span class="key">InventoryService</span><span class="q">": {</span>`,
+	key: `${i}<span class="q">"</span><span class="key">${W.file}</span><span class="q">": {</span>`,
 	entry: [
 		`${i}${i}<span class="k">"$path"</span>: {`,
 		...(wrap
 			? [
 					`${i}${i}${i}<span class="k">"optional"</span>:`,
-					`${i}${i}${i}${i}<span class="val">"src/Inventory/InventoryService@Server.luau"</span>`,
+					`${i}${i}${i}${i}<span class="val">"${W.path}"</span>`,
 				]
 			: [
-					`${i}${i}${i}<span class="k">"optional"</span>: <span class="val">"src/Inventory/InventoryService@Server.luau"</span>`,
+					`${i}${i}${i}<span class="k">"optional"</span>: <span class="val">"${W.path}"</span>`,
 				]),
 		`${i}${i}}`,
 		`${i}},`,
@@ -97,17 +150,17 @@ const project = (i: string, wrap = false) => ({
  * its service expands; arrive: placed by the sync; feature: the feature colour; file: where
  * the chip lands; dim; open/shut: the arrow.
  */
-const EXPLORER: [string, number, Icon, string][] = [
+const explorer = (): [string, number, Icon, string][] => [
 	["ReplicatedStorage", 0, "svc", "service"],
-	["Shared", 1, "dir", "arrive open"],
-	["Inventory", 2, "dir", "arrive feature shut"],
+	[W.shared, 1, "dir", "arrive open"],
+	[W.feature, 2, "dir", "arrive feature shut"],
 	["ServerScriptService", 0, "svc", "service"],
-	["Inventory", 1, "dir", "arrive feature open"],
-	["InventoryService", 2, "scr", "file"],
-	["InventoryStore", 2, "scr", "arrive dim"],
+	[W.feature, 1, "dir", "arrive feature open"],
+	[W.file, 2, "scr", "file"],
+	[W.disk[4].replace(/@.*/, ""), 2, "scr", "arrive dim"],
 	["StarterPlayer", 0, "svc", "service"],
 	["StarterPlayerScripts", 1, "dir", "default open"],
-	["Inventory", 2, "dir", "arrive feature shut"],
+	[W.feature, 2, "dir", "arrive feature shut"],
 ];
 
 interface Metrics {
@@ -308,23 +361,25 @@ const px = (r: Rect) =>
 const line = (html: string, row: number, attrs = "") =>
 	`<span class="l"${attrs} style="top:calc(var(--line) * ${row})"><span class="tx">${html}</span></span>`;
 const sfx = (n: string) =>
-	n.replace("@Server", '<span class="sfx">@Server</span>');
+	n.replace(W.suffix, `<span class="sfx">${W.suffix}</span>`);
 
 const diskHTML = () =>
-	`<div class="pane-h"><b class="ttl">src/<span class="feat">Inventory</span>/</b><span>On disk</span></div><ul class="tree dt"><span class="band"></span>${DISK.map(
-		(n, i) =>
-			`<li${i === FILE ? ' class="file"' : ""}><span class="g">${i < DISK.length - 1 ? "├─ " : "└─ "}</span><span class="nm">${i === FILE ? sfx(n) : n}</span></li>`
-	).join("")}</ul>`;
+	`<div class="pane-h"><b class="ttl">src/<span class="feat">${W.feature}</span>/</b><span>On disk</span></div><ul class="tree dt"><span class="band"></span>${W.disk
+		.map(
+			(n, i) =>
+				`<li${i === FILE ? ' class="file"' : ""}><span class="g">${i < W.disk.length - 1 ? "├─ " : "└─ "}</span><span class="nm">${i === FILE ? sfx(n) : n}</span></li>`
+		)
+		.join("")}</ul>`;
 const stripHTML = () =>
-	`<ul class="tree dt" style="padding-top:5px;padding-bottom:5px"><span class="band" style="top:5px"></span><li class="file"><span class="nm">${sfx(DISK[FILE])}</span></li></ul>`;
+	`<ul class="tree dt" style="padding-top:5px;padding-bottom:5px"><span class="band" style="top:5px"></span><li class="file"><span class="nm">${sfx(W.disk[FILE])}</span></li></ul>`;
 const routesHTML = (M: Metrics) => {
 	const i = M.ind;
 	const wrap = M === METRICS.mini;
 	let r = 0;
 	let out = line('"routes": {', r++);
-	ROUTES.forEach(([k, v], n) => {
-		const hit = k === "Server" ? " data-hit" : "";
-		const end = n < ROUTES.length - 1 ? "," : "";
+	W.routes.forEach(([k, v], n) => {
+		const hit = k === W.routes[0][0] ? " data-hit" : "";
+		const end = n < W.routes.length - 1 ? "," : "";
 		const first = hit + (hit ? " data-r1" : "");
 		if (wrap) {
 			out += line(`${i}<span class="k">"${k}"</span>:`, r++, first);
@@ -351,8 +406,8 @@ const projHTML = (M: Metrics, top = 0) => {
 	return `<div class="proj" data-e="${E}" style="top:${top}px">${out}</div>`;
 };
 const exHTML = () =>
-	`<div class="pane-h"><b>Explorer</b><span>Roblox Studio</span></div><ul class="xt">${EXPLORER.map(
-		([name, d, ic, roles]) => {
+	`<div class="pane-h"><b>Explorer</b><span>Roblox Studio</span></div><ul class="xt">${explorer()
+		.map(([name, d, ic, roles]) => {
 			const r = ` ${roles} `;
 			const has = (role: string) => r.includes(` ${role} `);
 			const arrow =
@@ -360,8 +415,8 @@ const exHTML = () =>
 					? `<span class="ar c${has("open") ? "" : " shut"}"></span>`
 					: '<span class="ar"></span>';
 			return `<li class="x ${roles}" data-r="${roles}" style="--d:${d}">${has("file") ? '<span class="band2"></span><span class="slot"></span>' : ""}${arrow}${iconSvg(ic, `ic ic-${ic}`)}<span class="nm">${name}</span></li>`;
-		}
-	).join("")}</ul>`;
+		})
+		.join("")}</ul>`;
 const crumb =
 	'<span class="crumb">tree › <span class="f">ServerScriptService</span></span>';
 
@@ -415,9 +470,8 @@ function makeScene(name: string): Scene {
 	}
 	h +=
 		'<svg class="ln trail" aria-hidden="true"><path d=""/></svg><svg class="ln wire" aria-hidden="true"><path d=""/></svg><span class="rojo">Rojo</span>';
-	h +=
-		'<div class="tag" hidden><span class="tn">InventoryService</span><span class="ts">@Server.luau</span></div>';
-	h += `<div class="chip" hidden>${iconSvg("scr", "")}<span>InventoryService</span></div>`;
+	h += `<div class="tag" hidden><span class="tn">${W.file}</span><span class="ts">${W.suffix}${W.ext}</span></div>`;
+	h += `<div class="chip" hidden>${iconSvg("scr", "")}<span>${W.file}</span></div>`;
 	el.innerHTML = h;
 
 	const q = <T extends Element = HTMLElement>(s: string) =>
@@ -717,7 +771,8 @@ const kick = (i: number) =>
  * reader scrolls, and the page is never scrolled for them. Below that, each step has
  * its own small scene that plays as it comes into view.
  */
-export function mountStory(root: HTMLElement) {
+export function mountStory(root: HTMLElement, lang: Lang) {
+	W = WORDS[lang];
 	const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 	const field = root.querySelector<HTMLElement>("[data-field]")!;
 	root.querySelector("[data-steps]")!.innerHTML = STEPS.map(
@@ -726,11 +781,11 @@ export function mountStory(root: HTMLElement) {
 	).join("");
 	root.querySelector("[data-bodies]")!.innerHTML = STEPS.map(
 		(s, i) =>
-			`<div class="bd">${kick(i)}<span class="prog"><i></i></span><p class="cline">${s.line}</p></div>`
+			`<div class="bd">${kick(i)}<span class="prog"><i></i></span><p class="cline">${s.line()}</p></div>`
 	).join("");
 	root.querySelector("[data-slides]")!.innerHTML = STEPS.map(
 		(s, i) =>
-			`<li class="slide">${kick(i)}<p class="cline">${s.line}</p><div class="mini" aria-hidden="true"></div></li>`
+			`<li class="slide">${kick(i)}<p class="cline">${s.line()}</p><div class="mini" aria-hidden="true"></div></li>`
 	).join("");
 	const stepEls = [...root.querySelectorAll<HTMLElement>(".st")];
 	const bodyEls = [...root.querySelectorAll<HTMLElement>(".bd")];

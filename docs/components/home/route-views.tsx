@@ -11,47 +11,55 @@ import {
 } from "react";
 import { glyphs, type Service } from "./explorer";
 import { disk, Name, studio, StudioIcon, type DiskRow } from "./inventory";
+import { useLang, type Lang } from "./lang";
 import { delay } from "./more-link";
 
 type ViewId = "name" | "folder";
 // Folder rows with a colour are the Client/ and Server/ routing folders.
 type Row = DiskRow;
 
-const shared = disk.filter(
-	([, , , colour]) => colour !== "s" && colour !== "c"
-);
-const routed = (colour: Service, folder: string): Row[] => [
-	[folder, 2, "", colour],
-	...disk
-		.filter((row) => row[3] === colour)
-		.map(([name, , key]): Row => [
-			name.replace(/@\w+/, ""),
-			3,
-			key,
-			colour,
-		]),
-];
-
-const views: Record<ViewId, { label: string; desc: string; rows: Row[] }> = {
-	name: {
-		label: "Route by name",
-		desc: "Mark only the files that belong on one side. Everything else goes to ReplicatedStorage through the * route.",
-		rows: disk,
-	},
-	folder: {
-		label: "Route by folder",
-		desc: "Put files in a Client or Server folder. In Studio, that folder disappears and its files sit directly in the feature's folder.",
-		rows: [
-			...shared.slice(0, 5),
-			...routed("c", "Client/"),
-			...routed("s", "Server/"),
-			...shared.slice(5),
-		],
-	},
-};
-const ids = Object.keys(views) as ViewId[];
+function viewsOf(lang: Lang) {
+	const rows = disk[lang];
+	const shared = rows.filter(
+		([, , , colour]) => colour !== "s" && colour !== "c"
+	);
+	// A routing folder in the route's colour, with its files in it and their @ suffixes gone.
+	const routed = (colour: Service, folder: string): Row[] => [
+		[folder, 2, "", colour],
+		...rows
+			.filter((row) => row[3] === colour)
+			.map(([name, , key]): Row => [
+				name.replace(/@\w+/, ""),
+				3,
+				key,
+				colour,
+			]),
+	];
+	const [client, server] =
+		lang === "ts" ? ["client", "server"] : ["Client", "Server"];
+	const views: Record<ViewId, { label: string; desc: string; rows: Row[] }> =
+		{
+			name: {
+				label: "Route by name",
+				desc: "Mark only the files that belong on one side. Everything else goes to ReplicatedStorage through the * route.",
+				rows,
+			},
+			folder: {
+				label: "Route by folder",
+				desc: `Put files in a ${client} or ${server} folder. In Studio, that folder disappears and its files sit directly in the feature's folder.`,
+				rows: [
+					...shared.slice(0, 5),
+					...routed("c", `${client}/`),
+					...routed("s", `${server}/`),
+					...shared.slice(5),
+				],
+			},
+		};
+	return views;
+}
+const ids: ViewId[] = ["name", "folder"];
 // The tree keeps the height of the longer view, so switching views never resizes the section.
-const MAX_ROWS = Math.max(...ids.map((id) => views[id].rows.length));
+const MAX_ROWS = Math.max(...ids.map((id) => viewsOf("luau")[id].rows.length));
 
 function DiskRows({ rows }: { rows: Row[] }) {
 	const depths = rows.map((row) => row[1]);
@@ -76,6 +84,8 @@ function DiskRows({ rows }: { rows: Row[] }) {
 
 /** The Route by name / Route by folder toggle over src/Inventory on disk and its result in Studio. */
 export function RouteViews({ guide }: { guide: ReactNode }) {
+	const lang = useLang();
+	const views = viewsOf(lang);
 	const [view, setView] = useState<ViewId>("name");
 	const [shown, setShown] = useState<ViewId>("name");
 	const [entering, setEntering] = useState(false);
@@ -186,16 +196,18 @@ export function RouteViews({ guide }: { guide: ReactNode }) {
 						<span>Same for both</span>
 					</div>
 					<ul className="xt">
-						{studio.map(([, name, depth, icon, colour], i) => (
-							<li
-								key={i}
-								className={`x k-${colour}${icon === "svc" ? " svc" : ""}`}
-								style={{ "--d": depth } as CSSProperties}
-							>
-								<StudioIcon icon={icon} />
-								<span className="nm">{name}</span>
-							</li>
-						))}
+						{studio[lang].map(
+							([, name, depth, icon, colour], i) => (
+								<li
+									key={i}
+									className={`x k-${colour}${icon === "svc" ? " svc" : ""}`}
+									style={{ "--d": depth } as CSSProperties}
+								>
+									<StudioIcon icon={icon} />
+									<span className="nm">{name}</span>
+								</li>
+							)
+						)}
 					</ul>
 				</div>
 			</div>

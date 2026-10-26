@@ -98,6 +98,11 @@ body:has(.home) {
 .dark body:has(.home) {
 	background: #0b1e22;
 }
+/* the examples carry both languages; html[data-lang] picks one */
+html[data-lang="ts"] .home [data-only="luau"],
+html:not([data-lang="ts"]) .home [data-only="ts"] {
+	display: none !important;
+}
 .home code {
 	font-family: var(--mono);
 	font-size: 0.9em;
@@ -349,13 +354,44 @@ body:has(.home) {
 	margin-top: 0;
 }
 .home .langs {
+	display: flex;
+	align-items: center;
+	gap: 12px;
 	margin-top: var(--s3);
 	font: 400 13px/1 var(--mono);
 	color: var(--ink-3);
 }
-.home .langs b {
-	font-weight: 400;
+/* the active language comes from html[data-lang], so it is right before the page runs */
+.home .lang-seg {
+	display: inline-flex;
+	padding: 3px;
+	border-radius: 6px;
+	background: var(--deep);
+	box-shadow: inset 0 0 0 1px var(--line);
+}
+.home .lang-seg button {
+	appearance: none;
+	border: 0;
+	background: none;
+	height: 28px;
+	padding: 0 12px;
+	border-radius: 4px;
+	font: 500 13px/1 var(--mono);
 	color: var(--ink-2);
+	cursor: pointer;
+	transition:
+		color 0.25s var(--ease-out),
+		background-color 0.25s var(--ease-out);
+}
+html:not([data-lang="ts"]) .home .lang-seg [data-v="luau"],
+html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
+	background: var(--ink);
+	color: var(--bg);
+}
+@media (hover: hover) and (pointer: fine) {
+	.home .lang-seg button:hover {
+		color: var(--ink);
+	}
 }
 
 /* the hero window: rogen serve, then src/ wired to the Explorer; --hc is the row's service colour */

@@ -1,34 +1,56 @@
 "use client";
 
 import { useEffect, useRef, type CSSProperties } from "react";
+import { useLang } from "./lang";
 
 const AGENTS = [
 	{
 		feature: "Combat",
 		colour: "--agent-1",
-		files: [
-			"CombatService@Server.luau",
-			"CombatController@Client.luau",
-			"CombatTypes.luau",
-		],
+		files: {
+			luau: [
+				"CombatService@Server.luau",
+				"CombatController@Client.luau",
+				"CombatTypes.luau",
+			],
+			ts: [
+				"combatService@server.ts",
+				"combatController@client.ts",
+				"combatTypes.ts",
+			],
+		},
 	},
 	{
 		feature: "Inventory",
 		colour: "--agent-2",
-		files: [
-			"InventoryService@Server.luau",
-			"InventoryHud.luau",
-			"ItemCatalog.luau",
-		],
+		files: {
+			luau: [
+				"InventoryService@Server.luau",
+				"InventoryHud.luau",
+				"ItemCatalog.luau",
+			],
+			ts: [
+				"inventoryService@server.ts",
+				"InventoryHud.tsx",
+				"itemCatalog.ts",
+			],
+		},
 	},
 	{
 		feature: "Shop",
 		colour: "--agent-3",
-		files: [
-			"ShopService@Server.luau",
-			"ShopController@Client.luau",
-			"ShopTypes.luau",
-		],
+		files: {
+			luau: [
+				"ShopService@Server.luau",
+				"ShopController@Client.luau",
+				"ShopTypes.luau",
+			],
+			ts: [
+				"shopService@server.ts",
+				"shopController@client.ts",
+				"shopTypes.ts",
+			],
+		},
 	},
 ];
 // The file name, with its @Server or @Client suffix in that route's colour.
@@ -36,7 +58,7 @@ const fileName = (name: string) => {
 	const at = name.indexOf("@");
 	if (at < 0) return name;
 	const dot = name.lastIndexOf(".");
-	const route = name.includes("@Server") ? "s" : "c";
+	const route = /@server/i.test(name) ? "s" : "c";
 	return `${name.slice(0, at)}<span class="c-${route}">${name.slice(at, dot)}</span>${name.slice(dot)}`;
 };
 const ROWS = 10;
@@ -59,7 +81,7 @@ function write(e: Editor, k: number) {
 	if (!L.length || rand(e) < 0.16) {
 		if (L.length >= FILE_LINES) {
 			e.lines = [];
-			e.file = (e.file + 1) % AGENTS[k].files.length;
+			e.file = (e.file + 1) % AGENTS[k].files.luau.length;
 		}
 		e.lines.push("  ".repeat(Math.floor(rand(e) * 3)));
 		return;
@@ -97,6 +119,7 @@ function Lines({ e }: { e: Editor }) {
 /** Three editor windows, one per feature folder, each with an agent writing in it. */
 export function AgentWindows() {
 	const ref = useRef<HTMLDivElement>(null);
+	const lang = useLang();
 
 	useEffect(() => {
 		const root = ref.current;
@@ -115,7 +138,7 @@ export function AgentWindows() {
 			const file = wins[k].querySelector<HTMLElement>("[data-file]")!;
 			if (file.dataset.file !== String(e.file)) {
 				file.dataset.file = String(e.file);
-				file.innerHTML = fileName(AGENTS[k].files[e.file]);
+				file.innerHTML = fileName(AGENTS[k].files[lang][e.file]);
 			}
 		};
 
@@ -141,7 +164,7 @@ export function AgentWindows() {
 			io.disconnect();
 			stop();
 		};
-	}, []);
+	}, [lang]);
 
 	return (
 		<div
@@ -168,7 +191,13 @@ export function AgentWindows() {
 								<i />
 							</span>
 							<span className="aw-path">
-								src/<b>{agent.feature}</b>/
+								src/
+								<b>
+									{lang === "ts"
+										? agent.feature.toLowerCase()
+										: agent.feature}
+								</b>
+								/
 							</span>
 							<span className="aw-who">agent {k + 1}</span>
 						</div>
@@ -180,7 +209,7 @@ export function AgentWindows() {
 							<span
 								data-file={e.file}
 								dangerouslySetInnerHTML={{
-									__html: fileName(agent.files[e.file]),
+									__html: fileName(agent.files[lang][e.file]),
 								}}
 							/>
 							<span className="aw-r">writing</span>
