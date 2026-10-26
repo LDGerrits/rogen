@@ -4,30 +4,27 @@ description: Rogen is a superset of Rojo that generates Rojo project files
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
-import { BookOpen, History, Rocket } from "lucide-react";
+import { BookOpen, History, Rocket, Terminal } from "lucide-react";
 
-Rogen is a superset of Rojo that generates Rojo project files from your file system. You keep each feature's code in one folder, and Rogen puts every file in the service where it runs.
+Rogen is a superset of Rojo that generates Rojo project files from your file system. You organize your game by feature, and Rogen puts each file in the right place.
 
 ## Why Rogen?
 
-Rojo puts a folder where the project file mounts it, so most Roblox codebases are split by where code runs. One feature ends up in three places, and changing it means opening all of them:
+A Rojo project file mounts each folder onto a service, so most Roblox codebases split code by where it runs. One feature ends up in three places, and changing it means opening all of them:
 
 <RouteFigure
 	disk={`
   src/
     client/
-      Controllers/
-        InventoryController.luau
+      InventoryController.luau
     server/
-      Services/
-        InventoryService.luau
+      InventoryService.luau
     shared/
-      Types/
-        InventoryTypes.luau
+      InventoryTypes.luau
 `}
 />
 
-With Rogen, the feature is the folder, and where each file runs is a detail inside it. Rogen writes the project file that puts each piece in its service:
+With Rogen, each feature is one folder. Inside it, a folder named `Server`, `Client` or `Shared` decides where its files run:
 
 <RouteFigure
 	disk={`
@@ -55,11 +52,26 @@ With Rogen, the feature is the folder, and where each file runs is a detail insi
 `}
 />
 
-David Parnas made the same case in 1972: a module should hide a design decision, not follow the order the program runs in ([_On the Criteria To Be Used in Decomposing Systems into Modules_](https://wstomv.win.tue.nl/edu/2ip30/references/criteria_for_modularization.pdf)).
+## The Config
 
-## It's Still Rojo
+A Rogen config is a Rojo project file with `routes` added. `name`, `tree` and Rojo's other keys work as they do in Rojo, and the routes take the place of a `$path` for each service:
 
-Rojo still serves, builds and syncs your game. `rogen serve` and `rogen build` take Rojo's flags, and a project without a Rogen config works as it did. [Commands](/docs/v2/commands) lists them all.
+```json title="default.rogen.json"
+{
+	"name": "my-game",
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared"
+	},
+	"tree": {
+		"$className": "DataModel",
+		"Workspace": { "$path": "place/Workspace" }
+	}
+}
+```
+
+Rogen writes `default.project.json` from the config, and Rojo serves, builds and syncs your game as before. `rogen serve` and `rogen build` take Rojo's flags, and a project without a config works as it did. [Commands](/docs/v2/commands) lists them all.
 
 ## Next Steps
 
@@ -84,5 +96,12 @@ Rojo still serves, builds and syncs your game. `rogen serve` and `rogen build` t
 		href="/docs/v2/migrating-from-v1"
 	>
 		Why v2 changed, and how to move a v1 project to it.
+	</Card>
+	<Card
+		icon={<Terminal />}
+		title="Commands"
+		href="/docs/v2/commands"
+	>
+		Rojo's commands through Rogen, and Rogen's own.
 	</Card>
 </Cards>

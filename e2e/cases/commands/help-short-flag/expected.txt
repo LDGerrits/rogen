@@ -2,15 +2,15 @@ $ rogen build -h
 exit 0
 stdout:
   rogen-build
-  Writes the project file of default.rogen.json here, or of the config you name, beside it
-  (dist.rogen.json writes dist.project.json), then builds a place, model or plugin from it with Rojo,
-  as 'rojo build' does: -o or -p is required. To write the project file only, run 'rogen write'.
+  Writes the project file, then builds a place, model or plugin from it with Rojo, as 'rojo build'
+  does. Give -o or -p. To write only the project file, run 'rogen write'.
   
   USAGE:
       rogen build [OPTIONS] [PROJECT]
   
   ARGS:
-      <PROJECT>    A folder, a .rogen.json file, a *.project.json path, or the name of a file here.
+      <PROJECT>    A folder, a .rogen.json file, a *.project.json path, or a name such as dist for
+                   dist.rogen.json.
   
   OPTIONS:
           --color <COLOR>      Whether to colour the output. [default: auto] [possible values: auto,

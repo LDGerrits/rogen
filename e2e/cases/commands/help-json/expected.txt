@@ -119,7 +119,7 @@ stdout:
       },
       {
         "name": "init",
-        "summary": "Writes a starting default.rogen.json",
+        "summary": "Starts a project with a default.rogen.json",
         "args": [
           {
             "name": "path",
@@ -248,7 +248,7 @@ stdout:
       },
       {
         "name": "serve",
-        "summary": "Writes, serves with Rojo, and rewrites on changes",
+        "summary": "Serves with Rojo, and rewrites the project file on changes",
         "args": [
           {
             "name": "project",

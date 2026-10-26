@@ -49,7 +49,7 @@ registerCommand(
 				metadata: {
 					summary: "Installs or removes Rojo's Studio plugin",
 					description:
-						"Installs or removes Rojo's Studio plugin, with the Rojo your toolchain file pins, so the plugin matches the server 'rogen serve' starts.",
+						"Installs or removes Rojo's Studio plugin, with the Rojo your project pins, so the plugin matches the server 'rogen serve' starts.",
 					args: [
 						{
 							name: "action",

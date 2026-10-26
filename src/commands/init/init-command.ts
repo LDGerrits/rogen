@@ -30,7 +30,7 @@ const InitOptions = [
 		aliases: ["yes"],
 		type: "boolean",
 		description:
-			"Write the defaults without asking. A run without a terminal, or under a coding agent or CI, does so anyway. --json implies it. A flag below answers its question either way.",
+			"Write the defaults without asking. A run without a terminal, or under a coding agent or CI, does so anyway. --json implies it. Any flag still answers its own question.",
 	},
 	JsonOption,
 	{
@@ -103,7 +103,7 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "id",
 		description:
-			"A route to start with; repeat for several, or none. The routes are server, client, shared, replicatedFirst, serverStorage and starterGui. The first three when not given. When a lifted project file mounts a folder of that name, the name stands for the route derived from it, which `Took the defaults` and `--json` write as mount:server.",
+			"A route to start with; repeat for several, or none. The routes are server, client, shared, replicatedFirst, serverStorage and starterGui. The first three when not given. When a lifted project file mounts a folder of that name, the name stands for the route made from that mount, which --json writes as mount:server.",
 	},
 	{
 		name: "unmatched",
@@ -170,9 +170,9 @@ registerCommand(
 			super({
 				id: "init",
 				metadata: {
-					summary: "Writes a starting default.rogen.json",
+					summary: "Starts a project with a default.rogen.json",
 					description:
-						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, as 'rojo init' does. It starts projects and never changes a config that exists: where one is, it fails and writes nothing, unless --agent-rules or --agent-hook is all that is given, which add only the agent files. To change a config, edit the .rogen.json and run 'rogen check'.",
+						"Starts a project, as 'rojo init' does: writes default.rogen.json, reading what the folder already holds and asking in a terminal. With a folder, starts the project there. It never changes a config that exists: where one is, it stops and writes nothing, unless --agent-rules or --agent-hook is all that is given, which add only the agent files. To change a config, edit the .rogen.json and run 'rogen check'.",
 					args: [
 						{
 							name: "path",
