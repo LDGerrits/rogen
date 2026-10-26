@@ -1,31 +1,18 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
-import { appName, gitConfig } from "./shared";
-import Image from "next/image";
+import { LogoLockup } from "@/components/logo";
+import { socials } from "./shared";
 
 export function baseOptions(): BaseLayoutProps {
 	return {
 		nav: {
-			title: (
-				<div className="flex items-center gap-2">
-					<Image
-						src="/icon.png"
-						alt="Rogen Icon"
-						width={24}
-						height={24}
-						className="w-6 h-6 object-contain"
-					/>
-					<span className="font-bold tracking-tighter">
-						{appName}
-					</span>
-				</div>
-			),
+			title: <LogoLockup className="text-[17px]" />,
 		},
-		githubUrl: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,
-		themeSwitch: { enabled: false },
+		githubUrl: socials.github,
+		themeSwitch: { mode: "light-dark-system" },
 		links: [
 			{
 				type: "icon",
-				url: "https://discord.com/channels/385151591524597761/1503801029232295996",
+				url: socials.discord,
 				label: "Discord",
 				text: "Discord",
 				external: true,
@@ -42,7 +29,7 @@ export function baseOptions(): BaseLayoutProps {
 			},
 			{
 				type: "icon",
-				url: "https://devforum.roblox.com/t/rogen-feature-based-folder-structures-with-rojo-an-automatic-tool-for-luau-and-roblox-ts/4625829?u=clinkety",
+				url: socials.devforum,
 				label: "Roblox DevForum",
 				text: "Roblox DevForum",
 				external: true,

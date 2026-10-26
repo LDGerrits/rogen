@@ -1,100 +1,56 @@
-import Image from "next/image";
 import Link from "next/link";
+import { Logo } from "@/components/logo";
+import { socials } from "@/lib/shared";
+import { delay } from "./more-link";
+
+const resources = [
+	{ text: "Docs", url: "/docs/v2" },
+	{ text: "Quick Start", url: "/docs/v2/installation" },
+	{ text: "Architectures", url: "/docs/v2/architectures" },
+];
+
+const links = [
+	{ text: "GitHub", url: socials.github },
+	{ text: "Discord", url: socials.discord },
+	{ text: "DevForum", url: socials.devforum },
+];
 
 export function Footer() {
 	return (
-		<footer className="py-12 px-6 border-t border-white/[0.06] relative z-10">
-			<div className="max-w-6xl mx-auto">
-				<div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8">
-					<div className="md:col-span-2 flex flex-col h-full">
-						<div className="flex items-center gap-2">
-							<Image
-								src="/icon.png"
-								alt="Rogen Icon"
-								width={20}
-								height={20}
-								className="w-5 h-5 object-contain"
-							/>
-							<span className="text-xl font-bold text-paper tracking-tighter">
-								Rogen
-							</span>
-						</div>
-						<div className="mt-auto pt-6">
-							<p className="text-stone-600 text-xs">
-								{new Date().getFullYear()} L.D. Gerrits
-							</p>
-						</div>
-					</div>
-
-					<div>
-						<h4 className="text-paper font-medium mb-4 text-sm">
-							Resources
-						</h4>
-						<ul className="space-y-3 text-sm">
-							<li>
-								<Link
-									href="/docs/v2"
-									className="text-stone-500 hover:text-paper transition-colors duration-300"
-								>
-									Docs
-								</Link>
+		<footer>
+			<div className="wrap cols">
+				<div className="fb rv">
+					<span className="brand" role="img" aria-label="Rogen">
+						<Logo />
+						<span aria-hidden="true">Rogen</span>
+					</span>
+					<p>{new Date().getFullYear()} L.D. Gerrits</p>
+				</div>
+				<div className="fc rv" style={delay(80)}>
+					<h4>Resources</h4>
+					<ul>
+						{resources.map((link) => (
+							<li key={link.text}>
+								<Link href={link.url}>{link.text}</Link>
 							</li>
-							<li>
-								<Link
-									href="/docs/v2/installation"
-									className="text-stone-500 hover:text-paper transition-colors duration-300"
-								>
-									Quick Start
-								</Link>
-							</li>
-							<li>
-								<Link
-									href="/docs/v2/architectures"
-									className="text-stone-500 hover:text-paper transition-colors duration-300"
-								>
-									Architectures
-								</Link>
-							</li>
-						</ul>
-					</div>
-
-					<div>
-						<h4 className="text-paper font-medium mb-4 text-sm">
-							Links
-						</h4>
-						<ul className="space-y-3 text-sm">
-							<li>
+						))}
+					</ul>
+				</div>
+				<div className="fc rv" style={delay(160)}>
+					<h4>Links</h4>
+					<ul>
+						{links.map((link) => (
+							<li key={link.text}>
 								<a
-									href="https://github.com/LDGerrits/rogen"
+									href={link.url}
 									target="_blank"
 									rel="noopener noreferrer"
-									className="text-stone-500 hover:text-paper transition-colors duration-300"
 								>
-									GitHub
+									{link.text}
 								</a>
 							</li>
-							<li>
-								<a
-									href="https://discord.com/channels/385151591524597761/1503801029232295996"
-									target="_blank"
-									rel="noopener noreferrer"
-									className="text-stone-500 hover:text-paper transition-colors duration-300"
-								>
-									Discord
-								</a>
-							</li>
-							<li>
-								<a
-									href="https://devforum.roblox.com/t/rogen-feature-based-folder-structures-with-rojo-an-automatic-tool-for-luau-and-roblox-ts/4625829?u=clinkety"
-									target="_blank"
-									rel="noopener noreferrer"
-									className="text-stone-500 hover:text-paper transition-colors duration-300"
-								>
-									DevForum
-								</a>
-							</li>
-						</ul>
-					</div>
+						))}
+					</ul>
 				</div>
 			</div>
 		</footer>
