@@ -10,19 +10,15 @@ v2 reads neither v1's config nor most of v1's file names. While a v1 config is i
 
 ## Why v2 Changed
 
-v1 decided where a file went from many small signals, and the signals could disagree. Each one was convenient on its own. Together they made a file's place hard to predict, and a mistake often changed the build without a warning. v2 has fewer rules, and each one holds everywhere.
+v1 placed a file by many small rules that could disagree, often without a warning, and each problem got its own switch or marker file. v2 replaces them with rules that hold everywhere.
 
-**A folder's route covers everything inside it.** In v1 the deepest rule won, so a suffix could override the folder around it. `ReplicatedFirst/main.client.luau` went to `StarterPlayerScripts`, though a LocalScript in `ReplicatedFirst` was what the folder asked for. To know where a file landed, you had to check every rule on its path. Because a deeper rule could always move a file, v1 needed marker files to hold a folder still: `.structure` turned routing off below a folder, and `.sync` handed a folder to Rojo untouched. In v2 the outermost route governs, and Rogen ignores the routes inside it. That file stays in `ReplicatedFirst`, and a `Server/` folder holds for every file below it with no marker at all.
+**The outermost route governs.** In v1 the deepest rule won, so a suffix could override its folder: `ReplicatedFirst/main.client.luau` went to `StarterPlayerScripts`. Because any deeper rule could move a file, v1 needed the `.structure` and `.sync` markers to hold a folder still. In v2 a folder's route covers everything inside it, with no marker, and the routes below it are ignored.
 
-**One sign routes a name.** v1 read routes from prefixes, and from suffixes after `+`, `-`, `_`, `.`, `@` or a capital letter. Ordinary names matched by accident: `HttpClient.luau` went to the client and was renamed `Http`. Tags matched names the same way, so with a `test` tag off, `UnitTest.luau` dropped out of the build without a word. To keep a keyword in a name, v1 added the `verbatim` switch and a `.verbatim` marker. v2 routes a name only with `@`, as in `Save@server.luau`, which reads as "this name, at that place". Nothing else in a name routes, so nothing needs protecting. The dot belongs to Rojo, so `.server` and `.client` keep the meaning Rojo gives them.
+**Only `@` routes a name.** v1 read routes from prefixes and from suffixes after almost any separator, so ordinary names matched by accident: `HttpClient.luau` went to the client as `Http`. Keeping a keyword in a name took `verbatim` or a `.verbatim` marker. In v2 a name routes only with `@`, as in `Save@server.luau`: this name, at that place. Rojo's `.server` and `.client` keep their meaning.
 
-**You write every route.** v1's routes were built in, and so were the wrapper folders they made under each service. Each change to them needed its own patch. `aliases` added keywords. `casing` capitalised the wrapper folders, and the `unwrap` switch or a `.unwrap` marker removed them. Files that matched nothing went to `ReplicatedStorage`, where server code could reach clients. In v2 a route is a key and a target path that you write in `routes`, and only those routes exist. `"Shared": "ReplicatedStorage/Shared"` makes a capitalised wrapper folder, and `"server": "ServerScriptService"` makes none. A file that matches no route is left out with a warning, unless you declare a `"*"` route.
+**You write every route.** v1's keywords and wrapper folders were built in, so changing them took `aliases`, `casing`, `unwrap` and `.unwrap`. Files that matched nothing went to `ReplicatedStorage`, where server code could reach clients. In v2 a route is a key and a target path that you write, such as `"Shared": "ReplicatedStorage/Shared"`, and the target can be any path under a service that Rojo writes to. Only declared routes exist, and a file that matches none is left out with a warning.
 
-**Mistakes are reported.** Every problem has a code and a [fix](/docs/v2/diagnostics), and `rogen check` exits 1 on any warning. `rogen where` shows where a file lands and which route put it there.
-
-**The config is a Rojo project file.** v1 had a config language of its own, with modes and tags on top of a template project file. A v2 config is a Rojo project file with three more keys, so Rojo's documentation covers everything else in it. Rogen runs Rojo's commands with Rojo's flags.
-
-Each of v1's switches and marker files fixed one case, and you learned them one at a time. v2 replaces all of them with two rules: the outermost route governs, and every route's target is a path that you write. A target can be any path under a service that Rojo writes to.
+The config itself is a Rojo project file with three more keys, so Rojo's documentation covers the rest of it.
 
 ## Move a Project to v2
 
@@ -115,7 +111,6 @@ Serve the project with `rogen serve`, and compare Studio's Explorer with your v1
 | the deepest rule wins | the outermost [route governs](/docs/v2/core-concepts/routing#the-governing-route). `src/ReplicatedFirst/main.client.luau` now lands in `ReplicatedFirst`, not in the client folder |
 | unmatched files go to `ReplicatedStorage` | a `"*"` route that you declare. Without one, unmatched files are left out |
 | several places from one config | a folder per place, each with its own `default.rogen.json`. Shared code is a plain folder that each place lists in `sourcePaths` |
-| `-v` | `-V`. See [The `-v` Flag](#the--v-flag) |
 
 ### Names
 
@@ -163,7 +158,3 @@ v2: src/Teleport/Teleport.luau, dev/Teleport/Teleport.luau (the dev source path)
 <Callout type="warn" title="Old tag files ship">
 	v1 left `TeleportDev.luau` out when `dev` was off. In v2 it is an ordinary file that ships in every build, and `Teleport.dev.luau` is just a name. Move these files before your first v2 release.
 </Callout>
-
-### The `-v` Flag
-
-In v1, `-v` printed the version. In v2, `-v` is `--verbose` and `-V` prints the version, as in Rojo, Wally and Selene. A bare `rogen` prints usage instead of building. Update any scripts that call Rogen.
