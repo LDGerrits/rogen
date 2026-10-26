@@ -1,22 +1,49 @@
 ---
 title: Top-Level Instances
-description: Put an instance directly at a route's target, or group files without a folder in the game.
+description: Leave folders on disk out of the game
 ---
 
 ## Hoisted Names
 
-A name that starts with `^` lands directly at its route's target, without the folders in between. Roblox reads some instances only there, such as `Animate` in `StarterCharacterScripts`:
+A name that starts with `^` lands directly at its route's target, without the folders in between. Roblox reads some instances only there, such as `Animate` in `StarterCharacterScripts`. With a `Character` route to `StarterPlayer/StarterCharacterScripts`:
 
-| On disk | In the game |
-|---|---|
-| `src/Player/@Character` | nothing |
-| `src/Player/^Animate.client.luau` | `StarterPlayer/StarterCharacterScripts/Animate` |
-| `src/Player/Sprint.client.luau` | `StarterPlayer/StarterCharacterScripts/Player/Sprint` |
+<RouteFigure
+	disk={`
+  src/
+    Player/
+      @Character
+      ^Animate.client.luau
+      Sprint.client.luau
+`}
+	studio={`
+  StarterPlayer
+    StarterCharacterScripts
+      Animate
+      Player/
+        Sprint
+`}
+/>
 
 ## Invisible Folders
 
 A folder named in parentheses groups files on disk and leaves no folder in the game:
 
-| On disk | In the game |
-|---|---|
-| `src/Shop/Client/(Ui)/Button.luau` | `StarterPlayer/StarterPlayerScripts/Shop/Button` |
+<RouteFigure
+	disk={`
+  src/
+    Shop/
+      Client/
+        (Ui)/
+          Button.luau
+          Icon.luau
+        ShopController.luau
+`}
+	studio={`
+  StarterPlayer
+    StarterPlayerScripts
+      Shop/
+        Button
+        Icon
+        ShopController
+`}
+/>

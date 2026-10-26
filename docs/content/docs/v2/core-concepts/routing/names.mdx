@@ -1,37 +1,83 @@
 ---
 title: Routing by Name
-description: Route one file or folder with @, a marker file, or Rojo's script suffixes.
+description: Route a file or folder without moving it into a routing folder
 ---
 
-When a feature is too small for a folder per side, route by name.
+When a feature is too small for routing folders, route by name instead.
 
 ## The `@` Suffix
 
 `@` and a route key at the end of a name route it, and come off the name:
 
-| On disk | In the game |
-|---|---|
-| `src/Trade/TradeService@Server.luau` | `ServerScriptService/Trade/TradeService` |
-| `src/Trade/Admin@Server/Ban.luau` | `ServerScriptService/Trade/Admin/Ban` |
+<RouteFigure
+	disk={`
+  src/
+    Trade/
+      Admin@Server/
+        Ban.luau
+      TradeService@Server.luau
+      TradeTypes@Shared.luau
+      TradeUi@Client.luau
+`}
+	studio={`
+  ReplicatedStorage
+    Shared/
+      Trade/
+        TradeTypes
+  ServerScriptService
+    Trade/
+      Admin/
+        Ban
+      TradeService
+  StarterPlayer
+    StarterPlayerScripts
+      Trade/
+        TradeUi
+`}
+/>
 
-The file keeps its class, so `TradeService@Server.luau` is still a ModuleScript.
+A file keeps its class, so `TradeService@Server.luau` is still a ModuleScript.
 
 ## Marker Files
 
 An empty file named `@Server` routes the folder it's in, and the folder keeps its name:
 
-| On disk | In the game |
-|---|---|
-| `src/Anticheat/@Server` | nothing |
-| `src/Anticheat/Check.luau` | `ServerScriptService/Anticheat/Check` |
+<RouteFigure
+	disk={`
+  src/
+    Anticheat/
+      @Server
+      Check.luau
+      Report.luau
+`}
+	studio={`
+  ServerScriptService
+    Anticheat/
+      Check
+      Report
+`}
+/>
 
 ## Rojo's Script Suffixes
 
 When your config has a `Server` or `Client` key, Rojo's `.server` and `.client` suffixes route a script as well as set its class:
 
-| On disk | In the game |
-|---|---|
-| `src/Boot/Boot.server.luau` | `ServerScriptService/Boot/Boot`, a Script |
-| `src/Boot/Hud.client.luau` | `StarterPlayer/StarterPlayerScripts/Boot/Hud`, a LocalScript |
+<RouteFigure
+	disk={`
+  src/
+    Boot/
+      Boot.server.luau
+      Hud.client.luau
+`}
+	studio={`
+  ServerScriptService
+    Boot/
+      Boot
+  StarterPlayer
+    StarterPlayerScripts
+      Boot/
+        Hud
+`}
+/>
 
 A file that isn't a script routes with `@`, as in `Types@Shared.luau`.

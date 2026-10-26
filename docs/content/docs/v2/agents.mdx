@@ -1,15 +1,13 @@
 ---
 title: Working with agents
-description: Give coding agents Rogen's rules, and check the files they change.
+description: Give coding agents Rogen's rules, and check the files they change
 ---
 
-A coding agent places code and writes requires well, but it doesn't know that Rogen generates the Rojo project file, so Rojo and the editor can miss the files it adds. A short block of rules in `AGENTS.md` tells it to check its changes.
+A coding agent doesn't know that Rogen generates the Rojo project file, so Rojo and the editor can miss the files it adds. A short block of rules in `AGENTS.md` tells it to check its changes.
 
 ## Add the Rules
 
-`rogen init` adds the block below to `AGENTS.md`, or to `CLAUDE.md` when that is the only one, and `--no-agent-rules` leaves it out. Claude Code skips `AGENTS.md` when there is a `CLAUDE.md`, and Gemini CLI reads only `GEMINI.md`, so `init` imports `AGENTS.md` into those files.
-
-In a project that already has a config, `rogen init --agent-rules` adds the rules and changes no config. Or paste the block into `AGENTS.md` yourself, markers included:
+`rogen init` adds the block below to `AGENTS.md`, and imports it into the `CLAUDE.md` and `GEMINI.md` that Claude Code and Gemini CLI read instead. `--no-agent-rules` leaves it out. In a project that already has a config, run `rogen init --agent-rules`, or paste the block yourself, markers included:
 
 ````md title="AGENTS.md"
 <!-- rogen -->
@@ -43,13 +41,11 @@ After you add, move, rename or delete files, or edit a `*.rogen.json`, run `roge
 
 ## Keep the Rules Current
 
-When `rogen write` or `rogen serve` finds a block that differs from the installed version's, it replaces it. It looks in the agent files of the folder and of each folder above it, up to the repository root. Your text around the block is kept, and an edit inside it is overwritten. Pin one Rogen version for the team, as [Installation](/docs/v2/installation) does, or each person's `rogen write` rewrites the block to their own version.
-
-To stop the updates, delete the two marker lines and the rules become your own, or delete the whole block.
+`rogen write` and `rogen serve` replace an outdated block with the installed version's, and keep your text around it. Pin one Rogen version for the team, as [Installation](/docs/v2/installation) does, so everyone writes the same block. To stop the updates, delete the marker lines to keep the rules as your own, or delete the block.
 
 ## Check Changed Files Automatically
 
-An agent can forget the rule to run `rogen check`. This hook runs it when the agent is about to end its turn, on the files changed in git, and sends each line it hasn't reported this session back as the agent's next prompt. It works for every agent with a hook for the end of a turn. Cursor needs `cursor` as the first argument.
+An agent can forget to run `rogen check`. This hook runs it on the files changed in git when the agent ends its turn, and sends each new warning back as the agent's next prompt.
 
 ```js title=".agents/hooks/rogen-check.mjs"
 // Agent Stop hook: report new Rogen diagnostics about changed files before the agent ends its turn.
@@ -150,26 +146,24 @@ console.log(
 );
 ```
 
-`rogen init --agent-hook`, or a yes in a terminal, writes the script and registers it with each agent it finds:
+`rogen init --agent-hook` writes the script and registers it with each agent it finds:
 
-| Agent | Found by | Hook file | Event | Entry |
-|---|---|---|---|---|
-| Claude Code | `.claude`, `CLAUDE.md` | `.claude/settings.json` | `Stop` | `node "$CLAUDE_PROJECT_DIR"/.agents/hooks/rogen-check.mjs` |
-| Codex | `.codex` | `.codex/hooks.json` | `Stop` | `node "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.mjs` |
-| Gemini CLI | `.gemini`, `GEMINI.md` | `.gemini/settings.json` | `AfterAgent` | `node "$GEMINI_PROJECT_DIR"/.agents/hooks/rogen-check.mjs` |
-| Cursor | `.cursor` | `.cursor/hooks.json` | `stop` | `node .agents/hooks/rogen-check.mjs cursor` |
-| Copilot | `.github/copilot-instructions.md`, `.github/hooks` | `.github/hooks/rogen.json` | `agentStop` | `node "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.mjs` |
+| Agent | Hook file | Event | Entry |
+|---|---|---|---|
+| Claude Code | `.claude/settings.json` | `Stop` | `node "$CLAUDE_PROJECT_DIR"/.agents/hooks/rogen-check.mjs` |
+| Codex | `.codex/hooks.json` | `Stop` | `node "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.mjs` |
+| Gemini CLI | `.gemini/settings.json` | `AfterAgent` | `node "$GEMINI_PROJECT_DIR"/.agents/hooks/rogen-check.mjs` |
+| Cursor | `.cursor/hooks.json` | `stop` | `node .agents/hooks/rogen-check.mjs cursor` |
+| Copilot | `.github/hooks/rogen.json` | `agentStop` | `node "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.mjs` |
 
-To register it by hand, put the script at `.agents/hooks/rogen-check.mjs` and add the entry to the agent's hook file under its event. Codex runs a project hook only after you trust it in `/hooks`.
-
-The hook can't tell the agent's changes from your uncommitted ones, so a warning in a file you're editing is reported too, once per session. Without a `rogen` in `node_modules/.bin` or on the `PATH`, it says so once on stderr and lets the turn end.
+To register it by hand, put the script at `.agents/hooks/rogen-check.mjs` and add the entry under its event. Codex runs a project hook only after you trust it in `/hooks`. The hook also reports warnings in files you changed yourself, once per session.
 
 ## Install the Skill
 
-The `rogen` skill sets a repo up for Rogen. It runs `rogen init` for a new project or a Rojo one, and can reorganise a Rojo layout into feature folders. Install it with the [`skills`](https://github.com/vercel-labs/skills) CLI:
+The `rogen` skill sets a repo up through `rogen init`, and can reorganise a Rojo layout into feature folders:
 
 ```bash
 npx skills add LDGerrits/rogen
 ```
 
-The rules stay in `AGENTS.md` because an agent loads a skill only when a task looks like it needs one, and adding a Luau file doesn't look like that.
+The rules stay in `AGENTS.md` because an agent loads a skill only when a task looks like it needs one, and adding a Luau file doesn't.

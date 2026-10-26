@@ -36,7 +36,9 @@ function DiskName({ name }: { name: string }) {
 	const folder = /^\(?([A-Za-z]+)\)?\/$/.exec(name);
 	if (folder && keyColour(folder[1]))
 		return <span className={`nm c-${keyColour(folder[1])}`}>{name}</span>;
-	const at = /@([A-Za-z]+)/.exec(name);
+	// An @key, or Rojo's .server and .client on a script, in its route's colour.
+	const at =
+		/@([A-Za-z]+)/.exec(name) ?? /\.(server|client)(?=\.\w+$)/.exec(name);
 	if (!at || !keyColour(at[1])) return <span className="nm">{name}</span>;
 	const end = at.index + at[0].length;
 	return (
