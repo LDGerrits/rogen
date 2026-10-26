@@ -42,7 +42,7 @@ Running several agents? Give each one a feature. A lint rule catches any agent t
 <!-- prettier-ignore -->
 ```json
 {
-  "name": "Game",
+  "name": "my-game",
   "routes": {
     "Server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
