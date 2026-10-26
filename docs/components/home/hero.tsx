@@ -14,14 +14,14 @@ export function Hero() {
 							<span>Professional-grade</span> architecture for
 							Roblox
 						</h1>
-					</div>
-					<div className="hero-copy">
 						<p className="lede in-3">
 							Rogen is a superset of Rojo that generates Rojo
 							project files from your folders. You organize your
 							game by feature, and Rogen puts each file in the
 							right place.
 						</p>
+					</div>
+					<div className="hero-copy">
 						<InstallCommand className="in-4" />
 						<p className="langs in-5">
 							<b>Luau</b> · <b>roblox-ts</b>

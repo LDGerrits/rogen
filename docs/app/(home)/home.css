@@ -340,11 +340,13 @@ body:has(.home) {
 	white-space: nowrap;
 }
 .home .hero .lede {
+	margin-top: var(--s4);
+	max-width: 34em;
 	font-size: clamp(16px, 1.2vw, 18px);
 	line-height: 1.6;
 }
 .home .hero .install {
-	margin-top: var(--s4);
+	margin-top: 0;
 }
 .home .langs {
 	margin-top: var(--s3);
@@ -2009,7 +2011,7 @@ body:has(.home) {
 	}
 	.home .hero-copy {
 		grid-column: 1 / span 8;
-		margin-top: var(--s4);
+		margin-top: var(--s5);
 	}
 }
 @media (max-width: 900px) {
