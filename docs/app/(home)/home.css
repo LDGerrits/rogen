@@ -460,22 +460,22 @@ body:has(.home) {
 	font-weight: 500;
 	color: var(--ink-2);
 }
-.home .win .tree {
+.home :is(.win, .dpane) .tree {
 	padding: 10px 14px 14px;
 	font: 400 13px/22px var(--mono);
 	list-style: none;
 	color: var(--ink-2);
 }
-.home .win .tree li,
-.home .win .x {
+.home :is(.win, .dpane) .tree li,
+.home :is(.win, .dpane) .x {
 	position: relative;
 	height: 22px;
 	white-space: nowrap;
 }
-.home .win .tree .b {
+.home :is(.win, .dpane) .tree .b {
 	color: var(--ink);
 }
-.home .win .tree .g {
+.home :is(.win, .dpane) .tree .g {
 	color: var(--ink-3);
 	white-space: pre;
 }
@@ -1032,31 +1032,6 @@ body:has(.home) {
 	font-size: clamp(16px, 1.25vw, 18px);
 	max-width: 34em;
 }
-.home .codebox {
-	background: var(--deep);
-	border-radius: 6px;
-	box-shadow: inset 0 0 0 1px var(--line);
-	font: 400 14px/1.85 var(--mono);
-	color: var(--ink-3);
-	overflow-x: auto;
-}
-.home .codebox .fn {
-	display: flex;
-	justify-content: space-between;
-	font-size: 12px;
-	line-height: 1;
-	letter-spacing: 0.06em;
-	padding: var(--s2) var(--s3);
-	border-bottom: 1px solid var(--line);
-}
-.home .codebox pre {
-	padding: var(--s2) var(--s3) var(--s3);
-	font: inherit;
-	white-space: pre;
-}
-.home .codebox .k {
-	color: var(--ink);
-}
 
 /* the story: modes on .story[data-mode] are pinned and minis; .short is under 760px tall.
    The file is @Server, so the server colour (--hi) follows it; --feat marks the Inventory folder. */
@@ -1604,69 +1579,13 @@ body:has(.home) {
 	transform: none;
 }
 
-/* the bench: config on the left; toggle and both trees on the right; legend and guide below */
-.home .bench {
-	margin-top: var(--s6);
-	display: grid;
-	grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-	background: var(--deep);
-	border-radius: 8px;
-	box-shadow: inset 0 0 0 1px var(--line);
-}
-.home .b-conf {
-	border-right: 1px solid var(--line);
-	min-width: 0;
-}
-.home .bench .codebox {
-	background: none;
-	border-radius: 0;
-	box-shadow: none;
-}
-.home .bench .note {
-	margin: 0 var(--s3) var(--s3);
-	padding: var(--s2) var(--s3);
-	border-left: 2px solid var(--acc-2);
-	background: color-mix(in srgb, var(--acc) 8%, transparent);
-	font-size: 14px;
-	color: var(--ink-2);
-}
-.home .b-main {
-	min-width: 0;
-}
-.home .b-top {
-	padding: var(--s3);
-	border-bottom: 1px solid var(--line);
-}
-.home .b-trees {
-	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.home .b-trees .panel + .panel {
-	border-left: 1px solid var(--line);
-}
-.home .b-foot {
-	grid-column: 1 / -1;
+/* route by name or folder: the toggle and what it does, src/ beside the Studio result, then the note */
+.home .rt-top {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	justify-content: space-between;
 	gap: var(--s2) var(--s4);
-	padding: var(--s2) var(--s3);
-	border-top: 1px solid var(--line);
-}
-.home .legend {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--s1) var(--s3);
-	list-style: none;
-	font: 500 12px/1 var(--mono);
-	letter-spacing: 0.04em;
-	color: var(--ink-3);
-}
-.home .legend li {
-	display: flex;
-	align-items: center;
-	gap: 8px;
+	margin-top: var(--s6);
 }
 .home .toggle {
 	position: relative;
@@ -1701,6 +1620,7 @@ body:has(.home) {
 	color: var(--ink-2);
 	padding: 0 18px;
 	height: 44px;
+	white-space: nowrap;
 	border-radius: 4px;
 	transition: color 0.3s var(--ease-out);
 }
@@ -1719,53 +1639,51 @@ body:has(.home) {
 	}
 }
 .home .vdesc {
-	margin-top: var(--s2);
+	flex: 1;
+	min-width: 260px;
 	max-width: 40em;
-	min-height: 3.2em;
-}
-.home .panel {
-	padding: var(--s3);
-	min-width: 0;
-	overflow-x: auto;
-}
-.home .panel .ph {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: space-between;
-	gap: 6px var(--s2);
-	font: 500 12px/1 var(--mono);
-	letter-spacing: 0.06em;
-	color: var(--ink-3);
-	padding-bottom: var(--s2);
-	margin-bottom: var(--s1);
-	border-bottom: 1px solid var(--line);
-}
-.home .panel .ph b {
-	color: var(--ink);
-	font-weight: 500;
-}
-.home .rows {
-	font: 400 14px/1 var(--mono);
-}
-.home .rows div {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	height: 30px;
-	padding-left: calc(var(--d, 0) * 20px);
-	white-space: nowrap;
 	color: var(--ink-2);
+}
+.home .rt-panes {
+	display: grid;
+	grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+	gap: var(--s3);
+	margin-top: var(--s4);
+}
+.home .dpane {
+	min-width: 0;
+	background: var(--deep);
+	border-radius: 8px;
+	box-shadow: inset 0 0 0 1px var(--line-2);
+	overflow: hidden;
+}
+.home .dpane .tree li {
 	transition:
-		opacity 0.35s var(--ease-out),
+		opacity 0.3s var(--ease-out),
 		transform 0.45s var(--spring);
 }
-.home .rows .svc,
-.home .rows .me {
-	color: var(--ink);
-}
-.home .rows.swap div {
+.home .dpane .tree.swap li {
 	opacity: 0;
 	transform: translateY(6px);
+}
+.home .dpane .xt {
+	columns: 2;
+	column-gap: 0;
+}
+.home .dpane .x {
+	break-inside: avoid;
+}
+.home .rt-foot {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--s2) var(--s4);
+	margin-top: var(--s4);
+	color: var(--ink-2);
+}
+.home .rt-foot code {
+	color: var(--ink);
 }
 
 /* agents: heading on the right, the rooms full width, the two points below */
@@ -2025,10 +1943,10 @@ body:has(.home) {
 	.home .r-head p {
 		margin-top: var(--s3);
 	}
-	.home .bench {
+	.home .win .wsplit {
 		grid-template-columns: minmax(0, 1fr);
 	}
-	.home .win .wsplit {
+	.home .rt-panes {
 		grid-template-columns: minmax(0, 1fr);
 	}
 	.home .win .side + .side {
@@ -2037,10 +1955,6 @@ body:has(.home) {
 	}
 	.home .wires {
 		display: none;
-	}
-	.home .b-conf {
-		border-right: 0;
-		border-bottom: 1px solid var(--line);
 	}
 	.home .ag-head .lede {
 		grid-row: 2;
@@ -2065,13 +1979,6 @@ body:has(.home) {
 	}
 }
 @media (max-width: 600px) {
-	.home .b-trees {
-		grid-template-columns: minmax(0, 1fr);
-	}
-	.home .b-trees .panel + .panel {
-		border-left: 0;
-		border-top: 1px solid var(--line);
-	}
 	.home .nav-r,
 	.home .nav ul {
 		gap: 0;
@@ -2138,14 +2045,6 @@ body:has(.home) {
 	.home .places {
 		grid-template-columns: 1fr;
 	}
-	.home .codebox {
-		font-size: 12.5px;
-	}
-	.home .codebox pre,
-	.home .codebox .fn {
-		padding-left: var(--s2);
-		padding-right: var(--s2);
-	}
 	.home .cmds {
 		font-size: 13.5px;
 	}
@@ -2153,14 +2052,12 @@ body:has(.home) {
 		height: 52px;
 		gap: 12px;
 	}
-	.home .rows {
-		font-size: 12.5px;
-	}
-	.home .rows div {
-		padding-left: calc(var(--d, 0) * 14px);
-	}
 	.home .toggle {
 		display: flex;
+		width: 100%;
+	}
+	.home .dpane .xt {
+		columns: 1;
 	}
 	.home .toggle button {
 		flex: 1;
