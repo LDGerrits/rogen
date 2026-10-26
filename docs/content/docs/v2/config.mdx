@@ -11,6 +11,12 @@ A config, `default.rogen.json`, is a Rojo project file with three more keys. Rog
 | `sourcePaths` | `["src"]` | The folders Rogen reads. A later folder's file replaces an earlier one's at the same path. |
 | `compiledPath` | none | Where a compiler such as roblox-ts or Darklua writes your code, for Rojo to sync from. |
 
+## The Tree
+
+The `tree` is the base that Rogen adds your routed files to. Put in it what folder names can't place: packages, such as Wally's `Packages` or roblox-ts's `node_modules/@rbxts`, and `$properties`. A folder of a source path that the tree mounts is synced as it is, without routing.
+
+## Route Keys
+
 A route key is letters and digits, starting with a letter, or `*` for the [fallback route](/docs/v2/core-concepts/routing#files-without-a-route).
 
 ## Targets

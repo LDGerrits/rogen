@@ -8,53 +8,9 @@ import { BookOpen, History, Rocket, Terminal } from "lucide-react";
 
 Rogen is a superset of Rojo that generates Rojo project files from your file system. You organize your game by feature, and Rogen puts each file in the right place.
 
-## Why Rogen?
-
-A Rojo project file mounts each folder onto a service, so most Roblox codebases split code by where it runs. One feature ends up in three places, and changing it means opening all of them:
-
-<RouteFigure
-	disk={`
-  src/
-    client/
-      InventoryController.luau
-    server/
-      InventoryService.luau
-    shared/
-      InventoryTypes.luau
-`}
-/>
-
-With Rogen, each feature is one folder. Inside it, a folder named `Server`, `Client` or `Shared` decides where its files run:
-
-<RouteFigure
-	disk={`
-  src/
-    Inventory/
-      Client/
-        InventoryController.luau
-      Server/
-        InventoryService.luau
-      Shared/
-        InventoryTypes.luau
-`}
-	studio={`
-  ReplicatedStorage
-    Shared/
-      Inventory/
-        InventoryTypes
-  ServerScriptService
-    Inventory/
-      InventoryService
-  StarterPlayer
-    StarterPlayerScripts
-      Inventory/
-        InventoryController
-`}
-/>
-
 ## The Config
 
-A Rogen config is a Rojo project file with `routes` added. `name`, `tree` and Rojo's other keys work as they do in Rojo, and the routes take the place of a `$path` for each service:
+A Rogen config is a Rojo project file with `routes` added. The `tree` is the base: put in it what your folder names can't say, such as your packages, and Rogen adds every routed file to it.
 
 ```json title="default.rogen.json"
 {
@@ -66,12 +22,14 @@ A Rogen config is a Rojo project file with `routes` added. `name`, `tree` and Ro
 	},
 	"tree": {
 		"$className": "DataModel",
-		"Workspace": { "$path": "place/Workspace" }
+		"ReplicatedStorage": {
+			"Packages": { "$path": "Packages" }
+		}
 	}
 }
 ```
 
-Rogen writes `default.project.json` from the config, and Rojo serves, builds and syncs your game as before. `rogen serve` and `rogen build` take Rojo's flags, and a project without a config works as it did. [Commands](/docs/v2/commands) lists them all.
+A folder named after a route sends its files there, so `src/Inventory/Server/InventoryService.luau` lands in `ServerScriptService/Inventory`. Rogen writes `default.project.json` from the config, and Rojo serves, builds and syncs your game as before. `rogen serve` and `rogen build` take Rojo's flags, and a project without a config works as it did.
 
 ## Next Steps
 

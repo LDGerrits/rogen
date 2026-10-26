@@ -15,6 +15,7 @@ After you add, move, rename or delete files, or edit a `*.rogen.json`, run `roge
 ### Changing the setup
 
 - Edit the `*.rogen.json`, never the generated `*.project.json`.
+- Put what names can't place, such as packages, in the `tree`; Rogen adds the routed files to it.
 - Configs share nothing: apply a change to `routes`, `sourcePaths` or `tree` to every `*.rogen.json` it concerns.
 - Read `rogen doc routing` before adding a route or a new naming pattern.
 
