@@ -110,7 +110,7 @@ export function Features() {
 				<div className="cols">
 					<div className="head-r">
 						<h2 id="why-h" className="rv">
-							One folder per feature, from server to client
+							One folder per feature from server to client
 						</h2>
 					</div>
 				</div>

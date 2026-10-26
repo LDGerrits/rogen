@@ -1884,10 +1884,13 @@ body:has(.home) {
 .home .start .st {
 	grid-column: 8 / span 5;
 	text-align: right;
+	container-type: inline-size;
 }
+/* "Get started" stays on one line, so the size follows the column: it is about 5.4em wide */
 .home .start h2 {
-	font-size: clamp(48px, 6vw, 88px);
+	font-size: clamp(40px, 18cqi, 88px);
 	line-height: 0.98;
+	white-space: nowrap;
 }
 .home .start .link {
 	margin-top: var(--s3);
