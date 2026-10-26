@@ -324,12 +324,14 @@ body:has(.home) {
 }
 .home .hero-h {
 	grid-column: 1 / span 7;
+	container-type: inline-size;
 }
 .home .hero-copy {
 	grid-column: 8 / span 5;
 }
 .home .hero h1 {
-	font-size: clamp(42px, 5.2vw, 78px);
+	/* "Professional-grade" stays on one line, so the size follows the column: it is about 9.1em wide */
+	font-size: clamp(34px, min(10.6cqi, 6vw), 78px);
 	line-height: 1;
 	letter-spacing: -0.045em;
 	margin-top: var(--s3);
@@ -1063,13 +1065,18 @@ body:has(.home) {
 	--hi-t: color-mix(in srgb, var(--t-s) 15%, transparent);
 	--feat: var(--agent-1);
 	--pane-h: color-mix(in srgb, var(--deep) 94%, var(--ink));
+	/* the pinned height; the pin sticks centred, so the story starts right under the heading */
+	--ph: min(calc(100vh - 64px), 680px);
 	position: relative;
 	margin-top: var(--s5);
 }
+.home .story.short {
+	--ph: calc(100vh - 24px);
+}
 .home .pin {
 	position: sticky;
-	top: 0;
-	height: 100vh;
+	top: calc((100vh - var(--ph)) / 2);
+	height: var(--ph);
 	display: flex;
 	align-items: center;
 }
@@ -1084,7 +1091,7 @@ body:has(.home) {
 .home .field {
 	grid-column: 5 / span 8;
 	margin-right: calc(-1 * var(--pad) - max(0px, (100vw - var(--max)) / 2));
-	height: min(calc(100vh - 96px), 780px);
+	height: var(--ph);
 	position: relative;
 	display: flex;
 	align-items: center;
@@ -1092,12 +1099,9 @@ body:has(.home) {
 	overflow: hidden;
 	border-radius: 12px 0 0 12px;
 	background:
-		radial-gradient(circle, var(--field-dot) 1.6px, transparent 2px) 0 0 /
-			28px 28px,
+		radial-gradient(circle, var(--field-dot) 1.6px, transparent 2px) 0
+			calc(var(--drift, 0) * -1px) / 28px 28px,
 		var(--field);
-}
-.home .story.short .field {
-	height: calc(100vh - 24px);
 }
 
 /* stage: panes at real pixel sizes, set per layout in JS (--tree, --code, --row, --line, --head, --pad, --pady) */
@@ -1953,14 +1957,10 @@ body:has(.home) {
 	.home .field {
 		flex: 1 1 auto;
 		min-height: 0;
-		max-height: 780px;
 		width: 100%;
 		height: auto;
 		margin: 0;
 		border-radius: 12px;
-	}
-	.home .story.short .field {
-		height: auto;
 	}
 	.home .hero-h {
 		grid-column: 1 / -1;

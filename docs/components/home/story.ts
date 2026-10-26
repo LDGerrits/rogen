@@ -734,10 +734,20 @@ export function mountStory(root: HTMLElement) {
 	const bodyEls = [...root.querySelectorAll<HTMLElement>(".bd")];
 	let main: Scene | null = null;
 	let minis: { sc: Scene; view: HTMLElement; i: number }[] | null = null;
+	const pin = root.querySelector<HTMLElement>(".pin")!;
 	let mode = "";
-	let per = 600;
+	let per = 400;
 	const short = () => innerHeight < 760;
-	const top = () => root.getBoundingClientRect().top + scrollY;
+	// Where the scroll starts the story: when the pin sticks, centred in the viewport.
+	const start = () =>
+		root.getBoundingClientRect().top +
+		scrollY -
+		parseFloat(getComputedStyle(pin).top);
+	// The painted progress chases the scroll on a spring, so the stage glides instead of stepping.
+	let shown = 0;
+	let speed = 0;
+	let last = 0;
+	let spring = 0;
 
 	const captions = (g: number) => {
 		const n = Math.min(STEPS.length - 1, Math.floor(g));
@@ -788,11 +798,31 @@ export function mountStory(root: HTMLElement) {
 		const h = Math.min(r.height, 0.7 * vh);
 		return clamp((vh - h - r.top) / Math.max(0.85 * vh - h, 200));
 	};
+	const draw = (g: number) => {
+		main!.paint(stateAt(g));
+		captions(g);
+		field.style.setProperty("--drift", (g * 56).toFixed(1));
+	};
+	const target = () => clamp((scrollY - start()) / per, 0, STEPS.length);
+	const step = (now: number) => {
+		const dt = Math.min(0.05, (now - last) / 1000);
+		last = now;
+		const goal = target();
+		speed += (220 * (goal - shown) - 28 * speed) * dt;
+		shown += speed * dt;
+		if (Math.abs(goal - shown) < 0.0005 && Math.abs(speed) < 0.001) {
+			shown = goal;
+			speed = 0;
+			spring = 0;
+		} else spring = requestAnimationFrame(step);
+		if (main) draw(clamp(shown, 0, STEPS.length));
+	};
 	const update = () => {
 		if (mode === "pinned" && main) {
-			const g = clamp((scrollY - top()) / per, 0, STEPS.length);
-			main.paint(stateAt(g));
-			captions(g);
+			if (!spring) {
+				last = performance.now();
+				spring = requestAnimationFrame(step);
+			}
 		} else if (mode === "minis" && minis)
 			minis.forEach((m) => {
 				const r = m.view.getBoundingClientRect();
@@ -805,12 +835,19 @@ export function mountStory(root: HTMLElement) {
 		root.dataset.mode = mode;
 		root.classList.toggle("short", mode === "pinned" && short());
 		root.style.height =
-			mode === "pinned" ? `calc(100vh + ${STEPS.length * per}px)` : "";
+			mode === "pinned"
+				? `calc(var(--ph) + ${STEPS.length * per}px)`
+				: "";
 	};
 	const setup = () => {
-		per = clamp(innerHeight * 0.75, 480, 900);
+		per = clamp(innerHeight * 0.42, 300, 460);
 		setMode(innerWidth < 600 || innerHeight < 600 ? "minis" : "pinned");
 		if (mode === "pinned" && !fit()) setMode("minis");
+		if (mode === "pinned" && main) {
+			shown = target();
+			speed = 0;
+			draw(shown);
+		}
 		if (mode === "minis") {
 			minis ??= [...root.querySelectorAll<HTMLElement>(".slide")].map(
 				(li, i) => {
@@ -829,7 +866,7 @@ export function mountStory(root: HTMLElement) {
 		const go = () => {
 			if (mode !== "pinned") return;
 			scrollTo({
-				top: top() + i * per + (i ? 2 : 0),
+				top: start() + i * per + (i ? 2 : 0),
 				behavior: reduce ? "auto" : "smooth",
 			});
 		};
@@ -860,6 +897,7 @@ export function mountStory(root: HTMLElement) {
 		removeEventListener("resize", onResize);
 		cancelAnimationFrame(frame);
 		cancelAnimationFrame(resize);
+		cancelAnimationFrame(spring);
 		stepEls.forEach((el, i) =>
 			el.querySelector("button")!.removeEventListener("click", jumps[i])
 		);
