@@ -4,14 +4,13 @@ description: Rogen is a superset of Rojo that generates Rojo project files
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
-import { Callout } from "fumadocs-ui/components/callout";
 import { BookOpen, History, Rocket } from "lucide-react";
 
-A bad folder structure slows you down. You spend your time remembering where the related pieces live, and then hunting for them.
+Rogen is a superset of Rojo that generates Rojo project files from your file system. You keep each feature's code in one folder, and Rogen puts every file in the service where it runs.
 
-## The Problem: Technical Grouping
+## Why Rogen?
 
-Most Roblox codebases group files by what kind of code they are, not what they're about: `Controllers`, `Services` and `Utils`, under `server`, `client` and `shared`. Rojo maps folders straight onto instances, so Roblox tooling nudges you toward that runtime split. The result is that one feature is scattered across the tree, and changing the **Inventory** system means hunting through three folders for its pieces.
+Rojo puts a folder where the project file mounts it, so most Roblox codebases are split by where code runs. One feature ends up in three places, and changing it means opening all of them:
 
 <RouteFigure
 	disk={`
@@ -28,17 +27,7 @@ Most Roblox codebases group files by what kind of code they are, not what they'r
 `}
 />
 
-David Parnas called this a mistake back in 1972. He argued that modules should hide design decisions, not follow the order in which the program runs:
-
-> Since, in most cases, design decisions transcend time of execution, modules will not correspond to steps in the processing.
->
-> — D. L. Parnas, [_On the Criteria To Be Used in Decomposing Systems into Modules_](https://wstomv.win.tue.nl/edu/2ip30/references/criteria_for_modularization.pdf) (1972)
-
-On Roblox, _where code runs_ is one of those steps. A feature has server, client and shared code, so the feature should be the module, and where each piece runs becomes a detail inside it.
-
-## The Solution: Package by Feature
-
-Put all the code for one feature in a single **feature folder**, named after what it does in your game. Rogen reads your folder and file names and writes a Rojo **project file** that puts every script in the **service** where it runs. Rojo then syncs it into Studio as usual.
+With Rogen, the feature is the folder, and where each file runs is a detail inside it. Rogen writes the project file that puts each piece in its service:
 
 <RouteFigure
 	disk={`
@@ -66,24 +55,13 @@ Put all the code for one feature in a single **feature folder**, named after wha
 `}
 />
 
-Your [config](/docs/v2/config) maps each kind of folder to a service:
+David Parnas made the same case in 1972: a module should hide a design decision, not follow the order the program runs in ([_On the Criteria To Be Used in Decomposing Systems into Modules_](https://wstomv.win.tue.nl/edu/2ip30/references/criteria_for_modularization.pdf)).
 
-```json title="default.rogen.json"
-{
-	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared"
-	}
-}
-```
+## It's Still Rojo
 
-<Callout type="info">
-	**The result:** your repository stays organized by feature, and Studio still
-	gets every script in the right place.
-</Callout>
+Rojo still serves, builds and syncs your game. `rogen serve` and `rogen build` take Rojo's flags, and a project without a Rogen config works as it did. [Commands](/docs/v2/commands) lists them all.
 
-## Where to Go Next
+## Next Steps
 
 <Cards>
 	<Card
@@ -95,10 +73,10 @@ Your [config](/docs/v2/config) maps each kind of folder to a service:
 	</Card>
 	<Card
 		icon={<BookOpen />}
-		title="Routing"
+		title="How Routing Works"
 		href="/docs/v2/core-concepts/routing"
 	>
-		How folders, marker files and the `@` sign decide where a file goes.
+		Name a folder or file after a route, and Rogen puts it where the route points.
 	</Card>
 	<Card
 		icon={<History />}
