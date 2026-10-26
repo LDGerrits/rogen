@@ -46,21 +46,21 @@ const WORDS: Record<Lang, Words> = {
 		path: "src/Inventory/InventoryService@Server.luau",
 		shared: "Shared",
 	},
-	// roblox-ts: lowercase keys and folders, camelCase modules; Rojo reads the compiled .luau in out/.
+	// roblox-ts: lowercase keys and folders, kebab-case files as in Next.js; Rojo reads the compiled .luau in out/.
 	ts: {
 		feature: "inventory",
-		file: "inventoryService",
+		file: "inventory-service",
 		suffix: "@server",
 		ext: ".ts",
 		disk: [
 			"ui/",
-			"inventoryController@client.ts",
-			"inventoryInput@client.ts",
-			"inventoryService@server.ts",
-			"inventoryStore@server.ts",
-			"inventoryTypes.ts",
-			"itemCatalog.ts",
-			"itemIcons.ts",
+			"inventory-controller@client.ts",
+			"inventory-input@client.ts",
+			"inventory-service@server.ts",
+			"inventory-store@server.ts",
+			"inventory-types.ts",
+			"item-catalog.ts",
+			"item-icons.ts",
 		],
 		routes: [
 			["server", "ServerScriptService"],
@@ -68,7 +68,7 @@ const WORDS: Record<Lang, Words> = {
 			["shared", "ReplicatedStorage/shared"],
 			["*", "ReplicatedStorage/shared"],
 		],
-		path: "out/inventory/inventoryService@server.luau",
+		path: "out/inventory/inventory-service@server.luau",
 		shared: "shared",
 	},
 };

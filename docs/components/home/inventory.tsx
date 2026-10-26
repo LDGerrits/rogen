@@ -32,20 +32,20 @@ const luauDisk: DiskRow[] = [
 	["ItemIcons.rbxm", 2, "icons", "r"],
 ];
 
-// roblox-ts: lowercase folders and route keys, camelCase modules, PascalCase React components.
+// roblox-ts: lowercase folders and route keys, kebab-case files as in Next.js.
 const tsDisk: DiskRow[] = [
 	["src/", 0],
 	["inventory/", 1],
 	["ui/", 2],
-	["InventoryHud.tsx", 3, "hud", "r"],
-	["ItemSlot.tsx", 3, "slot", "r"],
-	["inventoryController@client.ts", 2, "ctrl", "c"],
-	["inventoryInput@client.ts", 2, "input", "c"],
-	["inventoryService@server.ts", 2, "svc", "s"],
-	["inventoryStore@server.ts", 2, "store", "s"],
-	["inventoryTypes.ts", 2, "types", "r"],
-	["itemCatalog.ts", 2, "cat", "r"],
-	["itemIcons.ts", 2, "icons", "r"],
+	["inventory-hud.tsx", 3, "hud", "r"],
+	["item-slot.tsx", 3, "slot", "r"],
+	["inventory-controller@client.ts", 2, "ctrl", "c"],
+	["inventory-input@client.ts", 2, "input", "c"],
+	["inventory-service@server.ts", 2, "svc", "s"],
+	["inventory-store@server.ts", 2, "store", "s"],
+	["inventory-types.ts", 2, "types", "r"],
+	["item-catalog.ts", 2, "cat", "r"],
+	["item-icons.ts", 2, "icons", "r"],
 ];
 
 const luauStudio: StudioRow[] = [
@@ -73,21 +73,21 @@ const tsStudio: StudioRow[] = [
 	["", "ReplicatedStorage", 0, "svc", "r"],
 	["", "shared", 1, "dir", "r"],
 	["", "inventory", 2, "dir", "r"],
-	["types", "inventoryTypes", 3, "scr", "r"],
-	["cat", "itemCatalog", 3, "scr", "r"],
-	["icons", "itemIcons", 3, "scr", "r"],
+	["types", "inventory-types", 3, "scr", "r"],
+	["cat", "item-catalog", 3, "scr", "r"],
+	["icons", "item-icons", 3, "scr", "r"],
 	["", "ui", 3, "dir", "r"],
-	["hud", "InventoryHud", 4, "scr", "r"],
-	["slot", "ItemSlot", 4, "scr", "r"],
+	["hud", "inventory-hud", 4, "scr", "r"],
+	["slot", "item-slot", 4, "scr", "r"],
 	["", "ServerScriptService", 0, "svc", "s"],
 	["", "inventory", 1, "dir", "s"],
-	["svc", "inventoryService", 2, "scr", "s"],
-	["store", "inventoryStore", 2, "scr", "s"],
+	["svc", "inventory-service", 2, "scr", "s"],
+	["store", "inventory-store", 2, "scr", "s"],
 	["", "StarterPlayer", 0, "svc", "c"],
 	["", "StarterPlayerScripts", 1, "dir", "c"],
 	["", "inventory", 2, "dir", "c"],
-	["ctrl", "inventoryController", 3, "scr", "c"],
-	["input", "inventoryInput", 3, "scr", "c"],
+	["ctrl", "inventory-controller", 3, "scr", "c"],
+	["input", "inventory-input", 3, "scr", "c"],
 ];
 
 export const disk: Record<Lang, DiskRow[]> = { luau: luauDisk, ts: tsDisk };

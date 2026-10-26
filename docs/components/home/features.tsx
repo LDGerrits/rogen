@@ -9,18 +9,24 @@ const tree: [string, string, number, Dot, string?][] = [
 	["Combat/", "combat/", 1, "o"],
 	["Inventory/", "inventory/", 1, "o", "on"],
 	["UI/", "ui/", 2, "r", "f"],
-	["InventoryHud.luau", "InventoryHud.tsx", 3, "r", "f"],
-	["ItemSlot.luau", "ItemSlot.tsx", 3, "r", "f"],
+	["InventoryHud.luau", "inventory-hud.tsx", 3, "r", "f"],
+	["ItemSlot.luau", "item-slot.tsx", 3, "r", "f"],
 	[
 		"InventoryController@Client.luau",
-		"inventoryController@client.ts",
+		"inventory-controller@client.ts",
 		2,
 		"c",
 		"f",
 	],
-	["InventoryService@Server.luau", "inventoryService@server.ts", 2, "s", "f"],
-	["InventoryTypes.luau", "inventoryTypes.ts", 2, "r", "f"],
-	["ItemIcons.rbxm", "itemIcons.ts", 2, "r", "f"],
+	[
+		"InventoryService@Server.luau",
+		"inventory-service@server.ts",
+		2,
+		"s",
+		"f",
+	],
+	["InventoryTypes.luau", "inventory-types.ts", 2, "r", "f"],
+	["ItemIcons.rbxm", "item-icons.ts", 2, "r", "f"],
 	["Shop/", "shop/", 1, "o"],
 ];
 
@@ -77,10 +83,10 @@ function Places() {
 				<div className="pl shared">
 					<b>shared/</b>
 					<span>
-						<L luau="InventoryTypes.luau" ts="inventoryTypes.ts" />
+						<L luau="InventoryTypes.luau" ts="inventory-types.ts" />
 					</span>
 					<span>
-						<L luau="ItemCatalog.luau" ts="itemCatalog.ts" />
+						<L luau="ItemCatalog.luau" ts="item-catalog.ts" />
 					</span>
 				</div>
 				<div className="pl">
@@ -90,7 +96,7 @@ function Places() {
 				<div className="pl">
 					<b>arena/</b>
 					<span className="ov">
-						<L luau="ItemCatalog.luau" ts="itemCatalog.ts" />
+						<L luau="ItemCatalog.luau" ts="item-catalog.ts" />
 					</span>
 					<em>replaces the shared one</em>
 				</div>
