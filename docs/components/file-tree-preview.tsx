@@ -23,7 +23,7 @@ export function PreviewArrow() {
 	return (
 		<div className="flex items-center justify-center z-20 py-4 md:py-0 px-2 md:px-6">
 			<svg
-				className="text-stone-500 md:rotate-0 rotate-90"
+				className="text-stone-500 dark:text-mist-dim md:rotate-0 rotate-90"
 				fill="none"
 				height="32"
 				stroke="currentColor"
@@ -49,7 +49,7 @@ export function SystemWindow({ children }: { children: ReactNode }) {
 					File System
 				</span>
 			</div>
-			<div className="p-6 font-mono text-sm leading-8 text-stone-600 dark:text-stone-400 whitespace-nowrap overflow-x-auto min-h-30">
+			<div className="p-6 font-mono text-sm leading-8 text-stone-600 dark:text-mist whitespace-nowrap overflow-x-auto min-h-30">
 				{children}
 			</div>
 		</div>
@@ -65,7 +65,7 @@ export function StudioWindow({ children }: { children: ReactNode }) {
 					Roblox Studio
 				</span>
 			</div>
-			<div className="p-6 font-mono text-sm leading-8 text-stone-600 dark:text-stone-400 whitespace-nowrap overflow-x-auto min-h-30">
+			<div className="p-6 font-mono text-sm leading-8 text-stone-600 dark:text-mist whitespace-nowrap overflow-x-auto min-h-30">
 				{children}
 			</div>
 		</div>
@@ -93,7 +93,7 @@ export function TreeFolder({
 			{open ? (
 				<FaFolderOpen className="text-stone-900 dark:text-paper" />
 			) : (
-				<FaFolder className="text-stone-400 dark:text-stone-600" />
+				<FaFolder className="text-stone-400 dark:text-mist-dim" />
 			)}
 			<span
 				className={
@@ -130,8 +130,8 @@ export function TreeFile({
 			<span
 				className={
 					marker
-						? "text-stone-500 dark:text-stone-400"
-						: "text-stone-800 dark:text-stone-300"
+						? "text-stone-500 dark:text-mist"
+						: "text-stone-800 dark:text-mist-bright"
 				}
 			>
 				{name}
@@ -160,7 +160,7 @@ export function TreeService({
 			className={`flex items-center gap-2 ${mt ? "mt-3" : ""}`}
 			style={{ marginLeft: `${level * 16}px` }}
 		>
-			<Icon className="text-stone-400 dark:text-stone-600" />
+			<Icon className="text-stone-400 dark:text-mist-dim" />
 			<span>{name}</span>
 		</div>
 	);
@@ -178,8 +178,8 @@ export function StudioFile({
 			className={`flex items-center gap-2`}
 			style={{ marginLeft: `${level * 16}px` }}
 		>
-			<FaFileAlt className="text-stone-500 dark:text-stone-400" />
-			<span className="text-stone-600 dark:text-stone-400">{name}</span>
+			<FaFileAlt className="text-stone-500 dark:text-mist" />
+			<span className="text-stone-600 dark:text-mist">{name}</span>
 		</div>
 	);
 }
