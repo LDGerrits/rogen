@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { JetBrains_Mono, Sora } from "next/font/google";
+import { LANG_SCRIPT } from "@/components/home/lang-script";
 import { Nav } from "@/components/home/nav";
 import "./home.css";
 
@@ -18,6 +19,7 @@ const jetbrainsMono = JetBrains_Mono({
 export default function Layout({ children }: { children: ReactNode }) {
 	return (
 		<div className={`home ${sora.variable} ${jetbrainsMono.variable}`}>
+			<script dangerouslySetInnerHTML={{ __html: LANG_SCRIPT }} />
 			<Nav />
 			{children}
 		</div>

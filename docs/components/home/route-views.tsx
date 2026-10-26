@@ -9,133 +9,83 @@ import {
 	type KeyboardEvent,
 	type ReactNode,
 } from "react";
+import { glyphs, type Service } from "./explorer";
+import { disk, Name, studio, StudioIcon, type DiskRow } from "./inventory";
+import { useLang, type Lang } from "./lang";
 import { delay } from "./more-link";
 
-type Colour = "s" | "c" | "r" | "o";
 type ViewId = "name" | "folder";
-type Row = [depth: number, cls: string, label: ReactNode, colour: Colour];
+// Folder rows with a colour are the Client/ and Server/ routing folders.
+type Row = DiskRow;
 
-const suffix = (
-	name: string,
-	colour: "s" | "c",
-	route: string,
-	ext = ".luau"
-) => (
-	<>
-		{name}
-		<span className={`c-${colour}`}>{route}</span>
-		{ext}
-	</>
-);
+function viewsOf(lang: Lang) {
+	const rows = disk[lang];
+	const shared = rows.filter(
+		([, , , colour]) => colour !== "s" && colour !== "c"
+	);
+	// A routing folder in the route's colour, with its files in it and their @ suffixes gone.
+	const routed = (colour: Service, folder: string): Row[] => [
+		[folder, 2, "", colour],
+		...rows
+			.filter((row) => row[3] === colour)
+			.map(([name, , key]): Row => [
+				name.replace(/@\w+/, ""),
+				3,
+				key,
+				colour,
+			]),
+	];
+	const [client, server] =
+		lang === "ts" ? ["client", "server"] : ["Client", "Server"];
+	const views: Record<ViewId, { label: string; desc: string; rows: Row[] }> =
+		{
+			name: {
+				label: "Route by name",
+				desc: "Mark only the files that belong on one side. Everything else goes to ReplicatedStorage through the * route.",
+				rows,
+			},
+			folder: {
+				label: "Route by folder",
+				desc: `Put files in a ${client} or ${server} folder. In Studio, that folder disappears and its files sit directly in the feature's folder.`,
+				rows: [
+					...shared.slice(0, 5),
+					...routed("c", `${client}/`),
+					...routed("s", `${server}/`),
+					...shared.slice(5),
+				],
+			},
+		};
+	return views;
+}
+const ids: ViewId[] = ["name", "folder"];
+// The tree keeps the height of the longer view, so switching views never resizes the section.
+const MAX_ROWS = Math.max(...ids.map((id) => viewsOf("luau")[id].rows.length));
 
-const ui: Row[] = [
-	[0, "", "UI/", "r"],
-	[1, "", "InventoryHud.luau", "r"],
-	[1, "", "ItemSlot.luau", "r"],
-];
-const shared: Row[] = [
-	[0, "", "InventoryTypes.luau", "r"],
-	[0, "", "ItemCatalog.luau", "r"],
-	[0, "", "ItemIcons.rbxm", "r"],
-];
-
-const views: Record<ViewId, { label: string; desc: string; rows: Row[] }> = {
-	name: {
-		label: "Route by name",
-		desc: "Mark only the files that belong on one side. Everything else goes to ReplicatedStorage through the * route.",
-		rows: [
-			...ui,
-			[0, "", suffix("InventoryController", "c", "@Client"), "c"],
-			[0, "", suffix("InventoryInput", "c", "@Client"), "c"],
-			[0, "me", suffix("InventoryService", "s", "@Server"), "s"],
-			[0, "", suffix("InventoryStore", "s", "@Server"), "s"],
-			...shared,
-		],
-	},
-	folder: {
-		label: "Route by folder",
-		desc: "Put files in a Client or Server folder. In Studio, that folder disappears and its files sit directly in the feature's folder.",
-		rows: [
-			...ui,
-			[
-				0,
-				"",
-				<span key="c" className="c-c">
-					Client/
-				</span>,
-				"o",
-			],
-			[1, "", "InventoryController.luau", "c"],
-			[1, "", "InventoryInput.luau", "c"],
-			[
-				0,
-				"",
-				<span key="s" className="c-s">
-					Server/
-				</span>,
-				"o",
-			],
-			[1, "me", "InventoryService.luau", "s"],
-			[1, "", "InventoryStore.luau", "s"],
-			...shared,
-		],
-	},
-};
-const ids = Object.keys(views) as ViewId[];
-
-const studio: Row[] = [
-	[0, "svc", "ReplicatedStorage", "r"],
-	[1, "", "Shared", "r"],
-	[2, "", "Inventory", "r"],
-	[3, "", "InventoryTypes", "r"],
-	[3, "", "ItemCatalog", "r"],
-	[3, "", "ItemIcons", "r"],
-	[3, "", "UI", "r"],
-	[4, "", "InventoryHud", "r"],
-	[4, "", "ItemSlot", "r"],
-	[0, "svc", "ServerScriptService", "s"],
-	[1, "", "Inventory", "s"],
-	[2, "me", "InventoryService", "s"],
-	[2, "", "InventoryStore", "s"],
-	[0, "svc", "StarterPlayer", "c"],
-	[1, "", "StarterPlayerScripts", "c"],
-	[2, "", "Inventory", "c"],
-	[3, "", "InventoryController", "c"],
-	[3, "", "InventoryInput", "c"],
-];
-
-function Rows({ rows }: { rows: Row[] }) {
-	return rows.map(([depth, cls, label, colour], i) => (
-		<div
-			key={i}
-			className={cls || undefined}
-			style={
-				{
-					"--d": depth,
-					transitionDelay: `${Math.min(i, 6) * 30}ms`,
-				} as CSSProperties
-			}
-		>
-			<i className={`dia ${colour}`} />
-			<span>{label}</span>
-		</div>
-	));
+function DiskRows({ rows }: { rows: Row[] }) {
+	const depths = rows.map((row) => row[1]);
+	return rows.map(([name, depth, key, colour], i) => {
+		const folder = name.endsWith("/");
+		return (
+			<li
+				key={`${name}${depth}`}
+				className={folder && !colour ? "b" : undefined}
+				style={{ transitionDelay: `${Math.min(i, 8) * 25}ms` }}
+			>
+				<span className="g">{glyphs(depths, i)}</span>
+				{folder && colour ? (
+					<span className={`nm c-${colour}`}>{name}</span>
+				) : (
+					<Name name={name} colour={key ? colour : undefined} />
+				)}
+			</li>
+		);
+	});
 }
 
-const legend: [Colour, string][] = [
-	["s", "Server"],
-	["c", "Client"],
-	["r", "Shared and *"],
-];
-
-/** The config beside the Route by name / Route by folder toggle and the on-disk and Studio panels. */
-export function RouteViews({
-	config,
-	guide,
-}: {
-	config: ReactNode;
-	guide: ReactNode;
-}) {
+/** The Route by name / Route by folder toggle over src/Inventory on disk and its result in Studio. */
+export function RouteViews({ guide }: { guide: ReactNode }) {
+	const lang = useLang();
+	const views = viewsOf(lang);
 	const [view, setView] = useState<ViewId>("name");
 	const [shown, setShown] = useState<ViewId>("name");
 	const [entering, setEntering] = useState(false);
@@ -172,14 +122,10 @@ export function RouteViews({
 	const select = (next: ViewId) => {
 		setView(next);
 		clearTimeout(timer.current);
-		if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-			setShown(next);
-			return;
-		}
 		timer.current = setTimeout(() => {
 			setShown(next);
 			setEntering(true);
-		}, 260);
+		}, 220);
 	};
 
 	const onKeyDown = (e: KeyboardEvent, i: number) => {
@@ -192,68 +138,80 @@ export function RouteViews({
 	const swapping = shown !== view || entering;
 
 	return (
-		<div className="bench rv" style={delay(120)}>
-			<div className="b-conf">{config}</div>
-			<div className="b-main">
-				<div className="b-top">
-					<div
-						ref={toggle}
-						className="toggle"
-						role="tablist"
-						aria-label="Routing style"
-					>
-						<span ref={knob} className="knob" aria-hidden="true" />
-						{ids.map((id, i) => (
-							<button
-								key={id}
-								ref={(el) => {
-									buttons.current[i] = el;
-								}}
-								type="button"
-								role="tab"
-								aria-selected={view === id}
-								tabIndex={view === id ? 0 : -1}
-								onClick={() => select(id)}
-								onKeyDown={(e) => onKeyDown(e, i)}
-							>
-								{views[id].label}
-							</button>
-						))}
-					</div>
-					<p className="vdesc" aria-live="polite">
-						{views[view].desc}
-					</p>
-				</div>
-				<div className="b-trees">
-					<div className="panel src">
-						<div className="ph">
-							<b>src/Inventory</b>
-							<span>on disk</span>
-						</div>
-						<div className={`rows${swapping ? " swap" : ""}`}>
-							<Rows rows={views[shown].rows} />
-						</div>
-					</div>
-					<div className="panel dst">
-						<div className="ph">
-							<b>Roblox Studio</b>
-							<span>same for both</span>
-						</div>
-						<div className="rows">
-							<Rows rows={studio} />
-						</div>
-					</div>
+		<div className="routes-demo">
+			<div className="rt-top rv" style={delay(120)}>
+				<div
+					ref={toggle}
+					className="toggle"
+					role="tablist"
+					aria-label="Routing style"
+				>
+					<span ref={knob} className="knob" aria-hidden="true" />
+					{ids.map((id, i) => (
+						<button
+							key={id}
+							ref={(el) => {
+								buttons.current[i] = el;
+							}}
+							type="button"
+							role="tab"
+							aria-selected={view === id}
+							tabIndex={view === id ? 0 : -1}
+							onClick={() => select(id)}
+							onKeyDown={(e) => onKeyDown(e, i)}
+						>
+							{views[id].label}
+						</button>
+					))}
 				</div>
 			</div>
-			<div className="b-foot">
-				<ul className="legend" aria-label="Route colours">
-					{legend.map(([colour, label]) => (
-						<li key={colour}>
-							<i className={`dia ${colour}`} />
-							{label}
-						</li>
-					))}
-				</ul>
+			<div className="rt-panes">
+				<div className="dpane rv" style={delay(160)}>
+					<div className="pane-h">
+						<b>src/</b>
+						<span>On disk</span>
+					</div>
+					<ul
+						className={`tree${swapping ? " swap" : ""}`}
+						style={{ "--rows": MAX_ROWS } as CSSProperties}
+					>
+						<DiskRows rows={views[shown].rows} />
+					</ul>
+					{/* Every description sits in one cell, so the longest sets the height and nothing below moves. */}
+					<p className="vdesc" aria-live="polite">
+						{ids.map((id) => (
+							<span
+								key={id}
+								aria-hidden={id !== view}
+								data-on={id === view || undefined}
+							>
+								{views[id].desc}
+							</span>
+						))}
+					</p>
+				</div>
+				<div className="dpane rv" style={delay(220)}>
+					<div className="pane-h">
+						<b>Result in Roblox Studio</b>
+						<span>Same for both</span>
+					</div>
+					<ul className="xt">
+						{studio[lang].map(
+							([, name, depth, icon, colour], i) => (
+								<li
+									key={i}
+									className={`x k-${colour}${icon === "svc" ? " svc" : ""}`}
+									style={{ "--d": depth } as CSSProperties}
+								>
+									<StudioIcon icon={icon} />
+									<span className="nm">{name}</span>
+								</li>
+							)
+						)}
+					</ul>
+				</div>
+			</div>
+			<div className="rt-foot rv" style={delay(260)}>
 				{guide}
 			</div>
 		</div>
