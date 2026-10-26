@@ -209,7 +209,7 @@ describe("help command", () => {
 				)
 			).toEqual([]);
 			expect(lines).toContain(
-				'  default.rogen.json - warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)'
+				'  warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)'
 			);
 		});
 
