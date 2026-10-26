@@ -5,7 +5,7 @@ description: Rogen is a superset of Rojo that generates Rojo project files.
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { Callout } from "fumadocs-ui/components/callout";
-import { BookOpen, LayoutGrid, Rocket, Settings2 } from "lucide-react";
+import { BookOpen, History, Rocket } from "lucide-react";
 
 A bad folder structure slows you down. You spend your time remembering where the related pieces live, and then hunting for them.
 
@@ -72,7 +72,7 @@ Put all the code for one feature in a single **feature folder**, named after wha
 
 </PreviewGroup>
 
-Your [config](/docs/v2/configuration) maps each kind of folder to a service:
+Your [config](/docs/v2/core-concepts/routing#the-config) maps each kind of folder to a service:
 
 ```json title="default.rogen.json"
 {
@@ -88,8 +88,6 @@ Your [config](/docs/v2/configuration) maps each kind of folder to a service:
 	**The result:** your repository stays organized by feature, and Studio still
 	gets every script in the right place.
 </Callout>
-
-Feature folders are a good place to start, but [Architectures](/docs/v2/architectures) covers other layouts that work well with Rogen, like layers and ECS.
 
 ## Where to Go Next
 
@@ -109,17 +107,10 @@ Feature folders are a good place to start, but [Architectures](/docs/v2/architec
 		How folders, marker files and the `@` sign decide where a file goes.
 	</Card>
 	<Card
-		icon={<LayoutGrid />}
-		title="Architectures"
-		href="/docs/v2/architectures"
+		icon={<History />}
+		title="Migrating from v1"
+		href="/docs/v2/migrating-from-v1"
 	>
-		Feature folders, layers and ECS, and when to pick each.
-	</Card>
-	<Card
-		icon={<Settings2 />}
-		title="Configuration"
-		href="/docs/v2/configuration"
-	>
-		Every key of a config file.
+		Move a Rogen 1 project to v2.
 	</Card>
 </Cards>

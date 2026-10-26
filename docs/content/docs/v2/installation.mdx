@@ -26,8 +26,7 @@ You can install Rogen with **Rokit** or **npm**.
 	  run `rogen plugin install`.
 	- `rogen serve` starts the Rojo your project pins, else the one on the
 	  PATH, and checks its version first: sync rules need Rojo 7.5.0 or newer.
-	- To use Argon instead, see
-	  [Studio](/docs/v2/studio#serve-with-argon).
+	- To use Argon instead, run `rogen write --watch` and `argon serve`.
 </Callout>
 
 <Tabs items={["Rokit", "npm"]}>
@@ -100,7 +99,7 @@ You can install Rogen with **Rokit** or **npm**.
 
 ## Updates
 
-Rogen tells you when a newer stable release is out, with one line on stderr after a command run in a terminal, and says which pin or `npm` command to change. To stop it, set `ROGEN_NO_UPDATE_CHECK=1` or `NO_UPDATE_NOTIFIER=1`. It reads GitHub's list of releases once a day. See [Update notice](/docs/v2/cli#update-notice) for when it speaks and what it keeps.
+Rogen tells you when a newer stable release is out, with one line on stderr after a command run in a terminal, and says which pin or `npm` command to change. To stop it, set `ROGEN_NO_UPDATE_CHECK=1` or `NO_UPDATE_NOTIFIER=1`. It reads GitHub's list of releases once a day.
 
 ## Quick Start
 
@@ -146,4 +145,4 @@ In an empty folder, four steps take you to a game in Studio:
   </Step>
 </Steps>
 
-Nothing else is needed for Luau. roblox-ts and Darklua have a compiler to run beside `rogen serve`, which `init` prints. The [Luau](/docs/v2/setups/luau), [roblox-ts](/docs/v2/setups/roblox-ts), [Darklua](/docs/v2/setups/darklua) and [Several Places](/docs/v2/setups/places) guides begin from `rogen init`.
+Nothing else is needed for Luau. roblox-ts and Darklua have a compiler to run beside `rogen serve`, which `init` prints.

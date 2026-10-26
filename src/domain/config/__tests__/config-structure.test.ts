@@ -29,7 +29,7 @@ describe("domain/config/config-structure", () => {
 			expect([...rojoKeys].sort()).toEqual([...ROJO_FIELDS].sort());
 		});
 
-		it.each(["help/config.md", "docs/content/docs/v2/configuration.mdx"])(
+		it.each(["help/config.md", "docs/content/docs/v2/core-concepts/routing.mdx"])(
 			"has every Rogen key named in %s",
 			(file) => {
 				const text = fs.readFileSync(

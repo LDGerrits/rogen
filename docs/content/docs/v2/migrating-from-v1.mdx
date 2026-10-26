@@ -19,7 +19,7 @@ v2 is a clean break. It won't read a v1 `.rogen.json`; a folder with only such a
 rogen init
 ```
 
-It writes `default.rogen.json`. If you have a hand-written `default.project.json`, its keys are lifted into `default.rogen.json`, because v2 [owns its project file](/docs/v2/core-concepts/output#output). Rogen writes `default.project.json` from then on, so `init` prints `git rm --cached default.project.json` to stop git tracking it.
+It writes `default.rogen.json`. If you have a hand-written `default.project.json`, its keys are lifted into `default.rogen.json`, because v2 owns its project file. Rogen writes `default.project.json` from then on, so `init` prints `git rm --cached default.project.json` to stop git tracking it.
 
 v2 doesn't look for a `.rogen.json`, so your v1 config stays where it is for the comparison below. Rename it if you want it out of the way:
 
@@ -118,7 +118,7 @@ v2: src/Teleport/Teleport.luau, dev/Teleport/Teleport.luau (the dev source path)
 }
 ```
 
-`rogen write` writes `default.project.json` with the overlay and `release.project.json` without it; `rogen write release` writes only the second. A file that is not an overlay of anything, such as a spec, is left out of a project with `globIgnorePaths` instead. See [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
+`rogen write` writes `default.project.json` with the overlay and `release.project.json` without it; `rogen write release` writes only the second. A file that is not an overlay of anything, such as a spec, is left out of a project with `globIgnorePaths` instead.
 
 <Callout type="warn" title="Old tag names ship">
 	v1 dropped `TeleportDev.luau` when `dev` was off. In v2 it's an ordinary file that ships in every build, and a dot suffix such as `Teleport.dev.luau` is part of the name, so move these files before your first v2 release.
@@ -152,7 +152,7 @@ Put the marker file of the route you want in the folder instead, such as `@share
 
 ### `.sync`
 
-Mount the folder in the [tree](/docs/v2/configuration#tree) as a plain `$path`, and Rogen leaves it alone:
+Mount the folder in the tree as a plain `$path`, and Rogen leaves it alone:
 
 ```json title="default.rogen.json"
 {
@@ -169,7 +169,7 @@ Mount the folder in the [tree](/docs/v2/configuration#tree) as a plain `$path`, 
 
 ### `^` Hoisting
 
-Make the folders above the file [invisible](/docs/v2/core-concepts/project-layout#invisible-folders) instead. That hoists everything inside them, not just one file:
+Make the folders above the file invisible instead. That hoists everything inside them, not just one file:
 
 ```
 v1: src/Physics/Server/^CollisionService.luau
@@ -200,7 +200,7 @@ A v1 mode changed which files a build had and where Rojo read them. In v2 it is 
 
 `rogen serve dist` or `rogen build dist -o game.rbxl` picks it by name. A bare `rogen serve` serves `default.rogen.json`, as a bare `rojo serve` serves `default.project.json`, so `init` prints the command that fits your setup. A v1 mode that only flipped tags becomes a file with its own `sourcePaths`, as above.
 
-A repo that built several places from one config becomes a [folder per place](/docs/v2/setups/places): each place has its own complete `default.rogen.json`, and the code they share is a plain folder that each place lists in `sourcePaths`.
+A repo that built several places from one config becomes a folder per place: each place has its own complete `default.rogen.json`, and the code they share is a plain folder that each place lists in `sourcePaths`.
 
 ## Config Fields
 
@@ -223,7 +223,7 @@ A repo that built several places from one config becomes a [folder per place](/d
 | v1 | v2 |
 |---|---|
 | the mode is picked from the detected toolchain | only `init` detects anything; a write does what the config says |
-| `build` replaces the first path segment | `compiledPath` replaces the [common root](/docs/v2/core-concepts/output#compiled-path) of the source paths |
+| `build` replaces the first path segment | `compiledPath` replaces the common root of the source paths |
 | Rogen adopts an existing project file | Rogen owns the project files it writes and replaces them; hand-written content goes in `tree` |
 | packages and `rbxts_include` injected from the toolchain | mounted in the `tree`, which `init` writes |
 | empty placeholder files for compiled toolchains | none: every emitted `$path` is optional |
@@ -245,4 +245,4 @@ A repo that built several places from one config becomes a [folder per place](/d
 	In v1, `-v` printed the version. In v2 it's `--verbose`, and `-V` prints the version, as in Rojo, Wally and Selene. A bare `rogen` prints usage instead of building. Check any scripts that call Rogen.
 </Callout>
 
-v2 also adds `rogen where`, `rogen check`, `--json`, JSONC configs, Rojo's keys in the config, and diagnostics with a file and position. See the [CLI](/docs/v2/cli) and [Configuration](/docs/v2/configuration) reference.
+v2 also adds `rogen where`, `rogen check`, `--json`, JSONC configs, Rojo's keys in the config, and diagnostics with a file and position. Run `rogen help` for every command.

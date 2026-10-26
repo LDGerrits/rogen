@@ -4,21 +4,12 @@
 	"pages": [
 		"---Overview---",
 		"index",
-		"core-concepts",
-		"---Getting Started---",
 		"installation",
-		"setups",
+		"core-concepts/routing",
 		"---Guides---",
-		"architectures",
 		"agents",
-		"studio",
-		"testing",
-		"coming-from-rojo",
 		"migrating-from-v1",
 		"---Reference---",
-		"configuration",
-		"cli",
-		"diagnostics",
-		"glossary"
+		"diagnostics"
 	]
 }

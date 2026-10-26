@@ -1,28 +1,17 @@
 ---
 title: Working with agents
-description: Why a Rogen layout suits coding agents, and how to tell an agent about Rogen.
+description: How to tell a coding agent about Rogen.
 ---
 
-## Why
-
-Coding agents work best when the context they need is in one place and their changes are easy to check. A Rogen layout gives you both.
-
-1. **One folder, one feature.** Point the agent at `Shop/` and it has everything about the shop.
-2. **A small blast radius.** If features don't require each other, a diff that stays inside `Shop/` can only break the shop, and the file list tells you that before you read any code.
-3. **Boundaries a linter can check.** Rules like "features don't require each other" are rules about paths, so a linter can catch a crossed boundary before you review. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
-4. **Placement is declared.** Where a file ends up comes from a short `routes` map, not from conventions the agent has to infer.
-5. **No generated file to break.** Rogen rewrites the project file on every write, so there's nothing hand-maintained for an agent to corrupt.
-6. **It checks its own work.** `rogen where` shows where a file lands and why, and `rogen check` reports what is misplaced, with a non-zero exit.
-
-Left to itself, an agent reads the layout well enough to place code and write requires, but it doesn't know the project file has to be written again, so Rojo and the editor miss its new files. In [our runs](#what-we-measured), 12 of 20 tasks without instructions ended that way, and none of 20 with them. A short block of instructions closes that gap and tells the agent which commands answer the rest.
+Left to itself, a coding agent places code and writes requires well, but it doesn't know the project file has to be written again, so Rojo and the editor miss its new files. A short block of instructions closes that gap and tells the agent which commands answer the rest.
 
 ## Set it up
 
-Run [`rogen init`](/docs/v2/cli#init-path). A first `init` adds the block below to your `AGENTS.md`, or to `CLAUDE.md` when that's the only one, and creates `AGENTS.md` when there's neither. In a terminal it asks first. Every agent that reads the file gets the rules, with nothing to install.
+Run `rogen init`. A first `init` adds the block below to your `AGENTS.md`, or to `CLAUDE.md` when that's the only one, and creates `AGENTS.md` when there's neither. In a terminal it asks first. Every agent that reads the file gets the rules, with nothing to install.
 
 Claude Code reads `CLAUDE.md` instead of `AGENTS.md` when there is one, and Gemini CLI reads only `GEMINI.md`. So `init` appends `@AGENTS.md`, which imports it, to each of those that doesn't import it already, and writes a `CLAUDE.md` or `GEMINI.md` holding only the import where the project has the agent's folder (`.claude`, `.gemini`) but not its file.
 
-An agent that runs `init` itself can't answer prompts: `rogen init --dry-run --json` shows what it would write and which choices it would take, and a flag answers each question (see [Choices as flags](/docs/v2/cli#choices-as-flags)).
+An agent that runs `init` itself can't answer prompts: `rogen init --dry-run --json` shows what it would write and which choices it would take, and a flag answers each question.
 
 ## Add it to an existing repo
 
@@ -63,7 +52,7 @@ Rogen owns what is between the `<!-- rogen -->` markers. When `rogen write` or `
 
 The block asks an agent to run `rogen check <paths>` after it adds, moves or renames files. That depends on the agent remembering, and a clean result still costs a tool call.
 
-[`rogen check`](/docs/v2/cli#check-path) prints the diagnostics about the paths it is given, and nothing else, and exits 1 when there are any. A hook that runs when the agent is about to end its turn can use that to report only what the agent's own changes caused.
+`rogen check` prints the diagnostics about the paths it is given, and nothing else, and exits 1 when there are any. A hook that runs when the agent is about to end its turn can use that to report only what the agent's own changes caused.
 
 The script below collects the changed files from git (modified, renamed and untracked, but not deleted), runs `rogen check` on them, and reports each line it hasn't reported earlier in the session. It is a Node script with no dependencies, so it runs wherever Rogen does, Windows included. It runs the Rogen in the project's `node_modules/.bin`, else the one on the `PATH`. The agent gets the report as its next prompt and continues its turn.
 
@@ -229,32 +218,3 @@ The block is how an agent works in a Rogen repo. Getting a repo there is a skill
 ```bash
 npx skills add LDGerrits/rogen
 ```
-
-## What an agent reads
-
-The block is loaded in every session, so it holds only what an agent gets wrong without being told, and the commands that answer the rest:
-
-1. **The block**, about 400 tokens: the rules and the commands that check them.
-2. **`rogen doc <topic>`**, between 400 and 2,400 tokens a topic, read when needed: `routing`, `config`, `layout` and `output`. It matches the installed version and works offline.
-3. **[`--json`](/docs/v2/cli#json-output) diagnostics**, when something's wrong: each has a stable code, the renames or commands that fix it, and a link to its [explanation](/docs/v2/diagnostics). `rogen help <code>` prints the same explanation.
-
-## What we measured
-
-On 2026-10-23, Claude Code with Sonnet 5.5 ran five tasks, twice each, in a fresh one-place Luau project from Rogen 2.0.0-beta.1's `init`. The tasks were: add a server-only module, add a secret only the server may read, put a server-only module "next to" a shared one, add a feature folder, and move a module into a new feature. Half the runs had the block above in `AGENTS.md` and half had no rules. Each was run on the Greeter routed by folder (`Server/`) and by suffix (`Greeter.server.luau`, `Greeting@shared.luau`). A run passes when `rogen check` is clean, the project file is what `rogen write` would write, every `require` resolves, and the agent never edited the project file.
-
-| Layout | With the block | Without |
-|---|---|---|
-| Folders | 10/10 | 6/10 |
-| Suffixes | 10/10 | 2/10 |
-
-Every failure was the same: a stale project file. Without the block, agents placed files and wrote requires correctly, but never ran `rogen check` or `rogen write`. A folder-routed project file lists folders, so only a new folder makes it stale. A suffix-routed one lists files, so every new file does. The 40 runs cost $3.01.
-
-The harness is in [`evals/agents`](https://github.com/LDGerrits/rogen/tree/main/evals/agents) of the repository: `npm run eval:agents` runs it with your own Claude Code login, with an empty config so your own instructions stay out.
-
-## Exit codes
-
-Every command ends with `0` (done, warnings included), `1` (the project has a problem, or Rojo failed; `rogen check` also exits 1 on any warning) or `2` (the command line is wrong, or a terminal is needed and there is none), with the same meaning under `--json`. A command that Ctrl+C or SIGTERM ends exits 130 or 143, as the shell reports it. [The table](/docs/v2/cli#exit-codes) is in the reference.
-
-## When a terminal counts as an agent's
-
-Rogen asks nothing when it thinks a program is on the other end: with `CI`, `AGENT` or `AI_AGENT` set, or a variable an agent's harness sets for its commands (`CLAUDECODE` for Claude Code, `CODEX_SANDBOX` for Codex, `CURSOR_AGENT`, `GEMINI_CLI`, …), a real terminal counts as non-interactive. `init` takes its defaults, and `syncback` writes nothing without `-y` (or lists what it would do with `--dry-run`) and exits 2, so an agent that runs it by hand in a terminal needs the flag too. The full list of variables is under [Output](/docs/v2/cli#output).
