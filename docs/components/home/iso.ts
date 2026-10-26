@@ -1,14 +1,14 @@
 export type Point = [number, number];
-export type Point3 = [number, number, number];
-export type ViewBox = [number, number, number, number];
+type Point3 = [number, number, number];
+type ViewBox = [number, number, number, number];
 
 const CO = Math.cos(Math.PI / 6);
 const SI = 0.5;
 
-export const v = (name: string) => `var(--${name})`;
+const v = (name: string) => `var(--${name})`;
 const darken = (name: string, f: number) =>
 	`color-mix(in srgb,var(--${name}) ${Math.round(f * 100)}%,#000)`;
-export const fill = (colour: string) => `style="fill:${colour}"`;
+const fill = (colour: string) => `style="fill:${colour}"`;
 
 // A material names its top colour; the sides use --<m>-l and --<m>-r when the theme sets them.
 const sides = (m: string) => [
@@ -20,7 +20,7 @@ const sides = (m: string) => [
 const n1 = (n: number) => n.toFixed(1);
 
 /** Isometric drawing helpers in world units, emitting SVG markup. */
-export function kit(ox: number, oy: number, s: number) {
+function kit(ox: number, oy: number, s: number) {
 	const box: ViewBox = [Infinity, Infinity, -Infinity, -Infinity];
 	const grow = ([x, y]: Point) => {
 		box[0] = Math.min(box[0], x);
@@ -191,7 +191,7 @@ export interface Building {
 }
 
 /** A service building: ServerScriptService striped, ReplicatedStorage capped, StarterPlayer windowed. */
-export function building(
+function building(
 	K: Kit,
 	k: Service,
 	b: Building,

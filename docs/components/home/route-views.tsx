@@ -122,8 +122,8 @@ function Rows({ rows }: { rows: Row[] }) {
 	));
 }
 
-/** The Route by name / Route by folder toggle, the config and the on-disk and Studio panels. */
-export function RouteViews({ config }: { config: ReactNode }) {
+/** The Route by name / Route by folder toggle and the on-disk and Studio panels. */
+export function RouteViews() {
 	const [view, setView] = useState<ViewId>("name");
 	const [shown, setShown] = useState<ViewId>("name");
 	const [entering, setEntering] = useState(false);
@@ -210,9 +210,6 @@ export function RouteViews({ config }: { config: ReactNode }) {
 					<p className="vdesc" aria-live="polite">
 						{views[view].desc}
 					</p>
-				</div>
-				<div className="conf rv" style={delay(80)}>
-					{config}
 				</div>
 			</div>
 			<div className="cols board rv" style={delay(80)}>

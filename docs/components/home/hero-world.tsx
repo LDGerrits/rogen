@@ -158,16 +158,6 @@ export function HeroWorld() {
 			);
 		};
 
-		if (reduced) {
-			const t = performance.now();
-			for (let n = 0; n < 7; n++) spawn(t, n * 1.9 + 0.8);
-			live.forEach((p) => (p.hit = true));
-			step(t);
-			return () => {
-				parcels.innerHTML = "";
-			};
-		}
-
 		// The loop runs only while the hero is on screen; parcels resume where they paused.
 		let last = 0;
 		let prev = 0;

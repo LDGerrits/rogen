@@ -1,6 +1,5 @@
 import { delay, MoreLink } from "./more-link";
 import { RouteViews } from "./route-views";
-import { RoutingStory } from "./routing-story";
 
 const routes = [
 	["Server", "ServerScriptService", "s"],
@@ -62,8 +61,9 @@ export function Routing() {
 						</h2>
 						<p className="rv" style={delay(80)}>
 							You choose the routes and where each one points. Add{" "}
-							<code>@Server</code> to a file&apos;s name or put it
-							in a <code>Server</code> folder, and it goes to
+							<code>@Server</code>
+							{" to a file's name or put it in a "}
+							<code>Server</code> folder, and it goes to
 							ServerScriptService. Files without a route go to{" "}
 							<code>*</code>.
 						</p>
@@ -74,9 +74,11 @@ export function Routing() {
 							Read the routing guide
 						</MoreLink>
 					</div>
+					<div className="conf rv" style={delay(80)}>
+						<Config />
+					</div>
 				</div>
-				<RoutingStory />
-				<RouteViews config={<Config />} />
+				<RouteViews />
 			</div>
 		</section>
 	);
