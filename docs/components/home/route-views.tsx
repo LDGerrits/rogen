@@ -75,13 +75,7 @@ function DiskRows({ rows }: { rows: Row[] }) {
 }
 
 /** The Route by name / Route by folder toggle over src/Inventory on disk and its result in Studio. */
-export function RouteViews({
-	note,
-	guide,
-}: {
-	note: ReactNode;
-	guide: ReactNode;
-}) {
+export function RouteViews({ guide }: { guide: ReactNode }) {
 	const [view, setView] = useState<ViewId>("name");
 	const [shown, setShown] = useState<ViewId>("name");
 	const [entering, setEntering] = useState(false);
@@ -160,18 +154,6 @@ export function RouteViews({
 						</button>
 					))}
 				</div>
-				{/* Every description sits in one cell, so the longest sets the height and nothing below moves. */}
-				<p className="vdesc" aria-live="polite">
-					{ids.map((id) => (
-						<span
-							key={id}
-							aria-hidden={id !== view}
-							data-on={id === view || undefined}
-						>
-							{views[id].desc}
-						</span>
-					))}
-				</p>
 			</div>
 			<div className="rt-panes">
 				<div className="dpane rv" style={delay(160)}>
@@ -185,6 +167,18 @@ export function RouteViews({
 					>
 						<DiskRows rows={views[shown].rows} />
 					</ul>
+					{/* Every description sits in one cell, so the longest sets the height and nothing below moves. */}
+					<p className="vdesc" aria-live="polite">
+						{ids.map((id) => (
+							<span
+								key={id}
+								aria-hidden={id !== view}
+								data-on={id === view || undefined}
+							>
+								{views[id].desc}
+							</span>
+						))}
+					</p>
 				</div>
 				<div className="dpane rv" style={delay(220)}>
 					<div className="pane-h">
@@ -206,7 +200,6 @@ export function RouteViews({
 				</div>
 			</div>
 			<div className="rt-foot rv" style={delay(260)}>
-				<p>{note}</p>
 				{guide}
 			</div>
 		</div>

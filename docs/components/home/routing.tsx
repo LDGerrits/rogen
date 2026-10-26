@@ -23,13 +23,6 @@ export function Routing() {
 			<RoutingStory />
 			<div className="wrap">
 				<RouteViews
-					note={
-						<>
-							Add your own, such as{" "}
-							<code>&quot;Gui&quot;: &quot;StarterGui&quot;</code>
-							, and <code>@Gui</code> sends a file to StarterGui.
-						</>
-					}
 					guide={
 						<MoreLink href="/docs/v2/core-concepts/routing">
 							Read the routing guide

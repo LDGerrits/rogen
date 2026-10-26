@@ -1578,7 +1578,7 @@ body:has(.home) {
 	transform: none;
 }
 
-/* route by name or folder: the toggle and what it does, src/ beside the Studio result, then the note */
+/* route by name or folder: the toggle, src/ (with what the view does) beside the Studio result, then the guide */
 .home .rt-top {
 	display: flex;
 	flex-wrap: wrap;
@@ -1638,10 +1638,12 @@ body:has(.home) {
 	}
 }
 .home .vdesc {
-	flex: 1;
-	min-width: 260px;
-	max-width: 40em;
 	display: grid;
+	margin-top: auto;
+	padding: 12px 14px;
+	border-top: 1px solid var(--line);
+	font-size: 14px;
+	line-height: 1.5;
 	color: var(--ink-2);
 }
 .home .vdesc span {
@@ -1653,11 +1655,13 @@ body:has(.home) {
 }
 .home .rt-panes {
 	display: grid;
-	grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: var(--s3);
 	margin-top: var(--s4);
 }
 .home .dpane {
+	display: flex;
+	flex-direction: column;
 	min-width: 0;
 	background: var(--deep);
 	border-radius: 8px;
@@ -1676,24 +1680,8 @@ body:has(.home) {
 	opacity: 0;
 	transform: translateY(6px);
 }
-.home .dpane .xt {
-	columns: 2;
-	column-gap: 0;
-}
-.home .dpane .x {
-	break-inside: avoid;
-}
 .home .rt-foot {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--s2) var(--s4);
 	margin-top: var(--s4);
-	color: var(--ink-2);
-}
-.home .rt-foot code {
-	color: var(--ink);
 }
 
 /* agents: heading on the right, an editor per feature below it, then the two points */
@@ -2164,9 +2152,6 @@ body:has(.home) {
 	.home .toggle {
 		display: flex;
 		width: 100%;
-	}
-	.home .dpane .xt {
-		columns: 1;
 	}
 	.home .toggle button {
 		flex: 1;
