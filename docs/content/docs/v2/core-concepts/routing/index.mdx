@@ -1,5 +1,5 @@
 ---
-title: Routing
+title: How Routing Works
 description: How Rogen decides where each file lands in the game
 ---
 
@@ -21,7 +21,7 @@ Rogen places each file by its folder and file names. The `routes` in your [confi
 
 A route key in a file's path sends the file to that route's target:
 
-| Route with | On disk | In the game |
+| By | On disk | In the game |
 |---|---|---|
 | [A routing folder](/docs/v2/core-concepts/routing/folders) | `src/Shop/Server/ShopService.luau` | `ServerScriptService/Shop/ShopService` |
 | [`@` in the name](/docs/v2/core-concepts/routing/names) | `src/Trade/TradeService@Server.luau` | `ServerScriptService/Trade/TradeService` |
