@@ -1,27 +1,19 @@
 ---
 title: Migrating from v1
-description: Move a v1 project to v2, and what replaces each removed feature.
+description: Move a Rogen 1 project to v2.
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-v2 is a clean break. It won't read a v1 `.rogen.json`; a folder with only such a file, or any config file with v1's keys, fails every command with an error that points here, and `init` writes nothing beside it. There's no `migrate` command. A fresh config only takes `init` a few seconds; the real work is in how v2 reads your **tree** differently, which is what this page covers.
+v2 reads neither v1's config nor most of v1's file names. While a v1 config is in the folder, every command stops with [`legacy.config`](/docs/v2/diagnostics#legacy-config). There is no `migrate` command. You write a new config with `rogen init`, then rename files until `rogen check` is clean.
 
 <Steps>
 
 <Step>
-### Run `rogen init`
+### Set the v1 Config Aside
 
-[Install v2](/docs/v2/installation), then run `init` in the project root:
-
-```bash
-rogen init
-```
-
-It writes `default.rogen.json`. If you have a hand-written `default.project.json`, its keys are lifted into `default.rogen.json`, because v2 owns its project file. Rogen writes `default.project.json` from then on, so `init` prints `git rm --cached default.project.json` to stop git tracking it.
-
-v2 doesn't look for a `.rogen.json`, so your v1 config stays where it is for the comparison below. Rename it if you want it out of the way:
+Rename every v1 config in the project folder: `.rogen.json`, and any other `*.rogen.json` that v1 read. v2 then skips it, and you keep it to compare against:
 
 ```bash
 mv .rogen.json .rogen.json.v1
@@ -30,9 +22,22 @@ mv .rogen.json .rogen.json.v1
 </Step>
 
 <Step>
+### Run `rogen init`
+
+[Install v2](/docs/v2/installation), then run `init` in the project folder:
+
+```bash
+rogen init
+```
+
+It writes `default.rogen.json`. If you have a `default.project.json`, `init` lifts its keys into `default.rogen.json`. Rogen writes `default.project.json` from then on, so `init` prints `git rm --cached default.project.json` to stop git from tracking it.
+
+</Step>
+
+<Step>
 ### Match Your Old Paths
 
-v1 added a wrapper folder under each service (`ServerScriptService/server`, `ReplicatedStorage/shared`). In v2 the target is the whole path, so write the wrappers in to keep your v1 `require` paths working:
+v1 put a wrapper folder under each service, such as `ServerScriptService/server`. In v2, a route's target is the whole path. To keep your v1 `require` paths, write the wrappers into the targets:
 
 ```json title="default.rogen.json"
 {
@@ -45,41 +50,58 @@ v1 added a wrapper folder under each service (`ServerScriptService/server`, `Rep
 }
 ```
 
-If you used `unwrap`, leave the wrapper out. If you used `casing: "PascalCase"`, capitalize it. Any `aliases` become routes too.
+If you used `unwrap`, leave the wrapper out. If you used `casing: "PascalCase"`, capitalise it. Add each of your `aliases` as a route.
 
 </Step>
 
 <Step>
-### Rename Your Files
-
-v2 has fewer ways to route by name, so most projects have files to rename. The [removed features](#removed-features) below each say what replaces them.
-
-</Step>
-
-<Step>
-### Build and Compare
-
-```bash
-rogen write
-```
-
-Read the warnings. Files that used an old suffix no longer route, so each is left out of the game with a [`route.unrouted`](/docs/v2/diagnostics#route-unrouted) warning until you rename or move it. You can list them all with:
+### Rename Files Until `rogen check` Is Clean
 
 ```bash
 rogen check
 ```
 
-Then compare the result in Studio with your v1 build, and delete `.rogen.json.v1` once they match.
+Each v1 file name that no longer routes gets a warning that names the fix, such as [`route.unrouted`](/docs/v2/diagnostics#route-unrouted) or [`route.dotRoute`](/docs/v2/diagnostics#route-dotroute). `--json` lists the renames. Use the [table below](#what-replaces-each-v1-feature) to rename or move each file, and run `rogen write` when `check` says to. The step is done when `rogen check` prints nothing and exits 0.
+
+Files that v1 built only under a tag raise no warning. Move them as [Tags](#tags) describes.
+
+</Step>
+
+<Step>
+### Compare With Your v1 Build
+
+Serve the project with `rogen serve`, and compare Studio's Explorer with your v1 build. When every script sits at the same path as before, delete `.rogen.json.v1`.
 
 </Step>
 
 </Steps>
 
-## Removed Features
+## What Replaces Each v1 Feature
 
-### Prefixes and Most Suffixes
+| v1 | v2 |
+|---|---|
+| `.rogen.json` | `default.rogen.json`, which `init` writes |
+| `source`, `-s` | `sourcePaths` |
+| `aliases`, built-in service keywords | `routes`. Only declared keys route |
+| `casing`, `unwrap`, `.unwrap` | the route's target, written as a path |
+| `verbatim`, `.verbatim` | nothing. v2 keeps every name as it is |
+| prefix and suffix keywords | `@key` at the end of the name, or a routing folder. See [Names](#names) |
+| `tags`, `-t` | an overlay source path. See [Tags](#tags) |
+| modes, `-m` | a second complete config: `dist.rogen.json` writes `dist.project.json`, and `rogen serve dist` serves it |
+| a mode's `build`, `-b` | `compiledPath` |
+| a mode's `output`, `-o` | none. Rogen writes the project file beside its config. `rogen build -o game.rbxl` builds a place with Rojo |
+| `project`, `template`, `-p` | `tree`, written in `default.rogen.json`. `-p` now builds a plugin: `rogen build -p Tool.rbxm` |
+| `.structure` | a marker file in the folder, such as `@shared`. It governs everything below it |
+| `.sync` | a plain `$path` node in the `tree`. Rogen leaves that folder alone |
+| `^` on a file | an invisible folder: `src/(Physics)/Server/CollisionService.luau` lands at `ServerScriptService/CollisionService` |
+| the deepest rule wins | the outermost [route governs](/docs/v2/core-concepts/routing#the-governing-route). `src/ReplicatedFirst/main.client.luau` now lands in `ReplicatedFirst`, not in the client folder |
+| unmatched files go to `ReplicatedStorage` | a `"*"` route that you declare. Without one, unmatched files are left out |
+| several places from one config | a folder per place, each with its own `default.rogen.json`. Shared code is a plain folder that each place lists in `sourcePaths` |
+| `-v` | `-V`. See [The `-v` Flag](#the--v-flag) |
 
-v1 routed files by a keyword anywhere at the start or end of a name, which made accidents easy: `HttpClient.luau` went to the client and lost its `Client`. v2 only routes by name with `@key` at the end, or with Rojo's own `.server` and `.client` on a script. A [routing folder](/docs/v2/core-concepts/routing#routing-folders) is usually even better:
+### Names
+
+v2 routes by name only with `@key` at the end of the name, or with Rojo's `.server` and `.client` on a script. A [routing folder](/docs/v2/core-concepts/routing#routing-folders) is often the better choice:
 
 ```
 v1: src/Combat/server_Combat.luau     v2: src/Combat/Server/Combat.luau
@@ -91,11 +113,11 @@ v1: src/Combat/Gun.server.rbxm        v2: src/Combat/Gun@server.rbxm
 v1: src/Combat/.server                v2: src/Combat/@server
 ```
 
-Route marker files now take `@` too: v1's `.server` becomes `@server`. So do models and data files, which have no script class for Rojo to read: `Gun.server.rbxm` becomes `Gun@server.rbxm`. Rogen warns about each dot-file or dot part that spells a route key and names its `@` form, and `--json` lists the renames, so the build output is a checklist.
+Marker files, models and data files take `@` too, because Rojo reads `.server` only on a script.
 
 ### Tags
 
-v2 has no tags. A file that v1 built only while a tag was on now lives in an **overlay source path**, a folder of its own that only the config files wanting it list. A later source path wins a clash without a warning, and a file with no plain twin is simply added. Put the overlay in `default.rogen.json` if your everyday build wants it, and write a second complete file, `release.rogen.json`, that leaves it out. A second file repeats `name`, `routes` and `tree` and changes only what differs; it needs its own `name`, because Rojo crashes on a project file other than `default.project.json` that has none:
+A file that v1 built only while a tag was on moves to an **overlay source path**: a folder of its own that only the configs that want it list. A later source path wins a clash, and a file with no twin in an earlier source path is added. List the overlay in `default.rogen.json` if your everyday build wants it. Then write a second complete config, such as `release.rogen.json`, without it:
 
 ```
 v1: src/Teleport/Teleport.luau, src/Teleport/TeleportDev.luau (tag dev)
@@ -118,131 +140,12 @@ v2: src/Teleport/Teleport.luau, dev/Teleport/Teleport.luau (the dev source path)
 }
 ```
 
-`rogen write` writes `default.project.json` with the overlay and `release.project.json` without it; `rogen write release` writes only the second. A file that is not an overlay of anything, such as a spec, is left out of a project with `globIgnorePaths` instead.
+`rogen write` writes `default.project.json` with the overlay and `release.project.json` without it. The second config needs its own `name`, because Rojo crashes on a project file other than `default.project.json` that has none. To leave a file out of every build, such as a spec, list it in `globIgnorePaths`.
 
-<Callout type="warn" title="Old tag names ship">
-	v1 dropped `TeleportDev.luau` when `dev` was off. In v2 it's an ordinary file that ships in every build, and a dot suffix such as `Teleport.dev.luau` is part of the name, so move these files before your first v2 release.
+<Callout type="warn" title="Old tag files ship">
+	v1 left `TeleportDev.luau` out when `dev` was off. In v2 it is an ordinary file that ships in every build, and `Teleport.dev.luau` is just a name. Move these files before your first v2 release.
 </Callout>
 
-### The Deepest Rule Wins
+### The `-v` Flag
 
-In v1 the deepest rule won, so a suffix beat its folder. In v2 the [outermost route governs](/docs/v2/core-concepts/routing#the-governing-route) and everything below it is ignored. That fixes v1's best-known surprise:
-
-```
-src/ReplicatedFirst/main.client.luau
-v1: StarterPlayer/StarterPlayerScripts/client/main   (the .client suffix won)
-v2: ReplicatedFirst/main                             (the folder governs; still a LocalScript)
-```
-
-### Built-in Service Keywords
-
-v1 routed any folder named after a service. In v2 only declared routes exist, so add the ones you use, like `"ReplicatedFirst": "ReplicatedFirst"`.
-
-### `.unwrap`, `unwrap` and `casing`
-
-Targets are paths, so the wrapper folder is whatever the target says: `"ServerScriptService"` is unwrapped and `"ReplicatedStorage/Shared"` is PascalCase.
-
-### `.verbatim` and `verbatim`
-
-These kept keywords like the `Client` in `HttpClient`. v2 doesn't strip them in the first place.
-
-### `.structure`
-
-Put the marker file of the route you want in the folder instead, such as `@shared`. As the outer route, it governs everything below.
-
-### `.sync`
-
-Mount the folder in the tree as a plain `$path`, and Rogen leaves it alone:
-
-```json title="default.rogen.json"
-{
-	"name": "my-game",
-	"routes": { "*": "ReplicatedStorage/Shared" },
-	"tree": {
-		"$className": "DataModel",
-		"ReplicatedStorage": {
-			"Roact": { "$path": "src/Vendor/Roact" }
-		}
-	}
-}
-```
-
-### `^` Hoisting
-
-Make the folders above the file invisible instead. That hoists everything inside them, not just one file:
-
-```
-v1: src/Physics/Server/^CollisionService.luau
-v2: src/(Physics)/Server/CollisionService.luau  ->  ServerScriptService/CollisionService
-```
-
-### The `ReplicatedStorage` Default
-
-v1 sent unmatched files to `ReplicatedStorage`, which could leak server code to clients. v2 never guesses, so declare the [fallback route](/docs/v2/core-concepts/routing#files-that-match-no-route) `"*"` yourself.
-
-### Modes and Profiles
-
-A v1 mode changed which files a build had and where Rojo read them. In v2 it is a second complete file beside `default.rogen.json`: `dist.rogen.json` writes `dist.project.json`. The file repeats `name`, `routes` and `tree` and changes the keys that differ. Nothing is inherited, so a change to the routes is made in each file.
-
-```json title="dist.rogen.json"
-{
-	"name": "Game",
-	"sourcePaths": ["src"],
-	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
-	},
-	"compiledPath": "dist"
-}
-```
-
-`rogen serve dist` or `rogen build dist -o game.rbxl` picks it by name. A bare `rogen serve` serves `default.rogen.json`, as a bare `rojo serve` serves `default.project.json`, so `init` prints the command that fits your setup. A v1 mode that only flipped tags becomes a file with its own `sourcePaths`, as above.
-
-A repo that built several places from one config becomes a folder per place: each place has its own complete `default.rogen.json`, and the code they share is a plain folder that each place lists in `sourcePaths`.
-
-## Config Fields
-
-| v1 | v2 |
-|---|---|
-| `.rogen.json`, or the first `*.rogen.json` | `default.rogen.json` (or `default.rogen.jsonc`) in a folder, and `<name>.rogen.json` for a second output; `init` writes the default |
-| `source` | `sourcePaths` |
-| modes (`luau`, `ts`, `darklua`, custom) | a second complete file, `<name>.rogen.json`, that repeats the keys and changes the ones that differ |
-| a mode's `build` | `compiledPath`, in the file for that mode |
-| a mode's `output` | removed. Rogen writes `<name>.project.json` beside `<name>.rogen.json` |
-| `tags` at the root and in modes | removed. An overlay source path that only the config files wanting those files list, or `globIgnorePaths` |
-| `globIgnorePaths` | `globIgnorePaths`, Rojo's own key, which Rogen also writes to the project file |
-| `aliases` and built-in service keywords | `routes`. Only declared keys route |
-| `casing`, `unwrap` | route targets as paths |
-| `verbatim` | removed; nothing routes by accident |
-| `project`, or the legacy `template` | `tree`, written inline in `default.rogen.json` |
-
-## Behavior
-
-| v1 | v2 |
-|---|---|
-| the mode is picked from the detected toolchain | only `init` detects anything; a write does what the config says |
-| `build` replaces the first path segment | `compiledPath` replaces the common root of the source paths |
-| Rogen adopts an existing project file | Rogen owns the project files it writes and replaces them; hand-written content goes in `tree` |
-| packages and `rbxts_include` injected from the toolchain | mounted in the `tree`, which `init` writes |
-| empty placeholder files for compiled toolchains | none: every emitted `$path` is optional |
-| a full rewrite on every change | incremental rewrites, and the config reloads while watching |
-
-## CLI
-
-| v1 | v2 |
-|---|---|
-| `-m, --mode <mode>` | removed. Name a file: `rogen build release -o game.rbxl`, `rogen serve dist` |
-| `-b, --build <path>` | removed. Set `compiledPath` in the config |
-| `-s, --source <path>` | removed. Set `sourcePaths` in the config |
-| `-o, --output <path>` | not the same. Rogen writes the project file beside the `.rogen.json`; `rogen build -o game.rbxl` has Rojo build a place file from it |
-| `-p, --project <path>` | removed. Set `tree` in `default.rogen.json`. `-p` now builds a plugin: `rogen build -p Tool.rbxm` |
-| `-t, --tag <tag>` | removed. Name the file whose `sourcePaths` list the overlay |
-| `-v, --version` | `-V, --version` |
-
-<Callout type="warn" title="-v changed meaning">
-	In v1, `-v` printed the version. In v2 it's `--verbose`, and `-V` prints the version, as in Rojo, Wally and Selene. A bare `rogen` prints usage instead of building. Check any scripts that call Rogen.
-</Callout>
-
-v2 also adds `rogen where`, `rogen check`, `--json`, JSONC configs, Rojo's keys in the config, and diagnostics with a file and position. Run `rogen help` for every command.
+In v1, `-v` printed the version. In v2, `-v` is `--verbose` and `-V` prints the version, as in Rojo, Wally and Selene. A bare `rogen` prints usage instead of building. Update any scripts that call Rogen.
