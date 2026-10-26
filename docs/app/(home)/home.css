@@ -1423,6 +1423,7 @@ body:has(.home) {
 	display: block;
 	height: 1em;
 	transform: translateY(calc(var(--g, 0) * -100%));
+	transition: transform 0.5s var(--snap);
 }
 .home .story.short .odo {
 	display: none;

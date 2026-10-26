@@ -244,15 +244,12 @@ const EASE: Record<Ease, (t: number) => number> = {
 };
 
 // g runs 0..4 over the story; each state is its track's eased progress. A step's tracks
-// are fitted into its first 65%, so each step ends on a still picture that holds while you scroll.
-const PLAY = 0.65;
-// Where each step's finished picture sits, in steps: the scroll comes to rest there.
-const REST = (PLAY + 1) / 2;
+// are stretched to fill it, so playing from i to i + 1 never pauses.
 const stateAt = (g: number) => {
 	const S: State = {};
 	STEPS.forEach((st, i) => {
 		const t = clamp(g - i);
-		const fit = PLAY / Math.max(...st.tracks.map((tr) => tr[2]));
+		const fit = 1 / Math.max(...st.tracks.map((tr) => tr[2]));
 		st.tracks.forEach(([k, a, b, e]) => {
 			S[k] = EASE[e](clamp((t - a * fit) / ((b - a) * fit)));
 		});
@@ -714,10 +711,11 @@ const kick = (i: number) =>
 	`<p class="skick"><span class="n">${num(i)}</span> · ${STEPS[i].kicker}</p>`;
 
 /*
- * Mounts the story in root. It pins and scrubs with the scroll from 600x600 up, and
- * shows one small scene per step below that. The scrub follows the reader's own
- * scrolling, so it runs with reduced motion too; only the step buttons jump instead
- * of gliding then.
+ * Mounts the story in root. From 600x600 up the stage pins (CSS sticky) and the scroll
+ * picks the step: each step gets a stretch of scroll, and entering it plays the step
+ * as a short animation of its own, so the motion is the same however fast or slow the
+ * reader scrolls, and the page is never scrolled for them. Below that, each step has
+ * its own small scene that plays as it comes into view.
  */
 export function mountStory(root: HTMLElement) {
 	const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -736,30 +734,62 @@ export function mountStory(root: HTMLElement) {
 	).join("");
 	const stepEls = [...root.querySelectorAll<HTMLElement>(".st")];
 	const bodyEls = [...root.querySelectorAll<HTMLElement>(".bd")];
-	let main: Scene | null = null;
-	let minis: { sc: Scene; view: HTMLElement; i: number }[] | null = null;
 	const pin = root.querySelector<HTMLElement>(".pin")!;
 	const odo = root.querySelector<HTMLElement>("[data-odo]")!;
 	odo.innerHTML = `<span>${STEPS.map((_, i) => num(i)).join("</span><span>")}</span>`;
+	let main: Player | null = null;
+	let minis: (Player & { view: HTMLElement; i: number })[] | null = null;
 	let mode = "";
-	let per = 400;
+	let per = 300;
+	// A step becomes active this far (in steps) before its stretch of scroll starts.
+	const LEAD = 0.4;
 	const short = () => innerHeight < 760;
-	// Where the scroll starts the story: when the pin sticks, centred in the viewport.
+	// Where the scroll reaches the story: when the pin sticks, centred in the viewport.
 	const start = () =>
 		root.getBoundingClientRect().top +
 		scrollY -
 		parseFloat(getComputedStyle(pin).top);
-	// The painted progress chases the scroll on a spring, so the stage glides instead of stepping.
-	let shown = 0;
-	let speed = 0;
-	let last = 0;
-	let spring = 0;
+	const raw = () => (scrollY - start()) / per;
 
-	const captions = (g: number) => {
-		const n = Math.min(STEPS.length - 1, Math.floor(g));
-		const f = clamp(g - n);
+	// A scene and how far it has played (shown) towards where the scroll wants it (target).
+	interface Player {
+		sc: Scene;
+		shown: number;
+		target: number;
+	}
+	const players = () => [...(main ? [main] : []), ...(minis ?? [])];
+
+	// Played at one step per 0.8s, faster when a quick scroll skips steps, so it never lags far behind.
+	let last = 0;
+	let loop = 0;
+	const tick = (now: number) => {
+		const dt = Math.min(0.05, (now - last) / 1000);
+		last = now;
+		let moving = false;
+		players().forEach((p) => {
+			const d = p.target - p.shown;
+			if (!d) return;
+			const rate = Math.max(1 / 0.8, Math.abs(d) / 1.2);
+			p.shown =
+				Math.abs(d) <= rate * dt
+					? p.target
+					: p.shown + Math.sign(d) * rate * dt;
+			p.sc.paint(stateAt(p.shown));
+			moving ||= p.shown !== p.target;
+		});
+		loop = moving ? requestAnimationFrame(tick) : 0;
+	};
+	const play = () => {
+		if (loop) return;
+		last = performance.now();
+		loop = requestAnimationFrame(tick);
+	};
+
+	// Captions and the step bars follow the scroll directly; they are the scroll's feedback.
+	const captions = (r: number) => {
+		const n = clamp(Math.floor(r + LEAD), 0, STEPS.length - 1);
 		const fill = (i: number) =>
-			String(i < n ? 1 : i === n ? f.toFixed(3) : 0);
+			String(i < n ? 1 : i === n ? clamp(r + LEAD - n).toFixed(3) : 0);
 		stepEls.forEach((el, i) => {
 			el.classList.toggle("on", i === n);
 			el.classList.toggle("done", i < n);
@@ -772,7 +802,10 @@ export function mountStory(root: HTMLElement) {
 				fill(i)
 			);
 		});
+		odo.style.setProperty("--g", String(n));
+		field.style.setProperty("--drift", (r * 60).toFixed(1));
 	};
+
 	// Picks the layout and scales the stage into the field; false when even compact falls below the floor.
 	const fit = () => {
 		const tight = short();
@@ -788,61 +821,29 @@ export function mountStory(root: HTMLElement) {
 				? "wide"
 				: "compact";
 		if (scale(name) < FLOOR) return false;
-		if (!main || main.name !== name) {
-			main?.el.remove();
-			main = makeScene(name);
-			field.appendChild(main.el);
+		if (!main || main.sc.name !== name) {
+			main?.sc.el.remove();
+			main = { sc: makeScene(name), shown: 0, target: 0 };
+			field.appendChild(main.sc.el);
 		}
-		main.measure();
+		main.sc.measure();
 		const s = scale(name);
-		main.el.style.transform = s < 1 ? `scale(${s.toFixed(4)})` : "";
+		main.sc.el.style.transform = s < 1 ? `scale(${s.toFixed(4)})` : "";
 		return true;
 	};
-	const miniProgress = (v: HTMLElement) => {
-		const r = v.getBoundingClientRect();
-		const vh = innerHeight;
-		const h = Math.min(r.height, 0.7 * vh);
-		return clamp((vh - h - r.top) / Math.max(0.85 * vh - h, 200));
-	};
-	const draw = (g: number) => {
-		// The big step number rolls over across each step boundary, from 10% before it to 10% after.
-		const h = g + 0.1;
-		const m = Math.floor(h);
-		const roll = m - 1 + EASE.io(clamp((h - m) / 0.2));
-		odo.style.setProperty(
-			"--g",
-			clamp(roll, 0, STEPS.length - 1).toFixed(4)
-		);
-		main!.paint(stateAt(g));
-		captions(g);
-		field.style.setProperty("--drift", (g * 120).toFixed(1));
-	};
-	const target = () => clamp((scrollY - start()) / per, 0, STEPS.length);
-	const step = (now: number) => {
-		const dt = Math.min(0.05, (now - last) / 1000);
-		last = now;
-		const goal = target();
-		speed += (300 * (goal - shown) - 34 * speed) * dt;
-		shown += speed * dt;
-		if (Math.abs(goal - shown) < 0.0005 && Math.abs(speed) < 0.001) {
-			shown = goal;
-			speed = 0;
-			spring = 0;
-		} else spring = requestAnimationFrame(step);
-		if (main) draw(clamp(shown, 0, STEPS.length));
-	};
+
+	// Step i plays from i to i + 1; before the first step the stage shows its opening picture.
 	const update = () => {
 		if (mode === "pinned" && main) {
-			if (!spring) {
-				last = performance.now();
-				spring = requestAnimationFrame(step);
-			}
+			const r = raw();
+			captions(r);
+			main.target = clamp(Math.floor(r + LEAD) + 1, 0, STEPS.length);
 		} else if (mode === "minis" && minis)
 			minis.forEach((m) => {
-				const r = m.view.getBoundingClientRect();
-				if (r.bottom > -60 && r.top < innerHeight + 60)
-					m.sc.paint(stateAt(m.i + miniProgress(m.view)));
+				const b = m.view.getBoundingClientRect();
+				m.target = b.top < innerHeight * 0.75 ? m.i + 1 : m.i;
 			});
+		play();
 	};
 	const setMode = (next: string) => {
 		mode = next;
@@ -850,37 +851,36 @@ export function mountStory(root: HTMLElement) {
 		root.classList.toggle("short", mode === "pinned" && short());
 		root.style.height =
 			mode === "pinned"
-				? `calc(var(--ph) + ${STEPS.length * per}px)`
+				? `calc(var(--ph) + ${(STEPS.length - LEAD - 0.2) * per}px)`
 				: "";
 	};
+	// Lays the story out and shows where the scroll is now, without playing anything.
 	const setup = () => {
-		per = clamp(innerHeight * 0.24, 170, 260);
+		per = clamp(innerHeight * 0.32, 220, 320);
 		setMode(innerWidth < 600 || innerHeight < 600 ? "minis" : "pinned");
 		if (mode === "pinned" && !fit()) setMode("minis");
-		if (mode === "pinned" && main) {
-			shown = target();
-			speed = 0;
-			draw(shown);
-		}
-		if (mode === "minis") {
+		if (mode === "minis")
 			minis ??= [...root.querySelectorAll<HTMLElement>(".slide")].map(
 				(li, i) => {
 					const sc = makeScene("mini" + (i + 1));
 					const view = li.querySelector<HTMLElement>(".mini")!;
 					view.appendChild(sc.el);
-					return { sc, view, i };
+					return { sc, view, i, shown: i, target: i };
 				}
 			);
-			minis.forEach((m) => m.sc.measure());
-		}
+		minis?.forEach((m) => m.sc.measure());
 		update();
+		players().forEach((p) => {
+			p.shown = p.target;
+			p.sc.paint(stateAt(p.shown));
+		});
 	};
 
 	const jumps = stepEls.map((el, i) => {
 		const go = () => {
 			if (mode !== "pinned") return;
 			scrollTo({
-				top: start() + (i + REST) * per,
+				top: start() + (i + 0.1) * per,
 				behavior: reduce ? "auto" : "smooth",
 			});
 		};
@@ -888,20 +888,8 @@ export function mountStory(root: HTMLElement) {
 		return go;
 	});
 
-	// When the scroll stops inside the story, it eases to the nearest finished picture.
-	let idle = 0;
-	const settle = () => {
-		if (mode !== "pinned") return;
-		const g = (scrollY - start()) / per;
-		if (g < 0.15 || g > STEPS.length - 0.05) return;
-		const n = clamp(Math.round(g - REST), 0, STEPS.length - 1);
-		if (Math.abs(g - (n + REST)) * per < 2) return;
-		scrollTo({ top: start() + (n + REST) * per, behavior: "smooth" });
-	};
 	let frame = 0;
 	const onScroll = () => {
-		clearTimeout(idle);
-		idle = window.setTimeout(settle, 160);
 		if (frame) return;
 		frame = requestAnimationFrame(() => {
 			frame = 0;
@@ -923,8 +911,7 @@ export function mountStory(root: HTMLElement) {
 		removeEventListener("resize", onResize);
 		cancelAnimationFrame(frame);
 		cancelAnimationFrame(resize);
-		cancelAnimationFrame(spring);
-		clearTimeout(idle);
+		cancelAnimationFrame(loop);
 		stepEls.forEach((el, i) =>
 			el.querySelector("button")!.removeEventListener("click", jumps[i])
 		);
