@@ -10,7 +10,7 @@
 		"core-concepts/routing/index",
 		"core-concepts/routing/folders",
 		"core-concepts/routing/names",
-		"core-concepts/routing/top-level",
+		"core-concepts/routing/skipping-folders",
 		"---Guides---",
 		"agents",
 		"migrating-from-v1",

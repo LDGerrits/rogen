@@ -1,9 +1,9 @@
 ---
 title: How Routing Works
-description: How Rogen decides where each file lands in the game
+description: Name a folder or file after a route, and Rogen puts it where the route points
 ---
 
-Rogen places each file by its folder and file names. The `routes` in your [config](/docs/v2/config) map each **route key** to a **target** in the game:
+Your config's `routes` name the places your code can go in the game. `rogen init` writes these three:
 
 ```json title="default.rogen.json"
 {
@@ -15,46 +15,59 @@ Rogen places each file by its folder and file names. The `routes` in your [confi
 }
 ```
 
-`rogen init` writes these three. Add your own the same way, such as `"Character": "StarterPlayer/StarterCharacterScripts"`.
+A route's name in a file's path sends the file there. A `Server/` folder sends everything inside it, and `@Client` at the end of a name sends one file:
 
-## Ways to Route a File
+<RouteFigure
+	disk={`
+  src/
+    Shop/
+      Server/
+        ShopService.luau
+      Shared/
+        Prices.luau
+      ShopUi@Client.luau
+`}
+	studio={`
+  ReplicatedStorage
+    Shared/
+      Shop/
+        Prices
+  ServerScriptService
+    Shop/
+      ShopService
+  StarterPlayer
+    StarterPlayerScripts
+      Shop/
+        ShopUi
+`}
+/>
 
-A route key in a file's path sends the file to that route's target:
+Everything else in the path stays, so `Shop` shows up under each service. [Routing Folders](/docs/v2/core-concepts/routing/folders) and [Routing by Name](/docs/v2/core-concepts/routing/names) show each way to route in full, and [Skipping Folders](/docs/v2/core-concepts/routing/skipping-folders) how to leave a folder out.
 
-| By | On disk | In the game |
-|---|---|---|
-| [A routing folder](/docs/v2/core-concepts/routing/folders) | `src/Shop/Server/ShopService.luau` | `ServerScriptService/Shop/ShopService` |
-| [`@` in the name](/docs/v2/core-concepts/routing/names) | `src/Trade/TradeService@Server.luau` | `ServerScriptService/Trade/TradeService` |
-| [A marker file](/docs/v2/core-concepts/routing/names#marker-files) | `src/Anticheat/@Server` routes `src/Anticheat/Check.luau` | `ServerScriptService/Anticheat/Check` |
-| [Rojo's script suffix](/docs/v2/core-concepts/routing/names#rojos-script-suffixes) | `src/Boot/Boot.server.luau` | `ServerScriptService/Boot/Boot` |
+## The Outermost Route Wins
 
-Routing folders are the layout we recommend. A key's first letter matches either case, so roblox-ts's lowercase `server/` works too.
+A route inside another route is an ordinary folder. Server code under `Shared/` ships to every client, and Rogen warns about it:
 
-## Nested Routes
+<RouteFigure
+	disk={`
+  src/
+    Shared/
+      Server/
+        Datastore.luau
+`}
+	studio={`
+  ReplicatedStorage
+    Shared/
+      Server/
+        Datastore
+`}
+/>
 
-The outermost route wins. A `Server/` folder inside `Shared/` is an ordinary folder, so its code ships to every client:
+## Files Without a Route
 
-| On disk | In the game |
-|---|---|
-| `src/Shared/Server/Datastore.luau` | `ReplicatedStorage/Shared/Server/Datastore` |
+Rogen leaves out a file that no route covers, and warns about it, so server code never reaches clients by accident. To send such files somewhere instead, add the fallback route `*`, such as `"*": "ReplicatedStorage/Shared"`. A server file that forgets its route then ships to clients without a warning.
 
-Rogen warns when this happens.
-
-## Files Outside Every Route
-
-Rogen leaves out a file that no route covers, and warns about it. It never guesses a side, so server code can't reach clients by accident.
-
-To send those files somewhere instead, declare the fallback route `*`:
-
-```json
-"*": "ReplicatedStorage/Shared"
-```
-
-A server file that forgets its route then ships to clients without a warning, so declare `*` only when most of your code runs on both sides.
-
-## See Where a File Lands
-
-`rogen where` works before the file exists:
+## Check Where a File Lands
 
 ```
 $ rogen where src/Shop/Server/ShopService.luau

@@ -156,7 +156,7 @@ Error. Two declared keys differ only in the case of their first letter. A name m
 error: "Server" and "server" differ only in the case of their first letter, so both would match the same names; keep one of them. (config.ambiguousKey)
 ```
 
-Keep one of the keys. See [Ways to Route a File](/docs/v2/core-concepts/routing#ways-to-route-a-file).
+Keep one of the keys. See [How Routing Works](/docs/v2/core-concepts/routing).
 
 ### `config.unnamedProjectFile` [#config-unnamedprojectfile]
 
@@ -206,7 +206,7 @@ Do one of these:
 - Add an `@key` suffix to the file's name.
 - Declare a `"*"` route, if every file like this one belongs in one place.
 
-The message names the routing folders of the file's feature. The feature is the folder directly inside the source path that holds the file. For a file at the top of a source path, the feature is the source path. See [Files Outside Every Route](/docs/v2/core-concepts/routing#files-outside-every-route).
+The message names the routing folders of the file's feature. The feature is the folder directly inside the source path that holds the file. For a file at the top of a source path, the feature is the source path. See [Files Without a Route](/docs/v2/core-concepts/routing#files-without-a-route).
 
 ### `route.strayAt` [#route-strayat]
 
@@ -291,7 +291,7 @@ error: "@client" does nothing here, because the "server" route already governs t
 
 Remove the `@key`, or move the file out of the governing route's folder. Rogen offers no automatic fix, because the right choice depends on where the code should run.
 
-An `@` that restates the governing route is fine, as in `Shared/Net/Remote@shared.luau`. Rogen also reports a file that another file replaces, because its name is wrong either way. See [Nested Routes](/docs/v2/core-concepts/routing#nested-routes).
+An `@` that restates the governing route is fine, as in `Shared/Net/Remote@shared.luau`. Rogen also reports a file that another file replaces, because its name is wrong either way. See [The Outermost Route Wins](/docs/v2/core-concepts/routing#the-outermost-route-wins).
 
 ### `route.caseMismatch` [#route-casemismatch]
 
@@ -301,7 +301,7 @@ Warning. A folder or marker file matches a declared key except for the letter ca
 warning: differs from the route "shared" only in letter case, so it is read as an ordinary name. Spell it "shared" or "Shared", or declare it as written. (route.caseMismatch)
 ```
 
-Rename it to the key. If it should route as it is written, declare that spelling as a key. Rogen offers no automatic fix, because a name like `SHARED/` can be an ordinary folder on purpose. See [Ways to Route a File](/docs/v2/core-concepts/routing#ways-to-route-a-file).
+Rename it to the key. If it should route as it is written, declare that spelling as a key. Rogen offers no automatic fix, because a name like `SHARED/` can be an ordinary folder on purpose. See [How Routing Works](/docs/v2/core-concepts/routing).
 
 ### `route.serverCodeShipped` [#route-servercodeshipped]
 
@@ -315,7 +315,7 @@ Move the file out of the replicating route's folder, for example from `Shared/Se
 
 If the folder should replicate, put a marker file in it that restates the governing route, such as `Shared/Server/@shared`. The marker covers every file below it. To cover one file, name it like `Secret@shared.luau`.
 
-A route written with `@`, as in `Shared/Data@server.luau`, gets the [`route.ignoredAt`](#route-ignoredat) error instead. See [Nested Routes](/docs/v2/core-concepts/routing#nested-routes).
+A route written with `@`, as in `Shared/Data@server.luau`, gets the [`route.ignoredAt`](#route-ignoredat) error instead. See [The Outermost Route Wins](/docs/v2/core-concepts/routing#the-outermost-route-wins).
 
 ## Tree
 
@@ -388,7 +388,7 @@ Error. An init script's name starts with `^`, but an init script can't be hoiste
 error: ^init.luau starts with "^", but an init script is its folder, so the "^" can't hoist it alone. Put the "^" on the folder: ^Net. (tree.hoistedInit)
 ```
 
-Rename the script back to `init.luau`, and rename the folder to `^Net`. See [Hoisted Names](/docs/v2/core-concepts/routing/top-level#hoisted-names).
+Rename the script back to `init.luau`, and rename the folder to `^Net`. See [Hoisted Names](/docs/v2/core-concepts/routing/skipping-folders#hoisted-names).
 
 ### `tree.deadScript` [#tree-deadscript]
 
