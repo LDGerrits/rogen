@@ -184,13 +184,13 @@ interface SceneSpec {
 const SCENES: Record<string, SceneSpec> = {
 	wide: {
 		m: "normal",
-		w: 820,
+		w: 760,
 		h: 584,
 		disk: [0, 0, 294, 252],
-		explorer: [526, 0, 294, 290],
-		editor: [0, 310, 820, 274],
+		explorer: [466, 0, 294, 290],
+		editor: [0, 310, 760, 274],
 		lane1: 300,
-		lane2: 512,
+		lane2: 446,
 	},
 	compact: {
 		m: "compact",
@@ -809,7 +809,7 @@ export function mountStory(root: HTMLElement) {
 	// Picks the layout and scales the stage into the field; false when even compact falls below the floor.
 	const fit = () => {
 		const tight = short();
-		const ix = tight ? 24 : 48;
+		const ix = tight ? 24 : 40;
 		const iy = tight ? 24 : 40;
 		const fw = field.clientWidth - ix;
 		const fh = field.clientHeight - iy;

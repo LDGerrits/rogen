@@ -1065,14 +1065,13 @@ body:has(.home) {
 }
 .home .field {
 	grid-column: 5 / span 8;
-	margin-right: calc(-1 * var(--pad) - max(0px, (100vw - var(--max)) / 2));
 	height: var(--ph);
 	position: relative;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	overflow: hidden;
-	border-radius: 12px 0 0 12px;
+	border-radius: 12px;
 	background:
 		radial-gradient(circle, var(--field-dot) 1.6px, transparent 2px) 0
 			calc(var(--drift, 0) * -1px) / 28px 28px,
