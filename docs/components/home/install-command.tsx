@@ -3,8 +3,11 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 const installs = {
-	rokit: { label: "Rokit", command: "rokit add ldgerrits/rogen" },
-	npm: { label: "npm", command: "npm i @ldgerrits/rogen" },
+	rokit: {
+		label: "Rokit",
+		command: "rokit add ldgerrits/rogen@2.0.0-beta.1",
+	},
+	npm: { label: "npm", command: "npm i @ldgerrits/rogen@next" },
 };
 
 type Manager = keyof typeof installs;
