@@ -1,0 +1,54 @@
+---
+title: Routing by Name
+description: Route one file or folder with @, a marker file, or Rojo's script suffixes.
+---
+
+When a feature is too small for a folder per side, route by name instead. All examples use the routes that `rogen init` writes: `Server`, `Client` and `Shared`.
+
+## The `@` Suffix
+
+End a name with `@` and a route key, and it goes to that route's target. What comes before the `@` is the name, as in an email address:
+
+| On disk | In the game |
+|---|---|
+| `src/Trade/TradeService@Server.luau` | `ServerScriptService/Trade/TradeService` |
+| `src/Trade/Admin@Server/Ban.luau` | `ServerScriptService/Trade/Admin/Ban` |
+| `src/Trade/@Server/Log.luau` | `ServerScriptService/Trade/Log` |
+
+On a file, `@Server` routes only that file and keeps its class, so `TradeService@Server.luau` is still a ModuleScript. On a folder, it routes everything inside, and the folder keeps its name. A bare `@Server/` has no name, so it works like a routing folder.
+
+An `@` that nearly spells a route key gets a warning: `Save@Sever.luau` gets `did you mean "@Server"?`. Any other `@` stays in the name, since package names use it too (`@rbxts/`).
+
+## Marker Files
+
+An empty file named after a route key with its `@` routes the folder it sits in, and everything below it. The folder keeps its name, so nothing needs renaming:
+
+| On disk | In the game |
+|---|---|
+| `src/Anticheat/@Server` | the marker, which makes no instance |
+| `src/Anticheat/Check.luau` | `ServerScriptService/Anticheat/Check` |
+
+Create one with `touch @Server`. In PowerShell, quote it: `New-Item '@Server'`. A folder takes one route, so two different markers in one folder are an error.
+
+## Rojo's Script Suffixes
+
+Rojo reads `.server` and `.client` at the end of a script's name as its class: `Boot.server.luau` is a Script, and `Hud.client.luau` is a LocalScript. When your config has a `Server` or `Client` key, these suffixes also route the script, so it lands where it can run:
+
+| On disk | In the game |
+|---|---|
+| `src/Boot/Boot.server.luau` | `ServerScriptService/Boot/Boot`, a Script |
+| `src/Boot/Hud.client.luau` | `StarterPlayer/StarterPlayerScripts/Boot/Hud`, a LocalScript |
+
+Only these two suffixes route, and only on a script. `Types.shared.luau` is an instance named `Types.shared`, and Rogen warns about it. Write `Types@Shared.luau` instead.
+
+## Matching
+
+A name matches a route key when it spells the key exactly, except that the first letter can be either case. With the key `Server`:
+
+| Matches | Doesn't match |
+|---|---|
+| `Server/`, `server/` | `SERVER/`, `sErver/` |
+| `@Server`, `@server` | `@SERVER` |
+| `Save@Server.luau`, `Save@server.luau` | `Save@SERVER.luau` |
+
+A name that doesn't match is an ordinary name. Rogen warns about one that differs from a key only in case, such as `SERVER/`.

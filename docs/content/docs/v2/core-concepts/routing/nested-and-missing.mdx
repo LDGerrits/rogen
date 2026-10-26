@@ -1,0 +1,77 @@
+---
+title: Nested and Missing Routes
+description: Which route wins when routes nest, and what happens to a file that no route matches.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Code ends up somewhere unexpected in two cases: when one route sits inside another, and when a file matches no route.
+
+## The Outermost Route Governs
+
+When routes nest, the first one Rogen meets walking down from the source folder governs the file. Every route below it is ignored: a deeper routing folder is an ordinary folder that keeps its name, and a `.client` suffix only sets the script's class.
+
+<PreviewGroup>
+	<SystemWindow>
+		<TreeFolder name="src" open />
+		<TreeFolder name="Shared" level={1} open highlight />
+		<TreeFolder name="Server" level={2} open />
+		<TreeFile name="Datastore.luau" level={3} />
+	</SystemWindow>
+
+    <PreviewArrow />
+
+    <StudioWindow>
+    	<TreeService name="ReplicatedStorage" type="replicated" />
+    	<TreeFolder name="Shared" level={1} highlight />
+    	<TreeFolder name="Server" level={2} />
+    	<StudioFile name="Datastore" level={3} />
+    </StudioWindow>
+
+</PreviewGroup>
+
+<Callout type="warn" title="Server code in Shared ships to every client">
+	`Shared` governs `Datastore.luau`, so it lands in `ReplicatedStorage`, where every client can read it. Keep server code outside `Shared/`.
+</Callout>
+
+An `@` under the governing route that names another route is an error, because the name says the file goes somewhere it doesn't: `Server/Util@Client.luau` gets [`route.ignoredAt`](/docs/v2/diagnostics#route-ignoredat). An `@` that repeats the governing route is fine, and comes off the name: `Shared/Net/Remote@Shared.luau` lands as `Remote`.
+
+### Server Code Under a Shared Route
+
+Rogen warns when a folder named after a route whose target is `ServerScriptService` or `ServerStorage` lands somewhere that replicates:
+
+```
+src/Shared/Server/Datastore.luau - warning: ships to clients as ReplicatedStorage/Shared/Server/Datastore: move it out of the "Shared" route's files if it's server code, or keep it there with a "@Shared" marker file in its folder (route.serverCodeShipped)
+```
+
+Move the file out of `Shared/`. If the folder is meant to replicate, put a `@Shared` marker file in it, and Rogen stops warning about every file below it.
+
+### Scripts That Never Run
+
+A Script runs only in `ServerScriptService` or `Workspace`. A LocalScript runs only in `StarterPlayerScripts`, `StarterCharacterScripts`, `StarterGui`, `StarterPack` or `ReplicatedFirst`. Rogen warns about a script that lands anywhere else, except in `ServerStorage`, where scripts are kept for cloning:
+
+| On disk | In the game |
+|---|---|
+| `src/Server/Hud.client.luau` | a LocalScript in `ServerScriptService`, which never runs |
+
+With `emitLegacyScripts: false` in your config, every script is a Script with a `RunContext`, which runs in more places, so Rogen warns only about client scripts in `ServerScriptService`.
+
+## Files That Match No Route
+
+Rogen leaves out a file that no route matches, and warns about it, naming the routing folders of its feature:
+
+```
+src/Shop/Secrets.luau - warning: matched no route, so it is left out. Move it into src/Shop/Server, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route. (route.unrouted)
+```
+
+Rogen can't tell server code from shared code by reading it, so it never picks a side for you. The folder is the only place that says where a file belongs.
+
+### The Fallback Route
+
+Declare the `*` route to send every file that no other route matches to one target. `rogen init --unmatched shared` writes it:
+
+```json title="default.rogen.json"
+"*": "ReplicatedStorage/Shared"
+```
+
+With `*`, a file that forgets its route lands in the fallback's target without a warning. A `Save.luau` meant for the server then ships to every client. Declare `*` when most of your code runs on both sides anyway. Keep the `Shared` key as well, because `*` only catches leftovers: without the key, a `Shared/` folder keeps its name in the game.

@@ -1,0 +1,85 @@
+---
+title: Routing
+description: How Rogen decides where each file lands in the game.
+---
+
+Rogen reads your folder and file names and decides where each file lands in the game. A **route** connects a name, the **route key**, to a **target**, a place in the game such as `ServerScriptService`. You declare routes in your [config](/docs/v2/config):
+
+```json title="default.rogen.json"
+{
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared"
+	}
+}
+```
+
+`rogen init` writes these three. Nothing is built in, so a route exists only once you declare it.
+
+## Routing Folders
+
+Name a folder after a route key, and everything inside it goes to that route's target. Give each feature a **feature folder**, and inside it one routing folder per side:
+
+<PreviewGroup>
+	<SystemWindow>
+		<TreeFolder name="src" open />
+		<TreeFolder name="Shop" level={1} open highlight />
+		<TreeFolder name="Client" level={2} dim />
+		<TreeFile name="ShopController.luau" level={3} />
+		<TreeFolder name="Server" level={2} dim />
+		<TreeFile name="ShopService.luau" level={3} />
+		<TreeFolder name="Shared" level={2} dim />
+		<TreeFile name="ShopItems.luau" level={3} />
+	</SystemWindow>
+
+    <PreviewArrow />
+
+    <StudioWindow>
+    	<TreeService name="ReplicatedStorage" type="replicated" />
+    	<TreeFolder name="Shared" level={1} />
+    	<TreeFolder name="Shop" level={2} highlight />
+    	<StudioFile name="ShopItems" level={3} />
+
+    	<TreeService name="ServerScriptService" type="server" mt />
+    	<TreeFolder name="Shop" level={1} highlight />
+    	<StudioFile name="ShopService" level={2} />
+
+    	<TreeService name="StarterPlayer" type="player" mt />
+    	<TreeService name="StarterPlayerScripts" type="player" level={1} />
+    	<TreeFolder name="Shop" level={2} highlight />
+    	<StudioFile name="ShopController" level={3} />
+    </StudioWindow>
+
+</PreviewGroup>
+
+The routing folder disappears, and the feature folder stays, so `Shop` appears under each service. This is the layout we recommend.
+
+roblox-ts projects use lowercase keys, such as `server`. The first letter of a key matches either case, so `Server/` and `server/` both work.
+
+## Add a Route
+
+Add a key and a target. With `"Character": "StarterPlayer/StarterCharacterScripts"`, a `Character/` folder sends its scripts to `StarterCharacterScripts`. A target starts at a service, and [Config](/docs/v2/config#targets) lists the rules.
+
+## See Where a File Lands
+
+`rogen where` prints where a file lands, which route placed it, and how to require it:
+
+```
+$ rogen where src/Shop/Server/ShopService.luau
+src/Shop/Server/ShopService.luau -> ServerScriptService/Shop/ShopService · route Server (folder)
+  require(game:GetService("ServerScriptService").Shop.ShopService)
+```
+
+It works before the file exists, so you can check a name before you create it.
+
+## Other Ways to Route
+
+Routing folders cover most code. The other pages cover the rest:
+
+| To | Use | See |
+|---|---|---|
+| Route one file without a folder | `@` at the end of its name: `Save@Server.luau` | [Routing by Name](/docs/v2/core-concepts/routing/names) |
+| Route a whole folder without renaming it | An empty marker file: `@Server` | [Routing by Name](/docs/v2/core-concepts/routing/names#marker-files) |
+| Know where a file inside another route goes | The outermost route | [Nested and Missing Routes](/docs/v2/core-concepts/routing/nested-and-missing) |
+| Put an instance at the top of a service | `^` at the start of its name: `^Animate.client.luau` | [Top-Level Instances](/docs/v2/core-concepts/routing/top-level) |

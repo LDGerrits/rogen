@@ -121,7 +121,7 @@ Error. The config lists `sourcePaths` but declares no `routes`. Rogen scans sour
 error: "sourcePaths" lists what routes scan, but the config declares no routes. Add "routes", or remove "sourcePaths". (config.sourcePathsWithoutRoutes)
 ```
 
-Add a `routes` map. Or remove `sourcePaths`, and mount the folders in the `tree` with `$path`. `rogen init` writes the routes `server`, `client`, `shared` and `*`. See [Routing](/docs/v2/core-concepts/routing).
+Add a `routes` map. Or remove `sourcePaths`, and mount the folders in the `tree` with `$path`. `rogen init` writes the routes `Server`, `Client` and `Shared`. See [Routing](/docs/v2/core-concepts/routing).
 
 ### `config.invalidSyncRule` [#config-invalidsyncrule]
 
@@ -156,7 +156,7 @@ Error. Two declared keys differ only in the case of their first letter. A name m
 error: "Server" and "server" differ only in the case of their first letter, so both would match the same names; keep one of them. (config.ambiguousKey)
 ```
 
-Keep one of the keys. See [Matching](/docs/v2/core-concepts/routing#matching).
+Keep one of the keys. See [Matching](/docs/v2/core-concepts/routing/names#matching).
 
 ### `config.unnamedProjectFile` [#config-unnamedprojectfile]
 
@@ -180,7 +180,7 @@ Error. A route's target doesn't start with a Roblox service that Rojo can write 
 error: "StarterPlayerScripts" is not a supported service. Did you mean "StarterPlayer/StarterPlayerScripts"? (roblox.unsupportedService)
 ```
 
-Start the target with a service, then any folders, such as `"StarterPlayer/StarterPlayerScripts"` or `"ReplicatedStorage/Shared"`. See [Targets](/docs/v2/core-concepts/routing#targets).
+Start the target with a service, then any folders, such as `"StarterPlayer/StarterPlayerScripts"` or `"ReplicatedStorage/Shared"`. See [Targets](/docs/v2/config#targets).
 
 ### `roblox.invalidFolder` [#roblox-invalidfolder]
 
@@ -190,7 +190,7 @@ Error. A route's target has a folder whose name is empty, `.` or `..`. Rojo woul
 error: the target "ServerScriptService/" has an empty folder name; write each folder between single slashes, such as "ServerScriptService/Folder". (roblox.invalidFolder)
 ```
 
-Remove the extra slash, or name the folder. See [Targets](/docs/v2/core-concepts/routing#targets).
+Remove the extra slash, or name the folder. See [Targets](/docs/v2/config#targets).
 
 ### `route.unrouted` [#route-unrouted]
 
@@ -206,7 +206,7 @@ Do one of these:
 - Add an `@key` suffix to the file's name.
 - Declare a `"*"` route, if every file like this one belongs in one place.
 
-The message names the routing folders of the file's feature. The feature is the folder directly inside the source path that holds the file. For a file at the top of a source path, the feature is the source path. See [Files That Match No Route](/docs/v2/core-concepts/routing#files-that-match-no-route).
+The message names the routing folders of the file's feature. The feature is the folder directly inside the source path that holds the file. For a file at the top of a source path, the feature is the source path. See [Files That Match No Route](/docs/v2/core-concepts/routing/nested-and-missing#files-that-match-no-route).
 
 ### `route.strayAt` [#route-strayat]
 
@@ -223,7 +223,7 @@ warning: 2 names have an "@" that routes nowhere, so they are read as ordinary n
 
 Rename the file to the spelling that the message suggests, or move the `@key` to the end of the name. In `--json`, `fixes` holds the rename when exactly one key is closest.
 
-Rogen doesn't report an `@` that is nowhere near a route key, such as the `@` in a package name like `@rbxts`. See [The `@` Sign](/docs/v2/core-concepts/routing#the--sign).
+Rogen doesn't report an `@` that is nowhere near a route key, such as the `@` in a package name like `@rbxts`. See [The `@` Suffix](/docs/v2/core-concepts/routing/names#the--suffix).
 
 ### `route.dotRoute` [#route-dotroute]
 
@@ -250,7 +250,7 @@ Rojo's `.server` and `.client` at the end of a script's name still route, and Ro
 - Only lowercase counts. Rojo reads `Boot.Server.luau` as a ModuleScript named `Boot.Server`, so Rogen suggests `Boot.server.luau`.
 - Only scripts count. A data file or a model has no `.server` or `.client` handling, so `Config.server.json` is a ModuleScript named `Config.server`, and it warns.
 
-See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
+See [Marker Files](/docs/v2/core-concepts/routing/names#marker-files).
 
 ### `route.folderTypo` [#route-foldertypo]
 
@@ -276,7 +276,7 @@ error: "@client" and "@server" route this folder to different places, and nothin
 
 Delete the marker that you don't want. Or move part of the folder into a subfolder with its own marker.
 
-An init script's route suffix counts as a marker, so `@server` beside `init@client.luau` clashes too. Two markers for the same route are fine. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
+An init script's route suffix counts as a marker, so `@server` beside `init@client.luau` clashes too. Two markers for the same route are fine. See [Marker Files](/docs/v2/core-concepts/routing/names#marker-files).
 
 ### `route.ignoredAt` [#route-ignoredat]
 
@@ -291,7 +291,7 @@ error: "@client" does nothing here, because the "server" route already governs t
 
 Remove the `@key`, or move the file out of the governing route's folder. Rogen offers no automatic fix, because the right choice depends on where the code should run.
 
-An `@` that restates the governing route is fine, as in `Shared/Net/Remote@shared.luau`. Rogen also reports a file that another file replaces, because its name is wrong either way. See [The Governing Route](/docs/v2/core-concepts/routing#the-governing-route).
+An `@` that restates the governing route is fine, as in `Shared/Net/Remote@shared.luau`. Rogen also reports a file that another file replaces, because its name is wrong either way. See [The Outermost Route Governs](/docs/v2/core-concepts/routing/nested-and-missing#the-outermost-route-governs).
 
 ### `route.caseMismatch` [#route-casemismatch]
 
@@ -301,7 +301,7 @@ Warning. A folder or marker file matches a declared key except for the letter ca
 warning: differs from the route "shared" only in letter case, so it is read as an ordinary name. Spell it "shared" or "Shared", or declare it as written. (route.caseMismatch)
 ```
 
-Rename it to the key. If it should route as it is written, declare that spelling as a key. Rogen offers no automatic fix, because a name like `SHARED/` can be an ordinary folder on purpose. See [Matching](/docs/v2/core-concepts/routing#matching).
+Rename it to the key. If it should route as it is written, declare that spelling as a key. Rogen offers no automatic fix, because a name like `SHARED/` can be an ordinary folder on purpose. See [Matching](/docs/v2/core-concepts/routing/names#matching).
 
 ### `route.serverCodeShipped` [#route-servercodeshipped]
 
@@ -315,7 +315,7 @@ Move the file out of the replicating route's folder, for example from `Shared/Se
 
 If the folder should replicate, put a marker file in it that restates the governing route, such as `Shared/Server/@shared`. The marker covers every file below it. To cover one file, name it like `Secret@shared.luau`.
 
-A route written with `@`, as in `Shared/Data@server.luau`, gets the [`route.ignoredAt`](#route-ignoredat) error instead. See [Server Code Under a Replicating Route](/docs/v2/core-concepts/routing#server-code-under-a-replicating-route).
+A route written with `@`, as in `Shared/Data@server.luau`, gets the [`route.ignoredAt`](#route-ignoredat) error instead. See [Server Code Under a Shared Route](/docs/v2/core-concepts/routing/nested-and-missing#server-code-under-a-shared-route).
 
 ## Tree
 
@@ -388,7 +388,7 @@ Error. An init script's name starts with `^`, but an init script can't be hoiste
 error: ^init.luau starts with "^", but an init script is its folder, so the "^" can't hoist it alone. Put the "^" on the folder: ^Net. (tree.hoistedInit)
 ```
 
-Rename the script back to `init.luau`, and rename the folder to `^Net`. See [Hoisted Names](/docs/v2/core-concepts/routing#hoisted-names).
+Rename the script back to `init.luau`, and rename the folder to `^Net`. See [Hoisted Names](/docs/v2/core-concepts/routing/top-level#hoisted-names).
 
 ### `tree.deadScript` [#tree-deadscript]
 
@@ -400,7 +400,7 @@ warning: 1 script will never run where it lands: (tree.deadScript)
 A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see.
 ```
 
-Move the script under a route whose target runs it. Or remove `.server` or `.client` from its name to make it a ModuleScript. See [Scripts That Never Run](/docs/v2/core-concepts/routing#scripts-that-never-run).
+Move the script under a route whose target runs it. Or remove `.server` or `.client` from its name to make it a ModuleScript. See [Scripts That Never Run](/docs/v2/core-concepts/routing/nested-and-missing#scripts-that-never-run).
 
 ### `tree.runContextTarget` [#tree-runcontexttarget]
 
@@ -593,7 +593,7 @@ Error. A meta file sets `RunContext` on a ModuleScript. A ModuleScript has no Ru
 error: sets a RunContext, but init.luau is a ModuleScript, which has none, so Rojo refuses this meta. Name the script .server or .client to make it a Script, or remove RunContext. (meta.runContextOnModule)
 ```
 
-Add `.server` or `.client` to the script's name to make it a Script, or remove `RunContext`. See [Rojo's Script Suffixes](/docs/v2/core-concepts/routing#rojos-script-suffixes).
+Add `.server` or `.client` to the script's name to make it a Script, or remove `RunContext`. See [Rojo's Script Suffixes](/docs/v2/core-concepts/routing/names#rojos-script-suffixes).
 
 ### `meta.classNameOnScript` [#meta-classnameonscript]
 
