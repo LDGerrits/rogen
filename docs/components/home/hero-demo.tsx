@@ -189,7 +189,8 @@ export function HeroDemo() {
 				<span className="ln" data-l="">
 					<span className="fr">│</span> <span className="ok">✔</span>{" "}
 					<span className="tx">
-						Serving default.rogen.json with Rojo at localhost:34872.
+						Serving default.rogen.json with Rojo 7.7.1 at
+						127.0.0.1:34872.
 					</span>
 				</span>
 				<span className="ln" data-l="">
