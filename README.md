@@ -2,7 +2,7 @@
 	<a href="https://rogen-roblox.vercel.app">
 		<picture>
 			<source media="(prefers-color-scheme: dark)" srcset="docs/public/icon.png" />
-			<img src="docs/public/icon-dark.png" alt="Rogen logo" width="100" />
+			<img src="docs/public/icon-dark.png" alt="Rogen logo" width="160" />
 		</picture>
 	</a>
 </p>
