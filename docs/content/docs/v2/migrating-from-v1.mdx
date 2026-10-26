@@ -8,6 +8,24 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 v2 reads neither v1's config nor most of v1's file names. While a v1 config is in the folder, every command stops with [`legacy.config`](/docs/v2/diagnostics#legacy-config). There is no `migrate` command. You write a new config with `rogen init`, then rename files until `rogen check` is clean.
 
+## Why v2 Changed
+
+v1 decided where a file went from many small signals, and the signals could disagree. Each one was convenient on its own. Together they made a file's place hard to predict, and a mistake often changed the build without a warning. v2 has fewer rules, and each one holds everywhere.
+
+**A folder's route covers everything inside it.** In v1 the deepest rule won, so a suffix could override the folder around it. `ReplicatedFirst/main.client.luau` went to `StarterPlayerScripts`, though a LocalScript in `ReplicatedFirst` was what the folder asked for. To know where a file landed, you had to check every rule on its path. In v2 the outermost route governs, and Rogen ignores the routes inside it. That file stays in `ReplicatedFirst`, and a `Server/` folder is a guarantee for every file below it.
+
+**One sign routes a name.** v1 read routes from prefixes, and from suffixes after `+`, `-`, `_`, `.`, `@` or a capital letter. Ordinary names matched by accident: `HttpClient.luau` went to the client and was renamed `Http`. Tags matched names the same way, so with a `test` tag off, `UnitTest.luau` dropped out of the build without a word. v2 routes a name only with `@`, as in `Save@server.luau`, which reads as "this name, at that place". The dot belongs to Rojo, so `.server` and `.client` keep the meaning Rojo gives them.
+
+**Nothing happens unless you declare it.** v1 routed any folder named after a service. It sent files that matched nothing to `ReplicatedStorage`, where server code could reach clients. In v2 only the routes you declare exist, and a file that matches none of them is left out with a warning, unless you declare a `"*"` route.
+
+**Mistakes are reported.** Every problem has a code and a [fix](/docs/v2/diagnostics), and `rogen check` exits 1 on any warning. `rogen where` shows where a file lands and which route put it there.
+
+**The config is a Rojo project file.** v1 had a config language of its own, with modes and tags on top of a template project file. A v2 config is a Rojo project file with three more keys, so Rojo's documentation covers everything else in it. Rogen runs Rojo's commands with Rojo's flags.
+
+v2 also needs fewer concepts. One `routes` map, whose targets are paths, replaces `aliases`, `casing`, `unwrap` and the built-in service keywords, and a target can be any path under a service that Rojo writes to. The config can also use every key of Rojo's project format.
+
+## Move a Project to v2
+
 <Steps>
 
 <Step>
