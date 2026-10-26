@@ -3,14 +3,15 @@ title: How Routing Works
 description: Name a folder or file after a route, and Rogen puts it where the route points
 ---
 
-Your config's `routes` name the places your code can go in the game. `rogen init` writes these three:
+Your config's `routes` name the places your code can go in the game:
 
 ```json title="default.rogen.json"
 {
 	"routes": {
 		"Server": "ServerScriptService",
 		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared"
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
 	}
 }
 ```
@@ -65,7 +66,7 @@ A route inside another route is an ordinary folder. Server code under `Shared/` 
 
 ## Files Without a Route
 
-Rogen leaves out a file that no route covers, and warns about it, so server code never reaches clients by accident. To send such files somewhere instead, add the fallback route `*`, such as `"*": "ReplicatedStorage/Shared"`. A server file that forgets its route then ships to clients without a warning.
+The `*` route takes every file that no other route matches, so `src/Shop/Prices.luau` lands in `ReplicatedStorage/Shared/Shop`. Without `*`, Rogen leaves such a file out and warns about it, so a server file that forgets its route never reaches clients. That suits a project where every file names its side.
 
 ## Check Where a File Lands
 
