@@ -1,11 +1,11 @@
 ---
 title: Migrating from v1
-description: Move a Rogen 1 project to v2.
+description: Why v2 changed, and how to move a v1 project to it.
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 
-v2 doesn't read v1's config or most v1 file names, and every command stops with [`legacy.config`](/docs/v2/diagnostics#legacy-config) while a v1 config is in the folder. To migrate, write a new config with `rogen init`, then rename files until `rogen check` is clean.
+v2 changes how Rogen reads your files, so a v1 project needs a new config and some renamed files. This page explains why v2 changed, then takes you through the move.
 
 ## Why v2 Changed
 
@@ -26,7 +26,7 @@ The config itself is a Rojo project file with three more keys, so Rojo's documen
 <Step>
 ### Set the v1 Config Aside
 
-Rename `.rogen.json`, and any other `*.rogen.json` that v1 read, so v2 skips it and you can compare against it:
+Every command stops with [`legacy.config`](/docs/v2/diagnostics#legacy-config) while a v1 config is in the folder. Rename `.rogen.json`, and any other `*.rogen.json` that v1 read, so v2 skips it and you can compare against it:
 
 ```bash
 mv .rogen.json .rogen.json.v1
