@@ -3,6 +3,7 @@ import { RootProvider } from "fumadocs-ui/provider/next";
 import "./global.css";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { siteDescription, siteUrl } from "@/lib/shared";
 
 const geistSans = Geist({
 	subsets: ["latin"],
@@ -15,13 +16,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-	metadataBase: new URL("https://rogen-playfully.vercel.app"),
+	metadataBase: new URL(siteUrl),
 	title: {
-		default: "Rogen - Professional-grade architecture for Roblox",
+		default: "Rogen - Rojo with file-system routing",
 		template: "%s | Rogen",
 	},
-	description:
-		"Rogen is a superset of Rojo that generates Rojo project files from your file system. You organize your game by feature, and Rogen puts each file in the right place.",
+	description: siteDescription,
 };
 
 export default function Layout({ children }: LayoutProps<"/">) {

@@ -136,6 +136,7 @@ export function Features() {
 					<div className="fpanel rv" style={delay(120)}>
 						<div
 							className="tree"
+							role="group"
 							aria-label="Example feature folder"
 						>
 							<div className="hd">src/</div>

@@ -38,8 +38,11 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
 				<MarkdownCopyButton markdownUrl={markdownUrl} />
 				<ViewOptionsPopover
 					markdownUrl={markdownUrl}
-					githubUrl={`https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/content/docs/${page.path}`}
+					githubUrl={`https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/docs/content/docs/${page.path}`}
 				/>
+				{page.data.lastModified && (
+					<LastUpdated date={page.data.lastModified} />
+				)}
 			</div>
 			<DocsBody>
 				<MDX
@@ -50,6 +53,21 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
 				/>
 			</DocsBody>
 		</DocsPage>
+	);
+}
+
+// Rendered on the server, unlike Fumadocs' PageLastUpdate, so the date is in the HTML.
+function LastUpdated({ date }: { date: Date }) {
+	return (
+		<p className="ms-auto text-sm text-fd-muted-foreground">
+			Updated{" "}
+			<time dateTime={date.toISOString()}>
+				{date.toLocaleDateString("en-US", {
+					dateStyle: "long",
+					timeZone: "UTC",
+				})}
+			</time>
+		</p>
 	);
 }
 
