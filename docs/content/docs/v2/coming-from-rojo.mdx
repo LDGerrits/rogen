@@ -5,6 +5,12 @@ description: Move a hand-written Rojo project to Rogen, then reorganise it by fe
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 
+## Should I Use Rogen or Rojo?
+
+Use Rogen if you want to organise your game by feature. It places each file by its folder or name, so a feature's server, client and shared code live in one folder. Stay with Rojo if your folders already match Roblox's services and you'd rather write the tree by hand. Rogen runs Rojo underneath, so leaving costs little: keep the last `default.project.json` it wrote, and Rojo serves it as it is.
+
+## How Rogen Differs from Rojo
+
 Rogen covers what `rojo` does for a project: `init`, `build`, `serve`, `sourcemap`, `upload`, `plugin`, `syncback` and `fmt-project`. A `default.rogen.json` is a project file with Rogen's keys beside Rojo's, so Rojo's keys keep their meaning.
 
 What changes for a Rojo user:
