@@ -243,13 +243,15 @@ const EASE: Record<Ease, (t: number) => number> = {
 	out: bez(0.16, 1, 0.3, 1),
 };
 
-// g runs 0..4 over the story; each state is its track's eased progress.
+// g runs 0..4 over the story; each state is its track's eased progress. A step's tracks
+// are stretched to end at 90% of it, so no stretch of scrolling goes by with nothing moving.
 const stateAt = (g: number) => {
 	const S: State = {};
 	STEPS.forEach((st, i) => {
 		const t = clamp(g - i);
+		const fit = 0.9 / Math.max(...st.tracks.map((tr) => tr[2]));
 		st.tracks.forEach(([k, a, b, e]) => {
-			S[k] = EASE[e](clamp((t - a) / (b - a)));
+			S[k] = EASE[e](clamp((t - a * fit) / ((b - a) * fit)));
 		});
 	});
 	return S;
@@ -735,6 +737,9 @@ export function mountStory(root: HTMLElement) {
 	let main: Scene | null = null;
 	let minis: { sc: Scene; view: HTMLElement; i: number }[] | null = null;
 	const pin = root.querySelector<HTMLElement>(".pin")!;
+	const odo = root.querySelector<HTMLElement>("[data-odo]")!;
+	odo.innerHTML = `<span>${STEPS.map((_, i) => num(i)).join("</span><span>")}</span>`;
+	let fitScale = 1;
 	let mode = "";
 	let per = 400;
 	const short = () => innerHeight < 760;
@@ -783,13 +788,14 @@ export function mountStory(root: HTMLElement) {
 				: "compact";
 		if (scale(name) < FLOOR) return false;
 		if (!main || main.name !== name) {
-			field.textContent = "";
+			main?.el.remove();
 			main = makeScene(name);
 			field.appendChild(main.el);
 		}
 		main.measure();
 		const s = scale(name);
-		main.el.style.transform = s < 1 ? `scale(${s.toFixed(4)})` : "";
+		fitScale = s;
+		lean(0);
 		return true;
 	};
 	const miniProgress = (v: HTMLElement) => {
@@ -798,17 +804,32 @@ export function mountStory(root: HTMLElement) {
 		const h = Math.min(r.height, 0.7 * vh);
 		return clamp((vh - h - r.top) / Math.max(0.85 * vh - h, 200));
 	};
+	// The stage leans with the scroll speed and settles back as the spring comes to rest.
+	const lean = (v: number) => {
+		if (!main) return;
+		const y = clamp(-v * 6, -12, 12);
+		main.el.style.transform = `translateY(${y.toFixed(1)}px) scale(${fitScale.toFixed(4)})`;
+	};
 	const draw = (g: number) => {
+		// The big step number rolls over across each step boundary, from 15% before it to 15% after.
+		const h = g + 0.15;
+		const m = Math.floor(h);
+		const roll = m - 1 + EASE.io(clamp((h - m) / 0.3));
+		odo.style.setProperty(
+			"--g",
+			clamp(roll, 0, STEPS.length - 1).toFixed(4)
+		);
+		lean(speed);
 		main!.paint(stateAt(g));
 		captions(g);
-		field.style.setProperty("--drift", (g * 56).toFixed(1));
+		field.style.setProperty("--drift", (g * 120).toFixed(1));
 	};
 	const target = () => clamp((scrollY - start()) / per, 0, STEPS.length);
 	const step = (now: number) => {
 		const dt = Math.min(0.05, (now - last) / 1000);
 		last = now;
 		const goal = target();
-		speed += (220 * (goal - shown) - 28 * speed) * dt;
+		speed += (300 * (goal - shown) - 34 * speed) * dt;
 		shown += speed * dt;
 		if (Math.abs(goal - shown) < 0.0005 && Math.abs(speed) < 0.001) {
 			shown = goal;
@@ -840,7 +861,7 @@ export function mountStory(root: HTMLElement) {
 				: "";
 	};
 	const setup = () => {
-		per = clamp(innerHeight * 0.42, 300, 460);
+		per = clamp(innerHeight * 0.24, 170, 260);
 		setMode(innerWidth < 600 || innerHeight < 600 ? "minis" : "pinned");
 		if (mode === "pinned" && !fit()) setMode("minis");
 		if (mode === "pinned" && main) {

@@ -19,6 +19,7 @@ export function RoutingStory() {
 			<div className="pin">
 				<div className="wrap cols pin-in">
 					<div className="cap">
+						<div className="odo" data-odo="" aria-hidden="true" />
 						<ol
 							className="steps"
 							aria-label="Steps"

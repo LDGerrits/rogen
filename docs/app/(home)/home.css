@@ -1411,6 +1411,22 @@ body:has(.home) {
 }
 
 /* the story's captions */
+.home .odo {
+	height: 1em;
+	margin-bottom: var(--s5);
+	overflow: hidden;
+	font: 600 clamp(96px, 9vw, 148px) / 1 var(--sans);
+	letter-spacing: -0.06em;
+	color: var(--ink);
+}
+.home .odo span {
+	display: block;
+	height: 1em;
+	transform: translateY(calc(var(--g, 0) * -100%));
+}
+.home .story.short .odo {
+	display: none;
+}
 .home .steps {
 	list-style: none;
 	border-top: 1px solid var(--line-2);
@@ -1946,6 +1962,9 @@ body:has(.home) {
 		min-height: 36px;
 	}
 	.home .story .st .lb {
+		display: none;
+	}
+	.home .odo {
 		display: none;
 	}
 	.home .bodies {
