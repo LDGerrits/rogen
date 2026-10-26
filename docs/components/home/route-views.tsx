@@ -50,6 +50,8 @@ const views: Record<ViewId, { label: string; desc: string; rows: Row[] }> = {
 	},
 };
 const ids = Object.keys(views) as ViewId[];
+// The tree keeps the height of the longer view, so switching views never resizes the section.
+const MAX_ROWS = Math.max(...ids.map((id) => views[id].rows.length));
 
 function DiskRows({ rows }: { rows: Row[] }) {
 	const depths = rows.map((row) => row[1]);
@@ -158,8 +160,17 @@ export function RouteViews({
 						</button>
 					))}
 				</div>
+				{/* Every description sits in one cell, so the longest sets the height and nothing below moves. */}
 				<p className="vdesc" aria-live="polite">
-					{views[view].desc}
+					{ids.map((id) => (
+						<span
+							key={id}
+							aria-hidden={id !== view}
+							data-on={id === view || undefined}
+						>
+							{views[id].desc}
+						</span>
+					))}
 				</p>
 			</div>
 			<div className="rt-panes">
@@ -168,7 +179,10 @@ export function RouteViews({
 						<b>src/</b>
 						<span>On disk</span>
 					</div>
-					<ul className={`tree${swapping ? " swap" : ""}`}>
+					<ul
+						className={`tree${swapping ? " swap" : ""}`}
+						style={{ "--rows": MAX_ROWS } as CSSProperties}
+					>
 						<DiskRows rows={views[shown].rows} />
 					</ul>
 				</div>

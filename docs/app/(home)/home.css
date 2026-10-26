@@ -1642,7 +1642,15 @@ body:has(.home) {
 	flex: 1;
 	min-width: 260px;
 	max-width: 40em;
+	display: grid;
 	color: var(--ink-2);
+}
+.home .vdesc span {
+	grid-area: 1 / 1;
+	visibility: hidden;
+}
+.home .vdesc span[data-on] {
+	visibility: visible;
 }
 .home .rt-panes {
 	display: grid;
@@ -1656,6 +1664,9 @@ body:has(.home) {
 	border-radius: 8px;
 	box-shadow: inset 0 0 0 1px var(--line-2);
 	overflow: hidden;
+}
+.home .dpane .tree {
+	min-height: calc(var(--rows) * 22px + 24px);
 }
 .home .dpane .tree li {
 	transition:
@@ -1686,7 +1697,7 @@ body:has(.home) {
 	color: var(--ink);
 }
 
-/* agents: heading on the right, the rooms full width, the two points below */
+/* agents: heading on the right, an editor per feature below it, then the two points */
 .home .ag-head {
 	align-items: end;
 }
@@ -1701,12 +1712,108 @@ body:has(.home) {
 	line-height: 1.55;
 	max-width: 30em;
 }
-.home .rooms {
-	display: block;
-	width: 100%;
-	height: 300px;
+.home .agw {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: var(--s3);
 	margin-top: var(--s6);
+}
+.home .aw {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	background: var(--deep);
+	border-radius: 8px;
+	box-shadow: inset 0 0 0 1px var(--line-2);
+	overflow: hidden;
 	font-family: var(--mono);
+}
+.home .aw-bar {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	height: 36px;
+	padding: 0 14px;
+	border-bottom: 1px solid var(--line);
+	font: 500 12px/1 var(--mono);
+	color: var(--ink-3);
+	white-space: nowrap;
+}
+.home .aw-path b {
+	font-weight: 500;
+	color: var(--a);
+}
+.home .aw-who {
+	margin-left: auto;
+	color: var(--a);
+}
+/* the agent's writing: ASCII strokes under line numbers, the newest line in its colour */
+.home .aw-body {
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	list-style: none;
+	height: calc(10 * 22px + 20px);
+	padding: 10px 0;
+	overflow: hidden;
+	font: 400 13px/22px var(--mono);
+	color: var(--ink-3);
+}
+.home .aw-body li {
+	flex: none;
+	height: 22px;
+	display: flex;
+	gap: 16px;
+	padding: 0 14px;
+	white-space: pre;
+	overflow: hidden;
+}
+.home .aw-body i {
+	flex: none;
+	width: 2ch;
+	text-align: right;
+	font-style: normal;
+	opacity: 0.55;
+}
+.home .aw-body span {
+	opacity: 0.75;
+}
+.home .aw-body .now span {
+	color: var(--a);
+	opacity: 1;
+}
+.home .aw-body .now span::after {
+	content: "";
+	display: inline-block;
+	width: 0.6em;
+	height: 1.1em;
+	margin-left: 2px;
+	vertical-align: -0.2em;
+	background: var(--a);
+	animation: home-blink 1.1s steps(1) infinite;
+}
+.home .aw-status {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 30px;
+	padding: 0 14px;
+	border-top: 1px solid var(--line);
+	font: 500 11.5px/1 var(--mono);
+	color: var(--ink);
+	white-space: nowrap;
+	overflow: hidden;
+}
+.home .aw-dot {
+	flex: none;
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--a);
+}
+.home .aw-r {
+	margin-left: auto;
+	color: var(--ink-3);
 }
 .home .ag-pts {
 	margin-top: var(--s5);
@@ -1949,6 +2056,12 @@ body:has(.home) {
 	.home .rt-panes {
 		grid-template-columns: minmax(0, 1fr);
 	}
+	.home .agw {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.home .aw-body {
+		height: calc(6 * 22px + 20px);
+	}
 	.home .win .side + .side {
 		border-left: 0;
 		border-top: 1px solid var(--line);
@@ -2033,9 +2146,6 @@ body:has(.home) {
 	}
 	.home .tree div {
 		padding-left: calc(var(--d, 0) * 14px);
-	}
-	.home .rooms {
-		height: 560px;
 	}
 	.home .reqs,
 	.home .places {

@@ -1,4 +1,4 @@
-import { AgentRooms } from "./agent-rooms";
+import { AgentWindows } from "./agent-windows";
 import { delay, MoreLink } from "./more-link";
 
 const points = [
@@ -25,7 +25,7 @@ export function Agents() {
 						easily as you do.
 					</p>
 				</div>
-				<AgentRooms />
+				<AgentWindows />
 				<div className="cols ag-pts">
 					{points.map((point, i) => (
 						<div
