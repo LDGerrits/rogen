@@ -1,5 +1,6 @@
 import { delay, MoreLink } from "./more-link";
 import { RouteViews } from "./route-views";
+import { RoutingStory } from "./routing-story";
 
 const routes = [
 	["Server", "ServerScriptService", "s"],
@@ -67,6 +68,9 @@ export function Routing() {
 						<code>*</code>.
 					</p>
 				</div>
+			</div>
+			<RoutingStory />
+			<div className="wrap">
 				<RouteViews
 					config={<Config />}
 					guide={

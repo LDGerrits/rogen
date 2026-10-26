@@ -1,8 +1,5 @@
 import type { CSSProperties } from "react";
-import { inventoryPlot } from "./iso";
 import { delay, MoreLink } from "./more-link";
-
-const plot = inventoryPlot();
 
 type Dot = "o" | "s" | "c" | "r";
 
@@ -48,6 +45,63 @@ const commands = [
 ];
 
 const depth = (d: number) => ({ "--d": d }) as CSSProperties;
+
+const requires: [from: string, to: string, ok: boolean, note: string][] = [
+	["Inventory/", "Inventory/", true, "same feature"],
+	["Combat/", "Inventory/", false, "lint error"],
+];
+
+function Boundaries() {
+	return (
+		<div className="plate rv" style={delay(240)}>
+			<div className="pane-h">
+				<b>require</b>
+				<span>between features</span>
+			</div>
+			<ul className="reqs">
+				{requires.map(([from, to, ok, note]) => (
+					<li
+						key={from}
+						className={ok ? "ok" : "no"}
+						aria-label={`${from} requires ${to}: ${note}`}
+					>
+						<code>{from}</code>
+						<i aria-hidden="true">{ok ? "→" : "✕"}</i>
+						<code>{to}</code>
+						<em>{note}</em>
+					</li>
+				))}
+			</ul>
+		</div>
+	);
+}
+
+function Places() {
+	return (
+		<div className="plate rv" style={delay(320)}>
+			<div className="pane-h">
+				<b>places/</b>
+				<span>shared code, one override</span>
+			</div>
+			<div className="places">
+				<div className="pl shared">
+					<b>shared/</b>
+					<span>InventoryTypes.luau</span>
+					<span>ItemCatalog.luau</span>
+				</div>
+				<div className="pl">
+					<b>lobby/</b>
+					<span className="dim">uses the shared files</span>
+				</div>
+				<div className="pl">
+					<b>arena/</b>
+					<span className="ov">ItemCatalog.luau</span>
+					<em>replaces the shared one</em>
+				</div>
+			</div>
+		</div>
+	);
+}
 
 export function Features() {
 	return (
@@ -104,12 +158,6 @@ export function Features() {
 								</div>
 							))}
 						</div>
-						<svg
-							viewBox={plot.viewBox.join(" ")}
-							aria-hidden="true"
-							data-assemble=""
-							dangerouslySetInnerHTML={{ __html: plot.markup }}
-						/>
 					</div>
 				</div>
 
@@ -130,6 +178,7 @@ export function Features() {
 						>
 							See the lint rule
 						</MoreLink>
+						<Boundaries />
 					</div>
 					<div className="rtxt">
 						<span className="n rv" style={delay(80)}>
@@ -147,6 +196,7 @@ export function Features() {
 						<MoreLink href="/docs/v2/setups/places" dl={260}>
 							Set up places
 						</MoreLink>
+						<Places />
 					</div>
 				</div>
 
