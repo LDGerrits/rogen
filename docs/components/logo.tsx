@@ -3,11 +3,16 @@ import type { SVGProps } from "react";
 const LOGO_PATH =
 	"M18 0L82 0C91.941 0 100 8.059 100 18L100 82C100 91.941 91.941 100 82 100L18 100C8.059 100 0 91.941 0 82L0 18C0 8.059 8.059 0 18 0ZM12.5 18.75L50 50L12.5 81.25L12.5 62.5L27.5 50L12.5 37.5ZM62.5 37.5L87.5 37.5L87.5 62.5L62.5 62.5Z";
 
-/** The Rogen mark in the current text colour. */
+/** The Rogen mark in the current text colour, turned 15° like Roblox's. */
 export function Logo(props: SVGProps<SVGSVGElement>) {
 	return (
-		<svg viewBox="0 0 100 100" aria-hidden="true" {...props}>
-			<path fill="currentColor" fillRule="evenodd" d={LOGO_PATH} />
+		<svg viewBox="-7.2 -7.2 114.4 114.4" aria-hidden="true" {...props}>
+			<path
+				fill="currentColor"
+				fillRule="evenodd"
+				transform="rotate(-15 50 50)"
+				d={LOGO_PATH}
+			/>
 		</svg>
 	);
 }

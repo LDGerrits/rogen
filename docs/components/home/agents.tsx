@@ -21,8 +21,8 @@ export function Agents() {
 						Built for agents
 					</h2>
 					<p className="lede rv" style={delay(80)}>
-						Coding agents find their way around a feature folder as
-						easily as you do.
+						Coding agents find their way around a feature as easily
+						as you do.
 					</p>
 				</div>
 				<AgentWindows />

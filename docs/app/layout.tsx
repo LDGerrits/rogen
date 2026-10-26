@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 		template: "%s | Rogen",
 	},
 	description:
-		"Rogen is a superset of Rojo that generates Rojo project files from your folders. You organize your game by feature, and Rogen puts each file in the right place.",
+		"Rogen is a superset of Rojo that generates Rojo project files from your file system. You organize your game by feature, and Rogen puts each file in the right place.",
 };
 
 export default function Layout({ children }: LayoutProps<"/">) {
