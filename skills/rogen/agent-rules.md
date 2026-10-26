@@ -1,7 +1,9 @@
 <!-- rogen -->
 ## Rogen
 
-This repo uses Rogen. Each `*.rogen.json` generates the Rojo project file beside it (`game.rogen.json` → `game.project.json`) from folder and file names, so a file's path on disk is not its path in the game.
+This repo uses Rogen. Each `*.rogen.json` generates the Rojo project file beside it (`game.rogen.json` → `game.project.json`) from folder and file names, so a file's path on disk is not its path in the game, and adding, moving or deleting a file can leave the project file out of date.
+
+After you add, move, rename or delete files, or edit a `*.rogen.json`, run `rogen check <paths>` from the repo root. Fix each line it prints, or tell the user why it stays. When it says to run `rogen write`, run it.
 
 ### Placing code
 
@@ -18,7 +20,6 @@ This repo uses Rogen. Each `*.rogen.json` generates the Rojo project file beside
 
 ### Commands
 
-- After changing files or a `*.rogen.json`, run `rogen check <paths>` from the repo root and fix what it prints, including when it says to run `rogen write`.
 - In roblox-ts, check `projects/common` through a place that uses it: `rogen check projects/game`.
 - Run other commands in the folder of the `*.rogen.json`, or name it: `rogen write projects/game`.
 - To sync to Studio, run `rogen serve --json` in the background and leave it running. `rogen help serve` explains its output.
