@@ -17,6 +17,7 @@
 		"---Reference---",
 		"commands",
 		"config",
-		"diagnostics"
+		"diagnostics",
+		"changelog"
 	]
 }
