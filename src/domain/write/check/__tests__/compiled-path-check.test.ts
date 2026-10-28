@@ -691,6 +691,30 @@ describe("CompiledPathCheck", () => {
 				});
 			});
 
+			it("should not warn about a cache file the compiler writes for itself", async () => {
+				await write(
+					"src/A/Real.luau",
+					"dist/A/Real.luau",
+					"dist/rbxts.copyfiles.json"
+				);
+
+				expect(await check()).toEqual([]);
+			});
+
+			it("should still warn about a cache file's name below the compiled path's root", async () => {
+				await write(
+					"src/A/Real.luau",
+					"dist/A/Real.luau",
+					"dist/A/rbxts.copyfiles.json"
+				);
+
+				const [warning] = await check();
+
+				expect(warning.message).toContain(
+					"dist/A/rbxts.copyfiles.json"
+				);
+			});
+
 			it("should warn in a folder that cannot collapse", async () => {
 				await write(
 					"src/A/Real.server.luau",

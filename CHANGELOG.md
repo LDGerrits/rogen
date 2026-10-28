@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - With a `compiledPath`, code compiled after the project file was written now syncs into a running Rojo. Rojo never watches a mounted path that is missing when it loads the project, so before it writes, Rogen creates each folder the project file mounts in the compiled path and roblox-ts's `include`, and a placeholder script for each Luau file mounted there, which the compiler replaces. This happened on a fresh checkout when Rojo started before the first compile, and to each new feature folder while serving.
+- `rogen write` no longer warns that `rbxts.copyfiles.json`, which sloptor writes in the compiled path for itself, is a `compiled.orphan`.
+- In the README that `rogen init` writes for one place, the paragraph on which folders decide where code runs now follows the one about the feature it means.
 
 ## [2.0.0-beta.1] - 2026-10-26
 

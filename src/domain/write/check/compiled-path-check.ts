@@ -229,7 +229,8 @@ export class CompiledPathCheck {
 				continue;
 			const made = await this.madeBy(sourcePath, layout);
 			for (const file of await this.filesUnder(compiledDir, true)) {
-				if (made.has(compiledKey(file))) continue;
+				if (made.has(compiledKey(file)) || layout.isCacheFile(file))
+					continue;
 				if (
 					!RojoFile.at(toPosix(file), config.syncRules).isSyncedByRojo
 				)
