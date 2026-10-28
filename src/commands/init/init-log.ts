@@ -88,6 +88,17 @@ function flagsOf({ question, value, flag }: InitDecision): string[] {
 		: value.map((item) => `${flag} ${item}`);
 }
 
+/** A choice with the flag that changes it: `--no-sample` for a sample init writes, `--language` for a language. */
+const flipped = (decision: InitDecision): InitDecision =>
+	typeof decision.value === "boolean"
+		? {
+				...decision,
+				flag: decision.value
+					? decision.flag.replace("--", "--no-")
+					: decision.flag,
+			}
+		: decision;
+
 /** The tool that scaffolds the project is reported as the command it is. */
 const asCommand = (
 	written: InitWritten
@@ -289,7 +300,7 @@ export class InitJsonLog implements InitReporter {
 	) {}
 
 	begin(plan: InitPlan): void {
-		this.decided = plan.decided;
+		this.decided = plan.decided.map(flipped);
 	}
 
 	written(written: InitWritten): void {
