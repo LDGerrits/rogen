@@ -3,7 +3,7 @@ exit 0
 stdout:
   rogen init
   The Greeter sample is the feature in src/common, which every place shares, Game in src/game, and Rojo's sample Baseplate and lighting in place/game. Pass --no-sample for empty source folders.
-  Took the defaults: --kind place, --language luau, --no-darklua, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.
+  Took the defaults: --kind place, --language luau, --no-darklua, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.
   Created game.rogen.json.
   Created src/common/Greeter/Shared/Greeting.luau.
   Created src/common/Greeter/Server/Greeter.server.luau.
@@ -131,7 +131,8 @@ game.rogen.json:
   "routes": {
     "Server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared"
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
   },
   "tree": {
     "$className": "DataModel",

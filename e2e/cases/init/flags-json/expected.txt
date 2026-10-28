@@ -41,7 +41,7 @@ stdout:
       },
       {
         "question": "unmatched",
-        "value": "leave",
+        "value": "shared",
         "flag": "--unmatched"
       },
       {
@@ -87,7 +87,8 @@ default.rogen.json:
     "lib"
   ],
   "routes": {
-    "Server": "ServerScriptService"
+    "Server": "ServerScriptService",
+    "*": "ReplicatedStorage/Shared"
   },
   "tree": {
     "$className": "DataModel"

@@ -2,7 +2,7 @@ $ rogen init --non-interactive --skip-git --no-sample
 exit 0
 stdout:
   rogen init
-  Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched leave, --agent-rules.
+  Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.
   Created default.rogen.json.
   Created AGENTS.md.
   Created rokit.toml.
@@ -32,7 +32,8 @@ default.rogen.json:
   "routes": {
     "Server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared"
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
   },
   "tree": {
     "$className": "DataModel"

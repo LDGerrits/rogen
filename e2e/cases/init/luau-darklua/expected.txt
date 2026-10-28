@@ -2,7 +2,7 @@ $ rogen init --non-interactive
 exit 0
 stdout:
   rogen init
-  Took the defaults: --kind place, --language luau, --darklua, --no-places, --source-path src, --compiled-path dist, --route server, --route client, --route shared, --unmatched leave, --agent-rules.
+  Took the defaults: --kind place, --language luau, --darklua, --no-places, --source-path src, --compiled-path dist, --route server, --route client, --route shared, --unmatched shared, --agent-rules.
   Created default.rogen.json.
   Created dist.rogen.json.
   Created .gitignore.
@@ -18,8 +18,6 @@ stdout:
     Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.
     Darklua reads sourcemap.json. Keep it current from default.project.json in a terminal of its own: rogen sourcemap --watch -o sourcemap.json
   Wrote 4 files.
-stderr:
-  src/Main.luau - warning: matched no route, so it is left out. Move it into src/Server, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route. (route.unrouted)
 
 written:
   .git/
@@ -37,7 +35,8 @@ default.rogen.json:
   "routes": {
     "Server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared"
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
   },
   "tree": {
     "$className": "DataModel"
@@ -53,7 +52,8 @@ dist.rogen.json:
   "routes": {
     "Server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared"
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
   },
   "compiledPath": "dist",
   "tree": {
@@ -63,3 +63,6 @@ dist.rogen.json:
 
 $ rojo sourcemap default.project.json
 project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Main: ModuleScript  <- src/Main.luau

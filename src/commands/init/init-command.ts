@@ -110,7 +110,7 @@ const InitOptions = [
 		type: "string",
 		values: ["leave", "shared"],
 		description:
-			'Where files that match no route go: nowhere (the default) or into the shared route. Left out, each file is warned about, naming the routing folders to move it into; in the shared route it goes in as a "*" route. A lifted project file that mounted a whole source path keeps "*", which places what that node held.',
+			'Where files that match no route go: the shared route (the default) or nowhere. Shared, they go in as a "*" route. Left out, each file is warned about, naming the routing folders to move it into. A lifted project file that mounted a whole source path points "*" at that node instead, which places what it held.',
 	},
 	{
 		name: "sample",
