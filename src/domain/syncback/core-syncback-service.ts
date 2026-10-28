@@ -2,7 +2,7 @@ import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { UsageError, failureReason } from "../../base/errors.js";
 import { ignoringGlob } from "../../base/glob.js";
-import { toNative, toPosix } from "../../base/path.js";
+import { contains, toNative, toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -37,7 +37,7 @@ import {
 	SyncbackRequest,
 	SyncbackResult,
 	UnplacedInstance,
-	compiledPathRefusal,
+	CompiledChange,
 	placeFileAmong,
 } from "./syncback.js";
 import { SyncbackService } from "./syncback-service.js";
@@ -93,6 +93,7 @@ class CoreSyncbackPlan implements SyncbackPlan {
 	constructor(
 		readonly project: ResolvedConfig,
 		readonly unplaced: readonly UnplacedInstance[],
+		readonly compiled: readonly CompiledChange[],
 		readonly operations: readonly Operation[],
 		/** The bytes of each path the operations touch when the plan was made; `undefined` for a path that wasn't there. */
 		readonly before: ReadonlyMap<string, Uint8Array | undefined>,
@@ -111,6 +112,7 @@ class CoreSyncbackPlan implements SyncbackPlan {
 /** What the run on a plain Rojo project lists, which Rojo writes itself. */
 class ListedPlan implements SyncbackPlan {
 	readonly unplaced: readonly UnplacedInstance[] = [];
+	readonly compiled: readonly CompiledChange[] = [];
 
 	constructor(
 		readonly project: ResolvedConfig,
@@ -182,10 +184,6 @@ export class CoreSyncbackService implements SyncbackService {
 		return placeFileAmong(names);
 	}
 
-	refusalFor(project: ResolvedConfig): DiagnosticsError | undefined {
-		return compiledPathRefusal(project);
-	}
-
 	async plan(request: SyncbackRequest): Promise<Result<SyncbackPlan, Error>> {
 		if (request.project.isAdopted) return this.planListed(request);
 		const prepared = await this.prepare(request);
@@ -245,6 +243,7 @@ export class CoreSyncbackService implements SyncbackService {
 			changes: plan.changes.filter(({ file }) => !done.failed.has(file)),
 			listed: plan.listed.filter(({ file }) => !done.failed.has(file)),
 			unplaced: [...plan.unplaced, ...done.unplaced],
+			compiled: plan.compiled,
 			warnings,
 		});
 	}
@@ -528,6 +527,22 @@ export class CoreSyncbackService implements SyncbackService {
 		const present = new Set(after.map(({ path: at }) => at));
 		const operations: Operation[] = [];
 		const unplaced: UnplacedInstance[] = [...skipped];
+		const { compiledPath } = request.project;
+		const compiled: CompiledChange[] = [];
+		const existing = new Set(
+			copied.map(({ mirror: at }) => CoreSyncbackService.instanceAt(at))
+		);
+		/** Lists a change to `file` when the project compiles it, which syncback must not write. */
+		const leftOut = (
+			file: string,
+			instance: string,
+			kind: CompiledChange["kind"]
+		): boolean => {
+			if (compiledPath === undefined || !contains(compiledPath, file))
+				return false;
+			compiled.push({ instance, kind });
+			return true;
+		};
 		const before = new Map<string, Uint8Array | undefined>();
 		const touch = async (file: string) => {
 			if (before.has(file)) return;
@@ -588,6 +603,14 @@ export class CoreSyncbackService implements SyncbackService {
 			);
 			for (const operation of compared) {
 				if (!operation) continue;
+				if (
+					leftOut(
+						operation.file,
+						operation.instance,
+						operation.kind === "remove" ? "removed" : "changed"
+					)
+				)
+					continue;
 				const at = claimed.get(operation.file);
 				if (at === undefined) {
 					await touch(operation.file);
@@ -648,11 +671,13 @@ export class CoreSyncbackService implements SyncbackService {
 			(a, b) => b.length - a.length
 		)) {
 			const target = mirror.targetOf(at);
-			if (target !== undefined && !holding.has(at))
+			if (target === undefined || holding.has(at)) continue;
+			const instance = CoreSyncbackService.instanceAt(at);
+			if (!leftOut(toNative(target), instance, "removed"))
 				operations.push({
 					kind: "prune",
 					file: toNative(target),
-					instance: CoreSyncbackService.instanceAt(at),
+					instance,
 					from: at,
 				});
 		}
@@ -689,6 +714,20 @@ export class CoreSyncbackService implements SyncbackService {
 			if (this.isIgnored(prepared, target)) continue;
 			const file = toNative(target);
 			const instance = CoreSyncbackService.instanceAt(added.path);
+			if (compiledPath !== undefined && contains(compiledPath, file)) {
+				// Rojo leaves every folder of the mirror in place; one that was there already is not new.
+				if (
+					added.folder &&
+					(await this.fileSystemService.isDirectory(file))
+				)
+					continue;
+				leftOut(
+					file,
+					instance,
+					existing.has(instance) ? "changed" : "added"
+				);
+				continue;
+			}
 			await touch(file);
 			operations.push(
 				added.folder
@@ -731,6 +770,13 @@ export class CoreSyncbackService implements SyncbackService {
 				unplaced.push(placed.why);
 				continue;
 			}
+			if (compiledPath !== undefined) {
+				compiled.push({
+					instance: instanceKey([...instance.parent, instance.name]),
+					kind: "added",
+				});
+				continue;
+			}
 			for (const operation of placed.operations) {
 				await touch(operation.file);
 				operations.push(operation);
@@ -740,6 +786,7 @@ export class CoreSyncbackService implements SyncbackService {
 		return new CoreSyncbackPlan(
 			request.project,
 			unplaced,
+			CoreSyncbackService.outermost(compiled),
 			operations,
 			before,
 			expected,
@@ -885,6 +932,24 @@ export class CoreSyncbackService implements SyncbackService {
 	}
 
 	/** The instance a path of the mirror is, as an instance key: its folders, then the instance its file makes. */
+	/** Each instance once, and none whose ancestor is listed too, as a folder removed with its scripts. */
+	private static outermost(
+		changes: readonly CompiledChange[]
+	): CompiledChange[] {
+		const listed = new Set(changes.map(({ instance }) => instance));
+		const seen = new Set<string>();
+		return changes.filter(({ instance }) => {
+			if (seen.has(instance)) return false;
+			seen.add(instance);
+			const names = instance.split("/");
+			return !names
+				.slice(1)
+				.some((_, depth) =>
+					listed.has(names.slice(0, depth + 1).join("/"))
+				);
+		});
+	}
+
 	private static instanceAt(mirror: string): string {
 		const names = mirror.split("/");
 		const last = names[names.length - 1];
@@ -1026,6 +1091,7 @@ export class CoreSyncbackService implements SyncbackService {
 			changes: this.listing(ran.value, request.project.projectDir),
 			listed: this.rojoLines(ran.value, request.project.projectDir),
 			unplaced: [],
+			compiled: [],
 			warnings: [],
 		});
 	}

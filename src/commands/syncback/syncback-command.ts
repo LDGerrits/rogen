@@ -33,6 +33,7 @@ import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { OutcomeLog } from "../write/outcome-log.js";
 import {
 	SyncbackOutcome,
+	compiledDiagnostics,
 	syncbackDocument,
 	syncbackDocumentShape,
 	syncbackEntry,
@@ -154,8 +155,6 @@ registerCommand(
 				? undefined
 				: rojoService.choose(selection.value);
 			const syncbacks = accessor.get(SyncbackService);
-			const refusal = project && syncbacks.refusalFor(project);
-			if (refusal) return err(refusal);
 
 			const writeService = accessor.get(WriteService);
 			let run = dryRun
@@ -281,7 +280,10 @@ registerCommand(
 						`${instance} is in the place and no folder of the project can take it, so it was left out: ${messageRelativeTo(reason, cwd)}.`
 					)
 				);
-			for (const warning of outcome.warnings)
+			for (const warning of [
+				...compiledDiagnostics(plan),
+				...outcome.warnings,
+			])
 				logService.diagnostic(warning);
 			if (outcome.kind === "written")
 				logService.info(
