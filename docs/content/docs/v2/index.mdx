@@ -1,129 +1,270 @@
 ---
 title: Introduction
-description: What Rogen does, and the problem it solves
+description: What Rogen is for, shown on a typical Roblox project
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { BookOpen, History, Rocket, Terminal } from "lucide-react";
 
-Rogen is a command-line tool that writes your Rojo project file for you. You run `rogen serve` where you ran `rojo serve`, and Rojo still syncs your game into Studio. Nothing of Rogen ends up in the game. What changes is how you can organize your code: by feature, with its server and client code in one folder.
+Rogen is a command-line tool that writes your Rojo project file for you. Rojo still syncs and builds your game, and nothing of Rogen ends up in it. To see why that helps, this page cleans up a typical Roblox project, one step at a time.
 
-## Organized by Type
+## A Typical Roblox Project
 
-Rojo maps each folder you list in the project file to one service in the game. A typical project lists three: `src/server` for ServerScriptService, `src/client` for StarterPlayerScripts and `src/shared` for ReplicatedStorage. Inside them, the code is often sorted again by type, into folders such as `services`, `controllers` and `utils`:
+Here is a game with an inventory, a shop and combat. Its project file mounts `src/server` into ServerScriptService, `src/client` into StarterPlayerScripts and `src/shared` into a `Shared` folder in ReplicatedStorage. Inside those three folders, the code is sorted by type:
 
 <RouteFigure
 	disk={`
   src/
-    server/
-      services/
-        InventoryService.luau
-        ShopService.luau
     client/
       controllers/
+        CombatController.luau
         InventoryController.luau
         ShopController.luau
       ui/
+        HealthBar.luau
         InventoryWindow.luau
         ShopWindow.luau
+    server/
+      data/
+        InventoryStore.luau
+        PurchaseStore.luau
+      services/
+        CombatService.luau
+        InventoryService.luau
+        ShopService.luau
     shared/
+      config/
+        ItemConfig.luau
+        ShopConfig.luau
+        WeaponConfig.luau
       types/
+        CombatTypes.luau
         InventoryTypes.luau
         ShopTypes.luau
       utils/
+        DamageUtils.luau
         InventoryUtils.luau
-        ShopUtils.luau
-        TableUtils.luau
 `}
 />
 
-The inventory is spread over five folders, and the shop's files sit beside it in each one. To change how the inventory works, you jump between files far apart in the tree. To delete it, you hunt down each of its files, and its helpers in `utils` tend to stay behind.
+Now find everything that makes up the inventory. It's spread over seven folders, and the shop's and combat's files sit beside it in every one. To follow how the inventory works, you jump all over `src`. To remove it, you hunt down each of its files, and `ItemConfig` is easy to miss because its name doesn't mention the inventory.
 
-## Feature Folders on Each Side
+## Organize by Feature
 
-Sorting by feature helps, because a feature's files usually change together. Rojo can mount `src/Inventory/Server` into ServerScriptService, but only with its own entry in the project file. Every feature needs an entry for each side, and you keep them in sync by hand as features come and go. So most games settle for a feature folder on each side:
+Sort the same files by what they're for instead. Inside each of the three folders, every feature gets a folder of its own:
 
 <RouteFigure
 	disk={`
   src/
-    server/
-      Inventory/
-        InventoryService.luau
-      Shop/
-        ShopService.luau
     client/
+      Combat/
+        CombatController.luau
+        HealthBar.luau
       Inventory/
         InventoryController.luau
         InventoryWindow.luau
       Shop/
         ShopController.luau
         ShopWindow.luau
+    server/
+      Combat/
+        CombatService.luau
+      Inventory/
+        InventoryService.luau
+        InventoryStore.luau
+      Shop/
+        PurchaseStore.luau
+        ShopService.luau
     shared/
+      Combat/
+        CombatTypes.luau
+        DamageUtils.luau
+        WeaponConfig.luau
       Inventory/
         InventoryTypes.luau
         InventoryUtils.luau
+        ItemConfig.luau
       Shop/
+        ShopConfig.luau
         ShopTypes.luau
-        ShopUtils.luau
-      Utils/
-        TableUtils.luau
-`}
-/>
-
-The inventory now has a folder on each side, three in all, far apart in the tree. Deleting the feature still takes three deletes.
-
-## One Folder per Feature
-
-With Rogen, the feature is one folder. A `Server`, `Client` or `Shared` folder inside it says where its files go:
-
-<RouteFigure
-	disk={`
-  src/
-    Inventory/
-      Server/
-        InventoryService.luau
-      Client/
-        InventoryController.luau
-        InventoryWindow.luau
-      Shared/
-        InventoryTypes.luau
-        InventoryUtils.luau
 `}
 	studio={`
   ReplicatedStorage
     Shared/
+      Combat/
+        CombatTypes
+        DamageUtils
+        WeaponConfig
       Inventory/
         InventoryTypes
         InventoryUtils
+        ItemConfig
+      Shop/
+        ShopConfig
+        ShopTypes
   ServerScriptService
+    Combat/
+      CombatService
     Inventory/
       InventoryService
+      InventoryStore
+    Shop/
+      PurchaseStore
+      ShopService
   StarterPlayer
     StarterPlayerScripts
+      Combat/
+        CombatController
+        HealthBar
       Inventory/
         InventoryController
         InventoryWindow
+      Shop/
+        ShopController
+        ShopWindow
 `}
 />
 
-Each file still runs where it did, and everything about the inventory is in `src/Inventory`. You read it in one place, and you delete it by deleting one folder. Keeping a feature's code together like this is called colocation.
+This is already much easier to work with. The inventory's files no longer sit between the shop's, and `ItemConfig` is in the inventory's folder, where you'd look for it. A new feature gets a folder on each side instead of a file in every type folder. The project file doesn't even change, because Rojo still mounts the same three folders.
 
-A feature with a single server file can skip the folder and name the file `InventoryService@Server.luau`. [How Routing Works](/docs/v2/core-concepts/routing) shows both ways. In Studio the files still sit in different services, so code requires them by their path in the game. `rogen where` prints that path and the `require` line for any file.
+## Three Inventory Folders
 
-## Rogen Writes the Project File
+Look at the inventory again, though. It still has a folder in `client`, one in `server` and one in `shared`. A change to the inventory often touches all three, so you still jump between them to follow it.
 
-Rogen is a superset of Rojo that generates Rojo project files from your file system. Your config, `default.rogen.json`, is a Rojo project file with [`routes`](/docs/v2/config) added. Each route names a folder and the service it goes to. Rogen finds every file whose path names a route, and writes `default.project.json` with the entries you would otherwise write by hand. This is the part it writes for the inventory's server code:
+The next step is a single `src/Inventory` folder with the three sides inside it. Rojo can mount `src/Inventory/Server` into ServerScriptService, but every such folder needs its own entry in `default.project.json`. For three features, that's nine:
 
 ```json title="default.project.json"
-"ServerScriptService": {
-	"$className": "ServerScriptService",
-	"Inventory": {
-		"$path": { "optional": "src/Inventory/Server" }
+{
+	"name": "my-game",
+	"tree": {
+		"$className": "DataModel",
+		"ServerScriptService": {
+			"Combat": { "$path": "src/Combat/Server" },
+			"Inventory": { "$path": "src/Inventory/Server" },
+			"Shop": { "$path": "src/Shop/Server" }
+		},
+		"StarterPlayer": {
+			"StarterPlayerScripts": {
+				"Combat": { "$path": "src/Combat/Client" },
+				"Inventory": { "$path": "src/Inventory/Client" },
+				"Shop": { "$path": "src/Shop/Client" }
+			}
+		},
+		"ReplicatedStorage": {
+			"Shared": {
+				"$className": "Folder",
+				"Combat": { "$path": "src/Combat/Shared" },
+				"Inventory": { "$path": "src/Inventory/Shared" },
+				"Shop": { "$path": "src/Shop/Shared" }
+			}
+		}
 	}
 }
 ```
 
-Rogen doesn't build or sync your game itself. `rogen serve` writes `default.project.json`, runs `rojo serve`, and writes the project file again when your files change. `rogen build` writes it and runs `rojo build`. Both take Rojo's flags. To start from an existing Rojo project, run `rogen init` in it. It turns your `default.project.json` into a `default.rogen.json` and keeps your tree.
+Every feature you add, rename or remove means editing this file by hand, and a folder you forget to list never reaches the game. That upkeep is why projects sorted by feature usually keep the three side folders.
+
+## One Folder per Feature
+
+Rogen writes those entries for you. Put each feature in one folder, and a `Client`, `Server` or `Shared` folder inside it says where its files go:
+
+<RouteFigure
+	disk={`
+  src/
+    Combat/
+      Client/
+        CombatController.luau
+        HealthBar.luau
+      Server/
+        CombatService.luau
+      Shared/
+        CombatTypes.luau
+        DamageUtils.luau
+        WeaponConfig.luau
+    Inventory/
+      Client/
+        InventoryController.luau
+        InventoryWindow.luau
+      Server/
+        InventoryService.luau
+        InventoryStore.luau
+      Shared/
+        InventoryTypes.luau
+        InventoryUtils.luau
+        ItemConfig.luau
+    Shop/
+      Client/
+        ShopController.luau
+        ShopWindow.luau
+      Server/
+        PurchaseStore.luau
+        ShopService.luau
+      Shared/
+        ShopConfig.luau
+        ShopTypes.luau
+`}
+	studio={`
+  ReplicatedStorage
+    Shared/
+      Combat/
+        CombatTypes
+        DamageUtils
+        WeaponConfig
+      Inventory/
+        InventoryTypes
+        InventoryUtils
+        ItemConfig
+      Shop/
+        ShopConfig
+        ShopTypes
+  ServerScriptService
+    Combat/
+      CombatService
+    Inventory/
+      InventoryService
+      InventoryStore
+    Shop/
+      PurchaseStore
+      ShopService
+  StarterPlayer
+    StarterPlayerScripts
+      Combat/
+        CombatController
+        HealthBar
+      Inventory/
+        InventoryController
+        InventoryWindow
+      Shop/
+        ShopController
+        ShopWindow
+`}
+/>
+
+In Studio, the game is the same as when you sorted by feature, so your requires don't change. On disk, everything about the inventory is in `src/Inventory`. You read it in one place, and you remove it by deleting one folder. Keeping a feature's code together like this is called colocation.
+
+## How Rogen Does It
+
+Your config, `default.rogen.json`, is a Rojo project file with [`routes`](/docs/v2/config) added. Each route names a folder and where its files go:
+
+```json title="default.rogen.json"
+{
+	"name": "my-game",
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared"
+	},
+	"tree": {
+		"$className": "DataModel"
+	}
+}
+```
+
+From it, Rogen writes `default.project.json` with the same nine entries you would have written by hand, and adds new ones as you add features. `rogen serve` writes the project file, runs `rojo serve`, and keeps the file up to date while you work. `rogen build` writes it and runs `rojo build`. Both take Rojo's flags.
+
+A feature with a single server file can skip the folder: name the file `CombatService@Server.luau`. [How Routing Works](/docs/v2/core-concepts/routing) shows both ways.
+
+In short, Rogen is a superset of Rojo that generates Rojo project files from your file system. To try it on an existing Rojo project, [install Rogen](/docs/v2/installation) and run `rogen init`. It turns your `default.project.json` into a `default.rogen.json` and leaves your files where they are.
 
 ## Next Steps
 
