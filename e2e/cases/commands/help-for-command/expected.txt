@@ -100,9 +100,10 @@ stdout:
                                            not given, or several where a projects folder exists for
                                            roblox-ts.
           --project-file <PROJECT_FILE>    What to do with a default.project.json already here: lift
-                                           its tree, or start a new one. Lifting writes the tree into
-                                           default.rogen.json, and is the default. [possible values:
-                                           lift, new]
+                                           its tree, or start a new one. Lifting is the default: it
+                                           writes the tree into default.rogen.json, and the mounts of
+                                           a folder Darklua writes into dist.rogen.json. [possible
+                                           values: lift, new]
       -q, --quiet                          Only print errors.
           --route <ID>                     A route to start with; repeat for several, or none. The
                                            routes are server, client, shared, replicatedFirst,

@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- `rogen init` lifts a Rojo project whose code Darklua writes to a folder of its own, such as `build`, into a `default.rogen.json` that reads the source and a `dist.rogen.json` with that folder as its `compiledPath`, and its next steps serve `dist`. It looks for a `.darklua.json` or `.darklua.json5` and for mounts that repeat the source path. Before, the lifted config kept the mounts of that folder, so Rojo synced each script twice.
 - `rogen init` now writes a `*` route by default, so a file that matches no route goes to the shared route. Only the files that run on one side need marking, such as with `@Server`. Pass `--unmatched leave`, or pick it when asked, to leave such files out with a warning instead.
 - In `rogen init --json`, each `decided` entry names the flag that changes the choice, as the agent skill reads it: `--no-sample` for the sample init writes, `--places` for one place. Before, it named the flag that keeps the choice. The text line "Took the defaults" still names the flags that keep them.
 - `rogen syncback` runs on a project with a `compiledPath`. It writes the changes outside the compiled path, such as the folders the tree mounts, and lists each changed, removed or new instance that the project compiles as a `syncback.compiledPath` warning, for you to make in the source files. Before, it stopped with `syncback.compiledPath` and wrote nothing. In a terminal, the warnings about what syncback leaves out now come before it asks to write the rest.
@@ -20,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - The Baseplate that `rogen init` writes gives its color as whole numbers (`Color3uint8`), which a place keeps exactly, so the first `rogen syncback` no longer rewrites it when nothing changed in Studio.
 - With a `compiledPath`, code compiled after the project file was written now syncs into a running Rojo. Rojo never watches a mounted path that is missing when it loads the project, so before it writes, Rogen creates each folder the project file mounts in the compiled path and roblox-ts's `include`, and a placeholder script for each Luau file mounted there, which the compiler replaces. This happened on a fresh checkout when Rojo started before the first compile, and to each new feature folder while serving.
+- When `rogen init` lifts a project file, files that it mounts through a compiled folder (roblox-ts's `out`, Darklua's) or through a folder above the source path (such as `"."`) no longer count as files Rojo ignored (`init.unmountedFiles`).
 - `rogen write` no longer warns that `rbxts.copyfiles.json`, which sloptor writes in the compiled path for itself, is a `compiled.orphan`.
 - In the README that `rogen init` writes for one place, the paragraph on which folders decide where code runs now follows the one about the feature it means.
 

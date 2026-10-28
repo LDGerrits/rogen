@@ -654,6 +654,123 @@ describe("CoreInitService", () => {
 				"darklua"
 			);
 		});
+
+		describe("lifting a project whose processor writes a folder of its own", () => {
+			const HAND_WRITTEN = {
+				name: "mine",
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Shared: { $path: "build/shared" } },
+					ServerScriptService: { Server: { $path: "build/server" } },
+				},
+			};
+
+			const liftPlan = async () => {
+				await write(
+					"default.project.json",
+					JSON.stringify(HAND_WRITTEN)
+				);
+				await write("src/shared/Util.luau");
+				await write("src/server/Main.server.luau");
+				await write("build/shared/Util.luau");
+				await write("build/server/Main.server.luau");
+				return (
+					await serviceFor().plan({
+						ask: false,
+						choices: { agentRules: false },
+					})
+				).unwrap();
+			};
+
+			const configIn = (plan: InitPlan | undefined, fileName: string) =>
+				JSON.parse(
+					plan?.files.find((file) => file.fileName === fileName)
+						?.content ?? "null"
+				);
+
+			it("should root the default at the source and read the folder in dist.rogen.json", async () => {
+				await write(".darklua.json", "{}");
+
+				const plan = await liftPlan();
+
+				expect(configIn(plan, "default.rogen.json")).toEqual({
+					name: "mine",
+					sourcePaths: ["src"],
+					routes: {
+						Shared: "ReplicatedStorage/Shared",
+						Server: "ServerScriptService/Server",
+						Client: "StarterPlayer/StarterPlayerScripts",
+						"*": "ReplicatedStorage/Shared",
+					},
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: {},
+						ServerScriptService: {},
+					},
+				});
+				expect(configIn(plan, "dist.rogen.json")).toEqual({
+					...configIn(plan, "default.rogen.json"),
+					compiledPath: "build",
+				});
+				expect(plan?.warnings).toEqual([]);
+			});
+
+			it("should say what it took from the project file and serve the processed config", async () => {
+				await write(".darklua.json5", "{}");
+
+				const plan = await liftPlan();
+
+				expect(plan?.notes).toContain(
+					'Took build as the folder Darklua writes, since .darklua.json5 is here and the mounts of default.project.json into build repeat src. default.rogen.json reads src, and dist.rogen.json reads build as its "compiledPath".'
+				);
+				expect(plan?.nextSteps.run).toEqual(["rogen serve dist"]);
+			});
+
+			it("should keep the mounts, with a note, when no processor config says who writes the folder", async () => {
+				const plan = await liftPlan();
+
+				expect(
+					configIn(plan, "default.rogen.json").tree
+						.ServerScriptService
+				).toEqual({ Server: { $path: "build/server" } });
+				expect(configIn(plan, "dist.rogen.json")).toBeNull();
+				expect(plan?.notes).toContain(
+					'Kept the mounts of default.project.json into build, which repeat src, since no .darklua.json says a processor writes build. Rojo now syncs a script there twice: from build and from its route. If a processor writes build, remove those mounts and serve a copy of default.rogen.json with "compiledPath": "build".'
+				);
+				expect(plan?.nextSteps.run).toEqual(["rogen serve"]);
+				expect(plan?.warnings).toEqual([]);
+			});
+
+			it("should leave a package folder alone", async () => {
+				await write(".darklua.json", "{}");
+				await write(
+					"default.project.json",
+					JSON.stringify({
+						tree: {
+							$className: "DataModel",
+							ReplicatedStorage: {
+								Packages: { $path: "Packages" },
+								Shared: { $path: "src/shared" },
+							},
+						},
+					})
+				);
+				await write("src/shared/Util.luau");
+				await write("Packages/Promise.lua");
+
+				const plan = (
+					await serviceFor().plan({
+						ask: false,
+						choices: { agentRules: false },
+					})
+				).unwrap();
+
+				expect(configIn(plan, "dist.rogen.json")).toBeNull();
+				expect(
+					configIn(plan, "default.rogen.json").tree.ReplicatedStorage
+				).toEqual({ Packages: { $path: "Packages" } });
+			});
+		});
 	});
 
 	describe("Rojo", () => {

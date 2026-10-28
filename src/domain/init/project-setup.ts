@@ -14,14 +14,23 @@ import {
 	RogenConfig,
 	configFileName,
 } from "../config/config.js";
-import { Language, Mount, PlannedFile } from "../toolchain/toolchain.js";
+import {
+	Darklua,
+	Language,
+	Mount,
+	PlannedFile,
+} from "../toolchain/toolchain.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { GreeterSample, SAMPLE_ROUTES } from "./greeter-sample.js";
 import { SAMPLE_GAME_FOLDER, SampleGame } from "./sample-game.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
-import { OutputConfigs, RELEASE_OUTPUT } from "./output-configs.js";
+import {
+	OutputConfigs,
+	PROCESSED_OUTPUT,
+	RELEASE_OUTPUT,
+} from "./output-configs.js";
 import { InitQuestions } from "./init-questions.js";
 import { InitKind, PlannedCommand, PlannedScaffold } from "./init-service.js";
 import { ProjectFiles } from "./project-files.js";
@@ -36,6 +45,7 @@ import {
 	StarterPlaces,
 	StartingPlaces,
 } from "./starter-places.js";
+import { ProcessedFolder } from "./processed-folder.js";
 import { UnmountedFiles } from "./unmounted-files.js";
 import { ProjectTree, TreeChoice, TreePlan } from "./tree-plan.js";
 
@@ -43,6 +53,8 @@ export interface ProjectChoices {
 	readonly language: Language;
 	readonly sourcePaths: readonly string[];
 	readonly compiledPath?: string;
+	/** The folder a processor writes, which the lifted project file mounts; `config` is the processor's config file, without which those mounts stay. */
+	readonly processed?: { readonly folder: string; readonly config?: string };
 	readonly tree: ProjectTree;
 	readonly mounts: readonly Mount[];
 	readonly routes: readonly RouteId[];
@@ -93,8 +105,21 @@ const BUILD_COMMANDS: Readonly<Record<InitKind, (name: string) => string>> = {
 function generatedDirs({
 	sourcePaths,
 	compiledPath,
-}: Pick<ProjectChoices, "sourcePaths" | "compiledPath">): string[] {
-	return [...sourcePaths, ...(compiledPath ? [compiledPath] : [])];
+	processed,
+}: Pick<
+	ProjectChoices,
+	"sourcePaths" | "compiledPath" | "processed"
+>): string[] {
+	return [
+		...sourcePaths,
+		...(compiledPath ? [compiledPath] : []),
+		...(processed?.config ? [processed.folder] : []),
+	];
+}
+
+/** The folder the processed config reads, when a processor's config says one writes it. */
+function processedPathOf({ processed }: ProjectChoices): string | undefined {
+	return processed?.config ? processed.folder : undefined;
 }
 
 const UNMOUNTED_SHOWN = 5;
@@ -152,6 +177,27 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const compiledPath = language.compiler?.outDir;
 
 		const routed = takesRoutes(tree.value);
+		const lifted =
+			routed && tree.value.kind === "lift"
+				? tree.value.project
+				: undefined;
+		const processedFolder = lifted
+			? await new ProcessedFolder(
+					this.fileSystemService,
+					directory.path
+				).find(
+					sourcePaths,
+					lifted.mountedFolders(),
+					compiledPath ? [compiledPath] : []
+				)
+			: undefined;
+		const processorConfig = directory.workspace.darkluaConfig;
+		const processed = processedFolder
+			? {
+					folder: processedFolder,
+					...(processorConfig && { config: processorConfig }),
+				}
+			: undefined;
 		const mounted = routed
 			? await questions.mounts(directory, language)
 			: [];
@@ -169,23 +215,25 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					language,
 					derivedRoutesOf(
 						tree.value,
-						generatedDirs({ sourcePaths, compiledPath })
+						generatedDirs({ sourcePaths, compiledPath, processed })
 					)
 				)
 			: { routes: [], fallback: false };
 		if (routes === undefined) return ok(undefined);
 
-		const unmounted =
-			routed && tree.value.kind === "lift"
-				? await new UnmountedFiles(
-						this.fileSystemService,
-						directory.path
-					).find(
-						sourcePaths,
-						tree.value.project.mountedFolders(),
-						tree.value.project.toConfig().globIgnorePaths ?? []
+		const unmounted = lifted
+			? await new UnmountedFiles(
+					this.fileSystemService,
+					directory.path
+				).find(
+					sourcePaths,
+					lifted.mountedFolders(),
+					lifted.toConfig().globIgnorePaths ?? [],
+					[compiledPath, processedFolder].filter(
+						(folder) => folder !== undefined
 					)
-				: [];
+				)
+			: [];
 
 		const sample = this.wantsSample(
 			kind,
@@ -221,6 +269,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			language,
 			sourcePaths: [...sourcePaths],
 			...(compiledPath && { compiledPath }),
+			...(processed && { processed }),
 			tree:
 				game && tree.value.kind === "new"
 					? { ...tree.value, game }
@@ -258,9 +307,15 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		});
 	}
 
-	/** The command that serves the project: a place by its folder or name. */
-	private static serveCommand(places: StartingPlaces | undefined): string {
-		return places ? `rogen serve ${places.place}` : "rogen serve";
+	/** The command that serves the project: a place by its folder or name, and the processed config by its name. */
+	private static serveCommand(
+		places: StartingPlaces | undefined,
+		processedPath?: string
+	): string {
+		if (places) return `rogen serve ${places.place}`;
+		return processedPath
+			? `rogen serve ${PROCESSED_OUTPUT}`
+			: "rogen serve";
 	}
 
 	/** How to add a second place, which `init` starts but never adds; `game`: whether the first place has the sample game, which the second copies. */
@@ -483,9 +538,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			written,
 			places?.configFile ?? DEFAULT_CONFIG_FILE
 		);
+		const processedPath = processedPathOf(choices);
 		for (const { stem, config: output } of OutputConfigs.of(config, {
 			name,
-			releasePath: compiledPath,
+			processedPath,
+			releasePath: processedPath ?? compiledPath,
 			releaseIgnore: this.directory.workspace.testRunner
 				? `**/*.spec.${language.extension}`
 				: undefined,
@@ -514,6 +571,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		if (choices.tree.kind === "lift")
 			builder.setLiftedFrom(choices.tree.from);
 		for (const note of tree.notes) builder.addNote(note);
+		if (choices.tree.kind === "lift" && choices.processed)
+			builder.addNote(
+				ProjectSetup.processedNote(
+					choices.tree.from,
+					sourcePaths,
+					choices.processed
+				)
+			);
 		const others = places
 			? []
 			: this.directory.otherProjectFiles(
@@ -598,6 +663,17 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 	}
 
+	private static processedNote(
+		from: string,
+		sourcePaths: readonly string[],
+		{ folder, config }: { folder: string; config?: string }
+	): string {
+		const source = joinedWithAnd(sourcePaths);
+		return config
+			? `Took ${folder} as the folder Darklua writes, since ${config} is here and the mounts of ${from} into ${folder} repeat ${source}. ${DEFAULT_CONFIG_FILE} reads ${source}, and ${configFileName(PROCESSED_OUTPUT)} reads ${folder} as its "compiledPath".`
+			: `Kept the mounts of ${from} into ${folder}, which repeat ${source}, since no ${Darklua.CONFIG_FILES[0]} says a processor writes ${folder}. Rojo now syncs a script there twice: from ${folder} and from its route. If a processor writes ${folder}, remove those mounts and serve a copy of ${DEFAULT_CONFIG_FILE} with "compiledPath": "${folder}".`;
+	}
+
 	private static unmountedWarning(
 		from: string,
 		files: readonly string[]
@@ -613,16 +689,17 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 	private planNextSteps(
 		builder: InitPlanBuilder,
-		{
+		choices: ProjectChoices,
+		tree: TreePlan
+	): void {
+		const {
 			language,
 			sourcePaths,
 			tree: chosen,
 			places,
 			projectFilesHint,
 			scaffold,
-		}: ProjectChoices,
-		tree: TreePlan
-	): void {
+		} = choices;
 		const { compiler } = language;
 		if (chosen.kind === "template") {
 			builder.addRun(
@@ -671,7 +748,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			...(compiler
 				? [(scaffold && "npm run watch") ?? compiler.compileCommand]
 				: []),
-			ProjectSetup.serveCommand(places)
+			ProjectSetup.serveCommand(places, processedPathOf(choices))
 		);
 	}
 }

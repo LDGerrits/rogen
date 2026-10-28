@@ -73,7 +73,7 @@ const InitOptions = [
 		type: "string",
 		values: ["lift", "new"],
 		description:
-			"What to do with a default.project.json already here: lift its tree, or start a new one. Lifting writes the tree into default.rogen.json, and is the default.",
+			"What to do with a default.project.json already here: lift its tree, or start a new one. Lifting is the default: it writes the tree into default.rogen.json, and the mounts of a folder Darklua writes into dist.rogen.json.",
 	},
 	{
 		name: "package",
