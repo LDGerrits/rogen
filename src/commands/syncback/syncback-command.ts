@@ -193,6 +193,7 @@ registerCommand(
 						planned.value.changes.length > 0
 					) {
 						this.listChanges(logService, planned.value, cwd);
+						this.warnLeftOut(logService, planned.value, cwd);
 						listed = true;
 						if (await this.asked(promptService, planned.value))
 							outcome = written(
@@ -234,7 +235,8 @@ registerCommand(
 					outcome,
 					cwd,
 					(dryRun || line.options.list === true) && !listed,
-					dryRun
+					dryRun,
+					listed
 				);
 			if (stopped) return err(stopped);
 			return failure ? this.reported(failure) : ok(undefined);
@@ -263,15 +265,12 @@ registerCommand(
 				);
 		}
 
-		private report(
+		/** Warns about what the plan leaves out, which a user should see before saying yes to the rest. */
+		private warnLeftOut(
 			logService: LogService,
-			outcome: Extract<SyncbackOutcome, { plan: SyncbackPlan }>,
-			cwd: string,
-			list: boolean,
-			dryRun: boolean
+			plan: SyncbackPlan,
+			cwd: string
 		): void {
-			const { plan } = outcome;
-			if (list) this.listChanges(logService, plan, cwd);
 			for (const { instance, reason } of plan.unplaced)
 				logService.diagnostic(
 					warningDiagnostic(
@@ -280,10 +279,22 @@ registerCommand(
 						`${instance} is in the place and no folder of the project can take it, so it was left out: ${messageRelativeTo(reason, cwd)}.`
 					)
 				);
-			for (const warning of [
-				...compiledDiagnostics(plan),
-				...outcome.warnings,
-			])
+			for (const warning of compiledDiagnostics(plan))
+				logService.diagnostic(warning);
+		}
+
+		private report(
+			logService: LogService,
+			outcome: Extract<SyncbackOutcome, { plan: SyncbackPlan }>,
+			cwd: string,
+			list: boolean,
+			dryRun: boolean,
+			warned: boolean
+		): void {
+			const { plan } = outcome;
+			if (list) this.listChanges(logService, plan, cwd);
+			if (!warned) this.warnLeftOut(logService, plan, cwd);
+			for (const warning of outcome.warnings)
 				logService.diagnostic(warning);
 			if (outcome.kind === "written")
 				logService.info(
