@@ -1,4 +1,5 @@
 local combat = game:GetService("ServerScriptService").Combat
+combat:SetAttribute("Level", 3)
 combat.Combat.Source = 'return "combat2"\n'
 
 local loot = Instance.new("ModuleScript")

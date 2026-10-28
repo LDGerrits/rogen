@@ -144,7 +144,7 @@ describe("syncback command", () => {
 		expect((await running).isOk()).toBe(true);
 		expect(said(log).filter((text) => text.includes("(syncback."))).toEqual(
 			[
-				"/repo/default.rogen.json - warning: ServerScriptService/Combat/Combat was removed from the place, but its code is compiled into dist, so syncback left it out. Remove it from the source files. (syncback.compiledPath)",
+				"/repo/default.rogen.json - warning: ServerScriptService/Combat/Combat was removed from the place, but it is compiled into dist, so syncback left it out. Remove it from the source files. (syncback.compiledPath)",
 			]
 		);
 		expect(await fs.exists(abs("dist/Combat/Server/Combat.luau"))).toBe(

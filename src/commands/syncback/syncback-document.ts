@@ -76,11 +76,11 @@ export function compiledDiagnostics(plan: SyncbackPlan): Diagnostic[] {
 		(instance: string) => string
 	> = {
 		changed: (instance) =>
-			`${instance} changed in the place, but its code is compiled into ${folder}, so syncback left it out. Make the change in its source file.`,
+			`${instance} changed in the place, but it is compiled into ${folder}, so syncback left it out. Make the change in the source files.`,
 		removed: (instance) =>
-			`${instance} was removed from the place, but its code is compiled into ${folder}, so syncback left it out. Remove it from the source files.`,
+			`${instance} was removed from the place, but it is compiled into ${folder}, so syncback left it out. Remove it from the source files.`,
 		added: (instance) =>
-			`${instance} is new in the place, but the project compiles its code into ${folder}, so syncback left it out. Add it to the source files.`,
+			`${instance} is new in the place, but the project compiles into ${folder}, so syncback left it out. Add it to the source files.`,
 	};
 	return plan.compiled.map(({ instance, kind }) =>
 		warningDiagnostic(

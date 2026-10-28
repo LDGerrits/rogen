@@ -690,6 +690,8 @@ export class CoreSyncbackService implements SyncbackService {
 		}
 		for (const entry of mirror.entries)
 			if (entry.kind === "folder") known.add(entry.mirror);
+		for (const folder of known)
+			existing.add(instanceKey(folder.split("/")));
 
 		const fresh: AddedPath[] = [];
 		for (const added of after) {
@@ -931,25 +933,35 @@ export class CoreSyncbackService implements SyncbackService {
 		});
 	}
 
-	/** The instance a path of the mirror is, as an instance key: its folders, then the instance its file makes. */
-	/** Each instance once, and none whose ancestor is listed too, as a folder removed with its scripts. */
+	/** Each instance once, under its strongest kind, in path order; none below a removed one, nor a new one below a new one. */
 	private static outermost(
 		changes: readonly CompiledChange[]
 	): CompiledChange[] {
-		const listed = new Set(changes.map(({ instance }) => instance));
-		const seen = new Set<string>();
-		return changes.filter(({ instance }) => {
-			if (seen.has(instance)) return false;
-			seen.add(instance);
-			const names = instance.split("/");
-			return !names
-				.slice(1)
-				.some((_, depth) =>
-					listed.has(names.slice(0, depth + 1).join("/"))
-				);
-		});
+		const strength = { changed: 0, added: 1, removed: 2 } as const;
+		const kinds = new Map<string, CompiledChange["kind"]>();
+		for (const { instance, kind } of changes) {
+			const listed = kinds.get(instance);
+			if (listed === undefined || strength[kind] > strength[listed])
+				kinds.set(instance, kind);
+		}
+		return [...kinds]
+			.filter(([instance, kind]) => {
+				const names = instance.split("/");
+				return !names.slice(1).some((_, depth) => {
+					const above = kinds.get(
+						instanceKey(names.slice(0, depth + 1))
+					);
+					return (
+						above === "removed" ||
+						(above === "added" && kind === "added")
+					);
+				});
+			})
+			.map(([instance, kind]) => ({ instance, kind }))
+			.sort((a, b) => compareStrings(a.instance, b.instance));
 	}
 
+	/** The instance a path of the mirror is, as an instance key: its folders, then the instance its file makes. */
 	private static instanceAt(mirror: string): string {
 		const names = mirror.split("/");
 		const last = names[names.length - 1];

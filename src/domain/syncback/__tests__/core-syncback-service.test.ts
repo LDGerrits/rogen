@@ -661,6 +661,68 @@ describe("CoreSyncbackService", () => {
 			]);
 		});
 
+		it("should list a property set on a compiled folder as a change, beside the changes in it", async () => {
+			await compiled();
+			rojo.say = async () => {
+				await fs.writeFile(
+					mirror("ServerScriptService", "Combat", "init.meta.json"),
+					'{"attributes":{"Level":3}}'
+				);
+				await fs.delete(
+					mirror("ServerScriptService", "Combat", "Hit.luau")
+				);
+				return [];
+			};
+
+			const result = (await service.apply(request)).unwrap();
+
+			expect(result.compiled).toEqual([
+				{ instance: "ServerScriptService/Combat", kind: "changed" },
+				{ instance: "ServerScriptService/Combat/Hit", kind: "removed" },
+			]);
+		});
+
+		it("should list a change inside a changed module too", async () => {
+			await writeFiles(
+				fs,
+				"dist/Combat/Server/Mod/init.luau",
+				"dist/Combat/Server/Mod/Child.luau"
+			);
+			await prepare(
+				[
+					"src/Combat/Server/Mod/init.luau",
+					"src/Combat/Server/Mod/Child.luau",
+				],
+				{ compiledPath: abs("dist") }
+			);
+			rojo.say = async () => {
+				await fs.writeFile(
+					mirror("ServerScriptService", "Combat", "Mod", "init.luau"),
+					"return 2"
+				);
+				await fs.writeFile(
+					mirror(
+						"ServerScriptService",
+						"Combat",
+						"Mod",
+						"Child.luau"
+					),
+					"return 2"
+				);
+				return [];
+			};
+
+			const result = (await service.apply(request)).unwrap();
+
+			expect(result.compiled).toEqual([
+				{ instance: "ServerScriptService/Combat/Mod", kind: "changed" },
+				{
+					instance: "ServerScriptService/Combat/Mod/Child",
+					kind: "changed",
+				},
+			]);
+		});
+
 		it("should say why a new instance has no place, as without a compiled path", async () => {
 			await prepare(
 				[
