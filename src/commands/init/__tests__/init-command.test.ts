@@ -106,7 +106,7 @@ describe("init command", () => {
 					{
 						question: "agentRules",
 						value: true,
-						flag: "--agent-rules",
+						flag: "--no-agent-rules",
 					},
 				]),
 				directories: [path.join(cwd, "src")],
@@ -193,6 +193,67 @@ describe("init command", () => {
 					appended: true,
 				}
 			);
+		});
+	});
+
+	describe("decided", () => {
+		const flagsByQuestion = async (options: CommandLine["options"]) => {
+			const logService = new MockLogService();
+			await runInit(new MockPromptService([], false), logService, {
+				json: true,
+				"dry-run": true,
+				...options,
+			});
+			const { decided } = JSON.parse(logService.entries[0].text);
+			return Object.fromEntries(
+				decided.map(
+					({
+						question,
+						flag,
+					}: {
+						question: string;
+						flag: string;
+					}) => [question, flag]
+				)
+			);
+		};
+
+		it("should name the flag that changes each choice", async () => {
+			const flags = await flagsByQuestion({});
+
+			expect(flags).toMatchObject({
+				kind: "--kind",
+				language: "--language",
+				sample: "--no-sample",
+				agentRules: "--no-agent-rules",
+				places: "--places",
+			});
+		});
+
+		it("should name --no-places when the default is several places", async () => {
+			await write("projects/keep");
+
+			const flags = await flagsByQuestion({ language: "roblox-ts" });
+
+			expect(flags.places).toBe("--no-places");
+		});
+
+		it("should name in the text the flags that reproduce the choices instead", async () => {
+			const flags = await flagsByQuestion({});
+			const logService = new MockLogService();
+
+			await runInit(new MockPromptService([], false), logService);
+
+			const tookDefaults = logService.lines.find((line) =>
+				line.includes("Took the defaults")
+			);
+			expect(tookDefaults).toContain("--no-places, ");
+			expect(tookDefaults).toContain("--sample, --agent-rules.");
+			expect(flags).toMatchObject({
+				places: "--places",
+				sample: "--no-sample",
+				agentRules: "--no-agent-rules",
+			});
 		});
 	});
 

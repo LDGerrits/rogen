@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - `rogen init` now writes a `*` route by default, so a file that matches no route goes to the shared route. Only the files that run on one side need marking, such as with `@Server`. Pass `--unmatched leave`, or pick it when asked, to leave such files out with a warning instead.
+- In `rogen init --json`, each `decided` entry names the flag that changes the choice, as the agent skill reads it: `--no-sample` for the sample init writes, `--places` for one place. Before, it named the flag that keeps the choice. The text line "Took the defaults" still names the flags that keep them.
 - `rogen syncback` runs on a project with a `compiledPath`. It writes the changes outside the compiled path, such as the folders the tree mounts, and lists each changed, removed or new instance that the project compiles as a `syncback.compiledPath` warning, for you to make in the source files. Before, it stopped with `syncback.compiledPath` and wrote nothing. In a terminal, the warnings about what syncback leaves out now come before it asks to write the rest.
 
 ### Fixed

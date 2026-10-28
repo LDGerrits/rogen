@@ -96,7 +96,7 @@ stdout:
       {
         "question": "sample",
         "value": true,
-        "flag": "--sample"
+        "flag": "--no-sample"
       },
       {
         "question": "skipGit",
@@ -106,7 +106,7 @@ stdout:
       {
         "question": "agentRules",
         "value": true,
-        "flag": "--agent-rules"
+        "flag": "--no-agent-rules"
       }
     ],
     "projects": [

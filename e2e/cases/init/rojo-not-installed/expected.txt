@@ -65,7 +65,7 @@ stdout:
       {
         "question": "agentRules",
         "value": true,
-        "flag": "--agent-rules"
+        "flag": "--no-agent-rules"
       }
     ],
     "projects": [
