@@ -6,7 +6,66 @@ description: Rogen is a superset of Rojo that generates Rojo project files
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { BookOpen, History, Rocket, Terminal } from "lucide-react";
 
-Rogen is a superset of Rojo that generates Rojo project files from your file system. You organize your game by feature, and Rogen puts each file in the right place.
+Rogen is a superset of Rojo that generates Rojo project files from your file system. It lets you keep all the code for a feature in one folder, even when part of it runs on the server and part of it on the client.
+
+## One Feature, Three Folders
+
+A Rojo project file maps each folder to one place in the game. A typical project maps `src/server` to ServerScriptService, `src/client` to StarterPlayerScripts and `src/shared` to ReplicatedStorage. Your code is sorted by where it runs, so an inventory feature ends up in three folders:
+
+<RouteFigure
+	disk={`
+  src/
+    server/
+      Inventory/
+        InventoryService.luau
+    client/
+      Inventory/
+        InventoryController.luau
+    shared/
+      Inventory/
+        InventoryTypes.luau
+`}
+/>
+
+To work on the inventory, you open all three. To delete it, you find and delete it in all three. A project that also sorts by type, with folders such as `client/controllers` and `shared/types`, spreads each feature further.
+
+## One Feature, One Folder
+
+With Rogen, the feature is one folder. A `Server`, `Client` or `Shared` folder inside it says where its code goes:
+
+<RouteFigure
+	disk={`
+  src/
+    Inventory/
+      Server/
+        InventoryService.luau
+      Client/
+        InventoryController.luau
+      Shared/
+        InventoryTypes.luau
+`}
+	studio={`
+  ReplicatedStorage
+    Shared/
+      Inventory/
+        InventoryTypes
+  ServerScriptService
+    Inventory/
+      InventoryService
+  StarterPlayer
+    StarterPlayerScripts
+      Inventory/
+        InventoryController
+`}
+/>
+
+Rogen reads those folder names and writes `default.project.json`, which mounts each file in the right service. In Studio, the game looks as it did before. On disk, everything about the inventory is in `src/Inventory`, so you read it in one place and delete it by deleting one folder.
+
+Keeping a feature's code together like this is called colocation. With Rojo alone, the split between server and client code made it hard to do.
+
+## Rojo Still Runs Your Game
+
+Rogen doesn't build or sync your game itself. It writes the project file, and then Rojo does what it always did. `rogen serve` writes `default.project.json`, runs `rojo serve`, and writes the file again when you add or move a file. `rogen build` writes it and runs `rojo build`. Both take Rojo's flags. A project without a Rogen config works as it does with Rojo.
 
 ## The Config
 
@@ -30,7 +89,7 @@ A Rogen config is a Rojo project file with `routes` added. The `tree` is the bas
 }
 ```
 
-A folder named after a route sends its files there, so `src/Inventory/Server/InventoryService.luau` lands in `ServerScriptService/Inventory`. The `*` route takes every file that no other route matches. Rogen writes `default.project.json` from the config, and Rojo serves, builds and syncs your game as before. `rogen serve` and `rogen build` take Rojo's flags, and a project without a config works as it did.
+Each route names a folder and where its files go. The `*` route takes every file that no other route matches. The routes are yours to change: add `"Gui": "StarterGui"`, and a `Gui` folder sends its files to StarterGui.
 
 ## Next Steps
 
