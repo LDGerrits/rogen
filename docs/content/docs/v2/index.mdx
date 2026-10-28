@@ -1,16 +1,16 @@
 ---
 title: Introduction
-description: Rogen is a superset of Rojo that generates Rojo project files
+description: What Rogen does, and the problem it solves
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { BookOpen, History, Rocket, Terminal } from "lucide-react";
 
-Rogen is a superset of Rojo that generates Rojo project files from your file system. It lets you keep all the code for a feature in one folder, even when part of it runs on the server and part of it on the client.
+Rogen is a command-line tool that writes your Rojo project file for you. You run `rogen serve` where you ran `rojo serve`, and Rojo still syncs your game into Studio. Nothing of Rogen ends up in the game. What changes is how you can organize your code: by feature, with its server and client code in one folder.
 
 ## Organized by Type
 
-Many Roblox games sort their code by type. A Rojo project maps `src/server` to ServerScriptService, `src/client` to StarterPlayerScripts and `src/shared` to ReplicatedStorage, and inside those folders the code is sorted again, into folders such as `services`, `controllers` and `types`:
+Rojo maps each folder you list in the project file to one service in the game. A typical project lists three: `src/server` for ServerScriptService, `src/client` for StarterPlayerScripts and `src/shared` for ReplicatedStorage. Inside them, the code is often sorted again by type, into folders such as `services`, `controllers` and `utils`:
 
 <RouteFigure
 	disk={`
@@ -23,18 +23,25 @@ Many Roblox games sort their code by type. A Rojo project maps `src/server` to S
       controllers/
         InventoryController.luau
         ShopController.luau
+      ui/
+        InventoryWindow.luau
+        ShopWindow.luau
     shared/
       types/
         InventoryTypes.luau
         ShopTypes.luau
+      utils/
+        InventoryUtils.luau
+        ShopUtils.luau
+        TableUtils.luau
 `}
 />
 
-The inventory is spread over three folders, and each of those folders also holds a piece of every other feature. To change how the inventory works, you edit files far apart in the tree. To delete it, you hunt down every file that belongs to it. The more features a game has, the longer each of those folders gets.
+The inventory is spread over five folders, and the shop's files sit beside it in each one. To change how the inventory works, you jump between files far apart in the tree. To delete it, you hunt down each of its files, and its helpers in `utils` tend to stay behind.
 
-## Organized by Feature
+## Feature Folders on Each Side
 
-Organizing by feature is much better. A feature's files change together, so they belong together, and a folder named `Inventory` tells you what is in it. But a Rojo project still splits the code by where it runs, so the best you can do is a feature folder on each side:
+Sorting by feature helps, because a feature's files usually change together. Rojo can mount `src/Inventory/Server` into ServerScriptService, but only with its own entry in the project file. Every feature needs an entry for each side, and you keep them in sync by hand as features come and go. So most games settle for a feature folder on each side:
 
 <RouteFigure
 	disk={`
@@ -47,21 +54,27 @@ Organizing by feature is much better. A feature's files change together, so they
     client/
       Inventory/
         InventoryController.luau
+        InventoryWindow.luau
       Shop/
         ShopController.luau
+        ShopWindow.luau
     shared/
       Inventory/
         InventoryTypes.luau
+        InventoryUtils.luau
       Shop/
         ShopTypes.luau
+        ShopUtils.luau
+      Utils/
+        TableUtils.luau
 `}
 />
 
-Each folder now holds one feature, but each feature still lives in three folders. The server half of the inventory sits far from its client half, and deleting the feature still means deleting it three times.
+The inventory now has a folder on each side, three in all, far apart in the tree. Deleting the feature still takes three deletes.
 
-## One Feature, One Folder
+## One Folder per Feature
 
-Rogen removes the split. The feature is one folder, and a `Server`, `Client` or `Shared` folder inside it says where its code goes:
+With Rogen, the feature is one folder. A `Server`, `Client` or `Shared` folder inside it says where its files go:
 
 <RouteFigure
 	disk={`
@@ -71,14 +84,17 @@ Rogen removes the split. The feature is one folder, and a `Server`, `Client` or 
         InventoryService.luau
       Client/
         InventoryController.luau
+        InventoryWindow.luau
       Shared/
         InventoryTypes.luau
+        InventoryUtils.luau
 `}
 	studio={`
   ReplicatedStorage
     Shared/
       Inventory/
         InventoryTypes
+        InventoryUtils
   ServerScriptService
     Inventory/
       InventoryService
@@ -86,40 +102,28 @@ Rogen removes the split. The feature is one folder, and a `Server`, `Client` or 
     StarterPlayerScripts
       Inventory/
         InventoryController
+        InventoryWindow
 `}
 />
 
-Rogen reads those folder names and writes `default.project.json`, which mounts each file in the right service. In Studio, the game looks as it did before. On disk, everything about the inventory is in `src/Inventory`, so you read it in one place and delete it by deleting one folder.
+Each file still runs where it did, and everything about the inventory is in `src/Inventory`. You read it in one place, and you delete it by deleting one folder. Keeping a feature's code together like this is called colocation.
 
-Keeping all of a feature's code together like this is called colocation. With Rojo alone, the split between server and client code stood in the way.
+A feature with a single server file can skip the folder and name the file `InventoryService@Server.luau`. [How Routing Works](/docs/v2/core-concepts/routing) shows both ways. In Studio the files still sit in different services, so code requires them by their path in the game. `rogen where` prints that path and the `require` line for any file.
 
-## Rojo Still Runs Your Game
+## Rogen Writes the Project File
 
-Rogen doesn't build or sync your game itself. It writes the project file, and then Rojo does what it always did. `rogen serve` writes `default.project.json`, runs `rojo serve`, and writes the file again when you add or move a file. `rogen build` writes it and runs `rojo build`. Both take Rojo's flags. A project without a Rogen config works as it does with Rojo.
+Rogen is a superset of Rojo that generates Rojo project files from your file system. Your config, `default.rogen.json`, is a Rojo project file with [`routes`](/docs/v2/config) added. Each route names a folder and the service it goes to. Rogen finds every file whose path names a route, and writes `default.project.json` with the entries you would otherwise write by hand. This is the part it writes for the inventory's server code:
 
-## The Config
-
-A Rogen config is a Rojo project file with `routes` added. The `tree` is the base: put in it what your folder names can't say, such as your packages, and Rogen adds every routed file to it.
-
-```json title="default.rogen.json"
-{
-	"name": "my-game",
-	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
-	},
-	"tree": {
-		"$className": "DataModel",
-		"ReplicatedStorage": {
-			"Packages": { "$path": "Packages" }
-		}
+```json title="default.project.json"
+"ServerScriptService": {
+	"$className": "ServerScriptService",
+	"Inventory": {
+		"$path": { "optional": "src/Inventory/Server" }
 	}
 }
 ```
 
-Each route names a folder and where its files go. The `*` route takes every file that no other route matches. The routes are yours to change: add `"Gui": "StarterGui"`, and a `Gui` folder sends its files to StarterGui.
+Rogen doesn't build or sync your game itself. `rogen serve` writes `default.project.json`, runs `rojo serve`, and writes the project file again when your files change. `rogen build` writes it and runs `rojo build`. Both take Rojo's flags. To start from an existing Rojo project, run `rogen init` in it. It turns your `default.project.json` into a `default.rogen.json` and keeps your tree.
 
 ## Next Steps
 
