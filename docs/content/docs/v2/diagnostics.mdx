@@ -844,7 +844,7 @@ These diagnostics come from `rogen init`, which starts projects and lifts a hand
 
 ### `init.configExists` [#init-configexists]
 
-Error. The folder already has a `.rogen.json` or `.rogen.jsonc`, either `default` or named. `init` never overwrites or changes a config, so it stops and writes nothing. The exception is when `--agent-rules` or `--agent-hook` are the only flags. Then `init` adds only the agent files.
+Error. The folder already has a `.rogen.json` or `.rogen.jsonc`, either `default` or named. `init` never overwrites or changes a config, so it stops and writes nothing. With `--agent-rules` or `--agent-hook`, `init` adds only the agent files instead. A flag that shapes a config, such as `--language`, is then an error.
 
 ```
 error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'; for a new place, copy a config and edit the copy. To add the agent rules or the agent hook to this project, run 'rogen init --agent-rules' or 'rogen init --agent-hook'; to set Rojo up, see https://rogen-roblox.vercel.app/docs/v2/installation. (init.configExists)

@@ -117,14 +117,14 @@ const InitOptions = [
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether to add Rogen's rules for coding agents to the agent file. Added when not given, and imported into CLAUDE.md and GEMINI.md. Alone, in a project that has a config, it adds them there.",
+			"Whether to add Rogen's rules for coding agents to the agent file. Added when not given, and imported into CLAUDE.md and GEMINI.md. In a project that has a config, it adds them there, and takes no flag that shapes a config.",
 	},
 	{
 		name: "agent-hook",
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether to add the hook that reports Rogen warnings to the coding agents found. Not added when not given. Alone, in a project that has a config, it adds it there.",
+			"Whether to add the hook that reports Rogen warnings to the coding agents found. Not added when not given. In a project that has a config, it adds it there, and takes no flag that shapes a config.",
 	},
 ] as const;
 
@@ -156,7 +156,7 @@ registerCommand(
 				metadata: {
 					summary: "Starts a project with a default.rogen.json",
 					description:
-						"Starts a project, as 'rojo init' does: writes default.rogen.json, reading what the folder already holds and asking in a terminal. With a folder, starts the project there. It never changes a config that exists: where one is, it stops and writes nothing, unless --agent-rules or --agent-hook is all that is given, which add only the agent files. To change a config, edit the .rogen.json and run 'rogen check'.",
+						"Starts a project, as 'rojo init' does: writes default.rogen.json, reading what the folder already holds and asking in a terminal. With a folder, starts the project there. It never changes a config that exists: where one is, it stops and writes nothing. There, --agent-rules and --agent-hook add only the agent files, with --skip-git, -y, -n or --json if given; a flag that shapes a config, such as --language, is an error beside them. To change a config, edit the .rogen.json and run 'rogen check'.",
 					args: [
 						{
 							name: "path",

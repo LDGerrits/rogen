@@ -32,13 +32,29 @@ import { ToolchainSetup } from "./toolchain-setup.js";
 import { ServerFinder } from "../runner/server-finder.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
 
-/** Whether the choices given are only `--agent-rules` or `--agent-hook`, at least one of them yes. */
-function asksForAgentsOnly(choices: InitChoices): boolean {
-	const { agentRules, agentHook, ...rest } = choices;
-	return (
-		(agentRules === true || agentHook === true) &&
-		Object.values(rest).every((value) => value === undefined)
-	);
+/** The flags that shape a new config, by the choice each gives; init takes none of them where a config exists. */
+const SHAPING_FLAGS: Record<
+	Exclude<keyof InitChoices, "agentRules" | "agentHook" | "skipGit">,
+	string
+> = {
+	kind: "kind",
+	language: "language",
+	sourcePaths: "source-path",
+	projectFile: "project-file",
+	packages: "package",
+	routes: "route",
+	unmatched: "unmatched",
+	sample: "sample",
+	places: "places",
+};
+
+/** The shaping flags given, as typed. */
+function shapingFlagsOf(choices: InitChoices): string[] {
+	return Object.entries(SHAPING_FLAGS).flatMap(([choice, flag]) => {
+		const value = choices[choice as keyof typeof SHAPING_FLAGS];
+		if (value === undefined) return [];
+		return [value === false ? `--no-${flag}` : `--${flag}`];
+	});
 }
 
 /** The prompt services of a run: the one that takes the default of what a summary shows, and the one that always asks. */
@@ -155,23 +171,25 @@ export class CoreInitService implements InitService {
 		);
 		if (stale.length > 0) return err(new DiagnosticsError([...stale]));
 		if (directory.value.hasConfigs)
-			return asksForAgentsOnly(choices)
-				? this.planAgentsIn(directory.value, questions)
-				: err(
-						new DiagnosticsError(
-							directory.value.checkFree(
-								directory.value.configFiles
-							)
-						)
-					);
+			return this.planAgentsIn(directory.value, questions);
 		return this.planIn(directory.value, questions);
 	}
 
-	/** A project that has a config: the agent rules and the hook only, which change no config. */
+	/** A project that has a config: the agent rules and the hook only, which change no config, and only when a flag asks for them. */
 	private async planAgentsIn(
 		directory: InitDirectory,
 		questions: InitQuestions
 	): Promise<Result<InitPlan | undefined, Error>> {
+		const { choices } = questions;
+		const { configFiles } = directory;
+		if (choices.agentRules !== true && choices.agentHook !== true)
+			return err(new DiagnosticsError(directory.checkFree(configFiles)));
+		const [shaping] = shapingFlagsOf(choices);
+		if (shaping !== undefined)
+			throw new UsageError(
+				`${shaping} shapes a new config, and ${configFiles.join(", ")} is here already.`,
+				"Beside a config, --agent-rules and --agent-hook add only the agent files. To change the config, edit it and run 'rogen check'."
+			);
 		const agents = await this.agentSetupIn(directory, questions);
 		if (agents.isErr()) return agents;
 		return this.planWith(directory, questions, [agents.value]);
