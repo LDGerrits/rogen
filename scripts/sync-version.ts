@@ -2,6 +2,7 @@ import { execFileSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { pathToFileURL } from "url";
+import { withRelease } from "./changelog.js";
 
 /** A file outside package.json that names the release. */
 export interface VersionedFile {
@@ -60,7 +61,17 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
 	const { version } = JSON.parse(fs.readFileSync("package.json", "utf8")) as {
 		version: string;
 	};
+	const changelog = fs.readFileSync("CHANGELOG.md", "utf8");
+	const released = withRelease(
+		changelog,
+		version,
+		new Date().toISOString().slice(0, 10)
+	);
 	const changed = syncVersion(".", version);
+	if (released !== changelog) {
+		fs.writeFileSync("CHANGELOG.md", released);
+		changed.push("CHANGELOG.md");
+	}
 	if (changed.length > 0) execFileSync("git", ["add", ...changed]);
 	for (const file of changed) console.log(`Updated ${file} to ${version}`);
 }
