@@ -23,6 +23,8 @@ export interface SyncTool {
 	readonly initName?: string;
 	/** The folder beside the project file that the tool writes its runtime library to, outside the compiled path. */
 	readonly runtimeFolder?: string;
+	/** The files the tool writes at the root of the compiled path for itself, such as sloptor's copy cache. */
+	readonly cacheFiles?: readonly string[];
 	readonly metaReplacement?: MetaReplacement;
 	readonly dataReplacement?: DataReplacement;
 }

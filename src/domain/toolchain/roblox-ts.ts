@@ -71,6 +71,7 @@ export class RobloxTsCompiler implements Compiler {
 		readsOnly: (source) => DECLARATION_FILE.test(source),
 		initName: "index",
 		runtimeFolder: INCLUDE_DIR,
+		cacheFiles: ["rbxts.copyfiles.json"],
 	};
 
 	readonly name = "roblox-ts";

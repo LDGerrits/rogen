@@ -1,5 +1,5 @@
 import path from "path";
-import { contains, containsPosix, toPosix } from "../../base/path.js";
+import { contains, containsPosix, samePath, toPosix } from "../../base/path.js";
 import { ResolvedConfig, compiledPathOf } from "../config/resolved-config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import {
@@ -92,6 +92,14 @@ export class CompiledLayout {
 				path.posix.relative(root, absolute)
 			)
 		);
+	}
+
+	/** Whether `file` is one a tool writes at the root of the compiled path for itself. */
+	isCacheFile(file: string): boolean {
+		if (this.compiledPath === undefined) return false;
+		if (!samePath(path.dirname(file), this.compiledPath)) return false;
+		const name = path.basename(file);
+		return this.tools.some(({ cacheFiles }) => cacheFiles?.includes(name));
 	}
 
 	/** Whether a tool reads `source` without writing anything for it. */
