@@ -1,198 +1,211 @@
 # Changelog
 
-All notable changes to Rogen. Rogen follows [Semantic Versioning](https://semver.org).
+All notable changes to Rogen are listed here.
 
-## Unreleased
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Rogen adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) from 2.0.0 on. Releases before 2.0.0 did not always: some minor releases held breaking changes, and some patch releases held new features.
+
+## [Unreleased]
 
 ## [2.0.0-beta.1] - 2026-10-26
 
-Rogen v2 is a complete overhaul. It's now a Rojo superset with file-system routing for feature-based organization. Name a folder or file after a route, and Rogen generates the Rojo project file that sends it there.
+### Added
 
-### Install
+- `default.rogen.json`, a Rojo project file with Rogen's keys `routes`, `sourcePaths` and `compiledPath`. Rogen writes `default.project.json` from it.
+- Routing by folder (`Server/`), by name (`Save@Server.luau`) or by marker file (`@Server`).
+- The `*` fallback route, for files that no other route covers.
+- Rojo's commands through Rogen: `serve`, `build`, `upload`, `sourcemap`, `syncback`, `fmt-project` and `plugin`. They take Rojo's flags and write the project file first.
+- In a folder with a plain `default.project.json` and no config, Rojo's commands run on that file as Rojo would.
+- `rogen write`, which writes the project file, and with `--watch` writes it on every change.
+- `rogen check`, which reports each problem with a code and its fix.
+- `rogen where`, which prints where a file lands in the game and how to require it.
+- `rogen help`, which prints a command's flags or what a diagnostic code means, and `rogen doc`, which opens the docs or prints a topic offline.
+- `rogen init` adds Rogen's rules for coding agents to `AGENTS.md`, and can add a hook that checks the files an agent changed before it ends its turn.
+- `--json` on every command, for one JSON document instead of text.
+- A new docs site at [rogen-roblox.vercel.app](https://rogen-roblox.vercel.app).
 
-```bash
-rokit add ldgerrits/rogen@2.0.0-beta.1
-npm i @ldgerrits/rogen@next
-```
+### Changed
 
-Rogen v2 needs Rojo 7.5.0 or newer. Run `rogen init` to start a project, or see [Creating a New Game](https://rogen-roblox.vercel.app/docs/v2/new-game). Without a version, `rokit add ldgerrits/rogen` and `npm i @ldgerrits/rogen` still install 1.4.4.
+- **Breaking:** Rogen needs Rojo 7.5.0 or newer.
+- **Breaking:** The outermost route wins. In 1.x the deepest rule won.
+- **Breaking:** Only `@` routes a name. Prefixes and suffixes such as `server_Combat.luau` and `Combat_Server.luau` no longer route, and Rojo's `.server` and `.client` keep their meaning.
+- **Breaking:** Only the routes you declare exist. A file that no route covers is left out with a warning, instead of going to `ReplicatedStorage`.
+- **Breaking:** A `^` file goes to the root of its route's target, not of the service.
+- **Breaking:** `rogen build -o` builds a place, as Rojo's does.
+- **Breaking:** Every command stops with `legacy.config` while a v1 `.rogen.json` is in the folder. See [Migrating from v1](https://rogen-roblox.vercel.app/docs/v2/migrating-from-v1) to move a project.
 
-### Highlights
+### Removed
 
-- **A Rojo project file with routes:** `default.rogen.json` takes every Rojo key plus `routes`, and Rogen writes `default.project.json` from it.
-- **Routing by folder or by name:** A `Server/` folder, an `@Server` suffix or an `@Server` marker file sends code to that route's target. The outermost route wins. A file that no route covers is left out with a warning, or goes to the `*` fallback route.
-- **Rojo's commands:** `serve`, `build`, `upload`, `sourcemap`, `syncback`, `fmt-project` and `plugin` take Rojo's flags and write the project file first.
-- **Spotting problems:** `rogen check` reports each problem with a code and its fix, and `rogen where` prints where a file lands and how to require it.
-- **Built for coding agents:** `rogen init` adds Rogen's rules to `AGENTS.md`. And there's an optional hook that checks the files an agent changed before it ends its turn. Every command can also print in JSON.
-- **A new website:** The docs are rewritten for v2, with a new home page and a new look, at [rogen-roblox.vercel.app](https://rogen-roblox.vercel.app).
-
-### Breaking changes
-
-Rogen v2 reads configs and file names differently from 1.x, and every command stops with `legacy.config` while a v1 `.rogen.json` is in the folder. See [Migrating from v1](https://rogen-roblox.vercel.app/docs/v2/migrating-from-v1) to move a project.
-
-### Feedback
-
-Report if anything breaks in [GitHub Issues](https://github.com/LDGerrits/rogen/issues) or on [Discord](https://discord.com/channels/385151591524597761/1503801029232295996).
-
-[2.0.0-beta.1]: https://github.com/LDGerrits/rogen/releases/tag/v2.0.0-beta.1
+- **Breaking:** The 1.x config keys and flags. `source` is now `sourcePaths`, `aliases` and the built-in keywords are now `routes`, a mode's `build` is now `compiledPath`, and `project` is now the config's `tree`. `casing`, `unwrap`, `verbatim`, tags and modes are gone; [Migrating from v1](https://rogen-roblox.vercel.app/docs/v2/migrating-from-v1) says what replaces each.
+- **Breaking:** The `.structure`, `.sync`, `.verbatim` and `.unwrap` marker files.
+- **Breaking:** Several places from one config. Each place has a config of its own.
+- **Breaking:** `rogen watch` and `-w`. Use `rogen write --watch`, or `rogen serve`, which writes the project file on every change.
 
 ## [1.4.4] - 2026-08-20
 
-This patch fixes a regression introduced in 1.4.2.
+### Fixed
 
-### Fixes
-
-* **StarterCharacterScripts and StarterPlayerScripts aliases:** Fixed an issue where adding custom aliases for nested services (`StarterCharacterScripts` or `StarterPlayerScripts`) did not generate the correct nodes in the project file.
-
-[1.4.4]: https://github.com/LDGerrits/rogen/releases/tag/v1.4.4
+- Custom aliases for nested services (`StarterCharacterScripts` or `StarterPlayerScripts`) generate the correct nodes in the project file again. This broke in 1.4.2.
 
 ## [1.4.3] - 2026-08-15
 
-This patch fixes a bug where folders with semantic version names were incorrectly removed during build.
+### Fixed
 
-### Fixes and Improvements
-
-* **Data File Classification:** Fixed an issue where folders with semantic version names (e.g., `sleitnick_signal@2.0.3`) were incorrectly detected as data files. Rogen now uses a whitelist of supported data extensions (those supported by Rojo and Argon) to prevent this from happening.
-
-[1.4.3]: https://github.com/LDGerrits/rogen/releases/tag/v1.4.3
+- Folders with a version in their name, such as `sleitnick_signal@2.0.3`, were taken for data files and removed from the build. Rogen now only takes the data file extensions that Rojo and Argon support.
 
 ## [1.4.2] - 2026-08-10
 
-This patch brings major stability fixes for Rojo and Windows users, and smarter project file generation.
+### Added
 
-### Major Upgrades
+- A log line for the first run, even when nothing changed.
 
-* **Rojo Stability & Live Deletions:** Deleting a file or folder during `rojo serve` no longer has any possibility of crashing Rojo. Rogen now builds entries using Rojo's optional path format (`{ "optional": path }`).
-* **Windows "Folder in Use" Fix:** Watching now polls for changes (only on Windows). Polling stops editors like VSCode from showing "folder in use" prompts.
-* **Stale Instance Cleanup:** Generated folders set `$ignoreUnknownInstances: false` by default.
-* **Atomic Writes:** Rogen writes the project file atomically to prevent watchers from reading a half-written file.
+### Changed
 
-### Bug Fixes
+- Generated entries use Rojo's optional path form (`{ "optional": path }`), so deleting a file or folder during `rojo serve` no longer crashes Rojo.
+- Watching polls for changes on Windows, so editors such as VS Code no longer show "folder in use" prompts.
+- Generated folders set `$ignoreUnknownInstances: false`.
+- The project file is written atomically, so a watcher never reads a half-written file.
+- A better project tree when you use `globIgnorePaths`.
 
-* **TypeScript Definitions:** Fixed a bug where Rogen failed to ignore `*.d.ts` files due to a bug introduced in v1.4.0.
-* **Glob Ignore Paths:** Improved the project tree structure when you use `globIgnorePaths`.
-* **Service Containers:** Fixed a desyncing issue for undefined service containers.
-* **Luau Project Deletions:** Fixed a bug where the watcher fired mid-deletion and tried to rebuild deleted paths as empty stubs. Rogen now creates placeholder stubs only for compiled projects (TypeScript or Darklua). In Luau projects, Rogen simply drops the old node.
+### Fixed
 
-### Additions
-
-* **Initial Run Log:** Added a log message for the first run even if there were no changes for improved feedback.
-
-[1.4.2]: https://github.com/LDGerrits/rogen/releases/tag/v1.4.2
+- `*.d.ts` files were not ignored. This broke in 1.4.0.
+- Undefined service containers went out of sync.
+- In Luau projects, the watcher fired in the middle of a deletion and rebuilt deleted paths as empty stubs. Placeholder stubs are now made only for compiled projects (TypeScript or Darklua).
 
 ## [1.4.1] - 2026-08-01
 
-This patch fixes a folder collapsing edge-case and stops raw data files from preventing rebuilds.
+### Changed
 
-### Fixes and Improvements
+- An unmapped data file no longer stops the build. Rogen leaves it out of the tree, finishes the build, and warns you to use `globIgnorePaths` or to wrap it in a folder.
 
-* **Folder Collapsing:** Fixed an issue where folder collapsing overwrote a parent node's own `$path`. Rogen now skips folder collapsing on nodes with an existing `$path`.
-* **Data File Handling:** Rogen no longer stops building `project.json` when it finds an unmapped raw data file. Rogen now removes these files from the tree, finishes the build, and warns you to use `globIgnorePaths` or to wrap them in a folder.
+### Fixed
 
-[1.4.1]: https://github.com/LDGerrits/rogen/releases/tag/v1.4.1
+- Folder collapsing overwrote a parent node's own `$path`. Rogen now skips folder collapsing on nodes with a `$path`.
 
 ## [1.4.0] - 2026-07-31
 
-Introducing a new [documentation website](https://rogen-playfully.vercel.app), major stability fixes for Rojo, and a powerful tag system. If you use an old configuration, Rogen will warn you exactly what to change.
+### Added
 
-### Breaking Changes
+- Tags, which leave files out of a build, such as tests and mock data. Define tags in your config and apply them to files or folders.
+- The `unwrap` config option, which removes the global wrapper folders.
+- The `globIgnorePaths` config option, which ignores files by pattern.
+- The `casing` config option, which sets folder names to `"camelCase"` or `"PascalCase"` (contributed by @bo-rges).
+- Invisible folders: a folder name in parentheses, like `(inventory)`, keeps its files together on disk but leaves the folder out of Roblox Studio.
+- File hoisting: a `^` at the start of a file name places it at the root of a service.
+- The `.structure`, `.sync`, `.verbatim` and `.unwrap` marker files, which change how Rogen reads a folder.
+- The plus sign (`+`) as a routing delimiter in file names, beside dots, hyphens and underscores.
+- Support for data files such as `.json` and `.yml`.
+- Full support for Argon.
+- Warnings for colliding file paths, and for an old configuration, saying what to change.
+- The `watch` and `init` commands. The `-w`, `--watch`, `-i` and `--init` flags still work.
+- The `-v` and `--version` flags.
+- The npm package: `npm i @ldgerrits/rogen`.
+- A [documentation website](https://rogen-playfully.vercel.app).
 
-* **Configuration:** Configured paths now resolve relative to the `.rogen.json` file, not your current terminal folder. You can now run Rogen from any directory, which makes managing multi-place projects much easier. (Paths passed via CLI flags still use your terminal folder.)
-* **Configuration:** The `.rogen.json` file now uses `project` instead of `template` to define the base tree.
-* **Configuration:** The `verbatim` boolean replaces the old `keepRouteNames` setting.
-* **CLI:** The `-t` flag now activates tags. It no longer sets the template.
-* **CLI:** The `-p` or `--project` flag overrides the project file. This replaces the old `-t` template flag.
+### Changed
 
-### Major Upgrades
-
-* **Rojo Stability:** Improved the generated Rojo structure. This fix significantly reduces Rojo crashes when deleting files or folders.
-* **Tag System:** Rogen now supports build-time dependency injection. You can filter test files and mock data from production builds. Define tags in your config, then apply them to files or folders. Rogen removes files with inactive tags from the build entirely.
-* **Data Files:** Rogen now properly handles data files like `.json` and `.yml`.
-* **Argon Support:** Rogen now fully supports Argon.
-
-### Additions
-
-* **New Config Options:** Use `unwrap` to remove global wrapper folders, and use `globIgnorePaths` to ignore exact file patterns. Use `casing` to set folder formatting to `"camelCase"` or `"PascalCase"` (contributed by @bo-rges)
-* **Invisible Folders:** Wrap a folder name in parentheses, like `(inventory)`. Rogen keeps the files together on your machine but removes the folder from Roblox Studio.
-* **File Hoisting:** Add a `^` symbol to the start of a file name to place it exactly at the root of a service.
-* **New Marker Files:** Drop `.structure`, `.sync`, `.verbatim`, or `.unwrap` into a folder to change how Rogen reads its contents.
-* **New Routing Delimiter:** Use the plus symbol (`+`) as a routing delimiter in file names, alongside dots, hyphens, and underscores.
-* **Logging & Collision Warnings:** Rogen logs events more clearly and warns you when file paths collide.
-* **Exact Keyword Names:** If a file name matches a routing keyword exactly, Rogen treats it as the name, not as a routing affix.
-* **CLI Commands:** You can run `watch` and `init` directly as commands. The old `-w`, `--watch`, `-i`, and `--init` flags still work.
-* **Version Check:** View the installed version using the new `-v` or `--version` flag.
-
-### Package Manager Support
-
-- You can now install Rogen with npm using `npm i @ldgerrits/rogen`
-
-[1.4.0]: https://github.com/LDGerrits/rogen/releases/tag/v1.4.0
+- **Breaking:** Paths in the config are resolved from the `.rogen.json` file, not from your terminal's folder, so Rogen runs from any folder. Paths given as flags still use your terminal's folder.
+- **Breaking:** The `project` config option replaces `template` for the base tree.
+- **Breaking:** The `verbatim` config option replaces `keepRouteNames`.
+- **Breaking:** The `-t` flag activates tags. It no longer sets the template.
+- **Breaking:** The `-p` and `--project` flags set the project file, which `-t` used to do.
+- A file name that is exactly a routing keyword is now its name, not a routing affix.
+- The generated Rojo tree crashes Rojo far less when you delete files or folders.
+- Clearer log messages.
 
 ## [1.3.1] - 2026-06-30
 
-- Rogen's code moved to TypeScript. Nothing changes in how you use it.
+### Changed
 
-[1.3.1]: https://github.com/LDGerrits/rogen/releases/tag/v1.3.1
+- Rogen's code moved to TypeScript. Nothing changes in how you use it.
 
 ## [1.3.0] - 2026-06-27
 
-- **Marker files:** An empty `.server`, `.client` or `.shared` file routes the folder it is in, and the folder keeps its name.
-- **Prefixes:** A routing keyword can start a file name as well as end it, as in `server.data.ts` or `serverData.ts`.
-- **File names win:** A file's prefix or suffix now overrides its folder and marker file. Before, the folder won.
-- **Renamed:** `keepSuffixes` and `-k, --keepSuffixes` are now `keepRouteNames` and `-k, --keepRouteNames`.
+### Added
 
-[1.3.0]: https://github.com/LDGerrits/rogen/releases/tag/v1.3.0
+- Marker files: an empty `.server`, `.client` or `.shared` file routes the folder it is in, and the folder keeps its name.
+- Routing prefixes: a keyword can start a file name as well as end it, as in `server.data.ts` or `serverData.ts`.
+
+### Changed
+
+- **Breaking:** A file's prefix or suffix overrides its folder and its marker file. Before, the folder won.
+- **Breaking:** `keepSuffixes` and `-k, --keepSuffixes` are renamed to `keepRouteNames` and `-k, --keepRouteNames`.
 
 ## [1.2.2] - 2026-06-15
 
-- **Watching on Linux:** Fixed watching on Linux by replacing `fs.watch` with chokidar.
+### Fixed
 
-[1.2.2]: https://github.com/LDGerrits/rogen/releases/tag/v1.2.2
+- Watching on Linux, which now uses chokidar instead of `fs.watch`.
 
 ## [1.2.1] - 2026-06-01
 
-- Fixed a bug in watching introduced in 1.2.0.
+### Fixed
 
-[1.2.1]: https://github.com/LDGerrits/rogen/releases/tag/v1.2.1
+- A bug in watching introduced in 1.2.0.
 
 ## [1.2.0] - 2026-06-01
 
-- **Several sources:** `source` takes a list of folders, and `-s` can be passed more than once. Rogen merges them into one project: folders with the same route merge, and when two sources hold the same file, the one listed last wins. Useful for multi-place games that share a core.
+### Added
 
-[1.2.0]: https://github.com/LDGerrits/rogen/releases/tag/v1.2.0
+- Several sources: `source` takes a list of folders, and `-s` can be given more than once. Folders with the same route merge, and when two sources hold the same file, the one listed last wins.
 
 ## [1.1.1] - 2026-05-22
 
-- **Init:** `rogen -i` (or `--init`) writes a default `.rogen.json`.
-- **Aliases:** The `aliases` key routes your own keywords or folders to a service, such as `"Controller": "ReplicatedStorage"`, and can override the default routing.
-- **Keep suffixes:** The `keepSuffixes` key and the `-k` flag keep routing suffixes in script names instead of stripping them.
+### Added
 
-[1.1.1]: https://github.com/LDGerrits/rogen/releases/tag/v1.1.1
+- The `-i` and `--init` flags, which write a default `.rogen.json`.
+- The `aliases` config option, which routes your own keywords or folders to a service, such as `"Controller": "ReplicatedStorage"`, and can override the default routing.
+- The `keepSuffixes` config option and the `-k` flag, which keep routing suffixes in script names.
 
 ## [1.1.0] - 2026-05-21
 
-- **Config lookup:** Rogen reads `.rogen.json`, or else the first `*.rogen.json` in the folder.
-- **CLI:** Fixed `-h` and `-b`, which the help listed but Rogen didn't read.
-- Fixed the built-in config Rogen uses when there is no `.rogen.json`.
+### Changed
 
-[1.1.0]: https://github.com/LDGerrits/rogen/releases/tag/v1.1.0
+- Rogen reads `.rogen.json`, or else the first `*.rogen.json` in the folder.
+
+### Fixed
+
+- The `-h` and `-b` flags, which the help listed but Rogen didn't read.
+- The built-in config Rogen uses when there is no `.rogen.json`.
 
 ## [1.0.2] - 2026-05-20
 
-- Compiled files that are not there yet get an empty placeholder right away, so Rojo doesn't fail and the compiler has the tree it needs. Before, Rogen waited up to 5 seconds and then dropped them.
+### Changed
 
-[1.0.2]: https://github.com/LDGerrits/rogen/releases/tag/v1.0.2
+- Compiled files that are not there yet get an empty placeholder right away, so Rojo doesn't fail and the compiler has the tree it needs. Before, Rogen waited up to 5 seconds and then dropped them.
 
 ## [1.0.1] - 2026-05-19
 
-- **Watching:** `rogen -w` regenerates the project file when your files change, so you no longer need chokidar-cli.
-- **Help:** `rogen --help` lists every option.
-- Waits for compiled output (such as roblox-ts) before writing the project file.
+### Added
 
-[1.0.1]: https://github.com/LDGerrits/rogen/releases/tag/v1.0.1
+- The `-w` and `--watch` flags, which regenerate the project file when your files change, so you no longer need chokidar-cli.
+- The `--help` flag.
+
+### Changed
+
+- Rogen waits for compiled output, such as roblox-ts's, before it writes the project file.
 
 ## [1.0.0] - 2026-05-19
 
-- First release. Rogen routes your files to Roblox services by folder name (`server`, `client`, `shared` or a service name) or by file-name suffix, and generates the Rojo project file from them. It supports Luau, roblox-ts and Darklua.
+### Added
 
+- Routing files to Roblox services by folder name (`server`, `client`, `shared` or a service name) or by file-name suffix, and generating the Rojo project file from them.
+- Support for Luau, roblox-ts and Darklua.
+
+[unreleased]: https://github.com/LDGerrits/rogen/compare/v2.0.0-beta.1...HEAD
+[2.0.0-beta.1]: https://github.com/LDGerrits/rogen/compare/v1.4.4...v2.0.0-beta.1
+[1.4.4]: https://github.com/LDGerrits/rogen/compare/v1.4.3...v1.4.4
+[1.4.3]: https://github.com/LDGerrits/rogen/compare/v1.4.2...v1.4.3
+[1.4.2]: https://github.com/LDGerrits/rogen/compare/v1.4.1...v1.4.2
+[1.4.1]: https://github.com/LDGerrits/rogen/compare/v1.4.0...v1.4.1
+[1.4.0]: https://github.com/LDGerrits/rogen/compare/v1.3.1...v1.4.0
+[1.3.1]: https://github.com/LDGerrits/rogen/compare/v1.3.0...v1.3.1
+[1.3.0]: https://github.com/LDGerrits/rogen/compare/v1.2.2...v1.3.0
+[1.2.2]: https://github.com/LDGerrits/rogen/compare/v1.2.1...v1.2.2
+[1.2.1]: https://github.com/LDGerrits/rogen/compare/v1.2.0...v1.2.1
+[1.2.0]: https://github.com/LDGerrits/rogen/compare/v1.1.1...v1.2.0
+[1.1.1]: https://github.com/LDGerrits/rogen/compare/v1.1.0...v1.1.1
+[1.1.0]: https://github.com/LDGerrits/rogen/compare/v1.0.2...v1.1.0
+[1.0.2]: https://github.com/LDGerrits/rogen/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/LDGerrits/rogen/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/LDGerrits/rogen/releases/tag/v1.0.0

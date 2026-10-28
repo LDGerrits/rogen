@@ -1,8 +1,10 @@
 import fs from "fs";
 import { pathToFileURL } from "url";
 
-const UNRELEASED = "## Unreleased";
-const RELEASES = "https://github.com/LDGerrits/rogen/releases/tag/";
+const UNRELEASED = "## [Unreleased]";
+const COMPARE = "https://github.com/LDGerrits/rogen/compare/";
+const UNRELEASED_LINK = /^\[unreleased\]: .*\/compare\/v(.+)\.\.\.HEAD$/i;
+const LINK_DEFINITION = /^\[[^\]]+\]: \S+$/;
 
 const linesOf = (changelog: string): string[] => changelog.split(/\r?\n/);
 
@@ -14,7 +16,7 @@ const nextHeading = (lines: readonly string[], start: number): number => {
 	return found === -1 ? lines.length : found;
 };
 
-/** What the changelog says under `version`, without its heading and link; undefined when it says nothing. */
+/** What the changelog says under `version`, without its heading; undefined when it says nothing. */
 export function releaseNotes(
 	changelog: string,
 	version: string
@@ -26,15 +28,15 @@ export function releaseNotes(
 	if (heading === -1) return undefined;
 	const notes = lines
 		.slice(heading + 1, nextHeading(lines, heading))
-		.filter((line) => !line.startsWith(`[${version}]: `))
+		.filter((line) => !LINK_DEFINITION.test(line))
 		.join("\n")
 		.trim();
 	return notes === "" ? undefined : notes;
 }
 
 /**
- * The changelog with the notes under Unreleased moved under a heading for `version`, released on `date`.
- * @throws Error when the changelog has notes for neither, so a release can't go out without them.
+ * The changelog with the notes under Unreleased moved under a heading for `version`, released on `date`, and its compare links moved on.
+ * @throws Error when the changelog has notes for neither, or no `[unreleased]` compare link, so a release can't go out without them.
  */
 export function withRelease(
 	changelog: string,
@@ -45,17 +47,29 @@ export function withRelease(
 	const lines = linesOf(changelog);
 	const unreleased = lines.indexOf(UNRELEASED);
 	const end = nextHeading(lines, unreleased);
-	const notes =
-		unreleased === -1
-			? ""
-			: lines
-					.slice(unreleased + 1, end)
-					.join("\n")
-					.trim();
+	const section = unreleased === -1 ? [] : lines.slice(unreleased + 1, end);
+	const notes = section
+		.filter((line) => !LINK_DEFINITION.test(line))
+		.join("\n")
+		.trim();
 	if (notes === "")
 		throw new Error(
 			`CHANGELOG.md has no notes for ${version}: write them under "${UNRELEASED}".`
 		);
+	if (!lines.some((line) => UNRELEASED_LINK.test(line)))
+		throw new Error(
+			"CHANGELOG.md has no [unreleased] link comparing the last release with HEAD."
+		);
+	const withLinks = (part: readonly string[]): string[] =>
+		part.flatMap((line) => {
+			const previous = UNRELEASED_LINK.exec(line)?.[1];
+			return previous === undefined
+				? [line]
+				: [
+						`[unreleased]: ${COMPARE}v${version}...HEAD`,
+						`[${version}]: ${COMPARE}v${previous}...v${version}`,
+					];
+		});
 	return [
 		...lines.slice(0, unreleased + 1),
 		"",
@@ -63,9 +77,8 @@ export function withRelease(
 		"",
 		notes,
 		"",
-		`[${version}]: ${RELEASES}v${version}`,
-		"",
-		...lines.slice(end),
+		...withLinks(section.filter((line) => LINK_DEFINITION.test(line))),
+		...(end === lines.length ? [""] : withLinks(lines.slice(end))),
 	].join("\n");
 }
 
