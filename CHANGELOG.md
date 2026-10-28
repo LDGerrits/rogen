@@ -2,7 +2,7 @@
 
 All notable changes to Rogen are listed here.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Rogen adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) from 2.0.0 on. Releases before 2.0.0 did not always: some minor releases held breaking changes, and some patch releases held new features.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Rogen adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) from 2.0.0 on.
 
 ## [Unreleased]
 
