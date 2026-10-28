@@ -143,9 +143,12 @@ export class StartedServer extends AbstractDisposable {
 					state.kind === "serving" &&
 					state.info.project === target.project
 				) {
+					// Recorded before it is announced, so a serve killed right after still leaves its server's record.
 					this.recordWrite = this.writeRecord(state.info);
-					this.listener.served({ target, info: state.info });
-					return;
+					return this.recordWrite.then(() => {
+						if (this.stoppedOnPurpose || this.exited) return;
+						this.listener.served({ target, info: state.info });
+					});
 				}
 				this.warnWhenSlow(state);
 				this.readyDelay = Math.min(
