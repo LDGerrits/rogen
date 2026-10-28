@@ -8,6 +8,7 @@ written:
   AGENTS.md
   default.project.json
   default.rogen.json
+  out/main.server.luau
 
 default.rogen.json:
 {
@@ -43,4 +44,7 @@ default.rogen.json:
 $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
+    rbxts_include: Folder
+      node_modules: Folder
   ServerScriptService: ServerScriptService
+    main: Script  <- out/main.server.luau

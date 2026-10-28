@@ -7,6 +7,12 @@ import { ProjectText } from "../rojo/project-text.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { OutputFile } from "./write.js";
+import { PLACEHOLDER_SOURCE, Placeholder } from "./compiled-layout.js";
+
+export interface OutputWriteOptions {
+	readonly force?: boolean;
+	readonly placeholders?: readonly Placeholder[];
+}
 
 /** Writes a tree to its output through a staging file, so a reader never sees half a project file. */
 export class OutputWriter {
@@ -16,17 +22,20 @@ export class OutputWriter {
 		return ProjectText.of(projectFile);
 	}
 
-	/** Writes the file when its bytes differ; `force` writes unchanged bytes so a watcher sees them. */
+	/** Writes the file when its bytes differ; `force` writes unchanged bytes so a watcher sees them. The missing `placeholders` are created first, whether or not the file is written. */
 	async write(
 		output: OutputFile,
 		tree: RojoProjectFile,
-		{ force = false } = {}
+		{ force = false, placeholders = [] }: OutputWriteOptions = {}
 	): Promise<Result<boolean, DiagnosticsError>> {
 		const projectFile = output.path;
 		const content = OutputWriter.textOf(tree);
 		const temporary = output.stagingFile(randomUUID());
 
 		const written = await tryWithAsync(async (): Promise<boolean> => {
+			await Promise.all(
+				placeholders.map((each) => this.createPlaceholder(each))
+			);
 			const onDisk = (await this.fileSystemService.isFile(projectFile))
 				? await this.fileSystemService.readFile(projectFile)
 				: undefined;
@@ -47,5 +56,15 @@ export class OutputWriter {
 				),
 			])
 		);
+	}
+
+	private async createPlaceholder({
+		path,
+		kind,
+	}: Placeholder): Promise<void> {
+		if (await this.fileSystemService.exists(path)) return;
+		if (kind === "folder")
+			await this.fileSystemService.createDirectory(path);
+		else await this.fileSystemService.writeFile(path, PLACEHOLDER_SOURCE);
 	}
 }

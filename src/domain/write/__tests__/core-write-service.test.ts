@@ -326,6 +326,19 @@ describe("CoreWriteService", () => {
 			expect(outcome.warnings).toEqual([]);
 		});
 
+		it("should create the compiled folders the project mounts, so Rojo watches them before the compiler writes", async () => {
+			await fs.writeFile(abs("src/Coins/shared/Coins.luau"), "");
+
+			await runOf([
+				configOf({
+					compiledPath: abs("out"),
+					routes: { shared: "ReplicatedStorage/shared" },
+				}),
+			]);
+
+			expect(await fs.isDirectory(abs("out/Coins/shared"))).toBe(true);
+		});
+
 		it("should keep the compiled path warnings of a config that was not written", async () => {
 			await fs.writeFile(abs("lobby/src/init.meta.json"), "{ nope");
 
@@ -355,6 +368,12 @@ describe("CoreWriteService", () => {
 			expect(result).toMatchObject([{ kind: "wouldWrite" }]);
 			expect(result[0]).not.toHaveProperty("blockedBy");
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
+		});
+
+		it("should create no compiled folder", async () => {
+			await checkOf(configOf({ compiledPath: abs("dist") }));
+
+			expect(await fs.exists(abs("dist"))).toBe(false);
 		});
 
 		it("should raise the diagnostics a write raises, the compiled path's included", async () => {

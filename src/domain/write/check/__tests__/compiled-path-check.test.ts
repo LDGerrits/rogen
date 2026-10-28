@@ -5,6 +5,7 @@ import { ResolvedConfigSpec } from "../../../config/__tests__/mock-config-servic
 import { ResolvedConfig } from "../../../config/resolved-config.js";
 import { SyncTool } from "../../../toolchain/toolchain.js";
 import { CompiledPathCheck } from "../compiled-path-check.js";
+import { PLACEHOLDER_SOURCE } from "../../compiled-layout.js";
 import {
 	abs,
 	configOf as baseConfigOf,
@@ -120,6 +121,31 @@ describe("CompiledPathCheck", () => {
 					expect(warnings[0].message).toContain(
 						'nearest path that exists is "out" — has your compiler or processor run?'
 					);
+				});
+
+				it("should take a compiled path that holds only empty folders as nothing emitted", async () => {
+					await fs.writeFile(abs("src/Inventory/A.ts"), "");
+					await fs.createDirectory(abs("out/Inventory"));
+
+					const warnings = await check(fs, emittedConfigOf());
+
+					expect(warnings).toMatchObject([
+						{ code: "output.nothingEmitted", resource: abs("src") },
+					]);
+				});
+
+				it("should take a compiled path that holds only placeholder scripts as nothing emitted", async () => {
+					await fs.writeFile(abs("src/Save.server.ts"), "");
+					await fs.writeFile(
+						abs("out/Save.server.luau"),
+						PLACEHOLDER_SOURCE
+					);
+
+					const warnings = await check(fs, emittedConfigOf());
+
+					expect(warnings).toMatchObject([
+						{ code: "output.nothingEmitted", resource: abs("src") },
+					]);
 				});
 
 				it("should warn once for the source path whose paths went missing and stay quiet for the other", async () => {

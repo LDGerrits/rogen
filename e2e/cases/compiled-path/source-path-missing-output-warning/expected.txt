@@ -6,10 +6,12 @@ stderr:
 
 written:
   default.project.json
+  out/core/Types.luau
 
 $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
+      Types: ModuleScript  <- out/core/Types.luau
   ServerScriptService: ServerScriptService
     Save: Script  <- out/place/Save.server.luau

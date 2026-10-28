@@ -1,0 +1,24 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+stderr:
+  out - warning: the compiled path "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
+
+$ rogen write
+exit 0
+stdout: (not shown)
+stderr:
+  src - warning: nothing emitted for source path "src" exists under "out". The nearest path that exists is "out" — has your compiler or processor run? (output.nothingEmitted)
+
+written:
+  default.project.json
+  out/Save.server.luau
+  out/Types.luau
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Types: ModuleScript  <- out/Types.luau
+  ServerScriptService: ServerScriptService
+    Save: Script  <- out/Save.server.luau

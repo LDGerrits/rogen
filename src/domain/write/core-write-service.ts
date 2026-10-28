@@ -334,7 +334,7 @@ export class CoreWriteService implements WriteService {
 				: await this.writer.write(
 						new OutputFile(config.projectFile),
 						projectFile,
-						options
+						{ ...options, placeholders: attempt.placeholders }
 					);
 			if (written.isErr()) failed = config.file;
 			outcomes.push(

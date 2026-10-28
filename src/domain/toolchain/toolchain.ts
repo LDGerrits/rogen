@@ -21,6 +21,8 @@ export interface SyncTool {
 	readsOnly?(source: string): boolean;
 	/** A script name the tool writes as Rojo's `init`, which makes the file its folder too. */
 	readonly initName?: string;
+	/** The folder beside the project file that the tool writes its runtime library to, outside the compiled path. */
+	readonly runtimeFolder?: string;
 	readonly metaReplacement?: MetaReplacement;
 	readonly dataReplacement?: DataReplacement;
 }
