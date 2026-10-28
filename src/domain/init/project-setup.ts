@@ -124,6 +124,8 @@ function processedPathOf({ processed }: ProjectChoices): string | undefined {
 
 const UNMOUNTED_SHOWN = 5;
 
+const LIFTED_HERE = `${DEFAULT_PROJECT_FILE} is here, which init lifts.`;
+
 export class ProjectSetup implements Setup<ProjectChoices> {
 	private readonly files: ProjectFiles;
 
@@ -138,6 +140,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	async ask(): Promise<Result<ProjectChoices | undefined, Diagnostic[]>> {
 		const { directory, questions } = this;
 		const kind = questions.kind();
+		const tree = await this.resolveTree(questions.tree(directory), kind);
+		if (tree.isErr()) return tree;
 		const picked = await questions.language(directory);
 		if (picked === undefined) return ok(undefined);
 		const starter = this.starterFor(kind, picked);
@@ -164,15 +168,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 		const sourcePaths = places
 			? [...places.sourcePaths]
-			: (await this.startsUnrouted(kind))
-				? []
-				: await questions.sourcePaths(directory, language);
+			: takesRoutes(tree.value)
+				? await questions.sourcePaths(directory, language)
+				: [];
 		if (sourcePaths === undefined) return ok(undefined);
-
-		const chosen = await questions.tree(directory);
-		if (chosen === undefined) return ok(undefined);
-		const tree = await this.resolveTree(chosen, kind);
-		if (tree.isErr()) return tree;
 
 		const compiledPath = language.compiler?.outDir;
 
@@ -366,14 +365,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		language: Language,
 		scaffolded: boolean
 	): string | undefined {
-		const given = this.questions.choices.projectFile;
 		if (kind !== "place") return `is for a place, not for a ${kind}.`;
 		const later =
 			"Start with one place, then add more by hand, as the places guide shows.";
 		if (language.compiler && !scaffolded)
 			return `starts a new ${language.copy.label} project with places, and this folder already has one. ${later}`;
-		if (this.directory.hasHandWrittenProject && given !== "new")
-			return `starts a new tree, and ${DEFAULT_PROJECT_FILE} is here. Pass --project-file new, or leave --places out to lift it.`;
+		if (this.directory.hasHandWrittenProject)
+			return `starts a new tree, and ${LIFTED_HERE} Move ${DEFAULT_PROJECT_FILE} away first, or leave --places out.`;
 		return undefined;
 	}
 
@@ -419,7 +417,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			kind !== "place"
 				? `is for a place, not for a ${kind}.`
 				: tree.kind !== "new"
-					? `needs a new tree, and ${DEFAULT_PROJECT_FILE} is lifted.`
+					? `needs a new tree, and ${LIFTED_HERE} Move ${DEFAULT_PROJECT_FILE} away first, or leave --sample out.`
 					: language.compiler && !scaffolded
 						? `isn't written for ${language.copy.label} here, where ${language.copy.label} was set up already.`
 						: codeFolders.length > 0
@@ -463,20 +461,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		);
 	}
 
-	/** Whether the tree is settled before any question and takes no routes, so a source path would change nothing. */
-	private async startsUnrouted(kind: InitKind): Promise<boolean> {
-		const { directory, questions } = this;
-		const given = questions.choices.projectFile;
-		if (!directory.hasHandWrittenProject || given === "new")
-			return kind !== "place";
-		if (given !== "lift" && questions.interactive) return false;
-		const project = await new ProjectReader(
-			this.fileSystemService,
-			directory.path
-		).read(DEFAULT_PROJECT_FILE);
-		return project.isOk() && !project.value.takesRoutes;
-	}
-
 	private async resolveTree(
 		chosen: TreeChoice,
 		kind: InitKind
@@ -496,12 +480,15 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			this.directory.path
 		);
 		const project = await reader.read(chosen.from);
-		return project.isErr()
-			? err(project.error)
-			: ok({
-					...chosen,
-					project: await reader.withInitFolders(project.value),
-				});
+		if (project.isErr()) return err(project.error);
+		if (kind !== "place" && project.value.takesRoutes)
+			throw new UsageError(
+				`--kind ${kind} starts a new ${kind}, and ${DEFAULT_PROJECT_FILE} is here, which init lifts as a place. Move ${DEFAULT_PROJECT_FILE} away first, or leave --kind out.`
+			);
+		return ok({
+			...chosen,
+			project: await reader.withInitFolders(project.value),
+		});
 	}
 
 	plan(choices: ProjectChoices, builder: InitPlanBuilder): void {

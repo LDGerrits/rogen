@@ -867,11 +867,11 @@ Move the file out of the way.
 Error. `init` found a hand-written `default.project.json` to lift into `default.rogen.json`, but it couldn't read the file, or the file isn't a valid project file.
 
 ```
-error: couldn't read this file to lift it: permission denied. (init.projectUnreadable)
+error: couldn't read this file to lift it: permission denied. Fix the file, or move it away to start a new project. (init.projectUnreadable)
 error: this file does not exist, so it can't be lifted. (init.projectUnreadable)
 ```
 
-Fix the file's permissions or its contents, or move it out of the way.
+Fix the file's permissions or its contents. To start a new project instead, move `default.project.json` away: `init` always lifts it when it is there.
 
 ### `init.mountNarrowed` [#init-mountnarrowed]
 

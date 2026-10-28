@@ -807,25 +807,16 @@ describe("init command", () => {
 	});
 
 	describe("project file", () => {
-		it("should ask whether to lift a hand-written default.project.json", async () => {
+		it("should lift a hand-written default.project.json in a terminal without asking about it", async () => {
 			await write("default.project.json", '{"name":"hand-written"}');
 			const prompts = new MockPromptService({});
 
 			await runInit(prompts);
 
-			expect(prompts.asked).toContain("Project file");
+			expect(prompts.asked).not.toContain("Project file");
 			expect((await readJson("default.rogen.json")).name).toBe(
 				"hand-written"
 			);
-		});
-
-		it("should start a new tree when that is the answer", async () => {
-			await write("default.project.json", '{"name":"hand-written"}');
-			const prompts = new MockPromptService({ "Project file": "new" });
-
-			await runInit(prompts);
-
-			expect((await readJson("default.rogen.json")).name).toBeUndefined();
 		});
 	});
 

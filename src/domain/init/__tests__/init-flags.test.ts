@@ -358,20 +358,37 @@ describe("init choices given as flags", () => {
 		});
 	});
 
-	describe("--project-file", () => {
-		it("should refuse to lift a project file that isn't there", async () => {
-			const error = await refused(run(luau, { projectFile: "lift" }));
+	describe("beside a hand-written project file", () => {
+		const beside = (choices: InitChoices) =>
+			run(luau, choices, false, ["default.project.json"]);
 
-			expect(error.message).toContain("nothing to lift");
+		it("should lift it, and write down no choice for it", async () => {
+			const { asked, questions } = await beside({});
+
+			expect(asked.unwrap()?.tree).toMatchObject({
+				kind: "lift",
+				from: "default.project.json",
+			});
+			expect(decidedFlags(questions)).not.toContain("--project-file");
 		});
 
-		it("should start a new tree instead of lifting the one there", async () => {
-			const { asked } = await run(luau, { projectFile: "new" }, false, [
-				"default.project.json",
-			]);
-
-			expect(asked.unwrap()?.tree.kind).toBe("new");
+		it("should refuse --places and --sample, saying to move the file away first", async () => {
+			expect((await refused(beside({ places: true }))).message).toBe(
+				"--places starts a new tree, and default.project.json is here, which init lifts. Move default.project.json away first, or leave --places out."
+			);
+			expect((await refused(beside({ sample: true }))).message).toBe(
+				"--sample needs a new tree, and default.project.json is here, which init lifts. Move default.project.json away first, or leave --sample out."
+			);
 		});
+
+		it.each(["model", "plugin"] as const)(
+			"should refuse --kind %s when the file is a place's",
+			async (kind) => {
+				expect((await refused(beside({ kind }))).message).toBe(
+					`--kind ${kind} starts a new ${kind}, and default.project.json is here, which init lifts as a place. Move default.project.json away first, or leave --kind out.`
+				);
+			}
+		);
 	});
 });
 

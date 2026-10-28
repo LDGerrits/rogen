@@ -2,7 +2,7 @@ import { UsageError } from "../../base/errors.js";
 import { normalizeDir } from "../../base/path.js";
 import { joinedClosestFirst, joinedWithAnd } from "../../base/strings.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
-import { DEFAULT_CONFIG_FILE, DEFAULT_PROJECT_FILE } from "../config/config.js";
+import { DEFAULT_PROJECT_FILE } from "../config/config.js";
 import { Language, Mount, MountCandidate } from "../toolchain/toolchain.js";
 import { HOOK_SCRIPT_FILE } from "./agent/coding-agent.js";
 import { InitDirectory } from "./init-directory.js";
@@ -229,42 +229,10 @@ export class InitQuestions {
 			: splitList(answer).map(normalizeDir);
 	}
 
-	async tree(directory: InitDirectory): Promise<TreeChoice | undefined> {
-		const given = this.choices.projectFile;
-		if (!directory.hasHandWrittenProject) {
-			if (given === "lift")
-				throw new UsageError(
-					`${DEFAULT_PROJECT_FILE} doesn't exist, so there is nothing to lift.`
-				);
-			return { kind: "new" };
-		}
-		const lift: TreeChoice = { kind: "lift", from: DEFAULT_PROJECT_FILE };
-		if (given !== undefined)
-			return given === "lift" ? lift : { kind: "new" };
-		if (!this.interactive) {
-			this.decide("projectFile", "lift", "--project-file");
-			return lift;
-		}
-
-		const answer = await this.essential.select<TreeChoice["kind"]>({
-			message: "Project file",
-			description: `${DEFAULT_PROJECT_FILE} exists, and Rogen replaces it whenever it writes the project file.`,
-			choices: [
-				{
-					value: "lift",
-					label: `Lift ${DEFAULT_PROJECT_FILE} into ${DEFAULT_CONFIG_FILE}`,
-					hint: "keeps its name, properties and packages",
-				},
-				{
-					value: "new",
-					label: "Start a new tree",
-					hint: "packages are asked next",
-				},
-			],
-			initialValue: "lift",
-		});
-		if (answer === undefined) return undefined;
-		return answer === "lift" ? lift : { kind: "new" };
+	tree(directory: InitDirectory): TreeChoice {
+		return directory.hasHandWrittenProject
+			? { kind: "lift", from: DEFAULT_PROJECT_FILE }
+			: { kind: "new" };
 	}
 
 	private offeredMounts(

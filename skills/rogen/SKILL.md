@@ -14,7 +14,7 @@ Rogen's [agent rules](agent-rules.md) belong in the repo's `AGENTS.md`, where ev
 3. Run `rogen init` with those flags. It writes the `*.rogen.json` and adds the agent rules to `AGENTS.md`.
 4. Do what its `nextSteps` say, then run `rogen check` and fix what it prints.
 
-A Rojo project keeps its layout: each folder the project file mounted from `src` becomes a route, so every script stays where it was in the game. When Darklua writes the code to a folder of its own, such as `build`, and a `.darklua.json` is there, `default.rogen.json` reads `src` and `dist.rogen.json` reads that folder; serve it with `rogen serve dist`.
+`init` always lifts the tree of a `default.project.json` into `default.rogen.json`, and from then on `rogen write` writes `default.project.json` from the config, so changes go in the config. To start a new tree instead, move `default.project.json` away first. A Rojo project keeps its layout: each folder the project file mounted from `src` becomes a route, so every script stays where it was in the game. When Darklua writes the code to a folder of its own, such as `build`, and a `.darklua.json` is there, `default.rogen.json` reads `src` and `dist.rogen.json` reads that folder; serve it with `rogen serve dist`.
 
 ## Add the agent rules to a repo that has Rogen
 
