@@ -451,8 +451,9 @@ export class InitQuestions {
 		}
 		if (unmatched !== undefined)
 			return { routes, fallback: unmatched === "shared" };
+		const byDefault = "shared";
 		if (!this.interactive) {
-			this.decide("unmatched", "shared", "--unmatched");
+			this.decide("unmatched", byDefault, "--unmatched");
 			return { routes, fallback: true };
 		}
 
@@ -470,7 +471,7 @@ export class InitQuestions {
 					label: "Leave them out (Rogen warns when it does)",
 				},
 			],
-			initialValue: "shared",
+			initialValue: byDefault,
 		});
 		return fallback && { routes, fallback: fallback === "shared" };
 	}

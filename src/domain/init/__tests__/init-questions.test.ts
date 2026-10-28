@@ -691,21 +691,6 @@ describe("InitQuestions askProject", () => {
 				expect(result?.fallback).toBe(true);
 			});
 
-			it("should put files that match no route in the fallback unless told otherwise", async () => {
-				const prompts = new MockPromptService({});
-				let initial: string | undefined;
-				const original = prompts.select.bind(prompts);
-				prompts.select = ((options: Parameters<typeof original>[0]) => {
-					if (options.message === "Files that match no route")
-						initial = options.initialValue as string;
-					return original(options);
-				}) as typeof prompts.select;
-
-				await askLifting(prompts);
-
-				expect(initial).toBe("shared");
-			});
-
 			it("should accept a standard route id for the derived route that replaced it", async () => {
 				const result = (
 					await askLifting(new MockPromptService([], false), {
@@ -770,6 +755,21 @@ describe("InitQuestions askProject", () => {
 			});
 
 			expect(choices.routes).toEqual(["server", "starterGui"]);
+		});
+
+		it("should offer to put files that match no route in the shared route first", async () => {
+			const prompts = new MockPromptService({});
+			let initial: string | undefined;
+			const original = prompts.select.bind(prompts);
+			prompts.select = ((options: Parameters<typeof original>[0]) => {
+				if (options.message === "Files that match no route")
+					initial = options.initialValue as string;
+				return original(options);
+			}) as typeof prompts.select;
+
+			await askInitChoices(prompts, contextOf(luau));
+
+			expect(initial).toBe("shared");
 		});
 
 		it("should let files that match no route be left out", async () => {
