@@ -159,7 +159,7 @@ const explorer = (): [string, number, Icon, string][] => [
 	[W.file, 2, "scr", "file"],
 	[W.disk[4].replace(/@.*/, ""), 2, "scr", "arrive dim"],
 	["StarterPlayer", 0, "svc", "service"],
-	["StarterPlayerScripts", 1, "dir", "default open"],
+	["StarterPlayerScripts", 1, "svc", "default open"],
 	[W.feature, 2, "dir", "arrive feature shut"],
 ];
 
