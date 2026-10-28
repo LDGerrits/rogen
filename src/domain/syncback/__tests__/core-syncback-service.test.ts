@@ -682,6 +682,34 @@ describe("CoreSyncbackService", () => {
 			]);
 		});
 
+		it("should list a compiled script Rojo writes in another form as changed, not removed", async () => {
+			await compiled();
+			rojo.say = async () => {
+				await fs.delete(
+					mirror("ServerScriptService", "Combat", "Combat.luau")
+				);
+				await fs.writeFile(
+					mirror(
+						"ServerScriptService",
+						"Combat",
+						"Combat",
+						"init.luau"
+					),
+					"return 2"
+				);
+				return [];
+			};
+
+			const result = (await service.apply(request)).unwrap();
+
+			expect(result.compiled).toEqual([
+				{
+					instance: "ServerScriptService/Combat/Combat",
+					kind: "changed",
+				},
+			]);
+		});
+
 		it("should list a change inside a changed module too", async () => {
 			await writeFiles(
 				fs,

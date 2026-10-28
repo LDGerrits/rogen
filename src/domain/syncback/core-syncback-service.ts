@@ -933,11 +933,12 @@ export class CoreSyncbackService implements SyncbackService {
 		});
 	}
 
-	/** Each instance once, under its strongest kind, in path order; none below a removed one, nor a new one below a new one. */
+	/** Each instance once, under its strongest kind, a folder before what it holds; none below a removed one, nor a new one below a new one. */
 	private static outermost(
 		changes: readonly CompiledChange[]
 	): CompiledChange[] {
-		const strength = { changed: 0, added: 1, removed: 2 } as const;
+		// An instance Rojo rewrote in another form is gone in its old one, but still there.
+		const strength = { removed: 0, changed: 1, added: 2 } as const;
 		const kinds = new Map<string, CompiledChange["kind"]>();
 		for (const { instance, kind } of changes) {
 			const listed = kinds.get(instance);
@@ -958,7 +959,15 @@ export class CoreSyncbackService implements SyncbackService {
 				});
 			})
 			.map(([instance, kind]) => ({ instance, kind }))
-			.sort((a, b) => compareStrings(a.instance, b.instance));
+			.sort((a, b) => {
+				const [left, right] = [a, b].map(({ instance }) =>
+					instance.split("/")
+				);
+				for (let at = 0; at < Math.min(left.length, right.length); at++)
+					if (left[at] !== right[at])
+						return compareStrings(left[at], right[at]);
+				return left.length - right.length;
+			});
 	}
 
 	/** The instance a path of the mirror is, as an instance key: its folders, then the instance its file makes. */
