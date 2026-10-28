@@ -1,0 +1,25 @@
+{
+	"steps": [
+		["init", "--non-interactive", "--skip-git"],
+		["$", "cp", ".page/darklua.json", ".darklua.json"],
+		["$", "cp", ".page/dist.json", "dist.rogen.json"],
+		["$", "cp", ".page/release.json", "release.rogen.json"],
+		[
+			"$",
+			"cp",
+			".page/Wave.server.luau",
+			"src/Greeter/Server/Wave.server.luau"
+		],
+		[
+			"$",
+			"cp",
+			".page/Greeting.spec.luau",
+			"src/Greeter/Shared/Greeting.spec.luau"
+		],
+		["sourcemap", "-o", "sourcemap.json"],
+		["$", "darklua", "process", "src", "dist"],
+		["write", "dist"],
+		["write", "release"]
+	],
+	"show": [".darklua.json", "dist/Greeter/Server/Wave.server.luau"]
+}

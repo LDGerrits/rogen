@@ -15,7 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Removed
 
-- `rogen init` no longer asks about Darklua or sets it up: it writes no `.darklua.json`, Darklua pin, `dist.rogen.json` or `.gitignore` entry for Darklua's output, and its next steps run no `darklua process`. The `--darklua` and `--compiled-path` flags are gone. `rogen write` still knows Darklua's output in a `compiledPath`, and warns about it as before.
+- `rogen init` no longer asks about Darklua or sets it up: it writes no `.darklua.json`, Darklua pin, `dist.rogen.json` or `.gitignore` entry for Darklua's output, and its next steps run no `darklua process`. The `--darklua` and `--compiled-path` flags are gone. `rogen write` still knows Darklua's output in a `compiledPath`, and warns about it as before. [Using Darklua](https://rogen-roblox.vercel.app/docs/v2/setups/darklua) sets it up by hand.
 
 ### Fixed
 
