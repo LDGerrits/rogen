@@ -112,48 +112,45 @@ describe("syncback command", () => {
 		expect(await fs.exists(abs("default.project.json"))).toBe(false);
 	});
 
-	it.each([
-		["a run", { "non-interactive": true }],
-		["a dry run", { "dry-run": true }],
-	])(
-		"should refuse a project with a compiled path in %s, and write and run nothing",
-		async (_, flags) => {
-			const log = new MockLogService();
-			const running = commandHarness({
-				fs,
-				log,
-				config: new MockConfigService([
-					mockEntry(
-						{
-							name: "repo",
-							sourcePaths: [abs("src")],
-							routes: { "*": "ReplicatedStorage" },
-							compiledPath: abs("dist"),
-						},
-						abs("default.rogen.json")
-					),
-				]),
-				processes,
-				prompt: new MockPromptService([], false),
-			}).run("syncback", {
-				positionals: [],
-				options: { input: "game.rbxl", ...flags },
-			});
+	it("should run on a project with a compiled path, and list the compiled code it leaves out", async () => {
+		await fs.writeFile(abs("dist/Combat/Server/Combat.luau"), "");
+		const log = new MockLogService();
+		const running = commandHarness({
+			fs,
+			log,
+			config: new MockConfigService([
+				mockEntry(
+					{
+						name: "repo",
+						sourcePaths: [abs("src")],
+						routes: { Server: "ServerScriptService" },
+						compiledPath: abs("dist"),
+					},
+					abs("default.rogen.json")
+				),
+			]),
+			processes,
+			prompt: new MockPromptService([], false),
+		}).run("syncback", {
+			positionals: [],
+			options: { input: "game.rbxl", "non-interactive": true },
+		});
+		const [rojo] = await rojoRuns(1);
+		await fs.delete(
+			abs(".rogen-syncback/mirror/ServerScriptService/Combat/Combat.luau")
+		);
+		rojo.exit({ code: 0, signal: null });
 
-			const { error } = (await running) as ResultError<DiagnosticsError>;
-
-			expect(error.diagnostics).toMatchObject([
-				{
-					code: "syncback.compiledPath",
-					message: expect.stringContaining(
-						"reads compiled code from"
-					),
-				},
-			]);
-			expect(processes.spawned).toEqual([]);
-			expect(await fs.exists(abs("default.project.json"))).toBe(false);
-		}
-	);
+		expect((await running).isOk()).toBe(true);
+		expect(said(log).filter((text) => text.includes("(syncback."))).toEqual(
+			[
+				"/repo/default.rogen.json - warning: ServerScriptService/Combat/Combat was removed from the place, but it is compiled into dist, so syncback left it out. Remove it from the source files. (syncback.compiledPath)",
+			]
+		);
+		expect(await fs.exists(abs("dist/Combat/Server/Combat.luau"))).toBe(
+			true
+		);
+	});
 
 	/** What the test's Rojo does to the mirror it runs on: Loot added, Combat removed. */
 	const editMirror = async () => {
@@ -300,6 +297,63 @@ describe("syncback command", () => {
 		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
 			false
 		);
+	});
+
+	it("should warn about the compiled code it leaves out before it asks, and only then", async () => {
+		await fs.writeFile(abs("dist/Combat/Server/Combat.luau"), "");
+		await fs.writeFile(abs("Packages/Lib.luau"), "");
+		const log = new MockLogService();
+		const warning = (text: string) =>
+			text.includes("(syncback.compiledPath)");
+		let warnedBeforeAsking = false;
+		const prompt = new MockPromptService([true], true);
+		const confirm = prompt.confirm.bind(prompt);
+		prompt.confirm = async (options) => {
+			warnedBeforeAsking = said(log).some(warning);
+			return confirm(options);
+		};
+		const running = commandHarness({
+			fs,
+			log,
+			config: new MockConfigService([
+				mockEntry(
+					{
+						name: "repo",
+						sourcePaths: [abs("src")],
+						routes: { Server: "ServerScriptService" },
+						compiledPath: abs("dist"),
+						project: {
+							tree: {
+								$className: "DataModel",
+								ReplicatedStorage: {
+									Packages: { $path: "Packages" },
+								},
+							},
+						},
+					},
+					abs("default.rogen.json")
+				),
+			]),
+			processes,
+			prompt,
+		}).run("syncback", {
+			positionals: [],
+			options: { input: "game.rbxl" },
+		});
+		const [rojo] = await rojoRuns(1);
+		await fs.writeFile(
+			abs(".rogen-syncback/mirror/ReplicatedStorage/Packages/Lib.luau"),
+			"return 2"
+		);
+		await fs.delete(
+			abs(".rogen-syncback/mirror/ServerScriptService/Combat/Combat.luau")
+		);
+		rojo.exit({ code: 0, signal: null });
+
+		expect((await running).isOk()).toBe(true);
+		expect(warnedBeforeAsking).toBe(true);
+		expect(said(log).filter(warning)).toHaveLength(1);
+		expect(await fs.readFile(abs("Packages/Lib.luau"))).toBe("return 2");
 	});
 
 	it("should ask first in a terminal, and write nothing on a no", async () => {

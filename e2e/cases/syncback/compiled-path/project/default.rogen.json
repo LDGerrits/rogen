@@ -1,1 +1,1 @@
-{ "name":"Game", "tree":{"$className":"DataModel"}, "sourcePaths":["src"], "routes":{"Server":"ServerScriptService","*":"ReplicatedStorage/Shared"}, "compiledPath":"dist" }
+{ "name":"Game", "tree":{"$className":"DataModel","Workspace":{"$path":"place/Workspace"}}, "sourcePaths":["src"], "routes":{"Server":"ServerScriptService","*":"ReplicatedStorage/Shared"}, "compiledPath":"dist" }
