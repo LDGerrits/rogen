@@ -68,30 +68,6 @@ Sort the same files by feature instead, with a folder per feature on each side:
         ShopConfig.luau
         ShopTypes.luau
 `}
-	studio={`
-  ReplicatedStorage
-    Shared/
-      Inventory/
-        InventoryTypes
-        ItemConfig
-      Shop/
-        ShopConfig
-        ShopTypes
-  ServerScriptService
-    Inventory/
-      InventoryService
-      InventoryStore
-    Shop/
-      ShopService
-  StarterPlayer
-    StarterPlayerScripts
-      Inventory/
-        InventoryController
-        InventoryWindow
-      Shop/
-        ShopController
-        ShopWindow
-`}
 />
 
 That's much better. The inventory's files are no longer mixed in with the shop's, and the project file stays the same.
@@ -102,27 +78,27 @@ But the inventory still has three folders, one each in `client`, `server` and `s
 
 ```json title="default.project.json"
 {
-	"name": "my-game",
-	"tree": {
-		"$className": "DataModel",
-		"ServerScriptService": {
-			"Inventory": { "$path": "src/Inventory/Server" },
-			"Shop": { "$path": "src/Shop/Server" }
-		},
-		"StarterPlayer": {
-			"StarterPlayerScripts": {
-				"Inventory": { "$path": "src/Inventory/Client" },
-				"Shop": { "$path": "src/Shop/Client" }
-			}
-		},
-		"ReplicatedStorage": {
-			"Shared": {
-				"$className": "Folder",
-				"Inventory": { "$path": "src/Inventory/Shared" },
-				"Shop": { "$path": "src/Shop/Shared" }
-			}
-		}
-	}
+  "name": "my-game",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "Inventory": { "$path": "src/Inventory/Server" },
+      "Shop": { "$path": "src/Shop/Server" }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Inventory": { "$path": "src/Inventory/Client" },
+        "Shop": { "$path": "src/Shop/Client" }
+      }
+    },
+    "ReplicatedStorage": {
+      "Shared": {
+        "$className": "Folder",
+        "Inventory": { "$path": "src/Inventory/Shared" },
+        "Shop": { "$path": "src/Shop/Shared" }
+      }
+    }
+  }
 }
 ```
 
@@ -181,7 +157,7 @@ Rogen writes those entries for you. Put each feature in one folder, with `Client
 `}
 />
 
-Studio gets the same game as before, so your requires don't change. Everything about the inventory is in `src/Inventory`, and you remove it by deleting one folder.
+In Studio, the game is the same as when you sorted by feature, so your requires don't change. Everything about the inventory is in `src/Inventory`, and you remove it by deleting one folder.
 
 ## How Rogen Does It
 
@@ -189,13 +165,13 @@ You write `default.rogen.json`, a Rojo project file with [`routes`](/docs/v2/con
 
 ```json title="default.rogen.json"
 {
-	"name": "my-game",
-	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared"
-	},
-	"tree": { "$className": "DataModel" }
+  "name": "my-game",
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared"
+  },
+  "tree": { "$className": "DataModel" }
 }
 ```
 

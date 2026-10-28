@@ -97,6 +97,11 @@ html > body[data-scroll-locked] {
 	--t-s: #c43a2b;
 	--t-c: #8c5f00;
 	--t-r: #0a7b67;
+	--rf-line: color-mix(
+		in srgb,
+		var(--color-fd-muted-foreground) 40%,
+		transparent
+	);
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 16px;
@@ -164,9 +169,42 @@ html > body[data-scroll-locked] {
 .route-fig .rf-tree .b {
 	color: var(--color-fd-foreground);
 }
+/* Tree lines drawn with borders, so they join up and keep one colour on every row */
 .route-fig .g {
-	white-space: pre;
-	opacity: 0.6;
+	display: inline-flex;
+	vertical-align: top;
+	height: 22px;
+}
+.route-fig .g i {
+	position: relative;
+	flex: none;
+	width: 20px;
+}
+.route-fig .g i::before,
+.route-fig .g i::after {
+	position: absolute;
+	left: 6px;
+	background: var(--rf-line);
+}
+.route-fig .g-pipe::before,
+.route-fig .g-tee::before {
+	content: "";
+	top: 0;
+	bottom: 0;
+	width: 1px;
+}
+.route-fig .g-end::before {
+	content: "";
+	top: 0;
+	height: 11px;
+	width: 1px;
+}
+.route-fig .g-tee::after,
+.route-fig .g-end::after {
+	content: "";
+	top: 11px;
+	width: 9px;
+	height: 1px;
 }
 .route-fig .c-s {
 	color: var(--t-s);

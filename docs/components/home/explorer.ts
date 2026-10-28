@@ -12,16 +12,32 @@ export const icons: Record<Icon, string> = {
 export const iconSvg = (icon: Icon, cls = "ic") =>
 	`<svg class="${cls}" viewBox="0 0 16 16" aria-hidden="true">${icons[icon]}</svg>`;
 
-/** The tree-drawing prefix of row i, given each row's depth. */
-export function glyphs(depths: number[], i: number) {
+export type Guide = "pipe" | "none" | "tee" | "end";
+
+/** The tree lines in front of row i, one per level, given each row's depth. */
+export function guides(depths: number[], i: number): Guide[] {
 	const d = depths[i];
 	const more = (level: number) => {
 		for (let j = i + 1; j < depths.length; j++)
 			if (depths[j] <= level) return depths[j] === level;
 		return false;
 	};
-	let g = "";
+	const g: Guide[] = [];
 	if (!d) return g;
-	for (let a = 1; a < d; a++) g += more(a) ? "│  " : "   ";
-	return g + (more(d) ? "├─ " : "└─ ");
+	for (let a = 1; a < d; a++) g.push(more(a) ? "pipe" : "none");
+	g.push(more(d) ? "tee" : "end");
+	return g;
 }
+
+const GLYPHS: Record<Guide, string> = {
+	pipe: "│  ",
+	none: "   ",
+	tee: "├─ ",
+	end: "└─ ",
+};
+
+/** The tree-drawing prefix of row i, given each row's depth. */
+export const glyphs = (depths: number[], i: number) =>
+	guides(depths, i)
+		.map((guide) => GLYPHS[guide])
+		.join("");

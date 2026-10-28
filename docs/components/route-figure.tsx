@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { glyphs, icons, type Icon, type Service } from "./home/explorer";
+import { guides, icons, type Icon, type Service } from "./home/explorer";
 
 // The home page's routing panes for docs pages: src/ on disk beside the Studio Explorer, in each service's colour.
 const KEY_COLOURS: Record<string, Service> = {
@@ -84,7 +84,11 @@ export function RouteFigure({
 							key={i}
 							className={name.endsWith("/") ? "b" : undefined}
 						>
-							<span className="g">{glyphs(depths, i)}</span>
+							<span className="g" aria-hidden="true">
+								{guides(depths, i).map((guide, j) => (
+									<i key={j} className={`g-${guide}`} />
+								))}
+							</span>
 							<DiskName name={name} />
 						</li>
 					))}
