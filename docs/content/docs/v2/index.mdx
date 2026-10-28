@@ -8,9 +8,33 @@ import { BookOpen, History, Rocket, Terminal } from "lucide-react";
 
 Rogen is a superset of Rojo that generates Rojo project files from your file system. It lets you keep all the code for a feature in one folder, even when part of it runs on the server and part of it on the client.
 
-## One Feature, Three Folders
+## Organized by Type
 
-A Rojo project file maps each folder to one place in the game. A typical project maps `src/server` to ServerScriptService, `src/client` to StarterPlayerScripts and `src/shared` to ReplicatedStorage. Your code is sorted by where it runs, so an inventory feature ends up in three folders:
+Many Roblox games sort their code by type. A Rojo project maps `src/server` to ServerScriptService, `src/client` to StarterPlayerScripts and `src/shared` to ReplicatedStorage, and inside those folders the code is sorted again, into folders such as `services`, `controllers` and `types`:
+
+<RouteFigure
+	disk={`
+  src/
+    server/
+      services/
+        InventoryService.luau
+        ShopService.luau
+    client/
+      controllers/
+        InventoryController.luau
+        ShopController.luau
+    shared/
+      types/
+        InventoryTypes.luau
+        ShopTypes.luau
+`}
+/>
+
+The inventory is spread over three folders, and each of those folders also holds a piece of every other feature. To change how the inventory works, you edit files far apart in the tree. To delete it, you hunt down every file that belongs to it. The more features a game has, the longer each of those folders gets.
+
+## Organized by Feature
+
+Organizing by feature is much better. A feature's files change together, so they belong together, and a folder named `Inventory` tells you what is in it. But a Rojo project still splits the code by where it runs, so the best you can do is a feature folder on each side:
 
 <RouteFigure
 	disk={`
@@ -18,20 +42,26 @@ A Rojo project file maps each folder to one place in the game. A typical project
     server/
       Inventory/
         InventoryService.luau
+      Shop/
+        ShopService.luau
     client/
       Inventory/
         InventoryController.luau
+      Shop/
+        ShopController.luau
     shared/
       Inventory/
         InventoryTypes.luau
+      Shop/
+        ShopTypes.luau
 `}
 />
 
-To work on the inventory, you open all three. To delete it, you find and delete it in all three. A project that also sorts by type, with folders such as `client/controllers` and `shared/types`, spreads each feature further.
+Each folder now holds one feature, but each feature still lives in three folders. The server half of the inventory sits far from its client half, and deleting the feature still means deleting it three times.
 
 ## One Feature, One Folder
 
-With Rogen, the feature is one folder. A `Server`, `Client` or `Shared` folder inside it says where its code goes:
+Rogen removes the split. The feature is one folder, and a `Server`, `Client` or `Shared` folder inside it says where its code goes:
 
 <RouteFigure
 	disk={`
@@ -61,7 +91,7 @@ With Rogen, the feature is one folder. A `Server`, `Client` or `Shared` folder i
 
 Rogen reads those folder names and writes `default.project.json`, which mounts each file in the right service. In Studio, the game looks as it did before. On disk, everything about the inventory is in `src/Inventory`, so you read it in one place and delete it by deleting one folder.
 
-Keeping a feature's code together like this is called colocation. With Rojo alone, the split between server and client code made it hard to do.
+Keeping all of a feature's code together like this is called colocation. With Rojo alone, the split between server and client code stood in the way.
 
 ## Rojo Still Runs Your Game
 
