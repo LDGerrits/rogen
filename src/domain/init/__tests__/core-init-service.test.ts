@@ -5,6 +5,7 @@ import { jest } from "@jest/globals";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import path from "path";
 import { ResultError } from "../../../base/result.js";
+import { UsageError } from "../../../base/errors.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import {
@@ -222,11 +223,56 @@ describe("CoreInitService", () => {
 			expect(plan?.configs).toEqual([]);
 		});
 
-		it("should fail with init.configExists when a project flag comes with the agent flags", async () => {
+		it("should plan only the agent rules where a config exists and --skip-git comes with --agent-rules", async () => {
+			await write("default.rogen.json", "{}");
+
+			const plan = (
+				await serviceFor(new MockPromptService([])).plan({
+					ask: false,
+					choices: { agentRules: true, skipGit: true },
+				})
+			).unwrap();
+
+			expect(plan?.files).toEqual([
+				{ fileName: "AGENTS.md", content: agentBlock },
+			]);
+		});
+
+		it.each([
+			[{ language: "luau" }, "--language"],
+			[{ places: false }, "--no-places"],
+			[{ kind: "model" as const }, "--kind"],
+			[{ sample: false }, "--no-sample"],
+		])(
+			"should be a usage error when %o comes with an agent flag, naming %s",
+			async (shaping, flag) => {
+				await write("default.rogen.json", "{}");
+
+				const result = await serviceFor(new MockPromptService([])).plan(
+					{
+						choices: {
+							agentHook: false,
+							agentRules: true,
+							...shaping,
+						},
+					}
+				);
+
+				expect(result.isErr() && result.error).toBeInstanceOf(
+					UsageError
+				);
+				expect(result.isErr() && result.error.message).toContain(flag);
+				expect(result.isErr() && result.error.message).toContain(
+					"default.rogen.json"
+				);
+			}
+		);
+
+		it("should fail with init.configExists when a project flag comes alone", async () => {
 			await write("default.rogen.json", "{}");
 
 			const diagnostics = await refused(new MockPromptService([]), {
-				choices: { agentRules: true, language: "luau" },
+				choices: { language: "luau", agentRules: false },
 			});
 
 			expect(diagnostics).toMatchObject([{ code: "init.configExists" }]);

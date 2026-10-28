@@ -1,0 +1,11 @@
+{
+	"steps": [
+		["init", "--agent-rules", "--language", "luau"],
+		["init", "--agent-hook", "--no-places", "--json"],
+		["init", "--language", "luau"],
+		["init", "--agent-rules", "--skip-git", "-y"],
+		["init", "--agent-hook", "--skip-git", "-n", "--json"]
+	],
+	"output": ["init"],
+	"rojo": false
+}

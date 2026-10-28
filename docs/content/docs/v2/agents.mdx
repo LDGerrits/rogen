@@ -7,7 +7,7 @@ A coding agent doesn't know that Rogen generates the Rojo project file, so Rojo 
 
 ## Add the Rules
 
-`rogen init` adds the block below to `AGENTS.md`, and imports it into the `CLAUDE.md` and `GEMINI.md` that Claude Code and Gemini CLI read instead. `--no-agent-rules` leaves it out. In a project that already has a config, run `rogen init --agent-rules`, or paste the block yourself, markers included:
+`rogen init` adds the block below to `AGENTS.md`, and imports it into the `CLAUDE.md` and `GEMINI.md` that Claude Code and Gemini CLI read instead. `--no-agent-rules` leaves it out. In a project that already has a config, run `rogen init --agent-rules`, which adds only the agent files and changes no config, or paste the block yourself, markers included:
 
 ````md title="AGENTS.md"
 <!-- rogen -->
@@ -158,6 +158,8 @@ console.log(
 | Copilot | `.github/hooks/rogen.json` | `agentStop` | `node "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.mjs` |
 
 To register it by hand, put the script at `.agents/hooks/rogen-check.mjs` and add the entry under its event. Codex runs a project hook only after you trust it in `/hooks`. The hook also reports warnings in files you changed yourself, once per session.
+
+In a project that already has a config, `--agent-rules` and `--agent-hook` add only the agent files and change no config. They take `--skip-git`, `-y`, `-n` and `--json`, but a flag that shapes a config, such as `--language`, is an error.
 
 ## Install the Skill
 
