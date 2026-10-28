@@ -2,8 +2,20 @@
 	"steps": [
 		["init", "--non-interactive", "--skip-git"],
 		["$", "cp", "default.rogen.json", "before.json"],
+		[
+			"$",
+			"cp",
+			"place/Workspace/Baseplate.model.json",
+			"baseplate-before.json"
+		],
 		["build", "-o", "place.rbxl"],
 		["syncback", "-i", "place.rbxl", "-y"],
-		["$", "cmp", "before.json", "default.rogen.json"]
+		["$", "cmp", "before.json", "default.rogen.json"],
+		[
+			"$",
+			"cmp",
+			"baseplate-before.json",
+			"place/Workspace/Baseplate.model.json"
+		]
 	]
 }

@@ -5,6 +5,9 @@ stdout: (not shown)
 $ cp default.rogen.json before.json
 exit 0
 
+$ cp place/Workspace/Baseplate.model.json baseplate-before.json
+exit 0
+
 $ rogen build -o place.rbxl
 exit 0
 stdout: (not shown)
@@ -19,14 +22,18 @@ stderr:
   rogen syncback · default.rogen.json
   default.project.json · unchanged
   Wrote 1 project.
-  Syncback wrote 1 change.
+  Syncback changed nothing.
 
 $ cmp before.json default.rogen.json
+exit 0
+
+$ cmp baseplate-before.json place/Workspace/Baseplate.model.json
 exit 0
 
 written:
   AGENTS.md
   README.md
+  baseplate-before.json
   before.json
   default.project.json
   default.rogen.json

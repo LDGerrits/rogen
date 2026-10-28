@@ -1,6 +1,9 @@
+import path from "path";
+import { toNative } from "../../base/path.js";
 import { configPath } from "../../platform/config/config-path.js";
 import { ConfigOutcome } from "../../domain/write/write.js";
 import {
+	CompiledChange,
 	SyncbackChange,
 	SyncbackPlan,
 	UnplacedInstance,
@@ -12,7 +15,10 @@ import {
 	errorShape,
 	failureToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	warningDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 import { configsDocument, writeEntryShape } from "../write/write-document.js";
 
@@ -60,6 +66,31 @@ export type SyncbackOutcome =
 			readonly warnings: readonly Diagnostic[];
 	  };
 
+/** A warning for each change to compiled code that syncback left out of the plan. */
+export function compiledDiagnostics(plan: SyncbackPlan): Diagnostic[] {
+	const { compiledPath, projectDir, file } = plan.project;
+	if (compiledPath === undefined) return [];
+	const folder = toNative(path.relative(projectDir, compiledPath));
+	const messages: Record<
+		CompiledChange["kind"],
+		(instance: string) => string
+	> = {
+		changed: (instance) =>
+			`${instance} changed in the place, but it is compiled into ${folder}, so syncback left it out. Make the change in the source files.`,
+		removed: (instance) =>
+			`${instance} was removed from the place, but it is compiled into ${folder}, so syncback left it out. Remove it from the source files.`,
+		added: (instance) =>
+			`${instance} is new in the place, but the project compiles into ${folder}, so syncback left it out. Add it to the source files.`,
+	};
+	return plan.compiled.map(({ instance, kind }) =>
+		warningDiagnostic(
+			"syncback.compiledPath",
+			{ resource: file },
+			messages[kind](instance)
+		)
+	);
+}
+
 export function syncbackEntry(
 	input: string,
 	outcome: SyncbackOutcome,
@@ -82,14 +113,18 @@ export function syncbackEntry(
 			unplaced: [],
 			...failureToJson(outcome.error),
 		};
+	const diagnostics = [
+		...compiledDiagnostics(outcome.plan),
+		...outcome.warnings,
+	];
 	return {
 		outcome: outcome.kind === "planned" ? "wouldWrite" : outcome.kind,
 		config: configPath(cwd, outcome.plan.project.file),
 		input,
 		changes: outcome.plan.changes.map(({ kind, file }) => ({ kind, file })),
 		unplaced: outcome.plan.unplaced,
-		...(outcome.warnings.length > 0 && {
-			diagnostics: outcome.warnings.map(diagnosticToJson),
+		...(diagnostics.length > 0 && {
+			diagnostics: diagnostics.map(diagnosticToJson),
 		}),
 	};
 }

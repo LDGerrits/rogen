@@ -1040,13 +1040,15 @@ These diagnostics come from `rogen syncback`, which writes the changes made in a
 
 ### `syncback.compiledPath` [#syncback-compiledpath]
 
-Error. Syncback would write into the project's `compiledPath`, where the next compile would delete the edits. The project reads compiled code from that folder, which a tool such as Darklua or `rbxtsc` writes. Nothing was written, in a dry run too. No flag overrides this error.
+Warning. The project has a `compiledPath`, and an instance that comes from it changed in the place, was removed, or is new: a script, or a folder or model the compiler copies there. A tool such as Darklua or `rbxtsc` writes the compiled path from your source files, so the next compile would replace anything syncback wrote there. Syncback leaves the instance out and writes the rest, such as the folders the tree mounts.
 
 ```
-error: the project reads compiled code from dist; syncback would write into it and the next compile would delete the edits. Bring the changes into the source files by hand, or run syncback on a project that has no compiledPath. (syncback.compiledPath)
+warning: ServerScriptService/Combat/Combat changed in the place, but it is compiled into dist, so syncback left it out. Make the change in the source files. (syncback.compiledPath)
+warning: ServerScriptService/Combat/Hit was removed from the place, but it is compiled into dist, so syncback left it out. Remove it from the source files. (syncback.compiledPath)
+warning: ServerScriptService/Combat/Loot is new in the place, but the project compiles into dist, so syncback left it out. Add it to the source files. (syncback.compiledPath)
 ```
 
-Copy the changes into the source files by hand. Or run `rogen syncback` on a project that has no `compiledPath`.
+Make the change in the source files the compiler reads.
 
 ### `syncback.removedFromProjectFile` [#syncback-removedfromprojectfile]
 
