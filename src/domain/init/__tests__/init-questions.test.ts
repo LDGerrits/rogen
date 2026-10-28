@@ -9,7 +9,6 @@ import {
 	ScriptedAnswer,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { withRobloxTs } from "../../toolchain/__tests__/workspaces.js";
-import { Darklua } from "../../toolchain/toolchain.js";
 import { InitQuestions } from "../init-questions.js";
 import { InitChoices } from "../init-service.js";
 import { ProjectChoices, ProjectSetup } from "../project-setup.js";
@@ -87,11 +86,9 @@ const acceptAll = (count: number) => Array(count).fill(ACCEPT_DEFAULT);
 
 describe("InitQuestions askProject", () => {
 	it("should give an unattended run the choices a user accepting every default gets", async () => {
-		const darklua = { ...luau, darkluaConfig: ".darklua.json" };
 		for (const workspace of [
 			rbxts,
 			luau,
-			darklua,
 			{ ...luau, packageManager: "pesde" as const },
 		]) {
 			expect(await asked(workspace, {})).toEqual(
@@ -100,14 +97,13 @@ describe("InitQuestions askProject", () => {
 		}
 	});
 
-	it("should ask in order: language, Darklua, source path, packages, routes, fallback", async () => {
+	it("should ask in order: language, source path, packages, routes, fallback", async () => {
 		const prompts = new MockPromptService({});
 
 		await askInitChoices(prompts, contextOf(rbxts));
 
 		expect(prompts.asked).toEqual([
 			"Language",
-			"Does Darklua process your code before Rojo syncs it?",
 			"Source path",
 			"Packages",
 			"Routes",
@@ -126,42 +122,6 @@ describe("InitQuestions askProject", () => {
 
 			expect(choices.language.id).toBe("roblox-ts");
 			expect(choices.compiledPath).toBe("out");
-		});
-	});
-
-	describe("darklua", () => {
-		it("should be preselected when found", async () => {
-			const choices = await asked(
-				{ ...luau, darkluaConfig: ".darklua.json" },
-				{}
-			);
-
-			expect(choices.darklua).toBeInstanceOf(Darklua);
-			expect(choices.compiledPath).toBe("dist");
-		});
-
-		it("should hint at the Darklua config that was found", async () => {
-			const prompts = new MockPromptService({});
-
-			await askInitChoices(
-				prompts,
-				contextOf({ ...luau, darkluaConfig: ".darklua.json5" })
-			);
-
-			expect(
-				prompts.prompts.find(({ message }) =>
-					message.startsWith("Does Darklua")
-				)?.hint
-			).toBe("found .darklua.json5");
-		});
-
-		it("should take the answer that was given", async () => {
-			const choices = await asked(luau, {
-				"Does Darklua process your code before Rojo syncs it?": true,
-			});
-
-			expect(choices.darklua).toBeInstanceOf(Darklua);
-			expect(choices.compiledPath).toBe("dist");
 		});
 	});
 
@@ -185,35 +145,6 @@ describe("InitQuestions askProject", () => {
 			expect(compiledPathPrompt(prompts)).toBeUndefined();
 			expect(result.unwrap()?.compiledPath).toBe("build");
 		});
-
-		it("should default to dist for Darklua and say what Darklua does", async () => {
-			const prompts = new MockPromptService({});
-
-			await askInitChoices(
-				prompts,
-				contextOf({ ...luau, darkluaConfig: ".darklua.json" })
-			);
-
-			expect(compiledPathPrompt(prompts)?.placeholder).toBe("dist");
-			expect(compiledPathPrompt(prompts)?.description).toContain(
-				"Darklua writes into"
-			);
-		});
-
-		it.each(["src", "src/out", "./src/"])(
-			"should refuse %j, which holds or lies in a source path",
-			async (answer) => {
-				await expect(
-					ask(
-						{ ...luau, darkluaConfig: ".darklua.json" },
-						{
-							"Does Darklua process your code before Rojo syncs it?": true,
-							"Compiled path": answer,
-						}
-					)
-				).rejects.toThrow("overlaps src");
-			}
-		);
 	});
 
 	it("should split source paths on commas", async () => {
@@ -815,20 +746,11 @@ describe("InitQuestions askProject", () => {
 	it("should show every text question as a placeholder with a description", async () => {
 		const prompts = new MockPromptService({});
 
-		await askInitChoices(
-			prompts,
-			contextOf({ ...rbxts, darkluaConfig: ".darklua.json" })
-		);
+		await askInitChoices(prompts, contextOf(rbxts));
 
 		const text = prompts.prompts.filter(({ placeholder }) => placeholder);
-		expect(text.map(({ message }) => message)).toEqual([
-			"Source path",
-			"Compiled path",
-		]);
-		expect(text.map(({ placeholder }) => placeholder)).toEqual([
-			"src",
-			"dist",
-		]);
+		expect(text.map(({ message }) => message)).toEqual(["Source path"]);
+		expect(text.map(({ placeholder }) => placeholder)).toEqual(["src"]);
 		for (const { description } of text) expect(description).toBeTruthy();
 	});
 
@@ -838,7 +760,7 @@ describe("InitQuestions askProject", () => {
 		expect(choices).toEqual(await defaultInitChoices(luau));
 	});
 
-	it.each([0, 1, 2, 3, 4, 5])(
+	it.each([0, 1, 2, 3, 4])(
 		"should resolve undefined when cancelled at question %i",
 		async (index) => {
 			const answers: ScriptedAnswer[] = acceptAll(index);

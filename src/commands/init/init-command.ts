@@ -61,26 +61,12 @@ const InitOptions = [
 			"The language: luau or roblox-ts. Detected from the folder when not given. For roblox-ts in a folder with no code, package.json or tsconfig.json, init first runs 'npm create roblox-ts', which needs npm and the network.",
 	},
 	{
-		name: "darklua",
-		type: "boolean",
-		negatable: true,
-		description:
-			"Whether Darklua processes your code before Rojo syncs it. Found from a Darklua config when not given.",
-	},
-	{
 		name: "source-path",
 		type: "string",
 		multiple: true,
 		placeholder: "path",
 		description:
 			"A folder with your scripts, relative to here; repeat for several. src when not given, or where the code is.",
-	},
-	{
-		name: "compiled-path",
-		type: "string",
-		placeholder: "path",
-		description:
-			"With Darklua: the folder it writes into, and Rojo syncs from.",
 	},
 	{
 		name: "project-file",
@@ -152,10 +138,8 @@ function choicesOf(
 		agentRules: options["agent-rules"],
 		agentHook: options["agent-hook"],
 		language: options.language,
-		darklua: options.darklua,
 		sourcePaths: options["source-path"],
 		projectFile: options["project-file"] as InitChoices["projectFile"],
-		compiledPath: options["compiled-path"],
 		packages: options.package,
 		routes: options.route,
 		unmatched: options.unmatched as InitChoices["unmatched"],

@@ -32,11 +32,6 @@ stdout:
         "flag": "--language"
       },
       {
-        "question": "darklua",
-        "value": false,
-        "flag": "--darklua"
-      },
-      {
         "question": "places",
         "value": false,
         "flag": "--places"

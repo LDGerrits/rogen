@@ -266,7 +266,7 @@ describe("init command", () => {
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
 				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
-				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
+				"info: Took the defaults: --kind place, --language luau, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
 				"success: Created default.rogen.json.",
 				"success: Created .gitignore.",
 				"success: Created src/Greeter/Shared/Greeting.luau.",
@@ -422,7 +422,7 @@ describe("init command", () => {
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
 				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
-				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
+				"info: Took the defaults: --kind place, --language luau, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
 				"success: Would create default.rogen.json.",
 				"success: Would create .gitignore.",
 				"success: Would create src/Greeter/Shared/Greeting.luau.",
@@ -568,10 +568,9 @@ describe("init command", () => {
 			expect(config.sourcePaths).toEqual(["lib"]);
 			expect(Object.keys(config.routes)).not.toContain("Client");
 			expect(await exists("AGENTS.md")).toBe(false);
-			const { decided } = JSON.parse(logService.entries[0].text);
-			expect(decided.map(({ flag }: { flag: string }) => flag)).toEqual([
-				"--darklua",
-			]);
+			expect(JSON.parse(logService.entries[0].text)).not.toHaveProperty(
+				"decided"
+			);
 		});
 
 		it("should add the agent hook when asked to, though it can't ask", async () => {
@@ -772,10 +771,8 @@ describe("init command", () => {
 				"one",
 				"customise",
 				"luau",
-				true,
 				"one",
 				"src, lib",
-				"out",
 				[],
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,

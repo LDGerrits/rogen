@@ -5,7 +5,7 @@ stdout:
   Starts from create-roblox-ts, which writes package.json and the compiler's settings.
   Syncing from out, where roblox-ts compiles to.
   The Greeter sample is the feature in projects/common/src, which every place shares, Game in projects/game/src, and Rojo's sample Baseplate and lighting in projects/game/place. Pass --no-sample for empty source folders.
-  Took the defaults: --kind place, --no-darklua, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.
+  Took the defaults: --kind place, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.
   Ran npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild.
   Created projects/game/default.rogen.json.
   Created projects/common/src/Greeter/shared/Greeting.ts.
@@ -32,7 +32,7 @@ stdout:
     In Studio, press Connect in the Rojo plugin.
     Add your own routes under "routes" in projects/game/default.rogen.json.
     Edit projects/game/default.rogen.json and leave projects/game/default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write projects/game' so the editor's projects/game/default.project.json follows.
-    Add another place: make projects/lobby/src, copy projects/game/default.rogen.json, projects/game/tsconfig.json and projects/game/place into projects/lobby (with the dist and release configs and .darklua.json, if the place has them), and change the "name" in each config to lobby. Run 'rogen write projects/lobby' for its project file, add 'rbxtsc -p projects/lobby' and 'rbxtsc -w -p projects/lobby' to the build and watch scripts in package.json, and serve it from a second terminal with its own --port: 'rogen serve projects/lobby --port <port>'.
+    Add another place: make projects/lobby/src, copy projects/game/default.rogen.json, projects/game/tsconfig.json and projects/game/place into projects/lobby (with the release config, if the place has one), and change the "name" in each config to lobby. Run 'rogen write projects/lobby' for its project file, add 'rbxtsc -p projects/lobby' and 'rbxtsc -w -p projects/lobby' to the build and watch scripts in package.json, and serve it from a second terminal with its own --port: 'rogen serve projects/lobby --port <port>'.
   Wrote 14 files.
 
 ran:

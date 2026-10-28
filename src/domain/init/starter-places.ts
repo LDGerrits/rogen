@@ -35,7 +35,7 @@ export interface StartingPlaces {
 	/** The place's config and the project file it writes, relative to the project. */
 	readonly configFile: string;
 	readonly projectFile: string;
-	/** What the stem of the place's other configs, such as `dist`, starts with. */
+	/** What the stem of the place's other configs, such as `release`, starts with. */
 	readonly outputPrefix: string;
 	/** The source paths the place lists. */
 	readonly sourcePaths: readonly string[];

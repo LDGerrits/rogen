@@ -1,6 +1,3 @@
-import path from "path";
-import { commonAncestor, toPosix } from "../../base/path.js";
-
 export interface MetaReplacement {
 	readonly suffix: string;
 	/** Says why, in the warning about the meta Rojo no longer applies. */
@@ -151,7 +148,6 @@ export interface LanguageDetector {
 }
 
 interface DetectedWorkspaceFields {
-	readonly darklua: Darklua;
 	readonly languages: readonly Language[];
 	readonly darkluaConfig?: string;
 	readonly packageManager?: PackageManager;
@@ -161,7 +157,6 @@ interface DetectedWorkspaceFields {
 
 /** What `init` found in the workspace: facts only, never decisions. */
 export class DetectedWorkspace {
-	readonly darklua: Darklua;
 	readonly languages: readonly Language[];
 	readonly darkluaConfig?: string;
 	readonly packageManager?: PackageManager;
@@ -172,7 +167,6 @@ export class DetectedWorkspace {
 		if (fields.languages.length === 0) {
 			throw new Error("A workspace needs at least one language.");
 		}
-		this.darklua = fields.darklua;
 		this.languages = fields.languages;
 		this.darkluaConfig = fields.darkluaConfig;
 		this.packageManager = fields.packageManager;
@@ -207,7 +201,7 @@ export class DetectedWorkspace {
 	}
 }
 
-/** Darklua, the one processor `init` sets up. */
+/** Darklua, a processor: Rogen never runs it, and only knows its config files and what it writes. */
 export class Darklua {
 	static readonly SYNC_TOOL: SyncTool = {
 		id: "darklua",
@@ -221,49 +215,9 @@ export class Darklua {
 		},
 	};
 
-	/** Where toolchain managers install it from, and the release `init` pins: the one the guide and the e2e tests ran. */
-	static readonly REPOSITORY = "seaofvoices/darklua";
-	static readonly PINNED = "0.19.0";
-
-	readonly defaultCompiledPath = "dist";
-	readonly configFiles: readonly string[] = [
+	/** In the order Darklua reads them. */
+	static readonly CONFIG_FILES: readonly string[] = [
 		".darklua.json",
 		".darklua.json5",
 	];
-
-	/** The config `init` writes where none exists. Luau code requires files by path, which `convert_require` turns into instance requires with the sourcemap; compiled code (roblox-ts) has none to convert, and the rule would fail on a missing sourcemap. */
-	configFor(language: Language): string {
-		const rules = language.compiler
-			? []
-			: [
-					{
-						rule: "convert_require",
-						current: { name: "path" },
-						target: {
-							name: "roblox",
-							rojo_sourcemap: "./sourcemap.json",
-							indexing_style: "property",
-						},
-					},
-				];
-		return `${JSON.stringify({ rules }, null, "\t")}\n`;
-	}
-
-	sourcemapCommand(): string {
-		return "rogen sourcemap --watch -o sourcemap.json";
-	}
-
-	/** One `darklua process --watch` per directory, each landing at its path relative to their common root. */
-	processCommands(
-		directory: string,
-		sourceDirs: readonly string[],
-		compiledPath: string
-	): string[] {
-		const absolute = sourceDirs.map((dir) => path.resolve(directory, dir));
-		const common = commonAncestor(absolute);
-		return sourceDirs.map((dir, index) => {
-			const relative = toPosix(path.relative(common, absolute[index]));
-			return `darklua process ${dir} ${relative ? `${compiledPath}/${relative}` : compiledPath} --watch`;
-		});
-	}
 }

@@ -1,47 +1,8 @@
-import path from "path";
 import { Darklua, DetectedWorkspace, PackageManager } from "../toolchain.js";
 import { Luau } from "../luau.js";
 import { workspaceOf } from "./workspaces.js";
 
-const directory = path.resolve("/mock/my-game");
-
-const darklua = new Darklua();
-
 describe("Darklua", () => {
-	describe("processCommands", () => {
-		it("should process one source path into the compiled path itself", () => {
-			expect(darklua.processCommands(directory, ["src"], "dist")).toEqual(
-				["darklua process src dist --watch"]
-			);
-		});
-
-		it("should process each of several source paths to its path under the common root", () => {
-			expect(
-				darklua.processCommands(
-					directory,
-					["src", "places/lobby"],
-					"dist/lobby"
-				)
-			).toEqual([
-				"darklua process src dist/lobby/src --watch",
-				"darklua process places/lobby dist/lobby/places/lobby --watch",
-			]);
-		});
-
-		it("should measure from the deepest shared folder", () => {
-			expect(
-				darklua.processCommands(
-					directory,
-					["game/src", "game/lib"],
-					"dist"
-				)
-			).toEqual([
-				"darklua process game/src dist/src --watch",
-				"darklua process game/lib dist/lib --watch",
-			]);
-		});
-	});
-
 	describe("SYNC_TOOL", () => {
 		it("should say it turns .meta.json into .meta.lua", () => {
 			expect(Darklua.SYNC_TOOL.metaReplacement).toEqual({
@@ -119,7 +80,6 @@ describe("DetectedWorkspace", () => {
 		expect(
 			() =>
 				new DetectedWorkspace({
-					darklua: darklua,
 					languages: [],
 					packageDirs: new Set(),
 				})

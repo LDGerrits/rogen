@@ -234,19 +234,16 @@ export class CoreInitService implements InitService {
 		const manifests = await this.toolchainService.readManifests(
 			directory.path
 		);
-		const tools = ToolchainSetup.of(
-			async () =>
-				ToolchainSetup.stateOf(
-					directory.path,
-					manifests,
-					await this.existingFolder(directory.path),
-					{
-						finder: this.finder,
-						locator: this.locator,
-						processService: this.processService,
-					}
-				),
-			() => questions.usesDarklua
+		const tools = ToolchainSetup.of(async () =>
+			ToolchainSetup.stateOf(
+				directory.path,
+				manifests,
+				await this.existingFolder(directory.path),
+				{
+					finder: this.finder,
+					locator: this.locator,
+				}
+			)
 		);
 		return this.planWith(directory, questions, [
 			new ProjectSetup(directory, questions, this.fileSystemService),

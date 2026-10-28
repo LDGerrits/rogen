@@ -35,11 +35,6 @@ stdout:
         "flag": "--language"
       },
       {
-        "question": "darklua",
-        "value": false,
-        "flag": "--darklua"
-      },
-      {
         "question": "unmatched",
         "value": "shared",
         "flag": "--unmatched"

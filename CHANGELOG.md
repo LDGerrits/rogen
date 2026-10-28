@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - In `rogen init --json`, each `decided` entry names the flag that changes the choice, as the agent skill reads it: `--no-sample` for the sample init writes, `--places` for one place. Before, it named the flag that keeps the choice. The text line "Took the defaults" still names the flags that keep them.
 - `rogen syncback` runs on a project with a `compiledPath`. It writes the changes outside the compiled path, such as the folders the tree mounts, and lists each changed, removed or new instance that the project compiles as a `syncback.compiledPath` warning, for you to make in the source files. Before, it stopped with `syncback.compiledPath` and wrote nothing. In a terminal, the warnings about what syncback leaves out now come before it asks to write the rest.
 
+### Removed
+
+- `rogen init` no longer asks about Darklua or sets it up: it writes no `.darklua.json`, Darklua pin, `dist.rogen.json` or `.gitignore` entry for Darklua's output, and its next steps run no `darklua process`. The `--darklua` and `--compiled-path` flags are gone. `rogen write` still knows Darklua's output in a `compiledPath`, and warns about it as before.
+
 ### Fixed
 
 - The Baseplate that `rogen init` writes gives its color as whole numbers (`Color3uint8`), which a place keeps exactly, so the first `rogen syncback` no longer rewrites it when nothing changed in Studio.

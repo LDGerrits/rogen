@@ -14,23 +14,14 @@ import {
 	RogenConfig,
 	configFileName,
 } from "../config/config.js";
-import {
-	Darklua,
-	Language,
-	Mount,
-	PlannedFile,
-} from "../toolchain/toolchain.js";
+import { Language, Mount, PlannedFile } from "../toolchain/toolchain.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { GreeterSample, SAMPLE_ROUTES } from "./greeter-sample.js";
 import { SAMPLE_GAME_FOLDER, SampleGame } from "./sample-game.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
-import {
-	OutputConfigs,
-	PROCESSED_OUTPUT,
-	RELEASE_OUTPUT,
-} from "./output-configs.js";
+import { OutputConfigs, RELEASE_OUTPUT } from "./output-configs.js";
 import { InitQuestions } from "./init-questions.js";
 import { InitKind, PlannedCommand, PlannedScaffold } from "./init-service.js";
 import { ProjectFiles } from "./project-files.js";
@@ -45,13 +36,11 @@ import {
 	StarterPlaces,
 	StartingPlaces,
 } from "./starter-places.js";
-import { SyncSteps } from "./sync-steps.js";
 import { UnmountedFiles } from "./unmounted-files.js";
 import { ProjectTree, TreeChoice, TreePlan } from "./tree-plan.js";
 
 export interface ProjectChoices {
 	readonly language: Language;
-	readonly darklua: Darklua | undefined;
 	readonly sourcePaths: readonly string[];
 	readonly compiledPath?: string;
 	readonly tree: ProjectTree;
@@ -74,10 +63,6 @@ export interface ProjectChoices {
 		readonly tool: PlannedScaffold;
 		readonly after: readonly PlannedCommand[];
 	};
-	/** Whether luau-lsp is set up in the folder, which keeps `sourcemap.json` current for Darklua. */
-	readonly luauLsp?: boolean;
-	/** What to add to the `.gitignore` that was there, which `init` never edits. */
-	readonly gitignoreHint?: string;
 	/** What to add to it so git leaves the project files Rogen writes out. */
 	readonly projectFilesHint?: string;
 }
@@ -106,20 +91,10 @@ const BUILD_COMMANDS: Readonly<Record<InitKind, (name: string) => string>> = {
 };
 
 function generatedDirs({
-	language,
-	darklua,
 	sourcePaths,
 	compiledPath,
-}: Pick<
-	ProjectChoices,
-	"language" | "darklua" | "sourcePaths" | "compiledPath"
->): string[] {
-	const { compiler } = language;
-	return [
-		...sourcePaths,
-		...(compiledPath ? [compiledPath] : []),
-		...(darklua && compiler ? [compiler.outDir] : []),
-	];
+}: Pick<ProjectChoices, "sourcePaths" | "compiledPath">): string[] {
+	return [...sourcePaths, ...(compiledPath ? [compiledPath] : [])];
 }
 
 const UNMOUNTED_SHOWN = 5;
@@ -142,10 +117,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		if (picked === undefined) return ok(undefined);
 		const starter = this.starterFor(kind, picked);
 		const language = starter ? (picked.scaffolded?.() ?? picked) : picked;
-		const usesDarklua = await questions.darklua(directory);
-		if (usesDarklua === undefined) return ok(undefined);
-		const darklua = usesDarklua ? directory.workspace.darklua : undefined;
-		questions.usesDarklua = usesDarklua;
 
 		const several = await this.severalPlaces(
 			kind,
@@ -178,15 +149,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const tree = await this.resolveTree(chosen, kind);
 		if (tree.isErr()) return tree;
 
-		let compiledPath = new SyncSteps(language, darklua).compiledPath;
-		if (darklua) {
-			const answer = await questions.compiledPath(directory, [
-				...sourcePaths,
-				...(language.compiler ? [language.compiler.outDir] : []),
-			]);
-			if (answer === undefined) return ok(undefined);
-			compiledPath = answer;
-		}
+		const compiledPath = language.compiler?.outDir;
 
 		const routed = takesRoutes(tree.value);
 		const mounted = routed
@@ -206,12 +169,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					language,
 					derivedRoutesOf(
 						tree.value,
-						generatedDirs({
-							language,
-							darklua,
-							sourcePaths,
-							compiledPath,
-						})
+						generatedDirs({ sourcePaths, compiledPath })
 					)
 				)
 			: { routes: [], fallback: false };
@@ -243,7 +201,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const game = sample
 			? new SampleGame(places?.gameFolder ?? SAMPLE_GAME_FOLDER)
 			: undefined;
-		const processed = darklua && compiledPath ? compiledPath : undefined;
 		const sampleFiles = game
 			? [
 					...sampleOf.feature(
@@ -253,29 +210,15 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					...game.written(places?.folder ?? ""),
 					sampleOf.readme(
 						places?.commonSourcePath ?? sourcePaths[0],
-						ProjectSetup.serveCommand(places, processed),
+						ProjectSetup.serveCommand(places),
 						places?.place
 					),
 				]
 			: [];
 
 		const skipGit = questions.skipGit();
-		const darkluaConfig =
-			darklua &&
-			(places?.folder || directory.workspace.darkluaConfig === undefined)
-				? [
-						{
-							fileName: path.posix.join(
-								places?.folder ?? "",
-								darklua.configFiles[0]
-							),
-							content: darklua.configFor(language),
-						},
-					]
-				: [];
 		return ok({
 			language,
-			darklua,
 			sourcePaths: [...sourcePaths],
 			...(compiledPath && { compiledPath }),
 			tree:
@@ -296,24 +239,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					after: places ? [starter.scripts(places.folder)] : [],
 				},
 			}),
-			luauLsp:
-				places?.settings === true ||
-				(await this.files.luauLspIsSetUp()),
 			projectFilesHint: await this.files.projectFilesHint(),
-			...(processed &&
-				!skipGit &&
-				!places?.folder && {
-					gitignoreHint: await this.files.gitignoreHint(processed),
-				}),
 			templateFiles: await this.absent([
 				...ProjectSetup.templateFiles(
 					new ProjectTemplate(
 						kind,
 						path.basename(directory.path),
-						processed &&
-							(places?.folder
-								? `${PROJECTS_FOLDER}/*/${processed}`
-								: processed),
 						starter
 							? RobloxTsStarter.ignored(places !== undefined)
 							: []
@@ -321,40 +252,24 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					tree.value,
 					skipGit
 				),
-				...darkluaConfig,
 				...sampleFiles,
 				...(places?.files ?? []),
 			]),
 		});
 	}
 
-	/** The command that serves the project: the place by its folder, and the one Darklua writes by its file or name. */
-	private static serveCommand(
-		places: StartingPlaces | undefined,
-		processed: string | undefined
-	): string {
-		if (places) {
-			if (!processed) return `rogen serve ${places.place}`;
-			const output = configFileName(
-				`${places.outputPrefix}${PROCESSED_OUTPUT}`
-			);
-			return `rogen serve ${path.posix.join(places.folder, output)}`;
-		}
-		return processed ? `rogen serve ${PROCESSED_OUTPUT}` : "rogen serve";
+	/** The command that serves the project: a place by its folder or name. */
+	private static serveCommand(places: StartingPlaces | undefined): string {
+		return places ? `rogen serve ${places.place}` : "rogen serve";
 	}
 
 	/** How to add a second place, which `init` starts but never adds; `game`: whether the first place has the sample game, which the second copies. */
-	private static addPlaceStep(
-		places: StartingPlaces,
-		processed: string | undefined,
-		game: boolean
-	): string {
+	private static addPlaceStep(places: StartingPlaces, game: boolean): string {
 		const port = "from a second terminal with its own --port";
 		if (places.folder === "") {
 			const { outputPrefix, gameFolder } = places;
 			const lobby = (file: string) =>
 				file.replace(outputPrefix, "lobby.");
-			const dist = configFileName(`${outputPrefix}${PROCESSED_OUTPUT}`);
 			const release = configFileName(`${outputPrefix}${RELEASE_OUTPUT}`);
 			const lobbyGame = path.posix.join(
 				path.posix.dirname(gameFolder),
@@ -365,9 +280,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			const copy = game
 				? `copy ${places.configFile} to ${lobby(places.configFile)}, point each ${gameFolder} in its tree to ${lobbyGame}, make src/lobby and copy ${gameFolder} to ${lobbyGame}. ${edited}`
 				: `copy ${places.configFile} to ${lobby(places.configFile)} and make src/lobby. ${edited}`;
-			return processed
-				? `Add another place: ${copy} Do the same for ${dist}, and for ${release} if there is one, and run 'darklua process src/lobby ${processed}/lobby --watch' beside the other darklua commands. Serve it ${port}: 'rogen serve ${lobby(dist)} --port <port>'.`
-				: `Add another place: ${copy} Serve it ${port}: 'rogen serve lobby --port <port>'.`;
+			return `Add another place: ${copy} Do the same for ${release} if there is one. Serve it ${port}: 'rogen serve lobby --port <port>'.`;
 		}
 		const lobby = `${PROJECTS_FOLDER}/lobby`;
 		const copied = [
@@ -375,7 +288,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			`${places.folder}/tsconfig.json`,
 			...(game ? [`${places.folder}/${places.gameFolder}`] : []),
 		];
-		return `Add another place: make ${lobby}/src, copy ${joinedWithAnd(copied)} into ${lobby} (with the dist and release configs and .darklua.json, if the place has them), and change the "name" in each config to lobby. Run 'rogen write ${lobby}' for its project file, add 'rbxtsc -p ${lobby}' and 'rbxtsc -w -p ${lobby}' to the build and watch scripts in package.json, and serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
+		return `Add another place: make ${lobby}/src, copy ${joinedWithAnd(copied)} into ${lobby} (with the release config, if the place has one), and change the "name" in each config to lobby. Run 'rogen write ${lobby}' for its project file, add 'rbxtsc -p ${lobby}' and 'rbxtsc -w -p ${lobby}' to the build and watch scripts in package.json, and serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
 	}
 
 	/** An error when the first place has a config already, which init never overwrites. */
@@ -537,8 +450,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	}
 
 	plan(choices: ProjectChoices, builder: InitPlanBuilder): void {
-		const { language, darklua, sourcePaths, compiledPath, places } =
-			choices;
+		const { language, sourcePaths, compiledPath, places } = choices;
 		const dirs = generatedDirs(choices);
 		const derived = derivedRoutesOf(choices.tree, dirs);
 		const routes = takesRoutes(choices.tree)
@@ -555,13 +467,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			landings: Object.values(routes ?? {}),
 		});
 		const { compiler } = language;
-		const defaultCompiledPath = darklua ? compiler?.outDir : compiledPath;
 		const name = path.basename(places?.place ?? this.directory.path);
 		const config: RogenConfig = {
 			...((choices.scaffold || places) && { name }),
 			...tree.fields,
 			...(routes && { sourcePaths: [...sourcePaths], routes }),
-			...(defaultCompiledPath && { compiledPath: defaultCompiledPath }),
+			...(compiledPath && { compiledPath }),
 		};
 		const written =
 			choices.tree.kind === "lift"
@@ -572,11 +483,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			written,
 			places?.configFile ?? DEFAULT_CONFIG_FILE
 		);
-		const processed = darklua && compiledPath ? compiledPath : undefined;
 		for (const { stem, config: output } of OutputConfigs.of(config, {
 			name,
-			processedPath: processed,
-			releasePath: processed ?? defaultCompiledPath,
+			releasePath: compiledPath,
 			releaseIgnore: this.directory.workspace.testRunner
 				? `**/*.spec.${language.extension}`
 				: undefined,
@@ -627,7 +536,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addNote(
 				`Starts from create-roblox-ts, which writes package.json${places ? "" : ", tsconfig.json"} and the compiler's settings.`
 			);
-		if (compiler && !darklua && compiledPath) {
+		if (compiler && compiledPath) {
 			builder.addNote(
 				`Syncing from ${compiledPath}, where ${compiler.name} compiles to.`
 			);
@@ -649,9 +558,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		{
 			kind,
 			language,
-			darklua,
 			sourcePaths,
-			compiledPath,
 			tree,
 			mounts,
 			places,
@@ -682,10 +589,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				`${places ? places.directories.join(", ") : sourcePaths.join(", ")} → ${keys.length > 0 ? keys.join(", ") : "no routes"}${rest ? `; other files to ${rest}` : ""}`
 			);
 		}
-		builder.addSummary(
-			"Darklua",
-			darklua && compiledPath ? `yes, writing to ${compiledPath}` : "no"
-		);
 		if (mounts.length > 0)
 			builder.addSummary(
 				"Packages",
@@ -712,13 +615,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		builder: InitPlanBuilder,
 		{
 			language,
-			darklua,
 			sourcePaths,
-			compiledPath,
 			tree: chosen,
 			places,
-			luauLsp,
-			gitignoreHint,
 			projectFilesHint,
 			scaffold,
 		}: ProjectChoices,
@@ -743,7 +642,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addSetup(compiler.sourcePathStep(sourcePaths[0]));
 		}
 		builder.addEdit(...tree.edits);
-		if (gitignoreHint) builder.addEdit(gitignoreHint);
 		if (projectFilesHint) builder.addEdit(projectFilesHint);
 		if (chosen.kind === "lift")
 			builder.addEdit(
@@ -766,23 +664,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addEdit(
 				ProjectSetup.addPlaceStep(
 					places,
-					darklua && compiledPath ? compiledPath : undefined,
 					chosen.kind === "new" && chosen.game !== undefined
 				)
 			);
-		const processed = darklua && compiledPath ? compiledPath : undefined;
-		new SyncSteps(language, darklua, scaffold && "npm run watch").plan(
-			builder,
-			places?.folder
-				? path.join(this.directory.path, places.folder)
-				: this.directory.path,
-			{
-				processed: compiler ? [compiler.outDir] : sourcePaths,
-				compiledPath,
-				luauLsp: luauLsp === true,
-				serve: ProjectSetup.serveCommand(places, processed),
-				...(places?.folder && { folder: places.folder }),
-			}
+		builder.addRun(
+			...(compiler
+				? [(scaffold && "npm run watch") ?? compiler.compileCommand]
+				: []),
+			ProjectSetup.serveCommand(places)
 		);
 	}
 }

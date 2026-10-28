@@ -13,7 +13,6 @@ const withPackages: WorkspaceSpec = {
 	packageManager: "wally",
 	packageDirs: ["Packages"],
 };
-const darklua: WorkspaceSpec = { darkluaConfig: ".darklua.json" };
 const rbxts: WorkspaceSpec = { language: "roblox-ts" };
 
 async function run(
@@ -54,7 +53,6 @@ describe("init choices given as flags", () => {
 			expect(questions.decided).toEqual([
 				{ question: "kind", value: "place", flag: "--kind" },
 				{ question: "language", value: "luau", flag: "--language" },
-				{ question: "darklua", value: false, flag: "--darklua" },
 				{ question: "places", value: false, flag: "--places" },
 				{
 					question: "sourcePaths",
@@ -87,7 +85,6 @@ describe("init choices given as flags", () => {
 				kind: "place",
 				skipGit: true,
 				language: "luau",
-				darklua: false,
 				sourcePaths: ["src"],
 				routes: ["server"],
 				unmatched: "leave",
@@ -103,7 +100,6 @@ describe("init choices given as flags", () => {
 				withPackages,
 				{
 					language: "luau",
-					darklua: false,
 					sourcePaths: ["lib"],
 					packages: ["Packages"],
 					routes: ["server", "shared"],
@@ -229,17 +225,6 @@ describe("init choices given as flags", () => {
 		});
 	});
 
-	describe("--darklua", () => {
-		it("should turn it on or off whatever was found", async () => {
-			expect(
-				(await run(darklua, { darklua: false })).asked.unwrap()?.darklua
-			).toBeUndefined();
-			expect(
-				(await run(luau, { darklua: true })).asked.unwrap()?.darklua
-			).toBeDefined();
-		});
-	});
-
 	describe("--source-path", () => {
 		it("should take several folders", async () => {
 			const { asked } = await run(luau, { sourcePaths: ["a", "b/"] });
@@ -271,22 +256,6 @@ describe("init choices given as flags", () => {
 			);
 
 			expect(error.message).not.toBe("");
-		});
-	});
-
-	describe("--compiled-path", () => {
-		it("should take a folder of its own", async () => {
-			const { asked } = await run(darklua, { compiledPath: "out" });
-
-			expect(asked.unwrap()?.compiledPath).toBe("out");
-		});
-
-		it("should refuse one that overlaps a source path", async () => {
-			const error = await refused(
-				run(darklua, { sourcePaths: ["src"], compiledPath: "src" })
-			);
-
-			expect(error.message).toContain("overlaps src");
 		});
 	});
 

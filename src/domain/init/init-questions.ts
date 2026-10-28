@@ -1,5 +1,5 @@
 import { UsageError } from "../../base/errors.js";
-import { containsPath, normalizeDir } from "../../base/path.js";
+import { normalizeDir } from "../../base/path.js";
 import { joinedClosestFirst, joinedWithAnd } from "../../base/strings.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { DEFAULT_CONFIG_FILE, DEFAULT_PROJECT_FILE } from "../config/config.js";
@@ -41,9 +41,6 @@ function listOf(given: readonly string[], flag: string): readonly string[] {
 	return [];
 }
 
-const required = (what: string) => (value: string) =>
-	value.trim() === "" ? `Enter ${what}.` : undefined;
-
 const splitList = (value: string): string[] =>
 	value
 		.split(",")
@@ -53,8 +50,6 @@ const splitList = (value: string): string[] =>
 /** Everything `init` asks. A question the user answered with a flag is not asked, and one a run that can't ask takes the default of is written to `decided`. A flag with a value that doesn't fit throws a `UsageError`. */
 export class InitQuestions {
 	readonly decided: InitDecision[] = [];
-	/** Whether the project being started uses Darklua, once it has been answered. */
-	usesDarklua = false;
 
 	constructor(
 		private readonly promptService: PromptService,
@@ -197,21 +192,6 @@ export class InitQuestions {
 		return id === undefined ? undefined : workspace.languageFor(id);
 	}
 
-	darklua({ workspace }: InitDirectory): Promise<boolean | undefined> {
-		const found = workspace.darkluaConfig !== undefined;
-		if (this.choices.darklua !== undefined)
-			return Promise.resolve(this.choices.darklua);
-		if (!this.interactive)
-			return Promise.resolve(this.decide("darklua", found, "--darklua"));
-		return this.promptService.confirm({
-			message: "Does Darklua process your code before Rojo syncs it?",
-			description:
-				"Darklua writes a processed copy of your code, and Rojo syncs that copy instead.",
-			hint: found ? `found ${workspace.darkluaConfig}` : undefined,
-			initialValue: found,
-		});
-	}
-
 	async sourcePaths(
 		directory: InitDirectory,
 		language: Language
@@ -285,41 +265,6 @@ export class InitQuestions {
 		});
 		if (answer === undefined) return undefined;
 		return answer === "lift" ? lift : { kind: "new" };
-	}
-
-	async compiledPath(
-		{ workspace }: InitDirectory,
-		read: readonly string[]
-	): Promise<string | undefined> {
-		const placeholder = workspace.darklua.defaultCompiledPath;
-		const checked = (value: string): string | undefined => {
-			const missing = required("a compiled path")(value);
-			if (missing) return missing;
-			const dir = normalizeDir(value);
-			const overlapped = read.find(
-				(folder) =>
-					containsPath(folder, dir) || containsPath(dir, folder)
-			);
-			return overlapped
-				? `${dir} overlaps ${overlapped}. Darklua must write to a folder of its own.`
-				: undefined;
-		};
-		const given = this.choices.compiledPath;
-		if (given !== undefined) {
-			const problem = checked(given);
-			if (problem) throw new UsageError(problem);
-			return normalizeDir(given);
-		}
-		if (!this.interactive)
-			return this.decide("compiledPath", placeholder, "--compiled-path");
-		const answer = await this.promptService.text({
-			message: "Compiled path",
-			description:
-				"The folder Darklua writes into. Rojo syncs from here.",
-			placeholder,
-			validate: checked,
-		});
-		return answer === undefined ? undefined : normalizeDir(answer);
 	}
 
 	private offeredMounts(

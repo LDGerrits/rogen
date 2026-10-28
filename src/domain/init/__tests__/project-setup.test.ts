@@ -3,7 +3,6 @@ import {
 	withRobloxTs,
 	workspaceOf,
 } from "../../toolchain/__tests__/workspaces.js";
-import { Darklua } from "../../toolchain/toolchain.js";
 import { ConfigFormatter } from "../../config/config-formatter.js";
 import { InitPlan } from "../init-service.js";
 import { InitQuestions } from "../init-questions.js";
@@ -177,68 +176,37 @@ describe("ProjectSetup plan", () => {
 		expect(configOf(files).compiledPath).toBe("build");
 	});
 
-	describe("language and darklua", () => {
-		const planFor = async (
-			language: WorkspaceSpec["language"],
-			darklua: boolean
-		) =>
+	describe("language", () => {
+		const planFor = async (language: WorkspaceSpec["language"]) =>
 			planProject({
 				choices: await defaultProjectChoices(
-					withRobloxTs(
-						{
-							...luau,
-							language,
-							darkluaConfig: darklua
-								? ".darklua.json"
-								: undefined,
-						},
-						{ outDir: "build" }
-					)
+					withRobloxTs({ ...luau, language }, { outDir: "build" })
 				),
 			}).unwrap();
 
 		it("should write one config without a compiled path for luau", async () => {
-			const files = await planFor("luau", false);
-
-			expect(files.configs).toEqual(["default.rogen.json"]);
-			expect(configOf(files).compiledPath).toBeUndefined();
-		});
-
-		it("should leave the description of luau with darklua pointing at the source", async () => {
-			const files = await planFor("luau", true);
+			const files = await planFor("luau");
 
 			expect(files.configs).toEqual(["default.rogen.json"]);
 			expect(configOf(files).compiledPath).toBeUndefined();
 		});
 
 		it("should write one config with the outDir for roblox-ts", async () => {
-			const files = await planFor("roblox-ts", false);
+			const files = await planFor("roblox-ts");
 
 			expect(files.configs).toEqual(["default.rogen.json"]);
 			expect(configOf(files).compiledPath).toBe("build");
-		});
-
-		it("should leave the description of roblox-ts with darklua pointing at the compiled output", async () => {
-			const files = await planFor("roblox-ts", true);
-
-			expect(files.configs).toEqual(["default.rogen.json"]);
-			expect(configOf(files).compiledPath).toBe("build");
-			expect(files.nextSteps.run).toEqual([
-				"rbxtsc -w",
-				"darklua process build dist --watch",
-				"rogen serve dist",
-			]);
 		});
 
 		it("should write no projects or serveProject", async () => {
-			const config = configOf(await planFor("luau", true));
+			const config = configOf(await planFor("luau"));
 
 			expect(config).not.toHaveProperty("projects");
 			expect(config).not.toHaveProperty("serveProject");
 		});
 
 		it("should say how to run luau", async () => {
-			expect((await planFor("luau", false)).nextSteps).toEqual({
+			expect((await planFor("luau")).nextSteps).toEqual({
 				setup: [],
 				run: ["rogen serve"],
 				edits: [
@@ -249,54 +217,9 @@ describe("ProjectSetup plan", () => {
 		});
 
 		it("should start rbxtsc first for roblox-ts", async () => {
-			expect((await planFor("roblox-ts", false)).nextSteps.run).toEqual([
+			expect((await planFor("roblox-ts")).nextSteps.run).toEqual([
 				"rbxtsc -w",
 				"rogen serve",
-			]);
-		});
-
-		it("should run Darklua beside the server, watching", async () => {
-			expect((await planFor("luau", true)).nextSteps.run).toEqual([
-				"darklua process src dist --watch",
-				"rogen serve dist",
-			]);
-		});
-
-		it("should say how to keep the sourcemap current", async () => {
-			expect((await planFor("luau", true)).nextSteps.edits.at(-1)).toBe(
-				"Darklua reads sourcemap.json. Keep it current from default.project.json in a terminal of its own: rogen sourcemap --watch -o sourcemap.json"
-			);
-		});
-
-		it("should not ask roblox-ts with darklua for a sourcemap", async () => {
-			expect(
-				(await planFor("roblox-ts", true)).nextSteps.edits.join("\n")
-			).not.toContain("sourcemap");
-		});
-
-		it("should give each source path its own path under the compiled path", async () => {
-			const files = planProject({
-				choices: {
-					...(await defaultProjectChoices({
-						...luau,
-						darkluaConfig: ".darklua.json",
-					})),
-					sourcePaths: ["src", "lib/shared"],
-				},
-			}).unwrap();
-
-			expect(files.nextSteps.run).toEqual([
-				"darklua process src dist/src --watch",
-				"darklua process lib/shared dist/lib/shared --watch",
-				"rogen serve dist",
-			]);
-		});
-
-		it("should tell roblox-ts with darklua to process the compiled output", async () => {
-			expect((await planFor("roblox-ts", true)).nextSteps.run).toEqual([
-				"rbxtsc -w",
-				"darklua process build dist --watch",
-				"rogen serve dist",
 			]);
 		});
 	});
@@ -441,15 +364,6 @@ describe("ProjectSetup plan", () => {
 			const files = await planChoices({ mounts: [] });
 
 			expect(configOf(files).tree).toEqual({ $className: "DataModel" });
-		});
-
-		it("should write no compiled path when darklua has none", async () => {
-			const files = await planChoices({
-				darklua: new Darklua(),
-				compiledPath: undefined,
-			});
-
-			expect(configOf(files).compiledPath).toBeUndefined();
 		});
 	});
 
@@ -648,41 +562,19 @@ describe("ProjectSetup plan, second config files", () => {
 			planned.files.find((file) => file.fileName === name)!.content
 		);
 
-	it("should write a complete dist.rogen.json beside the default when Darklua is set up", async () => {
+	it("should set up no Darklua in a new project, even beside a .darklua.json", async () => {
 		const planned = await plan(darkluaLuau);
 
-		expect(files(planned)).toEqual(
-			expect.arrayContaining(["default.rogen.json", "dist.rogen.json"])
-		);
-		expect(contentOf(planned, "dist.rogen.json")).toMatchObject({
-			name: "my-game",
-			tree: configOf(planned).tree,
-			sourcePaths: ["src"],
-			routes: LUAU_ROUTES,
-			compiledPath: "dist",
-		});
+		expect(files(planned)).toEqual(["default.rogen.json", ".gitignore"]);
 		expect(configOf(planned).compiledPath).toBeUndefined();
-	});
-
-	it("should build only the default config after writing", async () => {
-		expect((await plan(darkluaLuau)).configs).toEqual([
-			"default.rogen.json",
-		]);
-	});
-
-	it("should keep the compiler's folder in the default and read dist from the folder Darklua writes", async () => {
-		const planned = await plan(
-			withRobloxTs(
-				{ ...darkluaLuau, language: "roblox-ts" },
-				{ outDir: "build" }
-			)
+		expect(planned.summary.map(({ area }) => area)).not.toContain(
+			"Darklua"
 		);
-
-		expect(configOf(planned).compiledPath).toBe("build");
-		expect(contentOf(planned, "dist.rogen.json").compiledPath).toBe("dist");
+		expect(planned.nextSteps.run).toEqual(["rogen serve"]);
+		expect(planned.nextSteps.edits.join("\n")).not.toContain("Darklua");
 	});
 
-	it("should write no second file without Darklua or a test runner", async () => {
+	it("should write no second file without a test runner", async () => {
 		const planned = await plan(luau);
 
 		expect(files(planned)).not.toContain("dist.rogen.json");
@@ -698,18 +590,13 @@ describe("ProjectSetup plan, second config files", () => {
 			sourcePaths: ["src"],
 			routes: LUAU_ROUTES,
 		});
+		expect(contentOf(planned, "release.rogen.json")).not.toHaveProperty(
+			"compiledPath"
+		);
 		expect(configOf(planned)).not.toHaveProperty("globIgnorePaths");
 	});
 
-	it("should have release read the folder Darklua writes", async () => {
-		const planned = await plan({ ...darkluaLuau, testRunner: "Jest" });
-
-		expect(contentOf(planned, "release.rogen.json").compiledPath).toBe(
-			"dist"
-		);
-	});
-
-	it("should have release read the compiler's folder without Darklua", async () => {
+	it("should have release read the compiler's folder", async () => {
 		const planned = await plan(
 			withRobloxTs(
 				{ ...luau, language: "roblox-ts", testRunner: "Jest" },
@@ -721,13 +608,6 @@ describe("ProjectSetup plan, second config files", () => {
 			globIgnorePaths: ["**/*.spec.ts"],
 			compiledPath: "build",
 		});
-	});
-
-	it("should serve dist by name", async () => {
-		expect((await plan(darkluaLuau)).nextSteps.run).toEqual([
-			"darklua process src dist --watch",
-			"rogen serve dist",
-		]);
 	});
 
 	it("should ignore every project file Rogen writes", async () => {

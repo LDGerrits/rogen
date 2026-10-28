@@ -232,62 +232,33 @@ describe("init for several places", () => {
 			expect(result.isErr()).toBe(true);
 		});
 
-		describe("with Darklua and a test runner", () => {
+		describe("with a test runner", () => {
 			const planned = async () => {
-				await put(".darklua.json", "{}");
 				await put(
 					"package.json",
 					'{"devDependencies":{"jest-lua":"1"}}'
 				);
-				return plan({ darklua: true });
+				return plan();
 			};
 
-			it("should write the other outputs beside the config, named for the place", async () => {
+			it("should write the release output beside the config, named for the place", async () => {
 				const result = await planned();
 
-				expect(names(result)).toEqual(
-					expect.arrayContaining([
-						"game.dist.rogen.json",
-						"game.release.rogen.json",
-					])
+				expect(names(result)).not.toContain("game.dist.rogen.json");
+				expect(jsonOf(result, "game.release.rogen.json")).toMatchObject(
+					{
+						sourcePaths: ["src/common", "src/game"],
+						globIgnorePaths: ["**/*.spec.luau"],
+					}
 				);
-				expect(jsonOf(result, "game.dist.rogen.json")).toMatchObject({
-					sourcePaths: ["src/common", "src/game"],
-					compiledPath: "dist",
-				});
+				expect(result.nextSteps.run).toEqual(["rogen serve game"]);
 			});
 
-			it("should process each source path into the layout dist reads, and serve the file", async () => {
+			it("should say how to add a place with its release config", async () => {
 				const result = await planned();
 
-				expect(result.nextSteps.run).toEqual([
-					"darklua process src/common dist/common --watch",
-					"darklua process src/game dist/game --watch",
-					"rogen serve game.dist.rogen.json",
-				]);
-			});
-
-			it("should say how to add a place with its dist and release configs", async () => {
-				const result = await planned();
-
-				const edits = result.nextSteps.edits.join("\n");
-				expect(edits).toContain(
-					"Do the same for game.dist.rogen.json, and for game.release.rogen.json if there is one"
-				);
-				expect(edits).toContain(
-					"darklua process src/lobby dist/lobby --watch"
-				);
-				expect(edits).toContain(
-					"rogen serve lobby.dist.rogen.json --port"
-				);
-			});
-
-			it("should write the Darklua config at the root, and ignore the processed folder there", async () => {
-				const result = await plan({ darklua: true, skipGit: false });
-
-				expect(names(result)).toContain(".darklua.json");
-				expect(fileOf(result, ".gitignore")?.content).toContain(
-					"\n/dist\n"
+				expect(result.nextSteps.edits.join("\n")).toContain(
+					"Do the same for game.release.rogen.json if there is one"
 				);
 			});
 		});
@@ -438,25 +409,6 @@ describe("init for several places", () => {
 			expect(edits).toContain("rbxtsc -w -p projects/lobby");
 			expect(edits).toContain("rogen serve projects/lobby --port");
 			expect(edits).not.toContain("rogen init");
-		});
-
-		it("should write the dist output and the Darklua config in the place's folder", async () => {
-			const result = await planned({ darklua: true, skipGit: false });
-
-			expect(names(result)).toEqual(
-				expect.arrayContaining([
-					"projects/game/dist.rogen.json",
-					"projects/game/.darklua.json",
-				])
-			);
-			expect(result.nextSteps.run).toEqual([
-				"npm run watch",
-				"cd projects/game\ndarklua process out dist --watch",
-				"rogen serve projects/game/dist.rogen.json",
-			]);
-			expect(fileOf(result, ".gitignore")?.content).toContain(
-				"/projects/*/dist\n"
-			);
 		});
 	});
 

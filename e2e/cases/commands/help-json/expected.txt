@@ -159,18 +159,9 @@ stdout:
             "type": "string"
           },
           {
-            "name": "darklua",
-            "type": "boolean",
-            "negatable": true
-          },
-          {
             "name": "source-path",
             "type": "string",
             "multiple": true
-          },
-          {
-            "name": "compiled-path",
-            "type": "string"
           },
           {
             "name": "project-file",
