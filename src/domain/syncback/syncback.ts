@@ -1,10 +1,4 @@
-import path from "path";
-import { toNative } from "../../base/path.js";
-import {
-	Diagnostic,
-	errorDiagnostic,
-} from "../../platform/diagnostics/diagnostic.js";
-import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 
@@ -38,6 +32,7 @@ export interface SyncbackPlan {
 	/** What `--list` prints: the files and folders Rojo lists, in the order it lists them, with the files syncback placed after them. */
 	readonly listed: readonly SyncbackChange[];
 	readonly unplaced: readonly UnplacedInstance[];
+	readonly compiled: readonly CompiledChange[];
 }
 
 export interface SyncbackResult extends SyncbackPlan {
@@ -53,19 +48,8 @@ export function placeFileAmong(names: readonly string[]): string | undefined {
 	return names.find((name) => PLACE_FILE.test(name));
 }
 
-/** The error for a project that reads compiled code, which syncback would write into and the next compile would delete; `undefined` for any other project. */
-export function compiledPathRefusal(
-	project: ResolvedConfig
-): DiagnosticsError | undefined {
-	if (project.compiledPath === undefined) return undefined;
-	const folder = toNative(
-		path.relative(project.projectDir, project.compiledPath)
-	);
-	return new DiagnosticsError([
-		errorDiagnostic(
-			"syncback.compiledPath",
-			{ resource: project.file },
-			`the project reads compiled code from ${folder}; syncback would write into it and the next compile would delete the edits. Bring the changes into the source files by hand, or run syncback on a project that has no compiledPath.`
-		),
-	]);
+/** A change in the place to code the project compiles, which syncback leaves out since the next compile replaces it. */
+export interface CompiledChange {
+	readonly instance: string;
+	readonly kind: "changed" | "removed" | "added";
 }

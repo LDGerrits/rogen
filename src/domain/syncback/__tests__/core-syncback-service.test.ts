@@ -529,6 +529,259 @@ describe("CoreSyncbackService", () => {
 		expect(await fs.readFile(abs("Packages/Lib.luau"))).toBe("");
 	});
 
+	describe("with a compiledPath", () => {
+		const compiled = async () => {
+			await writeFiles(
+				fs,
+				"Packages/Lib.luau",
+				"dist/Combat/Server/Combat.luau",
+				"dist/Combat/Server/Hit.luau"
+			);
+			await prepare(
+				["src/Combat/Server/Combat.luau", "src/Combat/Server/Hit.luau"],
+				{
+					compiledPath: abs("dist"),
+					project: {
+						tree: {
+							$className: "DataModel",
+							ReplicatedStorage: {
+								Packages: { $path: "Packages" },
+							},
+						},
+					},
+				}
+			);
+		};
+
+		it("should write an edit to a folder the tree mounts", async () => {
+			await compiled();
+			rojo.say = async () => {
+				await fs.writeFile(
+					mirror("ReplicatedStorage", "Packages", "Lib.luau"),
+					"return 2"
+				);
+				return [];
+			};
+
+			const result = (await service.apply(request)).unwrap();
+
+			expect(result.changes).toEqual([
+				{ kind: "write", file: abs("Packages/Lib.luau") },
+			]);
+			expect(await fs.readFile(abs("Packages/Lib.luau"))).toBe(
+				"return 2"
+			);
+		});
+
+		it("should list an edit to compiled code, and write nothing into the compiled path", async () => {
+			await compiled();
+			rojo.say = async () => {
+				await fs.writeFile(
+					mirror("ServerScriptService", "Combat", "Combat.luau"),
+					"return 2"
+				);
+				return [];
+			};
+
+			const result = (await service.apply(request)).unwrap();
+
+			expect(result.changes).toEqual([]);
+			expect(result.unplaced).toEqual([]);
+			expect(result.compiled).toEqual([
+				{
+					instance: "ServerScriptService/Combat/Combat",
+					kind: "changed",
+				},
+			]);
+			expect(
+				await fs.readFile(abs("dist/Combat/Server/Combat.luau"))
+			).toBe("");
+		});
+
+		it("should list a removed and a new script, and write neither", async () => {
+			await compiled();
+			rojo.say = async () => {
+				await fs.delete(
+					mirror("ServerScriptService", "Combat", "Hit.luau")
+				);
+				await fs.writeFile(
+					mirror("ServerScriptService", "Combat", "Loot.luau"),
+					"return 1"
+				);
+				return [];
+			};
+
+			const result = (await service.apply(request)).unwrap();
+
+			expect(result.changes).toEqual([]);
+			expect(result.unplaced).toEqual([]);
+			expect(result.compiled).toEqual([
+				{ instance: "ServerScriptService/Combat/Hit", kind: "removed" },
+				{ instance: "ServerScriptService/Combat/Loot", kind: "added" },
+			]);
+			expect(await fs.exists(abs("dist/Combat/Server/Hit.luau"))).toBe(
+				true
+			);
+			expect(await fs.exists(abs("src/Combat/Server/Loot.luau"))).toBe(
+				false
+			);
+		});
+
+		it("should list a property Rojo wrote beside a compiled script as a change to that script", async () => {
+			await compiled();
+			rojo.say = async () => {
+				await fs.writeFile(
+					mirror("ServerScriptService", "Combat", "Combat.meta.json"),
+					"{}"
+				);
+				return [];
+			};
+
+			const result = (await service.apply(request)).unwrap();
+
+			expect(result.compiled).toEqual([
+				{
+					instance: "ServerScriptService/Combat/Combat",
+					kind: "changed",
+				},
+			]);
+		});
+
+		it("should list a removed folder once, and not each script in it", async () => {
+			await compiled();
+			rojo.say = async () => {
+				await fs.delete(mirror("ServerScriptService", "Combat"), true);
+				return [];
+			};
+
+			const result = (await service.apply(request)).unwrap();
+
+			expect(result.compiled).toEqual([
+				{ instance: "ServerScriptService/Combat", kind: "removed" },
+			]);
+		});
+
+		it("should list a property set on a compiled folder as a change, beside the changes in it", async () => {
+			await compiled();
+			rojo.say = async () => {
+				await fs.writeFile(
+					mirror("ServerScriptService", "Combat", "init.meta.json"),
+					'{"attributes":{"Level":3}}'
+				);
+				await fs.delete(
+					mirror("ServerScriptService", "Combat", "Hit.luau")
+				);
+				return [];
+			};
+
+			const result = (await service.apply(request)).unwrap();
+
+			expect(result.compiled).toEqual([
+				{ instance: "ServerScriptService/Combat", kind: "changed" },
+				{ instance: "ServerScriptService/Combat/Hit", kind: "removed" },
+			]);
+		});
+
+		it("should list a compiled script Rojo writes in another form as changed, not removed", async () => {
+			await compiled();
+			rojo.say = async () => {
+				await fs.delete(
+					mirror("ServerScriptService", "Combat", "Combat.luau")
+				);
+				await fs.writeFile(
+					mirror(
+						"ServerScriptService",
+						"Combat",
+						"Combat",
+						"init.luau"
+					),
+					"return 2"
+				);
+				return [];
+			};
+
+			const result = (await service.apply(request)).unwrap();
+
+			expect(result.compiled).toEqual([
+				{
+					instance: "ServerScriptService/Combat/Combat",
+					kind: "changed",
+				},
+			]);
+		});
+
+		it("should list a change inside a changed module too", async () => {
+			await writeFiles(
+				fs,
+				"dist/Combat/Server/Mod/init.luau",
+				"dist/Combat/Server/Mod/Child.luau"
+			);
+			await prepare(
+				[
+					"src/Combat/Server/Mod/init.luau",
+					"src/Combat/Server/Mod/Child.luau",
+				],
+				{ compiledPath: abs("dist") }
+			);
+			rojo.say = async () => {
+				await fs.writeFile(
+					mirror("ServerScriptService", "Combat", "Mod", "init.luau"),
+					"return 2"
+				);
+				await fs.writeFile(
+					mirror(
+						"ServerScriptService",
+						"Combat",
+						"Mod",
+						"Child.luau"
+					),
+					"return 2"
+				);
+				return [];
+			};
+
+			const result = (await service.apply(request)).unwrap();
+
+			expect(result.compiled).toEqual([
+				{ instance: "ServerScriptService/Combat/Mod", kind: "changed" },
+				{
+					instance: "ServerScriptService/Combat/Mod/Child",
+					kind: "changed",
+				},
+			]);
+		});
+
+		it("should say why a new instance has no place, as without a compiled path", async () => {
+			await prepare(
+				[
+					"src/Inventory/Server/Bag.luau",
+					"lib/Inventory/Server/Cart.luau",
+				],
+				{
+					sourcePaths: [abs("src"), abs("lib")],
+					compiledPath: abs("dist"),
+				}
+			);
+			rojo.say = async () => {
+				await fs.writeFile(
+					mirror("ServerScriptService", "Inventory", "Mail.luau"),
+					"return 1"
+				);
+				return [];
+			};
+
+			const plan = (await service.plan(request)).unwrap();
+
+			expect(plan.compiled).toEqual([]);
+			expect(plan.unplaced).toMatchObject([
+				{
+					instance: "ServerScriptService/Inventory/Mail",
+					reason: expect.stringContaining("more than one place"),
+				},
+			]);
+		});
+	});
+
 	it("should keep the files an ignore glob left out when it removes a folder", async () => {
 		await writeFiles(fs, "vendor/kit/A.luau", "vendor/kit/A.spec.luau");
 		await prepare(["src/Combat/Server/Combat.luau"], {

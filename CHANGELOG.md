@@ -9,9 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - `rogen init` now writes a `*` route by default, so a file that matches no route goes to the shared route. Only the files that run on one side need marking, such as with `@Server`. Pass `--unmatched leave`, or pick it when asked, to leave such files out with a warning instead.
+- `rogen syncback` runs on a project with a `compiledPath`. It writes the changes outside the compiled path, such as the folders the tree mounts, and lists each changed, removed or new instance that the project compiles as a `syncback.compiledPath` warning, for you to make in the source files. Before, it stopped with `syncback.compiledPath` and wrote nothing. In a terminal, the warnings about what syncback leaves out now come before it asks to write the rest.
 
 ### Fixed
 
+- The Baseplate that `rogen init` writes gives its color as whole numbers (`Color3uint8`), which a place keeps exactly, so the first `rogen syncback` no longer rewrites it when nothing changed in Studio.
 - With a `compiledPath`, code compiled after the project file was written now syncs into a running Rojo. Rojo never watches a mounted path that is missing when it loads the project, so before it writes, Rogen creates each folder the project file mounts in the compiled path and roblox-ts's `include`, and a placeholder script for each Luau file mounted there, which the compiler replaces. This happened on a fresh checkout when Rojo started before the first compile, and to each new feature folder while serving.
 - `rogen write` no longer warns that `rbxts.copyfiles.json`, which sloptor writes in the compiled path for itself, is a `compiled.orphan`.
 - In the README that `rogen init` writes for one place, the paragraph on which folders decide where code runs now follows the one about the feature it means.

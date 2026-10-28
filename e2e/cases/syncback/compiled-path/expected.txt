@@ -1,9 +1,41 @@
-$ rogen syncback -i place.rbxl -y
-exit 1
-stderr:
-  default.rogen.json - error: the project reads compiled code from dist; syncback would write into it and the next compile would delete the edits. Bring the changes into the source files by hand, or run syncback on a project that has no compiledPath. (syncback.compiledPath)
-
 $ rogen syncback -i place.rbxl --dry-run
-exit 1
+exit 0
+stdout:
+  Writing place/Workspace/Baseplate.model.json
+  Writing place/Workspace/Spawn.rbxm
 stderr:
-  default.rogen.json - error: the project reads compiled code from dist; syncback would write into it and the next compile would delete the edits. Bring the changes into the source files by hand, or run syncback on a project that has no compiledPath. (syncback.compiledPath)
+  rogen syncback · default.rogen.json
+  default.project.json · would write
+  Checked 1 project.
+  default.rogen.json - warning: ServerScriptService/Combat changed in the place, but it is compiled into dist, so syncback left it out. Make the change in the source files. (syncback.compiledPath)
+  default.rogen.json - warning: ServerScriptService/Combat/Combat changed in the place, but it is compiled into dist, so syncback left it out. Make the change in the source files. (syncback.compiledPath)
+  default.rogen.json - warning: ServerScriptService/Combat/Hit was removed from the place, but it is compiled into dist, so syncback left it out. Remove it from the source files. (syncback.compiledPath)
+  default.rogen.json - warning: ServerScriptService/Combat/Loot is new in the place, but the project compiles into dist, so syncback left it out. Add it to the source files. (syncback.compiledPath)
+  Syncback would change 2 files (2 to write).
+
+$ rogen syncback -i place.rbxl -y
+exit 0
+stderr:
+  rogen syncback · default.rogen.json
+  default.project.json · wrote
+  Wrote 1 project.
+  default.rogen.json - warning: ServerScriptService/Combat changed in the place, but it is compiled into dist, so syncback left it out. Make the change in the source files. (syncback.compiledPath)
+  default.rogen.json - warning: ServerScriptService/Combat/Combat changed in the place, but it is compiled into dist, so syncback left it out. Make the change in the source files. (syncback.compiledPath)
+  default.rogen.json - warning: ServerScriptService/Combat/Hit was removed from the place, but it is compiled into dist, so syncback left it out. Remove it from the source files. (syncback.compiledPath)
+  default.rogen.json - warning: ServerScriptService/Combat/Loot is new in the place, but the project compiles into dist, so syncback left it out. Add it to the source files. (syncback.compiledPath)
+  Syncback wrote 2 changes.
+
+written:
+  default.project.json
+  place/Workspace/Baseplate.model.json
+  place/Workspace/Spawn.rbxm
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Combat: ModuleScript  <- dist/Combat/Server/Combat.luau
+      Hit: ModuleScript  <- dist/Combat/Server/Hit.luau
+  Workspace: Workspace  <- place/Workspace/init.meta.json
+    Baseplate: Part  <- place/Workspace/Baseplate.model.json
+    Spawn: Part  <- place/Workspace/Spawn.rbxm
