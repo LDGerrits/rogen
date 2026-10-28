@@ -194,6 +194,48 @@ describe("StartedServer", () => {
 		});
 	});
 
+	it("should say it serves only once its record is written", async () => {
+		let finishWrite = () => {};
+		jest.spyOn(records, "write").mockReturnValue(
+			new Promise<void>((resolve) => {
+				finishWrite = resolve;
+			})
+		);
+		start();
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+		});
+
+		await jest.advanceTimersByTimeAsync(250);
+		expect(served).toHaveLength(0);
+
+		finishWrite();
+		await jest.advanceTimersByTimeAsync(0);
+		expect(served).toHaveLength(1);
+	});
+
+	it("should not say it serves when it was stopped while writing its record", async () => {
+		let finishWrite = () => {};
+		jest.spyOn(records, "write").mockReturnValue(
+			new Promise<void>((resolve) => {
+				finishWrite = resolve;
+			})
+		);
+		start();
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+		});
+		await jest.advanceTimersByTimeAsync(250);
+
+		await server.terminate();
+		finishWrite();
+		await jest.advanceTimersByTimeAsync(0);
+
+		expect(served).toHaveLength(0);
+	});
+
 	it("should report a failure to write its record, and still say it serves", async () => {
 		jest.spyOn(records, "write").mockRejectedValue(new Error("disk full"));
 		start();
