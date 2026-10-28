@@ -771,7 +771,7 @@ If the compiled path doesn't exist, as before the compiler or processor first ru
 warning: the compiled path "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
 ```
 
-If the compiled path exists but a source path's part of it is missing, the warning names that source path and the nearest path that exists. If the output is there but rooted one level off, the warning says where it found the output:
+If the compiled path exists but a source path's part of it is missing, or holds only the placeholders Rogen creates for Rojo, the warning names that source path and the nearest path that exists. If the output is there but rooted one level off, the warning says where it found the output:
 
 ```
 warning: nothing emitted for source path "src" exists under "out/src". The nearest path that exists is "out" — has your compiler or processor run? (output.nothingEmitted)

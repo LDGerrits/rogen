@@ -47,6 +47,8 @@ default.rogen.json:
 $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
+    rbxts_include: Folder
+      node_modules: Folder
   ServerScriptService: ServerScriptService
     Inventory: Folder
       Save: ModuleScript  <- out/Inventory/Server/Save.luau

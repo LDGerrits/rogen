@@ -1,31 +1,48 @@
 import path from "path";
-import { containsPosix, toPosix } from "../../base/path.js";
+import { contains, containsPosix, toPosix } from "../../base/path.js";
 import { ResolvedConfig, compiledPathOf } from "../config/resolved-config.js";
 import { RojoFile } from "../rojo/rojo.js";
-import { OptionalRojoPath } from "../rojo/rojo-project.js";
+import {
+	OptionalRojoPath,
+	RojoProject,
+	RojoProjectFile,
+	rojoPathTarget,
+} from "../rojo/rojo-project.js";
+import { SyncRules } from "../rojo/sync-rules.js";
 import {
 	DataReplacement,
 	MetaReplacement,
 	SyncTool,
 } from "../toolchain/toolchain.js";
 
+/** Rojo never watches a `$path` missing at load, so the write makes a folder or script there first. */
+export interface Placeholder {
+	readonly path: string;
+	readonly kind: "folder" | "script";
+}
+
+export const PLACEHOLDER_SOURCE =
+	"-- Rogen wrote this so Rojo watches it. Your compiler replaces it.\n";
+
 /** Where a write's files are synced from: the source paths themselves, or the `compiledPath` that tools write them into. */
 export class CompiledLayout {
 	readonly commonRoot: string;
 	readonly compiledPath: string | undefined;
 	readonly projectDir: string;
+	private readonly syncRules: SyncRules;
 
 	/** `tools` are what rewrites code on its way to `compiledPath`. */
 	constructor(
 		config: Pick<
 			ResolvedConfig,
-			"commonRoot" | "compiledPath" | "projectDir"
+			"commonRoot" | "compiledPath" | "projectDir" | "syncRules"
 		>,
 		private readonly tools: readonly SyncTool[]
 	) {
 		this.commonRoot = config.commonRoot ?? config.projectDir;
 		this.compiledPath = config.compiledPath;
 		this.projectDir = config.projectDir;
+		this.syncRules = config.syncRules;
 	}
 
 	/** The script names that make a file its folder: Rojo's `init`, and any name a tool writes as it. */
@@ -84,5 +101,31 @@ export class CompiledLayout {
 
 	rojoPath(filePath: string): OptionalRojoPath {
 		return { optional: this.relativeToProject(this.emittedPath(filePath)) };
+	}
+
+	/** The folders and Luau files `projectFile` mounts in the compiled path or a tool's runtime folder; any other file would be read before it is written. */
+	placeholdersOf(projectFile: RojoProjectFile): Placeholder[] {
+		if (this.compiledPath === undefined) return [];
+		const written = [
+			this.compiledPath,
+			...this.tools.flatMap(({ runtimeFolder }) =>
+				runtimeFolder
+					? path.resolve(this.projectDir, runtimeFolder)
+					: []
+			),
+		];
+		return new RojoProject(projectFile)
+			.mountedPaths()
+			.map(({ path: rojoPath }) =>
+				path.resolve(this.projectDir, rojoPathTarget(rojoPath))
+			)
+			.filter((target) => written.some((dir) => contains(dir, target)))
+			.flatMap((target): Placeholder[] => {
+				const file = RojoFile.at(toPosix(target), this.syncRules);
+				if (file.isLuau) return [{ path: target, kind: "script" }];
+				return file.isSyncedByRojo
+					? []
+					: [{ path: target, kind: "folder" }];
+			});
 	}
 }

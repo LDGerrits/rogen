@@ -17,6 +17,7 @@ import { Placer } from "./placer.js";
 import { CompiledPathCheck } from "./check/compiled-path-check.js";
 import { TreeAssembler } from "./tree-assembler.js";
 import { UnmountedSources } from "./check/unmounted-sources.js";
+import { Placeholder } from "./compiled-layout.js";
 
 /** One config prepared in memory, which the run goes on to write. */
 export interface PreparedConfig {
@@ -26,6 +27,7 @@ export interface PreparedConfig {
 	readonly summary: WriteSummary;
 	/** The files the write read; a change to one must rewrite it. */
 	readonly readFiles: readonly string[];
+	readonly placeholders: readonly Placeholder[];
 }
 
 type ExaminedConfig =
@@ -97,6 +99,7 @@ export class WritePipeline {
 					(await this.compiledPathCheck.check(placement)),
 			},
 			readFiles,
+			placeholders: placement.layout.placeholdersOf(projectFile),
 		});
 	}
 

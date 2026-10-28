@@ -5,6 +5,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import { OutputFile } from "../write.js";
 import { OutputWriter } from "../output-writer.js";
+import { PLACEHOLDER_SOURCE, Placeholder } from "../compiled-layout.js";
 
 const stagingPattern = (file: string) => new OutputFile(file).stagingPattern;
 
@@ -203,6 +204,52 @@ describe("OutputWriter", () => {
 			expect(entries.map(([name]) => name)).toEqual([
 				path.basename(projectFile),
 			]);
+		});
+
+		describe("placeholders", () => {
+			const folder = path.resolve("/repo", "out/Coins/shared");
+			const script = path.resolve("/repo", "out/Shop/Save.server.luau");
+			const placeholders: Placeholder[] = [
+				{ path: folder, kind: "folder" },
+				{ path: script, kind: "script" },
+			];
+
+			const writeWith = (tree: RojoProjectFile) =>
+				writer.write(new OutputFile(projectFile), tree, {
+					placeholders,
+				});
+
+			it("should create the missing folders and placeholder scripts before the project file", async () => {
+				const events: string[] = [];
+				store.add(
+					fs.onDidMutateFile((event) => events.push(event.path))
+				);
+
+				await writeWith(treeOf());
+
+				expect(await fs.isDirectory(folder)).toBe(true);
+				expect(await fs.readFile(script)).toBe(PLACEHOLDER_SOURCE);
+				expect(events.indexOf(script)).toBeLessThan(
+					events.indexOf(projectFile)
+				);
+			});
+
+			it("should leave a placeholder that is already there alone", async () => {
+				await fs.writeFile(script, "return 1");
+
+				await writeWith(treeOf());
+
+				expect(await fs.readFile(script)).toBe("return 1");
+			});
+
+			it("should create them when the project file's bytes are unchanged", async () => {
+				await write(treeOf());
+
+				const result = await writeWith(treeOf());
+
+				expect(result.unwrap()).toBe(false);
+				expect(await fs.isDirectory(folder)).toBe(true);
+			});
 		});
 	});
 });

@@ -14,7 +14,7 @@ import {
 import { RojoFile } from "../../rojo/rojo.js";
 import { MetaReplacement } from "../../toolchain/toolchain.js";
 import { Placement } from "../placement.js";
-import { CompiledLayout } from "../compiled-layout.js";
+import { CompiledLayout, PLACEHOLDER_SOURCE } from "../compiled-layout.js";
 
 const LISTED_PATHS = 3;
 
@@ -61,7 +61,7 @@ export class CompiledPathCheck {
 			const paths = await this.topLevelEmitted(sourcePath, layout);
 			tops.set(sourcePath, {
 				paths,
-				synced: await this.anyExists(paths),
+				synced: await this.anyEmitted(paths),
 			});
 		}
 		return tops;
@@ -320,9 +320,21 @@ export class CompiledPathCheck {
 			.map(([name]) => layout.emittedPath(path.join(sourcePath, name)));
 	}
 
-	private async anyExists(paths: readonly string[]): Promise<boolean> {
-		for (const target of paths)
-			if (await this.fileSystemService.exists(target)) return true;
+	/** Whether a compiler wrote any of `paths`; the placeholders a write makes for Rojo don't count. */
+	private async anyEmitted(paths: readonly string[]): Promise<boolean> {
+		for (const target of paths) {
+			const files = (await this.fileSystemService.isFile(target))
+				? [target]
+				: (await this.fileSystemService.isDirectory(target))
+					? await this.filesUnder(target, false)
+					: [];
+			for (const file of files)
+				if (
+					(await this.fileSystemService.readFile(file)) !==
+					PLACEHOLDER_SOURCE
+				)
+					return true;
+		}
 		return false;
 	}
 

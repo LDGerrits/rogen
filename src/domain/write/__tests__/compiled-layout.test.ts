@@ -1,6 +1,8 @@
 import { SyncTool } from "../../toolchain/toolchain.js";
+import { SyncRules } from "../../rojo/sync-rules.js";
 import { CompiledLayout } from "../compiled-layout.js";
 import { commonAncestor } from "../../../base/path.js";
+import { RojoNode, RojoProjectFile } from "../../rojo/rojo-project.js";
 import { abs, configOf, syncTools } from "./fixtures.js";
 
 interface LayoutSpec {
@@ -11,7 +13,7 @@ interface LayoutSpec {
 }
 
 const layoutOf = ({ tools, ...config }: LayoutSpec) =>
-	new CompiledLayout(config, tools);
+	new CompiledLayout({ ...config, syncRules: SyncRules.DEFAULT }, tools);
 
 describe("CompiledLayout", () => {
 	it("should take the project dir from the config's folder and the common root from the source paths", () => {
@@ -344,6 +346,62 @@ describe("CompiledLayout", () => {
 			});
 
 			expect(layout.syncedGlob("src/**/*.md")).toBe("dist/**/*.md");
+		});
+	});
+
+	describe("placeholdersOf", () => {
+		const projectOf = (...paths: RojoNode["$path"][]): RojoProjectFile => ({
+			tree: {
+				$className: "DataModel",
+				...Object.fromEntries(
+					paths.map((rojoPath, index) => [
+						`Node${index}`,
+						{ $path: rojoPath },
+					])
+				),
+			},
+		});
+
+		it("should name the folders and Luau files that the project mounts in the compiled path", () => {
+			const layout = new CompiledLayout(
+				configOf({ compiledPath: abs("out") }),
+				syncTools
+			);
+
+			expect(
+				layout.placeholdersOf(
+					projectOf(
+						{ optional: "out/Coins/shared" },
+						{ optional: "out/Shop/Save.server.luau" },
+						{ optional: "out/Shop/prices.json" },
+						"place/Workspace"
+					)
+				)
+			).toEqual([
+				{ path: abs("out/Coins/shared"), kind: "folder" },
+				{ path: abs("out/Shop/Save.server.luau"), kind: "script" },
+			]);
+		});
+
+		it("should name the folder roblox-ts writes its runtime library to", () => {
+			const layout = new CompiledLayout(
+				configOf({ compiledPath: abs("out") }),
+				syncTools
+			);
+
+			expect(layout.placeholdersOf(projectOf("include"))).toEqual([
+				{ path: abs("include"), kind: "folder" },
+			]);
+		});
+
+		it("should name nothing without a compiled path", () => {
+			const layout = new CompiledLayout(configOf(), syncTools);
+
+			expect(
+				layout.placeholdersOf(
+					projectOf("include", { optional: "out/Coins" })
+				)
+			).toEqual([]);
 		});
 	});
 });
