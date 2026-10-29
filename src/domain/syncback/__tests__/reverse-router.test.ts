@@ -311,6 +311,23 @@ describe("ReverseRouter", () => {
 			});
 		});
 
+		it("should make a feature folder for a folder whose script is in a folder below it", async () => {
+			const router = await routerOf(["src/Inventory/Server/Bag.luau"]);
+
+			expect(
+				router.place({
+					...quest,
+					files: [
+						["Quest", "Tracker", "init.luau"],
+						["Quest", "Tracker", "Child.luau"],
+					],
+				})
+			).toEqual({
+				kind: "placed",
+				home: { dir: posix("src/Quest/Server"), contents: true },
+			});
+		});
+
 		it("should put a file in the routing folder of the source path", async () => {
 			const router = await routerOf(["src/Inventory/Server/Bag.luau"]);
 

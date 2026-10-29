@@ -1,0 +1,30 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/Quest/Server/Tracker/Child.luau
+  Writing src/Quest/Server/Tracker/init.luau
+stderr:
+  rogen syncback · default.rogen.json
+  default.project.json · wrote
+  Wrote 1 project.
+  Syncback wrote 2 changes.
+
+written:
+  default.project.json
+  src/Quest/Server/Tracker/Child.luau
+  src/Quest/Server/Tracker/init.luau
+
+src/Quest/Server/Tracker/Child.luau:
+return "child"
+
+src/Quest/Server/Tracker/init.luau:
+return "tracker"
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Bag: ModuleScript  <- src/Inventory/Server/Bag.luau
+    Quest: Folder
+      Tracker: ModuleScript  <- src/Quest/Server/Tracker/init.luau
+        Child: ModuleScript  <- src/Quest/Server/Tracker/Child.luau

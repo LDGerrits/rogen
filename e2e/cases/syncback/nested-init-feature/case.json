@@ -1,0 +1,1 @@
+{"place": "place.rbxl", "steps": [["syncback", "-i", "place.rbxl", "-y", "--list"]], "show": ["src/Quest/Server/Tracker/init.luau", "src/Quest/Server/Tracker/Child.luau"]}
