@@ -438,7 +438,7 @@ Give the root `"$className": "DataModel"`. If the project is a model, remove the
 
 ### `tree.unreadableValue` [#tree-unreadablevalue]
 
-Error. A value in the `$properties` or `$attributes` of a node in the config's `tree` is one that Rojo can't read without the property's type. Examples are a UDim2 written as nested lists, a CFrame written as an object with no type, and `null`. Rojo refuses the project, and `rogen fmt-project` refuses to format it, as `rojo fmt-project` does. Without this check, `rojo build` fails later with "Failed to deserialize JSON", and the message doesn't name the value.
+Error. A value in the `$properties` or `$attributes` of a node in the config's `tree` is one that Rojo can't read without the property's type. Examples are a UDim2 written as nested lists, a CFrame written as an object with no type, a type Rojo doesn't know such as `{ "vector3": [1, 2, 3] }`, and `null`. Rojo refuses the project, and `rogen fmt-project` refuses to format it, as `rojo fmt-project` does. Without this check, `rojo build` fails later with "Failed to deserialize JSON", and the message doesn't name the value.
 
 ```
 error: "tree.StarterGui.Hud.Bar.$properties.Size": Rojo can't read this value, so it refuses the project. Write a boolean, a number, a string, a list of numbers (2, 3, 4 or 12), a list of strings, or a { "Type": value } pair. (tree.unreadableValue)
@@ -505,7 +505,7 @@ Give the field the type that the message names. It is the type that Rojo's meta 
 
 ### `meta.unreadableValue` [#meta-unreadablevalue]
 
-Error. A value in a meta file's `properties` or `attributes` is one that Rojo can't read, such as `null`, a list of numbers of the wrong length, or an object of several keys that is neither attributes of types Rojo knows nor material colors of whole numbers from 0 to 255. Rojo refuses the meta. Without this check, the build fails later, with a message that doesn't name the file.
+Error. A value in a meta file's `properties` or `attributes` is one that Rojo can't read, such as `null`, a list of numbers of the wrong length, a `{ "Type": value }` of a type Rojo doesn't know, or an object of several keys that is neither attributes of types Rojo knows nor material colors of whole numbers from 0 to 255. Rojo refuses the meta. Without this check, the build fails later, with a message that doesn't name the file.
 
 ```
 error: "properties.WorldPivotData": Rojo can't read this value, so it refuses this meta. Write a boolean, a number, a string, a list of numbers (2, 3, 4 or 12), a list of strings, or a { "Type": value } pair. (meta.unreadableValue)
@@ -743,7 +743,7 @@ warning: its name has ":", which Windows file names cannot hold. Rename it so a 
 
 Rename the file or folder, and update what requires it.
 
-Rogen leaves nothing out, except a file whose name has a backslash. Rogen reads `\` as a folder separator, so it leaves that file out. The check covers each file and folder that becomes an instance, and meta files and marker files. It skips files that Rogen ignores.
+Rogen leaves nothing out, except a file whose name has a backslash. Rogen reads `\` as a folder separator, so it leaves that file out. The check covers each file and folder that becomes an instance, and meta files and marker files. It skips files that Rogen ignores, but not meta files, which Rojo applies even when `globIgnorePaths` matches them.
 
 ## Output
 

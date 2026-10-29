@@ -637,7 +637,7 @@ describe("CompiledPathCheck", () => {
 					expect(await check()).toEqual([]);
 				});
 
-				it("should leave out ignored meta files", async () => {
+				it("should count a meta file the ignore globs match, which Rojo still applies", async () => {
 					await write(
 						"src/Inventory/Save.server.luau",
 						"src/Inventory/Save.meta.json",
@@ -648,7 +648,7 @@ describe("CompiledPathCheck", () => {
 						await check({
 							ignored: [abs("src/Inventory/Save.meta.json")],
 						})
-					).toEqual([]);
+					).toMatchObject([{ code: "output.metaNotSynced" }]);
 				});
 			});
 		});

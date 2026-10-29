@@ -213,6 +213,8 @@ describe("MetaReader", () => {
 			["an array of the wrong length", "[1, 2, 3, 4, 5]"],
 			["an array of mixed values", '[1, "a"]'],
 			["an object of several keys", '{"a": 1, "b": 2}'],
+			["a type Rojo doesn't know", '{"Vector": [1, 2, 3]}'],
+			["a type in the wrong case", '{"vector3": [1, 2, 3]}'],
 			[
 				"attributes of a type Rojo doesn't know",
 				'{"a": {"b": 1}, "c": {"d": 2}}',
@@ -289,6 +291,9 @@ describe("MetaReader", () => {
 							Id: { Ref: "00000000000000000000000000000000" },
 						},
 						K: { Grass: [0, 255, 3], CrackedLava: [4, 5, 6] },
+						L: { Hey: { String: "Grandma" } },
+						M: { Grass: [1, 2, 3] },
+						N: {},
 					},
 				})
 			);
