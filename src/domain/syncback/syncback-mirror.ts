@@ -19,6 +19,15 @@ const SAFE_NAME = /^[A-Za-z0-9_][A-Za-z0-9_ .-]*$/;
 /** The sync rule Rojo's syncback stops on: it can't write a script it reads as a legacy LocalScript. */
 const UNSYNCABLE_USE = "legacyClientScript";
 
+/** The classes Rojo makes from a file's contents: it drops the property that file would hold from a node of one that has a `$path`. */
+const FILE_CONTENT_CLASSES: ReadonlySet<string> = new Set([
+	"StringValue",
+	"Script",
+	"LocalScript",
+	"ModuleScript",
+	"LocalizationTable",
+]);
+
 const isPlainFolder = (node: RojoNode): boolean =>
 	node.$className === "Folder" &&
 	Object.keys(node).every(
@@ -35,6 +44,14 @@ export interface MirrorEntry {
 	/** Absolute, written with `/`: what Rojo reads in the project. */
 	readonly target: string;
 	readonly kind: "file" | "folder";
+}
+
+/** An empty mirror folder a node with no `$path` reads, where Rojo writes the children Studio adds to it. */
+export interface NodeFolder {
+	/** Relative to the mirror's root, written with `/`. */
+	readonly mirror: string;
+	/** The names from the root to the node. */
+	readonly node: readonly string[];
 }
 
 export interface SyncbackMirrorInputs {
@@ -71,6 +88,7 @@ export class SyncbackMirror {
 		readonly entries: readonly MirrorEntry[],
 		/** Mirror folders to make even when no file lands in them: plain folders the write made, and the folders nodes are mounted at; relative to the mirror's root. */
 		readonly folders: readonly string[],
+		readonly nodeFolders: readonly NodeFolder[],
 		/** The sync rules of the written file, which apply to the mirror once its files are known. */
 		private readonly rules: readonly SyncRule[]
 	) {}
@@ -86,7 +104,13 @@ export class SyncbackMirror {
 			await walk.children(file.tree, [], "");
 		else await walk.keep(file.tree, [], undefined);
 		SyncbackMirror.assertInside(file, inputs.root);
-		return new SyncbackMirror(file, walk.entries, walk.folders, rules);
+		return new SyncbackMirror(
+			file,
+			walk.entries,
+			walk.folders,
+			walk.nodeFolders,
+			rules
+		);
 	}
 
 	/** Throws at a `$path` outside the mirror, which would let Rojo's syncback write the project's own files. */
@@ -166,6 +190,7 @@ const KEPT = "~kept";
 class MirrorWalk {
 	readonly entries: MirrorEntry[] = [];
 	readonly folders: string[] = [];
+	readonly nodeFolders: NodeFolder[] = [];
 	private kept = 0;
 
 	/** Every instance path a placed file is at or below, joined with `\0`. */
@@ -266,6 +291,11 @@ class MirrorWalk {
 			const own = at ?? this.spare();
 			if (await this.children(node, instancePath, own))
 				this.mount(node, own);
+			else if (!FILE_CONTENT_CLASSES.has(node.$className ?? "")) {
+				const empty = this.spare();
+				this.mount(node, empty);
+				this.nodeFolders.push({ mirror: empty, node: instancePath });
+			}
 			return;
 		}
 		const target = toPosix(

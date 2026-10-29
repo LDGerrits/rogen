@@ -30,6 +30,7 @@ import { SyncRules } from "../rojo/sync-rules.js";
 import { RojoCommandService } from "../runner/rojo-command-service.js";
 import { ServerMessage } from "../runner/rojo-server.js";
 import { AddedInstance, AddedPath, addedInstances } from "./added-instances.js";
+import { WrittenEntry, addedNode } from "./added-node.js";
 import { ReverseRouter, instanceNameOf } from "./reverse-router.js";
 import {
 	SyncbackChange,
@@ -43,7 +44,7 @@ import {
 import { SyncbackService } from "./syncback-service.js";
 import { SyncbackLayout } from "./syncback-layout.js";
 import { SyncbackMirror } from "./syncback-mirror.js";
-import { applyTreeChanges, treeChanges } from "./tree-changes.js";
+import { TreeChange, applyTreeChanges, treeChanges } from "./tree-changes.js";
 import {
 	onlySerializedOverrides,
 	treeWithoutSerializedOverrides,
@@ -658,12 +659,6 @@ export class CoreSyncbackService implements SyncbackService {
 				}
 			}
 		}
-		const edited = await this.editTree(request, prepared);
-		if (edited.operation) {
-			await touch(edited.operation.file);
-			operations.push(edited.operation);
-		}
-		unplaced.push(...edited.unplaced);
 		const holding = new Set<string>();
 		for (const { path: at } of after) {
 			const names = at.split("/");
@@ -712,6 +707,13 @@ export class CoreSyncbackService implements SyncbackService {
 			if (entry.kind === "folder") known.add(entry.mirror);
 		for (const folder of known)
 			existing.add(instanceKey(folder.split("/")));
+		for (const { mirror: folder } of mirror.nodeFolders) {
+			const names = folder.split("/");
+			for (let depth = 1; depth < names.length; depth++)
+				known.add(names.slice(0, depth).join("/"));
+		}
+		const nodeAt = (folder: string) =>
+			mirror.nodeFolders.find(({ mirror: at }) => at === folder)?.node;
 
 		const fresh: AddedPath[] = [];
 		for (const added of after) {
@@ -726,7 +728,8 @@ export class CoreSyncbackService implements SyncbackService {
 				if (
 					!added.folder &&
 					name.startsWith("init.") &&
-					known.has(folder)
+					known.has(folder) &&
+					nodeAt(folder) === undefined
 				) {
 					if (RojoFile.INIT_FILES.has(name))
 						unplaced.push({
@@ -793,7 +796,20 @@ export class CoreSyncbackService implements SyncbackService {
 		const folders = new Set(
 			fresh.filter(({ folder }) => folder).map(({ path: at }) => at)
 		);
+		const additions: TreeChange[] = [];
 		for (const instance of instances) {
+			const node = nodeAt(instance.parentFolder);
+			if (node) {
+				const addition = await this.nodeOf(
+					prepared,
+					instance,
+					node,
+					folders
+				);
+				if ("reason" in addition) unplaced.push(addition);
+				else additions.push(addition);
+				continue;
+			}
 			const placed = await this.place(
 				prepared,
 				router,
@@ -818,6 +834,12 @@ export class CoreSyncbackService implements SyncbackService {
 			}
 			expected.push(...placed.expected);
 		}
+		const edited = await this.editTree(request, prepared, additions);
+		if (edited.operation) {
+			await touch(edited.operation.file);
+			operations.push(edited.operation);
+		}
+		unplaced.push(...edited.unplaced);
 		return new CoreSyncbackPlan(
 			request.project,
 			unplaced,
@@ -829,10 +851,49 @@ export class CoreSyncbackService implements SyncbackService {
 		);
 	}
 
-	/** What Rojo changed in the nodes of the project file it ran on, as an edit of the config's own tree; a node the tree does not have, which routing made, has no place for it. */
+	/** A new instance Rojo wrote into the folder of a node with no `$path`, as a child node of that node; one the tree can't describe has no place. */
+	private async nodeOf(
+		prepared: Prepared,
+		instance: AddedInstance,
+		node: readonly string[],
+		folders: ReadonlySet<string>
+	): Promise<TreeChange | UnplacedInstance> {
+		const entries: WrittenEntry[] = [];
+		for (const file of instance.files) {
+			const at = `${instance.parentFolder}/${file.join("/")}`;
+			entries.push(
+				folders.has(at)
+					? { path: file }
+					: {
+							path: file,
+							text: await this.fileSystemService.readFile(
+								path.join(prepared.root, at)
+							),
+						}
+			);
+		}
+		const made = addedNode(entries);
+		if (made)
+			return {
+				node,
+				set: {},
+				remove: [],
+				added: [{ name: instance.name, node: made }],
+			};
+		const written = instance.folder
+			? `the folder ${instance.name}`
+			: instance.files.map((file) => file.join("/")).join(" and ");
+		return {
+			instance: instanceKey([...node, instance.name]),
+			reason: `Rojo writes it as ${written}, and its parent ${instanceKey(node)} is a node of the tree of ${toNative(prepared.configFile)} with no $path; give that node a $path, or create the file by hand`,
+		};
+	}
+
+	/** What Rojo changed in the nodes of the project file it ran on, and the nodes `added` for new instances, as an edit of the config's own tree; a node the tree does not have, which routing made, has no place for it. */
 	private async editTree(
 		request: SyncbackRequest,
-		prepared: Prepared
+		prepared: Prepared,
+		added: readonly TreeChange[]
 	): Promise<{
 		operation?: Operation;
 		unplaced: UnplacedInstance[];
@@ -850,12 +911,19 @@ export class CoreSyncbackService implements SyncbackService {
 					},
 				],
 			};
-		const allChanges = treeChanges(prepared.mirror.file.tree, ran.value);
+		const allChanges = [
+			...treeChanges(prepared.mirror.file.tree, ran.value),
+			...added,
+		];
 		if (allChanges.length === 0) return { unplaced: [] };
 		const editedInStudio = treeChanges(
 			treeWithoutSerializedOverrides(prepared.mirror.file.tree),
 			treeWithoutSerializedOverrides(ran.value)
 		);
+		const children = (changes: readonly TreeChange[]) =>
+			changes.flatMap(({ node, added: nodes }) =>
+				nodes.map(({ name }) => [...node, name])
+			);
 		const { project } = request;
 		const current = await tryWithAsync(() =>
 			this.fileSystemService.readFile(prepared.configFile)
@@ -864,20 +932,38 @@ export class CoreSyncbackService implements SyncbackService {
 			node.length === 0 ? project.projectName : instanceKey(node);
 		if (current.isErr())
 			return {
-				unplaced: editedInStudio.map(({ node }) => ({
+				unplaced: [
+					...editedInStudio.map(({ node }) => node),
+					...children(added),
+				].map((node) => ({
 					instance: label(node),
 					reason: `${prepared.configFile} could not be read`,
 				})),
 			};
 		const applied = applyTreeChanges(current.value, ["tree"], allChanges);
-		const unplaced = applyTreeChanges(
+		const homeless = applyTreeChanges(
 			current.value,
 			["tree"],
-			editedInStudio
-		).unhomed.map((node) => ({
-			instance: label(node),
-			reason: `a property or attribute changed in Studio, and the tree of ${toNative(prepared.configFile)} has no node for it, since routing made it; add a node for it to the tree`,
-		}));
+			added
+		).unhomed;
+		const unplaced = [
+			...applyTreeChanges(
+				current.value,
+				["tree"],
+				editedInStudio
+			).unhomed.map((node) => ({
+				instance: label(node),
+				reason: `a property or attribute changed in Studio, and the tree of ${toNative(prepared.configFile)} has no node for it, since routing made it; add a node for it to the tree`,
+			})),
+			...children(
+				added.filter(({ node }) =>
+					homeless.some((at) => instanceKey(at) === instanceKey(node))
+				)
+			).map((node) => ({
+				instance: label(node),
+				reason: `its parent ${label(node.slice(0, -1))} has no $path, and the tree of ${toNative(prepared.configFile)} has no node for it, since routing made it; add a node with a $path for it to the tree, or create the file by hand`,
+			})),
+		];
 		if (applied.text === current.value) return { unplaced };
 		return {
 			unplaced,

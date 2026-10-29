@@ -530,6 +530,7 @@ describe("CoreSyncbackService", () => {
 
 		expect(JSON.parse(rojo.projectTexts[0]).tree.ReplicatedStorage).toEqual(
 			{
+				$path: ".rogen-syncback/mirror/~kept/0",
 				Packages: {
 					$path: ".rogen-syncback/mirror/ReplicatedStorage/Packages",
 				},
@@ -539,6 +540,117 @@ describe("CoreSyncbackService", () => {
 			{ kind: "write", file: abs("Packages/Lib.luau") },
 		]);
 		expect(await fs.readFile(abs("Packages/Lib.luau"))).toBe("");
+	});
+
+	describe("with a node that has no $path", () => {
+		const tree = {
+			$className: "DataModel",
+			ReplicatedStorage: {
+				Remotes: {
+					$className: "Folder",
+					Hit: { $className: "RemoteEvent" },
+				},
+			},
+		};
+
+		beforeEach(async () => {
+			await prepare(["src/Combat/Server/Combat.luau"], {
+				project: { tree },
+			});
+			await fs.writeFile(
+				abs("default.rogen.json"),
+				JSON.stringify({ tree }, undefined, "\t")
+			);
+		});
+
+		/** Writes a file where Rojo writes the new children of the node at `node`. */
+		const writeIntoNode = async (
+			node: readonly string[],
+			file: string,
+			text: string
+		) => {
+			let found = JSON.parse(rojo.projectTexts[0]).tree;
+			for (const name of node) found = found[name];
+			await fs.writeFile(path.join(abs(found.$path), file), text);
+		};
+
+		it("should add an instance Rojo wrote there to that node in the config's tree", async () => {
+			rojo.say = async () => {
+				await writeIntoNode(
+					["ReplicatedStorage", "Remotes"],
+					"Buy.model.json",
+					JSON.stringify({ className: "RemoteEvent" })
+				);
+				return [];
+			};
+
+			const done = (await service.apply(request)).unwrap();
+
+			expect(done.changes).toEqual([
+				{ kind: "write", file: abs("default.rogen.json") },
+			]);
+			expect(done.unplaced).toEqual([]);
+			expect(
+				JSON.parse(await fs.readFile(abs("default.rogen.json"))).tree
+			).toEqual({
+				...tree,
+				ReplicatedStorage: {
+					Remotes: {
+						...tree.ReplicatedStorage.Remotes,
+						Buy: { $className: "RemoteEvent" },
+					},
+				},
+			});
+		});
+
+		it("should say how to keep an instance there that the tree can't describe, and write nothing for it", async () => {
+			rojo.say = async () => {
+				await writeIntoNode(
+					["ReplicatedStorage", "Remotes"],
+					"Run.server.luau",
+					"print(1)"
+				);
+				return [];
+			};
+
+			const plan = (await service.plan(request)).unwrap();
+
+			expect(plan.changes).toEqual([]);
+			expect(plan.unplaced).toEqual([
+				{
+					instance: "ReplicatedStorage/Remotes/Run",
+					reason: `Rojo writes it as Run.server.luau, and its parent ReplicatedStorage/Remotes is a node of the tree of ${abs("default.rogen.json")} with no $path; give that node a $path, or create the file by hand`,
+				},
+			]);
+		});
+	});
+
+	it("should say how to keep an instance Studio added under a node with no $path that only routing made", async () => {
+		await prepare(["src/Hud/Client/Hud.luau"], {
+			project: { tree: { $className: "DataModel" } },
+		});
+		await fs.writeFile(
+			abs("default.rogen.json"),
+			JSON.stringify({ tree: { $className: "DataModel" } })
+		);
+		rojo.say = async () => {
+			const { tree } = JSON.parse(rojo.projectTexts[0]);
+			await fs.writeFile(
+				path.join(abs(tree.StarterPlayer.$path), "Buy.model.json"),
+				JSON.stringify({ className: "RemoteEvent" })
+			);
+			return [];
+		};
+
+		const plan = (await service.plan(request)).unwrap();
+
+		expect(plan.changes).toEqual([]);
+		expect(plan.unplaced).toEqual([
+			{
+				instance: "StarterPlayer/Buy",
+				reason: `its parent StarterPlayer has no $path, and the tree of ${abs("default.rogen.json")} has no node for it, since routing made it; add a node with a $path for it to the tree, or create the file by hand`,
+			},
+		]);
 	});
 
 	describe("with a compiledPath", () => {

@@ -135,6 +135,7 @@ describe("SyncbackMirror", () => {
 		expect(mirror.file.tree).toEqual({
 			StarterPlayer: {
 				$className: "StarterPlayer",
+				$path: `${ROOT}/~kept/0`,
 				StarterPlayerScripts: {
 					$className: "StarterPlayerScripts",
 					$path: `${ROOT}/StarterPlayer/StarterPlayerScripts`,
@@ -162,6 +163,7 @@ describe("SyncbackMirror", () => {
 
 		expect(mirror.file.tree).toEqual({
 			ReplicatedStorage: {
+				$path: `${ROOT}/~kept/1`,
 				Packages: { $path: `${ROOT}/ReplicatedStorage/Packages` },
 				Lib: {
 					$className: "Folder",
@@ -187,6 +189,73 @@ describe("SyncbackMirror", () => {
 			},
 		]);
 	});
+
+	it("should read a node with no $path from an empty folder of its own, where Rojo writes the children Studio adds to it", async () => {
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: {
+						Remotes: {
+							$className: "Folder",
+							Hit: { $className: "RemoteEvent" },
+						},
+					},
+				},
+			},
+			[]
+		);
+
+		expect(mirror.file.tree).toEqual({
+			$className: "DataModel",
+			ReplicatedStorage: {
+				$path: `${ROOT}/~kept/2`,
+				Remotes: {
+					$className: "Folder",
+					$path: `${ROOT}/~kept/1`,
+					Hit: {
+						$className: "RemoteEvent",
+						$path: `${ROOT}/~kept/0`,
+					},
+				},
+			},
+		});
+		expect(mirror.entries).toEqual([]);
+		expect(mirror.nodeFolders).toEqual([
+			{
+				mirror: "~kept/0",
+				node: ["ReplicatedStorage", "Remotes", "Hit"],
+			},
+			{ mirror: "~kept/1", node: ["ReplicatedStorage", "Remotes"] },
+			{ mirror: "~kept/2", node: ["ReplicatedStorage"] },
+		]);
+		expect(mirror.folders).toEqual(["~kept/0", "~kept/1", "~kept/2"]);
+	});
+
+	it.each(["StringValue", "ModuleScript", "LocalizationTable"])(
+		"should keep a %s node with no $path as it is, as Rojo drops the property its file would hold from a node with a $path",
+		async (className) => {
+			const mirror = await mirrorOf(
+				{
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: {
+							$path: "vendor",
+							Version: { $className: className },
+						},
+					},
+				},
+				[],
+				["/repo/vendor"]
+			);
+
+			expect(mirror.file.tree.ReplicatedStorage).toEqual({
+				$path: `${ROOT}/ReplicatedStorage`,
+				Version: { $className: className },
+			});
+			expect(mirror.nodeFolders).toEqual([]);
+		}
+	);
 
 	it("should name the project paths that would share a mirror path on a case-blind system", async () => {
 		const mirror = await mirrorOf(
@@ -271,6 +340,7 @@ describe("SyncbackMirror", () => {
 
 		expect(mirror.file.tree).toEqual({
 			ServerScriptService: {
+				$path: `${ROOT}/~kept/1`,
 				Inventory: {
 					$className: "Folder",
 					$path: `${ROOT}/ServerScriptService/Inventory`,
@@ -315,6 +385,7 @@ describe("SyncbackMirror", () => {
 		expect(mirror.file.tree).toEqual({
 			ReplicatedStorage: {
 				$className: "ReplicatedStorage",
+				$path: `${ROOT}/~kept/1`,
 				Shared: {
 					$className: "Folder",
 					$path: `${ROOT}/ReplicatedStorage/Shared`,
@@ -356,6 +427,7 @@ describe("SyncbackMirror", () => {
 
 		expect(mirror.file.tree).toEqual({
 			ReplicatedStorage: {
+				$path: `${ROOT}/~kept/2`,
 				Net: {
 					$path: `${ROOT}/ReplicatedStorage/Net`,
 					Sub: {
@@ -431,6 +503,7 @@ describe("SyncbackMirror", () => {
 		expect(mirror.file.tree).toEqual({
 			$className: "DataModel",
 			ReplicatedStorage: {
+				$path: `${ROOT}/~kept/1`,
 				Nested: { $path: `${ROOT}/~kept/0/nested.project.json` },
 			},
 		});
