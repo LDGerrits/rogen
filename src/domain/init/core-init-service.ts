@@ -34,20 +34,15 @@ import { ServerFinder } from "../runner/server-finder.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
 
 /** The flags that shape a new config, by the choice each gives; init takes none of them where a config exists. */
-const SHAPING_FLAGS = [
-	"kind",
-	"language",
-	"sample",
-	"places",
-] as const satisfies readonly Exclude<
-	keyof InitChoices,
-	"agentRules" | "agentHook" | "skipGit"
->[];
+const SHAPING_FLAGS: Record<
+	Exclude<keyof InitChoices, "agentRules" | "agentHook" | "skipGit">,
+	true
+> = { kind: true, language: true, sample: true, places: true };
 
 /** The shaping flags given, as typed. */
 function shapingFlagsOf(choices: InitChoices): string[] {
-	return SHAPING_FLAGS.flatMap((choice) => {
-		const value = choices[choice];
+	return Object.keys(SHAPING_FLAGS).flatMap((choice) => {
+		const value = choices[choice as keyof typeof SHAPING_FLAGS];
 		if (value === undefined) return [];
 		return [booleanFlag(`--${choice}`, value !== false)];
 	});
