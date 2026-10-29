@@ -1097,6 +1097,7 @@ Syncback also uses this warning for changes that it can't write:
 
 - an instance where an ignore glob would put it
 - a property set on a folder that matches no single folder of the project
+- an instance named like an init file, such as `init` or `init.server`, in a folder that matches no single folder of the project, because Rojo reads its file as the folder itself (rename it in Studio)
 - a property set on a node that only routing made, because the `tree` has no node for it
 - a copy of an init script that was edited differently from another copy, or deleted while another copy was edited (Rogen writes the edit)
 - a change that Rojo itself can't sync back, such as a `.json` or `.toml` module, which Rojo skips, or a changed `.yaml` or `.yml` module, which makes Rojo's syncback fail
