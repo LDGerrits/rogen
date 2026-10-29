@@ -16,10 +16,8 @@ import {
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import {
 	ConfirmPromptOptions,
-	MultiSelectPromptOptions,
 	PromptService,
 	SelectPromptOptions,
-	TextPromptOptions,
 } from "../../../platform/prompt/prompt-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
@@ -62,20 +60,8 @@ class CustomiseFirst implements PromptService {
 		return this.once(options.message, () => this.inner.select(options));
 	}
 
-	text(options: TextPromptOptions): Promise<string | undefined> {
-		return this.once(options.message, () => this.inner.text(options));
-	}
-
 	confirm(options: ConfirmPromptOptions): Promise<boolean | undefined> {
 		return this.once(options.message, () => this.inner.confirm(options));
-	}
-
-	multiSelect<T extends string>(
-		options: MultiSelectPromptOptions<T>
-	): Promise<readonly T[] | undefined> {
-		return this.once(options.message, () =>
-			this.inner.multiSelect(options)
-		);
 	}
 }
 

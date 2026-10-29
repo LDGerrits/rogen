@@ -1,11 +1,14 @@
 import { CANCEL, MockPromptService } from "./mock-prompt-service.js";
 
+const select = (prompts: MockPromptService, message: string) =>
+	prompts.select({ message, choices: [] });
+
 describe("MockPromptService", () => {
 	it("should answer in order, failing once the answers run out", async () => {
 		const prompts = new MockPromptService(["a"]);
 
-		expect(await prompts.text({ message: "First" })).toBe("a");
-		await expect(prompts.text({ message: "Second" })).rejects.toThrow(
+		expect(await select(prompts, "First")).toBe("a");
+		await expect(select(prompts, "Second")).rejects.toThrow(
 			'No scripted answer for "Second".'
 		);
 	});
@@ -37,24 +40,24 @@ describe("MockPromptService", () => {
 		it("should fail at a question it names no answer for that has no default", async () => {
 			const prompts = new MockPromptService({});
 
-			await expect(
-				prompts.text({ message: "Config name" })
-			).rejects.toThrow('No scripted answer for "Config name".');
+			await expect(select(prompts, "Config name")).rejects.toThrow(
+				'No scripted answer for "Config name".'
+			);
 		});
 
 		it("should cancel a question named with CANCEL", async () => {
 			const prompts = new MockPromptService({ Places: CANCEL });
 
 			expect(
-				await prompts.text({ message: "Places", placeholder: "lobby" })
+				await prompts.confirm({ message: "Places", initialValue: true })
 			).toBeUndefined();
 		});
 
 		it("should fail when a question is asked again", async () => {
 			const prompts = new MockPromptService({ Places: "lobby" });
-			await prompts.text({ message: "Places" });
+			await select(prompts, "Places");
 
-			await expect(prompts.text({ message: "Places" })).rejects.toThrow(
+			await expect(select(prompts, "Places")).rejects.toThrow(
 				'"Places" was asked again; script the answers as a list.'
 			);
 		});
@@ -63,7 +66,11 @@ describe("MockPromptService", () => {
 			const prompts = new MockPromptService({});
 
 			expect(
-				await prompts.text({ message: "constructor", placeholder: "x" })
+				await prompts.select({
+					message: "constructor",
+					choices: [],
+					initialValue: "x",
+				})
 			).toBe("x");
 		});
 
@@ -72,11 +79,11 @@ describe("MockPromptService", () => {
 				Places: "lobby",
 				Language: "luau",
 			});
-			await prompts.text({ message: "Places" });
+			await select(prompts, "Places");
 
 			expect(prompts.unusedAnswers()).toEqual(["Language"]);
 
-			await prompts.text({ message: "Language" });
+			await select(prompts, "Language");
 		});
 	});
 });

@@ -5,7 +5,6 @@ export const KEY = {
 	enter: "\r",
 	up: "\x1b[A",
 	down: "\x1b[B",
-	space: " ",
 	ctrlC: "\x03",
 } as const;
 
