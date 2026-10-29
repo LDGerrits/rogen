@@ -508,6 +508,50 @@ describe("CoreSyncbackService", () => {
 		expect(plan.unplaced).toEqual([]);
 	});
 
+	it("should remove a route folder it emptied when the place no longer holds its instance", async () => {
+		await prepare([
+			"src/Inventory/Server/Bag.luau",
+			"src/Inventory/Save@server.luau",
+			"src/Inventory/Shared/Types.luau",
+		]);
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Inventory"), true);
+			await writeFiles(
+				fs,
+				".rogen-syncback/mirror/ServerScriptService/Bags/Bag.luau",
+				".rogen-syncback/mirror/ServerScriptService/Bags/Save.luau"
+			);
+			return [];
+		};
+
+		await service.apply(request);
+
+		expect(await fs.exists(abs("src/Inventory/Server"))).toBe(false);
+		expect(await fs.exists(abs("src/Inventory/Shared/Types.luau"))).toBe(
+			true
+		);
+	});
+
+	it("should keep a route folder it emptied when the place still holds its instance", async () => {
+		await prepare([
+			"src/Inventory/Server/Bag.luau",
+			"src/Inventory/Save@server.luau",
+		]);
+		rojo.say = async () => {
+			await fs.delete(
+				mirror("ServerScriptService", "Inventory", "Bag.luau")
+			);
+			return [];
+		};
+
+		await service.apply(request);
+
+		expect(await fs.isDirectory(abs("src/Inventory/Server"))).toBe(true);
+		expect(await fs.exists(abs("src/Inventory/Save@server.luau"))).toBe(
+			true
+		);
+	});
+
 	it("should mirror a folder the tree mounts too, so a plan writes nothing outside the mirror", async () => {
 		await writeFiles(fs, "Packages/Lib.luau");
 		await prepare(["src/Combat/Server/Combat.luau"], {
