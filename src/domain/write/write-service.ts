@@ -9,6 +9,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
+import { FileChange } from "../../platform/fs/file-changes.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
@@ -269,6 +270,15 @@ export interface WriteService {
 		listing: IndexReader,
 		previous?: LoadedConfig,
 		force?: boolean
+	): Promise<LoadedConfig>;
+
+	/** `previous` with what the compiled path holds now, for when only `changes` in the compiled path happened; writes nothing, and returns `previous` when it failed, is of another version of the config, or `changes` only add what a write makes there. */
+	recheck(
+		set: WriteSet,
+		projectFile: string,
+		listing: IndexReader,
+		previous: LoadedConfig,
+		changes: readonly FileChange[]
 	): Promise<LoadedConfig>;
 
 	/** What a write raises about each of `targets.args`, and why any config didn't load; with no arguments, about every config. Writes nothing; fails as `locate` does. */

@@ -34,6 +34,7 @@ const change = (type: FileChangeType, file: string): FileChange => ({
 const updateOf = (update: Partial<WatchUpdate>): WatchUpdate => ({
 	at: new Date(2026, 0, 2, 3, 4, 5),
 	cause: { kind: "initial" },
+	rewrote: true,
 	changes: [],
 	notices: [],
 	reports: [],
@@ -103,6 +104,12 @@ describe("WatchLog.update", () => {
 				kind: "warn",
 				text: "The burst has stopped, after 101 more changes.",
 			});
+		});
+
+		it("should count the compiled files that changed", () => {
+			expect(
+				logged({ cause: { kind: "compiled", files: 2 } })[0].text
+			).toBe("03:04:05 · 2 compiled files changed");
 		});
 
 		it("should count source files", () => {

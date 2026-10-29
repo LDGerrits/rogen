@@ -8,7 +8,7 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  src - warning: nothing emitted for source path "src" exists under "out". The nearest path that exists is "out" — has your compiler or processor run? (output.nothingEmitted)
+  src - warning: source path "src" has no output under "out". The nearest path that exists is "out" — has your compiler or processor run? (output.nothingEmitted)
 
 written:
   default.project.json

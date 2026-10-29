@@ -2,7 +2,7 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  core - warning: nothing emitted for source path "core" exists under "out/core". Found "out/Types.luau" — is the output of your compiler or processor rooted differently? (output.nothingEmitted)
+  core - warning: source path "core" has no output under "out/core". Found "out/Types.luau" — is the output of your compiler or processor rooted differently? (output.nothingEmitted)
 
 written:
   default.project.json

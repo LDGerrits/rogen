@@ -7,6 +7,7 @@ import {
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
@@ -35,6 +36,7 @@ import {
 	skippedOutside,
 } from "./write-service.js";
 import { PreparedConfig, WritePipeline } from "./write-pipeline.js";
+import { PLACEHOLDER_SOURCE } from "./compiled-layout.js";
 import { ProjectFileStaleness } from "./check/project-file-staleness.js";
 import { OutsideSourcePaths } from "./check/outside-source-paths.js";
 import { LocateTargets } from "./locate/locate-targets.js";
@@ -117,14 +119,49 @@ export class CoreWriteService implements WriteService {
 	): Promise<LoadedConfig> {
 		const config = set.configOf(projectFile);
 		if (!config) throw new Error(`${projectFile} is not in the set.`);
-		const syncWarnings =
+		const known =
 			previous?.config === config ? previous.syncWarnings : undefined;
 		const attempts = await this.attempt(
-			[{ config, syncWarnings }],
+			[{ config, syncWarnings: known ?? [] }],
 			listing
 		);
 		const [outcome] = await this.settle(attempts, [], true, { force });
-		return outcome;
+		if (known) return outcome;
+		// Checked after the write, which creates the compiled path's placeholders.
+		if (outcome.kind === "failed")
+			return new FailedConfig(config, outcome.errors, {
+				warnings: outcome.warnings,
+				syncWarnings: undefined,
+			});
+		return CoreWriteService.withSyncWarnings(
+			outcome,
+			await this.compiledPathWarnings(config, listing)
+		);
+	}
+
+	async recheck(
+		set: WriteSet,
+		projectFile: string,
+		listing: IndexReader,
+		previous: LoadedConfig,
+		changes: readonly FileChange[]
+	): Promise<LoadedConfig> {
+		const config = set.configOf(projectFile);
+		if (
+			previous.config !== config ||
+			previous.kind === "failed" ||
+			(await this.onlyPlaceholders(changes))
+		)
+			return previous;
+		const syncWarnings = await this.compiledPathWarnings(config, listing);
+		// A recheck writes nothing, so a config it wrote before is unchanged now.
+		return syncWarnings
+			? CoreWriteService.withSyncWarnings(
+					previous,
+					syncWarnings,
+					"unchanged"
+				)
+			: previous;
 	}
 
 	async locate(
@@ -354,6 +391,63 @@ export class CoreWriteService implements WriteService {
 			);
 		}
 		return outcomes;
+	}
+
+	private compiledPathWarnings(
+		config: ResolvedConfig,
+		listing: IndexReader
+	): Promise<Diagnostic[] | undefined> {
+		return new WritePipeline(
+			this.fileSystemService,
+			listing,
+			this.syncTools
+		).compiledPathWarnings(config);
+	}
+
+	/** Whether each of `changes` adds what a write makes in the compiled path before the compiler runs: a folder, or a placeholder script. */
+	private async onlyPlaceholders(
+		changes: readonly FileChange[]
+	): Promise<boolean> {
+		for (const { type, path: file } of changes) {
+			if (type !== FileChangeType.ADDED) return false;
+			if (await this.fileSystemService.isDirectory(file)) continue;
+			if (
+				!(await this.fileSystemService.isFile(file)) ||
+				(await this.fileSystemService.readFile(file)) !==
+					PLACEHOLDER_SOURCE
+			)
+				return false;
+		}
+		return true;
+	}
+
+	private static withSyncWarnings(
+		outcome: Exclude<LoadedConfig, FailedConfig>,
+		syncWarnings: readonly Diagnostic[] | undefined,
+		kind?: WrittenConfig["kind"]
+	): LoadedConfig {
+		const { config, summary, readFiles } = outcome;
+		const findings = { warnings: outcome.warnings, syncWarnings };
+		switch (outcome.kind) {
+			case "notWritten":
+				return new UnwrittenConfig(
+					config,
+					findings,
+					summary,
+					readFiles,
+					outcome.blockedBy
+				);
+			case "wouldWrite":
+				return new CheckedConfig(config, findings, summary, readFiles);
+			default:
+				return new WrittenConfig(
+					config,
+					kind ?? outcome.kind,
+					findings,
+					summary,
+					readFiles
+				);
+		}
 	}
 
 	private static unwritten(

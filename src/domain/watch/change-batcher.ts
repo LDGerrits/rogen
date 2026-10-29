@@ -35,12 +35,16 @@ export class ChangeBatcher extends AbstractDisposable {
 	);
 	readonly onDidOverflow: Event<ChangeBurst> = this._onDidOverflow.event;
 
-	constructor(
-		private readonly options: ChangeBatcherOptions = DEFAULT_OPTIONS
-	) {
+	private readonly options: ChangeBatcherOptions;
+
+	constructor(options: Partial<ChangeBatcherOptions> = {}) {
 		super();
+		this.options = { ...DEFAULT_OPTIONS, ...options };
 		this.flush = this._register(
-			new RunOnceScheduler(() => this.flushBuffer(), options.debounceMs)
+			new RunOnceScheduler(
+				() => this.flushBuffer(),
+				this.options.debounceMs
+			)
 		);
 	}
 

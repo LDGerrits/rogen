@@ -75,6 +75,8 @@ function titleOf(cause: WatchCause, cwd: string): string {
 			return "initial write";
 		case "burst":
 			return "many changes · full rewrite";
+		case "compiled":
+			return `${plural(cause.files, "compiled file")} changed`;
 		case "change":
 			return describeChange({
 				sourceFiles: cause.sourceFiles,

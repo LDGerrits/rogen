@@ -20,6 +20,8 @@ export interface ChangeBurst {
 export type WatchCause =
 	| { readonly kind: "initial" }
 	| ({ readonly kind: "burst" } & ChangeBurst)
+	/** Files in a compiled path changed, so only its check ran again. */
+	| { readonly kind: "compiled"; readonly files: number }
 	| {
 			readonly kind: "change";
 			readonly sourceFiles: number;
@@ -46,6 +48,8 @@ export interface RewriteReport {
 export interface WatchUpdate {
 	readonly at: Date;
 	readonly cause: WatchCause;
+	/** Whether the round wrote project files; a check of the compiled path alone writes none, so nothing that reads them needs to run again. */
+	readonly rewrote: boolean;
 	readonly changes: readonly FileChange[];
 	/** What the config reloads of this round said: added, removed, broken or loading again. */
 	readonly notices: readonly ConfigNotice[];
