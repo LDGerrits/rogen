@@ -696,6 +696,8 @@ export class CoreSyncbackService implements SyncbackService {
 		const fresh: AddedPath[] = [];
 		for (const added of after) {
 			if (copiedPaths.has(added.path)) continue;
+			// An empty folder the mirror made, which Rojo left empty, is not new.
+			if (added.folder && known.has(added.path)) continue;
 			const target = mirror.targetOf(added.path);
 			const names = added.path.split("/");
 			if (target === undefined) {

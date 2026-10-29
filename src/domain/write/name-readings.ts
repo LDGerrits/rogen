@@ -71,11 +71,13 @@ export class NameReadings {
 			this.readMarkers(root);
 			for (const metaFile of root.metaFiles)
 				this.readFoldersAbove(root.sourcePath, metaFile);
+			for (const dir of root.emptyDirs)
+				this.foldersDownTo(root.sourcePath, dir);
 			for (const entry of root.entries) this.readEntry(root, entry);
 		}
 	}
 
-	/** By absolute POSIX path; holds every folder above an entry, marker or meta file. */
+	/** By absolute POSIX path; holds every folder above an entry, marker or meta file, and every empty folder. */
 	get folders(): ReadonlyMap<string, FolderReading> {
 		return this._folders;
 	}
@@ -245,13 +247,19 @@ export class NameReadings {
 		sourcePath: string,
 		relativePath: string
 	): FolderReading[] {
-		const above: FolderReading[] = [];
+		return this.foldersDownTo(sourcePath, path.posix.dirname(relativePath));
+	}
+
+	/** The folders from the source path down to `relativeDir`, outermost first. */
+	foldersDownTo(sourcePath: string, relativeDir: string): FolderReading[] {
+		const folders: FolderReading[] = [];
+		if (relativeDir === "." || relativeDir === "") return folders;
 		let dir = "";
-		for (const segment of relativePath.split("/").slice(0, -1)) {
+		for (const segment of relativeDir.split("/")) {
 			dir = dir ? `${dir}/${segment}` : segment;
-			above.push(this.folderAt(sourcePath, dir));
+			folders.push(this.folderAt(sourcePath, dir));
 		}
-		return above;
+		return folders;
 	}
 
 	private suffixedNameOf(entry: ScannedFile): {

@@ -60,8 +60,14 @@ export class Placer {
 			this.projectNames
 		);
 		const claims = new RootClaims(roots, readings);
-		const { routed, toCopy, unrouted, withoutFolder, hoistedInits } =
-			new Router(this.config, readings).route(roots, claims);
+		const {
+			routed,
+			emptyFolders,
+			toCopy,
+			unrouted,
+			withoutFolder,
+			hoistedInits,
+		} = new Router(this.config, readings).route(roots, claims);
 		const markerClashes = new MarkerClashes(claims);
 		const routeErrors = [
 			...markerClashes.diagnostics(),
@@ -99,6 +105,7 @@ export class Placer {
 				readings,
 				routedNodes,
 				nodes: templating.nodes,
+				emptyFolders,
 				leftOut,
 				clashes: resolved.clashes,
 				displaced: templating.displaced,

@@ -125,6 +125,23 @@ describe("ConfigFormatter", () => {
 		expect(await fs.readFile("/repo/default.rogen.json")).toBe(text);
 	});
 
+	it("should refuse a tree value Rojo can't read, as rojo fmt-project does, and leave the file", async () => {
+		const text =
+			'{ "name": "Game", "tree": { "$className": "DataModel", "StarterGui": { "Bar": { "$className": "Frame", "$properties": { "Size": [[0, 0], [0.5, -5]] } } } } }';
+		await fs.writeFile("/repo/default.rogen.json", text);
+
+		const result = await format();
+
+		expect(result.isErr() ? result.error : []).toMatchObject([
+			{
+				code: "tree.unreadableValue",
+				resource: "/repo/default.rogen.json",
+				position: { line: 1, column: 129 },
+			},
+		]);
+		expect(await fs.readFile("/repo/default.rogen.json")).toBe(text);
+	});
+
 	it("should format a default.rogen.json with a trailing comma", async () => {
 		await fs.writeFile(
 			"/repo/default.rogen.json",

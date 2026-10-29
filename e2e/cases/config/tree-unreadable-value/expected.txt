@@ -1,0 +1,16 @@
+$ rogen check
+exit 1
+stdout:
+  default.rogen.json:12:15 - error: "tree.StarterGui.Hud.Bar.$properties.Size": Rojo can't read this value, so it refuses the project. Write a boolean, a number, a string, a list of numbers (2, 3, 4 or 12), a list of strings, or a { "Type": value } pair. (tree.unreadableValue)
+
+$ rogen write
+exit 1
+stdout: (not shown)
+stderr:
+  error: default.rogen.json · not loaded
+  default.rogen.json:12:15 - error: "tree.StarterGui.Hud.Bar.$properties.Size": Rojo can't read this value, so it refuses the project. Write a boolean, a number, a string, a list of numbers (2, 3, 4 or 12), a list of strings, or a { "Type": value } pair. (tree.unreadableValue)
+
+$ rogen fmt-project
+exit 1
+stderr:
+  default.rogen.json:12:15 - error: "tree.StarterGui.Hud.Bar.$properties.Size": Rojo can't read this value, so it refuses the project. Write a boolean, a number, a string, a list of numbers (2, 3, 4 or 12), a list of strings, or a { "Type": value } pair. (tree.unreadableValue)

@@ -55,6 +55,8 @@ interface ScannedRootParts {
 	readonly markers: readonly string[];
 	/** `.meta.json` and `.meta.jsonc` files, `init.meta.json` included; they are never entries. */
 	readonly metaFiles: readonly string[];
+	/** The folders below the source path that hold no file or folder Rojo makes an instance from, relative to it; Rojo builds each as an empty Folder. */
+	readonly emptyDirs: readonly string[];
 	/** The paths the scan left out, by absolute POSIX path. */
 	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
 	readonly oddNames: readonly OddName[];
@@ -67,6 +69,7 @@ export class ScannedRoot implements ScannedRootParts {
 	readonly entries: readonly ScannedFile[];
 	readonly markers: readonly string[];
 	readonly metaFiles: readonly string[];
+	readonly emptyDirs: readonly string[];
 	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
 	readonly oddNames: readonly OddName[];
 
@@ -81,6 +84,7 @@ export class ScannedRoot implements ScannedRootParts {
 			entries: this.entries,
 			markers: this.markers,
 			metaFiles: this.metaFiles,
+			emptyDirs: this.emptyDirs,
 			leftOut: this.leftOut,
 			oddNames: this.oddNames,
 		} = parts);
@@ -98,6 +102,7 @@ export class ScannedRoot implements ScannedRootParts {
 				entries: [],
 				markers: [],
 				metaFiles: [],
+				emptyDirs: [],
 				leftOut: new Map(),
 				oddNames: [],
 			},
@@ -205,6 +210,7 @@ interface Walk {
 	readonly entries: ScannedFile[];
 	readonly markers: string[];
 	readonly metaFiles: string[];
+	readonly emptyDirs: string[];
 	readonly leftOut: Map<string, ScanLeftOut>;
 	readonly oddNames: OddName[];
 }
@@ -225,6 +231,7 @@ export class RootScanner {
 			entries: [],
 			markers: [],
 			metaFiles: [],
+			emptyDirs: [],
 			oddNames: [],
 			leftOut: new Map(
 				this.mounts
@@ -247,6 +254,7 @@ export class RootScanner {
 				),
 				markers: walk.markers.sort(),
 				metaFiles: walk.metaFiles.sort(),
+				emptyDirs: walk.emptyDirs.sort(),
 				leftOut: walk.leftOut,
 				oddNames: walk.oddNames.sort((a, b) =>
 					compareStrings(a.source, b.source)
@@ -409,6 +417,15 @@ export class RootScanner {
 				}
 			}
 		}
+
+		if (
+			dir !== walk.sourcePath &&
+			instanceNames.length === 0 &&
+			![...listing.keys()].some((name) =>
+				this.mounts.at(path.join(dir, name))
+			)
+		)
+			walk.emptyDirs.push(relativeDir);
 
 		const byLowercase = groupBy(instanceNames, (name) =>
 			name.toLowerCase()

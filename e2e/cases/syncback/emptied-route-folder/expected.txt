@@ -1,0 +1,35 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/Inventory/Server/.gitkeep
+  Removing src/Inventory/Server/Bag.luau
+stderr:
+  rogen syncback · default.rogen.json
+  default.project.json · wrote
+  Wrote 1 project.
+  Syncback wrote 2 changes.
+
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stderr:
+  rogen syncback · default.rogen.json
+  default.project.json · would write
+  Checked 1 project.
+  Syncback would change nothing.
+
+written:
+  default.project.json
+  src/Inventory/Server/.gitkeep
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Inventory: Folder
+        ItemTypes: ModuleScript  <- src/Inventory/Shared/ItemTypes.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder

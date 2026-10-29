@@ -167,6 +167,9 @@ export class TreeAssembler {
 					$path: layout.rojoPath(entry.source),
 				});
 		}
+		for (const { folder, instancePath } of placement.emptyFolders)
+			if (!collapsed.covers(folder))
+				project.ensureContainer(instancePath);
 		return initDirs;
 	}
 

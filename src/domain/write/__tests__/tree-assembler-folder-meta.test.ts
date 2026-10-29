@@ -209,17 +209,20 @@ describe("TreeAssembler", () => {
 				).toBe("combat");
 			});
 
-			it("should copy nothing from a folder whose files were all ignored", async () => {
-				await write("src/Mocks/Http.luau", "src/A.luau");
-				await writeMeta("src/Mocks/init.meta.json", {
-					className: "Actor",
+			it("should make a folder that holds only its meta the instance the meta names, as Rojo builds it", async () => {
+				await write("src/A.luau");
+				await writeMeta("src/Settings/init.meta.json", {
+					className: "Configuration",
+					attributes: { Level: 1 },
 				});
 
-				const storage = await storageOf({
-					ignored: [abs("src/Mocks/**")],
-				});
+				const storage = await storageOf();
 
-				expect(storage.Mocks).toBeUndefined();
+				expect(storage.Settings).toEqual({
+					$className: "Configuration",
+					$ignoreUnknownInstances: false,
+					$attributes: { Level: 1 },
+				});
 			});
 
 			it("should copy nothing from a folder whose files lost their instances to a later source path", async () => {

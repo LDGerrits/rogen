@@ -9,6 +9,8 @@ $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
+      Inventory: Folder
+        __tests__: Folder
       Keep: ModuleScript  <- src/Keep.luau
   ServerScriptService: ServerScriptService
     Inventory: Folder

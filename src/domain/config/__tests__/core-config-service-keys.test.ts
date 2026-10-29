@@ -299,5 +299,102 @@ describe("CoreConfigService", () => {
 
 			expect(errors(0)).toEqual([]);
 		});
+
+		it("should refuse a property value Rojo can't read without its type, at the value", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				`{
+	"tree": {
+		"$className": "DataModel",
+		"StarterGui": {
+			"Bar": { "$className": "Frame", "$properties": { "Size": [[0, 0], [0.5, -5]] } }
+		}
+	}
+}`
+			);
+
+			await start();
+
+			expect(errors(0)).toMatchObject([
+				{
+					code: "tree.unreadableValue",
+					resource: "/repo/default.rogen.json",
+					position: { line: 5, column: 61 },
+					message: expect.stringContaining(
+						'"tree.StarterGui.Bar.$properties.Size": Rojo can\'t read this value'
+					),
+				},
+			]);
+		});
+
+		it.each([
+			[
+				"a CFrame with no type",
+				"$properties",
+				{ position: [0, 0, 0], orientation: [[1, 0, 0]] },
+			],
+			["an attribute of nested lists", "$attributes", [[1, 2]]],
+		])("should refuse %s", async (_, table, value) => {
+			await write("/repo/default.rogen.json", {
+				tree: {
+					$className: "DataModel",
+					Workspace: { [table]: { Pivot: value } },
+				},
+			});
+
+			await start();
+
+			expect(errors(0)).toMatchObject([
+				{
+					code: "tree.unreadableValue",
+					message: expect.stringContaining(
+						`"tree.Workspace.${table}.Pivot"`
+					),
+				},
+			]);
+		});
+
+		it("should accept the values Rojo reads in a node's tables", async () => {
+			await write("/repo/default.rogen.json", {
+				tree: {
+					$className: "DataModel",
+					StarterGui: {
+						Bar: {
+							$className: "Frame",
+							$properties: {
+								Size: {
+									UDim2: [
+										[0, 0],
+										[0.5, -5],
+									],
+								},
+								Visible: true,
+								Tags: ["a", "b"],
+								Position: [1, 2, 3],
+								Attributes: {
+									Hey: { String: "Grandma" },
+									Vector: { Vector3: [4, 5, 6] },
+								},
+							},
+							$attributes: { Level: 1, Name: "x" },
+						},
+					},
+					Workspace: {
+						Terrain: {
+							$properties: {
+								MaterialColors: {
+									Grass: [1, 2, 3],
+									Slate: [4, 5, 6],
+								},
+							},
+						},
+					},
+				},
+			});
+
+			await start();
+
+			expect(errors(0)).toEqual([]);
+		});
 	});
 });

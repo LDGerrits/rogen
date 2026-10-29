@@ -106,7 +106,7 @@ export class FolderMetaApplier {
 		project: RojoProject,
 		problems: DiagnosticCollector
 	): FolderMetaOutcome[] {
-		const { tree, nodes, displaced } = this.placement;
+		const { tree, nodes, displaced, emptyFolders } = this.placement;
 		const sharedWithFile = new InstanceMap<RoutedFile>();
 		for (const file of nodes) sharedWithFile.set(file.instancePath, file);
 
@@ -115,6 +115,7 @@ export class FolderMetaApplier {
 		for (const [nodePath, node] of this.reachedNodes([
 			...nodes,
 			...displaced.map(({ file }) => file),
+			...emptyFolders,
 		])) {
 			const instance = instanceKey(nodePath);
 			const shared = sharedWithFile.get(nodePath);
@@ -192,9 +193,9 @@ export class FolderMetaApplier {
 	}
 
 	private instanceless(): FolderMetaOutcome[] {
-		const { readings, routed } = this.placement;
+		const { readings, routed, emptyFolders } = this.placement;
 		const named = new Set(
-			routed.flatMap(({ folderNodes }) =>
+			[...routed, ...emptyFolders].flatMap(({ folderNodes }) =>
 				folderNodes.map(({ folder }) => folder)
 			)
 		);
@@ -239,10 +240,10 @@ export class FolderMetaApplier {
 	}
 
 	private reachedNodes(
-		files: readonly RoutedFile[]
+		placed: readonly Pick<RoutedFile, "folderNodes">[]
 	): InstanceMap<ReachedNode> {
 		const reached = new InstanceMap<ReachedNode>();
-		for (const { folderNodes } of files) {
+		for (const { folderNodes } of placed) {
 			for (const { instancePath, folder } of folderNodes) {
 				const node = reached.get(instancePath) ?? {
 					instancePath,

@@ -21,6 +21,7 @@ import {
 	RojoProject,
 	projectFileName,
 } from "../rojo/rojo-project.js";
+import { PropertyValues } from "../rojo/property-values.js";
 import { SYNC_RULE_FIELDS, SyncRules } from "../rojo/sync-rules.js";
 import { ConfigFile } from "../../platform/config/config-file.js";
 import {
@@ -67,6 +68,13 @@ export class ConfigValidator {
 			.map((config) => ({ config }));
 	}
 
+	/** The errors for each value in the tree's `$properties` and `$attributes` that Rojo can't read. */
+	static unreadableValues(source: ConfigFile): Diagnostic[] {
+		const validator = new ConfigValidator(source);
+		validator.checkPropertyValues(validator.readProject());
+		return [...validator.problems.diagnostics];
+	}
+
 	validate(): Result<ResolvedConfig, Diagnostic[]> {
 		const routes = this.checkRoutes();
 		const routed = Object.keys(this.routes).length > 0;
@@ -87,6 +95,7 @@ export class ConfigValidator {
 		this.checkName(project);
 		this.checkNodes(project);
 		this.checkNodeFields(project);
+		this.checkPropertyValues(project);
 		this.checkRoot(project, routed);
 		this.checkSourcePaths(routed);
 		const compiledPath = this.checkCompiledPath();
@@ -168,6 +177,18 @@ export class ConfigValidator {
 			this.locate(...unknown),
 			`"${unknown.join(".")}" is not a field of a node, and Rojo rejects a project file with a field it doesn't know.${suggestion ? ` Did you mean "${suggestion}"?` : ""}`
 		);
+	}
+
+	private checkPropertyValues(project: RojoProject<ParsedProjectFile>): void {
+		for (const unreadable of RojoProject.findUnreadableValues(
+			project.getNode([]) ?? {},
+			["tree"]
+		))
+			this.problems.error(
+				"tree.unreadableValue",
+				this.locate(...unreadable),
+				`"${unreadable.join(".")}": Rojo can't read this value, so it refuses the project. ${PropertyValues.READABLE_HINT}`
+			);
 	}
 
 	private checkSyncRules(project: RojoProject<ParsedProjectFile>): void {
