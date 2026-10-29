@@ -9,7 +9,7 @@ stderr:
   rogen syncback · default.rogen.json
   default.project.json · wrote
   Wrote 1 project.
-  Syncback wrote 5 changes.
+  Syncback wrote 4 changes.
 
 $ rogen write
 exit 0

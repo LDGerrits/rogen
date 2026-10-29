@@ -567,6 +567,46 @@ describe("CoreSyncbackService", () => {
 		);
 	});
 
+	it("should remove the folders above a route folder it emptied up to the source path, and list them as one removal", async () => {
+		await prepare([
+			"src/Combat/Server/Hit.luau",
+			"src/Combat/Server/Damage/Calc.luau",
+			"src/Inventory/Shared/Types.luau",
+		]);
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Combat"), true);
+			return [
+				`Removing ${path.join(".rogen-syncback", "mirror", "ServerScriptService", "Combat")}`,
+			];
+		};
+
+		const done = (await service.apply(request)).unwrap();
+
+		expect(done.changes).toEqual([
+			{ kind: "remove", file: abs("src/Combat") },
+		]);
+		expect(done.listed).toEqual(done.changes);
+		expect(await fs.exists(abs("src/Combat"))).toBe(false);
+		expect(await fs.isDirectory(abs("src"))).toBe(true);
+	});
+
+	it("should keep an empty folder it did not remove in a folder it emptied", async () => {
+		await prepare([
+			"src/Inventory/Server/Bag.luau",
+			"src/Inventory/Save@server.luau",
+		]);
+		await fs.createDirectory(abs("src/Inventory/Notes"));
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Inventory"), true);
+			return [];
+		};
+
+		await service.apply(request);
+
+		expect(await fs.exists(abs("src/Inventory/Server"))).toBe(false);
+		expect(await fs.isDirectory(abs("src/Inventory/Notes"))).toBe(true);
+	});
+
 	it("should keep a route folder it emptied when the place still holds its instance", async () => {
 		await prepare([
 			"src/Inventory/Server/Bag.luau",

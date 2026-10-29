@@ -108,11 +108,33 @@ class CoreSyncbackPlan implements SyncbackPlan {
 		listed: readonly SyncbackChange[]
 	) {
 		this.listed = listed;
-		this.changes = operations.map(({ kind, file }) => ({
-			kind: kind === "remove" || kind === "prune" ? "remove" : "write",
-			file,
-		}));
+		this.changes = withoutRemovedInside(
+			operations.map(({ kind, file }) => ({
+				kind:
+					kind === "remove" || kind === "prune" ? "remove" : "write",
+				file,
+			}))
+		);
 	}
+}
+
+/** `changes` without a removal inside a folder another one removes, as `--list` shows them. */
+function withoutRemovedInside(
+	changes: readonly SyncbackChange[]
+): SyncbackChange[] {
+	const removed = new Set(
+		changes.filter(({ kind }) => kind === "remove").map(({ file }) => file)
+	);
+	return changes.filter(({ kind, file }) => {
+		if (kind !== "remove") return true;
+		for (
+			let dir = path.dirname(file);
+			path.dirname(dir) !== dir;
+			dir = path.dirname(dir)
+		)
+			if (removed.has(dir)) return false;
+		return true;
+	});
 }
 
 /** What the run on a plain Rojo project lists, which Rojo writes itself. */
@@ -729,38 +751,73 @@ export class CoreSyncbackService implements SyncbackService {
 					from: at,
 				});
 		}
-		const removed = new Set(
+		const gone = new Set(
 			operations
-				.filter(({ kind }) => kind === "remove")
+				.filter(({ kind }) => kind === "remove" || kind === "prune")
 				.map(({ file }) => file)
 		);
-		const pruned = new Set(
-			operations
-				.filter(({ kind }) => kind === "prune")
-				.map(({ file }) => file)
-		);
-		for (const { kind, file, from } of [...operations]) {
-			if (kind !== "remove" || from === undefined) continue;
-			const folder = path.dirname(file);
-			const at = path.posix.dirname(from);
-			if (
-				pruned.has(folder) ||
-				holding.has(at) ||
-				!CoreSyncbackService.belowSource(request.project, folder) ||
-				!(await this.walk(folder)).every(
-					(entry) =>
-						entry.folder ||
-						removed.has(path.join(folder, entry.path))
-				)
-			)
+		/** The mirror folders each project folder is read at, which say whether the place still holds it. */
+		const readAt = new Map<string, Set<string>>();
+		const readsAt = (folder: string, at: string) =>
+			readAt.set(folder, (readAt.get(folder) ?? new Set()).add(at));
+		for (const at of copiedFolders) {
+			const target = mirror.targetOf(at);
+			if (target !== undefined) readsAt(toNative(target), at);
+		}
+		/** Each removed file or folder, with the instance it was and the mirror folder of the folder it is in when the mirror has one. */
+		const emptied: { file: string; instance: string; parent?: string }[] =
+			[];
+		for (const { kind, file, from } of operations) {
+			if (kind === "write" || kind === "folder" || from === undefined)
 				continue;
-			pruned.add(folder);
-			operations.push({
-				kind: "prune",
-				file: folder,
-				instance: CoreSyncbackService.instanceAt(at),
-				from: at,
+			if (kind === "prune") {
+				emptied.push({
+					file,
+					instance: CoreSyncbackService.instanceAt(from),
+				});
+				continue;
+			}
+			const parent = path.posix.dirname(from);
+			readsAt(path.dirname(file), parent);
+			emptied.push({
+				file,
+				instance: CoreSyncbackService.instanceAt(parent),
+				parent,
 			});
+		}
+		const entries = new Map<string, string[]>();
+		const entriesOf = async (folder: string) => {
+			let names = entries.get(folder);
+			if (names) return names;
+			const read = await tryWithAsync(() =>
+				this.fileSystemService.readDirectory(folder)
+			);
+			names = read.isOk() ? read.value.map(([name]) => name) : [];
+			entries.set(folder, names);
+			return names;
+		};
+		for (const { file, instance, parent } of emptied) {
+			for (
+				let folder = path.dirname(file);
+				!gone.has(folder) &&
+				CoreSyncbackService.belowSource(request.project, folder) &&
+				![...(readAt.get(folder) ?? [])].some((at) =>
+					holding.has(at)
+				) &&
+				(await entriesOf(folder)).every((name) =>
+					gone.has(path.join(folder, name))
+				);
+				folder = path.dirname(folder)
+			) {
+				gone.add(folder);
+				operations.push({
+					kind: "prune",
+					file: folder,
+					instance,
+					...(parent !== undefined &&
+						folder === path.dirname(file) && { from: parent }),
+				});
+			}
 		}
 
 		const known = new Set<string>(mirror.folders);
@@ -1396,12 +1453,13 @@ export class CoreSyncbackService implements SyncbackService {
 				covered = fromRojo.has(`${asKind} ${dir}`);
 			if (!covered) add(asKind, file);
 		}
+		const shown = withoutRemovedInside(listed);
 		return projectFile
 			? [
 					projectFile,
-					...listed.filter(({ file }) => file !== projectFile.file),
+					...shown.filter(({ file }) => file !== projectFile.file),
 				]
-			: listed;
+			: shown;
 	}
 
 	/** Writes again in memory and compares: a file syncback placed that lands elsewhere than the place had it is a warning. A compiled path holds what a tool wrote, which the write does not place. */
