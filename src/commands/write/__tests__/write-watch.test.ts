@@ -212,7 +212,7 @@ describe("watch", () => {
 			expect(processes.spawned).toHaveLength(3);
 		});
 
-		it("should not run Rojo again when only the compiled path was checked again", async () => {
+		it("should run Rojo again when the compiler writes to the compiled path", async () => {
 			await write(
 				"/repo/default.rogen.json",
 				config({ compiledPath: "dist" })
@@ -224,8 +224,9 @@ describe("watch", () => {
 
 			await memFs.writeFile("/repo/dist/A.luau", "return 1");
 			await settle();
+			await finishRojo(1);
 
-			expect(processes.spawned).toHaveLength(1);
+			expect(processes.spawned).toHaveLength(2);
 		});
 
 		it("should run Rojo once more, not once per update, after a burst while it runs", async () => {

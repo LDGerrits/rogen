@@ -216,7 +216,9 @@ export class CoreWatchSession
 		);
 		if (outcome === latest) return undefined;
 		const report = watched.finished(outcome);
-		return report.unreported.length > 0 || report.fixed.length > 0
+		return this.options.contentEdits ||
+			report.unreported.length > 0 ||
+			report.fixed.length > 0
 			? report
 			: undefined;
 	}
@@ -297,7 +299,6 @@ export class CoreWatchSession
 					this._onDidUpdate.fire({
 						at,
 						cause,
-						rewrote: cause.kind !== "compiled",
 						changes,
 						notices,
 						reports,
