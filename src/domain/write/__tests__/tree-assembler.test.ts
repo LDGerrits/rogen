@@ -499,6 +499,35 @@ describe("TreeAssembler", () => {
 				).toEqual(FOLDER);
 			});
 
+			it("should place a folder that holds only its route marker and a .gitkeep as an empty Folder", async () => {
+				await write(
+					"src/Inventory/@Server",
+					"src/Inventory/.gitkeep",
+					"src/Shared/Types.luau"
+				);
+
+				const { projectFile } = await assemble({
+					routes: {
+						Server: "ServerScriptService",
+						"*": "ReplicatedStorage",
+					},
+				});
+
+				expect(
+					(projectFile.tree.ServerScriptService as RojoNode).Inventory
+				).toEqual(FOLDER);
+			});
+
+			it("should place a folder whose files the globs all ignore as an empty Folder, as Rojo builds it", async () => {
+				await write("src/Mocks/Http.luau", "src/A.luau");
+
+				const storage = await storageOf({
+					ignored: [abs("src/Mocks/**")],
+				});
+
+				expect(storage.Mocks).toEqual(FOLDER);
+			});
+
 			it("should place an empty folder as an empty Folder under the route its parents name", async () => {
 				await write("src/Combat/Hit.luau");
 				await fs.createDirectory(abs("src/Combat/Effects"));

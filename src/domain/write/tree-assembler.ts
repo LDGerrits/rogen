@@ -168,7 +168,8 @@ export class TreeAssembler {
 				});
 		}
 		for (const { folder, instancePath } of placement.emptyFolders)
-			if (!collapsed.covers(folder)) project.ensureNode(instancePath);
+			if (!collapsed.covers(folder))
+				project.ensureContainer(instancePath);
 		return initDirs;
 	}
 

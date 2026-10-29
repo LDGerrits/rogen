@@ -175,6 +175,8 @@ describe("TreeAssembler", () => {
 
 				expect(storage.Inventory).toEqual({
 					...FOLDER,
+					Assets: FOLDER,
+					Docs: FOLDER,
 					Save: { $path: optional("src/Inventory/Save.luau") },
 				});
 			});

@@ -55,7 +55,7 @@ interface ScannedRootParts {
 	readonly markers: readonly string[];
 	/** `.meta.json` and `.meta.jsonc` files, `init.meta.json` included; they are never entries. */
 	readonly metaFiles: readonly string[];
-	/** The folders below the source path that are empty or hold only a `.gitkeep`, relative to it; Rojo builds each as an empty Folder. */
+	/** The folders below the source path that hold no file or folder Rojo makes an instance from, relative to it; Rojo builds each as an empty Folder. */
 	readonly emptyDirs: readonly string[];
 	/** The paths the scan left out, by absolute POSIX path. */
 	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
@@ -355,11 +355,6 @@ export class RootScanner {
 		const kept = this.keptEntries(walk, dir, listing);
 		if (dir !== walk.sourcePath && this.visitProject(walk, dir, kept))
 			return true;
-		if (
-			dir !== walk.sourcePath &&
-			[...listing.keys()].every((name) => name === RojoFile.KEEP_FILE)
-		)
-			walk.emptyDirs.push(relativeDir);
 
 		const odd = (name: string, reason: string, leftOut = false) =>
 			walk.oddNames.push({
@@ -422,6 +417,15 @@ export class RootScanner {
 				}
 			}
 		}
+
+		if (
+			dir !== walk.sourcePath &&
+			instanceNames.length === 0 &&
+			![...listing.keys()].some((name) =>
+				this.mounts.at(path.join(dir, name))
+			)
+		)
+			walk.emptyDirs.push(relativeDir);
 
 		const byLowercase = groupBy(instanceNames, (name) =>
 			name.toLowerCase()

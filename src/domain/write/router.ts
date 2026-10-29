@@ -147,11 +147,13 @@ export interface InitToCopy extends Pick<RoutedFile, "entry"> {
 	readonly placed: RoutedFile | undefined;
 }
 
-/** A folder that is empty or holds only a `.gitkeep`, at the node a file in it would sit in. */
-export interface RoutedFolder {
+/** A folder that holds nothing Rojo makes an instance from, at the node a file in it would sit in. */
+export interface RoutedFolder extends Pick<
+	RoutedFile,
+	"instancePath" | "folderNodes"
+> {
 	/** Absolute, POSIX-style. */
 	readonly folder: string;
-	readonly instancePath: readonly string[];
 }
 
 export interface Routing {
@@ -204,10 +206,14 @@ export class Router {
 			dirs,
 			claims
 		);
-		const target = this.config.routes.get(claims.routeKey);
-		const names = folders.slice(hoistAt ?? 0).map(({ name }) => name);
-		if (!target || names.length === 0) return undefined;
-		return { folder, instancePath: [...target.instancePath, ...names] };
+		const placed = this.placeFolders(
+			root.sourcePath,
+			folders.slice(hoistAt ?? 0),
+			claims
+		);
+		return placed && placed.folderNodes.length > 0
+			? { folder, ...placed }
+			: undefined;
 	}
 
 	private routeEntry(
@@ -286,23 +292,14 @@ export class Router {
 		claimed: ClaimedPath
 	): RoutedFile | undefined {
 		const { claims, folders, leaf } = claimed;
-		const route = claims.routeKey;
-		const target = this.config.routes.get(route);
-		if (!target) return undefined;
+		const placed = this.placeFolders(entry.sourcePath, folders, claims);
+		if (!placed) return undefined;
 
-		const folderNodes: FolderNode[] = [];
-		let parent: readonly string[] = target.instancePath;
-		for (const { name: folderName, dir } of folders) {
-			parent = [...parent, folderName];
-			folderNodes.push({
-				instancePath: parent,
-				folder: joinPosix(entry.sourcePath, dir),
-			});
-		}
+		const { instancePath: parent, folderNodes } = placed;
 		const instancePath = leaf.isInit ? parent : [...parent, leaf.name];
 		return {
 			entry,
-			route,
+			route: claims.routeKey,
 			routeMatch: claims.route?.match ?? "fallback",
 			instancePath,
 			folderNodes,
@@ -311,6 +308,27 @@ export class Router {
 			init: leaf.isInit ? this.initFolders(entry, folders) : undefined,
 			...(claimed.hoisted && { hoisted: true }),
 		};
+	}
+
+	/** The nodes `folders` become under the route `claims` names, and the node a file in the last sits in; none when no route is declared for it. */
+	private placeFolders(
+		sourcePath: string,
+		folders: readonly ClaimedFolder[],
+		claims: Claims
+	): Pick<RoutedFile, "instancePath" | "folderNodes"> | undefined {
+		const target = this.config.routes.get(claims.routeKey);
+		if (!target) return undefined;
+
+		const folderNodes: FolderNode[] = [];
+		let instancePath: readonly string[] = target.instancePath;
+		for (const { name, dir } of folders) {
+			instancePath = [...instancePath, name];
+			folderNodes.push({
+				instancePath,
+				folder: joinPosix(sourcePath, dir),
+			});
+		}
+		return { instancePath, folderNodes };
 	}
 
 	private initFolders(

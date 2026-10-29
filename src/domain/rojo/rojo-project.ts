@@ -372,8 +372,12 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return { added, skipped };
 	}
 
-	/** The node at `instancePath`, made with its missing ancestors when absent. */
-	ensureNode(instancePath: readonly string[]): RojoNode {
+	/** Makes the node at `instancePath`, and each ancestor it lacks, a container when it is absent. */
+	ensureContainer(instancePath: readonly string[]): void {
+		this.ensureNode(instancePath);
+	}
+
+	private ensureNode(instancePath: readonly string[]): RojoNode {
 		let current = this.project.tree;
 		instancePath.forEach((segment, depth) => {
 			const next = getOwn(current, segment);
