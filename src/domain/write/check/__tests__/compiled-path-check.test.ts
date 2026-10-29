@@ -648,7 +648,7 @@ describe("CompiledPathCheck", () => {
 						await check({
 							ignored: [abs("src/Inventory/Save.meta.json")],
 						})
-					).toHaveLength(1);
+					).toMatchObject([{ code: "output.metaNotSynced" }]);
 				});
 			});
 		});

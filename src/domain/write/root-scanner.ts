@@ -55,6 +55,8 @@ interface ScannedRootParts {
 	readonly markers: readonly string[];
 	/** `.meta.json` and `.meta.jsonc` files, `init.meta.json` included; they are never entries. */
 	readonly metaFiles: readonly string[];
+	/** The meta files that `globIgnorePaths` matches, which Rojo still applies; one that no file claims is not reported. */
+	readonly ignoredMeta: readonly string[];
 	/** The folders below the source path that hold no file or folder Rojo makes an instance from, relative to it; Rojo builds each as an empty Folder. */
 	readonly emptyDirs: readonly string[];
 	/** The paths the scan left out, by absolute POSIX path. */
@@ -69,6 +71,7 @@ export class ScannedRoot implements ScannedRootParts {
 	readonly entries: readonly ScannedFile[];
 	readonly markers: readonly string[];
 	readonly metaFiles: readonly string[];
+	readonly ignoredMeta: readonly string[];
 	readonly emptyDirs: readonly string[];
 	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
 	readonly oddNames: readonly OddName[];
@@ -84,6 +87,7 @@ export class ScannedRoot implements ScannedRootParts {
 			entries: this.entries,
 			markers: this.markers,
 			metaFiles: this.metaFiles,
+			ignoredMeta: this.ignoredMeta,
 			emptyDirs: this.emptyDirs,
 			leftOut: this.leftOut,
 			oddNames: this.oddNames,
@@ -102,6 +106,7 @@ export class ScannedRoot implements ScannedRootParts {
 				entries: [],
 				markers: [],
 				metaFiles: [],
+				ignoredMeta: [],
 				emptyDirs: [],
 				leftOut: new Map(),
 				oddNames: [],
@@ -152,7 +157,11 @@ export class ScannedRoot implements ScannedRootParts {
 	unclaimedMeta(): UnclaimedMeta[] {
 		return this.metaFiles.flatMap((metaFile) => {
 			const fileName = path.posix.basename(metaFile);
-			if (RojoFile.isInitMeta(fileName)) return [];
+			if (
+				RojoFile.isInitMeta(fileName) ||
+				this.ignoredMeta.includes(metaFile)
+			)
+				return [];
 			const dir = path.join(
 				this.sourcePath,
 				path.posix.dirname(metaFile)
@@ -210,6 +219,7 @@ interface Walk {
 	readonly entries: ScannedFile[];
 	readonly markers: string[];
 	readonly metaFiles: string[];
+	readonly ignoredMeta: string[];
 	readonly emptyDirs: string[];
 	readonly leftOut: Map<string, ScanLeftOut>;
 	readonly oddNames: OddName[];
@@ -231,6 +241,7 @@ export class RootScanner {
 			entries: [],
 			markers: [],
 			metaFiles: [],
+			ignoredMeta: [],
 			emptyDirs: [],
 			oddNames: [],
 			leftOut: new Map(
@@ -254,6 +265,7 @@ export class RootScanner {
 				),
 				markers: walk.markers.sort(),
 				metaFiles: walk.metaFiles.sort(),
+				ignoredMeta: walk.ignoredMeta.sort(),
 				emptyDirs: walk.emptyDirs.sort(),
 				leftOut: walk.leftOut,
 				oddNames: walk.oddNames.sort((a, b) =>
@@ -277,19 +289,26 @@ export class RootScanner {
 		const kept: [string, FileType][] = [];
 		for (const [name, type] of listing) {
 			const mount = this.mounts.at(path.join(dir, name));
-			const glob =
-				(isFileType(type) && isConfigFileName(name)) ||
-				isSyncbackFileName(name)
+			// Rojo applies a meta file that globIgnorePaths matches.
+			const meta =
+				isFileType(type) && this.fileAt(joinPosix(dir, name)).isMeta;
+			if (meta && this.ignoringGlob(path.join(dir, name)))
+				walk.ignoredMeta.push(
+					toPosix(
+						path.relative(walk.sourcePath, path.join(dir, name))
+					)
+				);
+			const glob = meta
+				? undefined
+				: (isFileType(type) && isConfigFileName(name)) ||
+					  isSyncbackFileName(name)
 					? name
 					: isFileType(type) &&
 						  this.projectFiles.some((file) =>
 								samePath(path.join(dir, name), file)
 						  )
 						? name
-						: isFileType(type) &&
-							  this.fileAt(joinPosix(dir, name)).isMeta
-							? undefined
-							: this.ignoringGlob(path.join(dir, name));
+						: this.ignoringGlob(path.join(dir, name));
 			if (mount)
 				walk.leftOut.set(joinPosix(dir, name), {
 					status: "mounted",

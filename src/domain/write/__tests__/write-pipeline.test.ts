@@ -354,6 +354,14 @@ describe("WritePipeline", () => {
 				expect(warnings).toEqual([]);
 			});
 
+			it("should not warn about meta the ignore globs match", async () => {
+				const warnings = await warningsFor(["src/Gone.meta.json"], {
+					ignored: [toPosix(abs("src/Gone.meta.json"))],
+				});
+
+				expect(warnings).toEqual([]);
+			});
+
 			const messageAt = (warnings: readonly Diagnostic[], file: string) =>
 				warnings.find(({ resource }) => resource === toPosix(abs(file)))
 					?.message;

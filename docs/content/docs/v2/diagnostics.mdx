@@ -743,7 +743,7 @@ warning: its name has ":", which Windows file names cannot hold. Rename it so a 
 
 Rename the file or folder, and update what requires it.
 
-Rogen leaves nothing out, except a file whose name has a backslash. Rogen reads `\` as a folder separator, so it leaves that file out. The check covers each file and folder that becomes an instance, and meta files and marker files. It skips files that Rogen ignores.
+Rogen leaves nothing out, except a file whose name has a backslash. Rogen reads `\` as a folder separator, so it leaves that file out. The check covers each file and folder that becomes an instance, and meta files and marker files. It skips files that Rogen ignores, but not meta files, which Rojo applies even when `globIgnorePaths` matches them.
 
 ## Output
 
