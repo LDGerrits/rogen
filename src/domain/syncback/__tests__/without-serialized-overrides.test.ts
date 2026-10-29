@@ -1,5 +1,6 @@
 import {
 	onlySerializedOverrides,
+	treeWithoutSerializedOverrides,
 	withoutSerializedOverrides,
 } from "../without-serialized-overrides.js";
 
@@ -25,25 +26,6 @@ describe("withoutSerializedOverrides", () => {
 			className: "Folder",
 			properties: { Anchored: true },
 			attributes: { Level: 3 },
-		});
-	});
-
-	it("should take it out of every node of a tree", () => {
-		expect(
-			withoutSerializedOverrides({
-				$className: "DataModel",
-				$properties: { SerializedOverrides: empty },
-				Workspace: {
-					$path: "place/Workspace",
-					$properties: { SerializedOverrides: empty, Gravity: 10 },
-				},
-			})
-		).toEqual({
-			$className: "DataModel",
-			Workspace: {
-				$path: "place/Workspace",
-				$properties: { Gravity: 10 },
-			},
 		});
 	});
 
@@ -73,10 +55,54 @@ describe("withoutSerializedOverrides", () => {
 		expect(withoutSerializedOverrides(meta)).toEqual(meta);
 	});
 
+	it("should read a property map only where a meta or model file has one", () => {
+		const meta = {
+			attributes: { properties: { SerializedOverrides: empty } },
+		};
+
+		expect(withoutSerializedOverrides(meta)).toEqual(meta);
+	});
+
 	it("should keep an attribute named SerializedOverrides", () => {
 		const meta = { attributes: { SerializedOverrides: empty } };
 
 		expect(withoutSerializedOverrides(meta)).toEqual(meta);
+	});
+});
+
+describe("treeWithoutSerializedOverrides", () => {
+	it("should take it out of every node of a tree", () => {
+		expect(
+			treeWithoutSerializedOverrides({
+				$className: "DataModel",
+				$properties: { SerializedOverrides: empty },
+				Workspace: {
+					$path: "place/Workspace",
+					$properties: { SerializedOverrides: empty, Gravity: 10 },
+				},
+			})
+		).toEqual({
+			$className: "DataModel",
+			Workspace: {
+				$path: "place/Workspace",
+				$properties: { Gravity: 10 },
+			},
+		});
+	});
+
+	it("should read a child named properties as an instance", () => {
+		expect(
+			treeWithoutSerializedOverrides({
+				$className: "DataModel",
+				properties: {
+					$className: "Folder",
+					$properties: { SerializedOverrides: empty },
+				},
+			})
+		).toEqual({
+			$className: "DataModel",
+			properties: { $className: "Folder" },
+		});
 	});
 });
 

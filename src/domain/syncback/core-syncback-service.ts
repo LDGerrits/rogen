@@ -46,7 +46,7 @@ import { SyncbackMirror } from "./syncback-mirror.js";
 import { applyTreeChanges, treeChanges } from "./tree-changes.js";
 import {
 	onlySerializedOverrides,
-	withoutSerializedOverrides,
+	treeWithoutSerializedOverrides,
 } from "./without-serialized-overrides.js";
 
 /** The first Rojo release with `syncback`. */
@@ -535,6 +535,16 @@ export class CoreSyncbackService implements SyncbackService {
 		const compiled: CompiledChange[] = [];
 		const isCompiled = (file: string) =>
 			compiledPath !== undefined && contains(compiledPath, file);
+		const decoder = new TextDecoder();
+		/** Whether Rojo's file at `at` differs from `file`, or is new where `file` is undefined, only by an empty `SerializedOverrides`. */
+		const onlyOverrides = async (at: string, file?: string) =>
+			onlySerializedOverrides(
+				file !== undefined &&
+					(await this.fileSystemService.isFile(file))
+					? await this.fileSystemService.readFile(file)
+					: undefined,
+				await this.fileSystemService.readFile(path.join(root, at))
+			);
 		const existing = new Set(
 			copied.map(({ mirror: at }) => CoreSyncbackService.instanceAt(at))
 		);
@@ -595,7 +605,6 @@ export class CoreSyncbackService implements SyncbackService {
 								path.join(root, at)
 							)
 						);
-						const decoder = new TextDecoder();
 						return sameBytes(next, original) ||
 							(isCompiled(file) &&
 								onlySerializedOverrides(
@@ -719,14 +728,7 @@ export class CoreSyncbackService implements SyncbackService {
 					name.startsWith("init.") &&
 					known.has(folder)
 				) {
-					if (
-						!onlySerializedOverrides(
-							undefined,
-							await this.fileSystemService.readFile(
-								path.join(root, added.path)
-							)
-						)
-					)
+					if (!(await onlyOverrides(added.path)))
 						unplaced.push({
 							instance: instanceKey(names.slice(0, -1)),
 							reason: `Rojo wrote ${name} for a property or attribute changed in Studio, and no one folder of the project is this instance; set it on its node in the tree of the config`,
@@ -744,17 +746,7 @@ export class CoreSyncbackService implements SyncbackService {
 					(await this.fileSystemService.isDirectory(file))
 				)
 					continue;
-				if (
-					!added.folder &&
-					onlySerializedOverrides(
-						(await this.fileSystemService.isFile(file))
-							? await this.fileSystemService.readFile(file)
-							: undefined,
-						await this.fileSystemService.readFile(
-							path.join(root, added.path)
-						)
-					)
-				)
+				if (!added.folder && (await onlyOverrides(added.path, file)))
 					continue;
 				leftOut(
 					file,
@@ -850,11 +842,11 @@ export class CoreSyncbackService implements SyncbackService {
 					},
 				],
 			};
-		const changes = treeChanges(prepared.mirror.file.tree, ran.value);
-		if (changes.length === 0) return { unplaced: [] };
-		const edits = treeChanges(
-			withoutSerializedOverrides(prepared.mirror.file.tree),
-			withoutSerializedOverrides(ran.value)
+		const allChanges = treeChanges(prepared.mirror.file.tree, ran.value);
+		if (allChanges.length === 0) return { unplaced: [] };
+		const editedInStudio = treeChanges(
+			treeWithoutSerializedOverrides(prepared.mirror.file.tree),
+			treeWithoutSerializedOverrides(ran.value)
 		);
 		const { project } = request;
 		const current = await tryWithAsync(() =>
@@ -864,16 +856,16 @@ export class CoreSyncbackService implements SyncbackService {
 			node.length === 0 ? project.projectName : instanceKey(node);
 		if (current.isErr())
 			return {
-				unplaced: edits.map(({ node }) => ({
+				unplaced: editedInStudio.map(({ node }) => ({
 					instance: label(node),
 					reason: `${prepared.configFile} could not be read`,
 				})),
 			};
-		const applied = applyTreeChanges(current.value, ["tree"], changes);
+		const applied = applyTreeChanges(current.value, ["tree"], allChanges);
 		const unplaced = applyTreeChanges(
 			current.value,
 			["tree"],
-			edits
+			editedInStudio
 		).unhomed.map((node) => ({
 			instance: label(node),
 			reason: `a property or attribute changed in Studio, and the tree of ${toNative(prepared.configFile)} has no node for it, since routing made it; add a node for it to the tree`,
@@ -884,7 +876,7 @@ export class CoreSyncbackService implements SyncbackService {
 			operation: {
 				kind: "write",
 				file: prepared.configFile,
-				instance: label(changes[0].node),
+				instance: label(allChanges[0].node),
 				bytes: new TextEncoder().encode(applied.text),
 			},
 		};

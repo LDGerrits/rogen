@@ -7,6 +7,7 @@ import {
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
@@ -35,6 +36,7 @@ import {
 	skippedOutside,
 } from "./write-service.js";
 import { PreparedConfig, WritePipeline } from "./write-pipeline.js";
+import { PLACEHOLDER_SOURCE } from "./compiled-layout.js";
 import { ProjectFileStaleness } from "./check/project-file-staleness.js";
 import { OutsideSourcePaths } from "./check/outside-source-paths.js";
 import { LocateTargets } from "./locate/locate-targets.js";
@@ -133,8 +135,7 @@ export class CoreWriteService implements WriteService {
 			});
 		return CoreWriteService.withSyncWarnings(
 			outcome,
-			await this.compiledPathWarnings(config, listing),
-			outcome.kind === "unchanged" ? "unchanged" : "wrote"
+			await this.compiledPathWarnings(config, listing)
 		);
 	}
 
@@ -142,12 +143,18 @@ export class CoreWriteService implements WriteService {
 		set: WriteSet,
 		projectFile: string,
 		listing: IndexReader,
-		previous: LoadedConfig
+		previous: LoadedConfig,
+		changes: readonly FileChange[]
 	): Promise<LoadedConfig> {
 		const config = set.configOf(projectFile);
-		if (previous.config !== config || previous.kind === "failed")
+		if (
+			previous.config !== config ||
+			previous.kind === "failed" ||
+			(await this.onlyPlaceholders(changes))
+		)
 			return previous;
 		const syncWarnings = await this.compiledPathWarnings(config, listing);
+		// A recheck writes nothing, so a config it wrote before is unchanged now.
 		return syncWarnings
 			? CoreWriteService.withSyncWarnings(
 					previous,
@@ -397,10 +404,27 @@ export class CoreWriteService implements WriteService {
 		).compiledPathWarnings(config);
 	}
 
+	/** Whether each of `changes` adds what a write makes in the compiled path before the compiler runs: a folder, or a placeholder script. */
+	private async onlyPlaceholders(
+		changes: readonly FileChange[]
+	): Promise<boolean> {
+		for (const { type, path: file } of changes) {
+			if (type !== FileChangeType.ADDED) return false;
+			if (await this.fileSystemService.isDirectory(file)) continue;
+			if (
+				!(await this.fileSystemService.isFile(file)) ||
+				(await this.fileSystemService.readFile(file)) !==
+					PLACEHOLDER_SOURCE
+			)
+				return false;
+		}
+		return true;
+	}
+
 	private static withSyncWarnings(
 		outcome: Exclude<LoadedConfig, FailedConfig>,
 		syncWarnings: readonly Diagnostic[] | undefined,
-		kind: WrittenConfig["kind"]
+		kind?: WrittenConfig["kind"]
 	): LoadedConfig {
 		const { config, summary, readFiles } = outcome;
 		const findings = { warnings: outcome.warnings, syncWarnings };
@@ -418,7 +442,7 @@ export class CoreWriteService implements WriteService {
 			default:
 				return new WrittenConfig(
 					config,
-					kind,
+					kind ?? outcome.kind,
 					findings,
 					summary,
 					readFiles

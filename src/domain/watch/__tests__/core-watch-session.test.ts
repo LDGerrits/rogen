@@ -478,6 +478,73 @@ describe("CoreWatchSession", () => {
 		expect(await fs.readFile("/repo/default.project.json")).toBe("{}");
 	});
 
+	it("should not check the compiled path again for the placeholders a rewrite makes there", async () => {
+		await writeConfig("/repo/default.rogen.json", {
+			compiledPath: "dist",
+		});
+		await fs.writeFile("/repo/src/A.luau", "");
+		await fs.writeFile("/repo/dist/A.luau", "return 1");
+		await start();
+
+		await fs.writeFile("/repo/src/Pets/init.meta.json", "{}");
+		await fs.writeFile("/repo/src/Pets/init.luau", "");
+		await fs.writeFile("/repo/src/B.luau", "");
+		await settle();
+		await settle();
+
+		expect(await fs.isDirectory("/repo/dist/Pets")).toBe(true);
+		expect(await fs.isFile("/repo/dist/B.luau")).toBe(true);
+		expect(updates.map(({ cause }) => cause.kind)).toEqual([
+			"initial",
+			"change",
+		]);
+	});
+
+	it("should check the compiled path once, and not rewrite, for more compiled files than a burst", async () => {
+		await writeConfig("/repo/default.rogen.json", {
+			compiledPath: "dist",
+		});
+		await fs.writeFile("/repo/src/A.luau", "");
+		await start();
+		await fs.writeFile("/repo/default.project.json", "{}");
+
+		await fs.writeFile("/repo/dist/A.luau", "return 1");
+		for (let i = 1; i < 250; i++)
+			await fs.writeFile(`/repo/dist/M${i}.luau`, "return 1");
+		await settle();
+
+		expect(updates.map(({ cause }) => cause)).toEqual([
+			{ kind: "initial" },
+			{ kind: "compiled", files: 250 },
+		]);
+		expect(await fs.readFile("/repo/default.project.json")).toBe("{}");
+	});
+
+	it("should check a compiled path inside another config's source path again, without rewriting either", async () => {
+		await writeConfig("/repo/default.rogen.json", {
+			sourcePaths: ["lib"],
+			compiledPath: "src/out",
+		});
+		await fs.writeFile("/repo/lib/A.luau", "");
+		await fs.createDirectory("/repo/arena");
+		await writeConfig("/repo/arena/default.rogen.json", {
+			sourcePaths: ["../src"],
+		});
+		await start([".", "arena"]);
+
+		await fs.writeFile("/repo/src/out/A.luau", "return 1");
+		await settle();
+
+		expect(updates.at(-1)?.cause).toEqual({ kind: "compiled", files: 1 });
+		expect(updates.at(-1)?.reports).toMatchObject([
+			{
+				outcome: { config: { file: "/repo/default.rogen.json" } },
+				fixed: [{ code: "output.nothingEmitted" }],
+			},
+		]);
+		expect(changeUpdates()).toEqual([]);
+	});
+
 	it("should say nothing when the compiled path changes and its warnings stay the same", async () => {
 		await writeConfig("/repo/default.rogen.json", {
 			compiledPath: "dist",

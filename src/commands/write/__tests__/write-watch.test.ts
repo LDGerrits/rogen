@@ -225,9 +225,6 @@ describe("watch", () => {
 			await memFs.writeFile("/repo/dist/A.luau", "return 1");
 			await settle();
 
-			expect(logService.lines.join("\n")).toContain(
-				"1 compiled file changed"
-			);
 			expect(processes.spawned).toHaveLength(1);
 		});
 

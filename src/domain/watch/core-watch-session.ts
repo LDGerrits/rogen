@@ -37,6 +37,8 @@ export class CoreWatchSession
 	readonly onDidError: Event<Error> = this._onDidError.event;
 
 	private readonly batcher: ChangeBatcher;
+	/** Batches compiled output apart from the sources: it only starts a check, so any amount of it is one round. */
+	private readonly compiledBatcher: ChangeBatcher;
 	private readonly intake = new Sequencer();
 	private readonly updates = new Sequencer();
 	private readonly watched = new Map<string, WatchedConfig>();
@@ -59,6 +61,9 @@ export class CoreWatchSession
 	) {
 		super();
 		this.batcher = this._register(new ChangeBatcher());
+		this.compiledBatcher = this._register(
+			new ChangeBatcher({ burstThreshold: Infinity })
+		);
 		this.plan = new WatchPlan(this.selection.configs);
 	}
 
@@ -71,15 +76,26 @@ export class CoreWatchSession
 		this.starting = true;
 		this._register(
 			this.watcher.onDidChangeFile((changes) => {
-				const relevant = this.dropSourceUpdates(changes);
-				if (relevant.length > 0) {
-					this.batcher.queueEvents(relevant);
-				}
+				const compiled: FileChange[] = [];
+				const others: FileChange[] = [];
+				for (const change of this.dropSourceUpdates(changes))
+					(this.plan.isCompiled(change.path)
+						? compiled
+						: others
+					).push(change);
+				if (others.length > 0) this.batcher.queueEvents(others);
+				if (compiled.length > 0)
+					this.compiledBatcher.queueEvents(compiled);
 			})
 		);
 		this._register(
 			this.batcher.onDidEmitChanges((changes) =>
 				this.enqueue(() => this.onChanges(changes))
+			)
+		);
+		this._register(
+			this.compiledBatcher.onDidEmitChanges((changes) =>
+				this.enqueue(() => this.onCompiledChanges(changes))
 			)
 		);
 		this._register(
@@ -115,8 +131,6 @@ export class CoreWatchSession
 
 	private dropSourceUpdates(changes: readonly FileChange[]): FileChange[] {
 		const { contentEdits } = this.options;
-		const compiled = (change: FileChange) =>
-			this.plan.compiledFor(change.path).length > 0;
 		if (contentEdits)
 			return changes.filter(
 				(change) =>
@@ -137,7 +151,7 @@ export class CoreWatchSession
 			(change) =>
 				this.isWatched(change.path) &&
 				(change.type !== FileChangeType.UPDATED ||
-					compiled(change) ||
+					this.plan.isCompiled(change.path) ||
 					this.selection.reads(change.path) ||
 					watched.some((config) => config.reads(change.path)))
 		);
@@ -165,7 +179,7 @@ export class CoreWatchSession
 			this.selection.concerns(file) ||
 			this.selection.reads(file) ||
 			this.plan.watches(file) ||
-			this.plan.compiledFor(file).length > 0
+			this.plan.isCompiled(file)
 		);
 	}
 
@@ -188,7 +202,8 @@ export class CoreWatchSession
 
 	private async recheck(
 		watched: WatchedConfig,
-		projectFile: string
+		projectFile: string,
+		changes: readonly FileChange[]
 	): Promise<RewriteReport | undefined> {
 		const { latest } = watched;
 		if (!latest || !this.writeSet.configOf(projectFile)) return undefined;
@@ -196,7 +211,8 @@ export class CoreWatchSession
 			this.writeSet,
 			projectFile,
 			this.listing,
-			latest
+			latest,
+			changes
 		);
 		if (outcome === latest) return undefined;
 		const report = watched.finished(outcome);
@@ -236,10 +252,11 @@ export class CoreWatchSession
 	}
 
 	private queueRecheck(
-		projectFile: string
+		projectFile: string,
+		changes: readonly FileChange[]
 	): Promise<RewriteReport | undefined> {
 		return this.queueFor(projectFile, (config) =>
-			this.recheck(config, projectFile)
+			this.recheck(config, projectFile, changes)
 		);
 	}
 
@@ -280,6 +297,7 @@ export class CoreWatchSession
 					this._onDidUpdate.fire({
 						at,
 						cause,
+						rewrote: cause.kind !== "compiled",
 						changes,
 						notices,
 						reports,
@@ -422,20 +440,31 @@ export class CoreWatchSession
 			),
 			sourceChanges
 		);
+	}
 
-		const compiledChanges = changes.filter(
-			(change) => this.plan.compiledFor(change.path).length > 0
+	private async onCompiledChanges(changes: FileChange[]): Promise<void> {
+		const indexed = changes.filter((change) =>
+			this.plan.watches(change.path)
 		);
-		if (compiledChanges.length === 0) return;
-		const rechecked = new Set(
-			compiledChanges.flatMap((change) =>
-				this.plan.compiledFor(change.path)
-			)
+		if (indexed.length > 0)
+			this.listing = await this.indexService.update(
+				this.listing,
+				indexed
+			);
+		const projects = new Set(
+			changes.flatMap((change) => this.plan.compiledFor(change.path))
 		);
 		this.announce(
-			{ kind: "compiled", files: compiledChanges.length },
-			[...rechecked].map((file) => this.queueRecheck(file)),
-			compiledChanges
+			{ kind: "compiled", files: changes.length },
+			[...projects].map((file) =>
+				this.queueRecheck(
+					file,
+					changes.filter((change) =>
+						this.plan.compiledFor(change.path).includes(file)
+					)
+				)
+			),
+			changes
 		);
 	}
 

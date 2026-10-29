@@ -48,9 +48,6 @@ export class WatchPlan {
 		const ignoredPaths = [
 			...new Set([
 				...outputs.map(({ path }) => path),
-				...this.claims.flatMap(({ compiledPath }) =>
-					compiledPath && inRoot(compiledPath) ? [compiledPath] : []
-				),
 				...configs.flatMap(({ projectDir }) =>
 					Object.values(SYNCBACK_FILES).map((name) =>
 						path.resolve(projectDir, name)
@@ -66,23 +63,34 @@ export class WatchPlan {
 		];
 	}
 
+	/** The projects whose roots hold `changePath`; none for compiled output, which only starts a check. */
 	projectsFor(changePath: string): readonly string[] {
 		const target = path.resolve(changePath);
+		if (this.isCompiled(target)) return [];
 		return this.claims
 			.filter(({ roots }) => roots.some((root) => contains(root, target)))
 			.map(({ projectFile }) => projectFile);
 	}
 
-	/** The projects whose compiled path holds `changePath`, when no root does. */
+	/** The projects whose compiled path holds `changePath`, unless a root inside that compiled path does. */
 	compiledFor(changePath: string): readonly string[] {
 		const target = path.resolve(changePath);
-		if (this.watches(target)) return [];
 		return this.claims
 			.filter(
 				({ compiledPath }) =>
-					compiledPath !== undefined && contains(compiledPath, target)
+					compiledPath !== undefined &&
+					contains(compiledPath, target) &&
+					!this.roots.some(
+						(root) =>
+							contains(compiledPath, root) &&
+							contains(root, target)
+					)
 			)
 			.map(({ projectFile }) => projectFile);
+	}
+
+	isCompiled(changePath: string): boolean {
+		return this.compiledFor(changePath).length > 0;
 	}
 
 	watches(changePath: string): boolean {
