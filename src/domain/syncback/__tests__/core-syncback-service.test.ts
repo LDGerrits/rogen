@@ -892,6 +892,33 @@ describe("CoreSyncbackService", () => {
 		]);
 	});
 
+	it.each(["init.luau", "init.server.luau"])(
+		"should list an instance whose name makes Rojo write %s for a folder no one folder of the project is",
+		async (file) => {
+			await prepare([
+				"src/Inventory/Bag@server.luau",
+				"src/Inventory/Save@server.luau",
+			]);
+			rojo.say = async () => {
+				await fs.writeFile(
+					mirror("ServerScriptService", "Inventory", file),
+					"return 2\n"
+				);
+				return [];
+			};
+
+			const plan = (await service.plan(request)).unwrap();
+
+			expect(plan.changes).toEqual([]);
+			expect(plan.unplaced).toEqual([
+				{
+					instance: "ServerScriptService/Inventory/init",
+					reason: `its name makes Rojo write it as ${file}, which Rojo reads as the folder ServerScriptService/Inventory itself; rename it in Studio`,
+				},
+			]);
+		}
+	);
+
 	it("should not write a file whose only difference is its line endings", async () => {
 		await prepare([]);
 		await fs.writeFile(

@@ -728,7 +728,15 @@ export class CoreSyncbackService implements SyncbackService {
 					name.startsWith("init.") &&
 					known.has(folder)
 				) {
-					if (!(await onlyOverrides(added.path)))
+					if (RojoFile.INIT_FILES.has(name))
+						unplaced.push({
+							instance: instanceKey([
+								...names.slice(0, -1),
+								RojoFile.INIT_NAME,
+							]),
+							reason: `its name makes Rojo write it as ${name}, which Rojo reads as the folder ${instanceKey(names.slice(0, -1))} itself; rename it in Studio`,
+						});
+					else if (!(await onlyOverrides(added.path)))
 						unplaced.push({
 							instance: instanceKey(names.slice(0, -1)),
 							reason: `Rojo wrote ${name} for a property or attribute changed in Studio, and no one folder of the project is this instance; set it on its node in the tree of the config`,
