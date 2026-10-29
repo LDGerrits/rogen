@@ -122,7 +122,8 @@ export class WriteWatch {
 			session.onDidUpdate((update) => {
 				log.update(update);
 				const { step } = this;
-				if (step === undefined) return;
+				if (step === undefined || update.cause.kind === "compiled")
+					return;
 				const planned = step.plan(selection.value);
 				if (planned.isErr()) {
 					log.error(planned.error);

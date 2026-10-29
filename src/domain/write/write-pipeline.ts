@@ -74,6 +74,16 @@ export class WritePipeline {
 		).place();
 	}
 
+	/** What the compiled path check finds for `config` now, or none when its files can't be placed. */
+	async compiledPathWarnings(
+		config: ResolvedConfig
+	): Promise<Diagnostic[] | undefined> {
+		const placement = await this.place(config);
+		return placement.isOk()
+			? this.compiledPathCheck.check(placement.value)
+			: undefined;
+	}
+
 	/** Prepares `config`: `examine`, then the compiled path check, unless `syncWarnings` already says what is known of it. Fails when any phase does, or when no source path of the config exists. */
 	async run(
 		config: ResolvedConfig,

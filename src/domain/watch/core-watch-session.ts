@@ -115,6 +115,8 @@ export class CoreWatchSession
 
 	private dropSourceUpdates(changes: readonly FileChange[]): FileChange[] {
 		const { contentEdits } = this.options;
+		const compiled = (change: FileChange) =>
+			this.plan.compiledFor(change.path).length > 0;
 		if (contentEdits)
 			return changes.filter(
 				(change) =>
@@ -135,6 +137,7 @@ export class CoreWatchSession
 			(change) =>
 				this.isWatched(change.path) &&
 				(change.type !== FileChangeType.UPDATED ||
+					compiled(change) ||
 					this.selection.reads(change.path) ||
 					watched.some((config) => config.reads(change.path)))
 		);
@@ -161,7 +164,8 @@ export class CoreWatchSession
 			!this.selection.followedFolder ||
 			this.selection.concerns(file) ||
 			this.selection.reads(file) ||
-			this.plan.watches(file)
+			this.plan.watches(file) ||
+			this.plan.compiledFor(file).length > 0
 		);
 	}
 
@@ -180,6 +184,25 @@ export class CoreWatchSession
 				force
 			)
 		);
+	}
+
+	private async recheck(
+		watched: WatchedConfig,
+		projectFile: string
+	): Promise<RewriteReport | undefined> {
+		const { latest } = watched;
+		if (!latest || !this.writeSet.configOf(projectFile)) return undefined;
+		const outcome = await this.writeService.recheck(
+			this.writeSet,
+			projectFile,
+			this.listing,
+			latest
+		);
+		if (outcome === latest) return undefined;
+		const report = watched.finished(outcome);
+		return report.unreported.length > 0 || report.fixed.length > 0
+			? report
+			: undefined;
 	}
 
 	private guarded<T>(task: () => Promise<T>): () => Promise<T | undefined> {
@@ -207,15 +230,30 @@ export class CoreWatchSession
 		projectFile: string,
 		force = false
 	): Promise<RewriteReport | undefined> {
+		return this.queueFor(projectFile, (config) =>
+			this.rewrite(config, projectFile, force)
+		);
+	}
+
+	private queueRecheck(
+		projectFile: string
+	): Promise<RewriteReport | undefined> {
+		return this.queueFor(projectFile, (config) =>
+			this.recheck(config, projectFile)
+		);
+	}
+
+	private queueFor(
+		projectFile: string,
+		task: (config: WatchedConfig) => Promise<RewriteReport | undefined>
+	): Promise<RewriteReport | undefined> {
 		let watched = this.watched.get(projectFile);
 		if (!watched) {
 			watched = new WatchedConfig();
 			this.watched.set(projectFile, watched);
 		}
 		const config = watched;
-		const queued = config.queue(
-			this.guarded(() => this.rewrite(config, projectFile, force))
-		);
+		const queued = config.queue(this.guarded(() => task(config)));
 		this.track(queued);
 		return queued;
 	}
@@ -260,7 +298,11 @@ export class CoreWatchSession
 	}
 
 	private watchPaths(): string[] {
-		return [...this.selection.files, ...this.plan.roots];
+		return [
+			...this.selection.files,
+			...this.plan.roots,
+			...this.plan.compiledRoots,
+		];
 	}
 
 	// JSON.stringify drops a RegExp's source, so patterns are stringified explicitly.
@@ -379,6 +421,21 @@ export class CoreWatchSession
 				this.queueRewrite(file, metaChanged.has(file))
 			),
 			sourceChanges
+		);
+
+		const compiledChanges = changes.filter(
+			(change) => this.plan.compiledFor(change.path).length > 0
+		);
+		if (compiledChanges.length === 0) return;
+		const rechecked = new Set(
+			compiledChanges.flatMap((change) =>
+				this.plan.compiledFor(change.path)
+			)
+		);
+		this.announce(
+			{ kind: "compiled", files: compiledChanges.length },
+			[...rechecked].map((file) => this.queueRecheck(file)),
+			compiledChanges
 		);
 	}
 

@@ -271,6 +271,14 @@ export interface WriteService {
 		force?: boolean
 	): Promise<LoadedConfig>;
 
+	/** `previous` with what the compiled path holds now, for when only the compiled path changed; writes nothing, and returns `previous` when it failed or is of another version of the config. */
+	recheck(
+		set: WriteSet,
+		projectFile: string,
+		listing: IndexReader,
+		previous: LoadedConfig
+	): Promise<LoadedConfig>;
+
 	/** What a write raises about each of `targets.args`, and why any config didn't load; with no arguments, about every config. Writes nothing; fails as `locate` does. */
 	diagnose(
 		selection: ConfigSelection,

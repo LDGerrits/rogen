@@ -176,8 +176,51 @@ describe("domain/watch/watch-plan", () => {
 		});
 	});
 
+	describe("compiled paths", () => {
+		it("should watch a compiled path two configs share once", () => {
+			const plan = new WatchPlan([
+				config("/repo/default.rogen.json", ["/repo/src"], {
+					compiledPath: "/repo/out",
+				}),
+				config("/repo/arena/default.rogen.json", ["/repo/src"], {
+					compiledPath: "/repo/out",
+				}),
+			]);
+
+			expect(plan.compiledRoots).toEqual(["/repo/out"]);
+			expect(plan.compiledFor("/repo/out/A.luau")).toEqual([
+				"/repo/default.project.json",
+				"/repo/arena/default.project.json",
+			]);
+		});
+
+		it("should leave a compiled path inside a root to the root, which ignores it", () => {
+			const plan = new WatchPlan([
+				config("/repo/default.rogen.json", ["/repo/src"], {
+					compiledPath: "/repo/src/out",
+				}),
+			]);
+
+			expect(plan.compiledRoots).toEqual([]);
+			expect(plan.compiledFor("/repo/src/out/A.luau")).toEqual([]);
+		});
+
+		it("should not take a source file for compiled output in a compiled path that holds the root", () => {
+			const plan = new WatchPlan([
+				config("/repo/default.rogen.json", ["/repo/dist/src"], {
+					compiledPath: "/repo/dist",
+				}),
+			]);
+
+			expect(plan.compiledFor("/repo/dist/src/A.luau")).toEqual([]);
+			expect(plan.compiledFor("/repo/dist/A.luau")).toEqual([
+				"/repo/default.project.json",
+			]);
+		});
+	});
+
 	describe("ignored", () => {
-		it("should list each output file, its compiled path and a pattern for its staging files", () => {
+		it("should list each output file and a pattern for its staging files, but not the compiled path", () => {
 			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"], {
 					compiledPath: "/repo/out",
@@ -186,7 +229,6 @@ describe("domain/watch/watch-plan", () => {
 
 			expect(plan.ignored).toEqual([
 				"/repo/default.project.json",
-				"/repo/out",
 				"/repo/rogen-syncback.project.json",
 				"/repo/.rogen-syncback",
 				expect.any(RegExp),
@@ -279,16 +321,16 @@ describe("domain/watch/watch-plan", () => {
 		it("should list a path shared by two configs once", () => {
 			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"], {
-					compiledPath: "/repo/out",
+					compiledPath: "/repo/src/out",
 				}),
 				config("/repo/arena/default.rogen.json", ["/repo/src"], {
-					compiledPath: "/repo/out",
+					compiledPath: "/repo/src/out",
 				}),
 			]);
 
-			expect(plan.ignored.filter((p) => p === "/repo/out")).toHaveLength(
-				1
-			);
+			expect(
+				plan.ignored.filter((p) => p === "/repo/src/out")
+			).toHaveLength(1);
 			expect(
 				plan.ignored.filter((p) => p instanceof RegExp)
 			).toHaveLength(2);

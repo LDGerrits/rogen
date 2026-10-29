@@ -13,18 +13,30 @@ type WatchPlanConfig = Pick<
 
 export class WatchPlan {
 	readonly roots: readonly string[];
+	/** The compiled paths outside every root, watched only to check them again. */
+	readonly compiledRoots: readonly string[];
 	readonly ignored: readonly IgnoredPath[];
 	private readonly claims: readonly {
 		readonly projectFile: string;
 		readonly roots: readonly string[];
+		readonly compiledPath: string | undefined;
 	}[];
 
 	constructor(configs: readonly WatchPlanConfig[]) {
 		this.claims = configs.map((config) => ({
 			projectFile: config.projectFile,
 			roots: config.indexedPaths.map((dir) => path.resolve(dir)),
+			compiledPath:
+				config.compiledPath && path.resolve(config.compiledPath),
 		}));
 		this.roots = outermostDirs(this.claims.flatMap(({ roots }) => roots));
+		const inRoot = (target: string) =>
+			this.roots.some((root) => contains(root, target));
+		this.compiledRoots = outermostDirs(
+			this.claims.flatMap(({ compiledPath }) =>
+				compiledPath && !inRoot(compiledPath) ? [compiledPath] : []
+			)
+		);
 
 		const outputs = [
 			...new Set(
@@ -36,10 +48,8 @@ export class WatchPlan {
 		const ignoredPaths = [
 			...new Set([
 				...outputs.map(({ path }) => path),
-				...configs.flatMap((config) =>
-					config.compiledPath
-						? [path.resolve(config.compiledPath)]
-						: []
+				...this.claims.flatMap(({ compiledPath }) =>
+					compiledPath && inRoot(compiledPath) ? [compiledPath] : []
 				),
 				...configs.flatMap(({ projectDir }) =>
 					Object.values(SYNCBACK_FILES).map((name) =>
@@ -60,6 +70,18 @@ export class WatchPlan {
 		const target = path.resolve(changePath);
 		return this.claims
 			.filter(({ roots }) => roots.some((root) => contains(root, target)))
+			.map(({ projectFile }) => projectFile);
+	}
+
+	/** The projects whose compiled path holds `changePath`, when no root does. */
+	compiledFor(changePath: string): readonly string[] {
+		const target = path.resolve(changePath);
+		if (this.watches(target)) return [];
+		return this.claims
+			.filter(
+				({ compiledPath }) =>
+					compiledPath !== undefined && contains(compiledPath, target)
+			)
 			.map(({ projectFile }) => projectFile);
 	}
 

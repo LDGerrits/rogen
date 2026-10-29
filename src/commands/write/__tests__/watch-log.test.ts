@@ -105,6 +105,12 @@ describe("WatchLog.update", () => {
 			});
 		});
 
+		it("should count the compiled files that changed", () => {
+			expect(
+				logged({ cause: { kind: "compiled", files: 2 } })[0].text
+			).toBe("03:04:05 · 2 compiled files changed");
+		});
+
 		it("should count source files", () => {
 			expect(titleOf(2, [], false)).toContain("2 files changed");
 			expect(titleOf(1, [], false)).toContain("1 file changed");

@@ -454,9 +454,42 @@ describe("CoreWatchSession", () => {
 			{ code: "output.nothingEmitted" },
 		]);
 		expect(updates[1].reports[0].unreported).toEqual([]);
-		expect(updates[1].reports[0].outcome.syncWarnings).toBe(
-			updates[0].reports[0].outcome.syncWarnings
-		);
+	});
+
+	it("should check the compiled path again when it changes, without writing the project file", async () => {
+		await writeConfig("/repo/default.rogen.json", {
+			compiledPath: "dist",
+		});
+		await fs.writeFile("/repo/src/A.luau", "");
+		await start();
+		await fs.writeFile("/repo/default.project.json", "{}");
+
+		await fs.writeFile("/repo/dist/A.luau", "return 1");
+		await settle();
+
+		expect(updates).toHaveLength(2);
+		expect(updates[1].cause).toEqual({ kind: "compiled", files: 1 });
+		expect(updates[1].reports).toMatchObject([
+			{
+				outcome: { kind: "unchanged", syncWarnings: [] },
+				fixed: [{ code: "output.nothingEmitted" }],
+			},
+		]);
+		expect(await fs.readFile("/repo/default.project.json")).toBe("{}");
+	});
+
+	it("should say nothing when the compiled path changes and its warnings stay the same", async () => {
+		await writeConfig("/repo/default.rogen.json", {
+			compiledPath: "dist",
+		});
+		await fs.writeFile("/repo/src/A.luau", "");
+		await fs.writeFile("/repo/dist/A.luau", "return 1");
+		await start();
+
+		await fs.writeFile("/repo/dist/A.luau", "return 2");
+		await settle();
+
+		expect(updates).toHaveLength(1);
 	});
 
 	it("should not rewrite for an update to a meta file the write never read", async () => {
@@ -719,7 +752,7 @@ describe("CoreWatchSession", () => {
 			]);
 		});
 
-		it("should tell the watcher to skip each output file and compiled path", async () => {
+		it("should tell the watcher to skip each output file, and to watch the compiled path", async () => {
 			await write(
 				"/repo/default.rogen.json",
 				config({ compiledPath: "out" })
@@ -728,14 +761,15 @@ describe("CoreWatchSession", () => {
 
 			await start();
 
-			const [, options] = watch.mock.calls[0];
+			const [paths, options] = watch.mock.calls[0];
+			expect(paths).toContain("/repo/out");
 			expect(options?.ignored).toEqual(
 				expect.arrayContaining([
 					"/repo/default.project.json",
-					"/repo/out",
 					new OutputFile("/repo/default.project.json").stagingPattern,
 				])
 			);
+			expect(options?.ignored).not.toContain("/repo/out");
 		});
 
 		it("should emit one batch for one change to a root shared by two configs", async () => {

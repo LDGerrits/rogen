@@ -105,7 +105,7 @@ export class CompiledPathCheck {
 				warningDiagnostic(
 					"output.nothingEmitted",
 					{ resource: sourcePath },
-					`nothing emitted for source path "${shown(sourcePath)}" exists under "${shown(expected)}". ${nearest}`
+					`source path "${shown(sourcePath)}" has no output under "${shown(expected)}". ${nearest}`
 				)
 			);
 		}

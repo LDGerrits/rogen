@@ -20,6 +20,8 @@ export interface ChangeBurst {
 export type WatchCause =
 	| { readonly kind: "initial" }
 	| ({ readonly kind: "burst" } & ChangeBurst)
+	/** Files in a compiled path changed, so only its check ran again. */
+	| { readonly kind: "compiled"; readonly files: number }
 	| {
 			readonly kind: "change";
 			readonly sourceFiles: number;
