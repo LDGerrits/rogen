@@ -509,6 +509,16 @@ export class CoreSyncbackService implements SyncbackService {
 		);
 	}
 
+	/** Whether `folder` lies below a source path, which syncback never removes itself. */
+	private static belowSource(
+		project: ResolvedConfig,
+		folder: string
+	): boolean {
+		return project.sourcePaths.some(
+			(source) => contains(source, folder) && !contains(folder, source)
+		);
+	}
+
 	private isUnread({ dir, unread }: Prepared, target: string): boolean {
 		const relative = path.posix.relative(toPosix(dir), target);
 		return ignoringGlob(relative, unread) !== undefined;
@@ -700,6 +710,39 @@ export class CoreSyncbackService implements SyncbackService {
 					instance,
 					from: at,
 				});
+		}
+		const removed = new Set(
+			operations
+				.filter(({ kind }) => kind === "remove")
+				.map(({ file }) => file)
+		);
+		const pruned = new Set(
+			operations
+				.filter(({ kind }) => kind === "prune")
+				.map(({ file }) => file)
+		);
+		for (const { kind, file, from } of [...operations]) {
+			if (kind !== "remove" || from === undefined) continue;
+			const folder = path.dirname(file);
+			const at = path.posix.dirname(from);
+			if (
+				pruned.has(folder) ||
+				holding.has(at) ||
+				!CoreSyncbackService.belowSource(request.project, folder) ||
+				!(await this.walk(folder)).every(
+					(entry) =>
+						entry.folder ||
+						removed.has(path.join(folder, entry.path))
+				)
+			)
+				continue;
+			pruned.add(folder);
+			operations.push({
+				kind: "prune",
+				file: folder,
+				instance: CoreSyncbackService.instanceAt(at),
+				from: at,
+			});
 		}
 
 		const known = new Set<string>(mirror.folders);
