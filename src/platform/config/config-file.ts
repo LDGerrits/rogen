@@ -70,10 +70,8 @@ export class ConfigFileReader {
 		return this.parse(text.value, file);
 	}
 
-	private parse(
-		text: string,
-		file: string
-	): Result<ConfigFile, ConfigFileFailure> {
+	/** Reads `text` as the config `file` holds. */
+	parse(text: string, file: string): Result<ConfigFile, ConfigFileFailure> {
 		const document = this.documents.read(text, file, this.structure);
 		if (document.isErr()) {
 			const parsed = parse(text);

@@ -213,6 +213,26 @@ describe("MetaReader", () => {
 			["an array of the wrong length", "[1, 2, 3, 4, 5]"],
 			["an array of mixed values", '[1, "a"]'],
 			["an object of several keys", '{"a": 1, "b": 2}'],
+			[
+				"attributes of a type Rojo doesn't know",
+				'{"a": {"b": 1}, "c": {"d": 2}}',
+			],
+			[
+				"colors of a name that is no terrain material",
+				'{"X": [1, 2, 3], "Y": [4, 5, 6]}',
+			],
+			[
+				"material colors that aren't whole numbers",
+				'{"Grass": [0.5, 2, 3], "Slate": [4, 5, 6]}',
+			],
+			[
+				"material colors above 255",
+				'{"Grass": [256, 2, 3], "Slate": [4, 5, 6]}',
+			],
+			[
+				"attributes and material colors in one object",
+				'{"a": {"String": "x"}, "Grass": [1, 2, 3]}',
+			],
 		])(
 			"should fail at a property Rojo can't read as a value: %s",
 			async (_, value) => {
@@ -264,6 +284,11 @@ describe("MetaReader", () => {
 						G: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
 						H: ["a", "b"],
 						I: { Vector3: [1, 2, 3] },
+						J: {
+							Hey: { String: "Grandma" },
+							Id: { Ref: "00000000000000000000000000000000" },
+						},
+						K: { Grass: [0, 255, 3], CrackedLava: [4, 5, 6] },
 					},
 				})
 			);

@@ -438,7 +438,7 @@ Give the root `"$className": "DataModel"`. If the project is a model, remove the
 
 ### `tree.unreadableValue` [#tree-unreadablevalue]
 
-Error. A value in the `$properties` or `$attributes` of a node in the config's `tree` is one that Rojo can't read without the property's type. Examples are a UDim2 written as nested lists, a CFrame written as an object with no type, and `null`. Rojo refuses the project. Without this check, `rojo build` fails later with "Failed to deserialize JSON", and the message doesn't name the value.
+Error. A value in the `$properties` or `$attributes` of a node in the config's `tree` is one that Rojo can't read without the property's type. Examples are a UDim2 written as nested lists, a CFrame written as an object with no type, and `null`. Rojo refuses the project, and `rogen fmt-project` refuses to format it, as `rojo fmt-project` does. Without this check, `rojo build` fails later with "Failed to deserialize JSON", and the message doesn't name the value.
 
 ```
 error: "tree.StarterGui.Hud.Bar.$properties.Size": Rojo can't read this value, so it refuses the project. Write a boolean, a number, a string, a list of numbers (2, 3, 4 or 12), a list of strings, or a { "Type": value } pair. (tree.unreadableValue)
@@ -505,7 +505,7 @@ Give the field the type that the message names. It is the type that Rojo's meta 
 
 ### `meta.unreadableValue` [#meta-unreadablevalue]
 
-Error. A value in a meta file's `properties` or `attributes` is one that Rojo can't read, such as `null`, a list of numbers of the wrong length, or an object with several plain values. Rojo refuses the meta. Without this check, the build fails later, with a message that doesn't name the file.
+Error. A value in a meta file's `properties` or `attributes` is one that Rojo can't read, such as `null`, a list of numbers of the wrong length, or an object of several keys that is neither attributes of types Rojo knows nor material colors of whole numbers from 0 to 255. Rojo refuses the meta. Without this check, the build fails later, with a message that doesn't name the file.
 
 ```
 error: "properties.WorldPivotData": Rojo can't read this value, so it refuses this meta. Write a boolean, a number, a string, a list of numbers (2, 3, 4 or 12), a list of strings, or a { "Type": value } pair. (meta.unreadableValue)

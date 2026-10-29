@@ -146,6 +146,54 @@ const WHOLE_TYPES = new Set([
 
 const ATTRIBUTES = "Attributes";
 
+/** Every type Rojo reads as `{ "Type": value }`; those in neither list above it writes as they were given. */
+const TYPES = new Set([
+	...Object.keys(SHAPES),
+	...WHOLE_TYPES,
+	ATTRIBUTES,
+	"ContentId",
+	"EnumItem",
+	"MaterialColors",
+	"NetAssetRef",
+	"PhysicalProperties",
+	"Ref",
+]);
+
+/** The materials Rojo reads as the keys of a Terrain's `MaterialColors`. */
+const TERRAIN_MATERIALS = new Set([
+	"Asphalt",
+	"Basalt",
+	"Brick",
+	"Cobblestone",
+	"Concrete",
+	"CrackedLava",
+	"Glacier",
+	"Grass",
+	"Ground",
+	"Ice",
+	"LeafyGrass",
+	"Limestone",
+	"Mud",
+	"Pavement",
+	"Rock",
+	"Salt",
+	"Sand",
+	"Sandstone",
+	"Slate",
+	"Snow",
+	"WoodPlanks",
+]);
+
+const isTypedValue = (value: unknown): boolean =>
+	isObject(value) &&
+	Object.keys(value).length === 1 &&
+	TYPES.has(Object.keys(value)[0]);
+
+const isColor3uint8 = (value: unknown): boolean =>
+	Array.isArray(value) &&
+	value.length === 3 &&
+	value.every((part) => Number.isInteger(part) && part >= 0 && part <= 255);
+
 /** The lengths of the lists of numbers Rojo reads as a value: a vector, a color, a rectangle and a matrix. */
 const NUMBER_LIST_LENGTHS = new Set([2, 3, 4, 12]);
 
@@ -154,7 +202,7 @@ export class PropertyValues {
 	static readonly READABLE_HINT =
 		'Write a boolean, a number, a string, a list of numbers (2, 3, 4 or 12), a list of strings, or a { "Type": value } pair.';
 
-	/** Whether Rojo reads `value` without knowing the property's type; it refuses the file holding any other. Several keys read as attributes or material colors. */
+	/** Whether Rojo reads `value` without knowing the property's type; it refuses the file holding any other. An object of several keys reads only as attributes, each a `{ "Type": value }` of a type Rojo knows, or as material colors, each a terrain material with three whole numbers from 0 to 255. */
 	static isReadable(value: unknown): boolean {
 		if (
 			typeof value === "boolean" ||
@@ -169,17 +217,13 @@ export class PropertyValues {
 					NUMBER_LIST_LENGTHS.has(value.length))
 			);
 		if (!isObject(value)) return false;
-		const entries = Object.values(value);
+		const entries = Object.entries(value);
 		return (
 			entries.length <= 1 ||
+			entries.every(([, entry]) => isTypedValue(entry)) ||
 			entries.every(
-				(entry) => isObject(entry) && Object.keys(entry).length === 1
-			) ||
-			entries.every(
-				(entry) =>
-					Array.isArray(entry) &&
-					entry.length === 3 &&
-					entry.every((part) => typeof part === "number")
+				([material, color]) =>
+					TERRAIN_MATERIALS.has(material) && isColor3uint8(color)
 			)
 		);
 	}
@@ -189,22 +233,10 @@ export class PropertyValues {
 		return Object.fromEntries(
 			Object.entries(values).map(([name, value]) => [
 				name,
-				name === ATTRIBUTES &&
-				isObject(value) &&
-				!PropertyValues.isTyped(value)
+				name === ATTRIBUTES && isObject(value) && !isTypedValue(value)
 					? PropertyValues.attributes(value)
 					: PropertyValues.value(value),
 			])
-		);
-	}
-
-	private static isTyped(value: Record<string, unknown>): boolean {
-		const keys = Object.keys(value);
-		return (
-			keys.length === 1 &&
-			(Object.hasOwn(SHAPES, keys[0]) ||
-				WHOLE_TYPES.has(keys[0]) ||
-				keys[0] === ATTRIBUTES)
 		);
 	}
 
@@ -213,7 +245,7 @@ export class PropertyValues {
 		if (typeof value === "number") return new FloatText(value, 64);
 		if (Array.isArray(value))
 			return value.map((entry) => PropertyValues.value(entry));
-		if (!isObject(value) || !PropertyValues.isTyped(value)) return value;
+		if (!isObject(value) || !isTypedValue(value)) return value;
 		const [type] = Object.keys(value);
 		const inner = value[type];
 		if (type === ATTRIBUTES)
