@@ -1034,24 +1034,32 @@ export class CoreSyncbackService implements SyncbackService {
 			const text = await this.fileSystemService.readFile(prepared.file);
 			return (JSON.parse(text) as RojoProjectFile).tree;
 		});
-		if (ran.isErr() || ran.value === undefined)
-			return {
-				unplaced: [
-					{
-						instance: request.project.projectName,
-						reason: "the project file Rojo rewrote could not be read, so its changes to the nodes of the tree are not written",
-					},
-				],
-			};
+		const rewritten = ran.isOk() ? ran.value : undefined;
+		const unread: UnplacedInstance[] =
+			rewritten === undefined
+				? [
+						{
+							instance: request.project.projectName,
+							reason: "the project file Rojo rewrote could not be read, so its changes to the nodes of the tree are not written",
+						},
+					]
+				: [];
 		const allChanges = [
-			...treeChanges(prepared.mirror.file.tree, ran.value),
+			...(rewritten === undefined
+				? []
+				: treeChanges(prepared.mirror.file.tree, rewritten)),
 			...added,
 		];
-		if (allChanges.length === 0) return { unplaced: [] };
-		const editedInStudio = treeChanges(
-			treeWithoutSerializedOverrides(prepared.mirror.file.tree),
-			treeWithoutSerializedOverrides(ran.value)
-		);
+		if (allChanges.length === 0) return { unplaced: unread };
+		const editedInStudio =
+			rewritten === undefined
+				? []
+				: treeChanges(
+						treeWithoutSerializedOverrides(
+							prepared.mirror.file.tree
+						),
+						treeWithoutSerializedOverrides(rewritten)
+					);
 		const children = (changes: readonly TreeChange[]) =>
 			changes.flatMap(({ node, added: nodes }) =>
 				nodes.map(({ name }) => [...node, name])
@@ -1065,22 +1073,28 @@ export class CoreSyncbackService implements SyncbackService {
 		if (current.isErr())
 			return {
 				unplaced: [
-					...editedInStudio.map(({ node }) => node),
-					...children(added),
-				].map((node) => ({
-					instance: label(node),
-					reason: `${prepared.configFile} could not be read`,
-				})),
+					...unread,
+					...[
+						...editedInStudio.map(({ node }) => node),
+						...children(added),
+					].map((node) => ({
+						instance: label(node),
+						reason: `${prepared.configFile} could not be read`,
+					})),
+				],
 			};
 		const applied = applyTreeChanges(current.value, ["tree"], allChanges);
-		const unplaced = applyTreeChanges(
-			current.value,
-			["tree"],
-			editedInStudio
-		).unhomed.map((node) => ({
-			instance: label(node),
-			reason: `a property or attribute changed in Studio, and the tree of ${toNative(prepared.configFile)} has no node for it, since routing made it; add a node for it to the tree`,
-		}));
+		const unplaced = [
+			...unread,
+			...applyTreeChanges(
+				current.value,
+				["tree"],
+				editedInStudio
+			).unhomed.map((node) => ({
+				instance: label(node),
+				reason: `a property or attribute changed in Studio, and the tree of ${toNative(prepared.configFile)} has no node for it, since routing made it; add a node for it to the tree`,
+			})),
+		];
 		if (applied.text === current.value) return { unplaced };
 		return {
 			unplaced,

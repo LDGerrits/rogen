@@ -721,6 +721,31 @@ describe("CoreSyncbackService", () => {
 			});
 		});
 
+		it("should still add an instance Rojo wrote there when the project file Rojo rewrote can't be read", async () => {
+			rojo.say = async () => {
+				await writeIntoNode(
+					["ReplicatedStorage", "Remotes"],
+					"Buy.model.json",
+					JSON.stringify({ className: "RemoteEvent" })
+				);
+				await fs.writeFile(abs("rogen-syncback.project.json"), "{");
+				return [];
+			};
+
+			const done = (await service.apply(request)).unwrap();
+
+			expect(done.unplaced).toEqual([
+				{
+					instance: config.projectName,
+					reason: "the project file Rojo rewrote could not be read, so its changes to the nodes of the tree are not written",
+				},
+			]);
+			expect(
+				JSON.parse(await fs.readFile(abs("default.rogen.json"))).tree
+					.ReplicatedStorage.Remotes.Buy
+			).toEqual({ $className: "RemoteEvent" });
+		});
+
 		it("should say how to keep an instance there that the tree can't describe, and write nothing for it", async () => {
 			rojo.say = async () => {
 				await writeIntoNode(
