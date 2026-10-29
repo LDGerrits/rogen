@@ -1,8 +1,6 @@
 import { describeWithRojo } from "../src/domain/rojo/__tests__/rojo-cli.js";
 import { NETWORK_TIMEOUT_MS, bundleCli } from "./harness.js";
-import { Variant, follow, stepOf } from "./first-success.js";
-
-const SOURCEMAP = ["rogen", "sourcemap", "-o", "sourcemap.json"] as const;
+import { Variant, follow } from "./first-success.js";
 
 const GAME = "projects/game";
 
@@ -17,27 +15,6 @@ const VARIANTS: readonly Variant[] = [
 		mapped: ["game"],
 	},
 	{
-		name: "Luau with Darklua",
-		flags: ["--darklua"],
-		steps: [SOURCEMAP, ["darklua", "process", "src", "dist"]],
-		project: ["dist"],
-		served: "project",
-	},
-	{
-		name: "Luau with Darklua, several places",
-		flags: ["--places", "--darklua"],
-		steps: [
-			{
-				run: ["rogen", "sourcemap", "game", "-o", "sourcemap.json"],
-				editor: true,
-			},
-			{ run: ["darklua", "process", "src/common", "dist/common"] },
-			{ run: ["darklua", "process", "src/game", "dist/game"] },
-		],
-		project: ["game.dist.rogen.json"],
-		served: "game",
-	},
-	{
 		name: "roblox-ts, one place",
 		flags: ["--language", "roblox-ts"],
 		steps: [["npx", "rbxtsc"]],
@@ -50,28 +27,6 @@ const VARIANTS: readonly Variant[] = [
 		steps: [["npx", "rbxtsc", "-p", GAME]],
 		network: true,
 		project: [GAME],
-		served: "game",
-	},
-	{
-		name: "roblox-ts with Darklua",
-		flags: ["--language", "roblox-ts", "--darklua"],
-		steps: [
-			["npx", "rbxtsc"],
-			["darklua", "process", "out", "dist"],
-		],
-		network: true,
-		project: ["dist"],
-		served: "project",
-	},
-	{
-		name: "roblox-ts with Darklua, several places",
-		flags: ["--language", "roblox-ts", "--places", "--darklua"],
-		steps: [
-			["npx", "rbxtsc", "-p", GAME],
-			{ in: GAME, run: ["darklua", "process", "out", "dist"] },
-		],
-		network: true,
-		project: [`${GAME}/dist.rogen.json`],
 		served: "game",
 	},
 ];
@@ -106,9 +61,8 @@ describeWithRojo("first success from an empty folder", () => {
 				expect(success.commands).toEqual([
 					"init",
 					...variant.steps
-						.map(stepOf)
-						.filter(({ run: [program] }) => program === "rogen")
-						.map(({ run: [, command] }) => command),
+						.filter(([program]) => program === "rogen")
+						.map(([, command]) => command),
 					"serve",
 				]);
 				expect(success.unprinted).toEqual([]);

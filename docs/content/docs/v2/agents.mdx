@@ -7,7 +7,7 @@ A coding agent doesn't know that Rogen generates the Rojo project file, so Rojo 
 
 ## Add the Rules
 
-`rogen init` adds the block below to `AGENTS.md`, and imports it into the `CLAUDE.md` and `GEMINI.md` that Claude Code and Gemini CLI read instead. `--no-agent-rules` leaves it out. In a project that already has a config, run `rogen init --agent-rules`, or paste the block yourself, markers included:
+`rogen init` adds the block below to `AGENTS.md`, and imports it into the `CLAUDE.md` and `GEMINI.md` that Claude Code and Gemini CLI read instead. `--no-agent-rules` leaves it out. In a project that already has a config, run `rogen init --agent-rules`, which adds only the agent files and changes no config, or paste the block yourself, markers included:
 
 ````md title="AGENTS.md"
 <!-- rogen -->
@@ -147,7 +147,7 @@ console.log(
 );
 ```
 
-`rogen init --agent-hook` writes the script and registers it with each agent it finds:
+`rogen init` adds the hook only when asked: `rogen init --agent-hook`, or Customise in a terminal. It writes the script and registers it with each agent it finds:
 
 | Agent | Hook file | Event | Entry |
 |---|---|---|---|
@@ -159,6 +159,8 @@ console.log(
 
 To register it by hand, put the script at `.agents/hooks/rogen-check.mjs` and add the entry under its event. Codex runs a project hook only after you trust it in `/hooks`. The hook also reports warnings in files you changed yourself, once per session.
 
+In a project that already has a config, `--agent-rules` and `--agent-hook` add only the agent files and change no config. They take `--skip-git`, `-y`, `-n` and `--json`, but a flag that shapes a config, such as `--language`, is an error.
+
 ## Install the Skill
 
 The `rogen` skill sets a repo up through `rogen init`, and can reorganise a Rojo layout into feature folders:
@@ -166,5 +168,7 @@ The `rogen` skill sets a repo up through `rogen init`, and can reorganise a Rojo
 ```bash
 npx skills add LDGerrits/rogen
 ```
+
+The skill runs `rogen init --dry-run --json` and reads its `decided` list, each choice init made with the flag that changes it. `{"question": "sample", "value": true, "flag": "--no-sample"}` means init writes the Greeter sample, and `--no-sample` leaves it out. It also reads `warnings`, such as code that no source path holds, and settles each one with you.
 
 The rules stay in `AGENTS.md` because an agent loads a skill only when a task looks like it needs one, and adding a Luau file doesn't.

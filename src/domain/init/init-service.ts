@@ -17,30 +17,26 @@ export type InitKind = "place" | "model" | "plugin";
 /** What the user gave as flags, so that `init` asks nothing about it. */
 export interface InitChoices {
 	readonly kind?: InitKind;
-	readonly skipGit?: boolean;
+	readonly skipGit?: true;
 	readonly agentRules?: boolean;
-	readonly agentHook?: boolean;
+	readonly agentHook?: true;
 	readonly language?: string;
-	readonly darklua?: boolean;
-	readonly sourcePaths?: readonly string[];
-	readonly projectFile?: "lift" | "new";
-	readonly compiledPath?: string;
-	/** Folders to mount, or `none`. */
-	readonly packages?: readonly string[];
-	/** Route ids, or `none`. */
-	readonly routes?: readonly string[];
-	readonly unmatched?: "shared" | "leave";
-	/** Whether a new place starts with the Greeter sample. */
-	readonly sample?: boolean;
+	/** Given only to leave the Greeter sample out of a new place. */
+	readonly sample?: false;
 	/** Whether a new project is several places under `places/`, rather than one. */
 	readonly places?: boolean;
 }
 
 /** A choice a run that couldn't ask took for itself, and the flag that makes it another. */
 export interface InitDecision {
-	readonly question: string;
-	readonly value: string | boolean | readonly string[];
+	readonly question: keyof InitChoices;
+	readonly value: string | boolean;
 	readonly flag: string;
+}
+
+/** The form of the boolean flag `--name` that gives `value`, such as `--no-sample` for false. */
+export function booleanFlag(flag: string, value: boolean): string {
+	return value ? flag : flag.replace(/^--/, "--no-");
 }
 
 /** A program that `init` runs once it has written the files, such as the tool that installs a compiler's packages. */

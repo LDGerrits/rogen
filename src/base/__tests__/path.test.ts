@@ -7,6 +7,7 @@ import {
 	containsPath,
 	containsPosix,
 	dirnamePosix,
+	isBelowPosix,
 	isInside,
 	joinPosix,
 	normalizeDir,
@@ -204,6 +205,19 @@ describe("normalizeDir", () => {
 			expect(containsPath("C:/Repo/Src", "c:/repo/src-extra", true)).toBe(
 				false
 			);
+		});
+	});
+
+	describe("isBelowPosix", () => {
+		it("should hold a folder below the one it is relative to", () => {
+			expect(isBelowPosix("src")).toBe(true);
+			expect(isBelowPosix("src/..lib")).toBe(true);
+		});
+
+		it("should not hold the folder itself or one above it", () => {
+			expect(isBelowPosix(".")).toBe(false);
+			expect(isBelowPosix("..")).toBe(false);
+			expect(isBelowPosix("../lib")).toBe(false);
 		});
 	});
 

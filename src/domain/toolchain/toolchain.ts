@@ -1,6 +1,3 @@
-import path from "path";
-import { commonAncestor, toPosix } from "../../base/path.js";
-
 export interface MetaReplacement {
 	readonly suffix: string;
 	/** Says why, in the warning about the meta Rojo no longer applies. */
@@ -60,23 +57,23 @@ export class PackageManager {
 		readonly server: string
 	) {}
 
-	/** The folders it offers to mount; a manifest means packages are coming, so they start ticked. */
+	/** Its package folders; a manifest means packages are coming, so they are mounted before they are installed. */
 	mounts(
 		installedDirs: ReadonlySet<string>,
 		hasManifest: boolean
 	): MountCandidate[] {
-		const offer = (dir: string, landing: string): MountCandidate => {
+		const candidate = (dir: string, landing: string): MountCandidate => {
 			const installed = installedDirs.has(dir);
 			return {
 				path: dir,
 				installed,
 				landing,
-				ticked: installed || hasManifest,
+				mounted: installed || hasManifest,
 			};
 		};
 		return [
-			offer(this.shared, PackageManager.SHARED_LANDING),
-			offer(this.server, PackageManager.SERVER_LANDING),
+			candidate(this.shared, PackageManager.SHARED_LANDING),
+			candidate(this.server, PackageManager.SERVER_LANDING),
 		];
 	}
 }
@@ -100,7 +97,8 @@ export interface MountCandidate {
 	readonly path: string;
 	readonly installed: boolean;
 	readonly landing: string;
-	readonly ticked: boolean;
+	/** Whether init mounts it. */
+	readonly mounted: boolean;
 }
 
 export interface Compiler {
@@ -108,19 +106,11 @@ export interface Compiler {
 	readonly name: string;
 	readonly outDir: string;
 	readonly compileCommand: string;
-	/** The edit that makes it compile the shared code from `sourcePath`, when its config compiles another folder. */
-	sourcePathStep(sourcePath: string): string;
 }
 
 export interface LanguageCopy {
 	readonly label: string;
 	readonly detectedHint?: string;
-	readonly packagesNote?: string;
-	/** Only for a language whose compiler reads a single source path. */
-	readonly sourcePath?: {
-		readonly description: string;
-		readonly severalProblem: string;
-	};
 }
 
 export interface Language {
@@ -141,9 +131,10 @@ export interface Language {
 	routeKey(id: string): string;
 	/** The source path the language's own config names, if any; `init` prefers it. */
 	configuredSourcePath(): string | undefined;
-	/** Folders mounted without asking. */
+	/** Folders mounted whether or not they are installed. */
 	alwaysMounted(): readonly MountCandidate[];
-	offeredMounts(): readonly MountCandidate[];
+	/** Folders mounted only once they are installed. */
+	installedMounts(): readonly MountCandidate[];
 }
 
 export interface LanguageDetector {
@@ -151,7 +142,6 @@ export interface LanguageDetector {
 }
 
 interface DetectedWorkspaceFields {
-	readonly darklua: Darklua;
 	readonly languages: readonly Language[];
 	readonly darkluaConfig?: string;
 	readonly packageManager?: PackageManager;
@@ -161,7 +151,6 @@ interface DetectedWorkspaceFields {
 
 /** What `init` found in the workspace: facts only, never decisions. */
 export class DetectedWorkspace {
-	readonly darklua: Darklua;
 	readonly languages: readonly Language[];
 	readonly darkluaConfig?: string;
 	readonly packageManager?: PackageManager;
@@ -172,7 +161,6 @@ export class DetectedWorkspace {
 		if (fields.languages.length === 0) {
 			throw new Error("A workspace needs at least one language.");
 		}
-		this.darklua = fields.darklua;
 		this.languages = fields.languages;
 		this.darkluaConfig = fields.darkluaConfig;
 		this.packageManager = fields.packageManager;
@@ -207,7 +195,7 @@ export class DetectedWorkspace {
 	}
 }
 
-/** Darklua, the one processor `init` sets up. */
+/** Darklua, a processor: Rogen never runs it, and only knows its config files and what it writes. */
 export class Darklua {
 	static readonly SYNC_TOOL: SyncTool = {
 		id: "darklua",
@@ -221,49 +209,9 @@ export class Darklua {
 		},
 	};
 
-	/** Where toolchain managers install it from, and the release `init` pins: the one the guide and the e2e tests ran. */
-	static readonly REPOSITORY = "seaofvoices/darklua";
-	static readonly PINNED = "0.19.0";
-
-	readonly defaultCompiledPath = "dist";
-	readonly configFiles: readonly string[] = [
+	/** In the order Darklua reads them. */
+	static readonly CONFIG_FILES: readonly string[] = [
 		".darklua.json",
 		".darklua.json5",
 	];
-
-	/** The config `init` writes where none exists. Luau code requires files by path, which `convert_require` turns into instance requires with the sourcemap; compiled code (roblox-ts) has none to convert, and the rule would fail on a missing sourcemap. */
-	configFor(language: Language): string {
-		const rules = language.compiler
-			? []
-			: [
-					{
-						rule: "convert_require",
-						current: { name: "path" },
-						target: {
-							name: "roblox",
-							rojo_sourcemap: "./sourcemap.json",
-							indexing_style: "property",
-						},
-					},
-				];
-		return `${JSON.stringify({ rules }, null, "\t")}\n`;
-	}
-
-	sourcemapCommand(): string {
-		return "rogen sourcemap --watch -o sourcemap.json";
-	}
-
-	/** One `darklua process --watch` per directory, each landing at its path relative to their common root. */
-	processCommands(
-		directory: string,
-		sourceDirs: readonly string[],
-		compiledPath: string
-	): string[] {
-		const absolute = sourceDirs.map((dir) => path.resolve(directory, dir));
-		const common = commonAncestor(absolute);
-		return sourceDirs.map((dir, index) => {
-			const relative = toPosix(path.relative(common, absolute[index]));
-			return `darklua process ${dir} ${relative ? `${compiledPath}/${relative}` : compiledPath} --watch`;
-		});
-	}
 }

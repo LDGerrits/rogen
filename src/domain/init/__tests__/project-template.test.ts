@@ -14,13 +14,13 @@ describe("ProjectTemplate", () => {
 	});
 
 	it("should list the lines the language ignores after the rest", () => {
-		const { content } = new ProjectTemplate("place", "game", "dist", [
+		const { content } = new ProjectTemplate("place", "game", [
 			"/node_modules",
 			"/out",
 		]).gitignore;
 
 		expect(content).toBe(
-			"# Project place file\n/game.rbxlx\n\n# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n\nsourcemap.json\n*.project.json\n\n# Darklua output\n/dist\n\n# Compiler output and installed packages\n/node_modules\n/out\n"
+			"# Project place file\n/game.rbxlx\n\n# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n\nsourcemap.json\n*.project.json\n\n# Compiler output and installed packages\n/node_modules\n/out\n"
 		);
 	});
 

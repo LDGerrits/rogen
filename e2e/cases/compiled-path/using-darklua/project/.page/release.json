@@ -1,0 +1,18 @@
+{
+	"name": "my-game",
+	"sourcePaths": ["src"],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"compiledPath": "dist",
+	"globIgnorePaths": ["**/*.spec.luau"],
+	"tree": {
+		"$className": "DataModel",
+		"Lighting": { "$path": "place/Lighting" },
+		"SoundService": { "$path": "place/SoundService" },
+		"Workspace": { "$path": "place/Workspace" }
+	}
+}

@@ -1,0 +1,209 @@
+$ rogen init --non-interactive --skip-git
+exit 0
+stdout: (not shown)
+
+$ cp .page/darklua.json .darklua.json
+exit 0
+
+$ cp .page/dist.json dist.rogen.json
+exit 0
+
+$ cp .page/release.json release.rogen.json
+exit 0
+
+$ cp .page/Wave.server.luau src/Greeter/Server/Wave.server.luau
+exit 0
+
+$ cp .page/Greeting.spec.luau src/Greeter/Shared/Greeting.spec.luau
+exit 0
+
+$ rogen sourcemap -o sourcemap.json
+exit 0
+stdout:
+  Created sourcemap at sourcemap.json
+stderr:
+  rogen sourcemap · default.rogen.json
+  default.project.json · unchanged
+  Wrote 1 project.
+  sourcemap.json · wrote
+
+$ darklua process src dist
+exit 0
+stdout: (not shown)
+
+$ rogen write dist
+exit 0
+stdout: (not shown)
+
+$ rogen write release
+exit 0
+stdout: (not shown)
+
+written:
+  .darklua.json
+  AGENTS.md
+  README.md
+  default.project.json
+  default.rogen.json
+  dist.project.json
+  dist.rogen.json
+  dist/Greeter/Client/Greeter.client.luau
+  dist/Greeter/Server/Greeter.server.luau
+  dist/Greeter/Server/Wave.server.luau
+  dist/Greeter/Shared/Greeting.luau
+  dist/Greeter/Shared/Greeting.spec.luau
+  place/Lighting/init.meta.json
+  place/SoundService/init.meta.json
+  place/Workspace/Baseplate.model.json
+  place/Workspace/init.meta.json
+  release.project.json
+  release.rogen.json
+  sourcemap.json
+  src/Greeter/Client/Greeter.client.luau
+  src/Greeter/Server/Greeter.server.luau
+  src/Greeter/Server/Wave.server.luau
+  src/Greeter/Shared/Greeting.luau
+  src/Greeter/Shared/Greeting.spec.luau
+
+.darklua.json:
+{
+	"rules": [
+		{
+			"rule": "convert_require",
+			"current": { "name": "path" },
+			"target": {
+				"name": "roblox",
+				"rojo_sourcemap": "./sourcemap.json",
+				"indexing_style": "property"
+			}
+		}
+	]
+}
+
+default.rogen.json:
+{
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$path": "place/Lighting"
+    },
+    "SoundService": {
+      "$path": "place/SoundService"
+    },
+    "Workspace": {
+      "$path": "place/Workspace"
+    }
+  }
+}
+
+dist.rogen.json:
+{
+	"name": "my-game",
+	"sourcePaths": ["src"],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"compiledPath": "dist",
+	"tree": {
+		"$className": "DataModel",
+		"Lighting": { "$path": "place/Lighting" },
+		"SoundService": { "$path": "place/SoundService" },
+		"Workspace": { "$path": "place/Workspace" }
+	}
+}
+
+dist/Greeter/Server/Wave.server.luau:
+local Greeting = require(game:GetService('ReplicatedStorage').Shared.Greeter.Greeting)
+
+print(Greeting("wave"))
+
+release.rogen.json:
+{
+	"name": "my-game",
+	"sourcePaths": ["src"],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"compiledPath": "dist",
+	"globIgnorePaths": ["**/*.spec.luau"],
+	"tree": {
+		"$className": "DataModel",
+		"Lighting": { "$path": "place/Lighting" },
+		"SoundService": { "$path": "place/SoundService" },
+		"Workspace": { "$path": "place/Workspace" }
+	}
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  Lighting: Lighting  <- place/Lighting/init.meta.json
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Greeter: Folder
+        Greeting: ModuleScript  <- src/Greeter/Shared/Greeting.luau
+        Greeting.spec: ModuleScript  <- src/Greeter/Shared/Greeting.spec.luau
+  ServerScriptService: ServerScriptService
+    Greeter: Folder
+      Greeter: Script  <- src/Greeter/Server/Greeter.server.luau
+      Wave: Script  <- src/Greeter/Server/Wave.server.luau
+  SoundService: SoundService  <- place/SoundService/init.meta.json
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Greeter: Folder
+        Greeter: LocalScript  <- src/Greeter/Client/Greeter.client.luau
+  Workspace: Workspace  <- place/Workspace/init.meta.json
+    Baseplate: Part  <- place/Workspace/Baseplate.model.json
+
+$ rojo sourcemap dist.project.json
+my-game: DataModel
+  Lighting: Lighting  <- place/Lighting/init.meta.json
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Greeter: Folder
+        Greeting: ModuleScript  <- dist/Greeter/Shared/Greeting.luau
+        Greeting.spec: ModuleScript  <- dist/Greeter/Shared/Greeting.spec.luau
+  ServerScriptService: ServerScriptService
+    Greeter: Folder
+      Greeter: Script  <- dist/Greeter/Server/Greeter.server.luau
+      Wave: Script  <- dist/Greeter/Server/Wave.server.luau
+  SoundService: SoundService  <- place/SoundService/init.meta.json
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Greeter: Folder
+        Greeter: LocalScript  <- dist/Greeter/Client/Greeter.client.luau
+  Workspace: Workspace  <- place/Workspace/init.meta.json
+    Baseplate: Part  <- place/Workspace/Baseplate.model.json
+
+$ rojo sourcemap release.project.json
+my-game: DataModel
+  Lighting: Lighting  <- place/Lighting/init.meta.json
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Greeter: Folder
+        Greeting: ModuleScript  <- dist/Greeter/Shared/Greeting.luau
+  ServerScriptService: ServerScriptService
+    Greeter: Folder
+      Greeter: Script  <- dist/Greeter/Server/Greeter.server.luau
+      Wave: Script  <- dist/Greeter/Server/Wave.server.luau
+  SoundService: SoundService  <- place/SoundService/init.meta.json
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Greeter: Folder
+        Greeter: LocalScript  <- dist/Greeter/Client/Greeter.client.luau
+  Workspace: Workspace  <- place/Workspace/init.meta.json
+    Baseplate: Part  <- place/Workspace/Baseplate.model.json

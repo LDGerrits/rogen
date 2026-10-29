@@ -106,7 +106,7 @@ describe("init command", () => {
 					{
 						question: "agentRules",
 						value: true,
-						flag: "--agent-rules",
+						flag: "--no-agent-rules",
 					},
 				]),
 				directories: [path.join(cwd, "src")],
@@ -123,7 +123,7 @@ describe("init command", () => {
 					setup: [],
 					run: ["rbxtsc -w", "rogen serve"],
 					edits: [
-						'Add your own routes under "routes" in default.rogen.json.',
+						'To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".',
 						"Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.",
 					],
 				},
@@ -196,6 +196,63 @@ describe("init command", () => {
 		});
 	});
 
+	describe("decided", () => {
+		const flagsByQuestion = async (options: CommandLine["options"]) => {
+			const logService = new MockLogService();
+			await runInit(new MockPromptService([], false), logService, {
+				json: true,
+				"dry-run": true,
+				...options,
+			});
+			const { decided } = JSON.parse(logService.entries[0].text);
+			return Object.fromEntries(
+				decided.map(
+					({
+						question,
+						flag,
+					}: {
+						question: string;
+						flag: string;
+					}) => [question, flag]
+				)
+			);
+		};
+
+		it("should name the flag that changes each choice", async () => {
+			const flags = await flagsByQuestion({});
+
+			expect(flags).toMatchObject({
+				kind: "--kind",
+				language: "--language",
+				sample: "--no-sample",
+				agentRules: "--no-agent-rules",
+				places: "--places",
+			});
+		});
+
+		it("should name --no-places when the default is several places", async () => {
+			await write("projects/keep");
+
+			const flags = await flagsByQuestion({ language: "roblox-ts" });
+
+			expect(flags.places).toBe("--no-places");
+		});
+
+		it("should name in the text each choice with the same flag", async () => {
+			const logService = new MockLogService();
+
+			await runInit(new MockPromptService([], false), logService);
+
+			expect(
+				logService.lines.find((line) =>
+					line.includes("Took the defaults")
+				)
+			).toBe(
+				"info: Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules)."
+			);
+		});
+	});
+
 	describe("output", () => {
 		it("should open with a header, list each file written and close with a result", async () => {
 			const logService = new MockLogService();
@@ -205,7 +262,7 @@ describe("init command", () => {
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
 				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
-				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
+				"info: Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules).",
 				"success: Created default.rogen.json.",
 				"success: Created .gitignore.",
 				"success: Created src/Greeter/Shared/Greeting.luau.",
@@ -222,7 +279,7 @@ describe("init command", () => {
 				"info: Run:",
 				"info:   rogen serve",
 				"info: In Studio, press Connect in the Rojo plugin.",
-				'info: Add your own routes under "routes" in default.rogen.json.',
+				'info: To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".',
 				"info: Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.",
 				"outro: Wrote 11 files.",
 			]);
@@ -303,13 +360,14 @@ describe("init command", () => {
 	});
 
 	describe("agent hook", () => {
-		const accepting = () => new MockPromptService({});
+		const withHook = (logService: MockLogService) =>
+			runInit(undefined, logService, { "agent-hook": true });
 
 		it("should say it created the script and the agent's file", async () => {
 			await write(".claude/keep");
 			const logService = new MockLogService();
 
-			await runInit(accepting(), logService);
+			await withHook(logService);
 
 			expect(logService.lines).toEqual(
 				expect.arrayContaining([
@@ -324,7 +382,7 @@ describe("init command", () => {
 			await write(".codex/hooks.json", "{}\n");
 			const logService = new MockLogService();
 
-			await runInit(accepting(), logService);
+			await withHook(logService);
 
 			expect(logService.lines).toContain(
 				"success: Added the Rogen hook to .codex/hooks.json."
@@ -334,12 +392,16 @@ describe("init command", () => {
 			).toHaveLength(1);
 		});
 
-		it("should not write it in a run that can't ask", async () => {
+		it("should leave it out unless given, and say how to add it", async () => {
 			await write(".claude/keep");
+			const logService = new MockLogService();
 
-			await runInit();
+			await runInit(new MockPromptService({}), logService);
 
 			expect(await exists(".agents/hooks/rogen-check.mjs")).toBe(false);
+			expect(logService.lines).toContain(
+				"info: Claude Code is in use here. 'rogen init --agent-hook' adds a hook that reports Rogen's warnings when it ends its turn."
+			);
 		});
 	});
 
@@ -361,7 +423,7 @@ describe("init command", () => {
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
 				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
-				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
+				"info: Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules).",
 				"success: Would create default.rogen.json.",
 				"success: Would create .gitignore.",
 				"success: Would create src/Greeter/Shared/Greeting.luau.",
@@ -495,22 +557,18 @@ describe("init command", () => {
 					kind: "place",
 					"skip-git": true,
 					language: "luau",
-					"source-path": ["lib"],
+					places: false,
 					"agent-rules": false,
-					route: ["server"],
-					unmatched: "leave",
+					sample: false,
 				})
 			);
 
 			expect(result.isOk()).toBe(true);
-			const config = await readJson("default.rogen.json");
-			expect(config.sourcePaths).toEqual(["lib"]);
-			expect(Object.keys(config.routes)).not.toContain("Client");
+			expect(await exists(".gitignore")).toBe(false);
 			expect(await exists("AGENTS.md")).toBe(false);
-			const { decided } = JSON.parse(logService.entries[0].text);
-			expect(decided.map(({ flag }: { flag: string }) => flag)).toEqual([
-				"--darklua",
-			]);
+			expect(JSON.parse(logService.entries[0].text)).not.toHaveProperty(
+				"decided"
+			);
 		});
 
 		it("should add the agent hook when asked to, though it can't ask", async () => {
@@ -711,22 +769,18 @@ describe("init command", () => {
 				"one",
 				"customise",
 				"luau",
-				true,
-				"one",
-				"src, lib",
-				"out",
-				[],
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
+				"several",
 				ACCEPT_DEFAULT,
 				"yes",
 			]);
 
 			await runInit(prompts);
 
-			const config = await readJson("default.rogen.json");
-			expect(config.sourcePaths).toEqual(["src", "lib"]);
-			expect(config).not.toHaveProperty("projects");
+			expect(await exists("default.rogen.json")).toBe(false);
+			expect((await readJson("game.rogen.json")).sourcePaths).toEqual([
+				"src/common",
+				"src/game",
+			]);
 		});
 
 		it("should write nothing when cancelled", async () => {
@@ -749,25 +803,16 @@ describe("init command", () => {
 	});
 
 	describe("project file", () => {
-		it("should ask whether to lift a hand-written default.project.json", async () => {
+		it("should lift a hand-written default.project.json in a terminal without asking about it", async () => {
 			await write("default.project.json", '{"name":"hand-written"}');
 			const prompts = new MockPromptService({});
 
 			await runInit(prompts);
 
-			expect(prompts.asked).toContain("Project file");
+			expect(prompts.asked).not.toContain("Project file");
 			expect((await readJson("default.rogen.json")).name).toBe(
 				"hand-written"
 			);
-		});
-
-		it("should start a new tree when that is the answer", async () => {
-			await write("default.project.json", '{"name":"hand-written"}');
-			const prompts = new MockPromptService({ "Project file": "new" });
-
-			await runInit(prompts);
-
-			expect((await readJson("default.rogen.json")).name).toBeUndefined();
 		});
 	});
 

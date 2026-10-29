@@ -1,0 +1,4 @@
+{
+	"steps": [["init"], ["write", "dist"]],
+	"output": ["init"]
+}

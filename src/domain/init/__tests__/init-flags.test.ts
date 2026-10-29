@@ -13,7 +13,6 @@ const withPackages: WorkspaceSpec = {
 	packageManager: "wally",
 	packageDirs: ["Packages"],
 };
-const darklua: WorkspaceSpec = { darkluaConfig: ".darklua.json" };
 const rbxts: WorkspaceSpec = { language: "roblox-ts" };
 
 async function run(
@@ -54,32 +53,28 @@ describe("init choices given as flags", () => {
 			expect(questions.decided).toEqual([
 				{ question: "kind", value: "place", flag: "--kind" },
 				{ question: "language", value: "luau", flag: "--language" },
-				{ question: "darklua", value: false, flag: "--darklua" },
 				{ question: "places", value: false, flag: "--places" },
-				{
-					question: "sourcePaths",
-					value: ["src"],
-					flag: "--source-path",
-				},
-				{
-					question: "routes",
-					value: ["server", "client", "shared"],
-					flag: "--route",
-				},
-				{ question: "unmatched", value: "shared", flag: "--unmatched" },
-				{ question: "sample", value: true, flag: "--sample" },
+				{ question: "sample", value: true, flag: "--no-sample" },
 				{ question: "skipGit", value: false, flag: "--skip-git" },
 			]);
 		});
 
-		it("should write down the packages it mounted when it was offered some", async () => {
-			const { questions } = await run(withPackages, {});
-
-			expect(questions.decided).toContainEqual({
-				question: "packages",
-				value: ["Packages", "ServerPackages"],
-				flag: "--package",
+		it("should name --no-places when a projects folder makes several places the default", async () => {
+			const questions = new InitQuestions(
+				new MockPromptService([], false),
+				false,
+				{}
+			);
+			const target = directoryOf({
+				workspace: { ...rbxts, codeFolders: ["projects"] },
+				existing: ["projects"],
 			});
+
+			await questions.places(target, target.workspace.language);
+
+			expect(questions.decided).toEqual([
+				{ question: "places", value: true, flag: "--no-places" },
+			]);
 		});
 
 		it("should write down nothing for a choice it was given", async () => {
@@ -87,10 +82,8 @@ describe("init choices given as flags", () => {
 				kind: "place",
 				skipGit: true,
 				language: "luau",
-				darklua: false,
-				sourcePaths: ["src"],
-				routes: ["server"],
-				unmatched: "leave",
+				places: false,
+				sample: false,
 			});
 
 			expect(questions.decided).toEqual([]);
@@ -103,28 +96,21 @@ describe("init choices given as flags", () => {
 				withPackages,
 				{
 					language: "luau",
-					darklua: false,
-					sourcePaths: ["lib"],
-					packages: ["Packages"],
-					routes: ["server", "shared"],
-					unmatched: "leave",
+					places: false,
 				},
 				true
 			);
 
 			expect(prompts.asked).toEqual([]);
 			expect(questions.decided).toEqual([]);
-			const choices = asked.unwrap();
-			expect(choices?.sourcePaths).toEqual(["lib"]);
-			expect(choices?.routes).toEqual(["server", "shared"]);
-			expect(choices?.fallback).toBe(false);
-			expect(choices?.mounts.map(({ path }) => path)).toEqual([
+			expect(asked.unwrap()?.mounts.map(({ path }) => path)).toEqual([
 				"Packages",
+				"ServerPackages",
 			]);
 		});
 	});
 
-	describe("--sample", () => {
+	describe("the sample", () => {
 		const fileNames = async (choices: InitChoices) =>
 			(await run(luau, choices)).asked
 				.unwrap()
@@ -157,9 +143,7 @@ describe("init choices given as flags", () => {
 			expect(asked.unwrap()?.sample).toBe(false);
 			expect(asked.unwrap()?.tree).toEqual({ kind: "new" });
 			expect(await fileNames({ sample: false })).toEqual([".gitignore"]);
-			expect(questions.decided.map(({ flag }) => flag)).not.toContain(
-				"--sample"
-			);
+			expect(decidedFlags(questions)).not.toContain("--no-sample");
 		});
 
 		it("should write none in a folder with code, and take that for the default", async () => {
@@ -169,15 +153,7 @@ describe("init choices given as flags", () => {
 			);
 
 			expect(asked.unwrap()?.sample).toBe(false);
-			expect(questions.decided.map(({ flag }) => flag)).not.toContain(
-				"--sample"
-			);
-		});
-
-		it("should write none when a route its folders are named after is left out", async () => {
-			const { asked } = await run(luau, { routes: ["server", "shared"] });
-
-			expect(asked.unwrap()?.sample).toBe(false);
+			expect(decidedFlags(questions)).not.toContain("--no-sample");
 		});
 
 		it("should write it in a new roblox-ts project, whose starter tool sets the folder up", async () => {
@@ -192,23 +168,6 @@ describe("init choices given as flags", () => {
 
 			expect(asked.unwrap()?.sample).toBe(false);
 			expect(asked.unwrap()?.scaffold).toBeUndefined();
-		});
-
-		it("should refuse --sample where it can't be written, saying why", async () => {
-			expect(
-				(
-					await refused(
-						run({ ...luau, codeFolders: ["lib"] }, { sample: true })
-					)
-				).message
-			).toBe("--sample is for a folder with no code, and lib has some.");
-			expect(
-				(await refused(run(luau, { sample: true, kind: "model" })))
-					.message
-			).toBe("--sample is for a place, not for a model.");
-			expect(
-				(await refused(run(rbxts, { sample: true }))).message
-			).toContain("--sample isn't written for roblox-ts here");
 		});
 	});
 
@@ -229,180 +188,34 @@ describe("init choices given as flags", () => {
 		});
 	});
 
-	describe("--darklua", () => {
-		it("should turn it on or off whatever was found", async () => {
-			expect(
-				(await run(darklua, { darklua: false })).asked.unwrap()?.darklua
-			).toBeUndefined();
-			expect(
-				(await run(luau, { darklua: true })).asked.unwrap()?.darklua
-			).toBeDefined();
-		});
-	});
+	describe("beside a hand-written project file", () => {
+		const beside = (choices: InitChoices) =>
+			run(luau, choices, false, ["default.project.json"]);
 
-	describe("--source-path", () => {
-		it("should take several folders", async () => {
-			const { asked } = await run(luau, { sourcePaths: ["a", "b/"] });
+		it("should lift it, and write down no choice for it", async () => {
+			const { asked, questions } = await beside({});
 
-			expect(asked.unwrap()?.sourcePaths).toEqual(["a", "b"]);
-		});
-
-		it("should refuse a folder that overlaps another as the prompt would", async () => {
-			const error = await refused(
-				run(luau, { sourcePaths: ["a", "a/b"] })
-			);
-
-			expect(error.message).toContain("a");
-		});
-
-		it("should refuse several for a compiler that takes one", async () => {
-			const error = await refused(
-				run(
-					{
-						language: "roblox-ts",
-						robloxTs: {
-							outDir: "build",
-							rbxtsScopes: ["@rbxts"],
-							includeInstalled: true,
-						},
-					},
-					{ sourcePaths: ["a", "b"] }
-				)
-			);
-
-			expect(error.message).not.toBe("");
-		});
-	});
-
-	describe("--compiled-path", () => {
-		it("should take a folder of its own", async () => {
-			const { asked } = await run(darklua, { compiledPath: "out" });
-
-			expect(asked.unwrap()?.compiledPath).toBe("out");
-		});
-
-		it("should refuse one that overlaps a source path", async () => {
-			const error = await refused(
-				run(darklua, { sourcePaths: ["src"], compiledPath: "src" })
-			);
-
-			expect(error.message).toContain("overlaps src");
-		});
-	});
-
-	describe("--package", () => {
-		it("should mount the folders named, and none for none", async () => {
-			const named = await run(withPackages, { packages: ["Packages"] });
-			const none = await run(withPackages, { packages: ["none"] });
-
-			expect(
-				named.asked.unwrap()?.mounts.map(({ path }) => path)
-			).toEqual(["Packages"]);
-			expect(none.asked.unwrap()?.mounts).toEqual([]);
-		});
-
-		it("should take a folder written with a trailing slash", async () => {
-			const { asked } = await run(withPackages, {
-				packages: ["./Packages/"],
+			expect(asked.unwrap()?.tree).toMatchObject({
+				kind: "lift",
+				from: "default.project.json",
 			});
-
-			expect(asked.unwrap()?.mounts.map(({ path }) => path)).toEqual([
-				"Packages",
-			]);
+			expect(decidedFlags(questions)).not.toContain("--project-file");
 		});
 
-		it("should refuse none beside a folder", async () => {
-			const error = await refused(
-				run(withPackages, { packages: ["none", "Packages"] })
-			);
-
-			expect(error.reason).toBe(
-				"'none' can't be combined with other values of --package."
+		it("should refuse --places, saying to move the file away first", async () => {
+			expect((await refused(beside({ places: true }))).message).toBe(
+				"--places starts a new tree, and default.project.json is here, which init lifts. Move default.project.json away first, or leave --places out."
 			);
 		});
 
-		it("should say there is nothing to take when nothing is offered", async () => {
-			const error = await refused(
-				run(
-					{
-						language: "roblox-ts",
-						robloxTs: {
-							outDir: "build",
-							rbxtsScopes: [],
-							includeInstalled: true,
-						},
-					},
-					{ packages: ["Packages"] }
-				)
-			);
-
-			expect(error.hint).toBe(
-				"There is nothing here for --package to take."
-			);
-		});
-
-		it("should refuse a folder that isn't offered", async () => {
-			const error = await refused(
-				run(withPackages, { packages: ["Pakcages"] })
-			);
-
-			expect(error.hint).toBe(
-				"The values of --package are Packages and ServerPackages."
-			);
-		});
-	});
-
-	describe("--route and --unmatched", () => {
-		it("should take the routes named", async () => {
-			const { asked } = await run(luau, { routes: ["client"] });
-
-			expect(asked.unwrap()?.routes).toEqual(["client"]);
-		});
-
-		it("should take none, and then ask nothing about the files left", async () => {
-			const { asked, questions } = await run(luau, { routes: ["none"] });
-
-			expect(asked.unwrap()?.routes).toEqual([]);
-			expect(decidedFlags(questions)).not.toContain("--unmatched");
-		});
-
-		it("should put the files that match no route in the shared route unless asked to leave them out", async () => {
-			const left = await run(luau, { unmatched: "leave" });
-			const shared = await run(luau, {});
-
-			expect(left.asked.unwrap()?.fallback).toBe(false);
-			expect(shared.asked.unwrap()?.fallback).toBe(true);
-		});
-
-		it("should refuse --unmatched when there is no route for it to apply to", async () => {
-			const error = await refused(
-				run(luau, { routes: ["none"], unmatched: "leave" })
-			);
-
-			expect(error.reason).toBe("--unmatched has no route to apply to.");
-		});
-
-		it("should refuse a route that isn't offered, closest first", async () => {
-			const error = await refused(run(luau, { routes: ["servr"] }));
-
-			expect(error.hint).toMatch(/^The values of --route are server,/);
-		});
-	});
-
-	describe("--project-file", () => {
-		it("should refuse to lift a project file that isn't there", async () => {
-			const error = await refused(run(luau, { projectFile: "lift" }));
-
-			expect(error.message).toContain("nothing to lift");
-		});
-
-		it("should start a new tree instead of lifting the one there", async () => {
-			const { asked } = await run(luau, { projectFile: "new" }, false, [
-				"default.project.json",
-			]);
-
-			expect(asked.unwrap()?.tree.kind).toBe("new");
-		});
+		it.each(["model", "plugin"] as const)(
+			"should refuse --kind %s when the file is a place's",
+			async (kind) => {
+				expect((await refused(beside({ kind }))).message).toBe(
+					`--kind ${kind} starts a new ${kind}, and default.project.json is here, which init lifts as a place. Move default.project.json away first, or leave --kind out.`
+				);
+			}
+		);
 	});
 });
 
@@ -425,7 +238,7 @@ describe("the yes or no questions", () => {
 		await asked.addAgentHook(["x"]);
 
 		expect(asked.decided).toEqual([
-			{ question: "agentRules", value: true, flag: "--agent-rules" },
+			{ question: "agentRules", value: true, flag: "--no-agent-rules" },
 			{ question: "agentHook", value: false, flag: "--agent-hook" },
 		]);
 	});

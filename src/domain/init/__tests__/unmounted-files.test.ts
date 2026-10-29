@@ -7,8 +7,15 @@ describe("UnmountedFiles", () => {
 	const find = (
 		mounted: string[],
 		ignored: string[] = [],
-		sourcePaths = ["src"]
-	) => new UnmountedFiles(fs, "/repo").find(sourcePaths, mounted, ignored);
+		sourcePaths = ["src"],
+		compiled: string[] = []
+	) =>
+		new UnmountedFiles(fs, "/repo").find(
+			sourcePaths,
+			mounted,
+			ignored,
+			compiled
+		);
 
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();
@@ -57,5 +64,40 @@ describe("UnmountedFiles", () => {
 		await fs.writeFile("/repo/lib/L.luau", "");
 
 		expect(await find([], [], ["src", "lib"])).toEqual(["lib/L.luau"]);
+	});
+
+	it("should count a file as mounted where a folder its compiled copy lands in is", async () => {
+		await fs.writeFile("/repo/src/server/Main.server.luau", "");
+		await fs.writeFile("/repo/src/Loose.luau", "");
+
+		expect(await find(["build/server"], [], ["src"], ["build"])).toEqual([
+			"src/Loose.luau",
+		]);
+	});
+
+	it("should map compiled roblox-ts sources the same way", async () => {
+		await fs.writeFile("/repo/src/server/main.server.ts", "");
+		await fs.writeFile("/repo/src/shared/module.ts", "");
+
+		expect(
+			await find(["out/server", "out/shared"], [], ["src"], ["out"])
+		).toEqual([]);
+	});
+
+	it("should map each of several source paths under their common folder", async () => {
+		await fs.writeFile("/repo/src/common/A.luau", "");
+		await fs.writeFile("/repo/src/game/B.luau", "");
+
+		expect(
+			await find(["dist/game"], [], ["src/common", "src/game"], ["dist"])
+		).toEqual(["src/common/A.luau"]);
+	});
+
+	it("should list nothing when the project mounts a folder that holds the source path", async () => {
+		await fs.writeFile("/repo/src/A.luau", "");
+		await fs.writeFile("/repo/game/src/A.luau", "");
+
+		expect(await find(["."])).toEqual([]);
+		expect(await find(["game"], [], ["game/src"])).toEqual([]);
 	});
 });

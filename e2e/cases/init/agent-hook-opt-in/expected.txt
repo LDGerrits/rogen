@@ -1,0 +1,49 @@
+$ rogen init --non-interactive
+exit 0
+stdout:
+  rogen init
+  Claude Code and Codex are in use here. 'rogen init --agent-hook' adds a hook that reports Rogen's warnings when they end their turn.
+  Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), a git repository (--skip-git), agent rules (--no-agent-rules), no agent hook (--agent-hook).
+  Created default.rogen.json.
+  Created .gitignore.
+  Created AGENTS.md.
+  Created CLAUDE.md.
+  Initialised a git repository.
+  default.project.json · wrote
+  Next steps
+    Run:
+      rogen serve
+    In Studio, press Connect in the Rojo plugin.
+    To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".
+    Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.
+  Wrote 4 files.
+
+written:
+  .git/
+  .gitignore
+  AGENTS.md
+  CLAUDE.md
+  default.project.json
+  default.rogen.json
+
+default.rogen.json:
+{
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "tree": {
+    "$className": "DataModel"
+  }
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      A: ModuleScript  <- src/A.luau

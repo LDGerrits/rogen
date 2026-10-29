@@ -12,7 +12,6 @@ export class WorkspaceDetector {
 	/** `languages` lists the first as the one assumed when none is detected. */
 	constructor(
 		private readonly fileSystemService: FileReader,
-		private readonly darklua: Darklua,
 		private readonly testRunnerDetector: TestRunnerDetector,
 		private readonly languages: readonly [
 			LanguageDetector,
@@ -34,7 +33,6 @@ export class WorkspaceDetector {
 			]);
 
 		return new DetectedWorkspace({
-			darklua: this.darklua,
 			languages,
 			darkluaConfig,
 			packageManager: packages.packageManager,
@@ -46,8 +44,8 @@ export class WorkspaceDetector {
 	private async darkluaConfigIn(
 		has: (name: string) => Promise<boolean>
 	): Promise<string | undefined> {
-		const found = await Promise.all(this.darklua.configFiles.map(has));
-		return this.darklua.configFiles.find((_file, index) => found[index]);
+		const found = await Promise.all(Darklua.CONFIG_FILES.map(has));
+		return Darklua.CONFIG_FILES.find((_file, index) => found[index]);
 	}
 
 	private async packagesIn(has: (name: string) => Promise<boolean>): Promise<{

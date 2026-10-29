@@ -26,6 +26,7 @@ const scopeLanding = (scope: string) =>
 
 export interface RobloxTsFacts {
 	readonly outDir?: string;
+	/** The `rootDir` of tsconfig.json, which roblox-ts compiles. */
 	readonly sourcePath?: string;
 	readonly rbxtsScopes?: readonly string[];
 	readonly includeInstalled?: boolean;
@@ -82,10 +83,6 @@ export class RobloxTsCompiler implements Compiler {
 	get outDir(): string {
 		return this.facts.outDir ?? DEFAULT_OUT_DIR;
 	}
-
-	sourcePathStep(sourcePath: string): string {
-		return `Set "sourcePath" to "${sourcePath}" and "include" to ["${sourcePath}"] in ${TSCONFIG}, so roblox-ts compiles the shared code from there.`;
-	}
 }
 
 export class RobloxTs implements Language {
@@ -93,12 +90,6 @@ export class RobloxTs implements Language {
 	readonly copy: LanguageCopy = {
 		label: "roblox-ts",
 		detectedHint: "found tsconfig.json",
-		packagesNote: "include and @rbxts are always mounted.",
-		sourcePath: {
-			description:
-				"The folder roblox-ts compiles (sourcePath in tsconfig.json).",
-			severalProblem: "roblox-ts compiles one folder.",
-		},
 	};
 	readonly extension = "ts";
 	readonly compiler: RobloxTsCompiler;
@@ -143,7 +134,7 @@ export class RobloxTs implements Language {
 				path: INCLUDE_DIR,
 				installed: hasInclude,
 				landing: INCLUDE_LANDING,
-				ticked: hasInclude,
+				mounted: hasInclude,
 			},
 			...ALWAYS_MOUNTED_SCOPES.map((scope) => {
 				const installed = rbxtsScopes.includes(scope);
@@ -151,13 +142,13 @@ export class RobloxTs implements Language {
 					path: scopePath(scope),
 					installed,
 					landing: scopeLanding(scope),
-					ticked: installed,
+					mounted: installed,
 				};
 			}),
 		];
 	}
 
-	offeredMounts(): MountCandidate[] {
+	installedMounts(): MountCandidate[] {
 		const { rbxtsScopes = [] } = this.facts;
 		return SCOPES.filter(
 			(scope) =>
@@ -167,7 +158,7 @@ export class RobloxTs implements Language {
 			path: scopePath(scope),
 			installed: true,
 			landing: scopeLanding(scope),
-			ticked: true,
+			mounted: true,
 		}));
 	}
 }
@@ -225,7 +216,7 @@ export class RobloxTsDetector implements LanguageDetector {
 			}
 			return undefined;
 		};
-		const sourcePath = option("sourcePath");
+		const sourcePath = option("rootDir");
 		return {
 			outDir: option("outDir") ?? DEFAULT_OUT_DIR,
 			...(sourcePath && { sourcePath }),

@@ -3,7 +3,7 @@ exit 0
 stdout:
   rogen init
   Started a plugin project: its tree mounts src, and Rogen adds no routes to a plugin.
-  Took the defaults: --language luau, --no-darklua, --agent-rules.
+  Took the defaults, each with the flag that changes it: luau (--language), a git repository (--skip-git), agent rules (--no-agent-rules).
   Created default.rogen.json.
   Created README.md.
   Created .gitignore.

@@ -12,9 +12,9 @@ export interface OutputConfig {
 export interface OutputSettings {
 	/** The name the second files carry, since Rojo names only a default project file after its folder. */
 	readonly name: string;
-	/** The folder Darklua writes, which `dist` reads. */
+	/** The folder a processor writes, which `dist` reads. */
 	readonly processedPath?: string;
-	/** The folder `release` reads: the one Darklua writes, else the compiler's. */
+	/** The folder `release` reads: the one a processor writes, else the compiler's. */
 	readonly releasePath?: string;
 	/** The glob that leaves the test specs out of `release`, when a test runner is set up. */
 	readonly releaseIgnore?: string;

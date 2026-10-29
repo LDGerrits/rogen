@@ -1,6 +1,6 @@
 import { Luau } from "../luau.js";
 import { RobloxTs, RobloxTsFacts } from "../roblox-ts.js";
-import { Darklua, DetectedWorkspace, PackageManager } from "../toolchain.js";
+import { DetectedWorkspace, PackageManager } from "../toolchain.js";
 
 export interface WorkspaceSpec {
 	readonly language?: "luau" | "roblox-ts";
@@ -13,7 +13,6 @@ export interface WorkspaceSpec {
 
 export function workspaceOf(spec: WorkspaceSpec = {}): DetectedWorkspace {
 	return new DetectedWorkspace({
-		darklua: new Darklua(),
 		languages: [
 			new Luau(),
 			new RobloxTs(spec.robloxTs ?? {}, spec.language === "roblox-ts"),

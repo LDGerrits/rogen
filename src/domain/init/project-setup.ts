@@ -1,5 +1,6 @@
 import path from "path";
 import { UsageError } from "../../base/errors.js";
+import { containsPosix, normalizeDir } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import {
@@ -22,7 +23,7 @@ import {
 } from "../toolchain/toolchain.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { DerivedRoutes } from "./derived-routes.js";
-import { GreeterSample, SAMPLE_ROUTES } from "./greeter-sample.js";
+import { GreeterSample } from "./greeter-sample.js";
 import { SAMPLE_GAME_FOLDER, SampleGame } from "./sample-game.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
@@ -39,25 +40,37 @@ import { StarterProject } from "./starter-project.js";
 import { ProjectReader } from "./project-reader.js";
 import { Setup } from "./setup.js";
 import { RobloxTsStarter } from "./roblox-ts-starter.js";
-import { RouteId, StartingRoutes } from "./starting-routes.js";
+import { StartingRoutes } from "./starting-routes.js";
 import {
 	PROJECTS_FOLDER,
 	StarterPlaces,
 	StartingPlaces,
 } from "./starter-places.js";
-import { SyncSteps } from "./sync-steps.js";
+import { ProcessedFolder } from "./processed-folder.js";
+import { MountedCode } from "./mounted-code.js";
+import { CodeFinder } from "./code-finder.js";
 import { UnmountedFiles } from "./unmounted-files.js";
 import { ProjectTree, TreeChoice, TreePlan } from "./tree-plan.js";
 
+/** The folder a processor writes, which the lifted project file mounts. */
+export interface ProcessedOutput {
+	readonly folder: string;
+	/** The processor's config file. */
+	readonly config?: string;
+}
+
 export interface ProjectChoices {
 	readonly language: Language;
-	readonly darklua: Darklua | undefined;
 	readonly sourcePaths: readonly string[];
 	readonly compiledPath?: string;
+	/** Without `config`, nothing says a processor writes the folder, so its mounts stay. */
+	readonly processed?: ProcessedOutput;
 	readonly tree: ProjectTree;
 	readonly mounts: readonly Mount[];
-	readonly routes: readonly RouteId[];
-	readonly fallback: boolean;
+	/** Folders of code the lifted project file mounts, which no source path holds and the tree keeps mounting. */
+	readonly keptCode?: readonly string[];
+	/** Code Rogen places nowhere, which init warns about. */
+	readonly outside?: readonly string[];
 	/** Files of the source paths that the lifted project file mounts nowhere, which Rojo ignored and routes will place. */
 	readonly unmounted?: readonly string[];
 	/** The template of a new project; its files and git step are left out when none is given. */
@@ -74,10 +87,6 @@ export interface ProjectChoices {
 		readonly tool: PlannedScaffold;
 		readonly after: readonly PlannedCommand[];
 	};
-	/** Whether luau-lsp is set up in the folder, which keeps `sourcemap.json` current for Darklua. */
-	readonly luauLsp?: boolean;
-	/** What to add to the `.gitignore` that was there, which `init` never edits. */
-	readonly gitignoreHint?: string;
 	/** What to add to it so git leaves the project files Rogen writes out. */
 	readonly projectFilesHint?: string;
 }
@@ -87,8 +96,23 @@ function derivedRoutesOf(
 	dirs: readonly string[]
 ): DerivedRoutes | undefined {
 	return tree.kind === "lift"
-		? DerivedRoutes.of(tree.from, tree.project, dirs)
+		? DerivedRoutes.of(tree.project, dirs)
 		: undefined;
+}
+
+/** The folders placed as they are: the language's own, and the packages that are installed or that a manifest says are coming. */
+function mountsOf(directory: InitDirectory, language: Language): Mount[] {
+	return [
+		...language.alwaysMounted(),
+		...[
+			...directory.workspace.packageMounts(language),
+			...language.installedMounts(),
+		].filter(({ mounted }) => mounted),
+	].map(({ path, installed, landing }) => ({
+		path,
+		optional: !installed,
+		landing,
+	}));
 }
 
 /** Whether routes can place code in the tree: a lifted file whose root isn't a DataModel, such as a model or plugin, is Rojo's own and has no service to route to. */
@@ -105,24 +129,34 @@ const BUILD_COMMANDS: Readonly<Record<InitKind, (name: string) => string>> = {
 	plugin: (name) => `rogen build -p "${name}.rbxm"`,
 };
 
-function generatedDirs({
-	language,
-	darklua,
-	sourcePaths,
-	compiledPath,
-}: Pick<
-	ProjectChoices,
-	"language" | "darklua" | "sourcePaths" | "compiledPath"
->): string[] {
-	const { compiler } = language;
-	return [
-		...sourcePaths,
-		...(compiledPath ? [compiledPath] : []),
-		...(darklua && compiler ? [compiler.outDir] : []),
-	];
+/** The folder the processed config reads, when a processor's config says one writes it. */
+function processedPathOf({
+	processed,
+}: Pick<ProjectChoices, "processed">): string | undefined {
+	return processed?.config ? processed.folder : undefined;
 }
 
-const UNMOUNTED_SHOWN = 5;
+function generatedDirs(
+	choices: Pick<ProjectChoices, "sourcePaths" | "compiledPath" | "processed">
+): string[] {
+	return [
+		...choices.sourcePaths,
+		choices.compiledPath,
+		processedPathOf(choices),
+	].filter((dir) => dir !== undefined);
+}
+
+const LISTED_SHOWN = 5;
+
+/** The first few of `items`, so a warning about many files stays one line. */
+function listedBriefly(items: readonly string[]): string {
+	const more = items.length - LISTED_SHOWN;
+	return more > 0
+		? `${items.slice(0, LISTED_SHOWN).join(", ")} and ${more} more`
+		: joinedWithAnd(items);
+}
+
+const LIFTED_HERE = `${DEFAULT_PROJECT_FILE} is here, which init lifts.`;
 
 export class ProjectSetup implements Setup<ProjectChoices> {
 	private readonly files: ProjectFiles;
@@ -138,14 +172,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	async ask(): Promise<Result<ProjectChoices | undefined, Diagnostic[]>> {
 		const { directory, questions } = this;
 		const kind = questions.kind();
+		const tree = await this.resolveTree(questions.tree(directory), kind);
+		if (tree.isErr()) return tree;
 		const picked = await questions.language(directory);
 		if (picked === undefined) return ok(undefined);
 		const starter = this.starterFor(kind, picked);
 		const language = starter ? (picked.scaffolded?.() ?? picked) : picked;
-		const usesDarklua = await questions.darklua(directory);
-		if (usesDarklua === undefined) return ok(undefined);
-		const darklua = usesDarklua ? directory.workspace.darklua : undefined;
-		questions.usesDarklua = usesDarklua;
 
 		const several = await this.severalPlaces(
 			kind,
@@ -159,40 +191,55 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					starter
 				)
 			: undefined;
-		if (places && questions.choices.sourcePaths !== undefined)
-			throw new UsageError(
-				`--source-path would change nothing, since every place lists ${places.sourcePaths.join(" and ")}.`
-			);
 		const taken = places ? await this.placeTaken(places) : undefined;
 		if (taken) return err([taken]);
 
+		const compiledPath = language.compiler?.outDir;
+		const routed = takesRoutes(tree.value);
+		const lifted =
+			routed && tree.value.kind === "lift"
+				? tree.value.project
+				: undefined;
+		const liftedMounts = lifted?.mountedFolders() ?? [];
+		const code =
+			lifted && !language.compiler
+				? await new MountedCode(
+						this.fileSystemService,
+						directory.path
+					).find(
+						lifted,
+						[...directory.workspace.packageDirs],
+						directory.layout.codeFolders
+					)
+				: undefined;
 		const sourcePaths = places
 			? [...places.sourcePaths]
-			: (await this.startsUnrouted(kind))
+			: !routed
 				? []
-				: await questions.sourcePaths(directory, language);
-		if (sourcePaths === undefined) return ok(undefined);
+				: code && code.sourcePaths.length > 0
+					? [...code.sourcePaths]
+					: [directory.defaultSourcePath(language)];
 
-		const chosen = await questions.tree(directory);
-		if (chosen === undefined) return ok(undefined);
-		const tree = await this.resolveTree(chosen, kind);
-		if (tree.isErr()) return tree;
-
-		let compiledPath = new SyncSteps(language, darklua).compiledPath;
-		if (darklua) {
-			const answer = await questions.compiledPath(directory, [
-				...sourcePaths,
-				...(language.compiler ? [language.compiler.outDir] : []),
-			]);
-			if (answer === undefined) return ok(undefined);
-			compiledPath = answer;
-		}
-
-		const routed = takesRoutes(tree.value);
-		const mounted = routed
-			? await questions.mounts(directory, language)
-			: [];
-		if (mounted === undefined) return ok(undefined);
+		const processedFolder = code
+			? code.processed
+			: lifted
+				? await new ProcessedFolder(
+						this.fileSystemService,
+						directory.path
+					).find(
+						sourcePaths,
+						liftedMounts,
+						compiledPath ? [compiledPath] : []
+					)
+				: undefined;
+		const processorConfig = directory.workspace.darkluaConfig;
+		const processed = processedFolder
+			? {
+					folder: processedFolder,
+					...(processorConfig && { config: processorConfig }),
+				}
+			: undefined;
+		const mounted = routed ? mountsOf(directory, language) : [];
 		const mounts = places
 			? StarterPlaces.mountsFor(
 					places,
@@ -201,39 +248,49 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				)
 			: mounted;
 
-		const routes = routed
-			? await questions.routes(
-					language,
-					derivedRoutesOf(
-						tree.value,
-						generatedDirs({
-							language,
-							darklua,
-							sourcePaths,
-							compiledPath,
-						})
+		const unmounted = lifted
+			? await new UnmountedFiles(
+					this.fileSystemService,
+					directory.path
+				).find(
+					sourcePaths,
+					liftedMounts,
+					lifted.toConfig().globIgnorePaths ?? [],
+					[compiledPath, processedFolder].filter(
+						(folder) => folder !== undefined
 					)
 				)
-			: { routes: [], fallback: false };
-		if (routes === undefined) return ok(undefined);
+			: [];
 
-		const unmounted =
-			routed && tree.value.kind === "lift"
-				? await new UnmountedFiles(
-						this.fileSystemService,
-						directory.path
-					).find(
-						sourcePaths,
-						tree.value.project.mountedFolders(),
-						tree.value.project.toConfig().globIgnorePaths ?? []
+		const keptCode =
+			code && !code.processed
+				? code.folders.filter(
+						(folder) =>
+							!sourcePaths.some((sourcePath) =>
+								containsPosix(sourcePath, folder)
+							)
 					)
 				: [];
+
+		const outside = routed
+			? await new CodeFinder(this.fileSystemService).codeOutside(
+					directory.path,
+					[...sourcePaths, ...liftedMounts].map(normalizeDir),
+					[
+						...directory.workspace.packageDirs,
+						...language.reservedFolders,
+						compiledPath,
+						processedFolder,
+					]
+						.filter((folder) => folder !== undefined)
+						.map(normalizeDir)
+				)
+			: [];
 
 		const sample = this.wantsSample(
 			kind,
 			tree.value,
 			language,
-			routes.routes,
 			starter !== undefined
 		);
 		const sampleOf = new GreeterSample(
@@ -243,7 +300,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const game = sample
 			? new SampleGame(places?.gameFolder ?? SAMPLE_GAME_FOLDER)
 			: undefined;
-		const processed = darklua && compiledPath ? compiledPath : undefined;
 		const sampleFiles = game
 			? [
 					...sampleOf.feature(
@@ -253,38 +309,25 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					...game.written(places?.folder ?? ""),
 					sampleOf.readme(
 						places?.commonSourcePath ?? sourcePaths[0],
-						ProjectSetup.serveCommand(places, processed),
+						ProjectSetup.serveCommand(places),
 						places?.place
 					),
 				]
 			: [];
 
 		const skipGit = questions.skipGit();
-		const darkluaConfig =
-			darklua &&
-			(places?.folder || directory.workspace.darkluaConfig === undefined)
-				? [
-						{
-							fileName: path.posix.join(
-								places?.folder ?? "",
-								darklua.configFiles[0]
-							),
-							content: darklua.configFor(language),
-						},
-					]
-				: [];
 		return ok({
 			language,
-			darklua,
 			sourcePaths: [...sourcePaths],
 			...(compiledPath && { compiledPath }),
+			...(processed && { processed }),
 			tree:
 				game && tree.value.kind === "new"
 					? { ...tree.value, game }
 					: tree.value,
 			mounts,
-			routes: routes.routes,
-			fallback: routes.fallback,
+			keptCode,
+			outside,
 			unmounted,
 			kind,
 			skipGit,
@@ -296,24 +339,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					after: places ? [starter.scripts(places.folder)] : [],
 				},
 			}),
-			luauLsp:
-				places?.settings === true ||
-				(await this.files.luauLspIsSetUp()),
 			projectFilesHint: await this.files.projectFilesHint(),
-			...(processed &&
-				!skipGit &&
-				!places?.folder && {
-					gitignoreHint: await this.files.gitignoreHint(processed),
-				}),
 			templateFiles: await this.absent([
 				...ProjectSetup.templateFiles(
 					new ProjectTemplate(
 						kind,
 						path.basename(directory.path),
-						processed &&
-							(places?.folder
-								? `${PROJECTS_FOLDER}/*/${processed}`
-								: processed),
 						starter
 							? RobloxTsStarter.ignored(places !== undefined)
 							: []
@@ -321,40 +352,30 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					tree.value,
 					skipGit
 				),
-				...darkluaConfig,
 				...sampleFiles,
 				...(places?.files ?? []),
 			]),
 		});
 	}
 
-	/** The command that serves the project: the place by its folder, and the one Darklua writes by its file or name. */
+	/** The command that serves the project: a place by its folder or name, and the processed config by its name. */
 	private static serveCommand(
 		places: StartingPlaces | undefined,
-		processed: string | undefined
+		processedPath?: string
 	): string {
-		if (places) {
-			if (!processed) return `rogen serve ${places.place}`;
-			const output = configFileName(
-				`${places.outputPrefix}${PROCESSED_OUTPUT}`
-			);
-			return `rogen serve ${path.posix.join(places.folder, output)}`;
-		}
-		return processed ? `rogen serve ${PROCESSED_OUTPUT}` : "rogen serve";
+		if (places) return `rogen serve ${places.place}`;
+		return processedPath
+			? `rogen serve ${PROCESSED_OUTPUT}`
+			: "rogen serve";
 	}
 
 	/** How to add a second place, which `init` starts but never adds; `game`: whether the first place has the sample game, which the second copies. */
-	private static addPlaceStep(
-		places: StartingPlaces,
-		processed: string | undefined,
-		game: boolean
-	): string {
+	private static addPlaceStep(places: StartingPlaces, game: boolean): string {
 		const port = "from a second terminal with its own --port";
 		if (places.folder === "") {
 			const { outputPrefix, gameFolder } = places;
 			const lobby = (file: string) =>
 				file.replace(outputPrefix, "lobby.");
-			const dist = configFileName(`${outputPrefix}${PROCESSED_OUTPUT}`);
 			const release = configFileName(`${outputPrefix}${RELEASE_OUTPUT}`);
 			const lobbyGame = path.posix.join(
 				path.posix.dirname(gameFolder),
@@ -365,9 +386,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			const copy = game
 				? `copy ${places.configFile} to ${lobby(places.configFile)}, point each ${gameFolder} in its tree to ${lobbyGame}, make src/lobby and copy ${gameFolder} to ${lobbyGame}. ${edited}`
 				: `copy ${places.configFile} to ${lobby(places.configFile)} and make src/lobby. ${edited}`;
-			return processed
-				? `Add another place: ${copy} Do the same for ${dist}, and for ${release} if there is one, and run 'darklua process src/lobby ${processed}/lobby --watch' beside the other darklua commands. Serve it ${port}: 'rogen serve ${lobby(dist)} --port <port>'.`
-				: `Add another place: ${copy} Serve it ${port}: 'rogen serve lobby --port <port>'.`;
+			return `Add another place: ${copy} Do the same for ${release} if there is one. Serve it ${port}: 'rogen serve lobby --port <port>'.`;
 		}
 		const lobby = `${PROJECTS_FOLDER}/lobby`;
 		const copied = [
@@ -375,7 +394,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			`${places.folder}/tsconfig.json`,
 			...(game ? [`${places.folder}/${places.gameFolder}`] : []),
 		];
-		return `Add another place: make ${lobby}/src, copy ${joinedWithAnd(copied)} into ${lobby} (with the dist and release configs and .darklua.json, if the place has them), and change the "name" in each config to lobby. Run 'rogen write ${lobby}' for its project file, add 'rbxtsc -p ${lobby}' and 'rbxtsc -w -p ${lobby}' to the build and watch scripts in package.json, and serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
+		return `Add another place: make ${lobby}/src, copy ${joinedWithAnd(copied)} into ${lobby} (with the release config, if the place has one), and change the "name" in each config to lobby. Run 'rogen write ${lobby}' for its project file, add 'rbxtsc -p ${lobby}' and 'rbxtsc -w -p ${lobby}' to the build and watch scripts in package.json, and serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
 	}
 
 	/** An error when the first place has a config already, which init never overwrites. */
@@ -398,14 +417,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		language: Language,
 		scaffolded: boolean
 	): string | undefined {
-		const given = this.questions.choices.projectFile;
 		if (kind !== "place") return `is for a place, not for a ${kind}.`;
 		const later =
 			"Start with one place, then add more by hand, as the places guide shows.";
 		if (language.compiler && !scaffolded)
 			return `starts a new ${language.copy.label} project with places, and this folder already has one. ${later}`;
-		if (this.directory.hasHandWrittenProject && given !== "new")
-			return `starts a new tree, and ${DEFAULT_PROJECT_FILE} is here. Pass --project-file new, or leave --places out to lift it.`;
+		if (this.directory.hasHandWrittenProject)
+			return `starts a new tree, and ${LIFTED_HERE} Move ${DEFAULT_PROJECT_FILE} away first, or leave --places out.`;
 		return undefined;
 	}
 
@@ -438,33 +456,19 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			: undefined;
 	}
 
-	/** Whether the Greeter sample is written: in a new place, in a folder with no code, with the routes its folders are named after, and for a compiled language only when its starter tool has set the folder up. */
+	/** Whether the Greeter sample is written: in a new place, in a folder with no code, and for a compiled language only when its starter tool has set the folder up. */
 	private wantsSample(
 		kind: InitKind,
 		tree: ProjectTree,
 		language: Language,
-		routes: readonly RouteId[],
 		scaffolded: boolean
 	): boolean {
-		const { codeFolders } = this.directory.layout;
-		const problem =
-			kind !== "place"
-				? `is for a place, not for a ${kind}.`
-				: tree.kind !== "new"
-					? `needs a new tree, and ${DEFAULT_PROJECT_FILE} is lifted.`
-					: language.compiler && !scaffolded
-						? `isn't written for ${language.copy.label} here, where ${language.copy.label} was set up already.`
-						: codeFolders.length > 0
-							? `is for a folder with no code, and ${codeFolders.join(", ")} has some.`
-							: SAMPLE_ROUTES.some(
-										(route) => !routes.includes(route)
-								  )
-								? `needs the ${SAMPLE_ROUTES.join(", ")} routes.`
-								: undefined;
-		if (problem === undefined) return this.questions.sample();
-		if (this.questions.choices.sample === true)
-			throw new UsageError(`--sample ${problem}`);
-		return false;
+		const writable =
+			kind === "place" &&
+			tree.kind === "new" &&
+			(!language.compiler || scaffolded) &&
+			this.directory.layout.codeFolders.length === 0;
+		return writable && this.questions.sample();
 	}
 
 	private static templateFiles(
@@ -495,20 +499,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		);
 	}
 
-	/** Whether the tree is settled before any question and takes no routes, so a source path would change nothing. */
-	private async startsUnrouted(kind: InitKind): Promise<boolean> {
-		const { directory, questions } = this;
-		const given = questions.choices.projectFile;
-		if (!directory.hasHandWrittenProject || given === "new")
-			return kind !== "place";
-		if (given !== "lift" && questions.interactive) return false;
-		const project = await new ProjectReader(
-			this.fileSystemService,
-			directory.path
-		).read(DEFAULT_PROJECT_FILE);
-		return project.isOk() && !project.value.takesRoutes;
-	}
-
 	private async resolveTree(
 		chosen: TreeChoice,
 		kind: InitKind
@@ -528,24 +518,23 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			this.directory.path
 		);
 		const project = await reader.read(chosen.from);
-		return project.isErr()
-			? err(project.error)
-			: ok({
-					...chosen,
-					project: await reader.withInitFolders(project.value),
-				});
+		if (project.isErr()) return err(project.error);
+		if (kind !== "place" && project.value.takesRoutes)
+			throw new UsageError(
+				`--kind ${kind} starts a new ${kind}, and ${DEFAULT_PROJECT_FILE} is here, which init lifts as a place. Move ${DEFAULT_PROJECT_FILE} away first, or leave --kind out.`
+			);
+		return ok({
+			...chosen,
+			project: await reader.withInitFolders(project.value),
+		});
 	}
 
 	plan(choices: ProjectChoices, builder: InitPlanBuilder): void {
-		const { language, darklua, sourcePaths, compiledPath, places } =
-			choices;
+		const { language, sourcePaths, compiledPath, places } = choices;
 		const dirs = generatedDirs(choices);
 		const derived = derivedRoutesOf(choices.tree, dirs);
 		const routes = takesRoutes(choices.tree)
-			? new StartingRoutes(language, derived).starting(
-					choices.routes,
-					choices.fallback
-				)
+			? new StartingRoutes(language, derived).routes
 			: undefined;
 		const tree = TreePlan.of({
 			tree: choices.tree,
@@ -555,13 +544,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			landings: Object.values(routes ?? {}),
 		});
 		const { compiler } = language;
-		const defaultCompiledPath = darklua ? compiler?.outDir : compiledPath;
 		const name = path.basename(places?.place ?? this.directory.path);
 		const config: RogenConfig = {
 			...((choices.scaffold || places) && { name }),
 			...tree.fields,
 			...(routes && { sourcePaths: [...sourcePaths], routes }),
-			...(defaultCompiledPath && { compiledPath: defaultCompiledPath }),
+			...(compiledPath && { compiledPath }),
 		};
 		const written =
 			choices.tree.kind === "lift"
@@ -572,11 +560,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			written,
 			places?.configFile ?? DEFAULT_CONFIG_FILE
 		);
-		const processed = darklua && compiledPath ? compiledPath : undefined;
+		const processedPath = processedPathOf(choices);
 		for (const { stem, config: output } of OutputConfigs.of(config, {
 			name,
-			processedPath: processed,
-			releasePath: processed ?? defaultCompiledPath,
+			processedPath,
+			releasePath: processedPath ?? compiledPath,
 			releaseIgnore: this.directory.workspace.testRunner
 				? `**/*.spec.${language.extension}`
 				: undefined,
@@ -605,6 +593,18 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		if (choices.tree.kind === "lift")
 			builder.setLiftedFrom(choices.tree.from);
 		for (const note of tree.notes) builder.addNote(note);
+		if (choices.tree.kind === "lift" && choices.processed)
+			builder.addNote(
+				ProjectSetup.processedNote(
+					choices.tree.from,
+					sourcePaths,
+					choices.processed
+				)
+			);
+		if (choices.keptCode?.length)
+			builder.addNote(
+				`Kept the mounts of ${joinedWithAnd(choices.keptCode)} in the tree as they are: only the project's own folder holds them all, and a source path is a folder below it. To route their code, move the folders into ${sourcePaths[0]}.`
+			);
 		const others = places
 			? []
 			: this.directory.otherProjectFiles(
@@ -623,11 +623,19 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					choices.unmounted
 				)
 			);
+		if (choices.outside?.length)
+			builder.addWarning(
+				ProjectSetup.outsideWarning(
+					places?.configFile ?? DEFAULT_CONFIG_FILE,
+					sourcePaths[0],
+					choices.outside
+				)
+			);
 		if (choices.scaffold)
 			builder.addNote(
 				`Starts from create-roblox-ts, which writes package.json${places ? "" : ", tsconfig.json"} and the compiler's settings.`
 			);
-		if (compiler && !darklua && compiledPath) {
+		if (compiler && compiledPath) {
 			builder.addNote(
 				`Syncing from ${compiledPath}, where ${compiler.name} compiles to.`
 			);
@@ -649,9 +657,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		{
 			kind,
 			language,
-			darklua,
 			sourcePaths,
-			compiledPath,
 			tree,
 			mounts,
 			places,
@@ -682,10 +688,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				`${places ? places.directories.join(", ") : sourcePaths.join(", ")} → ${keys.length > 0 ? keys.join(", ") : "no routes"}${rest ? `; other files to ${rest}` : ""}`
 			);
 		}
-		builder.addSummary(
-			"Darklua",
-			darklua && compiledPath ? `yes, writing to ${compiledPath}` : "no"
-		);
 		if (mounts.length > 0)
 			builder.addSummary(
 				"Packages",
@@ -695,35 +697,52 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 	}
 
+	private static processedNote(
+		from: string,
+		sourcePaths: readonly string[],
+		{ folder, config }: ProcessedOutput
+	): string {
+		const source = joinedWithAnd(sourcePaths);
+		return config
+			? `Took ${folder} as the folder Darklua writes, since ${config} is here and the mounts of ${from} into ${folder} repeat ${source}. ${DEFAULT_CONFIG_FILE} reads ${source}, and ${configFileName(PROCESSED_OUTPUT)} reads ${folder} as its "compiledPath".`
+			: `Kept the mounts of ${from} into ${folder}, which repeat ${source}, since no ${Darklua.CONFIG_FILES[0]} says a processor writes ${folder}. Rojo now syncs a script there twice: from ${folder} and from its route. If a processor writes ${folder}, remove those mounts and serve a copy of ${DEFAULT_CONFIG_FILE} with "compiledPath": "${folder}".`;
+	}
+
 	private static unmountedWarning(
 		from: string,
 		files: readonly string[]
 	): Diagnostic {
-		const shown = files.slice(0, UNMOUNTED_SHOWN).join(", ");
-		const more = files.length - UNMOUNTED_SHOWN;
 		return warningDiagnostic(
 			"init.unmountedFiles",
 			{ resource: from },
-			`${files.length === 1 ? "1 file" : `${files.length} files`} in the source paths ${files.length === 1 ? "is" : "are"} mounted by no node, so Rojo ignored ${files.length === 1 ? "it" : "them"}, and Rogen places ${files.length === 1 ? "it if a route matches it" : "each one a route matches"}: ${shown}${more > 0 ? ` and ${more} more` : ""}. Check where with 'rogen where <path>', and list ${files.length === 1 ? "it" : "them"} under "globIgnorePaths" to leave ${files.length === 1 ? "it" : "them"} out as Rojo did.`
+			`${files.length === 1 ? "1 file" : `${files.length} files`} in the source paths ${files.length === 1 ? "is" : "are"} mounted by no node, so Rojo ignored ${files.length === 1 ? "it" : "them"}, and Rogen places ${files.length === 1 ? "it if a route matches it" : "each one a route matches"}: ${listedBriefly(files)}. Check where with 'rogen where <path>', and list ${files.length === 1 ? "it" : "them"} under "globIgnorePaths" to leave ${files.length === 1 ? "it" : "them"} out as Rojo did.`
+		);
+	}
+
+	private static outsideWarning(
+		configFile: string,
+		sourcePath: string,
+		found: readonly string[]
+	): Diagnostic {
+		return warningDiagnostic(
+			"init.codeOutsideSourcePaths",
+			{ resource: configFile },
+			`${listedBriefly(found)} ${found.length === 1 ? "holds" : "hold"} code that no source path holds and the tree doesn't mount, so Rogen places none of it. Move the code into ${sourcePath}, or list its folders under "sourcePaths" in ${configFile}.`
 		);
 	}
 
 	private planNextSteps(
 		builder: InitPlanBuilder,
-		{
-			language,
-			darklua,
-			sourcePaths,
-			compiledPath,
-			tree: chosen,
-			places,
-			luauLsp,
-			gitignoreHint,
-			projectFilesHint,
-			scaffold,
-		}: ProjectChoices,
+		choices: ProjectChoices,
 		tree: TreePlan
 	): void {
+		const {
+			language,
+			tree: chosen,
+			places,
+			projectFilesHint,
+			scaffold,
+		} = choices;
 		const { compiler } = language;
 		if (chosen.kind === "template") {
 			builder.addRun(
@@ -733,17 +752,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 			return;
 		}
-		const compiled = this.directory.defaultSourcePath(language);
-		if (
-			compiler &&
-			!places &&
-			sourcePaths.length > 0 &&
-			compiled !== sourcePaths[0]
-		) {
-			builder.addSetup(compiler.sourcePathStep(sourcePaths[0]));
-		}
 		builder.addEdit(...tree.edits);
-		if (gitignoreHint) builder.addEdit(gitignoreHint);
 		if (projectFilesHint) builder.addEdit(projectFilesHint);
 		if (chosen.kind === "lift")
 			builder.addEdit(
@@ -752,7 +761,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const configFile = places?.configFile ?? DEFAULT_CONFIG_FILE;
 		if (takesRoutes(chosen))
 			builder.addEdit(
-				`Add your own routes under "routes" in ${configFile}.`
+				builder.configCount > 1
+					? 'To change where code goes, edit "routes" in each .rogen.json. To place a folder as it is, such as Packages, mount it in the "tree" of each.'
+					: `To change where code goes, edit "routes" in ${configFile}. To place a folder as it is, such as Packages, mount it in its "tree".`
 			);
 		const projectFile = places?.projectFile ?? DEFAULT_PROJECT_FILE;
 		builder.addEdit(
@@ -766,23 +777,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addEdit(
 				ProjectSetup.addPlaceStep(
 					places,
-					darklua && compiledPath ? compiledPath : undefined,
 					chosen.kind === "new" && chosen.game !== undefined
 				)
 			);
-		const processed = darklua && compiledPath ? compiledPath : undefined;
-		new SyncSteps(language, darklua, scaffold && "npm run watch").plan(
-			builder,
-			places?.folder
-				? path.join(this.directory.path, places.folder)
-				: this.directory.path,
-			{
-				processed: compiler ? [compiler.outDir] : sourcePaths,
-				compiledPath,
-				luauLsp: luauLsp === true,
-				serve: ProjectSetup.serveCommand(places, processed),
-				...(places?.folder && { folder: places.folder }),
-			}
+		builder.addRun(
+			...(compiler
+				? [(scaffold && "npm run watch") ?? compiler.compileCommand]
+				: []),
+			ProjectSetup.serveCommand(places, processedPathOf(choices))
 		);
 	}
 }

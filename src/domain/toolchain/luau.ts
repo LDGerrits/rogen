@@ -32,7 +32,7 @@ export class Luau implements Language, LanguageDetector {
 		return [];
 	}
 
-	offeredMounts(): readonly MountCandidate[] {
+	installedMounts(): readonly MountCandidate[] {
 		return [];
 	}
 }

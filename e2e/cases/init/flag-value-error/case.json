@@ -1,7 +1,7 @@
 {
 	"steps": [
 		["init", "--json", "--language", "lua"],
-		["init", "--json", "--unmatched", "shard"],
+		["init", "--json", "--kind", "plce"],
 		["init", "--json", "--no-json"],
 		["init", "--json", "--agent-hook"]
 	],

@@ -19,10 +19,8 @@ export class CoreToolchainService implements ToolchainService {
 	private readonly detector: WorkspaceDetector;
 
 	constructor(private readonly fileSystemService: FileSystemService) {
-		const darklua = new Darklua();
 		this.detector = new WorkspaceDetector(
 			fileSystemService,
-			darklua,
 			new TestRunnerDetector(fileSystemService),
 			[new Luau(), new RobloxTsDetector(fileSystemService)]
 		);

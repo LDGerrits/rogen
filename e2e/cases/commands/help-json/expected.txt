@@ -159,49 +159,8 @@ stdout:
             "type": "string"
           },
           {
-            "name": "darklua",
-            "type": "boolean",
-            "negatable": true
-          },
-          {
-            "name": "source-path",
-            "type": "string",
-            "multiple": true
-          },
-          {
-            "name": "compiled-path",
-            "type": "string"
-          },
-          {
-            "name": "project-file",
-            "type": "string",
-            "enum": [
-              "lift",
-              "new"
-            ]
-          },
-          {
-            "name": "package",
-            "type": "string",
-            "multiple": true
-          },
-          {
-            "name": "route",
-            "type": "string",
-            "multiple": true
-          },
-          {
-            "name": "unmatched",
-            "type": "string",
-            "enum": [
-              "leave",
-              "shared"
-            ]
-          },
-          {
-            "name": "sample",
-            "type": "boolean",
-            "negatable": true
+            "name": "no-sample",
+            "type": "boolean"
           },
           {
             "name": "places",
@@ -215,8 +174,7 @@ stdout:
           },
           {
             "name": "agent-hook",
-            "type": "boolean",
-            "negatable": true
+            "type": "boolean"
           }
         ],
         "effects": [

@@ -131,6 +131,20 @@ export function containsPath(
 		: containsPosix(parent, child);
 }
 
+/** The deepest relative POSIX folder that holds every one of `dirs`, compared as text; `.` when they share none. */
+export function commonFolderPosix(dirs: readonly string[]): string {
+	let folder = dirs[0];
+	for (const dir of dirs)
+		while (folder !== "." && !containsPosix(folder, dir))
+			folder = path.posix.dirname(folder);
+	return folder;
+}
+
+/** Whether a relative POSIX folder lies below the folder it is relative to, not at or above it. */
+export function isBelowPosix(relative: string): boolean {
+	return relative !== "." && relative !== ".." && !relative.startsWith("../");
+}
+
 /** `dirs` without repeats and without any dir that lies inside another, in their first order. */
 export function outermostDirs(dirs: readonly string[]): string[] {
 	const unique = [...new Set(dirs)];

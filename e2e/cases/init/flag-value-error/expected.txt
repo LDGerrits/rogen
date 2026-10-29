@@ -9,14 +9,14 @@ stdout:
     }
   }
 
-$ rogen init --json --unmatched shard
+$ rogen init --json --kind plce
 exit 2
 stdout:
   {
     "error": {
       "kind": "usage",
-      "message": "'shard' is not a value of '--unmatched'.",
-      "hint": "The values are shared and leave."
+      "message": "'plce' is not a value of '--kind'.",
+      "hint": "The values are place, model and plugin."
     }
   }
 
@@ -26,8 +26,7 @@ stdout:
   {
     "error": {
       "kind": "usage",
-      "message": "Unknown option '--no-json'.",
-      "hint": "Did you mean '--json'?"
+      "message": "'--no-json' is the default; only '--json' changes it."
     }
   }
 

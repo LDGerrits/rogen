@@ -1,9 +1,7 @@
 import {
 	ConfirmPromptOptions,
-	MultiSelectPromptOptions,
 	PromptService,
 	SelectPromptOptions,
-	TextPromptOptions,
 } from "../../platform/prompt/prompt-service.js";
 
 /** How a run that shows its plan first asks: `quick` takes the default of every question the plan shows, `customise` asks them all, each with the answer given before preselected. */
@@ -54,17 +52,6 @@ export class ReviewPrompts {
 		return {
 			_serviceBrand: undefined,
 			isInteractive: true,
-			text: (options: TextPromptOptions) =>
-				this.answer(
-					options.message,
-					essential,
-					options.placeholder ?? "",
-					(initial) =>
-						this.real.text({
-							...options,
-							initialValue: initial ?? options.initialValue,
-						})
-				),
 			confirm: (options: ConfirmPromptOptions) =>
 				this.answer(
 					options.message,
@@ -85,19 +72,6 @@ export class ReviewPrompts {
 						this.real.select({
 							...options,
 							initialValue: initial ?? options.initialValue,
-						})
-				),
-			multiSelect: <T extends string>(
-				options: MultiSelectPromptOptions<T>
-			) =>
-				this.answer<readonly T[]>(
-					options.message,
-					essential,
-					options.initialValues ?? [],
-					(initial) =>
-						this.real.multiSelect({
-							...options,
-							initialValues: initial ?? options.initialValues,
 						})
 				),
 		};

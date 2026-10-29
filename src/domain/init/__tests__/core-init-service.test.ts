@@ -5,6 +5,7 @@ import { jest } from "@jest/globals";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import path from "path";
 import { ResultError } from "../../../base/result.js";
+import { UsageError } from "../../../base/errors.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import {
@@ -15,16 +16,17 @@ import {
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import {
 	ConfirmPromptOptions,
-	MultiSelectPromptOptions,
 	PromptService,
 	SelectPromptOptions,
-	TextPromptOptions,
 } from "../../../platform/prompt/prompt-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
-import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
+import {
+	errorDiagnostic,
+	warningDiagnostic,
+} from "../../../platform/diagnostics/diagnostic.js";
 import { CoreInitService } from "../core-init-service.js";
-import { InitPlan, InitWritten } from "../init-service.js";
+import { InitChoices, InitPlan, InitWritten } from "../init-service.js";
 
 const directory = path.resolve("/mock/my-game");
 
@@ -58,20 +60,8 @@ class CustomiseFirst implements PromptService {
 		return this.once(options.message, () => this.inner.select(options));
 	}
 
-	text(options: TextPromptOptions): Promise<string | undefined> {
-		return this.once(options.message, () => this.inner.text(options));
-	}
-
 	confirm(options: ConfirmPromptOptions): Promise<boolean | undefined> {
 		return this.once(options.message, () => this.inner.confirm(options));
-	}
-
-	multiSelect<T extends string>(
-		options: MultiSelectPromptOptions<T>
-	): Promise<readonly T[] | undefined> {
-		return this.once(options.message, () =>
-			this.inner.multiSelect(options)
-		);
 	}
 }
 
@@ -222,11 +212,55 @@ describe("CoreInitService", () => {
 			expect(plan?.configs).toEqual([]);
 		});
 
-		it("should fail with init.configExists when a project flag comes with the agent flags", async () => {
+		it("should plan only the agent rules where a config exists and --skip-git comes with --agent-rules", async () => {
+			await write("default.rogen.json", "{}");
+
+			const plan = (
+				await serviceFor(new MockPromptService([])).plan({
+					ask: false,
+					choices: { agentRules: true, skipGit: true },
+				})
+			).unwrap();
+
+			expect(plan?.files).toEqual([
+				{ fileName: "AGENTS.md", content: agentBlock },
+			]);
+		});
+
+		it.each([
+			[{ language: "luau" }, "--language"],
+			[{ places: false }, "--no-places"],
+			[{ kind: "model" as const }, "--kind model"],
+			[{ sample: false as const }, "--no-sample"],
+		])(
+			"should be a usage error when %o comes with an agent flag, naming %s",
+			async (shaping, flag) => {
+				await write("default.rogen.json", "{}");
+
+				const result = await serviceFor(new MockPromptService([])).plan(
+					{
+						choices: {
+							agentRules: true,
+							...shaping,
+						},
+					}
+				);
+
+				expect(result.isErr() && result.error).toBeInstanceOf(
+					UsageError
+				);
+				expect(result.isErr() && result.error.message).toContain(flag);
+				expect(result.isErr() && result.error.message).toContain(
+					"default.rogen.json"
+				);
+			}
+		);
+
+		it("should fail with init.configExists when a project flag comes alone", async () => {
 			await write("default.rogen.json", "{}");
 
 			const diagnostics = await refused(new MockPromptService([]), {
-				choices: { agentRules: true, language: "luau" },
+				choices: { language: "luau", agentRules: false },
 			});
 
 			expect(diagnostics).toMatchObject([{ code: "init.configExists" }]);
@@ -363,12 +397,12 @@ describe("CoreInitService", () => {
 		const answersEverything = () => new MockPromptService({});
 		const names = (plan: { files: readonly PlannedFile[] } | undefined) =>
 			plan?.files.map(({ fileName }) => fileName);
-		const planned = async (prompts = answersEverything()) =>
-			(
-				await serviceFor(askingEach(prompts)).plan({
-					choices: { sample: false },
-				})
-			).unwrap();
+		const planned = async (
+			prompts = answersEverything(),
+			choices: InitChoices = { sample: false, agentHook: true }
+		) => (await serviceFor(askingEach(prompts)).plan({ choices })).unwrap();
+		const asking = (prompts: MockPromptService) =>
+			planned(prompts, { sample: false });
 		const fileOf = (
 			plan: { files: readonly PlannedFile[] } | undefined,
 			name: string
@@ -403,6 +437,25 @@ describe("CoreInitService", () => {
 					],
 				},
 			});
+		});
+
+		it("should leave it out when the plan is created as shown, and say how to add it", async () => {
+			await write(".claude/keep", "");
+
+			const plan = (
+				await serviceFor(new MockPromptService({})).plan({
+					choices: { sample: false },
+				})
+			).unwrap();
+
+			expect(names(plan)).not.toContain(SCRIPT);
+			expect(names(plan)).not.toContain(CLAUDE);
+			expect(plan?.notes).toContain(
+				"Claude Code is in use here. 'rogen init --agent-hook' adds a hook that reports Rogen's warnings when it ends its turn."
+			);
+			expect(plan?.nextSteps.edits.join("\n")).not.toContain(
+				"--agent-hook"
+			);
 		});
 
 		it("should write a CLAUDE.md that imports AGENTS.md where Claude Code is in use and has none", async () => {
@@ -465,7 +518,7 @@ describe("CoreInitService", () => {
 		it("should not offer it where nothing says an agent is in use", async () => {
 			const prompts = answersEverything();
 
-			const plan = await planned(prompts);
+			const plan = await asking(prompts);
 
 			expect(names(plan)).not.toContain(SCRIPT);
 			expect(
@@ -486,22 +539,24 @@ describe("CoreInitService", () => {
 			await write(".codex/keep", "");
 			const prompts = answersEverything();
 
-			await planned(prompts);
+			await asking(prompts);
 
 			expect(prompts.asked.at(-1)).toBe(
 				"Add a hook that reports Rogen warnings to Claude Code and Codex?"
 			);
 		});
 
-		it("should not write it when the question is declined", async () => {
+		it("should leave it out under Customise unless the question is answered yes", async () => {
 			await write(".claude/keep", "");
-			const declined = new MockPromptService({
-				"Add a hook that reports Rogen warnings to Claude Code?": false,
+			const accepted = new MockPromptService({
+				"Add a hook that reports Rogen warnings to Claude Code?": true,
 			});
 
-			const plan = await planned(declined);
+			const taken = await asking(answersEverything());
+			const added = await asking(accepted);
 
-			expect(names(plan)).not.toContain(SCRIPT);
+			expect(names(taken)).not.toContain(SCRIPT);
+			expect(names(added)).toContain(SCRIPT);
 		});
 
 		it("should register it in a file that exists, keeping what it holds", async () => {
@@ -555,7 +610,12 @@ describe("CoreInitService", () => {
 				})
 			);
 
-			expect(names(await planned())).not.toContain(SCRIPT);
+			const plan = await planned();
+
+			expect(names(plan)).not.toContain(SCRIPT);
+			expect(plan?.notes).toContain(
+				"The Rogen hook is registered for Claude Code already."
+			);
 		});
 
 		it("should register a new agent without writing over a script that exists", async () => {
@@ -629,215 +689,333 @@ describe("CoreInitService", () => {
 	});
 
 	describe("Darklua", () => {
-		const DARKLUA_PIN = "seaofvoices/darklua@0.19.0";
-		const planWithDarklua = async () =>
+		it("should set up nothing of Darklua's in a new project, where Darklua is found", async () => {
+			processes.installed.delete("rojo");
+			processes.installed.set("rokit", "/bin/rokit");
+			await write(".darklua.json", "{}");
+
+			const plan = (
+				await serviceFor().plan({
+					ask: false,
+					choices: { sample: false, agentRules: false },
+				})
+			).unwrap();
+
+			expect(plan?.files.map(({ fileName }) => fileName).sort()).toEqual([
+				".gitignore",
+				"default.rogen.json",
+				"rokit.toml",
+			]);
+			expect(
+				plan?.files.find(({ fileName }) => fileName === "rokit.toml")
+					?.content
+			).toBe('[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n');
+			expect(plan?.decided.map(({ question }) => question)).not.toContain(
+				"darklua"
+			);
+		});
+
+		describe("lifting a project whose processor writes a folder of its own", () => {
+			const HAND_WRITTEN = {
+				name: "mine",
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Shared: { $path: "build/shared" } },
+					ServerScriptService: { Server: { $path: "build/server" } },
+				},
+			};
+
+			const liftPlan = async () => {
+				await write(
+					"default.project.json",
+					JSON.stringify(HAND_WRITTEN)
+				);
+				await write("src/shared/Util.luau");
+				await write("src/server/Main.server.luau");
+				await write("build/shared/Util.luau");
+				await write("build/server/Main.server.luau");
+				return (
+					await serviceFor().plan({
+						ask: false,
+						choices: { agentRules: false },
+					})
+				).unwrap();
+			};
+
+			const configIn = (plan: InitPlan | undefined, fileName: string) =>
+				JSON.parse(
+					plan?.files.find((file) => file.fileName === fileName)
+						?.content ?? "null"
+				);
+
+			it("should root the default at the source and read the folder in dist.rogen.json", async () => {
+				await write(".darklua.json", "{}");
+
+				const plan = await liftPlan();
+
+				expect(configIn(plan, "default.rogen.json")).toEqual({
+					name: "mine",
+					sourcePaths: ["src"],
+					routes: {
+						Shared: "ReplicatedStorage/Shared",
+						Server: "ServerScriptService/Server",
+						Client: "StarterPlayer/StarterPlayerScripts",
+						"*": "ReplicatedStorage/Shared",
+					},
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: {},
+						ServerScriptService: {},
+					},
+				});
+				expect(configIn(plan, "dist.rogen.json")).toEqual({
+					...configIn(plan, "default.rogen.json"),
+					compiledPath: "build",
+				});
+				expect(plan?.warnings).toEqual([]);
+			});
+
+			it("should say what it took from the project file and serve the processed config", async () => {
+				await write(".darklua.json5", "{}");
+
+				const plan = await liftPlan();
+
+				expect(plan?.notes).toContain(
+					'Took build as the folder Darklua writes, since .darklua.json5 is here and the mounts of default.project.json into build repeat src. default.rogen.json reads src, and dist.rogen.json reads build as its "compiledPath".'
+				);
+				expect(plan?.nextSteps.run).toEqual(["rogen serve dist"]);
+			});
+
+			it("should keep the mounts, with a note, when no processor config says who writes the folder", async () => {
+				const plan = await liftPlan();
+
+				expect(
+					configIn(plan, "default.rogen.json").tree
+						.ServerScriptService
+				).toEqual({ Server: { $path: "build/server" } });
+				expect(configIn(plan, "dist.rogen.json")).toBeNull();
+				expect(plan?.notes).toContain(
+					'Kept the mounts of default.project.json into build, which repeat src, since no .darklua.json says a processor writes build. Rojo now syncs a script there twice: from build and from its route. If a processor writes build, remove those mounts and serve a copy of default.rogen.json with "compiledPath": "build".'
+				);
+				expect(plan?.nextSteps.run).toEqual(["rogen serve"]);
+				expect(plan?.warnings).toEqual([]);
+			});
+
+			it("should leave a package folder alone", async () => {
+				await write(".darklua.json", "{}");
+				await write(
+					"default.project.json",
+					JSON.stringify({
+						tree: {
+							$className: "DataModel",
+							ReplicatedStorage: {
+								Packages: { $path: "Packages" },
+								Shared: { $path: "src/shared" },
+							},
+						},
+					})
+				);
+				await write("src/shared/Util.luau");
+				await write("Packages/Promise.lua");
+
+				const plan = (
+					await serviceFor().plan({
+						ask: false,
+						choices: { agentRules: false },
+					})
+				).unwrap();
+
+				expect(configIn(plan, "dist.rogen.json")).toBeNull();
+				expect(
+					configIn(plan, "default.rogen.json").tree.ReplicatedStorage
+				).toEqual({ Packages: { $path: "Packages" } });
+			});
+		});
+	});
+
+	describe("source paths", () => {
+		const planOf = async () =>
 			(
 				await serviceFor().plan({
 					ask: false,
-					choices: { darklua: true },
+					choices: { agentRules: false },
 				})
 			).unwrap();
-		const names = (plan: { files: readonly PlannedFile[] } | undefined) =>
-			plan?.files.map(({ fileName }) => fileName);
-		const fileOf = (
-			plan: { files: readonly PlannedFile[] } | undefined,
-			name: string
-		) => plan?.files.find(({ fileName }) => fileName === name);
 
-		it("should write the config that converts path requires, where there is none", async () => {
-			const plan = await planWithDarklua();
+		const configOf = (plan: InitPlan | undefined) =>
+			JSON.parse(
+				plan?.files.find(
+					({ fileName }) => fileName === "default.rogen.json"
+				)?.content ?? "null"
+			);
 
-			expect(JSON.parse(fileOf(plan, ".darklua.json")!.content)).toEqual({
-				rules: [
-					{
-						rule: "convert_require",
-						current: { name: "path" },
-						target: {
-							name: "roblox",
-							rojo_sourcemap: "./sourcemap.json",
-							indexing_style: "property",
-						},
+		const lift = (tree: object) =>
+			write(
+				"default.project.json",
+				JSON.stringify({
+					name: "mine",
+					tree: { $className: "DataModel", ...tree },
+				})
+			);
+
+		it("should take the closest folder that holds every folder of code the project file mounts", async () => {
+			await lift({
+				ServerScriptService: { Server: { $path: "code/server" } },
+				StarterPlayer: {
+					StarterPlayerScripts: {
+						Client: { $path: "code/client" },
 					},
-				],
+				},
+			});
+			await write("code/server/Main.server.luau");
+			await write("code/client/Main.client.luau");
+			await write("src/.gitkeep");
+
+			const plan = await planOf();
+
+			expect(configOf(plan)).toMatchObject({
+				sourcePaths: ["code"],
+				routes: {
+					Server: "ServerScriptService/Server",
+					Client: "StarterPlayer/StarterPlayerScripts/Client",
+				},
+			});
+			expect(plan?.warnings).toEqual([]);
+		});
+
+		it("should take the parent of a lone mounted folder named after a route, when its route places the files there", async () => {
+			await lift({
+				ServerScriptService: { Server: { $path: "src/server" } },
+			});
+			await write("src/server/Main.server.luau");
+			await write("src/server/Admin/Ban.luau");
+
+			const plan = await planOf();
+
+			expect(configOf(plan)).toMatchObject({
+				sourcePaths: ["src"],
+				routes: { Server: "ServerScriptService/Server" },
+				tree: { $className: "DataModel", ServerScriptService: {} },
+			});
+			expect(plan?.warnings).toEqual([]);
+		});
+
+		it("should keep a lone folder named after a route at the top of the project in the tree, with a note", async () => {
+			const tree = {
+				ServerScriptService: { Server: { $path: "server" } },
+			};
+			await lift(tree);
+			await write("server/Main.server.luau");
+
+			const plan = await planOf();
+
+			expect(configOf(plan)).toMatchObject({
+				sourcePaths: ["src"],
+				tree: { $className: "DataModel", ...tree },
+			});
+			expect(plan?.notes).toContainEqual(
+				expect.stringMatching(/^Kept the mounts of server in the tree/)
+			);
+			expect(plan?.warnings).toEqual([]);
+		});
+
+		it("should keep folders mounted at the top of the project in the tree, with a note", async () => {
+			const tree = {
+				ServerScriptService: { Server: { $path: "server" } },
+				StarterPlayer: {
+					StarterPlayerScripts: { Client: { $path: "client" } },
+				},
+				ReplicatedStorage: { Shared: { $path: "shared" } },
+			};
+			await lift(tree);
+			await write("server/Main.server.luau");
+			await write("client/Main.client.luau");
+			await write("shared/Util.luau");
+
+			const plan = await planOf();
+
+			expect(configOf(plan)).toMatchObject({
+				sourcePaths: ["src"],
+				tree: { $className: "DataModel", ...tree },
+			});
+			expect(plan?.notes).toContain(
+				"Kept the mounts of client, server and shared in the tree as they are: only the project's own folder holds them all, and a source path is a folder below it. To route their code, move the folders into src."
+			);
+			expect(plan?.warnings).toEqual([]);
+		});
+
+		it("should never take the project's own folder or a package folder", async () => {
+			await lift({
+				Workspace: { Map: { $path: "." } },
+				ReplicatedStorage: {
+					Packages: { $path: "Packages" },
+					Shared: { $path: "code/shared" },
+				},
+				ServerScriptService: { Server: { $path: "code/server" } },
+			});
+			await write("wally.toml");
+			await write("Packages/Promise.luau");
+			await write("code/shared/Util.luau");
+			await write("code/server/Main.server.luau");
+
+			expect(configOf(await planOf()).sourcePaths).toEqual(["code"]);
+		});
+
+		it("should take roblox-ts's source path from the rootDir of tsconfig.json", async () => {
+			await write(
+				"tsconfig.json",
+				JSON.stringify({
+					compilerOptions: { rootDir: "game", outDir: "out" },
+				})
+			);
+			await lift({
+				ServerScriptService: { Server: { $path: "out/server" } },
+				ReplicatedStorage: { Shared: { $path: "out/shared" } },
+			});
+			await write("game/server/main.server.ts");
+			await write("out/server/main.server.luau");
+			await write("out/shared/util.luau");
+
+			expect(configOf(await planOf())).toMatchObject({
+				sourcePaths: ["game"],
+				compiledPath: "out",
 			});
 		});
 
-		it("should write a config with no rules for compiled code, which has no path requires", async () => {
-			await write("tsconfig.json", "{}");
+		it("should warn of code that no source path holds, by code", async () => {
+			await write("game/Main.server.luau");
+			await write("lib/Util.luau");
 
-			const plan = await planWithDarklua();
+			const plan = await planOf();
 
-			expect(JSON.parse(fileOf(plan, ".darklua.json")!.content)).toEqual({
-				rules: [],
-			});
-		});
-
-		it("should leave a config that is there as it is", async () => {
-			await write(".darklua.json5", "{}");
-
-			const plan = await planWithDarklua();
-
-			expect(names(plan)).not.toContain(".darklua.json");
-		});
-
-		it("should have the new .gitignore list the compiled path", async () => {
-			const plan = await planWithDarklua();
-
-			expect(fileOf(plan, ".gitignore")?.content).toContain("\n/dist\n");
-			expect(plan?.nextSteps.edits.join("\n")).not.toContain(
-				"/dist to .gitignore"
-			);
-		});
-
-		it("should not edit a .gitignore that is there, and say what to add", async () => {
-			await write(".gitignore", "sourcemap.json\n");
-
-			const plan = await planWithDarklua();
-
-			expect(names(plan)).not.toContain(".gitignore");
-			expect(plan?.nextSteps.edits).toContain(
-				"Add /dist to .gitignore so the processed code isn't committed."
-			);
-		});
-
-		it("should say nothing when the .gitignore there lists the compiled path", async () => {
-			await write(".gitignore", "dist/\n");
-
-			const plan = await planWithDarklua();
-
-			expect(plan?.nextSteps.edits.join("\n")).not.toContain(
-				"/dist to .gitignore"
-			);
-		});
-
-		it("should know the other ways a .gitignore lists the compiled path", async () => {
-			for (const line of [
-				"dist/*",
-				"/dist/",
-				"**/dist",
-				"/dist # built",
-			]) {
-				await write(".gitignore", `${line.replace(" # built", "")}\n`);
-
-				const plan = await planWithDarklua();
-
-				expect(plan?.nextSteps.edits.join("\n")).not.toContain(
-					"/dist to .gitignore"
-				);
-			}
-		});
-
-		it("should keep the sourcemap step when luau-lsp is told not to make it", async () => {
-			await write(
-				".vscode/settings.json",
-				'{ "luau-lsp.sourcemap.autogenerate": false }'
-			);
-
-			const plan = await planWithDarklua();
-
-			expect(plan?.nextSteps.edits.join("\n")).toContain("sourcemap");
-		});
-
-		it("should leave the sourcemap to luau-lsp where the editor settings name it", async () => {
-			await write(
-				".vscode/settings.json",
-				'{ "luau-lsp.sourcemap.enabled": true }'
-			);
-
-			const plan = await planWithDarklua();
-
-			expect(plan?.nextSteps.edits.join("\n")).not.toContain("sourcemap");
-		});
-
-		it("should pin it beside Rojo in one file, and name one command to install both", async () => {
-			processes.installed.delete("rojo");
-			processes.installed.set("rokit", "/bin/rokit");
-
-			const plan = await planWithDarklua();
-
-			expect(fileOf(plan, "rokit.toml")?.content).toBe(
-				`[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\ndarklua = "${DARKLUA_PIN}"\n`
-			);
-			expect(plan?.commands).toEqual([]);
-			expect(plan?.nextSteps.setup[0]).toBe(
-				"Run 'rokit install' to install Rojo and Darklua."
-			);
-		});
-
-		it("should pin only Darklua when Rojo runs", async () => {
-			processes.installed.set("rokit", "/bin/rokit");
-
-			const plan = await planWithDarklua();
-
-			expect(fileOf(plan, "rokit.toml")?.content).toBe(
-				`[tools]\ndarklua = "${DARKLUA_PIN}"\n`
-			);
-			expect(plan?.nextSteps.setup).toEqual([
-				"Run 'rokit install' to install Darklua.",
+			expect(configOf(plan).sourcePaths).toEqual(["src"]);
+			expect(plan?.warnings).toEqual([
+				warningDiagnostic(
+					"init.codeOutsideSourcePaths",
+					{ resource: "default.rogen.json" },
+					`game and lib hold code that no source path holds and the tree doesn't mount, so Rogen places none of it. Move the code into src, or list its folders under "sourcePaths" in default.rogen.json.`
+				),
 			]);
 		});
 
-		it("should pin nothing when Darklua runs or a toolchain file pins it", async () => {
-			processes.installed.set("rokit", "/bin/rokit");
-			processes.installed.set("darklua", "/bin/darklua");
-			processes.outputs.set("/bin/darklua", {
-				code: 0,
-				stdout: "darklua 0.19.0\n",
-				stderr: "",
+		it("should warn of code that neither a source path holds nor the tree mounts in a lifted project", async () => {
+			await lift({
+				ServerScriptService: { Admin: { $path: "src/server/Admin" } },
+				ReplicatedStorage: { Packages: { $path: "Packages" } },
 			});
-			const running = await planWithDarklua();
-			processes.installed.delete("darklua");
-			await write("rokit.toml", `[tools]\ndarklua = "${DARKLUA_PIN}"\n`);
-			const pinned = await planWithDarklua();
+			await write("wally.toml");
+			await write("Packages/Promise.luau");
+			await write("src/server/Admin/Ban.luau");
+			await write("src/server/Main.server.luau");
 
-			expect(names(running)).not.toContain("rokit.toml");
-			expect(fileOf(pinned, "rokit.toml")).toBeUndefined();
-			expect(pinned?.nextSteps.setup).toEqual([]);
-		});
+			const plan = await planOf();
 
-		it("should not add a second darklua key when the file names another tool darklua", async () => {
-			processes.installed.set("rokit", "/bin/rokit");
-			await write(
-				"rokit.toml",
-				'[tools]\ndarklua = "someone/fork@1.0.0"\n'
-			);
-
-			const plan = await planWithDarklua();
-
-			expect(fileOf(plan, "rokit.toml")).toBeUndefined();
-		});
-
-		it("should say Darklua alone is pinned when Rojo runs", async () => {
-			processes.installed.set("rokit", "/bin/rokit");
-
-			const plan = await planWithDarklua();
-
-			expect(plan?.summary).toContainEqual({
-				area: "Darklua",
-				text: "pin Darklua 0.19.0 in rokit.toml",
-			});
-		});
-
-		it("should pin nothing when the project does not use Darklua", async () => {
-			processes.installed.set("rokit", "/bin/rokit");
-
-			const plan = (await serviceFor().plan()).unwrap();
-
-			expect(names(plan)).not.toContain("rokit.toml");
-		});
-
-		it("should write Foreman's lines for both, and name foreman install", async () => {
-			processes.installed.delete("rojo");
-			processes.installed.set("foreman", "/bin/foreman");
-
-			const plan = await planWithDarklua();
-
-			expect(fileOf(plan, "foreman.toml")?.content).toBe(
-				'[tools]\nrojo = { github = "rojo-rbx/rojo", version = "7.7.1" }\ndarklua = { github = "seaofvoices/darklua", version = "0.19.0" }\n'
-			);
-			expect(plan?.nextSteps.setup[0]).toBe(
-				"Run 'foreman install' to install Rojo and Darklua."
-			);
+			expect(configOf(plan).sourcePaths).toEqual(["src/server/Admin"]);
+			expect(plan?.warnings.map(({ message }) => message)).toEqual([
+				expect.stringMatching(
+					/^src\/server\/Main\.server\.luau holds code that no source path holds/
+				),
+			]);
 		});
 	});
 
@@ -1036,9 +1214,6 @@ describe("CoreInitService", () => {
 			expect(plan?.nextSteps.run).toEqual([
 				'rogen build -o "my-game.rbxmx"',
 			]);
-			expect(plan?.decided.map(({ flag }) => flag)).not.toContain(
-				"--source-path"
-			);
 		});
 
 		it("should start a plugin with a script that runs", async () => {
@@ -1143,7 +1318,7 @@ describe("CoreInitService", () => {
 			expect(plan?.gitInit).toBe(false);
 		});
 
-		it("should ask for no source path when a lifted project takes no routes, and name none in the steps", async () => {
+		it("should take no source path when a lifted project takes no routes, and name none in the steps", async () => {
 			await write("tsconfig.json", "{}");
 			await write(
 				"default.project.json",
@@ -1152,9 +1327,6 @@ describe("CoreInitService", () => {
 
 			const plan = (await serviceFor().plan()).unwrap();
 
-			expect(plan?.decided.map(({ flag }) => flag)).not.toContain(
-				"--source-path"
-			);
 			expect(JSON.stringify(plan?.nextSteps)).not.toContain("undefined");
 			expect(plan?.directories).toEqual([]);
 		});
@@ -1305,7 +1477,7 @@ describe("CoreInitService", () => {
 			expect(shown).toContain(
 				"Project   one place, Luau, sample Greeter"
 			);
-			expect(shown).toContain("Darklua   no");
+			expect(shown).not.toContain("Darklua");
 			expect(shown).toContain("Agents    rules in AGENTS.md");
 			expect(shown).toContain("default.rogen.json");
 		});
@@ -1326,11 +1498,7 @@ describe("CoreInitService", () => {
 				"one",
 				"customise",
 				"luau",
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
-				"lib",
-				ACCEPT_DEFAULT,
-				ACCEPT_DEFAULT,
+				"several",
 				ACCEPT_DEFAULT,
 				"yes",
 			]);
@@ -1342,20 +1510,16 @@ describe("CoreInitService", () => {
 				"One place or several?",
 				CREATE,
 				"Language",
-				"Does Darklua process your code before Rojo syncs it?",
 				"One place or several?",
-				"Source paths",
-				"Routes",
-				"Files that match no route",
 				"Add Rogen's rules for coding agents to AGENTS.md?",
 				CREATE,
 			]);
 			expect(prompts.prompts.at(-1)?.description).toContain(
-				"lib → Server"
+				"several places"
 			);
 			expect(plan?.summary).toContainEqual({
-				area: "Code",
-				text: expect.stringContaining("lib"),
+				area: "Project",
+				text: expect.stringContaining("several places"),
 			});
 		});
 

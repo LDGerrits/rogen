@@ -23,7 +23,7 @@ Matching is exact except for the first letter: key `Server` matches `server/` an
 
 The governing route is the first one found walking down from the source path. Every route after it is ignored whole: a nested `Server/` folder is an ordinary folder that keeps its name. A nested `@key` naming another route is an error (`server/Util@client.luau`), and one restating the governing route is fine. So `Shared/Server/Datastore.luau` stays in ReplicatedStorage; never put server code under `Shared/`. Rogen warns when that ships server modules to clients (a `Shared/Server/@shared` marker says the folder is meant to), and when a Script or LocalScript lands where it never runs.
 
-A file no route matches goes to the `*` route, which `init` writes unless given `--unmatched leave`. In a config without `*`, such a file is left out, with a warning that names the routing folders of its feature to move it into.
+A file no route matches goes to the `*` route, which `init` writes. In a config without `*`, such a file is left out, with a warning that names the routing folders of its feature to move it into.
 
 A file's instance path is its route's target, then its folders without the routing folder, then its name as Rojo reads it (`Save.server.luau` is `Save`). A name that starts with `^` (`^Animate.client.luau`, or a folder `^Hud/`) lands directly at the target instead, dropping every folder in between; quote it in a shell. `^init.luau` is an error: hoist the folder.
 

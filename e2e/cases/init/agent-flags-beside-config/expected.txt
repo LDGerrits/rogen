@@ -1,0 +1,68 @@
+$ rogen init --agent-rules --language luau
+exit 2
+stdout:
+  rogen init
+  init failed.
+stderr:
+  error: --language luau shapes a new config, and default.rogen.json is here already. Beside a config, --agent-rules and --agent-hook add only the agent files. To change the config, edit it and run 'rogen check'.
+
+$ rogen init --agent-hook --no-places --json
+exit 2
+stdout:
+  {
+    "error": {
+      "kind": "usage",
+      "message": "--no-places shapes a new config, and default.rogen.json is here already.",
+      "hint": "Beside a config, --agent-rules and --agent-hook add only the agent files. To change the config, edit it and run 'rogen check'."
+    }
+  }
+
+$ rogen init --language luau
+exit 1
+stdout:
+  rogen init
+  init failed.
+stderr:
+  default.rogen.json - error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'; for a new place, copy a config and edit the copy. To add the agent rules or the agent hook to this project, run 'rogen init --agent-rules' or 'rogen init --agent-hook'; to set Rojo up, see https://rogen-roblox.vercel.app/docs/v2/installation. (init.configExists)
+
+$ rogen init --agent-rules --skip-git -y
+exit 0
+stdout:
+  rogen init
+  Claude Code is in use here. 'rogen init --agent-hook' adds a hook that reports Rogen's warnings when it ends its turn.
+  Took the defaults, each with the flag that changes it: no agent hook (--agent-hook).
+  Created AGENTS.md.
+  Created CLAUDE.md.
+  Wrote 2 files.
+
+$ rogen init --agent-hook --skip-git -n --json
+exit 0
+stdout:
+  {
+    "changed": false,
+    "dryRun": true,
+    "files": [
+      {
+        "file": "<dir>/.agents/hooks/rogen-check.mjs",
+        "outcome": "wouldWrite"
+      },
+      {
+        "file": "<dir>/.claude/settings.json",
+        "outcome": "wouldWrite",
+        "appended": true
+      }
+    ],
+    "directories": [],
+    "notes": [],
+    "nextSteps": {
+      "setup": [
+        "The hook runs the Rogen in node_modules/.bin, else the one on the PATH; install Rogen in the project or globally."
+      ],
+      "run": [],
+      "edits": []
+    }
+  }
+
+written:
+  AGENTS.md
+  CLAUDE.md

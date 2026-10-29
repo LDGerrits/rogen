@@ -1,0 +1,92 @@
+$ rogen init
+exit 0
+stdout:
+  rogen init
+  Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every write.
+  Left out ReplicatedStorage/Shared and ServerScriptService/Server, since they point into build and Rogen generates that code now.
+  Took build as the folder Darklua writes, since .darklua.json is here and the mounts of default.project.json into build repeat src. default.rogen.json reads src, and dist.rogen.json reads build as its "compiledPath".
+  Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), a git repository (--skip-git), agent rules (--no-agent-rules).
+  Created default.rogen.json.
+  Created dist.rogen.json.
+  Created .gitignore.
+  Created AGENTS.md.
+  Initialised a git repository.
+  default.project.json · wrote
+  Next steps
+    Run:
+      rogen serve dist
+    In Studio, press Connect in the Rojo plugin.
+    Rogen writes default.project.json now, so git can stop tracking it: git rm --cached default.project.json
+    To change where code goes, edit "routes" in each .rogen.json. To place a folder as it is, such as Packages, mount it in the "tree" of each.
+    Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.
+  Wrote 4 files.
+
+$ rogen write dist
+exit 0
+stdout: (not shown)
+
+written:
+  .git/
+  .gitignore
+  AGENTS.md
+  default.project.json
+  default.rogen.json
+  dist.project.json
+  dist.rogen.json
+
+default.rogen.json:
+{
+  "name": "my-game",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Shared": "ReplicatedStorage/Shared",
+    "Server": "ServerScriptService/Server",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {},
+    "ServerScriptService": {}
+  }
+}
+
+dist.rogen.json:
+{
+  "name": "my-game",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Shared": "ReplicatedStorage/Shared",
+    "Server": "ServerScriptService/Server",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "compiledPath": "build",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {},
+    "ServerScriptService": {}
+  }
+}
+
+$ rojo sourcemap default.project.json
+my-game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Util: ModuleScript  <- src/shared/Util.luau
+  ServerScriptService: ServerScriptService
+    Server: Folder
+      Main: Script  <- src/server/Main.server.luau
+
+$ rojo sourcemap dist.project.json
+my-game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Util: ModuleScript  <- build/shared/Util.luau
+  ServerScriptService: ServerScriptService
+    Server: Folder
+      Main: Script  <- build/server/Main.server.luau

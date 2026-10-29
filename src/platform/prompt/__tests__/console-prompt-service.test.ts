@@ -1,4 +1,3 @@
-import { jest } from "@jest/globals";
 import { ConsolePromptService } from "../console-prompt-service.js";
 import { KEY, ScriptedTerminal } from "./scripted-terminal.js";
 
@@ -67,17 +66,10 @@ describe("ConsolePromptService", () => {
 			hint: "Found code in: src",
 		};
 		const prompts = {
-			text: () => service.text({ message: "Source paths", ...details }),
 			confirm: () =>
 				service.confirm({ message: "Source paths", ...details }),
 			select: () =>
 				service.select({
-					message: "Source paths",
-					choices: [{ value: "a", label: "A" }],
-					...details,
-				}),
-			multiSelect: () =>
-				service.multiSelect({
 					message: "Source paths",
 					choices: [{ value: "a", label: "A" }],
 					...details,
@@ -110,7 +102,7 @@ describe("ConsolePromptService", () => {
 
 		it("should wrap a long description under the gutter", async () => {
 			const words = Array(30).fill("scan").join(" ");
-			const answer = service.text({
+			const answer = service.confirm({
 				message: "Source paths",
 				description: words,
 			});
@@ -124,7 +116,7 @@ describe("ConsolePromptService", () => {
 		});
 
 		it("should show every choice's hint, not only the focused one", async () => {
-			const answer = service.multiSelect({
+			const answer = service.select({
 				message: "Routes",
 				choices: [
 					{ value: "a", label: "A", hint: "→ first" },
@@ -139,68 +131,9 @@ describe("ConsolePromptService", () => {
 		});
 	});
 
-	describe("text", () => {
-		it("should resolve to the placeholder when Enter is pressed on an empty field", async () => {
-			const answer = service.text({
-				message: "Name",
-				placeholder: "default",
-			});
-			await terminal.press(KEY.enter);
-			expect(await answer).toBe("default");
-		});
-
-		it("should pass the placeholder to validate on an empty answer", async () => {
-			const validate = jest.fn(() => undefined);
-			const answer = service.text({
-				message: "Name",
-				placeholder: "default",
-				validate,
-			});
-			await terminal.press(KEY.enter);
-			await answer;
-			expect(validate).toHaveBeenCalledWith("default");
-		});
-
-		it("should prefer typed input over the placeholder", async () => {
-			const validate = jest.fn(() => undefined);
-			const answer = service.text({
-				message: "Name",
-				placeholder: "default",
-				validate,
-			});
-			await terminal.press("l", "o", "b", "b", "y", KEY.enter);
-			expect(await answer).toBe("lobby");
-			expect(validate).toHaveBeenCalledWith("lobby");
-			expect(validate).not.toHaveBeenCalledWith("default");
-		});
-
-		it("should keep the prompt open when validate rejects the placeholder", async () => {
-			const validate = jest.fn((value: string) =>
-				value === "default" ? "Pick another name." : undefined
-			);
-			let settled = false;
-			const answer = service
-				.text({ message: "Name", placeholder: "default", validate })
-				.finally(() => {
-					settled = true;
-				});
-
-			await terminal.press(KEY.enter);
-			expect(settled).toBe(false);
-			expect(terminal.screen).toContain("Pick another name.");
-
-			await terminal.press("a", KEY.enter);
-			expect(await answer).toBe("a");
-		});
-
-		it("should resolve to undefined on Ctrl+C", async () => {
-			const answer = service.text({ message: "Name" });
-			await terminal.press(KEY.ctrlC);
-			expect(await answer).toBeUndefined();
-		});
-
+	describe("details", () => {
 		it("should show the description and hint under the message", async () => {
-			const answer = service.text({
+			const answer = service.confirm({
 				message: "Source paths",
 				description: "Folders to scan.",
 				hint: "Found code in: src",
@@ -273,35 +206,6 @@ describe("ConsolePromptService", () => {
 
 		it("should resolve to undefined on Ctrl+C", async () => {
 			const answer = service.select({ message: "Pick", choices });
-			await terminal.press(KEY.ctrlC);
-			expect(await answer).toBeUndefined();
-		});
-	});
-
-	describe("multiSelect", () => {
-		const choices = [
-			{ value: "a", label: "A" },
-			{ value: "b", label: "B" },
-		] as const;
-
-		it("should resolve to the initial values on Enter", async () => {
-			const answer = service.multiSelect({
-				message: "Pick",
-				choices,
-				initialValues: ["b"],
-			});
-			await terminal.press(KEY.enter);
-			expect(await answer).toEqual(["b"]);
-		});
-
-		it("should resolve to the toggled choices", async () => {
-			const answer = service.multiSelect({ message: "Pick", choices });
-			await terminal.press(KEY.space, KEY.down, KEY.space, KEY.enter);
-			expect(await answer).toEqual(["a", "b"]);
-		});
-
-		it("should resolve to undefined on Ctrl+C", async () => {
-			const answer = service.multiSelect({ message: "Pick", choices });
 			await terminal.press(KEY.ctrlC);
 			expect(await answer).toBeUndefined();
 		});

@@ -3,6 +3,7 @@ import { Command } from "../../platform/commands/commands.js";
 import {
 	GlobalOptions,
 	OptionDescriptor,
+	flagName,
 } from "../../platform/environment/args.js";
 import {
 	diagnosticUrl,
@@ -117,15 +118,15 @@ const optionBrief = ({
 	short,
 	type,
 	multiple,
-	negatable,
+	negation,
 	values,
 	default: fallback,
 }: OptionDescriptor) => ({
-	name,
+	name: flagName({ name, negation }),
 	...(short && { short }),
 	type,
 	...(multiple && { multiple }),
-	...(negatable && { negatable }),
+	...(negation === "also" && { negatable: true }),
 	...(values && { enum: values }),
 	...(fallback !== undefined && { default: fallback }),
 });

@@ -1,1 +1,0 @@
-{ "steps": [["init", "-y", "--unmatched", "leave"], ["check"], ["write"]] }

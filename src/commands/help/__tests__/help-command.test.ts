@@ -32,6 +32,7 @@ import {
 import {
 	GlobalOptions,
 	OptionDescriptor,
+	flagName,
 } from "../../../platform/environment/args.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { Registry } from "../../../platform/registry/registry.js";
@@ -39,7 +40,7 @@ import { firstSentence } from "../help-pages.js";
 import { helpTexts } from "../help-texts.js";
 
 const flagText = (option: OptionDescriptor) =>
-	option.negatable ? `[no-]${option.name}` : option.name;
+	option.negation === "also" ? `[no-]${option.name}` : flagName(option);
 
 describe("help command", () => {
 	const registry = Registry.as<CommandRegistry>(Extensions.Commands);
@@ -683,7 +684,7 @@ describe("help command", () => {
 				info.mockClear();
 				await help(command.id);
 
-				const options = [
+				const options: readonly OptionDescriptor[] = [
 					...GlobalOptions,
 					...(command.metadata.options ?? []),
 				];
@@ -692,7 +693,7 @@ describe("help command", () => {
 
 					const argv = [
 						command.id,
-						`--${option.name}`,
+						`--${flagName(option)}`,
 						...(option.type === "string"
 							? [option.values?.[0] ?? "x"]
 							: []),
