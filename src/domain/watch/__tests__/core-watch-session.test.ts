@@ -613,6 +613,24 @@ describe("CoreWatchSession", () => {
 			expect(updates).toHaveLength(1);
 		});
 
+		it("should report a change to the compiled path, which a step reads, though its warnings stay the same", async () => {
+			await writeConfig("/repo/default.rogen.json", {
+				compiledPath: "dist",
+			});
+			await fs.writeFile("/repo/src/A.luau", "");
+			await fs.writeFile("/repo/dist/A.luau", "return 1");
+			await start(["."], { contentEdits: { ignoring: [] } });
+			await fs.writeFile("/repo/default.project.json", "{}");
+
+			await fs.writeFile("/repo/dist/A.luau", "return 2");
+			await settle();
+
+			expect(updates).toHaveLength(2);
+			expect(updates[1].cause).toEqual({ kind: "compiled", files: 1 });
+			expect(updates[1].reports[0].outcome.kind).toBe("unchanged");
+			expect(await fs.readFile("/repo/default.project.json")).toBe("{}");
+		});
+
 		it("should not rewrite for a change to a file the step writes", async () => {
 			await fs.writeFile("/repo/src/sourcemap.json", "{}");
 			await start(["."], {

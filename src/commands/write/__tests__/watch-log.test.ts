@@ -34,7 +34,6 @@ const change = (type: FileChangeType, file: string): FileChange => ({
 const updateOf = (update: Partial<WatchUpdate>): WatchUpdate => ({
 	at: new Date(2026, 0, 2, 3, 4, 5),
 	cause: { kind: "initial" },
-	rewrote: true,
 	changes: [],
 	notices: [],
 	reports: [],
