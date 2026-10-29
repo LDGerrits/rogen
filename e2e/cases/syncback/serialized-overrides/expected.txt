@@ -1,0 +1,54 @@
+$ rogen syncback -i place.rbxl -y
+exit 0
+stderr:
+  rogen syncback · default.rogen.json
+  default.project.json · wrote
+  Wrote 1 project.
+  default.rogen.json - warning: ReplicatedStorage/Shared is in the place and no folder of the project can take it, so it was left out: Rojo wrote init.meta.json for a property or attribute changed in Studio, and no one folder of the project is this instance; set it on its node in the tree of the config. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Combat/Hit changed in the place, but it is compiled into dist, so syncback left it out. Make the change in the source files. (syncback.compiledPath)
+  Syncback wrote 2 changes.
+
+written:
+  default.project.json
+  default.rogen.json
+  place/Workspace/Baseplate.model.json
+
+default.rogen.json:
+{
+  "name": "Game",
+  "tree": {
+    "$className": "DataModel",
+    "Workspace": {
+      "$path": "place/Workspace",
+      "$properties": {
+        "SerializedOverrides": {
+          "BinaryString": ""
+        }
+      }
+    }
+  },
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "compiledPath": "dist"
+}
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Combat: Folder
+        Shared: Folder
+          Util: ModuleScript  <- dist/Combat/Shared/Util.luau
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Combat: ModuleScript  <- dist/Combat/Server/Combat.luau
+      Effects: Folder
+        Spark: ModuleScript  <- dist/Combat/Server/Effects/Spark.luau
+      Hit: ModuleScript  <- dist/Combat/Server/Hit.luau
+  Workspace: Workspace  <- place/Workspace/init.meta.json
+    Baseplate: Part  <- place/Workspace/Baseplate.model.json
