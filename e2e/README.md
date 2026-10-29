@@ -47,7 +47,8 @@ e2e/cases/<area>/<case>/
   with `game` and `Instance` as in Studio's command bar. A `.rbxlx` name saves XML.
   This is how syncback cases say what an edit in Studio was, with no place file to
   keep in step with `project/` by hand. It builds `default.project.json` from the
-  project root, so a case with `place` takes no `links` or `cwd`.
+  project root, or the project file of its only config, so a case with `place`
+  takes no `links` or `cwd`.
 - Files that a run created or changed are listed under `written:`. `*.rogen.json` and
   `*.rogen.jsonc` files are printed, and every `*.project.json` is passed to Rojo.
 

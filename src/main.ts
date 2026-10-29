@@ -325,6 +325,7 @@ class RogenMain {
 		services.set(
 			SyncbackService,
 			new CoreSyncbackService(
+				configService,
 				fileSystemService,
 				writeService,
 				rojoCommandService

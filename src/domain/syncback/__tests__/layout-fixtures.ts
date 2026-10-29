@@ -17,10 +17,11 @@ export const ROUTES = {
 	"*": "ReplicatedStorage/Shared",
 };
 
-/** The layout the write finds for `files`, paths from the repo root and each an empty file. */
+/** The layout the write finds for `files`, paths from the repo root and each an empty file, beside the other configs of the project in `others`. */
 export async function layoutOf(
 	files: readonly string[],
-	spec: ResolvedConfigSpec = {}
+	spec: ResolvedConfigSpec = {},
+	others: readonly ResolvedConfigSpec[] = []
 ): Promise<SyncbackLayout> {
 	const fs = new MemoryFileSystemService();
 	await writeFiles(fs, ...files);
@@ -28,7 +29,11 @@ export async function layoutOf(
 	const located = (
 		await locateIn(writeServiceOf(fs, new CoreIndexService(fs)), config)
 	).unwrap();
-	return new SyncbackLayout(config, located.files);
+	return new SyncbackLayout(
+		config,
+		located.files,
+		others.map((other) => configOf(other))
+	);
 }
 
 export { abs };

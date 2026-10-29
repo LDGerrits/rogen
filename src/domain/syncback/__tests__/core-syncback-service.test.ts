@@ -10,7 +10,11 @@ import {
 	configOf,
 	writeFiles,
 } from "../../write/__tests__/fixtures.js";
-import { selectionOf } from "../../config/__tests__/mock-config-service.js";
+import {
+	MockConfigService,
+	mockEntry,
+	selectionOf,
+} from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
 	RojoCommandRequest,
@@ -71,6 +75,7 @@ class FakeRojo implements RojoCommandService {
 
 describe("CoreSyncbackService", () => {
 	let fs: MemoryFileSystemService;
+	let configs: MockConfigService;
 	let rojo: FakeRojo;
 	let service: CoreSyncbackService;
 	let config: ResolvedConfig;
@@ -99,7 +104,9 @@ describe("CoreSyncbackService", () => {
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
 		rojo = new FakeRojo(fs);
+		configs = new MockConfigService([]);
 		service = new CoreSyncbackService(
+			configs,
 			fs,
 			writeServiceOf(fs, new CoreIndexService(fs)),
 			rojo
@@ -455,6 +462,34 @@ describe("CoreSyncbackService", () => {
 		expect(result.changes).toEqual([
 			{ kind: "write", file: abs("src/Quest/Server/Main.luau") },
 		]);
+		expect(result.warnings).toEqual([]);
+	});
+
+	it("should write a new feature into the one source path no other config beside it lists", async () => {
+		await prepare(["shared/Combat/Server/Combat.luau"], {
+			file: abs("game.rogen.json"),
+			sourcePaths: [abs("shared"), abs("place")],
+		});
+		configs.entries = [
+			mockEntry({}, abs("game.rogen.json")),
+			mockEntry(
+				{ sourcePaths: [abs("shared"), abs("lobby")] },
+				abs("lobby.rogen.json")
+			),
+		];
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Quest", "Main.luau"),
+				"return 1"
+			);
+			return [];
+		};
+
+		const result = (await service.apply(request)).unwrap();
+
+		expect(await fs.readFile(abs("place/Quest/Server/Main.luau"))).toBe(
+			"return 1"
+		);
 		expect(result.warnings).toEqual([]);
 	});
 

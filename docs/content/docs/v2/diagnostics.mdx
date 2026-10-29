@@ -1090,7 +1090,7 @@ Syncback writes a new instance where routing would place a file for it, in the s
 
 - No route puts files where the instance's parent is.
 - Two routes do.
-- The project has several source paths, and no file beside the instance says which one.
+- The project has several source paths, no file beside the instance says which one, and no one of them is the place's own. A source path is the place's own when its last folder has the place's name, as `src/game` for `game.rogen.json`. When no source path or more than one has that name, the place's own is the one source path that no other config in the config's folder lists.
 - The files beside the instance are split evenly between two folders of one style.
 
 Syncback also uses this warning for changes that it can't write:

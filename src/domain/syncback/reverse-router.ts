@@ -254,7 +254,8 @@ export class ReverseRouter {
 	private asNewFeature(instance: NewInstance): NewPlacement {
 		const { parent, name, folder } = instance;
 		const roots = this.layout.sourcePaths;
-		if (roots.length !== 1)
+		const root = this.layout.ownSourcePath;
+		if (root === undefined)
 			return conflict(
 				roots.length === 0
 					? "the project has no source path"
@@ -263,7 +264,6 @@ export class ReverseRouter {
 		const route = this.routeTo(parent);
 		if (route.kind === "conflict") return conflict(route.reason);
 		const below = parent.slice(route.depth);
-		const [root] = roots;
 		if (route.kind === "fallback")
 			return {
 				kind: "placed",

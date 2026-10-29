@@ -2,7 +2,7 @@ import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { UsageError, failureReason } from "../../base/errors.js";
 import { ignoringGlob } from "../../base/glob.js";
-import { contains, toNative, toPosix } from "../../base/path.js";
+import { contains, samePath, toNative, toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -21,6 +21,7 @@ import {
 	PlacedLocation,
 } from "../write/write-service.js";
 import { SYNCBACK_FILES, isSyncbackFileName } from "../config/config.js";
+import { ConfigService, validFile } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { instanceKey } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
@@ -179,6 +180,7 @@ export class CoreSyncbackService implements SyncbackService {
 	declare readonly _serviceBrand: undefined;
 
 	constructor(
+		private readonly configService: ConfigService,
 		private readonly fileSystemService: FileSystemService,
 		private readonly writeService: WriteService,
 		private readonly rojoService: RojoCommandService
@@ -295,6 +297,22 @@ export class CoreSyncbackService implements SyncbackService {
 		return { failed, unplaced };
 	}
 
+	/** The configs beside `project` in its folder, which together with it are the places of one game. */
+	private async otherConfigsOf(
+		project: ResolvedConfig
+	): Promise<ResolvedConfig[]> {
+		const configs: ResolvedConfig[] = [];
+		for (const file of await this.configService.configsIn(
+			project.projectDir
+		)) {
+			if (samePath(file, project.file)) continue;
+			const { config } =
+				validFile(await this.configService.read(file)) ?? {};
+			if (config) configs.push(config);
+		}
+		return configs;
+	}
+
 	/** Whether `dir` holds no file, in it or in any folder below it. */
 	private async isEmptyFolder(dir: string): Promise<boolean> {
 		const entries = await tryWithAsync(() =>
@@ -367,7 +385,11 @@ export class CoreSyncbackService implements SyncbackService {
 			);
 		return ok({
 			mirror,
-			layout: new SyncbackLayout(project, here.files),
+			layout: new SyncbackLayout(
+				project,
+				here.files,
+				await this.otherConfigsOf(project)
+			),
 			placed,
 			configFile: project.file,
 			dir,

@@ -2,6 +2,7 @@ import path from "path";
 import { containsPosix, toPosix } from "../../base/path.js";
 import { FileLocation, PlacedLocation } from "../write/write-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
+import { configStem } from "../config/config.js";
 
 /** How a placed file was routed, which a new file beside it repeats. */
 export type Style = "folder" | "suffix" | "marker" | "fallback";
@@ -31,14 +32,20 @@ export class SyncbackLayout {
 	private readonly placed: readonly PlacedLocation[];
 	private readonly roots: readonly string[];
 	private readonly keys: ResolvedConfig["keys"];
+	private readonly shared: ReadonlySet<string>;
 
 	constructor(
 		readonly config: ResolvedConfig,
-		locations: readonly FileLocation[]
+		locations: readonly FileLocation[],
+		/** The other configs of the project, whose source paths are shared code where this config lists them too. */
+		others: readonly ResolvedConfig[] = []
 	) {
 		this.placed = locations.filter(isPlaced);
 		this.roots = config.sourcePaths.map(toPosix);
 		this.keys = config.keys;
+		this.shared = new Set(
+			others.flatMap((other) => other.sourcePaths.map(toPosix))
+		);
 	}
 
 	/** Where Rojo reads the source folder `dir` from: under the compiled path when a tool writes the files there. */
@@ -53,6 +60,18 @@ export class SyncbackLayout {
 
 	get sourcePaths(): readonly string[] {
 		return this.roots;
+	}
+
+	/** The source path a new feature with nothing beside it goes in: the only one, else the one named for the place, else the one no other config of the project lists; none when that gives no one answer. */
+	get ownSourcePath(): string | undefined {
+		if (this.roots.length === 1) return this.roots[0];
+		const names = [configStem(this.config.file), this.config.projectName];
+		const named = this.roots.filter((root) =>
+			names.includes(path.posix.basename(root))
+		);
+		if (named.length === 1) return named[0];
+		const own = this.roots.filter((root) => !this.shared.has(root));
+		return own.length === 1 ? own[0] : undefined;
 	}
 
 	/** The files placed directly under `node`, each as the donor of the layout a new sibling is written in. */

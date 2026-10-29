@@ -130,7 +130,11 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	configsHere(): Promise<string[]> {
-		return this.discovery.list(this.environmentService.cwd);
+		return this.configsIn(this.environmentService.cwd);
+	}
+
+	configsIn(folder: string): Promise<string[]> {
+		return this.discovery.list(folder);
 	}
 
 	plainProjectsHere(): Promise<string[]> {
