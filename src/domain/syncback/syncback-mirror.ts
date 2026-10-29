@@ -91,6 +91,8 @@ export class SyncbackMirror {
 		/** Mirror folders to make even when no file lands in them: plain folders the write made, and the folders nodes are mounted at; relative to the mirror's root. */
 		readonly folders: readonly string[],
 		readonly nodeFolders: readonly NodeFolder[],
+		/** The instance path of each node read from a folder of its own under `~kept`. */
+		private readonly kept: ReadonlyMap<string, readonly string[]>,
 		/** The sync rules of the written file, which apply to the mirror once its files are known. */
 		private readonly rules: readonly SyncRule[]
 	) {}
@@ -111,6 +113,7 @@ export class SyncbackMirror {
 			walk.entries,
 			walk.folders,
 			walk.nodeFolders,
+			walk.keptNodes,
 			rules
 		);
 	}
@@ -154,6 +157,16 @@ export class SyncbackMirror {
 		return rules;
 	}
 
+	/** The instance path a path of the mirror is at: its names, with a node's own folder under `~kept` read as that node. */
+	instancePathOf(mirror: string): string[] {
+		const names = mirror.split("/");
+		const node =
+			names[0] === KEPT
+				? this.kept.get(names.slice(0, 2).join("/"))
+				: undefined;
+		return node ? [...node, ...names.slice(2)] : names;
+	}
+
 	/** The project file or folder a path of the mirror stands for: the entry that is it, else the deepest folder entry it is in; none for a path no entry holds, which is a new instance. */
 	targetOf(mirror: string): string | undefined {
 		const exact = this.entries.find((entry) => entry.mirror === mirror);
@@ -193,6 +206,7 @@ class MirrorWalk {
 	readonly entries: MirrorEntry[] = [];
 	readonly folders: string[] = [];
 	readonly nodeFolders: NodeFolder[] = [];
+	readonly keptNodes = new Map<string, readonly string[]>();
 	private kept = 0;
 
 	/** Every instance path a placed file is at or below, joined with `\0`. */
@@ -292,10 +306,10 @@ class MirrorWalk {
 		if (node.$path === undefined) {
 			const own = at ?? this.spare();
 			if (await this.children(node, instancePath, own))
-				this.mount(node, own);
+				this.mount(node, own, instancePath);
 			else if (this.takesChildren(node, instancePath)) {
 				const empty = this.spare();
-				this.mount(node, empty);
+				this.mount(node, empty, instancePath);
 				this.nodeFolders.push({ mirror: empty, node: instancePath });
 			}
 			return;
@@ -306,6 +320,7 @@ class MirrorWalk {
 		const optional = typeof node.$path !== "string";
 		if (await this.inputs.isFolder(target)) {
 			const own = at ?? this.spare();
+			this.keptNodes.set(own, instancePath);
 			this.entries.push({ mirror: own, target, kind: "folder" });
 			this.repoint(node, own, optional);
 			await this.children(node, instancePath, own, true);
@@ -437,8 +452,13 @@ class MirrorWalk {
 		node.$path = optional ? { optional: at } : at;
 	}
 
-	private mount(node: RojoNode, folder: string): void {
+	private mount(
+		node: RojoNode,
+		folder: string,
+		instancePath: readonly string[]
+	): void {
 		node.$path = path.posix.join(this.inputs.root, folder);
+		this.keptNodes.set(folder, instancePath);
 		this.addFolder(folder);
 	}
 

@@ -602,7 +602,9 @@ export class CoreSyncbackService implements SyncbackService {
 				await this.fileSystemService.readFile(path.join(root, at))
 			);
 		const existing = new Set(
-			copied.map(({ mirror: at }) => CoreSyncbackService.instanceAt(at))
+			copied.map(({ mirror: at }) =>
+				CoreSyncbackService.instanceAt(mirror, at)
+			)
 		);
 		/** Lists a change to `file` when the project compiles it, which syncback must not write. */
 		const leftOut = (
@@ -637,7 +639,10 @@ export class CoreSyncbackService implements SyncbackService {
 					.slice(from, from + COPY_BATCH)
 					.map(async ({ mirror: at, target, modified }) => {
 						const file = toNative(target);
-						const instance = CoreSyncbackService.instanceAt(at);
+						const instance = CoreSyncbackService.instanceAt(
+							mirror,
+							at
+						);
 						if (!present.has(at))
 							return {
 								kind: "remove" as const,
@@ -742,7 +747,7 @@ export class CoreSyncbackService implements SyncbackService {
 		)) {
 			const target = mirror.targetOf(at);
 			if (target === undefined || holding.has(at)) continue;
-			const instance = CoreSyncbackService.instanceAt(at);
+			const instance = CoreSyncbackService.instanceAt(mirror, at);
 			if (!leftOut(toNative(target), instance, "removed"))
 				operations.push({
 					kind: "prune",
@@ -773,7 +778,7 @@ export class CoreSyncbackService implements SyncbackService {
 			if (kind === "prune") {
 				emptied.push({
 					file,
-					instance: CoreSyncbackService.instanceAt(from),
+					instance: CoreSyncbackService.instanceAt(mirror, from),
 				});
 				continue;
 			}
@@ -781,7 +786,7 @@ export class CoreSyncbackService implements SyncbackService {
 			readsAt(path.dirname(file), parent);
 			emptied.push({
 				file,
-				instance: CoreSyncbackService.instanceAt(parent),
+				instance: CoreSyncbackService.instanceAt(mirror, parent),
 				parent,
 			});
 		}
@@ -829,7 +834,7 @@ export class CoreSyncbackService implements SyncbackService {
 		for (const entry of mirror.entries)
 			if (entry.kind === "folder") known.add(entry.mirror);
 		for (const folder of known)
-			existing.add(instanceKey(folder.split("/")));
+			existing.add(instanceKey(mirror.instancePathOf(folder)));
 		for (const { mirror: folder } of mirror.nodeFolders) {
 			const names = folder.split("/");
 			for (let depth = 1; depth < names.length; depth++)
@@ -850,21 +855,23 @@ export class CoreSyncbackService implements SyncbackService {
 				const folder = names.slice(0, -1).join("/");
 				if (
 					!added.folder &&
-					name.startsWith("init.") &&
+					(RojoFile.INIT_FILES.has(name) ||
+						name === RojoFile.INIT_META) &&
 					known.has(folder) &&
 					nodeAt(folder) === undefined
 				) {
+					const parent = mirror.instancePathOf(folder);
 					if (RojoFile.INIT_FILES.has(name))
 						unplaced.push({
 							instance: instanceKey([
-								...names.slice(0, -1),
+								...parent,
 								RojoFile.INIT_NAME,
 							]),
-							reason: `its name makes Rojo write it as ${name}, which Rojo reads as the folder ${instanceKey(names.slice(0, -1))} itself; rename it in Studio`,
+							reason: `its name makes Rojo write it as ${name}, which Rojo reads as the folder ${instanceKey(parent)} itself; rename it in Studio`,
 						});
 					else if (!(await onlyOverrides(added.path)))
 						unplaced.push({
-							instance: instanceKey(names.slice(0, -1)),
+							instance: instanceKey(parent),
 							reason: `Rojo wrote ${name} for a property or attribute changed in Studio, and no one folder of the project is this instance; set it on its node in the tree of the config`,
 						});
 				} else fresh.push(added);
@@ -872,7 +879,7 @@ export class CoreSyncbackService implements SyncbackService {
 			}
 			if (this.isIgnored(prepared, target)) continue;
 			const file = toNative(target);
-			const instance = CoreSyncbackService.instanceAt(added.path);
+			const instance = CoreSyncbackService.instanceAt(mirror, added.path);
 			if (isCompiled(file)) {
 				// Rojo leaves every folder of the mirror in place; one that was there already is not new.
 				if (
@@ -1206,8 +1213,8 @@ export class CoreSyncbackService implements SyncbackService {
 	}
 
 	/** The instance a path of the mirror is, as an instance key: its folders, then the instance its file makes. */
-	private static instanceAt(mirror: string): string {
-		const names = mirror.split("/");
+	private static instanceAt(mirror: SyncbackMirror, at: string): string {
+		const names = mirror.instancePathOf(at);
 		const last = names[names.length - 1];
 		return instanceKey([
 			...names.slice(0, -1),

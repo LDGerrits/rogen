@@ -1121,6 +1121,74 @@ describe("CoreSyncbackService", () => {
 		}
 	);
 
+	it.each(["init.txt", "init.model.json"])(
+		"should place an instance whose name makes Rojo write %s, which Rojo reads as a child of the folder",
+		async (file) => {
+			await prepare([
+				"src/Inventory/Bag@server.luau",
+				"src/Inventory/Save@server.luau",
+			]);
+			rojo.say = async () => {
+				await fs.writeFile(
+					mirror("ServerScriptService", "Inventory", file),
+					file === "init.txt"
+						? "x"
+						: JSON.stringify({ className: "RemoteEvent" })
+				);
+				return [];
+			};
+
+			const plan = (await service.plan(request)).unwrap();
+
+			expect(plan.unplaced).toEqual([]);
+			expect(plan.changes).toEqual([
+				{
+					kind: "write",
+					file: abs(
+						`src/Inventory/${file.replace("init", "init@server")}`
+					),
+				},
+			]);
+		}
+	);
+
+	it("should name an instance called init by its instance path in a node's mirror folder", async () => {
+		await prepare(
+			["src/Combat/Server/Combat.luau", "src/Kit/Tools/Hammer.luau"],
+			{
+				routes: { ...ROUTES, Tools: "ServerScriptService/Tools" },
+				project: {
+					tree: {
+						$className: "DataModel",
+						ServerScriptService: {
+							Tools: { $className: "Configuration" },
+						},
+					},
+				},
+			}
+		);
+		rojo.say = async () => {
+			const { tree } = JSON.parse(rojo.projectTexts[0]);
+			await fs.writeFile(
+				path.join(
+					abs(tree.ServerScriptService.Tools.$path),
+					"init.luau"
+				),
+				"return 2\n"
+			);
+			return [];
+		};
+
+		const plan = (await service.plan(request)).unwrap();
+
+		expect(plan.unplaced).toEqual([
+			{
+				instance: "ServerScriptService/Tools/init",
+				reason: "its name makes Rojo write it as init.luau, which Rojo reads as the folder ServerScriptService/Tools itself; rename it in Studio",
+			},
+		]);
+	});
+
 	it("should not write a file whose only difference is its line endings", async () => {
 		await prepare([]);
 		await fs.writeFile(
