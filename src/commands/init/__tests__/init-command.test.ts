@@ -238,22 +238,18 @@ describe("init command", () => {
 			expect(flags.places).toBe("--no-places");
 		});
 
-		it("should name in the text the flags that reproduce the choices instead", async () => {
-			const flags = await flagsByQuestion({});
+		it("should name in the text each choice with the same flag", async () => {
 			const logService = new MockLogService();
 
 			await runInit(new MockPromptService([], false), logService);
 
-			const tookDefaults = logService.lines.find((line) =>
-				line.includes("Took the defaults")
+			expect(
+				logService.lines.find((line) =>
+					line.includes("Took the defaults")
+				)
+			).toBe(
+				"info: Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules)."
 			);
-			expect(tookDefaults).toContain("--no-places, ");
-			expect(tookDefaults).toContain("--sample, --agent-rules.");
-			expect(flags).toMatchObject({
-				places: "--places",
-				sample: "--no-sample",
-				agentRules: "--no-agent-rules",
-			});
 		});
 	});
 
@@ -266,7 +262,7 @@ describe("init command", () => {
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
 				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
-				"info: Took the defaults: --kind place, --language luau, --no-places, --sample, --agent-rules.",
+				"info: Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules).",
 				"success: Created default.rogen.json.",
 				"success: Created .gitignore.",
 				"success: Created src/Greeter/Shared/Greeting.luau.",
@@ -364,13 +360,14 @@ describe("init command", () => {
 	});
 
 	describe("agent hook", () => {
-		const accepting = () => new MockPromptService({});
+		const withHook = (logService: MockLogService) =>
+			runInit(undefined, logService, { "agent-hook": true });
 
 		it("should say it created the script and the agent's file", async () => {
 			await write(".claude/keep");
 			const logService = new MockLogService();
 
-			await runInit(accepting(), logService);
+			await withHook(logService);
 
 			expect(logService.lines).toEqual(
 				expect.arrayContaining([
@@ -385,7 +382,7 @@ describe("init command", () => {
 			await write(".codex/hooks.json", "{}\n");
 			const logService = new MockLogService();
 
-			await runInit(accepting(), logService);
+			await withHook(logService);
 
 			expect(logService.lines).toContain(
 				"success: Added the Rogen hook to .codex/hooks.json."
@@ -395,12 +392,16 @@ describe("init command", () => {
 			).toHaveLength(1);
 		});
 
-		it("should not write it in a run that can't ask", async () => {
+		it("should leave it out unless given, and say how to add it", async () => {
 			await write(".claude/keep");
+			const logService = new MockLogService();
 
-			await runInit();
+			await runInit(new MockPromptService({}), logService);
 
 			expect(await exists(".agents/hooks/rogen-check.mjs")).toBe(false);
+			expect(logService.lines).toContain(
+				"info: To have Claude Code report Rogen's warnings when it ends its turn, run 'rogen init --agent-hook'."
+			);
 		});
 	});
 
@@ -422,7 +423,7 @@ describe("init command", () => {
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
 				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
-				"info: Took the defaults: --kind place, --language luau, --no-places, --sample, --agent-rules.",
+				"info: Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules).",
 				"success: Would create default.rogen.json.",
 				"success: Would create .gitignore.",
 				"success: Would create src/Greeter/Shared/Greeting.luau.",

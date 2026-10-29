@@ -36,7 +36,7 @@ export class InitQuestions {
 	) {}
 
 	private decide<T extends InitDecision["value"]>(
-		question: string,
+		question: InitDecision["question"],
 		value: T,
 		flag: string
 	): T {
@@ -64,7 +64,7 @@ export class InitQuestions {
 		if (this.choices.agentRules !== undefined)
 			return this.choices.agentRules;
 		if (!this.interactive)
-			return this.decide("agentRules", true, "--agent-rules");
+			return this.decide("agentRules", true, "--no-agent-rules");
 		return this.promptService.confirm({
 			message: `Add Rogen's rules for coding agents to ${fileName}?`,
 			description:
@@ -82,7 +82,7 @@ export class InitQuestions {
 		return this.promptService.confirm({
 			message: `Add a hook that reports Rogen warnings to ${joinedWithAnd(agents)}?`,
 			description: `Writes ${HOOK_SCRIPT_FILE} and registers it with ${agents.length === 1 ? "the agent" : "each agent"}. It runs when the agent is about to stop, on the files it changed.`,
-			initialValue: true,
+			initialValue: false,
 		});
 	}
 
@@ -90,7 +90,7 @@ export class InitQuestions {
 	sample(): boolean {
 		const given = this.choices.sample;
 		if (given !== undefined) return given;
-		if (!this.interactive) this.decide("sample", true, "--sample");
+		if (!this.interactive) this.decide("sample", true, "--no-sample");
 		return true;
 	}
 
@@ -108,7 +108,11 @@ export class InitQuestions {
 				(folder) => folder === PROJECTS_FOLDER
 			);
 		if (!this.interactive)
-			return this.decide("places", several, "--places");
+			return this.decide(
+				"places",
+				several,
+				several ? "--no-places" : "--places"
+			);
 		const answer = await this.essential.select<"one" | "several">({
 			message: "One place or several?",
 			choices: [

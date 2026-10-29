@@ -191,7 +191,7 @@ describe("init for several places", () => {
 		});
 
 		it("should ignore the project files Rogen writes", async () => {
-			const planned = await plan({ skipGit: false });
+			const planned = await plan({ skipGit: undefined });
 
 			expect(fileOf(planned, ".gitignore")?.content).toContain(
 				"sourcemap.json\n*.project.json\n"
@@ -361,7 +361,7 @@ describe("init for several places", () => {
 		});
 
 		it("should ignore what each place compiles", async () => {
-			const result = await planned({ skipGit: false });
+			const result = await planned({ skipGit: undefined });
 
 			expect(fileOf(result, ".gitignore")?.content).toContain(
 				"projects/*/out\nprojects/*/include\n"

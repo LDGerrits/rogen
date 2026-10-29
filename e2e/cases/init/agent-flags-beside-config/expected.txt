@@ -4,7 +4,7 @@ stdout:
   rogen init
   init failed.
 stderr:
-  error: --language shapes a new config, and default.rogen.json is here already. Beside a config, --agent-rules and --agent-hook add only the agent files. To change the config, edit it and run 'rogen check'.
+  error: --language luau shapes a new config, and default.rogen.json is here already. Beside a config, --agent-rules and --agent-hook add only the agent files. To change the config, edit it and run 'rogen check'.
 
 $ rogen init --agent-hook --no-places --json
 exit 2
@@ -29,9 +29,11 @@ $ rogen init --agent-rules --skip-git -y
 exit 0
 stdout:
   rogen init
-  Took the defaults: --no-agent-hook.
+  Took the defaults, each with the flag that changes it: no agent hook (--agent-hook).
   Created AGENTS.md.
   Created CLAUDE.md.
+  Next steps
+    To have Claude Code report Rogen's warnings when it ends its turn, run 'rogen init --agent-hook'.
   Wrote 2 files.
 
 $ rogen init --agent-hook --skip-git -n --json

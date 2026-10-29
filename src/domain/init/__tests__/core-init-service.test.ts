@@ -26,7 +26,7 @@ import {
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { CoreInitService } from "../core-init-service.js";
-import { InitPlan, InitWritten } from "../init-service.js";
+import { InitChoices, InitPlan, InitWritten } from "../init-service.js";
 
 const directory = path.resolve("/mock/my-game");
 
@@ -230,8 +230,8 @@ describe("CoreInitService", () => {
 		it.each([
 			[{ language: "luau" }, "--language"],
 			[{ places: false }, "--no-places"],
-			[{ kind: "model" as const }, "--kind"],
-			[{ sample: false }, "--no-sample"],
+			[{ kind: "model" as const }, "--kind model"],
+			[{ sample: false as const }, "--no-sample"],
 		])(
 			"should be a usage error when %o comes with an agent flag, naming %s",
 			async (shaping, flag) => {
@@ -240,7 +240,6 @@ describe("CoreInitService", () => {
 				const result = await serviceFor(new MockPromptService([])).plan(
 					{
 						choices: {
-							agentHook: false,
 							agentRules: true,
 							...shaping,
 						},
@@ -398,12 +397,12 @@ describe("CoreInitService", () => {
 		const answersEverything = () => new MockPromptService({});
 		const names = (plan: { files: readonly PlannedFile[] } | undefined) =>
 			plan?.files.map(({ fileName }) => fileName);
-		const planned = async (prompts = answersEverything()) =>
-			(
-				await serviceFor(askingEach(prompts)).plan({
-					choices: { sample: false },
-				})
-			).unwrap();
+		const planned = async (
+			prompts = answersEverything(),
+			choices: InitChoices = { sample: false, agentHook: true }
+		) => (await serviceFor(askingEach(prompts)).plan({ choices })).unwrap();
+		const asking = (prompts: MockPromptService) =>
+			planned(prompts, { sample: false });
 		const fileOf = (
 			plan: { files: readonly PlannedFile[] } | undefined,
 			name: string
@@ -438,6 +437,22 @@ describe("CoreInitService", () => {
 					],
 				},
 			});
+		});
+
+		it("should leave it out when the plan is created as shown, and say how to add it", async () => {
+			await write(".claude/keep", "");
+
+			const plan = (
+				await serviceFor(new MockPromptService({})).plan({
+					choices: { sample: false },
+				})
+			).unwrap();
+
+			expect(names(plan)).not.toContain(SCRIPT);
+			expect(names(plan)).not.toContain(CLAUDE);
+			expect(plan?.nextSteps.edits).toContain(
+				"To have Claude Code report Rogen's warnings when it ends its turn, run 'rogen init --agent-hook'."
+			);
 		});
 
 		it("should write a CLAUDE.md that imports AGENTS.md where Claude Code is in use and has none", async () => {
@@ -500,7 +515,7 @@ describe("CoreInitService", () => {
 		it("should not offer it where nothing says an agent is in use", async () => {
 			const prompts = answersEverything();
 
-			const plan = await planned(prompts);
+			const plan = await asking(prompts);
 
 			expect(names(plan)).not.toContain(SCRIPT);
 			expect(
@@ -521,22 +536,24 @@ describe("CoreInitService", () => {
 			await write(".codex/keep", "");
 			const prompts = answersEverything();
 
-			await planned(prompts);
+			await asking(prompts);
 
 			expect(prompts.asked.at(-1)).toBe(
 				"Add a hook that reports Rogen warnings to Claude Code and Codex?"
 			);
 		});
 
-		it("should not write it when the question is declined", async () => {
+		it("should leave it out under Customise unless the question is answered yes", async () => {
 			await write(".claude/keep", "");
-			const declined = new MockPromptService({
-				"Add a hook that reports Rogen warnings to Claude Code?": false,
+			const accepted = new MockPromptService({
+				"Add a hook that reports Rogen warnings to Claude Code?": true,
 			});
 
-			const plan = await planned(declined);
+			const taken = await asking(answersEverything());
+			const added = await asking(accepted);
 
-			expect(names(plan)).not.toContain(SCRIPT);
+			expect(names(taken)).not.toContain(SCRIPT);
+			expect(names(added)).toContain(SCRIPT);
 		});
 
 		it("should register it in a file that exists, keeping what it holds", async () => {
@@ -590,7 +607,12 @@ describe("CoreInitService", () => {
 				})
 			);
 
-			expect(names(await planned())).not.toContain(SCRIPT);
+			const plan = await planned();
+
+			expect(names(plan)).not.toContain(SCRIPT);
+			expect(plan?.notes).toContain(
+				"The Rogen hook is registered for Claude Code already."
+			);
 		});
 
 		it("should register a new agent without writing over a script that exists", async () => {

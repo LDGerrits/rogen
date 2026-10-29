@@ -54,8 +54,26 @@ describe("init choices given as flags", () => {
 				{ question: "kind", value: "place", flag: "--kind" },
 				{ question: "language", value: "luau", flag: "--language" },
 				{ question: "places", value: false, flag: "--places" },
-				{ question: "sample", value: true, flag: "--sample" },
+				{ question: "sample", value: true, flag: "--no-sample" },
 				{ question: "skipGit", value: false, flag: "--skip-git" },
+			]);
+		});
+
+		it("should name --no-places when a projects folder makes several places the default", async () => {
+			const questions = new InitQuestions(
+				new MockPromptService([], false),
+				false,
+				{}
+			);
+			const target = directoryOf({
+				workspace: { ...rbxts, codeFolders: ["projects"] },
+				existing: ["projects"],
+			});
+
+			await questions.places(target, target.workspace.language);
+
+			expect(questions.decided).toEqual([
+				{ question: "places", value: true, flag: "--no-places" },
 			]);
 		});
 
@@ -65,7 +83,7 @@ describe("init choices given as flags", () => {
 				skipGit: true,
 				language: "luau",
 				places: false,
-				sample: true,
+				sample: false,
 			});
 
 			expect(questions.decided).toEqual([]);
@@ -92,7 +110,7 @@ describe("init choices given as flags", () => {
 		});
 	});
 
-	describe("--sample", () => {
+	describe("the sample", () => {
 		const fileNames = async (choices: InitChoices) =>
 			(await run(luau, choices)).asked
 				.unwrap()
@@ -125,9 +143,7 @@ describe("init choices given as flags", () => {
 			expect(asked.unwrap()?.sample).toBe(false);
 			expect(asked.unwrap()?.tree).toEqual({ kind: "new" });
 			expect(await fileNames({ sample: false })).toEqual([".gitignore"]);
-			expect(questions.decided.map(({ flag }) => flag)).not.toContain(
-				"--sample"
-			);
+			expect(decidedFlags(questions)).not.toContain("--no-sample");
 		});
 
 		it("should write none in a folder with code, and take that for the default", async () => {
@@ -137,9 +153,7 @@ describe("init choices given as flags", () => {
 			);
 
 			expect(asked.unwrap()?.sample).toBe(false);
-			expect(questions.decided.map(({ flag }) => flag)).not.toContain(
-				"--sample"
-			);
+			expect(decidedFlags(questions)).not.toContain("--no-sample");
 		});
 
 		it("should write it in a new roblox-ts project, whose starter tool sets the folder up", async () => {
@@ -154,23 +168,6 @@ describe("init choices given as flags", () => {
 
 			expect(asked.unwrap()?.sample).toBe(false);
 			expect(asked.unwrap()?.scaffold).toBeUndefined();
-		});
-
-		it("should refuse --sample where it can't be written, saying why", async () => {
-			expect(
-				(
-					await refused(
-						run({ ...luau, codeFolders: ["lib"] }, { sample: true })
-					)
-				).message
-			).toBe("--sample is for a folder with no code, and lib has some.");
-			expect(
-				(await refused(run(luau, { sample: true, kind: "model" })))
-					.message
-			).toBe("--sample is for a place, not for a model.");
-			expect(
-				(await refused(run(rbxts, { sample: true }))).message
-			).toContain("--sample isn't written for roblox-ts here");
 		});
 	});
 
@@ -205,12 +202,9 @@ describe("init choices given as flags", () => {
 			expect(decidedFlags(questions)).not.toContain("--project-file");
 		});
 
-		it("should refuse --places and --sample, saying to move the file away first", async () => {
+		it("should refuse --places, saying to move the file away first", async () => {
 			expect((await refused(beside({ places: true }))).message).toBe(
 				"--places starts a new tree, and default.project.json is here, which init lifts. Move default.project.json away first, or leave --places out."
-			);
-			expect((await refused(beside({ sample: true }))).message).toBe(
-				"--sample needs a new tree, and default.project.json is here, which init lifts. Move default.project.json away first, or leave --sample out."
 			);
 		});
 
@@ -244,7 +238,7 @@ describe("the yes or no questions", () => {
 		await asked.addAgentHook(["x"]);
 
 		expect(asked.decided).toEqual([
-			{ question: "agentRules", value: true, flag: "--agent-rules" },
+			{ question: "agentRules", value: true, flag: "--no-agent-rules" },
 			{ question: "agentHook", value: false, flag: "--agent-hook" },
 		]);
 	});

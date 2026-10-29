@@ -64,9 +64,10 @@ stdout:
       <PATH>    The folder to start the project in, made when it is not there.
   
   OPTIONS:
-          --[no-]agent-hook     Whether to add the hook that reports Rogen warnings to the coding
-                                agents found. Not added when not given. In a project that has a
-                                config, it adds it there, and takes no flag that shapes a config.
+          --agent-hook          Add the hook that reports Rogen warnings to the coding agents found.
+                                Added only when given, or chosen under Customise. In a project that
+                                has a config, it adds it there, and takes no flag that shapes a
+                                config.
           --[no-]agent-rules    Whether to add Rogen's rules for coding agents to the agent file.
                                 Added when not given, and imported into CLAUDE.md and GEMINI.md. In a
                                 project that has a config, it adds them there, and takes no flag that
@@ -94,11 +95,10 @@ stdout:
                                 tsconfig.json, more by copying that folder. One place when not given,
                                 or several where a projects folder exists for roblox-ts.
       -q, --quiet               Only print errors.
-          --[no-]sample         Whether a new place starts with the Greeter sample. It is three
-                                hello-world scripts in src/Greeter, Rojo's Baseplate and lighting in
-                                place, which the tree mounts, and a README. Written when not given, in
-                                a folder with no code. --no-sample leaves src empty and writes no
-                                place.
+          --no-sample           Leave the Greeter sample out, for an empty src and no place. The
+                                sample is three hello-world scripts in src/Greeter, Rojo's Baseplate
+                                and lighting in place, which the tree mounts, and a README; a new
+                                place in a folder with no code gets it.
           --skip-git            Leave git out of a new project: write no .gitignore and run no git
                                 init. Otherwise a .gitignore is written where none is, and git init
                                 runs where no work tree holds the folder.

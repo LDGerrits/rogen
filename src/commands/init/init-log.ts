@@ -9,7 +9,6 @@ import {
 	InitPlan,
 	InitWritten,
 	NextSteps,
-	booleanFlag,
 } from "../../domain/init/init-service.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ReportedError } from "../../platform/commands/commands.js";
@@ -78,18 +77,22 @@ export const initDocumentShape = S.object({
 	),
 });
 
-/** A choice as the flags that make it, so the line can be copied: `--no-places`, `--language luau`. */
-function flagsOf({ question, value, flag }: InitDecision): string[] {
-	if (question === "skipGit") return value === true ? [flag] : [];
-	if (typeof value === "boolean") return [booleanFlag(flag, value)];
-	return [`${flag} ${value}`];
-}
+/** How the defaults line names each choice's value. */
+const VALUE_NAMES: Record<
+	InitDecision["question"],
+	(value: InitDecision["value"]) => string
+> = {
+	kind: (kind) => `a ${kind}`,
+	language: (language) => String(language),
+	places: (several) => (several ? "several places" : "one place"),
+	sample: (sample) => (sample ? "the Greeter sample" : "no sample"),
+	skipGit: (skip) => (skip ? "no git" : "a git repository"),
+	agentRules: (rules) => (rules ? "agent rules" : "no agent rules"),
+	agentHook: (hook) => (hook ? "the agent hook" : "no agent hook"),
+};
 
-/** A choice with the flag that changes it: `--no-sample` for a sample init writes, `--language` for a language. */
-const flipped = (decision: InitDecision): InitDecision =>
-	typeof decision.value === "boolean"
-		? { ...decision, flag: booleanFlag(decision.flag, !decision.value) }
-		: decision;
+const describedChoice = ({ question, value, flag }: InitDecision) =>
+	`${VALUE_NAMES[question](value)} (${flag})`;
 
 /** The tool that scaffolds the project is reported as the command it is. */
 const asCommand = (
@@ -171,7 +174,7 @@ export class InitLog implements InitReporter {
 			this.logService.diagnostic(warning);
 		if (plan.decided.length > 0)
 			this.logService.info(
-				`Took the defaults: ${plan.decided.flatMap(flagsOf).join(", ")}.`
+				`Took the defaults, each with the flag that changes it: ${plan.decided.map(describedChoice).join(", ")}.`
 			);
 	}
 
@@ -292,7 +295,7 @@ export class InitJsonLog implements InitReporter {
 	) {}
 
 	begin(plan: InitPlan): void {
-		this.decided = plan.decided.map(flipped);
+		this.decided = plan.decided;
 	}
 
 	written(written: InitWritten): void {

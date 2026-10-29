@@ -3,7 +3,7 @@ exit 0
 stdout:
   rogen init
   Syncing from dist-ts, where roblox-ts compiles to.
-  Took the defaults: --kind place, --language roblox-ts, --agent-rules.
+  Took the defaults, each with the flag that changes it: a place (--kind), roblox-ts (--language), a git repository (--skip-git), agent rules (--no-agent-rules).
   Created default.rogen.json.
   Created .gitignore.
   Created AGENTS.md.

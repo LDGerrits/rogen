@@ -3,7 +3,7 @@ exit 0
 stdout:
   rogen init
   The Greeter sample is the feature in game/src/common, which every place shares, Game in game/src/game, and Rojo's sample Baseplate and lighting in game/place/game. Pass --no-sample for empty source folders.
-  Took the defaults: --kind place, --language luau, --sample, --agent-rules.
+  Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), the Greeter sample (--no-sample), agent rules (--no-agent-rules).
   Created game/game.rogen.json.
   Created game/src/common/Greeter/Shared/Greeting.luau.
   Created game/src/common/Greeter/Server/Greeter.server.luau.

@@ -1,4 +1,5 @@
 import { Result, ok } from "../../base/result.js";
+import { joinedWithAnd } from "../../base/strings.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { AgentFile } from "./agent/agent-file.js";
 import { AgentHooks } from "./agent/agent-hooks.js";
@@ -53,6 +54,10 @@ export class AgentSetup implements Setup<AgentChoices> {
 				)
 			);
 		if (hook) builder.addAgentHook(this.hooks);
+		else if (this.hooks.offered)
+			builder.addEdit(
+				`To have ${joinedWithAnd(this.hooks.agents)} report Rogen's warnings when ${this.hooks.agents.length === 1 ? "it ends its turn" : "they end their turn"}, run 'rogen init --agent-hook'.`
+			);
 		builder.addSummary(
 			"Agents",
 			[
@@ -65,6 +70,11 @@ export class AgentSetup implements Setup<AgentChoices> {
 		if (this.agentFile.hasBlock && this.questions.choices.agentRules)
 			builder.addNote(
 				`Rogen's rules are in ${this.agentFile.blockFileName} already. A 'rogen write' keeps them current.`
+			);
+		const { registered } = this.hooks;
+		if (this.questions.choices.agentHook && registered.length > 0)
+			builder.addNote(
+				`The Rogen hook is registered for ${joinedWithAnd(registered)} already.`
 			);
 		for (const note of this.hooks.notes) builder.addNote(note);
 	}

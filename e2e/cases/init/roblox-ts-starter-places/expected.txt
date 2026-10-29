@@ -5,7 +5,7 @@ stdout:
   Starts from create-roblox-ts, which writes package.json and the compiler's settings.
   Syncing from out, where roblox-ts compiles to.
   The Greeter sample is the feature in projects/common/src, which every place shares, Game in projects/game/src, and Rojo's sample Baseplate and lighting in projects/game/place. Pass --no-sample for empty source folders.
-  Took the defaults: --kind place, --sample, --agent-rules.
+  Took the defaults, each with the flag that changes it: a place (--kind), the Greeter sample (--no-sample), agent rules (--no-agent-rules).
   Ran npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild.
   Created projects/game/default.rogen.json.
   Created projects/common/src/Greeter/shared/Greeting.ts.

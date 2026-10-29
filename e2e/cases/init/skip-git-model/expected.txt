@@ -3,7 +3,7 @@ exit 0
 stdout:
   rogen init
   Started a model project: its tree mounts src, and Rogen adds no routes to a model.
-  Took the defaults: --language luau, --agent-rules.
+  Took the defaults, each with the flag that changes it: luau (--language), agent rules (--no-agent-rules).
   Created default.rogen.json.
   Created README.md.
   Created src/init.luau.

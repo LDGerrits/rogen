@@ -1,1 +1,1 @@
-{ "steps": [["init", "--non-interactive"]] }
+{ "steps": [["init", "--non-interactive"]], "output": ["init"] }

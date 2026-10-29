@@ -63,9 +63,9 @@ const InitOptions = [
 	{
 		name: "sample",
 		type: "boolean",
-		negatable: true,
+		negatedOnly: true,
 		description:
-			"Whether a new place starts with the Greeter sample. It is three hello-world scripts in src/Greeter, Rojo's Baseplate and lighting in place, which the tree mounts, and a README. Written when not given, in a folder with no code. --no-sample leaves src empty and writes no place.",
+			"Leave the Greeter sample out, for an empty src and no place. The sample is three hello-world scripts in src/Greeter, Rojo's Baseplate and lighting in place, which the tree mounts, and a README; a new place in a folder with no code gets it.",
 	},
 	{
 		name: "places",
@@ -84,9 +84,8 @@ const InitOptions = [
 	{
 		name: "agent-hook",
 		type: "boolean",
-		negatable: true,
 		description:
-			"Whether to add the hook that reports Rogen warnings to the coding agents found. Not added when not given. In a project that has a config, it adds it there, and takes no flag that shapes a config.",
+			"Add the hook that reports Rogen warnings to the coding agents found. Added only when given, or chosen under Customise. In a project that has a config, it adds it there, and takes no flag that shapes a config.",
 	},
 ] as const;
 

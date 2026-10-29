@@ -5,7 +5,7 @@ stdout:
   Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every write.
   Left out ReplicatedStorage/Shared and ServerScriptService/Server, since they point into build and Rogen generates that code now.
   Took build as the folder Darklua writes, since .darklua.json is here and the mounts of default.project.json into build repeat src. default.rogen.json reads src, and dist.rogen.json reads build as its "compiledPath".
-  Took the defaults: --kind place, --language luau, --agent-rules.
+  Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), a git repository (--skip-git), agent rules (--no-agent-rules).
   Created default.rogen.json.
   Created dist.rogen.json.
   Created .gitignore.

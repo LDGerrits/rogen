@@ -17,19 +17,19 @@ export type InitKind = "place" | "model" | "plugin";
 /** What the user gave as flags, so that `init` asks nothing about it. */
 export interface InitChoices {
 	readonly kind?: InitKind;
-	readonly skipGit?: boolean;
+	readonly skipGit?: true;
 	readonly agentRules?: boolean;
-	readonly agentHook?: boolean;
+	readonly agentHook?: true;
 	readonly language?: string;
-	/** Whether a new place starts with the Greeter sample. */
-	readonly sample?: boolean;
+	/** Given only to leave the Greeter sample out of a new place. */
+	readonly sample?: false;
 	/** Whether a new project is several places under `places/`, rather than one. */
 	readonly places?: boolean;
 }
 
 /** A choice a run that couldn't ask took for itself, and the flag that makes it another. */
 export interface InitDecision {
-	readonly question: string;
+	readonly question: keyof InitChoices;
 	readonly value: string | boolean;
 	readonly flag: string;
 }

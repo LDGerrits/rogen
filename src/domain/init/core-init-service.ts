@@ -44,7 +44,11 @@ function shapingFlagsOf(choices: InitChoices): string[] {
 	return Object.keys(SHAPING_FLAGS).flatMap((choice) => {
 		const value = choices[choice as keyof typeof SHAPING_FLAGS];
 		if (value === undefined) return [];
-		return [booleanFlag(`--${choice}`, value !== false)];
+		return [
+			typeof value === "string"
+				? `--${choice} ${value}`
+				: booleanFlag(`--${choice}`, value),
+		];
 	});
 }
 

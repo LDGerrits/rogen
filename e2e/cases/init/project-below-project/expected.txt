@@ -2,7 +2,7 @@ $ rogen init -y --skip-git --no-sample tools
 exit 0
 stdout:
   rogen init
-  Took the defaults: --kind place, --language luau, --no-places, --agent-rules.
+  Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), agent rules (--no-agent-rules).
   Created tools/default.rogen.json.
   Created tools/AGENTS.md.
   Created tools/src/.

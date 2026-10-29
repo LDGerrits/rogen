@@ -463,21 +463,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		language: Language,
 		scaffolded: boolean
 	): boolean {
-		const { codeFolders } = this.directory.layout;
-		const problem =
-			kind !== "place"
-				? `is for a place, not for a ${kind}.`
-				: tree.kind !== "new"
-					? `needs a new tree, and ${LIFTED_HERE} Move ${DEFAULT_PROJECT_FILE} away first, or leave --sample out.`
-					: language.compiler && !scaffolded
-						? `isn't written for ${language.copy.label} here, where ${language.copy.label} was set up already.`
-						: codeFolders.length > 0
-							? `is for a folder with no code, and ${codeFolders.join(", ")} has some.`
-							: undefined;
-		if (problem === undefined) return this.questions.sample();
-		if (this.questions.choices.sample === true)
-			throw new UsageError(`--sample ${problem}`);
-		return false;
+		const writable =
+			kind === "place" &&
+			tree.kind === "new" &&
+			(!language.compiler || scaffolded) &&
+			this.directory.layout.codeFolders.length === 0;
+		return writable && this.questions.sample();
 	}
 
 	private static templateFiles(

@@ -5,7 +5,7 @@ stdout:
   Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every write.
   Left out ReplicatedStorage/Shared, since it points into src and Rogen generates that code now.
   Kept ServerScriptService/Server and StarterPlayer/StarterPlayerScripts/Client in the tree as $path mounts, since their folders hold an init file, which Rojo reads as the instance of the folder itself and a route can't.
-  Took the defaults: --kind place, --language luau, --agent-rules.
+  Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), a git repository (--skip-git), agent rules (--no-agent-rules).
   Created default.rogen.json.
   Created .gitignore.
   Created AGENTS.md.

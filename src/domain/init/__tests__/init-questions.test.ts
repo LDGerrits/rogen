@@ -322,14 +322,14 @@ describe("InitQuestions addAgentInstructions", () => {
 });
 
 describe("InitQuestions addAgentHook", () => {
-	it("should add it on Enter in a terminal, and never in a run that can't ask", async () => {
+	it("should leave it out on Enter in a terminal, as in a run that can't ask", async () => {
 		const asked = new InitQuestions(new MockPromptService({}), true);
 		const unasked = new InitQuestions(
 			new MockPromptService([], false),
 			false
 		);
 
-		expect(await asked.addAgentHook(["Claude Code"])).toBe(true);
+		expect(await asked.addAgentHook(["Claude Code"])).toBe(false);
 		expect(await unasked.addAgentHook(["Claude Code"])).toBe(false);
 	});
 });

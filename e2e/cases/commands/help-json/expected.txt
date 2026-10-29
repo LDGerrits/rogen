@@ -159,9 +159,8 @@ stdout:
             "type": "string"
           },
           {
-            "name": "sample",
-            "type": "boolean",
-            "negatable": true
+            "name": "no-sample",
+            "type": "boolean"
           },
           {
             "name": "places",
@@ -175,8 +174,7 @@ stdout:
           },
           {
             "name": "agent-hook",
-            "type": "boolean",
-            "negatable": true
+            "type": "boolean"
           }
         ],
         "effects": [
