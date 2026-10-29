@@ -153,6 +153,29 @@ describeWithRojo("end to end watch", () => {
 		});
 	}, 30_000);
 
+	it("should build the place again when the compiler writes to the compiled path", async () => {
+		project.dispose();
+		project = createProject({
+			"default.rogen.json": JSON.stringify({
+				sourcePaths: ["src"],
+				routes: { server: "ServerScriptService" },
+				compiledPath: "out",
+			}),
+			"src/A.server.ts": "",
+			"out/A.server.luau": "return 1",
+		});
+		const place = path.join(project.dir, "game.rbxlx");
+		start(["-o", "game.rbxlx"]);
+		await eventually(() => {
+			expect(fs.readFileSync(place, "utf8")).toContain("return 1");
+		});
+
+		writeProjectFile(project.dir, "out/A.server.luau", "return 12345");
+		await eventually(() => {
+			expect(fs.readFileSync(place, "utf8")).toContain("12345");
+		});
+	}, 30_000);
+
 	it("should write the sourcemap again when a model file is edited in place", async () => {
 		const map = path.join(project.dir, "sourcemap.json");
 		writeProjectFile(
