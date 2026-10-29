@@ -450,8 +450,11 @@ describe("CoreInitService", () => {
 
 			expect(names(plan)).not.toContain(SCRIPT);
 			expect(names(plan)).not.toContain(CLAUDE);
-			expect(plan?.nextSteps.edits).toContain(
-				"To have Claude Code report Rogen's warnings when it ends its turn, run 'rogen init --agent-hook'."
+			expect(plan?.notes).toContain(
+				"Claude Code is in use here. 'rogen init --agent-hook' adds a hook that reports Rogen's warnings when it ends its turn."
+			);
+			expect(plan?.nextSteps.edits.join("\n")).not.toContain(
+				"--agent-hook"
 			);
 		});
 

@@ -54,10 +54,13 @@ export class AgentSetup implements Setup<AgentChoices> {
 				)
 			);
 		if (hook) builder.addAgentHook(this.hooks);
-		else if (this.hooks.offered)
-			builder.addEdit(
-				`To have ${joinedWithAnd(this.hooks.agents)} report Rogen's warnings when ${this.hooks.agents.length === 1 ? "it ends its turn" : "they end their turn"}, run 'rogen init --agent-hook'.`
+		else if (this.hooks.offered) {
+			const { agents } = this.hooks;
+			const one = agents.length === 1;
+			builder.addNote(
+				`${joinedWithAnd(agents)} ${one ? "is" : "are"} in use here. 'rogen init --agent-hook' adds a hook that reports Rogen's warnings when ${one ? "it ends its turn" : "they end their turn"}.`
 			);
+		}
 		builder.addSummary(
 			"Agents",
 			[

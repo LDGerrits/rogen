@@ -400,7 +400,7 @@ describe("init command", () => {
 
 			expect(await exists(".agents/hooks/rogen-check.mjs")).toBe(false);
 			expect(logService.lines).toContain(
-				"info: To have Claude Code report Rogen's warnings when it ends its turn, run 'rogen init --agent-hook'."
+				"info: Claude Code is in use here. 'rogen init --agent-hook' adds a hook that reports Rogen's warnings when it ends its turn."
 			);
 		});
 	});
