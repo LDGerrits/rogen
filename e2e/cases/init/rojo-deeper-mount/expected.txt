@@ -2,7 +2,7 @@ $ rogen init --non-interactive
 exit 0
 stdout: (not shown)
 stderr:
-  default.project.json - warning: 1 file in the source paths is mounted by no node, so Rojo ignored it, and Rogen places it if a route matches it: src/server/Main.server.luau. Check where with 'rogen where <path>', and list it under "globIgnorePaths" to leave it out as Rojo did. (init.unmountedFiles)
+  default.rogen.json - warning: src/server/Main.server.luau holds code that no source path holds and the tree doesn't mount, so Rogen places none of it. Move the code into src/server/Admin, or list its folders under "sourcePaths" in default.rogen.json. (init.codeOutsideSourcePaths)
 
 $ rogen write
 exit 0
@@ -19,19 +19,17 @@ default.rogen.json:
 {
   "name": "my-game",
   "sourcePaths": [
-    "src"
+    "src/server/Admin"
   ],
   "routes": {
     "Server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
     "Shared": "ReplicatedStorage/Shared",
-    "*": "ReplicatedStorage/Shared"
+    "*": "ServerScriptService/Admin"
   },
   "tree": {
     "$className": "DataModel",
-    "ServerScriptService": {
-      "Admin": { "$path": "src/server/Admin" }
-    }
+    "ServerScriptService": {}
   }
 }
 
@@ -40,4 +38,3 @@ my-game: DataModel
   ServerScriptService: ServerScriptService
     Admin: Folder
       Ban: ModuleScript  <- src/server/Admin/Ban.luau
-    Main: Script  <- src/server/Main.server.luau

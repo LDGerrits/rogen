@@ -1,4 +1,4 @@
-$ rogen init --json --source-path lib --route server --agent-hook --no-agent-rules
+$ rogen init --json --route server --agent-hook --no-agent-rules
 exit 0
 stdout:
   {
@@ -21,7 +21,9 @@ stdout:
         "outcome": "wrote"
       }
     ],
-    "directories": [],
+    "directories": [
+      "<dir>/src"
+    ],
     "git": "initialised",
     "decided": [
       {
@@ -33,6 +35,11 @@ stdout:
         "question": "language",
         "value": "luau",
         "flag": "--language"
+      },
+      {
+        "question": "places",
+        "value": false,
+        "flag": "--places"
       },
       {
         "question": "unmatched",
@@ -79,7 +86,7 @@ written:
 default.rogen.json:
 {
   "sourcePaths": [
-    "lib"
+    "src"
   ],
   "routes": {
     "Server": "ServerScriptService",

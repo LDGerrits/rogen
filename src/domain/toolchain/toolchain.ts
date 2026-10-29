@@ -105,19 +105,12 @@ export interface Compiler {
 	readonly name: string;
 	readonly outDir: string;
 	readonly compileCommand: string;
-	/** The edit that makes it compile the shared code from `sourcePath`, when its config compiles another folder. */
-	sourcePathStep(sourcePath: string): string;
 }
 
 export interface LanguageCopy {
 	readonly label: string;
 	readonly detectedHint?: string;
 	readonly packagesNote?: string;
-	/** Only for a language whose compiler reads a single source path. */
-	readonly sourcePath?: {
-		readonly description: string;
-		readonly severalProblem: string;
-	};
 }
 
 export interface Language {

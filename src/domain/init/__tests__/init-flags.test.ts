@@ -55,11 +55,6 @@ describe("init choices given as flags", () => {
 				{ question: "language", value: "luau", flag: "--language" },
 				{ question: "places", value: false, flag: "--places" },
 				{
-					question: "sourcePaths",
-					value: ["src"],
-					flag: "--source-path",
-				},
-				{
 					question: "routes",
 					value: ["server", "client", "shared"],
 					flag: "--route",
@@ -85,7 +80,7 @@ describe("init choices given as flags", () => {
 				kind: "place",
 				skipGit: true,
 				language: "luau",
-				sourcePaths: ["src"],
+				places: false,
 				routes: ["server"],
 				unmatched: "leave",
 			});
@@ -100,7 +95,7 @@ describe("init choices given as flags", () => {
 				withPackages,
 				{
 					language: "luau",
-					sourcePaths: ["lib"],
+					places: false,
 					packages: ["Packages"],
 					routes: ["server", "shared"],
 					unmatched: "leave",
@@ -111,7 +106,6 @@ describe("init choices given as flags", () => {
 			expect(prompts.asked).toEqual([]);
 			expect(questions.decided).toEqual([]);
 			const choices = asked.unwrap();
-			expect(choices?.sourcePaths).toEqual(["lib"]);
 			expect(choices?.routes).toEqual(["server", "shared"]);
 			expect(choices?.fallback).toBe(false);
 			expect(choices?.mounts.map(({ path }) => path)).toEqual([
@@ -222,40 +216,6 @@ describe("init choices given as flags", () => {
 			expect(error.hint).toBe(
 				"The values of --language are luau and roblox-ts."
 			);
-		});
-	});
-
-	describe("--source-path", () => {
-		it("should take several folders", async () => {
-			const { asked } = await run(luau, { sourcePaths: ["a", "b/"] });
-
-			expect(asked.unwrap()?.sourcePaths).toEqual(["a", "b"]);
-		});
-
-		it("should refuse a folder that overlaps another as the prompt would", async () => {
-			const error = await refused(
-				run(luau, { sourcePaths: ["a", "a/b"] })
-			);
-
-			expect(error.message).toContain("a");
-		});
-
-		it("should refuse several for a compiler that takes one", async () => {
-			const error = await refused(
-				run(
-					{
-						language: "roblox-ts",
-						robloxTs: {
-							outDir: "build",
-							rbxtsScopes: ["@rbxts"],
-							includeInstalled: true,
-						},
-					},
-					{ sourcePaths: ["a", "b"] }
-				)
-			);
-
-			expect(error.message).not.toBe("");
 		});
 	});
 

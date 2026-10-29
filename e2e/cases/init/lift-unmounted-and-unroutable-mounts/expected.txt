@@ -7,7 +7,7 @@ stdout:
   Kept ReplicatedStorage/MyLib in the tree as a $path mount, since no route can make it: my-lib is not a valid route name.
   Kept ReplicatedStorage/Pkg in the tree as a $path mount, since no route can make it: only a folder directly in a source path becomes a route.
   Kept ServerScriptService/Admin in the tree as a $path mount, since no route can make it: only a folder directly in a source path becomes a route.
-  Took the defaults: --kind place, --language luau, --source-path src, --route mount:shared, --route mount:server, --route client, --unmatched shared, --agent-rules.
+  Took the defaults: --kind place, --language luau, --route mount:shared, --route mount:server, --route client, --unmatched shared, --agent-rules.
   Created default.rogen.json.
   Created .gitignore.
   Created AGENTS.md.

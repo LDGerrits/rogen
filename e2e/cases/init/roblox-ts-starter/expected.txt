@@ -5,7 +5,7 @@ stdout:
   Starts from create-roblox-ts, which writes package.json, tsconfig.json and the compiler's settings.
   Syncing from out, where roblox-ts compiles to.
   The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.
-  Took the defaults: --kind place, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.
+  Took the defaults: --kind place, --no-places, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.
   Ran npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild.
   Created default.rogen.json.
   Created .gitignore.

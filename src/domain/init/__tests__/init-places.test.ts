@@ -223,15 +223,6 @@ describe("init for several places", () => {
 			);
 		});
 
-		it("should refuse a source path, which every place lists in full", async () => {
-			const result = await serviceFor().plan({
-				ask: false,
-				choices: { places: true, sourcePaths: ["lib"] },
-			});
-
-			expect(result.isErr()).toBe(true);
-		});
-
 		describe("with a test runner", () => {
 			const planned = async () => {
 				await put(

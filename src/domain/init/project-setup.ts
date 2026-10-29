@@ -1,5 +1,6 @@
 import path from "path";
 import { UsageError } from "../../base/errors.js";
+import { containsPosix, normalizeDir } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import {
@@ -46,6 +47,8 @@ import {
 	StartingPlaces,
 } from "./starter-places.js";
 import { ProcessedFolder } from "./processed-folder.js";
+import { MountedCode } from "./mounted-code.js";
+import { CodeFinder } from "./code-finder.js";
 import { UnmountedFiles } from "./unmounted-files.js";
 import { ProjectTree, TreeChoice, TreePlan } from "./tree-plan.js";
 
@@ -59,6 +62,10 @@ export interface ProjectChoices {
 	readonly mounts: readonly Mount[];
 	readonly routes: readonly RouteId[];
 	readonly fallback: boolean;
+	/** Folders of code the lifted project file mounts, which no source path holds and the tree keeps mounting. */
+	readonly keptCode?: readonly string[];
+	/** Folders and files of code that no source path holds and the tree doesn't mount, which Rogen places nowhere. */
+	readonly outside?: readonly string[];
 	/** Files of the source paths that the lifted project file mounts nowhere, which Rojo ignored and routes will place. */
 	readonly unmounted?: readonly string[];
 	/** The template of a new project; its files and git step are left out when none is given. */
@@ -159,37 +166,46 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					starter
 				)
 			: undefined;
-		if (places && questions.choices.sourcePaths !== undefined)
-			throw new UsageError(
-				`--source-path would change nothing, since every place lists ${places.sourcePaths.join(" and ")}.`
-			);
 		const taken = places ? await this.placeTaken(places) : undefined;
 		if (taken) return err([taken]);
 
-		const sourcePaths = places
-			? [...places.sourcePaths]
-			: takesRoutes(tree.value)
-				? await questions.sourcePaths(directory, language)
-				: [];
-		if (sourcePaths === undefined) return ok(undefined);
-
 		const compiledPath = language.compiler?.outDir;
-
 		const routed = takesRoutes(tree.value);
 		const lifted =
 			routed && tree.value.kind === "lift"
 				? tree.value.project
 				: undefined;
-		const processedFolder = lifted
-			? await new ProcessedFolder(
-					this.fileSystemService,
-					directory.path
-				).find(
-					sourcePaths,
-					lifted.mountedFolders(),
-					compiledPath ? [compiledPath] : []
-				)
-			: undefined;
+		const code =
+			lifted && !language.compiler
+				? await new MountedCode(
+						this.fileSystemService,
+						directory.path
+					).find(
+						lifted.mountedFolders(),
+						[...directory.workspace.packageDirs],
+						directory.layout.codeFolders
+					)
+				: undefined;
+		const sourcePaths = places
+			? [...places.sourcePaths]
+			: !routed
+				? []
+				: code && code.sourcePaths.length > 0
+					? [...code.sourcePaths]
+					: [directory.defaultSourcePath(language)];
+
+		const processedFolder = code
+			? code.processed
+			: lifted
+				? await new ProcessedFolder(
+						this.fileSystemService,
+						directory.path
+					).find(
+						sourcePaths,
+						lifted.mountedFolders(),
+						compiledPath ? [compiledPath] : []
+					)
+				: undefined;
 		const processorConfig = directory.workspace.darkluaConfig;
 		const processed = processedFolder
 			? {
@@ -231,6 +247,33 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					[compiledPath, processedFolder].filter(
 						(folder) => folder !== undefined
 					)
+				)
+			: [];
+
+		const keptCode =
+			code && !code.processed
+				? code.folders.filter(
+						(folder) =>
+							!sourcePaths.some((sourcePath) =>
+								containsPosix(sourcePath, folder)
+							)
+					)
+				: [];
+
+		const outside = routed
+			? await new CodeFinder(this.fileSystemService).codeOutside(
+					directory.path,
+					[...sourcePaths, ...(lifted?.mountedFolders() ?? [])].map(
+						normalizeDir
+					),
+					[
+						...directory.workspace.packageDirs,
+						...language.reservedFolders,
+						compiledPath,
+						processedFolder,
+					]
+						.filter((folder) => folder !== undefined)
+						.map(normalizeDir)
 				)
 			: [];
 
@@ -276,6 +319,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			mounts,
 			routes: routes.routes,
 			fallback: routes.fallback,
+			keptCode,
+			outside,
 			unmounted,
 			kind,
 			skipGit,
@@ -566,6 +611,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					choices.processed
 				)
 			);
+		if (choices.keptCode?.length)
+			builder.addNote(
+				`Kept the mounts of ${joinedWithAnd(choices.keptCode)} in the tree as they are: only the project's own folder holds them all, and a source path is a folder below it. To route their code, move the folders into ${sourcePaths[0]}.`
+			);
 		const others = places
 			? []
 			: this.directory.otherProjectFiles(
@@ -582,6 +631,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				ProjectSetup.unmountedWarning(
 					choices.tree.from,
 					choices.unmounted
+				)
+			);
+		if (choices.outside?.length)
+			builder.addWarning(
+				ProjectSetup.outsideWarning(
+					places?.configFile ?? DEFAULT_CONFIG_FILE,
+					sourcePaths[0],
+					choices.outside
 				)
 			);
 		if (choices.scaffold)
@@ -674,6 +731,20 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		);
 	}
 
+	private static outsideWarning(
+		configFile: string,
+		sourcePath: string,
+		found: readonly string[]
+	): Diagnostic {
+		const shown = joinedWithAnd(found.slice(0, UNMOUNTED_SHOWN));
+		const more = found.length - UNMOUNTED_SHOWN;
+		return warningDiagnostic(
+			"init.codeOutsideSourcePaths",
+			{ resource: configFile },
+			`${more > 0 ? `${found.slice(0, UNMOUNTED_SHOWN).join(", ")} and ${more} more` : shown} ${found.length === 1 ? "holds" : "hold"} code that no source path holds and the tree doesn't mount, so Rogen places none of it. Move the code into ${sourcePath}, or list its folders under "sourcePaths" in ${configFile}.`
+		);
+	}
+
 	private planNextSteps(
 		builder: InitPlanBuilder,
 		choices: ProjectChoices,
@@ -681,7 +752,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	): void {
 		const {
 			language,
-			sourcePaths,
 			tree: chosen,
 			places,
 			projectFilesHint,
@@ -695,15 +765,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				)
 			);
 			return;
-		}
-		const compiled = this.directory.defaultSourcePath(language);
-		if (
-			compiler &&
-			!places &&
-			sourcePaths.length > 0 &&
-			compiled !== sourcePaths[0]
-		) {
-			builder.addSetup(compiler.sourcePathStep(sourcePaths[0]));
 		}
 		builder.addEdit(...tree.edits);
 		if (projectFilesHint) builder.addEdit(projectFilesHint);

@@ -905,6 +905,16 @@ warning: 2 files in the source paths are mounted by no node, so Rojo ignored the
 
 Run `rogen where` on the files to see where they land. To keep them out of the game, list them under `globIgnorePaths` in `default.rogen.json`, or delete them.
 
+### `init.codeOutsideSourcePaths` [#init-codeoutsidesourcepaths]
+
+Warning. `init` found code that no source path holds and that the tree doesn't mount, so Rogen places none of it. Package folders and a compiler's output don't count. With no `default.project.json`, the source path is `src`, or the only folder that holds code. When `init` lifts a `default.project.json`, the source path is the closest folder that holds every folder of code that the file mounts.
+
+```
+warning: game and lib hold code that no source path holds and the tree doesn't mount, so Rogen places none of it. Move the code into src, or list its folders under "sourcePaths" in default.rogen.json. (init.codeOutsideSourcePaths)
+```
+
+Move the code into a source path, or add its folders to `sourcePaths` in the config. If the code isn't part of the game, such as a script that a tool runs, you can leave it where it is.
+
 ## Serve
 
 These diagnostics come from `rogen serve` and the Rojo server that it starts.

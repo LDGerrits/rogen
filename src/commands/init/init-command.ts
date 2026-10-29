@@ -61,14 +61,6 @@ const InitOptions = [
 			"The language: luau or roblox-ts. Detected from the folder when not given. For roblox-ts in a folder with no code, package.json or tsconfig.json, init first runs 'npm create roblox-ts', which needs npm and the network.",
 	},
 	{
-		name: "source-path",
-		type: "string",
-		multiple: true,
-		placeholder: "path",
-		description:
-			"A folder with your scripts, relative to here; repeat for several. src when not given, or where the code is.",
-	},
-	{
 		name: "package",
 		type: "string",
 		multiple: true,
@@ -131,7 +123,6 @@ function choicesOf(
 		agentRules: options["agent-rules"],
 		agentHook: options["agent-hook"],
 		language: options.language,
-		sourcePaths: options["source-path"],
 		packages: options.package,
 		routes: options.route,
 		unmatched: options.unmatched as InitChoices["unmatched"],
@@ -148,7 +139,7 @@ registerCommand(
 				metadata: {
 					summary: "Starts a project with a default.rogen.json",
 					description:
-						"Starts a project, as 'rojo init' does: writes default.rogen.json, reading what the folder already holds and asking in a terminal. With a folder, starts the project there. Beside a hand-written default.project.json, it lifts that tree into default.rogen.json, and the mounts of a folder Darklua writes into dist.rogen.json; from then on 'rogen write' writes default.project.json from the config. It never changes a config that exists: where one is, it stops and writes nothing. There, --agent-rules and --agent-hook add only the agent files, with --skip-git, -y, -n or --json if given; a flag that shapes a config, such as --language, is an error beside them. To change a config, edit the .rogen.json and run 'rogen check'.",
+						"Starts a project, as 'rojo init' does: writes default.rogen.json, reading what the folder already holds and asking in a terminal. With a folder, starts the project there. Beside a hand-written default.project.json, it lifts that tree into default.rogen.json, and the mounts of a folder Darklua writes into dist.rogen.json; the source path is the closest folder below the project's own that holds every folder of code the file mounts. From then on 'rogen write' writes default.project.json from the config. It never changes a config that exists: where one is, it stops and writes nothing. There, --agent-rules and --agent-hook add only the agent files, with --skip-git, -y, -n or --json if given; a flag that shapes a config, such as --language, is an error beside them. To change a config, edit the .rogen.json and run 'rogen check'.",
 					args: [
 						{
 							name: "path",

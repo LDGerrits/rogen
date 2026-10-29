@@ -122,36 +122,6 @@ describe("domain/init/init-directory", () => {
 		});
 	});
 
-	describe("sourcePathsProblem", () => {
-		const HERE = path.resolve("/repo");
-		const here = directoryOf({ path: HERE });
-
-		it("should accept separate folders", () => {
-			expect(
-				here.sourcePathsProblem(["src", "lib/shared"])
-			).toBeUndefined();
-		});
-
-		it("should accept folders that share a prefix but not a parent", () => {
-			expect(here.sourcePathsProblem(["src", "src2"])).toBeUndefined();
-		});
-
-		it.each([
-			[[], "Enter at least one source path."],
-			[["/abs"], "Use a path relative to here, not /abs."],
-			[["C:\\game"], "Use a path relative to here, not C:\\game."],
-			[["../lib"], "../lib is outside this folder."],
-			[["src", "./src"], "src is listed twice."],
-			[
-				["src", "src/Combat"],
-				"src/Combat is inside src. List only one of them.",
-			],
-			[[".", "src"], "src is inside .. List only one of them."],
-		])("should reject %j", (entries, message) => {
-			expect(here.sourcePathsProblem(entries)).toBe(message);
-		});
-	});
-
 	describe("defaultSourcePath", () => {
 		const luau = workspaceOf().language;
 
@@ -178,26 +148,6 @@ describe("domain/init/init-directory", () => {
 					workspace: { codeFolders: ["a", "b"] },
 				}).defaultSourcePath(luau)
 			).toBe("src");
-		});
-	});
-
-	describe("otherCodeFoldersHint", () => {
-		it("should name the code folders the source path doesn't cover", () => {
-			const target = directoryOf({
-				workspace: { codeFolders: ["lib", "shared", "src"] },
-			});
-
-			expect(target.otherCodeFoldersHint("src")).toBe(
-				"Also found code in: lib, shared"
-			);
-		});
-
-		it("should say nothing when the source path covers them all", () => {
-			expect(
-				directoryOf({
-					workspace: { codeFolders: ["src"] },
-				}).otherCodeFoldersHint("src/main")
-			).toBeUndefined();
 		});
 	});
 });

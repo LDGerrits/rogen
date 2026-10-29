@@ -73,13 +73,6 @@ stdout:
         "flag": "--places"
       },
       {
-        "question": "sourcePaths",
-        "value": [
-          "src"
-        ],
-        "flag": "--source-path"
-      },
-      {
         "question": "routes",
         "value": [
           "server",

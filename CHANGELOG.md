@@ -15,10 +15,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Removed
 
+- `rogen init` finds the source path itself, and `--source-path` and its question are gone. When it lifts a Luau project, the source path is the closest folder that holds every folder of code the project file mounts, so `code/server` and `code/client` give `code`. Folders mounted from the top of the project, such as `server/` and `shared/`, stay mounted in the tree, with a note. Package folders, `"."` and a compiler's output are never source paths. Code that no source path holds and the tree doesn't mount gets an `init.codeOutsideSourcePaths` warning, also in `--json` `warnings`. Before, a lifted project whose code wasn't in `src` got an empty `src`, and Rogen placed nothing, with no warning.
 - `rogen init` always lifts a hand-written `default.project.json` into `default.rogen.json`: it no longer asks whether to lift it or start a new tree, and `--project-file` is gone. Starting a new tree replaced the file and lost its tree with no warning. To start a new one, move `default.project.json` away first. Beside it, `--places`, `--sample`, and `--kind model` or `--kind plugin` when the file is a place's, are a usage error that says so.
 - `rogen init` no longer asks about Darklua or sets it up: it writes no `.darklua.json`, Darklua pin, `dist.rogen.json` or `.gitignore` entry for Darklua's output, and its next steps run no `darklua process`. The `--darklua` and `--compiled-path` flags are gone. `rogen write` still knows Darklua's output in a `compiledPath`, and warns about it as before.
 
 ### Fixed
+
+- `rogen init` takes a roblox-ts project's source path from the `rootDir` in `tsconfig.json`, which roblox-ts compiles. Before, it read a `sourcePath` there, which roblox-ts doesn't use.
 
 - The Baseplate that `rogen init` writes gives its color as whole numbers (`Color3uint8`), which a place keeps exactly, so the first `rogen syncback` no longer rewrites it when nothing changed in Studio.
 - With a `compiledPath`, code compiled after the project file was written now syncs into a running Rojo. Rojo never watches a mounted path that is missing when it loads the project, so before it writes, Rogen creates each folder the project file mounts in the compiled path and roblox-ts's `include`, and a placeholder script for each Luau file mounted there, which the compiler replaces. This happened on a fresh checkout when Rojo started before the first compile, and to each new feature folder while serving.

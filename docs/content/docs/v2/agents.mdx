@@ -169,6 +169,6 @@ The `rogen` skill sets a repo up through `rogen init`, and can reorganise a Rojo
 npx skills add LDGerrits/rogen
 ```
 
-The skill runs `rogen init --dry-run --json` and reads its `decided` list, each choice init made with the flag that changes it. `{"question": "sample", "value": true, "flag": "--no-sample"}` means init writes the Greeter sample, and `--no-sample` leaves it out.
+The skill runs `rogen init --dry-run --json` and reads its `decided` list, each choice init made with the flag that changes it. `{"question": "sample", "value": true, "flag": "--no-sample"}` means init writes the Greeter sample, and `--no-sample` leaves it out. It also reads `warnings`, such as code that no source path holds, and settles each one with you.
 
 The rules stay in `AGENTS.md` because an agent loads a skill only when a task looks like it needs one, and adding a Luau file doesn't.

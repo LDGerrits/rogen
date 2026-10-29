@@ -31,13 +31,6 @@ stdout:
         "flag": "--language"
       },
       {
-        "question": "sourcePaths",
-        "value": [
-          "src"
-        ],
-        "flag": "--source-path"
-      },
-      {
         "question": "routes",
         "value": [
           "mount:props",

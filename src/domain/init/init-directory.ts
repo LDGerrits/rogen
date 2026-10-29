@@ -1,5 +1,5 @@
 import path from "path";
-import { PathSet, normalizeDir, samePath } from "../../base/path.js";
+import { PathSet, samePath } from "../../base/path.js";
 import { ignoresPathCase } from "../../base/platform.js";
 import {
 	Diagnostic,
@@ -9,7 +9,6 @@ import {
 	DEFAULT_PROJECT_FILE,
 	DEFAULT_SOURCE_PATH,
 	isConfigFileName,
-	sourcePathOverlap,
 } from "../config/config.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
 import { DirectoryLayout } from "./code-finder.js";
@@ -83,42 +82,5 @@ export class InitDirectory {
 		if (this.has(DEFAULT_SOURCE_PATH)) return DEFAULT_SOURCE_PATH;
 		const { codeFolders } = this.layout;
 		return codeFolders.length === 1 ? codeFolders[0] : DEFAULT_SOURCE_PATH;
-	}
-
-	otherCodeFoldersHint(sourcePath: string): string | undefined {
-		const [topLevel] = sourcePath.split("/");
-		const others = this.layout.codeFolders.filter(
-			(folder) => folder !== topLevel
-		);
-		return others.length > 0
-			? `Also found code in: ${others.join(", ")}`
-			: undefined;
-	}
-
-	sourcePathsProblem(entries: readonly string[]): string | undefined {
-		if (entries.length === 0) return "Enter at least one source path.";
-		for (const entry of entries) {
-			if (path.posix.isAbsolute(entry) || path.win32.isAbsolute(entry)) {
-				return `Use a path relative to here, not ${entry}.`;
-			}
-			const normalized = normalizeDir(entry);
-			if (normalized === ".." || normalized.startsWith("../")) {
-				return `${entry} is outside this folder.`;
-			}
-		}
-		const normalized = entries.map(normalizeDir);
-		const absolute = normalized.map((entry) =>
-			path.resolve(this.path, entry)
-		);
-		for (const [index, entry] of normalized.entries()) {
-			const overlap = sourcePathOverlap(absolute, index);
-			if (overlap?.kind === "duplicate")
-				return `${entry} is listed twice.`;
-			if (overlap?.kind === "nested") {
-				const outer = normalized[absolute.indexOf(overlap.outer)];
-				return `${entry} is inside ${outer}. List only one of them.`;
-			}
-		}
-		return undefined;
 	}
 }

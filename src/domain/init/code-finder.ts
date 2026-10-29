@@ -1,4 +1,5 @@
 import path from "path";
+import { containsPosix, joinPosix } from "../../base/path.js";
 import {
 	FileReader,
 	isDirectoryType,
@@ -55,6 +56,53 @@ export class CodeFinder {
 			)
 				return true;
 		return false;
+	}
+
+	/** The shallowest folders and files of code, relative to `cwd` and sorted, that no folder of `held` holds and none of `excluded` is; `.` in `held` holds everything. */
+	async codeOutside(
+		cwd: string,
+		held: readonly string[],
+		excluded: readonly string[],
+		folder = "."
+	): Promise<string[]> {
+		if (held.includes(".")) return [];
+		let entries;
+		try {
+			entries = await this.fileReader.readDirectory(
+				path.join(cwd, folder)
+			);
+		} catch {
+			return [];
+		}
+		const found: string[] = [];
+		for (const [name, type] of entries) {
+			const relative = joinPosix(folder, name);
+			if (
+				isHiddenOrVendored(name) ||
+				[...held, ...excluded].some((dir) =>
+					containsPosix(dir, relative)
+				)
+			)
+				continue;
+			if (isDirectoryType(type)) {
+				if (held.some((dir) => containsPosix(relative, dir)))
+					found.push(
+						...(await this.codeOutside(
+							cwd,
+							held,
+							excluded,
+							relative
+						))
+					);
+				else if (await this.holdsCode(path.join(cwd, relative)))
+					found.push(relative);
+			} else if (
+				isFileType(type) &&
+				new RojoFile(name, SyncRules.DEFAULT).kind === "script"
+			)
+				found.push(relative);
+		}
+		return found.sort();
 	}
 
 	private async codeFoldersIn(

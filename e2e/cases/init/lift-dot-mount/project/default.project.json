@@ -1,0 +1,21 @@
+{
+	"name": "my-game",
+	"tree": {
+		"$className": "DataModel",
+		"Workspace": {
+			"Everything": {
+				"$path": "."
+			}
+		},
+		"ReplicatedStorage": {
+			"Shared": {
+				"$path": "code/shared"
+			}
+		},
+		"ServerScriptService": {
+			"Server": {
+				"$path": "code/server"
+			}
+		}
+	}
+}

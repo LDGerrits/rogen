@@ -1,0 +1,59 @@
+$ rogen init --non-interactive
+exit 0
+stdout: (not shown)
+
+$ rogen write
+exit 0
+stdout: (not shown)
+
+written:
+  .git/
+  .gitignore
+  AGENTS.md
+  default.project.json
+  default.rogen.json
+
+default.rogen.json:
+{
+  "name": "my-game",
+  "sourcePaths": [
+    "game"
+  ],
+  "routes": {
+    "shared": "ReplicatedStorage/shared",
+    "server": "ServerScriptService/server",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "*": "ReplicatedStorage/shared"
+  },
+  "compiledPath": "out",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "rbxts_include": {
+        "node_modules": {
+          "$className": "Folder",
+          "@rbxts": {
+            "$path": {
+              "optional": "node_modules/@rbxts"
+            }
+          }
+        },
+        "$path": {
+          "optional": "include"
+        }
+      }
+    },
+    "ServerScriptService": {}
+  }
+}
+
+$ rojo sourcemap default.project.json
+my-game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    rbxts_include: Folder
+      node_modules: Folder
+    shared: Folder
+      util: ModuleScript  <- out/shared/util.luau
+  ServerScriptService: ServerScriptService
+    server: Folder
+      main: Script  <- out/server/main.server.luau

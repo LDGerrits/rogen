@@ -26,6 +26,7 @@ const scopeLanding = (scope: string) =>
 
 export interface RobloxTsFacts {
 	readonly outDir?: string;
+	/** The `rootDir` of tsconfig.json, which roblox-ts compiles. */
 	readonly sourcePath?: string;
 	readonly rbxtsScopes?: readonly string[];
 	readonly includeInstalled?: boolean;
@@ -82,10 +83,6 @@ export class RobloxTsCompiler implements Compiler {
 	get outDir(): string {
 		return this.facts.outDir ?? DEFAULT_OUT_DIR;
 	}
-
-	sourcePathStep(sourcePath: string): string {
-		return `Set "sourcePath" to "${sourcePath}" and "include" to ["${sourcePath}"] in ${TSCONFIG}, so roblox-ts compiles the shared code from there.`;
-	}
 }
 
 export class RobloxTs implements Language {
@@ -94,11 +91,6 @@ export class RobloxTs implements Language {
 		label: "roblox-ts",
 		detectedHint: "found tsconfig.json",
 		packagesNote: "include and @rbxts are always mounted.",
-		sourcePath: {
-			description:
-				"The folder roblox-ts compiles (sourcePath in tsconfig.json).",
-			severalProblem: "roblox-ts compiles one folder.",
-		},
 	};
 	readonly extension = "ts";
 	readonly compiler: RobloxTsCompiler;
@@ -225,7 +217,7 @@ export class RobloxTsDetector implements LanguageDetector {
 			}
 			return undefined;
 		};
-		const sourcePath = option("sourcePath");
+		const sourcePath = option("rootDir");
 		return {
 			outDir: option("outDir") ?? DEFAULT_OUT_DIR,
 			...(sourcePath && { sourcePath }),

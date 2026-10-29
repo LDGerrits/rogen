@@ -313,17 +313,6 @@ describe("ProjectSetup plan", () => {
 			expect(configOf(files).sourcePaths).toEqual(["src", "shared"]);
 		});
 
-		it("should tell roblox-ts to compile the source path chosen when it is not the one it compiles", async () => {
-			const plan = await planChoices({
-				language: workspaceOf().languageFor("roblox-ts"),
-				sourcePaths: ["game"],
-			});
-
-			expect(plan.nextSteps.setup).toEqual([
-				expect.stringContaining('Set "sourcePath" to "game"'),
-			]);
-		});
-
 		it("should write the chosen compiled path", async () => {
 			const files = await planChoices({
 				language: workspaceOf().languageFor("roblox-ts"),

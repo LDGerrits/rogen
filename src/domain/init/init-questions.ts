@@ -41,12 +41,6 @@ function listOf(given: readonly string[], flag: string): readonly string[] {
 	return [];
 }
 
-const splitList = (value: string): string[] =>
-	value
-		.split(",")
-		.map((entry) => entry.trim())
-		.filter((entry) => entry !== "");
-
 /** Everything `init` asks. A question the user answered with a flag is not asked, and one a run that can't ask takes the default of is written to `decided`. A flag with a value that doesn't fit throws a `UsageError`. */
 export class InitQuestions {
 	readonly decided: InitDecision[] = [];
@@ -125,7 +119,6 @@ export class InitQuestions {
 	): Promise<boolean | undefined> {
 		const given = this.choices.places;
 		if (given !== undefined) return given;
-		if (this.choices.sourcePaths !== undefined) return false;
 		const several =
 			language.compiler !== undefined &&
 			directory.has(PROJECTS_FOLDER) &&
@@ -190,43 +183,6 @@ export class InitQuestions {
 			initialValue: workspace.language.id,
 		});
 		return id === undefined ? undefined : workspace.languageFor(id);
-	}
-
-	async sourcePaths(
-		directory: InitDirectory,
-		language: Language
-	): Promise<string[] | undefined> {
-		const placeholder = directory.defaultSourcePath(language);
-		const { compiler } = language;
-		const copy = language.copy.sourcePath;
-		const checked = (entries: readonly string[]): string | undefined => {
-			const problem = directory.sourcePathsProblem(entries);
-			if (problem) return problem;
-			return compiler && entries.length > 1
-				? copy?.severalProblem
-				: undefined;
-		};
-		const given = this.choices.sourcePaths;
-		if (given !== undefined) {
-			const problem = checked(given);
-			if (problem) throw new UsageError(problem);
-			return given.map(normalizeDir);
-		}
-		if (!this.interactive)
-			return this.decide("sourcePaths", [placeholder], "--source-path");
-
-		const answer = await this.promptService.text({
-			message: compiler ? "Source path" : "Source paths",
-			description: compiler
-				? copy?.description
-				: "Folders with your scripts, relative to here. Separate several with commas.",
-			hint: directory.otherCodeFoldersHint(placeholder),
-			placeholder,
-			validate: (value) => checked(splitList(value)),
-		});
-		return answer === undefined
-			? undefined
-			: splitList(answer).map(normalizeDir);
 	}
 
 	tree(directory: InitDirectory): TreeChoice {

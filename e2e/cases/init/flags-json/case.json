@@ -3,8 +3,6 @@
 		[
 			"init",
 			"--json",
-			"--source-path",
-			"lib",
 			"--route",
 			"server",
 			"--agent-hook",

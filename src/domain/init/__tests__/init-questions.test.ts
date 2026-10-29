@@ -97,14 +97,13 @@ describe("InitQuestions askProject", () => {
 		}
 	});
 
-	it("should ask in order: language, source path, packages, routes, fallback", async () => {
+	it("should ask in order: language, packages, routes, fallback", async () => {
 		const prompts = new MockPromptService({});
 
 		await askInitChoices(prompts, contextOf(rbxts));
 
 		expect(prompts.asked).toEqual([
 			"Language",
-			"Source path",
 			"Packages",
 			"Routes",
 			"Files that match no route",
@@ -147,131 +146,26 @@ describe("InitQuestions askProject", () => {
 		});
 	});
 
-	it("should split source paths on commas", async () => {
-		const choices = await asked(luau, {
-			"Source paths": "src, ./shared/ ,,server",
-		});
-
-		expect(choices.sourcePaths).toEqual(["src", "shared", "server"]);
-	});
-
 	describe("source paths", () => {
-		const sourcePathsPrompt = async (workspace: WorkspaceSpec) => {
-			const prompts = new MockPromptService({});
-			await askInitChoices(prompts, contextOf(workspace));
-			return prompts.prompts.find(({ message }) =>
-				message.startsWith("Source path")
+		it("should take the folder roblox-ts compiles from tsconfig.json", async () => {
+			const choices = await asked(
+				{
+					...withRobloxTs(rbxts, { sourcePath: "./game" }),
+					hasSrc: true,
+				},
+				{}
 			);
-		};
 
-		it("should take the placeholder from the tsconfig sourcePath for roblox-ts", async () => {
-			const prompt = await sourcePathsPrompt({
-				...withRobloxTs(rbxts, { sourcePath: "./game" }),
-				hasSrc: true,
-			});
-
-			expect(prompt?.placeholder).toBe("game");
+			expect(choices.sourcePaths).toEqual(["game"]);
 		});
 
 		it("should ignore the tsconfig sourcePath for luau", async () => {
-			const prompt = await sourcePathsPrompt({
-				...withRobloxTs(luau, { sourcePath: "game" }),
-				hasSrc: true,
-			});
-
-			expect(prompt?.placeholder).toBe("src");
-		});
-
-		it("should take src when it exists", async () => {
-			const prompt = await sourcePathsPrompt({
-				...luau,
-				hasSrc: true,
-				codeFolders: ["lib"],
-			});
-
-			expect(prompt?.placeholder).toBe("src");
-		});
-
-		it("should take the only code folder when src does not exist", async () => {
-			const prompt = await sourcePathsPrompt({
-				...luau,
-				codeFolders: ["lib"],
-			});
-
-			expect(prompt?.placeholder).toBe("lib");
-		});
-
-		it("should fall back to src", async () => {
-			expect((await sourcePathsPrompt(luau))?.placeholder).toBe("src");
-			expect(
-				(
-					await sourcePathsPrompt({
-						...luau,
-						codeFolders: ["a", "b"],
-					})
-				)?.placeholder
-			).toBe("src");
-		});
-
-		it("should not list the top folder of a nested source path as another", async () => {
-			const prompt = await sourcePathsPrompt({
-				...withRobloxTs(rbxts, { sourcePath: "src/main" }),
-				codeFolders: ["lib", "src"],
-			});
-
-			expect(prompt?.placeholder).toBe("src/main");
-			expect(prompt?.hint).toBe("Also found code in: lib");
-		});
-
-		it("should hint at the other code folders, never as a choice", async () => {
-			const prompt = await sourcePathsPrompt({
-				...luau,
-				hasSrc: true,
-				codeFolders: ["lib", "shared", "src"],
-			});
-
-			expect(prompt?.hint).toBe("Also found code in: lib, shared");
-		});
-
-		it("should not hint when there are no other code folders", async () => {
-			const prompt = await sourcePathsPrompt({
-				...luau,
-				hasSrc: true,
-				codeFolders: ["src"],
-			});
-
-			expect(prompt?.hint).toBeUndefined();
-		});
-
-		it("should say what a source path is, per language", async () => {
-			expect((await sourcePathsPrompt(luau))?.description).toBe(
-				"Folders with your scripts, relative to here. Separate several with commas."
+			const choices = await asked(
+				{ ...withRobloxTs(luau, { sourcePath: "game" }), hasSrc: true },
+				{}
 			);
-			expect(await sourcePathsPrompt(rbxts)).toMatchObject({
-				message: "Source path",
-				description:
-					"The folder roblox-ts compiles (sourcePath in tsconfig.json).",
-			});
-		});
 
-		it.each([
-			[
-				"src, src/Combat",
-				"src/Combat is inside src. List only one of them.",
-			],
-			["src, ./src/", "src is listed twice."],
-			["/abs/src", "Use a path relative to here, not /abs/src."],
-			["../lib", "../lib is outside this folder."],
-		])("should reject %j at the prompt", async (answer, message) => {
-			await expect(ask(luau, { "Source paths": answer })).rejects.toThrow(
-				message
-			);
-		});
-
-		it("should take one source path for roblox-ts", async () => {
-			await expect(
-				ask(rbxts, { "Source path": "src, lib" })
-			).rejects.toThrow("roblox-ts compiles one folder.");
+			expect(choices.sourcePaths).toEqual(["src"]);
 		});
 	});
 
@@ -638,7 +532,10 @@ describe("InitQuestions askProject", () => {
 			it("should not route a mount whose folder holds an init file", async () => {
 				const result = (
 					await askLifting(new MockPromptService([], false), {
-						files: ["src/server/init.server.luau"],
+						files: [
+							"src/server/init.server.luau",
+							"src/shared/Util.luau",
+						],
 					})
 				).unwrap();
 
@@ -743,24 +640,7 @@ describe("InitQuestions askProject", () => {
 		});
 	});
 
-	it("should show every text question as a placeholder with a description", async () => {
-		const prompts = new MockPromptService({});
-
-		await askInitChoices(prompts, contextOf(rbxts));
-
-		const text = prompts.prompts.filter(({ placeholder }) => placeholder);
-		expect(text.map(({ message }) => message)).toEqual(["Source path"]);
-		expect(text.map(({ placeholder }) => placeholder)).toEqual(["src"]);
-		for (const { description } of text) expect(description).toBeTruthy();
-	});
-
-	it("should take the placeholder when a text answer is empty", async () => {
-		const choices = await asked(luau, { "Source paths": "" });
-
-		expect(choices).toEqual(await defaultInitChoices(luau));
-	});
-
-	it.each([0, 1, 2, 3, 4])(
+	it.each([0, 1, 2, 3])(
 		"should resolve undefined when cancelled at question %i",
 		async (index) => {
 			const answers: ScriptedAnswer[] = acceptAll(index);

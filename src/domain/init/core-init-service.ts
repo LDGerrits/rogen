@@ -39,7 +39,6 @@ const SHAPING_FLAGS: Record<
 > = {
 	kind: "kind",
 	language: "language",
-	sourcePaths: "source-path",
 	packages: "package",
 	routes: "route",
 	unmatched: "unmatched",

@@ -152,7 +152,7 @@ describe("CoreToolchainService.detect", () => {
 			await write(
 				"tsconfig.base.json",
 				JSON.stringify({
-					compilerOptions: { outDir: "build", sourcePath: "game" },
+					compilerOptions: { outDir: "build", rootDir: "game" },
 					include: ["game"],
 				})
 			);
@@ -202,7 +202,7 @@ describe("CoreToolchainService.detect", () => {
 			await write(
 				"tsconfig.a.json",
 				JSON.stringify({
-					compilerOptions: { outDir: "from-a", sourcePath: "game" },
+					compilerOptions: { outDir: "from-a", rootDir: "game" },
 				})
 			);
 			await write(
@@ -220,7 +220,7 @@ describe("CoreToolchainService.detect", () => {
 		it("should find a package in a node_modules above the folder", async () => {
 			await write(
 				"../node_modules/@acme/tsconfig/tsconfig.json",
-				JSON.stringify({ compilerOptions: { sourcePath: "shared" } })
+				JSON.stringify({ compilerOptions: { rootDir: "shared" } })
 			);
 			await extending("@acme/tsconfig");
 
@@ -247,11 +247,11 @@ describe("CoreToolchainService.detect", () => {
 		});
 	});
 
-	describe("sourcePath", () => {
-		it("should read compilerOptions.sourcePath from tsconfig.json", async () => {
+	describe("source path", () => {
+		it("should read compilerOptions.rootDir from tsconfig.json", async () => {
 			await write(
 				"tsconfig.json",
-				JSON.stringify({ compilerOptions: { sourcePath: "game" } })
+				JSON.stringify({ compilerOptions: { rootDir: "game" } })
 			);
 
 			expect(
@@ -259,7 +259,7 @@ describe("CoreToolchainService.detect", () => {
 			).toBe("game");
 		});
 
-		it("should not report a sourcePath when tsconfig.json has none", async () => {
+		it("should not report a source path when tsconfig.json has no rootDir", async () => {
 			await write("tsconfig.json", "{}");
 
 			expect(

@@ -266,7 +266,7 @@ describe("init command", () => {
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
 				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
-				"info: Took the defaults: --kind place, --language luau, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
+				"info: Took the defaults: --kind place, --language luau, --no-places, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
 				"success: Created default.rogen.json.",
 				"success: Created .gitignore.",
 				"success: Created src/Greeter/Shared/Greeting.luau.",
@@ -422,7 +422,7 @@ describe("init command", () => {
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
 				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
-				"info: Took the defaults: --kind place, --language luau, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
+				"info: Took the defaults: --kind place, --language luau, --no-places, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
 				"success: Would create default.rogen.json.",
 				"success: Would create .gitignore.",
 				"success: Would create src/Greeter/Shared/Greeting.luau.",
@@ -556,7 +556,7 @@ describe("init command", () => {
 					kind: "place",
 					"skip-git": true,
 					language: "luau",
-					"source-path": ["lib"],
+					places: false,
 					"agent-rules": false,
 					route: ["server"],
 					unmatched: "leave",
@@ -565,7 +565,6 @@ describe("init command", () => {
 
 			expect(result.isOk()).toBe(true);
 			const config = await readJson("default.rogen.json");
-			expect(config.sourcePaths).toEqual(["lib"]);
 			expect(Object.keys(config.routes)).not.toContain("Client");
 			expect(await exists("AGENTS.md")).toBe(false);
 			expect(JSON.parse(logService.entries[0].text)).not.toHaveProperty(
@@ -772,9 +771,7 @@ describe("init command", () => {
 				"customise",
 				"luau",
 				"one",
-				"src, lib",
-				[],
-				ACCEPT_DEFAULT,
+				["server"],
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
 				"yes",
@@ -783,7 +780,7 @@ describe("init command", () => {
 			await runInit(prompts);
 
 			const config = await readJson("default.rogen.json");
-			expect(config.sourcePaths).toEqual(["src", "lib"]);
+			expect(Object.keys(config.routes)).toEqual(["Server", "*"]);
 			expect(config).not.toHaveProperty("projects");
 		});
 

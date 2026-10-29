@@ -23,7 +23,10 @@ import {
 } from "../../../platform/prompt/prompt-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
-import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
+import {
+	errorDiagnostic,
+	warningDiagnostic,
+} from "../../../platform/diagnostics/diagnostic.js";
 import { CoreInitService } from "../core-init-service.js";
 import { InitPlan, InitWritten } from "../init-service.js";
 
@@ -819,6 +822,156 @@ describe("CoreInitService", () => {
 		});
 	});
 
+	describe("source paths", () => {
+		const planOf = async () =>
+			(
+				await serviceFor().plan({
+					ask: false,
+					choices: { agentRules: false },
+				})
+			).unwrap();
+
+		const configOf = (plan: InitPlan | undefined) =>
+			JSON.parse(
+				plan?.files.find(
+					({ fileName }) => fileName === "default.rogen.json"
+				)?.content ?? "null"
+			);
+
+		const lift = (tree: object) =>
+			write(
+				"default.project.json",
+				JSON.stringify({
+					name: "mine",
+					tree: { $className: "DataModel", ...tree },
+				})
+			);
+
+		it("should take the closest folder that holds every folder of code the project file mounts", async () => {
+			await lift({
+				ServerScriptService: { Server: { $path: "code/server" } },
+				StarterPlayer: {
+					StarterPlayerScripts: {
+						Client: { $path: "code/client" },
+					},
+				},
+			});
+			await write("code/server/Main.server.luau");
+			await write("code/client/Main.client.luau");
+			await write("src/.gitkeep");
+
+			const plan = await planOf();
+
+			expect(configOf(plan)).toMatchObject({
+				sourcePaths: ["code"],
+				routes: {
+					Server: "ServerScriptService/Server",
+					Client: "StarterPlayer/StarterPlayerScripts/Client",
+				},
+			});
+			expect(plan?.warnings).toEqual([]);
+		});
+
+		it("should keep folders mounted at the top of the project in the tree, with a note", async () => {
+			const tree = {
+				ServerScriptService: { Server: { $path: "server" } },
+				StarterPlayer: {
+					StarterPlayerScripts: { Client: { $path: "client" } },
+				},
+				ReplicatedStorage: { Shared: { $path: "shared" } },
+			};
+			await lift(tree);
+			await write("server/Main.server.luau");
+			await write("client/Main.client.luau");
+			await write("shared/Util.luau");
+
+			const plan = await planOf();
+
+			expect(configOf(plan)).toMatchObject({
+				sourcePaths: ["src"],
+				tree: { $className: "DataModel", ...tree },
+			});
+			expect(plan?.notes).toContain(
+				"Kept the mounts of client, server and shared in the tree as they are: only the project's own folder holds them all, and a source path is a folder below it. To route their code, move the folders into src."
+			);
+			expect(plan?.warnings).toEqual([]);
+		});
+
+		it("should never take the project's own folder or a package folder", async () => {
+			await lift({
+				Workspace: { Map: { $path: "." } },
+				ReplicatedStorage: {
+					Packages: { $path: "Packages" },
+					Shared: { $path: "code/shared" },
+				},
+				ServerScriptService: { Server: { $path: "code/server" } },
+			});
+			await write("wally.toml");
+			await write("Packages/Promise.luau");
+			await write("code/shared/Util.luau");
+			await write("code/server/Main.server.luau");
+
+			expect(configOf(await planOf()).sourcePaths).toEqual(["code"]);
+		});
+
+		it("should take roblox-ts's source path from the rootDir of tsconfig.json", async () => {
+			await write(
+				"tsconfig.json",
+				JSON.stringify({
+					compilerOptions: { rootDir: "game", outDir: "out" },
+				})
+			);
+			await lift({
+				ServerScriptService: { Server: { $path: "out/server" } },
+				ReplicatedStorage: { Shared: { $path: "out/shared" } },
+			});
+			await write("game/server/main.server.ts");
+			await write("out/server/main.server.luau");
+			await write("out/shared/util.luau");
+
+			expect(configOf(await planOf())).toMatchObject({
+				sourcePaths: ["game"],
+				compiledPath: "out",
+			});
+		});
+
+		it("should warn of code that no source path holds, by code", async () => {
+			await write("game/Main.server.luau");
+			await write("lib/Util.luau");
+
+			const plan = await planOf();
+
+			expect(configOf(plan).sourcePaths).toEqual(["src"]);
+			expect(plan?.warnings).toEqual([
+				warningDiagnostic(
+					"init.codeOutsideSourcePaths",
+					{ resource: "default.rogen.json" },
+					`game and lib hold code that no source path holds and the tree doesn't mount, so Rogen places none of it. Move the code into src, or list its folders under "sourcePaths" in default.rogen.json.`
+				),
+			]);
+		});
+
+		it("should warn of code that neither a source path holds nor the tree mounts in a lifted project", async () => {
+			await lift({
+				ServerScriptService: { Admin: { $path: "src/server/Admin" } },
+				ReplicatedStorage: { Packages: { $path: "Packages" } },
+			});
+			await write("wally.toml");
+			await write("Packages/Promise.luau");
+			await write("src/server/Admin/Ban.luau");
+			await write("src/server/Main.server.luau");
+
+			const plan = await planOf();
+
+			expect(configOf(plan).sourcePaths).toEqual(["src/server/Admin"]);
+			expect(plan?.warnings.map(({ message }) => message)).toEqual([
+				expect.stringMatching(
+					/^src\/server\/Main\.server\.luau holds code that no source path holds/
+				),
+			]);
+		});
+	});
+
 	describe("Rojo", () => {
 		const PIN = "rojo-rbx/rojo@7.7.1";
 		const PLUGIN_LINE =
@@ -1305,8 +1458,7 @@ describe("CoreInitService", () => {
 				"customise",
 				"luau",
 				ACCEPT_DEFAULT,
-				"lib",
-				ACCEPT_DEFAULT,
+				["server", "shared"],
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
 				"yes",
@@ -1320,18 +1472,17 @@ describe("CoreInitService", () => {
 				CREATE,
 				"Language",
 				"One place or several?",
-				"Source paths",
 				"Routes",
 				"Files that match no route",
 				"Add Rogen's rules for coding agents to AGENTS.md?",
 				CREATE,
 			]);
 			expect(prompts.prompts.at(-1)?.description).toContain(
-				"lib → Server"
+				"src → Server, Shared;"
 			);
 			expect(plan?.summary).toContainEqual({
 				area: "Code",
-				text: expect.stringContaining("lib"),
+				text: expect.stringContaining("src → Server, Shared;"),
 			});
 		});
 
