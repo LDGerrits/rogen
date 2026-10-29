@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
-import { guides, icons, type Icon, type Service } from "./home/explorer";
+import { icons, type Icon, type Service } from "./home/explorer";
+import { TreeGuides } from "./home/tree-guides";
 
-// The home page's routing panes for docs pages: src/ on disk beside the Studio Explorer, in each service's colour.
+// The home page's routing panes for docs pages: src/ in VS Code beside the Studio Explorer, in each service's colour.
 const KEY_COLOURS: Record<string, Service> = {
 	server: "s",
 	client: "c",
@@ -76,7 +77,7 @@ export function RouteFigure({
 			<div className="rf-pane">
 				<div className="rf-head">
 					<b>{titled ? outline[0].name : ""}</b>
-					<span>On disk</span>
+					<span>VS Code</span>
 				</div>
 				<ul className="rf-tree">
 					{diskRows.map(({ name }, i) => (
@@ -84,11 +85,7 @@ export function RouteFigure({
 							key={i}
 							className={name.endsWith("/") ? "b" : undefined}
 						>
-							<span className="g" aria-hidden="true">
-								{guides(depths, i).map((guide, j) => (
-									<i key={j} className={`g-${guide}`} />
-								))}
-							</span>
+							<TreeGuides depths={depths} i={i} />
 							<DiskName name={name} />
 						</li>
 					))}

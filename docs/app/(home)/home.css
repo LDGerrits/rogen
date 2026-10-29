@@ -446,6 +446,33 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	text-indent: -3ch;
 	white-space: pre-wrap;
 }
+/* rogen's frame drawn with borders, so it joins up across lines and wrapped lines */
+.home .term :is(.frame, .frame-top) {
+	position: relative;
+	text-indent: 0;
+}
+.home .term :is(.frame, .frame-top)::before,
+.home .term .frame-top::after {
+	content: "";
+	position: absolute;
+	left: 0.5ch;
+	background: color-mix(in srgb, var(--ink-3) 55%, transparent);
+}
+.home .term .frame::before {
+	top: 0;
+	bottom: 0;
+	width: 1px;
+}
+.home .term .frame-top::before {
+	top: 11px;
+	bottom: 0;
+	width: 1px;
+}
+.home .term .frame-top::after {
+	top: 11px;
+	width: 1.5ch;
+	height: 1px;
+}
 .home .term .ps {
 	color: var(--acc-2);
 }
@@ -515,8 +542,7 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	color: var(--ink);
 }
 .home :is(.win, .dpane) .tree .g {
-	color: var(--ink-3);
-	white-space: pre;
+	--g-line: color-mix(in srgb, var(--ink-3) 55%, transparent);
 }
 .home .win .band {
 	position: absolute;
@@ -1174,8 +1200,8 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	text-overflow: ellipsis;
 }
 .home .stage .tree .g {
-	color: var(--ink-3);
-	white-space: pre;
+	--g-row: var(--row);
+	--g-line: color-mix(in srgb, var(--ink-3) 55%, transparent);
 }
 .home .stage .dt .band {
 	position: absolute;
