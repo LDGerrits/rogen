@@ -1,0 +1,31 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing default.rogen.json
+stderr:
+  rogen syncback · default.rogen.json
+  default.project.json · wrote
+  Wrote 1 project.
+  Syncback wrote 1 change.
+
+written:
+  default.project.json
+  default.rogen.json
+
+default.rogen.json:
+{
+  "name": "game",
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": { "$properties": { "ClockTime": 6 }, "$attributes": { "Season": "winter" } }
+  },
+  "sourcePaths": ["src"],
+  "routes": { "Server": "ServerScriptService" }
+}
+
+$ rojo sourcemap default.project.json
+game: DataModel
+  Lighting: Lighting
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Hit: ModuleScript  <- src/Combat/Server/Hit.luau

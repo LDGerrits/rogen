@@ -3,6 +3,7 @@ import {
 	ParseError,
 	ParseErrorCode,
 	applyEdits,
+	findNodeAtLocation,
 	getNodeValue,
 	modify,
 	parseTree,
@@ -262,14 +263,42 @@ function formattingOf(text: string) {
 	};
 }
 
-/** `text` with the value at `at` set, or removed when `value` is undefined; comments and the rest of the formatting stay. */
+/** `text` with the value at `at` set, or removed when `value` is undefined; comments and the rest of the formatting stay, and an object written on one line stays on one line. */
 export function setJsoncValue(
 	text: string,
 	at: readonly string[],
 	value: unknown
 ): string {
+	const edits = modify(text, [...at], value, {
+		formattingOptions: formattingOf(text),
+	});
 	return applyEdits(
 		text,
-		modify(text, [...at], value, { formattingOptions: formattingOf(text) })
+		writtenOnOneLine(text, at.slice(0, -1))
+			? edits.map((edit) => ({
+					...edit,
+					content: onOneLine(edit.content),
+				}))
+			: edits
 	);
 }
+
+/** Whether the deepest object of `at` the text has is written on one line. */
+function writtenOnOneLine(text: string, at: readonly string[]): boolean {
+	const tree = parseTree(text, [], { allowTrailingComma: true });
+	if (!tree) return false;
+	for (let path = [...at]; ; path = path.slice(0, -1)) {
+		const node = findNodeAtLocation(tree, path);
+		if (node)
+			return !text
+				.slice(node.offset, node.offset + node.length)
+				.includes("\n");
+		if (path.length === 0) return false;
+	}
+}
+
+const onOneLine = (text: string) =>
+	text
+		.replace(/\[\s*\n\s*/g, "[")
+		.replace(/\s*\n\s*\]/g, "]")
+		.replace(/\s*\n\s*/g, " ");
