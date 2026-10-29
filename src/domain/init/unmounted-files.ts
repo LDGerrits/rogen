@@ -26,7 +26,7 @@ export class UnmountedFiles {
 		private readonly directory: string
 	) {}
 
-	/** Folders relative to the project, sorted. `mounted` and `ignored` are the mounts and `globIgnorePaths` of the project file; `compiled` are the folders a compiler or processor writes the source paths to, under their common folder. */
+	/** A file whose compiled copy is mounted counts as mounted, since Rojo synced that copy. */
 	async find(
 		sourcePaths: readonly string[],
 		mounted: readonly string[],

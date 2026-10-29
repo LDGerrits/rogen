@@ -56,13 +56,13 @@ export interface ProjectChoices {
 	readonly language: Language;
 	readonly sourcePaths: readonly string[];
 	readonly compiledPath?: string;
-	/** The folder a processor writes, which the lifted project file mounts; `config` is the processor's config file, without which those mounts stay. */
+	/** Without `config`, nothing says a processor writes the folder, so its mounts stay. */
 	readonly processed?: { readonly folder: string; readonly config?: string };
 	readonly tree: ProjectTree;
 	readonly mounts: readonly Mount[];
 	/** Folders of code the lifted project file mounts, which no source path holds and the tree keeps mounting. */
 	readonly keptCode?: readonly string[];
-	/** Folders and files of code that no source path holds and the tree doesn't mount, which Rogen places nowhere. */
+	/** Code Rogen places nowhere, which init warns about. */
 	readonly outside?: readonly string[];
 	/** Files of the source paths that the lifted project file mounts nowhere, which Rojo ignored and routes will place. */
 	readonly unmounted?: readonly string[];

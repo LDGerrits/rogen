@@ -32,7 +32,7 @@ export class MountedCode {
 		this.finder = new CodeFinder(reader);
 	}
 
-	/** The source path is the closest folder other than the project's own that holds every mounted folder of code. `excluded` are folders that are never source paths, such as packages or a compiler's output; `codeFolders` are the top folders that hold code, and a processor's mounts may repeat one that no node mounts. */
+	/** Never the project's own folder, which would scan the whole repository. */
 	async find(
 		project: StarterProject,
 		excluded: readonly string[],

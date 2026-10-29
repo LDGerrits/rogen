@@ -15,7 +15,7 @@ export class ProcessedFolder {
 		private readonly directory: string
 	) {}
 
-	/** The top folder whose every mount has its counterpart under the common folder of `sourcePaths`; `undefined` unless exactly one has. `taken` are folders that are someone else's, such as a compiler's output. */
+	/** Only a single match counts, since two folders that both repeat the source can't be told apart. */
 	async find(
 		sourcePaths: readonly string[],
 		mounted: readonly string[],

@@ -58,7 +58,7 @@ export class CodeFinder {
 		return false;
 	}
 
-	/** The shallowest folders and files of code, relative to `cwd` and sorted, that no folder of `held` holds and none of `excluded` is; `.` in `held` holds everything. */
+	/** Goes down only into folders above a held one, so each stray folder is named once, at its top. */
 	async codeOutside(
 		cwd: string,
 		held: readonly string[],
