@@ -54,7 +54,7 @@ export interface CaseSpec {
 	readonly env?: Readonly<Record<string, string>>;
 	/** The text each step reads on its standard input. */
 	readonly stdin?: string;
-	/** A place file the steps read, made before they run: the project as built, synced into a place by Rojo, then changed by the case's `place.luau` as in Studio's command bar. */
+	/** A place file the steps read, made before they run: the project as built from its default config, or its only config, synced into a place by Rojo, then changed by the case's `place.luau` as in Studio's command bar. */
 	readonly place?: string;
 	/** Programs that stand in for the toolchain on a machine that has none: each name is a script on the PATH that logs its call, then runs the body given (shell, so not on Windows). The case gets no Rokit file pinning Rojo, and a home folder of its own, so Rogen sees a machine with only these. The calls are in the transcript under `ran:`. */
 	readonly tools?: Readonly<Record<string, string>>;
@@ -340,9 +340,16 @@ async function makePlace(
 		verbatimSymlinks: true,
 	});
 	fs.copyFileSync(path.resolve("rokit.toml"), path.join(base, "rokit.toml"));
+	const stem = placeStem(base);
 	const steps: [string, readonly string[], string][] = [
-		[...invocation(cli, ["write"]), base],
-		["rojo", ["build", "default.project.json", "-o", "base.rbxl"], base],
+		[
+			...invocation(
+				cli,
+				stem === "default" ? ["write"] : ["write", stem]
+			),
+			base,
+		],
+		["rojo", ["build", `${stem}.project.json`, "-o", "base.rbxl"], base],
 		[
 			"lune",
 			[
@@ -362,6 +369,15 @@ async function makePlace(
 				`${command} ${args.join(" ")} failed while making the place: ${result.stderr || result.stdout}`
 			);
 	}
+}
+
+/** The config a place is built from: the default one, else the only config of a project of places. */
+function placeStem(project: string): string {
+	const stems = fs
+		.readdirSync(project)
+		.map((name) => /^(.+)\.rogen\.jsonc?$/.exec(name)?.[1])
+		.filter((stem): stem is string => stem !== undefined);
+	return stems.length === 1 ? stems[0] : "default";
 }
 
 function readSpec(caseDir: string): CaseSpec {

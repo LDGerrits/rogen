@@ -176,6 +176,8 @@ export interface ConfigService {
 	namedConfigs(): Promise<string[]>;
 	/** Every config file of the working directory, absolute and sorted. */
 	configsHere(): Promise<string[]>;
+	/** Every config file of `folder`, absolute and sorted. */
+	configsIn(folder: string): Promise<string[]>;
 	/** The project files of the working directory that no config of that name writes, absolute and sorted. */
 	plainProjectsHere(): Promise<string[]>;
 	/** Each argument that names a config as a bare name is replaced by its file; a file, or a folder with a default, stays a path. */
