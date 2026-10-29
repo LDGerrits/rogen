@@ -194,7 +194,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 						this.fileSystemService,
 						directory.path
 					).find(
-						lifted.mountedFolders(),
+						lifted,
 						[...directory.workspace.packageDirs],
 						directory.layout.codeFolders
 					)

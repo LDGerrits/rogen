@@ -6,7 +6,10 @@ import {
 } from "../../base/path.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { CodeFinder } from "./code-finder.js";
+import { DerivedRoutes } from "./derived-routes.js";
 import { ProcessedFolder } from "./processed-folder.js";
+import { StarterProject } from "./starter-project.js";
+import { StartingRoutes } from "./starting-routes.js";
 
 /** Where a hand-written project file keeps its code, as the source paths that hold it. */
 export interface CodeOfProject {
@@ -31,11 +34,11 @@ export class MountedCode {
 
 	/** The source path is the closest folder other than the project's own that holds every mounted folder of code. `excluded` are folders that are never source paths, such as packages or a compiler's output; `codeFolders` are the top folders that hold code, and a processor's mounts may repeat one that no node mounts. */
 	async find(
-		mounted: readonly string[],
+		project: StarterProject,
 		excluded: readonly string[],
 		codeFolders: readonly string[]
 	): Promise<CodeOfProject> {
-		const targets = mounted.map(normalizeDir);
+		const targets = project.mountedFolders().map(normalizeDir);
 		const skipped = excluded.map(normalizeDir);
 		const candidates = targets.filter(
 			(target) =>
@@ -78,6 +81,31 @@ export class MountedCode {
 				return { sourcePaths: [source], processed, folders };
 		}
 		const common = folders.length > 0 ? commonFolderPosix(folders) : ".";
-		return { sourcePaths: common === "." ? [] : [common], folders };
+		const sourcePath = MountedCode.unkeyed(common, project, folders);
+		return { sourcePaths: sourcePath ? [sourcePath] : [], folders };
+	}
+
+	/** A source path named after a route key routes nothing, so its parent takes its place where that routes each folder to where the project file mounted it. */
+	private static unkeyed(
+		common: string,
+		project: StarterProject,
+		folders: readonly string[]
+	): string | undefined {
+		if (common === ".") return undefined;
+		if (
+			!StartingRoutes.isKey(
+				path.posix.basename(common),
+				DerivedRoutes.of(project, [common])
+			)
+		)
+			return common;
+		const parent = path.posix.dirname(common);
+		if (parent === ".") return undefined;
+		const derived = DerivedRoutes.of(project, [parent]);
+		return derived?.unrouted.every(
+			({ target }) => !folders.includes(target)
+		)
+			? parent
+			: undefined;
 	}
 }

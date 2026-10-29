@@ -872,6 +872,42 @@ describe("CoreInitService", () => {
 			expect(plan?.warnings).toEqual([]);
 		});
 
+		it("should take the parent of a lone mounted folder named after a route, when its route places the files there", async () => {
+			await lift({
+				ServerScriptService: { Server: { $path: "src/server" } },
+			});
+			await write("src/server/Main.server.luau");
+			await write("src/server/Admin/Ban.luau");
+
+			const plan = await planOf();
+
+			expect(configOf(plan)).toMatchObject({
+				sourcePaths: ["src"],
+				routes: { Server: "ServerScriptService/Server" },
+				tree: { $className: "DataModel", ServerScriptService: {} },
+			});
+			expect(plan?.warnings).toEqual([]);
+		});
+
+		it("should keep a lone folder named after a route at the top of the project in the tree, with a note", async () => {
+			const tree = {
+				ServerScriptService: { Server: { $path: "server" } },
+			};
+			await lift(tree);
+			await write("server/Main.server.luau");
+
+			const plan = await planOf();
+
+			expect(configOf(plan)).toMatchObject({
+				sourcePaths: ["src"],
+				tree: { $className: "DataModel", ...tree },
+			});
+			expect(plan?.notes).toContainEqual(
+				expect.stringMatching(/^Kept the mounts of server in the tree/)
+			);
+			expect(plan?.warnings).toEqual([]);
+		});
+
 		it("should keep folders mounted at the top of the project in the tree, with a note", async () => {
 			const tree = {
 				ServerScriptService: { Server: { $path: "server" } },

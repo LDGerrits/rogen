@@ -18,6 +18,15 @@ export class StartingRoutes {
 		private readonly derived?: DerivedRoutes
 	) {}
 
+	/** Whether a folder of this name is read as a key of the routes a config starts with, which `derived` adds to. */
+	static isKey(name: string, derived?: DerivedRoutes): boolean {
+		const identity = DeclaredKeys.identityOf(name);
+		return [
+			...ROUTES.map(({ id }) => id),
+			...(derived?.routes.keys() ?? []),
+		].some((key) => DeclaredKeys.identityOf(key) === identity);
+	}
+
 	get sharedTarget(): string {
 		return `ReplicatedStorage/${this.language.routeKey("shared")}`;
 	}

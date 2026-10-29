@@ -1,0 +1,6 @@
+{
+	"steps": [
+		["init", "--non-interactive"],
+		["where", "src/server/Main.server.luau"]
+	]
+}

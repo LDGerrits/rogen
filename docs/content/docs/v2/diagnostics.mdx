@@ -907,7 +907,7 @@ Run `rogen where` on the files to see where they land. To keep them out of the g
 
 ### `init.codeOutsideSourcePaths` [#init-codeoutsidesourcepaths]
 
-Warning. `init` found code that no source path holds and that the tree doesn't mount, so Rogen places none of it. Package folders and a compiler's output don't count. With no `default.project.json`, the source path is `src`, or the only folder that holds code. When `init` lifts a `default.project.json`, the source path is the closest folder that holds every folder of code that the file mounts.
+Warning. `init` found code that no source path holds and that the tree doesn't mount, so Rogen places none of it. Package folders and a compiler's output don't count. With no `default.project.json`, the source path is `src`, or the only folder that holds code if no route is named after it. When `init` lifts a `default.project.json`, the source path is the closest folder that holds every folder of code that the file mounts. When a route is named after that folder, such as `src/server`, the source path is its parent, `src`, if the routes put the code where the file did. If they don't, the tree keeps the mounts.
 
 ```
 warning: game and lib hold code that no source path holds and the tree doesn't mount, so Rogen places none of it. Move the code into src, or list its folders under "sourcePaths" in default.rogen.json. (init.codeOutsideSourcePaths)

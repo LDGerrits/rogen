@@ -12,6 +12,7 @@ import {
 } from "../config/config.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
 import { DirectoryLayout } from "./code-finder.js";
+import { StartingRoutes } from "./starting-routes.js";
 import { DOCS_URL } from "../../platform/product/product-service.js";
 
 const PROJECT_FILE_SUFFIX = ".project.json";
@@ -75,12 +76,14 @@ export class InitDirectory {
 			);
 	}
 
-	/** The first that applies: the language's own config, `src`, the only code folder, else `src`. */
+	/** The first that applies: the language's own config, `src`, the only code folder unless a route is named after it, else `src`. */
 	defaultSourcePath(language: Language): string {
 		const configured = language.configuredSourcePath();
 		if (configured !== undefined) return configured;
 		if (this.has(DEFAULT_SOURCE_PATH)) return DEFAULT_SOURCE_PATH;
 		const { codeFolders } = this.layout;
-		return codeFolders.length === 1 ? codeFolders[0] : DEFAULT_SOURCE_PATH;
+		return codeFolders.length === 1 && !StartingRoutes.isKey(codeFolders[0])
+			? codeFolders[0]
+			: DEFAULT_SOURCE_PATH;
 	}
 }

@@ -141,6 +141,14 @@ describe("domain/init/init-directory", () => {
 			).toBe("lib");
 		});
 
+		it("should not be the only code folder when a route is named after it", () => {
+			expect(
+				directoryOf({
+					workspace: { codeFolders: ["server"] },
+				}).defaultSourcePath(luau)
+			).toBe("src");
+		});
+
 		it("should fall back to src", () => {
 			expect(directoryOf().defaultSourcePath(luau)).toBe("src");
 			expect(
