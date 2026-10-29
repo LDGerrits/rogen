@@ -362,6 +362,25 @@ describe("TreePlan", () => {
 			});
 		});
 
+		it("should name only the folders the nodes it leaves out point into", async () => {
+			const files = await lift(
+				{
+					name: "my-game",
+					tree: {
+						$className: "DataModel",
+						ServerScriptService: {
+							Server: { $path: "build/server" },
+						},
+					},
+				},
+				{ processed: { folder: "build", config: ".darklua.json" } }
+			);
+
+			expect(files.notes[1]).toBe(
+				"Left out ServerScriptService/Server, since it points into build and Rogen generates that code now."
+			);
+		});
+
 		it("should leave out of a lifted tree the nodes that point into the compiled path", async () => {
 			const files = planProject({
 				choices: {
@@ -388,7 +407,7 @@ describe("TreePlan", () => {
 				ServerScriptService: {},
 			});
 			expect(files.notes[1]).toBe(
-				"Left out ServerScriptService/TS, since it points into src or out and Rogen generates that code now."
+				"Left out ServerScriptService/TS, since it points into out and Rogen generates that code now."
 			);
 		});
 

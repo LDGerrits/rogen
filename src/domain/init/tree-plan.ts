@@ -1,4 +1,5 @@
 import path from "path";
+import { containsPosix, normalizeDir } from "../../base/path.js";
 import { joinedWithAnd, joinedWithOr } from "../../base/strings.js";
 import {
 	Diagnostic,
@@ -6,7 +7,11 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { DEFAULT_CONFIG_FILE, RogenConfig } from "../config/config.js";
 import { instanceKey } from "../roblox/roblox.js";
-import { MountedPath, RemovedMount } from "../rojo/rojo-project.js";
+import {
+	MountedPath,
+	RemovedMount,
+	rojoPathTarget,
+} from "../rojo/rojo-project.js";
 import { Mount } from "../toolchain/toolchain.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { InitKind } from "./init-service.js";
@@ -122,9 +127,20 @@ export class TreePlan {
 		const restoredPlaces = new Set(
 			restored.map(({ mount }) => placeOf(mount))
 		);
-		const leftOut = removed
-			.filter((mount) => !restoredPlaces.has(placeOf(mount)))
-			.map(({ instancePath }) => instanceKey(instancePath));
+		const leftOutMounts = removed.filter(
+			(mount) => !restoredPlaces.has(placeOf(mount))
+		);
+		const leftOut = leftOutMounts.map(({ instancePath }) =>
+			instanceKey(instancePath)
+		);
+		const leftOutDirs = dirs.filter((dir) =>
+			leftOutMounts.some((mount) =>
+				containsPosix(
+					normalizeDir(dir),
+					normalizeDir(rojoPathTarget(mount.path))
+				)
+			)
+		);
 		const unroutable = unrouted.filter(
 			({ mount }) => !restoredPlaces.has(placeOf(mount))
 		);
@@ -140,7 +156,7 @@ export class TreePlan {
 						]),
 				...(leftOut.length > 0
 					? [
-							`Left out ${joinedWithAnd(leftOut)}, since ${leftOut.length === 1 ? "it points" : "they point"} into ${joinedWithOr(dirs)} and Rogen generates that code now.`,
+							`Left out ${joinedWithAnd(leftOut)}, since ${leftOut.length === 1 ? "it points" : "they point"} into ${joinedWithOr(leftOutDirs)} and Rogen generates that code now.`,
 						]
 					: []),
 				...(routedMounts.length > 0
