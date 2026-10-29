@@ -31,6 +31,12 @@ const INIT_META_KEYS: ReadonlySet<string> = new Set([
 /** The prefix of the attributes Rojo keeps a reference between instances in, which a node can't hold. */
 const REFERENCE = "Rojo_";
 
+/** Whether a node could describe a file of this name, so it is worth reading: a model, text or meta file. */
+export const isNodeFile = (name: string): boolean =>
+	[MODEL_SUFFIX, TEXT_SUFFIX, RojoFile.META_SUFFIX].some((suffix) =>
+		name.endsWith(suffix)
+	);
+
 const objectOf = (
 	text: string | undefined
 ): Record<string, unknown> | undefined => {

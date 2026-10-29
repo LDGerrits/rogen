@@ -31,7 +31,7 @@ import { SyncRules } from "../rojo/sync-rules.js";
 import { RojoCommandService } from "../runner/rojo-command-service.js";
 import { ServerMessage } from "../runner/rojo-server.js";
 import { AddedInstance, AddedPath, addedInstances } from "./added-instances.js";
-import { WrittenEntry, addedNode } from "./added-node.js";
+import { WrittenEntry, addedNode, isNodeFile } from "./added-node.js";
 import { ReverseRouter, instanceNameOf } from "./reverse-router.js";
 import {
 	SyncbackChange,
@@ -991,18 +991,20 @@ export class CoreSyncbackService implements SyncbackService {
 		const entries: WrittenEntry[] = [];
 		for (const file of instance.files) {
 			const at = `${instance.parentFolder}/${file.join("/")}`;
-			entries.push(
-				folders.has(at)
-					? { path: file }
-					: {
-							path: file,
-							text: await this.fileSystemService.readFile(
-								path.join(prepared.root, at)
-							),
-						}
-			);
+			if (folders.has(at)) entries.push({ path: file });
+			else if (isNodeFile(file[file.length - 1]))
+				entries.push({
+					path: file,
+					text: await this.fileSystemService.readFile(
+						path.join(prepared.root, at)
+					),
+				});
+			else break;
 		}
-		const made = addedNode(entries);
+		const made =
+			entries.length === instance.files.length
+				? addedNode(entries)
+				: undefined;
 		if (made)
 			return {
 				node,
