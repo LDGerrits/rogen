@@ -2,71 +2,17 @@ import { DeclaredKeys } from "../config/declared-keys.js";
 import { Language } from "../toolchain/toolchain.js";
 import { DerivedRoutes } from "./derived-routes.js";
 
-type StandardRouteId =
-	| "server"
-	| "client"
-	| "shared"
-	| "replicatedFirst"
-	| "serverStorage"
-	| "starterGui";
+type StandardRouteId = "server" | "client" | "shared";
 
-/** A standard route, or one derived from a mount, named `mount:<key>`. */
-export type RouteId = StandardRouteId | `mount:${string}`;
-
-interface RouteOption {
-	readonly id: RouteId;
-	readonly key: string;
-	readonly target: string;
-	readonly hint: string;
-	readonly ticked: boolean;
-}
-
-interface RouteTemplate {
-	readonly id: StandardRouteId;
-	readonly hint: string;
-	readonly ticked: boolean;
-}
-
-interface FixedRoute extends RouteTemplate {
-	readonly target: string;
-}
-
-const ROUTES: readonly (FixedRoute | RouteTemplate)[] = [
-	{
-		id: "server",
-		target: "ServerScriptService",
-		hint: "runs on the server",
-		ticked: true,
-	},
-	{
-		id: "client",
-		target: "StarterPlayer/StarterPlayerScripts",
-		hint: "runs on each player's client",
-		ticked: true,
-	},
-	{ id: "shared", hint: "modules both sides require", ticked: true },
-	{
-		id: "replicatedFirst",
-		target: "ReplicatedFirst",
-		hint: "runs first on the client, while loading",
-		ticked: false,
-	},
-	{
-		id: "serverStorage",
-		target: "ServerStorage",
-		hint: "server modules that don't run on their own",
-		ticked: false,
-	},
-	{
-		id: "starterGui",
-		target: "StarterGui",
-		hint: "UI copied to each player",
-		ticked: false,
-	},
+/** The routes a new config starts with; shared code goes to a folder named like its key. */
+const ROUTES: readonly { id: StandardRouteId; target?: string }[] = [
+	{ id: "server", target: "ServerScriptService" },
+	{ id: "client", target: "StarterPlayer/StarterPlayerScripts" },
+	{ id: "shared" },
 ];
 
 export class StartingRoutes {
-	/** With `derived`, its routes come first, start ticked, and replace the standard route of the same key. */
+	/** With `derived`, its routes come first and replace the standard route of the same key. */
 	constructor(
 		private readonly language: Language,
 		private readonly derived?: DerivedRoutes
@@ -91,61 +37,24 @@ export class StartingRoutes {
 		return cased === identity ? derivedKey : cased;
 	}
 
-	/** `id` as an option of these routes: a standard id, such as `server`, names the derived route that replaced it. */
-	resolve(id: string): string {
-		const standard = ROUTES.find((template) => template.id === id);
-		if (!standard) return id;
-		const identity = DeclaredKeys.identityOf(
-			this.language.routeKey(standard.id)
-		);
-		return (
-			this.options.find(
-				(option) =>
-					option.id.startsWith("mount:") &&
-					DeclaredKeys.identityOf(option.key) === identity
-			)?.id ?? id
-		);
-	}
-
-	get options(): RouteOption[] {
+	/** The derived routes, the standard ones whose keys they leave free, and `*`. */
+	get routes(): Record<string, string> {
 		const derived = [...(this.derived?.routes ?? [])].map(
-			([key, target]): RouteOption => ({
-				id: `mount:${key}`,
-				key: this.keyOf(key),
-				target,
-				hint: `from ${this.derived?.from}`,
-				ticked: true,
-			})
+			([key, target]) => [this.keyOf(key), target] as const
 		);
 		const taken = new Set(
-			derived.map(({ key }) => DeclaredKeys.identityOf(key))
+			derived.map(([key]) => DeclaredKeys.identityOf(key))
 		);
-		const standard = ROUTES.map((template): RouteOption => ({
-			id: template.id,
-			key: this.language.routeKey(template.id),
-			target: "target" in template ? template.target : this.sharedTarget,
-			hint: template.hint,
-			ticked: template.ticked,
-		})).filter(({ key }) => !taken.has(DeclaredKeys.identityOf(key)));
-		return [...derived, ...standard];
-	}
-
-	get tickedByDefault(): RouteId[] {
-		return this.options.filter(({ ticked }) => ticked).map(({ id }) => id);
-	}
-
-	starting(
-		ticked: readonly RouteId[],
-		alwaysWriteFallback: boolean
-	): Record<string, string> {
-		const routes = this.options.filter(({ id }) => ticked.includes(id));
+		const standard = ROUTES.map(
+			({ id, target }) =>
+				[
+					this.language.routeKey(id),
+					target ?? this.sharedTarget,
+				] as const
+		).filter(([key]) => !taken.has(DeclaredKeys.identityOf(key)));
 		return {
-			...Object.fromEntries(
-				routes.map(({ key, target }) => [key, target])
-			),
-			...((alwaysWriteFallback || routes.length === 0) && {
-				[DeclaredKeys.FALLBACK_ROUTE]: this.fallbackTarget,
-			}),
+			...Object.fromEntries([...derived, ...standard]),
+			[DeclaredKeys.FALLBACK_ROUTE]: this.fallbackTarget,
 		};
 	}
 }

@@ -2,15 +2,12 @@ import { Result } from "../../../base/result.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import {
-	ACCEPT_DEFAULT,
 	CANCEL,
 	MockPromptService,
 	PromptScript,
-	ScriptedAnswer,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { withRobloxTs } from "../../toolchain/__tests__/workspaces.js";
 import { InitQuestions } from "../init-questions.js";
-import { InitChoices } from "../init-service.js";
 import { ProjectChoices, ProjectSetup } from "../project-setup.js";
 import path from "path";
 import {
@@ -82,8 +79,6 @@ const asked = async (...args: Parameters<typeof ask>) => {
 	return choices;
 };
 
-const acceptAll = (count: number) => Array(count).fill(ACCEPT_DEFAULT);
-
 describe("InitQuestions askProject", () => {
 	it("should give an unattended run the choices a user accepting every default gets", async () => {
 		for (const workspace of [
@@ -97,16 +92,19 @@ describe("InitQuestions askProject", () => {
 		}
 	});
 
-	it("should ask in order: language, packages, routes, fallback", async () => {
+	it("should ask only the language, and mount the installed packages", async () => {
 		const prompts = new MockPromptService({});
 
-		await askInitChoices(prompts, contextOf(rbxts));
+		const choices = (
+			await askInitChoices(prompts, contextOf(rbxts))
+		).unwrap();
 
-		expect(prompts.asked).toEqual([
-			"Language",
+		expect(prompts.asked).toEqual(["Language"]);
+		expect(choices?.mounts.map(({ path }) => path)).toEqual([
+			"include",
+			"node_modules/@rbxts",
 			"Packages",
-			"Routes",
-			"Files that match no route",
+			"ServerPackages",
 		]);
 	});
 
@@ -170,485 +168,96 @@ describe("InitQuestions askProject", () => {
 	});
 
 	describe("packages", () => {
-		const optionsFor = async (
-			workspace: WorkspaceSpec,
-			existing: readonly string[] = []
-		) => {
-			const prompts = new MockPromptService({});
-			let offered: { value: string; hint?: string }[] | undefined;
-			let initial: readonly string[] | undefined;
-			const original = prompts.multiSelect.bind(prompts);
-			prompts.multiSelect = (options) => {
-				if (options.message === "Packages") {
-					offered = [...options.choices];
-					initial = options.initialValues;
-				}
-				return original(options);
-			};
-			await askInitChoices(prompts, contextOf(workspace, existing));
-			return { offered, initial, prompts };
-		};
+		const mountedFor = async (workspace: WorkspaceSpec) =>
+			(await asked(workspace, {})).mounts;
 
-		it("should never offer include or an @ scope to luau", async () => {
-			const { offered } = await optionsFor(
-				withRobloxTs(
-					{ ...luau, packageManager: "wally" },
-					{
-						includeInstalled: true,
-						rbxtsScopes: ["@rbxts", "@flamework"],
-					}
-				)
-			);
-
-			expect(offered?.map(({ value }) => value)).toEqual([
-				"Packages",
-				"ServerPackages",
+		it("should mount the package folders when the manifest exists, installed or not", async () => {
+			expect(
+				await mountedFor({
+					...luau,
+					packageManager: "wally",
+					packageDirs: new Set(["Packages"]),
+				})
+			).toEqual([
+				{
+					path: "Packages",
+					optional: false,
+					landing: "ReplicatedStorage/Packages",
+				},
+				{
+					path: "ServerPackages",
+					optional: true,
+					landing: "ServerScriptService/ServerPackages",
+				},
 			]);
 		});
 
-		it("should tick the package folders when the manifest exists, installed or not", async () => {
+		it("should mount nothing when there is no package manager and no package folder", async () => {
+			expect(await mountedFor(luau)).toEqual([]);
+		});
+
+		it("should mount a package folder that exists without a manifest", async () => {
 			expect(
-				(await optionsFor({ ...luau, packageManager: "wally" })).initial
+				(
+					await mountedFor({
+						...luau,
+						packageDirs: new Set(["Packages"]),
+					})
+				).map(({ path }) => path)
+			).toEqual(["Packages"]);
+		});
+
+		it("should mount only pesde's folders when pesde is detected", async () => {
+			expect(
+				(await mountedFor({ ...luau, packageManager: "pesde" })).map(
+					({ path }) => path
+				)
+			).toEqual(["roblox_packages", "roblox_server_packages"]);
+		});
+
+		it("should never mount include or an @ scope for luau", async () => {
+			expect(
+				(
+					await mountedFor(
+						withRobloxTs(
+							{ ...luau, packageManager: "wally" },
+							{
+								includeInstalled: true,
+								rbxtsScopes: ["@rbxts", "@flamework"],
+							}
+						)
+					)
+				).map(({ path }) => path)
 			).toEqual(["Packages", "ServerPackages"]);
 		});
 
-		it("should skip the question when there is no package manager and no package folder", async () => {
-			const { offered, prompts } = await optionsFor(luau);
-
-			expect(offered).toBeUndefined();
-			expect(prompts.asked).not.toContain("Packages");
-		});
-
-		it("should ask when a package folder exists without a manifest", async () => {
-			const { offered } = await optionsFor({
-				...luau,
-				packageDirs: new Set(["Packages"]),
-			});
-
-			expect(offered?.map(({ value }) => value)).toContain("Packages");
-		});
-
-		it("should ask when a manifest exists and no folder does yet", async () => {
-			const { offered } = await optionsFor({
-				...luau,
-				packageManager: "wally",
-			});
-
-			expect(offered?.map(({ value }) => value)).toContain("Packages");
-		});
-
-		it("should offer only pesde's folders when pesde is detected", async () => {
-			const { offered } = await optionsFor({
-				...luau,
-				packageManager: "pesde",
-			});
-
-			expect(offered?.map(({ value }) => value)).toEqual([
-				"roblox_packages",
-				"roblox_server_packages",
-			]);
-		});
-
-		it("should say where each option lands and whether it is installed", async () => {
-			const { offered } = await optionsFor({
-				...luau,
-				packageManager: "wally",
-				packageDirs: new Set(["Packages"]),
-			});
-
-			expect(offered).toEqual([
-				expect.objectContaining({
-					value: "Packages",
-					hint: "→ ReplicatedStorage/Packages",
-				}),
-				expect.objectContaining({
-					value: "ServerPackages",
-					hint: "→ ServerScriptService/ServerPackages · not installed yet",
-				}),
-			]);
-		});
-
-		it("should offer the extra scopes roblox-ts found, and say include and @rbxts are always mounted", async () => {
-			const { offered, prompts } = await optionsFor(
-				withRobloxTs(rbxts, {
-					rbxtsScopes: ["@rbxts", "@flamework", "@rbxts-js"],
-				})
-			);
-
-			expect(offered?.map(({ value }) => value)).toEqual([
-				"Packages",
-				"ServerPackages",
-				"node_modules/@flamework",
-				"node_modules/@rbxts-js",
-			]);
-			expect(offered?.[2].hint).toBe(
-				"→ ReplicatedStorage/rbxts_include/node_modules/@flamework"
-			);
-			const prompt = prompts.prompts.find(
-				({ message }) => message === "Packages"
-			);
-			expect(prompt?.description).toContain(
-				"include and @rbxts are always mounted"
-			);
-		});
-
-		it("should be skipped when nothing is offered", async () => {
-			const prompts = new MockPromptService({});
-
-			const result = await askInitChoices(
-				prompts,
-				contextOf({ ...luau, language: "roblox-ts" })
-			);
-
-			expect(prompts.asked).not.toContain("Packages");
-			expect(result.unwrap()?.mounts.map(({ path }) => path)).toEqual([
-				"include",
-				"node_modules/@rbxts",
-			]);
-		});
-
-		it("should always mount include and @rbxts for roblox-ts", async () => {
-			const choices = await asked(rbxts, { Packages: [] });
-
-			expect(choices.mounts).toEqual([
-				{
-					path: "include",
-					optional: false,
-					landing: "ReplicatedStorage/rbxts_include",
-				},
-				{
-					path: "node_modules/@rbxts",
-					optional: false,
-					landing:
-						"ReplicatedStorage/rbxts_include/node_modules/@rbxts",
-				},
+		it("should always mount include and @rbxts for roblox-ts, with the extra scopes it found", async () => {
+			expect(
+				(
+					await mountedFor(
+						withRobloxTs(
+							{ ...luau, language: "roblox-ts" },
+							{ rbxtsScopes: ["@rbxts", "@flamework"] }
+						)
+					)
+				).map(({ path, landing }) => [path, landing])
+			).toEqual([
+				["include", "ReplicatedStorage/rbxts_include"],
+				[
+					"node_modules/@rbxts",
+					"ReplicatedStorage/rbxts_include/node_modules/@rbxts",
+				],
+				[
+					"node_modules/@flamework",
+					"ReplicatedStorage/rbxts_include/node_modules/@flamework",
+				],
 			]);
 		});
 	});
 
-	it("should mark packages that are not installed as optional", async () => {
-		const choices = await asked(rbxts, {
-			Packages: ["Packages", "ServerPackages"],
-		});
-
-		expect(choices.mounts).toEqual([
-			{
-				path: "include",
-				optional: false,
-				landing: "ReplicatedStorage/rbxts_include",
-			},
-			{
-				path: "node_modules/@rbxts",
-				optional: false,
-				landing: "ReplicatedStorage/rbxts_include/node_modules/@rbxts",
-			},
-			{
-				path: "Packages",
-				optional: false,
-				landing: "ReplicatedStorage/Packages",
-			},
-			{
-				path: "ServerPackages",
-				optional: true,
-				landing: "ServerScriptService/ServerPackages",
-			},
-		]);
+	it("should resolve undefined when the language question is cancelled", async () => {
+		expect((await ask(rbxts, [CANCEL])).unwrap()).toBeUndefined();
 	});
-
-	describe("routes", () => {
-		const routesPrompt = async (workspace: WorkspaceSpec) => {
-			const prompts = new MockPromptService({});
-			let choices: { value: string; label: string; hint?: string }[] = [];
-			let initial: readonly string[] | undefined;
-			const original = prompts.multiSelect.bind(prompts);
-			prompts.multiSelect = (options) => {
-				if (options.message === "Routes") {
-					choices = [...options.choices];
-					initial = options.initialValues;
-				}
-				return original(options);
-			};
-			await askInitChoices(prompts, contextOf(workspace));
-			return {
-				choices,
-				initial,
-				description: prompts.prompts.find(
-					({ message }) => message === "Routes"
-				)?.description,
-			};
-		};
-
-		it("should offer the six routes with the standard three ticked", async () => {
-			const { choices, initial } = await routesPrompt(luau);
-
-			expect(choices.map(({ value }) => value)).toEqual([
-				"server",
-				"client",
-				"shared",
-				"replicatedFirst",
-				"serverStorage",
-				"starterGui",
-			]);
-			expect(initial).toEqual(["server", "client", "shared"]);
-		});
-
-		it("should label them with capitalised keys for luau and say where each goes", async () => {
-			const { choices, description } = await routesPrompt(luau);
-
-			expect(choices.map(({ label }) => label)).toEqual([
-				"Server",
-				"Client",
-				"Shared",
-				"ReplicatedFirst",
-				"ServerStorage",
-				"StarterGui",
-			]);
-			expect(choices[0].hint).toBe(
-				"→ ServerScriptService · runs on the server"
-			);
-			expect(choices[2].hint).toContain("ReplicatedStorage/Shared");
-			expect(description).toBe(
-				"Where code goes. A Server folder, an @server marker file or a Foo@server.luau suffix all send code to ServerScriptService."
-			);
-		});
-
-		it("should label them with lowercase keys for roblox-ts", async () => {
-			const { choices, description } = await routesPrompt(rbxts);
-
-			expect(choices.map(({ label }) => label).slice(0, 4)).toEqual([
-				"server",
-				"client",
-				"shared",
-				"replicatedFirst",
-			]);
-			expect(choices[2].hint).toContain("ReplicatedStorage/shared");
-			expect(description).toContain(
-				"A server folder, an @server marker file or a Foo@server.ts suffix"
-			);
-		});
-
-		describe("from a lifted project file", () => {
-			const projectFile = JSON.stringify({
-				name: "my-game",
-				tree: {
-					$className: "DataModel",
-					ServerScriptService: { Server: { $path: "src/server" } },
-					ReplicatedStorage: { Shared: { $path: "src/shared" } },
-				},
-			});
-
-			const askLifting = async (
-				prompts: MockPromptService,
-				{
-					project = projectFile,
-					files = [],
-					choices = {},
-				}: {
-					project?: string;
-					files?: readonly string[];
-					choices?: InitChoices;
-				} = {}
-			) => {
-				const fileSystem = new MemoryFileSystemService();
-				await fileSystem.createDirectory(directory);
-				await fileSystem.writeFile(
-					path.join(directory, "default.project.json"),
-					project
-				);
-				for (const file of files)
-					await fileSystem.writeFile(path.join(directory, file), "");
-				return new ProjectSetup(
-					directoryOf({
-						workspace: luau,
-						existing: ["default.project.json"],
-					}),
-					new InitQuestions(prompts, prompts.isInteractive, choices),
-					fileSystem
-				).ask();
-			};
-
-			it("should offer the routes it derives first, ticked, beside the standard ones", async () => {
-				const prompts = new MockPromptService({});
-				let choices: { value: string; label: string; hint?: string }[] =
-					[];
-				let initial: readonly string[] | undefined;
-				const original = prompts.multiSelect.bind(prompts);
-				prompts.multiSelect = (options) => {
-					if (options.message === "Routes") {
-						choices = [...options.choices];
-						initial = options.initialValues;
-					}
-					return original(options);
-				};
-
-				await askLifting(prompts);
-
-				expect(choices.map(({ value }) => value)).toEqual([
-					"mount:server",
-					"mount:shared",
-					"client",
-					"replicatedFirst",
-					"serverStorage",
-					"starterGui",
-				]);
-				expect(choices[0]).toEqual({
-					value: "mount:server",
-					label: "Server",
-					hint: "→ ServerScriptService/Server · from default.project.json",
-				});
-				expect(initial).toEqual([
-					"mount:server",
-					"mount:shared",
-					"client",
-				]);
-			});
-
-			it("should take them without asking", async () => {
-				const result = (
-					await askLifting(new MockPromptService([], false))
-				).unwrap();
-
-				expect(result?.routes).toEqual([
-					"mount:server",
-					"mount:shared",
-					"client",
-				]);
-				expect(result?.fallback).toBe(true);
-			});
-
-			it("should accept a standard route id for the derived route that replaced it", async () => {
-				const result = (
-					await askLifting(new MockPromptService([], false), {
-						choices: { routes: ["server", "shared"] },
-					})
-				).unwrap();
-
-				expect(result?.routes).toEqual([
-					"mount:server",
-					"mount:shared",
-				]);
-			});
-
-			it("should not route a mount whose folder holds an init file", async () => {
-				const result = (
-					await askLifting(new MockPromptService([], false), {
-						files: [
-							"src/server/init.server.luau",
-							"src/shared/Util.luau",
-						],
-					})
-				).unwrap();
-
-				expect(result?.routes).toEqual([
-					"mount:shared",
-					"server",
-					"client",
-				]);
-				expect(result?.tree).toMatchObject({
-					kind: "lift",
-					project: expect.objectContaining({}),
-				});
-			});
-
-			it("should ask about no routes and no mounts for a root that is no DataModel", async () => {
-				const prompts = new MockPromptService({});
-				let asked = 0;
-				const original = prompts.multiSelect.bind(prompts);
-				prompts.multiSelect = (options) => {
-					asked++;
-					return original(options);
-				};
-
-				const result = (
-					await askLifting(prompts, {
-						project: JSON.stringify({ tree: { $path: "src" } }),
-					})
-				).unwrap();
-
-				expect(asked).toBe(0);
-				expect(result?.routes).toEqual([]);
-				expect(result?.mounts).toEqual([]);
-			});
-
-			it("should offer the standard routes when the file is not lifted", async () => {
-				const result = await defaultInitChoices(luau);
-
-				expect(result?.routes).toEqual(["server", "client", "shared"]);
-			});
-		});
-
-		it("should take the ticked routes", async () => {
-			const choices = await asked(luau, {
-				Routes: ["server", "starterGui"],
-			});
-
-			expect(choices.routes).toEqual(["server", "starterGui"]);
-		});
-
-		it("should offer to put files that match no route in the shared route first", async () => {
-			const prompts = new MockPromptService({});
-			let initial: string | undefined;
-			const original = prompts.select.bind(prompts);
-			prompts.select = ((options: Parameters<typeof original>[0]) => {
-				if (options.message === "Files that match no route")
-					initial = options.initialValue as string;
-				return original(options);
-			}) as typeof prompts.select;
-
-			await askInitChoices(prompts, contextOf(luau));
-
-			expect(initial).toBe("shared");
-		});
-
-		it("should let files that match no route be left out", async () => {
-			const choices = await asked(luau, {
-				"Files that match no route": "leave",
-			});
-
-			expect(choices.fallback).toBe(false);
-		});
-
-		it("should say what the fallback options do, per language", async () => {
-			const prompts = new MockPromptService({});
-			let labels: string[] = [];
-			const original = prompts.select.bind(prompts);
-			prompts.select = ((options: Parameters<typeof original>[0]) => {
-				if (options.message === "Files that match no route") {
-					labels = options.choices.map(({ label }) => label);
-				}
-				return original(options);
-			}) as typeof prompts.select;
-
-			await askInitChoices(prompts, contextOf(rbxts));
-
-			expect(labels).toEqual([
-				"Put them in ReplicatedStorage/shared",
-				"Leave them out (Rogen warns when it does)",
-			]);
-		});
-
-		it("should skip the fallback question when no route is ticked", async () => {
-			const prompts = new MockPromptService({ Routes: [] });
-
-			const result = await askInitChoices(prompts, contextOf(luau));
-
-			expect(prompts.asked).not.toContain("Files that match no route");
-			expect(result.unwrap()).toMatchObject({
-				routes: [],
-				fallback: true,
-			});
-		});
-	});
-
-	it.each([0, 1, 2, 3])(
-		"should resolve undefined when cancelled at question %i",
-		async (index) => {
-			const answers: ScriptedAnswer[] = acceptAll(index);
-			answers.push(CANCEL);
-
-			expect((await ask(rbxts, answers)).unwrap()).toBeUndefined();
-		}
-	);
 });
 
 describe("InitQuestions askProject project file", () => {
@@ -690,15 +299,10 @@ describe("InitQuestions askProject project file", () => {
 				landing: "ServerScriptService/ServerPackages",
 			},
 		]);
-		expect(prompts.asked).toContain("Packages");
 	});
 
 	it("should answer nothing when the user cancels", async () => {
-		const result = await ask(
-			luau,
-			[CANCEL, CANCEL, CANCEL],
-			["default.project.json"]
-		);
+		const result = await ask(luau, [CANCEL], ["default.project.json"]);
 
 		expect(result.unwrap()).toBeUndefined();
 	});

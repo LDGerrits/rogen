@@ -5,7 +5,7 @@ stdout:
   Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every write.
   Left out ReplicatedStorage/Shared, since it points into src and Rogen generates that code now.
   Kept ServerScriptService/Server and StarterPlayer/StarterPlayerScripts/Client in the tree as $path mounts, since their folders hold an init file, which Rojo reads as the instance of the folder itself and a route can't.
-  Took the defaults: --kind place, --language luau, --route mount:shared, --route server, --route client, --unmatched shared, --agent-rules.
+  Took the defaults: --kind place, --language luau, --agent-rules.
   Created default.rogen.json.
   Created .gitignore.
   Created AGENTS.md.
@@ -16,7 +16,7 @@ stdout:
       rogen serve
     In Studio, press Connect in the Rojo plugin.
     Rogen writes default.project.json now, so git can stop tracking it: git rm --cached default.project.json
-    Add your own routes under "routes" in default.rogen.json.
+    To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".
     Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.
   Wrote 3 files.
 

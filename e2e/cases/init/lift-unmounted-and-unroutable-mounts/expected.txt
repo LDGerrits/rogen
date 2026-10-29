@@ -7,7 +7,7 @@ stdout:
   Kept ReplicatedStorage/MyLib in the tree as a $path mount, since no route can make it: my-lib is not a valid route name.
   Kept ReplicatedStorage/Pkg in the tree as a $path mount, since no route can make it: only a folder directly in a source path becomes a route.
   Kept ServerScriptService/Admin in the tree as a $path mount, since no route can make it: only a folder directly in a source path becomes a route.
-  Took the defaults: --kind place, --language luau, --route mount:shared, --route mount:server, --route client, --unmatched shared, --agent-rules.
+  Took the defaults: --kind place, --language luau, --agent-rules.
   Created default.rogen.json.
   Created .gitignore.
   Created AGENTS.md.
@@ -18,7 +18,7 @@ stdout:
       rogen serve
     In Studio, press Connect in the Rojo plugin.
     Rogen writes default.project.json now, so git can stop tracking it: git rm --cached default.project.json
-    Add your own routes under "routes" in default.rogen.json.
+    To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".
     Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.
   Wrote 3 files.
 stderr:

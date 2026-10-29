@@ -1,4 +1,4 @@
-$ rogen init --json --route server --agent-hook --no-agent-rules
+$ rogen init --json --no-sample --agent-hook --no-agent-rules
 exit 0
 stdout:
   {
@@ -42,11 +42,6 @@ stdout:
         "flag": "--places"
       },
       {
-        "question": "unmatched",
-        "value": "shared",
-        "flag": "--unmatched"
-      },
-      {
         "question": "skipGit",
         "value": false,
         "flag": "--skip-git"
@@ -69,7 +64,7 @@ stdout:
         "rogen serve"
       ],
       "edits": [
-        "Add your own routes under \"routes\" in default.rogen.json.",
+        "To change where code goes, edit \"routes\" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its \"tree\".",
         "Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows."
       ]
     }
@@ -90,6 +85,8 @@ default.rogen.json:
   ],
   "routes": {
     "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
     "*": "ReplicatedStorage/Shared"
   },
   "tree": {

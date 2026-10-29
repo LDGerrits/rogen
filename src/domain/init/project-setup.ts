@@ -23,7 +23,7 @@ import {
 } from "../toolchain/toolchain.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { DerivedRoutes } from "./derived-routes.js";
-import { GreeterSample, SAMPLE_ROUTES } from "./greeter-sample.js";
+import { GreeterSample } from "./greeter-sample.js";
 import { SAMPLE_GAME_FOLDER, SampleGame } from "./sample-game.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
@@ -40,7 +40,7 @@ import { StarterProject } from "./starter-project.js";
 import { ProjectReader } from "./project-reader.js";
 import { Setup } from "./setup.js";
 import { RobloxTsStarter } from "./roblox-ts-starter.js";
-import { RouteId, StartingRoutes } from "./starting-routes.js";
+import { StartingRoutes } from "./starting-routes.js";
 import {
 	PROJECTS_FOLDER,
 	StarterPlaces,
@@ -60,8 +60,6 @@ export interface ProjectChoices {
 	readonly processed?: { readonly folder: string; readonly config?: string };
 	readonly tree: ProjectTree;
 	readonly mounts: readonly Mount[];
-	readonly routes: readonly RouteId[];
-	readonly fallback: boolean;
 	/** Folders of code the lifted project file mounts, which no source path holds and the tree keeps mounting. */
 	readonly keptCode?: readonly string[];
 	/** Folders and files of code that no source path holds and the tree doesn't mount, which Rogen places nowhere. */
@@ -93,6 +91,21 @@ function derivedRoutesOf(
 	return tree.kind === "lift"
 		? DerivedRoutes.of(tree.from, tree.project, dirs)
 		: undefined;
+}
+
+/** The folders placed as they are: the language's own, and the packages that are installed or that a manifest says are coming. */
+function mountsOf(directory: InitDirectory, language: Language): Mount[] {
+	return [
+		...language.alwaysMounted(),
+		...[
+			...directory.workspace.packageMounts(language),
+			...language.offeredMounts(),
+		].filter(({ ticked }) => ticked),
+	].map(({ path, installed, landing }) => ({
+		path,
+		optional: !installed,
+		landing,
+	}));
 }
 
 /** Whether routes can place code in the tree: a lifted file whose root isn't a DataModel, such as a model or plugin, is Rojo's own and has no service to route to. */
@@ -213,10 +226,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					...(processorConfig && { config: processorConfig }),
 				}
 			: undefined;
-		const mounted = routed
-			? await questions.mounts(directory, language)
-			: [];
-		if (mounted === undefined) return ok(undefined);
+		const mounted = routed ? mountsOf(directory, language) : [];
 		const mounts = places
 			? StarterPlaces.mountsFor(
 					places,
@@ -224,17 +234,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					RobloxTsStarter.OWN_FOLDERS
 				)
 			: mounted;
-
-		const routes = routed
-			? await questions.routes(
-					language,
-					derivedRoutesOf(
-						tree.value,
-						generatedDirs({ sourcePaths, compiledPath, processed })
-					)
-				)
-			: { routes: [], fallback: false };
-		if (routes === undefined) return ok(undefined);
 
 		const unmounted = lifted
 			? await new UnmountedFiles(
@@ -281,7 +280,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			kind,
 			tree.value,
 			language,
-			routes.routes,
 			starter !== undefined
 		);
 		const sampleOf = new GreeterSample(
@@ -317,8 +315,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					? { ...tree.value, game }
 					: tree.value,
 			mounts,
-			routes: routes.routes,
-			fallback: routes.fallback,
 			keptCode,
 			outside,
 			unmounted,
@@ -449,12 +445,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			: undefined;
 	}
 
-	/** Whether the Greeter sample is written: in a new place, in a folder with no code, with the routes its folders are named after, and for a compiled language only when its starter tool has set the folder up. */
+	/** Whether the Greeter sample is written: in a new place, in a folder with no code, and for a compiled language only when its starter tool has set the folder up. */
 	private wantsSample(
 		kind: InitKind,
 		tree: ProjectTree,
 		language: Language,
-		routes: readonly RouteId[],
 		scaffolded: boolean
 	): boolean {
 		const { codeFolders } = this.directory.layout;
@@ -467,11 +462,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 						? `isn't written for ${language.copy.label} here, where ${language.copy.label} was set up already.`
 						: codeFolders.length > 0
 							? `is for a folder with no code, and ${codeFolders.join(", ")} has some.`
-							: SAMPLE_ROUTES.some(
-										(route) => !routes.includes(route)
-								  )
-								? `needs the ${SAMPLE_ROUTES.join(", ")} routes.`
-								: undefined;
+							: undefined;
 		if (problem === undefined) return this.questions.sample();
 		if (this.questions.choices.sample === true)
 			throw new UsageError(`--sample ${problem}`);
@@ -541,10 +532,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const dirs = generatedDirs(choices);
 		const derived = derivedRoutesOf(choices.tree, dirs);
 		const routes = takesRoutes(choices.tree)
-			? new StartingRoutes(language, derived).starting(
-					choices.routes,
-					choices.fallback
-				)
+			? new StartingRoutes(language, derived).routes
 			: undefined;
 		const tree = TreePlan.of({
 			tree: choices.tree,
@@ -775,7 +763,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const configFile = places?.configFile ?? DEFAULT_CONFIG_FILE;
 		if (takesRoutes(chosen))
 			builder.addEdit(
-				`Add your own routes under "routes" in ${configFile}.`
+				builder.configCount > 1
+					? 'To change where code goes, edit "routes" in each .rogen.json. To place a folder as it is, such as Packages, mount it in the "tree" of each.'
+					: `To change where code goes, edit "routes" in ${configFile}. To place a folder as it is, such as Packages, mount it in its "tree".`
 			);
 		const projectFile = places?.projectFile ?? DEFAULT_PROJECT_FILE;
 		builder.addEdit(

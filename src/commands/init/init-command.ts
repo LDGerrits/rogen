@@ -61,29 +61,6 @@ const InitOptions = [
 			"The language: luau or roblox-ts. Detected from the folder when not given. For roblox-ts in a folder with no code, package.json or tsconfig.json, init first runs 'npm create roblox-ts', which needs npm and the network.",
 	},
 	{
-		name: "package",
-		type: "string",
-		multiple: true,
-		placeholder: "path",
-		description:
-			"A package folder to mount as it is; repeat for several, or none for no mounts. The installed ones when not given.",
-	},
-	{
-		name: "route",
-		type: "string",
-		multiple: true,
-		placeholder: "id",
-		description:
-			"A route to start with; repeat for several, or none. The routes are server, client, shared, replicatedFirst, serverStorage and starterGui. The first three when not given. When a lifted project file mounts a folder of that name, the name stands for the route made from that mount, which --json writes as mount:server.",
-	},
-	{
-		name: "unmatched",
-		type: "string",
-		values: ["leave", "shared"],
-		description:
-			'Where files that match no route go: the shared route (the default) or nowhere. In the shared route, they go in as a "*" route. Left out, each file is warned about, naming the routing folders to move it into. A lifted project file that mounted a whole source path points "*" at that node instead, which places what it held.',
-	},
-	{
 		name: "sample",
 		type: "boolean",
 		negatable: true,
@@ -123,9 +100,6 @@ function choicesOf(
 		agentRules: options["agent-rules"],
 		agentHook: options["agent-hook"],
 		language: options.language,
-		packages: options.package,
-		routes: options.route,
-		unmatched: options.unmatched as InitChoices["unmatched"],
 		sample: options.sample,
 		places: options.places,
 	};

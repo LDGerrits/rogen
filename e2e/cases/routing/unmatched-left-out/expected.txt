@@ -1,9 +1,3 @@
-$ rogen init -y --unmatched leave
-exit 0
-stdout: (not shown)
-stderr:
-  src/Shop/Secrets.luau - warning: matched no route, so it is left out. Move it into src/Shop/Server, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route. (route.unrouted)
-
 $ rogen check
 exit 1
 stdout:
@@ -16,26 +10,7 @@ stderr:
   src/Shop/Secrets.luau - warning: matched no route, so it is left out. Move it into src/Shop/Server, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route. (route.unrouted)
 
 written:
-  .git/
-  .gitignore
-  AGENTS.md
   default.project.json
-  default.rogen.json
-
-default.rogen.json:
-{
-  "sourcePaths": [
-    "src"
-  ],
-  "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared"
-  },
-  "tree": {
-    "$className": "DataModel"
-  }
-}
 
 $ rojo sourcemap default.project.json
 project: DataModel

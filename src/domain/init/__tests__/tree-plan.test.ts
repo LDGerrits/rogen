@@ -1,7 +1,4 @@
-import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
-import { DerivedRoutes } from "../derived-routes.js";
 import { ProjectChoices } from "../project-setup.js";
-import { RouteId, StartingRoutes } from "../starting-routes.js";
 import { WorkspaceSpec } from "./init-fixtures.js";
 import {
 	LUAU_ROUTES,
@@ -135,8 +132,7 @@ describe("TreePlan", () => {
 
 			const planDerived = async (
 				content: object,
-				holdingInit: readonly string[] = [],
-				ticked: (ids: RouteId[]) => RouteId[] = (ids) => ids
+				holdingInit: readonly string[] = []
 			) => {
 				const choices = await defaultProjectChoices(luau);
 				const whole = lifted({ name: "my-game", tree: content });
@@ -147,25 +143,8 @@ describe("TreePlan", () => {
 								project: whole.project.withInitIn(holdingInit),
 							}
 						: whole;
-				const derived =
-					project.kind === "lift"
-						? DerivedRoutes.of(
-								"default.project.json",
-								project.project,
-								choices.sourcePaths
-							)
-						: undefined;
-				const starting = new StartingRoutes(
-					workspaceOf(luau).languageFor("luau"),
-					derived
-				);
 				return planProject({
-					choices: {
-						...choices,
-						tree: project,
-						routes: ticked(starting.tickedByDefault),
-						fallback: true,
-					},
+					choices: { ...choices, tree: project },
 					existingFiles: new Set(["default.project.json"]),
 				}).unwrap();
 			};
@@ -318,27 +297,6 @@ describe("TreePlan", () => {
 				expect(files.notes.join("\n")).not.toContain("Couldn't route");
 			});
 
-			it("should leave the settings out with the mount when its route is not kept", async () => {
-				const files = await planDerived(
-					{
-						$className: "DataModel",
-						ServerScriptService: {
-							Server: {
-								$path: "src/server",
-								$properties: { Archivable: false },
-							},
-						},
-					},
-					[],
-					(ids) => ids.filter((id) => id !== "mount:server")
-				);
-
-				expect(JSON.stringify(configOf(files).tree)).not.toContain(
-					"Archivable"
-				);
-				expect(files.notes.join("\n")).not.toContain("Kept what");
-			});
-
 			it("should warn with a code about settings no route can land on", async () => {
 				const files = await planDerived({
 					$className: "DataModel",
@@ -446,24 +404,8 @@ describe("TreePlan", () => {
 					ServerScriptService: { TS: { $path: "out/server" } },
 				},
 			});
-			const derived =
-				project.kind === "lift"
-					? DerivedRoutes.of(
-							"default.project.json",
-							project.project,
-							[...tsChoices.sourcePaths, "out"]
-						)
-					: undefined;
 			const files = planProject({
-				choices: {
-					...tsChoices,
-					tree: project,
-					mounts: [],
-					routes: new StartingRoutes(
-						workspaceOf(luau).languageFor("roblox-ts"),
-						derived
-					).tickedByDefault,
-				},
+				choices: { ...tsChoices, tree: project, mounts: [] },
 				existingFiles: new Set(["default.project.json"]),
 			}).unwrap();
 

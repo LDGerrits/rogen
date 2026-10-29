@@ -5,7 +5,7 @@ stdout:
   Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every write.
   Left out ReplicatedStorage/Shared and ServerScriptService/Server, since they point into src or build and Rogen generates that code now.
   Took build as the folder Darklua writes, since .darklua.json is here and the mounts of default.project.json into build repeat src. default.rogen.json reads src, and dist.rogen.json reads build as its "compiledPath".
-  Took the defaults: --kind place, --language luau, --route mount:shared, --route mount:server, --route client, --unmatched shared, --agent-rules.
+  Took the defaults: --kind place, --language luau, --agent-rules.
   Created default.rogen.json.
   Created dist.rogen.json.
   Created .gitignore.
@@ -17,7 +17,7 @@ stdout:
       rogen serve dist
     In Studio, press Connect in the Rojo plugin.
     Rogen writes default.project.json now, so git can stop tracking it: git rm --cached default.project.json
-    Add your own routes under "routes" in default.rogen.json.
+    To change where code goes, edit "routes" in each .rogen.json. To place a folder as it is, such as Packages, mount it in the "tree" of each.
     Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.
   Wrote 4 files.
 

@@ -110,7 +110,6 @@ export interface Compiler {
 export interface LanguageCopy {
 	readonly label: string;
 	readonly detectedHint?: string;
-	readonly packagesNote?: string;
 }
 
 export interface Language {

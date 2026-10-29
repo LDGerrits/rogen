@@ -159,24 +159,6 @@ stdout:
             "type": "string"
           },
           {
-            "name": "package",
-            "type": "string",
-            "multiple": true
-          },
-          {
-            "name": "route",
-            "type": "string",
-            "multiple": true
-          },
-          {
-            "name": "unmatched",
-            "type": "string",
-            "enum": [
-              "leave",
-              "shared"
-            ]
-          },
-          {
             "name": "sample",
             "type": "boolean",
             "negatable": true

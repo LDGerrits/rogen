@@ -58,7 +58,7 @@ export const initDocumentShape = S.object({
 		S.array(
 			S.object({
 				question: S.string,
-				value: S.union(S.string, S.boolean, S.array(S.string)),
+				value: S.union(S.string, S.boolean),
 				flag: S.string,
 			})
 		)
@@ -77,15 +77,12 @@ export const initDocumentShape = S.object({
 	),
 });
 
-/** A choice as the flags that make it, so the line can be copied: `--no-places`, `--route server --route client`. */
+/** A choice as the flags that make it, so the line can be copied: `--no-places`, `--language luau`. */
 function flagsOf({ question, value, flag }: InitDecision): string[] {
 	if (question === "skipGit") return value === true ? [flag] : [];
 	if (typeof value === "boolean")
 		return [value ? flag : flag.replace("--", "--no-")];
-	if (typeof value === "string") return [`${flag} ${value}`];
-	return value.length === 0
-		? [`${flag} none`]
-		: value.map((item) => `${flag} ${item}`);
+	return [`${flag} ${value}`];
 }
 
 /** A choice with the flag that changes it: `--no-sample` for a sample init writes, `--language` for a language. */

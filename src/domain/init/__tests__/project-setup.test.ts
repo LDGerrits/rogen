@@ -210,7 +210,7 @@ describe("ProjectSetup plan", () => {
 				setup: [],
 				run: ["rogen serve"],
 				edits: [
-					'Add your own routes under "routes" in default.rogen.json.',
+					'To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".',
 					expect.stringContaining("leave default.project.json alone"),
 				],
 			});
@@ -248,53 +248,6 @@ describe("ProjectSetup plan", () => {
 
 		it("should write the standard routes with lowercase keys for roblox-ts", async () => {
 			expect(await routesOf({}, "roblox-ts")).toEqual(ROBLOX_TS_ROUTES);
-		});
-
-		it("should write exactly the ticked routes in a fixed order", async () => {
-			expect(
-				await routesOf({
-					routes: ["starterGui", "server", "replicatedFirst"],
-					fallback: false,
-				})
-			).toEqual({
-				Server: "ServerScriptService",
-				ReplicatedFirst: "ReplicatedFirst",
-				StarterGui: "StarterGui",
-			});
-		});
-
-		it("should camel-case the optional routes for roblox-ts", async () => {
-			expect(
-				await routesOf(
-					{
-						routes: [
-							"replicatedFirst",
-							"serverStorage",
-							"starterGui",
-						],
-						fallback: false,
-					},
-					"roblox-ts"
-				)
-			).toEqual({
-				replicatedFirst: "ReplicatedFirst",
-				serverStorage: "ServerStorage",
-				starterGui: "StarterGui",
-			});
-		});
-
-		it("should leave * out when files that match no route are left out", async () => {
-			expect(await routesOf({ fallback: false })).toEqual({
-				Server: "ServerScriptService",
-				Client: "StarterPlayer/StarterPlayerScripts",
-				Shared: "ReplicatedStorage/Shared",
-			});
-		});
-
-		it("should write * when no route is ticked, because a config with no routes can't build", async () => {
-			expect(await routesOf({ routes: [], fallback: false })).toEqual({
-				"*": "ReplicatedStorage/Shared",
-			});
 		});
 	});
 
@@ -583,6 +536,14 @@ describe("ProjectSetup plan, second config files", () => {
 			"compiledPath"
 		);
 		expect(configOf(planned)).not.toHaveProperty("globIgnorePaths");
+	});
+
+	it("should say to change the routes and the tree in each config when there are several", async () => {
+		const planned = await plan({ ...luau, testRunner: "Jest" });
+
+		expect(planned.nextSteps.edits).toContain(
+			'To change where code goes, edit "routes" in each .rogen.json. To place a folder as it is, such as Packages, mount it in the "tree" of each.'
+		);
 	});
 
 	it("should have release read the compiler's folder", async () => {

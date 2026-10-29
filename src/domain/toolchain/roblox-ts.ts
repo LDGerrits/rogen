@@ -90,7 +90,6 @@ export class RobloxTs implements Language {
 	readonly copy: LanguageCopy = {
 		label: "roblox-ts",
 		detectedHint: "found tsconfig.json",
-		packagesNote: "include and @rbxts are always mounted.",
 	};
 	readonly extension = "ts";
 	readonly compiler: RobloxTsCompiler;

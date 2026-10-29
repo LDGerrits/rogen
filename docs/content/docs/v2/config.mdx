@@ -15,6 +15,21 @@ A config, `default.rogen.json`, is a Rojo project file with three more keys. Rog
 
 The `tree` is the base that Rogen adds your routed files to. Put in it what folder names can't place: packages, such as Wally's `Packages` or roblox-ts's `node_modules/@rbxts`, and `$properties`. A folder of a source path that the tree mounts is synced as it is, without routing.
 
+`rogen init` mounts the package folders that are there, and those that a `wally.toml` or `pesde.toml` says are coming. In a project without either, mount the folder yourself:
+
+```json title="default.rogen.json"
+{
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Packages": { "$path": "Packages" }
+		}
+	}
+}
+```
+
+While the folder isn't installed yet, write `{ "optional": "Packages" }` as its `$path`, so Rojo serves without it.
+
 ## Route Keys
 
 A route key is letters and digits, starting with a letter, or `*` for the [fallback route](/docs/v2/core-concepts/routing#files-without-a-route).

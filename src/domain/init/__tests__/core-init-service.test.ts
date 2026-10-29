@@ -1451,9 +1451,7 @@ describe("CoreInitService", () => {
 				"one",
 				"customise",
 				"luau",
-				ACCEPT_DEFAULT,
-				["server", "shared"],
-				ACCEPT_DEFAULT,
+				"several",
 				ACCEPT_DEFAULT,
 				"yes",
 			]);
@@ -1466,17 +1464,15 @@ describe("CoreInitService", () => {
 				CREATE,
 				"Language",
 				"One place or several?",
-				"Routes",
-				"Files that match no route",
 				"Add Rogen's rules for coding agents to AGENTS.md?",
 				CREATE,
 			]);
 			expect(prompts.prompts.at(-1)?.description).toContain(
-				"src → Server, Shared;"
+				"several places"
 			);
 			expect(plan?.summary).toContainEqual({
-				area: "Code",
-				text: expect.stringContaining("src → Server, Shared;"),
+				area: "Project",
+				text: expect.stringContaining("several places"),
 			});
 		});
 

@@ -54,25 +54,9 @@ describe("init choices given as flags", () => {
 				{ question: "kind", value: "place", flag: "--kind" },
 				{ question: "language", value: "luau", flag: "--language" },
 				{ question: "places", value: false, flag: "--places" },
-				{
-					question: "routes",
-					value: ["server", "client", "shared"],
-					flag: "--route",
-				},
-				{ question: "unmatched", value: "shared", flag: "--unmatched" },
 				{ question: "sample", value: true, flag: "--sample" },
 				{ question: "skipGit", value: false, flag: "--skip-git" },
 			]);
-		});
-
-		it("should write down the packages it mounted when it was offered some", async () => {
-			const { questions } = await run(withPackages, {});
-
-			expect(questions.decided).toContainEqual({
-				question: "packages",
-				value: ["Packages", "ServerPackages"],
-				flag: "--package",
-			});
 		});
 
 		it("should write down nothing for a choice it was given", async () => {
@@ -81,8 +65,7 @@ describe("init choices given as flags", () => {
 				skipGit: true,
 				language: "luau",
 				places: false,
-				routes: ["server"],
-				unmatched: "leave",
+				sample: true,
 			});
 
 			expect(questions.decided).toEqual([]);
@@ -96,20 +79,15 @@ describe("init choices given as flags", () => {
 				{
 					language: "luau",
 					places: false,
-					packages: ["Packages"],
-					routes: ["server", "shared"],
-					unmatched: "leave",
 				},
 				true
 			);
 
 			expect(prompts.asked).toEqual([]);
 			expect(questions.decided).toEqual([]);
-			const choices = asked.unwrap();
-			expect(choices?.routes).toEqual(["server", "shared"]);
-			expect(choices?.fallback).toBe(false);
-			expect(choices?.mounts.map(({ path }) => path)).toEqual([
+			expect(asked.unwrap()?.mounts.map(({ path }) => path)).toEqual([
 				"Packages",
+				"ServerPackages",
 			]);
 		});
 	});
@@ -164,12 +142,6 @@ describe("init choices given as flags", () => {
 			);
 		});
 
-		it("should write none when a route its folders are named after is left out", async () => {
-			const { asked } = await run(luau, { routes: ["server", "shared"] });
-
-			expect(asked.unwrap()?.sample).toBe(false);
-		});
-
 		it("should write it in a new roblox-ts project, whose starter tool sets the folder up", async () => {
 			const { asked } = await run(luau, { language: "roblox-ts" });
 
@@ -216,105 +188,6 @@ describe("init choices given as flags", () => {
 			expect(error.hint).toBe(
 				"The values of --language are luau and roblox-ts."
 			);
-		});
-	});
-
-	describe("--package", () => {
-		it("should mount the folders named, and none for none", async () => {
-			const named = await run(withPackages, { packages: ["Packages"] });
-			const none = await run(withPackages, { packages: ["none"] });
-
-			expect(
-				named.asked.unwrap()?.mounts.map(({ path }) => path)
-			).toEqual(["Packages"]);
-			expect(none.asked.unwrap()?.mounts).toEqual([]);
-		});
-
-		it("should take a folder written with a trailing slash", async () => {
-			const { asked } = await run(withPackages, {
-				packages: ["./Packages/"],
-			});
-
-			expect(asked.unwrap()?.mounts.map(({ path }) => path)).toEqual([
-				"Packages",
-			]);
-		});
-
-		it("should refuse none beside a folder", async () => {
-			const error = await refused(
-				run(withPackages, { packages: ["none", "Packages"] })
-			);
-
-			expect(error.reason).toBe(
-				"'none' can't be combined with other values of --package."
-			);
-		});
-
-		it("should say there is nothing to take when nothing is offered", async () => {
-			const error = await refused(
-				run(
-					{
-						language: "roblox-ts",
-						robloxTs: {
-							outDir: "build",
-							rbxtsScopes: [],
-							includeInstalled: true,
-						},
-					},
-					{ packages: ["Packages"] }
-				)
-			);
-
-			expect(error.hint).toBe(
-				"There is nothing here for --package to take."
-			);
-		});
-
-		it("should refuse a folder that isn't offered", async () => {
-			const error = await refused(
-				run(withPackages, { packages: ["Pakcages"] })
-			);
-
-			expect(error.hint).toBe(
-				"The values of --package are Packages and ServerPackages."
-			);
-		});
-	});
-
-	describe("--route and --unmatched", () => {
-		it("should take the routes named", async () => {
-			const { asked } = await run(luau, { routes: ["client"] });
-
-			expect(asked.unwrap()?.routes).toEqual(["client"]);
-		});
-
-		it("should take none, and then ask nothing about the files left", async () => {
-			const { asked, questions } = await run(luau, { routes: ["none"] });
-
-			expect(asked.unwrap()?.routes).toEqual([]);
-			expect(decidedFlags(questions)).not.toContain("--unmatched");
-		});
-
-		it("should put the files that match no route in the shared route unless asked to leave them out", async () => {
-			const left = await run(luau, { unmatched: "leave" });
-			const shared = await run(luau, {});
-
-			expect(left.asked.unwrap()?.fallback).toBe(false);
-			expect(shared.asked.unwrap()?.fallback).toBe(true);
-		});
-
-		it("should refuse --unmatched when there is no route for it to apply to", async () => {
-			const error = await refused(
-				run(luau, { routes: ["none"], unmatched: "leave" })
-			);
-
-			expect(error.reason).toBe("--unmatched has no route to apply to.");
-		});
-
-		it("should refuse a route that isn't offered, closest first", async () => {
-			const error = await refused(run(luau, { routes: ["servr"] }));
-
-			expect(error.hint).toMatch(/^The values of --route are server,/);
 		});
 	});
 

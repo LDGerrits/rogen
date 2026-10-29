@@ -1,13 +1,6 @@
 {
 	"steps": [
-		[
-			"init",
-			"--json",
-			"--route",
-			"server",
-			"--agent-hook",
-			"--no-agent-rules"
-		]
+		["init", "--json", "--no-sample", "--agent-hook", "--no-agent-rules"]
 	],
 	"rojo": false
 }

@@ -21,11 +21,6 @@ export interface InitChoices {
 	readonly agentRules?: boolean;
 	readonly agentHook?: boolean;
 	readonly language?: string;
-	/** Folders to mount, or `none`. */
-	readonly packages?: readonly string[];
-	/** Route ids, or `none`. */
-	readonly routes?: readonly string[];
-	readonly unmatched?: "shared" | "leave";
 	/** Whether a new place starts with the Greeter sample. */
 	readonly sample?: boolean;
 	/** Whether a new project is several places under `places/`, rather than one. */
@@ -35,7 +30,7 @@ export interface InitChoices {
 /** A choice a run that couldn't ask took for itself, and the flag that makes it another. */
 export interface InitDecision {
 	readonly question: string;
-	readonly value: string | boolean | readonly string[];
+	readonly value: string | boolean;
 	readonly flag: string;
 }
 
