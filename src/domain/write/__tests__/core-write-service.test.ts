@@ -634,6 +634,28 @@ describe("CoreWriteService", () => {
 			]);
 		});
 
+		it("should check the compiled path once the write has made its placeholders", async () => {
+			const outcome = await rewriteOf(
+				new WriteSet([configOf({ compiledPath: abs("dist") })])
+			);
+
+			expect(outcome.syncWarnings).toMatchObject([
+				{ code: "output.nothingEmitted", resource: abs("src") },
+			]);
+		});
+
+		it("should leave the compiled path unknown when the write fails", async () => {
+			await fs.writeFile(abs("src/Hud.meta.json"), "{}");
+			await fs.writeFile(abs("src/init.luau"), "");
+
+			const outcome = await rewriteOf(
+				new WriteSet([configOf({ compiledPath: abs("dist") })])
+			);
+
+			expect(outcome.kind).toBe("failed");
+			expect(outcome.syncWarnings).toBeUndefined();
+		});
+
 		it("should keep what it knows of the compiled path while the config is the same", async () => {
 			const set = new WriteSet([configOf({ compiledPath: abs("dist") })]);
 			const first = await rewriteOf(set);

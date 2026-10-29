@@ -117,14 +117,44 @@ export class CoreWriteService implements WriteService {
 	): Promise<LoadedConfig> {
 		const config = set.configOf(projectFile);
 		if (!config) throw new Error(`${projectFile} is not in the set.`);
-		const syncWarnings =
+		const known =
 			previous?.config === config ? previous.syncWarnings : undefined;
 		const attempts = await this.attempt(
-			[{ config, syncWarnings }],
+			[{ config, syncWarnings: known ?? [] }],
 			listing
 		);
 		const [outcome] = await this.settle(attempts, [], true, { force });
-		return outcome;
+		if (known) return outcome;
+		// Checked after the write, which creates the compiled path's placeholders.
+		if (outcome.kind === "failed")
+			return new FailedConfig(config, outcome.errors, {
+				warnings: outcome.warnings,
+				syncWarnings: undefined,
+			});
+		return CoreWriteService.withSyncWarnings(
+			outcome,
+			await this.compiledPathWarnings(config, listing),
+			outcome.kind === "unchanged" ? "unchanged" : "wrote"
+		);
+	}
+
+	async recheck(
+		set: WriteSet,
+		projectFile: string,
+		listing: IndexReader,
+		previous: LoadedConfig
+	): Promise<LoadedConfig> {
+		const config = set.configOf(projectFile);
+		if (previous.config !== config || previous.kind === "failed")
+			return previous;
+		const syncWarnings = await this.compiledPathWarnings(config, listing);
+		return syncWarnings
+			? CoreWriteService.withSyncWarnings(
+					previous,
+					syncWarnings,
+					"unchanged"
+				)
+			: previous;
 	}
 
 	async locate(
@@ -354,6 +384,46 @@ export class CoreWriteService implements WriteService {
 			);
 		}
 		return outcomes;
+	}
+
+	private compiledPathWarnings(
+		config: ResolvedConfig,
+		listing: IndexReader
+	): Promise<Diagnostic[] | undefined> {
+		return new WritePipeline(
+			this.fileSystemService,
+			listing,
+			this.syncTools
+		).compiledPathWarnings(config);
+	}
+
+	private static withSyncWarnings(
+		outcome: Exclude<LoadedConfig, FailedConfig>,
+		syncWarnings: readonly Diagnostic[] | undefined,
+		kind: WrittenConfig["kind"]
+	): LoadedConfig {
+		const { config, summary, readFiles } = outcome;
+		const findings = { warnings: outcome.warnings, syncWarnings };
+		switch (outcome.kind) {
+			case "notWritten":
+				return new UnwrittenConfig(
+					config,
+					findings,
+					summary,
+					readFiles,
+					outcome.blockedBy
+				);
+			case "wouldWrite":
+				return new CheckedConfig(config, findings, summary, readFiles);
+			default:
+				return new WrittenConfig(
+					config,
+					kind,
+					findings,
+					summary,
+					readFiles
+				);
+		}
 	}
 
 	private static unwritten(
