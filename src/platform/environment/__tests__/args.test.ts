@@ -30,9 +30,9 @@ const buildOptions: OptionDescriptor[] = [
 		multiple: true,
 		description: "",
 	},
-	{ name: "hook", type: "boolean", negatable: true, description: "" },
+	{ name: "hook", type: "boolean", negation: "also", description: "" },
 	{ name: "dry", type: "boolean", description: "" },
-	{ name: "cache", type: "boolean", negatedOnly: true, description: "" },
+	{ name: "cache", type: "boolean", negation: "only", description: "" },
 	{
 		name: "assume",
 		short: "y",
@@ -83,11 +83,12 @@ describe("parseArgs", () => {
 			expect(values(["build"]).hook).toBeUndefined();
 		});
 
-		it("should not be negated when it isn't declared negatable", () => {
+		it("should refuse --no- for a flag without one, saying it is the default", () => {
 			const result = parse(["build", "--no-dry"]);
 
+			expect(result.isErr() && result.error).toBeInstanceOf(UsageError);
 			expect(result.isErr() && result.error.message).toBe(
-				"Unknown option '--no-dry'. Did you mean '--dry'?"
+				"'--no-dry' is the default; only '--dry' changes it."
 			);
 		});
 
@@ -111,7 +112,7 @@ describe("parseArgs", () => {
 
 			expect(result.isErr() && result.error).toBeInstanceOf(UsageError);
 			expect(result.isErr() && result.error.message).toBe(
-				"'--cache' is what build does already; only '--no-cache' changes it."
+				"'--cache' is the default; only '--no-cache' changes it."
 			);
 		});
 	});

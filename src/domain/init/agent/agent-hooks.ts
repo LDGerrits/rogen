@@ -20,7 +20,7 @@ export class AgentHooks {
 		readonly existed: boolean;
 	}[];
 	private readonly unreadable: readonly CodingAgent[];
-	private readonly present: readonly CodingAgent[];
+	private readonly registeredAlready: readonly CodingAgent[];
 
 	constructor(private readonly state: AgentHooksParts) {
 		const registrations = state.inUse.map(({ agent: target, text }) => ({
@@ -37,8 +37,9 @@ export class AgentHooks {
 		this.unreadable = registrations.flatMap(({ target, registration }) =>
 			registration.kind === "unreadable" ? [target] : []
 		);
-		this.present = registrations.flatMap(({ target, registration }) =>
-			registration.kind === "present" ? [target] : []
+		this.registeredAlready = registrations.flatMap(
+			({ target, registration }) =>
+				registration.kind === "present" ? [target] : []
 		);
 	}
 
@@ -60,7 +61,7 @@ export class AgentHooks {
 
 	/** The agents in use whose hook file registers the script already. */
 	get registered(): string[] {
-		return this.present.map(({ name }) => name);
+		return this.registeredAlready.map(({ name }) => name);
 	}
 
 	get agents(): string[] {

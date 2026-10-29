@@ -26,8 +26,7 @@ stdout:
   {
     "error": {
       "kind": "usage",
-      "message": "Unknown option '--no-json'.",
-      "hint": "Did you mean '--json'?"
+      "message": "'--no-json' is the default; only '--json' changes it."
     }
   }
 

@@ -14,10 +14,8 @@ export interface OptionDescriptor {
 	readonly aliases?: readonly string[];
 	readonly type: "string" | "boolean";
 	readonly multiple?: boolean;
-	/** For a flag: whether `--no-<name>` is accepted and means false, as against not given. */
-	readonly negatable?: boolean;
-	/** For a flag: whether only `--no-<name>` is accepted, for an opt-out whose positive form would repeat the default. */
-	readonly negatedOnly?: boolean;
+	/** For a flag: whether `--no-<name>` also means false, as against not given, or is its only form, for an opt-out whose positive form would repeat the default. */
+	readonly negation?: "also" | "only";
 	/** For a string option: the only values it takes. */
 	readonly values?: readonly string[];
 	/** What help writes for a string option's value: `--output <path>`. Defaults to `value`. */
@@ -32,9 +30,9 @@ type OptionValue<D extends OptionDescriptor> = D extends {
 	readonly multiple: true;
 }
 	? readonly boolean[]
-	: D extends { readonly type: "boolean"; readonly negatable: true }
+	: D extends { readonly type: "boolean"; readonly negation: "also" }
 		? boolean
-		: D extends { readonly type: "boolean"; readonly negatedOnly: true }
+		: D extends { readonly type: "boolean"; readonly negation: "only" }
 			? false
 			: D extends { readonly type: "boolean" }
 				? true
@@ -196,6 +194,11 @@ function commandOf(
 	};
 }
 
+/** The option's name as typed, `no-sample` for one that only opts out. */
+export const flagName = (
+	option: Pick<OptionDescriptor, "name" | "negation">
+): string => (option.negation === "only" ? `no-${option.name}` : option.name);
+
 /** Whether the token is `--no-<flag>` for a flag called `<flag>`. */
 const isNegated = (token: OptionToken): boolean =>
 	token.rawName.startsWith("--no-") && token.rawName !== `--${token.name}`;
@@ -244,14 +247,15 @@ function findOptionProblem(
 	for (const token of tokens) {
 		if (token.kind !== "option") continue;
 		const option = options.find(({ name }) => name === token.name);
-		if (option?.negatedOnly && !isNegated(token))
-			return new UsageError(
-				`'${token.rawName}' is what ${command ?? "it"} does already; only '--no-${option.name}' changes it.`
-			);
 		if (
-			!option ||
-			(isNegated(token) && !option.negatable && !option.negatedOnly)
-		) {
+			option?.type === "boolean" &&
+			option.negation !== "also" &&
+			isNegated(token) !== (option.negation === "only")
+		)
+			return new UsageError(
+				`'${token.rawName}' is the default; only '--${flagName(option)}' changes it.`
+			);
+		if (!option || (isNegated(token) && option.type !== "boolean")) {
 			return unknownOption(
 				token,
 				options,
@@ -301,8 +305,8 @@ export function parseArgs(
 						(option) =>
 							option.name === name &&
 							(negated
-								? option.negatable || option.negatedOnly
-								: !option.negatedOnly)
+								? option.negation !== undefined
+								: option.negation !== "only")
 					)
 				)
 				.sort();

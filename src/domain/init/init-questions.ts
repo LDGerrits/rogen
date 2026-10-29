@@ -5,7 +5,12 @@ import { DEFAULT_PROJECT_FILE } from "../config/config.js";
 import { Language } from "../toolchain/toolchain.js";
 import { HOOK_SCRIPT_FILE } from "./agent/coding-agent.js";
 import { InitDirectory } from "./init-directory.js";
-import { InitChoices, InitDecision, InitKind } from "./init-service.js";
+import {
+	InitChoices,
+	InitDecision,
+	InitKind,
+	booleanFlag,
+} from "./init-service.js";
 import { COMMON_FOLDER, PROJECTS_FOLDER } from "./starter-places.js";
 import { TreeChoice } from "./tree-plan.js";
 
@@ -111,7 +116,7 @@ export class InitQuestions {
 			return this.decide(
 				"places",
 				several,
-				several ? "--no-places" : "--places"
+				booleanFlag("--places", !several)
 			);
 		const answer = await this.essential.select<"one" | "several">({
 			message: "One place or several?",

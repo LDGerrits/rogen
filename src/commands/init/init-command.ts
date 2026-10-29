@@ -63,21 +63,21 @@ const InitOptions = [
 	{
 		name: "sample",
 		type: "boolean",
-		negatedOnly: true,
+		negation: "only",
 		description:
 			"Leave the Greeter sample out, for an empty src and no place. The sample is three hello-world scripts in src/Greeter, Rojo's Baseplate and lighting in place, which the tree mounts, and a README; a new place in a folder with no code gets it.",
 	},
 	{
 		name: "places",
 		type: "boolean",
-		negatable: true,
+		negation: "also",
 		description:
 			"Whether a new project is several places. Luau: the code they share in src/common, a first place in src/game, a game.rogen.json at the root for it, and editor settings for luau-lsp; more places by copying that file. roblox-ts: the code they share in projects/common and a first place in projects/game with its own default.rogen.json and tsconfig.json, more by copying that folder. One place when not given, or several where a projects folder exists for roblox-ts.",
 	},
 	{
 		name: "agent-rules",
 		type: "boolean",
-		negatable: true,
+		negation: "also",
 		description:
 			"Whether to add Rogen's rules for coding agents to the agent file. Added when not given, and imported into CLAUDE.md and GEMINI.md. In a project that has a config, it adds them there, and takes no flag that shapes a config.",
 	},
