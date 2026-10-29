@@ -452,6 +452,27 @@ describe("ReverseRouter", () => {
 			});
 		});
 
+		it("should go in the one source path inside the config's folder when the others are outside it", async () => {
+			const router = await routerOf(
+				["projects/common/src/A/Server/X.luau"],
+				{
+					file: abs("projects/game/default.rogen.json"),
+					sourcePaths: [
+						abs("projects/common/src"),
+						abs("projects/game/src"),
+					],
+				}
+			);
+
+			expect(router.place(quest)).toEqual({
+				kind: "placed",
+				home: {
+					dir: posix("projects/game/src/Quest/Server"),
+					contents: true,
+				},
+			});
+		});
+
 		it("should go in the one source path no other config of the project lists", async () => {
 			const router = await routerOf(
 				["shared/A/Server/X.luau"],

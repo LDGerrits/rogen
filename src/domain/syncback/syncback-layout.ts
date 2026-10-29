@@ -62,7 +62,7 @@ export class SyncbackLayout {
 		return this.roots;
 	}
 
-	/** The source path a new feature with nothing beside it goes in: the only one, else the one named for the place, else the one no other config of the project lists; none when that gives no one answer. */
+	/** The source path a new feature with nothing beside it goes in: the only one, else the one named for the place, else the one inside the config's folder, else the one no other config of the project lists; none when that gives no one answer. */
 	get ownSourcePath(): string | undefined {
 		if (this.roots.length === 1) return this.roots[0];
 		const names = [configStem(this.config.file), this.config.projectName];
@@ -70,6 +70,9 @@ export class SyncbackLayout {
 			names.includes(path.posix.basename(root))
 		);
 		if (named.length === 1) return named[0];
+		const dir = toPosix(this.config.projectDir);
+		const inside = this.roots.filter((root) => containsPosix(dir, root));
+		if (inside.length === 1) return inside[0];
 		const own = this.roots.filter((root) => !this.shared.has(root));
 		return own.length === 1 ? own[0] : undefined;
 	}
