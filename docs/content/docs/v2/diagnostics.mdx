@@ -1093,7 +1093,7 @@ Syncback writes a new instance where routing would place a file for it, in the s
 - The project has several source paths, no file beside the instance says which one, and no one of them is the place's own. A source path is the place's own when its last folder has the place's name, as `src/game` for `game.rogen.json`. When no source path or more than one has that name, the place's own is the one source path that no other config in the config's folder lists.
 - The files beside the instance are split evenly between two folders of one style.
 
-A new instance under a node of the config's `tree` that has no `$path` goes into the tree as a child node of that node when a node can describe it: a class, properties, attributes, and children that a node can describe too, such as a RemoteEvent, a StringValue or a folder of them. Anything else, such as a script or a model that Rojo writes as a `.rbxm` file, gets this warning. Give that node a `$path`, or create the file by hand.
+A new instance under a node of the config's `tree` that has no `$path` and is not a service goes into the tree as a child node of that node when a node can describe it: a class, properties, attributes, and children that a node can describe too, such as a RemoteEvent, a StringValue or a folder of them. Anything else, such as a script or a model that Rojo writes as a `.rbxm` file, gets this warning. Give that node a `$path`, or create the file by hand. Under a service, a node that only routing made, or a node with `"$ignoreUnknownInstances": true`, syncback leaves a new instance out without a word, as Rojo does, since Studio puts instances of its own there, such as `Workspace/Terrain` and `Lighting/Sky`.
 
 Syncback also uses this warning for changes that it can't write:
 
@@ -1101,7 +1101,6 @@ Syncback also uses this warning for changes that it can't write:
 - a property set on a folder that matches no single folder of the project
 - an instance named like an init file, such as `init` or `init.server`, in a folder that matches no single folder of the project, because Rojo reads its file as the folder itself (rename it in Studio)
 - a property set on a node that only routing made, because the `tree` has no node for it
-- a new instance under a node with no `$path` that only routing made, because the `tree` has no node to add it to
 - a copy of an init script that was edited differently from another copy, or deleted while another copy was edited (Rogen writes the edit)
 - a change that Rojo itself can't sync back, such as a `.json` or `.toml` module, which Rojo skips, or a changed `.yaml` or `.yml` module, which makes Rojo's syncback fail
 

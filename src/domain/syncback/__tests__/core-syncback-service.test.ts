@@ -609,7 +609,6 @@ describe("CoreSyncbackService", () => {
 
 		expect(JSON.parse(rojo.projectTexts[0]).tree.ReplicatedStorage).toEqual(
 			{
-				$path: ".rogen-syncback/mirror/~kept/0",
 				Packages: {
 					$path: ".rogen-syncback/mirror/ReplicatedStorage/Packages",
 				},
@@ -702,34 +701,6 @@ describe("CoreSyncbackService", () => {
 				},
 			]);
 		});
-	});
-
-	it("should say how to keep an instance Studio added under a node with no $path that only routing made", async () => {
-		await prepare(["src/Hud/Client/Hud.luau"], {
-			project: { tree: { $className: "DataModel" } },
-		});
-		await fs.writeFile(
-			abs("default.rogen.json"),
-			JSON.stringify({ tree: { $className: "DataModel" } })
-		);
-		rojo.say = async () => {
-			const { tree } = JSON.parse(rojo.projectTexts[0]);
-			await fs.writeFile(
-				path.join(abs(tree.StarterPlayer.$path), "Buy.model.json"),
-				JSON.stringify({ className: "RemoteEvent" })
-			);
-			return [];
-		};
-
-		const plan = (await service.plan(request)).unwrap();
-
-		expect(plan.changes).toEqual([]);
-		expect(plan.unplaced).toEqual([
-			{
-				instance: "StarterPlayer/Buy",
-				reason: `its parent StarterPlayer has no $path, and the tree of ${abs("default.rogen.json")} has no node for it, since routing made it; add a node with a $path for it to the tree, or create the file by hand`,
-			},
-		]);
 	});
 
 	describe("with a compiledPath", () => {

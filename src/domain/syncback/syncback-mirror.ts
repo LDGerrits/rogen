@@ -57,6 +57,8 @@ export interface NodeFolder {
 export interface SyncbackMirrorInputs {
 	/** The project file a write wrote, which every `$path` in is relative to `dir`. */
 	readonly written: RojoProjectFile;
+	/** The config's own tree, without the nodes routing adds. */
+	readonly tree: RojoNode;
 	/** The config's folder, where the temporary project file goes. */
 	readonly dir: string;
 	/** Where the mirror goes, relative to `dir` and written with `/`. */
@@ -291,7 +293,7 @@ class MirrorWalk {
 			const own = at ?? this.spare();
 			if (await this.children(node, instancePath, own))
 				this.mount(node, own);
-			else if (!FILE_CONTENT_CLASSES.has(node.$className ?? "")) {
+			else if (this.takesChildren(node, instancePath)) {
 				const empty = this.spare();
 				this.mount(node, empty);
 				this.nodeFolders.push({ mirror: empty, node: instancePath });
@@ -330,6 +332,20 @@ class MirrorWalk {
 		this.addFolder(own);
 		this.repoint(node, `${own}/${base}`, optional);
 		await this.children(node, instancePath, undefined);
+	}
+
+	/** Whether a node with no `$path` gets a folder for the children Studio adds to it: a node of the config's own tree below a service, as Studio fills services with instances of its own, which Rojo leaves alone. */
+	private takesChildren(
+		node: RojoNode,
+		instancePath: readonly string[]
+	): boolean {
+		if (instancePath.length < 2) return false;
+		if (node.$ignoreUnknownInstances === true) return false;
+		if (FILE_CONTENT_CLASSES.has(node.$className ?? "")) return false;
+		let own: RojoNode | undefined = this.inputs.tree;
+		for (const name of instancePath)
+			own = own && childNodes(own).find(([child]) => child === name)?.[1];
+		return own !== undefined;
 	}
 
 	/** A nested project file, copied with every file and folder it and the project files it nests read, laid out as they lie on disk, since its `$path`s are relative to it. */

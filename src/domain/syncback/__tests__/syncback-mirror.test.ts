@@ -1,6 +1,6 @@
 import { PlacedLocation } from "../../write/write-service.js";
 import { RojoFile } from "../../rojo/rojo.js";
-import { RojoProjectFile } from "../../rojo/rojo-project.js";
+import { RojoNode, RojoProjectFile } from "../../rojo/rojo-project.js";
 import { SyncRules } from "../../rojo/sync-rules.js";
 import { SyncbackMirror } from "../syncback-mirror.js";
 
@@ -19,10 +19,12 @@ const mirrorOf = (
 	written: RojoProjectFile,
 	files: readonly PlacedLocation[],
 	folders: readonly string[] = [],
-	texts: Readonly<Record<string, string>> = {}
+	texts: Readonly<Record<string, string>> = {},
+	tree: RojoNode = written.tree
 ) =>
 	SyncbackMirror.of({
 		written,
+		tree,
 		dir: "/repo",
 		root: ROOT,
 		placed: files,
@@ -135,7 +137,6 @@ describe("SyncbackMirror", () => {
 		expect(mirror.file.tree).toEqual({
 			StarterPlayer: {
 				$className: "StarterPlayer",
-				$path: `${ROOT}/~kept/0`,
 				StarterPlayerScripts: {
 					$className: "StarterPlayerScripts",
 					$path: `${ROOT}/StarterPlayer/StarterPlayerScripts`,
@@ -163,7 +164,6 @@ describe("SyncbackMirror", () => {
 
 		expect(mirror.file.tree).toEqual({
 			ReplicatedStorage: {
-				$path: `${ROOT}/~kept/1`,
 				Packages: { $path: `${ROOT}/ReplicatedStorage/Packages` },
 				Lib: {
 					$className: "Folder",
@@ -209,7 +209,6 @@ describe("SyncbackMirror", () => {
 		expect(mirror.file.tree).toEqual({
 			$className: "DataModel",
 			ReplicatedStorage: {
-				$path: `${ROOT}/~kept/2`,
 				Remotes: {
 					$className: "Folder",
 					$path: `${ROOT}/~kept/1`,
@@ -227,9 +226,43 @@ describe("SyncbackMirror", () => {
 				node: ["ReplicatedStorage", "Remotes", "Hit"],
 			},
 			{ mirror: "~kept/1", node: ["ReplicatedStorage", "Remotes"] },
-			{ mirror: "~kept/2", node: ["ReplicatedStorage"] },
 		]);
-		expect(mirror.folders).toEqual(["~kept/0", "~kept/1", "~kept/2"]);
+		expect(mirror.folders).toEqual(["~kept/0", "~kept/1"]);
+	});
+
+	it("should give no folder to a service, a node routing made, or a node that ignores unknown instances, as Rojo leaves the instances Studio makes there alone", async () => {
+		const routed = {
+			$className: "Folder",
+			Config: { $className: "Configuration" },
+		};
+		const ignoring = {
+			$className: "Model",
+			$ignoreUnknownInstances: true,
+		};
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					$className: "DataModel",
+					Lighting: { $properties: { ClockTime: 14 } },
+					ReplicatedStorage: { Routed: routed, Ignoring: ignoring },
+				},
+			},
+			[],
+			[],
+			{},
+			{
+				$className: "DataModel",
+				Lighting: { $properties: { ClockTime: 14 } },
+				ReplicatedStorage: { Ignoring: ignoring },
+			}
+		);
+
+		expect(mirror.file.tree).toEqual({
+			$className: "DataModel",
+			Lighting: { $properties: { ClockTime: 14 } },
+			ReplicatedStorage: { Routed: routed, Ignoring: ignoring },
+		});
+		expect(mirror.nodeFolders).toEqual([]);
 	});
 
 	it.each(["StringValue", "ModuleScript", "LocalizationTable"])(
@@ -340,7 +373,6 @@ describe("SyncbackMirror", () => {
 
 		expect(mirror.file.tree).toEqual({
 			ServerScriptService: {
-				$path: `${ROOT}/~kept/1`,
 				Inventory: {
 					$className: "Folder",
 					$path: `${ROOT}/ServerScriptService/Inventory`,
@@ -385,7 +417,6 @@ describe("SyncbackMirror", () => {
 		expect(mirror.file.tree).toEqual({
 			ReplicatedStorage: {
 				$className: "ReplicatedStorage",
-				$path: `${ROOT}/~kept/1`,
 				Shared: {
 					$className: "Folder",
 					$path: `${ROOT}/ReplicatedStorage/Shared`,
@@ -427,7 +458,6 @@ describe("SyncbackMirror", () => {
 
 		expect(mirror.file.tree).toEqual({
 			ReplicatedStorage: {
-				$path: `${ROOT}/~kept/2`,
 				Net: {
 					$path: `${ROOT}/ReplicatedStorage/Net`,
 					Sub: {
@@ -503,7 +533,6 @@ describe("SyncbackMirror", () => {
 		expect(mirror.file.tree).toEqual({
 			$className: "DataModel",
 			ReplicatedStorage: {
-				$path: `${ROOT}/~kept/1`,
 				Nested: { $path: `${ROOT}/~kept/0/nested.project.json` },
 			},
 		});

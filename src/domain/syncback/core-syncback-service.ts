@@ -357,6 +357,7 @@ export class CoreSyncbackService implements SyncbackService {
 		const mirror = await SyncbackMirror.of({
 			// Rojo crashes on a project file not named default.project.json that names no project.
 			written: { ...written, name: written.name ?? project.projectName },
+			tree: project.project.getFile().tree,
 			dir,
 			root: MIRROR,
 			placed,
@@ -1006,29 +1007,14 @@ export class CoreSyncbackService implements SyncbackService {
 				})),
 			};
 		const applied = applyTreeChanges(current.value, ["tree"], allChanges);
-		const homeless = applyTreeChanges(
+		const unplaced = applyTreeChanges(
 			current.value,
 			["tree"],
-			added
-		).unhomed;
-		const unplaced = [
-			...applyTreeChanges(
-				current.value,
-				["tree"],
-				editedInStudio
-			).unhomed.map((node) => ({
-				instance: label(node),
-				reason: `a property or attribute changed in Studio, and the tree of ${toNative(prepared.configFile)} has no node for it, since routing made it; add a node for it to the tree`,
-			})),
-			...children(
-				added.filter(({ node }) =>
-					homeless.some((at) => instanceKey(at) === instanceKey(node))
-				)
-			).map((node) => ({
-				instance: label(node),
-				reason: `its parent ${label(node.slice(0, -1))} has no $path, and the tree of ${toNative(prepared.configFile)} has no node for it, since routing made it; add a node with a $path for it to the tree, or create the file by hand`,
-			})),
-		];
+			editedInStudio
+		).unhomed.map((node) => ({
+			instance: label(node),
+			reason: `a property or attribute changed in Studio, and the tree of ${toNative(prepared.configFile)} has no node for it, since routing made it; add a node for it to the tree`,
+		}));
 		if (applied.text === current.value) return { unplaced };
 		return {
 			unplaced,
