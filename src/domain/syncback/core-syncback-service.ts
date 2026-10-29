@@ -44,6 +44,10 @@ import { SyncbackService } from "./syncback-service.js";
 import { SyncbackLayout } from "./syncback-layout.js";
 import { SyncbackMirror } from "./syncback-mirror.js";
 import { applyTreeChanges, treeChanges } from "./tree-changes.js";
+import {
+	onlySerializedOverrides,
+	withoutSerializedOverrides,
+} from "./without-serialized-overrides.js";
 
 /** The first Rojo release with `syncback`. */
 const SYNCBACK_SINCE = "7.7.0";
@@ -529,6 +533,8 @@ export class CoreSyncbackService implements SyncbackService {
 		const unplaced: UnplacedInstance[] = [...skipped];
 		const { compiledPath } = request.project;
 		const compiled: CompiledChange[] = [];
+		const isCompiled = (file: string) =>
+			compiledPath !== undefined && contains(compiledPath, file);
 		const existing = new Set(
 			copied.map(({ mirror: at }) => CoreSyncbackService.instanceAt(at))
 		);
@@ -538,8 +544,7 @@ export class CoreSyncbackService implements SyncbackService {
 			instance: string,
 			kind: CompiledChange["kind"]
 		): boolean => {
-			if (compiledPath === undefined || !contains(compiledPath, file))
-				return false;
+			if (!isCompiled(file)) return false;
 			compiled.push({ instance, kind });
 			return true;
 		};
@@ -590,7 +595,13 @@ export class CoreSyncbackService implements SyncbackService {
 								path.join(root, at)
 							)
 						);
-						return sameBytes(next, original)
+						const decoder = new TextDecoder();
+						return sameBytes(next, original) ||
+							(isCompiled(file) &&
+								onlySerializedOverrides(
+									decoder.decode(original),
+									decoder.decode(next)
+								))
 							? undefined
 							: {
 									kind: "write" as const,
@@ -707,22 +718,42 @@ export class CoreSyncbackService implements SyncbackService {
 					!added.folder &&
 					name.startsWith("init.") &&
 					known.has(folder)
-				)
-					unplaced.push({
-						instance: instanceKey(names.slice(0, -1)),
-						reason: `Rojo wrote ${name} for a property or attribute changed in Studio, and no one folder of the project is this instance; set it on its node in the tree of the config`,
-					});
-				else fresh.push(added);
+				) {
+					if (
+						!onlySerializedOverrides(
+							undefined,
+							await this.fileSystemService.readFile(
+								path.join(root, added.path)
+							)
+						)
+					)
+						unplaced.push({
+							instance: instanceKey(names.slice(0, -1)),
+							reason: `Rojo wrote ${name} for a property or attribute changed in Studio, and no one folder of the project is this instance; set it on its node in the tree of the config`,
+						});
+				} else fresh.push(added);
 				continue;
 			}
 			if (this.isIgnored(prepared, target)) continue;
 			const file = toNative(target);
 			const instance = CoreSyncbackService.instanceAt(added.path);
-			if (compiledPath !== undefined && contains(compiledPath, file)) {
+			if (isCompiled(file)) {
 				// Rojo leaves every folder of the mirror in place; one that was there already is not new.
 				if (
 					added.folder &&
 					(await this.fileSystemService.isDirectory(file))
+				)
+					continue;
+				if (
+					!added.folder &&
+					onlySerializedOverrides(
+						(await this.fileSystemService.isFile(file))
+							? await this.fileSystemService.readFile(file)
+							: undefined,
+						await this.fileSystemService.readFile(
+							path.join(root, added.path)
+						)
+					)
 				)
 					continue;
 				leftOut(
@@ -821,6 +852,10 @@ export class CoreSyncbackService implements SyncbackService {
 			};
 		const changes = treeChanges(prepared.mirror.file.tree, ran.value);
 		if (changes.length === 0) return { unplaced: [] };
+		const edits = treeChanges(
+			withoutSerializedOverrides(prepared.mirror.file.tree),
+			withoutSerializedOverrides(ran.value)
+		);
 		const { project } = request;
 		const current = await tryWithAsync(() =>
 			this.fileSystemService.readFile(prepared.configFile)
@@ -829,13 +864,17 @@ export class CoreSyncbackService implements SyncbackService {
 			node.length === 0 ? project.projectName : instanceKey(node);
 		if (current.isErr())
 			return {
-				unplaced: changes.map(({ node }) => ({
+				unplaced: edits.map(({ node }) => ({
 					instance: label(node),
 					reason: `${prepared.configFile} could not be read`,
 				})),
 			};
 		const applied = applyTreeChanges(current.value, ["tree"], changes);
-		const unplaced = applied.unhomed.map((node) => ({
+		const unplaced = applyTreeChanges(
+			current.value,
+			["tree"],
+			edits
+		).unhomed.map((node) => ({
 			instance: label(node),
 			reason: `a property or attribute changed in Studio, and the tree of ${toNative(prepared.configFile)} has no node for it, since routing made it; add a node for it to the tree`,
 		}));
