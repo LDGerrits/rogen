@@ -52,7 +52,7 @@ describe("ProjectSetup plan, unmounted files", () => {
 			},
 		]);
 		expect(planned.warnings[0].message).toContain(
-			"src/Loose.luau, src/x/Y.luau"
+			"src/Loose.luau and src/x/Y.luau"
 		);
 	});
 

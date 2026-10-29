@@ -2,6 +2,7 @@ import path from "path";
 import {
 	commonFolderPosix,
 	containsPosix,
+	isBelowPosix,
 	joinPosix,
 	normalizeDir,
 } from "../../base/path.js";
@@ -29,8 +30,7 @@ export class ProcessedFolder {
 		for (const target of mounted.map(normalizeDir)) {
 			const top = target.split("/")[0];
 			if (
-				top === "." ||
-				top === ".." ||
+				!isBelowPosix(top) ||
 				claimed.some(
 					(dir) =>
 						containsPosix(dir, target) || containsPosix(top, dir)

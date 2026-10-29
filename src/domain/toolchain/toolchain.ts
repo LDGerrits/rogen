@@ -57,23 +57,23 @@ export class PackageManager {
 		readonly server: string
 	) {}
 
-	/** The folders it offers to mount; a manifest means packages are coming, so they start ticked. */
+	/** Its package folders; a manifest means packages are coming, so they are mounted before they are installed. */
 	mounts(
 		installedDirs: ReadonlySet<string>,
 		hasManifest: boolean
 	): MountCandidate[] {
-		const offer = (dir: string, landing: string): MountCandidate => {
+		const candidate = (dir: string, landing: string): MountCandidate => {
 			const installed = installedDirs.has(dir);
 			return {
 				path: dir,
 				installed,
 				landing,
-				ticked: installed || hasManifest,
+				mounted: installed || hasManifest,
 			};
 		};
 		return [
-			offer(this.shared, PackageManager.SHARED_LANDING),
-			offer(this.server, PackageManager.SERVER_LANDING),
+			candidate(this.shared, PackageManager.SHARED_LANDING),
+			candidate(this.server, PackageManager.SERVER_LANDING),
 		];
 	}
 }
@@ -97,7 +97,8 @@ export interface MountCandidate {
 	readonly path: string;
 	readonly installed: boolean;
 	readonly landing: string;
-	readonly ticked: boolean;
+	/** Whether init mounts it. */
+	readonly mounted: boolean;
 }
 
 export interface Compiler {
@@ -130,9 +131,10 @@ export interface Language {
 	routeKey(id: string): string;
 	/** The source path the language's own config names, if any; `init` prefers it. */
 	configuredSourcePath(): string | undefined;
-	/** Folders mounted without asking. */
+	/** Folders mounted whether or not they are installed. */
 	alwaysMounted(): readonly MountCandidate[];
-	offeredMounts(): readonly MountCandidate[];
+	/** Folders mounted only once they are installed. */
+	installedMounts(): readonly MountCandidate[];
 }
 
 export interface LanguageDetector {

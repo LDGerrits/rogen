@@ -52,12 +52,19 @@ import { CodeFinder } from "./code-finder.js";
 import { UnmountedFiles } from "./unmounted-files.js";
 import { ProjectTree, TreeChoice, TreePlan } from "./tree-plan.js";
 
+/** The folder a processor writes, which the lifted project file mounts. */
+export interface ProcessedOutput {
+	readonly folder: string;
+	/** The processor's config file. */
+	readonly config?: string;
+}
+
 export interface ProjectChoices {
 	readonly language: Language;
 	readonly sourcePaths: readonly string[];
 	readonly compiledPath?: string;
 	/** Without `config`, nothing says a processor writes the folder, so its mounts stay. */
-	readonly processed?: { readonly folder: string; readonly config?: string };
+	readonly processed?: ProcessedOutput;
 	readonly tree: ProjectTree;
 	readonly mounts: readonly Mount[];
 	/** Folders of code the lifted project file mounts, which no source path holds and the tree keeps mounting. */
@@ -99,8 +106,8 @@ function mountsOf(directory: InitDirectory, language: Language): Mount[] {
 		...language.alwaysMounted(),
 		...[
 			...directory.workspace.packageMounts(language),
-			...language.offeredMounts(),
-		].filter(({ ticked }) => ticked),
+			...language.installedMounts(),
+		].filter(({ mounted }) => mounted),
 	].map(({ path, installed, landing }) => ({
 		path,
 		optional: !installed,
@@ -122,27 +129,32 @@ const BUILD_COMMANDS: Readonly<Record<InitKind, (name: string) => string>> = {
 	plugin: (name) => `rogen build -p "${name}.rbxm"`,
 };
 
-function generatedDirs({
-	sourcePaths,
-	compiledPath,
-	processed,
-}: Pick<
-	ProjectChoices,
-	"sourcePaths" | "compiledPath" | "processed"
->): string[] {
-	return [
-		...sourcePaths,
-		...(compiledPath ? [compiledPath] : []),
-		...(processed?.config ? [processed.folder] : []),
-	];
-}
-
 /** The folder the processed config reads, when a processor's config says one writes it. */
-function processedPathOf({ processed }: ProjectChoices): string | undefined {
+function processedPathOf({
+	processed,
+}: Pick<ProjectChoices, "processed">): string | undefined {
 	return processed?.config ? processed.folder : undefined;
 }
 
-const UNMOUNTED_SHOWN = 5;
+function generatedDirs(
+	choices: Pick<ProjectChoices, "sourcePaths" | "compiledPath" | "processed">
+): string[] {
+	return [
+		...choices.sourcePaths,
+		choices.compiledPath,
+		processedPathOf(choices),
+	].filter((dir) => dir !== undefined);
+}
+
+const LISTED_SHOWN = 5;
+
+/** The first few of `items`, so a warning about many files stays one line. */
+function listedBriefly(items: readonly string[]): string {
+	const more = items.length - LISTED_SHOWN;
+	return more > 0
+		? `${items.slice(0, LISTED_SHOWN).join(", ")} and ${more} more`
+		: joinedWithAnd(items);
+}
 
 const LIFTED_HERE = `${DEFAULT_PROJECT_FILE} is here, which init lifts.`;
 
@@ -188,6 +200,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			routed && tree.value.kind === "lift"
 				? tree.value.project
 				: undefined;
+		const liftedMounts = lifted?.mountedFolders() ?? [];
 		const code =
 			lifted && !language.compiler
 				? await new MountedCode(
@@ -215,7 +228,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 						directory.path
 					).find(
 						sourcePaths,
-						lifted.mountedFolders(),
+						liftedMounts,
 						compiledPath ? [compiledPath] : []
 					)
 				: undefined;
@@ -241,7 +254,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					directory.path
 				).find(
 					sourcePaths,
-					lifted.mountedFolders(),
+					liftedMounts,
 					lifted.toConfig().globIgnorePaths ?? [],
 					[compiledPath, processedFolder].filter(
 						(folder) => folder !== undefined
@@ -262,9 +275,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const outside = routed
 			? await new CodeFinder(this.fileSystemService).codeOutside(
 					directory.path,
-					[...sourcePaths, ...(lifted?.mountedFolders() ?? [])].map(
-						normalizeDir
-					),
+					[...sourcePaths, ...liftedMounts].map(normalizeDir),
 					[
 						...directory.workspace.packageDirs,
 						...language.reservedFolders,
@@ -698,7 +709,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	private static processedNote(
 		from: string,
 		sourcePaths: readonly string[],
-		{ folder, config }: { folder: string; config?: string }
+		{ folder, config }: ProcessedOutput
 	): string {
 		const source = joinedWithAnd(sourcePaths);
 		return config
@@ -710,12 +721,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		from: string,
 		files: readonly string[]
 	): Diagnostic {
-		const shown = files.slice(0, UNMOUNTED_SHOWN).join(", ");
-		const more = files.length - UNMOUNTED_SHOWN;
 		return warningDiagnostic(
 			"init.unmountedFiles",
 			{ resource: from },
-			`${files.length === 1 ? "1 file" : `${files.length} files`} in the source paths ${files.length === 1 ? "is" : "are"} mounted by no node, so Rojo ignored ${files.length === 1 ? "it" : "them"}, and Rogen places ${files.length === 1 ? "it if a route matches it" : "each one a route matches"}: ${shown}${more > 0 ? ` and ${more} more` : ""}. Check where with 'rogen where <path>', and list ${files.length === 1 ? "it" : "them"} under "globIgnorePaths" to leave ${files.length === 1 ? "it" : "them"} out as Rojo did.`
+			`${files.length === 1 ? "1 file" : `${files.length} files`} in the source paths ${files.length === 1 ? "is" : "are"} mounted by no node, so Rojo ignored ${files.length === 1 ? "it" : "them"}, and Rogen places ${files.length === 1 ? "it if a route matches it" : "each one a route matches"}: ${listedBriefly(files)}. Check where with 'rogen where <path>', and list ${files.length === 1 ? "it" : "them"} under "globIgnorePaths" to leave ${files.length === 1 ? "it" : "them"} out as Rojo did.`
 		);
 	}
 
@@ -724,12 +733,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		sourcePath: string,
 		found: readonly string[]
 	): Diagnostic {
-		const shown = joinedWithAnd(found.slice(0, UNMOUNTED_SHOWN));
-		const more = found.length - UNMOUNTED_SHOWN;
 		return warningDiagnostic(
 			"init.codeOutsideSourcePaths",
 			{ resource: configFile },
-			`${more > 0 ? `${found.slice(0, UNMOUNTED_SHOWN).join(", ")} and ${more} more` : shown} ${found.length === 1 ? "holds" : "hold"} code that no source path holds and the tree doesn't mount, so Rogen places none of it. Move the code into ${sourcePath}, or list its folders under "sourcePaths" in ${configFile}.`
+			`${listedBriefly(found)} ${found.length === 1 ? "holds" : "hold"} code that no source path holds and the tree doesn't mount, so Rogen places none of it. Move the code into ${sourcePath}, or list its folders under "sourcePaths" in ${configFile}.`
 		);
 	}
 

@@ -134,7 +134,7 @@ export class RobloxTs implements Language {
 				path: INCLUDE_DIR,
 				installed: hasInclude,
 				landing: INCLUDE_LANDING,
-				ticked: hasInclude,
+				mounted: hasInclude,
 			},
 			...ALWAYS_MOUNTED_SCOPES.map((scope) => {
 				const installed = rbxtsScopes.includes(scope);
@@ -142,13 +142,13 @@ export class RobloxTs implements Language {
 					path: scopePath(scope),
 					installed,
 					landing: scopeLanding(scope),
-					ticked: installed,
+					mounted: installed,
 				};
 			}),
 		];
 	}
 
-	offeredMounts(): MountCandidate[] {
+	installedMounts(): MountCandidate[] {
 		const { rbxtsScopes = [] } = this.facts;
 		return SCOPES.filter(
 			(scope) =>
@@ -158,7 +158,7 @@ export class RobloxTs implements Language {
 			path: scopePath(scope),
 			installed: true,
 			landing: scopeLanding(scope),
-			ticked: true,
+			mounted: true,
 		}));
 	}
 }

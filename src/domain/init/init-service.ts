@@ -34,6 +34,11 @@ export interface InitDecision {
 	readonly flag: string;
 }
 
+/** The form of the boolean flag `--name` that gives `value`, such as `--no-sample` for false. */
+export function booleanFlag(flag: string, value: boolean): string {
+	return value ? flag : flag.replace(/^--/, "--no-");
+}
+
 /** A program that `init` runs once it has written the files, such as the tool that installs a compiler's packages. */
 export interface PlannedCommand {
 	/** The command line as a person types it. */

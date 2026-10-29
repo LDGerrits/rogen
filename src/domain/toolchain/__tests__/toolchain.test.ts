@@ -16,7 +16,7 @@ describe("Darklua", () => {
 describe("PackageManager", () => {
 	const none = new Set<string>();
 
-	it("should offer its shared and server folders", () => {
+	it("should name its shared and server folders", () => {
 		expect(
 			PackageManager.WALLY.mounts(none, false).map(({ path }) => path)
 		).toEqual(["Packages", "ServerPackages"]);
@@ -36,19 +36,21 @@ describe("PackageManager", () => {
 		]);
 	});
 
-	it("should start a folder ticked when it is installed or a manifest promises it", () => {
+	it("should mount a folder when it is installed or a manifest promises it", () => {
 		const installed = new Set(["Packages"]);
 
 		expect(
 			PackageManager.WALLY.mounts(installed, false).map(
-				({ installed, ticked }) => ({ installed, ticked })
+				({ installed, mounted }) => ({ installed, mounted })
 			)
 		).toEqual([
-			{ installed: true, ticked: true },
-			{ installed: false, ticked: false },
+			{ installed: true, mounted: true },
+			{ installed: false, mounted: false },
 		]);
 		expect(
-			PackageManager.WALLY.mounts(none, true).map(({ ticked }) => ticked)
+			PackageManager.WALLY.mounts(none, true).map(
+				({ mounted }) => mounted
+			)
 		).toEqual([true, true]);
 	});
 
@@ -87,7 +89,7 @@ describe("DetectedWorkspace", () => {
 	});
 
 	describe("packageMounts", () => {
-		it("should offer the workspace's own manager, ticked", () => {
+		it("should mount the folders of the workspace's own manager", () => {
 			const workspace = workspaceOf({
 				packageManager: "pesde",
 				packageDirs: ["roblox_packages"],
@@ -96,27 +98,27 @@ describe("DetectedWorkspace", () => {
 			expect(
 				workspace
 					.packageMounts(workspace.language)
-					.map(({ path, ticked }) => [path, ticked])
+					.map(({ path, mounted }) => [path, mounted])
 			).toEqual([
 				["roblox_packages", true],
 				["roblox_server_packages", true],
 			]);
 		});
 
-		it("should offer the language's default manager, unticked, when the workspace has none", () => {
+		it("should name the folders of the language's default manager, unmounted, when the workspace has none", () => {
 			const workspace = workspaceOf();
 
 			expect(
 				workspace
 					.packageMounts(new Luau())
-					.map(({ path, ticked }) => [path, ticked])
+					.map(({ path, mounted }) => [path, mounted])
 			).toEqual([
 				["Packages", false],
 				["ServerPackages", false],
 			]);
 		});
 
-		it("should offer nothing for a language with no manager and a workspace with none", () => {
+		it("should mount nothing for a language with no manager and a workspace with none", () => {
 			const workspace = workspaceOf();
 
 			expect(

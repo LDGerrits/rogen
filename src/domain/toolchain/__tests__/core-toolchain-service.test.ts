@@ -321,7 +321,7 @@ describe("CoreToolchainService.detect", () => {
 			).toEqual(["node_modules/@rbxts"]);
 			expect(
 				rbxts(workspace)
-					.offeredMounts()
+					.installedMounts()
 					.map(({ path }) => path)
 			).toEqual(["node_modules/@flamework"]);
 		});

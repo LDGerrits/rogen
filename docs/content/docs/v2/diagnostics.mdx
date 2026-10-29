@@ -900,7 +900,7 @@ Add the settings to the node in the `tree` of `default.rogen.json`.
 Warning. `init` lifted a `default.project.json`, and found files in the source paths that none of its nodes mount. Rojo ignored those files. Rogen places every file below a source path that a route matches, so those files join the game. If there is no `*` route, Rogen leaves out the files that no route matches, with [`route.unrouted`](#route-unrouted).
 
 ```
-warning: 2 files in the source paths are mounted by no node, so Rojo ignored them, and Rogen places each one a route matches: src/Loose.luau, src/scratch/x.server.luau. Check where with 'rogen where <path>', and list them under "globIgnorePaths" to leave them out as Rojo did. (init.unmountedFiles)
+warning: 2 files in the source paths are mounted by no node, so Rojo ignored them, and Rogen places each one a route matches: src/Loose.luau and src/scratch/x.server.luau. Check where with 'rogen where <path>', and list them under "globIgnorePaths" to leave them out as Rojo did. (init.unmountedFiles)
 ```
 
 Run `rogen where` on the files to see where they land. To keep them out of the game, list them under `globIgnorePaths` in `default.rogen.json`, or delete them.

@@ -2,6 +2,7 @@ import path from "path";
 import {
 	commonFolderPosix,
 	containsPosix,
+	isBelowPosix,
 	normalizeDir,
 } from "../../base/path.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
@@ -12,7 +13,7 @@ import { StarterProject } from "./starter-project.js";
 import { StartingRoutes } from "./starting-routes.js";
 
 /** Where a hand-written project file keeps its code, as the source paths that hold it. */
-export interface CodeOfProject {
+export interface MountedCodeFolders {
 	/** Empty when no folder below the project's own holds every folder of code it mounts. */
 	readonly sourcePaths: readonly string[];
 	/** The folder a processor writes, whose mounts repeat the source path. */
@@ -37,14 +38,12 @@ export class MountedCode {
 		project: StarterProject,
 		excluded: readonly string[],
 		codeFolders: readonly string[]
-	): Promise<CodeOfProject> {
+	): Promise<MountedCodeFolders> {
 		const targets = project.mountedFolders().map(normalizeDir);
 		const skipped = excluded.map(normalizeDir);
 		const candidates = targets.filter(
 			(target) =>
-				target !== "." &&
-				target !== ".." &&
-				!target.startsWith("../") &&
+				isBelowPosix(target) &&
 				!skipped.some((folder) => containsPosix(folder, target))
 		);
 		const holding = await Promise.all(

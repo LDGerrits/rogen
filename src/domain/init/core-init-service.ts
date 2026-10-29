@@ -23,6 +23,7 @@ import {
 	InitPlan,
 	InitService,
 	InitWritten,
+	booleanFlag,
 } from "./init-service.js";
 import { ReviewMode, ReviewPrompts } from "./review-prompts.js";
 import { InitSummary } from "./init-summary.js";
@@ -33,22 +34,22 @@ import { ServerFinder } from "../runner/server-finder.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
 
 /** The flags that shape a new config, by the choice each gives; init takes none of them where a config exists. */
-const SHAPING_FLAGS: Record<
-	Exclude<keyof InitChoices, "agentRules" | "agentHook" | "skipGit">,
-	string
-> = {
-	kind: "kind",
-	language: "language",
-	sample: "sample",
-	places: "places",
-};
+const SHAPING_FLAGS = [
+	"kind",
+	"language",
+	"sample",
+	"places",
+] as const satisfies readonly Exclude<
+	keyof InitChoices,
+	"agentRules" | "agentHook" | "skipGit"
+>[];
 
 /** The shaping flags given, as typed. */
 function shapingFlagsOf(choices: InitChoices): string[] {
-	return Object.entries(SHAPING_FLAGS).flatMap(([choice, flag]) => {
-		const value = choices[choice as keyof typeof SHAPING_FLAGS];
+	return SHAPING_FLAGS.flatMap((choice) => {
+		const value = choices[choice];
 		if (value === undefined) return [];
-		return [value === false ? `--no-${flag}` : `--${flag}`];
+		return [booleanFlag(`--${choice}`, value !== false)];
 	});
 }
 

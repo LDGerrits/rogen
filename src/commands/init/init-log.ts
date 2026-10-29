@@ -9,6 +9,7 @@ import {
 	InitPlan,
 	InitWritten,
 	NextSteps,
+	booleanFlag,
 } from "../../domain/init/init-service.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ReportedError } from "../../platform/commands/commands.js";
@@ -80,20 +81,14 @@ export const initDocumentShape = S.object({
 /** A choice as the flags that make it, so the line can be copied: `--no-places`, `--language luau`. */
 function flagsOf({ question, value, flag }: InitDecision): string[] {
 	if (question === "skipGit") return value === true ? [flag] : [];
-	if (typeof value === "boolean")
-		return [value ? flag : flag.replace("--", "--no-")];
+	if (typeof value === "boolean") return [booleanFlag(flag, value)];
 	return [`${flag} ${value}`];
 }
 
 /** A choice with the flag that changes it: `--no-sample` for a sample init writes, `--language` for a language. */
 const flipped = (decision: InitDecision): InitDecision =>
 	typeof decision.value === "boolean"
-		? {
-				...decision,
-				flag: decision.value
-					? decision.flag.replace("--", "--no-")
-					: decision.flag,
-			}
+		? { ...decision, flag: booleanFlag(decision.flag, !decision.value) }
 		: decision;
 
 /** The tool that scaffolds the project is reported as the command it is. */

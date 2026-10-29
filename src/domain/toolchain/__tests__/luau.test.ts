@@ -15,7 +15,7 @@ describe("Luau", () => {
 	it("should have nothing to compile, mount or reserve", () => {
 		expect(luau.compiler).toBeUndefined();
 		expect(luau.alwaysMounted()).toEqual([]);
-		expect(luau.offeredMounts()).toEqual([]);
+		expect(luau.installedMounts()).toEqual([]);
 		expect(luau.reservedFolders).toEqual([]);
 		expect(luau.configuredSourcePath()).toBeUndefined();
 	});
