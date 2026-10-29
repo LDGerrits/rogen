@@ -90,6 +90,8 @@ export class RojoFile {
 		"default.project.json",
 		"default.project.jsonc",
 	];
+	/** The file Rojo's syncback writes into a folder it empties, so the folder stays. */
+	static readonly KEEP_FILE = ".gitkeep";
 
 	readonly stem: string;
 	private readonly match: SyncRuleMatch | undefined;

@@ -167,7 +167,7 @@ describe("TreeAssembler", () => {
 			it("should not collapse a directory with a folder in it that nothing places, so a collapsed write and an uncollapsed one agree", async () => {
 				await write(
 					"src/Inventory/Save.luau",
-					"src/Inventory/Assets/.gitkeep",
+					"src/Inventory/Assets/Icon.png",
 					"src/Inventory/Docs/README.md"
 				);
 
@@ -189,6 +189,7 @@ describe("TreeAssembler", () => {
 
 				expect(storage.Inventory).toEqual({
 					...FOLDER,
+					Empty: FOLDER,
 					Items: { $path: optional("src/Inventory/Items") },
 				});
 			});

@@ -9,7 +9,7 @@ import { WriteSummary, LeftOut } from "./write.js";
 import { WriteTree } from "./write-tree.js";
 import { EntryReading, NameReadings } from "./name-readings.js";
 import { ScannedRoot, UnclaimedMeta } from "./root-scanner.js";
-import { RoutedFile } from "./router.js";
+import { RoutedFile, RoutedFolder } from "./router.js";
 import { CompiledLayout } from "./compiled-layout.js";
 import { InstanceClash } from "./instance-resolver.js";
 import { isPlayerScriptContainer } from "../roblox/roblox.js";
@@ -66,6 +66,7 @@ interface PlacementParts {
 	readonly readings: NameReadings;
 	readonly routedNodes: readonly RoutedFile[];
 	readonly nodes: readonly RoutedFile[];
+	readonly emptyFolders: readonly RoutedFolder[];
 	readonly leftOut: LeftOutPaths;
 	readonly clashes: readonly InstanceClash[];
 	readonly displaced: readonly DisplacedFile[];
@@ -85,6 +86,7 @@ export class Placement {
 	readonly roots: readonly ScannedRoot[];
 	readonly readings: NameReadings;
 	readonly nodes: readonly RoutedFile[];
+	readonly emptyFolders: readonly RoutedFolder[];
 	readonly leftOut: LeftOutPaths;
 	readonly clashes: readonly InstanceClash[];
 	readonly displaced: readonly DisplacedFile[];
@@ -103,6 +105,7 @@ export class Placement {
 		this.roots = parts.roots;
 		this.readings = parts.readings;
 		this.nodes = parts.nodes;
+		this.emptyFolders = parts.emptyFolders;
 		this.leftOut = parts.leftOut;
 		this.clashes = parts.clashes;
 		this.displaced = parts.displaced;

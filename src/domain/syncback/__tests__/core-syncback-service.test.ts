@@ -496,6 +496,18 @@ describe("CoreSyncbackService", () => {
 		);
 	});
 
+	it("should change nothing for a folder the project keeps empty that the place still holds empty", async () => {
+		await prepare([
+			"src/Inventory/Server/.gitkeep",
+			"src/Inventory/Shared/Types.luau",
+		]);
+
+		const plan = (await service.plan(request)).unwrap();
+
+		expect(plan.changes).toEqual([]);
+		expect(plan.unplaced).toEqual([]);
+	});
+
 	it("should mirror a folder the tree mounts too, so a plan writes nothing outside the mirror", async () => {
 		await writeFiles(fs, "Packages/Lib.luau");
 		await prepare(["src/Combat/Server/Combat.luau"], {

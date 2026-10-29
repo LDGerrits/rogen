@@ -147,8 +147,16 @@ export interface InitToCopy extends Pick<RoutedFile, "entry"> {
 	readonly placed: RoutedFile | undefined;
 }
 
+/** A folder that is empty or holds only a `.gitkeep`, at the node a file in it would sit in. */
+export interface RoutedFolder {
+	/** Absolute, POSIX-style. */
+	readonly folder: string;
+	readonly instancePath: readonly string[];
+}
+
 export interface Routing {
 	readonly routed: RoutedFile[];
+	readonly emptyFolders: RoutedFolder[];
 	readonly toCopy: InitToCopy[];
 	readonly unrouted: string[];
 	readonly withoutFolder: InitWithoutFolder[];
@@ -161,10 +169,11 @@ export class Router {
 		private readonly readings: NameReadings
 	) {}
 
-	/** Every file a route governs, in scan order; the init scripts to copy; the sources of the files no route governs; the init scripts with no folder to be; and the init scripts written `^init`. */
+	/** Every file a route governs, in scan order; the empty folders it governs; the init scripts to copy; the sources of the files no route governs; the init scripts with no folder to be; and the init scripts written `^init`. */
 	route(roots: readonly ScannedRoot[], claims: RootClaims): Routing {
 		const routing: Routing = {
 			routed: [],
+			emptyFolders: [],
 			toCopy: [],
 			unrouted: [],
 			withoutFolder: [],
@@ -174,8 +183,31 @@ export class Router {
 			const dirs = claims.of(root);
 			for (const entry of root.entries)
 				this.routeEntry(entry, dirs, routing);
+			for (const dir of root.emptyDirs) {
+				const folder = this.routeEmptyFolder(root, dir, dirs);
+				if (folder) routing.emptyFolders.push(folder);
+			}
 		}
 		return routing;
+	}
+
+	private routeEmptyFolder(
+		root: ScannedRoot,
+		dir: string,
+		dirs: DirClaims
+	): RoutedFolder | undefined {
+		const claims = new Claims();
+		const folder = joinPosix(root.sourcePath, dir);
+		const { folders, hoistAt } = this.claimFolders(
+			folder,
+			this.readings.foldersDownTo(root.sourcePath, dir),
+			dirs,
+			claims
+		);
+		const target = this.config.routes.get(claims.routeKey);
+		const names = folders.slice(hoistAt ?? 0).map(({ name }) => name);
+		if (!target || names.length === 0) return undefined;
+		return { folder, instancePath: [...target.instancePath, ...names] };
 	}
 
 	private routeEntry(
@@ -224,8 +256,8 @@ export class Router {
 		const read = this.readings.entryReading(entry.source);
 		const claims = new Claims();
 		const { folders, hoistAt } = this.claimFolders(
-			entry,
-			read,
+			entry.source,
+			read.folders,
 			dirs,
 			claims
 		);
@@ -303,8 +335,8 @@ export class Router {
 	}
 
 	private claimFolders(
-		entry: ScannedFile,
-		read: EntryReading,
+		source: string,
+		readings: readonly FolderReading[],
 		dirs: DirClaims,
 		claims: Claims
 	): {
@@ -312,11 +344,11 @@ export class Router {
 		readonly hoistAt: number | undefined;
 	} {
 		const claimDirectory = (dir: string) =>
-			this.claimDirectory(entry, dir, dirs, claims);
+			this.claimDirectory(source, dir, dirs, claims);
 		claimDirectory("");
 		const folders: ClaimedFolder[] = [];
 		let hoistAt: number | undefined;
-		for (const folder of read.folders) {
+		for (const folder of readings) {
 			if (folder.hoisted) hoistAt = folders.length;
 			const routes = this.claimFolderRoute(folder, claims);
 			const name = routes ? folder.keptName : folder.outrankedName;
@@ -328,7 +360,7 @@ export class Router {
 	}
 
 	private claimDirectory(
-		entry: ScannedFile,
+		source: string,
 		dir: string,
 		dirs: DirClaims,
 		claims: Claims
@@ -337,8 +369,8 @@ export class Router {
 		for (const { fileName, key } of dirs.markersAt(dir)) {
 			claims.signed(key, "marker", depth, { key, dir, marker: fileName });
 		}
-		for (const { key, source, at } of dirs.initRoutesAt(dir)) {
-			if (source === entry.source) continue;
+		for (const { key, source: init, at } of dirs.initRoutesAt(dir)) {
+			if (init === source) continue;
 			if (at) claims.signed(key, "init", depth);
 			else claims.unsigned(key, "init", depth);
 		}
