@@ -74,6 +74,15 @@ export class SyncbackLayout {
 		return own.length === 1 ? own[0] : undefined;
 	}
 
+	/** The one source path whose folder `folder`, relative to it, holds a placed file; none when no source path or several do. */
+	sourcePathHolding(folder: string): string | undefined {
+		const holding = this.roots.filter((root) => {
+			const dir = path.posix.join(root, folder);
+			return this.placed.some((file) => containsPosix(dir, file.source));
+		});
+		return holding.length === 1 ? holding[0] : undefined;
+	}
+
 	/** The files placed directly under `node`, each as the donor of the layout a new sibling is written in. */
 	donorsAt(node: readonly string[]): Donor[] {
 		const donors: Donor[] = [];

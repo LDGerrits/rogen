@@ -4,11 +4,15 @@ stderr:
   rogen syncback · game.rogen.json
   game.project.json · wrote
   Wrote 1 project.
-  Syncback wrote 1 change.
+  Syncback wrote 2 changes.
 
 written:
   game.project.json
+  src/common/Greeter/Client/Wave.client.luau
   src/game/Quest/Server/Tracker.luau
+
+src/common/Greeter/Client/Wave.client.luau:
+print("wave")
 
 src/game/Quest/Server/Tracker.luau:
 return "tracker"
@@ -26,3 +30,9 @@ game: DataModel
       Greeter: Script  <- src/common/Greeter/Server/Greeter.server.luau
     Quest: Folder
       Tracker: ModuleScript  <- src/game/Quest/Server/Tracker.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Game: Folder
+        Hud: LocalScript  <- src/game/Game/Client/Hud.client.luau
+      Greeter: Folder
+        Wave: LocalScript  <- src/common/Greeter/Client/Wave.client.luau
