@@ -54,6 +54,12 @@ const isInitFile = (file: readonly string[]) =>
 const holdsScript = (instance: NewInstance) =>
 	(instance.files ?? []).some(isInitFile);
 
+/** Whether an init file right in the folder makes the folder instance itself a script. */
+const isScript = (instance: NewInstance) =>
+	(instance.files ?? []).some(
+		(file) => file.length === 2 && isInitFile(file)
+	);
+
 /** The route that puts files where `parent` is, and how deep its target is. */
 type ParentRoute =
 	| { readonly kind: "keyed"; readonly key: string; readonly depth: number }
@@ -279,7 +285,7 @@ export class ReverseRouter {
 		return {
 			kind: "placed",
 			home:
-				folder && !holdsScript(instance)
+				folder && !isScript(instance)
 					? {
 							dir: path.posix.join(
 								root,
