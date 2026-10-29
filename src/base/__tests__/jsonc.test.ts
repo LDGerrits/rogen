@@ -133,6 +133,21 @@ describe("setJsoncValue", () => {
 		expect(text).toBe(TEXT.replace('"ClockTime": 14', '"ClockTime": 6'));
 	});
 
+	it("should keep a value written on one line on one line in an object written on several lines", () => {
+		const text = setJsoncValue(
+			TEXT.replace(
+				'"$className": "Folder"',
+				'"$className": "Folder",\n      "$properties": { "Size": 1 }'
+			),
+			["tree", "Folder", "$properties"],
+			{ Size: 2, Level: 3 }
+		);
+
+		expect(text).toContain(
+			'      "$className": "Folder",\n      "$properties": { "Size": 2, "Level": 3 }\n'
+		);
+	});
+
 	it("should add a key to an object written on one line on that line", () => {
 		const text = setJsoncValue(
 			TEXT.replace("} },", "} }, // the sky"),
