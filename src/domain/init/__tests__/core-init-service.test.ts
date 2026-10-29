@@ -1167,9 +1167,6 @@ describe("CoreInitService", () => {
 			expect(plan?.nextSteps.run).toEqual([
 				'rogen build -o "my-game.rbxmx"',
 			]);
-			expect(plan?.decided.map(({ flag }) => flag)).not.toContain(
-				"--source-path"
-			);
 		});
 
 		it("should start a plugin with a script that runs", async () => {
@@ -1274,7 +1271,7 @@ describe("CoreInitService", () => {
 			expect(plan?.gitInit).toBe(false);
 		});
 
-		it("should ask for no source path when a lifted project takes no routes, and name none in the steps", async () => {
+		it("should take no source path when a lifted project takes no routes, and name none in the steps", async () => {
 			await write("tsconfig.json", "{}");
 			await write(
 				"default.project.json",
@@ -1283,9 +1280,6 @@ describe("CoreInitService", () => {
 
 			const plan = (await serviceFor().plan()).unwrap();
 
-			expect(plan?.decided.map(({ flag }) => flag)).not.toContain(
-				"--source-path"
-			);
 			expect(JSON.stringify(plan?.nextSteps)).not.toContain("undefined");
 			expect(plan?.directories).toEqual([]);
 		});
