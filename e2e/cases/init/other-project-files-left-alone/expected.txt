@@ -4,7 +4,7 @@ stdout:
   rogen init
   Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every write.
   Left alone: test.project.json. Rojo runs a plain project file as it is, and Rogen writes only the project files its .rogen.json files name.
-  Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --project-file lift, --route server, --route client, --route shared, --unmatched leave, --agent-rules.
+  Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --project-file lift, --route server, --route client, --route shared, --unmatched shared, --agent-rules.
   Created default.rogen.json.
   Created .gitignore.
   Created AGENTS.md.
@@ -43,7 +43,8 @@ default.rogen.json:
   "routes": {
     "Server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared"
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
   },
   "tree": {
     "$className": "DataModel",

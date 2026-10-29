@@ -13,7 +13,7 @@ v1 had many small rules that could disagree, and each problem got its own switch
 
 - **The outermost route governs.** In v1 the deepest rule won, so `ReplicatedFirst/main.client.luau` went to `StarterPlayerScripts`, and holding a folder still took `.structure` or `.sync`. In v2 a folder's route covers everything inside it.
 - **Only `@` routes a name.** v1 read routes from prefixes and suffixes, so `HttpClient.luau` went to the client as `Http`. In v2 only a name like `Save@server.luau` routes, and Rojo's `.server` and `.client` keep their meaning.
-- **You write every route.** v1's keywords and wrapper folders were built in, and unmatched files went to `ReplicatedStorage`. In v2 only the routes you declare exist, and a file that matches none is left out with a warning.
+- **You write every route.** v1's keywords and wrapper folders were built in, and unmatched files went to `ReplicatedStorage`. In v2 only the routes you declare exist. `rogen init` declares a `*` route for the files that match none, and without it such a file is left out with a warning.
 
 ## Move a Project to v2
 

@@ -331,6 +331,7 @@ describe("ProjectSetup plan", () => {
 			expect(
 				await routesOf({
 					routes: ["starterGui", "server", "replicatedFirst"],
+					fallback: false,
 				})
 			).toEqual({
 				Server: "ServerScriptService",
@@ -348,6 +349,7 @@ describe("ProjectSetup plan", () => {
 							"serverStorage",
 							"starterGui",
 						],
+						fallback: false,
 					},
 					"roblox-ts"
 				)
@@ -358,12 +360,11 @@ describe("ProjectSetup plan", () => {
 			});
 		});
 
-		it("should write * when files that match no route go to the shared route", async () => {
-			expect(await routesOf({ fallback: true })).toEqual({
+		it("should leave * out when files that match no route are left out", async () => {
+			expect(await routesOf({ fallback: false })).toEqual({
 				Server: "ServerScriptService",
 				Client: "StarterPlayer/StarterPlayerScripts",
 				Shared: "ReplicatedStorage/Shared",
-				"*": "ReplicatedStorage/Shared",
 			});
 		});
 

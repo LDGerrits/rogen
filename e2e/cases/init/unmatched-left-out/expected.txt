@@ -1,4 +1,4 @@
-$ rogen init -y
+$ rogen init -y --unmatched leave
 exit 0
 stdout: (not shown)
 stderr:

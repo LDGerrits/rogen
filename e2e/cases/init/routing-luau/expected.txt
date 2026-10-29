@@ -1,14 +1,10 @@
 $ rogen init
 exit 0
 stdout: (not shown)
-stderr:
-  src/Inventory/Types.luau - warning: matched no route, so it is left out. Move it into src/Inventory/Server, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route. (route.unrouted)
 
 $ rogen write
 exit 0
 stdout: (not shown)
-stderr:
-  src/Inventory/Types.luau - warning: matched no route, so it is left out. Move it into src/Inventory/Server, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route. (route.unrouted)
 
 written:
   .git/
@@ -25,7 +21,8 @@ default.rogen.json:
   "routes": {
     "Server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared"
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
   },
   "tree": {
     "$className": "DataModel"
@@ -36,6 +33,8 @@ $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
+      Inventory: Folder
+        Types: ModuleScript  <- src/Inventory/Types.luau
       Trading: Folder
         Rules: ModuleScript  <- src/Trading/shared/Rules.luau
   ServerScriptService: ServerScriptService
