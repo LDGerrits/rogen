@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Removed
 
+- `rogen init` always lifts a hand-written `default.project.json` into `default.rogen.json`: it no longer asks whether to lift it or start a new tree, and `--project-file` is gone. Starting a new tree replaced the file and lost its tree with no warning. To start a new one, move `default.project.json` away first. Beside it, `--places`, `--sample`, and `--kind model` or `--kind plugin` when the file is a place's, are a usage error that says so.
 - `rogen init` no longer asks about Darklua or sets it up: it writes no `.darklua.json`, Darklua pin, `dist.rogen.json` or `.gitignore` entry for Darklua's output, and its next steps run no `darklua process`. The `--darklua` and `--compiled-path` flags are gone. `rogen write` still knows Darklua's output in a `compiledPath`, and warns about it as before. [Using Darklua](https://rogen-roblox.vercel.app/docs/v2/setups/darklua) sets it up by hand.
 
 ### Fixed

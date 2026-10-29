@@ -3,4 +3,4 @@ title: Coming from Rojo
 description: Move a Rojo project to Rogen
 ---
 
-This guide is being rewritten for Rogen 2. Until it's back, run `rogen init` in your Rojo project: it lifts your `default.project.json` into a `default.rogen.json` and keeps your tree. If the project file mounts a folder that Darklua writes, such as `build`, and `.darklua.json` is beside it, `default.rogen.json` reads your source and a `dist.rogen.json` reads that folder as its `compiledPath`. Serve it with `rogen serve dist`.
+This guide is being rewritten for Rogen 2. Until it's back, run `rogen init` in your Rojo project: it lifts your `default.project.json` into a `default.rogen.json` and keeps your tree. From then on, `rogen write` writes `default.project.json` from `default.rogen.json`, so make your changes in `default.rogen.json`. If the project file mounts a folder that Darklua writes, such as `build`, and `.darklua.json` is beside it, `default.rogen.json` reads your source and a `dist.rogen.json` reads that folder as its `compiledPath`. Serve it with `rogen serve dist`.

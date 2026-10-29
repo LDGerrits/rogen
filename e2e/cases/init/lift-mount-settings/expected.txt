@@ -38,11 +38,6 @@ stdout:
         "flag": "--source-path"
       },
       {
-        "question": "projectFile",
-        "value": "lift",
-        "flag": "--project-file"
-      },
-      {
         "question": "routes",
         "value": [
           "mount:props",

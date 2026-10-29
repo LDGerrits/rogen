@@ -772,51 +772,28 @@ describe("InitQuestions askProject", () => {
 });
 
 describe("InitQuestions askProject project file", () => {
-	const projectFilePrompt = async (existing: readonly string[]) => {
+	const askBeside = async (existing: readonly string[]) => {
 		const prompts = new MockPromptService({});
-		let choices: { value: string; label: string }[] = [];
-		let initial: string | undefined;
-		const original = prompts.select.bind(prompts);
-		prompts.select = ((options: Parameters<typeof original>[0]) => {
-			if (options.message === "Project file") {
-				choices = [...options.choices];
-				initial = options.initialValue;
-			}
-			return original(options);
-		}) as typeof prompts.select;
 		const result = await askInitChoices(
 			prompts,
 			contextOf({ ...luau, packageManager: "wally" }, existing)
 		);
-		return { choices, initial, prompts, result: result.unwrap() };
+		return { prompts, result: result.unwrap() };
 	};
 
-	it("should not be asked without a hand-written project file", async () => {
-		const { prompts, result } = await projectFilePrompt([
-			"lobby.project.json",
-		]);
+	it("should start a new tree without a hand-written project file", async () => {
+		const { result } = await askBeside(["lobby.project.json"]);
 
-		expect(prompts.asked).not.toContain("Project file");
 		expect(result?.tree).toEqual({ kind: "new" });
 	});
 
-	it("should offer to lift the project file a build would replace, and preselect it", async () => {
-		const { choices, initial, prompts, result } = await projectFilePrompt([
+	it("should lift the project file a write would replace, without asking", async () => {
+		const { prompts, result } = await askBeside([
 			"default.project.json",
 			"lobby.project.json",
 		]);
 
-		expect(choices.map(({ label }) => label)).toEqual([
-			"Lift default.project.json into default.rogen.json",
-			"Start a new tree",
-		]);
-		expect(initial).toBe("lift");
-		expect(
-			prompts.prompts.find(({ message }) => message === "Project file")
-				?.description
-		).toBe(
-			"default.project.json exists, and Rogen replaces it whenever it writes the project file."
-		);
+		expect(prompts.asked).not.toContain("Project file");
 		expect(result?.tree).toMatchObject({
 			kind: "lift",
 			from: "default.project.json",
@@ -834,19 +811,6 @@ describe("InitQuestions askProject project file", () => {
 			},
 		]);
 		expect(prompts.asked).toContain("Packages");
-	});
-
-	it("should start a new tree when that is the answer", async () => {
-		const prompts = new MockPromptService({ "Project file": "new" });
-
-		const result = (
-			await askInitChoices(
-				prompts,
-				contextOf(luau, ["default.project.json"])
-			)
-		).unwrap();
-
-		expect(result?.tree).toEqual({ kind: "new" });
 	});
 
 	it("should answer nothing when the user cancels", async () => {

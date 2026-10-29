@@ -164,14 +164,6 @@ stdout:
             "multiple": true
           },
           {
-            "name": "project-file",
-            "type": "string",
-            "enum": [
-              "lift",
-              "new"
-            ]
-          },
-          {
             "name": "package",
             "type": "string",
             "multiple": true

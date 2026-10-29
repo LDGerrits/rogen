@@ -69,13 +69,6 @@ const InitOptions = [
 			"A folder with your scripts, relative to here; repeat for several. src when not given, or where the code is.",
 	},
 	{
-		name: "project-file",
-		type: "string",
-		values: ["lift", "new"],
-		description:
-			"What to do with a default.project.json already here: lift its tree, or start a new one. Lifting is the default: it writes the tree into default.rogen.json, and the mounts of a folder Darklua writes into dist.rogen.json.",
-	},
-	{
 		name: "package",
 		type: "string",
 		multiple: true,
@@ -139,7 +132,6 @@ function choicesOf(
 		agentHook: options["agent-hook"],
 		language: options.language,
 		sourcePaths: options["source-path"],
-		projectFile: options["project-file"] as InitChoices["projectFile"],
 		packages: options.package,
 		routes: options.route,
 		unmatched: options.unmatched as InitChoices["unmatched"],
@@ -156,7 +148,7 @@ registerCommand(
 				metadata: {
 					summary: "Starts a project with a default.rogen.json",
 					description:
-						"Starts a project, as 'rojo init' does: writes default.rogen.json, reading what the folder already holds and asking in a terminal. With a folder, starts the project there. It never changes a config that exists: where one is, it stops and writes nothing. There, --agent-rules and --agent-hook add only the agent files, with --skip-git, -y, -n or --json if given; a flag that shapes a config, such as --language, is an error beside them. To change a config, edit the .rogen.json and run 'rogen check'.",
+						"Starts a project, as 'rojo init' does: writes default.rogen.json, reading what the folder already holds and asking in a terminal. With a folder, starts the project there. Beside a hand-written default.project.json, it lifts that tree into default.rogen.json, and the mounts of a folder Darklua writes into dist.rogen.json; from then on 'rogen write' writes default.project.json from the config. It never changes a config that exists: where one is, it stops and writes nothing. There, --agent-rules and --agent-hook add only the agent files, with --skip-git, -y, -n or --json if given; a flag that shapes a config, such as --language, is an error beside them. To change a config, edit the .rogen.json and run 'rogen check'.",
 					args: [
 						{
 							name: "path",

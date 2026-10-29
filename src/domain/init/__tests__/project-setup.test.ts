@@ -499,7 +499,7 @@ describe("ProjectSetup project file that can't be read", () => {
 		expect(await askWith(fileSystem)).toMatchObject([
 			{
 				message:
-					"couldn't read this file to lift it: illegal operation on a directory.",
+					"couldn't read this file to lift it: illegal operation on a directory. Fix the file, or move it away to start a new project.",
 			},
 		]);
 	});
@@ -515,7 +515,7 @@ describe("ProjectSetup project file that can't be read", () => {
 			{
 				code: "init.projectUnreadable",
 				message:
-					"this is not a valid project file, so it can't be lifted: it must be a JSON object.",
+					"this is not a valid project file, so it can't be lifted: it must be a JSON object. Fix the file, or move it away to start a new project.",
 			},
 		]);
 	});

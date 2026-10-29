@@ -22,7 +22,6 @@ export interface InitChoices {
 	readonly agentHook?: boolean;
 	readonly language?: string;
 	readonly sourcePaths?: readonly string[];
-	readonly projectFile?: "lift" | "new";
 	/** Folders to mount, or `none`. */
 	readonly packages?: readonly string[];
 	/** Route ids, or `none`. */
