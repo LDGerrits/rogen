@@ -286,7 +286,10 @@ export class RootScanner {
 								samePath(path.join(dir, name), file)
 						  )
 						? name
-						: this.ignoringGlob(path.join(dir, name));
+						: isFileType(type) &&
+							  this.fileAt(joinPosix(dir, name)).isMeta
+							? undefined
+							: this.ignoringGlob(path.join(dir, name));
 			if (mount)
 				walk.leftOut.set(joinPosix(dir, name), {
 					status: "mounted",

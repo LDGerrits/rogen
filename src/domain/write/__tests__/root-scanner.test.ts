@@ -274,7 +274,7 @@ describe("RootScanner", () => {
 				]);
 			});
 
-			it("should leave an ignored .meta.json out of the meta files", async () => {
+			it("should keep a .meta.json the ignore globs match, which Rojo still applies, but not one in an ignored folder", async () => {
 				await write(
 					"src/A.luau",
 					"src/A.meta.json",
@@ -285,7 +285,7 @@ describe("RootScanner", () => {
 					ignored: [glob("src/A.meta.json"), glob("src/legacy")],
 				});
 
-				expect(roots[0].metaFiles).toEqual([]);
+				expect(roots[0].metaFiles).toEqual(["A.meta.json"]);
 			});
 
 			it("should drop unrecognised extensions", async () => {

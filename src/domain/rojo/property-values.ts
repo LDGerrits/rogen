@@ -202,7 +202,7 @@ export class PropertyValues {
 	static readonly READABLE_HINT =
 		'Write a boolean, a number, a string, a list of numbers (2, 3, 4 or 12), a list of strings, or a { "Type": value } pair.';
 
-	/** Whether Rojo reads `value` without knowing the property's type; it refuses the file holding any other. An object of several keys reads only as attributes, each a `{ "Type": value }` of a type Rojo knows, or as material colors, each a terrain material with three whole numbers from 0 to 255. */
+	/** Whether Rojo reads `value` without knowing the property's type; it refuses the file holding any other. An object reads only as a `{ "Type": value }` of a type Rojo knows, as attributes, each such a pair, or as material colors, each a terrain material with three whole numbers from 0 to 255. */
 	static isReadable(value: unknown): boolean {
 		if (
 			typeof value === "boolean" ||
@@ -219,7 +219,7 @@ export class PropertyValues {
 		if (!isObject(value)) return false;
 		const entries = Object.entries(value);
 		return (
-			entries.length <= 1 ||
+			isTypedValue(value) ||
 			entries.every(([, entry]) => isTypedValue(entry)) ||
 			entries.every(
 				([material, color]) =>

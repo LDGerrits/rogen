@@ -85,6 +85,25 @@ describe("TreeAssembler", () => {
 				});
 			});
 
+			it("should copy a meta the ignore globs match, which Rojo still applies", async () => {
+				await write(
+					"src/Combat/server/Hit.luau",
+					"src/Combat/client/Aim.luau"
+				);
+				await writeMeta("src/Combat/init.meta.json", {
+					className: "Actor",
+				});
+
+				const { projectFile: value } = await assemble({
+					routes: SPLIT,
+					ignored: [abs("src/**/*.meta.json")],
+				});
+
+				expect(
+					nodeAt(value.tree, "ServerScriptService", "Combat")
+				).toMatchObject({ $className: "Actor" });
+			});
+
 			it("should copy nothing onto a collapsed folder or a folder inside it, which Rojo reads itself", async () => {
 				await write("src/Bots/Body.luau", "src/Bots/Brain/Think.luau");
 				await writeMeta("src/Bots/init.meta.json", {
