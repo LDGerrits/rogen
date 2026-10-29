@@ -203,7 +203,9 @@ describe("applyTreeChanges", () => {
 			" */",
 			"{",
 			'    "tree": {',
-			'        "Value": { "$className": "StringValue" }',
+			'        "Value": {',
+			'            "$className": "StringValue"',
+			"        }",
 			"    }",
 			"}",
 		].join("\n");
