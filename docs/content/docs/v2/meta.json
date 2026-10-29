@@ -13,7 +13,6 @@
 		"core-concepts/routing/skipping-folders",
 		"---Guides---",
 		"agents",
-		"setups/darklua",
 		"migrating-from-v1",
 		"---Reference---",
 		"commands",
