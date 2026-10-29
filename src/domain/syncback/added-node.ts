@@ -1,5 +1,5 @@
 import { parse } from "../../base/jsonc.js";
-import { isObject } from "../../base/objects.js";
+import { isObject, setOwn } from "../../base/objects.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { RojoNode } from "../rojo/rojo-project.js";
 import { instanceNameOf } from "./reverse-router.js";
@@ -80,7 +80,7 @@ function modelNode(model: unknown): RojoNode | undefined {
 			return undefined;
 		const made = modelNode(child);
 		if (!made) return undefined;
-		node[child.name] = made;
+		setOwn(node, child.name, made);
 	}
 	return node;
 }
@@ -133,7 +133,7 @@ function folderNode(entries: readonly WrittenEntry[]): RojoNode | undefined {
 	for (const [name, held] of children) {
 		const child = isChildName(name) ? addedNode(held) : undefined;
 		if (!child) return undefined;
-		node[name] = child;
+		setOwn(node, name, child);
 	}
 	return node;
 }

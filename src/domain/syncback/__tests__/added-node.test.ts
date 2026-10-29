@@ -27,6 +27,32 @@ describe("addedNode", () => {
 		});
 	});
 
+	it("should keep a child named __proto__ as a child node", () => {
+		const fromModel = addedNode([
+			file(
+				"Shop.model.json",
+				JSON.stringify({
+					className: "Configuration",
+					children: [{ name: "__proto__", className: "RemoteEvent" }],
+				})
+			),
+		]);
+		const fromFolder = addedNode([
+			folder("Shop"),
+			file(
+				"Shop/__proto__.model.json",
+				JSON.stringify({ className: "RemoteEvent" })
+			),
+		]);
+
+		expect(JSON.stringify(fromModel)).toBe(
+			'{"$className":"Configuration","__proto__":{"$className":"RemoteEvent"}}'
+		);
+		expect(JSON.stringify(fromFolder)).toBe(
+			'{"$className":"Folder","__proto__":{"$className":"RemoteEvent"}}'
+		);
+	});
+
 	it("should make a node of each child a model file holds", () => {
 		expect(
 			addedNode([
