@@ -350,7 +350,8 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return { added, skipped };
 	}
 
-	private ensureNode(instancePath: readonly string[]): RojoNode {
+	/** The node at `instancePath`, made with its missing ancestors when absent. */
+	ensureNode(instancePath: readonly string[]): RojoNode {
 		let current = this.project.tree;
 		instancePath.forEach((segment, depth) => {
 			const next = getOwn(current, segment);

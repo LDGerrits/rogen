@@ -480,6 +480,37 @@ describe("TreeAssembler", () => {
 					Foo: { $path: optional("src/Foo.luau") },
 				});
 			});
+
+			it("should place a folder that holds only a .gitkeep as an empty Folder, as Rojo builds it", async () => {
+				await write(
+					"src/Inventory/Server/.gitkeep",
+					"src/Inventory/Shared/Types.luau"
+				);
+
+				const { projectFile } = await assemble({
+					routes: {
+						Server: "ServerScriptService",
+						"*": "ReplicatedStorage",
+					},
+				});
+
+				expect(
+					(projectFile.tree.ServerScriptService as RojoNode).Inventory
+				).toEqual(FOLDER);
+			});
+
+			it("should place an empty folder as an empty Folder under the route its parents name", async () => {
+				await write("src/Combat/Hit.luau");
+				await fs.createDirectory(abs("src/Combat/Effects"));
+
+				const storage = await storageOf();
+
+				expect(storage.Combat).toEqual({
+					...FOLDER,
+					Effects: FOLDER,
+					Hit: { $path: optional("src/Combat/Hit.luau") },
+				});
+			});
 		});
 
 		describe("data files", () => {
