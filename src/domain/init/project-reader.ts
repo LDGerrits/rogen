@@ -12,6 +12,8 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { StarterProject } from "./starter-project.js";
 
+const FIX_OR_MOVE = "Fix the file, or move it away to start a new project.";
+
 export class ProjectReader {
 	constructor(
 		private readonly fileReader: FileReader,
@@ -29,7 +31,7 @@ export class ProjectReader {
 					file,
 					isMissingPath(text.error)
 						? "this file does not exist, so it can't be lifted."
-						: `couldn't read this file to lift it: ${failureReason(text.error)}.`
+						: `couldn't read this file to lift it: ${failureReason(text.error)}. ${FIX_OR_MOVE}`
 				),
 			]);
 		const project = StarterProject.parse(text.value);
@@ -38,7 +40,7 @@ export class ProjectReader {
 			: err([
 					this.unreadable(
 						file,
-						`this is not a valid project file, so it can't be lifted: ${failureReason(project.error)}`
+						`this is not a valid project file, so it can't be lifted: ${failureReason(project.error)} ${FIX_OR_MOVE}`
 					),
 				]);
 	}

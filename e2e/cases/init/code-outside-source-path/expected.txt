@@ -1,0 +1,31 @@
+$ rogen init --non-interactive --no-sample
+exit 0
+stdout: (not shown)
+stderr:
+  default.rogen.json - warning: game and lib hold code that no source path holds and the tree doesn't mount, so Rogen places none of it. Move the code into src, or list its folders under "sourcePaths" in default.rogen.json. (init.codeOutsideSourcePaths)
+
+written:
+  .git/
+  .gitignore
+  AGENTS.md
+  default.project.json
+  default.rogen.json
+
+default.rogen.json:
+{
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "tree": {
+    "$className": "DataModel"
+  }
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel

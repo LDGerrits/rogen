@@ -58,7 +58,7 @@ export const initDocumentShape = S.object({
 		S.array(
 			S.object({
 				question: S.string,
-				value: S.union(S.string, S.boolean, S.array(S.string)),
+				value: S.union(S.string, S.boolean),
 				flag: S.string,
 			})
 		)
@@ -77,16 +77,22 @@ export const initDocumentShape = S.object({
 	),
 });
 
-/** A choice as the flags that make it, so the line can be copied: `--no-darklua`, `--route server --route client`. */
-function flagsOf({ question, value, flag }: InitDecision): string[] {
-	if (question === "skipGit") return value === true ? [flag] : [];
-	if (typeof value === "boolean")
-		return [value ? flag : flag.replace("--", "--no-")];
-	if (typeof value === "string") return [`${flag} ${value}`];
-	return value.length === 0
-		? [`${flag} none`]
-		: value.map((item) => `${flag} ${item}`);
-}
+/** How the defaults line names each choice's value. */
+const VALUE_NAMES: Record<
+	InitDecision["question"],
+	(value: InitDecision["value"]) => string
+> = {
+	kind: (kind) => `a ${kind}`,
+	language: (language) => String(language),
+	places: (several) => (several ? "several places" : "one place"),
+	sample: (sample) => (sample ? "the Greeter sample" : "no sample"),
+	skipGit: (skip) => (skip ? "no git" : "a git repository"),
+	agentRules: (rules) => (rules ? "agent rules" : "no agent rules"),
+	agentHook: (hook) => (hook ? "the agent hook" : "no agent hook"),
+};
+
+const describedChoice = ({ question, value, flag }: InitDecision) =>
+	`${VALUE_NAMES[question](value)} (${flag})`;
 
 /** The tool that scaffolds the project is reported as the command it is. */
 const asCommand = (
@@ -168,7 +174,7 @@ export class InitLog implements InitReporter {
 			this.logService.diagnostic(warning);
 		if (plan.decided.length > 0)
 			this.logService.info(
-				`Took the defaults: ${plan.decided.flatMap(flagsOf).join(", ")}.`
+				`Took the defaults, each with the flag that changes it: ${plan.decided.map(describedChoice).join(", ")}.`
 			);
 	}
 

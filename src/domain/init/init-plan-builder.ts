@@ -63,6 +63,10 @@ export class InitPlanBuilder {
 		});
 	}
 
+	get configCount(): number {
+		return this.configFiles.length;
+	}
+
 	/** `imports`: the files of the agents that read their own, pointed at the agent file. */
 	addAgentFile(file: AgentFile, imports: readonly PlannedFile[] = []): void {
 		this.agentFile = file.planned;

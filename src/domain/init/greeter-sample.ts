@@ -3,9 +3,6 @@ import { Language, PlannedFile } from "../toolchain/toolchain.js";
 import { templateFiles } from "./template-files.js";
 import { fillTemplate } from "./fill-template.js";
 
-/** The routes the sample needs: its folders are named after them. */
-export const SAMPLE_ROUTES = ["server", "client", "shared"] as const;
-
 /** The order `init` lists a feature's files in, by the folder of their route. */
 const ROUTE_ORDER: readonly string[] = ["shared", "server", "client"];
 

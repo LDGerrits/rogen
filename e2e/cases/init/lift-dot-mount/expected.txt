@@ -1,0 +1,36 @@
+$ rogen init --non-interactive
+exit 1
+stdout: (not shown)
+stderr:
+  error: default.project.json · not written
+  default.rogen.json - error: "Workspace/Everything" mounts <dir>, which holds the source path code, so Rojo would read all of it and Rogen would place nothing there. Mount a folder inside the source path, or remove the source path from "sourcePaths". (tree.mountsSourcePath)
+
+written:
+  .git/
+  .gitignore
+  AGENTS.md
+  default.rogen.json
+
+default.rogen.json:
+{
+  "name": "my-game",
+  "sourcePaths": [
+    "code"
+  ],
+  "routes": {
+    "Shared": "ReplicatedStorage/Shared",
+    "Server": "ServerScriptService/Server",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "tree": {
+    "$className": "DataModel",
+    "Workspace": {
+      "Everything": {
+        "$path": "."
+      }
+    },
+    "ReplicatedStorage": {},
+    "ServerScriptService": {}
+  }
+}

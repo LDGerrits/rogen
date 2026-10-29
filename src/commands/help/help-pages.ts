@@ -5,6 +5,7 @@ import { Command } from "../../platform/commands/commands.js";
 import {
 	GlobalOptions,
 	OptionDescriptor,
+	flagName,
 } from "../../platform/environment/args.js";
 import { HelpDocument } from "./help-document.js";
 import { DocTopics } from "./doc-topics.js";
@@ -101,7 +102,8 @@ function formatOption(
 	option: OptionDescriptor,
 	form: HelpForm
 ): [string, string] {
-	const name = option.negatable ? `[no-]${option.name}` : option.name;
+	const name =
+		option.negation === "also" ? `[no-]${option.name}` : flagName(option);
 	const flags = `${option.short ? `-${option.short}, ` : INDENT}--${name}`;
 	const value =
 		option.type === "string"

@@ -1,4 +1,0 @@
-{
-	"steps": [["init", "--non-interactive", "--skip-git", "--darklua"]],
-	"show": ["src/Greeter/Server/Greeter.server.luau"]
-}

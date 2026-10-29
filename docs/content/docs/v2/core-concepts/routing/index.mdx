@@ -66,7 +66,7 @@ A route inside another route is an ordinary folder. Server code under `Shared/` 
 
 ## Files Without a Route
 
-The `*` route takes every file that no other route matches, so `src/Shop/Prices.luau` lands in `ReplicatedStorage/Shared/Shop`. `rogen init` writes it unless you choose to leave such files out. Without `*`, Rogen leaves such a file out and warns about it, so a server file that forgets its route never reaches clients. That suits a project where every file names its side.
+The `*` route takes every file that no other route matches, so `src/Shop/Prices.luau` lands in `ReplicatedStorage/Shared/Shop`. `rogen init` writes it. Without `*`, Rogen leaves such a file out and warns about it, so a server file that forgets its route never reaches clients. That suits a project where every file names its side.
 
 ## Check Where a File Lands
 

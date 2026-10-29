@@ -1,0 +1,42 @@
+$ rogen init --non-interactive
+exit 0
+stdout: (not shown)
+
+$ rogen where src/server/Main.server.luau
+exit 0
+stdout:
+  src/server/Main.server.luau -> ServerScriptService/Server/Main · route Server (folder)
+    no require by this path: a script runs on its own and is not a module
+
+written:
+  .git/
+  .gitignore
+  AGENTS.md
+  default.project.json
+  default.rogen.json
+
+default.rogen.json:
+{
+  "name": "my-game",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService/Server",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {}
+  }
+}
+
+$ rojo sourcemap default.project.json
+my-game: DataModel
+  ServerScriptService: ServerScriptService
+    Server: Folder
+      Admin: Folder
+        Ban: ModuleScript  <- src/server/Admin/Ban.luau
+      Main: Script  <- src/server/Main.server.luau

@@ -61,84 +61,31 @@ const InitOptions = [
 			"The language: luau or roblox-ts. Detected from the folder when not given. For roblox-ts in a folder with no code, package.json or tsconfig.json, init first runs 'npm create roblox-ts', which needs npm and the network.",
 	},
 	{
-		name: "darklua",
-		type: "boolean",
-		negatable: true,
-		description:
-			"Whether Darklua processes your code before Rojo syncs it. Found from a Darklua config when not given.",
-	},
-	{
-		name: "source-path",
-		type: "string",
-		multiple: true,
-		placeholder: "path",
-		description:
-			"A folder with your scripts, relative to here; repeat for several. src when not given, or where the code is.",
-	},
-	{
-		name: "compiled-path",
-		type: "string",
-		placeholder: "path",
-		description:
-			"With Darklua: the folder it writes into, and Rojo syncs from.",
-	},
-	{
-		name: "project-file",
-		type: "string",
-		values: ["lift", "new"],
-		description:
-			"What to do with a default.project.json already here: lift its tree, or start a new one. Lifting writes the tree into default.rogen.json, and is the default.",
-	},
-	{
-		name: "package",
-		type: "string",
-		multiple: true,
-		placeholder: "path",
-		description:
-			"A package folder to mount as it is; repeat for several, or none for no mounts. The installed ones when not given.",
-	},
-	{
-		name: "route",
-		type: "string",
-		multiple: true,
-		placeholder: "id",
-		description:
-			"A route to start with; repeat for several, or none. The routes are server, client, shared, replicatedFirst, serverStorage and starterGui. The first three when not given. When a lifted project file mounts a folder of that name, the name stands for the route made from that mount, which --json writes as mount:server.",
-	},
-	{
-		name: "unmatched",
-		type: "string",
-		values: ["leave", "shared"],
-		description:
-			'Where files that match no route go: the shared route (the default) or nowhere. In the shared route, they go in as a "*" route. Left out, each file is warned about, naming the routing folders to move it into. A lifted project file that mounted a whole source path points "*" at that node instead, which places what it held.',
-	},
-	{
 		name: "sample",
 		type: "boolean",
-		negatable: true,
+		negation: "only",
 		description:
-			"Whether a new place starts with the Greeter sample. It is three hello-world scripts in src/Greeter, Rojo's Baseplate and lighting in place, which the tree mounts, and a README. Written when not given, in a folder with no code. --no-sample leaves src empty and writes no place.",
+			"Leave the Greeter sample out, for an empty src and no place. The sample is three hello-world scripts in src/Greeter, Rojo's Baseplate and lighting in place, which the tree mounts, and a README; a new place in a folder with no code gets it.",
 	},
 	{
 		name: "places",
 		type: "boolean",
-		negatable: true,
+		negation: "also",
 		description:
 			"Whether a new project is several places. Luau: the code they share in src/common, a first place in src/game, a game.rogen.json at the root for it, and editor settings for luau-lsp; more places by copying that file. roblox-ts: the code they share in projects/common and a first place in projects/game with its own default.rogen.json and tsconfig.json, more by copying that folder. One place when not given, or several where a projects folder exists for roblox-ts.",
 	},
 	{
 		name: "agent-rules",
 		type: "boolean",
-		negatable: true,
+		negation: "also",
 		description:
-			"Whether to add Rogen's rules for coding agents to the agent file. Added when not given, and imported into CLAUDE.md and GEMINI.md. Alone, in a project that has a config, it adds them there.",
+			"Whether to add Rogen's rules for coding agents to the agent file. Added when not given, and imported into CLAUDE.md and GEMINI.md. In a project that has a config, it adds them there, and takes no flag that shapes a config.",
 	},
 	{
 		name: "agent-hook",
 		type: "boolean",
-		negatable: true,
 		description:
-			"Whether to add the hook that reports Rogen warnings to the coding agents found. Not added when not given. Alone, in a project that has a config, it adds it there.",
+			"Add the hook that reports Rogen warnings to the coding agents found. Added only when given, or chosen under Customise. In a project that has a config, it adds it there, and takes no flag that shapes a config.",
 	},
 ] as const;
 
@@ -152,13 +99,6 @@ function choicesOf(
 		agentRules: options["agent-rules"],
 		agentHook: options["agent-hook"],
 		language: options.language,
-		darklua: options.darklua,
-		sourcePaths: options["source-path"],
-		projectFile: options["project-file"] as InitChoices["projectFile"],
-		compiledPath: options["compiled-path"],
-		packages: options.package,
-		routes: options.route,
-		unmatched: options.unmatched as InitChoices["unmatched"],
 		sample: options.sample,
 		places: options.places,
 	};
@@ -172,7 +112,7 @@ registerCommand(
 				metadata: {
 					summary: "Starts a project with a default.rogen.json",
 					description:
-						"Starts a project, as 'rojo init' does: writes default.rogen.json, reading what the folder already holds and asking in a terminal. With a folder, starts the project there. It never changes a config that exists: where one is, it stops and writes nothing, unless --agent-rules or --agent-hook is all that is given, which add only the agent files. To change a config, edit the .rogen.json and run 'rogen check'.",
+						"Starts a project with a default.rogen.json, as 'rojo init' does. It reads what the folder holds, and asks in a terminal. With a folder, it starts the project there. Beside a hand-written default.project.json, it lifts that tree into default.rogen.json. The source path is the closest folder that holds the code the file mounts. From then on, 'rogen write' writes default.project.json from the config. Where a config exists, init writes nothing, but --agent-rules and --agent-hook still add the agent files. To change a config, edit the .rogen.json and run 'rogen check'.",
 					args: [
 						{
 							name: "path",

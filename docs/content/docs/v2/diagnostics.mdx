@@ -121,7 +121,7 @@ Error. The config lists `sourcePaths` but declares no `routes`. Rogen scans sour
 error: "sourcePaths" lists what routes scan, but the config declares no routes. Add "routes", or remove "sourcePaths". (config.sourcePathsWithoutRoutes)
 ```
 
-Add a `routes` map. Or remove `sourcePaths`, and mount the folders in the `tree` with `$path`. `rogen init` writes the routes `Server`, `Client` and `Shared`. See [Routing](/docs/v2/core-concepts/routing).
+Add a `routes` map. Or remove `sourcePaths`, and mount the folders in the `tree` with `$path`. `rogen init` writes the routes `Server`, `Client`, `Shared` and `*`. See [Routing](/docs/v2/core-concepts/routing).
 
 ### `config.invalidSyncRule` [#config-invalidsyncrule]
 
@@ -844,7 +844,7 @@ These diagnostics come from `rogen init`, which starts projects and lifts a hand
 
 ### `init.configExists` [#init-configexists]
 
-Error. The folder already has a `.rogen.json` or `.rogen.jsonc`, either `default` or named. `init` never overwrites or changes a config, so it stops and writes nothing. The exception is when `--agent-rules` or `--agent-hook` are the only flags. Then `init` adds only the agent files.
+Error. The folder already has a `.rogen.json` or `.rogen.jsonc`, either `default` or named. `init` never overwrites or changes a config, so it stops and writes nothing. With `--agent-rules` or `--agent-hook`, `init` adds only the agent files instead. A flag that shapes a config, such as `--language`, is then an error.
 
 ```
 error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'; for a new place, copy a config and edit the copy. To add the agent rules or the agent hook to this project, run 'rogen init --agent-rules' or 'rogen init --agent-hook'; to set Rojo up, see https://rogen-roblox.vercel.app/docs/v2/installation. (init.configExists)
@@ -867,11 +867,11 @@ Move the file out of the way.
 Error. `init` found a hand-written `default.project.json` to lift into `default.rogen.json`, but it couldn't read the file, or the file isn't a valid project file.
 
 ```
-error: couldn't read this file to lift it: permission denied. (init.projectUnreadable)
+error: couldn't read this file to lift it: permission denied. Fix the file, or move it away to start a new project. (init.projectUnreadable)
 error: this file does not exist, so it can't be lifted. (init.projectUnreadable)
 ```
 
-Fix the file's permissions or its contents, or move it out of the way.
+Fix the file's permissions or its contents. To start a new project instead, move `default.project.json` away: `init` always lifts it when it is there.
 
 ### `init.mountNarrowed` [#init-mountnarrowed]
 
@@ -900,10 +900,20 @@ Add the settings to the node in the `tree` of `default.rogen.json`.
 Warning. `init` lifted a `default.project.json`, and found files in the source paths that none of its nodes mount. Rojo ignored those files. Rogen places every file below a source path that a route matches, so those files join the game. If there is no `*` route, Rogen leaves out the files that no route matches, with [`route.unrouted`](#route-unrouted).
 
 ```
-warning: 2 files in the source paths are mounted by no node, so Rojo ignored them, and Rogen places each one a route matches: src/Loose.luau, src/scratch/x.server.luau. Check where with 'rogen where <path>', and list them under "globIgnorePaths" to leave them out as Rojo did. (init.unmountedFiles)
+warning: 2 files in the source paths are mounted by no node, so Rojo ignored them, and Rogen places each one a route matches: src/Loose.luau and src/scratch/x.server.luau. Check where with 'rogen where <path>', and list them under "globIgnorePaths" to leave them out as Rojo did. (init.unmountedFiles)
 ```
 
 Run `rogen where` on the files to see where they land. To keep them out of the game, list them under `globIgnorePaths` in `default.rogen.json`, or delete them.
+
+### `init.codeOutsideSourcePaths` [#init-codeoutsidesourcepaths]
+
+Warning. `init` found code that no source path holds and that the tree doesn't mount, so Rogen places none of it. Package folders and a compiler's output don't count. With no `default.project.json`, the source path is `src`, or the only folder that holds code if no route is named after it. When `init` lifts a `default.project.json`, the source path is the closest folder that holds every folder of code that the file mounts. When a route is named after that folder, such as `src/server`, the source path is its parent, `src`, if the routes put the code where the file did. If they don't, the tree keeps the mounts.
+
+```
+warning: game and lib hold code that no source path holds and the tree doesn't mount, so Rogen places none of it. Move the code into src, or list its folders under "sourcePaths" in default.rogen.json. (init.codeOutsideSourcePaths)
+```
+
+Move the code into a source path, or add its folders to `sourcePaths` in the config. If the code isn't part of the game, such as a script that a tool runs, you can leave it where it is.
 
 ## Serve
 

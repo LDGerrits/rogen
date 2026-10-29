@@ -1,20 +1,14 @@
 import {
 	ConfirmPrompt,
-	MultiSelectPrompt,
 	Prompt,
 	SelectPrompt,
-	TextPrompt,
 	isCancel,
 	wrapTextWithPrefix,
 } from "@clack/core";
 import {
-	MULTISELECT_INSTRUCTIONS,
 	SELECT_INSTRUCTIONS,
 	S_BAR,
 	S_BAR_END,
-	S_CHECKBOX_ACTIVE,
-	S_CHECKBOX_INACTIVE,
-	S_CHECKBOX_SELECTED,
 	S_RADIO_ACTIVE,
 	S_RADIO_INACTIVE,
 	formatInstructionFooter,
@@ -26,12 +20,10 @@ import { Readable, Writable } from "stream";
 import { style } from "../../base/style.js";
 import {
 	ConfirmPromptOptions,
-	MultiSelectPromptOptions,
 	PromptChoice,
 	PromptDetails,
 	PromptService,
 	SelectPromptOptions,
-	TextPromptOptions,
 } from "./prompt-service.js";
 
 type State = Prompt<unknown>["state"];
@@ -91,10 +83,6 @@ function drawFrame(output: Writable, frame: Frame, style: Styler): string {
 	].join("\n")}\n`;
 }
 
-const errorFooter = (error: string, style: Styler) => [
-	`${style("yellow", S_BAR_END)}  ${style("yellow", error)}`,
-];
-
 interface PromptStreams {
 	readonly input?: Readable;
 	readonly output?: Writable;
@@ -121,42 +109,6 @@ export class ConsolePromptService implements PromptService {
 		this.streams = { input, output };
 		this.isInteractive = interactive;
 		this.style = color ? style : plain;
-	}
-
-	async text(options: TextPromptOptions): Promise<string | undefined> {
-		const { placeholder = "", validate } = options;
-		const { output } = this.streams;
-		const { style } = this;
-		const dim = (text: string) => style("dim", text);
-		const answer = await new TextPrompt({
-			...this.streams,
-			placeholder,
-			defaultValue: placeholder,
-			initialValue: options.initialValue,
-			validate: validate && ((value) => validate(value || placeholder)),
-			render() {
-				const empty = placeholder
-					? `${style("inverse", placeholder[0])}${dim(placeholder.slice(1))}`
-					: style(["inverse", "hidden"], "_");
-				return drawFrame(
-					output,
-					{
-						state: this.state,
-						message: options.message,
-						details: options,
-						body: [
-							this.userInput ? this.userInputWithCursor : empty,
-						],
-						answer: this.value ?? "",
-						...(this.state === "error" && {
-							footer: errorFooter(this.error, style),
-						}),
-					},
-					style
-				);
-			},
-		}).prompt();
-		return isCancel(answer) ? undefined : answer;
 	}
 
 	async confirm(options: ConfirmPromptOptions): Promise<boolean | undefined> {
@@ -230,56 +182,5 @@ export class ConsolePromptService implements PromptService {
 			},
 		}).prompt();
 		return isCancel(answer) ? undefined : (answer as T);
-	}
-
-	async multiSelect<T extends string>(
-		options: MultiSelectPromptOptions<T>
-	): Promise<readonly T[] | undefined> {
-		const { output } = this.streams;
-		const { style } = this;
-		const dim = (text: string) => style("dim", text);
-		const answer = await new MultiSelectPrompt<PromptChoice<T>>({
-			...this.streams,
-			options: [...options.choices],
-			initialValues: options.initialValues && [...options.initialValues],
-			required: false,
-			render() {
-				const ticked = (this.value ?? []) as T[];
-				const rows = limitOptions({
-					output,
-					cursor: this.cursor,
-					options: this.options,
-					style: (choice, active) => {
-						const box = ticked.includes(choice.value)
-							? style("green", S_CHECKBOX_SELECTED)
-							: active
-								? style("cyan", S_CHECKBOX_ACTIVE)
-								: dim(S_CHECKBOX_INACTIVE);
-						return `${box} ${choiceText(choice, dim, active ? undefined : dim)}`;
-					},
-				});
-				const labels = this.options
-					.filter(({ value }) => ticked.includes(value))
-					.map(({ label }) => label);
-				return drawFrame(
-					output,
-					{
-						state: this.state,
-						message: options.message,
-						details: options,
-						body: rows,
-						answer:
-							labels.join(", ") ||
-							(this.state === "submit" ? "none" : ""),
-						footer: formatInstructionFooter(
-							MULTISELECT_INSTRUCTIONS,
-							true
-						),
-					},
-					style
-				);
-			},
-		}).prompt();
-		return isCancel(answer) ? undefined : (answer as T[]);
 	}
 }

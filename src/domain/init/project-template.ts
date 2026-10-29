@@ -1,4 +1,3 @@
-import { normalizeDir } from "../../base/path.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
 import { InitKind } from "./init-service.js";
 
@@ -13,8 +12,6 @@ export class ProjectTemplate {
 		readonly kind: InitKind,
 		/** The project's name, which Rojo takes from the folder. */
 		readonly name: string,
-		/** The folder Darklua writes, as a path or glob from the project's root, which git is to leave out. */
-		readonly compiledPath?: string,
 		/** Lines the language adds to the `.gitignore`. */
 		readonly ignored: readonly string[] = []
 	) {}
@@ -45,16 +42,13 @@ export class ProjectTemplate {
 				: this.kind === "plugin"
 					? `# Plugin model files\n/${name}.rbxmx\n/${name}.rbxm\n`
 					: ROBLOX_LOCKS;
-		const processed = this.compiledPath
-			? `\n# Darklua output\n/${normalizeDir(this.compiledPath).replace(/\/$/, "")}\n`
-			: "";
 		const language =
 			this.ignored.length > 0
 				? `\n# Compiler output and installed packages\n${this.ignored.join("\n")}\n`
 				: "";
 		return {
 			fileName: ".gitignore",
-			content: `${project}\nsourcemap.json\n*.project.json\n${processed}${language}`,
+			content: `${project}\nsourcemap.json\n*.project.json\n${language}`,
 		};
 	}
 

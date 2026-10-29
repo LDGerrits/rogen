@@ -1,0 +1,6 @@
+{
+	"compilerOptions": {
+		"rootDir": "game",
+		"outDir": "out"
+	}
+}

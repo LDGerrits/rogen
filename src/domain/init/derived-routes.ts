@@ -33,7 +33,6 @@ export class DerivedRoutes {
 	readonly narrowed: NarrowedMount | undefined;
 
 	constructor(
-		readonly from: string,
 		removed: readonly RemovedMount[],
 		sourcePaths: readonly string[]
 	) {
@@ -115,13 +114,12 @@ export class DerivedRoutes {
 	}
 
 	static of(
-		from: string,
 		project: StarterProject,
 		sourcePaths: readonly string[]
 	): DerivedRoutes | undefined {
 		const removed = project.withoutNodesIn(sourcePaths)?.removed;
 		if (!removed) return undefined;
-		const derived = new DerivedRoutes(from, removed, sourcePaths);
+		const derived = new DerivedRoutes(removed, sourcePaths);
 		return derived.routes.size > 0 ||
 			derived.fallback !== undefined ||
 			derived.unrouted.length > 0

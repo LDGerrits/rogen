@@ -1,47 +1,8 @@
-import path from "path";
 import { Darklua, DetectedWorkspace, PackageManager } from "../toolchain.js";
 import { Luau } from "../luau.js";
 import { workspaceOf } from "./workspaces.js";
 
-const directory = path.resolve("/mock/my-game");
-
-const darklua = new Darklua();
-
 describe("Darklua", () => {
-	describe("processCommands", () => {
-		it("should process one source path into the compiled path itself", () => {
-			expect(darklua.processCommands(directory, ["src"], "dist")).toEqual(
-				["darklua process src dist --watch"]
-			);
-		});
-
-		it("should process each of several source paths to its path under the common root", () => {
-			expect(
-				darklua.processCommands(
-					directory,
-					["src", "places/lobby"],
-					"dist/lobby"
-				)
-			).toEqual([
-				"darklua process src dist/lobby/src --watch",
-				"darklua process places/lobby dist/lobby/places/lobby --watch",
-			]);
-		});
-
-		it("should measure from the deepest shared folder", () => {
-			expect(
-				darklua.processCommands(
-					directory,
-					["game/src", "game/lib"],
-					"dist"
-				)
-			).toEqual([
-				"darklua process game/src dist/src --watch",
-				"darklua process game/lib dist/lib --watch",
-			]);
-		});
-	});
-
 	describe("SYNC_TOOL", () => {
 		it("should say it turns .meta.json into .meta.lua", () => {
 			expect(Darklua.SYNC_TOOL.metaReplacement).toEqual({
@@ -55,7 +16,7 @@ describe("Darklua", () => {
 describe("PackageManager", () => {
 	const none = new Set<string>();
 
-	it("should offer its shared and server folders", () => {
+	it("should name its shared and server folders", () => {
 		expect(
 			PackageManager.WALLY.mounts(none, false).map(({ path }) => path)
 		).toEqual(["Packages", "ServerPackages"]);
@@ -75,19 +36,21 @@ describe("PackageManager", () => {
 		]);
 	});
 
-	it("should start a folder ticked when it is installed or a manifest promises it", () => {
+	it("should mount a folder when it is installed or a manifest promises it", () => {
 		const installed = new Set(["Packages"]);
 
 		expect(
 			PackageManager.WALLY.mounts(installed, false).map(
-				({ installed, ticked }) => ({ installed, ticked })
+				({ installed, mounted }) => ({ installed, mounted })
 			)
 		).toEqual([
-			{ installed: true, ticked: true },
-			{ installed: false, ticked: false },
+			{ installed: true, mounted: true },
+			{ installed: false, mounted: false },
 		]);
 		expect(
-			PackageManager.WALLY.mounts(none, true).map(({ ticked }) => ticked)
+			PackageManager.WALLY.mounts(none, true).map(
+				({ mounted }) => mounted
+			)
 		).toEqual([true, true]);
 	});
 
@@ -119,7 +82,6 @@ describe("DetectedWorkspace", () => {
 		expect(
 			() =>
 				new DetectedWorkspace({
-					darklua: darklua,
 					languages: [],
 					packageDirs: new Set(),
 				})
@@ -127,7 +89,7 @@ describe("DetectedWorkspace", () => {
 	});
 
 	describe("packageMounts", () => {
-		it("should offer the workspace's own manager, ticked", () => {
+		it("should mount the folders of the workspace's own manager", () => {
 			const workspace = workspaceOf({
 				packageManager: "pesde",
 				packageDirs: ["roblox_packages"],
@@ -136,27 +98,27 @@ describe("DetectedWorkspace", () => {
 			expect(
 				workspace
 					.packageMounts(workspace.language)
-					.map(({ path, ticked }) => [path, ticked])
+					.map(({ path, mounted }) => [path, mounted])
 			).toEqual([
 				["roblox_packages", true],
 				["roblox_server_packages", true],
 			]);
 		});
 
-		it("should offer the language's default manager, unticked, when the workspace has none", () => {
+		it("should name the folders of the language's default manager, unmounted, when the workspace has none", () => {
 			const workspace = workspaceOf();
 
 			expect(
 				workspace
 					.packageMounts(new Luau())
-					.map(({ path, ticked }) => [path, ticked])
+					.map(({ path, mounted }) => [path, mounted])
 			).toEqual([
 				["Packages", false],
 				["ServerPackages", false],
 			]);
 		});
 
-		it("should offer nothing for a language with no manager and a workspace with none", () => {
+		it("should mount nothing for a language with no manager and a workspace with none", () => {
 			const workspace = workspaceOf();
 
 			expect(

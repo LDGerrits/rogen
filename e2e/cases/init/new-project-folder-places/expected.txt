@@ -1,12 +1,10 @@
-$ rogen init game --non-interactive --skip-git --places --darklua
+$ rogen init game --non-interactive --skip-git --places
 exit 0
 stdout:
   rogen init
   The Greeter sample is the feature in game/src/common, which every place shares, Game in game/src/game, and Rojo's sample Baseplate and lighting in game/place/game. Pass --no-sample for empty source folders.
-  Took the defaults: --kind place, --language luau, --compiled-path dist, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.
+  Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), the Greeter sample (--no-sample), agent rules (--no-agent-rules).
   Created game/game.rogen.json.
-  Created game/game.dist.rogen.json.
-  Created game/.darklua.json.
   Created game/src/common/Greeter/Shared/Greeting.luau.
   Created game/src/common/Greeter/Server/Greeter.server.luau.
   Created game/src/common/Greeter/Client/Greeter.client.luau.
@@ -22,23 +20,19 @@ stdout:
   Next steps
     In each terminal, start in the project folder:
       cd game
-    Run each in its own terminal:
-      darklua process src/common dist/common --watch
-      darklua process src/game dist/game --watch
-      rogen serve game.dist.rogen.json
+    Run:
+      rogen serve game
     In Studio, press Connect in the Rojo plugin.
-    Add your own routes under "routes" in game.rogen.json.
+    To change where code goes, edit "routes" in game.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".
     Edit game.rogen.json and leave game.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write game' so the editor's game.project.json follows.
     luau-lsp reads the sourcemap of one place at a time, game here. To switch, change the name in the generatorCommand in .vscode/settings.json.
-    Add another place: copy game.rogen.json to lobby.rogen.json, point each place/game in its tree to place/lobby, make src/lobby and copy place/game to place/lobby. Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common. Do the same for game.dist.rogen.json, and for game.release.rogen.json if there is one, and run 'darklua process src/lobby dist/lobby --watch' beside the other darklua commands. Serve it from a second terminal with its own --port: 'rogen serve lobby.dist.rogen.json --port <port>'.
-  Wrote 14 files.
+    Add another place: copy game.rogen.json to lobby.rogen.json, point each place/game in its tree to place/lobby, make src/lobby and copy place/game to place/lobby. Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common. Do the same for game.release.rogen.json if there is one. Serve it from a second terminal with its own --port: 'rogen serve lobby --port <port>'.
+  Wrote 12 files.
 
 written:
-  game/.darklua.json
   game/.vscode/settings.json
   game/AGENTS.md
   game/README.md
-  game/game.dist.rogen.json
   game/game.project.json
   game/game.rogen.json
   game/place/game/Lighting/init.meta.json
@@ -49,34 +43,6 @@ written:
   game/src/common/Greeter/Server/Greeter.server.luau
   game/src/common/Greeter/Shared/Greeting.luau
   game/src/game/Game/Server/Game.server.luau
-
-game/game.dist.rogen.json:
-{
-  "name": "game",
-  "sourcePaths": [
-    "src/common",
-    "src/game"
-  ],
-  "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared",
-    "*": "ReplicatedStorage/Shared"
-  },
-  "compiledPath": "dist",
-  "tree": {
-    "$className": "DataModel",
-    "Lighting": {
-      "$path": "place/game/Lighting"
-    },
-    "SoundService": {
-      "$path": "place/game/SoundService"
-    },
-    "Workspace": {
-      "$path": "place/game/Workspace"
-    }
-  }
-}
 
 game/game.rogen.json:
 {

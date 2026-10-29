@@ -10,20 +10,13 @@ import {
 	run,
 } from "./harness.js";
 
-export interface Step {
-	readonly run: readonly string[];
-	readonly in?: string;
-	/** The editor runs it while it is open, so `init` does not print it. */
-	readonly editor?: boolean;
-}
-
 /** A way to start a project, followed from an empty folder to a served place. */
 export interface Variant {
 	readonly name: string;
 	/** Flags after `init -y`. */
 	readonly flags: readonly string[];
-	/** What the printed steps run between `init` and `serve`: a compiler or processor as program and arguments, or a Rogen command as `rogen` and its arguments. */
-	readonly steps: readonly (readonly string[] | Step)[];
+	/** What the printed steps run between `init` and `serve`: a compiler as program and arguments, or a Rogen command as `rogen` and its arguments. */
+	readonly steps: readonly (readonly string[])[];
 	readonly project?: readonly string[];
 	/** The variant downloads packages, so it runs only with ROGEN_E2E_NETWORK=1. */
 	readonly network?: boolean;
@@ -34,7 +27,7 @@ export interface Variant {
 }
 
 export interface Success {
-	/** The commands the user ran, besides compilers and processors. */
+	/** The commands the user ran, besides compilers. */
 	readonly commands: readonly string[];
 	/** What Rogen asked the user to run in `init`'s Next steps, as they print. */
 	readonly printed: readonly string[];
@@ -66,7 +59,7 @@ function printedSteps(stdout: string): string[] {
 		.slice(from + 1)
 		.map(
 			(line) =>
-				/(?:^|: )((?:cd \S+ && )?(?:rogen|darklua|npx|npm|rbxtsc) .*)$/.exec(
+				/(?:^|: )((?:rogen|npx|npm|rbxtsc) .*)$/.exec(
 					line.trim()
 				)?.[1] ??
 				/^Run '.*' to /.exec(line.trim())?.[0] ??
@@ -75,22 +68,16 @@ function printedSteps(stdout: string): string[] {
 		.filter((line) => line !== "");
 }
 
-/** The line of the printed steps that tells the user to run `step`, or none: a Rogen command by its name, Darklua's `process`, and a compiler by `rbxtsc` or the package script that runs it. */
-function printedLine(step: Step, printed: readonly string[]) {
-	const [program, first] = step.run;
-	const wanted =
-		program === "rogen" || program === "darklua"
-			? `${step.in ? `cd ${step.in} && ` : ""}${program} ${first}`
-			: undefined;
+/** The line of the printed steps that tells the user to run `step`, or none: a Rogen command by its name, and a compiler by `rbxtsc` or the package script that runs it. */
+function printedLine(step: readonly string[], printed: readonly string[]) {
+	const [program, first] = step;
+	const wanted = program === "rogen" ? `${program} ${first}` : undefined;
 	return printed.find((line) =>
 		wanted
 			? line.startsWith(wanted)
 			: /^(npx rbxtsc|rbxtsc|npm run (watch|build))/.test(line)
 	);
 }
-
-export const stepOf = (step: readonly string[] | Step): Step =>
-	Array.isArray(step) ? { run: step as readonly string[] } : (step as Step);
 
 function fail(step: string, result: { stdout: string; stderr: string }) {
 	return new Error(`${step} failed:\n${result.stdout}\n${result.stderr}`);
@@ -139,16 +126,12 @@ export async function follow(cli: string, variant: Variant): Promise<Success> {
 		if (init.exitCode !== 0) throw fail("init", init);
 		commands.push("init");
 
-		const steps = variant.steps.map(stepOf);
-		for (const {
-			run: [program, ...args],
-			in: folder,
-		} of steps) {
-			const cwd = folder ? path.join(dir, folder) : dir;
+		const { steps } = variant;
+		for (const [program, ...args] of steps) {
 			const step =
 				program === "rogen"
-					? await run(...invocation(cli, args), cwd, env, "", timeout)
-					: await run(program, args, cwd, env, "", timeout);
+					? await run(...invocation(cli, args), dir, env, "", timeout)
+					: await run(program, args, dir, env, "", timeout);
 			if (step.exitCode !== 0)
 				throw fail(`${program} ${args.join(" ")}`, step);
 			if (program === "rogen") commands.push(args[0]);
@@ -184,10 +167,8 @@ export async function follow(cli: string, variant: Variant): Promise<Success> {
 				commands,
 				printed,
 				unprinted: steps
-					.filter(
-						(step) => !step.editor && !printedLine(step, printed)
-					)
-					.map((step) => step.run.join(" ")),
+					.filter((step) => !printedLine(step, printed))
+					.map((step) => step.join(" ")),
 				serving: line,
 				mappedPaths,
 			};

@@ -1,0 +1,16 @@
+{
+	"name": "my-game",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Shared": {
+				"$path": "build/shared"
+			}
+		},
+		"ServerScriptService": {
+			"Server": {
+				"$path": "build/server"
+			}
+		}
+	}
+}

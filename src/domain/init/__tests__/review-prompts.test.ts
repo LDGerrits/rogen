@@ -19,18 +19,8 @@ describe("ReviewPrompts", () => {
 				initialValue: "y",
 			})
 		).toBe("y");
-		expect(
-			await review.quick.multiSelect({
-				message: "C",
-				choices: [{ value: "x", label: "x" }],
-				initialValues: ["x"],
-			})
-		).toEqual(["x"]);
-		expect(
-			await review.quick.text({ message: "D", placeholder: "src" })
-		).toBe("src");
 		expect(real.asked).toEqual([]);
-		expect(review.asked).toBe(4);
+		expect(review.asked).toBe(2);
 	});
 
 	it("should ask an essential question, and not ask it twice", async () => {
@@ -48,46 +38,27 @@ describe("ReviewPrompts", () => {
 	});
 
 	it("should ask every question when customising, with the answer given before preselected", async () => {
-		const real = new MockPromptService(["lib", false, ["a"], "lib, src"]);
+		const real = new MockPromptService(["roblox-ts", false, "luau"]);
 		const review = new ReviewPrompts(real);
-		await review.essential.text({
-			message: "Source paths",
-			placeholder: "src",
-		});
+		const language = () =>
+			review.essential.select({
+				message: "Language",
+				choices: [
+					{ value: "luau", label: "Luau" },
+					{ value: "roblox-ts", label: "roblox-ts" },
+				],
+			});
+		await language();
 		review.begin("customise");
 
-		await review.quick.confirm({ message: "Darklua", initialValue: true });
-		await review.quick.multiSelect({
-			message: "Routes",
-			choices: [
-				{ value: "a", label: "a" },
-				{ value: "b", label: "b" },
-			],
-			initialValues: ["a", "b"],
-		});
-		await review.quick.text({
-			message: "Source paths",
-			placeholder: "src",
-		});
+		await review.quick.confirm({ message: "Hook", initialValue: true });
+		await language();
 		review.begin("quick");
 
-		expect(real.asked).toEqual([
-			"Source paths",
-			"Darklua",
-			"Routes",
-			"Source paths",
-		]);
+		expect(real.asked).toEqual(["Language", "Hook", "Language"]);
 		expect(
-			await review.quick.confirm({
-				message: "Darklua",
-				initialValue: true,
-			})
+			await review.quick.confirm({ message: "Hook", initialValue: true })
 		).toBe(false);
-		expect(
-			await review.quick.text({
-				message: "Source paths",
-				placeholder: "src",
-			})
-		).toBe("lib, src");
+		expect(await language()).toBe("luau");
 	});
 });

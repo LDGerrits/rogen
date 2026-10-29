@@ -1,21 +1,15 @@
 import {
 	ConfirmPromptOptions,
-	MultiSelectPromptOptions,
 	PromptDetails,
 	PromptService,
 	SelectPromptOptions,
-	TextPromptOptions,
 } from "../prompt-service.js";
 
 export const ACCEPT_DEFAULT = Symbol("acceptDefault");
 export const CANCEL = Symbol("cancel");
 
 export type ScriptedAnswer =
-	| string
-	| boolean
-	| readonly string[]
-	| typeof ACCEPT_DEFAULT
-	| typeof CANCEL;
+	string | boolean | typeof ACCEPT_DEFAULT | typeof CANCEL;
 
 export type ScriptedAnswers = Readonly<Record<string, ScriptedAnswer>>;
 
@@ -40,7 +34,6 @@ afterEach(() => {
 
 export interface AskedPrompt extends PromptDetails {
 	readonly message: string;
-	readonly placeholder?: string;
 }
 
 export class MockPromptService implements PromptService {
@@ -68,19 +61,6 @@ export class MockPromptService implements PromptService {
 		);
 	}
 
-	async text(options: TextPromptOptions): Promise<string | undefined> {
-		const answer = this.next<string>(options, options.placeholder);
-		if (answer === undefined) return undefined;
-		const resolved = answer === "" ? (options.placeholder ?? "") : answer;
-		const problem = options.validate?.(resolved);
-		if (problem !== undefined) {
-			throw new Error(
-				`"${resolved}" rejected for "${options.message}": ${problem}`
-			);
-		}
-		return resolved;
-	}
-
 	async confirm(options: ConfirmPromptOptions): Promise<boolean | undefined> {
 		return this.next<boolean>(options, options.initialValue);
 	}
@@ -91,23 +71,17 @@ export class MockPromptService implements PromptService {
 		return this.next<T>(options, options.initialValue);
 	}
 
-	async multiSelect<T extends string>(
-		options: MultiSelectPromptOptions<T>
-	): Promise<readonly T[] | undefined> {
-		return this.next<readonly T[]>(options, options.initialValues);
-	}
-
 	private next<T>(
 		options: AskedPrompt,
 		initial: T | undefined
 	): T | undefined {
-		const { message, placeholder, description, hint } = options;
+		const { message, description, hint } = options;
 		if (this.byQuestion && this.asked.includes(message))
 			throw new Error(
 				`"${message}" was asked again; script the answers as a list.`
 			);
 		this.asked.push(message);
-		this.prompts.push({ message, placeholder, description, hint });
+		this.prompts.push({ message, description, hint });
 		const answer = this.byQuestion
 			? this.answerFor(message, initial)
 			: this.answers.shift();
