@@ -89,7 +89,7 @@ function derivedRoutesOf(
 	dirs: readonly string[]
 ): DerivedRoutes | undefined {
 	return tree.kind === "lift"
-		? DerivedRoutes.of(tree.from, tree.project, dirs)
+		? DerivedRoutes.of(tree.project, dirs)
 		: undefined;
 }
 

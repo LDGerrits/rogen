@@ -14,7 +14,7 @@ const RBX_TREE = {
 };
 
 const derive = (tree: object, sourcePaths = ["src"]) =>
-	DerivedRoutes.of("default.project.json", project(tree), sourcePaths);
+	DerivedRoutes.of(project(tree), sourcePaths);
 
 describe("domain/init/derived-routes", () => {
 	describe("DerivedRoutes", () => {
@@ -26,7 +26,6 @@ describe("domain/init/derived-routes", () => {
 				["server", "ServerScriptService/Server"],
 				["client", "StarterPlayer/StarterPlayerScripts/Client"],
 			]);
-			expect(derived?.from).toBe("default.project.json");
 		});
 
 		it("should send files that match no route where the shared folder went", () => {

@@ -8,7 +8,6 @@ const rbxts = new StartingRoutes(workspaceOf().languageFor("roblox-ts"));
 
 const lifted = (tree: object) =>
 	DerivedRoutes.of(
-		"default.project.json",
 		StarterProject.parse(JSON.stringify({ name: "x", tree })).unwrap(),
 		["src"]
 	);
