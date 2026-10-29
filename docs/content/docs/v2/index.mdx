@@ -1,36 +1,181 @@
 ---
 title: Introduction
-description: Rogen is a superset of Rojo that generates Rojo project files
+description: What Rogen is for, shown on a typical Roblox project
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { BookOpen, History, Rocket, Terminal } from "lucide-react";
 
-Rogen is a superset of Rojo that generates Rojo project files from your file system. You organize your game by feature, and Rogen puts each file in the right place.
+Rogen is a command-line tool that writes your Rojo project file for you. Rojo still syncs and builds your game. Here is why that helps.
 
-## The Config
+## A Typical Roblox Project
 
-A Rogen config is a Rojo project file with `routes` added. The `tree` is the base: put in it what your folder names can't say, such as your packages, and Rogen adds every routed file to it.
+This game has an inventory and a shop. Its project file mounts `src/server` into ServerScriptService, `src/client` into StarterPlayerScripts and `src/shared` into a `Shared` folder in ReplicatedStorage. Inside them, code is sorted by type:
 
-```json title="default.rogen.json"
+<RouteFigure
+	disk={`
+  src/
+    client/
+      controllers/
+        InventoryController.luau
+        ShopController.luau
+      ui/
+        InventoryWindow.luau
+        ShopWindow.luau
+    server/
+      data/
+        InventoryStore.luau
+      services/
+        InventoryService.luau
+        ShopService.luau
+    shared/
+      config/
+        ItemConfig.luau
+        ShopConfig.luau
+      types/
+        InventoryTypes.luau
+        ShopTypes.luau
+`}
+/>
+
+The inventory is spread over six folders, mixed in with the shop. To change or remove it, you hunt through all of them.
+
+## Organize by Feature
+
+Sort the same files by feature instead, with a folder per feature on each side:
+
+<RouteFigure
+	disk={`
+  src/
+    client/
+      Inventory/
+        InventoryController.luau
+        InventoryWindow.luau
+      Shop/
+        ShopController.luau
+        ShopWindow.luau
+    server/
+      Inventory/
+        InventoryService.luau
+        InventoryStore.luau
+      Shop/
+        ShopService.luau
+    shared/
+      Inventory/
+        InventoryTypes.luau
+        ItemConfig.luau
+      Shop/
+        ShopConfig.luau
+        ShopTypes.luau
+`}
+/>
+
+That's much better. The inventory's files are no longer mixed in with the shop's, and the project file stays the same.
+
+## Three Inventory Folders
+
+But the inventory still has three folders, one each in `client`, `server` and `shared`. A single `src/Inventory` folder would be better. Rojo can do that, but every side of every feature needs its own entry in `default.project.json`:
+
+```json title="default.project.json"
 {
-	"name": "my-game",
-	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
-	},
-	"tree": {
-		"$className": "DataModel",
-		"ReplicatedStorage": {
-			"Packages": { "$path": "Packages" }
-		}
-	}
+  "name": "my-game",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "Inventory": { "$path": "src/Inventory/Server" },
+      "Shop": { "$path": "src/Shop/Server" }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Inventory": { "$path": "src/Inventory/Client" },
+        "Shop": { "$path": "src/Shop/Client" }
+      }
+    },
+    "ReplicatedStorage": {
+      "Shared": {
+        "$className": "Folder",
+        "Inventory": { "$path": "src/Inventory/Shared" },
+        "Shop": { "$path": "src/Shop/Shared" }
+      }
+    }
+  }
 }
 ```
 
-A folder named after a route sends its files there, so `src/Inventory/Server/InventoryService.luau` lands in `ServerScriptService/Inventory`. The `*` route takes every file that no other route matches. Rogen writes `default.project.json` from the config, and Rojo serves, builds and syncs your game as before. `rogen serve` and `rogen build` take Rojo's flags, and a project without a config works as it did.
+Every feature you add, rename or remove means editing this file by hand, and a folder you forget never reaches the game.
+
+## One Folder per Feature
+
+Rogen writes those entries for you. Put each feature in one folder, with `Client`, `Server` and `Shared` folders inside:
+
+<RouteFigure
+	disk={`
+  src/
+    Inventory/
+      Client/
+        InventoryController.luau
+        InventoryWindow.luau
+      Server/
+        InventoryService.luau
+        InventoryStore.luau
+      Shared/
+        InventoryTypes.luau
+        ItemConfig.luau
+    Shop/
+      Client/
+        ShopController.luau
+        ShopWindow.luau
+      Server/
+        ShopService.luau
+      Shared/
+        ShopConfig.luau
+        ShopTypes.luau
+`}
+	studio={`
+  ReplicatedStorage
+    Shared/
+      Inventory/
+        InventoryTypes
+        ItemConfig
+      Shop/
+        ShopConfig
+        ShopTypes
+  ServerScriptService
+    Inventory/
+      InventoryService
+      InventoryStore
+    Shop/
+      ShopService
+  StarterPlayer
+    StarterPlayerScripts
+      Inventory/
+        InventoryController
+        InventoryWindow
+      Shop/
+        ShopController
+        ShopWindow
+`}
+/>
+
+In Studio, the game is the same as when you sorted by feature, so your requires don't change. Everything about the inventory is in `src/Inventory`, and you remove it by deleting one folder.
+
+## How Rogen Does It
+
+You write `default.rogen.json`, a Rojo project file with [`routes`](/docs/v2/config) added. Each route names a folder and where its files go:
+
+```json title="default.rogen.json"
+{
+  "name": "my-game",
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared"
+  },
+  "tree": { "$className": "DataModel" }
+}
+```
+
+`rogen serve` and `rogen build` write `default.project.json` from it, then run `rojo serve` and `rojo build` with Rojo's flags. To try it on an existing project, [install Rogen](/docs/v2/installation) and run `rogen init`.
 
 ## Next Steps
 
