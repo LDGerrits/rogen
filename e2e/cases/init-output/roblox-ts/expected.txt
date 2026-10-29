@@ -3,7 +3,7 @@ exit 0
 stdout:
   rogen init
   Syncing from dist-ts, where roblox-ts compiles to.
-  Took the defaults: --kind place, --language roblox-ts, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched leave, --agent-rules.
+  Took the defaults: --kind place, --language roblox-ts, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.
   Created default.rogen.json.
   Created .gitignore.
   Created AGENTS.md.
@@ -37,7 +37,8 @@ default.rogen.json:
   "routes": {
     "server": "ServerScriptService",
     "client": "StarterPlayer/StarterPlayerScripts",
-    "shared": "ReplicatedStorage/shared"
+    "shared": "ReplicatedStorage/shared",
+    "*": "ReplicatedStorage/shared"
   },
   "compiledPath": "dist-ts",
   "tree": {

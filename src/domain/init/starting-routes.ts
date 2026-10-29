@@ -80,11 +80,6 @@ export class StartingRoutes {
 		return this.derived?.fallback ?? this.sharedTarget;
 	}
 
-	/** Whether files that match no route go to the fallback unless asked otherwise: only when a lifted node mounted a whole source path. */
-	get fallbackByDefault(): boolean {
-		return this.derived?.mountedRoot !== undefined;
-	}
-
 	/** The key a derived route is written with: the language's casing, so one lift doesn't mix `shared` and `Server`. A language that keeps ids as they are (roblox-ts) keeps the folder's spelling, unless a standard route has the key. */
 	private keyOf(derivedKey: string): string {
 		const identity = DeclaredKeys.identityOf(derivedKey);

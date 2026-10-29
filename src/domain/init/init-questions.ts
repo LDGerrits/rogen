@@ -451,10 +451,10 @@ export class InitQuestions {
 		}
 		if (unmatched !== undefined)
 			return { routes, fallback: unmatched === "shared" };
-		const byDefault = starting.fallbackByDefault ? "shared" : "leave";
+		const byDefault = "shared";
 		if (!this.interactive) {
 			this.decide("unmatched", byDefault, "--unmatched");
-			return { routes, fallback: byDefault === "shared" };
+			return { routes, fallback: true };
 		}
 
 		const fallback = await this.promptService.select<"shared" | "leave">({

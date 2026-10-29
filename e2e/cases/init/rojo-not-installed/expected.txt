@@ -59,7 +59,7 @@ stdout:
       },
       {
         "question": "unmatched",
-        "value": "leave",
+        "value": "shared",
         "flag": "--unmatched"
       },
       {
@@ -106,7 +106,8 @@ default.rogen.json:
   "routes": {
     "Server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared"
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
   },
   "tree": {
     "$className": "DataModel"

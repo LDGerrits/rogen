@@ -66,7 +66,7 @@ describe("init choices given as flags", () => {
 					value: ["server", "client", "shared"],
 					flag: "--route",
 				},
-				{ question: "unmatched", value: "leave", flag: "--unmatched" },
+				{ question: "unmatched", value: "shared", flag: "--unmatched" },
 				{ question: "sample", value: true, flag: "--sample" },
 				{ question: "skipGit", value: false, flag: "--skip-git" },
 			]);
@@ -366,9 +366,9 @@ describe("init choices given as flags", () => {
 			expect(decidedFlags(questions)).not.toContain("--unmatched");
 		});
 
-		it("should leave out the files that match no route unless asked to put them in the shared route", async () => {
-			const left = await run(luau, {});
-			const shared = await run(luau, { unmatched: "shared" });
+		it("should put the files that match no route in the shared route unless asked to leave them out", async () => {
+			const left = await run(luau, { unmatched: "leave" });
+			const shared = await run(luau, {});
 
 			expect(left.asked.unwrap()?.fallback).toBe(false);
 			expect(shared.asked.unwrap()?.fallback).toBe(true);
