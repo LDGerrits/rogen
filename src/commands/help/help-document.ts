@@ -118,10 +118,11 @@ const optionBrief = ({
 	type,
 	multiple,
 	negatable,
+	negatedOnly,
 	values,
 	default: fallback,
 }: OptionDescriptor) => ({
-	name,
+	name: negatedOnly ? `no-${name}` : name,
 	...(short && { short }),
 	type,
 	...(multiple && { multiple }),

@@ -16,6 +16,8 @@ export interface OptionDescriptor {
 	readonly multiple?: boolean;
 	/** For a flag: whether `--no-<name>` is accepted and means false, as against not given. */
 	readonly negatable?: boolean;
+	/** For a flag: whether only `--no-<name>` is accepted, for an opt-out whose positive form would repeat the default. */
+	readonly negatedOnly?: boolean;
 	/** For a string option: the only values it takes. */
 	readonly values?: readonly string[];
 	/** What help writes for a string option's value: `--output <path>`. Defaults to `value`. */
@@ -30,13 +32,20 @@ type OptionValue<D extends OptionDescriptor> = D extends {
 	readonly multiple: true;
 }
 	? readonly boolean[]
-	: D extends { readonly type: "boolean" }
+	: D extends { readonly type: "boolean"; readonly negatable: true }
 		? boolean
-		: D extends { readonly multiple: true }
-			? readonly string[]
-			: D extends { readonly type: "string" }
-				? string
-				: boolean | string | readonly string[] | readonly boolean[];
+		: D extends { readonly type: "boolean"; readonly negatedOnly: true }
+			? false
+			: D extends { readonly type: "boolean" }
+				? true
+				: D extends { readonly multiple: true }
+					? readonly string[]
+					: D extends { readonly type: "string" }
+						? string
+						: | boolean
+							| string
+							| readonly string[]
+							| readonly boolean[];
 
 type OptionValues<O extends readonly OptionDescriptor[]> = {
 	readonly [D in O[number] as D["name"]]?: OptionValue<D>;
@@ -235,7 +244,14 @@ function findOptionProblem(
 	for (const token of tokens) {
 		if (token.kind !== "option") continue;
 		const option = options.find(({ name }) => name === token.name);
-		if (!option || (isNegated(token) && !option.negatable)) {
+		if (option?.negatedOnly && !isNegated(token))
+			return new UsageError(
+				`'${token.rawName}' is what ${command ?? "it"} does already; only '--no-${option.name}' changes it.`
+			);
+		if (
+			!option ||
+			(isNegated(token) && !option.negatable && !option.negatedOnly)
+		) {
 			return unknownOption(
 				token,
 				options,
@@ -284,7 +300,9 @@ export function parseArgs(
 					optionsFor(owner).some(
 						(option) =>
 							option.name === name &&
-							(!negated || option.negatable)
+							(negated
+								? option.negatable || option.negatedOnly
+								: !option.negatedOnly)
 					)
 				)
 				.sort();

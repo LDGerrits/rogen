@@ -32,6 +32,7 @@ const buildOptions: OptionDescriptor[] = [
 	},
 	{ name: "hook", type: "boolean", negatable: true, description: "" },
 	{ name: "dry", type: "boolean", description: "" },
+	{ name: "cache", type: "boolean", negatedOnly: true, description: "" },
 	{
 		name: "assume",
 		short: "y",
@@ -95,6 +96,22 @@ describe("parseArgs", () => {
 
 			expect(result.isErr() && result.error.message).toContain(
 				"Unknown option '--no-variant'."
+			);
+		});
+	});
+
+	describe("a flag that only opts out", () => {
+		it("should be false when given as --no- and not given otherwise", () => {
+			expect(values(["build", "--no-cache"]).cache).toBe(false);
+			expect(values(["build"]).cache).toBeUndefined();
+		});
+
+		it("should refuse the positive form, saying it is the default", () => {
+			const result = parse(["build", "--cache"]);
+
+			expect(result.isErr() && result.error).toBeInstanceOf(UsageError);
+			expect(result.isErr() && result.error.message).toBe(
+				"'--cache' is what build does already; only '--no-cache' changes it."
 			);
 		});
 	});

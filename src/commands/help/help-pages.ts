@@ -101,7 +101,11 @@ function formatOption(
 	option: OptionDescriptor,
 	form: HelpForm
 ): [string, string] {
-	const name = option.negatable ? `[no-]${option.name}` : option.name;
+	const name = option.negatedOnly
+		? `no-${option.name}`
+		: option.negatable
+			? `[no-]${option.name}`
+			: option.name;
 	const flags = `${option.short ? `-${option.short}, ` : INDENT}--${name}`;
 	const value =
 		option.type === "string"

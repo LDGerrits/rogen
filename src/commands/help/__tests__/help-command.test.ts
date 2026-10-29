@@ -39,7 +39,11 @@ import { firstSentence } from "../help-pages.js";
 import { helpTexts } from "../help-texts.js";
 
 const flagText = (option: OptionDescriptor) =>
-	option.negatable ? `[no-]${option.name}` : option.name;
+	option.negatedOnly
+		? `no-${option.name}`
+		: option.negatable
+			? `[no-]${option.name}`
+			: option.name;
 
 describe("help command", () => {
 	const registry = Registry.as<CommandRegistry>(Extensions.Commands);
@@ -683,7 +687,7 @@ describe("help command", () => {
 				info.mockClear();
 				await help(command.id);
 
-				const options = [
+				const options: readonly OptionDescriptor[] = [
 					...GlobalOptions,
 					...(command.metadata.options ?? []),
 				];
@@ -692,7 +696,7 @@ describe("help command", () => {
 
 					const argv = [
 						command.id,
-						`--${option.name}`,
+						`--${option.negatedOnly ? "no-" : ""}${option.name}`,
 						...(option.type === "string"
 							? [option.values?.[0] ?? "x"]
 							: []),
