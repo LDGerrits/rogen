@@ -333,7 +333,7 @@ export class RojoMeta {
 		if (document.isErr()) return err(document.error);
 
 		const { root, value } = document.value;
-		const unreadable = unreadableMetaValues(root, file);
+		const unreadable = unreadableMetaValues(root, value, file);
 		if (unreadable.length > 0) return err(unreadable);
 		const known = Object.keys(META_STRUCTURE.properties ?? {});
 		return ok({

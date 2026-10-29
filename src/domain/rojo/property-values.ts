@@ -146,8 +146,44 @@ const WHOLE_TYPES = new Set([
 
 const ATTRIBUTES = "Attributes";
 
+/** The lengths of the lists of numbers Rojo reads as a value: a vector, a color, a rectangle and a matrix. */
+const NUMBER_LIST_LENGTHS = new Set([2, 3, 4, 12]);
+
 /** The values of a node's `$properties` and `$attributes` as Rojo writes them: numbers as floats where Rojo reads them as floats. */
 export class PropertyValues {
+	static readonly READABLE_HINT =
+		'Write a boolean, a number, a string, a list of numbers (2, 3, 4 or 12), a list of strings, or a { "Type": value } pair.';
+
+	/** Whether Rojo reads `value` without knowing the property's type; it refuses the file holding any other. Several keys read as attributes or material colors. */
+	static isReadable(value: unknown): boolean {
+		if (
+			typeof value === "boolean" ||
+			typeof value === "string" ||
+			typeof value === "number"
+		)
+			return true;
+		if (Array.isArray(value))
+			return (
+				value.every((item) => typeof item === "string") ||
+				(value.every((item) => typeof item === "number") &&
+					NUMBER_LIST_LENGTHS.has(value.length))
+			);
+		if (!isObject(value)) return false;
+		const entries = Object.values(value);
+		return (
+			entries.length <= 1 ||
+			entries.every(
+				(entry) => isObject(entry) && Object.keys(entry).length === 1
+			) ||
+			entries.every(
+				(entry) =>
+					Array.isArray(entry) &&
+					entry.length === 3 &&
+					entry.every((part) => typeof part === "number")
+			)
+		);
+	}
+
 	/** `values`, a `$properties` or `$attributes` table, with each value typed; the entries stay in the order given. */
 	static typed(values: Record<string, unknown>): Record<string, unknown> {
 		return Object.fromEntries(

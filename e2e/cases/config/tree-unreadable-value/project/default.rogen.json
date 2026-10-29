@@ -1,0 +1,21 @@
+{
+	"sourcePaths": ["src"],
+	"routes": { "*": "ReplicatedStorage/Shared" },
+	"tree": {
+		"$className": "DataModel",
+		"StarterGui": {
+			"Hud": {
+				"$className": "ScreenGui",
+				"Bar": {
+					"$className": "Frame",
+					"$properties": {
+						"Size": [
+							[0, 0],
+							[0.5, -5]
+						]
+					}
+				}
+			}
+		}
+	}
+}

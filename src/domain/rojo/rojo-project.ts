@@ -2,6 +2,7 @@ import { getOwn, isObject, setOwn } from "../../base/objects.js";
 import { parse } from "../../base/jsonc.js";
 import { Result, err, ok } from "../../base/result.js";
 import { instanceKey } from "../roblox/roblox.js";
+import { PropertyValues } from "./property-values.js";
 import { SyncRule } from "./sync-rules.js";
 
 export interface OptionalRojoPath {
@@ -169,6 +170,27 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 			if (inner) return inner;
 		}
 		return undefined;
+	}
+
+	/** Each value of a `$properties` or `$attributes` table under `node` that Rojo can't read, as the path to it. */
+	static findUnreadableValues(
+		node: RojoNode,
+		at: readonly string[]
+	): (readonly string[])[] {
+		return Object.entries(node).flatMap(([key, value]) => {
+			const here = [...at, key];
+			if (key === "$properties" || key === "$attributes")
+				return isObject(value)
+					? Object.entries(value)
+							.filter(
+								([, found]) => !PropertyValues.isReadable(found)
+							)
+							.map(([name]) => [...here, name])
+					: [];
+			return !key.startsWith("$") && isObject(value)
+				? RojoProject.findUnreadableValues(value, here)
+				: [];
+		});
 	}
 
 	get name(): string | undefined {
