@@ -9,9 +9,10 @@ import {
 	type KeyboardEvent,
 	type ReactNode,
 } from "react";
-import { glyphs, type Service } from "./explorer";
+import type { Service } from "./explorer";
 import { disk, Name, studio, StudioIcon, type DiskRow } from "./inventory";
 import { useLang, type Lang } from "./lang";
+import { TreeGuides } from "./tree-guides";
 import { delay } from "./more-link";
 
 type ViewId = "name" | "folder";
@@ -71,7 +72,7 @@ function DiskRows({ rows }: { rows: Row[] }) {
 				className={folder && !colour ? "b" : undefined}
 				style={{ transitionDelay: `${Math.min(i, 8) * 25}ms` }}
 			>
-				<span className="g">{glyphs(depths, i)}</span>
+				<TreeGuides depths={depths} i={i} />
 				{folder && colour ? (
 					<span className={`nm c-${colour}`}>{name}</span>
 				) : (
@@ -169,7 +170,7 @@ export function RouteViews({ guide }: { guide: ReactNode }) {
 				<div className="dpane rv" style={delay(160)}>
 					<div className="pane-h">
 						<b>src/</b>
-						<span>On disk</span>
+						<span>VS Code</span>
 					</div>
 					<ul
 						className={`tree${swapping ? " swap" : ""}`}

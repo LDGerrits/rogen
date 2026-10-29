@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, type CSSProperties } from "react";
-import { glyphs } from "./explorer";
 import { disk, Name, studio, StudioIcon } from "./inventory";
 import { getLang, onLang, type Lang } from "./lang";
+import { TreeGuides } from "./tree-guides";
 
 // Both languages are in the page; the stylesheet shows the current one, so it is right before the page runs.
 const LANGS: Lang[] = ["luau", "ts"];
@@ -187,23 +187,20 @@ export function HeroDemo() {
 						{COMMAND}
 					</span>
 				</span>
-				<span className="ln" data-l="">
-					<span className="fr">┌</span> rogen serve ·
-					default.rogen.json
+				<span className="ln frame-top" data-l="">
+					rogen serve · default.rogen.json
 				</span>
-				<span className="ln" data-l="">
-					<span className="fr">│</span> <span className="ok">✔</span>{" "}
+				<span className="ln frame" data-l="">
+					<span className="ok">✔</span>{" "}
 					<span className="tx">
 						Serving default.rogen.json with Rojo 7.7.1 at
 						127.0.0.1:34872.
 					</span>
 				</span>
-				<span className="ln" data-l="">
-					<span className="fr">│</span> Studio connected to
-					default.rogen.json.
+				<span className="ln frame" data-l="">
+					Studio connected to default.rogen.json.
 				</span>
-				<span className="ln" data-l="">
-					<span className="fr">│</span>{" "}
+				<span className="ln frame" data-l="">
 					<span className="cur" aria-hidden="true" />
 				</span>
 			</div>
@@ -211,7 +208,7 @@ export function HeroDemo() {
 				<div className="side">
 					<div className="pane-h">
 						<b>src/</b>
-						<span>On disk</span>
+						<span>VS Code</span>
 					</div>
 					{LANGS.map((lang) => (
 						<ul key={lang} className="tree" data-only={lang}>
@@ -230,12 +227,10 @@ export function HeroDemo() {
 										}
 									>
 										<span className="band" />
-										<span className="g">
-											{glyphs(
-												rows.map((row) => row[1]),
-												i
-											)}
-										</span>
+										<TreeGuides
+											depths={rows.map((row) => row[1])}
+											i={i}
+										/>
 										<Name name={name} colour={colour} />
 									</li>
 								)

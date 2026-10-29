@@ -29,15 +29,8 @@ export function guides(depths: number[], i: number): Guide[] {
 	return g;
 }
 
-const GLYPHS: Record<Guide, string> = {
-	pipe: "│  ",
-	none: "   ",
-	tee: "├─ ",
-	end: "└─ ",
-};
-
-/** The tree-drawing prefix of row i, given each row's depth. */
-export const glyphs = (depths: number[], i: number) =>
-	guides(depths, i)
-		.map((guide) => GLYPHS[guide])
-		.join("");
+/** The tree lines in front of row i as markup; the stylesheet draws each one. */
+export const guidesHtml = (depths: number[], i: number) =>
+	`<span class="g" aria-hidden="true">${guides(depths, i)
+		.map((guide) => `<i class="g-${guide}"></i>`)
+		.join("")}</span>`;

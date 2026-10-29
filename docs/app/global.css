@@ -169,40 +169,43 @@ html > body[data-scroll-locked] {
 .route-fig .rf-tree .b {
 	color: var(--color-fd-foreground);
 }
-/* Tree lines drawn with borders, so they join up and keep one colour on every row */
-.route-fig .g {
+/* Tree lines drawn with borders, so they join up and keep one colour on every row; the home page uses them too */
+.route-fig {
+	--g-line: var(--rf-line);
+}
+:is(.route-fig, .home) .g {
 	display: inline-flex;
 	vertical-align: top;
-	height: 22px;
+	height: var(--g-row, 22px);
 }
-.route-fig .g i {
+:is(.route-fig, .home) .g i {
 	position: relative;
 	flex: none;
 	width: 20px;
 }
-.route-fig .g i::before,
-.route-fig .g i::after {
+:is(.route-fig, .home) .g i::before,
+:is(.route-fig, .home) .g i::after {
 	position: absolute;
 	left: 6px;
-	background: var(--rf-line);
+	background: var(--g-line);
 }
-.route-fig .g-pipe::before,
-.route-fig .g-tee::before {
+:is(.route-fig, .home) .g-pipe::before,
+:is(.route-fig, .home) .g-tee::before {
 	content: "";
 	top: 0;
 	bottom: 0;
 	width: 1px;
 }
-.route-fig .g-end::before {
+:is(.route-fig, .home) .g-end::before {
 	content: "";
 	top: 0;
-	height: 11px;
+	height: calc(var(--g-row, 22px) / 2);
 	width: 1px;
 }
-.route-fig .g-tee::after,
-.route-fig .g-end::after {
+:is(.route-fig, .home) .g-tee::after,
+:is(.route-fig, .home) .g-end::after {
 	content: "";
-	top: 11px;
+	top: calc(var(--g-row, 22px) / 2);
 	width: 9px;
 	height: 1px;
 }

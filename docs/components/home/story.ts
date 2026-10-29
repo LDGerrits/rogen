@@ -1,4 +1,4 @@
-import { iconSvg, type Icon } from "./explorer";
+import { guidesHtml, iconSvg, type Icon } from "./explorer";
 import type { Lang } from "./lang-script";
 
 /*
@@ -79,7 +79,7 @@ const FILE = 3;
 
 const STEPS: { kicker: string; line: () => string; tracks: Track[] }[] = [
 	{
-		kicker: "On disk",
+		kicker: "VS Code",
 		line: () =>
 			`<span class="cpath">src/<wbr>${W.feature}/<wbr>${W.file}<span class="fi">${W.suffix}</span>${W.ext}</span>`,
 		tracks: [
@@ -364,10 +364,13 @@ const sfx = (n: string) =>
 	n.replace(W.suffix, `<span class="sfx">${W.suffix}</span>`);
 
 const diskHTML = () =>
-	`<div class="pane-h"><b class="ttl">src/<span class="feat">${W.feature}</span>/</b><span>On disk</span></div><ul class="tree dt"><span class="band"></span>${W.disk
+	`<div class="pane-h"><b class="ttl">src/<span class="feat">${W.feature}</span>/</b><span>VS Code</span></div><ul class="tree dt"><span class="band"></span>${W.disk
 		.map(
 			(n, i) =>
-				`<li${i === FILE ? ' class="file"' : ""}><span class="g">${i < W.disk.length - 1 ? "├─ " : "└─ "}</span><span class="nm">${i === FILE ? sfx(n) : n}</span></li>`
+				`<li${i === FILE ? ' class="file"' : ""}>${guidesHtml(
+					W.disk.map(() => 1),
+					i
+				)}<span class="nm">${i === FILE ? sfx(n) : n}</span></li>`
 		)
 		.join("")}</ul>`;
 const stripHTML = () =>
