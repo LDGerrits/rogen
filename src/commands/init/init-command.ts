@@ -113,7 +113,7 @@ registerCommand(
 				metadata: {
 					summary: "Starts a project with a default.rogen.json",
 					description:
-						"Starts a project, as 'rojo init' does: writes default.rogen.json, reading what the folder already holds and asking in a terminal. With a folder, starts the project there. Beside a hand-written default.project.json, it lifts that tree into default.rogen.json, and the mounts of a folder Darklua writes into dist.rogen.json; the source path is the closest folder below the project's own that holds every folder of code the file mounts. From then on 'rogen write' writes default.project.json from the config. It never changes a config that exists: where one is, it stops and writes nothing. There, --agent-rules and --agent-hook add only the agent files, with --skip-git, -y, -n or --json if given; a flag that shapes a config, such as --language, is an error beside them. To change a config, edit the .rogen.json and run 'rogen check'.",
+						"Starts a project with a default.rogen.json, as 'rojo init' does. It reads what the folder holds, and asks in a terminal. With a folder, it starts the project there. Beside a hand-written default.project.json, it lifts that tree into default.rogen.json. The source path is the closest folder that holds the code the file mounts. From then on, 'rogen write' writes default.project.json from the config. Where a config exists, init writes nothing, but --agent-rules and --agent-hook still add the agent files. To change a config, edit the .rogen.json and run 'rogen check'.",
 					args: [
 						{
 							name: "path",

@@ -10,7 +10,7 @@ Rogen's [agent rules](agent-rules.md) belong in the repo's `AGENTS.md`, where ev
 ## Start a project, or move a Rojo project onto Rogen
 
 1. Run `rogen init --dry-run --json` in the project folder, or `rogen init <folder> --dry-run --json` for a new one. It writes nothing.
-2. Read `decided`, each choice init made with the flag that changes it, `notes`, what it takes from an existing `default.project.json`, and `warnings`, such as code that no source path holds, which Rogen would place nowhere. Settle each warning with the user before you run `init`. `{"question": "sample", "value": true, "flag": "--no-sample"}` means init writes the Greeter sample, and `--no-sample` leaves it out. Ask the user about each choice the repo doesn't settle: Luau or roblox-ts, one place or several (`--places`), and whether to add the hook that checks changed files when an agent's turn ends (`--agent-hook`).
+2. Read `decided`, `notes` and `warnings`. Each `decided` entry names the flag that changes it: `{"question": "sample", "value": true, "flag": "--no-sample"}` means init writes the Greeter sample, and `--no-sample` leaves it out. `notes` say what init takes from an existing `default.project.json`. `warnings` name code that Rogen would place nowhere, and other problems. Settle each warning with the user before you run `init`. Ask the user about each choice the repo doesn't settle: Luau or roblox-ts, one place or several (`--places`), and the hook that checks changed files when an agent's turn ends (`--agent-hook`).
 3. Run `rogen init` with those flags. It writes the `*.rogen.json` and adds the agent rules to `AGENTS.md`.
 4. Do what its `nextSteps` say, then run `rogen check` and fix what it prints.
 
