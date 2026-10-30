@@ -101,6 +101,24 @@ describe("TerminalLogService", () => {
 		]);
 	});
 
+	it("should write plain lines on stderr once stdout is reserved", () => {
+		const info = jest.spyOn(console, "info").mockImplementation(() => {});
+		const error = jest.spyOn(console, "error").mockImplementation(() => {});
+		const logService = new TerminalLogService();
+		logService.reserveStdout();
+
+		logService.success("Wrote default.project.json.");
+		logService.info("Syncing 2 instances.");
+		logService.outro("Synced back.");
+
+		expect(info).not.toHaveBeenCalled();
+		expect(error.mock.calls.map(([line]) => line)).toEqual([
+			"Wrote default.project.json.",
+			"Syncing 2 instances.",
+			"Synced back.",
+		]);
+	});
+
 	it("should draw a section as a step with its lines under it, although only errors are asked for", () => {
 		const logService = new TerminalLogService();
 		logService.setLevel(LogLevel.Error);

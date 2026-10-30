@@ -73,7 +73,7 @@ export class TerminalLogService extends AbstractLogService {
 			case "success":
 			case "info":
 			case "outro":
-				console.info(text);
+				(this.stdoutReserved ? console.error : console.info)(text);
 				return true;
 			case "debug":
 			case "trace":
