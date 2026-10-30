@@ -266,8 +266,8 @@ describe("watch", () => {
 			processes.spawned[0].printError("ERROR: boom\n");
 			await finishRojo(0, 1);
 
-			expect(logService.texts("error").join("\n")).toContain(
-				"'rojo build' failed (exit code 1): boom"
+			expect(logService.texts("diagnosticError").join("\n")).toContain(
+				"Rojo couldn't build this project: (rojo.commandFailed)\n  boom"
 			);
 			await memFs.writeFile("/repo/src/A.luau", "");
 			await settle();

@@ -54,7 +54,10 @@ stdout:
         },
         {
           "severity": "error",
-          "text": "failed to create file `missing/game.rbxlx`: No such file or directory (os error 2)"
+          "text": "failed to create file `missing/game.rbxlx`",
+          "details": [
+            "Caused by: No such file or directory (os error 2)"
+          ]
         }
       ],
       "diagnostics": [
@@ -62,7 +65,11 @@ stdout:
           "file": "<dir>/default.project.json",
           "severity": "error",
           "code": "rojo.commandFailed",
-          "message": "'rojo build' failed (exit code 1): failed to create file `missing/game.rbxlx`: No such file or directory (os error 2)",
+          "message": "Rojo couldn't build this project:",
+          "details": [
+            "failed to create file `missing/game.rbxlx`",
+            "Caused by: No such file or directory (os error 2)"
+          ],
           "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#rojo-commandfailed"
         }
       ]

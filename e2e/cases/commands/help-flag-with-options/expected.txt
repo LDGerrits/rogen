@@ -103,9 +103,9 @@ stdout:
     "failure": "{diagnostics:[Diagnostic]}|{error:Error}",
     "shapes": {
       "WriteEntry": "{config:string,projectFile:string|null,outcome:\"wrote\"|\"unchanged\"|\"wouldWrite\"|\"notWritten\",blockedBy?:[string],diagnostics:[Diagnostic]}",
-      "Diagnostic": "{file:string,line?:int,column?:int,severity:\"error\"|\"warning\",code:string,message:string,url:string,related?:[{file:string,message:string}],fixes?:[Fix]}",
+      "Diagnostic": "{file:string,line?:int,column?:int,severity:\"error\"|\"warning\",code:string,message:string,details?:[string],url:string,related?:[{file:string,message:string}],fixes?:[Fix]}",
       "Fix": "{rename:{from:string,to:string}}|{replace:{file:string,line:int,column:int,from:string,to:string}}|{run:{command:string,cwd:string}}",
-      "RojoEntry": "{command:\"build\",outcome:\"built\"|\"failed\"|\"notRun\",project:string|null,output?:string,plugin?:string,messages:[{severity:\"error\"|\"warning\"|\"info\",text:string}],diagnostics?:[Diagnostic],error?:Error}",
+      "RojoEntry": "{command:\"build\",outcome:\"built\"|\"failed\"|\"notRun\",project:string|null,output?:string,plugin?:string,messages:[{severity:\"error\"|\"warning\"|\"info\",text:string,details?:[string]}],diagnostics?:[Diagnostic],error?:Error}",
       "Error": "{kind:\"usage\"|\"project\"|\"tool\"|\"io\"|\"cancelled\"|\"internal\",message:string,hint?:string}"
     }
   }

@@ -688,7 +688,7 @@ describe("build command", () => {
 			const result = await running;
 
 			expect((result as ResultError<Error>).error.message).toContain(
-				"'rojo build' failed (exit code 1): no such folder"
+				"Rojo couldn't build this project: (rojo.commandFailed)\n  no such folder"
 			);
 		});
 
@@ -794,6 +794,33 @@ describe("build command", () => {
 				expect(entry.diagnostics[0]).toMatchObject({
 					code: "rojo.commandFailed",
 					severity: "error",
+				});
+			});
+
+			it("should carry each line of a failed Rojo's error as a detail, in its message and its diagnostic", async () => {
+				const { running, log } = await withRojo({
+					output: "g.rbxl",
+					json: true,
+				});
+				const rojo = await rojoStarted();
+				rojo.printError(
+					"[ERROR rojo] Unresolvable property\n        \n        Caused by:\n            Wrong type\n"
+				);
+				rojo.exit({ code: 1, signal: null });
+
+				await running;
+
+				const { rojo: entry } = document(log);
+				expect(entry.messages).toEqual([
+					{
+						severity: "error",
+						text: "Unresolvable property",
+						details: ["Caused by: Wrong type"],
+					},
+				]);
+				expect(entry.diagnostics[0]).toMatchObject({
+					message: "Rojo couldn't build this project:",
+					details: ["Unresolvable property", "Caused by: Wrong type"],
 				});
 			});
 

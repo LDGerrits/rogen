@@ -171,7 +171,7 @@ describe("upload command", () => {
 		rojo.exit({ code: 1, signal: null });
 
 		expect(((await running) as ResultError<Error>).error.message).toContain(
-			"'rojo upload' failed (exit code 1): --universe_id must be provided"
+			"Rojo couldn't upload this project: (rojo.commandFailed)\n  --universe_id must be provided"
 		);
 	});
 

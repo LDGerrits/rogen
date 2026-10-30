@@ -100,23 +100,33 @@ export class ServerOutput extends AbstractDisposable {
 		const record = this.pending;
 		this.pending = undefined;
 		if (!record) return;
-		this.say(
-			record.severity,
-			record.paragraph
-				? record.parts.filter((part) => part !== "").join(" ")
-				: record.parts
-						.filter((part) => part !== "" && part !== "Caused by:")
-						.map((part) => part.replace(/^\d+:\s*/, ""))
-						.join(": "),
-			!record.paragraph
-		);
+		if (record.paragraph) {
+			this.say(
+				record.severity,
+				record.parts.filter((part) => part !== "").join(" "),
+				false
+			);
+			return;
+		}
+		const [first, ...rest] = record.parts;
+		const details: string[] = [];
+		let causes = false;
+		for (const part of rest) {
+			if (part === "") continue;
+			if (part === "Caused by:") causes = true;
+			else if (causes)
+				details.push(`Caused by: ${part.replace(/^\d+:\s*/, "")}`);
+			else details.push(part);
+		}
+		this.say(record.severity, first, true, undefined, details);
 	}
 
 	private say(
 		severity: ServerMessage["severity"],
 		said: string,
 		isLogRecord = true,
-		stdout?: string
+		stdout?: string,
+		details: readonly string[] = []
 	): void {
 		const text = RUST_NOISE.test(said)
 			? undefined
@@ -143,10 +153,14 @@ export class ServerOutput extends AbstractDisposable {
 			this._onDidMessage.fire({ severity: "debug", text: said });
 			return;
 		}
-		const key = `${severity} ${text}`;
+		const key = [severity, text, ...details].join("\n");
 		const now = Date.now();
 		if (this.last?.key === key && now - this.last.at < REPEAT_MS) return;
 		this.last = { key, at: now };
-		this._onDidMessage.fire({ severity, text });
+		this._onDidMessage.fire({
+			severity,
+			text,
+			...(details.length > 0 && { details }),
+		});
 	}
 }

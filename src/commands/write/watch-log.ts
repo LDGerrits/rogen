@@ -7,6 +7,7 @@ import {
 	WatchUpdate,
 } from "../../domain/watch/watch-service.js";
 import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
@@ -130,7 +131,11 @@ export class WatchLog implements WatchReporter {
 	}
 
 	error(error: Error): void {
-		this.logService.error(error.message);
+		if (error instanceof DiagnosticsError)
+			error.diagnostics.forEach((diagnostic) =>
+				this.logService.diagnostic(diagnostic)
+			);
+		else this.logService.error(error.message);
 	}
 
 	rojo(ran: Result<RojoCommandRun, Error>): void {

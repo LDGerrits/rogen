@@ -5,6 +5,8 @@ import { RojoVersion } from "./rojo-version.js";
 export interface ServerMessage {
 	readonly severity: "error" | "warning" | "info" | "debug";
 	readonly text: string;
+	/** The lines that follow the first in a record, in order: the rest of its message, then one `Caused by:` line per cause. */
+	readonly details?: readonly string[];
 	/** The line as the server printed it on stdout, when it is one a program reading stdout takes in: not a log record. */
 	readonly stdout?: string;
 }

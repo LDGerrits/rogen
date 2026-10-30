@@ -128,7 +128,7 @@ $ rogen plugin uninstall
 exit 1
 stderr:
   Rojo: Your platform is not currently supported
-  error: 'rojo plugin uninstall' failed (exit code 1).
+  error: Rojo couldn't run 'rojo plugin uninstall' (exit code 1).
 
 $ rogen plugin
 exit 2

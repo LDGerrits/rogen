@@ -183,7 +183,7 @@ describe("sourcemap command", () => {
 		rojo.exit({ code: 1, signal: null });
 
 		expect(((await running) as ResultError<Error>).error.message).toContain(
-			"'rojo sourcemap' failed (exit code 1): no such folder"
+			"Rojo couldn't make a sourcemap of this project: (rojo.commandFailed)\n  no such folder"
 		);
 	});
 

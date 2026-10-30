@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- A Rojo error keeps every line Rojo wrote. `rojo.commandFailed` reads `Rojo couldn't build this project:`, and each line of Rojo's message and each `Caused by:` cause follows on an indented line of its own, with paths relative to the working folder. In `--json`, the diagnostic's `details` array and each message's `details` hold those lines. Before, the lines were joined with `: ` and the causes were dropped. In `--watch`, a failed Rojo prints once, relative to the working folder. A Rojo that can't be found or started is `rojo.notFound`, `rojo.notInstalled` or `rojo.unusable` for every command; before, it was `serve.noServer`, `serve.notInstalled` or `serve.serverFailed`, even on `build`.
 - `legacy.config` now says to run `rogen init` to migrate the config.
 
 - `rogen init` now writes a `*` route by default, so a file that matches no route goes to the shared route. Only the files that run on one side need marking, such as with `@Server`. To leave such files out with a warning instead, remove `*` from `routes` in the config.

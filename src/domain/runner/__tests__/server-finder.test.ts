@@ -92,7 +92,7 @@ describe("ServerFinder", () => {
 
 		const diagnostic = await diagnosticOf();
 
-		expect(diagnostic.code).toBe("serve.notInstalled");
+		expect(diagnostic.code).toBe("rojo.notInstalled");
 		expect(diagnostic.resource).toBe("/repo/rokit.toml");
 		expect(diagnostic.message).toBe(
 			"rokit.toml pins Rojo as rojo, but it isn't installed. Run 'rokit install'."
@@ -105,10 +105,10 @@ describe("ServerFinder", () => {
 	it("should say how to add Rojo and its plugin when there is no server at all", async () => {
 		const diagnostic = await diagnosticOf();
 
-		expect(diagnostic.code).toBe("serve.noServer");
+		expect(diagnostic.code).toBe("rojo.notFound");
 		expect(diagnostic.resource).toBe("/repo/game/default.rogen.json");
 		expect(diagnostic.message).toBe(
-			"No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
+			"No Rojo found: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
 		);
 		expect(diagnostic.fixes).toEqual([
 			{ run: { command: "rokit add rojo-rbx/rojo", cwd: "/repo/game" } },
@@ -136,7 +136,7 @@ describe("ServerFinder", () => {
 
 		const diagnostic = await diagnosticOf();
 
-		expect(diagnostic.code).toBe("serve.noServer");
+		expect(diagnostic.code).toBe("rojo.notFound");
 		expect(diagnostic.message).toContain(
 			"Argon is pinned, but rogen serve only starts Rojo: run 'rogen write --watch' to keep the project files current, and 'argon serve' to serve them."
 		);
@@ -152,7 +152,7 @@ describe("ServerFinder", () => {
 		const diagnostic = await diagnosticOf();
 
 		expect(diagnostic.message).toBe(
-			"No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Pin rojo-rbx/rojo in foreman.toml, install it, then run 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
+			"No Rojo found: none is pinned in a toolchain file here or above, or on the PATH. Pin rojo-rbx/rojo in foreman.toml, install it, then run 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
 		);
 		expect(diagnostic.fixes).toEqual([
 			{ run: { command: "rogen plugin install", cwd: "/repo/game" } },
@@ -169,7 +169,7 @@ describe("ServerFinder", () => {
 
 		const diagnostic = await diagnosticOf();
 
-		expect(diagnostic.code).toBe("serve.serverFailed");
+		expect(diagnostic.code).toBe("rojo.unusable");
 		expect(diagnostic.message).toBe(
 			"'rojo --version' failed, so Rojo can't start: ERROR Failed to find tool 'rojo' in any project manifest file. If Rojo isn't pinned yet, run 'rokit add rojo-rbx/rojo'. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
 		);

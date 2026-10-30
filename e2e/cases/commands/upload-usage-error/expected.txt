@@ -5,7 +5,8 @@ stderr:
   default.project.json · wrote
   Wrote 1 project.
   Rojo: For more information try --help
-  default.project.json - error: 'rojo upload' failed (exit code 2): Invalid value "abc" for '--asset_id <ASSET_ID>': invalid digit found in string (rojo.commandFailed)
+  default.project.json - error: Rojo couldn't upload this project: (rojo.commandFailed)
+    Invalid value "abc" for '--asset_id <ASSET_ID>': invalid digit found in string
 
 written:
   default.project.json
