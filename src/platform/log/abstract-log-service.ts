@@ -5,6 +5,7 @@ import {
 	renderDiagnostic,
 } from "../diagnostics/diagnostic.js";
 import { diagnosticAnnotationLine } from "../diagnostics/diagnostic-annotation-line.js";
+import { defanged } from "../../base/strings.js";
 import { LogLevel, LogService } from "./log-service.js";
 
 export type LogKind =
@@ -99,66 +100,71 @@ export abstract class AbstractLogService implements LogService {
 
 	protected abstract write(kind: LogKind, text: string): void;
 
+	/** Writes `text` with the control characters and workflow commands a file name could put in it made harmless; `print` is the stdout channel, which carries text that is not Rogen's to change, so its callers defang what they print. */
+	private emit(kind: LogKind, text: string): void {
+		this.write(kind, kind === "print" ? text : defanged(text));
+	}
+
 	error(message: string | Error, ...args: unknown[]): void {
 		if (this.canLog(LogLevel.Error))
-			this.write("error", this.format(message, args));
+			this.emit("error", this.format(message, args));
 	}
 
 	warn(message: string, ...args: unknown[]): void {
 		if (this.canLog(LogLevel.Warn))
-			this.write("warn", this.format(message, args));
+			this.emit("warn", this.format(message, args));
 	}
 
 	info(message: string, ...args: unknown[]): void {
 		if (this.canLog(LogLevel.Info))
-			this.write("info", this.format(message, args));
+			this.emit("info", this.format(message, args));
 	}
 
 	debug(message: string, ...args: unknown[]): void {
 		if (this.canLog(LogLevel.Debug))
-			this.write("debug", this.format(message, args));
+			this.emit("debug", this.format(message, args));
 	}
 
 	trace(message: string, ...args: unknown[]): void {
 		if (this.canLog(LogLevel.Trace))
-			this.write("trace", this.format(message, args));
+			this.emit("trace", this.format(message, args));
 	}
 
 	print(text: string): void {
-		if (this.level !== LogLevel.Off) this.write("print", text);
+		if (this.level !== LogLevel.Off) this.emit("print", text);
 	}
 
 	note(text: string): void {
-		if (this.level !== LogLevel.Off) this.write("note", text);
+		if (this.level !== LogLevel.Off) this.emit("note", text);
 	}
 
 	notice(text: string): void {
-		if (this.canLog(LogLevel.Info)) this.write("notice", text);
+		if (this.canLog(LogLevel.Info)) this.emit("notice", text);
 	}
 
 	intro(title: string): void {
 		if (!this.canLog(LogLevel.Info)) return;
-		this.write("intro", title);
+		this.emit("intro", title);
 		this.frameOpen = true;
 	}
 
 	step(title: string): void {
-		if (this.canLog(LogLevel.Info)) this.write("step", title);
+		if (this.canLog(LogLevel.Info)) this.emit("step", title);
 	}
 
 	section(title: string, body?: string): void {
 		if (this.level === LogLevel.Off) return;
-		this.write("section", title);
-		if (body) this.write("sectionBody", body);
+		this.emit("section", title);
+		if (body) this.emit("sectionBody", body);
 	}
 
 	success(message: string): void {
-		if (this.canLog(LogLevel.Info)) this.write("success", message);
+		if (this.canLog(LogLevel.Info)) this.emit("success", message);
 	}
 
 	outro(message: string): void {
 		if (!this.canLog(LogLevel.Info)) return;
-		this.write("outro", message);
+		this.emit("outro", message);
 		this.frameOpen = false;
 	}
 
@@ -178,7 +184,7 @@ export abstract class AbstractLogService implements LogService {
 	diagnostic(diagnostic: Diagnostic): void {
 		const isError = diagnostic.severity === DiagnosticSeverity.Error;
 		if (this.canLog(isError ? LogLevel.Error : LogLevel.Warn))
-			this.write(
+			this.emit(
 				isError ? "diagnosticError" : "diagnosticWarning",
 				renderDiagnostic(diagnostic, this.cwd)
 			);

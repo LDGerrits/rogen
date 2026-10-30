@@ -1,6 +1,6 @@
 import { relativeTo } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
-import { joinedWithAnd } from "../../base/strings.js";
+import { defanged, joinedWithAnd } from "../../base/strings.js";
 import {
 	WriteService,
 	Diagnosis,
@@ -117,7 +117,7 @@ registerCommand(
 					failure
 				);
 			for (const diagnostic of failure?.diagnostics ?? []) {
-				logService.print(renderDiagnostic(diagnostic, cwd));
+				logService.print(defanged(renderDiagnostic(diagnostic, cwd)));
 				logService.annotate(diagnostic);
 			}
 			if (stoppedBy.length > 0)

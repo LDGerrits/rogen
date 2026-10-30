@@ -4,6 +4,18 @@ export function capitalized(text: string): string {
 	return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+const escaped = (char: string) =>
+	char === "\n" || char === "\t"
+		? char
+		: `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`;
+
+/** `text` with each control character other than a newline or tab, each line separator and each bidirectional override written as an escape, and no line left to start a CI workflow command (`::error::`), since a file name can hold both. */
+export function defanged(text: string): string {
+	return text
+		.replace(/[\p{Cc}\u2028\u2029\u202a-\u202e\u2066-\u2069]/gu, escaped)
+		.replace(/^([ \t]*):(?=:)/gm, "$1\\u003a");
+}
+
 /** The first `limit` of `items` joined by commas, then an ellipsis when there are more. */
 export function listLimited(items: readonly string[], limit: number): string {
 	const listed = items.slice(0, limit).join(", ");
