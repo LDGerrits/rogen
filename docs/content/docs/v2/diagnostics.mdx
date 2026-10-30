@@ -1098,9 +1098,10 @@ A new instance under a node of the config's `tree` that has no `$path` and is no
 Syncback also uses this warning for changes that it can't write:
 
 - an instance where an ignore glob would put it
-- a property set on a folder that matches no single folder of the project
+- a property set on one of the instances a feature folder makes, such as `ServerScriptService/Inventory` for `src/Inventory/Server` beside `src/Inventory/Shared`, because the feature folder's `init.meta.json` sets it on each of them (a property set alike on all of them, or on a feature's only instance, goes into that `init.meta.json`)
+- a property set on a folder that matches no single folder of the project and that no feature folder makes
 - an instance named like an init file, such as `init` or `init.server`, in a folder that matches no single folder of the project, because Rojo reads its file as the folder itself (rename it in Studio)
-- a property set on a node that only routing made, because the `tree` has no node for it
+- a property set on a node that only routing made and no feature folder makes, because the `tree` has no node for it
 - a copy of an init script that was edited differently from another copy, or deleted while another copy was edited (Rogen writes the edit)
 - a change that Rojo itself can't sync back, such as a `.json` or `.toml` module, which Rojo skips, or a changed `.yaml` or `.yml` module, which makes Rojo's syncback fail
 

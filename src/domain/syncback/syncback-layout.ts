@@ -148,6 +148,39 @@ export class SyncbackLayout {
 		);
 	}
 
+	/** The feature folder whose routing makes `node`, with every instance it makes, as its `init.meta.json` applies to each; none when `node` is not such an instance, or when its files say more than one folder. */
+	featureMaking(
+		node: readonly string[]
+	): { folder: string; instances: (readonly string[])[] } | undefined {
+		const features = this.placed.map((file) => this.featureOf(file));
+		const folders = new Set(
+			features.flatMap((feature) =>
+				feature && SyncbackLayout.sameNode(feature.instance, node)
+					? [feature.folder]
+					: []
+			)
+		);
+		if (folders.size !== 1) return undefined;
+		const [folder] = folders;
+		const instances: (readonly string[])[] = [];
+		for (const feature of features)
+			if (
+				feature?.folder === folder &&
+				!instances.some((known) =>
+					SyncbackLayout.sameNode(known, feature.instance)
+				)
+			)
+				instances.push(feature.instance);
+		const inFeature = this.placed.every(
+			(file) =>
+				!containsPosix(folder, file.source) ||
+				instances.some((instance) =>
+					instance.every((name, at) => file.instancePath[at] === name)
+				)
+		);
+		return inFeature ? { folder, instances } : undefined;
+	}
+
 	/** The routing folder name used for `route` in this project, else the key itself. */
 	folderNameFor(route: string): string {
 		for (const file of this.placed) {
@@ -164,6 +197,40 @@ export class SyncbackLayout {
 
 	private rootOf(source: string): string | undefined {
 		return this.roots.find((root) => containsPosix(root, source));
+	}
+
+	/** The feature folder a file is in and the instance that folder is on the file's side: the folder holding the routing folder, or the name, that spells the file's route. */
+	private featureOf(
+		file: PlacedLocation
+	): { folder: string; instance: readonly string[] } | undefined {
+		const root = this.rootOf(file.source);
+		if (!root) return undefined;
+		const segments = path.posix.relative(root, file.source).split("/");
+		const spelling = (segment: string, at: number) =>
+			at < segments.length - 1
+				? this.keys.resolve(segment) === file.route
+				: false;
+		const marked = (segment: string) => {
+			const key = AT_KEY.exec(segment)?.[1];
+			return key !== undefined && this.keys.resolve(key) === file.route;
+		};
+		let anchor: number;
+		let below: string[];
+		if (file.routeMatch === "folder") {
+			anchor = segments.findIndex(spelling);
+			below = segments.slice(anchor + 1);
+		} else if (file.routeMatch === "suffix") {
+			anchor = segments.findIndex(marked);
+			below = segments.slice(anchor);
+		} else return undefined;
+		if (anchor < 1) return undefined;
+		const isInit = segments[segments.length - 1].startsWith("init.");
+		const depth = below.length - 1 + (isInit ? 0 : 1);
+		if (depth < 1 || depth >= file.instancePath.length) return undefined;
+		return {
+			folder: path.posix.join(root, ...segments.slice(0, anchor)),
+			instance: file.instancePath.slice(0, -depth),
+		};
 	}
 
 	/** The first folder from the source path down that spells the file's route, as the router meets it. */
