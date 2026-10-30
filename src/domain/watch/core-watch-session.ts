@@ -2,9 +2,6 @@ import { Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
-import path from "path";
-import { ignoringGlob } from "../../base/glob.js";
-import { samePath, toPosix } from "../../base/path.js";
 import { Result, ok, tryWithAsync } from "../../base/result.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { IndexService, Listing } from "../../platform/fs/index-service.js";
@@ -19,7 +16,6 @@ import { WatchPlan } from "./watch-plan.js";
 import {
 	RewriteReport,
 	WatchCause,
-	WatchOptions,
 	WatchSession,
 	WatchUpdate,
 	ChangeBurst,
@@ -56,8 +52,7 @@ export class CoreWatchSession
 		private writeSet: WriteSet,
 		private readonly watcher: Watcher,
 		private readonly indexService: IndexService,
-		private readonly writeService: WriteService,
-		private readonly options: WatchOptions = {}
+		private readonly writeService: WriteService
 	) {
 		super();
 		this.batcher = this._register(new ChangeBatcher());
@@ -145,19 +140,6 @@ export class CoreWatchSession
 	}
 
 	private dropSourceUpdates(changes: readonly FileChange[]): FileChange[] {
-		const { contentEdits } = this.options;
-		if (contentEdits)
-			return changes.filter(
-				(change) =>
-					this.isWatched(change.path) &&
-					!contentEdits.ignoring.some((file) =>
-						samePath(file, change.path)
-					) &&
-					!(
-						change.type === FileChangeType.UPDATED &&
-						this.isLeftOut(change.path)
-					)
-			);
 		const watched = [...this.watched.values()];
 		if (!this.started || watched.some((config) => !config.readsKnown)) {
 			return changes.filter((change) => this.isWatched(change.path));
@@ -169,22 +151,6 @@ export class CoreWatchSession
 					this.plan.isCompiled(change.path) ||
 					this.selection.reads(change.path) ||
 					watched.some((config) => config.reads(change.path)))
-		);
-	}
-
-	/** Whether every project that reads `file` leaves it out by its `globIgnorePaths`, so an edit of it changes nothing Rojo reads. */
-	private isLeftOut(file: string): boolean {
-		const projects = this.plan.projectsFor(file);
-		const owners = this.selection.configs.filter(({ projectFile }) =>
-			projects.includes(projectFile)
-		);
-		return (
-			owners.length > 0 &&
-			owners.every(
-				({ ignored }) =>
-					ignoringGlob(toPosix(path.resolve(file)), ignored) !==
-					undefined
-			)
 		);
 	}
 
@@ -231,9 +197,7 @@ export class CoreWatchSession
 		);
 		if (outcome === latest) return undefined;
 		const report = watched.finished(outcome);
-		return this.options.contentEdits ||
-			report.unreported.length > 0 ||
-			report.fixed.length > 0
+		return report.unreported.length > 0 || report.fixed.length > 0
 			? report
 			: undefined;
 	}

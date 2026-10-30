@@ -48,6 +48,10 @@ class FakeRojo implements RojoCommandService {
 		throw new Error("not used");
 	}
 
+	watch(): never {
+		throw new Error("not used");
+	}
+
 	async run(
 		_selection: unknown,
 		request: RojoCommandRequest

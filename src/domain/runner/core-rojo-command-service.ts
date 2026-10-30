@@ -15,11 +15,14 @@ import {
 	RojoCommandRequest,
 	RojoCommandRun,
 	RojoCommandService,
+	RojoWatch,
+	RojoWatchRequest,
 } from "./rojo-command-service.js";
 import { RojoCompatibility } from "./rojo-compatibility.js";
 import { RojoVersion } from "./rojo-version.js";
 import { RojoRunner, ServerExecutable } from "./rojo-runner.js";
 import { RojoServer, ServerMessage } from "./rojo-server.js";
+import { WatchingRojo } from "./watching-rojo.js";
 
 /** How Rojo exited, and each line of the errors it wrote, in order. */
 interface RojoFailure {
@@ -46,6 +49,76 @@ export class CoreRojoCommandService implements RojoCommandService {
 		selection: ConfigSelection,
 		request: RojoCommandRequest
 	): Promise<Result<RojoCommandRun, Error>> {
+		const prepared = await this.prepare(selection, request);
+		if (prepared.isErr()) return prepared;
+		const { project, executable, projectFile } = prepared.value;
+		const ran = await this.spawn(
+			executable,
+			request.command,
+			path.relative(request.cwd, projectFile),
+			request.flags,
+			request.cwd,
+			request.signal
+		);
+		return ok({
+			project,
+			messages: ran.messages,
+			...(ran.failure && {
+				failure: this.commandFailure(
+					request.command,
+					project,
+					ran.failure,
+					ran.refusedArguments ? "usage" : "project"
+				),
+			}),
+		});
+	}
+
+	async watch(
+		selection: ConfigSelection,
+		request: RojoWatchRequest
+	): Promise<Result<RojoWatch, Error>> {
+		const prepared = await this.prepare(selection, request);
+		if (prepared.isErr()) return prepared;
+		if (request.signal?.aborted)
+			return err(new Error("The watch stopped before Rojo started."));
+		const { project, executable, projectFile } = prepared.value;
+		return ok(
+			new WatchingRojo(
+				project,
+				() =>
+					this.rojoRunner.start(
+						executable,
+						request.command,
+						path.relative(request.cwd, projectFile),
+						[...request.flags, "--watch"],
+						request.cwd,
+						true
+					),
+				(said) =>
+					this.commandFailure(request.command, project, {
+						how: "an error",
+						said,
+					}),
+				request.beforeRestart
+			)
+		);
+	}
+
+	/** The project, the Rojo that runs on it and the file it reads, once the checks pass. */
+	private async prepare(
+		selection: ConfigSelection,
+		request: RojoCommandRequest
+	): Promise<
+		Result<
+			{
+				project: ResolvedConfig;
+				executable: ServerExecutable;
+				projectFile: string;
+			},
+			Error
+		>
+	> {
 		const valid = selection.requireValid();
 		if (valid.isErr()) return valid;
 		const project = request.project ?? this.choose(selection);
@@ -74,39 +147,33 @@ export class CoreRojoCommandService implements RojoCommandService {
 			request.command
 		);
 		if (problems.length > 0) return err(new DiagnosticsError(problems));
+		return ok({ project, executable: executable.value, projectFile });
+	}
 
-		const ran = await this.spawn(
-			executable.value,
-			request.command,
-			path.relative(request.cwd, projectFile),
-			request.flags,
-			request.cwd,
-			request.signal
+	private commandFailure(
+		command: string,
+		project: ResolvedConfig,
+		failure: RojoFailure,
+		kind: "usage" | "project" = "project"
+	): DiagnosticsError {
+		return new DiagnosticsError(
+			[
+				{
+					...errorDiagnostic(
+						"rojo.commandFailed",
+						{ resource: project.projectFile },
+						this.failed(
+							`${WHAT_FAILED[command] ?? `run '${command}' on`} this project`,
+							failure
+						)
+					),
+					...(failure.said.length > 0 && {
+						details: failure.said,
+					}),
+				},
+			],
+			kind
 		);
-		return ok({
-			project,
-			messages: ran.messages,
-			...(ran.failure && {
-				failure: new DiagnosticsError(
-					[
-						{
-							...errorDiagnostic(
-								"rojo.commandFailed",
-								{ resource: project.projectFile },
-								this.failed(
-									`${WHAT_FAILED[request.command] ?? `run '${request.command}' on`} this project`,
-									ran.failure
-								)
-							),
-							...(ran.failure.said.length > 0 && {
-								details: ran.failure.said,
-							}),
-						},
-					],
-					ran.refusedArguments ? "usage" : "project"
-				),
-			}),
-		});
 	}
 
 	/** Why the Rojo that will run has no `request.command`, when it is older than the release that added it. */

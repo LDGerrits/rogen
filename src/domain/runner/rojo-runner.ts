@@ -41,13 +41,14 @@ export interface RojoRunner {
 	/** Ends a server an earlier run left, the process of this id and what it started, and resolves once they are gone. */
 	terminateTree(pid: number): Promise<void>;
 
-	/** Starts `executable` as `rojo <command> <projectFile> <flags>` in `cwd`; the flags go last, untouched. A command that reads no project, such as `plugin`, has none. */
+	/** Starts `executable` as `rojo <command> <projectFile> <flags>` in `cwd`; the flags go last, untouched. A command that reads no project, such as `plugin`, has none. `readsStdout` keeps what it prints on stdout under `--quiet` too. */
 	start(
 		executable: ServerExecutable,
 		command: string,
 		projectFile: string | undefined,
 		flags: readonly string[],
-		cwd: string
+		cwd: string,
+		readsStdout?: boolean
 	): RojoProcess;
 }
 

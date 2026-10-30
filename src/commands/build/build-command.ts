@@ -76,7 +76,7 @@ const WatchOption = {
 	name: "watch",
 	type: "boolean",
 	description:
-		"Keep going: write the project file again whenever names or configs change. Build with Rojo after each write, and again after an edit inside a file under the source paths. Press Ctrl+C to stop; --json prints one JSON object per line.",
+		"Keep going, and build with Rojo's own build --watch. Rogen writes the project file again whenever names or configs change, and Rojo builds again after a change to any path the project file mounts. Press Ctrl+C to stop; --json prints one JSON object per line.",
 } as const satisfies OptionDescriptor;
 
 const BuildOptions = [
