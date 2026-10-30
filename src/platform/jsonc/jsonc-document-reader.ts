@@ -89,10 +89,7 @@ export class JsoncDocumentReader {
 			if (/^\d+$/.test(node.text) && Number(node.text) <= whole.max)
 				return undefined;
 			return {
-				expected:
-					whole.max >= Number.MAX_SAFE_INTEGER
-						? "a whole number, 0 or more"
-						: `a whole number from 0 to ${whole.max}`,
+				expected: `a whole number from 0 to ${whole.max}`,
 				found: node.text,
 			};
 		}

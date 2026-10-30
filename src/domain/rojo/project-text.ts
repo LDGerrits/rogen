@@ -81,19 +81,27 @@ class Commented {
 		return this.comments.at(path);
 	}
 
-	/** The comments of entries that the printed document no longer has, which end the document rather than get lost. */
-	get unplaced(): (readonly string[])[] {
-		return this.comments.paths
-			.filter((key) => !this.used.has(key))
-			.flatMap((key) => {
-				const marks = this.comments.atKey(key);
-				return [
-					...marks.leading,
-					...marks.opening,
-					...marks.closing,
-					...marks.trailing,
-				];
-			});
+	/** The comments below `path` that nothing printed asked for, because formatting leaves their entry out; they count as printed now. */
+	orphansUnder(path: JsoncPath): (readonly string[])[] {
+		const kept: (readonly string[])[] = [];
+		for (const key of this.comments.paths) {
+			const at = JSON.parse(key) as JsoncPath;
+			if (
+				this.used.has(key) ||
+				at.length <= path.length ||
+				!path.every((segment, index) => at[index] === segment)
+			)
+				continue;
+			this.used.add(key);
+			const marks = this.comments.at(at);
+			kept.push(
+				...marks.leading,
+				...marks.opening,
+				...marks.closing,
+				...marks.trailing
+			);
+		}
+		return kept;
 	}
 }
 
@@ -199,9 +207,7 @@ export class ProjectText {
 		return [
 			...root.leading.map((comment) => comment.join("\n")),
 			text,
-			...[...root.trailing, ...commented.unplaced].map((comment) =>
-				comment.join("\n")
-			),
+			...root.trailing.map((comment) => comment.join("\n")),
 		].join("\n");
 	}
 
@@ -428,12 +434,6 @@ export class ProjectText {
 		path: JsoncPath
 	): string {
 		const marks = commented?.take(path);
-		if (
-			items.length === 0 &&
-			!marks?.opening.length &&
-			!marks?.closing.length
-		)
-			return `${open}${close}`;
 		const inner = indent + INDENT;
 		const lines: string[] = [];
 		items.forEach(([segment, label, entry], at) => {
@@ -445,9 +445,17 @@ export class ProjectText {
 				`${inner}${label}${ProjectText.print(entry, inner, commented, [...path, segment])}${comma}${ProjectText.sameLine(own?.trailing, inner)}`
 			);
 		});
-		for (const comment of marks?.closing ?? [])
+		for (const comment of [
+			...(marks?.closing ?? []),
+			...(commented?.orphansUnder(path) ?? []),
+		])
 			lines.push(...ProjectText.commentLines(comment, inner));
-		return `${open}${ProjectText.sameLine(marks?.opening, inner)}\n${lines.join("\n")}\n${indent}${close}`;
+		const opening = ProjectText.sameLine(marks?.opening, inner);
+		if (lines.length === 0)
+			return opening
+				? `${open}${opening}\n${indent}${close}`
+				: `${open}${close}`;
+		return `${open}${opening}\n${lines.join("\n")}\n${indent}${close}`;
 	}
 
 	private static commentLines(

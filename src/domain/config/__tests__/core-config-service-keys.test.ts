@@ -79,19 +79,19 @@ describe("CoreConfigService", () => {
 			],
 			[
 				'"placeId": -1',
-				'"placeId": expected a whole number, 0 or more, found -1.',
+				'"placeId": expected a whole number from 0 to 9007199254740991, found -1.',
 			],
 			[
 				'"gameId": 1.5',
-				'"gameId": expected a whole number, 0 or more, found 1.5.',
+				'"gameId": expected a whole number from 0 to 9007199254740991, found 1.5.',
 			],
 			[
 				'"servePlaceIds": [1, -2]',
-				'"servePlaceIds[1]": expected a whole number, 0 or more, found -2.',
+				'"servePlaceIds[1]": expected a whole number from 0 to 9007199254740991, found -2.',
 			],
 			[
 				'"blockedPlaceIds": [0.5]',
-				'"blockedPlaceIds[0]": expected a whole number, 0 or more, found 0.5.',
+				'"blockedPlaceIds[0]": expected a whole number from 0 to 9007199254740991, found 0.5.',
 			],
 			[
 				'"serveAddress": "localhost"',

@@ -197,14 +197,28 @@ describe("ConfigFormatter", () => {
 			expect(text).toBe('// top\n{\n  "name": "Game"\n}\n// bottom');
 		});
 
-		it("should not lose the comment of an entry that formatting leaves out", async () => {
+		it("should keep the comment of an entry that formatting leaves out at the end of the object it was in", async () => {
 			const text = await formatted(
 				'{ "name": "Game", "tree": { "$className": "Folder",\n // props\n "$properties": {} } }',
 				"default.rogen.jsonc"
 			);
 
-			expect(text).toContain("// props");
-			expect(text).not.toContain("$properties");
+			expect(text).toBe(
+				'{\n  "name": "Game",\n  "tree": {\n    "$className": "Folder"\n    // props\n  }\n}'
+			);
+		});
+
+		it("should print an empty object with only a comment after its brace the same the second time", async () => {
+			const once = await formatted(
+				'{ "name": "Game", "tree": { // open\n } }',
+				"default.rogen.jsonc"
+			);
+			const twice = await formatted(once, "default.rogen.jsonc");
+
+			expect(once).toBe(
+				'{\n  "name": "Game",\n  "tree": { // open\n  }\n}'
+			);
+			expect(twice).toBe(once);
 		});
 
 		it("should keep the comments of a multi-line block comment aligned", async () => {

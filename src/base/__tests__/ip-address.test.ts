@@ -44,6 +44,8 @@ describe("IpAddress", () => {
 			expect(printed(":1:2:3:4:5:6:7")).toBeUndefined();
 			expect(printed("fe80::1%eth0")).toBeUndefined();
 			expect(printed("::g")).toBeUndefined();
+			expect(printed("1.2.3.4::5")).toBeUndefined();
+			expect(printed("1.2.3.4::")).toBeUndefined();
 		});
 	});
 });

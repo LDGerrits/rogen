@@ -29,14 +29,14 @@ export class IpAddress {
 	private static groups(text: string): number[] | undefined {
 		const halves = text.split("::");
 		if (halves.length > 2) return undefined;
-		const read = (half: string): number[] | undefined => {
+		const read = (half: string, ends: boolean): number[] | undefined => {
 			if (half === "") return [];
 			const parts = half.split(":");
 			const last = parts[parts.length - 1];
 			const octets = last.includes(".")
 				? IpAddress.octets(last)
 				: undefined;
-			if (last.includes(".") && !octets) return undefined;
+			if (last.includes(".") && (!octets || !ends)) return undefined;
 			const hex = octets ? parts.slice(0, -1) : parts;
 			if (!hex.every((part) => GROUP.test(part))) return undefined;
 			const groups = hex.map((part) => parseInt(part, 16));
@@ -48,12 +48,12 @@ export class IpAddress {
 			return groups;
 		};
 		const [head, tail] = halves;
-		const before = read(head);
+		const before = read(head, halves.length === 1);
 		if (halves.length === 1)
 			return before?.length === 8 && !text.endsWith(":")
 				? before
 				: undefined;
-		const after = read(tail);
+		const after = read(tail, true);
 		if (!before || !after || before.length + after.length > 7)
 			return undefined;
 		return [
