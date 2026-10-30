@@ -8,6 +8,7 @@ import {
 	ServerOutputEvent,
 	ServerExitEvent,
 	ServerReadyEvent,
+	ServerRestartEvent,
 	isServed,
 } from "../../domain/serve/serve-service.js";
 import { RojoServer, ServerInfo } from "../../domain/runner/rojo-server.js";
@@ -15,7 +16,7 @@ import { WatchUpdate } from "../../domain/watch/watch-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 import { watchLineShapes } from "../write/write-document.js";
-import { reportServerOutput } from "../write/report-rojo.js";
+import { reportRojo } from "../write/report-rojo.js";
 import { WatchJsonLog, WatchLog } from "../write/watch-log.js";
 import {
 	diagnosticShape,
@@ -52,6 +53,17 @@ export const serveLineShape = S.union(
 		}),
 	}),
 	S.object({
+		restarted: S.object({
+			...serverEventFields,
+			version: S.string,
+			project: S.string,
+			host: S.string,
+			port: S.integer,
+			session: S.optional(S.string),
+			code: S.nullable(S.integer),
+		}),
+	}),
+	S.object({
 		connected: S.object({ ...connectionFields, clients: S.integer }),
 	}),
 	S.object({
@@ -73,7 +85,7 @@ export const serveLineShape = S.union(
 	S.object({
 		stopped: S.object({
 			...serverEventFields,
-			reason: S.enum("exited", "removed", "moved", "shutdown"),
+			reason: S.enum("exited", "crashed", "removed", "moved", "shutdown"),
 			code: S.optional(S.nullable(S.integer)),
 			signal: S.optional(S.nullable(S.string)),
 		}),
@@ -86,6 +98,7 @@ export interface ServeReporter {
 	begin(): void;
 	update(update: WatchUpdate): void;
 	serving(serving: ServerReadyEvent): void;
+	restarted(restart: ServerRestartEvent): void;
 	said(said: ServerOutputEvent): void;
 	connection(change: ServerConnectionEvent): void;
 	stopped(stop: ServerExitEvent): void;
@@ -124,13 +137,23 @@ export class ServeLog implements ServeReporter {
 	}
 
 	serving({ target, info }: ServerReadyEvent): void {
+		const { label } = target.config;
 		this.logService.success(
-			`Serving ${this.nameOf(target)} with ${serverOf(info)} at ${target.address} (Studio lists it as ${info.project}).`
+			`Serving ${label} at ${target.address.shown} · ${target.address.url}\n  In Studio, press Connect in the Rojo plugin.`
+		);
+		this.logService.debug(
+			`${serverOf(info)} serves ${label}${info.session ? ` (session ${info.session})` : ""}.`
+		);
+	}
+
+	restarted({ target }: ServerRestartEvent): void {
+		this.logService.info(
+			`Rojo crashed, so Rogen restarted it on ${target.address.shown}.\n  In Studio, press Connect in the Rojo plugin.`
 		);
 	}
 
 	said(said: ServerOutputEvent): void {
-		reportServerOutput(this.logService, said.message, this.cwd);
+		reportRojo(this.logService, [said.message], this.cwd);
 	}
 
 	connection({ target, opened, clients }: ServerConnectionEvent): void {
@@ -162,7 +185,7 @@ export class ServeLog implements ServeReporter {
 				return;
 			case "retired":
 				this.logService.info(
-					`Stopped serving ${label}${change.reason === "moved" ? ` at ${target.address}` : ""}: ${RETIRED_BECAUSE[change.reason]}.`
+					`Stopped serving ${label}${change.reason === "moved" ? ` at ${target.address.shown}` : ""}: ${RETIRED_BECAUSE[change.reason]}.`
 				);
 		}
 	}
@@ -187,7 +210,7 @@ export class ServeLog implements ServeReporter {
 
 	private running(target: ServedTarget): void {
 		const { servedBy: info } = target;
-		const served = `${serverOf(info)} serves a project named ${info.project} at ${target.address}${info.session ? ` (session ${info.session})` : ""}.`;
+		const served = `${serverOf(info)} serves a project named ${info.project} at ${target.address.shown}${info.session ? ` (session ${info.session})` : ""}.`;
 		this.logService.info(
 			`${this.nameOf(target)} is already served by another rogen serve: ${served}`
 		);
@@ -218,6 +241,20 @@ export class ServeJsonLog implements ServeReporter {
 		this.line({ serving: this.servingJson(target, info, false) });
 	}
 
+	restarted({ target, info, exit }: ServerRestartEvent): void {
+		this.line({
+			restarted: {
+				...this.serverFields(target),
+				version: info.version,
+				project: info.project,
+				host: target.address.host,
+				port: target.address.port,
+				...(info.session && { session: info.session }),
+				code: exit.code,
+			},
+		});
+	}
+
 	said(said: ServerOutputEvent): void {
 		const { target, message } = said;
 		if (message.severity === "debug") {
@@ -244,9 +281,9 @@ export class ServeJsonLog implements ServeReporter {
 		});
 	}
 
-	stopped({ target, exit, failure }: ServerExitEvent): void {
+	stopped({ target, exit, failure, crashed }: ServerExitEvent): void {
 		this.line({
-			stopped: this.stoppedJson(target, "exited", {
+			stopped: this.stoppedJson(target, crashed ? "crashed" : "exited", {
 				code: exit.code,
 				signal: exit.signal,
 			}),

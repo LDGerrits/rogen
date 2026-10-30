@@ -1,10 +1,8 @@
 $ rogen build -o game.rbxlx
 exit 1
+stdout: (not shown)
 stderr:
-  rogen build · default.rogen.json
-  default.project.json · wrote
-  build failed.
-  default.rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation. (serve.noServer)
+  default.rogen.json - error: No Rojo found: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation. (rojo.notFound)
 
 $ rogen build -o game.rbxlx --json
 exit 1
@@ -29,9 +27,9 @@ stdout:
         {
           "file": "<dir>/default.rogen.json",
           "severity": "error",
-          "code": "serve.noServer",
-          "message": "No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation.",
-          "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#serve-noserver",
+          "code": "rojo.notFound",
+          "message": "No Rojo found: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation.",
+          "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#rojo-notfound",
           "fixes": [
             {
               "run": {

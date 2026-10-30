@@ -48,6 +48,10 @@ class FakeRojo implements RojoCommandService {
 		throw new Error("not used");
 	}
 
+	watch(): never {
+		throw new Error("not used");
+	}
+
 	async run(
 		_selection: unknown,
 		request: RojoCommandRequest
@@ -1287,7 +1291,9 @@ describe("CoreSyncbackService", () => {
 			await prepare(["src/Combat/Server/Main.server.luau"], {
 				project: {
 					tree: { $className: "DataModel" },
-					syncbackRules: { ignorePaths: ["src/Combat/init.meta.json"] },
+					syncbackRules: {
+						ignorePaths: ["src/Combat/init.meta.json"],
+					},
 				},
 			});
 			rojo.say = async () => {
@@ -1551,11 +1557,16 @@ describe("CoreSyncbackService", () => {
 		]);
 		rojo.say = async () =>
 			new DiagnosticsError([
-				errorDiagnostic(
-					"rojo.commandFailed",
-					{ resource: abs("rogen-syncback.project.json") },
-					"'rojo syncback' failed (exit code 1): Failed to syncback because The child 'Bag' of Instance 'Inventory' is present only in a project file, and not the provided file."
-				),
+				{
+					...errorDiagnostic(
+						"rojo.commandFailed",
+						{ resource: abs("rogen-syncback.project.json") },
+						"Rojo couldn't sync back into this project:"
+					),
+					details: [
+						"Failed to syncback because The child 'Bag' of Instance 'Inventory' is present only in a project file, and not the provided file.",
+					],
+				},
 			]);
 
 		const planned = await service.plan(request);

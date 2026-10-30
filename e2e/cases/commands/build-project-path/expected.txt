@@ -2,7 +2,7 @@ $ rogen write .
 exit 0
 stdout:
   rogen write
-  default.project.json · wrote
+  Wrote default.project.json.
   Wrote 1 of 1 project file.
 
 $ rogen write default.project.json
@@ -16,7 +16,7 @@ $ rogen write lobby
 exit 0
 stdout:
   rogen write
-  lobby/default.project.json · wrote
+  Wrote lobby/default.project.json.
   Wrote 1 of 1 project file.
 
 $ rogen write lobby/default.project.json

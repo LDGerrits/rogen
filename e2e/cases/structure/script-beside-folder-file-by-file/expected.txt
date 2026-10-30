@@ -1,0 +1,17 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+stderr:
+  src/Shop/client/X.lua - warning: becomes "StarterPlayer/StarterPlayerScripts/Shop/X", as src/Shop/client/X.luau does, which takes its place. Rename one of them to keep both. (tree.instanceClash)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Shop: Folder
+        Dup: ModuleScript  <- src/Shop/client/Dup.luau
+          C: ModuleScript  <- src/Shop/client/Dup/C.luau
+        X: ModuleScript  <- src/Shop/client/X.luau

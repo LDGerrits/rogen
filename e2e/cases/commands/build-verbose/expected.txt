@@ -1,0 +1,18 @@
+$ rogen build -o game.rbxlx -v
+exit 0
+stdout:
+  Wrote default.project.json.
+  Built game.rbxlx.
+stderr:
+  [debug] rogen build · default.rogen.json
+  [debug] src: 1 file
+  [debug] route server -> ServerScriptService: 1 file
+  [debug] route * -> ReplicatedStorage: 0 files
+  [debug] Rojo: Loading project file from <dir>/default.project.json
+  [debug] Rojo: Loading project file from <dir>/default.project.json
+  [debug] Rojo: Building project 'Game'
+  [debug] Rojo: Built project to game.rbxlx
+
+written:
+  default.project.json
+  game.rbxlx

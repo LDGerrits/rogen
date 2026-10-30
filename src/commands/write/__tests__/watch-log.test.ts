@@ -18,6 +18,7 @@ import {
 	FileChange,
 	FileChangeType,
 } from "../../../platform/fs/file-changes.js";
+import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { LogLevel } from "../../../platform/log/log-service.js";
@@ -40,10 +41,26 @@ const updateOf = (update: Partial<WatchUpdate>): WatchUpdate => ({
 	...update,
 });
 
+const wrote: RewriteReport = {
+	outcome: new WrittenConfig(
+		mockEntry({}, path.join(cwd, "default.rogen.json")).config,
+		"wrote",
+		{ warnings: [], syncWarnings: [] },
+		{ roots: [], routes: [], unrouted: 0, replaced: 0, displaced: 0 },
+		[]
+	),
+	unreported: [],
+	repeated: [],
+	fixed: [],
+	repeatedFailure: false,
+};
+
 const logged = (update: Partial<WatchUpdate>) => {
 	const logService = new MockLogService();
 	logService.setLevel(LogLevel.Debug);
-	new WatchLog(logService, cwd).update(updateOf(update));
+	new WatchLog(logService, cwd).update(
+		updateOf({ reports: [wrote], ...update })
+	);
 	return logService.entries;
 };
 
@@ -78,6 +95,7 @@ describe("WatchLog.update", () => {
 					threshold: 200,
 					ended: false,
 				},
+				reports: [],
 			});
 
 			expect(lines.map(({ kind, text }) => [kind, text])).toEqual([
@@ -270,7 +288,7 @@ describe("WatchLog.update", () => {
 				resultLine([
 					reportOf(writtenWith(standing), [], false, standing),
 				])
-			).toBe("default.project.json · wrote · 3 warnings as before");
+			).toBe("Wrote default.project.json (3 warnings as before).");
 			expect(
 				resultLine([
 					reportOf(
@@ -280,7 +298,7 @@ describe("WatchLog.update", () => {
 						standing.slice(0, 1)
 					),
 				])
-			).toBe("default.project.json · wrote · 1 warning as before");
+			).toBe("Wrote default.project.json (1 warning as before).");
 		});
 
 		it("should count the warnings it leaves out of a failed write too", () => {
@@ -316,7 +334,7 @@ describe("WatchLog.update", () => {
 			const fresh = warning("new");
 
 			expect(resultLine([reportOf(writtenWith([]), [])])).toBe(
-				"default.project.json · wrote"
+				"Wrote default.project.json."
 			);
 			expect(
 				resultLine([
@@ -327,7 +345,7 @@ describe("WatchLog.update", () => {
 						[warning("old")]
 					),
 				])
-			).toBe("default.project.json · wrote · 1 warning as before");
+			).toBe("Wrote default.project.json (1 warning as before).");
 		});
 
 		it("should say how many diagnostics a rewrite fixed, after the ones left out", () => {
@@ -344,7 +362,7 @@ describe("WatchLog.update", () => {
 					),
 				])
 			).toBe(
-				"default.project.json · wrote · 1 warning as before · 2 warnings fixed"
+				"Wrote default.project.json (1 warning as before, 2 warnings fixed)."
 			);
 			expect(
 				resultLine([
@@ -362,7 +380,7 @@ describe("WatchLog.update", () => {
 						]
 					),
 				])
-			).toBe("default.project.json · wrote · 1 error fixed");
+			).toBe("Wrote default.project.json (1 error fixed).");
 		});
 
 		it("should print a warning two configs of one round share once, and say so on the second", () => {
@@ -398,11 +416,11 @@ describe("WatchLog.update", () => {
 					)
 					.map(({ kind, text }) => [kind, text])
 			).toEqual([
-				["success", "default.project.json · wrote"],
+				["success", "Wrote default.project.json."],
 				["diagnosticWarning", expect.stringContaining(": shared")],
 				[
 					"success",
-					"lobby/default.project.json · wrote · same warnings as default.rogen.json",
+					"Wrote lobby/default.project.json (same warnings as default.rogen.json).",
 				],
 			]);
 		});
@@ -439,6 +457,36 @@ describe("WatchLog.update", () => {
 					"Still writing from the last valid default.rogen.json.",
 				],
 			]);
+		});
+
+		it("should say it waits for a broken plain project file, which it never writes", () => {
+			const { log, logService } = session();
+			const file = "/repo/default.project.json";
+
+			log.update(
+				updateOf({
+					notices: [
+						{
+							kind: "broken",
+							file,
+							errors: [
+								errorDiagnostic(
+									"x.err",
+									{ resource: file },
+									"bad."
+								),
+							],
+							keptLastValid: true,
+						},
+					],
+				})
+			);
+
+			expect(
+				logService.entries
+					.filter(({ kind }) => kind === "error")
+					.map(({ text }) => text)
+			).toEqual(["Waiting until default.project.json loads."]);
 		});
 
 		it("should say a config that was never valid isn't written, and a config added or removed", () => {
@@ -511,5 +559,23 @@ describe("WatchLog.error", () => {
 		new WatchLog(logService, cwd).error(new Error("the watcher broke"));
 
 		expect(logService.texts("error")).toEqual(["the watcher broke"]);
+	});
+
+	it("should print each diagnostic of a failure once, relative to the working directory", () => {
+		const logService = new MockLogService(cwd);
+
+		new WatchLog(logService, cwd).error(
+			new DiagnosticsError([
+				errorDiagnostic(
+					"rojo.commandFailed",
+					{ resource: path.join(cwd, "default.project.json") },
+					"Rojo couldn't build this project:"
+				),
+			])
+		);
+
+		expect(logService.lines).toEqual([
+			"diagnosticError: default.project.json - error: Rojo couldn't build this project: (rojo.commandFailed)",
+		]);
 	});
 });

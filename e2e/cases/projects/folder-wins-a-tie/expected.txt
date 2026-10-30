@@ -2,7 +2,7 @@ $ rogen write lobby
 exit 0
 stdout:
   rogen write
-  lobby/default.project.json · wrote
+  Wrote lobby/default.project.json.
   Wrote 1 of 1 project file.
 stderr:
   warning: "lobby" is a folder with a default config and also lobby.rogen.json: using the folder. To use the file, name it: lobby.rogen.json.
@@ -11,7 +11,7 @@ $ rogen write lobby.rogen.json
 exit 0
 stdout:
   rogen write
-  lobby.project.json · wrote
+  Wrote lobby.project.json.
   Wrote 1 of 1 project file.
 
 written:

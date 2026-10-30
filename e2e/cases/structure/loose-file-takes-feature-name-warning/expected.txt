@@ -1,0 +1,14 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+stderr:
+  src/server/Inventory.luau - warning: becomes "ServerScriptService/Inventory", where src/Inventory/server/Save.luau lands too, so that file becomes a child of this one. Rename one of them to keep them apart. (tree.instanceClash)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Inventory: ModuleScript  <- src/server/Inventory.luau
+      Save: ModuleScript  <- src/Inventory/server/Save.luau

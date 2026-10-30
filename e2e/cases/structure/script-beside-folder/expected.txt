@@ -1,0 +1,15 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Inventory: Folder
+        Dup: ModuleScript  <- src/Inventory/client/Dup.luau
+          C: ModuleScript  <- src/Inventory/client/Dup/C.luau
+        Open: ModuleScript  <- src/Inventory/client/Open.luau

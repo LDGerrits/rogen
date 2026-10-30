@@ -40,7 +40,8 @@ export abstract class AbstractLogService implements LogService {
 		private readonly annotationsIn?: string
 	) {}
 
-	get framed(): boolean {
+	/** Whether a frame is open and drawn, as on a terminal. */
+	protected get framed(): boolean {
 		return this.drawsFrame && this.frameOpen;
 	}
 

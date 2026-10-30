@@ -27,4 +27,19 @@ describe("ServeAddress", () => {
 	])("should write %s as %s", (host, written) => {
 		expect(new ServeAddress(host, 34872).toString()).toBe(written);
 	});
+
+	it.each([
+		["127.0.0.1", "localhost:34872", "http://localhost:34872/"],
+		["127.0.0.2", "localhost:34872", "http://localhost:34872/"],
+		["::1", "localhost:34872", "http://localhost:34872/"],
+		["0.0.0.0", "0.0.0.0:34872", "http://0.0.0.0:34872/"],
+		["::", "[::]:34872", "http://[::]:34872/"],
+		["fd00::2", "[fd00::2]:34872", "http://[fd00::2]:34872/"],
+		["192.168.1.2", "192.168.1.2:34872", "http://192.168.1.2:34872/"],
+	])("should show %s as Rojo does, as %s at %s", (host, shown, url) => {
+		const address = new ServeAddress(host, 34872);
+
+		expect(address.shown).toBe(shown);
+		expect(address.url).toBe(url);
+	});
 });

@@ -19,6 +19,7 @@ const SEVERITIES: Readonly<Record<string, ServerMessage["severity"]>> = {
 
 /** Rust's own lines: a CLI error or warning; in capitals, a message the server wrote itself, as a paragraph that ends at the blank line. */
 const RUST_RECORD = /^(?<level>error|warning|ERROR|WARNING): (?<text>.*)$/;
+const PARAGRAPH_RECORD = /^(ERROR|WARNING): /;
 const RUST_NOISE = /^note: run with `RUST_BACKTRACE=1`/;
 
 interface PendingRecord {
@@ -65,7 +66,9 @@ export class ServerOutput extends AbstractDisposable {
 
 	private read(line: string, stream?: "stdout" | "stderr"): void {
 		const logged = RojoServer.logRecordOf(line);
-		if (stream === "stdout" && !logged) {
+		const ownMessage =
+			this.pending?.paragraph || PARAGRAPH_RECORD.test(line);
+		if (stream === "stdout" && !logged && !ownMessage) {
 			this.flush();
 			this.say("info", line.trim(), false, line);
 			return;
@@ -100,23 +103,33 @@ export class ServerOutput extends AbstractDisposable {
 		const record = this.pending;
 		this.pending = undefined;
 		if (!record) return;
-		this.say(
-			record.severity,
-			record.paragraph
-				? record.parts.filter((part) => part !== "").join(" ")
-				: record.parts
-						.filter((part) => part !== "" && part !== "Caused by:")
-						.map((part) => part.replace(/^\d+:\s*/, ""))
-						.join(": "),
-			!record.paragraph
-		);
+		if (record.paragraph) {
+			this.say(
+				record.severity,
+				record.parts.filter((part) => part !== "").join(" "),
+				false
+			);
+			return;
+		}
+		const [first, ...rest] = record.parts;
+		const details: string[] = [];
+		let causes = false;
+		for (const part of rest) {
+			if (part === "") continue;
+			if (part === "Caused by:") causes = true;
+			else if (causes)
+				details.push(`Caused by: ${part.replace(/^\d+:\s*/, "")}`);
+			else details.push(part);
+		}
+		this.say(record.severity, first, true, undefined, details);
 	}
 
 	private say(
 		severity: ServerMessage["severity"],
 		said: string,
 		isLogRecord = true,
-		stdout?: string
+		stdout?: string,
+		details: readonly string[] = []
 	): void {
 		const text = RUST_NOISE.test(said)
 			? undefined
@@ -143,10 +156,14 @@ export class ServerOutput extends AbstractDisposable {
 			this._onDidMessage.fire({ severity: "debug", text: said });
 			return;
 		}
-		const key = `${severity} ${text}`;
+		const key = [severity, text, ...details].join("\n");
 		const now = Date.now();
 		if (this.last?.key === key && now - this.last.at < REPEAT_MS) return;
 		this.last = { key, at: now };
-		this._onDidMessage.fire({ severity, text });
+		this._onDidMessage.fire({
+			severity,
+			text,
+			...(details.length > 0 && { details }),
+		});
 	}
 }

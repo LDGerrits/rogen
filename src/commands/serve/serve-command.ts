@@ -129,7 +129,6 @@ registerCommand(
 			);
 			if (tooMany) return err(tooMany);
 			const serveService = accessor.get(ServeService);
-			if (!line.options.json) accessor.get(LogService).reserveStdout();
 
 			const store = new DisposableStore();
 			const shutdown = this.untilShutdown(accessor, store);
@@ -204,6 +203,9 @@ registerCommand(
 			store.add(session.onDidUpdate((update) => log.update(update)));
 			store.add(session.onDidError((error) => log.error(error)));
 			store.add(session.onDidServe((serving) => log.serving(serving)));
+			store.add(
+				session.onDidRestart((restart) => log.restarted(restart))
+			);
 			store.add(session.onDidOutput((said) => log.said(said)));
 			store.add(session.onDidConnect((change) => log.connection(change)));
 			store.add(session.onDidChange((change) => log.changed(change)));

@@ -152,6 +152,51 @@ describe("TreeAssembler", () => {
 				});
 			});
 
+			it("should not collapse a directory holding a script and a folder of the same name, which Rojo would build as two siblings", async () => {
+				await write(
+					"src/Inventory/Dup.luau",
+					"src/Inventory/Dup/C.luau",
+					"src/Inventory/Save.luau"
+				);
+
+				const storage = await storageOf();
+
+				expect(storage.Inventory).toEqual({
+					...FOLDER,
+					Dup: {
+						$path: optional("src/Inventory/Dup.luau"),
+						C: { $path: optional("src/Inventory/Dup/C.luau") },
+					},
+					Save: { $path: optional("src/Inventory/Save.luau") },
+				});
+			});
+
+			it("should not mount a routing folder holding a script and a folder of the same name", async () => {
+				await write(
+					"src/Combat/server/Dup.server.luau",
+					"src/Combat/server/Dup/C.luau"
+				);
+
+				const { projectFile: value } = await assemble({
+					routes: { server: "ServerScriptService" },
+				});
+
+				expect(value.tree.ServerScriptService).toEqual({
+					$className: "ServerScriptService",
+					Combat: {
+						...FOLDER,
+						Dup: {
+							$path: optional(
+								"src/Combat/server/Dup.server.luau"
+							),
+							C: {
+								$path: optional("src/Combat/server/Dup/C.luau"),
+							},
+						},
+					},
+				});
+			});
+
 			it("should mount a routing folder at its route's target folder", async () => {
 				await write("src/shared/Types.luau");
 

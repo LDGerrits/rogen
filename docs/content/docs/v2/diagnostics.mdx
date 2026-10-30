@@ -347,6 +347,14 @@ Rename or delete one of the files. In `--json`, `related` names the file that ta
 
 Across source paths, the last file wins without a warning. That is how a later source path replaces a file of an earlier one.
 
+It also warns when a file becomes an instance that files from elsewhere land in, so they become its children. That happens when a loose file, such as `src/Server/Inv.luau`, has the name of a feature folder, or when a `^` file hoists into a feature's name.
+
+```
+warning: becomes "ServerScriptService/Inv", where src/Inv/Server/Save.luau lands too, so that file becomes a child of this one. Rename one of them to keep them apart. (tree.instanceClash)
+```
+
+Rename the file. A script beside a folder of its own name, such as `Dup.luau` beside `Dup/`, is one script with the folder's files as its children, and raises no warning.
+
 ### `tree.nodeClash` [#tree-nodeclash]
 
 Warning. The `tree` defines a node at the same instance path as a file or folder. Rogen keeps the tree's node and leaves the file out.
@@ -539,7 +547,7 @@ Rename the meta file to the name that the message gives, or delete it. A folder'
 
 ### `meta.appliesToNothing` [#meta-appliestonothing]
 
-Warning. An `init.meta.json` is in a folder that never becomes an instance, such as a routing folder or an invisible folder.
+Warning. An `init.meta.json` is in a folder that never becomes an instance, such as a routing folder without an init script or an invisible folder.
 
 ```
 warning: applies to nothing, because a routing folder never becomes an instance. Move the meta into the folder that should get it. (meta.appliesToNothing)
@@ -651,6 +659,8 @@ warning: 3 files here are mounted by nothing in the tree, and the config declare
 Add `routes` so that Rogen places the files. Or mount the folder in the `tree` with a `$path`.
 
 Files that `globIgnorePaths` matches don't count.
+
+On a plain Rojo project, which has no config, only `rogen check` reports it. Rojo's commands run on that project as Rojo would, and Rojo says nothing about these files.
 
 ### `scan.extensionCase` [#scan-extensioncase]
 
@@ -921,45 +931,6 @@ Move the code into a source path, or add its folders to `sourcePaths` in the con
 
 These diagnostics come from `rogen serve` and the Rojo server that it starts.
 
-### `serve.noServer` [#serve-noserver]
-
-Error. `rogen serve` found no Rojo. No `rokit.toml`, `aftman.toml` or `foreman.toml` in the folder or above pins it, and it isn't on the PATH. `serve` starts only Rojo, so a pinned Argon doesn't count. If Argon is pinned, the message says so.
-
-```
-error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation. (serve.noServer)
-error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. Argon is pinned, but rogen serve only starts Rojo: run 'rogen write --watch' to keep the project files current, and 'argon serve' to serve them. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation. (serve.noServer)
-```
-
-Pin Rojo with your toolchain manager, then install Rojo's Studio plugin with `rogen plugin install`:
-
-- Rokit: `rokit add rojo-rbx/rojo`
-- Aftman: `aftman add rojo-rbx/rojo`
-- Foreman: add Rojo to `foreman.toml` by hand, because Foreman has no add command.
-
-Rogen never installs Rojo. In a new project, `rogen init` writes the pin into your toolchain file, and you run the manager's `install`. See [Installation](/docs/v2/installation). To serve with Argon instead, run `rogen write --watch` and `argon serve`.
-
-### `serve.notInstalled` [#serve-notinstalled]
-
-Error. A toolchain file pins Rojo, but Rojo isn't installed, so its command isn't on the PATH.
-
-```
-error: rokit.toml pins Rojo as rojo, but it isn't installed. Run 'rokit install'. (serve.notInstalled)
-```
-
-Run the manager's install command: `rokit install`, `aftman install` or `foreman install`.
-
-### `serve.serverFailed` [#serve-serverfailed]
-
-Error. `<tool> --version` failed, so Rojo can't start. Rogen runs that command before it writes. The message ends with the first line that Rojo printed.
-
-```
-error: 'rojo --version' failed, so Rojo can't start: Failed to find tool 'rojo' in any project manifest file. If Rojo isn't pinned yet, run 'rokit add rojo-rbx/rojo'. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation. (serve.serverFailed)
-```
-
-Pin the tool, or fix the install that the quoted line points at. To see the full output, run `rojo --version` yourself.
-
-A toolchain shim on the PATH fails this way when its project doesn't pin the tool. The message then adds the command that pins it.
-
 ### `serve.portTaken` [#serve-porttaken]
 
 Error. Another process holds the port that a config would be served on. If that process is a Rojo server, the message names the project it serves. If a `rogen serve` started it, the message also names the config file it was started for.
@@ -986,9 +957,50 @@ error: Rojo stopped serving default with exit code 1; see what it said above. (s
 
 Read what the server printed just above the error. It usually says why the server stopped. If the server printed nothing, as when it was killed, the message ends with `without saying why`.
 
+A Rojo that crashes after it started to serve isn't this error: Rogen starts it again, and reports [`rojo.crashed`](#rojo-crashed) when it crashes again right away.
+
 ## Rojo
 
-These diagnostics come from the Rojo that Rogen runs: a Rojo too old for what the project file uses, or a Rojo command that failed.
+These diagnostics come from the Rojo that Rogen runs: a Rojo that can't be found or started, a Rojo too old for what the project file uses, or a Rojo command that failed. Every command that runs Rojo reports them the same way.
+
+### `rojo.notFound` [#rojo-notfound]
+
+Error. A command that runs Rojo, such as `rogen serve` or `rogen build -o`, found no Rojo. No `rokit.toml`, `aftman.toml` or `foreman.toml` in the folder or above pins it, and it isn't on the PATH. Rogen starts only Rojo, so a pinned Argon doesn't count. If Argon is pinned, the message says so.
+
+```
+error: No Rojo found: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation. (rojo.notFound)
+error: No Rojo found: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. Argon is pinned, but rogen serve only starts Rojo: run 'rogen write --watch' to keep the project files current, and 'argon serve' to serve them. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation. (rojo.notFound)
+```
+
+Pin Rojo with your toolchain manager, then install Rojo's Studio plugin with `rogen plugin install`:
+
+- Rokit: `rokit add rojo-rbx/rojo`
+- Aftman: `aftman add rojo-rbx/rojo`
+- Foreman: add Rojo to `foreman.toml` by hand, because Foreman has no add command.
+
+Rogen never installs Rojo. In a new project, `rogen init` writes the pin into your toolchain file, and you run the manager's `install`. See [Installation](/docs/v2/installation). To serve with Argon instead, run `rogen write --watch` and `argon serve`.
+
+### `rojo.notInstalled` [#rojo-notinstalled]
+
+Error. A toolchain file pins Rojo, but Rojo isn't installed, so its command isn't on the PATH.
+
+```
+error: rokit.toml pins Rojo as rojo, but it isn't installed. Run 'rokit install'. (rojo.notInstalled)
+```
+
+Run the manager's install command: `rokit install`, `aftman install` or `foreman install`.
+
+### `rojo.unusable` [#rojo-unusable]
+
+Error. `<tool> --version` failed, so Rojo can't start. Rogen runs that command before it runs Rojo. The message ends with the first line that Rojo printed.
+
+```
+error: 'rojo --version' failed, so Rojo can't start: Failed to find tool 'rojo' in any project manifest file. If Rojo isn't pinned yet, run 'rokit add rojo-rbx/rojo'. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation. (rojo.unusable)
+```
+
+Pin the tool, or fix the install that the quoted line points at. To see the full output, run `rojo --version` yourself.
+
+A toolchain shim on the PATH fails this way when its project doesn't pin the tool. The message then adds the command that pins it.
 
 ### `rojo.syncRulesUnsupported` [#rojo-syncrulesunsupported]
 
@@ -1026,15 +1038,44 @@ Only `sourcemap` stops with this error. `build` and `serve` read the file correc
 
 ### `rojo.commandFailed` [#rojo-commandfailed]
 
-Error. Rojo exited with an error while Rogen ran it, such as `rojo build` for `rogen build -o`. The message says how Rojo exited and what it printed.
+Error. Rojo exited with an error while Rogen ran it, such as `rojo build` for `rogen build -o`. The first line says what Rojo couldn't do. Each line that Rojo printed follows, indented, in Rojo's order, and each `Caused by:` line is one cause in Rojo's chain. In `--json`, the diagnostic's `details` array holds those lines.
 
 ```
-error: 'rojo build' failed (exit code 1): failed to create file 'nodir/game.rbxl' Caused by: No such file or directory (os error 2). (rojo.commandFailed)
+default.project.json - error: Rojo couldn't build this project: (rojo.commandFailed)
+  Unresolvable property in project at path default.project.json
+  Caused by: Wrong type of value for property Workspace.Gravity. Expected Float32, got a string
 ```
 
-Fix what Rojo reports, such as an output folder that doesn't exist, and run the command again.
+When Rojo printed no error, the first line says how it exited, such as `Rojo couldn't build this project (exit code 1).`
+
+Fix what Rojo reports, such as a property value of the wrong type or an output folder that doesn't exist, and run the command again.
 
 Rogen had already written the project files when Rojo failed.
+
+### `rojo.crashed` [#rojo-crashed]
+
+Error. Rojo crashed twice in a row, so Rogen stopped. When the Rojo that `rogen serve` started crashes while it serves, Rogen writes the project file again and starts Rojo again on the same address and port. Rogen then prints this line:
+
+```
+Rojo crashed, so Rogen restarted it on localhost:34872.
+  In Studio, press Connect in the Rojo plugin.
+```
+
+If the new Rojo crashes before it serves, or within about 30 seconds, Rogen gives up and exits 1. The lines that Rojo printed about the crash follow, indented. In `--json`, the diagnostic's `details` array holds those lines.
+
+```
+default.rogen.json - error: Rojo crashed again right after a restart, so Rogen stopped serving default: (rojo.crashed)
+  Rojo crashed! You are running Rojo 7.7.1.
+  This is probably a Rojo bug.
+  Details: called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+  in file src/change_processor.rs on line 179
+```
+
+`rogen build --watch` and `rogen sourcemap --watch` do the same with Rojo's own watch. They print `Rojo crashed, so Rogen restarted it.`, and give up when the new Rojo crashes before its first build, or within about 30 seconds.
+
+Rojo 7.7.0 and 7.7.1 crash this way when you delete a folder that holds files inside a folder that the project file mounts. Rojo 7.6.1 doesn't. A crash after Rojo has run longer than 30 seconds gets a new restart. Under `--verbose`, Rogen shows the crash lines of each restart as debug lines.
+
+After a restart, press Connect in the Rojo plugin, because the plugin doesn't connect again by itself.
 
 ### `rojo.commandUnsupported` [#rojo-commandunsupported]
 

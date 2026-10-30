@@ -2,6 +2,7 @@ import { Result, ok } from "../../base/result.js";
 import { UsageError } from "../../base/errors.js";
 import { ConfigSelection } from "../../domain/config/config-service.js";
 import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
+import { RojoTarget } from "../write/rojo-entry.js";
 import { RojoPlan, RojoStep } from "../write/rojo-step.js";
 
 /** Rojo's build into the place, model or plugin `-o` or `-p` names. */
@@ -17,18 +18,22 @@ export class BuildStep implements RojoStep {
 		private readonly plugin: string | undefined
 	) {}
 
+	get target(): RojoTarget {
+		return {
+			command: this.command,
+			cwd: this.cwd,
+			output: this.output,
+			plugin: this.plugin,
+		};
+	}
+
 	plan(selection: ConfigSelection): Result<RojoPlan | undefined, UsageError> {
 		if (selection.requireValid().isErr()) return ok(undefined);
 		return ok({
 			project: this.rojo.choose(selection),
 			flags: this.flags,
 			cwd: this.cwd,
-			target: {
-				command: this.command,
-				cwd: this.cwd,
-				output: this.output,
-				plugin: this.plugin,
-			},
+			target: this.target,
 		});
 	}
 }

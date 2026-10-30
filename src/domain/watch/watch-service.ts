@@ -54,12 +54,6 @@ export interface WatchUpdate {
 	readonly reports: readonly RewriteReport[];
 }
 
-/** What a watch is for, when the files are not all it serves. */
-export interface WatchOptions {
-	/** A step reads the files themselves after each round, so an edit inside a file or a change to the compiled path counts: a change to one of `ignoring`, which the step writes, does not. */
-	readonly contentEdits?: { readonly ignoring: readonly string[] };
-}
-
 /** A running watch; the caller owns it and disposes it. */
 export interface WatchSession extends Disposable {
 	/** The configs it writes now. */
@@ -71,6 +65,8 @@ export interface WatchSession extends Disposable {
 
 	/** Resolves once the watcher is live and the initial write is queued, so no change goes unseen. */
 	start(): Promise<Result<void, Error>>;
+	/** Lists the source paths again and rewrites every config from them, without waiting for the watcher to report what changed; reports nothing. */
+	refresh(): Promise<void>;
 	/** Lets the work already started finish, then stops the watcher. Safe to call twice. */
 	stop(): Promise<void>;
 }
@@ -80,8 +76,7 @@ export interface WatchService {
 
 	/** Fails as a write would when a config is broken or the configs can't be written together. The caller starts, stops and disposes the session; one at a time, as sessions share the process's watcher. */
 	watch(
-		selection: ReloadableSelection,
-		options?: WatchOptions
+		selection: ReloadableSelection
 	): Result<WatchSession, DiagnosticsError>;
 }
 

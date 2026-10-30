@@ -9,6 +9,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
+import { LogLevel } from "../../../platform/log/log-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
 import { recordFile } from "../../../domain/serve/__tests__/record-fixtures.js";
@@ -109,14 +110,82 @@ describe("serve command", () => {
 		expect(logService.lines).toEqual([
 			"intro: rogen serve · default.rogen.json",
 			expect.stringMatching(/^step: \d\d:\d\d:\d\d · initial write$/),
-			"success: default.project.json · wrote",
-			"success: Serving default.rogen.json with Rojo 7.7.1 at 127.0.0.1:34872 (Studio lists it as repo).",
+			"success: Wrote default.project.json.",
+			"success: Serving repo at localhost:34872 · http://localhost:34872/\n  In Studio, press Connect in the Rojo plugin.",
+		]);
+		expect(logService.reserved).toBe(false);
+	});
+
+	it("should name the Rojo that serves only with --verbose", async () => {
+		logService.setLevel(LogLevel.Debug);
+		void serve();
+		await settle();
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+			sessionId: "s1",
+		});
+		await settle();
+
+		expect(logService.lines).toContain(
+			"debug: Rojo 7.7.1 serves repo (session s1)."
+		);
+	});
+
+	it("should say nothing of a change that leaves the project file as it was", async () => {
+		void serve();
+		await settle();
+		logService.clear();
+
+		await memFs.writeFile("/repo/src/A.luau", "print()");
+		await settle();
+
+		expect(logService.lines).toEqual([]);
+	});
+
+	it("should say nothing of an initial write that leaves the project file as it was", async () => {
+		void serve();
+		await settle();
+		lifecycle.shutdown();
+		await settle();
+		await running;
+		logService.clear();
+		lifecycle = new MockLifecycleService();
+
+		void serve();
+		await settle();
+
+		expect(logService.lines).toEqual([
+			"intro: rogen serve · default.rogen.json",
+		]);
+	});
+
+	it("should still say a change that rewrites the project file", async () => {
+		void serve();
+		await settle();
+		logService.clear();
+
+		await memFs.writeFile(
+			"/repo/default.rogen.json",
+			JSON.stringify({
+				sourcePaths: ["src"],
+				routes: { "*": "ServerStorage" },
+			})
+		);
+		await settle();
+
+		expect(logService.lines).toEqual([
+			expect.stringMatching(
+				/^step: \d\d:\d\d:\d\d · default\.rogen\.json changed · reloaded$/
+			),
+			"success: Wrote default.project.json.",
 		]);
 	});
 
 	it("should drop the server's banner, since the Serving line says where it listens", async () => {
 		void serve();
 		await settle();
+		logService.clear();
 
 		processes.spawned[0].print(
 			[
@@ -130,8 +199,33 @@ describe("serve command", () => {
 		);
 		await settle();
 
-		expect(logService.reserved).toBe(true);
-		expect(logService.texts("print")).toEqual([]);
+		expect(logService.lines).toEqual([]);
+	});
+
+	it("should say Rojo's warning that the network reaches the server as one warning", async () => {
+		void serve([], { address: "0.0.0.0" });
+		await settle();
+		logService.clear();
+
+		processes.spawned[0].print(
+			[
+				"Rojo server listening:",
+				"  Address: \u001b[0m\u001b[1m\u001b[32m0.0.0.0",
+				"\u001b[0m  Port:    \u001b[0m\u001b[1m\u001b[32m34872",
+				"",
+				"\u001b[0m\u001b[1m\u001b[33mWARNING: This server is bound to 0.0.0.0, which is reachable from the network.",
+				"The serve API is unauthenticated, so anyone who can reach 0.0.0.0:34872 can read",
+				"and modify your project's source.",
+				"\u001b[0m",
+				"\u001b[0mVisit \u001b[0m\u001b[1m\u001b[32mhttp://0.0.0.0:34872/\u001b[0m in your browser for more information.",
+				"",
+			].join("\n")
+		);
+		await settle();
+
+		expect(logService.lines).toEqual([
+			"warn: Rojo: This server is bound to 0.0.0.0, which is reachable from the network. The serve API is unauthenticated, so anyone who can reach 0.0.0.0:34872 can read and modify your project's source.",
+		]);
 	});
 
 	it("should show what the server says as its own lines, besides its banner", async () => {
@@ -151,7 +245,7 @@ describe("serve command", () => {
 		await settle();
 
 		expect(logService.lines.slice(-2)).toEqual([
-			"error: Rojo: File is not a valid JSON model: src/Bad.model.json: JSONC parse error: Expected colon on line 2 column 1",
+			"error: Rojo: File is not a valid JSON model: src/Bad.model.json: JSONC parse error\n  Caused by: Expected colon on line 2 column 1",
 			"warn: Rojo: Unknown file: src/notes.xyz",
 		]);
 	});
@@ -235,7 +329,7 @@ describe("serve command", () => {
 		expect(await memFs.exists("/repo/default.project.json")).toBe(false);
 		expect(logService.lines).toEqual([
 			"intro: rogen serve · default.rogen.json",
-			"info: default.rogen.json is already served by another rogen serve: Rojo 7.7.1 serves a project named repo at 127.0.0.1:34872 (session s1).",
+			"info: default.rogen.json is already served by another rogen serve: Rojo 7.7.1 serves a project named repo at localhost:34872 (session s1).",
 			"outro: Nothing to start: another rogen serve already serves this project, so nothing is written or watched here.",
 		]);
 	});
@@ -441,7 +535,7 @@ describe("serve command", () => {
 			await writeConfig(34901);
 
 			expect(logService.lines).toContainEqual(
-				"info: Stopped serving default.rogen.json at 127.0.0.1:34872: its address changed."
+				"info: Stopped serving default.rogen.json at localhost:34872: its address changed."
 			);
 			expect(processes.spawned.map(({ args }) => args)).toEqual([
 				["serve", "default.project.json", "--port", "34872"],
@@ -520,7 +614,7 @@ describe("serve command", () => {
 		expect(error).toMatchObject({
 			diagnostics: [
 				expect.objectContaining({
-					code: "serve.noServer",
+					code: "rojo.notFound",
 					message: expect.stringContaining(
 						"Argon is pinned, but rogen serve only starts Rojo: run 'rogen write --watch' to keep the project files current, and 'argon serve' to serve them."
 					),
@@ -537,7 +631,7 @@ describe("serve command", () => {
 
 		expect(error).toMatchObject({
 			diagnostics: [
-				expect.objectContaining({ code: "serve.notInstalled" }),
+				expect.objectContaining({ code: "rojo.notInstalled" }),
 			],
 		});
 		expect(exitCodeOf(error)).toBe(1);
@@ -589,6 +683,105 @@ describe("serve command", () => {
 				],
 			},
 		]);
+	});
+
+	describe("when Rojo crashes", () => {
+		const crashText =
+			"[ERROR rojo] Rojo crashed! You are running Rojo 7.7.1.\n[ERROR rojo] Details: it broke\n";
+		const answer = async (session: string) => {
+			requests.answer(ROJO_URL, {
+				projectName: "repo",
+				serverVersion: "7.7.1",
+				sessionId: session,
+			});
+			await settle();
+		};
+		const crash = async (index: number) => {
+			requests.responses.delete(ROJO_URL);
+			processes.spawned[index].printError(crashText);
+			processes.spawned[index].exit({ code: 1, signal: null });
+			await settle();
+		};
+
+		it("should restart it, say to press Connect, and keep serving", async () => {
+			void serve();
+			await settle();
+			await answer("s1");
+
+			await crash(0);
+			await answer("s2");
+
+			expect(processes.spawned).toHaveLength(2);
+			expect(logService.lines.slice(-1)).toEqual([
+				"info: Rojo crashed, so Rogen restarted it on localhost:34872.\n  In Studio, press Connect in the Rojo plugin.",
+			]);
+			expect(logService.lines.join("\n")).not.toContain("error");
+		});
+
+		it("should exit 1 with Rojo's crash text when it crashes again right after the restart", async () => {
+			const result = serve();
+			await settle();
+			await answer("s1");
+			await crash(0);
+			await answer("s2");
+
+			await crash(1);
+			const error = await failureOf(result);
+
+			expect(exitCodeOf(error)).toBe(1);
+			expect(logService.lines.slice(-2)).toEqual([
+				[
+					"diagnosticError: /repo/default.rogen.json - error: Rojo crashed again right after a restart, so Rogen stopped serving repo: (rojo.crashed)",
+					"  Rojo crashed! You are running Rojo 7.7.1.",
+					"  Details: it broke",
+				].join("\n"),
+				"outro: serve failed.",
+			]);
+		});
+
+		it("should print the restart and the giving up as JSON lines", async () => {
+			const result = serve([], { json: true });
+			await settle();
+			await answer("s1");
+			await crash(0);
+			await answer("s2");
+
+			await crash(1);
+			await result;
+
+			expect(printed().slice(2)).toEqual([
+				{
+					restarted: {
+						config: "default.rogen.json",
+						version: "7.7.1",
+						project: "repo",
+						host: "127.0.0.1",
+						port: 34872,
+						session: "s2",
+						code: 1,
+					},
+				},
+				{
+					stopped: {
+						config: "default.rogen.json",
+						reason: "crashed",
+						code: 1,
+						signal: null,
+					},
+				},
+				{
+					diagnostics: [
+						expect.objectContaining({
+							code: "rojo.crashed",
+							details: [
+								"Rojo crashed! You are running Rojo 7.7.1.",
+								"Details: it broke",
+							],
+						}),
+					],
+				},
+			]);
+		});
 	});
 
 	it("should pass --address, --port and --allowed-hosts to the server", async () => {
@@ -734,7 +927,7 @@ describe("serve command", () => {
 
 		expect(processes.spawned).toHaveLength(1);
 		expect(logService.lines.at(-1)).toBe(
-			"success: Serving default.rogen.json with Rojo 7.7.1 at 127.0.0.1:34872 (Studio lists it as repo)."
+			"success: Serving repo at localhost:34872 · http://localhost:34872/\n  In Studio, press Connect in the Rojo plugin."
 		);
 	});
 

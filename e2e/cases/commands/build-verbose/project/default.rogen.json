@@ -1,0 +1,5 @@
+{
+	"name": "Game",
+	"sourcePaths": ["src"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
+}

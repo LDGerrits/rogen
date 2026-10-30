@@ -16,7 +16,7 @@ import { CommandLine } from "../../../platform/environment/args.js";
 import { IndexService } from "../../../platform/fs/index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 
-import { LogService } from "../../../platform/log/log-service.js";
+import { LogLevel, LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { ReportedError } from "../../../platform/commands/commands.js";
@@ -119,7 +119,7 @@ describe("build command", () => {
 			},
 		});
 		expect(logService.texts("success")).toContain(
-			"default.project.json · wrote"
+			"Wrote default.project.json."
 		);
 	});
 
@@ -242,9 +242,9 @@ describe("build command", () => {
 		expect(logService.lines).toEqual([
 			"intro: rogen build · lobby/default.rogen.json, arena/default.rogen.json",
 			"step: lobby/default.rogen.json",
-			"success: lobby/default.project.json · wrote",
+			"success: Wrote lobby/default.project.json.",
 			"step: arena/default.rogen.json",
-			"success: arena/default.project.json · wrote",
+			"success: Wrote arena/default.project.json.",
 			expect.stringMatching(/^outro: /),
 		]);
 	});
@@ -261,7 +261,6 @@ describe("build command", () => {
 		);
 
 		expect(logService.entries.map(({ kind }) => kind)).toEqual([
-			"intro",
 			"success",
 			"diagnosticWarning",
 			"outro",
@@ -350,10 +349,8 @@ describe("build command", () => {
 
 		expect(result.isErr() && result.error).toBeInstanceOf(ReportedError);
 		expect(logService.lines).toEqual([
-			"intro: rogen build · default.rogen.json",
 			"error: default.rogen.json · not loaded",
 			"diagnosticError: /repo/default.rogen.json - error: boom. (config.unknownField)",
-			expect.stringMatching(/^outro: .*fail/),
 		]);
 	});
 
@@ -646,15 +643,57 @@ describe("build command", () => {
 			expect(await fs.exists(abs("default.project.json"))).toBe(true);
 		});
 
-		it("should leave stdout to Rojo's lines", async () => {
+		it("should say in one line each that it wrote the project file and built, in place of Rojo's lines", async () => {
 			const { log, running } = await withRojo({ output: "game.rbxl" });
 			const rojo = await rojoStarted();
-			rojo.print("Built project to game.rbxl\n");
+			rojo.print("Building project 'repo'\nBuilt project to game.rbxl\n");
 			rojo.exit({ code: 0, signal: null });
 			await running;
 
-			expect(log.reserved).toBe(true);
-			expect(log.texts("print")).toEqual(["Built project to game.rbxl"]);
+			expect(log.reserved).toBe(false);
+			expect(log.lines).toEqual([
+				"success: Wrote default.project.json.",
+				"outro: Built game.rbxl.",
+			]);
+		});
+
+		it("should say nothing of a project file that was already up to date, bar under -v", async () => {
+			const first = await withRojo({ output: "game.rbxl" });
+			(await rojoStarted()).exit({ code: 0, signal: null });
+			await first.running;
+			processes.spawned.length = 0;
+
+			const { log, running } = await withRojo({ output: "game.rbxl" });
+			log.setLevel(LogLevel.Debug);
+			const rojo = await rojoStarted();
+			rojo.print("Building project 'repo'\nBuilt project to game.rbxl\n");
+			rojo.exit({ code: 0, signal: null });
+			await running;
+
+			expect(
+				log.lines.filter((line) => !line.startsWith("debug"))
+			).toEqual(["outro: Built game.rbxl."]);
+			expect(log.texts("debug")).toEqual(
+				expect.arrayContaining([
+					"rogen build · default.rogen.json",
+					"default.project.json · unchanged",
+					"Rojo: Building project 'repo'",
+					"Rojo: Built project to game.rbxl",
+				])
+			);
+		});
+
+		it("should show a line Rojo prints that Rogen doesn't know", async () => {
+			const { log, running } = await withRojo({ output: "game.rbxl" });
+			const rojo = await rojoStarted();
+			rojo.print("Something new\n");
+			rojo.exit({ code: 0, signal: null });
+			await running;
+
+			expect(log.entries).toContainEqual({
+				kind: "info",
+				text: "Rojo: Something new",
+			});
 		});
 
 		it("should pass --plugin for -p", async () => {
@@ -688,7 +727,7 @@ describe("build command", () => {
 			const result = await running;
 
 			expect((result as ResultError<Error>).error.message).toContain(
-				"'rojo build' failed (exit code 1): no such folder"
+				"Rojo couldn't build this project: (rojo.commandFailed)\n  no such folder"
 			);
 		});
 
@@ -797,6 +836,33 @@ describe("build command", () => {
 				});
 			});
 
+			it("should carry each line of a failed Rojo's error as a detail, in its message and its diagnostic", async () => {
+				const { running, log } = await withRojo({
+					output: "g.rbxl",
+					json: true,
+				});
+				const rojo = await rojoStarted();
+				rojo.printError(
+					"[ERROR rojo] Unresolvable property\n        \n        Caused by:\n            Wrong type\n"
+				);
+				rojo.exit({ code: 1, signal: null });
+
+				await running;
+
+				const { rojo: entry } = document(log);
+				expect(entry.messages).toEqual([
+					{
+						severity: "error",
+						text: "Unresolvable property",
+						details: ["Caused by: Wrong type"],
+					},
+				]);
+				expect(entry.diagnostics[0]).toMatchObject({
+					message: "Rojo couldn't build this project:",
+					details: ["Unresolvable property", "Caused by: Wrong type"],
+				});
+			});
+
 			it("should say Rojo did not run when the build had errors", async () => {
 				const { running, log } = await withRojo(
 					{ output: "g.rbxl", json: true },
@@ -882,8 +948,7 @@ describe("build command", () => {
 			rojo.exit({ code: 1, signal: null });
 			await running;
 
-			expect(log.lines.at(-1)).toBe("outro: build failed.");
-			expect(log.texts("outro").join()).not.toContain("Built");
+			expect(log.texts("outro")).toEqual([]);
 		});
 
 		it("should print no success line when Rojo is not installed", async () => {
@@ -893,7 +958,7 @@ describe("build command", () => {
 			const result = await running;
 
 			expect(result.isErr()).toBe(true);
-			expect(log.texts("outro")).toEqual(["build failed."]);
+			expect(log.texts("outro")).toEqual([]);
 		});
 	});
 });

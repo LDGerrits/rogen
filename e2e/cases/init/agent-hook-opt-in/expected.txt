@@ -9,7 +9,7 @@ stdout:
   Created AGENTS.md.
   Created CLAUDE.md.
   Initialised a git repository.
-  default.project.json · wrote
+  Wrote default.project.json.
   Next steps
     Run:
       rogen serve

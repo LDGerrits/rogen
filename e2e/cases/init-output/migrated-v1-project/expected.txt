@@ -10,7 +10,7 @@ stdout:
   Renamed src/Combat/Combat_Server.luau to src/Combat/Combat@Server.luau.
   Created default.rogen.json.
   Created AGENTS.md.
-  default.project.json · wrote
+  Wrote default.project.json.
   Next steps
     Run:
       rogen serve

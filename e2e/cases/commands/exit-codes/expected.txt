@@ -12,19 +12,14 @@ stderr:
 
 $ rogen build ok -o game.rbxl
 exit 0
-stderr:
-  rogen build · ok/default.rogen.json
-  ok/default.project.json · unchanged
-  Built game.rbxl.
+stdout: (not shown)
 
 $ rogen build broken -o game.rbxl
 exit 1
 stderr:
-  rogen build · broken/default.rogen.json
   error: broken/default.rogen.json · not loaded
   broken/default.rogen.json:1:13 - error: invalid JSONC: expected a value. (config.invalidSyntax)
   broken/default.rogen.json:1:13 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
-  write failed.
 
 $ rogen build ok
 exit 2
@@ -79,11 +74,9 @@ stderr:
 $ rogen syncback broken -i game.rbxl -y
 exit 1
 stderr:
-  rogen syncback · broken/default.rogen.json
   error: broken/default.rogen.json · not loaded
   broken/default.rogen.json:1:13 - error: invalid JSONC: expected a value. (config.invalidSyntax)
   broken/default.rogen.json:1:13 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
-  write failed.
 
 $ rogen syncback ok
 exit 2
@@ -93,11 +86,9 @@ stderr:
 $ rogen upload broken --asset_id 1
 exit 1
 stderr:
-  rogen upload · broken/default.rogen.json
   error: broken/default.rogen.json · not loaded
   broken/default.rogen.json:1:13 - error: invalid JSONC: expected a value. (config.invalidSyntax)
   broken/default.rogen.json:1:13 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
-  write failed.
 
 $ rogen upload ok
 exit 2
@@ -121,14 +112,15 @@ stderr:
 
 $ rogen plugin install
 exit 0
-stderr:
-  Rojo's plugin installed
+stdout:
+  Installed Rojo's plugin.
 
 $ rogen plugin uninstall
 exit 1
-stderr:
+stdout:
   Rojo: Your platform is not currently supported
-  error: 'rojo plugin uninstall' failed (exit code 1).
+stderr:
+  error: Rojo couldn't run 'rojo plugin uninstall' (exit code 1).
 
 $ rogen plugin
 exit 2

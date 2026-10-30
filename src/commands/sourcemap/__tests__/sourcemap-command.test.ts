@@ -62,18 +62,7 @@ describe("sourcemap command", () => {
 		});
 	});
 
-	it("should leave stdout to the sourcemap and Rojo's lines", async () => {
-		const { log, running } = start(new MockConfigService([validEntry()]), {
-			output: "map.json",
-		});
-		const [rojo] = await spawnedCount(1);
-		rojo.exit({ code: 0, signal: null });
-		await running;
-
-		expect(log.reserved).toBe(true);
-	});
-
-	it("should print the line Rojo prints about the file it wrote on stdout, as Rojo does", async () => {
+	it("should say in one line each, on stdout, that it wrote the project file and the sourcemap, in place of Rojo's line", async () => {
 		const { log, running } = start(new MockConfigService([validEntry()]), {
 			output: "map.json",
 		});
@@ -82,7 +71,27 @@ describe("sourcemap command", () => {
 		rojo.exit({ code: 0, signal: null });
 		await running;
 
-		expect(log.texts("print")).toEqual(["Created sourcemap at map.json"]);
+		expect(log.reserved).toBe(false);
+		expect(log.lines).toEqual([
+			"success: Wrote default.project.json.",
+			"outro: Wrote map.json.",
+		]);
+	});
+
+	it("should keep stdout for the sourcemap it prints, and say on stderr that it wrote the project file", async () => {
+		const { log, running } = start(new MockConfigService([validEntry()]));
+		const [rojo] = await spawnedCount(1);
+		const output = rojo.args[rojo.args.indexOf("--output") + 1];
+		await fs.writeFile(output, '{"name":"repo"}\n');
+		rojo.print(`Created sourcemap at ${output}\n`);
+		rojo.exit({ code: 0, signal: null });
+		await running;
+
+		expect(log.reserved).toBe(true);
+		expect(log.lines).toEqual([
+			'print: {"name":"repo"}',
+			"success: Wrote default.project.json.",
+		]);
 	});
 
 	it("should print what Rojo writes to a file of its own, and nothing else on stdout", async () => {
@@ -99,7 +108,6 @@ describe("sourcemap command", () => {
 			"default.project.json",
 		]);
 		expect(log.texts("print")).toEqual(['{"name":"repo"}']);
-		expect(log.texts("success")).toEqual([]);
 		expect(log.texts("outro")).toEqual([]);
 		expect(await fs.exists(output)).toBe(false);
 	});
@@ -143,11 +151,8 @@ describe("sourcemap command", () => {
 		rojo.exit({ code: 0, signal: null });
 		await running;
 
-		expect(log.texts("success")).toContain("map.json · wrote");
 		expect(log.texts("warn")).toContain("Rojo: odd file");
-		expect(log.lines).not.toContain(
-			"info: Rojo: Created sourcemap at map.json"
-		);
+		expect(log.lines.at(-1)).toBe("outro: Wrote map.json.");
 	});
 
 	it("should refuse a second project, as Rojo's sourcemap does", async () => {
@@ -183,7 +188,7 @@ describe("sourcemap command", () => {
 		rojo.exit({ code: 1, signal: null });
 
 		expect(((await running) as ResultError<Error>).error.message).toContain(
-			"'rojo sourcemap' failed (exit code 1): no such folder"
+			"Rojo couldn't make a sourcemap of this project: (rojo.commandFailed)\n  no such folder"
 		);
 	});
 

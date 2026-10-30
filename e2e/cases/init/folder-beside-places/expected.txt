@@ -16,7 +16,7 @@ stdout:
   Created README.md.
   Created .vscode/settings.json.
   Created AGENTS.md.
-  game.project.json · wrote
+  Wrote game.project.json.
   Next steps
     Run:
       rogen serve game
@@ -43,7 +43,7 @@ stdout:
   Created lobby/place/Workspace/init.meta.json.
   Created lobby/README.md.
   Created lobby/AGENTS.md.
-  lobby/default.project.json · wrote
+  Wrote lobby/default.project.json.
   Next steps
     In each terminal, start in the project folder:
       cd lobby

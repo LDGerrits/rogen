@@ -1,10 +1,10 @@
 $ rogen upload --asset_id 1 --api_key key
 exit 1
+stdout:
+  Wrote default.project.json.
 stderr:
-  rogen upload · default.rogen.json
-  default.project.json · wrote
-  Wrote 1 project.
-  default.project.json - error: 'rojo upload' failed (exit code 1): --universe_id must be provided to use the Open Cloud API (rojo.commandFailed)
+  default.project.json - error: Rojo couldn't upload this project: (rojo.commandFailed)
+    --universe_id must be provided to use the Open Cloud API
 
 written:
   default.project.json

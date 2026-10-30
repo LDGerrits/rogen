@@ -1,4 +1,5 @@
 import { ResultError } from "../../../base/result.js";
+import { LogLevel } from "../../../platform/log/log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import {
 	CommandHarness,
@@ -26,15 +27,16 @@ describe("fmt-project command", () => {
 		harness = commandHarness({ log: logService });
 	});
 
-	it("should format the config here and say which file it formatted", async () => {
+	it("should format the config here and print nothing, as Rojo does, bar under -v", async () => {
 		await harness.fs.writeFile("/repo/default.rogen.json", CONFIG);
+		logService.setLevel(LogLevel.Debug);
 
 		const result = await fmt();
 
 		expect(result.isOk()).toBe(true);
-		expect(logService.texts("print")).toContain(
-			"formatted default.rogen.json"
-		);
+		expect(logService.lines).toEqual([
+			"debug: Formatted default.rogen.json.",
+		]);
 		expect(
 			Object.keys(
 				JSON.parse(
@@ -52,7 +54,7 @@ describe("fmt-project command", () => {
 		const result = await fmt();
 
 		expect(result.isOk()).toBe(true);
-		expect(logService.texts("print")).toEqual([]);
+		expect(logService.lines).toEqual([]);
 	});
 
 	it("should format the config of a place it is given, and not the one at the root", async () => {
@@ -67,10 +69,12 @@ describe("fmt-project command", () => {
 			})
 		);
 
+		logService.setLevel(LogLevel.Debug);
+
 		await fmt("places/lobby");
 
-		expect(logService.texts("print")).toEqual([
-			"formatted places/lobby/default.rogen.json",
+		expect(logService.texts("debug")).toEqual([
+			"Formatted places/lobby/default.rogen.json.",
 		]);
 	});
 

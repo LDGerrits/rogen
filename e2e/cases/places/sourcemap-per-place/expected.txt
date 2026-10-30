@@ -2,16 +2,14 @@ $ rogen sourcemap places/lobby
 exit 0
 stdout:
   {"name":"Lobby","className":"DataModel","filePaths":["default.project.json"],"children":[{"name":"ReplicatedStorage","className":"ReplicatedStorage","children":[{"name":"Packages","className":"Folder","children":[{"name":"Roact","className":"ModuleScript","filePaths":["../../Packages/Roact.luau"]}]},{"name":"Shared","className":"Folder","children":[{"name":"Common","className":"Folder","children":[{"name":"Util","className":"ModuleScript","filePaths":["../shared/src/Common/Util.luau"]}]}]}]},{"name":"ServerScriptService","className":"ServerScriptService","children":[{"name":"Main","className":"Script","filePaths":["src/Main.server.luau"]}]}]}
+stderr:
+  Wrote places/lobby/default.project.json.
 
 $ rogen sourcemap places/arena -o arena-sourcemap.json
 exit 0
 stdout:
-  Created sourcemap at arena-sourcemap.json
-stderr:
-  rogen sourcemap · places/arena/default.rogen.json
-  places/arena/default.project.json · wrote
-  Wrote 1 project.
-  arena-sourcemap.json · wrote
+  Wrote places/arena/default.project.json.
+  Wrote arena-sourcemap.json.
 
 $ rogen sourcemap places/arena places/lobby
 exit 2

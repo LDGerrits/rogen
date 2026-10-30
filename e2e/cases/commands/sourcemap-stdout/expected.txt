@@ -2,6 +2,8 @@ $ rogen sourcemap
 exit 0
 stdout:
   {"name":"Game","className":"DataModel","filePaths":["default.project.json"],"children":[{"name":"ServerScriptService","className":"ServerScriptService","children":[{"name":"A","className":"Script","filePaths":["src/A.server.luau"]}]}]}
+stderr:
+  Wrote default.project.json.
 
 $ rogen sourcemap --include-non-scripts
 exit 0

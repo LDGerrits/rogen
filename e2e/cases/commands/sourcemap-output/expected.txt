@@ -1,12 +1,8 @@
 $ rogen sourcemap -o sourcemap.json
 exit 0
 stdout:
-  Created sourcemap at sourcemap.json
-stderr:
-  rogen sourcemap · default.rogen.json
-  default.project.json · wrote
-  Wrote 1 project.
-  sourcemap.json · wrote
+  Wrote default.project.json.
+  Wrote sourcemap.json.
 
 $ rogen sourcemap -o sourcemap.json --json
 exit 0
@@ -56,7 +52,10 @@ stdout:
       "messages": [
         {
           "severity": "error",
-          "text": "failed to create file `missing/sourcemap.json`: No such file or directory (os error 2)"
+          "text": "failed to create file `missing/sourcemap.json`",
+          "details": [
+            "Caused by: No such file or directory (os error 2)"
+          ]
         }
       ],
       "diagnostics": [
@@ -64,7 +63,11 @@ stdout:
           "file": "<dir>/default.project.json",
           "severity": "error",
           "code": "rojo.commandFailed",
-          "message": "'rojo sourcemap' failed (exit code 1): failed to create file `missing/sourcemap.json`: No such file or directory (os error 2)",
+          "message": "Rojo couldn't make a sourcemap of this project:",
+          "details": [
+            "failed to create file `missing/sourcemap.json`",
+            "Caused by: No such file or directory (os error 2)"
+          ],
           "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#rojo-commandfailed"
         }
       ]

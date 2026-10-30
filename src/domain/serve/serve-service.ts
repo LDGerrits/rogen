@@ -60,6 +60,12 @@ export interface ServerReadyEvent {
 	readonly info: ServerInfo;
 }
 
+/** A server that crashed was started again, and the new one answers. */
+export interface ServerRestartEvent extends ServerReadyEvent {
+	/** How the one that crashed exited. */
+	readonly exit: ProcessExit;
+}
+
 /** A Studio plugin connected to a server the session started, or left it. */
 export interface ServerConnectionEvent {
 	readonly target: ServeTarget;
@@ -80,6 +86,8 @@ export type ServerExitEvent = {
 	readonly exit: ProcessExit;
 	/** It was interrupted along with Rogen, as Ctrl+C does, rather than stopping on its own. */
 	readonly interrupted: boolean;
+	/** It crashed again right after Rogen restarted it after a crash, so Rogen gave up. */
+	readonly crashed?: boolean;
 } & (
 	| {
 			/** Why the stop is a failure: the server couldn't start, or exited with an error. */
@@ -112,6 +120,8 @@ export interface ServeSession extends Disposable {
 	readonly onDidError: Event<Error>;
 	/** Fired once for each server started, when it answers. */
 	readonly onDidServe: Event<ServerReadyEvent>;
+	/** Fired when a server that crashed was started again, once the new one answers. */
+	readonly onDidRestart: Event<ServerRestartEvent>;
 	/** Fired when a Studio plugin connects to a server the session started, or leaves it; a server that doesn't say fires nothing. */
 	readonly onDidConnect: Event<ServerConnectionEvent>;
 	/** Fired for each message a server prints; its own info logs and noise come as `debug`. */

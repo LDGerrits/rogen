@@ -1,6 +1,5 @@
 import { randomUUID } from "crypto";
 import path from "path";
-import { relativeTo } from "../../base/path.js";
 import { DisposableStore } from "../../base/disposable.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
@@ -30,7 +29,11 @@ import { ServicesAccessor } from "../../platform/instantiation/instantiation.js"
 import { LogService } from "../../platform/log/log-service.js";
 import { OutcomeLog } from "../write/outcome-log.js";
 import { WriteWatch } from "../write/write-watch.js";
-import { reportRojo, reportRojoBesideFailure } from "../write/report-rojo.js";
+import {
+	reportRojo,
+	reportRojoBesideFailure,
+	rojoDone,
+} from "../write/report-rojo.js";
 import { rojoEntry } from "../write/rojo-entry.js";
 import {
 	sourcemapDocument,
@@ -65,7 +68,7 @@ const WatchOption = {
 	name: "watch",
 	type: "boolean",
 	description:
-		"Keep going: write the project file again whenever names or configs change. Write the sourcemap after each write, and after each edit of a file under the source paths. Without -o it prints each sourcemap, which leaves no room for --json. Press Ctrl+C to stop; --json prints one JSON object per line.",
+		"Keep going, with Rojo's own sourcemap --watch. Rogen writes the project file again whenever names or configs change, and Rojo writes the sourcemap again whenever it changes. Without -o it prints each sourcemap, which leaves no room for --json. Press Ctrl+C to stop; --json prints one JSON object per line.",
 } as const satisfies OptionDescriptor;
 
 const SourcemapOptions = [
@@ -154,7 +157,7 @@ registerCommand(
 			}
 
 			const logService = accessor.get(LogService);
-			if (!json) logService.reserveStdout();
+			if (!json && output === undefined) logService.reserveStdout();
 			const fileSystemService = accessor.get(FileSystemService);
 			const selection = await accessor
 				.get(ConfigService)
@@ -222,13 +225,7 @@ registerCommand(
 					failure ?? rojoFailure
 				);
 			const outcomeLog = new OutcomeLog(logService, cwd);
-			if (printed)
-				for (const one of written.outcomes)
-					outcomeLog.diagnostics(
-						[...one.warnings, ...one.errors],
-						one.file
-					);
-			else outcomeLog.report(written, selection.value.home, "sourcemap");
+			outcomeLog.outcomes(written, selection.value.home, "sourcemap");
 			if (plan && ran?.isOk()) {
 				const { messages, failure: runFailure } = ran.value;
 				(runFailure ? reportRojoBesideFailure : reportRojo)(
@@ -241,12 +238,15 @@ registerCommand(
 					),
 					cwd
 				);
-				const { target } = plan;
-				if (!runFailure && target.output !== undefined)
-					logService.success(
-						`${relativeTo(cwd, path.resolve(target.cwd, target.output))} · wrote`
-					);
 			}
+			if (!printed)
+				outcomeLog.close(written, "sourcemap", true, {
+					said: rojoDone(
+						plan?.target ?? { command: "sourcemap", cwd, output },
+						cwd
+					),
+					failed: rojoFailure !== undefined,
+				});
 			const rojoProblem = rojoFailure ?? unread;
 			if (rojoProblem) return err(rojoProblem);
 			return failure ? this.reported(failure) : ok(undefined);

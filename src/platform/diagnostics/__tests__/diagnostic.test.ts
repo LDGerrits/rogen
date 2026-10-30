@@ -84,6 +84,23 @@ describe("platform/diagnostics/diagnostic", () => {
 			expect(renderDiagnostic(diagnostic)).toContain("/repo/src/A.luau");
 		});
 
+		it("should put each detail on an indented line of its own, with its paths relative to the working directory", () => {
+			const diagnostic: Diagnostic = {
+				severity: DiagnosticSeverity.Error,
+				code: "test.example",
+				message: "Rojo couldn't build this project:",
+				details: [
+					"Unresolvable property in project at path /repo/default.project.json",
+					"Caused by: Wrong type of value",
+				],
+				resource: "/repo/default.project.json",
+			};
+
+			expect(renderDiagnostic(diagnostic, "/repo")).toBe(
+				"default.project.json - error: Rojo couldn't build this project: (test.example)\n  Unresolvable property in project at path default.project.json\n  Caused by: Wrong type of value"
+			);
+		});
+
 		it.each([
 			["/", "see /etc/foo", "see /etc/foo"],
 			["/repo/", "see /repo/src/A.luau", "see src/A.luau"],
@@ -125,6 +142,23 @@ describe("platform/diagnostics/diagnostic", () => {
 				message: 'unknown field "outDir".',
 				url: `${DOCS_URL}/diagnostics#test-example`,
 			});
+		});
+
+		it("should carry the details as an array, and leave them out when there are none", () => {
+			const diagnostic: Diagnostic = {
+				severity: DiagnosticSeverity.Error,
+				code: "test.example",
+				message: "Rojo couldn't build this project:",
+				details: ["File $path: nothere"],
+				resource: "/repo/default.project.json",
+			};
+
+			expect(diagnosticToJson(diagnostic).details).toEqual([
+				"File $path: nothere",
+			]);
+			expect(
+				diagnosticToJson({ ...diagnostic, details: undefined })
+			).not.toHaveProperty("details");
 		});
 
 		it("should leave the position out when there is none", () => {

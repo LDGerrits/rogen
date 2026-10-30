@@ -1,7 +1,5 @@
-import path from "path";
 import { DisposableStore } from "../../base/disposable.js";
 import { UsageError } from "../../base/errors.js";
-import { relativeTo } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { WriteService } from "../../domain/write/write-service.js";
 
@@ -25,7 +23,11 @@ import { ServicesAccessor } from "../../platform/instantiation/instantiation.js"
 import { LogService } from "../../platform/log/log-service.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 import { OutcomeLog } from "../write/outcome-log.js";
-import { reportRojo, reportRojoBesideFailure } from "../write/report-rojo.js";
+import {
+	reportRojo,
+	reportRojoBesideFailure,
+	rojoDone,
+} from "../write/report-rojo.js";
 import { buildRojoEntryShape, rojoEntry } from "../write/rojo-entry.js";
 import {
 	configsDocument,
@@ -74,7 +76,7 @@ const WatchOption = {
 	name: "watch",
 	type: "boolean",
 	description:
-		"Keep going: write the project file again whenever names or configs change. Build with Rojo after each write, and again after an edit inside a file under the source paths. Press Ctrl+C to stop; --json prints one JSON object per line.",
+		"Keep going, and build with Rojo's own build --watch. Rogen writes the project file again whenever names or configs change, and Rojo builds again after a change to any path the project file mounts. Press Ctrl+C to stop; --json prints one JSON object per line.",
 } as const satisfies OptionDescriptor;
 
 const BuildOptions = [
@@ -149,7 +151,6 @@ registerCommand(
 			const configService = accessor.get(ConfigService);
 			const writeService = accessor.get(WriteService);
 			const logService = accessor.get(LogService);
-			if (!line.options.json) logService.reserveStdout();
 
 			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
@@ -196,35 +197,20 @@ registerCommand(
 					},
 					failure ?? rojoFailure
 				);
-			new OutcomeLog(logService, cwd).report(
-				run,
-				selection.value.home,
-				"build",
-				true,
-				{
-					name: this.builtName(line, cwd),
-					failed: rojoFailure !== undefined,
-				}
-			);
+			const outcomeLog = new OutcomeLog(logService, cwd);
+			outcomeLog.outcomes(run, selection.value.home, "build");
 			if (built?.isOk())
 				(rojoFailure ? reportRojoBesideFailure : reportRojo)(
 					logService,
 					built.value.messages,
 					cwd
 				);
+			outcomeLog.close(run, "build", true, {
+				said: rojoDone(plan?.target ?? step.target, cwd),
+				failed: rojoFailure !== undefined,
+			});
 			if (rojoFailure) return err(rojoFailure);
 			return failure ? this.reported(failure) : ok(undefined);
-		}
-
-		/** The file or plugin the closing line says was built. */
-		private builtName(
-			line: CommandLine<typeof BuildOptions>,
-			cwd: string
-		): string {
-			const { output, plugin } = line.options;
-			return output !== undefined
-				? relativeTo(cwd, path.resolve(cwd, output))
-				: `plugin ${plugin}`;
 		}
 
 		/** Rojo's flags for the build, which needs one of `-o` and `-p`, as `rojo build` does. */

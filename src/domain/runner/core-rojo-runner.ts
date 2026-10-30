@@ -6,8 +6,15 @@ import { ToolLocator } from "../toolchain/tool-locator.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { RojoServer } from "./rojo-server.js";
 import { StartedRojo } from "./started-rojo.js";
-import { RojoProcess, RojoRunner, ServerExecutable } from "./rojo-runner.js";
+import {
+	RojoProcess,
+	RojoRunner,
+	ServerExecutable,
+	SupervisedRojoOptions,
+	SupervisedRojoProcess,
+} from "./rojo-runner.js";
 import { ServerFinder } from "./server-finder.js";
+import { SupervisedRojo } from "./supervised-rojo.js";
 
 export class CoreRojoRunner implements RojoRunner {
 	declare readonly _serviceBrand: undefined;
@@ -49,7 +56,8 @@ export class CoreRojoRunner implements RojoRunner {
 		command: string,
 		projectFile: string | undefined,
 		flags: readonly string[],
-		cwd: string
+		cwd: string,
+		keepStdoutWhenQuiet = false
 	): RojoProcess {
 		return new StartedRojo(
 			this.processService.spawn(
@@ -60,10 +68,17 @@ export class CoreRojoRunner implements RojoRunner {
 					...this.verbosity(),
 					...flags,
 				],
-				{ cwd, env: RojoServer.LOG_ENV }
+				{ cwd, env: RojoServer.logEnv(this.logLevel) }
 			),
-			this.logLevel <= LogLevel.Error
+			!keepStdoutWhenQuiet && this.logLevel <= LogLevel.Error
 		);
+	}
+
+	supervise(
+		start: () => RojoProcess,
+		options?: SupervisedRojoOptions
+	): SupervisedRojoProcess {
+		return new SupervisedRojo(start, options);
 	}
 
 	private verbosity(): string[] {

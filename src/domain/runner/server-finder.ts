@@ -105,7 +105,7 @@ export class ServerFinder {
 		return err(
 			new DiagnosticsError([
 				errorDiagnostic(
-					"serve.serverFailed",
+					"rojo.unusable",
 					{ resource: manifest?.file ?? resource },
 					`'${command} --version' failed, so Rojo can't start${printed ? `: ${printed}${/[.!?]$/.test(printed) ? "" : "."}` : "."}${pin ? ` If Rojo isn't pinned yet, run '${pin.run.command}'.` : ""} ${SET_UP}`,
 					pin ? [pin] : []
@@ -117,7 +117,7 @@ export class ServerFinder {
 	private notInstalled({ command, manifest }: PinnedCandidate) {
 		const { file } = manifest;
 		return errorDiagnostic(
-			"serve.notInstalled",
+			"rojo.notInstalled",
 			{ resource: file },
 			`${path.basename(file)} pins Rojo as ${command}, but it isn't installed. Run '${manifest.installCommand}'.`,
 			[
@@ -149,9 +149,9 @@ export class ServerFinder {
 			? " Argon is pinned, but rogen serve only starts Rojo: run 'rogen write --watch' to keep the project files current, and 'argon serve' to serve them."
 			: "";
 		return errorDiagnostic(
-			"serve.noServer",
+			"rojo.notFound",
 			{ resource: manifests[0]?.file ?? resource },
-			`No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. ${steps}${argon} ${SET_UP}`,
+			`No Rojo found: none is pinned in a toolchain file here or above, or on the PATH. ${steps}${argon} ${SET_UP}`,
 			pin ? [pin, plugin] : [plugin]
 		);
 	}

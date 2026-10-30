@@ -106,7 +106,7 @@ registerCommand(
 				const entry = formattedFile(file, formatted);
 				files.push(entry);
 				if (!line.options.json && entry.outcome === "wrote")
-					logService.print(`formatted ${relativeTo(cwd, file)}`);
+					logService.debug(`Formatted ${relativeTo(cwd, file)}.`);
 			}
 			const failure = DiagnosticsError.of(failures);
 			if (line.options.json)

@@ -47,6 +47,23 @@ interface WriteOptions {
 	readonly force?: boolean;
 }
 
+/** Warnings about Rogen's own model, which a plain Rojo project hears only from a diagnosis, as Rojo says nothing of them. */
+const ROGEN_ADVICE: ReadonlySet<string> = new Set(["scan.unmountedSource"]);
+
+/** `prepared` without Rogen's advice when its config is a plain Rojo project. */
+function withoutRogenAdvice(prepared: PreparedConfig): PreparedConfig {
+	if (!prepared.config.isAdopted) return prepared;
+	return {
+		...prepared,
+		findings: {
+			...prepared.findings,
+			warnings: prepared.findings.warnings.filter(
+				({ code }) => !ROGEN_ADVICE.has(code)
+			),
+		},
+	};
+}
+
 type Attempt = PreparedConfig | FailedConfig;
 
 export class CoreWriteService implements WriteService {
@@ -66,11 +83,14 @@ export class CoreWriteService implements WriteService {
 		selection: ConfigSelection,
 		options: { readonly independent?: boolean } = {}
 	): Promise<WriteRun> {
-		return this.writeAll(selection, true, options.independent);
+		return this.writeAll(selection, {
+			write: true,
+			independent: options.independent,
+		});
 	}
 
 	check(selection: ConfigSelection): Promise<WriteRun> {
-		return this.writeAll(selection, false);
+		return this.writeAll(selection, { write: false });
 	}
 
 	async projectFileOf(
@@ -84,16 +104,25 @@ export class CoreWriteService implements WriteService {
 		).projectFileOf(project);
 	}
 
+	/** With `advice`, a plain Rojo project keeps the warnings about Rogen's own model. */
 	private async writeAll(
 		selection: ConfigSelection,
-		write: boolean,
-		independent = false
+		{
+			write,
+			independent = false,
+			advice = false,
+		}: {
+			readonly write: boolean;
+			readonly independent?: boolean;
+			readonly advice?: boolean;
+		}
 	): Promise<WriteRun> {
 		const { set, unloaded } = WriteSet.partition(selection);
 		const listing = await this.indexService.list(set.indexedPaths);
 		const attempts = await this.attempt(
 			set.configs.map((config) => ({ config, syncWarnings: undefined })),
-			listing
+			listing,
+			advice
 		);
 		const settled = await this.settle(
 			attempts,
@@ -215,7 +244,10 @@ export class CoreWriteService implements WriteService {
 		targets?: LocateQuery
 	): Promise<Result<Diagnosis, DiagnosticsError>> {
 		if (!targets || targets.args.length === 0) {
-			const { diagnostics } = await this.check(selection);
+			const { diagnostics } = await this.writeAll(selection, {
+				write: false,
+				advice: true,
+			});
 			return ok({ diagnostics, stoppedBy: [], skipped: [] });
 		}
 		const located = await this.locate(selection, targets);
@@ -271,7 +303,8 @@ export class CoreWriteService implements WriteService {
 			readonly config: ResolvedConfig;
 			readonly syncWarnings: readonly Diagnostic[] | undefined;
 		}[],
-		listing: IndexReader
+		listing: IndexReader,
+		advice = false
 	): Promise<Attempt[]> {
 		const pipeline = new WritePipeline(
 			this.fileSystemService,
@@ -283,7 +316,9 @@ export class CoreWriteService implements WriteService {
 			const result = await pipeline.run(config, syncWarnings);
 			attempts.push(
 				result.isOk()
-					? result.value
+					? advice
+						? result.value
+						: withoutRogenAdvice(result.value)
 					: FailedConfig.before(
 							config,
 							result.error.diagnostics,

@@ -183,7 +183,9 @@ describe("TreeAssembler", () => {
 					className: "Actor",
 				});
 
-				const { warnings } = await assemble({ routes: SPLIT });
+				const warnings = (
+					await assemble({ routes: SPLIT })
+				).warnings.filter(({ code }) => code !== "tree.instanceClash");
 
 				expect(warnings).toMatchObject([
 					{ code: "meta.sharedWithScript" },
@@ -563,6 +565,28 @@ describe("TreeAssembler", () => {
 					nothing("src/Combat/(group)", "an invisible folder"),
 					nothing("src/Combat/server", "a routing folder"),
 					nothing("src", "a source path"),
+				]);
+			});
+
+			it("should not warn at the meta of a routing folder that holds an init script, which Rojo applies", async () => {
+				await write(
+					"src/Inv/client/init.client.luau",
+					"src/Inv/shared/A.luau"
+				);
+				for (const dir of ["src/Inv/client", "src/Inv/shared"])
+					await writeMeta(`${dir}/init.meta.json`, {
+						attributes: { K: 1 },
+					});
+
+				const { warnings } = await assemble({
+					routes: { ...SPLIT, shared: "ReplicatedStorage" },
+				});
+
+				expect(warnings).toMatchObject([
+					{
+						code: "meta.appliesToNothing",
+						resource: abs("src/Inv/shared/init.meta.json"),
+					},
 				]);
 			});
 

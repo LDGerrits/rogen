@@ -24,6 +24,7 @@ export interface DiagnosticJson {
 	readonly severity: "error" | "warning";
 	readonly code: string;
 	readonly message: string;
+	readonly details?: readonly string[];
 	readonly url: string;
 	readonly related?: readonly {
 		readonly file: string;
@@ -68,6 +69,7 @@ export const diagnosticShape = OutputShape.named(
 		severity: OutputShape.enum("error", "warning"),
 		code: OutputShape.string,
 		message: OutputShape.string,
+		details: OutputShape.optional(OutputShape.array(OutputShape.string)),
 		url: OutputShape.string,
 		related: OutputShape.optional(
 			OutputShape.array(
@@ -89,14 +91,23 @@ export const diagnosticUrl = (code: string): string =>
 	`${DOCS_URL}/diagnostics#${diagnosticAnchor(code)}`;
 
 export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
-	const { resource, position, severity, code, message, related, fixes } =
-		diagnostic;
+	const {
+		resource,
+		position,
+		severity,
+		code,
+		message,
+		details,
+		related,
+		fixes,
+	} = diagnostic;
 	return {
 		file: toNative(resource),
 		...(position && { line: position.line, column: position.column }),
 		severity: SEVERITY_LABELS[severity],
 		code,
 		message,
+		...(details && { details }),
 		url: diagnosticUrl(code),
 		...(related && {
 			related: related.map((item) => ({

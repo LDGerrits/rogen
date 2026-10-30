@@ -1,9 +1,7 @@
 $ rogen syncback game -i place.rbxl -y
 exit 0
 stderr:
-  rogen syncback · game.rogen.json
-  game.project.json · wrote
-  Wrote 1 project.
+  Wrote game.project.json.
   Syncback wrote 2 changes.
 
 written:

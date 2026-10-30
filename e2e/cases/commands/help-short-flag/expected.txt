@@ -24,8 +24,7 @@ stdout:
       -q, --quiet              Only print errors.
       -v, --verbose            Print debug output; -vv, trace output. (repeatable)
       -V, --version            Print the version.
-          --watch              Keep going: write the project file again whenever names or configs
-                               change.
+          --watch              Keep going, and build with Rojo's own build --watch.
   
   EXIT CODES:
       0    done (warnings included)

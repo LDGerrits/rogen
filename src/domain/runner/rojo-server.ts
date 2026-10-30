@@ -1,10 +1,13 @@
 import { isObject } from "../../base/objects.js";
+import { LogLevel } from "../../platform/log/log-service.js";
 import { RojoVersion } from "./rojo-version.js";
 
 /** One thing the server said. `info` is a line Rogen doesn't recognise, kept so nothing that explains a failure is lost; `debug` is what Rogen drops as noise, shown only with `--verbose`. */
 export interface ServerMessage {
 	readonly severity: "error" | "warning" | "info" | "debug";
 	readonly text: string;
+	/** The lines that follow the first in a record, in order: the rest of its message, then one `Caused by:` line per cause. */
+	readonly details?: readonly string[];
 	/** The line as the server printed it on stdout, when it is one a program reading stdout takes in: not a log record. */
 	readonly stdout?: string;
 }
@@ -28,6 +31,23 @@ const CONNECTION_OPENED = /^WebSocket subscription established\b/;
 // Each way its handler can end a connection logs one of these.
 const CONNECTION_CLOSED =
 	/^(WebSocket subscription closed|WebSocket stream ended|WebSocket error|Message queue disconnected)\b/;
+
+// The stdout lines that end one of its builds: a build or a sourcemap file.
+const BUILT = [/^Built project to .+$/, /^Created sourcemap at .+$/];
+
+// The lines it prints as it goes, which say what it is doing or has done.
+const PROGRESS = [
+	/^Building project '.*'$/,
+	...BUILT,
+	/^Beginning syncback\.\.\.$/,
+	/^Writing to the file system\.\.\.$/,
+	/^Finished syncback\.$/,
+	/^Would write \d+ files\/folders and remove \d+ files\/folders\.$/,
+	/^Aborting before writing to file system due to `--dry-run`$/,
+];
+
+// Its panic hook logs this first, then the details, then exits 1.
+const CRASHED = /^Rojo crashed!/;
 
 const text = (value: unknown): string | undefined =>
 	typeof value === "string" ? value : undefined;
@@ -53,12 +73,20 @@ export class RojoServer {
 	/** What installs its Studio plugin: Rogen runs the pinned Rojo's. */
 	static readonly PLUGIN_COMMAND = "rogen plugin install";
 
-	/** The environment that makes it print its connection records. */
-	static readonly LOG_ENV: Readonly<
-		Record<string, (inherited: string | undefined) => string>
-	> = {
-		RUST_LOG: (inherited) => `${inherited ?? "info"},librojo::web=debug`,
-	};
+	/** The environment that makes it print its connection records, and what its `-v` or `-vv` would show at `level` unless the user set a filter. */
+	static logEnv(
+		level: LogLevel
+	): Readonly<Record<string, (inherited: string | undefined) => string>> {
+		return {
+			RUST_LOG: (inherited) => {
+				if (inherited !== undefined)
+					return `${inherited},librojo::web=debug`;
+				if (level >= LogLevel.Trace) return "info,librojo=trace";
+				if (level >= LogLevel.Debug) return "info,librojo=debug";
+				return "info,librojo::web=debug";
+			},
+		};
+	}
 
 	/** What its info endpoint answered, when it is Rojo's answer. */
 	static readInfo(value: unknown): ServerInfo | undefined {
@@ -79,6 +107,21 @@ export class RojoServer {
 		if (CONNECTION_OPENED.test(line)) return "opened";
 		if (CONNECTION_CLOSED.test(line)) return "closed";
 		return undefined;
+	}
+
+	/** Whether `text` is one of the lines it prints as it goes, such as `Building project 'Game'`. */
+	static isProgress(text: string): boolean {
+		return PROGRESS.some((line) => line.test(text));
+	}
+
+	/** Whether the stdout line `text` ends one of its builds: a build, a sourcemap file, or the start of a printed sourcemap. */
+	static endsBuild(text: string): boolean {
+		return text.startsWith("{") || BUILT.some((line) => line.test(text));
+	}
+
+	/** Whether `text` starts the lines it logs when it crashes. */
+	static isCrash(text: string): boolean {
+		return CRASHED.test(text);
 	}
 
 	static logRecordOf(

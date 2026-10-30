@@ -16,7 +16,7 @@ stdout:
   Created newproj/README.md.
   Created newproj/AGENTS.md.
   Initialised a git repository.
-  newproj/default.project.json · wrote
+  Wrote newproj/default.project.json.
   Next steps
     In each terminal, start in the project folder:
       cd newproj

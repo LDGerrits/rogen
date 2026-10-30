@@ -1,8 +1,11 @@
+import { Disposable } from "../../base/disposable.js";
+import { Event } from "../../base/event.js";
 import { Result } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
+import { RojoRestartEvent } from "./rojo-runner.js";
 import { ServerMessage } from "./rojo-server.js";
 
 export interface RojoCommandRequest {
@@ -45,6 +48,30 @@ export interface RojoCommandRun extends RojoBareRun {
 	readonly failure?: DiagnosticsError;
 }
 
+export interface RojoWatchRequest extends RojoCommandRequest {
+	/** Runs before Rojo starts again after a crash, as a fresh write of the project file. */
+	readonly beforeRestart?: () => Promise<void>;
+}
+
+/** Rojo's watch stopped, and none is started in its place. */
+export interface RojoWatchExitEvent {
+	/** Why it stopped, unless it was asked to. */
+	readonly failure?: DiagnosticsError;
+}
+
+/** Rojo's own `--watch` of a project, started again when it crashes. */
+export interface RojoWatch extends Disposable {
+	/** Fired once per build Rojo finishes, and once per error that stops one, which comes as the run's `failure`. */
+	readonly onDidRun: Event<RojoCommandRun>;
+	/** Rojo crashed, and another started in its place. */
+	readonly onDidRestart: Event<RojoRestartEvent>;
+	/** Fired once, when Rojo stops and none is started in its place; `failure` says why, unless it was asked to stop. */
+	readonly onDidExit: Event<RojoWatchExitEvent>;
+
+	/** Ends Rojo, and starts no other. */
+	terminate(): Promise<void>;
+}
+
 export interface RojoCommandService {
 	readonly _serviceBrand: undefined;
 
@@ -56,6 +83,12 @@ export interface RojoCommandService {
 		selection: ConfigSelection,
 		request: RojoCommandRequest
 	): Promise<Result<RojoCommandRun, Error>>;
+
+	/** Starts the pinned Rojo's `request.command` with `--watch` on the project the selection names, which the caller has written. Fails when its files are broken or the Rojo can't read them. */
+	watch(
+		selection: ConfigSelection,
+		request: RojoWatchRequest
+	): Promise<Result<RojoWatch, Error>>;
 
 	/** Runs the pinned Rojo on no project, for a command such as `plugin install`: the one a toolchain file in `cwd` or above pins, else the one on the PATH. Fails when there is none or it can't start; a Rojo that exits with an error comes back as a run with a `failure`. */
 	runBare(request: RojoBareRequest): Promise<Result<RojoBareRun, Error>>;

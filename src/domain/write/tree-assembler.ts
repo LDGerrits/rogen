@@ -195,7 +195,10 @@ export class TreeAssembler {
 		const claims = TreeAssembler.claimsOf(placed);
 		const { entriesByDir, namedDirs } = TreeAssembler.dirsOf(placed);
 		const mountableDirs = this.routingDirs(entriesByDir, namedDirs);
-		const blocked = TreeAssembler.dirsAbove(leftOut);
+		const blocked = TreeAssembler.dirsAbove([
+			...leftOut,
+			...TreeAssembler.scriptsWithChildren(placed, claims),
+		]);
 		const holdsUnplacedFolder = this.unplacedFolderFinder(entriesByDir);
 
 		const collapsed = new Map<string, readonly string[]>();
@@ -269,6 +272,19 @@ export class TreeAssembler {
 			}
 		}
 		return { entriesByDir, namedDirs };
+	}
+
+	/** The files whose instance holds other files' instances, as `X.luau` beside `X/` does, which a `$path` to their folder would make two siblings. */
+	private static scriptsWithChildren(
+		placed: readonly PlacedEntry[],
+		claims: InstanceMap<number>
+	): string[] {
+		return placed
+			.filter(
+				({ file, rojoName }) =>
+					rojoName !== undefined && claims.get(file.instancePath)! > 1
+			)
+			.map(({ source }) => source);
 	}
 
 	private static dirsAbove(sources: readonly string[]): Set<string> {

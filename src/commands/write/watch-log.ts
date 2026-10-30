@@ -7,9 +7,11 @@ import {
 	WatchUpdate,
 } from "../../domain/watch/watch-service.js";
 import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
+import { isProjectFileConfig } from "../../domain/config/config.js";
 import { ResolvedConfig } from "../../domain/config/resolved-config.js";
 import { SharedDiagnostics } from "../../domain/write/write.js";
 import {
@@ -18,7 +20,11 @@ import {
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { RojoCommandRun } from "../../domain/runner/rojo-command-service.js";
 import { Result } from "../../base/result.js";
-import { reportRojo, reportRojoBesideFailure } from "./report-rojo.js";
+import {
+	reportRojo,
+	reportRojoBesideFailure,
+	rojoDone,
+} from "./report-rojo.js";
 import { RojoTarget, rojoEntry } from "./rojo-entry.js";
 import { writeEntry } from "./write-document.js";
 import { OutcomeLog } from "./outcome-log.js";
@@ -105,9 +111,11 @@ export interface WatchReporter {
 	begin(configs: readonly ResolvedConfig[], home?: string): void;
 	update(update: WatchUpdate): void;
 	error(error: Error): void;
-	/** Rojo's build after a write, or why it couldn't run. */
+	/** One of Rojo's builds, or why it couldn't run. */
 	rojo(ran: Result<RojoCommandRun, Error>, target: RojoTarget): void;
-	end(): void;
+	/** Rojo crashed, and another started in its place. */
+	restarted(): void;
+	end(message?: string): void;
 }
 
 export class WatchLog implements WatchReporter {
@@ -130,10 +138,14 @@ export class WatchLog implements WatchReporter {
 	}
 
 	error(error: Error): void {
-		this.logService.error(error.message);
+		if (error instanceof DiagnosticsError)
+			error.diagnostics.forEach((diagnostic) =>
+				this.logService.diagnostic(diagnostic)
+			);
+		else this.logService.error(error.message);
 	}
 
-	rojo(ran: Result<RojoCommandRun, Error>): void {
+	rojo(ran: Result<RojoCommandRun, Error>, target: RojoTarget): void {
 		if (ran.isErr()) this.error(ran.error);
 		else if (ran.value.failure) {
 			reportRojoBesideFailure(
@@ -142,7 +154,14 @@ export class WatchLog implements WatchReporter {
 				this.cwd
 			);
 			this.error(ran.value.failure);
-		} else reportRojo(this.logService, ran.value.messages, this.cwd);
+		} else {
+			reportRojo(this.logService, ran.value.messages, this.cwd);
+			this.logService.success(`${rojoDone(target, this.cwd)}.`);
+		}
+	}
+
+	restarted(): void {
+		this.logService.info("Rojo crashed, so Rogen restarted it.");
 	}
 
 	end(message = "Stopped watching."): void {
@@ -157,12 +176,23 @@ export class WatchLog implements WatchReporter {
 					: `Threshold reached (${cause.dropped} > ${cause.threshold}). Dropping the buffered changes.`
 			);
 		}
-		this.logService.step(`${clockTime(at)} · ${titleOf(cause, this.cwd)}`);
+		const quiet =
+			cause.kind !== "burst" &&
+			notices.length === 0 &&
+			reports.every(
+				({ outcome, unreported, fixed }) =>
+					outcome.kind === "unchanged" &&
+					unreported.length === 0 &&
+					fixed.length === 0
+			);
+		const title = `${clockTime(at)} · ${titleOf(cause, this.cwd)}`;
+		if (quiet) this.logService.debug(title);
+		else this.logService.step(title);
 		for (const line of describeFileChanges(changes, this.cwd))
 			this.logService.debug(line);
 		notices.forEach((notice) => this.notice(notice));
 		const sharedWarnings = SharedDiagnostics.warnings();
-		reports.forEach((report) => this.report(report, sharedWarnings));
+		reports.forEach((report) => this.report(report, sharedWarnings, quiet));
 	}
 
 	protected notice(notice: ConfigNotice): void {
@@ -180,9 +210,11 @@ export class WatchLog implements WatchReporter {
 			case "broken":
 				this.outcomeLog.diagnostics(notice.errors, notice.file);
 				this.logService.error(
-					notice.keptLastValid
-						? `Still writing from the last valid ${name}.`
-						: `Not writing ${name} until it loads.`
+					isProjectFileConfig(notice.file)
+						? `Waiting until ${name} loads.`
+						: notice.keptLastValid
+							? `Still writing from the last valid ${name}.`
+							: `Not writing ${name} until it loads.`
 				);
 				return;
 		}
@@ -196,7 +228,8 @@ export class WatchLog implements WatchReporter {
 			fixed,
 			repeatedFailure,
 		}: RewriteReport,
-		sharedWarnings: SharedDiagnostics
+		sharedWarnings: SharedDiagnostics,
+		quiet: boolean
 	): void {
 		const warnings = sharedWarnings.take(
 			outcome.file,
@@ -213,6 +246,7 @@ export class WatchLog implements WatchReporter {
 					this.outcomeLog.sameAs("warnings", warnings.sameAs),
 					counted(fixed, "fixed"),
 				],
+				quiet,
 			}
 		);
 	}
@@ -224,8 +258,11 @@ export class PrintedWatchLog extends WatchLog {
 
 	override end(): void {}
 
-	override rojo(ran: Result<RojoCommandRun, Error>): void {
-		if (ran.isErr() || ran.value.failure) return super.rojo(ran);
+	override rojo(
+		ran: Result<RojoCommandRun, Error>,
+		target: RojoTarget
+	): void {
+		if (ran.isErr() || ran.value.failure) return super.rojo(ran, target);
 		reportRojo(
 			this.logService,
 			ran.value.messages.filter(
@@ -255,6 +292,8 @@ export class WatchJsonLog implements WatchReporter {
 	begin(): void {}
 
 	end(): void {}
+
+	restarted(): void {}
 
 	update(update: WatchUpdate): void {
 		update.notices.forEach((notice) => this.notice(notice));

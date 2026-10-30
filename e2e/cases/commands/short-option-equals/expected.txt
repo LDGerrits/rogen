@@ -1,20 +1,12 @@
 $ rogen sourcemap -o=sourcemap.json
 exit 0
 stdout:
-  Created sourcemap at sourcemap.json
-stderr:
-  rogen sourcemap · default.rogen.json
-  default.project.json · wrote
-  Wrote 1 project.
-  sourcemap.json · wrote
+  Wrote default.project.json.
+  Wrote sourcemap.json.
 
 $ rogen build -o=game.rbxlx
 exit 0
 stdout: (not shown)
-stderr:
-  rogen build · default.rogen.json
-  default.project.json · unchanged
-  Built game.rbxlx.
 
 written:
   default.project.json

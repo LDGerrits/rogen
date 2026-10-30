@@ -5,10 +5,6 @@ stdout: (not shown)
 $ rogen build -o place.rbxl
 exit 0
 stdout: (not shown)
-stderr:
-  rogen build · default.rogen.json
-  default.project.json · unchanged
-  Built place.rbxl.
 
 $ lune run dump-place place.rbxl place.txt
 exit 0

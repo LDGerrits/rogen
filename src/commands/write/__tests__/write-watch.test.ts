@@ -1,6 +1,7 @@
 import { jest } from "@jest/globals";
 import "../../build/build-command.js";
 import "../write-command.js";
+import "../../sourcemap/sourcemap-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { DeferredPromise } from "../../../base/async.js";
 import { ResultError } from "../../../base/result.js";
@@ -11,8 +12,10 @@ import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
+import { LogLevel } from "../../../platform/log/log-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { CommandLine } from "../../../platform/environment/args.js";
+import { exitCodeOf } from "../../../platform/commands/command-failure.js";
 
 describe("watch", () => {
 	let memFs: MemoryFileSystemService;
@@ -176,70 +179,25 @@ describe("watch", () => {
 			await settle();
 		};
 
-		it("should run Rojo's build after each write, and never pass it --watch", async () => {
+		it("should start Rojo's own build --watch once, and leave the rewrites to it", async () => {
 			void startWatch([], { output: "game.rbxl" });
 			await settle();
-			expect(processes.spawned).toHaveLength(1);
-			expect(processes.spawned[0].args).toEqual([
-				"build",
-				"default.project.json",
-				"--output",
-				"game.rbxl",
-			]);
-			await finishRojo(0);
 
 			await memFs.writeFile("/repo/src/A.luau", "");
 			await settle();
-			await finishRojo(1);
-
-			expect(processes.spawned).toHaveLength(2);
-			for (const rojo of processes.spawned)
-				expect(rojo.args).not.toContain("--watch");
-		});
-
-		it("should run Rojo for an edit inside a file, though the project file is as it was", async () => {
-			void startWatch([], { output: "game.rbxl" });
-			await settle();
-			await finishRojo(0);
-
-			await memFs.writeFile("/repo/src/A.luau", "");
-			await settle();
-			await finishRojo(1);
 			await memFs.writeFile("/repo/src/A.luau", "changed");
 			await settle();
-			await finishRojo(2);
 
-			expect(processes.spawned).toHaveLength(3);
-		});
-
-		it("should run Rojo again when the compiler writes to the compiled path", async () => {
-			await write(
-				"/repo/default.rogen.json",
-				config({ compiledPath: "dist" })
-			);
-			await memFs.writeFile("/repo/src/A.luau", "");
-			void startWatch([], { output: "game.rbxl" });
-			await settle();
-			await finishRojo(0);
-
-			await memFs.writeFile("/repo/dist/A.luau", "return 1");
-			await settle();
-			await finishRojo(1);
-
-			expect(processes.spawned).toHaveLength(2);
-		});
-
-		it("should run Rojo once more, not once per update, after a burst while it runs", async () => {
-			void startWatch([], { output: "game.rbxl" });
-			await settle();
-			for (const name of ["B", "C", "D"]) {
-				await memFs.writeFile(`/repo/src/${name}.luau`, "");
-				await settle();
-			}
-			await finishRojo(0);
-			await finishRojo(1);
-
-			expect(processes.spawned).toHaveLength(2);
+			expect(processes.spawned.map(({ args }) => args)).toEqual([
+				[
+					"build",
+					"default.project.json",
+					"--output",
+					"game.rbxl",
+					"--watch",
+				],
+			]);
+			expect(processes.spawned[0].terminated).toBe(false);
 		});
 
 		it("should refuse to start when Rojo has several projects to run on", async () => {
@@ -260,21 +218,114 @@ describe("watch", () => {
 			expect(processes.spawned).toEqual([]);
 		});
 
-		it("should report a failed run and go on watching", async () => {
+		it("should say in its own line what Rojo built, once per build, in place of Rojo's lines", async () => {
 			void startWatch([], { output: "game.rbxl" });
 			await settle();
-			processes.spawned[0].printError("ERROR: boom\n");
-			await finishRojo(0, 1);
+			const rojo = processes.spawned[0];
 
-			expect(logService.texts("error").join("\n")).toContain(
-				"'rojo build' failed (exit code 1): boom"
-			);
-			await memFs.writeFile("/repo/src/A.luau", "");
+			rojo.print("Building project 'repo'\nBuilt project to game.rbxl\n");
+			rojo.print("Building project 'repo'\nBuilt project to game.rbxl\n");
 			await settle();
-			expect(processes.spawned).toHaveLength(2);
+
+			expect(logService.reserved).toBe(false);
+			expect(logService.texts("success")).toEqual([
+				"Wrote default.project.json.",
+				"Built game.rbxl.",
+				"Built game.rbxl.",
+			]);
+			expect(logService.lines.join("\n")).not.toContain(
+				"Building project"
+			);
 		});
 
-		it("should end the Rojo build that runs when it stops", async () => {
+		it("should report an error Rojo prints while it watches, and go on watching", async () => {
+			void startWatch([], { output: "game.rbxl" });
+			await settle();
+			const rojo = processes.spawned[0];
+			rojo.print("Built project to game.rbxl\n");
+
+			rojo.printError(
+				"[ERROR librojo::change_processor] File is not a valid JSON model: /repo/src/Bad.model.json\n"
+			);
+			await settle();
+			rojo.print("Built project to game.rbxl\n");
+			await settle();
+
+			expect(logService.texts("diagnosticError").join("\n")).toContain(
+				"Rojo couldn't build this project: (rojo.commandFailed)\n  File is not a valid JSON model"
+			);
+			expect(rojo.terminated).toBe(false);
+			expect(logService.texts("success").at(-1)).toBe("Built game.rbxl.");
+		});
+
+		it("should stop with exit code 1 when Rojo stops on its own, as its first build failing does", async () => {
+			const running = startWatch([], { output: "game.rbxl" });
+			await settle();
+
+			processes.spawned[0].printError("ERROR: boom\n");
+			await finishRojo(0, 1);
+			const result = await running;
+
+			expect(result.isErr() && exitCodeOf(result.error)).toBe(1);
+			expect(logService.texts("diagnosticError").join("\n")).toContain(
+				"Rojo stopped watching repo (exit code 1)."
+			);
+			expect(processes.spawned).toHaveLength(1);
+		});
+
+		it("should start Rojo once the first write succeeds, when the project can't be written at first", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				config({ sourcePaths: ["later"] })
+			);
+			void startWatch([], { output: "game.rbxl" });
+			await settle();
+			expect(processes.spawned).toEqual([]);
+
+			await memFs.writeFile("/repo/later/A.luau", "");
+			await settle();
+
+			expect(processes.spawned).toHaveLength(1);
+		});
+
+		it("should write the project file again and restart Rojo when it crashes after a build", async () => {
+			void startWatch([], { output: "game.rbxl" });
+			await settle();
+			processes.spawned[0].print("Built project to game.rbxl\n");
+			await memFs.delete("/repo/default.project.json");
+
+			processes.spawned[0].printError("[ERROR rojo] Rojo crashed!\n");
+			await finishRojo(0, 1);
+
+			expect(processes.spawned).toHaveLength(2);
+			expect(processes.spawned[1].args).toEqual(
+				processes.spawned[0].args
+			);
+			expect(await memFs.exists("/repo/default.project.json")).toBe(true);
+			expect(logService.texts("info")).toContain(
+				"Rojo crashed, so Rogen restarted it."
+			);
+			expect(logService.texts("diagnosticError")).toEqual([]);
+		});
+
+		it("should give up with rojo.crashed when the restarted Rojo crashes before it builds", async () => {
+			const running = startWatch([], { output: "game.rbxl" });
+			await settle();
+			processes.spawned[0].print("Built project to game.rbxl\n");
+			processes.spawned[0].printError("[ERROR rojo] Rojo crashed!\n");
+			await finishRojo(0, 1);
+
+			processes.spawned[1].printError("[ERROR rojo] Rojo crashed!\n");
+			await finishRojo(1, 1);
+			const result = await running;
+
+			expect(result.isErr() && exitCodeOf(result.error)).toBe(1);
+			expect(logService.texts("diagnosticError").join("\n")).toContain(
+				"Rojo crashed again right after a restart, so Rogen stopped watching repo: (rojo.crashed)"
+			);
+		});
+
+		it("should end the Rojo that watches when it stops", async () => {
 			void startWatch([], { output: "game.rbxl" });
 			await settle();
 
@@ -284,23 +335,80 @@ describe("watch", () => {
 			expect(processes.spawned[0].terminated).toBe(true);
 		});
 
+		it.each([
+			["SIGINT", 130],
+			["SIGTERM", 143],
+		] as const)(
+			"should exit as a shell reports %s when it stops by it",
+			async (signal, code) => {
+				const running = startWatch([], { output: "game.rbxl" });
+				await settle();
+
+				lifecycle.shutdown(signal);
+				const result = await running;
+
+				expect(result.isErr() && exitCodeOf(result.error)).toBe(code);
+				expect(logService.entries.at(-1)).toEqual({
+					kind: "outro",
+					text: "Stopped watching.",
+				});
+			}
+		);
+
 		it("should print a line for each Rojo build with --json", async () => {
 			void startWatch([], { output: "game.rbxl", json: true });
 			await settle();
-			processes.spawned[0].printError("ERROR: boom\n");
-			await finishRojo(0, 1);
+			const rojo = processes.spawned[0];
+
+			rojo.print("Building project 'repo'\nBuilt project to game.rbxl\n");
+			rojo.printError("[ERROR librojo::change_processor] boom\n");
+			await settle();
 
 			const lines = logService
 				.texts("print")
 				.map((line) => JSON.parse(line));
-			expect(lines).toContainEqual({
-				rojo: expect.objectContaining({
-					command: "build",
-					outcome: "failed",
-					output: "/repo/game.rbxl",
-					messages: [{ severity: "error", text: "boom" }],
-				}),
-			});
+			expect(lines.slice(1)).toEqual([
+				{
+					rojo: expect.objectContaining({
+						command: "build",
+						outcome: "built",
+						output: "/repo/game.rbxl",
+					}),
+				},
+				{
+					rojo: expect.objectContaining({
+						command: "build",
+						outcome: "failed",
+						messages: [{ severity: "error", text: "boom" }],
+					}),
+				},
+			]);
+		});
+
+		it("should print each sourcemap Rojo prints without -o, as it prints it, and nothing else on stdout", async () => {
+			void commandHarness({
+				fs: memFs,
+				log: logService,
+				config: configService,
+				lifecycle,
+				watcher,
+				processes,
+			}).run("sourcemap", { positionals: [], options: { watch: true } });
+			await settle();
+			const rojo = processes.spawned[0];
+
+			await memFs.writeFile("/repo/src/A.luau", "");
+			await settle();
+			rojo.print('{"name":"repo"}\n');
+			await settle();
+
+			expect(rojo.args).toEqual([
+				"sourcemap",
+				"default.project.json",
+				"--watch",
+			]);
+			expect(logService.reserved).toBe(true);
+			expect(logService.texts("print")).toEqual(['{"name":"repo"}']);
 		});
 
 		it("should run no Rojo without -o or -p", async () => {
@@ -375,9 +483,11 @@ describe("watch", () => {
 			);
 		});
 
-		it("should mark a project file that needs no rewrite as unchanged", async () => {
+		const restartUnchanged = async (
+			options: CommandLine["options"] = {}
+		) => {
 			await memFs.writeFile("/repo/src/A.luau", "");
-			void startWatch();
+			void startWatch([], options);
 			await settle();
 			lifecycle.shutdown();
 			await settle();
@@ -388,12 +498,26 @@ describe("watch", () => {
 				memFs,
 				new MockEnvironmentService("/repo")
 			);
-
-			void startWatch();
+			void startWatch([], options);
 			await settle();
+		};
+
+		it("should print nothing for a round that leaves the project file unchanged", async () => {
+			await restartUnchanged({ output: "game.rbxl" });
+
+			expect(logService.lines).not.toContainEqual(
+				expect.stringContaining("unchanged")
+			);
+			expect(logService.texts("step")).toEqual([]);
+		});
+
+		it("should mark a project file that needs no rewrite as unchanged under -v", async () => {
+			logService.setLevel(LogLevel.Debug);
+
+			await restartUnchanged();
 
 			expect(logService.lines).toContain(
-				"success: default.project.json · unchanged"
+				"debug: default.project.json · unchanged"
 			);
 		});
 	});
@@ -434,7 +558,7 @@ describe("watch", () => {
 			expect(blocks()).toEqual([
 				{
 					title: "initial write",
-					lines: ["lobby/default.project.json · wrote"],
+					lines: ["Wrote lobby/default.project.json."],
 				},
 			]);
 		});

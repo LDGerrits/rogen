@@ -50,9 +50,6 @@ stdout:
   Writing src/Quest/Server/Main.luau
   Removing src/Combat/Server/Hit.luau
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · would write
-  Checked 1 project.
   Syncback would change 5 files (4 to write, 1 to remove).
 
 $ rogen syncback -i place.rbxl -y --list
@@ -64,9 +61,7 @@ stdout:
   Writing src/Quest/Server/Main.luau
   Removing src/Combat/Server/Hit.luau
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · wrote
-  Wrote 1 project.
+  Wrote default.project.json.
   Syncback wrote 5 changes.
 
 $ rogen where src

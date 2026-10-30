@@ -121,6 +121,46 @@ describeWithRojo("end to end watch", () => {
 		});
 	}, 30_000);
 
+	it("should build the place again for an edit or a new file under any path the project file mounts", async () => {
+		project.dispose();
+		project = createProject({
+			"default.rogen.json": JSON.stringify({
+				...JSON.parse(CONFIG),
+				tree: {
+					$className: "DataModel",
+					Workspace: { $path: "place/Workspace" },
+					ServerStorage: { Packages: { $path: "Packages" } },
+				},
+			}),
+			"src/A.server.luau": "",
+			"place/Workspace/Baseplate.model.json": JSON.stringify({
+				className: "Part",
+			}),
+			"Packages/A.luau": "",
+		});
+		const place = path.join(project.dir, "game.rbxlx");
+		start(["-o", "game.rbxlx"]);
+		await eventually(() => {
+			expect(fs.readFileSync(place, "utf8")).toContain("Baseplate");
+		});
+
+		writeProjectFile(
+			project.dir,
+			"place/Workspace/Baseplate.model.json",
+			JSON.stringify({ className: "TrussPart" })
+		);
+		writeProjectFile(project.dir, "Packages/B.luau", "return 'package'");
+		await eventually(() => {
+			const built = fs.readFileSync(place, "utf8");
+			expect(built).toContain("TrussPart");
+			expect(built).toContain("return 'package'");
+		});
+		expect(
+			session?.output.match(/Built game\.rbxlx\./g)?.length
+		).toBeGreaterThan(1);
+		expect(session?.output).not.toContain("Building project");
+	}, 30_000);
+
 	it("should write the sourcemap after each write when it is sourcemap --watch", async () => {
 		const map = path.join(project.dir, "sourcemap.json");
 		session = new RunningRogen(
@@ -220,11 +260,17 @@ describeWithRojo("end to end watch", () => {
 		await eventually(() => {
 			expect(session?.stdout).toContain("Added.luau");
 		});
+		writeProjectFile(project.dir, "src/Added.luau", "return 1");
+		writeProjectFile(project.dir, "src/Last.luau");
+		await eventually(() => {
+			expect(session?.stdout).toContain("Last.luau");
+		});
 		const documents = (session?.stdout ?? "")
 			.split("\n")
 			.filter((line) => line.trim() !== "");
 		for (const document of documents)
 			expect(() => JSON.parse(document)).not.toThrow();
+		expect(documents).toHaveLength(3);
 	}, 30_000);
 
 	it("should count the warnings a rewrite doesn't repeat", async () => {
@@ -238,7 +284,7 @@ describeWithRojo("end to end watch", () => {
 
 		await eventually(() => {
 			expect(running.output).toContain(
-				"default.project.json · wrote · 1 warning as before"
+				"Wrote default.project.json (1 warning as before)."
 			);
 		});
 		expect(running.output.split("did you mean").length).toBe(2);
@@ -530,12 +576,13 @@ describeWithRojo("end to end watch", () => {
 		});
 	}, 30_000);
 
-	it("should exit cleanly when interrupted", async () => {
-		const running = start();
+	it("should exit 130 when interrupted, as a shell reports Ctrl+C", async () => {
+		const running = start(["-o", "game.rbxlx"]);
 		await eventually(() => {
-			expect(running.output).toContain("default.project.json · ");
+			expect(running.output).toContain("Built game.rbxlx.");
 		});
 
-		expect(await running.stop()).toBe(0);
+		expect(await running.stop()).toBe(130);
+		expect(running.output).toContain("Stopped watching.");
 	}, 30_000);
 });

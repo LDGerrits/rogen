@@ -3,10 +3,7 @@ import { ToolError, UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import {
-	ProcessExit,
-	exitCodeText,
-} from "../../platform/process/process-service.js";
+import { ProcessExit } from "../../platform/process/process-service.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import {
@@ -15,11 +12,27 @@ import {
 	RojoCommandRequest,
 	RojoCommandRun,
 	RojoCommandService,
+	RojoWatch,
+	RojoWatchRequest,
 } from "./rojo-command-service.js";
 import { RojoCompatibility } from "./rojo-compatibility.js";
 import { RojoVersion } from "./rojo-version.js";
-import { RojoRunner, ServerExecutable } from "./rojo-runner.js";
+import { RojoRunner, ServerExecutable, exitHow } from "./rojo-runner.js";
 import { RojoServer, ServerMessage } from "./rojo-server.js";
+import { WatchingRojo } from "./watching-rojo.js";
+
+/** How Rojo exited, and each line of the errors it wrote, in order. */
+interface RojoFailure {
+	readonly how: string;
+	readonly said: readonly string[];
+}
+
+const WHAT_FAILED: Readonly<Record<string, string>> = {
+	build: "build",
+	upload: "upload",
+	sourcemap: "make a sourcemap of",
+	syncback: "sync back into",
+};
 
 export class CoreRojoCommandService implements RojoCommandService {
 	declare readonly _serviceBrand: undefined;
@@ -33,6 +46,78 @@ export class CoreRojoCommandService implements RojoCommandService {
 		selection: ConfigSelection,
 		request: RojoCommandRequest
 	): Promise<Result<RojoCommandRun, Error>> {
+		const prepared = await this.prepare(selection, request);
+		if (prepared.isErr()) return prepared;
+		const { project, executable, projectFile } = prepared.value;
+		const ran = await this.spawn(
+			executable,
+			request.command,
+			path.relative(request.cwd, projectFile),
+			request.flags,
+			request.cwd,
+			request.signal
+		);
+		return ok({
+			project,
+			messages: ran.messages,
+			...(ran.failure && {
+				failure: this.commandFailure(
+					request.command,
+					project,
+					ran.failure,
+					ran.refusedArguments ? "usage" : "project"
+				),
+			}),
+		});
+	}
+
+	async watch(
+		selection: ConfigSelection,
+		request: RojoWatchRequest
+	): Promise<Result<RojoWatch, Error>> {
+		const prepared = await this.prepare(selection, request);
+		if (prepared.isErr()) return prepared;
+		if (request.signal?.aborted)
+			return err(new Error("The watch stopped before Rojo started."));
+		const { project, executable, projectFile } = prepared.value;
+		return ok(
+			new WatchingRojo(
+				project,
+				this.rojoRunner.supervise(
+					() =>
+						this.rojoRunner.start(
+							executable,
+							request.command,
+							path.relative(request.cwd, projectFile),
+							[...request.flags, "--watch"],
+							request.cwd,
+							true
+						),
+					{ beforeRestart: request.beforeRestart }
+				),
+				(said) =>
+					this.commandFailure(request.command, project, {
+						how: "an error",
+						said,
+					})
+			)
+		);
+	}
+
+	/** The project, the Rojo that runs on it and the file it reads, once the checks pass. */
+	private async prepare(
+		selection: ConfigSelection,
+		request: RojoCommandRequest
+	): Promise<
+		Result<
+			{
+				project: ResolvedConfig;
+				executable: ServerExecutable;
+				projectFile: string;
+			},
+			Error
+		>
+	> {
 		const valid = selection.requireValid();
 		if (valid.isErr()) return valid;
 		const project = request.project ?? this.choose(selection);
@@ -61,31 +146,33 @@ export class CoreRojoCommandService implements RojoCommandService {
 			request.command
 		);
 		if (problems.length > 0) return err(new DiagnosticsError(problems));
+		return ok({ project, executable: executable.value, projectFile });
+	}
 
-		const ran = await this.spawn(
-			executable.value,
-			request.command,
-			path.relative(request.cwd, projectFile),
-			request.flags,
-			request.cwd,
-			request.signal
+	private commandFailure(
+		command: string,
+		project: ResolvedConfig,
+		failure: RojoFailure,
+		kind: "usage" | "project" = "project"
+	): DiagnosticsError {
+		return new DiagnosticsError(
+			[
+				{
+					...errorDiagnostic(
+						"rojo.commandFailed",
+						{ resource: project.projectFile },
+						this.failed(
+							`${WHAT_FAILED[command] ?? `run '${command}' on`} this project`,
+							failure
+						)
+					),
+					...(failure.said.length > 0 && {
+						details: failure.said,
+					}),
+				},
+			],
+			kind
 		);
-		return ok({
-			project,
-			messages: ran.messages,
-			...(ran.failure && {
-				failure: new DiagnosticsError(
-					[
-						errorDiagnostic(
-							"rojo.commandFailed",
-							{ resource: project.projectFile },
-							ran.failure
-						),
-					],
-					ran.refusedArguments ? "usage" : "project"
-				),
-			}),
-		});
 	}
 
 	/** Why the Rojo that will run has no `request.command`, when it is older than the release that added it. */
@@ -116,17 +203,29 @@ export class CoreRojoCommandService implements RojoCommandService {
 			undefined,
 			flags,
 			request.cwd,
-			request.signal,
-			request.args.join(" ")
+			request.signal
 		);
+		if (!ran.failure) return ok({ messages: ran.messages });
+		const failure = [
+			this.failed(
+				`run '${RojoServer.COMMAND} ${request.args.join(" ")}'`,
+				ran.failure
+			),
+			...ran.failure.said.map((line) => `  ${line}`),
+		].join("\n");
 		return ok({
 			messages: ran.messages,
-			...(ran.failure && {
-				failure: ran.refusedArguments
-					? new UsageError(ran.failure)
-					: new ToolError(ran.failure),
-			}),
+			failure: ran.refusedArguments
+				? new UsageError(failure)
+				: new ToolError(failure),
 		});
+	}
+
+	/** Rogen's sentence about what failed: it ends in a colon when Rojo's own lines follow it. */
+	private failed(what: string, { how, said }: RojoFailure): string {
+		return said.length > 0
+			? `Rojo couldn't ${what}:`
+			: `Rojo couldn't ${what} (${how}).`;
 	}
 
 	/** Runs `command`, and says why it failed when Rojo exited with an error. */
@@ -136,11 +235,10 @@ export class CoreRojoCommandService implements RojoCommandService {
 		projectFile: string | undefined,
 		flags: readonly string[],
 		cwd: string,
-		signal: AbortSignal | undefined,
-		described = command
+		signal: AbortSignal | undefined
 	): Promise<{
 		messages: ServerMessage[];
-		failure?: string;
+		failure?: RojoFailure;
 		/** Whether Rojo exited 2, as it does for a command line it can't read. */
 		refusedArguments?: boolean;
 	}> {
@@ -167,13 +265,10 @@ export class CoreRojoCommandService implements RojoCommandService {
 		if (exit.code === 0 || signal?.aborted) return { messages };
 		const said = messages
 			.filter(({ severity }) => severity === "error")
-			.map(({ text }) => text);
-		const how = exit.error
-			? exit.error.message
-			: `exit code ${exit.code === null ? exit.signal : exitCodeText(exit.code)}`;
+			.flatMap(({ text, details }) => [text, ...(details ?? [])]);
 		return {
 			messages,
-			failure: `'${RojoServer.COMMAND} ${described}' failed (${how})${said.length > 0 ? `: ${said.join(" ")}` : "."}`,
+			failure: { how: exitHow(exit), said },
 			refusedArguments: exit.code === 2,
 		};
 	}

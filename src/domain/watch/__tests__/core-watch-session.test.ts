@@ -9,7 +9,7 @@ import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { ReloadableSelection, validFile } from "../../config/config-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { WriteSet, OutputFile } from "../../write/write.js";
-import { WatchOptions, WatchUpdate } from "../watch-service.js";
+import { WatchUpdate } from "../watch-service.js";
 import { CoreWatchSession } from "../core-watch-session.js";
 import { writeServiceOf } from "../../write/__tests__/fixtures.js";
 
@@ -65,7 +65,7 @@ describe("CoreWatchSession", () => {
 	const changeUpdates = () =>
 		updates.filter(({ cause }) => cause.kind === "change");
 
-	const start = async (names: string[] = ["."], options?: WatchOptions) => {
+	const start = async (names: string[] = ["."]) => {
 		selection = (await configService.select(names)).unwrap();
 		const indexService = new CoreIndexService(fs);
 		const session = store.add(
@@ -74,8 +74,7 @@ describe("CoreWatchSession", () => {
 				WriteSet.of(selection).unwrap(),
 				watcher,
 				indexService,
-				writeServiceOf(fs, indexService),
-				options
+				writeServiceOf(fs, indexService)
 			)
 		);
 		store.add(session.onDidUpdate((update) => updates.push(update)));
@@ -133,6 +132,18 @@ describe("CoreWatchSession", () => {
 		const session = await start();
 
 		await expect(session.start()).rejects.toThrow("A watch starts once.");
+	});
+
+	it("should rewrite every config from what is on disk when refreshed, before the watcher reports the change", async () => {
+		await fs.writeFile("/repo/src/Shop/A.luau", "");
+		await fs.writeFile("/repo/src/B.luau", "");
+		const session = await start();
+
+		await fs.delete("/repo/src/Shop", true);
+		await session.refresh();
+
+		expect(await placed("default")).toEqual(["B"]);
+		expect(updates).toHaveLength(1);
 	});
 
 	it("should rewrite only the configs whose source paths hold a change", async () => {
@@ -571,77 +582,6 @@ describe("CoreWatchSession", () => {
 		await settle();
 
 		expect(updates).toHaveLength(1);
-	});
-
-	describe("with content edits", () => {
-		it("should rewrite for an update to a source file, which a step on the files reads", async () => {
-			await fs.writeFile("/repo/src/A.luau", "");
-			await start(["."], { contentEdits: { ignoring: [] } });
-
-			await fs.writeFile("/repo/src/A.luau", "return 1");
-			await settle();
-
-			expect(updates).toHaveLength(2);
-			expect(updates[1].reports[0].outcome.kind).toBe("unchanged");
-		});
-
-		it("should rewrite for an update to a file the write never read", async () => {
-			await fs.writeFile("/repo/src/Notes.txt", "");
-			await fs.writeFile("/repo/src/Notes.meta.json", "{}");
-			await start(["."], { contentEdits: { ignoring: [] } });
-
-			await fs.writeFile(
-				"/repo/src/Notes.meta.json",
-				'{"attributes":{"a":1}}'
-			);
-			await settle();
-
-			expect(updates).toHaveLength(2);
-		});
-
-		it("should not rewrite for an edit of a file the project leaves out", async () => {
-			await writeConfig("/repo/default.rogen.json", {
-				globIgnorePaths: ["**/*.tmp"],
-			});
-			await fs.writeFile("/repo/src/A.luau", "");
-			await fs.writeFile("/repo/src/A.tmp", "");
-			await start(["."], { contentEdits: { ignoring: [] } });
-
-			await fs.writeFile("/repo/src/A.tmp", "more");
-			await settle();
-
-			expect(updates).toHaveLength(1);
-		});
-
-		it("should report a change to the compiled path, which a step reads, though its warnings stay the same", async () => {
-			await writeConfig("/repo/default.rogen.json", {
-				compiledPath: "dist",
-			});
-			await fs.writeFile("/repo/src/A.luau", "");
-			await fs.writeFile("/repo/dist/A.luau", "return 1");
-			await start(["."], { contentEdits: { ignoring: [] } });
-			await fs.writeFile("/repo/default.project.json", "{}");
-
-			await fs.writeFile("/repo/dist/A.luau", "return 2");
-			await settle();
-
-			expect(updates).toHaveLength(2);
-			expect(updates[1].cause).toEqual({ kind: "compiled", files: 1 });
-			expect(updates[1].reports[0].outcome.kind).toBe("unchanged");
-			expect(await fs.readFile("/repo/default.project.json")).toBe("{}");
-		});
-
-		it("should not rewrite for a change to a file the step writes", async () => {
-			await fs.writeFile("/repo/src/sourcemap.json", "{}");
-			await start(["."], {
-				contentEdits: { ignoring: ["/repo/src/sourcemap.json"] },
-			});
-
-			await fs.writeFile("/repo/src/sourcemap.json", "{ }");
-			await settle();
-
-			expect(updates).toHaveLength(1);
-		});
 	});
 
 	it("should rewrite the project file when a meta file is added, which Rojo does not watch beside a file it mounts", async () => {

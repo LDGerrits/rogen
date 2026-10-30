@@ -10,11 +10,11 @@ stderr:
 
 $ rogen upload places/lobby --asset_id 1 --api_key key
 exit 1
+stdout:
+  Wrote places/lobby/default.project.json.
 stderr:
-  rogen upload · places/lobby/default.rogen.json
-  places/lobby/default.project.json · wrote
-  Wrote 1 project.
-  places/lobby/default.project.json - error: 'rojo upload' failed (exit code 1): --universe_id must be provided to use the Open Cloud API (rojo.commandFailed)
+  places/lobby/default.project.json - error: Rojo couldn't upload this project: (rojo.commandFailed)
+    --universe_id must be provided to use the Open Cloud API
 
 written:
   places/lobby/default.project.json

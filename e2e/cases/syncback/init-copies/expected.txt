@@ -4,9 +4,6 @@ stdout:
   Writing src/Net/init.luau
   Writing src/Net
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · would write
-  Checked 1 project.
   Syncback would change 1 file (1 to write).
 
 $ rogen syncback -i place.rbxl -y --list
@@ -15,9 +12,7 @@ stdout:
   Writing src/Net/init.luau
   Writing src/Net
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · wrote
-  Wrote 1 project.
+  Wrote default.project.json.
   Syncback wrote 1 change.
 
 written:

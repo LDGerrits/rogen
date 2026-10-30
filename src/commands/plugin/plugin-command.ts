@@ -27,6 +27,7 @@ const pluginDocumentShape = S.object({
 		S.object({
 			severity: S.enum("error", "warning", "info"),
 			text: S.string,
+			details: S.optional(S.array(S.string)),
 		})
 	),
 	diagnostics: S.optional(S.array(diagnosticShape)),
@@ -86,7 +87,6 @@ registerCommand(
 					)
 				);
 			const logService = accessor.get(LogService);
-			if (!line.options.json) logService.reserveStdout();
 			const cwd = accessor.get(EnvironmentService).cwd;
 
 			const ran = await accessor
@@ -105,9 +105,10 @@ registerCommand(
 									.filter(
 										({ severity }) => severity !== "debug"
 									)
-									.map(({ severity, text }) => ({
+									.map(({ severity, text, details }) => ({
 										severity,
 										text,
+										...(details && { details }),
 									})),
 						...(failed && failureToJson(failed)),
 					},
@@ -124,8 +125,8 @@ registerCommand(
 			if (failure) return err(failure);
 			logService.success(
 				action === "install"
-					? "Rojo's plugin installed"
-					: "Rojo's plugin removed"
+					? "Installed Rojo's plugin."
+					: "Removed Rojo's plugin."
 			);
 			return ok(undefined);
 		}
