@@ -1,3 +1,4 @@
+import path from "path";
 import { Disposable } from "../../../base/disposable.js";
 import { Result, err, ok } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
@@ -147,6 +148,12 @@ export class MockConfigService implements ConfigService {
 
 	async configsHere(): Promise<string[]> {
 		return this.entries.map(({ file }) => file);
+	}
+
+	async configsIn(folder: string): Promise<string[]> {
+		return this.entries
+			.map(({ file }) => file)
+			.filter((file) => path.dirname(file) === folder);
 	}
 
 	async plainProjectsHere(): Promise<string[]> {

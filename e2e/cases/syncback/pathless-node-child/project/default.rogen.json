@@ -1,0 +1,11 @@
+{
+  "name": "game",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Remotes": { "$className": "Folder", "Hit": { "$className": "RemoteEvent" } }
+    }
+  },
+  "sourcePaths": ["src"],
+  "routes": { "Server": "ServerScriptService" }
+}

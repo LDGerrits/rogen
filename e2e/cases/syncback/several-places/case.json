@@ -1,0 +1,8 @@
+{
+	"place": "place.rbxl",
+	"steps": [["syncback", "game", "-i", "place.rbxl", "-y"]],
+	"show": [
+		"src/game/Quest/Server/Tracker.luau",
+		"src/common/Greeter/Client/Wave.client.luau"
+	]
+}

@@ -1,0 +1,28 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/Inventory/init@server.txt
+stderr:
+  rogen syncback · default.rogen.json
+  default.project.json · wrote
+  Wrote 1 project.
+  Syncback wrote 1 change.
+
+$ rogen where src
+exit 0
+stdout:
+  src/Inventory/Bag@server.luau -> ServerScriptService/Inventory/Bag · route server (suffix)
+  src/Inventory/Save@server.luau -> ServerScriptService/Inventory/Save · route server (suffix)
+  src/Inventory/init@server.txt -> ServerScriptService/Inventory/init · route server (suffix)
+
+written:
+  default.project.json
+  src/Inventory/init@server.txt
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Bag: ModuleScript  <- src/Inventory/Bag@server.luau
+      Save: ModuleScript  <- src/Inventory/Save@server.luau
+      init: StringValue  <- src/Inventory/init@server.txt

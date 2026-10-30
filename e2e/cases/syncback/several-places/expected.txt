@@ -1,0 +1,38 @@
+$ rogen syncback game -i place.rbxl -y
+exit 0
+stderr:
+  rogen syncback · game.rogen.json
+  game.project.json · wrote
+  Wrote 1 project.
+  Syncback wrote 2 changes.
+
+written:
+  game.project.json
+  src/common/Greeter/Client/Wave.client.luau
+  src/game/Quest/Server/Tracker.luau
+
+src/common/Greeter/Client/Wave.client.luau:
+print("wave")
+
+src/game/Quest/Server/Tracker.luau:
+return "tracker"
+
+$ rojo sourcemap game.project.json
+game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Greeter: Folder
+        Greeting: ModuleScript  <- src/common/Greeter/Shared/Greeting.luau
+  ServerScriptService: ServerScriptService
+    Game: Folder
+      Game: Script  <- src/game/Game/Server/Game.server.luau
+    Greeter: Folder
+      Greeter: Script  <- src/common/Greeter/Server/Greeter.server.luau
+    Quest: Folder
+      Tracker: ModuleScript  <- src/game/Quest/Server/Tracker.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Game: Folder
+        Hud: LocalScript  <- src/game/Game/Client/Hud.client.luau
+      Greeter: Folder
+        Wave: LocalScript  <- src/common/Greeter/Client/Wave.client.luau

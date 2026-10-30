@@ -54,6 +54,12 @@ const isInitFile = (file: readonly string[]) =>
 const holdsScript = (instance: NewInstance) =>
 	(instance.files ?? []).some(isInitFile);
 
+/** Whether an init file right in the folder makes the folder instance itself a script. */
+const isScript = (instance: NewInstance) =>
+	(instance.files ?? []).some(
+		(file) => file.length === 2 && isInitFile(file)
+	);
+
 /** The route that puts files where `parent` is, and how deep its target is. */
 type ParentRoute =
 	| { readonly kind: "keyed"; readonly key: string; readonly depth: number }
@@ -248,16 +254,19 @@ export class ReverseRouter {
 	private asNewFeature(instance: NewInstance): NewPlacement {
 		const { parent, name, folder } = instance;
 		const roots = this.layout.sourcePaths;
-		if (roots.length !== 1)
+		const route = this.routeTo(parent);
+		const below =
+			route.kind === "conflict" ? [] : parent.slice(route.depth);
+		const root =
+			this.layout.sourcePathHolding(path.posix.join(...below, name)) ??
+			this.layout.ownSourcePath;
+		if (root === undefined)
 			return conflict(
 				roots.length === 0
 					? "the project has no source path"
 					: `no file beside it says which source path holds it: ${roots.join(", ")}`
 			);
-		const route = this.routeTo(parent);
 		if (route.kind === "conflict") return conflict(route.reason);
-		const below = parent.slice(route.depth);
-		const [root] = roots;
 		if (route.kind === "fallback")
 			return {
 				kind: "placed",
@@ -279,7 +288,7 @@ export class ReverseRouter {
 		return {
 			kind: "placed",
 			home:
-				folder && !holdsScript(instance)
+				folder && !isScript(instance)
 					? {
 							dir: path.posix.join(
 								root,

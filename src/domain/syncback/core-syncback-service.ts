@@ -2,7 +2,9 @@ import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { UsageError, failureReason } from "../../base/errors.js";
 import { ignoringGlob } from "../../base/glob.js";
-import { contains, toNative, toPosix } from "../../base/path.js";
+import { contains, samePath, toNative, toPosix } from "../../base/path.js";
+import { parse, setJsoncValue } from "../../base/jsonc.js";
+import { isObject, isSameJson } from "../../base/objects.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -21,6 +23,7 @@ import {
 	PlacedLocation,
 } from "../write/write-service.js";
 import { SYNCBACK_FILES, isSyncbackFileName } from "../config/config.js";
+import { ConfigService, validFile } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { instanceKey } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
@@ -30,6 +33,8 @@ import { SyncRules } from "../rojo/sync-rules.js";
 import { RojoCommandService } from "../runner/rojo-command-service.js";
 import { ServerMessage } from "../runner/rojo-server.js";
 import { AddedInstance, AddedPath, addedInstances } from "./added-instances.js";
+import { WrittenEntry, addedNode, isNodeFile } from "./added-node.js";
+import { MetaRequest, featureMetas } from "./feature-metas.js";
 import { ReverseRouter, instanceNameOf } from "./reverse-router.js";
 import {
 	SyncbackChange,
@@ -43,7 +48,7 @@ import {
 import { SyncbackService } from "./syncback-service.js";
 import { SyncbackLayout } from "./syncback-layout.js";
 import { SyncbackMirror } from "./syncback-mirror.js";
-import { applyTreeChanges, treeChanges } from "./tree-changes.js";
+import { TreeChange, applyTreeChanges, treeChanges } from "./tree-changes.js";
 import {
 	onlySerializedOverrides,
 	treeWithoutSerializedOverrides,
@@ -106,11 +111,33 @@ class CoreSyncbackPlan implements SyncbackPlan {
 		listed: readonly SyncbackChange[]
 	) {
 		this.listed = listed;
-		this.changes = operations.map(({ kind, file }) => ({
-			kind: kind === "remove" || kind === "prune" ? "remove" : "write",
-			file,
-		}));
+		this.changes = withoutRemovedInside(
+			operations.map(({ kind, file }) => ({
+				kind:
+					kind === "remove" || kind === "prune" ? "remove" : "write",
+				file,
+			}))
+		);
 	}
+}
+
+/** `changes` without a removal inside a folder another one removes, as `--list` shows them. */
+function withoutRemovedInside(
+	changes: readonly SyncbackChange[]
+): SyncbackChange[] {
+	const removed = new Set(
+		changes.filter(({ kind }) => kind === "remove").map(({ file }) => file)
+	);
+	return changes.filter(({ kind, file }) => {
+		if (kind !== "remove") return true;
+		for (
+			let dir = path.dirname(file);
+			path.dirname(dir) !== dir;
+			dir = path.dirname(dir)
+		)
+			if (removed.has(dir)) return false;
+		return true;
+	});
 }
 
 /** What the run on a plain Rojo project lists, which Rojo writes itself. */
@@ -161,6 +188,19 @@ function sameBytes(
 	return true;
 }
 
+/** The keys of a node that a meta file holds, by the name it holds them under. */
+const META_KEYS: Readonly<Record<string, string>> = {
+	$properties: "properties",
+	$attributes: "attributes",
+};
+
+/** Whether a change to a node is only to what a meta file can hold. */
+const isMetaChange = ({ set, remove, added }: TreeChange): boolean =>
+	added.length === 0 &&
+	[...Object.keys(set), ...remove].every((key) =>
+		Object.hasOwn(META_KEYS, key)
+	);
+
 /** `next` with the line endings of `before`: Rojo writes `\n`, and a file written with `\r\n` keeps them. */
 function withLineEndings(before: Uint8Array, next: Uint8Array): Uint8Array {
 	const crlf = before.some(
@@ -179,6 +219,7 @@ export class CoreSyncbackService implements SyncbackService {
 	declare readonly _serviceBrand: undefined;
 
 	constructor(
+		private readonly configService: ConfigService,
 		private readonly fileSystemService: FileSystemService,
 		private readonly writeService: WriteService,
 		private readonly rojoService: RojoCommandService
@@ -295,6 +336,22 @@ export class CoreSyncbackService implements SyncbackService {
 		return { failed, unplaced };
 	}
 
+	/** The configs beside `project` in its folder, which together with it are the places of one game. */
+	private async otherConfigsOf(
+		project: ResolvedConfig
+	): Promise<ResolvedConfig[]> {
+		const configs: ResolvedConfig[] = [];
+		for (const file of await this.configService.configsIn(
+			project.projectDir
+		)) {
+			if (samePath(file, project.file)) continue;
+			const { config } =
+				validFile(await this.configService.read(file)) ?? {};
+			if (config) configs.push(config);
+		}
+		return configs;
+	}
+
 	/** Whether `dir` holds no file, in it or in any folder below it. */
 	private async isEmptyFolder(dir: string): Promise<boolean> {
 		const entries = await tryWithAsync(() =>
@@ -338,6 +395,7 @@ export class CoreSyncbackService implements SyncbackService {
 		const mirror = await SyncbackMirror.of({
 			// Rojo crashes on a project file not named default.project.json that names no project.
 			written: { ...written, name: written.name ?? project.projectName },
+			tree: project.project.getFile().tree,
 			dir,
 			root: MIRROR,
 			placed,
@@ -367,7 +425,11 @@ export class CoreSyncbackService implements SyncbackService {
 			);
 		return ok({
 			mirror,
-			layout: new SyncbackLayout(project, here.files),
+			layout: new SyncbackLayout(
+				project,
+				here.files,
+				await this.otherConfigsOf(project)
+			),
 			placed,
 			configFile: project.file,
 			dir,
@@ -509,6 +571,16 @@ export class CoreSyncbackService implements SyncbackService {
 		);
 	}
 
+	/** Whether `folder` lies below a source path, which syncback never removes itself. */
+	private static belowSource(
+		project: ResolvedConfig,
+		folder: string
+	): boolean {
+		return project.sourcePaths.some(
+			(source) => contains(source, folder) && !contains(folder, source)
+		);
+	}
+
 	private isUnread({ dir, unread }: Prepared, target: string): boolean {
 		const relative = path.posix.relative(toPosix(dir), target);
 		return ignoringGlob(relative, unread) !== undefined;
@@ -546,7 +618,9 @@ export class CoreSyncbackService implements SyncbackService {
 				await this.fileSystemService.readFile(path.join(root, at))
 			);
 		const existing = new Set(
-			copied.map(({ mirror: at }) => CoreSyncbackService.instanceAt(at))
+			copied.map(({ mirror: at }) =>
+				CoreSyncbackService.instanceAt(mirror, at)
+			)
 		);
 		/** Lists a change to `file` when the project compiles it, which syncback must not write. */
 		const leftOut = (
@@ -581,7 +655,10 @@ export class CoreSyncbackService implements SyncbackService {
 					.slice(from, from + COPY_BATCH)
 					.map(async ({ mirror: at, target, modified }) => {
 						const file = toNative(target);
-						const instance = CoreSyncbackService.instanceAt(at);
+						const instance = CoreSyncbackService.instanceAt(
+							mirror,
+							at
+						);
 						if (!present.has(at))
 							return {
 								kind: "remove" as const,
@@ -658,12 +735,6 @@ export class CoreSyncbackService implements SyncbackService {
 				}
 			}
 		}
-		const edited = await this.editTree(request, prepared);
-		if (edited.operation) {
-			await touch(edited.operation.file);
-			operations.push(edited.operation);
-		}
-		unplaced.push(...edited.unplaced);
 		const holding = new Set<string>();
 		for (const { path: at } of after) {
 			const names = at.split("/");
@@ -692,7 +763,7 @@ export class CoreSyncbackService implements SyncbackService {
 		)) {
 			const target = mirror.targetOf(at);
 			if (target === undefined || holding.has(at)) continue;
-			const instance = CoreSyncbackService.instanceAt(at);
+			const instance = CoreSyncbackService.instanceAt(mirror, at);
 			if (!leftOut(toNative(target), instance, "removed"))
 				operations.push({
 					kind: "prune",
@@ -700,6 +771,74 @@ export class CoreSyncbackService implements SyncbackService {
 					instance,
 					from: at,
 				});
+		}
+		const gone = new Set(
+			operations
+				.filter(({ kind }) => kind === "remove" || kind === "prune")
+				.map(({ file }) => file)
+		);
+		/** The mirror folders each project folder is read at, which say whether the place still holds it. */
+		const readAt = new Map<string, Set<string>>();
+		const readsAt = (folder: string, at: string) =>
+			readAt.set(folder, (readAt.get(folder) ?? new Set()).add(at));
+		for (const at of copiedFolders) {
+			const target = mirror.targetOf(at);
+			if (target !== undefined) readsAt(toNative(target), at);
+		}
+		/** Each removed file or folder, with the instance it was and the mirror folder of the folder it is in when the mirror has one. */
+		const emptied: { file: string; instance: string; parent?: string }[] =
+			[];
+		for (const { kind, file, from } of operations) {
+			if (kind === "write" || kind === "folder" || from === undefined)
+				continue;
+			if (kind === "prune") {
+				emptied.push({
+					file,
+					instance: CoreSyncbackService.instanceAt(mirror, from),
+				});
+				continue;
+			}
+			const parent = path.posix.dirname(from);
+			readsAt(path.dirname(file), parent);
+			emptied.push({
+				file,
+				instance: CoreSyncbackService.instanceAt(mirror, parent),
+				parent,
+			});
+		}
+		const entries = new Map<string, string[]>();
+		const entriesOf = async (folder: string) => {
+			let names = entries.get(folder);
+			if (names) return names;
+			const read = await tryWithAsync(() =>
+				this.fileSystemService.readDirectory(folder)
+			);
+			names = read.isOk() ? read.value.map(([name]) => name) : [];
+			entries.set(folder, names);
+			return names;
+		};
+		for (const { file, instance, parent } of emptied) {
+			for (
+				let folder = path.dirname(file);
+				!gone.has(folder) &&
+				CoreSyncbackService.belowSource(request.project, folder) &&
+				![...(readAt.get(folder) ?? [])].some((at) =>
+					holding.has(at)
+				) &&
+				(await entriesOf(folder)).every((name) =>
+					gone.has(path.join(folder, name))
+				);
+				folder = path.dirname(folder)
+			) {
+				gone.add(folder);
+				operations.push({
+					kind: "prune",
+					file: folder,
+					instance,
+					...(parent !== undefined &&
+						folder === path.dirname(file) && { from: parent }),
+				});
+			}
 		}
 
 		const known = new Set<string>(mirror.folders);
@@ -711,9 +850,33 @@ export class CoreSyncbackService implements SyncbackService {
 		for (const entry of mirror.entries)
 			if (entry.kind === "folder") known.add(entry.mirror);
 		for (const folder of known)
-			existing.add(instanceKey(folder.split("/")));
+			existing.add(instanceKey(mirror.instancePathOf(folder)));
+		for (const { mirror: folder } of mirror.nodeFolders) {
+			const names = folder.split("/");
+			for (let depth = 1; depth < names.length; depth++)
+				known.add(names.slice(0, depth).join("/"));
+		}
+		const nodeAt = (folder: string) =>
+			mirror.nodeFolders.find(({ mirror: at }) => at === folder)?.node;
 
 		const fresh: AddedPath[] = [];
+		const metaFiles: MetaRequest<{ from: string; bytes: Uint8Array }>[] =
+			[];
+		/** Takes the meta Rojo wrote at `at` for `parent` as an edit of a feature's meta, unless it only adds an empty `SerializedOverrides`. */
+		const askMeta = async (at: string, parent: readonly string[]) => {
+			const feature = prepared.layout.featureMaking(parent);
+			const meta = feature && (await this.featureMeta(feature.folder));
+			if (await onlyOverrides(at, meta?.file)) return;
+			metaFiles.push({
+				instance: parent,
+				edit: {
+					from: at,
+					bytes: await this.fileSystemService.readFileBytes(
+						path.join(root, at)
+					),
+				},
+			});
+		};
 		for (const added of after) {
 			if (copiedPaths.has(added.path)) continue;
 			// An empty folder the mirror made, which Rojo left empty, is not new.
@@ -725,20 +888,27 @@ export class CoreSyncbackService implements SyncbackService {
 				const folder = names.slice(0, -1).join("/");
 				if (
 					!added.folder &&
-					name.startsWith("init.") &&
-					known.has(folder)
+					(RojoFile.INIT_FILES.has(name) ||
+						name === RojoFile.INIT_META) &&
+					known.has(folder) &&
+					nodeAt(folder) === undefined
 				) {
-					if (!(await onlyOverrides(added.path)))
+					const parent = mirror.instancePathOf(folder);
+					if (RojoFile.INIT_FILES.has(name))
 						unplaced.push({
-							instance: instanceKey(names.slice(0, -1)),
-							reason: `Rojo wrote ${name} for a property or attribute changed in Studio, and no one folder of the project is this instance; set it on its node in the tree of the config`,
+							instance: instanceKey([
+								...parent,
+								RojoFile.INIT_NAME,
+							]),
+							reason: `its name makes Rojo write it as ${name}, which Rojo reads as the folder ${instanceKey(parent)} itself; rename it in Studio`,
 						});
+					else await askMeta(added.path, parent);
 				} else fresh.push(added);
 				continue;
 			}
 			if (this.isIgnored(prepared, target)) continue;
 			const file = toNative(target);
-			const instance = CoreSyncbackService.instanceAt(added.path);
+			const instance = CoreSyncbackService.instanceAt(mirror, added.path);
 			if (isCompiled(file)) {
 				// Rojo leaves every folder of the mirror in place; one that was there already is not new.
 				if (
@@ -754,6 +924,19 @@ export class CoreSyncbackService implements SyncbackService {
 					existing.has(instance) ? "changed" : "added"
 				);
 				continue;
+			}
+			if (
+				!added.folder &&
+				names[names.length - 1] === RojoFile.INIT_META
+			) {
+				const parent = mirror.instancePathOf(
+					names.slice(0, -1).join("/")
+				);
+				// A routing folder never becomes an instance, so its meta would apply to nothing; the feature's meta sets it.
+				if (prepared.layout.featureMaking(parent)) {
+					await askMeta(added.path, parent);
+					continue;
+				}
 			}
 			await touch(file);
 			operations.push(
@@ -771,6 +954,41 @@ export class CoreSyncbackService implements SyncbackService {
 			);
 		}
 
+		const metas = featureMetas(prepared.layout, metaFiles, (a, b) =>
+			sameBytes(a.bytes, b.bytes)
+		);
+		for (const { folder, instance, edit } of metas.placed) {
+			const key = instanceKey(instance);
+			// A compiler makes the folders of a feature, so the change is for the source files.
+			if (compiledPath !== undefined) {
+				compiled.push({ instance: key, kind: "changed" });
+				continue;
+			}
+			const meta = await this.featureMeta(folder);
+			const keys = parse(decoder.decode(edit.bytes)).unwrapOr(undefined);
+			if (!isObject(keys)) continue;
+			const written = this.featureMetaWrite(
+				prepared,
+				meta,
+				key,
+				keys,
+				edit.bytes
+			);
+			if (written === undefined) continue;
+			if ("reason" in written) unplaced.push(written);
+			else {
+				await touch(meta.file);
+				operations.push({ ...written, from: edit.from });
+			}
+		}
+		unplaced.push(
+			...metas.unplaced,
+			...metas.homeless.map(({ instance }) => ({
+				instance: instanceKey(instance),
+				reason: `Rojo wrote ${RojoFile.INIT_META} for a property or attribute changed in Studio, and no one folder of the project is this instance; set it on its node in the tree of the config`,
+			}))
+		);
+
 		const expected: Expected[] = [];
 		const { instances, strays } = addedInstances(fresh, (folder) =>
 			known.has(folder)
@@ -785,7 +1003,20 @@ export class CoreSyncbackService implements SyncbackService {
 		const folders = new Set(
 			fresh.filter(({ folder }) => folder).map(({ path: at }) => at)
 		);
+		const additions: TreeChange[] = [];
 		for (const instance of instances) {
+			const node = nodeAt(instance.parentFolder);
+			if (node) {
+				const addition = await this.nodeOf(
+					prepared,
+					instance,
+					node,
+					folders
+				);
+				if ("reason" in addition) unplaced.push(addition);
+				else additions.push(addition);
+				continue;
+			}
 			const placed = await this.place(
 				prepared,
 				router,
@@ -810,6 +1041,12 @@ export class CoreSyncbackService implements SyncbackService {
 			}
 			expected.push(...placed.expected);
 		}
+		const edited = await this.editTree(request, prepared, additions);
+		for (const operation of edited.operations) {
+			await touch(operation.file);
+			operations.push(operation);
+		}
+		unplaced.push(...edited.unplaced);
 		return new CoreSyncbackPlan(
 			request.project,
 			unplaced,
@@ -821,33 +1058,137 @@ export class CoreSyncbackService implements SyncbackService {
 		);
 	}
 
-	/** What Rojo changed in the nodes of the project file it ran on, as an edit of the config's own tree; a node the tree does not have, which routing made, has no place for it. */
+	/** A new instance Rojo wrote into the folder of a node with no `$path`, as a child node of that node; one the tree can't describe has no place. */
+	private async nodeOf(
+		prepared: Prepared,
+		instance: AddedInstance,
+		node: readonly string[],
+		folders: ReadonlySet<string>
+	): Promise<TreeChange | UnplacedInstance> {
+		const entries: WrittenEntry[] = [];
+		for (const file of instance.files) {
+			const at = `${instance.parentFolder}/${file.join("/")}`;
+			if (folders.has(at)) entries.push({ path: file });
+			else if (isNodeFile(file[file.length - 1]))
+				entries.push({
+					path: file,
+					text: await this.fileSystemService.readFile(
+						path.join(prepared.root, at)
+					),
+				});
+			else break;
+		}
+		const made =
+			entries.length === instance.files.length
+				? addedNode(entries)
+				: undefined;
+		if (made)
+			return {
+				node,
+				set: {},
+				remove: [],
+				added: [{ name: instance.name, node: made }],
+			};
+		const written = instance.folder
+			? `the folder ${instance.name}`
+			: instance.files.map((file) => file.join("/")).join(" and ");
+		return {
+			instance: instanceKey([...node, instance.name]),
+			reason: `Rojo writes it as ${written}, and its parent ${instanceKey(node)} is a node of the tree of ${toNative(prepared.configFile)} with no $path; give that node a $path, or create the file by hand`,
+		};
+	}
+
+	/** The meta file of a feature folder that syncback edits, with its text when it is there: the `.meta.jsonc` when the folder has one, as Rojo applies it last, else the `.meta.json`. */
+	private async featureMeta(
+		folder: string
+	): Promise<{ readonly file: string; readonly text?: string }> {
+		for (const name of [RojoFile.INIT_META_JSONC, RojoFile.INIT_META]) {
+			const file = toNative(path.posix.join(folder, name));
+			if (await this.fileSystemService.isFile(file))
+				return {
+					file,
+					text: await this.fileSystemService.readFile(file),
+				};
+		}
+		return { file: toNative(path.posix.join(folder, RojoFile.INIT_META)) };
+	}
+
+	/** The write that sets `keys` in a feature's meta and keeps what else it holds, a key set to `undefined` taken off; `fresh` is the text of a meta that isn't there yet. None when nothing changes, and left out where an ignore glob matches the meta. */
+	private featureMetaWrite(
+		prepared: Prepared,
+		meta: { readonly file: string; readonly text?: string },
+		instance: string,
+		keys: Readonly<Record<string, unknown>>,
+		fresh?: Uint8Array
+	): Operation | UnplacedInstance | undefined {
+		if (this.isIgnored(prepared, toPosix(meta.file)))
+			return {
+				instance,
+				reason: `${meta.file} matches an ignore glob of the project, so it is left alone`,
+			};
+		const kept = Object.entries(keys).filter(
+			([, value]) => value !== undefined
+		);
+		if (meta.text === undefined && kept.length === 0) return undefined;
+		let edited = meta.text ?? "{}";
+		for (const [key, value] of Object.entries(keys))
+			edited = setJsoncValue(edited, [key], value);
+		if (edited === meta.text) return undefined;
+		return {
+			kind: "write",
+			file: meta.file,
+			instance,
+			bytes:
+				meta.text === undefined && fresh
+					? fresh
+					: new TextEncoder().encode(edited),
+		};
+	}
+
+	/** What Rojo changed in the nodes of the project file it ran on, and the nodes `added` for new instances, as an edit of the config's own tree; a node the tree does not have, which routing made, goes into the meta of the feature folder that makes it, or has no place. */
 	private async editTree(
 		request: SyncbackRequest,
-		prepared: Prepared
+		prepared: Prepared,
+		added: readonly TreeChange[]
 	): Promise<{
-		operation?: Operation;
+		operations: Operation[];
 		unplaced: UnplacedInstance[];
 	}> {
 		const ran = await tryWithAsync(async () => {
 			const text = await this.fileSystemService.readFile(prepared.file);
 			return (JSON.parse(text) as RojoProjectFile).tree;
 		});
-		if (ran.isErr() || ran.value === undefined)
-			return {
-				unplaced: [
-					{
-						instance: request.project.projectName,
-						reason: "the project file Rojo rewrote could not be read, so its changes to the nodes of the tree are not written",
-					},
-				],
-			};
-		const allChanges = treeChanges(prepared.mirror.file.tree, ran.value);
-		if (allChanges.length === 0) return { unplaced: [] };
-		const editedInStudio = treeChanges(
-			treeWithoutSerializedOverrides(prepared.mirror.file.tree),
-			treeWithoutSerializedOverrides(ran.value)
-		);
+		const rewritten = ran.isOk() ? ran.value : undefined;
+		const unread: UnplacedInstance[] =
+			rewritten === undefined
+				? [
+						{
+							instance: request.project.projectName,
+							reason: "the project file Rojo rewrote could not be read, so its changes to the nodes of the tree are not written",
+						},
+					]
+				: [];
+		const allChanges = [
+			...(rewritten === undefined
+				? []
+				: treeChanges(prepared.mirror.file.tree, rewritten)),
+			...added,
+		];
+		if (allChanges.length === 0)
+			return { operations: [], unplaced: unread };
+		const editedInStudio =
+			rewritten === undefined
+				? []
+				: treeChanges(
+						treeWithoutSerializedOverrides(
+							prepared.mirror.file.tree
+						),
+						treeWithoutSerializedOverrides(rewritten)
+					);
+		const children = (changes: readonly TreeChange[]) =>
+			changes.flatMap(({ node, added: nodes }) =>
+				nodes.map(({ name }) => [...node, name])
+			);
 		const { project } = request;
 		const current = await tryWithAsync(() =>
 			this.fileSystemService.readFile(prepared.configFile)
@@ -856,30 +1197,93 @@ export class CoreSyncbackService implements SyncbackService {
 			node.length === 0 ? project.projectName : instanceKey(node);
 		if (current.isErr())
 			return {
-				unplaced: editedInStudio.map(({ node }) => ({
-					instance: label(node),
-					reason: `${prepared.configFile} could not be read`,
-				})),
+				operations: [],
+				unplaced: [
+					...unread,
+					...[
+						...editedInStudio.map(({ node }) => node),
+						...children(added),
+					].map((node) => ({
+						instance: label(node),
+						reason: `${prepared.configFile} could not be read`,
+					})),
+				],
 			};
 		const applied = applyTreeChanges(current.value, ["tree"], allChanges);
-		const unplaced = applyTreeChanges(
+		const unhomed = applyTreeChanges(
 			current.value,
 			["tree"],
 			editedInStudio
-		).unhomed.map((node) => ({
-			instance: label(node),
-			reason: `a property or attribute changed in Studio, and the tree of ${toNative(prepared.configFile)} has no node for it, since routing made it; add a node for it to the tree`,
-		}));
-		if (applied.text === current.value) return { unplaced };
-		return {
-			unplaced,
-			operation: {
+		).unhomed;
+		const routed = editedInStudio.filter(
+			(change) =>
+				isMetaChange(change) &&
+				unhomed.some(
+					(node) => instanceKey(node) === instanceKey(change.node)
+				)
+		);
+		const metas =
+			request.project.compiledPath === undefined
+				? featureMetas(
+						prepared.layout,
+						routed.map((change) => ({
+							instance: change.node,
+							edit: change,
+						})),
+						(a, b) =>
+							isSameJson([a.set, a.remove], [b.set, b.remove])
+					)
+				: {
+						placed: [],
+						unplaced: [],
+						homeless: routed.map((change) => ({
+							instance: change.node,
+							edit: change,
+						})),
+					};
+		const operations: Operation[] = [];
+		const unplaced: UnplacedInstance[] = [...unread, ...metas.unplaced];
+		for (const { folder, instance, edit } of metas.placed) {
+			const keys: Record<string, unknown> = {};
+			for (const [key, value] of Object.entries(edit.set))
+				keys[META_KEYS[key]] = value;
+			for (const key of edit.remove) keys[META_KEYS[key]] = undefined;
+			const written = this.featureMetaWrite(
+				prepared,
+				await this.featureMeta(folder),
+				instanceKey(instance),
+				keys
+			);
+			if (written === undefined) continue;
+			if ("reason" in written) unplaced.push(written);
+			else operations.push(written);
+		}
+		const handled = new Set(
+			routed
+				.filter(
+					(change) =>
+						!metas.homeless.some(
+							({ instance }) =>
+								instanceKey(instance) ===
+								instanceKey(change.node)
+						)
+				)
+				.map(({ node }) => instanceKey(node))
+		);
+		for (const node of unhomed)
+			if (!handled.has(instanceKey(node)))
+				unplaced.push({
+					instance: label(node),
+					reason: `a property or attribute changed in Studio, and the tree of ${toNative(prepared.configFile)} has no node for it, since routing made it; add a node for it to the tree`,
+				});
+		if (applied.text !== current.value)
+			operations.push({
 				kind: "write",
 				file: prepared.configFile,
 				instance: label(allChanges[0].node),
 				bytes: new TextEncoder().encode(applied.text),
-			},
-		};
+			});
+		return { operations, unplaced };
 	}
 
 	/** Where routing puts a new instance, as the files to write; left out when routing can't place it, when a file is already there, or when an ignore glob matches where it goes. */
@@ -1004,8 +1408,8 @@ export class CoreSyncbackService implements SyncbackService {
 	}
 
 	/** The instance a path of the mirror is, as an instance key: its folders, then the instance its file makes. */
-	private static instanceAt(mirror: string): string {
-		const names = mirror.split("/");
+	private static instanceAt(mirror: SyncbackMirror, at: string): string {
+		const names = mirror.instancePathOf(at);
 		const last = names[names.length - 1];
 		return instanceKey([
 			...names.slice(0, -1),
@@ -1251,12 +1655,13 @@ export class CoreSyncbackService implements SyncbackService {
 				covered = fromRojo.has(`${asKind} ${dir}`);
 			if (!covered) add(asKind, file);
 		}
+		const shown = withoutRemovedInside(listed);
 		return projectFile
 			? [
 					projectFile,
-					...listed.filter(({ file }) => file !== projectFile.file),
+					...shown.filter(({ file }) => file !== projectFile.file),
 				]
-			: listed;
+			: shown;
 	}
 
 	/** Writes again in memory and compares: a file syncback placed that lands elsewhere than the place had it is a warning. A compiled path holds what a tool wrote, which the write does not place. */

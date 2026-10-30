@@ -152,7 +152,7 @@ export function commandHarness(
 	services.set(RojoCommandService, rojoCommands);
 	services.set(
 		SyncbackService,
-		new CoreSyncbackService(fs, writeService, rojoCommands)
+		new CoreSyncbackService(config, fs, writeService, rojoCommands)
 	);
 	services.set(
 		ServeService,

@@ -10,7 +10,11 @@ import {
 	configOf,
 	writeFiles,
 } from "../../write/__tests__/fixtures.js";
-import { selectionOf } from "../../config/__tests__/mock-config-service.js";
+import {
+	MockConfigService,
+	mockEntry,
+	selectionOf,
+} from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
 	RojoCommandRequest,
@@ -71,6 +75,7 @@ class FakeRojo implements RojoCommandService {
 
 describe("CoreSyncbackService", () => {
 	let fs: MemoryFileSystemService;
+	let configs: MockConfigService;
 	let rojo: FakeRojo;
 	let service: CoreSyncbackService;
 	let config: ResolvedConfig;
@@ -99,7 +104,9 @@ describe("CoreSyncbackService", () => {
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
 		rojo = new FakeRojo(fs);
+		configs = new MockConfigService([]);
 		service = new CoreSyncbackService(
+			configs,
 			fs,
 			writeServiceOf(fs, new CoreIndexService(fs)),
 			rojo
@@ -458,6 +465,34 @@ describe("CoreSyncbackService", () => {
 		expect(result.warnings).toEqual([]);
 	});
 
+	it("should write a new feature into the one source path no other config beside it lists", async () => {
+		await prepare(["shared/Combat/Server/Combat.luau"], {
+			file: abs("game.rogen.json"),
+			sourcePaths: [abs("shared"), abs("place")],
+		});
+		configs.entries = [
+			mockEntry({}, abs("game.rogen.json")),
+			mockEntry(
+				{ sourcePaths: [abs("shared"), abs("lobby")] },
+				abs("lobby.rogen.json")
+			),
+		];
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Quest", "Main.luau"),
+				"return 1"
+			);
+			return [];
+		};
+
+		const result = (await service.apply(request)).unwrap();
+
+		expect(await fs.readFile(abs("place/Quest/Server/Main.luau"))).toBe(
+			"return 1"
+		);
+		expect(result.warnings).toEqual([]);
+	});
+
 	it("should not overwrite a file that is already where a new instance would go", async () => {
 		await prepare(["src/Combat/Server/Combat.luau"]);
 		rojo.say = async () => {
@@ -508,6 +543,90 @@ describe("CoreSyncbackService", () => {
 		expect(plan.unplaced).toEqual([]);
 	});
 
+	it("should remove a route folder it emptied when the place no longer holds its instance", async () => {
+		await prepare([
+			"src/Inventory/Server/Bag.luau",
+			"src/Inventory/Save@server.luau",
+			"src/Inventory/Shared/Types.luau",
+		]);
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Inventory"), true);
+			await writeFiles(
+				fs,
+				".rogen-syncback/mirror/ServerScriptService/Bags/Bag.luau",
+				".rogen-syncback/mirror/ServerScriptService/Bags/Save.luau"
+			);
+			return [];
+		};
+
+		await service.apply(request);
+
+		expect(await fs.exists(abs("src/Inventory/Server"))).toBe(false);
+		expect(await fs.exists(abs("src/Inventory/Shared/Types.luau"))).toBe(
+			true
+		);
+	});
+
+	it("should remove the folders above a route folder it emptied up to the source path, and list them as one removal", async () => {
+		await prepare([
+			"src/Combat/Server/Hit.luau",
+			"src/Combat/Server/Damage/Calc.luau",
+			"src/Inventory/Shared/Types.luau",
+		]);
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Combat"), true);
+			return [
+				`Removing ${path.join(".rogen-syncback", "mirror", "ServerScriptService", "Combat")}`,
+			];
+		};
+
+		const done = (await service.apply(request)).unwrap();
+
+		expect(done.changes).toEqual([
+			{ kind: "remove", file: abs("src/Combat") },
+		]);
+		expect(done.listed).toEqual(done.changes);
+		expect(await fs.exists(abs("src/Combat"))).toBe(false);
+		expect(await fs.isDirectory(abs("src"))).toBe(true);
+	});
+
+	it("should keep an empty folder it did not remove in a folder it emptied", async () => {
+		await prepare([
+			"src/Inventory/Server/Bag.luau",
+			"src/Inventory/Save@server.luau",
+		]);
+		await fs.createDirectory(abs("src/Inventory/Notes"));
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Inventory"), true);
+			return [];
+		};
+
+		await service.apply(request);
+
+		expect(await fs.exists(abs("src/Inventory/Server"))).toBe(false);
+		expect(await fs.isDirectory(abs("src/Inventory/Notes"))).toBe(true);
+	});
+
+	it("should keep a route folder it emptied when the place still holds its instance", async () => {
+		await prepare([
+			"src/Inventory/Server/Bag.luau",
+			"src/Inventory/Save@server.luau",
+		]);
+		rojo.say = async () => {
+			await fs.delete(
+				mirror("ServerScriptService", "Inventory", "Bag.luau")
+			);
+			return [];
+		};
+
+		await service.apply(request);
+
+		expect(await fs.isDirectory(abs("src/Inventory/Server"))).toBe(true);
+		expect(await fs.exists(abs("src/Inventory/Save@server.luau"))).toBe(
+			true
+		);
+	});
+
 	it("should mirror a folder the tree mounts too, so a plan writes nothing outside the mirror", async () => {
 		await writeFiles(fs, "Packages/Lib.luau");
 		await prepare(["src/Combat/Server/Combat.luau"], {
@@ -539,6 +658,132 @@ describe("CoreSyncbackService", () => {
 			{ kind: "write", file: abs("Packages/Lib.luau") },
 		]);
 		expect(await fs.readFile(abs("Packages/Lib.luau"))).toBe("");
+	});
+
+	describe("with a node that has no $path", () => {
+		const tree = {
+			$className: "DataModel",
+			ReplicatedStorage: {
+				Remotes: {
+					$className: "Folder",
+					Hit: { $className: "RemoteEvent" },
+				},
+			},
+		};
+
+		beforeEach(async () => {
+			await prepare(["src/Combat/Server/Combat.luau"], {
+				project: { tree },
+			});
+			await fs.writeFile(
+				abs("default.rogen.json"),
+				JSON.stringify({ tree }, undefined, "\t")
+			);
+		});
+
+		/** Writes a file where Rojo writes the new children of the node at `node`. */
+		const writeIntoNode = async (
+			node: readonly string[],
+			file: string,
+			text: string
+		) => {
+			let found = JSON.parse(rojo.projectTexts[0]).tree;
+			for (const name of node) found = found[name];
+			await fs.writeFile(path.join(abs(found.$path), file), text);
+		};
+
+		it("should add an instance Rojo wrote there to that node in the config's tree", async () => {
+			rojo.say = async () => {
+				await writeIntoNode(
+					["ReplicatedStorage", "Remotes"],
+					"Buy.model.json",
+					JSON.stringify({ className: "RemoteEvent" })
+				);
+				return [];
+			};
+
+			const done = (await service.apply(request)).unwrap();
+
+			expect(done.changes).toEqual([
+				{ kind: "write", file: abs("default.rogen.json") },
+			]);
+			expect(done.unplaced).toEqual([]);
+			expect(
+				JSON.parse(await fs.readFile(abs("default.rogen.json"))).tree
+			).toEqual({
+				...tree,
+				ReplicatedStorage: {
+					Remotes: {
+						...tree.ReplicatedStorage.Remotes,
+						Buy: { $className: "RemoteEvent" },
+					},
+				},
+			});
+		});
+
+		it("should still add an instance Rojo wrote there when the project file Rojo rewrote can't be read", async () => {
+			rojo.say = async () => {
+				await writeIntoNode(
+					["ReplicatedStorage", "Remotes"],
+					"Buy.model.json",
+					JSON.stringify({ className: "RemoteEvent" })
+				);
+				await fs.writeFile(abs("rogen-syncback.project.json"), "{");
+				return [];
+			};
+
+			const done = (await service.apply(request)).unwrap();
+
+			expect(done.unplaced).toEqual([
+				{
+					instance: config.projectName,
+					reason: "the project file Rojo rewrote could not be read, so its changes to the nodes of the tree are not written",
+				},
+			]);
+			expect(
+				JSON.parse(await fs.readFile(abs("default.rogen.json"))).tree
+					.ReplicatedStorage.Remotes.Buy
+			).toEqual({ $className: "RemoteEvent" });
+		});
+
+		it("should say that a node Rojo added with a $path under a node of the tree has no place", async () => {
+			rojo.say = async () => {
+				const project = JSON.parse(rojo.projectTexts[0]);
+				project.tree.ReplicatedStorage.Remotes.Kit = { $path: "kit" };
+				await fs.writeFile(
+					abs("rogen-syncback.project.json"),
+					JSON.stringify(project)
+				);
+				return [];
+			};
+
+			const plan = (await service.plan(request)).unwrap();
+
+			expect(plan.unplaced).toMatchObject([
+				{ instance: "ReplicatedStorage/Remotes/Kit" },
+			]);
+		});
+
+		it("should say how to keep an instance there that the tree can't describe, and write nothing for it", async () => {
+			rojo.say = async () => {
+				await writeIntoNode(
+					["ReplicatedStorage", "Remotes"],
+					"Run.server.luau",
+					"print(1)"
+				);
+				return [];
+			};
+
+			const plan = (await service.plan(request)).unwrap();
+
+			expect(plan.changes).toEqual([]);
+			expect(plan.unplaced).toEqual([
+				{
+					instance: "ReplicatedStorage/Remotes/Run",
+					reason: `Rojo writes it as Run.server.luau, and its parent ReplicatedStorage/Remotes is a node of the tree of ${abs("default.rogen.json")} with no $path; give that node a $path, or create the file by hand`,
+				},
+			]);
+		});
 	});
 
 	describe("with a compiledPath", () => {
@@ -868,26 +1113,329 @@ describe("CoreSyncbackService", () => {
 		expect(copied).toBe(true);
 	});
 
-	it("should list a property Rojo wrote for a folder no one folder of the project is", async () => {
-		await prepare([
-			"src/Inventory/Bag@server.luau",
-			"src/Inventory/Save@server.luau",
-		]);
-		rojo.say = async () => {
+	describe("with a property set on the folder of a feature", () => {
+		const meta = '{"attributes":{"Owner":"you"}}';
+
+		const writeMeta = (...instancePath: string[]) =>
+			fs.writeFile(mirror(...instancePath, "init.meta.json"), meta);
+
+		/** Has Rojo set `$attributes` on the nodes at each instance path of the project file it ran on. */
+		const rewriteNodes = async (
+			attributes: Record<string, unknown>,
+			...nodes: string[][]
+		) => {
+			const project = JSON.parse(rojo.projectTexts[0]);
+			for (const node of nodes) {
+				let found = project.tree;
+				for (const name of node) found = found[name];
+				found.$attributes = attributes;
+			}
 			await fs.writeFile(
-				mirror("ServerScriptService", "Inventory", "init.meta.json"),
-				"{}"
+				abs("rogen-syncback.project.json"),
+				JSON.stringify(project)
+			);
+		};
+
+		it("should write the meta Rojo wrote in its routing folder into the feature folder", async () => {
+			await prepare(["src/Combat/Server/Main.server.luau"]);
+			rojo.say = async () => {
+				await writeMeta("ServerScriptService", "Combat");
+				return [];
+			};
+
+			const done = (await service.apply(request)).unwrap();
+
+			expect(done.changes).toEqual([
+				{ kind: "write", file: abs("src/Combat/init.meta.json") },
+			]);
+			expect(done.unplaced).toEqual([]);
+			expect(await fs.readFile(abs("src/Combat/init.meta.json"))).toBe(
+				meta
+			);
+			expect(
+				await fs.exists(abs("src/Combat/Server/init.meta.json"))
+			).toBe(false);
+		});
+
+		it("should write the meta of a feature written only in names that spell the route into its folder", async () => {
+			await prepare([
+				"src/Inventory/Bag@server.luau",
+				"src/Inventory/Save@server.luau",
+			]);
+			rojo.say = async () => {
+				await writeMeta("ServerScriptService", "Inventory");
+				return [];
+			};
+
+			const plan = (await service.plan(request)).unwrap();
+
+			expect(plan.changes).toEqual([
+				{ kind: "write", file: abs("src/Inventory/init.meta.json") },
+			]);
+			expect(plan.unplaced).toEqual([]);
+		});
+
+		it("should list a property set on one of the instances a feature folder makes, as its meta sets every one", async () => {
+			await prepare([
+				"src/Inventory/Server/Bag.luau",
+				"src/Inventory/Shared/Item.luau",
+			]);
+			rojo.say = async () => {
+				await writeMeta("ServerScriptService", "Inventory");
+				return [];
+			};
+
+			const plan = (await service.plan(request)).unwrap();
+
+			expect(plan.changes).toEqual([]);
+			expect(plan.unplaced).toMatchObject([
+				{
+					instance: "ServerScriptService/Inventory",
+					reason: expect.stringContaining(
+						"ReplicatedStorage/Shared/Inventory"
+					),
+				},
+			]);
+		});
+
+		it("should write a property set alike on every instance a feature folder makes into its meta", async () => {
+			await prepare([
+				"src/Inventory/Server/Bag.luau",
+				"src/Inventory/Shared/Item.luau",
+			]);
+			rojo.say = async () => {
+				await writeMeta("ServerScriptService", "Inventory");
+				await writeMeta("ReplicatedStorage", "Shared", "Inventory");
+				return [];
+			};
+
+			const plan = (await service.plan(request)).unwrap();
+
+			expect(plan.changes).toEqual([
+				{ kind: "write", file: abs("src/Inventory/init.meta.json") },
+			]);
+			expect(plan.unplaced).toEqual([]);
+		});
+
+		it("should edit the feature's meta when Rojo changed what it set on the feature's instance", async () => {
+			await prepare([
+				"src/Combat/Server/Main.server.luau",
+				"src/Combat/init.meta.json",
+			]);
+			await fs.writeFile(
+				abs("src/Combat/init.meta.json"),
+				'{\n\t"attributes": { "Owner": "me" }\n}\n'
+			);
+			await fs.writeFile(
+				abs("default.rogen.json"),
+				'{"tree":{"$className":"DataModel"}}'
+			);
+			await writeServiceOf(fs, new CoreIndexService(fs)).write(
+				request.selection
+			);
+			rojo.say = async () => {
+				await rewriteNodes({ Owner: "you" }, [
+					"ServerScriptService",
+					"Combat",
+				]);
+				return [];
+			};
+
+			const done = (await service.apply(request)).unwrap();
+
+			expect(done.unplaced).toEqual([]);
+			expect(done.changes).toEqual([
+				{ kind: "write", file: abs("src/Combat/init.meta.json") },
+			]);
+			expect(await fs.readFile(abs("src/Combat/init.meta.json"))).toBe(
+				'{\n\t"attributes": { "Owner": "you" }\n}\n'
+			);
+		});
+
+		it("should write into the feature's meta.jsonc, keeping its comments and other keys", async () => {
+			await prepare([
+				"src/Combat/Server/Main.server.luau",
+				"src/Combat/init.meta.jsonc",
+			]);
+			await fs.writeFile(
+				abs("src/Combat/init.meta.jsonc"),
+				'{\n\t// kept\n\t"ignoreUnknownInstances": true\n}\n'
+			);
+			await writeServiceOf(fs, new CoreIndexService(fs)).write(
+				request.selection
+			);
+			rojo.say = async () => {
+				await writeMeta("ServerScriptService", "Combat");
+				return [];
+			};
+
+			const done = (await service.apply(request)).unwrap();
+
+			expect(done.changes).toEqual([
+				{ kind: "write", file: abs("src/Combat/init.meta.jsonc") },
+			]);
+			const text = await fs.readFile(abs("src/Combat/init.meta.jsonc"));
+			expect(text).toContain("// kept");
+			expect(text).toContain('"ignoreUnknownInstances": true');
+			expect(text).toContain('"Owner": "you"');
+			expect(await fs.exists(abs("src/Combat/init.meta.json"))).toBe(
+				false
+			);
+		});
+
+		it("should leave a feature's meta alone where an ignore glob matches it", async () => {
+			await prepare(["src/Combat/Server/Main.server.luau"], {
+				project: {
+					tree: { $className: "DataModel" },
+					syncbackRules: { ignorePaths: ["src/Combat/init.meta.json"] },
+				},
+			});
+			rojo.say = async () => {
+				await writeMeta("ServerScriptService", "Combat");
+				return [];
+			};
+
+			const plan = (await service.plan(request)).unwrap();
+
+			expect(plan.changes).toEqual([]);
+			expect(plan.unplaced).toMatchObject([
+				{
+					instance: "ServerScriptService/Combat",
+					reason: expect.stringContaining("ignore glob"),
+				},
+			]);
+		});
+
+		it("should list a change Rojo made on one of the instances whose feature meta sets several", async () => {
+			await prepare([
+				"src/Inventory/Server/Bag.luau",
+				"src/Inventory/Shared/Item.luau",
+				"src/Inventory/init.meta.json",
+			]);
+			await fs.writeFile(
+				abs("src/Inventory/init.meta.json"),
+				'{"attributes":{"Owner":"me"}}'
+			);
+			await fs.writeFile(
+				abs("default.rogen.json"),
+				'{"tree":{"$className":"DataModel"}}'
+			);
+			await writeServiceOf(fs, new CoreIndexService(fs)).write(
+				request.selection
+			);
+			rojo.say = async () => {
+				await rewriteNodes({ Owner: "you" }, [
+					"ServerScriptService",
+					"Inventory",
+				]);
+				return [];
+			};
+
+			const plan = (await service.plan(request)).unwrap();
+
+			expect(plan.changes).toEqual([]);
+			expect(plan.unplaced).toMatchObject([
+				{
+					instance: "ServerScriptService/Inventory",
+					reason: expect.stringContaining(
+						"ReplicatedStorage/Shared/Inventory"
+					),
+				},
+			]);
+		});
+	});
+
+	it.each(["init.luau", "init.server.luau"])(
+		"should list an instance whose name makes Rojo write %s for a folder no one folder of the project is",
+		async (file) => {
+			await prepare([
+				"src/Inventory/Bag@server.luau",
+				"src/Inventory/Save@server.luau",
+			]);
+			rojo.say = async () => {
+				await fs.writeFile(
+					mirror("ServerScriptService", "Inventory", file),
+					"return 2\n"
+				);
+				return [];
+			};
+
+			const plan = (await service.plan(request)).unwrap();
+
+			expect(plan.changes).toEqual([]);
+			expect(plan.unplaced).toEqual([
+				{
+					instance: "ServerScriptService/Inventory/init",
+					reason: `its name makes Rojo write it as ${file}, which Rojo reads as the folder ServerScriptService/Inventory itself; rename it in Studio`,
+				},
+			]);
+		}
+	);
+
+	it.each(["init.txt", "init.model.json"])(
+		"should place an instance whose name makes Rojo write %s, which Rojo reads as a child of the folder",
+		async (file) => {
+			await prepare([
+				"src/Inventory/Bag@server.luau",
+				"src/Inventory/Save@server.luau",
+			]);
+			rojo.say = async () => {
+				await fs.writeFile(
+					mirror("ServerScriptService", "Inventory", file),
+					file === "init.txt"
+						? "x"
+						: JSON.stringify({ className: "RemoteEvent" })
+				);
+				return [];
+			};
+
+			const plan = (await service.plan(request)).unwrap();
+
+			expect(plan.unplaced).toEqual([]);
+			expect(plan.changes).toEqual([
+				{
+					kind: "write",
+					file: abs(
+						`src/Inventory/${file.replace("init", "init@server")}`
+					),
+				},
+			]);
+		}
+	);
+
+	it("should name an instance called init by its instance path in a node's mirror folder", async () => {
+		await prepare(
+			["src/Combat/Server/Combat.luau", "src/Kit/Tools/Hammer.luau"],
+			{
+				routes: { ...ROUTES, Tools: "ServerScriptService/Tools" },
+				project: {
+					tree: {
+						$className: "DataModel",
+						ServerScriptService: {
+							Tools: { $className: "Configuration" },
+						},
+					},
+				},
+			}
+		);
+		rojo.say = async () => {
+			const { tree } = JSON.parse(rojo.projectTexts[0]);
+			await fs.writeFile(
+				path.join(
+					abs(tree.ServerScriptService.Tools.$path),
+					"init.luau"
+				),
+				"return 2\n"
 			);
 			return [];
 		};
 
 		const plan = (await service.plan(request)).unwrap();
 
-		expect(plan.changes).toEqual([]);
-		expect(plan.unplaced).toMatchObject([
+		expect(plan.unplaced).toEqual([
 			{
-				instance: "ServerScriptService/Inventory",
-				reason: expect.stringContaining("init.meta.json"),
+				instance: "ServerScriptService/Tools/init",
+				reason: "its name makes Rojo write it as init.luau, which Rojo reads as the folder ServerScriptService/Tools itself; rename it in Studio",
 			},
 		]);
 	});

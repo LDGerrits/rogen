@@ -5,8 +5,9 @@ const posix = (...segments: string[]) => abs(...segments).replaceAll("\\", "/");
 
 const routerOf = async (
 	files: readonly string[],
-	spec: Parameters<typeof layoutOf>[1] = {}
-) => new ReverseRouter(await layoutOf(files, spec));
+	spec: Parameters<typeof layoutOf>[1] = {},
+	others: Parameters<typeof layoutOf>[2] = []
+) => new ReverseRouter(await layoutOf(files, spec, others));
 
 const mail = {
 	parent: ["ServerScriptService", "Inventory"],
@@ -311,6 +312,23 @@ describe("ReverseRouter", () => {
 			});
 		});
 
+		it("should make a feature folder for a folder whose script is in a folder below it", async () => {
+			const router = await routerOf(["src/Inventory/Server/Bag.luau"]);
+
+			expect(
+				router.place({
+					...quest,
+					files: [
+						["Quest", "Tracker", "init.luau"],
+						["Quest", "Tracker", "Child.luau"],
+					],
+				})
+			).toEqual({
+				kind: "placed",
+				home: { dir: posix("src/Quest/Server"), contents: true },
+			});
+		});
+
 		it("should put a file in the routing folder of the source path", async () => {
 			const router = await routerOf(["src/Inventory/Server/Bag.luau"]);
 
@@ -402,6 +420,96 @@ describe("ReverseRouter", () => {
 					folder: true,
 				})
 			).toMatchObject({
+				kind: "conflict",
+				reason: expect.stringContaining("source path"),
+			});
+		});
+
+		it("should go in the one source path named for the place", async () => {
+			const router = await routerOf(["src/common/A/Server/X.luau"], {
+				file: abs("game.rogen.json"),
+				sourcePaths: [abs("src/common"), abs("src/game")],
+			});
+
+			expect(router.place(quest)).toEqual({
+				kind: "placed",
+				home: { dir: posix("src/game/Quest/Server"), contents: true },
+			});
+		});
+
+		it("should go in the source path that already holds a feature folder of its name", async () => {
+			const router = await routerOf(
+				["src/common/Quest/Shared/Log.luau"],
+				{
+					file: abs("game.rogen.json"),
+					sourcePaths: [abs("src/common"), abs("src/game")],
+				}
+			);
+
+			expect(router.place(quest)).toEqual({
+				kind: "placed",
+				home: { dir: posix("src/common/Quest/Server"), contents: true },
+			});
+		});
+
+		it("should go in the one source path inside the config's folder when the others are outside it", async () => {
+			const router = await routerOf(
+				["projects/common/src/A/Server/X.luau"],
+				{
+					file: abs("projects/game/default.rogen.json"),
+					sourcePaths: [
+						abs("projects/common/src"),
+						abs("projects/game/src"),
+					],
+				}
+			);
+
+			expect(router.place(quest)).toEqual({
+				kind: "placed",
+				home: {
+					dir: posix("projects/game/src/Quest/Server"),
+					contents: true,
+				},
+			});
+		});
+
+		it("should go in the one source path no other config of the project lists", async () => {
+			const router = await routerOf(
+				["shared/A/Server/X.luau"],
+				{
+					file: abs("game.rogen.json"),
+					sourcePaths: [abs("shared"), abs("place")],
+				},
+				[
+					{
+						file: abs("lobby.rogen.json"),
+						sourcePaths: [abs("shared"), abs("lobby")],
+					},
+				]
+			);
+
+			expect(router.place(quest)).toEqual({
+				kind: "placed",
+				home: { dir: posix("place/Quest/Server"), contents: true },
+			});
+		});
+
+		it("should refuse when other configs list every source path", async () => {
+			const router = await routerOf(
+				["shared/A/Server/X.luau"],
+				{
+					file: abs("game.rogen.json"),
+					sourcePaths: [abs("shared"), abs("place")],
+				},
+				[
+					{
+						file: abs("lobby.rogen.json"),
+						sourcePaths: [abs("shared"), abs("place")],
+					},
+				]
+			);
+
+			expect(router.place(quest)).toMatchObject({
 				kind: "conflict",
 				reason: expect.stringContaining("source path"),
 			});

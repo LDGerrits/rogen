@@ -1,0 +1,13 @@
+{
+  "name": "game",
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": { "$properties": { "ClockTime": 14 } },
+    "ReplicatedStorage": {
+      "Remotes": { "$className": "Folder", "Hit": { "$className": "RemoteEvent" } }
+    },
+    "Workspace": { "$properties": { "Gravity": 100 } }
+  },
+  "sourcePaths": ["src"],
+  "routes": { "Server": "ServerScriptService", "Client": "StarterPlayer/StarterPlayerScripts" }
+}

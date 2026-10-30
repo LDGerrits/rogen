@@ -1,0 +1,13 @@
+{
+	"name": "game",
+	"sourcePaths": ["src/common", "src/game"],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"tree": {
+		"$className": "DataModel"
+	}
+}
