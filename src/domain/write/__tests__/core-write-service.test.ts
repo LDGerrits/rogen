@@ -465,6 +465,57 @@ describe("CoreWriteService", () => {
 				expect(checked.errors).toEqual([]);
 			});
 
+			describe("with files in src that nothing mounts", () => {
+				const plain = () =>
+					configOf({
+						file: abs("default.project.json"),
+						sourcePaths: [],
+						routes: {},
+					});
+
+				const codesOf = (diagnostics: readonly Diagnostic[]) =>
+					diagnostics.map(({ code }) => code);
+
+				it("should say nothing of them on a write, as Rojo says nothing", async () => {
+					const [outcome] = (
+						await writeServiceOfFs().write(selectionOf(plain()))
+					).outcomes;
+
+					expect(outcome.kind).toBe("unchanged");
+					expect(outcome.warnings).toEqual([]);
+				});
+
+				it("should say nothing of them on a check that a Rojo command runs", async () => {
+					const [outcome] = (
+						await writeServiceOfFs().check(selectionOf(plain()))
+					).outcomes;
+
+					expect(outcome.warnings).toEqual([]);
+				});
+
+				it("should say nothing of them on a rewrite", async () => {
+					const config = plain();
+
+					const outcome = await writeServiceOfFs().rewrite(
+						new WriteSet([config]),
+						config.file,
+						await new CoreIndexService(fs).list([abs("src")])
+					);
+
+					expect(outcome.warnings).toEqual([]);
+				});
+
+				it("should still warn of them when diagnosed", async () => {
+					const diagnosis = await writeServiceOfFs().diagnose(
+						selectionOf(plain())
+					);
+
+					expect(
+						diagnosis.isOk() && codesOf(diagnosis.value.diagnostics)
+					).toEqual(["scan.unmountedSource"]);
+				});
+			});
+
 			it("should not call it stale", async () => {
 				await fs.writeFile(abs("default.project.json"), "{}");
 

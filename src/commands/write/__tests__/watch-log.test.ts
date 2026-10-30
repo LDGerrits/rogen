@@ -442,6 +442,36 @@ describe("WatchLog.update", () => {
 			]);
 		});
 
+		it("should say it waits for a broken plain project file, which it never writes", () => {
+			const { log, logService } = session();
+			const file = "/repo/default.project.json";
+
+			log.update(
+				updateOf({
+					notices: [
+						{
+							kind: "broken",
+							file,
+							errors: [
+								errorDiagnostic(
+									"x.err",
+									{ resource: file },
+									"bad."
+								),
+							],
+							keptLastValid: true,
+						},
+					],
+				})
+			);
+
+			expect(
+				logService.entries
+					.filter(({ kind }) => kind === "error")
+					.map(({ text }) => text)
+			).toEqual(["Waiting until default.project.json loads."]);
+		});
+
 		it("should say a config that was never valid isn't written, and a config added or removed", () => {
 			const { log, logService } = session();
 			const error = errorDiagnostic(
