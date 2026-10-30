@@ -1,0 +1,11 @@
+// The game
+{
+	"tree": { // the world
+		"$className": "DataModel",
+		"Workspace": { "$className": "Workspace" } // physics
+	},
+	/* where code lives */
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
+	"sourcePaths": ["src"],
+	"name": "Game"
+}

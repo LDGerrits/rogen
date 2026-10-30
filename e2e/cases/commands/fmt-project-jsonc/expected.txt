@@ -1,0 +1,35 @@
+$ rogen fmt-project
+exit 0
+stdout:
+  formatted default.rogen.jsonc
+
+$ rogen fmt-project
+exit 0
+
+$ rogen write
+exit 0
+stdout: (not shown)
+
+written:
+  default.project.json
+  default.rogen.jsonc
+
+default.rogen.jsonc:
+// The game
+{
+  "name": "Game",
+  "sourcePaths": [
+    "src"
+  ],
+  /* where code lives */
+  "routes": {
+    "server": "ServerScriptService",
+    "*": "ReplicatedStorage"
+  },
+  "tree": { // the world
+    "$className": "DataModel",
+    "Workspace": {
+      "$className": "Workspace"
+    } // physics
+  }
+}

@@ -1,4 +1,0 @@
-$ rogen fmt-project
-exit 1
-stderr:
-  default.rogen.jsonc - error: default.rogen.jsonc may hold comments, and formatting writes none. Rename it to default.rogen.json to format it, or format it in your editor. (format.commentsLost)

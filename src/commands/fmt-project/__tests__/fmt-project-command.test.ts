@@ -12,6 +12,8 @@ const CONFIG = JSON.stringify({
 	routes: { "*": "ReplicatedStorage" },
 });
 
+const REFUSED = JSON.stringify({ name: "Game", bogus: 1 });
+
 describe("fmt-project command", () => {
 	let logService: MockLogService;
 	let harness: CommandHarness<MockLogService>;
@@ -103,7 +105,7 @@ describe("fmt-project command", () => {
 	});
 
 	it("should tell a refused file in the document, and exit 1", async () => {
-		await harness.fs.writeFile("/repo/default.rogen.jsonc", CONFIG);
+		await harness.fs.writeFile("/repo/default.rogen.json", REFUSED);
 
 		const result = await harness.run("fmt-project", {
 			positionals: [],
@@ -113,22 +115,36 @@ describe("fmt-project command", () => {
 		expect(result.isErr()).toBe(true);
 		const document = JSON.parse(logService.texts("print")[0]);
 		expect(document.files[0]).toMatchObject({
-			file: "/repo/default.rogen.jsonc",
+			file: "/repo/default.rogen.json",
 			outcome: "failed",
-			diagnostics: [{ code: "format.commentsLost", severity: "error" }],
+			diagnostics: [{ code: "config.unknownField", severity: "error" }],
 		});
 	});
 
-	it("should refuse a default.rogen.jsonc and exit with the diagnostic", async () => {
-		await harness.fs.writeFile("/repo/default.rogen.jsonc", CONFIG);
+	it("should refuse a config that check refuses and exit with the diagnostic", async () => {
+		await harness.fs.writeFile("/repo/default.rogen.json", REFUSED);
 
 		const result = await fmt();
 
 		expect((result as ResultError<Error>).error.message).toContain(
-			"format.commentsLost"
+			"config.unknownField"
 		);
+		expect(await harness.fs.readFile("/repo/default.rogen.json")).toBe(
+			REFUSED
+		);
+	});
+
+	it("should format a default.rogen.jsonc and keep its comments", async () => {
+		await harness.fs.writeFile(
+			"/repo/default.rogen.jsonc",
+			'{ // the game\n"name": "Game" }'
+		);
+
+		const result = await fmt();
+
+		expect(result.isOk()).toBe(true);
 		expect(await harness.fs.readFile("/repo/default.rogen.jsonc")).toBe(
-			CONFIG
+			'{ // the game\n  "name": "Game"\n}'
 		);
 	});
 

@@ -830,16 +830,6 @@ Rogen matches a file to its source by the name a tool gives it. roblox-ts compil
 
 These diagnostics come from `rogen fmt-project`.
 
-### `format.commentsLost` [#format-commentslost]
-
-Error. `rogen fmt-project` won't write a config that has comments, because the formatted text has none. It always refuses a `.rogen.jsonc`, because that file is meant to hold comments. Nothing is written.
-
-```
-error: default.rogen.json has comments, and formatting writes none. Remove them first, or format it in your editor. (format.commentsLost)
-```
-
-Remove the comments if you don't need them, or format the file in your editor.
-
 ### `format.writeFailed` [#format-writefailed]
 
 Error. `rogen fmt-project` couldn't write the formatted config. The message gives the reason, without the system's error code.

@@ -443,7 +443,7 @@ describe("domain/rojo/project-text", () => {
 				tree: {},
 				servePlaceIds: [5, 3, 3, 9],
 				blockedPlaceIds: [2, 2],
-			});
+			} as RojoProjectFile);
 
 			expect(JSON.parse(text)).toMatchObject({
 				servePlaceIds: [5, 3, 9],
