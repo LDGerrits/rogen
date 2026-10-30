@@ -20,42 +20,18 @@ v1 had many small rules that could disagree, and each problem got its own switch
 <Steps>
 
 <Step>
-### Commit Your Work
-
-`rogen init` renames files, so start from a clean work tree. Then `git diff` shows everything it changed, and `git checkout .` takes it back.
-
-</Step>
-
-<Step>
 ### Run `rogen init`
 
-[Install v2](/docs/v2/installation) and run `rogen init` in the folder that holds `.rogen.json`. To see the plan first, run `rogen init --dry-run`.
+[Install v2](/docs/v2/installation) and run `rogen init` in the folder that holds `.rogen.json`. Add `--dry-run` to see the plan first.
 
-`init` finds the v1 config and migrates it:
-
-- It writes a config for each mode that ran: `default.rogen.json` for the project v1 wrote to `default.project.json`, and `build.rogen.json` for a Darklua mode that wrote `build.project.json`. A mode whose `build` folder isn't the source folder, such as roblox-ts's `out`, gets it as its `compiledPath`.
-- It takes the tree from the config's `project`, not from the `default.project.json` that v1 generated. From then on, `rogen write` writes that file.
-- It writes routes that keep v1's wrapper folders, such as `"Server": "ServerScriptService/server"`, with your `casing`, `unwrap` and `aliases`. Your scripts land where v1 put them, so your requires keep working.
-- It renames each file that v1 routed by a word in its name to v2's `@` form, such as `Combat_Server.luau` to `Combat@Server.luau`, and each marker file such as `.server` to `@Server`. The instance names stay the same.
-- It renames `.rogen.json` to `.rogen.json.v1`, so that no command reads it.
+`init` writes a config for each v1 mode, with routes that put every script where v1 did, and takes the tree from your `project`. It renames the files that v1 routed by a word in their name to the `@` form, such as `Combat_Server.luau` to `Combat@Server.luau`, and renames `.rogen.json` to `.rogen.json.v1`.
 
 </Step>
 
 <Step>
-### Fix What `init` Couldn't Carry Over
+### Fix the Warnings
 
-`init` warns about each thing it leaves for you, with the file and what to do. These are [tags](#tags), the `.structure`, `.unwrap` and `.sync` marker files, roblox-ts files that v1 routed by their names, and files that v1 placed by the deepest rule. The warnings are listed under [Migration](/docs/v2/diagnostics#migration) on the diagnostics page.
-
-</Step>
-
-<Step>
-### Run `rogen check`
-
-```bash
-rogen check
-```
-
-The step is done when `rogen check` prints nothing.
+`init` warns about what it can't carry over: [tags](#tags), v1's marker files that don't route, roblox-ts files that v1 routed by their names, and files that v1 placed by the deepest rule. Each warning says what to do. Then run `rogen check` until it prints nothing.
 
 </Step>
 
@@ -68,7 +44,7 @@ Run `rogen serve` and compare Studio's Explorer with your v1 build. When every s
 
 </Steps>
 
-If you ran an earlier v2's `rogen init` and it lifted the tree that v1 generated, start again: delete `default.rogen.json`, rename `.rogen.json.v1` back to `.rogen.json`, and run `rogen init`.
+If an earlier v2 `rogen init` lifted the tree that v1 generated, delete `default.rogen.json`, rename `.rogen.json.v1` back to `.rogen.json`, and run `rogen init` again.
 
 ## What Replaces Each v1 Feature
 
