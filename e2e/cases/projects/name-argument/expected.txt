@@ -2,21 +2,21 @@ $ rogen write dist
 exit 0
 stdout:
   rogen write
-  dist.project.json · wrote
+  Wrote dist.project.json.
   Wrote 1 of 1 project file.
 
 $ rogen write release.project.json
 exit 0
 stdout:
   rogen write
-  release.project.json · wrote
+  Wrote release.project.json.
   Wrote 1 of 1 project file.
 
 $ rogen write default.project.json
 exit 0
 stdout:
   rogen write
-  default.project.json · wrote
+  Wrote default.project.json.
   Wrote 1 of 1 project file.
 
 $ rogen write dist.rogen.json --json

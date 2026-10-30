@@ -268,17 +268,10 @@ export class OutcomeLog {
 				if (quiet) this.logService.debug(label);
 				else this.heading(label);
 			}
-			if (!framed && outcome.kind === "wrote") {
-				this.logService.success(
-					`Wrote ${relativeTo(this.cwd, outcome.config.projectFile)}.`
-				);
-				this.details(outcome.summary);
-				this.diagnostics(diagnostics, outcome.file);
-			} else
-				this.outcome(outcome, diagnostics, {
-					notes,
-					quiet: quiet || outcome.kind === "wouldWrite",
-				});
+			this.outcome(outcome, diagnostics, {
+				notes,
+				quiet: quiet || outcome.kind === "wouldWrite",
+			});
 		}
 	}
 
@@ -320,24 +313,21 @@ export class OutcomeLog {
 			readonly quiet?: boolean;
 		} = {}
 	): void {
-		const note =
-			notes.filter((part) => part !== undefined).join(" · ") || undefined;
-		const line = (said: string) =>
-			[
-				relativeTo(
-					this.cwd,
-					outcome.kind === "notLoaded"
-						? outcome.file
-						: outcome.config.projectFile
-				),
-				said,
-				note,
-			]
-				.filter((part) => part !== undefined)
-				.join(" · ");
+		const said = notes.filter((part) => part !== undefined);
+		const file = relativeTo(
+			this.cwd,
+			outcome.kind === "notLoaded"
+				? outcome.file
+				: outcome.config.projectFile
+		);
+		const line = (state: string) => [file, state, ...said].join(" · ");
 		switch (outcome.kind) {
 			case "wrote":
-				this.logService.success(line(outcome.kind));
+				this.logService.success(
+					said.length > 0
+						? `Wrote ${file} (${said.join(", ")}).`
+						: `Wrote ${file}.`
+				);
 				this.details(outcome.summary);
 				break;
 			case "unchanged":

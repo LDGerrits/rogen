@@ -7,7 +7,7 @@ stdout:
   Created AGENTS.md.
   Created rokit.toml.
   Created src/.
-  default.project.json · wrote
+  Wrote default.project.json.
   Next steps
     Install Rokit with 'curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash' (https://github.com/rojo-rbx/rokit), then run 'rokit install' here.
     Run 'rogen plugin install' to install Rojo's Studio plugin.

@@ -5,8 +5,8 @@ $ rogen write
 exit 0
 stdout:
   rogen write
-  game.project.json · wrote
-  lobby.project.json · wrote
+  Wrote game.project.json.
+  Wrote lobby.project.json.
   Wrote 2 of 2 project files.
 
 written:

@@ -110,7 +110,7 @@ describe("serve command", () => {
 		expect(logService.lines).toEqual([
 			"intro: rogen serve · default.rogen.json",
 			expect.stringMatching(/^step: \d\d:\d\d:\d\d · initial write$/),
-			"success: default.project.json · wrote",
+			"success: Wrote default.project.json.",
 			"success: Serving repo at localhost:34872 · http://localhost:34872/\n  In Studio, press Connect in the Rojo plugin.",
 		]);
 		expect(logService.reserved).toBe(false);
@@ -178,7 +178,7 @@ describe("serve command", () => {
 			expect.stringMatching(
 				/^step: \d\d:\d\d:\d\d · default\.rogen\.json changed · reloaded$/
 			),
-			"success: default.project.json · wrote",
+			"success: Wrote default.project.json.",
 		]);
 	});
 

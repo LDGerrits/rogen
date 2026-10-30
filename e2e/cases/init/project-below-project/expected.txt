@@ -6,7 +6,7 @@ stdout:
   Created tools/default.rogen.json.
   Created tools/AGENTS.md.
   Created tools/src/.
-  tools/default.project.json · wrote
+  Wrote tools/default.project.json.
   Next steps
     In each terminal, start in the project folder:
       cd tools

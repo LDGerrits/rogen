@@ -2,7 +2,7 @@ $ rogen write --color always
 exit 0
 stdout:
   ┌  rogen write
-  │  ✔ default.project.json · wrote
+  │  ✔ Wrote default.project.json.
   │  ▲ default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
   │    src/Save@sever.luau (did you mean "@Server"?)
   │

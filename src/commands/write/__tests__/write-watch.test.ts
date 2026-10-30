@@ -229,7 +229,7 @@ describe("watch", () => {
 
 			expect(logService.reserved).toBe(false);
 			expect(logService.texts("success")).toEqual([
-				"default.project.json · wrote",
+				"Wrote default.project.json.",
 				"Built game.rbxl.",
 				"Built game.rbxl.",
 			]);
@@ -558,7 +558,7 @@ describe("watch", () => {
 			expect(blocks()).toEqual([
 				{
 					title: "initial write",
-					lines: ["lobby/default.project.json · wrote"],
+					lines: ["Wrote lobby/default.project.json."],
 				},
 			]);
 		});

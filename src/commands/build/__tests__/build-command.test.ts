@@ -242,9 +242,9 @@ describe("build command", () => {
 		expect(logService.lines).toEqual([
 			"intro: rogen build · lobby/default.rogen.json, arena/default.rogen.json",
 			"step: lobby/default.rogen.json",
-			"success: lobby/default.project.json · wrote",
+			"success: Wrote lobby/default.project.json.",
 			"step: arena/default.rogen.json",
-			"success: arena/default.project.json · wrote",
+			"success: Wrote arena/default.project.json.",
 			expect.stringMatching(/^outro: /),
 		]);
 	});

@@ -9,7 +9,7 @@ $ rogen write
 exit 0
 stdout:
   rogen write
-  default.project.json · wrote
+  Wrote default.project.json.
   Wrote 1 of 1 project file with 1 warning.
 stderr:
   ::warning file=src/Save@sever.luau,title=route.strayAt::did you mean "@Server"?

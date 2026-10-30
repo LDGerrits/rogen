@@ -146,7 +146,7 @@ describe("OutcomeLog.outcome", () => {
 	it("should say a written config wrote or was unchanged", () => {
 		expect(lines(writtenOf(summaryOf()))[0]).toEqual([
 			"success",
-			"default.project.json · wrote",
+			"Wrote default.project.json.",
 		]);
 		expect(lines(writtenOf(summaryOf(), "unchanged"))[0]).toEqual([
 			"success",
@@ -175,7 +175,7 @@ describe("OutcomeLog.outcome", () => {
 	it("should end the line of a written config with the note", () => {
 		expect(lines(writtenOf(summaryOf()), [], "first build")[0]).toEqual([
 			"success",
-			"default.project.json · wrote · first build",
+			"Wrote default.project.json (first build).",
 		]);
 	});
 
@@ -423,10 +423,10 @@ describe("OutcomeLog report, warnings", () => {
 			])
 		).toEqual([
 			"step: arena/default.rogen.json",
-			"success: arena/default.project.json · wrote",
+			"success: Wrote arena/default.project.json.",
 			"diagnosticWarning: /repo/arena/default.rogen.json - warning: 1 folder is odd: (x.folder)\n  src/Sever",
 			"step: match/default.rogen.json",
-			"success: match/default.project.json · wrote · same warnings as arena/default.rogen.json",
+			"success: Wrote match/default.project.json (same warnings as arena/default.rogen.json).",
 			"outro: Wrote 2 projects with 1 warning.",
 		]);
 	});
@@ -445,7 +445,7 @@ describe("OutcomeLog report, warnings", () => {
 			]).slice(3)
 		).toEqual([
 			"step: match/default.rogen.json",
-			"success: match/default.project.json · wrote",
+			"success: Wrote match/default.project.json.",
 			"diagnosticWarning: /repo/match/default.rogen.json - warning: only here. (x.own)",
 			"outro: Wrote 2 projects with 2 warnings.",
 		]);
@@ -464,7 +464,7 @@ describe("OutcomeLog report, warnings", () => {
 				writtenWith("match", [], [shared]),
 			])[4]
 		).toBe(
-			"success: match/default.project.json · wrote · same warnings as arena/default.rogen.json"
+			"success: Wrote match/default.project.json (same warnings as arena/default.rogen.json)."
 		);
 	});
 

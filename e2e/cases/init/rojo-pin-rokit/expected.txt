@@ -7,7 +7,7 @@ stdout:
   Created AGENTS.md.
   Created rokit.toml.
   Created src/.
-  default.project.json · wrote
+  Wrote default.project.json.
   Next steps
     Run 'rokit install' to install Rojo.
     Run 'rogen plugin install' to install Rojo's Studio plugin.

@@ -274,7 +274,7 @@ describe("init command", () => {
 				"success: Created place/Workspace/init.meta.json.",
 				"success: Created README.md.",
 				"success: Created AGENTS.md.",
-				"success: default.project.json · wrote",
+				"success: Wrote default.project.json.",
 				"step: Next steps",
 				"info: Run:",
 				"info:   rogen serve",

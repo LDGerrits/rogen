@@ -92,8 +92,8 @@ describe("write command", () => {
 
 			expect(log.lines).toEqual([
 				"intro: rogen write",
-				"success: game.project.json · wrote",
-				"success: lobby.project.json · wrote",
+				"success: Wrote game.project.json.",
+				"success: Wrote lobby.project.json.",
 				"outro: Wrote 2 of 2 project files.",
 			]);
 		});
@@ -122,7 +122,7 @@ describe("write command", () => {
 			);
 			expect(await fs.exists(abs("game.project.json"))).toBe(true);
 			expect(await fs.exists(abs("lobby.project.json"))).toBe(false);
-			expect(log.texts("success")).toEqual(["game.project.json · wrote"]);
+			expect(log.texts("success")).toEqual(["Wrote game.project.json."]);
 			expect(log.texts("error")).toEqual([
 				"lobby.rogen.json · not loaded",
 			]);
@@ -201,7 +201,7 @@ describe("write command", () => {
 		);
 		expect(log.lines).toEqual([
 			"intro: rogen write",
-			"success: game.project.json · wrote",
+			"success: Wrote game.project.json.",
 			"info: plain.project.json · plain project, not written",
 			"outro: Wrote 1 of 1 project file.",
 		]);

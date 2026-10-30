@@ -288,7 +288,7 @@ describe("WatchLog.update", () => {
 				resultLine([
 					reportOf(writtenWith(standing), [], false, standing),
 				])
-			).toBe("default.project.json · wrote · 3 warnings as before");
+			).toBe("Wrote default.project.json (3 warnings as before).");
 			expect(
 				resultLine([
 					reportOf(
@@ -298,7 +298,7 @@ describe("WatchLog.update", () => {
 						standing.slice(0, 1)
 					),
 				])
-			).toBe("default.project.json · wrote · 1 warning as before");
+			).toBe("Wrote default.project.json (1 warning as before).");
 		});
 
 		it("should count the warnings it leaves out of a failed write too", () => {
@@ -334,7 +334,7 @@ describe("WatchLog.update", () => {
 			const fresh = warning("new");
 
 			expect(resultLine([reportOf(writtenWith([]), [])])).toBe(
-				"default.project.json · wrote"
+				"Wrote default.project.json."
 			);
 			expect(
 				resultLine([
@@ -345,7 +345,7 @@ describe("WatchLog.update", () => {
 						[warning("old")]
 					),
 				])
-			).toBe("default.project.json · wrote · 1 warning as before");
+			).toBe("Wrote default.project.json (1 warning as before).");
 		});
 
 		it("should say how many diagnostics a rewrite fixed, after the ones left out", () => {
@@ -362,7 +362,7 @@ describe("WatchLog.update", () => {
 					),
 				])
 			).toBe(
-				"default.project.json · wrote · 1 warning as before · 2 warnings fixed"
+				"Wrote default.project.json (1 warning as before, 2 warnings fixed)."
 			);
 			expect(
 				resultLine([
@@ -380,7 +380,7 @@ describe("WatchLog.update", () => {
 						]
 					),
 				])
-			).toBe("default.project.json · wrote · 1 error fixed");
+			).toBe("Wrote default.project.json (1 error fixed).");
 		});
 
 		it("should print a warning two configs of one round share once, and say so on the second", () => {
@@ -416,11 +416,11 @@ describe("WatchLog.update", () => {
 					)
 					.map(({ kind, text }) => [kind, text])
 			).toEqual([
-				["success", "default.project.json · wrote"],
+				["success", "Wrote default.project.json."],
 				["diagnosticWarning", expect.stringContaining(": shared")],
 				[
 					"success",
-					"lobby/default.project.json · wrote · same warnings as default.rogen.json",
+					"Wrote lobby/default.project.json (same warnings as default.rogen.json).",
 				],
 			]);
 		});
