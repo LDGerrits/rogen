@@ -1115,14 +1115,94 @@ Move or rename the file. Run `rogen where` on it to see which route places it. S
 
 ## Migration
 
-This diagnostic comes from a config written for Rogen 1.
+These diagnostics come from a config written for Rogen 1, and from `rogen init` when it migrates one. See [Migrating from v1](/docs/v2/migrating-from-v1).
 
 ### `legacy.config` [#legacy-config]
 
 Error. A `.rogen.json` has keys from Rogen 1, such as `source`, `aliases` or a mode. It is a v1 config, which v2 doesn't read.
 
 ```
-error: this looks like a config for Rogen 1, which v2 doesn't read. See https://rogen-roblox.vercel.app/docs/v2/migrating-from-v1 to migrate it. (legacy.config)
+error: this looks like a config for Rogen 1, which v2 doesn't read. Run 'rogen init' to migrate it, as https://rogen-roblox.vercel.app/docs/v2/migrating-from-v1 says. (legacy.config)
 ```
 
-Rewrite the config in the v2 format. See [Migrating from v1](/docs/v2/migrating-from-v1).
+Run `rogen init` in the config's folder. It writes a v2 config in its place and renames the v1 config to `.rogen.json.v1`.
+
+### `legacy.projectUnreadable` [#legacy-projectunreadable]
+
+Error. The v1 config's `project` names a file that `init` can't read as a project file, so `init` has no tree to start from. It writes nothing.
+
+```
+error: its "project" names base.project.json, which couldn't be read as a project file, so init can't take its tree. Fix the path or the file, then run 'rogen init' again. (legacy.projectUnreadable)
+```
+
+Fix the path in `project`, or the file it names, and run `rogen init` again.
+
+### `legacy.aliasKey` [#legacy-aliaskey]
+
+Warning. An alias of the v1 config can't become a route. Its key isn't a route key, which is letters and digits that start with a letter, such as `ui-kit`. Or it sends files to something that isn't a service, where v1 couldn't place them either.
+
+```
+warning: the alias "ui-kit" can't be a route key, which is letters and digits that start with a letter, so it has no route. Add the route you want by hand, and rename the files that use the alias. (legacy.aliasKey)
+```
+
+Add the route you want to `routes`, under a key that is letters and digits, such as `"UiKit": "StarterGui/client"`. Then rename the files and folders that used the alias, such as `Menu_ui-kit.luau` to `Menu@UiKit.luau`.
+
+### `legacy.outputClash` [#legacy-outputclash]
+
+Warning. Two modes of the v1 config wrote the same project file, so `init` writes one config for it, from the first mode.
+
+```
+warning: its release mode wrote default.project.json, as an earlier mode did, so init writes only one default.rogen.json. To keep both, copy default.rogen.json, give the copy another name and edit it. (legacy.outputClash)
+```
+
+Copy the config under another name, such as `release.rogen.json`, and change what differs, such as its `compiledPath`.
+
+### `legacy.tags` [#legacy-tags]
+
+Warning. The v1 config has tags, which v2 doesn't have. `init` renames none of the files that tags picked, and the message lists them.
+
+```
+warning: v1's tags (dev) aren't carried over: v2 has none, and init renames none of the files they pick, src/Debug/Cheats_dev.luau. Move each into a source path of its own. See https://rogen-roblox.vercel.app/docs/v2/migrating-from-v1#tags. (legacy.tags)
+```
+
+Move each file into a source path of its own, as [Tags](/docs/v2/migrating-from-v1#tags) shows.
+
+### `legacy.marker` [#legacy-marker]
+
+Warning. A folder has a v1 marker file that v2 has no use for: `.structure`, `.unwrap` or `.sync`. `init` leaves the file where it is.
+
+```
+warning: v1 mounted this folder as it is. v2 has no such marker: mount the folder with a $path node in the tree, and delete this file. (legacy.marker)
+```
+
+Do what the message says for the marker, then delete the file. For `.structure`, put an `@` marker of the folder's route in it. For `.unwrap`, give the folder a route whose target has no wrapper folder. For `.sync`, mount the folder with a `$path` node in the `tree`.
+
+### `legacy.typeScriptName` [#legacy-typescriptname]
+
+Warning. A roblox-ts file has a routing word in its name that v1 read and v2 doesn't, such as `CombatServer.ts`. `init` doesn't rename it, since renaming a file breaks the imports of it.
+
+```
+warning: v1 routed this file by a word in its name, which v2 doesn't read. init leaves it as it is, since renaming it breaks the imports of it: rename it to Combat@Server.ts and update those imports. (legacy.typeScriptName)
+```
+
+Rename the file to the name in the message, and update the imports of it.
+
+### `legacy.renameClash` [#legacy-renameclash]
+
+Warning. `init` can't rename a file that v1 routed by its name. Another file already has the new name, or two v1 configs route the file to different names.
+
+```
+warning: v1 routed this file by a word in its name, and Combat@Server.luau, the name that keeps it there in v2, is taken in its folder, so init leaves it as it is. Rename one of them. .rogen.json is the config that routed it. (legacy.renameClash)
+```
+
+Rename one of the two files. When two configs route a file apart, check where it lands with `rogen where`.
+
+### `legacy.outrankedRoute` [#legacy-outrankedroute]
+
+Warning. A file lands somewhere other than where v1 put it. v1 went by the last routing word in a file's path, and v2 goes by the outermost route. So `src/Boot/ReplicatedFirst/Loader.client.luau` went to the client in v1, and goes to `ReplicatedFirst` in v2.
+
+```
+warning: v1 put this file in StarterPlayer/StarterPlayerScripts/client, by the last routing word in its path, and v2 puts it in ReplicatedFirst/client: in v2 the outermost route governs. To keep it where it was, move it out of the folder that routes it to ReplicatedFirst/client. (legacy.outrankedRoute)
+```
+
+Move the file out of the routing folder, so that its own route places it. Or keep it where v2 puts it.

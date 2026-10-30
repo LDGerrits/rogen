@@ -1,7 +1,9 @@
+import { Disposable } from "../../base/disposable.js";
 import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
+import { PlannedMove, ProjectMigration } from "./project-migration.js";
 
 export interface NextSteps {
 	/** The folder `init` set up, relative to the one it ran in, which every step runs from; left out when that is the same folder. */
@@ -69,6 +71,8 @@ export interface InitPlan {
 	readonly summary: readonly SummaryRow[];
 	/** Runs before any file is written; a failure writes nothing. */
 	readonly scaffold?: PlannedScaffold;
+	/** Run before any file is written, so a file may be written where one was moved away. */
+	readonly moves: readonly PlannedMove[];
 	readonly files: readonly PlannedFile[];
 	/** Relative to `directory`; created by `init` when missing. */
 	readonly directories: readonly string[];
@@ -89,6 +93,7 @@ export interface InitPlan {
 
 export type InitWritten =
 	| { readonly kind: "scaffold"; readonly scaffold: PlannedScaffold }
+	| { readonly kind: "move"; readonly move: PlannedMove }
 	| { readonly kind: "file"; readonly file: PlannedFile }
 	| { readonly kind: "directory"; readonly directory: string }
 	/** `failed` is why `git init` did not make a repository, which leaves the project complete without one. */
@@ -120,6 +125,9 @@ export interface InitService {
 		onWritten: (written: InitWritten) => void,
 		dryRun?: boolean
 	): Promise<Result<void, Error>>;
+
+	/** Asks `migration` about every folder `init` plans before anything else; the first that finds a project plans it instead of a new one. Dispose the result to remove it. */
+	registerMigration(migration: ProjectMigration): Disposable;
 
 	/** Brings the Rogen block of the agent files of `folder`, and of the folders above it up to the repository root, to this version's, and returns the files it rewrote. A file without the block is never touched. */
 	refreshAgentRules(folder: string): Promise<string[]>;

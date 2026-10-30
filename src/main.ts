@@ -55,6 +55,7 @@ import { CoreInitService } from "./domain/init/core-init-service.js";
 import { ToolLocator } from "./domain/toolchain/tool-locator.js";
 import { InitService } from "./domain/init/init-service.js";
 import { LegacyConfig } from "./domain/legacy/legacy-config.js";
+import { LegacyMigration } from "./domain/legacy/legacy-migration.js";
 import { CoreToolchainService } from "./domain/toolchain/core-toolchain-service.js";
 import { ToolchainService } from "./domain/toolchain/toolchain-service.js";
 import { CoreUpdateService } from "./domain/update/core-update-service.js";
@@ -292,18 +293,17 @@ class RogenMain {
 			fileSystemService,
 			environmentService.userHome
 		);
-		services.set(
-			InitService,
-			new CoreInitService(
-				fileSystemService,
-				promptService,
-				environmentService,
-				toolchainService,
-				processService,
-				toolLocator,
-				configService
-			)
+		const initService: InitService = new CoreInitService(
+			fileSystemService,
+			promptService,
+			environmentService,
+			toolchainService,
+			processService,
+			toolLocator,
+			configService
 		);
+		services.set(InitService, initService);
+		disposables.add(initService.registerMigration(new LegacyMigration()));
 		const watchService = new CoreWatchService(
 			watcher,
 			indexService,

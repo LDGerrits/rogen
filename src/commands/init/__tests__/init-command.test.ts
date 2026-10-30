@@ -848,6 +848,55 @@ describe("init command", () => {
 		});
 	});
 
+	describe("in a Rogen 1 project", () => {
+		beforeEach(async () => {
+			await write(".rogen.json", '{ "source": ["src"] }');
+			await write("src/Combat/Combat_Server.luau", "return {}");
+		});
+
+		it("should say each rename before the files it wrote", async () => {
+			const log = new MockLogService();
+
+			(await runInit(undefined, log)).unwrap();
+
+			const lines = log.entries.map(({ text }) => text);
+			expect(lines).toEqual(
+				expect.arrayContaining([
+					"Renamed .rogen.json to .rogen.json.v1.",
+					"Renamed src/Combat/Combat_Server.luau to src/Combat/Combat@Server.luau.",
+					"Created default.rogen.json.",
+				])
+			);
+			expect(
+				lines.indexOf("Renamed .rogen.json to .rogen.json.v1.")
+			).toBeLessThan(lines.indexOf("Created default.rogen.json."));
+			expect(await exists("src/Combat/Combat@Server.luau")).toBe(true);
+			expect(await exists("default.project.json")).toBe(true);
+		});
+
+		it("should list the renames of --json, and of a dry run as wouldMove", async () => {
+			const log = new MockLogService();
+
+			(
+				await runInit(undefined, log, { json: true, "dry-run": true })
+			).unwrap();
+
+			expect(JSON.parse(log.entries[0].text).moves).toEqual([
+				{
+					from: path.join(cwd, ".rogen.json"),
+					to: path.join(cwd, ".rogen.json.v1"),
+					outcome: "wouldMove",
+				},
+				{
+					from: path.join(cwd, "src/Combat/Combat_Server.luau"),
+					to: path.join(cwd, "src/Combat/Combat@Server.luau"),
+					outcome: "wouldMove",
+				},
+			]);
+			expect(await exists(".rogen.json")).toBe(true);
+		});
+	});
+
 	it("should return a structured error if writing a file fails", async () => {
 		jest.spyOn(memFs, "writeFile").mockRejectedValue(
 			new Error("Permission denied")

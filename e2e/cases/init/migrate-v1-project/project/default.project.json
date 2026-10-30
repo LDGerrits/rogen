@@ -1,0 +1,106 @@
+{
+	"name": "survivors",
+	"tree": {
+		"$className": "DataModel",
+		"Lighting": {},
+		"ReplicatedFirst": {},
+		"ReplicatedStorage": {
+			"Packages": {
+				"$path": "Packages"
+			},
+			"shared": {
+				"$className": "Folder",
+				"$ignoreUnknownInstances": false,
+				"Core": {
+					"$ignoreUnknownInstances": false,
+					"$path": {
+						"optional": "src/Core/shared"
+					}
+				},
+				"Features": {
+					"$className": "Folder",
+					"$ignoreUnknownInstances": false,
+					"Combat": {
+						"$className": "Folder",
+						"$ignoreUnknownInstances": false,
+						"Types": {
+							"$path": {
+								"optional": "src/Features/Combat/Types.shared.luau"
+							}
+						}
+					}
+				}
+			}
+		},
+		"RobloxPluginGuiService": {},
+		"ServerScriptService": {
+			"server": {
+				"$className": "Folder",
+				"$ignoreUnknownInstances": false,
+				"Features": {
+					"$className": "Folder",
+					"$ignoreUnknownInstances": false,
+					"Anticheat": {
+						"$ignoreUnknownInstances": false,
+						"$path": {
+							"optional": "src/Features/Anticheat"
+						}
+					},
+					"Combat": {
+						"$className": "Folder",
+						"$ignoreUnknownInstances": false,
+						"Boot": {
+							"$path": {
+								"optional": "src/Features/Combat/Boot.server.luau"
+							}
+						},
+						"Combat": {
+							"$path": {
+								"optional": "src/Features/Combat/Combat_Server.luau"
+							}
+						}
+					},
+					"Ragdoll": {
+						"$ignoreUnknownInstances": false,
+						"$path": {
+							"optional": "src/Features/Ragdoll/server"
+						}
+					}
+				}
+			}
+		},
+		"ServerStorage": {},
+		"SoundService": {},
+		"StarterGui": {},
+		"StarterPack": {},
+		"StarterPlayer": {
+			"StarterCharacterScripts": {},
+			"StarterPlayerScripts": {
+				"client": {
+					"$className": "Folder",
+					"$ignoreUnknownInstances": false,
+					"Features": {
+						"$className": "Folder",
+						"$ignoreUnknownInstances": false,
+						"Combat": {
+							"$className": "Folder",
+							"$ignoreUnknownInstances": false,
+							"Hud": {
+								"$path": {
+									"optional": "src/Features/Combat/HudClient.luau"
+								}
+							}
+						},
+						"Ragdoll": {
+							"$ignoreUnknownInstances": false,
+							"$path": {
+								"optional": "src/Features/Ragdoll/client"
+							}
+						}
+					}
+				}
+			}
+		},
+		"Workspace": {}
+	}
+}

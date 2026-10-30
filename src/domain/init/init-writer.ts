@@ -36,6 +36,23 @@ export class InitWriter {
 			if (scaffolded.isErr()) return scaffolded;
 			onWritten({ kind: "scaffold", scaffold: plan.scaffold });
 		}
+		for (const move of plan.moves) {
+			const moved = await tryWithAsync(async () => {
+				if (!dryRun)
+					await this.fileSystemService.rename(
+						path.join(plan.directory, move.from),
+						path.join(plan.directory, move.to)
+					);
+			});
+			if (moved.isErr())
+				return err(
+					ErrorUtils.wrap(
+						`Failed to rename ${move.from} to ${move.to}`,
+						moved.error
+					)
+				);
+			onWritten({ kind: "move", move });
+		}
 		for (const file of plan.files) {
 			const { fileName, content } = file;
 			const written = await tryWithAsync(async () => {

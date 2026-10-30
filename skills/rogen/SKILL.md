@@ -16,6 +16,8 @@ Rogen's [agent rules](agent-rules.md) belong in the repo's `AGENTS.md`, where ev
 
 `init` always lifts the tree of a `default.project.json` into `default.rogen.json`, and from then on `rogen write` writes `default.project.json` from the config, so changes go in the config. To start a new tree instead, move `default.project.json` away first. A Rojo project keeps its layout: the source path is the closest folder that holds every folder of code the project file mounts, such as `src` for `src/server` and `src/client`, and each of those folders becomes a route, so every script stays where it was in the game. Folders mounted from the top of the project, such as `server/` and `shared/`, stay mounted in the tree. When Darklua writes the code to a folder of its own, such as `build`, and a `.darklua.json` is there, `default.rogen.json` reads `src` and `dist.rogen.json` reads that folder; serve it with `rogen serve dist`.
 
+Beside a Rogen 1 config (a `.rogen.json` with `source`, `aliases` or a mode), `init` migrates it instead: `moves` in the dry run lists each file it renames, the v1 config to `.rogen.json.v1` first. Commit before you run it, so `git diff` shows the renames. It never lifts the `default.project.json` that v1 generated.
+
 ## Add the agent rules to a repo that has Rogen
 
 Run `rogen init --agent-rules` in the folder of the `*.rogen.json`. It adds the rules to `AGENTS.md`, imports them into a `CLAUDE.md` or `GEMINI.md` that is there, and changes no config. Ask the user whether to add the hook too (`--agent-hook`). `rogen write` keeps the rules current after that.

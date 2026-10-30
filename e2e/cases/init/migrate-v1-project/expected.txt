@@ -1,0 +1,68 @@
+$ rogen init
+exit 0
+stdout: (not shown)
+
+$ rogen check
+exit 0
+
+written:
+  .rogen.json.v1
+  AGENTS.md
+  default.project.json
+  default.rogen.json
+  src/Features/Anticheat/@Server
+  src/Features/Combat/Combat@Server.luau
+  src/Features/Combat/Hud@Client.luau
+  src/Features/Combat/Types@Shared.luau
+
+default.rogen.json:
+{
+  "name": "survivors",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService/server",
+    "Client": "StarterPlayer/StarterPlayerScripts/client",
+    "Shared": "ReplicatedStorage/shared",
+    "*": "ReplicatedStorage/shared"
+  },
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Packages": {
+        "$path": "Packages"
+      }
+    }
+  }
+}
+
+$ rojo sourcemap default.project.json
+survivors: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Promise: ModuleScript  <- Packages/Promise.luau
+    shared: Folder
+      Core: Folder
+        Util: ModuleScript  <- src/Core/shared/Util.luau
+      Features: Folder
+        Combat: Folder
+          Types: ModuleScript  <- src/Features/Combat/Types@Shared.luau
+  ServerScriptService: ServerScriptService
+    server: Folder
+      Features: Folder
+        Anticheat: Folder
+          Check: ModuleScript  <- src/Features/Anticheat/Check.luau
+        Combat: Folder
+          Boot: Script  <- src/Features/Combat/Boot.server.luau
+          Combat: ModuleScript  <- src/Features/Combat/Combat@Server.luau
+        Ragdoll: Folder
+          RagdollService: ModuleScript  <- src/Features/Ragdoll/server/RagdollService.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      client: Folder
+        Features: Folder
+          Combat: Folder
+            Hud: ModuleScript  <- src/Features/Combat/Hud@Client.luau
+          Ragdoll: Folder
+            RagdollController: ModuleScript  <- src/Features/Ragdoll/client/RagdollController.luau

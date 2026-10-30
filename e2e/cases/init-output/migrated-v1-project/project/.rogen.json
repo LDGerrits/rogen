@@ -1,0 +1,5 @@
+{
+	"source": ["src"],
+	"casing": "PascalCase",
+	"tags": { "dev": false }
+}

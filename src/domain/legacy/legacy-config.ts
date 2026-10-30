@@ -15,7 +15,8 @@ import { FailedConfigFile } from "../config/config-service.js";
 export class LegacyConfig {
 	static readonly MIGRATION_URL = `${DOCS_URL}/migrating-from-v1`;
 
-	private static readonly FILE_NAME = /\.rogen\.jsonc?$/;
+	/** The name of every config v1 read: `.rogen.json`, or one named with `-c`. */
+	static readonly FILE_NAME = /\.rogen\.jsonc?$/;
 	private static readonly KEYS = ["source", "aliases"];
 	private static readonly MODE_KEYS = ["output", "build"];
 	private static readonly NAME_MAPS = ["routes", "tree"];
@@ -57,7 +58,7 @@ export class LegacyConfig {
 					errorDiagnostic(
 						"legacy.config",
 						{ resource: file },
-						`this looks like a config for Rogen 1, which v2 doesn't read. See ${LegacyConfig.MIGRATION_URL} to migrate it.`
+						`this looks like a config for Rogen 1, which v2 doesn't read. Run 'rogen init' to migrate it, as ${LegacyConfig.MIGRATION_URL} says.`
 					),
 				]
 			: [];
