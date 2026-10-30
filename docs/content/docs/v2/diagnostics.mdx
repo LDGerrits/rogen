@@ -660,6 +660,8 @@ Add `routes` so that Rogen places the files. Or mount the folder in the `tree` w
 
 Files that `globIgnorePaths` matches don't count.
 
+On a plain Rojo project, which has no config, only `rogen check` reports it. Rojo's commands run on that project as Rojo would, and Rojo says nothing about these files.
+
 ### `scan.extensionCase` [#scan-extensioncase]
 
 Warning. A file's extension has capital letters, so Rojo ignores the file. Rojo reads an extension only in lowercase. Rogen leaves the file out of the tree, as Rojo does.

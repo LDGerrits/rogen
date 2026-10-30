@@ -11,6 +11,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
+import { isProjectFileConfig } from "../../domain/config/config.js";
 import { ResolvedConfig } from "../../domain/config/resolved-config.js";
 import { SharedDiagnostics } from "../../domain/write/write.js";
 import {
@@ -206,9 +207,11 @@ export class WatchLog implements WatchReporter {
 			case "broken":
 				this.outcomeLog.diagnostics(notice.errors, notice.file);
 				this.logService.error(
-					notice.keptLastValid
-						? `Still writing from the last valid ${name}.`
-						: `Not writing ${name} until it loads.`
+					isProjectFileConfig(notice.file)
+						? `Waiting until ${name} loads.`
+						: notice.keptLastValid
+							? `Still writing from the last valid ${name}.`
+							: `Not writing ${name} until it loads.`
 				);
 				return;
 		}

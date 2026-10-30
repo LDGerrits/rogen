@@ -1,0 +1,4 @@
+{
+	"steps": [["build", "-o", "game.rbxlx"], ["check"]],
+	"output": ["build"]
+}
