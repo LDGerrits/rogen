@@ -2,7 +2,7 @@ import path from "path";
 import { relativeTo } from "../../base/path.js";
 import { messageRelativeTo } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { ServerMessage } from "../../domain/runner/rojo-server.js";
+import { RojoServer, ServerMessage } from "../../domain/runner/rojo-server.js";
 import { RojoTarget } from "./rojo-entry.js";
 
 /** One thing Rojo said, at the level it said it. */
@@ -24,20 +24,9 @@ function reportServerMessage(
 	else logService.info(said);
 }
 
-/** The lines Rojo prints as it goes, which the line Rogen closes with says again. */
-const PROGRESS = [
-	/^Building project '.*'$/,
-	/^Built project to .+$/,
-	/^Created sourcemap at .+$/,
-	/^Beginning syncback\.\.\.$/,
-	/^Writing to the file system\.\.\.$/,
-	/^Finished syncback\.$/,
-	/^Would write \d+ files\/folders and remove \d+ files\/folders\.$/,
-	/^Aborting before writing to file system due to `--dry-run`$/,
-];
-
+// Rojo's progress lines, which the line Rogen closes with says again.
 const isProgress = ({ severity, text }: ServerMessage) =>
-	severity === "info" && PROGRESS.some((line) => line.test(text));
+	severity === "info" && RojoServer.isProgress(text);
 
 /** What Rojo said while it ran: its progress lines only under `-v`, everything else in Rogen's style. */
 export function reportRojo(

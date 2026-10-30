@@ -3,10 +3,7 @@ import { ToolError, UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import {
-	ProcessExit,
-	exitCodeText,
-} from "../../platform/process/process-service.js";
+import { ProcessExit } from "../../platform/process/process-service.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import {
@@ -20,7 +17,7 @@ import {
 } from "./rojo-command-service.js";
 import { RojoCompatibility } from "./rojo-compatibility.js";
 import { RojoVersion } from "./rojo-version.js";
-import { RojoRunner, ServerExecutable } from "./rojo-runner.js";
+import { RojoRunner, ServerExecutable, exitHow } from "./rojo-runner.js";
 import { RojoServer, ServerMessage } from "./rojo-server.js";
 import { WatchingRojo } from "./watching-rojo.js";
 
@@ -86,21 +83,23 @@ export class CoreRojoCommandService implements RojoCommandService {
 		return ok(
 			new WatchingRojo(
 				project,
-				() =>
-					this.rojoRunner.start(
-						executable,
-						request.command,
-						path.relative(request.cwd, projectFile),
-						[...request.flags, "--watch"],
-						request.cwd,
-						true
-					),
+				this.rojoRunner.supervise(
+					() =>
+						this.rojoRunner.start(
+							executable,
+							request.command,
+							path.relative(request.cwd, projectFile),
+							[...request.flags, "--watch"],
+							request.cwd,
+							true
+						),
+					{ beforeRestart: request.beforeRestart }
+				),
 				(said) =>
 					this.commandFailure(request.command, project, {
 						how: "an error",
 						said,
-					}),
-				request.beforeRestart
+					})
 			)
 		);
 	}
@@ -267,12 +266,9 @@ export class CoreRojoCommandService implements RojoCommandService {
 		const said = messages
 			.filter(({ severity }) => severity === "error")
 			.flatMap(({ text, details }) => [text, ...(details ?? [])]);
-		const how = exit.error
-			? exit.error.message
-			: `exit code ${exit.code === null ? exit.signal : exitCodeText(exit.code)}`;
 		return {
 			messages,
-			failure: { how, said },
+			failure: { how: exitHow(exit), said },
 			refusedArguments: exit.code === 2,
 		};
 	}

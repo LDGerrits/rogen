@@ -2,19 +2,20 @@ import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { exitCodeText } from "../../platform/process/process-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
-import { RojoCommandRun, RojoWatch } from "./rojo-command-service.js";
-import { RojoProcess } from "./rojo-runner.js";
-import { ServerMessage } from "./rojo-server.js";
+import {
+	RojoCommandRun,
+	RojoWatch,
+	RojoWatchExitEvent,
+} from "./rojo-command-service.js";
 import {
 	RojoRestartEvent,
 	SupervisedExitEvent,
-	SupervisedRojo,
-} from "./supervised-rojo.js";
-
-/** The stdout lines that end one of its builds: a build, a sourcemap file, or a printed sourcemap. */
-const FINISHED = [/^Built project to .+$/, /^Created sourcemap at .+$/, /^\{/];
+	SupervisedRojoProcess,
+	crashedAgain,
+	exitHow,
+} from "./rojo-runner.js";
+import { RojoServer, ServerMessage } from "./rojo-server.js";
 
 /** A Rojo that runs its command with `--watch`, read into one run per build. */
 export class WatchingRojo extends AbstractDisposable implements RojoWatch {
@@ -22,28 +23,25 @@ export class WatchingRojo extends AbstractDisposable implements RojoWatch {
 	readonly onDidRun: Event<RojoCommandRun> = this._onDidRun.event;
 
 	private readonly _onDidExit = this._register(
-		new Emitter<{ readonly failure?: DiagnosticsError }>()
+		new Emitter<RojoWatchExitEvent>()
 	);
-	readonly onDidExit: Event<{ readonly failure?: DiagnosticsError }> =
-		this._onDidExit.event;
+	readonly onDidExit: Event<RojoWatchExitEvent> = this._onDidExit.event;
 
 	readonly onDidRestart: Event<RojoRestartEvent>;
 
-	private readonly child: SupervisedRojo;
+	private readonly child: SupervisedRojoProcess;
 	private messages: ServerMessage[] = [];
 	private stopping = false;
 
+	/** Takes `child`, a Rojo already started with `--watch`, to own. */
 	constructor(
 		private readonly project: ResolvedConfig,
-		start: () => RojoProcess,
+		child: SupervisedRojoProcess,
 		/** The failure of a build, from the lines of the error Rojo printed. */
-		private readonly failed: (said: readonly string[]) => DiagnosticsError,
-		beforeRestart?: () => Promise<void>
+		private readonly failed: (said: readonly string[]) => DiagnosticsError
 	) {
 		super();
-		this.child = this._register(
-			new SupervisedRojo(start, { beforeRestart })
-		);
+		this.child = this._register(child);
 		this.onDidRestart = this.child.onDidRestart;
 		this._register(
 			this.child.onDidRestart(() => {
@@ -76,7 +74,7 @@ export class WatchingRojo extends AbstractDisposable implements RojoWatch {
 		}
 		if (
 			message.stdout !== undefined &&
-			FINISHED.some((line) => line.test(message.text))
+			RojoServer.endsBuild(message.text)
 		) {
 			this.child.markReady();
 			this.finish();
@@ -95,36 +93,16 @@ export class WatchingRojo extends AbstractDisposable implements RojoWatch {
 
 	private failureOf({ exit, gaveUp }: SupervisedExitEvent): DiagnosticsError {
 		const { label, file } = this.project;
-		const how =
-			exit.error?.message ??
-			(exit.code === null
-				? `signal ${exit.signal}`
-				: `exit code ${exitCodeText(exit.code)}`);
-		if (gaveUp) {
-			const stopped = `Rojo crashed again right after a restart, so Rogen stopped watching ${label}`;
+		if (gaveUp)
 			return new DiagnosticsError([
-				gaveUp.length > 0
-					? {
-							...errorDiagnostic(
-								"rojo.crashed",
-								{ resource: file },
-								`${stopped}:`
-							),
-							details: gaveUp,
-						}
-					: errorDiagnostic(
-							"rojo.crashed",
-							{ resource: file },
-							`${stopped} (${how}).`
-						),
+				crashedAgain(`watching ${label}`, file, exit, gaveUp),
 			]);
-		}
 		return new DiagnosticsError(
 			[
 				errorDiagnostic(
 					"rojo.commandFailed",
 					{ resource: this.project.projectFile },
-					`Rojo stopped watching ${label} (${how}).`
+					`Rojo stopped watching ${label} (${exitHow(exit)}).`
 				),
 			],
 			"project"
