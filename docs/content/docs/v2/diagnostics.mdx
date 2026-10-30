@@ -955,6 +955,8 @@ error: Rojo stopped serving default with exit code 1; see what it said above. (s
 
 Read what the server printed just above the error. It usually says why the server stopped. If the server printed nothing, as when it was killed, the message ends with `without saying why`.
 
+A Rojo that crashes after it started to serve isn't this error: Rogen starts it again, and reports [`rojo.crashed`](#rojo-crashed) when it crashes again right away.
+
 ## Rojo
 
 These diagnostics come from the Rojo that Rogen runs: a Rojo that can't be found or started, a Rojo too old for what the project file uses, or a Rojo command that failed. Every command that runs Rojo reports them the same way.
@@ -1047,6 +1049,29 @@ When Rojo printed no error, the first line says how it exited, such as `Rojo cou
 Fix what Rojo reports, such as a property value of the wrong type or an output folder that doesn't exist, and run the command again.
 
 Rogen had already written the project files when Rojo failed.
+
+### `rojo.crashed` [#rojo-crashed]
+
+Error. Rojo crashed twice in a row, so Rogen stopped. When the Rojo that `rogen serve` started crashes while it serves, Rogen writes the project file again and starts Rojo again on the same address and port. Rogen then prints this line:
+
+```
+Rojo crashed, so Rogen restarted it on localhost:34872.
+  In Studio, press Connect in the Rojo plugin.
+```
+
+If the new Rojo crashes before it serves, or within about 30 seconds, Rogen gives up and exits 1. The lines that Rojo printed about the crash follow, indented. In `--json`, the diagnostic's `details` array holds those lines.
+
+```
+default.rogen.json - error: Rojo crashed again right after a restart, so Rogen stopped serving default: (rojo.crashed)
+  Rojo crashed! You are running Rojo 7.7.1.
+  This is probably a Rojo bug.
+  Details: called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+  in file src/change_processor.rs on line 179
+```
+
+Rojo 7.7.0 and 7.7.1 crash this way when you delete a folder that holds files inside a folder that the project file mounts. Rojo 7.6.1 doesn't. A crash after Rojo has run longer than 30 seconds gets a new restart. Under `--verbose`, Rogen shows the crash lines of each restart as debug lines.
+
+After a restart, press Connect in the Rojo plugin, because the plugin doesn't connect again by itself.
 
 ### `rojo.commandUnsupported` [#rojo-commandunsupported]
 

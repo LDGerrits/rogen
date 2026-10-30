@@ -33,6 +33,8 @@ describe("StartedServer", () => {
 	let stops: ServerExitEvent[];
 	let failures: Error[];
 	let connections: string[];
+	let restarted: ServerReadyEvent[];
+	let refreshes: number;
 	let server: StartedServer;
 
 	const config = mockConfig({ file: "/repo/default.rogen.json" });
@@ -64,6 +66,10 @@ describe("StartedServer", () => {
 					connections.push(
 						`${change.opened ? "opened" : "closed"} ${change.clients}`
 					),
+				restarted: (serving) => restarted.push(serving),
+			},
+			async () => {
+				refreshes++;
 			}
 		);
 		return processes.spawned[0];
@@ -80,6 +86,8 @@ describe("StartedServer", () => {
 		stops = [];
 		failures = [];
 		connections = [];
+		restarted = [];
+		refreshes = 0;
 	});
 
 	afterEach(() => {
@@ -438,5 +446,80 @@ describe("StartedServer", () => {
 		await jest.advanceTimersByTimeAsync(3_000);
 
 		expect(requests.requested).toEqual([]);
+	});
+
+	describe("when Rojo crashes", () => {
+		const crashText =
+			"[ERROR rojo] Rojo crashed! You are running Rojo 7.7.1.\n[ERROR rojo] Details: it broke\n";
+		const answer = async (session: string) => {
+			requests.answer(ROJO_URL, {
+				projectName: "repo",
+				serverVersion: "7.7.1",
+				sessionId: session,
+			});
+			await jest.advanceTimersByTimeAsync(1_000);
+		};
+		const crash = async (index: number) => {
+			requests.responses.delete(ROJO_URL);
+			processes.spawned[index].printError(crashText);
+			processes.spawned[index].exit({ code: 1, signal: null });
+			await jest.advanceTimersByTimeAsync(0);
+		};
+
+		it("should rewrite, start it again on the same port, and say so once it serves, recording the new process", async () => {
+			start();
+			await answer("s1");
+
+			await crash(0);
+			await answer("s2");
+
+			expect(refreshes).toBe(1);
+			expect(processes.spawned[1].args).toEqual(
+				processes.spawned[0].args
+			);
+			expect(served).toHaveLength(1);
+			expect(restarted).toHaveLength(1);
+			expect(restarted[0].info.session).toBe("s2");
+			expect(stops).toEqual([]);
+			expect(
+				await records.recordOf(target.address, restarted[0].info)
+			).toMatchObject({ pid: processes.spawned[1].pid });
+		});
+
+		it("should tell that a connected plugin lost it", async () => {
+			start();
+			await answer("s1");
+			processes.spawned[0].print(
+				"[DEBUG librojo::web::api] WebSocket subscription established for session s1\n"
+			);
+			await jest.advanceTimersByTimeAsync(100);
+
+			await crash(0);
+
+			expect(connections).toEqual(["opened 1", "closed 0"]);
+		});
+
+		it("should stop with Rojo's crash text when it crashes again right after the restart", async () => {
+			start();
+			await answer("s1");
+			await crash(0);
+			await answer("s2");
+
+			await crash(1);
+
+			expect(stops).toHaveLength(1);
+			expect(stops[0]).toMatchObject({
+				crashed: true,
+				failure: {
+					code: "rojo.crashed",
+					message:
+						"Rojo crashed again right after a restart, so Rogen stopped serving repo:",
+					details: [
+						"Rojo crashed! You are running Rojo 7.7.1.",
+						"Details: it broke",
+					],
+				},
+			});
+		});
 	});
 });

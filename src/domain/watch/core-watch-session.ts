@@ -116,6 +116,21 @@ export class CoreWatchSession
 		return ok(undefined);
 	}
 
+	async refresh(): Promise<void> {
+		let rewrites: Promise<unknown>[] = [];
+		const listed = this.intake.queue(
+			this.guarded(async () => {
+				this.listing = await this.indexService.list(this.plan.roots);
+				rewrites = this.selection.configs.map(({ projectFile }) =>
+					this.queueRewrite(projectFile)
+				);
+			})
+		);
+		this.track(listed);
+		await listed;
+		await Promise.all(rewrites);
+	}
+
 	stop(): Promise<void> {
 		this.stopping ??= (async () => {
 			await Promise.allSettled([...this.pending]);

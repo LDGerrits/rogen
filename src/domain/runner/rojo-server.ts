@@ -32,6 +32,9 @@ const CONNECTION_OPENED = /^WebSocket subscription established\b/;
 const CONNECTION_CLOSED =
 	/^(WebSocket subscription closed|WebSocket stream ended|WebSocket error|Message queue disconnected)\b/;
 
+// Its panic hook logs this first, then the details, then exits 1.
+const CRASHED = /^Rojo crashed!/;
+
 const text = (value: unknown): string | undefined =>
 	typeof value === "string" ? value : undefined;
 
@@ -90,6 +93,11 @@ export class RojoServer {
 		if (CONNECTION_OPENED.test(line)) return "opened";
 		if (CONNECTION_CLOSED.test(line)) return "closed";
 		return undefined;
+	}
+
+	/** Whether `text` starts the lines it logs when it crashes. */
+	static isCrash(text: string): boolean {
+		return CRASHED.test(text);
 	}
 
 	static logRecordOf(

@@ -33,6 +33,7 @@ const modules = {
 			"rojo-version",
 			"serve-flags",
 			"server-finder",
+			"supervised-rojo",
 		],
 		rojo: [
 			"project-text",

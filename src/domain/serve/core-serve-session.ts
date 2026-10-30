@@ -19,6 +19,7 @@ import {
 	ServerOutputEvent,
 	ServerExitEvent,
 	ServerReadyEvent,
+	ServerRestartEvent,
 	isServed,
 } from "./serve-service.js";
 import { ServePorts } from "./serve-ports.js";
@@ -41,6 +42,11 @@ export class CoreServeSession
 		new Emitter<ServerReadyEvent>()
 	);
 	readonly onDidServe: Event<ServerReadyEvent> = this._onDidServe.event;
+
+	private readonly _onDidRestart = this._register(
+		new Emitter<ServerRestartEvent>()
+	);
+	readonly onDidRestart: Event<ServerRestartEvent> = this._onDidRestart.event;
 
 	private readonly _onDidConnect = this._register(
 		new Emitter<ServerConnectionEvent>()
@@ -333,7 +339,9 @@ export class CoreServeSession
 				connection: (change) => this._onDidConnect.fire(change),
 				stopped: (stop) => this._onDidExit.fire(stop),
 				failed: (error) => this._onDidError.fire(error),
-			}
+				restarted: (serving) => this._onDidRestart.fire(serving),
+			},
+			() => this.watch.refresh()
 		);
 		this.servers.set(target.config.id, server);
 	}

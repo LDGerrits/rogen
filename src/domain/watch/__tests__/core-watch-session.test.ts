@@ -135,6 +135,18 @@ describe("CoreWatchSession", () => {
 		await expect(session.start()).rejects.toThrow("A watch starts once.");
 	});
 
+	it("should rewrite every config from what is on disk when refreshed, before the watcher reports the change", async () => {
+		await fs.writeFile("/repo/src/Shop/A.luau", "");
+		await fs.writeFile("/repo/src/B.luau", "");
+		const session = await start();
+
+		await fs.delete("/repo/src/Shop", true);
+		await session.refresh();
+
+		expect(await placed("default")).toEqual(["B"]);
+		expect(updates).toHaveLength(1);
+	});
+
 	it("should rewrite only the configs whose source paths hold a change", async () => {
 		await fs.createDirectory("/repo/lobby/src");
 		await writeConfig("/repo/lobby/default.rogen.json", {});
