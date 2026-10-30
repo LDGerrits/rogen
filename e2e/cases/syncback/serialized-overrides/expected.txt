@@ -14,28 +14,7 @@ written:
   place/Workspace/Baseplate.model.json
 
 default.rogen.json:
-{
-  "name": "Game",
-  "tree": {
-    "$className": "DataModel",
-    "Workspace": {
-      "$path": "place/Workspace",
-      "$properties": {
-        "SerializedOverrides": {
-          "BinaryString": ""
-        }
-      }
-    }
-  },
-  "sourcePaths": [
-    "src"
-  ],
-  "routes": {
-    "Server": "ServerScriptService",
-    "*": "ReplicatedStorage/Shared"
-  },
-  "compiledPath": "dist"
-}
+{ "name": "Game", "tree": { "$className": "DataModel", "Workspace": { "$path": "place/Workspace", "$properties": { "SerializedOverrides": { "BinaryString": "" } } } }, "sourcePaths": ["src"], "routes": { "Server": "ServerScriptService", "*": "ReplicatedStorage/Shared" }, "compiledPath": "dist" }
 
 $ rojo sourcemap default.project.json
 Game: DataModel

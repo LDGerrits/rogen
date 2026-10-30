@@ -1,0 +1,20 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stderr:
+  rogen syncback · default.rogen.json
+  default.project.json · wrote
+  Wrote 1 project.
+  default.rogen.json - warning: ReplicatedStorage/Remotes/Run is in the place and no folder of the project can take it, so it was left out: Rojo writes it as Run.server.luau, and its parent ReplicatedStorage/Remotes is a node of the tree of default.rogen.json with no $path; give that node a $path, or create the file by hand. (syncback.unplaced)
+  Syncback changed nothing.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Remotes: Folder
+      Hit: RemoteEvent
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Hit: ModuleScript  <- src/Combat/Server/Hit.luau

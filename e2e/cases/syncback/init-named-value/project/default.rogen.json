@@ -1,0 +1,9 @@
+{
+	"name": "Game",
+	"tree": { "$className": "DataModel" },
+	"sourcePaths": ["src"],
+	"routes": {
+		"server": "ServerScriptService",
+		"*": "ReplicatedStorage/Shared"
+	}
+}

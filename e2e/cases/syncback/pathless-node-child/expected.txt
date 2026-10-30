@@ -1,0 +1,44 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing default.rogen.json
+stderr:
+  rogen syncback · default.rogen.json
+  default.project.json · wrote
+  Wrote 1 project.
+  Syncback wrote 1 change.
+
+$ rogen syncback -i place.rbxl -y
+exit 0
+stderr:
+  rogen syncback · default.rogen.json
+  default.project.json · wrote
+  Wrote 1 project.
+  Syncback changed nothing.
+
+written:
+  default.project.json
+  default.rogen.json
+
+default.rogen.json:
+{
+  "name": "game",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Remotes": { "$className": "Folder", "Hit": { "$className": "RemoteEvent" }, "Buy": { "$className": "RemoteEvent" } }
+    }
+  },
+  "sourcePaths": ["src"],
+  "routes": { "Server": "ServerScriptService" }
+}
+
+$ rojo sourcemap default.project.json
+game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Remotes: Folder
+      Buy: RemoteEvent
+      Hit: RemoteEvent
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Hit: ModuleScript  <- src/Combat/Server/Hit.luau

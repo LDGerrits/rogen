@@ -1,0 +1,42 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/Combat/init.meta.json
+stderr:
+  rogen syncback · default.rogen.json
+  default.project.json · wrote
+  Wrote 1 project.
+  default.rogen.json - warning: ServerScriptService/Inventory is in the place and no folder of the project can take it, so it was left out: its feature folder src/Inventory also makes ReplicatedStorage/Shared/Inventory, and src/Inventory/init.meta.json would set it on each of them; set it alike on all of them in Studio, or edit src/Inventory/init.meta.json by hand. (syncback.unplaced)
+  Syncback wrote 1 change.
+
+$ rogen syncback -i place.rbxl -y
+exit 0
+stderr:
+  rogen syncback · default.rogen.json
+  default.project.json · unchanged
+  Wrote 1 project.
+  default.rogen.json - warning: ServerScriptService/Inventory is in the place and no folder of the project can take it, so it was left out: its feature folder src/Inventory also makes ReplicatedStorage/Shared/Inventory, and src/Inventory/init.meta.json would set it on each of them; set it alike on all of them in Studio, or edit src/Inventory/init.meta.json by hand. (syncback.unplaced)
+  Syncback changed nothing.
+
+written:
+  default.project.json
+  src/Combat/init.meta.json
+
+src/Combat/init.meta.json:
+{
+  "attributes": {
+    "Owner": "Red"
+  }
+}
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Inventory: Folder
+        Item: ModuleScript  <- src/Inventory/Shared/Item.luau
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Hit: Script  <- src/Combat/Server/Hit.server.luau
+    Inventory: Folder
+      Bag: ModuleScript  <- src/Inventory/Server/Bag.luau

@@ -1,4 +1,4 @@
-import { parse, parseJsonc, parseJsoncSpans } from "../jsonc.js";
+import { parse, parseJsonc, parseJsoncSpans, setJsoncValue } from "../jsonc.js";
 
 describe("parse", () => {
 	it("should return the value of a plain JSON document", () => {
@@ -110,5 +110,102 @@ describe("parseJsoncSpans", () => {
 
 	it("should be undefined for a document with an error", () => {
 		expect(parseJsoncSpans("{")).toBeUndefined();
+	});
+});
+
+describe("setJsoncValue", () => {
+	const TEXT = [
+		"{",
+		'  "tree": {',
+		'    "Lighting": { "$properties": { "ClockTime": 14 } },',
+		'    "Folder": {',
+		'      "$className": "Folder"',
+		"    }",
+		"  }",
+		"}",
+	].join("\n");
+
+	it("should keep an object written on one line on one line when a value in it changes", () => {
+		const text = setJsoncValue(TEXT, ["tree", "Lighting", "$properties"], {
+			ClockTime: 6,
+		});
+
+		expect(text).toBe(TEXT.replace('"ClockTime": 14', '"ClockTime": 6'));
+	});
+
+	it("should keep a value written on one line on one line in an object written on several lines", () => {
+		const text = setJsoncValue(
+			TEXT.replace(
+				'"$className": "Folder"',
+				'"$className": "Folder",\n      "$properties": { "Size": 1 }'
+			),
+			["tree", "Folder", "$properties"],
+			{ Size: 2, Level: 3 }
+		);
+
+		expect(text).toContain(
+			'      "$className": "Folder",\n      "$properties": { "Size": 2, "Level": 3 }\n'
+		);
+	});
+
+	it("should add a key to an object written on one line on that line", () => {
+		const text = setJsoncValue(
+			TEXT.replace("} },", "} }, // the sky"),
+			["tree", "Lighting", "$attributes"],
+			{ Sun: { Float32: 1 }, Tint: [1, 0.5, 0] }
+		);
+
+		expect(text).toContain(
+			'    "Lighting": { "$properties": { "ClockTime": 14 }, "$attributes": { "Sun": { "Float32": 1 }, "Tint": [1, 0.5, 0] } }, // the sky\n'
+		);
+	});
+
+	it("should keep nested objects written on one line on one line", () => {
+		const text = setJsoncValue(
+			TEXT.replace(
+				'"Lighting": { "$properties": { "ClockTime": 14 } }',
+				'"Lighting": { "Sky": { "$properties": { "StarCount": 3 } } }'
+			),
+			["tree", "Lighting", "Sky", "$properties"],
+			{ StarCount: 5, CelestialBodiesShown: false }
+		);
+
+		expect(text).toContain(
+			'    "Lighting": { "Sky": { "$properties": { "StarCount": 5, "CelestialBodiesShown": false } } },\n'
+		);
+	});
+
+	it("should remove a key from an object written on one line", () => {
+		const text = setJsoncValue(
+			TEXT.replace(
+				'{ "$properties"',
+				'{ "$className": "Lighting", "$properties"'
+			),
+			["tree", "Lighting", "$properties"],
+			undefined
+		);
+
+		expect(text).toContain(
+			'    "Lighting": { "$className": "Lighting" },\n'
+		);
+	});
+
+	it("should write a key added to an object written on several lines on lines of its own", () => {
+		const text = setJsoncValue(TEXT, ["tree", "Folder", "$attributes"], {
+			Level: 1,
+		});
+
+		expect(text).toBe(
+			TEXT.replace(
+				'      "$className": "Folder"\n',
+				[
+					'      "$className": "Folder",',
+					'      "$attributes": {',
+					'        "Level": 1',
+					"      }",
+					"",
+				].join("\n")
+			)
+		);
 	});
 });
