@@ -2,33 +2,22 @@ import { AbstractDisposable, DisposableStore } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import { onUnexpectedError } from "../../base/errors.js";
 import { ProcessExit } from "../../platform/process/process-service.js";
-import { RojoProcess } from "./rojo-runner.js";
+import {
+	RojoProcess,
+	RojoRestartEvent,
+	SupervisedExitEvent,
+	SupervisedRojoOptions,
+	SupervisedRojoProcess,
+} from "./rojo-runner.js";
 import { RojoServer, ServerMessage } from "./rojo-server.js";
 
 /** How long a restarted Rojo must run before its next crash counts as a new one rather than the same one again. */
 const BACK_TO_BACK_MS = 30_000;
 
-export interface SupervisedRojoOptions {
-	/** Runs before each restart, as a fresh write of the project file Rojo reads. */
-	readonly beforeRestart?: () => Promise<void>;
-}
-
-/** Rojo crashed while it served, and another started in its place. */
-export interface RojoRestartEvent {
-	readonly exit: ProcessExit;
-	/** What Rojo printed about the crash. */
-	readonly lines: readonly string[];
-}
-
-/** The supervised Rojo stopped for good. */
-export interface SupervisedExitEvent {
-	readonly exit: ProcessExit;
-	/** Set when a restarted Rojo crashed again right away, so no other was started: what it printed about the crash. */
-	readonly gaveUp?: readonly string[];
-}
-
-/** A Rojo that is started again when it crashes, until it crashes back to back. A crash is an exit with a non-zero code that nobody asked for, of a Rojo that served. */
-export class SupervisedRojo extends AbstractDisposable {
+export class SupervisedRojo
+	extends AbstractDisposable
+	implements SupervisedRojoProcess
+{
 	private readonly _onDidMessage = this._register(
 		new Emitter<ServerMessage>()
 	);

@@ -83,10 +83,12 @@ export class WriteWatch {
 		const failed = new DeferredPromise<Error>();
 		let rojo: RojoWatch | undefined;
 		let rojoProject: string | undefined;
+		const rojoListeners = store.add(new DisposableStore());
 		const startRojo = (step: RojoStep, plan: RojoPlan) =>
 			rojoStarts.queue(async () => {
 				const previous = rojo;
 				rojo = undefined;
+				rojoListeners.clear();
 				if (previous) {
 					await previous.terminate();
 					previous[Symbol.dispose]();
@@ -118,11 +120,11 @@ export class WriteWatch {
 						for (const { stdout } of run.messages)
 							if (stdout !== undefined) logService.print(stdout);
 					log.rojo(ok(run), plan.target);
-				});
-				watch.onDidRestart(() => log.restarted());
+				}, rojoListeners);
+				watch.onDidRestart(() => log.restarted(), rojoListeners);
 				watch.onDidExit(({ failure }) => {
 					if (failure) failed.complete(failure);
-				});
+				}, rojoListeners);
 			});
 
 		store.add(

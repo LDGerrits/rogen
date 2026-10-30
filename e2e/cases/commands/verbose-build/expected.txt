@@ -2,7 +2,7 @@ $ rogen write lobby -v
 exit 0
 stdout:
   rogen write
-  lobby/default.project.json · wrote
+  Wrote lobby/default.project.json.
   Wrote 1 of 1 project file.
 stderr:
   [debug] src: 5 files
@@ -14,7 +14,7 @@ $ rogen write match -v
 exit 0
 stdout:
   rogen write
-  match/default.project.json · wrote
+  Wrote match/default.project.json.
   Wrote 1 of 1 project file with 4 warnings.
 stderr:
   [debug] src: 5 files

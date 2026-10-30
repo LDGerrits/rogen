@@ -8,7 +8,7 @@ stdout:
   Created README.md.
   Created src/init.luau.
   Created AGENTS.md.
-  default.project.json · wrote
+  Wrote default.project.json.
   Next steps
     Run:
       rogen build -o "project.rbxmx"

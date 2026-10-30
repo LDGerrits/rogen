@@ -12,6 +12,7 @@ import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
+import { LogLevel } from "../../../platform/log/log-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { CommandLine } from "../../../platform/environment/args.js";
 import { exitCodeOf } from "../../../platform/commands/command-failure.js";
@@ -228,7 +229,7 @@ describe("watch", () => {
 
 			expect(logService.reserved).toBe(false);
 			expect(logService.texts("success")).toEqual([
-				"default.project.json · wrote",
+				"Wrote default.project.json.",
 				"Built game.rbxl.",
 				"Built game.rbxl.",
 			]);
@@ -482,9 +483,11 @@ describe("watch", () => {
 			);
 		});
 
-		it("should mark a project file that needs no rewrite as unchanged", async () => {
+		const restartUnchanged = async (
+			options: CommandLine["options"] = {}
+		) => {
 			await memFs.writeFile("/repo/src/A.luau", "");
-			void startWatch();
+			void startWatch([], options);
 			await settle();
 			lifecycle.shutdown();
 			await settle();
@@ -495,12 +498,26 @@ describe("watch", () => {
 				memFs,
 				new MockEnvironmentService("/repo")
 			);
-
-			void startWatch();
+			void startWatch([], options);
 			await settle();
+		};
+
+		it("should print nothing for a round that leaves the project file unchanged", async () => {
+			await restartUnchanged({ output: "game.rbxl" });
+
+			expect(logService.lines).not.toContainEqual(
+				expect.stringContaining("unchanged")
+			);
+			expect(logService.texts("step")).toEqual([]);
+		});
+
+		it("should mark a project file that needs no rewrite as unchanged under -v", async () => {
+			logService.setLevel(LogLevel.Debug);
+
+			await restartUnchanged();
 
 			expect(logService.lines).toContain(
-				"success: default.project.json · unchanged"
+				"debug: default.project.json · unchanged"
 			);
 		});
 	});
@@ -541,7 +558,7 @@ describe("watch", () => {
 			expect(blocks()).toEqual([
 				{
 					title: "initial write",
-					lines: ["lobby/default.project.json · wrote"],
+					lines: ["Wrote lobby/default.project.json."],
 				},
 			]);
 		});

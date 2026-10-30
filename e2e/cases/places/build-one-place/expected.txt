@@ -2,14 +2,14 @@ $ rogen write places/lobby
 exit 0
 stdout:
   rogen write
-  places/lobby/default.project.json · wrote
+  Wrote places/lobby/default.project.json.
   Wrote 1 of 1 project file.
 
 $ rogen write places/arena
 exit 0
 stdout:
   rogen write
-  places/arena/default.project.json · wrote
+  Wrote places/arena/default.project.json.
   Wrote 1 of 1 project file.
 
 $ rogen write places/arena places/lobby

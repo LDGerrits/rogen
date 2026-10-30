@@ -2,7 +2,7 @@ $ rogen write
 exit 1
 stdout:
   rogen write
-  game.project.json · wrote
+  Wrote game.project.json.
   Wrote 1 of 2 project files.
 stderr:
   error: lobby.rogen.json · not loaded

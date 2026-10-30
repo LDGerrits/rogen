@@ -3,12 +3,9 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreRojoRunner } from "../core-rojo-runner.js";
+import { RojoRestartEvent, SupervisedExitEvent } from "../rojo-runner.js";
 import { ServerMessage } from "../rojo-server.js";
-import {
-	RojoRestartEvent,
-	SupervisedExitEvent,
-	SupervisedRojo,
-} from "../supervised-rojo.js";
+import { SupervisedRojo } from "../supervised-rojo.js";
 
 const CRASH = [
 	"[ERROR rojo] Rojo crashed! You are running Rojo 7.7.1.",

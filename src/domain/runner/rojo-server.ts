@@ -32,6 +32,20 @@ const CONNECTION_OPENED = /^WebSocket subscription established\b/;
 const CONNECTION_CLOSED =
 	/^(WebSocket subscription closed|WebSocket stream ended|WebSocket error|Message queue disconnected)\b/;
 
+// The stdout lines that end one of its builds: a build or a sourcemap file.
+const BUILT = [/^Built project to .+$/, /^Created sourcemap at .+$/];
+
+// The lines it prints as it goes, which say what it is doing or has done.
+const PROGRESS = [
+	/^Building project '.*'$/,
+	...BUILT,
+	/^Beginning syncback\.\.\.$/,
+	/^Writing to the file system\.\.\.$/,
+	/^Finished syncback\.$/,
+	/^Would write \d+ files\/folders and remove \d+ files\/folders\.$/,
+	/^Aborting before writing to file system due to `--dry-run`$/,
+];
+
 // Its panic hook logs this first, then the details, then exits 1.
 const CRASHED = /^Rojo crashed!/;
 
@@ -93,6 +107,16 @@ export class RojoServer {
 		if (CONNECTION_OPENED.test(line)) return "opened";
 		if (CONNECTION_CLOSED.test(line)) return "closed";
 		return undefined;
+	}
+
+	/** Whether `text` is one of the lines it prints as it goes, such as `Building project 'Game'`. */
+	static isProgress(text: string): boolean {
+		return PROGRESS.some((line) => line.test(text));
+	}
+
+	/** Whether the stdout line `text` ends one of its builds: a build, a sourcemap file, or the start of a printed sourcemap. */
+	static endsBuild(text: string): boolean {
+		return text.startsWith("{") || BUILT.some((line) => line.test(text));
 	}
 
 	/** Whether `text` starts the lines it logs when it crashes. */

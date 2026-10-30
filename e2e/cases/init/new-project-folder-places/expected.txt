@@ -16,7 +16,7 @@ stdout:
   Created game/README.md.
   Created game/.vscode/settings.json.
   Created game/AGENTS.md.
-  game/game.project.json · wrote
+  Wrote game/game.project.json.
   Next steps
     In each terminal, start in the project folder:
       cd game

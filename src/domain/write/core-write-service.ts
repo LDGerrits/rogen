@@ -51,7 +51,7 @@ interface WriteOptions {
 const ROGEN_ADVICE: ReadonlySet<string> = new Set(["scan.unmountedSource"]);
 
 /** `prepared` without Rogen's advice when its config is a plain Rojo project. */
-function asRojoReads(prepared: PreparedConfig): PreparedConfig {
+function withoutRogenAdvice(prepared: PreparedConfig): PreparedConfig {
 	if (!prepared.config.isAdopted) return prepared;
 	return {
 		...prepared,
@@ -318,7 +318,7 @@ export class CoreWriteService implements WriteService {
 				result.isOk()
 					? advice
 						? result.value
-						: asRojoReads(result.value)
+						: withoutRogenAdvice(result.value)
 					: FailedConfig.before(
 							config,
 							result.error.diagnostics,

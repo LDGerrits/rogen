@@ -124,9 +124,7 @@ export class WatchLog implements WatchReporter {
 	constructor(
 		protected readonly logService: LogService,
 		protected readonly cwd: string,
-		private readonly command = "watch",
-		/** Whether a round that left every project file as it was, with nothing new to say, shows only under `-v`. */
-		private readonly quietWhenUnchanged = false
+		private readonly command = "watch"
 	) {
 		this.outcomeLog = new OutcomeLog(logService, cwd);
 	}
@@ -179,7 +177,6 @@ export class WatchLog implements WatchReporter {
 			);
 		}
 		const quiet =
-			this.quietWhenUnchanged &&
 			cause.kind !== "burst" &&
 			notices.length === 0 &&
 			reports.every(

@@ -5,8 +5,8 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
+import { RojoRestartEvent } from "./rojo-runner.js";
 import { ServerMessage } from "./rojo-server.js";
-import { RojoRestartEvent } from "./supervised-rojo.js";
 
 export interface RojoCommandRequest {
 	/** The Rojo command, such as `build`. */
@@ -53,6 +53,12 @@ export interface RojoWatchRequest extends RojoCommandRequest {
 	readonly beforeRestart?: () => Promise<void>;
 }
 
+/** Rojo's watch stopped, and none is started in its place. */
+export interface RojoWatchExitEvent {
+	/** Why it stopped, unless it was asked to. */
+	readonly failure?: DiagnosticsError;
+}
+
 /** Rojo's own `--watch` of a project, started again when it crashes. */
 export interface RojoWatch extends Disposable {
 	/** Fired once per build Rojo finishes, and once per error that stops one, which comes as the run's `failure`. */
@@ -60,7 +66,7 @@ export interface RojoWatch extends Disposable {
 	/** Rojo crashed, and another started in its place. */
 	readonly onDidRestart: Event<RojoRestartEvent>;
 	/** Fired once, when Rojo stops and none is started in its place; `failure` says why, unless it was asked to stop. */
-	readonly onDidExit: Event<{ readonly failure?: DiagnosticsError }>;
+	readonly onDidExit: Event<RojoWatchExitEvent>;
 
 	/** Ends Rojo, and starts no other. */
 	terminate(): Promise<void>;

@@ -284,7 +284,7 @@ describeWithRojo("end to end watch", () => {
 
 		await eventually(() => {
 			expect(running.output).toContain(
-				"default.project.json · wrote · 1 warning as before"
+				"Wrote default.project.json (1 warning as before)."
 			);
 		});
 		expect(running.output.split("did you mean").length).toBe(2);

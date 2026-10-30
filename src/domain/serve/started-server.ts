@@ -3,17 +3,16 @@ import { RunOnceScheduler } from "../../base/async.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { ProcessExit } from "../../platform/process/process-service.js";
 import {
-	ProcessExit,
-	exitCodeText,
-} from "../../platform/process/process-service.js";
-import { RojoRunner } from "../runner/rojo-runner.js";
+	RojoRunner,
+	SupervisedExitEvent,
+	SupervisedRojoProcess,
+	crashedAgain,
+	exitHow,
+} from "../runner/rojo-runner.js";
 import { ServerInfo } from "../runner/rojo-server.js";
 import { ServeFlags } from "../runner/serve-flags.js";
-import {
-	SupervisedExitEvent,
-	SupervisedRojo,
-} from "../runner/supervised-rojo.js";
 import {
 	ServePlan,
 	ServeTarget,
@@ -42,7 +41,7 @@ interface StartedServerListener {
 
 /** A server the session started to serve a config with. */
 export class StartedServer extends AbstractDisposable {
-	private readonly child: SupervisedRojo;
+	private readonly child: SupervisedRojoProcess;
 	private exited = false;
 	private restartedAfter: ProcessExit | undefined;
 	private stoppedOnPurpose = false;
@@ -66,7 +65,7 @@ export class StartedServer extends AbstractDisposable {
 		super();
 		const { executable, serverArgs, selection } = plan;
 		this.child = this._register(
-			new SupervisedRojo(
+			rojoRunner.supervise(
 				() =>
 					rojoRunner.start(
 						executable,
@@ -235,30 +234,14 @@ export class StartedServer extends AbstractDisposable {
 	): ServerExitEvent {
 		const interrupted = exit.interrupted === true;
 		const { label, file } = this.target.config;
-		if (gaveUp) {
-			const stopped = `Rojo crashed again right after a restart, so Rogen stopped serving ${label}`;
+		if (gaveUp)
 			return {
 				target: this.target,
 				exit,
 				interrupted,
 				crashed: true,
-				failure:
-					gaveUp.length > 0
-						? {
-								...errorDiagnostic(
-									"rojo.crashed",
-									{ resource: file },
-									`${stopped}:`
-								),
-								details: gaveUp,
-							}
-						: errorDiagnostic(
-								"rojo.crashed",
-								{ resource: file },
-								`${stopped} (exit code ${exitCodeText(exit.code ?? 1)}).`
-							),
+				failure: crashedAgain(`serving ${label}`, file, exit, gaveUp),
 			};
-		}
 		const failure =
 			exit.error !== undefined
 				? errorDiagnostic(
@@ -270,7 +253,7 @@ export class StartedServer extends AbstractDisposable {
 					? errorDiagnostic(
 							"serve.serverExited",
 							{ resource: file },
-							`Rojo stopped serving ${label} with ${exit.code === null ? `signal ${exit.signal}` : `exit code ${exitCodeText(exit.code)}`}${said ? "; see what it said above." : ", without saying why."}`
+							`Rojo stopped serving ${label} with ${exitHow(exit)}${said ? "; see what it said above." : ", without saying why."}`
 						)
 					: undefined;
 		const stop = { target: this.target, exit, interrupted };

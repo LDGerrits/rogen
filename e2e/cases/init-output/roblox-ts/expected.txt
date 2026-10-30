@@ -8,7 +8,7 @@ stdout:
   Created .gitignore.
   Created AGENTS.md.
   Initialised a git repository.
-  default.project.json · wrote
+  Wrote default.project.json.
   Next steps
     Run each in its own terminal:
       rbxtsc -w

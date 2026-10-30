@@ -16,7 +16,7 @@ stdout:
   Created README.md.
   Created .vscode/settings.json.
   Created AGENTS.md.
-  game.project.json · wrote
+  Wrote game.project.json.
   Next steps
     Run:
       rogen serve game
