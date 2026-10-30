@@ -746,6 +746,24 @@ describe("CoreSyncbackService", () => {
 			).toEqual({ $className: "RemoteEvent" });
 		});
 
+		it("should say that a node Rojo added with a $path under a node of the tree has no place", async () => {
+			rojo.say = async () => {
+				const project = JSON.parse(rojo.projectTexts[0]);
+				project.tree.ReplicatedStorage.Remotes.Kit = { $path: "kit" };
+				await fs.writeFile(
+					abs("rogen-syncback.project.json"),
+					JSON.stringify(project)
+				);
+				return [];
+			};
+
+			const plan = (await service.plan(request)).unwrap();
+
+			expect(plan.unplaced).toMatchObject([
+				{ instance: "ReplicatedStorage/Remotes/Kit" },
+			]);
+		});
+
 		it("should say how to keep an instance there that the tree can't describe, and write nothing for it", async () => {
 			rojo.say = async () => {
 				await writeIntoNode(
@@ -1232,6 +1250,60 @@ describe("CoreSyncbackService", () => {
 			expect(await fs.readFile(abs("src/Combat/init.meta.json"))).toBe(
 				'{\n\t"attributes": { "Owner": "you" }\n}\n'
 			);
+		});
+
+		it("should write into the feature's meta.jsonc, keeping its comments and other keys", async () => {
+			await prepare([
+				"src/Combat/Server/Main.server.luau",
+				"src/Combat/init.meta.jsonc",
+			]);
+			await fs.writeFile(
+				abs("src/Combat/init.meta.jsonc"),
+				'{\n\t// kept\n\t"ignoreUnknownInstances": true\n}\n'
+			);
+			await writeServiceOf(fs, new CoreIndexService(fs)).write(
+				request.selection
+			);
+			rojo.say = async () => {
+				await writeMeta("ServerScriptService", "Combat");
+				return [];
+			};
+
+			const done = (await service.apply(request)).unwrap();
+
+			expect(done.changes).toEqual([
+				{ kind: "write", file: abs("src/Combat/init.meta.jsonc") },
+			]);
+			const text = await fs.readFile(abs("src/Combat/init.meta.jsonc"));
+			expect(text).toContain("// kept");
+			expect(text).toContain('"ignoreUnknownInstances": true');
+			expect(text).toContain('"Owner": "you"');
+			expect(await fs.exists(abs("src/Combat/init.meta.json"))).toBe(
+				false
+			);
+		});
+
+		it("should leave a feature's meta alone where an ignore glob matches it", async () => {
+			await prepare(["src/Combat/Server/Main.server.luau"], {
+				project: {
+					tree: { $className: "DataModel" },
+					syncbackRules: { ignorePaths: ["src/Combat/init.meta.json"] },
+				},
+			});
+			rojo.say = async () => {
+				await writeMeta("ServerScriptService", "Combat");
+				return [];
+			};
+
+			const plan = (await service.plan(request)).unwrap();
+
+			expect(plan.changes).toEqual([]);
+			expect(plan.unplaced).toMatchObject([
+				{
+					instance: "ServerScriptService/Combat",
+					reason: expect.stringContaining("ignore glob"),
+				},
+			]);
 		});
 
 		it("should list a change Rojo made on one of the instances whose feature meta sets several", async () => {

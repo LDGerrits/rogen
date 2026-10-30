@@ -1,5 +1,7 @@
 import { toNative } from "../../base/path.js";
+import { joinedWithAnd } from "../../base/strings.js";
 import { instanceKey } from "../roblox/roblox.js";
+import { RojoFile } from "../rojo/rojo.js";
 import { UnplacedInstance } from "./syncback.js";
 import { SyncbackLayout } from "./syncback-layout.js";
 
@@ -13,11 +15,6 @@ export interface MetaRequest<T> {
 export interface PlacedMeta<T> extends MetaRequest<T> {
 	readonly folder: string;
 }
-
-const listed = (names: readonly string[]) =>
-	names.length < 2
-		? names.join("")
-		: `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 
 /** Where property edits on the instances of feature folders go: a feature's meta when every instance it makes got the same edit, left out otherwise; an edit on an instance no feature folder makes comes back as `homeless`. */
 export function featureMetas<T>(
@@ -59,10 +56,10 @@ export function featureMetas<T>(
 			placed.push({ folder, ...edits[0] });
 			continue;
 		}
-		const meta = toNative(`${folder}/init.meta.json`);
+		const meta = toNative(`${folder}/${RojoFile.INIT_META}`);
 		const reason =
 			missing.length > 0
-				? `its feature folder ${toNative(folder)} also makes ${listed(missing)}, and ${meta} would set it on each of them; set it alike on all of them in Studio, or edit ${meta} by hand`
+				? `its feature folder ${toNative(folder)} also makes ${joinedWithAnd(missing)}, and ${meta} would set it on each of them; set it alike on all of them in Studio, or edit ${meta} by hand`
 				: `it was set differently on the instances its feature folder ${toNative(folder)} makes, and ${meta} sets one value on each of them; set it alike in Studio, or edit ${meta} by hand`;
 		for (const key of keys) unplaced.push({ instance: key, reason });
 	}

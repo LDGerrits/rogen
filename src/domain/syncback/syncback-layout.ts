@@ -33,6 +33,10 @@ export class SyncbackLayout {
 	private readonly roots: readonly string[];
 	private readonly keys: ResolvedConfig["keys"];
 	private readonly shared: ReadonlySet<string>;
+	private features?: readonly (
+		| { readonly folder: string; readonly instance: readonly string[] }
+		| undefined
+	)[];
 
 	constructor(
 		readonly config: ResolvedConfig,
@@ -148,11 +152,13 @@ export class SyncbackLayout {
 		);
 	}
 
-	/** The feature folder whose routing makes `node`, with every instance it makes, as its `init.meta.json` applies to each; none when `node` is not such an instance, or when its files say more than one folder. */
+	/** The feature folder whose routing makes `node`, with every instance it makes, as its `init.meta.json` applies to each; none when `node` is not such an instance, such as one a script makes, or when its files say more than one folder. */
 	featureMaking(
 		node: readonly string[]
 	): { folder: string; instances: (readonly string[])[] } | undefined {
-		const features = this.placed.map((file) => this.featureOf(file));
+		if (this.fileMaking(node)) return undefined;
+		this.features ??= this.placed.map((file) => this.featureOf(file));
+		const { features } = this;
 		const folders = new Set(
 			features.flatMap((feature) =>
 				feature && SyncbackLayout.sameNode(feature.instance, node)

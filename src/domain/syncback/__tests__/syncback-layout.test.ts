@@ -99,6 +99,18 @@ describe("SyncbackLayout", () => {
 			).toBeUndefined();
 		});
 
+		it("should find none for an instance a script makes", async () => {
+			const layout = await layoutOf([
+				"src/Combat/Server/Util.luau",
+				"src/Combat/Shared/X.luau",
+				"src/Combat/Server/Hit/init.server.luau",
+			]);
+
+			expect(
+				layout.featureMaking(["ServerScriptService", "Combat", "Hit"])
+			).toBeUndefined();
+		});
+
 		it("should find none when the routing folder sits at the source path", async () => {
 			const layout = await layoutOf(["src/Server/Loose.luau"]);
 
