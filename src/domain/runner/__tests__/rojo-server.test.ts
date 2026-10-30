@@ -1,3 +1,4 @@
+import { LogLevel } from "../../../platform/log/log-service.js";
 import { RojoServer } from "../rojo-server.js";
 
 describe("domain/runner/rojo-server", () => {
@@ -67,15 +68,37 @@ describe("domain/runner/rojo-server", () => {
 		});
 	});
 
-	describe("LOG_ENV", () => {
+	describe("logEnv", () => {
 		it.each([
 			["nothing set", undefined, "info,librojo::web=debug"],
 			["the user's filter", "warn", "warn,librojo::web=debug"],
 		])(
 			"should ask Rojo for the debug lines of its web server beside %s",
 			(_, inherited, expected) => {
-				expect(RojoServer.LOG_ENV.RUST_LOG(inherited)).toBe(expected);
+				expect(
+					RojoServer.logEnv(LogLevel.Info).RUST_LOG(inherited)
+				).toBe(expected);
 			}
 		);
+
+		it.each([
+			[LogLevel.Error, "info,librojo::web=debug"],
+			[LogLevel.Info, "info,librojo::web=debug"],
+			[LogLevel.Debug, "info,librojo=debug"],
+			[LogLevel.Trace, "info,librojo=trace"],
+		])(
+			"should ask Rojo for what its -v flags show at log level %s",
+			(level, expected) => {
+				expect(RojoServer.logEnv(level).RUST_LOG(undefined)).toBe(
+					expected
+				);
+			}
+		);
+
+		it("should keep the user's filter over the log level", () => {
+			expect(RojoServer.logEnv(LogLevel.Trace).RUST_LOG("warn")).toBe(
+				"warn,librojo::web=debug"
+			);
+		});
 	});
 });

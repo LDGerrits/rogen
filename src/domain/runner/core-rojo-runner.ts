@@ -60,7 +60,7 @@ export class CoreRojoRunner implements RojoRunner {
 					...this.verbosity(),
 					...flags,
 				],
-				{ cwd, env: RojoServer.LOG_ENV }
+				{ cwd, env: RojoServer.logEnv(this.logLevel) }
 			),
 			this.logLevel <= LogLevel.Error
 		);
