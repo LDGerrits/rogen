@@ -136,7 +136,9 @@ export function syncbackDocument(
 ) {
 	const written = configsDocument(outcomes, cwd);
 	return {
-		changed: written.changed || syncback.outcome === "written",
+		changed:
+			written.changed ||
+			(syncback.outcome === "written" && syncback.changes.length > 0),
 		configs: written.configs,
 		syncback,
 	};

@@ -1,4 +1,5 @@
 import { jest } from "@jest/globals";
+import { DiagnosticSeverity } from "../../diagnostics/diagnostic.js";
 import { PlainLogService } from "../plain-log-service.js";
 
 describe("AbstractLogService formatting", () => {
@@ -90,6 +91,26 @@ describe("AbstractLogService formatting", () => {
 		const [loggedMessage] = consoleSpy.mock.calls[0] as [string];
 		expect(loggedMessage).not.toContain("Caused by");
 
+		consoleSpy.mockRestore();
+	});
+
+	it("should print a diagnostic about a file whose name holds control characters as escapes", () => {
+		const consoleSpy = jest
+			.spyOn(console, "warn")
+			.mockImplementation(() => {});
+
+		new PlainLogService("/repo").diagnostic({
+			resource: "/repo/src/a\u001b]0;x\u0007\n::error::pwned.luau",
+			severity: DiagnosticSeverity.Warning,
+			code: "scan.portableName",
+			message: "its name is odd.",
+		});
+
+		const [line] = consoleSpy.mock.calls[0] as [string];
+		expect(line).not.toContain("\u001b");
+		expect(line.split("\n").some((each) => each.startsWith("::"))).toBe(
+			false
+		);
 		consoleSpy.mockRestore();
 	});
 });

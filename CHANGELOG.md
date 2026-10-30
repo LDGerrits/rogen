@@ -65,6 +65,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `rogen write` no longer warns that `rbxts.copyfiles.json`, which sloptor writes in the compiled path for itself, is a `compiled.orphan`.
 - In a project that has a config, `rogen init --agent-rules` and `--agent-hook` add the agent files also with `--skip-git`, `-y`, `-n` or `--json`. Before, `--skip-git` made them stop with `init.configExists`. With a flag that shapes a config, such as `--language`, they now stop with a usage error that names the flag.
 - In the README that `rogen init` writes for one place, the paragraph on which folders decide where code runs now follows the one about the feature it means.
+- A file or folder name that holds a control character, or a line break followed by `::error::`, no longer reaches your terminal or a CI log as it is. Rogen prints each control character as an escape such as `\u001b`, and writes `\u003a:` for a `::` that starts a line, so a name can't clear the screen, set the window title or issue a GitHub Actions workflow command. The annotations Rogen writes for GitHub Actions were escaped already.
+- `rogen syncback --json` says `changed: false` when the project file was current and syncback wrote and removed nothing. Before, it said `true` whenever Rojo ran.
 
 ## [2.0.0-beta.1] - 2026-10-26
 

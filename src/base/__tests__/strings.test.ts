@@ -2,12 +2,39 @@ import {
 	capitalized,
 	closestMatch,
 	closestMatches,
+	defanged,
 	joinedWithAnd,
 	listLimited,
 	plural,
 	shellWord,
 	unlistedNote,
 } from "../strings.js";
+
+describe("defanged", () => {
+	it("should leave ordinary text, newlines and tabs alone", () => {
+		expect(defanged("a\tb\nc ü 日本")).toBe("a\tb\nc ü 日本");
+	});
+
+	it("should write control characters as escapes, so a file name cannot drive the terminal", () => {
+		expect(defanged("a\u001b]0;x\u0007\u001b[2Jb\r\u007f\u009b")).toBe(
+			"a\\u001b]0;x\\u0007\\u001b[2Jb\\u000d\\u007f\\u009b"
+		);
+	});
+
+	it("should write a line separator and a bidirectional override as escapes", () => {
+		expect(defanged("a\u2028b\u202ec")).toBe("a\\u2028b\\u202ec");
+	});
+
+	it("should break a line that starts a workflow command", () => {
+		expect(defanged("x\n::error::pwned\n  ::warning::y")).toBe(
+			"x\n\\u003a:error::pwned\n  \\u003a:warning::y"
+		);
+	});
+
+	it("should leave a colon pair inside a line", () => {
+		expect(defanged("a::b")).toBe("a::b");
+	});
+});
 
 describe("capitalized", () => {
 	it("should uppercase the first letter and keep the rest", () => {

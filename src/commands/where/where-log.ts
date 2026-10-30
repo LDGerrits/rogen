@@ -1,4 +1,5 @@
 import { unescapedGlob } from "../../base/glob.js";
+import { defanged } from "../../base/strings.js";
 import { configPath } from "../../platform/config/config-path.js";
 import path from "path";
 import { relativeTo, toPosix } from "../../base/path.js";
@@ -145,11 +146,11 @@ export class WhereLog {
 		const blocks = this.blocks();
 		if (blocks.length === 0) {
 			const empty = this.emptyLine();
-			if (empty) logService.print(empty);
+			if (empty) logService.print(defanged(empty));
 			return;
 		}
 		for (const block of blocks) {
-			logService.print(block.lines.join("\n"));
+			logService.print(defanged(block.lines.join("\n")));
 			if (block.requireLines.length > 0)
 				logService.note(block.requireLines.join("\n"));
 			else

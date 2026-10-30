@@ -68,6 +68,16 @@ describe("where command", () => {
 		]);
 	});
 
+	it("should print a file name's control characters as escapes", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await write("src/Combat/Server/a\u001b[2J.luau");
+
+		await run({ _: ["src/Combat/Server/a\u001b[2J.luau"] });
+
+		expect(printed().join("\n")).not.toContain("\u001b");
+		expect(printed()[0]).toContain("a\\u001b[2J");
+	});
+
 	describe("a file in no source path", () => {
 		beforeEach(async () => {
 			await writeConfig("default.rogen.json", {

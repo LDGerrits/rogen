@@ -257,6 +257,29 @@ describe("syncback command", () => {
 		expect(document.changed).toBe(false);
 	});
 
+	it("should say changed is false when the project file is current and syncback wrote nothing", async () => {
+		const first = start({ input: "game.rbxl", "non-interactive": true });
+		const [firstRojo] = await rojoRuns(1);
+		firstRojo.exit({ code: 0, signal: null });
+		await first.running;
+
+		const { running, log } = start({
+			input: "game.rbxl",
+			"non-interactive": true,
+			json: true,
+		});
+		const rojo = (await rojoRuns(2))[1];
+		rojo.exit({ code: 0, signal: null });
+		await running;
+
+		const document = log.json();
+		expect(document.syncback).toMatchObject({
+			outcome: "written",
+			changes: [],
+		});
+		expect(document.changed).toBe(false);
+	});
+
 	it("should write no project file in a dry run, and leave a stale one as it was", async () => {
 		const first = start({ input: "game.rbxl", "dry-run": true });
 		const [rojo] = await rojoRuns(1);

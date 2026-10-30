@@ -1,3 +1,4 @@
+import { defanged } from "../../base/strings.js";
 import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -261,7 +262,9 @@ registerCommand(
 		): void {
 			for (const { kind, file } of plan.listed)
 				logService.print(
-					`${kind === "write" ? "Writing" : "Removing"} ${path.relative(cwd, file)}`
+					defanged(
+						`${kind === "write" ? "Writing" : "Removing"} ${path.relative(cwd, file)}`
+					)
 				);
 		}
 
