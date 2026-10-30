@@ -49,7 +49,8 @@ export class CoreRojoRunner implements RojoRunner {
 		command: string,
 		projectFile: string | undefined,
 		flags: readonly string[],
-		cwd: string
+		cwd: string,
+		readsStdout = false
 	): RojoProcess {
 		return new StartedRojo(
 			this.processService.spawn(
@@ -62,7 +63,7 @@ export class CoreRojoRunner implements RojoRunner {
 				],
 				{ cwd, env: RojoServer.logEnv(this.logLevel) }
 			),
-			this.logLevel <= LogLevel.Error
+			!readsStdout && this.logLevel <= LogLevel.Error
 		);
 	}
 

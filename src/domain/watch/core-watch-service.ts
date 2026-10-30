@@ -6,7 +6,7 @@ import { WriteSet } from "../write/write.js";
 import { WriteService } from "../write/write-service.js";
 import { ReloadableSelection } from "../config/config-service.js";
 import { CoreWatchSession } from "./core-watch-session.js";
-import { WatchOptions, WatchService, WatchSession } from "./watch-service.js";
+import { WatchService, WatchSession } from "./watch-service.js";
 
 export class CoreWatchService implements WatchService {
 	declare readonly _serviceBrand: undefined;
@@ -18,8 +18,7 @@ export class CoreWatchService implements WatchService {
 	) {}
 
 	watch(
-		selection: ReloadableSelection,
-		options?: WatchOptions
+		selection: ReloadableSelection
 	): Result<WatchSession, DiagnosticsError> {
 		const set = WriteSet.of(selection);
 		if (set.isErr()) return set;
@@ -30,8 +29,7 @@ export class CoreWatchService implements WatchService {
 				set.value,
 				this.watcher,
 				this.indexService,
-				this.writeService,
-				options
+				this.writeService
 			)
 		);
 	}
