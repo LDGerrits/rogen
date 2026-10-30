@@ -1,4 +1,5 @@
 import { isObject } from "../../base/objects.js";
+import { LogLevel } from "../../platform/log/log-service.js";
 import { RojoVersion } from "./rojo-version.js";
 
 /** One thing the server said. `info` is a line Rogen doesn't recognise, kept so nothing that explains a failure is lost; `debug` is what Rogen drops as noise, shown only with `--verbose`. */
@@ -53,12 +54,20 @@ export class RojoServer {
 	/** What installs its Studio plugin: Rogen runs the pinned Rojo's. */
 	static readonly PLUGIN_COMMAND = "rogen plugin install";
 
-	/** The environment that makes it print its connection records. */
-	static readonly LOG_ENV: Readonly<
-		Record<string, (inherited: string | undefined) => string>
-	> = {
-		RUST_LOG: (inherited) => `${inherited ?? "info"},librojo::web=debug`,
-	};
+	/** The environment that makes it print its connection records, and what its `-v` or `-vv` would show at `level` unless the user set a filter. */
+	static logEnv(
+		level: LogLevel
+	): Readonly<Record<string, (inherited: string | undefined) => string>> {
+		return {
+			RUST_LOG: (inherited) => {
+				if (inherited !== undefined)
+					return `${inherited},librojo::web=debug`;
+				if (level >= LogLevel.Trace) return "info,librojo=trace";
+				if (level >= LogLevel.Debug) return "info,librojo=debug";
+				return "info,librojo::web=debug";
+			},
+		};
+	}
 
 	/** What its info endpoint answered, when it is Rojo's answer. */
 	static readInfo(value: unknown): ServerInfo | undefined {
