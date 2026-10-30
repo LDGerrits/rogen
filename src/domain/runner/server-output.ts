@@ -19,6 +19,7 @@ const SEVERITIES: Readonly<Record<string, ServerMessage["severity"]>> = {
 
 /** Rust's own lines: a CLI error or warning; in capitals, a message the server wrote itself, as a paragraph that ends at the blank line. */
 const RUST_RECORD = /^(?<level>error|warning|ERROR|WARNING): (?<text>.*)$/;
+const PARAGRAPH_RECORD = /^(ERROR|WARNING): /;
 const RUST_NOISE = /^note: run with `RUST_BACKTRACE=1`/;
 
 interface PendingRecord {
@@ -65,7 +66,9 @@ export class ServerOutput extends AbstractDisposable {
 
 	private read(line: string, stream?: "stdout" | "stderr"): void {
 		const logged = RojoServer.logRecordOf(line);
-		if (stream === "stdout" && !logged) {
+		const ownMessage =
+			this.pending?.paragraph || PARAGRAPH_RECORD.test(line);
+		if (stream === "stdout" && !logged && !ownMessage) {
 			this.flush();
 			this.say("info", line.trim(), false, line);
 			return;

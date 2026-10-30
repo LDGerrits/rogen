@@ -16,7 +16,7 @@ import { WatchUpdate } from "../../domain/watch/watch-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 import { watchLineShapes } from "../write/write-document.js";
-import { reportServerOutput } from "../write/report-rojo.js";
+import { reportRojo } from "../write/report-rojo.js";
 import { WatchJsonLog, WatchLog } from "../write/watch-log.js";
 import {
 	diagnosticShape,
@@ -122,7 +122,7 @@ export class ServeLog implements ServeReporter {
 		private readonly cwd: string,
 		private readonly plan: ServePlan
 	) {
-		this.watchLog = new WatchLog(logService, cwd, "serve");
+		this.watchLog = new WatchLog(logService, cwd, "serve", true);
 	}
 
 	begin(): void {
@@ -137,19 +137,23 @@ export class ServeLog implements ServeReporter {
 	}
 
 	serving({ target, info }: ServerReadyEvent): void {
+		const { label } = target.config;
 		this.logService.success(
-			`Serving ${this.nameOf(target)} with ${serverOf(info)} at ${target.address} (Studio lists it as ${info.project}).`
+			`Serving ${label} at ${target.address.shown} · ${target.address.url}\n  In Studio, press Connect in the Rojo plugin.`
+		);
+		this.logService.debug(
+			`${serverOf(info)} serves ${label}${info.session ? ` (session ${info.session})` : ""}.`
 		);
 	}
 
 	restarted({ target }: ServerRestartEvent): void {
 		this.logService.info(
-			`Rojo crashed, so Rogen restarted it on ${target.address}.\n  In Studio, press Connect in the Rojo plugin.`
+			`Rojo crashed, so Rogen restarted it on ${target.address.shown}.\n  In Studio, press Connect in the Rojo plugin.`
 		);
 	}
 
 	said(said: ServerOutputEvent): void {
-		reportServerOutput(this.logService, said.message, this.cwd);
+		reportRojo(this.logService, [said.message], this.cwd);
 	}
 
 	connection({ target, opened, clients }: ServerConnectionEvent): void {
@@ -181,7 +185,7 @@ export class ServeLog implements ServeReporter {
 				return;
 			case "retired":
 				this.logService.info(
-					`Stopped serving ${label}${change.reason === "moved" ? ` at ${target.address}` : ""}: ${RETIRED_BECAUSE[change.reason]}.`
+					`Stopped serving ${label}${change.reason === "moved" ? ` at ${target.address.shown}` : ""}: ${RETIRED_BECAUSE[change.reason]}.`
 				);
 		}
 	}
@@ -206,7 +210,7 @@ export class ServeLog implements ServeReporter {
 
 	private running(target: ServedTarget): void {
 		const { servedBy: info } = target;
-		const served = `${serverOf(info)} serves a project named ${info.project} at ${target.address}${info.session ? ` (session ${info.session})` : ""}.`;
+		const served = `${serverOf(info)} serves a project named ${info.project} at ${target.address.shown}${info.session ? ` (session ${info.session})` : ""}.`;
 		this.logService.info(
 			`${this.nameOf(target)} is already served by another rogen serve: ${served}`
 		);
