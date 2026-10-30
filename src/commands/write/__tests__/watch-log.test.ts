@@ -41,10 +41,26 @@ const updateOf = (update: Partial<WatchUpdate>): WatchUpdate => ({
 	...update,
 });
 
+const wrote: RewriteReport = {
+	outcome: new WrittenConfig(
+		mockEntry({}, path.join(cwd, "default.rogen.json")).config,
+		"wrote",
+		{ warnings: [], syncWarnings: [] },
+		{ roots: [], routes: [], unrouted: 0, replaced: 0, displaced: 0 },
+		[]
+	),
+	unreported: [],
+	repeated: [],
+	fixed: [],
+	repeatedFailure: false,
+};
+
 const logged = (update: Partial<WatchUpdate>) => {
 	const logService = new MockLogService();
 	logService.setLevel(LogLevel.Debug);
-	new WatchLog(logService, cwd).update(updateOf(update));
+	new WatchLog(logService, cwd).update(
+		updateOf({ reports: [wrote], ...update })
+	);
 	return logService.entries;
 };
 
@@ -79,6 +95,7 @@ describe("WatchLog.update", () => {
 					threshold: 200,
 					ended: false,
 				},
+				reports: [],
 			});
 
 			expect(lines.map(({ kind, text }) => [kind, text])).toEqual([

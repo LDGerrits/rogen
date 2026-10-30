@@ -122,7 +122,7 @@ export class ServeLog implements ServeReporter {
 		private readonly cwd: string,
 		private readonly plan: ServePlan
 	) {
-		this.watchLog = new WatchLog(logService, cwd, "serve", true);
+		this.watchLog = new WatchLog(logService, cwd, "serve");
 	}
 
 	begin(): void {
