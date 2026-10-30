@@ -86,11 +86,6 @@ export class JsoncComments {
 		return JSON.stringify(path);
 	}
 
-	/** The comments at a path given as its key, from `paths`. */
-	atKey(key: string): JsoncMarks {
-		return this.at(JSON.parse(key) as JsoncPath);
-	}
-
 	private attach(
 		comment: Found,
 		node: Node,

@@ -1,7 +1,6 @@
 import {
 	escapedGlobPrefix,
 	isGlobsetMatch,
-	isMatch,
 	ignoresAllOf,
 	ignoringAllOf,
 	ignoringGlob,
@@ -22,20 +21,14 @@ describe("a folder prefix of a glob", () => {
 	])("should match only %s once escaped", (directory) => {
 		const glob = `${escapedGlobPrefix(directory)}/**/*.spec.luau`;
 
-		expect(isMatch(`${directory}/src/A.spec.luau`, glob)).toBe(true);
-		expect(isMatch(`${directory}/src/A.luau`, glob)).toBe(false);
+		expect(isGlobsetMatch(`${directory}/src/A.spec.luau`, glob)).toBe(true);
+		expect(isGlobsetMatch(`${directory}/src/A.luau`, glob)).toBe(false);
 	});
 
 	it("should come back as written once unescaped", () => {
 		const glob = `${escapedGlobPrefix("/repo/a (1)/{b}")}/**/*.spec.luau`;
 
 		expect(unescapedGlob(glob)).toBe("/repo/a (1)/{b}/**/*.spec.luau");
-	});
-});
-
-describe("isMatch", () => {
-	it("should match dot files", () => {
-		expect(isMatch("/repo/.hidden/A.luau", "/repo/**/A.luau")).toBe(true);
 	});
 });
 

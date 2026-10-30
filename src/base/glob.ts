@@ -1,6 +1,3 @@
-import picomatch from "picomatch";
-import { isWindows } from "./platform.js";
-
 type GlobPattern = string;
 
 const MAGIC = /[(){}|[\]*?!+@]/g;
@@ -18,13 +15,6 @@ export function unescapedGlob(glob: GlobPattern): string {
 /** `filePath` as a glob that matches only itself under Rust's globset. */
 export function literalGlob(filePath: string): string {
 	return filePath.replace(/[[\]{}*?]/g, "[$&]");
-}
-
-export function isMatch(path: string, glob: GlobPattern): boolean {
-	return picomatch.isMatch(path, glob, {
-		dot: true,
-		windows: isWindows,
-	});
 }
 
 /** `glob` without the `!` that makes it re-include, and whether it had one; `\\!` is a literal `!`. */

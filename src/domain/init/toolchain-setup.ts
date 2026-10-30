@@ -20,7 +20,7 @@ const MANAGERS = ["rokit", "aftman", "foreman"] as const;
 type ToolManager = (typeof MANAGERS)[number];
 
 /** A tool a toolchain manager pins. */
-export interface ToolPin {
+interface ToolPin {
 	readonly name: string;
 	readonly label: string;
 	readonly repository: string;
