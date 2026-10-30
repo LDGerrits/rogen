@@ -121,7 +121,9 @@ export class WatchLog implements WatchReporter {
 	constructor(
 		protected readonly logService: LogService,
 		protected readonly cwd: string,
-		private readonly command = "watch"
+		private readonly command = "watch",
+		/** Whether a round that left every project file as it was, with nothing new to say, shows only under `-v`. */
+		private readonly quietWhenUnchanged = false
 	) {
 		this.outcomeLog = new OutcomeLog(logService, cwd);
 	}
@@ -169,12 +171,24 @@ export class WatchLog implements WatchReporter {
 					: `Threshold reached (${cause.dropped} > ${cause.threshold}). Dropping the buffered changes.`
 			);
 		}
-		this.logService.step(`${clockTime(at)} · ${titleOf(cause, this.cwd)}`);
+		const quiet =
+			this.quietWhenUnchanged &&
+			cause.kind !== "burst" &&
+			notices.length === 0 &&
+			reports.every(
+				({ outcome, unreported, fixed }) =>
+					outcome.kind === "unchanged" &&
+					unreported.length === 0 &&
+					fixed.length === 0
+			);
+		const title = `${clockTime(at)} · ${titleOf(cause, this.cwd)}`;
+		if (quiet) this.logService.debug(title);
+		else this.logService.step(title);
 		for (const line of describeFileChanges(changes, this.cwd))
 			this.logService.debug(line);
 		notices.forEach((notice) => this.notice(notice));
 		const sharedWarnings = SharedDiagnostics.warnings();
-		reports.forEach((report) => this.report(report, sharedWarnings));
+		reports.forEach((report) => this.report(report, sharedWarnings, quiet));
 	}
 
 	protected notice(notice: ConfigNotice): void {
@@ -208,7 +222,8 @@ export class WatchLog implements WatchReporter {
 			fixed,
 			repeatedFailure,
 		}: RewriteReport,
-		sharedWarnings: SharedDiagnostics
+		sharedWarnings: SharedDiagnostics,
+		quiet: boolean
 	): void {
 		const warnings = sharedWarnings.take(
 			outcome.file,
@@ -225,6 +240,7 @@ export class WatchLog implements WatchReporter {
 					this.outcomeLog.sameAs("warnings", warnings.sameAs),
 					counted(fixed, "fixed"),
 				],
+				quiet,
 			}
 		);
 	}

@@ -24,17 +24,6 @@ function reportServerMessage(
 	else logService.info(said);
 }
 
-/** A line Rojo printed on stdout comes out on stdout as it printed it, so a program that reads its output reads Rogen's; in a frame it is an `info` line, or `debug` when Rogen drops it as noise, so the frame stays whole. */
-export function reportServerOutput(
-	logService: LogService,
-	message: ServerMessage,
-	cwd: string
-): void {
-	if (!logService.framed && message.stdout !== undefined)
-		logService.print(message.stdout);
-	else if (message.text !== "") reportServerMessage(logService, message, cwd);
-}
-
 /** The lines Rojo prints as it goes, which the line Rogen closes with says again. */
 const PROGRESS = [
 	/^Building project '.*'$/,

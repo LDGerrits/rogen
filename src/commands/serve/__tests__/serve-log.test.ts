@@ -25,21 +25,24 @@ const say = (logService: MockLogService, message: ServerMessage) =>
 	new ServeLog(logService, "/repo", plan).said({ target, message });
 
 describe("ServeLog server output", () => {
-	it("should print a stdout line as the server printed it where there is no frame", () => {
+	it("should drop the banner where there is no frame", () => {
 		const logService = new MockLogService();
 
 		say(logService, banner);
 
-		expect(logService.lines).toEqual(["print: Port:    34872"]);
+		expect(logService.lines).toEqual([]);
 	});
 
-	it("should print a stdout line while a terminal has no frame open", () => {
+	it("should write a stdout line Rogen does not recognise as an info line where there is no frame", () => {
 		const logService = new MockLogService();
-		logService.drawsFrame = true;
 
-		say(logService, banner);
+		say(logService, {
+			severity: "info",
+			text: "Something new",
+			stdout: "Something new",
+		});
 
-		expect(logService.lines).toEqual(["print: Port:    34872"]);
+		expect(logService.lines).toEqual(["info: Rojo: Something new"]);
 	});
 
 	it("should show a line Rogen drops as noise only with --verbose inside a frame", () => {

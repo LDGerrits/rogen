@@ -129,7 +129,6 @@ registerCommand(
 			);
 			if (tooMany) return err(tooMany);
 			const serveService = accessor.get(ServeService);
-			if (!line.options.json) accessor.get(LogService).reserveStdout();
 
 			const store = new DisposableStore();
 			const shutdown = this.untilShutdown(accessor, store);
