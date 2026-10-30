@@ -452,6 +452,63 @@ describe("WriteValidator rules", () => {
 			});
 		});
 
+		describe("a script that other files' instances land in", () => {
+			const clashes = async () =>
+				(await route())
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "tree.instanceClash"
+					);
+
+			it("should warn of a loose file a feature's folder lands in, naming both", async () => {
+				await write(
+					"src/server/Inv.luau",
+					"src/Inv/server/A.luau",
+					"src/Inv/server/B.luau"
+				);
+
+				expect(await clashes()).toEqual([
+					{
+						severity: DiagnosticSeverity.Warning,
+						code: "tree.instanceClash",
+						resource: abs("src/server/Inv.luau"),
+						message: `becomes "ServerScriptService/Inv", where ${abs("src/Inv/server/A.luau")} lands too, so that file becomes a child of this one. Rename one of them to keep them apart.`,
+						related: [
+							{
+								resource: abs("src/Inv/server/A.luau"),
+								message:
+									'becomes a child of "ServerScriptService/Inv"',
+							},
+						],
+					},
+				]);
+			});
+
+			it("should warn of a hoisted file that takes a feature's name", async () => {
+				await write(
+					"src/Inv/server/^Shop.luau",
+					"src/Shop/server/S.luau"
+				);
+
+				expect(await clashes()).toMatchObject([
+					{
+						resource: abs("src/Inv/server/^Shop.luau"),
+						related: [{ resource: abs("src/Shop/server/S.luau") }],
+					},
+				]);
+			});
+
+			it("should leave a script beside a folder of its name alone", async () => {
+				await write(
+					"src/Inv/server/Dup.luau",
+					"src/Inv/server/Dup/C.luau",
+					"src/Inv/server/Dup/Deep/D.luau"
+				);
+
+				expect(await clashes()).toEqual([]);
+			});
+		});
+
 		describe("names that fail on some system", () => {
 			const named = async (code: string) =>
 				(await route())
