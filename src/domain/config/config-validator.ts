@@ -68,13 +68,6 @@ export class ConfigValidator {
 			.map((config) => ({ config }));
 	}
 
-	/** The errors for each value in the tree's `$properties` and `$attributes` that Rojo can't read. */
-	static unreadableValues(source: ConfigFile): Diagnostic[] {
-		const validator = new ConfigValidator(source);
-		validator.checkPropertyValues(validator.readProject());
-		return [...validator.problems.diagnostics];
-	}
-
 	validate(): Result<ResolvedConfig, Diagnostic[]> {
 		const routes = this.checkRoutes();
 		const routed = Object.keys(this.routes).length > 0;

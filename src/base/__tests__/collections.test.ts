@@ -48,4 +48,13 @@ describe("compareStrings", () => {
 		]);
 		expect(compareStrings("a", "a")).toBe(0);
 	});
+
+	it("should order by UTF-8 bytes, so a character past the basic plane follows one before the surrogates", () => {
+		expect(["\u{1F600}", "\uFF41"].sort(compareStrings)).toEqual([
+			"\uFF41",
+			"\u{1F600}",
+		]);
+		expect(compareStrings("a", "ab")).toBe(-1);
+		expect(compareStrings("ab", "a")).toBe(1);
+	});
 });

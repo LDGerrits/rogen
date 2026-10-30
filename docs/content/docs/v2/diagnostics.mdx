@@ -59,6 +59,8 @@ error: "sourcePaths": expected an array, found a string. (config.wrongType)
 
 Give the field the type that the message names.
 
+The type includes what Rojo accepts. `servePort` is a whole number from 0 to 65535, `placeId`, `gameId` and the lists of place IDs hold whole numbers of 0 or more, and `serveAddress` is an IP address such as `127.0.0.1` or `::1`. Put a host name in `serveAllowedHosts`. A key of `syncbackRules` gets this error too, or [`config.unknownField`](#config-unknownfield) when Rojo doesn't know it. Without this check, `rojo build` fails later with "Failed to deserialize JSON".
+
 `null` is never a valid value in a `.rogen.json`, and it doesn't remove anything. To remove a key, leave it out. To keep a mounted folder out of the project, list it in `globIgnorePaths`. A node of the `tree` must be an object, so `"DevPackages": null` in the tree gets this error too.
 
 ### `config.unknownField` [#config-unknownfield]
@@ -827,16 +829,6 @@ Rogen matches a file to its source by the name a tool gives it. roblox-ts compil
 ## Format
 
 These diagnostics come from `rogen fmt-project`.
-
-### `format.commentsLost` [#format-commentslost]
-
-Error. `rogen fmt-project` won't write a config that has comments, because the formatted text has none. It always refuses a `.rogen.jsonc`, because that file is meant to hold comments. Nothing is written.
-
-```
-error: default.rogen.json has comments, and formatting writes none. Remove them first, or format it in your editor. (format.commentsLost)
-```
-
-Remove the comments if you don't need them, or format the file in your editor.
 
 ### `format.writeFailed` [#format-writefailed]
 

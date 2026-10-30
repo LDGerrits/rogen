@@ -22,7 +22,25 @@ export function groupBy<T, K, V>(
 	return groups;
 }
 
-/** Orders by code point, unlike `localeCompare`, so it agrees on every machine. */
+/** Orders by code point, which is the order of the UTF-8 bytes, unlike `localeCompare`, so it agrees on every machine. */
 export function compareStrings(a: string, b: string): number {
-	return a < b ? -1 : a > b ? 1 : 0;
+	const shared = Math.min(a.length, b.length);
+	for (let at = 0; at < shared; at++) {
+		const first = a.charCodeAt(at);
+		const second = b.charCodeAt(at);
+		if (first !== second) {
+			const difference = byCodePoint(first) - byCodePoint(second);
+			return difference < 0 ? -1 : 1;
+		}
+	}
+	return a.length < b.length ? -1 : a.length > b.length ? 1 : 0;
+}
+
+/** A UTF-16 code unit moved so that a surrogate, which stands for a code point past the basic plane, sorts after every other unit. */
+function byCodePoint(unit: number): number {
+	return unit >= 0xe000
+		? unit - 0x800
+		: unit >= 0xd800
+			? unit + 0x2000
+			: unit;
 }

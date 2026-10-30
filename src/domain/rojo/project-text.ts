@@ -1,5 +1,11 @@
 import { compareStrings } from "../../base/collections.js";
+import { IpAddress } from "../../base/ip-address.js";
 import { JsoncSpan, parseJsoncSpans } from "../../base/jsonc.js";
+import {
+	JsoncComments,
+	JsoncMarks,
+	JsoncPath,
+} from "../../base/jsonc-comments.js";
 import { isObject, isSameJson } from "../../base/objects.js";
 import { FloatText, PropertyValues } from "./property-values.js";
 import { RojoProjectFile } from "./rojo-project.js";
@@ -21,6 +27,12 @@ const FILE_KEYS = [
 	"syncbackRules",
 	"syncRules",
 ];
+
+/** The lists Rojo writes only when they hold something. */
+const EMPTY_OMITTED = ["serveAllowedHosts", "globIgnorePaths", "syncRules"];
+
+/** The sets of place IDs, which Rojo writes with each ID once. */
+const PLACE_ID_KEYS = ["servePlaceIds", "blockedPlaceIds"];
 
 /** The keys of a sync rule, in the order Rojo writes them. */
 const SYNC_RULE_KEYS = ["pattern", "exclude", "use", "suffix"];
@@ -50,7 +62,48 @@ class Ordered {
 	constructor(readonly entries: Entries) {}
 }
 
+/** A list whose items keep the index they had in the text, which their comments are filed under. */
+class Listed {
+	constructor(readonly items: Entries) {}
+}
+
 const INDENT = "  ";
+
+/** The comments of the text a document is printed from, and which of them were printed. */
+class Commented {
+	private readonly used = new Set<string>();
+
+	constructor(private readonly comments: JsoncComments) {}
+
+	/** The comments filed under `path`, which count as printed once asked for. */
+	take(path: JsoncPath): JsoncMarks {
+		this.used.add(JsoncComments.key(path));
+		return this.comments.at(path);
+	}
+
+	/** The comments below `path` that nothing printed asked for, because formatting leaves their entry out; they count as printed now. */
+	orphansUnder(path: JsoncPath): (readonly string[])[] {
+		const kept: (readonly string[])[] = [];
+		for (const key of this.comments.paths) {
+			const at = JSON.parse(key) as JsoncPath;
+			if (
+				this.used.has(key) ||
+				at.length <= path.length ||
+				!path.every((segment, index) => at[index] === segment)
+			)
+				continue;
+			this.used.add(key);
+			const marks = this.comments.at(at);
+			kept.push(
+				...marks.leading,
+				...marks.opening,
+				...marks.closing,
+				...marks.trailing
+			);
+		}
+		return kept;
+	}
+}
 
 /** Text taken as it was written, whose lines after the first are relative to the entry it is printed in. */
 class Raw {
@@ -142,12 +195,20 @@ export class ProjectText {
 		config: Record<string, unknown>,
 		rogenKeys: readonly string[],
 		/** The tree of a project file the config was lifted from, printed as it was written where it is unchanged. */
-		written?: WrittenTree
+		written?: WrittenTree,
+		/** The comments of the text the config was read from, each printed with the entry it was written with. */
+		comments?: JsoncComments
 	): string {
-		return ProjectText.print(
-			ProjectText.file(config, rogenKeys, written),
-			""
-		);
+		const body = ProjectText.file(config, rogenKeys, written);
+		if (!comments || comments.isEmpty) return ProjectText.print(body, "");
+		const commented = new Commented(comments);
+		const root = commented.take([]);
+		const text = ProjectText.print(body, "", commented, []);
+		return [
+			...root.leading.map((comment) => comment.join("\n")),
+			text,
+			...root.trailing.map((comment) => comment.join("\n")),
+		].join("\n");
 	}
 
 	private static file(
@@ -163,7 +224,7 @@ export class ProjectText {
 		];
 		const entries: [string, unknown][] = [];
 		for (const key of listed)
-			if (key in all)
+			if (key in all && !ProjectText.isOmitted(key, all[key]))
 				entries.push([
 					key,
 					key === "tree" && written
@@ -175,8 +236,27 @@ export class ProjectText {
 		return new Ordered(entries);
 	}
 
+	/** Rojo leaves a list out of a project file when it has nothing in it. */
+	private static isOmitted(key: string, value: unknown): boolean {
+		return (
+			EMPTY_OMITTED.includes(key) &&
+			Array.isArray(value) &&
+			value.length === 0
+		);
+	}
+
 	private static fileValue(key: string, value: unknown): unknown {
 		if (key === "tree" && isObject(value)) return ProjectText.node(value);
+		if (PLACE_ID_KEYS.includes(key) && Array.isArray(value)) {
+			const seen = new Set<unknown>();
+			return new Listed(
+				value.flatMap((id, at) =>
+					seen.has(id) ? [] : (seen.add(id), [[String(at), id]])
+				)
+			);
+		}
+		if (key === "serveAddress" && typeof value === "string")
+			return IpAddress.parse(value)?.toString() ?? value;
 		if (key === "syncRules" && Array.isArray(value))
 			return value.map((rule) =>
 				isObject(rule)
@@ -204,12 +284,14 @@ export class ProjectText {
 			]);
 		}
 		for (const key of NODE_KEYS_AFTER)
-			if (key in node)
+			if (key in node && !ProjectText.isEmptyMap(key, node[key]))
 				entries.push([
 					key,
 					key === "$properties" || key === "$attributes"
 						? ProjectText.sorted(node[key])
-						: node[key],
+						: key === "$path"
+							? ProjectText.slashed(node[key])
+							: node[key],
 				]);
 		for (const key of Object.keys(node))
 			if (
@@ -220,16 +302,43 @@ export class ProjectText {
 		return new Ordered(entries);
 	}
 
+	/** Rojo leaves the properties and attributes of a node out when there are none. */
+	private static isEmptyMap(key: string, value: unknown): boolean {
+		return (
+			(key === "$properties" || key === "$attributes") &&
+			isObject(value) &&
+			Object.keys(value).length === 0
+		);
+	}
+
+	/** A `$path` written with `/`, as Rojo writes it on every system. */
+	private static slashed(value: unknown): unknown {
+		if (typeof value === "string") return value.replaceAll("\\", "/");
+		if (isObject(value) && typeof value.optional === "string")
+			return { ...value, optional: value.optional.replaceAll("\\", "/") };
+		return value;
+	}
+
 	private static syncbackRules(rules: Record<string, unknown>): Ordered {
-		const { ignoreProperties } = rules;
+		const kept = Object.fromEntries(
+			Object.entries(rules).filter(
+				([key, value]) =>
+					!(key === "ignoreTrees" || key === "ignorePaths"
+						? Array.isArray(value) && value.length === 0
+						: key === "ignoreProperties" &&
+							isObject(value) &&
+							Object.keys(value).length === 0)
+			)
+		);
+		const { ignoreProperties } = kept;
 		return ProjectText.inOrder(
 			isObject(ignoreProperties)
 				? {
-						...rules,
+						...kept,
 						ignoreProperties:
 							ProjectText.sortedKeys(ignoreProperties),
 					}
-				: rules,
+				: kept,
 			SYNCBACK_RULE_KEYS
 		);
 	}
@@ -265,9 +374,13 @@ export class ProjectText {
 		);
 	}
 
-	/** `serde_json`'s pretty form: two spaces, one entry per line, and `{}` and `[]` for nothing. */
-	private static print(value: unknown, indent: string): string {
-		const inner = indent + INDENT;
+	/** `serde_json`'s pretty form: two spaces, one entry per line, and `{}` and `[]` for nothing; with `commented`, the comments of the text each next to its entry. */
+	private static print(
+		value: unknown,
+		indent: string,
+		commented?: Commented,
+		path: JsoncPath = []
+	): string {
 		if (value instanceof FloatText) return value.toString();
 		if (value instanceof Raw)
 			return value.lines
@@ -275,29 +388,93 @@ export class ProjectText {
 					at === 0 || line === "" ? line : indent + line
 				)
 				.join("\n");
+		const block = (
+			open: string,
+			close: string,
+			items: readonly (readonly [string | number, string, unknown])[]
+		) => ProjectText.block(open, close, items, indent, commented, path);
 		if (value instanceof Ordered)
-			return value.entries.length === 0
-				? "{}"
-				: `{\n${value.entries
-						.map(
-							([key, entry]) =>
-								`${inner}${JSON.stringify(key)}: ${ProjectText.print(entry, inner)}`
-						)
-						.join(",\n")}\n${indent}}`;
+			return block(
+				"{",
+				"}",
+				value.entries.map(([key, entry]) => [
+					key,
+					`${JSON.stringify(key)}: `,
+					entry,
+				])
+			);
+		if (value instanceof Listed)
+			return block(
+				"[",
+				"]",
+				value.items.map(([at, entry]) => [Number(at), "", entry])
+			);
 		if (Array.isArray(value))
-			return value.length === 0
-				? "[]"
-				: `[\n${value
-						.map(
-							(entry) =>
-								`${inner}${ProjectText.print(entry, inner)}`
-						)
-						.join(",\n")}\n${indent}]`;
+			return block(
+				"[",
+				"]",
+				value.map((entry, at) => [at, "", entry])
+			);
 		if (isObject(value))
 			return ProjectText.print(
 				new Ordered(Object.entries(value)),
-				indent
+				indent,
+				commented,
+				path
 			);
 		return JSON.stringify(value);
+	}
+
+	private static block(
+		open: string,
+		close: string,
+		items: readonly (readonly [string | number, string, unknown])[],
+		indent: string,
+		commented: Commented | undefined,
+		path: JsoncPath
+	): string {
+		const marks = commented?.take(path);
+		const inner = indent + INDENT;
+		const lines: string[] = [];
+		items.forEach(([segment, label, entry], at) => {
+			const own = commented?.take([...path, segment]);
+			for (const comment of own?.leading ?? [])
+				lines.push(...ProjectText.commentLines(comment, inner));
+			const comma = at < items.length - 1 ? "," : "";
+			lines.push(
+				`${inner}${label}${ProjectText.print(entry, inner, commented, [...path, segment])}${comma}${ProjectText.sameLine(own?.trailing, inner)}`
+			);
+		});
+		for (const comment of [
+			...(marks?.closing ?? []),
+			...(commented?.orphansUnder(path) ?? []),
+		])
+			lines.push(...ProjectText.commentLines(comment, inner));
+		const opening = ProjectText.sameLine(marks?.opening, inner);
+		if (lines.length === 0)
+			return opening
+				? `${open}${opening}\n${indent}${close}`
+				: `${open}${close}`;
+		return `${open}${opening}\n${lines.join("\n")}\n${indent}${close}`;
+	}
+
+	private static commentLines(
+		comment: readonly string[],
+		indent: string
+	): string[] {
+		return comment.map((line) => (line === "" ? "" : indent + line));
+	}
+
+	/** Comments that stand on the line of the entry, after what is printed there. */
+	private static sameLine(
+		comments: readonly (readonly string[])[] | undefined,
+		indent: string
+	): string {
+		return (comments ?? [])
+			.map(
+				(comment) =>
+					` ${comment.map((line, at) => (at === 0 || line === "" ? line : indent + line)).join("\n")}`
+			)
+			.join("");
 	}
 }

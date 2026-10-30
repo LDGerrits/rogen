@@ -1,4 +1,5 @@
 import { JsonStructure } from "../../base/json-structure.js";
+import { IpAddress } from "../../base/ip-address.js";
 import { JsoncNode, parseJsonc } from "../../base/jsonc.js";
 import { Result, err, ok } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
@@ -80,6 +81,30 @@ export class JsoncDocumentReader {
 		);
 	}
 
+	private unreadableScalar(
+		node: JsoncNode,
+		{ whole, ipAddress }: JsonStructure
+	): { expected: string; found: string } | undefined {
+		if (node.kind === "number" && whole) {
+			if (/^\d+$/.test(node.text) && Number(node.text) <= whole.max)
+				return undefined;
+			return {
+				expected: `a whole number from 0 to ${whole.max}`,
+				found: node.text,
+			};
+		}
+		if (
+			node.kind === "string" &&
+			ipAddress &&
+			!IpAddress.parse(String(node.value))
+		)
+			return {
+				expected: "an IP address such as 127.0.0.1",
+				found: JSON.stringify(node.value),
+			};
+		return undefined;
+	}
+
 	private validate(
 		node: JsoncNode,
 		structure: JsonStructure,
@@ -102,6 +127,16 @@ export class JsoncDocumentReader {
 				),
 			];
 		}
+
+		const unreadable = this.unreadableScalar(node, structure);
+		if (unreadable)
+			return [
+				this.error(
+					"wrongType",
+					location(node),
+					`"${path}": expected ${unreadable.expected}, found ${unreadable.found}.${structure.hint ? ` ${structure.hint}` : ""}`
+				),
+			];
 
 		if (node.kind === "array" && structure.items) {
 			const items = structure.items;
