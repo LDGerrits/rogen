@@ -275,7 +275,7 @@ describe("domain/rojo/project-text", () => {
 						compiledPath: "out",
 						routes: {},
 						sourcePaths: ["src"],
-						globIgnorePaths: [],
+						globIgnorePaths: ["x"],
 						tree: {},
 						$schema: "s",
 					},
@@ -394,11 +394,86 @@ describe("domain/rojo/project-text", () => {
 		it("should write empty objects and lists on one line", () => {
 			const text = ProjectText.of({
 				tree: { Workspace: {} },
-				globIgnorePaths: [],
+				servePlaceIds: [],
 			});
 
 			expect(text).toContain('"Workspace": {}');
-			expect(text).toContain('"globIgnorePaths": []');
+			expect(text).toContain('"servePlaceIds": []');
+		});
+
+		it("should leave out the lists and maps Rojo leaves out when they are empty", () => {
+			const text = ProjectText.of({
+				tree: {
+					$className: "Folder",
+					$properties: {},
+					$attributes: {},
+				},
+				serveAllowedHosts: [],
+				globIgnorePaths: [],
+				syncRules: [],
+				syncbackRules: {
+					ignoreTrees: [],
+					ignorePaths: [],
+					ignoreProperties: {},
+				},
+			} as RojoProjectFile);
+
+			expect(JSON.parse(text)).toEqual({
+				tree: { $className: "Folder" },
+				syncbackRules: {},
+			});
+		});
+
+		it("should write a $path with slashes", () => {
+			const text = ProjectText.of({
+				tree: {
+					A: { $path: "src\\shared" },
+					B: { $path: { optional: "src\\opt" } },
+				},
+			} as RojoProjectFile);
+
+			expect(JSON.parse(text).tree).toEqual({
+				A: { $path: "src/shared" },
+				B: { $path: { optional: "src/opt" } },
+			});
+		});
+
+		it("should write each place ID once, in the order first written", () => {
+			const text = ProjectText.of({
+				tree: {},
+				servePlaceIds: [5, 3, 3, 9],
+				blockedPlaceIds: [2, 2],
+			});
+
+			expect(JSON.parse(text)).toMatchObject({
+				servePlaceIds: [5, 3, 9],
+				blockedPlaceIds: [2],
+			});
+		});
+
+		it.each([
+			["0:0:0:0:0:0:0:1", "::1"],
+			["2001:0db8:0:0:0:0:0:1", "2001:db8::1"],
+			["127.0.0.1", "127.0.0.1"],
+		])("should write the address %s as %s", (written, printed) => {
+			const text = ProjectText.of({
+				tree: {},
+				serveAddress: written,
+			});
+
+			expect(JSON.parse(text).serveAddress).toBe(printed);
+		});
+
+		it("should sort children by their UTF-8 bytes, which differs from UTF-16 order past the basic plane", () => {
+			const text = ProjectText.of({
+				tree: { "\u{1F600}": {}, "\uFF41": {}, a: {} },
+			});
+
+			expect(Object.keys(JSON.parse(text).tree)).toEqual([
+				"a",
+				"\uFF41",
+				"\u{1F600}",
+			]);
 		});
 
 		it("should keep a child that is not a node, and a node key it doesn't know, as they are", () => {
@@ -486,6 +561,36 @@ describe("domain/rojo/project-text", () => {
 				runRojo(dir, ["fmt-project"]);
 
 				expect(fs.readFileSync(file, "utf8")).toBe(before);
+			} finally {
+				fs.rmSync(dir, { recursive: true, force: true });
+			}
+		});
+
+		it("should write what fmt-project would from a file written by hand", () => {
+			const dir = makeRojoDir("rogen-fmt-");
+			try {
+				const file = path.join(dir, "default.project.json");
+				const written = {
+					name: "Game",
+					servePlaceIds: [7, 7],
+					serveAddress: "0:0:0:0:0:0:0:1",
+					serveAllowedHosts: [],
+					syncRules: [],
+					syncbackRules: { ignoreTrees: [], ignoreProperties: {} },
+					tree: {
+						$className: "DataModel",
+						$properties: {},
+						"\u{1F600}": { $className: "Folder" },
+						"\uFF41": { $path: "src\\shared" },
+					},
+				};
+				fs.writeFileSync(file, JSON.stringify(written));
+
+				runRojo(dir, ["fmt-project"]);
+
+				expect(ProjectText.of(written as RojoProjectFile)).toBe(
+					fs.readFileSync(file, "utf8")
+				);
 			} finally {
 				fs.rmSync(dir, { recursive: true, force: true });
 			}

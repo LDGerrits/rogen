@@ -1,4 +1,5 @@
 import { compareStrings } from "../../base/collections.js";
+import { IpAddress } from "../../base/ip-address.js";
 import { JsoncSpan, parseJsoncSpans } from "../../base/jsonc.js";
 import { isObject, isSameJson } from "../../base/objects.js";
 import { FloatText, PropertyValues } from "./property-values.js";
@@ -21,6 +22,12 @@ const FILE_KEYS = [
 	"syncbackRules",
 	"syncRules",
 ];
+
+/** The lists Rojo writes only when they hold something. */
+const EMPTY_OMITTED = ["serveAllowedHosts", "globIgnorePaths", "syncRules"];
+
+/** The sets of place IDs, which Rojo writes with each ID once. */
+const PLACE_ID_KEYS = ["servePlaceIds", "blockedPlaceIds"];
 
 /** The keys of a sync rule, in the order Rojo writes them. */
 const SYNC_RULE_KEYS = ["pattern", "exclude", "use", "suffix"];
@@ -163,7 +170,7 @@ export class ProjectText {
 		];
 		const entries: [string, unknown][] = [];
 		for (const key of listed)
-			if (key in all)
+			if (key in all && !ProjectText.isOmitted(key, all[key]))
 				entries.push([
 					key,
 					key === "tree" && written
@@ -175,8 +182,21 @@ export class ProjectText {
 		return new Ordered(entries);
 	}
 
+	/** Rojo leaves a list out of a project file when it has nothing in it. */
+	private static isOmitted(key: string, value: unknown): boolean {
+		return (
+			EMPTY_OMITTED.includes(key) &&
+			Array.isArray(value) &&
+			value.length === 0
+		);
+	}
+
 	private static fileValue(key: string, value: unknown): unknown {
 		if (key === "tree" && isObject(value)) return ProjectText.node(value);
+		if (PLACE_ID_KEYS.includes(key) && Array.isArray(value))
+			return [...new Set(value)];
+		if (key === "serveAddress" && typeof value === "string")
+			return IpAddress.parse(value)?.toString() ?? value;
 		if (key === "syncRules" && Array.isArray(value))
 			return value.map((rule) =>
 				isObject(rule)
@@ -204,12 +224,14 @@ export class ProjectText {
 			]);
 		}
 		for (const key of NODE_KEYS_AFTER)
-			if (key in node)
+			if (key in node && !ProjectText.isEmptyMap(key, node[key]))
 				entries.push([
 					key,
 					key === "$properties" || key === "$attributes"
 						? ProjectText.sorted(node[key])
-						: node[key],
+						: key === "$path"
+							? ProjectText.slashed(node[key])
+							: node[key],
 				]);
 		for (const key of Object.keys(node))
 			if (
@@ -220,16 +242,43 @@ export class ProjectText {
 		return new Ordered(entries);
 	}
 
+	/** Rojo leaves the properties and attributes of a node out when there are none. */
+	private static isEmptyMap(key: string, value: unknown): boolean {
+		return (
+			(key === "$properties" || key === "$attributes") &&
+			isObject(value) &&
+			Object.keys(value).length === 0
+		);
+	}
+
+	/** A `$path` written with `/`, as Rojo writes it on every system. */
+	private static slashed(value: unknown): unknown {
+		if (typeof value === "string") return value.replaceAll("\\", "/");
+		if (isObject(value) && typeof value.optional === "string")
+			return { ...value, optional: value.optional.replaceAll("\\", "/") };
+		return value;
+	}
+
 	private static syncbackRules(rules: Record<string, unknown>): Ordered {
-		const { ignoreProperties } = rules;
+		const kept = Object.fromEntries(
+			Object.entries(rules).filter(
+				([key, value]) =>
+					!(key === "ignoreTrees" || key === "ignorePaths"
+						? Array.isArray(value) && value.length === 0
+						: key === "ignoreProperties" &&
+							isObject(value) &&
+							Object.keys(value).length === 0)
+			)
+		);
+		const { ignoreProperties } = kept;
 		return ProjectText.inOrder(
 			isObject(ignoreProperties)
 				? {
-						...rules,
+						...kept,
 						ignoreProperties:
 							ProjectText.sortedKeys(ignoreProperties),
 					}
-				: rules,
+				: kept,
 			SYNCBACK_RULE_KEYS
 		);
 	}
