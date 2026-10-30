@@ -199,13 +199,18 @@ export class FolderMetaApplier {
 				folderNodes.map(({ folder }) => folder)
 			)
 		);
+		const initDirs = new Set(
+			routed.flatMap((file) => this.placement.initDirOf(file) ?? [])
+		);
 		const folderOf = ({
 			sourcePath,
 			dir,
-		}: FolderMeta): InstancelessFolder | undefined =>
-			dir !== "" && named.has(joinPosix(sourcePath, dir))
+		}: FolderMeta): InstancelessFolder | undefined => {
+			const folder = joinPosix(sourcePath, dir);
+			return dir !== "" && (named.has(folder) || initDirs.has(folder))
 				? undefined
 				: readings.instanceless(sourcePath, dir);
+		};
 		return [...this.metaByDir.values()].flatMap((meta) => {
 			const folder = folderOf(meta);
 			return folder ? [{ kind: "appliesToNothing", meta, folder }] : [];

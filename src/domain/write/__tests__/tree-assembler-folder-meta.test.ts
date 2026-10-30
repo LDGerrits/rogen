@@ -566,6 +566,28 @@ describe("TreeAssembler", () => {
 				]);
 			});
 
+			it("should not warn at the meta of a routing folder that holds an init script, which Rojo applies", async () => {
+				await write(
+					"src/Inv/client/init.client.luau",
+					"src/Inv/shared/A.luau"
+				);
+				for (const dir of ["src/Inv/client", "src/Inv/shared"])
+					await writeMeta(`${dir}/init.meta.json`, {
+						attributes: { K: 1 },
+					});
+
+				const { warnings } = await assemble({
+					routes: { ...SPLIT, shared: "ReplicatedStorage" },
+				});
+
+				expect(warnings).toMatchObject([
+					{
+						code: "meta.appliesToNothing",
+						resource: abs("src/Inv/shared/init.meta.json"),
+					},
+				]);
+			});
+
 			it("should collapse a routing folder an outer route outranks and a Name@key folder, so Rojo applies their meta", async () => {
 				await write(
 					"src/server/client/A.luau",
