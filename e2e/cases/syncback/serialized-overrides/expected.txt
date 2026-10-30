@@ -1,9 +1,7 @@
 $ rogen syncback -i place.rbxl -y
 exit 0
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · wrote
-  Wrote 1 project.
+  Wrote default.project.json.
   default.rogen.json - warning: ReplicatedStorage/Shared is in the place and no folder of the project can take it, so it was left out: Rojo wrote init.meta.json for a property or attribute changed in Studio, and no one folder of the project is this instance; set it on its node in the tree of the config. (syncback.unplaced)
   default.rogen.json - warning: ServerScriptService/Combat/Hit changed in the place, but it is compiled into dist, so syncback left it out. Make the change in the source files. (syncback.compiledPath)
   Syncback wrote 2 changes.

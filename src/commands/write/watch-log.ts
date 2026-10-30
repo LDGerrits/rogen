@@ -19,7 +19,11 @@ import {
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { RojoCommandRun } from "../../domain/runner/rojo-command-service.js";
 import { Result } from "../../base/result.js";
-import { reportRojo, reportRojoBesideFailure } from "./report-rojo.js";
+import {
+	reportRojo,
+	reportRojoBesideFailure,
+	rojoDone,
+} from "./report-rojo.js";
 import { RojoTarget, rojoEntry } from "./rojo-entry.js";
 import { writeEntry } from "./write-document.js";
 import { OutcomeLog } from "./outcome-log.js";
@@ -138,7 +142,7 @@ export class WatchLog implements WatchReporter {
 		else this.logService.error(error.message);
 	}
 
-	rojo(ran: Result<RojoCommandRun, Error>): void {
+	rojo(ran: Result<RojoCommandRun, Error>, target: RojoTarget): void {
 		if (ran.isErr()) this.error(ran.error);
 		else if (ran.value.failure) {
 			reportRojoBesideFailure(
@@ -147,7 +151,10 @@ export class WatchLog implements WatchReporter {
 				this.cwd
 			);
 			this.error(ran.value.failure);
-		} else reportRojo(this.logService, ran.value.messages, this.cwd);
+		} else {
+			reportRojo(this.logService, ran.value.messages, this.cwd);
+			this.logService.success(`${rojoDone(target, this.cwd)}.`);
+		}
 	}
 
 	end(message = "Stopped watching."): void {
@@ -229,8 +236,11 @@ export class PrintedWatchLog extends WatchLog {
 
 	override end(): void {}
 
-	override rojo(ran: Result<RojoCommandRun, Error>): void {
-		if (ran.isErr() || ran.value.failure) return super.rojo(ran);
+	override rojo(
+		ran: Result<RojoCommandRun, Error>,
+		target: RojoTarget
+	): void {
+		if (ran.isErr() || ran.value.failure) return super.rojo(ran, target);
 		reportRojo(
 			this.logService,
 			ran.value.messages.filter(

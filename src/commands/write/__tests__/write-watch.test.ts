@@ -260,6 +260,21 @@ describe("watch", () => {
 			expect(processes.spawned).toEqual([]);
 		});
 
+		it("should say in its own line what Rojo built, on stdout, in place of Rojo's lines", async () => {
+			void startWatch([], { output: "game.rbxl" });
+			await settle();
+			processes.spawned[0].print(
+				"Building project 'repo'\nBuilt project to game.rbxl\n"
+			);
+			await finishRojo(0);
+
+			expect(logService.reserved).toBe(false);
+			expect(logService.texts("success")).toContain("Built game.rbxl.");
+			expect(logService.lines.join("\n")).not.toContain(
+				"Building project"
+			);
+		});
+
 		it("should report a failed run and go on watching", async () => {
 			void startWatch([], { output: "game.rbxl" });
 			await settle();

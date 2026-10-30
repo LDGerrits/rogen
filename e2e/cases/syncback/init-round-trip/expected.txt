@@ -11,17 +11,10 @@ exit 0
 $ rogen build -o place.rbxl
 exit 0
 stdout: (not shown)
-stderr:
-  rogen build · default.rogen.json
-  default.project.json · unchanged
-  Built place.rbxl.
 
 $ rogen syncback -i place.rbxl -y
 exit 0
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · unchanged
-  Wrote 1 project.
   Syncback changed nothing.
 
 $ cmp before.json default.rogen.json

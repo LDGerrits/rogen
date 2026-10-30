@@ -3,9 +3,7 @@ exit 0
 stdout:
   Removing src/Combat
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · wrote
-  Wrote 1 project.
+  Wrote default.project.json.
   Syncback wrote 1 change.
 
 $ rogen write
@@ -15,9 +13,6 @@ stdout: (not shown)
 $ rogen syncback -i place.rbxl --dry-run
 exit 0
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · would write
-  Checked 1 project.
   Syncback would change nothing.
 
 written:

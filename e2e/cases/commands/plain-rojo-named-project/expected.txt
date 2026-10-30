@@ -12,8 +12,6 @@ stdout:
 
 $ rogen fmt-project test.project.json
 exit 0
-stdout:
-  formatted test.project.json
 
 written:
   test.project.json

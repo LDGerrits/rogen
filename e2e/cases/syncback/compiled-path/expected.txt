@@ -4,9 +4,6 @@ stdout:
   Writing place/Workspace/Baseplate.model.json
   Writing place/Workspace/Spawn.rbxm
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · would write
-  Checked 1 project.
   default.rogen.json - warning: ServerScriptService/Combat changed in the place, but it is compiled into dist, so syncback left it out. Make the change in the source files. (syncback.compiledPath)
   default.rogen.json - warning: ServerScriptService/Combat/Combat changed in the place, but it is compiled into dist, so syncback left it out. Make the change in the source files. (syncback.compiledPath)
   default.rogen.json - warning: ServerScriptService/Combat/Hit was removed from the place, but it is compiled into dist, so syncback left it out. Remove it from the source files. (syncback.compiledPath)
@@ -16,9 +13,7 @@ stderr:
 $ rogen syncback -i place.rbxl -y
 exit 0
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · wrote
-  Wrote 1 project.
+  Wrote default.project.json.
   default.rogen.json - warning: ServerScriptService/Combat changed in the place, but it is compiled into dist, so syncback left it out. Make the change in the source files. (syncback.compiledPath)
   default.rogen.json - warning: ServerScriptService/Combat/Combat changed in the place, but it is compiled into dist, so syncback left it out. Make the change in the source files. (syncback.compiledPath)
   default.rogen.json - warning: ServerScriptService/Combat/Hit was removed from the place, but it is compiled into dist, so syncback left it out. Remove it from the source files. (syncback.compiledPath)

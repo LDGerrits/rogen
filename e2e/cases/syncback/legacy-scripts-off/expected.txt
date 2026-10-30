@@ -4,9 +4,7 @@ stdout:
   Writing src/Fresh.client.luau
   Writing src/Hud.client.luau
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · wrote
-  Wrote 1 project.
+  Wrote default.project.json.
   Syncback wrote 2 changes.
 
 $ rogen where src

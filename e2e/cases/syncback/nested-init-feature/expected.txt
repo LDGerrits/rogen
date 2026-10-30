@@ -4,9 +4,7 @@ stdout:
   Writing src/Quest/Server/Tracker/Child.luau
   Writing src/Quest/Server/Tracker/init.luau
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · wrote
-  Wrote 1 project.
+  Wrote default.project.json.
   Syncback wrote 2 changes.
 
 written:

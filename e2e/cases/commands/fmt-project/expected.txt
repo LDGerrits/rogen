@@ -1,7 +1,5 @@
 $ rogen fmt-project
 exit 0
-stdout:
-  formatted default.rogen.json
 
 $ rogen fmt-project
 exit 0

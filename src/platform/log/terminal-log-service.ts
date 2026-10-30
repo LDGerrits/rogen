@@ -17,6 +17,7 @@ export class TerminalLogService extends AbstractLogService {
 	protected readonly drawsFrame = true;
 
 	protected write(kind: LogKind, text: string): void {
+		if (!this.framed && this.writeUnframed(kind, text)) return;
 		switch (kind) {
 			case "print":
 				console.info(text);
@@ -63,6 +64,31 @@ export class TerminalLogService extends AbstractLogService {
 				break;
 			default:
 				kind satisfies never;
+		}
+	}
+
+	/** A line outside a frame, written plainly as Rojo writes its own; false for the kinds that always draw one. */
+	private writeUnframed(kind: LogKind, text: string): boolean {
+		switch (kind) {
+			case "success":
+			case "info":
+			case "outro":
+				console.info(text);
+				return true;
+			case "debug":
+			case "trace":
+				console.error(style("dim", text));
+				return true;
+			case "warn":
+			case "diagnosticWarning":
+				console.error(`${SYMBOLS.warning} ${text}`);
+				return true;
+			case "error":
+			case "diagnosticError":
+				console.error(`${SYMBOLS.error} ${text}`);
+				return true;
+			default:
+				return false;
 		}
 	}
 }

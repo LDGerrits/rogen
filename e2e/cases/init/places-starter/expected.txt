@@ -34,12 +34,7 @@ stdout: (not shown)
 $ rogen sourcemap game -o sourcemap.json
 exit 0
 stdout:
-  Created sourcemap at sourcemap.json
-stderr:
-  rogen sourcemap · game.rogen.json
-  game.project.json · unchanged
-  Wrote 1 project.
-  sourcemap.json · wrote
+  Wrote sourcemap.json.
 
 written:
   .vscode/settings.json

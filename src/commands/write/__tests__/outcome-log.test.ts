@@ -216,8 +216,9 @@ describe("OutcomeLog report", () => {
 		]);
 	});
 
-	it("should report a config that only a check prepared as one that would be written, and close with a check", () => {
+	it("should say only under -v that a check prepared a config, and claim no write", () => {
 		const logService = new MockLogService();
+		logService.setLevel(LogLevel.Debug);
 
 		new OutcomeLog(logService, cwd).report(
 			new WriteRun([
@@ -228,14 +229,30 @@ describe("OutcomeLog report", () => {
 			false
 		);
 
-		expect(
-			logService.entries
-				.filter(({ kind }) => kind !== "intro")
-				.map(({ kind, text }) => `${kind}: ${text}`)
-		).toEqual([
-			"success: a/default.project.json · would write",
-			"outro: Checked 1 project.",
+		expect(logService.lines).toEqual([
+			"debug: rogen syncback · a/default.rogen.json",
+			"debug: a/default.project.json · checked",
 		]);
+	});
+
+	it("should say a project file it wrote in one line, and one it left alone only under -v", () => {
+		const said = (kind: "wrote" | "unchanged") => {
+			const logService = new MockLogService();
+			new OutcomeLog(logService, cwd).report(
+				new WriteRun([writtenOf(summaryOf(), kind)]),
+				undefined,
+				"build",
+				true,
+				{ said: "Built game.rbxl", failed: false }
+			);
+			return logService.lines;
+		};
+
+		expect(said("wrote")).toEqual([
+			"success: Wrote default.project.json.",
+			"outro: Built game.rbxl.",
+		]);
+		expect(said("unchanged")).toEqual(["outro: Built game.rbxl."]);
 	});
 
 	describe("configs that share a name", () => {
@@ -354,11 +371,10 @@ describe("OutcomeLog report", () => {
 			]);
 		});
 
-		it("should close the frame with the failure and not with the written line", () => {
+		it("should close nothing after the errors of a single config", () => {
 			expect(all([failedOf([shared], configNamed("arena"))])).toEqual([
 				"error: arena/default.project.json · not written",
 				"diagnosticError: /repo/a - error: shared. (x.shared)",
-				"outro: write failed.",
 			]);
 		});
 	});
@@ -475,77 +491,80 @@ describe("OutcomeLog report, warnings", () => {
 });
 
 describe("OutcomeLog report, closing line", () => {
+	const written = (warnings: number, label = "a") =>
+		new WrittenConfig(
+			mockConfig({
+				name: label,
+				file: path.join(cwd, label, "default.rogen.json"),
+			}),
+			"wrote",
+			{
+				warnings: Array.from({ length: warnings }, (_, n) =>
+					warningDiagnostic(
+						`x.w${n}`,
+						{ resource: `/repo/src/F${n}.luau` },
+						"bad."
+					)
+				),
+				syncWarnings: [],
+			},
+			summaryOf(),
+			[]
+		);
+
 	const closing = (warnings: number) => {
 		const logService = new MockLogService();
 		new OutcomeLog(logService, cwd).report(
-			new WriteRun([
-				new WrittenConfig(
-					mockConfig(),
-					"wrote",
-					{
-						warnings: Array.from({ length: warnings }, (_, n) =>
-							warningDiagnostic(
-								`x.w${n}`,
-								{ resource: `/repo/src/F${n}.luau` },
-								"bad."
-							)
-						),
-						syncWarnings: [],
-					},
-					summaryOf(),
-					[]
-				),
-			])
+			new WriteRun([written(warnings), written(0, "b")])
 		);
 		return logService.lines.at(-1);
 	};
 
-	it("should count the configs it built", () => {
-		expect(closing(0)).toBe("outro: Wrote 1 project.");
+	it("should count the configs it wrote when there are several", () => {
+		expect(closing(0)).toBe("outro: Wrote 2 projects.");
 	});
 
 	it("should count the warnings", () => {
-		expect(closing(1)).toBe("outro: Wrote 1 project with 1 warning.");
-		expect(closing(2)).toBe("outro: Wrote 1 project with 2 warnings.");
+		expect(closing(1)).toBe("outro: Wrote 2 projects with 1 warning.");
+		expect(closing(2)).toBe("outro: Wrote 2 projects with 2 warnings.");
 	});
 
-	it("should name what Rojo built in place of the count", () => {
+	it("should name what Rojo built, with the warnings", () => {
 		const logService = new MockLogService();
 		new OutcomeLog(logService, cwd).report(
-			new WriteRun([
-				new WrittenConfig(
-					mockConfig(),
-					"wrote",
-					{ warnings: [], syncWarnings: [] },
-					summaryOf(),
-					[]
-				),
-			]),
+			new WriteRun([written(1)]),
 			undefined,
 			"build",
 			true,
-			{ name: "game.rbxl", failed: false }
+			{ said: "Built game.rbxl", failed: false }
 		);
 
-		expect(logService.lines.at(-1)).toBe("outro: Built game.rbxl.");
+		expect(logService.lines.at(-1)).toBe(
+			"outro: Built game.rbxl with 1 warning."
+		);
 	});
 
 	it("should claim nothing when Rojo failed", () => {
 		const logService = new MockLogService();
 		new OutcomeLog(logService, cwd).report(
-			new WriteRun([
-				new WrittenConfig(
-					mockConfig(),
-					"wrote",
-					{ warnings: [], syncWarnings: [] },
-					summaryOf(),
-					[]
-				),
-			]),
+			new WriteRun([written(0)]),
 			undefined,
 			"build",
 			true,
-			{ name: "game.rbxl", failed: true }
+			{ said: "Built game.rbxl", failed: true }
+		);
+
+		expect(logService.texts("outro")).toEqual([]);
+	});
+
+	it("should close the frame of several configs with the failure when Rojo failed", () => {
+		const logService = new MockLogService();
+		new OutcomeLog(logService, cwd).report(
+			new WriteRun([written(0), written(0, "b")]),
+			undefined,
+			"build",
+			true,
+			{ said: "Built game.rbxl", failed: true }
 		);
 
 		expect(logService.lines.at(-1)).toBe("outro: build failed.");

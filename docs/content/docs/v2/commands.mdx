@@ -17,6 +17,8 @@ Rogen runs Rojo's commands with Rojo's flags. Each one writes the project file f
 
 In a folder with a plain `default.project.json` and no config, these commands run on that file as Rojo would, and write nothing.
 
+Each prints one line for each thing it did, in place of Rojo's progress lines, on the stream where Rojo prints its own. `rogen build -o game.rbxl` prints `Wrote default.project.json.` when the project file changed, then `Built game.rbxl.`; when nothing changed, only the second line. `fmt-project` prints nothing when it succeeds, as Rojo does. `--verbose` shows the rest, Rojo's own lines included.
+
 Rogen's own commands:
 
 | Command | What it does |

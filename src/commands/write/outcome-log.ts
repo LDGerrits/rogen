@@ -176,10 +176,10 @@ function inFolder(cwd: string, home: string | undefined): string | undefined {
 		: `in ${relativeTo(cwd, home)}`;
 }
 
-/** What Rojo built from the project files, for the closing line. */
-export interface BuiltFile {
-	/** The file or plugin as the closing line names it. */
-	readonly name: string;
+/** What the Rojo run after the write did, for the closing line. */
+export interface RojoDone {
+	/** The closing line without its warnings, such as `Built game.rbxl`. */
+	readonly said: string;
 	/** Whether Rojo failed, so there is nothing to claim. */
 	readonly failed: boolean;
 }
@@ -218,35 +218,90 @@ export class OutcomeLog {
 		home?: string,
 		command = "build",
 		writes = true,
-		built?: BuiltFile
+		done?: RojoDone
 	): void {
-		this.begin(
-			command,
-			run.outcomes.map(({ file }) => configPath(this.cwd, file)),
-			home
-		);
-		for (const { outcome, warnings, errors } of run.shares) {
-			if (run.outcomes.length > 1)
-				this.heading(configPath(this.cwd, outcome.file));
-			this.outcome(outcome, [...warnings.fresh, ...errors.fresh], {
-				notes: [
-					outcome.kind === "notWritten"
-						? `${joinedWithAnd(
-								outcome.blockedBy.map((file) =>
-									configPath(this.cwd, file)
-								)
-							)} failed`
-						: undefined,
-					this.sameAs("errors", errors.sameAs),
-					this.sameAs("warnings", warnings.sameAs),
-				],
-			});
-		}
-		if (run.failed || built?.failed)
-			this.logService.closeFrame(
-				run.failed ? "write failed." : `${command} failed.`
+		this.outcomes(run, home, command);
+		this.close(run, command, writes, done);
+	}
+
+	/** What the write said before Rojo runs: for one config only a project file it wrote and what went wrong, the rest under `-v`; for several, a frame with a line for each. */
+	outcomes(run: WriteRun, home?: string, command = "build"): void {
+		const framed = run.outcomes.length > 1;
+		if (framed)
+			this.begin(
+				command,
+				run.outcomes.map(({ file }) => configPath(this.cwd, file)),
+				home
 			);
-		else this.end(run.outcomes.length, run.warningCount, writes, built);
+		else
+			this.logService.debug(
+				[
+					`rogen ${command}`,
+					...run.outcomes.map(({ file }) =>
+						configPath(this.cwd, file)
+					),
+					inFolder(this.cwd, home),
+				]
+					.filter((part) => part !== undefined)
+					.join(" · ")
+			);
+		for (const { outcome, warnings, errors } of run.shares) {
+			const diagnostics = [...warnings.fresh, ...errors.fresh];
+			const notes = [
+				outcome.kind === "notWritten"
+					? `${joinedWithAnd(
+							outcome.blockedBy.map((file) =>
+								configPath(this.cwd, file)
+							)
+						)} failed`
+					: undefined,
+				this.sameAs("errors", errors.sameAs),
+				this.sameAs("warnings", warnings.sameAs),
+			];
+			const quiet =
+				(outcome.kind === "unchanged" ||
+					outcome.kind === "wouldWrite") &&
+				diagnostics.length === 0 &&
+				notes.every((note) => note === undefined);
+			if (framed) {
+				const label = configPath(this.cwd, outcome.file);
+				if (quiet) this.logService.debug(label);
+				else this.heading(label);
+			}
+			if (!framed && outcome.kind === "wrote") {
+				this.logService.success(
+					`Wrote ${relativeTo(this.cwd, outcome.config.projectFile)}.`
+				);
+				this.details(outcome.summary);
+				this.diagnostics(diagnostics, outcome.file);
+			} else
+				this.outcome(outcome, diagnostics, {
+					notes,
+					quiet: quiet || outcome.kind === "wouldWrite",
+				});
+		}
+	}
+
+	/** The closing line: what Rojo did, else how many configs the run wrote; nothing after a failure, or for one config with nothing to claim. */
+	close(
+		run: WriteRun,
+		command = "build",
+		writes = true,
+		done?: RojoDone
+	): void {
+		if (run.outcomes.length > 1) {
+			if (run.failed || done?.failed)
+				this.logService.closeFrame(
+					run.failed ? "write failed." : `${command} failed.`
+				);
+			else
+				this.end(
+					done?.said ??
+						`${writes ? "Wrote" : "Checked"} ${plural(run.outcomes.length, "project")}`,
+					run.warningCount
+				);
+		} else if (!run.failed && done && !done.failed)
+			this.end(done.said, run.warningCount);
 	}
 
 	private heading(label: string): void {
@@ -258,8 +313,11 @@ export class OutcomeLog {
 		diagnostics: readonly Diagnostic[],
 		{
 			notes = [],
+			quiet = false,
 		}: {
 			readonly notes?: readonly (string | undefined)[];
+			/** Whether a project file left as it was, or only checked, is said only under `-v`. */
+			readonly quiet?: boolean;
 		} = {}
 	): void {
 		const note =
@@ -279,12 +337,17 @@ export class OutcomeLog {
 				.join(" · ");
 		switch (outcome.kind) {
 			case "wrote":
-			case "unchanged":
 				this.logService.success(line(outcome.kind));
 				this.details(outcome.summary);
 				break;
+			case "unchanged":
+				if (quiet) this.logService.debug(line(outcome.kind));
+				else this.logService.success(line(outcome.kind));
+				this.details(outcome.summary);
+				break;
 			case "wouldWrite":
-				this.logService.success(line("would write"));
+				if (quiet) this.logService.debug(line("checked"));
+				else this.logService.success(line("would write"));
 				this.details(outcome.summary);
 				break;
 			case "notWritten":
@@ -310,17 +373,11 @@ export class OutcomeLog {
 			this.logService.diagnostic(diagnostic);
 	}
 
-	private end(
-		projects: number,
-		warnings: number,
-		writes: boolean,
-		file?: BuiltFile
-	): void {
-		const built = `${writes ? (file ? "Built" : "Wrote") : "Checked"} ${file?.name ?? plural(projects, "project")}`;
+	private end(said: string, warnings: number): void {
 		this.logService.outro(
 			warnings === 0
-				? `${built}.`
-				: `${built} with ${plural(warnings, "warning")}.`
+				? `${said}.`
+				: `${said} with ${plural(warnings, "warning")}.`
 		);
 	}
 

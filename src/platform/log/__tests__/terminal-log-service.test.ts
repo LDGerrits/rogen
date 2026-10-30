@@ -76,6 +76,31 @@ describe("TerminalLogService", () => {
 		]);
 	});
 
+	it("should write plain lines, with no frame, when none is open", () => {
+		const lines: string[] = [];
+		const keep = (text: unknown) => {
+			lines.push(stripVTControlCharacters(String(text)));
+		};
+		jest.spyOn(console, "info").mockImplementation(keep);
+		jest.spyOn(console, "error").mockImplementation(keep);
+		const logService = new TerminalLogService();
+
+		logService.success("Wrote default.project.json.");
+		logService.diagnostic(
+			warningDiagnostic("x.y", { resource: "/repo/a" }, "w")
+		);
+		logService.error("broken");
+		logService.outro("Built game.rbxl.");
+
+		expect(drawn()).toBe("");
+		expect(lines).toEqual([
+			"Wrote default.project.json.",
+			"▲ /repo/a - warning: w (x.y)",
+			"■ broken",
+			"Built game.rbxl.",
+		]);
+	});
+
 	it("should draw a section as a step with its lines under it, although only errors are asked for", () => {
 		const logService = new TerminalLogService();
 		logService.setLevel(LogLevel.Error);

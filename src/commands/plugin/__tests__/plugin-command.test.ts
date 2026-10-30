@@ -37,9 +37,12 @@ describe("plugin command", () => {
 		});
 	});
 
-	it.each(["install", "uninstall"])(
-		"should run Rojo's plugin %s, and show what it said",
-		async (action) => {
+	it.each([
+		["install", "Installed Rojo's plugin."],
+		["uninstall", "Removed Rojo's plugin."],
+	])(
+		"should run Rojo's plugin %s, show what it said, and say in one line what it did",
+		async (action, said) => {
 			const { log, running } = start([action]);
 			const [rojo] = await spawnedCount(1);
 			rojo.print("Done\n");
@@ -48,7 +51,7 @@ describe("plugin command", () => {
 			expect((await running).isOk()).toBe(true);
 			expect(rojo.args).toEqual(["plugin", action]);
 			expect(rojo.options.cwd).toBe("/repo");
-			expect(log.lines).toContain("print: Done");
+			expect(log.lines).toEqual(["info: Rojo: Done", `success: ${said}`]);
 		}
 	);
 
@@ -110,13 +113,13 @@ describe("plugin command", () => {
 		]);
 	});
 
-	it("should leave stdout to Rojo's lines", async () => {
+	it("should print its lines on stdout, as Rojo does", async () => {
 		const { log, running } = start(["install"]);
 		const [rojo] = await spawnedCount(1);
 		rojo.exit({ code: 0, signal: null });
 		await running;
 
-		expect(log.reserved).toBe(true);
+		expect(log.reserved).toBe(false);
 	});
 
 	it("should report the failure when Rojo fails", async () => {

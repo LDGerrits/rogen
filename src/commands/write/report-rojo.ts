@@ -1,6 +1,9 @@
+import path from "path";
+import { relativeTo } from "../../base/path.js";
 import { messageRelativeTo } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ServerMessage } from "../../domain/runner/rojo-server.js";
+import { RojoTarget } from "./rojo-entry.js";
 
 /** One thing Rojo said, at the level it said it. */
 function reportServerMessage(
@@ -32,14 +35,31 @@ export function reportServerOutput(
 	else if (message.text !== "") reportServerMessage(logService, message, cwd);
 }
 
-/** What Rojo said while it ran. */
+/** The lines Rojo prints as it goes, which the line Rogen closes with says again. */
+const PROGRESS = [
+	/^Building project '.*'$/,
+	/^Built project to .+$/,
+	/^Created sourcemap at .+$/,
+	/^Beginning syncback\.\.\.$/,
+	/^Writing to the file system\.\.\.$/,
+	/^Finished syncback\.$/,
+	/^Would write \d+ files\/folders and remove \d+ files\/folders\.$/,
+	/^Aborting before writing to file system due to `--dry-run`$/,
+];
+
+const isProgress = ({ severity, text }: ServerMessage) =>
+	severity === "info" && PROGRESS.some((line) => line.test(text));
+
+/** What Rojo said while it ran: its progress lines only under `-v`, everything else in Rogen's style. */
 export function reportRojo(
 	logService: LogService,
 	messages: readonly ServerMessage[],
 	cwd: string
 ): void {
 	for (const message of messages) {
-		reportServerOutput(logService, message, cwd);
+		if (isProgress(message)) logService.debug(`Rojo: ${message.text}`);
+		else if (message.text !== "")
+			reportServerMessage(logService, message, cwd);
 	}
 }
 
@@ -54,4 +74,24 @@ export function reportRojoBesideFailure(
 		messages.filter(({ severity }) => severity !== "error"),
 		cwd
 	);
+}
+
+/** What Rojo made, as the line that closes the run says it, such as `Built game.rbxl`. */
+export function rojoDone(target: RojoTarget, cwd: string): string {
+	const named = (file: string) =>
+		relativeTo(cwd, path.resolve(target.cwd, file));
+	switch (target.command) {
+		case "build":
+			return target.plugin !== undefined
+				? `Built plugin ${target.plugin}`
+				: `Built ${named(target.output ?? ".")}`;
+		case "sourcemap":
+			return target.output !== undefined
+				? `Wrote ${named(target.output)}`
+				: "Wrote the sourcemap";
+		case "upload":
+			return target.asset !== undefined
+				? `Uploaded to asset ${target.asset}`
+				: "Uploaded";
+	}
 }

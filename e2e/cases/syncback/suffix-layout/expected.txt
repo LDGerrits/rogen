@@ -7,9 +7,7 @@ stdout:
   Writing src/Inventory/Save@server.luau
   Writing src/Quest/Main@server.luau
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · wrote
-  Wrote 1 project.
+  Wrote default.project.json.
   Syncback wrote 5 changes.
 
 $ rogen where src
