@@ -68,6 +68,108 @@ describe("CoreConfigService", () => {
 			]);
 		});
 
+		it.each([
+			[
+				'"servePort": 70000',
+				'"servePort": expected a whole number from 0 to 65535, found 70000.',
+			],
+			[
+				'"servePort": -1',
+				'"servePort": expected a whole number from 0 to 65535, found -1.',
+			],
+			[
+				'"placeId": -1',
+				'"placeId": expected a whole number, 0 or more, found -1.',
+			],
+			[
+				'"gameId": 1.5',
+				'"gameId": expected a whole number, 0 or more, found 1.5.',
+			],
+			[
+				'"servePlaceIds": [1, -2]',
+				'"servePlaceIds[1]": expected a whole number, 0 or more, found -2.',
+			],
+			[
+				'"blockedPlaceIds": [0.5]',
+				'"blockedPlaceIds[0]": expected a whole number, 0 or more, found 0.5.',
+			],
+			[
+				'"serveAddress": "localhost"',
+				'"serveAddress": expected an IP address such as 127.0.0.1, found "localhost". Host names go in "serveAllowedHosts".',
+			],
+		])(
+			"should refuse a value Rojo can't read as a number or address: %s",
+			async (entry, message) => {
+				await write(
+					"/repo/default.rogen.json",
+					`{
+	${entry}
+}`
+				);
+
+				await start();
+
+				expect(errors(0)).toMatchObject([
+					{
+						code: "config.wrongType",
+						position: { line: 2 },
+						message,
+					},
+				]);
+			}
+		);
+
+		it.each([
+			'"servePort": 0',
+			'"servePort": 65535',
+			'"placeId": 0',
+			'"serveAddress": "::1"',
+			'"serveAddress": "192.168.0.10"',
+		])("should accept a value Rojo reads: %s", async (entry) => {
+			await write(
+				"/repo/default.rogen.json",
+				`{
+	${entry}
+}`
+			);
+
+			await start();
+
+			expect(errors(0)).toEqual([]);
+		});
+
+		it.each([
+			['{ "bogus": true }', 'unknown field "syncbackRules.bogus"'],
+			[
+				'{ "ignorePaths": "a" }',
+				'"syncbackRules.ignorePaths": expected an array, found a string.',
+			],
+			[
+				'{ "ignoreProperties": { "Part": "Color" } }',
+				'"syncbackRules.ignoreProperties.Part": expected an array, found a string.',
+			],
+			[
+				'{ "syncUnscriptable": "no" }',
+				'"syncbackRules.syncUnscriptable": expected a boolean, found a string.',
+			],
+		])(
+			"should refuse syncbackRules Rojo can't read: %s",
+			async (rules, message) => {
+				await write(
+					"/repo/default.rogen.json",
+					`{
+	"syncbackRules": ${rules}
+}`
+				);
+
+				await start();
+
+				expect(errors(0)).toMatchObject([
+					{ message: expect.stringContaining(message) },
+				]);
+			}
+		);
+
 		it("should refuse a $ key of a node that is no field and holds no object", async () => {
 			await write("/repo/default.rogen.json", {
 				tree: {

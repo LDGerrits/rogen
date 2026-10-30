@@ -118,6 +118,50 @@ describe("platform/jsonc/jsonc-document-reader", () => {
 				).toBe(true);
 			});
 
+			it("should report a number that is not whole or is out of range, and accept the bounds", () => {
+				const bounded: JsonStructure = {
+					type: "object",
+					properties: {
+						port: { type: "number", whole: { max: 10 } },
+					},
+				};
+				const messages = (text: string) => {
+					const result = read(text, bounded);
+					return result.isErr()
+						? result.error.map(({ message }) => message)
+						: [];
+				};
+
+				expect(messages('{ "port": 11 }')).toEqual([
+					'"port": expected a whole number from 0 to 10, found 11.',
+				]);
+				expect(messages('{ "port": -1 }')).toHaveLength(1);
+				expect(messages('{ "port": 1.5 }')).toHaveLength(1);
+				expect(messages('{ "port": 1.0 }')).toHaveLength(1);
+				expect(messages('{ "port": 1e1 }')).toHaveLength(1);
+				expect(messages('{ "port": 0 }')).toEqual([]);
+				expect(messages('{ "port": 10 }')).toEqual([]);
+			});
+
+			it("should report a string that is no IP address, with the hint of the structure", () => {
+				const addressed: JsonStructure = {
+					type: "object",
+					properties: {
+						host: {
+							type: "string",
+							ipAddress: true,
+							hint: "Use another key for names.",
+						},
+					},
+				};
+
+				const bad = read('{ "host": "example.com" }', addressed);
+				expect(bad.isErr() && bad.error[0].message).toBe(
+					'"host": expected an IP address such as 127.0.0.1, found "example.com". Use another key for names.'
+				);
+				expect(read('{ "host": "::1" }', addressed).isOk()).toBe(true);
+			});
+
 			it("should let fields through when the structure doesn't forbid others", () => {
 				const open: JsonStructure = {
 					type: "object",

@@ -34,7 +34,12 @@ export type JsoncNode = JsoncPosition &
 				readonly properties: readonly JsoncProperty[];
 		  }
 		| { readonly kind: "array"; readonly items: readonly JsoncNode[] }
-		| { readonly kind: "string" | "number" | "boolean" | "null" }
+		| {
+				readonly kind: "string" | "number" | "boolean" | "null";
+				readonly value: unknown;
+				/** The value as it is written in the text. */
+				readonly text: string;
+		  }
 	);
 
 interface JsoncDocument {
@@ -141,7 +146,7 @@ export function parseJsonc(text: string): JsoncDocument {
 		tree = parseTree(source, errors, { allowTrailingComma: true });
 		if (tree) {
 			value = getNodeValue(tree);
-			root = toJsoncNode(tree, positionAt);
+			root = toJsoncNode(tree, positionAt, source);
 		}
 	} catch (error) {
 		if (!(error instanceof RangeError)) throw error;
@@ -181,7 +186,11 @@ function withoutRepeats(errors: readonly JsoncError[]): JsoncError[] {
 	});
 }
 
-function toJsoncNode(node: Node, positionAt: PositionAt): JsoncNode {
+function toJsoncNode(
+	node: Node,
+	positionAt: PositionAt,
+	source: string
+): JsoncNode {
 	const position = positionAt(node.offset);
 	switch (node.type) {
 		case "object":
@@ -194,7 +203,7 @@ function toJsoncNode(node: Node, positionAt: PositionAt): JsoncNode {
 					return {
 						name: String(key.value),
 						...positionAt(key.offset),
-						value: toJsoncNode(value, positionAt),
+						value: toJsoncNode(value, positionAt, source),
 					};
 				}),
 			};
@@ -203,14 +212,19 @@ function toJsoncNode(node: Node, positionAt: PositionAt): JsoncNode {
 				...position,
 				kind: "array",
 				items: (node.children ?? []).map((item) =>
-					toJsoncNode(item, positionAt)
+					toJsoncNode(item, positionAt, source)
 				),
 			};
 		case "string":
 		case "number":
 		case "boolean":
 		case "null":
-			return { ...position, kind: node.type };
+			return {
+				...position,
+				kind: node.type,
+				value: node.value,
+				text: source.slice(node.offset, node.offset + node.length),
+			};
 		default:
 			throw new Error(`Unexpected JSONC node type "${node.type}".`);
 	}
