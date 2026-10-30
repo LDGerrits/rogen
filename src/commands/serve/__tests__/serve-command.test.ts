@@ -591,6 +591,105 @@ describe("serve command", () => {
 		]);
 	});
 
+	describe("when Rojo crashes", () => {
+		const crashText =
+			"[ERROR rojo] Rojo crashed! You are running Rojo 7.7.1.\n[ERROR rojo] Details: it broke\n";
+		const answer = async (session: string) => {
+			requests.answer(ROJO_URL, {
+				projectName: "repo",
+				serverVersion: "7.7.1",
+				sessionId: session,
+			});
+			await settle();
+		};
+		const crash = async (index: number) => {
+			requests.responses.delete(ROJO_URL);
+			processes.spawned[index].printError(crashText);
+			processes.spawned[index].exit({ code: 1, signal: null });
+			await settle();
+		};
+
+		it("should restart it, say to press Connect, and keep serving", async () => {
+			void serve();
+			await settle();
+			await answer("s1");
+
+			await crash(0);
+			await answer("s2");
+
+			expect(processes.spawned).toHaveLength(2);
+			expect(logService.lines.slice(-1)).toEqual([
+				"info: Rojo crashed, so Rogen restarted it on 127.0.0.1:34872.\n  In Studio, press Connect in the Rojo plugin.",
+			]);
+			expect(logService.lines.join("\n")).not.toContain("error");
+		});
+
+		it("should exit 1 with Rojo's crash text when it crashes again right after the restart", async () => {
+			const result = serve();
+			await settle();
+			await answer("s1");
+			await crash(0);
+			await answer("s2");
+
+			await crash(1);
+			const error = await failureOf(result);
+
+			expect(exitCodeOf(error)).toBe(1);
+			expect(logService.lines.slice(-2)).toEqual([
+				[
+					"diagnosticError: /repo/default.rogen.json - error: Rojo crashed again right after a restart, so Rogen stopped serving repo: (rojo.crashed)",
+					"  Rojo crashed! You are running Rojo 7.7.1.",
+					"  Details: it broke",
+				].join("\n"),
+				"outro: serve failed.",
+			]);
+		});
+
+		it("should print the restart and the giving up as JSON lines", async () => {
+			const result = serve([], { json: true });
+			await settle();
+			await answer("s1");
+			await crash(0);
+			await answer("s2");
+
+			await crash(1);
+			await result;
+
+			expect(printed().slice(2)).toEqual([
+				{
+					restarted: {
+						config: "default.rogen.json",
+						version: "7.7.1",
+						project: "repo",
+						host: "127.0.0.1",
+						port: 34872,
+						session: "s2",
+						code: 1,
+					},
+				},
+				{
+					stopped: {
+						config: "default.rogen.json",
+						reason: "crashed",
+						code: 1,
+						signal: null,
+					},
+				},
+				{
+					diagnostics: [
+						expect.objectContaining({
+							code: "rojo.crashed",
+							details: [
+								"Rojo crashed! You are running Rojo 7.7.1.",
+								"Details: it broke",
+							],
+						}),
+					],
+				},
+			]);
+		});
+	});
+
 	it("should pass --address, --port and --allowed-hosts to the server", async () => {
 		void serve([], {
 			address: "0.0.0.0",

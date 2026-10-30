@@ -7,9 +7,13 @@ import {
 	ProcessExit,
 	exitCodeText,
 } from "../../platform/process/process-service.js";
-import { RojoProcess, RojoRunner } from "../runner/rojo-runner.js";
+import { RojoRunner } from "../runner/rojo-runner.js";
 import { ServerInfo } from "../runner/rojo-server.js";
 import { ServeFlags } from "../runner/serve-flags.js";
+import {
+	SupervisedExitEvent,
+	SupervisedRojo,
+} from "../runner/supervised-rojo.js";
 import {
 	ServePlan,
 	ServeTarget,
@@ -17,6 +21,7 @@ import {
 	ServerOutputEvent,
 	ServerExitEvent,
 	ServerReadyEvent,
+	ServerRestartEvent,
 } from "./serve-service.js";
 import { PortState, ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
@@ -27,6 +32,8 @@ const SLOW_START_MS = 10_000;
 
 interface StartedServerListener {
 	served(serving: ServerReadyEvent): void;
+	/** Rojo crashed, and the one started in its place serves. */
+	restarted(serving: ServerRestartEvent): void;
 	said(said: ServerOutputEvent): void;
 	stopped(stop: ServerExitEvent): void;
 	connection(change: ServerConnectionEvent): void;
@@ -35,14 +42,15 @@ interface StartedServerListener {
 
 /** A server the session started to serve a config with. */
 export class StartedServer extends AbstractDisposable {
-	private readonly child: RojoProcess;
+	private readonly child: SupervisedRojo;
 	private exited = false;
+	private restartedAfter: ProcessExit | undefined;
 	private stoppedOnPurpose = false;
 	private recordWrite: Promise<void> | undefined;
 	private connected = 0;
 	private readonly ready: RunOnceScheduler;
 	private readyDelay = READY_POLL_MS.first;
-	private readonly startedAt = Date.now();
+	private startedAt = Date.now();
 	private toldSlow = false;
 
 	constructor(
@@ -51,19 +59,33 @@ export class StartedServer extends AbstractDisposable {
 		rojoRunner: RojoRunner,
 		private readonly probe: ServerProbe,
 		private readonly records: ServerRecords,
-		private readonly listener: StartedServerListener
+		private readonly listener: StartedServerListener,
+		/** Runs before Rojo starts again after a crash, to write the project file afresh. */
+		beforeRestart?: () => Promise<void>
 	) {
 		super();
 		const { executable, serverArgs, selection } = plan;
 		this.child = this._register(
-			rojoRunner.start(
-				executable,
-				"serve",
-				path.relative(selection.home, target.config.projectFile),
-				ServeFlags.portIn(serverArgs).unwrapOr(undefined) === undefined
-					? [...serverArgs, "--port", String(target.address.port)]
-					: serverArgs,
-				selection.home
+			new SupervisedRojo(
+				() =>
+					rojoRunner.start(
+						executable,
+						"serve",
+						path.relative(
+							selection.home,
+							target.config.projectFile
+						),
+						ServeFlags.portIn(serverArgs).unwrapOr(undefined) ===
+							undefined
+							? [
+									...serverArgs,
+									"--port",
+									String(target.address.port),
+								]
+							: serverArgs,
+						selection.home
+					),
+				{ beforeRestart }
 			)
 		);
 		let said = false;
@@ -86,6 +108,24 @@ export class StartedServer extends AbstractDisposable {
 			this.child.onDidMessage((message) => {
 				if (message.severity !== "debug") said = true;
 				this.listener.said({ target, message });
+			})
+		);
+		this._register(
+			this.child.onDidRestart(({ exit }) => {
+				said = false;
+				this.restartedAfter = exit;
+				this.toldSlow = false;
+				this.startedAt = Date.now();
+				this.readyDelay = READY_POLL_MS.first;
+				if (this.connected > 0) {
+					this.connected = 0;
+					this.listener.connection({
+						target,
+						opened: false,
+						clients: 0,
+					});
+				}
+				this.ready.schedule(READY_POLL_MS.first);
 			})
 		);
 		this._register(
@@ -143,11 +183,20 @@ export class StartedServer extends AbstractDisposable {
 					state.kind === "serving" &&
 					state.info.project === target.project
 				) {
+					this.child.markReady();
+					const crashed = this.restartedAfter;
+					this.restartedAfter = undefined;
 					// Recorded before it is announced, so a serve killed right after still leaves its server's record.
 					this.recordWrite = this.writeRecord(state.info);
 					return this.recordWrite.then(() => {
 						if (this.stoppedOnPurpose || this.exited) return;
-						this.listener.served({ target, info: state.info });
+						const serving = { target, info: state.info };
+						if (crashed)
+							this.listener.restarted({
+								...serving,
+								exit: crashed,
+							});
+						else this.listener.served(serving);
 					});
 				}
 				this.warnWhenSlow(state);
@@ -180,9 +229,36 @@ export class StartedServer extends AbstractDisposable {
 		});
 	}
 
-	private stopOf(exit: ProcessExit, said: boolean): ServerExitEvent {
+	private stopOf(
+		{ exit, gaveUp }: SupervisedExitEvent,
+		said: boolean
+	): ServerExitEvent {
 		const interrupted = exit.interrupted === true;
 		const { label, file } = this.target.config;
+		if (gaveUp) {
+			const stopped = `Rojo crashed again right after a restart, so Rogen stopped serving ${label}`;
+			return {
+				target: this.target,
+				exit,
+				interrupted,
+				crashed: true,
+				failure:
+					gaveUp.length > 0
+						? {
+								...errorDiagnostic(
+									"rojo.crashed",
+									{ resource: file },
+									`${stopped}:`
+								),
+								details: gaveUp,
+							}
+						: errorDiagnostic(
+								"rojo.crashed",
+								{ resource: file },
+								`${stopped} (exit code ${exitCodeText(exit.code ?? 1)}).`
+							),
+			};
+		}
 		const failure =
 			exit.error !== undefined
 				? errorDiagnostic(

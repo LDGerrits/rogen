@@ -71,6 +71,8 @@ export interface WatchSession extends Disposable {
 
 	/** Resolves once the watcher is live and the initial write is queued, so no change goes unseen. */
 	start(): Promise<Result<void, Error>>;
+	/** Lists the source paths again and rewrites every config from them, without waiting for the watcher to report what changed; reports nothing. */
+	refresh(): Promise<void>;
 	/** Lets the work already started finish, then stops the watcher. Safe to call twice. */
 	stop(): Promise<void>;
 }
