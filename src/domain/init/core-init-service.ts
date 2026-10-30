@@ -1,6 +1,9 @@
 import path from "path";
+import { Disposable, toDisposable } from "../../base/disposable.js";
 import { ErrorUtils, UsageError } from "../../base/errors.js";
+import { samePath } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -32,6 +35,8 @@ import { ProjectSetup } from "./project-setup.js";
 import { ToolchainSetup } from "./toolchain-setup.js";
 import { ServerFinder } from "../runner/server-finder.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
+import { MigratedProject, ProjectMigration } from "./project-migration.js";
+import { MigrationSetup } from "./migration-setup.js";
 
 /** The flags that shape a new config, by the choice each gives; init takes none of them where a config exists. */
 const SHAPING_FLAGS: Record<
@@ -65,6 +70,7 @@ export class CoreInitService implements InitService {
 	private readonly writer: InitWriter;
 	private readonly git: GitRepository;
 	private readonly finder: ServerFinder;
+	private readonly migrations = new Set<ProjectMigration>();
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
@@ -161,13 +167,58 @@ export class CoreInitService implements InitService {
 		);
 		const directory = await this.prepare(folder, place !== undefined);
 		if (directory.isErr()) return directory;
-		const stale = await this.configService.staleConfigsIn(
-			directory.value.path
+		const migrated = await this.migrationIn(directory.value.path);
+		if (migrated.isErr()) return err(new DiagnosticsError(migrated.error));
+		const stale = (
+			await this.configService.staleConfigsIn(directory.value.path)
+		).filter(
+			({ resource }) =>
+				!migrated.value?.from.some((file) =>
+					samePath(path.join(directory.value.path, file), resource)
+				)
 		);
 		if (stale.length > 0) return err(new DiagnosticsError([...stale]));
+		if (migrated.value)
+			return this.planMigrationIn(
+				directory.value,
+				questions,
+				migrated.value
+			);
 		if (directory.value.hasConfigs)
 			return this.planAgentsIn(directory.value, questions);
 		return this.planIn(directory.value, questions);
+	}
+
+	/** The project the first registered migration finds in `folder`. */
+	private async migrationIn(
+		folder: string
+	): Promise<Result<MigratedProject | undefined, Diagnostic[]>> {
+		for (const migration of this.migrations) {
+			const found = await migration.find(folder, this.fileSystemService);
+			if (found.isErr() || found.value) return found;
+		}
+		return ok(undefined);
+	}
+
+	/** A project that another tool set up: the migration's configs in place of a new project's. */
+	private async planMigrationIn(
+		directory: InitDirectory,
+		questions: InitQuestions,
+		migrated: MigratedProject
+	): Promise<Result<InitPlan | undefined, Error>> {
+		const [shaping] = shapingFlagsOf(questions.choices);
+		if (shaping !== undefined)
+			throw new UsageError(
+				`${shaping} shapes a new config, and init migrates ${migrated.label} here.`,
+				"Leave the flag out; edit the configs init writes, then run 'rogen check'."
+			);
+		const agents = await this.agentSetupIn(directory, questions);
+		if (agents.isErr()) return agents;
+		return this.planWith(directory, questions, [
+			new MigrationSetup(directory, migrated, this.fileSystemService),
+			agents.value,
+			await this.toolchainSetupIn(directory),
+		]);
 	}
 
 	/** A project that has a config: the agent rules and the hook only, which change no config, and only when a flag asks for them. */
@@ -244,10 +295,20 @@ export class CoreInitService implements InitService {
 	): Promise<Result<InitPlan | undefined, Error>> {
 		const agents = await this.agentSetupIn(directory, questions);
 		if (agents.isErr()) return agents;
+		return this.planWith(directory, questions, [
+			new ProjectSetup(directory, questions, this.fileSystemService),
+			agents.value,
+			await this.toolchainSetupIn(directory),
+		]);
+	}
+
+	private async toolchainSetupIn(
+		directory: InitDirectory
+	): Promise<Setup<unknown>> {
 		const manifests = await this.toolchainService.readManifests(
 			directory.path
 		);
-		const tools = ToolchainSetup.of(async () =>
+		return ToolchainSetup.of(async () =>
 			ToolchainSetup.stateOf(
 				directory.path,
 				manifests,
@@ -258,11 +319,6 @@ export class CoreInitService implements InitService {
 				}
 			)
 		);
-		return this.planWith(directory, questions, [
-			new ProjectSetup(directory, questions, this.fileSystemService),
-			agents.value,
-			tools,
-		]);
 	}
 
 	/** The folder itself, else the nearest one above it that is there, where a program can run before the folder is made. */
@@ -306,6 +362,11 @@ export class CoreInitService implements InitService {
 					}
 				: plan.value
 		);
+	}
+
+	registerMigration(migration: ProjectMigration): Disposable {
+		this.migrations.add(migration);
+		return toDisposable(() => this.migrations.delete(migration));
 	}
 
 	refreshAgentRules(folder: string): Promise<string[]> {

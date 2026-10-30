@@ -54,8 +54,11 @@ stdout:
   asks in a terminal. With a folder, it starts the project there. Beside a hand-written
   default.project.json, it lifts that tree into default.rogen.json. The source path is the closest
   folder that holds the code the file mounts. From then on, 'rogen write' writes default.project.json
-  from the config. Where a config exists, init writes nothing, but --agent-rules and --agent-hook
-  still add the agent files. To change a config, edit the .rogen.json and run 'rogen check'.
+  from the config. Beside a Rogen 1 .rogen.json, it migrates the project: a config for each v1 mode,
+  with routes that put every file where v1 did and the tree from v1's project, renames the files v1
+  routed by their names to the @ form, and sets the v1 config aside as .rogen.json.v1. Where a config
+  exists, init writes nothing, but --agent-rules and --agent-hook still add the agent files. To change
+  a config, edit the .rogen.json and run 'rogen check'.
   
   USAGE:
       rogen init [OPTIONS] [PATH]

@@ -5,66 +5,35 @@ description: Why v2 changed, and how to move a v1 project to it
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 
-v2 reads configs and file names differently, so a v1 project needs a new config and some renamed files.
+Run `rogen init` to migrate a v1 project. Your scripts land where they did, and it warns about anything it can't carry over.
 
 ## Why v2 Changed
 
-v1 had many small rules that could disagree, and each problem got its own switch or marker file. v2 has three rules that hold everywhere:
+Rogen v2 is a complete overhaul. In v1, Rogen only wrote the project file. You still wrote part of the tree yourself, and you ran Rojo next to Rogen to serve and build. v2 merges the two into one tool: it's now a superset of Rojo. Your config is a Rojo project file with a few extra keys, and Rogen runs Rojo's commands for you.
 
-- **The outermost route governs.** In v1 the deepest rule won, so `ReplicatedFirst/main.client.luau` went to `StarterPlayerScripts`, and holding a folder still took `.structure` or `.sync`. In v2 a folder's route covers everything inside it.
-- **Only `@` routes a name.** v1 read routes from prefixes and suffixes, so `HttpClient.luau` went to the client as `Http`. In v2 only a name like `Save@server.luau` routes, and Rojo's `.server` and `.client` keep their meaning.
-- **You write every route.** v1's keywords and wrapper folders were built in, and unmatched files went to `ReplicatedStorage`. In v2 only the routes you declare exist. `rogen init` declares a `*` route for the files that match none, and without it such a file is left out with a warning.
+v2 also fixes the flaws in v1's design. Options like `casing` and `unwrap`, and markers like `.structure`, were patches for problems in v1's routing rules. v2 replaces those rules, so the patches are gone. The outermost route now decides where a file goes, and you choose where each route points:
+
+- **The outermost route governs.** In v1, the deepest rule won, so `ReplicatedFirst/main.client.luau` ended up in `StarterPlayerScripts`. To keep a folder together, you needed `.structure` or `.sync`. In v2, a folder's route covers everything inside it.
+- **Only `@` routes a name.** v1 guessed routes from prefixes and suffixes, so `HttpClient.luau` went to the client as `Http`. In v2, only a name like `Save@Server.luau` is routed, and Rojo's `.server` and `.client` keep their usual meaning.
+- **You write every route.** v1 had its keywords and wrapper folders built in, and sent unmatched files to `ReplicatedStorage`. In v2, only the routes you declare exist, and each one points where you write it, with or without a wrapper folder. `rogen init` adds a `*` route for files that match no other route. Without it, those files are left out with a warning.
 
 ## Move a Project to v2
 
 <Steps>
 
 <Step>
-### Set the v1 Config Aside
-
-Every command stops with [`legacy.config`](/docs/v2/diagnostics#legacy-config) while a v1 config is in the folder. Rename it, and any other `*.rogen.json` v1 read:
-
-```bash
-mv .rogen.json .rogen.json.v1
-```
-
-</Step>
-
-<Step>
 ### Run `rogen init`
 
-[Install v2](/docs/v2/installation) and run `rogen init`. It writes `default.rogen.json`, taking in an existing `default.project.json`. Run the `git rm --cached` command it prints.
+[Install v2](/docs/v2/installation) and run `rogen init` in the folder that holds `.rogen.json`. Add `--dry-run` to see the plan first.
+
+`init` writes a config for each v1 mode, with routes that put every script where v1 did, and takes the tree from your `project`. It renames the files that v1 routed by a word in their name to the `@` form, such as `Combat_Server.luau` to `Combat@Server.luau`, and renames `.rogen.json` to `.rogen.json.v1`.
 
 </Step>
 
 <Step>
-### Match Your Old Paths
+### Fix the Warnings
 
-To keep your v1 `require` paths, write v1's wrapper folders into the targets:
-
-```json title="default.rogen.json"
-{
-	"routes": {
-		"server": "ServerScriptService/server",
-		"client": "StarterPlayer/StarterPlayerScripts/client",
-		"shared": "ReplicatedStorage/shared",
-		"*": "ReplicatedStorage/shared"
-	}
-}
-```
-
-Leave the wrappers out if you used `unwrap`, and capitalise them if you used `casing: "PascalCase"`. Add each of your `aliases` as a route.
-
-</Step>
-
-<Step>
-### Rename Files Until `rogen check` Is Clean
-
-```bash
-rogen check
-```
-
-Each v1 name that no longer routes gets a warning that names the fix. The step is done when `rogen check` prints nothing. Files that v1 built only under a tag get no warning, so move them as [Tags](#tags) describes.
+`init` warns about what it can't carry over: tags, v1's marker files that don't route, roblox-ts files that v1 routed by their names, and files that v1 placed by the deepest rule. Each warning says what to do. Then run `rogen check` until it prints nothing.
 
 </Step>
 
@@ -77,6 +46,8 @@ Run `rogen serve` and compare Studio's Explorer with your v1 build. When every s
 
 </Steps>
 
+If an earlier v2 `rogen init` lifted the tree that v1 generated, delete `default.rogen.json`, rename `.rogen.json.v1` back to `.rogen.json`, and run `rogen init` again.
+
 ## What Replaces Each v1 Feature
 
 | v1 | v2 |
@@ -86,8 +57,8 @@ Run `rogen serve` and compare Studio's Explorer with your v1 build. When every s
 | `casing`, `unwrap`, `.unwrap` | the route's target path |
 | `verbatim`, `.verbatim` | not needed |
 | keywords in names | `@key` or a routing folder. See [Names](#names) |
-| `tags`, `-t` | an overlay source path. See [Tags](#tags) |
-| modes, `-m` | a second config, such as `dist.rogen.json` |
+| `tags`, `-t` | a source path listed after the others, whose files replace the ones at the same path |
+| modes, `-m` | a config for each mode, named after its `output`, such as `build.rogen.json` |
 | a mode's `build`, `-b` | `compiledPath` |
 | a mode's `output`, `-o` | none. `rogen build -o` now builds a place |
 | `project`, `template`, `-p` | `tree` in the config |
@@ -98,21 +69,14 @@ Run `rogen serve` and compare Studio's Explorer with your v1 build. When every s
 
 ### Names
 
+`rogen init` renames these for you:
+
 ```
-v1: src/Combat/server_Combat.luau     v2: src/Combat/Server/Combat.luau
-v1: src/Combat/Combat_Server.luau     v2: src/Combat/Combat@server.luau
-v1: src/Combat/Types.shared.luau      v2: src/Combat/Types@shared.luau
+v1: src/Combat/server_Combat.luau     v2: src/Combat/Combat@Server.luau
+v1: src/Combat/Combat_Server.luau     v2: src/Combat/Combat@Server.luau
+v1: src/Combat/Types.shared.luau      v2: src/Combat/Types@Shared.luau
 v1: src/Combat/Hud.client.luau        v2: unchanged
-v1: src/Combat/.server                v2: src/Combat/@server
+v1: src/Combat/.server                v2: src/Combat/@Server
 ```
 
-### Tags
-
-Few projects used tags. Move a file that v1 built only under a tag into a folder of its own, and list that folder as a later source path, where its file replaces the one at the same path:
-
-```
-v1: src/Teleport/TeleportDev.luau (tag dev)
-v2: dev/Teleport/Teleport.luau (the dev source path)
-```
-
-Write a second config without it, such as `release.rogen.json` with `"sourcePaths": ["src"]` and its own `name`.
+A roblox-ts file keeps its name, since renaming it breaks the imports of it. Rename it yourself and update the imports.

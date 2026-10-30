@@ -1,0 +1,4 @@
+{
+	"steps": [["init"], ["check"]],
+	"show": ["default.rogen.json"]
+}

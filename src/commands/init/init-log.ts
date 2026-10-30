@@ -36,6 +36,15 @@ const S = OutputShape;
 export const initDocumentShape = S.object({
 	changed: S.boolean,
 	dryRun: S.optional(S.boolean),
+	moves: S.optional(
+		S.array(
+			S.object({
+				from: S.string,
+				to: S.string,
+				outcome: S.enum("moved", "wouldMove"),
+			})
+		)
+	),
 	files: S.array(
 		S.object({
 			file: S.string,
@@ -212,6 +221,12 @@ export class InitLog implements InitReporter {
 			);
 			return;
 		}
+		if (item.kind === "move") {
+			this.logService.success(
+				`${this.dryRun ? "Would rename" : "Renamed"} ${this.shown(item.move.from)} to ${this.shown(item.move.to)}.`
+			);
+			return;
+		}
 		const { fileName, addition } = item.file;
 		this.logService.success(
 			addition !== undefined
@@ -225,8 +240,12 @@ export class InitLog implements InitReporter {
 	}
 
 	planned(plan: InitPlan): Result<void, Error> {
+		const renames =
+			plan.moves.length > 0
+				? ` and rename ${plural(plan.moves.length, "file")}`
+				: "";
 		this.logService.outro(
-			`Would write ${plural(plan.files.length, "file")}. Nothing was written.`
+			`Would write ${plural(plan.files.length, "file")}${renames}. Nothing was written.`
 		);
 		return ok(undefined);
 	}
@@ -260,9 +279,16 @@ interface InitFile {
 	readonly appended?: true;
 }
 
+interface InitMove {
+	readonly from: string;
+	readonly to: string;
+	readonly outcome: "moved" | "wouldMove";
+}
+
 interface InitDocument {
 	readonly changed: boolean;
 	readonly dryRun?: true;
+	readonly moves?: readonly InitMove[];
 	readonly files: readonly InitFile[];
 	readonly directories: readonly string[];
 	readonly git?: "initialised" | "wouldInitialise" | "failed";
@@ -280,6 +306,7 @@ interface InitDocument {
 }
 
 export class InitJsonLog implements InitReporter {
+	private readonly moves: InitMove[] = [];
 	private readonly files: InitFile[] = [];
 	private readonly directories: string[] = [];
 	private decided: readonly InitDecision[] = [];
@@ -329,6 +356,14 @@ export class InitJsonLog implements InitReporter {
 					command: skipped.command,
 					outcome: "skipped",
 				});
+			return;
+		}
+		if (item.kind === "move") {
+			this.moves.push({
+				from: path.join(this.directory, item.move.from),
+				to: path.join(this.directory, item.move.to),
+				outcome: this.dryRun ? "wouldMove" : "moved",
+			});
 			return;
 		}
 		this.files.push({
@@ -384,10 +419,14 @@ export class InitJsonLog implements InitReporter {
 		return {
 			changed:
 				!this.dryRun &&
-				(this.files.length + this.directories.length > 0 ||
+				(this.moves.length +
+					this.files.length +
+					this.directories.length >
+					0 ||
 					this.git === "initialised" ||
 					this.commands.some(({ outcome }) => outcome === "ran")),
 			...(this.dryRun && { dryRun: true as const }),
+			...(this.moves.length > 0 && { moves: this.moves }),
 			files: this.files,
 			directories: this.directories,
 			...(this.git && { git: this.git }),

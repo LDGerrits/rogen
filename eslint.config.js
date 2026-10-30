@@ -22,7 +22,7 @@ const modules = {
 			"declared-keys",
 			"resolved-config",
 		],
-		init: ["init-service"],
+		init: ["init-service", "project-migration"],
 		legacy: ["legacy-config"],
 		roblox: ["roblox", "supported-services"],
 		runner: [
@@ -115,7 +115,7 @@ const domainDependencies = {
 	write: ["config", "roblox", "rojo", "toolchain"],
 	config: ["roblox", "rojo"],
 	init: ["config", "roblox", "rojo", "runner", "toolchain"],
-	legacy: ["config"],
+	legacy: ["config", "init", "roblox"],
 	roblox: [],
 	runner: ["config", "toolchain"],
 	rojo: ["roblox"],

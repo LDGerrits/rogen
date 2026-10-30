@@ -50,6 +50,7 @@ import {
 } from "../../platform/commands/commands.js";
 import { Registry } from "../../platform/registry/registry.js";
 import { LegacyConfig } from "../../domain/legacy/legacy-config.js";
+import { LegacyMigration } from "../../domain/legacy/legacy-migration.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
 
 export interface CommandHarnessOptions<L extends LogService> {
@@ -122,18 +123,17 @@ export function commandHarness(
 	services.set(IndexService, index);
 	services.set(ToolchainService, toolchain);
 	services.set(WriteService, writeService);
-	services.set(
-		InitService,
-		new CoreInitService(
-			fs,
-			prompt,
-			environment,
-			toolchain,
-			processes,
-			undefined,
-			config
-		)
+	const init = new CoreInitService(
+		fs,
+		prompt,
+		environment,
+		toolchain,
+		processes,
+		undefined,
+		config
 	);
+	init.registerMigration(new LegacyMigration());
+	services.set(InitService, init);
 	services.set(
 		LifecycleService,
 		options.lifecycle ?? new MockLifecycleService()

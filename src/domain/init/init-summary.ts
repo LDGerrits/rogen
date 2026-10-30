@@ -42,6 +42,16 @@ function summaryLines(plan: InitPlan, width: number): string[] {
 		...(git.length > 0
 			? [["Git", git.join(", ")] as [string, string]]
 			: []),
+		...(plan.moves.length > 0
+			? [
+					[
+						"Renames",
+						plan.moves
+							.map(({ from, to }) => `${from} → ${to}`)
+							.join(", "),
+					] as [string, string],
+				]
+			: []),
 		[
 			"Files",
 			plan.files.length > 0

@@ -4,7 +4,7 @@ import { PlannedFile } from "../../toolchain/toolchain.js";
 import { jest } from "@jest/globals";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import path from "path";
-import { ResultError } from "../../../base/result.js";
+import { ResultError, ok } from "../../../base/result.js";
 import { UsageError } from "../../../base/errors.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -26,6 +26,7 @@ import {
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { CoreInitService } from "../core-init-service.js";
+import { MigratedProject } from "../project-migration.js";
 import { InitChoices, InitPlan, InitWritten } from "../init-service.js";
 
 const directory = path.resolve("/mock/my-game");
@@ -1653,6 +1654,180 @@ describe("CoreInitService", () => {
 			expect((result as ResultError<Error>).error.message).toBe(
 				"Failed to create lib: read-only"
 			);
+		});
+	});
+
+	describe("a registered migration", () => {
+		const migrated = (
+			changes: Partial<MigratedProject> = {}
+		): MigratedProject => ({
+			label: "an old config",
+			from: ["old.rogen.json"],
+			configs: [
+				{
+					fileName: "old.rogen.json",
+					config: {
+						sourcePaths: ["src"],
+						routes: { Server: "ServerScriptService/server" },
+					},
+				},
+			],
+			moves: [
+				{ from: "old.rogen.json", to: "old.rogen.json.v1" },
+				{ from: "src/A_Server.luau", to: "src/A@Server.luau" },
+			],
+			notes: ["Took the tree from the old config."],
+			warnings: [
+				warningDiagnostic(
+					"old.tags",
+					{ resource: path.join(directory, "old.rogen.json") },
+					"tags are gone."
+				),
+			],
+			edits: ["Run 'rogen check' and fix what it reports."],
+			...changes,
+		});
+
+		const migrating = (
+			project: MigratedProject | undefined = migrated(),
+			promptService?: PromptService
+		) => {
+			const service = serviceFor(promptService);
+			const asked: string[] = [];
+			const registration = service.registerMigration({
+				find: async (folder) => {
+					asked.push(folder);
+					return ok(project);
+				},
+			});
+			return { service, asked, registration };
+		};
+
+		beforeEach(async () => {
+			await write("old.rogen.json", '{ "source": "src" }');
+			await write("src/A_Server.luau", "return {}");
+		});
+
+		it("should plan its configs, moves, notes and warnings in place of a new project", async () => {
+			const { service } = migrating();
+
+			const plan = (await service.plan({ ask: false })).unwrap()!;
+
+			expect(plan.moves).toEqual(migrated().moves);
+			expect(plan.configs).toEqual(["old.rogen.json"]);
+			expect(
+				JSON.parse(
+					plan.files.find(
+						({ fileName }) => fileName === "old.rogen.json"
+					)?.content ?? "{}"
+				)
+			).toEqual(migrated().configs[0].config);
+			expect(plan.files.map(({ fileName }) => fileName)).not.toContain(
+				".gitignore"
+			);
+			expect(plan.notes).toContain("Took the tree from the old config.");
+			expect(plan.warnings.map(({ code }) => code)).toEqual(["old.tags"]);
+			expect(plan.nextSteps.edits[0]).toBe(
+				"Run 'rogen check' and fix what it reports."
+			);
+			expect(plan.nextSteps.run).toEqual(["rogen serve old"]);
+		});
+
+		it("should come before the folder's stale configs that it covers", async () => {
+			configs.registerFolderCheck(async (folder) => [
+				errorDiagnostic(
+					"stale.config",
+					{ resource: path.join(folder, "old.rogen.json") },
+					"is old."
+				),
+			]);
+
+			expect(
+				(await migrating().service.plan({ ask: false })).isOk()
+			).toBe(true);
+		});
+
+		it("should still stop for a stale config it doesn't cover", async () => {
+			configs.registerFolderCheck(async (folder) => [
+				errorDiagnostic(
+					"stale.config",
+					{ resource: path.join(folder, "other.rogen.json") },
+					"is old."
+				),
+			]);
+
+			const planned = await migrating().service.plan({ ask: false });
+
+			expect(
+				planned.isErr() &&
+					planned.error instanceof DiagnosticsError &&
+					planned.error.diagnostics.map(({ code }) => code)
+			).toEqual(["stale.config"]);
+		});
+
+		it("should refuse a flag that shapes a new config", async () => {
+			const planned = await migrating().service.plan({
+				ask: false,
+				choices: { language: "luau" },
+			});
+
+			expect(planned.isErr() && planned.error).toBeInstanceOf(UsageError);
+		});
+
+		it("should show every rename before it asks", async () => {
+			const prompts = new MockPromptService([ACCEPT_DEFAULT], true);
+
+			(await migrating(undefined, prompts).service.plan()).unwrap();
+
+			expect(
+				prompts.prompts.at(-1)?.description?.replace(/\s+/g, " ")
+			).toContain("src/A_Server.luau → src/A@Server.luau");
+		});
+
+		it("should move the files before it writes, and move nothing in a dry run", async () => {
+			const { service } = migrating();
+			const plan = (await service.plan({ ask: false })).unwrap()!;
+			const written: InitWritten[] = [];
+
+			(await service.write(plan, () => {}, true)).unwrap();
+			expect(
+				await fileSystem.exists(
+					path.join(directory, "src/A@Server.luau")
+				)
+			).toBe(false);
+			(await service.write(plan, (item) => written.push(item))).unwrap();
+
+			expect(written.slice(0, 2)).toEqual(
+				plan.moves.map((move) => ({ kind: "move", move }))
+			);
+			expect(
+				await fileSystem.readFile(
+					path.join(directory, "old.rogen.json.v1")
+				)
+			).toBe('{ "source": "src" }');
+			expect(
+				JSON.parse(
+					await fileSystem.readFile(
+						path.join(directory, "old.rogen.json")
+					)
+				)
+			).toMatchObject({ sourcePaths: ["src"] });
+			expect(
+				await fileSystem.exists(
+					path.join(directory, "src/A@Server.luau")
+				)
+			).toBe(true);
+		});
+
+		it("should plan a new project once it is removed", async () => {
+			await fileSystem.delete(path.join(directory, "old.rogen.json"));
+			const { service, asked, registration } = migrating();
+			registration[Symbol.dispose]();
+
+			const plan = (await service.plan({ ask: false })).unwrap()!;
+
+			expect(asked).toEqual([]);
+			expect(plan.moves).toEqual([]);
 		});
 	});
 });

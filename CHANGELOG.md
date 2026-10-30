@@ -6,7 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `rogen init` migrates a Rogen 1 project. Beside a v1 `.rogen.json`, or a named one such as `lobby.rogen.json`, it writes a config for each mode that ran, named after the mode's `output`. The routes put every file where v1 did, with v1's wrapper folders, `casing`, `unwrap`, `aliases` and the services the source folders name, such as `"Server": "ServerScriptService/server"`. The tree comes from the config's `project`, not from the `default.project.json` that v1 generated. It renames each file that v1 routed by a word in its name to the `@` form (`Combat_Server.luau` to `Combat@Server.luau`), each marker file such as `.server` to `@Server`, and the v1 config to `.rogen.json.v1`. Before, `init` stopped with `legacy.config`, and once the v1 config was set aside, it lifted the generated tree, so every feature folder stayed mounted in the tree. What it can't carry over is a warning: tags (`legacy.tags`), `.structure`, `.unwrap` and `.sync` (`legacy.marker`), roblox-ts files with a routing word in their name (`legacy.typeScriptName`), and files that v1 placed by the deepest routing word (`legacy.outrankedRoute`). `--dry-run` and the summary list every rename, and `--json` lists them under `moves`.
+
 ### Changed
+
+- `legacy.config` now says to run `rogen init` to migrate the config.
 
 - `rogen init` now writes a `*` route by default, so a file that matches no route goes to the shared route. Only the files that run on one side need marking, such as with `@Server`. To leave such files out with a warning instead, remove `*` from `routes` in the config.
 - `rogen init` lifts a Rojo project whose code Darklua writes to a folder of its own, such as `build`, into a `default.rogen.json` that reads the source and a `dist.rogen.json` with that folder as its `compiledPath`, and its next steps serve `dist`. It looks for a `.darklua.json` or `.darklua.json5` and for mounts that repeat the source path. Before, the lifted config kept the mounts of that folder, so Rojo synced each script twice.

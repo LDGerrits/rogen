@@ -1,0 +1,54 @@
+$ rogen init
+exit 0
+stdout:
+  rogen init
+  Took the tree v1 made for .rogen.json, which has no "project".
+  The routes send each file where v1 did, such as Server files to ServerScriptService/Server, so requires keep working.
+  Renames 1 file that v1 routed by a word in the name or by a marker file to v2's @ form, which keeps each instance's name.
+  Took the defaults, each with the flag that changes it: agent rules (--no-agent-rules).
+  Renamed .rogen.json to .rogen.json.v1.
+  Renamed src/Combat/Combat_Server.luau to src/Combat/Combat@Server.luau.
+  Created default.rogen.json.
+  Created AGENTS.md.
+  default.project.json · wrote
+  Next steps
+    Run:
+      rogen serve
+    In Studio, press Connect in the Rojo plugin.
+    Run 'rogen check' and fix what it reports.
+    Serve the project and compare Studio's Explorer with your v1 build. When every script sits where it did, delete .rogen.json.v1. See https://rogen-roblox.vercel.app/docs/v2/migrating-from-v1.
+    Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's project file follows.
+  Wrote 2 files.
+stderr:
+  .rogen.json - warning: v1's tags (dev) aren't carried over: v2 has none, and init renames none of the files they pick. Move each into a folder of its own, and list that folder after the other source paths in the configs that should have it: its files replace the ones at the same path. (legacy.tags)
+
+written:
+  .rogen.json.v1
+  AGENTS.md
+  default.project.json
+  default.rogen.json
+  src/Combat/Combat@Server.luau
+
+default.rogen.json:
+{
+  "name": "project",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService/Server",
+    "Client": "StarterPlayer/StarterPlayerScripts/Client",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "tree": {
+    "$className": "DataModel"
+  }
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Server: Folder
+      Combat: Folder
+        Combat: ModuleScript  <- src/Combat/Combat@Server.luau

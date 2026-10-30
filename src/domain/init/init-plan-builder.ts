@@ -19,6 +19,7 @@ import {
 	PlannedScaffold,
 	SummaryRow,
 } from "./init-service.js";
+import { PlannedMove } from "./project-migration.js";
 
 export class InitPlanBuilder {
 	private readonly configFiles: {
@@ -30,6 +31,7 @@ export class InitPlanBuilder {
 	private hookFiles: readonly PlannedFile[] = [];
 	private toolManifest: PlannedFile | undefined;
 	private readonly templateFiles: PlannedFile[] = [];
+	private readonly moves: PlannedMove[] = [];
 	private gitInit = false;
 	private readonly directories = new Set<string>();
 	private readonly notes: string[] = [];
@@ -85,6 +87,11 @@ export class InitPlanBuilder {
 	/** A file of the project's template, which is written after the config. */
 	addFile(file: PlannedFile): void {
 		this.templateFiles.push(file);
+	}
+
+	/** A file to rename before any file is written; a config may then be written under its old name. */
+	addMove(move: PlannedMove): void {
+		this.moves.push(move);
 	}
 
 	/** A line of the summary: what the plan sets up in `area`. */
@@ -149,8 +156,11 @@ export class InitPlanBuilder {
 		const toWrite = this.configFiles
 			.filter(({ writesProjectFile }) => writesProjectFile)
 			.map(({ file }) => file);
+		const movedAway = new Set(this.moves.map(({ from }) => from));
 		const taken = this.directory.checkFree(
-			written.map(({ fileName }) => fileName)
+			written
+				.map(({ fileName }) => fileName)
+				.filter((fileName) => !movedAway.has(fileName))
 		);
 		if (taken.length > 0) return err(taken);
 
@@ -161,6 +171,7 @@ export class InitPlanBuilder {
 			decided: this.decided,
 			gitInit: this.gitInit,
 			...(this.scaffold && { scaffold: this.scaffold }),
+			moves: [...this.moves],
 			files: [
 				...written,
 				...this.templateFiles,
