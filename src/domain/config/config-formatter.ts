@@ -10,6 +10,7 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { hasComments } from "../../base/jsonc.js";
 import { ProjectText } from "../rojo/project-text.js";
 import { configStructure } from "./config-structure.js";
+import { ConfigKeys } from "./config-keys.js";
 import { ConfigValidator } from "./config-validator.js";
 import { ROGEN_KEYS } from "./config.js";
 
@@ -21,7 +22,7 @@ export class ConfigFormatter {
 		this.reader = new ConfigFileReader(fileSystemService, configStructure);
 	}
 
-	/** Whether the file changed. A file with comments fails, since the formatted text has none, and so does one with a tree value Rojo can't read; a trailing comma is dropped. */
+	/** Whether the file changed. A file with comments fails, since the formatted text has none, and so does one that `rogen check` refuses; a trailing comma is dropped. */
 	async format(file: string): Promise<Result<boolean, Diagnostic[]>> {
 		const read = await tryWithAsync(() =>
 			this.fileSystemService.readFile(file)
@@ -47,8 +48,14 @@ export class ConfigFormatter {
 			]);
 		const parsed = this.reader.parse(text, file);
 		if (parsed.isErr()) return err([...parsed.error.diagnostics]);
-		const unreadable = ConfigValidator.unreadableValues(parsed.value);
-		if (unreadable.length > 0) return err(unreadable);
+		const config = parsed.value;
+		const keys = ConfigKeys.check(config.model.keys, (key) => ({
+			resource: file,
+			position: config.positionOfKey(key),
+		}));
+		if (keys.length > 0) return err(keys);
+		const validated = ConfigValidator.validateFile(config);
+		if (validated.isErr()) return err(validated.error);
 		if (hasComments(text))
 			return err([
 				errorDiagnostic(
@@ -58,11 +65,11 @@ export class ConfigFormatter {
 				),
 			]);
 
-		const config = parsed.value.model.contents;
+		const contents = config.model.contents;
 		const formatted = ProjectText.ofConfig(
-			"name" in config
-				? config
-				: { ...config, name: path.basename(path.dirname(file)) },
+			"name" in contents
+				? contents
+				: { ...contents, name: path.basename(path.dirname(file)) },
 			ROGEN_KEYS
 		);
 		if (formatted === text) return ok(false);

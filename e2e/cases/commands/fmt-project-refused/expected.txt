@@ -1,0 +1,9 @@
+$ rogen check
+exit 1
+stdout:
+  default.rogen.json:1:16 - error: "bogus" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know. (config.unknownField)
+
+$ rogen fmt-project
+exit 1
+stderr:
+  default.rogen.json:1:16 - error: "bogus" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know. (config.unknownField)

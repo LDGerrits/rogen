@@ -55,10 +55,7 @@ describe("ConfigFormatter", () => {
 	});
 
 	it("should name a config after its folder when it has no name, as Rojo does a project file", async () => {
-		await fs.writeFile(
-			"/repo/default.rogen.json",
-			'{"sourcePaths":["src"]}'
-		);
+		await fs.writeFile("/repo/default.rogen.json", '{"servePort":34873}');
 
 		await format();
 
@@ -66,8 +63,49 @@ describe("ConfigFormatter", () => {
 			JSON.parse(await fs.readFile("/repo/default.rogen.json"))
 		).toEqual({
 			name: "repo",
-			sourcePaths: ["src"],
+			servePort: 34873,
 		});
+	});
+
+	it("should refuse a config with a key neither Rojo's nor Rogen's, as check does, and leave the file", async () => {
+		const text =
+			'{ "name": "u", "bogus": 1, "tree": { "$className": "DataModel" } }';
+		await fs.writeFile("/repo/default.rogen.json", text);
+
+		const result = await format();
+
+		expect(result.isErr() ? result.error : []).toMatchObject([
+			{
+				code: "config.unknownField",
+				resource: "/repo/default.rogen.json",
+				position: { line: 1, column: 16 },
+			},
+		]);
+		expect(await fs.readFile("/repo/default.rogen.json")).toBe(text);
+	});
+
+	it("should refuse a value Rojo can't read, as check does", async () => {
+		const text = '{ "name": "u", "servePort": 70000 }';
+		await fs.writeFile("/repo/default.rogen.json", text);
+
+		const result = await format();
+
+		expect(result.isErr() ? result.error : []).toMatchObject([
+			{ code: "config.wrongType" },
+		]);
+		expect(await fs.readFile("/repo/default.rogen.json")).toBe(text);
+	});
+
+	it("should refuse a named config without a name rather than take the folder's", async () => {
+		const text = '{ "servePort": 34873 }';
+		await fs.writeFile("/repo/lobby.rogen.json", text);
+
+		const result = await format("/repo/lobby.rogen.json");
+
+		expect(result.isErr() ? result.error : []).toMatchObject([
+			{ code: "config.unnamedProjectFile" },
+		]);
+		expect(await fs.readFile("/repo/lobby.rogen.json")).toBe(text);
 	});
 
 	it("should keep the name a config has", async () => {
