@@ -347,6 +347,14 @@ Rename or delete one of the files. In `--json`, `related` names the file that ta
 
 Across source paths, the last file wins without a warning. That is how a later source path replaces a file of an earlier one.
 
+It also warns when a file becomes an instance that files from elsewhere land in, so they become its children. That happens when a loose file, such as `src/Server/Inv.luau`, has the name of a feature folder, or when a `^` file hoists into a feature's name.
+
+```
+warning: becomes "ServerScriptService/Inv", where src/Inv/Server/Save.luau lands too, so that file becomes a child of this one. Rename one of them to keep them apart. (tree.instanceClash)
+```
+
+Rename the file. A script beside a folder of its own name, such as `Dup.luau` beside `Dup/`, is one script with the folder's files as its children, and raises no warning.
+
 ### `tree.nodeClash` [#tree-nodeclash]
 
 Warning. The `tree` defines a node at the same instance path as a file or folder. Rogen keeps the tree's node and leaves the file out.

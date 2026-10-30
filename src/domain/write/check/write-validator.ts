@@ -11,6 +11,7 @@ import {
 import { DeclaredKeys } from "../../config/declared-keys.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
+	InstanceMap,
 	ScriptRun,
 	isServerOnlyService,
 	scriptFate,
@@ -424,6 +425,48 @@ export class WriteValidator {
 	}
 
 	private instanceClash(): Diagnostic[] {
+		return [...this.replacedInstance(), ...this.adoptedChildren()];
+	}
+
+	private adoptedChildren(): Diagnostic[] {
+		const { files } = this.placement;
+		const below = new InstanceMap<RoutedFile[]>();
+		for (const file of files)
+			for (let length = 1; length < file.instancePath.length; length++) {
+				const above = file.instancePath.slice(0, length);
+				const landed = below.get(above);
+				if (landed) landed.push(file);
+				else below.set(above, [file]);
+			}
+		return files.flatMap((file) => {
+			const { entry, instancePath } = file;
+			const dir = path.posix.dirname(entry.source);
+			const ownFolder = file.init
+				? dir
+				: path.posix.join(dir, instancePath.at(-1)!);
+			const child = below
+				.get(instancePath)
+				?.find(({ entry }) => !isInside(entry.source, ownFolder));
+			if (child === undefined) return [];
+			const instance = instanceKey(instancePath);
+			return [
+				warningDiagnostic(
+					"tree.instanceClash",
+					{ resource: entry.source },
+					`becomes "${instance}", where ${child.entry.source} lands too, so that file becomes a child of this one. Rename one of them to keep them apart.`,
+					[],
+					[
+						{
+							resource: child.entry.source,
+							message: `becomes a child of "${instance}"`,
+						},
+					]
+				),
+			];
+		});
+	}
+
+	private replacedInstance(): Diagnostic[] {
 		return this.placement.clashes.flatMap(({ instance, winner, losers }) =>
 			losers.map(({ entry }) =>
 				warningDiagnostic(

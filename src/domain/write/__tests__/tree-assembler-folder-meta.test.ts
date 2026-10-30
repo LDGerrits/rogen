@@ -183,7 +183,9 @@ describe("TreeAssembler", () => {
 					className: "Actor",
 				});
 
-				const { warnings } = await assemble({ routes: SPLIT });
+				const warnings = (
+					await assemble({ routes: SPLIT })
+				).warnings.filter(({ code }) => code !== "tree.instanceClash");
 
 				expect(warnings).toMatchObject([
 					{ code: "meta.sharedWithScript" },
