@@ -1162,10 +1162,10 @@ Copy the config under another name, such as `release.rogen.json`, and change wha
 Warning. The v1 config has tags, which v2 doesn't have. `init` renames none of the files that tags picked, and the message lists them.
 
 ```
-warning: v1's tags (dev) aren't carried over: v2 has none, and init renames none of the files they pick, src/Debug/Cheats_dev.luau. Move each into a source path of its own. See https://rogen-roblox.vercel.app/docs/v2/migrating-from-v1#tags. (legacy.tags)
+warning: v1's tags (dev) aren't carried over: v2 has none, and init renames none of the files they pick, src/Debug/Cheats_dev.luau. Move each into a folder of its own, and list that folder after the other source paths in the configs that should have it: its files replace the ones at the same path. (legacy.tags)
 ```
 
-Move each file into a source path of its own, as [Tags](/docs/v2/migrating-from-v1#tags) shows.
+Move each file into a folder of its own, such as `dev/Teleport/Teleport.luau` for `src/Teleport/TeleportDev.luau`. List that folder after `src` in the `sourcePaths` of each config that should have the file. A later source path's file replaces the one at the same path.
 
 ### `legacy.marker` [#legacy-marker]
 

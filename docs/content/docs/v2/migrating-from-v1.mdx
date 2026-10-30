@@ -9,7 +9,9 @@ v2 reads configs and file names differently, so a v1 project needs a new config 
 
 ## Why v2 Changed
 
-v1 had many small rules that could disagree, and each problem got its own switch or marker file. v2 has three rules that hold everywhere:
+v1 wrote a project file, and Rojo did the rest. You already wrote a tree in v1's `project`, and you ran Rogen and Rojo side by side. Joining them was the natural next step, so v2 is a superset of Rojo. A config is a Rojo project file with Rogen's keys added, and Rogen runs Rojo's own commands, such as `serve` and `build`, with Rojo's flags.
+
+v2 also adds as little to Rojo as it can. v1 grew an option or a marker file for each problem, such as `casing`, `unwrap`, `verbatim`, tags and modes. v2 drops every one that isn't strictly needed, so a config has only three keys of its own: `sourcePaths`, `routes` and `compiledPath`. The routing rules shrank the same way, to three that hold everywhere:
 
 - **The outermost route governs.** In v1 the deepest rule won, so `ReplicatedFirst/main.client.luau` went to `StarterPlayerScripts`, and holding a folder still took `.structure` or `.sync`. In v2 a folder's route covers everything inside it.
 - **Only `@` routes a name.** v1 read routes from prefixes and suffixes, so `HttpClient.luau` went to the client as `Http`. In v2 only a name like `Save@server.luau` routes, and Rojo's `.server` and `.client` keep their meaning.
@@ -31,7 +33,7 @@ v1 had many small rules that could disagree, and each problem got its own switch
 <Step>
 ### Fix the Warnings
 
-`init` warns about what it can't carry over: [tags](#tags), v1's marker files that don't route, roblox-ts files that v1 routed by their names, and files that v1 placed by the deepest rule. Each warning says what to do. Then run `rogen check` until it prints nothing.
+`init` warns about what it can't carry over: tags, v1's marker files that don't route, roblox-ts files that v1 routed by their names, and files that v1 placed by the deepest rule. Each warning says what to do. Then run `rogen check` until it prints nothing.
 
 </Step>
 
@@ -55,7 +57,7 @@ If an earlier v2 `rogen init` lifted the tree that v1 generated, delete `default
 | `casing`, `unwrap`, `.unwrap` | the route's target path |
 | `verbatim`, `.verbatim` | not needed |
 | keywords in names | `@key` or a routing folder. See [Names](#names) |
-| `tags`, `-t` | an overlay source path. See [Tags](#tags) |
+| `tags`, `-t` | a source path listed after the others, whose files replace the ones at the same path |
 | modes, `-m` | a config for each mode, named after its `output`, such as `build.rogen.json` |
 | a mode's `build`, `-b` | `compiledPath` |
 | a mode's `output`, `-o` | none. `rogen build -o` now builds a place |
@@ -78,14 +80,3 @@ v1: src/Combat/.server                v2: src/Combat/@Server
 ```
 
 A roblox-ts file keeps its name, since renaming it breaks the imports of it. Rename it yourself and update the imports.
-
-### Tags
-
-Few projects used tags. Move a file that v1 built only under a tag into a folder of its own, and list that folder as a later source path, where its file replaces the one at the same path:
-
-```
-v1: src/Teleport/TeleportDev.luau (tag dev)
-v2: dev/Teleport/Teleport.luau (the dev source path)
-```
-
-Write a second config without it, such as `release.rogen.json` with `"sourcePaths": ["src"]` and its own `name`.
