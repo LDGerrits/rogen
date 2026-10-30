@@ -69,7 +69,6 @@ export class WriteWatch {
 	): Promise<Result<void, Error>> {
 		const { accessor } = this;
 		const logService = accessor.get(LogService);
-		if (this.step && !this.json) logService.reserveStdout();
 		const configService = accessor.get(ConfigService);
 		const watchService = accessor.get(WatchService);
 		const environment = accessor.get(EnvironmentService);
@@ -86,6 +85,7 @@ export class WriteWatch {
 			planned = stepPlan.value;
 		}
 		const printing = planned?.printed ?? false;
+		if (printing && !this.json) logService.reserveStdout();
 		const log: WatchReporter = this.json
 			? new WatchJsonLog(logService, cwd)
 			: printing

@@ -8,9 +8,7 @@ stdout:
   Writing src/Hud/Client/Bar.client.luau
   Removing src/Shop/Server/Kiosk/Item.luau
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · wrote
-  Wrote 1 project.
+  Wrote default.project.json.
   Syncback wrote 6 changes.
 
 $ rogen where src

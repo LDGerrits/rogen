@@ -136,32 +136,29 @@ describe("upload command", () => {
 		expect(processes.spawned).toEqual([]);
 	});
 
-	it("should show what Rojo said", async () => {
+	it("should say in one line each, on stdout, that it wrote the project file and uploaded it", async () => {
 		const { log, running } = start(new MockConfigService([validEntry()]));
 		const [rojo] = await spawnedCount(1);
-		rojo.print("Uploaded to asset 123\n[WARN rojo] odd file\n");
+		rojo.print("Building project 'repo'\n");
 		rojo.exit({ code: 0, signal: null });
 		await running;
 
-		expect(log.lines).toContain("print: Uploaded to asset 123");
-		expect(log.texts("warn")).toContain("Rojo: odd file");
+		expect(log.reserved).toBe(false);
+		expect(log.lines).toEqual([
+			"success: Wrote default.project.json.",
+			"outro: Uploaded to asset 123.",
+		]);
 	});
 
-	it("should leave stdout to Rojo's lines, unless it prints a document", async () => {
-		const printed = start(new MockConfigService([validEntry()]));
+	it("should show Rojo's warnings, and a line Rogen doesn't know", async () => {
+		const { log, running } = start(new MockConfigService([validEntry()]));
 		const [rojo] = await spawnedCount(1);
+		rojo.print("Something new\n[WARN rojo] odd file\n");
 		rojo.exit({ code: 0, signal: null });
-		await printed.running;
-		expect(printed.log.reserved).toBe(true);
+		await running;
 
-		const json = start(new MockConfigService([validEntry()]), {
-			asset_id: "123",
-			json: true,
-		});
-		const [, second] = await spawnedCount(2);
-		second.exit({ code: 0, signal: null });
-		await json.running;
-		expect(json.log.reserved).toBe(false);
+		expect(log.lines).toContain("info: Rojo: Something new");
+		expect(log.texts("warn")).toContain("Rojo: odd file");
 	});
 
 	it("should report the failure when Rojo fails", async () => {

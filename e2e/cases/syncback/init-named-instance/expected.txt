@@ -1,9 +1,7 @@
 $ rogen syncback -i place.rbxl -y --list
 exit 0
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · wrote
-  Wrote 1 project.
+  Wrote default.project.json.
   default.rogen.json - warning: ServerScriptService/Inventory/init is in the place and no folder of the project can take it, so it was left out: its name makes Rojo write it as init.luau, which Rojo reads as the folder ServerScriptService/Inventory itself; rename it in Studio. (syncback.unplaced)
   default.rogen.json - warning: ServerScriptService/Shop/init is in the place and no folder of the project can take it, so it was left out: its name makes Rojo write it as init.server.luau, which Rojo reads as the folder ServerScriptService/Shop itself; rename it in Studio. (syncback.unplaced)
   Syncback changed nothing.

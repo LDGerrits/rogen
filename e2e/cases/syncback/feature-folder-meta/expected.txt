@@ -3,18 +3,13 @@ exit 0
 stdout:
   Writing src/Combat/init.meta.json
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · wrote
-  Wrote 1 project.
+  Wrote default.project.json.
   default.rogen.json - warning: ServerScriptService/Inventory is in the place and no folder of the project can take it, so it was left out: its feature folder src/Inventory also makes ReplicatedStorage/Shared/Inventory, and src/Inventory/init.meta.json would set it on each of them; set it alike on all of them in Studio, or edit src/Inventory/init.meta.json by hand. (syncback.unplaced)
   Syncback wrote 1 change.
 
 $ rogen syncback -i place.rbxl -y
 exit 0
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · unchanged
-  Wrote 1 project.
   default.rogen.json - warning: ServerScriptService/Inventory is in the place and no folder of the project can take it, so it was left out: its feature folder src/Inventory also makes ReplicatedStorage/Shared/Inventory, and src/Inventory/init.meta.json would set it on each of them; set it alike on all of them in Studio, or edit src/Inventory/init.meta.json by hand. (syncback.unplaced)
   Syncback changed nothing.
 

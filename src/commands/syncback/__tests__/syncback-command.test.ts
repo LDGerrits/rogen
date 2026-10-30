@@ -196,6 +196,39 @@ describe("syncback command", () => {
 		expect(await fs.exists(abs("rogen-syncback.project.json"))).toBe(false);
 	});
 
+	it("should say in one line what a dry run would change, and claim no project file", async () => {
+		const { running, log } = start({
+			input: "game.rbxl",
+			"dry-run": true,
+		});
+		const [rojo] = await rojoRuns(1);
+		await editMirror();
+		rojo.exit({ code: 0, signal: null });
+		await running;
+
+		expect(log.lines).toEqual([
+			"print: Removing src/Combat/Server/Combat.luau",
+			"print: Writing src/Combat/Server/Loot.luau",
+			"info: Syncback would change 2 files (1 to write, 1 to remove).",
+		]);
+	});
+
+	it("should say in one line each that it wrote the project file and what syncback wrote", async () => {
+		const { running, log } = start({
+			input: "game.rbxl",
+			"non-interactive": true,
+		});
+		const [rojo] = await rojoRuns(1);
+		await editMirror();
+		rojo.exit({ code: 0, signal: null });
+		await running;
+
+		expect(log.lines).toEqual([
+			"success: Wrote default.project.json.",
+			"info: Syncback wrote 2 changes.",
+		]);
+	});
+
 	it("should say wouldWrite for the config and the syncback of a dry run, by the config file", async () => {
 		const { running, log } = start({
 			input: "game.rbxl",

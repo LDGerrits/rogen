@@ -44,6 +44,8 @@ export interface RojoTarget {
 	readonly cwd: string;
 	readonly output?: string;
 	readonly plugin?: string;
+	/** The asset `--asset_id` uploads to. */
+	readonly asset?: string;
 }
 
 /** Rojo's build for `-o` or `-p`: `notRun` when the project files had errors, so Rojo had nothing to build. */

@@ -1,10 +1,9 @@
 $ rogen upload --asset_id abc
 exit 2
-stderr:
-  rogen upload · default.rogen.json
-  default.project.json · wrote
-  Wrote 1 project.
+stdout:
+  Wrote default.project.json.
   Rojo: For more information try --help
+stderr:
   default.project.json - error: Rojo couldn't upload this project: (rojo.commandFailed)
     Invalid value "abc" for '--asset_id <ASSET_ID>': invalid digit found in string
 

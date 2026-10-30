@@ -3,9 +3,7 @@ exit 0
 stdout:
   Removing src/Inventory/Bag@server.luau
 stderr:
-  rogen syncback · default.rogen.json
-  default.project.json · wrote
-  Wrote 1 project.
+  Wrote default.project.json.
   Syncback wrote 1 change.
 
 $ rogen where src

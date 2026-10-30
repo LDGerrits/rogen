@@ -20,12 +20,7 @@ exit 0
 $ rogen sourcemap -o sourcemap.json
 exit 0
 stdout:
-  Created sourcemap at sourcemap.json
-stderr:
-  rogen sourcemap · default.rogen.json
-  default.project.json · unchanged
-  Wrote 1 project.
-  sourcemap.json · wrote
+  Wrote sourcemap.json.
 
 $ darklua process src dist
 exit 0

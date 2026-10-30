@@ -20,7 +20,11 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { OutcomeLog } from "../write/outcome-log.js";
-import { reportRojo, reportRojoBesideFailure } from "../write/report-rojo.js";
+import {
+	reportRojo,
+	reportRojoBesideFailure,
+	rojoDone,
+} from "../write/report-rojo.js";
 import { rojoEntry } from "../write/rojo-entry.js";
 import { uploadDocument, uploadDocumentShape } from "./upload-document.js";
 
@@ -113,7 +117,6 @@ registerCommand(
 			];
 			const rojoService = accessor.get(RojoCommandService);
 			const logService = accessor.get(LogService);
-			if (!line.options.json) logService.reserveStdout();
 			const cwd = accessor.get(EnvironmentService).cwd;
 
 			const selection = await accessor
@@ -156,17 +159,21 @@ registerCommand(
 					),
 					failure ?? rojoFailure
 				);
-			new OutcomeLog(logService, cwd).report(
-				written,
-				selection.value.home,
-				"upload"
-			);
+			const outcomeLog = new OutcomeLog(logService, cwd);
+			outcomeLog.outcomes(written, selection.value.home, "upload");
 			if (uploaded?.isOk())
 				(rojoFailure ? reportRojoBesideFailure : reportRojo)(
 					logService,
 					uploaded.value.messages,
 					cwd
 				);
+			outcomeLog.close(written, "upload", true, {
+				said: rojoDone(
+					{ command: "upload", cwd, asset: asset_id },
+					cwd
+				),
+				failed: rojoFailure !== undefined,
+			});
 			if (rojoFailure) return err(rojoFailure);
 			return failure ? this.reported(failure) : ok(undefined);
 		}

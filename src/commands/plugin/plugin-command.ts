@@ -87,7 +87,6 @@ registerCommand(
 					)
 				);
 			const logService = accessor.get(LogService);
-			if (!line.options.json) logService.reserveStdout();
 			const cwd = accessor.get(EnvironmentService).cwd;
 
 			const ran = await accessor
@@ -126,8 +125,8 @@ registerCommand(
 			if (failure) return err(failure);
 			logService.success(
 				action === "install"
-					? "Rojo's plugin installed"
-					: "Rojo's plugin removed"
+					? "Installed Rojo's plugin."
+					: "Removed Rojo's plugin."
 			);
 			return ok(undefined);
 		}
