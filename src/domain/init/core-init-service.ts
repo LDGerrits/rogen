@@ -77,7 +77,7 @@ export class CoreInitService implements InitService {
 		private readonly promptService: PromptService,
 		private readonly environmentService: EnvironmentService,
 		private readonly toolchainService: ToolchainService,
-		private readonly processService: ProcessService,
+		processService: ProcessService,
 		private readonly locator: ToolLocator = new ToolLocator(processService),
 		private readonly configService: ConfigService
 	) {

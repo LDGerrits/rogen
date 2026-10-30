@@ -7,7 +7,7 @@ const FILE_NAMES = ["AGENTS.md", "CLAUDE.md", "GEMINI.md"] as const;
 const BLOCK = /<!-- rogen -->\r?\n[\s\S]*?<!-- \/rogen -->(\r?\n)?/;
 
 /** `text` with its Rogen block replaced by this version's, in the file's line endings; `undefined` when it has none or it is current. */
-export function refreshedRules(text: string): string | undefined {
+function refreshedRules(text: string): string | undefined {
 	const eol = text.includes("\r\n") ? "\r\n" : "\n";
 	const current = agentBlock.replaceAll("\n", eol);
 	const match = BLOCK.exec(text);
