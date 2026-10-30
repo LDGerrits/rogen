@@ -5,17 +5,17 @@ description: Why v2 changed, and how to move a v1 project to it
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 
-v2 reads configs and file names differently, so a v1 project needs a new config and some renamed files. `rogen init` makes both: it reads your v1 config and writes a v2 config that puts every file where v1 did.
+A v1 project needs a new config and a few renamed files to work with v2. `rogen init` does both for you, and every file stays where v1 put it.
 
 ## Why v2 Changed
 
-v1 wrote a project file, and Rojo did the rest. You already wrote a tree in v1's `project`, and you ran Rogen and Rojo side by side. Joining them was the natural next step, so v2 is a superset of Rojo. A config is a Rojo project file with Rogen's keys added, and Rogen runs Rojo's own commands, such as `serve` and `build`, with Rojo's flags.
+Rogen v2 is a complete overhaul. In v1, Rogen only wrote the project file. You still wrote part of the tree yourself, and you ran Rojo next to Rogen to serve and build. v2 merges the two into one tool: it's now a superset of Rojo. Your config is a Rojo project file with a few extra keys, and Rogen runs Rojo's commands for you.
 
-v2 also fixes what v1's options patched over. `casing`, `unwrap` and `aliases` worked around keywords and wrapper folders that were built in. `.structure`, `.sync` and `verbatim` worked around routing rules that disagreed. v2 changes the rules instead, so a config has only three keys of its own: `sourcePaths`, `routes` and `compiledPath`. Three rules hold everywhere:
+v2 also fixes the flaws in v1's design. Options like `casing` and `unwrap`, and markers like `.structure`, were patches for problems in v1's routing rules. v2 replaces those rules, so the patches are gone. The outermost route now decides where a file goes, and you choose where each route points:
 
-- **The outermost route governs.** In v1 the deepest rule won, so `ReplicatedFirst/main.client.luau` went to `StarterPlayerScripts`, and holding a folder still took `.structure` or `.sync`. In v2 a folder's route covers everything inside it.
-- **Only `@` routes a name.** v1 read routes from prefixes and suffixes, so `HttpClient.luau` went to the client as `Http`. In v2 only a name like `Save@server.luau` routes, and Rojo's `.server` and `.client` keep their meaning.
-- **You write every route.** v1's keywords and wrapper folders were built in, and unmatched files went to `ReplicatedStorage`. In v2 only the routes you declare exist, and each goes to the target you write, with or without a wrapper folder. `rogen init` declares a `*` route for the files that match none, and without it such a file is left out with a warning.
+- **The outermost route governs.** In v1, the deepest rule won, so `ReplicatedFirst/main.client.luau` ended up in `StarterPlayerScripts`. To keep a folder together, you needed `.structure` or `.sync`. In v2, a folder's route covers everything inside it.
+- **Only `@` routes a name.** v1 guessed routes from prefixes and suffixes, so `HttpClient.luau` went to the client as `Http`. In v2, only a name like `Save@Server.luau` is routed, and Rojo's `.server` and `.client` keep their usual meaning.
+- **You write every route.** v1 had its keywords and wrapper folders built in, and sent unmatched files to `ReplicatedStorage`. In v2, only the routes you declare exist, and each one points where you write it, with or without a wrapper folder. `rogen init` adds a `*` route for files that match no other route. Without it, those files are left out with a warning.
 
 ## Move a Project to v2
 
