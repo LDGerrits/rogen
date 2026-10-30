@@ -5,14 +5,17 @@ import { ServerMessage } from "../../domain/runner/rojo-server.js";
 /** One thing Rojo said, at the level it said it. */
 function reportServerMessage(
 	logService: LogService,
-	{ severity, text }: ServerMessage,
+	{ severity, text, details = [] }: ServerMessage,
 	cwd: string
 ): void {
 	if (severity === "debug") {
 		logService.debug(`Rojo: ${text}`);
 		return;
 	}
-	const said = `Rojo: ${messageRelativeTo(text, cwd)}`;
+	const said = [
+		`Rojo: ${messageRelativeTo(text, cwd)}`,
+		...details.map((detail) => `  ${messageRelativeTo(detail, cwd)}`),
+	].join("\n");
 	if (severity === "error") logService.error(said);
 	else if (severity === "warning") logService.warn(said);
 	else logService.info(said);

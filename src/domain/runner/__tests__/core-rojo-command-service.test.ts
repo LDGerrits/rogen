@@ -28,7 +28,8 @@ describe("CoreRojoCommandService", () => {
 		await new Promise((resolve) => setImmediate(resolve));
 		const [child] = processes.spawned;
 		for (const line of lines)
-			if (/^(\[?ERROR|error:)/.test(line)) child.printError(`${line}\n`);
+			if (/^(\[?ERROR|error:|\s)/.test(line))
+				child.printError(`${line}\n`);
 			else child.print(`${line}\n`);
 		child.exit({ code, signal: null });
 	};
@@ -164,15 +165,53 @@ describe("CoreRojoCommandService", () => {
 
 		const ran = (await running).unwrap();
 
-		expect(ran.failure?.diagnostics[0]).toMatchObject({
-			code: "rojo.commandFailed",
-			resource: "/repo/default.project.json",
-			message:
-				"'rojo build' failed (exit code 1): could not write a.rbxl",
-		});
+		expect(ran.failure?.diagnostics[0]).toEqual(
+			expect.objectContaining({
+				code: "rojo.commandFailed",
+				resource: "/repo/default.project.json",
+				message: "Rojo couldn't build this project:",
+				details: ["could not write a.rbxl"],
+			})
+		);
 		expect(ran.messages).toEqual([
 			{ severity: "error", text: "could not write a.rbxl" },
 		]);
+	});
+
+	it("should keep each line Rojo wrote, and each cause, as a detail of its own", async () => {
+		const running = run();
+		await finish(
+			[
+				"[ERROR rojo] Unresolvable property in project at path /repo/default.project.json",
+				"        ",
+				"        Caused by:",
+				"            Wrong type of value for property Workspace.Gravity. Expected Float32, got a string",
+				"[ERROR rojo] Rojo project referred to a file using $path that could not be turned into a Roblox Instance by Rojo.",
+				"        Check that the file exists and is a file type known by Rojo.",
+			],
+			1
+		);
+
+		const ran = (await running).unwrap();
+
+		expect(ran.failure?.diagnostics[0].details).toEqual([
+			"Unresolvable property in project at path /repo/default.project.json",
+			"Caused by: Wrong type of value for property Workspace.Gravity. Expected Float32, got a string",
+			"Rojo project referred to a file using $path that could not be turned into a Roblox Instance by Rojo.",
+			"Check that the file exists and is a file type known by Rojo.",
+		]);
+	});
+
+	it("should say how Rojo exited when it said nothing", async () => {
+		const running = run();
+		await finish([], 1);
+
+		const ran = (await running).unwrap();
+
+		expect(ran.failure?.diagnostics[0]).toMatchObject({
+			message: "Rojo couldn't build this project (exit code 1).",
+		});
+		expect(ran.failure?.diagnostics[0]).not.toHaveProperty("details");
 	});
 
 	it.each([
@@ -276,7 +315,7 @@ describe("CoreRojoCommandService", () => {
 			const ran = (await running).unwrap();
 
 			expect(ran.failure?.message).toBe(
-				"'rojo plugin install' failed (exit code 1): no plugins folder"
+				"Rojo couldn't run 'rojo plugin install':\n  no plugins folder"
 			);
 			expect(ran.failure).not.toBeInstanceOf(DiagnosticsError);
 		});

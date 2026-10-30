@@ -49,13 +49,13 @@ describe("diagnosticAnnotationLine", () => {
 
 	it("should name no file for a diagnostic about something outside the workspace", () => {
 		const diagnostic = errorDiagnostic(
-			"serve.noServer",
+			"rojo.notFound",
 			{ resource: "/home/me/rokit.toml" },
 			"none."
 		);
 
 		expect(diagnosticAnnotationLine(diagnostic, workspace)).toBe(
-			"::error title=serve.noServer::none."
+			"::error title=rojo.notFound::none."
 		);
 	});
 

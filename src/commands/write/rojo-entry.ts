@@ -28,6 +28,7 @@ export const rojoEntryShape = (command: RojoTarget["command"]) =>
 				S.object({
 					severity: S.enum("error", "warning", "info"),
 					text: S.string,
+					details: S.optional(S.array(S.string)),
 				})
 			),
 			diagnostics: S.optional(S.array(diagnosticShape)),
@@ -89,7 +90,11 @@ export function rojoEntry(
 		project: toNative(project.projectFile),
 		messages: messages
 			.filter(({ severity }) => severity !== "debug")
-			.map(({ severity, text }) => ({ severity, text })),
+			.map(({ severity, text, details }) => ({
+				severity,
+				text,
+				...(details && { details }),
+			})),
 		...(failure && failureToJson(failure)),
 	};
 }

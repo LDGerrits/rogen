@@ -1490,8 +1490,8 @@ export class CoreSyncbackService implements SyncbackService {
 		prepared: Prepared | undefined
 	): Error {
 		const said = failure.diagnostics
-			.map(({ message }) => message)
-			.join(" ");
+			.flatMap(({ message, details }) => [message, ...(details ?? [])])
+			.join("\n");
 		const refused =
 			/The child '(?<child>[^']+)' of Instance '(?<parent>[^']+)' is present only in a project file/.exec(
 				said

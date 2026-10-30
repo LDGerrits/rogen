@@ -176,7 +176,7 @@ describeWithRojo("end to end serve", () => {
 		await eventually(() => {
 			expect(serving.output).toMatch(/Rojo: .*src[\\/]Bad\.model\.json/);
 		});
-		expect(serving.output).not.toContain("Caused by");
+		expect(serving.output).toMatch(/\n {2}Caused by: Expected colon/);
 		expect(serving.output).not.toContain("librojo");
 		expect(serving.output).not.toContain(serve.dir);
 	}, 40_000);

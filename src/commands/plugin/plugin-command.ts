@@ -27,6 +27,7 @@ const pluginDocumentShape = S.object({
 		S.object({
 			severity: S.enum("error", "warning", "info"),
 			text: S.string,
+			details: S.optional(S.array(S.string)),
 		})
 	),
 	diagnostics: S.optional(S.array(diagnosticShape)),
@@ -105,9 +106,10 @@ registerCommand(
 									.filter(
 										({ severity }) => severity !== "debug"
 									)
-									.map(({ severity, text }) => ({
+									.map(({ severity, text, details }) => ({
 										severity,
 										text,
+										...(details && { details }),
 									})),
 						...(failed && failureToJson(failed)),
 					},

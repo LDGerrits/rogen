@@ -151,7 +151,7 @@ describe("serve command", () => {
 		await settle();
 
 		expect(logService.lines.slice(-2)).toEqual([
-			"error: Rojo: File is not a valid JSON model: src/Bad.model.json: JSONC parse error: Expected colon on line 2 column 1",
+			"error: Rojo: File is not a valid JSON model: src/Bad.model.json: JSONC parse error\n  Caused by: Expected colon on line 2 column 1",
 			"warn: Rojo: Unknown file: src/notes.xyz",
 		]);
 	});
@@ -520,7 +520,7 @@ describe("serve command", () => {
 		expect(error).toMatchObject({
 			diagnostics: [
 				expect.objectContaining({
-					code: "serve.noServer",
+					code: "rojo.notFound",
 					message: expect.stringContaining(
 						"Argon is pinned, but rogen serve only starts Rojo: run 'rogen write --watch' to keep the project files current, and 'argon serve' to serve them."
 					),
@@ -537,7 +537,7 @@ describe("serve command", () => {
 
 		expect(error).toMatchObject({
 			diagnostics: [
-				expect.objectContaining({ code: "serve.notInstalled" }),
+				expect.objectContaining({ code: "rojo.notInstalled" }),
 			],
 		});
 		expect(exitCodeOf(error)).toBe(1);

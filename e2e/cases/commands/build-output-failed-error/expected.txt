@@ -5,7 +5,9 @@ stderr:
   rogen build · default.rogen.json
   default.project.json · wrote
   build failed.
-  default.project.json - error: 'rojo build' failed (exit code 1): failed to create file `missing/game.rbxlx`: No such file or directory (os error 2) (rojo.commandFailed)
+  default.project.json - error: Rojo couldn't build this project: (rojo.commandFailed)
+    failed to create file `missing/game.rbxlx`
+    Caused by: No such file or directory (os error 2)
 
 $ rogen build -o a.rbxl -p b.rbxm
 exit 2

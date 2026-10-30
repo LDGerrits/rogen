@@ -71,6 +71,8 @@ export interface Diagnostic extends DiagnosticLocation {
 	/** Stable identifier such as `config.unknownField`; tests assert on it. */
 	readonly code: string;
 	readonly message: string;
+	/** Lines that follow the message, each indented on its own, such as what Rojo said and each cause of its chain. */
+	readonly details?: readonly string[];
 	/** The other files the problem involves, each with its part in it. */
 	readonly related?: readonly DiagnosticRelated[];
 	/** Given only when they are the one answer; the rendered line leaves them out. */
@@ -153,13 +155,16 @@ export function diagnosticSummary(
 	diagnostic: Diagnostic,
 	cwd?: string
 ): string {
+	const relative = (text: string) =>
+		cwd === undefined ? text : messageRelativeTo(text, cwd);
 	const message = messageWithCode(
-		cwd === undefined
-			? diagnostic.message
-			: messageRelativeTo(diagnostic.message, cwd),
+		relative(diagnostic.message),
 		diagnostic.code
 	);
-	return `${SEVERITY_LABELS[diagnostic.severity]}: ${message}`;
+	const details = (diagnostic.details ?? []).map(
+		(detail) => `\n  ${relative(detail)}`
+	);
+	return `${SEVERITY_LABELS[diagnostic.severity]}: ${message}${details.join("")}`;
 }
 
 export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
@@ -185,7 +190,7 @@ export function diagnosticKey(
 	diagnostic: Diagnostic,
 	ignoredResource?: string
 ): string {
-	const { resource, position, severity, code, message } = diagnostic;
+	const { resource, position, severity, code, message, details } = diagnostic;
 	return [
 		resource === ignoredResource ? "" : toPosix(resource),
 		position?.line,
@@ -193,6 +198,7 @@ export function diagnosticKey(
 		severity,
 		code,
 		message,
+		...(details ?? []),
 	].join("\0");
 }
 

@@ -263,7 +263,7 @@ describe("ServerOutput", () => {
 			]);
 		});
 
-		it("should join a record and its cause chain into one message", () => {
+		it("should keep each line of a record, and each cause of its chain, in order", () => {
 			write(
 				[
 					"[ERROR librojo::change_processor] Snapshot error: File was not a valid Rojo project: /repo/default.project.json",
@@ -279,7 +279,47 @@ describe("ServerOutput", () => {
 			expect(said).toEqual([
 				{
 					severity: "error",
-					text: "Snapshot error: File was not a valid Rojo project: /repo/default.project.json: Error parsing Rojo project in path /repo/default.project.json: Failed to parse JSONC",
+					text: "Snapshot error: File was not a valid Rojo project: /repo/default.project.json",
+					details: [
+						"Caused by: Error parsing Rojo project in path /repo/default.project.json",
+						"Caused by: Failed to parse JSONC",
+					],
+				},
+			]);
+		});
+
+		it("should keep the lines of a record's message apart from its cause", () => {
+			write(
+				[
+					"[ERROR rojo] Rojo project referred to a file using $path that could not be turned into a Roblox Instance by Rojo.",
+					"        Check that the file exists and is a file type known by Rojo.",
+					"        ",
+					"        Project path: /repo/default.project.json",
+					"        File $path: nothere",
+					"[ERROR rojo] Unresolvable property in project at path /repo/default.project.json",
+					"        ",
+					"        Caused by:",
+					"            Wrong type of value for property Workspace.Gravity. Expected Float32, got a string",
+				].join("\n")
+			);
+			output.end();
+
+			expect(said).toEqual([
+				{
+					severity: "error",
+					text: "Rojo project referred to a file using $path that could not be turned into a Roblox Instance by Rojo.",
+					details: [
+						"Check that the file exists and is a file type known by Rojo.",
+						"Project path: /repo/default.project.json",
+						"File $path: nothere",
+					],
+				},
+				{
+					severity: "error",
+					text: "Unresolvable property in project at path /repo/default.project.json",
+					details: [
+						"Caused by: Wrong type of value for property Workspace.Gravity. Expected Float32, got a string",
+					],
 				},
 			]);
 		});
@@ -295,7 +335,8 @@ describe("ServerOutput", () => {
 			expect(said).toEqual([
 				{
 					severity: "warning",
-					text: "Unknown file: /repo/a.xyz: no handler",
+					text: "Unknown file: /repo/a.xyz",
+					details: ["Caused by: no handler"],
 				},
 			]);
 		});

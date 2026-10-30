@@ -126,7 +126,7 @@ describe("plugin command", () => {
 		rojo.exit({ code: 1, signal: null });
 
 		expect(((await running) as ResultError<Error>).error.message).toContain(
-			"'rojo plugin install' failed (exit code 1): Your platform is not currently supported"
+			"Rojo couldn't run 'rojo plugin install':\n  Your platform is not currently supported"
 		);
 	});
 

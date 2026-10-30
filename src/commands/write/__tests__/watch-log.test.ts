@@ -18,6 +18,7 @@ import {
 	FileChange,
 	FileChangeType,
 } from "../../../platform/fs/file-changes.js";
+import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { LogLevel } from "../../../platform/log/log-service.js";
@@ -511,5 +512,23 @@ describe("WatchLog.error", () => {
 		new WatchLog(logService, cwd).error(new Error("the watcher broke"));
 
 		expect(logService.texts("error")).toEqual(["the watcher broke"]);
+	});
+
+	it("should print each diagnostic of a failure once, relative to the working directory", () => {
+		const logService = new MockLogService(cwd);
+
+		new WatchLog(logService, cwd).error(
+			new DiagnosticsError([
+				errorDiagnostic(
+					"rojo.commandFailed",
+					{ resource: path.join(cwd, "default.project.json") },
+					"Rojo couldn't build this project:"
+				),
+			])
+		);
+
+		expect(logService.lines).toEqual([
+			"diagnosticError: default.project.json - error: Rojo couldn't build this project: (rojo.commandFailed)",
+		]);
 	});
 });

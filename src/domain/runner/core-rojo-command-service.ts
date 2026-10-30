@@ -21,6 +21,19 @@ import { RojoVersion } from "./rojo-version.js";
 import { RojoRunner, ServerExecutable } from "./rojo-runner.js";
 import { RojoServer, ServerMessage } from "./rojo-server.js";
 
+/** How Rojo exited, and each line of the errors it wrote, in order. */
+interface RojoFailure {
+	readonly how: string;
+	readonly said: readonly string[];
+}
+
+const WHAT_FAILED: Readonly<Record<string, string>> = {
+	build: "build",
+	upload: "upload",
+	sourcemap: "make a sourcemap of",
+	syncback: "sync back into",
+};
+
 export class CoreRojoCommandService implements RojoCommandService {
 	declare readonly _serviceBrand: undefined;
 
@@ -76,11 +89,19 @@ export class CoreRojoCommandService implements RojoCommandService {
 			...(ran.failure && {
 				failure: new DiagnosticsError(
 					[
-						errorDiagnostic(
-							"rojo.commandFailed",
-							{ resource: project.projectFile },
-							ran.failure
-						),
+						{
+							...errorDiagnostic(
+								"rojo.commandFailed",
+								{ resource: project.projectFile },
+								this.failed(
+									`${WHAT_FAILED[request.command] ?? `run '${request.command}' on`} this project`,
+									ran.failure
+								)
+							),
+							...(ran.failure.said.length > 0 && {
+								details: ran.failure.said,
+							}),
+						},
 					],
 					ran.refusedArguments ? "usage" : "project"
 				),
@@ -116,17 +137,29 @@ export class CoreRojoCommandService implements RojoCommandService {
 			undefined,
 			flags,
 			request.cwd,
-			request.signal,
-			request.args.join(" ")
+			request.signal
 		);
+		if (!ran.failure) return ok({ messages: ran.messages });
+		const failure = [
+			this.failed(
+				`run '${RojoServer.COMMAND} ${request.args.join(" ")}'`,
+				ran.failure
+			),
+			...ran.failure.said.map((line) => `  ${line}`),
+		].join("\n");
 		return ok({
 			messages: ran.messages,
-			...(ran.failure && {
-				failure: ran.refusedArguments
-					? new UsageError(ran.failure)
-					: new ToolError(ran.failure),
-			}),
+			failure: ran.refusedArguments
+				? new UsageError(failure)
+				: new ToolError(failure),
 		});
+	}
+
+	/** Rogen's sentence about what failed: it ends in a colon when Rojo's own lines follow it. */
+	private failed(what: string, { how, said }: RojoFailure): string {
+		return said.length > 0
+			? `Rojo couldn't ${what}:`
+			: `Rojo couldn't ${what} (${how}).`;
 	}
 
 	/** Runs `command`, and says why it failed when Rojo exited with an error. */
@@ -136,11 +169,10 @@ export class CoreRojoCommandService implements RojoCommandService {
 		projectFile: string | undefined,
 		flags: readonly string[],
 		cwd: string,
-		signal: AbortSignal | undefined,
-		described = command
+		signal: AbortSignal | undefined
 	): Promise<{
 		messages: ServerMessage[];
-		failure?: string;
+		failure?: RojoFailure;
 		/** Whether Rojo exited 2, as it does for a command line it can't read. */
 		refusedArguments?: boolean;
 	}> {
@@ -167,13 +199,13 @@ export class CoreRojoCommandService implements RojoCommandService {
 		if (exit.code === 0 || signal?.aborted) return { messages };
 		const said = messages
 			.filter(({ severity }) => severity === "error")
-			.map(({ text }) => text);
+			.flatMap(({ text, details }) => [text, ...(details ?? [])]);
 		const how = exit.error
 			? exit.error.message
 			: `exit code ${exit.code === null ? exit.signal : exitCodeText(exit.code)}`;
 		return {
 			messages,
-			failure: `'${RojoServer.COMMAND} ${described}' failed (${how})${said.length > 0 ? `: ${said.join(" ")}` : "."}`,
+			failure: { how, said },
 			refusedArguments: exit.code === 2,
 		};
 	}
