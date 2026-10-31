@@ -71,52 +71,64 @@ export function TrafficLights() {
 	);
 }
 
+/** The CSS that shows a Studio class's icon, light or dark with the site. */
+export const classIconStyle = (name: string) =>
+	({
+		"--il": `url(/studio/light/${name}.png)`,
+		"--id": `url(/studio/dark/${name}.png)`,
+	}) as CSSProperties;
+
 export function ClassIcon({ name }: { name: string }) {
 	return (
 		<span
 			className="ide-ci"
 			aria-hidden="true"
-			style={
-				{
-					"--il": `url(/studio/light/${name}.png)`,
-					"--id": `url(/studio/dark/${name}.png)`,
-				} as CSSProperties
-			}
+			style={classIconStyle(name)}
 		/>
 	);
 }
 
+// luau-lsp's Luau file icon, on a 60x60 grid.
+export const LUAU_ICON =
+	"M15.86 5.51 5.51 44.14l38.63 10.35 10.35-38.63zm20.84 9.89 12.67 3.4-3.4 12.67-12.67-3.4z";
+
 // Seti's glyph and colour class for each kind of file VS Code shows.
 const SETI: [RegExp, string, string][] = [
-	[/\.jsonc?$/, "", "json"],
-	[/\.toml$/, "", "config"],
-	[/\.tsx$/, "", "ts"],
-	[/\.ts$/, "", "ts"],
-	[/\.md$/, "", "ts"],
-	[/\.csv$/, "", "csv"],
-	[/\.ya?ml$/, "", "yml"],
+	[/\.jsonc?$/, "\ue055", "json"],
+	[/\.toml$/, "\ue019", "config"],
+	[/\.tsx$/, "\ue07d", "ts"],
+	[/\.ts$/, "\ue099", "ts"],
+	[/\.md$/, "\ue060", "ts"],
+	[/\.csv$/, "\ue01e", "csv"],
+	[/\.ya?ml$/, "\ue0a7", "yml"],
 ];
 
+/** The Seti glyph and its colour class for a file, or undefined for a Luau file, which has luau-lsp's icon. */
+export function setiOf(
+	name: string
+): [glyph: string, kind: string] | undefined {
+	if (/\.luau?$/.test(name)) return undefined;
+	const [, glyph, kind] = SETI.find(([pattern]) => pattern.test(name)) ?? [
+		null,
+		"\ue023",
+		"file",
+	];
+	return [glyph, kind];
+}
+
 export function FileIcon({ name }: { name: string }) {
-	if (/\.luau?$/.test(name))
+	const seti = setiOf(name);
+	if (!seti)
 		return (
 			<span className="ide-fi luau" aria-hidden="true">
 				<svg viewBox="0 0 60 60">
-					<path
-						fillRule="evenodd"
-						d="M15.86 5.51 5.51 44.14l38.63 10.35 10.35-38.63zm20.84 9.89 12.67 3.4-3.4 12.67-12.67-3.4z"
-					/>
+					<path fillRule="evenodd" d={LUAU_ICON} />
 				</svg>
 			</span>
 		);
-	const [, glyph, kind] = SETI.find(([pattern]) => pattern.test(name)) ?? [
-		null,
-		"",
-		"file",
-	];
 	return (
-		<span className={`ide-fi seti ${kind}`} aria-hidden="true">
-			{glyph}
+		<span className={`ide-fi seti ${seti[1]}`} aria-hidden="true">
+			{seti[0]}
 		</span>
 	);
 }

@@ -1,4 +1,5 @@
-import { guidesHtml, iconSvg, type Icon } from "./explorer";
+import { classIconStyle, LUAU_ICON, setiOf } from "../ide";
+import type { Icon } from "./explorer";
 import type { Lang } from "./lang-script";
 
 /*
@@ -126,7 +127,7 @@ const STEPS: { kicker: string; line: () => string; tracks: Track[] }[] = [
 const project = (i: string, wrap = false) => ({
 	head: [
 		`"<span class="feat">${W.feature}</span>": {`,
-		`${i}<span class="k">"$className"</span>: "Folder",`,
+		`${i}<span class="k">"$className"</span>: <span class="s">"Folder"</span>,`,
 	],
 	key: `${i}<span class="q">"</span><span class="key">${W.file}</span><span class="q">": {</span>`,
 	entry: [
@@ -178,11 +179,11 @@ interface Metrics {
 }
 const METRICS: Record<"normal" | "compact" | "mini", Metrics> = {
 	normal: {
-		tree: 12.5,
+		tree: 13,
 		code: 12.5,
-		row: 24,
-		line: 24,
-		head: 34,
+		row: 22,
+		line: 22,
+		head: 35,
 		pad: 14,
 		cpad: 14,
 		pady: 12,
@@ -191,7 +192,7 @@ const METRICS: Record<"normal" | "compact" | "mini", Metrics> = {
 		ind: "  ",
 	},
 	compact: {
-		tree: 12,
+		tree: 12.5,
 		code: 12,
 		row: 20,
 		line: 18,
@@ -204,7 +205,7 @@ const METRICS: Record<"normal" | "compact" | "mini", Metrics> = {
 		ind: "  ",
 	},
 	mini: {
-		tree: 12,
+		tree: 12.5,
 		code: 11,
 		row: 20,
 		line: 18,
@@ -238,24 +239,24 @@ const SCENES: Record<string, SceneSpec> = {
 	wide: {
 		m: "normal",
 		w: 760,
-		h: 584,
-		disk: [0, 0, 294, 252],
-		explorer: [466, 0, 294, 290],
-		editor: [0, 310, 760, 274],
+		h: 596,
+		disk: [0, 0, 300, 296],
+		explorer: [466, 0, 294, 296],
+		editor: [0, 316, 760, 280],
 		lane1: 300,
 		lane2: 446,
 	},
 	compact: {
 		m: "compact",
 		w: 610,
-		h: 470,
-		disk: [0, 0, 270, 210],
-		explorer: [390, 0, 220, 242],
-		editor: [0, 258, 610, 212],
+		h: 494,
+		disk: [0, 0, 276, 272],
+		explorer: [390, 0, 220, 272],
+		editor: [0, 282, 610, 212],
 		lane1: 276,
 		lane2: 370,
 	},
-	mini1: { m: "mini", w: 326, h: 212, disk: [28, 0, 270, 212] },
+	mini1: { m: "mini", w: 326, h: 264, disk: [28, 0, 270, 264] },
 	mini2: {
 		m: "mini",
 		w: 326,
@@ -267,9 +268,9 @@ const SCENES: Record<string, SceneSpec> = {
 	mini4: {
 		m: "mini",
 		w: 326,
-		h: 324,
+		h: 356,
 		key: [0, 0, 326, 32],
-		explorer: [16, 80, 310, 244],
+		explorer: [16, 80, 310, 276],
 	},
 };
 // The smallest scale the pinned stage may shrink to before the story falls back to minis.
@@ -363,18 +364,36 @@ const line = (html: string, row: number, attrs = "") =>
 const sfx = (n: string) =>
 	n.replace(W.suffix, `<span class="sfx">${W.suffix}</span>`);
 
+// VS Code's and Studio's pieces as markup, as components/ide.tsx draws them.
+const trafficLights = '<span class="ide-tl"><i></i><i></i><i></i></span>';
+const bar = (title: string) =>
+	`<div class="ide-bar">${trafficLights}<b>${title}</b></div>`;
+const chev = (open: boolean) =>
+	`<svg class="ide-chev" viewBox="0 0 16 16"><path d="${open ? "M4 6l4 4 4-4" : "M6 4l4 4-4 4"}"/></svg>`;
+const fileIcon = (name: string) => {
+	const seti = setiOf(name);
+	return seti
+		? `<span class="ide-fi seti ${seti[1]}">${seti[0]}</span>`
+		: `<span class="ide-fi luau"><svg viewBox="0 0 60 60"><path fill-rule="evenodd" d="${LUAU_ICON}"/></svg></span>`;
+};
+const classIcon = (name: string) => {
+	const style = classIconStyle(name) as Record<string, string>;
+	return `<span class="ide-ci" style="--il:${style["--il"]};--id:${style["--id"]}"></span>`;
+};
+const studioClass = (icon: Icon, name: string) =>
+	icon === "svc" ? name : icon === "dir" ? "Folder" : "ModuleScript";
+const diskRow = (n: string, depth: number, cls = "") => {
+	const folder = n.endsWith("/");
+	const name = n.replace(/\/$/, "");
+	return `<li${cls ? ` class="${cls}"` : ""} style="--d:${depth}">${folder ? chev(false) : `<span class="ide-chev"></span>${fileIcon(name)}`}<span class="nm">${cls === "file" ? sfx(name) : name}</span></li>`;
+};
+
 const diskHTML = () =>
-	`<div class="pane-h"><b class="ttl">src/<span class="feat">${W.feature}</span>/</b><span>VS Code</span></div><ul class="tree dt"><span class="band"></span>${W.disk
-		.map(
-			(n, i) =>
-				`<li${i === FILE ? ' class="file"' : ""}>${guidesHtml(
-					W.disk.map(() => 1),
-					i
-				)}<span class="nm">${i === FILE ? sfx(n) : n}</span></li>`
-		)
+	`${bar("my-game")}<div class="ide-section">${chev(true)}MY-GAME</div><ul class="tree dt"><span class="band"></span><li style="--d:0">${chev(true)}<span class="nm">src</span></li><li style="--d:1">${chev(true)}<span class="nm"><span class="feat">${W.feature}</span></span></li>${W.disk
+		.map((n, i) => diskRow(n, 2, i === FILE ? "file" : ""))
 		.join("")}</ul>`;
 const stripHTML = () =>
-	`<ul class="tree dt" style="padding-top:5px;padding-bottom:5px"><span class="band" style="top:5px"></span><li class="file"><span class="nm">${sfx(W.disk[FILE])}</span></li></ul>`;
+	`<ul class="tree dt strip"><span class="band"></span>${diskRow(W.disk[FILE], 0, "file")}</ul>`;
 const routesHTML = (M: Metrics) => {
 	const i = M.ind;
 	const wrap = M === METRICS.mini;
@@ -386,10 +405,14 @@ const routesHTML = (M: Metrics) => {
 		const first = hit + (hit ? " data-r1" : "");
 		if (wrap) {
 			out += line(`${i}<span class="k">"${k}"</span>:`, r++, first);
-			out += line(`${i}${i}"${v}"${end}`, r++, hit);
+			out += line(
+				`${i}${i}<span class="s">"${v}"</span>${end}`,
+				r++,
+				hit
+			);
 		} else
 			out += line(
-				`${i}<span class="k">"${k}"</span>: "${v}"${end}`,
+				`${i}<span class="k">"${k}"</span>: <span class="s">"${v}"</span>${end}`,
 				r++,
 				first
 			);
@@ -409,7 +432,7 @@ const projHTML = (M: Metrics, top = 0) => {
 	return `<div class="proj" data-e="${E}" style="top:${top}px">${out}</div>`;
 };
 const exHTML = () =>
-	`<div class="pane-h"><b>Explorer</b><span>Roblox Studio</span></div><ul class="xt">${explorer()
+	`${bar("Explorer")}<div class="ide-search"><span>Search</span><span>•••</span></div><ul class="xt">${explorer()
 		.map(([name, d, ic, roles]) => {
 			const r = ` ${roles} `;
 			const has = (role: string) => r.includes(` ${role} `);
@@ -417,7 +440,7 @@ const exHTML = () =>
 				has("service") || has("open") || has("shut")
 					? `<span class="ar c${has("open") ? "" : " shut"}"></span>`
 					: '<span class="ar"></span>';
-			return `<li class="x ${roles}" data-r="${roles}" style="--d:${d}">${has("file") ? '<span class="band2"></span><span class="slot"></span>' : ""}${arrow}${iconSvg(ic, `ic ic-${ic}`)}<span class="nm">${name}</span></li>`;
+			return `<li class="x ${roles}" data-r="${roles}" style="--d:${d}">${has("file") ? '<span class="band2"></span><span class="slot"></span>' : ""}${arrow}${classIcon(studioClass(ic, name))}<span class="nm">${name}</span></li>`;
 		})
 		.join("")}</ul>`;
 const crumb =
@@ -450,31 +473,31 @@ function makeScene(name: string): Scene {
 	const C = SCENES[name];
 	const M = METRICS[C.m];
 	const el = document.createElement("div");
-	el.className = "stage";
+	el.className = "stage ide";
 	el.style.cssText = `width:${C.w}px;height:${C.h}px;--tree:${M.tree}px;--code:${M.code}px;--row:${M.row}px;--line:${M.line}px;--head:${M.head}px;--pad:${M.pad}px;--cpad:${M.cpad}px;--pady:${M.pady}px;--tab:${M.tab}px`;
 	if (C.strip) el.style.setProperty("--tagf", M.tree + "px");
 	let h = "";
 	if (C.disk)
-		h += `<div class="pane p-disk" style="${px(C.disk)}">${diskHTML()}</div>`;
+		h += `<div class="pane p-disk ide-win ide-vs" style="${px(C.disk)}">${diskHTML()}</div>`;
 	if (C.strip)
-		h += `<div class="pane p-strip" style="${px(C.strip)}">${stripHTML()}</div>`;
+		h += `<div class="pane p-strip ide-win ide-vs" style="${px(C.strip)}">${stripHTML()}</div>`;
 	if (C.routes)
-		h += `<div class="pane p-routes" style="${px(C.routes)}"><div class="code">${routesHTML(M)}</div></div>`;
+		h += `<div class="pane p-routes ide-win ide-ed" style="${px(C.routes)}"><div class="code">${routesHTML(M)}</div></div>`;
 	if (C.project)
-		h += `<div class="pane p-proj" style="${px(C.project)}"><div class="pane-h"><b class="ttl">default.project.json</b></div><div class="code">${line(crumb, 0)}${projHTML(M, M.line)}</div></div>`;
+		h += `<div class="pane p-proj ide-win ide-ed" style="${px(C.project)}"><div class="ed-tabs">${trafficLights}<span class="tab front">default.project.json</span></div><div class="code">${line(crumb, 0)}${projHTML(M, M.line)}</div></div>`;
 	if (C.key)
-		h += `<div class="pane p-key" style="${px(C.key)}"><div class="code" style="margin:6px 0">${line(project(M.ind).key, 0)}</div></div>`;
+		h += `<div class="pane p-key ide-win ide-ed" style="${px(C.key)}"><div class="code" style="margin:6px 0">${line(project(M.ind).key, 0)}</div></div>`;
 	if (C.explorer)
-		h += `<div class="pane p-ex" style="${px(C.explorer)}">${exHTML()}</div>`;
+		h += `<div class="pane p-ex ide-win ide-st" style="${px(C.explorer)}">${exHTML()}</div>`;
 	if (C.editor) {
 		const [x, y, w] = C.editor;
-		h += `<div class="pane p-ed" style="${px(C.editor)}"><div class="pane-h"></div><div class="code">${routesHTML(M)}${projHTML(M)}</div></div>`;
-		h += `<div class="ed-bar" style="left:${x + 1}px;top:${y + 1}px;width:${w - 2}px"><span class="tab t1 front">default.rogen.json</span><span class="tab t2">default.project.json</span>${crumb}</div>`;
+		h += `<div class="pane p-ed ide-win ide-ed" style="${px(C.editor)}"><div class="pane-h"></div><div class="code">${routesHTML(M)}${projHTML(M)}</div></div>`;
+		h += `<div class="ed-bar" style="left:${x}px;top:${y}px;width:${w}px">${trafficLights}<span class="tab t1 front">default.rogen.json</span><span class="tab t2">default.project.json</span>${crumb}</div>`;
 	}
 	h +=
 		'<svg class="ln trail" aria-hidden="true"><path d=""/></svg><svg class="ln wire" aria-hidden="true"><path d=""/></svg><span class="rojo">Rojo</span>';
 	h += `<div class="tag" hidden><span class="tn">${W.file}</span><span class="ts">${W.suffix}${W.ext}</span></div>`;
-	h += `<div class="chip" hidden>${iconSvg("scr", "")}<span>${W.file}</span></div>`;
+	h += `<div class="chip" hidden>${classIcon("ModuleScript")}<span>${W.file}</span></div>`;
 	el.innerHTML = h;
 
 	const q = <T extends Element = HTMLElement>(s: string) =>
@@ -485,7 +508,7 @@ function makeScene(name: string): Scene {
 	let g: Geometry = {};
 	const lights: [HTMLElement[], string][] = (
 		[
-			[".p-disk .ttl .feat", "found"],
+			[".p-disk .feat", "found"],
 			[".dt .file .sfx", "found"],
 			[".dt .file", "source"],
 			[".routes [data-hit]", "route"],

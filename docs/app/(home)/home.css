@@ -404,23 +404,28 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .k-r {
 	--hc: var(--t-r);
 }
+/* on the hero's columns: VS Code under the heading, the Explorer under the install box */
 .home .hero-ide {
 	position: relative;
 	display: grid;
-	grid-template-columns: minmax(0, 500px) minmax(48px, 1fr) minmax(0, 360px);
+	grid-template-columns: repeat(12, minmax(0, 1fr));
+	column-gap: var(--s3);
 	align-items: stretch;
 	margin-top: clamp(48px, 6vw, 80px);
 	animation: home-up 0.8s var(--spring) 0.5s both;
 }
+.home .hero-ide .ide-vs {
+	grid-column: 1 / span 5;
+}
 .home .hero-ide .ide-st {
-	grid-column: 3;
+	grid-column: 8 / span 5;
 }
 @media (max-width: 900px) {
 	.home .hero-ide {
 		grid-template-columns: minmax(0, 1fr);
 		gap: var(--s3);
 	}
-	.home .hero-ide .ide-st {
+	.home .hero-ide :is(.ide-vs, .ide-st) {
 		grid-column: 1;
 	}
 	.home .hero-ide .wires {
@@ -806,26 +811,6 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .tree .f {
 	color: var(--ink-2);
 }
-.home .dia {
-	flex: none;
-	width: 8px;
-	height: 8px;
-	transform: rotate(45deg) scaleY(0.58) rotate(0);
-	background: currentColor;
-}
-.home .dia.o {
-	background: none;
-	box-shadow: inset 0 0 0 1.5px var(--ink-3);
-}
-.home .dia.s {
-	background: var(--cs);
-}
-.home .dia.c {
-	background: var(--cc);
-}
-.home .dia.r {
-	background: var(--cr);
-}
 .home .plate {
 	margin-top: var(--s4);
 	max-width: 520px;
@@ -1066,25 +1051,11 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 }
 .home .stage .pane {
 	position: absolute;
-	display: flex;
-	flex-direction: column;
-	background: var(--deep);
-	border-radius: 8px;
-	box-shadow:
-		inset 0 0 0 1px var(--line-2),
-		0 24px 50px -30px rgba(4, 14, 16, 0.5);
 	overflow: hidden;
 }
 .home .stage .pane-h {
 	flex: none;
 	height: var(--head);
-	background: var(--pane-h);
-}
-.home .stage .pane-h .ttl {
-	font: 500 12px/1 var(--mono);
-	letter-spacing: 0;
-	text-transform: none;
-	color: var(--ink);
 }
 .home .stage .feat {
 	color: color-mix(
@@ -1096,41 +1067,53 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .stage .tree {
 	position: relative;
 	list-style: none;
-	padding: var(--pady) var(--pad);
-	font: 400 var(--tree) / var(--row) var(--mono);
-	color: var(--ink-2);
+	padding: 0 0 var(--pady);
+	color: var(--vs-fg);
+	font:
+		400 var(--tree) / var(--row) system-ui,
+		-apple-system,
+		"Segoe UI",
+		sans-serif;
 }
 .home .stage .tree li {
 	position: relative;
 	z-index: 1;
+	display: flex;
+	align-items: center;
 	height: var(--row);
+	padding-left: calc(8px + var(--d, 0) * 8px);
 	white-space: nowrap;
 	overflow: hidden;
-	text-overflow: ellipsis;
 }
-.home .stage .tree .g {
-	--g-row: var(--row);
-	--g-line: color-mix(in srgb, var(--ink-3) 55%, transparent);
-}
+/* the walk starts on the feature's first file, under src and the feature folder */
 .home .stage .dt .band {
 	position: absolute;
-	left: calc(var(--pad) - 6px);
-	right: calc(var(--pad) - 6px);
-	top: var(--pady);
+	left: 4px;
+	right: 4px;
+	top: calc(2 * var(--row));
 	height: var(--row);
 	border-radius: 3px;
 	background: var(--hi-t);
 }
+.home .stage .dt.strip {
+	padding: 5px 0;
+}
+.home .stage .dt.strip .band {
+	top: 5px;
+}
 .home .stage .dt .file .nm,
 .home .stage .dt .file .sfx {
-	color: color-mix(in srgb, var(--hi) calc(var(--v, 0) * 100%), var(--ink));
+	color: color-mix(in srgb, var(--hi) calc(var(--v, 0) * 100%), var(--vs-fg));
 }
 .home .stage .code {
 	position: relative;
 	flex: 1;
 	margin: var(--pady) 0;
-	font: 400 var(--code) / var(--line) var(--mono);
-	color: var(--ink-3);
+	font:
+		400 var(--code) / var(--line) ui-monospace,
+		Menlo,
+		Consolas,
+		monospace;
 	white-space: pre;
 }
 .home .stage .code .routes,
@@ -1146,7 +1129,10 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	padding: 0 var(--cpad);
 }
 .home .stage .code .k {
-	color: var(--ink-2);
+	color: var(--json-key);
+}
+.home .stage .code .s {
+	color: var(--json-str);
 }
 .home .stage .routes .l[data-hit] {
 	background: color-mix(
@@ -1154,66 +1140,95 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 		var(--hi) calc(var(--v, 0) * 16%),
 		transparent
 	);
-	color: color-mix(
-		in srgb,
-		var(--ink) calc(var(--v, 0) * 100%),
-		var(--ink-3)
-	);
 }
 .home .stage .routes .l[data-hit] .k {
-	color: color-mix(in srgb, var(--hi) calc(var(--v, 0) * 100%), var(--ink-2));
+	color: color-mix(
+		in srgb,
+		var(--hi) calc(var(--v, 0) * 100%),
+		var(--json-key)
+	);
 }
 .home .stage .proj .feat {
-	--base: var(--ink-2);
+	--base: var(--json-key);
 }
 .home .stage .proj .key,
 .home .stage .p-key .key {
 	color: var(--hi);
 }
 .home .stage .proj .val {
-	color: color-mix(in srgb, var(--hi) calc(var(--v, 0) * 100%), var(--ink-3));
+	color: color-mix(
+		in srgb,
+		var(--hi) calc(var(--v, 0) * 100%),
+		var(--json-str)
+	);
 }
 .home .stage .crumb {
-	color: var(--ink-3);
+	color: var(--vs-muted);
 }
 .home .stage .crumb .f {
-	color: color-mix(in srgb, var(--hi) calc(var(--v, 0) * 100%), var(--ink-2));
+	color: color-mix(in srgb, var(--hi) calc(var(--v, 0) * 100%), var(--vs-fg));
+}
+/* VS Code's tab bar, with the window's lights at its left */
+.home .stage :is(.ed-bar, .ed-tabs) {
+	display: flex;
+	align-items: stretch;
+	height: var(--head);
+	padding-left: 12px;
+	background: var(--vs-bg);
+	border-bottom: 1px solid var(--vs-bd);
+	font:
+		400 12.5px/1 system-ui,
+		-apple-system,
+		"Segoe UI",
+		sans-serif;
+	white-space: nowrap;
 }
 .home .stage .ed-bar {
 	position: absolute;
 	z-index: 3;
-	display: flex;
-	height: var(--head);
-	background: var(--pane-h);
-	border-bottom: 1px solid var(--line);
-	border-radius: 7px 7px 0 0;
+	border-radius: 10px 10px 0 0;
 	overflow: hidden;
-	font: 500 12px/1 var(--mono);
 }
-.home .stage .ed-bar .tab {
+.home .stage .ed-tabs {
+	flex: none;
+}
+.home .stage :is(.ed-bar, .ed-tabs) .ide-tl {
+	align-self: center;
+	margin-right: 14px;
+}
+.home .stage :is(.ed-bar, .ed-tabs) .tab {
 	display: flex;
 	align-items: center;
 	padding: 0 var(--tab);
-	color: var(--ink-3);
-	border-right: 1px solid var(--line);
-	white-space: nowrap;
+	color: var(--vs-muted);
+	border-right: 1px solid var(--vs-bd);
 }
-.home .stage .ed-bar .tab.front {
-	background: var(--deep);
-	color: var(--ink);
+.home .stage :is(.ed-bar, .ed-tabs) .tab.front {
+	background: var(--ed-bg);
+	color: var(--vs-fg);
+	box-shadow: inset 0 1px 0 var(--vs-acc);
 }
 .home .stage .ed-bar .crumb {
 	margin-left: auto;
 	display: flex;
 	align-items: center;
 	padding: 0 14px;
+	font:
+		400 12px/1 ui-monospace,
+		Menlo,
+		Consolas,
+		monospace;
 	white-space: pre;
 }
 .home .stage .xt {
 	position: relative;
 	flex: 1;
 	padding: 0;
-	font: 400 var(--tree) / var(--row) var(--mono);
+	color: var(--st-fg);
+	font:
+		400 var(--tree) / var(--row) var(--font-studio),
+		system-ui,
+		sans-serif;
 }
 .home .stage .x {
 	position: absolute;
@@ -1221,40 +1236,34 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	right: 0;
 	top: 0;
 	height: var(--row);
-	padding-left: calc(10px + var(--d, 0) * 16px);
+	padding-left: calc(8px + var(--d, 0) * 12px);
 	will-change: transform;
 }
 .home .stage .x .ar {
 	flex: none;
-	width: 12px;
-	height: 12px;
+	width: 10px;
+	height: 10px;
+	margin-right: 2px;
 	display: grid;
 	place-items: center;
 }
+/* Studio's filled arrow: right when shut, down when open */
 .home .stage .x .ar.c::before {
 	content: "";
-	width: 5px;
-	height: 5px;
-	border-right: 1.4px solid var(--ink-3);
-	border-bottom: 1.4px solid var(--ink-3);
-	transform: translateY(-1.5px) rotate(45deg);
+	border-left: 5px solid currentColor;
+	border-top: 3.5px solid transparent;
+	border-bottom: 3.5px solid transparent;
+	transform: rotate(90deg);
 	transition: transform 0.35s var(--snap);
 }
 .home .stage .x .ar.c.shut::before {
-	transform: translateX(-1px) rotate(-45deg);
+	transform: none;
 }
-.home .stage .x .ic {
-	margin: 0 6px 0 2px;
-}
-.home .stage .x.service .nm {
-	color: var(--ink);
-}
-.home .stage .x.feature .nm,
-.home .stage .x.feature .ic {
+.home .stage .x.feature .nm {
 	color: var(--feat);
 }
 .home .stage .x.file .nm,
-.home .stage .x.file .ic {
+.home .stage .x.file .ide-ci {
 	color: var(--hi);
 	opacity: var(--land, 0);
 }
@@ -1269,7 +1278,7 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	position: absolute;
 	top: 2px;
 	bottom: 2px;
-	left: calc(10px + var(--d) * 16px + 12px);
+	left: calc(8px + var(--d) * 12px + 12px);
 	right: 12px;
 	border: 1px dashed color-mix(in srgb, var(--hi) 60%, transparent);
 	border-radius: 3px;
@@ -1355,10 +1364,8 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	box-shadow: 0 8px 20px -6px rgba(4, 14, 16, 0.5);
 	will-change: transform;
 }
-.home .stage .chip svg {
-	width: 12px;
-	height: 12px;
-	flex: none;
+.home .stage .chip .ide-ci {
+	margin-right: 0;
 }
 .home .stage [hidden] {
 	display: none !important;

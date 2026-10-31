@@ -101,6 +101,10 @@ html > body[data-scroll-locked] {
 	--vs-guide: rgb(169 169 169 / 0.6);
 	--vs-acc: #005fb8;
 	--vs-sel: #e4e6f1;
+	--ed-bg: #ffffff;
+	--ed-fg: #3b3b3b;
+	--json-key: #0451a5;
+	--json-str: #a31515;
 	--vs-prompt: #005fb8;
 	--seti-luau: #498ba7;
 	--seti-json: #b7b73b;
@@ -126,6 +130,10 @@ html > body[data-scroll-locked] {
 	--vs-guide: rgb(88 88 88 / 0.6);
 	--vs-acc: #0078d4;
 	--vs-sel: #37373d;
+	--ed-bg: #1f1f1f;
+	--ed-fg: #cccccc;
+	--json-key: #9cdcfe;
+	--json-str: #ce9178;
 	--vs-prompt: #3794ff;
 	--seti-luau: #519aba;
 	--seti-json: #cbcb41;
@@ -377,6 +385,10 @@ html > body[data-scroll-locked] {
 .ide-fi.file {
 	color: var(--seti-file);
 }
+.ide-ed {
+	background: var(--ed-bg);
+	color: var(--ed-fg);
+}
 .ide-st {
 	background: var(--st-bg);
 	color: var(--st-fg);
@@ -475,41 +487,4 @@ html > body[data-scroll-locked] {
 }
 .route-fig .c-r {
 	color: var(--t-r);
-}
-/* Tree lines drawn with borders, so they join up and keep one colour on every row */
-.home .g {
-	display: inline-flex;
-	vertical-align: top;
-	height: var(--g-row, 22px);
-}
-.home .g i {
-	position: relative;
-	flex: none;
-	width: 20px;
-}
-.home .g i::before,
-.home .g i::after {
-	position: absolute;
-	left: 6px;
-	background: var(--g-line);
-}
-.home .g-pipe::before,
-.home .g-tee::before {
-	content: "";
-	top: 0;
-	bottom: 0;
-	width: 1px;
-}
-.home .g-end::before {
-	content: "";
-	top: 0;
-	height: calc(var(--g-row, 22px) / 2);
-	width: 1px;
-}
-.home .g-tee::after,
-.home .g-end::after {
-	content: "";
-	top: calc(var(--g-row, 22px) / 2);
-	width: 9px;
-	height: 1px;
 }
