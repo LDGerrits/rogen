@@ -44,7 +44,7 @@ Running several agents? Give each one a feature. A lint rule catches any agent t
 
 ## How it works
 
-`default.rogen.json` is a Rojo project file with `routes` added. The `tree` is the base: put in it what folder names can't say, such as your packages, and Rogen adds every routed file to it:
+`default.rogen.json` is a Rojo project file with `routes`. Its `tree` holds what folder names can't say, such as your packages:
 
 <!-- prettier-ignore -->
 ```json
@@ -65,9 +65,7 @@ Running several agents? Give each one a feature. A lint rule catches any agent t
 }
 ```
 
-A folder or an `@` suffix named after a route sends its code there, so `src/Inventory/Server/InventoryService.luau` and `src/Inventory/Save@Server.luau` both go to `ServerScriptService/Inventory`. The `*` route takes every file that matches no other.
-
-The routes are yours to change. Add `"Gui": "StarterGui"`, and a `Gui` folder or a `@Gui` suffix sends code to StarterGui.
+A file goes where its folder or `@` suffix says: `Server/` and `@Server` both mean ServerScriptService. Everything else goes to `*`, and a route you add, such as `"Gui": "StarterGui"`, works the same way.
 
 ## Installation
 
