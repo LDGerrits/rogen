@@ -136,7 +136,13 @@ export class PlacementLocator {
 
 	private placedAt(file: RoutedFile): PlacedLocation {
 		const others = this.placement.otherNodesOf(file);
-		const { isLuau, isLuauModule } = file.entry.file;
+		const { isLuau, isLuauModule, isDataModule } = file.entry.file;
+		const code =
+			isLuauModule || isDataModule
+				? "module"
+				: isLuau
+					? "script"
+					: undefined;
 		return {
 			status: "placed",
 			source: file.entry.source,
@@ -148,7 +154,7 @@ export class PlacementLocator {
 			route: file.route,
 			routeMatch: file.routeMatch,
 			...(file.hoisted && { hoisted: true }),
-			...(isLuau && { luau: isLuauModule ? "module" : "script" }),
+			...(code && { code }),
 		};
 	}
 

@@ -190,7 +190,7 @@ describe("CoreWriteService.locate", () => {
 				route: "Server",
 				routeMatch: "folder",
 				named: true,
-				luau: "module",
+				code: "module",
 			},
 			{
 				status: "placed",
@@ -205,7 +205,7 @@ describe("CoreWriteService.locate", () => {
 				route: "Client",
 				routeMatch: "suffix",
 				named: true,
-				luau: "module",
+				code: "module",
 			},
 			expect.objectContaining({
 				source: abs("src/Net/Socket.client.luau"),
@@ -220,7 +220,7 @@ describe("CoreWriteService.locate", () => {
 				route: "Server",
 				routeMatch: "marker",
 				named: true,
-				luau: "module",
+				code: "module",
 			},
 			{
 				status: "placed",
@@ -230,8 +230,39 @@ describe("CoreWriteService.locate", () => {
 				route: "*",
 				routeMatch: "fallback",
 				named: true,
-				luau: "module",
+				code: "module",
 			},
+		]);
+	});
+
+	it("should mark a data file Rojo makes a ModuleScript from as a module, and no other data file", async () => {
+		const files = [
+			"src/Data/Rates@server.json",
+			"src/Data/Opts@server.jsonc",
+			"src/Data/Costs@server.toml",
+			"src/Data/Theme@server.yaml",
+			"src/Data/Skin@server.yml",
+			"src/Data/Note@server.txt",
+			"src/Data/Strings@server.csv",
+			"src/Data/Crate@server.model.json",
+		];
+		await write(...files);
+
+		const located = await locate(files);
+
+		expect(
+			located.map((location) =>
+				location.status === "placed" ? location.code : location.status
+			)
+		).toEqual([
+			"module",
+			"module",
+			"module",
+			"module",
+			"module",
+			undefined,
+			undefined,
+			undefined,
 		]);
 	});
 
@@ -560,7 +591,7 @@ describe("CoreWriteService.locate", () => {
 				instancePath: ["ReplicatedStorage", "Shared", "Kept"],
 				route: "*",
 				routeMatch: "fallback",
-				luau: "module",
+				code: "module",
 			},
 			{
 				status: "displaced",
@@ -1006,7 +1037,7 @@ describe("CoreWriteService.locate", () => {
 					route: "*",
 					routeMatch: "fallback",
 					named: true,
-					luau: "module",
+					code: "module",
 				},
 			]);
 			expect(

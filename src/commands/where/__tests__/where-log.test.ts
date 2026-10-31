@@ -14,10 +14,10 @@ import { WhereFileEntry } from "../where-document.js";
 import { WhereLog } from "../where-log.js";
 import { documentOf, lineOf, reportOf } from "./where-fixtures.js";
 
-const luauOf = (source: string): { luau?: "module" | "script" } =>
+const codeOf = (source: string): { code?: "module" | "script" } =>
 	/\.luau?$/.test(source)
 		? {
-				luau: /\.(server|client|plugin)\.luau?$/.test(source)
+				code: /\.(server|client|plugin)\.luau?$/.test(source)
 					? "script"
 					: "module",
 			}
@@ -348,7 +348,7 @@ describe("WhereLog", () => {
 			instancePath,
 			route: "*",
 			routeMatch: "fallback",
-			...luauOf(source),
+			...codeOf(source),
 		});
 		const entry = (location: FileLocation) =>
 			documentOf([["default", [location]]])
@@ -451,7 +451,7 @@ describe("WhereLog", () => {
 			instancePath,
 			route: "*",
 			routeMatch: "fallback",
-			...luauOf("/repo/src/Util.luau"),
+			...codeOf("/repo/src/Util.luau"),
 			...(named && { named: true as const }),
 		});
 		const requireLines = (...configs: [string, FileLocation][]) =>
@@ -466,7 +466,7 @@ describe("WhereLog", () => {
 					{
 						...placed(["ReplicatedStorage", "Boot"]),
 						source: "/repo/src/Boot.client.luau",
-						...luauOf("/repo/src/Boot.client.luau"),
+						...codeOf("/repo/src/Boot.client.luau"),
 					},
 				])
 			).toEqual([
@@ -500,7 +500,7 @@ describe("WhereLog", () => {
 						{
 							...placed(["ReplicatedStorage", "X"]),
 							source,
-							...{ luau: luauOf(source).luau },
+							...{ code: codeOf(source).code },
 						},
 					])
 				).toEqual([]);

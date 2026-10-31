@@ -1,0 +1,33 @@
+$ rogen where src/Shop/Prices@shared.json src/Shop/Rates@server.toml src/Shop/Greeting@shared.txt
+exit 0
+stdout:
+  src/Shop/Prices@shared.json -> ReplicatedStorage/shared/Shop/Prices · route shared (suffix)
+    require(game:GetService("ReplicatedStorage").shared.Shop.Prices)
+  src/Shop/Rates@server.toml -> ServerScriptService/Shop/Rates · route server (suffix)
+    require(game:GetService("ServerScriptService").Shop.Rates)
+  src/Shop/Greeting@shared.txt -> ReplicatedStorage/shared/Shop/Greeting · route shared (suffix)
+
+$ rogen where --json src/Shop/Prices@shared.json
+exit 0
+stdout:
+  {
+    "locations": [
+      {
+        "config": "default.rogen.json",
+        "source": "<dir>/src/Shop/Prices@shared.json",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "ReplicatedStorage",
+          "shared",
+          "Shop",
+          "Prices"
+        ],
+        "require": "game:GetService(\"ReplicatedStorage\").shared.Shop.Prices",
+        "route": "shared",
+        "routeMatch": "suffix",
+        "diagnostics": []
+      }
+    ],
+    "diagnostics": []
+  }

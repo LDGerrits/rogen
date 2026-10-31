@@ -226,6 +226,12 @@ export class RojoFile {
 		return this.isLuau && this.scriptSuffix === undefined;
 	}
 
+	/** Whether Rojo makes a ModuleScript that returns the file's data, as from `.json`, `.toml` or `.yaml`. */
+	get isDataModule(): boolean {
+		const use = this.match?.rule.use;
+		return use === "json" || use === "toml" || use === "yaml";
+	}
+
 	/** The script class Rojo reads from the file name, or from the rule of the project that takes it; none for a module and any other file. */
 	get scriptSuffix(): RojoScriptSuffix | undefined {
 		if (this.kind !== "script") return undefined;
