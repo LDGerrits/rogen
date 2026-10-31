@@ -16,12 +16,12 @@ export interface VersionedFile {
 export const VERSIONED_FILES: readonly VersionedFile[] = [
 	{
 		path: "docs/content/docs/v2/installation.mdx",
-		pattern: /(ldgerrits\/rogen@)([^"]+)(")/g,
+		pattern: /(ldgerrits\/rogen@)(\d[^"]*)(")/g,
 		stableOnly: true,
 	},
 	{
 		path: "docs/components/home/install-command.tsx",
-		pattern: /(ldgerrits\/rogen@)([^"]+)(")/g,
+		pattern: /(ldgerrits\/rogen@)(\d[^"]*)(")/g,
 		stableOnly: true,
 	},
 	{
