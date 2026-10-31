@@ -82,10 +82,8 @@ export function RouteFigure({
 								style={{ "--d": depth } as CSSProperties}
 							>
 								<IndentGuides depth={depth} />
-								{folder ? (
+								{folder && (
 									<Chevron open={hasChildren(diskRows, i)} />
-								) : (
-									<span className="ide-chev" />
 								)}
 								{!folder && <FileIcon name={name} />}
 								<DiskName name={name.replace(/\/$/, "")} />

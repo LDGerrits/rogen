@@ -25,6 +25,11 @@
 	--agent-3: #10262b;
 	--field: #dcd6ca;
 	--field-dot: rgba(16, 38, 43, 0.07);
+	/* a macOS segmented control: a sunken track, the chosen segment raised on it */
+	--seg: rgba(16, 38, 43, 0.075);
+	--seg-on: #fff;
+	--seg-shadow:
+		0 1px 2px rgba(16, 38, 43, 0.14), 0 0 0 0.5px rgba(16, 38, 43, 0.08);
 	--sans: var(--font-sora), system-ui, sans-serif;
 	--mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 	/* objects arrive on a spring, text and lines ease out, hover snaps */
@@ -91,6 +96,10 @@
 	--agent-3: #f0f6f2;
 	--field: #133238;
 	--field-dot: rgba(240, 246, 242, 0.05);
+	--seg: rgba(240, 246, 242, 0.07);
+	--seg-on: #2a3f43;
+	--seg-shadow:
+		0 1px 2px rgba(0, 0, 0, 0.35), inset 0 0.5px rgba(240, 246, 242, 0.12);
 }
 body:has(.home) {
 	background: #eeebe4;
@@ -364,29 +373,30 @@ html:not([data-lang="ts"]) .home [data-only="ts"] {
 /* the active language comes from html[data-lang], so it is right before the page runs */
 .home .lang-seg {
 	display: inline-flex;
-	padding: 3px;
-	border-radius: 6px;
-	background: var(--deep);
-	box-shadow: inset 0 0 0 1px var(--line);
+	padding: 2px;
+	border-radius: 8px;
+	background: var(--seg);
 }
 .home .lang-seg button {
 	appearance: none;
 	border: 0;
 	background: none;
 	height: 28px;
-	padding: 0 12px;
-	border-radius: 4px;
-	font: 500 13px/1 var(--mono);
+	padding: 0 14px;
+	border-radius: 6px;
+	font: 500 13px/1 var(--sans);
 	color: var(--ink-2);
 	cursor: pointer;
 	transition:
 		color 0.25s var(--ease-out),
-		background-color 0.25s var(--ease-out);
+		background-color 0.25s var(--ease-out),
+		box-shadow 0.25s var(--ease-out);
 }
 html:not([data-lang="ts"]) .home .lang-seg [data-v="luau"],
 html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
-	background: var(--ink);
-	color: var(--bg);
+	background: var(--seg-on);
+	box-shadow: var(--seg-shadow);
+	color: var(--ink);
 }
 @media (hover: hover) and (pointer: fine) {
 	.home .lang-seg button:hover {
@@ -1460,18 +1470,18 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .toggle {
 	position: relative;
 	display: inline-flex;
-	background: var(--deep);
-	border-radius: 6px;
-	padding: 4px;
-	box-shadow: inset 0 0 0 1px var(--line);
+	background: var(--seg);
+	border-radius: 9px;
+	padding: 3px;
 }
 .home .toggle .knob {
 	position: absolute;
-	top: 4px;
+	top: 3px;
 	left: 0;
-	height: calc(100% - 8px);
-	background: var(--ink);
-	border-radius: 4px;
+	height: calc(100% - 6px);
+	background: var(--seg-on);
+	box-shadow: var(--seg-shadow);
+	border-radius: 7px;
 	transition:
 		transform 0.55s var(--spring),
 		width 0.55s var(--spring);
@@ -1486,19 +1496,20 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	background: none;
 	border: 0;
 	cursor: pointer;
-	font: 600 14px/1 var(--sans);
+	font: 500 14px/1 var(--sans);
 	color: var(--ink-2);
-	padding: 0 18px;
-	height: 44px;
+	padding: 0 20px;
+	height: 36px;
 	white-space: nowrap;
-	border-radius: 4px;
+	border-radius: 7px;
 	transition: color 0.3s var(--ease-out);
 }
 .home .toggle button[aria-selected="true"] {
-	color: var(--bg);
+	color: var(--ink);
 }
 .home .toggle:not([data-ready]) button[aria-selected="true"] {
-	background: var(--ink);
+	background: var(--seg-on);
+	box-shadow: var(--seg-shadow);
 }
 .home .toggle button:active {
 	transform: scale(0.98);

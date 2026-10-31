@@ -305,15 +305,13 @@ export function HeroDemo() {
 													<IndentGuides
 														depth={depth}
 													/>
-													{folder ? (
+													{folder && (
 														<Chevron
 															open={hasChildren(
 																rows,
 																i
 															)}
 														/>
-													) : (
-														<span className="ide-chev" />
 													)}
 													{!folder && (
 														<FileIcon name={name} />

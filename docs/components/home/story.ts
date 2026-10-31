@@ -385,7 +385,7 @@ const studioClass = (icon: Icon, name: string) =>
 const diskRow = (n: string, depth: number, cls = "") => {
 	const folder = n.endsWith("/");
 	const name = n.replace(/\/$/, "");
-	return `<li${cls ? ` class="${cls}"` : ""} style="--d:${depth}">${folder ? chev(false) : `<span class="ide-chev"></span>${fileIcon(name)}`}<span class="nm">${cls === "file" ? sfx(name) : name}</span></li>`;
+	return `<li${cls ? ` class="${cls}"` : ""} style="--d:${depth}">${folder ? chev(false) : fileIcon(name)}<span class="nm">${cls === "file" ? sfx(name) : name}</span></li>`;
 };
 
 const diskHTML = () =>

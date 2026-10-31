@@ -240,15 +240,13 @@ function ExplorerAndTerminal({
 											}
 										>
 											<IndentGuides depth={depth} />
-											{isFolder ? (
+											{isFolder && (
 												<Chevron
 													open={hasChildren(
 														depths,
 														i
 													)}
 												/>
-											) : (
-												<span className="ide-chev" />
 											)}
 											{!isFolder && (
 												<FileIcon name={name} />
@@ -317,12 +315,10 @@ export function Features() {
 										style={depth(d)}
 									>
 										<IndentGuides depth={d} />
-										{luau.endsWith("/") ? (
+										{luau.endsWith("/") && (
 											<Chevron
 												open={hasChildren(depths, i)}
 											/>
-										) : (
-											<span className="ide-chev" />
 										)}
 										<L
 											luau={

@@ -14,7 +14,9 @@ export function Hero() {
 						</h1>
 						<p className="lede in-3">
 							Rogen generates the Rojo project file from your file
-							system.
+							system. Keep a feature&apos;s server and client code
+							together, and Rogen sends each file to the right
+							place in Studio.
 						</p>
 					</div>
 					<div className="hero-copy">

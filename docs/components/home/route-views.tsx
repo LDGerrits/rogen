@@ -87,11 +87,7 @@ function DiskRows({ rows }: { rows: Row[] }) {
 				}
 			>
 				<IndentGuides depth={depth} />
-				{folder ? (
-					<Chevron open={hasChildren(depths, i)} />
-				) : (
-					<span className="ide-chev" />
-				)}
+				{folder && <Chevron open={hasChildren(depths, i)} />}
 				{!folder && <FileIcon name={name} />}
 				{folder && colour ? (
 					<span className={`nm c-${colour}`}>{bare}</span>
