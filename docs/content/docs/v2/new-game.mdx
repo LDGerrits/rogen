@@ -35,7 +35,7 @@ Use `aftman install` or `foreman install` if that is your tool manager. The seco
 <Step>
 ### Open the Editor
 
-In a Luau game, open the folder in VS Code with the luau-lsp extension. luau-lsp builds `sourcemap.json` from `default.project.json`, which `init` wrote. `init` also gitignores that file, so after you clone the game, run `rogen write` before you open the editor. See [Using Luau](/docs/v2/setups/luau#keep-the-editors-sourcemap-current).
+In a Luau game, open the folder in VS Code with the luau-lsp extension. After you clone the game, run `rogen write` first, so luau-lsp finds the project file. See [Using Luau](/docs/v2/setups/luau#keep-the-editors-sourcemap-current).
 
 </Step>
 
@@ -61,4 +61,4 @@ rogen build -o game.rbxl
 
 </Steps>
 
-`rogen upload` publishes the game to Roblox, as `rojo upload` does. Next, read [Routing](/docs/v2/core-concepts/routing) to see where your files land.
+Next, read [Routing](/docs/v2/core-concepts/routing) to see where your files land.

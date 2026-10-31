@@ -54,9 +54,7 @@ npm run watch
 rogen serve
 ```
 
-`npm run watch` runs `rbxtsc -w`, which compiles each file when you save it. `rogen serve` writes the project file again when you add, move or rename a file. Rogen creates the folders it mounts in `out`, so Rojo serves before the compiler has written anything.
-
-`rbxtsc` reads the project file to turn each import into an instance path, so it needs a project file. On a fresh clone, run `rogen write` before the first compile.
+`npm run watch` runs `rbxtsc -w`, which compiles each file when you save it. `rogen serve` writes the project file again when you add, move or rename a file. `rbxtsc` needs that project file, so on a fresh clone, run `rogen write` before the first compile.
 
 ## Add a Feature
 
@@ -88,4 +86,4 @@ roblox-ts projects name files in kebab-case and folders in lowercase, and the ro
 `}
 />
 
-Import by relative file path, as in any TypeScript project. The compiler turns `import { MAX_STACK } from "../shared/inventory-types"` into the instance path the project file gives it.
+Import by relative file path, as in any TypeScript project.

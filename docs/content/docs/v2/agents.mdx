@@ -7,7 +7,7 @@ A coding agent doesn't know that Rogen generates the Rojo project file, so Rojo 
 
 ## Add the Rules
 
-`rogen init` adds the block below to `AGENTS.md`, and imports it into the `CLAUDE.md` and `GEMINI.md` that Claude Code and Gemini CLI read instead. `--no-agent-rules` leaves it out. In a project that already has a config, run `rogen init --agent-rules`, which adds only the agent files and changes no config, or paste the block yourself, markers included:
+`rogen init` adds the block below to `AGENTS.md`, and imports it into the `CLAUDE.md` that Claude Code reads instead. `--no-agent-rules` leaves it out. In a project that already has a config, run `rogen init --agent-rules`, which adds only the agent files and changes no config, or paste the block yourself, markers included:
 
 ````md title="AGENTS.md"
 <!-- rogen -->
@@ -153,7 +153,6 @@ console.log(
 |---|---|---|---|
 | Claude Code | `.claude/settings.json` | `Stop` | `node "$CLAUDE_PROJECT_DIR"/.agents/hooks/rogen-check.mjs` |
 | Codex | `.codex/hooks.json` | `Stop` | `node "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.mjs` |
-| Gemini CLI | `.gemini/settings.json` | `AfterAgent` | `node "$GEMINI_PROJECT_DIR"/.agents/hooks/rogen-check.mjs` |
 | Cursor | `.cursor/hooks.json` | `stop` | `node .agents/hooks/rogen-check.mjs cursor` |
 | Copilot | `.github/hooks/rogen.json` | `agentStop` | `node "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.mjs` |
 

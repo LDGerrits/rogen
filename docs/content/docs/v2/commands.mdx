@@ -32,7 +32,7 @@ To sync with Argon or another tool instead of Rojo, run `rogen write --watch` be
 
 ## Exit Codes and JSON
 
-A command exits 0 when it did what it was asked, warnings included, 1 when the project has errors, and 2 when the command line is wrong. `rogen check` exits 1 on any warning too, so it fails a CI job on what `rogen build` lets through.
+A command exits 0 when it did what it was asked, warnings included, 1 when the project has errors, and 2 when the command line is wrong. `rogen check` exits 1 on any warning too.
 
 With `--json`, a command prints one JSON document on one line of stdout and nothing else. Match a diagnostic on its `code`, not its `message`. `rogen doc output` explains every key.
 
