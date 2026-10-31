@@ -21,9 +21,10 @@ export function Hero() {
 					</div>
 					<div className="hero-copy">
 						<InstallCommand className="in-4" />
-						<LangSwitch className="in-5" />
 					</div>
 				</div>
+				{/* over the demo it rewrites, and every example below it */}
+				<LangSwitch className="in-5" />
 				<HeroDemo />
 			</div>
 		</section>

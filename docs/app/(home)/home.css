@@ -374,7 +374,7 @@ html:not([data-lang="ts"]) .home [data-only="ts"] {
 	min-width: 12ch;
 }
 .home .langs {
-	margin-top: var(--s3);
+	margin-top: clamp(48px, 6vw, 80px);
 }
 .home .seg {
 	display: inline-flex;
@@ -428,7 +428,7 @@ html[data-lang="ts"] .home .seg [data-v="ts"],
 	grid-template-columns: repeat(12, minmax(0, 1fr));
 	column-gap: var(--s3);
 	align-items: stretch;
-	margin-top: clamp(48px, 6vw, 80px);
+	margin-top: var(--s2);
 	animation: home-up 0.8s var(--spring) 0.5s both;
 }
 .home .hero-ide .ide-vs {
