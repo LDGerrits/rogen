@@ -11,7 +11,7 @@
 	<strong>A Rojo superset that keeps each feature's server and client code in one folder.</strong>
 </p>
 <p align="center">
-	Rogen generates the Rojo project file from your file system. Keep a feature's server and client code together, and Rogen sends each file to the right place in Studio.
+	Rogen generates the Rojo project file from your file system, and sends each file to the right place in Studio.
 </p>
 <p align="center">
 	<a href="https://www.npmjs.com/package/@ldgerrits/rogen"><img alt="Beta release" src="https://img.shields.io/npm/v/@ldgerrits/rogen/next?style=flat-square&label=beta" /></a>
@@ -33,14 +33,14 @@
 
 - **Organize by feature** — Group all code, UI, and assets for a specific feature in one place. This gives you high cohesion, better scalability, fewer merge conflicts, and features that are simple to maintain or delete.
 - **Enforce boundaries** — Keep coupling low with a linter. Every path names its feature, so a [lint rule](https://rogen-roblox.vercel.app/docs/v2/linting) can stop one feature from requiring another.
-- **Multi-place games** — Write shared code once and use it in every place. When one place needs something different, add a file with the same name to that place's folder, and it overwrites the shared one there.
+- **Multi-place games** — Write shared code once and use it in every place. When one place needs something different, add a file with the same name to that place's folder, and it replaces the shared one there.
 - **Still Rojo** — Rogen runs the Rojo commands you use, with the same flags. One tool, and nothing to relearn.
 
 ## Built for agents
 
 When an agent works on a feature, everything it needs is in one folder, from server to client. It spends its context on your task instead of searching the codebase.
 
-Running several agents? Give each one a feature. A lint rule catches any agent that makes one feature require another, and there's no shared project file to conflict on.
+Running several agents? Give each one a feature. A lint rule catches any agent that makes one feature require another, and there's no shared project file to conflict on. See [Working with agents](https://rogen-roblox.vercel.app/docs/v2/agents) to set them up.
 
 ## How it works
 
