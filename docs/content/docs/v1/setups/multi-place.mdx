@@ -15,12 +15,14 @@ Give each place its own config that combines the shared code with that place's o
 
 Keep shared code and each place's code in separate folders:
 
-<SystemWindow>
-	<TreeFolder name="src" open />
-	<TreeFolder level={1} name="core" />
-	<TreeFolder level={1} name="lobby" />
-	<TreeFolder level={1} name="match" />
-</SystemWindow>
+<RouteFigure
+	disk={`
+  src/
+    core/
+    lobby/
+    match/
+`}
+/>
 
 </Step>
 

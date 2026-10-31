@@ -22,23 +22,20 @@ Most Roblox projects split their code twice:
 
 It looks tidy at first, but it doesn't scale. The folders keep growing and related files drift further apart, until changing the **Inventory** system means digging through three big trees just to collect its pieces.
 
-<PreviewGroup>
-	<SystemWindow>
-		<TreeFolder name="src" open />
-		<TreeFolder name="client" level={1} open />
-		<TreeFolder name="Controllers" level={2} open />
-		<TreeFile name="InventoryController.luau" level={3} highlight />
-
-    	<TreeFolder name="server" level={1} open mt />
-    	<TreeFolder name="Services" level={2} open />
-    	<TreeFile name="InventoryService.luau" level={3} highlight />
-
-    	<TreeFolder name="shared" level={1} open mt />
-    	<TreeFolder name="Types" level={2} open />
-    	<TreeFile name="InventoryTypes.luau" level={3} highlight />
-    </SystemWindow>
-
-</PreviewGroup>
+<RouteFigure
+	disk={`
+  src/
+    client/
+      Controllers/
+        InventoryController.luau
+    server/
+      Services/
+        InventoryService.luau
+    shared/
+      Types/
+        InventoryTypes.luau
+`}
+/>
 
 <Callout type="warn">
 	**The cost:** constant context switching. Working on one feature means
@@ -49,35 +46,30 @@ It looks tidy at first, but it doesn't scale. The folders keep growing and relat
 
 Keep all the code for one feature (client, server and shared) together in a single folder, and let Rogen sort out the rest. It reads your folder and file names and sends every file to the Roblox service where it belongs.
 
-<PreviewGroup>
-	<SystemWindow>
-		<TreeFolder name="src" open />
-		<TreeFolder name="Inventory" level={1} open highlight />
-		<TreeFolder name="client" level={2} dim />
-		<TreeFile name="InventoryController.luau" level={3} />
-		<TreeFolder name="server" level={2} dim />
-		<TreeFile name="InventoryService.luau" level={3} />
-		<TreeFolder name="shared" level={2} dim />
-		<TreeFile name="InventoryTypes.luau" level={3} />
-	</SystemWindow>
-
-    <PreviewArrow />
-
-    <StudioWindow>
-    	<TreeService name="ReplicatedStorage" type="replicated" />
-    	<TreeFolder name="Inventory" level={1} highlight />
-    	<StudioFile name="InventoryTypes" level={2} />
-
-    	<TreeService name="ServerScriptService" type="server" mt />
-    	<TreeFolder name="Inventory" level={1} highlight />
-    	<StudioFile name="InventoryService" level={2} />
-
-    	<TreeService name="StarterPlayerScripts" type="player" mt />
-    	<TreeFolder name="Inventory" level={1} highlight />
-    	<StudioFile name="InventoryController" level={2} />
-    </StudioWindow>
-
-</PreviewGroup>
+<RouteFigure
+	disk={`
+  src/
+    Inventory/
+      client/
+        InventoryController.luau
+      server/
+        InventoryService.luau
+      shared/
+        InventoryTypes.luau
+`}
+	studio={`
+  ReplicatedStorage
+    Inventory/
+      InventoryTypes
+  ServerScriptService
+    Inventory/
+      InventoryService
+  StarterPlayer
+    StarterPlayerScripts
+      Inventory/
+        InventoryController
+`}
+/>
 
 <Callout type="info">
 	**The result:** your repository stays organized by feature, and Studio
