@@ -35,7 +35,7 @@ When an agent works on a feature, everything it needs is in one folder, from ser
 
 Running several agents? Give each one a feature. A lint rule catches any agent that makes one feature require another, and there's no shared project file to conflict on.
 
-## Example
+## How it works
 
 `default.rogen.json` is a Rojo project file with `routes` added. The `tree` is the base: put in it what folder names can't say, such as your packages, and Rogen adds every routed file to it:
 
@@ -58,15 +58,7 @@ Running several agents? Give each one a feature. A lint rule catches any agent t
 }
 ```
 
-A folder or an `@` suffix named after a route sends its code there. The `*` route takes every file that matches no other:
-
-| In `src/Inventory`                | Goes to                                        |
-| --------------------------------- | ---------------------------------------------- |
-| `Server/InventoryService.luau`    | `ServerScriptService/Inventory`                |
-| `Client/InventoryController.luau` | `StarterPlayer/StarterPlayerScripts/Inventory` |
-| `Shared/InventoryTypes.luau`      | `ReplicatedStorage/Shared/Inventory`           |
-| `Save@Server.luau`                | `ServerScriptService/Inventory`                |
-| `InventoryConfig.luau`            | `ReplicatedStorage/Shared/Inventory`           |
+A folder or an `@` suffix named after a route sends its code there, so `src/Inventory/Server/InventoryService.luau` and `src/Inventory/Save@Server.luau` both go to `ServerScriptService/Inventory`. The `*` route takes every file that matches no other.
 
 The routes are yours to change. Add `"Gui": "StarterGui"`, and a `Gui` folder or a `@Gui` suffix sends code to StarterGui.
 

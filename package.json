@@ -1,7 +1,7 @@
 {
 	"name": "@ldgerrits/rogen",
 	"version": "2.0.0-beta.2",
-	"description": "A Rojo superset with file-system routing — organize your codebase by feature for cleaner architecture, seamless scaling, and simpler maintenance.",
+	"description": "A Rojo superset that keeps each feature's server and client code in one folder.",
 	"publishConfig": {
 		"access": "public"
 	},
