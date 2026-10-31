@@ -11,7 +11,7 @@
 	<strong>A Rojo superset that keeps each feature's server and client code in one folder.</strong>
 </p>
 <p align="center">
-	Rogen generates the Rojo project file from your file system.
+	Rogen generates the Rojo project file from your file system. Keep a feature's server and client code together, and Rogen sends each file to the right place in Studio.
 </p>
 <p align="center">
 	<a href="https://www.npmjs.com/package/@ldgerrits/rogen"><img alt="Beta release" src="https://img.shields.io/npm/v/@ldgerrits/rogen/next?style=flat-square&label=beta" /></a>
