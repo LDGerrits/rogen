@@ -27,6 +27,8 @@ A larger codebase puts feature folders inside layers, and each layer requires on
           PlayerData.luau
     core/
       Player/
+        Server/
+          PlayerService.luau
         Shared/
           PlayerState.luau
     features/
@@ -52,6 +54,9 @@ A larger codebase puts feature folders inside layers, and each layer requires on
   ServerScriptService
     app/
       Main
+    core/
+      Player/
+        PlayerService
     platform/
       Data/
         PlayerData
@@ -68,6 +73,6 @@ A larger codebase puts feature folders inside layers, and each layer requires on
 `}
 />
 
-`base` holds helpers that depend on nothing else, such as a signal class. `platform` holds the services every feature uses, such as player data. `core` holds what the game is about and every feature reads, such as the player's state. `features` holds the features, and each one requires the layers below it, never another feature. `app` holds the scripts that start the game: they require the features and wire them together, and nothing requires `app`.
+`base` holds code that knows nothing about Roblox or your game, such as a signal class. `platform` holds code that knows Roblox but not your game, such as a player data service. You could copy both into another game and they would work. `core` holds the shared features that other features depend on, such as the player. `features` holds the rest of the game, and a feature requires `core`, `platform` and `base`, never another feature. `app` holds the scripts that start the game: they require the features and wire them together, and nothing requires `app`.
 
 Rogen routes files, so it doesn't check that a require stays within these rules. [Linting](/docs/v2/linting) shows a lint rule that does.
