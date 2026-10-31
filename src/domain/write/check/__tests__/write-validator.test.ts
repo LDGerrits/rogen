@@ -402,6 +402,55 @@ describe("WriteValidator rules", () => {
 			});
 		});
 
+		describe("a script suffix before an @ suffix", () => {
+			const beforeAt = async () =>
+				(await route())
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "route.scriptSuffixBeforeAt"
+					);
+
+			it("should warn that Rojo reads the file as a ModuleScript, with no rename when the suffix and the @ name different places", async () => {
+				await write(
+					"src/Boot/Start.server@client.luau",
+					"src/Boot/Tool.plugin@client.luau",
+					"src/Boot/Run.server.luau",
+					"src/Boot/Hud@client.luau"
+				);
+
+				const warnings = await beforeAt();
+
+				expect(warnings.map(({ resource }) => resource)).toEqual([
+					abs("src/Boot/Start.server@client.luau"),
+					abs("src/Boot/Tool.plugin@client.luau"),
+				]);
+				expect(warnings[0]).toMatchObject({
+					severity: DiagnosticSeverity.Warning,
+					message: expect.stringContaining("ModuleScript"),
+				});
+				expect(warnings[0].fixes ?? []).toEqual([]);
+			});
+
+			it("should propose the name that ends with the suffix when it routes the file where the @ does", async () => {
+				await write("src/Boot/Start.server@server.luau");
+
+				expect(await beforeAt()).toMatchObject([
+					{
+						fixes: [
+							{
+								rename: {
+									from: abs(
+										"src/Boot/Start.server@server.luau"
+									),
+									to: abs("src/Boot/Start.server.luau"),
+								},
+							},
+						],
+					},
+				]);
+			});
+		});
+
 		describe("an instance named with a leading $", () => {
 			const reserved = async () =>
 				(await route())

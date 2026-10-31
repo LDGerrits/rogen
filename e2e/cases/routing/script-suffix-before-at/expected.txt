@@ -1,0 +1,59 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+stderr:
+  src/Boot/Spawn.server@server.luau - warning: Rojo reads ".server" only at the end of a name, so it makes this file a ModuleScript named "Spawn". For a Script, rename it Spawn.server.luau, which the "server" route takes; for a module, remove ".server". (route.scriptSuffixBeforeAt)
+  src/Boot/Start.server@client.luau - warning: Rojo reads ".server" only at the end of a name, so it makes this file a ModuleScript named "Start". For a Script, name it Start.server.luau in a folder that routes it; for a module, remove ".server". (route.scriptSuffixBeforeAt)
+
+$ rogen write --json
+exit 0
+stdout:
+  {
+    "changed": false,
+    "configs": [
+      {
+        "config": "default.rogen.json",
+        "projectFile": "<dir>/default.project.json",
+        "outcome": "unchanged",
+        "diagnostics": [
+          {
+            "file": "<dir>/src/Boot/Spawn.server@server.luau",
+            "severity": "warning",
+            "code": "route.scriptSuffixBeforeAt",
+            "message": "Rojo reads \".server\" only at the end of a name, so it makes this file a ModuleScript named \"Spawn\". For a Script, rename it Spawn.server.luau, which the \"server\" route takes; for a module, remove \".server\".",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-scriptsuffixbeforeat",
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/Boot/Spawn.server@server.luau",
+                  "to": "<dir>/src/Boot/Spawn.server.luau"
+                }
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Boot/Start.server@client.luau",
+            "severity": "warning",
+            "code": "route.scriptSuffixBeforeAt",
+            "message": "Rojo reads \".server\" only at the end of a name, so it makes this file a ModuleScript named \"Start\". For a Script, name it Start.server.luau in a folder that routes it; for a module, remove \".server\".",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-scriptsuffixbeforeat"
+          }
+        ]
+      }
+    ],
+    "plainProjects": []
+  }
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Boot: Folder
+      Spawn: ModuleScript  <- src/Boot/Spawn.server@server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Boot: Folder
+        Hud: ModuleScript  <- src/Boot/Hud@client.luau
+        Start: ModuleScript  <- src/Boot/Start.server@client.luau

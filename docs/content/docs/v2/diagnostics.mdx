@@ -295,6 +295,18 @@ Remove the `@key`, or move the file out of the governing route's folder. Rogen o
 
 An `@` that restates the governing route is fine, as in `Shared/Net/Remote@shared.luau`. Rogen also reports a file that another file replaces, because its name is wrong either way. See [The Outermost Route Wins](/docs/v2/core-concepts/routing#the-outermost-route-wins).
 
+### `route.scriptSuffixBeforeAt` [#route-scriptsuffixbeforeat]
+
+Warning. A Luau file has `.server`, `.client` or `.plugin` before its `@` suffix, as in `Start.server@client.luau`. Rojo reads a script suffix only at the end of a name, so it makes the file a ModuleScript, and the code in it never runs on its own.
+
+```
+warning: Rojo reads ".server" only at the end of a name, so it makes this file a ModuleScript named "Start". For a Script, name it Start.server.luau in a folder that routes it; for a module, remove ".server". (route.scriptSuffixBeforeAt)
+```
+
+For a module, remove the script suffix, as in `Start@client.luau`. For a Script, end the name with the suffix and route the file with a [routing folder](/docs/v2/core-concepts/routing/folders) or a [marker file](/docs/v2/core-concepts/routing/names#marker-files), because an `@` suffix must end the name ([`route.strayAt`](#route-strayat)).
+
+When the suffix routes the file where the `@` does, as `.server` does in `Start.server@server.luau` with a `server` route, the name without the `@` part is enough. Rogen proposes `Start.server.luau`, and in `--json`, `fixes` holds the rename.
+
 ### `route.caseMismatch` [#route-casemismatch]
 
 Warning. A folder or marker file matches a declared key except for the letter case after the first letter. Rogen reads it as an ordinary name.

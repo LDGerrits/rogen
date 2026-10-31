@@ -30,6 +30,10 @@ import { MissingSourcePaths } from "./missing-source-paths.js";
 import { RoutedFile } from "../router.js";
 import { Assembly } from "../tree-assembler.js";
 
+/** A script suffix written before an `@` suffix, as in `Start.server@client.luau`, where Rojo doesn't read it. */
+const SCRIPT_SUFFIX_BEFORE_AT =
+	/^(?<stem>.+)\.(?<suffix>server|client|plugin)@[^.@]+(?<extension>\.luau?)$/;
+
 function reservedKeys(
 	node: RojoNode,
 	at: readonly string[]
@@ -70,6 +74,7 @@ export class WriteValidator {
 			...this.unrouted(),
 			...this.serverCodeShipped(),
 			...this.deadScript(),
+			...this.scriptSuffixBeforeAt(),
 			...this.reservedName(),
 			...this.instanceClash(),
 			...this.emptyName(),
@@ -375,6 +380,44 @@ export class WriteValidator {
 		return run === "Script" || run === "LocalScript"
 			? `a ${run}`
 			: `a Script with RunContext ${run}`;
+	}
+
+	private scriptSuffixBeforeAt(): Diagnostic[] {
+		return this.placement.files.flatMap((file) => {
+			if (!file.entry.file.isLuauModule) return [];
+			const found = SCRIPT_SUFFIX_BEFORE_AT.exec(
+				path.posix.basename(file.entry.source)
+			)?.groups;
+			if (!found) return [];
+			const { stem, suffix, extension } = found;
+			const named = `${stem}.${suffix}${extension}`;
+			const routes = this.config.keys.resolve(suffix) === file.route;
+			const script = routes
+				? `rename it ${named}, which the "${file.route}" route takes`
+				: `name it ${named} in a folder that routes it`;
+			return [
+				warningDiagnostic(
+					"route.scriptSuffixBeforeAt",
+					{ resource: file.entry.source },
+					`Rojo reads ".${suffix}" only at the end of a name, so it makes this file a ModuleScript named "${file.instancePath[file.instancePath.length - 1]}". For a Script, ${script}; for a module, remove ".${suffix}".`,
+					routes
+						? [
+								{
+									rename: {
+										from: file.entry.source,
+										to: path.posix.join(
+											path.posix.dirname(
+												file.entry.source
+											),
+											named
+										),
+									},
+								},
+							]
+						: []
+				),
+			];
+		});
 	}
 
 	private reservedName(): Diagnostic[] {
