@@ -65,7 +65,7 @@ Running several agents? Give each one a feature. A lint rule catches any agent t
 }
 ```
 
-A file goes where its folder or `@` suffix says: `Server/` and `@Server` both mean ServerScriptService. Everything else goes to `*`, and a route you add, such as `"Gui": "StarterGui"`, works the same way.
+A file goes where its [folder or `@` suffix](https://rogen-roblox.vercel.app/docs/v2/core-concepts/routing) says: `Server/` and `@Server` both mean ServerScriptService. Everything else goes to `*`, and a route you add, such as `"Gui": "StarterGui"`, works the same way.
 
 ## Installation
 
@@ -84,7 +84,7 @@ rogen build -o game.rbxl   # Update the project file, then build a place with Ro
 rogen check                # Print warnings and errors, and exit 1 on any
 ```
 
-`sourcemap`, `upload`, `syncback` and `plugin` take Rojo's flags too. See the [documentation](https://rogen-roblox.vercel.app/docs/v2) for every command.
+`sourcemap`, `upload`, `syncback` and `plugin` take Rojo's flags too. See the [command reference](https://rogen-roblox.vercel.app/docs/v2/commands) for every command.
 
 ## FAQ
 
