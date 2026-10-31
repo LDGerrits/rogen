@@ -3,7 +3,7 @@ title: Several Places
 description: Set up Rogen for a game with more than one place
 ---
 
-A game with a lobby and a match is two places that share code. In Rogen, each place has a config of its own, and the shared code is a plain folder that each place lists in its `sourcePaths`. No config reads another.
+A game with a lobby and a match is two places that share code. In Rogen, each place has a config of its own, and the shared code is a plain folder that each place lists in its `sourcePaths`.
 
 ## Start a Game with Places
 
@@ -13,7 +13,7 @@ In an empty folder, run:
 rogen init --places
 ```
 
-It writes a first place, `game`, with its code in `src/game`, the shared code in `src/common`, and the place's map in `place/game`:
+It writes a first place, `game`, with its code in `src/game` and the shared code in `src/common`:
 
 ```json title="game.rogen.json"
 {
@@ -25,57 +25,28 @@ It writes a first place, `game`, with its code in `src/game`, the shared code in
 		"Shared": "ReplicatedStorage/Shared",
 		"*": "ReplicatedStorage/Shared"
 	},
-	"tree": {
-		"$className": "DataModel",
-		"Lighting": { "$path": "place/game/Lighting" },
-		"SoundService": { "$path": "place/game/SoundService" },
-		"Workspace": { "$path": "place/game/Workspace" }
-	}
+	"tree": { "$className": "DataModel" }
 }
 ```
 
-`game.rogen.json` writes `game.project.json`. Each place needs its own `name`, because Rojo can't read a project file other than `default.project.json` without one.
+A place's file replaces a shared file at the same path, because the later source path wins.
 
 ## Name the Place
 
-The root holds no `default.rogen.json`, so name the place in each command, as you would name a Rojo project file:
+There is no `default.rogen.json`, so name the place in each command:
 
 ```bash
 rogen serve game
 rogen build game -o game.rbxl
 ```
 
-`rogen write` and `rogen check` with no place cover every config in the folder.
-
-## Share Code
-
-Put the code that every place needs in `src/common`, and the code of one place in its own folder. A place's file replaces a shared file at the same path, because the later source path wins. `rogen where` shows which file each place uses.
-
 ## Add a Place
 
-To add a `lobby` place, copy the first place's config and its `place` folder, and make a folder for its code:
+Copy the first place's config, set its `"name"` to `"lobby"` and its own folder in `sourcePaths`, and make that folder:
 
 ```bash
 cp game.rogen.json lobby.rogen.json
-cp -r place/game place/lobby
 mkdir src/lobby
 ```
 
-Then edit `lobby.rogen.json`: set `"name"` to `"lobby"`, change `"src/game"` in `sourcePaths` to `"src/lobby"`, and change each `place/game` in the `tree` to `place/lobby`. Until you edit the copy, Rogen writes neither place ([`config.identicalConfig`](/docs/v2/diagnostics#config-identicalconfig)).
-
-## Serve Two Places at Once
-
-Rojo serves on port 34872 by default, so the second place needs a port of its own:
-
-```bash
-rogen serve lobby
-rogen serve game --port 34873
-```
-
-To keep the port, set Rojo's `servePort` in the place's config. Rojo's `servePlaceIds` works the same way: the Rojo plugin then connects only from that place in Studio.
-
-## The Editor and roblox-ts
-
-luau-lsp reads one `sourcemap.json`, and a sourcemap describes one place. `rogen init --places` writes a `.vscode/settings.json` whose `generatorCommand` is `rogen sourcemap game --watch -o sourcemap.json`. To work on the lobby, change `game` to `lobby` there.
-
-roblox-ts compiles one `tsconfig.json` at a time, so `rogen init --language roblox-ts --places` gives each place a folder under `projects/`, with the shared code in `projects/common/src`. Name a place by its folder, as in `rogen serve projects/game`. To add one, copy `projects/game` to `projects/lobby`, set its `name`, and add `rbxtsc -p projects/lobby` to the `build` and `watch` scripts in `package.json`.
+To serve two places at once, give the second a port of its own with `--port`, or set Rojo's `servePort` in its config.
