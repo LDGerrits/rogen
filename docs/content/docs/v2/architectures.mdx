@@ -3,4 +3,74 @@ title: Architectures
 description: Folder layouts that work well with Rogen
 ---
 
-This guide is being rewritten for Rogen 2. Until it's back, [Routing](/docs/v2/core-concepts/routing) explains how folders decide where your code goes.
+Rogen puts each file where its route sends it, so the layout of your folders is yours to choose. Two layouts work well with it.
+
+## Feature Folders
+
+Give each feature one folder, with a routing folder inside for each side it runs on. The [Introduction](/docs/v2) shows how `src/Inventory` holds everything about the inventory, and [Routing Folders](/docs/v2/core-concepts/routing/folders) how it reaches the game.
+
+## Layers
+
+A larger codebase can put the feature folders inside layers, where each layer requires only the layers below it:
+
+<RouteFigure
+	disk={`
+  src/
+    base/
+      Shared/
+        Signal.luau
+    platform/
+      Marketplace/
+        Server/
+          Marketplace.luau
+    core/
+      Player/
+        Server/
+          PlayerService.luau
+        Shared/
+          PlayerState.luau
+    features/
+      Inventory/
+        Client/
+          InventoryController.luau
+        Server/
+          InventoryService.luau
+    app/
+      Server/
+        Main.server.luau
+      Client/
+        Main.client.luau
+`}
+	studio={`
+  ReplicatedStorage
+    Shared/
+      base/
+        Signal
+      core/
+        Player/
+          PlayerState
+  ServerScriptService
+    app/
+      Main
+    core/
+      Player/
+        PlayerService
+    platform/
+      Marketplace/
+        Marketplace
+    features/
+      Inventory/
+        InventoryService
+  StarterPlayer
+    StarterPlayerScripts
+      app/
+        Main
+      features/
+        Inventory/
+          InventoryController
+`}
+/>
+
+`base` holds code that knows nothing about Roblox or your game, such as a signal class. `platform` holds code that knows Roblox but not your game, such as a wrapper around MarketplaceService. You could copy both into another game and they would work. `core` holds the shared features that other features depend on, such as the player. `features` holds the rest of the game, and a feature requires `core`, `platform` and `base`, never another feature. `app` holds the scripts that start the game: they require the features and wire them together, and nothing requires `app`.
+
+Rogen routes files, so it doesn't check that a require stays within these rules. [Linting](/docs/v2/linting) shows a lint rule that does.

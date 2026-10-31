@@ -68,6 +68,10 @@ A route inside another route is an ordinary folder. Server code under `Shared/` 
 
 The `*` route takes every file that no other route matches, so `src/Shop/Prices.luau` lands in `ReplicatedStorage/Shared/Shop`. `rogen init` writes it. Without `*`, Rogen leaves such a file out and warns about it, so a server file that forgets its route never reaches clients. That suits a project where every file names its side.
 
+## What Each Side Can Require
+
+Code in `Shared/` runs on the server and on every client, so it can't require anything under `Server/`. A Luau require names the instance, not the file, as in `require(ReplicatedStorage.Shared.Shop.Prices)`.
+
 ## Check Where a File Lands
 
 ```

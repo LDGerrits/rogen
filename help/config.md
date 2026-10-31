@@ -20,3 +20,5 @@ Ownership:
 
 - `rogen write` overwrites the project file of each config it writes, and so does every command that writes one: put changes in the `.rogen.json`. `*.project.json` is gitignored by `init`; `!name.project.json` keeps one.
 - The `compiledPath` is compiler output: edit the sources in the source paths.
+
+The docs page: https://rogen-roblox.vercel.app/docs/v2/config

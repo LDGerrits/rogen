@@ -3,32 +3,27 @@ title: Config
 description: The keys Rogen adds to a Rojo project file
 ---
 
-A config, `default.rogen.json`, is a Rojo project file with three more keys. Rogen writes it, with your routed files added to the `tree`, to `default.project.json`. Edit the `.rogen.json`: `rogen write` overwrites the project file. Rojo's own keys work as [Rojo documents them](https://rojo.space/docs/v7/project-format/).
+A config, `default.rogen.json`, is a Rojo project file with three more keys. Rogen writes it, with your routed files added to the `tree`, to `default.project.json`, so edit the config, never the project file. Rojo's own keys work as [Rojo documents them](https://rojo.space/docs/v7/project-format/).
 
 | Key | Default | What it does |
 |---|---|---|
 | `routes` | none | [Route keys](/docs/v2/core-concepts/routing) and their targets. |
 | `sourcePaths` | `["src"]` | The folders Rogen reads. A later folder's file replaces an earlier one's at the same path. |
-| `compiledPath` | none | Where a compiler such as roblox-ts or Darklua writes your code, for Rojo to sync from. Rogen creates the folders and scripts it mounts there before the compiler runs, so Rojo picks up what the compiler writes later. |
+| `compiledPath` | none | The folder a compiler such as [roblox-ts](/docs/v2/setups/roblox-ts) or [Darklua](/docs/v2/setups/luau#using-darklua) writes your code to, such as `out`. Rogen still reads the source paths to decide where each file goes, and points the project file at the compiled copy of the file in this folder, so Rojo syncs what the compiler wrote. |
 
 ## The Tree
 
-The `tree` is the base that Rogen adds your routed files to. Put in it what folder names can't place: packages, such as Wally's `Packages` or roblox-ts's `node_modules/@rbxts`, and `$properties`. A folder of a source path that the tree mounts is synced as it is, without routing.
+The `tree` is the base that Rogen adds your routed files to. [The Tree](/docs/v2/core-concepts/routing/tree) says what goes in it.
 
-`rogen init` mounts the package folders that are there, and those that a `wally.toml` or `pesde.toml` says are coming. In a project without either, mount the folder yourself:
+## Leaving Files Out
+
+Rojo's `globIgnorePaths` lists globs, relative to the config, for files that Rojo ignores. Rogen doesn't route them or warn about them:
 
 ```json title="default.rogen.json"
 {
-	"tree": {
-		"$className": "DataModel",
-		"ReplicatedStorage": {
-			"Packages": { "$path": "Packages" }
-		}
-	}
+	"globIgnorePaths": ["**/*.spec.luau"]
 }
 ```
-
-While the folder isn't installed yet, write `{ "optional": "Packages" }` as its `$path`, so Rojo serves without it.
 
 ## Route Keys
 

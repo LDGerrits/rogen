@@ -1,0 +1,89 @@
+---
+title: Using roblox-ts
+description: Compile with roblox-ts while Rogen routes your TypeScript files
+---
+
+[roblox-ts](https://roblox-ts.com/) compiles the TypeScript in `src` to Luau in `out`. Rogen reads `src` to decide where each file goes, and points the project file at the compiled file in `out`.
+
+## Start a Project
+
+In an empty folder, run:
+
+```bash
+rogen init --language roblox-ts
+```
+
+`init` runs `npm create roblox-ts` first, which needs npm and the network. Then it writes the config and a small sample game. In a folder that already has a `tsconfig.json`, a bare `rogen init` finds roblox-ts and sets Rogen up beside it.
+
+The config that `init` writes:
+
+```json title="default.rogen.json"
+{
+	"name": "game",
+	"sourcePaths": ["src"],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	},
+	"compiledPath": "out",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"rbxts_include": {
+				"$path": "include",
+				"node_modules": {
+					"$className": "Folder",
+					"@rbxts": { "$path": "node_modules/@rbxts" }
+				}
+			}
+		}
+	}
+}
+```
+
+`compiledPath` is the `outDir` from `tsconfig.json`, where Rojo syncs from. The `tree` mounts the roblox-ts runtime and your `@rbxts` packages, so a package that you install with `npm i` reaches the game with no change to the config.
+
+## Run the Compiler Beside Rogen
+
+Run each command in its own terminal:
+
+```bash
+npm run watch
+rogen serve
+```
+
+`npm run watch` runs `rbxtsc -w`, which compiles each file when you save it. `rogen serve` writes the project file again when you add, move or rename a file. `rbxtsc` needs that project file, so on a fresh clone, run `rogen write` before the first compile.
+
+## Add a Feature
+
+roblox-ts projects name files in kebab-case and folders in lowercase, and the routes that `init` writes are lowercase to match:
+
+<RouteFigure
+	disk={`
+  src/
+    inventory/
+      client/
+        inventory-hud.client.ts
+      server/
+        inventory-service.ts
+      shared/
+        inventory-types.ts
+`}
+	studio={`
+  ReplicatedStorage
+    shared/
+      inventory/
+        inventory-types
+  ServerScriptService
+    inventory/
+      inventory-service
+  StarterPlayer
+    StarterPlayerScripts
+      inventory/
+        inventory-hud
+`}
+/>
+
+Import by relative file path, as in any TypeScript project.

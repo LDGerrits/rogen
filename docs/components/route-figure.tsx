@@ -65,13 +65,19 @@ export function RouteFigure({
 		outline.filter((row) => row.depth === 0).length === 1;
 	const diskRows = titled ? outline.slice(1) : outline;
 	const depths = diskRows.map((row) => row.depth);
-	let colour: Service = "r";
-	const studioRows = rowsOf(studio ?? "").map(({ depth, name }) => {
+	// Each row takes the colour of the top-level service above it.
+	const studioRows = rowsOf(studio ?? "").reduce<
+		{ depth: number; name: string; icon: Icon; colour: Service }[]
+	>((rows, { depth, name }) => {
 		const service = SERVICES[name];
-		if (service && depth === 0) colour = service;
+		const colour =
+			service && depth === 0 ? service : (rows.at(-1)?.colour ?? "r");
 		const icon: Icon = service ? "svc" : name.endsWith("/") ? "dir" : "scr";
-		return { depth, name: name.replace(/\/$/, ""), icon, colour };
-	});
+		return [
+			...rows,
+			{ depth, name: name.replace(/\/$/, ""), icon, colour },
+		];
+	}, []);
 	return (
 		<figure className={`route-fig not-prose${studio ? "" : " solo"}`}>
 			<div className="rf-pane">

@@ -1,0 +1,48 @@
+---
+title: Using Luau
+description: The editor, requires and Darklua in a Luau game
+---
+
+## Keep the Editor's Sourcemap Current
+
+luau-lsp reads `sourcemap.json` to know where each file sits in the game. Its VS Code extension writes that file by running `rojo sourcemap --watch` on `default.project.json`.
+
+`rogen init` gitignores `*.project.json`, so a fresh clone has no project file and luau-lsp can't find the game. After you clone, run `rogen write`, then **Luau: Regenerate Sourcemap** from the command palette.
+
+A new file in a feature folder reaches the sourcemap by itself. A new feature folder needs a new entry in `default.project.json`, which `rogen serve` writes as you add the folder. When serve isn't running, run `rogen write`.
+
+## Requires
+
+A Luau `require` names where the module is in the game, not where the file is on disk, and `rogen where <file>` prints it. A string require such as `require("./Prices")` resolves in the game too, so it reaches only the files routed into the same folder.
+
+## Using Darklua
+
+[Darklua](https://github.com/seaofvoices/darklua) rewrites your code into a folder of its own, such as `dist`, and Rojo syncs from there. Its `convert_require` rule turns `require("../Shared/InventoryTypes")` into a require by instance path, which it finds in `sourcemap.json`:
+
+```json title=".darklua.json"
+{
+	"rules": [
+		{
+			"rule": "convert_require",
+			"current": { "name": "path" },
+			"target": {
+				"name": "roblox",
+				"rojo_sourcemap": "sourcemap.json",
+				"indexing_style": "wait_for_child"
+			}
+		}
+	]
+}
+```
+
+The game needs two configs. `default.rogen.json` reads `src`, and the sourcemap comes from it. `dist.rogen.json` is a full copy that adds `"compiledPath": "dist"` and a `name`, and Rojo serves the project file it writes. A change to `routes`, `sourcePaths` or `tree` goes into both files. When you run `rogen init` on a Rojo project that already uses Darklua, it writes both configs for you.
+
+Run each command in its own terminal, in this order:
+
+```bash
+rogen sourcemap --watch -o sourcemap.json
+darklua process src dist --watch
+rogen serve dist
+```
+
+Start the sourcemap first: without `sourcemap.json`, Darklua stops on each file. To build a release, run the same three steps once, with `rogen build dist -o game.rbxl` last.

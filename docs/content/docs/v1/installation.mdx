@@ -6,7 +6,6 @@ description: Install Rogen and set up the project
 import { Callout } from "fumadocs-ui/components/callout";
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Tabs, Tab } from "fumadocs-ui/components/tabs";
-import InstallCodeBlock from "@/components/install-code-block";
 
 You can install Rogen with **Rokit** or **npm**.
 
@@ -24,7 +23,10 @@ You can install Rogen with **Rokit** or **npm**.
 
         Add Rogen to your `rokit.toml`:
 
-        <InstallCodeBlock />
+        ```toml title="rokit.toml"
+        [tools]
+        rogen = "ldgerrits/rogen@1.4.4"
+        ```
 
       </Step>
 

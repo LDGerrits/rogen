@@ -1,0 +1,54 @@
+---
+title: Linting
+description: A lint rule that stops one feature from requiring another
+---
+
+Rogen doesn't check your requires. Because every path names its side and its feature, a linter can catch a require that crosses a boundary before the game runs.
+
+## Luau
+
+[Lute](https://lute.luau.org/cli/lint/)'s linter runs rules written in Luau. The rule [`require_boundaries.luau`](https://github.com/LDGerrits/rogen/blob/main/docs/public/lint/require_boundaries.luau) reads the sourcemap to learn where each file lands, follows each `require` to the instance it names, and reports shared code that requires a side, a feature that requires another feature not listed in `sharedFeatures`, and a `require` of an instance that no file provides.
+
+1. Install Lute with `rokit add luau-lang/lute`, and save the rule:
+
+	```bash
+	curl -o lints/require_boundaries.luau --create-dirs https://rogen-roblox.vercel.app/lint/require_boundaries.luau
+	```
+
+2. Add a `.config.luau`. `featureRoots` are the targets of your routes:
+
+	```luau title=".config.luau"
+	return {
+		lute = {
+			lint = {
+				rulepaths = { "lints" },
+				ruleconfigs = {
+					require_boundaries = {
+						options = {
+							sourcemap = "sourcemap.json",
+							featureRoots = {
+								"ServerScriptService",
+								"StarterPlayer.StarterPlayerScripts",
+								"ReplicatedStorage.Shared",
+							},
+							sharedFeatures = { "Util" },
+						},
+					},
+				},
+			},
+		},
+	}
+	```
+
+3. Write the sourcemap, then lint:
+
+	```bash
+	rogen sourcemap -o sourcemap.json
+	lute lint --no-default-lints src
+	```
+
+Each crossed boundary is an error, such as `feature Inventory requires feature Shop: ServerScriptService.Shop.ShopService`, and `lute lint` exits 1, so a CI job that runs it fails.
+
+## roblox-ts
+
+An import names a file, so ESLint's [`import/no-restricted-paths`](https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-restricted-paths.md) does the same job: give each feature a zone, and each side a zone that keeps out the other side's folders.

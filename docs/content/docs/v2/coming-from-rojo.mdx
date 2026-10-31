@@ -1,6 +1,42 @@
 ---
 title: Coming from Rojo
-description: Move a Rojo project to Rogen
+description: Move a Rojo project to Rogen, then sort it by feature
 ---
 
-This guide is being rewritten for Rogen 2. Until it's back, run `rogen init` in your Rojo project. It lifts your `default.project.json` into a `default.rogen.json` and keeps your tree. The source path is the closest folder that holds the code the project file mounts, such as `code` for `code/server` and `code/client`. Each of those folders becomes a route. Folders mounted from the top of the project, such as `server/`, stay in the tree. `init` warns about code that it places nowhere ([`init.codeOutsideSourcePaths`](/docs/v2/diagnostics#init-codeoutsidesourcepaths)). After that, make your changes in `default.rogen.json`, because `rogen write` writes `default.project.json` from it. If Darklua writes your code to a folder such as `build`, `init` also writes a `dist.rogen.json` for that folder. Serve it with `rogen serve dist`.
+Use Rogen when you want each feature's server, client and shared code in one folder. If your folders already match Roblox's services and you don't mind writing the tree by hand, Rojo alone does the job. Rogen runs Rojo underneath, so Rojo's keys and flags keep their meaning.
+
+## Run `rogen init`
+
+In the folder that holds `default.project.json`, run `rogen init`. It moves no files. It lifts the project file into `default.rogen.json`, keeps your tree, and turns each folder that a node mounts from `src` into a route to that node:
+
+```json title="default.rogen.json"
+{
+	"name": "my-game",
+	"routes": {
+		"Shared": "ReplicatedStorage/Shared",
+		"Server": "ServerScriptService/Server",
+		"Client": "StarterPlayer/StarterPlayerScripts/Client",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Packages": { "$path": "Packages" }
+		}
+	}
+}
+```
+
+Every file lands where Rojo put it, so your requires still work. From now on, `rogen write` overwrites `default.project.json`, so make your changes in `default.rogen.json` and run `git rm --cached default.project.json`.
+
+## Sort by Feature
+
+Next, move the code into [feature folders](/docs/v2/core-concepts/routing/folders), one feature at a time:
+
+```bash
+git mv src/server/Services/InventoryService.luau src/Inventory/Server/
+git mv src/client/Controllers/InventoryController.luau src/Inventory/Client/
+git mv src/shared/Types/InventoryTypes.luau src/Inventory/Shared/
+```
+
+Moving a file changes its instance path. Rogen doesn't check requires, so update the ones that reach the feature. `rogen where` on a module prints the require that reaches it. Old folders and feature folders build side by side, so the game works between moves.

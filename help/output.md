@@ -2,7 +2,7 @@
 
 Diagnostics print as `file:line:col - severity: message (code)`, on stderr, except those of `check`, which prints them on stdout; `rogen help <code>` explains the code. An error stops the config from being written. Warnings don't, and still name something to fix.
 
-Exit codes: 0 done, warnings included (`check` exits 1 on any diagnostic about the paths it is given, or about the whole project, for CI); 1 the project has errors (an invalid config, build errors, a failed write, a cancelled init); 2 the command line is wrong (an unknown command, option or name, or a combination that isn't allowed). `rogen serve` and every `--watch` exit 130 on Ctrl+C (143 on SIGTERM, 129 on SIGHUP), and 1 when Rojo crashes again right after Rogen restarted it; `serve` exits with the server's code when a server stops on its own, and 0 when another `rogen serve` already serves the project, and `build --watch` and `sourcemap --watch` exit 1 when Rojo stops watching on its own, as it does when its first build fails. `--json` keeps the same codes.
+Exit codes: 0 done, warnings included (`check` exits 1 on any diagnostic about the paths it is given, or about the whole project, for CI); 1 the project has errors (an invalid config, build errors, a failed write, a cancelled init); 2 the command line is wrong (an unknown command, option or name, or a combination that isn't allowed). `rogen serve` and every `--watch` exit 130 on Ctrl+C (143 on SIGTERM, 129 on SIGHUP); `serve`, `build --watch` and `sourcemap --watch` exit 1 when Rojo crashes again right after Rogen restarted it; `serve` exits with the server's code when a server stops on its own, and 0 when another `rogen serve` already serves the project, and `build --watch` and `sourcemap --watch` exit 1 when Rojo stops watching on its own, as it does when its first build fails. `--json` keeps the same codes.
 
 Under GitHub Actions, `build` and `check` also write each diagnostic as a workflow command on stderr (`::warning file=src/Save@sever.luau,title=route.strayAt::did you mean "@Server"?`), one per file for a warning about several; never with `--json`.
 
@@ -34,3 +34,5 @@ Each JSON diagnostic has `file`, `line` and `column` (when it has a position), `
 `rogen check <paths>` is `where`'s verdict: it prints only the diagnostics about the paths (a clean path prints nothing), writes nothing and exits 1 on any, a stale project file of their config included; with no path it reports every `.rogen.json` of the folder whole, the compiled path's warnings included, and each project file on disk that differs from what `write` would write.
 
 `rogen write` is safe beside a running `rogen write --watch` or `rogen serve`: it writes only bytes that changed.
+
+The docs page: https://rogen-roblox.vercel.app/docs/v2/commands
