@@ -74,8 +74,7 @@ export function InstallCommand({ className = "" }: { className?: string }) {
 	return (
 		<div className={`install ${className}`}>
 			<div className="pick">
-				<span id="install-l">Install with</span>
-				<div className="seg" role="tablist" aria-labelledby="install-l">
+				<div className="seg" role="tablist" aria-label="Install with">
 					{managers.map((id, i) => (
 						<button
 							key={id}

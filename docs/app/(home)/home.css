@@ -23,8 +23,8 @@
 	--agent-1: #3d63c9;
 	--agent-2: #a46f00;
 	--agent-3: #10262b;
-	--field: #dcd6ca;
-	--field-dot: rgba(16, 38, 43, 0.07);
+	--field: #e3e8e6;
+	--field-dot: rgba(16, 38, 43, 0.1);
 	/* a macOS segmented control: a sunken track, the chosen segment raised on it */
 	--seg: rgba(16, 38, 43, 0.075);
 	--seg-on: #fff;
@@ -362,16 +362,8 @@ html:not([data-lang="ts"]) .home [data-only="ts"] {
 .home .hero .install {
 	margin-top: 0;
 }
-/* a label and a segmented control: "Install with" and "Works with", their controls on one line */
 .home .pick {
 	display: flex;
-	align-items: center;
-	gap: 12px;
-	font: 400 13px/1 var(--mono);
-	color: var(--ink-3);
-}
-.home .pick > span {
-	min-width: 12ch;
 }
 .home .langs {
 	margin-top: clamp(48px, 6vw, 80px);
