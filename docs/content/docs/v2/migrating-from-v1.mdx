@@ -1,52 +1,13 @@
 ---
 title: Migrating from v1
-description: Why v2 changed, and how to move a v1 project to it
+description: Move a v1 project to v2
 ---
-
-import { Steps, Step } from "fumadocs-ui/components/steps";
-
-Run `rogen init` to migrate a v1 project. Your scripts land where they did, and it warns about anything it can't carry over.
-
-## Why v2 Changed
-
-Rogen v2 is a complete overhaul. In v1, Rogen only wrote the project file. You still wrote part of the tree yourself, and you ran Rojo next to Rogen to serve and build. v2 merges the two into one tool: it's now a superset of Rojo. Your config is a Rojo project file with a few extra keys, and Rogen runs Rojo's commands for you.
-
-v2 also fixes the flaws in v1's design. Options like `casing` and `unwrap`, and markers like `.structure`, were patches for problems in v1's routing rules. v2 replaces those rules, so the patches are gone. The outermost route now decides where a file goes, and you choose where each route points:
-
-- **The outermost route governs.** In v1, the deepest rule won, so `ReplicatedFirst/main.client.luau` ended up in `StarterPlayerScripts`. To keep a folder together, you needed `.structure` or `.sync`. In v2, a folder's route covers everything inside it.
-- **Only `@` routes a name.** v1 guessed routes from prefixes and suffixes, so `HttpClient.luau` went to the client as `Http`. In v2, only a name like `Save@Server.luau` is routed, and Rojo's `.server` and `.client` keep their usual meaning.
-- **You write every route.** v1 had its keywords and wrapper folders built in, and sent unmatched files to `ReplicatedStorage`. In v2, only the routes you declare exist, and each one points where you write it, with or without a wrapper folder. `rogen init` adds a `*` route for files that match no other route. Without it, those files are left out with a warning.
-
-## Move a Project to v2
-
-<Steps>
-
-<Step>
-### Run `rogen init`
 
 [Install v2](/docs/v2/installation) and run `rogen init` in the folder that holds `.rogen.json`. Add `--dry-run` to see the plan first.
 
 `init` writes a config for each v1 mode, with routes that put every script where v1 did, and takes the tree from your `project`. It renames the files that v1 routed by a word in their name to the `@` form, such as `Combat_Server.luau` to `Combat@Server.luau`, and renames `.rogen.json` to `.rogen.json.v1`.
 
-</Step>
-
-<Step>
-### Fix the Warnings
-
-`init` warns about what it can't carry over: tags, v1's marker files that don't route, roblox-ts files that v1 routed by their names, and files that v1 placed by the deepest rule. Each warning says what to do. Then run `rogen check` until it prints nothing.
-
-</Step>
-
-<Step>
-### Compare With Your v1 Build
-
-Run `rogen serve` and compare Studio's Explorer with your v1 build. When every script sits where it did, delete `.rogen.json.v1`.
-
-</Step>
-
-</Steps>
-
-If an earlier v2 `rogen init` lifted the tree that v1 generated, delete `default.rogen.json`, rename `.rogen.json.v1` back to `.rogen.json`, and run `rogen init` again.
+It warns about what it can't carry over: tags, v1's marker files that don't route, and files that v1 placed by the deepest rule. Each warning says what to do. Run `rogen check` until it prints nothing, then `rogen serve` and compare Studio's Explorer with your v1 build. When every script sits where it did, delete `.rogen.json.v1`.
 
 ## What Replaces Each v1 Feature
 
@@ -55,15 +16,13 @@ If an earlier v2 `rogen init` lifted the tree that v1 generated, delete `default
 | `source`, `-s` | `sourcePaths` |
 | `aliases`, built-in keywords | `routes` |
 | `casing`, `unwrap`, `.unwrap` | the route's target path |
-| `verbatim`, `.verbatim` | not needed |
 | keywords in names | `@key` or a routing folder |
 | `tags`, `-t` | a source path listed after the others, whose files replace the ones at the same path |
-| modes, `-m` | a config for each mode, named after its `output`, such as `build.rogen.json` |
+| modes, `-m` | a config for each mode, such as `build.rogen.json` |
 | a mode's `build`, `-b` | `compiledPath` |
-| a mode's `output`, `-o` | none. `rogen build -o` now builds a place |
 | `project`, `template`, `-p` | `tree` in the config |
 | `.structure` | a marker file such as `@shared` |
 | `.sync` | a `$path` node in the `tree` |
-| `^` at the service's root | `^` at the route's target |
 | several places from one config | a config per place |
 
+In v2, the outermost route decides where a file goes, and only a name like `Save@Server.luau` is routed. That is why v1's `casing`, `unwrap` and `.structure` have no v2 key: they patched routing rules that v2 replaced.
