@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { TrafficLights } from "../ide";
 
 const installs = {
 	rokit: {
@@ -71,34 +72,59 @@ export function InstallCommand({ className = "" }: { className?: string }) {
 		copyText(installs[manager].command).then(done, done);
 	};
 
+	// A terminal window: the package manager picked in its title bar, the command at its prompt.
 	return (
-		<div className={`install ${className}`}>
-			<div className="tabs" role="tablist" aria-label="Install with">
-				{managers.map((id, i) => (
-					<button
-						key={id}
-						ref={(el) => {
-							tabs.current[i] = el;
-						}}
-						type="button"
-						role="tab"
-						aria-selected={manager === id}
-						tabIndex={manager === id ? 0 : -1}
-						onClick={() => select(id)}
-						onKeyDown={(e) => onKeyDown(e, i)}
-					>
-						{installs[id].label}
-					</button>
-				))}
+		<div className={`install ide ide-win ide-vs ${className}`}>
+			<div className="ide-bar">
+				<TrafficLights />
+				<div className="seg" role="tablist" aria-label="Install with">
+					{managers.map((id, i) => (
+						<button
+							key={id}
+							ref={(el) => {
+								tabs.current[i] = el;
+							}}
+							type="button"
+							role="tab"
+							aria-selected={manager === id}
+							tabIndex={manager === id ? 0 : -1}
+							onClick={() => select(id)}
+							onKeyDown={(e) => onKeyDown(e, i)}
+						>
+							{installs[id].label}
+						</button>
+					))}
+				</div>
 			</div>
 			<div className="cmd">
 				<code>
-					<i>$</i>
+					<i>~ %</i>
 					<span className={shown === manager ? "" : "swap"}>
 						{installs[shown].command}
 					</span>
 				</code>
-				<button type="button" className="copy" onClick={copy}>
+				<button
+					type="button"
+					className="copy"
+					onClick={copy}
+					aria-label={copied ? "Copied" : "Copy the command"}
+				>
+					<svg viewBox="0 0 16 16" aria-hidden="true">
+						{copied ? (
+							<path d="M3.5 8.5l3 3 6-7" />
+						) : (
+							<>
+								<rect
+									x="5.5"
+									y="5.5"
+									width="8"
+									height="8"
+									rx="1.5"
+								/>
+								<path d="M10.5 3.5v-.5a1.5 1.5 0 00-1.5-1.5H4A1.5 1.5 0 002.5 3v5A1.5 1.5 0 004 9.5h.5" />
+							</>
+						)}
+					</svg>
 					{copied ? "Copied" : "Copy"}
 				</button>
 			</div>
