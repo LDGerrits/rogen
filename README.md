@@ -70,7 +70,7 @@ A file goes where its [folder or `@` suffix](https://rogen-roblox.vercel.app/doc
 ## Installation
 
 ```bash
-rokit add ldgerrits/rogen@2.0.0-beta.1
+rokit add ldgerrits/rogen@2.0.0-beta.2
 rogen init
 ```
 

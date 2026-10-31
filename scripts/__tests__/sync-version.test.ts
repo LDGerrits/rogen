@@ -65,6 +65,15 @@ describe("scripts/sync-version", () => {
 			expect(read(INSTALL_FILE)).not.toContain("@2.0.0");
 		});
 
+		it("should leave a dist-tag such as next alone", () => {
+			write(
+				HOME_FILE,
+				'command: "rokit add ldgerrits/rogen@2.0.0-beta.1" },\nnpm: { command: "npm i @ldgerrits/rogen@next" },\n'
+			);
+			syncVersion(root, "2.0.0-beta.2");
+			expect(read(HOME_FILE)).toContain('"npm i @ldgerrits/rogen@next"');
+		});
+
 		it("should report no files when they already name the version", () => {
 			expect(syncVersion(root, "2.0.0")).toEqual([]);
 		});
