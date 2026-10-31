@@ -25,19 +25,33 @@ A larger codebase puts feature folders inside layers, and each layer requires on
       Data/
         Server/
           PlayerData.luau
+    core/
+      Player/
+        Shared/
+          PlayerState.luau
     features/
       Inventory/
         Client/
           InventoryController.luau
         Server/
           InventoryService.luau
+    app/
+      Server/
+        Main.server.luau
+      Client/
+        Main.client.luau
 `}
 	studio={`
   ReplicatedStorage
     Shared/
       base/
         Signal
+      core/
+        Player/
+          PlayerState
   ServerScriptService
+    app/
+      Main
     platform/
       Data/
         PlayerData
@@ -46,14 +60,14 @@ A larger codebase puts feature folders inside layers, and each layer requires on
         InventoryService
   StarterPlayer
     StarterPlayerScripts
+      app/
+        Main
       features/
         Inventory/
           InventoryController
 `}
 />
 
-`base` holds helpers that depend on nothing else, `platform` the services every feature uses, such as player data, and `features` the game itself. A feature requires `platform` and `base`, never another feature, and `platform` never requires a feature.
-
-A layer folder stays in the game path, so a require names it, as in `ReplicatedStorage.Shared.base.Signal`. To leave the layers out of the game, make them [invisible folders](/docs/v2/core-concepts/routing/skipping-folders#invisible-folders), such as `(features)/`.
+`base` holds helpers that depend on nothing else, such as a signal class. `platform` holds the services every feature uses, such as player data. `core` holds what the game is about and every feature reads, such as the player's state. `features` holds the features, and each one requires the layers below it, never another feature. `app` holds the scripts that start the game: they require the features and wire them together, and nothing requires `app`.
 
 Rogen routes files, so it doesn't check that a require stays within these rules. [Linting](/docs/v2/linting) shows a lint rule that does.
