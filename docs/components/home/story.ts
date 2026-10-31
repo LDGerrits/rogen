@@ -459,7 +459,6 @@ interface Geometry {
 	trail?: Wire;
 	chip?: Pt[];
 	wire?: Wire;
-	rojo?: [number, number, boolean];
 }
 interface Scene {
 	name: string;
@@ -495,7 +494,7 @@ function makeScene(name: string): Scene {
 		h += `<div class="ed-bar" style="left:${x}px;top:${y}px;width:${w}px">${trafficLights}<span class="tab t1 front">default.rogen.json</span><span class="tab t2">default.project.json</span>${crumb}</div>`;
 	}
 	h +=
-		'<svg class="ln trail" aria-hidden="true"><path d=""/></svg><svg class="ln wire" aria-hidden="true"><path d=""/></svg><span class="rojo">Rojo</span>';
+		'<svg class="ln trail" aria-hidden="true"><path d=""/></svg><svg class="ln wire" aria-hidden="true"><path d=""/></svg>';
 	h += `<div class="tag" hidden><span class="tn">${W.file}</span><span class="ts">${W.suffix}${W.ext}</span></div>`;
 	h += `<div class="chip" hidden>${classIcon("ModuleScript")}<span>${W.file}</span></div>`;
 	el.innerHTML = h;
@@ -531,7 +530,6 @@ function makeScene(name: string): Scene {
 	}));
 	const tag = q(".tag")!;
 	const chip = q(".chip")!;
-	const rojo = q(".rojo")!;
 	const trail = q<SVGPathElement>(".trail path")!;
 	const wire = q<SVGPathElement>(".wire path")!;
 	const draw = (path: SVGPathElement, d: Wire) => {
@@ -614,8 +612,6 @@ function makeScene(name: string): Scene {
 				],
 				off: ke + 6 - (kx - 21),
 			};
-			// The Rojo label sits under the wire where it leaves the project file, clear of both lanes.
-			next.rojo = [ke + 14, r2 + 13, false];
 		}
 		if (C.strip && C.routes) {
 			const r1 = q(".p-routes [data-r1]")!;
@@ -664,19 +660,9 @@ function makeScene(name: string): Scene {
 				],
 				off: 10,
 			};
-			next.rojo = [
-				lane + 10,
-				(C.key[1] + C.key[3] + C.explorer[1]) / 2,
-				false,
-			];
 		}
 		if (next.trail) draw(trail, next.trail);
 		if (next.wire) draw(wire, next.wire);
-		if (next.rojo) {
-			rojo.style.left = next.rojo[0] + "px";
-			rojo.style.top = next.rojo[1] - 5 + "px";
-			rojo.style.transform = next.rojo[2] ? "translateX(-100%)" : "";
-		}
 		g = next;
 	};
 
@@ -779,7 +765,6 @@ function makeScene(name: string): Scene {
 			const lift = -4 * S.lift * (1 - clamp((S.ride - 0.9) / 0.1));
 			chip.style.transform = `translate(${x.toFixed(1)}px, ${(y - (M.row - 2) / 2 + lift).toFixed(1)}px)`;
 			stroke(wire, g.wire, ridden - g.wire.off);
-			rojo.style.opacity = v(clamp(S.ride / 0.15));
 		}
 	};
 

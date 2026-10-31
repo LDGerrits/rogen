@@ -813,86 +813,10 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 }
 .home .plate {
 	margin-top: var(--s4);
-	max-width: 520px;
-	background: var(--deep);
-	border-radius: 6px;
-	box-shadow: inset 0 0 0 1px var(--line);
-	overflow: hidden;
 }
-.home .reqs {
-	list-style: none;
-	display: grid;
-	gap: 10px;
-	padding: var(--s3);
-	font: 400 13px/1 var(--mono);
-}
-.home .reqs li {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-}
-.home .reqs code {
-	padding: 7px 10px;
-	border-radius: 4px;
-	box-shadow: inset 0 0 0 1px var(--line-2);
-	color: var(--ink);
-	font-size: 1em;
-}
-.home .reqs i {
-	font-style: normal;
-	width: 1.2em;
-	text-align: center;
-}
-.home .reqs em {
-	margin-left: auto;
-	font-style: normal;
-	font-size: 12px;
-}
-.home .reqs .ok i,
-.home .reqs .ok em {
-	color: var(--t-r);
-}
-.home .reqs .no i,
-.home .reqs .no em {
-	color: var(--t-s);
-}
-.home .reqs .no code {
-	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--t-s) 55%, transparent);
-}
-.home .places {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 10px;
-	padding: var(--s3);
-	font: 400 13px/1.9 var(--mono);
-}
-.home .pl {
-	display: flex;
-	flex-direction: column;
-	padding: 10px 14px;
-	border-radius: 4px;
-	box-shadow: inset 0 0 0 1px var(--line-2);
-	color: var(--ink);
-	white-space: nowrap;
-}
-.home .pl.shared {
-	grid-column: 1 / -1;
-}
-.home .pl b {
-	font-weight: 500;
-	font-size: 12px;
-	color: var(--ink-3);
-}
-.home .pl .dim {
-	color: var(--ink-3);
-}
-.home .pl .ov {
-	color: var(--acc-2);
-}
-.home .pl em {
-	font-style: normal;
-	font-size: 12px;
-	color: var(--ink-3);
+.home .plate .ide-term {
+	font-size: 11px;
+	line-height: 16px;
 }
 .home .split {
 	display: grid;
@@ -1306,15 +1230,6 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .stage .wire {
 	z-index: 4;
 }
-.home .stage .rojo {
-	position: absolute;
-	z-index: 4;
-	font: 500 11px/1 var(--mono);
-	letter-spacing: 0.06em;
-	color: var(--ink);
-	opacity: 0;
-	white-space: nowrap;
-}
 .home .stage .tag {
 	position: absolute;
 	left: 0;
@@ -1686,90 +1601,46 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	margin-top: var(--s6);
 }
 .home .aw {
-	display: flex;
-	flex-direction: column;
 	min-width: 0;
-	background: var(--deep);
-	border-radius: 8px;
-	box-shadow: inset 0 0 0 1px var(--line-2);
-	overflow: hidden;
-	font-family: var(--mono);
 }
-.home .aw-bar {
-	display: flex;
-	align-items: center;
-	gap: 14px;
-	height: 36px;
-	padding: 0 14px;
-	border-bottom: 1px solid var(--line);
-	font: 500 12px/1 var(--mono);
-	color: var(--ink-3);
-	white-space: nowrap;
+.home .aw .ide-code {
+	height: calc(12 * 17px + 12px);
+	font-size: 11.5px;
+	line-height: 17px;
+	tab-size: 4;
 }
-.home .aw-path b {
-	font-weight: 500;
-	color: var(--a);
+/* VS Code's word wrap, so the agent's cursor stays in view */
+.home .aw .ide-code li {
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
 }
-.home .aw-who {
-	margin-left: auto;
-	color: var(--a);
+.home .aw .ide-code li > span {
+	flex: 1;
+	min-width: 0;
 }
-/* the agent's writing: ASCII strokes under line numbers, the newest line in its colour */
-.home .aw-body {
-	display: flex;
-	flex-direction: column;
-	justify-content: flex-end;
-	list-style: none;
-	height: calc(10 * 22px + 20px);
-	padding: 10px 0;
-	overflow: hidden;
-	font: 400 13px/22px var(--mono);
-	color: var(--ink-3);
-}
-.home .aw-body li {
-	flex: none;
-	height: 22px;
-	display: flex;
-	gap: 16px;
-	padding: 0 14px;
-	white-space: pre;
-	overflow: hidden;
-}
-.home .aw-body i {
-	flex: none;
-	width: 2ch;
-	text-align: right;
-	font-style: normal;
-	opacity: 0.55;
-}
-.home .aw-body span {
-	opacity: 0.75;
-}
-.home .aw-body .now span {
-	color: var(--a);
-	opacity: 1;
-}
-.home .aw-body .now span::after {
-	content: "";
+/* the agent's cursor, with its name above it as a shared cursor shows one */
+.home .aw .caret {
+	position: relative;
 	display: inline-block;
-	width: 0.6em;
-	height: 1.1em;
-	margin-left: 2px;
-	vertical-align: -0.2em;
+	width: 2px;
+	height: 15px;
+	margin-left: 1px;
+	vertical-align: -3px;
 	background: var(--a);
-	animation: home-blink 2.4s ease-in-out infinite;
 }
-.home .aw-status {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	height: 30px;
-	padding: 0 14px;
-	border-top: 1px solid var(--line);
-	font: 500 11.5px/1 var(--mono);
-	color: var(--ink);
+.home .aw .caret em {
+	position: absolute;
+	left: 0;
+	bottom: 100%;
+	padding: 1px 4px;
+	border-radius: 2px 2px 2px 0;
+	background: var(--a);
+	color: var(--bg);
+	font:
+		600 10px/1.3 system-ui,
+		sans-serif;
+	font-style: normal;
 	white-space: nowrap;
-	overflow: hidden;
 }
 .home .aw-dot {
 	flex: none;
@@ -1780,7 +1651,7 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 }
 .home .aw-r {
 	margin-left: auto;
-	color: var(--ink-3);
+	color: var(--vs-muted);
 }
 .home .ag-pts {
 	margin-top: var(--s5);
@@ -2027,8 +1898,8 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	.home .agw {
 		grid-template-columns: minmax(0, 1fr);
 	}
-	.home .aw-body {
-		height: calc(6 * 22px + 20px);
+	.home .aw .ide-code {
+		height: calc(8 * 18px + 12px);
 	}
 	.home .wires {
 		display: none;
@@ -2111,14 +1982,6 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	}
 	.home .tree div {
 		padding-left: calc(var(--d, 0) * 14px);
-	}
-	.home .reqs,
-	.home .places {
-		padding: var(--s2);
-		font-size: 12px;
-	}
-	.home .places {
-		grid-template-columns: 1fr;
 	}
 	.home .cmds {
 		font-size: 13.5px;
