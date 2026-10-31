@@ -18,6 +18,20 @@ const geistMono = localFont({
 	variable: "--font-geist-mono",
 });
 
+// For the VS Code and Studio windows; loaded only where one is drawn.
+const studioSans = localFont({
+	src: "./fonts/source-sans-3.woff2",
+	weight: "200 900",
+	variable: "--font-studio",
+	preload: false,
+});
+
+const seti = localFont({
+	src: "./fonts/seti.woff",
+	variable: "--font-seti",
+	preload: false,
+});
+
 export const metadata: Metadata = {
 	metadataBase: new URL(siteUrl),
 	title: {
@@ -31,7 +45,7 @@ export default function Layout({ children }: LayoutProps<"/">) {
 	return (
 		<html
 			lang="en"
-			className={`${geistSans.variable} ${geistMono.variable}`}
+			className={`${geistSans.variable} ${geistMono.variable} ${studioSans.variable} ${seti.variable}`}
 			suppressHydrationWarning
 		>
 			<body className="flex flex-col min-h-screen">
