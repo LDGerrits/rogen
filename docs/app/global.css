@@ -345,6 +345,9 @@ html > body[data-scroll-locked] {
 	height: 22px;
 	padding-left: calc(8px + var(--d, 0) * 8px);
 }
+.ide-tree li.sel {
+	background: var(--vs-sel);
+}
 .ide-chev {
 	flex: none;
 	width: 16px;

@@ -61,47 +61,24 @@ function TreeName({ name, dot }: { name: string; dot: Dot }) {
 	);
 }
 
-// A line of code as VS Code colours it: [text, token class].
-type Code = [string, string?][];
+// A row of VS Code's explorer: [name, depth, selected].
+type Row = [string, number, boolean?];
 
-// What each language's linter says about a feature that requires another, as each prints it.
-const BOUNDARY = {
+// A feature that requires another, and what each language's linter prints about it.
+const BOUNDARY: Record<
+	"luau" | "ts",
+	{ rows: Row[]; command: string; output: string[] }
+> = {
 	luau: {
-		file: "CombatService@Server.luau",
-		feature: "Combat",
-		code: [
-			[
-				["local ", "kw"],
-				["ReplicatedStorage", "var"],
-				[" = "],
-				["game", "var"],
-				[":"],
-				["GetService", "fn"],
-				["("],
-				['"ReplicatedStorage"', "str"],
-				[")"],
-			],
-			[],
-			[
-				["local ", "kw"],
-				["CombatTypes", "var"],
-				[" = "],
-				["require", "fn"],
-				["("],
-				["ReplicatedStorage", "var"],
-				[".Shared.Combat.CombatTypes)"],
-			],
-			[
-				["local ", "kw"],
-				["ItemCatalog", "var"],
-				[" = "],
-				["require", "fn"],
-				["("],
-				["ReplicatedStorage", "var"],
-				[".Shared.Inventory.ItemCatalog)"],
-			],
-		] as Code[],
-		bad: 3,
+		rows: [
+			["src/", 0],
+			["Combat/", 1],
+			["CombatService@Server.luau", 2, true],
+			["CombatTypes.luau", 2],
+			["Inventory/", 1],
+			["InventoryService@Server.luau", 2],
+			["ItemCatalog.luau", 2],
+		],
 		command: "lute lint --no-default-lints src",
 		output: [
 			"error[require_boundaries]: feature Combat requires feature Inventory: ReplicatedStorage.Shared.Inventory.ItemCatalog",
@@ -113,27 +90,15 @@ const BOUNDARY = {
 		],
 	},
 	ts: {
-		file: "combat-service@server.ts",
-		feature: "combat",
-		code: [
-			[
-				["import ", "ctl"],
-				["ItemCatalog", "var"],
-				[" from ", "ctl"],
-				['"../inventory/item-catalog"', "str"],
-				[";"],
-			],
-			[
-				["import ", "ctl"],
-				["{ "],
-				["CombatTypes", "var"],
-				[" } "],
-				["from ", "ctl"],
-				['"./combat-types"', "str"],
-				[";"],
-			],
-		] as Code[],
-		bad: 0,
+		rows: [
+			["src/", 0],
+			["combat/", 1],
+			["combat-service@server.ts", 2, true],
+			["combat-types.ts", 2],
+			["inventory/", 1],
+			["inventory-service@server.ts", 2],
+			["item-catalog.ts", 2],
+		],
 		command: "npx eslint src",
 		output: [
 			"/Users/me/my-game/src/combat/combat-service@server.ts",
@@ -145,7 +110,10 @@ const BOUNDARY = {
 };
 
 // Two places that share src/common, in the layout each language's init writes, and what rogen where says of the game place.
-const PLACES = {
+const PLACES: Record<
+	"luau" | "ts",
+	{ rows: Row[]; command: string; output: string[] }
+> = {
 	luau: {
 		rows: [
 			["src/", 0],
@@ -159,7 +127,7 @@ const PLACES = {
 			["lobby/", 1],
 			["game.rogen.json", 0],
 			["lobby.rogen.json", 0],
-		] as [string, number, boolean?][],
+		],
 		command: "rogen where game",
 		output: [
 			"src/common/Shop/ItemCatalog.luau -> replaced by src/game/Shop/ItemCatalog.luau",
@@ -182,7 +150,7 @@ const PLACES = {
 			["tsconfig.json", 2],
 			["lobby/", 1],
 			["package.json", 0],
-		] as [string, number, boolean?][],
+		],
 		command: "rogen where projects/game/default.rogen.json",
 		output: [
 			"projects/common/src/shop/item-catalog.ts -> replaced by projects/game/src/shop/item-catalog.ts",
@@ -217,62 +185,19 @@ function Terminal({ command, output }: { command: string; output: string[] }) {
 	);
 }
 
-function Boundaries() {
+/** VS Code's explorer over a terminal, in each language, as Boundaries and Places show them. */
+function ExplorerAndTerminal({
+	figure,
+	delayMs,
+}: {
+	figure: typeof PLACES;
+	delayMs: number;
+}) {
 	return (
-		<div className="plate ide rv" style={delay(240)}>
+		<div className="plate ide rv" style={delay(delayMs)}>
 			{(["luau", "ts"] as const).map((lang) => {
-				const b = BOUNDARY[lang];
-				return (
-					<div key={lang} data-only={lang}>
-						<VsCodeWindow title="my-game">
-							<div className="ide-tabbar">
-								<span className="ide-tab">
-									<FileIcon name={b.file} />
-									{b.file}
-								</span>
-							</div>
-							<div className="ide-crumbs">
-								src › {b.feature} › {b.file}
-							</div>
-							<ol className="ide-code">
-								{b.code.map((line, i) => (
-									<li
-										key={i}
-										className={
-											i === b.bad ? "hl" : undefined
-										}
-									>
-										<i>{i + 1}</i>
-										<span>
-											{line.map(([text, token], j) => (
-												<span
-													key={j}
-													className={
-														token && `tk-${token}`
-													}
-												>
-													{text}
-												</span>
-											))}
-										</span>
-									</li>
-								))}
-							</ol>
-							<Terminal command={b.command} output={b.output} />
-						</VsCodeWindow>
-					</div>
-				);
-			})}
-		</div>
-	);
-}
-
-function Places() {
-	return (
-		<div className="plate ide rv" style={delay(320)}>
-			{(["luau", "ts"] as const).map((lang) => {
-				const p = PLACES[lang];
-				const depths = p.rows.map(([, depth]) => ({ depth }));
+				const { rows, command, output } = figure[lang];
+				const depths = rows.map(([, depth]) => ({ depth }));
 				return (
 					<div key={lang} data-only={lang}>
 						<VsCodeWindow title="my-game">
@@ -281,7 +206,7 @@ function Places() {
 								MY-GAME
 							</div>
 							<ul className="ide-tree">
-								{p.rows.map(([name, depth, chosen], i) => {
+								{rows.map(([name, depth, chosen], i) => {
 									const isFolder = name.endsWith("/");
 									return (
 										<li
@@ -317,7 +242,7 @@ function Places() {
 									);
 								})}
 							</ul>
-							<Terminal command={p.command} output={p.output} />
+							<Terminal command={command} output={output} />
 						</VsCodeWindow>
 					</div>
 				);
@@ -412,7 +337,7 @@ export function Features() {
 						<MoreLink href="/docs/v2/linting" dl={180}>
 							See the lint rule
 						</MoreLink>
-						<Boundaries />
+						<ExplorerAndTerminal figure={BOUNDARY} delayMs={240} />
 					</div>
 					<div className="rtxt">
 						<span className="n rv" style={delay(80)}>
@@ -430,7 +355,7 @@ export function Features() {
 						<MoreLink href="/docs/v2/setups/places" dl={260}>
 							Set up places
 						</MoreLink>
-						<Places />
+						<ExplorerAndTerminal figure={PLACES} delayMs={320} />
 					</div>
 				</div>
 
