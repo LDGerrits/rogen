@@ -16,7 +16,7 @@ In an empty folder, run:
 rogen init
 ```
 
-It asks for the language, Luau or roblox-ts, and whether the game has one place or several. It writes the config, a small sample game, and a pin for Rojo in your tool manager's file, such as `rokit.toml`. To change where code goes or to add packages later, edit the config: see [Config](/docs/v2/config#the-tree).
+It asks for the language, Luau or roblox-ts, and whether the game has one place or several. It writes the config, a small sample game, and a pin for Rojo in your tool manager's file, such as `rokit.toml`. To change where code goes, edit the config's [`routes`](/docs/v2/core-concepts/routing). To add packages, see [The Tree](/docs/v2/core-concepts/routing/tree).
 
 </Step>
 
@@ -29,6 +29,13 @@ rogen plugin install
 ```
 
 Use `aftman install` or `foreman install` if that is your tool manager. The second command installs Rojo's Studio plugin.
+
+</Step>
+
+<Step>
+### Open the Editor
+
+In a Luau game, open the folder in VS Code with the luau-lsp extension. luau-lsp builds `sourcemap.json` from `default.project.json`, which `init` wrote. `init` also gitignores that file, so after you clone the game, run `rogen write` before you open the editor. See [Using Luau](/docs/v2/setups/luau#keep-the-editors-sourcemap-current).
 
 </Step>
 
