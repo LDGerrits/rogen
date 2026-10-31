@@ -15,6 +15,16 @@ A config, `default.rogen.json`, is a Rojo project file with three more keys. Rog
 
 The `tree` is the base that Rogen adds your routed files to. [The Tree](/docs/v2/core-concepts/routing/tree) says what goes in it, such as your packages and service `$properties`.
 
+## Leaving Files Out
+
+Rojo's `globIgnorePaths` lists globs, relative to the config, for files that Rojo ignores. Rogen doesn't route them or warn about them:
+
+```json title="default.rogen.json"
+{
+	"globIgnorePaths": ["**/*.spec.luau"]
+}
+```
+
 ## Route Keys
 
 A route key is letters and digits, starting with a letter, or `*` for the [fallback route](/docs/v2/core-concepts/routing#files-without-a-route).

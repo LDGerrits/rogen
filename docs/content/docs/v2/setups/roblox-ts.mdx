@@ -56,7 +56,7 @@ rogen serve
 
 `npm run watch` runs `rbxtsc -w`, which compiles each file when you save it. `rogen serve` writes the project file again when you add, move or rename a file. Rogen creates the folders it mounts in `out`, so Rojo serves before the compiler has written anything.
 
-`rbxtsc` reads the project file to turn each import into an instance path, so it needs a project file. On a fresh clone, run `rogen write` before the first compile. When `rbxtsc -w` reports `Could not find Rojo data` for an import from a new folder, it compiled before Rogen wrote that folder into the project file. Save the file again.
+`rbxtsc` reads the project file to turn each import into an instance path, so it needs a project file. On a fresh clone, run `rogen write` before the first compile.
 
 ## Add a Feature
 

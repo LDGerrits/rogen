@@ -9,13 +9,7 @@ In a Luau game, Rojo syncs your source files as they are. This page covers what 
 
 luau-lsp reads `sourcemap.json` to know where each file sits in the game. Its VS Code extension writes that file by running `rojo sourcemap --watch` on `default.project.json`.
 
-`rogen init` gitignores `*.project.json`, so a fresh clone has no project file, and luau-lsp warns:
-
-```
-Unable to find project file default.project.json for Rojo sourcemap generation.
-```
-
-After you clone, run `rogen write`, then **Luau: Regenerate Sourcemap** from the command palette.
+`rogen init` gitignores `*.project.json`, so a fresh clone has no project file and luau-lsp can't find the game. After you clone, run `rogen write`, then **Luau: Regenerate Sourcemap** from the command palette.
 
 A new file in a feature folder reaches the sourcemap by itself. A new feature folder needs a new entry in `default.project.json`, which `rogen serve` writes as you add the folder. When serve isn't running, run `rogen write`.
 
@@ -33,17 +27,7 @@ A string require such as `require("./Prices")` also resolves in the game, so it 
 
 ## Using Darklua
 
-[Darklua](https://github.com/seaofvoices/darklua) rewrites your code into a folder of its own, such as `dist`, and Rojo syncs from there. Its `convert_require` rule turns a require by file path into a require by instance:
-
-```lua title="src/Inventory/Server/InventoryService.server.luau"
-local InventoryTypes = require("../Shared/InventoryTypes")
-```
-
-```lua title="dist/Inventory/Server/InventoryService.server.luau"
-local InventoryTypes = require(game:GetService('ReplicatedStorage'):WaitForChild('Shared'):WaitForChild('Inventory'):WaitForChild('InventoryTypes'))
-```
-
-Darklua finds the instance in `sourcemap.json`:
+[Darklua](https://github.com/seaofvoices/darklua) rewrites your code into a folder of its own, such as `dist`, and Rojo syncs from there. Its `convert_require` rule turns `require("../Shared/InventoryTypes")` into a require by instance path, which it finds in `sourcemap.json`:
 
 ```json title=".darklua.json"
 {

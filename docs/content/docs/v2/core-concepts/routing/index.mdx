@@ -70,9 +70,7 @@ The `*` route takes every file that no other route matches, so `src/Shop/Prices.
 
 ## What Each Side Can Require
 
-Code in `Shared/` runs on the server and on every client. It can't require anything under `Server/`, because the client can't see ServerScriptService.
-
-A Luau require names the instance, not the file, as in `require(ReplicatedStorage.Shared.Shop.Prices)`. A string require resolves in the game too, so `./` reaches only the files routed into the same folder. In `src/Shop/Server/ShopService.luau`, `require("./Prices")` looks in `ServerScriptService/Shop` and doesn't find `src/Shop/Shared/Prices.luau`. [Using Luau](/docs/v2/setups/luau#require-by-instance) shows how to get the require for a file.
+Code in `Shared/` runs on the server and on every client, so it can't require anything under `Server/`. A Luau require names the instance, not the file, as in `require(ReplicatedStorage.Shared.Shop.Prices)`. `rogen where` prints the require for a file.
 
 ## Check Where a File Lands
 

@@ -3,7 +3,7 @@ title: The Tree
 description: Mount packages and the other things that folder names can't place
 ---
 
-The `tree` in your config is a Rojo project tree. Rogen adds your routed files to it and writes the result to `default.project.json`. Folder names place only the code in your source paths, so everything else goes in the `tree`: packages, the place's map and service properties.
+The `tree` in your config is a Rojo project tree. Rogen adds your routed files to it and writes the result to `default.project.json`. Folder names place only the code in your source paths, so everything else goes in the `tree`: packages and the place's map.
 
 ## Packages
 
@@ -30,23 +30,6 @@ Your code requires a package by its path in the game, as in `require(ReplicatedS
 
 `rogen init` mounts the package folders for you. It reads a `wally.toml` or a `pesde.toml`, so it mounts `Packages` in ReplicatedStorage and `ServerPackages` in ServerScriptService before you install anything. In a roblox-ts project, it mounts `node_modules/@rbxts`, as [Using roblox-ts](/docs/v2/setups/roblox-ts) shows.
 
-## Service Properties
-
-`$properties` sets the properties of a service, as in any Rojo project file:
-
-```json title="default.rogen.json"
-{
-	"tree": {
-		"$className": "DataModel",
-		"Lighting": {
-			"$properties": { "Ambient": [0, 0, 0], "Brightness": 2 }
-		}
-	}
-}
-```
-
-Rojo's [Properties](https://rojo.space/docs/v7/properties/) page lists how to write each type of value.
-
 ## The Place
 
 `rogen init` puts the starting map, a baseplate and Rojo's lighting, in a `place` folder and mounts it:
@@ -62,8 +45,4 @@ Rojo's [Properties](https://rojo.space/docs/v7/properties/) page lists how to wr
 }
 ```
 
-The `place` folder is outside the source paths, so Rogen doesn't route it. To start without it, run `rogen init --no-sample`.
-
-## Code Synced As It Is
-
-A `$path` to a folder inside a source path, such as `"Vendor": { "$path": "src/Vendor" }`, gives that folder to Rojo. Rogen doesn't route the files in it, which suits vendored code that you keep as it is.
+The `place` folder is outside the source paths, so Rogen doesn't route it. To start without it, run `rogen init --no-sample`. Anything else a Rojo project tree can hold, such as a service's `$properties`, goes here too.

@@ -17,8 +17,6 @@ Rogen runs Rojo's commands with Rojo's flags. Each one writes the project file f
 
 In a folder with a plain `default.project.json` and no config, these commands run on that file as Rojo would, and write nothing.
 
-Each prints one line for each thing it did, in place of Rojo's progress lines, on the stream where Rojo prints its own. `rogen build -o game.rbxl` prints `Wrote default.project.json.` when the project file changed, then `Built game.rbxl.`; when nothing changed, only the second line. `fmt-project` prints nothing when it succeeds, as Rojo does. `--verbose` shows the rest, Rojo's own lines included.
-
 Rogen's own commands:
 
 | Command | What it does |
@@ -30,4 +28,28 @@ Rogen's own commands:
 | `rogen help` | Prints a command's flags, or what a [diagnostic](/docs/v2/diagnostics) code means |
 | `rogen doc` | Opens these docs, or prints a topic offline |
 
-To sync with Argon or another tool instead of Rojo, run `rogen write --watch` beside it. `rogen help <command>` lists every flag, and [Output](/docs/v2/output) covers exit codes, `--json` and CI.
+To sync with Argon or another tool instead of Rojo, run `rogen write --watch` beside it. `rogen help <command>` lists every flag.
+
+## Exit Codes and JSON
+
+A command exits 0 when it did what it was asked, warnings included, 1 when the project has errors, and 2 when the command line is wrong. `rogen check` exits 1 on any warning too, so it fails a CI job on what `rogen build` lets through.
+
+With `--json`, a command prints one JSON document on one line of stdout and nothing else. Match a diagnostic on its `code`, not its `message`. `rogen doc output` explains every key.
+
+## Running in CI
+
+This workflow installs the tools that `rokit.toml` pins, which must include Rogen, then checks and builds the game. Under GitHub Actions, `rogen check` also shows each diagnostic on the file in the pull request:
+
+```yaml title=".github/workflows/ci.yml"
+name: CI
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: CompeyDev/setup-rokit@v0.2.1
+      - run: rogen check
+      - run: rogen build -o game.rbxl
+```

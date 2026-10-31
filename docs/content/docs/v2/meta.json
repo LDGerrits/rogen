@@ -14,7 +14,6 @@
 		"core-concepts/routing/names",
 		"core-concepts/routing/skipping-folders",
 		"core-concepts/routing/tree",
-		"core-concepts/routing/sync-details",
 		"---Guides---",
 		"setups/luau",
 		"setups/roblox-ts",
@@ -25,7 +24,6 @@
 		"agents",
 		"---Reference---",
 		"commands",
-		"output",
 		"config",
 		"diagnostics",
 		"changelog"

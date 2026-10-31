@@ -35,4 +35,4 @@ Each JSON diagnostic has `file`, `line` and `column` (when it has a position), `
 
 `rogen write` is safe beside a running `rogen write --watch` or `rogen serve`: it writes only bytes that changed.
 
-The docs page: https://rogen-roblox.vercel.app/docs/v2/output
+The docs page: https://rogen-roblox.vercel.app/docs/v2/commands

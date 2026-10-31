@@ -13,4 +13,4 @@
 - `globIgnorePaths` globs are neither routed nor warned about; an ignored folder isn't read, and `rogen where` names the glob that matches. A `.rogen.json` in a source path is never synced.
 - A symlink or junction inside a source path is read as the directory it points at, and keeps its own path in the output. A link that points at nothing, or back at a directory that holds it, is skipped with a warning.
 
-The docs page: https://rogen-roblox.vercel.app/docs/v2/core-concepts/routing/sync-details
+The docs page: https://rogen-roblox.vercel.app/docs/v2/core-concepts/routing
