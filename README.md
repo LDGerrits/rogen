@@ -8,10 +8,10 @@
 </p>
 <h1 align="center">Rogen</h1>
 <p align="center">
-	<strong>Rojo with file-system routing. Professional-grade architecture for Roblox codebases.</strong>
+	<strong>A Rojo superset that keeps each feature's server and client code in one folder.</strong>
 </p>
 <p align="center">
-	Rogen is a superset of Rojo that generates Rojo project files from your file system. Put code in a <code>Server</code> or <code>Client</code> folder, or add <code>@Server</code> to a file's name, and Rogen sends it to the right place.
+	Rogen generates the Rojo project file from your file system.
 </p>
 <p align="center">
 	<a href="https://www.npmjs.com/package/@ldgerrits/rogen"><img alt="Beta release" src="https://img.shields.io/npm/v/@ldgerrits/rogen/next?style=flat-square&label=beta" /></a>
@@ -20,6 +20,13 @@
 	<a href="https://github.com/LDGerrits/rogen/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/LDGerrits/rogen?style=flat-square&logo=github" /></a>
 	<a href="https://luau.org"><img alt="Luau" src="https://img.shields.io/badge/Luau-00A2FF?style=flat-square&logo=luau&logoColor=white" /></a>
 	<a href="https://roblox-ts.com"><img alt="roblox-ts" src="https://img.shields.io/badge/roblox--ts-3178C6?style=flat-square&logo=typescript&logoColor=white" /></a>
+</p>
+
+<p align="center">
+	<picture>
+		<source media="(prefers-color-scheme: dark)" srcset="docs/public/readme/routing-dark.png" />
+		<img src="docs/public/readme/routing-light.png" alt="VS Code with an Inventory feature and rogen serve in its terminal, beside the Roblox Studio Explorer with each file where Rogen sent it" width="840" />
+	</picture>
 </p>
 
 ## Why Rogen?
