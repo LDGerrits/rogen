@@ -1,7 +1,7 @@
 {
 	"name": "@ldgerrits/rogen",
 	"version": "2.0.0-beta.1",
-	"description": "A Rojo superset with file-system routing. Organize by feature.",
+	"description": "A Rojo superset with file-system routing — organize your codebase by feature for cleaner architecture, seamless scaling, and simpler maintenance.",
 	"publishConfig": {
 		"access": "public"
 	},
