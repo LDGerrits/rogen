@@ -10,49 +10,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- `rogen init` migrates a Rogen 1 project. It writes a config for each mode, renames files such as `Combat_Server.luau` to `Combat@Server.luau`, and warns about what it can't carry over. See [Migrating from v1](https://rogen-roblox.vercel.app/docs/v2/migrating-from-v1). ([#285](https://github.com/LDGerrits/rogen/pull/285))
-- `rogen syncback` runs on a project with a `compiledPath`. It writes what it can, and lists each compiled change for you to make in the source files. ([#257](https://github.com/LDGerrits/rogen/pull/257))
-- `rogen fmt-project` formats a config with comments, and keeps them. ([#284](https://github.com/LDGerrits/rogen/pull/284))
-- `rogen where` prints how to require a JSON, TOML or YAML module. ([#291](https://github.com/LDGerrits/rogen/pull/291))
-- The `route.scriptSuffixBeforeAt` warning, for a name such as `Start.server@client.luau`, which Rojo makes a ModuleScript. ([#291](https://github.com/LDGerrits/rogen/pull/291))
+- `rogen init` migrates a Rogen 1 project.
+- `rogen syncback` works on a project with a `compiledPath`.
+- `rogen fmt-project` keeps comments.
 
 ### Changed
 
-- **Breaking:** A Rojo that can't be found or started is `rojo.notFound`, `rojo.notInstalled` or `rojo.unusable` in every command. Before, it was `serve.noServer`, `serve.notInstalled` or `serve.serverFailed`. ([#286](https://github.com/LDGerrits/rogen/pull/286))
-- **Breaking:** Ctrl+C now exits every `--watch` with 130, and SIGTERM with 143, as in `serve`. ([#286](https://github.com/LDGerrits/rogen/pull/286))
-- Rojo's commands print one line for each thing done, such as `Wrote default.project.json.` and `Built game.rbxl.`. Rojo's progress lines show under `--verbose`. ([#286](https://github.com/LDGerrits/rogen/pull/286))
-- `rogen serve` prints where it serves as Rojo does. ([#286](https://github.com/LDGerrits/rogen/pull/286))
-- A Rojo error keeps every line and cause Rojo wrote. ([#286](https://github.com/LDGerrits/rogen/pull/286))
-- `rogen build --watch` and `rogen sourcemap --watch` run Rojo's own `--watch`, so a change anywhere the project mounts, such as `Packages/`, builds again. ([#286](https://github.com/LDGerrits/rogen/pull/286))
-- A script beside a folder of its own name, such as `Dup.luau` beside `Dup/`, is always one script with the folder's files as its children, as in Rojo. ([#286](https://github.com/LDGerrits/rogen/pull/286))
-- `rogen init` writes a `*` route, so only the files that run on one side need marking. ([#259](https://github.com/LDGerrits/rogen/pull/259))
-- `rogen init` adds the agent hook only with `--agent-hook`. ([#264](https://github.com/LDGerrits/rogen/pull/264))
-- On a plain Rojo project, Rojo's commands no longer warn about files nothing mounts. `rogen check` still does. ([#286](https://github.com/LDGerrits/rogen/pull/286))
-
-### Removed
-
-- **Breaking:** The `rogen init` flags for what is one line in the config: `--route`, `--unmatched`, `--package`, `--source-path`, `--project-file`, `--darklua` and `--compiled-path`, with their questions, and `--sample` and `--no-agent-hook`. Init finds the source path, always lifts an existing `default.project.json`, and no longer sets up Darklua. ([#264](https://github.com/LDGerrits/rogen/pull/264))
+- **Breaking:** `rogen init` drops the flags for what is one line in the config, and writes a `*` route by default.
+- **Breaking:** Rojo failures use the `rojo.*` codes in every command.
+- Output is shorter and closer to Rojo's.
+- `--watch` runs Rojo's own watch, and Ctrl+C exits with 130.
 
 ### Fixed
 
-- `rogen syncback` puts a new feature, and a change to a feature folder, where the next build reads them, also with several source paths. ([#283](https://github.com/LDGerrits/rogen/pull/283))
-- `rogen syncback` keeps a new instance under a `tree` node with no `$path`, and removes the folders it empties. ([#283](https://github.com/LDGerrits/rogen/pull/283))
-- `rogen syncback` no longer reports every instance of a place that Studio saved as changed. ([#269](https://github.com/LDGerrits/rogen/pull/269))
-- `rogen syncback` handles nested projects, YAML files and names such as `Rates.model@Server.json` as Rojo does. ([#289](https://github.com/LDGerrits/rogen/pull/289))
-- `rogen syncback --json` says `changed: false` when nothing changed. ([#288](https://github.com/LDGerrits/rogen/pull/288))
-- With a `compiledPath`, code compiled after Rojo started now syncs, also for a new feature while serving. ([#252](https://github.com/LDGerrits/rogen/pull/252))
-- The watches check the compiled path again each time the compiler writes, so its warnings and builds are no longer one compile behind. ([#269](https://github.com/LDGerrits/rogen/pull/269), [#270](https://github.com/LDGerrits/rogen/pull/270))
-- An empty folder, or one with only a `.gitkeep` or a `README.md`, is an empty Folder, as Rojo builds it. ([#265](https://github.com/LDGerrits/rogen/pull/265))
-- An `init.meta.json` that `globIgnorePaths` matches applies to its folder, as in Rojo. ([#268](https://github.com/LDGerrits/rogen/pull/268))
-- A value Rojo can't read, such as a `servePort` over 65535 or a UDim2 written as nested lists, is an error at the value. Before, Rojo failed later without naming it. ([#265](https://github.com/LDGerrits/rogen/pull/265), [#268](https://github.com/LDGerrits/rogen/pull/268), [#284](https://github.com/LDGerrits/rogen/pull/284))
-- `rogen fmt-project` refuses a config that `rogen check` refuses, and writes what `rojo fmt-project` writes. ([#284](https://github.com/LDGerrits/rogen/pull/284))
-- `rogen init` reads a roblox-ts source path from `rootDir` in `tsconfig.json`. ([#264](https://github.com/LDGerrits/rogen/pull/264))
-- The Baseplate that `rogen init` writes no longer changes on the first syncback. ([#260](https://github.com/LDGerrits/rogen/pull/260))
-- `rogen write` no longer warns about `rbxts.copyfiles.json` in the compiled path. ([#255](https://github.com/LDGerrits/rogen/pull/255))
-
-### Security
-
-- Rogen escapes control characters in the names it prints, so a file name can't change your terminal or issue a GitHub Actions command. ([#288](https://github.com/LDGerrits/rogen/pull/288))
+- Many `rogen syncback` fixes.
+- Behaviour that differed from Rojo, such as empty folders and values Rojo can't read.
+- File names with control characters are escaped in output.
 
 ## [2.0.0-beta.1] - 2026-10-26
 
