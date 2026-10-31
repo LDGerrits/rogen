@@ -1,7 +1,7 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { UsageError, failureReason } from "../../base/errors.js";
-import { ignoringGlob } from "../../base/glob.js";
+import { ignoringGlob, literalGlob } from "../../base/glob.js";
 import { contains, samePath, toNative, toPosix } from "../../base/path.js";
 import { parse, setJsoncValue } from "../../base/jsonc.js";
 import { isObject, isSameJson } from "../../base/objects.js";
@@ -236,21 +236,17 @@ export class CoreSyncbackService implements SyncbackService {
 		try {
 			const copied = await this.copy(prepared.value);
 			const started = Date.now();
-			const ran = await this.run(
-				request,
-				prepared.value,
-				prepared.value.file,
-				["--list"]
-			);
+			const ran = await this.runAround(request, prepared.value, copied);
 			if (ran.isErr()) return ran;
+			const { messages, refused } = ran.value;
 			return ok(
 				await this.settle(
 					request,
 					prepared.value,
 					copied,
 					started,
-					CoreSyncbackService.skipped(ran.value),
-					ran.value
+					[...refused, ...CoreSyncbackService.skipped(messages)],
+					messages
 				)
 			);
 		} finally {
@@ -462,7 +458,7 @@ export class CoreSyncbackService implements SyncbackService {
 
 	/** Copies the project's files into the mirror and writes the project file that mounts it; what was copied, as each file's mirror path and project path. */
 	private async copy(prepared: Prepared): Promise<Copied[]> {
-		const { mirror, root, dir } = prepared;
+		const { mirror, root } = prepared;
 		await this.clean(prepared);
 		const copied: Copied[] = [];
 		for (const folder of mirror.folders)
@@ -499,15 +495,93 @@ export class CoreSyncbackService implements SyncbackService {
 				})
 			);
 		copied.sort((a, b) => compareStrings(a.mirror, b.mirror));
+		await this.writeProject(prepared, copied, []);
+		return copied;
+	}
+
+	/** Writes the project file that mounts the mirror, whose syncback leaves the mirror files `ignored` alone. */
+	private async writeProject(
+		{ mirror, dir, file }: Prepared,
+		copied: readonly Copied[],
+		ignored: readonly string[]
+	): Promise<void> {
 		const rules = mirror.rulesFor(copied, MIRROR, dir);
+		const syncbackRules = (
+			mirror.file as { syncbackRules?: { ignorePaths?: string[] } }
+		).syncbackRules;
 		await this.fileSystemService.writeFile(
-			prepared.file,
+			file,
 			ProjectText.of({
 				...mirror.file,
 				...(rules.length > 0 && { syncRules: rules }),
+				...(ignored.length > 0 && {
+					syncbackRules: {
+						...syncbackRules,
+						ignorePaths: [
+							...(syncbackRules?.ignorePaths ?? []),
+							...ignored.map((at) =>
+								literalGlob(path.posix.join(MIRROR, at))
+							),
+						],
+					},
+				}),
 			})
 		);
-		return copied;
+	}
+
+	/** Runs Rojo's syncback, and again without each YAML file it stops on, as Rojo skips a JSON or TOML file it can't write back but fails on YAML; what it said, with the instances of those files. */
+	private async runAround(
+		request: SyncbackRequest,
+		prepared: Prepared,
+		copied: readonly Copied[]
+	): Promise<
+		Result<
+			{ messages: readonly ServerMessage[]; refused: UnplacedInstance[] },
+			Error
+		>
+	> {
+		const ignored: string[] = [];
+		const refused: UnplacedInstance[] = [];
+		for (;;) {
+			const ran = await this.run(request, prepared, prepared.file, [
+				"--list",
+			]);
+			if (ran.isOk()) return ok({ messages: ran.value, refused });
+			const instance = CoreSyncbackService.refusedYaml(ran.error);
+			const file =
+				instance &&
+				copied.find(({ target }) =>
+					prepared.placed.some(
+						(placed) =>
+							toPosix(placed.source) === target &&
+							placed.instancePath.join("/") === instance
+					)
+				)?.mirror;
+			if (!instance || !file || ignored.includes(file)) return ran;
+			ignored.push(file);
+			refused.push({
+				instance,
+				reason: "Rojo can't sync back a Yaml file, so its change stays in the place; copy it by hand",
+			});
+			await this.writeProject(prepared, copied, ignored);
+		}
+	}
+
+	/** The instance whose YAML file Rojo's syncback stopped on. */
+	private static refusedYaml(error: Error): string | undefined {
+		if (!(error instanceof DiagnosticsError)) return undefined;
+		const said = error.diagnostics.flatMap(({ message, details }) => [
+			message,
+			...(details ?? []),
+		]);
+		for (const line of said) {
+			const found =
+				/Failed to syncback (?<instance>.+) because cannot syncback Yaml middleware/.exec(
+					line
+				)?.groups;
+			if (found) return found.instance;
+		}
+		return undefined;
 	}
 
 	/** Copies a folder of the project into the mirror, leaving out what its ignore globs leave out, as Rojo did when it served it, and syncback's own files. */
@@ -990,9 +1064,13 @@ export class CoreSyncbackService implements SyncbackService {
 		);
 
 		const expected: Expected[] = [];
-		const { instances, strays } = addedInstances(fresh, (folder) =>
-			known.has(folder)
-		);
+		const added = addedInstances(fresh, (folder) => known.has(folder));
+		const { strays } = added;
+		// A folder under `~kept` stands for its node, so a parent's names are read through the mirror.
+		const instances = added.instances.map((instance) => ({
+			...instance,
+			parent: mirror.instancePathOf(instance.parentFolder),
+		}));
 		for (const stray of strays)
 			unplaced.push({
 				instance: stray,

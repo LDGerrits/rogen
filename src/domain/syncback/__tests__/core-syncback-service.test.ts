@@ -424,6 +424,28 @@ describe("CoreSyncbackService", () => {
 		]);
 	});
 
+	it("should place a new instance beside its siblings in a folder the mirror keeps apart", async () => {
+		await prepare([
+			"src/Inventory/Bag@server.luau",
+			"src/Inventory/Rates.model@server.json",
+			"src/Shop/Cart@server.luau",
+		]);
+		rojo.say = async () => {
+			const tree = JSON.parse(rojo.projectTexts[0]).tree;
+			const folder = tree.ServerScriptService.Inventory.$path as string;
+			expect(folder).toContain("~kept");
+			await fs.writeFile(abs(folder, "Mail.luau"), "return 1");
+			return [];
+		};
+
+		const plan = (await service.plan(request)).unwrap();
+
+		expect(plan.unplaced).toEqual([]);
+		expect(plan.changes).toEqual([
+			{ kind: "write", file: abs("src/Inventory/Mail@server.luau") },
+		]);
+	});
+
 	it("should say why an instance has no place, and not write it", async () => {
 		await prepare(
 			["src/Inventory/Server/Bag.luau", "lib/Inventory/Server/Cart.luau"],
@@ -1547,6 +1569,47 @@ describe("CoreSyncbackService", () => {
 		]);
 		expect(result.unplaced).toMatchObject([
 			{ reason: expect.stringContaining("denied") },
+		]);
+	});
+
+	it("should leave out a YAML file Rojo stops on, list its instance as it does a JSON file, and sync back the rest", async () => {
+		await prepare([
+			"src/Inventory/Bag@server.luau",
+			"src/Inventory/Rates@server.yaml",
+		]);
+		rojo.say = async () =>
+			rojo.requests.length > 1
+				? []
+				: new DiagnosticsError([
+						{
+							...errorDiagnostic(
+								"rojo.commandFailed",
+								{
+									resource: abs(
+										"rogen-syncback.project.json"
+									),
+								},
+								"Rojo couldn't sync back into this project:"
+							),
+							details: [
+								"Failed to syncback ServerScriptService/Inventory/Rates because cannot syncback Yaml middleware",
+							],
+						},
+					]);
+
+		const plan = (await service.plan(request)).unwrap();
+
+		expect(rojo.requests).toHaveLength(2);
+		expect(JSON.parse(rojo.projectTexts[1]).syncbackRules).toEqual({
+			ignorePaths: [
+				".rogen-syncback/mirror/ServerScriptService/Inventory/Rates.yaml",
+			],
+		});
+		expect(plan.unplaced).toEqual([
+			{
+				instance: "ServerScriptService/Inventory/Rates",
+				reason: "Rojo can't sync back a Yaml file, so its change stays in the place; copy it by hand",
+			},
 		]);
 	});
 

@@ -558,6 +558,125 @@ describe("SyncbackMirror", () => {
 		);
 	});
 
+	it("should copy a nested project the write placed as a project, not as a JSON file", async () => {
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					$className: "DataModel",
+					ServerScriptService: {
+						Vendor: {
+							$className: "Folder",
+							Widget: {
+								$path: optional(
+									"src/Vendor/Widget@server.project.json"
+								),
+							},
+						},
+					},
+				},
+			},
+			[
+				placed(
+					"src/Vendor/Widget@server.project.json",
+					"ServerScriptService",
+					"Vendor",
+					"Widget"
+				),
+			],
+			[],
+			{
+				"/repo/src/Vendor/Widget@server.project.json": JSON.stringify({
+					name: "Widget",
+					tree: { $className: "Folder" },
+				}),
+			},
+			{ $className: "DataModel" }
+		);
+
+		expect(mirror.entries).toEqual([
+			{
+				mirror: "~kept/0/Widget@server.project.json",
+				target: "/repo/src/Vendor/Widget@server.project.json",
+				kind: "file",
+			},
+		]);
+		expect(mirror.file.tree).toEqual({
+			$className: "DataModel",
+			ServerScriptService: {
+				Vendor: {
+					$className: "Folder",
+					Widget: {
+						$path: optional(
+							`${ROOT}/~kept/0/Widget@server.project.json`
+						),
+					},
+				},
+			},
+		});
+	});
+
+	it("should keep a file under its own name when the name of its instance would make Rojo read it as another kind of file", async () => {
+		const files = [
+			"Rates.model@server.json",
+			"Odd.meta@server.json",
+			"Odd.project@server.json",
+		];
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					$className: "DataModel",
+					ServerScriptService: {
+						Inventory: {
+							$className: "Folder",
+							"Rates.model": {
+								$path: optional(`src/Inventory/${files[0]}`),
+							},
+							"Odd.meta": {
+								$path: optional(`src/Inventory/${files[1]}`),
+							},
+							"Odd.project": {
+								$path: optional(`src/Inventory/${files[2]}`),
+							},
+						},
+					},
+				},
+			},
+			[
+				placed(
+					`src/Inventory/${files[0]}`,
+					"ServerScriptService",
+					"Inventory",
+					"Rates.model"
+				),
+				placed(
+					`src/Inventory/${files[1]}`,
+					"ServerScriptService",
+					"Inventory",
+					"Odd.meta"
+				),
+				placed(
+					`src/Inventory/${files[2]}`,
+					"ServerScriptService",
+					"Inventory",
+					"Odd.project"
+				),
+			],
+			[],
+			{},
+			{ $className: "DataModel" }
+		);
+
+		expect(
+			mirror.entries
+				.filter(({ mirror }) => !mirror.endsWith(".meta.json"))
+				.map(({ mirror }) => mirror)
+		).toEqual([
+			`~kept/0/${files[0]}`,
+			`~kept/1/${files[1]}`,
+			`~kept/2/${files[2]}`,
+		]);
+	});
+
 	it("should give the path in the project of a mirror path, and none for a new one", async () => {
 		const mirror = await mirrorOf(
 			{
