@@ -1,0 +1,25 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/Shared/Greeting.txt
+stderr:
+  Wrote default.project.json.
+  default.rogen.json - warning: ReplicatedStorage/Packages/Theme is in the place and no folder of the project can take it, so it was left out: Rojo can't sync back a Yaml file, so its change stays in the place; copy it by hand. (syncback.unplaced)
+  default.rogen.json - warning: ReplicatedStorage/Shared/Rates is in the place and no folder of the project can take it, so it was left out: Rojo can't sync back a Yaml file, so its change stays in the place; copy it by hand. (syncback.unplaced)
+  Syncback wrote 1 change.
+
+written:
+  default.project.json
+  src/Shared/Greeting.txt
+
+src/Shared/Greeting.txt:
+bye
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Theme: ModuleScript  <- Packages/Theme.yml
+    Shared: Folder
+      Greeting: StringValue  <- src/Shared/Greeting.txt
+      Rates: ModuleScript  <- src/Shared/Rates.yaml

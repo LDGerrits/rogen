@@ -1,0 +1,5 @@
+{
+	"place": "place.rbxl",
+	"steps": [["syncback", "-i", "place.rbxl", "-y", "--list"]],
+	"show": ["src/Shared/Greeting.txt", "src/Shared/Rates.yaml"]
+}

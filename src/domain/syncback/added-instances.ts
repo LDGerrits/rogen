@@ -14,10 +14,11 @@ export interface AddedInstance extends NewInstance {
 	readonly parentFolder: string;
 }
 
-/** Groups what Rojo created in the mirror by the instance each path makes: the first name below a folder that was there before is the instance. `known` says whether a mirror folder was there before the run; a path below none is a stray. */
+/** Groups what Rojo created in the mirror by the instance each path makes: the first name below a folder that was there before is the instance. `known` says whether a mirror folder was there before the run; a path below none is a stray. `instancePathOf` reads a mirror folder as the instance it stands for. */
 export function addedInstances(
 	added: readonly AddedPath[],
-	known: (folder: string) => boolean
+	known: (folder: string) => boolean,
+	instancePathOf: (folder: string) => string[]
 ): { instances: AddedInstance[]; strays: string[] } {
 	const units = new Map<
 		string,
@@ -52,6 +53,7 @@ export function addedInstances(
 	return {
 		instances: [...units.values()].map((unit) => ({
 			...unit,
+			parent: instancePathOf(unit.parent.join("/")),
 			parentFolder: unit.parent.join("/"),
 		})),
 		strays,
