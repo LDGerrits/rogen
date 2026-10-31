@@ -251,7 +251,7 @@ class MirrorWalk {
 					: undefined;
 			if (at !== undefined && folder !== undefined) {
 				const target = this.madeFrom(child, here);
-				if (target !== undefined) {
+				if (target !== undefined && this.readsAlike(target, name)) {
 					await this.add(target, at, name, folder);
 					delete node[name];
 					moved = true;
@@ -277,11 +277,37 @@ class MirrorWalk {
 		instancePath: readonly string[]
 	): boolean {
 		const here = [...instancePath, name];
-		return (
-			SAFE_NAME.test(name) &&
-			(this.madeFrom(child, here) !== undefined ||
-				(instancePath.length > 0 && this.madeWhole(child, here)))
+		if (!SAFE_NAME.test(name)) return false;
+		const target = this.madeFrom(child, here);
+		if (target !== undefined) return this.readsAlike(target, name);
+		return instancePath.length > 0 && this.madeWhole(child, here);
+	}
+
+	/** Whether Rojo reads `target` named for its instance `name` as it reads it now; `Lib.project.json` named `Lib.json` would be JSON, and `Odd.meta@server.json` named `Odd.meta.json` a meta file. */
+	private readsAlike(target: string, name: string): boolean {
+		const now = this.inputs.fileAt(target);
+		const renamed = this.inputs.fileAt(
+			path.posix.join(
+				path.posix.dirname(target),
+				`${name}${this.suffixOf(target)}`
+			)
 		);
+		return (
+			renamed.instanceName === name &&
+			renamed.kind === now.kind &&
+			renamed.isProject === now.isProject &&
+			renamed.isMeta === now.isMeta &&
+			renamed.scriptSuffix === now.scriptSuffix
+		);
+	}
+
+	/** What follows the name Rojo gives the file at `target`, as `.server.luau`. */
+	private suffixOf(target: string): string {
+		const base = path.posix.basename(target);
+		const rojoName = this.inputs.fileAt(target).instanceName;
+		return base.startsWith(rojoName)
+			? base.slice(rojoName.length)
+			: path.posix.extname(base);
 	}
 
 	/** Whether `node` is a plain folder whose every child the write made, so its folder can lie inside the one of its parent. */
@@ -493,15 +519,11 @@ class MirrorWalk {
 			this.entries.push({ mirror: at, target, kind: "folder" });
 			return;
 		}
-		const base = path.posix.basename(target);
 		const rojoName = this.inputs.fileAt(target).instanceName;
-		const suffix = base.startsWith(rojoName)
-			? base.slice(rojoName.length)
-			: path.posix.extname(base);
 		const inFolder = (file: string) =>
 			folder === "" ? file : `${folder}/${file}`;
 		this.entries.push({
-			mirror: inFolder(`${name}${suffix}`),
+			mirror: inFolder(`${name}${this.suffixOf(target)}`),
 			target,
 			kind: "file",
 		});

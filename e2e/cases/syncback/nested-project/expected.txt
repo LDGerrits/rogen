@@ -1,0 +1,22 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing vendor/widget/Note.txt
+stderr:
+  Wrote default.project.json.
+  Syncback wrote 1 change.
+
+written:
+  default.project.json
+  vendor/widget/Note.txt
+
+vendor/widget/Note.txt:
+bye
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Vendor: Folder
+        Widget: Folder  <- src/Vendor/Widget.project.json
+          Note: StringValue  <- vendor/widget/Note.txt

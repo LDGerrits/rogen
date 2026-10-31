@@ -1,0 +1,21 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/Shop/Note@Server.txt
+stderr:
+  Wrote default.project.json.
+  Syncback wrote 1 change.
+
+written:
+  default.project.json
+  src/Shop/Note@Server.txt
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ServerScriptService: ServerScriptService
+    Bag: Folder
+      Item: ModuleScript  <- src/Bag/Item@Server.luau
+    Shop: Folder
+      Café: ModuleScript  <- src/Shop/Café@Server.luau
+      Cart: ModuleScript  <- src/Shop/Cart@Server.luau
+      Note: StringValue  <- src/Shop/Note@Server.txt
