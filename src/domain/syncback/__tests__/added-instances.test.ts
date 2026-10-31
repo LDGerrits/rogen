@@ -1,5 +1,7 @@
 import { addedInstances } from "../added-instances.js";
 
+const asNames = (folder: string) => folder.split("/");
+
 const known =
 	(...folders: string[]) =>
 	(folder: string) =>
@@ -18,7 +20,8 @@ describe("addedInstances", () => {
 					folder: false,
 				},
 			],
-			known("ServerScriptService", "ServerScriptService/Inventory")
+			known("ServerScriptService", "ServerScriptService/Inventory"),
+			asNames
 		);
 
 		expect(instances).toEqual([
@@ -42,7 +45,8 @@ describe("addedInstances", () => {
 				},
 				{ path: "ServerScriptService/Quest/Empty", folder: true },
 			],
-			known("ServerScriptService")
+			known("ServerScriptService"),
+			asNames
 		);
 
 		expect(instances).toEqual([
@@ -63,7 +67,8 @@ describe("addedInstances", () => {
 	it("should make an empty new folder an instance of its own", () => {
 		const { instances } = addedInstances(
 			[{ path: "ServerScriptService/Empty", folder: true }],
-			known("ServerScriptService")
+			known("ServerScriptService"),
+			asNames
 		);
 
 		expect(instances).toMatchObject([{ name: "Empty", folder: true }]);
@@ -73,7 +78,8 @@ describe("addedInstances", () => {
 		expect(
 			addedInstances(
 				[{ path: "Workspace/Map.luau", folder: false }],
-				known()
+				known(),
+				asNames
 			).strays
 		).toEqual(["Workspace/Map.luau"]);
 	});

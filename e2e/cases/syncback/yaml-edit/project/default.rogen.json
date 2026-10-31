@@ -1,6 +1,9 @@
 {
 	"name": "Game",
-	"tree": { "$className": "DataModel" },
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": { "Packages": { "$path": "Packages" } }
+	},
 	"sourcePaths": ["src"],
 	"routes": {
 		"Shared": "ReplicatedStorage/Shared",

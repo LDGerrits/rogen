@@ -1613,6 +1613,51 @@ describe("CoreSyncbackService", () => {
 		]);
 	});
 
+	it("should leave out a YAML file Rojo stops on in a folder the tree mounts", async () => {
+		await writeFiles(fs, "Packages/Rates.yaml", "Packages/Lib.luau");
+		await prepare(["src/Combat/Server/Combat.luau"], {
+			project: {
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Packages: { $path: "Packages" } },
+				},
+			},
+		});
+		rojo.say = async () =>
+			rojo.requests.length > 1
+				? []
+				: new DiagnosticsError([
+						{
+							...errorDiagnostic(
+								"rojo.commandFailed",
+								{
+									resource: abs(
+										"rogen-syncback.project.json"
+									),
+								},
+								"Rojo couldn't sync back into this project:"
+							),
+							details: [
+								"Failed to syncback ReplicatedStorage/Packages/Rates because cannot syncback Yaml middleware",
+							],
+						},
+					]);
+
+		const plan = (await service.plan(request)).unwrap();
+
+		expect(JSON.parse(rojo.projectTexts[1]).syncbackRules).toEqual({
+			ignorePaths: [
+				".rogen-syncback/mirror/ReplicatedStorage/Packages/Rates.yaml",
+			],
+		});
+		expect(plan.unplaced).toEqual([
+			{
+				instance: "ReplicatedStorage/Packages/Rates",
+				reason: "Rojo can't sync back a Yaml file, so its change stays in the place; copy it by hand",
+			},
+		]);
+	});
+
 	it("should name the file to delete when Rojo refuses to remove an instance a project file defines", async () => {
 		await prepare([
 			"src/Inventory/Bag@server.luau",

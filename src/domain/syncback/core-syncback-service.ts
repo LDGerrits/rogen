@@ -64,6 +64,13 @@ const LISTED = /^(Writing|Removing) (.+)$/;
 
 /** Rojo's warning for an instance whose kind of file it can't write back. */
 const SKIPPED = /Cannot syncback (?<kind>\S+) at (?<instance>.+?), skipping/;
+/** Rojo's error for a YAML file it can't write back, which it fails on where it skips JSON and TOML. */
+const REFUSED_YAML =
+	/Failed to syncback (?<instance>.+) because cannot syncback Yaml middleware/;
+
+/** Why an instance whose kind of file Rojo can't write back is left out. */
+const unsyncable = (kind: string): string =>
+	`Rojo can't sync back a ${kind} file, so its change stays in the place; copy it by hand`;
 
 /** How far apart two writes must be for every file system to give them different times; a copy younger than this when Rojo starts is compared byte for byte. */
 const COARSEST_CLOCK_MS = 2000;
@@ -236,7 +243,11 @@ export class CoreSyncbackService implements SyncbackService {
 		try {
 			const copied = await this.copy(prepared.value);
 			const started = Date.now();
-			const ran = await this.runAround(request, prepared.value, copied);
+			const ran = await this.runSkippingYaml(
+				request,
+				prepared.value,
+				copied
+			);
 			if (ran.isErr()) return ran;
 			const { messages, refused } = ran.value;
 			return ok(
@@ -530,7 +541,7 @@ export class CoreSyncbackService implements SyncbackService {
 	}
 
 	/** Runs Rojo's syncback, and again without each YAML file it stops on, as Rojo skips a JSON or TOML file it can't write back but fails on YAML; what it said, with the instances of those files. */
-	private async runAround(
+	private async runSkippingYaml(
 		request: SyncbackRequest,
 		prepared: Prepared,
 		copied: readonly Copied[]
@@ -550,18 +561,12 @@ export class CoreSyncbackService implements SyncbackService {
 			const instance = CoreSyncbackService.refusedYaml(ran.error);
 			const file =
 				instance &&
-				copied.find(({ target }) =>
-					prepared.placed.some(
-						(placed) =>
-							toPosix(placed.source) === target &&
-							placed.instancePath.join("/") === instance
-					)
-				)?.mirror;
+				CoreSyncbackService.yamlFileOf(prepared, copied, instance);
 			if (!instance || !file || ignored.includes(file)) return ran;
 			ignored.push(file);
 			refused.push({
 				instance,
-				reason: "Rojo can't sync back a Yaml file, so its change stays in the place; copy it by hand",
+				reason: unsyncable("Yaml"),
 			});
 			await this.writeProject(prepared, copied, ignored);
 		}
@@ -575,13 +580,33 @@ export class CoreSyncbackService implements SyncbackService {
 			...(details ?? []),
 		]);
 		for (const line of said) {
-			const found =
-				/Failed to syncback (?<instance>.+) because cannot syncback Yaml middleware/.exec(
-					line
-				)?.groups;
+			const found = REFUSED_YAML.exec(line)?.groups;
 			if (found) return found.instance;
 		}
 		return undefined;
+	}
+
+	/** The mirror path of the YAML file that makes `instance`: by the file the write placed or the mirror folder it lies in, else the one YAML file of its name. */
+	private static yamlFileOf(
+		{ mirror, placed }: Prepared,
+		copied: readonly Copied[],
+		instance: string
+	): string | undefined {
+		const yaml = copied.filter((file) => /\.ya?ml$/.test(file.mirror));
+		const nameOf = (at: string) => instanceNameOf(path.posix.basename(at));
+		const instanceOf = ({ mirror: at, target }: Copied) =>
+			placed
+				.find(({ source }) => toPosix(source) === target)
+				?.instancePath.join("/") ??
+			[...mirror.instancePathOf(path.posix.dirname(at)), nameOf(at)].join(
+				"/"
+			);
+		const exact = yaml.find((file) => instanceOf(file) === instance);
+		if (exact) return exact.mirror;
+		const named = yaml.filter(
+			(file) => nameOf(file.mirror) === instance.split("/").pop()
+		);
+		return named.length === 1 ? named[0].mirror : undefined;
 	}
 
 	/** Copies a folder of the project into the mirror, leaving out what its ignore globs leave out, as Rojo did when it served it, and syncback's own files. */
@@ -1064,13 +1089,11 @@ export class CoreSyncbackService implements SyncbackService {
 		);
 
 		const expected: Expected[] = [];
-		const added = addedInstances(fresh, (folder) => known.has(folder));
-		const { strays } = added;
-		// A folder under `~kept` stands for its node, so a parent's names are read through the mirror.
-		const instances = added.instances.map((instance) => ({
-			...instance,
-			parent: mirror.instancePathOf(instance.parentFolder),
-		}));
+		const { instances, strays } = addedInstances(
+			fresh,
+			(folder) => known.has(folder),
+			(folder) => mirror.instancePathOf(folder)
+		);
 		for (const stray of strays)
 			unplaced.push({
 				instance: stray,
@@ -1441,7 +1464,7 @@ export class CoreSyncbackService implements SyncbackService {
 				? [
 						{
 							instance: found.instance,
-							reason: `Rojo can't sync back a ${found.kind} file, so its change stays in the place; copy it by hand`,
+							reason: unsyncable(found.kind),
 						},
 					]
 				: [];
