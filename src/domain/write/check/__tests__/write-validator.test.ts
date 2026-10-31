@@ -449,6 +449,42 @@ describe("WriteValidator rules", () => {
 					},
 				]);
 			});
+			it("should propose no rename onto a file that is already there", async () => {
+				await write(
+					"src/Boot/Start.server@server.luau",
+					"src/Boot/Start.server.luau"
+				);
+
+				const [warning] = await beforeAt();
+
+				expect(warning.fixes ?? []).toEqual([]);
+			});
+
+			it("should read the suffix as the route key it spells in another letter case", async () => {
+				await write("src/Boot/Start.server@Server.luau");
+
+				const warnings = (
+					await route({
+						routes: {
+							Server: "ServerScriptService",
+							"*": "ReplicatedStorage",
+						},
+					})
+				)
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "route.scriptSuffixBeforeAt"
+					);
+
+				expect(warnings[0].fixes).toEqual([
+					{
+						rename: {
+							from: abs("src/Boot/Start.server@Server.luau"),
+							to: abs("src/Boot/Start.server.luau"),
+						},
+					},
+				]);
+			});
 		});
 
 		describe("an instance named with a leading $", () => {

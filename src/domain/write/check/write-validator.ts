@@ -17,7 +17,7 @@ import {
 	scriptFate,
 	instanceKey,
 } from "../../roblox/roblox.js";
-import { RojoFile, scriptRunOf } from "../../rojo/rojo.js";
+import { RojoFile, SCRIPT_SUFFIXES, scriptRunOf } from "../../rojo/rojo.js";
 import { NODE_FIELDS, RojoNode } from "../../rojo/rojo-project.js";
 import { FolderMeta } from "../folder-meta.js";
 import {
@@ -31,8 +31,9 @@ import { RoutedFile } from "../router.js";
 import { Assembly } from "../tree-assembler.js";
 
 /** A script suffix written before an `@` suffix, as in `Start.server@client.luau`, where Rojo doesn't read it. */
-const SCRIPT_SUFFIX_BEFORE_AT =
-	/^(?<stem>.+)\.(?<suffix>server|client|plugin)@[^.@]+(?<extension>\.luau?)$/;
+const SCRIPT_SUFFIX_BEFORE_AT = new RegExp(
+	`^(?<stem>.+)\\.(?<suffix>${SCRIPT_SUFFIXES.join("|")})@[^.@]+(?<extension>\\.luau?)$`
+);
 
 function reservedKeys(
 	node: RojoNode,
@@ -383,6 +384,11 @@ export class WriteValidator {
 	}
 
 	private scriptSuffixBeforeAt(): Diagnostic[] {
+		const scanned = new Set(
+			this.placement.roots.flatMap(({ entries }) =>
+				entries.map(({ source }) => source)
+			)
+		);
 		return this.placement.files.flatMap((file) => {
 			if (!file.entry.file.isLuauModule) return [];
 			const found = SCRIPT_SUFFIX_BEFORE_AT.exec(
@@ -391,29 +397,22 @@ export class WriteValidator {
 			if (!found) return [];
 			const { stem, suffix, extension } = found;
 			const named = `${stem}.${suffix}${extension}`;
-			const routes = this.config.keys.resolve(suffix) === file.route;
-			const script = routes
+			const to = path.posix.join(
+				path.posix.dirname(file.entry.source),
+				named
+			);
+			const suffixRoutesHere =
+				this.config.keys.resolve(suffix) === file.route;
+			const script = suffixRoutesHere
 				? `rename it ${named}, which the "${file.route}" route takes`
 				: `name it ${named} in a folder that routes it`;
 			return [
 				warningDiagnostic(
 					"route.scriptSuffixBeforeAt",
 					{ resource: file.entry.source },
-					`Rojo reads ".${suffix}" only at the end of a name, so it makes this file a ModuleScript named "${file.instancePath[file.instancePath.length - 1]}". For a Script, ${script}; for a module, remove ".${suffix}".`,
-					routes
-						? [
-								{
-									rename: {
-										from: file.entry.source,
-										to: path.posix.join(
-											path.posix.dirname(
-												file.entry.source
-											),
-											named
-										),
-									},
-								},
-							]
+					`Rojo reads ".${suffix}" only at the end of a name, so it makes this file a ModuleScript named "${file.instancePath.at(-1)}". For a Script, ${script}; for a module, remove ".${suffix}".`,
+					suffixRoutesHere && !scanned.has(to)
+						? [{ rename: { from: file.entry.source, to } }]
 						: []
 				),
 			];

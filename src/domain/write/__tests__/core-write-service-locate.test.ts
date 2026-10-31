@@ -245,8 +245,14 @@ describe("CoreWriteService.locate", () => {
 			"src/Data/Note@server.txt",
 			"src/Data/Strings@server.csv",
 			"src/Data/Crate@server.model.json",
+			"src/Data/Tool@server.rbxm",
+			"src/Data/Lib@server.project.json",
 		];
 		await write(...files);
+		await fs.writeFile(
+			abs("src/Data/Lib@server.project.json"),
+			JSON.stringify({ name: "Lib", tree: { $className: "Folder" } })
+		);
 
 		const located = await locate(files);
 
@@ -260,6 +266,8 @@ describe("CoreWriteService.locate", () => {
 			"module",
 			"module",
 			"module",
+			undefined,
+			undefined,
 			undefined,
 			undefined,
 			undefined,

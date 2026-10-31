@@ -27,7 +27,7 @@ import {
 
 export type RojoFileKind = "script" | "model" | "data";
 
-const SCRIPT_SUFFIXES = ["server", "client", "plugin"] as const;
+export const SCRIPT_SUFFIXES = ["server", "client", "plugin"] as const;
 
 export type RojoScriptSuffix = (typeof SCRIPT_SUFFIXES)[number];
 
