@@ -16,9 +16,7 @@ export function Reveals() {
 		);
 		const pending: HTMLElement[] = [];
 		document
-			.querySelectorAll<HTMLElement>(
-				".home .rv, .home [data-line], .home [data-cmds]"
-			)
+			.querySelectorAll<HTMLElement>(".home .rv, .home [data-line]")
 			.forEach((el) => {
 				if (el.getBoundingClientRect().top <= innerHeight) return;
 				el.classList.add("pending");

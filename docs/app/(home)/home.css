@@ -335,7 +335,7 @@ html:not([data-lang="ts"]) .home [data-only="ts"] {
 	grid-column: 8 / span 5;
 }
 .home .hero h1 {
-	/* "Professional-grade" stays on one line, so the size follows the column: it is about 9.1em wide */
+	/* "Each feature in" stays on one line, so the size follows the column
 	font-size: clamp(34px, min(10.6cqi, 6vw), 78px);
 	line-height: 1;
 	letter-spacing: -0.045em;
@@ -447,7 +447,7 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .hero-ide .on .band {
 	opacity: 1;
 }
-.home .hero-ide .cur {
+.home .ide-term .cur {
 	display: inline-block;
 	width: 7px;
 	height: 14px;
@@ -809,18 +809,35 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	color: var(--ink-2);
 }
 .home .plate {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	margin-top: var(--s4);
 }
+.home .plate > div,
+.home .plate .ide-win {
+	display: flex;
+	flex-direction: column;
+}
+.home .plate .ide-win,
+.home .plate .ide-tree {
+	flex: 1;
+}
 .home .plate .ide-term {
+	overflow-wrap: anywhere;
 	padding-right: 12px;
 	font-size: 10.5px;
 	line-height: 15px;
 }
+/* each column is a subgrid of its number, heading, text, link and figure, so both figures start on one line */
 .home .split {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .home .split > div {
+	display: grid;
+	grid-row: span 5;
+	grid-template-rows: subgrid;
+	grid-template-columns: minmax(0, 1fr);
 	position: relative;
 	padding: var(--s6) var(--s5) var(--s6) 0;
 }
@@ -845,65 +862,19 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .split p {
 	max-width: 32em;
 }
+.home .split .link {
+	justify-self: start;
+}
 .home .r4 {
 	padding-top: var(--s6);
 	align-items: start;
 }
-.home .cmds {
+.home .still {
 	grid-column: 7 / span 6;
-	list-style: none;
-	font: 400 16px/1 var(--mono);
-	color: var(--ink);
 }
-.home .cmds li {
-	position: relative;
-	display: flex;
-	align-items: center;
-	gap: 16px;
-	height: 62px;
-	padding: 0 var(--s1);
-	white-space: nowrap;
-	overflow: hidden;
-}
-.home .cmds li::before,
-.home .cmds li:last-child::after {
-	content: "";
-	position: absolute;
-	left: 0;
-	right: 0;
-	top: 0;
-	height: 1px;
-	background: var(--line-2);
-	transform-origin: left;
-	transition: transform 0.9s var(--ease-out);
-	transition-delay: var(--dl, 0ms);
-}
-.home .cmds li:last-child::after {
-	top: auto;
-	bottom: 0;
-	transition-delay: 0.32s;
-}
-.home .cmds li i {
-	font-style: normal;
-	color: var(--acc-2);
-}
-.home .cmds li span,
-.home .cmds li i {
-	transition:
-		opacity 0.7s var(--ease-out),
-		transform 0.7s var(--ease-out);
-	transition-delay: var(--dl, 0ms);
-}
-.home .cmds.pending li::before,
-.home .cmds.pending li:last-child::after {
-	transform: scaleX(0);
-}
-.home .cmds.pending li span,
-.home .cmds.pending li i {
-	opacity: 0;
-}
-.home .cmds.pending li span {
-	transform: translateX(-8px);
+.home .still .ide-term {
+	font-size: 12px;
+	line-height: 19px;
 }
 
 /* routing */
@@ -1554,11 +1525,14 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .rt-panes {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
-	align-items: start;
-	gap: var(--s3);
+	column-gap: var(--s3);
 	margin-top: var(--s4);
 }
+/* both panes share a window row and a description row, so the windows are one size */
 .home .rt-pane {
+	display: grid;
+	grid-row: span 2;
+	grid-template-rows: subgrid;
 	min-width: 0;
 }
 .home .rt-panes .ide-vs .ide-tree {
@@ -1866,7 +1840,7 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 		padding-bottom: var(--s6);
 	}
 	.home .split {
-		grid-template-columns: 1fr;
+		grid-template-columns: minmax(0, 1fr);
 	}
 	.home .split > div,
 	.home .split > div + div {
@@ -1884,7 +1858,7 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	.home .split.pending > div + div::after {
 		transform: scaleX(0);
 	}
-	.home .cmds {
+	.home .still {
 		margin-top: var(--s4);
 	}
 	.home .r-head p {
@@ -1892,6 +1866,9 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	}
 	.home .rt-panes {
 		grid-template-columns: minmax(0, 1fr);
+	}
+	.home .rt-pane + .rt-pane {
+		margin-top: var(--s3);
 	}
 	.home .agw {
 		grid-template-columns: minmax(0, 1fr);
@@ -1980,13 +1957,6 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	}
 	.home .tree div {
 		padding-left: calc(var(--d, 0) * 14px);
-	}
-	.home .cmds {
-		font-size: 13.5px;
-	}
-	.home .cmds li {
-		height: 52px;
-		gap: 12px;
 	}
 	.home .toggle {
 		display: flex;

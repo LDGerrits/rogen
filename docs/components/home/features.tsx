@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { Fragment, type CSSProperties } from "react";
 import {
 	Chevron,
 	FileIcon,
@@ -38,11 +38,25 @@ const tree: [string, string, number, Dot, string?][] = [
 	["Shop/", "shop/", 1, "o"],
 ];
 
-const commands = [
-	"rogen serve",
-	"rogen build -o game.rbxl",
-	"rogen sourcemap -o sourcemap.json",
-	"rogen syncback --input game.rbxl",
+// Rojo's commands through Rogen, with what each prints.
+const ROJO_RUNS: Run[] = [
+	{ command: "rogen build -o game.rbxl", output: ["Built game.rbxl."] },
+	{
+		command: "rogen sourcemap -o sourcemap.json",
+		output: ["Wrote sourcemap.json."],
+	},
+	{
+		command: "rogen syncback --input game.rbxl -y",
+		output: ["Syncback wrote 2 changes."],
+	},
+	{
+		command: "rogen serve",
+		output: [
+			"rogen serve · default.rogen.json",
+			"Serving my-game at localhost:34872 · http://localhost:34872/",
+			"  In Studio, press Connect in the Rojo plugin.",
+		],
+	},
 ];
 
 const depth = (d: number) => ({ "--d": d }) as CSSProperties;
@@ -63,12 +77,11 @@ function TreeName({ name, dot }: { name: string; dot: Dot }) {
 
 // A row of VS Code's explorer: [name, depth, selected].
 type Row = [string, number, boolean?];
+// A command typed in the terminal, and what it prints.
+type Run = { command: string; output: string[] };
 
 // A feature that requires another, and what each language's linter prints about it.
-const BOUNDARY: Record<
-	"luau" | "ts",
-	{ rows: Row[]; command: string; output: string[] }
-> = {
+const BOUNDARY: Record<"luau" | "ts", { rows: Row[] } & Run> = {
 	luau: {
 		rows: [
 			["src/", 0],
@@ -110,10 +123,7 @@ const BOUNDARY: Record<
 };
 
 // Two places that share src/common, in the layout each language's init writes, and what rogen where says of the game place.
-const PLACES: Record<
-	"luau" | "ts",
-	{ rows: Row[]; command: string; output: string[] }
-> = {
+const PLACES: Record<"luau" | "ts", { rows: Row[] } & Run> = {
 	luau: {
 		rows: [
 			["src/", 0],
@@ -163,7 +173,7 @@ const PLACES: Record<
 const suffixColour = (name: string) =>
 	/@server/i.test(name) ? "s" : /@client/i.test(name) ? "c" : undefined;
 
-function Terminal({ command, output }: { command: string; output: string[] }) {
+function Terminal({ runs, prompt = false }: { runs: Run[]; prompt?: boolean }) {
 	return (
 		<div className="ide-panel">
 			<div className="ide-tabs" aria-hidden="true">
@@ -172,14 +182,23 @@ function Terminal({ command, output }: { command: string; output: string[] }) {
 				<span className="on">TERMINAL</span>
 			</div>
 			<div className="ide-term">
-				<span className="ln">
-					<span className="ps">my-game %</span> {command}
-				</span>
-				{output.map((text, i) => (
-					<span key={i} className="ln">
-						{text || " "}
-					</span>
+				{runs.map(({ command, output }, i) => (
+					<Fragment key={i}>
+						<span className="ln">
+							<span className="ps">my-game %</span> {command}
+						</span>
+						{output.map((text, j) => (
+							<span key={j} className="ln">
+								{text || " "}
+							</span>
+						))}
+					</Fragment>
 				))}
+				{prompt && (
+					<span className="ln">
+						<span className="cur" aria-hidden="true" />
+					</span>
+				)}
 			</div>
 		</div>
 	);
@@ -242,7 +261,7 @@ function ExplorerAndTerminal({
 									);
 								})}
 							</ul>
-							<Terminal command={command} output={output} />
+							<Terminal runs={[{ command, output }]} />
 						</VsCodeWindow>
 					</div>
 				);
@@ -374,18 +393,16 @@ export function Features() {
 							Coming from Rojo
 						</MoreLink>
 					</div>
-					<ul
-						className="cmds"
-						aria-label="Rogen commands"
-						data-cmds=""
+					<div
+						className="still ide rv"
+						style={delay(120)}
+						role="img"
+						aria-label="VS Code's terminal running rogen build, sourcemap, syncback and serve, as Rojo's commands are run"
 					>
-						{commands.map((command, i) => (
-							<li key={command} style={delay(i * 100)}>
-								<i>$</i>
-								<span>{command}</span>
-							</li>
-						))}
-					</ul>
+						<VsCodeWindow title="my-game">
+							<Terminal runs={ROJO_RUNS} prompt />
+						</VsCodeWindow>
+					</div>
 				</div>
 			</div>
 		</section>

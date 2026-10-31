@@ -8,18 +8,13 @@ export function Hero() {
 			<div className="wrap">
 				<div className="cols hero-row">
 					<div className="hero-h">
-						<span className="eyebrow in-1">
-							Rojo with file-system routing
-						</span>
+						<span className="eyebrow in-1">A Rojo superset</span>
 						<h1 className="in-2">
-							<span>Professional-grade</span> architecture for
-							Roblox
+							Each feature in <span>one folder</span>
 						</h1>
 						<p className="lede in-3">
-							Rogen is a superset of Rojo that generates Rojo
-							project files from your file system. You organize
-							your game by feature, and Rogen puts each file in
-							the right place.
+							Rogen generates the Rojo project file from your file
+							system.
 						</p>
 					</div>
 					<div className="hero-copy">
