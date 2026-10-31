@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.0-beta.2] - 2026-10-31
+
 ### Added
 
 - `rogen init` migrates a Rogen 1 project. It writes a config for each mode, renames files such as `Combat_Server.luau` to `Combat@Server.luau`, and warns about what it can't carry over. See [Migrating from v1](https://rogen-roblox.vercel.app/docs/v2/migrating-from-v1). ([#285](https://github.com/LDGerrits/rogen/pull/285))
@@ -238,7 +240,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Routing files to Roblox services by folder name (`server`, `client`, `shared` or a service name) or by file-name suffix, and generating the Rojo project file from them.
 - Support for Luau, roblox-ts and Darklua.
 
-[unreleased]: https://github.com/LDGerrits/rogen/compare/v2.0.0-beta.1...HEAD
+[unreleased]: https://github.com/LDGerrits/rogen/compare/v2.0.0-beta.2...HEAD
+[2.0.0-beta.2]: https://github.com/LDGerrits/rogen/compare/v2.0.0-beta.1...v2.0.0-beta.2
 [2.0.0-beta.1]: https://github.com/LDGerrits/rogen/compare/v1.4.4...v2.0.0-beta.1
 [1.4.4]: https://github.com/LDGerrits/rogen/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/LDGerrits/rogen/compare/v1.4.2...v1.4.3

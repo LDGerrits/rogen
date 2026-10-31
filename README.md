@@ -73,7 +73,7 @@ The routes are yours to change. Add `"Gui": "StarterGui"`, and a `Gui` folder or
 ## Installation
 
 ```bash
-rokit add ldgerrits/rogen@2.0.0-beta.1
+rokit add ldgerrits/rogen@2.0.0-beta.2
 rogen init
 ```
 
