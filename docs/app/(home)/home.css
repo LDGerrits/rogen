@@ -335,7 +335,7 @@ html:not([data-lang="ts"]) .home [data-only="ts"] {
 	grid-column: 8 / span 5;
 }
 .home .hero h1 {
-	/* "Each feature in" stays on one line, so the size follows the column
+	/* "Each feature in" stays on one line, so the size follows the column */
 	font-size: clamp(34px, min(10.6cqi, 6vw), 78px);
 	line-height: 1;
 	letter-spacing: -0.045em;
