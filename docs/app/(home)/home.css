@@ -362,22 +362,27 @@ html:not([data-lang="ts"]) .home [data-only="ts"] {
 .home .hero .install {
 	margin-top: 0;
 }
-.home .langs {
+/* a label and a segmented control: "Install with" and "Works with", their controls on one line */
+.home .pick {
 	display: flex;
 	align-items: center;
 	gap: 12px;
-	margin-top: var(--s3);
 	font: 400 13px/1 var(--mono);
 	color: var(--ink-3);
 }
-/* the active language comes from html[data-lang], so it is right before the page runs */
-.home .lang-seg {
+.home .pick > span {
+	min-width: 12ch;
+}
+.home .langs {
+	margin-top: var(--s3);
+}
+.home .seg {
 	display: inline-flex;
 	padding: 2px;
 	border-radius: 8px;
 	background: var(--seg);
 }
-.home .lang-seg button {
+.home .seg button {
 	appearance: none;
 	border: 0;
 	background: none;
@@ -392,14 +397,16 @@ html:not([data-lang="ts"]) .home [data-only="ts"] {
 		background-color 0.25s var(--ease-out),
 		box-shadow 0.25s var(--ease-out);
 }
-html:not([data-lang="ts"]) .home .lang-seg [data-v="luau"],
-html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
+/* the active language comes from html[data-lang], so it is right before the page runs */
+html:not([data-lang="ts"]) .home .seg [data-v="luau"],
+html[data-lang="ts"] .home .seg [data-v="ts"],
+.home .seg [aria-selected="true"] {
 	background: var(--seg-on);
 	box-shadow: var(--seg-shadow);
 	color: var(--ink);
 }
 @media (hover: hover) and (pointer: fine) {
-	.home .lang-seg button:hover {
+	.home .seg button:hover {
 		color: var(--ink);
 	}
 }
@@ -596,89 +603,42 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	}
 }
 
-/* install: a terminal window, the package manager picked in its title bar */
+/* install: which tool, then its command in a field with a copy button */
 .home .install {
 	margin-top: var(--s5);
 	max-width: 480px;
-	background: var(--ed-bg);
-	color: var(--ed-fg);
-	/* the segmented control in the window's grey, not the page's */
-	--seg: rgb(0 0 0 / 0.06);
-	--seg-on: #fff;
-	--seg-shadow: 0 1px 2px rgb(0 0 0 / 0.14), 0 0 0 0.5px rgb(0 0 0 / 0.08);
-}
-.dark .home .install {
-	--seg: rgb(255 255 255 / 0.07);
-	--seg-on: #3a3a3a;
-	--seg-shadow:
-		0 1px 2px rgb(0 0 0 / 0.4), inset 0 0.5px rgb(255 255 255 / 0.1);
-}
-.home .install .ide-bar {
-	height: 40px;
-	background: var(--vs-bg);
-}
-.home .install .seg {
-	position: absolute;
-	left: 50%;
-	transform: translateX(-50%);
-	display: flex;
-	padding: 2px;
-	border-radius: 7px;
-	background: var(--seg);
-}
-.home .install .seg button {
-	appearance: none;
-	border: 0;
-	background: none;
-	height: 22px;
-	padding: 0 14px;
-	border-radius: 5px;
-	font:
-		500 12px/1 system-ui,
-		-apple-system,
-		sans-serif;
-	color: var(--vs-muted);
-	cursor: pointer;
-	transition:
-		color 0.25s var(--ease-out),
-		background-color 0.25s var(--ease-out),
-		box-shadow 0.25s var(--ease-out);
-}
-.home .install .seg button[aria-selected="true"] {
-	background: var(--seg-on);
-	box-shadow: var(--seg-shadow);
-	color: var(--vs-fg);
-}
-@media (hover: hover) and (pointer: fine) {
-	.home .install .seg button:hover {
-		color: var(--vs-fg);
-	}
 }
 .home .cmd {
+	position: relative;
 	display: flex;
 	align-items: center;
-	gap: var(--s2);
-	padding: 14px 12px 14px 18px;
+	gap: var(--s1);
+	height: 56px;
+	margin-top: var(--s2);
+	padding: 0 8px 0 var(--s3);
+	border-radius: 10px;
+	background: var(--deep);
+	box-shadow:
+		inset 0 0 0 1px var(--line-2),
+		0 1px 2px var(--line);
 }
 .home .cmd code {
 	flex: 1;
 	min-width: 0;
-	font:
-		400 14px/1.4 ui-monospace,
-		Menlo,
-		Consolas,
-		monospace;
+	font: 400 15px/1 var(--mono);
+	color: var(--ink);
 	white-space: nowrap;
 	overflow-x: auto;
 	scrollbar-width: none;
+	mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 }
 .home .cmd code::-webkit-scrollbar {
 	display: none;
 }
 .home .cmd code i {
 	font-style: normal;
-	color: var(--vs-prompt);
-	margin-right: 10px;
+	color: var(--acc-2);
+	margin-right: 12px;
 }
 .home .cmd code span {
 	display: inline-block;
@@ -692,43 +652,69 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 }
 .home .copy {
 	flex: none;
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
+	display: grid;
+	place-items: center;
+	width: 40px;
+	height: 40px;
 	appearance: none;
 	border: 0;
-	cursor: pointer;
-	font:
-		500 12px/1 system-ui,
-		-apple-system,
-		sans-serif;
-	color: var(--vs-muted);
+	border-radius: 7px;
 	background: none;
-	border-radius: 6px;
-	height: 28px;
-	padding: 0 10px;
-	box-shadow: inset 0 0 0 1px var(--vs-bd);
+	color: var(--ink-3);
+	cursor: pointer;
 	transition:
 		color 0.2s var(--snap),
 		background-color 0.2s var(--snap);
 }
 .home .copy svg {
-	width: 14px;
-	height: 14px;
+	width: 17px;
+	height: 17px;
 	fill: none;
 	stroke: currentColor;
 	stroke-width: 1.3;
 	stroke-linecap: round;
 	stroke-linejoin: round;
+	overflow: visible;
+}
+.home .copy svg > * {
+	transition:
+		opacity 0.2s var(--ease-out),
+		transform 0.3s var(--spring);
+	transform-origin: center;
+	transform-box: fill-box;
+}
+.home .copy .ic-done,
+.home .copy.done .ic-copy {
+	opacity: 0;
+	transform: scale(0.6);
+}
+.home .copy.done .ic-done {
+	opacity: 1;
+	transform: none;
+}
+.home .copy.done {
+	color: var(--t-r);
 }
 @media (hover: hover) and (pointer: fine) {
 	.home .copy:hover {
-		color: var(--vs-fg);
-		background: var(--vs-bg);
+		color: var(--ink);
+		background: var(--seg);
+	}
+	.home .copy.done:hover {
+		color: var(--t-r);
 	}
 }
 .home .copy:active {
-	transform: scale(0.97);
+	transform: scale(0.94);
+}
+/* "Copied" floats over the field's top edge, so it never moves the command */
+.home .copied {
+	position: absolute;
+	right: 8px;
+	bottom: calc(100% + 6px);
+	font: 500 12px/1 var(--mono);
+	color: var(--t-r);
+	pointer-events: none;
 }
 
 /* sections */
@@ -1981,8 +1967,11 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	.home .xt {
 		font-size: 12px;
 	}
+	.home .cmd {
+		padding-left: var(--s2);
+	}
 	.home .cmd code {
-		font-size: 13px;
+		font-size: 13.5px;
 	}
 	.home .tree {
 		font-size: 12.5px;

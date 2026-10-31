@@ -13,13 +13,9 @@ export function LangSwitch({ className }: { className?: string }) {
 	const lang = useLang();
 	useEffect(syncLang, []);
 	return (
-		<div className={`langs ${className ?? ""}`}>
+		<div className={`pick langs ${className ?? ""}`}>
 			<span id="langs-l">Works with</span>
-			<div
-				className="lang-seg"
-				role="radiogroup"
-				aria-labelledby="langs-l"
-			>
+			<div className="seg" role="radiogroup" aria-labelledby="langs-l">
 				{LABELS.map(([id, label]) => (
 					<button
 						key={id}
