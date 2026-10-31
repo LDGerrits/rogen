@@ -1,9 +1,7 @@
 ---
 title: Sync Details
-description: How init scripts, meta files, nested projects and data files sync
+description: How init scripts, meta files and data files sync
 ---
-
-import { Callout } from "fumadocs-ui/components/callout";
 
 Routing decides where a file goes. This page covers the files that become something other than one instance of their own. The examples use the routes from [How Routing Works](/docs/v2/core-concepts/routing).
 
@@ -26,13 +24,9 @@ A folder with an `init` script, such as `init.luau`, `init.server.luau` or roblo
 `}
 />
 
-A script beside a folder of the same name, such as `Cart.luau` beside `Cart/`, is one script too, with the folder's files as its children. An init script directly in a source path or in a routing folder has no folder to become, and is an error ([`tree.initWithoutFolder`](/docs/v2/diagnostics#tree-initwithoutfolder)).
-
 A route on the init script, such as `init@Server.luau`, routes its whole folder, as a [marker file](/docs/v2/core-concepts/routing/names#marker-files) does.
 
-## Folders Split Across Routes
-
-When a folder's files land in two services, the folder becomes an instance in each. Each gets a copy of its `init.luau` with only the files routed there:
+When a folder's files land in two services, the folder becomes an instance in each, and each gets a copy of its `init.luau` with only the files routed there:
 
 <RouteFigure
 	disk={`
@@ -55,31 +49,13 @@ When a folder's files land in two services, the folder becomes an instance in ea
 `}
 />
 
-An init Script or LocalScript is never copied, because every copy would run.
-
-<Callout type="warn" title="Keep a copied init free of state">
-	A copy's children depend on where it sits, not on who runs it. The server can load both copies, each with its own state. Look children up with `script:FindFirstChild` instead of choosing them with `RunService`.
-</Callout>
-
 ## Meta Files
 
-A `.meta.json` file sets what a file can't set on its own, as in Rojo. Name it after the name Rojo gives the file: drop `.server`, `.client` and `.plugin`, and keep everything else, `@` and `^` included.
-
-| File | Its meta |
-|---|---|
-| `Save.server.luau` | `Save.meta.json` |
-| `TradeService@Server.luau` | `TradeService@Server.meta.json` |
-| `^Animate.client.luau` | `^Animate.meta.json` |
-
-A folder's `init.meta.json`, such as `{ "className": "Actor" }`, applies to every instance the folder becomes. In a routing folder or an invisible folder it applies to nothing, and Rogen warns ([`meta.appliesToNothing`](/docs/v2/diagnostics#meta-appliestonothing)).
-
-## Nested Projects
-
-A folder that holds a `default.project.json` is that project, as in Rojo. It becomes one instance, named by the project's `name`, with only what the project's `tree` mounts. Rogen doesn't route its other files. A `default.project.json` directly in a source path has no folder to become, so Rogen warns ([`scan.nestedProject`](/docs/v2/diagnostics#scan-nestedproject)).
+A `.meta.json` file sets what a file can't set on its own, as in Rojo. Name it after the name Rojo gives the file: `Save.server.luau` takes `Save.meta.json`, and `TradeService@Server.luau` takes `TradeService@Server.meta.json`. A folder's `init.meta.json` applies to every instance the folder becomes.
 
 ## Data Files
 
-Data files and models become instances as Rojo reads them, and route like scripts. Put the route before the extension, as in `Prices@Shared.json`. `.json`, `.jsonc`, `.toml` and `.yaml` files become ModuleScripts, `.txt` a StringValue, `.csv` a LocalizationTable, and `.rbxm`, `.rbxmx` and `.model.json` the model they hold.
+Data files and models become instances as Rojo reads them, and route like scripts. Put the route before the extension, as in `Prices@Shared.json`.
 
 ## Leaving Files Out
 
@@ -87,8 +63,6 @@ Data files and models become instances as Rojo reads them, and route like script
 
 ```json title="default.rogen.json"
 {
-	"globIgnorePaths": ["**/*.spec.luau", "**/_*"]
+	"globIgnorePaths": ["**/*.spec.luau"]
 }
 ```
-
-`rogen where` names the glob for each file it leaves out. A symlink inside a source path is read as the folder it points at, and keeps the link's own path in the project file.

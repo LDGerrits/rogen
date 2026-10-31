@@ -25,7 +25,7 @@
 ## Why Rogen?
 
 - **Organize by feature** — Group all code, UI, and assets for a specific feature in one place. This gives you high cohesion, better scalability, fewer merge conflicts, and features that are simple to maintain or delete.
-- **Enforce boundaries** — Keep coupling low with a linter. Every path names its feature, so a [lint rule](https://rogen-roblox.vercel.app/docs/v2/architectures) can stop one feature from requiring another.
+- **Enforce boundaries** — Keep coupling low with a linter. Every path names its feature, so a [lint rule](https://rogen-roblox.vercel.app/docs/v2/boundaries) can stop one feature from requiring another.
 - **Multi-place games** — Write shared code once and use it in every place. When one place needs something different, add a file with the same name to that place's folder, and it overwrites the shared one there.
 - **Still Rojo** — Rogen runs the Rojo commands you use, with the same flags. One tool, and nothing to relearn.
 

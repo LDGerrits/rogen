@@ -5,8 +5,6 @@ description: Bring changes made in Studio back into your source files
 
 `rogen syncback` reads a place file that you saved from Studio, and writes what changed into your source files. It runs Rojo's own syncback underneath, so it needs Rojo 7.7.0 or newer.
 
-## Bring Changes Back
-
 In Studio, choose **File > Save to File As** and save the place as `game.rbxlx` in your project folder. Then see what syncback would do:
 
 ```bash
@@ -22,29 +20,8 @@ Removing src/Greeter/Client
 Syncback would change 5 files (4 to write, 1 to remove).
 ```
 
-Syncback removes the files of every instance that the place no longer holds, so a place saved from an old copy of the game undoes the edits made since. Look before you write. Then run it without `--dry-run`. In a terminal it asks before it writes, and `git diff` shows what it wrote.
+Syncback removes the files of every instance that the place no longer holds, so a place saved from an old copy of the game undoes the edits made since. Look before you write. Then run it without `--dry-run`. In a terminal it asks before it writes. Under CI or a coding agent it can't ask, so pass `-y`.
 
-Under CI or a coding agent, syncback can't ask, so it stops with exit 2 and writes nothing. Pass `-y` to write without asking. `--json` prints the run as [one document](/docs/v2/output).
+A changed instance goes back to the file it came from, in any layout. A new instance goes where routing would place a file for it, in the style of the files around it: in a project that routes with folders, a new `ServerScriptService/Quest/Main` script becomes `src/Quest/Server/Main.server.luau`.
 
-## Where Changes Land
-
-A changed instance goes back to the file it came from, in any layout: a routing folder, an `@` name, a `^` name, a `(Group)` folder or a marker file. When the place no longer holds an instance, its file goes, and its meta file with it.
-
-A new instance goes where routing would place a file for it, in the style of the files around it. In a project that routes with folders, a new `ServerScriptService/Quest/Main` script becomes `src/Quest/Server/Main.server.luau`. In a project where most server files have an `@Server` name, a new `ServerScriptService/Mail/MailService` becomes `src/Mail/MailService@Server.luau`. A new module with children becomes a folder with an `init.luau`.
-
-A property changed on a node of your `tree`, such as `Lighting`, goes into that node's `$properties` in `default.rogen.json`.
-
-## Projects With a Compiled Path
-
-When your config has a [`compiledPath`](/docs/v2/config), the next compile would replace whatever syncback wrote there. So syncback leaves compiled code alone and lists each change for you to make in the source files:
-
-```
-default.rogen.json - warning: ReplicatedStorage/Shared/Greeter/Greeting changed in the place, but it is compiled into dist, so syncback left it out. Make the change in the source files. (syncback.compiledPath)
-```
-
-Everything outside the compiled path is still written, such as the `$properties` of your `tree`.
-
-## Limits
-
-- A new instance where no route puts files, such as a `Remotes` folder directly in ReplicatedStorage, is left out with [`syncback.unplaced`](/docs/v2/diagnostics#syncback-unplaced). To keep it, mount a folder for it in the [tree](/docs/v2/core-concepts/routing/tree).
-- A feature renamed in Studio is a new feature to syncback, so its files are written again in the new-file style. Rename the folder on disk instead.
+When your config has a [`compiledPath`](/docs/v2/config), syncback leaves the compiled code alone, because the next compile would replace it, and lists each change as a `syncback.compiledPath` warning for you to make in the source files.

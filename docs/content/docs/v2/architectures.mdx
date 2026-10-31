@@ -1,102 +1,59 @@
 ---
 title: Architectures
-description: Folder layouts that work well with Rogen, and a lint rule that keeps features apart
+description: Folder layouts that work well with Rogen
 ---
 
-Rogen puts each file where its route sends it, so the layout of your folders is yours to choose.
+Rogen puts each file where its route sends it, so the layout of your folders is yours to choose. Two layouts work well with it.
 
 ## Feature Folders
 
-Give each feature one folder, with a routing folder inside for each side it runs on. The [Introduction](/docs/v2) shows why. Features don't require each other. When several features need the same code, move that code into a feature of its own, such as `Util`:
+Give each feature one folder, with a routing folder inside for each side it runs on. The [Introduction](/docs/v2) shows how `src/Inventory` holds everything about the inventory, and [Routing Folders](/docs/v2/core-concepts/routing/folders) how it reaches the game.
+
+Features talk to each other through what they put in `Shared/`, and a feature's `Server/` and `Client/` code is its own. To delete a feature, delete its folder.
+
+## Layers
+
+A larger codebase puts feature folders inside layers, and each layer requires only the layers below it:
 
 <RouteFigure
 	disk={`
   src/
-    Inventory/
-      Client/
-        InventoryController.luau
-      Server/
-        InventoryService.luau
-      Shared/
-        InventoryTypes.luau
-    Shop/
-      Server/
-        ShopService.luau
-    Util/
+    base/
       Shared/
         Signal.luau
+    platform/
+      Data/
+        Server/
+          PlayerData.luau
+    features/
+      Inventory/
+        Client/
+          InventoryController.luau
+        Server/
+          InventoryService.luau
 `}
 	studio={`
   ReplicatedStorage
     Shared/
-      Inventory/
-        InventoryTypes
-      Util/
+      base/
         Signal
   ServerScriptService
-    Inventory/
-      InventoryService
-    Shop/
-      ShopService
+    platform/
+      Data/
+        PlayerData
+    features/
+      Inventory/
+        InventoryService
   StarterPlayer
     StarterPlayerScripts
-      Inventory/
-        InventoryController
+      features/
+        Inventory/
+          InventoryController
 `}
 />
 
-To delete a feature, delete its folder. Nothing else requires it, so nothing else breaks.
+`base` holds helpers that depend on nothing else, `platform` the services every feature uses, such as player data, and `features` the game itself. A feature requires `platform` and `base`, never another feature, and `platform` never requires a feature.
 
-## Other Layouts
+A layer folder stays in the game path, so a require names it, as in `ReplicatedStorage.Shared.base.Signal`. To leave the layers out of the game, make them [invisible folders](/docs/v2/core-concepts/routing/skipping-folders#invisible-folders), such as `(features)/`.
 
-A **layered** codebase, as in [VS Code](https://github.com/microsoft/vscode/wiki/Source-Code-Organization), puts feature folders inside layers such as `base`, `platform` and `features`, and each layer requires only the layers below it. A layer folder stays in the game path. To leave it out, make it an [invisible folder](/docs/v2/core-concepts/routing/skipping-folders#invisible-folders), such as `(features)/`.
-
-**ECS by feature**, with [Jecs](https://github.com/Ukendio/jecs) or [Matter](https://github.com/matter-ecs/matter), keeps feature folders too. A feature's components go in `Shared/`, and its systems in `Server/` or `Client/`.
-
-## Enforcing Boundaries
-
-Rogen routes files. It doesn't read your requires. Because every path names its side and its feature, a linter can catch a crossed boundary before the game runs.
-
-In Luau, [Lute](https://lute.luau.org/cli/lint/)'s linter runs rules written in Luau. The rule [`require_boundaries.luau`](https://github.com/LDGerrits/rogen/blob/main/docs/public/lint/require_boundaries.luau) reads the sourcemap to learn where each file lands, follows each `require` to the instance it names, and reports shared code that requires a side, a feature that requires another feature not listed in `sharedFeatures`, and a `require` of an instance that no file provides. It skips a require it can't resolve without running the code.
-
-1. Install Lute with `rokit add luau-lang/lute`, and save the rule:
-
-	```bash
-	curl -o lints/require_boundaries.luau --create-dirs https://rogen-roblox.vercel.app/lint/require_boundaries.luau
-	```
-
-2. Add a `.config.luau`. `featureRoots` are the targets of your routes:
-
-	```luau title=".config.luau"
-	return {
-		lute = {
-			lint = {
-				rulepaths = { "lints" },
-				ruleconfigs = {
-					require_boundaries = {
-						options = {
-							sourcemap = "sourcemap.json",
-							featureRoots = {
-								"ServerScriptService",
-								"StarterPlayer.StarterPlayerScripts",
-								"ReplicatedStorage.Shared",
-							},
-							sharedFeatures = { "Util" },
-						},
-					},
-				},
-			},
-		},
-	}
-	```
-
-3. Write the sourcemap, then lint:
-
-	```bash
-	rogen sourcemap -o sourcemap.json
-	lute lint --no-default-lints src
-	```
-
-Each crossed boundary is an error, such as `feature Inventory requires feature Shop: ServerScriptService.Shop.ShopService`, and `lute lint` exits 1, so a CI job that runs it fails.
-
-In roblox-ts, an import names a file, so ESLint's [`import/no-restricted-paths`](https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-restricted-paths.md) does the same job: give each feature a zone, and each side a zone that keeps out the other side's folders.
+Rogen routes files, so it doesn't check that a require stays within these rules. [Enforcing Boundaries](/docs/v2/boundaries) shows a lint rule that does.

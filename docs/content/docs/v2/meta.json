@@ -20,6 +20,7 @@
 		"setups/roblox-ts",
 		"setups/places",
 		"architectures",
+		"boundaries",
 		"syncback",
 		"agents",
 		"---Reference---",

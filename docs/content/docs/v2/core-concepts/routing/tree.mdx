@@ -66,10 +66,4 @@ The `place` folder is outside the source paths, so Rogen doesn't route it. To st
 
 ## Code Synced As It Is
 
-A `$path` to a folder inside a source path, such as `"Vendor": { "$path": "src/Vendor" }`, gives that folder to Rojo. Rogen doesn't route the files in it, which suits vendored code that you keep as it is. A `$path` to a source path itself is an error ([`tree.mountsSourcePath`](/docs/v2/diagnostics#tree-mountssourcepath)).
-
-## When the Tree and a Route Clash
-
-When the tree and a routed folder name the same instance, the tree wins. Rogen leaves the folder out and warns with [`tree.nodeClash`](/docs/v2/diagnostics#tree-nodeclash). When a routed file and a mounted folder put the same name in one place, Rojo builds both, and Rogen warns with [`tree.mountClash`](/docs/v2/diagnostics#tree-mountclash).
-
-With `routes`, the root of the tree must be a `DataModel`, because a route's target starts with a service.
+A `$path` to a folder inside a source path, such as `"Vendor": { "$path": "src/Vendor" }`, gives that folder to Rojo. Rogen doesn't route the files in it, which suits vendored code that you keep as it is.

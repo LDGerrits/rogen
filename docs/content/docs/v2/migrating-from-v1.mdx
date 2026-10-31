@@ -56,7 +56,7 @@ If an earlier v2 `rogen init` lifted the tree that v1 generated, delete `default
 | `aliases`, built-in keywords | `routes` |
 | `casing`, `unwrap`, `.unwrap` | the route's target path |
 | `verbatim`, `.verbatim` | not needed |
-| keywords in names | `@key` or a routing folder. See [Names](#names) |
+| keywords in names | `@key` or a routing folder |
 | `tags`, `-t` | a source path listed after the others, whose files replace the ones at the same path |
 | modes, `-m` | a config for each mode, named after its `output`, such as `build.rogen.json` |
 | a mode's `build`, `-b` | `compiledPath` |
@@ -67,16 +67,3 @@ If an earlier v2 `rogen init` lifted the tree that v1 generated, delete `default
 | `^` at the service's root | `^` at the route's target |
 | several places from one config | a config per place |
 
-### Names
-
-`rogen init` renames these for you:
-
-```
-v1: src/Combat/server_Combat.luau     v2: src/Combat/Combat@Server.luau
-v1: src/Combat/Combat_Server.luau     v2: src/Combat/Combat@Server.luau
-v1: src/Combat/Types.shared.luau      v2: src/Combat/Types@Shared.luau
-v1: src/Combat/Hud.client.luau        v2: unchanged
-v1: src/Combat/.server                v2: src/Combat/@Server
-```
-
-A roblox-ts file keeps its name, since renaming it breaks the imports of it. Rename it yourself and update the imports.

@@ -7,23 +7,11 @@ Use Rogen when you want each feature's server, client and shared code in one fol
 
 ## Run `rogen init`
 
-This page moves a project whose `default.project.json` mounts `src/server`, `src/client` and `src/shared`, a Wally `Packages` folder, and `src/server/Admin` at `ServerStorage/Admin`. In the folder that holds it, run `rogen init`. It moves no files:
-
-```
-$ rogen init -y
-Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every write.
-Left out ReplicatedStorage/Shared, ServerScriptService/Server and StarterPlayer/StarterPlayerScripts/Client, since they point into src and Rogen generates that code now.
-Kept ServerStorage/Admin in the tree as a $path mount, since no route can make it: only a folder directly in a source path becomes a route.
-Created default.rogen.json.
-Wrote default.project.json.
-```
-
-The config keeps your tree, and turns each folder that a node mounted from `src` into a route to that node:
+In the folder that holds `default.project.json`, run `rogen init`. It moves no files. It lifts the project file into `default.rogen.json`, keeps your tree, and turns each folder that a node mounts from `src` into a route to that node:
 
 ```json title="default.rogen.json"
 {
 	"name": "my-game",
-	"sourcePaths": ["src"],
 	"routes": {
 		"Shared": "ReplicatedStorage/Shared",
 		"Server": "ServerScriptService/Server",
@@ -34,21 +22,16 @@ The config keeps your tree, and turns each folder that a node mounted from `src`
 		"$className": "DataModel",
 		"ReplicatedStorage": {
 			"Packages": { "$path": "Packages" }
-		},
-		"ServerStorage": {
-			"Admin": { "$path": "src/server/Admin" }
 		}
 	}
 }
 ```
 
-Every file lands where Rojo put it, so your requires still work. `rogen where src` lists them. A folder that holds an init script, such as the `src/server` that `rojo init` writes, stays a `$path` mount, because Rojo reads that folder as one script. To route it, rename the init script and delete the folder's node from the tree.
-
-From now on, `rogen write` overwrites `default.project.json`, so make your changes in `default.rogen.json` and run `git rm --cached default.project.json`. The `.gitignore` that `init` writes lists `*.project.json`; if you had one already, add that line.
+Every file lands where Rojo put it, so your requires still work. From now on, `rogen write` overwrites `default.project.json`, so make your changes in `default.rogen.json` and run `git rm --cached default.project.json`.
 
 ## Sort by Feature
 
-The project builds as it did. Next, move the code into [feature folders](/docs/v2/core-concepts/routing/folders). Moving a file changes its instance path, so work on a branch and move one feature at a time:
+Next, move the code into [feature folders](/docs/v2/core-concepts/routing/folders), one feature at a time:
 
 ```bash
 git mv src/server/Services/InventoryService.luau src/Inventory/Server/
@@ -56,26 +39,4 @@ git mv src/client/Controllers/InventoryController.luau src/Inventory/Client/
 git mv src/shared/Types/InventoryTypes.luau src/Inventory/Shared/
 ```
 
-Rogen doesn't check requires, so update the ones that reach the feature. `rogen where` on a module prints the require that reaches it:
-
-```
-$ rogen where src/Inventory/Server/InventoryService.luau
-src/Inventory/Server/InventoryService.luau -> ServerScriptService/Server/Inventory/InventoryService · route Server (folder)
-  require(game:GetService("ServerScriptService").Server.Inventory.InventoryService)
-```
-
-Old folders and feature folders build side by side, so the game works between moves. Once every feature has moved, point the `Server` route at `ServerScriptService` instead of `ServerScriptService/Server`, and update the requires again.
-
-## Where Rogen Reads a Layout Differently
-
-In a folder that Rogen routes, these names build differently from Rojo:
-
-| Files | Rojo builds | Rogen builds |
-| --- | --- | --- |
-| `src/Loose.luau`, which no node mounts | Nothing | `ReplicatedStorage/Shared/Loose`, by the `*` route, with an [`init.unmountedFiles`](/docs/v2/diagnostics#init-unmountedfiles) warning |
-| `src/server/Admin`, mounted by its own node inside a mounted folder | `Admin` at both places | `Admin` only at its own node |
-| `Dup.luau` beside a `Dup/` folder | A ModuleScript and a Folder, both named `Dup` | One ModuleScript, with the folder's files as its children |
-| `(Ui)/Button.luau` | A Folder named `(Ui)` | `Button`, with no folder |
-| `Foo@Server.luau` | A ModuleScript named `Foo@Server` | `Foo`, routed to `Server` |
-
-[Sync Details](/docs/v2/core-concepts/routing/sync-details) lists the rest. Rojo's other commands run through Rogen with Rojo's flags: `rogen build`, `rogen sourcemap` and [`rogen syncback`](/docs/v2/syncback) write `default.project.json` first, then run Rojo on it. [Commands](/docs/v2/commands) lists them all.
+Moving a file changes its instance path. Rogen doesn't check requires, so update the ones that reach the feature. `rogen where` on a module prints the require that reaches it. Old folders and feature folders build side by side, so the game works between moves.
