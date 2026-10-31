@@ -23,8 +23,8 @@
 	--agent-1: #3d63c9;
 	--agent-2: #a46f00;
 	--agent-3: #10262b;
-	--field: #e3e8e6;
-	--field-dot: rgba(16, 38, 43, 0.1);
+	--field: var(--bg);
+	--field-dot: rgba(16, 38, 43, 0.08);
 	/* a macOS segmented control: a sunken track, the chosen segment raised on it */
 	--seg: rgba(16, 38, 43, 0.075);
 	--seg-on: #fff;
