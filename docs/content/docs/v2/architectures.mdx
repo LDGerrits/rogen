@@ -9,11 +9,9 @@ Rogen puts each file where its route sends it, so the layout of your folders is 
 
 Give each feature one folder, with a routing folder inside for each side it runs on. The [Introduction](/docs/v2) shows how `src/Inventory` holds everything about the inventory, and [Routing Folders](/docs/v2/core-concepts/routing/folders) how it reaches the game.
 
-Features talk to each other through what they put in `Shared/`, and a feature's `Server/` and `Client/` code is its own. To delete a feature, delete its folder.
-
 ## Layers
 
-A larger codebase puts feature folders inside layers, and each layer requires only the layers below it:
+A larger codebase can put the feature folders inside layers, where each layer requires only the layers below it:
 
 <RouteFigure
 	disk={`
