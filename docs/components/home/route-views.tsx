@@ -9,10 +9,19 @@ import {
 	type KeyboardEvent,
 	type ReactNode,
 } from "react";
+import {
+	Chevron,
+	ClassIcon,
+	FileIcon,
+	hasChildren,
+	IndentGuides,
+	StudioWindow,
+	Triangle,
+	VsCodeWindow,
+} from "../ide";
 import type { Service } from "./explorer";
-import { disk, Name, studio, StudioIcon, type DiskRow } from "./inventory";
+import { disk, Name, studio, studioClass, type DiskRow } from "./inventory";
 import { useLang, type Lang } from "./lang";
-import { TreeGuides } from "./tree-guides";
 import { delay } from "./more-link";
 
 type ViewId = "name" | "folder";
@@ -63,20 +72,31 @@ const ids: ViewId[] = ["name", "folder"];
 const MAX_ROWS = Math.max(...ids.map((id) => viewsOf("luau")[id].rows.length));
 
 function DiskRows({ rows }: { rows: Row[] }) {
-	const depths = rows.map((row) => row[1]);
+	const depths = rows.map((row) => ({ depth: row[1] }));
 	return rows.map(([name, depth, key, colour], i) => {
 		const folder = name.endsWith("/");
+		const bare = name.replace(/\/$/, "");
 		return (
 			<li
 				key={`${name}${depth}`}
-				className={folder && !colour ? "b" : undefined}
-				style={{ transitionDelay: `${Math.min(i, 8) * 25}ms` }}
+				style={
+					{
+						"--d": depth,
+						transitionDelay: `${Math.min(i, 8) * 25}ms`,
+					} as CSSProperties
+				}
 			>
-				<TreeGuides depths={depths} i={i} />
-				{folder && colour ? (
-					<span className={`nm c-${colour}`}>{name}</span>
+				<IndentGuides depth={depth} />
+				{folder ? (
+					<Chevron open={hasChildren(depths, i)} />
 				) : (
-					<Name name={name} colour={key ? colour : undefined} />
+					<span className="ide-chev" />
+				)}
+				{!folder && <FileIcon name={name} />}
+				{folder && colour ? (
+					<span className={`nm c-${colour}`}>{bare}</span>
+				) : (
+					<Name name={bare} colour={key ? colour : undefined} />
 				)}
 			</li>
 		);
@@ -166,18 +186,20 @@ export function RouteViews({ guide }: { guide: ReactNode }) {
 					))}
 				</div>
 			</div>
-			<div className="rt-panes">
-				<div className="dpane rv" style={delay(160)}>
-					<div className="pane-h">
-						<b>src/</b>
-						<span>VS Code</span>
-					</div>
-					<ul
-						className={`tree${swapping ? " swap" : ""}`}
-						style={{ "--rows": MAX_ROWS } as CSSProperties}
-					>
-						<DiskRows rows={views[shown].rows} />
-					</ul>
+			<div className="rt-panes ide">
+				<div className="rt-pane rv" style={delay(160)}>
+					<VsCodeWindow title="my-game">
+						<div className="ide-section">
+							<Chevron open />
+							MY-GAME
+						</div>
+						<ul
+							className={`ide-tree${swapping ? " swap" : ""}`}
+							style={{ "--rows": MAX_ROWS } as CSSProperties}
+						>
+							<DiskRows rows={views[shown].rows} />
+						</ul>
+					</VsCodeWindow>
 					{/* Every description sits in one cell, so the longest sets the height and nothing below moves. */}
 					<p className="vdesc" aria-live="polite">
 						{ids.map((id) => (
@@ -191,25 +213,41 @@ export function RouteViews({ guide }: { guide: ReactNode }) {
 						))}
 					</p>
 				</div>
-				<div className="dpane rv" style={delay(220)}>
-					<div className="pane-h">
-						<b>Result in Roblox Studio</b>
-						<span>Same for both</span>
-					</div>
-					<ul className="xt">
-						{studio[lang].map(
-							([, name, depth, icon, colour], i) => (
-								<li
-									key={i}
-									className={`x k-${colour}${icon === "svc" ? " svc" : ""}`}
-									style={{ "--d": depth } as CSSProperties}
-								>
-									<StudioIcon icon={icon} />
-									<span className="nm">{name}</span>
-								</li>
-							)
-						)}
-					</ul>
+				<div className="rt-pane rv" style={delay(220)}>
+					<StudioWindow>
+						<ul className="ide-tree">
+							{studio[lang].map(
+								([, name, depth, icon], i, rows) => (
+									<li
+										key={i}
+										style={
+											{ "--d": depth } as CSSProperties
+										}
+									>
+										<Triangle
+											open={
+												hasChildren(
+													rows.map((row) => ({
+														depth: row[2],
+													})),
+													i
+												) || undefined
+											}
+										/>
+										<ClassIcon
+											name={studioClass(icon, name)}
+										/>
+										<span className="nm">{name}</span>
+									</li>
+								)
+							)}
+						</ul>
+					</StudioWindow>
+					<p className="vdesc">
+						<span data-on>
+							The result in Studio is the same for both.
+						</span>
+					</p>
 				</div>
 			</div>
 			<div className="rt-foot rv" style={delay(260)}>

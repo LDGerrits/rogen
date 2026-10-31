@@ -1,4 +1,11 @@
 import type { CSSProperties } from "react";
+import {
+	Chevron,
+	FileIcon,
+	hasChildren,
+	IndentGuides,
+	VsCodeWindow,
+} from "../ide";
 import { L, Name } from "./inventory";
 import { delay, MoreLink } from "./more-link";
 
@@ -6,6 +13,7 @@ type Dot = "o" | "s" | "c" | "r";
 
 // [Luau name, roblox-ts name, depth, marker, class]
 const tree: [string, string, number, Dot, string?][] = [
+	["src/", "src/", 0, "o"],
 	["Combat/", "combat/", 1, "o"],
 	["Inventory/", "inventory/", 1, "o", "on"],
 	["UI/", "ui/", 2, "r", "f"],
@@ -38,6 +46,20 @@ const commands = [
 ];
 
 const depth = (d: number) => ({ "--d": d }) as CSSProperties;
+const depths = tree.map(([, , d]) => ({ depth: d }));
+
+function TreeName({ name, dot }: { name: string; dot: Dot }) {
+	const folder = name.endsWith("/");
+	return (
+		<>
+			{!folder && <FileIcon name={name} />}
+			<Name
+				name={name.replace(/\/$/, "")}
+				colour={dot === "o" ? undefined : dot}
+			/>
+		</>
+	);
+}
 
 const requires: [from: string, to: string, ok: boolean, note: string][] = [
 	["Inventory", "Inventory", true, "same feature"],
@@ -133,45 +155,47 @@ export function Features() {
 							See suggested architectures
 						</MoreLink>
 					</div>
-					<div className="fpanel rv" style={delay(120)}>
-						<div
-							className="tree"
-							role="group"
-							aria-label="Example feature folder"
-						>
-							<div className="hd">src/</div>
-							{tree.map(([luau, ts, d, dot, cls]) => (
-								<div
-									key={luau}
-									className={cls}
-									style={depth(d)}
-								>
-									<i className={`dia ${dot}`} />
-									<L
-										luau={
-											<Name
-												name={luau}
-												colour={
-													dot === "o"
-														? undefined
-														: dot
-												}
-											/>
+					<div className="fpanel ide rv" style={delay(120)}>
+						<VsCodeWindow title="my-game">
+							<div className="ide-section">
+								<Chevron open />
+								MY-GAME
+							</div>
+							<ul
+								className="ide-tree"
+								aria-label="Example feature folder"
+							>
+								{tree.map(([luau, ts, d, dot, cls], i) => (
+									<li
+										key={luau}
+										className={
+											cls === "on" ? "sel" : undefined
 										}
-										ts={
-											<Name
-												name={ts}
-												colour={
-													dot === "o"
-														? undefined
-														: dot
-												}
+										style={depth(d)}
+									>
+										<IndentGuides depth={d} />
+										{luau.endsWith("/") ? (
+											<Chevron
+												open={hasChildren(depths, i)}
 											/>
-										}
-									/>
-								</div>
-							))}
-						</div>
+										) : (
+											<span className="ide-chev" />
+										)}
+										<L
+											luau={
+												<TreeName
+													name={luau}
+													dot={dot}
+												/>
+											}
+											ts={
+												<TreeName name={ts} dot={dot} />
+											}
+										/>
+									</li>
+								))}
+							</ul>
+						</VsCodeWindow>
 					</div>
 				</div>
 

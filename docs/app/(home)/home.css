@@ -404,91 +404,50 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .k-r {
 	--hc: var(--t-r);
 }
-.home .win {
+.home .hero-ide {
+	position: relative;
+	display: grid;
+	grid-template-columns: minmax(0, 500px) minmax(48px, 1fr) minmax(0, 360px);
+	align-items: stretch;
 	margin-top: clamp(48px, 6vw, 80px);
-	background: var(--deep);
-	border-radius: 10px;
-	box-shadow:
-		inset 0 0 0 1px var(--line-2),
-		0 50px 90px -50px rgba(4, 14, 16, 0.55);
-	overflow: hidden;
 	animation: home-up 0.8s var(--spring) 0.5s both;
 }
-.home .win-bar {
-	display: grid;
-	grid-template-columns: 1fr auto 1fr;
-	align-items: center;
-	height: 36px;
-	padding: 0 14px;
-	border-bottom: 1px solid var(--line);
-	font: 500 12px/1 var(--mono);
-	color: var(--ink-3);
+.home .hero-ide .ide-st {
+	grid-column: 3;
 }
-.home .dots {
-	display: flex;
-	gap: 7px;
+@media (max-width: 900px) {
+	.home .hero-ide {
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--s3);
+	}
+	.home .hero-ide .ide-st {
+		grid-column: 1;
+	}
+	.home .hero-ide .wires {
+		display: none;
+	}
 }
-.home .dots i {
-	width: 10px;
-	height: 10px;
-	border-radius: 50%;
-	box-shadow: inset 0 0 0 1px var(--line-2);
+.home .hero-ide li {
+	isolation: isolate;
 }
-.home .term {
-	padding: 14px 18px 16px;
-	border-bottom: 1px solid var(--line);
-	font: 400 13px/22px var(--mono);
-	color: var(--ink-3);
-}
-.home .term .ln {
-	display: block;
-	padding-left: 3ch;
-	text-indent: -3ch;
-	white-space: pre-wrap;
-}
-/* rogen's frame drawn with borders, so it joins up across lines and wrapped lines */
-.home .term :is(.frame, .frame-top) {
-	position: relative;
-	text-indent: 0;
-}
-.home .term :is(.frame, .frame-top)::before,
-.home .term .frame-top::after {
-	content: "";
+.home .hero-ide .band {
 	position: absolute;
-	left: 0.5ch;
-	background: color-mix(in srgb, var(--ink-3) 55%, transparent);
+	inset: 0 4px;
+	z-index: -1;
+	border-radius: 3px;
+	background: color-mix(in srgb, var(--hc) 18%, transparent);
+	opacity: 0;
+	transition: opacity 0.35s var(--ease-out);
 }
-.home .term .frame::before {
-	top: 0;
-	bottom: 0;
-	width: 1px;
+.home .hero-ide .on .band {
+	opacity: 1;
 }
-.home .term .frame-top::before {
-	top: 11px;
-	bottom: 0;
-	width: 1px;
-}
-.home .term .frame-top::after {
-	top: 11px;
-	width: 1.5ch;
-	height: 1px;
-}
-.home .term .ps {
-	color: var(--acc-2);
-}
-.home .term .cmd-t,
-.home .term .tx {
-	color: var(--ink);
-}
-.home .term .ok {
-	color: var(--t-r);
-}
-.home .cur {
+.home .hero-ide .cur {
 	display: inline-block;
-	width: 8px;
-	height: 15px;
-	background: var(--ink-2);
-	vertical-align: -3px;
+	width: 7px;
+	height: 14px;
+	background: currentColor;
+	vertical-align: -2px;
 	animation: home-blink 2.4s ease-in-out infinite;
 }
 /* a slow, even fade rather than a hard blink */
@@ -497,16 +456,14 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 		opacity: 0.2;
 	}
 }
-.home .win.play .ln[data-l]:not(.in) {
+.home .hero-ide.play .ln[data-l]:not(.in) {
 	visibility: hidden;
 }
-.home .win .wsplit {
-	position: relative;
-	display: grid;
-	grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+.home .hero-ide .arr {
+	transition: opacity 0.35s var(--ease-out);
 }
-.home .win .side + .side {
-	border-left: 1px solid var(--line);
+.home .hero-ide.play .arr:not(.in) {
+	opacity: 0;
 }
 .home .pane-h {
 	display: flex;
@@ -526,43 +483,6 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	font-weight: 500;
 	color: var(--ink-2);
 }
-.home :is(.win, .dpane) .tree {
-	padding: 10px 14px 14px;
-	font: 400 13px/22px var(--mono);
-	list-style: none;
-	color: var(--ink-2);
-}
-.home :is(.win, .dpane) .tree li,
-.home :is(.win, .dpane) .x {
-	position: relative;
-	height: 22px;
-	white-space: nowrap;
-}
-.home :is(.win, .dpane) .tree .b {
-	color: var(--ink);
-}
-.home :is(.win, .dpane) .tree .g {
-	--g-line: color-mix(in srgb, var(--ink-3) 55%, transparent);
-}
-.home .win .band {
-	position: absolute;
-	inset: 0 -6px;
-	z-index: -1;
-	border-radius: 3px;
-	background: color-mix(in srgb, var(--hc) 15%, transparent);
-	opacity: 0;
-	transition: opacity 0.35s var(--ease-out);
-}
-.home .win .on .band {
-	opacity: 1;
-}
-.home .win .on .nm {
-	color: var(--ink);
-}
-.home .win .tree li,
-.home .win .xt {
-	isolation: isolate;
-}
 .home .xt {
 	padding: 10px 0 14px;
 	font: 400 13px/22px var(--mono);
@@ -575,9 +495,6 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	padding-left: calc(14px + var(--d, 0) * 16px);
 	padding-right: 10px;
 }
-.home .x .band {
-	inset: 0 6px;
-}
 .home .x .ic {
 	flex: none;
 	width: 16px;
@@ -585,8 +502,7 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	margin-right: 7px;
 	color: var(--ink-3);
 }
-.home .x.svc .ic,
-.home .x.on .ic {
+.home .x.svc .ic {
 	color: var(--hc);
 }
 .home .x.svc .nm {
@@ -595,12 +511,6 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .x .nm {
 	overflow: hidden;
 	text-overflow: ellipsis;
-}
-.home .x.arr {
-	transition: opacity 0.35s var(--ease-out);
-}
-.home .win.play .x.arr:not(.in) {
-	opacity: 0;
 }
 .home .wires {
 	position: absolute;
@@ -631,11 +541,11 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	stroke: var(--wc);
 	stroke-width: 1.75;
 }
-.home .win.play .wires path {
+.home .hero-ide.play .wires path {
 	stroke-dasharray: 1;
 	stroke-dashoffset: 1;
 }
-.home .win.play .wires.in path {
+.home .hero-ide.play .wires.in path {
 	stroke-dashoffset: 0;
 	transition:
 		stroke-dashoffset 0.8s var(--ease-out),
@@ -859,10 +769,9 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 }
 .home .fpanel {
 	grid-column: 7 / span 6;
-	background: var(--deep);
-	border-radius: 6px;
-	box-shadow: inset 0 0 0 1px var(--line);
-	overflow: hidden;
+}
+.home .fpanel .ide-tree li.sel {
+	background: var(--vs-sel);
 }
 .home .tree {
 	padding: var(--s3);
@@ -1710,9 +1619,7 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 }
 .home .vdesc {
 	display: grid;
-	margin-top: auto;
-	padding: 12px 14px;
-	border-top: 1px solid var(--line);
+	margin-top: var(--s2);
 	font-size: 14px;
 	line-height: 1.5;
 	color: var(--ink-2);
@@ -1727,27 +1634,22 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .rt-panes {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
+	align-items: start;
 	gap: var(--s3);
 	margin-top: var(--s4);
 }
-.home .dpane {
-	display: flex;
-	flex-direction: column;
+.home .rt-pane {
 	min-width: 0;
-	background: var(--deep);
-	border-radius: 8px;
-	box-shadow: inset 0 0 0 1px var(--line-2);
-	overflow: hidden;
 }
-.home .dpane .tree {
-	min-height: calc(var(--rows) * 22px + 24px);
+.home .rt-panes .ide-vs .ide-tree {
+	min-height: calc(var(--rows) * 22px + 10px);
 }
-.home .dpane .tree li {
+.home .rt-panes .ide-vs .ide-tree li {
 	transition:
 		opacity 0.3s var(--ease-out),
 		transform 0.45s var(--spring);
 }
-.home .dpane .tree.swap li {
+.home .rt-panes .ide-tree.swap li {
 	opacity: 0;
 	transform: translateY(6px);
 }
@@ -2112,9 +2014,6 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	.home .r-head p {
 		margin-top: var(--s3);
 	}
-	.home .win .wsplit {
-		grid-template-columns: minmax(0, 1fr);
-	}
 	.home .rt-panes {
 		grid-template-columns: minmax(0, 1fr);
 	}
@@ -2123,10 +2022,6 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	}
 	.home .aw-body {
 		height: calc(6 * 22px + 20px);
-	}
-	.home .win .side + .side {
-		border-left: 0;
-		border-top: 1px solid var(--line);
 	}
 	.home .wires {
 		display: none;
@@ -2190,13 +2085,8 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	.home .hero h1 {
 		font-size: 35px;
 	}
-	.home .term,
-	.home .win .tree,
 	.home .xt {
 		font-size: 12px;
-	}
-	.home .term {
-		padding: 12px 14px;
 	}
 	.home .cmd {
 		padding-left: var(--s2);
