@@ -1,0 +1,7 @@
+{
+	"steps": [
+		["where", "src/Shop/Prices@shared.json", "src/Shop/Rates@server.toml", "src/Shop/Greeting@shared.txt"],
+		["where", "--json", "src/Shop/Prices@shared.json"]
+	],
+	"rojo": false
+}

@@ -46,8 +46,8 @@ export interface PlacedLocation extends Located {
 	readonly hoisted?: boolean;
 	/** The path was named as a file, and not found in a folder or behind an instance. */
 	readonly named?: true;
-	/** For a Luau file: a module, or a script that runs on its own. */
-	readonly luau?: "module" | "script";
+	/** For a file Rojo makes a script from: a module to require, or a script that runs on its own. */
+	readonly code?: "module" | "script";
 }
 
 interface UnplacedLocation extends Located {
@@ -94,7 +94,7 @@ export function diagnosticsOf(
 export function requireExpressionOf(
 	location: FileLocation
 ): string | undefined {
-	return location.status === "placed" && location.luau === "module"
+	return location.status === "placed" && location.code === "module"
 		? requireExpression(location.instancePath)
 		: undefined;
 }
@@ -102,8 +102,8 @@ export function requireExpressionOf(
 /** For a file the user named: the call that requires it, or why none can. */
 export function requireNoteOf(location: FileLocation): string | undefined {
 	if (location.status !== "placed" || !location.named) return undefined;
-	if (location.luau === undefined) return undefined;
-	if (location.luau === "script")
+	if (location.code === undefined) return undefined;
+	if (location.code === "script")
 		return "no require by this path: a script runs on its own and is not a module";
 	const expression = requireExpression(location.instancePath);
 	if (expression) return `require(${expression})`;
