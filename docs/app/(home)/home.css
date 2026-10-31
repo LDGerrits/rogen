@@ -23,8 +23,13 @@
 	--agent-1: #3d63c9;
 	--agent-2: #a46f00;
 	--agent-3: #10262b;
-	--field: #dcd6ca;
-	--field-dot: rgba(16, 38, 43, 0.07);
+	--field: var(--bg);
+	--field-dot: rgba(16, 38, 43, 0.08);
+	/* a macOS segmented control: a sunken track, the chosen segment raised on it */
+	--seg: rgba(16, 38, 43, 0.075);
+	--seg-on: #fff;
+	--seg-shadow:
+		0 1px 2px rgba(16, 38, 43, 0.14), 0 0 0 0.5px rgba(16, 38, 43, 0.08);
 	--sans: var(--font-sora), system-ui, sans-serif;
 	--mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 	/* objects arrive on a spring, text and lines ease out, hover snaps */
@@ -91,6 +96,10 @@
 	--agent-3: #f0f6f2;
 	--field: #133238;
 	--field-dot: rgba(240, 246, 242, 0.05);
+	--seg: rgba(240, 246, 242, 0.07);
+	--seg-on: #2a3f43;
+	--seg-shadow:
+		0 1px 2px rgba(0, 0, 0, 0.35), inset 0 0.5px rgba(240, 246, 242, 0.12);
 }
 body:has(.home) {
 	background: #eeebe4;
@@ -335,7 +344,7 @@ html:not([data-lang="ts"]) .home [data-only="ts"] {
 	grid-column: 8 / span 5;
 }
 .home .hero h1 {
-	/* "Professional-grade" stays on one line, so the size follows the column: it is about 9.1em wide */
+	/* "Each feature in" stays on one line, so the size follows the column */
 	font-size: clamp(34px, min(10.6cqi, 6vw), 78px);
 	line-height: 1;
 	letter-spacing: -0.045em;
@@ -353,43 +362,43 @@ html:not([data-lang="ts"]) .home [data-only="ts"] {
 .home .hero .install {
 	margin-top: 0;
 }
-.home .langs {
+.home .pick {
 	display: flex;
-	align-items: center;
-	gap: 12px;
-	margin-top: var(--s3);
-	font: 400 13px/1 var(--mono);
-	color: var(--ink-3);
 }
-/* the active language comes from html[data-lang], so it is right before the page runs */
-.home .lang-seg {
+.home .langs {
+	margin-top: clamp(48px, 6vw, 80px);
+}
+.home .seg {
 	display: inline-flex;
-	padding: 3px;
-	border-radius: 6px;
-	background: var(--deep);
-	box-shadow: inset 0 0 0 1px var(--line);
+	padding: 2px;
+	border-radius: 8px;
+	background: var(--seg);
 }
-.home .lang-seg button {
+.home .seg button {
 	appearance: none;
 	border: 0;
 	background: none;
 	height: 28px;
-	padding: 0 12px;
-	border-radius: 4px;
-	font: 500 13px/1 var(--mono);
+	padding: 0 14px;
+	border-radius: 6px;
+	font: 500 13px/1 var(--sans);
 	color: var(--ink-2);
 	cursor: pointer;
 	transition:
 		color 0.25s var(--ease-out),
-		background-color 0.25s var(--ease-out);
+		background-color 0.25s var(--ease-out),
+		box-shadow 0.25s var(--ease-out);
 }
-html:not([data-lang="ts"]) .home .lang-seg [data-v="luau"],
-html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
-	background: var(--ink);
-	color: var(--bg);
+/* the active language comes from html[data-lang], so it is right before the page runs */
+html:not([data-lang="ts"]) .home .seg [data-v="luau"],
+html[data-lang="ts"] .home .seg [data-v="ts"],
+.home .seg [aria-selected="true"] {
+	background: var(--seg-on);
+	box-shadow: var(--seg-shadow);
+	color: var(--ink);
 }
 @media (hover: hover) and (pointer: fine) {
-	.home .lang-seg button:hover {
+	.home .seg button:hover {
 		color: var(--ink);
 	}
 }
@@ -404,91 +413,55 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .k-r {
 	--hc: var(--t-r);
 }
-.home .win {
-	margin-top: clamp(48px, 6vw, 80px);
-	background: var(--deep);
-	border-radius: 10px;
-	box-shadow:
-		inset 0 0 0 1px var(--line-2),
-		0 50px 90px -50px rgba(4, 14, 16, 0.55);
-	overflow: hidden;
+/* on the hero's columns: VS Code under the heading, the Explorer under the install box */
+.home .hero-ide {
+	position: relative;
+	display: grid;
+	grid-template-columns: repeat(12, minmax(0, 1fr));
+	column-gap: var(--s3);
+	align-items: stretch;
+	margin-top: var(--s2);
 	animation: home-up 0.8s var(--spring) 0.5s both;
 }
-.home .win-bar {
-	display: grid;
-	grid-template-columns: 1fr auto 1fr;
-	align-items: center;
-	height: 36px;
-	padding: 0 14px;
-	border-bottom: 1px solid var(--line);
-	font: 500 12px/1 var(--mono);
-	color: var(--ink-3);
+.home .hero-ide .ide-vs {
+	grid-column: 1 / span 5;
 }
-.home .dots {
-	display: flex;
-	gap: 7px;
+.home .hero-ide .ide-st {
+	grid-column: 8 / span 5;
 }
-.home .dots i {
-	width: 10px;
-	height: 10px;
-	border-radius: 50%;
-	box-shadow: inset 0 0 0 1px var(--line-2);
+@media (max-width: 900px) {
+	.home .hero-ide {
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--s3);
+	}
+	.home .hero-ide :is(.ide-vs, .ide-st) {
+		grid-column: 1;
+	}
+	.home .hero-ide .wires {
+		display: none;
+	}
 }
-.home .term {
-	padding: 14px 18px 16px;
-	border-bottom: 1px solid var(--line);
-	font: 400 13px/22px var(--mono);
-	color: var(--ink-3);
+.home .hero-ide li {
+	isolation: isolate;
 }
-.home .term .ln {
-	display: block;
-	padding-left: 3ch;
-	text-indent: -3ch;
-	white-space: pre-wrap;
-}
-/* rogen's frame drawn with borders, so it joins up across lines and wrapped lines */
-.home .term :is(.frame, .frame-top) {
-	position: relative;
-	text-indent: 0;
-}
-.home .term :is(.frame, .frame-top)::before,
-.home .term .frame-top::after {
-	content: "";
+.home .hero-ide .band {
 	position: absolute;
-	left: 0.5ch;
-	background: color-mix(in srgb, var(--ink-3) 55%, transparent);
+	inset: 0 4px;
+	z-index: -1;
+	border-radius: 3px;
+	background: color-mix(in srgb, var(--hc) 18%, transparent);
+	opacity: 0;
+	transition: opacity 0.35s var(--ease-out);
 }
-.home .term .frame::before {
-	top: 0;
-	bottom: 0;
-	width: 1px;
+.home .hero-ide .on .band {
+	opacity: 1;
 }
-.home .term .frame-top::before {
-	top: 11px;
-	bottom: 0;
-	width: 1px;
-}
-.home .term .frame-top::after {
-	top: 11px;
-	width: 1.5ch;
-	height: 1px;
-}
-.home .term .ps {
-	color: var(--acc-2);
-}
-.home .term .cmd-t,
-.home .term .tx {
-	color: var(--ink);
-}
-.home .term .ok {
-	color: var(--t-r);
-}
-.home .cur {
+.home .ide-term .cur {
 	display: inline-block;
-	width: 8px;
-	height: 15px;
-	background: var(--ink-2);
-	vertical-align: -3px;
+	width: 7px;
+	height: 14px;
+	background: currentColor;
+	vertical-align: -2px;
 	animation: home-blink 2.4s ease-in-out infinite;
 }
 /* a slow, even fade rather than a hard blink */
@@ -497,16 +470,14 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 		opacity: 0.2;
 	}
 }
-.home .win.play .ln[data-l]:not(.in) {
+.home .hero-ide.play .ln[data-l]:not(.in) {
 	visibility: hidden;
 }
-.home .win .wsplit {
-	position: relative;
-	display: grid;
-	grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+.home .hero-ide .arr {
+	transition: opacity 0.35s var(--ease-out);
 }
-.home .win .side + .side {
-	border-left: 1px solid var(--line);
+.home .hero-ide.play .arr:not(.in) {
+	opacity: 0;
 }
 .home .pane-h {
 	display: flex;
@@ -526,43 +497,6 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	font-weight: 500;
 	color: var(--ink-2);
 }
-.home :is(.win, .dpane) .tree {
-	padding: 10px 14px 14px;
-	font: 400 13px/22px var(--mono);
-	list-style: none;
-	color: var(--ink-2);
-}
-.home :is(.win, .dpane) .tree li,
-.home :is(.win, .dpane) .x {
-	position: relative;
-	height: 22px;
-	white-space: nowrap;
-}
-.home :is(.win, .dpane) .tree .b {
-	color: var(--ink);
-}
-.home :is(.win, .dpane) .tree .g {
-	--g-line: color-mix(in srgb, var(--ink-3) 55%, transparent);
-}
-.home .win .band {
-	position: absolute;
-	inset: 0 -6px;
-	z-index: -1;
-	border-radius: 3px;
-	background: color-mix(in srgb, var(--hc) 15%, transparent);
-	opacity: 0;
-	transition: opacity 0.35s var(--ease-out);
-}
-.home .win .on .band {
-	opacity: 1;
-}
-.home .win .on .nm {
-	color: var(--ink);
-}
-.home .win .tree li,
-.home .win .xt {
-	isolation: isolate;
-}
 .home .xt {
 	padding: 10px 0 14px;
 	font: 400 13px/22px var(--mono);
@@ -575,9 +509,6 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	padding-left: calc(14px + var(--d, 0) * 16px);
 	padding-right: 10px;
 }
-.home .x .band {
-	inset: 0 6px;
-}
 .home .x .ic {
 	flex: none;
 	width: 16px;
@@ -585,8 +516,7 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	margin-right: 7px;
 	color: var(--ink-3);
 }
-.home .x.svc .ic,
-.home .x.on .ic {
+.home .x.svc .ic {
 	color: var(--hc);
 }
 .home .x.svc .nm {
@@ -595,12 +525,6 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .x .nm {
 	overflow: hidden;
 	text-overflow: ellipsis;
-}
-.home .x.arr {
-	transition: opacity 0.35s var(--ease-out);
-}
-.home .win.play .x.arr:not(.in) {
-	opacity: 0;
 }
 .home .wires {
 	position: absolute;
@@ -631,11 +555,11 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	stroke: var(--wc);
 	stroke-width: 1.75;
 }
-.home .win.play .wires path {
+.home .hero-ide.play .wires path {
 	stroke-dasharray: 1;
 	stroke-dashoffset: 1;
 }
-.home .win.play .wires.in path {
+.home .hero-ide.play .wires.in path {
 	stroke-dashoffset: 0;
 	transition:
 		stroke-dashoffset 0.8s var(--ease-out),
@@ -671,74 +595,41 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	}
 }
 
-/* install */
+/* install: which tool, then its command in a field with a copy button */
 .home .install {
 	margin-top: var(--s5);
 	max-width: 480px;
-	background: var(--deep);
-	border-radius: 6px;
-	box-shadow: inset 0 0 0 1px var(--line);
-}
-.home .tabs {
-	display: flex;
-	gap: var(--s3);
-	padding: 0 var(--s3);
-	border-bottom: 1px solid var(--line);
-}
-.home .tabs button {
-	position: relative;
-	appearance: none;
-	background: none;
-	border: 0;
-	font: 500 13px/1 var(--mono);
-	color: var(--ink-3);
-	padding: 16px 0 15px;
-	cursor: pointer;
-	transition: color 0.25s var(--snap);
-}
-.home .tabs button::after {
-	content: "";
-	position: absolute;
-	left: 0;
-	right: 0;
-	bottom: -1px;
-	height: 2px;
-	background: var(--acc-2);
-	transform: scaleX(0);
-	transition: transform 0.35s var(--ease-out);
-}
-.home .tabs button[aria-selected="true"] {
-	color: var(--ink);
-}
-.home .tabs button[aria-selected="true"]::after {
-	transform: scaleX(1);
-}
-@media (hover: hover) and (pointer: fine) {
-	.home .tabs button:hover {
-		color: var(--ink);
-	}
 }
 .home .cmd {
+	position: relative;
 	display: flex;
 	align-items: center;
-	gap: var(--s2);
-	padding: var(--s2) var(--s2) var(--s2) var(--s3);
+	gap: var(--s1);
+	height: 56px;
+	margin-top: var(--s2);
+	padding: 0 8px 0 var(--s3);
+	border-radius: 10px;
+	background: var(--deep);
+	box-shadow:
+		inset 0 0 0 1px var(--line-2),
+		0 1px 2px var(--line);
 }
 .home .cmd code {
 	flex: 1;
 	min-width: 0;
-	font-size: 15px;
+	font: 400 15px/1 var(--mono);
 	color: var(--ink);
 	white-space: nowrap;
 	overflow-x: auto;
 	scrollbar-width: none;
+	mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 }
 .home .cmd code::-webkit-scrollbar {
 	display: none;
 }
 .home .cmd code i {
 	font-style: normal;
-	color: var(--ink-3);
+	color: var(--acc-2);
 	margin-right: 12px;
 }
 .home .cmd code span {
@@ -753,28 +644,69 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 }
 .home .copy {
 	flex: none;
+	display: grid;
+	place-items: center;
+	width: 40px;
+	height: 40px;
 	appearance: none;
 	border: 0;
+	border-radius: 7px;
+	background: none;
+	color: var(--ink-3);
 	cursor: pointer;
-	font: 500 13px/1 var(--mono);
-	color: var(--acc-ink);
-	background: var(--acc);
-	border-radius: 4px;
-	height: 40px;
-	min-width: 76px;
-	padding: 0 16px;
 	transition:
-		background-color 0.25s var(--snap),
-		transform 0.25s var(--snap);
+		color 0.2s var(--snap),
+		background-color 0.2s var(--snap);
+}
+.home .copy svg {
+	width: 17px;
+	height: 17px;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.3;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	overflow: visible;
+}
+.home .copy svg > * {
+	transition:
+		opacity 0.2s var(--ease-out),
+		transform 0.3s var(--spring);
+	transform-origin: center;
+	transform-box: fill-box;
+}
+.home .copy .ic-done,
+.home .copy.done .ic-copy {
+	opacity: 0;
+	transform: scale(0.6);
+}
+.home .copy.done .ic-done {
+	opacity: 1;
+	transform: none;
+}
+.home .copy.done {
+	color: var(--t-r);
 }
 @media (hover: hover) and (pointer: fine) {
 	.home .copy:hover {
-		background: var(--acc-hover);
-		transform: translateY(-1px);
+		color: var(--ink);
+		background: var(--seg);
+	}
+	.home .copy.done:hover {
+		color: var(--t-r);
 	}
 }
 .home .copy:active {
-	transform: translateY(0) scale(0.97);
+	transform: scale(0.94);
+}
+/* "Copied" floats over the field's top edge, so it never moves the command */
+.home .copied {
+	position: absolute;
+	right: 8px;
+	bottom: calc(100% + 6px);
+	font: 500 12px/1 var(--mono);
+	color: var(--t-r);
+	pointer-events: none;
 }
 
 /* sections */
@@ -859,10 +791,6 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 }
 .home .fpanel {
 	grid-column: 7 / span 6;
-	background: var(--deep);
-	border-radius: 6px;
-	box-shadow: inset 0 0 0 1px var(--line);
-	overflow: hidden;
 }
 .home .tree {
 	padding: var(--s3);
@@ -897,114 +825,36 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .tree .f {
 	color: var(--ink-2);
 }
-.home .dia {
-	flex: none;
-	width: 8px;
-	height: 8px;
-	transform: rotate(45deg) scaleY(0.58) rotate(0);
-	background: currentColor;
-}
-.home .dia.o {
-	background: none;
-	box-shadow: inset 0 0 0 1.5px var(--ink-3);
-}
-.home .dia.s {
-	background: var(--cs);
-}
-.home .dia.c {
-	background: var(--cc);
-}
-.home .dia.r {
-	background: var(--cr);
-}
 .home .plate {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	margin-top: var(--s4);
-	max-width: 520px;
-	background: var(--deep);
-	border-radius: 6px;
-	box-shadow: inset 0 0 0 1px var(--line);
-	overflow: hidden;
 }
-.home .reqs {
-	list-style: none;
-	display: grid;
-	gap: 10px;
-	padding: var(--s3);
-	font: 400 13px/1 var(--mono);
-}
-.home .reqs li {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-}
-.home .reqs code {
-	padding: 7px 10px;
-	border-radius: 4px;
-	box-shadow: inset 0 0 0 1px var(--line-2);
-	color: var(--ink);
-	font-size: 1em;
-}
-.home .reqs i {
-	font-style: normal;
-	width: 1.2em;
-	text-align: center;
-}
-.home .reqs em {
-	margin-left: auto;
-	font-style: normal;
-	font-size: 12px;
-}
-.home .reqs .ok i,
-.home .reqs .ok em {
-	color: var(--t-r);
-}
-.home .reqs .no i,
-.home .reqs .no em {
-	color: var(--t-s);
-}
-.home .reqs .no code {
-	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--t-s) 55%, transparent);
-}
-.home .places {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 10px;
-	padding: var(--s3);
-	font: 400 13px/1.9 var(--mono);
-}
-.home .pl {
+.home .plate > div,
+.home .plate .ide-win {
 	display: flex;
 	flex-direction: column;
-	padding: 10px 14px;
-	border-radius: 4px;
-	box-shadow: inset 0 0 0 1px var(--line-2);
-	color: var(--ink);
-	white-space: nowrap;
 }
-.home .pl.shared {
-	grid-column: 1 / -1;
+.home .plate .ide-win,
+.home .plate .ide-tree {
+	flex: 1;
 }
-.home .pl b {
-	font-weight: 500;
-	font-size: 12px;
-	color: var(--ink-3);
+.home .plate .ide-term {
+	overflow-wrap: anywhere;
+	padding-right: 12px;
+	font-size: 10.5px;
+	line-height: 15px;
 }
-.home .pl .dim {
-	color: var(--ink-3);
-}
-.home .pl .ov {
-	color: var(--acc-2);
-}
-.home .pl em {
-	font-style: normal;
-	font-size: 12px;
-	color: var(--ink-3);
-}
+/* each column is a subgrid of its number, heading, text, link and figure, so both figures start on one line */
 .home .split {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .home .split > div {
+	display: grid;
+	grid-row: span 5;
+	grid-template-rows: subgrid;
+	grid-template-columns: minmax(0, 1fr);
 	position: relative;
 	padding: var(--s6) var(--s5) var(--s6) 0;
 }
@@ -1029,65 +879,19 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .split p {
 	max-width: 32em;
 }
+.home .split .link {
+	justify-self: start;
+}
 .home .r4 {
 	padding-top: var(--s6);
 	align-items: start;
 }
-.home .cmds {
+.home .still {
 	grid-column: 7 / span 6;
-	list-style: none;
-	font: 400 16px/1 var(--mono);
-	color: var(--ink);
 }
-.home .cmds li {
-	position: relative;
-	display: flex;
-	align-items: center;
-	gap: 16px;
-	height: 62px;
-	padding: 0 var(--s1);
-	white-space: nowrap;
-	overflow: hidden;
-}
-.home .cmds li::before,
-.home .cmds li:last-child::after {
-	content: "";
-	position: absolute;
-	left: 0;
-	right: 0;
-	top: 0;
-	height: 1px;
-	background: var(--line-2);
-	transform-origin: left;
-	transition: transform 0.9s var(--ease-out);
-	transition-delay: var(--dl, 0ms);
-}
-.home .cmds li:last-child::after {
-	top: auto;
-	bottom: 0;
-	transition-delay: 0.32s;
-}
-.home .cmds li i {
-	font-style: normal;
-	color: var(--acc-2);
-}
-.home .cmds li span,
-.home .cmds li i {
-	transition:
-		opacity 0.7s var(--ease-out),
-		transform 0.7s var(--ease-out);
-	transition-delay: var(--dl, 0ms);
-}
-.home .cmds.pending li::before,
-.home .cmds.pending li:last-child::after {
-	transform: scaleX(0);
-}
-.home .cmds.pending li span,
-.home .cmds.pending li i {
-	opacity: 0;
-}
-.home .cmds.pending li span {
-	transform: translateX(-8px);
+.home .still .ide-term {
+	font-size: 12px;
+	line-height: 19px;
 }
 
 /* routing */
@@ -1157,25 +961,11 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 }
 .home .stage .pane {
 	position: absolute;
-	display: flex;
-	flex-direction: column;
-	background: var(--deep);
-	border-radius: 8px;
-	box-shadow:
-		inset 0 0 0 1px var(--line-2),
-		0 24px 50px -30px rgba(4, 14, 16, 0.5);
 	overflow: hidden;
 }
 .home .stage .pane-h {
 	flex: none;
 	height: var(--head);
-	background: var(--pane-h);
-}
-.home .stage .pane-h .ttl {
-	font: 500 12px/1 var(--mono);
-	letter-spacing: 0;
-	text-transform: none;
-	color: var(--ink);
 }
 .home .stage .feat {
 	color: color-mix(
@@ -1187,41 +977,53 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .stage .tree {
 	position: relative;
 	list-style: none;
-	padding: var(--pady) var(--pad);
-	font: 400 var(--tree) / var(--row) var(--mono);
-	color: var(--ink-2);
+	padding: 0 0 var(--pady);
+	color: var(--vs-fg);
+	font:
+		400 var(--tree) / var(--row) system-ui,
+		-apple-system,
+		"Segoe UI",
+		sans-serif;
 }
 .home .stage .tree li {
 	position: relative;
 	z-index: 1;
+	display: flex;
+	align-items: center;
 	height: var(--row);
+	padding-left: calc(8px + var(--d, 0) * 8px);
 	white-space: nowrap;
 	overflow: hidden;
-	text-overflow: ellipsis;
 }
-.home .stage .tree .g {
-	--g-row: var(--row);
-	--g-line: color-mix(in srgb, var(--ink-3) 55%, transparent);
-}
+/* the walk starts on the feature's first file, under src and the feature folder */
 .home .stage .dt .band {
 	position: absolute;
-	left: calc(var(--pad) - 6px);
-	right: calc(var(--pad) - 6px);
-	top: var(--pady);
+	left: 4px;
+	right: 4px;
+	top: calc(2 * var(--row));
 	height: var(--row);
 	border-radius: 3px;
 	background: var(--hi-t);
 }
+.home .stage .dt.strip {
+	padding: 5px 0;
+}
+.home .stage .dt.strip .band {
+	top: 5px;
+}
 .home .stage .dt .file .nm,
 .home .stage .dt .file .sfx {
-	color: color-mix(in srgb, var(--hi) calc(var(--v, 0) * 100%), var(--ink));
+	color: color-mix(in srgb, var(--hi) calc(var(--v, 0) * 100%), var(--vs-fg));
 }
 .home .stage .code {
 	position: relative;
 	flex: 1;
 	margin: var(--pady) 0;
-	font: 400 var(--code) / var(--line) var(--mono);
-	color: var(--ink-3);
+	font:
+		400 var(--code) / var(--line) ui-monospace,
+		Menlo,
+		Consolas,
+		monospace;
 	white-space: pre;
 }
 .home .stage .code .routes,
@@ -1237,7 +1039,10 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	padding: 0 var(--cpad);
 }
 .home .stage .code .k {
-	color: var(--ink-2);
+	color: var(--json-key);
+}
+.home .stage .code .s {
+	color: var(--json-str);
 }
 .home .stage .routes .l[data-hit] {
 	background: color-mix(
@@ -1245,66 +1050,95 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 		var(--hi) calc(var(--v, 0) * 16%),
 		transparent
 	);
-	color: color-mix(
-		in srgb,
-		var(--ink) calc(var(--v, 0) * 100%),
-		var(--ink-3)
-	);
 }
 .home .stage .routes .l[data-hit] .k {
-	color: color-mix(in srgb, var(--hi) calc(var(--v, 0) * 100%), var(--ink-2));
+	color: color-mix(
+		in srgb,
+		var(--hi) calc(var(--v, 0) * 100%),
+		var(--json-key)
+	);
 }
 .home .stage .proj .feat {
-	--base: var(--ink-2);
+	--base: var(--json-key);
 }
 .home .stage .proj .key,
 .home .stage .p-key .key {
 	color: var(--hi);
 }
 .home .stage .proj .val {
-	color: color-mix(in srgb, var(--hi) calc(var(--v, 0) * 100%), var(--ink-3));
+	color: color-mix(
+		in srgb,
+		var(--hi) calc(var(--v, 0) * 100%),
+		var(--json-str)
+	);
 }
 .home .stage .crumb {
-	color: var(--ink-3);
+	color: var(--vs-muted);
 }
 .home .stage .crumb .f {
-	color: color-mix(in srgb, var(--hi) calc(var(--v, 0) * 100%), var(--ink-2));
+	color: color-mix(in srgb, var(--hi) calc(var(--v, 0) * 100%), var(--vs-fg));
+}
+/* VS Code's tab bar, with the window's lights at its left */
+.home .stage :is(.ed-bar, .ed-tabs) {
+	display: flex;
+	align-items: stretch;
+	height: var(--head);
+	padding-left: 12px;
+	background: var(--vs-bg);
+	border-bottom: 1px solid var(--vs-bd);
+	font:
+		400 12.5px/1 system-ui,
+		-apple-system,
+		"Segoe UI",
+		sans-serif;
+	white-space: nowrap;
 }
 .home .stage .ed-bar {
 	position: absolute;
 	z-index: 3;
-	display: flex;
-	height: var(--head);
-	background: var(--pane-h);
-	border-bottom: 1px solid var(--line);
-	border-radius: 7px 7px 0 0;
+	border-radius: 10px 10px 0 0;
 	overflow: hidden;
-	font: 500 12px/1 var(--mono);
 }
-.home .stage .ed-bar .tab {
+.home .stage .ed-tabs {
+	flex: none;
+}
+.home .stage :is(.ed-bar, .ed-tabs) .ide-tl {
+	align-self: center;
+	margin-right: 14px;
+}
+.home .stage :is(.ed-bar, .ed-tabs) .tab {
 	display: flex;
 	align-items: center;
 	padding: 0 var(--tab);
-	color: var(--ink-3);
-	border-right: 1px solid var(--line);
-	white-space: nowrap;
+	color: var(--vs-muted);
+	border-right: 1px solid var(--vs-bd);
 }
-.home .stage .ed-bar .tab.front {
-	background: var(--deep);
-	color: var(--ink);
+.home .stage :is(.ed-bar, .ed-tabs) .tab.front {
+	background: var(--ed-bg);
+	color: var(--vs-fg);
+	box-shadow: inset 0 1px 0 var(--vs-acc);
 }
 .home .stage .ed-bar .crumb {
 	margin-left: auto;
 	display: flex;
 	align-items: center;
 	padding: 0 14px;
+	font:
+		400 12px/1 ui-monospace,
+		Menlo,
+		Consolas,
+		monospace;
 	white-space: pre;
 }
 .home .stage .xt {
 	position: relative;
 	flex: 1;
 	padding: 0;
-	font: 400 var(--tree) / var(--row) var(--mono);
+	color: var(--st-fg);
+	font:
+		400 var(--tree) / var(--row) var(--font-studio),
+		system-ui,
+		sans-serif;
 }
 .home .stage .x {
 	position: absolute;
@@ -1312,40 +1146,34 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	right: 0;
 	top: 0;
 	height: var(--row);
-	padding-left: calc(10px + var(--d, 0) * 16px);
+	padding-left: calc(8px + var(--d, 0) * 12px);
 	will-change: transform;
 }
 .home .stage .x .ar {
 	flex: none;
-	width: 12px;
-	height: 12px;
+	width: 10px;
+	height: 10px;
+	margin-right: 2px;
 	display: grid;
 	place-items: center;
 }
+/* Studio's filled arrow: right when shut, down when open */
 .home .stage .x .ar.c::before {
 	content: "";
-	width: 5px;
-	height: 5px;
-	border-right: 1.4px solid var(--ink-3);
-	border-bottom: 1.4px solid var(--ink-3);
-	transform: translateY(-1.5px) rotate(45deg);
+	border-left: 5px solid currentColor;
+	border-top: 3.5px solid transparent;
+	border-bottom: 3.5px solid transparent;
+	transform: rotate(90deg);
 	transition: transform 0.35s var(--snap);
 }
 .home .stage .x .ar.c.shut::before {
-	transform: translateX(-1px) rotate(-45deg);
+	transform: none;
 }
-.home .stage .x .ic {
-	margin: 0 6px 0 2px;
-}
-.home .stage .x.service .nm {
-	color: var(--ink);
-}
-.home .stage .x.feature .nm,
-.home .stage .x.feature .ic {
+.home .stage .x.feature .nm {
 	color: var(--feat);
 }
 .home .stage .x.file .nm,
-.home .stage .x.file .ic {
+.home .stage .x.file .ide-ci {
 	color: var(--hi);
 	opacity: var(--land, 0);
 }
@@ -1360,7 +1188,7 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	position: absolute;
 	top: 2px;
 	bottom: 2px;
-	left: calc(10px + var(--d) * 16px + 12px);
+	left: calc(8px + var(--d) * 12px + 12px);
 	right: 12px;
 	border: 1px dashed color-mix(in srgb, var(--hi) 60%, transparent);
 	border-radius: 3px;
@@ -1387,15 +1215,6 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 }
 .home .stage .wire {
 	z-index: 4;
-}
-.home .stage .rojo {
-	position: absolute;
-	z-index: 4;
-	font: 500 11px/1 var(--mono);
-	letter-spacing: 0.06em;
-	color: var(--ink);
-	opacity: 0;
-	white-space: nowrap;
 }
 .home .stage .tag {
 	position: absolute;
@@ -1446,10 +1265,8 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	box-shadow: 0 8px 20px -6px rgba(4, 14, 16, 0.5);
 	will-change: transform;
 }
-.home .stage .chip svg {
-	width: 12px;
-	height: 12px;
-	flex: none;
+.home .stage .chip .ide-ci {
+	margin-right: 0;
 }
 .home .stage [hidden] {
 	display: none !important;
@@ -1660,18 +1477,18 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .toggle {
 	position: relative;
 	display: inline-flex;
-	background: var(--deep);
-	border-radius: 6px;
-	padding: 4px;
-	box-shadow: inset 0 0 0 1px var(--line);
+	background: var(--seg);
+	border-radius: 9px;
+	padding: 3px;
 }
 .home .toggle .knob {
 	position: absolute;
-	top: 4px;
+	top: 3px;
 	left: 0;
-	height: calc(100% - 8px);
-	background: var(--ink);
-	border-radius: 4px;
+	height: calc(100% - 6px);
+	background: var(--seg-on);
+	box-shadow: var(--seg-shadow);
+	border-radius: 7px;
 	transition:
 		transform 0.55s var(--spring),
 		width 0.55s var(--spring);
@@ -1686,19 +1503,20 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	background: none;
 	border: 0;
 	cursor: pointer;
-	font: 600 14px/1 var(--sans);
+	font: 500 14px/1 var(--sans);
 	color: var(--ink-2);
-	padding: 0 18px;
-	height: 44px;
+	padding: 0 20px;
+	height: 36px;
 	white-space: nowrap;
-	border-radius: 4px;
+	border-radius: 7px;
 	transition: color 0.3s var(--ease-out);
 }
 .home .toggle button[aria-selected="true"] {
-	color: var(--bg);
+	color: var(--ink);
 }
 .home .toggle:not([data-ready]) button[aria-selected="true"] {
-	background: var(--ink);
+	background: var(--seg-on);
+	box-shadow: var(--seg-shadow);
 }
 .home .toggle button:active {
 	transform: scale(0.98);
@@ -1710,9 +1528,7 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 }
 .home .vdesc {
 	display: grid;
-	margin-top: auto;
-	padding: 12px 14px;
-	border-top: 1px solid var(--line);
+	margin-top: var(--s2);
 	font-size: 14px;
 	line-height: 1.5;
 	color: var(--ink-2);
@@ -1727,27 +1543,25 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 .home .rt-panes {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: var(--s3);
+	column-gap: var(--s3);
 	margin-top: var(--s4);
 }
-.home .dpane {
-	display: flex;
-	flex-direction: column;
+/* both panes share a window row and a description row, so the windows are one size */
+.home .rt-pane {
+	display: grid;
+	grid-row: span 2;
+	grid-template-rows: subgrid;
 	min-width: 0;
-	background: var(--deep);
-	border-radius: 8px;
-	box-shadow: inset 0 0 0 1px var(--line-2);
-	overflow: hidden;
 }
-.home .dpane .tree {
-	min-height: calc(var(--rows) * 22px + 24px);
+.home .rt-panes .ide-vs .ide-tree {
+	min-height: calc(var(--rows) * 22px + 10px);
 }
-.home .dpane .tree li {
+.home .rt-panes .ide-vs .ide-tree li {
 	transition:
 		opacity 0.3s var(--ease-out),
 		transform 0.45s var(--spring);
 }
-.home .dpane .tree.swap li {
+.home .rt-panes .ide-tree.swap li {
 	opacity: 0;
 	transform: translateY(6px);
 }
@@ -1777,90 +1591,46 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	margin-top: var(--s6);
 }
 .home .aw {
-	display: flex;
-	flex-direction: column;
 	min-width: 0;
-	background: var(--deep);
-	border-radius: 8px;
-	box-shadow: inset 0 0 0 1px var(--line-2);
-	overflow: hidden;
-	font-family: var(--mono);
 }
-.home .aw-bar {
-	display: flex;
-	align-items: center;
-	gap: 14px;
-	height: 36px;
-	padding: 0 14px;
-	border-bottom: 1px solid var(--line);
-	font: 500 12px/1 var(--mono);
-	color: var(--ink-3);
-	white-space: nowrap;
+.home .aw .ide-code {
+	height: calc(12 * 17px + 12px);
+	font-size: 11.5px;
+	line-height: 17px;
+	tab-size: 4;
 }
-.home .aw-path b {
-	font-weight: 500;
-	color: var(--a);
+/* VS Code's word wrap, so the agent's cursor stays in view */
+.home .aw .ide-code li {
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
 }
-.home .aw-who {
-	margin-left: auto;
-	color: var(--a);
+.home .aw .ide-code li > span {
+	flex: 1;
+	min-width: 0;
 }
-/* the agent's writing: ASCII strokes under line numbers, the newest line in its colour */
-.home .aw-body {
-	display: flex;
-	flex-direction: column;
-	justify-content: flex-end;
-	list-style: none;
-	height: calc(10 * 22px + 20px);
-	padding: 10px 0;
-	overflow: hidden;
-	font: 400 13px/22px var(--mono);
-	color: var(--ink-3);
-}
-.home .aw-body li {
-	flex: none;
-	height: 22px;
-	display: flex;
-	gap: 16px;
-	padding: 0 14px;
-	white-space: pre;
-	overflow: hidden;
-}
-.home .aw-body i {
-	flex: none;
-	width: 2ch;
-	text-align: right;
-	font-style: normal;
-	opacity: 0.55;
-}
-.home .aw-body span {
-	opacity: 0.75;
-}
-.home .aw-body .now span {
-	color: var(--a);
-	opacity: 1;
-}
-.home .aw-body .now span::after {
-	content: "";
+/* the agent's cursor, with its name above it as a shared cursor shows one */
+.home .aw .caret {
+	position: relative;
 	display: inline-block;
-	width: 0.6em;
-	height: 1.1em;
-	margin-left: 2px;
-	vertical-align: -0.2em;
+	width: 2px;
+	height: 15px;
+	margin-left: 1px;
+	vertical-align: -3px;
 	background: var(--a);
-	animation: home-blink 2.4s ease-in-out infinite;
 }
-.home .aw-status {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	height: 30px;
-	padding: 0 14px;
-	border-top: 1px solid var(--line);
-	font: 500 11.5px/1 var(--mono);
-	color: var(--ink);
+.home .aw .caret em {
+	position: absolute;
+	left: 0;
+	bottom: 100%;
+	padding: 1px 4px;
+	border-radius: 2px 2px 2px 0;
+	background: var(--a);
+	color: var(--bg);
+	font:
+		600 10px/1.3 system-ui,
+		sans-serif;
+	font-style: normal;
 	white-space: nowrap;
-	overflow: hidden;
 }
 .home .aw-dot {
 	flex: none;
@@ -1871,7 +1641,7 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 }
 .home .aw-r {
 	margin-left: auto;
-	color: var(--ink-3);
+	color: var(--vs-muted);
 }
 .home .ag-pts {
 	margin-top: var(--s5);
@@ -2088,7 +1858,7 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 		padding-bottom: var(--s6);
 	}
 	.home .split {
-		grid-template-columns: 1fr;
+		grid-template-columns: minmax(0, 1fr);
 	}
 	.home .split > div,
 	.home .split > div + div {
@@ -2106,27 +1876,23 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	.home .split.pending > div + div::after {
 		transform: scaleX(0);
 	}
-	.home .cmds {
+	.home .still {
 		margin-top: var(--s4);
 	}
 	.home .r-head p {
 		margin-top: var(--s3);
 	}
-	.home .win .wsplit {
-		grid-template-columns: minmax(0, 1fr);
-	}
 	.home .rt-panes {
 		grid-template-columns: minmax(0, 1fr);
+	}
+	.home .rt-pane + .rt-pane {
+		margin-top: var(--s3);
 	}
 	.home .agw {
 		grid-template-columns: minmax(0, 1fr);
 	}
-	.home .aw-body {
-		height: calc(6 * 22px + 20px);
-	}
-	.home .win .side + .side {
-		border-left: 0;
-		border-top: 1px solid var(--line);
+	.home .aw .ide-code {
+		height: calc(8 * 18px + 12px);
 	}
 	.home .wires {
 		display: none;
@@ -2190,13 +1956,8 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	.home .hero h1 {
 		font-size: 35px;
 	}
-	.home .term,
-	.home .win .tree,
 	.home .xt {
 		font-size: 12px;
-	}
-	.home .term {
-		padding: 12px 14px;
 	}
 	.home .cmd {
 		padding-left: var(--s2);
@@ -2204,31 +1965,12 @@ html[data-lang="ts"] .home .lang-seg [data-v="ts"] {
 	.home .cmd code {
 		font-size: 13.5px;
 	}
-	.home .tabs {
-		padding-left: var(--s2);
-		padding-right: var(--s2);
-	}
 	.home .tree {
 		font-size: 12.5px;
 		padding: var(--s2);
 	}
 	.home .tree div {
 		padding-left: calc(var(--d, 0) * 14px);
-	}
-	.home .reqs,
-	.home .places {
-		padding: var(--s2);
-		font-size: 12px;
-	}
-	.home .places {
-		grid-template-columns: 1fr;
-	}
-	.home .cmds {
-		font-size: 13.5px;
-	}
-	.home .cmds li {
-		height: 52px;
-		gap: 12px;
 	}
 	.home .toggle {
 		display: flex;

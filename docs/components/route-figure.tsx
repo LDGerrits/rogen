@@ -1,40 +1,31 @@
 import type { CSSProperties } from "react";
-import { icons, type Icon, type Service } from "./home/explorer";
-import { TreeGuides } from "./home/tree-guides";
+import {
+	Chevron,
+	ClassIcon,
+	classOfFile,
+	FileIcon,
+	hasChildren,
+	IndentGuides,
+	instanceName,
+	isService,
+	outlineOf,
+	StudioWindow,
+	Triangle,
+	VsCodeWindow,
+} from "./ide";
 
-// The home page's routing panes for docs pages: src/ in VS Code beside the Studio Explorer, in each service's colour.
-const KEY_COLOURS: Record<string, Service> = {
+// A project in VS Code beside the Studio Explorer it makes, for docs pages.
+const KEYS: Record<string, string> = {
 	server: "s",
 	client: "c",
 	shared: "r",
 	character: "c",
 };
-const SERVICES: Record<string, Service> = {
-	ServerScriptService: "s",
-	ServerStorage: "s",
-	ReplicatedStorage: "r",
-	ReplicatedFirst: "r",
-	StarterPlayer: "c",
-	StarterPlayerScripts: "c",
-	StarterCharacterScripts: "c",
-	StarterGui: "c",
-};
 
-/** Rows of an outline indented two spaces per level, measured from its least indented line. */
-function rowsOf(text: string) {
-	const lines = text.split("\n").filter((line) => line.trim());
-	const indents = lines.map((line) => line.length - line.trimStart().length);
-	const base = Math.min(...indents);
-	return lines.map((line, i) => ({
-		depth: (indents[i] - base) / 2,
-		name: line.trim(),
-	}));
-}
-
-const keyColour = (key: string) => KEY_COLOURS[key.toLowerCase()];
+const keyColour = (key: string) => KEYS[key.toLowerCase()];
 
 function DiskName({ name }: { name: string }) {
-	const folder = /^\(?([A-Za-z]+)\)?\/$/.exec(name);
+	const folder = /^\(?([A-Za-z]+)\)?$/.exec(name);
 	if (folder && keyColour(folder[1]))
 		return <span className={`nm c-${keyColour(folder[1])}`}>{name}</span>;
 	// An @key, or Rojo's .server and .client on a script, in its route's colour.
@@ -58,71 +49,82 @@ export function RouteFigure({
 	disk: string;
 	studio?: string;
 }) {
-	// A lone top folder, such as src/, titles the pane as on the home page.
-	const outline = rowsOf(disk);
-	const titled =
-		outline[0]?.name.endsWith("/") &&
-		outline.filter((row) => row.depth === 0).length === 1;
-	const diskRows = titled ? outline.slice(1) : outline;
-	const depths = diskRows.map((row) => row.depth);
-	// Each row takes the colour of the top-level service above it.
-	const studioRows = rowsOf(studio ?? "").reduce<
-		{ depth: number; name: string; icon: Icon; colour: Service }[]
-	>((rows, { depth, name }) => {
-		const service = SERVICES[name];
-		const colour =
-			service && depth === 0 ? service : (rows.at(-1)?.colour ?? "r");
-		const icon: Icon = service ? "svc" : name.endsWith("/") ? "dir" : "scr";
-		return [
-			...rows,
-			{ depth, name: name.replace(/\/$/, ""), icon, colour },
-		];
-	}, []);
+	const diskRows = outlineOf(disk);
+	// Each script in the Explorer takes the class its file makes, and an init file gives its folder's.
+	const classes = new Map<string, string>();
+	diskRows.forEach((row, i) => {
+		if (row.name.endsWith("/")) return;
+		const kind = classOfFile(row.name);
+		if (!kind) return;
+		const parent = diskRows
+			.slice(0, i)
+			.findLast((above) => above.depth < row.depth);
+		const name = instanceName(row.name);
+		classes.set(
+			name === "init" && parent ? parent.name.replace(/\/$/, "") : name,
+			kind
+		);
+	});
+	const studioRows = outlineOf(studio ?? "");
 	return (
-		<figure className={`route-fig not-prose${studio ? "" : " solo"}`}>
-			<div className="rf-pane">
-				<div className="rf-head">
-					<b>{titled ? outline[0].name : ""}</b>
-					<span>VS Code</span>
+		<figure className={`route-fig ide not-prose${studio ? "" : " solo"}`}>
+			<VsCodeWindow title="my-game">
+				<div className="ide-section">
+					<Chevron open />
+					MY-GAME
 				</div>
-				<ul className="rf-tree">
-					{diskRows.map(({ name }, i) => (
-						<li
-							key={i}
-							className={name.endsWith("/") ? "b" : undefined}
-						>
-							<TreeGuides depths={depths} i={i} />
-							<DiskName name={name} />
-						</li>
-					))}
-				</ul>
-			</div>
-			{studio && (
-				<div className="rf-pane">
-					<div className="rf-head">
-						<b>Explorer</b>
-						<span>Roblox Studio</span>
-					</div>
-					<ul className="rf-xt">
-						{studioRows.map(({ depth, name, icon, colour }, i) => (
+				<ul className="ide-tree">
+					{diskRows.map(({ depth, name }, i) => {
+						const folder = name.endsWith("/");
+						return (
 							<li
 								key={i}
-								className={`k-${colour}${icon === "svc" ? " svc" : ""}`}
 								style={{ "--d": depth } as CSSProperties}
 							>
-								<svg
-									className="ic"
-									viewBox="0 0 16 16"
-									aria-hidden="true"
-									dangerouslySetInnerHTML={{
-										__html: icons[icon],
-									}}
-								/>
-								<span className="nm">{name}</span>
+								<IndentGuides depth={depth} />
+								{folder && (
+									<Chevron open={hasChildren(diskRows, i)} />
+								)}
+								{!folder && <FileIcon name={name} />}
+								<DiskName name={name.replace(/\/$/, "")} />
 							</li>
-						))}
+						);
+					})}
+				</ul>
+			</VsCodeWindow>
+			{studio && (
+				<StudioWindow>
+					<ul className="ide-tree">
+						{studioRows.map(({ depth, name }, i) => {
+							const bare = name.replace(/\/$/, "");
+							const parent = hasChildren(studioRows, i);
+							const icon = isService(bare)
+								? bare
+								: name.endsWith("/")
+									? "Folder"
+									: (classes.get(bare) ??
+										(parent ? "Folder" : "ModuleScript"));
+							return (
+								<li
+									key={i}
+									style={{ "--d": depth } as CSSProperties}
+								>
+									<Triangle
+										open={
+											parent
+												? true
+												: name.endsWith("/")
+													? false
+													: undefined
+										}
+									/>
+									<ClassIcon name={icon} />
+									<span className="nm">{bare}</span>
+								</li>
+							);
+						})}
 					</ul>
-				</div>
+				</StudioWindow>
 			)}
 		</figure>
 	);

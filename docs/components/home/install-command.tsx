@@ -73,23 +73,25 @@ export function InstallCommand({ className = "" }: { className?: string }) {
 
 	return (
 		<div className={`install ${className}`}>
-			<div className="tabs" role="tablist" aria-label="Install with">
-				{managers.map((id, i) => (
-					<button
-						key={id}
-						ref={(el) => {
-							tabs.current[i] = el;
-						}}
-						type="button"
-						role="tab"
-						aria-selected={manager === id}
-						tabIndex={manager === id ? 0 : -1}
-						onClick={() => select(id)}
-						onKeyDown={(e) => onKeyDown(e, i)}
-					>
-						{installs[id].label}
-					</button>
-				))}
+			<div className="pick">
+				<div className="seg" role="tablist" aria-label="Install with">
+					{managers.map((id, i) => (
+						<button
+							key={id}
+							ref={(el) => {
+								tabs.current[i] = el;
+							}}
+							type="button"
+							role="tab"
+							aria-selected={manager === id}
+							tabIndex={manager === id ? 0 : -1}
+							onClick={() => select(id)}
+							onKeyDown={(e) => onKeyDown(e, i)}
+						>
+							{installs[id].label}
+						</button>
+					))}
+				</div>
 			</div>
 			<div className="cmd">
 				<code>
@@ -98,9 +100,29 @@ export function InstallCommand({ className = "" }: { className?: string }) {
 						{installs[shown].command}
 					</span>
 				</code>
-				<button type="button" className="copy" onClick={copy}>
-					{copied ? "Copied" : "Copy"}
+				<button
+					type="button"
+					className={`copy${copied ? " done" : ""}`}
+					onClick={copy}
+					aria-label="Copy the command"
+				>
+					<svg viewBox="0 0 16 16" aria-hidden="true">
+						<g className="ic-copy">
+							<rect
+								x="5.5"
+								y="5.5"
+								width="8"
+								height="8"
+								rx="1.75"
+							/>
+							<path d="M10.5 3.25A1.75 1.75 0 008.75 1.5h-5A1.75 1.75 0 002 3.25v5A1.75 1.75 0 003.75 10" />
+						</g>
+						<path className="ic-done" d="M3.5 8.5l3 3 6-7" />
+					</svg>
 				</button>
+				<span className="copied" aria-live="polite">
+					{copied ? "Copied" : ""}
+				</span>
 			</div>
 		</div>
 	);

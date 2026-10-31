@@ -92,26 +92,485 @@ html > body[data-scroll-locked] {
 	--removed-body-scroll-bar-size: 0px !important;
 }
 
-/* RouteFigure: the home page's routing panes, in each service's colour */
-.route-fig {
+/* VS Code's explorer and Studio's Explorer (components/ide.tsx), in their own Light Modern and Dark Modern colours */
+.ide {
+	--vs-bg: #f8f8f8;
+	--vs-bd: #e5e5e5;
+	--vs-fg: #3b3b3b;
+	--vs-muted: #616161;
+	--vs-guide: rgb(169 169 169 / 0.6);
+	--vs-acc: #005fb8;
+	--vs-sel: #e4e6f1;
+	--ed-bg: #ffffff;
+	--ed-fg: #3b3b3b;
+	--json-key: #0451a5;
+	--json-str: #a31515;
+	--tk-kw: #0000ff;
+	--tk-ctl: #af00db;
+	--tk-fn: #795e26;
+	--tk-var: #001080;
+	--tk-num: #098658;
+	--ed-line: #6e7681;
+	--ed-hl: #f0f0f0;
+	--vs-prompt: #005fb8;
+	--seti-luau: #498ba7;
+	--seti-json: #b7b73b;
+	--seti-config: #627379;
+	--seti-ts: #498ba7;
+	--seti-csv: #7fae42;
+	--seti-yml: #9068b0;
+	--seti-file: #bfc2c1;
+	--st-bg: #f7f7f8;
+	--st-bar: #ffffff;
+	--st-search: #e4e5ea;
+	--st-fg: #494d5a;
+	--st-muted: #6a6f81;
 	--t-s: #c43a2b;
 	--t-c: #8c5f00;
 	--t-r: #0a7b67;
-	--rf-line: color-mix(
-		in srgb,
-		var(--color-fd-muted-foreground) 40%,
-		transparent
-	);
-	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 16px;
-	margin: 24px 0;
-	font: 400 13px/22px var(--font-mono);
 }
-.dark .route-fig {
+.dark .ide {
+	--vs-bg: #181818;
+	--vs-bd: #2b2b2b;
+	--vs-fg: #cccccc;
+	--vs-muted: #9d9d9d;
+	--vs-guide: rgb(88 88 88 / 0.6);
+	--vs-acc: #0078d4;
+	--vs-sel: #37373d;
+	--ed-bg: #1f1f1f;
+	--ed-fg: #cccccc;
+	--json-key: #9cdcfe;
+	--json-str: #ce9178;
+	--tk-kw: #569cd6;
+	--tk-ctl: #c586c0;
+	--tk-fn: #dcdcaa;
+	--tk-var: #9cdcfe;
+	--tk-num: #b5cea8;
+	--ed-line: #6e7681;
+	--ed-hl: #282828;
+	--vs-prompt: #3794ff;
+	--seti-luau: #519aba;
+	--seti-json: #cbcb41;
+	--seti-config: #6d8086;
+	--seti-ts: #519aba;
+	--seti-csv: #8dc149;
+	--seti-yml: #a074c4;
+	--seti-file: #d4d7d6;
+	--st-bg: #191a1f;
+	--st-bar: #202227;
+	--st-search: #2c2d33;
+	--st-fg: #d5d7dd;
+	--st-muted: #bcbec8;
 	--t-s: #ff6b5b;
 	--t-c: #ffcc4d;
 	--t-r: #5be3c8;
+}
+.ide-win {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	border-radius: 10px;
+	overflow: hidden;
+	box-shadow:
+		0 0 0 0.5px rgb(0 0 0 / 0.22),
+		0 12px 30px -8px rgb(0 0 0 / 0.14),
+		0 2px 6px rgb(0 0 0 / 0.06);
+	-webkit-font-smoothing: antialiased;
+}
+.dark .ide-win {
+	box-shadow:
+		0 0 0 0.5px rgb(0 0 0 / 0.7),
+		inset 0 0 0 0.5px rgb(255 255 255 / 0.12),
+		0 16px 36px -8px rgb(0 0 0 / 0.45);
+}
+.ide-bar {
+	position: relative;
+	flex: none;
+	display: flex;
+	align-items: center;
+	height: 30px;
+	padding: 0 12px;
+}
+.ide-bar b {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	font-weight: 400;
+	font-size: 12.5px;
+	pointer-events: none;
+}
+.ide-tl {
+	display: flex;
+	gap: 8px;
+}
+.ide-tl i {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	background: #ff5f57;
+}
+.ide-tl i:nth-child(2) {
+	background: #febc2e;
+}
+.ide-tl i:nth-child(3) {
+	background: #28c840;
+}
+.ide-tree {
+	list-style: none;
+	margin: 0;
+	padding: 0 0 10px;
+	overflow-x: auto;
+}
+.ide-tree li {
+	position: relative;
+	display: flex;
+	align-items: center;
+	white-space: nowrap;
+}
+/* a name the language switch picks lays out as if it were the row's own */
+.ide-tree li > [data-only] {
+	display: contents;
+}
+.ide-vs {
+	background: var(--vs-bg);
+	color: var(--vs-fg);
+	font:
+		400 13px/1 system-ui,
+		-apple-system,
+		"Segoe UI",
+		sans-serif;
+}
+.ide-vs .ide-bar {
+	border-bottom: 1px solid var(--vs-bd);
+}
+.ide-vs .ide-bar b {
+	color: var(--vs-muted);
+}
+.ide-main {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+}
+.ide-act {
+	position: relative;
+	flex: none;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 24px;
+	width: 48px;
+	padding-top: 16px;
+	border-right: 1px solid var(--vs-bd);
+}
+.ide-act::before {
+	content: "";
+	position: absolute;
+	top: 4px;
+	left: 0;
+	width: 2px;
+	height: 48px;
+	background: var(--vs-acc);
+}
+.ide-act svg {
+	width: 24px;
+	height: 24px;
+	fill: none;
+	stroke: var(--vs-muted);
+	stroke-width: 1.4;
+}
+.ide-act svg.on {
+	stroke: var(--vs-fg);
+}
+.ide-side {
+	flex: 1;
+	min-width: 0;
+}
+.ide-hd {
+	display: flex;
+	align-items: center;
+	height: 35px;
+	padding-left: 20px;
+	font-size: 11px;
+	letter-spacing: 0.04em;
+}
+.ide-panel {
+	flex: none;
+	border-top: 1px solid var(--vs-bd);
+}
+.ide-tabs {
+	display: flex;
+	align-items: center;
+	gap: 22px;
+	height: 35px;
+	padding-left: 20px;
+	font-size: 11px;
+	letter-spacing: 0.04em;
+	color: var(--vs-muted);
+}
+.ide-tabs .on {
+	padding: 10px 0 9px;
+	color: var(--vs-fg);
+	box-shadow: inset 0 -1px 0 currentColor;
+}
+.ide-term {
+	padding: 4px 20px 14px;
+	font:
+		400 12px/18px ui-monospace,
+		Menlo,
+		Consolas,
+		monospace;
+}
+.ide-term .ln {
+	display: block;
+	white-space: pre-wrap;
+}
+.ide-term .ps {
+	color: var(--vs-prompt);
+}
+.ide-term .dim {
+	color: var(--vs-muted);
+}
+.ide-section {
+	display: flex;
+	align-items: center;
+	height: 22px;
+	margin-top: 4px;
+	padding-left: 2px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+}
+.ide-vs .ide-tree li {
+	height: 22px;
+	padding-left: calc(8px + var(--d, 0) * 8px);
+}
+.ide-tree li.sel {
+	background: var(--vs-sel);
+}
+.ide-chev {
+	flex: none;
+	width: 16px;
+	height: 16px;
+	margin-right: 2px;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	opacity: 0.85;
+}
+.ide-guide {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: calc(16px + var(--a) * 8px);
+	width: 1px;
+	background: var(--vs-guide);
+}
+.ide-fi {
+	flex: none;
+	display: grid;
+	place-items: center;
+	width: 16px;
+	height: 16px;
+	margin-right: 6px;
+}
+.ide-fi.luau svg {
+	width: 14px;
+	height: 14px;
+	fill: var(--seti-luau);
+}
+.ide-fi.seti {
+	font: 15px/1 var(--font-seti);
+}
+.ide-fi.json {
+	color: var(--seti-json);
+}
+.ide-fi.config {
+	color: var(--seti-config);
+}
+.ide-fi.ts {
+	color: var(--seti-ts);
+}
+.ide-fi.csv {
+	color: var(--seti-csv);
+}
+.ide-fi.yml {
+	color: var(--seti-yml);
+}
+.ide-fi.file {
+	color: var(--seti-file);
+}
+.ide-ed {
+	background: var(--ed-bg);
+	color: var(--ed-fg);
+}
+/* VS Code's status bar */
+.ide-status {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	height: 22px;
+	padding: 0 10px;
+	background: var(--vs-bg);
+	border-top: 1px solid var(--vs-bd);
+	font-size: 11.5px;
+	white-space: nowrap;
+}
+.tk-com {
+	color: #6a9955;
+}
+/* VS Code's editor: a tab, the breadcrumbs, then the code with its line numbers */
+.ide-tabbar {
+	display: flex;
+	height: 35px;
+	background: var(--vs-bg);
+	border-bottom: 1px solid var(--vs-bd);
+}
+.ide-tab {
+	display: flex;
+	align-items: center;
+	padding: 0 12px 0 10px;
+	background: var(--ed-bg);
+	border-right: 1px solid var(--vs-bd);
+	box-shadow: inset 0 1px 0 var(--vs-acc);
+	font-size: 12.5px;
+	white-space: nowrap;
+}
+.ide-crumbs {
+	height: 22px;
+	display: flex;
+	align-items: center;
+	padding-left: 16px;
+	background: var(--ed-bg);
+	font-size: 12px;
+	color: var(--vs-muted);
+	white-space: nowrap;
+}
+.ide-code {
+	list-style: none;
+	margin: 0;
+	padding: 2px 0 10px;
+	background: var(--ed-bg);
+	color: var(--ed-fg);
+	font:
+		400 12px/18px ui-monospace,
+		Menlo,
+		Consolas,
+		monospace;
+	overflow: hidden;
+}
+.ide-code li {
+	display: flex;
+	white-space: pre;
+}
+.ide-code li.hl {
+	background: var(--ed-hl);
+}
+.ide-code i {
+	flex: none;
+	width: 40px;
+	padding-right: 18px;
+	text-align: right;
+	font-style: normal;
+	color: var(--ed-line);
+}
+.tk-kw {
+	color: var(--tk-kw);
+}
+.tk-ctl {
+	color: var(--tk-ctl);
+}
+.tk-fn {
+	color: var(--tk-fn);
+}
+.tk-var {
+	color: var(--tk-var);
+}
+.tk-str {
+	color: var(--json-str);
+}
+.tk-num {
+	color: var(--tk-num);
+}
+.ide-st {
+	background: var(--st-bg);
+	color: var(--st-fg);
+	font:
+		400 13.5px/1 var(--font-studio),
+		system-ui,
+		sans-serif;
+}
+.ide-st .ide-bar {
+	background: var(--st-bar);
+}
+.ide-st .ide-bar b {
+	font-size: 13px;
+	color: var(--st-muted);
+}
+.ide-search {
+	display: flex;
+	gap: 4px;
+	margin: 4px 6px 6px;
+	font-size: 13px;
+	color: var(--st-muted);
+}
+.ide-search span {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 20px;
+	border-radius: 4px;
+	background: var(--st-search);
+}
+.ide-search span:first-child {
+	flex: 1;
+	justify-content: space-between;
+	padding: 0 6px;
+}
+.ide-search span:last-child {
+	width: 20px;
+	font-size: 8px;
+	letter-spacing: -1px;
+	color: var(--st-fg);
+}
+.ide-search svg {
+	width: 13px;
+	height: 13px;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.4;
+}
+.ide-st .ide-tree li {
+	height: 20px;
+	padding-left: calc(8px + var(--d, 0) * 12px);
+}
+.ide-tri {
+	flex: none;
+	width: 10px;
+	height: 10px;
+	margin-right: 2px;
+	fill: currentColor;
+}
+.ide-ci {
+	flex: none;
+	width: 16px;
+	height: 16px;
+	margin-right: 4px;
+	background: var(--il) center / 16px no-repeat;
+}
+.dark .ide-ci {
+	background-image: var(--id);
+}
+
+/* RouteFigure: a project in VS Code beside the Studio Explorer it makes */
+.route-fig {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	align-items: start;
+	gap: 16px;
+	margin: 24px 0;
 }
 .route-fig.solo {
 	grid-template-columns: minmax(0, 1fr);
@@ -125,90 +584,6 @@ html > body[data-scroll-locked] {
 		grid-template-columns: minmax(0, 1fr);
 	}
 }
-.route-fig .rf-pane {
-	min-width: 0;
-	background: var(--color-fd-card);
-	border: 1px solid var(--color-fd-border);
-	border-radius: 8px;
-	box-shadow: 0 1px 3px rgb(16 38 43 / 0.05);
-	overflow: hidden;
-}
-.route-fig .rf-head {
-	height: 34px;
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	gap: 16px;
-	padding: 0 14px;
-	background: var(--color-fd-muted);
-	border-bottom: 1px solid var(--color-fd-border);
-	font: 500 11px/1 var(--font-mono);
-	color: var(--color-fd-muted-foreground);
-	white-space: nowrap;
-}
-.route-fig .rf-head b {
-	font-weight: 500;
-	font-size: 12px;
-	color: var(--color-fd-foreground);
-}
-.route-fig .rf-head span {
-	letter-spacing: 0.09em;
-	text-transform: uppercase;
-}
-.route-fig ul {
-	list-style: none;
-	margin: 0;
-	padding: 10px 14px 14px;
-	color: var(--color-fd-muted-foreground);
-	overflow-x: auto;
-}
-.route-fig li {
-	height: 22px;
-	white-space: nowrap;
-}
-.route-fig .rf-tree .b {
-	color: var(--color-fd-foreground);
-}
-/* Tree lines drawn with borders, so they join up and keep one colour on every row; the home page uses them too */
-.route-fig {
-	--g-line: var(--rf-line);
-}
-:is(.route-fig, .home) .g {
-	display: inline-flex;
-	vertical-align: top;
-	height: var(--g-row, 22px);
-}
-:is(.route-fig, .home) .g i {
-	position: relative;
-	flex: none;
-	width: 20px;
-}
-:is(.route-fig, .home) .g i::before,
-:is(.route-fig, .home) .g i::after {
-	position: absolute;
-	left: 6px;
-	background: var(--g-line);
-}
-:is(.route-fig, .home) .g-pipe::before,
-:is(.route-fig, .home) .g-tee::before {
-	content: "";
-	top: 0;
-	bottom: 0;
-	width: 1px;
-}
-:is(.route-fig, .home) .g-end::before {
-	content: "";
-	top: 0;
-	height: calc(var(--g-row, 22px) / 2);
-	width: 1px;
-}
-:is(.route-fig, .home) .g-tee::after,
-:is(.route-fig, .home) .g-end::after {
-	content: "";
-	top: calc(var(--g-row, 22px) / 2);
-	width: 9px;
-	height: 1px;
-}
 .route-fig .c-s {
 	color: var(--t-s);
 }
@@ -217,30 +592,4 @@ html > body[data-scroll-locked] {
 }
 .route-fig .c-r {
 	color: var(--t-r);
-}
-.route-fig .rf-xt li {
-	display: flex;
-	align-items: center;
-	padding-left: calc(var(--d, 0) * 16px);
-}
-.route-fig .ic {
-	flex: none;
-	width: 16px;
-	height: 16px;
-	margin-right: 7px;
-}
-.route-fig .k-s {
-	--hc: var(--t-s);
-}
-.route-fig .k-c {
-	--hc: var(--t-c);
-}
-.route-fig .k-r {
-	--hc: var(--t-r);
-}
-.route-fig .svc .ic {
-	color: var(--hc);
-}
-.route-fig .svc .nm {
-	color: var(--color-fd-foreground);
 }

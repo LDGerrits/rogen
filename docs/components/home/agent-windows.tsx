@@ -1,122 +1,196 @@
 "use client";
 
 import { useEffect, useRef, type CSSProperties } from "react";
-import { useLang } from "./lang";
+import { FileIcon, VsCodeWindow } from "../ide";
+import { useLang, type Lang } from "./lang";
 
-const AGENTS = [
+// One agent per feature, each writing one file of its own feature, which requires only that feature.
+const AGENTS: {
+	feature: Record<Lang, string>;
+	colour: string;
+	file: Record<Lang, string>;
+	code: Record<Lang, string>;
+}[] = [
 	{
-		feature: "Combat",
+		feature: { luau: "Combat", ts: "combat" },
 		colour: "--agent-1",
-		files: {
-			luau: [
-				"CombatService@Server.luau",
-				"CombatController@Client.luau",
-				"CombatTypes.luau",
-			],
-			ts: [
-				"combat-service@server.ts",
-				"combat-controller@client.ts",
-				"combat-types.ts",
-			],
+		file: {
+			luau: "CombatService@Server.luau",
+			ts: "combat-service@server.ts",
+		},
+		code: {
+			luau: `local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local CombatTypes = require(ReplicatedStorage.Shared.Combat.CombatTypes)
+
+local CombatService = {}
+
+function CombatService.dealDamage(target: Model, hit: CombatTypes.Hit)
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	if humanoid and humanoid.Health > 0 then
+		humanoid:TakeDamage(hit.damage)
+	end
+end
+
+return CombatService`,
+			ts: `import { Hit } from "./combat-types";
+
+export function dealDamage(target: Model, hit: Hit) {
+	const humanoid = target.FindFirstChildOfClass("Humanoid");
+	if (humanoid && humanoid.Health > 0) {
+		humanoid.TakeDamage(hit.damage);
+	}
+}`,
 		},
 	},
 	{
-		feature: "Inventory",
+		feature: { luau: "Inventory", ts: "inventory" },
 		colour: "--agent-2",
-		files: {
-			luau: [
-				"InventoryService@Server.luau",
-				"InventoryHud.luau",
-				"ItemCatalog.luau",
-			],
-			ts: [
-				"inventory-service@server.ts",
-				"inventory-hud.tsx",
-				"item-catalog.ts",
-			],
+		file: {
+			luau: "InventoryService@Server.luau",
+			ts: "inventory-service@server.ts",
+		},
+		code: {
+			luau: `local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local ItemCatalog = require(ReplicatedStorage.Shared.Inventory.ItemCatalog)
+
+local InventoryService = {}
+local bags: { [Player]: { string } } = {}
+
+function InventoryService.give(player: Player, itemId: string)
+	assert(ItemCatalog[itemId], \`unknown item {itemId}\`)
+	local bag = bags[player] or {}
+	table.insert(bag, itemId)
+	bags[player] = bag
+end
+
+return InventoryService`,
+			ts: `import { ItemCatalog } from "./item-catalog";
+
+const bags = new Map<Player, string[]>();
+
+export function give(player: Player, itemId: string) {
+	assert(ItemCatalog[itemId], \`unknown item \${itemId}\`);
+	const bag = bags.get(player) ?? [];
+	bag.push(itemId);
+	bags.set(player, bag);
+}`,
 		},
 	},
 	{
-		feature: "Shop",
+		feature: { luau: "Shop", ts: "shop" },
 		colour: "--agent-3",
-		files: {
-			luau: [
-				"ShopService@Server.luau",
-				"ShopController@Client.luau",
-				"ShopTypes.luau",
-			],
-			ts: [
-				"shop-service@server.ts",
-				"shop-controller@client.ts",
-				"shop-types.ts",
-			],
+		file: {
+			luau: "ShopController@Client.luau",
+			ts: "shop-controller@client.ts",
+		},
+		code: {
+			luau: `local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local ShopTypes = require(ReplicatedStorage.Shared.Shop.ShopTypes)
+
+local ShopController = {}
+
+function ShopController.open(offer: ShopTypes.Offer)
+	local gui = Players.LocalPlayer.PlayerGui:WaitForChild("Shop")
+	gui.Title.Text = offer.name
+	gui.Price.Text = \`{offer.price} coins\`
+	gui.Enabled = true
+end
+
+return ShopController`,
+			ts: `import { Players } from "@rbxts/services";
+import { Offer } from "./shop-types";
+
+export function openShop(offer: Offer) {
+	const gui = Players.LocalPlayer.FindFirstChild("PlayerGui")?.FindFirstChild("Shop");
+	if (!gui?.IsA("ScreenGui")) return;
+	gui.Enabled = true;
+	print(\`\${offer.name}: \${offer.price} coins\`);
+}`,
 		},
 	},
 ];
-// The file name, with its @Server or @Client suffix in that route's colour.
-const fileName = (name: string) => {
-	const at = name.indexOf("@");
-	if (at < 0) return name;
-	const dot = name.lastIndexOf(".");
-	const route = /@server/i.test(name) ? "s" : "c";
-	return `${name.slice(0, at)}<span class="c-${route}">${name.slice(at, dot)}</span>${name.slice(dot)}`;
-};
-const ROWS = 10;
-const FILE_LINES = 16;
-const WORDS = ["====", "======", "==", "========", "---", "-----", "+++", "::"];
 
-// One agent's editor: the lines of the file it is writing, and which file that is.
-interface Editor {
-	lines: string[];
-	file: number;
-	seed: number;
+// What VS Code's Modern themes colour as keywords: storage in blue, control flow in purple.
+const KEYWORDS: Record<Lang, Set<string>> = {
+	luau: new Set([
+		"local",
+		"function",
+		"and",
+		"or",
+		"not",
+		"nil",
+		"true",
+		"false",
+	]),
+	ts: new Set(["const", "let", "function", "new", "true", "false"]),
+};
+const CONTROL: Record<Lang, Set<string>> = {
+	luau: new Set([
+		"if",
+		"then",
+		"else",
+		"elseif",
+		"end",
+		"return",
+		"for",
+		"in",
+		"do",
+		"while",
+	]),
+	ts: new Set(["import", "from", "export", "return", "if", "else", "for"]),
+};
+const TOKEN =
+	/(--[^\n]*|\/\/[^\n]*)|("(?:[^"\\\n]|\\.)*"?|`(?:[^`\\]|\\.)*`?)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_]\w*)|([\s\S])/g;
+
+const escape = (text: string) =>
+	text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/** A line of code as VS Code colours it, as markup; word wrap may break after a dot, a bracket or a colon, as VS Code's does. */
+function highlight(line: string, lang: Lang) {
+	let out = "";
+	for (const m of line.matchAll(TOKEN)) {
+		const [text, comment, string, number, word] = m;
+		const span = (cls: string) =>
+			`<span class="tk-${cls}">${escape(text)}</span>`;
+		if (comment) out += span("com");
+		else if (string) out += span("str");
+		else if (number) out += span("num");
+		else if (word) {
+			const after = line.slice(m.index + text.length).trimStart();
+			if (CONTROL[lang].has(word)) out += span("ctl");
+			else if (KEYWORDS[lang].has(word)) out += span("kw");
+			else if (after.startsWith("(") || after.startsWith("<"))
+				out += span("fn");
+			else out += span("var");
+		} else out += escape(text) + (/[.(:]/.test(text) ? "<wbr>" : "");
+	}
+	return out;
 }
 
-const rand = (e: Editor) =>
-	(e.seed = (e.seed * 16807) % 2147483647) / 2147483647;
-
-// Adds a word to the current line, or starts a new one; a full file moves on to the next.
-function write(e: Editor, k: number) {
-	const L = e.lines;
-	if (!L.length || rand(e) < 0.16) {
-		if (L.length >= FILE_LINES) {
-			e.lines = [];
-			e.file = (e.file + 1) % AGENTS[k].files.luau.length;
-		}
-		e.lines.push("  ".repeat(Math.floor(rand(e) * 3)));
-		return;
-	}
-	const i = L.length - 1;
-	if (L[i].trim().length > 18 + k * 3) L.push("");
-	else
-		L[i] +=
-			(L[i].trim() ? " " : "") +
-			WORDS[Math.floor(rand(e) * WORDS.length)];
+/** The first typed characters of an agent's file, as numbered lines with the agent's cursor at the end. */
+function render(k: number, lang: Lang, typed: number) {
+	const lines = AGENTS[k].code[lang].slice(0, typed).split("\n");
+	return lines
+		.map(
+			(line, i) =>
+				`<li><i>${i + 1}</i><span>${highlight(line, lang)}${
+					i === lines.length - 1
+						? `<b class="caret"><em>Agent ${k + 1}</em></b>`
+						: ""
+				}</span></li>`
+		)
+		.join("");
 }
 
 // The same opening state on the server and the client, so hydration matches.
-const opening = (k: number) => {
-	const e: Editor = { lines: [], file: k % 3, seed: 11 + k * 7 };
-	for (let n = 0; n < 34 + k * 9; n++) write(e, k);
-	return e;
-};
+const opening = (k: number, lang: Lang) =>
+	Math.floor(AGENTS[k].code[lang].length * (0.3 + k * 0.2));
 
-const visible = (e: Editor) => {
-	const from = Math.max(0, e.lines.length - ROWS);
-	return e.lines.slice(from).map((text, i) => ({ n: from + i + 1, text }));
-};
-
-function Lines({ e }: { e: Editor }) {
-	const rows = visible(e);
-	return rows.map(({ n, text }, i) => (
-		<li key={n} className={i === rows.length - 1 ? "now" : undefined}>
-			<i>{n}</i>
-			<span>{text}</span>
-		</li>
-	));
-}
-
-/** Three editor windows, one per feature folder, each with an agent writing in it. */
+/** Three VS Code windows, one per feature folder, each with an agent writing a file of that feature. */
 export function AgentWindows() {
 	const ref = useRef<HTMLDivElement>(null);
 	const lang = useLang();
@@ -124,36 +198,38 @@ export function AgentWindows() {
 	useEffect(() => {
 		const root = ref.current;
 		if (!root) return;
-		const editors = AGENTS.map((_, k) => opening(k));
-		const wins = [...root.querySelectorAll<HTMLElement>(".aw")];
-		const render = (k: number) => {
-			const e = editors[k];
-			const rows = visible(e);
-			wins[k].querySelector("ol")!.innerHTML = rows
-				.map(
-					({ n, text }, i) =>
-						`<li${i === rows.length - 1 ? ' class="now"' : ""}><i>${n}</i><span>${text}</span></li>`
-				)
-				.join("");
-			const file = wins[k].querySelector<HTMLElement>("[data-file]")!;
-			if (file.dataset.file !== String(e.file)) {
-				file.dataset.file = String(e.file);
-				file.innerHTML = fileName(AGENTS[k].files[lang][e.file]);
-			}
+		const typed = AGENTS.map((_, k) => opening(k, lang));
+		const holds = AGENTS.map(() => 0);
+		const codes = [...root.querySelectorAll<HTMLElement>(".ide-code")];
+		const show = (k: number) => {
+			codes[k].innerHTML = render(k, lang, typed[k]);
+			codes[k].scrollTop = codes[k].scrollHeight;
 		};
-
-		// Each agent types at its own pace, and only while the windows are on screen.
+		// Each agent types at its own pace, waits at the end of a line and of the file, then starts again.
+		const step = (k: number) => {
+			const code = AGENTS[k].code[lang];
+			if (holds[k] > 0) {
+				holds[k]--;
+				return;
+			}
+			if (typed[k] >= code.length) {
+				typed[k] = 0;
+				show(k);
+				return;
+			}
+			typed[k] = Math.min(
+				code.length,
+				typed[k] + 1 + ((typed[k] * 7 + k) % 3)
+			);
+			if (code[typed[k] - 1] === "\n") holds[k] = 4;
+			if (typed[k] >= code.length) holds[k] = 40;
+			show(k);
+		};
 		const timers: number[] = [];
 		const start = () =>
 			AGENTS.forEach((_, k) => {
 				clearInterval(timers[k]);
-				timers[k] = window.setInterval(
-					() => {
-						write(editors[k], k);
-						render(k);
-					},
-					120 + k * 25
-				);
+				timers[k] = window.setInterval(() => step(k), 55 + k * 15);
 			});
 		const stop = () => timers.forEach((t) => clearInterval(t));
 		const io = new IntersectionObserver(([e]) =>
@@ -169,54 +245,43 @@ export function AgentWindows() {
 	return (
 		<div
 			ref={ref}
-			className="agw rv"
+			className="agw ide rv"
 			role="img"
-			aria-label="Three editor windows, one for each feature folder: Combat, Inventory and Shop. A different agent writes in each one at the same time."
+			aria-label="Three VS Code windows, one for each feature folder: Combat, Inventory and Shop. A different agent writes a file of its own feature in each one at the same time."
 		>
-			{AGENTS.map((agent, k) => {
-				const e = opening(k);
-				return (
-					<div
-						key={agent.feature}
-						className="aw"
-						style={
-							{ "--a": `var(${agent.colour})` } as CSSProperties
-						}
-						aria-hidden="true"
-					>
-						<div className="aw-bar">
-							<span className="dots">
-								<i />
-								<i />
-								<i />
+			{AGENTS.map((agent, k) => (
+				<div
+					key={k}
+					className="aw"
+					style={{ "--a": `var(${agent.colour})` } as CSSProperties}
+					aria-hidden="true"
+				>
+					<VsCodeWindow title="my-game">
+						<div className="ide-tabbar">
+							<span className="ide-tab">
+								<FileIcon name={agent.file[lang]} />
+								{agent.file[lang]}
 							</span>
-							<span className="aw-path">
-								src/
-								<b>
-									{lang === "ts"
-										? agent.feature.toLowerCase()
-										: agent.feature}
-								</b>
-								/
-							</span>
-							<span className="aw-who">agent {k + 1}</span>
 						</div>
-						<ol className="aw-body">
-							<Lines e={e} />
-						</ol>
-						<div className="aw-status">
+						<div className="ide-crumbs">
+							src › {agent.feature[lang]} › {agent.file[lang]}
+						</div>
+						<ol
+							className="ide-code"
+							dangerouslySetInnerHTML={{
+								__html: render(k, lang, opening(k, lang)),
+							}}
+						/>
+						<div className="ide-status">
 							<span className="aw-dot" />
-							<span
-								data-file={e.file}
-								dangerouslySetInnerHTML={{
-									__html: fileName(agent.files[lang][e.file]),
-								}}
-							/>
-							<span className="aw-r">writing</span>
+							Agent {k + 1}
+							<span className="aw-r">
+								{lang === "ts" ? "TypeScript" : "Luau"}
+							</span>
 						</div>
-					</div>
-				);
-			})}
+					</VsCodeWindow>
+				</div>
+			))}
 		</div>
 	);
 }

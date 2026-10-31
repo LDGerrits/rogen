@@ -1,4 +1,11 @@
-import type { CSSProperties } from "react";
+import { Fragment, type CSSProperties } from "react";
+import {
+	Chevron,
+	FileIcon,
+	hasChildren,
+	IndentGuides,
+	VsCodeWindow,
+} from "../ide";
 import { L, Name } from "./inventory";
 import { delay, MoreLink } from "./more-link";
 
@@ -6,6 +13,7 @@ type Dot = "o" | "s" | "c" | "r";
 
 // [Luau name, roblox-ts name, depth, marker, class]
 const tree: [string, string, number, Dot, string?][] = [
+	["src/", "src/", 0, "o"],
 	["Combat/", "combat/", 1, "o"],
 	["Inventory/", "inventory/", 1, "o", "on"],
 	["UI/", "ui/", 2, "r", "f"],
@@ -30,77 +38,232 @@ const tree: [string, string, number, Dot, string?][] = [
 	["Shop/", "shop/", 1, "o"],
 ];
 
-const commands = [
-	"rogen serve",
-	"rogen build -o game.rbxl",
-	"rogen sourcemap -o sourcemap.json",
-	"rogen syncback --input game.rbxl",
+// Rojo's commands through Rogen, with what each prints.
+const ROJO_RUNS: Run[] = [
+	{ command: "rogen build -o game.rbxl", output: ["Built game.rbxl."] },
+	{
+		command: "rogen sourcemap -o sourcemap.json",
+		output: ["Wrote sourcemap.json."],
+	},
+	{
+		command: "rogen syncback --input game.rbxl -y",
+		output: ["Syncback wrote 2 changes."],
+	},
+	{
+		command: "rogen serve",
+		output: [
+			"rogen serve · default.rogen.json",
+			"Serving my-game at localhost:34872 · http://localhost:34872/",
+			"  In Studio, press Connect in the Rojo plugin.",
+		],
+	},
 ];
 
 const depth = (d: number) => ({ "--d": d }) as CSSProperties;
+const depths = tree.map(([, , d]) => ({ depth: d }));
 
-const requires: [from: string, to: string, ok: boolean, note: string][] = [
-	["Inventory", "Inventory", true, "same feature"],
-	["Combat", "Inventory", false, "lint error"],
-];
-const folder = (name: string) => (
-	<L luau={`${name}/`} ts={`${name.toLowerCase()}/`} />
-);
-
-function Boundaries() {
+function TreeName({ name, dot }: { name: string; dot: Dot }) {
+	const folder = name.endsWith("/");
 	return (
-		<div className="plate rv" style={delay(240)}>
-			<div className="pane-h">
-				<b>require</b>
-				<span>between features</span>
+		<>
+			{!folder && <FileIcon name={name} />}
+			<Name
+				name={name.replace(/\/$/, "")}
+				colour={dot === "o" ? undefined : dot}
+			/>
+		</>
+	);
+}
+
+// A row of VS Code's explorer: [name, depth, selected].
+type Row = [string, number, boolean?];
+// A command typed in the terminal, and what it prints.
+type Run = { command: string; output: string[] };
+
+// A feature that requires another, and what each language's linter prints about it.
+const BOUNDARY: Record<"luau" | "ts", { rows: Row[] } & Run> = {
+	luau: {
+		rows: [
+			["src/", 0],
+			["Combat/", 1],
+			["CombatService@Server.luau", 2, true],
+			["CombatTypes.luau", 2],
+			["Inventory/", 1],
+			["InventoryService@Server.luau", 2],
+			["ItemCatalog.luau", 2],
+		],
+		command: "lute lint --no-default-lints src",
+		output: [
+			"error[require_boundaries]: feature Combat requires feature Inventory: ReplicatedStorage.Shared.Inventory.ItemCatalog",
+			"",
+			"   ┌── /Users/me/my-game/src/Combat/CombatService@Server.luau:4:21-76 ──",
+			"   │",
+			" 4 │ local ItemCatalog = require(ReplicatedStorage.Shared.Inventory.ItemCatalog)",
+			"   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+		],
+	},
+	ts: {
+		rows: [
+			["src/", 0],
+			["combat/", 1],
+			["combat-service@server.ts", 2, true],
+			["combat-types.ts", 2],
+			["inventory/", 1],
+			["inventory-service@server.ts", 2],
+			["item-catalog.ts", 2],
+		],
+		command: "npx eslint src",
+		output: [
+			"/Users/me/my-game/src/combat/combat-service@server.ts",
+			'  1:25  error  Unexpected path "../inventory/item-catalog" imported in restricted zone  import/no-restricted-paths',
+			"",
+			"✖ 1 problem (1 error, 0 warnings)",
+		],
+	},
+};
+
+// Two places that share src/common, in the layout each language's init writes, and what rogen where says of the game place.
+const PLACES: Record<"luau" | "ts", { rows: Row[] } & Run> = {
+	luau: {
+		rows: [
+			["src/", 0],
+			["common/", 1],
+			["Shop/", 2],
+			["ItemCatalog.luau", 3],
+			["ShopService@Server.luau", 3],
+			["game/", 1],
+			["Shop/", 2],
+			["ItemCatalog.luau", 3, true],
+			["lobby/", 1],
+			["game.rogen.json", 0],
+			["lobby.rogen.json", 0],
+		],
+		command: "rogen where game",
+		output: [
+			"src/common/Shop/ItemCatalog.luau -> replaced by src/game/Shop/ItemCatalog.luau",
+			"src/common/Shop/ShopService@Server.luau -> ServerScriptService/Shop/ShopService · route Server (suffix)",
+			"src/game/Shop/ItemCatalog.luau -> ReplicatedStorage/Shared/Shop/ItemCatalog · route * (fallback)",
+		],
+	},
+	ts: {
+		rows: [
+			["projects/", 0],
+			["common/", 1],
+			["src/shop/", 2],
+			["item-catalog.ts", 3],
+			["shop-service@server.ts", 3],
+			["tsconfig.json", 2],
+			["game/", 1],
+			["src/shop/", 2],
+			["item-catalog.ts", 3, true],
+			["default.rogen.json", 2],
+			["tsconfig.json", 2],
+			["lobby/", 1],
+			["package.json", 0],
+		],
+		command: "rogen where projects/game/default.rogen.json",
+		output: [
+			"projects/common/src/shop/item-catalog.ts -> replaced by projects/game/src/shop/item-catalog.ts",
+			"projects/common/src/shop/shop-service@server.ts -> ServerScriptService/shop/shop-service · route server (suffix)",
+			"projects/game/src/shop/item-catalog.ts -> ReplicatedStorage/shared/shop/item-catalog · route * (fallback)",
+		],
+	},
+};
+
+const suffixColour = (name: string) =>
+	/@server/i.test(name) ? "s" : /@client/i.test(name) ? "c" : undefined;
+
+function Terminal({ runs, prompt = false }: { runs: Run[]; prompt?: boolean }) {
+	return (
+		<div className="ide-panel">
+			<div className="ide-tabs" aria-hidden="true">
+				<span>PROBLEMS</span>
+				<span>OUTPUT</span>
+				<span className="on">TERMINAL</span>
 			</div>
-			<ul className="reqs">
-				{requires.map(([from, to, ok, note]) => (
-					<li
-						key={from}
-						className={ok ? "ok" : "no"}
-						aria-label={`${from} requires ${to}: ${note}`}
-					>
-						<code>{folder(from)}</code>
-						<i aria-hidden="true">{ok ? "→" : "✕"}</i>
-						<code>{folder(to)}</code>
-						<em>{note}</em>
-					</li>
+			<div className="ide-term">
+				{runs.map(({ command, output }, i) => (
+					<Fragment key={i}>
+						<span className="ln">
+							<span className="ps">my-game %</span> {command}
+						</span>
+						{output.map((text, j) => (
+							<span key={j} className="ln">
+								{text || " "}
+							</span>
+						))}
+					</Fragment>
 				))}
-			</ul>
+				{prompt && (
+					<span className="ln">
+						<span className="cur" aria-hidden="true" />
+					</span>
+				)}
+			</div>
 		</div>
 	);
 }
 
-function Places() {
+/** VS Code's explorer over a terminal, in each language, as Boundaries and Places show them. */
+function ExplorerAndTerminal({
+	figure,
+	delayMs,
+}: {
+	figure: typeof PLACES;
+	delayMs: number;
+}) {
 	return (
-		<div className="plate rv" style={delay(320)}>
-			<div className="pane-h">
-				<b>places/</b>
-				<span>shared code, one override</span>
-			</div>
-			<div className="places">
-				<div className="pl shared">
-					<b>shared/</b>
-					<span>
-						<L luau="InventoryTypes.luau" ts="inventory-types.ts" />
-					</span>
-					<span>
-						<L luau="ItemCatalog.luau" ts="item-catalog.ts" />
-					</span>
-				</div>
-				<div className="pl">
-					<b>lobby/</b>
-					<span className="dim">uses the shared files</span>
-				</div>
-				<div className="pl">
-					<b>arena/</b>
-					<span className="ov">
-						<L luau="ItemCatalog.luau" ts="item-catalog.ts" />
-					</span>
-					<em>replaces the shared one</em>
-				</div>
-			</div>
+		<div className="plate ide rv" style={delay(delayMs)}>
+			{(["luau", "ts"] as const).map((lang) => {
+				const { rows, command, output } = figure[lang];
+				const depths = rows.map(([, depth]) => ({ depth }));
+				return (
+					<div key={lang} data-only={lang}>
+						<VsCodeWindow title="my-game">
+							<div className="ide-section">
+								<Chevron open />
+								MY-GAME
+							</div>
+							<ul className="ide-tree">
+								{rows.map(([name, depth, chosen], i) => {
+									const isFolder = name.endsWith("/");
+									return (
+										<li
+											key={i}
+											className={
+												chosen ? "sel" : undefined
+											}
+											style={
+												{
+													"--d": depth,
+												} as CSSProperties
+											}
+										>
+											<IndentGuides depth={depth} />
+											{isFolder && (
+												<Chevron
+													open={hasChildren(
+														depths,
+														i
+													)}
+												/>
+											)}
+											{!isFolder && (
+												<FileIcon name={name} />
+											)}
+											<Name
+												name={name.replace(/\/$/, "")}
+												colour={suffixColour(name)}
+											/>
+										</li>
+									);
+								})}
+							</ul>
+							<Terminal runs={[{ command, output }]} />
+						</VsCodeWindow>
+					</div>
+				);
+			})}
 		</div>
 	);
 }
@@ -133,45 +296,45 @@ export function Features() {
 							See suggested architectures
 						</MoreLink>
 					</div>
-					<div className="fpanel rv" style={delay(120)}>
-						<div
-							className="tree"
-							role="group"
-							aria-label="Example feature folder"
-						>
-							<div className="hd">src/</div>
-							{tree.map(([luau, ts, d, dot, cls]) => (
-								<div
-									key={luau}
-									className={cls}
-									style={depth(d)}
-								>
-									<i className={`dia ${dot}`} />
-									<L
-										luau={
-											<Name
-												name={luau}
-												colour={
-													dot === "o"
-														? undefined
-														: dot
-												}
-											/>
+					<div className="fpanel ide rv" style={delay(120)}>
+						<VsCodeWindow title="my-game">
+							<div className="ide-section">
+								<Chevron open />
+								MY-GAME
+							</div>
+							<ul
+								className="ide-tree"
+								aria-label="Example feature folder"
+							>
+								{tree.map(([luau, ts, d, dot, cls], i) => (
+									<li
+										key={luau}
+										className={
+											cls === "on" ? "sel" : undefined
 										}
-										ts={
-											<Name
-												name={ts}
-												colour={
-													dot === "o"
-														? undefined
-														: dot
-												}
+										style={depth(d)}
+									>
+										<IndentGuides depth={d} />
+										{luau.endsWith("/") && (
+											<Chevron
+												open={hasChildren(depths, i)}
 											/>
-										}
-									/>
-								</div>
-							))}
-						</div>
+										)}
+										<L
+											luau={
+												<TreeName
+													name={luau}
+													dot={dot}
+												/>
+											}
+											ts={
+												<TreeName name={ts} dot={dot} />
+											}
+										/>
+									</li>
+								))}
+							</ul>
+						</VsCodeWindow>
 					</div>
 				</div>
 
@@ -189,7 +352,7 @@ export function Features() {
 						<MoreLink href="/docs/v2/linting" dl={180}>
 							See the lint rule
 						</MoreLink>
-						<Boundaries />
+						<ExplorerAndTerminal figure={BOUNDARY} delayMs={240} />
 					</div>
 					<div className="rtxt">
 						<span className="n rv" style={delay(80)}>
@@ -207,7 +370,7 @@ export function Features() {
 						<MoreLink href="/docs/v2/setups/places" dl={260}>
 							Set up places
 						</MoreLink>
-						<Places />
+						<ExplorerAndTerminal figure={PLACES} delayMs={320} />
 					</div>
 				</div>
 
@@ -226,18 +389,16 @@ export function Features() {
 							Coming from Rojo
 						</MoreLink>
 					</div>
-					<ul
-						className="cmds"
-						aria-label="Rogen commands"
-						data-cmds=""
+					<div
+						className="still ide rv"
+						style={delay(120)}
+						role="img"
+						aria-label="VS Code's terminal running rogen build, sourcemap, syncback and serve, as Rojo's commands are run"
 					>
-						{commands.map((command, i) => (
-							<li key={command} style={delay(i * 100)}>
-								<i>$</i>
-								<span>{command}</span>
-							</li>
-						))}
-					</ul>
+						<VsCodeWindow title="my-game">
+							<Terminal runs={ROJO_RUNS} prompt />
+						</VsCodeWindow>
+					</div>
 				</div>
 			</div>
 		</section>

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { icons, type Icon, type Service } from "./explorer";
+import type { Icon, Service } from "./explorer";
 import type { Lang } from "./lang-script";
 
 // The example feature, src/Inventory, on disk and in the Studio Explorer.
@@ -120,13 +120,9 @@ export function Name({ name, colour }: { name: string; colour?: Service }) {
 	);
 }
 
-export function StudioIcon({ icon }: { icon: Icon }) {
-	return (
-		<svg
-			className="ic"
-			viewBox="0 0 16 16"
-			aria-hidden="true"
-			dangerouslySetInnerHTML={{ __html: icons[icon] }}
-		/>
-	);
+/** The Studio class an Explorer row shows the icon of. */
+export function studioClass(icon: Icon, name: string): string {
+	if (icon === "svc") return name;
+	if (icon === "dir") return "Folder";
+	return icon === "mdl" ? "Model" : "ModuleScript";
 }

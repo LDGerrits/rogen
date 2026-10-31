@@ -8,10 +8,10 @@
 </p>
 <h1 align="center">Rogen</h1>
 <p align="center">
-	<strong>Rojo with file-system routing. Professional-grade architecture for Roblox codebases.</strong>
+	<strong>A Rojo superset that keeps each feature's server and client code in one folder.</strong>
 </p>
 <p align="center">
-	Rogen is a superset of Rojo that generates Rojo project files from your file system. Put code in a <code>Server</code> or <code>Client</code> folder, or add <code>@Server</code> to a file's name, and Rogen sends it to the right place.
+	Rogen generates the Rojo project file from your file system, and sends each file to the right place in Studio.
 </p>
 <p align="center">
 	<a href="https://www.npmjs.com/package/@ldgerrits/rogen"><img alt="Beta release" src="https://img.shields.io/npm/v/@ldgerrits/rogen/next?style=flat-square&label=beta" /></a>
@@ -22,22 +22,29 @@
 	<a href="https://roblox-ts.com"><img alt="roblox-ts" src="https://img.shields.io/badge/roblox--ts-3178C6?style=flat-square&logo=typescript&logoColor=white" /></a>
 </p>
 
+<p align="center">
+	<picture>
+		<source media="(prefers-color-scheme: dark)" srcset="docs/public/readme/routing-dark.png" />
+		<img src="docs/public/readme/routing-light.png" alt="VS Code with an Inventory feature and rogen serve in its terminal, beside the Roblox Studio Explorer with each file where Rogen sent it" width="840" />
+	</picture>
+</p>
+
 ## Why Rogen?
 
 - **Organize by feature** — Group all code, UI, and assets for a specific feature in one place. This gives you high cohesion, better scalability, fewer merge conflicts, and features that are simple to maintain or delete.
 - **Enforce boundaries** — Keep coupling low with a linter. Every path names its feature, so a [lint rule](https://rogen-roblox.vercel.app/docs/v2/linting) can stop one feature from requiring another.
-- **Multi-place games** — Write shared code once and use it in every place. When one place needs something different, add a file with the same name to that place's folder, and it overwrites the shared one there.
+- **Multi-place games** — Write shared code once and use it in every place. When one place needs something different, add a file with the same name to that place's folder, and it replaces the shared one there.
 - **Still Rojo** — Rogen runs the Rojo commands you use, with the same flags. One tool, and nothing to relearn.
 
 ## Built for agents
 
 When an agent works on a feature, everything it needs is in one folder, from server to client. It spends its context on your task instead of searching the codebase.
 
-Running several agents? Give each one a feature. A lint rule catches any agent that makes one feature require another, and there's no shared project file to conflict on.
+Running several agents? Give each one a feature. A lint rule catches any agent that makes one feature require another, and there's no shared project file to conflict on. See [Working with agents](https://rogen-roblox.vercel.app/docs/v2/agents) to set them up.
 
-## Example
+## How it works
 
-`default.rogen.json` is a Rojo project file with `routes` added. The `tree` is the base: put in it what folder names can't say, such as your packages, and Rogen adds every routed file to it:
+`default.rogen.json` is a Rojo project file with `routes`. Its `tree` holds what folder names can't say, such as your packages:
 
 <!-- prettier-ignore -->
 ```json
@@ -58,17 +65,7 @@ Running several agents? Give each one a feature. A lint rule catches any agent t
 }
 ```
 
-A folder or an `@` suffix named after a route sends its code there. The `*` route takes every file that matches no other:
-
-| In `src/Inventory`                | Goes to                                        |
-| --------------------------------- | ---------------------------------------------- |
-| `Server/InventoryService.luau`    | `ServerScriptService/Inventory`                |
-| `Client/InventoryController.luau` | `StarterPlayer/StarterPlayerScripts/Inventory` |
-| `Shared/InventoryTypes.luau`      | `ReplicatedStorage/Shared/Inventory`           |
-| `Save@Server.luau`                | `ServerScriptService/Inventory`                |
-| `InventoryConfig.luau`            | `ReplicatedStorage/Shared/Inventory`           |
-
-The routes are yours to change. Add `"Gui": "StarterGui"`, and a `Gui` folder or a `@Gui` suffix sends code to StarterGui.
+A file goes where its [folder or `@` suffix](https://rogen-roblox.vercel.app/docs/v2/core-concepts/routing) says: `Server/` and `@Server` both mean ServerScriptService. Everything else goes to `*`, and a route you add, such as `"Gui": "StarterGui"`, works the same way.
 
 ## Installation
 
@@ -87,7 +84,7 @@ rogen build -o game.rbxl   # Update the project file, then build a place with Ro
 rogen check                # Print warnings and errors, and exit 1 on any
 ```
 
-`sourcemap`, `upload`, `syncback` and `plugin` take Rojo's flags too. See the [documentation](https://rogen-roblox.vercel.app/docs/v2) for every command.
+`sourcemap`, `upload`, `syncback` and `plugin` take Rojo's flags too. See the [command reference](https://rogen-roblox.vercel.app/docs/v2/commands) for every command.
 
 ## FAQ
 
