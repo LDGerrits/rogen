@@ -3,23 +3,11 @@ title: Using Syncback
 description: Bring changes made in Studio back into your source files
 ---
 
-import { Steps, Step } from "fumadocs-ui/components/steps";
-
-`rogen syncback` reads a place file that you saved from Studio, and writes what changed into your source files. It reads the saved file, not a live Studio session. Underneath, it runs Rojo's own syncback, so it needs Rojo 7.7.0 or newer.
+`rogen syncback` reads a place file that you saved from Studio, and writes what changed into your source files. It runs Rojo's own syncback underneath, so it needs Rojo 7.7.0 or newer.
 
 ## Bring Changes Back
 
-<Steps>
-
-<Step>
-### Save the Place
-
-In Studio, choose **File > Save to File As** and save the place as `game.rbxlx` in your project folder. The `.gitignore` that `rogen init` writes leaves that file out of git.
-
-</Step>
-
-<Step>
-### See What Syncback Would Do
+In Studio, choose **File > Save to File As** and save the place as `game.rbxlx` in your project folder. Then see what syncback would do:
 
 ```bash
 rogen syncback --input game.rbxlx --dry-run
@@ -34,84 +22,29 @@ Removing src/Greeter/Client
 Syncback would change 5 files (4 to write, 1 to remove).
 ```
 
-A dry run writes nothing, the project file included. Syncback removes the files of every instance that the place no longer holds, so a place saved from an old copy of the game undoes the edits made since. Look before you write.
+Syncback removes the files of every instance that the place no longer holds, so a place saved from an old copy of the game undoes the edits made since. Look before you write. Then run it without `--dry-run`. In a terminal it asks before it writes, and `git diff` shows what it wrote.
 
-</Step>
-
-<Step>
-### Write the Changes
-
-```bash
-rogen syncback --input game.rbxlx
-```
-
-In a terminal, syncback lists the same changes and asks:
-
-```
-◆  Write and remove files (4 to write, 1 to remove)?
-│  ● Yes / ○ No
-```
-
-Answer **No** and it prints `Nothing was written.`
-
-</Step>
-
-<Step>
-### Review the Diff
-
-Read `git diff` before you commit, as you would for a change someone else made. Syncback has already written the project file again.
-
-</Step>
-
-</Steps>
+Under CI or a coding agent, syncback can't ask, so it stops with exit 2 and writes nothing. Pass `-y` to write without asking. `--json` prints the run as [one document](/docs/v2/output).
 
 ## Where Changes Land
 
-A changed instance goes back to the file it came from, in any layout: a routing folder, an `@` name, a `^` name, a `(Group)` folder or a marker file. When the place no longer holds an instance, its file goes, and its meta file with it. A folder that ends up empty keeps a `.gitkeep`, so the folder is still in the game after the next build.
+A changed instance goes back to the file it came from, in any layout: a routing folder, an `@` name, a `^` name, a `(Group)` folder or a marker file. When the place no longer holds an instance, its file goes, and its meta file with it.
 
-A new instance goes where routing would place a file for it, written in the style of the files around it. In a project that routes with folders, a new `ServerScriptService/Quest/Main` script becomes `src/Quest/Server/Main.server.luau`. In a project where most server files have an `@Server` name, a new `ServerScriptService/Mail/MailService` becomes `src/Mail/MailService@Server.luau`. A new module with children becomes a folder with an `init.luau`:
+A new instance goes where routing would place a file for it, in the style of the files around it. In a project that routes with folders, a new `ServerScriptService/Quest/Main` script becomes `src/Quest/Server/Main.server.luau`. In a project where most server files have an `@Server` name, a new `ServerScriptService/Mail/MailService` becomes `src/Mail/MailService@Server.luau`. A new module with children becomes a folder with an `init.luau`.
 
-```
-Writing src/Inventory/Server/Bag/Slot.luau
-Writing src/Inventory/Server/Bag/init.luau
-```
-
-A property changed on a node of your `tree`, such as `Lighting`, goes into that node's `$properties` in `default.rogen.json`. The rest of the config stays as it was.
-
-## Without a Terminal
-
-Under CI or a coding agent, or with no terminal, syncback can't ask, so it stops and writes nothing:
-
-```
-error: syncback writes and removes files, and this run can't ask. Pass -y/--non-interactive to write without asking, or --dry-run to list what it would do.
-```
-
-It exits 2. Pass `-y` to write without asking:
-
-```bash
-rogen syncback --input game.rbxlx -y
-```
-
-```
-Wrote default.project.json.
-Syncback wrote 5 changes.
-```
-
-Add `--list` to print the `Writing` and `Removing` lines too, as `rojo syncback --list` does. `--json` prints the run as [one document](/docs/v2/output).
+A property changed on a node of your `tree`, such as `Lighting`, goes into that node's `$properties` in `default.rogen.json`.
 
 ## Projects With a Compiled Path
 
-When your config has a [`compiledPath`](/docs/v2/config), the compiler writes the scripts that Rojo syncs, and the next compile would replace whatever syncback wrote there. So syncback leaves compiled code alone and lists each change for you to make in the source files:
+When your config has a [`compiledPath`](/docs/v2/config), the next compile would replace whatever syncback wrote there. So syncback leaves compiled code alone and lists each change for you to make in the source files:
 
 ```
 default.rogen.json - warning: ReplicatedStorage/Shared/Greeter/Greeting changed in the place, but it is compiled into dist, so syncback left it out. Make the change in the source files. (syncback.compiledPath)
-default.rogen.json - warning: ServerScriptService/Quest is new in the place, but the project compiles into dist, so syncback left it out. Add it to the source files. (syncback.compiledPath)
 ```
 
-Everything outside the compiled path is still written, such as the folders and the `$properties` of your `tree`.
+Everything outside the compiled path is still written, such as the `$properties` of your `tree`.
 
 ## Limits
 
-- A new instance where no route puts files, such as a `Remotes` folder directly in ReplicatedStorage, is left out with [`syncback.unplaced`](/docs/v2/diagnostics#syncback-unplaced). To keep it, create `place/Remotes`, mount it in the [tree](/docs/v2/core-concepts/routing/tree) as `"Remotes": { "$path": "place/Remotes" }` under `ReplicatedStorage`, and run syncback again.
-- A feature renamed in Studio is a new feature to syncback. Its files are written again in the style that new files take, so `src/Trade/TradeService@Server.luau` can come back as `src/Exchange/Server/TradeService.luau`. Rename the folder on disk instead.
-- As with Rojo, a script whose class changed in Studio keeps its file, and a child added to a script that has no folder of its own isn't written.
+- A new instance where no route puts files, such as a `Remotes` folder directly in ReplicatedStorage, is left out with [`syncback.unplaced`](/docs/v2/diagnostics#syncback-unplaced). To keep it, mount a folder for it in the [tree](/docs/v2/core-concepts/routing/tree).
+- A feature renamed in Studio is a new feature to syncback, so its files are written again in the new-file style. Rename the folder on disk instead.

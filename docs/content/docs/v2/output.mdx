@@ -5,28 +5,16 @@ description: What Rogen prints, its exit codes, and its JSON for scripts and CI
 
 ## Diagnostics
 
-A diagnostic reads `file:line:col - severity: message (code)`. The line and column appear when Rogen knows them:
+A diagnostic reads `file:line:col - severity: message (code)`:
 
 ```
 default.rogen.json:5:3 - error: "route" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know. Did you mean "routes"? (config.unknownField)
 src/Greeter/Save@sever.luau - warning: did you mean "@Server"? (route.strayAt)
 ```
 
-An error stops Rogen from writing the project file. A warning doesn't, but it still names something to fix. `rogen help route.strayAt` prints what a code means and how to fix it, and [Diagnostics](/docs/v2/diagnostics) has a section for every code.
+An error stops Rogen from writing the project file. A warning doesn't, but it still names something to fix. `rogen help route.strayAt` prints what a code means, and [Diagnostics](/docs/v2/diagnostics) has a section for every code.
 
-## Where Output Goes
-
-Results go to stdout. Warnings, errors and `--verbose` lines go to stderr. `rogen check` is the exception: its diagnostics are its result, so they go to stdout.
-
-Rojo's commands print one line for each thing they did, on the stream where Rojo prints its own. `build` prints on stdout:
-
-```
-$ rogen build -o game.rbxl
-Wrote default.project.json.
-Built game.rbxl.
-```
-
-`syncback` and a sourcemap printed without `-o` put these lines on stderr. A line from Rojo that Rogen doesn't know shows as `Rojo: <line>`, and `--verbose` shows the rest of Rojo's output.
+Results go to stdout. Warnings, errors and `--verbose` lines go to stderr, except in `rogen check`, whose diagnostics are its result. Rojo's commands print one line for each thing they did, such as `Wrote default.project.json.` and `Built game.rbxl.`, on the stream where Rojo prints its own.
 
 ## Exit Codes
 
@@ -35,53 +23,30 @@ Built game.rbxl.
 | 0 | The command did what it was asked. Warnings don't change it. |
 | 1 | The project has errors: an invalid config, a failed build or write, or a cancelled `init`. `rogen check` also exits 1 on any warning. |
 | 2 | The command line is wrong, such as an unknown command or option. |
-| 129 | `serve` or a `--watch` command stopped with SIGHUP. |
-| 130 | `serve` or a `--watch` command stopped with Ctrl+C. |
-| 143 | `serve` or a `--watch` command stopped with SIGTERM. |
+| 129, 130, 143 | `serve` or a `--watch` command stopped with SIGHUP, Ctrl+C or SIGTERM. |
 
-`serve`, `build --watch` and `sourcemap --watch` exit 1 when Rojo crashes again right after Rogen restarted it. `build --watch` and `sourcemap --watch` also exit 1 when Rojo stops watching on its own, as it does when its first build fails. When another `rogen serve` already serves the project, a second `rogen serve` says so and exits 0.
+`serve`, `build --watch` and `sourcemap --watch` exit 1 when Rojo crashes again right after Rogen restarted it, or stops watching on its own.
 
 ## JSON
 
-With `--json`, a command prints one JSON document on one line of stdout and nothing else, whatever the exit code. The exit code stays the same. Read the document instead of the text, which can change:
+With `--json`, a command prints one JSON document on one line of stdout and nothing else, whatever the exit code:
 
 ```
 $ rogen check --json
 {"diagnostics":[{"file":"/home/me/game/src/Greeter/Save@sever.luau","severity":"warning","code":"route.strayAt","message":"did you mean \"@Server\"?","url":"https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat","fixes":[{"rename":{"from":"/home/me/game/src/Greeter/Save@sever.luau","to":"/home/me/game/src/Greeter/Save@Server.luau"}}]}]}
 ```
 
-Match a diagnostic on its `code`, not on its `message`. A command line that is wrong prints an error document:
-
-```
-$ rogen bild --json
-{"error":{"kind":"usage","message":"Unknown command \"bild\".","hint":"Did you mean 'rogen build'?"}}
-```
-
-`serve --json` prints one JSON object per line for as long as it runs, and so do `build --watch --json` and `sourcemap --watch --json`:
-
-```
-$ rogen serve --json
-{"write":{"config":"default.rogen.json","projectFile":"/home/me/game/default.project.json","outcome":"unchanged","diagnostics":[]}}
-{"serving":{"config":"default.rogen.json","version":"7.7.1","project":"game","host":"127.0.0.1","port":34872,"session":"65376891-6167-4164-b40d-f1b3542118d7","reportsConnections":true}}
-{"stopped":{"config":"default.rogen.json","reason":"shutdown"}}
-```
-
-`rogen help --json` lists every command with its arguments, options and exit codes. `rogen help <command> --json` adds the shape of that command's document. `rogen doc output` explains every key.
-
-## GitHub Annotations
-
-Under GitHub Actions, `build` and `check` also write each diagnostic to stderr as a workflow command. GitHub shows it on the file in the pull request. Nothing needs to be turned on, because GitHub sets `GITHUB_ACTIONS`:
-
-```
-::warning file=src/Greeter/Save@sever.luau,title=route.strayAt::did you mean "@Server"?
-::error file=default.rogen.json,line=5,col=3,title=config.unknownField::"route" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know. Did you mean "routes"?
-```
-
-With `--json`, Rogen writes no annotations.
+Match a diagnostic on its `code`, not on its `message`. `serve --json`, `build --watch --json` and `sourcemap --watch --json` print one JSON object per line for as long as they run. `rogen help <command> --json` gives the shape of a command's document, and `rogen doc output` explains every key.
 
 ## Running in CI
 
-`rogen check` writes nothing and exits 1 on any diagnostic, so it fails the job on a warning that `rogen build` lets through. It also works on a fresh clone, where `init`'s `.gitignore` leaves out the project file. This workflow installs the tools that `rokit.toml` pins, then checks and builds the game. It needs Rogen pinned there, as [Installation](/docs/v2/installation) shows:
+Under GitHub Actions, `build` and `check` also write each diagnostic as a workflow command, so GitHub shows it on the file in the pull request:
+
+```
+::warning file=src/Greeter/Save@sever.luau,title=route.strayAt::did you mean "@Server"?
+```
+
+`rogen check` writes nothing and exits 1 on any diagnostic, so it fails the job on a warning that `rogen build` lets through. This workflow installs the tools that `rokit.toml` pins, which must include Rogen, then checks and builds the game:
 
 ```yaml title=".github/workflows/ci.yml"
 name: CI
@@ -97,28 +62,6 @@ jobs:
       - run: rogen build -o game.rbxl
 ```
 
-On a clean project, the two steps print:
-
-```
-$ rogen check
-$ rogen build -o game.rbxl
-Wrote default.project.json.
-Built game.rbxl.
-```
-
-To check only some files, such as the ones a pull request changes, name them. `rogen check` then reports only the diagnostics about those files:
-
-```
-$ rogen check src/Greeter/Save@sever.luau
-src/Greeter/Save@sever.luau - warning: did you mean "@Server"? (route.strayAt)
-```
-
 ## Update Notice
 
-When you run Rogen in a terminal and a newer release is out, Rogen prints one line on stderr after the command. The line says how to update for the way you installed Rogen:
-
-```
-Rogen 2.0.3 is out (you have 2.0.0). Update the pin in rokit.toml: rogen = "ldgerrits/rogen@2.0.3". Then run rokit install.
-```
-
-Rogen names each version once a day. It never prints the line under CI or a coding agent, in a pipe, or with `--json` or `--quiet`. To turn off the check and the line, set `ROGEN_NO_UPDATE_CHECK=1` or `NO_UPDATE_NOTIFIER=1`.
+When a newer release is out, Rogen prints one line on stderr after the command, once a day, with the update command for the way you installed it. It never prints the line under CI, in a pipe, or with `--json`. To turn the check off, set `ROGEN_NO_UPDATE_CHECK=1`.

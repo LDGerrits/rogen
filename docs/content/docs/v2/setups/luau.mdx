@@ -1,6 +1,6 @@
 ---
 title: Using Luau
-description: The editor, requires, packages and Darklua in a Luau game
+description: The editor, requires and Darklua in a Luau game
 ---
 
 In a Luau game, Rojo syncs your source files as they are. This page covers what you meet day to day once [Creating a New Game](/docs/v2/new-game) has set the game up.
@@ -15,9 +15,9 @@ luau-lsp reads `sourcemap.json` to know where each file sits in the game. Its VS
 Unable to find project file default.project.json for Rojo sourcemap generation.
 ```
 
-After you clone, run `rogen write`. Then run **Luau: Regenerate Sourcemap** from the command palette, or reopen the editor.
+After you clone, run `rogen write`, then **Luau: Regenerate Sourcemap** from the command palette.
 
-A new file in a feature folder reaches the sourcemap by itself. A new feature folder needs a new entry in `default.project.json`. `rogen serve` writes it as you add the folder. When serve isn't running, run `rogen write`.
+A new file in a feature folder reaches the sourcemap by itself. A new feature folder needs a new entry in `default.project.json`, which `rogen serve` writes as you add the folder. When serve isn't running, run `rogen write`.
 
 ## Require by Instance
 
@@ -29,19 +29,7 @@ src/Greeter/Shared/Greeting.luau -> ReplicatedStorage/Shared/Greeter/Greeting ·
   require(game:GetService("ReplicatedStorage").Shared.Greeter.Greeting)
 ```
 
-For a file that no other code can require, it says why:
-
-```
-$ rogen where src/Greeter/Server/Greeter.server.luau
-src/Greeter/Server/Greeter.server.luau -> ServerScriptService/Greeter/Greeter · route Server (folder)
-  no require by this path: a script runs on its own and is not a module
-```
-
-A string require such as `require("./Prices")` also resolves in the game, so it reaches only the files routed into the same folder. [What Each Side Can Require](/docs/v2/core-concepts/routing#what-each-side-can-require) says which modules each side can reach.
-
-## Packages
-
-When a `wally.toml` is there, `rogen init` mounts Wally's `Packages` in ReplicatedStorage and `ServerPackages` in ServerScriptService. Require a package by its instance, such as `require(ReplicatedStorage.Packages.Promise)`. To mount a package folder yourself, see [The Tree](/docs/v2/core-concepts/routing/tree).
+A string require such as `require("./Prices")` also resolves in the game, so it reaches only the files routed into the same folder. [What Each Side Can Require](/docs/v2/core-concepts/routing#what-each-side-can-require) says which modules each side can reach, and [The Tree](/docs/v2/core-concepts/routing/tree) how to mount Wally's `Packages`.
 
 ## Using Darklua
 
@@ -55,7 +43,7 @@ local InventoryTypes = require("../Shared/InventoryTypes")
 local InventoryTypes = require(game:GetService('ReplicatedStorage'):WaitForChild('Shared'):WaitForChild('Inventory'):WaitForChild('InventoryTypes'))
 ```
 
-The path is the file's path on disk, so a server script can reach `Shared` through `..`. Darklua finds the instance in `sourcemap.json`, which must map your source files:
+Darklua finds the instance in `sourcemap.json`:
 
 ```json title=".darklua.json"
 {
@@ -73,28 +61,7 @@ The path is the file's path on disk, so a server script can reach `Shared` throu
 }
 ```
 
-### Two Configs
-
-The game needs two configs. `default.rogen.json` reads `src`, and the sourcemap comes from it. `dist.rogen.json` is a full copy that adds `"compiledPath": "dist"` and a `name`, and Rojo serves the project file it writes:
-
-```json title="dist.rogen.json"
-{
-	"name": "my-game",
-	"sourcePaths": ["src"],
-	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
-	},
-	"compiledPath": "dist",
-	"tree": { "$className": "DataModel" }
-}
-```
-
-When you run `rogen init` on a Rojo project whose code Darklua already writes to a folder of its own, it writes both configs for you. Otherwise, copy `default.rogen.json` and add those two keys. A change to `routes`, `sourcePaths` or `tree` goes into both files. Add `dist` to `.gitignore`.
-
-### Serve the Processed Code
+The game needs two configs. `default.rogen.json` reads `src`, and the sourcemap comes from it. `dist.rogen.json` is a full copy that adds `"compiledPath": "dist"` and a `name`, and Rojo serves the project file it writes. A change to `routes`, `sourcePaths` or `tree` goes into both files. When you run `rogen init` on a Rojo project that already uses Darklua, it writes both configs for you.
 
 Run each command in its own terminal, in this order:
 
@@ -104,14 +71,4 @@ darklua process src dist --watch
 rogen serve dist
 ```
 
-Start the sourcemap first. Without `sourcemap.json`, Darklua stops on each file with `unable to find sourcemap.json`. Darklua processes every file again when the sourcemap changes, so the requires in a new feature folder convert too. A bare `rogen serve` serves `src` without Darklua.
-
-To build a release, run the same steps once:
-
-```bash
-rogen sourcemap -o sourcemap.json
-darklua process src dist
-rogen build dist -o game.rbxl
-```
-
-Darklua turns `.txt`, `.json`, `.toml`, `.yaml` and `.yml` files into Lua modules, so Rojo doesn't find them where the project file points. Rogen warns with [`output.dataFileConverted`](/docs/v2/diagnostics#output-datafileconverted).
+Start the sourcemap first: without `sourcemap.json`, Darklua stops on each file. Darklua processes every file again when the sourcemap changes, so the requires in a new feature folder convert too. To build a release, run the same three steps once, with `rogen build dist -o game.rbxl` last.

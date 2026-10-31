@@ -13,7 +13,7 @@ In an empty folder, run:
 rogen init --language roblox-ts
 ```
 
-`init` first runs `npm create roblox-ts`, which needs npm and the network. It writes `package.json`, `tsconfig.json` and `node_modules`. Then `init` writes the config and a small sample game in `src/Greeter`. In a folder that already has a `tsconfig.json`, a bare `rogen init` finds roblox-ts and sets Rogen up beside it.
+`init` runs `npm create roblox-ts` first, which needs npm and the network. Then it writes the config and a small sample game. In a folder that already has a `tsconfig.json`, a bare `rogen init` finds roblox-ts and sets Rogen up beside it.
 
 The config that `init` writes:
 
@@ -30,7 +30,6 @@ The config that `init` writes:
 	"compiledPath": "out",
 	"tree": {
 		"$className": "DataModel",
-		"Lighting": { "$path": "place/Lighting" },
 		"ReplicatedStorage": {
 			"rbxts_include": {
 				"$path": "include",
@@ -39,14 +38,12 @@ The config that `init` writes:
 					"@rbxts": { "$path": "node_modules/@rbxts" }
 				}
 			}
-		},
-		"SoundService": { "$path": "place/SoundService" },
-		"Workspace": { "$path": "place/Workspace" }
+		}
 	}
 }
 ```
 
-`compiledPath` is the `outDir` from `tsconfig.json`, where Rojo syncs from. [Config](/docs/v2/config) lists the key. The `tree` mounts the roblox-ts runtime in `include` and your packages in `node_modules/@rbxts`, so a package that you install with `npm i` reaches the game with no change to the config. [The Tree](/docs/v2/core-concepts/routing/tree) says what else goes there.
+`compiledPath` is the `outDir` from `tsconfig.json`, where Rojo syncs from. The `tree` mounts the roblox-ts runtime and your `@rbxts` packages, so a package that you install with `npm i` reaches the game with no change to the config.
 
 ## Run the Compiler Beside Rogen
 
@@ -57,13 +54,13 @@ npm run watch
 rogen serve
 ```
 
-`npm run watch` runs `rbxtsc -w`, which compiles each file when you save it. `rogen serve` writes the project file again when you add, move or rename a file, and Rojo syncs the compiled code into Studio. Rogen doesn't run the compiler for you.
+`npm run watch` runs `rbxtsc -w`, which compiles each file when you save it. `rogen serve` writes the project file again when you add, move or rename a file. Rogen creates the folders it mounts in `out`, so Rojo serves before the compiler has written anything.
 
-Rogen creates the folders it mounts in `out`, so Rojo serves before the compiler has written anything, and picks up each file as it is compiled.
+`rbxtsc` reads the project file to turn each import into an instance path, so it needs a project file. On a fresh clone, run `rogen write` before the first compile. When `rbxtsc -w` reports `Could not find Rojo data` for an import from a new folder, it compiled before Rogen wrote that folder into the project file. Save the file again.
 
 ## Add a Feature
 
-roblox-ts projects name files in kebab-case and folders in lowercase, and the routes that `init` writes are lowercase to match. Give each feature a folder, with a routing folder for each side:
+roblox-ts projects name files in kebab-case and folders in lowercase, and the routes that `init` writes are lowercase to match:
 
 <RouteFigure
 	disk={`
@@ -91,27 +88,4 @@ roblox-ts projects name files in kebab-case and folders in lowercase, and the ro
 `}
 />
 
-Import by relative file path, as in any TypeScript project:
-
-```ts title="src/inventory/server/inventory-service.ts"
-import { MAX_STACK } from "../shared/inventory-types";
-```
-
-`rbxtsc` reads the project file to find where each file is in the game, and compiles the import to that instance:
-
-```lua
-local MAX_STACK = TS.import(script, game:GetService("ReplicatedStorage"), "shared", "inventory", "inventory-types").MAX_STACK
-```
-
-The compiler can only find a file once the project file has its folder. When `rbxtsc -w` reports `Could not find Rojo data` for an import from a new folder, it compiled before Rogen wrote that folder into the project file. Save the file again. Without `rogen serve` running, run `rogen write` first.
-
-## After a Clone
-
-`init` lists `*.project.json` in `.gitignore`, and `rbxtsc` stops without a project file:
-
-```
-$ npx rbxtsc
-error TS roblox-ts: Non-package projects must have a Rojo project file!
-```
-
-Run `rogen write` before your first build. `rogen serve` writes the project file on its own.
+Import by relative file path, as in any TypeScript project. The compiler turns `import { MAX_STACK } from "../shared/inventory-types"` into the instance path the project file gives it.

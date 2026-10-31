@@ -18,64 +18,17 @@ Mount a package folder with `$path` where your code requires it from. Wally inst
 	"tree": {
 		"$className": "DataModel",
 		"ReplicatedStorage": {
-			"Packages": { "$path": "Packages" }
+			"Packages": { "$path": { "optional": "Packages" } }
 		}
 	}
 }
 ```
 
-<RouteFigure
-	disk={`
-  Packages/
-    Promise/
-      init.luau
-    Signal.luau
-  src/
-    Shop/
-      Server/
-        ShopService.luau
-      Shared/
-        Prices.luau
-`}
-	studio={`
-  ReplicatedStorage
-    Packages/
-      Promise
-      Signal
-    Shared/
-      Shop/
-        Prices
-  ServerScriptService
-    Shop/
-      ShopService
-`}
-/>
+Your code requires a package by its path in the game, as in `require(ReplicatedStorage.Packages.Promise)`. The routed `Shared` folder lands next to `Packages`.
 
-Your code requires a package by its path in the game, as in `require(ReplicatedStorage.Packages.Promise)`.
+`optional` lets Rojo build before `wally install` has run. Without it, a `$path` to a folder that doesn't exist stops Rojo.
 
-`rogen init` mounts the package folders for you. It reads a `wally.toml` or a `pesde.toml`, so it mounts the folders before you install anything: `Packages` in ReplicatedStorage, and `ServerPackages` in ServerScriptService for the packages only the server uses. In a roblox-ts project, `init` mounts `node_modules/@rbxts`, as [Using roblox-ts](/docs/v2/setups/roblox-ts) shows.
-
-## Folders That Aren't Installed Yet
-
-A `$path` to a folder that doesn't exist stops Rojo. On a fresh clone, before `wally install` has run:
-
-```
-$ rogen build -o game.rbxl
-Wrote default.project.json.
-default.project.json - error: Rojo couldn't build this project: (rojo.commandFailed)
-  Rojo project referred to a file using $path that could not be turned into a Roblox Instance by Rojo.
-  Check that the file exists and is a file type known by Rojo.
-  Project path: default.project.json
-  File $path: Packages
-```
-
-Make the path `optional`, and Rojo builds without the folder until it is there:
-
-```json
-"Packages": { "$path": { "optional": "Packages" } }
-```
-
-The package paths that `init` writes are optional.
+`rogen init` mounts the package folders for you. It reads a `wally.toml` or a `pesde.toml`, so it mounts `Packages` in ReplicatedStorage and `ServerPackages` in ServerScriptService before you install anything. In a roblox-ts project, it mounts `node_modules/@rbxts`, as [Using roblox-ts](/docs/v2/setups/roblox-ts) shows.
 
 ## Service Properties
 
@@ -87,9 +40,6 @@ The package paths that `init` writes are optional.
 		"$className": "DataModel",
 		"Lighting": {
 			"$properties": { "Ambient": [0, 0, 0], "Brightness": 2 }
-		},
-		"Players": {
-			"$properties": { "CharacterAutoLoads": false }
 		}
 	}
 }
@@ -116,36 +66,10 @@ The `place` folder is outside the source paths, so Rogen doesn't route it. To st
 
 ## Code Synced As It Is
 
-A `$path` to a folder inside a source path gives that folder to Rojo. Rogen doesn't route the files in it, which suits vendored code that you keep as it is:
+A `$path` to a folder inside a source path, such as `"Vendor": { "$path": "src/Vendor" }`, gives that folder to Rojo. Rogen doesn't route the files in it, which suits vendored code that you keep as it is. A `$path` to a source path itself is an error ([`tree.mountsSourcePath`](/docs/v2/diagnostics#tree-mountssourcepath)).
 
-```json title="default.rogen.json"
-{
-	"tree": {
-		"$className": "DataModel",
-		"ReplicatedStorage": {
-			"Vendor": { "$path": "src/Vendor" }
-		}
-	}
-}
-```
+## When the Tree and a Route Clash
 
-```
-$ rogen where src/Vendor/Signal/init.luau
-src/Vendor/Signal/init.luau -> ReplicatedStorage/Vendor/Signal · inside the mount at ReplicatedStorage/Vendor, which Rojo reads
-```
+When the tree and a routed folder name the same instance, the tree wins. Rogen leaves the folder out and warns with [`tree.nodeClash`](/docs/v2/diagnostics#tree-nodeclash). When a routed file and a mounted folder put the same name in one place, Rojo builds both, and Rogen warns with [`tree.mountClash`](/docs/v2/diagnostics#tree-mountclash).
 
-A `$path` to a source path itself, or to a folder above one, is an error ([`tree.mountsSourcePath`](/docs/v2/diagnostics#tree-mountssourcepath)).
-
-## How Routed Files Join the Tree
-
-Rogen adds each routed folder under the node that its route's target names, beside what the tree already holds there. In the Packages example above, `Shared` lands next to `Packages` in ReplicatedStorage.
-
-When the tree and a routed folder name the same instance, the tree wins. Rogen leaves the folder out and warns:
-
-```
-src/Shop - warning: the tree defines "ServerScriptService/Shop" too, so its node is kept and this folder is left out. Rename one of them to keep both. (tree.nodeClash)
-```
-
-A route into a folder that a `$path` mounts puts its files next to the mounted ones. When a name is in both, Rojo builds two instances of that name, and Rogen warns with [`tree.mountClash`](/docs/v2/diagnostics#tree-mountclash).
-
-With `routes`, the root of the tree must be a `DataModel`, because a route's target starts with a service. Without a `tree`, Rogen starts from an empty `DataModel`.
+With `routes`, the root of the tree must be a `DataModel`, because a route's target starts with a service.

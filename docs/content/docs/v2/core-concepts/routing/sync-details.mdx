@@ -1,6 +1,6 @@
 ---
 title: Sync Details
-description: How init scripts, meta files, nested projects, data files and links sync
+description: How init scripts, meta files, nested projects and data files sync
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
@@ -26,52 +26,13 @@ A folder with an `init` script, such as `init.luau`, `init.server.luau` or roblo
 `}
 />
 
-An `init.csv` works the same way and makes the folder a LocalizationTable.
+A script beside a folder of the same name, such as `Cart.luau` beside `Cart/`, is one script too, with the folder's files as its children. An init script directly in a source path or in a routing folder has no folder to become, and is an error ([`tree.initWithoutFolder`](/docs/v2/diagnostics#tree-initwithoutfolder)).
 
-A script beside a folder of the same name is one script too, with the folder's files as its children:
-
-<RouteFigure
-	disk={`
-  src/
-    Shop/
-      Cart/
-        Line.luau
-      Cart.luau
-`}
-	studio={`
-  ReplicatedStorage
-    Shared/
-      Shop/
-        Cart
-          Line
-`}
-/>
-
-An init script needs a folder to become. In a source path itself, or directly in a routing folder such as `Server/`, it is an error ([`tree.initWithoutFolder`](/docs/v2/diagnostics#tree-initwithoutfolder)).
-
-## Route an Init Script
-
-A route on the init script routes its whole folder, as a [marker file](/docs/v2/core-concepts/routing/names#marker-files) does. Use `init@Server.luau`, or `init.server.luau` when your config has a `Server` key:
-
-<RouteFigure
-	disk={`
-  src/
-    Admin/
-      Ban.luau
-      init@Server.luau
-`}
-	studio={`
-  ServerScriptService
-    Admin
-      Ban
-`}
-/>
-
-The init script's route is the outermost route, so a `Shared/` folder inside `Admin/` is an ordinary folder on the server.
+A route on the init script, such as `init@Server.luau`, routes its whole folder, as a [marker file](/docs/v2/core-concepts/routing/names#marker-files) does.
 
 ## Folders Split Across Routes
 
-An init ModuleScript without a route of its own goes where its folder goes. When the folder's files land in two services, the folder becomes an instance in each, and each gets a copy of `init.luau` with only the files routed there:
+When a folder's files land in two services, the folder becomes an instance in each. Each gets a copy of its `init.luau` with only the files routed there:
 
 <RouteFigure
 	disk={`
@@ -94,22 +55,15 @@ An init ModuleScript without a route of its own goes where its folder goes. When
 `}
 />
 
-`rogen where` lists the copies:
-
-```
-$ rogen where src/Combat/init.luau
-src/Combat/init.luau -> ReplicatedStorage/Shared/Combat · route * (fallback) · also ServerScriptService/Combat
-```
-
 An init Script or LocalScript is never copied, because every copy would run.
 
 <Callout type="warn" title="Keep a copied init free of state">
-	A copy's children depend on where it sits, not on who runs it. Server code that requires `ReplicatedStorage.Shared.Combat` gets the copy without `Damage`. The server can also load both copies, each with its own state. Look children up with `script:FindFirstChild` instead of choosing them with `RunService`.
+	A copy's children depend on where it sits, not on who runs it. The server can load both copies, each with its own state. Look children up with `script:FindFirstChild` instead of choosing them with `RunService`.
 </Callout>
 
 ## Meta Files
 
-A `.meta.json` file sets the properties and attributes that a file can't set on its own, as in Rojo. Name it after the name Rojo gives the file. Drop `.server`, `.client` and `.plugin`, and keep everything else, `@` and `^` included:
+A `.meta.json` file sets what a file can't set on its own, as in Rojo. Name it after the name Rojo gives the file: drop `.server`, `.client` and `.plugin`, and keep everything else, `@` and `^` included.
 
 | File | Its meta |
 |---|---|
@@ -117,71 +71,15 @@ A `.meta.json` file sets the properties and attributes that a file can't set on 
 | `TradeService@Server.luau` | `TradeService@Server.meta.json` |
 | `^Animate.client.luau` | `^Animate.meta.json` |
 
-A folder's `init.meta.json` applies to every instance the folder becomes. This makes `Combat` an Actor in both services:
-
-```json title="src/Combat/init.meta.json"
-{ "className": "Actor" }
-```
-
-`className` works only in a folder without an init script, because the script decides the class ([`meta.classNameOnScript`](/docs/v2/diagnostics#meta-classnameonscript)). A routing folder and an invisible folder never become an instance, so an `init.meta.json` in one applies to nothing, and Rogen warns ([`meta.appliesToNothing`](/docs/v2/diagnostics#meta-appliestonothing)). Rogen also warns about a meta file that no file claims ([`meta.unclaimed`](/docs/v2/diagnostics#meta-unclaimed)).
+A folder's `init.meta.json`, such as `{ "className": "Actor" }`, applies to every instance the folder becomes. In a routing folder or an invisible folder it applies to nothing, and Rogen warns ([`meta.appliesToNothing`](/docs/v2/diagnostics#meta-appliestonothing)).
 
 ## Nested Projects
 
-A folder that holds a `default.project.json` is that project, as in Rojo. The folder becomes one instance, named by the project's `name`, and Rojo reads only what the project's `tree` mounts:
-
-<RouteFigure
-	disk={`
-  src/
-    Vendor/
-      Signal/
-        lib/
-          init.luau
-        default.project.json
-        README.md
-`}
-	studio={`
-  ReplicatedStorage
-    Shared/
-      Vendor/
-        Signal
-`}
-/>
-
-Rogen doesn't route the other files in the folder, and `rogen where` says `in a nested project` for them. Any other `.project.json`, such as `Lib.project.json`, becomes one instance named by its project's `name`.
-
-A `default.project.json` directly in a source path has no folder to become, so Rogen places it on its own and warns ([`scan.nestedProject`](/docs/v2/diagnostics#scan-nestedproject)). Move it into a folder of its own.
+A folder that holds a `default.project.json` is that project, as in Rojo. It becomes one instance, named by the project's `name`, with only what the project's `tree` mounts. Rogen doesn't route its other files. A `default.project.json` directly in a source path has no folder to become, so Rogen warns ([`scan.nestedProject`](/docs/v2/diagnostics#scan-nestedproject)).
 
 ## Data Files
 
-Data files and models become instances as Rojo reads them, and route like scripts. Put the route before the extension:
-
-<RouteFigure
-	disk={`
-  src/
-    Shop/
-      Server/
-        Tuning.toml
-      Notes.txt
-      Prices@Shared.json
-      Strings@Client.csv
-`}
-	studio={`
-  ReplicatedStorage
-    Shared/
-      Shop/
-        Notes
-        Prices
-  ServerScriptService
-    Shop/
-      Tuning
-  StarterPlayer
-    StarterPlayerScripts
-      Shop/
-        Strings
-`}
-/>
-
-`.json`, `.jsonc`, `.toml` and `.yaml` files become ModuleScripts, `.txt` a StringValue, `.csv` a LocalizationTable, and `.rbxm`, `.rbxmx` and `.model.json` the model they hold. A folder with no file that becomes an instance, such as one with only a `.gitkeep` or a `README.md`, is an empty Folder, as in Rojo.
+Data files and models become instances as Rojo reads them, and route like scripts. Put the route before the extension, as in `Prices@Shared.json`. `.json`, `.jsonc`, `.toml` and `.yaml` files become ModuleScripts, `.txt` a StringValue, `.csv` a LocalizationTable, and `.rbxm`, `.rbxmx` and `.model.json` the model they hold.
 
 ## Leaving Files Out
 
@@ -193,18 +91,4 @@ Data files and models become instances as Rojo reads them, and route like script
 }
 ```
 
-`rogen where` names the glob for each file it leaves out. An ignored folder isn't read, so `**/_*` leaves out everything in `_Drafts/`:
-
-```
-$ rogen where src
-src/Shop/Server/ShopService.luau -> ServerScriptService/Shop/ShopService · route Server (folder)
-src/Shop/Server/ShopService.spec.luau -> ignored · matches **/*.spec.luau
-src/Shop/_Old.luau -> ignored · matches **/_*
-src/_Drafts -> ignored · matches **/_*
-```
-
-A `.rogen.json` file in a source path is never synced. An ignored file isn't in the game, so a `require` of it fails when the game runs.
-
-## Links
-
-A symlink, or a junction on Windows, inside a source path is read as the folder it points at, so you can share code between repositories. The project file keeps the link's own path. Rogen skips a link that points at nothing or back at a folder that holds it, and warns ([`scan.unresolvedLink`](/docs/v2/diagnostics#scan-unresolvedlink)).
+`rogen where` names the glob for each file it leaves out. A symlink inside a source path is read as the folder it points at, and keeps the link's own path in the project file.
