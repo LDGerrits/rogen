@@ -609,8 +609,8 @@ describe("ProjectSetup plan, second config files", () => {
 		[true, true],
 		[false, false],
 	])(
-		"should tell a lifted project in a work tree to stop tracking the file Rogen writes now (in a work tree: %s)",
-		async (inWorkTree, told) => {
+		"should tell a lifted project to stop tracking the file Rogen writes now when git tracks it (tracked: %s)",
+		async (tracksProjectFile, told) => {
 			const choices = {
 				...(await defaultProjectChoices(luau)),
 				tree: lifted({ name: "g", tree: { $className: "DataModel" } }),
@@ -619,7 +619,7 @@ describe("ProjectSetup plan, second config files", () => {
 			const planned = planProject({
 				choices,
 				existingFiles: new Set(["default.project.json"]),
-				inWorkTree,
+				tracksProjectFile,
 			}).unwrap();
 
 			expect(

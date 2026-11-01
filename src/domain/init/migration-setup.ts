@@ -33,7 +33,7 @@ export class MigrationSetup implements Setup<MigrationChoices> {
 
 	plan(choices: MigrationChoices, builder: InitPlanBuilder): void {
 		const { migrated } = this;
-		builder.setMigrating();
+		builder.setAction("migrate");
 		builder.addSummary("Project", `migrating ${migrated.label}`);
 		for (const { fileName, config } of migrated.configs) {
 			builder.addSummary(

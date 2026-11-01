@@ -65,8 +65,8 @@ export interface SummaryRow {
 	readonly text: string;
 }
 
-/** What init does in its folder: start a new project, lift a hand-written project file into a config, or migrate a project another tool set up. */
-export type InitAction = "create" | "lift" | "migrate";
+/** What init does in its folder: start a new project, lift a hand-written project file into a config, migrate a project another tool set up, or add only the agent files beside a config. */
+export type InitAction = "create" | "lift" | "migrate" | "agents";
 
 export interface InitPlan {
 	readonly directory: string;

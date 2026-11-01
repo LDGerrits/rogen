@@ -13,6 +13,7 @@ import { AgentFile } from "./agent/agent-file.js";
 import { AgentHooks } from "./agent/agent-hooks.js";
 import { InitDirectory } from "./init-directory.js";
 import {
+	InitAction,
 	InitDecision,
 	InitPlan,
 	PlannedCommand,
@@ -37,7 +38,7 @@ export class InitPlanBuilder {
 	private readonly notes: string[] = [];
 	private readonly warnings: Diagnostic[] = [];
 	private liftedFrom: string | undefined;
-	private migrating = false;
+	private action: InitAction = "create";
 	private readonly setup = new Set<string>();
 	private readonly run: string[] = [];
 	private readonly edits: string[] = [];
@@ -148,9 +149,8 @@ export class InitPlanBuilder {
 		this.run.push(...commands);
 	}
 
-	/** The plan migrates a project another tool set up. */
-	setMigrating(): void {
-		this.migrating = true;
+	setAction(action: InitAction): void {
+		this.action = action;
 	}
 
 	addEdit(...lines: readonly string[]): void {
@@ -172,11 +172,7 @@ export class InitPlanBuilder {
 
 		return ok({
 			directory: this.directory.path,
-			action: this.migrating
-				? "migrate"
-				: this.liftedFrom !== undefined
-					? "lift"
-					: "create",
+			action: this.action,
 			summary: [...this.summary],
 			asked: this.asked,
 			decided: this.decided,

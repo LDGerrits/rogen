@@ -593,8 +593,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		for (const file of choices.templateFiles ?? []) builder.addFile(file);
 		if (choices.kind !== undefined && !choices.skipGit)
 			builder.requestGitInit();
-		if (choices.tree.kind === "lift")
+		if (choices.tree.kind === "lift") {
 			builder.setLiftedFrom(choices.tree.from);
+			builder.setAction("lift");
+		}
 		for (const note of tree.notes) builder.addNote(note);
 		if (choices.tree.kind === "lift" && choices.processed)
 			builder.addNote(
@@ -646,10 +648,15 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		if (choices.sample) {
 			const here = (...parts: string[]) =>
 				builder.fromHere(path.posix.join(...parts));
+			const flag = this.questions.interactive
+				? ""
+				: places
+					? " Pass --no-sample for empty source folders."
+					: ` Pass --no-sample for an empty ${here(sourcePaths[0])} and no ${here(SAMPLE_GAME_FOLDER)}.`;
 			builder.addNote(
 				places
-					? `The Greeter sample is the feature in ${here(places.commonSourcePath)}, which every place shares, Game in ${here(places.placeSourcePath)}, and Rojo's sample Baseplate and lighting in ${here(places.folder, places.gameFolder)}. Pass --no-sample for empty source folders.`
-					: `The Greeter sample is in ${here(sourcePaths[0], "Greeter")}, and Rojo's sample Baseplate and lighting in ${here(SAMPLE_GAME_FOLDER)}, which the tree mounts. Pass --no-sample for an empty ${here(sourcePaths[0])} and no ${here(SAMPLE_GAME_FOLDER)}.`
+					? `The Greeter sample is the feature in ${here(places.commonSourcePath)}, which every place shares, Game in ${here(places.placeSourcePath)}, and Rojo's sample Baseplate and lighting in ${here(places.folder, places.gameFolder)}.${flag}`
+					: `The Greeter sample is in ${here(sourcePaths[0], "Greeter")}, and Rojo's sample Baseplate and lighting in ${here(SAMPLE_GAME_FOLDER)}, which the tree mounts.${flag}`
 			);
 		}
 		this.planNextSteps(builder, choices, tree);
@@ -752,7 +759,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		}
 		builder.addEdit(...tree.edits);
 		if (projectFilesHint) builder.addEdit(projectFilesHint);
-		if (chosen.kind === "lift" && this.directory.inWorkTree)
+		if (chosen.kind === "lift" && this.directory.tracksProjectFile)
 			builder.addEdit(
 				`Rogen writes ${chosen.from} now, so git can stop tracking it: git rm --cached ${chosen.from}`
 			);

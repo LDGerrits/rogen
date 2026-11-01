@@ -19,6 +19,18 @@ export class GitRepository {
 		return (await this.workTreeOf(directory)) === undefined;
 	}
 
+	/** Whether git tracks `file` in `directory`'s work tree. */
+	async tracks(directory: string, file: string): Promise<boolean> {
+		const git = await this.processService.which("git");
+		if (!git) return false;
+		const listed = await this.processService.exec(
+			git,
+			["ls-files", "--error-unmatch", "--", file],
+			{ cwd: directory, timeout: TIMEOUT_MS }
+		);
+		return listed.isOk() && listed.value.code === 0;
+	}
+
 	/** The nearest folder from `directory` up that holds a `.git`, which marks a work tree; none outside one. */
 	async workTreeOf(directory: string): Promise<string | undefined> {
 		for (const folder of selfAndAncestors(directory))

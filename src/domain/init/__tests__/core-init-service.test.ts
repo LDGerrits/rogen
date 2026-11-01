@@ -1576,6 +1576,61 @@ describe("CoreInitService", () => {
 			);
 		});
 
+		it.each([
+			[0, true],
+			[1, false],
+		])(
+			"should tell a lifted project to stop tracking default.project.json only when git tracks it (git ls-files exits %i)",
+			async (code, told) => {
+				await write(
+					"default.project.json",
+					JSON.stringify({
+						name: "g",
+						tree: { $className: "DataModel" },
+					})
+				);
+				processes.installed.set("git", "/bin/git");
+				processes.outputs.set("/bin/git", {
+					code,
+					stdout: "",
+					stderr: "",
+				});
+
+				const plan = (await serviceFor().plan({ ask: false })).unwrap();
+
+				expect(
+					plan?.nextSteps.edits.some((edit) =>
+						edit.includes("git rm --cached default.project.json")
+					)
+				).toBe(told);
+			}
+		);
+
+		it("should ask whether to add the agent files beside a config", async () => {
+			await write("default.rogen.json", "{}");
+			await fileSystem.createDirectory(path.join(directory, ".claude"));
+			const prompts = new MockPromptService([ACCEPT_DEFAULT], true);
+
+			await serviceFor(prompts).plan({ choices: { agentRules: true } });
+
+			expect(prompts.prompts.at(-1)?.message).toBe(
+				"Add these agent files?"
+			);
+		});
+
+		it("should point to the sample's flag only in a run that doesn't ask", async () => {
+			const asked = (
+				await review(new MockPromptService(["luau", "one", "yes"]))
+			).unwrap();
+			const unasked = (await serviceFor().plan({ ask: false })).unwrap();
+
+			expect(asked?.notes.join("\n")).toContain(
+				"The Greeter sample is in"
+			);
+			expect(asked?.notes.join("\n")).not.toContain("--no-sample");
+			expect(unasked?.notes.join("\n")).toContain("--no-sample");
+		});
+
 		it("should offer no Customise when every question the summary shows was asked", async () => {
 			const prompts = new MockPromptService({
 				"One place or several?": "one",

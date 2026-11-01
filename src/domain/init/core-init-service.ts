@@ -10,6 +10,7 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { ConfigService } from "../config/config-service.js";
+import { DEFAULT_PROJECT_FILE } from "../config/config.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { CodeFinder } from "./code-finder.js";
 import { InitDirectory } from "./init-directory.js";
@@ -69,6 +70,7 @@ const QUESTIONS: Readonly<Record<InitAction, string>> = {
 	create: "Create this project?",
 	lift: "Set up Rogen in this project?",
 	migrate: "Migrate this project?",
+	agents: "Add these agent files?",
 };
 
 export class CoreInitService implements InitService {
@@ -254,7 +256,7 @@ export class CoreInitService implements InitService {
 			);
 		const agents = await this.agentSetupIn(directory, questions);
 		if (agents.isErr()) return agents;
-		return this.planWith(directory, questions, [agents.value]);
+		return this.planWith(directory, questions, [agents.value], "agents");
 	}
 
 	private async agentSetupIn(
@@ -301,7 +303,8 @@ export class CoreInitService implements InitService {
 					directory,
 					workspace
 				),
-				(await this.git.workTreeOf(directory)) !== undefined
+				entries.has(DEFAULT_PROJECT_FILE) &&
+					(await this.git.tracks(directory, DEFAULT_PROJECT_FILE))
 			)
 		);
 	}
@@ -349,7 +352,8 @@ export class CoreInitService implements InitService {
 	private async planWith(
 		directory: InitDirectory,
 		questions: InitQuestions,
-		setups: readonly Setup<unknown>[]
+		setups: readonly Setup<unknown>[],
+		action?: InitAction
 	): Promise<Result<InitPlan | undefined, Error>> {
 		const answered: { setup: Setup<unknown>; choices: unknown }[] = [];
 		for (const setup of setups) {
@@ -365,6 +369,7 @@ export class CoreInitService implements InitService {
 			questions.decided,
 			this.environmentService.cwd
 		);
+		if (action) builder.setAction(action);
 		for (const { setup, choices } of answered) setup.plan(choices, builder);
 		const plan = builder.build();
 		if (plan.isErr()) return err(new DiagnosticsError(plan.error));
