@@ -27,9 +27,10 @@ stdout:
           --watch              Keep going, and build with Rojo's own build --watch.
   
   EXIT CODES:
-      0    done (warnings included)
-      1    the project has a problem: an error, or Rojo failing
-      2    the command line is wrong, or a terminal is needed and there is none
+      0        done (warnings included)
+      1        the project has errors, or Rojo failed
+      2        the command line is wrong
+      128+N    --watch stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP
   
   EXAMPLES:
       rogen build -o game.rbxl

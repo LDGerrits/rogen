@@ -61,6 +61,13 @@ export const ExitCodes = {
 	2: "the command line is wrong, or a terminal is needed and there is none",
 } as const;
 
+/** What each exit code means for one command, where the command says nothing different. */
+export const CommandExitCodes = {
+	0: "done (warnings included)",
+	1: "an error stopped it",
+	2: "the command line is wrong",
+} as const;
+
 /** What went wrong in a word a program can branch on, each with the exit code its run ends with. */
 export const ErrorKinds = {
 	usage: { exitCode: 2, meaning: "the command line is wrong" },

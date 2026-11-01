@@ -54,7 +54,7 @@ const IncludeNonScriptsOption = {
 	name: "include-non-scripts",
 	type: "boolean",
 	description:
-		"Include instances that are not scripts, such as folders' files and models.",
+		"Include instances that are not scripts, such as folders, models and values.",
 } as const satisfies OptionDescriptor;
 
 const AbsoluteOption = {
@@ -107,7 +107,10 @@ registerCommand(
 					effects: ["writesFiles", "runsProcesses"],
 					longRunningWith: "watch",
 					exitCodes: {
+						"1": "the project has errors, or Rojo failed",
 						"2": "the command line is wrong, or Rojo refused it",
+						"128+N":
+							"--watch stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP",
 					},
 					examples: [
 						"rogen sourcemap",

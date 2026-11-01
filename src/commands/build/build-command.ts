@@ -106,6 +106,11 @@ registerCommand(
 					formerCommands: {
 						watch: "'rogen watch' is now 'rogen write --watch'.",
 					},
+					exitCodes: {
+						"1": "the project has errors, or Rojo failed",
+						"128+N":
+							"--watch stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP",
+					},
 					examples: [
 						"rogen build -o game.rbxl",
 						"rogen build places/lobby -o lobby.rbxl",
