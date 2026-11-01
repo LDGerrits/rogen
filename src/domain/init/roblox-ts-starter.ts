@@ -27,7 +27,7 @@ export class RobloxTsStarter {
 			`/${outDir}`,
 			"/include",
 			"*.tsbuildinfo",
-			...(several ? [`projects/*/${OUT_DIR}`, "projects/*/include"] : []),
+			...(several ? [`projects/*/${outDir}`, "projects/*/include"] : []),
 		];
 	}
 

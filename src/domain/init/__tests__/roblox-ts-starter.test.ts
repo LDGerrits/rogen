@@ -59,6 +59,17 @@ describe("RobloxTsStarter", () => {
 		]);
 	});
 
+	it("should ignore the compiler's own output folder at the root and in each place", () => {
+		expect(RobloxTsStarter.ignored(true, "build")).toEqual([
+			"/node_modules",
+			"/build",
+			"/include",
+			"*.tsbuildinfo",
+			"projects/*/build",
+			"projects/*/include",
+		]);
+	});
+
 	it("should point the build and watch scripts at the place", () => {
 		expect(new RobloxTsStarter().scripts("projects/game")).toMatchObject({
 			file: "npm",
