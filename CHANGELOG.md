@@ -17,6 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- `rogen check` and `rogen write` refuse a file's own `.meta.json` that Rojo can't read, as they refuse a folder's `init.meta.json`.
+- A misspelled `$` key that holds an object, such as `"$propertes": {...}`, is refused with the field it is closest to.
 - `rogen init` checks the project it plans before it writes anything, so a plan that would fail writes nothing, and `--dry-run` says so too.
 - `rogen init` sets up Rojo's template layout as a lift of the project file `rojo init` writes, and a folder whose code is one module as a model.
 - A lift leaves out what Rojo never placed with `globIgnorePaths`, and a lifted model or plugin gets a model's or a plugin's next steps.

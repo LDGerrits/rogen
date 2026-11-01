@@ -155,18 +155,18 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return undefined;
 	}
 
-	/** The first `$` key that is no field and holds no object, which Rojo refuses. */
+	/** The first `$` key that is no field and holds nothing Rojo reads as a child, which Rojo refuses. */
 	static findUnknownField(
 		node: RojoNode,
 		at: readonly string[]
 	): readonly string[] | undefined {
 		for (const [key, value] of Object.entries(node)) {
 			const here = [...at, key];
-			if (!isObject(value)) {
-				if (key.startsWith("$") && !NODE_FIELDS.has(key)) return here;
-				continue;
-			}
-			if (NODE_FIELDS.has(key)) continue;
+			const isField = NODE_FIELDS.has(key);
+			const isChild =
+				isObject(value) && !RojoProject.findNonNode(value, []);
+			if (key.startsWith("$") && !isField && !isChild) return here;
+			if (!isObject(value) || isField) continue;
 			const inner = RojoProject.findUnknownField(value, here);
 			if (inner) return inner;
 		}

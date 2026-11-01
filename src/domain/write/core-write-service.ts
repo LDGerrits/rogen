@@ -14,6 +14,7 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
+import { RojoFile } from "../rojo/rojo.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { SyncTool } from "../toolchain/toolchain.js";
@@ -258,9 +259,12 @@ export class CoreWriteService implements WriteService {
 		}
 		const located = await this.locate(selection, targets);
 		return located.map(({ errors, configs }) => {
-			const about = (config: ConfigLocations) => [
-				...config.files.map(({ source }) => source),
-				...config.queried,
+			const about = ({ config, files, queried }: ConfigLocations) => [
+				...files.flatMap(({ source }) => [
+					source,
+					...RojoFile.metaFilesBeside(source, config.syncRules),
+				]),
+				...queried,
 			];
 			const outside = new OutsideSourcePaths(
 				configs.flatMap(({ config }) => config.sourcePaths)
