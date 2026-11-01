@@ -34,6 +34,9 @@ const WHAT_FAILED: Readonly<Record<string, string>> = {
 	syncback: "sync back into",
 };
 
+/** The line under a command line Rojo refused, which points at Rojo's help, not Rogen's. */
+const HELP_POINTER = /^For more information,? try '?--help'?\.?$/;
+
 export class CoreRojoCommandService implements RojoCommandService {
 	declare readonly _serviceBrand: undefined;
 
@@ -281,7 +284,8 @@ export class CoreRojoCommandService implements RojoCommandService {
 			refusedArguments ? severity !== "debug" : severity === "error";
 		const said = messages
 			.filter(folded)
-			.flatMap(({ text, details }) => [text, ...(details ?? [])]);
+			.flatMap(({ text, details }) => [text, ...(details ?? [])])
+			.filter((line) => !(refusedArguments && HELP_POINTER.test(line)));
 		return {
 			messages: refusedArguments
 				? messages.filter((message) => !folded(message))

@@ -726,7 +726,7 @@ describe("build command", () => {
 
 			expect(result.isErr() && result.error).toEqual(
 				new UsageError(
-					"Rojo refused the command line:\n  Found argument '--bogus' which wasn't expected\n  For more information try --help"
+					"Rojo refused the command line:\n  Found argument '--bogus' which wasn't expected"
 				)
 			);
 			expect(log.lines.filter((line) => line.includes("Rojo:"))).toEqual(

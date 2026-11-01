@@ -236,7 +236,7 @@ describe("CoreRojoCommandService", () => {
 		}
 	);
 
-	it("should say Rojo refused the command line when it exits 2, with every line it printed, and leave none to report beside it", async () => {
+	it("should say Rojo refused the command line when it exits 2, with every line it printed but the one that points at Rojo's help, and leave none to report beside it", async () => {
 		const running = run(selection(), ["--asset_id", "abc"]);
 		await new Promise((resolve) => setImmediate(resolve));
 		const [child] = processes.spawned;
@@ -249,10 +249,28 @@ describe("CoreRojoCommandService", () => {
 
 		expect(ran.failure).toEqual(
 			new UsageError(
-				"Rojo refused the command line:\n  Invalid value \"abc\" for '--asset_id <ASSET_ID>': invalid digit found in string\n  For more information try --help"
+				"Rojo refused the command line:\n  Invalid value \"abc\" for '--asset_id <ASSET_ID>': invalid digit found in string"
 			)
 		);
 		expect(ran.messages).toEqual([]);
+	});
+
+	it("should leave out the newer wording of the line that points at Rojo's help", async () => {
+		const running = run(selection(), ["--bogus"]);
+		await new Promise((resolve) => setImmediate(resolve));
+		const [child] = processes.spawned;
+		child.printError(
+			"error: unexpected argument '--bogus' found\n\nFor more information, try '--help'.\n"
+		);
+		child.exit({ code: 2, signal: null });
+
+		const ran = (await running).unwrap();
+
+		expect(ran.failure).toEqual(
+			new UsageError(
+				"Rojo refused the command line:\n  unexpected argument '--bogus' found"
+			)
+		);
 	});
 
 	it("should fail without running Rojo when no Rojo is found", async () => {
