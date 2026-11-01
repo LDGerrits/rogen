@@ -1,5 +1,5 @@
 import { compareStrings } from "../../base/collections.js";
-import { ExitCodes, UsageError } from "../../base/errors.js";
+import { CommandExitCodes, UsageError } from "../../base/errors.js";
 import { closestMatch } from "../../base/strings.js";
 import { Command } from "../../platform/commands/commands.js";
 import {
@@ -24,10 +24,6 @@ function codeNamed(name: string): string | undefined {
 	);
 	return ending.length === 1 ? ending[0] : undefined;
 }
-
-const EXIT_CODES = `Exit codes: ${Object.entries(ExitCodes)
-	.map(([code, meaning]) => `${code} ${meaning}`)
-	.join(", ")}. 'check' also exits 1 on a warning.`;
 
 const ROOT_EXAMPLES = [
 	"rogen write",
@@ -193,8 +189,6 @@ function formatHelp(
 			"Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.",
 			WIDTH
 		),
-		"",
-		...wrapped(EXIT_CODES, WIDTH),
 	].join("\n");
 }
 
@@ -244,7 +238,10 @@ function formatCommandHelp(
 		[
 			"EXIT CODES",
 			formatColumns(
-				Object.entries({ ...ExitCodes, ...command.metadata.exitCodes })
+				Object.entries({
+					...CommandExitCodes,
+					...command.metadata.exitCodes,
+				})
 			),
 		],
 		["EXAMPLES", examples.map((line) => `${INDENT}${line}`)],

@@ -89,14 +89,15 @@ describe("help command", () => {
 			}
 		});
 
-		it("should end with the exit codes", async () => {
+		it("should end with where to read more, and leave the exit codes to each command's help", async () => {
 			await help();
 
 			expect(
 				printed().trimEnd().split("\n\n").at(-1)?.replace(/\n/g, " ")
 			).toBe(
-				"Exit codes: 0 done (warnings included), 1 the project has a problem: an error, or Rojo failing, 2 the command line is wrong, or a terminal is needed and there is none. 'check' also exits 1 on a warning."
+				"Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code."
 			);
+			expect(printed()).not.toContain("Exit codes");
 		});
 
 		it("should print the version as a JSON document for --version --json", async () => {

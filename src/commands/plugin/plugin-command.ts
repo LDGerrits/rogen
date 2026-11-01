@@ -62,6 +62,7 @@ registerCommand(
 					options: PluginOptions,
 					output: { document: pluginDocumentShape },
 					effects: ["writesFiles", "runsProcesses"],
+					exitCodes: { "1": "Rojo failed" },
 					examples: [
 						"rogen plugin install",
 						"rogen plugin uninstall",

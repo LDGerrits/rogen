@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { ExitCodes, UsageError } from "../../../base/errors.js";
+import { CommandExitCodes, UsageError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import {
 	CommandRegistry,
@@ -18,6 +18,7 @@ import "../help-command.js";
 import "../../init/init-command.js";
 import "../../serve/serve-command.js";
 import "../../where/where-command.js";
+import "../../write/write-command.js";
 import { helpTexts } from "../help-texts.js";
 
 describe("rogen help --json", () => {
@@ -184,7 +185,34 @@ describe("rogen help --json", () => {
 				expect.objectContaining({ "2": expect.any(String) })
 			);
 			expect(document().exitCodes["0"]).toBe("done (warnings included)");
-			expect(document().exitCodes["1"]).toBe(ExitCodes[1]);
+			expect(document().exitCodes["1"]).toContain("Rojo failed");
+		});
+
+		it("should give a command that says nothing different the general meaning of each code", async () => {
+			await help("doc");
+
+			expect(document().exitCodes).toEqual(CommandExitCodes);
+		});
+
+		it("should not say Rojo or a terminal in the exit codes of a command that needs neither", async () => {
+			for (const name of [
+				"check",
+				"doc",
+				"fmt-project",
+				"help",
+				"init",
+				"where",
+				"write",
+			]) {
+				print.mockClear();
+				await help(name);
+
+				expect(
+					Object.values(
+						document().exitCodes as Record<string, string>
+					)
+				).not.toContainEqual(expect.stringMatching(/Rojo|terminal/));
+			}
 		});
 
 		it("should resolve the name in any case", async () => {
