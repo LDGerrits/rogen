@@ -90,6 +90,73 @@ describe("RootScanner", () => {
 			});
 		});
 
+		describe("a folder that can't be read", () => {
+			const placeIn = (unreadable: string[]) =>
+				pipelineOf(
+					fs,
+					new Listing(
+						new Map([
+							[
+								toPosix(abs("src")),
+								new Map([
+									["Fine.luau", FileType.File],
+									["Locked", FileType.Directory],
+								]),
+							],
+						]),
+						new Set(unreadable.map((dir) => toPosix(abs(dir))))
+					)
+				).place(configOf({ sourcePaths: [abs("src")], ignored: [] }));
+
+			it("should fail the placement with an error naming the folder, as Rojo fails the build", async () => {
+				const placed = await placeIn(["src/Locked"]);
+
+				expect(placed.isErr() && placed.error).toEqual([
+					expect.objectContaining({
+						code: "scan.unreadable",
+						severity: DiagnosticSeverity.Error,
+						resource: toPosix(abs("src/Locked")),
+					}),
+				]);
+			});
+
+			it("should fail on a source path that can't be read, rather than call it missing", async () => {
+				const placed = await pipelineOf(
+					fs,
+					new Listing(new Map(), new Set([toPosix(abs("src"))]))
+				).place(configOf({ sourcePaths: [abs("src")], ignored: [] }));
+
+				expect(placed.isErr() && placed.error).toEqual([
+					expect.objectContaining({
+						code: "scan.unreadable",
+						resource: toPosix(abs("src")),
+					}),
+				]);
+			});
+
+			it("should leave out a folder that globIgnorePaths matches without reading it", async () => {
+				const placed = await pipelineOf(
+					fs,
+					new Listing(
+						new Map([
+							[
+								toPosix(abs("src")),
+								new Map([["Locked", FileType.Directory]]),
+							],
+						]),
+						new Set([toPosix(abs("src/Locked"))])
+					)
+				).place(
+					configOf({
+						sourcePaths: [abs("src")],
+						ignored: [glob("src/Locked")],
+					})
+				);
+
+				expect(placed.isOk()).toBe(true);
+			});
+		});
+
 		describe("a name with a backslash that is no instance", () => {
 			it("should be neither left out nor reported", async () => {
 				const index = new Listing(

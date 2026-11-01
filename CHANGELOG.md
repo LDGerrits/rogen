@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - `build --json` says `changed` when Rojo wrote the build.
 - `--color`, `NO_COLOR` and `FORCE_COLOR` change only the colours, not the layout or the streams.
+- `--json` prints nothing on stderr, notes, watch errors and `-vv` trace lines included.
+- A folder Rogen can't read is a `scan.unreadable` error naming it, as Rojo fails to build it, and `--watch` prints it once.
 
 ## [2.0.0-beta.2] - 2026-10-31
 

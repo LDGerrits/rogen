@@ -13,10 +13,12 @@ type Directories = Map<string, ReadonlyMap<string, FileType>>;
 
 class ListingDraft {
 	readonly directories: Directories;
+	readonly unreadable: Set<string>;
 	private readonly edited = new Map<string, Map<string, FileType>>();
 
 	constructor(base: Listing) {
 		this.directories = new Map(base.directories);
+		this.unreadable = new Set(base.unreadable);
 	}
 
 	get(dir: string): ReadonlyMap<string, FileType> | undefined {
@@ -34,6 +36,7 @@ class ListingDraft {
 	}
 
 	remove(dir: string): void {
+		this.unreadable.delete(dir);
 		const children = this.directories.get(dir);
 		if (!children) return;
 		for (const [name, type] of children) {
@@ -66,17 +69,28 @@ export class CoreIndexService implements IndexService {
 
 	async list(dirs: readonly string[]): Promise<Listing> {
 		const directories: Directories = new Map();
+		const unreadable = new Set<string>();
 		await Promise.all(
-			outermostDirs(dirs).map((root) => this.traverse(root, directories))
+			outermostDirs(dirs).map((root) =>
+				this.traverse(root, directories, unreadable)
+			)
 		);
-		return new Listing(directories);
+		return new Listing(directories, unreadable);
 	}
 
 	private async traverse(
 		currentDir: string,
-		into: Directories
+		into: Directories,
+		unreadable: Set<string>
 	): Promise<void> {
-		const entries = await this.readDirectory(currentDir);
+		let entries: [string, FileType][] | undefined;
+		try {
+			entries = await this.readDirectory(currentDir);
+		} catch (error) {
+			if (!ErrorUtils.hasCode(error, "EACCES", "EPERM")) throw error;
+			unreadable.add(toPosix(currentDir));
+			return;
+		}
 		if (!entries) return;
 
 		const children = new Map<string, FileType>();
@@ -89,7 +103,9 @@ export class CoreIndexService implements IndexService {
 				subdirs.push(path.join(currentDir, name));
 		}
 
-		await Promise.all(subdirs.map((subdir) => this.traverse(subdir, into)));
+		await Promise.all(
+			subdirs.map((subdir) => this.traverse(subdir, into, unreadable))
+		);
 	}
 
 	private async readDirectory(
@@ -135,7 +151,7 @@ export class CoreIndexService implements IndexService {
 				draft.delete(dir, name);
 			}
 		}
-		return new Listing(draft.directories);
+		return new Listing(draft.directories, draft.unreadable);
 	}
 
 	private async assertReadable(
@@ -164,6 +180,10 @@ export class CoreIndexService implements IndexService {
 		if (previous !== undefined && isDirectoryType(previous))
 			draft.remove(fullPosixPath);
 		if (isDirectoryType(type))
-			await this.traverse(fullPosixPath, draft.directories);
+			await this.traverse(
+				fullPosixPath,
+				draft.directories,
+				draft.unreadable
+			);
 	}
 }

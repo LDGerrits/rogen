@@ -79,6 +79,67 @@ describe("CoreIndexService", () => {
 			expect(listing.getEntries("missing-root")).toBeUndefined();
 		});
 
+		it.each(["EACCES", "EPERM"])(
+			"should record a folder that throws %s as unreadable, and list the rest",
+			async (code) => {
+				await memoryFs.writeFile("src/locked/b.luau", "");
+				await memoryFs.writeFile("src/open/c.luau", "");
+				const read = memoryFs.readDirectory.bind(memoryFs);
+				jest.spyOn(memoryFs, "readDirectory").mockImplementation(
+					async (dir) => {
+						if (dir.endsWith("locked"))
+							throw Object.assign(new Error(`${code}: denied`), {
+								code,
+							});
+						return read(dir);
+					}
+				);
+
+				listing = await indexService.list(["src"]);
+
+				expect(listing.isUnreadable("src/locked")).toBe(true);
+				expect(listing.isUnreadable("src/open")).toBe(false);
+				expect(listing.getEntries("src/locked")).toBeUndefined();
+				expect(listing.hasEntry("src/open", "c.luau")).toBe(true);
+			}
+		);
+
+		it("should record an added folder that can't be read as unreadable, and forget it once deleted", async () => {
+			await memoryFs.writeFile("src/a.luau", "");
+			listing = await indexService.list(["src"]);
+			await memoryFs.writeFile("src/locked/b.luau", "");
+			const read = memoryFs.readDirectory.bind(memoryFs);
+			jest.spyOn(memoryFs, "readDirectory").mockImplementation(
+				async (dir) => {
+					if (dir.endsWith("locked"))
+						throw Object.assign(new Error("EACCES: denied"), {
+							code: "EACCES",
+						});
+					return read(dir);
+				}
+			);
+
+			const added = await indexService.update(listing, [
+				{
+					type: FileChangeType.ADDED,
+					path: "src/locked",
+					fileType: FileType.Directory,
+				},
+			]);
+			jest.restoreAllMocks();
+			const deleted = await indexService.update(added, [
+				{
+					type: FileChangeType.DELETED,
+					path: "src/locked",
+					fileType: FileType.Directory,
+				},
+			]);
+
+			expect(listing.isUnreadable("src/locked")).toBe(false);
+			expect(added.isUnreadable("src/locked")).toBe(true);
+			expect(deleted.isUnreadable("src/locked")).toBe(false);
+		});
+
 		it("should list a directory's entries with their types", async () => {
 			await memoryFs.writeFile("src/app.ts", "");
 			await memoryFs.createDirectory("src/components");

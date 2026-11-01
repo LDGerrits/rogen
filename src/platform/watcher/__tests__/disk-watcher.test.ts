@@ -4,7 +4,9 @@ import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { FileChange, FileChangeType } from "../../fs/file-changes.js";
+import { LogLevel } from "../../log/log-service.js";
 import { NullLogService } from "../../log/null-log-service.js";
+import { MockLogService } from "../../log/__tests__/mock-log-service.js";
 import { DiskWatcher } from "../disk-watcher.js";
 
 function waitFor(predicate: () => boolean, timeoutMs = 3000): Promise<void> {
@@ -51,6 +53,27 @@ describe("DiskWatcher", () => {
 			await waitFor(() => changes.some(added));
 
 			expect(changes.some(added)).toBe(true);
+		});
+
+		it("should leave a folder it may not read to the write, which reports it, with a debug line only", async () => {
+			const locked = path.join(dir, "locked");
+			await fs.mkdir(locked);
+			await fs.chmod(locked, 0);
+			const logService = new MockLogService();
+			logService.setLevel(LogLevel.Debug);
+			const quiet = new DiskWatcher(logService);
+
+			try {
+				await quiet.watch([dir]);
+			} finally {
+				await quiet.stop();
+				await fs.chmod(locked, 0o755);
+			}
+
+			expect(logService.texts("error")).toEqual([]);
+			expect(logService.texts("debug")).toContainEqual(
+				expect.stringContaining("EACCES")
+			);
 		});
 
 		it("should report a root that was deleted and made again", async () => {

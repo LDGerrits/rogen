@@ -2,6 +2,7 @@ import chokidar from "chokidar";
 import * as fs from "fs";
 import { isUnfollowableLink } from "../fs/disk-file-system-service.js";
 import { FileType } from "../fs/file-system-service.js";
+import { ErrorUtils } from "../../base/errors.js";
 import { toPosix } from "../../base/path.js";
 import { FileChangeType } from "../fs/file-changes.js";
 import { AbstractWatcher } from "./abstract-watcher.js";
@@ -48,11 +49,13 @@ export class DiskWatcher extends AbstractWatcher {
 
 		this.watcher.on("raw", () => this.dropRemovedLinks());
 
-		this.watcher.on("error", (error) =>
-			this.logService.error(
-				`Can't watch part of the project: ${error.message}`
-			)
-		);
+		this.watcher.on("error", (error) => {
+			const message = `Can't watch part of the project: ${error.message}`;
+			// The write reports a folder it may not read as scan.unreadable.
+			if (ErrorUtils.hasCode(error, "EACCES", "EPERM"))
+				this.logService.debug(message);
+			else this.logService.error(message);
+		});
 
 		// Until chokidar is ready, new files count as initial and are ignored.
 		const watcher = this.watcher;
