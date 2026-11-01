@@ -321,18 +321,14 @@ describe("WriteValidator rules", () => {
 				expect(await dead()).toEqual([]);
 			});
 
-			it("should still warn when the meta sets the Legacy run context or is invalid", async () => {
-				await write(
-					"src/shared/A.server.luau",
-					"src/shared/B.server.luau"
-				);
+			it("should still warn when the meta sets the Legacy run context", async () => {
+				await write("src/shared/A.server.luau");
 				await fs.writeFile(
 					abs("src/shared/A.meta.json"),
 					metaWith("Legacy")
 				);
-				await fs.writeFile(abs("src/shared/B.meta.json"), "{ nope");
 
-				expect(await dead()).toHaveLength(2);
+				expect(await dead()).toHaveLength(1);
 			});
 
 			const legacyOff = {

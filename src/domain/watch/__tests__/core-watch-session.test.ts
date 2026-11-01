@@ -571,12 +571,12 @@ describe("CoreWatchSession", () => {
 	});
 
 	it("should not rewrite for an update to a meta file the write never read", async () => {
-		await fs.writeFile("/repo/src/Notes.txt", "");
-		await fs.writeFile("/repo/src/Notes.meta.json", "{}");
+		await fs.writeFile("/repo/src/Part.model.json", "{}");
+		await fs.writeFile("/repo/src/Part.meta.json", "{}");
 		await start();
 
 		await fs.writeFile(
-			"/repo/src/Notes.meta.json",
+			"/repo/src/Part.meta.json",
 			'{"attributes":{"a":1}}'
 		);
 		await settle();
