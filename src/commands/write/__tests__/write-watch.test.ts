@@ -308,7 +308,7 @@ describe("watch", () => {
 			expect(logService.texts("diagnosticError")).toEqual([]);
 		});
 
-		it("should give up with rojo.crashed when the restarted Rojo crashes before it builds", async () => {
+		it("should print rojo.crashed and exit 1 when Rogen gives up on Rojo's watch", async () => {
 			const running = startWatch([], { output: "game.rbxl" });
 			await settle();
 			processes.spawned[0].print("Built project to game.rbxl\n");

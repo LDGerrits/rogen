@@ -819,7 +819,7 @@ describe("serve command", () => {
 			expect(logService.lines.join("\n")).not.toContain("error");
 		});
 
-		it("should exit 1 with Rojo's crash text when it crashes again before the restarted one serves", async () => {
+		it("should print Rojo's crash text and exit 1 when Rogen gives up on Rojo", async () => {
 			const result = serve();
 			await settle();
 			await answer("s1");

@@ -575,7 +575,7 @@ describe("StartedServer", () => {
 			expect(connections).toEqual(["opened 1", "closed 0"]);
 		});
 
-		it("should stop with Rojo's crash text when it crashes again before the restarted one serves", async () => {
+		it("should stop as crashed, with a rojo.crashed failure about its config, when its Rojo is given up on", async () => {
 			start();
 			await answer("s1");
 			await crash(0);
@@ -587,12 +587,7 @@ describe("StartedServer", () => {
 				crashed: true,
 				failure: {
 					code: "rojo.crashed",
-					message:
-						"Rojo crashed again right after a restart, so Rogen stopped serving repo:",
-					details: [
-						"Rojo crashed! You are running Rojo 7.7.1.",
-						"Details: it broke",
-					],
+					resource: config.file,
 				},
 			});
 		});
