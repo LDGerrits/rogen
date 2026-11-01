@@ -79,6 +79,8 @@ export interface ProjectChoices {
 	readonly skipGit?: boolean;
 	/** The files of the template that are not there yet, which `init` writes. */
 	readonly templateFiles?: readonly PlannedFile[];
+	/** The source folders init makes with nothing in them, which a `.gitkeep` keeps in git. */
+	readonly emptyFolders?: readonly string[];
 	/** Whether the Greeter sample is written. */
 	readonly sample?: boolean;
 	/** The places a project of several starts with. */
@@ -160,6 +162,9 @@ function listedBriefly(items: readonly string[]): string {
 		? `${items.slice(0, LISTED_SHOWN).join(", ")} and ${more} more`
 		: joinedWithAnd(items);
 }
+
+/** The empty file that keeps an empty folder in git, as Rojo's syncback writes it. */
+const GITKEEP = ".gitkeep";
 
 const LIFTED_HERE = `${DEFAULT_PROJECT_FILE} is here, which init lifts.`;
 
@@ -309,6 +314,20 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			: [];
 
 		const skipGit = questions.skipGit();
+		const templateFiles = await this.absent([
+			...ProjectSetup.templateFiles(
+				new ProjectTemplate(
+					kind,
+					path.basename(directory.path),
+					starter ? RobloxTsStarter.ignored(places !== undefined) : []
+				),
+				tree.value,
+				skipGit,
+				directory.moduleRoot !== undefined
+			),
+			...sampleFiles,
+			...(places?.files ?? []),
+		]);
 		return ok({
 			language,
 			sourcePaths: [...sourcePaths],
@@ -333,23 +352,31 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				},
 			}),
 			projectFilesHint: await this.files.projectFilesHint(),
-			templateFiles: await this.absent([
-				...ProjectSetup.templateFiles(
-					new ProjectTemplate(
-						kind,
-						path.basename(directory.path),
-						starter
-							? RobloxTsStarter.ignored(places !== undefined)
-							: []
-					),
-					tree.value,
-					skipGit,
-					directory.moduleRoot !== undefined
-				),
-				...sampleFiles,
-				...(places?.files ?? []),
-			]),
+			templateFiles,
+			emptyFolders: await this.emptyFolders(
+				places?.directories ?? sourcePaths,
+				templateFiles
+			),
 		});
+	}
+
+	/** The folders of `folders` that init makes and no file of `files` goes in. */
+	private async emptyFolders(
+		folders: readonly string[],
+		files: readonly PlannedFile[]
+	): Promise<string[]> {
+		const there = await Promise.all(
+			folders.map((folder) =>
+				this.fileSystemService.exists(
+					path.join(this.directory.path, folder)
+				)
+			)
+		);
+		return folders.filter(
+			(folder, at) =>
+				!there[at] &&
+				!files.some(({ fileName }) => containsPosix(folder, fileName))
+		);
 	}
 
 	/** The command that serves the project: a place by its folder or name, and the processed config by its name. */
@@ -643,7 +670,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 		this.summarise(builder, choices, routes);
 		for (const sourcePath of places?.directories ?? sourcePaths)
-			builder.addDirectory(sourcePath);
+			if (choices.emptyFolders?.includes(sourcePath))
+				builder.addFile({
+					fileName: path.posix.join(sourcePath, GITKEEP),
+					content: "",
+				});
+			else builder.addDirectory(sourcePath);
 		for (const note of places?.notes ?? []) builder.addNote(note);
 		if (choices.scaffold) {
 			builder.setScaffold(choices.scaffold.tool);

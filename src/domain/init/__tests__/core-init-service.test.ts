@@ -437,6 +437,7 @@ describe("CoreInitService", () => {
 
 			expect(names(plan)).toEqual([
 				"default.rogen.json",
+				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				"CLAUDE.md",
@@ -514,6 +515,7 @@ describe("CoreInitService", () => {
 
 			expect(names(plan)).toEqual([
 				"default.rogen.json",
+				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				"CLAUDE.md",
@@ -614,6 +616,7 @@ describe("CoreInitService", () => {
 
 			expect(names(plan)).toEqual([
 				"default.rogen.json",
+				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				"CLAUDE.md",
@@ -648,6 +651,7 @@ describe("CoreInitService", () => {
 
 			expect(names(plan)).toEqual([
 				"default.rogen.json",
+				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				CODEX,
@@ -662,6 +666,7 @@ describe("CoreInitService", () => {
 
 			expect(names(plan)).toEqual([
 				"default.rogen.json",
+				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				"CLAUDE.md",
@@ -727,6 +732,7 @@ describe("CoreInitService", () => {
 				".gitignore",
 				"default.rogen.json",
 				"rokit.toml",
+				"src/.gitkeep",
 			]);
 			expect(
 				plan?.files.find(({ fileName }) => fileName === "rokit.toml")
@@ -1454,6 +1460,47 @@ describe("CoreInitService", () => {
 		});
 	});
 
+	describe("empty source folders", () => {
+		const keptIn = async (choices: InitChoices) => {
+			const plan = (await serviceFor().plan({ choices })).unwrap();
+			return {
+				gitkeeps: (plan?.files ?? [])
+					.filter(({ fileName }) => fileName.endsWith(".gitkeep"))
+					.map(({ fileName, content }) => [fileName, content]),
+				directories: plan?.directories,
+			};
+		};
+
+		it("should keep the source folder it makes in git with a .gitkeep", async () => {
+			expect(await keptIn({ sample: false })).toEqual({
+				gitkeeps: [["src/.gitkeep", ""]],
+				directories: [],
+			});
+		});
+
+		it("should keep each source folder of several places", async () => {
+			expect(
+				(await keptIn({ sample: false, places: true })).gitkeeps
+			).toEqual([
+				["src/common/.gitkeep", ""],
+				["src/game/.gitkeep", ""],
+			]);
+		});
+
+		it("should write none where the sample fills the folder", async () => {
+			expect((await keptIn({})).gitkeeps).toEqual([]);
+		});
+
+		it("should write none in a folder that is there", async () => {
+			await fileSystem.createDirectory(path.join(directory, "src"));
+
+			expect(await keptIn({ sample: false })).toEqual({
+				gitkeeps: [],
+				directories: ["src"],
+			});
+		});
+	});
+
 	describe("a folder named on the command line", () => {
 		it("should start a project there, and make the folder", async () => {
 			const plan = (
@@ -1948,6 +1995,7 @@ describe("CoreInitService", () => {
 			);
 			const plan = {
 				...(await planned()),
+				files: [],
 				directories: ["lib"],
 			};
 

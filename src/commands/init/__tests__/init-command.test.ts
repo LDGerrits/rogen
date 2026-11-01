@@ -94,6 +94,10 @@ describe("init command", () => {
 						file: path.join(cwd, "default.rogen.json"),
 						outcome: "wrote",
 					},
+					{
+						file: path.join(cwd, "src/.gitkeep"),
+						outcome: "wrote",
+					},
 					{ file: path.join(cwd, ".gitignore"), outcome: "wrote" },
 					{ file: path.join(cwd, "AGENTS.md"), outcome: "wrote" },
 				],
@@ -109,7 +113,7 @@ describe("init command", () => {
 						flag: "--no-agent-rules",
 					},
 				]),
-				directories: [path.join(cwd, "src")],
+				directories: [],
 				projects: [
 					{
 						config: "default.rogen.json",
@@ -149,6 +153,10 @@ describe("init command", () => {
 				files: [
 					{
 						file: path.join(cwd, "default.rogen.json"),
+						outcome: "wrote",
+					},
+					{
+						file: path.join(cwd, "src/.gitkeep"),
 						outcome: "wrote",
 					},
 					{ file: path.join(cwd, ".gitignore"), outcome: "wrote" },

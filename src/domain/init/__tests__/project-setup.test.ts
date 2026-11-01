@@ -541,7 +541,11 @@ describe("ProjectSetup plan, second config files", () => {
 	it("should set up no Darklua in a new project, even beside a .darklua.json", async () => {
 		const planned = await plan(darkluaLuau);
 
-		expect(files(planned)).toEqual(["default.rogen.json", ".gitignore"]);
+		expect(files(planned)).toEqual([
+			"default.rogen.json",
+			"src/.gitkeep",
+			".gitignore",
+		]);
 		expect(configOf(planned).compiledPath).toBeUndefined();
 		expect(planned.summary.map(({ area }) => area)).not.toContain(
 			"Darklua"
