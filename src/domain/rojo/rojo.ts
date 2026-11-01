@@ -117,6 +117,14 @@ export class RojoFile {
 		);
 	}
 
+	/** The meta files Rojo reads beside the file at `source`, an absolute POSIX path. */
+	static metaFilesBeside(source: string, rules: SyncRules): string[] {
+		const dir = path.posix.dirname(source);
+		return RojoFile.at(source, rules).metaFiles.map((name) =>
+			path.posix.join(dir, name)
+		);
+	}
+
 	/** The match of a rule the project wrote. */
 	private get ownMatch(): SyncRuleMatch | undefined {
 		return this.match?.own ? this.match : undefined;
