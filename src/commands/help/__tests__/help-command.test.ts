@@ -606,6 +606,14 @@ describe("help command", () => {
 				"Unknown diagnostic code \"route.strayAd\". Did you mean 'rogen help route.strayAt'?"
 			);
 		});
+
+		it("should point at the list of codes for a code close to none", async () => {
+			const result = await help("route.nosuch");
+
+			expect((result as ResultError<Error>).error.message).toBe(
+				"Unknown diagnostic code \"route.nosuch\". Run 'rogen help codes' to see every code."
+			);
+		});
 	});
 
 	describe("option table", () => {

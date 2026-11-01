@@ -1,5 +1,6 @@
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
+import { closestMatch } from "../../base/strings.js";
 import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
 import {
 	AbstractCommand,
@@ -81,12 +82,22 @@ registerCommand(
 					positionals: ["plugin"],
 					options: {},
 				});
-			if (!isSubcommand(action) || rest.length > 0)
+			if (!isSubcommand(action) || rest.length > 0) {
+				const suggestion =
+					action === undefined || isSubcommand(action)
+						? undefined
+						: closestMatch(action, [
+								...SUBCOMMANDS.map(({ name }) => name),
+								"help",
+							]);
 				return err(
 					new UsageError(
-						"'rogen plugin' takes install, uninstall or help."
+						"'rogen plugin' takes install, uninstall or help.",
+						suggestion &&
+							`Did you mean 'rogen plugin ${suggestion}'?`
 					)
 				);
+			}
 			const logService = accessor.get(LogService);
 			const cwd = accessor.get(EnvironmentService).cwd;
 
