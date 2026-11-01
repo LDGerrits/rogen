@@ -327,15 +327,27 @@ describe("CoreIndexService", () => {
 		});
 
 		it.each([
-			["a folder that can't be read", "src/locked", FileType.Directory],
 			[
-				"a file in a folder that can't be read",
+				"a deletion of a folder that can't be read",
+				FileChangeType.DELETED,
+				"src/locked",
+				FileType.Directory,
+			],
+			[
+				"a deletion of a file in a folder that can't be read",
+				FileChangeType.DELETED,
 				"src/locked/b.luau",
 				FileType.File,
 			],
+			[
+				"a file added to a folder that can't be read",
+				FileChangeType.ADDED,
+				"src/locked/c.luau",
+				FileType.File,
+			],
 		])(
-			"should fail on a deletion of %s, rather than drop what the project holds",
-			async (_, deleted, fileType) => {
+			"should record the folder as unreadable on %s, as a rescan does",
+			async (_, type, changed, fileType) => {
 				await memoryFs.writeFile("src/locked/b.luau", "");
 				listing = await indexService.list(["src"]);
 				const read = memoryFs.readDirectory.bind(memoryFs);
@@ -349,16 +361,14 @@ describe("CoreIndexService", () => {
 					}
 				);
 
-				await expect(
-					indexService.update(listing, [
-						{
-							type: FileChangeType.DELETED,
-							path: deleted,
-							fileType,
-						},
-					])
-				).rejects.toThrow("EACCES");
-				expect(listing.hasEntry("src", "locked")).toBe(true);
+				const updated = await indexService.update(listing, [
+					{ type, path: changed, fileType },
+				]);
+
+				expect(updated.hasEntry("src", "locked")).toBe(true);
+				expect(updated.isUnreadable("src/locked")).toBe(true);
+				expect(updated.getEntries("src/locked")).toBeUndefined();
+				expect(updated).toEqual(await indexService.list(["src"]));
 			}
 		);
 

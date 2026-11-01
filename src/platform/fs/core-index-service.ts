@@ -60,6 +60,16 @@ class ListingDraft {
 		if (this.get(dir)?.has(name)) this.edit(dir).delete(name);
 		this.remove(joinPosix(dir, name));
 	}
+
+	/** Records `dir` as a fresh listing would: refused, with nothing under it. */
+	markUnreadable(dir: string): void {
+		this.remove(dir);
+		this.unreadable.add(dir);
+	}
+
+	toListing(): Listing {
+		return new Listing(this.directories, this.unreadable);
+	}
 }
 
 export class CoreIndexService implements IndexService {
@@ -68,33 +78,22 @@ export class CoreIndexService implements IndexService {
 	constructor(private readonly fileSystemService: FileSystemService) {}
 
 	async list(dirs: readonly string[]): Promise<Listing> {
-		const directories: Directories = new Map();
-		const unreadable = new Set<string>();
+		const draft = new ListingDraft(Listing.EMPTY);
 		await Promise.all(
-			outermostDirs(dirs).map((root) =>
-				this.traverse(root, directories, unreadable)
-			)
+			outermostDirs(dirs).map((root) => this.traverse(root, draft))
 		);
-		return new Listing(directories, unreadable);
+		return draft.toListing();
 	}
 
 	private async traverse(
 		currentDir: string,
-		into: Directories,
-		unreadable: Set<string>
+		draft: ListingDraft
 	): Promise<void> {
-		let entries: [string, FileType][] | undefined;
-		try {
-			entries = await this.readDirectory(currentDir);
-		} catch (error) {
-			if (!ErrorUtils.hasCode(error, "EACCES", "EPERM")) throw error;
-			unreadable.add(toPosix(currentDir));
-			return;
-		}
+		const entries = await this.readDirectory(currentDir, draft);
 		if (!entries) return;
 
 		const children = new Map<string, FileType>();
-		into.set(toPosix(currentDir), children);
+		draft.directories.set(toPosix(currentDir), children);
 		const subdirs: string[] = [];
 
 		for (const [name, type] of entries) {
@@ -104,19 +103,25 @@ export class CoreIndexService implements IndexService {
 		}
 
 		await Promise.all(
-			subdirs.map((subdir) => this.traverse(subdir, into, unreadable))
+			subdirs.map((subdir) => this.traverse(subdir, draft))
 		);
 	}
 
+	/** `undefined` for a directory that is missing, or that can't be read, which `draft` then records as unreadable until a read succeeds. */
 	private async readDirectory(
-		dir: string
+		dir: string,
+		draft: ListingDraft
 	): Promise<[string, FileType][] | undefined> {
+		const posixDir = toPosix(dir);
+		draft.unreadable.delete(posixDir);
 		try {
 			return await this.fileSystemService.readDirectory(dir);
 		} catch (error) {
-			if (ErrorUtils.hasCode(error, "ENOENT", "ENOTDIR"))
-				return undefined;
-			throw error;
+			if (ErrorUtils.hasCode(error, "EACCES", "EPERM"))
+				draft.markUnreadable(posixDir);
+			else if (!ErrorUtils.hasCode(error, "ENOENT", "ENOTDIR"))
+				throw error;
+			return undefined;
 		}
 	}
 
@@ -128,7 +133,7 @@ export class CoreIndexService implements IndexService {
 		const listings = new Map<string, Map<string, FileType> | undefined>();
 		const listingOf = async (dir: string) => {
 			if (!listings.has(dir)) {
-				const entries = await this.readDirectory(dir);
+				const entries = await this.readDirectory(dir, draft);
 				listings.set(dir, entries && new Map(entries));
 			}
 			return listings.get(dir);
@@ -145,24 +150,18 @@ export class CoreIndexService implements IndexService {
 				if (listed === undefined) continue;
 				await this.addEntry(draft, dir, name, listed);
 			} else if (change.type === FileChangeType.DELETED) {
-				await this.assertReadable(listingOf, dir);
+				// A folder that can no longer be read is reported deleted; listing records it, and any other failure lets the deletion stand.
+				await listingOf(dir).catch(() => undefined);
 				if (isDirectoryType(change.fileType))
-					await this.assertReadable(listingOf, posixPath);
-				draft.delete(dir, name);
+					await listingOf(posixPath).catch(() => undefined);
+				if (
+					!draft.unreadable.has(dir) &&
+					!draft.unreadable.has(posixPath)
+				)
+					draft.delete(dir, name);
 			}
 		}
-		return new Listing(draft.directories, draft.unreadable);
-	}
-
-	private async assertReadable(
-		listingOf: (dir: string) => Promise<unknown>,
-		dir: string
-	): Promise<void> {
-		try {
-			await listingOf(dir);
-		} catch (error) {
-			if (ErrorUtils.hasCode(error, "EACCES", "EPERM")) throw error;
-		}
+		return draft.toListing();
 	}
 
 	private async addEntry(
@@ -179,11 +178,6 @@ export class CoreIndexService implements IndexService {
 		if (previous === type && draft.get(fullPosixPath)) return;
 		if (previous !== undefined && isDirectoryType(previous))
 			draft.remove(fullPosixPath);
-		if (isDirectoryType(type))
-			await this.traverse(
-				fullPosixPath,
-				draft.directories,
-				draft.unreadable
-			);
+		if (isDirectoryType(type)) await this.traverse(fullPosixPath, draft);
 	}
 }
