@@ -109,7 +109,7 @@ registerCommand(
 					examples: [
 						"rogen syncback --input game.rbxl --dry-run",
 						"rogen syncback -i game.rbxl -y",
-						"rogen syncback places/lobby -i lobby.rbxl --list",
+						"rogen syncback lobby -i lobby.rbxl --list",
 					],
 				},
 			});

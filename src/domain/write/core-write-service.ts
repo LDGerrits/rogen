@@ -8,7 +8,10 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import {
+	FileReader,
+	FileSystemService,
+} from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoFile } from "../rojo/rojo.js";
@@ -90,8 +93,8 @@ export class CoreWriteService implements WriteService {
 		});
 	}
 
-	check(selection: ConfigSelection): Promise<WriteRun> {
-		return this.writeAll(selection, { write: false });
+	check(selection: ConfigSelection, reader?: FileReader): Promise<WriteRun> {
+		return this.writeAll(selection, { write: false, reader });
 	}
 
 	async projectFileOf(
@@ -105,31 +108,34 @@ export class CoreWriteService implements WriteService {
 		).projectFileOf(project);
 	}
 
-	/** With `advice`, a plain Rojo project keeps the warnings about Rogen's own model. */
+	/** With `advice`, a plain Rojo project keeps the warnings about Rogen's own model; with `reader`, a check reads through it. */
 	private async writeAll(
 		selection: ConfigSelection,
 		{
 			write,
 			independent = false,
 			advice = false,
+			reader = this.fileSystemService,
 		}: {
 			readonly write: boolean;
 			readonly independent?: boolean;
 			readonly advice?: boolean;
+			readonly reader?: FileReader;
 		}
 	): Promise<WriteRun> {
 		const { set, unloaded } = WriteSet.partition(selection);
-		const listing = await this.indexService.list(set.indexedPaths);
+		const listing = await this.indexService.list(set.indexedPaths, reader);
 		const attempts = await this.attempt(
 			set.configs.map((config) => ({ config, syncWarnings: undefined })),
 			listing,
-			advice
+			advice,
+			reader
 		);
 		const settled = await this.settle(
 			attempts,
 			unloaded.map(({ file }) => file),
 			write,
-			{ independent }
+			{ independent, reader }
 		);
 		const outcomes = groupBy(
 			[...unloaded, ...settled],
@@ -308,13 +314,10 @@ export class CoreWriteService implements WriteService {
 			readonly syncWarnings: readonly Diagnostic[] | undefined;
 		}[],
 		listing: IndexReader,
-		advice = false
+		advice = false,
+		reader: FileReader = this.fileSystemService
 	): Promise<Attempt[]> {
-		const pipeline = new WritePipeline(
-			this.fileSystemService,
-			listing,
-			this.syncTools
-		);
+		const pipeline = new WritePipeline(reader, listing, this.syncTools);
 		const attempts: Attempt[] = [];
 		for (const { config, syncWarnings } of configs) {
 			const result = await pipeline.run(config, syncWarnings);
@@ -337,7 +340,10 @@ export class CoreWriteService implements WriteService {
 		attempts: readonly Attempt[],
 		unloaded: readonly string[],
 		write: boolean,
-		options: WriteOptions & { readonly independent?: boolean } = {}
+		options: WriteOptions & {
+			readonly independent?: boolean;
+			readonly reader?: FileReader;
+		} = {}
 	): Promise<LoadedConfig[]> {
 		const prepared = attempts.filter(
 			(attempt): attempt is PreparedConfig =>
@@ -363,7 +369,10 @@ export class CoreWriteService implements WriteService {
 			attempts.map(async (attempt) => {
 				if (attempt instanceof FailedConfig) return attempt;
 				if (write) return CoreWriteService.unwritten(attempt, failed);
-				const checked = await this.withStaleness(attempt);
+				const checked = await this.withStaleness(
+					attempt,
+					options.reader
+				);
 				return failed.length === 0
 					? new CheckedConfig(
 							checked.config,
@@ -377,11 +386,13 @@ export class CoreWriteService implements WriteService {
 	}
 
 	private async withStaleness(
-		attempt: PreparedConfig
+		attempt: PreparedConfig,
+		reader: FileReader = this.fileSystemService
 	): Promise<PreparedConfig> {
-		const stale = await new ProjectFileStaleness(
-			this.fileSystemService
-		).diagnostic(attempt.config, async () => attempt.projectFile);
+		const stale = await new ProjectFileStaleness(reader).diagnostic(
+			attempt.config,
+			async () => attempt.projectFile
+		);
 		if (!stale) return attempt;
 		return {
 			...attempt,

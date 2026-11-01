@@ -140,6 +140,7 @@ written:
   fresh/AGENTS.md
   fresh/default.project.json
   fresh/default.rogen.json
+  fresh/src/.gitkeep
   ok/default.project.json
 
 fresh/default.rogen.json:

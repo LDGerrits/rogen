@@ -97,6 +97,7 @@ describe("init choices given as flags", () => {
 				{
 					language: "luau",
 					places: false,
+					sample: false,
 				},
 				true
 			);

@@ -114,7 +114,7 @@ for (const [layer, layerModules] of Object.entries(modules)) {
 const domainDependencies = {
 	write: ["config", "roblox", "rojo", "toolchain"],
 	config: ["roblox", "rojo"],
-	init: ["config", "roblox", "rojo", "runner", "toolchain"],
+	init: ["write", "config", "roblox", "rojo", "runner", "toolchain"],
 	legacy: ["config", "init", "roblox"],
 	roblox: [],
 	runner: ["config", "toolchain"],

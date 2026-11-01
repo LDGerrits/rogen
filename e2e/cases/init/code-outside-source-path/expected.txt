@@ -10,6 +10,7 @@ written:
   AGENTS.md
   default.project.json
   default.rogen.json
+  src/.gitkeep
 
 default.rogen.json:
 {

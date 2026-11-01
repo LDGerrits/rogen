@@ -21,7 +21,7 @@ function wrapped(label: string, text: string, width: number): string[] {
 }
 
 export class InitSummary {
-	/** The plan as the user is shown it before it is written: what each area gets, then every file and command, so nothing happens that wasn't shown. Lines are at most `width` characters. */
+	/** The plan as the user is shown it before it is written: what each area gets, then every file and command, so nothing happens that wasn't shown, then what init could not do as asked. Lines are at most `width` characters. */
 	static lines(plan: InitPlan, width = 76): string[] {
 		const git = [
 			plan.files.some(({ fileName }) => fileName === ".gitignore")
@@ -66,6 +66,10 @@ export class InitSummary {
 			...(commands.length > 0
 				? [["Runs", commands.join(", ")] as [string, string]]
 				: []),
+			...plan.warnings.map(({ message }): [string, string] => [
+				"Warning",
+				message,
+			]),
 		];
 		return rows.flatMap(([area, text]) => wrapped(area, text, width));
 	}

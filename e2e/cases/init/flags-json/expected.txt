@@ -9,6 +9,10 @@ stdout:
         "outcome": "wrote"
       },
       {
+        "file": "<dir>/src/.gitkeep",
+        "outcome": "wrote"
+      },
+      {
         "file": "<dir>/.gitignore",
         "outcome": "wrote"
       },
@@ -21,9 +25,7 @@ stdout:
         "outcome": "wrote"
       }
     ],
-    "directories": [
-      "<dir>/src"
-    ],
+    "directories": [],
     "git": "initialised",
     "decided": [
       {
@@ -65,7 +67,7 @@ stdout:
       ],
       "edits": [
         "To change where code goes, edit \"routes\" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its \"tree\".",
-        "Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows."
+        "Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows."
       ]
     }
   }
@@ -77,6 +79,7 @@ written:
   .gitignore
   default.project.json
   default.rogen.json
+  src/.gitkeep
 
 default.rogen.json:
 {

@@ -51,6 +51,24 @@ describe("CoreToolchainService.detect", () => {
 			expect(workspace.packageManager).toBeUndefined();
 		});
 
+		it.each([
+			[{ scripts: { watch: "rbxtsc -w" } }, "npm run watch"],
+			[{ scripts: { build: "rbxtsc" } }, "npx rbxtsc -w"],
+			[undefined, "npx rbxtsc -w"],
+		])(
+			"should watch through package.json's watch script, else the local compiler, for %j",
+			async (manifest, command) => {
+				await write("tsconfig.json", "{}");
+				if (manifest)
+					await write("package.json", JSON.stringify(manifest));
+
+				expect(
+					rbxts(await toolchain().detect(cwd)).compiler
+						?.compileCommand
+				).toBe(command);
+			}
+		);
+
 		it("should detect roblox-ts from tsconfig.json", async () => {
 			await write("tsconfig.json", "{}");
 

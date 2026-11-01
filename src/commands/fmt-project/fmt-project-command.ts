@@ -78,7 +78,7 @@ registerCommand(
 					},
 					examples: [
 						"rogen fmt-project",
-						"rogen fmt-project places/lobby",
+						"rogen fmt-project lobby",
 						"rogen fmt-project --json",
 					],
 				},
