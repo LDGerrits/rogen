@@ -1,6 +1,6 @@
 import path from "path";
 import { DisposableStore } from "./base/disposable.js";
-import { UsageError, setUnexpectedErrorHandler } from "./base/errors.js";
+import { IoError, setUnexpectedErrorHandler } from "./base/errors.js";
 import {
 	CommandRegistry,
 	CommandService,
@@ -177,7 +177,7 @@ class RogenMain {
 		}
 		const { command, line } = argsResult.value;
 		if (cwd === undefined && command !== HELP_COMMAND) {
-			const gone = new UsageError(
+			const gone = new IoError(
 				"The current folder no longer exists.",
 				"cd to one that does, then run rogen again."
 			);
