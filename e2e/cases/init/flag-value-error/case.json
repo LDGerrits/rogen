@@ -2,8 +2,7 @@
 	"steps": [
 		["init", "--json", "--language", "lua"],
 		["init", "--json", "--kind", "plce"],
-		["init", "--json", "--no-json"],
-		["init", "--json", "--agent-hook"]
+		["init", "--json", "--no-json"]
 	],
 	"rojo": false
 }

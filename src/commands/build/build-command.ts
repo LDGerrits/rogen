@@ -113,7 +113,7 @@ registerCommand(
 					},
 					examples: [
 						"rogen build -o game.rbxl",
-						"rogen build places/lobby -o lobby.rbxl",
+						"rogen build lobby -o lobby.rbxl",
 						"rogen build -p Tool.rbxm",
 						"rogen build -o game.rbxl --watch",
 						"rogen build -o game.rbxl --json",

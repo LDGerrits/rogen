@@ -73,7 +73,7 @@ error: "sourcePath" is not a Rojo key and not Rogen's, and Rojo rejects a projec
 
 Rename the key to the one that the message suggests, or remove it.
 
-The message suggests a key only when one of Rojo's or Rogen's keys is close. A `$` key of a node in the `tree` gets this error too when it isn't one of Rojo's fields, such as `$clasName`. The exception is a `$` key whose value is an object that Rojo can read as a child, such as `"$Thing": { "$className": "Folder" }`. A misspelled field such as `"$propertes": { "Anchored": true }` is no child, so it gets this error. An unknown field in a sync rule gets this code as a warning instead. Rojo ignores that field, so the rule doesn't do what it seems to say. A config with Rogen 1 keys also gets [`legacy.config`](#legacy-config).
+The message suggests a key only when one of Rojo's or Rogen's keys is close. A `$` key of a node in the `tree` gets this error too when it isn't one of Rojo's fields, such as `$clasName`. The exception is a `$` key whose value is an object that Rojo can read as a child, such as `"$Thing": { "$className": "Folder" }`. A misspelled field such as `"$propertes": { "Anchored": true }` is no child, so it gets this error. An unknown field in a sync rule gets this code as a warning instead. Rojo ignores that field, so the rule doesn't do what it seems to say. A config with Rogen 1 keys gets [`legacy.config`](#legacy-config) instead.
 
 ### `config.duplicateSourcePath` [#config-duplicatesourcepath]
 
@@ -322,7 +322,7 @@ Rename it to the key. If it should route as it is written, declare that spelling
 Warning. A file is in a plain folder named after a server route, such as `Server/` or `(Server)/`, but an outer route outranks that folder. The outer route places the file, and that route replicates to clients. Server code under `Shared/` ships to every client.
 
 ```
-warning: ships to clients as ReplicatedStorage/Shared/Datastore: move it out of the "Shared" route's files if it's server code, or keep it there with a "@Shared" marker file in its folder (route.serverCodeShipped)
+warning: ships to clients as ReplicatedStorage/Shared/Server/Datastore: move it out of the "Shared" route's files if it's server code, or keep it there with a "@Shared" marker file in its folder (route.serverCodeShipped)
 ```
 
 Move the file out of the replicating route's folder, for example from `Shared/Server/` to `Server/`.
@@ -929,16 +929,6 @@ Add the settings to the node in the `tree` of `default.rogen.json`.
 
 `init` keeps the settings of a node that a route lands on.
 
-### `init.unmountedFiles` [#init-unmountedfiles]
-
-Warning. `init` lifted a `default.project.json`, and found files in the source paths that none of its nodes mount. Rojo ignored those files. Rogen places every file below a source path that a route matches, so those files join the game. If there is no `*` route, Rogen leaves out the files that no route matches, with [`route.unrouted`](#route-unrouted).
-
-```
-warning: 2 files in the source paths are mounted by no node, so Rojo ignored them, and Rogen places each one a route matches: src/Loose.luau and src/scratch/x.server.luau. Check where with 'rogen where <path>', and list them under "globIgnorePaths" to leave them out as Rojo did. (init.unmountedFiles)
-```
-
-Run `rogen where` on the files to see where they land. To keep them out of the game, list them under `globIgnorePaths` in `default.rogen.json`, or delete them.
-
 ### `init.codeOutsideSourcePaths` [#init-codeoutsidesourcepaths]
 
 Warning. `init` found code that no source path holds and that the tree doesn't mount, so Rogen places none of it. Package folders and a compiler's output don't count. With no `default.project.json`, the source path is `src`, or the only folder that holds code if no route is named after it. When `init` lifts a `default.project.json`, the source path is the closest folder that holds every folder of code that the file mounts. When a route is named after that folder, such as `src/server`, the source path is its parent, `src`, if the routes put the code where the file did. If they don't, the tree keeps the mounts.
@@ -948,6 +938,16 @@ warning: game and lib hold code that no source path holds and the tree doesn't m
 ```
 
 Move the code into a source path, or add its folders to `sourcePaths` in the config. If the code isn't part of the game, such as a script that a tool runs, you can leave it where it is.
+
+### `init.noCodingAgent` [#init-nocodingagent]
+
+Warning, or error. `--agent-hook` was given, and `init` found no coding agent in use in the folder. An agent is in use where its folder or file is, such as `.claude`, `CLAUDE.md`, `.codex`, `.cursor` or `.gemini`. In a new project it is a warning: `init` writes the project without the hook. Beside a config, where the hook is all that `init` was asked to add, it is an error, and `init` exits with 1.
+
+```
+warning: --agent-hook adds the hook to the coding agents in use here, and init found none, so it adds no hook. An agent is in use where its folder or file is: .claude, CLAUDE.md, .codex, .gemini, GEMINI.md, .cursor, .github/copilot-instructions.md or .github/hooks. Once one is, run 'rogen init --agent-hook'. (init.noCodingAgent)
+```
+
+Start the coding agent in the folder once, so that its folder is there, then run `rogen init --agent-hook`.
 
 ## Serve
 
@@ -964,7 +964,7 @@ Whether this is an error depends on what started the server:
 - Anything else, such as a `rojo serve` you ran yourself or an Argon server: an error, even when it serves a project with the same name. The message says that another process holds the port.
 
 ```
-error: Port 34872 is taken by Rojo serving lobby, which rogen serve started for places/lobby/default.rogen.json, so places/arena/default.rogen.json can't be served there. Stop it, set a servePort in places/arena/default.rogen.json, or run 'rogen serve places/arena --port <port>'. (serve.portTaken)
+error: Port 34872 is taken by Rojo serving game, which rogen serve started for game.rogen.json, so lobby.rogen.json can't be served there. Stop it, set a servePort in lobby.rogen.json, or run 'rogen serve lobby.rogen.json --port <port>'. (serve.portTaken)
 ```
 
 Stop what holds the port, give the config its own `servePort` in its `.rogen.json`, or pass a free port with `--port`. Serve a second place from a second terminal. In `--json`, `fixes` holds the command with a free port that Rogen found.

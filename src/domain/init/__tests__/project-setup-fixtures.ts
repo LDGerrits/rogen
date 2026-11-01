@@ -71,14 +71,20 @@ export interface ProjectPlanOptions {
 	readonly choices: ProjectChoices;
 	readonly existingFiles?: ReadonlySet<string>;
 	readonly workspace?: WorkspaceSpec;
+	readonly tracksProjectFile?: boolean;
 }
 
 export const planProject = ({
 	choices,
 	existingFiles = new Set(),
 	workspace,
+	tracksProjectFile,
 }: ProjectPlanOptions) => {
-	const target = directoryOf({ existing: [...existingFiles], workspace });
+	const target = directoryOf({
+		existing: [...existingFiles],
+		workspace,
+		tracksProjectFile,
+	});
 	return planOf(
 		new ProjectSetup(
 			target,

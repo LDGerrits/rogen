@@ -303,7 +303,8 @@ class RogenMain {
 			toolchainService,
 			processService,
 			toolLocator,
-			configService
+			configService,
+			writeService
 		);
 		services.set(InitService, initService);
 		disposables.add(initService.registerMigration(new LegacyMigration()));

@@ -7,6 +7,7 @@ written:
   aftman.toml
   default.project.json
   default.rogen.json
+  src/.gitkeep
 
 aftman.toml:
 [tools]

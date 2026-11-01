@@ -56,12 +56,20 @@ const isBareName = (ref: string): boolean =>
 
 /** Finds which config file a command reads: the one it names, else the default of the working directory. */
 export class ConfigDiscovery {
-	private readonly folderChecks = new Set<ConfigFolderCheck>();
-
 	constructor(
 		private readonly fileSystemService: FileReader,
-		private readonly environmentService: EnvironmentService
+		private readonly environmentService: EnvironmentService,
+		private readonly folderChecks = new Set<ConfigFolderCheck>()
 	) {}
+
+	/** A discovery that reads through `reader`, with the same checks. */
+	over(reader: FileReader): ConfigDiscovery {
+		return new ConfigDiscovery(
+			reader,
+			this.environmentService,
+			this.folderChecks
+		);
+	}
 
 	registerFolderCheck(check: ConfigFolderCheck): Disposable {
 		this.folderChecks.add(check);
