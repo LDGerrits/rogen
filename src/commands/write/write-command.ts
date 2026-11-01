@@ -17,7 +17,7 @@ import {
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { WriteWatch } from "../write/write-watch.js";
+import { WatchedConfigs, WriteWatch } from "../write/write-watch.js";
 import {
 	writeLineShape,
 	writeDocument,
@@ -105,13 +105,17 @@ registerCommand(
 			const json = Boolean(line.options.json);
 			await refreshAgentRules(accessor, json);
 			return line.options.watch
-				? this.watch(accessor, targets.value.configs, json)
+				? this.watch(
+						accessor,
+						this.watchedConfigs(line.positionals, targets.value),
+						json
+					)
 				: this.writeOnce(accessor, targets.value, json);
 		}
 
 		private async watch(
 			accessor: ServicesAccessor,
-			configs: readonly string[],
+			configs: WatchedConfigs,
 			json: boolean
 		): Promise<Result<void, Error>> {
 			const store = new DisposableStore();
@@ -119,7 +123,7 @@ registerCommand(
 			try {
 				return await new WriteWatch(
 					accessor,
-					this.watchedRefs(configs),
+					configs,
 					json,
 					undefined,
 					"write"
@@ -171,8 +175,12 @@ registerCommand(
 			return ok({ home: selection.value.home, run });
 		}
 
-		/** What a watch selects: the configs, except that a lone default is selected as the folder's default, so the watch follows the folder when its source paths come and go. */
-		private watchedRefs(configs: readonly string[]): readonly string[] {
+		/** What a watch selects: with none named, every config of the folder, following those that come and go; else the configs, except that a lone default is selected as the folder's default. */
+		private watchedConfigs(
+			given: readonly string[],
+			{ configs }: Targets
+		): WatchedConfigs {
+			if (given.length === 0 && configs.length > 0) return "here";
 			return configs.length === 1 &&
 				isDefaultConfigFileName(path.basename(configs[0]))
 				? FOLDER_DEFAULT

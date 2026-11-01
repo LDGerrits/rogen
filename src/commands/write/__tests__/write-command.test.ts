@@ -348,5 +348,38 @@ describe("write command", () => {
 			expect(await listed("lobby.project.json")).toEqual(["A", "B"]);
 			expect(log.entries[0].text).toMatch(/^rogen write --watch/);
 		});
+
+		it("should write a config added to the folder, and stop writing one removed from it", async () => {
+			const { run } = commandHarness({
+				fs,
+				log,
+				lifecycle,
+				watcher,
+				config: new CoreConfigService(
+					fs,
+					new MockEnvironmentService("/repo")
+				),
+			});
+			void run("write", {
+				positionals: [],
+				options: { watch: true, json: true },
+			});
+			await settle();
+
+			await fs.writeFile(abs("arena.rogen.json"), named("Arena"));
+			await settle();
+			await fs.delete(abs("lobby.rogen.json"));
+			await settle();
+
+			const printed = log
+				.texts("print")
+				.map((text) => JSON.parse(text))
+				.filter((line) => "notice" in line);
+			expect(printed).toEqual([
+				{ notice: { kind: "added", config: "arena.rogen.json" } },
+				{ notice: { kind: "removed", config: "lobby.rogen.json" } },
+			]);
+			expect(await fs.exists(abs("arena.project.json"))).toBe(true);
+		});
 	});
 });

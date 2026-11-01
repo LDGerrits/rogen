@@ -102,13 +102,13 @@ export interface ConfigSelection {
 /** The caller owns it; only `reload` changes it. */
 export interface ReloadableSelection extends ConfigSelection {
 	readonly files: ReadonlySet<string>;
-	/** The folder the selection was picked from when no config was named; a `reload` follows the added and deleted default config of it, and no other file. */
+	/** The folder the selection follows, when no config was named: a `reload` follows the configs added to it and deleted from it, its default alone or every config, as the selection was picked. */
 	readonly followedFolder: string | undefined;
 
 	/** Whether a selected config reads `file`; a watcher reports POSIX paths on every system, so any spelling of the path matches. */
 	reads(file: string): boolean;
 
-	/** Whether `reload` should hear of a change to `file`: one a selected config reads, or the default config that came to the folder. */
+	/** Whether `reload` should hear of a change to `file`: one a selected config reads, or a config of the followed folder. */
 	concerns(file: string): boolean;
 
 	/** Reloads the configs that read `files`, in order, keeping a broken config's last valid version so a watch survives a bad edit. */
@@ -160,6 +160,8 @@ export interface ConfigService {
 	select(
 		refs: readonly string[]
 	): Promise<Result<ReloadableSelection, Error>>;
+	/** Loads every config of the working directory, and follows the configs that come to it and leave it. */
+	selectHere(): Promise<ReloadableSelection>;
 	/** The named configs, those that are not a default, of the working directory, absolute and sorted. */
 	namedConfigs(): Promise<string[]>;
 	/** Every config file of the working directory, absolute and sorted. */

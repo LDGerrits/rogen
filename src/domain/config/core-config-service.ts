@@ -8,7 +8,11 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ConfigFormatter } from "./config-formatter.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ConfigDiscovery, DiscoveredConfigs } from "./config-discovery.js";
-import { isDefaultConfigFileName, isProjectFileConfig } from "./config.js";
+import {
+	isConfigFileName,
+	isDefaultConfigFileName,
+	isProjectFileConfig,
+} from "./config.js";
 import { ConfigLoader } from "./config-loader.js";
 import {
 	ConfigEntry,
@@ -67,11 +71,29 @@ export class CoreConfigService implements ConfigService {
 				this.loader,
 				directory,
 				noneNamed && !files.some(isProjectFileConfig)
-					? { directory, list: () => this.firstConfigIn(directory) }
+					? {
+							directory,
+							list: () => this.firstConfigIn(directory),
+							holds: isDefaultConfigFileName,
+						}
 					: undefined,
 				notes
 			)
 		);
+	}
+
+	async selectHere(): Promise<ReloadableSelection> {
+		const directory = this.environmentService.cwd;
+		const opened = await Promise.all(
+			(await this.discovery.list(directory)).map((file) =>
+				ManagedConfig.open(file, this.loader)
+			)
+		);
+		return new CoreConfigSelection(opened, this.loader, directory, {
+			directory,
+			list: () => this.discovery.list(directory),
+			holds: isConfigFileName,
+		});
 	}
 
 	private async firstConfigIn(directory: string): Promise<string[]> {

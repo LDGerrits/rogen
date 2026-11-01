@@ -28,11 +28,14 @@ import {
 	WatchReporter,
 } from "./watch-log.js";
 
+/** The configs a watch writes: those the refs name (the folder's default when none), or `here`, every config of the working directory, following the ones that come and go. */
+export type WatchedConfigs = readonly string[] | "here";
+
 /** `rogen build --watch`, `rogen write --watch` and `rogen sourcemap --watch`: writes, then rewrites whenever names, folders or configs change, and runs Rojo's own watch from the first write when asked to. */
 export class WriteWatch {
 	constructor(
 		private readonly accessor: ServicesAccessor,
-		private readonly refs: readonly string[],
+		private readonly configs: WatchedConfigs,
 		private readonly json: boolean,
 		/** What to run Rojo's watch for, when the files are not all that is wanted. */
 		private readonly step: RojoStep | undefined,
@@ -53,7 +56,10 @@ export class WriteWatch {
 		const { cwd } = environment;
 		const stopped = new AbortController();
 		store.add({ [Symbol.dispose]: () => stopped.abort() });
-		const selection = await configService.select(this.refs);
+		const selection =
+			this.configs === "here"
+				? ok(await configService.selectHere())
+				: await configService.select(this.configs);
 		if (selection.isErr()) return selection;
 		for (const note of selection.value.notes) logService.warn(note);
 		let planned: RojoPlan | undefined;

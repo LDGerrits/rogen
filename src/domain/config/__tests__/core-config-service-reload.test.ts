@@ -1,6 +1,7 @@
 import {
 	useConfigFixture,
 	fs,
+	service,
 	selection,
 	write,
 	start,
@@ -318,6 +319,38 @@ describe("CoreConfigService", () => {
 			await selection.reload(["/repo/unrelated.json"]);
 
 			expect(selection.entries[0]).toBe(before);
+		});
+	});
+
+	describe("reload of every config here", () => {
+		it("should take up a config of any name that comes to the folder, and drop one that leaves it", async () => {
+			await write("/repo/default.rogen.json", { routes: ROUTED });
+			await write("/repo/lobby.rogen.json", {
+				name: "Lobby",
+				routes: ROUTED,
+			});
+			const here = await service.selectHere();
+
+			await write("/repo/arena.rogen.json", {
+				name: "Arena",
+				routes: ROUTED,
+			});
+			await fs.delete("/repo/lobby.rogen.json");
+			const reload = await here.reload([
+				"/repo/arena.rogen.json",
+				"/repo/lobby.rogen.json",
+			]);
+
+			expect(here.concerns("/repo/arena.rogen.json")).toBe(true);
+			expect(here.concerns("/repo/src/arena.rogen.json")).toBe(false);
+			expect(here.entries.map(({ file }) => file)).toEqual([
+				"/repo/default.rogen.json",
+				"/repo/arena.rogen.json",
+			]);
+			expect(reload.notices).toEqual([
+				{ kind: "removed", file: "/repo/lobby.rogen.json" },
+				{ kind: "added", file: "/repo/arena.rogen.json" },
+			]);
 		});
 	});
 });
