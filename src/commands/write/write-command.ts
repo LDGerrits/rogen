@@ -1,9 +1,7 @@
-import path from "path";
 import { DisposableStore } from "../../base/disposable.js";
 import { Result, ok } from "../../base/result.js";
 import { WriteRun } from "../../domain/write/write.js";
 import { WriteService } from "../../domain/write/write-service.js";
-import { isDefaultConfigFileName } from "../../domain/config/config.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
@@ -17,7 +15,7 @@ import {
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { WriteWatch } from "../write/write-watch.js";
+import { WatchedConfigs, WriteWatch } from "../write/write-watch.js";
 import {
 	writeLineShape,
 	writeDocument,
@@ -105,13 +103,19 @@ registerCommand(
 			const json = Boolean(line.options.json);
 			await refreshAgentRules(accessor, json);
 			return line.options.watch
-				? this.watch(accessor, targets.value.configs, json)
+				? this.watch(
+						accessor,
+						line.positionals.length === 0
+							? "here"
+							: line.positionals,
+						json
+					)
 				: this.writeOnce(accessor, targets.value, json);
 		}
 
 		private async watch(
 			accessor: ServicesAccessor,
-			configs: readonly string[],
+			configs: WatchedConfigs,
 			json: boolean
 		): Promise<Result<void, Error>> {
 			const store = new DisposableStore();
@@ -119,7 +123,7 @@ registerCommand(
 			try {
 				return await new WriteWatch(
 					accessor,
-					this.watchedRefs(configs),
+					configs,
 					json,
 					undefined,
 					"write"
@@ -169,14 +173,6 @@ registerCommand(
 				.get(WriteService)
 				.write(selection.value, { independent: true });
 			return ok({ home: selection.value.home, run });
-		}
-
-		/** What a watch selects: the configs, except that a lone default is selected as the folder's default, so the watch follows the folder when its source paths come and go. */
-		private watchedRefs(configs: readonly string[]): readonly string[] {
-			return configs.length === 1 &&
-				isDefaultConfigFileName(path.basename(configs[0]))
-				? FOLDER_DEFAULT
-				: configs;
 		}
 
 		/** The configs to write: the ones named, else every one of the working directory, and the plain project files that are left alone. Fails when the folder holds neither. */

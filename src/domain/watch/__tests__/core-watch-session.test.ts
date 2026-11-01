@@ -143,7 +143,20 @@ describe("CoreWatchSession", () => {
 		await session.refresh();
 
 		expect(await placed("default")).toEqual(["B"]);
-		expect(updates).toHaveLength(1);
+		expect(updates).toHaveLength(2);
+	});
+
+	it("should report the rewrite of a refresh as a round of its own", async () => {
+		await fs.writeFile("/repo/src/Shop/A.luau", "");
+		const session = await start();
+
+		await fs.delete("/repo/src/Shop", true);
+		await session.refresh();
+
+		expect(updates[1].cause).toEqual({ kind: "refresh" });
+		expect(updates[1].reports.map(({ outcome }) => outcome.kind)).toEqual([
+			"wrote",
+		]);
 	});
 
 	it("should rewrite only the configs whose source paths hold a change", async () => {

@@ -14,6 +14,7 @@ import { ConfigDiscovery, DiscoveredConfigs } from "./config-discovery.js";
 import {
 	DEFAULT_PROJECT,
 	configStem,
+	isConfigFileName,
 	isDefaultConfigFileName,
 	isProjectFileConfig,
 	projectStem,
@@ -29,7 +30,7 @@ import {
 	CoveredTargets,
 	validFile,
 } from "./config-service.js";
-import { CoreConfigSelection } from "./core-config-selection.js";
+import { CoreConfigSelection, PickedFolder } from "./core-config-selection.js";
 import { ManagedConfig } from "./managed-config.js";
 
 export class CoreConfigService implements ConfigService {
@@ -73,19 +74,52 @@ export class CoreConfigService implements ConfigService {
 		if (discovered.isErr()) return err(discovered.error);
 
 		const { home: directory, files, noneNamed, notes } = discovered.value;
+		return ok(
+			await this.selectionOf(
+				files,
+				directory,
+				noneNamed && !files.some(isProjectFileConfig)
+					? {
+							directory,
+							list: () => this.firstConfigIn(directory),
+							holds: isDefaultConfigFileName,
+						}
+					: undefined,
+				notes,
+				loader
+			)
+		);
+	}
+
+	async selectHere(): Promise<ReloadableSelection> {
+		const directory = this.environmentService.cwd;
+		return this.selectionOf(
+			await this.discovery.list(directory),
+			directory,
+			{
+				directory,
+				list: () => this.discovery.list(directory),
+				holds: isConfigFileName,
+			}
+		);
+	}
+
+	private async selectionOf(
+		files: readonly string[],
+		directory: string,
+		folder: PickedFolder | undefined,
+		notes?: readonly string[],
+		loader: ConfigLoader = this.loader
+	): Promise<ReloadableSelection> {
 		const opened = await Promise.all(
 			files.map((file) => ManagedConfig.open(file, loader))
 		);
-		return ok(
-			new CoreConfigSelection(
-				opened,
-				loader,
-				directory,
-				noneNamed && !files.some(isProjectFileConfig)
-					? { directory, list: () => this.firstConfigIn(directory) }
-					: undefined,
-				notes
-			)
+		return new CoreConfigSelection(
+			opened,
+			loader,
+			directory,
+			folder,
+			notes
 		);
 	}
 

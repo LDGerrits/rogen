@@ -112,18 +112,21 @@ export class CoreWatchSession
 	}
 
 	async refresh(): Promise<void> {
-		let rewrites: Promise<unknown>[] = [];
+		let announced: Promise<void> | undefined;
 		const listed = this.intake.queue(
 			this.guarded(async () => {
 				this.listing = await this.indexService.list(this.plan.roots);
-				rewrites = this.selection.configs.map(({ projectFile }) =>
-					this.queueRewrite(projectFile)
+				announced = this.announce(
+					{ kind: "refresh" },
+					this.selection.configs.map(({ projectFile }) =>
+						this.queueRewrite(projectFile)
+					)
 				);
 			})
 		);
 		this.track(listed);
 		await listed;
-		await Promise.all(rewrites);
+		await announced;
 	}
 
 	stop(): Promise<void> {
@@ -264,29 +267,30 @@ export class CoreWatchSession
 		cause: WatchCause,
 		results: readonly Promise<RewriteReport | undefined>[],
 		changes: readonly FileChange[] = []
-	): void {
+	): Promise<void> {
 		const at = new Date();
 		const notices = this.notices.splice(0);
-		if (notices.length === 0 && results.length === 0) return;
-		this.track(
-			this.updates.queue(async () => {
-				try {
-					const reports = (await Promise.all(results)).filter(
-						(report) => report !== undefined
-					);
-					if (notices.length === 0 && reports.length === 0) return;
-					this._onDidUpdate.fire({
-						at,
-						cause,
-						changes,
-						notices,
-						reports,
-					});
-				} catch (error) {
-					this._onDidError.fire(ErrorUtils.fromUnknown(error));
-				}
-			})
-		);
+		if (notices.length === 0 && results.length === 0)
+			return Promise.resolve();
+		const announced = this.updates.queue(async () => {
+			try {
+				const reports = (await Promise.all(results)).filter(
+					(report) => report !== undefined
+				);
+				if (notices.length === 0 && reports.length === 0) return;
+				this._onDidUpdate.fire({
+					at,
+					cause,
+					changes,
+					notices,
+					reports,
+				});
+			} catch (error) {
+				this._onDidError.fire(ErrorUtils.fromUnknown(error));
+			}
+		});
+		this.track(announced);
+		return announced;
 	}
 
 	private get shallowDirs(): string[] {

@@ -40,6 +40,7 @@ export const serveLineShape = S.union(
 	watchLineShapes.write,
 	watchLineShapes.notice,
 	watchLineShapes.error,
+	watchLineShapes.diagnostics,
 	S.object({
 		serving: S.object({
 			...serverEventFields,
@@ -80,6 +81,15 @@ export const serveLineShape = S.union(
 		refused: S.object({
 			...serverEventFields,
 			diagnostics: S.array(diagnosticShape),
+		}),
+	}),
+	S.object({
+		orphan: S.object({
+			...serverEventFields,
+			pid: S.integer,
+			owner: S.optional(S.integer),
+			ended: S.boolean,
+			error: S.optional(S.string),
 		}),
 	}),
 	S.object({
@@ -165,8 +175,9 @@ export class ServeLog implements ServeReporter {
 		);
 	}
 
-	stopped({ target, interrupted, failure }: ServerExitEvent): void {
-		if (failure) this.logService.diagnostic(failure);
+	stopped({ target, interrupted, failure, servedBy }: ServerExitEvent): void {
+		if (servedBy) this.running({ ...target, servedBy });
+		else if (failure) this.logService.diagnostic(failure);
 		else if (!interrupted)
 			this.logService.info(
 				`Rojo stopped serving ${this.nameOf(target)}.`
@@ -187,6 +198,18 @@ export class ServeLog implements ServeReporter {
 				this.logService.info(
 					`Stopped serving ${label}${change.reason === "moved" ? ` at ${target.address.shown}` : ""}: ${RETIRED_BECAUSE[change.reason]}.`
 				);
+				return;
+			case "orphan": {
+				const left = `the Rojo (process ${change.pid}) that a rogen serve${change.owner === undefined ? "" : ` (process ${change.owner})`} left running`;
+				if (change.error)
+					this.logService.warn(
+						`Couldn't end ${left}: ${change.error}`
+					);
+				else
+					this.logService.info(
+						`Ended ${left} when it stopped without ending it.`
+					);
+			}
 		}
 	}
 
@@ -281,7 +304,17 @@ export class ServeJsonLog implements ServeReporter {
 		});
 	}
 
-	stopped({ target, exit, failure, crashed }: ServerExitEvent): void {
+	stopped({
+		target,
+		exit,
+		failure,
+		crashed,
+		servedBy,
+	}: ServerExitEvent): void {
+		if (servedBy) {
+			this.running({ ...target, servedBy });
+			return;
+		}
 		this.line({
 			stopped: this.stoppedJson(target, crashed ? "crashed" : "exited", {
 				code: exit.code,
@@ -307,6 +340,21 @@ export class ServeJsonLog implements ServeReporter {
 				return;
 			case "retired":
 				this.line({ stopped: this.stoppedJson(target, change.reason) });
+				return;
+			case "orphan":
+				this.line({
+					orphan: {
+						...this.serverFields(target),
+						pid: change.pid,
+						...(change.owner !== undefined && {
+							owner: change.owner,
+						}),
+						ended: change.error === undefined,
+						...(change.error !== undefined && {
+							error: change.error,
+						}),
+					},
+				});
 		}
 	}
 

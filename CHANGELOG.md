@@ -14,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The summary leaves out what you just answered, and shows a Sample row when the Greeter sample is added.
 - The tip to run `git rm --cached default.project.json` shows only when git tracks that file.
 - The next steps say that `rogen write` replaces the project file, as the docs do.
+- `rogen write --watch` with no project follows every config of the folder, as `rogen write` writes them, and says when one is added or removed.
+- `serve --json` prints an `orphan` line when it ends a server that a killed `rogen serve` left running.
+- A burst of file changes is named only under `--verbose`.
 
 ### Fixed
 
@@ -52,6 +55,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `rogen where` and `rogen check` answer a project file inside a source path and a file in the compiled path, and leave a copied config's error out of a path outside its source paths.
 - `rogen where -` maps a character's copy of a StarterCharacterScripts script back to its file.
 - `scan.unmountedSource` names the files that nothing mounts.
+- `serve` and the `--watch` commands keep going when Rojo crashes on deleted folders more than once, and give up only when a restarted Rojo crashes before it serves. Back-to-back restarts wait a little longer each time, up to 10 seconds.
+- The write done before a crashed Rojo starts again is reported.
+- `serve` knows its server after the project's `name` changes, and a second `serve` of the same project exits 0: without `--port` on any port, and when both start at once.
+- `rogen write --watch` given a `default.rogen.json` of another folder watches that config, not the working directory's.
+- `build --watch --json` and `sourcemap --watch --json` print Rojo's failure as `diagnostics`.
+- `syncback --dry-run` works on a read-only source file.
 
 ## [2.0.0-beta.2] - 2026-10-31
 

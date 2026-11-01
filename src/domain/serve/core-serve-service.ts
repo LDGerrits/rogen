@@ -82,6 +82,16 @@ export class CoreServeService implements ServeService {
 
 		const ports = this.portsFor(request.serverArgs);
 		if (ports.portError) return err(ports.portError);
+		const running = await ports.runningServeOf(config);
+		if (running)
+			return ok(
+				new ServePlan(
+					selection,
+					executable.value,
+					running,
+					request.serverArgs
+				)
+			);
 		const checked = await ports.check(ports.targetOf(config));
 		if (checked.isErr()) return err(new DiagnosticsError([checked.error]));
 		return ok(

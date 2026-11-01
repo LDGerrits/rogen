@@ -16,7 +16,7 @@ import { ResolvedConfig } from "../../domain/config/resolved-config.js";
 import { SharedDiagnostics, isUnchanged } from "../../domain/write/write.js";
 import {
 	diagnosticToJson,
-	errorToJson,
+	failureToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { RojoCommandRun } from "../../domain/runner/rojo-command-service.js";
 import { Result } from "../../base/result.js";
@@ -81,6 +81,8 @@ function titleOf(cause: WatchCause, cwd: string): string {
 			return "initial write";
 		case "burst":
 			return "many changes · full rewrite";
+		case "refresh":
+			return "full rewrite";
 		case "compiled":
 			return `${plural(cause.files, "compiled file")} changed`;
 		case "change":
@@ -170,14 +172,13 @@ export class WatchLog implements WatchReporter {
 
 	update({ at, cause, changes, notices, reports }: WatchUpdate): void {
 		if (cause.kind === "burst") {
-			this.logService.warn(
+			this.logService.debug(
 				cause.ended
-					? `The burst has stopped, after ${plural(cause.dropped, "more change")}.`
-					: `Threshold reached (${cause.dropped} > ${cause.threshold}). Dropping the buffered changes.`
+					? `The burst stopped after ${plural(cause.dropped, "more change")}, so every config is written again.`
+					: `${cause.dropped} changes came at once, more than ${cause.threshold}, so every config is written again from a fresh listing.`
 			);
 		}
 		const quiet =
-			cause.kind !== "burst" &&
 			notices.length === 0 &&
 			reports.every(
 				({ outcome, unreported, fixed }) =>
@@ -302,7 +303,7 @@ export class WatchJsonLog implements WatchReporter {
 	}
 
 	error(error: Error): void {
-		this.line({ error: errorToJson(error) });
+		this.line(failureToJson(error));
 	}
 
 	rojo(ran: Result<RojoCommandRun, Error>, target: RojoTarget): void {

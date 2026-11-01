@@ -8,7 +8,6 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ResolvedConfig } from "./resolved-config.js";
-import { isDefaultConfigFileName } from "./config.js";
 import { ConfigLoader } from "./config-loader.js";
 import { ManagedConfig } from "./managed-config.js";
 import {
@@ -22,10 +21,12 @@ import {
 const errorsOf = (entry: ConfigEntry): readonly Diagnostic[] =>
 	entry.status === "broken" ? entry.errors : [];
 
-interface PickedFolder {
+export interface PickedFolder {
 	readonly directory: string;
 	/** Absolute and sorted; empty when the folder has no config or can't be read. */
 	list(): Promise<readonly string[]>;
+	/** Whether a file of this name in the folder is one `list` would give. */
+	holds(fileName: string): boolean;
 }
 
 /** The configs one invocation picked, each loading and reloading itself. */
@@ -66,7 +67,7 @@ export class CoreConfigSelection implements ReloadableSelection {
 		const posixFile = toPosix(file);
 		return (
 			this.folder !== undefined &&
-			isDefaultConfigFileName(path.posix.basename(posixFile)) &&
+			this.folder.holds(path.posix.basename(posixFile)) &&
 			new PathSet([this.folder.directory]).has(dirnamePosix(posixFile))
 		);
 	}

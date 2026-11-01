@@ -25,6 +25,7 @@ import {
 	ServeSession,
 	ServerExitEvent,
 	ServerReadyEvent,
+	ServerRestartEvent,
 } from "../serve-service.js";
 
 type Fields = Record<string, unknown>;
@@ -359,6 +360,26 @@ describe("CoreServeService", () => {
 			expect(servePlan.target.servedBy).toBeDefined();
 		});
 
+		it("should leave a server alone that another serve recorded for this project file before its name changed", async () => {
+			await memFs.writeFile(
+				"/repo/default.rogen.json",
+				config({ name: "Game" })
+			);
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json")
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+
+			const servePlan = await plan();
+
+			expect(servePlan.target.servedBy).toMatchObject({
+				project: "repo",
+			});
+		});
+
 		it("should leave a server alone whose serve still runs", async () => {
 			processes.running.add(5000);
 			await memFs.writeFile(
@@ -376,6 +397,65 @@ describe("CoreServeService", () => {
 
 			expect(servePlan.target.servedBy).toBeDefined();
 		});
+
+		it("should find the server another serve started for the project on a port given as a flag, when no port is given", async () => {
+			processes.running.add(5000);
+			await memFs.writeFile(
+				...recordFile(37001, "repo", "/repo/default.project.json", {
+					owner: 5000,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:37001/api/rojo",
+				rojoInfo("repo")
+			);
+
+			const servePlan = await plan();
+
+			expect(servePlan.isIdle).toBe(true);
+			expect(servePlan.target.address.port).toBe(37001);
+		});
+
+		it("should start another server for the project when a port is given", async () => {
+			processes.running.add(5000);
+			await memFs.writeFile(
+				...recordFile(37001, "repo", "/repo/default.project.json", {
+					owner: 5000,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:37001/api/rojo",
+				rojoInfo("repo")
+			);
+
+			const servePlan = await plan({ serverArgs: ["--port", "37002"] });
+
+			expect(servePlan.isIdle).toBe(false);
+			expect(servePlan.target.address.port).toBe(37002);
+		});
+
+		it.each([
+			["another project file", "/other/default.project.json", 5000],
+			["a serve that ended", "/repo/default.project.json", 5001],
+			["no serve", "/repo/default.project.json", undefined],
+		])(
+			"should not take a server recorded for %s as this project's",
+			async (_, projectFile, owner) => {
+				processes.running.add(5000);
+				await memFs.writeFile(
+					...recordFile(37001, "repo", projectFile, { owner })
+				);
+				requests.answer(
+					"http://127.0.0.1:37001/api/rojo",
+					rojoInfo("repo")
+				);
+
+				const servePlan = await plan();
+
+				expect(servePlan.isIdle).toBe(false);
+				expect(servePlan.target.address.port).toBe(34872);
+			}
+		);
 
 		it("should refuse a server whose serve ended when the process that leads it is gone too", async () => {
 			await memFs.writeFile(
@@ -617,7 +697,7 @@ describe("CoreServeService", () => {
 			changes = [];
 			session.onDidChange((change: ServeChangeEvent) =>
 				changes.push(
-					`${change.kind} ${change.target.config.label}${change.kind === "retired" ? ` (${change.reason})` : change.kind === "refused" ? `: ${change.diagnostic.message}` : ""}`
+					`${change.kind} ${change.target.config.label}${change.kind === "retired" ? ` (${change.reason})` : change.kind === "refused" ? `: ${change.diagnostic.message}` : change.kind === "orphan" ? ` (process ${change.pid} of ${change.owner})${change.error ? `: ${change.error}` : ""}` : ""}`
 				)
 			);
 			const started = session.start();
@@ -853,9 +933,8 @@ describe("CoreServeService", () => {
 
 			expect(processes.terminatedTrees).toEqual([5001]);
 			expect(processes.spawned).toHaveLength(1);
-			expect(said).toEqual([
-				"warning: Ended the Rojo (process 5001) that a rogen serve (process 5000) left running when it stopped without ending it.",
-			]);
+			expect(said).toEqual([]);
+			expect(changes).toEqual(["orphan repo (process 5001 of 5000)"]);
 		});
 
 		it("should leave a server alone that went before the serve got to end it", async () => {
@@ -903,8 +982,9 @@ describe("CoreServeService", () => {
 
 			await start();
 
-			expect(said).toEqual([
-				"warning: Couldn't end the Rojo (process 5001) that a rogen serve (process 5000) left running: EINVAL",
+			expect(said).toEqual([]);
+			expect(changes).toEqual([
+				"orphan repo (process 5001 of 5000): EINVAL",
 			]);
 			expect(processes.spawned).toHaveLength(1);
 		});
@@ -949,6 +1029,7 @@ describe("CoreServeService", () => {
 			await start();
 
 			processes.spawned[0].exit({ code: 1, signal: null });
+			await settle();
 
 			expect(stops).toHaveLength(1);
 			expect(stops[0].interrupted).toBe(false);
@@ -963,11 +1044,115 @@ describe("CoreServeService", () => {
 
 			processes.spawned[0].print("[ERROR librojo] Port in use");
 			processes.spawned[0].exit({ code: 1, signal: null });
+			await settle();
 
 			expect(said).toEqual(["error: Port in use", "stopped"]);
 			expect(stops[0].failure?.message).toBe(
 				"Rojo stopped serving repo with exit code 1; see what it said above."
 			);
+		});
+
+		it("should stand down without a failure when another serve started a server for the project on its port first", async () => {
+			await start();
+			processes.running.add(5000);
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+
+			processes.spawned[0].exit({ code: 1, signal: null });
+			await settle();
+
+			expect(stops).toHaveLength(1);
+			expect(stops[0].failure).toBeUndefined();
+			expect(stops[0].servedBy).toEqual({
+				project: "repo",
+				version: "7.7.1",
+				session: "s1",
+			});
+		});
+
+		it("should wait for the record of a server that answers for the project when its own couldn't start", async () => {
+			await start();
+			processes.running.add(5000);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+
+			processes.spawned[0].exit({ code: 1, signal: null });
+			await jest.advanceTimersByTimeAsync(300);
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+				})
+			);
+			await settle();
+
+			expect(stops[0].servedBy?.project).toBe("repo");
+		});
+
+		it("should stand down, not restart, when the server it took for its own was another serve's that started first", async () => {
+			await start();
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+			await settle();
+
+			processes.spawned[0].print(
+				"[ERROR librojo] Address already in use"
+			);
+			processes.spawned[0].exit({ code: 1, signal: null });
+			await jest.advanceTimersByTimeAsync(300);
+			processes.running.add(5000);
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+				})
+			);
+			await settle();
+
+			expect(processes.spawned).toHaveLength(1);
+			expect(stops).toHaveLength(1);
+			expect(stops[0].failure).toBeUndefined();
+			expect(stops[0].servedBy?.session).toBe("s1");
+		});
+
+		it("should stop waiting for another serve's record, and report nothing, once it is stopped", async () => {
+			await start();
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+			processes.spawned[0].exit({ code: 1, signal: null });
+			await jest.advanceTimersByTimeAsync(300);
+
+			await session.stop();
+			const asked = requests.requested.length;
+			await jest.advanceTimersByTimeAsync(6_000);
+
+			expect(stops).toEqual([]);
+			expect(requests.requested).toHaveLength(asked);
+		});
+
+		it("should fail as before when its server couldn't start and the port holds no server of the project", async () => {
+			await start();
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("other")
+			);
+
+			processes.spawned[0].exit({ code: 1, signal: null });
+			await settle();
+
+			expect(stops[0].failure?.code).toBe("serve.serverExited");
+			expect(stops[0].servedBy).toBeUndefined();
 		});
 
 		describe("as its configs change", () => {
@@ -1238,6 +1423,38 @@ describe("CoreServeService", () => {
 
 				expect(spawnedProjects()).toEqual(["default.project.json"]);
 				expect(changes).toEqual([]);
+			});
+
+			it("should know its server again after a crash once the config renames the project", async () => {
+				await start();
+				const restarts: ServerRestartEvent[] = [];
+				session.onDidRestart((restart) => restarts.push(restart));
+				requests.answer(
+					"http://127.0.0.1:34872/api/rojo",
+					rojoInfo("repo")
+				);
+				await settle();
+
+				await memFs.writeFile(
+					"/repo/default.rogen.json",
+					config({ name: "Game" })
+				);
+				await settle();
+				processes.spawned[0].printError(
+					"[ERROR rojo] Rojo crashed! You are running Rojo 7.7.1.\n"
+				);
+				requests.responses.delete("http://127.0.0.1:34872/api/rojo");
+				processes.spawned[0].exit({ code: 1, signal: null });
+				await jest.advanceTimersByTimeAsync(0);
+				requests.answer("http://127.0.0.1:34872/api/rojo", {
+					...rojoInfo("Game"),
+					sessionId: "s2",
+				});
+				await settle();
+
+				expect(restarts.map(({ info }) => info.project)).toEqual([
+					"Game",
+				]);
 			});
 
 			it("should serve only the named configs, not one added beside them", async () => {

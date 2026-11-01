@@ -477,7 +477,7 @@ describeWithRojo("end to end watch", () => {
 		});
 	}, 30_000);
 
-	it("should not mind a config of another name that comes to the folder", async () => {
+	it("should write a config of another name that comes to the folder", async () => {
 		const running = start();
 		await eventually(async () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
@@ -495,11 +495,11 @@ describeWithRojo("end to end watch", () => {
 
 		await eventually(async () => {
 			expect(await tree()).toContain("<- src/B.server.luau");
+			expect(running.output).toContain("arena.rogen.json added");
+			expect(
+				fs.existsSync(path.join(project.dir, "arena.project.json"))
+			).toBe(true);
 		});
-		expect(running.output).not.toContain("arena.rogen.json");
-		expect(
-			fs.existsSync(path.join(project.dir, "arena.project.json"))
-		).toBe(false);
 	}, 30_000);
 
 	it("should pick up a source path that appears later", async () => {

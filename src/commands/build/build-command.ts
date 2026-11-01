@@ -51,7 +51,8 @@ const buildLineShape = S.union(
 	watchLineShapes.write,
 	S.object({ rojo: buildRojoEntryShape }),
 	watchLineShapes.notice,
-	watchLineShapes.error
+	watchLineShapes.error,
+	watchLineShapes.diagnostics
 );
 
 const OutputOption = {

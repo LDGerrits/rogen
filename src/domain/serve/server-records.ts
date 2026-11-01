@@ -1,5 +1,6 @@
 import path from "path";
 import { isObject } from "../../base/objects.js";
+import { samePath } from "../../base/path.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ServerInfo } from "../runner/rojo-server.js";
 import { ServeAddress } from "./serve.js";
@@ -71,6 +72,26 @@ export class ServerRecords {
 			: undefined;
 	}
 
+	/** Every record whose project file is `projectFile`, whatever port it is on. */
+	async recordsFor(projectFile: string): Promise<ServerRecord[]> {
+		let names: string[];
+		try {
+			names = (await this.fileSystemService.readDirectory(this.dir)).map(
+				([name]) => name
+			);
+		} catch {
+			return [];
+		}
+		const records: ServerRecord[] = [];
+		for (const name of names) {
+			if (!name.endsWith(".json")) continue;
+			const record = await this.read(path.join(this.dir, name));
+			if (record && samePath(record.projectFile, projectFile))
+				records.push(record);
+		}
+		return records;
+	}
+
 	async write(
 		address: ServeAddress,
 		info: ServerInfo,
@@ -91,8 +112,12 @@ export class ServerRecords {
 		);
 	}
 
-	async remove(address: ServeAddress): Promise<void> {
-		await this.fileSystemService.delete(this.fileOf(address.port));
+	/** Forgets the record of `address` when it is the one this serve wrote for the server that answered with `info`, leaving one another serve wrote since. */
+	async remove(address: ServeAddress, info: ServerInfo): Promise<void> {
+		const file = this.fileOf(address.port);
+		const record = await this.read(file);
+		if (record?.owner === this.owner && record.session === info.session)
+			await this.fileSystemService.delete(file);
 	}
 
 	private async read(file: string): Promise<ServerRecord | undefined> {

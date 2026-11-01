@@ -1,4 +1,4 @@
-import { DeferredPromise, Sequencer } from "../../base/async.js";
+import { DeferredPromise, Sequencer, timeout } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
@@ -9,6 +9,7 @@ import { isWritten } from "../write/write.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoCompatibility } from "../runner/rojo-compatibility.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
+import { ServerInfo } from "../runner/rojo-server.js";
 import { WatchSession, WatchUpdate } from "../watch/watch-service.js";
 import {
 	ServeChangeEvent,
@@ -26,6 +27,10 @@ import { ServePorts } from "./serve-ports.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
 import { StartedServer } from "./started-server.js";
+
+const RECORD_POLL_MS = 250;
+
+const RECORD_WAIT_MS = 5_000;
 
 /** Watches the plan's configs and keeps a started server for each config to serve. */
 export class CoreServeSession
@@ -81,7 +86,9 @@ export class CoreServeSession
 	private readonly firstUpdate = new DeferredPromise<
 		WatchUpdate | Error | undefined
 	>();
+	private readonly exits = new Sequencer();
 	private stopping = false;
+	private readonly halted = new AbortController();
 	private stopped: Promise<void> | undefined;
 
 	constructor(
@@ -172,6 +179,7 @@ export class CoreServeSession
 
 	stop(): Promise<void> {
 		this.stopping = true;
+		this.halted.abort();
 		this.stopped ??= (async () => {
 			if (!this.firstUpdate.isSettled)
 				this.firstUpdate.complete(undefined);
@@ -183,6 +191,7 @@ export class CoreServeSession
 			await Promise.allSettled(
 				servers.map((server) => server.unrecord())
 			);
+			await this.exits.queue(async () => undefined);
 			await this.watch.stop();
 		})();
 		return this.stopped;
@@ -226,7 +235,10 @@ export class CoreServeSession
 		const target = this.ports.targetOf(config);
 		const address = target.address.toString();
 		const started = this.servers.get(config.id);
-		if (started?.target.address.toString() === address) return;
+		if (started?.target.address.toString() === address) {
+			started.follow(target);
+			return;
+		}
 		if (!this.writtenConfigs.has(config.id)) return;
 
 		const prior = this.declined.get(config.id);
@@ -279,14 +291,12 @@ export class CoreServeSession
 		kind: "refused" | "elsewhere"
 	): Promise<boolean> {
 		const state = await this.probe.probe(target.address);
-		const ownProject =
-			state.kind === "serving" && state.info.project === target.project;
-		if (kind === "refused") return state.kind !== "free" && !ownProject;
-		return (
-			state.kind === "serving" &&
-			ownProject &&
-			!(await this.ports.ownerEndedFor(target, state.info))
-		);
+		const recorded =
+			state.kind === "serving"
+				? await this.ports.recordFor(target, state.info)
+				: undefined;
+		if (kind === "refused") return state.kind !== "free" && !recorded;
+		return recorded !== undefined && !this.ports.ownerEnded(recorded);
 	}
 
 	private async retire(
@@ -312,22 +322,63 @@ export class CoreServeSession
 		const state = await this.probe.probe(target.address);
 		if (state.kind !== "serving" || state.info.session !== orphan.session)
 			return;
-		const left = `the Rojo (process ${orphan.pid}) that a rogen serve (process ${orphan.owner}) left running`;
-		let text = `Ended ${left} when it stopped without ending it.`;
+		let error: string | undefined;
 		try {
 			await this.rojoRunner.terminateTree(orphan.pid);
-		} catch (error) {
-			text = `Couldn't end ${left}: ${ErrorUtils.fromUnknown(error).message}`;
+		} catch (thrown) {
+			error = ErrorUtils.fromUnknown(thrown).message;
 		}
-		this._onDidOutput.fire({
+		this._onDidChange.fire({
+			kind: "orphan",
 			target,
-			message: { severity: "warning", text },
+			pid: orphan.pid,
+			owner: orphan.owner,
+			...(error !== undefined && { error }),
 		});
+	}
+
+	/** Reports the stop, as a stand-down when the server failed to start because another serve's took its address first; that wait ends with the session. */
+	private stoppedServer(stop: ServerExitEvent, served: boolean): void {
+		if (!stop.failure || stop.crashed || served) {
+			this._onDidExit.fire(stop);
+			return;
+		}
+		this.exits
+			.queue(async () => {
+				const servedBy = await this.waitForAnotherServe(stop.target);
+				if (this.stopping) return;
+				const { target, exit } = stop;
+				this._onDidExit.fire(
+					servedBy
+						? { target, exit, interrupted: false, servedBy }
+						: stop
+				);
+			})
+			.catch((error) =>
+				this._onDidError.fire(ErrorUtils.fromUnknown(error))
+			);
+	}
+
+	/** The server another `rogen serve` started on the target's address first, which kept this one from starting; waits a little for its record, until the session stops. */
+	private async waitForAnotherServe(
+		target: ServeTarget
+	): Promise<ServerInfo | undefined> {
+		const { signal } = this.halted;
+		for (
+			let waited = 0;
+			waited <= RECORD_WAIT_MS && !signal.aborted;
+			waited += RECORD_POLL_MS
+		) {
+			const served = await this.ports.anotherServeAt(target);
+			if (served !== "pending") return served;
+			await timeout(RECORD_POLL_MS, signal);
+		}
+		return undefined;
 	}
 
 	private launch(target: ServeTarget): void {
 		if (this.stopping) return;
-		const server = new StartedServer(
+		const server: StartedServer = new StartedServer(
 			target,
 			this.plan,
 			this.rojoRunner,
@@ -337,7 +388,7 @@ export class CoreServeSession
 				served: (serving) => this._onDidServe.fire(serving),
 				said: (said) => this._onDidOutput.fire(said),
 				connection: (change) => this._onDidConnect.fire(change),
-				stopped: (stop) => this._onDidExit.fire(stop),
+				stopped: (stop) => this.stoppedServer(stop, server.hasServed),
 				failed: (error) => this._onDidError.fire(error),
 				restarted: (serving) => this._onDidRestart.fire(serving),
 			},

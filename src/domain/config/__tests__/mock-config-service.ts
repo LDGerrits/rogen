@@ -138,6 +138,10 @@ export class MockConfigService implements ConfigService {
 		return ok(new MockConfigSelection(this.entries, this.home));
 	}
 
+	async selectHere(): Promise<ReloadableSelection> {
+		return new MockConfigSelection(this.entries, this.home);
+	}
+
 	async namedConfigs(): Promise<string[]> {
 		return [];
 	}

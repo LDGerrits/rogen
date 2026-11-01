@@ -58,6 +58,20 @@ describe("DiskFileSystemService", () => {
 		});
 	});
 
+	describe("copyFile", () => {
+		it("should leave a copy of a read-only file writable", async () => {
+			const from = path.join(dir, "a.luau");
+			const to = path.join(dir, "m/a.luau");
+			await disk.writeFile(from, "return 1");
+			fs.chmodSync(from, 0o444);
+
+			await disk.copyFile(from, to);
+			await disk.writeFile(to, "return 2");
+
+			expect(await disk.readFile(to)).toBe("return 2");
+		});
+	});
+
 	describe("readDirectory", () => {
 		const canDenyAccess =
 			process.platform !== "win32" && process.getuid?.() !== 0;

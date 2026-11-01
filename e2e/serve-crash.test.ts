@@ -12,7 +12,7 @@ import {
 } from "./harness.js";
 import { freePort, projectFiles, useServeProject } from "./serve-fixtures.js";
 
-/** A Rojo that serves its project for a moment, then crashes as Rojo 7.7.1 does on a deleted folder. */
+/** A Rojo that serves its project for a moment, then crashes as Rojo 7.7.1 does on a deleted folder; started again, it crashes before it serves. */
 const CRASHING_ROJO = `#!/usr/bin/env node
 const fs = require("fs");
 const http = require("http");
@@ -21,6 +21,18 @@ if (args[0] === "--version") {
 	console.log("Rojo 7.7.1");
 	process.exit(0);
 }
+const crash = () => {
+	for (const line of [
+		"Rojo crashed! You are running Rojo 7.7.1.",
+		"Details: called \`Result::unwrap()\` on an \`Err\` value",
+		"in file src/change_processor.rs on line 179",
+	])
+		console.error("[ERROR rojo] " + line);
+	process.exit(1);
+};
+const crashed = __filename + ".crashed";
+if (fs.existsSync(crashed)) crash();
+fs.writeFileSync(crashed, "");
 const port = Number(args[args.indexOf("--port") + 1]);
 const project = JSON.parse(fs.readFileSync(args[1], "utf8")).name;
 http
@@ -29,15 +41,7 @@ http
 		response.end(JSON.stringify({ projectName: project, serverVersion: "7.7.1", sessionId: String(process.pid) }));
 	})
 	.listen(port, "127.0.0.1");
-setTimeout(() => {
-	for (const line of [
-		"Rojo crashed! You are running Rojo 7.7.1.",
-		"Details: called \`Result::unwrap()\` on an \`Err\` value",
-		"in file src/change_processor.rs on line 179",
-	])
-		console.error("[ERROR rojo] " + line);
-	process.exit(1);
-}, 1500);
+setTimeout(crash, 1500);
 `;
 
 async function servedNames(port: number): Promise<string[]> {
@@ -86,7 +90,7 @@ describeOnUnix("end to end serve with a Rojo that keeps crashing", () => {
 		fs.rmSync(bin, { recursive: true, force: true });
 	});
 
-	it("should restart it once, then give up with its crash text and exit 1", async () => {
+	it("should restart it once, then give up with its crash text and exit 1 when the new one crashes before it serves", async () => {
 		serving = new RunningRogen(
 			bundle.cli,
 			project.dir,
@@ -97,9 +101,6 @@ describeOnUnix("end to end serve with a Rojo that keeps crashing", () => {
 		);
 
 		expect(await serving.exited).toBe(1);
-		expect(serving.output).toContain(
-			"Rojo crashed, so Rogen restarted it on localhost:"
-		);
 		expect(serving.output).toContain(
 			[
 				"error: Rojo crashed again right after a restart, so Rogen stopped serving Game: (rojo.crashed)",

@@ -229,6 +229,12 @@ registerCommand(
 				]);
 				await session.stop();
 				if (!stop) log.shutdown(session.target);
+				if (stop?.servedBy) {
+					log.end(
+						"Another rogen serve started serving this project first, so this one stops."
+					);
+					return ok(undefined);
+				}
 				if (!stop?.failure) {
 					log.end("Stopped serving.");
 					return stop ? ok(undefined) : this.stoppedBy(lifecycle);

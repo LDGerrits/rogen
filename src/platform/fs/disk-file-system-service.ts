@@ -141,7 +141,8 @@ export class DiskFileSystemService implements FileSystemService {
 			await this.createDirectory(path.dirname(to));
 			await fs.promises.copyFile(from, to);
 		}
-		const { atime, mtime } = await fs.promises.stat(from);
+		const { atime, mtime, mode } = await fs.promises.stat(from);
+		if ((mode & 0o200) === 0) await fs.promises.chmod(to, mode | 0o200);
 		await fs.promises.utimes(to, atime, mtime);
 	}
 

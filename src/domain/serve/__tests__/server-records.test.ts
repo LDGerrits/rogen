@@ -58,13 +58,59 @@ describe("ServerRecords", () => {
 		});
 	});
 
+	describe("recordsFor", () => {
+		it("should give the records of a project file on every port", async () => {
+			await records.write(address, info, served);
+			await records.write(
+				new ServeAddress("127.0.0.1", 37001),
+				info,
+				served
+			);
+			await records.write(new ServeAddress("127.0.0.1", 37002), info, {
+				projectFile: "/other/default.project.json",
+			});
+			await fs.writeFile("/tmp/rogen-serve/37003.json", "{");
+
+			expect(
+				(await records.recordsFor("/repo/default.project.json"))
+					.map(({ port }) => port)
+					.sort()
+			).toEqual([34872, 37001]);
+		});
+
+		it("should give none when nothing was recorded", async () => {
+			expect(
+				await records.recordsFor("/repo/default.project.json")
+			).toEqual([]);
+		});
+	});
+
 	describe("remove", () => {
-		it("should forget a record", async () => {
+		it("should forget a record it wrote for the session", async () => {
 			await records.write(address, info, served);
 
-			await records.remove(address);
+			await records.remove(address, info);
 
 			expect(await records.recordOf(address, info)).toBeUndefined();
 		});
+
+		it.each([
+			["another serve", 5000, info],
+			["another session", 4242, { ...info, session: "s2" }],
+		])(
+			"should leave a record that %s wrote since",
+			async (_, owner, written) => {
+				await records.write(address, info, served);
+				await new ServerRecords(fs, "/tmp", owner).write(
+					address,
+					written,
+					served
+				);
+
+				await records.remove(address, info);
+
+				expect(await records.recordOf(address, written)).toBeDefined();
+			}
+		);
 	});
 });

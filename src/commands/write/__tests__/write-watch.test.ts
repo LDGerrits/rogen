@@ -308,7 +308,7 @@ describe("watch", () => {
 			expect(logService.texts("diagnosticError")).toEqual([]);
 		});
 
-		it("should give up with rojo.crashed when the restarted Rojo crashes before it builds", async () => {
+		it("should print rojo.crashed and exit 1 when Rogen gives up on Rojo's watch", async () => {
 			const running = startWatch([], { output: "game.rbxl" });
 			await settle();
 			processes.spawned[0].print("Built project to game.rbxl\n");
@@ -354,6 +354,26 @@ describe("watch", () => {
 				});
 			}
 		);
+
+		it("should print the diagnostics of a Rojo that stops on its own with --json, not their text", async () => {
+			const running = startWatch([], { output: "game.rbxl", json: true });
+			await settle();
+
+			await finishRojo(0, 1);
+			await running;
+
+			const lines = logService
+				.texts("print")
+				.map((line) => JSON.parse(line));
+			expect(lines.at(-1)).toEqual({
+				diagnostics: [
+					expect.objectContaining({
+						code: "rojo.commandFailed",
+						message: "Rojo stopped watching repo (exit code 1).",
+					}),
+				],
+			});
+		});
 
 		it("should print a line for each Rojo build with --json", async () => {
 			void startWatch([], { output: "game.rbxl", json: true });

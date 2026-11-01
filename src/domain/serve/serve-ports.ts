@@ -42,6 +42,29 @@ export class ServePorts {
 		return this.port.isErr() ? this.port.error : undefined;
 	}
 
+	/** The server a `rogen serve` that still runs started for `config`, on whatever port, when no `--port` was given to pick one; a record that names no serve isn't one. */
+	async runningServeOf(
+		config: ResolvedConfig
+	): Promise<ServeTarget | undefined> {
+		if (this.port.unwrapOr(undefined) !== undefined) return undefined;
+		for (const recorded of await this.records.recordsFor(
+			config.projectFile
+		)) {
+			if (!this.ownerRuns(recorded)) continue;
+			const target = {
+				...this.targetOf(config),
+				address: new ServeAddress(recorded.host, recorded.port),
+			};
+			const state = await this.probe.probe(target.address);
+			if (
+				state.kind === "serving" &&
+				(await this.recordFor(target, state.info))
+			)
+				return { ...target, servedBy: state.info };
+		}
+		return undefined;
+	}
+
 	/** The address the server will listen on: the flags given to serve, then the project file, then the server's own defaults. */
 	targetOf(config: ResolvedConfig): ServeTarget {
 		const { project } = config;
@@ -57,42 +80,61 @@ export class ServePorts {
 		};
 	}
 
-	/** Whether the server on `target`'s port was recorded for its project file by a `rogen serve` that has ended. */
-	async ownerEndedFor(
+	/** The record of the server on `target`'s port when a `rogen serve` started it for `target`'s project file, whatever name the project has now. */
+	async recordFor(
 		target: ServeTarget,
 		holder: ServerInfo
-	): Promise<boolean> {
+	): Promise<ServerRecord | undefined> {
 		const recorded = await this.records.recordOf(target.address, holder);
-		return (
-			recorded !== undefined &&
-			samePath(recorded.projectFile, target.config.projectFile) &&
-			this.ownerEnded(recorded)
-		);
+		return recorded &&
+			samePath(recorded.projectFile, target.config.projectFile)
+			? recorded
+			: undefined;
+	}
+
+	/** The server on `target`'s port when a `rogen serve` that still runs recorded it for `target`'s project file; `pending` when it answers for the project but has no record yet. */
+	async anotherServeAt(
+		target: ServeTarget
+	): Promise<ServerInfo | "pending" | undefined> {
+		const state = await this.probe.probe(target.address);
+		if (state.kind !== "serving") return undefined;
+		const recorded = await this.recordFor(target, state.info);
+		if (recorded) return this.ownerEnded(recorded) ? undefined : state.info;
+		return state.info.project === target.project ? "pending" : undefined;
 	}
 
 	/** `target` once its port is free, or with `servedBy` set when its project is already served there; else why it can't be served. */
 	async check(target: ServeTarget): Promise<Result<ServeTarget, Diagnostic>> {
 		const state = await this.probe.probe(target.address);
 		if (state.kind === "free") return ok(target);
-		const holder = state.kind === "serving" ? state.info : undefined;
-		const recorded =
-			holder && (await this.records.recordOf(target.address, holder));
-		if (
-			holder?.project === target.project &&
-			recorded &&
-			samePath(recorded.projectFile, target.config.projectFile)
-		) {
-			const served = this.targetServedBy(target, holder, recorded);
+		if (state.kind !== "serving")
+			return err(await this.portTaken(target, undefined, undefined));
+		const holder = state.info;
+		const own = await this.recordFor(target, holder);
+		if (own) {
+			const served = this.targetServedBy(target, holder, own);
 			if (served) return ok(served);
 			return err(await this.portTaken(target, holder, undefined));
 		}
-		return err(await this.portTaken(target, holder, recorded));
+		return err(
+			await this.portTaken(
+				target,
+				holder,
+				await this.records.recordOf(target.address, holder)
+			)
+		);
 	}
 
 	/** Whether the `rogen serve` that started the recorded server has ended; a record without an owner can't tell. */
 	ownerEnded(record: ServerRecord): boolean {
 		return (
 			record.owner !== undefined && !this.runner.isRunning(record.owner)
+		);
+	}
+
+	private ownerRuns(record: ServerRecord): boolean {
+		return (
+			record.owner !== undefined && this.runner.isRunning(record.owner)
 		);
 	}
 

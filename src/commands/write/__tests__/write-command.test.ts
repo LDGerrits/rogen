@@ -362,5 +362,104 @@ describe("write command", () => {
 			expect(await listed("lobby.project.json")).toEqual(["A", "B"]);
 			expect(log.entries[0].text).toMatch(/^rogen write --watch/);
 		});
+
+		it("should write a config added to the folder, and stop writing one removed from it", async () => {
+			const { run } = commandHarness({
+				fs,
+				log,
+				lifecycle,
+				watcher,
+				config: new CoreConfigService(
+					fs,
+					new MockEnvironmentService("/repo")
+				),
+			});
+			void run("write", {
+				positionals: [],
+				options: { watch: true, json: true },
+			});
+			await settle();
+
+			await fs.writeFile(abs("arena.rogen.json"), named("Arena"));
+			await settle();
+			await fs.delete(abs("lobby.rogen.json"));
+			await settle();
+
+			const printed = log
+				.texts("print")
+				.map((text) => JSON.parse(text))
+				.filter((line) => "notice" in line);
+			expect(printed).toEqual([
+				{ notice: { kind: "added", config: "arena.rogen.json" } },
+				{ notice: { kind: "removed", config: "lobby.rogen.json" } },
+			]);
+			expect(await fs.exists(abs("arena.project.json"))).toBe(true);
+		});
+
+		it("should watch the default config it is given from another folder", async () => {
+			await fs.writeFile(
+				abs("places/lobby/default.rogen.json"),
+				JSON.stringify({
+					name: "Lobby",
+					sourcePaths: ["../../src"],
+					routes: { "*": "ReplicatedStorage" },
+				})
+			);
+			const { run } = commandHarness({
+				fs,
+				log,
+				lifecycle,
+				watcher,
+				config: new CoreConfigService(
+					fs,
+					new MockEnvironmentService("/repo")
+				),
+			});
+			void run("write", {
+				positionals: ["places/lobby/default.rogen.json"],
+				options: { watch: true },
+			});
+			await settle();
+
+			expect(
+				await fs.exists(abs("places/lobby/default.project.json"))
+			).toBe(true);
+		});
+
+		it("should write a config added to a folder that held only a plain project file, and leave that file alone", async () => {
+			await fs.delete(abs("game.rogen.json"));
+			await fs.delete(abs("lobby.rogen.json"));
+			const plain = JSON.stringify({ name: "Plain", tree: {} });
+			await fs.writeFile(abs("default.project.json"), plain);
+			const { run } = commandHarness({
+				fs,
+				log,
+				lifecycle,
+				watcher,
+				config: new CoreConfigService(
+					fs,
+					new MockEnvironmentService("/repo")
+				),
+			});
+			void run("write", {
+				positionals: [],
+				options: { watch: true, json: true },
+			});
+			await settle();
+
+			await fs.writeFile(abs("arena.rogen.json"), named("Arena"));
+			await settle();
+
+			expect(
+				log
+					.texts("print")
+					.map((text) => JSON.parse(text))
+					.filter((line) => "notice" in line)
+			).toEqual([
+				{ notice: { kind: "added", config: "arena.rogen.json" } },
+			]);
+			expect(await fs.exists(abs("arena.project.json"))).toBe(true);
+			expect(await fs.readFile(abs("default.project.json"))).toBe(plain);
+		});
 	});
 });

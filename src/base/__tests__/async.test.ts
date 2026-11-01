@@ -1,5 +1,10 @@
 import { jest } from "@jest/globals";
-import { DeferredPromise, RunOnceScheduler, Sequencer } from "../async.js";
+import {
+	DeferredPromise,
+	RunOnceScheduler,
+	Sequencer,
+	timeout,
+} from "../async.js";
 
 describe("Async Utilities", () => {
 	describe("Sequencer", () => {
@@ -141,6 +146,43 @@ describe("Async Utilities", () => {
 
 			expect(runner).not.toHaveBeenCalled();
 			expect(scheduler.isScheduled).toBe(false);
+		});
+	});
+
+	describe("timeout", () => {
+		beforeEach(() => jest.useFakeTimers());
+		afterEach(() => jest.useRealTimers());
+
+		it("should resolve after the time", async () => {
+			const done = jest.fn();
+			void timeout(100).then(done);
+
+			await jest.advanceTimersByTimeAsync(99);
+			expect(done).not.toHaveBeenCalled();
+			await jest.advanceTimersByTimeAsync(1);
+
+			expect(done).toHaveBeenCalled();
+		});
+
+		it("should resolve at once and leave no timer when its signal aborts", async () => {
+			const stop = new AbortController();
+			const done = jest.fn();
+			void timeout(10_000, stop.signal).then(done);
+
+			stop.abort();
+			await jest.advanceTimersByTimeAsync(0);
+
+			expect(done).toHaveBeenCalled();
+			expect(jest.getTimerCount()).toBe(0);
+		});
+
+		it("should resolve at once when its signal has aborted already", async () => {
+			const stop = new AbortController();
+			stop.abort();
+
+			await timeout(10_000, stop.signal);
+
+			expect(jest.getTimerCount()).toBe(0);
 		});
 	});
 });
