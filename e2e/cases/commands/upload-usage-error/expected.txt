@@ -5,7 +5,6 @@ stdout:
 stderr:
   error: Rojo refused the command line:
     Invalid value "abc" for '--asset_id <ASSET_ID>': invalid digit found in string
-    For more information try --help
 
 written:
   default.project.json
