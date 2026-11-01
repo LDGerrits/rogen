@@ -2,16 +2,31 @@ import path from "path";
 import { containsPosix, joinPosix } from "../../base/path.js";
 import {
 	FileReader,
+	FileType,
 	isDirectoryType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
+import { DEFAULT_SOURCE_PATH } from "../config/config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import { DetectedWorkspace } from "../toolchain/toolchain.js";
+import { ROJO_TEMPLATE_NODES } from "./starter-project.js";
 
 export interface DirectoryLayout {
 	readonly codeFolders: readonly string[];
+	/** The code folders with an init module at their top, which Rojo reads as one module. */
+	readonly moduleFolders?: readonly string[];
+	/** The folders of Rojo's place template that hold code, such as `src/server`, when `src` holds code only in them. */
+	readonly templateFolders?: readonly string[];
 }
+
+const TEMPLATE_FOLDERS = Object.keys(ROJO_TEMPLATE_NODES);
+
+/** The init files Rojo reads as a module, which a model's folder is. */
+const MODULE_INITS = ["init.luau", "init.lua"];
+
+const isScript = (name: string): boolean =>
+	new RojoFile(name, SyncRules.DEFAULT).kind === "script";
 
 const isHiddenOrVendored = (name: string): boolean =>
 	name.startsWith(".") || name === "node_modules";
@@ -30,7 +45,62 @@ export class CodeFinder {
 				({ reservedFolders }) => reservedFolders
 			),
 		]);
-		return { codeFolders };
+		const holdsModule = await Promise.all(
+			codeFolders.map((folder) =>
+				this.holdsModule(path.join(cwd, folder))
+			)
+		);
+		return {
+			codeFolders,
+			moduleFolders: codeFolders.filter((_, at) => holdsModule[at]),
+			templateFolders: codeFolders.includes(DEFAULT_SOURCE_PATH)
+				? await this.templateFoldersIn(cwd)
+				: [],
+		};
+	}
+
+	private async holdsModule(dir: string): Promise<boolean> {
+		const entries = await this.entriesOf(dir);
+		return entries.some(
+			([name, type]) => isFileType(type) && MODULE_INITS.includes(name)
+		);
+	}
+
+	/** The folders of Rojo's template in `src`, when they hold all of its code. */
+	private async templateFoldersIn(cwd: string): Promise<string[]> {
+		const entries = await this.entriesOf(
+			path.join(cwd, DEFAULT_SOURCE_PATH)
+		);
+		const visible = entries.filter(([name]) => !isHiddenOrVendored(name));
+		if (visible.some(([name, type]) => isFileType(type) && isScript(name)))
+			return [];
+		const folders = visible
+			.filter(([, type]) => isDirectoryType(type))
+			.map(([name]) => name);
+		const holding = await Promise.all(
+			folders.map((name) =>
+				this.holdsCode(path.join(cwd, DEFAULT_SOURCE_PATH, name))
+			)
+		);
+		const code = folders.filter((_, at) => holding[at]);
+		if (
+			code.length === 0 ||
+			!code.every((name) => TEMPLATE_FOLDERS.includes(name.toLowerCase()))
+		)
+			return [];
+		return TEMPLATE_FOLDERS.flatMap((template) =>
+			code
+				.filter((name) => name.toLowerCase() === template)
+				.map((name) => joinPosix(DEFAULT_SOURCE_PATH, name))
+		);
+	}
+
+	private async entriesOf(dir: string): Promise<[string, FileType][]> {
+		try {
+			return await this.fileReader.readDirectory(dir);
+		} catch {
+			return [];
+		}
 	}
 
 	async holdsCode(dir: string): Promise<boolean> {
@@ -41,13 +111,7 @@ export class CodeFinder {
 			return false;
 		}
 		const visible = entries.filter(([name]) => !isHiddenOrVendored(name));
-		if (
-			visible.some(
-				([name, type]) =>
-					isFileType(type) &&
-					new RojoFile(name, SyncRules.DEFAULT).kind === "script"
-			)
-		)
+		if (visible.some(([name, type]) => isFileType(type) && isScript(name)))
 			return true;
 		for (const [name, type] of visible)
 			if (
@@ -96,11 +160,7 @@ export class CodeFinder {
 					);
 				else if (await this.holdsCode(path.join(cwd, relative)))
 					found.push(relative);
-			} else if (
-				isFileType(type) &&
-				new RojoFile(name, SyncRules.DEFAULT).kind === "script"
-			)
-				found.push(relative);
+			} else if (isFileType(type) && isScript(name)) found.push(relative);
 		}
 		return found.sort();
 	}

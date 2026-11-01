@@ -77,6 +77,19 @@ export class InitDirectory {
 			);
 	}
 
+	/** The folder a model mounts where the code is one module: `src`, else the only code folder, when an init module is at its top. */
+	get moduleRoot(): string | undefined {
+		const { codeFolders, moduleFolders = [] } = this.layout;
+		const root = this.has(DEFAULT_SOURCE_PATH)
+			? DEFAULT_SOURCE_PATH
+			: codeFolders.length === 1
+				? codeFolders[0]
+				: undefined;
+		return root !== undefined && moduleFolders.includes(root)
+			? root
+			: undefined;
+	}
+
 	/** The first that applies: the language's own config, `src`, the only code folder unless a route is named after it, else `src`. */
 	defaultSourcePath(language: Language): string {
 		const configured = language.configuredSourcePath();

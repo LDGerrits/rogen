@@ -74,12 +74,17 @@ export class InitQuestions {
 		return value;
 	}
 
-	/** The template of a new project; it is never asked, since Rojo's `init` doesn't ask it. */
-	kind(): InitKind {
+	/** The template of a new project; it is never asked, since Rojo's `init` doesn't ask it. A folder whose code is one module, with no project file to lift, is a model. */
+	kind(directory: InitDirectory): InitKind {
 		const given = this.choices.kind;
 		if (given !== undefined) return given;
-		if (!this.interactive) this.decide("kind", "place", "--kind");
-		return "place";
+		const kind =
+			directory.moduleRoot !== undefined &&
+			!directory.hasHandWrittenProject
+				? "model"
+				: "place";
+		if (!this.interactive) this.decide("kind", kind, "--kind");
+		return kind;
 	}
 
 	/** Whether to leave git out: no `.gitignore` and no `git init`. */

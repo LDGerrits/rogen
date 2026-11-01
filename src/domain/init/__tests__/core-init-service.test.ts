@@ -880,6 +880,60 @@ describe("CoreInitService", () => {
 				})
 			);
 
+		describe("Rojo's template layout without a project file", () => {
+			const rojoTemplate = {
+				ReplicatedStorage: { Shared: { $path: "src/shared" } },
+				ServerScriptService: { Server: { $path: "src/server" } },
+				StarterPlayer: {
+					StarterPlayerScripts: { Client: { $path: "src/client" } },
+				},
+			};
+
+			it.each([
+				["with init scripts", "init.server.luau", "init.client.luau"],
+				[
+					"without init scripts",
+					"Main.server.luau",
+					"Main.client.luau",
+				],
+			])(
+				"should get the config a lift of the project file of 'rojo init' gets, %s",
+				async (_, server, client) => {
+					await write(`src/server/${server}`, "print(1)");
+					await write(`src/client/${client}`, "print(1)");
+					await write("src/shared/Hello.luau", "return 1");
+
+					const planned = await planOf();
+					await lift(rojoTemplate);
+					const { name: _name, ...lifted } = configOf(await planOf());
+
+					expect(configOf(planned)).toEqual(lifted);
+					expect(planned?.action).toBe("create");
+					expect(planned?.liftedFrom).toBeUndefined();
+				}
+			);
+
+			it("should mount only the folders of the template that are there", async () => {
+				await write("src/server/init.server.luau", "print(1)");
+
+				const { tree } = configOf(await planOf());
+
+				expect(tree).toEqual({
+					$className: "DataModel",
+					ServerScriptService: { Server: { $path: "src/server" } },
+				});
+			});
+
+			it("should route as a new project does where no folder of the template holds code", async () => {
+				await write("src/Shop/Server/Main.server.luau", "print(1)");
+				await write("src/shared/.gitkeep");
+
+				const { tree } = configOf(await planOf());
+
+				expect(tree).toEqual({ $className: "DataModel" });
+			});
+		});
+
 		it("should take the closest folder that holds every folder of code the project file mounts", async () => {
 			await lift({
 				ServerScriptService: { Server: { $path: "code/server" } },
@@ -1236,6 +1290,41 @@ describe("CoreInitService", () => {
 			expect(plan?.nextSteps.run).toEqual([
 				'rogen build -o "my-game.rbxmx"',
 			]);
+		});
+
+		it.each(["src", "lib"])(
+			"should start a model that mounts %s where that folder is one module",
+			async (folder) => {
+				await write(`${folder}/init.luau`, "return {}");
+				await write(`${folder}/Util.luau`, "return {}");
+
+				const plan = (await serviceFor().plan()).unwrap();
+
+				expect(JSON.parse(files(plan)["default.rogen.json"])).toEqual({
+					tree: { $path: folder },
+				});
+				expect(Object.keys(files(plan))).not.toContain("src/init.luau");
+				expect(plan?.decided).toContainEqual({
+					question: "kind",
+					value: "model",
+					flag: "--kind",
+				});
+				expect(plan?.nextSteps.run).toEqual([
+					'rogen build -o "my-game.rbxmx"',
+				]);
+			}
+		);
+
+		it("should start a place where the folder's init is a script", async () => {
+			await write("src/init.server.luau", "print(1)");
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(plan?.decided).toContainEqual({
+				question: "kind",
+				value: "place",
+				flag: "--kind",
+			});
 		});
 
 		it("should start a plugin with a script that runs", async () => {

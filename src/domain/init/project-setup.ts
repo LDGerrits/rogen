@@ -12,6 +12,7 @@ import { FileReader } from "../../platform/fs/file-system-service.js";
 import {
 	DEFAULT_CONFIG_FILE,
 	DEFAULT_PROJECT_FILE,
+	DEFAULT_SOURCE_PATH,
 	RogenConfig,
 	configFileName,
 } from "../config/config.js";
@@ -91,13 +92,19 @@ export interface ProjectChoices {
 	readonly projectFilesHint?: string;
 }
 
+/** The project a tree carries over: a lifted file's, or the one `rojo init` writes for Rojo's template layout. */
+function carriedProject(tree: ProjectTree): StarterProject | undefined {
+	return tree.kind === "lift" || tree.kind === "rojoTemplate"
+		? tree.project
+		: undefined;
+}
+
 function derivedRoutesOf(
 	tree: ProjectTree,
 	dirs: readonly string[]
 ): DerivedRoutes | undefined {
-	return tree.kind === "lift"
-		? DerivedRoutes.of(tree.project, dirs)
-		: undefined;
+	const carried = carriedProject(tree);
+	return carried ? DerivedRoutes.of(carried, dirs) : undefined;
 }
 
 /** The folders placed as they are: the language's own, and the packages that are installed or that a manifest says are coming. */
@@ -117,10 +124,7 @@ function mountsOf(directory: InitDirectory, language: Language): Mount[] {
 
 /** Whether routes can place code in the tree: a lifted file whose root isn't a DataModel, such as a model or plugin, is Rojo's own and has no service to route to. */
 function takesRoutes(tree: ProjectTree): boolean {
-	return (
-		tree.kind === "new" ||
-		(tree.kind === "lift" && tree.project.takesRoutes)
-	);
+	return tree.kind === "new" || carriedProject(tree)?.takesRoutes === true;
 }
 
 const BUILD_COMMANDS: Readonly<
@@ -172,7 +176,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 	async ask(): Promise<Result<ProjectChoices | undefined, Diagnostic[]>> {
 		const { directory, questions } = this;
-		const kind = questions.kind();
+		const kind = questions.kind(directory);
 		const tree = await this.resolveTree(questions.tree(directory), kind);
 		if (tree.isErr()) return tree;
 		const picked = await questions.language(directory);
@@ -193,10 +197,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 		const compiledPath = language.compiler?.outDir;
 		const routed = takesRoutes(tree.value);
-		const lifted =
-			routed && tree.value.kind === "lift"
-				? tree.value.project
-				: undefined;
+		const lifted = routed ? carriedProject(tree.value) : undefined;
 		const liftedMounts = lifted?.mountedFolders() ?? [];
 		const code =
 			lifted && !language.compiler
@@ -245,19 +246,20 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				)
 			: mounted;
 
-		const unmounted = lifted
-			? await new UnmountedFiles(
-					this.fileSystemService,
-					directory.path
-				).find(
-					sourcePaths,
-					liftedMounts,
-					lifted.toConfig().globIgnorePaths ?? [],
-					[compiledPath, processedFolder].filter(
-						(folder) => folder !== undefined
+		const unmounted =
+			lifted && tree.value.kind === "lift"
+				? await new UnmountedFiles(
+						this.fileSystemService,
+						directory.path
+					).find(
+						sourcePaths,
+						liftedMounts,
+						lifted.toConfig().globIgnorePaths ?? [],
+						[compiledPath, processedFolder].filter(
+							(folder) => folder !== undefined
+						)
 					)
-				)
-			: [];
+				: [];
 
 		const keptCode =
 			code && !code.processed
@@ -341,7 +343,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 							: []
 					),
 					tree.value,
-					skipGit
+					skipGit,
+					directory.moduleRoot !== undefined
 				),
 				...sampleFiles,
 				...(places?.files ?? []),
@@ -415,6 +418,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			return `starts a new ${language.copy.label} project with places, and this folder already has one. ${later}`;
 		if (this.directory.hasHandWrittenProject)
 			return `starts a new tree, and ${LIFTED_HERE} Move ${DEFAULT_PROJECT_FILE} away first, or leave --places out.`;
+		if (this.directory.layout.templateFolders?.length)
+			return `starts a new tree, and ${DEFAULT_SOURCE_PATH} is laid out as Rojo's place template, which init keeps. Leave --places out.`;
 		return undefined;
 	}
 
@@ -513,13 +518,18 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		return writable && this.questions.sample();
 	}
 
+	/** `hasModule`: the folder's code is a module already, which takes the place of the template's script. */
 	private static templateFiles(
 		template: ProjectTemplate,
 		tree: ProjectTree,
-		skipGit: boolean
+		skipGit: boolean,
+		hasModule: boolean
 	): PlannedFile[] {
 		const { readme } = template;
-		const script = tree.kind === "template" ? template.script : undefined;
+		const script =
+			tree.kind === "template" && !hasModule
+				? template.script
+				: undefined;
 		return [
 			...(readme ? [readme] : []),
 			...(skipGit ? [] : [template.gitignore]),
@@ -546,6 +556,18 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		chosen: TreeChoice,
 		kind: InitKind
 	): Promise<Result<ProjectTree, Diagnostic[]>> {
+		const reader = new ProjectReader(
+			this.fileSystemService,
+			this.directory.path
+		);
+		const templateFolders = this.directory.layout.templateFolders ?? [];
+		if (chosen.kind === "new" && kind === "place" && templateFolders.length)
+			return ok({
+				kind: "rojoTemplate",
+				project: await reader.withInitFolders(
+					StarterProject.ofRojoTemplate(templateFolders)
+				),
+			});
 		if (chosen.kind === "new")
 			return ok(
 				kind === "place"
@@ -553,13 +575,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					: {
 							kind: "template",
 							template: kind,
-							project: StarterProject.ofScript(),
+							project: StarterProject.ofScript(
+								this.directory.moduleRoot
+							),
 						}
 			);
-		const reader = new ProjectReader(
-			this.fileSystemService,
-			this.directory.path
-		);
 		const project = await reader.read(chosen.from);
 		if (project.isErr()) return err(project.error);
 		if (kind !== "place" && project.value.takesRoutes)

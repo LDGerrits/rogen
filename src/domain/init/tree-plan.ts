@@ -5,7 +5,11 @@ import {
 	Diagnostic,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { DEFAULT_CONFIG_FILE, RogenConfig } from "../config/config.js";
+import {
+	DEFAULT_CONFIG_FILE,
+	DEFAULT_SOURCE_PATH,
+	RogenConfig,
+} from "../config/config.js";
 import { instanceKey } from "../roblox/roblox.js";
 import {
 	MountedPath,
@@ -35,6 +39,11 @@ export type ProjectTree =
 	| {
 			readonly kind: "lift";
 			readonly from: string;
+			readonly project: StarterProject;
+	  }
+	| {
+			/** A folder laid out as Rojo's place template with no project file: the tree of the one `rojo init` writes, which init lifts. */
+			readonly kind: "rojoTemplate";
 			readonly project: StarterProject;
 	  };
 
@@ -69,12 +78,13 @@ export class TreePlan {
 	static of({ tree, mounts, dirs, derived, landings }: TreeInputs): TreePlan {
 		switch (tree.kind) {
 			case "lift":
+			case "rojoTemplate":
 				return TreePlan.lifted(tree, mounts, dirs, derived, landings);
 			case "template":
 				return new TreePlan(
 					tree.project.toConfig(),
 					[
-						`Started a ${tree.template} project: its tree mounts src, and Rogen adds no routes to a ${tree.template}.`,
+						`Started a ${tree.template} project: its tree mounts ${tree.project.mountedFolders().join(", ")}, and Rogen adds no routes to a ${tree.template}.`,
 					],
 					[]
 				);
@@ -87,8 +97,9 @@ export class TreePlan {
 		}
 	}
 
+	/** Without `from`, the project is the one `rojo init` writes for this folder, which isn't on disk. */
 	private static lifted(
-		{ from, project }: { from: string; project: StarterProject },
+		{ from, project }: { from?: string; project: StarterProject },
 		mounts: readonly Mount[],
 		dirs: readonly string[],
 		derived: DerivedRoutes | undefined,
@@ -145,16 +156,19 @@ export class TreePlan {
 			({ mount }) => !restoredPlaces.has(placeOf(mount))
 		);
 		const { added, skipped } = mounted;
+		const resource = from ?? DEFAULT_CONFIG_FILE;
 		return new TreePlan(
 			mounted.project.toConfig(),
 			[
-				`Lifting ${from} into ${DEFAULT_CONFIG_FILE}, since Rogen replaces ${from} on every write.`,
+				from === undefined
+					? `${DEFAULT_SOURCE_PATH} is laid out as Rojo's place template, so ${DEFAULT_CONFIG_FILE} places its folders where the project file of 'rojo init' does.`
+					: `Lifting ${from} into ${DEFAULT_CONFIG_FILE}, since Rogen replaces ${from} on every write.`,
 				...(project.takesRoutes
 					? []
 					: [
 							`The root of ${from} is not a DataModel, as in a model or a plugin, so ${DEFAULT_CONFIG_FILE} keeps the tree as Rojo reads it and adds no routes.`,
 						]),
-				...(leftOut.length > 0
+				...(leftOut.length > 0 && from !== undefined
 					? [
 							`Left out ${joinedWithAnd(leftOut)}, since ${leftOut.length === 1 ? "it points" : "they point"} into ${joinedWithOr(leftOutDirs)} and Rogen generates that code now.`,
 						]
@@ -200,11 +214,11 @@ export class TreePlan {
 				...dropped.map(({ node, mount }) =>
 					warningDiagnostic(
 						"init.settingsDropped",
-						{ resource: from },
+						{ resource },
 						`${node} set ${joinedWithAnd(Object.keys(mount.settings))}, which ${DEFAULT_CONFIG_FILE} doesn't carry, since no route lands on that node. Add them to the tree by hand.`
 					)
 				),
-				...TreePlan.narrowedWarnings(from, derived, landings),
+				...TreePlan.narrowedWarnings(resource, derived, landings),
 			]
 		);
 	}
