@@ -84,14 +84,24 @@ export class CoreConfigService implements ConfigService {
 		const selections = new Map<string, ReloadableSelection>();
 		const found = new Map<string, { indexes: number[]; whole: boolean }>();
 		const uncovered: number[] = [];
+		const coversAt = new Map<number, ConfigCover[]>();
+		for (const [index, target] of targets.entries())
+			if (target !== undefined)
+				coversAt.set(index, await this.coversOf(target));
+		const named = targets.includes(undefined)
+			? [...coversAt.values()].flat().filter(({ whole }) => whole)
+			: [];
 		for (const [index, target] of targets.entries()) {
 			let covers: ConfigCover[];
-			if (target === undefined) {
+			if (target === undefined && named.length > 0)
+				covers = named.map(({ file }) => ({ file, whole: false }));
+			else if (target === undefined) {
 				const here = await this.select([]);
 				if (here.isErr()) return here;
 				covers = [{ file: here.value.entries[0].file, whole: false }];
 				selections.set(covers[0].file, here.value);
-			} else covers = await this.coversOf(target);
+			} else covers = coversAt.get(index)!;
+			if (named.length > 0 && covers.some(({ whole }) => whole)) continue;
 			if (covers.length === 0) {
 				uncovered.push(index);
 				continue;

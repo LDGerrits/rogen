@@ -129,7 +129,7 @@ export interface CoveredTargets {
 		readonly selection: ReloadableSelection;
 		/** The targets this config answers for, by position; a target several configs cover is in each of their groups. */
 		readonly indexes: readonly number[];
-		/** A target is a `.rogen.json`, so the config is answered whole. */
+		/** A target is a `.rogen.json`, so the config is answered whole; one named beside an undefined target answers only for that target and the paths it covers. */
 		readonly whole: boolean;
 	}[];
 	/** The targets no config covers, by position. */
@@ -172,7 +172,7 @@ export interface ConfigService {
 	resolveNames(args: readonly string[]): Promise<Result<string[], Error>>;
 	/** The configs that answer for `target`, so a command run from the root can take a path of any place: the default of the nearest folder at or above it, else every named config there whose source paths cover it. */
 	coversOf(target: string): Promise<ConfigCover[]>;
-	/** Loads the configs that answer for each target, one selection per config, so a command can take paths of several places. */
+	/** Loads the configs that answer for each target, one selection per config, so a command can take paths of several places. An undefined target, such as an instance, is answered by the configs named among the targets, else the default of the working directory. */
 	selectCovering(
 		targets: readonly (string | undefined)[]
 	): Promise<Result<CoveredTargets, Error>>;

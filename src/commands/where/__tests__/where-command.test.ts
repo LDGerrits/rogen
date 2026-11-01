@@ -469,6 +469,17 @@ describe("where command", () => {
 			expect(named.join("\n")).not.toContain("src/lobby");
 		});
 
+		it("should answer an instance by the config named beside it", async () => {
+			const result = await run({
+				_: ["game", "ServerScriptService.Main"],
+			});
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([
+				"src/game/Server/Main.luau -> ServerScriptService/Main · route Server (folder)",
+			]);
+		});
+
 		it("should still place a file that no config is named for", async () => {
 			const result = await run({ _: ["src/game/Server/New.luau"] });
 
@@ -860,6 +871,16 @@ describe("where command", () => {
 				);
 			});
 
+			it("should rewrite by the config named beside it, at the root", async () => {
+				const result = await pipe(
+					"ServerScriptService.Only:5: b",
+					"places/lobby"
+				);
+
+				expect(result.isOk()).toBe(true);
+				expect(text()).toBe("places/lobby/src/Server/Only.luau:5: b");
+			});
+
 			it("should rewrite what the place's own file places and what it shares from the place's folder", async () => {
 				const result = await pipeIn(
 					"/repo/places/lobby",
@@ -913,8 +934,13 @@ describe("where command", () => {
 		});
 
 		describe("when the line is wrong", () => {
-			it("should fail for - beside another argument", async () => {
-				const result = await pipe("", "src");
+			it("should fail for - beside a path that names no config", async () => {
+				await write("src/Inventory/Server/Save.luau");
+
+				const result = await pipe(
+					"ServerScriptService.Inventory.Save:1",
+					"src/Inventory/Server/Save.luau"
+				);
 
 				expect(result.isErr()).toBe(true);
 				expect((result as { error: Error }).error).toBeInstanceOf(
