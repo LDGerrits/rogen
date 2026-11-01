@@ -1,5 +1,6 @@
 import path from "path";
 import { isObject } from "../../base/objects.js";
+import { samePath } from "../../base/path.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ServerInfo } from "../runner/rojo-server.js";
 import { ServeAddress } from "./serve.js";
@@ -69,6 +70,26 @@ export class ServerRecords {
 			record.session === info.session
 			? record
 			: undefined;
+	}
+
+	/** Every record whose project file is `projectFile`, whatever port it is on. */
+	async recordsFor(projectFile: string): Promise<ServerRecord[]> {
+		let names: string[];
+		try {
+			names = (await this.fileSystemService.readDirectory(this.dir)).map(
+				([name]) => name
+			);
+		} catch {
+			return [];
+		}
+		const records: ServerRecord[] = [];
+		for (const name of names) {
+			if (!name.endsWith(".json")) continue;
+			const record = await this.read(path.join(this.dir, name));
+			if (record && samePath(record.projectFile, projectFile))
+				records.push(record);
+		}
+		return records;
 	}
 
 	async write(

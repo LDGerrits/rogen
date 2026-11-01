@@ -370,6 +370,64 @@ describe("CoreServeService", () => {
 			expect(servePlan.target.servedBy).toBeDefined();
 		});
 
+		it("should find the server another serve started for the project on a port given as a flag, when no port is given", async () => {
+			processes.running.add(5000);
+			await memFs.writeFile(
+				...recordFile(37001, "repo", "/repo/default.project.json", {
+					owner: 5000,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:37001/api/rojo",
+				rojoInfo("repo")
+			);
+
+			const servePlan = await plan();
+
+			expect(servePlan.isIdle).toBe(true);
+			expect(servePlan.target.address.port).toBe(37001);
+		});
+
+		it("should start another server for the project when a port is given", async () => {
+			processes.running.add(5000);
+			await memFs.writeFile(
+				...recordFile(37001, "repo", "/repo/default.project.json", {
+					owner: 5000,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:37001/api/rojo",
+				rojoInfo("repo")
+			);
+
+			const servePlan = await plan({ serverArgs: ["--port", "37002"] });
+
+			expect(servePlan.isIdle).toBe(false);
+			expect(servePlan.target.address.port).toBe(37002);
+		});
+
+		it.each([
+			["another project file", "/other/default.project.json", 5000],
+			["a serve that ended", "/repo/default.project.json", 5001],
+		])(
+			"should not take a server recorded for %s as this project's",
+			async (_, projectFile, owner) => {
+				processes.running.add(5000);
+				await memFs.writeFile(
+					...recordFile(37001, "repo", projectFile, { owner })
+				);
+				requests.answer(
+					"http://127.0.0.1:37001/api/rojo",
+					rojoInfo("repo")
+				);
+
+				const servePlan = await plan();
+
+				expect(servePlan.isIdle).toBe(false);
+				expect(servePlan.target.address.port).toBe(34872);
+			}
+		);
+
 		it("should refuse a server whose serve ended when the process that leads it is gone too", async () => {
 			await memFs.writeFile(
 				...recordFile(34872, "repo", "/repo/default.project.json", {

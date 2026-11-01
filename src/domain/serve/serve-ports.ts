@@ -41,6 +41,31 @@ export class ServePorts {
 		return this.port.isErr() ? this.port.error : undefined;
 	}
 
+	/** The server a `rogen serve` that still runs started for `config`, on whatever port, when no `--port` was given to pick one. */
+	async runningServeOf(
+		config: ResolvedConfig
+	): Promise<ServeTarget | undefined> {
+		if (this.port.unwrapOr(undefined) !== undefined) return undefined;
+		for (const recorded of await this.records.recordsFor(
+			config.projectFile
+		)) {
+			if (this.ownerEnded(recorded)) continue;
+			const address = new ServeAddress(recorded.host, recorded.port);
+			const state = await this.probe.probe(address);
+			if (
+				state.kind === "serving" &&
+				(await this.records.recordOf(address, state.info))
+			)
+				return {
+					config,
+					project: config.projectName,
+					address,
+					servedBy: state.info,
+				};
+		}
+		return undefined;
+	}
+
 	/** The address the server will listen on: the flags given to serve, then the project file, then the server's own defaults. */
 	targetOf(config: ResolvedConfig): ServeTarget {
 		const { project } = config;

@@ -58,6 +58,33 @@ describe("ServerRecords", () => {
 		});
 	});
 
+	describe("recordsFor", () => {
+		it("should give the records of a project file on every port", async () => {
+			await records.write(address, info, served);
+			await records.write(
+				new ServeAddress("127.0.0.1", 37001),
+				info,
+				served
+			);
+			await records.write(new ServeAddress("127.0.0.1", 37002), info, {
+				projectFile: "/other/default.project.json",
+			});
+			await fs.writeFile("/tmp/rogen-serve/37003.json", "{");
+
+			expect(
+				(await records.recordsFor("/repo/default.project.json"))
+					.map(({ port }) => port)
+					.sort()
+			).toEqual([34872, 37001]);
+		});
+
+		it("should give none when nothing was recorded", async () => {
+			expect(
+				await records.recordsFor("/repo/default.project.json")
+			).toEqual([]);
+		});
+	});
+
 	describe("remove", () => {
 		it("should forget a record", async () => {
 			await records.write(address, info, served);
