@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - `rogen where` exits 1 when an error stops the write, and reports a missing source path as `rogen write` does.
 - `rogen where` and `rogen check` narrow diagnostics to a path by one rule: a clash, a meta file's error and a marker file's warning count for the files they are about.
+- A warning that `rogen where` prints under a file's line names the file it is about when that is another file, such as the file that loses a clash.
 - `rogen where` and `rogen check` answer a project file inside a source path and a file in the compiled path, and leave a copied config's error out of a path outside its source paths.
 - `rogen where -` maps a character's copy of a StarterCharacterScripts script back to its file.
 - `scan.unmountedSource` names the files that nothing mounts.
