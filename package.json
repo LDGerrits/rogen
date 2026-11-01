@@ -63,11 +63,11 @@
 		"typecheck": "tsc -p e2e && tsc -p scripts",
 		"check": "npm run lint && npm run build && npm run typecheck && npm test",
 		"prelint": "npm run generate",
-		"lint": "eslint .",
+		"lint": "eslint --concurrency=auto .",
 		"generate": "tsx scripts/generate.ts",
 		"generate:templates": "tsx scripts/generate.ts",
 		"generate:services": "tsx scripts/generate-services.ts",
-		"lint:fix": "eslint . --fix",
+		"lint:fix": "eslint --concurrency=auto . --fix",
 		"release:local": "npm run bundle && node scripts/make-binary.ts releases/rogen",
 		"version": "tsx scripts/sync-version.ts"
 	},

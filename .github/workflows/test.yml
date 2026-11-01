@@ -9,6 +9,11 @@ on:
 permissions:
     contents: read
 
+# A new push to a pull request cancels its older run; runs on main always finish.
+concurrency:
+    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
     test:
         name: Lint, build and test
@@ -28,8 +33,9 @@ jobs:
               with:
                   cache: true
 
+            # The docs site's packages are left out; Vercel installs them.
             - name: Install Dependencies
-              run: npm ci
+              run: npm ci --workspaces=false --prefer-offline --no-audit --no-fund
 
             - name: Lint
               run: npm run lint
@@ -40,8 +46,32 @@ jobs:
             - name: Type-check End-to-End Tests and Scripts
               run: npm run typecheck
 
+            - name: Unit Test
+              run: npm run test:unit
+
+    e2e:
+        name: End-to-end tests on the bundle
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: "npm"
+
+            - name: Install Rojo and Argon
+              uses: CompeyDev/setup-rokit@v0.2.1
+              with:
+                  cache: true
+
+            - name: Install Dependencies
+              run: npm ci --workspaces=false --prefer-offline --no-audit --no-fund
+
             - name: Test
-              run: npm test
+              run: npm run test:e2e
 
     binary:
         name: End-to-end tests on the compiled binary
@@ -62,7 +92,7 @@ jobs:
                   cache: true
 
             - name: Install Dependencies
-              run: npm ci
+              run: npm ci --workspaces=false --prefer-offline --no-audit --no-fund
 
             - name: Bundle
               run: npm run bundle
