@@ -816,6 +816,20 @@ describe("domain/rojo/project-text", () => {
 			expect(text).not.toMatch(/[ \t]\n/);
 		});
 
+		it("should print a tree written on one line as fmt-project would", () => {
+			const oneLine =
+				'{"name":"game","tree":{"$className":"DataModel","Workspace":{"$properties":{"Gravity":50}},"ReplicatedStorage":{"Packages":{"$path":"Packages"}}}}';
+			const config = parseJsonc(oneLine).value as Record<string, unknown>;
+
+			const text = ProjectText.ofConfig(
+				config,
+				[],
+				WrittenTree.of(oneLine)
+			);
+
+			expect(text).toBe(ProjectText.ofConfig(config, []));
+		});
+
 		it("should be undefined for a text that holds no tree", () => {
 			expect(WrittenTree.of("{}")).toBeUndefined();
 			expect(WrittenTree.of("{")).toBeUndefined();
