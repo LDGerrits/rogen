@@ -23,7 +23,8 @@ export const sourcemapLineShape = S.union(
 	watchLineShapes.write,
 	S.object({ rojo: sourcemapEntryShape }),
 	watchLineShapes.notice,
-	watchLineShapes.error
+	watchLineShapes.error,
+	watchLineShapes.diagnostics
 );
 
 export function sourcemapDocument(

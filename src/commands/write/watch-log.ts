@@ -16,7 +16,7 @@ import { ResolvedConfig } from "../../domain/config/resolved-config.js";
 import { SharedDiagnostics } from "../../domain/write/write.js";
 import {
 	diagnosticToJson,
-	errorToJson,
+	failureToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { RojoCommandRun } from "../../domain/runner/rojo-command-service.js";
 import { Result } from "../../base/result.js";
@@ -304,7 +304,7 @@ export class WatchJsonLog implements WatchReporter {
 	}
 
 	error(error: Error): void {
-		this.line({ error: errorToJson(error) });
+		this.line(failureToJson(error));
 	}
 
 	rojo(ran: Result<RojoCommandRun, Error>, target: RojoTarget): void {

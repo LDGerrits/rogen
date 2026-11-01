@@ -39,13 +39,15 @@ export const watchLineShapes = {
 		}),
 	}),
 	error: S.object({ error: errorShape }),
+	diagnostics: S.object({ diagnostics: S.array(diagnosticShape) }),
 };
 
 /** One line of `write --watch --json`. */
 export const writeLineShape = S.union(
 	watchLineShapes.write,
 	watchLineShapes.notice,
-	watchLineShapes.error
+	watchLineShapes.error,
+	watchLineShapes.diagnostics
 );
 
 export interface WriteEntry {

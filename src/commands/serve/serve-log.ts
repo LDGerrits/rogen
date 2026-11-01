@@ -40,6 +40,7 @@ export const serveLineShape = S.union(
 	watchLineShapes.write,
 	watchLineShapes.notice,
 	watchLineShapes.error,
+	watchLineShapes.diagnostics,
 	S.object({
 		serving: S.object({
 			...serverEventFields,
