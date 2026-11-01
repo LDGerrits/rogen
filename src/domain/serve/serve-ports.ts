@@ -94,7 +94,7 @@ export class ServePorts {
 	}
 
 	/** The server on `target`'s port when a `rogen serve` that still runs recorded it for `target`'s project file; `pending` when it answers for the project but has no record yet. */
-	async servedByAnother(
+	async anotherServeAt(
 		target: ServeTarget
 	): Promise<ServerInfo | "pending" | undefined> {
 		const state = await this.probe.probe(target.address);

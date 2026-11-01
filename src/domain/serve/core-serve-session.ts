@@ -86,7 +86,9 @@ export class CoreServeSession
 	private readonly firstUpdate = new DeferredPromise<
 		WatchUpdate | Error | undefined
 	>();
+	private readonly exits = new Sequencer();
 	private stopping = false;
+	private readonly halted = new AbortController();
 	private stopped: Promise<void> | undefined;
 
 	constructor(
@@ -177,6 +179,7 @@ export class CoreServeSession
 
 	stop(): Promise<void> {
 		this.stopping = true;
+		this.halted.abort();
 		this.stopped ??= (async () => {
 			if (!this.firstUpdate.isSettled)
 				this.firstUpdate.complete(undefined);
@@ -188,6 +191,7 @@ export class CoreServeSession
 			await Promise.allSettled(
 				servers.map((server) => server.unrecord())
 			);
+			await this.exits.queue(async () => undefined);
 			await this.watch.stop();
 		})();
 		return this.stopped;
@@ -333,34 +337,41 @@ export class CoreServeSession
 		});
 	}
 
-	private async stoppedServer(
-		stop: ServerExitEvent,
-		served: boolean
-	): Promise<void> {
-		const servedBy =
-			stop.failure && !stop.crashed && !served
-				? await this.servedByAnother(stop.target)
-				: undefined;
-		if (!servedBy) {
+	/** Reports the stop, as a stand-down when the server failed to start because another serve's took its address first; that wait ends with the session. */
+	private stoppedServer(stop: ServerExitEvent, served: boolean): void {
+		if (!stop.failure || stop.crashed || served) {
 			this._onDidExit.fire(stop);
 			return;
 		}
-		const { target, exit } = stop;
-		this._onDidExit.fire({ target, exit, interrupted: false, servedBy });
+		this.exits
+			.queue(async () => {
+				const servedBy = await this.waitForAnotherServe(stop.target);
+				if (this.stopping) return;
+				const { target, exit } = stop;
+				this._onDidExit.fire(
+					servedBy
+						? { target, exit, interrupted: false, servedBy }
+						: stop
+				);
+			})
+			.catch((error) =>
+				this._onDidError.fire(ErrorUtils.fromUnknown(error))
+			);
 	}
 
-	/** The server another `rogen serve` started on the target's address first, which kept this one from starting; waits a little for its record. */
-	private async servedByAnother(
+	/** The server another `rogen serve` started on the target's address first, which kept this one from starting; waits a little for its record, until the session stops. */
+	private async waitForAnotherServe(
 		target: ServeTarget
 	): Promise<ServerInfo | undefined> {
+		const { signal } = this.halted;
 		for (
 			let waited = 0;
-			waited <= RECORD_WAIT_MS;
+			waited <= RECORD_WAIT_MS && !signal.aborted;
 			waited += RECORD_POLL_MS
 		) {
-			const served = await this.ports.servedByAnother(target);
+			const served = await this.ports.anotherServeAt(target);
 			if (served !== "pending") return served;
-			await timeout(RECORD_POLL_MS);
+			await timeout(RECORD_POLL_MS, signal);
 		}
 		return undefined;
 	}
@@ -377,11 +388,7 @@ export class CoreServeSession
 				served: (serving) => this._onDidServe.fire(serving),
 				said: (said) => this._onDidOutput.fire(said),
 				connection: (change) => this._onDidConnect.fire(change),
-				stopped: (stop) => {
-					this.stoppedServer(stop, server.hasServed).catch((error) =>
-						this._onDidError.fire(ErrorUtils.fromUnknown(error))
-					);
-				},
+				stopped: (stop) => this.stoppedServer(stop, server.hasServed),
 				failed: (error) => this._onDidError.fire(error),
 				restarted: (serving) => this._onDidRestart.fire(serving),
 			},

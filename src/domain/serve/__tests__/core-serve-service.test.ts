@@ -1095,6 +1095,23 @@ describe("CoreServeService", () => {
 			expect(stops[0].servedBy?.session).toBe("s1");
 		});
 
+		it("should stop waiting for another serve's record, and report nothing, once it is stopped", async () => {
+			await start();
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+			processes.spawned[0].exit({ code: 1, signal: null });
+			await jest.advanceTimersByTimeAsync(300);
+
+			await session.stop();
+			const asked = requests.requested.length;
+			await jest.advanceTimersByTimeAsync(6_000);
+
+			expect(stops).toEqual([]);
+			expect(requests.requested).toHaveLength(asked);
+		});
+
 		it("should fail as before when its server couldn't start and the port holds no server of the project", async () => {
 			await start();
 			requests.answer(
