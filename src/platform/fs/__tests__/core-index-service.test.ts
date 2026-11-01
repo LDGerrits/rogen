@@ -79,21 +79,12 @@ describe("CoreIndexService", () => {
 			expect(listing.getEntries("missing-root")).toBeUndefined();
 		});
 
-		it.each(["EACCES", "EPERM"])(
+		it.each(["EACCES", "EPERM"] as const)(
 			"should record a folder that throws %s as unreadable, and list the rest",
 			async (code) => {
 				await memoryFs.writeFile("src/locked/b.luau", "");
 				await memoryFs.writeFile("src/open/c.luau", "");
-				const read = memoryFs.readDirectory.bind(memoryFs);
-				jest.spyOn(memoryFs, "readDirectory").mockImplementation(
-					async (dir) => {
-						if (dir.endsWith("locked"))
-							throw Object.assign(new Error(`${code}: denied`), {
-								code,
-							});
-						return read(dir);
-					}
-				);
+				memoryFs.refuseListing("src/locked", code);
 
 				listing = await indexService.list(["src"]);
 
@@ -108,16 +99,7 @@ describe("CoreIndexService", () => {
 			await memoryFs.writeFile("src/a.luau", "");
 			listing = await indexService.list(["src"]);
 			await memoryFs.writeFile("src/locked/b.luau", "");
-			const read = memoryFs.readDirectory.bind(memoryFs);
-			jest.spyOn(memoryFs, "readDirectory").mockImplementation(
-				async (dir) => {
-					if (dir.endsWith("locked"))
-						throw Object.assign(new Error("EACCES: denied"), {
-							code: "EACCES",
-						});
-					return read(dir);
-				}
-			);
+			memoryFs.refuseListing("src/locked", "EACCES");
 
 			const added = await indexService.update(listing, [
 				{
@@ -126,7 +108,7 @@ describe("CoreIndexService", () => {
 					fileType: FileType.Directory,
 				},
 			]);
-			jest.restoreAllMocks();
+			await memoryFs.delete("src/locked", true);
 			const deleted = await indexService.update(added, [
 				{
 					type: FileChangeType.DELETED,
@@ -350,16 +332,7 @@ describe("CoreIndexService", () => {
 			async (_, type, changed, fileType) => {
 				await memoryFs.writeFile("src/locked/b.luau", "");
 				listing = await indexService.list(["src"]);
-				const read = memoryFs.readDirectory.bind(memoryFs);
-				jest.spyOn(memoryFs, "readDirectory").mockImplementation(
-					async (dir) => {
-						if (dir.endsWith("locked"))
-							throw Object.assign(new Error("EACCES: denied"), {
-								code: "EACCES",
-							});
-						return read(dir);
-					}
-				);
+				memoryFs.refuseListing("src/locked", "EACCES");
 
 				const updated = await indexService.update(listing, [
 					{ type, path: changed, fileType },
