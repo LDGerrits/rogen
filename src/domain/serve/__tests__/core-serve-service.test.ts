@@ -409,6 +409,7 @@ describe("CoreServeService", () => {
 		it.each([
 			["another project file", "/other/default.project.json", 5000],
 			["a serve that ended", "/repo/default.project.json", 5001],
+			["no serve", "/repo/default.project.json", undefined],
 		])(
 			"should not take a server recorded for %s as this project's",
 			async (_, projectFile, owner) => {

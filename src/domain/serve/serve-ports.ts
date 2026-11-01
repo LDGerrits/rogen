@@ -41,7 +41,7 @@ export class ServePorts {
 		return this.port.isErr() ? this.port.error : undefined;
 	}
 
-	/** The server a `rogen serve` that still runs started for `config`, on whatever port, when no `--port` was given to pick one. */
+	/** The server a `rogen serve` that still runs started for `config`, on whatever port, when no `--port` was given to pick one; a record that names no serve isn't one. */
 	async runningServeOf(
 		config: ResolvedConfig
 	): Promise<ServeTarget | undefined> {
@@ -49,7 +49,7 @@ export class ServePorts {
 		for (const recorded of await this.records.recordsFor(
 			config.projectFile
 		)) {
-			if (this.ownerEnded(recorded)) continue;
+			if (!this.ownerRuns(recorded)) continue;
 			const address = new ServeAddress(recorded.host, recorded.port);
 			const state = await this.probe.probe(address);
 			if (
@@ -127,6 +127,12 @@ export class ServePorts {
 	ownerEnded(record: ServerRecord): boolean {
 		return (
 			record.owner !== undefined && !this.runner.isRunning(record.owner)
+		);
+	}
+
+	private ownerRuns(record: ServerRecord): boolean {
+		return (
+			record.owner !== undefined && this.runner.isRunning(record.owner)
 		);
 	}
 
