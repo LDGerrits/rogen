@@ -738,6 +738,22 @@ describe("serve command", () => {
 			]);
 		});
 
+		it("should report the write it does before the restart", async () => {
+			void serve([], { json: true });
+			await settle();
+			await answer("s1");
+
+			await memFs.delete("/repo/src/A.luau");
+			await crash(0);
+			await answer("s2");
+
+			expect(printed().slice(2)).toEqual([
+				{ write: expect.objectContaining({ outcome: "wrote" }) },
+				{ write: expect.objectContaining({ outcome: "unchanged" }) },
+				{ restarted: expect.objectContaining({ session: "s2" }) },
+			]);
+		});
+
 		it("should print the restart and the giving up as JSON lines", async () => {
 			const result = serve([], { json: true });
 			await settle();
@@ -749,7 +765,11 @@ describe("serve command", () => {
 			await crash(2);
 			await result;
 
-			expect(printed().slice(2)).toEqual([
+			expect(
+				printed()
+					.slice(2)
+					.filter((line) => !("write" in line))
+			).toEqual([
 				{
 					restarted: {
 						config: "default.rogen.json",
