@@ -180,12 +180,15 @@ export class CoreConfigService implements ConfigService {
 		return (await this.configAbove(cover.file)) ?? cover;
 	}
 
-	/** With no default config to answer, the named configs at and above `target` whose source paths cover it; one that is broken is kept, since its source paths can't be told. */
+	/** With no default config to answer, the named configs at and above `target` whose source paths cover it; one that is broken is kept unless its source paths can be told. */
 	private async namedCovers(target: string): Promise<ConfigCover[]> {
 		const covers: ConfigCover[] = [];
 		for (const file of await this.discovery.namedConfigsAbove(target)) {
-			const { config } = validFile(await this.read(file)) ?? {};
-			if (config && !(await this.covers(config.sourcePaths, target)))
+			const entry = await this.read(file);
+			const sourcePaths =
+				validFile(entry)?.config.sourcePaths ??
+				(entry.status === "broken" ? entry.sourcePaths : undefined);
+			if (sourcePaths && !(await this.covers(sourcePaths, target)))
 				continue;
 			covers.push({ file, whole: false });
 		}

@@ -53,6 +53,8 @@ export interface BrokenConfigEntry extends ConfigEntryFields {
 	readonly errors: readonly Diagnostic[];
 	/** The version a watch keeps writing while the file is broken; undefined if it was never valid. */
 	readonly lastValid: ResolvedConfigFile | undefined;
+	/** Its source paths, when only a copy beside it breaks it. */
+	readonly sourcePaths?: readonly string[];
 }
 
 /** One config as it last loaded; a reload replaces it. */

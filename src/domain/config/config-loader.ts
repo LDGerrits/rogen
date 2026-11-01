@@ -19,6 +19,8 @@ export interface LoadedConfig {
 	readonly files: readonly string[];
 	readonly value?: Readonly<Record<string, unknown>>;
 	readonly resolved: Result<ResolvedConfigFile, Diagnostic[]>;
+	/** The source paths of a config that only a copy beside it breaks. */
+	readonly sourcePaths?: readonly string[];
 }
 
 export class ConfigLoader {
@@ -45,7 +47,12 @@ export class ConfigLoader {
 		);
 		const files = [...loaded.files, ...siblings.map((s) => s.config.file)];
 		return clashes.length > 0
-			? { files, value: loaded.value, resolved: err(clashes) }
+			? {
+					files,
+					value: loaded.value,
+					resolved: err(clashes),
+					sourcePaths: loaded.resolved.value.config.sourcePaths,
+				}
 			: { ...loaded, files };
 	}
 

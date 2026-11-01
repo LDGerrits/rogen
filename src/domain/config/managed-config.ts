@@ -57,6 +57,7 @@ export class ManagedConfig {
 			status: "broken",
 			errors: loaded.resolved.error,
 			lastValid: this._entry && validFile(this._entry),
+			...(loaded.sourcePaths && { sourcePaths: loaded.sourcePaths }),
 		};
 	}
 

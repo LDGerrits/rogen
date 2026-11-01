@@ -323,6 +323,22 @@ describe("CoreConfigService coversOf named configs", () => {
 		]);
 	});
 
+	it("should not keep a copy beside another config for a path neither covers", async () => {
+		await write("/repo/game2.rogen.json", {
+			name: "game",
+			sourcePaths: ["src/common", "src/game"],
+			routes: ROUTES,
+		});
+
+		expect(await filesOf("/repo/src/lobby/Main.luau")).toEqual([
+			"/repo/lobby.rogen.json",
+		]);
+		expect(await filesOf("/repo/src/game/Main.luau")).toEqual([
+			"/repo/game.rogen.json",
+			"/repo/game2.rogen.json",
+		]);
+	});
+
 	it("should keep a config that is broken, since its source paths can't be told", async () => {
 		await write("/repo/lobby.rogen.json", { routes: 3 });
 
