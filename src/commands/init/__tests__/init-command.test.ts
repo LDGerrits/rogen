@@ -355,18 +355,6 @@ describe("init command", () => {
 			}
 		);
 
-		it("should check the project with the files it plans in place", async () => {
-			const logService = new MockLogService();
-
-			const result = await runInit(
-				new MockPromptService([], false),
-				logService,
-				{ "dry-run": true, sample: false }
-			);
-
-			expect(result.isOk()).toBe(true);
-		});
-
 		it("should keep the files and fail when the project file cannot be written", async () => {
 			const writeFile = memFs.writeFile.bind(memFs);
 			jest.spyOn(memFs, "writeFile").mockImplementation(

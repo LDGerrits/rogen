@@ -6,12 +6,17 @@ import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import {
+	DraftFileReader,
+	FileDraft,
+} from "../../platform/fs/draft-file-reader.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { ConfigService } from "../config/config-service.js";
 import { DEFAULT_PROJECT_FILE } from "../config/config.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
+import { WriteService } from "../write/write-service.js";
 import { CodeFinder } from "./code-finder.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
@@ -59,6 +64,21 @@ function shapingFlagsOf(choices: InitChoices): string[] {
 	});
 }
 
+/** The folder as `plan` leaves it, before any program it runs. */
+function draftOf(plan: InitPlan): FileDraft {
+	const at = (relative: string) => path.join(plan.directory, relative);
+	return {
+		files: new Map(
+			plan.files.map(({ fileName, content }) => [at(fileName), content])
+		),
+		directories: [plan.directory, ...plan.directories.map(at)],
+		moves: plan.moves.map(({ from, to }) => ({
+			from: at(from),
+			to: at(to),
+		})),
+	};
+}
+
 /** The prompt services of a run: the one that takes the default of what a summary shows, and the one that always asks. */
 interface RunPrompts {
 	readonly quick: PromptService;
@@ -91,7 +111,8 @@ export class CoreInitService implements InitService {
 		private readonly toolchainService: ToolchainService,
 		processService: ProcessService,
 		private readonly locator: ToolLocator = new ToolLocator(processService),
-		private readonly configService: ConfigService
+		private readonly configService: ConfigService,
+		private readonly writeService: WriteService
 	) {
 		this.agentReader = new AgentReader(fileSystemService);
 		this.git = new GitRepository(processService, fileSystemService);
@@ -405,6 +426,20 @@ export class CoreInitService implements InitService {
 
 	refreshAgentRules(folder: string): Promise<string[]> {
 		return new AgentRules(this.fileSystemService, this.git).refresh(folder);
+	}
+
+	async check(plan: InitPlan): Promise<Result<void, Error>> {
+		if (plan.configs.length === 0) return ok(undefined);
+		const reader = new DraftFileReader(
+			this.fileSystemService,
+			draftOf(plan)
+		);
+		const selection = await this.configService.select(plan.configs, reader);
+		if (selection.isErr()) return selection;
+		const failure = (
+			await this.writeService.check(selection.value, reader)
+		).failure();
+		return failure ? err(failure) : ok(undefined);
 	}
 
 	write(

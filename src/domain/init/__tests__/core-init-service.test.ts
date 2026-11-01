@@ -27,6 +27,8 @@ import {
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { CoreInitService } from "../core-init-service.js";
+import { CoreWriteService } from "../../write/core-write-service.js";
+import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MigratedProject } from "../project-migration.js";
 import { StarterPlaces } from "../starter-places.js";
 import { InitChoices, InitPlan, InitWritten } from "../init-service.js";
@@ -98,14 +100,20 @@ describe("CoreInitService", () => {
 		cwd = directory
 	) => {
 		const environmentService = new NativeEnvironmentService({}, cwd);
+		const toolchain = new CoreToolchainService(fileSystem);
 		const service = new CoreInitService(
 			fileSystem,
 			promptService,
 			environmentService,
-			new CoreToolchainService(fileSystem),
+			toolchain,
 			processes,
 			undefined,
-			configs
+			configs,
+			new CoreWriteService(
+				fileSystem,
+				new CoreIndexService(fileSystem),
+				toolchain.syncTools
+			)
 		);
 		return service;
 	};
@@ -2072,6 +2080,32 @@ describe("CoreInitService", () => {
 			expect(written).toContain("rokit.toml");
 			expect(written.length).toBeGreaterThan(5);
 			for (const item of written) expect(shown).toContain(item);
+		});
+	});
+
+	describe("check", () => {
+		it("should fail with the write's diagnostics when the project it plans fails them", async () => {
+			await write("src/Inventory/@server");
+			await write("src/Inventory/@client");
+			const service = serviceFor();
+			const plan = (await service.plan()).unwrap();
+
+			const checked = await service.check(plan!);
+
+			expect((checked as ResultError<Error>).error.message).toContain(
+				"(route.markerClash)"
+			);
+		});
+
+		it("should check the project with the files it plans in place", async () => {
+			const service = serviceFor();
+			const plan = (
+				await service.plan({ choices: { sample: false } })
+			).unwrap();
+
+			const checked = await service.check(plan!);
+
+			expect(checked.isOk()).toBe(true);
 		});
 	});
 

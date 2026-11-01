@@ -9,6 +9,8 @@ import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js"
 import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreInitService } from "../core-init-service.js";
+import { CoreWriteService } from "../../write/core-write-service.js";
+import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { InitPlan, InitWritten } from "../init-service.js";
 import { RobloxTsStarter } from "../roblox-ts-starter.js";
 
@@ -143,14 +145,20 @@ describe("a new roblox-ts project", () => {
 
 	const serviceFor = () => {
 		const environmentService = new NativeEnvironmentService({}, directory);
+		const toolchain = new CoreToolchainService(fileSystem);
 		return new CoreInitService(
 			fileSystem,
 			new MockPromptService([], false),
 			environmentService,
-			new CoreToolchainService(fileSystem),
+			toolchain,
 			processes,
 			undefined,
-			new CoreConfigService(fileSystem, environmentService)
+			new CoreConfigService(fileSystem, environmentService),
+			new CoreWriteService(
+				fileSystem,
+				new CoreIndexService(fileSystem),
+				toolchain.syncTools
+			)
 		);
 	};
 
