@@ -25,10 +25,6 @@ function codeNamed(name: string): string | undefined {
 	return ending.length === 1 ? ending[0] : undefined;
 }
 
-const EXIT_CODES = `Exit codes: ${Object.entries(ExitCodes)
-	.map(([code, meaning]) => `${code} ${meaning}`)
-	.join(", ")}. 'check' also exits 1 on a warning.`;
-
 const ROOT_EXAMPLES = [
 	"rogen write",
 	"rogen serve",
@@ -193,8 +189,6 @@ function formatHelp(
 			"Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.",
 			WIDTH
 		),
-		"",
-		...wrapped(EXIT_CODES, WIDTH),
 	].join("\n");
 }
 
