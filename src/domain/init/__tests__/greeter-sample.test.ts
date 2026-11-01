@@ -79,6 +79,9 @@ describe("GreeterSample", () => {
 		expect(content).toContain("rogen sourcemap game --watch");
 		expect(content).toContain("luau-lsp analyze");
 		expect(content).toContain("rogen serve lobby --port");
+		expect(content).toContain(
+			"copy the `place/game` folder to `place/lobby`"
+		);
 		expect(content).not.toContain("code-workspace");
 	});
 
@@ -104,11 +107,26 @@ describe("GreeterSample", () => {
 			]);
 		});
 
-		it("should have both scripts import the module through the routed path", () => {
+		it("should have both scripts import the module by relative path", () => {
 			for (const { content } of typescript.feature("src").slice(1))
 				expect(content).toContain(
-					'import { greeting } from "Greeter/shared/Greeting";'
+					'import { greeting } from "../shared/Greeting";'
 				);
+		});
+
+		it("should say how to add a place with its map, and to watch it from a terminal of its own", () => {
+			const { content } = typescript.readme(
+				"projects/common/src",
+				"rogen serve projects/game",
+				"projects/game"
+			);
+
+			expect(content).toContain(
+				"the `projects/game/place` folder into `projects/lobby`"
+			);
+			expect(content).toContain(
+				"```bash\nnpx rbxtsc -w -p projects/lobby\n```"
+			);
 		});
 
 		it("should export the greeting", () => {

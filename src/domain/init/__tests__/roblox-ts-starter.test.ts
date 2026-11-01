@@ -180,7 +180,7 @@ describe("a new roblox-ts project", () => {
 			);
 			expect(
 				fileOf(planned, "src/Greeter/server/Greeter.server.ts")?.content
-			).toContain('import { greeting } from "Greeter/shared/Greeting"');
+			).toContain('import { greeting } from "../shared/Greeting"');
 		});
 
 		it("should name the project, which roblox-ts needs, mount its runtime and sync from out", async () => {
