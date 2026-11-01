@@ -74,15 +74,16 @@ export class InitQuestions {
 		return value;
 	}
 
-	/** The template of a new project; it is never asked, since Rojo's `init` doesn't ask it. A folder whose code is one module, with no project file to lift, is a model. */
-	kind(directory: InitDirectory): InitKind {
+	/** The template of a new project; it is never asked, since Rojo's `init` doesn't ask it. A lifted project file is the kind it is, `lifted`; else a folder whose code is one module is a model. */
+	kind(directory: InitDirectory, lifted?: InitKind): InitKind {
 		const given = this.choices.kind;
 		if (given !== undefined) return given;
 		const kind =
-			directory.moduleRoot !== undefined &&
+			lifted ??
+			(directory.moduleRoot !== undefined &&
 			!directory.hasHandWrittenProject
 				? "model"
-				: "place";
+				: "place");
 		if (!this.interactive) this.decide("kind", kind, "--kind");
 		return kind;
 	}

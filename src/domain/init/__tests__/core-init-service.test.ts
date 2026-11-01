@@ -1321,6 +1321,33 @@ describe("CoreInitService", () => {
 			}
 		);
 
+		it.each([
+			["init.luau", "model", 'rogen build -o "lib.rbxmx"'],
+			["init.server.luau", "plugin", 'rogen build -p "lib.rbxm"'],
+		])(
+			"should lift a project file whose root is %s as the kind it is, with that kind's steps",
+			async (init, kind, step) => {
+				await write(`src/${init}`, "return {}");
+				await write(
+					"default.project.json",
+					JSON.stringify({ name: "lib", tree: { $path: "src" } })
+				);
+
+				const plan = (await serviceFor().plan()).unwrap();
+
+				expect(plan?.decided).toContainEqual({
+					question: "kind",
+					value: kind,
+					flag: "--kind",
+				});
+				expect(plan?.nextSteps.run).toEqual([step]);
+				expect(plan?.nextSteps.edits.join("\n")).not.toContain(
+					"feature folder"
+				);
+				expect(files(plan)).not.toHaveProperty(["README.md"]);
+			}
+		);
+
 		it("should start a place where the folder's init is a script", async () => {
 			await write("src/init.server.luau", "print(1)");
 

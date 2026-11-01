@@ -95,6 +95,18 @@ export class StarterProject {
 		);
 	}
 
+	/** What the root mounts, as a model or a plugin does. */
+	get rootPath(): string | undefined {
+		const mounted = this.project.getNode([])?.$path;
+		return mounted === undefined ? undefined : rojoPathTarget(mounted);
+	}
+
+	/** The name the project gives itself, which Rojo builds it as. */
+	get name(): string | undefined {
+		const { name } = this.project.getFile();
+		return typeof name === "string" ? name : undefined;
+	}
+
 	/** Every folder the tree mounts, as `normalizeDir` writes it. */
 	mountedFolders(): string[] {
 		return [

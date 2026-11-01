@@ -53,6 +53,15 @@ import { CodeFinder } from "./code-finder.js";
 import { UnmountedFiles } from "./unmounted-files.js";
 import { ProjectTree, TreeChoice, TreePlan } from "./tree-plan.js";
 
+/** The tree init starts from, with the project file a lift takes read. */
+type ReadChoice =
+	| { readonly kind: "new" }
+	| {
+			readonly kind: "lift";
+			readonly from: string;
+			readonly project: StarterProject;
+	  };
+
 /** The folder a processor writes, which the lifted project file mounts. */
 export interface ProcessedOutput {
 	readonly folder: string;
@@ -170,6 +179,7 @@ const LIFTED_HERE = `${DEFAULT_PROJECT_FILE} is here, which init lifts.`;
 
 export class ProjectSetup implements Setup<ProjectChoices> {
 	private readonly files: ProjectFiles;
+	private readonly reader: ProjectReader;
 
 	constructor(
 		private readonly directory: InitDirectory,
@@ -177,12 +187,20 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		private readonly fileSystemService: FileReader
 	) {
 		this.files = new ProjectFiles(fileSystemService, directory.path);
+		this.reader = new ProjectReader(fileSystemService, directory.path);
 	}
 
 	async ask(): Promise<Result<ProjectChoices | undefined, Diagnostic[]>> {
 		const { directory, questions } = this;
-		const kind = questions.kind(directory);
-		const tree = await this.resolveTree(questions.tree(directory), kind);
+		const chosen = await this.read(questions.tree(directory));
+		if (chosen.isErr()) return chosen;
+		const kind = questions.kind(
+			directory,
+			chosen.value.kind === "lift"
+				? await this.kindOf(chosen.value.project)
+				: undefined
+		);
+		const tree = await this.resolveTree(chosen.value, kind);
 		if (tree.isErr()) return tree;
 		const picked = await questions.language(directory);
 		if (picked === undefined) return ok(undefined);
@@ -557,7 +575,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		skipGit: boolean,
 		hasModule: boolean
 	): PlannedFile[] {
-		const { readme } = template;
+		const readme = tree.kind === "lift" ? undefined : template.readme;
 		const script =
 			tree.kind === "template" && !hasModule
 				? template.script
@@ -584,14 +602,38 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		);
 	}
 
+	/** The kind a lifted project is: a place where routes place its code, else a plugin where its root is a script that runs, as in Rojo's plugin template, else a model. */
+	private async kindOf(project: StarterProject): Promise<InitKind> {
+		if (project.takesRoutes) return "place";
+		const root = project.rootPath;
+		if (root === undefined) return "model";
+		if (/\.server\.luau?$/.test(root)) return "plugin";
+		const scripts = await Promise.all(
+			["init.server.luau", "init.server.lua"].map((name) =>
+				this.fileSystemService.exists(
+					path.join(this.directory.path, root, name)
+				)
+			)
+		);
+		return scripts.some(Boolean) ? "plugin" : "model";
+	}
+
+	/** `chosen` with the project file a lift takes, read. */
+	private async read(
+		chosen: TreeChoice
+	): Promise<Result<ReadChoice, Diagnostic[]>> {
+		if (chosen.kind === "new") return ok(chosen);
+		const project = await this.reader.read(chosen.from);
+		return project.isErr()
+			? err(project.error)
+			: ok({ ...chosen, project: project.value });
+	}
+
 	private async resolveTree(
-		chosen: TreeChoice,
+		chosen: ReadChoice,
 		kind: InitKind
 	): Promise<Result<ProjectTree, Diagnostic[]>> {
-		const reader = new ProjectReader(
-			this.fileSystemService,
-			this.directory.path
-		);
+		const { reader } = this;
 		const templateFolders = this.directory.layout.templateFolders ?? [];
 		if (chosen.kind === "new" && kind === "place" && templateFolders.length)
 			return ok({
@@ -612,15 +654,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 							),
 						}
 			);
-		const project = await reader.read(chosen.from);
-		if (project.isErr()) return err(project.error);
-		if (kind !== "place" && project.value.takesRoutes)
+		if (kind !== "place" && chosen.project.takesRoutes)
 			throw new UsageError(
 				`--kind ${kind} starts a new ${kind}, and ${DEFAULT_PROJECT_FILE} is here, which init lifts as a place. Move ${DEFAULT_PROJECT_FILE} away first, or leave --kind out.`
 			);
 		return ok({
 			...chosen,
-			project: await reader.withInitFolders(project.value),
+			project: await reader.withInitFolders(chosen.project),
 		});
 	}
 
@@ -863,7 +903,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 		const projectFile = places?.projectFile ?? DEFAULT_PROJECT_FILE;
 		builder.addEdit(
-			`Edit ${configFile} and leave ${projectFile} alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write${places ? ` ${places.place}` : ""}' so the editor's ${projectFile} follows.`
+			`Edit ${configFile} and leave ${projectFile} alone, since 'rogen write' replaces it.${takesRoutes(chosen) ? ` After you add a feature folder, run 'rogen write${places ? ` ${places.place}` : ""}' so the editor's ${projectFile} follows.` : ""}`
 		);
 		if (places?.settings)
 			builder.addEdit(
@@ -876,6 +916,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					chosen.kind === "new" && chosen.game !== undefined
 				)
 			);
+		if (chosen.kind === "lift" && !takesRoutes(chosen)) {
+			builder.addRun(
+				BUILD_COMMANDS[choices.kind === "plugin" ? "plugin" : "model"](
+					chosen.project.name ?? path.basename(this.directory.path)
+				)
+			);
+			return;
+		}
 		builder.addRun(
 			...(compiler ? [compiler.compileCommand] : []),
 			ProjectSetup.serveCommand(places, processedPathOf(choices))
