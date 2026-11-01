@@ -24,6 +24,8 @@ export class InitDirectory {
 		private readonly entries: ReadonlySet<string>,
 		readonly workspace: DetectedWorkspace,
 		readonly layout: DirectoryLayout,
+		/** Whether git tracks the hand-written default.project.json here. */
+		readonly tracksProjectFile: boolean,
 		/** Whether the file system takes `Src` and `src` for one name, as Windows' and macOS' do. */
 		caseInsensitive = ignoresPathCase
 	) {
@@ -73,6 +75,35 @@ export class InitDirectory {
 							"this file already exists, and init never overwrites one. Pick another name."
 						)
 			);
+	}
+
+	/** Whether the folder holds code: in a folder, or as a script at its top. */
+	get holdsCode(): boolean {
+		const { codeFolders, rootScripts } = this.layout;
+		return codeFolders.length > 0 || rootScripts.length > 0;
+	}
+
+	/** The folder a model mounts where the code is one module: `src`, else the only code folder, when an init module is at its top. */
+	get moduleRoot(): string | undefined {
+		const { codeFolders, moduleFolders } = this.layout;
+		const root = this.has(DEFAULT_SOURCE_PATH)
+			? DEFAULT_SOURCE_PATH
+			: codeFolders.length === 1
+				? codeFolders[0]
+				: undefined;
+		return root !== undefined && moduleFolders.includes(root)
+			? root
+			: undefined;
+	}
+
+	/** Whether the folder's only code is the module at `moduleRoot`, which makes it a model. */
+	get isOneModule(): boolean {
+		const { codeFolders, rootScripts } = this.layout;
+		return (
+			this.moduleRoot !== undefined &&
+			codeFolders.length === 1 &&
+			rootScripts.length === 0
+		);
 	}
 
 	/** The first that applies: the language's own config, `src`, the only code folder unless a route is named after it, else `src`. */

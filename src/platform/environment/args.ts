@@ -96,19 +96,18 @@ export const JsonOption = {
 export interface CommandLine<
 	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],
 > {
+	/** The words after the command word, and everything after the first `--`, which ends the options. */
 	readonly positionals: readonly string[];
-	/** Everything after the first `--`, as typed, which no command takes. */
-	readonly passthrough?: readonly string[];
 	/** Whether help was asked for with `-h` alone, which prints the short form. */
 	readonly shortHelp?: true;
+	/** Whether the line names no command and asks for neither help nor the version, which Rojo refuses after printing its help. */
+	readonly bare?: true;
 	readonly options: OptionValues<O> & OptionValues<typeof GlobalOptions>;
 }
 
 interface ParsedCli {
 	readonly command: string;
 	readonly line: CommandLine;
-	/** Whether the line names no command and asks for neither help nor the version. */
-	readonly bare: boolean;
 }
 
 function toOptionTable(options: readonly OptionDescriptor[]) {
@@ -237,6 +236,9 @@ function unknownOption(
 	);
 }
 
+/** Options a line may give more than once, as Rojo takes `--help` twice. */
+const REPEATABLE: ReadonlySet<string> = new Set(["help", "version"]);
+
 /** Node's wording varies by version and talks about positionals, so options are checked here. */
 function findOptionProblem(
 	tokens: NonNullable<Token>,
@@ -244,6 +246,7 @@ function findOptionProblem(
 	ownersOf: (name: string, negated: boolean) => string[],
 	command: string | undefined
 ): UsageError | undefined {
+	const given = new Set<string>();
 	for (const token of tokens) {
 		if (token.kind !== "option") continue;
 		const option = options.find(({ name }) => name === token.name);
@@ -262,6 +265,18 @@ function findOptionProblem(
 				ownersOf(token.name, isNegated(token)),
 				command
 			);
+		}
+		const spelled = isNegated(token)
+			? `--no-${option.name}`
+			: `--${option.name}`;
+		if (!option.multiple && !REPEATABLE.has(option.name)) {
+			if (given.has(spelled))
+				return new UsageError(
+					option.type === "string"
+						? `'${spelled}' was given more than once, but takes one value.`
+						: `'${spelled}' was given more than once, but can be given only once.`
+				);
+			given.add(spelled);
 		}
 		if (
 			option.type === "string" &&
@@ -332,6 +347,16 @@ export function parseArgs(
 				? [token.value]
 				: []
 		);
+		const afterTerminator = terminator
+			? typed.slice(terminator.index + 1)
+			: [];
+		if (positionals.length === 0 && afterTerminator.length > 0)
+			return err(
+				new UsageError(
+					`'${afterTerminator[0]}' comes after '--', which ends the options, so it can't be the command.`,
+					"Remove the '--' before it."
+				)
+			);
 		const { runs, names, consumesWord } = commandOf(values, positionals);
 		const helpRawNames = tokens.flatMap((token) =>
 			token.kind === "option" && token.name === "help"
@@ -358,15 +383,17 @@ export function parseArgs(
 		}
 		return ok({
 			command: runs,
-			bare: positionals.length === 0 && !values.version && !values.help,
 			line: {
-				positionals: consumesWord
-					? positionals.slice(1)
-					: positionals.slice(0, 1),
+				positionals: [
+					...(consumesWord
+						? positionals.slice(1)
+						: positionals.slice(0, 1)),
+					...afterTerminator,
+				],
 				...(shortHelp && { shortHelp: true as const }),
-				...(terminator && {
-					passthrough: typed.slice(terminator.index + 1),
-				}),
+				...(positionals.length === 0 &&
+					!values.version &&
+					!values.help && { bare: true as const }),
 				options: values as CommandLine["options"],
 			},
 		});

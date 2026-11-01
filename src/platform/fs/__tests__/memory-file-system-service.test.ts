@@ -30,6 +30,23 @@ describe("MemoryFileSystemService: core operations", () => {
 		});
 	});
 
+	describe("refuseListing", () => {
+		it("should make listing the folder fail with the code, as a folder without read permission does, until lifted", async () => {
+			await memFs.writeFile("src/locked/a.luau", "");
+
+			memFs.refuseListing("src/locked", "EPERM");
+
+			await expect(memFs.readDirectory("src/locked")).rejects.toThrow(
+				expect.objectContaining({ code: "EPERM" })
+			);
+			expect(await memFs.readFile("src/locked/a.luau")).toBe("");
+			memFs.refuseListing("src/locked", undefined);
+			expect(await memFs.readDirectory("src/locked")).toEqual([
+				["a.luau", FileType.File],
+			]);
+		});
+	});
+
 	describe("Reads and Writes", () => {
 		it("should auto-create parent directories on writeFile", async () => {
 			await memFs.writeFile("a/b/c/deep.txt", "hello");

@@ -13,6 +13,7 @@ import {
 } from "./toolchain.js";
 
 const TSCONFIG = "tsconfig.json";
+const PACKAGE_JSON = "package.json";
 const DEFAULT_OUT_DIR = "out";
 const MAX_EXTENDS_DEPTH = 10;
 const INCLUDE_DIR = "include";
@@ -30,6 +31,8 @@ export interface RobloxTsFacts {
 	readonly sourcePath?: string;
 	readonly rbxtsScopes?: readonly string[];
 	readonly includeInstalled?: boolean;
+	/** Whether `package.json` has a `watch` script, as create-roblox-ts writes one. */
+	readonly watchScript?: boolean;
 }
 
 interface TsconfigFacts {
@@ -71,9 +74,13 @@ export class RobloxTsCompiler implements Compiler {
 	};
 
 	readonly name = "roblox-ts";
-	readonly compileCommand = "rbxtsc -w";
 
 	constructor(private readonly facts: RobloxTsFacts) {}
+
+	/** The project's watch script, else the compiler of its own `node_modules`, which isn't on the PATH. */
+	get compileCommand(): string {
+		return this.facts.watchScript ? "npm run watch" : "npx rbxtsc -w";
+	}
 
 	get outDir(): string {
 		return this.facts.outDir ?? DEFAULT_OUT_DIR;
@@ -106,6 +113,7 @@ export class RobloxTs implements Language {
 			{
 				...this.facts,
 				includeInstalled: true,
+				watchScript: true,
 				rbxtsScopes: [...(this.facts.rbxtsScopes ?? []), "@rbxts"],
 			},
 			true
@@ -164,7 +172,7 @@ export class RobloxTsDetector implements LanguageDetector {
 	async detect(cwd: string): Promise<RobloxTs> {
 		const has = (...segments: string[]) =>
 			this.fileSystemService.exists(path.join(cwd, ...segments));
-		const [isTs, installed, hasInclude] = await Promise.all([
+		const [isTs, installed, hasInclude, watchScript] = await Promise.all([
 			has(TSCONFIG),
 			Promise.all(
 				SCOPES.map(async (scope) =>
@@ -172,6 +180,7 @@ export class RobloxTsDetector implements LanguageDetector {
 				)
 			),
 			has(INCLUDE_DIR),
+			this.hasWatchScript(path.join(cwd, PACKAGE_JSON)),
 		]);
 		const tsconfig = isTs
 			? await this.readTsconfig(cwd, path.join(cwd, TSCONFIG))
@@ -180,6 +189,7 @@ export class RobloxTsDetector implements LanguageDetector {
 			{
 				rbxtsScopes: installed.filter((scope) => scope !== undefined),
 				includeInstalled: hasInclude,
+				...(watchScript && { watchScript }),
 				...(tsconfig && {
 					outDir: tsconfig.outDir,
 					...(tsconfig.sourcePath && {
@@ -189,6 +199,21 @@ export class RobloxTsDetector implements LanguageDetector {
 			},
 			isTs
 		);
+	}
+
+	private async hasWatchScript(file: string): Promise<boolean> {
+		if (!(await this.fileSystemService.exists(file))) return false;
+		try {
+			const parsed = parse(await this.fileSystemService.readFile(file));
+			return (
+				parsed.isOk() &&
+				isObject(parsed.value) &&
+				isObject(parsed.value.scripts) &&
+				typeof parsed.value.scripts.watch === "string"
+			);
+		} catch {
+			return false;
+		}
 	}
 
 	private async readTsconfig(

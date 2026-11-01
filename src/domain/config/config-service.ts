@@ -156,9 +156,10 @@ export type ConfigFileCheck = (
 export interface ConfigService {
 	readonly _serviceBrand: undefined;
 
-	/** Loads the configs `refs` names, else the default of the working directory. Fails only when they can't be picked; a broken config lands on its entry. */
+	/** Loads the configs `refs` names, else the default of the working directory. Fails only when they can't be picked; a broken config lands on its entry. With `reader`, such as a draft of files not written yet, reads through it. */
 	select(
-		refs: readonly string[]
+		refs: readonly string[],
+		reader?: FileReader
 	): Promise<Result<ReloadableSelection, Error>>;
 	/** The named configs, those that are not a default, of the working directory, absolute and sorted. */
 	namedConfigs(): Promise<string[]>;

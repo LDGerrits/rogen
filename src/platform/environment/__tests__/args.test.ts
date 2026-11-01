@@ -173,17 +173,17 @@ describe("parseArgs", () => {
 		expect(values(["build", "-y"]).assume).toBe(true);
 		expect(values(["build", "--yes", "--", "--yes"]).assume).toBe(true);
 		expect(
-			parse(["build", "--yes", "--", "--yes"]).unwrap().line.passthrough
+			parse(["build", "--yes", "--", "--yes"]).unwrap().line.positionals
 		).toEqual(["--yes"]);
 	});
 
 	it("should mark a line with no command, --help or --version as bare", () => {
-		expect(parse([]).unwrap().bare).toBe(true);
-		expect(parse(["-q"]).unwrap().bare).toBe(true);
-		expect(parse(["--help"]).unwrap().bare).toBe(false);
-		expect(parse(["-V"]).unwrap().bare).toBe(false);
-		expect(parse(["help"]).unwrap().bare).toBe(false);
-		expect(parse(["build"]).unwrap().bare).toBe(false);
+		expect(parse([]).unwrap().line.bare).toBe(true);
+		expect(parse(["-q"]).unwrap().line.bare).toBe(true);
+		expect(parse(["--help"]).unwrap().line.bare).toBeUndefined();
+		expect(parse(["-V"]).unwrap().line.bare).toBeUndefined();
+		expect(parse(["help"]).unwrap().line.bare).toBeUndefined();
+		expect(parse(["build"]).unwrap().line.bare).toBeUndefined();
 	});
 
 	it("should leave the positionals empty for a bare line", () => {
@@ -273,7 +273,6 @@ describe("parseArgs", () => {
 	it("should check a --help or --version line against the command it names", () => {
 		expect(parse(["build", "--variant", "a", "--help"]).unwrap()).toEqual({
 			command: "help",
-			bare: false,
 			line: {
 				positionals: ["build"],
 				options: { variant: ["a"], help: true },
@@ -305,32 +304,38 @@ describe("parseArgs", () => {
 		);
 	});
 
-	it("should pass everything after the first -- through untouched", () => {
+	it("should read everything after the first -- as positionals, as Rojo does", () => {
 		const { line } = parse([
-			"watch",
-			"lobby",
+			"build",
+			"-t",
+			"mock",
 			"--",
+			"base",
 			"--port",
-			"34873",
 			"--",
-			"x",
+			"-dash",
 		]).unwrap();
 
-		expect(line.positionals).toEqual(["lobby"]);
-		expect(line.passthrough).toEqual(["--port", "34873", "--", "x"]);
+		expect(line.positionals).toEqual(["base", "--port", "--", "-dash"]);
+		expect(line.options.variant).toEqual(["mock"]);
 	});
 
 	it("should not read options after -- as its own", () => {
-		const { line } = parse(["watch", "--", "--quiet"]).unwrap();
+		const { line } = parse(["where", "--", "--quiet"]).unwrap();
 
 		expect(line.options.quiet).toBeUndefined();
-		expect(line.passthrough).toEqual(["--quiet"]);
+		expect(line.positionals).toEqual(["--quiet"]);
 	});
 
-	it("should give no passthrough to a line without --", () => {
-		const { line } = parse(["watch", "lobby"]).unwrap();
+	it("should refuse a command after --, as Rojo does", () => {
+		const result = parse(["--", "build"]);
 
-		expect(line.passthrough).toBeUndefined();
+		expect(result.isErr() && result.error).toEqual(
+			new UsageError(
+				"'build' comes after '--', which ends the options, so it can't be the command.",
+				"Remove the '--' before it."
+			)
+		);
 	});
 
 	it("should leave an unknown command to the command service", () => {
@@ -350,6 +355,52 @@ describe("parseArgs", () => {
 		const result = parse(argv);
 
 		expect(result.isErr() && result.error.message).toBe(message);
+	});
+
+	it.each([
+		[["build", "--listing", "glob", "--listing", "file"]],
+		[["build", "--listing=glob", "--listing", "file"]],
+	])(
+		"should refuse an option of one value given twice in %j, as Rojo does",
+		(argv) => {
+			const result = parse(argv);
+
+			expect(result.isErr() && result.error).toEqual(
+				new UsageError(
+					"'--listing' was given more than once, but takes one value."
+				)
+			);
+		}
+	);
+
+	it.each([
+		[["build", "--dry", "--dry"], "--dry"],
+		[["--quiet", "build", "-q"], "--quiet"],
+		[["build", "--yes", "-y"], "--assume"],
+		[["build", "--no-cache", "--no-cache"], "--no-cache"],
+		[["build", "--no-hook", "--no-hook"], "--no-hook"],
+	])("should refuse a flag given twice in %j, as Rojo does", (argv, flag) => {
+		const result = parse(argv);
+
+		expect(result.isErr() && result.error).toEqual(
+			new UsageError(
+				`'${flag}' was given more than once, but can be given only once.`
+			)
+		);
+	});
+
+	it("should take -v, --help and a flag and its negation more than once", () => {
+		expect(values(["build", "-v", "-v"]).verbose).toEqual([true, true]);
+		expect(parse(["build", "--help", "-h"]).isOk()).toBe(true);
+		expect(values(["build", "--hook", "--no-hook"]).hook).toBe(false);
+	});
+
+	it("should take an option of one value once, and one of several values any number of times", () => {
+		expect(values(["build", "--listing", "glob"]).listing).toBe("glob");
+		expect(values(["build", "-t", "a", "-t", "b"]).variant).toEqual([
+			"a",
+			"b",
+		]);
 	});
 
 	it("should read -t=mock as -t mock, as Rojo does", () => {
@@ -373,7 +424,7 @@ describe("parseArgs", () => {
 	it("should not rewrite -t=mock after --", () => {
 		const { line } = parse(["build", "--", "-t=mock"]).unwrap();
 
-		expect(line.passthrough).toEqual(["-t=mock"]);
+		expect(line.positionals).toEqual(["-t=mock"]);
 	});
 
 	it.each([["--no-input"], ["--all"], ["-c", "x"]])(

@@ -11,6 +11,8 @@ export interface WatchOptions {
 	readonly ignored?: readonly IgnoredPath[];
 	/** Directories to watch for their own entries only, unless `paths` also reaches a subfolder. */
 	readonly shallow?: readonly string[];
+	/** Directories under which the caller reports a folder it can't read, so the watcher only writes a debug line for one. */
+	readonly reportsUnreadable?: readonly string[];
 }
 
 export interface Watcher {

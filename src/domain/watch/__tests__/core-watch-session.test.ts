@@ -803,6 +803,19 @@ describe("CoreWatchSession", () => {
 			expect(options?.ignored).not.toContain("/repo/out");
 		});
 
+		it("should tell the watcher that the write reports a folder it can't read in the source paths, but not in the compiled path", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				config({ compiledPath: "out" })
+			);
+			const watch = jest.spyOn(watcher, "watch");
+
+			await start();
+
+			const [, options] = watch.mock.calls[0];
+			expect(options?.reportsUnreadable).toEqual(["/repo/src"]);
+		});
+
 		it("should emit one batch for one change to a root shared by two configs", async () => {
 			await write("/repo/source/default.rogen.json", sharing());
 			await start([".", "source"]);

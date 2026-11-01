@@ -65,8 +65,12 @@ export interface SummaryRow {
 	readonly text: string;
 }
 
+/** What init does in its folder: start a new project, lift a hand-written project file into a config, migrate a project another tool set up, or add only the agent files beside a config. */
+export type InitAction = "create" | "lift" | "migrate" | "agents";
+
 export interface InitPlan {
 	readonly directory: string;
+	readonly action: InitAction;
 	/** What the plan sets up, by area, which the summary shows beside the files and commands. */
 	readonly summary: readonly SummaryRow[];
 	/** Runs before any file is written; a failure writes nothing. */
@@ -118,6 +122,9 @@ export interface InitService {
 
 	/** `ok(undefined)` means the user cancelled; with `ask` false it takes every default. */
 	plan(options?: InitOptions): Promise<Result<InitPlan | undefined, Error>>;
+
+	/** Checks the configs of `plan` as 'write' would, over the folder as the plan leaves it, so a plan that would fail is stopped before it writes anything. */
+	check(plan: InitPlan): Promise<Result<void, Error>>;
 
 	/** A directory that exists is left alone and not reported. A dry run writes nothing, and reports what it would. */
 	write(

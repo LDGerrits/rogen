@@ -1,3 +1,4 @@
+import path from "path";
 import { Result } from "../../base/result.js";
 import { containsPosix, normalizeDir } from "../../base/path.js";
 import { RogenConfig } from "../config/config.js";
@@ -21,6 +22,14 @@ const mountNode = ({ path, optional }: Mount): Partial<RojoNode> => ({
 
 const describe = ({ path, instancePath }: MountedPath): string =>
 	`${normalizeDir(rojoPathTarget(path))} at ${instanceKey(instancePath)}`;
+
+/** Where the project file of `rojo init` mounts each folder of `src` for a place, by the folder's name. */
+export const ROJO_TEMPLATE_NODES: Readonly<Record<string, readonly string[]>> =
+	{
+		shared: ["ReplicatedStorage", "Shared"],
+		server: ["ServerScriptService", "Server"],
+		client: ["StarterPlayer", "StarterPlayerScripts", "Client"],
+	};
 
 export class StarterProject {
 	private constructor(
@@ -47,10 +56,26 @@ export class StarterProject {
 		return new StarterProject(project);
 	}
 
-	/** The project `rojo init` makes for a model or a plugin: the folder `src` is the instance itself. */
-	static ofScript(): StarterProject {
+	/** The project `rojo init` makes for a place, mounting only `folders`, each one of its folders of `src`. */
+	static ofRojoTemplate(folders: readonly string[]): StarterProject {
+		const tree: RojoNode = { $className: "DataModel" };
+		for (const folder of folders) {
+			const names =
+				ROJO_TEMPLATE_NODES[path.posix.basename(folder).toLowerCase()];
+			let node = tree;
+			for (const name of names) {
+				node[name] ??= {};
+				node = node[name] as RojoNode;
+			}
+			node.$path = folder;
+		}
+		return new StarterProject(new RojoProject<ParsedProjectFile>({ tree }));
+	}
+
+	/** The project `rojo init` makes for a model or a plugin: the folder, `src` in Rojo's, is the instance itself. */
+	static ofScript(folder = "src"): StarterProject {
 		return new StarterProject(
-			new RojoProject<ParsedProjectFile>({ tree: { $path: "src" } })
+			new RojoProject<ParsedProjectFile>({ tree: { $path: folder } })
 		);
 	}
 
@@ -68,6 +93,18 @@ export class StarterProject {
 			root?.$className === "DataModel" ||
 			(root?.$className === undefined && root?.$path === undefined)
 		);
+	}
+
+	/** What the root mounts, as a model or a plugin does. */
+	get rootPath(): string | undefined {
+		const mounted = this.project.getNode([])?.$path;
+		return mounted === undefined ? undefined : rojoPathTarget(mounted);
+	}
+
+	/** The name the project gives itself, which Rojo builds it as. */
+	get name(): string | undefined {
+		const { name } = this.project.getFile();
+		return typeof name === "string" ? name : undefined;
 	}
 
 	/** Every folder the tree mounts, as `normalizeDir` writes it. */

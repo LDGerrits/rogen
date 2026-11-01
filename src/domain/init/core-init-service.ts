@@ -3,14 +3,23 @@ import { Disposable, toDisposable } from "../../base/disposable.js";
 import { ErrorUtils, UsageError } from "../../base/errors.js";
 import { samePath, selfAndAncestors } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	DiagnosticSeverity,
+} from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import {
+	DraftFileReader,
+	FileDraft,
+} from "../../platform/fs/draft-file-reader.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { ConfigService } from "../config/config-service.js";
+import { DEFAULT_PROJECT_FILE } from "../config/config.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
+import { WriteService } from "../write/write-service.js";
 import { CodeFinder } from "./code-finder.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
@@ -21,6 +30,7 @@ import { GitRepository } from "./git-repository.js";
 import { AgentSetup } from "./agent-setup.js";
 import { AgentRules } from "./agent/agent-rules.js";
 import {
+	InitAction,
 	InitChoices,
 	InitOptions,
 	InitPlan,
@@ -57,11 +67,36 @@ function shapingFlagsOf(choices: InitChoices): string[] {
 	});
 }
 
+/** The folder as `plan` leaves it, before any program it runs. */
+function draftOf(plan: InitPlan): FileDraft {
+	const at = (relative: string) => path.join(plan.directory, relative);
+	return {
+		files: new Map(
+			plan.files.map(({ fileName, content }) => [at(fileName), content])
+		),
+		directories: [plan.directory, ...plan.directories.map(at)],
+		moves: plan.moves.map(({ from, to }) => ({
+			from: at(from),
+			to: at(to),
+		})),
+	};
+}
+
 /** The prompt services of a run: the one that takes the default of what a summary shows, and the one that always asks. */
 interface RunPrompts {
 	readonly quick: PromptService;
 	readonly essential: PromptService;
+	/** Whether the quick questions are asked rather than taken by default, as under Customise. */
+	readonly customising?: boolean;
 }
+
+/** What the summary asks before init writes, which names what it does. */
+const QUESTIONS: Readonly<Record<InitAction, string>> = {
+	create: "Create this project?",
+	lift: "Set up Rogen in this project?",
+	migrate: "Migrate this project?",
+	agents: "Add these agent files?",
+};
 
 export class CoreInitService implements InitService {
 	declare readonly _serviceBrand: undefined;
@@ -79,7 +114,8 @@ export class CoreInitService implements InitService {
 		private readonly toolchainService: ToolchainService,
 		processService: ProcessService,
 		private readonly locator: ToolLocator = new ToolLocator(processService),
-		private readonly configService: ConfigService
+		private readonly configService: ConfigService,
+		private readonly writeService: WriteService
 	) {
 		this.agentReader = new AgentReader(fileSystemService);
 		this.git = new GitRepository(processService, fileSystemService);
@@ -107,7 +143,7 @@ export class CoreInitService implements InitService {
 		}
 	}
 
-	/** In a terminal the plan is shown once and accepted with Enter; Customise asks every question, each with its answer preselected, and shows the plan again. */
+	/** In a terminal the plan is shown once and accepted with Enter; Customise asks the questions it took the default of, each with its answer preselected, and shows the plan again. */
 	private async review(
 		options: InitOptions
 	): Promise<Result<InitPlan | undefined, Error>> {
@@ -121,10 +157,17 @@ export class CoreInitService implements InitService {
 		let mode: ReviewMode = "quick";
 		for (;;) {
 			prompts.begin(mode);
-			const planned = await this.planWithin(options, prompts);
+			const planned = await this.planWithin(options, {
+				quick: prompts.quick,
+				essential: prompts.essential,
+				customising: mode === "customise",
+			});
 			if (planned.isErr() || !planned.value || prompts.asked === 0)
 				return planned;
-			const verdict = await this.accepted(planned.value);
+			const verdict = await this.accepted(
+				planned.value,
+				prompts.customisable > 0
+			);
 			if (verdict === "yes") return planned;
 			if (verdict === "cancel") return ok(undefined);
 			mode = "customise";
@@ -132,19 +175,24 @@ export class CoreInitService implements InitService {
 	}
 
 	private accepted(
-		plan: InitPlan
+		plan: InitPlan,
+		customisable: boolean
 	): Promise<"yes" | "customise" | "cancel" | undefined> {
 		return this.promptService
 			.select<"yes" | "customise" | "cancel">({
-				message: "Create this project?",
+				message: QUESTIONS[plan.action],
 				description: InitSummary.lines(plan).join("\n"),
 				choices: [
 					{ value: "yes", label: "Yes" },
-					{
-						value: "customise",
-						label: "Customise",
-						hint: "ask every question",
-					},
+					...(customisable
+						? [
+								{
+									value: "customise" as const,
+									label: "Customise",
+									hint: "change the defaults",
+								},
+							]
+						: []),
 					{ value: "cancel", label: "Cancel" },
 				],
 				initialValue: "yes",
@@ -163,7 +211,8 @@ export class CoreInitService implements InitService {
 			prompts.quick,
 			interactive,
 			choices,
-			prompts.essential
+			prompts.essential,
+			prompts.customising
 		);
 		const directory = await this.prepare(folder, place !== undefined);
 		if (directory.isErr()) return directory;
@@ -243,7 +292,16 @@ export class CoreInitService implements InitService {
 			);
 		const agents = await this.agentSetupIn(directory, questions);
 		if (agents.isErr()) return agents;
-		return this.planWith(directory, questions, [agents.value]);
+		if (agents.value.hookUnfound && choices.agentRules !== true)
+			return err(
+				new DiagnosticsError([
+					AgentSetup.noCodingAgent(
+						directory.path,
+						DiagnosticSeverity.Error
+					),
+				])
+			);
+		return this.planWith(directory, questions, [agents.value], "agents");
 	}
 
 	private async agentSetupIn(
@@ -254,12 +312,14 @@ export class CoreInitService implements InitService {
 		if (agentFile.isErr()) return agentFile;
 		const hooks = await this.agentReader.hooksIn(directory);
 		if (hooks.isErr()) return hooks;
-		if (questions.choices.agentHook === true && !hooks.value.inUse)
-			throw new UsageError(
-				"There is no hook to add.",
-				"No coding agent folder here (.claude, .codex, .cursor, ...) was found."
-			);
-		return ok(new AgentSetup(agentFile.value, hooks.value, questions));
+		return ok(
+			new AgentSetup(
+				agentFile.value,
+				hooks.value,
+				questions,
+				directory.path
+			)
+		);
 	}
 
 	/** `mayBeNew`: the folder was named, and is made if it is not there. */
@@ -289,7 +349,9 @@ export class CoreInitService implements InitService {
 				await new CodeFinder(this.fileSystemService).layoutOf(
 					directory,
 					workspace
-				)
+				),
+				entries.has(DEFAULT_PROJECT_FILE) &&
+					(await this.git.tracks(directory, DEFAULT_PROJECT_FILE))
 			)
 		);
 	}
@@ -337,7 +399,8 @@ export class CoreInitService implements InitService {
 	private async planWith(
 		directory: InitDirectory,
 		questions: InitQuestions,
-		setups: readonly Setup<unknown>[]
+		setups: readonly Setup<unknown>[],
+		action?: InitAction
 	): Promise<Result<InitPlan | undefined, Error>> {
 		const answered: { setup: Setup<unknown>; choices: unknown }[] = [];
 		for (const setup of setups) {
@@ -353,6 +416,7 @@ export class CoreInitService implements InitService {
 			questions.decided,
 			this.environmentService.cwd
 		);
+		if (action) builder.setAction(action);
 		for (const { setup, choices } of answered) setup.plan(choices, builder);
 		const plan = builder.build();
 		if (plan.isErr()) return err(new DiagnosticsError(plan.error));
@@ -373,6 +437,20 @@ export class CoreInitService implements InitService {
 
 	refreshAgentRules(folder: string): Promise<string[]> {
 		return new AgentRules(this.fileSystemService, this.git).refresh(folder);
+	}
+
+	async check(plan: InitPlan): Promise<Result<void, Error>> {
+		if (plan.configs.length === 0) return ok(undefined);
+		const reader = new DraftFileReader(
+			this.fileSystemService,
+			draftOf(plan)
+		);
+		const selection = await this.configService.select(plan.configs, reader);
+		if (selection.isErr()) return selection;
+		const failure = (
+			await this.writeService.check(selection.value, reader)
+		).failure();
+		return failure ? err(failure) : ok(undefined);
 	}
 
 	write(

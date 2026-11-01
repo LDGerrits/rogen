@@ -36,7 +36,7 @@ In the folder that holds `default.project.json`, run `rogen init`. It moves no f
 
 The rest of the tree, such as `Workspace` and `Lighting`, stays as it was. `src/shared` becomes the `Shared` route. `src/server` and `src/client` hold an init script, which Rojo reads as the folder's own instance and a route can't, so they stay `$path` mounts. A mounted folder without one becomes a route to its node instead, such as `"Server": "ServerScriptService/Server"`.
 
-Every file lands where Rojo put it, so your requires still work. From now on, `rogen write` overwrites `default.project.json`, so make your changes in `default.rogen.json`. Stop tracking the project file: add `*.project.json` to `.gitignore` if `init` didn't (it does when it creates the `.gitignore`), then run `git rm --cached default.project.json`.
+Every file lands where Rojo put it, so your requires still work. A file in `src` that no node mounted stays out of the game: `init` lists it, or its folder, under `globIgnorePaths`. From now on, `rogen write` replaces `default.project.json`, so make your changes in `default.rogen.json`. Stop tracking the project file: add `*.project.json` to `.gitignore` if `init` didn't (it does when it creates the `.gitignore`), then, if git tracks it, run `git rm --cached default.project.json`.
 
 ## Sort by Feature
 

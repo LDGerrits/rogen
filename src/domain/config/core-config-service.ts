@@ -3,7 +3,10 @@ import { Disposable } from "../../base/disposable.js";
 import { isInside, samePath, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import {
+	FileReader,
+	FileSystemService,
+} from "../../platform/fs/file-system-service.js";
 
 import { ConfigFormatter } from "./config-formatter.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -53,24 +56,30 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	async select(
-		refs: readonly string[]
+		refs: readonly string[],
+		reader?: FileReader
 	): Promise<Result<ReloadableSelection, Error>> {
-		return this.open(await this.discovery.discover(refs));
+		const discovery = reader ? this.discovery.over(reader) : this.discovery;
+		return this.open(
+			await discovery.discover(refs),
+			reader ? this.loader.over(reader) : this.loader
+		);
 	}
 
 	private async open(
-		discovered: Result<DiscoveredConfigs, Error>
+		discovered: Result<DiscoveredConfigs, Error>,
+		loader: ConfigLoader
 	): Promise<Result<ReloadableSelection, Error>> {
 		if (discovered.isErr()) return err(discovered.error);
 
 		const { home: directory, files, noneNamed, notes } = discovered.value;
 		const opened = await Promise.all(
-			files.map((file) => ManagedConfig.open(file, this.loader))
+			files.map((file) => ManagedConfig.open(file, loader))
 		);
 		return ok(
 			new CoreConfigSelection(
 				opened,
-				this.loader,
+				loader,
 				directory,
 				noneNamed && !files.some(isProjectFileConfig)
 					? { directory, list: () => this.firstConfigIn(directory) }

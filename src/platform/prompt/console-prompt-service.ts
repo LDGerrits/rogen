@@ -17,7 +17,7 @@ import {
 	symbolBar,
 } from "@clack/prompts";
 import { Readable, Writable } from "stream";
-import { style } from "../../base/style.js";
+import { Styler, style, unstyled } from "../../base/style.js";
 import {
 	ConfirmPromptOptions,
 	PromptChoice,
@@ -27,10 +27,6 @@ import {
 } from "./prompt-service.js";
 
 type State = Prompt<unknown>["state"];
-
-type Styler = typeof style;
-
-const plain: Styler = (_format, text) => text;
 
 const choiceText = <T extends string>(
 	{ label, hint }: PromptChoice<T>,
@@ -108,7 +104,7 @@ export class ConsolePromptService implements PromptService {
 	}: PromptSession) {
 		this.streams = { input, output };
 		this.isInteractive = interactive;
-		this.style = color ? style : plain;
+		this.style = color ? style : unstyled;
 	}
 
 	async confirm(options: ConfirmPromptOptions): Promise<boolean | undefined> {

@@ -40,32 +40,36 @@ describe("ProjectSetup plan, unmounted files", () => {
 			}).unwrap()
 		);
 
-	it("should warn, by code, of files Rojo ignored that a route may place", async () => {
-		const planned = await lift(["src/Loose.luau", "src/x/Y.luau"]);
+	it("should leave out what Rojo ignored with globIgnorePaths, and say so", async () => {
+		const planned = await lift(["src/Loose.luau", "src/x"]);
 
-		expect(planned.warnings).toMatchObject([
-			{
-				code: "init.unmountedFiles",
-				message: expect.stringContaining(
-					"2 files in the source paths are mounted by no node"
-				),
-			},
+		expect(configOf(planned).globIgnorePaths).toEqual([
+			"src/Loose.luau",
+			"src/x",
 		]);
-		expect(planned.warnings[0].message).toContain(
-			"src/Loose.luau and src/x/Y.luau"
+		expect(planned.warnings).toEqual([]);
+		expect(planned.notes).toContainEqual(
+			expect.stringContaining(
+				'Left out src/Loose.luau and src/x with "globIgnorePaths", since no node of default.project.json mounts them, so Rojo ignored them.'
+			)
 		);
 	});
 
-	it("should name five files and count the rest", async () => {
+	it("should name five paths and count the rest", async () => {
 		const planned = await lift(
 			Array.from({ length: 8 }, (_, at) => `src/F${at}.luau`)
 		);
 
-		expect(planned.warnings[0].message).toContain("src/F4.luau and 3 more");
+		expect(planned.notes).toContainEqual(
+			expect.stringContaining("src/F4.luau and 3 more")
+		);
 	});
 
 	it("should say nothing when every file is mounted", async () => {
-		expect((await lift([])).warnings).toEqual([]);
+		const planned = await lift([]);
+
+		expect(planned.notes.join("\n")).not.toContain("globIgnorePaths");
+		expect(configOf(planned).globIgnorePaths).toBeUndefined();
 	});
 });
 
@@ -250,9 +254,9 @@ describe("ProjectSetup plan", () => {
 			});
 		});
 
-		it("should start rbxtsc first for roblox-ts", async () => {
+		it("should start the local rbxtsc first for roblox-ts", async () => {
 			expect((await planFor("roblox-ts")).nextSteps.run).toEqual([
-				"rbxtsc -w",
+				"npx rbxtsc -w",
 				"rogen serve",
 			]);
 		});
@@ -524,6 +528,21 @@ describe("ProjectSetup plan with a test runner", () => {
 
 		expect(config.globIgnorePaths).toEqual(["**/*.draft.luau"]);
 	});
+
+	it("should add what Rojo ignored after the globs of the lifted file", async () => {
+		const choices = {
+			...(await defaultProjectChoices(luau)),
+			tree: lifted({
+				tree: { $className: "DataModel" },
+				globIgnorePaths: ["**/*.draft.luau"],
+			}),
+			unmounted: ["src/dev"],
+		};
+
+		const config = configOf(planProject({ choices }).unwrap());
+
+		expect(config.globIgnorePaths).toEqual(["**/*.draft.luau", "src/dev"]);
+	});
 });
 
 describe("ProjectSetup plan, second config files", () => {
@@ -541,7 +560,11 @@ describe("ProjectSetup plan, second config files", () => {
 	it("should set up no Darklua in a new project, even beside a .darklua.json", async () => {
 		const planned = await plan(darkluaLuau);
 
-		expect(files(planned)).toEqual(["default.rogen.json", ".gitignore"]);
+		expect(files(planned)).toEqual([
+			"default.rogen.json",
+			"src/.gitkeep",
+			".gitignore",
+		]);
 		expect(configOf(planned).compiledPath).toBeUndefined();
 		expect(planned.summary.map(({ area }) => area)).not.toContain(
 			"Darklua"
@@ -605,21 +628,30 @@ describe("ProjectSetup plan, second config files", () => {
 		).toContain("sourcemap.json\n*.project.json\n");
 	});
 
-	it("should tell a lifted project to stop tracking the file Rogen writes now", async () => {
-		const choices = {
-			...(await defaultProjectChoices(luau)),
-			tree: lifted({ name: "g", tree: { $className: "DataModel" } }),
-		};
+	it.each([
+		[true, true],
+		[false, false],
+	])(
+		"should tell a lifted project to stop tracking the file Rogen writes now when git tracks it (tracked: %s)",
+		async (tracksProjectFile, told) => {
+			const choices = {
+				...(await defaultProjectChoices(luau)),
+				tree: lifted({ name: "g", tree: { $className: "DataModel" } }),
+			};
 
-		const planned = planProject({
-			choices,
-			existingFiles: new Set(["default.project.json"]),
-		}).unwrap();
+			const planned = planProject({
+				choices,
+				existingFiles: new Set(["default.project.json"]),
+				tracksProjectFile,
+			}).unwrap();
 
-		expect(planned.nextSteps.edits.join("\n")).toContain(
-			"git rm --cached default.project.json"
-		);
-	});
+			expect(
+				planned.nextSteps.edits.some((edit) =>
+					edit.includes("git rm --cached default.project.json")
+				)
+			).toBe(told);
+		}
+	);
 
 	it("should say to edit the config, and to build after adding a feature folder", async () => {
 		expect((await plan(luau)).nextSteps.edits).toContainEqual(

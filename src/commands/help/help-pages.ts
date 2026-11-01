@@ -321,7 +321,9 @@ export class HelpPages {
 			`Unknown ${what} "${target}".`,
 			suggestion
 				? `Did you mean 'rogen help ${suggestion}'?`
-				: "Run 'rogen help' to see the commands."
+				: isCode(target)
+					? "Run 'rogen help codes' to see every code."
+					: "Run 'rogen help' to see the commands."
 		);
 	}
 }

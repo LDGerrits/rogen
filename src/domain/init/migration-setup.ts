@@ -50,6 +50,7 @@ export class MigrationSetup implements Setup<MigrationChoices> {
 
 	plan(choices: MigrationChoices, builder: InitPlanBuilder): void {
 		const { migrated } = this;
+		builder.setAction("migrate");
 		builder.addSummary("Project", `migrating ${migrated.label}`);
 		for (const { fileName, config } of migrated.configs) {
 			builder.addSummary(
@@ -65,7 +66,7 @@ export class MigrationSetup implements Setup<MigrationChoices> {
 		if (choices.projectFilesHint) builder.addEdit(choices.projectFilesHint);
 		const files = migrated.configs.map(({ fileName }) => fileName);
 		builder.addEdit(
-			`Edit ${joinedWithAnd(files)}${files.length > 1 ? "," : ""} and leave ${joinedWithAnd(files.map(MigrationSetup.projectFileOf))} alone, since 'rogen write' overwrites ${files.length === 1 ? "it" : "them"}. After you add a feature folder, run 'rogen write' so the editor's ${files.length === 1 ? "project file follows" : "project files follow"}.`
+			`Edit ${joinedWithAnd(files)}${files.length > 1 ? "," : ""} and leave ${joinedWithAnd(files.map(MigrationSetup.projectFileOf))} alone, since 'rogen write' replaces ${files.length === 1 ? "it" : "them"}. After you add a feature folder, run 'rogen write' so the editor's ${files.length === 1 ? "project file follows" : "project files follow"}.`
 		);
 		if (choices.serve) builder.addRun(choices.serve);
 	}

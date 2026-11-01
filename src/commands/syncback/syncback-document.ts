@@ -59,7 +59,12 @@ interface SyncbackEntry {
 
 export type SyncbackOutcome =
 	| { readonly kind: "notRun" }
-	| { readonly kind: "failed"; readonly error: Error }
+	| {
+			readonly kind: "failed";
+			readonly error: Error;
+			/** The config Rojo ran on. */
+			readonly configFile: string;
+	  }
 	| {
 			readonly kind: "planned" | "written";
 			readonly plan: SyncbackPlan;
@@ -99,7 +104,10 @@ export function syncbackEntry(
 	if (outcome.kind === "notRun" || outcome.kind === "failed")
 		return {
 			outcome: outcome.kind,
-			config: null,
+			config:
+				outcome.kind === "failed"
+					? configPath(cwd, outcome.configFile)
+					: null,
 			input,
 			changes: [],
 			unplaced: [],

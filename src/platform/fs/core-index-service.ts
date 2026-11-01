@@ -1,5 +1,6 @@
 import path from "path";
 import {
+	FileReader,
 	FileSystemService,
 	FileType,
 	isDirectoryType,
@@ -13,10 +14,12 @@ type Directories = Map<string, ReadonlyMap<string, FileType>>;
 
 class ListingDraft {
 	readonly directories: Directories;
+	readonly unreadable: Set<string>;
 	private readonly edited = new Map<string, Map<string, FileType>>();
 
 	constructor(base: Listing) {
 		this.directories = new Map(base.directories);
+		this.unreadable = new Set(base.unreadable);
 	}
 
 	get(dir: string): ReadonlyMap<string, FileType> | undefined {
@@ -34,6 +37,7 @@ class ListingDraft {
 	}
 
 	remove(dir: string): void {
+		this.unreadable.delete(dir);
 		const children = this.directories.get(dir);
 		if (!children) return;
 		for (const [name, type] of children) {
@@ -57,6 +61,16 @@ class ListingDraft {
 		if (this.get(dir)?.has(name)) this.edit(dir).delete(name);
 		this.remove(joinPosix(dir, name));
 	}
+
+	/** Records `dir` as a fresh listing would: refused, with nothing under it. */
+	markUnreadable(dir: string): void {
+		this.remove(dir);
+		this.unreadable.add(dir);
+	}
+
+	toListing(): Listing {
+		return new Listing(this.directories, this.unreadable);
+	}
 }
 
 export class CoreIndexService implements IndexService {
@@ -64,23 +78,29 @@ export class CoreIndexService implements IndexService {
 
 	constructor(private readonly fileSystemService: FileSystemService) {}
 
-	async list(dirs: readonly string[]): Promise<Listing> {
-		const directories: Directories = new Map();
+	async list(
+		dirs: readonly string[],
+		reader: FileReader = this.fileSystemService
+	): Promise<Listing> {
+		const draft = new ListingDraft(Listing.EMPTY);
 		await Promise.all(
-			outermostDirs(dirs).map((root) => this.traverse(root, directories))
+			outermostDirs(dirs).map((root) =>
+				this.traverse(root, draft, reader)
+			)
 		);
-		return new Listing(directories);
+		return draft.toListing();
 	}
 
 	private async traverse(
 		currentDir: string,
-		into: Directories
+		draft: ListingDraft,
+		reader: FileReader = this.fileSystemService
 	): Promise<void> {
-		const entries = await this.readDirectory(currentDir);
+		const entries = await this.readDirectory(currentDir, draft, reader);
 		if (!entries) return;
 
 		const children = new Map<string, FileType>();
-		into.set(toPosix(currentDir), children);
+		draft.directories.set(toPosix(currentDir), children);
 		const subdirs: string[] = [];
 
 		for (const [name, type] of entries) {
@@ -89,18 +109,27 @@ export class CoreIndexService implements IndexService {
 				subdirs.push(path.join(currentDir, name));
 		}
 
-		await Promise.all(subdirs.map((subdir) => this.traverse(subdir, into)));
+		await Promise.all(
+			subdirs.map((subdir) => this.traverse(subdir, draft, reader))
+		);
 	}
 
+	/** `undefined` for a directory that is missing, or that can't be read, which `draft` then records as unreadable until a read succeeds. */
 	private async readDirectory(
-		dir: string
+		dir: string,
+		draft: ListingDraft,
+		reader: FileReader = this.fileSystemService
 	): Promise<[string, FileType][] | undefined> {
+		const posixDir = toPosix(dir);
+		draft.unreadable.delete(posixDir);
 		try {
-			return await this.fileSystemService.readDirectory(dir);
+			return await reader.readDirectory(dir);
 		} catch (error) {
-			if (ErrorUtils.hasCode(error, "ENOENT", "ENOTDIR"))
-				return undefined;
-			throw error;
+			if (ErrorUtils.hasCode(error, "EACCES", "EPERM"))
+				draft.markUnreadable(posixDir);
+			else if (!ErrorUtils.hasCode(error, "ENOENT", "ENOTDIR"))
+				throw error;
+			return undefined;
 		}
 	}
 
@@ -112,7 +141,7 @@ export class CoreIndexService implements IndexService {
 		const listings = new Map<string, Map<string, FileType> | undefined>();
 		const listingOf = async (dir: string) => {
 			if (!listings.has(dir)) {
-				const entries = await this.readDirectory(dir);
+				const entries = await this.readDirectory(dir, draft);
 				listings.set(dir, entries && new Map(entries));
 			}
 			return listings.get(dir);
@@ -129,24 +158,18 @@ export class CoreIndexService implements IndexService {
 				if (listed === undefined) continue;
 				await this.addEntry(draft, dir, name, listed);
 			} else if (change.type === FileChangeType.DELETED) {
-				await this.assertReadable(listingOf, dir);
+				// A folder that can no longer be read is reported deleted; listing records it, and any other failure lets the deletion stand.
+				await listingOf(dir).catch(() => undefined);
 				if (isDirectoryType(change.fileType))
-					await this.assertReadable(listingOf, posixPath);
-				draft.delete(dir, name);
+					await listingOf(posixPath).catch(() => undefined);
+				if (
+					!draft.unreadable.has(dir) &&
+					!draft.unreadable.has(posixPath)
+				)
+					draft.delete(dir, name);
 			}
 		}
-		return new Listing(draft.directories);
-	}
-
-	private async assertReadable(
-		listingOf: (dir: string) => Promise<unknown>,
-		dir: string
-	): Promise<void> {
-		try {
-			await listingOf(dir);
-		} catch (error) {
-			if (ErrorUtils.hasCode(error, "EACCES", "EPERM")) throw error;
-		}
+		return draft.toListing();
 	}
 
 	private async addEntry(
@@ -163,7 +186,6 @@ export class CoreIndexService implements IndexService {
 		if (previous === type && draft.get(fullPosixPath)) return;
 		if (previous !== undefined && isDirectoryType(previous))
 			draft.remove(fullPosixPath);
-		if (isDirectoryType(type))
-			await this.traverse(fullPosixPath, draft.directories);
+		if (isDirectoryType(type)) await this.traverse(fullPosixPath, draft);
 	}
 }

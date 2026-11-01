@@ -135,7 +135,8 @@ export function commandHarness(
 		toolchain,
 		processes,
 		undefined,
-		config
+		config,
+		writeService
 	);
 	init.registerMigration(new LegacyMigration());
 	services.set(InitService, init);
