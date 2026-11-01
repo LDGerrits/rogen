@@ -79,6 +79,68 @@ describe("CoreIndexService", () => {
 			expect(listing.getEntries("missing-root")).toBeUndefined();
 		});
 
+		it.each(["EACCES", "EPERM"] as const)(
+			"should record a folder that throws %s as unreadable, and list the rest",
+			async (code) => {
+				await memoryFs.writeFile("src/locked/b.luau", "");
+				await memoryFs.writeFile("src/open/c.luau", "");
+				memoryFs.refuseListing("src/locked", code);
+
+				listing = await indexService.list(["src"]);
+
+				expect(listing.isUnreadable("src/locked")).toBe(true);
+				expect(listing.isUnreadable("src/open")).toBe(false);
+				expect(listing.getEntries("src/locked")).toBeUndefined();
+				expect(listing.hasEntry("src/open", "c.luau")).toBe(true);
+			}
+		);
+
+		it("should record an added folder that can't be read as unreadable, and forget it once deleted", async () => {
+			await memoryFs.writeFile("src/a.luau", "");
+			listing = await indexService.list(["src"]);
+			await memoryFs.writeFile("src/locked/b.luau", "");
+			memoryFs.refuseListing("src/locked", "EACCES");
+
+			const added = await indexService.update(listing, [
+				{
+					type: FileChangeType.ADDED,
+					path: "src/locked",
+					fileType: FileType.Directory,
+				},
+			]);
+			await memoryFs.delete("src/locked", true);
+			const deleted = await indexService.update(added, [
+				{
+					type: FileChangeType.DELETED,
+					path: "src/locked",
+					fileType: FileType.Directory,
+				},
+			]);
+
+			expect(listing.isUnreadable("src/locked")).toBe(false);
+			expect(added.isUnreadable("src/locked")).toBe(true);
+			expect(deleted.isUnreadable("src/locked")).toBe(false);
+		});
+
+		it("should read a folder it could not read once it is reported added", async () => {
+			await memoryFs.writeFile("src/locked/b.luau", "");
+			memoryFs.refuseListing("src/locked", "EACCES");
+			listing = await indexService.list(["src"]);
+			memoryFs.refuseListing("src/locked", undefined);
+
+			const updated = await indexService.update(listing, [
+				{
+					type: FileChangeType.ADDED,
+					path: "src/locked",
+					fileType: FileType.Directory,
+				},
+			]);
+
+			expect(updated.isUnreadable("src/locked")).toBe(false);
+			expect(updated.hasEntry("src/locked", "b.luau")).toBe(true);
+			expect(updated).toEqual(await indexService.list(["src"]));
+		});
+
 		it("should list a directory's entries with their types", async () => {
 			await memoryFs.writeFile("src/app.ts", "");
 			await memoryFs.createDirectory("src/components");
@@ -266,38 +328,39 @@ describe("CoreIndexService", () => {
 		});
 
 		it.each([
-			["a folder that can't be read", "src/locked", FileType.Directory],
 			[
-				"a file in a folder that can't be read",
+				"a deletion of a folder that can't be read",
+				FileChangeType.DELETED,
+				"src/locked",
+				FileType.Directory,
+			],
+			[
+				"a deletion of a file in a folder that can't be read",
+				FileChangeType.DELETED,
 				"src/locked/b.luau",
 				FileType.File,
 			],
+			[
+				"a file added to a folder that can't be read",
+				FileChangeType.ADDED,
+				"src/locked/c.luau",
+				FileType.File,
+			],
 		])(
-			"should fail on a deletion of %s, rather than drop what the project holds",
-			async (_, deleted, fileType) => {
+			"should record the folder as unreadable on %s, as a rescan does",
+			async (_, type, changed, fileType) => {
 				await memoryFs.writeFile("src/locked/b.luau", "");
 				listing = await indexService.list(["src"]);
-				const read = memoryFs.readDirectory.bind(memoryFs);
-				jest.spyOn(memoryFs, "readDirectory").mockImplementation(
-					async (dir) => {
-						if (dir.endsWith("locked"))
-							throw Object.assign(new Error("EACCES: denied"), {
-								code: "EACCES",
-							});
-						return read(dir);
-					}
-				);
+				memoryFs.refuseListing("src/locked", "EACCES");
 
-				await expect(
-					indexService.update(listing, [
-						{
-							type: FileChangeType.DELETED,
-							path: deleted,
-							fileType,
-						},
-					])
-				).rejects.toThrow("EACCES");
-				expect(listing.hasEntry("src", "locked")).toBe(true);
+				const updated = await indexService.update(listing, [
+					{ type, path: changed, fileType },
+				]);
+
+				expect(updated.hasEntry("src", "locked")).toBe(true);
+				expect(updated.isUnreadable("src/locked")).toBe(true);
+				expect(updated.getEntries("src/locked")).toBeUndefined();
+				expect(updated).toEqual(await indexService.list(["src"]));
 			}
 		);
 

@@ -5,10 +5,13 @@ import {
 	ConfigLocations,
 	FileLocation,
 	InstanceFix,
+	LocatedDiagnosis,
 	Locations,
-	diagnosticsOf,
 } from "../../domain/write/write-service.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	uniqueDiagnostics,
+} from "../../platform/diagnostics/diagnostic.js";
 
 interface FileAnswer {
 	readonly kind: "file";
@@ -33,7 +36,10 @@ const sourceOf = (answer: Answer): string =>
 	answer.kind === "file" ? answer.location.source : answer.instance;
 
 export class WhereAnswers {
+	/** The errors no line shows, so they print on their own. */
 	readonly errors: readonly Diagnostic[];
+	/** The errors that stop the write of a config that answered. */
+	readonly stops: readonly Diagnostic[];
 	readonly configCount: number;
 	readonly sourcePaths: readonly string[];
 	private readonly answers: Answer[];
@@ -41,12 +47,21 @@ export class WhereAnswers {
 	private readonly asked: readonly Asked[];
 
 	constructor({ everyFile, asked, configs, errors }: Locations) {
-		this.errors = errors;
 		this.asked = asked;
 		this.sourcePaths = configs.flatMap(({ config }) => config.sourcePaths);
 		this.configCount = configs.length;
 		this.sorted = everyFile;
-		this.answers = configs.flatMap((located) => answersOf(located));
+		const diagnoses = configs.map(
+			(located) => new LocatedDiagnosis(located)
+		);
+		this.answers = configs.flatMap((located, at) =>
+			answersOf(located, diagnoses[at])
+		);
+		this.stops = uniqueDiagnostics(diagnoses.flatMap(({ stops }) => stops));
+		this.errors = uniqueDiagnostics([
+			...errors,
+			...diagnoses.flatMap(({ unshown }) => unshown),
+		]);
 	}
 
 	/** In the order asked, or sorted; a directory's files stay together. */
@@ -109,19 +124,18 @@ export class WhereAnswers {
 	}
 }
 
-function answersOf({
-	config,
-	files: locations,
-	instances,
-	diagnostics,
-}: ConfigLocations): Answer[] {
+function answersOf(
+	located: ConfigLocations,
+	diagnosis: LocatedDiagnosis
+): Answer[] {
+	const { config, files: locations, instances } = located;
 	const { file } = config;
 	const answer = (location: FileLocation, instance?: string): FileAnswer => ({
 		kind: "file",
 		config: file,
 		location,
 		...(instance !== undefined && { instance }),
-		diagnostics: diagnosticsOf(location, diagnostics),
+		diagnostics: diagnosis.of(location),
 	});
 	return [
 		...locations.map((location) => answer(location)),

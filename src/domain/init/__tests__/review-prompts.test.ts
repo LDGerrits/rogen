@@ -1,4 +1,7 @@
-import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
+import {
+	ACCEPT_DEFAULT,
+	MockPromptService,
+} from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { ReviewPrompts } from "../review-prompts.js";
 
 describe("ReviewPrompts", () => {
@@ -37,8 +40,12 @@ describe("ReviewPrompts", () => {
 		expect(real.asked).toEqual(["Language"]);
 	});
 
-	it("should ask every question when customising, with the answer given before preselected", async () => {
-		const real = new MockPromptService(["roblox-ts", false, "luau"]);
+	it("should ask only the quick questions when customising, with the answer given before preselected", async () => {
+		const real = new MockPromptService([
+			"roblox-ts",
+			false,
+			ACCEPT_DEFAULT,
+		]);
 		const review = new ReviewPrompts(real);
 		const language = () =>
 			review.essential.select({
@@ -48,17 +55,20 @@ describe("ReviewPrompts", () => {
 					{ value: "roblox-ts", label: "roblox-ts" },
 				],
 			});
+		const hook = () =>
+			review.quick.confirm({ message: "Hook", initialValue: true });
 		await language();
+		await hook();
 		review.begin("customise");
 
-		await review.quick.confirm({ message: "Hook", initialValue: true });
 		await language();
-		review.begin("quick");
+		await hook();
+		review.begin("customise");
+		await language();
+		const again = await hook();
 
-		expect(real.asked).toEqual(["Language", "Hook", "Language"]);
-		expect(
-			await review.quick.confirm({ message: "Hook", initialValue: true })
-		).toBe(false);
-		expect(await language()).toBe("luau");
+		expect(real.asked).toEqual(["Language", "Hook", "Hook"]);
+		expect(again).toBe(false);
+		expect(await language()).toBe("roblox-ts");
 	});
 });

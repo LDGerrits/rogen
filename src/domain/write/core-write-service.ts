@@ -2,18 +2,18 @@ import { groupBy } from "../../base/collections.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	Diagnostic,
-	diagnosticsReaching,
-	isError,
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import {
+	FileReader,
+	FileSystemService,
+} from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
-import { RojoFile } from "../rojo/rojo.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
-import { ConfigSelection } from "../config/config-service.js";
+import { ConfigSelection, ConfigService } from "../config/config-service.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import {
 	WriteRun,
@@ -28,9 +28,9 @@ import {
 import {
 	Asked,
 	WriteService,
-	ConfigLocations,
 	Diagnosis,
 	LocateQuery,
+	LocatedDiagnosis,
 	Locations,
 	outsideEveryConfig,
 	skippedByEveryConfig,
@@ -75,7 +75,8 @@ export class CoreWriteService implements WriteService {
 	constructor(
 		private readonly fileSystemService: FileSystemService,
 		private readonly indexService: IndexService,
-		private readonly syncTools: readonly SyncTool[]
+		private readonly syncTools: readonly SyncTool[],
+		private readonly configService: ConfigService
 	) {
 		this.writer = new OutputWriter(fileSystemService);
 	}
@@ -90,8 +91,8 @@ export class CoreWriteService implements WriteService {
 		});
 	}
 
-	check(selection: ConfigSelection): Promise<WriteRun> {
-		return this.writeAll(selection, { write: false });
+	check(selection: ConfigSelection, reader?: FileReader): Promise<WriteRun> {
+		return this.writeAll(selection, { write: false, reader });
 	}
 
 	async projectFileOf(
@@ -105,31 +106,34 @@ export class CoreWriteService implements WriteService {
 		).projectFileOf(project);
 	}
 
-	/** With `advice`, a plain Rojo project keeps the warnings about Rogen's own model. */
+	/** With `advice`, a plain Rojo project keeps the warnings about Rogen's own model; with `reader`, a check reads through it. */
 	private async writeAll(
 		selection: ConfigSelection,
 		{
 			write,
 			independent = false,
 			advice = false,
+			reader = this.fileSystemService,
 		}: {
 			readonly write: boolean;
 			readonly independent?: boolean;
 			readonly advice?: boolean;
+			readonly reader?: FileReader;
 		}
 	): Promise<WriteRun> {
 		const { set, unloaded } = WriteSet.partition(selection);
-		const listing = await this.indexService.list(set.indexedPaths);
+		const listing = await this.indexService.list(set.indexedPaths, reader);
 		const attempts = await this.attempt(
 			set.configs.map((config) => ({ config, syncWarnings: undefined })),
 			listing,
-			advice
+			advice,
+			reader
 		);
 		const settled = await this.settle(
 			attempts,
 			unloaded.map(({ file }) => file),
 			write,
-			{ independent }
+			{ independent, reader }
 		);
 		const outcomes = groupBy(
 			[...unloaded, ...settled],
@@ -253,13 +257,6 @@ export class CoreWriteService implements WriteService {
 		}
 		const located = await this.locate(selection, targets);
 		return located.map(({ errors, configs }) => {
-			const about = ({ config, files, queried }: ConfigLocations) => [
-				...files.flatMap(({ source }) => [
-					source,
-					...RojoFile.metaFilesBeside(source, config.syncRules),
-				]),
-				...queried,
-			];
 			const outside = new OutsideSourcePaths(
 				configs.flatMap(({ config }) => config.sourcePaths)
 			);
@@ -267,6 +264,9 @@ export class CoreWriteService implements WriteService {
 				source,
 				warnings: outside.about(source),
 			}));
+			const diagnoses = configs.map(
+				(config) => new LocatedDiagnosis(config)
+			);
 			return {
 				skipped: skippedOutside(
 					misspelt
@@ -277,26 +277,10 @@ export class CoreWriteService implements WriteService {
 				diagnostics: uniqueDiagnostics([
 					...errors,
 					...misspelt.flatMap(({ warnings }) => warnings),
-					...configs.flatMap((config) =>
-						about(config).flatMap((target) =>
-							diagnosticsReaching(config.diagnostics, target)
-						)
-					),
+					...diagnoses.flatMap(({ reaching }) => reaching),
 				]),
 				stoppedBy: uniqueDiagnostics(
-					configs.flatMap((config) =>
-						config.diagnostics.filter(
-							(diagnostic) =>
-								isError(diagnostic) &&
-								about(config).every(
-									(target) =>
-										diagnosticsReaching(
-											[diagnostic],
-											target
-										).length === 0
-								)
-						)
-					)
+					diagnoses.flatMap(({ stoppedBy }) => stoppedBy)
 				),
 			};
 		});
@@ -308,13 +292,10 @@ export class CoreWriteService implements WriteService {
 			readonly syncWarnings: readonly Diagnostic[] | undefined;
 		}[],
 		listing: IndexReader,
-		advice = false
+		advice = false,
+		reader: FileReader = this.fileSystemService
 	): Promise<Attempt[]> {
-		const pipeline = new WritePipeline(
-			this.fileSystemService,
-			listing,
-			this.syncTools
-		);
+		const pipeline = new WritePipeline(reader, listing, this.syncTools);
 		const attempts: Attempt[] = [];
 		for (const { config, syncWarnings } of configs) {
 			const result = await pipeline.run(config, syncWarnings);
@@ -337,7 +318,10 @@ export class CoreWriteService implements WriteService {
 		attempts: readonly Attempt[],
 		unloaded: readonly string[],
 		write: boolean,
-		options: WriteOptions & { readonly independent?: boolean } = {}
+		options: WriteOptions & {
+			readonly independent?: boolean;
+			readonly reader?: FileReader;
+		} = {}
 	): Promise<LoadedConfig[]> {
 		const prepared = attempts.filter(
 			(attempt): attempt is PreparedConfig =>
@@ -363,7 +347,10 @@ export class CoreWriteService implements WriteService {
 			attempts.map(async (attempt) => {
 				if (attempt instanceof FailedConfig) return attempt;
 				if (write) return CoreWriteService.unwritten(attempt, failed);
-				const checked = await this.withStaleness(attempt);
+				const checked = await this.withStaleness(
+					attempt,
+					options.reader
+				);
 				return failed.length === 0
 					? new CheckedConfig(
 							checked.config,
@@ -377,10 +364,12 @@ export class CoreWriteService implements WriteService {
 	}
 
 	private async withStaleness(
-		attempt: PreparedConfig
+		attempt: PreparedConfig,
+		reader: FileReader = this.fileSystemService
 	): Promise<PreparedConfig> {
 		const stale = await new ProjectFileStaleness(
-			this.fileSystemService
+			reader,
+			this.configService
 		).diagnostic(attempt.config, async () => attempt.projectFile);
 		if (!stale) return attempt;
 		return {

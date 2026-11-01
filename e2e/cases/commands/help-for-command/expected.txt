@@ -37,7 +37,7 @@ stdout:
   
   EXAMPLES:
       rogen build -o game.rbxl
-      rogen build places/lobby -o lobby.rbxl
+      rogen build lobby -o lobby.rbxl
       rogen build -p Tool.rbxm
       rogen build -o game.rbxl --watch
       rogen build -o game.rbxl --json
@@ -80,9 +80,11 @@ stdout:
       -n, --dry-run             Plan without writing: print the files and choices, then stop.
       -h, --help                Print help.
           --json                Print one JSON document instead of text.
-          --kind <KIND>         What a new project is, as Rojo's init names it: a place (the default),
-                                a model or a plugin. A model or a plugin starts with Rojo's template
-                                of that kind and no routes. [possible values: place, model, plugin]
+          --kind <KIND>         What a new project is, as Rojo's init names it: a place, a model or a
+                                plugin. A place when not given, or a model where the code is one
+                                folder with an init.luau at its top. A model or a plugin starts with
+                                Rojo's template of that kind and no routes. [possible values: place,
+                                model, plugin]
           --language <ID>       The language: luau or roblox-ts. Detected from the folder when not
                                 given. For roblox-ts in a folder with no code, package.json or
                                 tsconfig.json, init first runs 'npm create roblox-ts', which needs npm
@@ -141,14 +143,12 @@ stdout:
                      stderr.
                    - Config: the default config of the nearest folder at or above the path; with none,
                      every .rogen.json at or above it whose source paths cover it. A .rogen.json, or a
-                     config named as build reads it (game for game.rogen.json), lists every file of
-                     that config.
-                   - Several configs: each answer names its config file, and so does config in the
+                     config named as build reads it (game for game.rogen.json), lists all its files.
+                   - Several configs: each answer names its config file, as config does in the JSON.
+                   - Skipped: a path Rogen leaves out gets a note on stderr and a skipped entry in the
                      JSON.
-                   - Skipped: a path Rogen leaves out gets a note on stderr, and is listed under
-                     skipped in the JSON document.
                    - No path: every file of every config of the working directory. An instance or '-':
-                     its default config.
+                     a config named beside it, else the default.
   
   OPTIONS:
           --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto,
@@ -161,7 +161,7 @@ stdout:
   
   EXIT CODES:
       0    every path answered, one that no file places included
-      1    the config has errors
+      1    the config has errors, or an error stops its write
       2    the command line is wrong
   
   EXAMPLES:
@@ -209,7 +209,7 @@ stdout:
   
   EXAMPLES:
       rogen build -o game.rbxl
-      rogen build places/lobby -o lobby.rbxl
+      rogen build lobby -o lobby.rbxl
       rogen build -p Tool.rbxm
       rogen build -o game.rbxl --watch
       rogen build -o game.rbxl --json

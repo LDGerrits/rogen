@@ -2,12 +2,12 @@ import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { samePath, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
-import { shellWord } from "../../base/strings.js";
+import { commandWith, shellWord } from "../../base/strings.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { DEFAULT_PROJECT } from "../config/config.js";
+import { ConfigService } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
 import { RojoServer, ServerInfo } from "../runner/rojo-server.js";
@@ -30,7 +30,8 @@ export class ServePorts {
 		private readonly records: ServerRecords,
 		serverArgs: readonly string[],
 		private readonly cwd: string,
-		private readonly runner: RojoRunner
+		private readonly runner: RojoRunner,
+		private readonly configService: ConfigService
 	) {
 		this.host = ServeFlags.hostIn(serverArgs);
 		this.port = ServeFlags.portIn(serverArgs);
@@ -166,7 +167,7 @@ export class ServePorts {
 			this.otherArgs.length === 0
 				? ""
 				: ` ${this.otherArgs.map(shellWord).join(" ")}`;
-		const serve = `rogen serve ${this.refOf(config)} --port`;
+		const serve = `${commandWith("rogen serve", await this.configService.referenceTo(config.file, this.cwd))} --port`;
 		const command = `${serve} ${free ?? "<port>"}${rest}`;
 		return errorDiagnostic(
 			"serve.portTaken",
@@ -180,13 +181,6 @@ export class ServePorts {
 						},
 					]
 		);
-	}
-
-	/** What a command names `config` by: its folder for a default, else its file. */
-	private refOf(config: ResolvedConfig): string {
-		return path.basename(config.file).startsWith(`${DEFAULT_PROJECT}.`)
-			? toPosix(path.relative(this.cwd, path.dirname(config.file))) || "."
-			: this.nameOfFile(config.file);
 	}
 
 	private nameOf(config: ResolvedConfig): string {

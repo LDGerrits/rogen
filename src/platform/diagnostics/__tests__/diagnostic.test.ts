@@ -3,8 +3,8 @@ import path from "path";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
-	diagnosticsAbout,
-	diagnosticsReaching,
+	isAbout,
+	reaches,
 	renderDiagnostic,
 	replaceFixes,
 	warningDiagnostic,
@@ -300,7 +300,7 @@ describe("platform/diagnostics/diagnostic", () => {
 		});
 	});
 
-	describe("diagnosticsAbout", () => {
+	describe("isAbout", () => {
 		const own = warningDiagnostic(
 			"x.own",
 			{ resource: "/repo/src/A.luau" },
@@ -314,52 +314,89 @@ describe("platform/diagnostics/diagnostic", () => {
 			[{ resource: "/repo/src/A.luau", message: "takes its place" }]
 		);
 
-		it("should keep a diagnostic whose resource is the path", () => {
-			expect(diagnosticsAbout([own], "/repo/src/A.luau")).toEqual([own]);
-			expect(diagnosticsAbout([own], "/repo/src/B.luau")).toEqual([]);
+		it("should hold for a diagnostic whose resource is the path", () => {
+			expect(isAbout(own, "/repo/src/A.luau")).toBe(true);
+			expect(isAbout(own, "/repo/src/B.luau")).toBe(false);
 		});
 
-		it("should leave out one that names the path only as a related file", () => {
-			expect(diagnosticsAbout([clash], "/repo/src/A.luau")).toEqual([]);
-			expect(diagnosticsAbout([clash], "/repo/src/B.luau")).toEqual([
-				clash,
-			]);
+		it("should hold for one that names the path as a related file", () => {
+			expect(isAbout(clash, "/repo/src/A.luau")).toBe(true);
+			expect(isAbout(clash, "/repo/src/B.luau")).toBe(true);
+			expect(isAbout(clash, "/repo/src/C.luau")).toBe(false);
 		});
 	});
 
-	describe("diagnosticsReaching", () => {
-		const about = (resource: string, code = "x.y") =>
-			warningDiagnostic(code, { resource }, "odd");
+	describe("reaches", () => {
+		const about = (resource: string) =>
+			warningDiagnostic("x.y", { resource }, "odd");
 
-		it("should keep one about the path, one inside it and one about a folder it lies in", () => {
-			const file = about("/repo/src/F/A.luau", "x.file");
-			const inside = about("/repo/src/F/Sever", "x.inside");
-			const above = about("/repo/src/F", "x.above");
+		it("should hold for one about the path, one inside it and one about a folder it lies in", () => {
+			const file = about("/repo/src/F/A.luau");
+			const inside = about("/repo/src/F/Sever");
+			const above = about("/repo/src/F");
 
 			expect(
-				diagnosticsReaching(
-					[file, inside, above],
-					"/repo/src/F/A.luau"
-				).map(({ code }) => code)
-			).toEqual(["x.file", "x.above"]);
-			expect(
-				diagnosticsReaching([file, inside, above], "/repo/src/F").map(
-					({ code }) => code
+				[file, inside, above].map((diagnostic) =>
+					reaches(diagnostic, "/repo/src/F/A.luau")
 				)
-			).toEqual(["x.file", "x.inside", "x.above"]);
+			).toEqual([true, false, true]);
+			expect(
+				[file, inside, above].map((diagnostic) =>
+					reaches(diagnostic, "/repo/src/F")
+				)
+			).toEqual([true, true, true]);
 		});
 
-		it("should leave out one about a sibling, and one filed under a config", () => {
+		it("should hold for one that names the path as a related file", () => {
+			const clash = warningDiagnostic(
+				"x.clash",
+				{ resource: "/repo/src/F/B.luau" },
+				"clashes",
+				[],
+				[{ resource: "/repo/src/G/A.luau", message: "takes its place" }]
+			);
+
+			expect(reaches(clash, "/repo/src/G/A.luau")).toBe(true);
+			expect(reaches(clash, "/repo/src/G")).toBe(true);
+		});
+
+		it("should reach from a folder only the related files of one that lists them", () => {
+			const unmounted = warningDiagnostic(
+				"x.unmounted",
+				{ resource: "/repo/src" },
+				"unmounted",
+				[],
+				[{ resource: "/repo/src/other/b.luau", message: "unmounted" }]
+			);
+
+			expect(reaches(unmounted, "/repo/src/lib/a.luau")).toBe(false);
+			expect(reaches(unmounted, "/repo/src/other/b.luau")).toBe(true);
+			expect(reaches(unmounted, "/repo/src")).toBe(true);
+			expect(reaches(unmounted, "/repo")).toBe(true);
+		});
+
+		it("should reach from the folder it is given in place of its file", () => {
+			const marker = about("/repo/src/M/@SERVER");
+
+			expect(reaches(marker, "/repo/src/M/a.luau")).toBe(false);
+			expect(reaches(marker, "/repo/src/M/a.luau", "/repo/src/M")).toBe(
+				true
+			);
+			expect(reaches(marker, "/repo/src/O/b.luau", "/repo/src/M")).toBe(
+				false
+			);
+		});
+
+		it("should not hold for one about a sibling, or one filed under a config", () => {
 			expect(
-				diagnosticsReaching(
-					[
-						about("/repo/src/F/B.luau"),
-						about("/repo/src/Fx/A.luau"),
-						about("/repo/default.rogen.json"),
-					],
-					"/repo/src/F/A.luau"
+				[
+					about("/repo/src/F/B.luau"),
+					about("/repo/src/Fx/A.luau"),
+					about("/repo/default.rogen.json"),
+				].some((diagnostic) =>
+					reaches(diagnostic, "/repo/src/F/A.luau")
 				)
-			).toEqual([]);
+			).toBe(false);
 		});
 	});
 });

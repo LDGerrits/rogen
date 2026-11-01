@@ -22,6 +22,7 @@ describe("Placer", () => {
 		getEntries: () => undefined,
 		hasEntry: () => false,
 		getEntryType: () => undefined,
+		isUnreadable: () => false,
 	};
 
 	describe("preparing", () => {

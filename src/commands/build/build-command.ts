@@ -114,7 +114,7 @@ registerCommand(
 					},
 					examples: [
 						"rogen build -o game.rbxl",
-						"rogen build places/lobby -o lobby.rbxl",
+						"rogen build lobby -o lobby.rbxl",
 						"rogen build -p Tool.rbxm",
 						"rogen build -o game.rbxl --watch",
 						"rogen build -o game.rbxl --json",
@@ -186,23 +186,27 @@ registerCommand(
 					: built.isErr()
 						? built.error
 						: built.value.failure;
-			if (line.options.json)
+			if (line.options.json) {
+				const written = configsDocument(run.outcomes, cwd);
+				const rojo = rojoEntry(
+					{
+						command: "build",
+						cwd,
+						output: line.options.output,
+						plugin: line.options.plugin,
+					},
+					built
+				);
 				return this.printJson(
 					logService,
 					{
-						...configsDocument(run.outcomes, cwd),
-						rojo: rojoEntry(
-							{
-								command: "build",
-								cwd,
-								output: line.options.output,
-								plugin: line.options.plugin,
-							},
-							built
-						),
+						changed: written.changed || rojo.outcome === "built",
+						configs: written.configs,
+						rojo,
 					},
 					failure ?? rojoFailure
 				);
+			}
 			const outcomeLog = new OutcomeLog(logService, cwd);
 			outcomeLog.outcomes(run, selection.value.home, "build");
 			if (built?.isOk())

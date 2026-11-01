@@ -26,6 +26,8 @@ function isOn(value: string | undefined): boolean {
 	return isSet(lowered) && lowered !== "0" && lowered !== "false";
 }
 
+const FORCED_COLOR = new Set(["", "1", "2", "3", "true"]);
+
 function isAutomated(env: Variables): boolean {
 	return (
 		GENERIC_VARIABLES.some((name) => isOn(env[name])) ||
@@ -77,6 +79,7 @@ export class NativeEnvironmentService implements EnvironmentService {
 	readonly logLevel: LogLevel;
 	readonly isInteractive: boolean;
 	readonly isPlain: boolean;
+	readonly hasColor: boolean;
 	readonly userHome: string;
 	readonly tmpDir: string;
 	readonly cacheDir: string;
@@ -111,11 +114,13 @@ export class NativeEnvironmentService implements EnvironmentService {
 					: LogLevel.Info;
 		this.isInteractive =
 			isTerminal && env.TERM !== "dumb" && !isAutomated(env);
-		this.isPlain =
-			json === true ||
-			color === "never" ||
-			(color !== "always" &&
-				(!this.isInteractive || isSet(env.NO_COLOR)));
+		this.isPlain = json === true || !this.isInteractive;
+		this.hasColor =
+			color === "always" ||
+			(color !== "never" &&
+				(env.FORCE_COLOR !== undefined
+					? FORCED_COLOR.has(env.FORCE_COLOR.toLowerCase())
+					: !this.isPlain && !isSet(env.NO_COLOR)));
 		this.checksForUpdates =
 			this.isInteractive &&
 			json !== true &&

@@ -51,7 +51,14 @@ export interface FileSystemService extends FileReader {
 }
 
 type FileSystemErrorCode =
-	"ENOENT" | "ENOTDIR" | "EISDIR" | "EEXIST" | "ELOOP" | "EINVAL";
+	| "ENOENT"
+	| "ENOTDIR"
+	| "EISDIR"
+	| "EEXIST"
+	| "ELOOP"
+	| "EINVAL"
+	| "EACCES"
+	| "EPERM";
 
 export function fileSystemError(
 	code: FileSystemErrorCode,

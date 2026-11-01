@@ -39,6 +39,7 @@ export const answersOf = (
 				instances,
 				queried: [],
 				diagnostics,
+				markers: [],
 			})
 		),
 	});

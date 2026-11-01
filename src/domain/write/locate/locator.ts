@@ -4,8 +4,8 @@ import { toPosix } from "../../../base/path.js";
 import { Result, err, ok } from "../../../base/result.js";
 import {
 	Diagnostic,
-	diagnosticsReaching,
 	isRenameFix,
+	reaches,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import {
@@ -25,6 +25,7 @@ import {
 	InstanceLocation,
 	LocateQuery,
 	Locations,
+	RaisedDiagnostics,
 } from "../write-service.js";
 import { WritePipeline } from "../write-pipeline.js";
 import { MountedInstances } from "./mounted-instances.js";
@@ -87,29 +88,31 @@ class ConfigLocator {
 		folders,
 		instances,
 	}: Targets): Promise<Result<ConfigLocations, DiagnosticsError>> {
+		const queried = paths.map(toPosix);
 		let files: FileLocation[] = [];
-		let diagnostics: readonly Diagnostic[] = [];
+		let raised: RaisedDiagnostics = { diagnostics: [], markers: [] };
 		if (paths.length > 0) {
 			const planned = await this.locatePaths(paths, folders);
 			if (planned.isErr()) {
 				if (instances.length > 0) return err(planned.error);
-				const { diagnostics: stopped } = planned.error;
+				const { diagnostics } = planned.error;
 				return ok({
 					config: this.config,
-					files: await this.blocked(paths, stopped),
+					files: await this.blocked(paths, diagnostics),
 					instances: [],
-					queried: paths.map(toPosix),
-					diagnostics: stopped,
+					queried,
+					diagnostics,
+					markers: [],
 				});
 			}
-			({ files, diagnostics } = planned.value);
+			({ files, raised } = planned.value);
 			if (instances.length === 0)
 				return ok({
 					config: this.config,
 					files,
 					instances: [],
-					queried: paths.map(toPosix),
-					diagnostics,
+					queried,
+					...raised,
 				});
 		}
 
@@ -129,14 +132,13 @@ class ConfigLocator {
 				instances.map((reference) =>
 					this.locateInstance(
 						locator,
-						existing.value.diagnostics,
+						existing.value.raised.diagnostics,
 						reference
 					)
 				)
 			),
-			queried: paths.map(toPosix),
-			diagnostics:
-				paths.length > 0 ? diagnostics : existing.value.diagnostics,
+			queried,
+			...(paths.length > 0 ? raised : existing.value.raised),
 		});
 	}
 
@@ -147,9 +149,7 @@ class ConfigLocator {
 		return Promise.all(
 			paths.map(async (target): Promise<FileLocation> => {
 				const source = toPosix(target);
-				const own = errors.find(
-					(error) => diagnosticsReaching([error], source).length > 0
-				);
+				const own = errors.find((error) => reaches(error, source));
 				return {
 					source,
 					exists: await this.fileSystemService.exists(target),
@@ -168,7 +168,7 @@ class ConfigLocator {
 		Result<
 			{
 				readonly files: FileLocation[];
-				readonly diagnostics: readonly Diagnostic[];
+				readonly raised: RaisedDiagnostics;
 			},
 			DiagnosticsError
 		>
@@ -184,13 +184,13 @@ class ConfigLocator {
 			await this.existsOnDisk(index, paths)
 		);
 		if (planned.isErr()) return planned;
-		const { locator, diagnostics } = planned.value;
+		const { locator, raised } = planned.value;
 		return ok({
 			files: await this.withMountedInstances(
 				locator.locate(paths, folders),
 				locator
 			),
-			diagnostics,
+			raised,
 		});
 	}
 
@@ -230,6 +230,10 @@ class ConfigLocator {
 			await this.mountedInstancesOf(locator).filesAt(reference);
 		if (mounted.length > 0)
 			return { reference, files: mounted, folders: [], fixes: [] };
+		const character = reference.characterScript;
+		const copied = character ? locator.locateInstance(character) : [];
+		if (copied.length > 0)
+			return { reference, files: copied, folders: [], fixes: [] };
 		const fixes = await this.renamesPlacing(diagnostics, reference);
 		const known = locator.foldersFor(reference);
 		return {
@@ -391,18 +395,30 @@ class ConfigLocator {
 		Result<
 			{
 				readonly locator: PlacementLocator;
-				readonly diagnostics: readonly Diagnostic[];
+				readonly raised: RaisedDiagnostics;
 			},
 			DiagnosticsError
 		>
 	> {
 		const pipeline = this.pipelineOf(index);
 		const examined = await pipeline.examine(this.config);
-		return examined.map((result) => ({
-			locator: new PlacementLocator(result.placement, index, exists),
-			diagnostics:
-				result.kind === "assembled" ? result.warnings : result.errors,
-		}));
+		return examined.map((result) => {
+			const locator = new PlacementLocator(
+				result.placement,
+				index,
+				exists
+			);
+			return {
+				locator,
+				raised: {
+					diagnostics:
+						result.kind === "assembled"
+							? result.warnings
+							: result.errors,
+					markers: locator.markers,
+				},
+			};
+		});
 	}
 
 	private pipelineOf(index: IndexReader): WritePipeline {

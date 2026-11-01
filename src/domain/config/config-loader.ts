@@ -19,14 +19,23 @@ export interface LoadedConfig {
 	readonly files: readonly string[];
 	readonly value?: Readonly<Record<string, unknown>>;
 	readonly resolved: Result<ResolvedConfigFile, Diagnostic[]>;
+	/** The source paths of a config that only a copy beside it breaks. */
+	readonly sourcePaths?: readonly string[];
 }
 
 export class ConfigLoader {
 	private readonly reader: ConfigFileReader;
-	private readonly fileChecks = new Set<ConfigFileCheck>();
 
-	constructor(private readonly fileSystemService: FileReader) {
+	constructor(
+		private readonly fileSystemService: FileReader,
+		private readonly fileChecks = new Set<ConfigFileCheck>()
+	) {
 		this.reader = new ConfigFileReader(fileSystemService, configStructure);
+	}
+
+	/** A loader that reads through `reader`, with the same checks. */
+	over(reader: FileReader): ConfigLoader {
+		return new ConfigLoader(reader, this.fileChecks);
 	}
 
 	registerFileCheck(check: ConfigFileCheck): Disposable {
@@ -45,7 +54,12 @@ export class ConfigLoader {
 		);
 		const files = [...loaded.files, ...siblings.map((s) => s.config.file)];
 		return clashes.length > 0
-			? { files, value: loaded.value, resolved: err(clashes) }
+			? {
+					files,
+					value: loaded.value,
+					resolved: err(clashes),
+					sourcePaths: loaded.resolved.value.config.sourcePaths,
+				}
 			: { ...loaded, files };
 	}
 

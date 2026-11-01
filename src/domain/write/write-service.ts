@@ -1,18 +1,22 @@
+import path from "path";
 import { toPosix } from "../../base/path.js";
 import { Result } from "../../base/result.js";
 import {
 	Diagnostic,
 	RenameFix,
-	diagnosticsAbout,
-	diagnosticsReaching,
+	isAbout,
+	isError,
+	reaches,
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
 import { FileChange } from "../../platform/fs/file-changes.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
+import { RojoFile } from "../rojo/rojo.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ConfigSelection } from "../config/config-service.js";
 import {
@@ -72,23 +76,21 @@ export interface MountedLocation extends Located {
 	readonly instancePath?: readonly string[];
 }
 
+/** A file the tools write under the compiled path for a placed source file, `from`; Rojo reads it as the instance `instancePath`. */
+export interface CompiledLocation extends Located {
+	readonly status: "compiled";
+	readonly from: string;
+	readonly instancePath: readonly string[];
+}
+
 /** Where a path lands in the tree, or why it lands nowhere. */
 export type FileLocation =
 	| PlacedLocation
 	| MountedLocation
+	| CompiledLocation
 	| (Exclude<LeftOut, { status: "mounted" }> & Located)
 	| UnplacedLocation
 	| BlockedLocation;
-
-/** What a write raises about `location`: for a file the user named, everything that reaches it; for any other, only what is about that path. */
-export function diagnosticsOf(
-	location: FileLocation,
-	diagnostics: readonly Diagnostic[]
-): Diagnostic[] {
-	return location.status === "placed" && location.named
-		? diagnosticsReaching(diagnostics, location.source)
-		: diagnosticsAbout(diagnostics, location.source);
-}
 
 /** The expression that requires the module a placed location is, if its path holds at runtime. */
 export function requireExpressionOf(
@@ -127,14 +129,94 @@ export interface InstanceFix {
 	readonly rename: RenameFix["rename"];
 }
 
-export interface ConfigLocations {
+/** What a write of a config raises, with what says which paths each diagnostic reaches. */
+export interface RaisedDiagnostics {
+	/** Without the compiled path's: the errors that stopped the later phases, else the warnings. */
+	readonly diagnostics: readonly Diagnostic[];
+	/** The marker files of the source paths, absolute POSIX; one stands for its folder. */
+	readonly markers: readonly string[];
+}
+
+export interface ConfigLocations extends RaisedDiagnostics {
 	readonly config: ResolvedConfig;
 	/** One per path argument; every file when no argument was given. */
 	readonly files: readonly FileLocation[];
 	readonly instances: readonly InstanceLocation[];
 	readonly queried: readonly string[];
-	/** What a write of the config raises, without the compiled path's: the errors that stopped the later phases, else the warnings. */
-	readonly diagnostics: readonly Diagnostic[];
+}
+
+/** Which paths asked about a config's diagnostics reach: what `check` reports, what `where` shows under each line, and which errors stop the write unseen. */
+export class LocatedDiagnosis {
+	/** What reaches a path asked about or a file of its answer, by path. */
+	readonly reaching: readonly Diagnostic[];
+	readonly stops: readonly Diagnostic[];
+	/** The errors that stop the write and reach nothing asked about. */
+	readonly stoppedBy: readonly Diagnostic[];
+	/** The errors that stop the write and that no location shows; none beside a blocked location, which names the error and sends to `check`. */
+	readonly unshown: readonly Diagnostic[];
+
+	constructor(private readonly located: ConfigLocations) {
+		const targets = [
+			...located.files.map(({ source }) => source),
+			...located.queried,
+		];
+		this.reaching = [
+			...new Set(
+				targets.flatMap((target) =>
+					located.diagnostics.filter((diagnostic) =>
+						this.reaches(diagnostic, target)
+					)
+				)
+			),
+		];
+		this.stops = located.diagnostics.filter(isError);
+		this.stoppedBy = this.stops.filter(
+			(error) => !this.reaching.includes(error)
+		);
+		const shown = new Set(
+			[
+				...located.files,
+				...located.instances.flatMap(({ files }) => files),
+			].flatMap((location) => this.of(location))
+		);
+		this.unshown = located.files.some(({ status }) => status === "blocked")
+			? []
+			: this.stops.filter((error) => !shown.has(error));
+	}
+
+	/** What a write raises about `location`: for a path asked about, everything that reaches it; for a file found in a folder or behind an instance, only what is about it or its meta file. */
+	of(location: FileLocation): Diagnostic[] {
+		const asked = this.located.queried.includes(location.source);
+		return this.located.diagnostics.filter((diagnostic) =>
+			asked
+				? this.reaches(diagnostic, location.source)
+				: isAbout(diagnostic, location.source) ||
+					this.isMetaOf(diagnostic, location.source)
+		);
+	}
+
+	/** About `target` or inside it, about a folder it lies in or a marker file that routes that folder, or about its meta file. */
+	private reaches(diagnostic: Diagnostic, target: string): boolean {
+		const resource = toPosix(diagnostic.resource);
+		return (
+			reaches(
+				diagnostic,
+				target,
+				this.located.markers.includes(resource)
+					? path.posix.dirname(resource)
+					: resource
+			) || this.isMetaOf(diagnostic, target)
+		);
+	}
+
+	/** About a meta file Rojo reads for the file at `source`. */
+	private isMetaOf(diagnostic: Diagnostic, source: string): boolean {
+		const posixSource = toPosix(source);
+		const dir = path.posix.dirname(posixSource);
+		return RojoFile.at(posixSource, this.located.config.syncRules)
+			.metaFiles.map((name) => path.posix.join(dir, name))
+			.includes(toPosix(diagnostic.resource));
+	}
 }
 
 /** One thing `where` was asked about: a path, resolved and written with slashes, or an instance. */
@@ -255,8 +337,8 @@ export interface WriteService {
 		options?: { readonly independent?: boolean }
 	): Promise<WriteRun>;
 
-	/** Prepares every selected config as `write` does, and writes nothing. */
-	check(selection: ConfigSelection): Promise<WriteRun>;
+	/** Prepares every selected config as `write` does, and writes nothing. With `reader`, such as a draft of files not written yet, reads through it. */
+	check(selection: ConfigSelection, reader?: FileReader): Promise<WriteRun>;
 
 	/** The project file a write of `project` would write, or none when it fails. Writes nothing. */
 	projectFileOf(

@@ -4,14 +4,16 @@ import {
 	SelectPromptOptions,
 } from "../../platform/prompt/prompt-service.js";
 
-/** How a run that shows its plan first asks: `quick` takes the default of every question the plan shows, `customise` asks them all, each with the answer given before preselected. */
+/** How a run that shows its plan first asks: `quick` takes the default of every question the plan shows, `customise` asks those, each with the answer given before preselected. */
 export type ReviewMode = "quick" | "customise";
 
-/** Answers questions for a run that shows its whole plan once and lets the user accept it, so only what can't be detected is asked. A question that is always asked is asked in either mode and remembered, so the plan shown again doesn't ask it twice. */
+/** Answers questions for a run that shows its whole plan once and lets the user accept it, so only what can't be detected is asked. A question that is always asked is asked once in either mode and remembered, so the plan shown again doesn't ask it twice. */
 export class ReviewPrompts {
 	mode: ReviewMode = "quick";
 	/** How many questions this pass put, answered or taken by default. */
 	asked = 0;
+	/** How many of them were quick ones, which Customise asks. */
+	customisable = 0;
 	private readonly answers = new Map<string, unknown>();
 
 	/** For the questions whose default the plan shows. */
@@ -29,6 +31,7 @@ export class ReviewPrompts {
 	begin(mode: ReviewMode): void {
 		this.mode = mode;
 		this.asked = 0;
+		this.customisable = 0;
 	}
 
 	private async answer<T>(
@@ -38,9 +41,11 @@ export class ReviewPrompts {
 		ask: (initial: T | undefined) => Promise<T | undefined>
 	): Promise<T | undefined> {
 		this.asked++;
+		if (!essential) this.customisable++;
 		const known = this.answers.has(message);
-		if (this.mode === "quick" && (known || !essential))
-			return known ? (this.answers.get(message) as T) : fallback;
+		if (known && (essential || this.mode === "quick"))
+			return this.answers.get(message) as T;
+		if (this.mode === "quick" && !essential) return fallback;
 		const answer = await ask(
 			known ? (this.answers.get(message) as T) : undefined
 		);

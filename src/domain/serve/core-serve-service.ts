@@ -52,7 +52,8 @@ export class CoreServeService implements ServeService {
 			this.records,
 			serverArgs,
 			this.environmentService.cwd,
-			this.rojoRunner
+			this.rojoRunner,
+			this.configService
 		);
 	}
 

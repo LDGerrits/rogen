@@ -17,8 +17,10 @@ export interface EnvironmentService {
 	readonly logLevel: LogLevel;
 	/** Whether a person can answer a question: stdin and stdout are terminals, the terminal isn't dumb, and no agent or CI runs the process. */
 	readonly isInteractive: boolean;
-	/** Whether to print plain lines: JSON, not interactive, or `NO_COLOR`. */
+	/** Whether to print plain lines rather than draw: JSON, or not interactive. */
 	readonly isPlain: boolean;
+	/** Whether to colour the output: `--color`, else `FORCE_COLOR`, else a drawn layout without `NO_COLOR`. */
+	readonly hasColor: boolean;
 	/** Whether to announce a newer Rogen: a person at a terminal, no JSON or `--quiet`, and no opt-out variable. */
 	readonly checksForUpdates: boolean;
 }

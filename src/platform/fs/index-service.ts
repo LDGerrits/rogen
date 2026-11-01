@@ -1,13 +1,15 @@
 import { toPosix } from "../../base/path.js";
 import { createServiceIdentifier } from "../instantiation/instantiation.js";
 import { FileChange } from "./file-changes.js";
-import { FileType } from "./file-system-service.js";
+import { FileReader, FileType } from "./file-system-service.js";
 
 export interface IndexReader {
 	/** `undefined` when the directory was never listed or doesn't exist. */
 	getEntries(dirPath: string): ReadonlyMap<string, FileType> | undefined;
 	hasEntry(dirPath: string, name: string): boolean;
 	getEntryType(dirPath: string, name: string): FileType | undefined;
+	/** Whether listing the directory was refused, as for a folder without read permission. */
+	isUnreadable(dirPath: string): boolean;
 }
 
 /** The entries of every listed directory, by posix path. A listing never changes: an update makes a new one. */
@@ -15,7 +17,12 @@ export class Listing implements IndexReader {
 	static readonly EMPTY = new Listing(new Map());
 
 	constructor(
-		readonly directories: ReadonlyMap<string, ReadonlyMap<string, FileType>>
+		readonly directories: ReadonlyMap<
+			string,
+			ReadonlyMap<string, FileType>
+		>,
+		/** The directories whose listing was refused, by posix path. */
+		readonly unreadable: ReadonlySet<string> = new Set()
 	) {}
 
 	getEntries(dirPath: string): ReadonlyMap<string, FileType> | undefined {
@@ -29,13 +36,18 @@ export class Listing implements IndexReader {
 	getEntryType(dirPath: string, name: string): FileType | undefined {
 		return this.getEntries(dirPath)?.get(name);
 	}
+
+	isUnreadable(dirPath: string): boolean {
+		return this.unreadable.has(toPosix(dirPath));
+	}
 }
 
 /** Lists directories into memory so a write reads memory, not the disk. Holds nothing itself. */
 export interface IndexService {
 	readonly _serviceBrand: undefined;
 
-	list(dirs: readonly string[]): Promise<Listing>;
+	/** Lists through `reader` when given, such as a draft of files not written yet. */
+	list(dirs: readonly string[], reader?: FileReader): Promise<Listing>;
 	/** `base` with `changes` applied as a fresh listing would have them; `base` is unchanged. */
 	update(base: Listing, changes: readonly FileChange[]): Promise<Listing>;
 }

@@ -156,6 +156,7 @@ describe("WhereLog", () => {
 								instances: [],
 								queried: [],
 								diagnostics: [],
+								markers: [],
 							},
 						],
 					})
@@ -166,6 +167,26 @@ describe("WhereLog", () => {
 		);
 
 		it.each<[FileLocation, string]>([
+			[
+				{
+					status: "compiled",
+					source: "/repo/out/Shop/util.luau",
+					exists: true,
+					from: "/repo/src/Shop/util.ts",
+					instancePath: ["ReplicatedStorage", "Shop", "util"],
+				},
+				"out/Shop/util.luau -> ReplicatedStorage/Shop/util · compiled from src/Shop/util.ts",
+			],
+			[
+				{
+					status: "compiled",
+					source: "/repo/out/Shop/util.luau",
+					exists: false,
+					from: "/repo/src/Shop/util.ts",
+					instancePath: ["ReplicatedStorage", "Shop", "util"],
+				},
+				"out/Shop/util.luau -> ReplicatedStorage/Shop/util · compiled from src/Shop/util.ts · the file does not exist yet",
+			],
 			[
 				{
 					status: "replaced",
@@ -651,6 +672,7 @@ describe("WhereLog", () => {
 							instances: [],
 							queried: [],
 							diagnostics: [],
+							markers: [],
 						},
 						{
 							config: mockConfig({ sourcePaths: ["/repo/src"] }),
@@ -658,6 +680,7 @@ describe("WhereLog", () => {
 							instances: [],
 							queried: [],
 							diagnostics: [],
+							markers: [],
 						},
 					],
 				})
@@ -720,6 +743,45 @@ describe("WhereLog", () => {
 				"src/U.luau -> ReplicatedStorage/Save · route * (fallback)",
 				"  warning: matched no route. (route.unrouted)",
 				"src/Clean.luau -> ReplicatedStorage/Save · route * (fallback)",
+			]);
+		});
+
+		it("should name the file a diagnostic is about when it shows under a related file", () => {
+			const clash = warningDiagnostic(
+				"tree.instanceClash",
+				{ resource: "/repo/src/Types.lua" },
+				"becomes the same instance as src/Types.luau.",
+				[],
+				[
+					{
+						resource: "/repo/src/Types.luau",
+						message: "takes its place",
+					},
+				]
+			);
+
+			const report = reportOf([
+				[
+					"default",
+					[
+						{
+							status: "replaced",
+							source: "/repo/src/Types.lua",
+							exists: true,
+							by: "/repo/src/Types.luau",
+						},
+						placed("/repo/src/Types.luau"),
+					],
+					[],
+					[clash],
+				],
+			]);
+
+			expect(report.lines()).toEqual([
+				"src/Types.lua -> replaced by src/Types.luau",
+				"  warning: becomes the same instance as src/Types.luau. (tree.instanceClash)",
+				"src/Types.luau -> ReplicatedStorage/Save · route * (fallback)",
+				"  src/Types.lua - warning: becomes the same instance as src/Types.luau. (tree.instanceClash)",
 			]);
 		});
 

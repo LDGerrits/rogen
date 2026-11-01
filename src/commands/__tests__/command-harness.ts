@@ -108,7 +108,12 @@ export function commandHarness(
 	const index = options.index ?? new CoreIndexService(fs);
 	const toolchain = new CoreToolchainService(fs);
 	const requests = options.requests ?? new MockRequestService();
-	const writeService = new CoreWriteService(fs, index, toolchain.syncTools);
+	const writeService = new CoreWriteService(
+		fs,
+		index,
+		toolchain.syncTools,
+		config
+	);
 	const watcher = options.watcher ?? new MemoryWatcher(fs, log);
 	const watch = new CoreWatchService(watcher, index, writeService);
 	const processes = options.processes ?? new MockProcessService();
@@ -130,7 +135,8 @@ export function commandHarness(
 		toolchain,
 		processes,
 		undefined,
-		config
+		config,
+		writeService
 	);
 	init.registerMigration(new LegacyMigration());
 	services.set(InitService, init);

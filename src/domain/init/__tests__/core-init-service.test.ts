@@ -22,11 +22,15 @@ import {
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import {
+	DiagnosticSeverity,
 	errorDiagnostic,
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { CoreInitService } from "../core-init-service.js";
+import { CoreWriteService } from "../../write/core-write-service.js";
+import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MigratedProject } from "../project-migration.js";
+import { StarterPlaces } from "../starter-places.js";
 import { InitChoices, InitPlan, InitWritten } from "../init-service.js";
 
 const directory = path.resolve("/mock/my-game");
@@ -85,6 +89,10 @@ describe("CoreInitService", () => {
 		await fileSystem.createDirectory(directory);
 	});
 
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
 	let configs: CoreConfigService;
 
 	const serviceFor = (
@@ -92,14 +100,21 @@ describe("CoreInitService", () => {
 		cwd = directory
 	) => {
 		const environmentService = new NativeEnvironmentService({}, cwd);
+		const toolchain = new CoreToolchainService(fileSystem);
 		const service = new CoreInitService(
 			fileSystem,
 			promptService,
 			environmentService,
-			new CoreToolchainService(fileSystem),
+			toolchain,
 			processes,
 			undefined,
-			configs
+			configs,
+			new CoreWriteService(
+				fileSystem,
+				new CoreIndexService(fileSystem),
+				toolchain.syncTools,
+				configs
+			)
 		);
 		return service;
 	};
@@ -409,6 +424,74 @@ describe("CoreInitService", () => {
 			name: string
 		) => plan?.files.find(({ fileName }) => fileName === name);
 
+		it("should write a new project without the hook where no coding agent is found, and warn", async () => {
+			const plan = await planned();
+
+			expect(names(plan)).toContain("default.rogen.json");
+			expect(names(plan)).not.toContain(SCRIPT);
+			expect(plan?.warnings).toMatchObject([
+				{
+					code: "init.noCodingAgent",
+					message: expect.stringContaining(".claude"),
+				},
+			]);
+		});
+
+		it("should fail beside a config when the hook is all that was asked and no coding agent is found", async () => {
+			await write("default.rogen.json", "{}");
+
+			const result = await serviceFor().plan({
+				choices: { agentHook: true },
+			});
+
+			expect(
+				result.isErr() &&
+					result.error instanceof DiagnosticsError &&
+					result.error.diagnostics
+			).toMatchObject([
+				{
+					code: "init.noCodingAgent",
+					severity: DiagnosticSeverity.Error,
+				},
+			]);
+		});
+
+		it("should still add the rules beside a config when no coding agent is found for the hook", async () => {
+			await write("default.rogen.json", "{}");
+
+			const plan = (
+				await serviceFor().plan({
+					choices: { agentHook: true, agentRules: true },
+				})
+			).unwrap();
+
+			expect(names(plan)).toEqual(["AGENTS.md"]);
+			expect(plan?.warnings).toMatchObject([
+				{ code: "init.noCodingAgent" },
+			]);
+		});
+
+		it("should show in the summary that there is no hook, and not point to the flag, in a run that asks", async () => {
+			await write(".claude/keep", "");
+			const prompts = new MockPromptService([
+				"luau",
+				"one",
+				"customise",
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				false,
+				"yes",
+			]);
+
+			const plan = (await serviceFor(prompts).plan()).unwrap();
+
+			expect(plan?.summary).toContainEqual({
+				area: "Agents",
+				text: "rules in AGENTS.md, no hook for Claude Code",
+			});
+			expect(plan?.notes.join("\n")).not.toContain("--agent-hook");
+		});
+
 		it("should offer it where an agent is in use, and write the script and the agent's file", async () => {
 			await write(".claude/keep", "");
 
@@ -416,6 +499,7 @@ describe("CoreInitService", () => {
 
 			expect(names(plan)).toEqual([
 				"default.rogen.json",
+				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				"CLAUDE.md",
@@ -493,6 +577,7 @@ describe("CoreInitService", () => {
 
 			expect(names(plan)).toEqual([
 				"default.rogen.json",
+				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				"CLAUDE.md",
@@ -593,6 +678,7 @@ describe("CoreInitService", () => {
 
 			expect(names(plan)).toEqual([
 				"default.rogen.json",
+				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				"CLAUDE.md",
@@ -627,6 +713,7 @@ describe("CoreInitService", () => {
 
 			expect(names(plan)).toEqual([
 				"default.rogen.json",
+				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				CODEX,
@@ -641,6 +728,7 @@ describe("CoreInitService", () => {
 
 			expect(names(plan)).toEqual([
 				"default.rogen.json",
+				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				"CLAUDE.md",
@@ -706,6 +794,7 @@ describe("CoreInitService", () => {
 				".gitignore",
 				"default.rogen.json",
 				"rokit.toml",
+				"src/.gitkeep",
 			]);
 			expect(
 				plan?.files.find(({ fileName }) => fileName === "rokit.toml")
@@ -858,6 +947,60 @@ describe("CoreInitService", () => {
 					tree: { $className: "DataModel", ...tree },
 				})
 			);
+
+		describe("Rojo's template layout without a project file", () => {
+			const rojoTemplate = {
+				ReplicatedStorage: { Shared: { $path: "src/shared" } },
+				ServerScriptService: { Server: { $path: "src/server" } },
+				StarterPlayer: {
+					StarterPlayerScripts: { Client: { $path: "src/client" } },
+				},
+			};
+
+			it.each([
+				["with init scripts", "init.server.luau", "init.client.luau"],
+				[
+					"without init scripts",
+					"Main.server.luau",
+					"Main.client.luau",
+				],
+			])(
+				"should get the config a lift of the project file of 'rojo init' gets, %s",
+				async (_, server, client) => {
+					await write(`src/server/${server}`, "print(1)");
+					await write(`src/client/${client}`, "print(1)");
+					await write("src/shared/Hello.luau", "return 1");
+
+					const planned = await planOf();
+					await lift(rojoTemplate);
+					const { name: _name, ...lifted } = configOf(await planOf());
+
+					expect(configOf(planned)).toEqual(lifted);
+					expect(planned?.action).toBe("create");
+					expect(planned?.liftedFrom).toBeUndefined();
+				}
+			);
+
+			it("should mount only the folders of the template that are there", async () => {
+				await write("src/server/init.server.luau", "print(1)");
+
+				const { tree } = configOf(await planOf());
+
+				expect(tree).toEqual({
+					$className: "DataModel",
+					ServerScriptService: { Server: { $path: "src/server" } },
+				});
+			});
+
+			it("should route as a new project does where no folder of the template holds code", async () => {
+				await write("src/Shop/Server/Main.server.luau", "print(1)");
+				await write("src/shared/.gitkeep");
+
+				const { tree } = configOf(await planOf());
+
+				expect(tree).toEqual({ $className: "DataModel" });
+			});
+		});
 
 		it("should take the closest folder that holds every folder of code the project file mounts", async () => {
 			await lift({
@@ -1217,6 +1360,90 @@ describe("CoreInitService", () => {
 			]);
 		});
 
+		it.each(["src", "lib"])(
+			"should start a model that mounts %s where that folder is one module",
+			async (folder) => {
+				await write(`${folder}/init.luau`, "return {}");
+				await write(`${folder}/Util.luau`, "return {}");
+
+				const plan = (await serviceFor().plan()).unwrap();
+
+				expect(JSON.parse(files(plan)["default.rogen.json"])).toEqual({
+					tree: { $path: folder },
+				});
+				expect(Object.keys(files(plan))).not.toContain("src/init.luau");
+				expect(plan?.decided).toContainEqual({
+					question: "kind",
+					value: "model",
+					flag: "--kind",
+				});
+				expect(plan?.nextSteps.run).toEqual([
+					'rogen build -o "my-game.rbxmx"',
+				]);
+			}
+		);
+
+		it.each([
+			["a folder of code", "lib/Util.luau"],
+			["a script at the root", "Main.server.luau"],
+		])(
+			"should start a place, and warn, where the module folder has %s beside it",
+			async (_, other) => {
+				await write("src/init.luau", "return {}");
+				await write(other, "return {}");
+
+				const plan = (await serviceFor().plan()).unwrap();
+
+				expect(plan?.decided).toContainEqual({
+					question: "kind",
+					value: "place",
+					flag: "--kind",
+				});
+				expect(plan?.warnings.map(({ code }) => code)).toContain(
+					"init.codeOutsideSourcePaths"
+				);
+			}
+		);
+
+		it.each([
+			["init.luau", "model", 'rogen build -o "lib.rbxmx"'],
+			["init.server.luau", "plugin", 'rogen build -p "lib.rbxm"'],
+		])(
+			"should lift a project file whose root is %s as the kind it is, with that kind's steps",
+			async (init, kind, step) => {
+				await write(`src/${init}`, "return {}");
+				await write(
+					"default.project.json",
+					JSON.stringify({ name: "lib", tree: { $path: "src" } })
+				);
+
+				const plan = (await serviceFor().plan()).unwrap();
+
+				expect(plan?.decided).toContainEqual({
+					question: "kind",
+					value: kind,
+					flag: "--kind",
+				});
+				expect(plan?.nextSteps.run).toEqual([step]);
+				expect(plan?.nextSteps.edits.join("\n")).not.toContain(
+					"feature folder"
+				);
+				expect(files(plan)).not.toHaveProperty(["README.md"]);
+			}
+		);
+
+		it("should start a place where the folder's init is a script", async () => {
+			await write("src/init.server.luau", "print(1)");
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(plan?.decided).toContainEqual({
+				question: "kind",
+				value: "place",
+				flag: "--kind",
+			});
+		});
+
 		it("should start a plugin with a script that runs", async () => {
 			const plan = (
 				await serviceFor().plan({ choices: { kind: "plugin" } })
@@ -1341,6 +1568,105 @@ describe("CoreInitService", () => {
 					{ question: "skipGit", value: false, flag: "--skip-git" },
 				])
 			);
+		});
+	});
+
+	describe("a roblox-ts folder", () => {
+		beforeEach(async () => {
+			await write(
+				"tsconfig.json",
+				JSON.stringify({ compilerOptions: { outDir: "build" } })
+			);
+			await write("src/Shop/server/Main.server.ts", "print(1)");
+		});
+
+		it("should ignore what the compiler and npm write in a new .gitignore", async () => {
+			await write("package.json", "{}");
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(
+				plan?.files.find(({ fileName }) => fileName === ".gitignore")
+					?.content
+			).toContain("/node_modules\n/build\n/include\n");
+		});
+
+		it("should watch with the project's own watch script", async () => {
+			await write(
+				"package.json",
+				JSON.stringify({ scripts: { watch: "rbxtsc -w" } })
+			);
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(plan?.nextSteps.run).toEqual([
+				"npm run watch",
+				"rogen serve",
+			]);
+		});
+	});
+
+	describe("the sample", () => {
+		const sampleFiles = (plan: InitPlan | undefined) =>
+			(plan?.files ?? [])
+				.map(({ fileName }) => fileName)
+				.filter((fileName) => /Greeter|^place\//.test(fileName));
+
+		it("should be left out where a script lies at the root of the folder", async () => {
+			await write("Main.server.luau", "print(1)");
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(sampleFiles(plan)).toEqual([]);
+		});
+
+		it("should be written where the root holds only files that are not code", async () => {
+			await write("notes.md", "hi");
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(sampleFiles(plan)).not.toEqual([]);
+		});
+	});
+
+	describe("empty source folders", () => {
+		const keptIn = async (choices: InitChoices) => {
+			const plan = (await serviceFor().plan({ choices })).unwrap();
+			return {
+				gitkeeps: (plan?.files ?? [])
+					.filter(({ fileName }) => fileName.endsWith(".gitkeep"))
+					.map(({ fileName, content }) => [fileName, content]),
+				directories: plan?.directories,
+			};
+		};
+
+		it("should keep the source folder it makes in git with a .gitkeep", async () => {
+			expect(await keptIn({ sample: false })).toEqual({
+				gitkeeps: [["src/.gitkeep", ""]],
+				directories: [],
+			});
+		});
+
+		it("should keep each source folder of several places", async () => {
+			expect(
+				(await keptIn({ sample: false, places: true })).gitkeeps
+			).toEqual([
+				["src/common/.gitkeep", ""],
+				["src/game/.gitkeep", ""],
+			]);
+		});
+
+		it("should write none where the sample fills the folder", async () => {
+			expect((await keptIn({})).gitkeeps).toEqual([]);
+		});
+
+		it("should write none in a folder that is there", async () => {
+			await fileSystem.createDirectory(path.join(directory, "src"));
+
+			expect(await keptIn({ sample: false })).toEqual({
+				gitkeeps: [],
+				directories: ["src"],
+			});
 		});
 	});
 
@@ -1475,9 +1801,8 @@ describe("CoreInitService", () => {
 			await review(prompts);
 			const shown = prompts.prompts.at(-1)?.description ?? "";
 
-			expect(shown).toContain(
-				"Project   one place, Luau, sample Greeter"
-			);
+			expect(shown).not.toContain("Project");
+			expect(shown).toMatch(/^Sample {4}Greeter$/m);
 			expect(shown).not.toContain("Darklua");
 			expect(shown).toContain("Agents    rules in AGENTS.md");
 			expect(shown).toContain("default.rogen.json");
@@ -1493,14 +1818,13 @@ describe("CoreInitService", () => {
 			expect((await review(prompts)).unwrap()).toBeUndefined();
 		});
 
-		it("should ask every question on Customise, then show the summary with the new answer", async () => {
+		it("should ask on Customise only the questions the summary answered by default, then show it again", async () => {
 			const prompts = new MockPromptService([
 				"luau",
 				"one",
 				"customise",
-				"luau",
-				"several",
 				ACCEPT_DEFAULT,
+				false,
 				"yes",
 			]);
 
@@ -1510,18 +1834,224 @@ describe("CoreInitService", () => {
 				"Language",
 				"One place or several?",
 				CREATE,
+				"Add the Greeter sample?",
+				"Add Rogen's rules for coding agents to AGENTS.md?",
+				CREATE,
+			]);
+			expect(prompts.prompts.at(-1)?.description).toContain(
+				"Agents    none"
+			);
+			expect(plan?.summary).toContainEqual({
+				area: "Agents",
+				text: "none",
+			});
+		});
+
+		it("should leave the sample out when Customise is answered so", async () => {
+			const prompts = new MockPromptService([
+				"luau",
+				"one",
+				"customise",
+				false,
+				true,
+				"yes",
+			]);
+
+			const plan = (await review(prompts)).unwrap();
+
+			expect(prompts.asked.slice(3, 5)).toEqual([
+				"Add the Greeter sample?",
+				"Add Rogen's rules for coding agents to AGENTS.md?",
+			]);
+			expect(plan?.summary.map(({ area }) => area)).not.toContain(
+				"Project"
+			);
+			expect(
+				plan?.files.some(({ fileName }) => fileName.includes("Greeter"))
+			).toBe(false);
+		});
+
+		it("should show the language and layout it didn't ask", async () => {
+			await write("src/Combat/Hit.server.luau");
+			const prompts = new MockPromptService({ [CREATE]: "yes" });
+
+			const plan = (await review(prompts)).unwrap();
+
+			expect(plan?.summary).toContainEqual({
+				area: "Project",
+				text: "one place, Luau",
+			});
+		});
+
+		it("should show a warning of the plan before it is accepted", async () => {
+			await write("src/Combat/Hit.server.luau");
+			const prompts = new MockPromptService({ [CREATE]: "yes" });
+
+			await serviceFor(prompts).plan({ choices: { places: true } });
+			const shown = prompts.prompts.at(-1)?.description ?? "";
+
+			expect(shown).toMatch(
+				/^Warning {3}src\/Combat holds code that no source/m
+			);
+		});
+
+		it("should ask whether to set Rogen up in a project it lifts", async () => {
+			await write(
+				"default.project.json",
+				JSON.stringify({ name: "g", tree: { $className: "DataModel" } })
+			);
+			const prompts = new MockPromptService([ACCEPT_DEFAULT], true);
+
+			await serviceFor(prompts).plan({ choices: { language: "luau" } });
+
+			expect(prompts.prompts.at(-1)?.message).toBe(
+				"Set up Rogen in this project?"
+			);
+		});
+
+		it.each([
+			[0, true],
+			[1, false],
+		])(
+			"should tell a lifted project to stop tracking default.project.json only when git tracks it (git ls-files exits %i)",
+			async (code, told) => {
+				await write(
+					"default.project.json",
+					JSON.stringify({
+						name: "g",
+						tree: { $className: "DataModel" },
+					})
+				);
+				processes.installed.set("git", "/bin/git");
+				processes.outputs.set("/bin/git", {
+					code,
+					stdout: "",
+					stderr: "",
+				});
+
+				const plan = (await serviceFor().plan({ ask: false })).unwrap();
+
+				expect(
+					plan?.nextSteps.edits.some((edit) =>
+						edit.includes("git rm --cached default.project.json")
+					)
+				).toBe(told);
+			}
+		);
+
+		it("should ask whether to add the agent files beside a config", async () => {
+			await write("default.rogen.json", "{}");
+			await fileSystem.createDirectory(path.join(directory, ".claude"));
+			const prompts = new MockPromptService([ACCEPT_DEFAULT], true);
+
+			await serviceFor(prompts).plan({ choices: { agentRules: true } });
+
+			expect(prompts.prompts.at(-1)?.message).toBe(
+				"Add these agent files?"
+			);
+		});
+
+		it("should point to the sample's flag only in a run that doesn't ask", async () => {
+			const asked = (
+				await review(new MockPromptService(["luau", "one", "yes"]))
+			).unwrap();
+			const unasked = (await serviceFor().plan({ ask: false })).unwrap();
+
+			expect(asked?.notes.join("\n")).toContain(
+				"The Greeter sample is in"
+			);
+			expect(asked?.notes.join("\n")).not.toContain("--no-sample");
+			expect(unasked?.notes.join("\n")).toContain("--no-sample");
+		});
+
+		it("should name the code that several places would leave unplaced", async () => {
+			await write("src/Combat/Hit.server.luau");
+			await write("src/Util.luau");
+			const prompts = new MockPromptService([
+				"customise",
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				"yes",
+			]);
+
+			await review(prompts);
+			const places = prompts.prompts.find(
+				({ message }) => message === "One place or several?"
+			);
+
+			expect(places?.choiceHints?.several).toBe(
+				"src/common holds the shared code, src/game the first place; leaves src/Combat and src/Util.luau unplaced"
+			);
+		});
+
+		it("should not look for the code each layout leaves unplaced while the layout isn't asked", async () => {
+			await write("src/Combat/Hit.server.luau");
+			const search = jest.spyOn(StarterPlaces.prototype, "plan");
+
+			await review(new MockPromptService(["yes"]));
+
+			expect(search).not.toHaveBeenCalled();
+		});
+
+		it("should name loose scripts at the root that neither layout places", async () => {
+			await write("Main.server.luau");
+			const prompts = new MockPromptService([
+				"customise",
+				ACCEPT_DEFAULT,
+				"one",
+				ACCEPT_DEFAULT,
+				"yes",
+			]);
+
+			await review(prompts);
+			const places = prompts.prompts.find(
+				({ message }) => message === "One place or several?"
+			);
+
+			expect(places?.choiceHints).toEqual({
+				one: "the code is in src; leaves Main.server.luau unplaced",
+				several:
+					"src/common holds the shared code, src/game the first place; leaves Main.server.luau unplaced",
+			});
+		});
+
+		it("should not ask the layout of a folder that holds code, and offer it under Customise with the folder one place uses", async () => {
+			await write("lib/Combat/Hit.luau");
+			const prompts = new MockPromptService([
+				"customise",
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				"yes",
+			]);
+
+			await review(prompts);
+			const places = prompts.prompts.find(
+				({ message }) => message === "One place or several?"
+			);
+
+			expect(prompts.asked).toEqual([
+				CREATE,
 				"Language",
 				"One place or several?",
 				"Add Rogen's rules for coding agents to AGENTS.md?",
 				CREATE,
 			]);
-			expect(prompts.prompts.at(-1)?.description).toContain(
-				"several places"
-			);
-			expect(plan?.summary).toContainEqual({
-				area: "Project",
-				text: expect.stringContaining("several places"),
+			expect(places?.choiceHints?.one).toBe("the code is in lib");
+		});
+
+		it("should offer no Customise when every question the summary shows was asked", async () => {
+			const prompts = new MockPromptService({
+				"One place or several?": "one",
+				[CREATE]: "yes",
 			});
+
+			await serviceFor(prompts).plan({
+				choices: { language: "luau", agentRules: false, sample: false },
+			});
+
+			expect(prompts.prompts.at(-1)?.choices).toEqual(["yes", "cancel"]);
 		});
 
 		it("should list every file and command of the plan, as a dry run would write them", async () => {
@@ -1551,6 +2081,32 @@ describe("CoreInitService", () => {
 			expect(written).toContain("rokit.toml");
 			expect(written.length).toBeGreaterThan(5);
 			for (const item of written) expect(shown).toContain(item);
+		});
+	});
+
+	describe("check", () => {
+		it("should fail with the write's diagnostics when the project it plans fails them", async () => {
+			await write("src/Inventory/@server");
+			await write("src/Inventory/@client");
+			const service = serviceFor();
+			const plan = (await service.plan()).unwrap();
+
+			const checked = await service.check(plan!);
+
+			expect((checked as ResultError<Error>).error.message).toContain(
+				"(route.markerClash)"
+			);
+		});
+
+		it("should check the project with the files it plans in place", async () => {
+			const service = serviceFor();
+			const plan = (
+				await service.plan({ choices: { sample: false } })
+			).unwrap();
+
+			const checked = await service.check(plan!);
+
+			expect(checked.isOk()).toBe(true);
 		});
 	});
 
@@ -1646,6 +2202,7 @@ describe("CoreInitService", () => {
 			);
 			const plan = {
 				...(await planned()),
+				files: [],
 				directories: ["lib"],
 			};
 
@@ -1751,6 +2308,15 @@ describe("CoreInitService", () => {
 			expect(plan.nextSteps.run).toEqual(["rogen serve old"]);
 		});
 
+		it("should serve a config by its file when a folder of its name holds a project", async () => {
+			await write("old/default.project.json", "{}");
+			const { service } = migrating();
+
+			const plan = (await service.plan({ ask: false })).unwrap()!;
+
+			expect(plan.nextSteps.run).toEqual(["rogen serve old.rogen.json"]);
+		});
+
 		it("should sum up the code of each config it writes", async () => {
 			const { service } = migrating(
 				migrated({
@@ -1841,6 +2407,16 @@ describe("CoreInitService", () => {
 			expect(
 				prompts.prompts.at(-1)?.description?.replace(/\s+/g, " ")
 			).toContain("src/A_Server.luau → src/A@Server.luau");
+		});
+
+		it("should ask whether to migrate the project", async () => {
+			const prompts = new MockPromptService([ACCEPT_DEFAULT], true);
+
+			(await migrating(undefined, prompts).service.plan()).unwrap();
+
+			expect(prompts.prompts.at(-1)?.message).toBe(
+				"Migrate this project?"
+			);
 		});
 
 		it("should move the files before it writes, and move nothing in a dry run", async () => {

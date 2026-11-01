@@ -1,4 +1,4 @@
-import { errorKind } from "../../../base/errors.js";
+import { UsageError, errorKind } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -165,7 +165,9 @@ describe("CoreRojoCommandService", () => {
 
 		const ran = (await running).unwrap();
 
-		expect(ran.failure?.diagnostics[0]).toEqual(
+		expect(
+			(ran.failure as DiagnosticsError | undefined)?.diagnostics[0]
+		).toEqual(
 			expect.objectContaining({
 				code: "rojo.commandFailed",
 				resource: "/repo/default.project.json",
@@ -194,7 +196,10 @@ describe("CoreRojoCommandService", () => {
 
 		const ran = (await running).unwrap();
 
-		expect(ran.failure?.diagnostics[0].details).toEqual([
+		expect(
+			(ran.failure as DiagnosticsError | undefined)?.diagnostics[0]
+				.details
+		).toEqual([
 			"Unresolvable property in project at path /repo/default.project.json",
 			"Caused by: Wrong type of value for property Workspace.Gravity. Expected Float32, got a string",
 			"Rojo project referred to a file using $path that could not be turned into a Roblox Instance by Rojo.",
@@ -208,10 +213,14 @@ describe("CoreRojoCommandService", () => {
 
 		const ran = (await running).unwrap();
 
-		expect(ran.failure?.diagnostics[0]).toMatchObject({
+		expect(
+			(ran.failure as DiagnosticsError | undefined)?.diagnostics[0]
+		).toMatchObject({
 			message: "Rojo couldn't build this project (exit code 1).",
 		});
-		expect(ran.failure?.diagnostics[0]).not.toHaveProperty("details");
+		expect(
+			(ran.failure as DiagnosticsError | undefined)?.diagnostics[0]
+		).not.toHaveProperty("details");
 	});
 
 	it.each([
@@ -223,9 +232,46 @@ describe("CoreRojoCommandService", () => {
 			const running = run();
 			await finish(["error: invalid value 'abc'"], code);
 
-			expect((await running).unwrap().failure?.kind).toBe(kind);
+			expect(errorKind((await running).unwrap().failure!)).toBe(kind);
 		}
 	);
+
+	it("should say Rojo refused the command line when it exits 2, with every line it printed but the one that points at Rojo's help, and leave none to report beside it", async () => {
+		const running = run(selection(), ["--asset_id", "abc"]);
+		await new Promise((resolve) => setImmediate(resolve));
+		const [child] = processes.spawned;
+		child.printError(
+			"error: Invalid value \"abc\" for '--asset_id <ASSET_ID>': invalid digit found in string\n\nFor more information try --help\n"
+		);
+		child.exit({ code: 2, signal: null });
+
+		const ran = (await running).unwrap();
+
+		expect(ran.failure).toEqual(
+			new UsageError(
+				"Rojo refused the command line:\n  Invalid value \"abc\" for '--asset_id <ASSET_ID>': invalid digit found in string"
+			)
+		);
+		expect(ran.messages).toEqual([]);
+	});
+
+	it("should leave out the newer wording of the line that points at Rojo's help", async () => {
+		const running = run(selection(), ["--bogus"]);
+		await new Promise((resolve) => setImmediate(resolve));
+		const [child] = processes.spawned;
+		child.printError(
+			"error: unexpected argument '--bogus' found\n\nFor more information, try '--help'.\n"
+		);
+		child.exit({ code: 2, signal: null });
+
+		const ran = (await running).unwrap();
+
+		expect(ran.failure).toEqual(
+			new UsageError(
+				"Rojo refused the command line:\n  unexpected argument '--bogus' found"
+			)
+		);
+	});
 
 	it("should fail without running Rojo when no Rojo is found", async () => {
 		processes.installed.clear();

@@ -1,12 +1,17 @@
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
+import { closestMatch, joinedWithOr } from "../../base/strings.js";
 import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
 import {
 	AbstractCommand,
 	CommandService,
 	registerCommand,
 } from "../../platform/commands/commands.js";
-import { CommandLine, JsonOption } from "../../platform/environment/args.js";
+import {
+	CommandLine,
+	HELP_COMMAND,
+	JsonOption,
+} from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import {
@@ -42,6 +47,9 @@ const SUBCOMMANDS = [
 const isSubcommand = (word: string) =>
 	SUBCOMMANDS.some(({ name }) => name === word);
 
+/** The words that may follow `rogen plugin`. */
+const ACTIONS = [...SUBCOMMANDS.map(({ name }) => name), HELP_COMMAND];
+
 registerCommand(
 	class PluginCommand extends AbstractCommand<typeof PluginOptions> {
 		constructor() {
@@ -76,17 +84,26 @@ registerCommand(
 			line: CommandLine<typeof PluginOptions>
 		): Promise<Result<void, Error>> {
 			const [action, ...rest] = line.positionals;
-			if (action === "help" && rest.every(isSubcommand))
-				return accessor.get(CommandService).executeCommand("help", {
-					positionals: ["plugin"],
-					options: {},
-				});
-			if (!isSubcommand(action) || rest.length > 0)
+			if (action === HELP_COMMAND && rest.every(isSubcommand))
+				return accessor
+					.get(CommandService)
+					.executeCommand(HELP_COMMAND, {
+						positionals: ["plugin"],
+						options: {},
+					});
+			if (!isSubcommand(action) || rest.length > 0) {
+				const suggestion =
+					action === undefined || isSubcommand(action)
+						? undefined
+						: closestMatch(action, ACTIONS);
 				return err(
 					new UsageError(
-						"'rogen plugin' takes install, uninstall or help."
+						`'rogen plugin' takes ${joinedWithOr(ACTIONS)}.`,
+						suggestion &&
+							`Did you mean 'rogen plugin ${suggestion}'?`
 					)
 				);
+			}
 			const logService = accessor.get(LogService);
 			const cwd = accessor.get(EnvironmentService).cwd;
 

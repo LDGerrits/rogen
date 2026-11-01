@@ -22,15 +22,26 @@ describe("UnmountedFiles", () => {
 		await fs.createDirectory("/repo");
 	});
 
-	it("should list the files below a source path that nothing mounts", async () => {
+	it("should list the files below a source path that nothing mounts, and a folder where nothing in it is mounted", async () => {
 		await fs.writeFile("/repo/src/server/Main.luau", "");
 		await fs.writeFile("/repo/src/Loose.luau", "");
 		await fs.writeFile("/repo/src/scratch/x.server.luau", "");
+		await fs.writeFile("/repo/src/scratch/deep/y.luau", "");
+		await fs.writeFile("/repo/src/mixed/Kept/K.luau", "");
+		await fs.writeFile("/repo/src/mixed/Left.luau", "");
 
-		expect(await find(["src/server"])).toEqual([
+		expect(await find(["src/server", "src/mixed/Kept"])).toEqual([
 			"src/Loose.luau",
-			"src/scratch/x.server.luau",
+			"src/mixed/Left.luau",
+			"src/scratch",
 		]);
+	});
+
+	it("should write a path with glob characters as a glob that matches only it", async () => {
+		await fs.writeFile("/repo/src/a/A.luau", "");
+		await fs.writeFile("/repo/src/old [1]/B.luau", "");
+
+		expect(await find(["src/a"])).toEqual(["src/old [[]1[]]"]);
 	});
 
 	it("should skip what a mounted file or folder holds", async () => {

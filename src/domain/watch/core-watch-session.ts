@@ -321,6 +321,7 @@ export class CoreWatchSession
 		await this.watcher.watch(this.watchPaths(), {
 			ignored: [...this.plan.ignored],
 			shallow: this.shallowDirs,
+			reportsUnreadable: this.plan.roots,
 		});
 		this.activeWatch = key;
 		this.listing = await this.indexService.list(this.plan.roots);

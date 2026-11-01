@@ -1,17 +1,23 @@
 import path from "path";
 import { Disposable } from "../../base/disposable.js";
-import { isInside, samePath } from "../../base/path.js";
+import { isInside, samePath, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import {
+	FileReader,
+	FileSystemService,
+} from "../../platform/fs/file-system-service.js";
 
 import { ConfigFormatter } from "./config-formatter.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ConfigDiscovery, DiscoveredConfigs } from "./config-discovery.js";
 import {
+	DEFAULT_PROJECT,
+	configStem,
 	isConfigFileName,
 	isDefaultConfigFileName,
 	isProjectFileConfig,
+	projectStem,
 } from "./config.js";
 import { ConfigLoader } from "./config-loader.js";
 import {
@@ -51,13 +57,19 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	async select(
-		refs: readonly string[]
+		refs: readonly string[],
+		reader?: FileReader
 	): Promise<Result<ReloadableSelection, Error>> {
-		return this.open(await this.discovery.discover(refs));
+		const discovery = reader ? this.discovery.over(reader) : this.discovery;
+		return this.open(
+			await discovery.discover(refs),
+			reader ? this.loader.over(reader) : this.loader
+		);
 	}
 
 	private async open(
-		discovered: Result<DiscoveredConfigs, Error>
+		discovered: Result<DiscoveredConfigs, Error>,
+		loader: ConfigLoader
 	): Promise<Result<ReloadableSelection, Error>> {
 		if (discovered.isErr()) return err(discovered.error);
 
@@ -73,7 +85,8 @@ export class CoreConfigService implements ConfigService {
 							holds: isDefaultConfigFileName,
 						}
 					: undefined,
-				notes
+				notes,
+				loader
 			)
 		);
 	}
@@ -95,14 +108,15 @@ export class CoreConfigService implements ConfigService {
 		files: readonly string[],
 		directory: string,
 		folder: PickedFolder | undefined,
-		notes?: readonly string[]
+		notes?: readonly string[],
+		loader: ConfigLoader = this.loader
 	): Promise<ReloadableSelection> {
 		const opened = await Promise.all(
-			files.map((file) => ManagedConfig.open(file, this.loader))
+			files.map((file) => ManagedConfig.open(file, loader))
 		);
 		return new CoreConfigSelection(
 			opened,
-			this.loader,
+			loader,
 			directory,
 			folder,
 			notes
@@ -119,14 +133,24 @@ export class CoreConfigService implements ConfigService {
 		const selections = new Map<string, ReloadableSelection>();
 		const found = new Map<string, { indexes: number[]; whole: boolean }>();
 		const uncovered: number[] = [];
+		const coversAt = new Map<number, ConfigCover[]>();
+		for (const [index, target] of targets.entries())
+			if (target !== undefined)
+				coversAt.set(index, await this.coversOf(target));
+		const named = targets.includes(undefined)
+			? [...coversAt.values()].flat().filter(({ whole }) => whole)
+			: [];
 		for (const [index, target] of targets.entries()) {
 			let covers: ConfigCover[];
-			if (target === undefined) {
+			if (target === undefined && named.length > 0)
+				covers = named.map(({ file }) => ({ file, whole: false }));
+			else if (target === undefined) {
 				const here = await this.select([]);
 				if (here.isErr()) return here;
 				covers = [{ file: here.value.entries[0].file, whole: false }];
 				selections.set(covers[0].file, here.value);
-			} else covers = await this.coversOf(target);
+			} else covers = coversAt.get(index)!;
+			if (named.length > 0 && covers.some(({ whole }) => whole)) continue;
 			if (covers.length === 0) {
 				uncovered.push(index);
 				continue;
@@ -192,6 +216,24 @@ export class CoreConfigService implements ConfigService {
 		return ok(resolved);
 	}
 
+	async referenceTo(file: string, folder: string): Promise<string> {
+		const base = path.basename(file);
+		if (base.startsWith(`${DEFAULT_PROJECT}.`))
+			return toPosix(path.relative(folder, path.dirname(file)));
+		const stem =
+			configStem(base) ??
+			(isProjectFileConfig(base) ? projectStem(base) : undefined);
+		const relative = toPosix(path.relative(folder, file));
+		const fileRef =
+			relative === "" || relative.startsWith("..") ? file : relative;
+		return stem !== undefined &&
+			samePath(path.dirname(file), folder) &&
+			!(await this.isPath(path.join(folder, stem))) &&
+			(await this.discovery.stemReads(folder, stem, file))
+			? stem
+			: fileRef;
+	}
+
 	private async isPath(target: string): Promise<boolean> {
 		if (!(await this.fileSystemService.exists(target))) return false;
 		if (!(await this.fileSystemService.isDirectory(target))) return true;
@@ -199,6 +241,12 @@ export class CoreConfigService implements ConfigService {
 			(await this.discovery.defaultConfigs(target)).length > 0 ||
 			(await this.discovery.adoptable(target)) !== undefined
 		);
+	}
+
+	async firstNotConfig(refs: readonly string[]): Promise<string | undefined> {
+		for (const ref of refs)
+			if (!(await this.discovery.namesConfig(ref))) return ref;
+		return undefined;
 	}
 
 	async coversOf(target: string): Promise<ConfigCover[]> {
@@ -210,17 +258,24 @@ export class CoreConfigService implements ConfigService {
 		target: string
 	): Promise<ConfigCover | undefined> {
 		const cover = await this.discovery.coverOf(target);
-		if (!cover || cover.whole || !isProjectFileConfig(cover.file))
-			return cover;
+		if (!cover) return cover;
+		if (cover.whole)
+			return isProjectFileConfig(target)
+				? ((await this.configAbove(target)) ?? cover)
+				: cover;
+		if (!isProjectFileConfig(cover.file)) return cover;
 		return (await this.configAbove(cover.file)) ?? cover;
 	}
 
-	/** With no default config to answer, the named configs at and above `target` whose source paths cover it; one that is broken is kept, since its source paths can't be told. */
+	/** With no default config to answer, the named configs at and above `target` whose source paths cover it; one that is broken is kept unless its source paths can be told. */
 	private async namedCovers(target: string): Promise<ConfigCover[]> {
 		const covers: ConfigCover[] = [];
 		for (const file of await this.discovery.namedConfigsAbove(target)) {
-			const { config } = validFile(await this.read(file)) ?? {};
-			if (config && !(await this.covers(config.sourcePaths, target)))
+			const entry = await this.read(file);
+			const sourcePaths =
+				validFile(entry)?.config.sourcePaths ??
+				(entry.status === "broken" ? entry.sourcePaths : undefined);
+			if (sourcePaths && !(await this.covers(sourcePaths, target)))
 				continue;
 			covers.push({ file, whole: false });
 		}

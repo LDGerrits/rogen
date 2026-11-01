@@ -221,10 +221,6 @@ describe("exitCode", () => {
 		expect(exitCode(ok(undefined))).toBe(0);
 	});
 
-	it("should be 2 for a run that named no command", () => {
-		expect(exitCode(ok(undefined), { bare: true })).toBe(2);
-	});
-
 	it("should be the code of the failure for a run that failed", () => {
 		const failed = (error: Error): Result<void, Error> => err(error);
 

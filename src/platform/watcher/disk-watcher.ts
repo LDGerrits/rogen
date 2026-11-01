@@ -2,7 +2,8 @@ import chokidar from "chokidar";
 import * as fs from "fs";
 import { isUnfollowableLink } from "../fs/disk-file-system-service.js";
 import { FileType } from "../fs/file-system-service.js";
-import { toPosix } from "../../base/path.js";
+import { ErrorUtils } from "../../base/errors.js";
+import { containsPath, toPosix } from "../../base/path.js";
 import { FileChangeType } from "../fs/file-changes.js";
 import { AbstractWatcher } from "./abstract-watcher.js";
 import { WatchFilter, WatchOptions } from "./watcher.js";
@@ -24,6 +25,8 @@ export class DiskWatcher extends AbstractWatcher {
 	private ready = false;
 	private roots: string[] = [];
 	private readonly seen = new Map<string, string | undefined>();
+	/** Folders chokidar could not read; chokidar reports nothing when one becomes readable, so that is reported here. */
+	private readonly refused = new Set<string>();
 	private revival: NodeJS.Timeout | undefined;
 	/** Ends a start still waiting for chokidar, which never reports ready once closed. */
 	private cancelStart: (() => void) | undefined;
@@ -48,11 +51,10 @@ export class DiskWatcher extends AbstractWatcher {
 
 		this.watcher.on("raw", () => this.dropRemovedLinks());
 
-		this.watcher.on("error", (error) =>
-			this.logService.error(
-				`Can't watch part of the project: ${error.message}`
-			)
-		);
+		this.watcher.on("error", (error) => {
+			this.recordRefused(error);
+			this.reportError(error, options.reportsUnreadable ?? []);
+		});
 
 		// Until chokidar is ready, new files count as initial and are ignored.
 		const watcher = this.watcher;
@@ -65,13 +67,30 @@ export class DiskWatcher extends AbstractWatcher {
 		this.watchForReturns();
 	}
 
-	/** Rewatches roots that came back or began as a new place: chokidar loses a deleted root and never sees one that did not exist. */
+	private reportError(error: Error, reported: readonly string[]): void {
+		const message = `Can't watch part of the project: ${error.message}`;
+		if (!ErrorUtils.hasCode(error, "EACCES", "EPERM"))
+			this.logService.error(message);
+		else if (isUnder(error, reported)) this.logService.debug(message);
+		else this.logService.warn(message);
+	}
+
+	private recordRefused(error: Error): void {
+		const { path: failed } = error as NodeJS.ErrnoException;
+		if (
+			failed !== undefined &&
+			ErrorUtils.hasCode(error, "EACCES", "EPERM")
+		)
+			this.refused.add(failed);
+	}
+
+	/** Rewatches roots that came back or began as a new place, and folders that became readable: chokidar sees none of them. */
 	private watchForReturns(): void {
 		for (const root of this.roots) this.seen.set(root, identityOf(root));
-		this.revival = setInterval(
-			() => this.reviveRoots(),
-			REVIVAL_INTERVAL_MS
-		);
+		this.revival = setInterval(() => {
+			this.reviveRoots();
+			this.reviveRefused();
+		}, REVIVAL_INTERVAL_MS);
 		this.revival.unref();
 	}
 
@@ -89,6 +108,21 @@ export class DiskWatcher extends AbstractWatcher {
 					? FileType.Directory
 					: FileType.File
 			);
+		}
+	}
+
+	private reviveRefused(): void {
+		for (const dir of this.refused) {
+			try {
+				fs.readdirSync(dir);
+			} catch (error) {
+				if (!ErrorUtils.hasCode(error, "EACCES", "EPERM"))
+					this.refused.delete(dir);
+				continue;
+			}
+			this.refused.delete(dir);
+			this.watcher?.add(dir);
+			this.fireEvent(FileChangeType.ADDED, dir, FileType.Directory);
 		}
 	}
 
@@ -143,6 +177,7 @@ export class DiskWatcher extends AbstractWatcher {
 			await this.watcher.close();
 			this.watcher = null;
 		}
+		this.refused.clear();
 	}
 }
 
@@ -156,6 +191,15 @@ function clearThrottles(watcher: chokidar.FSWatcher): void {
 	};
 	for (const actions of throttled?.values() ?? [])
 		for (const { clear } of [...actions.values()]) clear();
+}
+
+/** Whether the failed path of `error` lies in one of `dirs`. */
+function isUnder(error: Error, dirs: readonly string[]): boolean {
+	const failed = (error as NodeJS.ErrnoException).path;
+	return (
+		failed !== undefined &&
+		dirs.some((dir) => containsPath(toPosix(dir), toPosix(failed)))
+	);
 }
 
 function identityOf(target: string): string | undefined {

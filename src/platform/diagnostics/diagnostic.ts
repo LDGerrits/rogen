@@ -151,9 +151,11 @@ function messageWithCode(message: string, code: string): string {
 		: `${message.slice(0, end)} (${code})${message.slice(end)}`;
 }
 
+/** `severity` writes the severity label, as a log service colours it. */
 export function diagnosticSummary(
 	diagnostic: Diagnostic,
-	cwd?: string
+	cwd?: string,
+	severity: (label: string) => string = (label) => label
 ): string {
 	const relative = (text: string) =>
 		cwd === undefined ? text : messageRelativeTo(text, cwd);
@@ -164,10 +166,14 @@ export function diagnosticSummary(
 	const details = (diagnostic.details ?? []).map(
 		(detail) => `\n  ${relative(detail)}`
 	);
-	return `${SEVERITY_LABELS[diagnostic.severity]}: ${message}${details.join("")}`;
+	return `${severity(`${SEVERITY_LABELS[diagnostic.severity]}:`)} ${message}${details.join("")}`;
 }
 
-export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
+export function renderDiagnostic(
+	diagnostic: Diagnostic,
+	cwd?: string,
+	severity?: (label: string) => string
+): string {
 	const { position } = diagnostic;
 	const resource =
 		cwd === undefined
@@ -176,7 +182,7 @@ export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
 	const where = position
 		? `${resource}:${position.line}:${position.column}`
 		: resource;
-	return `${where} - ${diagnosticSummary(diagnostic, cwd)}`;
+	return `${where} - ${diagnosticSummary(diagnostic, cwd, severity)}`;
 }
 
 export function renderDiagnostics(diagnostics: readonly Diagnostic[]): string {
@@ -223,25 +229,28 @@ export function newDiagnostics(
 	return after.filter((diagnostic) => !seen.has(diagnosticKey(diagnostic)));
 }
 
-/** The diagnostics about `source`. */
-export function diagnosticsAbout(
-	diagnostics: readonly Diagnostic[],
-	source: string
-): Diagnostic[] {
-	const target = toPosix(source);
-	return diagnostics.filter(({ resource }) => toPosix(resource) === target);
+/** Its own file and its related files, as POSIX paths. */
+function filesOf({ resource, related }: Diagnostic): string[] {
+	return [resource, ...(related ?? []).map(({ resource }) => resource)].map(
+		toPosix
+	);
 }
 
-/** The diagnostics about `target`, inside it, or about a folder it lies in. */
-export function diagnosticsReaching(
-	diagnostics: readonly Diagnostic[],
-	target: string
-): Diagnostic[] {
+/** Whether `diagnostic` is about `source`: its own file or a related one. */
+export function isAbout(diagnostic: Diagnostic, source: string): boolean {
+	return filesOf(diagnostic).includes(toPosix(source));
+}
+
+/** Whether `diagnostic` is about `target` or inside it, or about `folder`, which `target` lies in; one that lists its files in `related` reaches only them from its folder. `folder` is its own file unless that file stands for its folder. */
+export function reaches(
+	diagnostic: Diagnostic,
+	target: string,
+	folder: string = diagnostic.resource
+): boolean {
 	const posixTarget = toPosix(target);
-	return diagnostics.filter(({ resource }) => {
-		const posix = toPosix(resource);
-		return (
-			containsPath(posixTarget, posix) || containsPath(posix, posixTarget)
-		);
-	});
+	return (
+		filesOf(diagnostic).some((file) => containsPath(posixTarget, file)) ||
+		(diagnostic.related === undefined &&
+			containsPath(toPosix(folder), posixTarget))
+	);
 }

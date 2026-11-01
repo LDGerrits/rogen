@@ -24,14 +24,6 @@ export class CoreCommandService implements CommandService {
 		const command = this.registry.getCommand(commandId);
 
 		if (!command) return err(unknownCommand(commandId, this.registry));
-		if (line.passthrough?.length) {
-			return err(
-				new UsageError(
-					`${commandId} takes nothing after '--'.`,
-					`Run 'rogen ${HELP_COMMAND} ${commandId}' to see what it accepts.`
-				)
-			);
-		}
 
 		try {
 			return await command.handler(this.accessor, line);
