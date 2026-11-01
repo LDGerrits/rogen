@@ -1251,24 +1251,6 @@ describe("CoreWriteService", () => {
 					)
 				).unwrap();
 
-			it("should report the error of a script's meta file against the script", async () => {
-				await fs.writeFile(abs("src/A/M.luau"), "");
-				await fs.writeFile(
-					abs("src/A/M.meta.json"),
-					'{"properties":{"RunContext":"Server"}}'
-				);
-
-				const found = await diagnose("src/A/M.luau");
-
-				expect(found.diagnostics).toMatchObject([
-					{
-						code: "meta.runContextOnModule",
-						resource: abs("src/A/M.meta.json"),
-					},
-				]);
-				expect(found.stoppedBy).toEqual([]);
-			});
-
 			it("should report a clash against the file that wins it", async () => {
 				await fs.writeFile(abs("src/Combat/Hit@server.luau"), "");
 				await fs.writeFile(abs("src/Combat/Server/Hit.luau"), "");

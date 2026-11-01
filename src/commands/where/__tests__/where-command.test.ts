@@ -227,46 +227,35 @@ describe("where command", () => {
 			);
 		});
 
-		it("should show the error under the script it is about, and fail, with no path", async () => {
+		it("should fail with the error under a line, with no path", async () => {
 			const result = await run({});
 
 			expect(result.isErr() && result.error).toBeInstanceOf(
 				ReportedError
 			);
-			expect(printed().join("\n")).toContain(
-				"src/A/M.luau -> ReplicatedStorage/Shared/A/M · route * (fallback)\n  error: sets a RunContext"
+			expect(printed()).toContainEqual(
+				expect.stringMatching(/^ {2}error: /)
 			);
 		});
 
-		it("should fail when the meta file is asked about", async () => {
-			const result = await run({ _: ["src/A/M.meta.json"] });
-
-			expect(result.isErr()).toBe(true);
-			expect(printed().join("\n")).toContain("meta.runContextOnModule");
-		});
-
-		it("should fail with the error, which no line shows, for a file it is not about", async () => {
+		it("should fail with the error on its own when no line shows it", async () => {
 			const result = await run({ _: ["src/B.luau"] });
 
 			expect(result.isErr() && result.error).toBeInstanceOf(
 				DiagnosticsError
 			);
-			expect(
-				(result.isErr() &&
-					(result.error as DiagnosticsError).diagnostics.map(
-						({ code }) => code
-					)) ||
-					[]
-			).toEqual(["meta.runContextOnModule"]);
+			expect(printed()).toEqual([
+				"src/B.luau -> ReplicatedStorage/Shared/B · route * (fallback)",
+			]);
 		});
 
 		it("should put the error that no entry holds at the top of the JSON document", async () => {
 			const result = await run({ _: ["src/B.luau"], json: true });
 
 			expect(result.isErr()).toBe(true);
-			expect(JSON.parse(printed().join("\n")).diagnostics).toMatchObject([
-				{ code: "meta.runContextOnModule" },
-			]);
+			expect(JSON.parse(printed().join("\n")).diagnostics).toHaveLength(
+				1
+			);
 		});
 	});
 

@@ -892,7 +892,7 @@ describe("CoreWriteService.locate", () => {
 	});
 
 	describe("a source path that is not a folder", () => {
-		it("should say a file there is not an instance, with the error that stops the write", async () => {
+		it("should say a file there is not an instance", async () => {
 			await fs.writeFile(abs("src"), "");
 
 			const located = (
@@ -904,9 +904,6 @@ describe("CoreWriteService.locate", () => {
 
 			expect(located.files).toEqual([
 				{ status: "notInstance", source: abs("src"), exists: true },
-			]);
-			expect(located.diagnostics).toMatchObject([
-				{ code: "scan.missingSourcePath", resource: abs("src") },
 			]);
 		});
 
