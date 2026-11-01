@@ -156,6 +156,7 @@ describe("WhereLog", () => {
 								instances: [],
 								queried: [],
 								diagnostics: [],
+								markers: [],
 							},
 						],
 					})
@@ -651,6 +652,7 @@ describe("WhereLog", () => {
 							instances: [],
 							queried: [],
 							diagnostics: [],
+							markers: [],
 						},
 						{
 							config: mockConfig({ sourcePaths: ["/repo/src"] }),
@@ -658,6 +660,7 @@ describe("WhereLog", () => {
 							instances: [],
 							queried: [],
 							diagnostics: [],
+							markers: [],
 						},
 					],
 				})

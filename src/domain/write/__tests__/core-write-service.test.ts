@@ -1236,6 +1236,72 @@ describe("CoreWriteService", () => {
 			);
 		});
 
+		describe("what reaches a file", () => {
+			const routes = {
+				Server: "ServerScriptService",
+				"*": "ReplicatedStorage/Shared",
+			};
+			const diagnose = async (arg: string) =>
+				(
+					await writeServiceOfFs().diagnose(
+						selectionOf(configOf({ routes })),
+						{ args: [arg], cwd: abs() }
+					)
+				).unwrap();
+
+			it("should report the error of a script's meta file against the script", async () => {
+				await fs.writeFile(abs("src/A/M.luau"), "");
+				await fs.writeFile(
+					abs("src/A/M.meta.json"),
+					'{"properties":{"RunContext":"Server"}}'
+				);
+
+				const found = await diagnose("src/A/M.luau");
+
+				expect(found.diagnostics).toMatchObject([
+					{
+						code: "meta.runContextOnModule",
+						resource: abs("src/A/M.meta.json"),
+					},
+				]);
+				expect(found.stoppedBy).toEqual([]);
+			});
+
+			it("should report a clash against the file that wins it", async () => {
+				await fs.writeFile(abs("src/Combat/Hit@server.luau"), "");
+				await fs.writeFile(abs("src/Combat/Server/Hit.luau"), "");
+
+				expect(
+					(await diagnose("src/Combat/Server/Hit.luau")).diagnostics
+				).toMatchObject([{ code: "tree.instanceClash" }]);
+			});
+
+			it("should report a marker file's warnings against the files of its folder", async () => {
+				await fs.writeFile(abs("src/M/@SERVER"), "");
+				await fs.writeFile(abs("src/M/a.luau"), "");
+				await fs.writeFile(abs("src/I/.server"), "");
+				await fs.writeFile(abs("src/I/L.luau"), "");
+				await fs.writeFile(abs("src/O/b.luau"), "");
+
+				expect(
+					(await diagnose("src/M/a.luau")).diagnostics
+				).toMatchObject([
+					{
+						code: "route.caseMismatch",
+						resource: abs("src/M/@SERVER"),
+					},
+				]);
+				expect(
+					(await diagnose("src/I/L.luau")).diagnostics
+				).toMatchObject([
+					{ code: "route.dotRoute", resource: abs("src/I/.server") },
+				]);
+				expect((await diagnose("src/O/b.luau")).diagnostics).toEqual(
+					[]
+				);
+			});
+		});
+
 		it("should report the error of a config that did not load beside what reaches the path in the others", async () => {
 			await fs.writeFile(abs("src/F/Sever/A.luau"), "");
 			const failure = errorDiagnostic(

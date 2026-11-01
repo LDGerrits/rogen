@@ -107,14 +107,16 @@ registerCommand(
 
 			const answers = new WhereAnswers(locations);
 			const failure = DiagnosticsError.of(answers.errors);
+			const stopped = DiagnosticsError.of(answers.stops);
 			if (line.options.json)
 				return this.printJson(
 					logService,
 					whereDocument(answers, cwd, skipped),
-					failure
+					failure ?? stopped
 				);
 			new WhereLog(cwd, answers).print(logService);
-			return failure ? err(failure) : ok(undefined);
+			if (failure) return err(failure);
+			return stopped ? this.reported(stopped) : ok(undefined);
 		}
 
 		/** With paths, each is answered by the config that covers it, and one that nothing covers is said so and skipped. */

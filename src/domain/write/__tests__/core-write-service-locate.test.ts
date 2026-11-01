@@ -845,6 +845,37 @@ describe("CoreWriteService.locate", () => {
 		]);
 	});
 
+	describe("a source path that is not a folder", () => {
+		it("should say a file there is not an instance, with the error that stops the write", async () => {
+			await fs.writeFile(abs("src"), "");
+
+			const located = (
+				await locateIn(writeService(), configOf(), {
+					args: [abs("src")],
+					cwd: abs(),
+				})
+			).unwrap();
+
+			expect(located.files).toEqual([
+				{ status: "notInstance", source: abs("src"), exists: true },
+			]);
+			expect(located.diagnostics).toMatchObject([
+				{ code: "scan.missingSourcePath", resource: abs("src") },
+			]);
+		});
+
+		it("should give the error that stops the write when it is not there", async () => {
+			const located = (
+				await locateIn(writeService(), configOf())
+			).unwrap();
+
+			expect(located.files).toEqual([]);
+			expect(located.diagnostics).toMatchObject([
+				{ code: "scan.missingSourcePath", resource: abs("src") },
+			]);
+		});
+	});
+
 	describe("an entry of unknown type", () => {
 		const unknownEntry = async (name: string) => {
 			await write("src/Other.luau", name);

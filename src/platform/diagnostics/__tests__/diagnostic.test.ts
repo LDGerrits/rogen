@@ -319,11 +319,14 @@ describe("platform/diagnostics/diagnostic", () => {
 			expect(diagnosticsAbout([own], "/repo/src/B.luau")).toEqual([]);
 		});
 
-		it("should leave out one that names the path only as a related file", () => {
-			expect(diagnosticsAbout([clash], "/repo/src/A.luau")).toEqual([]);
+		it("should keep one that names the path as a related file", () => {
+			expect(diagnosticsAbout([clash], "/repo/src/A.luau")).toEqual([
+				clash,
+			]);
 			expect(diagnosticsAbout([clash], "/repo/src/B.luau")).toEqual([
 				clash,
 			]);
+			expect(diagnosticsAbout([clash], "/repo/src/C.luau")).toEqual([]);
 		});
 	});
 
@@ -347,6 +350,46 @@ describe("platform/diagnostics/diagnostic", () => {
 					({ code }) => code
 				)
 			).toEqual(["x.file", "x.inside", "x.above"]);
+		});
+
+		it("should keep one that names the path as a related file", () => {
+			const clash = warningDiagnostic(
+				"x.clash",
+				{ resource: "/repo/src/F/B.luau" },
+				"clashes",
+				[],
+				[{ resource: "/repo/src/G/A.luau", message: "takes its place" }]
+			);
+
+			expect(diagnosticsReaching([clash], "/repo/src/G/A.luau")).toEqual([
+				clash,
+			]);
+			expect(diagnosticsReaching([clash], "/repo/src/G")).toEqual([
+				clash,
+			]);
+		});
+
+		it("should reach from a folder only the related files of one that lists them", () => {
+			const unmounted = warningDiagnostic(
+				"x.unmounted",
+				{ resource: "/repo/src" },
+				"unmounted",
+				[],
+				[{ resource: "/repo/src/other/b.luau", message: "unmounted" }]
+			);
+
+			expect(
+				diagnosticsReaching([unmounted], "/repo/src/lib/a.luau")
+			).toEqual([]);
+			expect(
+				diagnosticsReaching([unmounted], "/repo/src/other/b.luau")
+			).toEqual([unmounted]);
+			expect(diagnosticsReaching([unmounted], "/repo/src")).toEqual([
+				unmounted,
+			]);
+			expect(diagnosticsReaching([unmounted], "/repo")).toEqual([
+				unmounted,
+			]);
 		});
 
 		it("should leave out one about a sibling, and one filed under a config", () => {

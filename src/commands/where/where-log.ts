@@ -145,7 +145,8 @@ export class WhereLog {
 	print(logService: LogService): void {
 		const blocks = this.blocks();
 		if (blocks.length === 0) {
-			const empty = this.emptyLine();
+			const empty =
+				this.answers.stops.length === 0 ? this.emptyLine() : undefined;
 			if (empty) logService.print(defanged(empty));
 			return;
 		}

@@ -2,7 +2,6 @@ import { groupBy } from "../../base/collections.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	Diagnostic,
-	diagnosticsReaching,
 	isError,
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
@@ -34,6 +33,7 @@ import {
 	outsideEveryConfig,
 	skippedByEveryConfig,
 	skippedOutside,
+	diagnosticsReachingPath,
 } from "./write-service.js";
 import { PreparedConfig, WritePipeline } from "./write-pipeline.js";
 import { PLACEHOLDER_SOURCE } from "./compiled-layout.js";
@@ -275,7 +275,7 @@ export class CoreWriteService implements WriteService {
 					...misspelt.flatMap(({ warnings }) => warnings),
 					...configs.flatMap((config) =>
 						about(config).flatMap((target) =>
-							diagnosticsReaching(config.diagnostics, target)
+							diagnosticsReachingPath(config, target)
 						)
 					),
 				]),
@@ -286,10 +286,10 @@ export class CoreWriteService implements WriteService {
 								isError(diagnostic) &&
 								about(config).every(
 									(target) =>
-										diagnosticsReaching(
-											[diagnostic],
+										!diagnosticsReachingPath(
+											config,
 											target
-										).length === 0
+										).includes(diagnostic)
 								)
 						)
 					)

@@ -53,6 +53,25 @@ describe("UnmountedSources", () => {
 		expect(warnings[0].message).toContain('"$path"');
 	});
 
+	it("should name the files, the first three in the message and every one as related", async () => {
+		await write(
+			"src/A.luau",
+			"src/deep/B.luau",
+			"src/deep/er/C.json",
+			"src/D.luau"
+		);
+
+		const [warning] = await warningsOf();
+
+		expect(warning.message).toContain("(A.luau, D.luau, deep/B.luau, …)");
+		expect(warning.related?.map(({ resource }) => resource)).toEqual([
+			abs("src/A.luau"),
+			abs("src/D.luau"),
+			abs("src/deep/B.luau"),
+			abs("src/deep/er/C.json"),
+		]);
+	});
+
 	it("should say it of one file in the singular", async () => {
 		await write("src/A.luau");
 

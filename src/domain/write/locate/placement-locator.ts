@@ -59,6 +59,11 @@ export class PlacementLocator {
 		return [...found.values()];
 	}
 
+	/** The marker files of the source paths, absolute POSIX. */
+	get markers(): string[] {
+		return [...this.placement.readings.markers.keys()];
+	}
+
 	/** The paths the tree's `$path`s mount. */
 	get mounts(): TreeMounts {
 		return this.placement.tree.mounts;
@@ -200,10 +205,11 @@ export class PlacementLocator {
 					exists: this.exists(target),
 				},
 			];
-		const exists = index.hasEntry(
-			path.posix.dirname(target),
-			path.posix.basename(target)
-		);
+		const exists =
+			index.hasEntry(
+				path.posix.dirname(target),
+				path.posix.basename(target)
+			) || this.exists(target);
 		const folder = !exists && folders.has(target);
 		return [
 			{

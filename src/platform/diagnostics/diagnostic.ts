@@ -223,25 +223,36 @@ export function newDiagnostics(
 	return after.filter((diagnostic) => !seen.has(diagnosticKey(diagnostic)));
 }
 
-/** The diagnostics about `source`. */
+/** Its own file and its related files, as POSIX paths. */
+function filesOf({ resource, related }: Diagnostic): string[] {
+	return [resource, ...(related ?? []).map(({ resource }) => resource)].map(
+		toPosix
+	);
+}
+
+/** The diagnostics about `source`: its own file or a related one. */
 export function diagnosticsAbout(
 	diagnostics: readonly Diagnostic[],
 	source: string
 ): Diagnostic[] {
 	const target = toPosix(source);
-	return diagnostics.filter(({ resource }) => toPosix(resource) === target);
+	return diagnostics.filter((diagnostic) =>
+		filesOf(diagnostic).includes(target)
+	);
 }
 
-/** The diagnostics about `target`, inside it, or about a folder it lies in. */
+/** The diagnostics about `target` or inside it, and those about a folder it lies in; one that lists its files in `related` reaches only them from its folder. */
 export function diagnosticsReaching(
 	diagnostics: readonly Diagnostic[],
 	target: string
 ): Diagnostic[] {
 	const posixTarget = toPosix(target);
-	return diagnostics.filter(({ resource }) => {
-		const posix = toPosix(resource);
-		return (
-			containsPath(posixTarget, posix) || containsPath(posix, posixTarget)
-		);
-	});
+	return diagnostics.filter(
+		(diagnostic) =>
+			filesOf(diagnostic).some((file) =>
+				containsPath(posixTarget, file)
+			) ||
+			(diagnostic.related === undefined &&
+				containsPath(toPosix(diagnostic.resource), posixTarget))
+	);
 }

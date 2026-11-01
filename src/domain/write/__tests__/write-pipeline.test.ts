@@ -27,6 +27,27 @@ describe("WritePipeline", () => {
 		fs = new MemoryFileSystemService();
 	});
 
+	describe("examine", () => {
+		it("should stop when no source path exists, as run fails", async () => {
+			const config = configOf({ sourcePaths: [abs("srcc")] });
+			const index = await indexOf(fs, config.indexedPaths);
+
+			const examined = (
+				await pipelineOf(fs, index).examine(config)
+			).unwrap();
+
+			expect(examined).toMatchObject({
+				kind: "stopped",
+				errors: [
+					{
+						severity: DiagnosticSeverity.Error,
+						code: "scan.missingSourcePath",
+					},
+				],
+			});
+		});
+	});
+
 	describe("run", () => {
 		it("should report the folder meta it read, and not a data file's", async () => {
 			await fs.writeFile(abs("src/Combat/Hit.luau"), "");

@@ -89,6 +89,7 @@ class ConfigLocator {
 	}: Targets): Promise<Result<ConfigLocations, DiagnosticsError>> {
 		let files: FileLocation[] = [];
 		let diagnostics: readonly Diagnostic[] = [];
+		let markers: readonly string[] = [];
 		if (paths.length > 0) {
 			const planned = await this.locatePaths(paths, folders);
 			if (planned.isErr()) {
@@ -100,9 +101,10 @@ class ConfigLocator {
 					instances: [],
 					queried: paths.map(toPosix),
 					diagnostics: stopped,
+					markers: [],
 				});
 			}
-			({ files, diagnostics } = planned.value);
+			({ files, diagnostics, markers } = planned.value);
 			if (instances.length === 0)
 				return ok({
 					config: this.config,
@@ -110,6 +112,7 @@ class ConfigLocator {
 					instances: [],
 					queried: paths.map(toPosix),
 					diagnostics,
+					markers,
 				});
 		}
 
@@ -137,6 +140,7 @@ class ConfigLocator {
 			queried: paths.map(toPosix),
 			diagnostics:
 				paths.length > 0 ? diagnostics : existing.value.diagnostics,
+			markers: paths.length > 0 ? markers : locator.markers,
 		});
 	}
 
@@ -169,6 +173,7 @@ class ConfigLocator {
 			{
 				readonly files: FileLocation[];
 				readonly diagnostics: readonly Diagnostic[];
+				readonly markers: readonly string[];
 			},
 			DiagnosticsError
 		>
@@ -191,6 +196,7 @@ class ConfigLocator {
 				locator
 			),
 			diagnostics,
+			markers: locator.markers,
 		});
 	}
 

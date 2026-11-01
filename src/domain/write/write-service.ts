@@ -1,4 +1,5 @@
-import { toPosix } from "../../base/path.js";
+import path from "path";
+import { containsPath, toPosix } from "../../base/path.js";
 import { Result } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -13,6 +14,7 @@ import { FileChange } from "../../platform/fs/file-changes.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
+import { RojoFile } from "../rojo/rojo.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ConfigSelection } from "../config/config-service.js";
 import {
@@ -80,14 +82,46 @@ export type FileLocation =
 	| UnplacedLocation
 	| BlockedLocation;
 
-/** What a write raises about `location`: for a file the user named, everything that reaches it; for any other, only what is about that path. */
+/** What a write raises about `location`: for a file the user named, everything that reaches it; for any other, only what is about that path or its meta file. */
 export function diagnosticsOf(
 	location: FileLocation,
-	diagnostics: readonly Diagnostic[]
+	located: ConfigLocations
 ): Diagnostic[] {
-	return location.status === "placed" && location.named
-		? diagnosticsReaching(diagnostics, location.source)
-		: diagnosticsAbout(diagnostics, location.source);
+	if (location.status === "placed" && location.named)
+		return diagnosticsReachingPath(located, location.source);
+	const metaFiles = metaFilesOf(located, location.source);
+	return located.diagnostics.filter(
+		(diagnostic) =>
+			diagnosticsAbout([diagnostic], location.source).length > 0 ||
+			metaFiles.includes(toPosix(diagnostic.resource))
+	);
+}
+
+/** What a write raises that reaches `target`: about it or inside it, about a folder it lies in or a marker file that routes that folder, or about its meta file. */
+export function diagnosticsReachingPath(
+	located: ConfigLocations,
+	target: string
+): Diagnostic[] {
+	const posixTarget = toPosix(target);
+	const metaFiles = metaFilesOf(located, posixTarget);
+	return located.diagnostics.filter((diagnostic) => {
+		const resource = toPosix(diagnostic.resource);
+		return (
+			diagnosticsReaching([diagnostic], posixTarget).length > 0 ||
+			metaFiles.includes(resource) ||
+			(diagnostic.related === undefined &&
+				located.markers.includes(resource) &&
+				containsPath(path.posix.dirname(resource), posixTarget))
+		);
+	});
+}
+
+/** The meta files Rojo reads for the file at `source`. */
+function metaFilesOf(located: ConfigLocations, source: string): string[] {
+	const dir = path.posix.dirname(toPosix(source));
+	return RojoFile.at(toPosix(source), located.config.syncRules).metaFiles.map(
+		(name) => path.posix.join(dir, name)
+	);
 }
 
 /** The expression that requires the module a placed location is, if its path holds at runtime. */
@@ -135,6 +169,8 @@ export interface ConfigLocations {
 	readonly queried: readonly string[];
 	/** What a write of the config raises, without the compiled path's: the errors that stopped the later phases, else the warnings. */
 	readonly diagnostics: readonly Diagnostic[];
+	/** The marker files of the source paths, absolute POSIX. */
+	readonly markers: readonly string[];
 }
 
 /** One thing `where` was asked about: a path, resolved and written with slashes, or an instance. */

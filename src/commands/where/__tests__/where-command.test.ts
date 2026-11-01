@@ -7,6 +7,8 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { MockInputService } from "../../../platform/input/__tests__/mock-input-service.js";
 import { UsageError } from "../../../base/errors.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
+import { ReportedError } from "../../../platform/commands/commands.js";
+import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 
 const ROUTES = {
 	Server: "ServerScriptService",
@@ -171,10 +173,12 @@ describe("where command", () => {
 			);
 		});
 
-		it("should say what stops it, and still succeed", async () => {
+		it("should say what stops it, and fail", async () => {
 			const result = await run({ _: ["src/F/Shared/Good.luau"] });
 
-			expect(result.isOk()).toBe(true);
+			expect(result.isErr() && result.error).toBeInstanceOf(
+				ReportedError
+			);
 			expect(printed()).toEqual([
 				"src/F/Shared/Good.luau -> not placed · the write stops on src/F/Shared/Bad@server.luau (route.ignoredAt); run 'rogen check'",
 			]);
@@ -200,6 +204,59 @@ describe("where command", () => {
 					},
 				}
 			);
+		});
+	});
+
+	describe("when a meta error stops the write", () => {
+		beforeEach(async () => {
+			await writeConfig("default.rogen.json", { routes: ROUTES });
+			await write("src/A/M.luau", "src/B.luau");
+			await fs.writeFile(
+				"/repo/src/A/M.meta.json",
+				'{"properties":{"RunContext":"Server"}}'
+			);
+		});
+
+		it("should show the error under the script it is about, and fail, with no path", async () => {
+			const result = await run({});
+
+			expect(result.isErr() && result.error).toBeInstanceOf(
+				ReportedError
+			);
+			expect(printed().join("\n")).toContain(
+				"src/A/M.luau -> ReplicatedStorage/Shared/A/M · route * (fallback)\n  error: sets a RunContext"
+			);
+		});
+
+		it("should fail when the meta file is asked about", async () => {
+			const result = await run({ _: ["src/A/M.meta.json"] });
+
+			expect(result.isErr()).toBe(true);
+			expect(printed().join("\n")).toContain("meta.runContextOnModule");
+		});
+
+		it("should fail with the error, which no line shows, for a file it is not about", async () => {
+			const result = await run({ _: ["src/B.luau"] });
+
+			expect(result.isErr() && result.error).toBeInstanceOf(
+				DiagnosticsError
+			);
+			expect(
+				(result.isErr() &&
+					(result.error as DiagnosticsError).diagnostics.map(
+						({ code }) => code
+					)) ||
+					[]
+			).toEqual(["meta.runContextOnModule"]);
+		});
+
+		it("should put the error that no entry holds at the top of the JSON document", async () => {
+			const result = await run({ _: ["src/B.luau"], json: true });
+
+			expect(result.isErr()).toBe(true);
+			expect(JSON.parse(printed().join("\n")).diagnostics).toMatchObject([
+				{ code: "meta.runContextOnModule" },
+			]);
 		});
 	});
 
@@ -250,6 +307,32 @@ describe("where command", () => {
 
 		expect(result.isOk()).toBe(true);
 		expect(printed()).toEqual(["No files in the source paths (src)."]);
+	});
+
+	it("should fail as a write does when the source path is not there", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+
+		const result = await run({});
+
+		expect(result.isErr() && result.error).toBeInstanceOf(DiagnosticsError);
+		expect(
+			result.isErr() &&
+				(result.error as DiagnosticsError).diagnostics.map(
+					({ code }) => code
+				)
+		).toEqual(["scan.missingSourcePath"]);
+		expect(printed()).toEqual([]);
+	});
+
+	it("should say a source path that is a file is no instance, and fail", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await fs.writeFile("/repo/src", "");
+
+		const result = await run({ _: ["src"] });
+
+		expect(result.isErr()).toBe(true);
+		expect(printed()[0]).toBe("src -> not an instance");
+		expect(printed()[1]).toContain("(scan.missingSourcePath)");
 	});
 
 	it("should fail with the config's errors", async () => {

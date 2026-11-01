@@ -201,12 +201,13 @@ export class WriteValidator {
 	}
 
 	private caseMismatch(): Diagnostic[] {
-		const { nearMisses } = this.placement.readings;
+		const { nearMisses, markers } = this.placement.readings;
 		return [...nearMisses].map(([resource, key]) => {
+			const sign = markers.has(resource) ? "@" : "";
 			return warningDiagnostic(
 				"route.caseMismatch",
 				{ resource },
-				`differs from the route "${key}" only in letter case, so it is read as an ordinary name. Spell it "${key}" or "${DeclaredKeys.flipFirstLetter(key)}", or declare it as written.`
+				`differs from the route "${key}" only in letter case, so it is read as an ordinary name. Spell it "${sign}${key}" or "${sign}${DeclaredKeys.flipFirstLetter(key)}", or declare it as written.`
 			);
 		});
 	}
