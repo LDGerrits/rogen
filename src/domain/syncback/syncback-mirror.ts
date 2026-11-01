@@ -1,6 +1,6 @@
 import path from "path";
 import { isGlobsetMatch } from "../../base/glob.js";
-import { containsPosix, toPosix } from "../../base/path.js";
+import { commonFolderPosix, containsPosix, toPosix } from "../../base/path.js";
 import { PlacedLocation } from "../write/write-service.js";
 import { RojoFile } from "../rojo/rojo.js";
 import {
@@ -38,7 +38,7 @@ const isPlainFolder = (node: RojoNode): boolean =>
 	);
 
 /** A file or folder of the project, copied into the mirror where Rojo finds the instance it makes. */
-export interface MirrorEntry {
+interface MirrorEntry {
 	/** Relative to the mirror's root, written with `/`. */
 	readonly mirror: string;
 	/** Absolute, written with `/`: what Rojo reads in the project. */
@@ -47,14 +47,14 @@ export interface MirrorEntry {
 }
 
 /** An empty mirror folder a node with no `$path` reads, where Rojo writes the children Studio adds to it. */
-export interface NodeFolder {
+interface NodeFolder {
 	/** Relative to the mirror's root, written with `/`. */
 	readonly mirror: string;
 	/** The names from the root to the node. */
 	readonly node: readonly string[];
 }
 
-export interface SyncbackMirrorInputs {
+interface SyncbackMirrorInputs {
 	/** The project file a write wrote, which every `$path` in is relative to `dir`. */
 	readonly written: RojoProjectFile;
 	/** The config's own tree, without the nodes routing adds. */
@@ -72,15 +72,6 @@ export interface SyncbackMirrorInputs {
 	readonly isFolder: (target: string) => Promise<boolean>;
 	/** The text of the file at an absolute path written with `/`; none when it can't be read. */
 	readonly readText: (target: string) => Promise<string | undefined>;
-}
-
-/** The deepest folder that holds every one of `targets`, absolute and written with `/`. */
-function commonFolder(targets: readonly string[]): string {
-	let folder = targets[0];
-	for (const target of targets)
-		while (!containsPosix(folder, target))
-			folder = path.posix.dirname(folder);
-	return folder;
 }
 
 /** The project file Rojo's syncback runs on: the written one, with every node the write made from a file or a plain folder moved into a mirror folder laid out by instance path, so Rojo edits, adds and removes there as in a plain Rojo project. */
@@ -407,7 +398,7 @@ class MirrorWalk {
 				(folder) => folder !== file && containsPosix(folder, file)
 			);
 		const files = reads.filter((read) => !inFolder(read));
-		const base = commonFolder([
+		const base = commonFolderPosix([
 			...projects.map((project) => path.posix.dirname(project)),
 			...files.map((file) =>
 				folders.includes(file) ? file : path.posix.dirname(file)

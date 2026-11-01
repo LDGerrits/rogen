@@ -12,7 +12,7 @@ export interface MetaRequest<T> {
 }
 
 /** An edit that goes into the `init.meta.json` of a feature folder, which sets it on every instance the folder makes. */
-export interface PlacedMeta<T> extends MetaRequest<T> {
+interface PlacedMeta<T> extends MetaRequest<T> {
 	readonly folder: string;
 }
 

@@ -46,7 +46,7 @@ export const syncbackDocumentShape = S.object({
 	syncback: syncbackEntryShape,
 });
 
-export interface SyncbackEntry {
+interface SyncbackEntry {
 	readonly outcome: "written" | "wouldWrite" | "failed" | "notRun";
 	/** The config file's path relative to the working folder. */
 	readonly config: string | null;
@@ -96,22 +96,14 @@ export function syncbackEntry(
 	outcome: SyncbackOutcome,
 	cwd: string
 ): SyncbackEntry {
-	if (outcome.kind === "notRun")
+	if (outcome.kind === "notRun" || outcome.kind === "failed")
 		return {
-			outcome: "notRun",
+			outcome: outcome.kind,
 			config: null,
 			input,
 			changes: [],
 			unplaced: [],
-		};
-	if (outcome.kind === "failed")
-		return {
-			outcome: "failed",
-			config: null,
-			input,
-			changes: [],
-			unplaced: [],
-			...failureToJson(outcome.error),
+			...(outcome.kind === "failed" && failureToJson(outcome.error)),
 		};
 	const diagnostics = [
 		...compiledDiagnostics(outcome.plan),
