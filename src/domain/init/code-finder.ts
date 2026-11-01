@@ -24,9 +24,6 @@ export interface DirectoryLayout {
 
 const TEMPLATE_FOLDERS = Object.keys(ROJO_TEMPLATE_NODES);
 
-/** The init files Rojo reads as a module, which a model's folder is. */
-const MODULE_INITS = ["init.luau", "init.lua"];
-
 const isScript = (name: string): boolean =>
 	new RojoFile(name, SyncRules.DEFAULT).kind === "script";
 
@@ -34,6 +31,12 @@ const isScript = (name: string): boolean =>
 const isRojoScript = (name: string): boolean => {
 	const file = new RojoFile(name, SyncRules.DEFAULT);
 	return file.kind === "script" && file.isSyncedByRojo;
+};
+
+/** An init file Rojo reads as a module, which a model's folder is. */
+const isModuleInit = (name: string): boolean => {
+	const file = new RojoFile(name, SyncRules.DEFAULT);
+	return file.isInit && file.isLuauModule;
 };
 
 const isCompiledScript = (name: string): boolean =>
@@ -82,7 +85,7 @@ export class CodeFinder {
 	private async holdsModule(dir: string): Promise<boolean> {
 		const entries = await this.entriesOf(dir);
 		return entries.some(
-			([name, type]) => isFileType(type) && MODULE_INITS.includes(name)
+			([name, type]) => isFileType(type) && isModuleInit(name)
 		);
 	}
 

@@ -16,6 +16,8 @@ import {
 	RogenConfig,
 	configFileName,
 } from "../config/config.js";
+import { RojoFile } from "../rojo/rojo.js";
+import { SyncRules } from "../rojo/sync-rules.js";
 import {
 	Darklua,
 	Language,
@@ -174,6 +176,12 @@ function listedBriefly(items: readonly string[]): string {
 
 /** The empty file that keeps an empty folder in git, as Rojo's syncback writes it. */
 const GITKEEP = ".gitkeep";
+
+/** A Luau script Rojo makes a Script of, which runs in a plugin. */
+const isServerScript = (name: string): boolean => {
+	const file = new RojoFile(name, SyncRules.DEFAULT);
+	return file.isLuau && file.scriptSuffix === "server";
+};
 
 const LIFTED_HERE = `${DEFAULT_PROJECT_FILE} is here, which init lifts.`;
 
@@ -607,13 +615,15 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		if (project.takesRoutes) return "place";
 		const root = project.rootPath;
 		if (root === undefined) return "model";
-		if (/\.server\.luau?$/.test(root)) return "plugin";
+		if (isServerScript(path.posix.basename(root))) return "plugin";
 		const scripts = await Promise.all(
-			["init.server.luau", "init.server.lua"].map((name) =>
-				this.fileSystemService.exists(
-					path.join(this.directory.path, root, name)
+			[...RojoFile.INIT_FILES]
+				.filter(isServerScript)
+				.map((name) =>
+					this.fileSystemService.exists(
+						path.join(this.directory.path, root, name)
+					)
 				)
-			)
 		);
 		return scripts.some(Boolean) ? "plugin" : "model";
 	}
