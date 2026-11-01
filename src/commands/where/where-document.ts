@@ -52,6 +52,10 @@ export const whereDocumentShape = S.object({
 				routeMatch: S.string,
 				hoisted: S.optional(S.boolean),
 			}),
+			fileEntryShape(S.enum("compiled"), {
+				instancePath: instancePathShape,
+				from: S.string,
+			}),
 			fileEntryShape(S.enum("replaced"), { by: S.string }),
 			fileEntryShape(S.enum("extensionCase"), { rename: S.string }),
 			fileEntryShape(S.enum("blocked"), {
@@ -106,6 +110,11 @@ type LocationFields =
 			readonly route: string;
 			readonly routeMatch: string;
 			readonly hoisted?: true;
+	  }
+	| {
+			readonly status: "compiled";
+			readonly instancePath: readonly string[];
+			readonly from: string;
 	  }
 	| { readonly status: "replaced"; readonly by: string }
 	| { readonly status: "extensionCase"; readonly rename: string }
@@ -167,6 +176,12 @@ function fieldsOf(location: FileLocation): LocationFields {
 				...(location.hoisted && { hoisted: true as const }),
 			};
 		}
+		case "compiled":
+			return {
+				status: "compiled",
+				instancePath: location.instancePath,
+				from: toNative(location.from),
+			};
 		case "replaced":
 			return { status: "replaced", by: toNative(location.by) };
 		case "extensionCase":

@@ -845,6 +845,52 @@ describe("CoreWriteService.locate", () => {
 		]);
 	});
 
+	describe("a file in the compiled path", () => {
+		beforeEach(() =>
+			write("src/Shop/Shared/util.ts", "out/Shop/Shared/util.luau")
+		);
+
+		const locateCompiled = (target: string) =>
+			locate([target], {
+				compiledPath: abs("out"),
+				routes: { Shared: "ReplicatedStorage/Shared" },
+			});
+
+		it("should be answered as the compiled form of the source file that makes it", async () => {
+			expect(await locateCompiled("out/Shop/Shared/util.luau")).toEqual([
+				{
+					status: "compiled",
+					source: toPosix(abs("out/Shop/Shared/util.luau")),
+					exists: true,
+					from: toPosix(abs("src/Shop/Shared/util.ts")),
+					instancePath: [
+						"ReplicatedStorage",
+						"Shared",
+						"Shop",
+						"util",
+					],
+				},
+			]);
+		});
+
+		it("should give the compiled files in a folder of the compiled path", async () => {
+			expect(await locateCompiled("out/Shop")).toMatchObject([
+				{
+					status: "compiled",
+					source: toPosix(abs("out/Shop/Shared/util.luau")),
+				},
+			]);
+		});
+
+		it("should stay outside the source paths when no source file makes it", async () => {
+			await write("out/Stale.luau");
+
+			expect(await locateCompiled("out/Stale.luau")).toMatchObject([
+				{ status: "outside" },
+			]);
+		});
+	});
+
 	describe("a source path that is not a folder", () => {
 		it("should say a file there is not an instance, with the error that stops the write", async () => {
 			await fs.writeFile(abs("src"), "");

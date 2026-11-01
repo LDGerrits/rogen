@@ -41,6 +41,8 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 				: " · the file does not exist yet";
 			return `${instanceKey(location.instancePath)} · route ${location.route} (${location.routeMatch})${hoisted}${alsoAt}${absent}`;
 		}
+		case "compiled":
+			return `${instanceKey(location.instancePath)} · compiled from ${relative(location.from)}`;
 		case "replaced":
 			return `replaced by ${relative(location.by)}`;
 		case "displaced":

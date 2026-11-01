@@ -5,6 +5,7 @@ import { ancestors, contains, toPosix } from "../../../base/path.js";
 import { IndexReader } from "../../../platform/fs/index-service.js";
 import { InstanceReference } from "../../roblox/roblox.js";
 import {
+	CompiledLocation,
 	FileLocation,
 	MountedLocation,
 	PlacedLocation,
@@ -183,7 +184,7 @@ export class PlacementLocator {
 			return [...below, ...mountedBelow].sort(this.bySource);
 
 		if (!roots.some((root) => contains(toPosix(root.sourcePath), target)))
-			return [this.outsideRoots(target)];
+			return this.outsideRoots(target);
 
 		for (const dir of ancestors(target)) {
 			const enclosing = this.scanned.get(dir);
@@ -232,7 +233,7 @@ export class PlacementLocator {
 		}));
 	}
 
-	private outsideRoots(target: string): FileLocation {
+	private outsideRoots(target: string): FileLocation[] {
 		const { mounts } = this.placement.tree;
 		const exists = this.exists(target);
 		const mount = mounts.covering(target);
@@ -241,10 +242,39 @@ export class PlacementLocator {
 			: (ignoringGlob(toPosix(target), this.placement.config.ignored) ??
 				ignoringAllOf(toPosix(target), this.placement.config.ignored));
 		if (pattern !== undefined)
-			return { status: "ignored", source: target, exists, pattern };
-		return mount
-			? { status: "mounted", source: target, exists, node: mount.node }
-			: { status: "outside", source: target, exists };
+			return [{ status: "ignored", source: target, exists, pattern }];
+		if (mount)
+			return [
+				{ status: "mounted", source: target, exists, node: mount.node },
+			];
+		const compiled = this.compiledIn(target);
+		return compiled.length > 0
+			? compiled
+			: [{ status: "outside", source: target, exists }];
+	}
+
+	/** What the tools write for placed files at `target` or inside it, under the compiled path. */
+	private compiledIn(target: string): CompiledLocation[] {
+		const { layout, files } = this.placement;
+		if (
+			layout.compiledPath === undefined ||
+			!contains(toPosix(layout.compiledPath), target)
+		)
+			return [];
+		return files
+			.map((file) => ({
+				file,
+				emitted: toPosix(layout.emittedPath(file.entry.source)),
+			}))
+			.filter(({ emitted }) => contains(target, emitted))
+			.map(({ file, emitted }): CompiledLocation => ({
+				status: "compiled",
+				source: emitted,
+				exists: this.exists(emitted),
+				from: file.entry.source,
+				instancePath: file.instancePath,
+			}))
+			.sort(this.bySource);
 	}
 
 	private bySource(a: FileLocation, b: FileLocation): number {

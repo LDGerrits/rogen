@@ -74,10 +74,18 @@ export interface MountedLocation extends Located {
 	readonly instancePath?: readonly string[];
 }
 
+/** A file the tools write under the compiled path for a placed source file, `from`; Rojo reads it as the instance `instancePath`. */
+export interface CompiledLocation extends Located {
+	readonly status: "compiled";
+	readonly from: string;
+	readonly instancePath: readonly string[];
+}
+
 /** Where a path lands in the tree, or why it lands nowhere. */
 export type FileLocation =
 	| PlacedLocation
 	| MountedLocation
+	| CompiledLocation
 	| (Exclude<LeftOut, { status: "mounted" }> & Located)
 	| UnplacedLocation
 	| BlockedLocation;

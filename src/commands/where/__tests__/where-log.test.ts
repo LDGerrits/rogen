@@ -169,6 +169,16 @@ describe("WhereLog", () => {
 		it.each<[FileLocation, string]>([
 			[
 				{
+					status: "compiled",
+					source: "/repo/out/Shop/util.luau",
+					exists: true,
+					from: "/repo/src/Shop/util.ts",
+					instancePath: ["ReplicatedStorage", "Shop", "util"],
+				},
+				"out/Shop/util.luau -> ReplicatedStorage/Shop/util · compiled from src/Shop/util.ts",
+			],
+			[
+				{
 					status: "replaced",
 					source: "/repo/src/T.lua",
 					exists: true,
