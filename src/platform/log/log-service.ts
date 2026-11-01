@@ -38,7 +38,7 @@ export interface LogService {
 	closeFrame(message: string): void;
 	/** Written as `file:line:col - severity: message` so editors and CI can parse it; a warning is hidden by `--quiet`. */
 	diagnostic(diagnostic: Diagnostic): void;
-	/** Writes GitHub Actions workflow commands on stderr if the run asked for them; takes the diagnostic as the command found it. */
+	/** Writes GitHub Actions workflow commands on stderr if the run asked for them; takes the diagnostic as the command found it, and a warning is hidden by `--quiet`. */
 	annotate(diagnostic: Diagnostic): void;
 }
 

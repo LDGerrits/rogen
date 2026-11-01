@@ -173,7 +173,11 @@ export abstract class AbstractLogService implements LogService {
 	}
 
 	annotate(diagnostic: Diagnostic): void {
-		if (this.annotationsIn === undefined || this.level === LogLevel.Off)
+		const isError = diagnostic.severity === DiagnosticSeverity.Error;
+		if (
+			this.annotationsIn === undefined ||
+			!this.canLog(isError ? LogLevel.Error : LogLevel.Warn)
+		)
 			return;
 		this.write(
 			"annotation",

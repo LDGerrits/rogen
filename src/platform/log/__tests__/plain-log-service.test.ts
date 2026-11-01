@@ -325,13 +325,22 @@ describe("PlainLogService", () => {
 			expect(errors).toEqual([]);
 		});
 
-		it("should write them even when only errors are shown, since the pull request decides what to show", () => {
+		it("should write only the errors when only errors are shown, as --quiet asks", () => {
 			const logService = new PlainLogService("/work/repo", "/work/repo");
 			logService.setLevel(LogLevel.Error);
 
 			logService.annotate(diagnostic);
+			logService.annotate(
+				errorDiagnostic(
+					"meta.wrongType",
+					{ resource: "/work/repo/src/init.meta.json" },
+					"wrong."
+				)
+			);
 
-			expect(errors).toHaveLength(1);
+			expect(errors).toEqual([
+				"::error file=src/init.meta.json,title=meta.wrongType::wrong.",
+			]);
 		});
 	});
 });
