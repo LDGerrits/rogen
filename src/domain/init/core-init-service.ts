@@ -21,6 +21,7 @@ import { GitRepository } from "./git-repository.js";
 import { AgentSetup } from "./agent-setup.js";
 import { AgentRules } from "./agent/agent-rules.js";
 import {
+	InitAction,
 	InitChoices,
 	InitOptions,
 	InitPlan,
@@ -62,6 +63,13 @@ interface RunPrompts {
 	readonly quick: PromptService;
 	readonly essential: PromptService;
 }
+
+/** What the summary asks before init writes, which names what it does. */
+const QUESTIONS: Readonly<Record<InitAction, string>> = {
+	create: "Create this project?",
+	lift: "Set up Rogen in this project?",
+	migrate: "Migrate this project?",
+};
 
 export class CoreInitService implements InitService {
 	declare readonly _serviceBrand: undefined;
@@ -107,7 +115,7 @@ export class CoreInitService implements InitService {
 		}
 	}
 
-	/** In a terminal the plan is shown once and accepted with Enter; Customise asks every question, each with its answer preselected, and shows the plan again. */
+	/** In a terminal the plan is shown once and accepted with Enter; Customise asks the questions it took the default of, each with its answer preselected, and shows the plan again. */
 	private async review(
 		options: InitOptions
 	): Promise<Result<InitPlan | undefined, Error>> {
@@ -124,7 +132,10 @@ export class CoreInitService implements InitService {
 			const planned = await this.planWithin(options, prompts);
 			if (planned.isErr() || !planned.value || prompts.asked === 0)
 				return planned;
-			const verdict = await this.accepted(planned.value);
+			const verdict = await this.accepted(
+				planned.value,
+				prompts.customisable > 0
+			);
 			if (verdict === "yes") return planned;
 			if (verdict === "cancel") return ok(undefined);
 			mode = "customise";
@@ -132,19 +143,24 @@ export class CoreInitService implements InitService {
 	}
 
 	private accepted(
-		plan: InitPlan
+		plan: InitPlan,
+		customisable: boolean
 	): Promise<"yes" | "customise" | "cancel" | undefined> {
 		return this.promptService
 			.select<"yes" | "customise" | "cancel">({
-				message: "Create this project?",
+				message: QUESTIONS[plan.action],
 				description: InitSummary.lines(plan).join("\n"),
 				choices: [
 					{ value: "yes", label: "Yes" },
-					{
-						value: "customise",
-						label: "Customise",
-						hint: "ask every question",
-					},
+					...(customisable
+						? [
+								{
+									value: "customise" as const,
+									label: "Customise",
+									hint: "change the defaults",
+								},
+							]
+						: []),
 					{ value: "cancel", label: "Cancel" },
 				],
 				initialValue: "yes",
@@ -284,7 +300,8 @@ export class CoreInitService implements InitService {
 				await new CodeFinder(this.fileSystemService).layoutOf(
 					directory,
 					workspace
-				)
+				),
+				(await this.git.workTreeOf(directory)) !== undefined
 			)
 		);
 	}

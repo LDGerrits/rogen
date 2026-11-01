@@ -12,6 +12,7 @@ describe("domain/init/init-directory", () => {
 					new Set(["agents.md"]),
 					workspaceOf(),
 					{ codeFolders: [] },
+					false,
 					caseInsensitive
 				);
 

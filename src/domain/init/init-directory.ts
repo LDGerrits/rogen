@@ -24,6 +24,8 @@ export class InitDirectory {
 		private readonly entries: ReadonlySet<string>,
 		readonly workspace: DetectedWorkspace,
 		readonly layout: DirectoryLayout,
+		/** Whether a git work tree holds the folder already. */
+		readonly inWorkTree: boolean,
 		/** Whether the file system takes `Src` and `src` for one name, as Windows' and macOS' do. */
 		caseInsensitive = ignoresPathCase
 	) {

@@ -124,7 +124,7 @@ describe("init command", () => {
 					run: ["rbxtsc -w", "rogen serve"],
 					edits: [
 						'To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".',
-						"Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.",
+						"Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.",
 					],
 				},
 			});
@@ -280,7 +280,7 @@ describe("init command", () => {
 				"info:   rogen serve",
 				"info: In Studio, press Connect in the Rojo plugin.",
 				'info: To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".',
-				"info: Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.",
+				"info: Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.",
 				"outro: Wrote 11 files.",
 			]);
 		});
@@ -766,16 +766,16 @@ describe("init command", () => {
 		it("should write the answers", async () => {
 			const prompts = new MockPromptService([
 				"luau",
-				"one",
-				"customise",
-				"luau",
 				"several",
+				"customise",
 				ACCEPT_DEFAULT,
+				false,
 				"yes",
 			]);
 
 			await runInit(prompts);
 
+			expect(await exists("AGENTS.md")).toBe(false);
 			expect(await exists("default.rogen.json")).toBe(false);
 			expect((await readJson("game.rogen.json")).sourcePaths).toEqual([
 				"src/common",

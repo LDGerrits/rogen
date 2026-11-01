@@ -288,12 +288,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				)
 			: [];
 
-		const sample = this.wantsSample(
+		const sample = await this.wantsSample(
 			kind,
 			tree.value,
 			language,
 			starter !== undefined
 		);
+		if (sample === undefined) return ok(undefined);
 		const sampleOf = new GreeterSample(
 			language,
 			path.basename(directory.path)
@@ -458,12 +459,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	}
 
 	/** Whether the Greeter sample is written: in a new place, in a folder with no code, and for a compiled language only when its starter tool has set the folder up. */
-	private wantsSample(
+	private async wantsSample(
 		kind: InitKind,
 		tree: ProjectTree,
 		language: Language,
 		scaffolded: boolean
-	): boolean {
+	): Promise<boolean | undefined> {
 		const writable =
 			kind === "place" &&
 			tree.kind === "new" &&
@@ -751,7 +752,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		}
 		builder.addEdit(...tree.edits);
 		if (projectFilesHint) builder.addEdit(projectFilesHint);
-		if (chosen.kind === "lift")
+		if (chosen.kind === "lift" && this.directory.inWorkTree)
 			builder.addEdit(
 				`Rogen writes ${chosen.from} now, so git can stop tracking it: git rm --cached ${chosen.from}`
 			);
@@ -764,7 +765,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 		const projectFile = places?.projectFile ?? DEFAULT_PROJECT_FILE;
 		builder.addEdit(
-			`Edit ${configFile} and leave ${projectFile} alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write${places ? ` ${places.place}` : ""}' so the editor's ${projectFile} follows.`
+			`Edit ${configFile} and leave ${projectFile} alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write${places ? ` ${places.place}` : ""}' so the editor's ${projectFile} follows.`
 		);
 		if (places?.settings)
 			builder.addEdit(

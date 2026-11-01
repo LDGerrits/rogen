@@ -65,8 +65,12 @@ export interface SummaryRow {
 	readonly text: string;
 }
 
+/** What init does in its folder: start a new project, lift a hand-written project file into a config, or migrate a project another tool set up. */
+export type InitAction = "create" | "lift" | "migrate";
+
 export interface InitPlan {
 	readonly directory: string;
+	readonly action: InitAction;
 	/** What the plan sets up, by area, which the summary shows beside the files and commands. */
 	readonly summary: readonly SummaryRow[];
 	/** Runs before any file is written; a failure writes nothing. */

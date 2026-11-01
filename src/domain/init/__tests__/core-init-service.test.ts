@@ -1493,14 +1493,13 @@ describe("CoreInitService", () => {
 			expect((await review(prompts)).unwrap()).toBeUndefined();
 		});
 
-		it("should ask every question on Customise, then show the summary with the new answer", async () => {
+		it("should ask on Customise only the questions the summary answered by default, then show it again", async () => {
 			const prompts = new MockPromptService([
 				"luau",
 				"one",
 				"customise",
-				"luau",
-				"several",
 				ACCEPT_DEFAULT,
+				false,
 				"yes",
 			]);
 
@@ -1510,18 +1509,84 @@ describe("CoreInitService", () => {
 				"Language",
 				"One place or several?",
 				CREATE,
-				"Language",
-				"One place or several?",
+				"Add the Greeter sample?",
 				"Add Rogen's rules for coding agents to AGENTS.md?",
 				CREATE,
 			]);
 			expect(prompts.prompts.at(-1)?.description).toContain(
-				"several places"
+				"Agents    none"
 			);
 			expect(plan?.summary).toContainEqual({
-				area: "Project",
-				text: expect.stringContaining("several places"),
+				area: "Agents",
+				text: "none",
 			});
+		});
+
+		it("should leave the sample out when Customise is answered so", async () => {
+			const prompts = new MockPromptService([
+				"luau",
+				"one",
+				"customise",
+				false,
+				true,
+				"yes",
+			]);
+
+			const plan = (await review(prompts)).unwrap();
+
+			expect(prompts.asked.slice(3, 5)).toEqual([
+				"Add the Greeter sample?",
+				"Add Rogen's rules for coding agents to AGENTS.md?",
+			]);
+			expect(plan?.summary).toContainEqual({
+				area: "Project",
+				text: "one place, Luau",
+			});
+			expect(
+				plan?.files.some(({ fileName }) => fileName.includes("Greeter"))
+			).toBe(false);
+		});
+
+		it("should show a warning of the plan before it is accepted", async () => {
+			await write("src/Combat/Hit.server.luau");
+			const prompts = new MockPromptService({
+				"One place or several?": "several",
+				[CREATE]: "yes",
+			});
+
+			await review(prompts);
+			const shown = prompts.prompts.at(-1)?.description ?? "";
+
+			expect(shown).toMatch(
+				/^Warning {3}src\/Combat holds code that no source/m
+			);
+		});
+
+		it("should ask whether to set Rogen up in a project it lifts", async () => {
+			await write(
+				"default.project.json",
+				JSON.stringify({ name: "g", tree: { $className: "DataModel" } })
+			);
+			const prompts = new MockPromptService([ACCEPT_DEFAULT], true);
+
+			await serviceFor(prompts).plan({ choices: { language: "luau" } });
+
+			expect(prompts.prompts.at(-1)?.message).toBe(
+				"Set up Rogen in this project?"
+			);
+		});
+
+		it("should offer no Customise when every question the summary shows was asked", async () => {
+			const prompts = new MockPromptService({
+				"One place or several?": "one",
+				[CREATE]: "yes",
+			});
+
+			await serviceFor(prompts).plan({
+				choices: { language: "luau", agentRules: false, sample: false },
+			});
+
+			expect(prompts.prompts.at(-1)?.choices).toEqual(["yes", "cancel"]);
 		});
 
 		it("should list every file and command of the plan, as a dry run would write them", async () => {
@@ -1841,6 +1906,16 @@ describe("CoreInitService", () => {
 			expect(
 				prompts.prompts.at(-1)?.description?.replace(/\s+/g, " ")
 			).toContain("src/A_Server.luau → src/A@Server.luau");
+		});
+
+		it("should ask whether to migrate the project", async () => {
+			const prompts = new MockPromptService([ACCEPT_DEFAULT], true);
+
+			(await migrating(undefined, prompts).service.plan()).unwrap();
+
+			expect(prompts.prompts.at(-1)?.message).toBe(
+				"Migrate this project?"
+			);
 		});
 
 		it("should move the files before it writes, and move nothing in a dry run", async () => {

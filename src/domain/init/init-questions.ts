@@ -91,12 +91,18 @@ export class InitQuestions {
 		});
 	}
 
-	/** Whether the Greeter sample is written, which only a flag turns off. */
-	sample(): boolean {
+	/** Whether the Greeter sample is written. */
+	async sample(): Promise<boolean | undefined> {
 		const given = this.choices.sample;
 		if (given !== undefined) return given;
-		if (!this.interactive) this.decide("sample", true, "--no-sample");
-		return true;
+		if (!this.interactive)
+			return this.decide("sample", true, "--no-sample");
+		return this.promptService.confirm({
+			message: "Add the Greeter sample?",
+			description:
+				"Three hello-world scripts and a README, with Rojo's Baseplate and lighting for the place.",
+			initialValue: true,
+		});
 	}
 
 	/** Whether a new project is several places; a `projects` folder here makes it the default for a compiled language. */

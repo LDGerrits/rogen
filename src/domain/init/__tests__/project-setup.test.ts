@@ -605,21 +605,30 @@ describe("ProjectSetup plan, second config files", () => {
 		).toContain("sourcemap.json\n*.project.json\n");
 	});
 
-	it("should tell a lifted project to stop tracking the file Rogen writes now", async () => {
-		const choices = {
-			...(await defaultProjectChoices(luau)),
-			tree: lifted({ name: "g", tree: { $className: "DataModel" } }),
-		};
+	it.each([
+		[true, true],
+		[false, false],
+	])(
+		"should tell a lifted project in a work tree to stop tracking the file Rogen writes now (in a work tree: %s)",
+		async (inWorkTree, told) => {
+			const choices = {
+				...(await defaultProjectChoices(luau)),
+				tree: lifted({ name: "g", tree: { $className: "DataModel" } }),
+			};
 
-		const planned = planProject({
-			choices,
-			existingFiles: new Set(["default.project.json"]),
-		}).unwrap();
+			const planned = planProject({
+				choices,
+				existingFiles: new Set(["default.project.json"]),
+				inWorkTree,
+			}).unwrap();
 
-		expect(planned.nextSteps.edits.join("\n")).toContain(
-			"git rm --cached default.project.json"
-		);
-	});
+			expect(
+				planned.nextSteps.edits.some((edit) =>
+					edit.includes("git rm --cached default.project.json")
+				)
+			).toBe(told);
+		}
+	);
 
 	it("should say to edit the config, and to build after adding a feature folder", async () => {
 		expect((await plan(luau)).nextSteps.edits).toContainEqual(

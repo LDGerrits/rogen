@@ -34,6 +34,8 @@ afterEach(() => {
 
 export interface AskedPrompt extends PromptDetails {
 	readonly message: string;
+	/** The values a select offered. */
+	readonly choices?: readonly string[];
 }
 
 export class MockPromptService implements PromptService {
@@ -68,20 +70,28 @@ export class MockPromptService implements PromptService {
 	async select<T extends string>(
 		options: SelectPromptOptions<T>
 	): Promise<T | undefined> {
-		return this.next<T>(options, options.initialValue);
+		return this.next<T>(
+			{ ...options, choices: options.choices.map(({ value }) => value) },
+			options.initialValue
+		);
 	}
 
 	private next<T>(
 		options: AskedPrompt,
 		initial: T | undefined
 	): T | undefined {
-		const { message, description, hint } = options;
+		const { message, description, hint, choices } = options;
 		if (this.byQuestion && this.asked.includes(message))
 			throw new Error(
 				`"${message}" was asked again; script the answers as a list.`
 			);
 		this.asked.push(message);
-		this.prompts.push({ message, description, hint });
+		this.prompts.push({
+			message,
+			description,
+			hint,
+			...(choices && { choices }),
+		});
 		const answer = this.byQuestion
 			? this.answerFor(message, initial)
 			: this.answers.shift();

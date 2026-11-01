@@ -23,6 +23,7 @@ export interface DirectorySpec {
 	readonly workspace?: WorkspaceSpec;
 	readonly existing?: readonly string[];
 	readonly path?: string;
+	readonly inWorkTree?: boolean;
 }
 
 export function directoryOf(spec: DirectorySpec = {}): InitDirectory {
@@ -31,7 +32,8 @@ export function directoryOf(spec: DirectorySpec = {}): InitDirectory {
 		spec.path ?? directory,
 		new Set([...(spec.existing ?? []), ...(hasSrc ? ["src"] : [])]),
 		workspaceOf(spec.workspace),
-		{ codeFolders }
+		{ codeFolders },
+		spec.inWorkTree ?? false
 	);
 }
 

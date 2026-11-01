@@ -37,6 +37,7 @@ export class InitPlanBuilder {
 	private readonly notes: string[] = [];
 	private readonly warnings: Diagnostic[] = [];
 	private liftedFrom: string | undefined;
+	private migrating = false;
 	private readonly setup = new Set<string>();
 	private readonly run: string[] = [];
 	private readonly edits: string[] = [];
@@ -147,6 +148,11 @@ export class InitPlanBuilder {
 		this.run.push(...commands);
 	}
 
+	/** The plan migrates a project another tool set up. */
+	setMigrating(): void {
+		this.migrating = true;
+	}
+
 	addEdit(...lines: readonly string[]): void {
 		this.edits.push(...lines);
 	}
@@ -166,6 +172,11 @@ export class InitPlanBuilder {
 
 		return ok({
 			directory: this.directory.path,
+			action: this.migrating
+				? "migrate"
+				: this.liftedFrom !== undefined
+					? "lift"
+					: "create",
 			summary: [...this.summary],
 			asked: this.asked,
 			decided: this.decided,
