@@ -51,7 +51,7 @@ const InitOptions = [
 		type: "string",
 		values: ["place", "model", "plugin"],
 		description:
-			"What a new project is, as Rojo's init names it: a place (the default), a model or a plugin. A model or a plugin starts with Rojo's template of that kind and no routes.",
+			"What a new project is, as Rojo's init names it: a place, a model or a plugin. A place when not given, or a model where the code is one folder with an init.luau at its top. A model or a plugin starts with Rojo's template of that kind and no routes.",
 	},
 	{
 		name: "skip-git",
