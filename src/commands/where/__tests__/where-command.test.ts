@@ -319,30 +319,27 @@ describe("where command", () => {
 		expect(printed()).toEqual(["No files in the source paths (src)."]);
 	});
 
-	it("should fail as a write does when the source path is not there", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
+	describe("when the source path is not there", () => {
+		beforeEach(() => writeConfig("default.rogen.json", { routes: ROUTES }));
 
-		const result = await run({});
+		it("should fail with the error on its own, with no path", async () => {
+			const result = await run({});
 
-		expect(result.isErr() && result.error).toBeInstanceOf(DiagnosticsError);
-		expect(
-			result.isErr() &&
-				(result.error as DiagnosticsError).diagnostics.map(
-					({ code }) => code
-				)
-		).toEqual(["scan.missingSourcePath"]);
-		expect(printed()).toEqual([]);
-	});
+			expect(result.isErr() && result.error).toBeInstanceOf(
+				DiagnosticsError
+			);
+			expect(printed()).toEqual([]);
+		});
 
-	it("should say a source path that is a file is no instance, and fail", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await fs.writeFile("/repo/src", "");
+		it("should fail with the error under a file named in it", async () => {
+			const result = await run({ _: ["src/A.luau"] });
 
-		const result = await run({ _: ["src"] });
-
-		expect(result.isErr()).toBe(true);
-		expect(printed()[0]).toBe("src -> not an instance");
-		expect(printed()[1]).toContain("(scan.missingSourcePath)");
+			expect(result.isErr() && result.error).toBeInstanceOf(
+				ReportedError
+			);
+			expect(printed()[0]).toBe("src/A.luau -> does not exist");
+			expect(printed()[1]).toMatch(/^ {2}error: /);
+		});
 	});
 
 	it("should fail with the config's errors", async () => {

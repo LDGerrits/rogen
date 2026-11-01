@@ -922,6 +922,8 @@ describe("CoreWriteService", () => {
 		});
 
 		it("should keep the warnings a write raises about the files it was asked about", async () => {
+			await fs.createDirectory(abs("src"));
+
 			const result = (
 				await locate(
 					configOf({

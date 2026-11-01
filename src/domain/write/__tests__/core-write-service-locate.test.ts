@@ -910,12 +910,17 @@ describe("CoreWriteService.locate", () => {
 			]);
 		});
 
-		it("should give the error that stops the write when it is not there", async () => {
+		it("should say a file named in it does not exist, with the error that stops the write, when it is not there", async () => {
 			const located = (
-				await locateIn(writeService(), configOf())
+				await locateIn(writeService(), configOf(), {
+					args: [abs("src/A.luau")],
+					cwd: abs(),
+				})
 			).unwrap();
 
-			expect(located.files).toEqual([]);
+			expect(located.files).toEqual([
+				{ status: "missing", source: abs("src/A.luau"), exists: false },
+			]);
 			expect(located.diagnostics).toMatchObject([
 				{ code: "scan.missingSourcePath", resource: abs("src") },
 			]);
