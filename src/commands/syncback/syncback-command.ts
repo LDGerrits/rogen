@@ -3,6 +3,7 @@ import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { WriteService } from "../../domain/write/write-service.js";
+import { didWrite } from "../../domain/write/write.js";
 import {
 	ProjectArgument,
 	singleProjectError,
@@ -203,7 +204,7 @@ registerCommand(
 					const rewritten = await writeService.write(selection.value);
 					if (
 						rewritten.failure() ||
-						rewritten.outcomes.some(({ kind }) => kind === "wrote")
+						rewritten.outcomes.some(didWrite)
 					)
 						run = rewritten;
 				}

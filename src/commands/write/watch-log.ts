@@ -13,7 +13,7 @@ import { LogService } from "../../platform/log/log-service.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
 import { isProjectFileConfig } from "../../domain/config/config.js";
 import { ResolvedConfig } from "../../domain/config/resolved-config.js";
-import { SharedDiagnostics } from "../../domain/write/write.js";
+import { SharedDiagnostics, isUnchanged } from "../../domain/write/write.js";
 import {
 	diagnosticToJson,
 	errorToJson,
@@ -181,7 +181,7 @@ export class WatchLog implements WatchReporter {
 			notices.length === 0 &&
 			reports.every(
 				({ outcome, unreported, fixed }) =>
-					outcome.kind === "unchanged" &&
+					isUnchanged(outcome) &&
 					unreported.length === 0 &&
 					fixed.length === 0
 			);

@@ -1,6 +1,11 @@
 import { relativeTo } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
-import { ConfigOutcome, WriteRun } from "../../domain/write/write.js";
+import {
+	ConfigOutcome,
+	WriteRun,
+	didWrite,
+	isUnchanged,
+} from "../../domain/write/write.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { OutcomeLog } from "../write/outcome-log.js";
 import { isPlain } from "./write-document.js";
@@ -44,10 +49,8 @@ export class WriteLog {
 
 	/** How many project files the write wrote, and how many it left as they were. */
 	private static count(configs: readonly ConfigOutcome[]): string {
-		const wrote = configs.filter(({ kind }) => kind === "wrote").length;
-		const unchanged = configs.filter(
-			({ kind }) => kind === "unchanged"
-		).length;
+		const wrote = configs.filter(didWrite).length;
+		const unchanged = configs.filter(isUnchanged).length;
 		if (unchanged > 0 && unchanged === configs.length)
 			return `${plural(unchanged, "project file")} unchanged`;
 		const count = `Wrote ${wrote} of ${plural(configs.length, "project file")}`;
