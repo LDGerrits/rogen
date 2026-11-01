@@ -73,7 +73,7 @@ error: "sourcePath" is not a Rojo key and not Rogen's, and Rojo rejects a projec
 
 Rename the key to the one that the message suggests, or remove it.
 
-The message suggests a key only when one of Rojo's or Rogen's keys is close. A `$` key of a node in the `tree` gets this error too when it isn't one of Rojo's fields, such as `$clasName`. The exception is a `$` key whose value is an object that Rojo can read as a child, such as `"$Thing": { "$className": "Folder" }`. A misspelled field such as `"$propertes": { "Anchored": true }` is no child, so it gets this error. An unknown field in a sync rule gets this code as a warning instead. Rojo ignores that field, so the rule doesn't do what it seems to say. A config with Rogen 1 keys also gets [`legacy.config`](#legacy-config).
+The message suggests a key only when one of Rojo's or Rogen's keys is close. A `$` key of a node in the `tree` gets this error too when it isn't one of Rojo's fields, such as `$clasName`. The exception is a `$` key whose value is an object that Rojo can read as a child, such as `"$Thing": { "$className": "Folder" }`. A misspelled field such as `"$propertes": { "Anchored": true }` is no child, so it gets this error. An unknown field in a sync rule gets this code as a warning instead. Rojo ignores that field, so the rule doesn't do what it seems to say. A config with Rogen 1 keys gets [`legacy.config`](#legacy-config) instead.
 
 ### `config.duplicateSourcePath` [#config-duplicatesourcepath]
 
@@ -322,7 +322,7 @@ Rename it to the key. If it should route as it is written, declare that spelling
 Warning. A file is in a plain folder named after a server route, such as `Server/` or `(Server)/`, but an outer route outranks that folder. The outer route places the file, and that route replicates to clients. Server code under `Shared/` ships to every client.
 
 ```
-warning: ships to clients as ReplicatedStorage/Shared/Datastore: move it out of the "Shared" route's files if it's server code, or keep it there with a "@Shared" marker file in its folder (route.serverCodeShipped)
+warning: ships to clients as ReplicatedStorage/Shared/Server/Datastore: move it out of the "Shared" route's files if it's server code, or keep it there with a "@Shared" marker file in its folder (route.serverCodeShipped)
 ```
 
 Move the file out of the replicating route's folder, for example from `Shared/Server/` to `Server/`.
@@ -954,7 +954,7 @@ Whether this is an error depends on what started the server:
 - Anything else, such as a `rojo serve` you ran yourself or an Argon server: an error, even when it serves a project with the same name. The message says that another process holds the port.
 
 ```
-error: Port 34872 is taken by Rojo serving lobby, which rogen serve started for places/lobby/default.rogen.json, so places/arena/default.rogen.json can't be served there. Stop it, set a servePort in places/arena/default.rogen.json, or run 'rogen serve places/arena --port <port>'. (serve.portTaken)
+error: Port 34872 is taken by Rojo serving game, which rogen serve started for game.rogen.json, so lobby.rogen.json can't be served there. Stop it, set a servePort in lobby.rogen.json, or run 'rogen serve lobby.rogen.json --port <port>'. (serve.portTaken)
 ```
 
 Stop what holds the port, give the config its own `servePort` in its `.rogen.json`, or pass a free port with `--port`. Serve a second place from a second terminal. In `--json`, `fixes` holds the command with a free port that Rogen found.
