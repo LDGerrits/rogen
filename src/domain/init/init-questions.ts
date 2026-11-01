@@ -162,7 +162,7 @@ export class InitQuestions {
 				several,
 				booleanFlag("--places", !several)
 			);
-		const holdsCode = directory.layout.codeFolders.length > 0;
+		const { holdsCode } = directory;
 		const answer = await this.ask(
 			"places",
 			holdsCode ? this.promptService : this.essential,
@@ -209,7 +209,7 @@ export class InitQuestions {
 		}
 		const detected =
 			workspace.languages.some(({ present }) => present) ||
-			directory.layout.codeFolders.length > 0 ||
+			directory.holdsCode ||
 			directory.has("package.json");
 		const id = await this.ask(
 			"language",

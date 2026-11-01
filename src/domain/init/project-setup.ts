@@ -525,7 +525,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			!directory.hasHandWrittenProject &&
 			!directory.has("package.json") &&
 			!language.present &&
-			directory.layout.codeFolders.length === 0
+			!directory.holdsCode
 			? RobloxTsStarter.of(language)
 			: undefined;
 	}
@@ -541,7 +541,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			kind === "place" &&
 			tree.kind === "new" &&
 			(!language.compiler || scaffolded) &&
-			this.directory.layout.codeFolders.length === 0;
+			!this.directory.holdsCode;
 		return writable && this.questions.sample();
 	}
 

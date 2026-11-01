@@ -68,6 +68,20 @@ describe("CodeFinder.layoutOf", () => {
 		});
 	});
 
+	describe("scripts at the root", () => {
+		it("should list the scripts Rojo reads at the top of the folder", async () => {
+			await write("Main.server.luau");
+			await write("Util.lua");
+			await write("vite.config.ts");
+			await write("README.md");
+
+			expect((await layout()).rootScripts).toEqual([
+				"Main.server.luau",
+				"Util.lua",
+			]);
+		});
+	});
+
 	describe("a folder that can't be read", () => {
 		it("should have no code folders when the working directory is missing", async () => {
 			const found = await new CodeFinder(fs).layoutOf(

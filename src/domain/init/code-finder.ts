@@ -16,6 +16,8 @@ export interface DirectoryLayout {
 	readonly codeFolders: readonly string[];
 	/** The code folders with an init module at their top, which Rojo reads as one module. */
 	readonly moduleFolders?: readonly string[];
+	/** The scripts at the top of the folder that Rojo reads, outside every code folder. */
+	readonly rootScripts?: readonly string[];
 	/** The folders of Rojo's place template that hold code, such as `src/server`, when `src` holds code only in them. */
 	readonly templateFolders?: readonly string[];
 }
@@ -27,6 +29,12 @@ const MODULE_INITS = ["init.luau", "init.lua"];
 
 const isScript = (name: string): boolean =>
 	new RojoFile(name, SyncRules.DEFAULT).kind === "script";
+
+/** A script Rojo syncs itself, leaving out what only a compiler reads. */
+const isRojoScript = (name: string): boolean => {
+	const file = new RojoFile(name, SyncRules.DEFAULT);
+	return file.kind === "script" && file.isSyncedByRojo;
+};
 
 const isHiddenOrVendored = (name: string): boolean =>
 	name.startsWith(".") || name === "node_modules";
@@ -52,6 +60,15 @@ export class CodeFinder {
 		);
 		return {
 			codeFolders,
+			rootScripts: (await this.entriesOf(cwd))
+				.filter(
+					([name, type]) =>
+						isFileType(type) &&
+						!isHiddenOrVendored(name) &&
+						isRojoScript(name)
+				)
+				.map(([name]) => name)
+				.sort(),
 			moduleFolders: codeFolders.filter((_, at) => holdsModule[at]),
 			templateFolders: codeFolders.includes(DEFAULT_SOURCE_PATH)
 				? await this.templateFoldersIn(cwd)

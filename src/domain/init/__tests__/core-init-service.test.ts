@@ -1460,6 +1460,29 @@ describe("CoreInitService", () => {
 		});
 	});
 
+	describe("the sample", () => {
+		const sampleFiles = (plan: InitPlan | undefined) =>
+			(plan?.files ?? [])
+				.map(({ fileName }) => fileName)
+				.filter((fileName) => /Greeter|^place\//.test(fileName));
+
+		it("should be left out where a script lies at the root of the folder", async () => {
+			await write("Main.server.luau", "print(1)");
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(sampleFiles(plan)).toEqual([]);
+		});
+
+		it("should be written where the root holds only files that are not code", async () => {
+			await write("notes.md", "hi");
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(sampleFiles(plan)).not.toEqual([]);
+		});
+	});
+
 	describe("empty source folders", () => {
 		const keptIn = async (choices: InitChoices) => {
 			const plan = (await serviceFor().plan({ choices })).unwrap();
@@ -1818,10 +1841,13 @@ describe("CoreInitService", () => {
 
 		it("should name loose scripts at the root that neither layout places", async () => {
 			await write("Main.server.luau");
-			const prompts = new MockPromptService({
-				"One place or several?": "one",
-				[CREATE]: "yes",
-			});
+			const prompts = new MockPromptService([
+				"customise",
+				ACCEPT_DEFAULT,
+				"one",
+				ACCEPT_DEFAULT,
+				"yes",
+			]);
 
 			await review(prompts);
 			const places = prompts.prompts.find(
