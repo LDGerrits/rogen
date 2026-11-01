@@ -1,5 +1,7 @@
 import path from "path";
 import { MemoryFileSystemService } from "../../../../platform/fs/memory-file-system-service.js";
+import { MockProcessService } from "../../../../platform/process/__tests__/mock-process-service.js";
+import { GitRepository } from "../../git-repository.js";
 import { agentBlock } from "../agent-block.js";
 import { AgentRules } from "../agent-rules.js";
 
@@ -16,7 +18,10 @@ describe("AgentRules", () => {
 	beforeEach(async () => {
 		fileSystem = new MemoryFileSystemService();
 		await fileSystem.createDirectory(path.join(root, ".git"));
-		rules = new AgentRules(fileSystem);
+		rules = new AgentRules(
+			fileSystem,
+			new GitRepository(new MockProcessService(), fileSystem)
+		);
 	});
 
 	it("should replace an outdated block, keeping every byte around it", async () => {

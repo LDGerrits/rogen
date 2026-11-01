@@ -1,5 +1,5 @@
 import path from "path";
-import { ancestors } from "../../base/path.js";
+import { selfAndAncestors } from "../../base/path.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { Luau } from "./luau.js";
 import { TestRunnerDetector } from "./test-runner-detector.js";
@@ -32,7 +32,7 @@ export class CoreToolchainService implements ToolchainService {
 
 	async readManifests(directory: string): Promise<readonly ToolManifest[]> {
 		const manifests: ToolManifest[] = [];
-		for (const dir of [directory, ...ancestors(directory)]) {
+		for (const dir of selfAndAncestors(directory)) {
 			for (const fileName of ToolManifest.FILE_NAMES) {
 				const file = path.join(dir, fileName);
 				if (!(await this.fileSystemService.exists(file))) continue;

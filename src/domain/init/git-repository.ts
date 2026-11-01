@@ -1,5 +1,5 @@
 import path from "path";
-import { ancestors } from "../../base/path.js";
+import { selfAndAncestors } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
@@ -13,13 +13,18 @@ export class GitRepository {
 		private readonly fileReader: FileReader
 	) {}
 
-	/** Whether `git init` would start a repository in `directory`: git is installed and no folder from `directory` up holds a `.git`, which marks a work tree. */
+	/** Whether `git init` would start a repository in `directory`: git is installed and `directory` is in no work tree. */
 	async needsInit(directory: string): Promise<boolean> {
 		if (!(await this.processService.which("git"))) return false;
-		for (const folder of [directory, ...ancestors(directory)])
+		return (await this.workTreeOf(directory)) === undefined;
+	}
+
+	/** The nearest folder from `directory` up that holds a `.git`, which marks a work tree; none outside one. */
+	async workTreeOf(directory: string): Promise<string | undefined> {
+		for (const folder of selfAndAncestors(directory))
 			if (await this.fileReader.exists(path.join(folder, ".git")))
-				return false;
-		return true;
+				return folder;
+		return undefined;
 	}
 
 	async init(directory: string): Promise<Result<void, Error>> {

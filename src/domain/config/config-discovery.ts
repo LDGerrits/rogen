@@ -1,6 +1,6 @@
 import path from "path";
 import { Disposable, toDisposable } from "../../base/disposable.js";
-import { ancestors } from "../../base/path.js";
+import { selfAndAncestors } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { IoError, ProjectError, UsageError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
@@ -384,7 +384,7 @@ export class ConfigDiscovery {
 		const start = (await this.fileSystemService.isDirectory(target))
 			? target
 			: path.dirname(target);
-		return [start, ...ancestors(start)];
+		return [...selfAndAncestors(start)];
 	}
 }
 
