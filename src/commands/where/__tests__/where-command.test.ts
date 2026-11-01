@@ -755,6 +755,20 @@ describe("where command", () => {
 		const writeJson = (file: string, value: Record<string, unknown>) =>
 			fs.writeFile(`/repo/${file}`, JSON.stringify(value));
 
+		it("should refuse a folder beside it that holds no default config", async () => {
+			await writeConfig("default.rogen.json", { routes: ROUTES });
+			await fs.createDirectory("/repo/places/game");
+
+			const result = await pipe("ServerScriptService.A:1", "places/game");
+
+			const { error } = result as { error: Error };
+			expect(error).toBeInstanceOf(UsageError);
+			expect(error.message).toContain(
+				"'-' takes only configs beside it; places/game is not a config."
+			);
+			expect(text()).toBe("");
+		});
+
 		it("should write both forms Studio prints as file:line and leave the other text as it is", async () => {
 			await writeConfig("default.rogen.json", {
 				routes: ROUTES,
@@ -943,8 +957,10 @@ describe("where command", () => {
 				);
 
 				expect(result.isErr()).toBe(true);
-				expect((result as { error: Error }).error).toBeInstanceOf(
-					UsageError
+				const { error } = result as { error: Error };
+				expect(error).toBeInstanceOf(UsageError);
+				expect(error.message).toContain(
+					"'-' takes only configs beside it; src/Inventory/Server/Save.luau is not a config."
 				);
 			});
 

@@ -172,6 +172,9 @@ export interface ConfigService {
 	resolveNames(args: readonly string[]): Promise<Result<string[], Error>>;
 	/** The shortest argument that makes a command run in `folder` read exactly `file`: none for the default config of `folder`, the folder of any other default, the bare name when it reads `file`, else the path. `file` may be a config not written yet. */
 	referenceTo(file: string, folder: string): Promise<string>;
+
+	/** The first of `refs` that names no config: not a config or project file, a folder with a default config, nor a bare name that stands for a config. */
+	firstNotConfig(refs: readonly string[]): Promise<string | undefined>;
 	/** The configs that answer for `target`, so a command run from the root can take a path of any place: the default of the nearest folder at or above it, else every named config there whose source paths cover it. */
 	coversOf(target: string): Promise<ConfigCover[]>;
 	/** Loads the configs that answer for each target, one selection per config, so a command can take paths of several places. An undefined target, such as an instance, is answered by the configs named among the targets, else the default of the working directory. */
