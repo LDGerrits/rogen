@@ -939,6 +939,8 @@ describe("CoreWriteService", () => {
 		});
 
 		it("should keep the warnings a write raises about the files it was asked about", async () => {
+			await fs.createDirectory(abs("src"));
+
 			const result = (
 				await locate(
 					configOf({
@@ -1251,6 +1253,54 @@ describe("CoreWriteService", () => {
 					["meta.invalidSyntax", abs("src/Combat/init.meta.json")],
 				])
 			);
+		});
+
+		describe("what reaches a file", () => {
+			const routes = {
+				Server: "ServerScriptService",
+				"*": "ReplicatedStorage/Shared",
+			};
+			const diagnose = async (arg: string) =>
+				(
+					await writeServiceOfFs().diagnose(
+						selectionOf(configOf({ routes })),
+						{ args: [arg], cwd: abs() }
+					)
+				).unwrap();
+
+			it("should report a clash against the file that wins it", async () => {
+				await fs.writeFile(abs("src/Combat/Hit@server.luau"), "");
+				await fs.writeFile(abs("src/Combat/Server/Hit.luau"), "");
+
+				expect(
+					(await diagnose("src/Combat/Server/Hit.luau")).diagnostics
+				).toMatchObject([{ code: "tree.instanceClash" }]);
+			});
+
+			it("should report a marker file's warnings against the files of its folder", async () => {
+				await fs.writeFile(abs("src/M/@SERVER"), "");
+				await fs.writeFile(abs("src/M/a.luau"), "");
+				await fs.writeFile(abs("src/I/.server"), "");
+				await fs.writeFile(abs("src/I/L.luau"), "");
+				await fs.writeFile(abs("src/O/b.luau"), "");
+
+				expect(
+					(await diagnose("src/M/a.luau")).diagnostics
+				).toMatchObject([
+					{
+						code: "route.caseMismatch",
+						resource: abs("src/M/@SERVER"),
+					},
+				]);
+				expect(
+					(await diagnose("src/I/L.luau")).diagnostics
+				).toMatchObject([
+					{ code: "route.dotRoute", resource: abs("src/I/.server") },
+				]);
+				expect((await diagnose("src/O/b.luau")).diagnostics).toEqual(
+					[]
+				);
+			});
 		});
 
 		it("should report the error of a script's meta against the script and the meta", async () => {

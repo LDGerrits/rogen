@@ -2,8 +2,6 @@ import { groupBy } from "../../base/collections.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	Diagnostic,
-	diagnosticsReaching,
-	isError,
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -14,7 +12,6 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
-import { RojoFile } from "../rojo/rojo.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ConfigSelection, ConfigService } from "../config/config-service.js";
 import { SyncTool } from "../toolchain/toolchain.js";
@@ -31,9 +28,9 @@ import {
 import {
 	Asked,
 	WriteService,
-	ConfigLocations,
 	Diagnosis,
 	LocateQuery,
+	LocatedDiagnosis,
 	Locations,
 	outsideEveryConfig,
 	skippedByEveryConfig,
@@ -260,13 +257,6 @@ export class CoreWriteService implements WriteService {
 		}
 		const located = await this.locate(selection, targets);
 		return located.map(({ errors, configs }) => {
-			const about = ({ config, files, queried }: ConfigLocations) => [
-				...files.flatMap(({ source }) => [
-					source,
-					...RojoFile.metaFilesBeside(source, config.syncRules),
-				]),
-				...queried,
-			];
 			const outside = new OutsideSourcePaths(
 				configs.flatMap(({ config }) => config.sourcePaths)
 			);
@@ -274,6 +264,9 @@ export class CoreWriteService implements WriteService {
 				source,
 				warnings: outside.about(source),
 			}));
+			const diagnoses = configs.map(
+				(config) => new LocatedDiagnosis(config)
+			);
 			return {
 				skipped: skippedOutside(
 					misspelt
@@ -284,26 +277,10 @@ export class CoreWriteService implements WriteService {
 				diagnostics: uniqueDiagnostics([
 					...errors,
 					...misspelt.flatMap(({ warnings }) => warnings),
-					...configs.flatMap((config) =>
-						about(config).flatMap((target) =>
-							diagnosticsReaching(config.diagnostics, target)
-						)
-					),
+					...diagnoses.flatMap(({ reaching }) => reaching),
 				]),
 				stoppedBy: uniqueDiagnostics(
-					configs.flatMap((config) =>
-						config.diagnostics.filter(
-							(diagnostic) =>
-								isError(diagnostic) &&
-								about(config).every(
-									(target) =>
-										diagnosticsReaching(
-											[diagnostic],
-											target
-										).length === 0
-								)
-						)
-					)
+					diagnoses.flatMap(({ stoppedBy }) => stoppedBy)
 				),
 			};
 		});

@@ -276,6 +276,17 @@ describe("CoreConfigService coversOf", () => {
 		]);
 	});
 
+	it("should cover a project file inside the source paths of a config above it as a file of that config", async () => {
+		await write("/repo/src/Shop/Items.project.json", { name: "Items" });
+
+		expect(
+			await service.coversOf("/repo/src/pkg/default.project.json")
+		).toEqual([{ file: "/repo/default.rogen.json", whole: false }]);
+		expect(
+			await service.coversOf("/repo/src/Shop/Items.project.json")
+		).toEqual([{ file: "/repo/default.rogen.json", whole: false }]);
+	});
+
 	it("should keep a plain project file outside every source path above it", async () => {
 		expect(await service.coversOf("/repo/tools/run.luau")).toEqual([
 			{ file: "/repo/tools/default.project.json", whole: false },
@@ -364,6 +375,22 @@ describe("CoreConfigService coversOf named configs", () => {
 
 		expect(await filesOf("/repo/src/game/Main.luau")).toEqual([
 			"/repo/src/game/default.rogen.json",
+		]);
+	});
+
+	it("should not keep a copy beside another config for a path neither covers", async () => {
+		await write("/repo/game2.rogen.json", {
+			name: "game",
+			sourcePaths: ["src/common", "src/game"],
+			routes: ROUTES,
+		});
+
+		expect(await filesOf("/repo/src/lobby/Main.luau")).toEqual([
+			"/repo/lobby.rogen.json",
+		]);
+		expect(await filesOf("/repo/src/game/Main.luau")).toEqual([
+			"/repo/game.rogen.json",
+			"/repo/game2.rogen.json",
 		]);
 	});
 

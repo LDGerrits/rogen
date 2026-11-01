@@ -284,6 +284,17 @@ describe("WriteValidator rules", () => {
 				expect(await caseWarnings()).toEqual([]);
 			});
 
+			it("should spell a marker file's mismatch with its @", async () => {
+				await write("src/M/@SERVER", "src/M/a.luau");
+
+				const [warning] = await caseWarnings();
+
+				expect(warning.resource).toBe(abs("src/M/@SERVER"));
+				expect(warning.message).toContain(
+					'Spell it "@server" or "@Server"'
+				);
+			});
+
 			it("should still report a mismatch on a file that no route governs", async () => {
 				await write("src/SERVER/Save.luau");
 

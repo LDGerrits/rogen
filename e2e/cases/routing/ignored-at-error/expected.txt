@@ -70,7 +70,7 @@ stdout:
   }
 
 $ rogen where src/server/Util@client.luau
-exit 0
+exit 1
 stdout:
   src/server/Util@client.luau -> not placed · it has an error (route.ignoredAt)
     error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files. (route.ignoredAt)

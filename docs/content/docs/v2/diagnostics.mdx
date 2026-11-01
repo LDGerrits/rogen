@@ -162,7 +162,7 @@ Keep one of the keys. See [How Routing Works](/docs/v2/core-concepts/routing).
 
 ### `config.unnamedProjectFile` [#config-unnamedprojectfile]
 
-Error. A Rojo project file that you named on the command line has no `name`, as in `rogen serve test.project.json`. Rojo names `default.project.json` after its folder. It crashes on a project file with any other file name and no `name`, so Rogen stops before Rojo does.
+Error. A project file other than `default.project.json` has no `name`. It is either a Rojo project file that you named on the command line, as in `rogen serve test.project.json`, or the file a config such as `dist.rogen.json` writes, whose `name` comes from the config. Rojo names `default.project.json` after its folder. It crashes on a project file with any other file name and no `name`, so Rogen stops before Rojo does, in `rogen write`, `rogen check` and every Rojo command.
 
 ```
 error: test.project.json has no "name", and Rojo can't read a project file without one unless it is default.project.json or default.project.jsonc. Add "name". (config.unnamedProjectFile)
@@ -315,7 +315,7 @@ Warning. A folder or marker file matches a declared key except for the letter ca
 warning: differs from the route "shared" only in letter case, so it is read as an ordinary name. Spell it "shared" or "Shared", or declare it as written. (route.caseMismatch)
 ```
 
-Rename it to the key. If it should route as it is written, declare that spelling as a key. Rogen offers no automatic fix, because a name like `SHARED/` can be an ordinary folder on purpose. See [How Routing Works](/docs/v2/core-concepts/routing).
+Rename it to the key, as `@Shared` for a marker file. If it should route as it is written, declare that spelling as a key. Rogen offers no automatic fix, because a name like `SHARED/` can be an ordinary folder on purpose. See [How Routing Works](/docs/v2/core-concepts/routing).
 
 ### `route.serverCodeShipped` [#route-servercodeshipped]
 
@@ -665,8 +665,10 @@ A config with no `sourcePaths` uses the default, `src`. The error then tells you
 Warning. The default `src` folder holds files that Rojo never syncs. The config declares no `routes`, so Rogen scans no source path, and nothing in the `tree` mounts the files.
 
 ```
-warning: 3 files here are mounted by nothing in the tree, and the config declares no routes, so Rojo never syncs them. Add "routes" to place them, or mount the folder with "$path". (scan.unmountedSource)
+warning: 3 files here are mounted by nothing in the tree (Main.client.luau, Util.luau, lib/Net.luau), and the config declares no routes, so Rojo never syncs them. Add "routes" to place them, or mount the folder with "$path". (scan.unmountedSource)
 ```
+
+The message names the first three files. In `--json`, `related` lists every one.
 
 Add `routes` so that Rogen places the files. Or mount the folder in the `tree` with a `$path`.
 

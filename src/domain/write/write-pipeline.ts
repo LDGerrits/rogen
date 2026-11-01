@@ -95,9 +95,6 @@ export class WritePipeline {
 		if (examinedConfig.kind === "stopped")
 			return err(new DiagnosticsError(examinedConfig.errors));
 		const { placement, projectFile, readFiles, warnings } = examinedConfig;
-		const missing = WritePipeline.missingOf(config, placement);
-		if (missing.stopsWrite)
-			return err(new DiagnosticsError(missing.diagnostics()));
 		return ok({
 			config,
 			projectFile,
@@ -113,7 +110,7 @@ export class WritePipeline {
 		});
 	}
 
-	/** Runs every phase of `run` but the compiled path check. A meta or assembly error doesn't fail it; the result is `stopped`. Fails only when the files can't be placed. */
+	/** Runs every phase of `run` but the compiled path check. A meta or assembly error, or no source path that exists, doesn't fail it; the result is `stopped`. Fails only when the files can't be placed. */
 	async examine(
 		config: ResolvedConfig
 	): Promise<Result<ExaminedConfig, DiagnosticsError>> {
@@ -126,6 +123,13 @@ export class WritePipeline {
 				kind: "stopped",
 				placement: placement.value,
 				errors: assembled.error,
+			});
+		const missing = WritePipeline.missingOf(config, placement.value);
+		if (missing.stopsWrite)
+			return ok({
+				kind: "stopped",
+				placement: placement.value,
+				errors: missing.diagnostics(),
 			});
 		const { meta, assembly } = assembled.value;
 		return ok({
@@ -141,17 +145,6 @@ export class WritePipeline {
 				...new UnmountedSources(config, this.index).diagnostics(),
 			],
 		});
-	}
-
-	/** The project file `examined` assembled, when a write of `config` would write it: not when a phase stopped, or no source path exists. */
-	assembledFile(
-		config: ResolvedConfig,
-		examined: ExaminedConfig
-	): RojoProjectFile | undefined {
-		if (examined.kind !== "assembled") return undefined;
-		return WritePipeline.missingOf(config, examined.placement).stopsWrite
-			? undefined
-			: examined.projectFile;
 	}
 
 	private static missingOf(
@@ -170,8 +163,8 @@ export class WritePipeline {
 		config: ResolvedConfig
 	): Promise<RojoProjectFile | undefined> {
 		const examined = await this.examine(config);
-		return examined.isOk()
-			? this.assembledFile(config, examined.value)
+		return examined.isOk() && examined.value.kind === "assembled"
+			? examined.value.projectFile
 			: undefined;
 	}
 

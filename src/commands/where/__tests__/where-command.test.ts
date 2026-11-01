@@ -7,6 +7,8 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { MockInputService } from "../../../platform/input/__tests__/mock-input-service.js";
 import { UsageError } from "../../../base/errors.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
+import { ReportedError } from "../../../platform/commands/commands.js";
+import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 
 const ROUTES = {
 	Server: "ServerScriptService",
@@ -171,13 +173,25 @@ describe("where command", () => {
 			);
 		});
 
-		it("should say what stops it, and still succeed", async () => {
+		it("should say what stops it, and fail", async () => {
 			const result = await run({ _: ["src/F/Shared/Good.luau"] });
 
-			expect(result.isOk()).toBe(true);
+			expect(result.isErr() && result.error).toBeInstanceOf(
+				ReportedError
+			);
 			expect(printed()).toEqual([
 				"src/F/Shared/Good.luau -> not placed · the write stops on src/F/Shared/Bad@server.luau (route.ignoredAt); run 'rogen check'",
 			]);
+		});
+
+		it("should leave the other errors that stop it to 'rogen check'", async () => {
+			await write("src/F/Shared/Worse@client.luau");
+
+			const result = await run({ _: ["src/F/Shared/Good.luau"] });
+
+			expect(result.isErr() && result.error).toBeInstanceOf(
+				ReportedError
+			);
 		});
 
 		it("should name the file with the error when the error is inside the directory asked about", async () => {
@@ -199,6 +213,48 @@ describe("where command", () => {
 						code: "route.ignoredAt",
 					},
 				}
+			);
+		});
+	});
+
+	describe("when a meta error stops the write", () => {
+		beforeEach(async () => {
+			await writeConfig("default.rogen.json", { routes: ROUTES });
+			await write("src/A/M.luau", "src/B.luau");
+			await fs.writeFile(
+				"/repo/src/A/M.meta.json",
+				'{"properties":{"RunContext":"Server"}}'
+			);
+		});
+
+		it("should fail with the error under a line, with no path", async () => {
+			const result = await run({});
+
+			expect(result.isErr() && result.error).toBeInstanceOf(
+				ReportedError
+			);
+			expect(printed()).toContainEqual(
+				expect.stringMatching(/^ {2}error: /)
+			);
+		});
+
+		it("should fail with the error on its own when no line shows it", async () => {
+			const result = await run({ _: ["src/B.luau"] });
+
+			expect(result.isErr() && result.error).toBeInstanceOf(
+				DiagnosticsError
+			);
+			expect(printed()).toEqual([
+				"src/B.luau -> ReplicatedStorage/Shared/B · route * (fallback)",
+			]);
+		});
+
+		it("should put the error that no entry holds at the top of the JSON document", async () => {
+			const result = await run({ _: ["src/B.luau"], json: true });
+
+			expect(result.isErr()).toBe(true);
+			expect(JSON.parse(printed().join("\n")).diagnostics).toHaveLength(
+				1
 			);
 		});
 	});
@@ -250,6 +306,29 @@ describe("where command", () => {
 
 		expect(result.isOk()).toBe(true);
 		expect(printed()).toEqual(["No files in the source paths (src)."]);
+	});
+
+	describe("when the source path is not there", () => {
+		beforeEach(() => writeConfig("default.rogen.json", { routes: ROUTES }));
+
+		it("should fail with the error on its own, with no path", async () => {
+			const result = await run({});
+
+			expect(result.isErr() && result.error).toBeInstanceOf(
+				DiagnosticsError
+			);
+			expect(printed()).toEqual([]);
+		});
+
+		it("should fail with the error under a file named in it", async () => {
+			const result = await run({ _: ["src/A.luau"] });
+
+			expect(result.isErr() && result.error).toBeInstanceOf(
+				ReportedError
+			);
+			expect(printed()[0]).toBe("src/A.luau -> does not exist");
+			expect(printed()[1]).toMatch(/^ {2}error: /);
+		});
 	});
 
 	it("should fail with the config's errors", async () => {
@@ -797,6 +876,43 @@ describe("where command", () => {
 				].join("\n")
 			);
 			expect(logService.texts("warn")).toEqual([]);
+		});
+
+		describe("a script in a character", () => {
+			beforeEach(() =>
+				writeConfig("default.rogen.json", {
+					routes: {
+						...ROUTES,
+						Character: "StarterPlayer/StarterCharacterScripts",
+					},
+				})
+			);
+
+			it("should write it as the StarterCharacterScripts file it is a copy of", async () => {
+				await write("src/Hud/Character/Anim.client.luau");
+
+				await pipe("Workspace.ldg.Hud.Anim:3: x");
+
+				expect(text()).toBe("src/Hud/Character/Anim.client.luau:3: x");
+			});
+
+			it("should leave it as it is when a file places it in Workspace", async () => {
+				await writeConfig("default.rogen.json", {
+					routes: {
+						...ROUTES,
+						Character: "StarterPlayer/StarterCharacterScripts",
+						World: "Workspace/ldg",
+					},
+				});
+				await write(
+					"src/Hud/Character/Anim.client.luau",
+					"src/Hud/World/Anim.luau"
+				);
+
+				await pipe("Workspace.ldg.Hud.Anim:3: x");
+
+				expect(text()).toBe("src/Hud/World/Anim.luau:3: x");
+			});
 		});
 
 		it("should leave an instance no file places as it is", async () => {

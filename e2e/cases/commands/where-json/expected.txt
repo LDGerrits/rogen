@@ -115,7 +115,21 @@ stdout:
         "require": "game:GetService(\"ReplicatedStorage\").Shared.Net.Types",
         "route": "*",
         "routeMatch": "fallback",
-        "diagnostics": []
+        "diagnostics": [
+          {
+            "file": "<dir>/src/Net/Types.lua",
+            "severity": "warning",
+            "code": "tree.instanceClash",
+            "message": "becomes \"ReplicatedStorage/Shared/Net/Types\", as <dir>/src/Net/Types.luau does, which takes its place. Rename one of them to keep both.",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#tree-instanceclash",
+            "related": [
+              {
+                "file": "<dir>/src/Net/Types.luau",
+                "message": "takes its place as \"ReplicatedStorage/Shared/Net/Types\""
+              }
+            ]
+          }
+        ]
       },
       {
         "config": "default.rogen.json",

@@ -281,6 +281,31 @@ describe("domain/roblox/roblox", () => {
 			);
 		});
 
+		it("should read a character's script as the StarterCharacterScripts path it may be a copy of", () => {
+			expect(
+				InstanceReference.parse("Workspace.ldg.Hud.Anim:3")
+					?.characterScript
+			).toMatchObject({
+				text: "StarterPlayer.StarterCharacterScripts.Hud.Anim",
+				namesScript: true,
+			});
+			expect(
+				InstanceReference.parse("Workspace/ldg/Anim")?.characterScript
+					?.text
+			).toBe("StarterPlayer/StarterCharacterScripts/Anim");
+		});
+
+		it("should not read a character, or a path out of Workspace, as a character's script", () => {
+			for (const text of [
+				"Workspace.ldg",
+				"Workspace",
+				"ServerScriptService.ldg.Anim",
+			])
+				expect(
+					InstanceReference.parse(text)?.characterScript
+				).toBeUndefined();
+		});
+
 		it("should read a slashed path", () => {
 			expect(
 				InstanceReference.parse("ServerScriptService/Inventory/Save")

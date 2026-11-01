@@ -122,7 +122,8 @@ describe("DiskWatcher", () => {
 					await waitFor(() => changes.some(inside), 10000);
 
 					expect(changes.filter(added)).toHaveLength(1);
-				}
+				},
+				20000
 			);
 		});
 

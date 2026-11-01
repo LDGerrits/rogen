@@ -9,7 +9,11 @@ import {
 	requireExpressionOf,
 	requireNoteOf,
 } from "../../domain/write/write-service.js";
-import { diagnosticSummary } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	diagnosticSummary,
+	renderDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { instanceKey } from "../../domain/roblox/roblox.js";
 import { Answer, WhereAnswers } from "./where-answers.js";
@@ -21,6 +25,20 @@ function patternRelativeTo(cwd: string, escaped: string): string {
 	const rooted = (posixPath: string) =>
 		posixPath.startsWith("/") ? posixPath : `/${posixPath}`;
 	return path.posix.relative(rooted(toPosix(cwd)), rooted(pattern)) || ".";
+}
+
+/** `diagnostic` reaches `source` as a related file, so its line names the file it is about. */
+function aboutRelatedFile(diagnostic: Diagnostic, source: string): boolean {
+	return (
+		toPosix(diagnostic.resource) !== source &&
+		(diagnostic.related ?? []).some(
+			({ resource }) => toPosix(resource) === source
+		)
+	);
+}
+
+function absentNote(location: FileLocation): string {
+	return location.exists ? "" : " · the file does not exist yet";
 }
 
 function describeLocation(location: FileLocation, cwd: string): string {
@@ -36,11 +54,10 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 				? ` · also ${location.alsoAt.map(instanceKey).join(", ")}`
 				: "";
 			const hoisted = location.hoisted ? " · hoisted by ^" : "";
-			const absent = location.exists
-				? ""
-				: " · the file does not exist yet";
-			return `${instanceKey(location.instancePath)} · route ${location.route} (${location.routeMatch})${hoisted}${alsoAt}${absent}`;
+			return `${instanceKey(location.instancePath)} · route ${location.route} (${location.routeMatch})${hoisted}${alsoAt}${absentNote(location)}`;
 		}
+		case "compiled":
+			return `${instanceKey(location.instancePath)} · compiled from ${relative(location.from)}${absentNote(location)}`;
 		case "replaced":
 			return `replaced by ${relative(location.by)}`;
 		case "displaced":
@@ -145,7 +162,8 @@ export class WhereLog {
 	print(logService: LogService): void {
 		const blocks = this.blocks();
 		if (blocks.length === 0) {
-			const empty = this.emptyLine();
+			const empty =
+				this.answers.stops.length === 0 ? this.emptyLine() : undefined;
 			if (empty) logService.print(defanged(empty));
 			return;
 		}
@@ -179,8 +197,14 @@ export class WhereLog {
 
 	private noted(answer: Answer): string[] {
 		if (answer.kind !== "file") return [];
+		const { source } = answer.location;
 		return answer.diagnostics.map(
-			(diagnostic) => `  ${diagnosticSummary(diagnostic, this.cwd)}`
+			(diagnostic) =>
+				`  ${
+					aboutRelatedFile(diagnostic, source)
+						? renderDiagnostic(diagnostic, this.cwd)
+						: diagnosticSummary(diagnostic, this.cwd)
+				}`
 		);
 	}
 

@@ -45,6 +45,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `rogen where` answers a Studio instance path or `-` by the config named beside it, as in `rogen where game -`, where it used to ask for a default config; `-` refuses any other path beside it.
 - The `serve.portTaken` error suggests `rogen serve lobby --port <port>` instead of naming the whole `lobby.rogen.json`, when the bare name reads that config.
 - The `rogen serve` command that `rogen init` suggests after a v1 migration no longer names the wrong config when a folder of the config's name holds a default config; it names the config's file then.
+- `rogen where` exits 1 when an error stops the write, and reports a missing source path as `rogen write` does.
+- `rogen where` and `rogen check` narrow diagnostics to a path by one rule: a clash, a meta file's error and a marker file's warning count for the files they are about.
+- A warning that `rogen where` prints under a file's line names the file it is about when that is another file, such as the file that loses a clash.
+- `rogen where` and `rogen check` answer a project file inside a source path and a file in the compiled path, and leave a copied config's error out of a path outside its source paths.
+- `rogen where -` maps a character's copy of a StarterCharacterScripts script back to its file.
+- `scan.unmountedSource` names the files that nothing mounts.
 
 ## [2.0.0-beta.2] - 2026-10-31
 
