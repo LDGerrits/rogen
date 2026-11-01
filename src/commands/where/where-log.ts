@@ -9,7 +9,11 @@ import {
 	requireExpressionOf,
 	requireNoteOf,
 } from "../../domain/write/write-service.js";
-import { diagnosticSummary } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	diagnosticSummary,
+	renderDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { instanceKey } from "../../domain/roblox/roblox.js";
 import { Answer, WhereAnswers } from "./where-answers.js";
@@ -21,6 +25,16 @@ function patternRelativeTo(cwd: string, escaped: string): string {
 	const rooted = (posixPath: string) =>
 		posixPath.startsWith("/") ? posixPath : `/${posixPath}`;
 	return path.posix.relative(rooted(toPosix(cwd)), rooted(pattern)) || ".";
+}
+
+/** `diagnostic` reaches `source` as a related file, so its line names the file it is about. */
+function aboutRelatedFile(diagnostic: Diagnostic, source: string): boolean {
+	return (
+		toPosix(diagnostic.resource) !== source &&
+		(diagnostic.related ?? []).some(
+			({ resource }) => toPosix(resource) === source
+		)
+	);
 }
 
 function describeLocation(location: FileLocation, cwd: string): string {
@@ -182,8 +196,14 @@ export class WhereLog {
 
 	private noted(answer: Answer): string[] {
 		if (answer.kind !== "file") return [];
+		const { source } = answer.location;
 		return answer.diagnostics.map(
-			(diagnostic) => `  ${diagnosticSummary(diagnostic, this.cwd)}`
+			(diagnostic) =>
+				`  ${
+					aboutRelatedFile(diagnostic, source)
+						? renderDiagnostic(diagnostic, this.cwd)
+						: diagnosticSummary(diagnostic, this.cwd)
+				}`
 		);
 	}
 

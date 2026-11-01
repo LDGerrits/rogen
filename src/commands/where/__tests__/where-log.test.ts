@@ -736,6 +736,45 @@ describe("WhereLog", () => {
 			]);
 		});
 
+		it("should name the file a diagnostic is about when it shows under a related file", () => {
+			const clash = warningDiagnostic(
+				"tree.instanceClash",
+				{ resource: "/repo/src/Types.lua" },
+				"becomes the same instance as src/Types.luau.",
+				[],
+				[
+					{
+						resource: "/repo/src/Types.luau",
+						message: "takes its place",
+					},
+				]
+			);
+
+			const report = reportOf([
+				[
+					"default",
+					[
+						{
+							status: "replaced",
+							source: "/repo/src/Types.lua",
+							exists: true,
+							by: "/repo/src/Types.luau",
+						},
+						placed("/repo/src/Types.luau"),
+					],
+					[],
+					[clash],
+				],
+			]);
+
+			expect(report.lines()).toEqual([
+				"src/Types.lua -> replaced by src/Types.luau",
+				"  warning: becomes the same instance as src/Types.luau. (tree.instanceClash)",
+				"src/Types.luau -> ReplicatedStorage/Save · route * (fallback)",
+				"  src/Types.lua - warning: becomes the same instance as src/Types.luau. (tree.instanceClash)",
+			]);
+		});
+
 		it("should print an error as an error", () => {
 			const report = reportOf([
 				[
