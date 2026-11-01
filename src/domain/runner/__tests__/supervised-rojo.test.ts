@@ -120,12 +120,60 @@ describe("SupervisedRojo", () => {
 
 		await jest.advanceTimersByTimeAsync(6_000);
 		await crash(1);
+		await jest.advanceTimersByTimeAsync(500);
 		rojo.markReady();
 		await crash(2);
+		await jest.advanceTimersByTimeAsync(1_000);
 
 		expect(processes.spawned).toHaveLength(4);
 		expect(restarts).toHaveLength(3);
 		expect(exits).toEqual([]);
+	});
+
+	it("should wait longer before each back-to-back restart, doubling from half a second up to ten seconds", async () => {
+		start();
+		const waits: number[] = [];
+		for (let index = 0; index < 8; index++) {
+			rojo.markReady();
+			await crash(index);
+			let waited = 0;
+			while (processes.spawned.length === index + 1) {
+				await jest.advanceTimersByTimeAsync(100);
+				waited += 100;
+			}
+			waits.push(waited);
+		}
+
+		expect(waits).toEqual([0, 500, 1000, 2000, 4000, 8000, 10000, 10000]);
+	});
+
+	it("should restart at once again after the restarted Rojo served for ten seconds", async () => {
+		start();
+		rojo.markReady();
+		await crash(0);
+		rojo.markReady();
+		await crash(1);
+		await jest.advanceTimersByTimeAsync(500);
+		rojo.markReady();
+
+		await jest.advanceTimersByTimeAsync(10_000);
+		await crash(2);
+
+		expect(processes.spawned).toHaveLength(4);
+	});
+
+	it("should start nothing when it is stopped while it waits to restart", async () => {
+		start();
+		rojo.markReady();
+		await crash(0);
+		rojo.markReady();
+		await crash(1);
+
+		await rojo.terminate();
+		await jest.advanceTimersByTimeAsync(1_000);
+
+		expect(processes.spawned).toHaveLength(2);
+		expect(exits).toHaveLength(1);
 	});
 
 	it("should give up with Rojo's crash text when the restarted Rojo crashes before it serves", async () => {

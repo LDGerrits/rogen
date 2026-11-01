@@ -1085,7 +1085,7 @@ default.rogen.json - error: Rojo crashed again right after a restart, so Rogen s
 
 `rogen build --watch` and `rogen sourcemap --watch` do the same with Rojo's own watch. They print `Rojo crashed, so Rogen restarted it.`, and give up when the new Rojo crashes before its first build.
 
-Rojo 7.7.0 and 7.7.1 crash this way when you delete a folder that holds files inside a folder that the project file mounts. Rojo 7.6.1 doesn't. A crash after the new Rojo serves or builds gets a new restart, however soon it comes, so deleting several folders one after another keeps Rogen running. Under `--verbose`, Rogen shows the crash lines of each restart as debug lines.
+Rojo 7.7.0 and 7.7.1 crash this way when you delete a folder that holds files inside a folder that the project file mounts. Rojo 7.6.1 doesn't. A crash after the new Rojo serves or builds gets a new restart, however soon it comes, so deleting several folders one after another keeps Rogen running. When the crashes come one after another, Rogen waits before each restart: half a second, then twice as long each time, up to 10 seconds. Once a Rojo has served for 10 seconds, the next restart comes at once again. Under `--verbose`, Rogen shows the crash lines of each restart as debug lines.
 
 After a restart, press Connect in the Rojo plugin, because the plugin doesn't connect again by itself.
 

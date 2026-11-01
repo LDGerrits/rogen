@@ -14,7 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
-- `serve` and the `--watch` commands keep going when Rojo crashes on deleted folders more than once, and give up only when a restarted Rojo crashes before it serves.
+- `serve` and the `--watch` commands keep going when Rojo crashes on deleted folders more than once, and give up only when a restarted Rojo crashes before it serves. Back-to-back restarts wait a little longer each time, up to 10 seconds.
 - The write done before a crashed Rojo starts again is reported.
 - `serve` knows its server after the project's `name` changes, and a second `serve` of the same project exits 0: without `--port` on any port, and when both start at once.
 - `build --watch --json` and `sourcemap --watch --json` print Rojo's failure as `diagnostics`.

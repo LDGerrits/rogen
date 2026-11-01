@@ -1,3 +1,4 @@
+import { timeout } from "../../base/async.js";
 import { AbstractDisposable, DisposableStore } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import { onUnexpectedError } from "../../base/errors.js";
@@ -10,6 +11,12 @@ import {
 	SupervisedRojoProcess,
 } from "./rojo-runner.js";
 import { RojoServer, ServerMessage } from "./rojo-server.js";
+
+/** How long it waits before a restart that follows soon after the last: doubling from `first` up to `max`. */
+const RESTART_DELAY_MS = { first: 500, max: 10_000 };
+
+/** How long a Rojo serves before its crash is no longer one soon after the last restart. */
+const SERVED_LONG_MS = 10_000;
 
 export class SupervisedRojo
 	extends AbstractDisposable
@@ -45,7 +52,10 @@ export class SupervisedRojo
 	private ready = false;
 	private exited = false;
 	private stopping = false;
+	private readonly halted = new AbortController();
 	private restarting: Promise<void> | undefined;
+	private readyAt = 0;
+	private restartDelay = 0;
 
 	constructor(
 		private readonly start: () => RojoProcess,
@@ -64,18 +74,21 @@ export class SupervisedRojo
 	markReady(): boolean {
 		if (this.exited) return false;
 		this.ready = true;
+		this.readyAt = Date.now();
 		return true;
 	}
 
 	/** Ends the current Rojo, and starts no other. */
 	async terminate(): Promise<void> {
 		this.stopping = true;
+		this.halted.abort();
 		await this.restarting;
 		await this.current?.terminate();
 	}
 
 	override [Symbol.dispose](): void {
 		this.stopping = true;
+		this.halted.abort();
 		super[Symbol.dispose]();
 	}
 
@@ -146,6 +159,7 @@ export class SupervisedRojo
 			this.endedUnserved(exit, lines);
 			return;
 		}
+		await timeout(this.nextRestartDelay(), this.halted.signal);
 		if (!this.stopping) await this.options.beforeRestart?.();
 		if (this.stopping) {
 			this._onDidExit.fire({ exit });
@@ -154,5 +168,16 @@ export class SupervisedRojo
 		this.restarted = true;
 		this.launch();
 		this._onDidRestart.fire({ exit, lines });
+	}
+
+	/** None for a crash after a Rojo served a while, else twice the last, from `first` up to `max`. */
+	private nextRestartDelay(): number {
+		if (Date.now() - this.readyAt >= SERVED_LONG_MS) this.restartDelay = 0;
+		const delay = this.restartDelay;
+		this.restartDelay =
+			delay === 0
+				? RESTART_DELAY_MS.first
+				: Math.min(delay * 2, RESTART_DELAY_MS.max);
+		return delay;
 	}
 }
