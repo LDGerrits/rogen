@@ -1460,6 +1460,41 @@ describe("CoreInitService", () => {
 		});
 	});
 
+	describe("a roblox-ts folder", () => {
+		beforeEach(async () => {
+			await write(
+				"tsconfig.json",
+				JSON.stringify({ compilerOptions: { outDir: "build" } })
+			);
+			await write("src/Shop/server/Main.server.ts", "print(1)");
+		});
+
+		it("should ignore what the compiler and npm write in a new .gitignore", async () => {
+			await write("package.json", "{}");
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(
+				plan?.files.find(({ fileName }) => fileName === ".gitignore")
+					?.content
+			).toContain("/node_modules\n/build\n/include\n");
+		});
+
+		it("should watch with the project's own watch script", async () => {
+			await write(
+				"package.json",
+				JSON.stringify({ scripts: { watch: "rbxtsc -w" } })
+			);
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(plan?.nextSteps.run).toEqual([
+				"npm run watch",
+				"rogen serve",
+			]);
+		});
+	});
+
 	describe("the sample", () => {
 		const sampleFiles = (plan: InitPlan | undefined) =>
 			(plan?.files ?? [])

@@ -20,11 +20,11 @@ export class RobloxTsStarter {
 		return language.id === "roblox-ts" ? new RobloxTsStarter() : undefined;
 	}
 
-	/** Lines for the `.gitignore` that create-roblox-ts would have written. */
-	static ignored(several: boolean): string[] {
+	/** Lines for the `.gitignore` that create-roblox-ts would have written, with the folder the compiler writes. */
+	static ignored(several: boolean, outDir = OUT_DIR): string[] {
 		return [
 			"/node_modules",
-			`/${OUT_DIR}`,
+			`/${outDir}`,
 			"/include",
 			"*.tsbuildinfo",
 			...(several ? [`projects/*/${OUT_DIR}`, "projects/*/include"] : []),

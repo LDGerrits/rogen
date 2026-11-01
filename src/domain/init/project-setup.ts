@@ -319,7 +319,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				new ProjectTemplate(
 					kind,
 					path.basename(directory.path),
-					starter ? RobloxTsStarter.ignored(places !== undefined) : []
+					RobloxTsStarter.of(language)
+						? RobloxTsStarter.ignored(
+								places !== undefined,
+								compiledPath
+							)
+						: []
 				),
 				tree.value,
 				skipGit,
@@ -872,9 +877,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				)
 			);
 		builder.addRun(
-			...(compiler
-				? [(scaffold && "npm run watch") ?? compiler.compileCommand]
-				: []),
+			...(compiler ? [compiler.compileCommand] : []),
 			ProjectSetup.serveCommand(places, processedPathOf(choices))
 		);
 	}

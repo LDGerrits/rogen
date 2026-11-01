@@ -40,6 +40,12 @@ describe("RobloxTs", () => {
 		);
 	});
 
+	it("should watch through the watch script that create-roblox-ts writes", () => {
+		expect(
+			new RobloxTs({}, false).scaffolded().compiler.compileCommand
+		).toBe("npm run watch");
+	});
+
 	it("should compile to the outDir tsconfig.json names, else out", () => {
 		expect(new RobloxTs({ outDir: "build" }, true).compiler.outDir).toBe(
 			"build"

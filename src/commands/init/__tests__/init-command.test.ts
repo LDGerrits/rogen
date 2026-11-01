@@ -125,7 +125,7 @@ describe("init command", () => {
 				notes: ["Syncing from out, where roblox-ts compiles to."],
 				nextSteps: {
 					setup: [],
-					run: ["rbxtsc -w", "rogen serve"],
+					run: ["npx rbxtsc -w", "rogen serve"],
 					edits: [
 						'To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".',
 						"Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.",

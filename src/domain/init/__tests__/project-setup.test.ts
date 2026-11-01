@@ -254,9 +254,9 @@ describe("ProjectSetup plan", () => {
 			});
 		});
 
-		it("should start rbxtsc first for roblox-ts", async () => {
+		it("should start the local rbxtsc first for roblox-ts", async () => {
 			expect((await planFor("roblox-ts")).nextSteps.run).toEqual([
-				"rbxtsc -w",
+				"npx rbxtsc -w",
 				"rogen serve",
 			]);
 		});
