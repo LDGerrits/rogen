@@ -499,11 +499,10 @@ describe("StartedServer", () => {
 			expect(connections).toEqual(["opened 1", "closed 0"]);
 		});
 
-		it("should stop with Rojo's crash text when it crashes again right after the restart", async () => {
+		it("should stop with Rojo's crash text when it crashes again before the restarted one serves", async () => {
 			start();
 			await answer("s1");
 			await crash(0);
-			await answer("s2");
 
 			await crash(1);
 

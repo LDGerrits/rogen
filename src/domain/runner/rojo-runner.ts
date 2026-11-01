@@ -42,7 +42,7 @@ export interface RojoRestartEvent {
 /** The supervised Rojo stopped for good. */
 export interface SupervisedExitEvent {
 	readonly exit: ProcessExit;
-	/** Set when a restarted Rojo crashed again right away, so no other was started: what it printed about the crash. */
+	/** Set when a restarted Rojo crashed again before it served, so no other was started: what it printed about the crash. */
 	readonly gaveUp?: readonly string[];
 }
 
@@ -51,7 +51,7 @@ export interface SupervisedRojoOptions {
 	readonly beforeRestart?: () => Promise<void>;
 }
 
-/** A Rojo that is started again when it crashes, until it crashes back to back. A crash is an exit with a non-zero code that nobody asked for, of a Rojo that served. */
+/** A Rojo that is started again when it crashes, until a restarted one crashes before it serves. A crash is an exit with a non-zero code that nobody asked for, of a Rojo that served. */
 export interface SupervisedRojoProcess extends Disposable {
 	/** The id of the current Rojo's process. */
 	readonly pid: number | undefined;

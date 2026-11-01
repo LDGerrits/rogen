@@ -112,22 +112,23 @@ describe("SupervisedRojo", () => {
 		);
 	});
 
-	it("should give up with Rojo's crash text when the restarted Rojo crashes within thirty seconds", async () => {
+	it("should restart again when the restarted Rojo crashes soon after it serves again", async () => {
 		start();
 		rojo.markReady();
 		await crash(0);
 		rojo.markReady();
 
-		await jest.advanceTimersByTimeAsync(20_000);
+		await jest.advanceTimersByTimeAsync(6_000);
 		await crash(1);
+		rojo.markReady();
+		await crash(2);
 
-		expect(processes.spawned).toHaveLength(2);
-		expect(exits).toEqual([
-			{ exit: { code: 1, signal: null }, gaveUp: CRASH_LINES },
-		]);
+		expect(processes.spawned).toHaveLength(4);
+		expect(restarts).toHaveLength(3);
+		expect(exits).toEqual([]);
 	});
 
-	it("should give up when the restarted Rojo crashes before it serves", async () => {
+	it("should give up with Rojo's crash text when the restarted Rojo crashes before it serves", async () => {
 		start();
 		rojo.markReady();
 		await crash(0);
@@ -136,28 +137,15 @@ describe("SupervisedRojo", () => {
 		await crash(1);
 
 		expect(processes.spawned).toHaveLength(2);
-		expect(exits[0].gaveUp).toEqual(CRASH_LINES);
-	});
-
-	it("should restart again when the restarted Rojo crashes after thirty seconds", async () => {
-		start();
-		rojo.markReady();
-		await crash(0);
-		rojo.markReady();
-
-		await jest.advanceTimersByTimeAsync(31_000);
-		await crash(1);
-
-		expect(processes.spawned).toHaveLength(3);
-		expect(restarts).toHaveLength(2);
-		expect(exits).toEqual([]);
+		expect(exits).toEqual([
+			{ exit: { code: 1, signal: null }, gaveUp: CRASH_LINES },
+		]);
 	});
 
 	it("should give as the crash text the errors Rojo printed when it printed no crash", async () => {
 		start();
 		rojo.markReady();
 		await crash(0);
-		rojo.markReady();
 
 		processes.spawned[1].printError("[ERROR rojo] it broke\n");
 		processes.spawned[1].exit({ code: 2, signal: null });

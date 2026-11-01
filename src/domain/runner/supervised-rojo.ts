@@ -11,9 +11,6 @@ import {
 } from "./rojo-runner.js";
 import { RojoServer, ServerMessage } from "./rojo-server.js";
 
-/** How long a restarted Rojo must run before its next crash counts as a new one rather than the same one again. */
-const BACK_TO_BACK_MS = 30_000;
-
 export class SupervisedRojo
 	extends AbstractDisposable
 	implements SupervisedRojoProcess
@@ -46,7 +43,6 @@ export class SupervisedRojo
 	private readonly running = this._register(new DisposableStore());
 	private restarted = false;
 	private ready = false;
-	private startedAt = 0;
 	private stopping = false;
 	private restarting: Promise<void> | undefined;
 
@@ -85,7 +81,6 @@ export class SupervisedRojo
 		const child = this.running.add(this.start());
 		this.current = child;
 		this.ready = false;
-		this.startedAt = Date.now();
 		const errors: string[] = [];
 		const crash: string[] = [];
 		this.running.add(
@@ -123,10 +118,7 @@ export class SupervisedRojo
 			this._onDidExit.fire({ exit });
 			return;
 		}
-		if (
-			this.restarted &&
-			(!this.ready || Date.now() - this.startedAt < BACK_TO_BACK_MS)
-		) {
+		if (this.restarted && !this.ready) {
 			this._onDidExit.fire({ exit, gaveUp: lines });
 			return;
 		}

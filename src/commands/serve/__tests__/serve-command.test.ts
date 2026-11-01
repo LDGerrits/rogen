@@ -718,12 +718,11 @@ describe("serve command", () => {
 			expect(logService.lines.join("\n")).not.toContain("error");
 		});
 
-		it("should exit 1 with Rojo's crash text when it crashes again right after the restart", async () => {
+		it("should exit 1 with Rojo's crash text when it crashes again before the restarted one serves", async () => {
 			const result = serve();
 			await settle();
 			await answer("s1");
 			await crash(0);
-			await answer("s2");
 
 			await crash(1);
 			const error = await failureOf(result);
@@ -745,8 +744,9 @@ describe("serve command", () => {
 			await answer("s1");
 			await crash(0);
 			await answer("s2");
-
 			await crash(1);
+
+			await crash(2);
 			await result;
 
 			expect(printed().slice(2)).toEqual([
