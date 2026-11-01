@@ -318,16 +318,18 @@ export class CoreServeSession
 		const state = await this.probe.probe(target.address);
 		if (state.kind !== "serving" || state.info.session !== orphan.session)
 			return;
-		const left = `the Rojo (process ${orphan.pid}) that a rogen serve (process ${orphan.owner}) left running`;
-		let text = `Ended ${left} when it stopped without ending it.`;
+		let error: string | undefined;
 		try {
 			await this.rojoRunner.terminateTree(orphan.pid);
-		} catch (error) {
-			text = `Couldn't end ${left}: ${ErrorUtils.fromUnknown(error).message}`;
+		} catch (thrown) {
+			error = ErrorUtils.fromUnknown(thrown).message;
 		}
-		this._onDidOutput.fire({
+		this._onDidChange.fire({
+			kind: "orphan",
 			target,
-			message: { severity: "warning", text },
+			pid: orphan.pid,
+			owner: orphan.owner,
+			...(error !== undefined && { error }),
 		});
 	}
 

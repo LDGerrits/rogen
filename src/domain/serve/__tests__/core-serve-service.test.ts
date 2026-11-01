@@ -668,7 +668,7 @@ describe("CoreServeService", () => {
 			changes = [];
 			session.onDidChange((change: ServeChangeEvent) =>
 				changes.push(
-					`${change.kind} ${change.target.config.label}${change.kind === "retired" ? ` (${change.reason})` : change.kind === "refused" ? `: ${change.diagnostic.message}` : ""}`
+					`${change.kind} ${change.target.config.label}${change.kind === "retired" ? ` (${change.reason})` : change.kind === "refused" ? `: ${change.diagnostic.message}` : change.kind === "orphan" ? ` (process ${change.pid} of ${change.owner})${change.error ? `: ${change.error}` : ""}` : ""}`
 				)
 			);
 			const started = session.start();
@@ -904,9 +904,8 @@ describe("CoreServeService", () => {
 
 			expect(processes.terminatedTrees).toEqual([5001]);
 			expect(processes.spawned).toHaveLength(1);
-			expect(said).toEqual([
-				"warning: Ended the Rojo (process 5001) that a rogen serve (process 5000) left running when it stopped without ending it.",
-			]);
+			expect(said).toEqual([]);
+			expect(changes).toEqual(["orphan repo (process 5001 of 5000)"]);
 		});
 
 		it("should leave a server alone that went before the serve got to end it", async () => {
@@ -954,8 +953,9 @@ describe("CoreServeService", () => {
 
 			await start();
 
-			expect(said).toEqual([
-				"warning: Couldn't end the Rojo (process 5001) that a rogen serve (process 5000) left running: EINVAL",
+			expect(said).toEqual([]);
+			expect(changes).toEqual([
+				"orphan repo (process 5001 of 5000): EINVAL",
 			]);
 			expect(processes.spawned).toHaveLength(1);
 		});

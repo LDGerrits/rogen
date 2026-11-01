@@ -84,6 +84,15 @@ export const serveLineShape = S.union(
 		}),
 	}),
 	S.object({
+		orphan: S.object({
+			...serverEventFields,
+			pid: S.integer,
+			owner: S.optional(S.integer),
+			ended: S.boolean,
+			error: S.optional(S.string),
+		}),
+	}),
+	S.object({
 		stopped: S.object({
 			...serverEventFields,
 			reason: S.enum("exited", "crashed", "removed", "moved", "shutdown"),
@@ -189,6 +198,18 @@ export class ServeLog implements ServeReporter {
 				this.logService.info(
 					`Stopped serving ${label}${change.reason === "moved" ? ` at ${target.address.shown}` : ""}: ${RETIRED_BECAUSE[change.reason]}.`
 				);
+				return;
+			case "orphan": {
+				const left = `the Rojo (process ${change.pid}) that a rogen serve${change.owner === undefined ? "" : ` (process ${change.owner})`} left running`;
+				if (change.error)
+					this.logService.warn(
+						`Couldn't end ${left}: ${change.error}`
+					);
+				else
+					this.logService.info(
+						`Ended ${left} when it stopped without ending it.`
+					);
+			}
 		}
 	}
 
@@ -319,6 +340,21 @@ export class ServeJsonLog implements ServeReporter {
 				return;
 			case "retired":
 				this.line({ stopped: this.stoppedJson(target, change.reason) });
+				return;
+			case "orphan":
+				this.line({
+					orphan: {
+						...this.serverFields(target),
+						pid: change.pid,
+						...(change.owner !== undefined && {
+							owner: change.owner,
+						}),
+						ended: change.error === undefined,
+						...(change.error !== undefined && {
+							error: change.error,
+						}),
+					},
+				});
 		}
 	}
 

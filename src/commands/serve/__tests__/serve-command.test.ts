@@ -394,6 +394,47 @@ describe("serve command", () => {
 		]);
 	});
 
+	describe("when a serve that ended left its server running", () => {
+		beforeEach(async () => {
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+					pid: 5001,
+				})
+			);
+			requests.answer(ROJO_URL, {
+				projectName: "repo",
+				serverVersion: "7.7.1",
+				sessionId: "s1",
+			});
+			processes.running.add(5001);
+		});
+
+		it("should say as its own line that it ended that server", async () => {
+			void serve();
+			await settle();
+
+			expect(logService.lines).toContain(
+				"info: Ended the Rojo (process 5001) that a rogen serve (process 5000) left running when it stopped without ending it."
+			);
+		});
+
+		it("should print it as an orphan line with --json", async () => {
+			void serve([], { json: true });
+			await settle();
+
+			expect(printed()).toContainEqual({
+				orphan: {
+					config: "default.rogen.json",
+					pid: 5001,
+					owner: 5000,
+					ended: true,
+				},
+			});
+			expect(printed().some((line) => "output" in line)).toBe(false);
+		});
+	});
+
 	it("should print one JSON object per line", async () => {
 		void serve([], { json: true });
 		await settle();

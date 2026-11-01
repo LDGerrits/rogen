@@ -113,7 +113,17 @@ export type ServeChangeEvent =
 			readonly diagnostic: Diagnostic;
 	  }
 	/** A config to serve is already served by a server the session didn't start. */
-	| { readonly kind: "servedElsewhere"; readonly target: ServedTarget };
+	| { readonly kind: "servedElsewhere"; readonly target: ServedTarget }
+	/** The server a `rogen serve` that ended left on the target's port was ended so this one could start; `error` says why it couldn't be. */
+	| {
+			readonly kind: "orphan";
+			readonly target: ServeTarget;
+			/** The process that led the server. */
+			readonly pid: number;
+			/** The `rogen serve` that started it. */
+			readonly owner?: number;
+			readonly error?: string;
+	  };
 
 /** A running serve; the caller owns it and disposes it. */
 export interface ServeSession extends Disposable {
