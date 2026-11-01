@@ -34,6 +34,7 @@ import {
 	OptionDescriptor,
 	flagName,
 } from "../../../platform/environment/args.js";
+import { exitCodeOf } from "../../../platform/commands/command-failure.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { Registry } from "../../../platform/registry/registry.js";
 import { firstSentence } from "../help-pages.js";
@@ -98,6 +99,39 @@ describe("help command", () => {
 				"Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code."
 			);
 			expect(printed()).not.toContain("Exit codes");
+		});
+
+		it("should print the help on stderr and fail as a usage error for a line with no command, as Rojo does", async () => {
+			const { run, log } = commandHarness();
+
+			const result = await run("help", {
+				positionals: [],
+				bare: true,
+				options: {},
+			});
+
+			expect(log.reserved).toBe(true);
+			expect(log.texts("print")).toEqual([]);
+			expect(log.texts("info")[0]).toContain("USAGE:");
+			expect(exitCodeOf((result as ResultError<Error>).error)).toBe(2);
+		});
+
+		it("should print a usage failure document for a line with no command under --json", async () => {
+			const { run, log } = commandHarness();
+
+			const result = await run("help", {
+				positionals: [],
+				bare: true,
+				options: { json: true },
+			});
+
+			expect(log.entries).toEqual([]);
+			expect((result as ResultError<Error>).error).toEqual(
+				new UsageError(
+					"No command given.",
+					"Run 'rogen help' to see the commands."
+				)
+			);
 		});
 
 		it("should print the version as a JSON document for --version --json", async () => {

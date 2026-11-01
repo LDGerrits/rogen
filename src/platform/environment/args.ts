@@ -100,14 +100,14 @@ export interface CommandLine<
 	readonly positionals: readonly string[];
 	/** Whether help was asked for with `-h` alone, which prints the short form. */
 	readonly shortHelp?: true;
+	/** Whether the line names no command and asks for neither help nor the version, which Rojo refuses after printing its help. */
+	readonly bare?: true;
 	readonly options: OptionValues<O> & OptionValues<typeof GlobalOptions>;
 }
 
 interface ParsedCli {
 	readonly command: string;
 	readonly line: CommandLine;
-	/** Whether the line names no command and asks for neither help nor the version. */
-	readonly bare: boolean;
 }
 
 function toOptionTable(options: readonly OptionDescriptor[]) {
@@ -367,7 +367,6 @@ export function parseArgs(
 		}
 		return ok({
 			command: runs,
-			bare: positionals.length === 0 && !values.version && !values.help,
 			line: {
 				positionals: [
 					...(consumesWord
@@ -376,6 +375,9 @@ export function parseArgs(
 					...afterTerminator,
 				],
 				...(shortHelp && { shortHelp: true as const }),
+				...(positionals.length === 0 &&
+					!values.version &&
+					!values.help && { bare: true as const }),
 				options: values as CommandLine["options"],
 			},
 		});

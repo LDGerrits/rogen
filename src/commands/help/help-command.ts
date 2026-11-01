@@ -87,6 +87,16 @@ registerCommand(
 			).getCommands();
 			const pages = new HelpPages(commands);
 
+			if (line.bare) {
+				const missing = new UsageError(
+					"No command given.",
+					`Run 'rogen ${HELP_COMMAND}' to see the commands.`
+				);
+				if (line.options.json) return err(missing);
+				logService.reserveStdout();
+				logService.info(pages.overview());
+				return this.reported(missing);
+			}
 			if (target === undefined) {
 				if (line.options.json)
 					return this.printJson(

@@ -175,7 +175,7 @@ class RogenMain {
 			process.exitCode = exitCode(argsResult);
 			return;
 		}
-		const { command, line, bare } = argsResult.value;
+		const { command, line } = argsResult.value;
 		if (cwd === undefined && command !== HELP_COMMAND) {
 			const gone = new UsageError(
 				"The current folder no longer exists.",
@@ -217,7 +217,7 @@ class RogenMain {
 			});
 
 		if (result.isErr()) failure.report(result.error, command);
-		process.exitCode = exitCode(result, { bare });
+		process.exitCode = exitCode(result);
 		if (!notice.printedFirst) await notice.print();
 	}
 
