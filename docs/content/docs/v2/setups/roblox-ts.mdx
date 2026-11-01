@@ -15,7 +15,7 @@ rogen init --language roblox-ts
 
 `init` runs `npm create roblox-ts` first, which needs npm and the network. Then it writes the config and a small sample game. In a folder that already has a `tsconfig.json`, a bare `rogen init` finds roblox-ts and sets Rogen up beside it.
 
-The config that `init` writes:
+The config that `init` writes in a folder named `game`:
 
 ```json title="default.rogen.json"
 {
@@ -30,20 +30,23 @@ The config that `init` writes:
 	"compiledPath": "out",
 	"tree": {
 		"$className": "DataModel",
+		"Lighting": { "$path": "place/Lighting" },
 		"ReplicatedStorage": {
 			"rbxts_include": {
-				"$path": "include",
 				"node_modules": {
 					"$className": "Folder",
 					"@rbxts": { "$path": "node_modules/@rbxts" }
-				}
+				},
+				"$path": "include"
 			}
-		}
+		},
+		"SoundService": { "$path": "place/SoundService" },
+		"Workspace": { "$path": "place/Workspace" }
 	}
 }
 ```
 
-`compiledPath` is the `outDir` from `tsconfig.json`, where Rojo syncs from. The `tree` mounts the roblox-ts runtime and your `@rbxts` packages, so a package that you install with `npm i` reaches the game with no change to the config.
+`compiledPath` is the `outDir` from `tsconfig.json`, where Rojo syncs from. The `tree` mounts the roblox-ts runtime and your `@rbxts` packages, so a package that you install with `npm i` reaches the game with no change to the config. It also mounts `place`, Rojo's sample Baseplate and lighting, which `--no-sample` leaves out.
 
 ## Run the Compiler Beside Rogen
 
@@ -58,7 +61,7 @@ rogen serve
 
 ## Add a Feature
 
-roblox-ts projects name files in kebab-case and folders in lowercase, and the routes that `init` writes are lowercase to match:
+The routes that `init` writes for roblox-ts are lowercase, so the folders inside a feature are `client`, `server` and `shared`. The sample names its feature and files in PascalCase (`src/Greeter/shared/Greeting.ts`), and many roblox-ts projects use kebab-case instead:
 
 <RouteFigure
 	disk={`

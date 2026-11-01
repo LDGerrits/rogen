@@ -87,7 +87,7 @@ registerCommand(
 					},
 					examples: [
 						"rogen upload --asset_id 123456",
-						"rogen upload places/lobby --asset_id 123456 --api_key $KEY --universe_id 7890",
+						"rogen upload lobby --asset_id 123456 --api_key $KEY --universe_id 7890",
 						"rogen upload --asset_id 123456 --json",
 					],
 				},
