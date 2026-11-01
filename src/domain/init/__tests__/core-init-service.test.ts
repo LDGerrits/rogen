@@ -28,6 +28,7 @@ import {
 } from "../../../platform/diagnostics/diagnostic.js";
 import { CoreInitService } from "../core-init-service.js";
 import { MigratedProject } from "../project-migration.js";
+import { StarterPlaces } from "../starter-places.js";
 import { InitChoices, InitPlan, InitWritten } from "../init-service.js";
 
 const directory = path.resolve("/mock/my-game");
@@ -84,6 +85,10 @@ describe("CoreInitService", () => {
 		processes.installed.set("rojo", "/bin/rojo");
 		processes.outputs.set("/bin/rojo", ROJO_VERSION);
 		await fileSystem.createDirectory(directory);
+	});
+
+	afterEach(() => {
+		jest.restoreAllMocks();
 	});
 
 	let configs: CoreConfigService;
@@ -1969,6 +1974,15 @@ describe("CoreInitService", () => {
 			expect(places?.choiceHints?.several).toBe(
 				"src/common holds the shared code, src/game the first place; leaves src/Combat and src/Util.luau unplaced"
 			);
+		});
+
+		it("should not look for the code each layout leaves unplaced while the layout isn't asked", async () => {
+			await write("src/Combat/Hit.server.luau");
+			const search = jest.spyOn(StarterPlaces.prototype, "plan");
+
+			await review(new MockPromptService(["yes"]));
+
+			expect(search).not.toHaveBeenCalled();
 		});
 
 		it("should name loose scripts at the root that neither layout places", async () => {

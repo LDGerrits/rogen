@@ -137,9 +137,18 @@ export class InitQuestions {
 		);
 	}
 
-	/** Whether `places` asks: in a terminal, when no flag answers it. */
-	get asksPlaces(): boolean {
-		return this.interactive && this.choices.places === undefined;
+	/** Where `places` asks: up front only in a folder without code, else as a default the summary shows. */
+	private placesView(directory: InitDirectory): PromptService {
+		return directory.holdsCode ? this.promptService : this.essential;
+	}
+
+	/** Whether the user sees `places`: in a terminal, when no flag answers it, up front or under Customise. */
+	showsPlaces(directory: InitDirectory): boolean {
+		return (
+			this.interactive &&
+			this.choices.places === undefined &&
+			(this.placesView(directory) === this.essential || this.customising)
+		);
 	}
 
 	/** Whether a new project is several places, asked up front only in a folder without code; a `projects` folder here makes it the default for a compiled language. */
@@ -162,10 +171,9 @@ export class InitQuestions {
 				several,
 				booleanFlag("--places", !several)
 			);
-		const { holdsCode } = directory;
 		const answer = await this.ask(
 			"places",
-			holdsCode ? this.promptService : this.essential,
+			this.placesView(directory),
 			(view) =>
 				view.select<"one" | "several">({
 					message: "One place or several?",

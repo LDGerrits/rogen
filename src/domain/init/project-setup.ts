@@ -496,7 +496,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			return this.questions.places(
 				this.directory,
 				language,
-				this.questions.asksPlaces
+				this.questions.showsPlaces(this.directory)
 					? await this.unplacedBy(language, starter)
 					: {}
 			);
