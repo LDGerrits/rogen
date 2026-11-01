@@ -96,9 +96,8 @@ export const JsonOption = {
 export interface CommandLine<
 	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],
 > {
+	/** The words after the command word, and everything after the first `--`, which ends the options. */
 	readonly positionals: readonly string[];
-	/** Everything after the first `--`, as typed, which no command takes. */
-	readonly passthrough?: readonly string[];
 	/** Whether help was asked for with `-h` alone, which prints the short form. */
 	readonly shortHelp?: true;
 	readonly options: OptionValues<O> & OptionValues<typeof GlobalOptions>;
@@ -332,6 +331,16 @@ export function parseArgs(
 				? [token.value]
 				: []
 		);
+		const afterTerminator = terminator
+			? typed.slice(terminator.index + 1)
+			: [];
+		if (positionals.length === 0 && afterTerminator.length > 0)
+			return err(
+				new UsageError(
+					`'${afterTerminator[0]}' comes after '--', which ends the options, so it can't be the command.`,
+					"Remove the '--' before it."
+				)
+			);
 		const { runs, names, consumesWord } = commandOf(values, positionals);
 		const helpRawNames = tokens.flatMap((token) =>
 			token.kind === "option" && token.name === "help"
@@ -360,13 +369,13 @@ export function parseArgs(
 			command: runs,
 			bare: positionals.length === 0 && !values.version && !values.help,
 			line: {
-				positionals: consumesWord
-					? positionals.slice(1)
-					: positionals.slice(0, 1),
+				positionals: [
+					...(consumesWord
+						? positionals.slice(1)
+						: positionals.slice(0, 1)),
+					...afterTerminator,
+				],
 				...(shortHelp && { shortHelp: true as const }),
-				...(terminator && {
-					passthrough: typed.slice(terminator.index + 1),
-				}),
 				options: values as CommandLine["options"],
 			},
 		});

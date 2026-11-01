@@ -173,7 +173,7 @@ describe("parseArgs", () => {
 		expect(values(["build", "-y"]).assume).toBe(true);
 		expect(values(["build", "--yes", "--", "--yes"]).assume).toBe(true);
 		expect(
-			parse(["build", "--yes", "--", "--yes"]).unwrap().line.passthrough
+			parse(["build", "--yes", "--", "--yes"]).unwrap().line.positionals
 		).toEqual(["--yes"]);
 	});
 
@@ -305,32 +305,38 @@ describe("parseArgs", () => {
 		);
 	});
 
-	it("should pass everything after the first -- through untouched", () => {
+	it("should read everything after the first -- as positionals, as Rojo does", () => {
 		const { line } = parse([
-			"watch",
-			"lobby",
+			"build",
+			"-t",
+			"mock",
 			"--",
+			"base",
 			"--port",
-			"34873",
 			"--",
-			"x",
+			"-dash",
 		]).unwrap();
 
-		expect(line.positionals).toEqual(["lobby"]);
-		expect(line.passthrough).toEqual(["--port", "34873", "--", "x"]);
+		expect(line.positionals).toEqual(["base", "--port", "--", "-dash"]);
+		expect(line.options.variant).toEqual(["mock"]);
 	});
 
 	it("should not read options after -- as its own", () => {
-		const { line } = parse(["watch", "--", "--quiet"]).unwrap();
+		const { line } = parse(["where", "--", "--quiet"]).unwrap();
 
 		expect(line.options.quiet).toBeUndefined();
-		expect(line.passthrough).toEqual(["--quiet"]);
+		expect(line.positionals).toEqual(["--quiet"]);
 	});
 
-	it("should give no passthrough to a line without --", () => {
-		const { line } = parse(["watch", "lobby"]).unwrap();
+	it("should refuse a command after --, as Rojo does", () => {
+		const result = parse(["--", "build"]);
 
-		expect(line.passthrough).toBeUndefined();
+		expect(result.isErr() && result.error).toEqual(
+			new UsageError(
+				"'build' comes after '--', which ends the options, so it can't be the command.",
+				"Remove the '--' before it."
+			)
+		);
 	});
 
 	it("should leave an unknown command to the command service", () => {
@@ -373,7 +379,7 @@ describe("parseArgs", () => {
 	it("should not rewrite -t=mock after --", () => {
 		const { line } = parse(["build", "--", "-t=mock"]).unwrap();
 
-		expect(line.passthrough).toEqual(["-t=mock"]);
+		expect(line.positionals).toEqual(["-t=mock"]);
 	});
 
 	it.each([["--no-input"], ["--all"], ["-c", "x"]])(
