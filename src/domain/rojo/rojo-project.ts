@@ -61,6 +61,7 @@ export interface RojoProjectFile {
 	globIgnorePaths?: string[];
 	syncRules?: SyncRule[];
 	emitLegacyScripts?: boolean;
+	syncbackRules?: { ignorePaths?: string[]; createIgnoreDirPaths?: boolean };
 }
 
 /** The node to create for a missing ancestor, named by its instance path. */
@@ -273,7 +274,7 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 	/** Merges `data` into the node at `instancePath`, creating missing ancestors; a node that gets a `$path` loses a `Folder` class. */
 	insertNode(instancePath: readonly string[], data: Partial<RojoNode>): void {
 		if (instancePath.length === 0) return;
-		const parent = this.ensureNode(instancePath.slice(0, -1));
+		const parent = this.ensureContainer(instancePath.slice(0, -1));
 		const leaf = instancePath[instancePath.length - 1];
 		const existing = getOwn(parent, leaf);
 		const updated: RojoNode = {
@@ -373,11 +374,7 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 	}
 
 	/** Makes the node at `instancePath`, and each ancestor it lacks, a container when it is absent. */
-	ensureContainer(instancePath: readonly string[]): void {
-		this.ensureNode(instancePath);
-	}
-
-	private ensureNode(instancePath: readonly string[]): RojoNode {
+	ensureContainer(instancePath: readonly string[]): RojoNode {
 		let current = this.project.tree;
 		instancePath.forEach((segment, depth) => {
 			const next = getOwn(current, segment);

@@ -19,7 +19,6 @@ import {
 	ConfigCover,
 	CoveredTargets,
 	validFile,
-	EnclosingConfigs,
 } from "./config-service.js";
 import { CoreConfigSelection } from "./core-config-selection.js";
 import { ManagedConfig } from "./managed-config.js";
@@ -224,10 +223,6 @@ export class CoreConfigService implements ConfigService {
 			if (config && coversFolder(config.sourcePaths, folder))
 				return above;
 		}
-	}
-
-	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined> {
-		return this.discovery.findEnclosing(from);
 	}
 
 	async read(file: string): Promise<ConfigEntry> {

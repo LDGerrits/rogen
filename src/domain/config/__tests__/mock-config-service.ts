@@ -16,7 +16,6 @@ import {
 	ConfigCover,
 	ConfigService,
 	CoveredTargets,
-	EnclosingConfigs,
 	ValidConfigEntry,
 	validConfigs,
 } from "../config-service.js";
@@ -130,13 +129,8 @@ export class MockConfigService implements ConfigService {
 
 	constructor(
 		public entries: readonly ConfigEntry[] = [mockEntry()],
-		public enclosing: EnclosingConfigs | undefined = undefined,
 		public home = "/repo"
 	) {}
-
-	async findEnclosing(): Promise<EnclosingConfigs | undefined> {
-		return this.enclosing;
-	}
 
 	async select(): Promise<Result<ReloadableSelection, Error>> {
 		return ok(new MockConfigSelection(this.entries, this.home));

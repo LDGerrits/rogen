@@ -1,19 +1,12 @@
 import { Disposable, toDisposable } from "../../base/disposable.js";
 import path from "path";
 import { Result, err, tryWithAsync } from "../../base/result.js";
-import {
-	ConfigFile,
-	ConfigFileReader,
-} from "../../platform/config/config-file.js";
-import {
-	Diagnostic,
-	DiagnosticLocation,
-} from "../../platform/diagnostics/diagnostic.js";
+import { ConfigFileReader } from "../../platform/config/config-file.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
 	FileReader,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import { ConfigKeys } from "./config-keys.js";
 import { isConfigFileName, isProjectFileConfig } from "./config.js";
 import { FolderConfig, folderClashes } from "./folder-clashes.js";
 import { configStructure } from "./config-structure.js";
@@ -92,27 +85,13 @@ export class ConfigLoader {
 		const config = loaded.value;
 		const value = config.model.contents;
 		const hints = this.hintsOf(file, value);
-		if (hints.length > 0)
-			return { files: [file], value, resolved: err(hints) };
-		return this.resolve(config);
-	}
-
-	private resolve(config: ConfigFile): LoadedConfig {
-		const { file } = config;
-		const value = config.model.contents;
-		const keys = ConfigKeys.check(
-			config.model.keys,
-			(key): DiagnosticLocation => ({
-				resource: file,
-				position: config.positionOfKey(key),
-			})
-		);
-		if (keys.length > 0)
-			return { files: [file], value, resolved: err(keys) };
 		return {
 			files: [file],
 			value,
-			resolved: ConfigValidator.validateFile(config),
+			resolved:
+				hints.length > 0
+					? err(hints)
+					: ConfigValidator.validateFile(config),
 		};
 	}
 

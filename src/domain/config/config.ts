@@ -31,18 +31,6 @@ export interface RogenConfig extends RogenKeys {
 	readonly syncbackRules?: Record<string, unknown>;
 }
 
-interface ConfigValues {
-	getValue<T>(section?: string | readonly string[]): T | undefined;
-}
-
-/** One of Rogen's keys. */
-export function fieldOf<K extends keyof RogenKeys>(
-	values: ConfigValues,
-	key: K
-): RogenKeys[K] {
-	return values.getValue<RogenKeys[K]>(key);
-}
-
 const CONFIG_FILE_PATTERN = /^(.+)\.rogen\.jsonc?$/;
 
 /** The stem of a config file's name: `dist` for `dist.rogen.json`. */
@@ -85,26 +73,20 @@ export const isSyncbackFileName = (name: string): boolean =>
 /** The folder Rogen scans when a config declares routes and no source paths. */
 export const DEFAULT_SOURCE_PATH = "src";
 
-/** The source paths a config without `sourcePaths` has: the default folder when it has routes to scan it, else none. */
-export function defaultSourcePaths(routed: boolean): string[] {
-	return routed ? [DEFAULT_SOURCE_PATH] : [];
-}
-
 export const DEFAULT_PROJECT_FILE = projectFileName(DEFAULT_PROJECT);
-
-/** The names Rojo looks for in a folder, in its order. */
-export const DEFAULT_PROJECT_FILES = [
-	DEFAULT_PROJECT_FILE,
-	`${DEFAULT_PROJECT_FILE}c`,
-];
 
 /** Whether a file is named as a Rojo project file is. A config that is one was given no `.rogen.json`, and is its own output. */
 export const isProjectFileConfig = (file: string): boolean =>
 	isProjectFileName(path.basename(file));
 
-/** Whether Rojo reads this project file without a `name`, as it names the project after the folder. */
-export const isDefaultProjectFile = (file: string): boolean =>
-	DEFAULT_PROJECT_FILES.includes(path.basename(file));
+/** The Rojo project file a config writes, beside it and named for its stem; for a config that is a Rojo project file, that file. */
+export const projectFileOf = (configFile: string): string =>
+	isProjectFileConfig(configFile)
+		? configFile
+		: path.join(
+				path.dirname(configFile),
+				projectFileName(configStem(configFile) ?? DEFAULT_PROJECT)
+			);
 
 /** Rogen's keys, in the order `rogen fmt-project` writes them, before the `tree`. */
 export const ROGEN_KEYS: readonly (keyof RogenKeys)[] = [
@@ -116,20 +98,12 @@ export const ROGEN_KEYS: readonly (keyof RogenKeys)[] = [
 export const isRogenKey = (key: string): boolean =>
 	(ROGEN_KEYS as readonly string[]).includes(key);
 
-/** A config as `rogen fmt-project` writes it, so the first format changes nothing. */
-function configText(
-	config: Record<string, unknown>,
-	written?: WrittenTree
-): string {
-	return ProjectText.ofConfig(config, ROGEN_KEYS, written);
-}
-
-/** `written`: the tree of the project file the config was lifted from, which stays as the user wrote it where it is unchanged. */
+/** A config as `rogen fmt-project` writes it, so the first format changes nothing. `written`: the tree of the project file the config was lifted from, which stays as the user wrote it where it is unchanged. */
 export function configFileContent(
 	config: RogenConfig,
 	written?: WrittenTree
 ): string {
-	return configText({ ...config }, written);
+	return ProjectText.ofConfig({ ...config }, ROGEN_KEYS, written);
 }
 
 type SourcePathOverlap =

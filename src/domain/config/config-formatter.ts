@@ -10,7 +10,6 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { JsoncComments } from "../../base/jsonc-comments.js";
 import { ProjectText } from "../rojo/project-text.js";
 import { configStructure } from "./config-structure.js";
-import { ConfigKeys } from "./config-keys.js";
 import { ConfigValidator } from "./config-validator.js";
 import { ROGEN_KEYS } from "./config.js";
 
@@ -40,11 +39,6 @@ export class ConfigFormatter {
 		const parsed = this.reader.parse(text, file);
 		if (parsed.isErr()) return err([...parsed.error.diagnostics]);
 		const config = parsed.value;
-		const keys = ConfigKeys.check(config.model.keys, (key) => ({
-			resource: file,
-			position: config.positionOfKey(key),
-		}));
-		if (keys.length > 0) return err(keys);
 		const validated = ConfigValidator.validateFile(config);
 		if (validated.isErr()) return err(validated.error);
 		const contents = config.model.contents;

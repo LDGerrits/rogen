@@ -1,5 +1,6 @@
 import path from "path";
 import { Disposable, toDisposable } from "../../base/disposable.js";
+import { ancestors } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { IoError, ProjectError, UsageError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
@@ -9,12 +10,12 @@ import {
 	FileType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
+import { RojoFile } from "../rojo/rojo.js";
 import { isProjectFileName, projectFileName } from "../rojo/rojo-project.js";
 import {
 	DEFAULT_CONFIG_FILE,
 	DEFAULT_CONFIG_FILE_NAMES,
 	DEFAULT_PROJECT,
-	DEFAULT_PROJECT_FILES,
 	configStem,
 	isConfigFileName,
 	isDefaultConfigFileName,
@@ -22,11 +23,7 @@ import {
 	isSyncbackFileName,
 	projectStem,
 } from "./config.js";
-import {
-	ConfigCover,
-	ConfigFolderCheck,
-	EnclosingConfigs,
-} from "./config-service.js";
+import { ConfigCover, ConfigFolderCheck } from "./config-service.js";
 
 export interface DiscoveredConfigs {
 	/** The working directory. */
@@ -160,7 +157,9 @@ export class ConfigDiscovery {
 		target: string,
 		ref: string
 	): Promise<Result<NamedConfig, Error>> {
-		const folder = await this.folderDefault(target, ref);
+		const folder = (await this.defaultIn(target, ref)).map((file) => ({
+			file,
+		}));
 		if (!isBareName(ref)) return folder;
 		const file = await this.fileNamed(this.environmentService.cwd, ref);
 		if (file.isErr() || !file.value) return folder;
@@ -170,14 +169,6 @@ export class ConfigDiscovery {
 			...folder.value,
 			note: `"${ref}" is a folder with a default config and also ${name}: using the folder. To use the file, name it: ${name}.`,
 		});
-	}
-
-	private async folderDefault(
-		target: string,
-		ref: string
-	): Promise<Result<NamedConfig, Error>> {
-		const config = await this.defaultIn(target, ref);
-		return config.isOk() ? ok({ file: config.value }) : err(config.error);
 	}
 
 	private async projectFileRef(
@@ -341,7 +332,7 @@ export class ConfigDiscovery {
 
 	/** The Rojo project file of a folder with no config: Rogen reads it as a config whose output is itself, and writes nothing. */
 	async adoptable(directory: string): Promise<string | undefined> {
-		for (const name of DEFAULT_PROJECT_FILES) {
+		for (const name of RojoFile.DEFAULT_PROJECTS) {
 			const file = path.join(directory, name);
 			if (await this.fileSystemService.isFile(file)) return file;
 		}
@@ -368,51 +359,32 @@ export class ConfigDiscovery {
 				whole: true,
 			};
 		}
-		let directory = (await this.fileSystemService.isDirectory(target))
-			? target
-			: path.dirname(target);
-		for (;;) {
+		for (const directory of await this.foldersUp(target)) {
 			const [config] = await this.defaultConfigs(directory);
 			const file = config ?? (await this.adoptable(directory));
 			if (file) return { file, whole: false };
-			const parent = path.dirname(directory);
-			if (parent === directory) return undefined;
-			directory = parent;
 		}
+		return undefined;
 	}
 
 	/** Every named config in the folder of `target` and in each folder above it, nearest folder first: the candidates for a path no default config answers for. */
 	async namedConfigsAbove(target: string): Promise<string[]> {
-		let directory = (await this.fileSystemService.isDirectory(target))
-			? target
-			: path.dirname(target);
 		const found: string[] = [];
-		for (;;) {
+		for (const directory of await this.foldersUp(target))
 			found.push(
 				...(await this.list(directory)).filter(
 					(file) => !isDefaultConfigFileName(path.basename(file))
 				)
 			);
-			const parent = path.dirname(directory);
-			if (parent === directory) return found;
-			directory = parent;
-		}
+		return found;
 	}
 
-	/** The nearest folder above `from`, the working directory unless given, with a default config. */
-	async findEnclosing(
-		from = this.environmentService.cwd
-	): Promise<EnclosingConfigs | undefined> {
-		let directory = from;
-		for (;;) {
-			const parent = path.dirname(directory);
-			if (parent === directory) return undefined;
-			directory = parent;
-			const fileNames = (await this.defaultConfigs(directory)).map(
-				(file) => path.basename(file)
-			);
-			if (fileNames.length > 0) return { directory, fileNames };
-		}
+	/** The folder of `target`, or `target` when it is one, then each folder above it. */
+	private async foldersUp(target: string): Promise<string[]> {
+		const start = (await this.fileSystemService.isDirectory(target))
+			? target
+			: path.dirname(target);
+		return [start, ...ancestors(start)];
 	}
 }
 

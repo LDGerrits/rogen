@@ -1,7 +1,7 @@
 import path from "path";
 import { parse } from "../../base/jsonc.js";
 import { isObject } from "../../base/objects.js";
-import { normalizeDir } from "../../base/path.js";
+import { ancestors, normalizeDir } from "../../base/path.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import {
 	Compiler,
@@ -43,11 +43,6 @@ function compilerOption(tsconfig: unknown, key: string): string | undefined {
 	}
 	const value = tsconfig.compilerOptions[key];
 	return typeof value === "string" && value !== "" ? value : undefined;
-}
-
-function ancestorsOf(dir: string): string[] {
-	const parent = path.dirname(dir);
-	return parent === dir ? [dir] : [dir, ...ancestorsOf(parent)];
 }
 
 const firstSegment = (dir: string): string =>
@@ -257,7 +252,7 @@ export class RobloxTsDetector implements LanguageDetector {
 			specifier.startsWith(".") || path.isAbsolute(specifier);
 		const bases = relative
 			? [path.resolve(path.dirname(from), specifier)]
-			: ancestorsOf(path.dirname(from)).map((dir) =>
+			: [...ancestors(from)].map((dir) =>
 					path.join(dir, "node_modules", specifier)
 				);
 		for (const base of bases) {

@@ -2,18 +2,9 @@ import path from "path";
 import { commonAncestor, samePath, toPosix } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { Target } from "../roblox/roblox.js";
-import {
-	ParsedProjectFile,
-	RojoProject,
-	projectFileName,
-} from "../rojo/rojo-project.js";
+import { ParsedProjectFile, RojoProject } from "../rojo/rojo-project.js";
 import { SyncRules } from "../rojo/sync-rules.js";
-import {
-	DEFAULT_PROJECT,
-	DEFAULT_SOURCE_PATH,
-	configStem,
-	isProjectFileConfig,
-} from "./config.js";
+import { DEFAULT_SOURCE_PATH, projectFileOf } from "./config.js";
 import { DeclaredKeys } from "./declared-keys.js";
 
 interface ResolvedConfigFields {
@@ -79,12 +70,7 @@ export class ResolvedConfig {
 
 	/** The Rojo project file the config writes, beside it and named for its stem; for a config that is a Rojo project file, that file. */
 	get projectFile(): string {
-		return isProjectFileConfig(this.file)
-			? this.file
-			: path.join(
-					this.projectDir,
-					projectFileName(configStem(this.file) ?? DEFAULT_PROJECT)
-				);
+		return projectFileOf(this.file);
 	}
 
 	/** Whether the only source path is the default one, which a config without `sourcePaths` has. */
