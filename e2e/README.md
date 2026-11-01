@@ -60,9 +60,10 @@ the `default.project.json` Rogen writes must equal the original apart from
 can't write back yet is listed in the test with what it needs; its test is
 `it.failing`, so it fails the day that works and the mark has to go.
 
-`rojo-parity.test.ts` runs Rojo and Rogen on the same project and compares what they make. Each of Rojo's
-build-test projects is built into `.rbxl`, `.rbxm` and `.rbxlx` and mapped with each `sourcemap` flag, and the
-files must be the same bytes. A plain Rojo project is edited in
+The `rojo-parity-*.test.ts` files run Rojo and Rogen on the same project and compare what they make. They are
+three files so that Jest runs them side by side. Each of Rojo's build-test projects is built into `.rbxl`,
+`.rbxm` and `.rbxlx` (`-build`) and mapped with each `sourcemap` flag (`-sourcemap`), and the files must be the
+same bytes. In `-syncback`, a plain Rojo project is edited in
 Studio in twelve ways, and `rogen syncback -y` must leave the same files as `rojo syncback`.
 Each of Rojo's syncback-test projects (`rojo-syncback-tests/`, vendored by the same script) is saved as a
 `default.rogen.json`; `rogen syncback -y` must leave the same files as `rojo syncback` apart from the project file, and

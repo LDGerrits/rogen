@@ -2,172 +2,12 @@ import { spawnSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { stripVTControlCharacters } from "util";
-import {
-	describeWithRojo,
-	makeRojoDir,
-} from "../src/domain/rojo/__tests__/rojo-cli.js";
-import { bundleCli, invocation } from "./harness.js";
-import { PROJECTS_DIR, SYNCBACK_PROJECTS_DIR } from "./rojo-conformance.js";
-
-const projects = fs
-	.readdirSync(PROJECTS_DIR, { withFileTypes: true })
-	.filter(
-		(entry) =>
-			entry.isDirectory() &&
-			fs.existsSync(
-				path.join(PROJECTS_DIR, entry.name, "default.project.json")
-			)
-	)
-	.map((entry) => entry.name);
-
-const FORMATS = ["rbxl", "rbxm", "rbxlx"];
-const SOURCEMAP_FLAGS = [
-	[],
-	["--include-non-scripts"],
-	["--absolute"],
-	["--include-non-scripts", "--absolute"],
-];
-
-/** The files under `root`, by relative path, with what is in them; those `skip` names are left out. */
-const snapshot = (
-	root: string,
-	skip: readonly string[] = []
-): Record<string, string> => {
-	const seen: Record<string, string> = {};
-	const walk = (dir: string) => {
-		for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-			if (skip.includes(entry.name)) continue;
-			const full = path.join(dir, entry.name);
-			if (entry.isDirectory()) {
-				seen[`${path.relative(root, full)}/`] = "";
-				walk(full);
-			} else
-				seen[path.relative(root, full)] = fs
-					.readFileSync(full)
-					.toString("base64");
-		}
-	};
-	walk(root);
-	return seen;
-};
-
-interface Run {
-	readonly status: number | null;
-	readonly stdout: string;
-}
+import { describeWithRojo } from "../src/domain/rojo/__tests__/rojo-cli.js";
+import { SYNCBACK_PROJECTS_DIR } from "./rojo-conformance.js";
+import { parityRunners, snapshot } from "./rojo-parity.js";
 
 describeWithRojo("Rogen and Rojo on the same project", () => {
-	let bundle: ReturnType<typeof bundleCli>;
-	let parent: string;
-
-	const rogen = (
-		cwd: string,
-		args: readonly string[],
-		input?: string
-	): Run => {
-		const [command, rest] = invocation(bundle.cli, args);
-		const result = spawnSync(command, [...rest], {
-			cwd,
-			encoding: "utf8",
-			input,
-			timeout: 60_000,
-		});
-		return { status: result.status, stdout: result.stdout };
-	};
-
-	const rojo = (cwd: string, args: string[], input?: string): Run => {
-		const result = spawnSync("rojo", args, {
-			cwd,
-			encoding: "utf8",
-			input,
-			timeout: 60_000,
-		});
-		return { status: result.status, stdout: result.stdout };
-	};
-
-	beforeAll(() => {
-		bundle = bundleCli();
-		parent = makeRojoDir("rogen-parity-");
-	});
-
-	afterAll(() => {
-		bundle.dispose();
-		fs.rmSync(parent, { recursive: true, force: true });
-	});
-
-	const copies = (name: string) => {
-		const dir = fs.mkdtempSync(path.join(parent, `${name}-`));
-		const [byRojo, byRogen] = ["rojo", "rogen"].map((side) => {
-			const copy = path.join(dir, side, "project");
-			fs.cpSync(path.join(PROJECTS_DIR, name), copy, { recursive: true });
-			return copy;
-		});
-		fs.renameSync(
-			path.join(byRogen, "default.project.json"),
-			path.join(byRogen, "default.rogen.json")
-		);
-		return { dir, byRojo, byRogen };
-	};
-
-	describe("a build test of Rojo's", () => {
-		it.each(projects)(
-			"should build %s into each format as Rojo does",
-			(name) => {
-				const { dir, byRojo, byRogen } = copies(name);
-				const differing = FORMATS.filter((format) => {
-					const expected = rojo(byRojo, [
-						"build",
-						"default.project.json",
-						"-o",
-						path.join(dir, `rojo.${format}`),
-					]);
-					const actual = rogen(byRogen, [
-						"build",
-						"-o",
-						path.join(dir, `rogen.${format}`),
-					]);
-					return (
-						expected.status !== 0 ||
-						actual.status !== 0 ||
-						!fs
-							.readFileSync(path.join(dir, `rogen.${format}`))
-							.equals(
-								fs.readFileSync(
-									path.join(dir, `rojo.${format}`)
-								)
-							)
-					);
-				});
-
-				expect(differing).toEqual([]);
-			},
-			60_000
-		);
-
-		it.each(projects)(
-			"should write the sourcemap of %s as Rojo does, with each flag",
-			(name) => {
-				const { byRojo, byRogen } = copies(name);
-				const differing = SOURCEMAP_FLAGS.filter((flags) => {
-					const expected = rojo(byRojo, [
-						"sourcemap",
-						...flags,
-						"default.project.json",
-					]);
-					const actual = rogen(byRogen, ["sourcemap", ...flags]);
-					return (
-						expected.status !== 0 ||
-						actual.status !== 0 ||
-						actual.stdout.split(byRogen).join("") !==
-							expected.stdout.split(byRojo).join("")
-					);
-				});
-
-				expect(differing).toEqual([]);
-			},
-			60_000
-		);
-	});
+	const { rogen, rojo, folder } = parityRunners();
 
 	describe("a syncback test of Rojo's, as a default.rogen.json", () => {
 		const cases = fs
@@ -192,10 +32,7 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 			).tree;
 
 		const copy = (name: string, side: string) => {
-			const to = path.join(
-				fs.mkdtempSync(path.join(parent, `syncback-${name}-`)),
-				side
-			);
+			const to = path.join(folder(`syncback-${name}-`), side);
 			fs.cpSync(
 				path.join(SYNCBACK_PROJECTS_DIR, name, "input-project"),
 				to,
@@ -349,9 +186,7 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 		it.each(Object.entries(SCENARIOS))(
 			"should sync back %s as Rojo does",
 			(name, edit) => {
-				const dir = fs.mkdtempSync(
-					path.join(parent, `syncback-${name.replace(/ /g, "-")}-`)
-				);
+				const dir = folder(`syncback-${name.replace(/ /g, "-")}-`);
 				const base = path.join(dir, "base");
 				fs.mkdirSync(base);
 				write(base);
