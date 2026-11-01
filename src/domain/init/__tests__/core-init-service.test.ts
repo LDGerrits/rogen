@@ -409,6 +409,27 @@ describe("CoreInitService", () => {
 			name: string
 		) => plan?.files.find(({ fileName }) => fileName === name);
 
+		it("should show in the summary that there is no hook, and not point to the flag, in a run that asks", async () => {
+			await write(".claude/keep", "");
+			const prompts = new MockPromptService([
+				"luau",
+				"one",
+				"customise",
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				false,
+				"yes",
+			]);
+
+			const plan = (await serviceFor(prompts).plan()).unwrap();
+
+			expect(plan?.summary).toContainEqual({
+				area: "Agents",
+				text: "rules in AGENTS.md, no hook for Claude Code",
+			});
+			expect(plan?.notes.join("\n")).not.toContain("--agent-hook");
+		});
+
 		it("should offer it where an agent is in use, and write the script and the agent's file", async () => {
 			await write(".claude/keep", "");
 
@@ -1629,6 +1650,24 @@ describe("CoreInitService", () => {
 			);
 			expect(asked?.notes.join("\n")).not.toContain("--no-sample");
 			expect(unasked?.notes.join("\n")).toContain("--no-sample");
+		});
+
+		it("should name the code that several places would leave unplaced", async () => {
+			await write("src/Combat/Hit.server.luau");
+			await write("src/Util.luau");
+			const prompts = new MockPromptService({
+				"One place or several?": "one",
+				[CREATE]: "yes",
+			});
+
+			await review(prompts);
+			const places = prompts.prompts.find(
+				({ message }) => message === "One place or several?"
+			);
+
+			expect(places?.choiceHints?.several).toBe(
+				"src/common holds the shared code, src/game the first place; leaves src/Combat and src/Util.luau unplaced"
+			);
 		});
 
 		it("should offer no Customise when every question the summary shows was asked", async () => {

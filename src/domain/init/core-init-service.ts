@@ -63,6 +63,8 @@ function shapingFlagsOf(choices: InitChoices): string[] {
 interface RunPrompts {
 	readonly quick: PromptService;
 	readonly essential: PromptService;
+	/** Whether the quick questions are asked rather than taken by default, as under Customise. */
+	readonly customising?: boolean;
 }
 
 /** What the summary asks before init writes, which names what it does. */
@@ -131,7 +133,11 @@ export class CoreInitService implements InitService {
 		let mode: ReviewMode = "quick";
 		for (;;) {
 			prompts.begin(mode);
-			const planned = await this.planWithin(options, prompts);
+			const planned = await this.planWithin(options, {
+				quick: prompts.quick,
+				essential: prompts.essential,
+				customising: mode === "customise",
+			});
 			if (planned.isErr() || !planned.value || prompts.asked === 0)
 				return planned;
 			const verdict = await this.accepted(
@@ -181,7 +187,8 @@ export class CoreInitService implements InitService {
 			prompts.quick,
 			interactive,
 			choices,
-			prompts.essential
+			prompts.essential,
+			prompts.customising
 		);
 		const directory = await this.prepare(folder, place !== undefined);
 		if (directory.isErr()) return directory;

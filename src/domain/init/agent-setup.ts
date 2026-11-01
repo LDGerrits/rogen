@@ -54,7 +54,7 @@ export class AgentSetup implements Setup<AgentChoices> {
 				)
 			);
 		if (hook) builder.addAgentHook(this.hooks);
-		else if (this.hooks.offered) {
+		else if (this.hooks.offered && !this.questions.customising) {
 			const { agents } = this.hooks;
 			const one = agents.length === 1;
 			builder.addNote(
@@ -67,7 +67,11 @@ export class AgentSetup implements Setup<AgentChoices> {
 				...(rules || this.agentFile.hasBlock
 					? [`rules in ${this.agentFile.blockFileName}`]
 					: []),
-				...(hook ? [`hook for ${this.hooks.agents.join(", ")}`] : []),
+				...(hook
+					? [`hook for ${this.hooks.agents.join(", ")}`]
+					: this.hooks.offered
+						? [`no hook for ${this.hooks.agents.join(", ")}`]
+						: []),
 			].join(", ") || "none"
 		);
 		if (this.agentFile.hasBlock && this.questions.choices.agentRules)

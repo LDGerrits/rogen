@@ -37,7 +37,9 @@ export class InitQuestions {
 		readonly interactive: boolean,
 		readonly choices: InitChoices = {},
 		/** Asks the questions that are always asked, where `promptService` takes the default of those a summary shows. */
-		private readonly essential: PromptService = promptService
+		private readonly essential: PromptService = promptService,
+		/** Whether `promptService` asks every question rather than taking the defaults, as under Customise. */
+		readonly customising = false
 	) {}
 
 	private decide<T extends InitDecision["value"]>(
@@ -105,10 +107,11 @@ export class InitQuestions {
 		});
 	}
 
-	/** Whether a new project is several places; a `projects` folder here makes it the default for a compiled language. */
+	/** Whether a new project is several places; a `projects` folder here makes it the default for a compiled language. `unplaced`: the code here that several places would leave where nothing places it. */
 	async places(
 		directory: InitDirectory,
-		language: Language
+		language: Language,
+		unplaced: readonly string[] = []
 	): Promise<boolean | undefined> {
 		const given = this.choices.places;
 		if (given !== undefined) return given;
@@ -135,9 +138,11 @@ export class InitQuestions {
 				{
 					value: "several",
 					label: "Several places",
-					hint: language.compiler
-						? `${PROJECTS_FOLDER}/${COMMON_FOLDER} holds the shared code, ${PROJECTS_FOLDER}/game the first place`
-						: `src/${COMMON_FOLDER} holds the shared code, src/game the first place`,
+					hint: `${
+						language.compiler
+							? `${PROJECTS_FOLDER}/${COMMON_FOLDER} holds the shared code, ${PROJECTS_FOLDER}/game the first place`
+							: `src/${COMMON_FOLDER} holds the shared code, src/game the first place`
+					}${unplaced.length > 0 ? `; leaves ${unplaced.length > 2 ? `${unplaced[0]} and ${unplaced.length - 1} more` : joinedWithAnd(unplaced)} unplaced` : ""}`,
 				},
 			],
 			initialValue: several ? "several" : "one",

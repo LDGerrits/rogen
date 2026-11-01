@@ -36,6 +36,8 @@ export interface AskedPrompt extends PromptDetails {
 	readonly message: string;
 	/** The values a select offered. */
 	readonly choices?: readonly string[];
+	/** The hint of each choice, by value. */
+	readonly choiceHints?: Readonly<Record<string, string | undefined>>;
 }
 
 export class MockPromptService implements PromptService {
@@ -71,7 +73,13 @@ export class MockPromptService implements PromptService {
 		options: SelectPromptOptions<T>
 	): Promise<T | undefined> {
 		return this.next<T>(
-			{ ...options, choices: options.choices.map(({ value }) => value) },
+			{
+				...options,
+				choices: options.choices.map(({ value }) => value),
+				choiceHints: Object.fromEntries(
+					options.choices.map(({ value, hint }) => [value, hint])
+				),
+			},
 			options.initialValue
 		);
 	}
@@ -80,7 +88,7 @@ export class MockPromptService implements PromptService {
 		options: AskedPrompt,
 		initial: T | undefined
 	): T | undefined {
-		const { message, description, hint, choices } = options;
+		const { message, description, hint, choices, choiceHints } = options;
 		if (this.byQuestion && this.asked.includes(message))
 			throw new Error(
 				`"${message}" was asked again; script the answers as a list.`
@@ -91,6 +99,7 @@ export class MockPromptService implements PromptService {
 			description,
 			hint,
 			...(choices && { choices }),
+			...(choiceHints && { choiceHints }),
 		});
 		const answer = this.byQuestion
 			? this.answerFor(message, initial)

@@ -180,18 +180,17 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const starter = this.starterFor(kind, picked);
 		const language = starter ? (picked.scaffolded?.() ?? picked) : picked;
 
+		const startingPlaces = await new StarterPlaces(
+			this.fileSystemService
+		).plan(directory.path, starter);
 		const several = await this.severalPlaces(
 			kind,
 			language,
-			starter !== undefined
+			starter !== undefined,
+			startingPlaces
 		);
 		if (several === undefined) return ok(undefined);
-		const places = several
-			? await new StarterPlaces(this.fileSystemService).plan(
-					directory.path,
-					starter
-				)
-			: undefined;
+		const places = several ? startingPlaces : undefined;
 		const taken = places ? await this.placeTaken(places) : undefined;
 		if (taken) return err([taken]);
 
@@ -433,14 +432,36 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	private async severalPlaces(
 		kind: InitKind,
 		language: Language,
-		scaffolded: boolean
+		scaffolded: boolean,
+		places: StartingPlaces
 	): Promise<boolean | undefined> {
 		const problem = this.noPlacesBecause(kind, language, scaffolded);
 		if (problem === undefined)
-			return this.questions.places(this.directory, language);
+			return this.questions.places(
+				this.directory,
+				language,
+				await this.codeOutsidePlaces(places, language)
+			);
 		if (this.questions.choices.places === true)
 			throw new UsageError(`--places ${problem}`);
 		return false;
+	}
+
+	/** The code here that the source paths of `places` would not hold. */
+	private async codeOutsidePlaces(
+		places: StartingPlaces,
+		language: Language
+	): Promise<string[]> {
+		if (language.compiler || this.directory.layout.codeFolders.length === 0)
+			return [];
+		return new CodeFinder(this.fileSystemService).codeOutside(
+			this.directory.path,
+			places.sourcePaths.map(normalizeDir),
+			[
+				...this.directory.workspace.packageDirs,
+				...language.reservedFolders,
+			].map(normalizeDir)
+		);
 	}
 
 	/** The tool that starts a new place of `language` in a folder with nothing of its own: no code, no `package.json` or `tsconfig.json` (a language that is present has its own) for the tool to write over, and no project file to lift. */
