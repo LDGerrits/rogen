@@ -534,7 +534,7 @@ describeWithRojo("end to end serve", () => {
 
 		expect(await second.exited).toBe(1);
 		expect(second.output).toContain(
-			`Port ${serve.port} is taken by Rojo serving Game, which rogen serve started for default.rogen.json, so dist.rogen.json can't be served there. Stop it, set a servePort in dist.rogen.json, or run 'rogen serve dist.rogen.json --port`
+			`Port ${serve.port} is taken by Rojo serving Game, which rogen serve started for default.rogen.json, so dist.rogen.json can't be served there. Stop it, set a servePort in dist.rogen.json, or run 'rogen serve dist --port`
 		);
 		expect(await rojoProject(serve.port)).toBe("Game");
 	}, 40_000);

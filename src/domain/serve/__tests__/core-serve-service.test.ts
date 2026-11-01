@@ -282,7 +282,35 @@ describe("CoreServeService", () => {
 			})) as DiagnosticsError;
 
 			expect(error.diagnostics[0].message).toBe(
-				"Port 34872 is taken by Rojo serving repo, which rogen serve started for default.rogen.json, so dist.rogen.json can't be served there. Stop it, set a servePort in dist.rogen.json, or run 'rogen serve dist.rogen.json --port <port>'."
+				"Port 34872 is taken by Rojo serving repo, which rogen serve started for default.rogen.json, so dist.rogen.json can't be served there. Stop it, set a servePort in dist.rogen.json, or run 'rogen serve dist --port <port>'."
+			);
+		});
+
+		it("should name the config by its file when its bare name reads a folder", async () => {
+			await memFs.writeFile(
+				"/repo/dist.rogen.json",
+				config({ name: "repo", compiledPath: "dist" })
+			);
+			await memFs.writeFile(
+				"/repo/dist/default.rogen.json",
+				config({ name: "dist" })
+			);
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					configFile: "/repo/default.rogen.json",
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+
+			const error = (await errorOf({
+				refs: ["dist.rogen.json"],
+			})) as DiagnosticsError;
+
+			expect(error.diagnostics[0].message).toContain(
+				"or run 'rogen serve dist.rogen.json --port <port>'."
 			);
 		});
 

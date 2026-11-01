@@ -954,7 +954,7 @@ Whether this is an error depends on what started the server:
 - Anything else, such as a `rojo serve` you ran yourself or an Argon server: an error, even when it serves a project with the same name. The message says that another process holds the port.
 
 ```
-error: Port 34872 is taken by Rojo serving game, which rogen serve started for game.rogen.json, so lobby.rogen.json can't be served there. Stop it, set a servePort in lobby.rogen.json, or run 'rogen serve lobby.rogen.json --port <port>'. (serve.portTaken)
+error: Port 34872 is taken by Rojo serving game, which rogen serve started for game.rogen.json, so lobby.rogen.json can't be served there. Stop it, set a servePort in lobby.rogen.json, or run 'rogen serve lobby --port <port>'. (serve.portTaken)
 ```
 
 Stop what holds the port, give the config its own `servePort` in its `.rogen.json`, or pass a free port with `--port`. Serve a second place from a second terminal. In `--json`, `fixes` holds the command with a free port that Rogen found.

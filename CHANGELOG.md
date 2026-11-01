@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A misspelled `$` key that holds an object, such as `"$propertes": {...}`, is refused with the field it is closest to.
 - The `output.nothingEmitted` warning no longer names the missing path as the nearest path that exists.
 - `rogen where` answers a Studio instance path or `-` by the config named beside it, as in `rogen where game -`, where it used to ask for a default config.
+- The `serve.portTaken` error suggests `rogen serve lobby --port <port>` instead of naming the whole `lobby.rogen.json`, when the bare name reads that config.
 
 ## [2.0.0-beta.2] - 2026-10-31
 
