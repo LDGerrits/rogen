@@ -2,7 +2,7 @@ import { Result, ok } from "../../base/result.js";
 import { joinedWithAnd, joinedWithOr } from "../../base/strings.js";
 import {
 	Diagnostic,
-	errorDiagnostic,
+	DiagnosticSeverity,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { AgentFile } from "./agent/agent-file.js";
@@ -39,13 +39,18 @@ export class AgentSetup implements Setup<AgentChoices> {
 	/** Why `--agent-hook` adds nothing in `folder`: no coding agent is in use there. A warning where init writes the rest anyway. */
 	static noCodingAgent(
 		folder: string,
-		severity: "error" | "warning"
+		severity: DiagnosticSeverity
 	): Diagnostic {
 		const signs = CODING_AGENTS.flatMap(({ signs }) => signs);
 		const message = `--agent-hook adds the hook to the coding agents in use here, and init found none, so it adds no hook. An agent is in use where its folder or file is: ${joinedWithOr(signs)}. Once one is, run 'rogen init --agent-hook'.`;
-		const diagnostic =
-			severity === "error" ? errorDiagnostic : warningDiagnostic;
-		return diagnostic("init.noCodingAgent", { resource: folder }, message);
+		return {
+			...warningDiagnostic(
+				"init.noCodingAgent",
+				{ resource: folder },
+				message
+			),
+			severity,
+		};
 	}
 
 	/** `--agent-hook` was given and no coding agent is in use here. */
@@ -116,7 +121,10 @@ export class AgentSetup implements Setup<AgentChoices> {
 		for (const note of this.hooks.notes) builder.addNote(note);
 		if (this.hookUnfound)
 			builder.addWarning(
-				AgentSetup.noCodingAgent(this.folder, "warning")
+				AgentSetup.noCodingAgent(
+					this.folder,
+					DiagnosticSeverity.Warning
+				)
 			);
 	}
 }

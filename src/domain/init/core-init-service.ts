@@ -3,7 +3,10 @@ import { Disposable, toDisposable } from "../../base/disposable.js";
 import { ErrorUtils, UsageError } from "../../base/errors.js";
 import { samePath, selfAndAncestors } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	DiagnosticSeverity,
+} from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
@@ -287,7 +290,10 @@ export class CoreInitService implements InitService {
 		if (agents.value.hookUnfound && choices.agentRules !== true)
 			return err(
 				new DiagnosticsError([
-					AgentSetup.noCodingAgent(directory.path, "error"),
+					AgentSetup.noCodingAgent(
+						directory.path,
+						DiagnosticSeverity.Error
+					),
 				])
 			);
 		return this.planWith(directory, questions, [agents.value], "agents");
