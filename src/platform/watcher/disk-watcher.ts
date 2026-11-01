@@ -1,5 +1,6 @@
 import chokidar from "chokidar";
 import * as fs from "fs";
+import path from "path";
 import { isUnfollowableLink } from "../fs/disk-file-system-service.js";
 import { FileType } from "../fs/file-system-service.js";
 import { ErrorUtils } from "../../base/errors.js";
@@ -27,6 +28,12 @@ export class DiskWatcher extends AbstractWatcher {
 	private readonly seen = new Map<string, string | undefined>();
 	/** Folders chokidar could not read; chokidar reports nothing when one becomes readable, so that is reported here. */
 	private readonly refused = new Set<string>();
+	/** Paths handed back to chokidar and not yet reported, with the tick that did it: they are reported added a tick later, once watched, so what appears in them meanwhile is not lost. */
+	private readonly attaching = new Map<
+		string,
+		{ fileType: FileType; tick: number }
+	>();
+	private tick = 0;
 	private revival: NodeJS.Timeout | undefined;
 	/** Ends a start still waiting for chokidar, which never reports ready once closed. */
 	private cancelStart: (() => void) | undefined;
@@ -88,8 +95,10 @@ export class DiskWatcher extends AbstractWatcher {
 	private watchForReturns(): void {
 		for (const root of this.roots) this.seen.set(root, identityOf(root));
 		this.revival = setInterval(() => {
+			this.tick++;
 			this.reviveRoots();
 			this.reviveRefused();
+			this.reportAttached();
 		}, REVIVAL_INTERVAL_MS);
 		this.revival.unref();
 	}
@@ -100,9 +109,7 @@ export class DiskWatcher extends AbstractWatcher {
 			if (now === this.seen.get(root)) continue;
 			this.seen.set(root, now);
 			if (now === undefined) continue;
-			this.watcher?.add(root);
-			this.fireEvent(
-				FileChangeType.ADDED,
+			this.rewatch(
 				root,
 				fs.statSync(root, { throwIfNoEntry: false })?.isDirectory()
 					? FileType.Directory
@@ -121,8 +128,29 @@ export class DiskWatcher extends AbstractWatcher {
 				continue;
 			}
 			this.refused.delete(dir);
-			this.watcher?.add(dir);
-			this.fireEvent(FileChangeType.ADDED, dir, FileType.Directory);
+			this.rewatch(dir, FileType.Directory);
+		}
+	}
+
+	private rewatch(target: string, fileType: FileType): void {
+		this.watcher?.add(target);
+		this.attaching.set(target, { fileType, tick: this.tick });
+	}
+
+	private reportAttached(): void {
+		if (!this.watcher || this.attaching.size === 0) return;
+		const watched = this.watcher.getWatched();
+		for (const [target, { fileType, tick }] of this.attaching) {
+			if (tick === this.tick) continue;
+			const attached =
+				fileType === FileType.Directory
+					? watched[target] !== undefined
+					: watched[path.dirname(target)]?.includes(
+							path.basename(target)
+						);
+			if (!attached) continue;
+			this.attaching.delete(target);
+			this.fireEvent(FileChangeType.ADDED, target, fileType);
 		}
 	}
 
@@ -178,6 +206,7 @@ export class DiskWatcher extends AbstractWatcher {
 			this.watcher = null;
 		}
 		this.refused.clear();
+		this.attaching.clear();
 	}
 }
 

@@ -1,3 +1,4 @@
+import fsSync from "fs";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
@@ -126,6 +127,42 @@ describe("DiskWatcher", () => {
 				20000
 			);
 		});
+
+		it("should report a file made as soon as a folder is reported added once it can be read", async () => {
+			const rounds = 12;
+			const made = new Set<string>();
+			const reported = new Set<string>();
+			store.add(
+				watcher.onDidChangeFile((changes) => {
+					for (const c of changes) {
+						if (
+							c.type === FileChangeType.ADDED &&
+							c.fileType === FileType.Directory &&
+							made.size < rounds &&
+							path.basename(c.path).startsWith("locked-")
+						) {
+							const file = path.join(c.path, "a.luau");
+							fsSync.writeFileSync(file, "");
+							made.add(toPosix(file));
+						}
+						if (made.has(c.path)) reported.add(c.path);
+					}
+				})
+			);
+			const folders = Array.from({ length: rounds }, (_, i) =>
+				path.join(dir, `locked-${i}`)
+			);
+			for (const folder of folders) {
+				await fs.mkdir(folder);
+				await fs.chmod(folder, 0);
+			}
+			await watcher.watch([dir]);
+
+			for (const folder of folders) await fs.chmod(folder, 0o755);
+
+			await waitFor(() => made.size === rounds, 10000);
+			await waitFor(() => reported.size === rounds, 10000);
+		}, 30000);
 
 		it("should report a root that was deleted and made again", async () => {
 			const changes: FileChange[] = [];
