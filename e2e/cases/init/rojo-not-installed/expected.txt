@@ -9,6 +9,10 @@ stdout:
         "outcome": "wrote"
       },
       {
+        "file": "<dir>/src/.gitkeep",
+        "outcome": "wrote"
+      },
+      {
         "file": "<dir>/AGENTS.md",
         "outcome": "wrote"
       },
@@ -17,9 +21,7 @@ stdout:
         "outcome": "wrote"
       }
     ],
-    "directories": [
-      "<dir>/src"
-    ],
+    "directories": [],
     "decided": [
       {
         "question": "kind",
@@ -71,6 +73,7 @@ written:
   default.project.json
   default.rogen.json
   rokit.toml
+  src/.gitkeep
 
 default.rogen.json:
 {

@@ -11,7 +11,7 @@ stdout:
   Wrote default.project.json.
   Next steps
     Run each in its own terminal:
-      rbxtsc -w
+      npx rbxtsc -w
       rogen serve
     In Studio, press Connect in the Rojo plugin.
     To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".

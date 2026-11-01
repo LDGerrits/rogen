@@ -6,9 +6,9 @@ stdout:
   Kept the mounts of client, server and shared in the tree as they are: only the project's own folder holds them all, and a source path is a folder below it. To route their code, move the folders into src.
   Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), a git repository (--skip-git), agent rules (--no-agent-rules).
   Created default.rogen.json.
+  Created src/.gitkeep.
   Created .gitignore.
   Created AGENTS.md.
-  Created src/.
   Initialised a git repository.
   Wrote default.project.json.
   Next steps
@@ -17,7 +17,7 @@ stdout:
     In Studio, press Connect in the Rojo plugin.
     To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".
     Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.
-  Wrote 3 files.
+  Wrote 4 files.
 
 $ rogen write
 exit 0
@@ -29,6 +29,7 @@ written:
   AGENTS.md
   default.project.json
   default.rogen.json
+  src/.gitkeep
 
 default.rogen.json:
 {

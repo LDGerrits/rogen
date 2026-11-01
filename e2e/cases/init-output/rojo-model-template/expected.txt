@@ -4,7 +4,7 @@ stdout:
   rogen init
   Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every write.
   The root of default.project.json is not a DataModel, as in a model or a plugin, so default.rogen.json keeps the tree as Rojo reads it and adds no routes.
-  Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), a git repository (--skip-git), agent rules (--no-agent-rules).
+  Took the defaults, each with the flag that changes it: a model (--kind), luau (--language), a git repository (--skip-git), agent rules (--no-agent-rules).
   Created default.rogen.json.
   Created .gitignore.
   Created AGENTS.md.
@@ -12,9 +12,8 @@ stdout:
   default.project.json · unchanged
   Next steps
     Run:
-      rogen serve
-    In Studio, press Connect in the Rojo plugin.
-    Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.
+      rogen build -o "project.rbxmx"
+    Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it.
   Wrote 3 files.
 
 written:

@@ -32,7 +32,7 @@ stdout:
     In Studio, press Connect in the Rojo plugin.
     To change where code goes, edit "routes" in projects/game/default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".
     Edit projects/game/default.rogen.json and leave projects/game/default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write projects/game' so the editor's projects/game/default.project.json follows.
-    Add another place: make projects/lobby/src, copy projects/game/default.rogen.json, projects/game/tsconfig.json and projects/game/place into projects/lobby (with the release config, if the place has one), and change the "name" in each config to lobby. Run 'rogen write projects/lobby' for its project file, add 'rbxtsc -p projects/lobby' and 'rbxtsc -w -p projects/lobby' to the build and watch scripts in package.json, and serve it from a second terminal with its own --port: 'rogen serve projects/lobby --port <port>'.
+    Add another place: make projects/lobby/src, copy projects/game/default.rogen.json, projects/game/tsconfig.json and projects/game/place into projects/lobby (with the release config, if the place has one), and change the "name" in each config to lobby. Run 'rogen write projects/lobby' for its project file, and add ' && rbxtsc -p projects/lobby' to the end of the build script in package.json. 'rbxtsc -w' runs until you stop it, so watch the place from a terminal of its own with 'npx rbxtsc -w -p projects/lobby', and serve it from a second terminal with its own --port: 'rogen serve projects/lobby --port <port>'.
   Wrote 14 files.
 
 ran:
@@ -140,7 +140,7 @@ projects/game/default.rogen.json:
 }
 
 projects/game/src/Game/server/Game.server.ts:
-import { greeting } from "Greeter/shared/Greeting";
+import { greeting } from "../../Greeter/shared/Greeting";
 
 print(greeting("game"));
 

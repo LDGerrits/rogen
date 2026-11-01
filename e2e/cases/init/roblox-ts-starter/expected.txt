@@ -150,12 +150,12 @@ default.rogen.json:
 }
 
 src/Greeter/client/Greeter.client.ts:
-import { greeting } from "Greeter/shared/Greeting";
+import { greeting } from "../shared/Greeting";
 
 print(greeting("client"));
 
 src/Greeter/server/Greeter.server.ts:
-import { greeting } from "Greeter/shared/Greeting";
+import { greeting } from "../shared/Greeting";
 
 print(greeting("server"));
 
