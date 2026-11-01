@@ -115,7 +115,7 @@ registerCommand(
 					examples: [
 						"rogen sourcemap",
 						"rogen sourcemap -o sourcemap.json",
-						"rogen sourcemap places/lobby --include-non-scripts",
+						"rogen sourcemap lobby --include-non-scripts",
 						"rogen sourcemap --watch -o sourcemap.json",
 						"rogen sourcemap --json",
 					],

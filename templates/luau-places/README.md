@@ -8,13 +8,13 @@ A place is a `<place>.rogen.json` at the root: `{{place}}.rogen.json` lists the 
 
 `place/{{place}}` holds Rojo's sample Baseplate and the Lighting and SoundService settings, as Rojo files: an `init.meta.json` per service and `Workspace/Baseplate.model.json`. The tree in `{{place}}.rogen.json` mounts each service's folder, and Rogen routes nothing in it.
 
-The folders inside a feature decide where its code runs: `Server` goes to ServerScriptService, `Client` to StarterPlayerScripts and `Shared` to ReplicatedStorage. To see where a file lands, and how to require it, use:
+The folders inside a feature decide where its code runs: `Server` goes to ServerScriptService, `Client` to StarterPlayerScripts and `Shared` to ReplicatedStorage/Shared. To see where a file lands, and how to require it, use:
 
 ```bash
 rogen where {{source}}/Greeter/Shared/Greeting.luau
 ```
 
-`rogen check` and `rogen where` find the place a path belongs to, and a file in `src/common` belongs to every place. `rogen check` with no path checks every place. `rogen where` finds no `default.rogen.json` here, so name the place: `rogen where {{place}}.rogen.json`.
+`rogen check` and `rogen where` find the place a path belongs to, and a file in `src/common` belongs to every place. `rogen check` with no path checks every place. `rogen where {{place}}` lists the files of one place.
 
 ## Getting Started
 To serve the {{place}} place and connect to it from Roblox Studio, use:
@@ -30,7 +30,7 @@ rogen build {{place}} -o "{{name}}.rbxlx"
 ```
 
 ## Adding a place
-Copy `{{place}}.rogen.json` to `lobby.rogen.json`, change its `name` to `lobby`, its source path `src/{{place}}` to `src/lobby` and each `place/{{place}}` in its tree to `place/lobby`. Then make the `src/lobby` folder, and copy the `place/{{place}}` folder to `place/lobby`. A second place is served from a second terminal, with its own `--port`:
+Copy `{{place}}.rogen.json` to `lobby.rogen.json`, change its `name` to `lobby` and its source path `src/{{place}}` to `src/lobby`, and make the `src/lobby` folder. Copy `place/{{place}}` to `place/lobby` and point each `place/{{place}}` in the lobby's tree at the copy. A second place is served from a second terminal, with its own `--port`:
 
 ```bash
 rogen serve lobby --port <port>
