@@ -28,6 +28,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `--agent-hook` with no coding agent in the folder no longer stops a new project: `rogen init` writes it and warns.
 - `rogen init <folder> --language roblox-ts` makes the folder before it runs create-roblox-ts there, and removes it again when create-roblox-ts fails.
 - A lifted project file whose tree is written on one line gets a tree in `default.rogen.json` formatted as `rogen fmt-project` formats it, not the same one line.
+- `build --json` says `changed` when Rojo wrote the build.
+- `--color`, `NO_COLOR` and `FORCE_COLOR` change only the colours, not the layout or the streams.
+- `--json` prints nothing on stderr, notes, watch errors and `-vv` trace lines included.
+- `scan.portableName` no longer warns of a file such as `trail..luau`, whose name ends in its extension.
+- `--` ends the options, and what follows it are positionals, as in Rojo: `rogen where -- -name.luau`.
+- A command line Rojo refuses is a usage error with Rojo's words, all on stderr, not a project failure; Rojo's own stderr lines stay on stderr.
+- `rogen write` counts the project files it left unchanged apart from those it wrote.
+- An option that takes one value, such as `-o`, or a flag such as `--watch`, given twice is a usage error, as in Rojo, and `rogen` alone prints the help on stderr.
+- A working folder that was deleted is an `io` error, exit 1, not a usage error.
+- Under GitHub Actions, `--quiet` writes only the `::error` annotations.
+- A failed `syncback --json` names the config it ran on.
+- A folder Rogen can't read is a `scan.unreadable` error naming it, as Rojo fails to build it, and `--watch` prints it once.
 
 ## [2.0.0-beta.2] - 2026-10-31
 

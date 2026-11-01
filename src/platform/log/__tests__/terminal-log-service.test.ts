@@ -101,6 +101,40 @@ describe("TerminalLogService", () => {
 		]);
 	});
 
+	it("should draw the same frame without colour when colour is off", () => {
+		const logService = new TerminalLogService();
+
+		logService.intro("rogen build");
+		logService.success("Wrote default.project.json.");
+		logService.outro("Built game.rbxl.");
+
+		expect(written).toContain("✔ Wrote default.project.json.");
+		expect(written).toBe(drawn());
+	});
+
+	it("should colour its symbols when colour is on", () => {
+		const logService = new TerminalLogService({ color: true });
+
+		logService.intro("rogen build");
+		logService.success("Wrote default.project.json.");
+
+		expect(written).not.toBe(drawn());
+	});
+
+	it("should write plain lines without colour when colour is off", () => {
+		const error = jest.spyOn(console, "error").mockImplementation(() => {});
+		const logService = new TerminalLogService();
+		logService.setLevel(LogLevel.Debug);
+
+		logService.error("broken");
+		logService.debug("detail");
+
+		expect(error.mock.calls.map(([line]) => line)).toEqual([
+			"■ broken",
+			"detail",
+		]);
+	});
+
 	it("should write plain lines on stderr once stdout is reserved", () => {
 		const info = jest.spyOn(console, "info").mockImplementation(() => {});
 		const error = jest.spyOn(console, "error").mockImplementation(() => {});
@@ -168,7 +202,10 @@ describe("TerminalLogService", () => {
 	it("should write the workflow commands of a diagnostic on stderr, undrawn, when asked for a workspace", () => {
 		const error = jest.spyOn(console, "error").mockImplementation(() => {});
 
-		new TerminalLogService("/work/repo", "/work/repo").annotate(
+		new TerminalLogService({
+			cwd: "/work/repo",
+			annotationsIn: "/work/repo",
+		}).annotate(
 			warningDiagnostic(
 				"tree.deadScript",
 				{ resource: "/work/repo/src/Dead.luau" },

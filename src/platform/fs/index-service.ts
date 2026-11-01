@@ -8,6 +8,8 @@ export interface IndexReader {
 	getEntries(dirPath: string): ReadonlyMap<string, FileType> | undefined;
 	hasEntry(dirPath: string, name: string): boolean;
 	getEntryType(dirPath: string, name: string): FileType | undefined;
+	/** Whether listing the directory was refused, as for a folder without read permission. */
+	isUnreadable(dirPath: string): boolean;
 }
 
 /** The entries of every listed directory, by posix path. A listing never changes: an update makes a new one. */
@@ -15,7 +17,12 @@ export class Listing implements IndexReader {
 	static readonly EMPTY = new Listing(new Map());
 
 	constructor(
-		readonly directories: ReadonlyMap<string, ReadonlyMap<string, FileType>>
+		readonly directories: ReadonlyMap<
+			string,
+			ReadonlyMap<string, FileType>
+		>,
+		/** The directories whose listing was refused, by posix path. */
+		readonly unreadable: ReadonlySet<string> = new Set()
 	) {}
 
 	getEntries(dirPath: string): ReadonlyMap<string, FileType> | undefined {
@@ -28,6 +35,10 @@ export class Listing implements IndexReader {
 
 	getEntryType(dirPath: string, name: string): FileType | undefined {
 		return this.getEntries(dirPath)?.get(name);
+	}
+
+	isUnreadable(dirPath: string): boolean {
+		return this.unreadable.has(toPosix(dirPath));
 	}
 }
 

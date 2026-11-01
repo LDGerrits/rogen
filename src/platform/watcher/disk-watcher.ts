@@ -2,7 +2,8 @@ import chokidar from "chokidar";
 import * as fs from "fs";
 import { isUnfollowableLink } from "../fs/disk-file-system-service.js";
 import { FileType } from "../fs/file-system-service.js";
-import { toPosix } from "../../base/path.js";
+import { ErrorUtils } from "../../base/errors.js";
+import { containsPath, toPosix } from "../../base/path.js";
 import { FileChangeType } from "../fs/file-changes.js";
 import { AbstractWatcher } from "./abstract-watcher.js";
 import { WatchFilter, WatchOptions } from "./watcher.js";
@@ -49,9 +50,7 @@ export class DiskWatcher extends AbstractWatcher {
 		this.watcher.on("raw", () => this.dropRemovedLinks());
 
 		this.watcher.on("error", (error) =>
-			this.logService.error(
-				`Can't watch part of the project: ${error.message}`
-			)
+			this.reportError(error, options.reportsUnreadable ?? [])
 		);
 
 		// Until chokidar is ready, new files count as initial and are ignored.
@@ -63,6 +62,14 @@ export class DiskWatcher extends AbstractWatcher {
 		this.cancelStart = undefined;
 		this.ready = true;
 		this.watchForReturns();
+	}
+
+	private reportError(error: Error, reported: readonly string[]): void {
+		const message = `Can't watch part of the project: ${error.message}`;
+		if (!ErrorUtils.hasCode(error, "EACCES", "EPERM"))
+			this.logService.error(message);
+		else if (isUnder(error, reported)) this.logService.debug(message);
+		else this.logService.warn(message);
 	}
 
 	/** Rewatches roots that came back or began as a new place: chokidar loses a deleted root and never sees one that did not exist. */
@@ -156,6 +163,15 @@ function clearThrottles(watcher: chokidar.FSWatcher): void {
 	};
 	for (const actions of throttled?.values() ?? [])
 		for (const { clear } of [...actions.values()]) clear();
+}
+
+/** Whether the failed path of `error` lies in one of `dirs`. */
+function isUnder(error: Error, dirs: readonly string[]): boolean {
+	const failed = (error as NodeJS.ErrnoException).path;
+	return (
+		failed !== undefined &&
+		dirs.some((dir) => containsPath(toPosix(dir), toPosix(failed)))
+	);
 }
 
 function identityOf(target: string): string | undefined {

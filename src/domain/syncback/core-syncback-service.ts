@@ -1537,9 +1537,10 @@ export class CoreSyncbackService implements SyncbackService {
 
 	/** Rojo's refusal to remove an instance a node of the config's tree defines, with the file that makes it when there is one. */
 	private explain(
-		failure: DiagnosticsError,
+		failure: DiagnosticsError | UsageError,
 		prepared: Prepared | undefined
 	): Error {
+		if (failure instanceof UsageError) return failure;
 		const said = linesOf(failure).join("\n");
 		const refused =
 			/The child '(?<child>[^']+)' of Instance '(?<parent>[^']+)' is present only in a project file/.exec(

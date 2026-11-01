@@ -1,6 +1,6 @@
 import path from "path";
 import { DisposableStore } from "./base/disposable.js";
-import { UsageError, setUnexpectedErrorHandler } from "./base/errors.js";
+import { IoError, setUnexpectedErrorHandler } from "./base/errors.js";
 import {
 	CommandRegistry,
 	CommandService,
@@ -31,6 +31,7 @@ import { NativeLifecycleService } from "./platform/lifecycle/native-lifecycle-se
 import { Registry } from "./platform/registry/registry.js";
 import { ServiceCollection } from "./platform/instantiation/service-collection.js";
 import { LogService } from "./platform/log/log-service.js";
+import { JsonLogService } from "./platform/log/json-log-service.js";
 import { PlainLogService } from "./platform/log/plain-log-service.js";
 import { TerminalLogService } from "./platform/log/terminal-log-service.js";
 import { InputService } from "./platform/input/input-service.js";
@@ -166,7 +167,7 @@ class RogenMain {
 			{ ...options, json },
 			cwd ?? path.parse(process.execPath).root
 		);
-		const logService = this.createLogService(environmentService);
+		const logService = this.createLogService(environmentService, json);
 		const failure = new CommandFailure(logService, json);
 
 		if (argsResult.isErr()) {
@@ -174,9 +175,9 @@ class RogenMain {
 			process.exitCode = exitCode(argsResult);
 			return;
 		}
-		const { command, line, bare } = argsResult.value;
+		const { command, line } = argsResult.value;
 		if (cwd === undefined && command !== HELP_COMMAND) {
-			const gone = new UsageError(
+			const gone = new IoError(
 				"The current folder no longer exists.",
 				"cd to one that does, then run rogen again."
 			);
@@ -216,22 +217,24 @@ class RogenMain {
 			});
 
 		if (result.isErr()) failure.report(result.error, command);
-		process.exitCode = exitCode(result, { bare });
+		process.exitCode = exitCode(result);
 		if (!notice.printedFirst) await notice.print();
 	}
 
 	private createLogService(
-		environmentService: EnvironmentService
+		environmentService: EnvironmentService,
+		json: boolean
 	): LogService {
-		const logService: LogService = environmentService.isPlain
-			? new PlainLogService(
-					environmentService.cwd,
-					environmentService.annotationsIn
-				)
-			: new TerminalLogService(
-					environmentService.cwd,
-					environmentService.annotationsIn
-				);
+		const logOptions = {
+			cwd: environmentService.cwd,
+			annotationsIn: environmentService.annotationsIn,
+			color: environmentService.hasColor,
+		};
+		const logService: LogService = json
+			? new JsonLogService()
+			: environmentService.isPlain
+				? new PlainLogService(logOptions)
+				: new TerminalLogService(logOptions);
 		logService.setLevel(environmentService.logLevel);
 		return logService;
 	}
@@ -246,7 +249,7 @@ class RogenMain {
 		services.set(LogService, logService);
 		const promptService = new ConsolePromptService({
 			interactive: environmentService.isInteractive,
-			color: !environmentService.isPlain,
+			color: environmentService.hasColor,
 		});
 		services.set(PromptService, promptService);
 		services.set(InputService, new NativeInputService());

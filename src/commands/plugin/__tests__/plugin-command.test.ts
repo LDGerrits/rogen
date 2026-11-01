@@ -1,3 +1,4 @@
+import { UsageError } from "../../../base/errors.js";
 import "../plugin-command.js";
 import "../../help/help-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
@@ -64,6 +65,23 @@ describe("plugin command", () => {
 				"'rogen plugin' takes install, uninstall or help."
 			);
 			expect(processes.spawned).toEqual([]);
+		}
+	);
+
+	it.each([
+		["instal", "install"],
+		["unistall", "uninstall"],
+	])(
+		"should suggest the subcommand closest to %j",
+		async (action, suggestion) => {
+			const { running } = start([action]);
+
+			expect(((await running) as ResultError<Error>).error).toEqual(
+				new UsageError(
+					"'rogen plugin' takes install, uninstall or help.",
+					`Did you mean 'rogen plugin ${suggestion}'?`
+				)
+			);
 		}
 	);
 

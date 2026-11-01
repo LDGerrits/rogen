@@ -10,7 +10,7 @@ exit 0
 stdout:
   rogen write
   default.project.json · unchanged
-  Wrote 1 of 1 project file.
+  1 project file unchanged.
 
 $ rogen write lobby
 exit 0
@@ -24,14 +24,14 @@ exit 0
 stdout:
   rogen write
   lobby/default.project.json · unchanged
-  Wrote 1 of 1 project file.
+  1 project file unchanged.
 
 $ rogen write lobby/default.rogen.json
 exit 0
 stdout:
   rogen write
   lobby/default.project.json · unchanged
-  Wrote 1 of 1 project file.
+  1 project file unchanged.
 
 written:
   default.project.json

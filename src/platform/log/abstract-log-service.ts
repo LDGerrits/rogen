@@ -6,6 +6,7 @@ import {
 } from "../diagnostics/diagnostic.js";
 import { diagnosticAnnotationLine } from "../diagnostics/diagnostic-annotation-line.js";
 import { defanged } from "../../base/strings.js";
+import { Styler, style, unstyled } from "../../base/style.js";
 import { LogLevel, LogService } from "./log-service.js";
 
 export type LogKind =
@@ -27,19 +28,29 @@ export type LogKind =
 	| "diagnosticError"
 	| "annotation";
 
+/** Diagnostics print relative to `cwd`; annotations are written when `annotationsIn` names the folder their paths are relative to; `color` is off unless given. */
+export interface LogServiceOptions {
+	readonly cwd?: string;
+	readonly annotationsIn?: string;
+	readonly color?: boolean;
+}
+
 export abstract class AbstractLogService implements LogService {
 	declare readonly _serviceBrand: undefined;
 
 	protected level: LogLevel = LogLevel.Info;
 	protected stdoutReserved = false;
+	protected readonly style: Styler;
+	private readonly cwd?: string;
+	private readonly annotationsIn?: string;
 	private frameOpen = false;
 	protected abstract readonly drawsFrame: boolean;
 
-	/** Diagnostics print relative to `cwd`; annotations are written when `annotationsIn` names the folder their paths are relative to. */
-	constructor(
-		private readonly cwd?: string,
-		private readonly annotationsIn?: string
-	) {}
+	constructor({ cwd, annotationsIn, color }: LogServiceOptions = {}) {
+		this.cwd = cwd;
+		this.annotationsIn = annotationsIn;
+		this.style = color ? style : unstyled;
+	}
 
 	/** Whether a frame is open and drawn, as on a terminal. */
 	protected get framed(): boolean {
@@ -173,7 +184,11 @@ export abstract class AbstractLogService implements LogService {
 	}
 
 	annotate(diagnostic: Diagnostic): void {
-		if (this.annotationsIn === undefined || this.level === LogLevel.Off)
+		const isError = diagnostic.severity === DiagnosticSeverity.Error;
+		if (
+			this.annotationsIn === undefined ||
+			!this.canLog(isError ? LogLevel.Error : LogLevel.Warn)
+		)
 			return;
 		this.write(
 			"annotation",
@@ -181,12 +196,23 @@ export abstract class AbstractLogService implements LogService {
 		);
 	}
 
+	/** Colours the severity as the `error:` and `warning:` prefixes are, so the text around it is made harmless first. */
 	diagnostic(diagnostic: Diagnostic): void {
 		const isError = diagnostic.severity === DiagnosticSeverity.Error;
-		if (this.canLog(isError ? LogLevel.Error : LogLevel.Warn))
-			this.emit(
-				isError ? "diagnosticError" : "diagnosticWarning",
-				renderDiagnostic(diagnostic, this.cwd)
-			);
+		if (!this.canLog(isError ? LogLevel.Error : LogLevel.Warn)) return;
+		const { resource, message, details } = diagnostic;
+		this.write(
+			isError ? "diagnosticError" : "diagnosticWarning",
+			renderDiagnostic(
+				{
+					...diagnostic,
+					resource: defanged(resource),
+					message: defanged(message),
+					details: details?.map(defanged),
+				},
+				this.cwd,
+				(label) => this.style(isError ? "red" : "yellow", label)
+			)
+		);
 	}
 }

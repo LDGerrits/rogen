@@ -4,8 +4,11 @@ import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { FileChange, FileChangeType } from "../../fs/file-changes.js";
+import { LogLevel } from "../../log/log-service.js";
 import { NullLogService } from "../../log/null-log-service.js";
+import { MockLogService } from "../../log/__tests__/mock-log-service.js";
 import { DiskWatcher } from "../disk-watcher.js";
+import { WatchOptions } from "../watcher.js";
 
 function waitFor(predicate: () => boolean, timeoutMs = 3000): Promise<void> {
 	const start = Date.now();
@@ -51,6 +54,45 @@ describe("DiskWatcher", () => {
 			await waitFor(() => changes.some(added));
 
 			expect(changes.some(added)).toBe(true);
+		});
+
+		describe("a folder it may not read", () => {
+			const watchLocked = async (options?: WatchOptions) => {
+				const locked = path.join(dir, "locked");
+				await fs.mkdir(locked);
+				await fs.chmod(locked, 0);
+				const logService = new MockLogService();
+				logService.setLevel(LogLevel.Debug);
+				const watching = new DiskWatcher(logService);
+				try {
+					await watching.watch([dir], options);
+				} finally {
+					await watching.stop();
+					await fs.chmod(locked, 0o755);
+				}
+				return logService;
+			};
+
+			it("should warn of it once", async () => {
+				const logService = await watchLocked();
+
+				expect(logService.texts("error")).toEqual([]);
+				expect(logService.texts("warn")).toEqual([
+					expect.stringContaining("EACCES"),
+				]);
+			});
+
+			it("should write only a debug line for it where the caller reports it", async () => {
+				const logService = await watchLocked({
+					reportsUnreadable: [dir],
+				});
+
+				expect(logService.texts("error")).toEqual([]);
+				expect(logService.texts("warn")).toEqual([]);
+				expect(logService.texts("debug")).toContainEqual(
+					expect.stringContaining("EACCES")
+				);
+			});
 		});
 
 		it("should report a root that was deleted and made again", async () => {

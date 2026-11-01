@@ -730,6 +730,16 @@ warning: this link points at nothing, or back at a directory that contains it, s
 
 Fix the link's target, or remove the link.
 
+### `scan.unreadable` [#scan-unreadable]
+
+Error. Rogen can't list a folder in a source path, because the folder has no read permission. Rojo fails to build such a folder, so the project file isn't written.
+
+```
+error: this folder could not be read: permission denied, so Rojo can't build it. Fix the folder's permissions, or add it to "globIgnorePaths". (scan.unreadable)
+```
+
+Fix the folder's permissions. A folder that `globIgnorePaths` matches isn't read, by Rogen or by Rojo.
+
 ### `scan.emptyName` [#scan-emptyname]
 
 Warning. A script file's name is only its suffix, such as `.server.luau`, so it becomes an instance with an empty name. Rojo builds it the same way. Studio and `require` don't handle an empty name well.
@@ -1063,6 +1073,8 @@ When Rojo printed no error, the first line says how it exited, such as `Rojo cou
 Fix what Rojo reports, such as a property value of the wrong type or an output folder that doesn't exist, and run the command again.
 
 Rogen had already written the project files when Rojo failed.
+
+A command line that Rojo refuses, such as `rogen upload --asset_id abc`, is not this diagnostic: Rojo exits 2, and Rogen prints Rojo's lines under `error: Rojo refused the command line:` and exits 2.
 
 ### `rojo.crashed` [#rojo-crashed]
 
