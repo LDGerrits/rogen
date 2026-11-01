@@ -31,7 +31,7 @@ import {
 	PROCESSED_OUTPUT,
 	RELEASE_OUTPUT,
 } from "./output-configs.js";
-import { InitQuestions } from "./init-questions.js";
+import { InitQuestions, UnplacedCode } from "./init-questions.js";
 import { InitSummary } from "./init-summary.js";
 import { InitKind, PlannedCommand, PlannedScaffold } from "./init-service.js";
 import { ProjectFiles } from "./project-files.js";
@@ -180,17 +180,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const starter = this.starterFor(kind, picked);
 		const language = starter ? (picked.scaffolded?.() ?? picked) : picked;
 
-		const startingPlaces = await new StarterPlaces(
-			this.fileSystemService
-		).plan(directory.path, starter);
-		const several = await this.severalPlaces(
-			kind,
-			language,
-			starter !== undefined,
-			startingPlaces
-		);
+		const several = await this.severalPlaces(kind, language, starter);
 		if (several === undefined) return ok(undefined);
-		const places = several ? startingPlaces : undefined;
+		const places = several
+			? await new StarterPlaces(this.fileSystemService).plan(
+					directory.path,
+					starter
+				)
+			: undefined;
 		const taken = places ? await this.placeTaken(places) : undefined;
 		if (taken) return err([taken]);
 
@@ -273,17 +270,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				: [];
 
 		const outside = routed
-			? await new CodeFinder(this.fileSystemService).codeOutside(
-					directory.path,
-					[...sourcePaths, ...liftedMounts].map(normalizeDir),
-					[
-						...directory.workspace.packageDirs,
-						...language.reservedFolders,
-						compiledPath,
-						processedFolder,
-					]
-						.filter((folder) => folder !== undefined)
-						.map(normalizeDir)
+			? await this.codeOutside(
+					[...sourcePaths, ...liftedMounts],
+					language,
+					[compiledPath, processedFolder]
 				)
 			: [];
 
@@ -432,35 +422,64 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	private async severalPlaces(
 		kind: InitKind,
 		language: Language,
-		scaffolded: boolean,
-		places: StartingPlaces
+		starter: RobloxTsStarter | undefined
 	): Promise<boolean | undefined> {
-		const problem = this.noPlacesBecause(kind, language, scaffolded);
+		const problem = this.noPlacesBecause(
+			kind,
+			language,
+			starter !== undefined
+		);
 		if (problem === undefined)
 			return this.questions.places(
 				this.directory,
 				language,
-				await this.codeOutsidePlaces(places, language)
+				this.questions.asksPlaces
+					? await this.unplacedBy(language, starter)
+					: {}
 			);
 		if (this.questions.choices.places === true)
 			throw new UsageError(`--places ${problem}`);
 		return false;
 	}
 
-	/** The code here that the source paths of `places` would not hold. */
-	private async codeOutsidePlaces(
-		places: StartingPlaces,
-		language: Language
+	/** The code that one place, and several, would leave where no source path holds it; none where a starter tool sets up an empty folder. */
+	private async unplacedBy(
+		language: Language,
+		starter: RobloxTsStarter | undefined
+	): Promise<UnplacedCode> {
+		if (starter) return {};
+		const places = await new StarterPlaces(this.fileSystemService).plan(
+			this.directory.path,
+			starter
+		);
+		const [one, several] = await Promise.all(
+			[
+				[this.directory.defaultSourcePath(language)],
+				places.sourcePaths,
+			].map((held) => this.codeOutside(held, language))
+		);
+		return {
+			...(one.length > 0 && { one: listedBriefly(one) }),
+			...(several.length > 0 && { several: listedBriefly(several) }),
+		};
+	}
+
+	/** The code here that `held` doesn't hold, past the package folders, the language's own folders and `skipped`. */
+	private codeOutside(
+		held: readonly string[],
+		language: Language,
+		skipped: readonly (string | undefined)[] = []
 	): Promise<string[]> {
-		if (language.compiler || this.directory.layout.codeFolders.length === 0)
-			return [];
 		return new CodeFinder(this.fileSystemService).codeOutside(
 			this.directory.path,
-			places.sourcePaths.map(normalizeDir),
+			held.map(normalizeDir),
 			[
 				...this.directory.workspace.packageDirs,
 				...language.reservedFolders,
-			].map(normalizeDir)
+				...skipped,
+			]
+				.filter((folder) => folder !== undefined)
+				.map(normalizeDir)
 		);
 	}
 

@@ -54,7 +54,13 @@ export class AgentSetup implements Setup<AgentChoices> {
 				)
 			);
 		if (hook) builder.addAgentHook(this.hooks);
-		else if (this.hooks.offered && !this.questions.customising) {
+		else if (
+			this.hooks.offered &&
+			!(
+				this.questions.customising &&
+				this.questions.choices.agentHook === undefined
+			)
+		) {
 			const { agents } = this.hooks;
 			const one = agents.length === 1;
 			builder.addNote(
@@ -70,7 +76,7 @@ export class AgentSetup implements Setup<AgentChoices> {
 				...(hook
 					? [`hook for ${this.hooks.agents.join(", ")}`]
 					: this.hooks.offered
-						? [`no hook for ${this.hooks.agents.join(", ")}`]
+						? [`no hook for ${joinedWithAnd(this.hooks.agents)}`]
 						: []),
 			].join(", ") || "none"
 		);

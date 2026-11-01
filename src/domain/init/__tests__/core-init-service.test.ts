@@ -1670,6 +1670,25 @@ describe("CoreInitService", () => {
 			);
 		});
 
+		it("should name loose scripts at the root that neither layout places", async () => {
+			await write("Main.server.luau");
+			const prompts = new MockPromptService({
+				"One place or several?": "one",
+				[CREATE]: "yes",
+			});
+
+			await review(prompts);
+			const places = prompts.prompts.find(
+				({ message }) => message === "One place or several?"
+			);
+
+			expect(places?.choiceHints).toEqual({
+				one: "the code is in src; leaves Main.server.luau unplaced",
+				several:
+					"src/common holds the shared code, src/game the first place; leaves Main.server.luau unplaced",
+			});
+		});
+
 		it("should offer no Customise when every question the summary shows was asked", async () => {
 			const prompts = new MockPromptService({
 				"One place or several?": "one",

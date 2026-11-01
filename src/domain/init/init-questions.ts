@@ -28,6 +28,12 @@ function oneOf(
 	);
 }
 
+/** The code each layout would leave where no source path holds it, listed for a hint. */
+export interface UnplacedCode {
+	readonly one?: string;
+	readonly several?: string;
+}
+
 /** Everything `init` asks. A question the user answered with a flag is not asked, and one a run that can't ask takes the default of is written to `decided`. A flag with a value that doesn't fit throws a `UsageError`. */
 export class InitQuestions {
 	readonly decided: InitDecision[] = [];
@@ -107,11 +113,16 @@ export class InitQuestions {
 		});
 	}
 
-	/** Whether a new project is several places; a `projects` folder here makes it the default for a compiled language. `unplaced`: the code here that several places would leave where nothing places it. */
+	/** Whether `places` asks: in a terminal, when no flag answers it. */
+	get asksPlaces(): boolean {
+		return this.interactive && this.choices.places === undefined;
+	}
+
+	/** Whether a new project is several places; a `projects` folder here makes it the default for a compiled language. */
 	async places(
 		directory: InitDirectory,
 		language: Language,
-		unplaced: readonly string[] = []
+		unplaced: UnplacedCode = {}
 	): Promise<boolean | undefined> {
 		const given = this.choices.places;
 		if (given !== undefined) return given;
@@ -133,7 +144,7 @@ export class InitQuestions {
 				{
 					value: "one",
 					label: "One place",
-					hint: "the code is in src",
+					hint: `the code is in src${unplaced.one ? `; leaves ${unplaced.one} unplaced` : ""}`,
 				},
 				{
 					value: "several",
@@ -142,7 +153,7 @@ export class InitQuestions {
 						language.compiler
 							? `${PROJECTS_FOLDER}/${COMMON_FOLDER} holds the shared code, ${PROJECTS_FOLDER}/game the first place`
 							: `src/${COMMON_FOLDER} holds the shared code, src/game the first place`
-					}${unplaced.length > 0 ? `; leaves ${unplaced.length > 2 ? `${unplaced[0]} and ${unplaced.length - 1} more` : joinedWithAnd(unplaced)} unplaced` : ""}`,
+					}${unplaced.several ? `; leaves ${unplaced.several} unplaced` : ""}`,
 				},
 			],
 			initialValue: several ? "several" : "one",
