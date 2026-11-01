@@ -122,6 +122,25 @@ describe("CoreIndexService", () => {
 			expect(deleted.isUnreadable("src/locked")).toBe(false);
 		});
 
+		it("should read a folder it could not read once it is reported added", async () => {
+			await memoryFs.writeFile("src/locked/b.luau", "");
+			memoryFs.refuseListing("src/locked", "EACCES");
+			listing = await indexService.list(["src"]);
+			memoryFs.refuseListing("src/locked", undefined);
+
+			const updated = await indexService.update(listing, [
+				{
+					type: FileChangeType.ADDED,
+					path: "src/locked",
+					fileType: FileType.Directory,
+				},
+			]);
+
+			expect(updated.isUnreadable("src/locked")).toBe(false);
+			expect(updated.hasEntry("src/locked", "b.luau")).toBe(true);
+			expect(updated).toEqual(await indexService.list(["src"]));
+		});
+
 		it("should list a directory's entries with their types", async () => {
 			await memoryFs.writeFile("src/app.ts", "");
 			await memoryFs.createDirectory("src/components");

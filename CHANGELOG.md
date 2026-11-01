@@ -40,6 +40,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Under GitHub Actions, `--quiet` writes only the `::error` annotations.
 - A failed `syncback --json` names the config it ran on.
 - A folder Rogen can't read is a `scan.unreadable` error naming it, as Rojo fails to build it, and `--watch` prints it once.
+- `--watch` rewrites the project file when a folder it couldn't read becomes readable, and watches what is in it from then on.
 
 ## [2.0.0-beta.2] - 2026-10-31
 
