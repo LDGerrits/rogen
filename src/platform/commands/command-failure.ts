@@ -59,11 +59,7 @@ export function exitCodeOf(error: Error): number {
 	return ErrorKinds[errorKind(ErrorUtils.fromUnknown(cause))].exitCode;
 }
 
-/** The one place a run's exit code is chosen: commands return a result and never set a number. `bare` is a run that named no command, which printed the help and still left the command line incomplete. */
-export function exitCode(
-	outcome: Result<void, Error>,
-	{ bare = false }: { readonly bare?: boolean } = {}
-): number {
-	if (outcome.isErr()) return exitCodeOf(outcome.error);
-	return bare ? 2 : 0;
+/** The one place a run's exit code is chosen: commands return a result and never set a number. */
+export function exitCode(outcome: Result<void, Error>): number {
+	return outcome.isErr() ? exitCodeOf(outcome.error) : 0;
 }

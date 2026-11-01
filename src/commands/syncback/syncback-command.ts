@@ -3,6 +3,7 @@ import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { WriteService } from "../../domain/write/write-service.js";
+import { didWrite } from "../../domain/write/write.js";
 import {
 	ProjectArgument,
 	singleProjectError,
@@ -108,7 +109,7 @@ registerCommand(
 					examples: [
 						"rogen syncback --input game.rbxl --dry-run",
 						"rogen syncback -i game.rbxl -y",
-						"rogen syncback places/lobby -i lobby.rbxl --list",
+						"rogen syncback lobby -i lobby.rbxl --list",
 					],
 				},
 			});
@@ -168,21 +169,17 @@ registerCommand(
 				({ selection: selection.value, project, input, cwd } as const);
 			let outcome: SyncbackOutcome = { kind: "notRun" };
 			let listed = false;
-			const written = (applied: Result<SyncbackResult, Error>) =>
-				applied.isErr()
-					? ({ kind: "failed", error: applied.error } as const)
-					: ({
-							kind: "written",
-							plan: applied.value,
-							warnings: applied.value.warnings,
-						} as const);
 			if (!failure && request) {
+				const configFile = request.project.file;
 				if (yes && !dryRun) {
-					outcome = written(await syncbacks.apply(request));
+					outcome = this.written(
+						await syncbacks.apply(request),
+						configFile
+					);
 				} else {
 					const planned = await syncbacks.plan(request);
 					outcome = planned.isErr()
-						? { kind: "failed", error: planned.error }
+						? this.failed(planned.error, configFile)
 						: {
 								kind: "planned",
 								plan: planned.value,
@@ -197,8 +194,9 @@ registerCommand(
 						this.warnLeftOut(logService, planned.value, cwd);
 						listed = true;
 						if (await this.asked(promptService, planned.value))
-							outcome = written(
-								await syncbacks.apply(request, planned.value)
+							outcome = this.written(
+								await syncbacks.apply(request, planned.value),
+								configFile
 							);
 					}
 				}
@@ -206,7 +204,7 @@ registerCommand(
 					const rewritten = await writeService.write(selection.value);
 					if (
 						rewritten.failure() ||
-						rewritten.outcomes.some(({ kind }) => kind === "wrote")
+						rewritten.outcomes.some(didWrite)
 					)
 						run = rewritten;
 				}
@@ -241,6 +239,23 @@ registerCommand(
 				);
 			if (stopped) return err(stopped);
 			return failure ? this.reported(failure) : ok(undefined);
+		}
+
+		private written(
+			applied: Result<SyncbackResult, Error>,
+			configFile: string
+		): SyncbackOutcome {
+			return applied.isErr()
+				? this.failed(applied.error, configFile)
+				: {
+						kind: "written",
+						plan: applied.value,
+						warnings: applied.value.warnings,
+					};
+		}
+
+		private failed(error: Error, configFile: string): SyncbackOutcome {
+			return { kind: "failed", error, configFile };
 		}
 
 		private async asked(

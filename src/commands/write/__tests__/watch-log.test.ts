@@ -562,7 +562,7 @@ describe("WatchLog.error", () => {
 	});
 
 	it("should print each diagnostic of a failure once, relative to the working directory", () => {
-		const logService = new MockLogService(cwd);
+		const logService = new MockLogService({ cwd });
 
 		new WatchLog(logService, cwd).error(
 			new DiagnosticsError([

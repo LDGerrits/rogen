@@ -99,13 +99,18 @@ export class CompiledPathCheck {
 			);
 			const found = await this.findShifted(compiledPath, emitted[0]);
 			const nearest = found
+				? undefined
+				: await this.nearestExistingAncestor(expected);
+			const hint = found
 				? `Found "${shown(found)}" — is the output of your compiler or processor rooted differently?`
-				: `The nearest path that exists is "${shown(await this.nearestExisting(expected))}" — has your compiler or processor run?`;
+				: nearest
+					? `The nearest path that exists is "${shown(nearest)}" — has your compiler or processor run?`
+					: "Has your compiler or processor run?";
 			warnings.push(
 				warningDiagnostic(
 					"output.nothingEmitted",
 					{ resource: sourcePath },
-					`source path "${shown(sourcePath)}" has no output under "${shown(expected)}". ${nearest}`
+					`source path "${shown(sourcePath)}" has no output under "${shown(expected)}". ${hint}`
 				)
 			);
 		}
@@ -365,10 +370,13 @@ export class CompiledPathCheck {
 		return undefined;
 	}
 
-	private async nearestExisting(target: string): Promise<string> {
-		const chain = [...selfAndAncestors(target)];
-		for (const dir of chain)
+	/** The nearest folder above `target` that exists, when `target` itself doesn't. */
+	private async nearestExistingAncestor(
+		target: string
+	): Promise<string | undefined> {
+		if (await this.fileSystemService.exists(target)) return undefined;
+		for (const dir of [...selfAndAncestors(target)].slice(1))
 			if (await this.fileSystemService.exists(dir)) return dir;
-		return chain[chain.length - 1];
+		return undefined;
 	}
 }

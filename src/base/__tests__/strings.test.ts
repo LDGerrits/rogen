@@ -4,6 +4,7 @@ import {
 	closestMatches,
 	defanged,
 	joinedWithAnd,
+	commandWith,
 	listLimited,
 	plural,
 	shellWord,
@@ -145,5 +146,15 @@ describe("shellWord", () => {
 		["it's", "'it'\\''s'"],
 	])("should write %s as %s", (arg, word) => {
 		expect(shellWord(arg)).toBe(word);
+	});
+});
+
+describe("commandWith", () => {
+	it.each([
+		["rogen write", "", "rogen write"],
+		["rogen write", "lobby", "rogen write lobby"],
+		["rogen write", "my game", "rogen write 'my game'"],
+	])("should write %s and %j as %s", (command, argument, line) => {
+		expect(commandWith(command, argument)).toBe(line);
 	});
 });

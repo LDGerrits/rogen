@@ -1,10 +1,12 @@
 import path from "path";
 import { Disposable } from "../../../base/disposable.js";
+import { toPosix } from "../../../base/path.js";
 import { Result, err, ok } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { Target } from "../../roblox/roblox.js";
 import { RojoProject } from "../../rojo/rojo-project.js";
+import { configStem } from "../config.js";
 import { ResolvedConfig } from "../resolved-config.js";
 import {
 	BrokenConfigEntry,
@@ -158,6 +160,20 @@ export class MockConfigService implements ConfigService {
 		args: readonly string[]
 	): Promise<Result<string[], Error>> {
 		return ok([...args]);
+	}
+
+	async referenceTo(file: string, folder: string): Promise<string> {
+		const relative = toPosix(path.relative(folder, path.dirname(file)));
+		return path.basename(file).startsWith("default.")
+			? relative
+			: path.posix.join(
+					relative,
+					configStem(file) ?? path.basename(file)
+				);
+	}
+
+	async firstNotConfig(): Promise<string | undefined> {
+		return undefined;
 	}
 
 	async coversOf(target: string): Promise<ConfigCover[]> {

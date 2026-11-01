@@ -9,6 +9,10 @@ stdout:
         "outcome": "wrote"
       },
       {
+        "file": "<dir>/src/.gitkeep",
+        "outcome": "wrote"
+      },
+      {
         "file": "<dir>/AGENTS.md",
         "outcome": "wrote"
       },
@@ -17,9 +21,7 @@ stdout:
         "outcome": "wrote"
       }
     ],
-    "directories": [
-      "<dir>/src"
-    ],
+    "directories": [],
     "decided": [
       {
         "question": "kind",
@@ -61,7 +63,7 @@ stdout:
       ],
       "edits": [
         "To change where code goes, edit \"routes\" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its \"tree\".",
-        "Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows."
+        "Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows."
       ]
     }
   }
@@ -71,6 +73,7 @@ written:
   default.project.json
   default.rogen.json
   rokit.toml
+  src/.gitkeep
 
 default.rogen.json:
 {

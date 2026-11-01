@@ -131,7 +131,7 @@ export interface CoveredTargets {
 		readonly selection: ReloadableSelection;
 		/** The targets this config answers for, by position; a target several configs cover is in each of their groups. */
 		readonly indexes: readonly number[];
-		/** A target is a `.rogen.json`, so the config is answered whole. */
+		/** A target is a `.rogen.json`, so the config is answered whole; one named beside an undefined target answers only for that target and the paths it covers. */
 		readonly whole: boolean;
 	}[];
 	/** The targets no config covers, by position. */
@@ -158,9 +158,10 @@ export type ConfigFileCheck = (
 export interface ConfigService {
 	readonly _serviceBrand: undefined;
 
-	/** Loads the configs `refs` names, else the default of the working directory. Fails only when they can't be picked; a broken config lands on its entry. */
+	/** Loads the configs `refs` names, else the default of the working directory. Fails only when they can't be picked; a broken config lands on its entry. With `reader`, such as a draft of files not written yet, reads through it. */
 	select(
-		refs: readonly string[]
+		refs: readonly string[],
+		reader?: FileReader
 	): Promise<Result<ReloadableSelection, Error>>;
 	/** The named configs, those that are not a default, of the working directory, absolute and sorted. */
 	namedConfigs(): Promise<string[]>;
@@ -172,9 +173,14 @@ export interface ConfigService {
 	plainProjectsHere(): Promise<string[]>;
 	/** Each argument that names a config as a bare name is replaced by its file; a file, or a folder with a default, stays a path. */
 	resolveNames(args: readonly string[]): Promise<Result<string[], Error>>;
+	/** The shortest argument that makes a command run in `folder` read exactly `file`: none for the default config of `folder`, the folder of any other default, the bare name when it reads `file`, else the path. `file` may be a config not written yet. */
+	referenceTo(file: string, folder: string): Promise<string>;
+
+	/** The first of `refs` that names no config: not a config or project file, a folder with a default config, nor a bare name that stands for a config. */
+	firstNotConfig(refs: readonly string[]): Promise<string | undefined>;
 	/** The configs that answer for `target`, so a command run from the root can take a path of any place: the default of the nearest folder at or above it, else every named config there whose source paths cover it. */
 	coversOf(target: string): Promise<ConfigCover[]>;
-	/** Loads the configs that answer for each target, one selection per config, so a command can take paths of several places. */
+	/** Loads the configs that answer for each target, one selection per config, so a command can take paths of several places. An undefined target, such as an instance, is answered by the configs named among the targets, else the default of the working directory. */
 	selectCovering(
 		targets: readonly (string | undefined)[]
 	): Promise<Result<CoveredTargets, Error>>;

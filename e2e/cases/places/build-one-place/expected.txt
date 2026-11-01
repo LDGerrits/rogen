@@ -18,7 +18,7 @@ stdout:
   rogen write
   places/arena/default.project.json · unchanged
   places/lobby/default.project.json · unchanged
-  Wrote 2 of 2 project files.
+  2 project files unchanged.
 
 $ rogen build places/arena places/lobby -o game.rbxl
 exit 2

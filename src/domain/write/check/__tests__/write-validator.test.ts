@@ -611,7 +611,6 @@ describe("WriteValidator rules", () => {
 				["src/Bad:Name.luau", '":"'],
 				["src/What?.luau", '"?"'],
 				["src/con.luau", "Windows device"],
-				["src/trail .luau", "space or a dot"],
 			])("should warn of %s", async (file, reason) => {
 				await write(file);
 
@@ -619,6 +618,17 @@ describe("WriteValidator rules", () => {
 					{
 						resource: abs(file),
 						message: expect.stringContaining(reason),
+					},
+				]);
+			});
+
+			it("should warn of a folder whose name ends in a dot, and not of a file whose stem does", async () => {
+				await write("src/Trail./Fine.luau", "src/trail..luau");
+
+				expect(await named("scan.portableName")).toMatchObject([
+					{
+						resource: abs("src/Trail."),
+						message: expect.stringContaining("space or a dot"),
 					},
 				]);
 			});

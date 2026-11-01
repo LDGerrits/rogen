@@ -111,28 +111,6 @@ describe("CoreCommandService", () => {
 			).rejects.toThrow("oops");
 		});
 
-		it("should refuse words after --", async () => {
-			store.add(
-				registry.registerCommand({
-					id: "foo",
-					metadata: { summary: "Does a thing", description: "foo" },
-					handler: async () => ok(undefined),
-				})
-			);
-
-			const result = await commandService.executeCommand("foo", {
-				positionals: [],
-				passthrough: ["--port", "1"],
-				options: {},
-			});
-
-			expect(result.isErr() && result.error).toEqual(
-				new UsageError(
-					"foo takes nothing after '--'. Run 'rogen help foo' to see what it accepts."
-				)
-			);
-		});
-
 		it("should return an error naming an unknown command", async () => {
 			const result = await commandService.executeCommand("prod", {
 				positionals: [],

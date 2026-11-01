@@ -84,7 +84,7 @@ registerCommand(
 					},
 					examples: [
 						"rogen write",
-						"rogen write places/lobby",
+						"rogen write projects/lobby",
 						"rogen write game lobby",
 						"rogen write --watch",
 						"rogen write --json",

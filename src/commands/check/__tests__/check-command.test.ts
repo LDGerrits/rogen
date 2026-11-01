@@ -890,7 +890,10 @@ describe("check command", () => {
 		) => Promise<Result<void, Error>>;
 
 		beforeEach(async () => {
-			annotated = new MockLogService("/repo", "/repo");
+			annotated = new MockLogService({
+				cwd: "/repo",
+				annotationsIn: "/repo",
+			});
 			const harness = commandHarness({ log: annotated, fs });
 			runAnnotated = ({ _ = [], ...options }) =>
 				harness.run("check", { positionals: _, options });

@@ -112,7 +112,7 @@ registerCommand(
 					},
 					examples: [
 						"rogen serve",
-						"rogen serve places/lobby --port <port>",
+						"rogen serve lobby --port <port>",
 						"rogen serve dist",
 					],
 				},

@@ -61,6 +61,10 @@ export class PlannedFilesIndex implements IndexReader {
 		);
 	}
 
+	isUnreadable(dir: string): boolean {
+		return this.index.isUnreadable(dir);
+	}
+
 	private add(entry: string, type: FileType): void {
 		const dir = toPosix(path.dirname(entry));
 		const entries = this.added.get(dir) ?? new Map<string, FileType>();

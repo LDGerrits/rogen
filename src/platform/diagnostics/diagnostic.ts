@@ -151,9 +151,11 @@ function messageWithCode(message: string, code: string): string {
 		: `${message.slice(0, end)} (${code})${message.slice(end)}`;
 }
 
+/** `severity` writes the severity label, as a log service colours it. */
 export function diagnosticSummary(
 	diagnostic: Diagnostic,
-	cwd?: string
+	cwd?: string,
+	severity: (label: string) => string = (label) => label
 ): string {
 	const relative = (text: string) =>
 		cwd === undefined ? text : messageRelativeTo(text, cwd);
@@ -164,10 +166,14 @@ export function diagnosticSummary(
 	const details = (diagnostic.details ?? []).map(
 		(detail) => `\n  ${relative(detail)}`
 	);
-	return `${SEVERITY_LABELS[diagnostic.severity]}: ${message}${details.join("")}`;
+	return `${severity(`${SEVERITY_LABELS[diagnostic.severity]}:`)} ${message}${details.join("")}`;
 }
 
-export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
+export function renderDiagnostic(
+	diagnostic: Diagnostic,
+	cwd?: string,
+	severity?: (label: string) => string
+): string {
 	const { position } = diagnostic;
 	const resource =
 		cwd === undefined
@@ -176,7 +182,7 @@ export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
 	const where = position
 		? `${resource}:${position.line}:${position.column}`
 		: resource;
-	return `${where} - ${diagnosticSummary(diagnostic, cwd)}`;
+	return `${where} - ${diagnosticSummary(diagnostic, cwd, severity)}`;
 }
 
 export function renderDiagnostics(diagnostics: readonly Diagnostic[]): string {

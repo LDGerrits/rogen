@@ -12,6 +12,8 @@ const CODES = {
 
 type StyleName = keyof typeof CODES;
 
+export type Styler = typeof style;
+
 /** `text` in `format`; the caller decides whether the stream draws, so `util.styleText`'s checks are skipped. */
 export function style(
 	format: StyleName | readonly StyleName[],
@@ -24,3 +26,6 @@ export function style(
 		text
 	);
 }
+
+/** A `Styler` for output without colour. */
+export const unstyled: Styler = (_format, text) => text;

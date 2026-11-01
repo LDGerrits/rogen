@@ -99,7 +99,7 @@ describe("AbstractLogService formatting", () => {
 			.spyOn(console, "warn")
 			.mockImplementation(() => {});
 
-		new PlainLogService("/repo").diagnostic({
+		new PlainLogService({ cwd: "/repo" }).diagnostic({
 			resource: "/repo/src/a\u001b]0;x\u0007\n::error::pwned.luau",
 			severity: DiagnosticSeverity.Warning,
 			code: "scan.portableName",

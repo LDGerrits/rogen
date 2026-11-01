@@ -5,10 +5,10 @@ import { LogService } from "../../platform/log/log-service.js";
 import { RojoServer, ServerMessage } from "../../domain/runner/rojo-server.js";
 import { RojoTarget } from "./rojo-entry.js";
 
-/** One thing Rojo said, at the level it said it. */
+/** One thing Rojo said, at the level it said it, and on stderr when Rojo said it there. */
 function reportServerMessage(
 	logService: LogService,
-	{ severity, text, details = [] }: ServerMessage,
+	{ severity, text, details = [], stdout }: ServerMessage,
 	cwd: string
 ): void {
 	if (severity === "debug") {
@@ -21,6 +21,7 @@ function reportServerMessage(
 	].join("\n");
 	if (severity === "error") logService.error(said);
 	else if (severity === "warning") logService.warn(said);
+	else if (stdout === undefined) logService.notice(said);
 	else logService.info(said);
 }
 

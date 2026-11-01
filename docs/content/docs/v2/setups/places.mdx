@@ -29,6 +29,8 @@ It writes a first place, `game`, with its code in `src/game` and the shared code
 }
 ```
 
+With the sample, the tree also mounts `place/game`, Rojo's sample Baseplate and lighting, as `"Workspace": { "$path": "place/game/Workspace" }` and the same for `Lighting` and `SoundService`.
+
 A place's file replaces a shared file at the same path, because the later source path wins.
 
 ## Name the Place
@@ -42,11 +44,18 @@ rogen build game -o game.rbxl
 
 ## Add a Place
 
-Copy the first place's config, set its `"name"` to `"lobby"` and its own folder in `sourcePaths`, and make that folder:
+Copy the first place's config, set its `"name"` to `"lobby"` and its own folder in `sourcePaths`, and make that folder. If its tree mounts `place/game`, copy that folder too and point each of those `$path`s at `place/lobby`, or the lobby gets the game's map:
 
 ```bash
 cp game.rogen.json lobby.rogen.json
 mkdir src/lobby
+cp -r place/game place/lobby
 ```
 
 To serve two places at once, give the second a port of its own with `--port`, or set Rojo's `servePort` in its config.
+
+## Places in roblox-ts
+
+`rogen init --places --language roblox-ts` puts each place in a folder of `projects`. The shared code is in `projects/common/src`, and the first place is `projects/game`, with its own `default.rogen.json` and `tsconfig.json`, and with the sample a `place` folder. Its `sourcePaths` are `["../common/src", "src"]`. Name the folder in each command, as in `rogen serve projects/game`.
+
+To add a place, make `projects/lobby/src`, copy `default.rogen.json`, `tsconfig.json` and, if it is there, `place` from `projects/game` into `projects/lobby`, and set `"name"` to `"lobby"`. Run `rogen write projects/lobby`, then add `rbxtsc -p projects/lobby` to the `build` script in `package.json` and `rbxtsc -w -p projects/lobby` to `watch`.

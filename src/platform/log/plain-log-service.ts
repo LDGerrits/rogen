@@ -6,7 +6,7 @@ const indented = (text: string) =>
 		.map((line) => `  ${line}`)
 		.join("\n");
 
-/** For output that isn't a terminal (CI, pipes, redirects): plain lines, no gutter and no colour. */
+/** For output that isn't a terminal (CI, pipes, redirects): plain lines, no gutter, and colour only when asked for. */
 export class PlainLogService extends AbstractLogService {
 	declare readonly _serviceBrand: undefined;
 
@@ -35,10 +35,10 @@ export class PlainLogService extends AbstractLogService {
 				own(this.inStep ? indented(text) : text);
 				break;
 			case "warn":
-				console.warn(`warning: ${text}`);
+				console.warn(`${this.style("yellow", "warning:")} ${text}`);
 				break;
 			case "error":
-				console.error(`error: ${text}`);
+				console.error(`${this.style("red", "error:")} ${text}`);
 				break;
 			case "diagnosticWarning":
 				console.warn(text);
@@ -50,7 +50,7 @@ export class PlainLogService extends AbstractLogService {
 				break;
 			case "debug":
 			case "trace": {
-				const line = `[${kind}] ${text}`;
+				const line = this.style("dim", `[${kind}] ${text}`);
 				console.error(this.inStep ? indented(line) : line);
 				break;
 			}

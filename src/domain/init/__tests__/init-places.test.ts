@@ -6,6 +6,8 @@ import { MockPromptService } from "../../../platform/prompt/__tests__/mock-promp
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreInitService } from "../core-init-service.js";
+import { CoreWriteService } from "../../write/core-write-service.js";
+import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { InitChoices, InitPlan } from "../init-service.js";
 
 const directory = path.resolve("/mock/my-game");
@@ -28,14 +30,22 @@ describe("init for several places", () => {
 
 	const serviceFor = () => {
 		const environmentService = new NativeEnvironmentService({}, directory);
+		const toolchain = new CoreToolchainService(fileSystem);
+		const configs = new CoreConfigService(fileSystem, environmentService);
 		return new CoreInitService(
 			fileSystem,
 			new MockPromptService([], false),
 			environmentService,
-			new CoreToolchainService(fileSystem),
+			toolchain,
 			processes,
 			undefined,
-			new CoreConfigService(fileSystem, environmentService)
+			configs,
+			new CoreWriteService(
+				fileSystem,
+				new CoreIndexService(fileSystem),
+				toolchain.syncTools,
+				configs
+			)
 		);
 	};
 

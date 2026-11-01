@@ -109,6 +109,20 @@ describe("write command", () => {
 				"game.project.json · unchanged",
 				"lobby.project.json · unchanged",
 			]);
+			expect(log.lines.at(-1)).toBe("outro: 2 project files unchanged.");
+		});
+
+		it("should count the files it left unchanged apart from those it wrote", async () => {
+			const { run, log } = commandHarness({ fs });
+			await run("write");
+			await fs.writeFile(abs("lobby.rogen.json"), named("Arena"));
+			log.clear();
+
+			await run("write");
+
+			expect(log.lines.at(-1)).toBe(
+				"outro: Wrote 1 of 2 project files (1 unchanged)."
+			);
 		});
 
 		it("should write the other configs when one does not load, and fail", async () => {
