@@ -208,6 +208,50 @@ describe("CoreConfigService selectCovering", () => {
 
 		expect(result.isErr()).toBe(true);
 	});
+
+	it("should answer an undefined target by the configs named with it, which then answer only for it", async () => {
+		const covered = (
+			await service.selectCovering([
+				"/repo/places/lobby/default.rogen.json",
+				undefined,
+				"/repo/places/arena/default.rogen.json",
+			])
+		).unwrap();
+
+		expect(
+			covered.groups.map(({ selection, indexes, whole }) => ({
+				file: selection.entries[0].file,
+				indexes,
+				whole,
+			}))
+		).toEqual([
+			{
+				file: "/repo/places/lobby/default.rogen.json",
+				indexes: [1],
+				whole: false,
+			},
+			{
+				file: "/repo/places/arena/default.rogen.json",
+				indexes: [1],
+				whole: false,
+			},
+		]);
+		expect(covered.uncovered).toEqual([]);
+	});
+
+	it("should keep a path given beside a config named for an undefined target", async () => {
+		const covered = (
+			await service.selectCovering([
+				"/repo/places/lobby/default.rogen.json",
+				undefined,
+				"/repo/places/lobby/src/B.luau",
+			])
+		).unwrap();
+
+		expect(covered.groups).toMatchObject([
+			{ indexes: [1, 2], whole: false },
+		]);
+	});
 });
 
 describe("CoreConfigService coversOf", () => {

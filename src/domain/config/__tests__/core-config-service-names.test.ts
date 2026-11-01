@@ -47,3 +47,42 @@ describe("CoreConfigService.resolveNames", () => {
 		]);
 	});
 });
+
+describe("CoreConfigService.firstNotConfig", () => {
+	useConfigFixture();
+
+	const firstNot = (...refs: string[]) => service.firstNotConfig(refs);
+
+	it("should accept a config file, a bare name, a project file and a folder with a default config", async () => {
+		await write("/repo/game.rogen.json", {});
+		await write("/repo/lobby.project.json", {});
+		await write("/repo/places/arena/default.rogen.json", {});
+
+		expect(
+			await firstNot(
+				"game.rogen.json",
+				"game",
+				"lobby",
+				"lobby.project.json",
+				"places/arena"
+			)
+		).toBeUndefined();
+	});
+
+	it("should name a source file", async () => {
+		await write("/repo/game.rogen.json", {});
+		await fs.writeFile("/repo/src/x.luau", "");
+
+		expect(await firstNot("game", "src/x.luau")).toBe("src/x.luau");
+	});
+
+	it("should name a folder that holds no default config", async () => {
+		await fs.createDirectory("/repo/places/game");
+
+		expect(await firstNot("places/game")).toBe("places/game");
+	});
+
+	it("should name a bare name that stands for no config", async () => {
+		expect(await firstNot("missing")).toBe("missing");
+	});
+});

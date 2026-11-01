@@ -58,10 +58,10 @@ registerCommand(
 								"A file, a directory, a Studio instance path, or '-' for text on stdin. A directory gives the files in it, and a file that doesn't exist yet is placed as if it did. A :line or :line:col after a file is ignored.",
 								"- Instance: a path as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it.",
 								"- '-': reads text on stdin and prints it with each Studio instance path (Service.Feature.Name:12 or Script 'Service.Feature.Name', Line 12) written as file:line; an instance that several files place stays as it is, and is listed on stderr.",
-								"- Config: the default config of the nearest folder at or above the path; with none, every .rogen.json at or above it whose source paths cover it. A .rogen.json, or a config named as build reads it (game for game.rogen.json), lists every file of that config.",
-								"- Several configs: each answer names its config file, and so does config in the JSON.",
-								"- Skipped: a path Rogen leaves out gets a note on stderr, and is listed under skipped in the JSON document.",
-								"- No path: every file of every config of the working directory. An instance or '-': its default config.",
+								"- Config: the default config of the nearest folder at or above the path; with none, every .rogen.json at or above it whose source paths cover it. A .rogen.json, or a config named as build reads it (game for game.rogen.json), lists all its files.",
+								"- Several configs: each answer names its config file, as config does in the JSON.",
+								"- Skipped: a path Rogen leaves out gets a note on stderr and a skipped entry in the JSON.",
+								"- No path: every file of every config of the working directory. An instance or '-': a config named beside it, else the default.",
 							].join("\n"),
 							isOptional: true,
 							isVariadic: true,
@@ -166,11 +166,22 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof WhereOptions>
 		): Promise<Result<void, Error>> {
-			if (line.positionals.length > 1 || line.options.json)
+			if (line.options.json)
 				return err(
 					new UsageError(
-						"'-' reads text on stdin and prints it, so it takes no other path and no --json.",
-						"Run 'rogen where -' on its own, or name the paths without '-'."
+						"'-' reads text on stdin and prints it, so it takes no --json.",
+						"Run 'rogen where -' without --json, or name the paths without '-'."
+					)
+				);
+			const configs = line.positionals.filter((arg) => arg !== "-");
+			const notConfig = await accessor
+				.get(ConfigService)
+				.firstNotConfig(configs);
+			if (notConfig !== undefined)
+				return err(
+					new UsageError(
+						`'-' takes only configs beside it; ${notConfig} is not a config.`,
+						"Name a config as game, game.rogen.json or a folder with a default.rogen.json."
 					)
 				);
 			const input = accessor.get(InputService);
@@ -186,7 +197,7 @@ registerCommand(
 			const paths = studioPathsIn(text);
 			const placed =
 				paths.length > 0
-					? await this.filesPlacing(accessor, text, paths)
+					? await this.filesPlacing(accessor, configs, text, paths)
 					: ok({
 							files: new Map<string, string>(),
 							failure: undefined,
@@ -202,9 +213,10 @@ registerCommand(
 				: ok(undefined);
 		}
 
-		/** The file that places each instance in `paths`, relative to the working directory; one that several files place is warned about and left out. Fails when no config can answer; carries the errors of those that didn't load. */
+		/** The file that places each instance in `paths` in `configs`, else the default config, relative to the working directory; one that several files place is warned about and left out. Fails when no config can answer; carries the errors of those that didn't load. */
 		private async filesPlacing(
 			accessor: ServicesAccessor,
+			configs: readonly string[],
 			text: string,
 			paths: readonly StudioPath[]
 		): Promise<
@@ -217,7 +229,7 @@ registerCommand(
 			>
 		> {
 			const cwd = accessor.get(EnvironmentService).cwd;
-			const selection = await accessor.get(ConfigService).select([]);
+			const selection = await accessor.get(ConfigService).select(configs);
 			if (selection.isErr()) return selection;
 			const spans = new Map(
 				paths.map(({ reference, start, end }) => [

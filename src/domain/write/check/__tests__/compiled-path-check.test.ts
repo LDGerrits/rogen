@@ -105,22 +105,39 @@ describe("CompiledPathCheck", () => {
 					});
 				});
 
-				it("should keep the nearest path that exists when the compiled path does", async () => {
+				it("should leave out the nearest path when the expected path itself exists", async () => {
 					await fs.writeFile(abs("src/Inventory/A.ts"), "");
 					await fs.createDirectory(abs("out"));
 
 					const warnings = await check(fs, emittedConfigOf());
 
-					expect(warnings).toHaveLength(1);
-					expect(warnings[0]).toMatchObject({
-						code: "output.nothingEmitted",
-						resource: abs("src"),
-					});
-					expect(warnings[0].message).toContain('source path "src"');
-					expect(warnings[0].message).toContain('under "out"');
-					expect(warnings[0].message).toContain(
-						'nearest path that exists is "out" — has your compiler or processor run?'
+					expect(warnings).toMatchObject([
+						{
+							code: "output.nothingEmitted",
+							resource: abs("src"),
+							message:
+								'source path "src" has no output under "out". Has your compiler or processor run?',
+						},
+					]);
+				});
+
+				it("should leave out the nearest path when each source path's folder holds only empty folders", async () => {
+					await fs.writeFile(abs("src/Inventory/A.ts"), "");
+					await fs.writeFile(abs("tests/Inventory.spec.ts"), "");
+					await fs.createDirectory(abs("out/src/Inventory"));
+					await fs.createDirectory(abs("out/tests"));
+
+					const warnings = await check(
+						fs,
+						emittedConfigOf({
+							sourcePaths: [abs("src"), abs("tests")],
+						})
 					);
+
+					expect(warnings.map(({ message }) => message)).toEqual([
+						'source path "src" has no output under "out/src". Has your compiler or processor run?',
+						'source path "tests" has no output under "out/tests". Has your compiler or processor run?',
+					]);
 				});
 
 				it("should take a compiled path that holds only empty folders as nothing emitted", async () => {

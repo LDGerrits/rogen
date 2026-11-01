@@ -41,6 +41,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A failed `syncback --json` names the config it ran on.
 - A folder Rogen can't read is a `scan.unreadable` error naming it, as Rojo fails to build it, and `--watch` prints it once.
 - `--watch` rewrites the project file when a folder it couldn't read becomes readable, and watches what is in it from then on.
+- The `output.nothingEmitted` warning no longer names the missing path as the nearest path that exists.
+- `rogen where` answers a Studio instance path or `-` by the config named beside it, as in `rogen where game -`, where it used to ask for a default config; `-` refuses any other path beside it.
+- The `serve.portTaken` error suggests `rogen serve lobby --port <port>` instead of naming the whole `lobby.rogen.json`, when the bare name reads that config.
 
 ## [2.0.0-beta.2] - 2026-10-31
 

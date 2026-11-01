@@ -240,6 +240,28 @@ export class ConfigDiscovery {
 			: ok(undefined);
 	}
 
+	/** Whether `ref` names a config as `select` reads it: a config or project file, a folder with a default config, or a bare name that stands for a config; one that is broken still names it. */
+	async namesConfig(ref: string): Promise<boolean> {
+		const target = path.resolve(this.environmentService.cwd, ref);
+		const isDirectory = await this.fileSystemService.isDirectory(target);
+		if (isDirectory && (await this.defaultConfigs(target)).length > 0)
+			return true;
+		if (isDirectory && (await this.adoptable(target)) !== undefined)
+			return true;
+		if (
+			!isDirectory &&
+			(isConfigFileName(target) || isProjectFileConfig(target))
+		)
+			return true;
+		if (
+			!isBareName(ref) ||
+			(!isDirectory && (await this.fileSystemService.exists(target)))
+		)
+			return false;
+		const file = await this.fileNamed(this.environmentService.cwd, ref);
+		return file.isErr() || file.value !== undefined;
+	}
+
 	/** What a bare name stands for in `folder`: its config of that name, else its project file of that name. */
 	private async fileNamed(
 		folder: string,
