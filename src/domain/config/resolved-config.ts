@@ -68,7 +68,7 @@ export class ResolvedConfig {
 		return path.dirname(this.file);
 	}
 
-	/** The Rojo project file the config writes, beside it and named for its stem; for a config that is a Rojo project file, that file. */
+	/** The Rojo project file the config writes; see `projectFileOf`. */
 	get projectFile(): string {
 		return projectFileOf(this.file);
 	}

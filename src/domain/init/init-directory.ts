@@ -42,7 +42,7 @@ export class InitDirectory {
 		return [...this.entries].filter(isConfigFileName).sort();
 	}
 
-	/** The `*.project.json` files here other than `except`, which init does not lift. */
+	/** The Rojo project files here other than `except`, which init does not lift. */
 	otherProjectFiles(...except: string[]): string[] {
 		return [...this.entries]
 			.filter(
