@@ -96,6 +96,16 @@ export class InitDirectory {
 			: undefined;
 	}
 
+	/** Whether the folder's only code is the module at `moduleRoot`, which makes it a model. */
+	get isOneModule(): boolean {
+		const { codeFolders, rootScripts = [] } = this.layout;
+		return (
+			this.moduleRoot !== undefined &&
+			codeFolders.length === 1 &&
+			rootScripts.length === 0
+		);
+	}
+
 	/** The first that applies: the language's own config, `src`, the only code folder unless a route is named after it, else `src`. */
 	defaultSourcePath(language: Language): string {
 		const configured = language.configuredSourcePath();

@@ -1370,6 +1370,28 @@ describe("CoreInitService", () => {
 		);
 
 		it.each([
+			["a folder of code", "lib/Util.luau"],
+			["a script at the root", "Main.server.luau"],
+		])(
+			"should start a place, and warn, where the module folder has %s beside it",
+			async (_, other) => {
+				await write("src/init.luau", "return {}");
+				await write(other, "return {}");
+
+				const plan = (await serviceFor().plan()).unwrap();
+
+				expect(plan?.decided).toContainEqual({
+					question: "kind",
+					value: "place",
+					flag: "--kind",
+				});
+				expect(plan?.warnings.map(({ code }) => code)).toContain(
+					"init.codeOutsideSourcePaths"
+				);
+			}
+		);
+
+		it.each([
 			["init.luau", "model", 'rogen build -o "lib.rbxmx"'],
 			["init.server.luau", "plugin", 'rogen build -p "lib.rbxm"'],
 		])(

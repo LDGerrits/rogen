@@ -80,8 +80,7 @@ export class InitQuestions {
 		if (given !== undefined) return given;
 		const kind =
 			lifted ??
-			(directory.moduleRoot !== undefined &&
-			!directory.hasHandWrittenProject
+			(directory.isOneModule && !directory.hasHandWrittenProject
 				? "model"
 				: "place");
 		if (!this.interactive) this.decide("kind", kind, "--kind");
