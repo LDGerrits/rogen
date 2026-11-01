@@ -196,12 +196,23 @@ export abstract class AbstractLogService implements LogService {
 		);
 	}
 
+	/** Colours the severity as the `error:` and `warning:` prefixes are, so the text around it is made harmless first. */
 	diagnostic(diagnostic: Diagnostic): void {
 		const isError = diagnostic.severity === DiagnosticSeverity.Error;
-		if (this.canLog(isError ? LogLevel.Error : LogLevel.Warn))
-			this.emit(
-				isError ? "diagnosticError" : "diagnosticWarning",
-				renderDiagnostic(diagnostic, this.cwd)
-			);
+		if (!this.canLog(isError ? LogLevel.Error : LogLevel.Warn)) return;
+		const { resource, message, details } = diagnostic;
+		this.write(
+			isError ? "diagnosticError" : "diagnosticWarning",
+			renderDiagnostic(
+				{
+					...diagnostic,
+					resource: defanged(resource),
+					message: defanged(message),
+					details: details?.map(defanged),
+				},
+				this.cwd,
+				(label) => this.style(isError ? "red" : "yellow", label)
+			)
+		);
 	}
 }

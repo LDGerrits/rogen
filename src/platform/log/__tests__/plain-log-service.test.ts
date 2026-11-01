@@ -153,6 +153,22 @@ describe("PlainLogService", () => {
 		]);
 	});
 
+	it("should colour the severity of a diagnostic when colour is on", () => {
+		const logService = new PlainLogService({ color: true });
+
+		logService.diagnostic(
+			warningDiagnostic("x.y", { resource: "/repo/a" }, "w")
+		);
+		logService.diagnostic(
+			errorDiagnostic("x.z", { resource: "/repo/a\u001b[0m" }, "e")
+		);
+
+		expect(errors).toEqual([
+			"/repo/a - \u001b[33mwarning:\u001b[39m w (x.y)",
+			"/repo/a\\u001b[0m - \u001b[31merror:\u001b[39m e (x.z)",
+		]);
+	});
+
 	it("should indent debug lines inside a step", () => {
 		const logService = new PlainLogService();
 		logService.setLevel(LogLevel.Debug);
