@@ -175,8 +175,12 @@ export class CoreConfigService implements ConfigService {
 		target: string
 	): Promise<ConfigCover | undefined> {
 		const cover = await this.discovery.coverOf(target);
-		if (!cover || cover.whole || !isProjectFileConfig(cover.file))
-			return cover;
+		if (!cover) return cover;
+		if (cover.whole)
+			return isProjectFileConfig(target)
+				? ((await this.configAbove(target)) ?? cover)
+				: cover;
+		if (!isProjectFileConfig(cover.file)) return cover;
 		return (await this.configAbove(cover.file)) ?? cover;
 	}
 
