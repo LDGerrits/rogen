@@ -102,6 +102,7 @@ registerCommand(
 					output: { document: syncbackDocumentShape },
 					effects: ["writesFiles", "runsProcesses"],
 					exitCodes: {
+						"1": "the project has errors, or Rojo failed",
 						"2": "the command line is wrong, or a run with no terminal got neither --non-interactive nor --dry-run",
 					},
 					examples: [

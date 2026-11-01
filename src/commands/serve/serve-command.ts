@@ -105,6 +105,7 @@ registerCommand(
 					output: { lines: serveLineShape },
 					effects: ["writesFiles", "runsProcesses"],
 					exitCodes: {
+						"1": "the project has errors, or Rojo failed",
 						"0": "another rogen serve already serves the project",
 						"128+N":
 							"a signal stopped it: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP",

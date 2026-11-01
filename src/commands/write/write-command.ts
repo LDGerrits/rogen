@@ -77,6 +77,11 @@ registerCommand(
 					effects: ["writesFiles"],
 					unknownWordOffer: "To write a project file",
 					longRunningWith: "watch",
+					exitCodes: {
+						"1": "a config has errors, or a file could not be written",
+						"128+N":
+							"--watch stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP",
+					},
 					examples: [
 						"rogen write",
 						"rogen write places/lobby",

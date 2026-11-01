@@ -65,7 +65,7 @@ const InitOptions = [
 		type: "boolean",
 		negation: "only",
 		description:
-			"Leave the Greeter sample out, for an empty src and no place. The sample is three hello-world scripts in src/Greeter, Rojo's Baseplate and lighting in place, which the tree mounts, and a README; a new place in a folder with no code gets it.",
+			"Leave the Greeter sample out: empty source folders, and no place/ folder. The sample is a Greeter feature folder of three hello-world scripts, a README, and Rojo's Baseplate and lighting in place/, which the tree mounts. A new place in a folder with no code gets it.",
 	},
 	{
 		name: "places",
@@ -79,13 +79,13 @@ const InitOptions = [
 		type: "boolean",
 		negation: "also",
 		description:
-			"Whether to add Rogen's rules for coding agents to the agent file. Added when not given, and imported into CLAUDE.md and GEMINI.md. In a project that has a config, it adds them there, and takes no flag that shapes a config.",
+			"Whether to add Rogen's rules for coding agents to the agent file. Added when not given, and imported into CLAUDE.md and GEMINI.md. Also works where a config exists.",
 	},
 	{
 		name: "agent-hook",
 		type: "boolean",
 		description:
-			"Add the hook that reports Rogen warnings to the coding agents found. Added only when given, or chosen under Customise. In a project that has a config, it adds it there, and takes no flag that shapes a config.",
+			"Add the hook that reports Rogen warnings to the coding agents found. Added only when given, or chosen under Customise. Also works where a config exists.",
 	},
 ] as const;
 
@@ -111,8 +111,12 @@ registerCommand(
 				id: "init",
 				metadata: {
 					summary: "Starts a project with a default.rogen.json",
-					description:
-						"Starts a project with a default.rogen.json, as 'rojo init' does. It reads what the folder holds, and asks in a terminal. With a folder, it starts the project there. Beside a hand-written default.project.json, it lifts that tree into default.rogen.json. The source path is the closest folder that holds the code the file mounts. From then on, 'rogen write' writes default.project.json from the config. Beside a Rogen 1 .rogen.json, it migrates the project: a config for each v1 mode, with routes that put every file where v1 did and the tree from v1's project, renames the files v1 routed by their names to the @ form, and sets the v1 config aside as .rogen.json.v1. Where a config exists, init writes nothing, but --agent-rules and --agent-hook still add the agent files. To change a config, edit the .rogen.json and run 'rogen check'.",
+					description: [
+						"Starts a project with a default.rogen.json, as 'rojo init' does. It reads what the folder holds and, in a terminal, shows the plan and asks before it writes.",
+						"- Beside a hand-written default.project.json: lifts its tree into default.rogen.json, with the closest folder that holds the code it mounts as the source path. 'rogen write' then writes default.project.json from the config.",
+						"- Beside a Rogen 1 .rogen.json: migrates it to a config for each v1 mode, with routes that put every file where v1 did and the tree from v1's project. It renames the files v1 routed by their names to the @ form, and keeps the v1 config as .rogen.json.v1.",
+						"- Beside a config: writes nothing, but --agent-rules and --agent-hook still add the agent files. To change a config, edit the .rogen.json and run 'rogen check'.",
+					].join("\n"),
 					args: [
 						{
 							name: "path",
@@ -124,10 +128,15 @@ registerCommand(
 					options: InitOptions,
 					output: { document: initDocumentShape },
 					effects: ["writesFiles"],
+					exitCodes: {
+						"1": "the folder can't be set up as asked, or you cancelled",
+					},
 					examples: [
 						"rogen init",
 						"rogen init --non-interactive",
 						"rogen init game",
+						"rogen init --dry-run --json",
+						"rogen init --agent-hook",
 					],
 				},
 			});

@@ -1,5 +1,5 @@
 import { compareStrings } from "../../base/collections.js";
-import { ExitCodes, UsageError } from "../../base/errors.js";
+import { CommandExitCodes, UsageError } from "../../base/errors.js";
 import { closestMatch } from "../../base/strings.js";
 import { Command } from "../../platform/commands/commands.js";
 import {
@@ -238,7 +238,10 @@ function formatCommandHelp(
 		[
 			"EXIT CODES",
 			formatColumns(
-				Object.entries({ ...ExitCodes, ...command.metadata.exitCodes })
+				Object.entries({
+					...CommandExitCodes,
+					...command.metadata.exitCodes,
+				})
 			),
 		],
 		["EXAMPLES", examples.map((line) => `${INDENT}${line}`)],
