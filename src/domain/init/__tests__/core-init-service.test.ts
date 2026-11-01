@@ -1570,12 +1570,9 @@ describe("CoreInitService", () => {
 
 		it("should show a warning of the plan before it is accepted", async () => {
 			await write("src/Combat/Hit.server.luau");
-			const prompts = new MockPromptService({
-				"One place or several?": "several",
-				[CREATE]: "yes",
-			});
+			const prompts = new MockPromptService({ [CREATE]: "yes" });
 
-			await review(prompts);
+			await serviceFor(prompts).plan({ choices: { places: true } });
 			const shown = prompts.prompts.at(-1)?.description ?? "";
 
 			expect(shown).toMatch(
@@ -1655,10 +1652,13 @@ describe("CoreInitService", () => {
 		it("should name the code that several places would leave unplaced", async () => {
 			await write("src/Combat/Hit.server.luau");
 			await write("src/Util.luau");
-			const prompts = new MockPromptService({
-				"One place or several?": "one",
-				[CREATE]: "yes",
-			});
+			const prompts = new MockPromptService([
+				"customise",
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				"yes",
+			]);
 
 			await review(prompts);
 			const places = prompts.prompts.find(
@@ -1687,6 +1687,31 @@ describe("CoreInitService", () => {
 				several:
 					"src/common holds the shared code, src/game the first place; leaves Main.server.luau unplaced",
 			});
+		});
+
+		it("should not ask the layout of a folder that holds code, and offer it under Customise with the folder one place uses", async () => {
+			await write("lib/Combat/Hit.luau");
+			const prompts = new MockPromptService([
+				"customise",
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				"yes",
+			]);
+
+			await review(prompts);
+			const places = prompts.prompts.find(
+				({ message }) => message === "One place or several?"
+			);
+
+			expect(prompts.asked).toEqual([
+				CREATE,
+				"Language",
+				"One place or several?",
+				"Add Rogen's rules for coding agents to AGENTS.md?",
+				CREATE,
+			]);
+			expect(places?.choiceHints?.one).toBe("the code is in lib");
 		});
 
 		it("should offer no Customise when every question the summary shows was asked", async () => {

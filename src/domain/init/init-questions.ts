@@ -118,7 +118,7 @@ export class InitQuestions {
 		return this.interactive && this.choices.places === undefined;
 	}
 
-	/** Whether a new project is several places; a `projects` folder here makes it the default for a compiled language. */
+	/** Whether a new project is several places, asked up front only in a folder without code; a `projects` folder here makes it the default for a compiled language. */
 	async places(
 		directory: InitDirectory,
 		language: Language,
@@ -138,13 +138,16 @@ export class InitQuestions {
 				several,
 				booleanFlag("--places", !several)
 			);
-		const answer = await this.essential.select<"one" | "several">({
+		const holdsCode = directory.layout.codeFolders.length > 0;
+		const answer = await (
+			holdsCode ? this.promptService : this.essential
+		).select<"one" | "several">({
 			message: "One place or several?",
 			choices: [
 				{
 					value: "one",
 					label: "One place",
-					hint: `the code is in src${unplaced.one ? `; leaves ${unplaced.one} unplaced` : ""}`,
+					hint: `the code is in ${directory.defaultSourcePath(language)}${unplaced.one ? `; leaves ${unplaced.one} unplaced` : ""}`,
 				},
 				{
 					value: "several",

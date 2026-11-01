@@ -692,11 +692,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				? ""
 				: places
 					? " Pass --no-sample for empty source folders."
-					: ` Pass --no-sample for an empty ${here(sourcePaths[0])} and no ${here(SAMPLE_GAME_FOLDER)}.`;
+					: ` Pass --no-sample for an empty ${here(sourcePaths[0])}/ and no ${here(SAMPLE_GAME_FOLDER)}/.`;
 			builder.addNote(
 				places
 					? `The Greeter sample is the feature in ${here(places.commonSourcePath)}, which every place shares, Game in ${here(places.placeSourcePath)}, and Rojo's sample Baseplate and lighting in ${here(places.folder, places.gameFolder)}.${flag}`
-					: `The Greeter sample is in ${here(sourcePaths[0], "Greeter")}, and Rojo's sample Baseplate and lighting in ${here(SAMPLE_GAME_FOLDER)}, which the tree mounts.${flag}`
+					: `The Greeter sample is in ${here(sourcePaths[0], "Greeter")}, and Rojo's sample Baseplate and lighting in ${here(SAMPLE_GAME_FOLDER)}/, which the tree mounts.${flag}`
 			);
 		}
 		this.planNextSteps(builder, choices, tree);

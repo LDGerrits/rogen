@@ -31,7 +31,7 @@ $ rogen init lobby --non-interactive --skip-git
 exit 0
 stdout:
   rogen init
-  The Greeter sample is in lobby/src/Greeter, and Rojo's sample Baseplate and lighting in lobby/place, which the tree mounts. Pass --no-sample for an empty lobby/src and no lobby/place.
+  The Greeter sample is in lobby/src/Greeter, and Rojo's sample Baseplate and lighting in lobby/place/, which the tree mounts. Pass --no-sample for an empty lobby/src/ and no lobby/place/.
   Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), agent rules (--no-agent-rules).
   Created lobby/default.rogen.json.
   Created lobby/src/Greeter/Shared/Greeting.luau.

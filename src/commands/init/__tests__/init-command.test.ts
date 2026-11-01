@@ -261,7 +261,7 @@ describe("init command", () => {
 
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
+				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place/, which the tree mounts. Pass --no-sample for an empty src/ and no place/.",
 				"info: Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules).",
 				"success: Created default.rogen.json.",
 				"success: Created .gitignore.",
@@ -422,7 +422,7 @@ describe("init command", () => {
 			expect(await exists("default.project.json")).toBe(false);
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
+				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place/, which the tree mounts. Pass --no-sample for an empty src/ and no place/.",
 				"info: Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules).",
 				"success: Would create default.rogen.json.",
 				"success: Would create .gitignore.",
@@ -1021,7 +1021,7 @@ describe("init command", () => {
 		]);
 
 		expect(logService.lines).toContain(
-			"info: The Greeter sample is in lobby/src/Greeter, and Rojo's sample Baseplate and lighting in lobby/place, which the tree mounts. Pass --no-sample for an empty lobby/src and no lobby/place."
+			"info: The Greeter sample is in lobby/src/Greeter, and Rojo's sample Baseplate and lighting in lobby/place/, which the tree mounts. Pass --no-sample for an empty lobby/src/ and no lobby/place/."
 		);
 	});
 });
