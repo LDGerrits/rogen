@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - An option that takes one value, such as `-o`, given twice is a usage error, as in Rojo, and `rogen` alone prints the help on stderr.
 - A working folder that was deleted is an `io` error, exit 1, not a usage error.
 - Under GitHub Actions, `--quiet` writes only the `::error` annotations.
+- A failed `syncback --json` names the config it ran on.
 - A folder Rogen can't read is a `scan.unreadable` error naming it, as Rojo fails to build it, and `--watch` prints it once.
 
 ## [2.0.0-beta.2] - 2026-10-31

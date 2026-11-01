@@ -168,21 +168,27 @@ registerCommand(
 				({ selection: selection.value, project, input, cwd } as const);
 			let outcome: SyncbackOutcome = { kind: "notRun" };
 			let listed = false;
-			const written = (applied: Result<SyncbackResult, Error>) =>
-				applied.isErr()
-					? ({ kind: "failed", error: applied.error } as const)
-					: ({
-							kind: "written",
-							plan: applied.value,
-							warnings: applied.value.warnings,
-						} as const);
 			if (!failure && request) {
+				const failed = (error: Error) =>
+					({
+						kind: "failed",
+						error,
+						configFile: request.project.file,
+					}) as const;
+				const written = (applied: Result<SyncbackResult, Error>) =>
+					applied.isErr()
+						? failed(applied.error)
+						: ({
+								kind: "written",
+								plan: applied.value,
+								warnings: applied.value.warnings,
+							} as const);
 				if (yes && !dryRun) {
 					outcome = written(await syncbacks.apply(request));
 				} else {
 					const planned = await syncbacks.plan(request);
 					outcome = planned.isErr()
-						? { kind: "failed", error: planned.error }
+						? failed(planned.error)
 						: {
 								kind: "planned",
 								plan: planned.value,
