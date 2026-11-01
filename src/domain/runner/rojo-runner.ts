@@ -49,6 +49,8 @@ export interface SupervisedExitEvent {
 export interface SupervisedRojoOptions {
 	/** Runs before each restart, as a fresh write of the project file Rojo reads. */
 	readonly beforeRestart?: () => Promise<void>;
+	/** Asked when a Rojo taken as serving crashes, whether it served after all; one that didn't ends as one that never served. */
+	readonly confirmServed?: () => Promise<boolean>;
 }
 
 /** A Rojo that is started again when it crashes, until a restarted one crashes before it serves. A crash is an exit with a non-zero code that nobody asked for, of a Rojo that served. */
@@ -63,8 +65,8 @@ export interface SupervisedRojoProcess extends Disposable {
 	/** Fired once, when a Rojo stops and none is started in its place. */
 	readonly onDidExit: Event<SupervisedExitEvent>;
 
-	/** Marks the current Rojo as serving, so a crash from now on is one to restart from. */
-	markReady(): void;
+	/** Marks the current Rojo as serving, so a crash from now on is one to restart from; false, marking nothing, when it has exited. */
+	markReady(): boolean;
 	/** Ends the current Rojo, and starts no other. */
 	terminate(): Promise<void>;
 }

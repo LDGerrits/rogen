@@ -154,6 +154,40 @@ describe("SupervisedRojo", () => {
 		expect(exits[0].gaveUp).toEqual(["it broke"]);
 	});
 
+	it("should not restart Rojo that turns out not to have served, and end as one that never did", async () => {
+		start();
+		rojo[Symbol.dispose]();
+		rojo = new SupervisedRojo(
+			() =>
+				new CoreRojoRunner(
+					new CoreToolchainService(new MemoryFileSystemService()),
+					processes
+				).start(
+					{ file: "/bin/rojo", version: "7.7.1" },
+					"serve",
+					undefined,
+					[],
+					"/repo"
+				),
+			{ confirmServed: async () => false }
+		);
+		rojo.onDidExit((exit) => exits.push(exit));
+		rojo.markReady();
+
+		await crash(1);
+
+		expect(processes.spawned).toHaveLength(2);
+		expect(exits).toEqual([{ exit: { code: 1, signal: null } }]);
+	});
+
+	it("should not take as serving a Rojo that has exited", async () => {
+		start();
+
+		await crash(0);
+
+		expect(rojo.markReady()).toBe(false);
+	});
+
 	it("should not restart Rojo it was told to stop", async () => {
 		start();
 		rojo.markReady();

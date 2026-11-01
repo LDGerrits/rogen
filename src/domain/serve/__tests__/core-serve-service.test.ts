@@ -1068,6 +1068,33 @@ describe("CoreServeService", () => {
 			expect(stops[0].servedBy?.project).toBe("repo");
 		});
 
+		it("should stand down, not restart, when the server it took for its own was another serve's that started first", async () => {
+			await start();
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+			await settle();
+
+			processes.spawned[0].print(
+				"[ERROR librojo] Address already in use"
+			);
+			processes.spawned[0].exit({ code: 1, signal: null });
+			await jest.advanceTimersByTimeAsync(300);
+			processes.running.add(5000);
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+				})
+			);
+			await settle();
+
+			expect(processes.spawned).toHaveLength(1);
+			expect(stops).toHaveLength(1);
+			expect(stops[0].failure).toBeUndefined();
+			expect(stops[0].servedBy?.session).toBe("s1");
+		});
+
 		it("should fail as before when its server couldn't start and the port holds no server of the project", async () => {
 			await start();
 			requests.answer(
@@ -1370,7 +1397,9 @@ describe("CoreServeService", () => {
 				processes.spawned[0].printError(
 					"[ERROR rojo] Rojo crashed! You are running Rojo 7.7.1.\n"
 				);
+				requests.responses.delete("http://127.0.0.1:34872/api/rojo");
 				processes.spawned[0].exit({ code: 1, signal: null });
+				await jest.advanceTimersByTimeAsync(0);
 				requests.answer("http://127.0.0.1:34872/api/rojo", {
 					...rojoInfo("Game"),
 					sessionId: "s2",

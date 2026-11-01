@@ -49,6 +49,14 @@ export class StartedServer extends AbstractDisposable {
 	private restartedAfter: ProcessExit | undefined;
 	private stoppedOnPurpose = false;
 	private recordWrite: Promise<void> | undefined;
+	/** The server its record was last written for. */
+	private recorded: ServerInfo | undefined;
+	/** What the current Rojo was taken to serve. */
+	private serving: ServerInfo | undefined;
+	/** The sessions its Rojos were taken to serve, which no later one of them can serve again. */
+	private readonly sessions = new Set<string>();
+	/** Counts the Rojos started, so an answer to an earlier one's probe isn't taken for the current one's. */
+	private generation = 0;
 	private connected = 0;
 	private readonly ready: RunOnceScheduler;
 	private readyDelay = READY_POLL_MS.first;
@@ -58,7 +66,7 @@ export class StartedServer extends AbstractDisposable {
 	constructor(
 		target: ServeTarget,
 		plan: ServePlan,
-		rojoRunner: RojoRunner,
+		private readonly rojoRunner: RojoRunner,
 		private readonly probe: ServerProbe,
 		private readonly records: ServerRecords,
 		private readonly listener: StartedServerListener,
@@ -89,7 +97,7 @@ export class StartedServer extends AbstractDisposable {
 							: serverArgs,
 						selection.home
 					),
-				{ beforeRestart }
+				{ beforeRestart, confirmServed: () => this.servedUntilExit() }
 			)
 		);
 		let said = false;
@@ -117,6 +125,8 @@ export class StartedServer extends AbstractDisposable {
 		this._register(
 			this.child.onDidRestart(({ exit }) => {
 				said = false;
+				this.generation++;
+				this.serving = undefined;
 				this.restartedAfter = exit;
 				this.toldSlow = false;
 				this.startedAt = Date.now();
@@ -174,6 +184,7 @@ export class StartedServer extends AbstractDisposable {
 
 	private writeRecord(info: ServerInfo): Promise<void> {
 		const { target } = this;
+		this.recorded = info;
 		return this.records
 			.write(target.address, info, {
 				projectFile: target.config.projectFile,
@@ -186,31 +197,74 @@ export class StartedServer extends AbstractDisposable {
 	}
 
 	async unrecord(): Promise<void> {
-		if (!this.recordWrite) return;
-		await this.recordWrite;
-		await this.records.remove(this.target.address).catch(() => undefined);
+		const { recordWrite, recorded } = this;
+		if (!recordWrite || !recorded) return;
+		await recordWrite;
+		await this.records
+			.remove(this.target.address, recorded)
+			.catch(() => undefined);
+	}
+
+	/** Whether the Rojo that just crashed served what it was taken to: not when that server still answers, so it was another's all along, whose record it then leaves. */
+	private async servedUntilExit(): Promise<boolean> {
+		const taken = this.serving;
+		if (taken?.session === undefined) return true;
+		const state = await this.probe.probe(this.target.address);
+		if (state.kind !== "serving" || state.info.session !== taken.session)
+			return true;
+		await this.unrecord();
+		this.recordWrite = undefined;
+		this.serving = undefined;
+		return false;
+	}
+
+	/** Whether the server that answered can be the current Rojo's: not one an earlier Rojo of it served, nor one recorded for another Rojo that still runs. */
+	private async mayServe(info: ServerInfo): Promise<boolean> {
+		const { target } = this;
+		if (
+			info.project !== target.project &&
+			info.project !== this.servedProject
+		)
+			return false;
+		if (info.session === undefined) return true;
+		if (this.sessions.has(info.session)) return false;
+		const pid = (await this.records.recordOf(target.address, info))?.pid;
+		return (
+			pid === undefined ||
+			pid === this.child.pid ||
+			!this.rojoRunner.isRunning(pid)
+		);
 	}
 
 	private askReady(): void {
-		const { target } = this;
+		const { target, generation } = this;
+		const current = () =>
+			!this.stoppedOnPurpose &&
+			!this.exited &&
+			generation === this.generation;
 		this.probe
 			.probe(target.address)
-			.then((state) => {
-				if (this.stoppedOnPurpose || this.exited) return;
-				if (
+			.then(async (state) => {
+				if (!current()) return;
+				const info =
 					state.kind === "serving" &&
-					(state.info.project === target.project ||
-						state.info.project === this.servedProject)
-				) {
-					this.servedProject = state.info.project;
-					this.child.markReady();
+					(await this.mayServe(state.info))
+						? state.info
+						: undefined;
+				if (!current()) return;
+				if (info) {
+					if (!this.child.markReady()) return;
+					this.servedProject = info.project;
+					this.serving = info;
+					if (info.session !== undefined)
+						this.sessions.add(info.session);
 					const crashed = this.restartedAfter;
 					this.restartedAfter = undefined;
 					// Recorded before it is announced, so a serve killed right after still leaves its server's record.
-					this.recordWrite = this.writeRecord(state.info);
+					this.recordWrite = this.writeRecord(info);
 					return this.recordWrite.then(() => {
 						if (this.stoppedOnPurpose || this.exited) return;
-						const serving = { target, info: state.info };
+						const serving = { target, info };
 						if (crashed)
 							this.listener.restarted({
 								...serving,

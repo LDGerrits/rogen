@@ -86,12 +86,31 @@ describe("ServerRecords", () => {
 	});
 
 	describe("remove", () => {
-		it("should forget a record", async () => {
+		it("should forget a record it wrote for the session", async () => {
 			await records.write(address, info, served);
 
-			await records.remove(address);
+			await records.remove(address, info);
 
 			expect(await records.recordOf(address, info)).toBeUndefined();
 		});
+
+		it.each([
+			["another serve", 5000, info],
+			["another session", 4242, { ...info, session: "s2" }],
+		])(
+			"should leave a record that %s wrote since",
+			async (_, owner, written) => {
+				await records.write(address, info, served);
+				await new ServerRecords(fs, "/tmp", owner).write(
+					address,
+					written,
+					served
+				);
+
+				await records.remove(address, info);
+
+				expect(await records.recordOf(address, written)).toBeDefined();
+			}
+		);
 	});
 });

@@ -43,6 +43,7 @@ export class SupervisedRojo
 	private readonly running = this._register(new DisposableStore());
 	private restarted = false;
 	private ready = false;
+	private exited = false;
 	private stopping = false;
 	private restarting: Promise<void> | undefined;
 
@@ -59,9 +60,11 @@ export class SupervisedRojo
 		return this.current?.pid;
 	}
 
-	/** Marks the current Rojo as serving, so a crash from now on is one to restart from. */
-	markReady(): void {
+	/** Marks the current Rojo as serving, so a crash from now on is one to restart from; false, marking nothing, when it has exited. */
+	markReady(): boolean {
+		if (this.exited) return false;
 		this.ready = true;
+		return true;
 	}
 
 	/** Ends the current Rojo, and starts no other. */
@@ -81,6 +84,7 @@ export class SupervisedRojo
 		const child = this.running.add(this.start());
 		this.current = child;
 		this.ready = false;
+		this.exited = false;
 		const errors: string[] = [];
 		const crash: string[] = [];
 		this.running.add(
@@ -102,34 +106,47 @@ export class SupervisedRojo
 		);
 		this.running.add(
 			child.onDidExit((exit) =>
-				this.exited(exit, crash.length > 0 ? crash : errors)
+				this.ended(exit, crash.length > 0 ? crash : errors)
 			)
 		);
 	}
 
-	private exited(exit: ProcessExit, lines: readonly string[]): void {
+	private ended(exit: ProcessExit, lines: readonly string[]): void {
+		this.exited = true;
 		const crashed =
 			!this.stopping &&
 			exit.error === undefined &&
 			exit.interrupted !== true &&
 			exit.code !== null &&
 			exit.code !== 0;
-		if (!crashed || (!this.restarted && !this.ready)) {
+		if (!crashed) {
 			this._onDidExit.fire({ exit });
 			return;
 		}
-		if (this.restarted && !this.ready) {
-			this._onDidExit.fire({ exit, gaveUp: lines });
+		if (!this.ready) {
+			this.endedUnserved(exit, lines);
 			return;
 		}
 		this.restarting = this.restart(exit, lines).catch(onUnexpectedError);
+	}
+
+	/** Ends on a crash of a Rojo that never served: giving up when it was itself a restart. */
+	private endedUnserved(exit: ProcessExit, lines: readonly string[]): void {
+		this._onDidExit.fire(
+			this.restarted ? { exit, gaveUp: lines } : { exit }
+		);
 	}
 
 	private async restart(
 		exit: ProcessExit,
 		lines: readonly string[]
 	): Promise<void> {
-		await this.options.beforeRestart?.();
+		const served = (await this.options.confirmServed?.()) ?? true;
+		if (!served && !this.stopping) {
+			this.endedUnserved(exit, lines);
+			return;
+		}
+		if (!this.stopping) await this.options.beforeRestart?.();
 		if (this.stopping) {
 			this._onDidExit.fire({ exit });
 			return;

@@ -112,8 +112,12 @@ export class ServerRecords {
 		);
 	}
 
-	async remove(address: ServeAddress): Promise<void> {
-		await this.fileSystemService.delete(this.fileOf(address.port));
+	/** Forgets the record of `address` when it is the one this serve wrote for the server that answered with `info`, leaving one another serve wrote since. */
+	async remove(address: ServeAddress, info: ServerInfo): Promise<void> {
+		const file = this.fileOf(address.port);
+		const record = await this.read(file);
+		if (record?.owner === this.owner && record.session === info.session)
+			await this.fileSystemService.delete(file);
 	}
 
 	private async read(file: string): Promise<ServerRecord | undefined> {

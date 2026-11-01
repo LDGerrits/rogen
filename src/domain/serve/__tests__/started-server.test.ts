@@ -258,6 +258,51 @@ describe("StartedServer", () => {
 		expect(failures.map((error) => error.message)).toEqual(["disk full"]);
 	});
 
+	it("should not take for its own a server recorded for another Rojo while that Rojo runs", async () => {
+		processes.running.add(5001);
+		await new ServerRecords(fileSystem, "/tmp", 5000).write(
+			target.address,
+			{ project: "repo", version: "7.7.1", session: "s1" },
+			{ projectFile: "/repo/default.project.json", pid: 5001 }
+		);
+		start();
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+			sessionId: "s1",
+		});
+
+		await jest.advanceTimersByTimeAsync(2_000);
+		expect(served).toEqual([]);
+		processes.running.delete(5001);
+		await jest.advanceTimersByTimeAsync(1_000);
+
+		expect(served).toHaveLength(1);
+	});
+
+	it("should stop without a restart and forget its record when the server it took for its own outlives its Rojo", async () => {
+		const child = start();
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+			sessionId: "s1",
+		});
+		await jest.advanceTimersByTimeAsync(250);
+
+		child.printError("[ERROR librojo] Address already in use\n");
+		child.exit({ code: 1, signal: null });
+		await jest.advanceTimersByTimeAsync(0);
+
+		expect(processes.spawned).toHaveLength(1);
+		expect(server.hasServed).toBe(false);
+		expect(stops).toHaveLength(1);
+		expect(stops[0].crashed).toBeUndefined();
+		expect(stops[0].failure?.code).toBe("serve.serverExited");
+		expect(
+			await records.recordOf(target.address, served[0].info)
+		).toBeUndefined();
+	});
+
 	it("should keep asking while it answers for another project", async () => {
 		start();
 		requests.answer(ROJO_URL, {
@@ -484,6 +529,18 @@ describe("StartedServer", () => {
 			expect(
 				await records.recordOf(target.address, restarted[0].info)
 			).toMatchObject({ pid: processes.spawned[1].pid });
+		});
+
+		it("should not take the server an earlier Rojo of it served for the restarted one", async () => {
+			start();
+			await answer("s1");
+			await crash(0);
+
+			await answer("s1");
+			expect(restarted).toEqual([]);
+			await answer("s2");
+
+			expect(restarted).toHaveLength(1);
 		});
 
 		it("should know the restarted server by the name its config gives now", async () => {
