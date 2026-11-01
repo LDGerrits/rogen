@@ -112,7 +112,8 @@ describe("CoreInitService", () => {
 			new CoreWriteService(
 				fileSystem,
 				new CoreIndexService(fileSystem),
-				toolchain.syncTools
+				toolchain.syncTools,
+				configs
 			)
 		);
 		return service;
