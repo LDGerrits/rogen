@@ -22,6 +22,7 @@ import {
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import {
+	DiagnosticSeverity,
 	errorDiagnostic,
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
@@ -408,6 +409,53 @@ describe("CoreInitService", () => {
 			plan: { files: readonly PlannedFile[] } | undefined,
 			name: string
 		) => plan?.files.find(({ fileName }) => fileName === name);
+
+		it("should write a new project without the hook where no coding agent is found, and warn", async () => {
+			const plan = await planned();
+
+			expect(names(plan)).toContain("default.rogen.json");
+			expect(names(plan)).not.toContain(SCRIPT);
+			expect(plan?.warnings).toMatchObject([
+				{
+					code: "init.noCodingAgent",
+					message: expect.stringContaining(".claude"),
+				},
+			]);
+		});
+
+		it("should fail beside a config when the hook is all that was asked and no coding agent is found", async () => {
+			await write("default.rogen.json", "{}");
+
+			const result = await serviceFor().plan({
+				choices: { agentHook: true },
+			});
+
+			expect(
+				result.isErr() &&
+					result.error instanceof DiagnosticsError &&
+					result.error.diagnostics
+			).toMatchObject([
+				{
+					code: "init.noCodingAgent",
+					severity: DiagnosticSeverity.Error,
+				},
+			]);
+		});
+
+		it("should still add the rules beside a config when no coding agent is found for the hook", async () => {
+			await write("default.rogen.json", "{}");
+
+			const plan = (
+				await serviceFor().plan({
+					choices: { agentHook: true, agentRules: true },
+				})
+			).unwrap();
+
+			expect(names(plan)).toEqual(["AGENTS.md"]);
+			expect(plan?.warnings).toMatchObject([
+				{ code: "init.noCodingAgent" },
+			]);
+		});
 
 		it("should show in the summary that there is no hook, and not point to the flag, in a run that asks", async () => {
 			await write(".claude/keep", "");

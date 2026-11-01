@@ -263,6 +263,12 @@ export class CoreInitService implements InitService {
 			);
 		const agents = await this.agentSetupIn(directory, questions);
 		if (agents.isErr()) return agents;
+		if (agents.value.hookUnfound && choices.agentRules !== true)
+			return err(
+				new DiagnosticsError([
+					AgentSetup.noCodingAgent(directory.path, "error"),
+				])
+			);
 		return this.planWith(directory, questions, [agents.value], "agents");
 	}
 
@@ -274,12 +280,14 @@ export class CoreInitService implements InitService {
 		if (agentFile.isErr()) return agentFile;
 		const hooks = await this.agentReader.hooksIn(directory);
 		if (hooks.isErr()) return hooks;
-		if (questions.choices.agentHook === true && !hooks.value.inUse)
-			throw new UsageError(
-				"There is no hook to add.",
-				"No coding agent folder here (.claude, .codex, .cursor, ...) was found."
-			);
-		return ok(new AgentSetup(agentFile.value, hooks.value, questions));
+		return ok(
+			new AgentSetup(
+				agentFile.value,
+				hooks.value,
+				questions,
+				directory.path
+			)
+		);
 	}
 
 	/** `mayBeNew`: the folder was named, and is made if it is not there. */

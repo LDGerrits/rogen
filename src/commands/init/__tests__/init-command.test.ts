@@ -17,6 +17,7 @@ import {
 	MockPromptService,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { CommandLine } from "../../../platform/environment/args.js";
+import { exitCodeOf } from "../../../platform/commands/command-failure.js";
 
 const readyProcesses = () => {
 	const processes = new MockProcessService();
@@ -629,16 +630,28 @@ describe("init command", () => {
 			expect(await exists(".agents/hooks/rogen-check.mjs")).toBe(true);
 		});
 
-		it("should refuse a hook when no coding agent is missing it", async () => {
+		it("should write the project without a hook when no coding agent is found", async () => {
 			const result = await runInit(
 				new MockPromptService([], false),
 				new MockLogService(),
 				{ "agent-hook": true }
 			);
 
-			expect(result.isErr()).toBe(true);
-			expect(errorMessage(result)).toContain("There is no hook to add.");
-			expect(await exists("default.rogen.json")).toBe(false);
+			expect(result.isOk()).toBe(true);
+			expect(await exists("default.rogen.json")).toBe(true);
+		});
+
+		it("should exit 1 beside a config when the hook is all that was asked and no coding agent is found", async () => {
+			await write("default.rogen.json", "{}");
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				new MockLogService(),
+				{ "agent-hook": true }
+			);
+
+			expect(exitCodeOf((result as ResultError<Error>).error)).toBe(1);
+			expect(errorMessage(result)).toContain("(init.noCodingAgent)");
 		});
 
 		it("should write Rojo's pin and run no program", async () => {

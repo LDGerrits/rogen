@@ -872,13 +872,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		choices: ProjectChoices,
 		tree: TreePlan
 	): void {
-		const {
-			language,
-			tree: chosen,
-			places,
-			projectFilesHint,
-			scaffold,
-		} = choices;
+		const { language, tree: chosen, places, projectFilesHint } = choices;
 		const { compiler } = language;
 		if (chosen.kind === "template") {
 			builder.addRun(

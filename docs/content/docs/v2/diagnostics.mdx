@@ -929,6 +929,16 @@ warning: game and lib hold code that no source path holds and the tree doesn't m
 
 Move the code into a source path, or add its folders to `sourcePaths` in the config. If the code isn't part of the game, such as a script that a tool runs, you can leave it where it is.
 
+### `init.noCodingAgent` [#init-nocodingagent]
+
+Warning, or error. `--agent-hook` was given, and `init` found no coding agent in use in the folder. An agent is in use where its folder or file is, such as `.claude`, `CLAUDE.md`, `.codex`, `.cursor` or `.gemini`. In a new project it is a warning: `init` writes the project without the hook. Beside a config, where the hook is all that `init` was asked to add, it is an error, and `init` exits with 1.
+
+```
+warning: --agent-hook adds the hook to the coding agents in use here, and init found none, so it adds no hook. An agent is in use where its folder or file is: .claude, CLAUDE.md, .codex, .gemini, GEMINI.md, .cursor, .github/copilot-instructions.md or .github/hooks. Once one is, run 'rogen init --agent-hook'. (init.noCodingAgent)
+```
+
+Start the coding agent in the folder once, so that its folder is there, then run `rogen init --agent-hook`.
+
 ## Serve
 
 These diagnostics come from `rogen serve` and the Rojo server that it starts.
