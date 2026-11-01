@@ -1,9 +1,7 @@
-import path from "path";
 import { DisposableStore } from "../../base/disposable.js";
 import { Result, ok } from "../../base/result.js";
 import { WriteRun } from "../../domain/write/write.js";
 import { WriteService } from "../../domain/write/write-service.js";
-import { isDefaultConfigFileName } from "../../domain/config/config.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
@@ -107,7 +105,9 @@ registerCommand(
 			return line.options.watch
 				? this.watch(
 						accessor,
-						this.watchedConfigs(line.positionals, targets.value),
+						line.positionals.length === 0
+							? "here"
+							: line.positionals,
 						json
 					)
 				: this.writeOnce(accessor, targets.value, json);
@@ -173,18 +173,6 @@ registerCommand(
 				.get(WriteService)
 				.write(selection.value, { independent: true });
 			return ok({ home: selection.value.home, run });
-		}
-
-		/** What a watch selects: with none named, every config of the folder, following those that come and go; else the configs, except that a lone default is selected as the folder's default. */
-		private watchedConfigs(
-			given: readonly string[],
-			{ configs }: Targets
-		): WatchedConfigs {
-			if (given.length === 0 && configs.length > 0) return "here";
-			return configs.length === 1 &&
-				isDefaultConfigFileName(path.basename(configs[0]))
-				? FOLDER_DEFAULT
-				: configs;
 		}
 
 		/** The configs to write: the ones named, else every one of the working directory, and the plain project files that are left alone. Fails when the folder holds neither. */
