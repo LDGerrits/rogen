@@ -24,7 +24,10 @@ class FileNode {
 class DirectoryNode {
 	readonly type = FileType.Directory;
 	readonly entries = new Map<string, Node>();
+	refusal: ListingRefusal | undefined;
 }
+
+type ListingRefusal = "EACCES" | "EPERM";
 
 class LinkNode {
 	readonly type = FileType.SymbolicLink;
@@ -45,6 +48,8 @@ const FAILURE_MESSAGES = {
 	ENOENT: "no such file or directory",
 	ENOTDIR: "not a directory",
 	ELOOP: "too many symbolic links encountered",
+	EACCES: "permission denied",
+	EPERM: "operation not permitted",
 };
 
 function walkError(
@@ -202,6 +207,8 @@ export class MemoryFileSystemService
 				`ENOTDIR: not a directory, scandir '${filePath}'`
 			);
 		}
+		const { refusal } = node as DirectoryNode;
+		if (refusal) throw walkError(refusal, "scandir", filePath);
 		return Array.from((node as DirectoryNode).entries.entries())
 			.sort(([a], [b]) => compareStrings(a, b))
 			.map(([name, child]): [string, FileType] => [
@@ -210,6 +217,12 @@ export class MemoryFileSystemService
 					? FileType.SymbolicLink
 					: this.typeOf(child),
 			]);
+	}
+
+	/** Makes listing the folder fail with `code`, as for a folder without read permission; `undefined` lifts it. */
+	refuseListing(dirPath: string, code: ListingRefusal | undefined): void {
+		const node = this.lookupOrThrow(dirPath);
+		if (node.type === FileType.Directory) node.refusal = code;
 	}
 
 	private leadsBack(dirPath: string, child: Node): boolean {

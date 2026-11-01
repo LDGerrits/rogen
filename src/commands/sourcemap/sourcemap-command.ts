@@ -17,7 +17,6 @@ import {
 	AbstractCommand,
 	registerCommand,
 } from "../../platform/commands/commands.js";
-import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import {
 	CommandLine,
 	JsonOption,
@@ -79,13 +78,12 @@ const SourcemapOptions = [
 	WatchOption,
 ] as const;
 
-/** What went wrong with the run: its error, else the diagnostics of its failure. */
+/** What went wrong with the run: its error, else its failure. */
 function failureOf(
 	ran: Result<RojoCommandRun, Error> | undefined
 ): Error | undefined {
 	if (ran === undefined) return undefined;
-	if (ran.isErr()) return ran.error;
-	return DiagnosticsError.of(ran.value.failure?.diagnostics ?? []);
+	return ran.isErr() ? ran.error : ran.value.failure;
 }
 
 registerCommand(

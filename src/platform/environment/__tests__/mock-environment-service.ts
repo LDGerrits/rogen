@@ -5,6 +5,7 @@ export class MockEnvironmentService implements EnvironmentService {
 	declare readonly _serviceBrand: undefined;
 
 	readonly isPlain: boolean;
+	readonly hasColor: boolean;
 
 	constructor(
 		public readonly cwd: string = "/mock/cwd",
@@ -18,5 +19,6 @@ export class MockEnvironmentService implements EnvironmentService {
 		public readonly checksForUpdates: boolean = false
 	) {
 		this.isPlain = !isInteractive;
+		this.hasColor = isInteractive;
 	}
 }

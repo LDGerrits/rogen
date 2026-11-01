@@ -53,6 +53,8 @@ export class Placer {
 		);
 		if (sourcePathMounts.length > 0) return err(sourcePathMounts);
 		const roots = this.scan();
+		const unreadable = Placer.unreadableErrors(roots);
+		if (unreadable.length > 0) return err(unreadable);
 		const readings = new NameReadings(
 			keys,
 			this.layout.initNames,
@@ -123,6 +125,20 @@ export class Placer {
 		);
 		return this.config.sourcePaths.map((sourcePath) =>
 			scanner.scan(sourcePath)
+		);
+	}
+
+	private static unreadableErrors(
+		roots: readonly ScannedRoot[]
+	): Diagnostic[] {
+		return roots.flatMap(({ unreadable }) =>
+			unreadable.map((folder) =>
+				errorDiagnostic(
+					"scan.unreadable",
+					{ resource: folder },
+					"this folder could not be read: permission denied, so Rojo can't build it. Fix the folder's permissions, or add it to \"globIgnorePaths\"."
+				)
+			)
 		);
 	}
 

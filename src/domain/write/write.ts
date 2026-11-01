@@ -60,6 +60,14 @@ export function isWritten(outcome: ConfigOutcome): outcome is WrittenConfig {
 	return outcome.kind === "wrote" || outcome.kind === "unchanged";
 }
 
+/** Whether the run wrote the config's project file, which a write that found it as it should be doesn't. */
+export const didWrite = (outcome: ConfigOutcome): boolean =>
+	outcome.kind === "wrote";
+
+/** Whether the run found the config's project file as it should be, and left it. */
+export const isUnchanged = (outcome: ConfigOutcome): boolean =>
+	outcome.kind === "unchanged";
+
 /** What a run did for a config that loaded; narrow it on `kind`. */
 export type LoadedConfig =
 	WrittenConfig | CheckedConfig | UnwrittenConfig | FailedConfig;

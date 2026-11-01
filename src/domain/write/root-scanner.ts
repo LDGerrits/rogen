@@ -62,6 +62,8 @@ interface ScannedRootParts {
 	/** The paths the scan left out, by absolute POSIX path. */
 	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
 	readonly oddNames: readonly OddName[];
+	/** The folders whose listing was refused, by absolute POSIX path; Rojo fails to build any of them. */
+	readonly unreadable: readonly string[];
 }
 
 /** What a scan found under one source path, and the questions it answers about it. */
@@ -75,6 +77,7 @@ export class ScannedRoot implements ScannedRootParts {
 	readonly emptyDirs: readonly string[];
 	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
 	readonly oddNames: readonly OddName[];
+	readonly unreadable: readonly string[];
 
 	constructor(
 		parts: ScannedRootParts,
@@ -91,13 +94,15 @@ export class ScannedRoot implements ScannedRootParts {
 			emptyDirs: this.emptyDirs,
 			leftOut: this.leftOut,
 			oddNames: this.oddNames,
+			unreadable: this.unreadable,
 		} = parts);
 	}
 
 	static missing(
 		sourcePath: string,
 		index: IndexReader,
-		fileAt: FileAt
+		fileAt: FileAt,
+		unreadable: readonly string[] = []
 	): ScannedRoot {
 		return new ScannedRoot(
 			{
@@ -110,6 +115,7 @@ export class ScannedRoot implements ScannedRootParts {
 				emptyDirs: [],
 				leftOut: new Map(),
 				oddNames: [],
+				unreadable,
 			},
 			index,
 			fileAt
@@ -223,6 +229,7 @@ interface Walk {
 	readonly emptyDirs: string[];
 	readonly leftOut: Map<string, ScanLeftOut>;
 	readonly oddNames: OddName[];
+	readonly unreadable: string[];
 }
 
 /** Walks source paths in the index, leaving out what `globIgnorePaths` matches and what the tree mounts. */
@@ -244,6 +251,7 @@ export class RootScanner {
 			ignoredMeta: [],
 			emptyDirs: [],
 			oddNames: [],
+			unreadable: [],
 			leftOut: new Map(
 				this.mounts
 					.inside(sourcePath)
@@ -254,7 +262,12 @@ export class RootScanner {
 			),
 		};
 		if (!this.visit(walk, sourcePath)) {
-			return ScannedRoot.missing(sourcePath, this.index, this.fileAt);
+			return ScannedRoot.missing(
+				sourcePath,
+				this.index,
+				this.fileAt,
+				walk.unreadable
+			);
 		}
 		return new ScannedRoot(
 			{
@@ -271,6 +284,7 @@ export class RootScanner {
 				oddNames: walk.oddNames.sort((a, b) =>
 					compareStrings(a.source, b.source)
 				),
+				unreadable: walk.unreadable.sort(),
 			},
 			this.index,
 			this.fileAt
@@ -368,7 +382,11 @@ export class RootScanner {
 
 	private visit(walk: Walk, dir: string): boolean {
 		const listing = this.index.getEntries(dir);
-		if (!listing) return false;
+		if (!listing) {
+			if (this.index.isUnreadable(dir))
+				walk.unreadable.push(toPosix(dir));
+			return false;
+		}
 
 		const relativeDir = toPosix(path.relative(walk.sourcePath, dir));
 		const relativeTo = (name: string) =>
@@ -393,13 +411,13 @@ export class RootScanner {
 					isDirectoryType(type) ||
 					this.fileAt(joinPosix(dir, name)).kind
 				)
-					odd(name, PortableName.problemWith(name, name) ?? "", true);
+					odd(name, PortableName.problemWith(name) ?? "", true);
 			} else if (type === FileType.SymbolicLink) {
 				walk.leftOut.set(joinPosix(dir, name), { status: "skipped" });
 			} else if (isDirectoryType(type)) {
 				subdirs.push(path.join(dir, name));
 				instanceNames.push(name);
-				const problem = PortableName.problemWith(name, name);
+				const problem = PortableName.problemWith(name);
 				if (problem) odd(name, problem);
 			} else {
 				const file = this.fileAt(joinPosix(dir, name));
@@ -416,13 +434,10 @@ export class RootScanner {
 					});
 				} else if (file.isMeta) {
 					walk.metaFiles.push(relativeTo(name));
-					const problem = PortableName.problemWith(name, name);
+					const problem = PortableName.problemWith(name);
 					if (problem) odd(name, problem);
 				} else if (file.kind) {
-					const problem = PortableName.problemWith(
-						name,
-						stemOf(name)
-					);
+					const problem = PortableName.problemWith(name);
 					if (problem) odd(name, problem);
 					instanceNames.push(name);
 					walk.entries.push({
@@ -434,7 +449,7 @@ export class RootScanner {
 					});
 				} else if (name.startsWith(".") || name.startsWith("@")) {
 					walk.markers.push(relativeTo(name));
-					const problem = PortableName.problemWith(name, name);
+					const problem = PortableName.problemWith(name);
 					if (problem) odd(name, problem);
 				}
 			}

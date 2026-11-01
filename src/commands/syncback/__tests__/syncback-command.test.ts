@@ -257,6 +257,23 @@ describe("syncback command", () => {
 		expect(document.changed).toBe(false);
 	});
 
+	it("should name the config of a syncback that failed", async () => {
+		const { running, log } = start({
+			input: "game.rbxl",
+			"dry-run": true,
+			json: true,
+		});
+		const [rojo] = await rojoRuns(1);
+		rojo.printError("ERROR: no such place\n");
+		rojo.exit({ code: 1, signal: null });
+		await running;
+
+		expect(log.json().syncback).toMatchObject({
+			outcome: "failed",
+			config: "default.rogen.json",
+		});
+	});
+
 	it("should say changed is false when the project file is current and syncback wrote nothing", async () => {
 		const first = start({ input: "game.rbxl", "non-interactive": true });
 		const [firstRojo] = await rojoRuns(1);

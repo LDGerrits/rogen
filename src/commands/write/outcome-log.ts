@@ -6,6 +6,7 @@ import {
 	WriteRun,
 	WriteSummary,
 	ConfigOutcome,
+	isUnchanged,
 } from "../../domain/write/write.js";
 import {
 	Diagnostic,
@@ -259,8 +260,7 @@ export class OutcomeLog {
 				this.sameAs("warnings", warnings.sameAs),
 			];
 			const quiet =
-				(outcome.kind === "unchanged" ||
-					outcome.kind === "wouldWrite") &&
+				(isUnchanged(outcome) || outcome.kind === "wouldWrite") &&
 				diagnostics.length === 0 &&
 				notes.every((note) => note === undefined);
 			if (framed) {

@@ -17,7 +17,7 @@ stdout:
     In Studio, press Connect in the Rojo plugin.
     Run 'rogen check' and fix what it reports.
     Serve the project and compare Studio's Explorer with your v1 build. When every script sits where it did, delete .rogen.json.v1. See https://rogen-roblox.vercel.app/docs/v2/migrating-from-v1.
-    Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's project file follows.
+    Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's project file follows.
   Wrote 2 files.
 stderr:
   .rogen.json - warning: v1's tags (dev) aren't carried over: v2 has none, and init renames none of the files they pick. Move each into a folder of its own, and list that folder after the other source paths in the configs that should have it: its files replace the ones at the same path. (legacy.tags)

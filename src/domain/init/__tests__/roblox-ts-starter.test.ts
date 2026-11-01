@@ -1,6 +1,6 @@
 import path from "path";
 import { jest } from "@jest/globals";
-import { ResultError } from "../../../base/result.js";
+import { ResultError, ok } from "../../../base/result.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
@@ -9,6 +9,8 @@ import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js"
 import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreInitService } from "../core-init-service.js";
+import { CoreWriteService } from "../../write/core-write-service.js";
+import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { InitPlan, InitWritten } from "../init-service.js";
 import { RobloxTsStarter } from "../roblox-ts-starter.js";
 
@@ -55,6 +57,17 @@ describe("RobloxTsStarter", () => {
 		expect(RobloxTsStarter.ignored(true)).toEqual([
 			...RobloxTsStarter.ignored(false),
 			"projects/*/out",
+			"projects/*/include",
+		]);
+	});
+
+	it("should ignore the compiler's own output folder at the root and in each place", () => {
+		expect(RobloxTsStarter.ignored(true, "build")).toEqual([
+			"/node_modules",
+			"/build",
+			"/include",
+			"*.tsbuildinfo",
+			"projects/*/build",
 			"projects/*/include",
 		]);
 	});
@@ -132,14 +145,20 @@ describe("a new roblox-ts project", () => {
 
 	const serviceFor = () => {
 		const environmentService = new NativeEnvironmentService({}, directory);
+		const toolchain = new CoreToolchainService(fileSystem);
 		return new CoreInitService(
 			fileSystem,
 			new MockPromptService([], false),
 			environmentService,
-			new CoreToolchainService(fileSystem),
+			toolchain,
 			processes,
 			undefined,
-			new CoreConfigService(fileSystem, environmentService)
+			new CoreConfigService(fileSystem, environmentService),
+			new CoreWriteService(
+				fileSystem,
+				new CoreIndexService(fileSystem),
+				toolchain.syncTools
+			)
 		);
 	};
 
@@ -180,7 +199,7 @@ describe("a new roblox-ts project", () => {
 			);
 			expect(
 				fileOf(planned, "src/Greeter/server/Greeter.server.ts")?.content
-			).toContain('import { greeting } from "Greeter/shared/Greeting"');
+			).toContain('import { greeting } from "../shared/Greeting"');
 		});
 
 		it("should name the project, which roblox-ts needs, mount its runtime and sync from out", async () => {
@@ -372,6 +391,86 @@ describe("a new roblox-ts project", () => {
 				"npm isn't installed"
 			);
 			expect(await present("default.rogen.json")).toBe(false);
+		});
+
+		describe("in a folder that isn't there yet", () => {
+			const fresh = path.join(directory, "games", "fresh");
+
+			const planFresh = async () =>
+				(
+					await serviceFor().plan({
+						place: "games/fresh",
+						choices: { language: "roblox-ts", skipGit: true },
+					})
+				).unwrap() as InitPlan;
+
+			it("should make the folder before it runs create-roblox-ts there", async () => {
+				const planned = await planFresh();
+				let folderThere: boolean | undefined;
+				const exec = processes.exec.bind(processes);
+				jest.spyOn(processes, "exec").mockImplementation(
+					async (file, args, options) => {
+						if (file === "/bin/npm")
+							folderThere = await fileSystem.exists(options.cwd);
+						return exec(file, args, options);
+					}
+				);
+
+				const written = await serviceFor().write(
+					planned,
+					() => undefined
+				);
+
+				expect(written.isOk()).toBe(true);
+				expect(folderThere).toBe(true);
+				expect(
+					processes.execs.find(({ file }) => file === "/bin/npm")?.cwd
+				).toBe(fresh);
+			});
+
+			it("should remove the folders it made when create-roblox-ts fails", async () => {
+				const planned = await planFresh();
+				const exec = processes.exec.bind(processes);
+				jest.spyOn(processes, "exec").mockImplementation(
+					async (file, args, options) => {
+						if (file !== "/bin/npm")
+							return exec(file, args, options);
+						await fileSystem.writeFile(
+							path.join(options.cwd, "package.json"),
+							"{}"
+						);
+						return ok({ code: 1, stdout: "", stderr: "npm error" });
+					}
+				);
+
+				const result = await serviceFor().write(
+					planned,
+					() => undefined
+				);
+
+				expect(result.isErr()).toBe(true);
+				expect(
+					await fileSystem.exists(path.join(directory, "games"))
+				).toBe(false);
+				expect(await fileSystem.exists(directory)).toBe(true);
+				expect(result.isErr() && result.error).toMatchObject({
+					hint: expect.stringMatching(
+						/^Make .*games.*, run it there/
+					),
+				});
+			});
+
+			it("should make no folder in a dry run", async () => {
+				await serviceFor().write(
+					await planFresh(),
+					() => undefined,
+					true
+				);
+
+				expect(
+					await fileSystem.exists(path.join(directory, "games"))
+				).toBe(false);
+			});
 		});
 
 		it("should run nothing in a dry run, and still report the tool", async () => {

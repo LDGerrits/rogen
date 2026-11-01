@@ -51,5 +51,3 @@ stdout:
       }
     ]
   }
-stderr:
-  note: README.md: in no source path of default.rogen.json, so Rogen leaves it out of the project file.

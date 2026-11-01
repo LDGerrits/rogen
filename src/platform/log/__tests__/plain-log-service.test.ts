@@ -138,6 +138,37 @@ describe("PlainLogService", () => {
 		expect(out).toEqual([]);
 	});
 
+	it("should colour the prefixes and debug lines when colour is on", () => {
+		const logService = new PlainLogService({ color: true });
+		logService.setLevel(LogLevel.Debug);
+
+		logService.warn("careful");
+		logService.error("broken");
+		logService.debug("detail");
+
+		expect(errors).toEqual([
+			"\u001b[33mwarning:\u001b[39m careful",
+			"\u001b[31merror:\u001b[39m broken",
+			"\u001b[2m[debug] detail\u001b[22m",
+		]);
+	});
+
+	it("should colour the severity of a diagnostic when colour is on", () => {
+		const logService = new PlainLogService({ color: true });
+
+		logService.diagnostic(
+			warningDiagnostic("x.y", { resource: "/repo/a" }, "w")
+		);
+		logService.diagnostic(
+			errorDiagnostic("x.z", { resource: "/repo/a\u001b[0m" }, "e")
+		);
+
+		expect(errors).toEqual([
+			"/repo/a - \u001b[33mwarning:\u001b[39m w (x.y)",
+			"/repo/a\\u001b[0m - \u001b[31merror:\u001b[39m e (x.z)",
+		]);
+	});
+
 	it("should indent debug lines inside a step", () => {
 		const logService = new PlainLogService();
 		logService.setLevel(LogLevel.Debug);
@@ -267,7 +298,7 @@ describe("PlainLogService", () => {
 	});
 
 	it("should print diagnostics relative to the working directory it was given", () => {
-		const logService = new PlainLogService("/repo");
+		const logService = new PlainLogService({ cwd: "/repo" });
 
 		logService.diagnostic(
 			warningDiagnostic("x.y", { resource: "/repo/src/a.luau" }, "w")
@@ -284,7 +315,10 @@ describe("PlainLogService", () => {
 		);
 
 		it("should write the workflow commands of a diagnostic on stderr, when asked for a workspace", () => {
-			const logService = new PlainLogService("/work/repo", "/work/repo");
+			const logService = new PlainLogService({
+				cwd: "/work/repo",
+				annotationsIn: "/work/repo",
+			});
 
 			logService.annotate(diagnostic);
 
@@ -295,7 +329,10 @@ describe("PlainLogService", () => {
 		});
 
 		it("should start the line at its first column, inside a step too, or GitHub would not read it", () => {
-			const logService = new PlainLogService("/work/repo", "/work/repo");
+			const logService = new PlainLogService({
+				cwd: "/work/repo",
+				annotationsIn: "/work/repo",
+			});
 			logService.section("default.rogen.json", "source paths: src");
 			logService.step("lobby");
 
@@ -305,18 +342,30 @@ describe("PlainLogService", () => {
 		});
 
 		it("should write nothing without a workspace", () => {
-			new PlainLogService("/work/repo").annotate(diagnostic);
+			new PlainLogService({ cwd: "/work/repo" }).annotate(diagnostic);
 
 			expect(errors).toEqual([]);
 		});
 
-		it("should write them even when only errors are shown, since the pull request decides what to show", () => {
-			const logService = new PlainLogService("/work/repo", "/work/repo");
+		it("should write only the errors when only errors are shown, as --quiet asks", () => {
+			const logService = new PlainLogService({
+				cwd: "/work/repo",
+				annotationsIn: "/work/repo",
+			});
 			logService.setLevel(LogLevel.Error);
 
 			logService.annotate(diagnostic);
+			logService.annotate(
+				errorDiagnostic(
+					"meta.wrongType",
+					{ resource: "/work/repo/src/init.meta.json" },
+					"wrong."
+				)
+			);
 
-			expect(errors).toHaveLength(1);
+			expect(errors).toEqual([
+				"::error file=src/init.meta.json,title=meta.wrongType::wrong.",
+			]);
 		});
 	});
 });

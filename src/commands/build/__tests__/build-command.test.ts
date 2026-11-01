@@ -1,3 +1,4 @@
+import { UsageError } from "../../../base/errors.js";
 import path from "path";
 import "../build-command.js";
 import {
@@ -292,7 +293,10 @@ describe("build command", () => {
 			entries: ReturnType<typeof validEntry>[],
 			line: CommandLine = { positionals: [], options: toFile }
 		) => {
-			const logService = new MockLogService("/repo", "/repo");
+			const logService = new MockLogService({
+				cwd: "/repo",
+				annotationsIn: "/repo",
+			});
 			const result = await harness({
 				fs,
 				log: logService,
@@ -460,7 +464,7 @@ describe("build command", () => {
 			expect(await fs.exists(abs("default.project.json"))).toBe(true);
 		});
 
-		it("should say unchanged for a project file that was already up to date", async () => {
+		it("should say unchanged for a project file that was already up to date, and changed for the build Rojo wrote", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			await run(
 				new MockConfigService([validEntry()]),
@@ -472,7 +476,8 @@ describe("build command", () => {
 			);
 
 			expect(document.configs[0].outcome).toBe("unchanged");
-			expect(document.changed).toBe(false);
+			expect(document.rojo.outcome).toBe("built");
+			expect(document.changed).toBe(true);
 		});
 
 		it("should print every config as not written, with its errors, and fail without reporting again", async () => {
@@ -694,6 +699,39 @@ describe("build command", () => {
 				kind: "info",
 				text: "Rojo: Something new",
 			});
+		});
+
+		it("should show a line Rojo prints on stderr that Rogen doesn't know on stderr", async () => {
+			const { log, running } = await withRojo({ output: "game.rbxl" });
+			const rojo = await rojoStarted();
+			rojo.printError("Something new\n");
+			rojo.exit({ code: 0, signal: null });
+			await running;
+
+			expect(log.entries).toContainEqual({
+				kind: "notice",
+				text: "Rojo: Something new",
+			});
+		});
+
+		it("should fail with Rojo's words alone when Rojo refuses the command line", async () => {
+			const { log, running } = await withRojo({ output: "game.rbxl" });
+			const rojo = await rojoStarted();
+			rojo.printError(
+				"error: Found argument '--bogus' which wasn't expected\n\nFor more information try --help\n"
+			);
+			rojo.exit({ code: 2, signal: null });
+
+			const result = await running;
+
+			expect(result.isErr() && result.error).toEqual(
+				new UsageError(
+					"Rojo refused the command line:\n  Found argument '--bogus' which wasn't expected"
+				)
+			);
+			expect(log.lines.filter((line) => line.includes("Rojo:"))).toEqual(
+				[]
+			);
 		});
 
 		it("should pass --plugin for -p", async () => {

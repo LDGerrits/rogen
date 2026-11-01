@@ -28,17 +28,42 @@ function oneOf(
 	);
 }
 
+/** The code each layout would leave where no source path holds it, listed for a hint. */
+export interface UnplacedCode {
+	readonly one?: string;
+	readonly several?: string;
+}
+
+/** A question whose answer the plan's summary would repeat. */
+export type ShownQuestion = "language" | "places" | "sample";
+
 /** Everything `init` asks. A question the user answered with a flag is not asked, and one a run that can't ask takes the default of is written to `decided`. A flag with a value that doesn't fit throws a `UsageError`. */
 export class InitQuestions {
 	readonly decided: InitDecision[] = [];
+	/** The questions answered in the terminal, above the summary, which needn't repeat them. */
+	readonly shown = new Set<ShownQuestion>();
 
 	constructor(
 		private readonly promptService: PromptService,
 		readonly interactive: boolean,
 		readonly choices: InitChoices = {},
 		/** Asks the questions that are always asked, where `promptService` takes the default of those a summary shows. */
-		private readonly essential: PromptService = promptService
+		private readonly essential: PromptService = promptService,
+		/** Whether `promptService` asks every question rather than taking the defaults, as under Customise. */
+		readonly customising = false
 	) {}
+
+	/** Asks through `view`, noting a question the user sees: every one `essential` asks, and under Customise every one. */
+	private async ask<T>(
+		question: ShownQuestion,
+		view: PromptService,
+		prompt: (view: PromptService) => Promise<T | undefined>
+	): Promise<T | undefined> {
+		const answer = await prompt(view);
+		if (view === this.essential || this.customising)
+			this.shown.add(question);
+		return answer;
+	}
 
 	private decide<T extends InitDecision["value"]>(
 		question: InitDecision["question"],
@@ -49,12 +74,17 @@ export class InitQuestions {
 		return value;
 	}
 
-	/** The template of a new project; it is never asked, since Rojo's `init` doesn't ask it. */
-	kind(): InitKind {
+	/** The template of a new project; it is never asked, since Rojo's `init` doesn't ask it. A lifted project file is the kind it is, `lifted`; else a folder whose code is one module is a model. */
+	kind(directory: InitDirectory, lifted?: InitKind): InitKind {
 		const given = this.choices.kind;
 		if (given !== undefined) return given;
-		if (!this.interactive) this.decide("kind", "place", "--kind");
-		return "place";
+		const kind =
+			lifted ??
+			(directory.isOneModule && !directory.hasHandWrittenProject
+				? "model"
+				: "place");
+		if (!this.interactive) this.decide("kind", kind, "--kind");
+		return kind;
 	}
 
 	/** Whether to leave git out: no `.gitignore` and no `git init`. */
@@ -91,18 +121,41 @@ export class InitQuestions {
 		});
 	}
 
-	/** Whether the Greeter sample is written, which only a flag turns off. */
-	sample(): boolean {
+	/** Whether the Greeter sample is written. */
+	async sample(): Promise<boolean | undefined> {
 		const given = this.choices.sample;
 		if (given !== undefined) return given;
-		if (!this.interactive) this.decide("sample", true, "--no-sample");
-		return true;
+		if (!this.interactive)
+			return this.decide("sample", true, "--no-sample");
+		return this.ask("sample", this.promptService, (view) =>
+			view.confirm({
+				message: "Add the Greeter sample?",
+				description:
+					"Three hello-world scripts and a README, with Rojo's Baseplate and lighting for the place.",
+				initialValue: true,
+			})
+		);
 	}
 
-	/** Whether a new project is several places; a `projects` folder here makes it the default for a compiled language. */
+	/** Where `places` asks: up front only in a folder without code, else as a default the summary shows. */
+	private placesView(directory: InitDirectory): PromptService {
+		return directory.holdsCode ? this.promptService : this.essential;
+	}
+
+	/** Whether the user sees `places`: in a terminal, when no flag answers it, up front or under Customise. */
+	showsPlaces(directory: InitDirectory): boolean {
+		return (
+			this.interactive &&
+			this.choices.places === undefined &&
+			(this.placesView(directory) === this.essential || this.customising)
+		);
+	}
+
+	/** Whether a new project is several places, asked up front only in a folder without code; a `projects` folder here makes it the default for a compiled language. */
 	async places(
 		directory: InitDirectory,
-		language: Language
+		language: Language,
+		unplaced: UnplacedCode = {}
 	): Promise<boolean | undefined> {
 		const given = this.choices.places;
 		if (given !== undefined) return given;
@@ -118,24 +171,31 @@ export class InitQuestions {
 				several,
 				booleanFlag("--places", !several)
 			);
-		const answer = await this.essential.select<"one" | "several">({
-			message: "One place or several?",
-			choices: [
-				{
-					value: "one",
-					label: "One place",
-					hint: "the code is in src",
-				},
-				{
-					value: "several",
-					label: "Several places",
-					hint: language.compiler
-						? `${PROJECTS_FOLDER}/${COMMON_FOLDER} holds the shared code, ${PROJECTS_FOLDER}/game the first place`
-						: `src/${COMMON_FOLDER} holds the shared code, src/game the first place`,
-				},
-			],
-			initialValue: several ? "several" : "one",
-		});
+		const answer = await this.ask(
+			"places",
+			this.placesView(directory),
+			(view) =>
+				view.select<"one" | "several">({
+					message: "One place or several?",
+					choices: [
+						{
+							value: "one",
+							label: "One place",
+							hint: `the code is in ${directory.defaultSourcePath(language)}${unplaced.one ? `; leaves ${unplaced.one} unplaced` : ""}`,
+						},
+						{
+							value: "several",
+							label: "Several places",
+							hint: `${
+								language.compiler
+									? `${PROJECTS_FOLDER}/${COMMON_FOLDER} holds the shared code, ${PROJECTS_FOLDER}/game the first place`
+									: `src/${COMMON_FOLDER} holds the shared code, src/game the first place`
+							}${unplaced.several ? `; leaves ${unplaced.several} unplaced` : ""}`,
+						},
+					],
+					initialValue: several ? "several" : "one",
+				})
+		);
 		return answer === undefined ? undefined : answer === "several";
 	}
 
@@ -157,22 +217,25 @@ export class InitQuestions {
 		}
 		const detected =
 			workspace.languages.some(({ present }) => present) ||
-			directory.layout.codeFolders.length > 0 ||
+			directory.holdsCode ||
 			directory.has("package.json");
-		const id = await (
-			detected ? this.promptService : this.essential
-		).select({
-			message: "Language",
-			choices: workspace.languages.map((language) => ({
-				value: language.id,
-				label: language.copy.label,
-				hint:
-					language.id === workspace.language.id
-						? language.copy.detectedHint
-						: undefined,
-			})),
-			initialValue: workspace.language.id,
-		});
+		const id = await this.ask(
+			"language",
+			detected ? this.promptService : this.essential,
+			(view) =>
+				view.select({
+					message: "Language",
+					choices: workspace.languages.map((language) => ({
+						value: language.id,
+						label: language.copy.label,
+						hint:
+							language.id === workspace.language.id
+								? language.copy.detectedHint
+								: undefined,
+					})),
+					initialValue: workspace.language.id,
+				})
+		);
 		return id === undefined ? undefined : workspace.languageFor(id);
 	}
 
