@@ -1,7 +1,7 @@
 import path from "path";
 import { Disposable, toDisposable } from "../../base/disposable.js";
 import { ErrorUtils, UsageError } from "../../base/errors.js";
-import { ancestors, samePath } from "../../base/path.js";
+import { samePath, selfAndAncestors } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -323,7 +323,7 @@ export class CoreInitService implements InitService {
 
 	/** The folder itself, else the nearest one above it that is there, where a program can run before the folder is made. */
 	private async existingFolder(folder: string): Promise<string> {
-		const folders = [folder, ...ancestors(folder)];
+		const folders = [...selfAndAncestors(folder)];
 		for (const existing of folders)
 			if (await this.fileSystemService.exists(existing)) return existing;
 		return folders[folders.length - 1];
@@ -367,7 +367,7 @@ export class CoreInitService implements InitService {
 	}
 
 	refreshAgentRules(folder: string): Promise<string[]> {
-		return new AgentRules(this.fileSystemService).refresh(folder);
+		return new AgentRules(this.fileSystemService, this.git).refresh(folder);
 	}
 
 	write(

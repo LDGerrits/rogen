@@ -1,5 +1,5 @@
 import path from "path";
-import { ancestors } from "../../base/path.js";
+import { selfAndAncestors } from "../../base/path.js";
 import { FileReader } from "../fs/file-system-service.js";
 import { ProductService } from "./product-service.js";
 
@@ -22,10 +22,7 @@ export class CoreProductService implements ProductService {
 	async readVersion(): Promise<string> {
 		if (this.bakedVersion) return this.bakedVersion;
 		try {
-			for (const dir of [
-				this.installDir,
-				...ancestors(this.installDir),
-			]) {
+			for (const dir of selfAndAncestors(this.installDir)) {
 				const packageJsonPath = path.join(dir, "package.json");
 				if (await this.fileReader.exists(packageJsonPath)) {
 					const pkg = JSON.parse(

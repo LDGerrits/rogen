@@ -110,6 +110,12 @@ export function* ancestors(filePath: string): Generator<string> {
 	}
 }
 
+/** `folder`, then each folder above it up to and including the root. */
+export function* selfAndAncestors(folder: string): Generator<string> {
+	yield folder;
+	yield* ancestors(folder);
+}
+
 /** Whether `child` is `parent` or lies inside it; both must be absolute, and may be written with either kind of separator. */
 export function contains(parent: string, child: string): boolean {
 	return samePath(child, parent) || isInside(child, parent);

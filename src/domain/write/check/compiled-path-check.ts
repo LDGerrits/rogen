@@ -1,5 +1,5 @@
 import path from "path";
-import { ancestors, stemOf, toPosix } from "../../../base/path.js";
+import { selfAndAncestors, stemOf, toPosix } from "../../../base/path.js";
 import { listLimited } from "../../../base/strings.js";
 import {
 	Diagnostic,
@@ -366,7 +366,7 @@ export class CompiledPathCheck {
 	}
 
 	private async nearestExisting(target: string): Promise<string> {
-		const chain = [target, ...ancestors(target)];
+		const chain = [...selfAndAncestors(target)];
 		for (const dir of chain)
 			if (await this.fileSystemService.exists(dir)) return dir;
 		return chain[chain.length - 1];

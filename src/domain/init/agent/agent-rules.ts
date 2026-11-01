@@ -1,7 +1,8 @@
 import path from "path";
-import { ancestors } from "../../../base/path.js";
+import { selfAndAncestors } from "../../../base/path.js";
 import { tryWithAsync } from "../../../base/result.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
+import { GitRepository } from "../git-repository.js";
 import { agentBlock } from "./agent-block.js";
 import { AgentFile } from "./agent-file.js";
 
@@ -18,7 +19,10 @@ function refreshedRules(text: string): string | undefined {
 
 /** Keeps the Rogen block of a repository's agent files that of the Rogen that runs; a file without the block is never touched. */
 export class AgentRules {
-	constructor(private readonly fileSystemService: FileSystemService) {}
+	constructor(
+		private readonly fileSystemService: FileSystemService,
+		private readonly git: GitRepository
+	) {}
 
 	/** Refreshes the agent files of `folder` and of each folder above it up to the repository root (only `folder` outside one), and returns the files it rewrote. A file it can't read or write is left as it is. */
 	async refresh(folder: string): Promise<string[]> {
@@ -45,10 +49,13 @@ export class AgentRules {
 
 	private async foldersUp(folder: string): Promise<string[]> {
 		const start = path.resolve(folder);
-		const folders = [start, ...ancestors(start)];
-		for (const [at, current] of folders.entries())
-			if (await this.fileSystemService.exists(path.join(current, ".git")))
-				return folders.slice(0, at + 1);
-		return [start];
+		const root = await this.git.workTreeOf(start);
+		if (root === undefined) return [start];
+		const folders: string[] = [];
+		for (const current of selfAndAncestors(start)) {
+			folders.push(current);
+			if (current === root) break;
+		}
+		return folders;
 	}
 }

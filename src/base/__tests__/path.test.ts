@@ -14,6 +14,7 @@ import {
 	outermostDirs,
 	relativeTo,
 	samePath,
+	selfAndAncestors,
 	stemOf,
 	toNative,
 	toShellWord,
@@ -136,6 +137,24 @@ describe("normalizeDir", () => {
 		[".", "."],
 	])("should write %j as %j", (entry, expected) => {
 		expect(normalizeDir(entry)).toBe(expected);
+	});
+
+	describe("selfAndAncestors", () => {
+		it("should yield the folder, then each folder above it up to the root", () => {
+			const root = path.parse(path.resolve("/")).root;
+
+			expect([...selfAndAncestors(path.resolve("/repo/src"))]).toEqual([
+				path.resolve("/repo/src"),
+				path.resolve("/repo"),
+				root,
+			]);
+		});
+
+		it("should yield only the root for the root", () => {
+			const root = path.resolve("/");
+
+			expect([...selfAndAncestors(root)]).toEqual([root]);
+		});
 	});
 
 	describe("ancestors", () => {
