@@ -49,7 +49,7 @@ describe("WritePipeline", () => {
 	});
 
 	describe("run", () => {
-		it("should report the folder meta it read, and not a data file's", async () => {
+		it("should report the metas it read, a folder's and a data file's", async () => {
 			await fs.writeFile(abs("src/Combat/Hit.luau"), "");
 			await fs.writeFile(abs("src/Combat/init.meta.json"), "{}");
 			await fs.writeFile(abs("src/Notes.txt"), "");
@@ -59,6 +59,7 @@ describe("WritePipeline", () => {
 
 			expect(result.unwrap().readFiles).toEqual([
 				abs("src/Combat/init.meta.json"),
+				abs("src/Notes.meta.json"),
 			]);
 		});
 

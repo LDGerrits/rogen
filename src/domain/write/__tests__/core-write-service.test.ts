@@ -1286,6 +1286,33 @@ describe("CoreWriteService", () => {
 			});
 		});
 
+		it("should report the error of a script's meta against the script and the meta", async () => {
+			await fs.writeFile(abs("src/Save.luau"), "");
+			await fs.writeFile(abs("src/Save.meta.json"), '{"properties": 5}');
+			await fs.writeFile(abs("src/B.luau"), "");
+			const diagnose = async (arg: string) =>
+				(
+					await writeServiceOfFs().diagnose(selectionOf(configOf()), {
+						args: [arg],
+						cwd: abs(),
+					})
+				).unwrap();
+
+			for (const arg of ["src/Save.luau", "src/Save.meta.json"]) {
+				const found = await diagnose(arg);
+				expect(found.diagnostics).toMatchObject([
+					{
+						code: "meta.wrongType",
+						resource: abs("src/Save.meta.json"),
+					},
+				]);
+				expect(found.stoppedBy).toEqual([]);
+			}
+			expect((await diagnose("src/B.luau")).stoppedBy).toMatchObject([
+				{ code: "meta.wrongType" },
+			]);
+		});
+
 		it("should report the error of a config that did not load beside what reaches the path in the others", async () => {
 			await fs.writeFile(abs("src/F/Sever/A.luau"), "");
 			const failure = errorDiagnostic(

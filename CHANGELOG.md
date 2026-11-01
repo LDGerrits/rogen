@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- `rogen check` and `rogen write` refuse a file's own `.meta.json` that Rojo can't read, as they refuse a folder's `init.meta.json`.
+- A misspelled `$` key that holds an object, such as `"$propertes": {...}`, is refused with the field it is closest to.
 - `rogen where` exits 1 when an error stops the write, and reports a missing source path as `rogen write` does.
 - `rogen where` and `rogen check` narrow diagnostics to a path by one rule: a clash, a meta file's error and a marker file's warning count for the files they are about.
 - A warning that `rogen where` prints under a file's line names the file it is about when that is another file, such as the file that loses a clash.
