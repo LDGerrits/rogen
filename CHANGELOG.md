@@ -6,61 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.0-beta.3] - 2026-11-01
+
 ### Changed
 
-- Customise in `rogen init` asks only the questions the summary took the default of, each with your earlier answer preselected, and asks whether to add the Greeter sample. When every question was asked already, it isn't offered.
-- In a folder that holds code, `rogen init` doesn't ask "One place or several?" up front: the summary shows one place, and Customise changes it. Each option names the code it would leave unplaced.
-- The summary shows the plan's warnings before you accept, and its question names what `init` does, such as "Set up Rogen in this project?" for a lift.
-- The summary leaves out what you just answered, and shows a Sample row when the Greeter sample is added.
-- The tip to run `git rm --cached default.project.json` shows only when git tracks that file.
-- The next steps say that `rogen write` replaces the project file, as the docs do.
-- `rogen write --watch` with no project follows every config of the folder, as `rogen write` writes them, and says when one is added or removed.
-- `serve --json` prints an `orphan` line when it ends a server that a killed `rogen serve` left running.
-- A burst of file changes is named only under `--verbose`.
+- `rogen init` asks fewer questions, and shows the plan's warnings before you accept.
+- `rogen write --watch` with no project follows every config of the folder.
+- `--json` prints nothing on stderr, and a burst of file changes is named only under `--verbose`.
 
 ### Fixed
 
-- `--watch` reports a folder it could not read, or a root that came back, as added only once it is watched again, so a file made just then is not missed.
-- `rogen check` and `rogen write` refuse a file's own `.meta.json` that Rojo can't read, as they refuse a folder's `init.meta.json`.
-- A misspelled `$` key that holds an object, such as `"$propertes": {...}`, is refused with the field it is closest to.
-- `rogen init` checks the project it plans before it writes anything, so a plan that would fail writes nothing, and `--dry-run` says so too.
-- `rogen init` sets up Rojo's template layout as a lift of the project file `rojo init` writes, and a folder whose code is one module as a model.
-- A lift leaves out what Rojo never placed with `globIgnorePaths`, and a lifted model or plugin gets a model's or a plugin's next steps.
-- An empty source folder that `rogen init` makes gets a `.gitkeep`, so a clone has it.
-- Scripts at the root of the folder count as code, so `rogen init` adds no sample beside them.
-- In a roblox-ts project, the new `.gitignore` leaves out `node_modules`, the compiler's output and `include`, and the watch step uses the project's own compiler.
-- `--agent-hook` with no coding agent in the folder no longer stops a new project: `rogen init` writes it and warns.
-- `rogen init <folder> --language roblox-ts` makes the folder before it runs create-roblox-ts there, and removes it again when create-roblox-ts fails.
-- A lifted project file whose tree is written on one line gets a tree in `default.rogen.json` formatted as `rogen fmt-project` formats it, not the same one line.
-- `build --json` says `changed` when Rojo wrote the build.
-- `--color`, `NO_COLOR` and `FORCE_COLOR` change only the colours, not the layout or the streams.
-- `--json` prints nothing on stderr, notes, watch errors and `-vv` trace lines included.
-- `scan.portableName` no longer warns of a file such as `trail..luau`, whose name ends in its extension.
-- `--` ends the options, and what follows it are positionals, as in Rojo: `rogen where -- -name.luau`.
-- A command line Rojo refuses is a usage error with Rojo's words, all on stderr, not a project failure; Rojo's own stderr lines stay on stderr.
-- `rogen write` counts the project files it left unchanged apart from those it wrote.
-- An option that takes one value, such as `-o`, or a flag such as `--watch`, given twice is a usage error, as in Rojo, and `rogen` alone prints the help on stderr.
-- A working folder that was deleted is an `io` error, exit 1, not a usage error.
-- Under GitHub Actions, `--quiet` writes only the `::error` annotations.
-- A failed `syncback --json` names the config it ran on.
-- A folder Rogen can't read is a `scan.unreadable` error naming it, as Rojo fails to build it, and `--watch` prints it once.
-- `--watch` rewrites the project file when a folder it couldn't read becomes readable, and watches what is in it from then on.
-- The `output.nothingEmitted` warning no longer names the missing path as the nearest path that exists.
-- `rogen where` answers a Studio instance path or `-` by the config named beside it, as in `rogen where game -`, where it used to ask for a default config; `-` refuses any other path beside it.
-- The `serve.portTaken` error suggests `rogen serve lobby --port <port>` instead of naming the whole `lobby.rogen.json`, when the bare name reads that config.
-- The `rogen serve` command that `rogen init` suggests after a v1 migration no longer names the wrong config when a folder of the config's name holds a default config; it names the config's file then.
-- `rogen where` exits 1 when an error stops the write, and reports a missing source path as `rogen write` does.
-- `rogen where` and `rogen check` narrow diagnostics to a path by one rule: a clash, a meta file's error and a marker file's warning count for the files they are about.
-- A warning that `rogen where` prints under a file's line names the file it is about when that is another file, such as the file that loses a clash.
-- `rogen where` and `rogen check` answer a project file inside a source path and a file in the compiled path, and leave a copied config's error out of a path outside its source paths.
-- `rogen where -` maps a character's copy of a StarterCharacterScripts script back to its file.
-- `scan.unmountedSource` names the files that nothing mounts.
-- `serve` and the `--watch` commands keep going when Rojo crashes on deleted folders more than once, and give up only when a restarted Rojo crashes before it serves. Back-to-back restarts wait a little longer each time, up to 10 seconds.
-- The write done before a crashed Rojo starts again is reported.
-- `serve` knows its server after the project's `name` changes, and a second `serve` of the same project exits 0: without `--port` on any port, and when both start at once.
-- `rogen write --watch` given a `default.rogen.json` of another folder watches that config, not the working directory's.
-- `build --watch --json` and `sourcemap --watch --json` print Rojo's failure as `diagnostics`.
-- `syncback --dry-run` works on a read-only source file.
+- Many `rogen init` fixes, such as for Rojo's template layout and roblox-ts projects.
+- Many `rogen where` and `rogen check` fixes.
+- `serve` and `--watch` keep going when Rojo crashes on deleted folders.
+- `--watch` no longer misses a folder that comes back or becomes readable.
+- The command line is read as Rojo reads it, `--` and repeated options included.
 
 ## [2.0.0-beta.2] - 2026-10-31
 
@@ -269,7 +229,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Routing files to Roblox services by folder name (`server`, `client`, `shared` or a service name) or by file-name suffix, and generating the Rojo project file from them.
 - Support for Luau, roblox-ts and Darklua.
 
-[unreleased]: https://github.com/LDGerrits/rogen/compare/v2.0.0-beta.2...HEAD
+[unreleased]: https://github.com/LDGerrits/rogen/compare/v2.0.0-beta.3...HEAD
+[2.0.0-beta.3]: https://github.com/LDGerrits/rogen/compare/v2.0.0-beta.2...v2.0.0-beta.3
 [2.0.0-beta.2]: https://github.com/LDGerrits/rogen/compare/v2.0.0-beta.1...v2.0.0-beta.2
 [2.0.0-beta.1]: https://github.com/LDGerrits/rogen/compare/v1.4.4...v2.0.0-beta.1
 [1.4.4]: https://github.com/LDGerrits/rogen/compare/v1.4.3...v1.4.4
