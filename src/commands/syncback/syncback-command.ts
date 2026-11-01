@@ -169,26 +169,16 @@ registerCommand(
 			let outcome: SyncbackOutcome = { kind: "notRun" };
 			let listed = false;
 			if (!failure && request) {
-				const failed = (error: Error) =>
-					({
-						kind: "failed",
-						error,
-						configFile: request.project.file,
-					}) as const;
-				const written = (applied: Result<SyncbackResult, Error>) =>
-					applied.isErr()
-						? failed(applied.error)
-						: ({
-								kind: "written",
-								plan: applied.value,
-								warnings: applied.value.warnings,
-							} as const);
+				const configFile = request.project.file;
 				if (yes && !dryRun) {
-					outcome = written(await syncbacks.apply(request));
+					outcome = this.written(
+						await syncbacks.apply(request),
+						configFile
+					);
 				} else {
 					const planned = await syncbacks.plan(request);
 					outcome = planned.isErr()
-						? failed(planned.error)
+						? this.failed(planned.error, configFile)
 						: {
 								kind: "planned",
 								plan: planned.value,
@@ -203,8 +193,9 @@ registerCommand(
 						this.warnLeftOut(logService, planned.value, cwd);
 						listed = true;
 						if (await this.asked(promptService, planned.value))
-							outcome = written(
-								await syncbacks.apply(request, planned.value)
+							outcome = this.written(
+								await syncbacks.apply(request, planned.value),
+								configFile
 							);
 					}
 				}
@@ -247,6 +238,23 @@ registerCommand(
 				);
 			if (stopped) return err(stopped);
 			return failure ? this.reported(failure) : ok(undefined);
+		}
+
+		private written(
+			applied: Result<SyncbackResult, Error>,
+			configFile: string
+		): SyncbackOutcome {
+			return applied.isErr()
+				? this.failed(applied.error, configFile)
+				: {
+						kind: "written",
+						plan: applied.value,
+						warnings: applied.value.warnings,
+					};
+		}
+
+		private failed(error: Error, configFile: string): SyncbackOutcome {
+			return { kind: "failed", error, configFile };
 		}
 
 		private async asked(
