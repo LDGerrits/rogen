@@ -171,13 +171,13 @@ export class DiskWatcher extends AbstractWatcher {
 		this.ready = false;
 		this.stopRevival();
 		this.seen.clear();
-		this.refused.clear();
 		this.unfollowed = new Set();
 		if (this.watcher) {
 			clearThrottles(this.watcher);
 			await this.watcher.close();
 			this.watcher = null;
 		}
+		this.refused.clear();
 	}
 }
 
