@@ -411,13 +411,13 @@ export class RootScanner {
 					isDirectoryType(type) ||
 					this.fileAt(joinPosix(dir, name)).kind
 				)
-					odd(name, PortableName.problemWith(name, name) ?? "", true);
+					odd(name, PortableName.problemWith(name) ?? "", true);
 			} else if (type === FileType.SymbolicLink) {
 				walk.leftOut.set(joinPosix(dir, name), { status: "skipped" });
 			} else if (isDirectoryType(type)) {
 				subdirs.push(path.join(dir, name));
 				instanceNames.push(name);
-				const problem = PortableName.problemWith(name, name);
+				const problem = PortableName.problemWith(name);
 				if (problem) odd(name, problem);
 			} else {
 				const file = this.fileAt(joinPosix(dir, name));
@@ -434,13 +434,10 @@ export class RootScanner {
 					});
 				} else if (file.isMeta) {
 					walk.metaFiles.push(relativeTo(name));
-					const problem = PortableName.problemWith(name, name);
+					const problem = PortableName.problemWith(name);
 					if (problem) odd(name, problem);
 				} else if (file.kind) {
-					const problem = PortableName.problemWith(
-						name,
-						stemOf(name)
-					);
+					const problem = PortableName.problemWith(name);
 					if (problem) odd(name, problem);
 					instanceNames.push(name);
 					walk.entries.push({
@@ -452,7 +449,7 @@ export class RootScanner {
 					});
 				} else if (name.startsWith(".") || name.startsWith("@")) {
 					walk.markers.push(relativeTo(name));
-					const problem = PortableName.problemWith(name, name);
+					const problem = PortableName.problemWith(name);
 					if (problem) odd(name, problem);
 				}
 			}
