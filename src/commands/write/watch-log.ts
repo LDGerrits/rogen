@@ -172,14 +172,13 @@ export class WatchLog implements WatchReporter {
 
 	update({ at, cause, changes, notices, reports }: WatchUpdate): void {
 		if (cause.kind === "burst") {
-			this.logService.warn(
+			this.logService.debug(
 				cause.ended
-					? `The burst has stopped, after ${plural(cause.dropped, "more change")}.`
-					: `Threshold reached (${cause.dropped} > ${cause.threshold}). Dropping the buffered changes.`
+					? `The burst stopped after ${plural(cause.dropped, "more change")}, so every config is written again.`
+					: `${cause.dropped} changes came at once, more than ${cause.threshold}, so every config is written again from a fresh listing.`
 			);
 		}
 		const quiet =
-			cause.kind !== "burst" &&
 			notices.length === 0 &&
 			reports.every(
 				({ outcome, unreported, fixed }) =>

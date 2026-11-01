@@ -87,7 +87,7 @@ describe("WatchLog.update", () => {
 			});
 		});
 
-		it("should say a burst dropped the changes and rewrote everything", () => {
+		it("should name a burst only under --verbose, with the full rewrite it starts", () => {
 			const lines = logged({
 				cause: {
 					kind: "burst",
@@ -100,14 +100,14 @@ describe("WatchLog.update", () => {
 
 			expect(lines.map(({ kind, text }) => [kind, text])).toEqual([
 				[
-					"warn",
-					"Threshold reached (250 > 200). Dropping the buffered changes.",
+					"debug",
+					"250 changes came at once, more than 200, so every config is written again from a fresh listing.",
 				],
-				["step", "03:04:05 · many changes · full rewrite"],
+				["debug", "03:04:05 · many changes · full rewrite"],
 			]);
 		});
 
-		it("should say a burst has stopped, without a threshold it did not cross", () => {
+		it("should say under --verbose that a burst has stopped, without a threshold it did not cross", () => {
 			const lines = logged({
 				cause: {
 					kind: "burst",
@@ -115,11 +115,28 @@ describe("WatchLog.update", () => {
 					threshold: 200,
 					ended: true,
 				},
+				reports: [],
 			});
 
 			expect(lines[0]).toEqual({
-				kind: "warn",
-				text: "The burst has stopped, after 101 more changes.",
+				kind: "debug",
+				text: "The burst stopped after 101 more changes, so every config is written again.",
+			});
+		});
+
+		it("should show a burst's title when its rewrite changed a project file", () => {
+			const lines = logged({
+				cause: {
+					kind: "burst",
+					dropped: 250,
+					threshold: 200,
+					ended: false,
+				},
+			});
+
+			expect(lines).toContainEqual({
+				kind: "step",
+				text: "03:04:05 · many changes · full rewrite",
 			});
 		});
 
