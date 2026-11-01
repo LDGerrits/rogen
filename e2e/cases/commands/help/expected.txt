@@ -82,7 +82,7 @@ stdout:
 
 $ rogen
 exit 2
-stdout:
+stderr:
   rogen
   A superset of Rojo that generates Rojo project files from your file system
   

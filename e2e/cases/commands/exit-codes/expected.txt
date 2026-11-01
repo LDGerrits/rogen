@@ -117,9 +117,8 @@ stdout:
 
 $ rogen plugin uninstall
 exit 1
-stdout:
-  Rojo: Your platform is not currently supported
 stderr:
+  Rojo: Your platform is not currently supported
   error: Rojo couldn't run 'rojo plugin uninstall' (exit code 1).
 
 $ rogen plugin
