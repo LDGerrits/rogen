@@ -79,33 +79,24 @@ describe("RobloxTsStarter", () => {
 		]);
 	});
 
-	it("should have the tsconfig of the common code check it for the editor alone", () => {
-		const { fileName, content } = new RobloxTsStarter().commonTsconfig(
-			"projects/common/src"
-		);
+	describe("placesTsconfigs", () => {
+		const [common, place] = new RobloxTsStarter().placesTsconfigs();
 
-		expect(fileName).toBe("projects/common/tsconfig.json");
-		const tsconfig = JSON.parse(content);
-		expect(tsconfig.compilerOptions).toMatchObject({
-			rootDir: "src",
-			baseUrl: "src",
-			noEmit: true,
-			typeRoots: ["node_modules/@rbxts", "../../node_modules/@rbxts"],
+		it("should have the tsconfig of the common code check it for the editor alone", () => {
+			expect(common.fileName).toBe("projects/common/tsconfig.json");
+			const tsconfig = JSON.parse(common.content);
+			expect(tsconfig.compilerOptions).toMatchObject({
+				rootDir: "src",
+				baseUrl: "src",
+				noEmit: true,
+				typeRoots: ["node_modules/@rbxts", "../../node_modules/@rbxts"],
+			});
+			expect(tsconfig.include).toEqual(["src"]);
 		});
-		expect(tsconfig.include).toEqual(["src"]);
-	});
 
-	describe("place", () => {
-		const place = new RobloxTsStarter().place(
-			"projects/game",
-			"projects/common/src"
-		);
-
-		it("should compile its own code with the common code into its own out folder", () => {
-			const [file] = place.files;
-
-			expect(file.fileName).toBe("projects/game/tsconfig.json");
-			const tsconfig = JSON.parse(file.content);
+		it("should compile the place's own code with the common code into its own out folder", () => {
+			expect(place.fileName).toBe("projects/game/tsconfig.json");
+			const tsconfig = JSON.parse(place.content);
 			expect(tsconfig.compilerOptions).toMatchObject({
 				outDir: "out",
 				rootDirs: ["src", "../common/src"],
@@ -117,18 +108,6 @@ describe("RobloxTsStarter", () => {
 			expect(tsconfig.compilerOptions).not.toHaveProperty("rootDir");
 			expect(tsconfig).not.toHaveProperty("extends");
 			expect(tsconfig.include).toEqual(["src", "../common/src"]);
-		});
-
-		it("should reach the common code of the root from any folder", () => {
-			const [file] = new RobloxTsStarter().place(
-				"projects/arena",
-				"src"
-			).files;
-
-			expect(JSON.parse(file.content).compilerOptions.rootDirs).toEqual([
-				"src",
-				"../../src",
-			]);
 		});
 	});
 });

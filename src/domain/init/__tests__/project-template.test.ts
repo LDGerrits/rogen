@@ -34,8 +34,12 @@ describe("ProjectTemplate", () => {
 		expect(new ProjectTemplate("place", "game").script).toBeUndefined();
 	});
 
+	it("should leave the README of a place to its sample", () => {
+		expect(new ProjectTemplate("place", "game").readme).toBeUndefined();
+	});
+
 	it("should name the project in the README and build it with Rogen", () => {
-		const { content } = new ProjectTemplate("plugin", "tool").readme;
+		const content = new ProjectTemplate("plugin", "tool").readme?.content;
 
 		expect(content).toContain("# tool\n");
 		expect(content).toContain('rogen build -p "tool.rbxm"');

@@ -21,7 +21,6 @@ import {
 	Mount,
 	PlannedFile,
 } from "../toolchain/toolchain.js";
-import { DeclaredKeys } from "../config/declared-keys.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { GreeterSample } from "./greeter-sample.js";
 import { SAMPLE_GAME_FOLDER, SampleGame } from "./sample-game.js";
@@ -33,6 +32,7 @@ import {
 	RELEASE_OUTPUT,
 } from "./output-configs.js";
 import { InitQuestions } from "./init-questions.js";
+import { InitSummary } from "./init-summary.js";
 import { InitKind, PlannedCommand, PlannedScaffold } from "./init-service.js";
 import { ProjectFiles } from "./project-files.js";
 import { ProjectTemplate } from "./project-template.js";
@@ -123,8 +123,9 @@ function takesRoutes(tree: ProjectTree): boolean {
 	);
 }
 
-const BUILD_COMMANDS: Readonly<Record<InitKind, (name: string) => string>> = {
-	place: (name) => `rogen build -o "${name}.rbxlx"`,
+const BUILD_COMMANDS: Readonly<
+	Record<Exclude<InitKind, "place">, (name: string) => string>
+> = {
 	model: (name) => `rogen build -o "${name}.rbxmx"`,
 	plugin: (name) => `rogen build -p "${name}.rbxm"`,
 };
@@ -476,9 +477,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		tree: ProjectTree,
 		skipGit: boolean
 	): PlannedFile[] {
+		const { readme } = template;
 		const script = tree.kind === "template" ? template.script : undefined;
 		return [
-			...(template.kind === "place" ? [] : [template.readme]),
+			...(readme ? [readme] : []),
 			...(skipGit ? [] : [template.gitignore]),
 			...(script ? [script] : []),
 		];
@@ -678,16 +680,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				...(sample ? ["sample Greeter"] : []),
 			].join(", ")
 		);
-		if (routes) {
-			const keys = Object.keys(routes).filter(
-				(key) => key !== DeclaredKeys.FALLBACK_ROUTE
-			);
-			const rest = routes[DeclaredKeys.FALLBACK_ROUTE];
+		if (routes)
 			builder.addSummary(
 				"Code",
-				`${places ? places.directories.join(", ") : sourcePaths.join(", ")} → ${keys.length > 0 ? keys.join(", ") : "no routes"}${rest ? `; other files to ${rest}` : ""}`
+				InitSummary.code(places?.directories ?? sourcePaths, routes)
 			);
-		}
 		if (mounts.length > 0)
 			builder.addSummary(
 				"Packages",

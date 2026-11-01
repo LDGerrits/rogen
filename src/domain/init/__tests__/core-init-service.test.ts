@@ -1655,6 +1655,24 @@ describe("CoreInitService", () => {
 				"Failed to create lib: read-only"
 			);
 		});
+
+		it("should stop at the file it can't rename and name both names", async () => {
+			const onWritten = jest.fn<(written: InitWritten) => void>();
+			jest.spyOn(fileSystem, "rename").mockRejectedValue(
+				new Error("busy")
+			);
+			const plan = {
+				...(await planned()),
+				moves: [{ from: "old.rogen.json", to: "old.rogen.json.v1" }],
+			};
+
+			const result = await serviceFor().write(plan, onWritten);
+
+			expect((result as ResultError<Error>).error.message).toBe(
+				"Failed to rename old.rogen.json to old.rogen.json.v1: busy"
+			);
+			expect(onWritten).not.toHaveBeenCalled();
+		});
 	});
 
 	describe("a registered migration", () => {
@@ -1731,6 +1749,47 @@ describe("CoreInitService", () => {
 				"Run 'rogen check' and fix what it reports."
 			);
 			expect(plan.nextSteps.run).toEqual(["rogen serve old"]);
+		});
+
+		it("should sum up the code of each config it writes", async () => {
+			const { service } = migrating(
+				migrated({
+					configs: [
+						{
+							fileName: "old.rogen.json",
+							config: {
+								sourcePaths: ["src"],
+								routes: {
+									Server: "ServerScriptService/server",
+								},
+							},
+						},
+						{
+							fileName: "lobby.rogen.json",
+							config: {
+								sourcePaths: ["src", "lobby"],
+								routes: {
+									Client: "StarterPlayer/StarterPlayerScripts",
+									"*": "ReplicatedStorage",
+								},
+							},
+						},
+					],
+				})
+			);
+
+			const plan = (await service.plan({ ask: false })).unwrap()!;
+
+			expect(plan.summary.filter(({ area }) => area === "Code")).toEqual([
+				{
+					area: "Code",
+					text: "old.rogen.json: src → Server",
+				},
+				{
+					area: "Code",
+					text: "lobby.rogen.json: src, lobby → Client; other files to ReplicatedStorage",
+				},
+			]);
 		});
 
 		it("should come before the folder's stale configs that it covers", async () => {

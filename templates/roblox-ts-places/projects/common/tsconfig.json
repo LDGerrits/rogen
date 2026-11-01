@@ -1,0 +1,29 @@
+{
+	"compilerOptions": {
+		"allowSyntheticDefaultImports": true,
+		"downlevelIteration": true,
+		"jsx": "react",
+		"jsxFactory": "React.createElement",
+		"jsxFragmentFactory": "React.Fragment",
+		"module": "commonjs",
+		"moduleResolution": "Node",
+		"noLib": true,
+		"resolveJsonModule": true,
+		"experimentalDecorators": true,
+		"forceConsistentCasingInFileNames": true,
+		"moduleDetection": "force",
+		"strict": true,
+		"target": "ESNext",
+		"incremental": true,
+		"typeRoots": [
+			"node_modules/@rbxts",
+			"../../node_modules/@rbxts"
+		],
+		"rootDir": "src",
+		"baseUrl": "src",
+		"noEmit": true
+	},
+	"include": [
+		"src"
+	]
+}

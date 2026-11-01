@@ -29,7 +29,7 @@ export type ProjectTree =
 	  }
 	| {
 			readonly kind: "template";
-			readonly template: InitKind;
+			readonly template: Exclude<InitKind, "place">;
 			readonly project: StarterProject;
 	  }
 	| {

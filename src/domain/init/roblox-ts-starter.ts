@@ -1,35 +1,14 @@
-import path from "path";
 import { Language, PlannedFile } from "../toolchain/toolchain.js";
 import { PlannedCommand, PlannedScaffold } from "./init-service.js";
+import { templateFiles } from "./template-files.js";
 
 const CREATE_TIMEOUT = 300_000;
 const SCRIPT_TIMEOUT = 60_000;
 
-/** The settings roblox-ts requires, as create-roblox-ts writes them. */
-const REQUIRED_OPTIONS = {
-	allowSyntheticDefaultImports: true,
-	downlevelIteration: true,
-	jsx: "react",
-	jsxFactory: "React.createElement",
-	jsxFragmentFactory: "React.Fragment",
-	module: "commonjs",
-	moduleResolution: "Node",
-	noLib: true,
-	resolveJsonModule: true,
-	experimentalDecorators: true,
-	forceConsistentCasingInFileNames: true,
-	moduleDetection: "force",
-	strict: true,
-	target: "ESNext",
-	incremental: true,
-};
-
 const OUT_DIR = "out";
-const TS_BUILD_INFO = `${OUT_DIR}/tsconfig.tsbuildinfo`;
-const TYPES = "node_modules/@rbxts";
 
-const json = (value: unknown): string =>
-	`${JSON.stringify(value, null, "\t")}\n`;
+/** The variant whose `tsconfig.json` files make the places of `projects` compile with their common code. */
+const PLACES_VARIANT = "roblox-ts-places";
 
 /** What `init` takes from create-roblox-ts, which writes the project's `package.json`, `tsconfig.json` and compiler settings, and what it adds for places that share code. */
 export class RobloxTsStarter {
@@ -97,47 +76,10 @@ export class RobloxTsStarter {
 		};
 	}
 
-	/** The `tsconfig.json` of the common code of several places, which the editor reads to check it; `rbxtsc` never does. */
-	commonTsconfig(common: string): PlannedFile {
-		const folder = path.posix.dirname(common);
-		const toRoot = path.posix.relative(folder, ".");
-		return {
-			fileName: path.posix.join(folder, "tsconfig.json"),
-			content: json({
-				compilerOptions: {
-					...REQUIRED_OPTIONS,
-					typeRoots: [TYPES, `${toRoot}/${TYPES}`],
-					rootDir: "src",
-					baseUrl: "src",
-					noEmit: true,
-				},
-				include: ["src"],
-			}),
-		};
-	}
-
-	/** The `tsconfig.json` that makes `place` (relative to the root) compile its own code with the code in `common`. */
-	place(place: string, common: string): { files: PlannedFile[] } {
-		const toCommon = path.posix.relative(place, common);
-		const toRoot = path.posix.relative(place, ".");
-		return {
-			files: [
-				{
-					fileName: path.posix.join(place, "tsconfig.json"),
-					content: json({
-						compilerOptions: {
-							...REQUIRED_OPTIONS,
-							typeRoots: [TYPES, `${toRoot}/${TYPES}`],
-							outDir: OUT_DIR,
-							rootDirs: ["src", toCommon],
-							baseUrl: ".",
-							paths: { "*": ["src/*", `${toCommon}/*`] },
-							tsBuildInfoFile: TS_BUILD_INFO,
-						},
-						include: ["src", toCommon],
-					}),
-				},
-			],
-		};
+	/** The `tsconfig.json` of the common code of several places, which the editor reads to check it and `rbxtsc` never does, and of the first place, which compiles its own code with the common code. */
+	placesTsconfigs(): PlannedFile[] {
+		return [...templateFiles(PLACES_VARIANT)]
+			.filter(([file]) => file.endsWith("/tsconfig.json"))
+			.map(([fileName, content]) => ({ fileName, content }));
 	}
 }
