@@ -438,7 +438,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			`${places.folder}/tsconfig.json`,
 			...(game ? [`${places.folder}/${places.gameFolder}`] : []),
 		];
-		return `Add another place: make ${lobby}/src, copy ${joinedWithAnd(copied)} into ${lobby} (with the release config, if the place has one), and change the "name" in each config to lobby. Run 'rogen write ${lobby}' for its project file, add 'rbxtsc -p ${lobby}' and 'rbxtsc -w -p ${lobby}' to the build and watch scripts in package.json, and serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
+		return `Add another place: make ${lobby}/src, copy ${joinedWithAnd(copied)} into ${lobby} (with the release config, if the place has one), and change the "name" in each config to lobby. Run 'rogen write ${lobby}' for its project file, and add ' && rbxtsc -p ${lobby}' to the end of the build script in package.json. 'rbxtsc -w' runs until you stop it, so watch the place from a terminal of its own with 'npx rbxtsc -w -p ${lobby}', and serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
 	}
 
 	/** An error when the first place has a config already, which init never overwrites. */

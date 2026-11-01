@@ -30,7 +30,7 @@ rogen build {{place}} -o "{{name}}.rbxlx"
 ```
 
 ## Adding a place
-Copy `{{place}}.rogen.json` to `lobby.rogen.json`, change its `name` to `lobby` and its source path `src/{{place}}` to `src/lobby`, and make the `src/lobby` folder. A second place is served from a second terminal, with its own `--port`:
+Copy `{{place}}.rogen.json` to `lobby.rogen.json`, change its `name` to `lobby`, its source path `src/{{place}}` to `src/lobby` and each `place/{{place}}` in its tree to `place/lobby`. Then make the `src/lobby` folder, and copy the `place/{{place}}` folder to `place/lobby`. A second place is served from a second terminal, with its own `--port`:
 
 ```bash
 rogen serve lobby --port <port>
