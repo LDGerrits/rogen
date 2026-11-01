@@ -72,7 +72,7 @@ export interface ProjectChoices {
 	readonly keptCode?: readonly string[];
 	/** Code Rogen places nowhere, which init warns about. */
 	readonly outside?: readonly string[];
-	/** Files of the source paths that the lifted project file mounts nowhere, which Rojo ignored and routes will place. */
+	/** What the source paths hold that the lifted project file mounts nowhere, as globs: Rojo ignored it, so `globIgnorePaths` leaves it out. */
 	readonly unmounted?: readonly string[];
 	/** The template of a new project; its files and git step are left out when none is given. */
 	readonly kind?: InitKind;
@@ -635,9 +635,16 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		});
 		const { compiler } = language;
 		const name = path.basename(places?.place ?? this.directory.path);
+		const unmounted = choices.unmounted ?? [];
 		const config: RogenConfig = {
 			...((choices.scaffold || places) && { name }),
 			...tree.fields,
+			...(unmounted.length > 0 && {
+				globIgnorePaths: [
+					...(tree.fields.globIgnorePaths ?? []),
+					...unmounted,
+				],
+			}),
 			...(routes && { sourcePaths: [...sourcePaths], routes }),
 			...(compiledPath && { compiledPath }),
 		};
@@ -713,12 +720,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				`Left alone: ${others.join(", ")}. Rojo runs a plain project file as it is, and Rogen writes only the project files its .rogen.json files name.`
 			);
 		for (const warning of tree.warnings) builder.addWarning(warning);
-		if (choices.tree.kind === "lift" && choices.unmounted?.length)
-			builder.addWarning(
-				ProjectSetup.unmountedWarning(
-					choices.tree.from,
-					choices.unmounted
-				)
+		if (choices.tree.kind === "lift" && unmounted.length > 0)
+			builder.addNote(
+				`Left out ${listedBriefly(unmounted)} with "globIgnorePaths", since no node of ${choices.tree.from} mounts ${unmounted.length === 1 ? "it" : "them"}, so Rojo ignored ${unmounted.length === 1 ? "it" : "them"}. To have Rogen route ${unmounted.length === 1 ? "it" : "them"}, take ${unmounted.length === 1 ? "it" : "them"} out of "globIgnorePaths".`
 			);
 		if (choices.outside?.length)
 			builder.addWarning(
@@ -804,17 +808,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		return config
 			? `Took ${folder} as the folder Darklua writes, since ${config} is here and the mounts of ${from} into ${folder} repeat ${source}. ${DEFAULT_CONFIG_FILE} reads ${source}, and ${configFileName(PROCESSED_OUTPUT)} reads ${folder} as its "compiledPath".`
 			: `Kept the mounts of ${from} into ${folder}, which repeat ${source}, since no ${Darklua.CONFIG_FILES[0]} says a processor writes ${folder}. Rojo now syncs a script there twice: from ${folder} and from its route. If a processor writes ${folder}, remove those mounts and serve a copy of ${DEFAULT_CONFIG_FILE} with "compiledPath": "${folder}".`;
-	}
-
-	private static unmountedWarning(
-		from: string,
-		files: readonly string[]
-	): Diagnostic {
-		return warningDiagnostic(
-			"init.unmountedFiles",
-			{ resource: from },
-			`${files.length === 1 ? "1 file" : `${files.length} files`} in the source paths ${files.length === 1 ? "is" : "are"} mounted by no node, so Rojo ignored ${files.length === 1 ? "it" : "them"}, and Rogen places ${files.length === 1 ? "it if a route matches it" : "each one a route matches"}: ${listedBriefly(files)}. Check where with 'rogen where <path>', and list ${files.length === 1 ? "it" : "them"} under "globIgnorePaths" to leave ${files.length === 1 ? "it" : "them"} out as Rojo did.`
-		);
 	}
 
 	private static outsideWarning(

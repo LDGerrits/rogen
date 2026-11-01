@@ -27,7 +27,7 @@ In the folder that holds `default.project.json`, run `rogen init`. It moves no f
 }
 ```
 
-Every file lands where Rojo put it, so your requires still work. From now on, `rogen write` overwrites `default.project.json`, so make your changes in `default.rogen.json` and run `git rm --cached default.project.json`.
+Every file lands where Rojo put it, so your requires still work. A file in `src` that no node mounted stays out of the game: `init` lists it, or its folder, under `globIgnorePaths`. From now on, `rogen write` overwrites `default.project.json`, so make your changes in `default.rogen.json` and run `git rm --cached default.project.json`.
 
 ## Sort by Feature
 

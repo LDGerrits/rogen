@@ -40,32 +40,36 @@ describe("ProjectSetup plan, unmounted files", () => {
 			}).unwrap()
 		);
 
-	it("should warn, by code, of files Rojo ignored that a route may place", async () => {
-		const planned = await lift(["src/Loose.luau", "src/x/Y.luau"]);
+	it("should leave out what Rojo ignored with globIgnorePaths, and say so", async () => {
+		const planned = await lift(["src/Loose.luau", "src/x"]);
 
-		expect(planned.warnings).toMatchObject([
-			{
-				code: "init.unmountedFiles",
-				message: expect.stringContaining(
-					"2 files in the source paths are mounted by no node"
-				),
-			},
+		expect(configOf(planned).globIgnorePaths).toEqual([
+			"src/Loose.luau",
+			"src/x",
 		]);
-		expect(planned.warnings[0].message).toContain(
-			"src/Loose.luau and src/x/Y.luau"
+		expect(planned.warnings).toEqual([]);
+		expect(planned.notes).toContainEqual(
+			expect.stringContaining(
+				'Left out src/Loose.luau and src/x with "globIgnorePaths", since no node of default.project.json mounts them, so Rojo ignored them.'
+			)
 		);
 	});
 
-	it("should name five files and count the rest", async () => {
+	it("should name five paths and count the rest", async () => {
 		const planned = await lift(
 			Array.from({ length: 8 }, (_, at) => `src/F${at}.luau`)
 		);
 
-		expect(planned.warnings[0].message).toContain("src/F4.luau and 3 more");
+		expect(planned.notes).toContainEqual(
+			expect.stringContaining("src/F4.luau and 3 more")
+		);
 	});
 
 	it("should say nothing when every file is mounted", async () => {
-		expect((await lift([])).warnings).toEqual([]);
+		const planned = await lift([]);
+
+		expect(planned.notes.join("\n")).not.toContain("globIgnorePaths");
+		expect(configOf(planned).globIgnorePaths).toBeUndefined();
 	});
 });
 
@@ -523,6 +527,21 @@ describe("ProjectSetup plan with a test runner", () => {
 		);
 
 		expect(config.globIgnorePaths).toEqual(["**/*.draft.luau"]);
+	});
+
+	it("should add what Rojo ignored after the globs of the lifted file", async () => {
+		const choices = {
+			...(await defaultProjectChoices(luau)),
+			tree: lifted({
+				tree: { $className: "DataModel" },
+				globIgnorePaths: ["**/*.draft.luau"],
+			}),
+			unmounted: ["src/dev"],
+		};
+
+		const config = configOf(planProject({ choices }).unwrap());
+
+		expect(config.globIgnorePaths).toEqual(["**/*.draft.luau", "src/dev"]);
 	});
 });
 
