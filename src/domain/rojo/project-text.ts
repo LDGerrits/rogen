@@ -115,13 +115,17 @@ export class WrittenTree {
 		private readonly span: JsoncSpan
 	) {}
 
-	/** `undefined` when `text` isn't a project file with a tree. */
+	/** `undefined` when `text` isn't a project file with a tree, or writes its tree on one line, which is printed afresh. */
 	static of(text: string): WrittenTree | undefined {
 		const parsed = parseJsoncSpans(text);
 		const tree = parsed?.root.properties?.find(
 			({ name }) => name === "tree"
 		);
-		return parsed && tree && new WrittenTree(parsed.text, tree.value);
+		if (!parsed || !tree) return undefined;
+		const { start, end } = tree.value;
+		return parsed.text.slice(start, end).includes("\n")
+			? new WrittenTree(parsed.text, tree.value)
+			: undefined;
 	}
 
 	/** `tree` with each part of it that is as it was written taken from the text, with its numbers, key order, comments and trailing commas; only what differs is printed afresh. */
