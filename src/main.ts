@@ -31,6 +31,7 @@ import { NativeLifecycleService } from "./platform/lifecycle/native-lifecycle-se
 import { Registry } from "./platform/registry/registry.js";
 import { ServiceCollection } from "./platform/instantiation/service-collection.js";
 import { LogService } from "./platform/log/log-service.js";
+import { JsonLogService } from "./platform/log/json-log-service.js";
 import { PlainLogService } from "./platform/log/plain-log-service.js";
 import { TerminalLogService } from "./platform/log/terminal-log-service.js";
 import { InputService } from "./platform/input/input-service.js";
@@ -166,7 +167,7 @@ class RogenMain {
 			{ ...options, json },
 			cwd ?? path.parse(process.execPath).root
 		);
-		const logService = this.createLogService(environmentService);
+		const logService = this.createLogService(environmentService, json);
 		const failure = new CommandFailure(logService, json);
 
 		if (argsResult.isErr()) {
@@ -221,19 +222,22 @@ class RogenMain {
 	}
 
 	private createLogService(
-		environmentService: EnvironmentService
+		environmentService: EnvironmentService,
+		json: boolean
 	): LogService {
-		const logService: LogService = environmentService.isPlain
-			? new PlainLogService(
-					environmentService.cwd,
-					environmentService.annotationsIn,
-					environmentService.hasColor
-				)
-			: new TerminalLogService(
-					environmentService.cwd,
-					environmentService.annotationsIn,
-					environmentService.hasColor
-				);
+		const logService: LogService = json
+			? new JsonLogService()
+			: environmentService.isPlain
+				? new PlainLogService(
+						environmentService.cwd,
+						environmentService.annotationsIn,
+						environmentService.hasColor
+					)
+				: new TerminalLogService(
+						environmentService.cwd,
+						environmentService.annotationsIn,
+						environmentService.hasColor
+					);
 		logService.setLevel(environmentService.logLevel);
 		return logService;
 	}
