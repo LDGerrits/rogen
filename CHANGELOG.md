@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The `output.nothingEmitted` warning no longer names the missing path as the nearest path that exists.
 - `rogen where` answers a Studio instance path or `-` by the config named beside it, as in `rogen where game -`, where it used to ask for a default config.
 - The `serve.portTaken` error suggests `rogen serve lobby --port <port>` instead of naming the whole `lobby.rogen.json`, when the bare name reads that config.
+- The `rogen serve` command that `rogen init` suggests after a v1 migration no longer names the wrong config when a folder of the config's name holds a default config; it names the config's file then.
 
 ## [2.0.0-beta.2] - 2026-10-31
 

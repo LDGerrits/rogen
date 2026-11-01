@@ -215,7 +215,12 @@ export class CoreInitService implements InitService {
 		const agents = await this.agentSetupIn(directory, questions);
 		if (agents.isErr()) return agents;
 		return this.planWith(directory, questions, [
-			new MigrationSetup(directory, migrated, this.fileSystemService),
+			new MigrationSetup(
+				directory,
+				migrated,
+				this.fileSystemService,
+				this.configService
+			),
 			agents.value,
 			await this.toolchainSetupIn(directory),
 		]);

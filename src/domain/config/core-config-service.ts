@@ -1,6 +1,6 @@
 import path from "path";
 import { Disposable } from "../../base/disposable.js";
-import { isInside, samePath } from "../../base/path.js";
+import { isInside, samePath, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -8,7 +8,13 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ConfigFormatter } from "./config-formatter.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ConfigDiscovery, DiscoveredConfigs } from "./config-discovery.js";
-import { isDefaultConfigFileName, isProjectFileConfig } from "./config.js";
+import {
+	DEFAULT_PROJECT,
+	configStem,
+	isDefaultConfigFileName,
+	isProjectFileConfig,
+	projectStem,
+} from "./config.js";
 import { ConfigLoader } from "./config-loader.js";
 import {
 	ConfigEntry,
@@ -165,6 +171,24 @@ export class CoreConfigService implements ConfigService {
 			resolved.push(file.value ?? arg);
 		}
 		return ok(resolved);
+	}
+
+	async referenceTo(file: string, folder: string): Promise<string> {
+		const base = path.basename(file);
+		if (base.startsWith(`${DEFAULT_PROJECT}.`))
+			return toPosix(path.relative(folder, path.dirname(file)));
+		const stem =
+			configStem(base) ??
+			(isProjectFileConfig(base) ? projectStem(base) : undefined);
+		const relative = toPosix(path.relative(folder, file));
+		const fileRef =
+			relative === "" || relative.startsWith("..") ? file : relative;
+		return stem !== undefined &&
+			samePath(path.dirname(file), folder) &&
+			!(await this.isPath(path.join(folder, stem))) &&
+			(await this.discovery.stemReads(folder, stem, file))
+			? stem
+			: fileRef;
 	}
 
 	private async isPath(target: string): Promise<boolean> {

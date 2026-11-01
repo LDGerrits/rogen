@@ -126,3 +126,7 @@ export function firstLine(text: string): string | undefined {
 /** `arg` as one word of a shell command line. */
 export const shellWord = (arg: string): string =>
 	/^[\w@%+=:,./-]+$/.test(arg) ? arg : `'${arg.replace(/'/g, "'\\''")}'`;
+
+/** `command` followed by `argument` as one word, or by nothing when there is none. */
+export const commandWith = (command: string, argument: string): string =>
+	argument === "" ? command : `${command} ${shellWord(argument)}`;

@@ -9,6 +9,8 @@ import {
 	IndexService,
 	Listing,
 } from "../../../platform/fs/index-service.js";
+import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
+import { CoreConfigService } from "../../config/core-config-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
 	ResolvedConfigSpec,
@@ -50,7 +52,13 @@ export const writeServiceOf = (
 	fs: FileSystemService,
 	index: IndexService,
 	extraTools: readonly SyncTool[] = []
-) => new CoreWriteService(fs, index, [...syncTools, ...extraTools]);
+) =>
+	new CoreWriteService(
+		fs,
+		index,
+		[...syncTools, ...extraTools],
+		new CoreConfigService(fs, new MockEnvironmentService("/repo"))
+	);
 
 export async function locateIn(
 	writeService: WriteService,

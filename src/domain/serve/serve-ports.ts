@@ -2,12 +2,11 @@ import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { samePath, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
-import { shellWord } from "../../base/strings.js";
+import { commandWith, shellWord } from "../../base/strings.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { DEFAULT_PROJECT, configStem } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
@@ -126,7 +125,7 @@ export class ServePorts {
 			this.otherArgs.length === 0
 				? ""
 				: ` ${this.otherArgs.map(shellWord).join(" ")}`;
-		const serve = `rogen serve ${await this.refOf(config)} --port`;
+		const serve = `${commandWith("rogen serve", await this.configService.referenceTo(config.file, this.cwd))} --port`;
 		const command = `${serve} ${free ?? "<port>"}${rest}`;
 		return errorDiagnostic(
 			"serve.portTaken",
@@ -140,27 +139,6 @@ export class ServePorts {
 						},
 					]
 		);
-	}
-
-	/** What a command names `config` by: its folder for a default, its bare name when that reads it, else its file. */
-	private async refOf(config: ResolvedConfig): Promise<string> {
-		if (path.basename(config.file).startsWith(`${DEFAULT_PROJECT}.`))
-			return (
-				toPosix(path.relative(this.cwd, path.dirname(config.file))) ||
-				"."
-			);
-		const stem = configStem(config.file);
-		if (
-			stem !== undefined &&
-			samePath(path.dirname(config.file), this.cwd)
-		) {
-			const [named] = (
-				await this.configService.resolveNames([stem])
-			).unwrapOr([]);
-			if (named !== undefined && samePath(named, config.file))
-				return stem;
-		}
-		return this.nameOfFile(config.file);
 	}
 
 	private nameOf(config: ResolvedConfig): string {

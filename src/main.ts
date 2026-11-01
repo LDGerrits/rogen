@@ -285,7 +285,8 @@ class RogenMain {
 		const writeService = new CoreWriteService(
 			fileSystemService,
 			indexService,
-			toolchainService.syncTools
+			toolchainService.syncTools,
+			configService
 		);
 		services.set(WriteService, writeService);
 		const toolLocator = new ToolLocator(

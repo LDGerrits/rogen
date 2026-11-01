@@ -1751,6 +1751,15 @@ describe("CoreInitService", () => {
 			expect(plan.nextSteps.run).toEqual(["rogen serve old"]);
 		});
 
+		it("should serve a config by its file when a folder of its name holds a project", async () => {
+			await write("old/default.project.json", "{}");
+			const { service } = migrating();
+
+			const plan = (await service.plan({ ask: false })).unwrap()!;
+
+			expect(plan.nextSteps.run).toEqual(["rogen serve old.rogen.json"]);
+		});
+
 		it("should sum up the code of each config it writes", async () => {
 			const { service } = migrating(
 				migrated({

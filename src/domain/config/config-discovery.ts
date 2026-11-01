@@ -1,6 +1,6 @@
 import path from "path";
 import { Disposable, toDisposable } from "../../base/disposable.js";
-import { selfAndAncestors } from "../../base/path.js";
+import { samePath, selfAndAncestors } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { IoError, ProjectError, UsageError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
@@ -230,6 +230,21 @@ export class ConfigDiscovery {
 		return isBareName(ref)
 			? this.fileNamed(this.environmentService.cwd, ref)
 			: ok(undefined);
+	}
+
+	/** Whether the bare `stem` in `folder` reads `file`; a config not written yet is read by its stem unless a twin of the other extension would be. */
+	async stemReads(
+		folder: string,
+		stem: string,
+		file: string
+	): Promise<boolean> {
+		const named = isConfigFileName(file)
+			? await this.configBeside(folder, stem)
+			: await this.fileNamed(folder, stem);
+		return (
+			named.isOk() &&
+			(named.value === undefined || samePath(named.value, file))
+		);
 	}
 
 	/** What a bare name stands for in `folder`: its config of that name, else its project file of that name. */

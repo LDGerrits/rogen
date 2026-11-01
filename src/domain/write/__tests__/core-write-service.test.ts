@@ -582,7 +582,7 @@ describe("CoreWriteService", () => {
 				);
 			});
 
-			it("should name the config to write when it is not the default", async () => {
+			it("should name the config to write by its bare name when it is not the default", async () => {
 				await fs.writeFile(abs("dist.project.json"), "{}");
 
 				const [checked] = await checkOf(
@@ -594,15 +594,32 @@ describe("CoreWriteService", () => {
 						code: "output.differs",
 						resource: abs("dist.project.json"),
 						message: expect.stringContaining(
-							"Run 'rogen write dist.rogen.json' to write it again; what it holds comes from dist.rogen.json"
+							"Run 'rogen write dist' to write it again; what it holds comes from dist.rogen.json"
 						),
 						fixes: [
 							{
 								run: {
-									command: "rogen write dist.rogen.json",
+									command: "rogen write dist",
 									cwd: abs(),
 								},
 							},
+						],
+					},
+				]);
+			});
+
+			it("should name the config to write by its file when a folder of that name holds a default config", async () => {
+				await fs.writeFile(abs("dist.project.json"), "{}");
+				await fs.writeFile(abs("dist/default.rogen.json"), "{}");
+
+				const [checked] = await checkOf(
+					configOf({ file: abs("dist.rogen.json") })
+				);
+
+				expect(checked.warnings).toMatchObject([
+					{
+						fixes: [
+							{ run: { command: "rogen write dist.rogen.json" } },
 						],
 					},
 				]);
