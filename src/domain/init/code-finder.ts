@@ -2,16 +2,45 @@ import path from "path";
 import { containsPosix, joinPosix } from "../../base/path.js";
 import {
 	FileReader,
+	FileType,
 	isDirectoryType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
+import { DEFAULT_SOURCE_PATH } from "../config/config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import { DetectedWorkspace } from "../toolchain/toolchain.js";
+import { ROJO_TEMPLATE_NODES } from "./starter-project.js";
 
 export interface DirectoryLayout {
 	readonly codeFolders: readonly string[];
+	/** The code folders with an init module at their top, which Rojo reads as one module. */
+	readonly moduleFolders: readonly string[];
+	/** The scripts at the top of the folder that Rojo reads, outside every code folder. */
+	readonly rootScripts: readonly string[];
+	/** The folders of Rojo's place template that hold code, such as `src/server`, when `src` holds code only in them. */
+	readonly templateFolders: readonly string[];
 }
+
+const TEMPLATE_FOLDERS = Object.keys(ROJO_TEMPLATE_NODES);
+
+const isScript = (name: string): boolean =>
+	new RojoFile(name, SyncRules.DEFAULT).kind === "script";
+
+/** A script Rojo syncs itself, leaving out what only a compiler reads. */
+const isRojoScript = (name: string): boolean => {
+	const file = new RojoFile(name, SyncRules.DEFAULT);
+	return file.kind === "script" && file.isSyncedByRojo;
+};
+
+/** An init file Rojo reads as a module, which a model's folder is. */
+const isModuleInit = (name: string): boolean => {
+	const file = new RojoFile(name, SyncRules.DEFAULT);
+	return file.isInit && file.isLuauModule;
+};
+
+const isCompiledScript = (name: string): boolean =>
+	isScript(name) && !isRojoScript(name);
 
 const isHiddenOrVendored = (name: string): boolean =>
 	name.startsWith(".") || name === "node_modules";
@@ -30,29 +59,83 @@ export class CodeFinder {
 				({ reservedFolders }) => reservedFolders
 			),
 		]);
-		return { codeFolders };
+		const holdsModule = await Promise.all(
+			codeFolders.map((folder) =>
+				this.holdsModule(path.join(cwd, folder))
+			)
+		);
+		return {
+			codeFolders,
+			rootScripts: (await this.entriesOf(cwd))
+				.filter(
+					([name, type]) =>
+						isFileType(type) &&
+						!isHiddenOrVendored(name) &&
+						isRojoScript(name)
+				)
+				.map(([name]) => name)
+				.sort(),
+			moduleFolders: codeFolders.filter((_, at) => holdsModule[at]),
+			templateFolders: codeFolders.includes(DEFAULT_SOURCE_PATH)
+				? await this.templateFoldersIn(cwd)
+				: [],
+		};
 	}
 
-	async holdsCode(dir: string): Promise<boolean> {
-		let entries;
-		try {
-			entries = await this.fileReader.readDirectory(dir);
-		} catch {
-			return false;
-		}
+	private async holdsModule(dir: string): Promise<boolean> {
+		const entries = await this.entriesOf(dir);
+		return entries.some(
+			([name, type]) => isFileType(type) && isModuleInit(name)
+		);
+	}
+
+	/** The folders of Rojo's template in `src`, when they hold all of its code and it is code Rojo syncs itself, not a compiler's. */
+	private async templateFoldersIn(cwd: string): Promise<string[]> {
+		const source = path.join(cwd, DEFAULT_SOURCE_PATH);
+		if (await this.holdsCode(source, isCompiledScript)) return [];
+		const entries = await this.entriesOf(source);
 		const visible = entries.filter(([name]) => !isHiddenOrVendored(name));
-		if (
-			visible.some(
-				([name, type]) =>
-					isFileType(type) &&
-					new RojoFile(name, SyncRules.DEFAULT).kind === "script"
+		if (visible.some(([name, type]) => isFileType(type) && isScript(name)))
+			return [];
+		const folders = visible
+			.filter(([, type]) => isDirectoryType(type))
+			.map(([name]) => name);
+		const holding = await Promise.all(
+			folders.map((name) =>
+				this.holdsCode(path.join(cwd, DEFAULT_SOURCE_PATH, name))
 			)
+		);
+		const code = folders.filter((_, at) => holding[at]);
+		if (
+			code.length === 0 ||
+			!code.every((name) => TEMPLATE_FOLDERS.includes(name.toLowerCase()))
 		)
+			return [];
+		return TEMPLATE_FOLDERS.flatMap((template) =>
+			code
+				.filter((name) => name.toLowerCase() === template)
+				.map((name) => joinPosix(DEFAULT_SOURCE_PATH, name))
+		);
+	}
+
+	private async entriesOf(dir: string): Promise<[string, FileType][]> {
+		try {
+			return await this.fileReader.readDirectory(dir);
+		} catch {
+			return [];
+		}
+	}
+
+	/** `script`: what counts as code, any script by default. */
+	async holdsCode(dir: string, script = isScript): Promise<boolean> {
+		const entries = await this.entriesOf(dir);
+		const visible = entries.filter(([name]) => !isHiddenOrVendored(name));
+		if (visible.some(([name, type]) => isFileType(type) && script(name)))
 			return true;
 		for (const [name, type] of visible)
 			if (
 				isDirectoryType(type) &&
-				(await this.holdsCode(path.join(dir, name)))
+				(await this.holdsCode(path.join(dir, name), script))
 			)
 				return true;
 		return false;
@@ -66,14 +149,7 @@ export class CodeFinder {
 		folder = "."
 	): Promise<string[]> {
 		if (held.includes(".")) return [];
-		let entries;
-		try {
-			entries = await this.fileReader.readDirectory(
-				path.join(cwd, folder)
-			);
-		} catch {
-			return [];
-		}
+		const entries = await this.entriesOf(path.join(cwd, folder));
 		const found: string[] = [];
 		for (const [name, type] of entries) {
 			const relative = joinPosix(folder, name);
@@ -96,11 +172,7 @@ export class CodeFinder {
 					);
 				else if (await this.holdsCode(path.join(cwd, relative)))
 					found.push(relative);
-			} else if (
-				isFileType(type) &&
-				new RojoFile(name, SyncRules.DEFAULT).kind === "script"
-			)
-				found.push(relative);
+			} else if (isFileType(type) && isScript(name)) found.push(relative);
 		}
 		return found.sort();
 	}
@@ -109,12 +181,7 @@ export class CodeFinder {
 		cwd: string,
 		excluded: readonly string[]
 	): Promise<string[]> {
-		let entries;
-		try {
-			entries = await this.fileReader.readDirectory(cwd);
-		} catch {
-			return [];
-		}
+		const entries = await this.entriesOf(cwd);
 		const candidates = entries
 			.filter(
 				([name, type]) =>

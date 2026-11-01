@@ -80,9 +80,11 @@ stdout:
       -n, --dry-run             Plan without writing: print the files and choices, then stop.
       -h, --help                Print help.
           --json                Print one JSON document instead of text.
-          --kind <KIND>         What a new project is, as Rojo's init names it: a place (the default),
-                                a model or a plugin. A model or a plugin starts with Rojo's template
-                                of that kind and no routes. [possible values: place, model, plugin]
+          --kind <KIND>         What a new project is, as Rojo's init names it: a place, a model or a
+                                plugin. A place when not given, or a model where the code is one
+                                folder with an init.luau at its top. A model or a plugin starts with
+                                Rojo's template of that kind and no routes. [possible values: place,
+                                model, plugin]
           --language <ID>       The language: luau or roblox-ts. Detected from the folder when not
                                 given. For roblox-ts in a folder with no code, package.json or
                                 tsconfig.json, init first runs 'npm create roblox-ts', which needs npm

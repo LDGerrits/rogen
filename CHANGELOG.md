@@ -6,10 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Customise in `rogen init` asks only the questions the summary took the default of, each with your earlier answer preselected, and asks whether to add the Greeter sample. When every question was asked already, it isn't offered.
+- In a folder that holds code, `rogen init` doesn't ask "One place or several?" up front: the summary shows one place, and Customise changes it. Each option names the code it would leave unplaced.
+- The summary shows the plan's warnings before you accept, and its question names what `init` does, such as "Set up Rogen in this project?" for a lift.
+- The summary leaves out what you just answered, and shows a Sample row when the Greeter sample is added.
+- The tip to run `git rm --cached default.project.json` shows only when git tracks that file.
+- The next steps say that `rogen write` replaces the project file, as the docs do.
+
 ### Fixed
 
 - `rogen check` and `rogen write` refuse a file's own `.meta.json` that Rojo can't read, as they refuse a folder's `init.meta.json`.
 - A misspelled `$` key that holds an object, such as `"$propertes": {...}`, is refused with the field it is closest to.
+- `rogen init` checks the project it plans before it writes anything, so a plan that would fail writes nothing, and `--dry-run` says so too.
+- `rogen init` sets up Rojo's template layout as a lift of the project file `rojo init` writes, and a folder whose code is one module as a model.
+- A lift leaves out what Rojo never placed with `globIgnorePaths`, and a lifted model or plugin gets a model's or a plugin's next steps.
+- An empty source folder that `rogen init` makes gets a `.gitkeep`, so a clone has it.
+- Scripts at the root of the folder count as code, so `rogen init` adds no sample beside them.
+- In a roblox-ts project, the new `.gitignore` leaves out `node_modules`, the compiler's output and `include`, and the watch step uses the project's own compiler.
+- `--agent-hook` with no coding agent in the folder no longer stops a new project: `rogen init` writes it and warns.
 
 ## [2.0.0-beta.2] - 2026-10-31
 

@@ -17,6 +17,7 @@ import {
 	MockPromptService,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { CommandLine } from "../../../platform/environment/args.js";
+import { exitCodeOf } from "../../../platform/commands/command-failure.js";
 
 const readyProcesses = () => {
 	const processes = new MockProcessService();
@@ -94,6 +95,10 @@ describe("init command", () => {
 						file: path.join(cwd, "default.rogen.json"),
 						outcome: "wrote",
 					},
+					{
+						file: path.join(cwd, "src/.gitkeep"),
+						outcome: "wrote",
+					},
 					{ file: path.join(cwd, ".gitignore"), outcome: "wrote" },
 					{ file: path.join(cwd, "AGENTS.md"), outcome: "wrote" },
 				],
@@ -109,7 +114,7 @@ describe("init command", () => {
 						flag: "--no-agent-rules",
 					},
 				]),
-				directories: [path.join(cwd, "src")],
+				directories: [],
 				projects: [
 					{
 						config: "default.rogen.json",
@@ -121,10 +126,10 @@ describe("init command", () => {
 				notes: ["Syncing from out, where roblox-ts compiles to."],
 				nextSteps: {
 					setup: [],
-					run: ["rbxtsc -w", "rogen serve"],
+					run: ["npx rbxtsc -w", "rogen serve"],
 					edits: [
 						'To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".',
-						"Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.",
+						"Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.",
 					],
 				},
 			});
@@ -149,6 +154,10 @@ describe("init command", () => {
 				files: [
 					{
 						file: path.join(cwd, "default.rogen.json"),
+						outcome: "wrote",
+					},
+					{
+						file: path.join(cwd, "src/.gitkeep"),
 						outcome: "wrote",
 					},
 					{ file: path.join(cwd, ".gitignore"), outcome: "wrote" },
@@ -261,7 +270,7 @@ describe("init command", () => {
 
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
+				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place/, which the tree mounts. Pass --no-sample for an empty src/ and no place/.",
 				"info: Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules).",
 				"success: Created default.rogen.json.",
 				"success: Created .gitignore.",
@@ -280,7 +289,7 @@ describe("init command", () => {
 				"info:   rogen serve",
 				"info: In Studio, press Connect in the Rojo plugin.",
 				'info: To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".',
-				"info: Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.",
+				"info: Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.",
 				"outro: Wrote 11 files.",
 			]);
 		});
@@ -319,6 +328,32 @@ describe("init command", () => {
 				expect.stringContaining("(route.strayAt)")
 			);
 		});
+
+		it.each([
+			["a real run", {}],
+			["a dry run", { "dry-run": true }],
+			["--json", { json: true }],
+		])(
+			"should fail before it writes when the project it plans fails the write's checks, in %s",
+			async (_, options: CommandLine["options"]) => {
+				await write("src/Inventory/@server");
+				await write("src/Inventory/@client");
+				const logService = new MockLogService();
+
+				const result = await runInit(
+					new MockPromptService([], false),
+					logService,
+					options
+				);
+
+				expect(errorMessage(result)).toContain("(route.markerClash)");
+				expect(await exists("default.rogen.json")).toBe(false);
+				expect(await exists("AGENTS.md")).toBe(false);
+				expect(
+					logService.lines.filter((line) => line.includes("reate"))
+				).toEqual([]);
+			}
+		);
 
 		it("should keep the files and fail when the project file cannot be written", async () => {
 			const writeFile = memFs.writeFile.bind(memFs);
@@ -422,7 +457,7 @@ describe("init command", () => {
 			expect(await exists("default.project.json")).toBe(false);
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
+				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place/, which the tree mounts. Pass --no-sample for an empty src/ and no place/.",
 				"info: Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules).",
 				"success: Would create default.rogen.json.",
 				"success: Would create .gitignore.",
@@ -583,16 +618,26 @@ describe("init command", () => {
 			expect(await exists(".agents/hooks/rogen-check.mjs")).toBe(true);
 		});
 
-		it("should refuse a hook when no coding agent is missing it", async () => {
+		it("should write the project without a hook when no coding agent is found", async () => {
 			const result = await runInit(
 				new MockPromptService([], false),
 				new MockLogService(),
 				{ "agent-hook": true }
 			);
 
-			expect(result.isErr()).toBe(true);
-			expect(errorMessage(result)).toContain("There is no hook to add.");
-			expect(await exists("default.rogen.json")).toBe(false);
+			expect(result.isOk()).toBe(true);
+		});
+
+		it("should exit 1 beside a config when the hook is all that was asked and no coding agent is found", async () => {
+			await write("default.rogen.json", "{}");
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				new MockLogService(),
+				{ "agent-hook": true }
+			);
+
+			expect(exitCodeOf((result as ResultError<Error>).error)).toBe(1);
 		});
 
 		it("should write Rojo's pin and run no program", async () => {
@@ -766,16 +811,16 @@ describe("init command", () => {
 		it("should write the answers", async () => {
 			const prompts = new MockPromptService([
 				"luau",
-				"one",
-				"customise",
-				"luau",
 				"several",
+				"customise",
 				ACCEPT_DEFAULT,
+				false,
 				"yes",
 			]);
 
 			await runInit(prompts);
 
+			expect(await exists("AGENTS.md")).toBe(false);
 			expect(await exists("default.rogen.json")).toBe(false);
 			expect((await readJson("game.rogen.json")).sourcePaths).toEqual([
 				"src/common",
@@ -1021,7 +1066,7 @@ describe("init command", () => {
 		]);
 
 		expect(logService.lines).toContain(
-			"info: The Greeter sample is in lobby/src/Greeter, and Rojo's sample Baseplate and lighting in lobby/place, which the tree mounts. Pass --no-sample for an empty lobby/src and no lobby/place."
+			"info: The Greeter sample is in lobby/src/Greeter, and Rojo's sample Baseplate and lighting in lobby/place/, which the tree mounts. Pass --no-sample for an empty lobby/src/ and no lobby/place/."
 		);
 	});
 });

@@ -1,5 +1,6 @@
 import path from "path";
 import {
+	FileReader,
 	FileSystemService,
 	FileType,
 	isDirectoryType,
@@ -64,19 +65,25 @@ export class CoreIndexService implements IndexService {
 
 	constructor(private readonly fileSystemService: FileSystemService) {}
 
-	async list(dirs: readonly string[]): Promise<Listing> {
+	async list(
+		dirs: readonly string[],
+		reader: FileReader = this.fileSystemService
+	): Promise<Listing> {
 		const directories: Directories = new Map();
 		await Promise.all(
-			outermostDirs(dirs).map((root) => this.traverse(root, directories))
+			outermostDirs(dirs).map((root) =>
+				this.traverse(root, directories, reader)
+			)
 		);
 		return new Listing(directories);
 	}
 
 	private async traverse(
 		currentDir: string,
-		into: Directories
+		into: Directories,
+		reader: FileReader = this.fileSystemService
 	): Promise<void> {
-		const entries = await this.readDirectory(currentDir);
+		const entries = await this.readDirectory(currentDir, reader);
 		if (!entries) return;
 
 		const children = new Map<string, FileType>();
@@ -89,14 +96,17 @@ export class CoreIndexService implements IndexService {
 				subdirs.push(path.join(currentDir, name));
 		}
 
-		await Promise.all(subdirs.map((subdir) => this.traverse(subdir, into)));
+		await Promise.all(
+			subdirs.map((subdir) => this.traverse(subdir, into, reader))
+		);
 	}
 
 	private async readDirectory(
-		dir: string
+		dir: string,
+		reader: FileReader = this.fileSystemService
 	): Promise<[string, FileType][] | undefined> {
 		try {
-			return await this.fileSystemService.readDirectory(dir);
+			return await reader.readDirectory(dir);
 		} catch (error) {
 			if (ErrorUtils.hasCode(error, "ENOENT", "ENOTDIR"))
 				return undefined;

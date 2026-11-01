@@ -1,7 +1,7 @@
 import { toPosix } from "../../base/path.js";
 import { createServiceIdentifier } from "../instantiation/instantiation.js";
 import { FileChange } from "./file-changes.js";
-import { FileType } from "./file-system-service.js";
+import { FileReader, FileType } from "./file-system-service.js";
 
 export interface IndexReader {
 	/** `undefined` when the directory was never listed or doesn't exist. */
@@ -35,7 +35,8 @@ export class Listing implements IndexReader {
 export interface IndexService {
 	readonly _serviceBrand: undefined;
 
-	list(dirs: readonly string[]): Promise<Listing>;
+	/** Lists through `reader` when given, such as a draft of files not written yet. */
+	list(dirs: readonly string[], reader?: FileReader): Promise<Listing>;
 	/** `base` with `changes` applied as a fresh listing would have them; `base` is unchanged. */
 	update(base: Listing, changes: readonly FileChange[]): Promise<Listing>;
 }
