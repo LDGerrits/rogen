@@ -1,6 +1,6 @@
 import path from "path";
 import { jest } from "@jest/globals";
-import { ResultError } from "../../../base/result.js";
+import { ResultError, ok } from "../../../base/result.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
@@ -391,6 +391,81 @@ describe("a new roblox-ts project", () => {
 				"npm isn't installed"
 			);
 			expect(await present("default.rogen.json")).toBe(false);
+		});
+
+		describe("in a folder that isn't there yet", () => {
+			const fresh = path.join(directory, "games", "fresh");
+
+			const planFresh = async () =>
+				(
+					await serviceFor().plan({
+						place: "games/fresh",
+						choices: { language: "roblox-ts", skipGit: true },
+					})
+				).unwrap() as InitPlan;
+
+			it("should make the folder before it runs create-roblox-ts there", async () => {
+				const planned = await planFresh();
+				let folderThere: boolean | undefined;
+				const exec = processes.exec.bind(processes);
+				jest.spyOn(processes, "exec").mockImplementation(
+					async (file, args, options) => {
+						if (file === "/bin/npm")
+							folderThere = await fileSystem.exists(options.cwd);
+						return exec(file, args, options);
+					}
+				);
+
+				const written = await serviceFor().write(
+					planned,
+					() => undefined
+				);
+
+				expect(written.isOk()).toBe(true);
+				expect(folderThere).toBe(true);
+				expect(
+					processes.execs.find(({ file }) => file === "/bin/npm")?.cwd
+				).toBe(fresh);
+			});
+
+			it("should remove the folders it made when create-roblox-ts fails", async () => {
+				const planned = await planFresh();
+				const exec = processes.exec.bind(processes);
+				jest.spyOn(processes, "exec").mockImplementation(
+					async (file, args, options) => {
+						if (file !== "/bin/npm")
+							return exec(file, args, options);
+						await fileSystem.writeFile(
+							path.join(options.cwd, "package.json"),
+							"{}"
+						);
+						return ok({ code: 1, stdout: "", stderr: "npm error" });
+					}
+				);
+
+				const result = await serviceFor().write(
+					planned,
+					() => undefined
+				);
+
+				expect(result.isErr()).toBe(true);
+				expect(
+					await fileSystem.exists(path.join(directory, "games"))
+				).toBe(false);
+				expect(await fileSystem.exists(directory)).toBe(true);
+			});
+
+			it("should make no folder in a dry run", async () => {
+				await serviceFor().write(
+					await planFresh(),
+					() => undefined,
+					true
+				);
+
+				expect(
+					await fileSystem.exists(path.join(directory, "games"))
+				).toBe(false);
+			});
 		});
 
 		it("should run nothing in a dry run, and still report the tool", async () => {

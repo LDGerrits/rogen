@@ -1,5 +1,6 @@
 import path from "path";
 import { firstLine } from "../../base/strings.js";
+import { selfAndAncestors } from "../../base/path.js";
 import { ErrorUtils, ToolError, failureReason } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -102,21 +103,33 @@ export class InitWriter {
 		return ok(undefined);
 	}
 
-	/** Runs the tool, then removes what it wrote that `init` replaces; the tool failing is an error with the command to run by hand, since a project without its files is not what was asked for. */
+	/** Runs the tool in the folder, made first when it isn't there, then removes what it wrote that `init` replaces; the tool failing is an error with the command to run by hand, since a project without its files is not what was asked for, and removes the folders it made. */
 	private async scaffold(
 		{ command, replaces }: PlannedScaffold,
 		directory: string,
 		dryRun: boolean
 	): Promise<Result<void, Error>> {
 		if (dryRun) return ok(undefined);
+		const made = await this.firstMissing(directory);
+		if (made !== undefined) {
+			const created = await attempt(`Failed to create ${directory}`, () =>
+				this.fileSystemService.createDirectory(directory)
+			);
+			if (created.isErr()) return created;
+		}
 		const failed = await this.failureOf(command, directory);
-		if (failed !== undefined)
+		if (failed !== undefined) {
+			if (made !== undefined)
+				await tryWithAsync(() =>
+					this.fileSystemService.delete(made, true)
+				);
 			return err(
 				new ToolError(
 					`'${command.command}' failed: ${failed}.`,
 					`Run it in ${directory} yourself, then run 'rogen init' again.`
 				)
 			);
+		}
 		return attempt("Failed to clear the starter", async () => {
 			for (const file of replaces) {
 				const target = path.join(directory, file);
@@ -124,6 +137,16 @@ export class InitWriter {
 					await this.fileSystemService.delete(target, true);
 			}
 		});
+	}
+
+	/** The outermost folder of `directory` and its parents that isn't there, which making `directory` makes. */
+	private async firstMissing(directory: string): Promise<string | undefined> {
+		let missing: string | undefined;
+		for (const folder of selfAndAncestors(directory)) {
+			if (await this.fileSystemService.exists(folder)) break;
+			missing = folder;
+		}
+		return missing;
 	}
 
 	/** A command that fails leaves the project written, so it is reported to the caller, which says what to run by hand, and the commands after it are skipped. */
