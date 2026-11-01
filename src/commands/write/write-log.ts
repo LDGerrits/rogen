@@ -40,12 +40,7 @@ export class WriteLog {
 		const written = configs.filter(isWritten).length;
 		const count = `Wrote ${written} of ${plural(configs.length, "project file")}`;
 		if (run.failed) this.logService.closeFrame(`${count}.`);
-		else
-			this.logService.outro(
-				run.warningCount === 0
-					? `${count}.`
-					: `${count} with ${plural(run.warningCount, "warning")}.`
-			);
+		else this.outcomeLog.end(count, run.warningCount);
 	}
 
 	private plain(file: string): void {

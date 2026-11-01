@@ -231,21 +231,20 @@ registerCommand(
 			if (located.isErr()) return located;
 			const logService = accessor.get(LogService);
 			const files = new Map<string, string>();
-			for (const [instance, candidates] of filesByInstance(
-				located.value,
-				cwd
-			)) {
-				if (candidates.size === 1) {
-					const [file] = candidates.keys();
+			for (const [instance, byFile] of new WhereAnswers(
+				located.value
+			).byInstance()) {
+				if (byFile.size === 1) {
+					const [file] = byFile.keys();
 					files.set(instance, relativeTo(cwd, file));
 				} else
 					logService.warn(
 						`${instance} is placed by more than one file, so it is left as it is: ${[
-							...candidates,
+							...byFile,
 						]
 							.map(
-								([file, labels]) =>
-									`${[...labels].join(", ")}: ${relativeTo(cwd, file)}`
+								([file, placing]) =>
+									`${[...new Set(placing.map(({ config }) => configPath(cwd, config)))].join(", ")}: ${relativeTo(cwd, file)}`
 							)
 							.join("; ")}.`
 					);
@@ -257,21 +256,3 @@ registerCommand(
 		}
 	}
 );
-
-/** For each instance asked about: the files that place it, each with the config files it is placed in. Instances no file places are left out. */
-function filesByInstance(
-	locations: Locations,
-	cwd: string
-): Map<string, Map<string, Set<string>>> {
-	const placing = new Map<string, Map<string, Set<string>>>();
-	for (const { config, instances } of locations.configs)
-		for (const { reference, files } of instances)
-			for (const { source } of files) {
-				const byFile = placing.get(reference.text) ?? new Map();
-				placing.set(reference.text, byFile);
-				const labels = byFile.get(source) ?? new Set();
-				byFile.set(source, labels);
-				labels.add(configPath(cwd, config.file));
-			}
-	return placing;
-}
