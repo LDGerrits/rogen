@@ -280,15 +280,15 @@ export class CoreRojoCommandService implements RojoCommandService {
 		if (exit.code === 0 || signal?.aborted) return { messages };
 		// Rojo exits 2 on a command line it can't read, and all it says is about that.
 		const refusedArguments = exit.code === 2;
-		const folded = ({ severity }: ServerMessage) =>
+		const explainsFailure = ({ severity }: ServerMessage) =>
 			refusedArguments ? severity !== "debug" : severity === "error";
 		const said = messages
-			.filter(folded)
+			.filter(explainsFailure)
 			.flatMap(({ text, details }) => [text, ...(details ?? [])])
 			.filter((line) => !(refusedArguments && HELP_POINTER.test(line)));
 		return {
 			messages: refusedArguments
-				? messages.filter((message) => !folded(message))
+				? messages.filter((message) => !explainsFailure(message))
 				: messages,
 			failure: { how: exitHow(exit), said },
 			refusedArguments,
