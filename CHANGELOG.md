@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- `--watch` reports a folder it could not read, or a root that came back, as added only once it is watched again, so a file made just then is not missed.
 - `rogen check` and `rogen write` refuse a file's own `.meta.json` that Rojo can't read, as they refuse a folder's `init.meta.json`.
 - A misspelled `$` key that holds an object, such as `"$propertes": {...}`, is refused with the field it is closest to.
 - `rogen init` checks the project it plans before it writes anything, so a plan that would fail writes nothing, and `--dry-run` says so too.
