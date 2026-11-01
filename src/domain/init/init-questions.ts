@@ -34,9 +34,14 @@ export interface UnplacedCode {
 	readonly several?: string;
 }
 
+/** A question whose answer the plan's summary would repeat. */
+export type ShownQuestion = "language" | "places" | "sample";
+
 /** Everything `init` asks. A question the user answered with a flag is not asked, and one a run that can't ask takes the default of is written to `decided`. A flag with a value that doesn't fit throws a `UsageError`. */
 export class InitQuestions {
 	readonly decided: InitDecision[] = [];
+	/** The questions answered in the terminal, above the summary, which needn't repeat them. */
+	readonly shown = new Set<ShownQuestion>();
 
 	constructor(
 		private readonly promptService: PromptService,
@@ -47,6 +52,18 @@ export class InitQuestions {
 		/** Whether `promptService` asks every question rather than taking the defaults, as under Customise. */
 		readonly customising = false
 	) {}
+
+	/** Asks through `view`, noting a question the user sees: every one `essential` asks, and under Customise every one. */
+	private async ask<T>(
+		question: ShownQuestion,
+		view: PromptService,
+		prompt: (view: PromptService) => Promise<T | undefined>
+	): Promise<T | undefined> {
+		const answer = await prompt(view);
+		if (view === this.essential || this.customising)
+			this.shown.add(question);
+		return answer;
+	}
 
 	private decide<T extends InitDecision["value"]>(
 		question: InitDecision["question"],
@@ -105,12 +122,14 @@ export class InitQuestions {
 		if (given !== undefined) return given;
 		if (!this.interactive)
 			return this.decide("sample", true, "--no-sample");
-		return this.promptService.confirm({
-			message: "Add the Greeter sample?",
-			description:
-				"Three hello-world scripts and a README, with Rojo's Baseplate and lighting for the place.",
-			initialValue: true,
-		});
+		return this.ask("sample", this.promptService, (view) =>
+			view.confirm({
+				message: "Add the Greeter sample?",
+				description:
+					"Three hello-world scripts and a README, with Rojo's Baseplate and lighting for the place.",
+				initialValue: true,
+			})
+		);
 	}
 
 	/** Whether `places` asks: in a terminal, when no flag answers it. */
@@ -139,28 +158,31 @@ export class InitQuestions {
 				booleanFlag("--places", !several)
 			);
 		const holdsCode = directory.layout.codeFolders.length > 0;
-		const answer = await (
-			holdsCode ? this.promptService : this.essential
-		).select<"one" | "several">({
-			message: "One place or several?",
-			choices: [
-				{
-					value: "one",
-					label: "One place",
-					hint: `the code is in ${directory.defaultSourcePath(language)}${unplaced.one ? `; leaves ${unplaced.one} unplaced` : ""}`,
-				},
-				{
-					value: "several",
-					label: "Several places",
-					hint: `${
-						language.compiler
-							? `${PROJECTS_FOLDER}/${COMMON_FOLDER} holds the shared code, ${PROJECTS_FOLDER}/game the first place`
-							: `src/${COMMON_FOLDER} holds the shared code, src/game the first place`
-					}${unplaced.several ? `; leaves ${unplaced.several} unplaced` : ""}`,
-				},
-			],
-			initialValue: several ? "several" : "one",
-		});
+		const answer = await this.ask(
+			"places",
+			holdsCode ? this.promptService : this.essential,
+			(view) =>
+				view.select<"one" | "several">({
+					message: "One place or several?",
+					choices: [
+						{
+							value: "one",
+							label: "One place",
+							hint: `the code is in ${directory.defaultSourcePath(language)}${unplaced.one ? `; leaves ${unplaced.one} unplaced` : ""}`,
+						},
+						{
+							value: "several",
+							label: "Several places",
+							hint: `${
+								language.compiler
+									? `${PROJECTS_FOLDER}/${COMMON_FOLDER} holds the shared code, ${PROJECTS_FOLDER}/game the first place`
+									: `src/${COMMON_FOLDER} holds the shared code, src/game the first place`
+							}${unplaced.several ? `; leaves ${unplaced.several} unplaced` : ""}`,
+						},
+					],
+					initialValue: several ? "several" : "one",
+				})
+		);
 		return answer === undefined ? undefined : answer === "several";
 	}
 
@@ -184,20 +206,23 @@ export class InitQuestions {
 			workspace.languages.some(({ present }) => present) ||
 			directory.layout.codeFolders.length > 0 ||
 			directory.has("package.json");
-		const id = await (
-			detected ? this.promptService : this.essential
-		).select({
-			message: "Language",
-			choices: workspace.languages.map((language) => ({
-				value: language.id,
-				label: language.copy.label,
-				hint:
-					language.id === workspace.language.id
-						? language.copy.detectedHint
-						: undefined,
-			})),
-			initialValue: workspace.language.id,
-		});
+		const id = await this.ask(
+			"language",
+			detected ? this.promptService : this.essential,
+			(view) =>
+				view.select({
+					message: "Language",
+					choices: workspace.languages.map((language) => ({
+						value: language.id,
+						label: language.copy.label,
+						hint:
+							language.id === workspace.language.id
+								? language.copy.detectedHint
+								: undefined,
+					})),
+					initialValue: workspace.language.id,
+				})
+		);
 		return id === undefined ? undefined : workspace.languageFor(id);
 	}
 

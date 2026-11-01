@@ -1496,9 +1496,7 @@ describe("CoreInitService", () => {
 			await review(prompts);
 			const shown = prompts.prompts.at(-1)?.description ?? "";
 
-			expect(shown).toContain(
-				"Project   one place, Luau, sample Greeter"
-			);
+			expect(shown).toMatch(/^Project {3}sample Greeter$/m);
 			expect(shown).not.toContain("Darklua");
 			expect(shown).toContain("Agents    rules in AGENTS.md");
 			expect(shown).toContain("default.rogen.json");
@@ -1559,13 +1557,24 @@ describe("CoreInitService", () => {
 				"Add the Greeter sample?",
 				"Add Rogen's rules for coding agents to AGENTS.md?",
 			]);
+			expect(plan?.summary.map(({ area }) => area)).not.toContain(
+				"Project"
+			);
+			expect(
+				plan?.files.some(({ fileName }) => fileName.includes("Greeter"))
+			).toBe(false);
+		});
+
+		it("should show the language and layout it didn't ask", async () => {
+			await write("src/Combat/Hit.server.luau");
+			const prompts = new MockPromptService({ [CREATE]: "yes" });
+
+			const plan = (await review(prompts)).unwrap();
+
 			expect(plan?.summary).toContainEqual({
 				area: "Project",
 				text: "one place, Luau",
 			});
-			expect(
-				plan?.files.some(({ fileName }) => fileName.includes("Greeter"))
-			).toBe(false);
 		});
 
 		it("should show a warning of the plan before it is accepted", async () => {

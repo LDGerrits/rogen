@@ -715,19 +715,19 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		}: ProjectChoices,
 		routes: Record<string, string> | undefined
 	): void {
-		builder.addSummary(
-			"Project",
-			[
-				kind === "place"
-					? places
-						? "several places"
-						: "one place"
-					: `a ${kind}`,
-				language.copy.label,
-				...(tree.kind === "lift" ? [`lifting ${tree.from}`] : []),
-				...(sample ? ["sample Greeter"] : []),
-			].join(", ")
-		);
+		const { shown } = this.questions;
+		const project = [
+			...(kind !== "place"
+				? [`a ${kind}`]
+				: shown.has("places")
+					? []
+					: [places ? "several places" : "one place"]),
+			...(shown.has("language") ? [] : [language.copy.label]),
+			...(tree.kind === "lift" ? [`lifting ${tree.from}`] : []),
+			...(sample && !shown.has("sample") ? ["sample Greeter"] : []),
+		];
+		if (project.length > 0)
+			builder.addSummary("Project", project.join(", "));
 		if (routes)
 			builder.addSummary(
 				"Code",
