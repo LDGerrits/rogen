@@ -2,7 +2,6 @@ import { groupBy } from "../../base/collections.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	Diagnostic,
-	isError,
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -26,14 +25,13 @@ import {
 import {
 	Asked,
 	WriteService,
-	ConfigLocations,
 	Diagnosis,
 	LocateQuery,
+	LocatedDiagnosis,
 	Locations,
 	outsideEveryConfig,
 	skippedByEveryConfig,
 	skippedOutside,
-	diagnosticsReachingPath,
 } from "./write-service.js";
 import { PreparedConfig, WritePipeline } from "./write-pipeline.js";
 import { PLACEHOLDER_SOURCE } from "./compiled-layout.js";
@@ -252,10 +250,6 @@ export class CoreWriteService implements WriteService {
 		}
 		const located = await this.locate(selection, targets);
 		return located.map(({ errors, configs }) => {
-			const about = (config: ConfigLocations) => [
-				...config.files.map(({ source }) => source),
-				...config.queried,
-			];
 			const outside = new OutsideSourcePaths(
 				configs.flatMap(({ config }) => config.sourcePaths)
 			);
@@ -263,6 +257,9 @@ export class CoreWriteService implements WriteService {
 				source,
 				warnings: outside.about(source),
 			}));
+			const diagnoses = configs.map(
+				(config) => new LocatedDiagnosis(config)
+			);
 			return {
 				skipped: skippedOutside(
 					misspelt
@@ -273,26 +270,10 @@ export class CoreWriteService implements WriteService {
 				diagnostics: uniqueDiagnostics([
 					...errors,
 					...misspelt.flatMap(({ warnings }) => warnings),
-					...configs.flatMap((config) =>
-						about(config).flatMap((target) =>
-							diagnosticsReachingPath(config, target)
-						)
-					),
+					...diagnoses.flatMap(({ reaching }) => reaching),
 				]),
 				stoppedBy: uniqueDiagnostics(
-					configs.flatMap((config) =>
-						config.diagnostics.filter(
-							(diagnostic) =>
-								isError(diagnostic) &&
-								about(config).every(
-									(target) =>
-										!diagnosticsReachingPath(
-											config,
-											target
-										).includes(diagnostic)
-								)
-						)
-					)
+					diagnoses.flatMap(({ stoppedBy }) => stoppedBy)
 				),
 			};
 		});

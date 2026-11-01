@@ -5,13 +5,11 @@ import {
 	ConfigLocations,
 	FileLocation,
 	InstanceFix,
+	LocatedDiagnosis,
 	Locations,
-	diagnosticsOf,
 } from "../../domain/write/write-service.js";
 import {
 	Diagnostic,
-	isError,
-	newDiagnostics,
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 
@@ -38,7 +36,7 @@ const sourceOf = (answer: Answer): string =>
 	answer.kind === "file" ? answer.location.source : answer.instance;
 
 export class WhereAnswers {
-	/** The errors no answer shows: why a config didn't load, and what stops a write that no line is about or says is blocked. */
+	/** The errors no line shows, so they print on their own. */
 	readonly errors: readonly Diagnostic[];
 	/** The errors that stop the write of a config that answered. */
 	readonly stops: readonly Diagnostic[];
@@ -53,24 +51,16 @@ export class WhereAnswers {
 		this.sourcePaths = configs.flatMap(({ config }) => config.sourcePaths);
 		this.configCount = configs.length;
 		this.sorted = everyFile;
-		this.answers = configs.flatMap((located) => answersOf(located));
-		this.stops = uniqueDiagnostics(
-			configs.flatMap(({ diagnostics }) => diagnostics.filter(isError))
+		const diagnoses = configs.map(
+			(located) => new LocatedDiagnosis(located)
 		);
-		const shown = this.answers.flatMap((answer) =>
-			answer.kind === "file" ? answer.diagnostics : []
+		this.answers = configs.flatMap((located, at) =>
+			answersOf(located, diagnoses[at])
 		);
-		const unblocked = configs.filter(
-			({ files }) => !files.some(({ status }) => status === "blocked")
-		);
+		this.stops = uniqueDiagnostics(diagnoses.flatMap(({ stops }) => stops));
 		this.errors = uniqueDiagnostics([
 			...errors,
-			...newDiagnostics(
-				shown,
-				unblocked.flatMap(({ diagnostics }) =>
-					diagnostics.filter(isError)
-				)
-			),
+			...diagnoses.flatMap(({ unshown }) => unshown),
 		]);
 	}
 
@@ -134,7 +124,10 @@ export class WhereAnswers {
 	}
 }
 
-function answersOf(located: ConfigLocations): Answer[] {
+function answersOf(
+	located: ConfigLocations,
+	diagnosis: LocatedDiagnosis
+): Answer[] {
 	const { config, files: locations, instances } = located;
 	const { file } = config;
 	const answer = (location: FileLocation, instance?: string): FileAnswer => ({
@@ -142,7 +135,7 @@ function answersOf(located: ConfigLocations): Answer[] {
 		config: file,
 		location,
 		...(instance !== undefined && { instance }),
-		diagnostics: diagnosticsOf(location, located),
+		diagnostics: diagnosis.of(location),
 	});
 	return [
 		...locations.map((location) => answer(location)),
