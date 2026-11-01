@@ -357,6 +357,30 @@ describe("parseArgs", () => {
 		expect(result.isErr() && result.error.message).toBe(message);
 	});
 
+	it.each([
+		[["build", "--listing", "glob", "--listing", "file"]],
+		[["build", "--listing=glob", "--listing", "file"]],
+	])(
+		"should refuse an option of one value given twice in %j, as Rojo does",
+		(argv) => {
+			const result = parse(argv);
+
+			expect(result.isErr() && result.error).toEqual(
+				new UsageError(
+					"'--listing' was given more than once, but takes one value."
+				)
+			);
+		}
+	);
+
+	it("should take an option of one value once, and one of several values any number of times", () => {
+		expect(values(["build", "--listing", "glob"]).listing).toBe("glob");
+		expect(values(["build", "-t", "a", "-t", "b"]).variant).toEqual([
+			"a",
+			"b",
+		]);
+	});
+
 	it("should read -t=mock as -t mock, as Rojo does", () => {
 		const { line } = parse(["build", "-t=mock"]).unwrap();
 

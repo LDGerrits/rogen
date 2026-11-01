@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `--` ends the options, and what follows it are positionals, as in Rojo: `rogen where -- -name.luau`.
 - A command line Rojo refuses is a usage error with Rojo's words, all on stderr, not a project failure; Rojo's own stderr lines stay on stderr.
 - `rogen write` counts the project files it left unchanged apart from those it wrote.
+- An option that takes one value, such as `-o`, given twice is a usage error, as in Rojo, and `rogen` alone prints the help on stderr.
 - A folder Rogen can't read is a `scan.unreadable` error naming it, as Rojo fails to build it, and `--watch` prints it once.
 
 ## [2.0.0-beta.2] - 2026-10-31

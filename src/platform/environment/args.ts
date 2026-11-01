@@ -243,9 +243,17 @@ function findOptionProblem(
 	ownersOf: (name: string, negated: boolean) => string[],
 	command: string | undefined
 ): UsageError | undefined {
+	const given = new Set<string>();
 	for (const token of tokens) {
 		if (token.kind !== "option") continue;
 		const option = options.find(({ name }) => name === token.name);
+		if (option?.type === "string" && !option.multiple) {
+			if (given.has(option.name))
+				return new UsageError(
+					`'--${option.name}' was given more than once, but takes one value.`
+				);
+			given.add(option.name);
+		}
 		if (
 			option?.type === "boolean" &&
 			option.negation !== "also" &&
