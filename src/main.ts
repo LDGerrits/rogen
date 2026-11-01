@@ -225,19 +225,16 @@ class RogenMain {
 		environmentService: EnvironmentService,
 		json: boolean
 	): LogService {
+		const logOptions = {
+			cwd: environmentService.cwd,
+			annotationsIn: environmentService.annotationsIn,
+			color: environmentService.hasColor,
+		};
 		const logService: LogService = json
 			? new JsonLogService()
 			: environmentService.isPlain
-				? new PlainLogService(
-						environmentService.cwd,
-						environmentService.annotationsIn,
-						environmentService.hasColor
-					)
-				: new TerminalLogService(
-						environmentService.cwd,
-						environmentService.annotationsIn,
-						environmentService.hasColor
-					);
+				? new PlainLogService(logOptions)
+				: new TerminalLogService(logOptions);
 		logService.setLevel(environmentService.logLevel);
 		return logService;
 	}

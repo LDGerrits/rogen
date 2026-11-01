@@ -1,4 +1,3 @@
-import { Styler, style, unstyled } from "../../base/style.js";
 import { AbstractLogService, LogKind } from "./abstract-log-service.js";
 
 const indented = (text: string) =>
@@ -13,13 +12,7 @@ export class PlainLogService extends AbstractLogService {
 
 	protected readonly drawsFrame = false;
 
-	private readonly style: Styler;
 	private inStep = false;
-
-	constructor(cwd?: string, annotationsIn?: string, color = false) {
-		super(cwd, annotationsIn);
-		this.style = color ? style : unstyled;
-	}
 
 	protected write(kind: LogKind, text: string): void {
 		const own = this.stdoutReserved ? console.error : console.info;

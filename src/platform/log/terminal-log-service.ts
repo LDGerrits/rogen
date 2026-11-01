@@ -1,8 +1,11 @@
 import * as clack from "@clack/prompts";
 import { Writable } from "stream";
 import { stripVTControlCharacters } from "util";
-import { Styler, style, unstyled } from "../../base/style.js";
-import { AbstractLogService, LogKind } from "./abstract-log-service.js";
+import {
+	AbstractLogService,
+	LogKind,
+	LogServiceOptions,
+} from "./abstract-log-service.js";
 
 /** Stdout with the colours clack draws taken out. */
 class UncolouredStdout extends Writable {
@@ -25,22 +28,20 @@ export class TerminalLogService extends AbstractLogService {
 
 	protected readonly drawsFrame = true;
 
-	private readonly style: Styler;
 	private readonly symbols: Readonly<
 		Record<"success" | "warning" | "error", string>
 	>;
 	private readonly output?: Writable;
 
-	/** `color` false draws the same layout without colour. */
-	constructor(cwd?: string, annotationsIn?: string, color = true) {
-		super(cwd, annotationsIn);
-		this.style = color ? style : unstyled;
+	/** Without `color` it draws the same layout without colour. */
+	constructor(options: LogServiceOptions = {}) {
+		super(options);
 		this.symbols = {
 			success: this.style("green", "✔"),
 			warning: this.style("yellow", "▲"),
 			error: this.style("red", "■"),
 		};
-		if (!color) this.output = new UncolouredStdout();
+		if (!options.color) this.output = new UncolouredStdout();
 	}
 
 	protected write(kind: LogKind, text: string): void {

@@ -6,6 +6,7 @@ import {
 } from "../diagnostics/diagnostic.js";
 import { diagnosticAnnotationLine } from "../diagnostics/diagnostic-annotation-line.js";
 import { defanged } from "../../base/strings.js";
+import { Styler, style, unstyled } from "../../base/style.js";
 import { LogLevel, LogService } from "./log-service.js";
 
 export type LogKind =
@@ -27,19 +28,29 @@ export type LogKind =
 	| "diagnosticError"
 	| "annotation";
 
+/** Diagnostics print relative to `cwd`; annotations are written when `annotationsIn` names the folder their paths are relative to; `color` is off unless given. */
+export interface LogServiceOptions {
+	readonly cwd?: string;
+	readonly annotationsIn?: string;
+	readonly color?: boolean;
+}
+
 export abstract class AbstractLogService implements LogService {
 	declare readonly _serviceBrand: undefined;
 
 	protected level: LogLevel = LogLevel.Info;
 	protected stdoutReserved = false;
+	protected readonly style: Styler;
+	private readonly cwd?: string;
+	private readonly annotationsIn?: string;
 	private frameOpen = false;
 	protected abstract readonly drawsFrame: boolean;
 
-	/** Diagnostics print relative to `cwd`; annotations are written when `annotationsIn` names the folder their paths are relative to. */
-	constructor(
-		private readonly cwd?: string,
-		private readonly annotationsIn?: string
-	) {}
+	constructor({ cwd, annotationsIn, color }: LogServiceOptions = {}) {
+		this.cwd = cwd;
+		this.annotationsIn = annotationsIn;
+		this.style = color ? style : unstyled;
+	}
 
 	/** Whether a frame is open and drawn, as on a terminal. */
 	protected get framed(): boolean {

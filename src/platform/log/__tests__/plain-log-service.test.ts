@@ -139,7 +139,7 @@ describe("PlainLogService", () => {
 	});
 
 	it("should colour the prefixes and debug lines when colour is on", () => {
-		const logService = new PlainLogService(undefined, undefined, true);
+		const logService = new PlainLogService({ color: true });
 		logService.setLevel(LogLevel.Debug);
 
 		logService.warn("careful");
@@ -282,7 +282,7 @@ describe("PlainLogService", () => {
 	});
 
 	it("should print diagnostics relative to the working directory it was given", () => {
-		const logService = new PlainLogService("/repo");
+		const logService = new PlainLogService({ cwd: "/repo" });
 
 		logService.diagnostic(
 			warningDiagnostic("x.y", { resource: "/repo/src/a.luau" }, "w")
@@ -299,7 +299,10 @@ describe("PlainLogService", () => {
 		);
 
 		it("should write the workflow commands of a diagnostic on stderr, when asked for a workspace", () => {
-			const logService = new PlainLogService("/work/repo", "/work/repo");
+			const logService = new PlainLogService({
+				cwd: "/work/repo",
+				annotationsIn: "/work/repo",
+			});
 
 			logService.annotate(diagnostic);
 
@@ -310,7 +313,10 @@ describe("PlainLogService", () => {
 		});
 
 		it("should start the line at its first column, inside a step too, or GitHub would not read it", () => {
-			const logService = new PlainLogService("/work/repo", "/work/repo");
+			const logService = new PlainLogService({
+				cwd: "/work/repo",
+				annotationsIn: "/work/repo",
+			});
 			logService.section("default.rogen.json", "source paths: src");
 			logService.step("lobby");
 
@@ -320,13 +326,16 @@ describe("PlainLogService", () => {
 		});
 
 		it("should write nothing without a workspace", () => {
-			new PlainLogService("/work/repo").annotate(diagnostic);
+			new PlainLogService({ cwd: "/work/repo" }).annotate(diagnostic);
 
 			expect(errors).toEqual([]);
 		});
 
 		it("should write only the errors when only errors are shown, as --quiet asks", () => {
-			const logService = new PlainLogService("/work/repo", "/work/repo");
+			const logService = new PlainLogService({
+				cwd: "/work/repo",
+				annotationsIn: "/work/repo",
+			});
 			logService.setLevel(LogLevel.Error);
 
 			logService.annotate(diagnostic);

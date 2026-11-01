@@ -102,7 +102,7 @@ describe("TerminalLogService", () => {
 	});
 
 	it("should draw the same frame without colour when colour is off", () => {
-		const logService = new TerminalLogService(undefined, undefined, false);
+		const logService = new TerminalLogService();
 
 		logService.intro("rogen build");
 		logService.success("Wrote default.project.json.");
@@ -113,7 +113,7 @@ describe("TerminalLogService", () => {
 	});
 
 	it("should colour its symbols when colour is on", () => {
-		const logService = new TerminalLogService();
+		const logService = new TerminalLogService({ color: true });
 
 		logService.intro("rogen build");
 		logService.success("Wrote default.project.json.");
@@ -123,7 +123,7 @@ describe("TerminalLogService", () => {
 
 	it("should write plain lines without colour when colour is off", () => {
 		const error = jest.spyOn(console, "error").mockImplementation(() => {});
-		const logService = new TerminalLogService(undefined, undefined, false);
+		const logService = new TerminalLogService();
 		logService.setLevel(LogLevel.Debug);
 
 		logService.error("broken");
@@ -202,7 +202,10 @@ describe("TerminalLogService", () => {
 	it("should write the workflow commands of a diagnostic on stderr, undrawn, when asked for a workspace", () => {
 		const error = jest.spyOn(console, "error").mockImplementation(() => {});
 
-		new TerminalLogService("/work/repo", "/work/repo").annotate(
+		new TerminalLogService({
+			cwd: "/work/repo",
+			annotationsIn: "/work/repo",
+		}).annotate(
 			warningDiagnostic(
 				"tree.deadScript",
 				{ resource: "/work/repo/src/Dead.luau" },

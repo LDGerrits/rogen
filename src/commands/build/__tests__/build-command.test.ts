@@ -293,7 +293,10 @@ describe("build command", () => {
 			entries: ReturnType<typeof validEntry>[],
 			line: CommandLine = { positionals: [], options: toFile }
 		) => {
-			const logService = new MockLogService("/repo", "/repo");
+			const logService = new MockLogService({
+				cwd: "/repo",
+				annotationsIn: "/repo",
+			});
 			const result = await harness({
 				fs,
 				log: logService,
