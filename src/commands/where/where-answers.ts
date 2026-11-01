@@ -38,7 +38,7 @@ const sourceOf = (answer: Answer): string =>
 	answer.kind === "file" ? answer.location.source : answer.instance;
 
 export class WhereAnswers {
-	/** The errors no answer shows: why a config didn't load, and what stops a write that no line is about. */
+	/** The errors no answer shows: why a config didn't load, and what stops a write that no line is about or says is blocked. */
 	readonly errors: readonly Diagnostic[];
 	/** The errors that stop the write of a config that answered. */
 	readonly stops: readonly Diagnostic[];
@@ -58,18 +58,19 @@ export class WhereAnswers {
 			configs.flatMap(({ diagnostics }) => diagnostics.filter(isError))
 		);
 		const shown = this.answers.flatMap((answer) =>
-			answer.kind === "file"
-				? [
-						...answer.diagnostics,
-						...(answer.location.status === "blocked"
-							? [answer.location.by]
-							: []),
-					]
-				: []
+			answer.kind === "file" ? answer.diagnostics : []
+		);
+		const unblocked = configs.filter(
+			({ files }) => !files.some(({ status }) => status === "blocked")
 		);
 		this.errors = uniqueDiagnostics([
 			...errors,
-			...newDiagnostics(shown, this.stops),
+			...newDiagnostics(
+				shown,
+				unblocked.flatMap(({ diagnostics }) =>
+					diagnostics.filter(isError)
+				)
+			),
 		]);
 	}
 

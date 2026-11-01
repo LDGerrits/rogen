@@ -184,6 +184,16 @@ describe("where command", () => {
 			]);
 		});
 
+		it("should leave the other errors that stop it to 'rogen check'", async () => {
+			await write("src/F/Shared/Worse@client.luau");
+
+			const result = await run({ _: ["src/F/Shared/Good.luau"] });
+
+			expect(result.isErr() && result.error).toBeInstanceOf(
+				ReportedError
+			);
+		});
+
 		it("should name the file with the error when the error is inside the directory asked about", async () => {
 			await run({ _: ["src/F"] });
 
