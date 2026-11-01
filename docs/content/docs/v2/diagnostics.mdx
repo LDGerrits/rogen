@@ -73,7 +73,7 @@ error: "sourcePath" is not a Rojo key and not Rogen's, and Rojo rejects a projec
 
 Rename the key to the one that the message suggests, or remove it.
 
-The message suggests a key only when one of Rojo's or Rogen's keys is close. A `$` key of a node in the `tree` gets this error too when it isn't one of Rojo's fields, such as `$clasName`. The exception is a `$` key whose value is an object, because Rojo reads that as a child. An unknown field in a sync rule gets this code as a warning instead. Rojo ignores that field, so the rule doesn't do what it seems to say. A config with Rogen 1 keys gets [`legacy.config`](#legacy-config) instead.
+The message suggests a key only when one of Rojo's or Rogen's keys is close. A `$` key of a node in the `tree` gets this error too when it isn't one of Rojo's fields, such as `$clasName`. The exception is a `$` key whose value is an object that Rojo can read as a child, such as `"$Thing": { "$className": "Folder" }`. A misspelled field such as `"$propertes": { "Anchored": true }` is no child, so it gets this error. An unknown field in a sync rule gets this code as a warning instead. Rojo ignores that field, so the rule doesn't do what it seems to say. A config with Rogen 1 keys gets [`legacy.config`](#legacy-config) instead.
 
 ### `config.duplicateSourcePath` [#config-duplicatesourcepath]
 
@@ -470,7 +470,7 @@ Write the value with its type, such as `{ "UDim2": [[0, 0], [0.5, -5]] }`, or re
 
 ## Metadata
 
-These diagnostics come from `.meta.json` files. Rogen reads a folder's `init.meta.json` itself, and checks other meta files before Rojo reads them.
+These diagnostics come from `.meta.json` files. Rogen reads a folder's `init.meta.json` itself, and checks the meta of each file before Rojo reads it.
 
 ### `meta.unreadable` [#meta-unreadable]
 
@@ -485,7 +485,7 @@ Fix the file's permissions, or run the write again.
 
 ### `meta.invalidSyntax` [#meta-invalidsyntax]
 
-Error. A folder's `init.meta.json` isn't valid JSONC.
+Error. A meta file that Rojo reads, a folder's `init.meta.json` or the meta of a file such as `Save.meta.json`, isn't valid JSONC.
 
 ```
 error: invalid JSONC: expected '}'. (meta.invalidSyntax)
@@ -493,7 +493,7 @@ error: invalid JSONC: expected '}'. (meta.invalidSyntax)
 
 Fix the syntax at the line and column that the message shows.
 
-Rogen reads a folder's meta because it merges that meta into the project file. Rojo reads the meta of a single file itself, and reports that file's errors.
+Rojo refuses the whole project when it can't read a meta file. Rogen stops before it writes a project file that Rojo would fail on. `rogen check` on a file reports the errors of its meta too.
 
 ### `meta.byteOrderMark` [#meta-byteordermark]
 
@@ -507,7 +507,7 @@ Save the file as UTF-8 without a byte order mark.
 
 ### `meta.notAnObject` [#meta-notanobject]
 
-Error. A folder's `init.meta.json` holds a JSON value that isn't an object.
+Error. A meta file that Rojo reads holds a JSON value that isn't an object.
 
 ```
 error: a meta file must be a JSON object. (meta.notAnObject)
@@ -517,7 +517,7 @@ Wrap the fields in `{ }`.
 
 ### `meta.wrongType` [#meta-wrongtype]
 
-Error. A field in a folder's `init.meta.json` holds the wrong type of value.
+Error. A field in a meta file that Rojo reads holds the wrong type of value.
 
 ```
 error: "attributes": expected an object, found an array. (meta.wrongType)
