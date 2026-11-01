@@ -16,7 +16,7 @@ import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
-import { ConfigSelection } from "../config/config-service.js";
+import { ConfigSelection, ConfigService } from "../config/config-service.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import {
 	WriteRun,
@@ -78,7 +78,8 @@ export class CoreWriteService implements WriteService {
 	constructor(
 		private readonly fileSystemService: FileSystemService,
 		private readonly indexService: IndexService,
-		private readonly syncTools: readonly SyncTool[]
+		private readonly syncTools: readonly SyncTool[],
+		private readonly configService: ConfigService
 	) {
 		this.writer = new OutputWriter(fileSystemService);
 	}
@@ -389,10 +390,10 @@ export class CoreWriteService implements WriteService {
 		attempt: PreparedConfig,
 		reader: FileReader = this.fileSystemService
 	): Promise<PreparedConfig> {
-		const stale = await new ProjectFileStaleness(reader).diagnostic(
-			attempt.config,
-			async () => attempt.projectFile
-		);
+		const stale = await new ProjectFileStaleness(
+			reader,
+			this.configService
+		).diagnostic(attempt.config, async () => attempt.projectFile);
 		if (!stale) return attempt;
 		return {
 			...attempt,

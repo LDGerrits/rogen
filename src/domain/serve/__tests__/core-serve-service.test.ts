@@ -242,7 +242,7 @@ describe("CoreServeService", () => {
 				"/repo/default.rogen.json"
 			);
 			expect(error.diagnostics[0].message).toBe(
-				"Port 34872 is held by another process (Rojo serving repo), so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve . --port <port>'."
+				"Port 34872 is held by another process (Rojo serving repo), so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve --port <port>'."
 			);
 		});
 
@@ -472,12 +472,12 @@ describe("CoreServeService", () => {
 			expect(diagnostic.code).toBe("serve.portTaken");
 			expect(diagnostic.resource).toBe("/repo/default.rogen.json");
 			expect(diagnostic.message).toBe(
-				"Port 34872 is held by another process (Rojo serving Other), so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve . --port <port>'."
+				"Port 34872 is held by another process (Rojo serving Other), so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve --port <port>'."
 			);
 			expect(diagnostic.fixes).toEqual([
 				{
 					run: {
-						command: "rogen serve . --port 34874",
+						command: "rogen serve --port 34874",
 						cwd: "/repo",
 					},
 				},
@@ -505,7 +505,7 @@ describe("CoreServeService", () => {
 			).toEqual({
 				run: {
 					command:
-						"rogen serve . --port 34873 --address 0.0.0.0 --allowed-hosts 'my pc'",
+						"rogen serve --port 34873 --address 0.0.0.0 --allowed-hosts 'my pc'",
 					cwd: "/repo",
 				},
 			});
@@ -528,7 +528,7 @@ describe("CoreServeService", () => {
 				"/repo/default.rogen.json"
 			);
 			expect(error.diagnostics[0].message).toBe(
-				"Port 34900 is held by another process, so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve . --port <port>'."
+				"Port 34900 is held by another process, so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve --port <port>'."
 			);
 		});
 
@@ -548,7 +548,7 @@ describe("CoreServeService", () => {
 			const error = (await errorOf()) as DiagnosticsError;
 
 			expect(error.diagnostics[0].message).toContain(
-				"or run 'rogen serve . --port <port>'."
+				"or run 'rogen serve --port <port>'."
 			);
 			expect(error.diagnostics[0].fixes ?? []).toEqual([]);
 		});
@@ -1057,7 +1057,7 @@ describe("CoreServeService", () => {
 
 				expect(spawnedProjects()).toEqual(["default.project.json"]);
 				expect(changes).toEqual([
-					"refused repo: Port 34901 is held by another process, so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve . --port <port>'.",
+					"refused repo: Port 34901 is held by another process, so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve --port <port>'.",
 				]);
 			});
 
@@ -1073,7 +1073,7 @@ describe("CoreServeService", () => {
 				]);
 				expect(changes).toEqual([
 					"retired repo (removed)",
-					"refused Lobby: Port 34900 is held by another process, so default.rogen.jsonc can't be served there. Stop it, set a servePort in default.rogen.jsonc, or run 'rogen serve . --port <port>'.",
+					"refused Lobby: Port 34900 is held by another process, so default.rogen.jsonc can't be served there. Stop it, set a servePort in default.rogen.jsonc, or run 'rogen serve --port <port>'.",
 				]);
 			});
 

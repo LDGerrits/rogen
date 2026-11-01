@@ -146,6 +146,7 @@ describe("a new roblox-ts project", () => {
 	const serviceFor = () => {
 		const environmentService = new NativeEnvironmentService({}, directory);
 		const toolchain = new CoreToolchainService(fileSystem);
+		const configs = new CoreConfigService(fileSystem, environmentService);
 		return new CoreInitService(
 			fileSystem,
 			new MockPromptService([], false),
@@ -153,11 +154,12 @@ describe("a new roblox-ts project", () => {
 			toolchain,
 			processes,
 			undefined,
-			new CoreConfigService(fileSystem, environmentService),
+			configs,
 			new CoreWriteService(
 				fileSystem,
 				new CoreIndexService(fileSystem),
-				toolchain.syncTools
+				toolchain.syncTools,
+				configs
 			)
 		);
 	};

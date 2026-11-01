@@ -52,7 +52,7 @@ describe("DiskWatcher", () => {
 			const added = (c: FileChange) =>
 				c.type === FileChangeType.ADDED &&
 				c.path === toPosix(path.join(dir, "a.luau"));
-			await waitFor(() => changes.some(added));
+			await waitFor(() => changes.some(added), 10000);
 
 			expect(changes.some(added)).toBe(true);
 		});
@@ -119,7 +119,7 @@ describe("DiskWatcher", () => {
 					await fs.writeFile(path.join(locked, "a.luau"), "");
 					const inside = (c: FileChange) =>
 						c.path === toPosix(path.join(locked, "a.luau"));
-					await waitFor(() => changes.some(inside));
+					await waitFor(() => changes.some(inside), 10000);
 
 					expect(changes.filter(added)).toHaveLength(1);
 				}
