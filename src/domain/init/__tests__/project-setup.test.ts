@@ -69,6 +69,40 @@ describe("ProjectSetup plan, unmounted files", () => {
 	});
 });
 
+describe("ProjectSetup plan, summary", () => {
+	it("should sum up the code as its source paths, their routes and where other files go", async () => {
+		const planned = await plan(luau);
+
+		expect(planned.summary).toContainEqual({
+			area: "Code",
+			text: "src → Server, Client, Shared; other files to ReplicatedStorage/Shared",
+		});
+	});
+
+	it("should list the routes a lift derives before the standard ones", async () => {
+		const choices = await defaultProjectChoices(luau);
+		const planned = planProject({
+			choices: {
+				...choices,
+				sourcePaths: ["src", "lib"],
+				tree: lifted({
+					name: "g",
+					tree: {
+						$className: "DataModel",
+						ServerStorage: { Tools: { $path: "src/Tools" } },
+					},
+				}),
+			},
+			existingFiles: new Set(["default.project.json"]),
+		}).unwrap();
+
+		expect(planned.summary).toContainEqual({
+			area: "Code",
+			text: "src, lib → Tools, Server, Client, Shared; other files to ReplicatedStorage/Shared",
+		});
+	});
+});
+
 describe("ProjectSetup plan", () => {
 	it("should plan every source path it writes", async () => {
 		const choices = {

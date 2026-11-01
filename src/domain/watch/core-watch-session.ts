@@ -396,7 +396,7 @@ export class CoreWatchSession
 				.filter(
 					({ type, path: file }) =>
 						type !== FileChangeType.UPDATED &&
-						file.endsWith(".meta.json")
+						/\.meta\.jsonc?$/.test(file)
 				)
 				.flatMap(({ path: file }) => this.plan.projectsFor(file))
 		);

@@ -286,6 +286,15 @@ describe("init for several places", () => {
 			).toEqual(["../common/src", "src"]);
 		});
 
+		it("should sum up the code by the folders of the places", async () => {
+			const result = await planned();
+
+			expect(result.summary).toContainEqual({
+				area: "Code",
+				text: "projects/common/src, projects/game/src → server, client, shared; other files to ReplicatedStorage/shared",
+			});
+		});
+
 		it("should keep the place's sample game in its folder", async () => {
 			const result = await planned();
 

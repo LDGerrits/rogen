@@ -584,28 +584,34 @@ describe("CoreWatchSession", () => {
 		expect(updates).toHaveLength(1);
 	});
 
-	it("should rewrite the project file when a meta file is added, which Rojo does not watch beside a file it mounts", async () => {
-		await fs.writeFile("/repo/src/A.luau", "");
-		await start();
+	it.each([".meta.json", ".meta.jsonc"])(
+		"should rewrite the project file when a %s file is added, which Rojo does not watch beside a file it mounts",
+		async (suffix) => {
+			await fs.writeFile("/repo/src/A.luau", "");
+			await start();
 
-		await fs.writeFile("/repo/src/A.meta.json", "{}");
-		await settle();
+			await fs.writeFile(`/repo/src/A${suffix}`, "{}");
+			await settle();
 
-		expect(updates).toHaveLength(2);
-		expect(updates[1].reports[0].outcome.kind).toBe("wrote");
-	});
+			expect(updates).toHaveLength(2);
+			expect(updates[1].reports[0].outcome.kind).toBe("wrote");
+		}
+	);
 
-	it("should rewrite the project file when a meta file is removed", async () => {
-		await fs.writeFile("/repo/src/A.luau", "");
-		await fs.writeFile("/repo/src/A.meta.json", "{}");
-		await start();
+	it.each([".meta.json", ".meta.jsonc"])(
+		"should rewrite the project file when a %s file is removed",
+		async (suffix) => {
+			await fs.writeFile("/repo/src/A.luau", "");
+			await fs.writeFile(`/repo/src/A${suffix}`, "{}");
+			await start();
 
-		await fs.delete("/repo/src/A.meta.json");
-		await settle();
+			await fs.delete(`/repo/src/A${suffix}`);
+			await settle();
 
-		expect(updates).toHaveLength(2);
-		expect(updates[1].reports[0].outcome.kind).toBe("wrote");
-	});
+			expect(updates).toHaveLength(2);
+			expect(updates[1].reports[0].outcome.kind).toBe("wrote");
+		}
+	);
 
 	it("should leave an unchanged project file alone when a source file is added", async () => {
 		await fs.createDirectory("/repo/src/Combat");

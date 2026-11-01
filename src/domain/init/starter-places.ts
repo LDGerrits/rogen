@@ -79,10 +79,7 @@ export class StarterPlaces {
 			commonSourcePath,
 			placeSourcePath,
 			gameFolder: SAMPLE_GAME_FOLDER,
-			files: [
-				starter.commonTsconfig(commonSourcePath),
-				...starter.place(place, commonSourcePath).files,
-			],
+			files: starter.placesTsconfigs(),
 			directories: [commonSourcePath, placeSourcePath],
 			notes: [],
 			settings: false,

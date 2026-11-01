@@ -23,6 +23,7 @@ const SYNC_RULE_USES = [
 	"ignore",
 ] as const;
 
+/** The fields of a sync rule, in the order Rojo writes them. */
 export const SYNC_RULE_FIELDS: readonly string[] = [
 	"pattern",
 	"exclude",
@@ -52,7 +53,7 @@ export interface SyncRuleMatch {
 }
 
 /** What is wrong with the rule at `index` of a project's `syncRules`. */
-export interface SyncRuleProblem {
+interface SyncRuleProblem {
 	readonly index: number;
 	readonly message: string;
 }

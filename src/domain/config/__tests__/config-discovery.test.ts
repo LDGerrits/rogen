@@ -679,55 +679,6 @@ describe("ConfigDiscovery.namedConfigsAbove", () => {
 	});
 });
 
-describe("ConfigDiscovery.findEnclosing", () => {
-	let fs: MemoryFileSystemService;
-
-	beforeEach(async () => {
-		fs = new MemoryFileSystemService();
-		await fs.createDirectory("/repo");
-		await fs.createDirectory("/repo/src");
-		await fs.createDirectory("/repo/src/Inventory");
-	});
-
-	const from = (cwd: string) =>
-		new ConfigDiscovery(fs, new MockEnvironmentService(cwd));
-
-	it("should find the nearest parent folder with a config", async () => {
-		await fs.writeFile("/repo/default.rogen.json", "{}");
-		await fs.writeFile("/repo/src/default.rogen.jsonc", "{}");
-
-		const found = await from("/repo/src/Inventory").findEnclosing();
-
-		expect(found).toEqual({
-			directory: "/repo/src",
-			fileNames: ["default.rogen.jsonc"],
-		});
-	});
-
-	it("should not count the working directory", async () => {
-		await fs.writeFile("/repo/default.rogen.json", "{}");
-
-		expect(await from("/repo").findEnclosing()).toBeUndefined();
-	});
-
-	it("should find nothing when no parent has a config", async () => {
-		expect(
-			await from("/repo/src/Inventory").findEnclosing()
-		).toBeUndefined();
-	});
-
-	it("should go on past a parent that can't be read", async () => {
-		await fs.writeFile("/default.rogen.json", "{}");
-
-		const found = await from("/missing/child").findEnclosing();
-
-		expect(found).toEqual({
-			directory: "/",
-			fileNames: ["default.rogen.json"],
-		});
-	});
-});
-
 describe("ConfigDiscovery.fileNamedHere", () => {
 	let fs: MemoryFileSystemService;
 

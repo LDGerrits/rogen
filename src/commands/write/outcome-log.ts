@@ -363,7 +363,7 @@ export class OutcomeLog {
 			this.logService.diagnostic(diagnostic);
 	}
 
-	private end(said: string, warnings: number): void {
+	end(said: string, warnings: number): void {
 		this.logService.outro(
 			warnings === 0
 				? `${said}.`

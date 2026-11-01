@@ -104,6 +104,23 @@ describe("domain/init/init-directory", () => {
 			});
 		});
 
+		describe("otherProjectFiles", () => {
+			it("should list the project files here but those it is told to skip, sorted", () => {
+				const target = directoryOf({
+					existing: [
+						"lobby.project.jsonc",
+						"default.project.json",
+						"game.project.json",
+						"default.rogen.json",
+					],
+				});
+
+				expect(
+					target.otherProjectFiles("default.project.json")
+				).toEqual(["game.project.json", "lobby.project.jsonc"]);
+			});
+		});
+
 		describe("hasHandWrittenProject", () => {
 			it("should know whether default.project.json is here", () => {
 				expect(directoryOf().hasHandWrittenProject).toBe(false);

@@ -10,12 +10,11 @@ import {
 	DEFAULT_SOURCE_PATH,
 	isConfigFileName,
 } from "../config/config.js";
+import { isProjectFileName } from "../rojo/rojo-project.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
 import { DirectoryLayout } from "./code-finder.js";
 import { StartingRoutes } from "./starting-routes.js";
 import { DOCS_URL } from "../../platform/product/product-service.js";
-
-const PROJECT_FILE_SUFFIX = ".project.json";
 
 export class InitDirectory {
 	private readonly names: PathSet;
@@ -43,12 +42,12 @@ export class InitDirectory {
 		return [...this.entries].filter(isConfigFileName).sort();
 	}
 
-	/** The `*.project.json` files here other than `except`, which init does not lift. */
+	/** The Rojo project files here other than `except`, which init does not lift. */
 	otherProjectFiles(...except: string[]): string[] {
 		return [...this.entries]
 			.filter(
 				(name) =>
-					name.endsWith(PROJECT_FILE_SUFFIX) &&
+					isProjectFileName(name) &&
 					!except.some((own) => samePath(name, own))
 			)
 			.sort();

@@ -1,9 +1,10 @@
 import path from "path";
+import { ancestors } from "../../../base/path.js";
 import { tryWithAsync } from "../../../base/result.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { agentBlock } from "./agent-block.js";
+import { AgentFile } from "./agent-file.js";
 
-const FILE_NAMES = ["AGENTS.md", "CLAUDE.md", "GEMINI.md"] as const;
 const BLOCK = /<!-- rogen -->\r?\n[\s\S]*?<!-- \/rogen -->(\r?\n)?/;
 
 /** `text` with its Rogen block replaced by this version's, in the file's line endings; `undefined` when it has none or it is current. */
@@ -23,7 +24,7 @@ export class AgentRules {
 	async refresh(folder: string): Promise<string[]> {
 		const updated: string[] = [];
 		for (const directory of await this.foldersUp(folder)) {
-			for (const fileName of FILE_NAMES) {
+			for (const fileName of AgentFile.FILE_NAMES) {
 				const file = path.join(directory, fileName);
 				if (!(await this.fileSystemService.exists(file))) continue;
 				const text = await tryWithAsync(() =>
@@ -43,14 +44,11 @@ export class AgentRules {
 	}
 
 	private async foldersUp(folder: string): Promise<string[]> {
-		const folders: string[] = [];
-		for (let current = path.resolve(folder); ;) {
-			folders.push(current);
+		const start = path.resolve(folder);
+		const folders = [start, ...ancestors(start)];
+		for (const [at, current] of folders.entries())
 			if (await this.fileSystemService.exists(path.join(current, ".git")))
-				return folders;
-			const parent = path.dirname(current);
-			if (parent === current) return [path.resolve(folder)];
-			current = parent;
-		}
+				return folders.slice(0, at + 1);
+		return [start];
 	}
 }

@@ -785,6 +785,35 @@ describe("where command", () => {
 			expect(text()).toBe("ServerScriptService.Other.Thing:3: boom");
 		});
 
+		it("should leave an instance that several files place as it is, and warn which files place it", async () => {
+			await writeConfig("default.rogen.json", {
+				routes: ROUTES,
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: {
+						Lib: { $path: "lib", Inner: { $path: "inner" } },
+					},
+				},
+			});
+			await write(
+				"src/Inventory/Server/Save.luau",
+				"lib/init.luau",
+				"inner/init.luau"
+			);
+
+			const result = await pipe(
+				"ReplicatedStorage.Lib:3: boom\nServerScriptService.Inventory.Save:4: bang"
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(text()).toBe(
+				"ReplicatedStorage.Lib:3: boom\nsrc/Inventory/Server/Save.luau:4: bang"
+			);
+			expect(logService.texts("warn")).toEqual([
+				"ReplicatedStorage.Lib is placed by more than one file, so it is left as it is: default.rogen.json: lib/init.luau; default.rogen.json: inner/init.luau.",
+			]);
+		});
+
 		it("should pass text through when there is nothing to rewrite, even without a config", async () => {
 			const result = await pipe("hello\nworld\n");
 

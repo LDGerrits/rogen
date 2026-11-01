@@ -15,14 +15,14 @@ export interface NewInstance {
 }
 
 /** The route spelled into the names of what is written, such as `@server`. */
-export interface Mark {
+interface Mark {
 	readonly text: string;
 	/** The route key it spells. */
 	readonly route: string;
 }
 
 /** Where a new instance is written, as the folder it goes into. */
-export interface NewHome {
+interface NewHome {
 	/** Absolute POSIX path of the folder to write into. */
 	readonly dir: string;
 	/** For a folder: its files go into `dir` and the folder itself is not made, as the routing folder is the folder. */
@@ -30,7 +30,7 @@ export interface NewHome {
 	readonly mark?: Mark;
 }
 
-export type NewPlacement =
+type NewPlacement =
 	| { readonly kind: "placed"; readonly home: NewHome }
 	| { readonly kind: "conflict"; readonly reason: string };
 

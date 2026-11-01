@@ -62,13 +62,9 @@ export function validFile(entry: ConfigEntry): ResolvedConfigFile | undefined {
 	return entry.status === "valid" ? entry : entry.lastValid;
 }
 
-function validConfig(entry: ConfigEntry): ResolvedConfig | undefined {
-	return validFile(entry)?.config;
-}
-
 /** The valid config of `entry`, if it has one. */
 export function validConfigs(entry: ConfigEntry): ResolvedConfig[] {
-	const config = validConfig(entry);
+	const config = validFile(entry)?.config;
 	return config ? [config] : [];
 }
 
@@ -119,12 +115,6 @@ export interface ReloadableSelection extends ConfigSelection {
 	reload(files: readonly string[]): Promise<ConfigReload>;
 }
 
-export interface EnclosingConfigs {
-	readonly directory: string;
-	/** File names, sorted. */
-	readonly fileNames: readonly string[];
-}
-
 /** The config file that answers for a path. */
 export interface ConfigCover {
 	readonly file: string;
@@ -170,8 +160,6 @@ export interface ConfigService {
 	select(
 		refs: readonly string[]
 	): Promise<Result<ReloadableSelection, Error>>;
-	/** The nearest folder above `from`, the working directory unless given, that has a default config. */
-	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined>;
 	/** The named configs, those that are not a default, of the working directory, absolute and sorted. */
 	namedConfigs(): Promise<string[]>;
 	/** Every config file of the working directory, absolute and sorted. */

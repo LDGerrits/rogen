@@ -14,10 +14,7 @@ import {
 	AbstractCommand,
 	registerCommand,
 } from "../../platform/commands/commands.js";
-import {
-	renderDiagnostic,
-	uniqueDiagnostics,
-} from "../../platform/diagnostics/diagnostic.js";
+import { renderDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -103,7 +100,7 @@ registerCommand(
 				logService.notice(note);
 
 			const failure = DiagnosticsError.of(found.value.diagnostics);
-			const stoppedBy = uniqueDiagnostics(found.value.stoppedBy);
+			const { stoppedBy } = found.value;
 			if (line.options.json)
 				return this.printJson(
 					logService,

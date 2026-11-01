@@ -6,9 +6,6 @@ import { SyncbackPlan, SyncbackRequest, SyncbackResult } from "./syncback.js";
 export interface SyncbackService {
 	readonly _serviceBrand: undefined;
 
-	/** The first of `names`, the project arguments of a command line, that is a place or model file. */
-	placeFileAmong(names: readonly string[]): string | undefined;
-
 	/** What a run would write and remove, found by a dry run of Rojo's syncback. Writes nothing that stays. Fails when the project's files can't be written, when Rojo can't read the place, or when it holds a change syncback can't make. */
 	plan(request: SyncbackRequest): Promise<Result<SyncbackPlan, Error>>;
 

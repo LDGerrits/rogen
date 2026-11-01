@@ -2,9 +2,7 @@ import path from "path";
 import { mockConfig } from "./mock-config-service.js";
 import { DeclaredKeys } from "../declared-keys.js";
 import {
-	fieldOf,
 	isConfigFileName,
-	isDefaultProjectFile,
 	isProjectFileConfig,
 	sourcePathOverlap,
 } from "../config.js";
@@ -28,23 +26,6 @@ describe("domain/config/config", () => {
 		});
 	});
 
-	describe("isDefaultProjectFile", () => {
-		it.each(["/repo/default.project.json", "/repo/default.project.jsonc"])(
-			"should accept %s, which Rojo reads without a name",
-			(file) => {
-				expect(isDefaultProjectFile(file)).toBe(true);
-			}
-		);
-
-		it.each([
-			"/repo/lobby.project.json",
-			"/repo/xdefault.project.json",
-			"/default.project.json/lobby.project.json",
-		])("should not accept %s", (file) => {
-			expect(isDefaultProjectFile(file)).toBe(false);
-		});
-	});
-
 	describe("isConfigFileName", () => {
 		it.each([
 			"default.rogen.json",
@@ -64,27 +45,6 @@ describe("domain/config/config", () => {
 			"dist.project.json",
 		])("should not accept %s", (name) => {
 			expect(isConfigFileName(name)).toBe(false);
-		});
-	});
-
-	describe("fieldOf", () => {
-		const values = {
-			getValue: <T>(section?: string | readonly string[]) =>
-				(section === "compiledPath" ? "dist" : undefined) as
-					T | undefined,
-		};
-
-		it("should read a field the values hold, as the config declares it", () => {
-			const compiledPath: string | undefined = fieldOf(
-				values,
-				"compiledPath"
-			);
-
-			expect(compiledPath).toBe("dist");
-		});
-
-		it("should give undefined for a field they lack", () => {
-			expect(fieldOf(values, "routes")).toBeUndefined();
 		});
 	});
 

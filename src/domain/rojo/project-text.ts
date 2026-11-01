@@ -8,7 +8,8 @@ import {
 } from "../../base/jsonc-comments.js";
 import { isObject, isSameJson } from "../../base/objects.js";
 import { FloatText, PropertyValues } from "./property-values.js";
-import { RojoProjectFile } from "./rojo-project.js";
+import { NODE_FIELDS, RojoProjectFile } from "./rojo-project.js";
+import { SYNC_RULE_FIELDS } from "./sync-rules.js";
 
 /** The keys of a project file in the order Rojo writes them. */
 const FILE_KEYS = [
@@ -33,9 +34,6 @@ const EMPTY_OMITTED = ["serveAllowedHosts", "globIgnorePaths", "syncRules"];
 
 /** The sets of place IDs, which Rojo writes with each ID once. */
 const PLACE_ID_KEYS = ["servePlaceIds", "blockedPlaceIds"];
-
-/** The keys of a sync rule, in the order Rojo writes them. */
-const SYNC_RULE_KEYS = ["pattern", "exclude", "use", "suffix"];
 
 /** The keys of `syncbackRules`, in the order Rojo writes them. */
 const SYNCBACK_RULE_KEYS = [
@@ -260,7 +258,7 @@ export class ProjectText {
 		if (key === "syncRules" && Array.isArray(value))
 			return value.map((rule) =>
 				isObject(rule)
-					? ProjectText.inOrder(rule, SYNC_RULE_KEYS)
+					? ProjectText.inOrder(rule, SYNC_RULE_FIELDS)
 					: rule
 			);
 		if (key === "syncbackRules" && isObject(value))
@@ -294,10 +292,7 @@ export class ProjectText {
 							: node[key],
 				]);
 		for (const key of Object.keys(node))
-			if (
-				key.startsWith("$") &&
-				![...NODE_KEYS_BEFORE, ...NODE_KEYS_AFTER].includes(key)
-			)
+			if (key.startsWith("$") && !NODE_FIELDS.has(key))
 				entries.push([key, node[key]]);
 		return new Ordered(entries);
 	}

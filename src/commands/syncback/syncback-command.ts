@@ -1,4 +1,4 @@
-import { defanged } from "../../base/strings.js";
+import { defanged, plural } from "../../base/strings.js";
 import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -13,6 +13,7 @@ import { SyncbackService } from "../../domain/syncback/syncback-service.js";
 import {
 	SyncbackPlan,
 	SyncbackResult,
+	placeFileAmong,
 } from "../../domain/syncback/syncback.js";
 import {
 	AbstractCommand,
@@ -120,9 +121,7 @@ registerCommand(
 			if (tooMany) return err(tooMany);
 			const { input, json } = line.options;
 			if (input === undefined) {
-				const placeFile = accessor
-					.get(SyncbackService)
-					.placeFileAmong(line.positionals);
+				const placeFile = placeFileAmong(line.positionals);
 				return err(
 					new UsageError(
 						"--input names the place or model file to bring changes from, and Rojo needs it.",
@@ -303,14 +302,14 @@ registerCommand(
 				logService.info(
 					plan.changes.length === 0
 						? "Syncback changed nothing."
-						: `Syncback wrote ${plan.changes.length} ${plan.changes.length === 1 ? "change" : "changes"}.`
+						: `Syncback wrote ${plural(plan.changes.length, "change")}.`
 				);
 			else if (!dryRun) logService.info("Nothing was written.");
 			else
 				logService.info(
 					plan.changes.length === 0
 						? "Syncback would change nothing."
-						: `Syncback would change ${plan.changes.length} ${plan.changes.length === 1 ? "file" : "files"} (${counts(plan)}).`
+						: `Syncback would change ${plural(plan.changes.length, "file")} (${counts(plan)}).`
 				);
 		}
 	}

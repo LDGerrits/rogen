@@ -1,7 +1,8 @@
 import path from "path";
+import { isSameJson } from "../../base/objects.js";
 import { containsPosix, toPosix } from "../../base/path.js";
 import { FileLocation, PlacedLocation } from "../write/write-service.js";
-import { ResolvedConfig } from "../config/resolved-config.js";
+import { ResolvedConfig, compiledPathOf } from "../config/resolved-config.js";
 import { configStem } from "../config/config.js";
 
 /** How a placed file was routed, which a new file beside it repeats. */
@@ -29,7 +30,7 @@ const isPlaced = (location: FileLocation): location is PlacedLocation =>
 
 /** What the placed files of one project say about where their instances live on disk. */
 export class SyncbackLayout {
-	private readonly placed: readonly PlacedLocation[];
+	readonly placed: readonly PlacedLocation[];
 	private readonly roots: readonly string[];
 	private readonly keys: ResolvedConfig["keys"];
 	private readonly shared: ReadonlySet<string>;
@@ -54,12 +55,7 @@ export class SyncbackLayout {
 
 	/** Where Rojo reads the source folder `dir` from: under the compiled path when a tool writes the files there. */
 	synced(dir: string): string {
-		const { compiledPath, commonRoot } = this.config;
-		if (compiledPath === undefined || commonRoot === undefined) return dir;
-		return path.posix.join(
-			toPosix(compiledPath),
-			path.posix.relative(toPosix(commonRoot), dir)
-		);
+		return toPosix(compiledPathOf(this.config, dir));
 	}
 
 	get sourcePaths(): readonly string[] {
@@ -96,8 +92,7 @@ export class SyncbackLayout {
 		for (const file of this.placed) {
 			if (file.routeMatch === "init" || file.routeMatch === "copy")
 				continue;
-			if (!SyncbackLayout.sameNode(file.instancePath.slice(0, -1), node))
-				continue;
+			if (!isSameJson(file.instancePath.slice(0, -1), node)) continue;
 			const sourcePath = this.rootOf(file.source);
 			if (!sourcePath) continue;
 			donors.push({
@@ -147,9 +142,7 @@ export class SyncbackLayout {
 
 	/** The placed file that is the instance `node` itself, such as an init file making a folder. */
 	fileMaking(node: readonly string[]): PlacedLocation | undefined {
-		return this.placed.find((file) =>
-			SyncbackLayout.sameNode(file.instancePath, node)
-		);
+		return this.placed.find((file) => isSameJson(file.instancePath, node));
 	}
 
 	/** The feature folder whose routing makes `node`, with every instance it makes, as its `init.meta.json` applies to each; none when `node` is not such an instance, such as one a script makes, or when its files say more than one folder. */
@@ -161,7 +154,7 @@ export class SyncbackLayout {
 		const { features } = this;
 		const folders = new Set(
 			features.flatMap((feature) =>
-				feature && SyncbackLayout.sameNode(feature.instance, node)
+				feature && isSameJson(feature.instance, node)
 					? [feature.folder]
 					: []
 			)
@@ -172,9 +165,7 @@ export class SyncbackLayout {
 		for (const feature of features)
 			if (
 				feature?.folder === folder &&
-				!instances.some((known) =>
-					SyncbackLayout.sameNode(known, feature.instance)
-				)
+				!instances.some((known) => isSameJson(known, feature.instance))
 			)
 				instances.push(feature.instance);
 		const inFeature = this.placed.every(
@@ -191,14 +182,13 @@ export class SyncbackLayout {
 	folderNameFor(route: string): string {
 		for (const file of this.placed) {
 			if (file.route !== route || file.routeMatch !== "folder") continue;
-			const governing = this.governingDir(file);
-			if (governing) return path.posix.basename(governing);
+			const root = this.rootOf(file.source);
+			if (!root) continue;
+			const segments = path.posix.relative(root, file.source).split("/");
+			const at = this.routingFolderAt(file, segments);
+			if (at >= 0) return segments[at];
 		}
 		return route;
-	}
-
-	private static sameNode(a: readonly string[], b: readonly string[]) {
-		return a.length === b.length && a.every((name, at) => name === b[at]);
 	}
 
 	private rootOf(source: string): string | undefined {
@@ -212,10 +202,6 @@ export class SyncbackLayout {
 		const root = this.rootOf(file.source);
 		if (!root) return undefined;
 		const segments = path.posix.relative(root, file.source).split("/");
-		const spelling = (segment: string, at: number) =>
-			at < segments.length - 1
-				? this.keys.resolve(segment) === file.route
-				: false;
 		const marked = (segment: string) => {
 			const key = AT_KEY.exec(segment)?.[1];
 			return key !== undefined && this.keys.resolve(key) === file.route;
@@ -223,7 +209,7 @@ export class SyncbackLayout {
 		let anchor: number;
 		let below: string[];
 		if (file.routeMatch === "folder") {
-			anchor = segments.findIndex(spelling);
+			anchor = this.routingFolderAt(file, segments);
 			below = segments.slice(anchor + 1);
 		} else if (file.routeMatch === "suffix") {
 			anchor = segments.findIndex(marked);
@@ -239,17 +225,15 @@ export class SyncbackLayout {
 		};
 	}
 
-	/** The first folder from the source path down that spells the file's route, as the router meets it. */
-	private governingDir(file: PlacedLocation): string | undefined {
-		const root = this.rootOf(file.source);
-		if (!root) return undefined;
-		const segments = path.posix
-			.relative(root, path.posix.dirname(file.source))
-			.split("/")
-			.filter((segment) => segment !== "");
-		for (const [at, segment] of segments.entries())
-			if (this.keys.resolve(segment) === file.route)
-				return path.posix.join(root, ...segments.slice(0, at + 1));
-		return undefined;
+	/** Where in `segments`, a file's path below its source path, the first folder that spells its route is, as the router meets it; -1 when none does. */
+	private routingFolderAt(
+		file: PlacedLocation,
+		segments: readonly string[]
+	): number {
+		return segments.findIndex(
+			(segment, at) =>
+				at < segments.length - 1 &&
+				this.keys.resolve(segment) === file.route
+		);
 	}
 }

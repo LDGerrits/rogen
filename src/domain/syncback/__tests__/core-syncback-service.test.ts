@@ -1139,6 +1139,118 @@ describe("CoreSyncbackService", () => {
 		expect(copied).toBe(true);
 	});
 
+	it.each([
+		[undefined, []],
+		[true, []],
+		[false, [{ kind: "write", file: abs("vendor/kit/Gen") }]],
+	])(
+		"should take a folder an ignorePaths glob ending in /** names as ignored unless createIgnoreDirPaths is false (%s)",
+		async (createIgnoreDirPaths, changes) => {
+			await writeFiles(fs, "vendor/kit/init.luau");
+			await prepare(["src/Combat/Server/Combat.luau"], {
+				project: {
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: { Kit: { $path: "vendor/kit" } },
+					},
+					syncbackRules: {
+						ignorePaths: ["vendor/kit/Gen/**"],
+						...(createIgnoreDirPaths !== undefined && {
+							createIgnoreDirPaths,
+						}),
+					},
+				},
+			});
+			rojo.say = async () => {
+				await fs.createDirectory(
+					mirror("ReplicatedStorage", "Kit", "Gen")
+				);
+				return [];
+			};
+
+			const plan = (await service.plan(request)).unwrap();
+
+			expect(plan.changes).toEqual(changes);
+		}
+	);
+
+	describe("with a plain Rojo project", () => {
+		const said = [
+			"Writing to the file system...",
+			"Writing src",
+			"Writing src/A.luau",
+			"Removing src/B.luau",
+		];
+
+		beforeEach(async () => {
+			await fs.writeFile(abs("default.project.json"), "{}");
+			config = configOf({ file: abs("default.project.json") });
+			request = {
+				selection: selectionOf(config),
+				project: config,
+				input: "game.rbxl",
+				cwd: "/repo",
+			};
+			rojo.say = async () => said;
+		});
+
+		it("should plan with Rojo's own dry run on the project file, listing every line and changing what holds no other", async () => {
+			const plan = (await service.plan(request)).unwrap();
+
+			expect(rojo.requests).toHaveLength(1);
+			expect(rojo.requests[0]).toMatchObject({
+				flags: [
+					"--input",
+					"game.rbxl",
+					"--non-interactive",
+					"--dry-run",
+					"--list",
+				],
+				projectFile: abs("default.project.json"),
+			});
+			expect(plan).toMatchObject({
+				project: config,
+				changes: [
+					{ kind: "write", file: abs("src/A.luau") },
+					{ kind: "remove", file: abs("src/B.luau") },
+				],
+				listed: [
+					{ kind: "write", file: abs("src") },
+					{ kind: "write", file: abs("src/A.luau") },
+					{ kind: "remove", file: abs("src/B.luau") },
+				],
+				unplaced: [],
+				compiled: [],
+			});
+		});
+
+		it("should run Rojo's syncback on the project file as it is", async () => {
+			const done = (await service.apply(request)).unwrap();
+
+			expect(rojo.requests[0].flags).toEqual([
+				"--input",
+				"game.rbxl",
+				"--non-interactive",
+				"--list",
+			]);
+			expect(done).toEqual({
+				project: config,
+				changes: [
+					{ kind: "write", file: abs("src/A.luau") },
+					{ kind: "remove", file: abs("src/B.luau") },
+				],
+				listed: [
+					{ kind: "write", file: abs("src") },
+					{ kind: "write", file: abs("src/A.luau") },
+					{ kind: "remove", file: abs("src/B.luau") },
+				],
+				unplaced: [],
+				compiled: [],
+				warnings: [],
+			});
+		});
+	});
+
 	describe("with a property set on the folder of a feature", () => {
 		const meta = '{"attributes":{"Owner":"you"}}';
 

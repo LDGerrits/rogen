@@ -5,7 +5,7 @@ import {
 	withGlobBody,
 } from "../../base/glob.js";
 import { contains, isInside, toPosix } from "../../base/path.js";
-import { Result } from "../../base/result.js";
+import { Result, err } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
 import {
 	Diagnostic,
@@ -19,21 +19,19 @@ import {
 	ParsedProjectFile,
 	RojoNode,
 	RojoProject,
-	projectFileName,
 } from "../rojo/rojo-project.js";
 import { PropertyValues } from "../rojo/property-values.js";
+import { RojoFile } from "../rojo/rojo.js";
 import { SYNC_RULE_FIELDS, SyncRules } from "../rojo/sync-rules.js";
 import { ConfigFile } from "../../platform/config/config-file.js";
 import {
-	DEFAULT_PROJECT,
-	configStem,
-	defaultSourcePaths,
-	fieldOf,
-	isDefaultProjectFile,
-	isProjectFileConfig,
+	DEFAULT_SOURCE_PATH,
+	RogenKeys,
 	isRogenKey,
+	projectFileOf,
 	sourcePathOverlap,
 } from "./config.js";
+import { ConfigKeys } from "./config-keys.js";
 import { DeclaredKeys } from "./declared-keys.js";
 import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
 
@@ -51,18 +49,22 @@ export class ConfigValidator {
 
 	constructor(private readonly config: ConfigFile) {
 		this.dir = path.dirname(config.file);
-		this.routes = fieldOf(config.model, "routes") ?? {};
+		this.routes = this.field("routes") ?? {};
 		const routed = Object.keys(this.routes).length > 0;
-		const defaults = defaultSourcePaths(routed);
 		this.sourcePaths = (
-			fieldOf(config.model, "sourcePaths") ?? defaults
+			this.field("sourcePaths") ?? (routed ? [DEFAULT_SOURCE_PATH] : [])
 		).map((sourcePath) => path.resolve(this.dir, sourcePath));
 	}
 
-	/** Validates one config file. */
+	/** Validates one config file; a key neither Rojo's nor Rogen's fails it before anything else is checked. */
 	static validateFile(
 		source: ConfigFile
 	): Result<ResolvedConfigFile, Diagnostic[]> {
+		const keys = ConfigKeys.check(source.model.keys, (key) => ({
+			resource: source.file,
+			position: source.positionOfKey(key),
+		}));
+		if (keys.length > 0) return err(keys);
 		return new ConfigValidator(source)
 			.validate()
 			.map((config) => ({ config }));
@@ -98,8 +100,7 @@ export class ConfigValidator {
 			new ResolvedConfig({
 				file: this.config.file,
 				projectName: name ?? (path.basename(this.dir) || FALLBACK_NAME),
-				project:
-					project ?? new RojoProject<ParsedProjectFile>({ tree: {} }),
+				project,
 				sourcePaths: this.sourcePaths,
 				routes,
 				ignored,
@@ -109,6 +110,10 @@ export class ConfigValidator {
 				),
 			})
 		);
+	}
+
+	private field<K extends keyof RogenKeys>(key: K): RogenKeys[K] {
+		return this.config.model.getValue<RogenKeys[K]>(key);
 	}
 
 	private locate(...section: string[]): DiagnosticLocation {
@@ -133,10 +138,12 @@ export class ConfigValidator {
 	/** Rojo crashes on a project file of another name than `default` that has no `name`, so Rogen won't write or read one either. */
 	private checkName(project: RojoProject<ParsedProjectFile>): void {
 		const { file } = this.config;
-		const target = isProjectFileConfig(file)
-			? path.basename(file)
-			: projectFileName(configStem(file) ?? DEFAULT_PROJECT);
-		if (project.name !== undefined || isDefaultProjectFile(target)) return;
+		const target = path.basename(projectFileOf(file));
+		if (
+			project.name !== undefined ||
+			RojoFile.DEFAULT_PROJECTS.includes(target)
+		)
+			return;
 		this.problems.error(
 			"config.unnamedProjectFile",
 			{ resource: file, position: { line: 1, column: 1 } },
@@ -246,7 +253,7 @@ export class ConfigValidator {
 	}
 
 	private checkSourcePaths(routed: boolean): void {
-		if (!routed && fieldOf(this.config.model, "sourcePaths") !== undefined)
+		if (!routed && this.field("sourcePaths") !== undefined)
 			this.problems.error(
 				"config.sourcePathsWithoutRoutes",
 				this.locate("sourcePaths"),
@@ -273,7 +280,7 @@ export class ConfigValidator {
 	}
 
 	private checkCompiledPath(): string | undefined {
-		const written = fieldOf(this.config.model, "compiledPath");
+		const written = this.field("compiledPath");
 		if (written === undefined) return undefined;
 		const compiledPath = path.resolve(this.dir, written);
 		for (const sourcePath of this.sourcePaths) {

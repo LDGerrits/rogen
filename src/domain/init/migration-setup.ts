@@ -3,11 +3,11 @@ import { joinedWithAnd } from "../../base/strings.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { DEFAULT_CONFIG_FILE, configStem } from "../config/config.js";
-import { DeclaredKeys } from "../config/declared-keys.js";
 import { projectFileName } from "../rojo/rojo-project.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
-import { MigratedConfig, MigratedProject } from "./project-migration.js";
+import { InitSummary } from "./init-summary.js";
+import { MigratedProject } from "./project-migration.js";
 import { ProjectFiles } from "./project-files.js";
 import { Setup } from "./setup.js";
 
@@ -34,9 +34,12 @@ export class MigrationSetup implements Setup<MigrationChoices> {
 	plan(choices: MigrationChoices, builder: InitPlanBuilder): void {
 		const { migrated } = this;
 		builder.addSummary("Project", `migrating ${migrated.label}`);
-		for (const config of migrated.configs) {
-			builder.addSummary("Code", MigrationSetup.codeOf(config));
-			builder.setConfig(config.config, undefined, config.fileName);
+		for (const { fileName, config } of migrated.configs) {
+			builder.addSummary(
+				"Code",
+				`${fileName}: ${InitSummary.code(config.sourcePaths ?? [], config.routes ?? {})}`
+			);
+			builder.setConfig(config, undefined, fileName);
 		}
 		for (const move of migrated.moves) builder.addMove(move);
 		for (const note of migrated.notes) builder.addNote(note);
@@ -58,14 +61,5 @@ export class MigrationSetup implements Setup<MigrationChoices> {
 
 	private static projectFileOf(fileName: string): string {
 		return projectFileName(configStem(fileName) ?? fileName);
-	}
-
-	private static codeOf({ fileName, config }: MigratedConfig): string {
-		const routes = config.routes ?? {};
-		const keys = Object.keys(routes).filter(
-			(key) => key !== DeclaredKeys.FALLBACK_ROUTE
-		);
-		const rest = routes[DeclaredKeys.FALLBACK_ROUTE];
-		return `${fileName}: ${(config.sourcePaths ?? []).join(", ")} → ${keys.join(", ")}${rest ? `; other files to ${rest}` : ""}`;
 	}
 }

@@ -81,6 +81,22 @@ export class WhereAnswers {
 		return at === -1 ? this.asked.length : at;
 	};
 
+	/** For each instance asked about that a file places: the answers that place it, by file. */
+	byInstance(): Map<string, Map<string, FileAnswer[]>> {
+		const placing = this.answers.filter(
+			(answer): answer is FileAnswer & { readonly instance: string } =>
+				answer.kind === "file" && answer.instance !== undefined
+		);
+		return new Map(
+			[...groupBy(placing, ({ instance }) => instance)].map(
+				([instance, all]) => [
+					instance,
+					groupBy(all, ({ location }) => location.source),
+				]
+			)
+		);
+	}
+
 	static withoutOutside(answers: readonly Answer[]): readonly Answer[] {
 		const inside = answers.filter(
 			(answer) =>

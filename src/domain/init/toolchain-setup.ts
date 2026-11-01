@@ -1,6 +1,5 @@
 import path from "path";
 import { isWindows } from "../../base/platform.js";
-import { joinedWithAnd } from "../../base/strings.js";
 import { samePath } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -19,21 +18,6 @@ const MANAGERS = ["rokit", "aftman", "foreman"] as const;
 
 type ToolManager = (typeof MANAGERS)[number];
 
-/** A tool a toolchain manager pins. */
-interface ToolPin {
-	readonly name: string;
-	readonly label: string;
-	readonly repository: string;
-	readonly version: string;
-}
-
-const ROJO_PIN: ToolPin = {
-	name: RojoServer.COMMAND,
-	label: "Rojo",
-	repository: RojoServer.REPOSITORY,
-	version: RojoServer.PINNED.toString(),
-};
-
 /** How the tools the project needs stand. */
 export interface ToolState {
 	/** Rojo runs, or a toolchain file there or above pins it. */
@@ -46,12 +30,6 @@ export interface ToolState {
 		/** Whether the manager runs on this machine. */
 		readonly installed: boolean;
 	};
-}
-
-export interface ToolchainChoice {
-	/** The tools that are missing, which the plan pins. */
-	readonly tools: readonly ToolPin[];
-	readonly state: ToolState;
 }
 
 /** Rokit's own installer for the OS, which is printed and never run. */
@@ -68,10 +46,9 @@ const MANAGER_COPY: Readonly<
 };
 
 /** Writes Rojo's pin into the toolchain file of the manager the machine has, when Rojo isn't ready. It runs nothing and installs nothing; the next step names the command to run. */
-export class ToolchainSetup implements Setup<ToolchainChoice> {
-	private state: Promise<ToolState> | undefined;
-
-	private constructor(private readonly stateOf: () => Promise<ToolState>) {}
+export class ToolchainSetup implements Setup<ToolState> {
+	/** `stateOf` is called only when a plan needs it, since looking at the tools runs them. */
+	constructor(private readonly stateOf: () => Promise<ToolState>) {}
 
 	/** Whether a toolchain file in `manifests` already pins Rojo. */
 	static isPinned(manifests: readonly ToolManifest[]): boolean {
@@ -113,48 +90,32 @@ export class ToolchainSetup implements Setup<ToolchainChoice> {
 		};
 	}
 
-	/** `stateOf` is called once, and only when a plan needs it, since looking at the tools runs them. */
-	static of(stateOf: () => Promise<ToolState>): ToolchainSetup {
-		return new ToolchainSetup(stateOf);
+	async ask(): Promise<Result<ToolState | undefined, Diagnostic[]>> {
+		return ok(await this.stateOf());
 	}
 
-	private loaded(): Promise<ToolState> {
-		return (this.state ??= this.stateOf());
-	}
-
-	async ask(): Promise<Result<ToolchainChoice | undefined, Diagnostic[]>> {
-		const state = await this.loaded();
-		return ok({ tools: state.rojoReady ? [] : [ROJO_PIN], state });
-	}
-
-	plan({ tools, state }: ToolchainChoice, builder: InitPlanBuilder): void {
-		const { id, manifest, installed } = state.manager;
-		if (tools.length === 0) {
+	plan({ rojoReady, manager }: ToolState, builder: InitPlanBuilder): void {
+		const { id, manifest, installed } = manager;
+		if (rojoReady) {
 			builder.addSummary("Rojo", "ready");
 			return;
 		}
 		const file = `${id}.toml`;
-		let pinned = manifest ?? ToolManifest.parse(file, "")!;
-		let content = "";
-		for (const tool of tools) {
-			content = pinned.withPin(tool.name, tool.repository, tool.version);
-			pinned = ToolManifest.parse(file, content)!;
-		}
+		const version = RojoServer.PINNED.toString();
 		builder.addToolManifest({
 			fileName: file,
-			content,
-			...(manifest && {
-				addition: `${joinedWithAnd(tools.map(({ label }) => `${label}'s`))} pin`,
-			}),
+			content: (manifest ?? ToolManifest.parse(file, "")!).withPin(
+				RojoServer.COMMAND,
+				RojoServer.REPOSITORY,
+				version
+			),
+			...(manifest && { addition: "Rojo's pin" }),
 		});
-		builder.addSummary(
-			"Rojo",
-			`pin ${joinedWithAnd(tools.map(({ label, version }) => `${label} ${version}`))} in ${file}`
-		);
+		builder.addSummary("Rojo", `pin Rojo ${version} in ${file}`);
 		const { label, page } = MANAGER_COPY[id];
 		builder.addSetup(
 			installed
-				? `Run '${id} install' to install ${joinedWithAnd(tools.map(({ label: name }) => name))}.`
+				? `Run '${id} install' to install Rojo.`
 				: id === "rokit"
 					? `Install Rokit with '${ROKIT_INSTALL}' (${page}), then run 'rokit install' here.`
 					: `Install ${label} (${page}), then run '${id} install' here.`
