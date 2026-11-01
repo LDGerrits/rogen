@@ -292,7 +292,7 @@ export function containerClassName(instancePath: readonly string[]): string {
 	return "Folder";
 }
 
-/** An instance named the way Studio prints it, `ServerScriptService.Inventory.Save`, or with slashes, the way Rogen does. A running game's copy of a player's `PlayerScripts`, `PlayerGui` or `Backpack` is read as the Starter container it comes from. */
+/** An instance named the way Studio prints it, `ServerScriptService.Inventory.Save`, or with slashes, the way Rogen does. A running game's copy of a player's `PlayerScripts`, `PlayerGui` or `Backpack` is read as the Starter container it comes from; a character's copy of StarterCharacterScripts is offered as `characterScript`. */
 export class InstanceReference {
 	private static readonly GAME_PREFIX = /^game[./]/;
 	private static readonly QUOTED = /'([^']+)'/;
@@ -300,6 +300,10 @@ export class InstanceReference {
 	private static readonly LINE_AFTER_QUOTE = /^[\s,(]*line\s+\d+/i;
 	private static readonly PLAYER_COPY =
 		/^Players([./])[^./]+[./](PlayerScripts|PlayerGui|Backpack)(?=[./]|$)/;
+	private static readonly CHARACTER_SCRIPTS = [
+		"StarterPlayer",
+		"StarterCharacterScripts",
+	];
 	private static readonly STARTER_OF: Readonly<Record<string, string[]>> = {
 		PlayerScripts: ["StarterPlayer", "StarterPlayerScripts"],
 		PlayerGui: ["StarterGui"],
@@ -345,6 +349,19 @@ export class InstanceReference {
 
 	get service(): string {
 		return this.text.split(this.separator)[0];
+	}
+
+	/** For an instance inside a model in Workspace, the StarterCharacterScripts path a character's copy of a script there comes from. */
+	get characterScript(): InstanceReference | undefined {
+		const [service, , ...names] = this.text.split(this.separator);
+		if (service !== "Workspace" || names.length === 0) return undefined;
+		return new InstanceReference(
+			[...InstanceReference.CHARACTER_SCRIPTS, ...names].join(
+				this.separator
+			),
+			this.separator,
+			this.namesScript
+		);
 	}
 
 	/** Whether `instancePath` is this instance, or inside it unless a line number says it is a script. */

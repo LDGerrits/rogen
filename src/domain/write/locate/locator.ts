@@ -236,6 +236,10 @@ class ConfigLocator {
 			await this.mountedInstancesOf(locator).filesAt(reference);
 		if (mounted.length > 0)
 			return { reference, files: mounted, folders: [], fixes: [] };
+		const character = reference.characterScript;
+		const copied = character ? locator.locateInstance(character) : [];
+		if (copied.length > 0)
+			return { reference, files: copied, folders: [], fixes: [] };
 		const fixes = await this.renamesPlacing(diagnostics, reference);
 		const known = locator.foldersFor(reference);
 		return {

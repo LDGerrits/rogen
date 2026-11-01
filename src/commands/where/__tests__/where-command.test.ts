@@ -857,6 +857,43 @@ describe("where command", () => {
 			expect(logService.texts("warn")).toEqual([]);
 		});
 
+		describe("a script in a character", () => {
+			beforeEach(() =>
+				writeConfig("default.rogen.json", {
+					routes: {
+						...ROUTES,
+						Character: "StarterPlayer/StarterCharacterScripts",
+					},
+				})
+			);
+
+			it("should write it as the StarterCharacterScripts file it is a copy of", async () => {
+				await write("src/Hud/Character/Anim.client.luau");
+
+				await pipe("Workspace.ldg.Hud.Anim:3: x");
+
+				expect(text()).toBe("src/Hud/Character/Anim.client.luau:3: x");
+			});
+
+			it("should leave it as it is when a file places it in Workspace", async () => {
+				await writeConfig("default.rogen.json", {
+					routes: {
+						...ROUTES,
+						Character: "StarterPlayer/StarterCharacterScripts",
+						World: "Workspace/ldg",
+					},
+				});
+				await write(
+					"src/Hud/Character/Anim.client.luau",
+					"src/Hud/World/Anim.luau"
+				);
+
+				await pipe("Workspace.ldg.Hud.Anim:3: x");
+
+				expect(text()).toBe("src/Hud/World/Anim.luau:3: x");
+			});
+		});
+
 		it("should leave an instance no file places as it is", async () => {
 			await writeConfig("default.rogen.json", {
 				routes: ROUTES,
