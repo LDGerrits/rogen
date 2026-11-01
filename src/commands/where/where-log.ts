@@ -37,6 +37,10 @@ function aboutRelatedFile(diagnostic: Diagnostic, source: string): boolean {
 	);
 }
 
+function absentNote(location: FileLocation): string {
+	return location.exists ? "" : " · the file does not exist yet";
+}
+
 function describeLocation(location: FileLocation, cwd: string): string {
 	const relative = (file: string) => relativeTo(cwd, file);
 	return `${relative(location.source)} -> ${outcomeOf(location, cwd)}`;
@@ -50,13 +54,10 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 				? ` · also ${location.alsoAt.map(instanceKey).join(", ")}`
 				: "";
 			const hoisted = location.hoisted ? " · hoisted by ^" : "";
-			const absent = location.exists
-				? ""
-				: " · the file does not exist yet";
-			return `${instanceKey(location.instancePath)} · route ${location.route} (${location.routeMatch})${hoisted}${alsoAt}${absent}`;
+			return `${instanceKey(location.instancePath)} · route ${location.route} (${location.routeMatch})${hoisted}${alsoAt}${absentNote(location)}`;
 		}
 		case "compiled":
-			return `${instanceKey(location.instancePath)} · compiled from ${relative(location.from)}`;
+			return `${instanceKey(location.instancePath)} · compiled from ${relative(location.from)}${absentNote(location)}`;
 		case "replaced":
 			return `replaced by ${relative(location.by)}`;
 		case "displaced":
