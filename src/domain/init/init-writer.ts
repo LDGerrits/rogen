@@ -103,15 +103,15 @@ export class InitWriter {
 		return ok(undefined);
 	}
 
-	/** Runs the tool in the folder, made first when it isn't there, then removes what it wrote that `init` replaces; the tool failing is an error with the command to run by hand, since a project without its files is not what was asked for, and removes the folders it made. */
+	/** Runs the tool in the folder, making it first, then removes what it wrote that `init` replaces; a failed run removes the folders it made, so a second `init` starts clean. */
 	private async scaffold(
 		{ command, replaces }: PlannedScaffold,
 		directory: string,
 		dryRun: boolean
 	): Promise<Result<void, Error>> {
 		if (dryRun) return ok(undefined);
-		const made = await this.firstMissing(directory);
-		if (made !== undefined) {
+		const outermostNew = await this.firstMissing(directory);
+		if (outermostNew !== undefined) {
 			const created = await attempt(`Failed to create ${directory}`, () =>
 				this.fileSystemService.createDirectory(directory)
 			);
@@ -119,14 +119,16 @@ export class InitWriter {
 		}
 		const failed = await this.failureOf(command, directory);
 		if (failed !== undefined) {
-			if (made !== undefined)
+			if (outermostNew !== undefined)
 				await tryWithAsync(() =>
-					this.fileSystemService.delete(made, true)
+					this.fileSystemService.delete(outermostNew, true)
 				);
 			return err(
 				new ToolError(
 					`'${command.command}' failed: ${failed}.`,
-					`Run it in ${directory} yourself, then run 'rogen init' again.`
+					outermostNew === undefined
+						? `Run it in ${directory} yourself, then run 'rogen init' again.`
+						: `Make ${directory}, run it there yourself, then run 'rogen init' again.`
 				)
 			);
 		}

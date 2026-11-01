@@ -453,6 +453,11 @@ describe("a new roblox-ts project", () => {
 					await fileSystem.exists(path.join(directory, "games"))
 				).toBe(false);
 				expect(await fileSystem.exists(directory)).toBe(true);
+				expect(result.isErr() && result.error).toMatchObject({
+					hint: expect.stringMatching(
+						/^Make .*games.*, run it there/
+					),
+				});
 			});
 
 			it("should make no folder in a dry run", async () => {
