@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- `rogen init` checks the project it plans before it writes anything, so a plan that would fail writes nothing, and `--dry-run` says so too.
+- `rogen init` sets up Rojo's template layout as a lift of the project file `rojo init` writes, and a folder whose code is one module as a model.
+- A lift leaves out what Rojo never placed with `globIgnorePaths`, and a lifted model or plugin gets a model's or a plugin's next steps.
+- An empty source folder that `rogen init` makes gets a `.gitkeep`, so a clone has it.
+- Scripts at the root of the folder count as code, so `rogen init` adds no sample beside them.
+- In a roblox-ts project, the new `.gitignore` leaves out `node_modules`, the compiler's output and `include`, and the watch step uses the project's own compiler.
+- `--agent-hook` with no coding agent in the folder no longer stops a new project: `rogen init` writes it and warns.
+
 ## [2.0.0-beta.2] - 2026-10-31
 
 ### Added
