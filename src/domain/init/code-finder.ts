@@ -36,6 +36,9 @@ const isRojoScript = (name: string): boolean => {
 	return file.kind === "script" && file.isSyncedByRojo;
 };
 
+const isCompiledScript = (name: string): boolean =>
+	isScript(name) && !isRojoScript(name);
+
 const isHiddenOrVendored = (name: string): boolean =>
 	name.startsWith(".") || name === "node_modules";
 
@@ -83,11 +86,11 @@ export class CodeFinder {
 		);
 	}
 
-	/** The folders of Rojo's template in `src`, when they hold all of its code. */
+	/** The folders of Rojo's template in `src`, when they hold all of its code and it is code Rojo syncs itself, not a compiler's. */
 	private async templateFoldersIn(cwd: string): Promise<string[]> {
-		const entries = await this.entriesOf(
-			path.join(cwd, DEFAULT_SOURCE_PATH)
-		);
+		const source = path.join(cwd, DEFAULT_SOURCE_PATH);
+		if (await this.holdsCode(source, isCompiledScript)) return [];
+		const entries = await this.entriesOf(source);
 		const visible = entries.filter(([name]) => !isHiddenOrVendored(name));
 		if (visible.some(([name, type]) => isFileType(type) && isScript(name)))
 			return [];
@@ -120,7 +123,8 @@ export class CodeFinder {
 		}
 	}
 
-	async holdsCode(dir: string): Promise<boolean> {
+	/** `script`: what counts as code, any script by default. */
+	async holdsCode(dir: string, script = isScript): Promise<boolean> {
 		let entries;
 		try {
 			entries = await this.fileReader.readDirectory(dir);
@@ -128,12 +132,12 @@ export class CodeFinder {
 			return false;
 		}
 		const visible = entries.filter(([name]) => !isHiddenOrVendored(name));
-		if (visible.some(([name, type]) => isFileType(type) && isScript(name)))
+		if (visible.some(([name, type]) => isFileType(type) && script(name)))
 			return true;
 		for (const [name, type] of visible)
 			if (
 				isDirectoryType(type) &&
-				(await this.holdsCode(path.join(dir, name)))
+				(await this.holdsCode(path.join(dir, name), script))
 			)
 				return true;
 		return false;
