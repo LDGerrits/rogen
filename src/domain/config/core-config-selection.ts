@@ -21,7 +21,7 @@ import {
 const errorsOf = (entry: ConfigEntry): readonly Diagnostic[] =>
 	entry.status === "broken" ? entry.errors : [];
 
-interface PickedFolder {
+export interface PickedFolder {
 	readonly directory: string;
 	/** Absolute and sorted; empty when the folder has no config or can't be read. */
 	list(): Promise<readonly string[]>;

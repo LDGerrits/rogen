@@ -24,7 +24,7 @@ import {
 	CoveredTargets,
 	validFile,
 } from "./config-service.js";
-import { CoreConfigSelection } from "./core-config-selection.js";
+import { CoreConfigSelection, PickedFolder } from "./core-config-selection.js";
 import { ManagedConfig } from "./managed-config.js";
 
 export class CoreConfigService implements ConfigService {
@@ -62,13 +62,9 @@ export class CoreConfigService implements ConfigService {
 		if (discovered.isErr()) return err(discovered.error);
 
 		const { home: directory, files, noneNamed, notes } = discovered.value;
-		const opened = await Promise.all(
-			files.map((file) => ManagedConfig.open(file, this.loader))
-		);
 		return ok(
-			new CoreConfigSelection(
-				opened,
-				this.loader,
+			await this.selectionOf(
+				files,
 				directory,
 				noneNamed && !files.some(isProjectFileConfig)
 					? {
@@ -84,16 +80,33 @@ export class CoreConfigService implements ConfigService {
 
 	async selectHere(): Promise<ReloadableSelection> {
 		const directory = this.environmentService.cwd;
-		const opened = await Promise.all(
-			(await this.discovery.list(directory)).map((file) =>
-				ManagedConfig.open(file, this.loader)
-			)
-		);
-		return new CoreConfigSelection(opened, this.loader, directory, {
+		return this.selectionOf(
+			await this.discovery.list(directory),
 			directory,
-			list: () => this.discovery.list(directory),
-			holds: isConfigFileName,
-		});
+			{
+				directory,
+				list: () => this.discovery.list(directory),
+				holds: isConfigFileName,
+			}
+		);
+	}
+
+	private async selectionOf(
+		files: readonly string[],
+		directory: string,
+		folder: PickedFolder | undefined,
+		notes?: readonly string[]
+	): Promise<ReloadableSelection> {
+		const opened = await Promise.all(
+			files.map((file) => ManagedConfig.open(file, this.loader))
+		);
+		return new CoreConfigSelection(
+			opened,
+			this.loader,
+			directory,
+			folder,
+			notes
+		);
 	}
 
 	private async firstConfigIn(directory: string): Promise<string[]> {

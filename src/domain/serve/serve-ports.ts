@@ -50,18 +50,16 @@ export class ServePorts {
 			config.projectFile
 		)) {
 			if (!this.ownerRuns(recorded)) continue;
-			const address = new ServeAddress(recorded.host, recorded.port);
-			const state = await this.probe.probe(address);
+			const target = {
+				...this.targetOf(config),
+				address: new ServeAddress(recorded.host, recorded.port),
+			};
+			const state = await this.probe.probe(target.address);
 			if (
 				state.kind === "serving" &&
-				(await this.records.recordOf(address, state.info))
+				(await this.recordFor(target, state.info))
 			)
-				return {
-					config,
-					project: config.projectName,
-					address,
-					servedBy: state.info,
-				};
+				return { ...target, servedBy: state.info };
 		}
 		return undefined;
 	}
@@ -108,19 +106,22 @@ export class ServePorts {
 	async check(target: ServeTarget): Promise<Result<ServeTarget, Diagnostic>> {
 		const state = await this.probe.probe(target.address);
 		if (state.kind === "free") return ok(target);
-		const holder = state.kind === "serving" ? state.info : undefined;
-		const recorded =
-			holder && (await this.records.recordOf(target.address, holder));
-		if (
-			holder &&
-			recorded &&
-			samePath(recorded.projectFile, target.config.projectFile)
-		) {
-			const served = this.targetServedBy(target, holder, recorded);
+		if (state.kind !== "serving")
+			return err(await this.portTaken(target, undefined, undefined));
+		const holder = state.info;
+		const own = await this.recordFor(target, holder);
+		if (own) {
+			const served = this.targetServedBy(target, holder, own);
 			if (served) return ok(served);
 			return err(await this.portTaken(target, holder, undefined));
 		}
-		return err(await this.portTaken(target, holder, recorded));
+		return err(
+			await this.portTaken(
+				target,
+				holder,
+				await this.records.recordOf(target.address, holder)
+			)
+		);
 	}
 
 	/** Whether the `rogen serve` that started the recorded server has ended; a record without an owner can't tell. */
