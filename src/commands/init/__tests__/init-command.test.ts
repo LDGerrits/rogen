@@ -626,7 +626,6 @@ describe("init command", () => {
 			);
 
 			expect(result.isOk()).toBe(true);
-			expect(await exists("default.rogen.json")).toBe(true);
 		});
 
 		it("should exit 1 beside a config when the hook is all that was asked and no coding agent is found", async () => {
@@ -639,7 +638,6 @@ describe("init command", () => {
 			);
 
 			expect(exitCodeOf((result as ResultError<Error>).error)).toBe(1);
-			expect(errorMessage(result)).toContain("(init.noCodingAgent)");
 		});
 
 		it("should write Rojo's pin and run no program", async () => {

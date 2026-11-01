@@ -43,17 +43,9 @@ export class AgentSetup implements Setup<AgentChoices> {
 	): Diagnostic {
 		const signs = CODING_AGENTS.flatMap(({ signs }) => signs);
 		const message = `--agent-hook adds the hook to the coding agents in use here, and init found none, so it adds no hook. An agent is in use where its folder or file is: ${joinedWithOr(signs)}. Once one is, run 'rogen init --agent-hook'.`;
-		return severity === "error"
-			? errorDiagnostic(
-					"init.noCodingAgent",
-					{ resource: folder },
-					message
-				)
-			: warningDiagnostic(
-					"init.noCodingAgent",
-					{ resource: folder },
-					message
-				);
+		const diagnostic =
+			severity === "error" ? errorDiagnostic : warningDiagnostic;
+		return diagnostic("init.noCodingAgent", { resource: folder }, message);
 	}
 
 	/** `--agent-hook` was given and no coding agent is in use here. */

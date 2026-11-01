@@ -15,11 +15,11 @@ import { ROJO_TEMPLATE_NODES } from "./starter-project.js";
 export interface DirectoryLayout {
 	readonly codeFolders: readonly string[];
 	/** The code folders with an init module at their top, which Rojo reads as one module. */
-	readonly moduleFolders?: readonly string[];
+	readonly moduleFolders: readonly string[];
 	/** The scripts at the top of the folder that Rojo reads, outside every code folder. */
-	readonly rootScripts?: readonly string[];
+	readonly rootScripts: readonly string[];
 	/** The folders of Rojo's place template that hold code, such as `src/server`, when `src` holds code only in them. */
-	readonly templateFolders?: readonly string[];
+	readonly templateFolders: readonly string[];
 }
 
 const TEMPLATE_FOLDERS = Object.keys(ROJO_TEMPLATE_NODES);
@@ -128,12 +128,7 @@ export class CodeFinder {
 
 	/** `script`: what counts as code, any script by default. */
 	async holdsCode(dir: string, script = isScript): Promise<boolean> {
-		let entries;
-		try {
-			entries = await this.fileReader.readDirectory(dir);
-		} catch {
-			return false;
-		}
+		const entries = await this.entriesOf(dir);
 		const visible = entries.filter(([name]) => !isHiddenOrVendored(name));
 		if (visible.some(([name, type]) => isFileType(type) && script(name)))
 			return true;
@@ -154,14 +149,7 @@ export class CodeFinder {
 		folder = "."
 	): Promise<string[]> {
 		if (held.includes(".")) return [];
-		let entries;
-		try {
-			entries = await this.fileReader.readDirectory(
-				path.join(cwd, folder)
-			);
-		} catch {
-			return [];
-		}
+		const entries = await this.entriesOf(path.join(cwd, folder));
 		const found: string[] = [];
 		for (const [name, type] of entries) {
 			const relative = joinPosix(folder, name);
@@ -193,12 +181,7 @@ export class CodeFinder {
 		cwd: string,
 		excluded: readonly string[]
 	): Promise<string[]> {
-		let entries;
-		try {
-			entries = await this.fileReader.readDirectory(cwd);
-		} catch {
-			return [];
-		}
+		const entries = await this.entriesOf(cwd);
 		const candidates = entries
 			.filter(
 				([name, type]) =>

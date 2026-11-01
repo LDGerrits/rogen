@@ -1,7 +1,7 @@
 import path from "path";
 import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
 import { InitDirectory } from "../init-directory.js";
-import { directory, directoryOf } from "./init-fixtures.js";
+import { directory, directoryOf, layoutOf } from "./init-fixtures.js";
 
 describe("domain/init/init-directory", () => {
 	describe("InitDirectory", () => {
@@ -11,7 +11,7 @@ describe("domain/init/init-directory", () => {
 					directory,
 					new Set(["agents.md"]),
 					workspaceOf(),
-					{ codeFolders: [] },
+					layoutOf(),
 					false,
 					caseInsensitive
 				);

@@ -476,7 +476,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			return `starts a new ${language.copy.label} project with places, and this folder already has one. ${later}`;
 		if (this.directory.hasHandWrittenProject)
 			return `starts a new tree, and ${LIFTED_HERE} Move ${DEFAULT_PROJECT_FILE} away first, or leave --places out.`;
-		if (this.directory.layout.templateFolders?.length)
+		if (this.directory.layout.templateFolders.length > 0)
 			return `starts a new tree, and ${DEFAULT_SOURCE_PATH} is laid out as Rojo's place template, which init keeps. Leave --places out.`;
 		return undefined;
 	}
@@ -644,7 +644,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		kind: InitKind
 	): Promise<Result<ProjectTree, Diagnostic[]>> {
 		const { reader } = this;
-		const templateFolders = this.directory.layout.templateFolders ?? [];
+		const { templateFolders } = this.directory.layout;
 		if (chosen.kind === "new" && kind === "place" && templateFolders.length)
 			return ok({
 				kind: "rojoTemplate",
@@ -775,10 +775,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				`Left alone: ${others.join(", ")}. Rojo runs a plain project file as it is, and Rogen writes only the project files its .rogen.json files name.`
 			);
 		for (const warning of tree.warnings) builder.addWarning(warning);
-		if (choices.tree.kind === "lift" && unmounted.length > 0)
+		if (choices.tree.kind === "lift" && unmounted.length > 0) {
+			const them = unmounted.length === 1 ? "it" : "them";
 			builder.addNote(
-				`Left out ${listedBriefly(unmounted)} with "globIgnorePaths", since no node of ${choices.tree.from} mounts ${unmounted.length === 1 ? "it" : "them"}, so Rojo ignored ${unmounted.length === 1 ? "it" : "them"}. To have Rogen route ${unmounted.length === 1 ? "it" : "them"}, take ${unmounted.length === 1 ? "it" : "them"} out of "globIgnorePaths".`
+				`Left out ${listedBriefly(unmounted)} with "globIgnorePaths", since no node of ${choices.tree.from} mounts ${them}, so Rojo ignored ${them}. To have Rogen route ${them}, take ${them} out of "globIgnorePaths".`
 			);
+		}
 		if (choices.outside?.length)
 			builder.addWarning(
 				ProjectSetup.outsideWarning(

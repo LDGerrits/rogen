@@ -34,9 +34,7 @@ afterEach(() => {
 
 export interface AskedPrompt extends PromptDetails {
 	readonly message: string;
-	/** The values a select offered. */
 	readonly choices?: readonly string[];
-	/** The hint of each choice, by value. */
 	readonly choiceHints?: Readonly<Record<string, string | undefined>>;
 }
 

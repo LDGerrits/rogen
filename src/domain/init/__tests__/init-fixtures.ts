@@ -5,6 +5,7 @@ import {
 	WorkspaceSpec as ToolchainSpec,
 	workspaceOf,
 } from "../../toolchain/__tests__/workspaces.js";
+import { DirectoryLayout } from "../code-finder.js";
 import { InitDirectory } from "../init-directory.js";
 import { InitPlanBuilder } from "../init-plan-builder.js";
 import { InitPlan } from "../init-service.js";
@@ -26,13 +27,22 @@ export interface DirectorySpec {
 	readonly tracksProjectFile?: boolean;
 }
 
+export const layoutOf = (
+	codeFolders: readonly string[] = []
+): DirectoryLayout => ({
+	codeFolders,
+	moduleFolders: [],
+	rootScripts: [],
+	templateFolders: [],
+});
+
 export function directoryOf(spec: DirectorySpec = {}): InitDirectory {
 	const { codeFolders = [], hasSrc = false } = spec.workspace ?? {};
 	return new InitDirectory(
 		spec.path ?? directory,
 		new Set([...(spec.existing ?? []), ...(hasSrc ? ["src"] : [])]),
 		workspaceOf(spec.workspace),
-		{ codeFolders },
+		layoutOf(codeFolders),
 		spec.tracksProjectFile ?? false
 	);
 }
