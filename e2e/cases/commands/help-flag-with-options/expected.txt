@@ -100,7 +100,7 @@ stdout:
     },
     "output": {
       "document": "{changed:bool,configs:[WriteEntry],rojo?:RojoEntry}",
-      "lines": "{write:WriteEntry}|{rojo:RojoEntry}|{notice:{kind:\"added\"|\"removed\"|\"broken\"|\"recovered\",config:string,keptLastValid?:bool,diagnostics?:[Diagnostic]}}|{error:Error}"
+      "lines": "{write:WriteEntry}|{rojo:RojoEntry}|{notice:{kind:\"added\"|\"removed\"|\"broken\"|\"recovered\",config:string,keptLastValid?:bool,diagnostics?:[Diagnostic]}}|{error:Error}|{diagnostics:[Diagnostic]}"
     },
     "failure": "{diagnostics:[Diagnostic]}|{error:Error}",
     "shapes": {

@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- `rogen write --watch` with no project follows every config of the folder, as `rogen write` writes them, and says when one is added or removed.
+- `serve --json` prints an `orphan` line when it ends a server that a killed `rogen serve` left running.
+- A burst of file changes is named only under `--verbose`.
+
+### Fixed
+
+- `serve` and the `--watch` commands keep going when Rojo crashes on deleted folders more than once, and give up only when a restarted Rojo crashes before it serves.
+- The write done before a crashed Rojo starts again is reported.
+- `serve` knows its server after the project's `name` changes, and a second `serve` of the same project exits 0: without `--port` on any port, and when both start at once.
+- `build --watch --json` and `sourcemap --watch --json` print Rojo's failure as `diagnostics`.
+- `syncback --dry-run` works on a read-only source file.
+
 ## [2.0.0-beta.2] - 2026-10-31
 
 ### Added
