@@ -165,8 +165,9 @@ export class ServeLog implements ServeReporter {
 		);
 	}
 
-	stopped({ target, interrupted, failure }: ServerExitEvent): void {
-		if (failure) this.logService.diagnostic(failure);
+	stopped({ target, interrupted, failure, servedBy }: ServerExitEvent): void {
+		if (servedBy) this.running({ ...target, servedBy });
+		else if (failure) this.logService.diagnostic(failure);
 		else if (!interrupted)
 			this.logService.info(
 				`Rojo stopped serving ${this.nameOf(target)}.`
@@ -281,7 +282,17 @@ export class ServeJsonLog implements ServeReporter {
 		});
 	}
 
-	stopped({ target, exit, failure, crashed }: ServerExitEvent): void {
+	stopped({
+		target,
+		exit,
+		failure,
+		crashed,
+		servedBy,
+	}: ServerExitEvent): void {
+		if (servedBy) {
+			this.running({ ...target, servedBy });
+			return;
+		}
 		this.line({
 			stopped: this.stoppedJson(target, crashed ? "crashed" : "exited", {
 				code: exit.code,

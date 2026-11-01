@@ -82,3 +82,8 @@ export class RunOnceScheduler implements Disposable {
 		this.cancel();
 	}
 }
+
+/** Resolves after `ms` milliseconds. */
+export function timeout(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}

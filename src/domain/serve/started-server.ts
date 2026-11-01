@@ -149,6 +149,11 @@ export class StartedServer extends AbstractDisposable {
 		return this._target;
 	}
 
+	/** Whether a Rojo it started has answered for its project. */
+	get hasServed(): boolean {
+		return this.recordWrite !== undefined;
+	}
+
 	/** Takes the target its config gives now, at the same address, such as one with a new project name. */
 	follow(target: ServeTarget): void {
 		this._target = target;

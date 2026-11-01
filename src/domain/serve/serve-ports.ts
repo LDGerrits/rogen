@@ -68,6 +68,17 @@ export class ServePorts {
 			: undefined;
 	}
 
+	/** The server on `target`'s port when a `rogen serve` that still runs recorded it for `target`'s project file; `pending` when it answers for the project but has no record yet. */
+	async servedByAnother(
+		target: ServeTarget
+	): Promise<ServerInfo | "pending" | undefined> {
+		const state = await this.probe.probe(target.address);
+		if (state.kind !== "serving") return undefined;
+		const recorded = await this.recordFor(target, state.info);
+		if (recorded) return this.ownerEnded(recorded) ? undefined : state.info;
+		return state.info.project === target.project ? "pending" : undefined;
+	}
+
 	/** `target` once its port is free, or with `servedBy` set when its project is already served there; else why it can't be served. */
 	async check(target: ServeTarget): Promise<Result<ServeTarget, Diagnostic>> {
 		const state = await this.probe.probe(target.address);

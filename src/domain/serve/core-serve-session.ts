@@ -1,4 +1,4 @@
-import { DeferredPromise, Sequencer } from "../../base/async.js";
+import { DeferredPromise, Sequencer, timeout } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
@@ -9,6 +9,7 @@ import { isWritten } from "../write/write.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoCompatibility } from "../runner/rojo-compatibility.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
+import { ServerInfo } from "../runner/rojo-server.js";
 import { WatchSession, WatchUpdate } from "../watch/watch-service.js";
 import {
 	ServeChangeEvent,
@@ -26,6 +27,10 @@ import { ServePorts } from "./serve-ports.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
 import { StartedServer } from "./started-server.js";
+
+const RECORD_POLL_MS = 250;
+
+const RECORD_WAIT_MS = 5_000;
 
 /** Watches the plan's configs and keeps a started server for each config to serve. */
 export class CoreServeSession
@@ -326,9 +331,41 @@ export class CoreServeSession
 		});
 	}
 
+	private async stoppedServer(
+		stop: ServerExitEvent,
+		served: boolean
+	): Promise<void> {
+		const servedBy =
+			stop.failure && !stop.crashed && !served
+				? await this.servedByAnother(stop.target)
+				: undefined;
+		if (!servedBy) {
+			this._onDidExit.fire(stop);
+			return;
+		}
+		const { target, exit } = stop;
+		this._onDidExit.fire({ target, exit, interrupted: false, servedBy });
+	}
+
+	/** The server another `rogen serve` started on the target's address first, which kept this one from starting; waits a little for its record. */
+	private async servedByAnother(
+		target: ServeTarget
+	): Promise<ServerInfo | undefined> {
+		for (
+			let waited = 0;
+			waited <= RECORD_WAIT_MS;
+			waited += RECORD_POLL_MS
+		) {
+			const served = await this.ports.servedByAnother(target);
+			if (served !== "pending") return served;
+			await timeout(RECORD_POLL_MS);
+		}
+		return undefined;
+	}
+
 	private launch(target: ServeTarget): void {
 		if (this.stopping) return;
-		const server = new StartedServer(
+		const server: StartedServer = new StartedServer(
 			target,
 			this.plan,
 			this.rojoRunner,
@@ -338,7 +375,11 @@ export class CoreServeSession
 				served: (serving) => this._onDidServe.fire(serving),
 				said: (said) => this._onDidOutput.fire(said),
 				connection: (change) => this._onDidConnect.fire(change),
-				stopped: (stop) => this._onDidExit.fire(stop),
+				stopped: (stop) => {
+					this.stoppedServer(stop, server.hasServed).catch((error) =>
+						this._onDidError.fire(ErrorUtils.fromUnknown(error))
+					);
+				},
 				failed: (error) => this._onDidError.fire(error),
 				restarted: (serving) => this._onDidRestart.fire(serving),
 			},

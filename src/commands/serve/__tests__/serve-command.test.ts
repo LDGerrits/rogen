@@ -334,6 +334,66 @@ describe("serve command", () => {
 		]);
 	});
 
+	it("should exit 0 and name the server when another serve started one for the project first", async () => {
+		const result = serve([], { json: true });
+		await settle();
+		await memFs.writeFile(
+			...recordFile(34872, "repo", "/repo/default.project.json")
+		);
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+			sessionId: "s1",
+		});
+
+		processes.spawned[0].print("[ERROR librojo] Address already in use");
+		processes.spawned[0].exit({ code: 1, signal: null });
+
+		expect((await result).isOk()).toBe(true);
+		expect(printed().slice(1)).toEqual([
+			{
+				output: {
+					config: "default.rogen.json",
+					severity: "error",
+					message: "Address already in use",
+				},
+			},
+			{
+				serving: {
+					config: "default.rogen.json",
+					version: "7.7.1",
+					project: "repo",
+					host: "127.0.0.1",
+					port: 34872,
+					session: "s1",
+					reportsConnections: false,
+					alreadyRunning: true,
+				},
+			},
+		]);
+	});
+
+	it("should say in text that another serve started serving the project first", async () => {
+		const result = serve();
+		await settle();
+		await memFs.writeFile(
+			...recordFile(34872, "repo", "/repo/default.project.json")
+		);
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+			sessionId: "s1",
+		});
+
+		processes.spawned[0].exit({ code: 1, signal: null });
+
+		expect((await result).isOk()).toBe(true);
+		expect(logService.lines.slice(-2)).toEqual([
+			"info: default.rogen.json is already served by another rogen serve: Rojo 7.7.1 serves a project named repo at localhost:34872 (session s1).",
+			"outro: Another rogen serve started serving this project first, so this one stops.",
+		]);
+	});
+
 	it("should print one JSON object per line", async () => {
 		void serve([], { json: true });
 		await settle();

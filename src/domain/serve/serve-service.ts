@@ -88,6 +88,8 @@ export type ServerExitEvent = {
 	readonly interrupted: boolean;
 	/** It crashed again right after Rogen restarted it after a crash, so Rogen gave up. */
 	readonly crashed?: boolean;
+	/** It couldn't start because another `rogen serve` started a server for its project file on its address first, which serves it; the stop is no failure. */
+	readonly servedBy?: ServerInfo;
 } & (
 	| {
 			/** Why the stop is a failure: the server couldn't start, or exited with an error. */

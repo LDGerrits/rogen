@@ -942,6 +942,7 @@ describe("CoreServeService", () => {
 			await start();
 
 			processes.spawned[0].exit({ code: 1, signal: null });
+			await settle();
 
 			expect(stops).toHaveLength(1);
 			expect(stops[0].interrupted).toBe(false);
@@ -956,11 +957,71 @@ describe("CoreServeService", () => {
 
 			processes.spawned[0].print("[ERROR librojo] Port in use");
 			processes.spawned[0].exit({ code: 1, signal: null });
+			await settle();
 
 			expect(said).toEqual(["error: Port in use", "stopped"]);
 			expect(stops[0].failure?.message).toBe(
 				"Rojo stopped serving repo with exit code 1; see what it said above."
 			);
+		});
+
+		it("should stand down without a failure when another serve started a server for the project on its port first", async () => {
+			await start();
+			processes.running.add(5000);
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+
+			processes.spawned[0].exit({ code: 1, signal: null });
+			await settle();
+
+			expect(stops).toHaveLength(1);
+			expect(stops[0].failure).toBeUndefined();
+			expect(stops[0].servedBy).toEqual({
+				project: "repo",
+				version: "7.7.1",
+				session: "s1",
+			});
+		});
+
+		it("should wait for the record of a server that answers for the project when its own couldn't start", async () => {
+			await start();
+			processes.running.add(5000);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+
+			processes.spawned[0].exit({ code: 1, signal: null });
+			await jest.advanceTimersByTimeAsync(300);
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+				})
+			);
+			await settle();
+
+			expect(stops[0].servedBy?.project).toBe("repo");
+		});
+
+		it("should fail as before when its server couldn't start and the port holds no server of the project", async () => {
+			await start();
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("other")
+			);
+
+			processes.spawned[0].exit({ code: 1, signal: null });
+			await settle();
+
+			expect(stops[0].failure?.code).toBe("serve.serverExited");
+			expect(stops[0].servedBy).toBeUndefined();
 		});
 
 		describe("as its configs change", () => {
