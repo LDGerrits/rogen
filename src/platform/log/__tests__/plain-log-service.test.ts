@@ -138,6 +138,21 @@ describe("PlainLogService", () => {
 		expect(out).toEqual([]);
 	});
 
+	it("should colour the prefixes and debug lines when colour is on", () => {
+		const logService = new PlainLogService(undefined, undefined, true);
+		logService.setLevel(LogLevel.Debug);
+
+		logService.warn("careful");
+		logService.error("broken");
+		logService.debug("detail");
+
+		expect(errors).toEqual([
+			"\u001b[33mwarning:\u001b[39m careful",
+			"\u001b[31merror:\u001b[39m broken",
+			"\u001b[2m[debug] detail\u001b[22m",
+		]);
+	});
+
 	it("should indent debug lines inside a step", () => {
 		const logService = new PlainLogService();
 		logService.setLevel(LogLevel.Debug);

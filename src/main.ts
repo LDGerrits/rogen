@@ -226,11 +226,13 @@ class RogenMain {
 		const logService: LogService = environmentService.isPlain
 			? new PlainLogService(
 					environmentService.cwd,
-					environmentService.annotationsIn
+					environmentService.annotationsIn,
+					environmentService.hasColor
 				)
 			: new TerminalLogService(
 					environmentService.cwd,
-					environmentService.annotationsIn
+					environmentService.annotationsIn,
+					environmentService.hasColor
 				);
 		logService.setLevel(environmentService.logLevel);
 		return logService;
@@ -246,7 +248,7 @@ class RogenMain {
 		services.set(LogService, logService);
 		const promptService = new ConsolePromptService({
 			interactive: environmentService.isInteractive,
-			color: !environmentService.isPlain,
+			color: environmentService.hasColor,
 		});
 		services.set(PromptService, promptService);
 		services.set(InputService, new NativeInputService());

@@ -1,23 +1,56 @@
 import * as clack from "@clack/prompts";
-import { style } from "../../base/style.js";
+import { Writable } from "stream";
+import { stripVTControlCharacters } from "util";
+import { Styler, style, unstyled } from "../../base/style.js";
 import { AbstractLogService, LogKind } from "./abstract-log-service.js";
 
-const SYMBOLS = {
-	success: style("green", "✔"),
-	warning: style("yellow", "▲"),
-	error: style("red", "■"),
-} as const;
+/** Stdout with the colours clack draws taken out. */
+class UncolouredStdout extends Writable {
+	get columns(): number | undefined {
+		return process.stdout.columns;
+	}
 
-const nested = (text: string, symbol?: string) =>
-	clack.log.message(symbol ? `${symbol} ${text}` : text, { spacing: 0 });
+	override _write(
+		chunk: unknown,
+		_encoding: BufferEncoding,
+		done: (error?: Error | null) => void
+	): void {
+		process.stdout.write(stripVTControlCharacters(String(chunk)));
+		done();
+	}
+}
 
 export class TerminalLogService extends AbstractLogService {
 	declare readonly _serviceBrand: undefined;
 
 	protected readonly drawsFrame = true;
 
+	private readonly style: Styler;
+	private readonly symbols: Readonly<
+		Record<"success" | "warning" | "error", string>
+	>;
+	private readonly output?: Writable;
+
+	/** `color` false draws the same layout without colour. */
+	constructor(cwd?: string, annotationsIn?: string, color = true) {
+		super(cwd, annotationsIn);
+		this.style = color ? style : unstyled;
+		this.symbols = {
+			success: this.style("green", "✔"),
+			warning: this.style("yellow", "▲"),
+			error: this.style("red", "■"),
+		};
+		if (!color) this.output = new UncolouredStdout();
+	}
+
 	protected write(kind: LogKind, text: string): void {
 		if (!this.framed && this.writeUnframed(kind, text)) return;
+		const { output, symbols } = this;
+		const nested = (line: string, symbol?: string) =>
+			clack.log.message(symbol ? `${symbol} ${line}` : line, {
+				spacing: 0,
+				output,
+			});
 		switch (kind) {
 			case "print":
 				console.info(text);
@@ -26,38 +59,38 @@ export class TerminalLogService extends AbstractLogService {
 				console.error(text);
 				break;
 			case "note":
-				console.info(style("dim", text));
+				console.info(this.style("dim", text));
 				break;
 			case "notice":
-				console.error(style("dim", text));
+				console.error(this.style("dim", text));
 				break;
 			case "intro":
-				clack.intro(text);
+				clack.intro(text, { output });
 				break;
 			case "outro":
-				clack.outro(text);
+				clack.outro(text, { output });
 				break;
 			case "step":
 			case "section":
-				clack.log.step(text);
+				clack.log.step(text, { output });
 				break;
 			case "sectionBody":
 				nested(text);
 				break;
 			case "success":
-				nested(text, SYMBOLS.success);
+				nested(text, symbols.success);
 				break;
 			case "warn":
 			case "diagnosticWarning":
-				nested(text, SYMBOLS.warning);
+				nested(text, symbols.warning);
 				break;
 			case "error":
 			case "diagnosticError":
-				nested(text, SYMBOLS.error);
+				nested(text, symbols.error);
 				break;
 			case "debug":
 			case "trace":
-				nested(style("dim", text));
+				nested(this.style("dim", text));
 				break;
 			case "info":
 				nested(text);
@@ -77,15 +110,15 @@ export class TerminalLogService extends AbstractLogService {
 				return true;
 			case "debug":
 			case "trace":
-				console.error(style("dim", text));
+				console.error(this.style("dim", text));
 				return true;
 			case "warn":
 			case "diagnosticWarning":
-				console.error(`${SYMBOLS.warning} ${text}`);
+				console.error(`${this.symbols.warning} ${text}`);
 				return true;
 			case "error":
 			case "diagnosticError":
-				console.error(`${SYMBOLS.error} ${text}`);
+				console.error(`${this.symbols.error} ${text}`);
 				return true;
 			default:
 				return false;

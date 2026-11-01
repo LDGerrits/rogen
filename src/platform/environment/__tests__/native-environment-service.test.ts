@@ -14,6 +14,19 @@ const inTerminal = (
 		platform: "linux",
 	});
 
+const piped = (
+	env: Record<string, string | undefined>,
+	flags: ConstructorParameters<typeof NativeEnvironmentService>[0] = {}
+) =>
+	new NativeEnvironmentService(flags, "/mock/cwd", {
+		env,
+		isTerminal: false,
+		userHome: "/mock/home",
+		tmpDir: "/mock/tmp",
+		pid: 4242,
+		platform: "linux",
+	});
+
 describe("NativeEnvironmentService", () => {
 	it("should expose the working directory", () => {
 		expect(inTerminal({}).cwd).toBe("/mock/cwd");
@@ -99,68 +112,61 @@ describe("NativeEnvironmentService", () => {
 			expect(inTerminal({}).isPlain).toBe(false);
 		});
 
-		it("should print plain lines when NO_COLOR is set", () => {
-			const env = inTerminal({ NO_COLOR: "1" });
-
-			expect(env.isPlain).toBe(true);
-			expect(env.isInteractive).toBe(true);
-		});
-
 		it("should print plain lines when an agent runs it", () => {
 			expect(inTerminal({ CLAUDECODE: "1" }).isPlain).toBe(true);
 		});
 
-		it("should print plain lines under --color never in a terminal", () => {
-			expect(inTerminal({}, { color: "never" }).isPlain).toBe(true);
+		it("should draw in a terminal whatever NO_COLOR or --color says", () => {
+			expect(inTerminal({ NO_COLOR: "1" }).isPlain).toBe(false);
+			expect(inTerminal({}, { color: "never" }).isPlain).toBe(false);
 		});
 
-		it("should draw under --color always without a terminal, despite NO_COLOR or an agent", () => {
-			const piped = new NativeEnvironmentService(
-				{ color: "always" },
-				"/mock/cwd",
-				{
-					env: { NO_COLOR: "1", CLAUDECODE: "1" },
-					isTerminal: false,
-					userHome: "/mock/home",
-					tmpDir: "/mock/tmp",
-					pid: 4242,
-					platform: "linux",
-				}
-			);
-
-			expect(piped.isPlain).toBe(false);
-			expect(piped.isInteractive).toBe(false);
-		});
-
-		it("should follow the terminal under --color auto", () => {
-			expect(
-				inTerminal({ NO_COLOR: "1" }, { color: "auto" }).isPlain
-			).toBe(true);
-			expect(inTerminal({}, { color: "auto" }).isPlain).toBe(false);
-		});
-
-		it("should print plain lines under --json whatever --color says", () => {
-			expect(
-				inTerminal({}, { json: true, color: "always" }).isPlain
-			).toBe(true);
+		it("should print plain lines without a terminal under --color always", () => {
+			expect(piped({}, { color: "always" }).isPlain).toBe(true);
 		});
 
 		it("should print plain lines under --json in a terminal", () => {
-			const env = new NativeEnvironmentService(
-				{ json: true },
-				"/mock/cwd",
-				{
-					env: {},
-					isTerminal: true,
-					userHome: "/mock/home",
-					tmpDir: "/mock/tmp",
-					pid: 4242,
-					platform: "linux",
-				}
-			);
-
-			expect(env.isPlain).toBe(true);
+			expect(inTerminal({}, { json: true }).isPlain).toBe(true);
 		});
+	});
+
+	describe("hasColor", () => {
+		it("should colour an interactive terminal", () => {
+			expect(inTerminal({}).hasColor).toBe(true);
+			expect(inTerminal({}, { color: "auto" }).hasColor).toBe(true);
+		});
+
+		it("should not colour plain lines under --color auto", () => {
+			expect(piped({}).hasColor).toBe(false);
+			expect(inTerminal({ CLAUDECODE: "1" }).hasColor).toBe(false);
+		});
+
+		it("should not colour under NO_COLOR or --color never", () => {
+			expect(inTerminal({ NO_COLOR: "1" }).hasColor).toBe(false);
+			expect(inTerminal({}, { color: "never" }).hasColor).toBe(false);
+		});
+
+		it("should colour under --color always despite NO_COLOR, a pipe or an agent", () => {
+			expect(
+				piped({ NO_COLOR: "1", CLAUDECODE: "1" }, { color: "always" })
+					.hasColor
+			).toBe(true);
+		});
+
+		it.each([
+			["1", true],
+			["", true],
+			["0", false],
+			["false", false],
+		])(
+			"should follow FORCE_COLOR=%p under --color auto",
+			(value, color) => {
+				expect(piped({ FORCE_COLOR: value }).hasColor).toBe(color);
+				expect(
+					inTerminal({ FORCE_COLOR: value, NO_COLOR: "1" }).hasColor
+				).toBe(color);
+			}
+		);
 	});
 
 	describe("annotationsIn", () => {

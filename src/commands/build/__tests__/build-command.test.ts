@@ -460,7 +460,7 @@ describe("build command", () => {
 			expect(await fs.exists(abs("default.project.json"))).toBe(true);
 		});
 
-		it("should say unchanged for a project file that was already up to date", async () => {
+		it("should say unchanged for a project file that was already up to date, and changed for the build Rojo wrote", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			await run(
 				new MockConfigService([validEntry()]),
@@ -472,7 +472,8 @@ describe("build command", () => {
 			);
 
 			expect(document.configs[0].outcome).toBe("unchanged");
-			expect(document.changed).toBe(false);
+			expect(document.rojo.outcome).toBe("built");
+			expect(document.changed).toBe(true);
 		});
 
 		it("should print every config as not written, with its errors, and fail without reporting again", async () => {
