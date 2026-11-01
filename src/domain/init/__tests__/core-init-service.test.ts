@@ -1496,7 +1496,8 @@ describe("CoreInitService", () => {
 			await review(prompts);
 			const shown = prompts.prompts.at(-1)?.description ?? "";
 
-			expect(shown).toMatch(/^Project {3}sample Greeter$/m);
+			expect(shown).not.toContain("Project");
+			expect(shown).toMatch(/^Sample {4}Greeter$/m);
 			expect(shown).not.toContain("Darklua");
 			expect(shown).toContain("Agents    rules in AGENTS.md");
 			expect(shown).toContain("default.rogen.json");

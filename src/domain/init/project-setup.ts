@@ -724,10 +724,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					: [places ? "several places" : "one place"]),
 			...(shown.has("language") ? [] : [language.copy.label]),
 			...(tree.kind === "lift" ? [`lifting ${tree.from}`] : []),
-			...(sample && !shown.has("sample") ? ["sample Greeter"] : []),
 		];
 		if (project.length > 0)
 			builder.addSummary("Project", project.join(", "));
+		if (sample && !shown.has("sample"))
+			builder.addSummary("Sample", "Greeter");
 		if (routes)
 			builder.addSummary(
 				"Code",
