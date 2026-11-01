@@ -79,9 +79,7 @@ describe("GreeterSample", () => {
 		expect(content).toContain("rogen sourcemap game --watch");
 		expect(content).toContain("luau-lsp analyze");
 		expect(content).toContain("rogen serve lobby --port");
-		expect(content).toContain(
-			"copy the `place/game` folder to `place/lobby`"
-		);
+		expect(content).toContain("Copy `place/game` to `place/lobby`");
 		expect(content).not.toContain("code-workspace");
 	});
 
