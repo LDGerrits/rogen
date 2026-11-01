@@ -236,6 +236,9 @@ function unknownOption(
 	);
 }
 
+/** Options a line may give more than once, as Rojo takes `--help` twice. */
+const REPEATABLE: ReadonlySet<string> = new Set(["help", "version"]);
+
 /** Node's wording varies by version and talks about positionals, so options are checked here. */
 function findOptionProblem(
 	tokens: NonNullable<Token>,
@@ -247,13 +250,6 @@ function findOptionProblem(
 	for (const token of tokens) {
 		if (token.kind !== "option") continue;
 		const option = options.find(({ name }) => name === token.name);
-		if (option?.type === "string" && !option.multiple) {
-			if (given.has(option.name))
-				return new UsageError(
-					`'--${option.name}' was given more than once, but takes one value.`
-				);
-			given.add(option.name);
-		}
 		if (
 			option?.type === "boolean" &&
 			option.negation !== "also" &&
@@ -269,6 +265,18 @@ function findOptionProblem(
 				ownersOf(token.name, isNegated(token)),
 				command
 			);
+		}
+		const spelled = isNegated(token)
+			? `--no-${option.name}`
+			: `--${option.name}`;
+		if (!option.multiple && !REPEATABLE.has(option.name)) {
+			if (given.has(spelled))
+				return new UsageError(
+					option.type === "string"
+						? `'${spelled}' was given more than once, but takes one value.`
+						: `'${spelled}' was given more than once, but can be given only once.`
+				);
+			given.add(spelled);
 		}
 		if (
 			option.type === "string" &&

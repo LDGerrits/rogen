@@ -373,6 +373,28 @@ describe("parseArgs", () => {
 		}
 	);
 
+	it.each([
+		[["build", "--dry", "--dry"], "--dry"],
+		[["--quiet", "build", "-q"], "--quiet"],
+		[["build", "--yes", "-y"], "--assume"],
+		[["build", "--no-cache", "--no-cache"], "--no-cache"],
+		[["build", "--no-hook", "--no-hook"], "--no-hook"],
+	])("should refuse a flag given twice in %j, as Rojo does", (argv, flag) => {
+		const result = parse(argv);
+
+		expect(result.isErr() && result.error).toEqual(
+			new UsageError(
+				`'${flag}' was given more than once, but can be given only once.`
+			)
+		);
+	});
+
+	it("should take -v, --help and a flag and its negation more than once", () => {
+		expect(values(["build", "-v", "-v"]).verbose).toEqual([true, true]);
+		expect(parse(["build", "--help", "-h"]).isOk()).toBe(true);
+		expect(values(["build", "--hook", "--no-hook"]).hook).toBe(false);
+	});
+
 	it("should take an option of one value once, and one of several values any number of times", () => {
 		expect(values(["build", "--listing", "glob"]).listing).toBe("glob");
 		expect(values(["build", "-t", "a", "-t", "b"]).variant).toEqual([
