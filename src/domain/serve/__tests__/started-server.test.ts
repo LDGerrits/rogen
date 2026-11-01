@@ -486,6 +486,25 @@ describe("StartedServer", () => {
 			).toMatchObject({ pid: processes.spawned[1].pid });
 		});
 
+		it("should know the restarted server by the name its config gives now", async () => {
+			start();
+			await answer("s1");
+			server.follow({ ...target, project: "Game" });
+
+			await crash(0);
+			requests.answer(ROJO_URL, {
+				projectName: "Game",
+				serverVersion: "7.7.1",
+				sessionId: "s2",
+			});
+			await jest.advanceTimersByTimeAsync(11_000);
+
+			expect(restarted).toHaveLength(1);
+			expect(
+				said.filter(({ message }) => message.severity === "warning")
+			).toEqual([]);
+		});
+
 		it("should tell that a connected plugin lost it", async () => {
 			start();
 			await answer("s1");

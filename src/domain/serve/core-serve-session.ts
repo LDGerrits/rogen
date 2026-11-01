@@ -226,7 +226,10 @@ export class CoreServeSession
 		const target = this.ports.targetOf(config);
 		const address = target.address.toString();
 		const started = this.servers.get(config.id);
-		if (started?.target.address.toString() === address) return;
+		if (started?.target.address.toString() === address) {
+			started.follow(target);
+			return;
+		}
 		if (!this.writtenConfigs.has(config.id)) return;
 
 		const prior = this.declined.get(config.id);
@@ -279,14 +282,12 @@ export class CoreServeSession
 		kind: "refused" | "elsewhere"
 	): Promise<boolean> {
 		const state = await this.probe.probe(target.address);
-		const ownProject =
-			state.kind === "serving" && state.info.project === target.project;
-		if (kind === "refused") return state.kind !== "free" && !ownProject;
-		return (
-			state.kind === "serving" &&
-			ownProject &&
-			!(await this.ports.ownerEndedFor(target, state.info))
-		);
+		const recorded =
+			state.kind === "serving"
+				? await this.ports.recordFor(target, state.info)
+				: undefined;
+		if (kind === "refused") return state.kind !== "free" && !recorded;
+		return recorded !== undefined && !this.ports.ownerEnded(recorded);
 	}
 
 	private async retire(

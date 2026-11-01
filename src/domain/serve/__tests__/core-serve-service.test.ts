@@ -25,6 +25,7 @@ import {
 	ServeSession,
 	ServerExitEvent,
 	ServerReadyEvent,
+	ServerRestartEvent,
 } from "../serve-service.js";
 
 type Fields = Record<string, unknown>;
@@ -329,6 +330,26 @@ describe("CoreServeService", () => {
 			const servePlan = await plan();
 
 			expect(servePlan.target.servedBy).toBeDefined();
+		});
+
+		it("should leave a server alone that another serve recorded for this project file before its name changed", async () => {
+			await memFs.writeFile(
+				"/repo/default.rogen.json",
+				config({ name: "Game" })
+			);
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json")
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+
+			const servePlan = await plan();
+
+			expect(servePlan.target.servedBy).toMatchObject({
+				project: "repo",
+			});
 		});
 
 		it("should leave a server alone whose serve still runs", async () => {
@@ -1210,6 +1231,36 @@ describe("CoreServeService", () => {
 
 				expect(spawnedProjects()).toEqual(["default.project.json"]);
 				expect(changes).toEqual([]);
+			});
+
+			it("should know its server again after a crash once the config renames the project", async () => {
+				await start();
+				const restarts: ServerRestartEvent[] = [];
+				session.onDidRestart((restart) => restarts.push(restart));
+				requests.answer(
+					"http://127.0.0.1:34872/api/rojo",
+					rojoInfo("repo")
+				);
+				await settle();
+
+				await memFs.writeFile(
+					"/repo/default.rogen.json",
+					config({ name: "Game" })
+				);
+				await settle();
+				processes.spawned[0].printError(
+					"[ERROR rojo] Rojo crashed! You are running Rojo 7.7.1.\n"
+				);
+				processes.spawned[0].exit({ code: 1, signal: null });
+				requests.answer("http://127.0.0.1:34872/api/rojo", {
+					...rojoInfo("Game"),
+					sessionId: "s2",
+				});
+				await settle();
+
+				expect(restarts.map(({ info }) => info.project)).toEqual([
+					"Game",
+				]);
 			});
 
 			it("should serve only the named configs, not one added beside them", async () => {

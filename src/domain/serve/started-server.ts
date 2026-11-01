@@ -41,6 +41,9 @@ interface StartedServerListener {
 
 /** A server the session started to serve a config with. */
 export class StartedServer extends AbstractDisposable {
+	private _target: ServeTarget;
+	/** The project name the server last answered with, which a running Rojo keeps when its project file renames it. */
+	private servedProject: string;
 	private readonly child: SupervisedRojoProcess;
 	private exited = false;
 	private restartedAfter: ProcessExit | undefined;
@@ -53,7 +56,7 @@ export class StartedServer extends AbstractDisposable {
 	private toldSlow = false;
 
 	constructor(
-		readonly target: ServeTarget,
+		target: ServeTarget,
 		plan: ServePlan,
 		rojoRunner: RojoRunner,
 		private readonly probe: ServerProbe,
@@ -63,6 +66,8 @@ export class StartedServer extends AbstractDisposable {
 		beforeRestart?: () => Promise<void>
 	) {
 		super();
+		this._target = target;
+		this.servedProject = target.project;
 		const { executable, serverArgs, selection } = plan;
 		this.child = this._register(
 			rojoRunner.supervise(
@@ -97,7 +102,7 @@ export class StartedServer extends AbstractDisposable {
 					this.connected + (opened ? 1 : -1)
 				);
 				this.listener.connection({
-					target,
+					target: this.target,
 					opened,
 					clients: this.connected,
 				});
@@ -106,7 +111,7 @@ export class StartedServer extends AbstractDisposable {
 		this._register(
 			this.child.onDidMessage((message) => {
 				if (message.severity !== "debug") said = true;
-				this.listener.said({ target, message });
+				this.listener.said({ target: this.target, message });
 			})
 		);
 		this._register(
@@ -119,7 +124,7 @@ export class StartedServer extends AbstractDisposable {
 				if (this.connected > 0) {
 					this.connected = 0;
 					this.listener.connection({
-						target,
+						target: this.target,
 						opened: false,
 						clients: 0,
 					});
@@ -138,6 +143,15 @@ export class StartedServer extends AbstractDisposable {
 			new RunOnceScheduler(() => this.askReady(), READY_POLL_MS.first)
 		);
 		this.ready.schedule();
+	}
+
+	get target(): ServeTarget {
+		return this._target;
+	}
+
+	/** Takes the target its config gives now, at the same address, such as one with a new project name. */
+	follow(target: ServeTarget): void {
+		this._target = target;
 	}
 
 	async terminate(): Promise<void> {
@@ -180,8 +194,10 @@ export class StartedServer extends AbstractDisposable {
 				if (this.stoppedOnPurpose || this.exited) return;
 				if (
 					state.kind === "serving" &&
-					state.info.project === target.project
+					(state.info.project === target.project ||
+						state.info.project === this.servedProject)
 				) {
+					this.servedProject = state.info.project;
 					this.child.markReady();
 					const crashed = this.restartedAfter;
 					this.restartedAfter = undefined;

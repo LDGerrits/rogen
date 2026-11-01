@@ -56,17 +56,16 @@ export class ServePorts {
 		};
 	}
 
-	/** Whether the server on `target`'s port was recorded for its project file by a `rogen serve` that has ended. */
-	async ownerEndedFor(
+	/** The record of the server on `target`'s port when a `rogen serve` started it for `target`'s project file, whatever name the project has now. */
+	async recordFor(
 		target: ServeTarget,
 		holder: ServerInfo
-	): Promise<boolean> {
+	): Promise<ServerRecord | undefined> {
 		const recorded = await this.records.recordOf(target.address, holder);
-		return (
-			recorded !== undefined &&
-			samePath(recorded.projectFile, target.config.projectFile) &&
-			this.ownerEnded(recorded)
-		);
+		return recorded &&
+			samePath(recorded.projectFile, target.config.projectFile)
+			? recorded
+			: undefined;
 	}
 
 	/** `target` once its port is free, or with `servedBy` set when its project is already served there; else why it can't be served. */
@@ -77,7 +76,7 @@ export class ServePorts {
 		const recorded =
 			holder && (await this.records.recordOf(target.address, holder));
 		if (
-			holder?.project === target.project &&
+			holder &&
 			recorded &&
 			samePath(recorded.projectFile, target.config.projectFile)
 		) {
