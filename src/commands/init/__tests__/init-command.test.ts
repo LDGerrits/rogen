@@ -320,6 +320,44 @@ describe("init command", () => {
 			);
 		});
 
+		it.each([
+			["a real run", {}],
+			["a dry run", { "dry-run": true }],
+			["--json", { json: true }],
+		])(
+			"should fail before it writes when the project it plans fails the write's checks, in %s",
+			async (_, options: CommandLine["options"]) => {
+				await write("src/Inventory/@server");
+				await write("src/Inventory/@client");
+				const logService = new MockLogService();
+
+				const result = await runInit(
+					new MockPromptService([], false),
+					logService,
+					options
+				);
+
+				expect(errorMessage(result)).toContain("(route.markerClash)");
+				expect(await exists("default.rogen.json")).toBe(false);
+				expect(await exists("AGENTS.md")).toBe(false);
+				expect(
+					logService.lines.filter((line) => line.includes("reate"))
+				).toEqual([]);
+			}
+		);
+
+		it("should check the project with the files it plans in place", async () => {
+			const logService = new MockLogService();
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				logService,
+				{ "dry-run": true, sample: false }
+			);
+
+			expect(result.isOk()).toBe(true);
+		});
+
 		it("should keep the files and fail when the project file cannot be written", async () => {
 			const writeFile = memFs.writeFile.bind(memFs);
 			jest.spyOn(memFs, "writeFile").mockImplementation(

@@ -23,10 +23,17 @@ export interface LoadedConfig {
 
 export class ConfigLoader {
 	private readonly reader: ConfigFileReader;
-	private readonly fileChecks = new Set<ConfigFileCheck>();
 
-	constructor(private readonly fileSystemService: FileReader) {
+	constructor(
+		private readonly fileSystemService: FileReader,
+		private readonly fileChecks = new Set<ConfigFileCheck>()
+	) {
 		this.reader = new ConfigFileReader(fileSystemService, configStructure);
+	}
+
+	/** A loader that reads through `reader`, with the same checks. */
+	over(reader: FileReader): ConfigLoader {
+		return new ConfigLoader(reader, this.fileChecks);
 	}
 
 	registerFileCheck(check: ConfigFileCheck): Disposable {

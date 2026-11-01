@@ -1,3 +1,4 @@
+import path from "path";
 import { CancelledError, UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { WriteRun } from "../../domain/write/write.js";
@@ -14,6 +15,11 @@ import {
 } from "../../platform/commands/commands.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import {
+	DraftFileReader,
+	FileDraft,
+} from "../../platform/fs/draft-file-reader.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import {
@@ -104,6 +110,21 @@ function choicesOf(
 	};
 }
 
+/** The folder as `plan` leaves it, before any program it runs. */
+function draftOf(plan: InitPlan): FileDraft {
+	const at = (relative: string) => path.join(plan.directory, relative);
+	return {
+		files: new Map(
+			plan.files.map(({ fileName, content }) => [at(fileName), content])
+		),
+		directories: [plan.directory, ...plan.directories.map(at)],
+		moves: plan.moves.map(({ from, to }) => ({
+			from: at(from),
+			to: at(to),
+		})),
+	};
+}
+
 registerCommand(
 	class InitCommand extends AbstractCommand<typeof InitOptions> {
 		constructor() {
@@ -167,6 +188,8 @@ registerCommand(
 			if (planned.isErr()) return planned;
 			const plan = planned.value;
 			if (!plan) return err(new CancelledError("init cancelled."));
+			const checked = await this.checkPlanned(accessor, plan);
+			if (checked.isErr()) return checked;
 
 			const reporter: InitReporter = line.options.json
 				? new InitJsonLog(
@@ -187,6 +210,26 @@ registerCommand(
 			const run = await this.writeConfigs(accessor, plan);
 			if (run.isErr()) return reporter.failed(run.error);
 			return reporter.done(plan, run.value);
+		}
+
+		/** Prepares the configs of `plan` as 'write' would, over the folder with the plan's files in place, so a plan that fails writes nothing. */
+		private async checkPlanned(
+			accessor: ServicesAccessor,
+			plan: InitPlan
+		): Promise<Result<void, Error>> {
+			if (plan.configs.length === 0) return ok(undefined);
+			const reader = new DraftFileReader(
+				accessor.get(FileSystemService),
+				draftOf(plan)
+			);
+			const selection = await accessor
+				.get(ConfigService)
+				.select(plan.configs, reader);
+			if (selection.isErr()) return selection;
+			const failure = (
+				await accessor.get(WriteService).check(selection.value, reader)
+			).failure();
+			return failure ? err(failure) : ok(undefined);
 		}
 
 		private async writeConfigs(
