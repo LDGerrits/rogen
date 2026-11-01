@@ -358,9 +358,9 @@ describe("CoreSyncbackService", () => {
 	});
 
 	it("should delete the files of an instance the place no longer holds, in any layout", async () => {
+		await fs.writeFile(abs("src/Inventory/Bag@server.meta.json"), "{}");
 		await prepare([
 			"src/Inventory/Bag@server.luau",
-			"src/Inventory/Bag@server.meta.json",
 			"src/Inventory/Save@server.luau",
 		]);
 		rojo.say = async () => {
