@@ -1,3 +1,4 @@
+import { UsageError } from "../../../base/errors.js";
 import path from "path";
 import "../build-command.js";
 import {
@@ -695,6 +696,39 @@ describe("build command", () => {
 				kind: "info",
 				text: "Rojo: Something new",
 			});
+		});
+
+		it("should show a line Rojo prints on stderr that Rogen doesn't know on stderr", async () => {
+			const { log, running } = await withRojo({ output: "game.rbxl" });
+			const rojo = await rojoStarted();
+			rojo.printError("Something new\n");
+			rojo.exit({ code: 0, signal: null });
+			await running;
+
+			expect(log.entries).toContainEqual({
+				kind: "notice",
+				text: "Rojo: Something new",
+			});
+		});
+
+		it("should fail with Rojo's words alone when Rojo refuses the command line", async () => {
+			const { log, running } = await withRojo({ output: "game.rbxl" });
+			const rojo = await rojoStarted();
+			rojo.printError(
+				"error: Found argument '--bogus' which wasn't expected\n\nFor more information try --help\n"
+			);
+			rojo.exit({ code: 2, signal: null });
+
+			const result = await running;
+
+			expect(result.isErr() && result.error).toEqual(
+				new UsageError(
+					"Rojo refused the command line:\n  Found argument '--bogus' which wasn't expected\n  For more information try --help"
+				)
+			);
+			expect(log.lines.filter((line) => line.includes("Rojo:"))).toEqual(
+				[]
+			);
 		});
 
 		it("should pass --plugin for -p", async () => {

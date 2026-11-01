@@ -61,12 +61,13 @@ export class CoreRojoCommandService implements RojoCommandService {
 			project,
 			messages: ran.messages,
 			...(ran.failure && {
-				failure: this.commandFailure(
-					request.command,
-					project,
-					ran.failure,
-					ran.refusedArguments ? "usage" : "project"
-				),
+				failure: ran.refusedArguments
+					? CoreRojoCommandService.refused(ran.failure)
+					: this.commandFailure(
+							request.command,
+							project,
+							ran.failure
+						),
 			}),
 		});
 	}
@@ -152,8 +153,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 	private commandFailure(
 		command: string,
 		project: ResolvedConfig,
-		failure: RojoFailure,
-		kind: "usage" | "project" = "project"
+		failure: RojoFailure
 	): DiagnosticsError {
 		return new DiagnosticsError(
 			[
@@ -171,7 +171,19 @@ export class CoreRojoCommandService implements RojoCommandService {
 					}),
 				},
 			],
-			kind
+			"project"
+		);
+	}
+
+	/** Rojo's own words for a command line it can't read, which is no fault of the project. */
+	private static refused({ how, said }: RojoFailure): UsageError {
+		return new UsageError(
+			said.length > 0
+				? [
+						"Rojo refused the command line:",
+						...said.map((line) => `  ${line}`),
+					].join("\n")
+				: `Rojo refused the command line (${how}).`
 		);
 	}
 
@@ -206,6 +218,11 @@ export class CoreRojoCommandService implements RojoCommandService {
 			request.signal
 		);
 		if (!ran.failure) return ok({ messages: ran.messages });
+		if (ran.refusedArguments)
+			return ok({
+				messages: ran.messages,
+				failure: CoreRojoCommandService.refused(ran.failure),
+			});
 		const failure = [
 			this.failed(
 				`run '${RojoServer.COMMAND} ${request.args.join(" ")}'`,
@@ -213,12 +230,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 			),
 			...ran.failure.said.map((line) => `  ${line}`),
 		].join("\n");
-		return ok({
-			messages: ran.messages,
-			failure: ran.refusedArguments
-				? new UsageError(failure)
-				: new ToolError(failure),
-		});
+		return ok({ messages: ran.messages, failure: new ToolError(failure) });
 	}
 
 	/** Rogen's sentence about what failed: it ends in a colon when Rojo's own lines follow it. */
@@ -263,13 +275,19 @@ export class CoreRojoCommandService implements RojoCommandService {
 		rojo[Symbol.dispose]();
 
 		if (exit.code === 0 || signal?.aborted) return { messages };
+		// Rojo exits 2 on a command line it can't read, and all it says is about that.
+		const refusedArguments = exit.code === 2;
+		const folded = ({ severity }: ServerMessage) =>
+			refusedArguments ? severity !== "debug" : severity === "error";
 		const said = messages
-			.filter(({ severity }) => severity === "error")
+			.filter(folded)
 			.flatMap(({ text, details }) => [text, ...(details ?? [])]);
 		return {
-			messages,
+			messages: refusedArguments
+				? messages.filter((message) => !folded(message))
+				: messages,
 			failure: { how: exitHow(exit), said },
-			refusedArguments: exit.code === 2,
+			refusedArguments,
 		};
 	}
 

@@ -1,4 +1,5 @@
 import { Disposable } from "../../base/disposable.js";
+import { UsageError } from "../../base/errors.js";
 import { Event } from "../../base/event.js";
 import { Result } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -44,8 +45,8 @@ export interface RojoBareRun {
 export interface RojoCommandRun extends RojoBareRun {
 	/** The project Rojo ran on. */
 	readonly project: ResolvedConfig;
-	/** Why the run failed, when Rojo exited with an error, about the project file. */
-	readonly failure?: DiagnosticsError;
+	/** Why the run failed, when Rojo exited with an error: about the project file, or a command line Rojo refused. */
+	readonly failure?: DiagnosticsError | UsageError;
 }
 
 export interface RojoWatchRequest extends RojoCommandRequest {

@@ -1074,6 +1074,8 @@ Fix what Rojo reports, such as a property value of the wrong type or an output f
 
 Rogen had already written the project files when Rojo failed.
 
+A command line that Rojo refuses, such as `rogen upload --asset_id abc`, is not this diagnostic: Rojo exits 2, and Rogen prints Rojo's lines under `error: Rojo refused the command line:` and exits 2.
+
 ### `rojo.crashed` [#rojo-crashed]
 
 Error. Rojo crashed twice in a row, so Rogen stopped. When the Rojo that `rogen serve` started crashes while it serves, Rogen writes the project file again and starts Rojo again on the same address and port. Rogen then prints this line:

@@ -28,7 +28,7 @@ export interface LogService {
 	print(text: string): void;
 	/** Text that goes with what `print` wrote, dimmed where the output has colour. */
 	note(text: string): void;
-	/** A line about the program rather than the run, such as a newer version, on stderr and dimmed where the output has colour; `--quiet` hides it. */
+	/** A line on stderr that is neither a warning nor an error, such as a newer version or a line Rojo printed there, dimmed where the output has colour; `--quiet` hides it. */
 	notice(text: string): void;
 	intro(title: string): void;
 	step(title: string): void;
