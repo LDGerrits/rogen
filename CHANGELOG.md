@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Customise in `rogen init` asks only the questions the summary took the default of, each with your earlier answer preselected, and asks whether to add the Greeter sample. When every question was asked already, it isn't offered.
+- In a folder that holds code, `rogen init` doesn't ask "One place or several?" up front: the summary shows one place, and Customise changes it. Each option names the code it would leave unplaced.
+- The summary shows the plan's warnings before you accept, and its question names what `init` does, such as "Set up Rogen in this project?" for a lift.
+- The summary leaves out what you just answered, and shows a Sample row when the Greeter sample is added.
+- The tip to run `git rm --cached default.project.json` shows only when git tracks that file.
+- The next steps say that `rogen write` replaces the project file, as the docs do.
+
 ### Fixed
 
 - `rogen init` checks the project it plans before it writes anything, so a plan that would fail writes nothing, and `--dry-run` says so too.
