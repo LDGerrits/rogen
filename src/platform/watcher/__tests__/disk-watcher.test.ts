@@ -4,6 +4,7 @@ import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { FileChange, FileChangeType } from "../../fs/file-changes.js";
+import { FileType } from "../../fs/file-system-service.js";
 import { LogLevel } from "../../log/log-service.js";
 import { NullLogService } from "../../log/null-log-service.js";
 import { MockLogService } from "../../log/__tests__/mock-log-service.js";
@@ -93,6 +94,36 @@ describe("DiskWatcher", () => {
 					expect.stringContaining("EACCES")
 				);
 			});
+
+			it.each([
+				["a folder inside a root", false],
+				["a root", true],
+			])(
+				"should report %s added once it can be read, and what changes in it then",
+				async (_, isRoot) => {
+					const changes: FileChange[] = [];
+					store.add(
+						watcher.onDidChangeFile((c) => changes.push(...c))
+					);
+					const locked = path.join(dir, "locked");
+					await fs.mkdir(locked);
+					await fs.chmod(locked, 0);
+					await watcher.watch([isRoot ? locked : dir]);
+
+					await fs.chmod(locked, 0o755);
+					const added = (c: FileChange) =>
+						c.type === FileChangeType.ADDED &&
+						c.path === toPosix(locked) &&
+						c.fileType === FileType.Directory;
+					await waitFor(() => changes.some(added));
+					await fs.writeFile(path.join(locked, "a.luau"), "");
+					const inside = (c: FileChange) =>
+						c.path === toPosix(path.join(locked, "a.luau"));
+					await waitFor(() => changes.some(inside));
+
+					expect(changes.filter(added)).toHaveLength(1);
+				}
+			);
 		});
 
 		it("should report a root that was deleted and made again", async () => {

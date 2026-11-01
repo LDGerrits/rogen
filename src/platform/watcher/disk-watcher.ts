@@ -25,6 +25,8 @@ export class DiskWatcher extends AbstractWatcher {
 	private ready = false;
 	private roots: string[] = [];
 	private readonly seen = new Map<string, string | undefined>();
+	/** Folders chokidar could not read; chokidar reports nothing when one becomes readable, so that is reported here. */
+	private readonly refused = new Set<string>();
 	private revival: NodeJS.Timeout | undefined;
 	/** Ends a start still waiting for chokidar, which never reports ready once closed. */
 	private cancelStart: (() => void) | undefined;
@@ -49,9 +51,10 @@ export class DiskWatcher extends AbstractWatcher {
 
 		this.watcher.on("raw", () => this.dropRemovedLinks());
 
-		this.watcher.on("error", (error) =>
-			this.reportError(error, options.reportsUnreadable ?? [])
-		);
+		this.watcher.on("error", (error) => {
+			this.recordRefused(error);
+			this.reportError(error, options.reportsUnreadable ?? []);
+		});
 
 		// Until chokidar is ready, new files count as initial and are ignored.
 		const watcher = this.watcher;
@@ -72,13 +75,22 @@ export class DiskWatcher extends AbstractWatcher {
 		else this.logService.warn(message);
 	}
 
-	/** Rewatches roots that came back or began as a new place: chokidar loses a deleted root and never sees one that did not exist. */
+	private recordRefused(error: Error): void {
+		const { path: failed } = error as NodeJS.ErrnoException;
+		if (
+			failed !== undefined &&
+			ErrorUtils.hasCode(error, "EACCES", "EPERM")
+		)
+			this.refused.add(failed);
+	}
+
+	/** Rewatches roots that came back or began as a new place, and folders that became readable: chokidar sees none of them. */
 	private watchForReturns(): void {
 		for (const root of this.roots) this.seen.set(root, identityOf(root));
-		this.revival = setInterval(
-			() => this.reviveRoots(),
-			REVIVAL_INTERVAL_MS
-		);
+		this.revival = setInterval(() => {
+			this.reviveRoots();
+			this.reviveRefused();
+		}, REVIVAL_INTERVAL_MS);
 		this.revival.unref();
 	}
 
@@ -96,6 +108,21 @@ export class DiskWatcher extends AbstractWatcher {
 					? FileType.Directory
 					: FileType.File
 			);
+		}
+	}
+
+	private reviveRefused(): void {
+		for (const dir of this.refused) {
+			try {
+				fs.readdirSync(dir);
+			} catch (error) {
+				if (!ErrorUtils.hasCode(error, "EACCES", "EPERM"))
+					this.refused.delete(dir);
+				continue;
+			}
+			this.refused.delete(dir);
+			this.watcher?.add(dir);
+			this.fireEvent(FileChangeType.ADDED, dir, FileType.Directory);
 		}
 	}
 
@@ -144,6 +171,7 @@ export class DiskWatcher extends AbstractWatcher {
 		this.ready = false;
 		this.stopRevival();
 		this.seen.clear();
+		this.refused.clear();
 		this.unfollowed = new Set();
 		if (this.watcher) {
 			clearThrottles(this.watcher);
