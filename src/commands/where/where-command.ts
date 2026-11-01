@@ -72,7 +72,7 @@ registerCommand(
 					effects: [],
 					exitCodes: {
 						"0": "every path answered, one that no file places included",
-						"1": "the config has errors",
+						"1": "the config has errors, or an error stops its write",
 					},
 					examples: [
 						"rogen where src/Inventory/Server/Save.luau",
