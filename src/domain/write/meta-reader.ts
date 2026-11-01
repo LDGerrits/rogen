@@ -44,8 +44,9 @@ export class PlacementMeta {
 	}
 }
 
-interface ScriptMetaSource {
+interface FileMetaSource {
 	readonly entry: RoutedFile["entry"];
+	readonly isScript: boolean;
 	readonly scriptSuffix: RojoScriptSuffix | undefined;
 	readonly fromFolder?: {
 		readonly metaFile: string;
@@ -57,7 +58,7 @@ interface ScriptMetaSource {
 export class MetaReader {
 	constructor(private readonly fileSystemService: FileReader) {}
 
-	/** Fails on a folder meta Rojo would refuse, and on a RunContext Rojo can't set on a ModuleScript. */
+	/** Fails on a meta Rojo would refuse, a folder's or a file's, and on a RunContext Rojo can't set on a ModuleScript. */
 	async read(
 		placement: Placement
 	): Promise<Result<PlacementMeta, Diagnostic[]>> {
@@ -65,7 +66,7 @@ export class MetaReader {
 		if (folders.isErr()) return folders;
 		const folderMeta = folders.value.metas;
 
-		const sources = this.scriptMetaSources(placement, folderMeta);
+		const sources = this.fileMetaSources(placement, folderMeta);
 		const siblings = [
 			...new Set(sources.flatMap(({ siblings }) => siblings)),
 		];
@@ -78,10 +79,19 @@ export class MetaReader {
 		);
 
 		const problems = new DiagnosticCollector();
+		for (const meta of parsed.values())
+			if (meta.isErr()) problems.add(meta.error);
 		this.checkClassNames(placement, folderMeta, problems);
 		const runContexts = new Map<string, unknown>();
 		const claimed = new Set<string>();
-		for (const { entry, scriptSuffix, fromFolder, siblings } of sources) {
+		for (const {
+			entry,
+			isScript,
+			scriptSuffix,
+			fromFolder,
+			siblings,
+		} of sources) {
+			if (!isScript) continue;
 			let set: { metaFile: string; runContext: unknown } | undefined =
 				fromFolder;
 			const [first] = siblings;
@@ -208,21 +218,24 @@ export class MetaReader {
 				});
 	}
 
-	private scriptMetaSources(
+	private fileMetaSources(
 		placement: Placement,
 		folderMeta: readonly FolderMeta[]
-	): ScriptMetaSource[] {
+	): FileMetaSource[] {
 		const metaFiles = new Set(placement.metaFiles.map(({ file }) => file));
-		return placement.files.flatMap((file): ScriptMetaSource[] => {
+		return placement.files.flatMap((file): FileMetaSource[] => {
 			const { entry, init } = file;
 			const { kind, scriptSuffix } = placement.readingOf(file);
-			if (kind !== "script") return [];
-			for (const dir of init ? [init.becomes, init.sitsIn] : []) {
+			const isScript = kind === "script";
+			for (const dir of isScript && init
+				? [init.becomes, init.sitsIn]
+				: []) {
 				const meta = folderMeta.find(({ folder }) => folder === dir);
 				if (meta?.fields.properties?.RunContext !== undefined)
 					return [
 						{
 							entry,
+							isScript,
 							scriptSuffix,
 							fromFolder: {
 								metaFile: meta.file,
@@ -245,7 +258,7 @@ export class MetaReader {
 							meta.files.includes(candidate)
 						)
 				);
-			return [{ entry, scriptSuffix, siblings }];
+			return [{ entry, isScript, scriptSuffix, siblings }];
 		});
 	}
 

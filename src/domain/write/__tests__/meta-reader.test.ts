@@ -141,6 +141,49 @@ describe("MetaReader", () => {
 			expect(result.unwrap()).toEqual([]);
 		});
 
+		it.each([
+			["src/Save.luau", "src/Save.meta.json"],
+			["src/Save.server.luau", "src/Save.meta.jsonc"],
+			["src/Notes.txt", "src/Notes.meta.json"],
+			["src/Strings.csv", "src/Strings.meta.json"],
+			["src/Data.json", "src/Data.meta.json"],
+		])(
+			"should fail on the meta beside %s as on a folder's",
+			async (file, metaFile) => {
+				await fs.writeFile(abs(file), "");
+				await fs.writeFile(abs(metaFile), '{"properties": 5}');
+
+				const result = await read();
+
+				expect(result.isErr() ? result.error : []).toMatchObject([
+					{ code: "meta.wrongType", resource: abs(metaFile) },
+				]);
+			}
+		);
+
+		it.each([
+			['{"id": }', "meta.invalidSyntax"],
+			["[1]", "meta.notAnObject"],
+			['{"properties": {"Archivable": null}}', "meta.unreadableValue"],
+			['{"ignoreUnknownInstances": "yes"}', "meta.wrongType"],
+		])("should fail on a script's meta of %s", async (text, code) => {
+			await fs.writeFile(abs("src/Save.luau"), "");
+			await fs.writeFile(abs("src/Save.meta.json"), text);
+
+			const result = await read();
+
+			expect(result.isErr() ? result.error : []).toMatchObject([
+				{ code, resource: abs("src/Save.meta.json") },
+			]);
+		});
+
+		it("should leave the meta beside a model alone, as Rojo reads none", async () => {
+			await fs.writeFile(abs("src/Part.model.json"), "{}");
+			await fs.writeFile(abs("src/Part.meta.json"), '{"properties": 5}');
+
+			expect((await read()).isOk()).toBe(true);
+		});
+
 		it("should accept comments, trailing commas and unknown fields", async () => {
 			await fs.writeFile(
 				abs("src/Combat/init.meta.json"),

@@ -203,6 +203,37 @@ describe("CoreConfigService", () => {
 			expect(errors(0)).toEqual([]);
 		});
 
+		it.each([
+			["$propertes", { Anchored: true }, "$properties"],
+			["$attribute", { Level: 1 }, "$attributes"],
+		])(
+			"should refuse a %s that holds an object Rojo can't read as a child",
+			async (key, value, field) => {
+				await write("/repo/default.rogen.json", {
+					tree: {
+						$className: "DataModel",
+						Workspace: {
+							Thing: { $className: "Part", [key]: value },
+						},
+					},
+				});
+
+				await start();
+
+				expect(errors(0)).toMatchObject([
+					{
+						code: "config.unknownField",
+						message: expect.stringContaining(
+							`"tree.Workspace.Thing.${key}" is not a field of a node`
+						),
+					},
+				]);
+				expect(errors(0)[0].message).toContain(
+					`Did you mean "${field}"?`
+				);
+			}
+		);
+
 		it("should suggest the key a misspelling is closest to", async () => {
 			await write("/repo/default.rogen.json", { sourcePath: ["src"] });
 
