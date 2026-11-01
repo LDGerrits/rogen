@@ -160,6 +160,10 @@ export class MockConfigService implements ConfigService {
 		return ok([...args]);
 	}
 
+	async firstNotConfig(): Promise<string | undefined> {
+		return undefined;
+	}
+
 	async coversOf(target: string): Promise<ConfigCover[]> {
 		return this.covers(target);
 	}

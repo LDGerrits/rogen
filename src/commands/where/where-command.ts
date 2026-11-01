@@ -173,6 +173,17 @@ registerCommand(
 						"Run 'rogen where -' without --json, or name the paths without '-'."
 					)
 				);
+			const configs = line.positionals.filter((arg) => arg !== "-");
+			const notConfig = await accessor
+				.get(ConfigService)
+				.firstNotConfig(configs);
+			if (notConfig !== undefined)
+				return err(
+					new UsageError(
+						`'-' takes only configs beside it; ${notConfig} is not a config.`,
+						"Name a config as game, game.rogen.json or a folder with a default.rogen.json."
+					)
+				);
 			const input = accessor.get(InputService);
 			if (input.isTerminal)
 				return err(
@@ -184,7 +195,6 @@ registerCommand(
 			const logService = accessor.get(LogService);
 			const text = await input.readAll();
 			const paths = studioPathsIn(text);
-			const configs = line.positionals.filter((arg) => arg !== "-");
 			const placed =
 				paths.length > 0
 					? await this.filesPlacing(accessor, configs, text, paths)

@@ -176,6 +176,12 @@ export class CoreConfigService implements ConfigService {
 		);
 	}
 
+	async firstNotConfig(refs: readonly string[]): Promise<string | undefined> {
+		for (const ref of refs)
+			if (!(await this.discovery.namesConfig(ref))) return ref;
+		return undefined;
+	}
+
 	async coversOf(target: string): Promise<ConfigCover[]> {
 		const cover = await this.defaultCover(target);
 		return cover ? [cover] : this.namedCovers(target);
