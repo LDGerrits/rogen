@@ -40,7 +40,7 @@ export class WhereAnswers {
 	readonly errors: readonly Diagnostic[];
 	/** The errors that stop the write of a config that answered. */
 	readonly stops: readonly Diagnostic[];
-	/** When no file answered, the warnings that say why. */
+	/** When no file answered and no error stops the write, the warnings that say why. */
 	readonly whyEmpty: readonly Diagnostic[];
 	readonly configCount: number;
 	readonly sourcePaths: readonly string[];
@@ -61,7 +61,7 @@ export class WhereAnswers {
 		);
 		this.stops = uniqueDiagnostics(diagnoses.flatMap(({ stops }) => stops));
 		this.whyEmpty =
-			this.answers.length > 0
+			this.answers.length > 0 || this.stops.length > 0
 				? []
 				: uniqueDiagnostics(
 						diagnoses.flatMap(

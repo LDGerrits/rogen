@@ -2,7 +2,7 @@ import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { containsPosix, normalizeDir } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
-import { joinedWithAnd } from "../../base/strings.js";
+import { joinedBriefly, joinedWithAnd } from "../../base/strings.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -167,12 +167,8 @@ function generatedDirs(
 const LISTED_SHOWN = 5;
 
 /** The first few of `items`, so a warning about many files stays one line. */
-function listedBriefly(items: readonly string[]): string {
-	const more = items.length - LISTED_SHOWN;
-	return more > 0
-		? `${items.slice(0, LISTED_SHOWN).join(", ")} and ${more} more`
-		: joinedWithAnd(items);
-}
+const listedBriefly = (items: readonly string[]): string =>
+	joinedBriefly(items, LISTED_SHOWN);
 
 /** The empty file that keeps an empty folder in git, as Rojo's syncback writes it. */
 const GITKEEP = ".gitkeep";

@@ -2,7 +2,7 @@ import path from "path";
 import { parse } from "../../base/jsonc.js";
 import { containsPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
-import { joinedWithAnd, plural } from "../../base/strings.js";
+import { joinedBriefly, joinedWithAnd, plural } from "../../base/strings.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -525,9 +525,6 @@ class Migration {
 	}
 
 	private static listed(items: readonly string[]): string {
-		const shown = 5;
-		return items.length > shown
-			? `${items.slice(0, shown).join(", ")} and ${items.length - shown} more`
-			: joinedWithAnd(items);
+		return joinedBriefly(items, 5);
 	}
 }

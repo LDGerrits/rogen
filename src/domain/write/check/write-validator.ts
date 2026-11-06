@@ -4,7 +4,7 @@ import { isObject } from "../../../base/objects.js";
 import { isInside, joinPosix, toPosix } from "../../../base/path.js";
 import {
 	capitalized,
-	joinedWithAnd,
+	joinedBriefly,
 	joinedWithOr,
 } from "../../../base/strings.js";
 import {
@@ -13,10 +13,7 @@ import {
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { DeclaredKeys } from "../../config/declared-keys.js";
-import {
-	ResolvedConfig,
-	compiledPathOf,
-} from "../../config/resolved-config.js";
+import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
 	InstanceMap,
 	ScriptRun,
@@ -166,32 +163,36 @@ export class WriteValidator {
 		sourcePath: string,
 		unsynced: readonly string[]
 	): string {
-		const one = unsynced.length === 1;
-		const names = unsynced.map((file) =>
-			path.posix.relative(toPosix(sourcePath), file)
+		const listed = joinedBriefly(
+			unsynced.map((file) =>
+				path.posix.relative(toPosix(sourcePath), file)
+			),
+			LISTED_FILES
 		);
-		const listed = joinedWithAnd(
-			names.length > LISTED_FILES
-				? [
-						...names.slice(0, LISTED_FILES),
-						`${names.length - LISTED_FILES} more`,
-					]
-				: names
-		);
-		const subject = `If ${listed} ${one ? "is a script" : "are scripts"}`;
-		if (this.config.compiledPath === undefined)
-			return `${subject}, add a "syncRules" entry that reads ${one ? "its" : "their"} extension.`;
-		const compiled = (file: string) =>
-			toPosix(
-				path.relative(
-					this.config.projectDir,
-					compiledPathOf(this.config, file)
-				)
-			);
+		const words =
+			unsynced.length === 1
+				? {
+						are: "is a script",
+						their: "its",
+						copies: "its copy",
+						names: "name",
+					}
+				: {
+						are: "are scripts",
+						their: "their",
+						copies: "their copies",
+						names: "names",
+					};
+		const subject = `If ${listed} ${words.are}`;
+		const { layout } = this.placement;
+		if (layout.compiledPath === undefined)
+			return `${subject}, add a "syncRules" entry that reads ${words.their} extension.`;
+		const copyOf = (dir: string) =>
+			layout.relativeToProject(layout.emittedPath(dir));
 		const copies = this.config.sourcePaths
-			.map((each) => `"${compiled(each)}"`)
+			.map((each) => `"${copyOf(each)}"`)
 			.join(", ");
-		return `${subject}, a sync rule won't help: Rogen would point the project file at ${one ? "its copy" : "their copies"} in "${compiled(sourcePath)}" under the same ${one ? "name" : "names"}, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to [${copies}], and remove "compiledPath".`;
+		return `${subject}, a sync rule won't help: Rogen would point the project file at ${words.copies} in "${copyOf(sourcePath)}" under the same ${words.names}, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to [${copies}], and remove "compiledPath".`;
 	}
 
 	private syncRuleSuffix(): Diagnostic[] {
