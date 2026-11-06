@@ -219,6 +219,18 @@ describe("WriteValidator rules", () => {
 				);
 			});
 
+			it("should name the copy of a folder as a compiler writes it, which renames only files", async () => {
+				await write("src/main/Main.luau");
+				const [warning] = await unsynced(["src/lib.ts/a.aly"], {
+					compiledPath: abs("out"),
+					sourcePaths: [abs("src/main"), abs("src/lib.ts")],
+				});
+
+				expect(warning.message).toContain(
+					'at its copy in "out/lib.ts" under the same name, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out/main", "out/lib.ts"]'
+				);
+			});
+
 			it("should not warn when the tree mounts a folder of the source path", async () => {
 				expect(
 					await unsynced(["src/lib/a.luau", "src/README.md"], {

@@ -78,6 +78,11 @@ export class CompiledLayout {
 		);
 	}
 
+	/** Where the tools write the files of `dir`, relative to the project; they rename files, never folders. */
+	compiledFolderOf(dir: string): string {
+		return this.relativeToProject(compiledPathOf(this, dir));
+	}
+
 	/** A glob of the project written as it matches the files under the compiled path. */
 	syncedGlob(glob: string): string {
 		if (this.compiledPath === undefined) return glob;

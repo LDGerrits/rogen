@@ -32,6 +32,9 @@ const SET_ASIDE = ".v1";
 
 const MIGRATION_PAGE = LegacyConfig.MIGRATION_URL;
 
+/** How many tagged files a warning names before it counts the rest. */
+const LISTED_SHOWN = 5;
+
 /** The words every migrated config routes by, as v1 always did. */
 const ALWAYS_ROUTED = ["server", "client", "shared"];
 
@@ -519,12 +522,8 @@ class Migration {
 			warningDiagnostic(
 				"legacy.tags",
 				{ resource: this.resource(file) },
-				`v1's tags${tags.length > 0 ? ` (${joinedWithAnd(tags)})` : ""} aren't carried over: v2 has none, and init renames none of the files they pick${tagged.length > 0 ? `, ${Migration.listed(tagged)}` : ""}. Move each into a folder of its own, and list that folder after the other source paths in the configs that should have it: its files replace the ones at the same path.`
+				`v1's tags${tags.length > 0 ? ` (${joinedWithAnd(tags)})` : ""} aren't carried over: v2 has none, and init renames none of the files they pick${tagged.length > 0 ? `, ${joinedBriefly(tagged, LISTED_SHOWN)}` : ""}. Move each into a folder of its own, and list that folder after the other source paths in the configs that should have it: its files replace the ones at the same path.`
 			)
 		);
-	}
-
-	private static listed(items: readonly string[]): string {
-		return joinedBriefly(items, 5);
 	}
 }

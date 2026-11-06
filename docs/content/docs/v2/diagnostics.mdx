@@ -684,7 +684,7 @@ Warning. A source path holds files, but Rojo reads none of them, so Rogen places
 warning: this source path places nothing: Rojo reads no file in it. If client/main.client.aly, server/main.server.aly and shared/util.aly are scripts, add a "syncRules" entry that reads their extension. (scan.noSyncedFiles)
 ```
 
-The message names the first three files. In `--json`, `related` lists every one. When `rogen where` has no file to list, it prints this warning instead of saying the source paths hold no files.
+The message names the first three files. In `--json`, `related` lists every one. When `rogen where` has no file to list, it prints this warning instead of saying the source paths hold no files, unless an error stops the write.
 
 If the files are scripts, add [`syncRules`](https://rojo.space/docs/v7/project-format/#sync-rules) that read their extension, so Rogen routes them and Rojo syncs them. Otherwise, remove the folder from `sourcePaths`.
 

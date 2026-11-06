@@ -172,27 +172,25 @@ export class WriteValidator {
 		const words =
 			unsynced.length === 1
 				? {
-						are: "is a script",
-						their: "its",
-						copies: "its copy",
-						names: "name",
+						isScript: "is a script",
+						possessive: "its",
+						copy: "its copy",
+						name: "name",
 					}
 				: {
-						are: "are scripts",
-						their: "their",
-						copies: "their copies",
-						names: "names",
+						isScript: "are scripts",
+						possessive: "their",
+						copy: "their copies",
+						name: "names",
 					};
-		const subject = `If ${listed} ${words.are}`;
+		const subject = `If ${listed} ${words.isScript}`;
 		const { layout } = this.placement;
 		if (layout.compiledPath === undefined)
-			return `${subject}, add a "syncRules" entry that reads ${words.their} extension.`;
-		const copyOf = (dir: string) =>
-			layout.relativeToProject(layout.emittedPath(dir));
+			return `${subject}, add a "syncRules" entry that reads ${words.possessive} extension.`;
 		const copies = this.config.sourcePaths
-			.map((each) => `"${copyOf(each)}"`)
+			.map((each) => `"${layout.compiledFolderOf(each)}"`)
 			.join(", ");
-		return `${subject}, a sync rule won't help: Rogen would point the project file at ${words.copies} in "${copyOf(sourcePath)}" under the same ${words.names}, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to [${copies}], and remove "compiledPath".`;
+		return `${subject}, a sync rule won't help: Rogen would point the project file at ${words.copy} in "${layout.compiledFolderOf(sourcePath)}" under the same ${words.name}, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to [${copies}], and remove "compiledPath".`;
 	}
 
 	private syncRuleSuffix(): Diagnostic[] {
