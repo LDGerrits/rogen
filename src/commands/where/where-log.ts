@@ -162,9 +162,15 @@ export class WhereLog {
 	print(logService: LogService): void {
 		const blocks = this.blocks();
 		if (blocks.length === 0) {
-			const empty =
-				this.answers.stops.length === 0 ? this.emptyLine() : undefined;
-			if (empty) logService.print(defanged(empty));
+			if (this.answers.stops.length > 0) return;
+			const { sourcePathWarnings } = this.answers;
+			const lines =
+				sourcePathWarnings.length > 0
+					? sourcePathWarnings.map((warning) =>
+							renderDiagnostic(warning, this.cwd)
+						)
+					: [this.emptyLine()].filter((line) => line !== undefined);
+			for (const line of lines) logService.print(defanged(line));
 			return;
 		}
 		for (const block of blocks) {

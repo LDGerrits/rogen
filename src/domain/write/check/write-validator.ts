@@ -6,7 +6,6 @@ import {
 	capitalized,
 	joinedWithOr,
 	listLimited,
-	plural,
 } from "../../../base/strings.js";
 import {
 	Diagnostic,
@@ -141,19 +140,21 @@ export class WriteValidator {
 	private noSyncedFiles(): Diagnostic[] {
 		return this.placement.roots
 			.filter(
-				({ entries, unsynced }) =>
-					entries.length === 0 && unsynced.length > 0
+				({ entries, mountedCount, unsynced }) =>
+					entries.length === 0 &&
+					mountedCount === 0 &&
+					unsynced.length > 0
 			)
 			.map(({ sourcePath, unsynced }) =>
 				warningDiagnostic(
 					"scan.noSyncedFiles",
 					{ resource: sourcePath },
-					`this source path places nothing: Rojo reads none of its ${plural(unsynced.length, "file")} (${listLimited(
+					`this source path places nothing: Rojo reads no file in it, and no sync rule takes ${unsynced.length === 1 ? "this one" : `these ${unsynced.length}`} (${listLimited(
 						unsynced.map((file) =>
 							path.posix.relative(toPosix(sourcePath), file)
 						),
 						LISTED_FILES
-					)}). If they are scripts, add a "syncRules" entry that reads their extension.`,
+					)}). ${this.noSyncedFilesAdvice()}`,
 					[],
 					unsynced.map((resource) => ({
 						resource,
@@ -161,6 +162,14 @@ export class WriteValidator {
 					}))
 				)
 			);
+	}
+
+	private noSyncedFilesAdvice(): string {
+		const { compiledPath, projectDir } = this.config;
+		if (compiledPath === undefined)
+			return 'If they are scripts, add a "syncRules" entry that reads their extension.';
+		const compiled = toPosix(path.relative(projectDir, compiledPath));
+		return `A sync rule won't help: Rogen would point the project file at their copies in "${compiled}" under these names, and the compiler writes .luau files. Replace this source path with "${compiled}" in "sourcePaths", and remove "compiledPath".`;
 	}
 
 	private syncRuleSuffix(): Diagnostic[] {

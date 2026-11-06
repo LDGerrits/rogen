@@ -298,6 +298,32 @@ describe("where command", () => {
 		]);
 	});
 
+	describe("when no source path places a file", () => {
+		beforeEach(async () => {
+			await writeConfig("default.rogen.json", { routes: ROUTES });
+			await write("src/Server/Main.aly");
+		});
+
+		it("should print why instead of saying there are no files", async () => {
+			const result = await run({});
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([
+				'src - warning: this source path places nothing: Rojo reads no file in it, and no sync rule takes this one (Server/Main.aly). If they are scripts, add a "syncRules" entry that reads their extension. (scan.noSyncedFiles)',
+			]);
+		});
+
+		it("should list why in --json", async () => {
+			await run({ json: true });
+
+			expect(
+				JSON.parse(printed().join("\n")).diagnostics.map(
+					({ code }: { code: string }) => code
+				)
+			).toEqual(["scan.noSyncedFiles"]);
+		});
+	});
+
 	it("should say there are no files rather than print nothing", async () => {
 		await writeConfig("default.rogen.json", { routes: ROUTES });
 		await fs.createDirectory("/repo/src");

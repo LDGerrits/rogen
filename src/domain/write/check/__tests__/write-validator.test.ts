@@ -167,9 +167,17 @@ describe("WriteValidator rules", () => {
 						severity: DiagnosticSeverity.Warning,
 						resource: abs("src"),
 						message:
-							'this source path places nothing: Rojo reads none of its 4 files (Notes.md, client/main.client.aly, server/main.server.aly, …). If they are scripts, add a "syncRules" entry that reads their extension.',
+							'this source path places nothing: Rojo reads no file in it, and no sync rule takes these 4 (Notes.md, client/main.client.aly, server/main.server.aly, …). If they are scripts, add a "syncRules" entry that reads their extension.',
 					},
 				]);
+			});
+
+			it("should say this one for a single file", async () => {
+				const [warning] = await unsynced(["src/util.aly"]);
+
+				expect(warning.message).toContain(
+					"no sync rule takes this one (util.aly)."
+				);
 			});
 
 			it("should list every file in related", async () => {
@@ -187,6 +195,31 @@ describe("WriteValidator rules", () => {
 						at("src", file)
 					)
 				);
+			});
+
+			it("should send a compiled path to the source paths, since a sync rule keeps the files' names", async () => {
+				const [warning] = await unsynced(["src/util.aly"], {
+					compiledPath: abs("out"),
+				});
+
+				expect(warning.message).toBe(
+					`this source path places nothing: Rojo reads no file in it, and no sync rule takes this one (util.aly). A sync rule won't help: Rogen would point the project file at their copies in "out" under these names, and the compiler writes .luau files. Replace this source path with "out" in "sourcePaths", and remove "compiledPath".`
+				);
+			});
+
+			it("should not warn when the tree mounts a folder of the source path", async () => {
+				expect(
+					await unsynced(["src/lib/a.luau", "src/README.md"], {
+						project: {
+							tree: {
+								$className: "DataModel",
+								ReplicatedStorage: {
+									Lib: { $path: "src/lib" },
+								},
+							},
+						},
+					})
+				).toEqual([]);
 			});
 
 			it("should not warn when a file of the source path is synced", async () => {

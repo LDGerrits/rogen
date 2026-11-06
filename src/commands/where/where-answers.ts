@@ -1,5 +1,5 @@
 import { groupBy } from "../../base/collections.js";
-import { containsPath } from "../../base/path.js";
+import { containsPath, samePath } from "../../base/path.js";
 import {
 	Asked,
 	ConfigLocations,
@@ -10,6 +10,7 @@ import {
 } from "../../domain/write/write-service.js";
 import {
 	Diagnostic,
+	DiagnosticSeverity,
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 
@@ -40,6 +41,8 @@ export class WhereAnswers {
 	readonly errors: readonly Diagnostic[];
 	/** The errors that stop the write of a config that answered. */
 	readonly stops: readonly Diagnostic[];
+	/** When no file answered, the warnings about a source path itself, which say why. */
+	readonly sourcePathWarnings: readonly Diagnostic[];
 	readonly configCount: number;
 	readonly sourcePaths: readonly string[];
 	private readonly answers: Answer[];
@@ -58,6 +61,20 @@ export class WhereAnswers {
 			answersOf(located, diagnoses[at])
 		);
 		this.stops = uniqueDiagnostics(diagnoses.flatMap(({ stops }) => stops));
+		this.sourcePathWarnings =
+			this.answers.length > 0
+				? []
+				: uniqueDiagnostics(
+						configs.flatMap(({ config, diagnostics }) =>
+							diagnostics.filter(
+								({ severity, resource }) =>
+									severity === DiagnosticSeverity.Warning &&
+									config.sourcePaths.some((sourcePath) =>
+										samePath(sourcePath, resource)
+									)
+							)
+						)
+					);
 		this.errors = uniqueDiagnostics([
 			...errors,
 			...diagnoses.flatMap(({ unshown }) => unshown),

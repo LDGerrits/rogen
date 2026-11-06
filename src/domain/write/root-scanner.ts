@@ -64,7 +64,7 @@ interface ScannedRootParts {
 	readonly oddNames: readonly OddName[];
 	/** The folders whose listing was refused, by absolute POSIX path; Rojo fails to build any of them. */
 	readonly unreadable: readonly string[];
-	/** The files no sync rule takes, so Rojo makes no instance of them, by absolute POSIX path. */
+	/** The files no sync rule takes, other than meta files, markers and what the scan left out, by absolute POSIX path. */
 	readonly unsynced: readonly string[];
 }
 
@@ -292,7 +292,7 @@ export class RootScanner {
 					compareStrings(a.source, b.source)
 				),
 				unreadable: walk.unreadable.sort(),
-				unsynced: walk.unsynced.sort(compareStrings),
+				unsynced: walk.unsynced.sort(),
 			},
 			this.index,
 			this.fileAt
