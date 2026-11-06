@@ -258,7 +258,9 @@ export function whereDocument(
 			.bySource()
 			.flat()
 			.map((answer) => entryOf(answer, cwd)),
-		diagnostics: answers.errors.map(diagnosticToJson),
+		diagnostics: [...answers.errors, ...answers.whyEmpty].map(
+			diagnosticToJson
+		),
 		...skippedJson(skipped, cwd),
 	};
 }

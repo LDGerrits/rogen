@@ -154,6 +154,8 @@ export class LocatedDiagnosis {
 	readonly stoppedBy: readonly Diagnostic[];
 	/** The errors that stop the write and that no location shows; none beside a blocked location, which names the error and sends to `check`. */
 	readonly unshown: readonly Diagnostic[];
+	/** The warnings that a source path holds files but places none of them, which say why a listing of it is empty. */
+	readonly placingNothing: readonly Diagnostic[];
 
 	constructor(private readonly located: ConfigLocations) {
 		const targets = [
@@ -182,6 +184,9 @@ export class LocatedDiagnosis {
 		this.unshown = located.files.some(({ status }) => status === "blocked")
 			? []
 			: this.stops.filter((error) => !shown.has(error));
+		this.placingNothing = located.diagnostics.filter(
+			({ code }) => code === "scan.noSyncedFiles"
+		);
 	}
 
 	/** What a write raises about `location`: for a path asked about, everything that reaches it; for a file found in a folder or behind an instance, only what is about it or its meta file. */

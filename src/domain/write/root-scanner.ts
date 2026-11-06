@@ -64,6 +64,8 @@ interface ScannedRootParts {
 	readonly oddNames: readonly OddName[];
 	/** The folders whose listing was refused, by absolute POSIX path; Rojo fails to build any of them. */
 	readonly unreadable: readonly string[];
+	/** The files no sync rule takes, other than meta files, markers and what the scan left out, by absolute POSIX path. */
+	readonly unsynced: readonly string[];
 }
 
 /** What a scan found under one source path, and the questions it answers about it. */
@@ -78,6 +80,7 @@ export class ScannedRoot implements ScannedRootParts {
 	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
 	readonly oddNames: readonly OddName[];
 	readonly unreadable: readonly string[];
+	readonly unsynced: readonly string[];
 
 	constructor(
 		parts: ScannedRootParts,
@@ -95,6 +98,7 @@ export class ScannedRoot implements ScannedRootParts {
 			leftOut: this.leftOut,
 			oddNames: this.oddNames,
 			unreadable: this.unreadable,
+			unsynced: this.unsynced,
 		} = parts);
 	}
 
@@ -116,6 +120,7 @@ export class ScannedRoot implements ScannedRootParts {
 				leftOut: new Map(),
 				oddNames: [],
 				unreadable,
+				unsynced: [],
 			},
 			index,
 			fileAt
@@ -230,6 +235,7 @@ interface Walk {
 	readonly leftOut: Map<string, ScanLeftOut>;
 	readonly oddNames: OddName[];
 	readonly unreadable: string[];
+	readonly unsynced: string[];
 }
 
 /** Walks source paths in the index, leaving out what `globIgnorePaths` matches and what the tree mounts. */
@@ -252,6 +258,7 @@ export class RootScanner {
 			emptyDirs: [],
 			oddNames: [],
 			unreadable: [],
+			unsynced: [],
 			leftOut: new Map(
 				this.mounts
 					.inside(sourcePath)
@@ -285,6 +292,7 @@ export class RootScanner {
 					compareStrings(a.source, b.source)
 				),
 				unreadable: walk.unreadable.sort(),
+				unsynced: walk.unsynced.sort(),
 			},
 			this.index,
 			this.fileAt
@@ -451,7 +459,7 @@ export class RootScanner {
 					walk.markers.push(relativeTo(name));
 					const problem = PortableName.problemWith(name);
 					if (problem) odd(name, problem);
-				}
+				} else walk.unsynced.push(joinPosix(dir, name));
 			}
 		}
 

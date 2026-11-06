@@ -3,6 +3,7 @@ import {
 	closestMatch,
 	closestMatches,
 	defanged,
+	joinedBriefly,
 	joinedWithAnd,
 	commandWith,
 	listLimited,
@@ -136,6 +137,17 @@ describe("joinedWithAnd", () => {
 		[[], ""],
 	])("should join %j as %j", (items, joined) => {
 		expect(joinedWithAnd(items)).toBe(joined);
+	});
+});
+
+describe("joinedBriefly", () => {
+	it.each([
+		[["a", "b"], "a and b"],
+		[["a", "b", "c"], "a, b and c"],
+		[["a", "b", "c", "d"], "a, b, c and 1 more"],
+		[["a", "b", "c", "d", "e"], "a, b, c and 2 more"],
+	])("should join %j, three at most, as %j", (items, joined) => {
+		expect(joinedBriefly(items, 3)).toBe(joined);
 	});
 });
 

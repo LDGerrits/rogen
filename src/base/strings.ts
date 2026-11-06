@@ -105,6 +105,14 @@ export function joinedWithAnd(items: readonly string[]): string {
 	return joinedWith(items, "and");
 }
 
+/** `a, b and c`, or the first `shown` of them and how many more: `a, b, c and 2 more`. */
+export function joinedBriefly(items: readonly string[], shown: number): string {
+	const more = items.length - shown;
+	return more > 0
+		? `${items.slice(0, shown).join(", ")} and ${more} more`
+		: joinedWithAnd(items);
+}
+
 /** `a`, `a or b`, `a, b or c`. */
 export function joinedWithOr(items: readonly string[]): string {
 	return joinedWith(items, "or");

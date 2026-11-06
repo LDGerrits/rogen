@@ -2,7 +2,11 @@ import path from "path";
 import { compareStrings } from "../../../base/collections.js";
 import { isObject } from "../../../base/objects.js";
 import { isInside, joinPosix, toPosix } from "../../../base/path.js";
-import { capitalized, joinedWithOr } from "../../../base/strings.js";
+import {
+	capitalized,
+	joinedBriefly,
+	joinedWithOr,
+} from "../../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticFix,
@@ -35,6 +39,8 @@ const SCRIPT_SUFFIX_BEFORE_AT = new RegExp(
 	`^(?<stem>.+)\\.(?<suffix>${SCRIPT_SUFFIXES.join("|")})@[^.@]+(?<extension>\\.luau?)$`
 );
 
+const LISTED_FILES = 3;
+
 function reservedKeys(
 	node: RojoNode,
 	at: readonly string[]
@@ -64,6 +70,7 @@ export class WriteValidator {
 			...this.missingSourcePath(),
 			...this.sourcePathNamedAfterKey(),
 			...this.unresolvedLink(),
+			...this.noSyncedFiles(),
 			...this.extensionCase(),
 			...this.syncRuleSuffix(),
 			...this.nestedProject(),
@@ -128,6 +135,69 @@ export class WriteValidator {
 					"this link points at nothing, or back at a directory that contains it, so it contributes nothing."
 				)
 			);
+	}
+
+	private noSyncedFiles(): Diagnostic[] {
+		const { layout } = this.placement;
+		return this.placement.roots.flatMap(
+			({ sourcePath, entries, mountedCount, unsynced: scanned }) => {
+				const unsynced = scanned.filter(
+					(file) => !layout.isReadOnly(file)
+				);
+				if (
+					entries.length > 0 ||
+					mountedCount > 0 ||
+					unsynced.length === 0
+				)
+					return [];
+				return [
+					warningDiagnostic(
+						"scan.noSyncedFiles",
+						{ resource: sourcePath },
+						`this source path places nothing: Rojo reads no file in it. ${this.noSyncedFilesAdvice(sourcePath, unsynced)}`,
+						[],
+						unsynced.map((resource) => ({
+							resource,
+							message: "read by no sync rule",
+						}))
+					),
+				];
+			}
+		);
+	}
+
+	private noSyncedFilesAdvice(
+		sourcePath: string,
+		unsynced: readonly string[]
+	): string {
+		const listed = joinedBriefly(
+			unsynced.map((file) =>
+				path.posix.relative(toPosix(sourcePath), file)
+			),
+			LISTED_FILES
+		);
+		const words =
+			unsynced.length === 1
+				? {
+						isScript: "is a script",
+						possessive: "its",
+						copy: "its copy",
+						name: "name",
+					}
+				: {
+						isScript: "are scripts",
+						possessive: "their",
+						copy: "their copies",
+						name: "names",
+					};
+		const subject = `If ${listed} ${words.isScript}`;
+		const { layout } = this.placement;
+		if (layout.compiledPath === undefined)
+			return `${subject}, add a "syncRules" entry that reads ${words.possessive} extension.`;
+		const copyOf = (dir: string) =>
+			JSON.stringify(layout.compiledFolderOf(dir));
+		const copies = this.config.sourcePaths.map(copyOf).join(", ");
+		return `${subject}, a sync rule won't help: Rogen would point the project file at ${words.copy} in ${copyOf(sourcePath)} under the same ${words.name}, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to [${copies}], and remove "compiledPath".`;
 	}
 
 	private syncRuleSuffix(): Diagnostic[] {

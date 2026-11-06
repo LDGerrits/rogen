@@ -141,6 +141,165 @@ describe("WriteValidator rules", () => {
 			});
 		});
 
+		describe("a source path that holds no file Rojo syncs", () => {
+			const unsynced = async (
+				files: string[],
+				overrides: ResolvedConfigSpec = {}
+			) => {
+				await write(...files);
+				return (await route(overrides))
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "scan.noSyncedFiles"
+					);
+			};
+
+			it("should warn at the source path, naming its files", async () => {
+				expect(
+					await unsynced([
+						"src/shared/util.aly",
+						"src/server/main.server.aly",
+						"src/client/main.client.aly",
+						"src/Notes.md",
+					])
+				).toMatchObject([
+					{
+						severity: DiagnosticSeverity.Warning,
+						resource: abs("src"),
+						message:
+							'this source path places nothing: Rojo reads no file in it. If Notes.md, client/main.client.aly, server/main.server.aly and 1 more are scripts, add a "syncRules" entry that reads their extension.',
+					},
+				]);
+			});
+
+			it("should speak of a single file as one", async () => {
+				const [warning] = await unsynced(["src/util.aly"]);
+
+				expect(warning.message).toBe(
+					'this source path places nothing: Rojo reads no file in it. If util.aly is a script, add a "syncRules" entry that reads its extension.'
+				);
+			});
+
+			it("should list every file in related", async () => {
+				const [warning] = await unsynced([
+					"src/A.aly",
+					"src/B.aly",
+					"src/C.aly",
+					"src/D.aly",
+				]);
+
+				expect(
+					warning.related?.map(({ resource }) => resource)
+				).toEqual(
+					["A.aly", "B.aly", "C.aly", "D.aly"].map((file) =>
+						at("src", file)
+					)
+				);
+			});
+
+			it("should send a compiled path to the source paths, since a sync rule keeps the files' names", async () => {
+				const [warning] = await unsynced(["src/util.aly"], {
+					compiledPath: abs("out"),
+				});
+
+				expect(warning.message).toBe(
+					`this source path places nothing: Rojo reads no file in it. If util.aly is a script, a sync rule won't help: Rogen would point the project file at its copy in "out" under the same name, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out"], and remove "compiledPath".`
+				);
+			});
+
+			it("should send every source path to its compiled copy", async () => {
+				await write("src/Main.luau");
+				const [warning] = await unsynced(["lib/a.aly", "lib/b.aly"], {
+					compiledPath: abs("out"),
+					sourcePaths: [abs("src"), abs("lib")],
+				});
+
+				expect(warning.message).toContain(
+					'If a.aly and b.aly are scripts, a sync rule won\'t help: Rogen would point the project file at their copies in "out/lib" under the same names, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out/src", "out/lib"], and remove "compiledPath".'
+				);
+			});
+
+			it("should name the copy of a folder as a compiler writes it, which renames only files", async () => {
+				await write("src/main/Main.luau");
+				const [warning] = await unsynced(["src/lib.ts/a.aly"], {
+					compiledPath: abs("out"),
+					sourcePaths: [abs("src/main"), abs("src/lib.ts")],
+				});
+
+				expect(warning.message).toContain(
+					'at its copy in "out/lib.ts" under the same name, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out/main", "out/lib.ts"]'
+				);
+			});
+
+			it("should write the source paths it suggests as JSON", async () => {
+				await write("src/Main.luau");
+				const [warning] = await unsynced(['my "lib"/a.aly'], {
+					compiledPath: abs("out"),
+					sourcePaths: [abs("src"), abs('my "lib"')],
+				});
+
+				expect(warning.message).toContain(
+					'at its copy in "out/my \\"lib\\"" under the same name, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out/src", "out/my \\"lib\\""]'
+				);
+			});
+
+			it("should not count files a tool only reads", async () => {
+				await write("src/Main.ts");
+				expect(
+					await unsynced(["types/globals.d.ts"], {
+						compiledPath: abs("out"),
+						sourcePaths: [abs("src"), abs("types")],
+					})
+				).toEqual([]);
+			});
+
+			it("should not warn when the tree mounts a folder of the source path", async () => {
+				expect(
+					await unsynced(["src/lib/a.luau", "src/README.md"], {
+						project: {
+							tree: {
+								$className: "DataModel",
+								ReplicatedStorage: {
+									Lib: { $path: "src/lib" },
+								},
+							},
+						},
+					})
+				).toEqual([]);
+			});
+
+			it("should not warn when a file of the source path is synced", async () => {
+				expect(
+					await unsynced(["src/util.aly", "src/Main.luau"])
+				).toEqual([]);
+			});
+
+			it("should not warn when sync rules read the files", async () => {
+				expect(
+					await unsynced(["src/util.aly"], {
+						project: {
+							tree: {},
+							syncRules: [
+								{
+									pattern: "*.aly",
+									use: "moduleScript",
+									suffix: ".aly",
+								},
+							],
+						},
+					})
+				).toEqual([]);
+			});
+
+			it("should not count files that globIgnorePaths matches", async () => {
+				expect(
+					await unsynced(["src/util.aly"], {
+						ignored: [`${toPosix(abs("src"))}/**/*.aly`],
+					})
+				).toEqual([]);
+			});
+		});
+
 		describe("a sync rule whose suffix does not end a file name", () => {
 			const suffixed = async (...files: string[]) => {
 				await write(...files);

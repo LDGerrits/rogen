@@ -155,7 +155,7 @@ describe("where command", () => {
 
 	it("should say a file that is no instance is not one", async () => {
 		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await write("src/Notes.md");
+		await write("src/Notes.md", "src/Util.luau");
 
 		await run({ _: ["src/Notes.md"] });
 
@@ -296,6 +296,44 @@ describe("where command", () => {
 			"src/A/Server/C.luau -> ServerScriptService/A/C · route Server (folder)",
 			"src/B.luau -> ReplicatedStorage/Shared/B · route * (fallback)",
 		]);
+	});
+
+	describe("when no source path places a file", () => {
+		beforeEach(async () => {
+			await writeConfig("default.rogen.json", { routes: ROUTES });
+			await write("src/Server/Main.aly");
+		});
+
+		it("should print why instead of saying there are no files", async () => {
+			const result = await run({});
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([
+				'src - warning: this source path places nothing: Rojo reads no file in it. If Server/Main.aly is a script, add a "syncRules" entry that reads its extension. (scan.noSyncedFiles)',
+			]);
+		});
+
+		it("should list why in --json", async () => {
+			await run({ json: true });
+
+			expect(
+				JSON.parse(printed().join("\n")).diagnostics.map(
+					({ code }: { code: string }) => code
+				)
+			).toEqual(["scan.noSyncedFiles"]);
+		});
+	});
+
+	it("should say there are no files when a source path is only missing", async () => {
+		await writeConfig("default.rogen.json", {
+			routes: ROUTES,
+			sourcePaths: ["src", "lib"],
+		});
+		await fs.createDirectory("/repo/src");
+
+		await run({});
+
+		expect(printed()).toEqual(["No files in the source paths (src, lib)."]);
 	});
 
 	it("should say there are no files rather than print nothing", async () => {

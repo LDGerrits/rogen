@@ -2,7 +2,7 @@ import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { containsPosix, normalizeDir } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
-import { joinedWithAnd } from "../../base/strings.js";
+import { joinedBriefly, joinedWithAnd } from "../../base/strings.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -164,15 +164,8 @@ function generatedDirs(
 	].filter((dir) => dir !== undefined);
 }
 
+/** How many files a warning names before it counts the rest, so it stays one line. */
 const LISTED_SHOWN = 5;
-
-/** The first few of `items`, so a warning about many files stays one line. */
-function listedBriefly(items: readonly string[]): string {
-	const more = items.length - LISTED_SHOWN;
-	return more > 0
-		? `${items.slice(0, LISTED_SHOWN).join(", ")} and ${more} more`
-		: joinedWithAnd(items);
-}
 
 /** The empty file that keeps an empty folder in git, as Rojo's syncback writes it. */
 const GITKEEP = ".gitkeep";
@@ -522,8 +515,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			].map((held) => this.codeOutside(held, language))
 		);
 		return {
-			...(one.length > 0 && { one: listedBriefly(one) }),
-			...(several.length > 0 && { several: listedBriefly(several) }),
+			...(one.length > 0 && { one: joinedBriefly(one, LISTED_SHOWN) }),
+			...(several.length > 0 && {
+				several: joinedBriefly(several, LISTED_SHOWN),
+			}),
 		};
 	}
 
@@ -778,7 +773,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		if (choices.tree.kind === "lift" && unmounted.length > 0) {
 			const them = unmounted.length === 1 ? "it" : "them";
 			builder.addNote(
-				`Left out ${listedBriefly(unmounted)} with "globIgnorePaths", since no node of ${choices.tree.from} mounts ${them}, so Rojo ignored ${them}. To have Rogen route ${them}, take ${them} out of "globIgnorePaths".`
+				`Left out ${joinedBriefly(unmounted, LISTED_SHOWN)} with "globIgnorePaths", since no node of ${choices.tree.from} mounts ${them}, so Rojo ignored ${them}. To have Rogen route ${them}, take ${them} out of "globIgnorePaths".`
 			);
 		}
 		if (choices.outside?.length)
@@ -875,7 +870,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		return warningDiagnostic(
 			"init.codeOutsideSourcePaths",
 			{ resource: configFile },
-			`${listedBriefly(found)} ${found.length === 1 ? "holds" : "hold"} code that no source path holds and the tree doesn't mount, so Rogen places none of it. Move the code into ${sourcePath}, or list its folders under "sourcePaths" in ${configFile}.`
+			`${joinedBriefly(found, LISTED_SHOWN)} ${found.length === 1 ? "holds" : "hold"} code that no source path holds and the tree doesn't mount, so Rogen places none of it. Move the code into ${sourcePath}, or list its folders under "sourcePaths" in ${configFile}.`
 		);
 	}
 

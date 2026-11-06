@@ -676,6 +676,26 @@ Files that `globIgnorePaths` matches don't count.
 
 On a plain Rojo project, which has no config, only `rogen check` reports it. Rojo's commands run on that project as Rojo would, and Rojo says nothing about these files.
 
+### `scan.noSyncedFiles` [#scan-nosyncedfiles]
+
+Warning. A source path holds files, but Rojo reads none of them, so Rogen places nothing from it. Rojo reads a file by its extension, such as `.luau` or `.json`, or by a sync rule. A language that compiles to Luau, with an extension of its own, gets this warning.
+
+```
+warning: this source path places nothing: Rojo reads no file in it. If client/main.client.aly, server/main.server.aly and shared/util.aly are scripts, add a "syncRules" entry that reads their extension. (scan.noSyncedFiles)
+```
+
+The message names the first three files. In `--json`, `related` lists every one. When `rogen where` has no file to list, it prints this warning instead of saying the source paths hold no files. An error that stops the write hides it.
+
+If the files are scripts, add [`syncRules`](https://rojo.space/docs/v7/project-format/#sync-rules) that read their extension, so Rogen routes them and Rojo syncs them. Otherwise, remove the folder from `sourcePaths`.
+
+With a `compiledPath`, a sync rule doesn't help. Rogen points the project file at each file's copy in the compiled path under the file's own name, but a compiler writes `.luau` files. Route the compiled files instead: set `sourcePaths` to the copy of each source path that the compiler writes, and remove `compiledPath`.
+
+```
+warning: this source path places nothing: Rojo reads no file in it. If util.aly is a script, a sync rule won't help: Rogen would point the project file at its copy in "out" under the same name, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out"], and remove "compiledPath". (scan.noSyncedFiles)
+```
+
+Files that `globIgnorePaths` matches don't count, and neither does a source path that the tree mounts a folder or file of.
+
 ### `scan.extensionCase` [#scan-extensioncase]
 
 Warning. A file's extension has capital letters, so Rojo ignores the file. Rojo reads an extension only in lowercase. Rogen leaves the file out of the tree, as Rojo does.

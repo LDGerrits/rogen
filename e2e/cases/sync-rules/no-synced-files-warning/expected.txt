@@ -1,0 +1,11 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+stderr:
+  src - warning: this source path places nothing: Rojo reads no file in it. If server/main.server.aly and shared/util.aly are scripts, add a "syncRules" entry that reads their extension. (scan.noSyncedFiles)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel

@@ -5,6 +5,10 @@ import {
 	InstanceLocation,
 } from "../../../domain/write/write-service.js";
 import { InstanceReference } from "../../../domain/roblox/roblox.js";
+import {
+	errorDiagnostic,
+	warningDiagnostic,
+} from "../../../platform/diagnostics/diagnostic.js";
 
 const placed = (source: string, at: string): FileLocation => ({
 	status: "placed",
@@ -164,5 +168,31 @@ describe("WhereAnswers", () => {
 				]
 			)
 		).toEqual(["/repo/src/B.luau", "/repo/src/A.luau"]);
+	});
+
+	describe("whyEmpty", () => {
+		const placesNothing = warningDiagnostic(
+			"scan.noSyncedFiles",
+			{ resource: "/repo/src" },
+			"this source path places nothing"
+		);
+
+		it("should say why no file answered", () => {
+			expect(
+				answersOf([["default", [], [], [placesNothing]]]).whyEmpty
+			).toEqual([placesNothing]);
+		});
+
+		it("should say nothing when an error stops the write, as the listing does", () => {
+			const stop = errorDiagnostic(
+				"tree.hoistedInit",
+				{ resource: "/repo/src/init.luau" },
+				"stops the write"
+			);
+
+			expect(
+				answersOf([["default", [], [], [placesNothing, stop]]]).whyEmpty
+			).toEqual([]);
+		});
 	});
 });
