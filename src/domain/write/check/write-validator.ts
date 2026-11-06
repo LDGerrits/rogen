@@ -138,25 +138,32 @@ export class WriteValidator {
 	}
 
 	private noSyncedFiles(): Diagnostic[] {
-		return this.placement.roots
-			.filter(
-				({ entries, mountedCount, unsynced }) =>
-					entries.length === 0 &&
-					mountedCount === 0 &&
-					unsynced.length > 0
-			)
-			.map(({ sourcePath, unsynced }) =>
-				warningDiagnostic(
-					"scan.noSyncedFiles",
-					{ resource: sourcePath },
-					`this source path places nothing: Rojo reads no file in it. ${this.noSyncedFilesAdvice(sourcePath, unsynced)}`,
-					[],
-					unsynced.map((resource) => ({
-						resource,
-						message: "read by no sync rule",
-					}))
+		const { layout } = this.placement;
+		return this.placement.roots.flatMap(
+			({ sourcePath, entries, mountedCount, unsynced: scanned }) => {
+				const unsynced = scanned.filter(
+					(file) => !layout.isReadOnly(file)
+				);
+				if (
+					entries.length > 0 ||
+					mountedCount > 0 ||
+					unsynced.length === 0
 				)
-			);
+					return [];
+				return [
+					warningDiagnostic(
+						"scan.noSyncedFiles",
+						{ resource: sourcePath },
+						`this source path places nothing: Rojo reads no file in it. ${this.noSyncedFilesAdvice(sourcePath, unsynced)}`,
+						[],
+						unsynced.map((resource) => ({
+							resource,
+							message: "read by no sync rule",
+						}))
+					),
+				];
+			}
+		);
 	}
 
 	private noSyncedFilesAdvice(
@@ -187,10 +194,10 @@ export class WriteValidator {
 		const { layout } = this.placement;
 		if (layout.compiledPath === undefined)
 			return `${subject}, add a "syncRules" entry that reads ${words.possessive} extension.`;
-		const copies = this.config.sourcePaths
-			.map((each) => `"${layout.compiledFolderOf(each)}"`)
-			.join(", ");
-		return `${subject}, a sync rule won't help: Rogen would point the project file at ${words.copy} in "${layout.compiledFolderOf(sourcePath)}" under the same ${words.name}, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to [${copies}], and remove "compiledPath".`;
+		const copyOf = (dir: string) =>
+			JSON.stringify(layout.compiledFolderOf(dir));
+		const copies = this.config.sourcePaths.map(copyOf).join(", ");
+		return `${subject}, a sync rule won't help: Rogen would point the project file at ${words.copy} in ${copyOf(sourcePath)} under the same ${words.name}, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to [${copies}], and remove "compiledPath".`;
 	}
 
 	private syncRuleSuffix(): Diagnostic[] {

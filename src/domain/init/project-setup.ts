@@ -164,6 +164,7 @@ function generatedDirs(
 	].filter((dir) => dir !== undefined);
 }
 
+/** How many files a warning names before it counts the rest, so it stays one line. */
 const LISTED_SHOWN = 5;
 
 /** The empty file that keeps an empty folder in git, as Rojo's syncback writes it. */

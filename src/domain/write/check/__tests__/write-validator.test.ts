@@ -231,6 +231,28 @@ describe("WriteValidator rules", () => {
 				);
 			});
 
+			it("should write the source paths it suggests as JSON", async () => {
+				await write("src/Main.luau");
+				const [warning] = await unsynced(['my "lib"/a.aly'], {
+					compiledPath: abs("out"),
+					sourcePaths: [abs("src"), abs('my "lib"')],
+				});
+
+				expect(warning.message).toContain(
+					'at its copy in "out/my \\"lib\\"" under the same name, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out/src", "out/my \\"lib\\""]'
+				);
+			});
+
+			it("should not count files a tool only reads", async () => {
+				await write("src/Main.ts");
+				expect(
+					await unsynced(["types/globals.d.ts"], {
+						compiledPath: abs("out"),
+						sourcePaths: [abs("src"), abs("types")],
+					})
+				).toEqual([]);
+			});
+
 			it("should not warn when the tree mounts a folder of the source path", async () => {
 				expect(
 					await unsynced(["src/lib/a.luau", "src/README.md"], {
