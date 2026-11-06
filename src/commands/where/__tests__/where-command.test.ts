@@ -309,7 +309,7 @@ describe("where command", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(printed()).toEqual([
-				'src - warning: this source path places nothing: Rojo reads no file in it, and no sync rule takes this one (Server/Main.aly). If they are scripts, add a "syncRules" entry that reads their extension. (scan.noSyncedFiles)',
+				'src - warning: this source path places nothing: Rojo reads no file in it. If Server/Main.aly is a script, add a "syncRules" entry that reads its extension. (scan.noSyncedFiles)',
 			]);
 		});
 
@@ -322,6 +322,18 @@ describe("where command", () => {
 				)
 			).toEqual(["scan.noSyncedFiles"]);
 		});
+	});
+
+	it("should say there are no files when a source path is only missing", async () => {
+		await writeConfig("default.rogen.json", {
+			routes: ROUTES,
+			sourcePaths: ["src", "lib"],
+		});
+		await fs.createDirectory("/repo/src");
+
+		await run({});
+
+		expect(printed()).toEqual(["No files in the source paths (src, lib)."]);
 	});
 
 	it("should say there are no files rather than print nothing", async () => {

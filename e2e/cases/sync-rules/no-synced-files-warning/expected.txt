@@ -2,7 +2,7 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  src - warning: this source path places nothing: Rojo reads no file in it, and no sync rule takes these 2 (server/main.server.aly, shared/util.aly). If they are scripts, add a "syncRules" entry that reads their extension. (scan.noSyncedFiles)
+  src - warning: this source path places nothing: Rojo reads no file in it. If server/main.server.aly and shared/util.aly are scripts, add a "syncRules" entry that reads their extension. (scan.noSyncedFiles)
 
 written:
   default.project.json

@@ -681,17 +681,17 @@ On a plain Rojo project, which has no config, only `rogen check` reports it. Roj
 Warning. A source path holds files, but Rojo reads none of them, so Rogen places nothing from it. Rojo reads a file by its extension, such as `.luau` or `.json`, or by a sync rule. A language that compiles to Luau, with an extension of its own, gets this warning.
 
 ```
-warning: this source path places nothing: Rojo reads no file in it, and no sync rule takes these 3 (client/main.client.aly, server/main.server.aly, shared/util.aly). If they are scripts, add a "syncRules" entry that reads their extension. (scan.noSyncedFiles)
+warning: this source path places nothing: Rojo reads no file in it. If client/main.client.aly, server/main.server.aly and shared/util.aly are scripts, add a "syncRules" entry that reads their extension. (scan.noSyncedFiles)
 ```
 
-The message names the first three files. In `--json`, `related` lists every one. When no file of the config is placed, `rogen where` prints this warning instead of a list.
+The message names the first three files. In `--json`, `related` lists every one. When `rogen where` has no file to list, it prints this warning instead of saying the source paths hold no files.
 
 If the files are scripts, add [`syncRules`](https://rojo.space/docs/v7/project-format/#sync-rules) that read their extension, so Rogen routes them and Rojo syncs them. Otherwise, remove the folder from `sourcePaths`.
 
-With a `compiledPath`, a sync rule doesn't help. Rogen points the project file at each file's copy in the compiled path under the file's own name, and a compiler writes `.luau` files. Route the compiled files instead: put the compiled path in `sourcePaths` in place of the source path, and remove `compiledPath`.
+With a `compiledPath`, a sync rule doesn't help. Rogen points the project file at each file's copy in the compiled path under the file's own name, but a compiler writes `.luau` files. Route the compiled files instead: list each source path's copy in the compiled path in `sourcePaths`, and remove `compiledPath`.
 
 ```
-warning: this source path places nothing: Rojo reads no file in it, and no sync rule takes this one (util.aly). A sync rule won't help: Rogen would point the project file at their copies in "out" under these names, and the compiler writes .luau files. Replace this source path with "out" in "sourcePaths", and remove "compiledPath". (scan.noSyncedFiles)
+warning: this source path places nothing: Rojo reads no file in it. If util.aly is a script, a sync rule won't help: Rogen would point the project file at its copy in "out" under the same name, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out"], and remove "compiledPath". (scan.noSyncedFiles)
 ```
 
 Files that `globIgnorePaths` matches don't count, and neither does a source path that the tree mounts a folder or file of.

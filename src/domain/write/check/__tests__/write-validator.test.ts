@@ -167,16 +167,16 @@ describe("WriteValidator rules", () => {
 						severity: DiagnosticSeverity.Warning,
 						resource: abs("src"),
 						message:
-							'this source path places nothing: Rojo reads no file in it, and no sync rule takes these 4 (Notes.md, client/main.client.aly, server/main.server.aly, …). If they are scripts, add a "syncRules" entry that reads their extension.',
+							'this source path places nothing: Rojo reads no file in it. If Notes.md, client/main.client.aly, server/main.server.aly and 1 more are scripts, add a "syncRules" entry that reads their extension.',
 					},
 				]);
 			});
 
-			it("should say this one for a single file", async () => {
+			it("should speak of a single file as one", async () => {
 				const [warning] = await unsynced(["src/util.aly"]);
 
-				expect(warning.message).toContain(
-					"no sync rule takes this one (util.aly)."
+				expect(warning.message).toBe(
+					'this source path places nothing: Rojo reads no file in it. If util.aly is a script, add a "syncRules" entry that reads its extension.'
 				);
 			});
 
@@ -203,7 +203,19 @@ describe("WriteValidator rules", () => {
 				});
 
 				expect(warning.message).toBe(
-					`this source path places nothing: Rojo reads no file in it, and no sync rule takes this one (util.aly). A sync rule won't help: Rogen would point the project file at their copies in "out" under these names, and the compiler writes .luau files. Replace this source path with "out" in "sourcePaths", and remove "compiledPath".`
+					`this source path places nothing: Rojo reads no file in it. If util.aly is a script, a sync rule won't help: Rogen would point the project file at its copy in "out" under the same name, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out"], and remove "compiledPath".`
+				);
+			});
+
+			it("should send every source path to its compiled copy", async () => {
+				await write("src/Main.luau");
+				const [warning] = await unsynced(["lib/a.aly", "lib/b.aly"], {
+					compiledPath: abs("out"),
+					sourcePaths: [abs("src"), abs("lib")],
+				});
+
+				expect(warning.message).toContain(
+					'If a.aly and b.aly are scripts, a sync rule won\'t help: Rogen would point the project file at their copies in "out/lib" under the same names, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out/src", "out/lib"], and remove "compiledPath".'
 				);
 			});
 

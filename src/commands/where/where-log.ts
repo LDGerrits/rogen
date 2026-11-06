@@ -163,14 +163,13 @@ export class WhereLog {
 		const blocks = this.blocks();
 		if (blocks.length === 0) {
 			if (this.answers.stops.length > 0) return;
-			const { sourcePathWarnings } = this.answers;
-			const lines =
-				sourcePathWarnings.length > 0
-					? sourcePathWarnings.map((warning) =>
-							renderDiagnostic(warning, this.cwd)
-						)
-					: [this.emptyLine()].filter((line) => line !== undefined);
-			for (const line of lines) logService.print(defanged(line));
+			const { whyEmpty } = this.answers;
+			if (whyEmpty.length === 0) {
+				const empty = this.emptyLine();
+				if (empty) logService.print(defanged(empty));
+			}
+			for (const warning of whyEmpty)
+				logService.print(defanged(renderDiagnostic(warning, this.cwd)));
 			return;
 		}
 		for (const block of blocks) {

@@ -4,8 +4,8 @@ import { isObject } from "../../../base/objects.js";
 import { isInside, joinPosix, toPosix } from "../../../base/path.js";
 import {
 	capitalized,
+	joinedWithAnd,
 	joinedWithOr,
-	listLimited,
 } from "../../../base/strings.js";
 import {
 	Diagnostic,
@@ -13,7 +13,10 @@ import {
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { DeclaredKeys } from "../../config/declared-keys.js";
-import { ResolvedConfig } from "../../config/resolved-config.js";
+import {
+	ResolvedConfig,
+	compiledPathOf,
+} from "../../config/resolved-config.js";
 import {
 	InstanceMap,
 	ScriptRun,
@@ -149,12 +152,7 @@ export class WriteValidator {
 				warningDiagnostic(
 					"scan.noSyncedFiles",
 					{ resource: sourcePath },
-					`this source path places nothing: Rojo reads no file in it, and no sync rule takes ${unsynced.length === 1 ? "this one" : `these ${unsynced.length}`} (${listLimited(
-						unsynced.map((file) =>
-							path.posix.relative(toPosix(sourcePath), file)
-						),
-						LISTED_FILES
-					)}). ${this.noSyncedFilesAdvice()}`,
+					`this source path places nothing: Rojo reads no file in it. ${this.noSyncedFilesAdvice(sourcePath, unsynced)}`,
 					[],
 					unsynced.map((resource) => ({
 						resource,
@@ -164,12 +162,36 @@ export class WriteValidator {
 			);
 	}
 
-	private noSyncedFilesAdvice(): string {
-		const { compiledPath, projectDir } = this.config;
-		if (compiledPath === undefined)
-			return 'If they are scripts, add a "syncRules" entry that reads their extension.';
-		const compiled = toPosix(path.relative(projectDir, compiledPath));
-		return `A sync rule won't help: Rogen would point the project file at their copies in "${compiled}" under these names, and the compiler writes .luau files. Replace this source path with "${compiled}" in "sourcePaths", and remove "compiledPath".`;
+	private noSyncedFilesAdvice(
+		sourcePath: string,
+		unsynced: readonly string[]
+	): string {
+		const one = unsynced.length === 1;
+		const names = unsynced.map((file) =>
+			path.posix.relative(toPosix(sourcePath), file)
+		);
+		const listed = joinedWithAnd(
+			names.length > LISTED_FILES
+				? [
+						...names.slice(0, LISTED_FILES),
+						`${names.length - LISTED_FILES} more`,
+					]
+				: names
+		);
+		const subject = `If ${listed} ${one ? "is a script" : "are scripts"}`;
+		if (this.config.compiledPath === undefined)
+			return `${subject}, add a "syncRules" entry that reads ${one ? "its" : "their"} extension.`;
+		const compiled = (file: string) =>
+			toPosix(
+				path.relative(
+					this.config.projectDir,
+					compiledPathOf(this.config, file)
+				)
+			);
+		const copies = this.config.sourcePaths
+			.map((each) => `"${compiled(each)}"`)
+			.join(", ");
+		return `${subject}, a sync rule won't help: Rogen would point the project file at ${one ? "its copy" : "their copies"} in "${compiled(sourcePath)}" under the same ${one ? "name" : "names"}, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to [${copies}], and remove "compiledPath".`;
 	}
 
 	private syncRuleSuffix(): Diagnostic[] {
