@@ -141,6 +141,86 @@ describe("WriteValidator rules", () => {
 			});
 		});
 
+		describe("a source path that holds no file Rojo syncs", () => {
+			const unsynced = async (
+				files: string[],
+				overrides: ResolvedConfigSpec = {}
+			) => {
+				await write(...files);
+				return (await route(overrides))
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "scan.noSyncedFiles"
+					);
+			};
+
+			it("should warn at the source path, naming its files", async () => {
+				expect(
+					await unsynced([
+						"src/shared/util.aly",
+						"src/server/main.server.aly",
+						"src/client/main.client.aly",
+						"src/Notes.md",
+					])
+				).toMatchObject([
+					{
+						severity: DiagnosticSeverity.Warning,
+						resource: abs("src"),
+						message:
+							'this source path places nothing: Rojo reads none of its 4 files (Notes.md, client/main.client.aly, server/main.server.aly, …). If they are scripts, add a "syncRules" entry that reads their extension.',
+					},
+				]);
+			});
+
+			it("should list every file in related", async () => {
+				const [warning] = await unsynced([
+					"src/A.aly",
+					"src/B.aly",
+					"src/C.aly",
+					"src/D.aly",
+				]);
+
+				expect(
+					warning.related?.map(({ resource }) => resource)
+				).toEqual(
+					["A.aly", "B.aly", "C.aly", "D.aly"].map((file) =>
+						at("src", file)
+					)
+				);
+			});
+
+			it("should not warn when a file of the source path is synced", async () => {
+				expect(
+					await unsynced(["src/util.aly", "src/Main.luau"])
+				).toEqual([]);
+			});
+
+			it("should not warn when sync rules read the files", async () => {
+				expect(
+					await unsynced(["src/util.aly"], {
+						project: {
+							tree: {},
+							syncRules: [
+								{
+									pattern: "*.aly",
+									use: "moduleScript",
+									suffix: ".aly",
+								},
+							],
+						},
+					})
+				).toEqual([]);
+			});
+
+			it("should not count files that globIgnorePaths matches", async () => {
+				expect(
+					await unsynced(["src/util.aly"], {
+						ignored: [`${toPosix(abs("src"))}/**/*.aly`],
+					})
+				).toEqual([]);
+			});
+		});
+
 		describe("a sync rule whose suffix does not end a file name", () => {
 			const suffixed = async (...files: string[]) => {
 				await write(...files);

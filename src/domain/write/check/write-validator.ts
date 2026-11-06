@@ -2,7 +2,12 @@ import path from "path";
 import { compareStrings } from "../../../base/collections.js";
 import { isObject } from "../../../base/objects.js";
 import { isInside, joinPosix, toPosix } from "../../../base/path.js";
-import { capitalized, joinedWithOr } from "../../../base/strings.js";
+import {
+	capitalized,
+	joinedWithOr,
+	listLimited,
+	plural,
+} from "../../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticFix,
@@ -35,6 +40,8 @@ const SCRIPT_SUFFIX_BEFORE_AT = new RegExp(
 	`^(?<stem>.+)\\.(?<suffix>${SCRIPT_SUFFIXES.join("|")})@[^.@]+(?<extension>\\.luau?)$`
 );
 
+const LISTED_FILES = 3;
+
 function reservedKeys(
 	node: RojoNode,
 	at: readonly string[]
@@ -64,6 +71,7 @@ export class WriteValidator {
 			...this.missingSourcePath(),
 			...this.sourcePathNamedAfterKey(),
 			...this.unresolvedLink(),
+			...this.noSyncedFiles(),
 			...this.extensionCase(),
 			...this.syncRuleSuffix(),
 			...this.nestedProject(),
@@ -126,6 +134,31 @@ export class WriteValidator {
 					"scan.unresolvedLink",
 					{ resource: link },
 					"this link points at nothing, or back at a directory that contains it, so it contributes nothing."
+				)
+			);
+	}
+
+	private noSyncedFiles(): Diagnostic[] {
+		return this.placement.roots
+			.filter(
+				({ entries, unsynced }) =>
+					entries.length === 0 && unsynced.length > 0
+			)
+			.map(({ sourcePath, unsynced }) =>
+				warningDiagnostic(
+					"scan.noSyncedFiles",
+					{ resource: sourcePath },
+					`this source path places nothing: Rojo reads none of its ${plural(unsynced.length, "file")} (${listLimited(
+						unsynced.map((file) =>
+							path.posix.relative(toPosix(sourcePath), file)
+						),
+						LISTED_FILES
+					)}). If they are scripts, add a "syncRules" entry that reads their extension.`,
+					[],
+					unsynced.map((resource) => ({
+						resource,
+						message: "read by no sync rule",
+					}))
 				)
 			);
 	}

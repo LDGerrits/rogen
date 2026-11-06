@@ -676,6 +676,20 @@ Files that `globIgnorePaths` matches don't count.
 
 On a plain Rojo project, which has no config, only `rogen check` reports it. Rojo's commands run on that project as Rojo would, and Rojo says nothing about these files.
 
+### `scan.noSyncedFiles` [#scan-nosyncedfiles]
+
+Warning. A source path holds files, but Rojo reads none of them, so Rogen places nothing from it. Rojo reads a file by its extension, such as `.luau` or `.json`, or by a sync rule. A language that compiles to Luau, with an extension of its own, gets this warning.
+
+```
+warning: this source path places nothing: Rojo reads none of its 3 files (client/main.client.aly, server/main.server.aly, shared/util.aly). If they are scripts, add a "syncRules" entry that reads their extension. (scan.noSyncedFiles)
+```
+
+The message names the first three files. In `--json`, `related` lists every one.
+
+If the files are scripts, add [`syncRules`](https://rojo.space/docs/v7/project-format/#sync-rules) that read their extension, so Rogen routes them and Rojo syncs them. Otherwise, remove the folder from `sourcePaths`.
+
+Files that `globIgnorePaths` matches don't count.
+
 ### `scan.extensionCase` [#scan-extensioncase]
 
 Warning. A file's extension has capital letters, so Rojo ignores the file. Rojo reads an extension only in lowercase. Rogen leaves the file out of the tree, as Rojo does.

@@ -155,7 +155,7 @@ describe("where command", () => {
 
 	it("should say a file that is no instance is not one", async () => {
 		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await write("src/Notes.md");
+		await write("src/Notes.md", "src/Util.luau");
 
 		await run({ _: ["src/Notes.md"] });
 

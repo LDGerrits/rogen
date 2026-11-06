@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- A warning when a source path holds files but Rojo reads none of them, such as the files of a language that compiles to Luau, which a sync rule can read.
+
 ## [2.0.0-beta.3] - 2026-11-01
 
 ### Changed
