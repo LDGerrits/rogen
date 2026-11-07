@@ -296,8 +296,10 @@ describe("StartedServer", () => {
 		expect(processes.spawned).toHaveLength(1);
 		expect(server.hasServed).toBe(false);
 		expect(stops).toHaveLength(1);
-		expect(stops[0].crashed).toBeUndefined();
-		expect(stops[0].failure?.code).toBe("serve.serverExited");
+		expect(stops[0]).toMatchObject({
+			kind: "failed",
+			failure: { code: "serve.serverExited" },
+		});
 		expect(
 			await records.recordOf(target.address, served[0].info)
 		).toBeUndefined();
@@ -403,7 +405,7 @@ describe("StartedServer", () => {
 
 		expect(stops).toHaveLength(1);
 		expect(stops[0]).toMatchObject({
-			interrupted: false,
+			kind: "failed",
 			failure: {
 				code: "serve.serverExited",
 				message:
@@ -415,15 +417,17 @@ describe("StartedServer", () => {
 	it("should say it stopped without saying why when it printed nothing", () => {
 		start().exit({ code: 1, signal: null });
 
-		expect(stops[0].failure?.message).toContain("without saying why");
+		expect(stops[0]).toMatchObject({
+			failure: { message: expect.stringContaining("without saying why") },
+		});
 	});
 
 	it("should stop without a failure when Ctrl+C ended it", () => {
 		start().exit({ code: 130, signal: null, interrupted: true });
 
 		expect(stops).toHaveLength(1);
-		expect(stops[0]).toMatchObject({ interrupted: true });
-		expect(stops[0].failure).toBeUndefined();
+		expect(stops[0]).not.toHaveProperty("failure");
+		expect(stops[0].kind).toBe("interrupted");
 	});
 
 	it("should name the signal when a signal ended it", () => {
@@ -442,15 +446,15 @@ describe("StartedServer", () => {
 		start().exit({ code: 0, signal: null });
 
 		expect(stops).toHaveLength(1);
-		expect(stops[0]).toMatchObject({ interrupted: false });
-		expect(stops[0].failure).toBeUndefined();
+		expect(stops[0]).not.toHaveProperty("failure");
+		expect(stops[0].kind).toBe("stopped");
 	});
 
 	it("should fail when a signal from someone else ended it", () => {
 		start().exit({ code: null, signal: "SIGTERM" });
 
 		expect(stops[0]).toMatchObject({
-			interrupted: false,
+			kind: "failed",
 			failure: { code: "serve.serverExited" },
 		});
 	});
@@ -458,7 +462,11 @@ describe("StartedServer", () => {
 	it("should show a Windows status code in hex", () => {
 		start().exit({ code: 0xc0000005, signal: null });
 
-		expect(stops[0].failure?.message).toContain("exit code 0xC0000005");
+		expect(stops[0]).toMatchObject({
+			failure: {
+				message: expect.stringContaining("exit code 0xC0000005"),
+			},
+		});
 	});
 
 	it("should fail when it couldn't start", () => {
@@ -584,7 +592,7 @@ describe("StartedServer", () => {
 
 			expect(stops).toHaveLength(1);
 			expect(stops[0]).toMatchObject({
-				crashed: true,
+				kind: "crashed",
 				failure: {
 					code: "rojo.crashed",
 					resource: config.file,
