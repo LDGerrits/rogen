@@ -158,7 +158,7 @@ registerCommand(
 			}
 
 			const logService = accessor.get(LogService);
-			if (!json && output === undefined) logService.reserveStdout();
+			if (step.prints) logService.reserveStdout();
 			const fileSystemService = accessor.get(FileSystemService);
 			const selection = await accessor
 				.get(ConfigService)
