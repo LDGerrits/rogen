@@ -97,8 +97,11 @@ export class ServerRecords {
 		info: ServerInfo,
 		served: ServedProject
 	): Promise<void> {
+		const file = this.fileOf(address.port);
+		// Readers see the old record or the new one, never a partial file; the staging name isn't read as a record.
+		const staging = `${file}.${this.owner}.tmp`;
 		await this.fileSystemService.writeFile(
-			this.fileOf(address.port),
+			staging,
 			JSON.stringify({
 				host: address.host,
 				port: address.port,
@@ -110,6 +113,12 @@ export class ServerRecords {
 				pid: served.pid,
 			})
 		);
+		try {
+			await this.fileSystemService.rename(staging, file, true);
+		} catch (error) {
+			await this.fileSystemService.delete(staging).catch(() => undefined);
+			throw error;
+		}
 	}
 
 	/** Forgets the record of `address` when it is the one this serve wrote for the server that answered with `info`, leaving one another serve wrote since. */
