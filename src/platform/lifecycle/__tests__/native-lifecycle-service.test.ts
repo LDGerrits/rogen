@@ -1,6 +1,5 @@
 import { jest } from "@jest/globals";
 import os from "os";
-import { DeferredPromise } from "../../../base/async.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { Emitter } from "../../../base/event.js";
 import { NativeProcessService } from "../../process/native-process-service.js";
@@ -196,10 +195,11 @@ describe("NativeLifecycleService", () => {
 
 	it("should kill the children on a second signal after every listener left, while they stop", () => {
 		const stopNow = jest.fn();
-		const stopped = new DeferredPromise<void>();
+		const running = store.add(new Emitter<boolean>());
 		const service = store.add(
-			new NativeLifecycleService(stopNow, () => stopped.p)
+			new NativeLifecycleService(stopNow, running.event)
 		);
+		running.fire(true);
 		const listening = service.onWillShutdown(() => undefined);
 		const exit = jest
 			.spyOn(process, "exit")
@@ -221,10 +221,11 @@ describe("NativeLifecycleService", () => {
 
 	it("should give a listener that comes while the children stop a graceful first signal", () => {
 		const stopNow = jest.fn();
-		const stopped = new DeferredPromise<void>();
+		const running = store.add(new Emitter<boolean>());
 		const service = store.add(
-			new NativeLifecycleService(stopNow, () => stopped.p)
+			new NativeLifecycleService(stopNow, running.event)
 		);
+		running.fire(true);
 		const first = service.onWillShutdown(() => undefined);
 		process.emit("SIGINT");
 		first[Symbol.dispose]();
@@ -245,21 +246,17 @@ describe("NativeLifecycleService", () => {
 
 	it("should leave the signals to the process once the children it stops have stopped", async () => {
 		const signals = process.listenerCount("SIGINT");
-		const stopped = new DeferredPromise<void>();
+		const running = store.add(new Emitter<boolean>());
 		const service = store.add(
-			new NativeLifecycleService(
-				() => undefined,
-				() => stopped.p
-			)
+			new NativeLifecycleService(() => undefined, running.event)
 		);
+		running.fire(true);
 		const listening = service.onWillShutdown(() => undefined);
 		process.emit("SIGINT");
 		listening[Symbol.dispose]();
 		const whileStopping = process.listenerCount("SIGINT");
 
-		stopped.complete();
-		await stopped.p;
-		await Promise.resolve();
+		running.fire(false);
 
 		expect(whileStopping).toBe(signals + 1);
 		expect(process.listenerCount("SIGINT")).toBe(signals);
@@ -273,13 +270,7 @@ describe("NativeLifecycleService", () => {
 		(signal, code) => {
 			const stopNow = jest.fn();
 			const running = store.add(new Emitter<boolean>());
-			store.add(
-				new NativeLifecycleService(
-					stopNow,
-					() => Promise.resolve(),
-					running.event
-				)
-			);
+			store.add(new NativeLifecycleService(stopNow, running.event));
 			running.fire(true);
 			const exit = jest
 				.spyOn(process, "exit")
@@ -304,13 +295,7 @@ describe("NativeLifecycleService", () => {
 		const signals = process.listenerCount("SIGINT");
 		const errors = process.stdout.listenerCount("error");
 		const running = store.add(new Emitter<boolean>());
-		store.add(
-			new NativeLifecycleService(
-				() => undefined,
-				() => Promise.resolve(),
-				running.event
-			)
-		);
+		store.add(new NativeLifecycleService(() => undefined, running.event));
 
 		running.fire(true);
 		const whileRunning = process.listenerCount("SIGINT");
@@ -326,11 +311,7 @@ describe("NativeLifecycleService", () => {
 		const stopNow = jest.fn();
 		const running = store.add(new Emitter<boolean>());
 		const service = store.add(
-			new NativeLifecycleService(
-				stopNow,
-				() => Promise.resolve(),
-				running.event
-			)
+			new NativeLifecycleService(stopNow, running.event)
 		);
 		running.fire(true);
 		const listener = jest.fn();
@@ -355,7 +336,6 @@ describe("NativeLifecycleService", () => {
 		store.add(
 			new NativeLifecycleService(
 				() => processes.killAll(),
-				() => processes.stopped(),
 				processes.onDidChangeRunning
 			)
 		);
@@ -383,7 +363,6 @@ describe("NativeLifecycleService", () => {
 
 		expect(codes).toEqual([130]);
 		expect(await exited).toEqual({ code: null, signal: "SIGKILL" });
-		await processes.stopped();
 		let alive = true;
 		for (let tries = 0; tries < 50 && alive; tries++) {
 			alive = processes.isRunning(grandchild);

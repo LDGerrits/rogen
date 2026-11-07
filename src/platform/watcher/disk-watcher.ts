@@ -113,7 +113,6 @@ class WatchSession {
 
 	async close(): Promise<void> {
 		this.closed = true;
-		this.ready = false;
 		clearInterval(this.revival);
 		clearThrottles(this.watcher);
 		await this.watcher.close();

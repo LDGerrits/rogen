@@ -74,11 +74,13 @@ export function launch(
 }
 
 // A toolchain shim starts the real program as a child that outlives it unless the tree ends.
+const taskkillTree = (pid: number) => ["/pid", String(pid), "/T", "/F"];
+
 function killWindowsTree(pid: number): Promise<void> {
 	return new Promise<void>((resolve) =>
 		childProcess.execFile(
 			"taskkill",
-			["/pid", String(pid), "/T", "/F"],
+			taskkillTree(pid),
 			{ windowsHide: true },
 			() => resolve()
 		)
@@ -128,7 +130,6 @@ class FailedChildProcess extends AbstractDisposable implements ChildProcess {
 /** The processes a service started that still run. */
 class RunningChildren {
 	private readonly children = new Set<NativeChildProcess>();
-	private waiting: (() => void)[] = [];
 	private readonly _onDidChangeRunning = new Emitter<boolean>();
 	readonly onDidChangeRunning: Event<boolean> =
 		this._onDidChangeRunning.event;
@@ -141,19 +142,10 @@ class RunningChildren {
 	delete(child: NativeChildProcess): void {
 		if (this.children.delete(child) && this.children.size === 0)
 			this._onDidChangeRunning.fire(false);
-		if (this.children.size > 0) return;
-		const waiting = this.waiting;
-		this.waiting = [];
-		for (const resolve of waiting) resolve();
 	}
 
 	killAll(): void {
 		for (const child of this.children) child.kill();
-	}
-
-	stopped(): Promise<void> {
-		if (this.children.size === 0) return Promise.resolve();
-		return new Promise((resolve) => this.waiting.push(resolve));
 	}
 }
 
@@ -263,11 +255,9 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 	kill(): void {
 		if (this.exit || this.child.pid === undefined) return;
 		if (isWindows)
-			childProcess.spawnSync(
-				"taskkill",
-				["/pid", String(this.child.pid), "/T", "/F"],
-				{ windowsHide: true }
-			);
+			childProcess.spawnSync("taskkill", taskkillTree(this.child.pid), {
+				windowsHide: true,
+			});
 		else signalTree(this.child.pid, "SIGKILL", this.child);
 	}
 
@@ -388,11 +378,6 @@ export class NativeProcessService implements ProcessService {
 	/** Kills every process this service started that still runs, and what each started, without waiting; for a process about to exit. */
 	killAll(): void {
 		this.running.killAll();
-	}
-
-	/** Settles once no process this service started still runs. */
-	stopped(): Promise<void> {
-		return this.running.stopped();
 	}
 
 	async terminateTree(pid: number): Promise<void> {

@@ -266,27 +266,6 @@ describe("NativeProcessService", () => {
 			other[Symbol.dispose]();
 		});
 
-		it("should settle stopped once every process it started has ended", async () => {
-			const child = service.spawn(
-				node,
-				["-e", "setTimeout(() => {}, 200)"],
-				{ cwd: dir }
-			);
-			let settled = false;
-			const stopped = service.stopped().then(() => {
-				settled = true;
-			});
-			await new Promise((resolve) => setTimeout(resolve, 20));
-			const early = settled;
-
-			await exitOf(child);
-			await stopped;
-
-			expect(early).toBe(false);
-			expect(settled).toBe(true);
-			child[Symbol.dispose]();
-		});
-
 		it("should tell when a process it started first runs and when the last has ended", async () => {
 			const running: boolean[] = [];
 			const subscription = service.onDidChangeRunning((value) =>
@@ -307,7 +286,6 @@ describe("NativeProcessService", () => {
 			await exitOf(first);
 			const afterFirst = [...running];
 			await exitOf(second);
-			await service.stopped();
 
 			expect(started).toEqual([true]);
 			expect(afterFirst).toEqual([true]);
@@ -317,7 +295,12 @@ describe("NativeProcessService", () => {
 			second[Symbol.dispose]();
 		});
 
-		it("should settle stopped once a process disposed before it ended has ended", async () => {
+		it("should tell that the last process ended once one disposed before it ended has ended", async () => {
+			const ended = new Promise<boolean>((resolve) =>
+				service.onDidChangeRunning((running) => {
+					if (!running) resolve(running);
+				})
+			);
 			const child = service.spawn(
 				node,
 				["-e", "setTimeout(() => {}, 60_000)"],
@@ -326,7 +309,7 @@ describe("NativeProcessService", () => {
 
 			child[Symbol.dispose]();
 
-			await expect(service.stopped()).resolves.toBeUndefined();
+			await expect(ended).resolves.toBe(false);
 		});
 
 		it("should report a file that can't start as an exit with an error", async () => {

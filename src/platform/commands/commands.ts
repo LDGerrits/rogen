@@ -60,11 +60,12 @@ export function signalStop(
 	lifecycle: LifecycleService
 ): ExitCodeError | undefined {
 	const { signal } = lifecycle;
-	if (signal === undefined) return undefined;
-	return stoppedBySignal(
-		lifecycle,
-		new Error(`Stopped by ${signal}.`)
-	) as ExitCodeError;
+	return signal === undefined
+		? undefined
+		: new ExitCodeError(
+				exitCodeOfSignal(signal),
+				new Error(`Stopped by ${signal}.`)
+			);
 }
 
 /** The error an `ExitCodeError` carries, else `error` itself. */

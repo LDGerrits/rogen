@@ -266,7 +266,6 @@ class RogenMain {
 		const lifecycleService = disposables.add(
 			new NativeLifecycleService(
 				() => processService.killAll(),
-				() => processService.stopped(),
 				processService.onDidChangeRunning
 			)
 		);

@@ -33,8 +33,6 @@ export class NativeLifecycleService
 	constructor(
 		/** Ends at once what a graceful shutdown would still be waiting on, before a second signal exits. */
 		private readonly stopNow: () => void = () => undefined,
-		/** Settles once no child is left running. */
-		private readonly stopped: () => Promise<void> = () => Promise.resolve(),
 		/** Whether a child is running; a signal that ends Rogen then ends the children too, which the terminal's signal misses in their own process groups. */
 		onDidChangeRunning: Event<boolean> = NullEvent
 	) {
@@ -42,6 +40,7 @@ export class NativeLifecycleService
 		this._register(
 			onDidChangeRunning((running) => {
 				this.childrenRunning = running;
+				if (!running) this.draining = false;
 				this.update();
 			})
 		);
@@ -67,15 +66,7 @@ export class NativeLifecycleService
 	private lastLeft(): void {
 		const shutDown = this.shuttingDown;
 		this.shuttingDown = false;
-		if (shutDown) {
-			this.draining = true;
-			this.stopped()
-				.then(() => {
-					this.draining = false;
-					this.update();
-				})
-				.catch(() => undefined);
-		}
+		this.draining = shutDown && this.childrenRunning;
 		this.update();
 	}
 
