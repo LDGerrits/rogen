@@ -6,9 +6,9 @@ stdout:
   Left alone: test.project.json. Rojo runs a plain project file as it is, and Rogen writes only the project files its .rogen.json files name.
   Left out src/Combat with "globIgnorePaths", since no node of default.project.json mounts it, so Rojo ignored it. To have Rogen route it, take it out of "globIgnorePaths".
   Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), a git repository (--skip-git), agent rules (--no-agent-rules).
-  Created default.rogen.json.
   Created .gitignore.
   Created AGENTS.md.
+  Created default.rogen.json.
   Initialised a git repository.
   Wrote default.project.json.
   Next steps

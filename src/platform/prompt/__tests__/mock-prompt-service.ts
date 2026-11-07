@@ -42,6 +42,7 @@ export class MockPromptService implements PromptService {
 	declare readonly _serviceBrand: undefined;
 
 	readonly asked: string[] = [];
+	private readonly askedIds: string[] = [];
 	readonly prompts: AskedPrompt[] = [];
 	private readonly answers: ScriptedAnswer[] = [];
 	private readonly byQuestion?: ScriptedAnswers;
@@ -59,7 +60,7 @@ export class MockPromptService implements PromptService {
 
 	unusedAnswers(): string[] {
 		return Object.keys(this.byQuestion ?? {}).filter(
-			(message) => !this.asked.includes(message)
+			(key) => !this.asked.includes(key) && !this.askedIds.includes(key)
 		);
 	}
 
@@ -86,12 +87,14 @@ export class MockPromptService implements PromptService {
 		options: AskedPrompt,
 		initial: T | undefined
 	): T | undefined {
-		const { message, description, hint, choices, choiceHints } = options;
+		const { id, message, description, hint, choices, choiceHints } =
+			options;
 		if (this.byQuestion && this.asked.includes(message))
 			throw new Error(
 				`"${message}" was asked again; script the answers as a list.`
 			);
 		this.asked.push(message);
+		if (id !== undefined) this.askedIds.push(id);
 		this.prompts.push({
 			message,
 			description,
@@ -100,7 +103,7 @@ export class MockPromptService implements PromptService {
 			...(choiceHints && { choiceHints }),
 		});
 		const answer = this.byQuestion
-			? this.answerFor(message, initial)
+			? this.answerFor(id, message, initial)
 			: this.answers.shift();
 		if (answer === undefined) {
 			throw new Error(`No scripted answer for "${message}".`);
@@ -110,10 +113,13 @@ export class MockPromptService implements PromptService {
 	}
 
 	private answerFor(
+		id: string | undefined,
 		message: string,
 		initial: unknown
 	): ScriptedAnswer | undefined {
 		const byQuestion = this.byQuestion ?? {};
+		if (id !== undefined && Object.hasOwn(byQuestion, id))
+			return byQuestion[id];
 		if (Object.hasOwn(byQuestion, message)) return byQuestion[message];
 		return initial === undefined ? undefined : ACCEPT_DEFAULT;
 	}

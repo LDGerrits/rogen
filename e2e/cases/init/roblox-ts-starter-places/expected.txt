@@ -7,7 +7,6 @@ stdout:
   The Greeter sample is the feature in projects/common/src, which every place shares, Game in projects/game/src, and Rojo's sample Baseplate and lighting in projects/game/place. Pass --no-sample for empty source folders.
   Took the defaults, each with the flag that changes it: a place (--kind), the Greeter sample (--no-sample), agent rules (--no-agent-rules).
   Ran npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild.
-  Created projects/game/default.rogen.json.
   Created projects/common/src/Greeter/shared/Greeting.ts.
   Created projects/common/src/Greeter/server/Greeter.server.ts.
   Created projects/common/src/Greeter/client/Greeter.client.ts.
@@ -21,6 +20,7 @@ stdout:
   Created projects/game/tsconfig.json.
   Created AGENTS.md.
   Created rokit.toml.
+  Created projects/game/default.rogen.json.
   Ran npm pkg set "scripts.build=rbxtsc -p projects/game" "scripts.watch=rbxtsc -w -p projects/game".
   Wrote projects/game/default.project.json.
   Next steps

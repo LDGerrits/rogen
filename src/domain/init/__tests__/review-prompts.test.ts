@@ -71,4 +71,33 @@ describe("ReviewPrompts", () => {
 		expect(again).toBe(false);
 		expect(await language()).toBe("roblox-ts");
 	});
+
+	it("should remember an answer by the question's id when its message changes", async () => {
+		const real = new MockPromptService([false]);
+		const review = new ReviewPrompts(real);
+		const hook = (agents: string) =>
+			review.quick.confirm({
+				id: "hook",
+				message: `Add a hook to ${agents}?`,
+				initialValue: true,
+			});
+		review.begin("customise");
+		await hook("Claude Code");
+		review.begin("quick");
+
+		expect(await hook("Claude Code and Gemini CLI")).toBe(false);
+	});
+
+	it("should forget what a pass answered when it is undone", async () => {
+		const real = new MockPromptService([false]);
+		const review = new ReviewPrompts(real);
+		const hook = () =>
+			review.quick.confirm({ message: "Hook", initialValue: true });
+		review.begin("customise");
+		await hook();
+		review.undo();
+		review.begin("quick");
+
+		expect(await hook()).toBe(true);
+	});
 });
