@@ -224,12 +224,20 @@ registerCommand(
 						run = rewritten;
 				}
 			}
-			const failure = run.failure();
+			let failure = run.failure();
 			let stopped: Error | undefined;
 			if (outcome.kind === "failed") stopped = outcome.error;
 			const { signal } = lifecycleService;
-			if (stopped && signal !== undefined)
-				stopped = new ExitCodeError(exitCodeOfSignal(signal), stopped);
+			if (signal !== undefined) {
+				const code = exitCodeOfSignal(signal);
+				if (stopped) stopped = new ExitCodeError(code, stopped);
+				// A run a signal came to while it wrote still ends as the signal says.
+				else
+					failure = new ExitCodeError(
+						code,
+						failure ?? new Error(`Stopped by ${signal}.`)
+					);
+			}
 
 			if (json)
 				return this.printJson(
