@@ -1,5 +1,5 @@
 import path from "path";
-import { selfAndAncestors } from "../../base/path.js";
+import { selfAndAncestors, shownFrom } from "../../base/path.js";
 import { IoError, KindedError } from "../../base/errors.js";
 import { tryWithAsync } from "../../base/result.js";
 import {
@@ -165,7 +165,6 @@ export class UndoLog {
 	}
 
 	private shown(at: string): string {
-		const relative = path.relative(this.directory, at);
-		return relative === "" || relative.startsWith("..") ? at : relative;
+		return shownFrom(this.directory, at);
 	}
 }

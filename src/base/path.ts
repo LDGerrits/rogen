@@ -164,6 +164,13 @@ export function relativeTo(from: string, filePath: string): string {
 	return path.relative(from, filePath) || ".";
 }
 
+/** `filePath` as Rogen shows it: relative to `from`, with forward slashes, when it lies inside `from`, else as given. */
+export function shownFrom(from: string, filePath: string): string {
+	return isInside(filePath, from, false)
+		? toPosix(path.relative(from, filePath))
+		: filePath;
+}
+
 export function stemOf(fileName: string): string {
 	return fileName.slice(0, fileName.length - path.extname(fileName).length);
 }

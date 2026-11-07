@@ -1,6 +1,5 @@
-import path from "path";
 import { UsageError } from "../../base/errors.js";
-import { samePath, toPosix } from "../../base/path.js";
+import { samePath, shownFrom } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { commandWith, shellWord } from "../../base/strings.js";
 import {
@@ -196,8 +195,7 @@ export class ServePorts {
 	}
 
 	private nameOfFile(file: string): string {
-		const relative = toPosix(path.relative(this.cwd, file));
-		return relative === "" || relative.startsWith("..") ? file : relative;
+		return shownFrom(this.cwd, file);
 	}
 
 	private async freePortAfter(
