@@ -175,7 +175,7 @@ describe("CoreConfigService", () => {
 			expect(resolved(0)).toBeUndefined();
 		});
 
-		it("should list the file of every config", async () => {
+		it("should list the file of every config, and the twin of the other extension that would break it", async () => {
 			await write("/repo/a/default.rogen.json", {});
 			await write("/repo/b/default.rogen.json", {});
 
@@ -184,7 +184,9 @@ describe("CoreConfigService", () => {
 			expect(selection.files).toEqual(
 				new Set([
 					"/repo/a/default.rogen.json",
+					"/repo/a/default.rogen.jsonc",
 					"/repo/b/default.rogen.json",
+					"/repo/b/default.rogen.jsonc",
 				])
 			);
 		});

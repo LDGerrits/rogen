@@ -2,12 +2,19 @@ import { Disposable, toDisposable } from "../../base/disposable.js";
 import path from "path";
 import { Result, err, tryWithAsync } from "../../base/result.js";
 import { ConfigFileReader } from "../../platform/config/config-file.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	errorDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import {
 	FileReader,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import { isConfigFileName, isProjectFileConfig } from "./config.js";
+import {
+	isConfigFileName,
+	isProjectFileConfig,
+	projectFileOf,
+} from "./config.js";
 import { FolderConfig, folderClashes } from "./folder-clashes.js";
 import { configStructure } from "./config-structure.js";
 import { ConfigFileCheck } from "./config-service.js";
@@ -24,6 +31,17 @@ export interface LoadedConfig {
 	/** The source paths of a config that only a copy beside it breaks. */
 	readonly sourcePaths?: readonly string[];
 }
+
+/** The same config under the other extension: `dist.rogen.jsonc` for `dist.rogen.json`. */
+const twinOf = (file: string): string =>
+	file.endsWith("c") ? file.slice(0, -1) : `${file}c`;
+
+const bothExtensions = (file: string, twin: string): Diagnostic =>
+	errorDiagnostic(
+		"config.bothExtensions",
+		{ resource: file },
+		`${path.basename(file)} and ${path.basename(twin)} both write ${path.basename(projectFileOf(file))}. Keep one of them.`
+	);
 
 export class ConfigLoader {
 	private readonly reader: ConfigFileReader;
@@ -45,16 +63,22 @@ export class ConfigLoader {
 		return toDisposable(() => this.fileChecks.delete(check));
 	}
 
-	/** Never throws for a problem the user can cause. A config that copies another of its folder fails, and is reloaded when that one changes. */
+	/** Never throws for a problem the user can cause. A config that copies another of its folder, or has a twin of the other extension, fails, and is reloaded when that one changes. */
 	async load(file: string): Promise<LoadedConfig> {
 		const loaded = await this.loadFile(file);
-		if (loaded.resolved.isErr() || isProjectFileConfig(file)) return loaded;
+		if (isProjectFileConfig(file)) return loaded;
+		const twin = twinOf(file);
+		if (loaded.resolved.isErr())
+			return { ...loaded, files: [...loaded.files, twin] };
 		const { siblings, read } = await this.siblingsOf(file);
-		const clashes = folderClashes(
-			{ config: loaded.resolved.value.config, value: loaded.value },
-			siblings
-		);
-		const files = [...loaded.files, ...read];
+		const clashes = [
+			...(read.includes(twin) ? [bothExtensions(file, twin)] : []),
+			...folderClashes(
+				{ config: loaded.resolved.value.config, value: loaded.value },
+				siblings
+			),
+		];
+		const files = [...loaded.files, ...new Set([...read, twin])];
 		return clashes.length > 0
 			? {
 					files,

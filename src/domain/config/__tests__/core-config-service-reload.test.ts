@@ -105,7 +105,7 @@ describe("CoreConfigService", () => {
 			]);
 		});
 
-		it("should keep the config it has when a second config file appears beside it", async () => {
+		it("should refuse the config it has while a second default config is beside it, as a fresh run does", async () => {
 			await start();
 
 			await write("/repo/default.rogen.jsonc", {
@@ -118,7 +118,35 @@ describe("CoreConfigService", () => {
 			expect(selection.entries.map(({ file }) => file)).toEqual([
 				"/repo/default.rogen.json",
 			]);
-			expect(reload).toEqual({ changed: [], notices: [] });
+			expect(errors(0).map(({ code }) => code)).toEqual([
+				"config.bothExtensions",
+			]);
+			expect(reload).toMatchObject({
+				changed: [],
+				notices: [
+					{
+						kind: "broken",
+						file: "/repo/default.rogen.json",
+						keptLastValid: true,
+					},
+				],
+			});
+		});
+
+		it("should load the config again once the second default config is deleted", async () => {
+			await start();
+			await write("/repo/default.rogen.jsonc", { routes: ROUTED });
+			await selection.reload(["/repo/default.rogen.jsonc"]);
+
+			await fs.delete("/repo/default.rogen.jsonc");
+			const reload = await selection.reload([
+				"/repo/default.rogen.jsonc",
+			]);
+
+			expect(errors(0)).toEqual([]);
+			expect(reload.notices).toEqual([
+				{ kind: "recovered", file: "/repo/default.rogen.json" },
+			]);
 		});
 
 		it("should not look for new configs when the selection named its configs", async () => {
@@ -130,8 +158,12 @@ describe("CoreConfigService", () => {
 				"/repo/lobby/default.rogen.jsonc",
 			]);
 
-			expect(selection.entries).toHaveLength(1);
-			expect(reload).toEqual({ changed: [], notices: [] });
+			expect(selection.entries.map(({ file }) => file)).toEqual([
+				"/repo/lobby/default.rogen.json",
+			]);
+			expect(reload.notices).toMatchObject([
+				{ kind: "broken", file: "/repo/lobby/default.rogen.json" },
+			]);
 		});
 	});
 
