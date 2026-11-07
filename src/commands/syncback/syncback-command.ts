@@ -18,8 +18,9 @@ import {
 } from "../../domain/syncback/syncback.js";
 import {
 	AbstractCommand,
-	ExitCodeError,
 	registerCommand,
+	signalStop,
+	stoppedBySignal,
 } from "../../platform/commands/commands.js";
 import {
 	CommandLine,
@@ -32,10 +33,7 @@ import {
 	warningDiagnostic,
 	messageRelativeTo,
 } from "../../platform/diagnostics/diagnostic.js";
-import {
-	LifecycleService,
-	exitCodeOfSignal,
-} from "../../platform/lifecycle/lifecycle-service.js";
+import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { OutcomeLog } from "../write/outcome-log.js";
@@ -226,18 +224,13 @@ registerCommand(
 			}
 			let failure = run.failure();
 			let stopped: Error | undefined;
-			if (outcome.kind === "failed") stopped = outcome.error;
-			const { signal } = lifecycleService;
-			if (signal !== undefined) {
-				const code = exitCodeOfSignal(signal);
-				if (stopped) stopped = new ExitCodeError(code, stopped);
-				// A run a signal came to while it wrote still ends as the signal says.
-				else
-					failure = new ExitCodeError(
-						code,
-						failure ?? new Error(`Stopped by ${signal}.`)
-					);
-			}
+			if (outcome.kind === "failed")
+				stopped = stoppedBySignal(lifecycleService, outcome.error);
+			// A run a signal came to while it wrote still ends as the signal says.
+			else
+				failure = failure
+					? stoppedBySignal(lifecycleService, failure)
+					: signalStop(lifecycleService);
 
 			if (json)
 				return this.printJson(

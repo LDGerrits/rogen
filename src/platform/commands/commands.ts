@@ -1,4 +1,5 @@
 import { DeferredPromise } from "../../base/async.js";
+import { ErrorUtils } from "../../base/errors.js";
 import {
 	Disposable,
 	DisposableStore,
@@ -15,7 +16,10 @@ import {
 	ServicesAccessor,
 	createServiceIdentifier,
 } from "../instantiation/instantiation.js";
-import { LifecycleService } from "../lifecycle/lifecycle-service.js";
+import {
+	LifecycleService,
+	exitCodeOfSignal,
+} from "../lifecycle/lifecycle-service.js";
 import { LogService } from "../log/log-service.js";
 import { Registry } from "../registry/registry.js";
 import { OutputDeclaration } from "../output/output-shape.js";
@@ -38,6 +42,37 @@ export class ExitCodeError extends Error {
 	) {
 		super(cause.message, { cause });
 	}
+}
+
+/** `failure`, ending as a shell reports a process the signal stopped when a signal brought the shutdown. */
+export function stoppedBySignal(
+	lifecycle: LifecycleService,
+	failure: Error
+): Error {
+	const { signal } = lifecycle;
+	return signal === undefined
+		? failure
+		: new ExitCodeError(exitCodeOfSignal(signal), failure);
+}
+
+/** The failure of a run a signal stopped, ending as a shell reports it; none when no signal came. */
+export function signalStop(
+	lifecycle: LifecycleService
+): ExitCodeError | undefined {
+	const { signal } = lifecycle;
+	return signal === undefined
+		? undefined
+		: new ExitCodeError(
+				exitCodeOfSignal(signal),
+				new Error(`Stopped by ${signal}.`)
+			);
+}
+
+/** The error an `ExitCodeError` carries, else `error` itself. */
+export function exitCodeCause(error: Error): Error {
+	return error instanceof ExitCodeError
+		? ErrorUtils.fromUnknown(error.cause)
+		: error;
 }
 
 export interface CommandService {

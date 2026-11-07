@@ -10,14 +10,8 @@ import {
 } from "../../domain/runner/rojo-command-service.js";
 import { WatchService } from "../../domain/watch/watch-service.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import {
-	ExitCodeError,
-	ReportedError,
-} from "../../platform/commands/commands.js";
-import {
-	LifecycleService,
-	exitCodeOfSignal,
-} from "../../platform/lifecycle/lifecycle-service.js";
+import { ReportedError, signalStop } from "../../platform/commands/commands.js";
+import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { RojoPlan, RojoStep } from "./rojo-step.js";
@@ -181,16 +175,7 @@ export class WriteWatch {
 			return err(new ReportedError(failure));
 		}
 		log.end();
-		const { signal } = accessor.get(LifecycleService);
-		return signal === undefined
-			? ok(undefined)
-			: err(
-					new ReportedError(
-						new ExitCodeError(
-							exitCodeOfSignal(signal),
-							new Error(`Stopped by ${signal}.`)
-						)
-					)
-				);
+		const signalled = signalStop(accessor.get(LifecycleService));
+		return signalled ? err(new ReportedError(signalled)) : ok(undefined);
 	}
 }

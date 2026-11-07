@@ -1,5 +1,4 @@
 import path from "path";
-import { ErrorUtils } from "../../base/errors.js";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { toPosix, toShellWord } from "../../base/path.js";
@@ -13,8 +12,8 @@ import {
 } from "../../domain/init/init-service.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
-	ExitCodeError,
 	ReportedError,
+	exitCodeCause,
 } from "../../platform/commands/commands.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 import {
@@ -380,12 +379,11 @@ export class InitJsonLog implements InitReporter {
 	}
 
 	failed(error: Error): Result<void, Error> {
-		const cause =
-			error instanceof ExitCodeError
-				? ErrorUtils.fromUnknown(error.cause)
-				: error;
 		return this.print(
-			{ ...this.writtenSoFar(), error: errorToJson(cause) },
+			{
+				...this.writtenSoFar(),
+				error: errorToJson(exitCodeCause(error)),
+			},
 			error
 		);
 	}
