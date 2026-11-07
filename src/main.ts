@@ -265,7 +265,9 @@ class RogenMain {
 		services.set(BrowserService, new CoreBrowserService(processService));
 		services.set(
 			LifecycleService,
-			disposables.add(new NativeLifecycleService())
+			disposables.add(
+				new NativeLifecycleService(() => processService.killAll())
+			)
 		);
 		const watcher = disposables.add(new DiskWatcher(logService));
 		services.set(Watcher, watcher);
