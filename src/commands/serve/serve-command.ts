@@ -241,8 +241,12 @@ registerCommand(
 				await session.stop();
 				if (!stop || shutdown.isSettled) {
 					// A stop that came before the signal is still told, unless the signal caused it.
-					if (stop && stop.kind !== "interrupted") log.stopped(stop);
-					log.shutdown(session.target ?? stop?.target);
+					const told =
+						stop && stop.kind !== "interrupted" ? stop : undefined;
+					if (told) log.stopped(told);
+					const running = session.target ?? stop?.target;
+					if (running?.config.id !== told?.target.config.id)
+						log.shutdown(running);
 					log.end("Stopped serving.");
 					return this.stoppedBy(lifecycle);
 				}

@@ -335,6 +335,36 @@ describe("serve command", () => {
 		expect(logService.lines.at(-1)).toBe("outro: Stopped serving.");
 	});
 
+	it("should print one stopped line for a server that failed before a signal, and exit 130", async () => {
+		const result = serve([], { json: true });
+		await settle();
+		const stop = watcher.stop.bind(watcher);
+		jest.spyOn(watcher, "stop").mockImplementation(async () => {
+			lifecycle.shutdown("SIGINT");
+			return stop();
+		});
+
+		processes.spawned[0].exit({ code: 1, signal: null });
+
+		const ended = await result;
+		expect(ended.isErr() && exitCodeOf(ended.error)).toBe(130);
+		expect(printed().slice(1)).toEqual([
+			{
+				stopped: {
+					config: "default.rogen.json",
+					reason: "exited",
+					code: 1,
+					signal: null,
+				},
+			},
+			{
+				diagnostics: [
+					expect.objectContaining({ code: "serve.serverExited" }),
+				],
+			},
+		]);
+	});
+
 	it("should end as stopped by the signal in text when the server's exit comes first", async () => {
 		const result = serve();
 		await settle();
