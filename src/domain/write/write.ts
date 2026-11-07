@@ -60,6 +60,13 @@ export function isWritten(outcome: ConfigOutcome): outcome is WrittenConfig {
 	return outcome.kind === "wrote" || outcome.kind === "unchanged";
 }
 
+/** Whether the config failed or didn't load, which writes nothing. */
+export function isFailed<T extends object>(
+	outcome: T
+): outcome is Extract<T, FailedConfig | UnloadedConfig> {
+	return outcome instanceof FailedConfig || outcome instanceof UnloadedConfig;
+}
+
 /** Whether the run wrote the config's project file, which a write that found it as it should be doesn't. */
 export const didWrite = (outcome: ConfigOutcome): boolean =>
 	outcome.kind === "wrote";
@@ -289,9 +296,7 @@ export class WriteRun {
 
 	/** Whether a config failed or didn't load, which writes nothing. */
 	get failed(): boolean {
-		return this.outcomes.some(
-			({ kind }) => kind === "failed" || kind === "notLoaded"
-		);
+		return this.outcomes.some(isFailed);
 	}
 
 	/** Every error of every config, repeats included: what the run fails with. */
@@ -309,9 +314,7 @@ export class WriteRun {
 
 	/** Why the run fails: its errors. */
 	failure(): Error | undefined {
-		return this.errors.length > 0
-			? new DiagnosticsError(this.errors)
-			: undefined;
+		return this.failed ? new DiagnosticsError(this.errors) : undefined;
 	}
 
 	/** What the run says, config by config: its fresh warnings, then its fresh errors. */

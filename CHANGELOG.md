@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - A second `rogen syncback` in a project folder where one is running stops with `syncback.busy`, instead of deleting the first one's copy of your files.
+- `rogen write` with several configs writes the others when one's project file can't be written.
 
 ## [2.0.0-beta.3] - 2026-11-01
 
