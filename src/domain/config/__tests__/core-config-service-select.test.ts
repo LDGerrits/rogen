@@ -31,7 +31,7 @@ describe("CoreConfigService", () => {
 			expect(selection.home).toBe("/repo");
 		});
 
-		it("should read a Rojo project file as the config when no default.rogen.json is above, and follow no folder", async () => {
+		it("should read a Rojo project file as the config when no default.rogen.json is above, and follow its folder", async () => {
 			await write("/repo/default.project.json", {
 				name: "plain",
 				tree: { $className: "DataModel" },
@@ -42,7 +42,7 @@ describe("CoreConfigService", () => {
 			expect(selection.entries.map(({ file }) => file)).toEqual([
 				"/repo/default.project.json",
 			]);
-			expect(selection.followedFolder).toBeUndefined();
+			expect(selection.followedFolder).toBe("/repo");
 			expect(validFile(selection.entries[0])?.config.isAdopted).toBe(
 				true
 			);

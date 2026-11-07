@@ -149,6 +149,29 @@ describe("CoreConfigService", () => {
 			]);
 		});
 
+		it("should take up a default config that comes beside the project file it adopted, as a fresh run does", async () => {
+			await fs.delete("/repo/default.rogen.json");
+			await write("/repo/default.project.json", {
+				name: "Plain",
+				tree: { $className: "DataModel" },
+			});
+			await start();
+
+			await write("/repo/default.rogen.json", { routes: ROUTED });
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
+
+			expect(selection.entries.map(({ file }) => file)).toEqual([
+				"/repo/default.rogen.json",
+			]);
+			expect(reload).toEqual({
+				changed: ["/repo/default.rogen.json"],
+				notices: [
+					{ kind: "removed", file: "/repo/default.project.json" },
+					{ kind: "added", file: "/repo/default.rogen.json" },
+				],
+			});
+		});
+
 		it("should not look for new configs when the selection named its configs", async () => {
 			await write("/repo/lobby/default.rogen.json", {});
 			await start({ names: ["lobby"] });
