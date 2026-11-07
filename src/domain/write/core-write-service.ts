@@ -25,6 +25,7 @@ import {
 	SyncWarnings,
 	UnwrittenConfig,
 	WrittenConfig,
+	isFailed,
 } from "./write.js";
 import {
 	Asked,
@@ -169,7 +170,7 @@ export class CoreWriteService implements WriteService {
 		const attempts = await this.attempt([{ config, sync }], listing);
 		const [outcome] = await this.settle(attempts, [], true, { force });
 		if (sync.kind === "known") return outcome;
-		if (outcome.kind === "failed")
+		if (isFailed(outcome))
 			return new FailedConfig(config, outcome.errors, {
 				warnings: outcome.warnings,
 				sync: SyncWarnings.unknown,
@@ -190,7 +191,7 @@ export class CoreWriteService implements WriteService {
 		const config = set.configOf(projectFile);
 		if (
 			!CoreWriteService.sameVersion(previous, config) ||
-			previous.kind === "failed" ||
+			isFailed(previous) ||
 			(await this.onlyPlaceholders(changes))
 		)
 			return previous;
@@ -327,28 +328,23 @@ export class CoreWriteService implements WriteService {
 		} = {}
 	): Promise<LoadedConfig[]> {
 		const prepared = attempts.filter(
-			(attempt): attempt is PreparedConfig =>
-				!(attempt instanceof FailedConfig)
+			(attempt): attempt is PreparedConfig => !isFailed(attempt)
 		);
 		const failed = [
 			...unloaded,
-			...attempts.flatMap((attempt) =>
-				attempt instanceof FailedConfig ? [attempt.config.file] : []
-			),
+			...attempts.filter(isFailed).map(({ config }) => config.file),
 		];
-		if (write && options.independent)
+		if (write && (options.independent || failed.length === 0))
 			return [
-				...attempts.filter(
-					(attempt): attempt is FailedConfig =>
-						attempt instanceof FailedConfig
-				),
-				...(await this.writeInOrder(prepared, options)),
+				...attempts.filter(isFailed),
+				...(await this.writeInOrder(prepared, {
+					force: options.force,
+					stopOnFailure: !options.independent,
+				})),
 			];
-		if (failed.length === 0 && write)
-			return this.writeInOrder(prepared, options);
 		return Promise.all(
 			attempts.map(async (attempt) => {
-				if (attempt instanceof FailedConfig) return attempt;
+				if (isFailed(attempt)) return attempt;
 				if (write) return CoreWriteService.unwritten(attempt, failed);
 				const checked = await this.withStaleness(
 					attempt,
@@ -386,7 +382,10 @@ export class CoreWriteService implements WriteService {
 
 	private async writeInOrder(
 		prepared: readonly PreparedConfig[],
-		options: WriteOptions
+		{
+			force,
+			stopOnFailure,
+		}: WriteOptions & { readonly stopOnFailure: boolean }
 	): Promise<LoadedConfig[]> {
 		const outcomes: LoadedConfig[] = [];
 		let failed: string | undefined;
@@ -402,9 +401,9 @@ export class CoreWriteService implements WriteService {
 				: await this.writer.write(
 						new OutputFile(config.projectFile),
 						projectFile,
-						{ ...options, placeholders: attempt.placeholders }
+						{ force, placeholders: attempt.placeholders }
 					);
-			if (written.isErr()) failed = config.file;
+			if (written.isErr() && stopOnFailure) failed = config.file;
 			outcomes.push(
 				written.isErr()
 					? new FailedConfig(
