@@ -173,7 +173,12 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 	) {
 		super();
 		running.add(this);
-		this._register(this.onDidExit(() => running.delete(this)));
+		// On the child itself, since a dispose before the exit drops the listeners of `onDidExit`.
+		const left = () => running.delete(this);
+		child.once("exit", left);
+		child.once("error", () => {
+			if (child.pid === undefined) left();
+		});
 		for (const [stream, name] of [
 			[child.stdout, "stdout"],
 			[child.stderr, "stderr"],
