@@ -498,13 +498,13 @@ describe("CoreInitService", () => {
 			const plan = await planned();
 
 			expect(names(plan)).toEqual([
-				"default.rogen.json",
 				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				"CLAUDE.md",
 				SCRIPT,
 				CLAUDE,
+				"default.rogen.json",
 			]);
 			expect(fileOf(plan, SCRIPT)).toMatchObject({ content: hookScript });
 			expect(JSON.parse(fileOf(plan, CLAUDE)?.content ?? "")).toEqual({
@@ -576,7 +576,6 @@ describe("CoreInitService", () => {
 			const plan = await planned();
 
 			expect(names(plan)).toEqual([
-				"default.rogen.json",
 				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
@@ -588,6 +587,7 @@ describe("CoreInitService", () => {
 				".gemini/settings.json",
 				".cursor/hooks.json",
 				".github/hooks/rogen.json",
+				"default.rogen.json",
 			]);
 		});
 
@@ -677,13 +677,13 @@ describe("CoreInitService", () => {
 			const plan = await planned();
 
 			expect(names(plan)).toEqual([
-				"default.rogen.json",
 				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				"CLAUDE.md",
 				SCRIPT,
 				CODEX,
+				"default.rogen.json",
 			]);
 		});
 
@@ -712,11 +712,11 @@ describe("CoreInitService", () => {
 			const plan = await planned();
 
 			expect(names(plan)).toEqual([
-				"default.rogen.json",
 				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				CODEX,
+				"default.rogen.json",
 			]);
 		});
 
@@ -727,13 +727,13 @@ describe("CoreInitService", () => {
 			const plan = await planned();
 
 			expect(names(plan)).toEqual([
-				"default.rogen.json",
 				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				"CLAUDE.md",
 				SCRIPT,
 				CODEX,
+				"default.rogen.json",
 			]);
 			expect(plan?.notes).toEqual([
 				".claude/settings.json isn't plain JSON, so it was left alone. Register .agents/hooks/rogen-check.mjs in it by hand: https://rogen-roblox.vercel.app/docs/v2/agents",
@@ -1346,11 +1346,11 @@ describe("CoreInitService", () => {
 			).unwrap();
 
 			expect(Object.keys(files(plan))).toEqual([
-				"default.rogen.json",
 				"README.md",
 				".gitignore",
 				"src/init.luau",
 				"AGENTS.md",
+				"default.rogen.json",
 			]);
 			expect(JSON.parse(files(plan)["default.rogen.json"])).toEqual({
 				tree: { $path: "src" },
@@ -1702,7 +1702,6 @@ describe("CoreInitService", () => {
 			const plan = (await serviceFor().plan()).unwrap();
 
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
-				"default.rogen.json",
 				".gitignore",
 				"src/Greeter/Shared/Greeting.luau",
 				"src/Greeter/Server/Greeter.server.luau",
@@ -1713,6 +1712,7 @@ describe("CoreInitService", () => {
 				"place/Workspace/init.meta.json",
 				"README.md",
 				"AGENTS.md",
+				"default.rogen.json",
 			]);
 			expect(plan?.configs).toEqual(["default.rogen.json"]);
 			expect(plan?.nextSteps.run).toEqual(["rogen serve"]);
@@ -1737,7 +1737,10 @@ describe("CoreInitService", () => {
 
 			const plan = (await serviceFor().plan()).unwrap();
 
-			expect(JSON.parse(plan?.files[0].content ?? "{}")).toMatchObject({
+			expect(plan?.files.at(-1)?.fileName).toBe("default.rogen.json");
+			expect(
+				JSON.parse(plan?.files.at(-1)?.content ?? "{}")
+			).toMatchObject({
 				name: "mine",
 				tree: { $className: "DataModel", Workspace: {} },
 			});
@@ -2154,7 +2157,7 @@ describe("CoreInitService", () => {
 			const result = await serviceFor().write(await planned(), onWritten);
 
 			expect((result as ResultError<Error>).error.message).toBe(
-				"Failed to write default.rogen.json: disk full"
+				"Failed to write src/.gitkeep: disk full"
 			);
 			expect(onWritten).not.toHaveBeenCalled();
 		});
@@ -2288,7 +2291,10 @@ describe("CoreInitService", () => {
 
 			const plan = (await service.plan({ ask: false })).unwrap()!;
 
-			expect(plan.moves).toEqual(migrated().moves);
+			expect(plan.moves).toEqual([
+				{ from: "src/A_Server.luau", to: "src/A@Server.luau" },
+				{ from: "old.rogen.json", to: "old.rogen.json.v1" },
+			]);
 			expect(plan.configs).toEqual(["old.rogen.json"]);
 			expect(
 				JSON.parse(
