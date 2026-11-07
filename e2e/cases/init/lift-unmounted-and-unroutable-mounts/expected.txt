@@ -9,9 +9,9 @@ stdout:
   Kept ServerScriptService/Admin in the tree as a $path mount, since no route can make it: only a folder directly in a source path becomes a route.
   Left out src/Loose.luau and src/scratch with "globIgnorePaths", since no node of default.project.json mounts them, so Rojo ignored them. To have Rogen route them, take them out of "globIgnorePaths".
   Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), a git repository (--skip-git), agent rules (--no-agent-rules).
-  Created default.rogen.json.
   Created .gitignore.
   Created AGENTS.md.
+  Created default.rogen.json.
   Initialised a git repository.
   Wrote default.project.json.
   Next steps
