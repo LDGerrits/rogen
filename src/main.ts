@@ -333,7 +333,9 @@ class RogenMain {
 				configService,
 				fileSystemService,
 				writeService,
-				rojoCommandService
+				rojoCommandService,
+				environmentService,
+				processService
 			)
 		);
 		services.set(

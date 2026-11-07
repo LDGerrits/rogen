@@ -1137,6 +1137,16 @@ Pin a newer Rojo with your toolchain manager (`rokit add rojo-rbx/rojo`), or upd
 
 These diagnostics come from `rogen syncback`, which writes the changes made in a place back to your files.
 
+### `syncback.busy` [#syncback-busy]
+
+Error. Another `rogen syncback` is running in the same project folder, such as one in a second terminal or one that a coding agent started. Syncback works on a copy of your files in `.rogen-syncback`, and only one run at a time can own it. The second run stops before it touches anything, and exits 1. The message names the process id of the run that owns the folder.
+
+```
+error: another rogen syncback, process 4242, is running in this folder, so this one stopped before it touched anything. Wait for it to end, then run syncback again. (syncback.busy)
+```
+
+Wait for the other run to end, then run `rogen syncback` again. A run that was killed leaves its lock behind, and the next run takes it over, since the process that held it no longer runs.
+
 ### `syncback.compiledPath` [#syncback-compiledpath]
 
 Warning. The project has a `compiledPath`, and an instance that comes from it changed in the place, was removed, or is new: a script, or a folder or model the compiler copies there. A tool such as Darklua or `rbxtsc` writes the compiled path from your source files, so the next compile would replace anything syncback wrote there. Syncback leaves the instance out and writes the rest, such as the folders the tree mounts.
