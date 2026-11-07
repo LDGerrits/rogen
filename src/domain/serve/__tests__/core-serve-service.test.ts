@@ -350,24 +350,6 @@ describe("CoreServeService", () => {
 			);
 		});
 
-		it("should start over a server recorded for this project file by a serve that named no owner", async () => {
-			processes.running.add(5001);
-			await memFs.writeFile(
-				...recordFile(34872, "repo", "/repo/default.project.json", {
-					pid: 5001,
-				})
-			);
-			requests.answer(
-				"http://127.0.0.1:34872/api/rojo",
-				rojoInfo("repo")
-			);
-
-			const servePlan = await plan();
-
-			expect(servePlan.target.servedBy).toBeUndefined();
-			expect(servePlan.target.orphan?.pid).toBe(5001);
-		});
-
 		it("should leave a server alone that another serve recorded for this project file before its name changed", async () => {
 			await memFs.writeFile(
 				"/repo/default.rogen.json",
@@ -476,7 +458,7 @@ describe("CoreServeService", () => {
 			["the record names no leading process", { owner: 5000 }],
 			["the record names no serve", { pid: 5001 }],
 		])(
-			"should take the port of a server whose serve ended when %s",
+			"should refuse a server recorded for this project file when %s",
 			async (_, recorded) => {
 				await memFs.writeFile(
 					...recordFile(
@@ -491,12 +473,34 @@ describe("CoreServeService", () => {
 					rojoInfo("repo")
 				);
 
-				const servePlan = await plan();
+				const error = (await errorOf()) as DiagnosticsError;
 
-				expect(servePlan.target.servedBy).toBeUndefined();
-				expect(servePlan.isIdle).toBe(false);
+				expect(error.diagnostics[0]).toMatchObject({
+					code: "serve.portTaken",
+					message: expect.stringContaining(
+						"Port 34872 is held by another process (Rojo serving repo)"
+					),
+				});
 			}
 		);
+
+		it("should refuse a server recorded by a serve that named no owner, even while its leading process runs", async () => {
+			processes.running.add(5001);
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					pid: 5001,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+
+			const error = (await errorOf()) as DiagnosticsError;
+
+			expect(error.diagnostics[0].code).toBe("serve.portTaken");
+			expect(processes.terminatedTrees).toEqual([]);
+		});
 
 		it("should start over a server whose serve ended, and name what it leaves", async () => {
 			processes.running.add(5001);
@@ -977,25 +981,6 @@ describe("CoreServeService", () => {
 			expect(processes.spawned).toHaveLength(1);
 			expect(said).toEqual([]);
 			expect(changes).toEqual(["orphan repo (process 5001 of 5000)"]);
-		});
-
-		it("should start its own server, ending nothing, over a record whose serve and leading process are gone", async () => {
-			await memFs.writeFile(
-				...recordFile(34872, "repo", "/repo/default.project.json", {
-					owner: 5000,
-					pid: 5001,
-				})
-			);
-			requests.answer(
-				"http://127.0.0.1:34872/api/rojo",
-				rojoInfo("repo")
-			);
-
-			await start();
-
-			expect(processes.terminatedTrees).toEqual([]);
-			expect(changes).toEqual([]);
-			expect(processes.spawned).toHaveLength(1);
 		});
 
 		it("should leave a server alone that went before the serve got to end it", async () => {
