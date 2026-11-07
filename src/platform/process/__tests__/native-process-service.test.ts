@@ -287,6 +287,36 @@ describe("NativeProcessService", () => {
 			child[Symbol.dispose]();
 		});
 
+		it("should tell when a process it started first runs and when the last has ended", async () => {
+			const running: boolean[] = [];
+			const subscription = service.onDidChangeRunning((value) =>
+				running.push(value)
+			);
+			const first = service.spawn(
+				node,
+				["-e", "setTimeout(() => {}, 100)"],
+				{ cwd: dir }
+			);
+			const second = service.spawn(
+				node,
+				["-e", "setTimeout(() => {}, 200)"],
+				{ cwd: dir }
+			);
+			const started = [...running];
+
+			await exitOf(first);
+			const afterFirst = [...running];
+			await exitOf(second);
+			await service.stopped();
+
+			expect(started).toEqual([true]);
+			expect(afterFirst).toEqual([true]);
+			expect(running).toEqual([true, false]);
+			subscription[Symbol.dispose]();
+			first[Symbol.dispose]();
+			second[Symbol.dispose]();
+		});
+
 		it("should settle stopped once a process disposed before it ended has ended", async () => {
 			const child = service.spawn(
 				node,
