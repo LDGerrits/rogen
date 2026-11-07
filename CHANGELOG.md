@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - A warning when a source path holds files but Rojo reads none of them, such as the files of a language that compiles to Luau. `rogen where` prints it when it has no file to list.
 
+### Fixed
+
+- A second `rogen syncback` in a project folder where one is running stops with `syncback.busy`, instead of deleting the first one's copy of your files.
+
 ## [2.0.0-beta.3] - 2026-11-01
 
 ### Changed

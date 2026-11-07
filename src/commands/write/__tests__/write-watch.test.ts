@@ -431,6 +431,47 @@ describe("watch", () => {
 			expect(logService.texts("print")).toEqual(['{"name":"repo"}']);
 		});
 
+		it("should keep stdout for the sourcemap from the start, even when the config is broken", async () => {
+			await write("/repo/default.rogen.json", { bogus: "base" });
+
+			const result = await commandHarness({
+				fs: memFs,
+				log: logService,
+				config: configService,
+				lifecycle,
+				watcher,
+				processes,
+			}).run("sourcemap", { positionals: [], options: { watch: true } });
+
+			expect(result.isErr()).toBe(true);
+			expect(logService.reserved).toBe(true);
+			expect(logService.texts("print")).toEqual([]);
+		});
+
+		it("should leave stdout free for the sourcemap that -o writes to a file", async () => {
+			void commandHarness({
+				fs: memFs,
+				log: logService,
+				config: configService,
+				lifecycle,
+				watcher,
+				processes,
+			}).run("sourcemap", {
+				positionals: [],
+				options: { watch: true, output: "map.json" },
+			});
+			await settle();
+
+			expect(processes.spawned[0].args).toEqual([
+				"sourcemap",
+				"default.project.json",
+				"--output",
+				"map.json",
+				"--watch",
+			]);
+			expect(logService.reserved).toBe(false);
+		});
+
 		it("should run no Rojo without -o or -p", async () => {
 			void startWatch();
 			await settle();

@@ -1,6 +1,11 @@
 import { SyncTool } from "../../toolchain/toolchain.js";
 import { SyncRules } from "../../rojo/sync-rules.js";
-import { CompiledLayout } from "../compiled-layout.js";
+import {
+	CompiledLayout,
+	PLACEHOLDER_SOURCE,
+	placeholderState,
+} from "../compiled-layout.js";
+import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { commonAncestor } from "../../../base/path.js";
 import { RojoNode, RojoProjectFile } from "../../rojo/rojo-project.js";
 import { abs, configOf, syncTools } from "./fixtures.js";
@@ -403,5 +408,37 @@ describe("CompiledLayout", () => {
 				)
 			).toEqual([]);
 		});
+	});
+});
+
+describe("placeholderState", () => {
+	let fs: MemoryFileSystemService;
+
+	beforeEach(() => {
+		fs = new MemoryFileSystemService();
+	});
+
+	it("should find nothing at a path that doesn't exist", async () => {
+		expect(await placeholderState(fs, abs("out/A.luau"))).toBe("absent");
+	});
+
+	it("should count a folder as one a write makes", async () => {
+		await fs.createDirectory(abs("out/Hud"));
+
+		expect(await placeholderState(fs, abs("out/Hud"))).toBe("folder");
+	});
+
+	it("should know the script a write makes for Rojo", async () => {
+		await fs.writeFile(abs("out/A.luau"), PLACEHOLDER_SOURCE);
+
+		expect(await placeholderState(fs, abs("out/A.luau"))).toBe(
+			"placeholder"
+		);
+	});
+
+	it("should count any other file as written by something else", async () => {
+		await fs.writeFile(abs("out/A.luau"), "return 1");
+
+		expect(await placeholderState(fs, abs("out/A.luau"))).toBe("written");
 	});
 });

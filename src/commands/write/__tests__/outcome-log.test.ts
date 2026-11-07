@@ -5,6 +5,7 @@ import {
 	CheckedConfig,
 	ConfigOutcome,
 	FailedConfig,
+	SyncWarnings,
 	UnwrittenConfig,
 	WrittenConfig,
 } from "../../../domain/write/write.js";
@@ -44,7 +45,7 @@ const writtenOf = (
 	config: ResolvedConfig = mockConfig(),
 	blockedBy: readonly string[] = [matchFile]
 ): ConfigOutcome => {
-	const findings = { warnings: [], syncWarnings: [] };
+	const findings = { warnings: [], sync: SyncWarnings.known([]) };
 	if (outcome === "notWritten")
 		return new UnwrittenConfig(config, findings, summary, [], blockedBy);
 	if (outcome === "wouldWrite")
@@ -395,7 +396,7 @@ describe("OutcomeLog report, warnings", () => {
 		new WrittenConfig(
 			configNamed(label),
 			"wrote",
-			{ warnings, syncWarnings },
+			{ warnings, sync: SyncWarnings.known(syncWarnings) },
 			summaryOf(),
 			[]
 		);
@@ -477,7 +478,7 @@ describe("OutcomeLog report, warnings", () => {
 		const failed = (label: string) =>
 			new FailedConfig(configNamed(label), [error], {
 				warnings: [aboutSrc(label)],
-				syncWarnings: [],
+				sync: SyncWarnings.known([]),
 			});
 
 		expect(
@@ -506,7 +507,7 @@ describe("OutcomeLog report, closing line", () => {
 						"bad."
 					)
 				),
-				syncWarnings: [],
+				sync: SyncWarnings.known([]),
 			},
 			summaryOf(),
 			[]
@@ -666,7 +667,7 @@ describe("OutcomeLog report, when quiet", () => {
 								"bad."
 							),
 						],
-						syncWarnings: [],
+						sync: SyncWarnings.known([]),
 					},
 					summaryOf(),
 					[]
