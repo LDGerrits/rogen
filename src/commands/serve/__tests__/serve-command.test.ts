@@ -448,11 +448,13 @@ describe("serve command", () => {
 			},
 			"served-elsewhere": {
 				end: async () => {
+					processes.running.add(5000);
 					await memFs.writeFile(
 						...recordFile(
 							34872,
 							"repo",
-							"/repo/default.project.json"
+							"/repo/default.project.json",
+							{ owner: 5000 }
 						)
 					);
 					requests.answer(ROJO_URL, {
@@ -546,8 +548,11 @@ describe("serve command", () => {
 	});
 
 	it("should start nothing and exit 0 when another serve already serves the project", async () => {
+		processes.running.add(5000);
 		await memFs.writeFile(
-			...recordFile(34872, "repo", "/repo/default.project.json")
+			...recordFile(34872, "repo", "/repo/default.project.json", {
+				owner: 5000,
+			})
 		);
 		requests.answer(ROJO_URL, {
 			projectName: "repo",
@@ -570,8 +575,11 @@ describe("serve command", () => {
 	it("should exit 0 and name the server when another serve started one for the project first", async () => {
 		const result = serve([], { json: true });
 		await settle();
+		processes.running.add(5000);
 		await memFs.writeFile(
-			...recordFile(34872, "repo", "/repo/default.project.json")
+			...recordFile(34872, "repo", "/repo/default.project.json", {
+				owner: 5000,
+			})
 		);
 		requests.answer(ROJO_URL, {
 			projectName: "repo",
@@ -609,8 +617,11 @@ describe("serve command", () => {
 	it("should say in text that another serve started serving the project first", async () => {
 		const result = serve();
 		await settle();
+		processes.running.add(5000);
 		await memFs.writeFile(
-			...recordFile(34872, "repo", "/repo/default.project.json")
+			...recordFile(34872, "repo", "/repo/default.project.json", {
+				owner: 5000,
+			})
 		);
 		requests.answer(ROJO_URL, {
 			projectName: "repo",
