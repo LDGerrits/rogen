@@ -4,6 +4,8 @@ import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
+import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import {
 	abs,
 	writeServiceOf,
@@ -81,6 +83,7 @@ describe("CoreSyncbackService", () => {
 	let fs: MemoryFileSystemService;
 	let configs: MockConfigService;
 	let rojo: FakeRojo;
+	let processes: MockProcessService;
 	let service: CoreSyncbackService;
 	let config: ResolvedConfig;
 	let request: SyncbackRequest;
@@ -109,11 +112,14 @@ describe("CoreSyncbackService", () => {
 		fs = new MemoryFileSystemService();
 		rojo = new FakeRojo(fs);
 		configs = new MockConfigService([]);
+		processes = new MockProcessService();
 		service = new CoreSyncbackService(
 			configs,
 			fs,
 			writeServiceOf(fs, new CoreIndexService(fs)),
-			rojo
+			rojo,
+			new MockEnvironmentService("/repo"),
+			processes
 		);
 	});
 
@@ -171,6 +177,72 @@ describe("CoreSyncbackService", () => {
 
 		expect(await fs.exists(abs("rogen-syncback.project.json"))).toBe(false);
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should refuse to run while another syncback holds the folder, touching nothing", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs(".rogen-syncback/lock"), "77");
+		await fs.writeFile(
+			mirror("ServerScriptService", "Combat", "Combat.luau"),
+			"return 1"
+		);
+		processes.running.add(77);
+
+		const planned = await service.plan(request);
+
+		expect(planned.isErr()).toBe(true);
+		const error = (planned as ResultError<DiagnosticsError>).error;
+		expect(error.diagnostics).toMatchObject([
+			{
+				code: "syncback.busy",
+				resource: abs(),
+				message: expect.stringContaining("77"),
+			},
+		]);
+		expect(rojo.requests).toHaveLength(0);
+		expect(await fs.readFile(abs(".rogen-syncback/lock"))).toBe("77");
+		expect(
+			await fs.readFile(
+				mirror("ServerScriptService", "Combat", "Combat.luau")
+			)
+		).toBe("return 1");
+	});
+
+	it("should take over the folder from a syncback that was killed, and clean what it left", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs(".rogen-syncback/lock"), "77");
+		await fs.writeFile(mirror("Workspace", "Stale.luau"), "return 1");
+		let lock: string | undefined;
+		let stale: boolean | undefined;
+		rojo.say = async () => {
+			lock = await fs.readFile(abs(".rogen-syncback/lock"));
+			stale = await fs.exists(mirror("Workspace", "Stale.luau"));
+			return [];
+		};
+
+		const planned = await service.plan(request);
+
+		expect(planned.isOk()).toBe(true);
+		expect(lock).toBe("4242");
+		expect(stale).toBe(false);
+	});
+
+	it("should let the next syncback run once one has ended, whether it succeeded or failed", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		rojo.say = async () =>
+			new DiagnosticsError([
+				errorDiagnostic("rojo.failed", { resource: "/repo" }, "no"),
+			]);
+		processes.running.add(4242);
+
+		expect((await service.plan(request)).isErr()).toBe(true);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+
+		rojo.say = async () => [];
+
+		expect((await service.plan(request)).isOk()).toBe(true);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+		expect((await service.plan(request)).isOk()).toBe(true);
 	});
 
 	it("should write an edit into the source file, with the line endings it had", async () => {
@@ -1765,6 +1837,49 @@ describe("CoreSyncbackService", () => {
 		expect(plan.unplaced).toEqual([
 			{
 				instance: "ReplicatedStorage/Packages/Rates",
+				reason: "Rojo can't sync back a Yaml file, so its change stays in the place; copy it by hand",
+			},
+		]);
+	});
+
+	it("should leave out a YAML file the tree keeps under a name of its own", async () => {
+		await writeFiles(fs, "config.yaml");
+		await prepare(["src/Combat/Server/Combat.luau"], {
+			project: {
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Config: { $path: "config.yaml" } },
+				},
+			},
+		});
+		rojo.say = async () =>
+			rojo.requests.length > 1
+				? []
+				: new DiagnosticsError([
+						{
+							...errorDiagnostic(
+								"rojo.commandFailed",
+								{
+									resource: abs(
+										"rogen-syncback.project.json"
+									),
+								},
+								"Rojo couldn't sync back into this project:"
+							),
+							details: [
+								"Failed to syncback ReplicatedStorage/Config because cannot syncback Yaml middleware",
+							],
+						},
+					]);
+
+		const plan = (await service.plan(request)).unwrap();
+
+		expect(JSON.parse(rojo.projectTexts[1]).syncbackRules).toEqual({
+			ignorePaths: [".rogen-syncback/mirror/~kept/0/config.yaml"],
+		});
+		expect(plan.unplaced).toEqual([
+			{
+				instance: "ReplicatedStorage/Config",
 				reason: "Rojo can't sync back a Yaml file, so its change stays in the place; copy it by hand",
 			},
 		]);

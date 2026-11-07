@@ -688,6 +688,7 @@ describe("CoreInitService", () => {
 		});
 
 		it("should not offer it when every agent in use has it", async () => {
+			await write(SCRIPT, "#!/bin/sh\n");
 			await write(
 				CLAUDE,
 				JSON.stringify({

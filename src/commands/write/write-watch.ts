@@ -62,13 +62,11 @@ export class WriteWatch {
 				: await configService.select(this.configs);
 		if (selection.isErr()) return selection;
 		for (const note of selection.value.notes) logService.warn(note);
-		let planned: RojoPlan | undefined;
 		if (this.step !== undefined) {
 			const stepPlan = this.step.plan(selection.value);
 			if (stepPlan.isErr()) return stepPlan;
-			planned = stepPlan.value;
 		}
-		const printing = planned?.printed ?? false;
+		const printing = this.step?.prints ?? false;
 		if (printing && !this.json) logService.reserveStdout();
 		const log: WatchReporter = this.json
 			? new WatchJsonLog(logService, cwd)
@@ -122,7 +120,7 @@ export class WriteWatch {
 				const watch = started.value;
 				rojo = watch;
 				watch.onDidRun((run) => {
-					if (plan.printed)
+					if (step.prints)
 						for (const { stdout } of run.messages)
 							if (stdout !== undefined) logService.print(stdout);
 					log.rojo(ok(run), plan.target);

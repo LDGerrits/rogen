@@ -8,6 +8,7 @@ import { RojoPlan, RojoStep } from "../write/rojo-step.js";
 /** Rojo's build into the place, model or plugin `-o` or `-p` names. */
 export class BuildStep implements RojoStep {
 	readonly command = "build";
+	readonly prints = false;
 
 	constructor(
 		private readonly rojo: RojoCommandService,

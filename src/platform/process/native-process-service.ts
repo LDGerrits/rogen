@@ -140,8 +140,13 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 	private readonly exited: Promise<ProcessExit>;
 	private terminating: Promise<ProcessExit> | undefined;
 
-	constructor(private readonly child: childProcess.ChildProcess) {
+	constructor(
+		private readonly child: childProcess.ChildProcess,
+		running: Set<NativeChildProcess>
+	) {
 		super();
+		running.add(this);
+		this._register(this.onDidExit(() => running.delete(this)));
 		for (const [stream, name] of [
 			[child.stdout, "stdout"],
 			[child.stderr, "stderr"],
@@ -218,6 +223,17 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 		}
 	}
 
+	kill(): void {
+		if (this.exit || this.child.pid === undefined) return;
+		if (isWindows)
+			childProcess.spawnSync(
+				"taskkill",
+				["/pid", String(this.child.pid), "/T", "/F"],
+				{ windowsHide: true }
+			);
+		else signalTree(this.child.pid, "SIGKILL", this.child);
+	}
+
 	override [Symbol.dispose](): void {
 		this.terminate().catch(onUnexpectedError);
 		super[Symbol.dispose]();
@@ -226,6 +242,8 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 
 export class NativeProcessService implements ProcessService {
 	declare readonly _serviceBrand: undefined;
+
+	private readonly running = new Set<NativeChildProcess>();
 
 	constructor(
 		private readonly env: Readonly<
@@ -312,7 +330,8 @@ export class NativeProcessService implements ProcessService {
 				stdio: ["ignore", "pipe", "pipe"],
 				detached: !isWindows,
 				windowsHide: true,
-			})
+			}),
+			this.running
 		);
 	}
 
@@ -323,6 +342,11 @@ export class NativeProcessService implements ProcessService {
 		} catch (error) {
 			return (error as NodeJS.ErrnoException).code === "EPERM";
 		}
+	}
+
+	/** Kills every process this service started that still runs, and what each started, without waiting; for a process about to exit. */
+	killAll(): void {
+		for (const child of this.running) child.kill();
 	}
 
 	async terminateTree(pid: number): Promise<void> {
