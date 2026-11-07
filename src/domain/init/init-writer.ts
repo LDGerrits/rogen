@@ -3,7 +3,11 @@ import { firstLine } from "../../base/strings.js";
 import { ErrorUtils, ToolError, failureReason } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { UndoLog } from "./undo-log.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { DraftFileReader } from "../../platform/fs/draft-file-reader.js";
+import {
+	FileReader,
+	FileSystemService,
+} from "../../platform/fs/file-system-service.js";
 import { GitRepository } from "./git-repository.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
@@ -93,12 +97,25 @@ export class InitWriter {
 			if (wrote.isErr()) return wrote;
 			written.push({ kind: "file", file });
 		}
+		// A dry run asks the folder as the files and moves would leave it, as the real run asks after making them.
+		const folder: FileReader = dryRun
+			? new DraftFileReader(this.fileSystemService, {
+					files: new Map(
+						plan.files.map(({ fileName }) => [at(fileName), ""])
+					),
+					directories: [],
+					moves: plan.moves.map(({ from, to }) => ({
+						from: at(from),
+						to: at(to),
+					})),
+				})
+			: this.fileSystemService;
 		for (const directory of plan.directories) {
 			const created = await attempt(
 				`Failed to create ${directory}`,
 				async () =>
 					dryRun
-						? !(await this.fileSystemService.exists(at(directory)))
+						? !(await folder.exists(at(directory)))
 						: log.createDirectory(at(directory))
 			);
 			if (created.isErr()) return created;

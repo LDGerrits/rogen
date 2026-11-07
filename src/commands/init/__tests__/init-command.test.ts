@@ -542,7 +542,6 @@ describe("init command", () => {
 				"success: Would create README.md.",
 				"success: Would create AGENTS.md.",
 				"success: Would create default.rogen.json.",
-				"success: Would create src/.",
 				"outro: Would write 11 files. Nothing was written.",
 			]);
 		});
@@ -622,7 +621,7 @@ describe("init command", () => {
 						outcome: "wouldWrite",
 					},
 				],
-				directories: [path.join(cwd, "src")],
+				directories: [],
 			});
 			expect(document.decided).toContainEqual({
 				question: "language",
