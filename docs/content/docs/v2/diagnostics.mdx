@@ -681,7 +681,7 @@ On a plain Rojo project, which has no config, only `rogen check` reports it. Roj
 Warning. A source path holds files, but Rojo reads none of them, so Rogen places nothing from it. Rojo reads a file by its extension, such as `.luau` or `.json`, or by a sync rule. A language that compiles to Luau, with an extension of its own, gets this warning.
 
 ```
-warning: this source path places nothing: Rojo reads no file in it. If client/main.client.aly, server/main.server.aly and shared/util.aly are scripts, add a "syncRules" entry that reads their extension. (scan.noSyncedFiles)
+warning: this source path places nothing: Rojo reads none of its files (client/main.client.aly, server/main.server.aly and shared/util.aly). If they are scripts, add a "syncRules" entry for their extension. (scan.noSyncedFiles)
 ```
 
 The message names the first three files. In `--json`, `related` lists every one. When `rogen where` has no file to list, it prints this warning instead of saying the source paths hold no files. An error that stops the write hides it.
@@ -691,7 +691,7 @@ If the files are scripts, add [`syncRules`](https://rojo.space/docs/v7/project-f
 With a `compiledPath`, a sync rule doesn't help. Rogen points the project file at each file's copy in the compiled path under the file's own name, but a compiler writes `.luau` files. Route the compiled files instead: set `sourcePaths` to the copy of each source path that the compiler writes, and remove `compiledPath`.
 
 ```
-warning: this source path places nothing: Rojo reads no file in it. If util.aly is a script, a sync rule won't help: Rogen would point the project file at its copy in "out" under the same name, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out"], and remove "compiledPath". (scan.noSyncedFiles)
+warning: this source path places nothing: Rojo reads none of its files (util.aly). If they are scripts, a sync rule won't help: Rogen would point the project file at the same names in "out", but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out"], and remove "compiledPath". (scan.noSyncedFiles)
 ```
 
 Files that `globIgnorePaths` matches don't count, and neither does a source path that the tree mounts a folder or file of.

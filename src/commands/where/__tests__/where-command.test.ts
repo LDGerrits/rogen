@@ -309,7 +309,7 @@ describe("where command", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(printed()).toEqual([
-				'src - warning: this source path places nothing: Rojo reads no file in it. If Server/Main.aly is a script, add a "syncRules" entry that reads its extension. (scan.noSyncedFiles)',
+				'src - warning: this source path places nothing: Rojo reads none of its files (Server/Main.aly). If they are scripts, add a "syncRules" entry for their extension. (scan.noSyncedFiles)',
 			]);
 		});
 
