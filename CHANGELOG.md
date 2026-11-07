@@ -10,10 +10,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - A warning when a source path holds files but Rojo reads none of them, such as the files of a language that compiles to Luau. `rogen where` prints it when it has no file to list.
 
+### Changed
+
+- A second Ctrl+C while Rogen stops Rojo ends at once and stops every process Rogen started.
+- Esc while you customise `rogen init` goes back to the summary instead of leaving init.
+- A failed `rogen init` puts the folder back as it was, so running it again finishes the project.
+
 ### Fixed
 
 - A second `rogen syncback` in a project folder where one is running stops with `syncback.busy`, instead of deleting the first one's copy of your files.
+- `rogen syncback` stops with an error when it can't read or clear its copy of your files, instead of planning to remove them, and Ctrl+C leaves no copy behind.
+- `rogen syncback` writes nothing when the config or the place changed while it asked, and keeps a file it couldn't replace.
+- `rogen syncback` exits with 1 when it can't write the project file again afterwards.
 - `rogen write` with several configs writes the others when one's project file can't be written.
+- A file saved while `serve` or `--watch` starts is in the first project file, and a config saved then takes effect.
+- Ctrl+C on `rogen serve` always exits with 130.
+- `--watch` follows comment-only config edits, a second config of the same name with the other extension, and a broken config that becomes a copy of another.
+- `rogen init` restores the Rogen hook's script when an agent still runs it but it was deleted.
 
 ## [2.0.0-beta.3] - 2026-11-01
 
