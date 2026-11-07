@@ -157,6 +157,20 @@ export class DiskFileSystemService implements FileSystemService {
 		return fs.promises.writeFile(filePath, content, "utf-8");
 	}
 
+	async createFile(filePath: string, content: string): Promise<boolean> {
+		await this.createDirectory(path.dirname(filePath));
+		try {
+			await fs.promises.writeFile(filePath, content, {
+				encoding: "utf-8",
+				flag: "wx",
+			});
+			return true;
+		} catch (error) {
+			if (ErrorUtils.hasCode(error, "EEXIST")) return false;
+			throw error;
+		}
+	}
+
 	async delete(filePath: string, recursive: boolean = false): Promise<void> {
 		try {
 			await fs.promises.rm(filePath, { recursive, force: true });

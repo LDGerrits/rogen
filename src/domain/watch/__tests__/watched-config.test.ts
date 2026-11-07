@@ -1,5 +1,5 @@
 import { DeferredPromise } from "../../../base/async.js";
-import { WrittenConfig } from "../../write/write.js";
+import { SyncWarnings, WrittenConfig } from "../../write/write.js";
 import { configOf } from "../../write/__tests__/fixtures.js";
 import { WatchedConfig } from "../watched-config.js";
 
@@ -15,7 +15,7 @@ describe("WatchedConfig", () => {
 		new WrittenConfig(
 			configOf(),
 			"wrote",
-			{ warnings: [], syncWarnings: undefined },
+			{ warnings: [], sync: SyncWarnings.unknown },
 			summary,
 			readFiles
 		);

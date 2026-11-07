@@ -7,7 +7,11 @@ import { ProjectText } from "../rojo/project-text.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { OutputFile } from "./write.js";
-import { PLACEHOLDER_SOURCE, Placeholder } from "./compiled-layout.js";
+import {
+	PLACEHOLDER_SOURCE,
+	Placeholder,
+	placeholderState,
+} from "./compiled-layout.js";
 
 export interface OutputWriteOptions {
 	readonly force?: boolean;
@@ -62,7 +66,8 @@ export class OutputWriter {
 		path,
 		kind,
 	}: Placeholder): Promise<void> {
-		if (await this.fileSystemService.exists(path)) return;
+		if ((await placeholderState(this.fileSystemService, path)) !== "absent")
+			return;
 		if (kind === "folder")
 			await this.fileSystemService.createDirectory(path);
 		else await this.fileSystemService.writeFile(path, PLACEHOLDER_SOURCE);

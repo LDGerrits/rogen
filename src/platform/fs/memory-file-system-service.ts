@@ -337,6 +337,23 @@ export class MemoryFileSystemService
 		});
 	}
 
+	async createFile(filePath: string, content: string): Promise<boolean> {
+		const parts = splitPath(filePath);
+		const name = parts.pop()!;
+		const leading = toPosix(filePath).startsWith("/") ? "/" : "";
+		await this.createDirectory(leading + parts.join("/"));
+		// Checked and set with no await between, as an exclusive open is.
+		const parent = this.parentOf(filePath);
+		if (parent.entries.has(name)) return false;
+		parent.entries.set(name, new FileNode(content));
+		this.fire({
+			type: FileChangeType.ADDED,
+			path: this.targetPath(filePath),
+			fileType: FileType.File,
+		});
+		return true;
+	}
+
 	async delete(filePath: string, recursive: boolean = false): Promise<void> {
 		const parts = splitPath(filePath);
 		const name = parts.pop();
