@@ -77,9 +77,10 @@ export class InitPlanBuilder {
 		this.agentImports = imports;
 	}
 
-	addAgentHook(hooks: AgentHooks): void {
-		this.hookFiles = hooks.files;
-		this.addSetup(...hooks.setup);
+	/** `registering`: whether the hook is added to the agents that lack it; a missing script is restored either way. */
+	addAgentHook(hooks: AgentHooks, registering: boolean): void {
+		this.hookFiles = hooks.files(registering);
+		if (registering) this.addSetup(...hooks.setup);
 	}
 
 	addToolManifest(file: PlannedFile): void {
