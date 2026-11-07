@@ -1,7 +1,10 @@
 import path from "path";
 import { isObject } from "../../base/objects.js";
 import { samePath } from "../../base/path.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import {
+	FileSystemService,
+	replaceFile,
+} from "../../platform/fs/file-system-service.js";
 import { ServerInfo } from "../runner/rojo-server.js";
 import { ServeAddress } from "./serve.js";
 
@@ -98,10 +101,11 @@ export class ServerRecords {
 		served: ServedProject
 	): Promise<void> {
 		const file = this.fileOf(address.port);
-		// Readers see the old record or the new one, never a partial file; the staging name isn't read as a record.
-		const staging = `${file}.${this.owner}.tmp`;
-		await this.fileSystemService.writeFile(
-			staging,
+		// The staging name isn't read as a record.
+		await replaceFile(
+			this.fileSystemService,
+			file,
+			`${file}.${this.owner}.tmp`,
 			JSON.stringify({
 				host: address.host,
 				port: address.port,
@@ -113,12 +117,6 @@ export class ServerRecords {
 				pid: served.pid,
 			})
 		);
-		try {
-			await this.fileSystemService.rename(staging, file, true);
-		} catch (error) {
-			await this.fileSystemService.delete(staging).catch(() => undefined);
-			throw error;
-		}
 	}
 
 	/** Forgets the record of `address` when it is the one this serve wrote for the server that answered with `info`, leaving one another serve wrote since. */
