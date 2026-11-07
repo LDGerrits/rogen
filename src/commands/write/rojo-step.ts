@@ -13,8 +13,6 @@ export interface RojoPlan {
 	readonly cwd: string;
 	/** What the run is for, as the JSON reports it. */
 	readonly target: RojoTarget;
-	/** Set when `flags` name no file, because Rojo's output is for the screen. */
-	readonly printed?: true;
 }
 
 /** The Rojo command a command runs after it has written the project files. */

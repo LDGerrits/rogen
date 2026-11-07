@@ -47,7 +47,6 @@ export class SourcemapStep implements RojoStep {
 					: [...rojoFlags, "--output", output],
 			cwd: this.cwd,
 			target: { command: this.command, cwd: this.cwd, output },
-			...(this.prints && { printed: true as const }),
 		});
 	}
 }

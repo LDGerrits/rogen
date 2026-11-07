@@ -184,14 +184,14 @@ registerCommand(
 					? undefined
 					: await rojoService.run(selection.value, {
 							command: step.command,
-							flags: plan.printed
+							flags: step.prints
 								? [...plan.flags, "--output", tmp]
 								: plan.flags,
 							cwd: plan.cwd,
 							project: plan.project,
 						});
 			const rojoFailure = failureOf(ran);
-			const printed = plan?.printed === true;
+			const printed = plan !== undefined && step.prints;
 			let unread: Error | undefined;
 			if (printed) {
 				if (!rojoFailure && !failure) {
@@ -233,7 +233,7 @@ registerCommand(
 					logService,
 					messages.filter(
 						({ severity, stdout }) =>
-							(stdout !== undefined && !plan.printed) ||
+							(stdout !== undefined && !step.prints) ||
 							severity === "warning" ||
 							severity === "error"
 					),
