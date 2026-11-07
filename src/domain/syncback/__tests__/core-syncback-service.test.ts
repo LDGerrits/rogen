@@ -205,7 +205,8 @@ describe("CoreSyncbackService", () => {
 			{
 				code: "syncback.busy",
 				resource: abs(),
-				message: expect.stringContaining("77"),
+				message:
+					"another rogen syncback, process 77, is running in this folder, so this one stopped before it touched anything. Wait for it to end, then run syncback again. If no syncback is running, remove .rogen-syncback/lock.",
 			},
 		]);
 		expect(rojo.requests).toHaveLength(0);
@@ -234,6 +235,22 @@ describe("CoreSyncbackService", () => {
 		expect(planned.isOk()).toBe(true);
 		expect(lock).toBe("4242");
 		expect(stale).toBe(false);
+	});
+
+	it("should take over a lock that names this process, since no other run is it", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs(".rogen-syncback/lock"), "4242");
+		await fs.writeFile(mirror("Workspace", "Stale.luau"), "return 1");
+		processes.running.add(4242);
+		let stale: boolean | undefined;
+		rojo.say = async () => {
+			stale = await fs.exists(mirror("Workspace", "Stale.luau"));
+			return [];
+		};
+
+		expect((await service.plan(request)).isOk()).toBe(true);
+		expect(stale).toBe(false);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
 	});
 
 	it("should count a new lock that names no owner yet as held", async () => {

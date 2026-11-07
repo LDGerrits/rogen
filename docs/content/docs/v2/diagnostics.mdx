@@ -1152,10 +1152,10 @@ These diagnostics come from `rogen syncback`, which writes the changes made in a
 Error. Another `rogen syncback` is running in the same project folder, such as one in a second terminal or one that a coding agent started. Syncback works on a copy of your files in `.rogen-syncback`, and only one run at a time can own it. The second run stops before it touches anything, and exits 1. The message names the process id of the run that owns the folder.
 
 ```
-error: another rogen syncback, process 4242, is running in this folder, so this one stopped before it touched anything. Wait for it to end, then run syncback again. (syncback.busy)
+error: another rogen syncback, process 4242, is running in this folder, so this one stopped before it touched anything. Wait for it to end, then run syncback again. If no syncback is running, remove .rogen-syncback/lock. (syncback.busy)
 ```
 
-Wait for the other run to end, then run `rogen syncback` again. A run that was killed leaves its lock behind, and the next run takes it over, since the process that held it no longer runs.
+Wait for the other run to end, then run `rogen syncback` again. A run that was killed leaves its lock behind, and the next run takes it over, since the process that held it no longer runs. If the lock names a process that runs but is not a syncback, such as one that got the same id after a restart, remove `.rogen-syncback/lock` yourself.
 
 ### `syncback.compiledPath` [#syncback-compiledpath]
 

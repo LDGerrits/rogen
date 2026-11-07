@@ -133,13 +133,18 @@ export class SyncbackStaging {
 		}
 	}
 
-	/** Whether the lock at `file` is held: by a running owner, or, while it names none yet, for a moment after it was made. */
+	/** Whether the lock at `file` is held: by a running owner other than this process, or, while it names none yet, for a moment after it was made. */
 	private async holder(
 		file: string
 	): Promise<{ held: boolean; owner?: number }> {
 		const owner = await this.owner(file);
+		// A lock naming this process was left by an earlier one whose id it reuses.
 		if (owner !== undefined)
-			return { held: this.processService.isRunning(owner), owner };
+			return {
+				held:
+					owner !== this.pid && this.processService.isRunning(owner),
+				owner,
+			};
 		const modified = await tryWithAsync(() =>
 			this.fileSystemService.lastModified(file)
 		);
@@ -162,7 +167,7 @@ export class SyncbackStaging {
 			errorDiagnostic(
 				"syncback.busy",
 				{ resource: this.dir },
-				`another rogen syncback${owner === undefined ? "" : `, process ${owner},`} is running in this folder, so this one stopped before it touched anything. Wait for it to end, then run syncback again.`
+				`another rogen syncback${owner === undefined ? "" : `, process ${owner},`} is running in this folder, so this one stopped before it touched anything. Wait for it to end, then run syncback again. If no syncback is running, remove ${SYNCBACK_FILES.staging}/${LOCK}.`
 			),
 		]);
 	}
