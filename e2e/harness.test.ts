@@ -1,4 +1,9 @@
-import { RunningProcess, formatStep, showsStdout } from "./harness.js";
+import {
+	RunningProcess,
+	eventually,
+	formatStep,
+	showsStdout,
+} from "./harness.js";
 
 describe("e2e harness", () => {
 	describe("showsStdout", () => {
@@ -122,7 +127,9 @@ describe("e2e harness", () => {
 
 			await running.stop();
 
-			expect(() => process.kill(grandchild, 0)).toThrow();
+			await eventually(() =>
+				expect(() => process.kill(grandchild, 0)).toThrow()
+			);
 		});
 	});
 });
