@@ -316,28 +316,13 @@ export class ServeJsonLog implements ServeReporter {
 
 	stopped(stop: ServerExitEvent): void {
 		const { target } = stop;
-		switch (stop.kind) {
-			case "served-elsewhere":
-				this.running({ ...target, servedBy: stop.servedBy });
-				return;
-			case "stopped":
-			case "interrupted":
-				this.line({
-					stopped: this.exitedJson(target, "exited", stop.exit),
-				});
-				return;
-			case "crashed":
-				this.line({
-					stopped: this.exitedJson(target, "crashed", stop.exit),
-				});
-				this.line(diagnosticsJson([stop.failure]));
-				return;
-			case "failed":
-				this.line({
-					stopped: this.exitedJson(target, "exited", stop.exit),
-				});
-				this.line(diagnosticsJson([stop.failure]));
+		if (stop.kind === "served-elsewhere") {
+			this.running({ ...target, servedBy: stop.servedBy });
+			return;
 		}
+		const reason = stop.kind === "crashed" ? "crashed" : "exited";
+		this.line({ stopped: this.exitedJson(target, reason, stop.exit) });
+		if ("failure" in stop) this.line(diagnosticsJson([stop.failure]));
 	}
 
 	changed(change: ServeChangeEvent): void {

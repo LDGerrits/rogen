@@ -23,7 +23,7 @@ import {
 	ServerRestartEvent,
 	isServed,
 } from "./serve-service.js";
-import { ServePorts } from "./serve-ports.js";
+import { ServePorts, refuses } from "./serve-ports.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
 import { StartedServer } from "./started-server.js";
@@ -182,14 +182,7 @@ export class CoreServeSession
 	private async launchFirst(
 		update: WatchUpdate
 	): Promise<Result<void, Error> | undefined> {
-		if (this.stopping) return ok(undefined);
-		const incompatible = await this.compatibility.problemsIn(
-			this.plan.executable,
-			update.reports.flatMap(({ outcome }) =>
-				isWritten(outcome) ? [outcome.config.projectFile] : []
-			),
-			"serve"
-		);
+		const incompatible = await this.problemsIn(update);
 		if (this.firstLaunch.isSettled) return undefined;
 		if (incompatible.length > 0) {
 			const refusal = new DiagnosticsError(incompatible);
@@ -214,14 +207,19 @@ export class CoreServeSession
 		return ok(undefined);
 	}
 
-	private async reportIncompatible(update: WatchUpdate): Promise<void> {
-		const problems = await this.compatibility.problemsIn(
+	/** What the Rojo that runs can't serve of the project files `update` wrote. */
+	private problemsIn(update: WatchUpdate): Promise<Diagnostic[]> {
+		return this.compatibility.problemsIn(
 			this.plan.executable,
 			update.reports.flatMap(({ outcome }) =>
 				isWritten(outcome) ? [outcome.config.projectFile] : []
 			),
 			"serve"
 		);
+	}
+
+	private async reportIncompatible(update: WatchUpdate): Promise<void> {
+		const problems = await this.problemsIn(update);
 		if (problems.length > 0)
 			this._onDidError.fire(new DiagnosticsError(problems));
 	}
@@ -302,15 +300,7 @@ export class CoreServeSession
 		kind: "refused" | "elsewhere"
 	): Promise<boolean> {
 		const holder = await this.ports.classify(target);
-		if (kind === "refused")
-			return (
-				holder.kind === "taken" ||
-				holder.kind === "foreign" ||
-				holder.kind === "pending" ||
-				holder.kind === "stale" ||
-				holder.kind === "unowned"
-			);
-		return holder.kind === "ours";
+		return kind === "refused" ? refuses(holder) : holder.kind === "ours";
 	}
 
 	private async retire(

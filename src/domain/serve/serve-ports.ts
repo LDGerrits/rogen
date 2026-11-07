@@ -37,6 +37,22 @@ export type PortHolder =
 			readonly record: ServerRecord;
 	  };
 
+/** Whether serving is refused while `holder` holds the port. A stale or unowned record frees nothing: the real Rojo can outlive the shim the record names. */
+export function refuses(holder: PortHolder): boolean {
+	switch (holder.kind) {
+		case "taken":
+		case "foreign":
+		case "pending":
+		case "stale":
+		case "unowned":
+			return true;
+		case "free":
+		case "ours":
+		case "orphan":
+			return false;
+	}
+}
+
 export class ServePorts {
 	private readonly host: string | undefined;
 	private readonly port: Result<number | undefined, UsageError>;
@@ -120,7 +136,6 @@ export class ServePorts {
 				return err(
 					await this.portTaken(target, holder.info, holder.record)
 				);
-			// A stale or unowned record frees nothing: the real Rojo can outlive the shim the record names.
 			case "pending":
 			case "stale":
 			case "unowned":

@@ -47,10 +47,8 @@ export class StartedServer extends AbstractDisposable {
 	private readonly child: SupervisedRojoProcess;
 	private exited = false;
 	private stoppedOnPurpose = false;
-	private served = false;
-	private recordWrite: Promise<void> | undefined;
-	/** The server its record was last written for. */
-	private recorded: ServerInfo | undefined;
+	/** The server its record was last written for, while a Rojo it started serves. */
+	private record: { info: ServerInfo; written: Promise<void> } | undefined;
 	/** The sessions its Rojos were taken to serve, which no later one of them can serve again. */
 	private readonly sessions = new Set<string>();
 	/** The current Rojo; an answer to an earlier one's probe isn't taken for it. */
@@ -151,7 +149,7 @@ export class StartedServer extends AbstractDisposable {
 
 	/** Whether a Rojo it started has answered for its project. */
 	get hasServed(): boolean {
-		return this.served;
+		return this.record !== undefined;
 	}
 
 	/** Takes the target its config gives now, at the same address, such as one with a new project name. */
@@ -174,7 +172,6 @@ export class StartedServer extends AbstractDisposable {
 
 	private writeRecord(info: ServerInfo): Promise<void> {
 		const { target } = this;
-		this.recorded = info;
 		return this.records
 			.write(target.address, info, {
 				projectFile: target.config.projectFile,
@@ -187,11 +184,11 @@ export class StartedServer extends AbstractDisposable {
 	}
 
 	async unrecord(): Promise<void> {
-		const { recordWrite, recorded } = this;
-		if (!recordWrite || !recorded) return;
-		await recordWrite;
+		const { record } = this;
+		if (!record) return;
+		await record.written;
 		await this.records
-			.remove(this.target.address, recorded)
+			.remove(this.target.address, record.info)
 			.catch(() => undefined);
 	}
 
@@ -203,8 +200,7 @@ export class StartedServer extends AbstractDisposable {
 		if (state.kind !== "serving" || state.info.session !== taken.session)
 			return true;
 		await this.unrecord();
-		this.served = false;
-		this.recordWrite = undefined;
+		this.record = undefined;
 		this.generation.serving = undefined;
 		return false;
 	}
@@ -251,10 +247,9 @@ export class StartedServer extends AbstractDisposable {
 						this.sessions.add(info.session);
 					const crashed = generation.restartedAfter;
 					generation.restartedAfter = undefined;
-					this.served = true;
 					// Recorded before it is announced, so a serve killed right after still leaves its server's record.
-					this.recordWrite = this.writeRecord(info);
-					return this.recordWrite.then(() => {
+					this.record = { info, written: this.writeRecord(info) };
+					return this.record.written.then(() => {
 						if (this.stoppedOnPurpose || this.exited) return;
 						const serving = { target, info };
 						if (crashed)
@@ -311,30 +306,26 @@ export class StartedServer extends AbstractDisposable {
 				exit,
 				failure: crashedAgain(`serving ${label}`, file, exit, gaveUp),
 			};
-		if (exit.error !== undefined)
-			return {
-				kind: "failed",
-				target,
-				exit,
-				failure: errorDiagnostic(
-					"serve.serverExited",
-					{ resource: file },
-					`Rojo couldn't start to serve ${label}: ${exit.error.message}`
-				),
-			};
-		if (exit.interrupted === true)
-			return { kind: "interrupted", target, exit };
-		if (exit.code === 0) return { kind: "stopped", target, exit };
-		return {
+		const failed = (message: string): ServerExitEvent => ({
 			kind: "failed",
 			target,
 			exit,
 			failure: errorDiagnostic(
 				"serve.serverExited",
 				{ resource: file },
-				`Rojo stopped serving ${label} with ${exitHow(exit)}${said ? "; see what it said above." : ", without saying why."}`
+				message
 			),
-		};
+		});
+		if (exit.error !== undefined)
+			return failed(
+				`Rojo couldn't start to serve ${label}: ${exit.error.message}`
+			);
+		if (exit.interrupted === true)
+			return { kind: "interrupted", target, exit };
+		if (exit.code === 0) return { kind: "stopped", target, exit };
+		return failed(
+			`Rojo stopped serving ${label} with ${exitHow(exit)}${said ? "; see what it said above." : ", without saying why."}`
+		);
 	}
 }
 
