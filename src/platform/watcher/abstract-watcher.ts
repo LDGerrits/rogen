@@ -20,6 +20,7 @@ export abstract class AbstractWatcher
 		this._onDidChangeFile.event;
 
 	private readonly operations = new Sequencer();
+	private disposed = false;
 
 	constructor(protected readonly logService: LogService) {
 		super();
@@ -27,6 +28,7 @@ export abstract class AbstractWatcher
 
 	watch(paths: readonly string[], options: WatchOptions = {}): Promise<void> {
 		return this.operations.queue(async () => {
+			if (this.disposed) return;
 			this.logService.debug(
 				`Started watching paths: ${paths.join(", ")}`
 			);
@@ -51,6 +53,7 @@ export abstract class AbstractWatcher
 	}
 
 	override [Symbol.dispose](): void {
+		this.disposed = true;
 		this.stop().catch(onUnexpectedError);
 		super[Symbol.dispose]();
 	}
