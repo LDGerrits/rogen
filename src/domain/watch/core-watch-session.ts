@@ -2,7 +2,7 @@ import { Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
-import { Result, ok, tryWithAsync } from "../../base/result.js";
+import { Result, tryWithAsync } from "../../base/result.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { IndexService, Listing } from "../../platform/fs/index-service.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
@@ -39,13 +39,12 @@ export class CoreWatchSession
 	private readonly updates = new Sequencer();
 	private readonly watched = new Map<string, WatchedConfig>();
 	private readonly pending = new Set<Promise<void>>();
-	private starting = false;
-	private started = false;
+	private phase: "idle" | "listing" | "started" | "stopping" = "idle";
 	private notices: ConfigNotice[] = [];
 	private plan: WatchPlan;
 	private listing = Listing.EMPTY;
 	private activeWatch = "";
-	private stopping: Promise<void> | undefined;
+	private stopped: Promise<void> | undefined;
 
 	constructor(
 		private readonly selection: ReloadableSelection,
@@ -67,8 +66,8 @@ export class CoreWatchSession
 	}
 
 	async start(): Promise<Result<void, Error>> {
-		if (this.starting) throw new Error("A watch starts once.");
-		this.starting = true;
+		if (this.phase !== "idle") throw new Error("A watch starts once.");
+		this.phase = "listing";
 		this._register(
 			this.watcher.onDidChangeFile((changes) => {
 				const compiled: FileChange[] = [];
@@ -99,16 +98,21 @@ export class CoreWatchSession
 			)
 		);
 
-		const watching = await tryWithAsync(() => this.watchPlan());
-		if (watching.isErr()) return watching;
-		this.announce(
-			{ kind: "initial" },
-			this.selection.configs.map(({ projectFile }) =>
-				this.queueRewrite(projectFile)
-			)
+		// On the intake queue, so changes saved while listing run after the initial round.
+		const listed = this.intake.queue(() =>
+			tryWithAsync(async () => {
+				await this.watchPlan();
+				this.announce(
+					{ kind: "initial" },
+					this.selection.configs.map(({ projectFile }) =>
+						this.queueRewrite(projectFile)
+					)
+				);
+				if (this.phase === "listing") this.phase = "started";
+			})
 		);
-		this.started = true;
-		return ok(undefined);
+		this.track(listed);
+		return listed;
 	}
 
 	async refresh(): Promise<void> {
@@ -130,11 +134,12 @@ export class CoreWatchSession
 	}
 
 	stop(): Promise<void> {
-		this.stopping ??= (async () => {
+		this.phase = "stopping";
+		this.stopped ??= (async () => {
 			await Promise.allSettled([...this.pending]);
 			await this.watcher.stop();
 		})();
-		return this.stopping;
+		return this.stopped;
 	}
 
 	override [Symbol.dispose](): void {
@@ -144,7 +149,10 @@ export class CoreWatchSession
 
 	private dropSourceUpdates(changes: readonly FileChange[]): FileChange[] {
 		const watched = [...this.watched.values()];
-		if (!this.started || watched.some((config) => !config.readsKnown)) {
+		if (
+			this.phase === "listing" ||
+			watched.some((config) => !config.readsKnown)
+		) {
 			return changes.filter((change) => this.isWatched(change.path));
 		}
 		return changes.filter(
@@ -207,7 +215,7 @@ export class CoreWatchSession
 
 	private guarded<T>(task: () => Promise<T>): () => Promise<T | undefined> {
 		return async () => {
-			if (this.stopping) return undefined;
+			if (this.phase === "stopping") return undefined;
 			try {
 				return await task();
 			} catch (error) {
