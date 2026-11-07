@@ -18,6 +18,7 @@ import {
 } from "../../domain/syncback/syncback.js";
 import {
 	AbstractCommand,
+	ExitCodeError,
 	registerCommand,
 } from "../../platform/commands/commands.js";
 import {
@@ -31,6 +32,10 @@ import {
 	warningDiagnostic,
 	messageRelativeTo,
 } from "../../platform/diagnostics/diagnostic.js";
+import {
+	LifecycleService,
+	exitCodeOfSignal,
+} from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { OutcomeLog } from "../write/outcome-log.js";
@@ -76,6 +81,9 @@ const SyncbackOptions = [
 			"Write and remove without asking. A run without a terminal, or under a coding agent or CI, needs it, or --dry-run.",
 	},
 ] as const satisfies readonly OptionDescriptor[];
+
+/** How a run treats its plan: lists it only, writes it at once, or asks first. */
+type SyncbackMode = "dryRun" | "apply" | "ask";
 
 const counts = (plan: SyncbackPlan): string => {
 	const written = plan.changes.filter(({ kind }) => kind === "write").length;
@@ -132,12 +140,17 @@ registerCommand(
 					)
 				);
 			}
-			const dryRun = line.options["dry-run"] === true;
-			const yes = line.options["non-interactive"] === true;
+			const mode: SyncbackMode =
+				line.options["dry-run"] === true
+					? "dryRun"
+					: line.options["non-interactive"] === true
+						? "apply"
+						: "ask";
 			const promptService = accessor.get(PromptService);
 			const logService = accessor.get(LogService);
+			const lifecycleService = accessor.get(LifecycleService);
 			if (!json) logService.reserveStdout();
-			if (!dryRun && !yes && (!promptService.isInteractive || json))
+			if (mode === "ask" && (!promptService.isInteractive || json))
 				return err(
 					new UsageError(
 						"syncback writes and removes files, and this run can't ask.",
@@ -159,23 +172,39 @@ registerCommand(
 			const syncbacks = accessor.get(SyncbackService);
 
 			const writeService = accessor.get(WriteService);
-			let run = dryRun
-				? await writeService.check(selection.value)
-				: await writeService.write(selection.value);
-			const failure = run.failure();
+			let run =
+				mode === "dryRun"
+					? await writeService.check(selection.value)
+					: await writeService.write(selection.value);
 
 			const request =
 				project &&
 				({ selection: selection.value, project, input, cwd } as const);
 			let outcome: SyncbackOutcome = { kind: "notRun" };
 			let listed = false;
-			if (!failure && request) {
+			if (!run.failure() && request) {
 				const configFile = request.project.file;
-				if (yes && !dryRun) {
+				if (mode === "apply") {
 					outcome = this.written(
 						await syncbacks.apply(request),
 						configFile
 					);
+				} else if (mode === "ask") {
+					const applied = await syncbacks.apply(
+						request,
+						async (plan) => {
+							outcome = { kind: "planned", plan, warnings: [] };
+							if (plan.changes.length === 0) return false;
+							this.listChanges(logService, plan, cwd);
+							this.warnLeftOut(logService, plan, cwd);
+							listed = true;
+							return this.asked(promptService, plan);
+						}
+					);
+					if (applied.isErr())
+						outcome = this.failed(applied.error, configFile);
+					else if (applied.value)
+						outcome = this.written(ok(applied.value), configFile);
 				} else {
 					const planned = await syncbacks.plan(request);
 					outcome = planned.isErr()
@@ -185,20 +214,6 @@ registerCommand(
 								plan: planned.value,
 								warnings: [],
 							};
-					if (
-						planned.isOk() &&
-						!dryRun &&
-						planned.value.changes.length > 0
-					) {
-						this.listChanges(logService, planned.value, cwd);
-						this.warnLeftOut(logService, planned.value, cwd);
-						listed = true;
-						if (await this.asked(promptService, planned.value))
-							outcome = this.written(
-								await syncbacks.apply(request, planned.value),
-								configFile
-							);
-					}
 				}
 				if (outcome.kind === "written") {
 					const rewritten = await writeService.write(selection.value);
@@ -209,8 +224,12 @@ registerCommand(
 						run = rewritten;
 				}
 			}
+			const failure = run.failure();
 			let stopped: Error | undefined;
 			if (outcome.kind === "failed") stopped = outcome.error;
+			const { signal } = lifecycleService;
+			if (stopped && signal !== undefined)
+				stopped = new ExitCodeError(exitCodeOfSignal(signal), stopped);
 
 			if (json)
 				return this.printJson(
@@ -226,15 +245,16 @@ registerCommand(
 				run,
 				selection.value.home,
 				"syncback",
-				!dryRun
+				mode !== "dryRun"
 			);
 			if (outcome.kind === "planned" || outcome.kind === "written")
 				this.report(
 					logService,
 					outcome,
 					cwd,
-					(dryRun || line.options.list === true) && !listed,
-					dryRun,
+					(mode === "dryRun" || line.options.list === true) &&
+						!listed,
+					mode,
 					listed
 				);
 			if (stopped) return err(stopped);
@@ -306,7 +326,7 @@ registerCommand(
 			outcome: Extract<SyncbackOutcome, { plan: SyncbackPlan }>,
 			cwd: string,
 			list: boolean,
-			dryRun: boolean,
+			mode: SyncbackMode,
 			warned: boolean
 		): void {
 			const { plan } = outcome;
@@ -320,7 +340,7 @@ registerCommand(
 						? "Syncback changed nothing."
 						: `Syncback wrote ${plural(plan.changes.length, "change")}.`
 				);
-			else if (!dryRun) logService.info("Nothing was written.");
+			else if (mode !== "dryRun") logService.info("Nothing was written.");
 			else
 				logService.info(
 					plan.changes.length === 0

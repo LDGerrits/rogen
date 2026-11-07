@@ -65,9 +65,11 @@ describe("CoreWatchSession", () => {
 	const changeUpdates = () =>
 		updates.filter(({ cause }) => cause.kind === "change");
 
-	const start = async (names: string[] = ["."]) => {
+	const create = async (
+		names: string[] = ["."],
+		indexService = new CoreIndexService(fs)
+	) => {
 		selection = (await configService.select(names)).unwrap();
-		const indexService = new CoreIndexService(fs);
 		const session = store.add(
 			new CoreWatchSession(
 				selection,
@@ -79,6 +81,11 @@ describe("CoreWatchSession", () => {
 		);
 		store.add(session.onDidUpdate((update) => updates.push(update)));
 		store.add(session.onDidError((error) => errors.push(error)));
+		return session;
+	};
+
+	const start = async (names: string[] = ["."]) => {
+		const session = await create(names);
 		await session.start();
 		await settle();
 		return session;
@@ -451,6 +458,27 @@ describe("CoreWatchSession", () => {
 
 			expect(changeUpdates()).toEqual([]);
 		});
+	});
+
+	it("should check the compiled path again after an edit that only changes the config's text", async () => {
+		await writeConfig("/repo/default.rogen.json", {
+			compiledPath: "dist",
+		});
+		await fs.writeFile("/repo/src/A.luau", "");
+		await start();
+		await write(
+			"/repo/default.rogen.json",
+			`// comment\n${JSON.stringify(config({ compiledPath: "dist" }))}`
+		);
+		await settle();
+
+		await fs.writeFile("/repo/dist/A.luau", "return 1");
+		await settle();
+
+		expect(updates.at(-1)?.cause).toEqual({ kind: "compiled", files: 1 });
+		expect(updates.at(-1)?.reports).toMatchObject([
+			{ fixed: [{ code: "output.nothingEmitted" }] },
+		]);
 	});
 
 	it("should not call a warning fixed because the write that followed it failed", async () => {
@@ -1027,6 +1055,73 @@ describe("CoreWatchSession", () => {
 
 			expect(staged).toHaveBeenCalledTimes(2);
 			expect(await placed("default")).toEqual(["A", "B"]);
+		});
+	});
+
+	describe("starting", () => {
+		const gatedIndex = () => {
+			const indexService = new CoreIndexService(fs);
+			const listGate = new DeferredPromise<void>();
+			const updateGate = new DeferredPromise<void>();
+			const list = indexService.list.bind(indexService);
+			const update = indexService.update.bind(indexService);
+			const listing = jest.fn();
+			jest.spyOn(indexService, "list").mockImplementationOnce(
+				async (roots) => {
+					listing();
+					await listGate.p;
+					return list(roots);
+				}
+			);
+			jest.spyOn(indexService, "update").mockImplementationOnce(
+				async (previous, changes) => {
+					await updateGate.p;
+					return update(previous, changes);
+				}
+			);
+			return { indexService, listGate, updateGate, listing };
+		};
+
+		const startListing = async (gated: ReturnType<typeof gatedIndex>) => {
+			await fs.writeFile("/repo/src/A.luau", "");
+			await fs.writeFile("/repo/src/B.luau", "");
+			const session = await create(["."], gated.indexService);
+			const started = session.start();
+			while (gated.listing.mock.calls.length === 0)
+				await jest.advanceTimersByTimeAsync(0);
+			await fs.writeFile("/repo/src/C.luau", "");
+			await settle();
+			return { started };
+		};
+
+		it("should announce the initial round before a change saved while listing, and write the whole tree", async () => {
+			const gated = gatedIndex();
+			const { started } = await startListing(gated);
+
+			gated.listGate.complete();
+			gated.updateGate.complete();
+			expect((await started).isOk()).toBe(true);
+			await settle();
+
+			expect(updates.map(({ cause }) => cause.kind)).toEqual([
+				"initial",
+				"change",
+			]);
+			expect(await placed("default")).toEqual(["A", "B", "C"]);
+		});
+
+		it("should keep the full listing when a change saved while listing ends after it", async () => {
+			const gated = gatedIndex();
+			const { started } = await startListing(gated);
+
+			gated.listGate.complete();
+			await settle();
+			gated.updateGate.complete();
+			await started;
+			await settle();
+
+			expect(await placed("default")).toEqual(["A", "B", "C"]);
+			expect(errors).toEqual([]);
 		});
 	});
 

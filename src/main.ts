@@ -263,10 +263,13 @@ class RogenMain {
 		const processService = new NativeProcessService();
 		services.set(ProcessService, processService);
 		services.set(BrowserService, new CoreBrowserService(processService));
-		services.set(
-			LifecycleService,
-			disposables.add(new NativeLifecycleService())
+		const lifecycleService = disposables.add(
+			new NativeLifecycleService(
+				() => processService.killAll(),
+				() => processService.stopped()
+			)
 		);
+		services.set(LifecycleService, lifecycleService);
 		const watcher = disposables.add(new DiskWatcher(logService));
 		services.set(Watcher, watcher);
 		const productService = new CoreProductService(
@@ -333,7 +336,10 @@ class RogenMain {
 				configService,
 				fileSystemService,
 				writeService,
-				rojoCommandService
+				rojoCommandService,
+				environmentService,
+				processService,
+				lifecycleService
 			)
 		);
 		services.set(

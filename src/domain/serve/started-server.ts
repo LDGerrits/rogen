@@ -46,22 +46,16 @@ export class StartedServer extends AbstractDisposable {
 	private servedProject: string;
 	private readonly child: SupervisedRojoProcess;
 	private exited = false;
-	private restartedAfter: ProcessExit | undefined;
 	private stoppedOnPurpose = false;
+	private served = false;
 	private recordWrite: Promise<void> | undefined;
 	/** The server its record was last written for. */
 	private recorded: ServerInfo | undefined;
-	/** What the current Rojo was taken to serve. */
-	private serving: ServerInfo | undefined;
 	/** The sessions its Rojos were taken to serve, which no later one of them can serve again. */
 	private readonly sessions = new Set<string>();
-	/** Counts the Rojos started, so an answer to an earlier one's probe isn't taken for the current one's. */
-	private generation = 0;
-	private connected = 0;
+	/** The current Rojo; an answer to an earlier one's probe isn't taken for it. */
+	private generation = new Generation();
 	private readonly ready: RunOnceScheduler;
-	private readyDelay = READY_POLL_MS.first;
-	private startedAt = Date.now();
-	private toldSlow = false;
 
 	constructor(
 		target: ServeTarget,
@@ -100,39 +94,33 @@ export class StartedServer extends AbstractDisposable {
 				{ beforeRestart, confirmServed: () => this.servedUntilExit() }
 			)
 		);
-		let said = false;
 		this._register(
 			this.child.onDidConnection((change) => {
 				if (this.stoppedOnPurpose || this.exited) return;
 				const opened = change === "opened";
-				this.connected = Math.max(
+				const { generation } = this;
+				generation.connected = Math.max(
 					0,
-					this.connected + (opened ? 1 : -1)
+					generation.connected + (opened ? 1 : -1)
 				);
 				this.listener.connection({
 					target: this.target,
 					opened,
-					clients: this.connected,
+					clients: generation.connected,
 				});
 			})
 		);
 		this._register(
 			this.child.onDidMessage((message) => {
-				if (message.severity !== "debug") said = true;
+				if (message.severity !== "debug") this.generation.said = true;
 				this.listener.said({ target: this.target, message });
 			})
 		);
 		this._register(
 			this.child.onDidRestart(({ exit }) => {
-				said = false;
-				this.generation++;
-				this.serving = undefined;
-				this.restartedAfter = exit;
-				this.toldSlow = false;
-				this.startedAt = Date.now();
-				this.readyDelay = READY_POLL_MS.first;
-				if (this.connected > 0) {
-					this.connected = 0;
+				const { connected } = this.generation;
+				this.generation = new Generation(exit);
+				if (connected > 0) {
 					this.listener.connection({
 						target: this.target,
 						opened: false,
@@ -146,7 +134,9 @@ export class StartedServer extends AbstractDisposable {
 			this.child.onDidExit((exit) => {
 				this.exited = true;
 				if (!this.stoppedOnPurpose)
-					this.listener.stopped(this.stopOf(exit, said));
+					this.listener.stopped(
+						this.stopOf(exit, this.generation.said)
+					);
 			})
 		);
 		this.ready = this._register(
@@ -161,7 +151,7 @@ export class StartedServer extends AbstractDisposable {
 
 	/** Whether a Rojo it started has answered for its project. */
 	get hasServed(): boolean {
-		return this.recordWrite !== undefined;
+		return this.served;
 	}
 
 	/** Takes the target its config gives now, at the same address, such as one with a new project name. */
@@ -207,14 +197,15 @@ export class StartedServer extends AbstractDisposable {
 
 	/** Whether the Rojo that just crashed served what it was taken to: not when that server still answers, so it was another's all along, whose record it then leaves. */
 	private async servedUntilExit(): Promise<boolean> {
-		const taken = this.serving;
+		const taken = this.generation.serving;
 		if (taken?.session === undefined) return true;
 		const state = await this.probe.probe(this.target.address);
 		if (state.kind !== "serving" || state.info.session !== taken.session)
 			return true;
 		await this.unrecord();
+		this.served = false;
 		this.recordWrite = undefined;
-		this.serving = undefined;
+		this.generation.serving = undefined;
 		return false;
 	}
 
@@ -255,11 +246,12 @@ export class StartedServer extends AbstractDisposable {
 				if (info) {
 					if (!this.child.markReady()) return;
 					this.servedProject = info.project;
-					this.serving = info;
+					generation.serving = info;
 					if (info.session !== undefined)
 						this.sessions.add(info.session);
-					const crashed = this.restartedAfter;
-					this.restartedAfter = undefined;
+					const crashed = generation.restartedAfter;
+					generation.restartedAfter = undefined;
+					this.served = true;
 					// Recorded before it is announced, so a serve killed right after still leaves its server's record.
 					this.recordWrite = this.writeRecord(info);
 					return this.recordWrite.then(() => {
@@ -273,22 +265,25 @@ export class StartedServer extends AbstractDisposable {
 						else this.listener.served(serving);
 					});
 				}
-				this.warnWhenSlow(state);
-				this.readyDelay = Math.min(
-					this.readyDelay * 2,
+				this.warnWhenSlow(generation, state);
+				generation.readyDelay = Math.min(
+					generation.readyDelay * 2,
 					READY_POLL_MS.max
 				);
-				this.ready.schedule(this.readyDelay);
+				this.ready.schedule(generation.readyDelay);
 			})
 			.catch((error) =>
 				this.listener.failed(ErrorUtils.fromUnknown(error))
 			);
 	}
 
-	private warnWhenSlow(state: PortState): void {
-		if (this.toldSlow || Date.now() - this.startedAt < SLOW_START_MS)
+	private warnWhenSlow(generation: Generation, state: PortState): void {
+		if (
+			generation.toldSlow ||
+			Date.now() - generation.startedAt < SLOW_START_MS
+		)
 			return;
-		this.toldSlow = true;
+		generation.toldSlow = true;
 		const { target } = this;
 		const where = `port ${target.address.port}`;
 		this.listener.said({
@@ -307,31 +302,54 @@ export class StartedServer extends AbstractDisposable {
 		{ exit, gaveUp }: SupervisedExitEvent,
 		said: boolean
 	): ServerExitEvent {
-		const interrupted = exit.interrupted === true;
-		const { label, file } = this.target.config;
+		const { target } = this;
+		const { label, file } = target.config;
 		if (gaveUp)
 			return {
-				target: this.target,
+				kind: "crashed",
+				target,
 				exit,
-				interrupted,
-				crashed: true,
 				failure: crashedAgain(`serving ${label}`, file, exit, gaveUp),
 			};
-		const failure =
-			exit.error !== undefined
-				? errorDiagnostic(
-						"serve.serverExited",
-						{ resource: file },
-						`Rojo couldn't start to serve ${label}: ${exit.error.message}`
-					)
-				: !interrupted && exit.code !== 0
-					? errorDiagnostic(
-							"serve.serverExited",
-							{ resource: file },
-							`Rojo stopped serving ${label} with ${exitHow(exit)}${said ? "; see what it said above." : ", without saying why."}`
-						)
-					: undefined;
-		const stop = { target: this.target, exit, interrupted };
-		return failure ? { ...stop, failure } : stop;
+		if (exit.error !== undefined)
+			return {
+				kind: "failed",
+				target,
+				exit,
+				failure: errorDiagnostic(
+					"serve.serverExited",
+					{ resource: file },
+					`Rojo couldn't start to serve ${label}: ${exit.error.message}`
+				),
+			};
+		if (exit.interrupted === true)
+			return { kind: "interrupted", target, exit };
+		if (exit.code === 0) return { kind: "stopped", target, exit };
+		return {
+			kind: "failed",
+			target,
+			exit,
+			failure: errorDiagnostic(
+				"serve.serverExited",
+				{ resource: file },
+				`Rojo stopped serving ${label} with ${exitHow(exit)}${said ? "; see what it said above." : ", without saying why."}`
+			),
+		};
 	}
+}
+
+/** One Rojo the supervisor started; a crash replaces it with the next. */
+class Generation {
+	said = false;
+	connected = 0;
+	readyDelay = READY_POLL_MS.first;
+	toldSlow = false;
+	readonly startedAt = Date.now();
+	/** What this Rojo was taken to serve. */
+	serving: ServerInfo | undefined;
+
+	constructor(
+		/** The exit of the Rojo it replaced, until it serves. */
+		public restartedAfter?: ProcessExit
+	) {}
 }

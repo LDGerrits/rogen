@@ -40,6 +40,8 @@ export interface FileSystemService extends FileReader {
 	/** Copies the bytes of `from` to `to` with its last-modified time, as `cp -p` does, creating the folders above `to`; the copy is writable even when `from` is not. */
 	copyFile(from: string, to: string): Promise<void>;
 	writeFile(filePath: string, content: string): Promise<void>;
+	/** Writes `content` to a file that isn't there yet, creating the folders above it; false, touching nothing, when the path is taken. Of two creates at once, only one makes the file. */
+	createFile(filePath: string, content: string): Promise<boolean>;
 
 	delete(filePath: string, recursive?: boolean): Promise<void>;
 

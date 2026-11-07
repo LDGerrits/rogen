@@ -90,7 +90,9 @@ describe("CoreConfigService places", () => {
 		await write("/repo/default.rogen.json", { name: "Root" });
 		await start();
 
-		expect(selection.files).toEqual(new Set(["/repo/default.rogen.json"]));
+		expect(selection.files).toEqual(
+			new Set(["/repo/default.rogen.json", "/repo/default.rogen.jsonc"])
+		);
 	});
 
 	it("should fail for the folder of the shared code, which has no config", async () => {

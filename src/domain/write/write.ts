@@ -60,6 +60,13 @@ export function isWritten(outcome: ConfigOutcome): outcome is WrittenConfig {
 	return outcome.kind === "wrote" || outcome.kind === "unchanged";
 }
 
+/** Whether the config failed or didn't load, which writes nothing. */
+export function isFailed<T extends object>(
+	outcome: T
+): outcome is Extract<T, FailedConfig | UnloadedConfig> {
+	return outcome instanceof FailedConfig || outcome instanceof UnloadedConfig;
+}
+
 /** Whether the run wrote the config's project file, which a write that found it as it should be doesn't. */
 export const didWrite = (outcome: ConfigOutcome): boolean =>
 	outcome.kind === "wrote";
@@ -91,14 +98,27 @@ abstract class AbstractConfigOutcome {
 		return this.findings.warnings;
 	}
 
+	get sync(): SyncWarnings {
+		return this.findings.sync;
+	}
+
 	/** What the compiled path check found for this version of the config; `undefined` while unknown. */
 	get syncWarnings(): readonly Diagnostic[] | undefined {
-		return this.findings.syncWarnings;
+		return SyncWarnings.warningsOf(this.sync);
 	}
 
 	/** Everything the write has to say, in the order it is printed: warnings, compiled path warnings, then the errors that failed it. */
 	get diagnostics(): readonly Diagnostic[] {
 		return [...this.warnings, ...(this.syncWarnings ?? []), ...this.errors];
+	}
+
+	/** This outcome for `config`, a version of its config that writes the same. */
+	withConfig(config: ResolvedConfig): this {
+		return Object.assign(
+			Object.create(Object.getPrototypeOf(this) as object) as this,
+			this,
+			{ config }
+		);
 	}
 }
 
@@ -174,24 +194,49 @@ export class FailedConfig extends AbstractConfigOutcome {
 	constructor(
 		config: ResolvedConfig,
 		errors: readonly Diagnostic[],
-		findings: WriteFindings = { warnings: [], syncWarnings: undefined }
+		findings: WriteFindings = { warnings: [], sync: SyncWarnings.unknown }
 	) {
 		super(config, findings, errors);
 	}
 
-	/** A config that failed before it had warnings of its own; `syncWarnings` is what an earlier write of this version found. */
+	/** A config that failed before it had warnings of its own; `sync` is what an earlier write of this version found. */
 	static before(
 		config: ResolvedConfig,
 		errors: readonly Diagnostic[],
-		syncWarnings?: readonly Diagnostic[]
+		sync: SyncWarnings = SyncWarnings.unknown
 	): FailedConfig {
-		return new FailedConfig(config, errors, { warnings: [], syncWarnings });
+		return new FailedConfig(config, errors, { warnings: [], sync });
 	}
 }
 
+/** What the compiled path check found for one version of a config: nothing yet, nothing until the write has made its placeholders, or its warnings. */
+export type SyncWarnings =
+	| { readonly kind: "unknown" }
+	| { readonly kind: "deferred" }
+	| { readonly kind: "known"; readonly warnings: readonly Diagnostic[] };
+
+const unknown: SyncWarnings = { kind: "unknown" };
+const deferred: SyncWarnings = { kind: "deferred" };
+
+function known(warnings: readonly Diagnostic[]): SyncWarnings {
+	return { kind: "known", warnings };
+}
+
+/** The warnings in `sync`, or `undefined` while they aren't known. */
+function warningsOf(sync: SyncWarnings): readonly Diagnostic[] | undefined {
+	return sync.kind === "known" ? sync.warnings : undefined;
+}
+
+export const SyncWarnings = {
+	unknown,
+	deferred,
+	known,
+	warningsOf,
+} as const;
+
 export interface WriteFindings {
 	readonly warnings: readonly Diagnostic[];
-	readonly syncWarnings: readonly Diagnostic[] | undefined;
+	readonly sync: SyncWarnings;
 }
 
 interface SharedPart {
@@ -260,9 +305,7 @@ export class WriteRun {
 
 	/** Whether a config failed or didn't load, which writes nothing. */
 	get failed(): boolean {
-		return this.outcomes.some(
-			({ kind }) => kind === "failed" || kind === "notLoaded"
-		);
+		return this.outcomes.some(isFailed);
 	}
 
 	/** Every error of every config, repeats included: what the run fails with. */
@@ -280,9 +323,7 @@ export class WriteRun {
 
 	/** Why the run fails: its errors. */
 	failure(): Error | undefined {
-		return this.errors.length > 0
-			? new DiagnosticsError(this.errors)
-			: undefined;
+		return this.failed ? new DiagnosticsError(this.errors) : undefined;
 	}
 
 	/** What the run says, config by config: its fresh warnings, then its fresh errors. */

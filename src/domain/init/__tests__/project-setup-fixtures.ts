@@ -123,4 +123,8 @@ export const configOf = (planned: InitPlan): RogenConfig => {
 };
 
 export const treeOf = async (workspace: WorkspaceSpec) =>
-	JSON.parse((await plan({ ...luau, ...workspace })).files[0].content).tree;
+	JSON.parse(
+		(await plan({ ...luau, ...workspace })).files.find(
+			({ fileName }) => fileName === "default.rogen.json"
+		)!.content
+	).tree;

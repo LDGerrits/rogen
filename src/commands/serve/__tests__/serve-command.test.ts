@@ -279,6 +279,260 @@ describe("serve command", () => {
 		}
 	);
 
+	it.each([
+		["the server's exit comes before the signal", true],
+		["the signal comes before the server's exit", false],
+	] as const)(
+		"should exit 130 and print the shutdown line when %s",
+		async (_, exitFirst) => {
+			const result = serve([], { json: true });
+			await settle();
+
+			const interrupt = () =>
+				processes.spawned[0].exit({
+					code: 130,
+					signal: null,
+					interrupted: true,
+				});
+			if (exitFirst) {
+				interrupt();
+				await jest.advanceTimersByTimeAsync(100);
+				lifecycle.shutdown("SIGINT");
+			} else {
+				lifecycle.shutdown("SIGINT");
+				interrupt();
+			}
+
+			const ended = await result;
+			expect(ended.isErr() && exitCodeOf(ended.error)).toBe(130);
+			expect(printed().slice(1)).toEqual([
+				{
+					stopped: {
+						config: "default.rogen.json",
+						reason: "shutdown",
+					},
+				},
+			]);
+		}
+	);
+
+	it("should print a failure that came before a signal, then the shutdown, and exit 130", async () => {
+		const result = serve();
+		await settle();
+		const stop = watcher.stop.bind(watcher);
+		jest.spyOn(watcher, "stop").mockImplementation(async () => {
+			lifecycle.shutdown("SIGINT");
+			return stop();
+		});
+
+		processes.spawned[0].exit({ code: 3, signal: null });
+
+		const ended = await result;
+		expect(ended.isErr() && exitCodeOf(ended.error)).toBe(130);
+		expect(logService.lines).toContain(
+			"diagnosticError: /repo/default.rogen.json - error: Rojo stopped serving repo with exit code 3, without saying why. (serve.serverExited)"
+		);
+		expect(logService.lines.at(-1)).toBe("outro: Stopped serving.");
+	});
+
+	it("should end as stopped by the signal in text when the server's exit comes first", async () => {
+		const result = serve();
+		await settle();
+
+		processes.spawned[0].exit({
+			code: 130,
+			signal: null,
+			interrupted: true,
+		});
+		await jest.advanceTimersByTimeAsync(100);
+		lifecycle.shutdown("SIGINT");
+
+		const ended = await result;
+		expect(ended.isErr() && exitCodeOf(ended.error)).toBe(130);
+		expect(logService.lines.at(-1)).toBe("outro: Stopped serving.");
+	});
+
+	describe("as the server ends", () => {
+		const answer = async (session: string) => {
+			requests.answer(ROJO_URL, {
+				projectName: "repo",
+				serverVersion: "7.7.1",
+				sessionId: session,
+			});
+			await settle();
+		};
+		const crash = async (index: number) => {
+			requests.responses.delete(ROJO_URL);
+			processes.spawned[index].exit({ code: 1, signal: null });
+			await settle();
+		};
+		const endings = {
+			stopped: {
+				end: async () => {
+					processes.spawned[0].exit({ code: 0, signal: null });
+				},
+				code: 0,
+				text: [
+					"info: Rojo stopped serving default.rogen.json.",
+					"outro: Stopped serving.",
+				],
+				json: [
+					{
+						stopped: {
+							config: "default.rogen.json",
+							reason: "exited",
+							code: 0,
+							signal: null,
+						},
+					},
+				],
+			},
+			interrupted: {
+				end: async () => {
+					processes.spawned[0].exit({
+						code: 130,
+						signal: null,
+						interrupted: true,
+					});
+					await settle();
+				},
+				code: 0,
+				text: ["outro: Stopped serving."],
+				json: [
+					{
+						stopped: {
+							config: "default.rogen.json",
+							reason: "exited",
+							code: 130,
+							signal: null,
+						},
+					},
+				],
+			},
+			failed: {
+				end: async () => {
+					processes.spawned[0].exit({ code: 3, signal: null });
+				},
+				code: 1,
+				text: [
+					"diagnosticError: /repo/default.rogen.json - error: Rojo stopped serving repo with exit code 3, without saying why. (serve.serverExited)",
+					"outro: serve failed.",
+				],
+				json: [
+					{
+						stopped: {
+							config: "default.rogen.json",
+							reason: "exited",
+							code: 3,
+							signal: null,
+						},
+					},
+					{
+						diagnostics: [
+							expect.objectContaining({
+								code: "serve.serverExited",
+							}),
+						],
+					},
+				],
+			},
+			crashed: {
+				end: async () => {
+					await answer("s1");
+					await crash(0);
+					await answer("s2");
+					await crash(1);
+					await crash(2);
+				},
+				code: 1,
+				text: [
+					"diagnosticError: /repo/default.rogen.json - error: Rojo crashed again right after a restart, so Rogen stopped serving repo (exit code 1). (rojo.crashed)",
+					"outro: serve failed.",
+				],
+				json: [
+					{
+						stopped: {
+							config: "default.rogen.json",
+							reason: "crashed",
+							code: 1,
+							signal: null,
+						},
+					},
+					{
+						diagnostics: [
+							expect.objectContaining({ code: "rojo.crashed" }),
+						],
+					},
+				],
+			},
+			"served-elsewhere": {
+				end: async () => {
+					processes.running.add(5000);
+					await memFs.writeFile(
+						...recordFile(
+							34872,
+							"repo",
+							"/repo/default.project.json",
+							{ owner: 5000 }
+						)
+					);
+					requests.answer(ROJO_URL, {
+						projectName: "repo",
+						serverVersion: "7.7.1",
+						sessionId: "s1",
+					});
+					processes.spawned[0].exit({ code: 1, signal: null });
+				},
+				code: 0,
+				text: [
+					"info: default.rogen.json is already served by another rogen serve: Rojo 7.7.1 serves a project named repo at localhost:34872 (session s1).",
+					"outro: Another rogen serve started serving this project first, so this one stops.",
+				],
+				json: [
+					{
+						serving: {
+							config: "default.rogen.json",
+							version: "7.7.1",
+							project: "repo",
+							host: "127.0.0.1",
+							port: 34872,
+							session: "s1",
+							reportsConnections: false,
+							alreadyRunning: true,
+						},
+					},
+				],
+			},
+		};
+		const end = async (
+			kind: keyof typeof endings,
+			options: CommandLine["options"]
+		) => {
+			const result = serve([], options);
+			await settle();
+			await endings[kind].end();
+			const ended = await result;
+			return ended.isOk() ? 0 : exitCodeOf(ended.error);
+		};
+
+		describe.each(Object.keys(endings) as (keyof typeof endings)[])(
+			"when it ends as %s",
+			(kind) => {
+				const { code, text, json } = endings[kind];
+
+				it("should say so in text", async () => {
+					expect(await end(kind, {})).toBe(code);
+					expect(logService.lines.slice(-text.length)).toEqual(text);
+				});
+
+				it("should print the same as JSON lines", async () => {
+					expect(await end(kind, { json: true })).toBe(code);
+					expect(printed().slice(-json.length)).toEqual(json);
+				});
+			}
+		);
+	});
+
 	it("should exit 130 for a SIGINT that comes while it prepares", async () => {
 		const result = serve();
 		lifecycle.shutdown("SIGINT");
@@ -313,8 +567,11 @@ describe("serve command", () => {
 	});
 
 	it("should start nothing and exit 0 when another serve already serves the project", async () => {
+		processes.running.add(5000);
 		await memFs.writeFile(
-			...recordFile(34872, "repo", "/repo/default.project.json")
+			...recordFile(34872, "repo", "/repo/default.project.json", {
+				owner: 5000,
+			})
 		);
 		requests.answer(ROJO_URL, {
 			projectName: "repo",
@@ -337,8 +594,11 @@ describe("serve command", () => {
 	it("should exit 0 and name the server when another serve started one for the project first", async () => {
 		const result = serve([], { json: true });
 		await settle();
+		processes.running.add(5000);
 		await memFs.writeFile(
-			...recordFile(34872, "repo", "/repo/default.project.json")
+			...recordFile(34872, "repo", "/repo/default.project.json", {
+				owner: 5000,
+			})
 		);
 		requests.answer(ROJO_URL, {
 			projectName: "repo",
@@ -376,8 +636,11 @@ describe("serve command", () => {
 	it("should say in text that another serve started serving the project first", async () => {
 		const result = serve();
 		await settle();
+		processes.running.add(5000);
 		await memFs.writeFile(
-			...recordFile(34872, "repo", "/repo/default.project.json")
+			...recordFile(34872, "repo", "/repo/default.project.json", {
+				owner: 5000,
+			})
 		);
 		requests.answer(ROJO_URL, {
 			projectName: "repo",

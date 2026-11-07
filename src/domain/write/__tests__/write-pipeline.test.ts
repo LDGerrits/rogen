@@ -14,6 +14,7 @@ import {
 	expectWrittenProject,
 	indexOf,
 } from "./fixtures.js";
+import { SyncWarnings } from "../write.js";
 
 describe("WritePipeline", () => {
 	let fs: MemoryFileSystemService;
@@ -647,12 +648,30 @@ describe("WritePipeline", () => {
 			);
 
 			const checked = await pipeline.run(config);
-			const known = await pipeline.run(config, []);
+			const known = await pipeline.run(config, SyncWarnings.known([]));
 
-			expect(checked.unwrap().findings.syncWarnings).toMatchObject([
-				{ code: "output.nothingEmitted" },
-			]);
-			expect(known.unwrap().findings.syncWarnings).toEqual([]);
+			expect(checked.unwrap().findings.sync).toMatchObject({
+				kind: "known",
+				warnings: [{ code: "output.nothingEmitted" }],
+			});
+			expect(known.unwrap().findings.sync).toEqual(
+				SyncWarnings.known([])
+			);
+		});
+
+		it("should leave the compiled path to check after the write when deferred", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+			const config = configOf({ compiledPath: abs("dist") });
+			const pipeline = pipelineOf(
+				fs,
+				await indexOf(fs, config.sourcePaths)
+			);
+
+			const deferred = await pipeline.run(config, SyncWarnings.deferred);
+
+			expect(deferred.unwrap().findings.sync).toEqual({
+				kind: "deferred",
+			});
 		});
 	});
 });

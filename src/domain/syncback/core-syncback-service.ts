@@ -1,10 +1,11 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
-import { UsageError, failureReason } from "../../base/errors.js";
+import { IoError, UsageError, failureReason } from "../../base/errors.js";
 import { ignoringGlob, literalGlob } from "../../base/glob.js";
 import {
 	ancestors,
 	contains,
+	PathSet,
 	samePath,
 	toNative,
 	toPosix,
@@ -23,6 +24,9 @@ import {
 	isDirectoryType,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
+import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
+import { ProcessService } from "../../platform/process/process-service.js";
 import {
 	WriteService,
 	ConfigLocations,
@@ -53,6 +57,7 @@ import {
 import { SyncbackService } from "./syncback-service.js";
 import { SyncbackLayout } from "./syncback-layout.js";
 import { SyncbackMirror } from "./syncback-mirror.js";
+import { SyncbackStaging } from "./syncback-staging.js";
 import { TreeChange, applyTreeChanges, treeChanges } from "./tree-changes.js";
 import {
 	onlySerializedOverrides,
@@ -62,7 +67,6 @@ import {
 /** The first Rojo release with `syncback`. */
 const SYNCBACK_SINCE = "7.7.0";
 
-const TEMPORARY_PROJECT = SYNCBACK_FILES.project;
 const MIRROR = `${SYNCBACK_FILES.staging}/mirror`;
 
 const LISTED = /^(Writing|Removing) (.+)$/;
@@ -116,7 +120,7 @@ class CoreSyncbackPlan implements SyncbackPlan {
 		readonly unplaced: readonly UnplacedInstance[],
 		readonly compiled: readonly CompiledChange[],
 		readonly operations: readonly Operation[],
-		/** The bytes of each path the operations touch when the plan was made; `undefined` for a path that wasn't there. */
+		/** The bytes of the config, the place and each path the operations touch when the plan was made; `undefined` for a path that wasn't there. */
 		readonly before: ReadonlyMap<string, Uint8Array | undefined>,
 		readonly expected: readonly Expected[],
 		/** What `--list` prints for the run: see `SyncbackPlan.listed`. */
@@ -183,7 +187,7 @@ interface Prepared {
 	/** Absolute, in the system's own form. */
 	readonly dir: string;
 	readonly file: string;
-	readonly staging: string;
+	readonly staging: SyncbackStaging;
 	readonly root: string;
 	/** The `globIgnorePaths`, relative to `dir`: what Rojo never read, which the mirror leaves out and syncback never writes. */
 	readonly unread: readonly string[];
@@ -244,71 +248,108 @@ export class CoreSyncbackService implements SyncbackService {
 		private readonly configService: ConfigService,
 		private readonly fileSystemService: FileSystemService,
 		private readonly writeService: WriteService,
-		private readonly rojoService: RojoCommandService
+		private readonly rojoService: RojoCommandService,
+		private readonly environmentService: EnvironmentService,
+		private readonly processService: ProcessService,
+		private readonly lifecycleService: LifecycleService
 	) {}
 
 	async plan(request: SyncbackRequest): Promise<Result<SyncbackPlan, Error>> {
 		if (request.project.isAdopted) return this.runListed(request, true);
 		const prepared = await this.prepare(request);
 		if (prepared.isErr()) return prepared;
-		try {
-			const copied = await this.copy(prepared.value);
-			const started = Date.now();
-			const ran = await this.runSkippingYaml(
-				request,
-				prepared.value,
-				copied
-			);
-			if (ran.isErr()) return ran;
-			const { messages, refused } = ran.value;
-			return ok(
-				await this.settle(
-					request,
-					prepared.value,
-					copied,
-					started,
-					[...refused, ...CoreSyncbackService.skipped(messages)],
-					messages
-				)
-			);
-		} finally {
-			await this.clean(prepared.value);
-		}
+		return prepared.value.staging.use<SyncbackPlan>((signal) =>
+			this.planIn(request, prepared.value, signal)
+		);
 	}
 
+	apply(request: SyncbackRequest): Promise<Result<SyncbackResult, Error>>;
+	apply(
+		request: SyncbackRequest,
+		confirm: (plan: SyncbackPlan) => Promise<boolean>
+	): Promise<Result<SyncbackResult | undefined, Error>>;
 	async apply(
 		request: SyncbackRequest,
-		confirmed?: SyncbackPlan
-	): Promise<Result<SyncbackResult, Error>> {
-		if (request.project.isAdopted) return this.runListed(request, false);
-		let plan: CoreSyncbackPlan;
-		if (confirmed instanceof CoreSyncbackPlan) {
-			if (!(await this.unchangedSince(confirmed)))
-				return err(
-					new UsageError(
-						"The sources changed since the list was made, so nothing was written.",
-						"Run syncback again."
-					)
-				);
-			plan = confirmed;
-		} else {
-			const planned = await this.plan(request);
-			if (planned.isErr()) return planned;
-			plan = planned.value as CoreSyncbackPlan;
+		confirm?: (plan: SyncbackPlan) => Promise<boolean>
+	): Promise<Result<SyncbackResult | undefined, Error>> {
+		if (request.project.isAdopted) {
+			if (confirm) {
+				const planned = await this.runListed(request, true);
+				if (planned.isErr()) return planned;
+				if (!(await confirm(planned.value))) return ok(undefined);
+			}
+			return this.runListed(request, false);
 		}
+		const prepared = await this.prepare(request);
+		if (prepared.isErr()) return prepared;
+		return prepared.value.staging.use<SyncbackResult | undefined>(
+			async (signal) => {
+				const planned = await this.planIn(
+					request,
+					prepared.value,
+					signal
+				);
+				if (planned.isErr()) return planned;
+				const plan = planned.value;
+				if (confirm) {
+					if (!(await confirm(plan))) return ok(undefined);
+					if (!(await this.unchangedSince(plan)))
+						return err(
+							new UsageError(
+								"The project or the place changed since the list was made, so nothing was written.",
+								"Run syncback again."
+							)
+						);
+				}
+				// The staging turns a stopped run into its own error.
+				if (signal.aborted) return ok(undefined);
+				return ok(await this.written(request, plan));
+			}
+		);
+	}
+
+	private async planIn(
+		request: SyncbackRequest,
+		prepared: Prepared,
+		signal: AbortSignal
+	): Promise<Result<CoreSyncbackPlan, Error>> {
+		const copied = await this.copy(prepared);
+		const started = Date.now();
+		const ran = await this.runSkippingYaml(
+			request,
+			prepared,
+			copied,
+			signal
+		);
+		if (ran.isErr()) return ran;
+		const { messages, refused } = ran.value;
+		return this.settle(
+			request,
+			prepared,
+			copied,
+			started,
+			[...refused, ...CoreSyncbackService.skipped(messages)],
+			messages
+		);
+	}
+
+	private async written(
+		request: SyncbackRequest,
+		plan: CoreSyncbackPlan
+	): Promise<SyncbackResult> {
 		const done = await this.write(plan);
 		const warnings = await this.verify(
 			request,
 			plan.expected.filter(({ file }) => !done.failed.has(file))
 		);
-		return ok({
+		return {
 			project: request.project,
 			changes: plan.changes.filter(({ file }) => !done.failed.has(file)),
 			listed: plan.listed.filter(({ file }) => !done.failed.has(file)),
 			unplaced: [...plan.unplaced, ...done.unplaced],
 			compiled: plan.compiled,
 			warnings,
-		});
+		};
 	}
 
 	private async unchangedSince(plan: CoreSyncbackPlan): Promise<boolean> {
@@ -328,14 +369,38 @@ export class CoreSyncbackService implements SyncbackService {
 		return this.fileSystemService.readFileBytes(path.join(root, at));
 	}
 
-	/** Makes each change of `plan`; one that fails leaves its file listed as not written, and the rest are made. */
+	/** Makes each change of `plan`, writes before removals; one that fails leaves its file listed as not written, and the rest are made, except that no file is removed once a write failed. */
 	private async write(plan: CoreSyncbackPlan): Promise<{
 		failed: Set<string>;
 		unplaced: UnplacedInstance[];
 	}> {
 		const failed = new Set<string>();
 		const unplaced: UnplacedInstance[] = [];
-		for (const operation of plan.operations) {
+		const order = { write: 0, folder: 0, remove: 1, prune: 2 } as const;
+		const written = new PathSet(
+			plan.operations
+				.filter(({ kind }) => kind === "write")
+				.map(({ file }) => file)
+		);
+		// A rename that only changes case writes the old file where the file system folds case, so its removal goes first.
+		const rank = (operation: Operation) =>
+			operation.kind === "remove" && written.has(operation.file)
+				? -1
+				: order[operation.kind];
+		const operations = [...plan.operations].sort(
+			(a, b) => rank(a) - rank(b)
+		);
+		let wroteAll = true;
+		for (const operation of operations) {
+			// A rename is a removal and a write, so a failed write keeps the old file.
+			if (!wroteAll && operation.kind === "remove") {
+				failed.add(operation.file);
+				unplaced.push({
+					instance: operation.instance,
+					reason: `${operation.file} was kept, since another file could not be written`,
+				});
+				continue;
+			}
 			try {
 				if (operation.kind === "write")
 					await this.fileSystemService.writeFileBytes(
@@ -351,6 +416,8 @@ export class CoreSyncbackService implements SyncbackService {
 				else if (await this.isEmptyFolder(operation.file))
 					await this.fileSystemService.delete(operation.file, true);
 			} catch (error) {
+				if (operation.kind === "write" || operation.kind === "folder")
+					wroteAll = false;
 				failed.add(operation.file);
 				unplaced.push({
 					instance: operation.instance,
@@ -450,13 +517,20 @@ export class CoreSyncbackService implements SyncbackService {
 					"Rename one of them, then run syncback again."
 				)
 			);
+		const staging = new SyncbackStaging(
+			this.fileSystemService,
+			this.processService,
+			this.lifecycleService,
+			this.environmentService.pid,
+			dir
+		);
 		return ok({
 			mirror,
 			layout,
 			configFile: project.file,
 			dir,
-			file: path.join(dir, TEMPORARY_PROJECT),
-			staging: path.join(dir, SYNCBACK_FILES.staging),
+			file: staging.file,
+			staging,
 			root: path.join(dir, MIRROR),
 			unread: written.globIgnorePaths ?? [],
 			unwritten: CoreSyncbackService.ignorePathsOf(written),
@@ -476,7 +550,6 @@ export class CoreSyncbackService implements SyncbackService {
 	/** Copies the project's files into the mirror and writes the project file that mounts it; what was copied, as each file's mirror path and project path. */
 	private async copy(prepared: Prepared): Promise<Copied[]> {
 		const { mirror, root } = prepared;
-		await this.clean(prepared);
 		const copied: Copied[] = [];
 		for (const folder of mirror.folders)
 			await this.fileSystemService.createDirectory(
@@ -532,7 +605,8 @@ export class CoreSyncbackService implements SyncbackService {
 	private async runSkippingYaml(
 		request: SyncbackRequest,
 		prepared: Prepared,
-		copied: readonly Copied[]
+		copied: readonly Copied[],
+		signal: AbortSignal
 	): Promise<
 		Result<
 			{ messages: readonly ServerMessage[]; refused: UnplacedInstance[] },
@@ -542,9 +616,13 @@ export class CoreSyncbackService implements SyncbackService {
 		const ignored: string[] = [];
 		const refused: UnplacedInstance[] = [];
 		for (;;) {
-			const ran = await this.run(request, prepared, prepared.file, [
-				"--list",
-			]);
+			const ran = await this.run(
+				request,
+				prepared,
+				prepared.file,
+				["--list"],
+				signal
+			);
 			if (ran.isOk()) return ok({ messages: ran.value, refused });
 			const instance = CoreSyncbackService.refusedYaml(ran.error);
 			const file =
@@ -582,9 +660,7 @@ export class CoreSyncbackService implements SyncbackService {
 			layout.placed
 				.find(({ source }) => toPosix(source) === target)
 				?.instancePath.join("/") ??
-			[...mirror.instancePathOf(path.posix.dirname(at)), nameOf(at)].join(
-				"/"
-			);
+			CoreSyncbackService.instanceAt(mirror, at);
 		const exact = yaml.find((file) => instanceOf(file) === instance);
 		if (exact) return exact.mirror;
 		const named = yaml.filter(
@@ -692,9 +768,20 @@ export class CoreSyncbackService implements SyncbackService {
 		skipped: readonly UnplacedInstance[],
 		/** All Rojo said, which lists what it wrote and removed. */
 		said: readonly ServerMessage[]
-	): Promise<CoreSyncbackPlan> {
+	): Promise<Result<CoreSyncbackPlan, Error>> {
 		const { mirror, root } = prepared;
-		const after = await this.walk(root);
+		const walked = await this.walk(root);
+		const mountsNothing =
+			mirror.folders.length === 0 && mirror.entries.length === 0;
+		// A mirror that can't be read would read as a place that removed everything.
+		if (walked.isErr() && !(mountsNothing && isMissingPath(walked.error)))
+			return err(
+				new IoError(
+					`${root}, where Rojo wrote the place's changes, could not be read: ${failureReason(walked.error)}.`,
+					"Run syncback again."
+				)
+			);
+		const after = walked.isOk() ? walked.value : [];
 		const present = new Set(after.map(({ path: at }) => at));
 		const operations: Operation[] = [];
 		const unplaced: UnplacedInstance[] = [...skipped];
@@ -728,6 +815,11 @@ export class CoreSyncbackService implements SyncbackService {
 			return true;
 		};
 		const before = new Map<string, Uint8Array | undefined>();
+		for (const file of [
+			request.project.file,
+			path.resolve(request.cwd, request.input),
+		])
+			before.set(file, await this.bytesOf(file));
 		const add = async (operation: Operation) => {
 			if (!before.has(operation.file))
 				before.set(operation.file, await this.bytesOf(operation.file));
@@ -1100,14 +1192,16 @@ export class CoreSyncbackService implements SyncbackService {
 		const edited = await this.editTree(request, prepared, additions);
 		for (const operation of edited.operations) await add(operation);
 		unplaced.push(...edited.unplaced);
-		return new CoreSyncbackPlan(
-			request.project,
-			unplaced,
-			CoreSyncbackService.outermost(compiled),
-			operations,
-			before,
-			expected,
-			this.listedAs(said, prepared, operations)
+		return ok(
+			new CoreSyncbackPlan(
+				request.project,
+				unplaced,
+				CoreSyncbackService.outermost(compiled),
+				operations,
+				before,
+				expected,
+				this.listedAs(said, prepared, operations)
+			)
 		);
 	}
 
@@ -1486,40 +1580,38 @@ export class CoreSyncbackService implements SyncbackService {
 			: [...folders, instanceNameOf(name)];
 	}
 
-	/** The files below `dir`, and the folders with nothing in them, relative to it and written with `/`. */
-	private async walk(dir: string, below = ""): Promise<AddedPath[]> {
+	/** The files below `dir`, and the folders with nothing in them, relative to it and written with `/`; a folder below it that can't be read fails the walk. */
+	private async walk(
+		dir: string,
+		below = ""
+	): Promise<Result<AddedPath[], Error>> {
 		const entries = await tryWithAsync(() =>
 			this.fileSystemService.readDirectory(path.join(dir, below))
 		);
-		if (entries.isErr()) return [];
+		if (entries.isErr()) return entries;
 		const found: AddedPath[] = [];
 		for (const [name, type] of entries.value) {
 			const at = below === "" ? name : `${below}/${name}`;
 			if (!isDirectoryType(type)) found.push({ path: at, folder: false });
 			else {
 				const inside = await this.walk(dir, at);
+				if (inside.isErr()) return inside;
 				found.push(
-					...(inside.length > 0
-						? inside
+					...(inside.value.length > 0
+						? inside.value
 						: [{ path: at, folder: true }])
 				);
 			}
 		}
-		return found;
-	}
-
-	private async clean({ file, staging }: Prepared): Promise<void> {
-		await this.fileSystemService.delete(file).catch(() => undefined);
-		await this.fileSystemService
-			.delete(staging, true)
-			.catch(() => undefined);
+		return ok(found);
 	}
 
 	private async run(
 		request: SyncbackRequest,
 		prepared: Prepared | undefined,
 		projectFile: string,
-		flags: readonly string[]
+		flags: readonly string[],
+		signal?: AbortSignal
 	): Promise<Result<readonly ServerMessage[], Error>> {
 		const ran = await this.rojoService.run(request.selection, {
 			command: "syncback",
@@ -1528,6 +1620,7 @@ export class CoreSyncbackService implements SyncbackService {
 			project: request.project,
 			projectFile,
 			since: SYNCBACK_SINCE,
+			signal,
 		});
 		if (ran.isErr()) return ran;
 		if (ran.value.failure)

@@ -78,10 +78,11 @@ export class CoreConfigService implements ConfigService {
 			await this.selectionOf(
 				files,
 				directory,
-				noneNamed && !files.some(isProjectFileConfig)
+				noneNamed
 					? {
 							directory,
-							list: () => this.firstConfigIn(directory),
+							list: (known) => this.defaultIn(directory, known),
+							// An adopted project file is concerned as a file the selection reads; the one a config writes is not.
 							holds: isDefaultConfigFileName,
 						}
 					: undefined,
@@ -123,8 +124,15 @@ export class CoreConfigService implements ConfigService {
 		);
 	}
 
-	private async firstConfigIn(directory: string): Promise<string[]> {
-		return (await this.discovery.defaultConfigs(directory)).slice(0, 1);
+	/** What a fresh run picks in `directory`: its first default config, else the project file it adopts. A project file never takes a config's place, as it may be what that config wrote. */
+	private async defaultIn(
+		directory: string,
+		known: readonly string[]
+	): Promise<string[]> {
+		const [config] = await this.discovery.defaultConfigs(directory);
+		if (config) return [config];
+		const adopted = await this.discovery.adoptable(directory);
+		return adopted && known.includes(adopted) ? [adopted] : [];
 	}
 
 	async selectCovering(

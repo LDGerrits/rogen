@@ -102,6 +102,53 @@ describe.each(fixtures)("%s: contract", (_name, create) => {
 		});
 	});
 
+	describe("createFile", () => {
+		it("should write a new file, creating the folders above it", async () => {
+			expect(
+				await fixture.fileSystem.createFile(at("staging/lock"), "42")
+			).toBe(true);
+
+			expect(await fixture.fileSystem.readFile(at("staging/lock"))).toBe(
+				"42"
+			);
+		});
+
+		it("should leave a file that is there as it is", async () => {
+			await fixture.fileSystem.writeFile(at("lock"), "1");
+
+			expect(await fixture.fileSystem.createFile(at("lock"), "2")).toBe(
+				false
+			);
+			expect(await fixture.fileSystem.readFile(at("lock"))).toBe("1");
+		});
+
+		it("should let only one of two creates at once make the file", async () => {
+			const made = await Promise.all([
+				fixture.fileSystem.createFile(at("lock"), "1"),
+				fixture.fileSystem.createFile(at("lock"), "2"),
+			]);
+
+			expect(made.filter(Boolean)).toHaveLength(1);
+			expect(
+				(await fixture.fileSystem.readDirectory(at("."))).map(
+					([name]) => name
+				)
+			).toEqual(["lock"]);
+			expect(["1", "2"]).toContain(
+				await fixture.fileSystem.readFile(at("lock"))
+			);
+		});
+
+		it("should not create a file where a folder is", async () => {
+			await fixture.fileSystem.createDirectory(at("lock"));
+
+			expect(await fixture.fileSystem.createFile(at("lock"), "1")).toBe(
+				false
+			);
+			expect(await fixture.fileSystem.isDirectory(at("lock"))).toBe(true);
+		});
+	});
+
 	describe("readFileBytes and copyFile", () => {
 		it("should read what was written, byte for byte", async () => {
 			await fixture.fileSystem.writeFile(at("a.luau"), "return 1\r\n");

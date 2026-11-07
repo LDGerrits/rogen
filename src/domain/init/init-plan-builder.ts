@@ -33,6 +33,7 @@ export class InitPlanBuilder {
 	private toolManifest: PlannedFile | undefined;
 	private readonly templateFiles: PlannedFile[] = [];
 	private readonly moves: PlannedMove[] = [];
+	private readonly setAsides: PlannedMove[] = [];
 	private gitInit = false;
 	private readonly directories = new Set<string>();
 	private readonly notes: string[] = [];
@@ -77,9 +78,10 @@ export class InitPlanBuilder {
 		this.agentImports = imports;
 	}
 
-	addAgentHook(hooks: AgentHooks): void {
-		this.hookFiles = hooks.files;
-		this.addSetup(...hooks.setup);
+	/** `registering`: whether the hook is added to the agents that lack it; a missing script is restored either way. */
+	addAgentHook(hooks: AgentHooks, registering: boolean): void {
+		this.hookFiles = hooks.files(registering);
+		if (registering) this.addSetup(...hooks.setup);
 	}
 
 	addToolManifest(file: PlannedFile): void {
@@ -94,6 +96,11 @@ export class InitPlanBuilder {
 	/** A file to rename before any file is written; a config may then be written under its old name. */
 	addMove(move: PlannedMove): void {
 		this.moves.push(move);
+	}
+
+	/** A rename that sets aside a config the plan replaces, which runs after every other move. */
+	addSetAside(move: PlannedMove): void {
+		this.setAsides.push(move);
 	}
 
 	/** A line of the summary: what the plan sets up in `area`. */
@@ -162,7 +169,8 @@ export class InitPlanBuilder {
 		const toWrite = this.configFiles
 			.filter(({ writesProjectFile }) => writesProjectFile)
 			.map(({ file }) => file);
-		const movedAway = new Set(this.moves.map(({ from }) => from));
+		const moves = [...this.moves, ...this.setAsides];
+		const movedAway = new Set(moves.map(({ from }) => from));
 		const taken = this.directory.checkFree(
 			written
 				.map(({ fileName }) => fileName)
@@ -178,14 +186,15 @@ export class InitPlanBuilder {
 			decided: this.decided,
 			gitInit: this.gitInit,
 			...(this.scaffold && { scaffold: this.scaffold }),
-			moves: [...this.moves],
+			// The set-asides and configs mark a folder as set up, so they go last: a run cut short leaves one that init reads as not yet done.
+			moves,
 			files: [
-				...written,
 				...this.templateFiles,
 				...(this.agentFile ? [this.agentFile] : []),
 				...this.agentImports,
 				...this.hookFiles,
 				...(this.toolManifest ? [this.toolManifest] : []),
+				...written,
 			],
 			directories: [...this.directories],
 			commands: [...this.commands],

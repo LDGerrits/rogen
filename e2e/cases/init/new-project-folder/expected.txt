@@ -4,7 +4,6 @@ stdout:
   rogen init
   The Greeter sample is in newproj/src/Greeter, and Rojo's sample Baseplate and lighting in newproj/place/, which the tree mounts. Pass --no-sample for an empty newproj/src/ and no newproj/place/.
   Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules).
-  Created newproj/default.rogen.json.
   Created newproj/.gitignore.
   Created newproj/src/Greeter/Shared/Greeting.luau.
   Created newproj/src/Greeter/Server/Greeter.server.luau.
@@ -15,6 +14,7 @@ stdout:
   Created newproj/place/Workspace/init.meta.json.
   Created newproj/README.md.
   Created newproj/AGENTS.md.
+  Created newproj/default.rogen.json.
   Initialised a git repository.
   Wrote newproj/default.project.json.
   Next steps

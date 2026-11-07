@@ -4,7 +4,6 @@ stdout:
   rogen init
   The Greeter sample is the feature in src/common, which every place shares, Game in src/game, and Rojo's sample Baseplate and lighting in place/game. Pass --no-sample for empty source folders.
   Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), the Greeter sample (--no-sample), agent rules (--no-agent-rules).
-  Created game.rogen.json.
   Created src/common/Greeter/Shared/Greeting.luau.
   Created src/common/Greeter/Server/Greeter.server.luau.
   Created src/common/Greeter/Client/Greeter.client.luau.
@@ -16,6 +15,7 @@ stdout:
   Created README.md.
   Created .vscode/settings.json.
   Created AGENTS.md.
+  Created game.rogen.json.
   Wrote game.project.json.
   Next steps
     Run:
@@ -33,7 +33,6 @@ stdout:
   rogen init
   The Greeter sample is in lobby/src/Greeter, and Rojo's sample Baseplate and lighting in lobby/place/, which the tree mounts. Pass --no-sample for an empty lobby/src/ and no lobby/place/.
   Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), agent rules (--no-agent-rules).
-  Created lobby/default.rogen.json.
   Created lobby/src/Greeter/Shared/Greeting.luau.
   Created lobby/src/Greeter/Server/Greeter.server.luau.
   Created lobby/src/Greeter/Client/Greeter.client.luau.
@@ -43,6 +42,7 @@ stdout:
   Created lobby/place/Workspace/init.meta.json.
   Created lobby/README.md.
   Created lobby/AGENTS.md.
+  Created lobby/default.rogen.json.
   Wrote lobby/default.project.json.
   Next steps
     In each terminal, start in the project folder:

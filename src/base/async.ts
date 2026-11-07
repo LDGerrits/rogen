@@ -1,4 +1,5 @@
 import { Disposable } from "./disposable.js";
+import { onUnexpectedError } from "./errors.js";
 
 export interface Task<T> {
 	(): T;
@@ -64,7 +65,11 @@ export class RunOnceScheduler implements Disposable {
 		if (this.disposed) return;
 		this.timer = setTimeout(() => {
 			this.timer = undefined;
-			this.runner();
+			try {
+				this.runner();
+			} catch (error) {
+				onUnexpectedError(error);
+			}
 		}, delay);
 	}
 

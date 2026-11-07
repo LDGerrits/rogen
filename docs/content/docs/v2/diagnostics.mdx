@@ -105,6 +105,16 @@ error: game.rogen.json and lobby.rogen.json are the same config: a copy that was
 
 Edit the copy so it describes the place or output it is for, or delete it. A second output of one game, such as `dist` or `release`, keeps the same `name` and changes only what differs.
 
+### `config.bothExtensions` [#config-bothextensions]
+
+Error. A config has a twin with the other extension beside it, such as `default.rogen.json` and `default.rogen.jsonc`. Both write the same project file, so Rogen can't tell which one to write. A command that starts with both refuses to run. A watch reports the error when the second file appears, keeps writing the last valid version, and loads the config again when one of them is deleted.
+
+```
+error: default.rogen.json and default.rogen.jsonc both write default.project.json. Keep one of them. (config.bothExtensions)
+```
+
+Delete one of the two files.
+
 ### `config.compiledPathOverlapsSourcePath` [#config-compiledpathoverlapssourcepath]
 
 Error. The compiled path is a source path, is inside one, or contains one. Darklua or a compiler writes its output to the compiled path, so Rogen would read that output as source and write the project file from it.
@@ -1136,6 +1146,16 @@ Pin a newer Rojo with your toolchain manager (`rokit add rojo-rbx/rojo`), or upd
 ## Syncback
 
 These diagnostics come from `rogen syncback`, which writes the changes made in a place back to your files.
+
+### `syncback.busy` [#syncback-busy]
+
+Error. Another `rogen syncback` is running in the same project folder, such as one in a second terminal or one that a coding agent started. Syncback works on a copy of your files in `.rogen-syncback`, and only one run at a time can own it. The second run stops before it touches anything, and exits 1. The message names the process id of the run that owns the folder.
+
+```
+error: another rogen syncback, process 4242, is running in this folder, so this one stopped before it touched anything. Wait for it to end, then run syncback again. (syncback.busy)
+```
+
+Wait for the other run to end, then run `rogen syncback` again. A run that was killed leaves its lock behind, and the next run takes it over, since the process that held it no longer runs.
 
 ### `syncback.compiledPath` [#syncback-compiledpath]
 

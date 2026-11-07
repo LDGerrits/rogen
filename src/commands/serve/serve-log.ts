@@ -14,6 +14,7 @@ import {
 import { RojoServer, ServerInfo } from "../../domain/runner/rojo-server.js";
 import { WatchUpdate } from "../../domain/watch/watch-service.js";
 import { LogService } from "../../platform/log/log-service.js";
+import { ProcessExit } from "../../platform/process/process-service.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 import { watchLineShapes } from "../write/write-document.js";
 import { reportRojo } from "../write/report-rojo.js";
@@ -175,13 +176,22 @@ export class ServeLog implements ServeReporter {
 		);
 	}
 
-	stopped({ target, interrupted, failure, servedBy }: ServerExitEvent): void {
-		if (servedBy) this.running({ ...target, servedBy });
-		else if (failure) this.logService.diagnostic(failure);
-		else if (!interrupted)
-			this.logService.info(
-				`Rojo stopped serving ${this.nameOf(target)}.`
-			);
+	stopped(stop: ServerExitEvent): void {
+		switch (stop.kind) {
+			case "served-elsewhere":
+				this.running({ ...stop.target, servedBy: stop.servedBy });
+				return;
+			case "stopped":
+				this.logService.info(
+					`Rojo stopped serving ${this.nameOf(stop.target)}.`
+				);
+				return;
+			case "interrupted":
+				return;
+			case "crashed":
+			case "failed":
+				this.logService.diagnostic(stop.failure);
+		}
 	}
 
 	changed(change: ServeChangeEvent): void {
@@ -304,24 +314,30 @@ export class ServeJsonLog implements ServeReporter {
 		});
 	}
 
-	stopped({
-		target,
-		exit,
-		failure,
-		crashed,
-		servedBy,
-	}: ServerExitEvent): void {
-		if (servedBy) {
-			this.running({ ...target, servedBy });
-			return;
+	stopped(stop: ServerExitEvent): void {
+		const { target } = stop;
+		switch (stop.kind) {
+			case "served-elsewhere":
+				this.running({ ...target, servedBy: stop.servedBy });
+				return;
+			case "stopped":
+			case "interrupted":
+				this.line({
+					stopped: this.exitedJson(target, "exited", stop.exit),
+				});
+				return;
+			case "crashed":
+				this.line({
+					stopped: this.exitedJson(target, "crashed", stop.exit),
+				});
+				this.line(diagnosticsJson([stop.failure]));
+				return;
+			case "failed":
+				this.line({
+					stopped: this.exitedJson(target, "exited", stop.exit),
+				});
+				this.line(diagnosticsJson([stop.failure]));
 		}
-		this.line({
-			stopped: this.stoppedJson(target, crashed ? "crashed" : "exited", {
-				code: exit.code,
-				signal: exit.signal,
-			}),
-		});
-		if (failure) this.line(diagnosticsJson([failure]));
 	}
 
 	changed(change: ServeChangeEvent): void {
@@ -377,6 +393,17 @@ export class ServeJsonLog implements ServeReporter {
 	private running(target: ServedTarget): void {
 		this.line({
 			serving: this.servingJson(target, target.servedBy, true),
+		});
+	}
+
+	private exitedJson(
+		target: ServeTarget,
+		reason: "exited" | "crashed",
+		exit: ProcessExit
+	): Record<string, unknown> {
+		return this.stoppedJson(target, reason, {
+			code: exit.code,
+			signal: exit.signal,
 		});
 	}
 

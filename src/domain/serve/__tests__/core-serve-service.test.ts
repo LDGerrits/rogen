@@ -1,4 +1,5 @@
 import { jest } from "@jest/globals";
+import { DeferredPromise } from "../../../base/async.js";
 import { UsageError } from "../../../base/errors.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
@@ -212,8 +213,11 @@ describe("CoreServeService", () => {
 		});
 
 		it("should find a config a server already serves, and start nothing for it", async () => {
+			processes.running.add(5000);
 			await memFs.writeFile(
-				...recordFile(34872, "repo", "/repo/default.project.json")
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+				})
 			);
 			requests.answer(
 				"http://127.0.0.1:34872/api/rojo",
@@ -346,27 +350,16 @@ describe("CoreServeService", () => {
 			);
 		});
 
-		it("should leave a server alone that another serve recorded for this project file", async () => {
-			await memFs.writeFile(
-				...recordFile(34872, "repo", "/repo/default.project.json")
-			);
-			requests.answer(
-				"http://127.0.0.1:34872/api/rojo",
-				rojoInfo("repo")
-			);
-
-			const servePlan = await plan();
-
-			expect(servePlan.target.servedBy).toBeDefined();
-		});
-
 		it("should leave a server alone that another serve recorded for this project file before its name changed", async () => {
 			await memFs.writeFile(
 				"/repo/default.rogen.json",
 				config({ name: "Game" })
 			);
+			processes.running.add(5000);
 			await memFs.writeFile(
-				...recordFile(34872, "repo", "/repo/default.project.json")
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+				})
 			);
 			requests.answer(
 				"http://127.0.0.1:34872/api/rojo",
@@ -457,10 +450,44 @@ describe("CoreServeService", () => {
 			}
 		);
 
-		it("should refuse a server whose serve ended when the process that leads it is gone too", async () => {
+		it.each([
+			[
+				"the process that leads it is gone too",
+				{ owner: 5000, pid: 5001 },
+			],
+			["the record names no leading process", { owner: 5000 }],
+			["the record names no serve", { pid: 5001 }],
+		])(
+			"should refuse a server recorded for this project file when %s",
+			async (_, recorded) => {
+				await memFs.writeFile(
+					...recordFile(
+						34872,
+						"repo",
+						"/repo/default.project.json",
+						recorded
+					)
+				);
+				requests.answer(
+					"http://127.0.0.1:34872/api/rojo",
+					rojoInfo("repo")
+				);
+
+				const error = (await errorOf()) as DiagnosticsError;
+
+				expect(error.diagnostics[0]).toMatchObject({
+					code: "serve.portTaken",
+					message: expect.stringContaining(
+						"Port 34872 is held by another process (Rojo serving repo)"
+					),
+				});
+			}
+		);
+
+		it("should refuse a server recorded by a serve that named no owner, even while its leading process runs", async () => {
+			processes.running.add(5001);
 			await memFs.writeFile(
 				...recordFile(34872, "repo", "/repo/default.project.json", {
-					owner: 5000,
 					pid: 5001,
 				})
 			);
@@ -471,25 +498,8 @@ describe("CoreServeService", () => {
 
 			const error = (await errorOf()) as DiagnosticsError;
 
-			expect(error.diagnostics[0].message).toContain(
-				"Port 34872 is held by another process (Rojo serving repo)"
-			);
-		});
-
-		it("should refuse a server whose serve ended, and whose leading process the record doesn't name", async () => {
-			await memFs.writeFile(
-				...recordFile(34872, "repo", "/repo/default.project.json", {
-					owner: 5000,
-				})
-			);
-			requests.answer(
-				"http://127.0.0.1:34872/api/rojo",
-				rojoInfo("repo")
-			);
-
-			const error = (await errorOf()) as DiagnosticsError;
-
 			expect(error.diagnostics[0].code).toBe("serve.portTaken");
+			expect(processes.terminatedTrees).toEqual([]);
 		});
 
 		it("should start over a server whose serve ended, and name what it leaves", async () => {
@@ -792,6 +802,42 @@ describe("CoreServeService", () => {
 			expect(processes.spawned).toEqual([]);
 		});
 
+		it("should start nothing for a change saved while it refuses a Rojo before 7.5.0", async () => {
+			processes.outputs.set("/bin/rojo", {
+				code: 0,
+				stdout: "Rojo 7.4.4",
+				stderr: "",
+			});
+			await memFs.writeFile(
+				"/repo/default.rogen.json",
+				config({ syncRules: [{ pattern: "*.md", use: "text" }] })
+			);
+			service = serviceAt("/repo", new RojoCompatibility(memFs, false));
+			const checked = new DeferredPromise<void>();
+			const problemsIn = RojoCompatibility.prototype.problemsIn;
+			jest.spyOn(
+				RojoCompatibility.prototype,
+				"problemsIn"
+			).mockImplementation(async function (
+				this: RojoCompatibility,
+				...args
+			) {
+				const problems = await problemsIn.apply(this, args);
+				await checked.p;
+				return problems;
+			});
+			const started = start();
+			await settle();
+
+			await memFs.writeFile("/repo/default.rogen.json", config());
+			await settle();
+			checked.complete();
+			await settle();
+
+			expect((await started).isErr()).toBe(true);
+			expect(processes.spawned).toEqual([]);
+		});
+
 		it("should report sync rules once a Rojo before 7.5.0 is running", async () => {
 			processes.outputs.set("/bin/rojo", {
 				code: 0,
@@ -1032,11 +1078,14 @@ describe("CoreServeService", () => {
 			await settle();
 
 			expect(stops).toHaveLength(1);
-			expect(stops[0].interrupted).toBe(false);
-			expect(stops[0].failure?.code).toBe("serve.serverExited");
-			expect(stops[0].failure?.message).toBe(
-				"Rojo stopped serving repo with exit code 1, without saying why."
-			);
+			expect(stops[0]).toMatchObject({
+				kind: "failed",
+				failure: {
+					code: "serve.serverExited",
+					message:
+						"Rojo stopped serving repo with exit code 1, without saying why.",
+				},
+			});
 		});
 
 		it("should pass on what the server said before it stopped, and point to it", async () => {
@@ -1047,9 +1096,12 @@ describe("CoreServeService", () => {
 			await settle();
 
 			expect(said).toEqual(["error: Port in use", "stopped"]);
-			expect(stops[0].failure?.message).toBe(
-				"Rojo stopped serving repo with exit code 1; see what it said above."
-			);
+			expect(stops[0]).toMatchObject({
+				failure: {
+					message:
+						"Rojo stopped serving repo with exit code 1; see what it said above.",
+				},
+			});
 		});
 
 		it("should stand down without a failure when another serve started a server for the project on its port first", async () => {
@@ -1069,11 +1121,9 @@ describe("CoreServeService", () => {
 			await settle();
 
 			expect(stops).toHaveLength(1);
-			expect(stops[0].failure).toBeUndefined();
-			expect(stops[0].servedBy).toEqual({
-				project: "repo",
-				version: "7.7.1",
-				session: "s1",
+			expect(stops[0]).toMatchObject({
+				kind: "served-elsewhere",
+				servedBy: { project: "repo", version: "7.7.1", session: "s1" },
 			});
 		});
 
@@ -1094,7 +1144,10 @@ describe("CoreServeService", () => {
 			);
 			await settle();
 
-			expect(stops[0].servedBy?.project).toBe("repo");
+			expect(stops[0]).toMatchObject({
+				kind: "served-elsewhere",
+				servedBy: { project: "repo" },
+			});
 		});
 
 		it("should stand down, not restart, when the server it took for its own was another serve's that started first", async () => {
@@ -1120,8 +1173,10 @@ describe("CoreServeService", () => {
 
 			expect(processes.spawned).toHaveLength(1);
 			expect(stops).toHaveLength(1);
-			expect(stops[0].failure).toBeUndefined();
-			expect(stops[0].servedBy?.session).toBe("s1");
+			expect(stops[0]).toMatchObject({
+				kind: "served-elsewhere",
+				servedBy: { session: "s1" },
+			});
 		});
 
 		it("should stop waiting for another serve's record, and report nothing, once it is stopped", async () => {
@@ -1151,8 +1206,10 @@ describe("CoreServeService", () => {
 			processes.spawned[0].exit({ code: 1, signal: null });
 			await settle();
 
-			expect(stops[0].failure?.code).toBe("serve.serverExited");
-			expect(stops[0].servedBy).toBeUndefined();
+			expect(stops[0]).toMatchObject({
+				kind: "failed",
+				failure: { code: "serve.serverExited" },
+			});
 		});
 
 		describe("as its configs change", () => {
@@ -1294,8 +1351,11 @@ describe("CoreServeService", () => {
 			});
 
 			it("should start the server of a config another serve served once that server is gone", async () => {
+				processes.running.add(5000);
 				await memFs.writeFile(
-					...recordFile(34872, "repo", "/repo/default.project.json")
+					...recordFile(34872, "repo", "/repo/default.project.json", {
+						owner: 5000,
+					})
 				);
 				requests.answer(
 					"http://127.0.0.1:34872/api/rojo",
@@ -1369,8 +1429,14 @@ describe("CoreServeService", () => {
 				await replaceWithLobby();
 				await settle();
 
+				processes.running.add(5000);
 				await memFs.writeFile(
-					...recordFile(34900, "Lobby", "/repo/default.project.json")
+					...recordFile(
+						34900,
+						"Lobby",
+						"/repo/default.project.json",
+						{ owner: 5000 }
+					)
 				);
 				requests.answer(
 					"http://127.0.0.1:34900/api/rojo",
@@ -1387,8 +1453,11 @@ describe("CoreServeService", () => {
 			});
 
 			it("should refuse a config another serve served once another project's server holds its port", async () => {
+				processes.running.add(5000);
 				await memFs.writeFile(
-					...recordFile(34872, "repo", "/repo/default.project.json")
+					...recordFile(34872, "repo", "/repo/default.project.json", {
+						owner: 5000,
+					})
 				);
 				requests.answer(
 					"http://127.0.0.1:34872/api/rojo",
@@ -1455,6 +1524,70 @@ describe("CoreServeService", () => {
 				expect(restarts.map(({ info }) => info.project)).toEqual([
 					"Game",
 				]);
+			});
+
+			it("should move the server to the port its config sets while it ends the server a dead serve left", async () => {
+				await memFs.writeFile(
+					...recordFile(34872, "repo", "/repo/default.project.json", {
+						owner: 5000,
+						pid: 5001,
+					})
+				);
+				requests.answer(
+					"http://127.0.0.1:34872/api/rojo",
+					rojoInfo("repo")
+				);
+				processes.running.add(5001);
+				const ended = new DeferredPromise<void>();
+				jest.spyOn(processes, "terminateTree").mockReturnValue(ended.p);
+				const started = start();
+				await settle();
+
+				await portOf(34901);
+				await settle();
+				requests.responses.delete("http://127.0.0.1:34872/api/rojo");
+				ended.complete();
+				await settle();
+
+				expect((await started).isOk()).toBe(true);
+				expect(spawnedProjects()).toEqual([
+					"default.project.json (ended)",
+					"default.project.json",
+				]);
+				expect(session.target?.address.toString()).toBe(
+					"127.0.0.1:34901"
+				);
+			});
+
+			it("should serve a config that takes the place of another while it checks the Rojo that runs", async () => {
+				const checked = new DeferredPromise<void>();
+				const problemsIn = RojoCompatibility.prototype.problemsIn;
+				jest.spyOn(
+					RojoCompatibility.prototype,
+					"problemsIn"
+				).mockImplementation(async function (
+					this: RojoCompatibility,
+					...args
+				) {
+					const problems = await problemsIn.apply(this, args);
+					await checked.p;
+					return problems;
+				});
+				const started = start();
+				await settle();
+
+				await replaceWithLobby();
+				await settle();
+				checked.complete();
+				await settle();
+
+				expect((await started).isOk()).toBe(true);
+				expect(spawnedProjects()).toEqual([
+					"default.project.json (ended)",
+					"default.project.json",
+				]);
+				expect(changes).toEqual(["retired repo (removed)"]);
+				expect(session.target?.config.label).toBe("Lobby");
 			});
 
 			it("should serve only the named configs, not one added beside them", async () => {
