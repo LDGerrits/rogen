@@ -223,6 +223,26 @@ describe("CoreConfigService", () => {
 			expect(resolved(0)).toBe(before);
 		});
 
+		it("should give the new warning positions after an edit that only moves them, without reporting a change", async () => {
+			const rule = `{ "pattern": "*.md", "use": "text", "sufix": ".md" }`;
+			await write(
+				"/repo/default.rogen.json",
+				`{ "syncRules": [${rule}] }`
+			);
+			await start();
+
+			await write(
+				"/repo/default.rogen.json",
+				`// comment\n{\n\t"syncRules": [${rule}]\n}`
+			);
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
+
+			expect(reload).toEqual({ changed: [], notices: [] });
+			expect(resolved(0)?.warnings).toMatchObject([
+				{ position: { line: 3 } },
+			]);
+		});
+
 		it("should keep the last valid value when a reload breaks the config, and report the new errors", async () => {
 			await write("/repo/default.rogen.json", { name: "A" });
 			await start();

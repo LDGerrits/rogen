@@ -18,6 +18,8 @@ import { ConfigValidator } from "./config-validator.js";
 export interface LoadedConfig {
 	readonly files: readonly string[];
 	readonly value?: Readonly<Record<string, unknown>>;
+	/** What the file holds, when it parses. */
+	readonly text?: string;
 	readonly resolved: Result<ResolvedConfigFile, Diagnostic[]>;
 	/** The source paths of a config that only a copy beside it breaks. */
 	readonly sourcePaths?: readonly string[];
@@ -57,6 +59,7 @@ export class ConfigLoader {
 			? {
 					files,
 					value: loaded.value,
+					text: loaded.text,
 					resolved: err(clashes),
 					sourcePaths: loaded.resolved.value.config.sourcePaths,
 				}
@@ -102,6 +105,7 @@ export class ConfigLoader {
 		return {
 			files: [file],
 			value,
+			text: config.text,
 			resolved:
 				hints.length > 0
 					? err(hints)
