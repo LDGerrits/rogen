@@ -336,7 +336,7 @@ export function mergeLocations(
 export interface WriteService {
 	readonly _serviceBrand: undefined;
 
-	/** Prepares each selected config that loads and writes them in order; a config that fails or doesn't load writes nothing, and a failed write leaves the rest unwritten. With `independent`, a config that fails or doesn't load leaves the others to be written. A plain Rojo project gets no warning about Rogen's own model, which only `diagnose` raises. */
+	/** Prepares each selected config that loads and writes them in order; a config that fails or doesn't load writes nothing, and a failed write leaves the rest unwritten. With `independent`, a config that fails, doesn't load or can't be written leaves the others to be written. A plain Rojo project gets no warning about Rogen's own model, which only `diagnose` raises. */
 	write(
 		selection: ConfigSelection,
 		options?: { readonly independent?: boolean }

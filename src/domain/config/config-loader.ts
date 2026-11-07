@@ -2,12 +2,19 @@ import { Disposable, toDisposable } from "../../base/disposable.js";
 import path from "path";
 import { Result, err, tryWithAsync } from "../../base/result.js";
 import { ConfigFileReader } from "../../platform/config/config-file.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	errorDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import {
 	FileReader,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import { isConfigFileName, isProjectFileConfig } from "./config.js";
+import {
+	isConfigFileName,
+	isProjectFileConfig,
+	projectFileOf,
+} from "./config.js";
 import { FolderConfig, folderClashes } from "./folder-clashes.js";
 import { configStructure } from "./config-structure.js";
 import { ConfigFileCheck } from "./config-service.js";
@@ -18,10 +25,23 @@ import { ConfigValidator } from "./config-validator.js";
 export interface LoadedConfig {
 	readonly files: readonly string[];
 	readonly value?: Readonly<Record<string, unknown>>;
+	/** What the file holds, when it parses. */
+	readonly text?: string;
 	readonly resolved: Result<ResolvedConfigFile, Diagnostic[]>;
 	/** The source paths of a config that only a copy beside it breaks. */
 	readonly sourcePaths?: readonly string[];
 }
+
+/** The same config under the other extension: `dist.rogen.jsonc` for `dist.rogen.json`. */
+const twinOf = (file: string): string =>
+	file.endsWith("c") ? file.slice(0, -1) : `${file}c`;
+
+const bothExtensions = (file: string, twin: string): Diagnostic =>
+	errorDiagnostic(
+		"config.bothExtensions",
+		{ resource: file },
+		`${path.basename(file)} and ${path.basename(twin)} both write ${path.basename(projectFileOf(file))}. Keep one of them.`
+	);
 
 export class ConfigLoader {
 	private readonly reader: ConfigFileReader;
@@ -43,43 +63,54 @@ export class ConfigLoader {
 		return toDisposable(() => this.fileChecks.delete(check));
 	}
 
-	/** Never throws for a problem the user can cause. A config that copies another of its folder fails, and is reloaded when that one changes. */
+	/** Never throws for a problem the user can cause. A config that copies another of its folder, or has a twin of the other extension, fails, and is reloaded when that one changes. */
 	async load(file: string): Promise<LoadedConfig> {
 		const loaded = await this.loadFile(file);
-		if (loaded.resolved.isErr() || isProjectFileConfig(file)) return loaded;
-		const siblings = await this.siblingsOf(file);
-		const clashes = folderClashes(
-			{ config: loaded.resolved.value.config, value: loaded.value },
-			siblings
-		);
-		const files = [...loaded.files, ...siblings.map((s) => s.config.file)];
+		if (isProjectFileConfig(file)) return loaded;
+		const twin = twinOf(file);
+		if (loaded.resolved.isErr())
+			return { ...loaded, files: [...loaded.files, twin] };
+		const { siblings, read } = await this.siblingsOf(file);
+		const clashes = [
+			...(read.includes(twin) ? [bothExtensions(file, twin)] : []),
+			...folderClashes(
+				{ config: loaded.resolved.value.config, value: loaded.value },
+				siblings
+			),
+		];
+		const files = [...loaded.files, ...new Set([...read, twin])];
 		return clashes.length > 0
 			? {
 					files,
 					value: loaded.value,
+					text: loaded.text,
 					resolved: err(clashes),
 					sourcePaths: loaded.resolved.value.config.sourcePaths,
 				}
 			: { ...loaded, files };
 	}
 
-	/** The configs beside `file` that load. */
-	private async siblingsOf(file: string): Promise<FolderConfig[]> {
+	/** The configs beside `file` that load, and every config file read for them, so fixing a broken one reloads `file`. */
+	private async siblingsOf(
+		file: string
+	): Promise<{ siblings: FolderConfig[]; read: string[] }> {
 		const folder = path.dirname(file);
 		const listing = await tryWithAsync(() =>
 			this.fileSystemService.readDirectory(folder)
 		);
-		if (listing.isErr()) return [];
+		if (listing.isErr()) return { siblings: [], read: [] };
 		const siblings: FolderConfig[] = [];
+		const read: string[] = [];
 		for (const [name, type] of listing.value) {
 			const other = path.join(folder, name);
 			if (!isFileType(type) || !isConfigFileName(name) || other === file)
 				continue;
+			read.push(other);
 			const { resolved, value } = await this.loadFile(other);
 			if (resolved.isOk())
 				siblings.push({ config: resolved.value.config, value });
 		}
-		return siblings;
+		return { siblings, read };
 	}
 
 	private async loadFile(file: string): Promise<LoadedConfig> {
@@ -102,6 +133,7 @@ export class ConfigLoader {
 		return {
 			files: [file],
 			value,
+			text: config.text,
 			resolved:
 				hints.length > 0
 					? err(hints)

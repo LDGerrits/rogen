@@ -1851,6 +1851,79 @@ describe("CoreInitService", () => {
 			});
 		});
 
+		it("should go back to the summary it showed when Customise is cancelled", async () => {
+			const prompts = new MockPromptService([
+				"luau",
+				"one",
+				"customise",
+				false,
+				CANCEL,
+				"yes",
+			]);
+
+			const plan = (await review(prompts)).unwrap();
+
+			expect(prompts.asked).toEqual([
+				"Language",
+				"One place or several?",
+				CREATE,
+				"Add the Greeter sample?",
+				"Add Rogen's rules for coding agents to AGENTS.md?",
+				CREATE,
+			]);
+			expect(prompts.prompts.at(-1)?.description).toEqual(
+				prompts.prompts[2].description
+			);
+			expect(
+				plan?.files.some(({ fileName }) => fileName.includes("Greeter"))
+			).toBe(true);
+		});
+
+		it("should keep the answers it had when Customise is cancelled", async () => {
+			const prompts = new MockPromptService([
+				"luau",
+				"one",
+				"customise",
+				false,
+				CANCEL,
+				"customise",
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				"yes",
+			]);
+
+			const plan = (await review(prompts)).unwrap();
+
+			expect(
+				plan?.files.some(({ fileName }) => fileName.includes("Greeter"))
+			).toBe(true);
+		});
+
+		it("should read the folder and look at the tools once, however often the plan is shown", async () => {
+			const detect = jest.spyOn(CoreToolchainService.prototype, "detect");
+			const prompts = new MockPromptService([
+				"luau",
+				"one",
+				"customise",
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				"customise",
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				"yes",
+			]);
+
+			await review(prompts);
+
+			expect(prompts.asked.filter((one) => one === CREATE)).toHaveLength(
+				3
+			);
+			expect(detect).toHaveBeenCalledTimes(1);
+			expect(
+				processes.execs.filter(({ file }) => file === "/bin/rojo")
+			).toHaveLength(1);
+		});
+
 		it("should leave the sample out when Customise is answered so", async () => {
 			const prompts = new MockPromptService([
 				"luau",
