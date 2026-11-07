@@ -1,6 +1,11 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
-import { IoError, UsageError, failureReason } from "../../base/errors.js";
+import {
+	CancelledError,
+	IoError,
+	UsageError,
+	failureReason,
+} from "../../base/errors.js";
 import { ignoringGlob, literalGlob } from "../../base/glob.js";
 import {
 	ancestors,
@@ -108,6 +113,13 @@ type Operation = {
 interface Expected {
 	readonly file: string;
 	readonly instance: readonly string[];
+}
+
+/** The error of a run stopped before it wrote anything. */
+function stopped(): CancelledError {
+	return new CancelledError(
+		"Syncback stopped before it finished, so nothing was written."
+	);
 }
 
 /** The plan of a run on the mirror: what it writes, with the bytes, and the bytes each path it touches had, so a confirmed plan is written as it was shown. */
@@ -292,7 +304,9 @@ export class CoreSyncbackService implements SyncbackService {
 				if (planned.isErr()) return planned;
 				const plan = planned.value;
 				if (confirm) {
-					if (!(await confirm(plan))) return ok(undefined);
+					const confirmed = await confirm(plan);
+					if (signal.aborted) return err(stopped());
+					if (!confirmed) return ok(undefined);
 					if (!(await this.unchangedSince(plan)))
 						return err(
 							new UsageError(
@@ -301,8 +315,8 @@ export class CoreSyncbackService implements SyncbackService {
 							)
 						);
 				}
-				// The staging turns a stopped run into its own error.
-				if (signal.aborted) return ok(undefined);
+				// Once writing starts, a stop no longer undoes the run.
+				if (signal.aborted) return err(stopped());
 				return ok(await this.written(request, plan));
 			}
 		);
@@ -321,9 +335,10 @@ export class CoreSyncbackService implements SyncbackService {
 			copied,
 			signal
 		);
+		if (signal.aborted) return err(stopped());
 		if (ran.isErr()) return ran;
 		const { messages, refused } = ran.value;
-		return this.settle(
+		const settled = await this.settle(
 			request,
 			prepared,
 			copied,
@@ -331,6 +346,7 @@ export class CoreSyncbackService implements SyncbackService {
 			[...refused, ...CoreSyncbackService.skipped(messages)],
 			messages
 		);
+		return signal.aborted ? err(stopped()) : settled;
 	}
 
 	private async written(

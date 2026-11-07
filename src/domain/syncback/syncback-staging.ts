@@ -1,5 +1,5 @@
 import path from "path";
-import { CancelledError, IoError, failureReason } from "../../base/errors.js";
+import { IoError, failureReason } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -38,7 +38,7 @@ export class SyncbackStaging {
 		this.lock = path.join(this.folder, LOCK);
 	}
 
-	/** Runs `work` while this process owns the staging files, which it finds clean and leaves gone; `syncback.busy` when another syncback owns them, with nothing touched. A shutdown aborts `work`'s signal and removes the files at once. */
+	/** Runs `work` while this process owns the staging files, which it finds clean and leaves gone; `syncback.busy` when another syncback owns them, with nothing touched. A shutdown aborts `work`'s signal, which `work` turns into its own result, and removes the files at once. */
 	async use<T>(
 		work: (signal: AbortSignal) => Promise<Result<T, Error>>
 	): Promise<Result<T, Error>> {
@@ -53,14 +53,7 @@ export class SyncbackStaging {
 		try {
 			const cleaned = await this.clean();
 			if (cleaned.isErr()) return cleaned;
-			const done = await work(stopping.signal);
-			if (stopping.signal.aborted)
-				return err(
-					new CancelledError(
-						"Syncback stopped before it finished, so nothing was written."
-					)
-				);
-			return done;
+			return await work(stopping.signal);
 		} finally {
 			shutdown[Symbol.dispose]();
 			await released;

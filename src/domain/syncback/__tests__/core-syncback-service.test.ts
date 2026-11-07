@@ -436,6 +436,58 @@ describe("CoreSyncbackService", () => {
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
 	});
 
+	it("should report what it wrote when a run is asked to shut down while it writes", async () => {
+		await prepare([]);
+		await fs.writeFile(abs("src/Inventory/Bag@server.luau"), "return 1");
+		await prepare([]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Bag.luau"),
+				"return 2"
+			);
+			return [];
+		};
+		const writeBytes = fs.writeFileBytes.bind(fs);
+		jest.spyOn(fs, "writeFileBytes").mockImplementation(
+			async (file, bytes) => {
+				lifecycle.shutdown("SIGINT");
+				return writeBytes(file, bytes);
+			}
+		);
+
+		const result = (await service.apply(request)).unwrap();
+
+		expect(result.changes).toEqual([
+			{ kind: "write", file: abs("src/Inventory/Bag@server.luau") },
+		]);
+		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+			"return 2"
+		);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should write nothing when a run is asked to shut down after Rojo ran and before it writes", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Combat"), true);
+			return ["Removing ServerScriptService/Combat"];
+		};
+
+		const applied = await service.apply(request, async () => {
+			lifecycle.shutdown("SIGINT");
+			return true;
+		});
+
+		expect(applied.isErr()).toBe(true);
+		expect((applied as ResultError<Error>).error.message).toBe(
+			"Syncback stopped before it finished, so nothing was written."
+		);
+		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
+			true
+		);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
 	it("should stop listening for a shutdown once the run ended", async () => {
 		await prepare(["src/Combat/Server/Combat.luau"]);
 		await service.plan(request);

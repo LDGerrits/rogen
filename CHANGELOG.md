@@ -19,7 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - A second `rogen syncback` in a project folder where one is running stops with `syncback.busy`, instead of deleting the first one's copy of your files.
-- `rogen syncback` stops with an error when it can't read or clear its copy of your files, instead of planning to remove them, and Ctrl+C leaves no copy behind.
+- `rogen syncback` stops with an error when it can't read or clear its copy of your files, instead of planning to remove them. Ctrl+C leaves no copy behind, and once syncback writes your files it finishes and says what it wrote.
 - `rogen syncback` writes nothing when the config or the place changed while it asked, and keeps a file it couldn't replace.
 - `rogen syncback` exits with 1 when it can't write the project file again afterwards.
 - `rogen write` with several configs writes the others when one's project file can't be written.
