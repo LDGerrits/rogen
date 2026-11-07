@@ -5,7 +5,6 @@ import {
 	RunningRogen,
 	bundleCli,
 	createProject,
-	eventually,
 	outputProblem,
 	sourcemapTree,
 	writeProjectFile,
@@ -35,6 +34,9 @@ describeWithRojo("end to end watch", () => {
 		return session;
 	};
 
+	const waitFor = <T>(check: () => T | Promise<T>, timeoutMs?: number) =>
+		session!.waitFor(check, timeoutMs);
+
 	beforeAll(() => {
 		bundle = bundleCli();
 	});
@@ -59,24 +61,24 @@ describeWithRojo("end to end watch", () => {
 	it("should write the project file when it starts", async () => {
 		start();
 
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
 		});
 	}, 30_000);
 
 	it("should rewrite when a source file is added and removed", async () => {
 		start();
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
 		});
 
 		writeProjectFile(project.dir, "src/B.luau");
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("<- src/B.luau");
 		});
 
 		fs.rmSync(path.join(project.dir, "src/A.server.luau"));
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).not.toContain("<- src/A.server.luau");
 		});
 	}, 30_000);
@@ -84,7 +86,7 @@ describeWithRojo("end to end watch", () => {
 	it("should keep the last project file while no source path exists, and write again once one does", async () => {
 		const file = path.join(project.dir, "default.project.json");
 		const running = start();
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
 		});
 
@@ -92,7 +94,7 @@ describeWithRojo("end to end watch", () => {
 			path.join(project.dir, "src"),
 			path.join(project.dir, "moved")
 		);
-		await eventually(() => {
+		await waitFor(() => {
 			expect(running.output).toContain("scan.missingSourcePath");
 		});
 		expect(fs.readFileSync(file, "utf8")).toContain("src/A.server.luau");
@@ -102,7 +104,7 @@ describeWithRojo("end to end watch", () => {
 			path.join(project.dir, "src")
 		);
 		writeProjectFile(project.dir, "src/B.luau");
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("<- src/B.luau");
 		});
 	}, 30_000);
@@ -110,13 +112,13 @@ describeWithRojo("end to end watch", () => {
 	it("should build the place with Rojo after each write when given -o", async () => {
 		const place = path.join(project.dir, "game.rbxlx");
 		start(["-o", "game.rbxlx"]);
-		await eventually(() => {
+		await waitFor(() => {
 			expect(fs.existsSync(place)).toBe(true);
 			expect(fs.readFileSync(place, "utf8")).toContain("A");
 		});
 
 		writeProjectFile(project.dir, "src/Added.luau");
-		await eventually(() => {
+		await waitFor(() => {
 			expect(fs.readFileSync(place, "utf8")).toContain("Added");
 		});
 	}, 30_000);
@@ -140,7 +142,7 @@ describeWithRojo("end to end watch", () => {
 		});
 		const place = path.join(project.dir, "game.rbxlx");
 		start(["-o", "game.rbxlx"]);
-		await eventually(() => {
+		await waitFor(() => {
 			expect(fs.readFileSync(place, "utf8")).toContain("Baseplate");
 		});
 
@@ -150,7 +152,7 @@ describeWithRojo("end to end watch", () => {
 			JSON.stringify({ className: "TrussPart" })
 		);
 		writeProjectFile(project.dir, "Packages/B.luau", "return 'package'");
-		await eventually(() => {
+		await waitFor(() => {
 			const built = fs.readFileSync(place, "utf8");
 			expect(built).toContain("TrussPart");
 			expect(built).toContain("return 'package'");
@@ -170,12 +172,12 @@ describeWithRojo("end to end watch", () => {
 			undefined,
 			"sourcemap --watch"
 		);
-		await eventually(() => {
+		await waitFor(() => {
 			expect(fs.readFileSync(map, "utf8")).toContain("A");
 		});
 
 		writeProjectFile(project.dir, "src/Added.luau");
-		await eventually(() => {
+		await waitFor(() => {
 			expect(fs.readFileSync(map, "utf8")).toContain("Added");
 		});
 	}, 30_000);
@@ -183,12 +185,12 @@ describeWithRojo("end to end watch", () => {
 	it("should build the place again when a script is edited in place", async () => {
 		const place = path.join(project.dir, "game.rbxlx");
 		start(["-o", "game.rbxlx"]);
-		await eventually(() => {
+		await waitFor(() => {
 			expect(fs.readFileSync(place, "utf8")).toContain("A");
 		});
 
 		writeProjectFile(project.dir, "src/A.server.luau", "return 12345");
-		await eventually(() => {
+		await waitFor(() => {
 			expect(fs.readFileSync(place, "utf8")).toContain("12345");
 		});
 	}, 30_000);
@@ -206,12 +208,12 @@ describeWithRojo("end to end watch", () => {
 		});
 		const place = path.join(project.dir, "game.rbxlx");
 		start(["-o", "game.rbxlx"]);
-		await eventually(() => {
+		await waitFor(() => {
 			expect(fs.readFileSync(place, "utf8")).toContain("return 1");
 		});
 
 		writeProjectFile(project.dir, "out/A.server.luau", "return 12345");
-		await eventually(() => {
+		await waitFor(() => {
 			expect(fs.readFileSync(place, "utf8")).toContain("12345");
 		});
 	}, 30_000);
@@ -230,7 +232,7 @@ describeWithRojo("end to end watch", () => {
 			undefined,
 			"sourcemap --watch"
 		);
-		await eventually(() => {
+		await waitFor(() => {
 			expect(fs.readFileSync(map, "utf8")).toContain('"Folder"');
 		});
 
@@ -239,7 +241,7 @@ describeWithRojo("end to end watch", () => {
 			"src/Thing.model.json",
 			JSON.stringify({ ClassName: "Configuration" })
 		);
-		await eventually(() => {
+		await waitFor(() => {
 			expect(fs.readFileSync(map, "utf8")).toContain("Configuration");
 		});
 	}, 30_000);
@@ -252,17 +254,17 @@ describeWithRojo("end to end watch", () => {
 			undefined,
 			"sourcemap --watch"
 		);
-		await eventually(() => {
+		await waitFor(() => {
 			expect(session?.stdout).toContain("A.server.luau");
 		});
 
 		writeProjectFile(project.dir, "src/Added.luau");
-		await eventually(() => {
+		await waitFor(() => {
 			expect(session?.stdout).toContain("Added.luau");
 		});
 		writeProjectFile(project.dir, "src/Added.luau", "return 1");
 		writeProjectFile(project.dir, "src/Last.luau");
-		await eventually(() => {
+		await waitFor(() => {
 			expect(session?.stdout).toContain("Last.luau");
 		});
 		const documents = (session?.stdout ?? "")
@@ -276,13 +278,13 @@ describeWithRojo("end to end watch", () => {
 	it("should count the warnings a rewrite doesn't repeat", async () => {
 		writeProjectFile(project.dir, "src/Save@sever.luau");
 		const running = start();
-		await eventually(() => {
+		await waitFor(() => {
 			expect(running.output).toContain("did you mean");
 		});
 
 		writeProjectFile(project.dir, "src/B.luau");
 
-		await eventually(() => {
+		await waitFor(() => {
 			expect(running.output).toContain(
 				"Wrote default.project.json (1 warning as before)."
 			);
@@ -292,7 +294,7 @@ describeWithRojo("end to end watch", () => {
 
 	it("should reload when the config changes", async () => {
 		start();
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain(
 				"  ServerScriptService: ServerScriptService"
 			);
@@ -304,7 +306,7 @@ describeWithRojo("end to end watch", () => {
 			JSON.stringify({ routes: { "*": "Workspace" } })
 		);
 
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("  Workspace: Workspace");
 		});
 		expect(await tree()).not.toContain("ServerScriptService");
@@ -313,7 +315,7 @@ describeWithRojo("end to end watch", () => {
 
 	it("should keep writing from the last valid config while the config is invalid", async () => {
 		const running = start();
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
 		});
 
@@ -322,7 +324,7 @@ describeWithRojo("end to end watch", () => {
 			"default.rogen.json",
 			'{ "routes": { "*": "ReplicatedStorage"'
 		);
-		await eventually(() => {
+		await waitFor(() => {
 			expect(running.output).toContain(
 				"Still writing from the last valid"
 			);
@@ -332,7 +334,7 @@ describeWithRojo("end to end watch", () => {
 		).toHaveLength(2);
 
 		writeProjectFile(project.dir, "src/B.luau");
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("<- src/B.luau");
 		});
 		expect(await tree()).toContain("A: Script");
@@ -345,7 +347,7 @@ describeWithRojo("end to end watch", () => {
 				routes: { "*": "Workspace" },
 			})
 		);
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("  Workspace: Workspace");
 		});
 	}, 30_000);
@@ -358,7 +360,7 @@ describeWithRojo("end to end watch", () => {
 		);
 		writeProjectFile(project.dir, "lobby/src/Analytics.luau");
 		start(["lobby"]);
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree("lobby/default.project.json")).toContain(
 				"<- src/Analytics.luau"
 			);
@@ -372,14 +374,14 @@ describeWithRojo("end to end watch", () => {
 				routes: { "*": "Workspace" },
 			})
 		);
-		await eventually(() => {
+		await waitFor(() => {
 			expect(session?.output).toContain(
 				"lobby/default.rogen.json changed"
 			);
 		});
 
 		writeProjectFile(project.dir, "lobby/src/Other.luau");
-		await eventually(async () => {
+		await waitFor(async () => {
 			const built = await tree("lobby/default.project.json");
 			expect(built).toContain("<- src/Other.luau");
 			expect(built).toContain("<- src/Analytics.luau");
@@ -397,7 +399,7 @@ describeWithRojo("end to end watch", () => {
 		);
 		writeProjectFile(project.dir, "lobby/src/L.luau");
 		start(["lobby"]);
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree("lobby/default.project.json")).toContain(
 				"<- src/L.luau"
 			);
@@ -405,7 +407,7 @@ describeWithRojo("end to end watch", () => {
 
 		writeProjectFile(project.dir, "src/B.luau");
 		writeProjectFile(project.dir, "lobby/src/M.luau");
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree("lobby/default.project.json")).toContain(
 				"<- src/M.luau"
 			);
@@ -417,12 +419,12 @@ describeWithRojo("end to end watch", () => {
 
 	it("should stop building a config that is deleted, and build it again when it returns", async () => {
 		const running = start();
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
 		});
 
 		fs.rmSync(path.join(project.dir, "default.rogen.json"));
-		await eventually(() => {
+		await waitFor(() => {
 			expect(running.output).toContain("default.rogen.json removed");
 		});
 
@@ -431,7 +433,7 @@ describeWithRojo("end to end watch", () => {
 			"default.rogen.json",
 			JSON.stringify({ routes: { "*": "Workspace" } })
 		);
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("  Workspace: Workspace");
 		});
 		expect(running.output).toContain("default.rogen.json added");
@@ -439,7 +441,7 @@ describeWithRojo("end to end watch", () => {
 
 	it("should build from default.rogen.jsonc when the config is renamed to it", async () => {
 		const running = start();
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
 		});
 
@@ -447,19 +449,19 @@ describeWithRojo("end to end watch", () => {
 			path.join(project.dir, "default.rogen.json"),
 			path.join(project.dir, "default.rogen.jsonc")
 		);
-		await eventually(() => {
+		await waitFor(() => {
 			expect(running.output).toContain("default.rogen.jsonc added");
 		});
 
 		writeProjectFile(project.dir, "src/B.luau");
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("<- src/B.luau");
 		});
 	}, 30_000);
 
 	it("should watch the config of a folder named from below, and reload it when it changes", async () => {
 		const running = start([".."], path.join(project.dir, "src"));
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
 		});
 		expect(running.output).toContain(
@@ -472,14 +474,14 @@ describeWithRojo("end to end watch", () => {
 			JSON.stringify({ routes: { "*": "Workspace" } })
 		);
 
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("  Workspace: Workspace");
 		});
 	}, 30_000);
 
 	it("should write a config of another name that comes to the folder", async () => {
 		const running = start();
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
 		});
 
@@ -493,7 +495,7 @@ describeWithRojo("end to end watch", () => {
 		);
 		writeProjectFile(project.dir, "src/B.server.luau");
 
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("<- src/B.server.luau");
 			expect(running.output).toContain("arena.rogen.json added");
 			expect(
@@ -512,25 +514,25 @@ describeWithRojo("end to end watch", () => {
 			})
 		);
 		start();
-		await eventually(() => {
+		await waitFor(() => {
 			expect(session?.output).toContain("does not exist");
 		});
 
 		writeProjectFile(project.dir, "later/Late.luau");
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree()).toContain("<- later/Late.luau");
 		});
 	}, 30_000);
 
 	it("should print only JSON lines on stdout with --json, one per write", async () => {
 		const watching = start(["--json"]);
-		await eventually(() => {
+		await waitFor(() => {
 			expect(watching.stdout).toContain('"write"');
 		});
 
 		writeProjectFile(project.dir, "src/B.luau");
 
-		await eventually(() => {
+		await waitFor(() => {
 			const lines = watching.stdout
 				.trim()
 				.split("\n")
@@ -560,7 +562,7 @@ describeWithRojo("end to end watch", () => {
 			undefined,
 			"write"
 		);
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree("game.project.json")).toContain(
 				"<- src/A.server.luau"
 			);
@@ -570,7 +572,7 @@ describeWithRojo("end to end watch", () => {
 		});
 
 		writeProjectFile(project.dir, "src/B.luau");
-		await eventually(async () => {
+		await waitFor(async () => {
 			expect(await tree("game.project.json")).toContain("<- src/B.luau");
 			expect(await tree("lobby.project.json")).toContain("<- src/B.luau");
 		});
@@ -578,7 +580,7 @@ describeWithRojo("end to end watch", () => {
 
 	it("should exit 130 when interrupted, as a shell reports Ctrl+C", async () => {
 		const running = start(["-o", "game.rbxlx"]);
-		await eventually(() => {
+		await waitFor(() => {
 			expect(running.output).toContain("Built game.rbxlx.");
 		});
 
