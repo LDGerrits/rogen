@@ -349,7 +349,7 @@ export class CoreServeSession
 
 	/** Reports the stop, as a stand-down when the server failed to start because another serve's took its address first; that wait ends with the session. */
 	private stoppedServer(stop: ServerExitEvent, served: boolean): void {
-		if (!stop.failure || stop.crashed || served) {
+		if (stop.kind !== "failed" || served) {
 			this._onDidExit.fire(stop);
 			return;
 		}
@@ -357,10 +357,13 @@ export class CoreServeSession
 			.queue(async () => {
 				const servedBy = await this.waitForAnotherServe(stop.target);
 				if (this.stopping) return;
-				const { target, exit } = stop;
 				this._onDidExit.fire(
 					servedBy
-						? { target, exit, interrupted: false, servedBy }
+						? {
+								kind: "served-elsewhere",
+								target: stop.target,
+								servedBy,
+							}
 						: stop
 				);
 			})

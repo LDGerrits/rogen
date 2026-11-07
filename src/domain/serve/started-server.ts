@@ -307,31 +307,38 @@ export class StartedServer extends AbstractDisposable {
 		{ exit, gaveUp }: SupervisedExitEvent,
 		said: boolean
 	): ServerExitEvent {
-		const interrupted = exit.interrupted === true;
-		const { label, file } = this.target.config;
+		const { target } = this;
+		const { label, file } = target.config;
 		if (gaveUp)
 			return {
-				target: this.target,
+				kind: "crashed",
+				target,
 				exit,
-				interrupted,
-				crashed: true,
 				failure: crashedAgain(`serving ${label}`, file, exit, gaveUp),
 			};
-		const failure =
-			exit.error !== undefined
-				? errorDiagnostic(
-						"serve.serverExited",
-						{ resource: file },
-						`Rojo couldn't start to serve ${label}: ${exit.error.message}`
-					)
-				: !interrupted && exit.code !== 0
-					? errorDiagnostic(
-							"serve.serverExited",
-							{ resource: file },
-							`Rojo stopped serving ${label} with ${exitHow(exit)}${said ? "; see what it said above." : ", without saying why."}`
-						)
-					: undefined;
-		const stop = { target: this.target, exit, interrupted };
-		return failure ? { ...stop, failure } : stop;
+		if (exit.error !== undefined)
+			return {
+				kind: "failed",
+				target,
+				exit,
+				failure: errorDiagnostic(
+					"serve.serverExited",
+					{ resource: file },
+					`Rojo couldn't start to serve ${label}: ${exit.error.message}`
+				),
+			};
+		if (exit.interrupted === true)
+			return { kind: "interrupted", target, exit };
+		if (exit.code === 0) return { kind: "stopped", target, exit };
+		return {
+			kind: "failed",
+			target,
+			exit,
+			failure: errorDiagnostic(
+				"serve.serverExited",
+				{ resource: file },
+				`Rojo stopped serving ${label} with ${exitHow(exit)}${said ? "; see what it said above." : ", without saying why."}`
+			),
+		};
 	}
 }
