@@ -331,6 +331,23 @@ describe("CoreConfigService", () => {
 			expect(reload.changed).toEqual(["/repo/default.rogen.json"]);
 		});
 
+		it("should refuse both configs when a broken one beside another is fixed into its copy", async () => {
+			const game = { name: "Game", routes: ROUTED };
+			await write("/repo/game.rogen.json", game);
+			await write("/repo/lobby.rogen.json", "{ nope");
+			await start({ names: ["game"] });
+
+			await write("/repo/lobby.rogen.json", game);
+			const reload = await selection.reload(["/repo/lobby.rogen.json"]);
+
+			expect(errors(0).map(({ code }) => code)).toEqual([
+				"config.identicalConfig",
+			]);
+			expect(reload.notices).toMatchObject([
+				{ kind: "broken", file: "/repo/game.rogen.json" },
+			]);
+		});
+
 		it("should ignore files no config reads", async () => {
 			await write("/repo/default.rogen.json", {});
 			await start();
