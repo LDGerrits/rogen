@@ -1,4 +1,5 @@
 import { jest } from "@jest/globals";
+import { setUnexpectedErrorHandler } from "../../../base/errors.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
@@ -308,5 +309,43 @@ describe("SupervisedRojo", () => {
 		await jest.advanceTimersByTimeAsync(0);
 
 		expect(processes.spawned).toHaveLength(2);
+	});
+
+	it("should end as a failed exit, and report the error, when its restart throws", async () => {
+		const reported: Error[] = [];
+		const restore = setUnexpectedErrorHandler((error) => {
+			reported.push(error);
+		});
+		const broken = new Error("The project file can't be written.");
+		try {
+			rojo = new SupervisedRojo(
+				() =>
+					new CoreRojoRunner(
+						new CoreToolchainService(new MemoryFileSystemService()),
+						processes
+					).start(
+						{ file: "/bin/rojo", version: "7.7.1" },
+						"serve",
+						undefined,
+						[],
+						"/repo"
+					),
+				{
+					beforeRestart: async () => {
+						throw broken;
+					},
+				}
+			);
+			rojo.onDidExit((exit) => exits.push(exit));
+			rojo.markReady();
+
+			await crash(0);
+
+			expect(processes.spawned).toHaveLength(1);
+			expect(exits).toEqual([{ exit: { code: 1, signal: null } }]);
+			expect(reported).toEqual([broken]);
+		} finally {
+			setUnexpectedErrorHandler(restore);
+		}
 	});
 });

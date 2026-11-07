@@ -582,9 +582,7 @@ export class CoreSyncbackService implements SyncbackService {
 			layout.placed
 				.find(({ source }) => toPosix(source) === target)
 				?.instancePath.join("/") ??
-			[...mirror.instancePathOf(path.posix.dirname(at)), nameOf(at)].join(
-				"/"
-			);
+			CoreSyncbackService.instanceAt(mirror, at);
 		const exact = yaml.find((file) => instanceOf(file) === instance);
 		if (exact) return exact.mirror;
 		const named = yaml.filter(
