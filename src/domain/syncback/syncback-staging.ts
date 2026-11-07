@@ -1,8 +1,13 @@
 import path from "path";
+import { CancelledError, IoError, failureReason } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import {
+	FileSystemService,
+	isMissingPath,
+} from "../../platform/fs/file-system-service.js";
+import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { SYNCBACK_FILES } from "../config/config.js";
 
@@ -20,6 +25,7 @@ export class SyncbackStaging {
 	constructor(
 		private readonly fileSystemService: FileSystemService,
 		private readonly processService: ProcessService,
+		private readonly lifecycleService: LifecycleService,
 		private readonly pid: number,
 		/** The project folder, absolute, in the system's own form. */
 		readonly dir: string
@@ -29,30 +35,70 @@ export class SyncbackStaging {
 		this.lock = path.join(this.folder, LOCK);
 	}
 
-	/** Runs `work` while this process owns the staging files, which it finds clean and leaves gone; `syncback.busy` when another syncback owns them, with nothing touched. */
+	/** Runs `work` while this process owns the staging files, which it finds clean and leaves gone; `syncback.busy` when another syncback owns them, with nothing touched. A shutdown aborts `work`'s signal and removes the files at once. */
 	async use<T>(
-		work: () => Promise<Result<T, Error>>
+		work: (signal: AbortSignal) => Promise<Result<T, Error>>
 	): Promise<Result<T, Error>> {
 		const locked = await this.take();
 		if (locked.isErr()) return locked;
+		const stopping = new AbortController();
+		let released: Promise<void> | undefined;
+		const shutdown = this.lifecycleService.onWillShutdown(() => {
+			stopping.abort();
+			released = this.release();
+		});
 		try {
-			await this.clean();
-			return await work();
+			const cleaned = await this.clean();
+			if (cleaned.isErr()) return cleaned;
+			const done = await work(stopping.signal);
+			if (stopping.signal.aborted)
+				return err(
+					new CancelledError(
+						"Syncback stopped before it finished, so nothing was written."
+					)
+				);
+			return done;
 		} finally {
-			await this.release();
+			shutdown[Symbol.dispose]();
+			await released;
+			// After a shutdown, what the work wrote since is removed too, unless another run took the folder.
+			if (await this.isOursOrFree()) await this.release();
 		}
 	}
 
-	/** Removes what an earlier run left, except the lock. */
-	async clean(): Promise<void> {
-		await this.fileSystemService.delete(this.file).catch(() => undefined);
-		for (const [name] of await this.fileSystemService
-			.readDirectory(this.folder)
-			.catch(() => []))
-			if (name !== LOCK)
-				await this.fileSystemService
-					.delete(path.join(this.folder, name), true)
-					.catch(() => undefined);
+	/** Removes what an earlier run left, except the lock; an error, with nothing copied, when something can't be removed. */
+	async clean(): Promise<Result<void, Error>> {
+		const removed = await this.remove(this.file);
+		if (removed.isErr()) return removed;
+		const entries = await tryWithAsync(() =>
+			this.fileSystemService.readDirectory(this.folder)
+		);
+		if (entries.isErr())
+			return isMissingPath(entries.error)
+				? ok(undefined)
+				: err(this.uncleared(this.folder, entries.error));
+		for (const [name] of entries.value) {
+			if (name === LOCK) continue;
+			const left = await this.remove(path.join(this.folder, name));
+			if (left.isErr()) return left;
+		}
+		return ok(undefined);
+	}
+
+	private async remove(target: string): Promise<Result<void, Error>> {
+		const removed = await tryWithAsync(() =>
+			this.fileSystemService.delete(target, true)
+		);
+		return removed.isErr() && !isMissingPath(removed.error)
+			? err(this.uncleared(target, removed.error))
+			: ok(undefined);
+	}
+
+	private uncleared(target: string, error: Error): IoError {
+		return new IoError(
+			`${target} is left from an earlier syncback and could not be removed: ${failureReason(error)}.`,
+			"Remove it, then run syncback again."
+		);
 	}
 
 	private async take(): Promise<Result<void, DiagnosticsError>> {
@@ -87,6 +133,11 @@ export class SyncbackStaging {
 				`another rogen syncback${owner === undefined ? "" : `, process ${owner},`} is running in this folder, so this one stopped before it touched anything. Wait for it to end, then run syncback again.`
 			),
 		]);
+	}
+
+	private async isOursOrFree(): Promise<boolean> {
+		if (!(await this.fileSystemService.exists(this.lock))) return true;
+		return (await this.owner()) === this.pid;
 	}
 
 	private async release(): Promise<void> {

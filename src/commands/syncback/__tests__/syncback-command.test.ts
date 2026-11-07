@@ -10,6 +10,8 @@ import {
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { CommandLine } from "../../../platform/environment/args.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { exitCode } from "../../../platform/commands/command-failure.js";
+import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
@@ -36,7 +38,8 @@ describe("syncback command", () => {
 	const start = (
 		options: CommandLine["options"] = { input: "game.rbxl" },
 		prompt = new MockPromptService([], false),
-		positionals: string[] = []
+		positionals: string[] = [],
+		lifecycle = new MockLifecycleService()
 	) => {
 		const log = new MockLogService();
 		const running = commandHarness({
@@ -45,6 +48,7 @@ describe("syncback command", () => {
 			config: new MockConfigService([validEntry()]),
 			processes,
 			prompt,
+			lifecycle,
 		}).run("syncback", { positionals, options });
 		return { log, running };
 	};
@@ -507,6 +511,30 @@ describe("syncback command", () => {
 		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
 			true
 		);
+	});
+
+	it("should exit as a shell reports Ctrl+C, write nothing and leave no file of its own, when Ctrl+C comes while Rojo runs", async () => {
+		const lifecycle = new MockLifecycleService();
+		const { running } = start(
+			{ input: "game.rbxl", "non-interactive": true },
+			undefined,
+			[],
+			lifecycle
+		);
+		await rojoRuns(1);
+		await fs.delete(
+			abs(".rogen-syncback/mirror/ServerScriptService/Combat"),
+			true
+		);
+
+		lifecycle.shutdown("SIGINT");
+
+		expect(exitCode(await running)).toBe(130);
+		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
+			true
+		);
+		expect(await fs.exists(abs("rogen-syncback.project.json"))).toBe(false);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
 	});
 
 	it("should say when a Rojo is too old", async () => {
