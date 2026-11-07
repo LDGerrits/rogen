@@ -129,6 +129,14 @@ describe.each(fixtures)("%s: contract", (_name, create) => {
 			]);
 
 			expect(made.filter(Boolean)).toHaveLength(1);
+			expect(
+				(await fixture.fileSystem.readDirectory(at("."))).map(
+					([name]) => name
+				)
+			).toEqual(["lock"]);
+			expect(["1", "2"]).toContain(
+				await fixture.fileSystem.readFile(at("lock"))
+			);
 		});
 
 		it("should not create a file where a folder is", async () => {

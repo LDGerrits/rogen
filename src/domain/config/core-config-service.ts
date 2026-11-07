@@ -20,7 +20,6 @@ import {
 	projectStem,
 } from "./config.js";
 import { ConfigLoader } from "./config-loader.js";
-import { RojoFile } from "../rojo/rojo.js";
 import {
 	ConfigEntry,
 	ConfigFileCheck,
@@ -83,9 +82,8 @@ export class CoreConfigService implements ConfigService {
 					? {
 							directory,
 							list: (known) => this.defaultIn(directory, known),
-							holds: (name) =>
-								isDefaultConfigFileName(name) ||
-								RojoFile.DEFAULT_PROJECTS.includes(name),
+							// An adopted project file is concerned as a file the selection reads; the one a config writes is not.
+							holds: isDefaultConfigFileName,
 						}
 					: undefined,
 				notes,

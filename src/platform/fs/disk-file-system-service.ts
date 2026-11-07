@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import { compareStrings } from "../../base/collections.js";
@@ -159,6 +160,27 @@ export class DiskFileSystemService implements FileSystemService {
 
 	async createFile(filePath: string, content: string): Promise<boolean> {
 		await this.createDirectory(path.dirname(filePath));
+		// Written beside it and linked in, so the file never shows without its content.
+		const staged = `${filePath}.${randomUUID()}.tmp`;
+		await fs.promises.writeFile(staged, content, "utf-8");
+		try {
+			await fs.promises.link(staged, filePath);
+			return true;
+		} catch (error) {
+			if (ErrorUtils.hasCode(error, "EEXIST")) return false;
+			if (!ErrorUtils.hasCode(error, "EPERM", "ENOTSUP", "ENOSYS"))
+				throw error;
+			return this.createExclusive(filePath, content);
+		} finally {
+			await fs.promises.rm(staged, { force: true });
+		}
+	}
+
+	/** Creates the file with an exclusive open, for a file system without hard links. */
+	private async createExclusive(
+		filePath: string,
+		content: string
+	): Promise<boolean> {
 		try {
 			await fs.promises.writeFile(filePath, content, {
 				encoding: "utf-8",

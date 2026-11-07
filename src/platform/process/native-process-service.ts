@@ -125,6 +125,33 @@ class FailedChildProcess extends AbstractDisposable implements ChildProcess {
 	}
 }
 
+/** The processes a service started that still run. */
+class RunningChildren {
+	private readonly children = new Set<NativeChildProcess>();
+	private waiting: (() => void)[] = [];
+
+	add(child: NativeChildProcess): void {
+		this.children.add(child);
+	}
+
+	delete(child: NativeChildProcess): void {
+		this.children.delete(child);
+		if (this.children.size > 0) return;
+		const waiting = this.waiting;
+		this.waiting = [];
+		for (const resolve of waiting) resolve();
+	}
+
+	killAll(): void {
+		for (const child of this.children) child.kill();
+	}
+
+	stopped(): Promise<void> {
+		if (this.children.size === 0) return Promise.resolve();
+		return new Promise((resolve) => this.waiting.push(resolve));
+	}
+}
+
 class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 	private readonly _onDidOutput = this._register(new Emitter<OutputLine>());
 	readonly onDidOutput: Event<OutputLine> = this._onDidOutput.event;
@@ -142,11 +169,16 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 
 	constructor(
 		private readonly child: childProcess.ChildProcess,
-		running: Set<NativeChildProcess>
+		running: RunningChildren
 	) {
 		super();
 		running.add(this);
-		this._register(this.onDidExit(() => running.delete(this)));
+		// On the child itself, since a dispose before the exit drops the listeners of `onDidExit`.
+		const left = () => running.delete(this);
+		child.once("exit", left);
+		child.once("error", () => {
+			if (child.pid === undefined) left();
+		});
 		for (const [stream, name] of [
 			[child.stdout, "stdout"],
 			[child.stderr, "stderr"],
@@ -243,7 +275,7 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 export class NativeProcessService implements ProcessService {
 	declare readonly _serviceBrand: undefined;
 
-	private readonly running = new Set<NativeChildProcess>();
+	private readonly running = new RunningChildren();
 
 	constructor(
 		private readonly env: Readonly<
@@ -346,7 +378,12 @@ export class NativeProcessService implements ProcessService {
 
 	/** Kills every process this service started that still runs, and what each started, without waiting; for a process about to exit. */
 	killAll(): void {
-		for (const child of this.running) child.kill();
+		this.running.killAll();
+	}
+
+	/** Settles once no process this service started still runs. */
+	stopped(): Promise<void> {
+		return this.running.stopped();
 	}
 
 	async terminateTree(pid: number): Promise<void> {

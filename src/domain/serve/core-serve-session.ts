@@ -305,7 +305,9 @@ export class CoreServeSession
 			return (
 				holder.kind === "taken" ||
 				holder.kind === "foreign" ||
-				holder.kind === "pending"
+				holder.kind === "pending" ||
+				holder.kind === "stale" ||
+				holder.kind === "unowned"
 			);
 		return holder.kind === "ours";
 	}

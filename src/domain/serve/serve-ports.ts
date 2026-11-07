@@ -108,7 +108,7 @@ export class ServePorts {
 		return { kind: "foreign", info, record };
 	}
 
-	/** `target` once its port is free, with `servedBy` set when another `rogen serve` serves it there, or with `orphan` set when a server no serve runs for holds it; else why it can't be served. */
+	/** `target` once its port is free, with `servedBy` set when another `rogen serve` serves it there, or with `orphan` set when a server whose serve ended still runs there; else why it can't be served. */
 	async check(target: ServeTarget): Promise<Result<ServeTarget, Diagnostic>> {
 		const holder = await this.classify(target);
 		switch (holder.kind) {
@@ -120,20 +120,21 @@ export class ServePorts {
 				return err(
 					await this.portTaken(target, holder.info, holder.record)
 				);
+			// A stale or unowned record frees nothing: the real Rojo can outlive the shim the record names.
 			case "pending":
+			case "stale":
+			case "unowned":
 				return err(
 					await this.portTaken(target, holder.info, undefined)
 				);
 			case "ours":
 				return ok({ ...target, servedBy: holder.info });
 			case "orphan":
-			case "stale":
-			case "unowned":
 				return ok({ ...target, orphan: holder.record });
 		}
 	}
 
-	/** How a record for this project file stands: a record without an owner is as stale as one whose owner ended. */
+	/** How a record for this project file stands: by whether its serve, else its leading process, still runs. */
 	private standingOf(record: ServerRecord): RecordStanding {
 		if (record.owner === undefined) return "unowned";
 		if (this.runner.isRunning(record.owner)) return "ours";

@@ -4,6 +4,7 @@ import {
 	isError,
 	newDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { LoadedConfig, isFailed } from "../write/write.js";
 import { RewriteReport } from "./watch-service.js";
 
@@ -37,6 +38,12 @@ export class WatchedConfig {
 
 	get readsKnown(): boolean {
 		return this.pending === 0 && !this.failing;
+	}
+
+	/** Moves the latest outcome to `config`, a reload of its config that writes the same, so it still counts as this version's. */
+	rebase(config: ResolvedConfig): void {
+		if (this._latest && this._latest.config !== config)
+			this._latest = this._latest.withConfig(config);
 	}
 
 	finished(outcome: LoadedConfig): RewriteReport {

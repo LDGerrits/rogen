@@ -266,6 +266,39 @@ describe("NativeProcessService", () => {
 			other[Symbol.dispose]();
 		});
 
+		it("should settle stopped once every process it started has ended", async () => {
+			const child = service.spawn(
+				node,
+				["-e", "setTimeout(() => {}, 200)"],
+				{ cwd: dir }
+			);
+			let settled = false;
+			const stopped = service.stopped().then(() => {
+				settled = true;
+			});
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			const early = settled;
+
+			await exitOf(child);
+			await stopped;
+
+			expect(early).toBe(false);
+			expect(settled).toBe(true);
+			child[Symbol.dispose]();
+		});
+
+		it("should settle stopped once a process disposed before it ended has ended", async () => {
+			const child = service.spawn(
+				node,
+				["-e", "setTimeout(() => {}, 60_000)"],
+				{ cwd: dir }
+			);
+
+			child[Symbol.dispose]();
+
+			await expect(service.stopped()).resolves.toBeUndefined();
+		});
+
 		it("should report a file that can't start as an exit with an error", async () => {
 			const child = service.spawn(path.join(dir, "missing"), [], {
 				cwd: dir,

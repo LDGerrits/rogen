@@ -316,6 +316,25 @@ describe("serve command", () => {
 		}
 	);
 
+	it("should print a failure that came before a signal, then the shutdown, and exit 130", async () => {
+		const result = serve();
+		await settle();
+		const stop = watcher.stop.bind(watcher);
+		jest.spyOn(watcher, "stop").mockImplementation(async () => {
+			lifecycle.shutdown("SIGINT");
+			return stop();
+		});
+
+		processes.spawned[0].exit({ code: 3, signal: null });
+
+		const ended = await result;
+		expect(ended.isErr() && exitCodeOf(ended.error)).toBe(130);
+		expect(logService.lines).toContain(
+			"diagnosticError: /repo/default.rogen.json - error: Rojo stopped serving repo with exit code 3, without saying why. (serve.serverExited)"
+		);
+		expect(logService.lines.at(-1)).toBe("outro: Stopped serving.");
+	});
+
 	it("should end as stopped by the signal in text when the server's exit comes first", async () => {
 		const result = serve();
 		await settle();

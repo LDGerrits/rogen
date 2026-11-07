@@ -14,6 +14,9 @@ import { SYNCBACK_FILES } from "../config/config.js";
 /** The file in the staging folder that holds the id of the process that owns it. */
 const LOCK = "lock";
 
+/** How long a lock that names no owner yet counts as being made, rather than left by a run killed while making it. */
+const NEW_LOCK_MS = 5000;
+
 /** The staging files of a project folder, which one syncback at a time owns: it locks them, cleans them, works in them, and releases them. */
 export class SyncbackStaging {
 	/** The temporary project file Rojo runs on. */
@@ -103,23 +106,50 @@ export class SyncbackStaging {
 
 	private async take(): Promise<Result<void, DiagnosticsError>> {
 		if (await this.create()) return ok(undefined);
-		const owner = await this.owner();
-		if (owner !== undefined && this.processService.isRunning(owner))
-			return err(this.busy(owner));
-		// The owner was killed before it released the lock; one of two runs taking it over wins.
-		await this.fileSystemService.delete(this.lock).catch(() => undefined);
+		const found = await this.holder(this.lock);
+		if (found.held) return err(this.busy(found.owner));
+		// Moved aside rather than deleted, so of two runs taking over a killed owner's lock only one gets it, and a lock made meanwhile goes back.
+		const aside = `${this.lock}.${this.pid}`;
+		const moved = await tryWithAsync(() =>
+			this.fileSystemService.rename(this.lock, aside)
+		);
+		if (moved.isOk()) {
+			const taken = await this.holder(aside);
+			if (taken.held) {
+				await this.fileSystemService
+					.rename(aside, this.lock)
+					.catch(() => undefined);
+				return err(this.busy(taken.owner));
+			}
+			await this.fileSystemService.delete(aside).catch(() => undefined);
+		}
 		if (await this.create()) return ok(undefined);
-		return err(this.busy(await this.owner()));
+		return err(this.busy(await this.owner(this.lock)));
 	}
 
 	private create(): Promise<boolean> {
 		return this.fileSystemService.createFile(this.lock, String(this.pid));
 	}
 
-	/** The id the lock holds; none when it can't be read as one. */
-	private async owner(): Promise<number | undefined> {
+	/** Whether the lock at `file` is held: by a running owner, or, while it names none yet, for a moment after it was made. */
+	private async holder(
+		file: string
+	): Promise<{ held: boolean; owner?: number }> {
+		const owner = await this.owner(file);
+		if (owner !== undefined)
+			return { held: this.processService.isRunning(owner), owner };
+		const modified = await tryWithAsync(() =>
+			this.fileSystemService.lastModified(file)
+		);
+		return {
+			held: modified.isOk() && Date.now() - modified.value < NEW_LOCK_MS,
+		};
+	}
+
+	/** The id the lock at `file` holds; none when it can't be read as one. */
+	private async owner(file: string): Promise<number | undefined> {
 		const read = await tryWithAsync(() =>
-			this.fileSystemService.readFile(this.lock)
+			this.fileSystemService.readFile(file)
 		);
 		const pid = read.isOk() ? Number(read.value.trim()) : NaN;
 		return Number.isInteger(pid) && pid > 0 ? pid : undefined;
@@ -137,7 +167,7 @@ export class SyncbackStaging {
 
 	private async isOursOrFree(): Promise<boolean> {
 		if (!(await this.fileSystemService.exists(this.lock))) return true;
-		return (await this.owner()) === this.pid;
+		return (await this.owner(this.lock)) === this.pid;
 	}
 
 	private async release(): Promise<void> {

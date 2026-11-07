@@ -22,38 +22,63 @@ export class NativeLifecycleService
 	private readonly handlers = this._register(new DisposableStore());
 	private listeners = 0;
 	private shuttingDown = false;
+	/** Whether the signals are Rogen's: while something listens, and after a shutdown until the children have stopped. */
+	private handling = false;
 	signal: NodeJS.Signals | undefined;
 
-	/** `stopNow` ends at once what a graceful shutdown would still be waiting on, before a second signal exits. */
-	constructor(private readonly stopNow: () => void = () => undefined) {
+	constructor(
+		/** Ends at once what a graceful shutdown would still be waiting on, before a second signal exits. */
+		private readonly stopNow: () => void = () => undefined,
+		/** Settles once no child is left running. */
+		private readonly stopped: () => Promise<void> = () => Promise.resolve()
+	) {
 		super();
 	}
 
 	/** Takes over the signals while something listens, so a run that doesn't listen still dies of them. */
 	readonly onWillShutdown: Event<void> = (listener, disposables) => {
-		if (this.listeners++ === 0) this.listenForSignals();
+		if (this.listeners++ === 0 && !this.handling) this.listenForSignals();
 		const subscription = this._onWillShutdown.event(listener);
 		let left = false;
 		const disposable = toDisposable(() => {
 			if (left) return;
 			left = true;
 			subscription[Symbol.dispose]();
-			if (--this.listeners === 0) this.handlers.clear();
+			if (--this.listeners === 0) this.lastLeft();
 		});
 		disposables?.add(disposable);
 		return disposable;
 	};
 
+	/** A later listener starts afresh; after a shutdown, a second signal still ends the children that are stopping. */
+	private lastLeft(): void {
+		const shutDown = this.shuttingDown;
+		this.shuttingDown = false;
+		if (!shutDown) return this.stopListening();
+		this.stopped()
+			.then(() => {
+				if (this.listeners === 0) this.stopListening();
+			})
+			.catch(() => undefined);
+	}
+
+	private stopListening(): void {
+		this.handling = false;
+		this.handlers.clear();
+	}
+
 	private shutdown(): void {
-		if (this.shuttingDown) return;
+		if (this.shuttingDown || this.listeners === 0) return;
 		this.shuttingDown = true;
 		this._onWillShutdown.fire();
 	}
 
 	private listenForSignals(): void {
+		this.handling = true;
 		for (const signal of SHUTDOWN_SIGNALS) {
 			const listener = () => {
-				if (this.shuttingDown) return this.exitNow(signal);
+				if (this.shuttingDown || this.listeners === 0)
+					return this.exitNow(signal);
 				this.signal ??= signal;
 				this.shutdown();
 			};

@@ -27,7 +27,7 @@ import {
 } from "../../runner/rojo-command-service.js";
 import { ServerMessage } from "../../runner/rojo-server.js";
 import { CoreSyncbackService } from "../core-syncback-service.js";
-import { SyncbackRequest } from "../syncback.js";
+import { SyncbackPlan, SyncbackRequest } from "../syncback.js";
 import { ROUTES } from "./layout-fixtures.js";
 
 /** A Rojo that records what it was asked and does what the test says it did. */
@@ -126,6 +126,10 @@ describe("CoreSyncbackService", () => {
 			processes,
 			lifecycle
 		);
+	});
+
+	afterEach(() => {
+		jest.restoreAllMocks();
 	});
 
 	it("should run Rojo's syncback once, on a project file that mounts a mirror of the files by instance", async () => {
@@ -232,6 +236,56 @@ describe("CoreSyncbackService", () => {
 		expect(stale).toBe(false);
 	});
 
+	it("should count a new lock that names no owner yet as held", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs(".rogen-syncback/lock"), "");
+
+		const planned = await service.plan(request);
+
+		expect(planned.isErr()).toBe(true);
+		expect(
+			(planned as ResultError<DiagnosticsError>).error.diagnostics
+		).toMatchObject([{ code: "syncback.busy" }]);
+		expect(await fs.readFile(abs(".rogen-syncback/lock"))).toBe("");
+	});
+
+	it("should take over an old lock that names no owner", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs(".rogen-syncback/lock"), "");
+		const now = Date.now();
+		jest.spyOn(Date, "now").mockReturnValue(now + 60_000);
+
+		expect((await service.plan(request)).isOk()).toBe(true);
+	});
+
+	it("should not take over a lock another run made after it found a killed one's", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs(".rogen-syncback/lock"), "77");
+		const read = fs.readFile.bind(fs);
+		let raced = false;
+		jest.spyOn(fs, "readFile").mockImplementation(async (file) => {
+			const text = await read(file);
+			if (file === abs(".rogen-syncback/lock") && !raced) {
+				raced = true;
+				await fs.delete(file);
+				await fs.createFile(file, "88");
+				processes.running.add(88);
+			}
+			return text;
+		});
+
+		const planned = await service.plan(request);
+
+		expect(planned.isErr()).toBe(true);
+		expect(
+			(planned as ResultError<DiagnosticsError>).error.diagnostics
+		).toMatchObject([
+			{ code: "syncback.busy", message: expect.stringContaining("88") },
+		]);
+		expect(await read(abs(".rogen-syncback/lock"))).toBe("88");
+		expect(rojo.requests).toHaveLength(0);
+	});
+
 	it("should let the next syncback run once one has ended, whether it succeeded or failed", async () => {
 		await prepare(["src/Combat/Server/Combat.luau"]);
 		rojo.say = async () =>
@@ -264,6 +318,24 @@ describe("CoreSyncbackService", () => {
 			abs(".rogen-syncback/mirror")
 		);
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should fail, and plan no removal, when a folder in the mirror can't be read", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		rojo.say = async () => {
+			fs.refuseListing(mirror("ServerScriptService", "Combat"), "EPERM");
+			return [];
+		};
+
+		const planned = await service.plan(request);
+
+		expect(planned.isErr()).toBe(true);
+		expect((planned as ResultError<Error>).error.message).toContain(
+			abs(".rogen-syncback/mirror")
+		);
+		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
+			true
+		);
 	});
 
 	it("should fail, and plan no removal, when the mirror is gone after Rojo ran", async () => {
@@ -1816,6 +1888,49 @@ describe("CoreSyncbackService", () => {
 		]);
 	});
 
+	it("should hold the folder from the plan until it has written, while it waits to go on", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Bag.luau"),
+				"return 2"
+			);
+			return [];
+		};
+		let lock: string | undefined;
+
+		const applied = await service.apply(request, async () => {
+			lock = await fs.readFile(abs(".rogen-syncback/lock"));
+			return true;
+		});
+
+		expect(applied.isOk()).toBe(true);
+		expect(lock).toBe("4242");
+		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+			"return 2"
+		);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should write nothing, and let go of the folder, when told not to go on", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Bag.luau"),
+				"return 2"
+			);
+			return [];
+		};
+
+		const applied = await service.apply(request, async () => false);
+
+		expect(applied.isOk() && applied.value).toBeUndefined();
+		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+			""
+		);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
 	it("should write the plan it was shown without running Rojo again", async () => {
 		await prepare(["src/Inventory/Bag@server.luau"]);
 		rojo.say = async () => {
@@ -1825,12 +1940,17 @@ describe("CoreSyncbackService", () => {
 			);
 			return [];
 		};
-		const shown = (await service.plan(request)).unwrap();
+		let shown: SyncbackPlan | undefined;
 
-		const result = (await service.apply(request, shown)).unwrap();
+		const result = (
+			await service.apply(request, async (plan) => {
+				shown = plan;
+				return true;
+			})
+		).unwrap();
 
 		expect(rojo.requests).toHaveLength(1);
-		expect(result.changes).toEqual(shown.changes);
+		expect(result?.changes).toEqual(shown?.changes);
 		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
 			"return 2"
 		);
@@ -1845,10 +1965,11 @@ describe("CoreSyncbackService", () => {
 			);
 			return [];
 		};
-		const shown = (await service.plan(request)).unwrap();
-		await fs.writeFile(abs("src/Inventory/Bag@server.luau"), "edited");
 
-		const applied = await service.apply(request, shown);
+		const applied = await service.apply(request, async () => {
+			await fs.writeFile(abs("src/Inventory/Bag@server.luau"), "edited");
+			return true;
+		});
 
 		expect(applied.isErr()).toBe(true);
 		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
@@ -1865,10 +1986,11 @@ describe("CoreSyncbackService", () => {
 			);
 			return [];
 		};
-		const shown = (await service.plan(request)).unwrap();
-		await fs.writeFile(abs("default.rogen.json"), "{}");
 
-		const applied = await service.apply(request, shown);
+		const applied = await service.apply(request, async () => {
+			await fs.writeFile(abs("default.rogen.json"), "{}");
+			return true;
+		});
 
 		expect(applied.isErr()).toBe(true);
 		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
@@ -1886,10 +2008,11 @@ describe("CoreSyncbackService", () => {
 			);
 			return [];
 		};
-		const shown = (await service.plan(request)).unwrap();
-		await fs.writeFile(abs("game.rbxl"), "saved again");
 
-		const applied = await service.apply(request, shown);
+		const applied = await service.apply(request, async () => {
+			await fs.writeFile(abs("game.rbxl"), "saved again");
+			return true;
+		});
 
 		expect(applied.isErr()).toBe(true);
 		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(

@@ -460,6 +460,27 @@ describe("CoreWatchSession", () => {
 		});
 	});
 
+	it("should check the compiled path again after an edit that only changes the config's text", async () => {
+		await writeConfig("/repo/default.rogen.json", {
+			compiledPath: "dist",
+		});
+		await fs.writeFile("/repo/src/A.luau", "");
+		await start();
+		await write(
+			"/repo/default.rogen.json",
+			`// comment\n${JSON.stringify(config({ compiledPath: "dist" }))}`
+		);
+		await settle();
+
+		await fs.writeFile("/repo/dist/A.luau", "return 1");
+		await settle();
+
+		expect(updates.at(-1)?.cause).toEqual({ kind: "compiled", files: 1 });
+		expect(updates.at(-1)?.reports).toMatchObject([
+			{ fixed: [{ code: "output.nothingEmitted" }] },
+		]);
+	});
+
 	it("should not call a warning fixed because the write that followed it failed", async () => {
 		await fs.writeFile("/repo/src/Hud.meta.json", "{}");
 		await start();
