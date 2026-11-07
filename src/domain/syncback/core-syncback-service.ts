@@ -5,6 +5,7 @@ import { ignoringGlob, literalGlob } from "../../base/glob.js";
 import {
 	ancestors,
 	contains,
+	PathSet,
 	samePath,
 	toNative,
 	toPosix,
@@ -119,7 +120,7 @@ class CoreSyncbackPlan implements SyncbackPlan {
 		readonly unplaced: readonly UnplacedInstance[],
 		readonly compiled: readonly CompiledChange[],
 		readonly operations: readonly Operation[],
-		/** The bytes of each path the operations touch when the plan was made; `undefined` for a path that wasn't there. */
+		/** The bytes of the config, the place and each path the operations touch when the plan was made; `undefined` for a path that wasn't there. */
 		readonly before: ReadonlyMap<string, Uint8Array | undefined>,
 		readonly expected: readonly Expected[],
 		/** What `--list` prints for the run: see `SyncbackPlan.listed`. */
@@ -289,7 +290,7 @@ export class CoreSyncbackService implements SyncbackService {
 			if (!(await this.unchangedSince(confirmed)))
 				return err(
 					new UsageError(
-						"The sources changed since the list was made, so nothing was written.",
+						"The project or the place changed since the list was made, so nothing was written.",
 						"Run syncback again."
 					)
 				);
@@ -331,14 +332,38 @@ export class CoreSyncbackService implements SyncbackService {
 		return this.fileSystemService.readFileBytes(path.join(root, at));
 	}
 
-	/** Makes each change of `plan`; one that fails leaves its file listed as not written, and the rest are made. */
+	/** Makes each change of `plan`, writes before removals; one that fails leaves its file listed as not written, and the rest are made, except that no file is removed once a write failed. */
 	private async write(plan: CoreSyncbackPlan): Promise<{
 		failed: Set<string>;
 		unplaced: UnplacedInstance[];
 	}> {
 		const failed = new Set<string>();
 		const unplaced: UnplacedInstance[] = [];
-		for (const operation of plan.operations) {
+		const order = { write: 0, folder: 0, remove: 1, prune: 2 } as const;
+		const written = new PathSet(
+			plan.operations
+				.filter(({ kind }) => kind === "write")
+				.map(({ file }) => file)
+		);
+		// A rename that only changes case writes the old file where the file system folds case, so its removal goes first.
+		const rank = (operation: Operation) =>
+			operation.kind === "remove" && written.has(operation.file)
+				? -1
+				: order[operation.kind];
+		const operations = [...plan.operations].sort(
+			(a, b) => rank(a) - rank(b)
+		);
+		let wroteAll = true;
+		for (const operation of operations) {
+			// A rename is a removal and a write, so a failed write keeps the old file.
+			if (!wroteAll && operation.kind === "remove") {
+				failed.add(operation.file);
+				unplaced.push({
+					instance: operation.instance,
+					reason: `${operation.file} was kept, since another file could not be written`,
+				});
+				continue;
+			}
 			try {
 				if (operation.kind === "write")
 					await this.fileSystemService.writeFileBytes(
@@ -354,6 +379,8 @@ export class CoreSyncbackService implements SyncbackService {
 				else if (await this.isEmptyFolder(operation.file))
 					await this.fileSystemService.delete(operation.file, true);
 			} catch (error) {
+				if (operation.kind === "write" || operation.kind === "folder")
+					wroteAll = false;
 				failed.add(operation.file);
 				unplaced.push({
 					instance: operation.instance,
@@ -751,6 +778,11 @@ export class CoreSyncbackService implements SyncbackService {
 			return true;
 		};
 		const before = new Map<string, Uint8Array | undefined>();
+		for (const file of [
+			request.project.file,
+			path.resolve(request.cwd, request.input),
+		])
+			before.set(file, await this.bytesOf(file));
 		const add = async (operation: Operation) => {
 			if (!before.has(operation.file))
 				before.set(operation.file, await this.bytesOf(operation.file));

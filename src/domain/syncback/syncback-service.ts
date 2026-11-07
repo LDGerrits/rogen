@@ -9,7 +9,7 @@ export interface SyncbackService {
 	/** What a run would write and remove, found by a dry run of Rojo's syncback. Writes nothing that stays. Fails when the project's files can't be written, when Rojo can't read the place, or when it holds a change syncback can't make. */
 	plan(request: SyncbackRequest): Promise<Result<SyncbackPlan, Error>>;
 
-	/** Runs the syncback, and puts what Rojo had no folder for where routing puts it. Given the plan the user was shown, it plans again first and writes nothing if the run would differ. */
+	/** Runs the syncback, and puts what Rojo had no folder for where routing puts it. Given the plan the user was shown, it writes that plan, and writes nothing if the config, the place or a file the plan touches changed since. New files are written before old ones are removed. */
 	apply(
 		request: SyncbackRequest,
 		confirmed?: SyncbackPlan

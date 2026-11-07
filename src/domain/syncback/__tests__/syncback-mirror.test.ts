@@ -740,6 +740,68 @@ describe("SyncbackMirror", () => {
 		]);
 	});
 
+	it("should read a file in a kept project's copy as the instance its project mounts it at", async () => {
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: {
+						Nested: { $path: "nested/default.project.json" },
+					},
+				},
+			},
+			[],
+			[
+				"/repo/nested/lib",
+				"/repo/nested/tools",
+				"/repo/nested/inner/src",
+			],
+			{
+				"/repo/nested/default.project.json": JSON.stringify({
+					name: "Nested",
+					tree: {
+						$path: "lib",
+						Tools: { $path: "tools" },
+						Settings: { $path: "settings.luau" },
+						Inner: { $path: "inner/inner.project.json" },
+					},
+				}),
+				"/repo/nested/inner/inner.project.json": JSON.stringify({
+					name: "Inner",
+					tree: { $path: "src" },
+				}),
+			}
+		);
+
+		expect(mirror.instancePathOf("~kept/0/lib/Util.luau")).toEqual([
+			"ReplicatedStorage",
+			"Nested",
+			"Util.luau",
+		]);
+		expect(mirror.instancePathOf("~kept/0/tools/Hammer.luau")).toEqual([
+			"ReplicatedStorage",
+			"Nested",
+			"Tools",
+			"Hammer.luau",
+		]);
+		expect(mirror.instancePathOf("~kept/0/settings.luau")).toEqual([
+			"ReplicatedStorage",
+			"Nested",
+			"Settings",
+		]);
+		expect(mirror.instancePathOf("~kept/0/settings.meta.json")).toEqual([
+			"ReplicatedStorage",
+			"Nested",
+			"Settings",
+		]);
+		expect(mirror.instancePathOf("~kept/0/inner/src/Deep.luau")).toEqual([
+			"ReplicatedStorage",
+			"Nested",
+			"Inner",
+			"Deep.luau",
+		]);
+	});
+
 	it("should give the path in the project of a mirror path, and none for a new one", async () => {
 		const mirror = await mirrorOf(
 			{
