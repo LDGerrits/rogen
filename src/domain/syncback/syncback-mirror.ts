@@ -414,7 +414,8 @@ class MirrorWalk {
 	): Promise<void> {
 		const projects: string[] = [];
 		const reads: string[] = [];
-		await this.readsOf(target, projects, reads);
+		const mounts: { read: string; instancePath: readonly string[] }[] = [];
+		await this.readsOf(target, instancePath, projects, reads, mounts);
 		const folders: string[] = [];
 		for (const read of reads)
 			if (await this.inputs.isFolder(read)) folders.push(read);
@@ -458,16 +459,31 @@ class MirrorWalk {
 		}
 		this.keptNodes.set(own, instancePath);
 		this.keptNodes.set(at(target), instancePath);
+		for (const mount of mounts) {
+			this.keptNodes.set(at(mount.read), mount.instancePath);
+			if (!folders.includes(mount.read))
+				this.keptNodes.set(
+					at(
+						path.posix.join(
+							path.posix.dirname(mount.read),
+							`${this.inputs.fileAt(mount.read).instanceName}${RojoFile.META_SUFFIX}`
+						)
+					),
+					mount.instancePath
+				);
+		}
 		this.addFolder(own);
 		this.repoint(node, at(target), optional);
 		await this.children(node, instancePath, undefined);
 	}
 
-	/** Adds `project` and every project file it nests to `projects`, and what their `$path`s point at to `reads`. */
+	/** Adds `project`, mounted at `instancePath`, and every project file it nests to `projects`, what their `$path`s point at to `reads`, and each `$path` with the instance it makes to `mounts`. */
 	private async readsOf(
 		project: string,
+		instancePath: readonly string[],
 		projects: string[],
-		reads: string[]
+		reads: string[],
+		mounts: { read: string; instancePath: readonly string[] }[]
 	): Promise<void> {
 		if (projects.includes(project)) return;
 		projects.push(project);
@@ -481,8 +497,10 @@ class MirrorWalk {
 					rojoPathTarget(mounted.path)
 				)
 			);
+			const at = [...instancePath, ...mounted.instancePath];
+			mounts.push({ read, instancePath: at });
 			if (isProjectFileName(read))
-				await this.readsOf(read, projects, reads);
+				await this.readsOf(read, at, projects, reads, mounts);
 			else if (!reads.includes(read)) reads.push(read);
 		}
 	}
