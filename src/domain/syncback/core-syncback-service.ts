@@ -23,6 +23,8 @@ import {
 	isDirectoryType,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
+import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import { ProcessService } from "../../platform/process/process-service.js";
 import {
 	WriteService,
 	ConfigLocations,
@@ -53,6 +55,7 @@ import {
 import { SyncbackService } from "./syncback-service.js";
 import { SyncbackLayout } from "./syncback-layout.js";
 import { SyncbackMirror } from "./syncback-mirror.js";
+import { SyncbackStaging } from "./syncback-staging.js";
 import { TreeChange, applyTreeChanges, treeChanges } from "./tree-changes.js";
 import {
 	onlySerializedOverrides,
@@ -62,7 +65,6 @@ import {
 /** The first Rojo release with `syncback`. */
 const SYNCBACK_SINCE = "7.7.0";
 
-const TEMPORARY_PROJECT = SYNCBACK_FILES.project;
 const MIRROR = `${SYNCBACK_FILES.staging}/mirror`;
 
 const LISTED = /^(Writing|Removing) (.+)$/;
@@ -183,7 +185,7 @@ interface Prepared {
 	/** Absolute, in the system's own form. */
 	readonly dir: string;
 	readonly file: string;
-	readonly staging: string;
+	readonly staging: SyncbackStaging;
 	readonly root: string;
 	/** The `globIgnorePaths`, relative to `dir`: what Rojo never read, which the mirror leaves out and syncback never writes. */
 	readonly unread: readonly string[];
@@ -244,14 +246,16 @@ export class CoreSyncbackService implements SyncbackService {
 		private readonly configService: ConfigService,
 		private readonly fileSystemService: FileSystemService,
 		private readonly writeService: WriteService,
-		private readonly rojoService: RojoCommandService
+		private readonly rojoService: RojoCommandService,
+		private readonly environmentService: EnvironmentService,
+		private readonly processService: ProcessService
 	) {}
 
 	async plan(request: SyncbackRequest): Promise<Result<SyncbackPlan, Error>> {
 		if (request.project.isAdopted) return this.runListed(request, true);
 		const prepared = await this.prepare(request);
 		if (prepared.isErr()) return prepared;
-		try {
+		return prepared.value.staging.use(async () => {
 			const copied = await this.copy(prepared.value);
 			const started = Date.now();
 			const ran = await this.runSkippingYaml(
@@ -261,7 +265,7 @@ export class CoreSyncbackService implements SyncbackService {
 			);
 			if (ran.isErr()) return ran;
 			const { messages, refused } = ran.value;
-			return ok(
+			return ok<SyncbackPlan>(
 				await this.settle(
 					request,
 					prepared.value,
@@ -271,9 +275,7 @@ export class CoreSyncbackService implements SyncbackService {
 					messages
 				)
 			);
-		} finally {
-			await this.clean(prepared.value);
-		}
+		});
 	}
 
 	async apply(
@@ -450,13 +452,19 @@ export class CoreSyncbackService implements SyncbackService {
 					"Rename one of them, then run syncback again."
 				)
 			);
+		const staging = new SyncbackStaging(
+			this.fileSystemService,
+			this.processService,
+			this.environmentService.pid,
+			dir
+		);
 		return ok({
 			mirror,
 			layout,
 			configFile: project.file,
 			dir,
-			file: path.join(dir, TEMPORARY_PROJECT),
-			staging: path.join(dir, SYNCBACK_FILES.staging),
+			file: staging.file,
+			staging,
 			root: path.join(dir, MIRROR),
 			unread: written.globIgnorePaths ?? [],
 			unwritten: CoreSyncbackService.ignorePathsOf(written),
@@ -476,7 +484,6 @@ export class CoreSyncbackService implements SyncbackService {
 	/** Copies the project's files into the mirror and writes the project file that mounts it; what was copied, as each file's mirror path and project path. */
 	private async copy(prepared: Prepared): Promise<Copied[]> {
 		const { mirror, root } = prepared;
-		await this.clean(prepared);
 		const copied: Copied[] = [];
 		for (const folder of mirror.folders)
 			await this.fileSystemService.createDirectory(
@@ -1504,13 +1511,6 @@ export class CoreSyncbackService implements SyncbackService {
 			}
 		}
 		return found;
-	}
-
-	private async clean({ file, staging }: Prepared): Promise<void> {
-		await this.fileSystemService.delete(file).catch(() => undefined);
-		await this.fileSystemService
-			.delete(staging, true)
-			.catch(() => undefined);
 	}
 
 	private async run(
