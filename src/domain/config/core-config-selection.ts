@@ -20,8 +20,8 @@ const errorsOf = (entry: ConfigEntry): readonly Diagnostic[] =>
 
 export interface PickedFolder {
 	readonly directory: string;
-	/** Absolute and sorted; empty when the folder has no config or can't be read. `known` is what the selection holds now. */
-	list(known: readonly string[]): Promise<readonly string[]>;
+	/** Absolute and sorted; empty when the folder has no config or can't be read. */
+	list(): Promise<readonly string[]>;
 	/** Whether a file of this name in the folder is one `list` would give. */
 	holds(fileName: string): boolean;
 }
@@ -131,8 +131,8 @@ export class CoreConfigSelection implements ReloadableSelection {
 		removed: readonly ManagedConfig[];
 	}> {
 		if (!this.folder) return { added: [], removed: [] };
+		const now = new Set(await this.folder.list());
 		const known = new Set(this.managed.map(({ file }) => file));
-		const now = new Set(await this.folder.list([...known]));
 		const added = await Promise.all(
 			[...now]
 				.filter((file) => !known.has(file))
