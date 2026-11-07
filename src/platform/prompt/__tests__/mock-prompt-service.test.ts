@@ -26,6 +26,18 @@ describe("MockPromptService", () => {
 			).toBe("roblox-ts");
 		});
 
+		it("should give the answer named for the question's id", async () => {
+			const prompts = new MockPromptService({ hook: false });
+
+			expect(
+				await prompts.confirm({
+					id: "hook",
+					message: "Add a hook to Claude Code?",
+					initialValue: true,
+				})
+			).toBe(false);
+		});
+
 		it("should take the default of a question it names no answer for", async () => {
 			const prompts = new MockPromptService({});
 
