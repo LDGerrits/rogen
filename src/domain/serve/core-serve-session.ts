@@ -81,10 +81,9 @@ export class CoreServeSession
 		{ readonly kind: "refused" | "elsewhere"; readonly address: string }
 	>();
 	private readonly writtenConfigs = new Set<string>();
-	private launched = false;
 	private readonly reconciling = new Sequencer();
-	private readonly firstUpdate = new DeferredPromise<
-		WatchUpdate | Error | undefined
+	private readonly firstLaunch = new DeferredPromise<
+		Result<void, Error> | Promise<Result<void, Error>>
 	>();
 	private readonly exits = new Sequencer();
 	private stopping = false;
@@ -111,12 +110,16 @@ export class CoreServeSession
 					}
 					this.writtenConfigs.add(outcome.config.id);
 				}
-				if (!this.firstUpdate.isSettled)
-					this.firstUpdate.complete(update);
+				const first = !this.firstLaunch.isSettled;
+				if (first)
+					this.firstLaunch.complete(
+						this.reconciling.queue(() => this.launchFirst(update))
+					);
 				this._onDidUpdate.fire(update);
-				if (this.launched)
+				if (!first)
 					this.reconciling
 						.queue(async () => {
+							if (!(await this.launchedFirst())) return;
 							await this.reportIncompatible(update);
 							await this.reconcile();
 						})
@@ -127,8 +130,7 @@ export class CoreServeSession
 		);
 		this._register(
 			watch.onDidError((error) => {
-				if (!this.firstUpdate.isSettled)
-					this.firstUpdate.complete(error);
+				this.firstLaunch.complete(err(error));
 				this._onDidError.fire(error);
 			})
 		);
@@ -144,45 +146,14 @@ export class CoreServeSession
 			this._onDidError.fire(watching.error);
 			return watching;
 		}
-		const first = await this.firstUpdate.p;
-		if (!first || this.stopping) return ok(undefined);
-		if (first instanceof Error) return err(first);
-		const incompatible = await this.compatibility.problemsIn(
-			this.plan.executable,
-			first.reports.flatMap(({ outcome }) =>
-				isWritten(outcome) ? [outcome.config.projectFile] : []
-			),
-			"serve"
-		);
-		if (incompatible.length > 0) {
-			const refusal = new DiagnosticsError(incompatible);
-			this._onDidError.fire(refusal);
-			return err(refusal);
-		}
-		const { target } = this.plan;
-		if (!this.writtenConfigs.has(target.config.id)) {
-			this.launched = true;
-			return ok(undefined);
-		}
-		if (!isServed(target)) {
-			await this.endOrphanOf(target);
-			if (this.stopping) return ok(undefined);
-			this.launch(target);
-		} else
-			this.declined.set(target.config.id, {
-				kind: "elsewhere",
-				address: target.address.toString(),
-			});
-		this.launched = true;
-		return ok(undefined);
+		return this.firstLaunch.p;
 	}
 
 	stop(): Promise<void> {
 		this.stopping = true;
 		this.halted.abort();
 		this.stopped ??= (async () => {
-			if (!this.firstUpdate.isSettled)
-				this.firstUpdate.complete(undefined);
+			this.firstLaunch.complete(ok(undefined));
 			const servers = [...this.servers.values()];
 			await Promise.all([
 				...servers.map((server) => server.terminate()),
@@ -201,6 +172,45 @@ export class CoreServeSession
 		this.stop().catch(onUnexpectedError);
 		for (const server of this.servers.values()) server[Symbol.dispose]();
 		super[Symbol.dispose]();
+	}
+
+	/** Ends any orphan, checks the Rojo that runs and starts the target's server for the first update; later updates queue behind it. */
+	private async launchFirst(
+		first: WatchUpdate
+	): Promise<Result<void, Error>> {
+		if (this.stopping) return ok(undefined);
+		const incompatible = await this.compatibility.problemsIn(
+			this.plan.executable,
+			first.reports.flatMap(({ outcome }) =>
+				isWritten(outcome) ? [outcome.config.projectFile] : []
+			),
+			"serve"
+		);
+		if (incompatible.length > 0) {
+			const refusal = new DiagnosticsError(incompatible);
+			this._onDidError.fire(refusal);
+			return err(refusal);
+		}
+		const { target } = this.plan;
+		if (!this.writtenConfigs.has(target.config.id)) return ok(undefined);
+		if (!isServed(target)) {
+			await this.endOrphanOf(target);
+			this.launch(target);
+		} else
+			this.declined.set(target.config.id, {
+				kind: "elsewhere",
+				address: target.address.toString(),
+			});
+		return ok(undefined);
+	}
+
+	/** Whether the first launch went ahead; a session that refused to start serves nothing on later updates. */
+	private async launchedFirst(): Promise<boolean> {
+		try {
+			return (await this.firstLaunch.p).isOk();
+		} catch {
+			return false;
+		}
 	}
 
 	private async reportIncompatible(update: WatchUpdate): Promise<void> {
@@ -318,7 +328,7 @@ export class CoreServeSession
 	/** Ends the server a `rogen serve` that ended left holding the target's port, so its own can start; leaves it when it is gone by now. */
 	private async endOrphanOf(target: ServeTarget): Promise<void> {
 		const { orphan } = target;
-		if (!orphan?.pid) return;
+		if (!orphan?.pid || this.stopping) return;
 		const state = await this.probe.probe(target.address);
 		if (state.kind !== "serving" || state.info.session !== orphan.session)
 			return;
