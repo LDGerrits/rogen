@@ -8,24 +8,16 @@ export type DefaultFolderState = "adopting" | "configured";
 
 /** The default of a folder as a fresh run picks it, except that a project file is adopted only while no config has been picked, as it may be what that config wrote. */
 export class DefaultFolder implements PickedFolder {
-	private _state: DefaultFolderState;
-
 	constructor(
 		readonly directory: string,
 		private readonly discovery: ConfigDiscovery,
-		state: DefaultFolderState
-	) {
-		this._state = state;
-	}
-
-	get state(): DefaultFolderState {
-		return this._state;
-	}
+		private state: DefaultFolderState
+	) {}
 
 	async list(): Promise<readonly string[]> {
 		const [config] = await this.discovery.defaultConfigs(this.directory);
-		if (config) this._state = "configured";
-		if (this._state === "configured") return config ? [config] : [];
+		if (config) this.state = "configured";
+		if (this.state === "configured") return config ? [config] : [];
 		const project = await this.discovery.adoptable(this.directory);
 		return project ? [project] : [];
 	}
@@ -33,7 +25,7 @@ export class DefaultFolder implements PickedFolder {
 	holds(fileName: string): boolean {
 		return (
 			isDefaultConfigFileName(fileName) ||
-			(this._state === "adopting" &&
+			(this.state === "adopting" &&
 				RojoFile.DEFAULT_PROJECTS.includes(fileName))
 		);
 	}

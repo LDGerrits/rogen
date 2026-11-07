@@ -34,14 +34,14 @@ describe("DefaultFolder", () => {
 			await fs.delete("/repo/default.project.json");
 
 			expect(await folder.list()).toEqual([]);
-			expect(folder.state).toBe("adopting");
+			expect(folder.holds("default.project.json")).toBe(true);
 			expect(folder.holds("default.project.json")).toBe(true);
 		});
 
 		it("should not change before it lists", async () => {
 			await fs.writeFile("/repo/default.rogen.json", "{}");
 
-			expect(folder.state).toBe("adopting");
+			expect(folder.holds("default.project.json")).toBe(true);
 			expect(folder.holds("default.project.json")).toBe(true);
 		});
 
@@ -49,13 +49,13 @@ describe("DefaultFolder", () => {
 			await fs.writeFile("/repo/default.rogen.json", "{}");
 
 			expect(await folder.list()).toEqual(["/repo/default.rogen.json"]);
-			expect(folder.state).toBe("configured");
+			expect(folder.holds("default.project.json")).toBe(false);
 			expect(folder.holds("default.project.json")).toBe(false);
 
 			await fs.delete("/repo/default.rogen.json");
 
 			expect(await folder.list()).toEqual([]);
-			expect(folder.state).toBe("configured");
+			expect(folder.holds("default.project.json")).toBe(false);
 		});
 	});
 
