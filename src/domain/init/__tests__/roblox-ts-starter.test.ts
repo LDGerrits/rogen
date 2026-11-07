@@ -13,6 +13,7 @@ import { CoreWriteService } from "../../write/core-write-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { InitPlan, InitWritten } from "../init-service.js";
 import { RobloxTsStarter } from "../roblox-ts-starter.js";
+import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 
 const robloxTs = workspaceOf().languageFor("roblox-ts");
 const luau = workspaceOf().languageFor("luau");
@@ -160,7 +161,8 @@ describe("a new roblox-ts project", () => {
 				new CoreIndexService(fileSystem),
 				toolchain.syncTools,
 				configs
-			)
+			),
+			new MockLifecycleService()
 		);
 	};
 

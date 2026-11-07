@@ -3,7 +3,7 @@ import path from "path";
 import "../init-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { CancelledError } from "../../../base/errors.js";
-import { ResultError } from "../../../base/result.js";
+import { ResultError, err } from "../../../base/result.js";
 import { configStructure } from "../../../domain/config/config-structure.js";
 import { ConfigFileReader } from "../../../platform/config/config-file.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
@@ -11,6 +11,7 @@ import { FileType } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
+import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 import { PromptService } from "../../../platform/prompt/prompt-service.js";
 import {
 	ACCEPT_DEFAULT,
@@ -18,7 +19,10 @@ import {
 	MockPromptService,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { CommandLine } from "../../../platform/environment/args.js";
-import { exitCodeOf } from "../../../platform/commands/command-failure.js";
+import {
+	exitCode,
+	exitCodeOf,
+} from "../../../platform/commands/command-failure.js";
 
 const readyProcesses = () => {
 	const processes = new MockProcessService();
@@ -40,11 +44,13 @@ describe("init command", () => {
 		log: MockLogService = new MockLogService(),
 		options: CommandLine["options"] = {},
 		positionals: string[] = [],
-		processes: MockProcessService = readyProcesses()
+		processes: MockProcessService = readyProcesses(),
+		lifecycle: MockLifecycleService = new MockLifecycleService()
 	) => {
 		const harness = commandHarness({
 			cwd,
 			processes,
+			lifecycle,
 			fs: memFs,
 			log,
 			prompt,
@@ -837,6 +843,48 @@ describe("init command", () => {
 				expect(await tree()).toEqual(before);
 			});
 
+			it("should stop the command and remove what it added, exiting as a shell reports Ctrl+C, when Ctrl+C comes while it runs", async () => {
+				const before = await tree();
+				const processes = npmProcesses();
+				const lifecycle = new MockLifecycleService();
+				const exec = processes.exec.bind(processes);
+				jest.spyOn(processes, "exec").mockImplementation(
+					async (file, args, options) => {
+						if (file !== "/bin/npm")
+							return exec(file, args, options);
+						await memFs.writeFile(
+							path.join(options.cwd, "package.json"),
+							"{}"
+						);
+						await memFs.writeFile(
+							path.join(
+								options.cwd,
+								"node_modules/roblox-ts/index.js"
+							),
+							""
+						);
+						lifecycle.shutdown("SIGINT");
+						return options.signal?.aborted
+							? err(new Error("The operation was aborted"))
+							: exec(file, args, options);
+					}
+				);
+				const log = new MockLogService();
+
+				const result = await runInit(
+					new MockPromptService([], false),
+					log,
+					{ language: "roblox-ts", "skip-git": true },
+					["new-game"],
+					processes,
+					lifecycle
+				);
+
+				expect(exitCode(result)).toBe(130);
+				expect(await tree()).toEqual(before);
+				expect(text(log)).not.toContain(`Ran ${NPM}.`);
+			});
+
 			it("should fail with the command to run by hand, and write nothing", async () => {
 				const result = await runInit(
 					new MockPromptService([], false),
@@ -1162,6 +1210,75 @@ describe("init command", () => {
 
 			expect(failed.isErr()).toBe(true);
 			expect(await read("AGENTS.md")).toBe("# Rules\n");
+		});
+
+		const shutDownWhileWriting = (
+			lifecycle: MockLifecycleService,
+			suffix: string
+		) => {
+			const writeFile = memFs.writeFile.bind(memFs);
+			return jest
+				.spyOn(memFs, "writeFile")
+				.mockImplementation(async (file, content) => {
+					await writeFile(file, content);
+					if (file.endsWith(suffix)) lifecycle.shutdown("SIGINT");
+				});
+		};
+
+		it("should leave the folder as it was and say so, exiting as a shell reports Ctrl+C, when Ctrl+C comes while it writes", async () => {
+			await write("AGENTS.md", "# Rules\n");
+			const before = await tree();
+			const lifecycle = new MockLifecycleService();
+			const log = new MockLogService();
+			const writing = shutDownWhileWriting(
+				lifecycle,
+				"default.rogen.json"
+			);
+
+			const result = await runInit(
+				undefined,
+				log,
+				{},
+				[],
+				readyProcesses(),
+				lifecycle
+			);
+			writing.mockRestore();
+
+			expect(exitCode(result)).toBe(130);
+			expect(await tree()).toEqual(before);
+			expect((result as ResultError<Error>).error.cause).toBeInstanceOf(
+				CancelledError
+			);
+			expect(errorMessage(result)).toBe(
+				"init stopped before it finished, so it undid what it wrote."
+			);
+		});
+
+		it("should report a Ctrl+C while it writes as cancelled in --json", async () => {
+			const before = await tree();
+			const lifecycle = new MockLifecycleService();
+			const log = new MockLogService();
+			const writing = shutDownWhileWriting(
+				lifecycle,
+				"default.rogen.json"
+			);
+
+			const result = await runInit(
+				undefined,
+				log,
+				{ json: true },
+				[],
+				readyProcesses(),
+				lifecycle
+			);
+			writing.mockRestore();
+
+			expect(exitCode(result)).toBe(130);
+			expect(await tree()).toEqual(before);
+			expect(JSON.parse(log.entries[0].text).error.kind).toBe(
+				"cancelled"
+			);
 		});
 
 		it("should name a file it could not remove, and put back the rest", async () => {

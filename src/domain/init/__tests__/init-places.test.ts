@@ -9,6 +9,7 @@ import { CoreInitService } from "../core-init-service.js";
 import { CoreWriteService } from "../../write/core-write-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { InitChoices, InitPlan } from "../init-service.js";
+import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 
 const directory = path.resolve("/mock/my-game");
 
@@ -45,7 +46,8 @@ describe("init for several places", () => {
 				new CoreIndexService(fileSystem),
 				toolchain.syncTools,
 				configs
-			)
+			),
+			new MockLifecycleService()
 		);
 	};
 

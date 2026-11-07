@@ -91,6 +91,17 @@ describe("CommandFailure", () => {
 			]);
 		});
 
+		it("should close the frame with the message of a cancel a signal brought", () => {
+			logService.intro("rogen init");
+
+			new CommandFailure(logService, false).report(
+				new ExitCodeError(130, new CancelledError("init stopped.")),
+				"init"
+			);
+
+			expect(logService.lines.slice(1)).toEqual(["outro: init stopped."]);
+		});
+
 		it("should print the diagnostics of a failure as a JSON document", () => {
 			new CommandFailure(logService, true).report(
 				new DiagnosticsError([problem]),

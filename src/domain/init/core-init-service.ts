@@ -47,6 +47,7 @@ import { ProjectSetup } from "./project-setup.js";
 import { ToolchainSetup } from "./toolchain-setup.js";
 import { ServerFinder } from "../runner/server-finder.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
+import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { MigratedProject, ProjectMigration } from "./project-migration.js";
 import { MigrationSetup } from "./migration-setup.js";
 
@@ -126,7 +127,8 @@ export class CoreInitService implements InitService {
 		processService: ProcessService,
 		private readonly locator: ToolLocator = new ToolLocator(processService),
 		private readonly configService: ConfigService,
-		private readonly writeService: WriteService
+		private readonly writeService: WriteService,
+		lifecycleService: LifecycleService
 	) {
 		this.agentReader = new AgentReader(fileSystemService);
 		this.git = new GitRepository(processService, fileSystemService);
@@ -139,7 +141,8 @@ export class CoreInitService implements InitService {
 			fileSystemService,
 			this.git,
 			processService,
-			locator
+			locator,
+			lifecycleService
 		);
 	}
 

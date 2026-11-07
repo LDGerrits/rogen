@@ -1,6 +1,11 @@
 import path from "path";
 import { firstLine } from "../../base/strings.js";
-import { ErrorUtils, ToolError, failureReason } from "../../base/errors.js";
+import {
+	CancelledError,
+	ErrorUtils,
+	ToolError,
+	failureReason,
+} from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { UndoLog } from "./undo-log.js";
 import { DraftFileReader } from "../../platform/fs/draft-file-reader.js";
@@ -10,6 +15,7 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { GitRepository } from "./git-repository.js";
 import { ProcessService } from "../../platform/process/process-service.js";
+import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
 import {
 	InitPlan,
@@ -27,15 +33,21 @@ async function attempt<T>(
 	return done.isErr() ? err(ErrorUtils.wrap(what, done.error)) : done;
 }
 
+const stopped = () =>
+	new CancelledError(
+		"init stopped before it finished, so it undid what it wrote."
+	);
+
 export class InitWriter {
 	constructor(
 		private readonly fileSystemService: FileSystemService,
 		private readonly git: GitRepository,
 		private readonly processService: ProcessService,
-		private readonly locator: ToolLocator
+		private readonly locator: ToolLocator,
+		private readonly lifecycleService: LifecycleService
 	) {}
 
-	/** Stops at the first write that fails and undoes the writes before it; `onWritten` hears of each once the writes have all succeeded. A dry run writes nothing and calls it for what it would write. */
+	/** Stops at the first write that fails, or at a shutdown, which also stops the scaffold, and undoes the writes before it; `onWritten` hears of each once the writes have all succeeded. A dry run writes nothing and calls it for what it would write. */
 	async write(
 		plan: InitPlan,
 		onWritten: (written: InitWritten) => void,
@@ -43,8 +55,27 @@ export class InitWriter {
 	): Promise<Result<void, Error>> {
 		const log = new UndoLog(this.fileSystemService, plan.directory);
 		const written: InitWritten[] = [];
-		const changed = await this.change(plan, log, written, dryRun);
-		if (changed.isErr()) return err(await log.undo(changed.error));
+		const stopping = new AbortController();
+		const shutdown = this.lifecycleService.onWillShutdown(() =>
+			stopping.abort()
+		);
+		try {
+			const changed = await this.change(
+				plan,
+				log,
+				written,
+				dryRun,
+				stopping.signal
+			);
+			if (changed.isErr())
+				return err(
+					await log.undo(
+						stopping.signal.aborted ? stopped() : changed.error
+					)
+				);
+		} finally {
+			shutdown[Symbol.dispose]();
+		}
 		for (const item of written) onWritten(item);
 		if (plan.gitInit) {
 			const made = dryRun
@@ -65,20 +96,23 @@ export class InitWriter {
 		plan: InitPlan,
 		log: UndoLog,
 		written: InitWritten[],
-		dryRun: boolean
+		dryRun: boolean,
+		signal: AbortSignal
 	): Promise<Result<void, Error>> {
 		if (plan.scaffold) {
 			const scaffolded = await this.scaffold(
 				plan.scaffold,
 				plan.directory,
 				log,
-				dryRun
+				dryRun,
+				signal
 			);
 			if (scaffolded.isErr()) return scaffolded;
 			written.push({ kind: "scaffold", scaffold: plan.scaffold });
 		}
 		const at = (relative: string) => path.join(plan.directory, relative);
 		for (const move of plan.moves) {
+			if (signal.aborted) return err(stopped());
 			const moved = dryRun
 				? ok(undefined)
 				: await attempt(
@@ -89,6 +123,7 @@ export class InitWriter {
 			written.push({ kind: "move", move });
 		}
 		for (const file of plan.files) {
+			if (signal.aborted) return err(stopped());
 			const wrote = dryRun
 				? ok(undefined)
 				: await attempt(`Failed to write ${file.fileName}`, () =>
@@ -111,6 +146,7 @@ export class InitWriter {
 				})
 			: this.fileSystemService;
 		for (const directory of plan.directories) {
+			if (signal.aborted) return err(stopped());
 			const created = await attempt(
 				`Failed to create ${directory}`,
 				async () =>
@@ -129,7 +165,8 @@ export class InitWriter {
 		{ command, replaces }: PlannedScaffold,
 		directory: string,
 		log: UndoLog,
-		dryRun: boolean
+		dryRun: boolean,
+		signal: AbortSignal
 	): Promise<Result<void, Error>> {
 		if (dryRun) return ok(undefined);
 		const created = await attempt(`Failed to create ${directory}`, () =>
@@ -137,7 +174,7 @@ export class InitWriter {
 		);
 		if (created.isErr()) return created;
 		const failed = await log.recordAdded(directory, () =>
-			this.failureOf(command, directory)
+			this.failureOf(command, directory, signal)
 		);
 		if (failed !== undefined)
 			return err(
@@ -184,13 +221,15 @@ export class InitWriter {
 	/** Why `command` did not finish, or `undefined` when it did. */
 	private async failureOf(
 		command: PlannedCommand,
-		cwd: string
+		cwd: string,
+		signal?: AbortSignal
 	): Promise<string | undefined> {
 		const file = await this.locator.find(command.file);
 		if (!file) return `${command.file} isn't installed`;
 		const ran = await this.processService.exec(file, command.args, {
 			cwd,
 			timeout: command.timeout,
+			signal,
 		});
 		if (ran.isErr()) return failureReason(ran.error);
 		if (ran.value.code === 0) return undefined;
