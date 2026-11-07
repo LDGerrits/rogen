@@ -1251,7 +1251,97 @@ describe("init command", () => {
 				CancelledError
 			);
 			expect(errorMessage(result)).toBe(
-				"init stopped before it finished, so it undid what it wrote."
+				"init stopped before it finished, and put the folder back as it was."
+			);
+		});
+
+		const shutDownWhileChecking = (
+			lifecycle: MockLifecycleService,
+			suffix: string
+		) => {
+			const exists = memFs.exists.bind(memFs);
+			return jest
+				.spyOn(memFs, "exists")
+				.mockImplementation(async (file) => {
+					const found = await exists(file);
+					if (file.endsWith(suffix)) lifecycle.shutdown("SIGINT");
+					return found;
+				});
+		};
+
+		it("should leave the folder as it was, run no commands and exit as a shell reports Ctrl+C, when Ctrl+C comes during its last step", async () => {
+			const before = await tree();
+			const lifecycle = new MockLifecycleService();
+			const processes = readyProcesses();
+			processes.installed.set("git", "/bin/git");
+			const checking = shutDownWhileChecking(
+				lifecycle,
+				path.join("lobby", "src")
+			);
+
+			const result = await runInit(
+				undefined,
+				undefined,
+				{},
+				["lobby"],
+				processes,
+				lifecycle
+			);
+			checking.mockRestore();
+
+			expect(exitCode(result)).toBe(130);
+			expect(await tree()).toEqual(before);
+			expect(processes.execs.map(({ file }) => file)).not.toContain(
+				"/bin/git"
+			);
+		});
+
+		it("should leave Ctrl+C to end a dry run as it would any process, since it has nothing to undo", async () => {
+			const lifecycle = new MockLifecycleService();
+			const listening = jest.spyOn(lifecycle, "onWillShutdown");
+
+			const result = await runInit(
+				undefined,
+				undefined,
+				{ "dry-run": true },
+				[],
+				readyProcesses(),
+				lifecycle
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(listening).not.toHaveBeenCalled();
+		});
+
+		it("should name what it could not put back after Ctrl+C, without saying it put the folder back", async () => {
+			const lifecycle = new MockLifecycleService();
+			const writing = shutDownWhileWriting(
+				lifecycle,
+				"default.rogen.json"
+			);
+			const remove = memFs.delete.bind(memFs);
+			const stuck = jest
+				.spyOn(memFs, "delete")
+				.mockImplementation(async (file, recursive) => {
+					if (file.endsWith(".gitignore"))
+						throw new Error("Permission denied");
+					return remove(file, recursive);
+				});
+
+			const result = await runInit(
+				undefined,
+				undefined,
+				{},
+				[],
+				readyProcesses(),
+				lifecycle
+			);
+			writing.mockRestore();
+			stuck.mockRestore();
+
+			expect(exitCode(result)).toBe(130);
+			expect(errorMessage(result)).toBe(
+				"init stopped before it finished. Could not put back .gitignore."
 			);
 		});
 

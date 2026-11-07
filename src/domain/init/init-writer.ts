@@ -1,4 +1,5 @@
 import path from "path";
+import { NullDisposable } from "../../base/disposable.js";
 import { firstLine } from "../../base/strings.js";
 import {
 	CancelledError,
@@ -33,10 +34,7 @@ async function attempt<T>(
 	return done.isErr() ? err(ErrorUtils.wrap(what, done.error)) : done;
 }
 
-const stopped = () =>
-	new CancelledError(
-		"init stopped before it finished, so it undid what it wrote."
-	);
+const stopped = () => new CancelledError("init stopped before it finished.");
 
 export class InitWriter {
 	constructor(
@@ -47,7 +45,7 @@ export class InitWriter {
 		private readonly lifecycleService: LifecycleService
 	) {}
 
-	/** Stops at the first write that fails, or at a shutdown, which also stops the scaffold, and undoes the writes before it; `onWritten` hears of each once the writes have all succeeded. A dry run writes nothing and calls it for what it would write. */
+	/** Stops at the first write that fails, or at a shutdown, which also stops the scaffold, and undoes the writes before it; `onWritten` hears of each once the writes have all succeeded. A dry run writes nothing and calls it for what it would write, leaving a shutdown to end the process. */
 	async write(
 		plan: InitPlan,
 		onWritten: (written: InitWritten) => void,
@@ -56,9 +54,9 @@ export class InitWriter {
 		const log = new UndoLog(this.fileSystemService, plan.directory);
 		const written: InitWritten[] = [];
 		const stopping = new AbortController();
-		const shutdown = this.lifecycleService.onWillShutdown(() =>
-			stopping.abort()
-		);
+		const shutdown = dryRun
+			? NullDisposable
+			: this.lifecycleService.onWillShutdown(() => stopping.abort());
 		try {
 			const changed = await this.change(
 				plan,
@@ -67,12 +65,18 @@ export class InitWriter {
 				dryRun,
 				stopping.signal
 			);
-			if (changed.isErr())
+			if (stopping.signal.aborted) {
+				const cancelled = stopped();
+				const undone = await log.undo(cancelled);
 				return err(
-					await log.undo(
-						stopping.signal.aborted ? stopped() : changed.error
-					)
+					undone === cancelled
+						? new CancelledError(
+								"init stopped before it finished, and put the folder back as it was."
+							)
+						: undone
 				);
+			}
+			if (changed.isErr()) return err(await log.undo(changed.error));
 		} finally {
 			shutdown[Symbol.dispose]();
 		}
