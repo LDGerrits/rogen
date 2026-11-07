@@ -66,7 +66,7 @@ export class NativeLifecycleService
 	private lastLeft(): void {
 		const shutDown = this.shuttingDown;
 		this.shuttingDown = false;
-		this.draining = shutDown && this.childrenRunning;
+		if (shutDown) this.draining = this.childrenRunning;
 		this.update();
 	}
 

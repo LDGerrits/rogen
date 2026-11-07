@@ -296,11 +296,12 @@ describe("NativeProcessService", () => {
 		});
 
 		it("should tell that the last process ended once one disposed before it ended has ended", async () => {
-			const ended = new Promise<boolean>((resolve) =>
-				service.onDidChangeRunning((running) => {
+			let subscription: Disposable | undefined;
+			const ended = new Promise<boolean>((resolve) => {
+				subscription = service.onDidChangeRunning((running) => {
 					if (!running) resolve(running);
-				})
-			);
+				});
+			});
 			const child = service.spawn(
 				node,
 				["-e", "setTimeout(() => {}, 60_000)"],
@@ -310,6 +311,7 @@ describe("NativeProcessService", () => {
 			child[Symbol.dispose]();
 
 			await expect(ended).resolves.toBe(false);
+			subscription?.[Symbol.dispose]();
 		});
 
 		it("should report a file that can't start as an exit with an error", async () => {

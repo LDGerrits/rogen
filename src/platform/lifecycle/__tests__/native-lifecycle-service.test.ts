@@ -219,6 +219,33 @@ describe("NativeLifecycleService", () => {
 		expect(codes).toEqual([130]);
 	});
 
+	it("should still end the children at once on a second signal after a listener came and went while they stop", () => {
+		const stopNow = jest.fn();
+		const running = store.add(new Emitter<boolean>());
+		const service = store.add(
+			new NativeLifecycleService(stopNow, running.event)
+		);
+		running.fire(true);
+		const first = service.onWillShutdown(() => undefined);
+		process.emit("SIGINT");
+		first[Symbol.dispose]();
+		service.onWillShutdown(() => undefined)[Symbol.dispose]();
+		const exit = jest
+			.spyOn(process, "exit")
+			.mockImplementation(() => undefined as never);
+		const write = jest
+			.spyOn(process.stderr, "write")
+			.mockImplementation(() => true);
+
+		process.emit("SIGINT");
+		const written = write.mock.calls.map(([text]) => text);
+		exit.mockRestore();
+		write.mockRestore();
+
+		expect(stopNow).toHaveBeenCalledTimes(1);
+		expect(written).toEqual(["Stopping now\n"]);
+	});
+
 	it("should give a listener that comes while the children stop a graceful first signal", () => {
 		const stopNow = jest.fn();
 		const running = store.add(new Emitter<boolean>());

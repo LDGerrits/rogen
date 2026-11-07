@@ -73,9 +73,9 @@ export function launch(
 	});
 }
 
-// A toolchain shim starts the real program as a child that outlives it unless the tree ends.
 const taskkillTree = (pid: number) => ["/pid", String(pid), "/T", "/F"];
 
+// A toolchain shim starts the real program as a child that outlives it unless the tree ends.
 function killWindowsTree(pid: number): Promise<void> {
 	return new Promise<void>((resolve) =>
 		childProcess.execFile(
