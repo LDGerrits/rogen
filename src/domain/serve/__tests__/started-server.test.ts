@@ -119,9 +119,11 @@ describe("StartedServer", () => {
 			sessionId: "s1",
 		});
 
+		expect(server.hasServed).toBe(false);
 		await jest.advanceTimersByTimeAsync(250);
 
 		expect(served).toHaveLength(1);
+		expect(server.hasServed).toBe(true);
 		expect(served[0].info.project).toBe("repo");
 		expect(
 			await records.recordOf(target.address, served[0].info)
