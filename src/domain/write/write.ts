@@ -111,6 +111,15 @@ abstract class AbstractConfigOutcome {
 	get diagnostics(): readonly Diagnostic[] {
 		return [...this.warnings, ...(this.syncWarnings ?? []), ...this.errors];
 	}
+
+	/** This outcome for `config`, a version of its config that writes the same. */
+	withConfig(config: ResolvedConfig): this {
+		return Object.assign(
+			Object.create(Object.getPrototypeOf(this) as object) as this,
+			this,
+			{ config }
+		);
+	}
 }
 
 /** A config prepared and written, or found unchanged on disk. */

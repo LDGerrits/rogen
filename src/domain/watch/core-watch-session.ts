@@ -354,6 +354,16 @@ export class CoreWatchSession
 			if (!current.has(projectFile)) this.watched.delete(projectFile);
 	}
 
+	/** A reload that changed only a config's text gives a new object for the same version. */
+	private rebaseUnchanged(reloaded: ReadonlySet<string>): void {
+		for (const config of this.selection.configs)
+			if (!reloaded.has(config.file))
+				void this.queueFor(config.projectFile, async (watched) => {
+					watched.rebase(config);
+					return undefined;
+				});
+	}
+
 	private async reloadConfigs(
 		files: readonly string[]
 	): Promise<readonly string[]> {
@@ -379,6 +389,7 @@ export class CoreWatchSession
 		}
 		this.refreshSet();
 		this.forgetRemoved();
+		this.rebaseUnchanged(reloaded);
 		return { reloaded: [...reloaded], reindexed };
 	}
 
