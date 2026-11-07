@@ -286,6 +286,49 @@ describe("CoreSyncbackService", () => {
 		expect(rojo.requests).toHaveLength(0);
 	});
 
+	it("should leave the files another run makes while it takes over a lock, until it lets go of the folder", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs(".rogen-syncback/lock.88"), "77");
+		await fs.writeFile(abs(".rogen-syncback/lock.1234.tmp"), "88");
+		let left: boolean[] | undefined;
+		rojo.say = async () => {
+			left = [
+				await fs.exists(abs(".rogen-syncback/lock.88")),
+				await fs.exists(abs(".rogen-syncback/lock.1234.tmp")),
+			];
+			return [];
+		};
+
+		expect((await service.plan(request)).isOk()).toBe(true);
+		expect(left).toEqual([true, true]);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should take the folder when it was let go of while the lock was being made", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		const create = fs.createFile.bind(fs);
+		let released = false;
+		jest.spyOn(fs, "createFile").mockImplementation(
+			async (file, content) => {
+				if (!released) {
+					released = true;
+					throw Object.assign(new Error("ENOENT: no such file"), {
+						code: "ENOENT",
+					});
+				}
+				return create(file, content);
+			}
+		);
+		let lock: string | undefined;
+		rojo.say = async () => {
+			lock = await fs.readFile(abs(".rogen-syncback/lock"));
+			return [];
+		};
+
+		expect((await service.plan(request)).isOk()).toBe(true);
+		expect(lock).toBe("4242");
+	});
+
 	it("should let the next syncback run once one has ended, whether it succeeded or failed", async () => {
 		await prepare(["src/Combat/Server/Combat.luau"]);
 		rojo.say = async () =>

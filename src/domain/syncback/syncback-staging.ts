@@ -62,7 +62,7 @@ export class SyncbackStaging {
 		}
 	}
 
-	/** Removes what an earlier run left, except the lock; an error, with nothing copied, when something can't be removed. */
+	/** Removes what an earlier run left, except the lock and the files beside it; an error, with nothing copied, when something can't be removed. */
 	async clean(): Promise<Result<void, Error>> {
 		const removed = await this.remove(this.file);
 		if (removed.isErr()) return removed;
@@ -74,7 +74,8 @@ export class SyncbackStaging {
 				? ok(undefined)
 				: err(this.uncleared(this.folder, entries.error));
 		for (const [name] of entries.value) {
-			if (name === LOCK) continue;
+			// Another run taking over a stale lock moves it aside, or stages its own, beside it.
+			if (name === LOCK || name.startsWith(`${LOCK}.`)) continue;
 			const left = await this.remove(path.join(this.folder, name));
 			if (left.isErr()) return left;
 		}
@@ -120,8 +121,16 @@ export class SyncbackStaging {
 		return err(this.busy(await this.owner(this.lock)));
 	}
 
-	private create(): Promise<boolean> {
-		return this.fileSystemService.createFile(this.lock, String(this.pid));
+	private async create(): Promise<boolean> {
+		const created = () =>
+			this.fileSystemService.createFile(this.lock, String(this.pid));
+		try {
+			return await created();
+		} catch (error) {
+			// The folder was let go of between making it and making the lock in it.
+			if (!isMissingPath(error as Error)) throw error;
+			return created();
+		}
 	}
 
 	/** Whether the lock at `file` is held: by a running owner, or, while it names none yet, for a moment after it was made. */
