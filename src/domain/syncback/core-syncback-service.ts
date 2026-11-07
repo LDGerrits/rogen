@@ -258,61 +258,98 @@ export class CoreSyncbackService implements SyncbackService {
 		if (request.project.isAdopted) return this.runListed(request, true);
 		const prepared = await this.prepare(request);
 		if (prepared.isErr()) return prepared;
-		return prepared.value.staging.use<SyncbackPlan>(async (signal) => {
-			const copied = await this.copy(prepared.value);
-			const started = Date.now();
-			const ran = await this.runSkippingYaml(
-				request,
-				prepared.value,
-				copied,
-				signal
-			);
-			if (ran.isErr()) return ran;
-			const { messages, refused } = ran.value;
-			return this.settle(
-				request,
-				prepared.value,
-				copied,
-				started,
-				[...refused, ...CoreSyncbackService.skipped(messages)],
-				messages
-			);
-		});
+		return prepared.value.staging.use<SyncbackPlan>((signal) =>
+			this.planIn(request, prepared.value, signal)
+		);
 	}
 
+	apply(request: SyncbackRequest): Promise<Result<SyncbackResult, Error>>;
+	apply(
+		request: SyncbackRequest,
+		confirm: (plan: SyncbackPlan) => Promise<boolean>
+	): Promise<Result<SyncbackResult | undefined, Error>>;
 	async apply(
 		request: SyncbackRequest,
-		confirmed?: SyncbackPlan
-	): Promise<Result<SyncbackResult, Error>> {
-		if (request.project.isAdopted) return this.runListed(request, false);
-		let plan: CoreSyncbackPlan;
-		if (confirmed instanceof CoreSyncbackPlan) {
-			if (!(await this.unchangedSince(confirmed)))
-				return err(
-					new UsageError(
-						"The project or the place changed since the list was made, so nothing was written.",
-						"Run syncback again."
-					)
-				);
-			plan = confirmed;
-		} else {
-			const planned = await this.plan(request);
-			if (planned.isErr()) return planned;
-			plan = planned.value as CoreSyncbackPlan;
+		confirm?: (plan: SyncbackPlan) => Promise<boolean>
+	): Promise<Result<SyncbackResult | undefined, Error>> {
+		if (request.project.isAdopted) {
+			if (confirm) {
+				const planned = await this.runListed(request, true);
+				if (planned.isErr()) return planned;
+				if (!(await confirm(planned.value))) return ok(undefined);
+			}
+			return this.runListed(request, false);
 		}
+		const prepared = await this.prepare(request);
+		if (prepared.isErr()) return prepared;
+		return prepared.value.staging.use<SyncbackResult | undefined>(
+			async (signal) => {
+				const planned = await this.planIn(
+					request,
+					prepared.value,
+					signal
+				);
+				if (planned.isErr()) return planned;
+				const plan = planned.value;
+				if (confirm) {
+					if (!(await confirm(plan))) return ok(undefined);
+					if (!(await this.unchangedSince(plan)))
+						return err(
+							new UsageError(
+								"The project or the place changed since the list was made, so nothing was written.",
+								"Run syncback again."
+							)
+						);
+				}
+				// The staging turns a stopped run into its own error.
+				if (signal.aborted) return ok(undefined);
+				return ok(await this.written(request, plan));
+			}
+		);
+	}
+
+	private async planIn(
+		request: SyncbackRequest,
+		prepared: Prepared,
+		signal: AbortSignal
+	): Promise<Result<CoreSyncbackPlan, Error>> {
+		const copied = await this.copy(prepared);
+		const started = Date.now();
+		const ran = await this.runSkippingYaml(
+			request,
+			prepared,
+			copied,
+			signal
+		);
+		if (ran.isErr()) return ran;
+		const { messages, refused } = ran.value;
+		return this.settle(
+			request,
+			prepared,
+			copied,
+			started,
+			[...refused, ...CoreSyncbackService.skipped(messages)],
+			messages
+		);
+	}
+
+	private async written(
+		request: SyncbackRequest,
+		plan: CoreSyncbackPlan
+	): Promise<SyncbackResult> {
 		const done = await this.write(plan);
 		const warnings = await this.verify(
 			request,
 			plan.expected.filter(({ file }) => !done.failed.has(file))
 		);
-		return ok({
+		return {
 			project: request.project,
 			changes: plan.changes.filter(({ file }) => !done.failed.has(file)),
 			listed: plan.listed.filter(({ file }) => !done.failed.has(file)),
 			unplaced: [...plan.unplaced, ...done.unplaced],
 			compiled: plan.compiled,
 			warnings,
-		});
+		};
 	}
 
 	private async unchangedSince(plan: CoreSyncbackPlan): Promise<boolean> {

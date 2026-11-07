@@ -189,6 +189,22 @@ registerCommand(
 						await syncbacks.apply(request),
 						configFile
 					);
+				} else if (mode === "ask") {
+					const applied = await syncbacks.apply(
+						request,
+						async (plan) => {
+							outcome = { kind: "planned", plan, warnings: [] };
+							if (plan.changes.length === 0) return false;
+							this.listChanges(logService, plan, cwd);
+							this.warnLeftOut(logService, plan, cwd);
+							listed = true;
+							return this.asked(promptService, plan);
+						}
+					);
+					if (applied.isErr())
+						outcome = this.failed(applied.error, configFile);
+					else if (applied.value)
+						outcome = this.written(ok(applied.value), configFile);
 				} else {
 					const planned = await syncbacks.plan(request);
 					outcome = planned.isErr()
@@ -198,20 +214,6 @@ registerCommand(
 								plan: planned.value,
 								warnings: [],
 							};
-					if (
-						planned.isOk() &&
-						mode === "ask" &&
-						planned.value.changes.length > 0
-					) {
-						this.listChanges(logService, planned.value, cwd);
-						this.warnLeftOut(logService, planned.value, cwd);
-						listed = true;
-						if (await this.asked(promptService, planned.value))
-							outcome = this.written(
-								await syncbacks.apply(request, planned.value),
-								configFile
-							);
-					}
 				}
 				if (outcome.kind === "written") {
 					const rewritten = await writeService.write(selection.value);

@@ -27,7 +27,7 @@ import {
 } from "../../runner/rojo-command-service.js";
 import { ServerMessage } from "../../runner/rojo-server.js";
 import { CoreSyncbackService } from "../core-syncback-service.js";
-import { SyncbackRequest } from "../syncback.js";
+import { SyncbackPlan, SyncbackRequest } from "../syncback.js";
 import { ROUTES } from "./layout-fixtures.js";
 
 /** A Rojo that records what it was asked and does what the test says it did. */
@@ -1888,6 +1888,49 @@ describe("CoreSyncbackService", () => {
 		]);
 	});
 
+	it("should hold the folder from the plan until it has written, while it waits to go on", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Bag.luau"),
+				"return 2"
+			);
+			return [];
+		};
+		let lock: string | undefined;
+
+		const applied = await service.apply(request, async () => {
+			lock = await fs.readFile(abs(".rogen-syncback/lock"));
+			return true;
+		});
+
+		expect(applied.isOk()).toBe(true);
+		expect(lock).toBe("4242");
+		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+			"return 2"
+		);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should write nothing, and let go of the folder, when told not to go on", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Bag.luau"),
+				"return 2"
+			);
+			return [];
+		};
+
+		const applied = await service.apply(request, async () => false);
+
+		expect(applied.isOk() && applied.value).toBeUndefined();
+		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+			""
+		);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
 	it("should write the plan it was shown without running Rojo again", async () => {
 		await prepare(["src/Inventory/Bag@server.luau"]);
 		rojo.say = async () => {
@@ -1897,12 +1940,17 @@ describe("CoreSyncbackService", () => {
 			);
 			return [];
 		};
-		const shown = (await service.plan(request)).unwrap();
+		let shown: SyncbackPlan | undefined;
 
-		const result = (await service.apply(request, shown)).unwrap();
+		const result = (
+			await service.apply(request, async (plan) => {
+				shown = plan;
+				return true;
+			})
+		).unwrap();
 
 		expect(rojo.requests).toHaveLength(1);
-		expect(result.changes).toEqual(shown.changes);
+		expect(result?.changes).toEqual(shown?.changes);
 		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
 			"return 2"
 		);
@@ -1917,10 +1965,11 @@ describe("CoreSyncbackService", () => {
 			);
 			return [];
 		};
-		const shown = (await service.plan(request)).unwrap();
-		await fs.writeFile(abs("src/Inventory/Bag@server.luau"), "edited");
 
-		const applied = await service.apply(request, shown);
+		const applied = await service.apply(request, async () => {
+			await fs.writeFile(abs("src/Inventory/Bag@server.luau"), "edited");
+			return true;
+		});
 
 		expect(applied.isErr()).toBe(true);
 		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
@@ -1937,10 +1986,11 @@ describe("CoreSyncbackService", () => {
 			);
 			return [];
 		};
-		const shown = (await service.plan(request)).unwrap();
-		await fs.writeFile(abs("default.rogen.json"), "{}");
 
-		const applied = await service.apply(request, shown);
+		const applied = await service.apply(request, async () => {
+			await fs.writeFile(abs("default.rogen.json"), "{}");
+			return true;
+		});
 
 		expect(applied.isErr()).toBe(true);
 		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
@@ -1958,10 +2008,11 @@ describe("CoreSyncbackService", () => {
 			);
 			return [];
 		};
-		const shown = (await service.plan(request)).unwrap();
-		await fs.writeFile(abs("game.rbxl"), "saved again");
 
-		const applied = await service.apply(request, shown);
+		const applied = await service.apply(request, async () => {
+			await fs.writeFile(abs("game.rbxl"), "saved again");
+			return true;
+		});
 
 		expect(applied.isErr()).toBe(true);
 		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
