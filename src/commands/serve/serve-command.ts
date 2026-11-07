@@ -240,6 +240,8 @@ registerCommand(
 					await this.shutdownAfter(shutdown);
 				await session.stop();
 				if (!stop || shutdown.isSettled) {
+					// A stop that came before the signal is still told, unless the signal caused it.
+					if (stop && stop.kind !== "interrupted") log.stopped(stop);
 					log.shutdown(session.target ?? stop?.target);
 					log.end("Stopped serving.");
 					return this.stoppedBy(lifecycle);
