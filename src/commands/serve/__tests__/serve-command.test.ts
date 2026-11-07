@@ -13,6 +13,7 @@ import { LogLevel } from "../../../platform/log/log-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
 import { recordFile } from "../../../domain/serve/__tests__/record-fixtures.js";
+import { CoreWriteService } from "../../../domain/write/core-write-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { ReportedError } from "../../../platform/commands/commands.js";
 
@@ -94,6 +95,7 @@ describe("serve command", () => {
 		await settle();
 		await running;
 		await watcher.stop();
+		jest.restoreAllMocks();
 		jest.useRealTimers();
 	});
 
@@ -1343,6 +1345,27 @@ describe("serve command", () => {
 		expect(logService.lines.at(-1)).toBe(
 			"success: Serving repo at localhost:34872 · http://localhost:34872/\n  In Studio, press Connect in the Rojo plugin."
 		);
+	});
+
+	it("should exit 1, starting nothing, when a write throws after a failed first write", async () => {
+		await clashing();
+		const result = serve();
+		await settle();
+		jest.spyOn(CoreWriteService.prototype, "rewrite").mockRejectedValue(
+			new Error("disk on fire")
+		);
+		jest.spyOn(CoreWriteService.prototype, "recheck").mockRejectedValue(
+			new Error("disk on fire")
+		);
+
+		await memFs.delete("/repo/src/X/@client");
+		await settle();
+
+		const error = await failureOf(result);
+		expect(exitCodeOf(error)).toBe(1);
+		expect(processes.spawned).toEqual([]);
+		expect(logService.texts("error").at(-1)).toBe("disk on fire");
+		expect(logService.lines.at(-1)).toBe("outro: serve failed.");
 	});
 
 	it("should refuse a Rojo that can't serve the file and exit 1 once a failed first write is fixed", async () => {

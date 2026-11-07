@@ -1,6 +1,7 @@
 import { jest } from "@jest/globals";
 import { DeferredPromise } from "../../../base/async.js";
 import { UsageError } from "../../../base/errors.js";
+import { Result } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
@@ -1163,6 +1164,36 @@ describe("CoreServeService", () => {
 			expect(started.isErr() && started.error.message).toBe(
 				"disk on fire"
 			);
+			expect(processes.spawned).toEqual([]);
+		});
+
+		it("should fail to start, starting nothing, when a write throws after a failed first write", async () => {
+			await memFs.writeFile(
+				"/repo/default.rogen.json",
+				config({
+					routes: {
+						server: "ServerScriptService",
+						client: "StarterPlayer/StarterPlayerScripts",
+						"*": "ReplicatedStorage",
+					},
+				})
+			);
+			await memFs.writeFile("/repo/src/X/@server", "");
+			await memFs.writeFile("/repo/src/X/@client", "");
+			let ended: Result<void, Error> | undefined;
+			void start().then((result) => (ended = result));
+			await settle();
+			jest.spyOn(CoreWriteService.prototype, "rewrite").mockRejectedValue(
+				new Error("disk on fire")
+			);
+			jest.spyOn(CoreWriteService.prototype, "recheck").mockRejectedValue(
+				new Error("disk on fire")
+			);
+
+			await memFs.writeFile("/repo/src/B.luau", "");
+			await settle();
+
+			expect(ended?.isErr() && ended.error.message).toBe("disk on fire");
 			expect(processes.spawned).toEqual([]);
 		});
 
