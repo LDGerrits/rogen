@@ -9,6 +9,7 @@ import {
 	WriteSummary,
 	FailedConfig,
 	OutputFile,
+	SyncWarnings,
 	UnloadedConfig,
 	WrittenConfig,
 } from "../write.js";
@@ -56,7 +57,7 @@ describe("domain/write/write", () => {
 			new WrittenConfig(
 				config,
 				"wrote",
-				{ warnings, syncWarnings },
+				{ warnings, sync: SyncWarnings.known(syncWarnings) },
 				summary,
 				[]
 			);

@@ -228,6 +228,44 @@ describe("NativeProcessService", () => {
 			child[Symbol.dispose]();
 		});
 
+		it("should kill every process it started and what they started, at once", async () => {
+			if (process.platform === "win32") return;
+			const child = service.spawn(
+				node,
+				[
+					"-e",
+					"process.on('SIGTERM', () => {}); const grandchild = require('child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60_000)'], { stdio: 'ignore' }); console.log(grandchild.pid); setTimeout(() => {}, 60_000)",
+				],
+				{ cwd: dir }
+			);
+			const other = service.spawn(
+				node,
+				["-e", "setTimeout(() => {}, 60_000)"],
+				{ cwd: dir }
+			);
+			const pid = await new Promise<number>((resolve) =>
+				child.onDidOutput(({ line }) => resolve(Number(line.trim())))
+			);
+			const exits = Promise.all([exitOf(child), exitOf(other)]);
+
+			service.killAll();
+
+			expect(await exits).toEqual([
+				{ code: null, signal: "SIGKILL" },
+				{ code: null, signal: "SIGKILL" },
+			]);
+			const alive = async () => {
+				for (let tries = 0; tries < 50; tries++) {
+					if (!service.isRunning(pid)) return false;
+					await new Promise((resolve) => setTimeout(resolve, 20));
+				}
+				return true;
+			};
+			expect(await alive()).toBe(false);
+			child[Symbol.dispose]();
+			other[Symbol.dispose]();
+		});
+
 		it("should report a file that can't start as an exit with an error", async () => {
 			const child = service.spawn(path.join(dir, "missing"), [], {
 				cwd: dir,

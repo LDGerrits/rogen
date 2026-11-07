@@ -160,14 +160,14 @@ describe("ProjectSetup plan", () => {
 	});
 
 	it("should write fields in pipeline order", async () => {
-		const { files } = await plan(
+		const planned = await plan(
 			withRobloxTs(
 				{ ...luau, ...withPackages, language: "roblox-ts" },
 				{ outDir: "out" }
 			)
 		);
 
-		expect(Object.keys(JSON.parse(files[0].content))).toEqual([
+		expect(Object.keys(configOf(planned))).toEqual([
 			"sourcePaths",
 			"routes",
 			"compiledPath",
@@ -177,16 +177,19 @@ describe("ProjectSetup plan", () => {
 
 	it("should write strict JSON as fmt-project writes it, so a first format only adds the name Rojo gives", async () => {
 		const { files } = await plan(luau);
+		const { content } = files.find(
+			({ fileName }) => fileName === "default.rogen.json"
+		)!;
 
 		const config = new MemoryFileSystemService();
-		await config.writeFile("/repo/default.rogen.json", files[0].content);
+		await config.writeFile("/repo/default.rogen.json", content);
 		const formatter = new ConfigFormatter(config);
 
 		await formatter.format("/repo/default.rogen.json");
 		const named = await config.readFile("/repo/default.rogen.json");
 
 		expect(JSON.parse(named)).toEqual({
-			...JSON.parse(files[0].content),
+			...JSON.parse(content),
 			name: "repo",
 		});
 		expect(
@@ -561,9 +564,9 @@ describe("ProjectSetup plan, second config files", () => {
 		const planned = await plan(darkluaLuau);
 
 		expect(files(planned)).toEqual([
-			"default.rogen.json",
 			"src/.gitkeep",
 			".gitignore",
+			"default.rogen.json",
 		]);
 		expect(configOf(planned).compiledPath).toBeUndefined();
 		expect(planned.summary.map(({ area }) => area)).not.toContain(

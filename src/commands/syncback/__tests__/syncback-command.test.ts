@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import path from "path";
 import "../syncback-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
@@ -226,6 +227,66 @@ describe("syncback command", () => {
 		expect(log.lines).toEqual([
 			"success: Wrote default.project.json.",
 			"info: Syncback wrote 2 changes.",
+		]);
+	});
+
+	const refuseProjectFile = () => {
+		const refused = () =>
+			Promise.reject(new Error("EACCES: permission denied"));
+		const projectFile = abs("default.project.json");
+		for (const method of ["readFile", "writeFile", "rename"] as const) {
+			const original = fs[method].bind(fs) as (
+				...args: unknown[]
+			) => Promise<unknown>;
+			jest.spyOn(fs, method).mockImplementation(((
+				file: string,
+				...rest: unknown[]
+			) =>
+				file.startsWith(projectFile)
+					? refused()
+					: original(file, ...rest)) as never);
+		}
+	};
+
+	it("should exit 1 with the failure in its JSON when the project file can't be written again after syncback", async () => {
+		const { running, log } = start({
+			input: "game.rbxl",
+			"non-interactive": true,
+			json: true,
+		});
+		const [rojo] = await rojoRuns(1);
+		await editMirror();
+		refuseProjectFile();
+		rojo.exit({ code: 0, signal: null });
+		const result = await running;
+
+		expect(result.isErr()).toBe(true);
+		const document = log.json();
+		expect(document.syncback).toMatchObject({ outcome: "written" });
+		expect(document.configs).toMatchObject([
+			{
+				outcome: "notWritten",
+				diagnostics: [{ code: "output.writeFailed" }],
+			},
+		]);
+	});
+
+	it("should say the project file was not written, and exit 1, when the project file can't be written again after syncback", async () => {
+		const { running, log } = start({
+			input: "game.rbxl",
+			"non-interactive": true,
+		});
+		const [rojo] = await rojoRuns(1);
+		await editMirror();
+		refuseProjectFile();
+		rojo.exit({ code: 0, signal: null });
+		const result = await running;
+
+		expect(result.isErr()).toBe(true);
+		expect(said(log)).toEqual([
+			"default.project.json · not written",
+			"/repo/default.project.json - error: the project file could not be written: permission denied. (output.writeFailed)",
+			"Syncback wrote 2 changes.",
 		]);
 	});
 

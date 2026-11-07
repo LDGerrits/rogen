@@ -7,7 +7,6 @@ import {
 	RunningRogen,
 	bundleCli,
 	createProject,
-	eventually,
 	writeProjectFile,
 } from "./harness.js";
 import { freePort, projectFiles, useServeProject } from "./serve-fixtures.js";
@@ -118,19 +117,19 @@ describeWithRojo("end to end serve when Rojo crashes", () => {
 
 	it("should start Rojo again after it crashes on a deleted folder, and keep serving", async () => {
 		const serving = serve.start();
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.output).toContain("Serving ");
 		}, 20_000);
 
 		fs.rmSync(path.join(serve.dir, "src/Shop"), { recursive: true });
 
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.output).toContain(
 				`Rojo crashed, so Rogen restarted it on localhost:${serve.port}.`
 			);
 		}, 20_000);
 		writeProjectFile(serve.dir, "src/Fresh.luau");
-		await eventually(async () => {
+		await serving.waitFor(async () => {
 			expect(await servedNames(serve.port)).toContain("Fresh");
 		}, 20_000);
 		expect(serving.output).not.toContain("error");

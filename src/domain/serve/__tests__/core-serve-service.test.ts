@@ -1,4 +1,5 @@
 import { jest } from "@jest/globals";
+import { DeferredPromise } from "../../../base/async.js";
 import { UsageError } from "../../../base/errors.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
@@ -792,6 +793,42 @@ describe("CoreServeService", () => {
 			expect(processes.spawned).toEqual([]);
 		});
 
+		it("should start nothing for a change saved while it refuses a Rojo before 7.5.0", async () => {
+			processes.outputs.set("/bin/rojo", {
+				code: 0,
+				stdout: "Rojo 7.4.4",
+				stderr: "",
+			});
+			await memFs.writeFile(
+				"/repo/default.rogen.json",
+				config({ syncRules: [{ pattern: "*.md", use: "text" }] })
+			);
+			service = serviceAt("/repo", new RojoCompatibility(memFs, false));
+			const checked = new DeferredPromise<void>();
+			const problemsIn = RojoCompatibility.prototype.problemsIn;
+			jest.spyOn(
+				RojoCompatibility.prototype,
+				"problemsIn"
+			).mockImplementation(async function (
+				this: RojoCompatibility,
+				...args
+			) {
+				const problems = await problemsIn.apply(this, args);
+				await checked.p;
+				return problems;
+			});
+			const started = start();
+			await settle();
+
+			await memFs.writeFile("/repo/default.rogen.json", config());
+			await settle();
+			checked.complete();
+			await settle();
+
+			expect((await started).isErr()).toBe(true);
+			expect(processes.spawned).toEqual([]);
+		});
+
 		it("should report sync rules once a Rojo before 7.5.0 is running", async () => {
 			processes.outputs.set("/bin/rojo", {
 				code: 0,
@@ -1455,6 +1492,70 @@ describe("CoreServeService", () => {
 				expect(restarts.map(({ info }) => info.project)).toEqual([
 					"Game",
 				]);
+			});
+
+			it("should move the server to the port its config sets while it ends the server a dead serve left", async () => {
+				await memFs.writeFile(
+					...recordFile(34872, "repo", "/repo/default.project.json", {
+						owner: 5000,
+						pid: 5001,
+					})
+				);
+				requests.answer(
+					"http://127.0.0.1:34872/api/rojo",
+					rojoInfo("repo")
+				);
+				processes.running.add(5001);
+				const ended = new DeferredPromise<void>();
+				jest.spyOn(processes, "terminateTree").mockReturnValue(ended.p);
+				const started = start();
+				await settle();
+
+				await portOf(34901);
+				await settle();
+				requests.responses.delete("http://127.0.0.1:34872/api/rojo");
+				ended.complete();
+				await settle();
+
+				expect((await started).isOk()).toBe(true);
+				expect(spawnedProjects()).toEqual([
+					"default.project.json (ended)",
+					"default.project.json",
+				]);
+				expect(session.target?.address.toString()).toBe(
+					"127.0.0.1:34901"
+				);
+			});
+
+			it("should serve a config that takes the place of another while it checks the Rojo that runs", async () => {
+				const checked = new DeferredPromise<void>();
+				const problemsIn = RojoCompatibility.prototype.problemsIn;
+				jest.spyOn(
+					RojoCompatibility.prototype,
+					"problemsIn"
+				).mockImplementation(async function (
+					this: RojoCompatibility,
+					...args
+				) {
+					const problems = await problemsIn.apply(this, args);
+					await checked.p;
+					return problems;
+				});
+				const started = start();
+				await settle();
+
+				await replaceWithLobby();
+				await settle();
+				checked.complete();
+				await settle();
+
+				expect((await started).isOk()).toBe(true);
+				expect(spawnedProjects()).toEqual([
+					"default.project.json (ended)",
+					"default.project.json",
+				]);
+				expect(changes).toEqual(["retired repo (removed)"]);
+				expect(session.target?.config.label).toBe("Lobby");
 			});
 
 			it("should serve only the named configs, not one added beside them", async () => {

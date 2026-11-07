@@ -14,7 +14,7 @@ import {
 import { RojoFile } from "../../rojo/rojo.js";
 import { MetaReplacement } from "../../toolchain/toolchain.js";
 import { Placement } from "../placement.js";
-import { CompiledLayout, PLACEHOLDER_SOURCE } from "../compiled-layout.js";
+import { CompiledLayout, isPlaceholder } from "../compiled-layout.js";
 
 const LISTED_PATHS = 3;
 
@@ -335,10 +335,7 @@ export class CompiledPathCheck {
 					? await this.filesUnder(target, false)
 					: [];
 			for (const file of files)
-				if (
-					(await this.fileSystemService.readFile(file)) !==
-					PLACEHOLDER_SOURCE
-				)
+				if (!isPlaceholder(await this.fileSystemService.readFile(file)))
 					return true;
 		}
 		return false;

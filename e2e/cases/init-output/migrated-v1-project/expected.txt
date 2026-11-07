@@ -6,10 +6,10 @@ stdout:
   The routes send each file where v1 did, such as Server files to ServerScriptService/Server, so requires keep working.
   Renames 1 file that v1 routed by a word in the name or by a marker file to v2's @ form, which keeps each instance's name.
   Took the defaults, each with the flag that changes it: agent rules (--no-agent-rules).
-  Renamed .rogen.json to .rogen.json.v1.
   Renamed src/Combat/Combat_Server.luau to src/Combat/Combat@Server.luau.
-  Created default.rogen.json.
+  Renamed .rogen.json to .rogen.json.v1.
   Created AGENTS.md.
+  Created default.rogen.json.
   Wrote default.project.json.
   Next steps
     Run:

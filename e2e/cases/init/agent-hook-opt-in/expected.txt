@@ -4,10 +4,10 @@ stdout:
   rogen init
   Claude Code and Codex are in use here. 'rogen init --agent-hook' adds a hook that reports Rogen's warnings when they end their turn.
   Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), a git repository (--skip-git), agent rules (--no-agent-rules), no agent hook (--agent-hook).
-  Created default.rogen.json.
   Created .gitignore.
   Created AGENTS.md.
   Created CLAUDE.md.
+  Created default.rogen.json.
   Initialised a git repository.
   Wrote default.project.json.
   Next steps

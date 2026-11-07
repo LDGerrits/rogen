@@ -84,26 +84,18 @@ function fail(step: string, result: { stdout: string; stderr: string }) {
 }
 
 /** The `serving` line of a `serve --json`, read from its complete lines, or an error as soon as it ends without one. */
-async function servingLine(
-	serving: RunningRogen
-): Promise<Record<string, unknown>> {
-	let exitCode: number | null | undefined;
-	void serving.exited.then((code) => (exitCode = code));
-	const deadline = Date.now() + 30_000;
-	for (;;) {
-		const complete = serving.stdout.split("\n").slice(0, -1);
-		for (const one of complete) {
+function servingLine(serving: RunningRogen): Promise<Record<string, unknown>> {
+	return serving.waitFor(() => {
+		for (const one of serving.stdout.split("\n").slice(0, -1)) {
 			if (!one.startsWith("{")) continue;
 			const parsed = JSON.parse(one) as Record<string, unknown>;
 			if ("serving" in parsed)
 				return parsed.serving as Record<string, unknown>;
 		}
-		if (exitCode !== undefined || Date.now() > deadline)
-			throw new Error(
-				`serve ${exitCode === undefined ? "gave no serving line in time" : `ended with ${exitCode}`}:\n${serving.output}`
-			);
-		await new Promise((resolve) => setTimeout(resolve, 100));
-	}
+		throw new Error(
+			`serve gave no serving line in time:\n${serving.output}`
+		);
+	}, 30_000);
 }
 
 /** Follows `variant` in a new empty folder: `init -y`, the compilers, a build, then `serve --json` until its `serving` line. */
