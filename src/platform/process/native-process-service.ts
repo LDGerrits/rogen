@@ -258,10 +258,16 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 
 	private async end(signal: NodeJS.Signals): Promise<ProcessExit> {
 		if (this.exit || this.child.pid === undefined) return this.exited;
-		if (isWindows) await killWindowsTree(this.child.pid);
-		else signalTree(this.child.pid, signal, this.child);
+		// A Windows console hands Ctrl+C to every process on it, so only the grace is left to wait out.
+		if (isWindows && signal !== "SIGINT")
+			await killWindowsTree(this.child.pid);
+		else if (!isWindows) signalTree(this.child.pid, signal, this.child);
+		const pid = this.child.pid;
 		const timer = setTimeout(
-			() => signalTree(this.child.pid ?? 0, "SIGKILL", this.child),
+			() =>
+				isWindows
+					? void killWindowsTree(pid)
+					: signalTree(pid, "SIGKILL", this.child),
 			this.killGraceMs
 		);
 		try {
