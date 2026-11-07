@@ -129,13 +129,18 @@ class FailedChildProcess extends AbstractDisposable implements ChildProcess {
 class RunningChildren {
 	private readonly children = new Set<NativeChildProcess>();
 	private waiting: (() => void)[] = [];
+	private readonly _onDidChangeRunning = new Emitter<boolean>();
+	readonly onDidChangeRunning: Event<boolean> =
+		this._onDidChangeRunning.event;
 
 	add(child: NativeChildProcess): void {
 		this.children.add(child);
+		if (this.children.size === 1) this._onDidChangeRunning.fire(true);
 	}
 
 	delete(child: NativeChildProcess): void {
-		this.children.delete(child);
+		if (this.children.delete(child) && this.children.size === 0)
+			this._onDidChangeRunning.fire(false);
 		if (this.children.size > 0) return;
 		const waiting = this.waiting;
 		this.waiting = [];
@@ -276,6 +281,10 @@ export class NativeProcessService implements ProcessService {
 	declare readonly _serviceBrand: undefined;
 
 	private readonly running = new RunningChildren();
+
+	/** Fires true when a process this service started is the first to run, and false when the last has ended. */
+	readonly onDidChangeRunning: Event<boolean> =
+		this.running.onDidChangeRunning;
 
 	constructor(
 		private readonly env: Readonly<

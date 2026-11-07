@@ -1,6 +1,9 @@
 import { jest } from "@jest/globals";
+import os from "os";
 import { DeferredPromise } from "../../../base/async.js";
 import { DisposableStore } from "../../../base/disposable.js";
+import { Emitter } from "../../../base/event.js";
+import { NativeProcessService } from "../../process/native-process-service.js";
 import { NativeLifecycleService } from "../native-lifecycle-service.js";
 
 describe("NativeLifecycleService", () => {
@@ -216,6 +219,30 @@ describe("NativeLifecycleService", () => {
 		expect(codes).toEqual([130]);
 	});
 
+	it("should give a listener that comes while the children stop a graceful first signal", () => {
+		const stopNow = jest.fn();
+		const stopped = new DeferredPromise<void>();
+		const service = store.add(
+			new NativeLifecycleService(stopNow, () => stopped.p)
+		);
+		const first = service.onWillShutdown(() => undefined);
+		process.emit("SIGINT");
+		first[Symbol.dispose]();
+		const listener = jest.fn();
+		store.add(service.onWillShutdown(listener));
+		const exit = jest
+			.spyOn(process, "exit")
+			.mockImplementation(() => undefined as never);
+
+		process.emit("SIGINT");
+		const exited = exit.mock.calls.length;
+		exit.mockRestore();
+
+		expect(listener).toHaveBeenCalledTimes(1);
+		expect(stopNow).not.toHaveBeenCalled();
+		expect(exited).toBe(0);
+	});
+
 	it("should leave the signals to the process once the children it stops have stopped", async () => {
 		const signals = process.listenerCount("SIGINT");
 		const stopped = new DeferredPromise<void>();
@@ -235,6 +262,134 @@ describe("NativeLifecycleService", () => {
 		await Promise.resolve();
 
 		expect(whileStopping).toBe(signals + 1);
+		expect(process.listenerCount("SIGINT")).toBe(signals);
+	});
+	it.each([
+		["SIGINT", 130],
+		["SIGTERM", 143],
+		["SIGHUP", 129],
+	] as const)(
+		"should kill the children and exit on %s while they run and nothing listens",
+		(signal, code) => {
+			const stopNow = jest.fn();
+			const running = store.add(new Emitter<boolean>());
+			store.add(
+				new NativeLifecycleService(
+					stopNow,
+					() => Promise.resolve(),
+					running.event
+				)
+			);
+			running.fire(true);
+			const exit = jest
+				.spyOn(process, "exit")
+				.mockImplementation(() => undefined as never);
+			const write = jest
+				.spyOn(process.stderr, "write")
+				.mockImplementation(() => true);
+
+			process.emit(signal);
+			const written = write.mock.calls.length;
+			const codes = exit.mock.calls.map(([exitCode]) => exitCode);
+			exit.mockRestore();
+			write.mockRestore();
+
+			expect(stopNow).toHaveBeenCalledTimes(1);
+			expect(written).toBe(0);
+			expect(codes).toEqual([code]);
+		}
+	);
+
+	it("should leave the signals to the process once the children it didn't stop have ended", () => {
+		const signals = process.listenerCount("SIGINT");
+		const errors = process.stdout.listenerCount("error");
+		const running = store.add(new Emitter<boolean>());
+		store.add(
+			new NativeLifecycleService(
+				() => undefined,
+				() => Promise.resolve(),
+				running.event
+			)
+		);
+
+		running.fire(true);
+		const whileRunning = process.listenerCount("SIGINT");
+		const errorsWhileRunning = process.stdout.listenerCount("error");
+		running.fire(false);
+
+		expect(whileRunning).toBe(signals + 1);
+		expect(errorsWhileRunning).toBe(errors);
+		expect(process.listenerCount("SIGINT")).toBe(signals);
+	});
+
+	it("should keep a graceful first signal for a listener while children run", () => {
+		const stopNow = jest.fn();
+		const running = store.add(new Emitter<boolean>());
+		const service = store.add(
+			new NativeLifecycleService(
+				stopNow,
+				() => Promise.resolve(),
+				running.event
+			)
+		);
+		running.fire(true);
+		const listener = jest.fn();
+		store.add(service.onWillShutdown(listener));
+		const exit = jest
+			.spyOn(process, "exit")
+			.mockImplementation(() => undefined as never);
+
+		process.emit("SIGINT");
+		const exited = exit.mock.calls.length;
+		exit.mockRestore();
+
+		expect(listener).toHaveBeenCalledTimes(1);
+		expect(stopNow).not.toHaveBeenCalled();
+		expect(exited).toBe(0);
+	});
+
+	it("should end a running child's process group when a signal ends the run", async () => {
+		if (process.platform === "win32") return;
+		const signals = process.listenerCount("SIGINT");
+		const processes = new NativeProcessService();
+		store.add(
+			new NativeLifecycleService(
+				() => processes.killAll(),
+				() => processes.stopped(),
+				processes.onDidChangeRunning
+			)
+		);
+		const child = store.add(
+			processes.spawn(
+				process.execPath,
+				[
+					"-e",
+					"const grandchild = require('child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60_000)'], { stdio: 'ignore' }); console.log(grandchild.pid); setTimeout(() => {}, 60_000)",
+				],
+				{ cwd: os.tmpdir() }
+			)
+		);
+		const grandchild = await new Promise<number>((resolve) =>
+			child.onDidOutput(({ line }) => resolve(Number(line.trim())))
+		);
+		const exited = new Promise((resolve) => child.onDidExit(resolve));
+		const exit = jest
+			.spyOn(process, "exit")
+			.mockImplementation(() => undefined as never);
+
+		process.emit("SIGINT");
+		const codes = exit.mock.calls.map(([exitCode]) => exitCode);
+		exit.mockRestore();
+
+		expect(codes).toEqual([130]);
+		expect(await exited).toEqual({ code: null, signal: "SIGKILL" });
+		await processes.stopped();
+		let alive = true;
+		for (let tries = 0; tries < 50 && alive; tries++) {
+			alive = processes.isRunning(grandchild);
+			if (alive) await new Promise((resolve) => setTimeout(resolve, 20));
+		}
+		expect(alive).toBe(false);
 		expect(process.listenerCount("SIGINT")).toBe(signals);
 	});
 });

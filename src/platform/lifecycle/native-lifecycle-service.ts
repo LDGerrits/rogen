@@ -3,7 +3,7 @@ import {
 	DisposableStore,
 	toDisposable,
 } from "../../base/disposable.js";
-import { Emitter, Event } from "../../base/event.js";
+import { Emitter, Event, NullEvent } from "../../base/event.js";
 import { LifecycleService, exitCodeOfSignal } from "./lifecycle-service.js";
 
 const SHUTDOWN_SIGNALS: readonly NodeJS.Signals[] = [
@@ -19,25 +19,38 @@ export class NativeLifecycleService
 	declare readonly _serviceBrand: undefined;
 
 	private readonly _onWillShutdown = this._register(new Emitter<void>());
-	private readonly handlers = this._register(new DisposableStore());
+	private readonly signalHandlers = this._register(new DisposableStore());
+	private readonly outputHandlers = this._register(new DisposableStore());
 	private listeners = 0;
 	private shuttingDown = false;
-	/** Whether the signals are Rogen's: while something listens, and after a shutdown until the children have stopped. */
-	private handling = false;
+	/** After a shutdown, until its children have stopped. */
+	private draining = false;
+	private childrenRunning = false;
+	private handlingSignals = false;
+	private handlingOutput = false;
 	signal: NodeJS.Signals | undefined;
 
 	constructor(
 		/** Ends at once what a graceful shutdown would still be waiting on, before a second signal exits. */
 		private readonly stopNow: () => void = () => undefined,
 		/** Settles once no child is left running. */
-		private readonly stopped: () => Promise<void> = () => Promise.resolve()
+		private readonly stopped: () => Promise<void> = () => Promise.resolve(),
+		/** Whether a child is running; a signal that ends Rogen then ends the children too, which the terminal's signal misses in their own process groups. */
+		onDidChangeRunning: Event<boolean> = NullEvent
 	) {
 		super();
+		this._register(
+			onDidChangeRunning((running) => {
+				this.childrenRunning = running;
+				this.update();
+			})
+		);
 	}
 
 	/** Takes over the signals while something listens, so a run that doesn't listen still dies of them. */
 	readonly onWillShutdown: Event<void> = (listener, disposables) => {
-		if (this.listeners++ === 0 && !this.handling) this.listenForSignals();
+		this.listeners++;
+		this.update();
 		const subscription = this._onWillShutdown.event(listener);
 		let left = false;
 		const disposable = toDisposable(() => {
@@ -54,17 +67,32 @@ export class NativeLifecycleService
 	private lastLeft(): void {
 		const shutDown = this.shuttingDown;
 		this.shuttingDown = false;
-		if (!shutDown) return this.stopListening();
-		this.stopped()
-			.then(() => {
-				if (this.listeners === 0) this.stopListening();
-			})
-			.catch(() => undefined);
+		if (shutDown) {
+			this.draining = true;
+			this.stopped()
+				.then(() => {
+					this.draining = false;
+					this.update();
+				})
+				.catch(() => undefined);
+		}
+		this.update();
 	}
 
-	private stopListening(): void {
-		this.handling = false;
-		this.handlers.clear();
+	/** Holds the signals while something listens, a shutdown drains or a child runs, and the closed output only for the first two. */
+	private update(): void {
+		const output = this.listeners > 0 || this.draining;
+		const signals = output || this.childrenRunning;
+		if (output !== this.handlingOutput) {
+			this.handlingOutput = output;
+			if (output) this.listenForClosedOutput();
+			else this.outputHandlers.clear();
+		}
+		if (signals !== this.handlingSignals) {
+			this.handlingSignals = signals;
+			if (signals) this.listenForSignals();
+			else this.signalHandlers.clear();
+		}
 	}
 
 	private shutdown(): void {
@@ -74,20 +102,27 @@ export class NativeLifecycleService
 	}
 
 	private listenForSignals(): void {
-		this.handling = true;
 		for (const signal of SHUTDOWN_SIGNALS) {
 			const listener = () => {
-				if (this.shuttingDown || this.listeners === 0)
-					return this.exitNow(signal);
+				if (this.shuttingDown) return this.exitNow(signal);
+				if (this.listeners === 0)
+					return this.draining
+						? this.exitNow(signal)
+						: this.exitWithChildren(signal);
 				this.signal ??= signal;
 				this.shutdown();
 			};
 			process.on(signal, listener);
-			this.handlers.add(
+			this.signalHandlers.add(
 				toDisposable(() => process.off(signal, listener))
 			);
 		}
-		this.listenForClosedOutput();
+	}
+
+	/** Dies of the signal as a run that doesn't listen does, but takes the children along. */
+	private exitWithChildren(signal: NodeJS.Signals): void {
+		this.stopNow();
+		process.exit(exitCodeOfSignal(signal));
 	}
 
 	/** A second signal, a common reflex, means the graceful stop is taking too long. */
@@ -104,7 +139,7 @@ export class NativeLifecycleService
 			this.shutdown();
 		};
 		process.stdout.on("error", listener);
-		this.handlers.add(
+		this.outputHandlers.add(
 			toDisposable(() => process.stdout.off("error", listener))
 		);
 	}
