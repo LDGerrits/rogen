@@ -838,6 +838,44 @@ describe("CoreServeService", () => {
 			expect(processes.spawned).toEqual([]);
 		});
 
+		it("should not start a Rojo before 7.5.0 for a file with sync rules once a failed first write is fixed", async () => {
+			processes.outputs.set("/bin/rojo", {
+				code: 0,
+				stdout: "Rojo 7.4.4",
+				stderr: "",
+			});
+			const routes = {
+				server: "ServerScriptService",
+				client: "StarterPlayer/StarterPlayerScripts",
+				"*": "ReplicatedStorage",
+			};
+			await memFs.writeFile(
+				"/repo/default.rogen.json",
+				config({
+					routes,
+					syncRules: [{ pattern: "*.md", use: "text" }],
+				})
+			);
+			await memFs.writeFile("/repo/src/X/@server", "");
+			await memFs.writeFile("/repo/src/X/@client", "");
+			service = serviceAt("/repo", new RojoCompatibility(memFs, false));
+			const started = start();
+			await settle();
+
+			await memFs.delete("/repo/src/X/@client");
+			await settle();
+
+			const ended = await started;
+			if (ended.isOk()) throw new Error("expected a failure");
+			expect(
+				(ended.error as DiagnosticsError).diagnostics.map(
+					({ code }) => code
+				)
+			).toEqual(["rojo.syncRulesUnsupported"]);
+			expect(errored).toEqual([ended.error]);
+			expect(processes.spawned).toEqual([]);
+		});
+
 		it("should report sync rules once a Rojo before 7.5.0 is running", async () => {
 			processes.outputs.set("/bin/rojo", {
 				code: 0,
@@ -917,17 +955,18 @@ describe("CoreServeService", () => {
 			await memFs.writeFile("/repo/src/X/@client", "");
 			const updates: string[] = [];
 
-			const started = await start();
+			const started = start();
+			await settle();
 			session.onDidUpdate(({ reports }) =>
 				updates.push(...reports.map(({ outcome }) => outcome.kind))
 			);
 
-			expect(started.isOk()).toBe(true);
 			expect(processes.spawned).toEqual([]);
 
 			await memFs.delete("/repo/src/X/@client");
 			await settle();
 
+			expect((await started).isOk()).toBe(true);
 			expect(updates).toEqual(["wrote"]);
 			expect(processes.spawned).toHaveLength(1);
 		});

@@ -1345,6 +1345,40 @@ describe("serve command", () => {
 		);
 	});
 
+	it("should refuse a Rojo that can't serve the file and exit 1 once a failed first write is fixed", async () => {
+		processes.outputs.set("/bin/rojo", {
+			code: 0,
+			stdout: "Rojo 7.4.4",
+			stderr: "",
+		});
+		await clashing();
+		await memFs.writeFile(
+			"/repo/default.rogen.json",
+			JSON.stringify({
+				sourcePaths: ["src"],
+				routes: {
+					server: "ServerScriptService",
+					client: "StarterPlayer/StarterPlayerScripts",
+				},
+				syncRules: [{ pattern: "*.md", use: "text" }],
+			})
+		);
+		const result = serve();
+		await settle();
+
+		await memFs.delete("/repo/src/X/@client");
+		await settle();
+
+		const error = await failureOf(result);
+		expect(exitCodeOf(error)).toBe(1);
+		expect(processes.spawned).toEqual([]);
+		expect(
+			logService.lines.filter((line) =>
+				line.includes("rojo.syncRulesUnsupported")
+			)
+		).toHaveLength(1);
+	});
+
 	it("should print the write's errors once as JSON lines and wait for a fix when the first write fails", async () => {
 		await clashing();
 

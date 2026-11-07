@@ -82,9 +82,8 @@ export class CoreServeSession
 	>();
 	private readonly writtenConfigs = new Set<string>();
 	private readonly reconciling = new Sequencer();
-	private readonly firstLaunch = new DeferredPromise<
-		Result<void, Error> | Promise<Result<void, Error>>
-	>();
+	private readonly firstLaunch = new DeferredPromise<Result<void, Error>>();
+	private updated = false;
 	private readonly exits = new Sequencer();
 	private stopping = false;
 	private readonly halted = new AbortController();
@@ -110,27 +109,18 @@ export class CoreServeSession
 					}
 					this.writtenConfigs.add(outcome.config.id);
 				}
-				const first = !this.firstLaunch.isSettled;
-				if (first)
-					this.firstLaunch.complete(
-						this.reconciling.queue(() => this.launchFirst(update))
-					);
+				this.updated = true;
 				this._onDidUpdate.fire(update);
-				if (!first)
-					this.reconciling
-						.queue(async () => {
-							if (!(await this.launchedFirst())) return;
-							await this.reportIncompatible(update);
-							await this.reconcile();
-						})
-						.catch((error) =>
-							this._onDidError.fire(ErrorUtils.fromUnknown(error))
-						);
+				this.reconciling
+					.queue(() => this.applyUpdate(update))
+					.catch((error) =>
+						this._onDidError.fire(ErrorUtils.fromUnknown(error))
+					);
 			})
 		);
 		this._register(
 			watch.onDidError((error) => {
-				this.firstLaunch.complete(err(error));
+				if (!this.updated) this.firstLaunch.complete(err(error));
 				this._onDidError.fire(error);
 			})
 		);
@@ -174,14 +164,30 @@ export class CoreServeSession
 		super[Symbol.dispose]();
 	}
 
-	/** Ends any orphan, checks the Rojo that runs and starts the target's server for the first update; later updates queue behind it. */
+	/** Launches for the first update that writes a config, refusing the Rojo that runs as start does; later updates only report it. */
+	private async applyUpdate(update: WatchUpdate): Promise<void> {
+		if (this.firstLaunch.isSettled) {
+			if (!(await this.firstLaunch.p).isOk()) return;
+			await this.reportIncompatible(update);
+			await this.reconcile();
+			return;
+		}
+		try {
+			const launched = await this.launchFirst(update);
+			if (launched) this.firstLaunch.complete(launched);
+		} catch (error) {
+			this.firstLaunch.complete(err(ErrorUtils.fromUnknown(error)));
+		}
+	}
+
+	/** Ends any orphan, checks the Rojo that runs and starts the target's server; undefined while no config is written yet. */
 	private async launchFirst(
-		first: WatchUpdate
-	): Promise<Result<void, Error>> {
+		update: WatchUpdate
+	): Promise<Result<void, Error> | undefined> {
 		if (this.stopping) return ok(undefined);
 		const incompatible = await this.compatibility.problemsIn(
 			this.plan.executable,
-			first.reports.flatMap(({ outcome }) =>
+			update.reports.flatMap(({ outcome }) =>
 				isWritten(outcome) ? [outcome.config.projectFile] : []
 			),
 			"serve"
@@ -191,8 +197,12 @@ export class CoreServeSession
 			this._onDidError.fire(refusal);
 			return err(refusal);
 		}
+		if (this.writtenConfigs.size === 0) return undefined;
 		const { target } = this.plan;
-		if (!this.writtenConfigs.has(target.config.id)) return ok(undefined);
+		if (!this.writtenConfigs.has(target.config.id)) {
+			await this.reconcile();
+			return ok(undefined);
+		}
 		if (!isServed(target)) {
 			await this.endOrphanOf(target);
 			this.launch(target);
@@ -202,15 +212,6 @@ export class CoreServeSession
 				address: target.address.toString(),
 			});
 		return ok(undefined);
-	}
-
-	/** Whether the first launch went ahead; a session that refused to start serves nothing on later updates. */
-	private async launchedFirst(): Promise<boolean> {
-		try {
-			return (await this.firstLaunch.p).isOk();
-		} catch {
-			return false;
-		}
 	}
 
 	private async reportIncompatible(update: WatchUpdate): Promise<void> {
