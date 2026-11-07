@@ -14,6 +14,8 @@ import { ConfigModel, ConfigSection, sectionPath } from "./config-models.js";
 
 export interface ConfigFile {
 	readonly file: string;
+	/** What the file holds as read. */
+	readonly text: string;
 	readonly model: ConfigModel;
 	/** Where the value at `section` starts in the file, for pointing a diagnostic at it. */
 	positionOf(section: ConfigSection): DiagnosticPosition | undefined;
@@ -85,6 +87,7 @@ export class ConfigFileReader {
 		const { root, value } = document.value;
 		return ok({
 			file,
+			text,
 			model: new ConfigModel(value),
 			positionOf: (section) => positionIn(root, section),
 			positionOfKey: (key) => {
