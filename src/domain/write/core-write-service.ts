@@ -22,6 +22,7 @@ import {
 	FailedConfig,
 	LoadedConfig,
 	OutputFile,
+	SyncWarnings,
 	UnwrittenConfig,
 	WrittenConfig,
 } from "./write.js";
@@ -37,7 +38,7 @@ import {
 	skippedOutside,
 } from "./write-service.js";
 import { PreparedConfig, WritePipeline } from "./write-pipeline.js";
-import { PLACEHOLDER_SOURCE } from "./compiled-layout.js";
+import { placeholderState } from "./compiled-layout.js";
 import { ProjectFileStaleness } from "./check/project-file-staleness.js";
 import { OutsideSourcePaths } from "./check/outside-source-paths.js";
 import { LocateTargets } from "./locate/locate-targets.js";
@@ -124,7 +125,10 @@ export class CoreWriteService implements WriteService {
 		const { set, unloaded } = WriteSet.partition(selection);
 		const listing = await this.indexService.list(set.indexedPaths, reader);
 		const attempts = await this.attempt(
-			set.configs.map((config) => ({ config, syncWarnings: undefined })),
+			set.configs.map((config) => ({
+				config,
+				sync: SyncWarnings.unknown,
+			})),
 			listing,
 			advice,
 			reader
@@ -153,19 +157,22 @@ export class CoreWriteService implements WriteService {
 	): Promise<LoadedConfig> {
 		const config = set.configOf(projectFile);
 		if (!config) throw new Error(`${projectFile} is not in the set.`);
-		const known =
-			previous?.config === config ? previous.syncWarnings : undefined;
-		const attempts = await this.attempt(
-			[{ config, syncWarnings: known ?? [] }],
-			listing
-		);
+		const previousSync =
+			previous && CoreWriteService.sameVersion(previous, config)
+				? previous.sync
+				: SyncWarnings.unknown;
+		// Unless known, checked after the write, which creates the compiled path's placeholders.
+		const sync =
+			previousSync.kind === "known"
+				? previousSync
+				: SyncWarnings.deferred;
+		const attempts = await this.attempt([{ config, sync }], listing);
 		const [outcome] = await this.settle(attempts, [], true, { force });
-		if (known) return outcome;
-		// Checked after the write, which creates the compiled path's placeholders.
+		if (sync.kind === "known") return outcome;
 		if (outcome.kind === "failed")
 			return new FailedConfig(config, outcome.errors, {
 				warnings: outcome.warnings,
-				syncWarnings: undefined,
+				sync: SyncWarnings.unknown,
 			});
 		return CoreWriteService.withSyncWarnings(
 			outcome,
@@ -182,19 +189,15 @@ export class CoreWriteService implements WriteService {
 	): Promise<LoadedConfig> {
 		const config = set.configOf(projectFile);
 		if (
-			previous.config !== config ||
+			!CoreWriteService.sameVersion(previous, config) ||
 			previous.kind === "failed" ||
 			(await this.onlyPlaceholders(changes))
 		)
 			return previous;
-		const syncWarnings = await this.compiledPathWarnings(config, listing);
+		const sync = await this.compiledPathWarnings(config, listing);
 		// A recheck writes nothing, so a config it wrote before is unchanged now.
-		return syncWarnings
-			? CoreWriteService.withSyncWarnings(
-					previous,
-					syncWarnings,
-					"unchanged"
-				)
+		return sync.kind === "known"
+			? CoreWriteService.withSyncWarnings(previous, sync, "unchanged")
 			: previous;
 	}
 
@@ -289,7 +292,7 @@ export class CoreWriteService implements WriteService {
 	private async attempt(
 		configs: readonly {
 			readonly config: ResolvedConfig;
-			readonly syncWarnings: readonly Diagnostic[] | undefined;
+			readonly sync: SyncWarnings;
 		}[],
 		listing: IndexReader,
 		advice = false,
@@ -297,8 +300,8 @@ export class CoreWriteService implements WriteService {
 	): Promise<Attempt[]> {
 		const pipeline = new WritePipeline(reader, listing, this.syncTools);
 		const attempts: Attempt[] = [];
-		for (const { config, syncWarnings } of configs) {
-			const result = await pipeline.run(config, syncWarnings);
+		for (const { config, sync } of configs) {
+			const result = await pipeline.run(config, sync);
 			attempts.push(
 				result.isOk()
 					? advice
@@ -307,7 +310,7 @@ export class CoreWriteService implements WriteService {
 					: FailedConfig.before(
 							config,
 							result.error.diagnostics,
-							syncWarnings
+							sync
 						)
 			);
 		}
@@ -424,7 +427,7 @@ export class CoreWriteService implements WriteService {
 	private compiledPathWarnings(
 		config: ResolvedConfig,
 		listing: IndexReader
-	): Promise<Diagnostic[] | undefined> {
+	): Promise<SyncWarnings> {
 		return new WritePipeline(
 			this.fileSystemService,
 			listing,
@@ -438,24 +441,27 @@ export class CoreWriteService implements WriteService {
 	): Promise<boolean> {
 		for (const { type, path: file } of changes) {
 			if (type !== FileChangeType.ADDED) return false;
-			if (await this.fileSystemService.isDirectory(file)) continue;
-			if (
-				!(await this.fileSystemService.isFile(file)) ||
-				(await this.fileSystemService.readFile(file)) !==
-					PLACEHOLDER_SOURCE
-			)
-				return false;
+			const state = await placeholderState(this.fileSystemService, file);
+			if (state !== "folder" && state !== "placeholder") return false;
 		}
 		return true;
 	}
 
+	/** Whether `outcome` is of `config` as it is now; a config is immutable, so its object is its version. */
+	private static sameVersion(
+		outcome: LoadedConfig,
+		config: ResolvedConfig | undefined
+	): config is ResolvedConfig {
+		return outcome.config === config;
+	}
+
 	private static withSyncWarnings(
 		outcome: Exclude<LoadedConfig, FailedConfig>,
-		syncWarnings: readonly Diagnostic[] | undefined,
+		sync: SyncWarnings,
 		kind?: WrittenConfig["kind"]
 	): LoadedConfig {
 		const { config, summary, readFiles } = outcome;
-		const findings = { warnings: outcome.warnings, syncWarnings };
+		const findings = { warnings: outcome.warnings, sync };
 		switch (outcome.kind) {
 			case "notWritten":
 				return new UnwrittenConfig(
