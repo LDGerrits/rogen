@@ -128,6 +128,10 @@ describe("CoreSyncbackService", () => {
 		);
 	});
 
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
 	it("should run Rojo's syncback once, on a project file that mounts a mirror of the files by instance", async () => {
 		await prepare(["src/Inventory/Bag@server.luau"]);
 		let copied: string | undefined;
@@ -230,6 +234,56 @@ describe("CoreSyncbackService", () => {
 		expect(planned.isOk()).toBe(true);
 		expect(lock).toBe("4242");
 		expect(stale).toBe(false);
+	});
+
+	it("should count a new lock that names no owner yet as held", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs(".rogen-syncback/lock"), "");
+
+		const planned = await service.plan(request);
+
+		expect(planned.isErr()).toBe(true);
+		expect(
+			(planned as ResultError<DiagnosticsError>).error.diagnostics
+		).toMatchObject([{ code: "syncback.busy" }]);
+		expect(await fs.readFile(abs(".rogen-syncback/lock"))).toBe("");
+	});
+
+	it("should take over an old lock that names no owner", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs(".rogen-syncback/lock"), "");
+		const now = Date.now();
+		jest.spyOn(Date, "now").mockReturnValue(now + 60_000);
+
+		expect((await service.plan(request)).isOk()).toBe(true);
+	});
+
+	it("should not take over a lock another run made after it found a killed one's", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs(".rogen-syncback/lock"), "77");
+		const read = fs.readFile.bind(fs);
+		let raced = false;
+		jest.spyOn(fs, "readFile").mockImplementation(async (file) => {
+			const text = await read(file);
+			if (file === abs(".rogen-syncback/lock") && !raced) {
+				raced = true;
+				await fs.delete(file);
+				await fs.createFile(file, "88");
+				processes.running.add(88);
+			}
+			return text;
+		});
+
+		const planned = await service.plan(request);
+
+		expect(planned.isErr()).toBe(true);
+		expect(
+			(planned as ResultError<DiagnosticsError>).error.diagnostics
+		).toMatchObject([
+			{ code: "syncback.busy", message: expect.stringContaining("88") },
+		]);
+		expect(await read(abs(".rogen-syncback/lock"))).toBe("88");
+		expect(rojo.requests).toHaveLength(0);
 	});
 
 	it("should let the next syncback run once one has ended, whether it succeeded or failed", async () => {
