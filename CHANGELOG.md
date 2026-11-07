@@ -29,6 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `rogen init` restores the Rogen hook's script when an agent still runs it but it was deleted.
 - `rogen init --dry-run` no longer says it would create a folder that the files it would write already create.
 - A file deleted while `serve` or `--watch` reads a new folder no longer stays in the project file.
+- `rogen serve` refuses a Rojo that can't serve the project file once a failed first write is fixed, as it does when the first write succeeds, instead of starting it.
+- `rogen serve --json` prints one `stopped` line for a Rojo that failed just before Ctrl+C, instead of two.
 
 ## [2.0.0-beta.3] - 2026-11-01
 

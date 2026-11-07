@@ -335,6 +335,36 @@ describe("serve command", () => {
 		expect(logService.lines.at(-1)).toBe("outro: Stopped serving.");
 	});
 
+	it("should print one stopped line for a server that failed before a signal, and exit 130", async () => {
+		const result = serve([], { json: true });
+		await settle();
+		const stop = watcher.stop.bind(watcher);
+		jest.spyOn(watcher, "stop").mockImplementation(async () => {
+			lifecycle.shutdown("SIGINT");
+			return stop();
+		});
+
+		processes.spawned[0].exit({ code: 1, signal: null });
+
+		const ended = await result;
+		expect(ended.isErr() && exitCodeOf(ended.error)).toBe(130);
+		expect(printed().slice(1)).toEqual([
+			{
+				stopped: {
+					config: "default.rogen.json",
+					reason: "exited",
+					code: 1,
+					signal: null,
+				},
+			},
+			{
+				diagnostics: [
+					expect.objectContaining({ code: "serve.serverExited" }),
+				],
+			},
+		]);
+	});
+
 	it("should end as stopped by the signal in text when the server's exit comes first", async () => {
 		const result = serve();
 		await settle();
@@ -1313,6 +1343,40 @@ describe("serve command", () => {
 		expect(logService.lines.at(-1)).toBe(
 			"success: Serving repo at localhost:34872 · http://localhost:34872/\n  In Studio, press Connect in the Rojo plugin."
 		);
+	});
+
+	it("should refuse a Rojo that can't serve the file and exit 1 once a failed first write is fixed", async () => {
+		processes.outputs.set("/bin/rojo", {
+			code: 0,
+			stdout: "Rojo 7.4.4",
+			stderr: "",
+		});
+		await clashing();
+		await memFs.writeFile(
+			"/repo/default.rogen.json",
+			JSON.stringify({
+				sourcePaths: ["src"],
+				routes: {
+					server: "ServerScriptService",
+					client: "StarterPlayer/StarterPlayerScripts",
+				},
+				syncRules: [{ pattern: "*.md", use: "text" }],
+			})
+		);
+		const result = serve();
+		await settle();
+
+		await memFs.delete("/repo/src/X/@client");
+		await settle();
+
+		const error = await failureOf(result);
+		expect(exitCodeOf(error)).toBe(1);
+		expect(processes.spawned).toEqual([]);
+		expect(
+			logService.lines.filter((line) =>
+				line.includes("rojo.syncRulesUnsupported")
+			)
+		).toHaveLength(1);
 	});
 
 	it("should print the write's errors once as JSON lines and wait for a fix when the first write fails", async () => {
