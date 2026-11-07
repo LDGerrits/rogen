@@ -1856,6 +1856,73 @@ describe("CoreSyncbackService", () => {
 		);
 	});
 
+	it("should write nothing when the config changed since the plan was shown", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Bag.luau"),
+				"return 2"
+			);
+			return [];
+		};
+		const shown = (await service.plan(request)).unwrap();
+		await fs.writeFile(abs("default.rogen.json"), "{}");
+
+		const applied = await service.apply(request, shown);
+
+		expect(applied.isErr()).toBe(true);
+		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+			""
+		);
+	});
+
+	it("should write nothing when the place changed since the plan was shown", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+		await fs.writeFile(abs("game.rbxl"), "first");
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Bag.luau"),
+				"return 2"
+			);
+			return [];
+		};
+		const shown = (await service.plan(request)).unwrap();
+		await fs.writeFile(abs("game.rbxl"), "saved again");
+
+		const applied = await service.apply(request, shown);
+
+		expect(applied.isErr()).toBe(true);
+		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+			""
+		);
+	});
+
+	it("should keep a renamed file's old file when its new file could not be written", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+		rojo.say = async () => {
+			await fs.delete(
+				mirror("ServerScriptService", "Inventory", "Bag.luau")
+			);
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Pouch.luau"),
+				"return 2"
+			);
+			return [];
+		};
+		const write = fs.writeFileBytes.bind(fs);
+		fs.writeFileBytes = async (file, bytes) => {
+			if (file.includes("Pouch")) throw new Error("denied");
+			return write(file, bytes);
+		};
+
+		const result = (await service.apply(request)).unwrap();
+
+		expect(await fs.exists(abs("src/Inventory/Bag@server.luau"))).toBe(
+			true
+		);
+		expect(result.changes).toEqual([]);
+	});
+
 	it("should list a file it could not write, and write the rest", async () => {
 		await prepare(["src/Combat/Server/Combat.luau"]);
 		rojo.say = async () => {
