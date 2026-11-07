@@ -27,6 +27,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Ctrl+C on `rogen serve` always exits with 130.
 - `--watch` follows comment-only config edits, a second config of the same name with the other extension, and a broken config that becomes a copy of another.
 - `rogen init` restores the Rogen hook's script when an agent still runs it but it was deleted.
+- `rogen init --dry-run` no longer says it would create a folder that the files it would write already create.
+- A file deleted while `serve` or `--watch` reads a new folder no longer stays in the project file.
 
 ## [2.0.0-beta.3] - 2026-11-01
 
