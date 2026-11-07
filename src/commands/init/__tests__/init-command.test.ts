@@ -92,15 +92,15 @@ describe("init command", () => {
 				changed: true,
 				files: [
 					{
-						file: path.join(cwd, "default.rogen.json"),
-						outcome: "wrote",
-					},
-					{
 						file: path.join(cwd, "src/.gitkeep"),
 						outcome: "wrote",
 					},
 					{ file: path.join(cwd, ".gitignore"), outcome: "wrote" },
 					{ file: path.join(cwd, "AGENTS.md"), outcome: "wrote" },
+					{
+						file: path.join(cwd, "default.rogen.json"),
+						outcome: "wrote",
+					},
 				],
 				decided: expect.arrayContaining([
 					{
@@ -152,10 +152,6 @@ describe("init command", () => {
 			expect(JSON.parse(logService.entries[0].text)).toEqual({
 				changed: true,
 				files: [
-					{
-						file: path.join(cwd, "default.rogen.json"),
-						outcome: "wrote",
-					},
 					{
 						file: path.join(cwd, "src/.gitkeep"),
 						outcome: "wrote",
@@ -285,7 +281,6 @@ describe("init command", () => {
 				"intro: rogen init",
 				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place/, which the tree mounts. Pass --no-sample for an empty src/ and no place/.",
 				"info: Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules).",
-				"success: Created default.rogen.json.",
 				"success: Created .gitignore.",
 				"success: Created src/Greeter/Shared/Greeting.luau.",
 				"success: Created src/Greeter/Server/Greeter.server.luau.",
@@ -296,6 +291,7 @@ describe("init command", () => {
 				"success: Created place/Workspace/init.meta.json.",
 				"success: Created README.md.",
 				"success: Created AGENTS.md.",
+				"success: Created default.rogen.json.",
 				"success: Wrote default.project.json.",
 				"step: Next steps",
 				"info: Run:",
@@ -520,7 +516,6 @@ describe("init command", () => {
 				"intro: rogen init",
 				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place/, which the tree mounts. Pass --no-sample for an empty src/ and no place/.",
 				"info: Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules).",
-				"success: Would create default.rogen.json.",
 				"success: Would create .gitignore.",
 				"success: Would create src/Greeter/Shared/Greeting.luau.",
 				"success: Would create src/Greeter/Server/Greeter.server.luau.",
@@ -531,6 +526,7 @@ describe("init command", () => {
 				"success: Would create place/Workspace/init.meta.json.",
 				"success: Would create README.md.",
 				"success: Would create AGENTS.md.",
+				"success: Would create default.rogen.json.",
 				"success: Would create src/.",
 				"outro: Would write 11 files. Nothing was written.",
 			]);
@@ -551,10 +547,6 @@ describe("init command", () => {
 				changed: false,
 				dryRun: true,
 				files: [
-					{
-						file: path.join(cwd, "default.rogen.json"),
-						outcome: "wouldWrite",
-					},
 					{
 						file: path.join(cwd, ".gitignore"),
 						outcome: "wouldWrite",
@@ -608,6 +600,10 @@ describe("init command", () => {
 					},
 					{
 						file: path.join(cwd, "AGENTS.md"),
+						outcome: "wouldWrite",
+					},
+					{
+						file: path.join(cwd, "default.rogen.json"),
 						outcome: "wouldWrite",
 					},
 				],
@@ -989,18 +985,67 @@ describe("init command", () => {
 
 			expect(JSON.parse(log.entries[0].text).moves).toEqual([
 				{
-					from: path.join(cwd, ".rogen.json"),
-					to: path.join(cwd, ".rogen.json.v1"),
+					from: path.join(cwd, "src/Combat/Combat_Server.luau"),
+					to: path.join(cwd, "src/Combat/Combat@Server.luau"),
 					outcome: "wouldMove",
 				},
 				{
-					from: path.join(cwd, "src/Combat/Combat_Server.luau"),
-					to: path.join(cwd, "src/Combat/Combat@Server.luau"),
+					from: path.join(cwd, ".rogen.json"),
+					to: path.join(cwd, ".rogen.json.v1"),
 					outcome: "wouldMove",
 				},
 			]);
 			expect(await exists(".rogen.json")).toBe(true);
 		});
+
+		it("should keep the v1 config when a rename fails, so a second init migrates", async () => {
+			const move = memFs.rename.bind(memFs);
+			const rename = jest
+				.spyOn(memFs, "rename")
+				.mockImplementation(async (from, to) => {
+					if (from.endsWith("Combat_Server.luau"))
+						throw new Error("Permission denied");
+					return move(from, to);
+				});
+
+			const failed = await runInit();
+			rename.mockRestore();
+
+			expect(failed.isErr()).toBe(true);
+			expect(await exists(".rogen.json")).toBe(true);
+			expect(await exists(".rogen.json.v1")).toBe(false);
+
+			(await runInit()).unwrap();
+
+			expect(await exists(".rogen.json")).toBe(false);
+			expect(await exists(".rogen.json.v1")).toBe(true);
+			expect(await exists("src/Combat/Combat@Server.luau")).toBe(true);
+			expect(await exists("default.rogen.json")).toBe(true);
+			expect(await exists("default.project.json")).toBe(true);
+		});
+	});
+
+	it("should write no config when another file fails, so a second init makes the whole project", async () => {
+		const writeFile = memFs.writeFile.bind(memFs);
+		const refused = jest
+			.spyOn(memFs, "writeFile")
+			.mockImplementation(async (file, content) => {
+				if (file.endsWith(".gitignore")) throw new Error("disk full");
+				return writeFile(file, content);
+			});
+
+		const failed = await runInit();
+		refused.mockRestore();
+
+		expect(failed.isErr()).toBe(true);
+		expect(await exists("default.rogen.json")).toBe(false);
+
+		(await runInit()).unwrap();
+
+		expect(await exists("default.rogen.json")).toBe(true);
+		expect(await exists("default.project.json")).toBe(true);
+		expect(await exists(".gitignore")).toBe(true);
+		expect(await exists("AGENTS.md")).toBe(true);
 	});
 
 	it("should return a structured error if writing a file fails", async () => {
@@ -1011,9 +1056,7 @@ describe("init command", () => {
 		const result = await runInit();
 
 		expect(result.isErr()).toBe(true);
-		expect(errorMessage(result)).toContain(
-			"Failed to write default.rogen.json"
-		);
+		expect(errorMessage(result)).toContain("Failed to write .gitignore");
 		expect(errorMessage(result)).toContain("Permission denied");
 	});
 

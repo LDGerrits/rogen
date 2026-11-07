@@ -4,7 +4,7 @@ import {
 	isError,
 	newDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
-import { LoadedConfig } from "../write/write.js";
+import { LoadedConfig, isFailed } from "../write/write.js";
 import { RewriteReport } from "./watch-service.js";
 
 export class WatchedConfig {
@@ -32,7 +32,7 @@ export class WatchedConfig {
 	}
 
 	get failing(): boolean {
-		return this.latest?.kind === "failed";
+		return this.latest !== undefined && isFailed(this.latest);
 	}
 
 	get readsKnown(): boolean {
@@ -42,20 +42,17 @@ export class WatchedConfig {
 	finished(outcome: LoadedConfig): RewriteReport {
 		const before = this.latest?.diagnostics ?? [];
 		const unreported = newDiagnostics(before, outcome.diagnostics);
-		const fixed =
-			outcome.kind === "failed"
-				? []
-				: newDiagnostics(outcome.diagnostics, before).filter(
-						(gone) =>
-							!unreported.some(
-								({ code, resource }) =>
-									code === gone.code &&
-									resource === gone.resource
-							)
-					);
+		const fixed = isFailed(outcome)
+			? []
+			: newDiagnostics(outcome.diagnostics, before).filter(
+					(gone) =>
+						!unreported.some(
+							({ code, resource }) =>
+								code === gone.code && resource === gone.resource
+						)
+				);
 		this._latest = outcome;
-		if (outcome.kind !== "failed")
-			this.readFiles = new PathSet(outcome.readFiles);
+		if (!isFailed(outcome)) this.readFiles = new PathSet(outcome.readFiles);
 		return {
 			outcome,
 			unreported,
@@ -63,8 +60,7 @@ export class WatchedConfig {
 				(diagnostic) => !unreported.includes(diagnostic)
 			),
 			fixed,
-			repeatedFailure:
-				outcome.kind === "failed" && !unreported.some(isError),
+			repeatedFailure: isFailed(outcome) && !unreported.some(isError),
 		};
 	}
 }

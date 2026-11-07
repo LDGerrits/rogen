@@ -6,7 +6,7 @@ import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { SyncTool } from "../toolchain/toolchain.js";
-import { WriteFindings, WriteSummary } from "./write.js";
+import { SyncWarnings, WriteFindings, WriteSummary } from "./write.js";
 import { WriteValidator } from "./check/write-validator.js";
 import { MissingSourcePaths } from "./check/missing-source-paths.js";
 import { MountClashes } from "./check/mount-clashes.js";
@@ -74,20 +74,20 @@ export class WritePipeline {
 		).place();
 	}
 
-	/** What the compiled path check finds for `config` now, or none when its files can't be placed. */
-	async compiledPathWarnings(
-		config: ResolvedConfig
-	): Promise<Diagnostic[] | undefined> {
+	/** What the compiled path check finds for `config` now; unknown when its files can't be placed. */
+	async compiledPathWarnings(config: ResolvedConfig): Promise<SyncWarnings> {
 		const placement = await this.place(config);
 		return placement.isOk()
-			? this.compiledPathCheck.check(placement.value)
-			: undefined;
+			? SyncWarnings.known(
+					await this.compiledPathCheck.check(placement.value)
+				)
+			: SyncWarnings.unknown;
 	}
 
-	/** Prepares `config`: `examine`, then the compiled path check, unless `syncWarnings` already says what is known of it. Fails when any phase does, or when no source path of the config exists. */
+	/** Prepares `config`: `examine`, then the compiled path check while `sync` is unknown. Fails when any phase does, or when no source path of the config exists. */
 	async run(
 		config: ResolvedConfig,
-		syncWarnings?: readonly Diagnostic[]
+		sync: SyncWarnings = SyncWarnings.unknown
 	): Promise<Result<PreparedConfig, DiagnosticsError>> {
 		const examined = await this.examine(config);
 		if (examined.isErr()) return examined;
@@ -101,9 +101,12 @@ export class WritePipeline {
 			summary: placement.summary(),
 			findings: {
 				warnings,
-				syncWarnings:
-					syncWarnings ??
-					(await this.compiledPathCheck.check(placement)),
+				sync:
+					sync.kind === "unknown"
+						? SyncWarnings.known(
+								await this.compiledPathCheck.check(placement)
+							)
+						: sync,
 			},
 			readFiles,
 			placeholders: placement.layout.placeholdersOf(projectFile),

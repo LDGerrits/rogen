@@ -7,6 +7,8 @@ export interface PromptChoice<T extends string> {
 }
 
 export interface PromptDetails {
+	/** Names the question where its message names values that may change. */
+	readonly id?: string;
 	readonly description?: string;
 	readonly hint?: string;
 }

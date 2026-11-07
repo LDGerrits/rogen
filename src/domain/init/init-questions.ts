@@ -11,6 +11,7 @@ import {
 	InitKind,
 	booleanFlag,
 } from "./init-service.js";
+import { ReviewPrompts } from "./review-prompts.js";
 import { COMMON_FOLDER, PROJECTS_FOLDER } from "./starter-places.js";
 import { TreeChoice } from "./tree-plan.js";
 
@@ -47,21 +48,34 @@ export class InitQuestions {
 		private readonly promptService: PromptService,
 		readonly interactive: boolean,
 		readonly choices: InitChoices = {},
-		/** Asks the questions that are always asked, where `promptService` takes the default of those a summary shows. */
-		private readonly essential: PromptService = promptService,
-		/** Whether `promptService` asks every question rather than taking the defaults, as under Customise. */
-		readonly customising = false
+		/** The review of a run that shows its plan first, which takes the default of the questions its summary shows until Customise. */
+		private readonly review?: ReviewPrompts
 	) {}
 
-	/** Asks through `view`, noting a question the user sees: every one `essential` asks, and under Customise every one. */
+	/** Whether the quick questions are asked rather than taken by default, as under Customise. */
+	get customising(): boolean {
+		return this.review?.mode === "customise";
+	}
+
+	/** Where a question is asked: an `essential` one always, else as a default a summary shows. */
+	private view(essential: boolean): PromptService {
+		if (!this.review) return this.promptService;
+		return essential ? this.review.essential : this.review.quick;
+	}
+
+	/** Whether the user sees a question: every `essential` one, and every one outside a review's quick pass. */
+	private sees(essential: boolean): boolean {
+		return essential || this.review?.mode !== "quick";
+	}
+
+	/** Asks a question, noting it when the user sees it. */
 	private async ask<T>(
 		question: ShownQuestion,
-		view: PromptService,
+		essential: boolean,
 		prompt: (view: PromptService) => Promise<T | undefined>
 	): Promise<T | undefined> {
-		const answer = await prompt(view);
-		if (view === this.essential || this.customising)
-			this.shown.add(question);
+		const answer = await prompt(this.view(essential));
+		if (this.sees(essential)) this.shown.add(question);
 		return answer;
 	}
 
@@ -100,7 +114,8 @@ export class InitQuestions {
 			return this.choices.agentRules;
 		if (!this.interactive)
 			return this.decide("agentRules", true, "--no-agent-rules");
-		return this.promptService.confirm({
+		return this.view(false).confirm({
+			id: "agentRules",
 			message: `Add Rogen's rules for coding agents to ${fileName}?`,
 			description:
 				"About 10 lines, read by every agent that opens this repo.",
@@ -114,7 +129,8 @@ export class InitQuestions {
 		if (this.choices.agentHook !== undefined) return this.choices.agentHook;
 		if (!this.interactive)
 			return this.decide("agentHook", false, "--agent-hook");
-		return this.promptService.confirm({
+		return this.view(false).confirm({
+			id: "agentHook",
 			message: `Add a hook that reports Rogen warnings to ${joinedWithAnd(agents)}?`,
 			description: `Writes ${HOOK_SCRIPT_FILE} and registers it with ${agents.length === 1 ? "the agent" : "each agent"}. It runs when the agent is about to stop, on the files it changed.`,
 			initialValue: false,
@@ -127,8 +143,9 @@ export class InitQuestions {
 		if (given !== undefined) return given;
 		if (!this.interactive)
 			return this.decide("sample", true, "--no-sample");
-		return this.ask("sample", this.promptService, (view) =>
+		return this.ask("sample", false, (view) =>
 			view.confirm({
+				id: "sample",
 				message: "Add the Greeter sample?",
 				description:
 					"Three hello-world scripts and a README, with Rojo's Baseplate and lighting for the place.",
@@ -137,9 +154,9 @@ export class InitQuestions {
 		);
 	}
 
-	/** Where `places` asks: up front only in a folder without code, else as a default the summary shows. */
-	private placesView(directory: InitDirectory): PromptService {
-		return directory.holdsCode ? this.promptService : this.essential;
+	/** Whether `places` is asked up front: only in a folder without code, else as a default the summary shows. */
+	private placesEssential(directory: InitDirectory): boolean {
+		return !directory.holdsCode;
 	}
 
 	/** Whether the user sees `places`: in a terminal, when no flag answers it, up front or under Customise. */
@@ -147,7 +164,7 @@ export class InitQuestions {
 		return (
 			this.interactive &&
 			this.choices.places === undefined &&
-			(this.placesView(directory) === this.essential || this.customising)
+			this.sees(this.placesEssential(directory))
 		);
 	}
 
@@ -173,9 +190,10 @@ export class InitQuestions {
 			);
 		const answer = await this.ask(
 			"places",
-			this.placesView(directory),
+			this.placesEssential(directory),
 			(view) =>
 				view.select<"one" | "several">({
+					id: "places",
 					message: "One place or several?",
 					choices: [
 						{
@@ -219,22 +237,20 @@ export class InitQuestions {
 			workspace.languages.some(({ present }) => present) ||
 			directory.holdsCode ||
 			directory.has("package.json");
-		const id = await this.ask(
-			"language",
-			detected ? this.promptService : this.essential,
-			(view) =>
-				view.select({
-					message: "Language",
-					choices: workspace.languages.map((language) => ({
-						value: language.id,
-						label: language.copy.label,
-						hint:
-							language.id === workspace.language.id
-								? language.copy.detectedHint
-								: undefined,
-					})),
-					initialValue: workspace.language.id,
-				})
+		const id = await this.ask("language", !detected, (view) =>
+			view.select({
+				id: "language",
+				message: "Language",
+				choices: workspace.languages.map((language) => ({
+					value: language.id,
+					label: language.copy.label,
+					hint:
+						language.id === workspace.language.id
+							? language.copy.detectedHint
+							: undefined,
+				})),
+				initialValue: workspace.language.id,
+			})
 		);
 		return id === undefined ? undefined : workspace.languageFor(id);
 	}

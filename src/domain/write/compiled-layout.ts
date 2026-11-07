@@ -1,5 +1,6 @@
 import path from "path";
 import { contains, containsPosix, samePath, toPosix } from "../../base/path.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 import { ResolvedConfig, compiledPathOf } from "../config/resolved-config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import {
@@ -23,6 +24,26 @@ export interface Placeholder {
 
 export const PLACEHOLDER_SOURCE =
 	"-- Rogen wrote this so Rojo watches it. Your compiler replaces it.\n";
+
+/** What is at a path a write may hold for Rojo: nothing, a folder, Rogen's placeholder script, or a file something else wrote. */
+export type PlaceholderState = "absent" | "folder" | "placeholder" | "written";
+
+/** Whether `content` is the script a write makes for Rojo, which no compiler has replaced yet. */
+export function isPlaceholder(content: string): boolean {
+	return content === PLACEHOLDER_SOURCE;
+}
+
+export async function placeholderState(
+	reader: FileReader,
+	target: string
+): Promise<PlaceholderState> {
+	if (await reader.isDirectory(target)) return "folder";
+	if (await reader.isFile(target))
+		return isPlaceholder(await reader.readFile(target))
+			? "placeholder"
+			: "written";
+	return (await reader.exists(target)) ? "written" : "absent";
+}
 
 /** Where a write's files are synced from: the source paths themselves, or the `compiledPath` that tools write them into. */
 export class CompiledLayout {
