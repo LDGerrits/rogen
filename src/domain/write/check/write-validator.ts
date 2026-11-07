@@ -154,7 +154,7 @@ export class WriteValidator {
 					warningDiagnostic(
 						"scan.noSyncedFiles",
 						{ resource: sourcePath },
-						`this source path places nothing: Rojo reads no file in it. ${this.noSyncedFilesAdvice(sourcePath, unsynced)}`,
+						`this source path places nothing: ${this.noSyncedFilesAdvice(sourcePath, unsynced)}`,
 						[],
 						unsynced.map((resource) => ({
 							resource,
@@ -176,28 +176,13 @@ export class WriteValidator {
 			),
 			LISTED_FILES
 		);
-		const words =
-			unsynced.length === 1
-				? {
-						isScript: "is a script",
-						possessive: "its",
-						copy: "its copy",
-						name: "name",
-					}
-				: {
-						isScript: "are scripts",
-						possessive: "their",
-						copy: "their copies",
-						name: "names",
-					};
-		const subject = `If ${listed} ${words.isScript}`;
 		const { layout } = this.placement;
 		if (layout.compiledPath === undefined)
-			return `${subject}, add a "syncRules" entry that reads ${words.possessive} extension.`;
+			return `Rojo reads none of its files (${listed}). If they are scripts, add a "syncRules" entry for their extension.`;
 		const copyOf = (dir: string) =>
 			JSON.stringify(layout.compiledFolderOf(dir));
 		const copies = this.config.sourcePaths.map(copyOf).join(", ");
-		return `${subject}, a sync rule won't help: Rogen would point the project file at ${words.copy} in ${copyOf(sourcePath)} under the same ${words.name}, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to [${copies}], and remove "compiledPath".`;
+		return `Rojo reads none of its files (${listed}). If they are scripts, a sync rule won't help: Rogen would point the project file at the same names in ${copyOf(sourcePath)}, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to [${copies}], and remove "compiledPath".`;
 	}
 
 	private syncRuleSuffix(): Diagnostic[] {
