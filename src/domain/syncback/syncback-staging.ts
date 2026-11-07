@@ -1,5 +1,5 @@
 import path from "path";
-import { CancelledError, IoError, failureReason } from "../../base/errors.js";
+import { IoError, failureReason } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -38,7 +38,7 @@ export class SyncbackStaging {
 		this.lock = path.join(this.folder, LOCK);
 	}
 
-	/** Runs `work` while this process owns the staging files, which it finds clean and leaves gone; `syncback.busy` when another syncback owns them, with nothing touched. A shutdown aborts `work`'s signal and removes the files at once. */
+	/** Runs `work` while this process owns the staging files, which it finds clean and leaves gone; `syncback.busy` when another syncback owns them, with nothing touched. A shutdown aborts `work`'s signal, which `work` turns into its own result, and removes the files at once. */
 	async use<T>(
 		work: (signal: AbortSignal) => Promise<Result<T, Error>>
 	): Promise<Result<T, Error>> {
@@ -53,14 +53,7 @@ export class SyncbackStaging {
 		try {
 			const cleaned = await this.clean();
 			if (cleaned.isErr()) return cleaned;
-			const done = await work(stopping.signal);
-			if (stopping.signal.aborted)
-				return err(
-					new CancelledError(
-						"Syncback stopped before it finished, so nothing was written."
-					)
-				);
-			return done;
+			return await work(stopping.signal);
 		} finally {
 			shutdown[Symbol.dispose]();
 			await released;
@@ -69,7 +62,7 @@ export class SyncbackStaging {
 		}
 	}
 
-	/** Removes what an earlier run left, except the lock; an error, with nothing copied, when something can't be removed. */
+	/** Removes what an earlier run left, except the lock and the files beside it; an error, with nothing copied, when something can't be removed. */
 	async clean(): Promise<Result<void, Error>> {
 		const removed = await this.remove(this.file);
 		if (removed.isErr()) return removed;
@@ -81,7 +74,8 @@ export class SyncbackStaging {
 				? ok(undefined)
 				: err(this.uncleared(this.folder, entries.error));
 		for (const [name] of entries.value) {
-			if (name === LOCK) continue;
+			// Another run taking over a stale lock moves it aside, or stages its own, beside it.
+			if (name === LOCK || name.startsWith(`${LOCK}.`)) continue;
 			const left = await this.remove(path.join(this.folder, name));
 			if (left.isErr()) return left;
 		}
@@ -127,17 +121,30 @@ export class SyncbackStaging {
 		return err(this.busy(await this.owner(this.lock)));
 	}
 
-	private create(): Promise<boolean> {
-		return this.fileSystemService.createFile(this.lock, String(this.pid));
+	private async create(): Promise<boolean> {
+		const created = () =>
+			this.fileSystemService.createFile(this.lock, String(this.pid));
+		try {
+			return await created();
+		} catch (error) {
+			// The folder was let go of between making it and making the lock in it.
+			if (!isMissingPath(error as Error)) throw error;
+			return created();
+		}
 	}
 
-	/** Whether the lock at `file` is held: by a running owner, or, while it names none yet, for a moment after it was made. */
+	/** Whether the lock at `file` is held: by a running owner other than this process, or, while it names none yet, for a moment after it was made. */
 	private async holder(
 		file: string
 	): Promise<{ held: boolean; owner?: number }> {
 		const owner = await this.owner(file);
+		// A lock naming this process was left by an earlier one whose id it reuses.
 		if (owner !== undefined)
-			return { held: this.processService.isRunning(owner), owner };
+			return {
+				held:
+					owner !== this.pid && this.processService.isRunning(owner),
+				owner,
+			};
 		const modified = await tryWithAsync(() =>
 			this.fileSystemService.lastModified(file)
 		);
@@ -160,7 +167,7 @@ export class SyncbackStaging {
 			errorDiagnostic(
 				"syncback.busy",
 				{ resource: this.dir },
-				`another rogen syncback${owner === undefined ? "" : `, process ${owner},`} is running in this folder, so this one stopped before it touched anything. Wait for it to end, then run syncback again.`
+				`another rogen syncback${owner === undefined ? "" : `, process ${owner},`} is running in this folder, so this one stopped before it touched anything. Wait for it to end, then run syncback again. If no syncback is running, remove ${SYNCBACK_FILES.staging}/${LOCK}.`
 			),
 		]);
 	}

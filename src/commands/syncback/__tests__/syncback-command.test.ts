@@ -537,6 +537,39 @@ describe("syncback command", () => {
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
 	});
 
+	it("should report what it wrote and write the project file when Ctrl+C comes while it writes", async () => {
+		const lifecycle = new MockLifecycleService();
+		const { running, log } = start(
+			{ input: "game.rbxl", "non-interactive": true },
+			undefined,
+			[],
+			lifecycle
+		);
+		const [rojo] = await rojoRuns(1);
+		await editMirror();
+		const writeBytes = fs.writeFileBytes.bind(fs);
+		jest.spyOn(fs, "writeFileBytes").mockImplementation(
+			async (file, bytes) => {
+				lifecycle.shutdown("SIGINT");
+				return writeBytes(file, bytes);
+			}
+		);
+		rojo.exit({ code: 0, signal: null });
+
+		expect((await running).isOk()).toBe(true);
+		expect(log.lines).toEqual([
+			"success: Wrote default.project.json.",
+			"info: Syncback wrote 2 changes.",
+		]);
+		expect(await fs.readFile(abs("src/Combat/Server/Loot.luau"))).toBe(
+			"return 1"
+		);
+		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
+			false
+		);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
 	it("should say when a Rojo is too old", async () => {
 		processes.outputs.set("/bin/rojo", {
 			code: 0,
