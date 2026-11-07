@@ -1123,6 +1123,51 @@ describe("CoreWatchSession", () => {
 			expect(await placed("default")).toEqual(["A", "B", "C"]);
 			expect(errors).toEqual([]);
 		});
+
+		it("should rewrite for an update saved while listing to a file the write reads", async () => {
+			await fs.createDirectory("/repo/src/Combat");
+			await fs.writeFile("/repo/src/Combat/Hit.luau", "");
+			await fs.writeFile("/repo/src/Combat/init.meta.json", "{}");
+			const gated = gatedIndex();
+			const session = await create(["."], gated.indexService);
+			const started = session.start();
+			while (gated.listing.mock.calls.length === 0)
+				await jest.advanceTimersByTimeAsync(0);
+			await fs.writeFile(
+				"/repo/src/Combat/init.meta.json",
+				'{"className":"Actor"}'
+			);
+			await settle();
+
+			gated.listGate.complete();
+			gated.updateGate.complete();
+			await started;
+			await settle();
+
+			expect(updates.map(({ cause }) => cause.kind)).toEqual([
+				"initial",
+				"change",
+			]);
+		});
+
+		it("should write nothing when it stops while listing", async () => {
+			await fs.writeFile("/repo/src/A.luau", "");
+			const gated = gatedIndex();
+			const session = await create(["."], gated.indexService);
+			const started = session.start();
+			while (gated.listing.mock.calls.length === 0)
+				await jest.advanceTimersByTimeAsync(0);
+
+			const stopped = session.stop();
+			gated.listGate.complete();
+			await started;
+			await stopped;
+			await fs.writeFile("/repo/src/B.luau", "");
+			await settle();
+
+			expect(updates).toEqual([]);
+			expect(await fs.exists("/repo/default.project.json")).toBe(false);
+		});
 	});
 
 	describe("linked directories", () => {

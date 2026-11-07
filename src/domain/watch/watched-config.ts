@@ -37,7 +37,7 @@ export class WatchedConfig {
 	}
 
 	get readsKnown(): boolean {
-		return this.pending === 0 && !this.failing;
+		return this.latest !== undefined && this.pending === 0 && !this.failing;
 	}
 
 	/** Moves the latest outcome to `config`, a reload of its config that writes the same, so it still counts as this version's. */

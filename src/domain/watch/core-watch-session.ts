@@ -39,7 +39,7 @@ export class CoreWatchSession
 	private readonly updates = new Sequencer();
 	private readonly watched = new Map<string, WatchedConfig>();
 	private readonly pending = new Set<Promise<void>>();
-	private phase: "idle" | "listing" | "started" | "stopping" = "idle";
+	private phase: "idle" | "started" | "stopping" = "idle";
 	private notices: ConfigNotice[] = [];
 	private plan: WatchPlan;
 	private listing = Listing.EMPTY;
@@ -67,7 +67,7 @@ export class CoreWatchSession
 
 	async start(): Promise<Result<void, Error>> {
 		if (this.phase !== "idle") throw new Error("A watch starts once.");
-		this.phase = "listing";
+		this.phase = "started";
 		this._register(
 			this.watcher.onDidChangeFile((changes) => {
 				const compiled: FileChange[] = [];
@@ -108,7 +108,6 @@ export class CoreWatchSession
 						this.queueRewrite(projectFile)
 					)
 				);
-				if (this.phase === "listing") this.phase = "started";
 			})
 		);
 		this.track(listed);
@@ -150,8 +149,9 @@ export class CoreWatchSession
 	private dropSourceUpdates(changes: readonly FileChange[]): FileChange[] {
 		const watched = [...this.watched.values()];
 		if (
-			this.phase === "listing" ||
-			watched.some((config) => !config.readsKnown)
+			this.selection.configs.some(
+				({ projectFile }) => !this.watched.get(projectFile)?.readsKnown
+			)
 		) {
 			return changes.filter((change) => this.isWatched(change.path));
 		}
