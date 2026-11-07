@@ -163,6 +163,21 @@ describe("write command", () => {
 			expect(await fs.exists(abs("lobby.project.json"))).toBe(false);
 		});
 
+		it("should write the next config it is given when one's project file cannot be written, and fail", async () => {
+			await fs.createDirectory(abs("game.project.json"));
+			const { run, log } = commandHarness({ fs });
+
+			const result = await run("write", {
+				positionals: ["game", "lobby"],
+				options: {},
+			});
+
+			expect(result.isErr()).toBe(true);
+			expect(await fs.isDirectory(abs("game.project.json"))).toBe(true);
+			expect(await fs.exists(abs("lobby.project.json"))).toBe(true);
+			expect(log.texts("success")).toEqual(["Wrote lobby.project.json."]);
+		});
+
 		it("should write only the configs it is given, any number of them", async () => {
 			await fs.writeFile(abs("dist.rogen.json"), named("Dist"));
 			const { run } = commandHarness({ fs });

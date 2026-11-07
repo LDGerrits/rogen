@@ -58,7 +58,7 @@ describeWithRojo("end to end serve", () => {
 	it("should build, start the pinned Rojo on the project file, and stop it on Ctrl+C", async () => {
 		const serving = serve.start();
 
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.stdout).toContain(
 				`Serving Game at localhost:${serve.port} · http://localhost:${serve.port}/`
 			);
@@ -73,7 +73,7 @@ describeWithRojo("end to end serve", () => {
 	it("should say Rojo's warning about a server the network reaches as one warning", async () => {
 		const serving = serve.start(["--address", "0.0.0.0"]);
 
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.stdout).toContain(
 				`Serving Game at 0.0.0.0:${serve.port} · http://0.0.0.0:${serve.port}/`
 			);
@@ -91,7 +91,7 @@ describeWithRojo("end to end serve", () => {
 
 	it("should end the Rojo with it when the terminal closes", async () => {
 		const serving = serve.start();
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.output).toContain("Serving ");
 		}, 20_000);
 
@@ -104,20 +104,20 @@ describeWithRojo("end to end serve", () => {
 
 	it("should end the Rojo a killed serve left, and serve again so a new file reaches it", async () => {
 		const first = serve.start();
-		await eventually(() => {
+		await first.waitFor(() => {
 			expect(first.output).toContain("Serving ");
 		}, 20_000);
 		await first.kill("SIGKILL");
 		expect(await rojoProject(serve.port)).toBe("Game");
 
 		const second = serve.start();
-		await eventually(() => {
+		await second.waitFor(() => {
 			expect(second.output).toContain("that a rogen serve (process");
 			expect(second.output).toContain("Serving ");
 		}, 30_000);
 		writeProjectFile(serve.dir, "src/Fresh.luau");
 
-		await eventually(async () => {
+		await second.waitFor(async () => {
 			expect(await servedNames(serve.port)).toContain("Fresh");
 		}, 20_000);
 		expect(await second.stop()).toBe(130);
@@ -138,7 +138,7 @@ describeWithRojo("end to end serve", () => {
 			})
 		);
 		const serving = serve.start();
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.output).toContain("route.markerClash");
 		}, 20_000);
 		expect(serving.output).not.toContain("Serving ");
@@ -146,7 +146,7 @@ describeWithRojo("end to end serve", () => {
 
 		fs.rmSync(path.join(serve.dir, "src/X/@client"));
 
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.output).toContain("Serving ");
 		}, 20_000);
 		expect(await rojoProject(serve.port)).toBe("Game");
@@ -156,7 +156,7 @@ describeWithRojo("end to end serve", () => {
 
 	it("should serve a meta file created beside a script", async () => {
 		const serving = serve.start();
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.output).toContain("Serving ");
 		}, 20_000);
 
@@ -166,33 +166,33 @@ describeWithRojo("end to end serve", () => {
 			JSON.stringify({ attributes: { Level: 7 } })
 		);
 
-		await eventually(async () => {
+		await serving.waitFor(async () => {
 			expect(JSON.stringify(await served(serve.port))).toContain("Level");
 		}, 20_000);
 	}, 40_000);
 
 	it("should keep writing while it serves", async () => {
 		const serving = serve.start();
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.output).toContain("Serving ");
 		}, 20_000);
 
 		writeProjectFile(serve.dir, "src/B.luau");
 
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.output).toContain("1 file changed");
 		});
 	}, 40_000);
 
 	it("should show Rojo's errors as its own lines, and nothing else Rojo prints", async () => {
 		const serving = serve.start();
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.output).toContain("Serving ");
 		}, 20_000);
 
 		writeProjectFile(serve.dir, "src/Bad.model.json", "{ nope");
 
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.output).toMatch(/Rojo: .*src[\\/]Bad\.model\.json/);
 		});
 		expect(serving.output).toMatch(/\n {2}Caused by: Expected colon/);
@@ -202,13 +202,13 @@ describeWithRojo("end to end serve", () => {
 
 	it("should stop the server when the config is deleted, and start it again when it returns", async () => {
 		const serving = serve.start();
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.output).toContain("Serving ");
 		}, 20_000);
 
 		fs.rmSync(path.join(serve.dir, "default.rogen.json"));
 
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.output).toContain(
 				"Stopped serving default.rogen.json: its config is gone."
 			);
@@ -217,7 +217,7 @@ describeWithRojo("end to end serve", () => {
 
 		writeProjectFile(serve.dir, "default.rogen.json", config(serve.port));
 
-		await eventually(async () => {
+		await serving.waitFor(async () => {
 			expect(await rojoProject(serve.port)).toBe("Game");
 		}, 20_000);
 		expect(serving.output).toContain("default.rogen.json added");
@@ -240,7 +240,7 @@ describeWithRojo("end to end serve", () => {
 		writeProjectFile(serve.dir, "places/shared/src/Shared.luau");
 
 		const first = serve.start(["places/lobby", "--port", `${serve.port}`]);
-		await eventually(() => {
+		await first.waitFor(() => {
 			expect(first.output).toContain(
 				`Serving lobby at localhost:${serve.port} · http://localhost:${serve.port}/`
 			);
@@ -250,7 +250,7 @@ describeWithRojo("end to end serve", () => {
 			"--port",
 			`${serve.port + 1}`,
 		]);
-		await eventually(() => {
+		await second.waitFor(() => {
 			expect(second.output).toContain(
 				`Serving arena at localhost:${serve.port + 1} · http://localhost:${serve.port + 1}/`
 			);
@@ -289,7 +289,7 @@ describeWithRojo("end to end serve", () => {
 
 		const serving = serve.start([], path.join(serve.dir, "places/lobby"));
 
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.output).toContain(
 				`Serving Lobby at localhost:${serve.port + 1} · http://localhost:${serve.port + 1}/`
 			);
@@ -323,7 +323,7 @@ describeWithRojo("end to end serve", () => {
 
 		const serving = serve.start(["lobby"]);
 
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.output).toContain(
 				`Serving Lobby at localhost:${serve.port + 1} · http://localhost:${serve.port + 1}/`
 			);
@@ -345,7 +345,7 @@ describeWithRojo("end to end serve", () => {
 
 		const serving = serve.start();
 
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.output).toContain(
 				`Serving project at localhost:${serve.port} · http://localhost:${serve.port}/`
 			);
@@ -363,7 +363,7 @@ describeWithRojo("end to end serve", () => {
 
 		const serving = serve.start(["lobby", "--port", `${serve.port + 2}`]);
 
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.output).toContain(
 				`Serving Lobby at localhost:${serve.port + 2} · http://localhost:${serve.port + 2}/`
 			);
@@ -374,7 +374,7 @@ describeWithRojo("end to end serve", () => {
 
 	it("should restart the server where its servePort moves it", async () => {
 		const serving = serve.start();
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.output).toContain("Serving ");
 		}, 20_000);
 
@@ -384,7 +384,7 @@ describeWithRojo("end to end serve", () => {
 			config(serve.port + 2)
 		);
 
-		await eventually(async () => {
+		await serving.waitFor(async () => {
 			expect(await rojoProject(serve.port + 2)).toBe("Game");
 		}, 20_000);
 		expect(await rojoProject(serve.port)).toBeUndefined();
@@ -407,7 +407,7 @@ describeWithRojo("end to end serve", () => {
 				expect(await rojoProject(serve.port + 1)).toBe("Other");
 			}, 20_000);
 			const serving = serve.start();
-			await eventually(() => {
+			await serving.waitFor(() => {
 				expect(serving.output).toContain("Serving ");
 			}, 20_000);
 
@@ -417,7 +417,7 @@ describeWithRojo("end to end serve", () => {
 				config(serve.port + 1)
 			);
 
-			await eventually(() => {
+			await serving.waitFor(() => {
 				expect(serving.output).toContain(
 					`Port ${serve.port + 1} is held by another process (Rojo serving Other), so default.rogen.json can't be served there.`
 				);
@@ -433,7 +433,7 @@ describeWithRojo("end to end serve", () => {
 	it("should print only JSON lines on stdout, the write and then the server", async () => {
 		const serving = serve.start(["--json"]);
 
-		await eventually(() => {
+		await serving.waitFor(() => {
 			expect(serving.stdout).toContain('"serving"');
 		}, 20_000);
 
@@ -461,7 +461,7 @@ describeWithRojo("end to end serve", () => {
 
 	it("should exit 0 at once when another serve already serves the project", async () => {
 		const first = serve.start();
-		await eventually(() => {
+		await first.waitFor(() => {
 			expect(first.output).toContain("Serving ");
 		}, 20_000);
 
@@ -503,7 +503,7 @@ describeWithRojo("end to end serve", () => {
 
 	it("should refuse a server that another checkout of the project started", async () => {
 		const first = serve.start();
-		await eventually(() => {
+		await first.waitFor(() => {
 			expect(first.output).toContain("Serving ");
 		}, 20_000);
 		const checkout = createProject(projectFiles(serve.port));
@@ -526,7 +526,7 @@ describeWithRojo("end to end serve", () => {
 			config(serve.port, { compiledPath: "dist" })
 		);
 		const first = serve.start();
-		await eventually(() => {
+		await first.waitFor(() => {
 			expect(first.output).toContain("Serving ");
 		}, 20_000);
 
@@ -566,7 +566,7 @@ describeWithRojo("end to end serve", () => {
 	describe("as Studio connects", () => {
 		it("should tell when a plugin connects and when it goes away", async () => {
 			const serving = serve.start(["--json"]);
-			await eventually(() => {
+			await serving.waitFor(() => {
 				expect(serving.stdout).toContain('"serving"');
 			}, 20_000);
 			expect(
@@ -582,7 +582,7 @@ describeWithRojo("end to end serve", () => {
 				{ stdio: "ignore" }
 			);
 			try {
-				await eventually(() => {
+				await serving.waitFor(() => {
 					expect(serving.stdout).toContain(
 						`{"connected":{"config":"default.rogen.json","project":"Game","port":${serve.port},"clients":1}}`
 					);
@@ -591,7 +591,7 @@ describeWithRojo("end to end serve", () => {
 				studio.kill("SIGKILL");
 			}
 
-			await eventually(() => {
+			await serving.waitFor(() => {
 				expect(serving.stdout).toContain(
 					`{"disconnected":{"config":"default.rogen.json","project":"Game","port":${serve.port},"clients":0}}`
 				);

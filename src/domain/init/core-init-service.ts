@@ -29,6 +29,8 @@ import { InitWriter } from "./init-writer.js";
 import { GitRepository } from "./git-repository.js";
 import { AgentSetup } from "./agent-setup.js";
 import { AgentRules } from "./agent/agent-rules.js";
+import { AgentFile } from "./agent/agent-file.js";
+import { AgentHooks } from "./agent/agent-hooks.js";
 import {
 	InitAction,
 	InitChoices,
@@ -82,12 +84,21 @@ function draftOf(plan: InitPlan): FileDraft {
 	};
 }
 
-/** The prompt services of a run: the one that takes the default of what a summary shows, and the one that always asks. */
-interface RunPrompts {
-	readonly quick: PromptService;
-	readonly essential: PromptService;
-	/** Whether the quick questions are asked rather than taken by default, as under Customise. */
-	readonly customising?: boolean;
+/** What init reads of the folder and its tools, read once in a run however often it plans. */
+interface FolderRead {
+	readonly directory: InitDirectory;
+	readonly migrated: MigratedProject | undefined;
+	readonly agents: () => Promise<
+		Result<{ file: AgentFile; hooks: AgentHooks }, Error>
+	>;
+	readonly toolchain: () => Promise<Setup<unknown>>;
+	readonly needsGitInit: () => Promise<boolean>;
+}
+
+/** `make`, run the first time the result is asked for and then kept. */
+function once<T>(make: () => Promise<T>): () => Promise<T> {
+	let made: Promise<T> | undefined;
+	return () => (made ??= make());
 }
 
 /** What the summary asks before init writes, which names what it does. */
@@ -143,32 +154,38 @@ export class CoreInitService implements InitService {
 		}
 	}
 
-	/** In a terminal the plan is shown once and accepted with Enter; Customise asks the questions it took the default of, each with its answer preselected, and shows the plan again. */
+	/** In a terminal the plan is shown once and accepted with Enter; Customise asks the questions it took the default of, each with its answer preselected, and shows the plan again. Backing out of Customise shows the plan it had. */
 	private async review(
 		options: InitOptions
 	): Promise<Result<InitPlan | undefined, Error>> {
-		const { ask = true } = options;
+		const { ask = true, choices = {} } = options;
+		const read = await this.read(options);
+		if (read.isErr()) return read;
 		if (!(ask && this.promptService.isInteractive))
-			return this.planWithin(options, {
-				quick: this.promptService,
-				essential: this.promptService,
-			});
+			return this.planWithin(
+				read.value,
+				new InitQuestions(this.promptService, false, choices)
+			);
 		const prompts = new ReviewPrompts(this.promptService);
+		let shown: { plan: InitPlan; customisable: boolean } | undefined;
 		let mode: ReviewMode = "quick";
 		for (;;) {
 			prompts.begin(mode);
-			const planned = await this.planWithin(options, {
-				quick: prompts.quick,
-				essential: prompts.essential,
-				customising: mode === "customise",
-			});
-			if (planned.isErr() || !planned.value || prompts.asked === 0)
-				return planned;
-			const verdict = await this.accepted(
-				planned.value,
-				prompts.customisable > 0
+			const planned = await this.planWithin(
+				read.value,
+				new InitQuestions(this.promptService, true, choices, prompts)
 			);
-			if (verdict === "yes") return planned;
+			if (planned.isErr()) return planned;
+			if (planned.value) {
+				if (prompts.asked === 0) return planned;
+				shown = {
+					plan: planned.value,
+					customisable: prompts.customisable > 0,
+				};
+			} else if (shown) prompts.undo();
+			else return planned;
+			const verdict = await this.accepted(shown.plan, shown.customisable);
+			if (verdict === "yes") return ok(shown.plan);
 			if (verdict === "cancel") return ok(undefined);
 			mode = "customise";
 		}
@@ -200,20 +217,11 @@ export class CoreInitService implements InitService {
 			.then((answer) => answer ?? "cancel");
 	}
 
-	private async planWithin(
-		{ ask = true, place, choices = {} }: InitOptions,
-		prompts: RunPrompts
-	): Promise<Result<InitPlan | undefined, Error>> {
+	private async read({
+		place,
+	}: InitOptions): Promise<Result<FolderRead, Error>> {
 		const { cwd } = this.environmentService;
 		const folder = place === undefined ? cwd : path.resolve(cwd, place);
-		const interactive = ask && this.promptService.isInteractive;
-		const questions = new InitQuestions(
-			prompts.quick,
-			interactive,
-			choices,
-			prompts.essential,
-			prompts.customising
-		);
 		const directory = await this.prepare(folder, place !== undefined);
 		if (directory.isErr()) return directory;
 		const migrated = await this.migrationIn(directory.value.path);
@@ -227,15 +235,24 @@ export class CoreInitService implements InitService {
 				)
 		);
 		if (stale.length > 0) return err(new DiagnosticsError([...stale]));
-		if (migrated.value)
-			return this.planMigrationIn(
-				directory.value,
-				questions,
-				migrated.value
-			);
-		if (directory.value.hasConfigs)
-			return this.planAgentsIn(directory.value, questions);
-		return this.planIn(directory.value, questions);
+		return ok({
+			directory: directory.value,
+			migrated: migrated.value,
+			agents: once(() => this.agentsIn(directory.value)),
+			toolchain: once(() => this.toolchainSetupIn(directory.value)),
+			needsGitInit: once(() => this.git.needsInit(directory.value.path)),
+		});
+	}
+
+	private planWithin(
+		read: FolderRead,
+		questions: InitQuestions
+	): Promise<Result<InitPlan | undefined, Error>> {
+		if (read.migrated)
+			return this.planMigrationIn(read, questions, read.migrated);
+		if (read.directory.hasConfigs)
+			return this.planAgentsIn(read, questions);
+		return this.planIn(read, questions);
 	}
 
 	/** The project the first registered migration finds in `folder`. */
@@ -251,19 +268,20 @@ export class CoreInitService implements InitService {
 
 	/** A project that another tool set up: the migration's configs in place of a new project's. */
 	private async planMigrationIn(
-		directory: InitDirectory,
+		read: FolderRead,
 		questions: InitQuestions,
 		migrated: MigratedProject
 	): Promise<Result<InitPlan | undefined, Error>> {
+		const { directory } = read;
 		const [shaping] = shapingFlagsOf(questions.choices);
 		if (shaping !== undefined)
 			throw new UsageError(
 				`${shaping} shapes a new config, and init migrates ${migrated.label} here.`,
 				"Leave the flag out; edit the configs init writes, then run 'rogen check'."
 			);
-		const agents = await this.agentSetupIn(directory, questions);
+		const agents = await this.agentSetupIn(read, questions);
 		if (agents.isErr()) return agents;
-		return this.planWith(directory, questions, [
+		return this.planWith(read, questions, [
 			new MigrationSetup(
 				directory,
 				migrated,
@@ -271,15 +289,16 @@ export class CoreInitService implements InitService {
 				this.configService
 			),
 			agents.value,
-			await this.toolchainSetupIn(directory),
+			await read.toolchain(),
 		]);
 	}
 
 	/** A project that has a config: the agent rules and the hook only, which change no config, and only when a flag asks for them. */
 	private async planAgentsIn(
-		directory: InitDirectory,
+		read: FolderRead,
 		questions: InitQuestions
 	): Promise<Result<InitPlan | undefined, Error>> {
+		const { directory } = read;
 		const { choices } = questions;
 		const { configFiles } = directory;
 		if (choices.agentRules !== true && choices.agentHook !== true)
@@ -290,7 +309,7 @@ export class CoreInitService implements InitService {
 				`${shaping} shapes a new config, and ${configFiles.join(", ")} is here already.`,
 				"Beside a config, --agent-rules and --agent-hook add only the agent files. To change the config, edit it and run 'rogen check'."
 			);
-		const agents = await this.agentSetupIn(directory, questions);
+		const agents = await this.agentSetupIn(read, questions);
 		if (agents.isErr()) return agents;
 		if (agents.value.hookUnfound && choices.agentRules !== true)
 			return err(
@@ -301,23 +320,31 @@ export class CoreInitService implements InitService {
 					),
 				])
 			);
-		return this.planWith(directory, questions, [agents.value], "agents");
+		return this.planWith(read, questions, [agents.value], "agents");
+	}
+
+	private async agentsIn(
+		directory: InitDirectory
+	): Promise<Result<{ file: AgentFile; hooks: AgentHooks }, Error>> {
+		const file = await this.agentReader.fileIn(directory);
+		if (file.isErr()) return file;
+		const hooks = await this.agentReader.hooksIn(directory);
+		if (hooks.isErr()) return hooks;
+		return ok({ file: file.value, hooks: hooks.value });
 	}
 
 	private async agentSetupIn(
-		directory: InitDirectory,
+		read: FolderRead,
 		questions: InitQuestions
 	): Promise<Result<AgentSetup, Error>> {
-		const agentFile = await this.agentReader.fileIn(directory);
-		if (agentFile.isErr()) return agentFile;
-		const hooks = await this.agentReader.hooksIn(directory);
-		if (hooks.isErr()) return hooks;
+		const agents = await read.agents();
+		if (agents.isErr()) return agents;
 		return ok(
 			new AgentSetup(
-				agentFile.value,
-				hooks.value,
+				agents.value.file,
+				agents.value.hooks,
 				questions,
-				directory.path
+				read.directory.path
 			)
 		);
 	}
@@ -357,15 +384,15 @@ export class CoreInitService implements InitService {
 	}
 
 	private async planIn(
-		directory: InitDirectory,
+		read: FolderRead,
 		questions: InitQuestions
 	): Promise<Result<InitPlan | undefined, Error>> {
-		const agents = await this.agentSetupIn(directory, questions);
+		const agents = await this.agentSetupIn(read, questions);
 		if (agents.isErr()) return agents;
-		return this.planWith(directory, questions, [
-			new ProjectSetup(directory, questions, this.fileSystemService),
+		return this.planWith(read, questions, [
+			new ProjectSetup(read.directory, questions, this.fileSystemService),
 			agents.value,
-			await this.toolchainSetupIn(directory),
+			await read.toolchain(),
 		]);
 	}
 
@@ -375,15 +402,17 @@ export class CoreInitService implements InitService {
 		const manifests = await this.toolchainService.readManifests(
 			directory.path
 		);
-		return new ToolchainSetup(async () =>
-			ToolchainSetup.stateOf(
-				directory.path,
-				manifests,
-				await this.existingFolder(directory.path),
-				{
-					finder: this.finder,
-					locator: this.locator,
-				}
+		return new ToolchainSetup(
+			once(async () =>
+				ToolchainSetup.stateOf(
+					directory.path,
+					manifests,
+					await this.existingFolder(directory.path),
+					{
+						finder: this.finder,
+						locator: this.locator,
+					}
+				)
 			)
 		);
 	}
@@ -397,7 +426,7 @@ export class CoreInitService implements InitService {
 	}
 
 	private async planWith(
-		directory: InitDirectory,
+		read: FolderRead,
 		questions: InitQuestions,
 		setups: readonly Setup<unknown>[],
 		action?: InitAction
@@ -411,7 +440,7 @@ export class CoreInitService implements InitService {
 		}
 
 		const builder = new InitPlanBuilder(
-			directory,
+			read.directory,
 			questions.interactive,
 			questions.decided,
 			this.environmentService.cwd
@@ -424,7 +453,7 @@ export class CoreInitService implements InitService {
 			plan.value.gitInit
 				? {
 						...plan.value,
-						gitInit: await this.git.needsInit(plan.value.directory),
+						gitInit: await read.needsGitInit(),
 					}
 				: plan.value
 		);

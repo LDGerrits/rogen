@@ -5,10 +5,6 @@ stdout:
     "changed": true,
     "files": [
       {
-        "file": "<dir>/default.rogen.json",
-        "outcome": "wrote"
-      },
-      {
         "file": "<dir>/.gitignore",
         "outcome": "wrote"
       },
@@ -46,6 +42,10 @@ stdout:
       },
       {
         "file": "<dir>/AGENTS.md",
+        "outcome": "wrote"
+      },
+      {
+        "file": "<dir>/default.rogen.json",
         "outcome": "wrote"
       }
     ],

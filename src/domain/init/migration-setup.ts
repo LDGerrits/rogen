@@ -59,7 +59,10 @@ export class MigrationSetup implements Setup<MigrationChoices> {
 			);
 			builder.setConfig(config, undefined, fileName);
 		}
-		for (const move of migrated.moves) builder.addMove(move);
+		const replaced = new Set(migrated.from);
+		for (const move of migrated.moves)
+			if (replaced.has(move.from)) builder.addSetAside(move);
+			else builder.addMove(move);
 		for (const note of migrated.notes) builder.addNote(note);
 		for (const warning of migrated.warnings) builder.addWarning(warning);
 		builder.addEdit(...migrated.edits);

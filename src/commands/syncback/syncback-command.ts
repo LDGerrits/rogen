@@ -18,6 +18,7 @@ import {
 } from "../../domain/syncback/syncback.js";
 import {
 	AbstractCommand,
+	ExitCodeError,
 	registerCommand,
 } from "../../platform/commands/commands.js";
 import {
@@ -31,6 +32,10 @@ import {
 	warningDiagnostic,
 	messageRelativeTo,
 } from "../../platform/diagnostics/diagnostic.js";
+import {
+	LifecycleService,
+	exitCodeOfSignal,
+} from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { OutcomeLog } from "../write/outcome-log.js";
@@ -143,6 +148,7 @@ registerCommand(
 						: "ask";
 			const promptService = accessor.get(PromptService);
 			const logService = accessor.get(LogService);
+			const lifecycleService = accessor.get(LifecycleService);
 			if (!json) logService.reserveStdout();
 			if (mode === "ask" && (!promptService.isInteractive || json))
 				return err(
@@ -219,6 +225,9 @@ registerCommand(
 			const failure = run.failure();
 			let stopped: Error | undefined;
 			if (outcome.kind === "failed") stopped = outcome.error;
+			const { signal } = lifecycleService;
+			if (stopped && signal !== undefined)
+				stopped = new ExitCodeError(exitCodeOfSignal(signal), stopped);
 
 			if (json)
 				return this.printJson(

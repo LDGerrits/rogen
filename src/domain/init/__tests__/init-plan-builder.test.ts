@@ -7,7 +7,7 @@ describe("domain/init/init-plan-builder", () => {
 		const builderFor = (existing: readonly string[] = []) =>
 			new InitPlanBuilder(directoryOf({ existing }), false, []);
 
-		it("should write the config before the agent files", () => {
+		it("should write the config after the agent files", () => {
 			const builder = builderFor();
 			builder.addAgentFile(AgentFile.choose(() => undefined));
 			builder.setConfig({});
@@ -15,8 +15,8 @@ describe("domain/init/init-plan-builder", () => {
 			const plan = builder.build().unwrap();
 
 			expect(plan.files.map(({ fileName }) => fileName)).toEqual([
-				"default.rogen.json",
 				"AGENTS.md",
+				"default.rogen.json",
 			]);
 			expect(plan.configs).toEqual(["default.rogen.json"]);
 		});

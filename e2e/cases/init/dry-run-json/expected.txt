@@ -10,10 +10,6 @@ stdout:
     "dryRun": true,
     "files": [
       {
-        "file": "<dir>/default.rogen.json",
-        "outcome": "wouldWrite"
-      },
-      {
         "file": "<dir>/.gitignore",
         "outcome": "wouldWrite"
       },
@@ -51,6 +47,10 @@ stdout:
       },
       {
         "file": "<dir>/AGENTS.md",
+        "outcome": "wouldWrite"
+      },
+      {
+        "file": "<dir>/default.rogen.json",
         "outcome": "wouldWrite"
       }
     ],

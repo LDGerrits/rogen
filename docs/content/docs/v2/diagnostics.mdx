@@ -105,6 +105,16 @@ error: game.rogen.json and lobby.rogen.json are the same config: a copy that was
 
 Edit the copy so it describes the place or output it is for, or delete it. A second output of one game, such as `dist` or `release`, keeps the same `name` and changes only what differs.
 
+### `config.bothExtensions` [#config-bothextensions]
+
+Error. A config has a twin with the other extension beside it, such as `default.rogen.json` and `default.rogen.jsonc`. Both write the same project file, so Rogen can't tell which one to write. A command that starts with both refuses to run. A watch reports the error when the second file appears, keeps writing the last valid version, and loads the config again when one of them is deleted.
+
+```
+error: default.rogen.json and default.rogen.jsonc both write default.project.json. Keep one of them. (config.bothExtensions)
+```
+
+Delete one of the two files.
+
 ### `config.compiledPathOverlapsSourcePath` [#config-compiledpathoverlapssourcepath]
 
 Error. The compiled path is a source path, is inside one, or contains one. Darklua or a compiler writes its output to the compiled path, so Rogen would read that output as source and write the project file from it.
