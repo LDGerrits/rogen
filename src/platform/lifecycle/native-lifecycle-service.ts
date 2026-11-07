@@ -51,10 +51,7 @@ export class NativeLifecycleService
 		this.listeners++;
 		this.update();
 		const subscription = this._onWillShutdown.event(listener);
-		let left = false;
 		const disposable = toDisposable(() => {
-			if (left) return;
-			left = true;
 			subscription[Symbol.dispose]();
 			if (--this.listeners === 0) this.lastLeft();
 		});
