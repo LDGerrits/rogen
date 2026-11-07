@@ -1,6 +1,6 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
-import { UsageError, failureReason } from "../../base/errors.js";
+import { IoError, UsageError, failureReason } from "../../base/errors.js";
 import { ignoringGlob, literalGlob } from "../../base/glob.js";
 import {
 	ancestors,
@@ -24,6 +24,7 @@ import {
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import {
 	WriteService,
@@ -248,32 +249,32 @@ export class CoreSyncbackService implements SyncbackService {
 		private readonly writeService: WriteService,
 		private readonly rojoService: RojoCommandService,
 		private readonly environmentService: EnvironmentService,
-		private readonly processService: ProcessService
+		private readonly processService: ProcessService,
+		private readonly lifecycleService: LifecycleService
 	) {}
 
 	async plan(request: SyncbackRequest): Promise<Result<SyncbackPlan, Error>> {
 		if (request.project.isAdopted) return this.runListed(request, true);
 		const prepared = await this.prepare(request);
 		if (prepared.isErr()) return prepared;
-		return prepared.value.staging.use(async () => {
+		return prepared.value.staging.use<SyncbackPlan>(async (signal) => {
 			const copied = await this.copy(prepared.value);
 			const started = Date.now();
 			const ran = await this.runSkippingYaml(
 				request,
 				prepared.value,
-				copied
+				copied,
+				signal
 			);
 			if (ran.isErr()) return ran;
 			const { messages, refused } = ran.value;
-			return ok<SyncbackPlan>(
-				await this.settle(
-					request,
-					prepared.value,
-					copied,
-					started,
-					[...refused, ...CoreSyncbackService.skipped(messages)],
-					messages
-				)
+			return this.settle(
+				request,
+				prepared.value,
+				copied,
+				started,
+				[...refused, ...CoreSyncbackService.skipped(messages)],
+				messages
 			);
 		});
 	}
@@ -455,6 +456,7 @@ export class CoreSyncbackService implements SyncbackService {
 		const staging = new SyncbackStaging(
 			this.fileSystemService,
 			this.processService,
+			this.lifecycleService,
 			this.environmentService.pid,
 			dir
 		);
@@ -539,7 +541,8 @@ export class CoreSyncbackService implements SyncbackService {
 	private async runSkippingYaml(
 		request: SyncbackRequest,
 		prepared: Prepared,
-		copied: readonly Copied[]
+		copied: readonly Copied[],
+		signal: AbortSignal
 	): Promise<
 		Result<
 			{ messages: readonly ServerMessage[]; refused: UnplacedInstance[] },
@@ -549,9 +552,13 @@ export class CoreSyncbackService implements SyncbackService {
 		const ignored: string[] = [];
 		const refused: UnplacedInstance[] = [];
 		for (;;) {
-			const ran = await this.run(request, prepared, prepared.file, [
-				"--list",
-			]);
+			const ran = await this.run(
+				request,
+				prepared,
+				prepared.file,
+				["--list"],
+				signal
+			);
 			if (ran.isOk()) return ok({ messages: ran.value, refused });
 			const instance = CoreSyncbackService.refusedYaml(ran.error);
 			const file =
@@ -697,9 +704,18 @@ export class CoreSyncbackService implements SyncbackService {
 		skipped: readonly UnplacedInstance[],
 		/** All Rojo said, which lists what it wrote and removed. */
 		said: readonly ServerMessage[]
-	): Promise<CoreSyncbackPlan> {
+	): Promise<Result<CoreSyncbackPlan, Error>> {
 		const { mirror, root } = prepared;
-		const after = await this.walk(root);
+		const walked = await this.walk(root);
+		// A mirror that can't be read would read as a place that removed everything.
+		if (walked.isErr())
+			return err(
+				new IoError(
+					`${root}, where Rojo wrote the place's changes, could not be read: ${failureReason(walked.error)}.`,
+					"Run syncback again."
+				)
+			);
+		const after = walked.value;
 		const present = new Set(after.map(({ path: at }) => at));
 		const operations: Operation[] = [];
 		const unplaced: UnplacedInstance[] = [...skipped];
@@ -1105,14 +1121,16 @@ export class CoreSyncbackService implements SyncbackService {
 		const edited = await this.editTree(request, prepared, additions);
 		for (const operation of edited.operations) await add(operation);
 		unplaced.push(...edited.unplaced);
-		return new CoreSyncbackPlan(
-			request.project,
-			unplaced,
-			CoreSyncbackService.outermost(compiled),
-			operations,
-			before,
-			expected,
-			this.listedAs(said, prepared, operations)
+		return ok(
+			new CoreSyncbackPlan(
+				request.project,
+				unplaced,
+				CoreSyncbackService.outermost(compiled),
+				operations,
+				before,
+				expected,
+				this.listedAs(said, prepared, operations)
+			)
 		);
 	}
 
@@ -1491,12 +1509,15 @@ export class CoreSyncbackService implements SyncbackService {
 			: [...folders, instanceNameOf(name)];
 	}
 
-	/** The files below `dir`, and the folders with nothing in them, relative to it and written with `/`. */
-	private async walk(dir: string, below = ""): Promise<AddedPath[]> {
+	/** The files below `dir`, and the folders with nothing in them, relative to it and written with `/`; a folder below it that can't be read counts as empty. */
+	private async walk(
+		dir: string,
+		below = ""
+	): Promise<Result<AddedPath[], Error>> {
 		const entries = await tryWithAsync(() =>
 			this.fileSystemService.readDirectory(path.join(dir, below))
 		);
-		if (entries.isErr()) return [];
+		if (entries.isErr()) return entries;
 		const found: AddedPath[] = [];
 		for (const [name, type] of entries.value) {
 			const at = below === "" ? name : `${below}/${name}`;
@@ -1504,20 +1525,21 @@ export class CoreSyncbackService implements SyncbackService {
 			else {
 				const inside = await this.walk(dir, at);
 				found.push(
-					...(inside.length > 0
-						? inside
+					...(inside.isOk() && inside.value.length > 0
+						? inside.value
 						: [{ path: at, folder: true }])
 				);
 			}
 		}
-		return found;
+		return ok(found);
 	}
 
 	private async run(
 		request: SyncbackRequest,
 		prepared: Prepared | undefined,
 		projectFile: string,
-		flags: readonly string[]
+		flags: readonly string[],
+		signal?: AbortSignal
 	): Promise<Result<readonly ServerMessage[], Error>> {
 		const ran = await this.rojoService.run(request.selection, {
 			command: "syncback",
@@ -1526,6 +1548,7 @@ export class CoreSyncbackService implements SyncbackService {
 			project: request.project,
 			projectFile,
 			since: SYNCBACK_SINCE,
+			signal,
 		});
 		if (ran.isErr()) return ran;
 		if (ran.value.failure)

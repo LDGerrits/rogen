@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import path from "path";
 import { Result, ResultError, ok } from "../../../base/result.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
@@ -6,6 +7,7 @@ import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
+import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 import {
 	abs,
 	writeServiceOf,
@@ -84,6 +86,7 @@ describe("CoreSyncbackService", () => {
 	let configs: MockConfigService;
 	let rojo: FakeRojo;
 	let processes: MockProcessService;
+	let lifecycle: MockLifecycleService;
 	let service: CoreSyncbackService;
 	let config: ResolvedConfig;
 	let request: SyncbackRequest;
@@ -113,13 +116,15 @@ describe("CoreSyncbackService", () => {
 		rojo = new FakeRojo(fs);
 		configs = new MockConfigService([]);
 		processes = new MockProcessService();
+		lifecycle = new MockLifecycleService();
 		service = new CoreSyncbackService(
 			configs,
 			fs,
 			writeServiceOf(fs, new CoreIndexService(fs)),
 			rojo,
 			new MockEnvironmentService("/repo"),
-			processes
+			processes,
+			lifecycle
 		);
 	});
 
@@ -243,6 +248,104 @@ describe("CoreSyncbackService", () => {
 		expect((await service.plan(request)).isOk()).toBe(true);
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
 		expect((await service.plan(request)).isOk()).toBe(true);
+	});
+
+	it("should fail, and plan no removal, when the mirror can't be read after Rojo ran", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		rojo.say = async () => {
+			fs.refuseListing(abs(".rogen-syncback/mirror"), "EPERM");
+			return [];
+		};
+
+		const planned = await service.plan(request);
+
+		expect(planned.isErr()).toBe(true);
+		expect((planned as ResultError<Error>).error.message).toContain(
+			abs(".rogen-syncback/mirror")
+		);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it.each([
+		["the mirror an earlier run left", ".rogen-syncback/mirror"],
+		["the project file an earlier run left", "rogen-syncback.project.json"],
+	])(
+		"should fail before it copies anything when %s can't be removed",
+		async (_, left) => {
+			await prepare(["src/Combat/Server/Combat.luau"]);
+			await fs.writeFile(
+				mirror("ServerScriptService", "Combat", "Combat.luau"),
+				"return 1"
+			);
+			await fs.writeFile(abs("rogen-syncback.project.json"), "{}");
+			const remove = fs.delete.bind(fs);
+			jest.spyOn(fs, "delete").mockImplementation(
+				async (target, recursive) => {
+					if (target === abs(left))
+						throw Object.assign(new Error("EBUSY: resource busy"), {
+							code: "EBUSY",
+						});
+					return remove(target, recursive);
+				}
+			);
+
+			const planned = await service.plan(request);
+
+			expect(planned.isErr()).toBe(true);
+			expect((planned as ResultError<Error>).error.message).toContain(
+				abs(left)
+			);
+			expect(rojo.requests).toHaveLength(0);
+			expect(await fs.exists(abs(".rogen-syncback/lock"))).toBe(false);
+		}
+	);
+
+	it("should remove its files and let go of the folder when the run is asked to shut down while Rojo runs", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		let left: boolean | undefined;
+		rojo.say = async () => {
+			lifecycle.shutdown("SIGINT");
+			while (await fs.exists(abs(".rogen-syncback")))
+				await new Promise((resolve) => setImmediate(resolve));
+			left = await fs.exists(abs("rogen-syncback.project.json"));
+			return [];
+		};
+
+		const planned = await service.plan(request);
+
+		expect(planned.isErr()).toBe(true);
+		expect(left).toBe(false);
+		expect(rojo.requests[0].signal?.aborted).toBe(true);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should write nothing when a run that writes is asked to shut down while Rojo runs", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Combat"), true);
+			lifecycle.shutdown("SIGINT");
+			return ["Removing ServerScriptService/Combat"];
+		};
+
+		const applied = await service.apply(request);
+
+		expect(applied.isErr()).toBe(true);
+		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
+			true
+		);
+		expect(await fs.exists(abs("rogen-syncback.project.json"))).toBe(false);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should stop listening for a shutdown once the run ended", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await service.plan(request);
+		await fs.writeFile(abs(".rogen-syncback/lock"), "77");
+
+		lifecycle.shutdown("SIGINT");
+		await Promise.resolve();
+
+		expect(await fs.readFile(abs(".rogen-syncback/lock"))).toBe("77");
 	});
 
 	it("should write an edit into the source file, with the line endings it had", async () => {
