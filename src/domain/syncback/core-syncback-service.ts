@@ -707,15 +707,17 @@ export class CoreSyncbackService implements SyncbackService {
 	): Promise<Result<CoreSyncbackPlan, Error>> {
 		const { mirror, root } = prepared;
 		const walked = await this.walk(root);
+		const mountsNothing =
+			mirror.folders.length === 0 && mirror.entries.length === 0;
 		// A mirror that can't be read would read as a place that removed everything.
-		if (walked.isErr())
+		if (walked.isErr() && !(mountsNothing && isMissingPath(walked.error)))
 			return err(
 				new IoError(
 					`${root}, where Rojo wrote the place's changes, could not be read: ${failureReason(walked.error)}.`,
 					"Run syncback again."
 				)
 			);
-		const after = walked.value;
+		const after = walked.isOk() ? walked.value : [];
 		const present = new Set(after.map(({ path: at }) => at));
 		const operations: Operation[] = [];
 		const unplaced: UnplacedInstance[] = [...skipped];

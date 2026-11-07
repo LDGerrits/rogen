@@ -266,6 +266,33 @@ describe("CoreSyncbackService", () => {
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
 	});
 
+	it("should fail, and plan no removal, when the mirror is gone after Rojo ran", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		rojo.say = async () => {
+			await fs.delete(abs(".rogen-syncback/mirror"), true);
+			return [];
+		};
+
+		const planned = await service.plan(request);
+
+		expect(planned.isErr()).toBe(true);
+	});
+
+	it("should plan nothing for a project that mounts no folder", async () => {
+		await prepare([], {
+			sourcePaths: [],
+			routes: {},
+			project: {
+				name: "Value",
+				tree: { $className: "BinaryStringValue" },
+			},
+		});
+
+		const planned = await service.plan(request);
+
+		expect(planned.isOk() && planned.value.changes).toEqual([]);
+	});
+
 	it.each([
 		["the mirror an earlier run left", ".rogen-syncback/mirror"],
 		["the project file an earlier run left", "rogen-syncback.project.json"],
