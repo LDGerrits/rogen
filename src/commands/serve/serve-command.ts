@@ -1,4 +1,4 @@
-import { DeferredPromise } from "../../base/async.js";
+import { DeferredPromise, timeout } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
 import { onUnexpectedError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -36,6 +36,8 @@ import {
 	serveLineShape,
 } from "./serve-log.js";
 import { refreshAgentRules } from "../write/refresh-agent-rules.js";
+
+const SHUTDOWN_GRACE_MS = 1000;
 
 const AddressOption = {
 	name: "address",
@@ -193,6 +195,18 @@ registerCommand(
 					);
 		}
 
+		/** Waits a little for the shutdown that a server interrupted with Rogen means is coming, since on Windows its exit can come first. */
+		private async shutdownAfter(
+			shutdown: DeferredPromise<void>
+		): Promise<void> {
+			const waited = new AbortController();
+			await Promise.race([
+				shutdown.p,
+				timeout(SHUTDOWN_GRACE_MS, waited.signal),
+			]);
+			waited.abort();
+		}
+
 		private async serve(
 			lifecycle: LifecycleService,
 			session: ServeSession,
@@ -210,12 +224,7 @@ registerCommand(
 			store.add(session.onDidOutput((said) => log.said(said)));
 			store.add(session.onDidConnect((change) => log.connection(change)));
 			store.add(session.onDidChange((change) => log.changed(change)));
-			store.add(
-				session.onDidExit((stop) => {
-					log.stopped(stop);
-					stopped.complete(stop);
-				})
-			);
+			store.add(session.onDidExit((stop) => stopped.complete(stop)));
 			void shutdown.p.then(() => session.stop()).catch(onUnexpectedError);
 			try {
 				const started = await session.start();
@@ -227,20 +236,32 @@ registerCommand(
 					shutdown.p.then(() => undefined),
 					stopped.p,
 				]);
+				if (stop?.kind === "interrupted")
+					await this.shutdownAfter(shutdown);
 				await session.stop();
-				if (!stop) log.shutdown(session.target);
-				if (stop?.servedBy) {
-					log.end(
-						"Another rogen serve started serving this project first, so this one stops."
-					);
-					return ok(undefined);
-				}
-				if (!stop?.failure) {
+				if (!stop || shutdown.isSettled) {
+					log.shutdown(session.target ?? stop?.target);
 					log.end("Stopped serving.");
-					return stop ? ok(undefined) : this.stoppedBy(lifecycle);
+					return this.stoppedBy(lifecycle);
 				}
-				log.end("serve failed.");
-				return this.reported(new DiagnosticsError([stop.failure]));
+				log.stopped(stop);
+				switch (stop.kind) {
+					case "served-elsewhere":
+						log.end(
+							"Another rogen serve started serving this project first, so this one stops."
+						);
+						return ok(undefined);
+					case "stopped":
+					case "interrupted":
+						log.end("Stopped serving.");
+						return ok(undefined);
+					case "crashed":
+					case "failed":
+						log.end("serve failed.");
+						return this.reported(
+							new DiagnosticsError([stop.failure])
+						);
+				}
 			} finally {
 				await session.stop();
 				store[Symbol.dispose]();

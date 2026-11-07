@@ -1069,11 +1069,14 @@ describe("CoreServeService", () => {
 			await settle();
 
 			expect(stops).toHaveLength(1);
-			expect(stops[0].interrupted).toBe(false);
-			expect(stops[0].failure?.code).toBe("serve.serverExited");
-			expect(stops[0].failure?.message).toBe(
-				"Rojo stopped serving repo with exit code 1, without saying why."
-			);
+			expect(stops[0]).toMatchObject({
+				kind: "failed",
+				failure: {
+					code: "serve.serverExited",
+					message:
+						"Rojo stopped serving repo with exit code 1, without saying why.",
+				},
+			});
 		});
 
 		it("should pass on what the server said before it stopped, and point to it", async () => {
@@ -1084,9 +1087,12 @@ describe("CoreServeService", () => {
 			await settle();
 
 			expect(said).toEqual(["error: Port in use", "stopped"]);
-			expect(stops[0].failure?.message).toBe(
-				"Rojo stopped serving repo with exit code 1; see what it said above."
-			);
+			expect(stops[0]).toMatchObject({
+				failure: {
+					message:
+						"Rojo stopped serving repo with exit code 1; see what it said above.",
+				},
+			});
 		});
 
 		it("should stand down without a failure when another serve started a server for the project on its port first", async () => {
@@ -1106,11 +1112,9 @@ describe("CoreServeService", () => {
 			await settle();
 
 			expect(stops).toHaveLength(1);
-			expect(stops[0].failure).toBeUndefined();
-			expect(stops[0].servedBy).toEqual({
-				project: "repo",
-				version: "7.7.1",
-				session: "s1",
+			expect(stops[0]).toMatchObject({
+				kind: "served-elsewhere",
+				servedBy: { project: "repo", version: "7.7.1", session: "s1" },
 			});
 		});
 
@@ -1131,7 +1135,10 @@ describe("CoreServeService", () => {
 			);
 			await settle();
 
-			expect(stops[0].servedBy?.project).toBe("repo");
+			expect(stops[0]).toMatchObject({
+				kind: "served-elsewhere",
+				servedBy: { project: "repo" },
+			});
 		});
 
 		it("should stand down, not restart, when the server it took for its own was another serve's that started first", async () => {
@@ -1157,8 +1164,10 @@ describe("CoreServeService", () => {
 
 			expect(processes.spawned).toHaveLength(1);
 			expect(stops).toHaveLength(1);
-			expect(stops[0].failure).toBeUndefined();
-			expect(stops[0].servedBy?.session).toBe("s1");
+			expect(stops[0]).toMatchObject({
+				kind: "served-elsewhere",
+				servedBy: { session: "s1" },
+			});
 		});
 
 		it("should stop waiting for another serve's record, and report nothing, once it is stopped", async () => {
@@ -1188,8 +1197,10 @@ describe("CoreServeService", () => {
 			processes.spawned[0].exit({ code: 1, signal: null });
 			await settle();
 
-			expect(stops[0].failure?.code).toBe("serve.serverExited");
-			expect(stops[0].servedBy).toBeUndefined();
+			expect(stops[0]).toMatchObject({
+				kind: "failed",
+				failure: { code: "serve.serverExited" },
+			});
 		});
 
 		describe("as its configs change", () => {

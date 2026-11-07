@@ -79,24 +79,40 @@ export interface ServerOutputEvent {
 	readonly message: ServerMessage;
 }
 
-/** A server the session started that stopped before the session did. */
-export type ServerExitEvent = {
-	readonly target: ServeTarget;
-	/** How its process exited. */
-	readonly exit: ProcessExit;
-	/** It was interrupted along with Rogen, as Ctrl+C does, rather than stopping on its own. */
-	readonly interrupted: boolean;
-	/** It crashed again right after Rogen restarted it after a crash, so Rogen gave up. */
-	readonly crashed?: boolean;
+/** A server the session started that stopped before the session did, by how it stopped. */
+export type ServerExitEvent =
 	/** It couldn't start because another `rogen serve` started a server for its project file on its address first, which serves it; the stop is no failure. */
-	readonly servedBy?: ServerInfo;
-} & (
 	| {
-			/** Why the stop is a failure: the server couldn't start, or exited with an error. */
+			readonly kind: "served-elsewhere";
+			readonly target: ServeTarget;
+			readonly servedBy: ServerInfo;
+	  }
+	/** It stopped on its own without an error. */
+	| {
+			readonly kind: "stopped";
+			readonly target: ServeTarget;
+			readonly exit: ProcessExit;
+	  }
+	/** It was interrupted along with Rogen, as Ctrl+C does, rather than stopping on its own. */
+	| {
+			readonly kind: "interrupted";
+			readonly target: ServeTarget;
+			readonly exit: ProcessExit;
+	  }
+	/** It crashed again right after Rogen restarted it after a crash, so Rogen gave up. */
+	| {
+			readonly kind: "crashed";
+			readonly target: ServeTarget;
+			readonly exit: ProcessExit;
 			readonly failure: Diagnostic;
 	  }
-	| { readonly failure?: undefined }
-);
+	/** It couldn't start, or exited with an error. */
+	| {
+			readonly kind: "failed";
+			readonly target: ServeTarget;
+			readonly exit: ProcessExit;
+			readonly failure: Diagnostic;
+	  };
 
 /** How the servers changed with the configs after the session started them. */
 export type ServeChangeEvent =
