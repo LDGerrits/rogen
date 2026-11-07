@@ -295,7 +295,7 @@ export class CoreSyncbackService implements SyncbackService {
 		const prepared = await this.prepare(request);
 		if (prepared.isErr()) return prepared;
 		return prepared.value.staging.use<SyncbackResult | undefined>(
-			async (signal) => {
+			async (signal, writing) => {
 				const planned = await this.planIn(
 					request,
 					prepared.value,
@@ -317,6 +317,7 @@ export class CoreSyncbackService implements SyncbackService {
 				}
 				// Once writing starts, a stop no longer undoes the run.
 				if (signal.aborted) return err(stopped());
+				writing();
 				return ok(await this.written(request, plan));
 			}
 		);
