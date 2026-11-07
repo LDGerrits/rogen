@@ -300,13 +300,14 @@ export class CoreServeSession
 		target: ServeTarget,
 		kind: "refused" | "elsewhere"
 	): Promise<boolean> {
-		const state = await this.probe.probe(target.address);
-		const recorded =
-			state.kind === "serving"
-				? await this.ports.recordFor(target, state.info)
-				: undefined;
-		if (kind === "refused") return state.kind !== "free" && !recorded;
-		return recorded !== undefined && !this.ports.ownerEnded(recorded);
+		const holder = await this.ports.classify(target);
+		if (kind === "refused")
+			return (
+				holder.kind === "taken" ||
+				holder.kind === "foreign" ||
+				holder.kind === "pending"
+			);
+		return holder.kind === "ours";
 	}
 
 	private async retire(
@@ -328,7 +329,12 @@ export class CoreServeSession
 	/** Ends the server a `rogen serve` that ended left holding the target's port, so its own can start; leaves it when it is gone by now. */
 	private async endOrphanOf(target: ServeTarget): Promise<void> {
 		const { orphan } = target;
-		if (!orphan?.pid || this.stopping) return;
+		if (
+			!orphan?.pid ||
+			this.stopping ||
+			!this.rojoRunner.isRunning(orphan.pid)
+		)
+			return;
 		const state = await this.probe.probe(target.address);
 		if (state.kind !== "serving" || state.info.session !== orphan.session)
 			return;
@@ -382,8 +388,9 @@ export class CoreServeSession
 			waited <= RECORD_WAIT_MS && !signal.aborted;
 			waited += RECORD_POLL_MS
 		) {
-			const served = await this.ports.anotherServeAt(target);
-			if (served !== "pending") return served;
+			const holder = await this.ports.classify(target);
+			if (holder.kind === "ours") return holder.info;
+			if (holder.kind !== "pending") return undefined;
 			await timeout(RECORD_POLL_MS, signal);
 		}
 		return undefined;

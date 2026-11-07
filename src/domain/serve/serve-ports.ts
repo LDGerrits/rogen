@@ -19,6 +19,24 @@ import { ServerRecord, ServerRecords } from "./server-records.js";
 
 const FREE_PORT_SEARCH = 20;
 
+type RecordStanding = "ours" | "orphan" | "stale" | "unowned";
+
+/** Who holds a serve port: nothing, a program that isn't Rojo, a Rojo no `rogen serve` recorded for the project file, one that answers for the project before its record is written, or one recorded for the project file, standing by whether its serve and leading process still run. */
+export type PortHolder =
+	| { readonly kind: "free" }
+	| { readonly kind: "taken" }
+	| {
+			readonly kind: "foreign";
+			readonly info: ServerInfo;
+			readonly record?: ServerRecord;
+	  }
+	| { readonly kind: "pending"; readonly info: ServerInfo }
+	| {
+			readonly kind: RecordStanding;
+			readonly info: ServerInfo;
+			readonly record: ServerRecord;
+	  };
+
 export class ServePorts {
 	private readonly host: string | undefined;
 	private readonly port: Result<number | undefined, UsageError>;
@@ -42,7 +60,7 @@ export class ServePorts {
 		return this.port.isErr() ? this.port.error : undefined;
 	}
 
-	/** The server a `rogen serve` that still runs started for `config`, on whatever port, when no `--port` was given to pick one; a record that names no serve isn't one. */
+	/** The server a `rogen serve` that still runs started for `config`, on whatever port, when no `--port` was given to pick one. */
 	async runningServeOf(
 		config: ResolvedConfig
 	): Promise<ServeTarget | undefined> {
@@ -50,17 +68,14 @@ export class ServePorts {
 		for (const recorded of await this.records.recordsFor(
 			config.projectFile
 		)) {
-			if (!this.ownerRuns(recorded)) continue;
+			if (this.standingOf(recorded) !== "ours") continue;
 			const target = {
 				...this.targetOf(config),
 				address: new ServeAddress(recorded.host, recorded.port),
 			};
-			const state = await this.probe.probe(target.address);
-			if (
-				state.kind === "serving" &&
-				(await this.recordFor(target, state.info))
-			)
-				return { ...target, servedBy: state.info };
+			const holder = await this.classify(target);
+			if (holder.kind === "ours")
+				return { ...target, servedBy: holder.info };
 		}
 		return undefined;
 	}
@@ -80,74 +95,51 @@ export class ServePorts {
 		};
 	}
 
-	/** The record of the server on `target`'s port when a `rogen serve` started it for `target`'s project file, whatever name the project has now. */
-	async recordFor(
-		target: ServeTarget,
-		holder: ServerInfo
-	): Promise<ServerRecord | undefined> {
-		const recorded = await this.records.recordOf(target.address, holder);
-		return recorded &&
-			samePath(recorded.projectFile, target.config.projectFile)
-			? recorded
-			: undefined;
-	}
-
-	/** The server on `target`'s port when a `rogen serve` that still runs recorded it for `target`'s project file; `pending` when it answers for the project but has no record yet. */
-	async anotherServeAt(
-		target: ServeTarget
-	): Promise<ServerInfo | "pending" | undefined> {
+	/** What holds `target`'s port, told from the server that answers there and the record a `rogen serve` left for it. */
+	async classify(target: ServeTarget): Promise<PortHolder> {
 		const state = await this.probe.probe(target.address);
-		if (state.kind !== "serving") return undefined;
-		const recorded = await this.recordFor(target, state.info);
-		if (recorded) return this.ownerEnded(recorded) ? undefined : state.info;
-		return state.info.project === target.project ? "pending" : undefined;
+		if (state.kind !== "serving") return state;
+		const { info } = state;
+		const record = await this.records.recordOf(target.address, info);
+		if (record && samePath(record.projectFile, target.config.projectFile))
+			return { kind: this.standingOf(record), info, record };
+		if (!record && info.project === target.project)
+			return { kind: "pending", info };
+		return { kind: "foreign", info, record };
 	}
 
-	/** `target` once its port is free, or with `servedBy` set when its project is already served there; else why it can't be served. */
+	/** `target` once its port is free, with `servedBy` set when another `rogen serve` serves it there, or with `orphan` set when a server no serve runs for holds it; else why it can't be served. */
 	async check(target: ServeTarget): Promise<Result<ServeTarget, Diagnostic>> {
-		const state = await this.probe.probe(target.address);
-		if (state.kind === "free") return ok(target);
-		if (state.kind !== "serving")
-			return err(await this.portTaken(target, undefined, undefined));
-		const holder = state.info;
-		const own = await this.recordFor(target, holder);
-		if (own) {
-			const served = this.targetServedBy(target, holder, own);
-			if (served) return ok(served);
-			return err(await this.portTaken(target, holder, undefined));
+		const holder = await this.classify(target);
+		switch (holder.kind) {
+			case "free":
+				return ok(target);
+			case "taken":
+				return err(await this.portTaken(target, undefined, undefined));
+			case "foreign":
+				return err(
+					await this.portTaken(target, holder.info, holder.record)
+				);
+			case "pending":
+				return err(
+					await this.portTaken(target, holder.info, undefined)
+				);
+			case "ours":
+				return ok({ ...target, servedBy: holder.info });
+			case "orphan":
+			case "stale":
+			case "unowned":
+				return ok({ ...target, orphan: holder.record });
 		}
-		return err(
-			await this.portTaken(
-				target,
-				holder,
-				await this.records.recordOf(target.address, holder)
-			)
-		);
 	}
 
-	/** Whether the `rogen serve` that started the recorded server has ended; a record without an owner can't tell. */
-	ownerEnded(record: ServerRecord): boolean {
-		return (
-			record.owner !== undefined && !this.runner.isRunning(record.owner)
-		);
-	}
-
-	private ownerRuns(record: ServerRecord): boolean {
-		return (
-			record.owner !== undefined && this.runner.isRunning(record.owner)
-		);
-	}
-
-	/** The target as its recorded server serves it: left alone while its `rogen serve` runs, to end when only a server is left; none when there is no process to end. */
-	private targetServedBy(
-		target: ServeTarget,
-		holder: ServerInfo,
-		recorded: ServerRecord
-	): ServeTarget | undefined {
-		if (!this.ownerEnded(recorded)) return { ...target, servedBy: holder };
-		return recorded.pid !== undefined && this.runner.isRunning(recorded.pid)
-			? { ...target, orphan: recorded }
-			: undefined;
+	/** How a record for this project file stands: a record without an owner is as stale as one whose owner ended. */
+	private standingOf(record: ServerRecord): RecordStanding {
+		if (record.owner === undefined) return "unowned";
+		if (this.runner.isRunning(record.owner)) return "ours";
+		return record.pid !== undefined && this.runner.isRunning(record.pid)
+			? "orphan"
+			: "stale";
 	}
 
 	private async portTaken(
