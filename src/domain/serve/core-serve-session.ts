@@ -102,13 +102,6 @@ export class CoreServeSession
 		this._register(watch);
 		this._register(
 			watch.onDidUpdate((update) => {
-				for (const { outcome } of update.reports) {
-					if (!isWritten(outcome)) {
-						this.writtenConfigs.delete(outcome.config.id);
-						continue;
-					}
-					this.writtenConfigs.add(outcome.config.id);
-				}
 				this.updated = true;
 				this._onDidUpdate.fire(update);
 				this.reconciling
@@ -164,8 +157,15 @@ export class CoreServeSession
 		super[Symbol.dispose]();
 	}
 
-	/** Launches for the first update that writes a config, refusing the Rojo that runs as start does; later updates only report it. */
+	/** Records what the update wrote in its own turn, so a first launch serves only configs it checked; later updates only report the Rojo that runs. */
 	private async applyUpdate(update: WatchUpdate): Promise<void> {
+		for (const { outcome } of update.reports) {
+			if (!isWritten(outcome)) {
+				this.writtenConfigs.delete(outcome.config.id);
+				continue;
+			}
+			this.writtenConfigs.add(outcome.config.id);
+		}
 		if (this.firstLaunch.isSettled) {
 			if (!(await this.firstLaunch.p).isOk()) return;
 			await this.reportIncompatible(update);

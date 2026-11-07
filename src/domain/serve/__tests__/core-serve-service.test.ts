@@ -876,6 +876,62 @@ describe("CoreServeService", () => {
 			expect(processes.spawned).toEqual([]);
 		});
 
+		it("should not start a Rojo before 7.5.0 for sync rules saved while it checks a failed first write", async () => {
+			processes.outputs.set("/bin/rojo", {
+				code: 0,
+				stdout: "Rojo 7.4.4",
+				stderr: "",
+			});
+			const routes = {
+				server: "ServerScriptService",
+				client: "StarterPlayer/StarterPlayerScripts",
+				"*": "ReplicatedStorage",
+			};
+			await memFs.writeFile(
+				"/repo/default.rogen.json",
+				config({ routes })
+			);
+			await memFs.writeFile("/repo/src/X/@server", "");
+			await memFs.writeFile("/repo/src/X/@client", "");
+			service = serviceAt("/repo", new RojoCompatibility(memFs, false));
+			const checked = new DeferredPromise<void>();
+			const problemsIn = RojoCompatibility.prototype.problemsIn;
+			jest.spyOn(
+				RojoCompatibility.prototype,
+				"problemsIn"
+			).mockImplementation(async function (
+				this: RojoCompatibility,
+				...args
+			) {
+				const problems = await problemsIn.apply(this, args);
+				await checked.p;
+				return problems;
+			});
+			const started = start();
+			await settle();
+
+			await memFs.delete("/repo/src/X/@client");
+			await memFs.writeFile(
+				"/repo/default.rogen.json",
+				config({
+					routes,
+					syncRules: [{ pattern: "*.md", use: "text" }],
+				})
+			);
+			await settle();
+			checked.complete();
+			await settle();
+
+			const ended = await started;
+			if (ended.isOk()) throw new Error("expected a failure");
+			expect(
+				(ended.error as DiagnosticsError).diagnostics.map(
+					({ code }) => code
+				)
+			).toEqual(["rojo.syncRulesUnsupported"]);
+			expect(processes.spawned).toEqual([]);
+		});
+
 		it("should report sync rules once a Rojo before 7.5.0 is running", async () => {
 			processes.outputs.set("/bin/rojo", {
 				code: 0,
