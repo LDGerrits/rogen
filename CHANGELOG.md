@@ -14,7 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - A second Ctrl+C while Rogen stops Rojo ends at once and stops every process Rogen started.
 - Esc while you customise `rogen init` goes back to the summary instead of leaving init.
-- A failed `rogen init` puts the folder back as it was, so running it again finishes the project.
+- A failed `rogen init`, or one stopped with Ctrl+C while it writes, puts the folder back as it was, so running it again finishes the project. Ctrl+C also stops a starter command it runs, such as create-roblox-ts, and exits with 130.
 
 ### Fixed
 

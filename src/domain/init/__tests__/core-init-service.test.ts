@@ -32,6 +32,7 @@ import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MigratedProject } from "../project-migration.js";
 import { StarterPlaces } from "../starter-places.js";
 import { InitChoices, InitPlan, InitWritten } from "../init-service.js";
+import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 
 const directory = path.resolve("/mock/my-game");
 
@@ -114,7 +115,8 @@ describe("CoreInitService", () => {
 				new CoreIndexService(fileSystem),
 				toolchain.syncTools,
 				configs
-			)
+			),
+			new MockLifecycleService()
 		);
 		return service;
 	};

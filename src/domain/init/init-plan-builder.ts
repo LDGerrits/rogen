@@ -186,7 +186,7 @@ export class InitPlanBuilder {
 			decided: this.decided,
 			gitInit: this.gitInit,
 			...(this.scaffold && { scaffold: this.scaffold }),
-			// The set-asides and configs mark a folder as set up, so they go last: a run cut short leaves one that init reads as not yet done.
+			// The set-asides end the moves and the configs end the files, since they mark a folder as set up: a run killed before it could undo is likelier to leave a folder init reads as not yet done.
 			moves,
 			files: [
 				...this.templateFiles,

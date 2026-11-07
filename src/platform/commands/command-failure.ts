@@ -20,25 +20,25 @@ export class CommandFailure {
 	/** Tells the user why the run failed. `command` is the one that failed; without it the failure came before any command ran, so there is no frame to close. */
 	report(error: Error, command?: string): void {
 		if (error instanceof ReportedError) return;
+		const cause =
+			error instanceof ExitCodeError
+				? ErrorUtils.fromUnknown(error.cause)
+				: error;
 		if (this.json) {
-			const cause =
-				error instanceof ExitCodeError
-					? ErrorUtils.fromUnknown(error.cause)
-					: error;
 			this.logService.print(JSON.stringify(failureToJson(cause)));
 			return;
 		}
-		if (error instanceof CancelledError) {
-			this.logService.closeFrame(error.message);
+		if (cause instanceof CancelledError) {
+			this.logService.closeFrame(cause.message);
 			return;
 		}
-		if (error instanceof DiagnosticsError) {
-			for (const diagnostic of error.diagnostics) {
+		if (cause instanceof DiagnosticsError) {
+			for (const diagnostic of cause.diagnostics) {
 				this.logService.diagnostic(diagnostic);
 				this.logService.annotate(diagnostic);
 			}
 		} else {
-			this.logService.error(error.message);
+			this.logService.error(cause.message);
 		}
 		if (command) this.logService.closeFrame(`${command} failed.`);
 	}
