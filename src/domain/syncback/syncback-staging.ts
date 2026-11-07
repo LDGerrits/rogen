@@ -17,6 +17,9 @@ const LOCK = "lock";
 /** How long a lock that names no owner yet counts as being made, rather than left by a run killed while making it. */
 const NEW_LOCK_MS = 5000;
 
+/** What a run in the staging files does: works in them, or writes the user's files from them. */
+type StagingPhase = "staging" | "writing";
+
 /** The staging files of a project folder, which one syncback at a time owns: it locks them, cleans them, works in them, and releases them. */
 export class SyncbackStaging {
 	/** The temporary project file Rojo runs on. */
@@ -38,22 +41,28 @@ export class SyncbackStaging {
 		this.lock = path.join(this.folder, LOCK);
 	}
 
-	/** Runs `work` while this process owns the staging files, which it finds clean and leaves gone; `syncback.busy` when another syncback owns them, with nothing touched. A shutdown aborts `work`'s signal, which `work` turns into its own result, and removes the files at once. */
+	/** Runs `work` while this process owns the staging files, which it finds clean and leaves gone; `syncback.busy` when another syncback owns them, with nothing touched. A shutdown aborts `work`'s signal, which `work` turns into its own result, and removes the files at once, unless `work` said with `writing` that it writes the user's files, which keeps them until it ends. */
 	async use<T>(
-		work: (signal: AbortSignal) => Promise<Result<T, Error>>
+		work: (
+			signal: AbortSignal,
+			writing: () => void
+		) => Promise<Result<T, Error>>
 	): Promise<Result<T, Error>> {
 		const locked = await this.take();
 		if (locked.isErr()) return locked;
 		const stopping = new AbortController();
+		let phase: StagingPhase = "staging";
 		let released: Promise<void> | undefined;
 		const shutdown = this.lifecycleService.onWillShutdown(() => {
 			stopping.abort();
-			released = this.release();
+			if (phase === "staging") released = this.release();
 		});
 		try {
 			const cleaned = await this.clean();
 			if (cleaned.isErr()) return cleaned;
-			return await work(stopping.signal);
+			return await work(stopping.signal, () => {
+				phase = "writing";
+			});
 		} finally {
 			shutdown[Symbol.dispose]();
 			await released;

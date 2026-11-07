@@ -537,7 +537,7 @@ describe("syncback command", () => {
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
 	});
 
-	it("should report what it wrote and write the project file when Ctrl+C comes while it writes", async () => {
+	it("should report what it wrote, write the project file and exit as a shell reports Ctrl+C, when Ctrl+C comes while it writes", async () => {
 		const lifecycle = new MockLifecycleService();
 		const { running, log } = start(
 			{ input: "game.rbxl", "non-interactive": true },
@@ -556,7 +556,7 @@ describe("syncback command", () => {
 		);
 		rojo.exit({ code: 0, signal: null });
 
-		expect((await running).isOk()).toBe(true);
+		expect(exitCode(await running)).toBe(130);
 		expect(log.lines).toEqual([
 			"success: Wrote default.project.json.",
 			"info: Syncback wrote 2 changes.",

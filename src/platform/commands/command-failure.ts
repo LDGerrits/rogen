@@ -8,7 +8,7 @@ import { DiagnosticsError } from "../diagnostics/diagnostics-error.js";
 import { LogService } from "../log/log-service.js";
 import { failureToJson } from "../diagnostics/diagnostic-json.js";
 import { Result } from "../../base/result.js";
-import { ExitCodeError, ReportedError } from "./commands.js";
+import { ExitCodeError, ReportedError, exitCodeCause } from "./commands.js";
 
 /** Tells a failed run as one JSON line a program reads, or as lines for a person. */
 export class CommandFailure {
@@ -20,10 +20,7 @@ export class CommandFailure {
 	/** Tells the user why the run failed. `command` is the one that failed; without it the failure came before any command ran, so there is no frame to close. */
 	report(error: Error, command?: string): void {
 		if (error instanceof ReportedError) return;
-		const cause =
-			error instanceof ExitCodeError
-				? ErrorUtils.fromUnknown(error.cause)
-				: error;
+		const cause = exitCodeCause(error);
 		if (this.json) {
 			this.logService.print(JSON.stringify(failureToJson(cause)));
 			return;

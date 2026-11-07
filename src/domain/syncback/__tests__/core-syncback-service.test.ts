@@ -526,6 +526,36 @@ describe("CoreSyncbackService", () => {
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
 	});
 
+	it("should keep its lock until it finished writing when a run is asked to shut down while it writes", async () => {
+		await prepare([]);
+		await fs.writeFile(abs("src/Inventory/Bag@server.luau"), "return 1");
+		await prepare([]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Bag.luau"),
+				"return 2"
+			);
+			return [];
+		};
+		const locked: boolean[] = [];
+		const writeBytes = fs.writeFileBytes.bind(fs);
+		jest.spyOn(fs, "writeFileBytes").mockImplementation(
+			async (file, bytes) => {
+				lifecycle.shutdown("SIGINT");
+				for (let i = 0; i < 20; i++)
+					await new Promise((resolve) => setImmediate(resolve));
+				locked.push(await fs.exists(abs(".rogen-syncback/lock")));
+				return writeBytes(file, bytes);
+			}
+		);
+
+		const applied = await service.apply(request);
+
+		expect(applied.isOk()).toBe(true);
+		expect(locked).toEqual([true]);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
 	it("should write nothing when a run is asked to shut down after Rojo ran and before it writes", async () => {
 		await prepare(["src/Combat/Server/Combat.luau"]);
 		rojo.say = async () => {

@@ -14,7 +14,7 @@ import {
 import {
 	AbstractCommand,
 	registerCommand,
-	ExitCodeError,
+	signalStop,
 } from "../../platform/commands/commands.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import {
@@ -24,10 +24,7 @@ import {
 } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
-import {
-	LifecycleService,
-	exitCodeOfSignal,
-} from "../../platform/lifecycle/lifecycle-service.js";
+import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import {
 	ServeJsonLog,
@@ -184,15 +181,8 @@ registerCommand(
 
 		/** Ok, unless a signal stopped the run, which ends it as a shell reports a process the signal stopped. */
 		private stoppedBy(lifecycle: LifecycleService): Result<void, Error> {
-			const { signal } = lifecycle;
-			return signal === undefined
-				? ok(undefined)
-				: this.reported(
-						new ExitCodeError(
-							exitCodeOfSignal(signal),
-							new Error(`Stopped by ${signal}.`)
-						)
-					);
+			const stopped = signalStop(lifecycle);
+			return stopped ? this.reported(stopped) : ok(undefined);
 		}
 
 		/** Waits a little for the shutdown that a server interrupted with Rogen means is coming, since on Windows its exit can come first. */
