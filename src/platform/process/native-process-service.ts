@@ -151,6 +151,11 @@ class RunningChildren {
 		for (const child of this.children) child.kill();
 	}
 
+	signalAll(signal: NodeJS.Signals): void {
+		for (const child of this.children)
+			child.stop(signal).catch(onUnexpectedError);
+	}
+
 	stopped(): Promise<void> {
 		if (this.children.size === 0) return Promise.resolve();
 		return new Promise((resolve) => this.waiting.push(resolve));
@@ -174,7 +179,8 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 
 	constructor(
 		private readonly child: childProcess.ChildProcess,
-		running: RunningChildren
+		running: RunningChildren,
+		private readonly killGraceMs: number
 	) {
 		super();
 		running.add(this);
@@ -241,17 +247,22 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 	}
 
 	terminate(): Promise<ProcessExit> {
-		this.terminating ??= this.end();
+		return this.stop("SIGTERM");
+	}
+
+	/** Sends `signal` to the process and what it started, and kills them if they haven't ended after the grace period; Windows has no signals, so there they end at once. */
+	stop(signal: NodeJS.Signals): Promise<ProcessExit> {
+		this.terminating ??= this.end(signal);
 		return this.terminating;
 	}
 
-	private async end(): Promise<ProcessExit> {
+	private async end(signal: NodeJS.Signals): Promise<ProcessExit> {
 		if (this.exit || this.child.pid === undefined) return this.exited;
 		if (isWindows) await killWindowsTree(this.child.pid);
-		else signalTree(this.child.pid, "SIGTERM", this.child);
+		else signalTree(this.child.pid, signal, this.child);
 		const timer = setTimeout(
 			() => signalTree(this.child.pid ?? 0, "SIGKILL", this.child),
-			KILL_GRACE_MS
+			this.killGraceMs
 		);
 		try {
 			return await this.exited;
@@ -289,7 +300,8 @@ export class NativeProcessService implements ProcessService {
 	constructor(
 		private readonly env: Readonly<
 			Record<string, string | undefined>
-		> = process.env
+		> = process.env,
+		private readonly killGraceMs = KILL_GRACE_MS
 	) {}
 
 	async which(command: string): Promise<string | undefined> {
@@ -372,7 +384,8 @@ export class NativeProcessService implements ProcessService {
 				detached: !isWindows,
 				windowsHide: true,
 			}),
-			this.running
+			this.running,
+			this.killGraceMs
 		);
 	}
 
@@ -390,6 +403,11 @@ export class NativeProcessService implements ProcessService {
 		this.running.killAll();
 	}
 
+	/** Sends `signal` to every process this service started that still runs, and what each started, and kills those that haven't ended after the grace period. */
+	signalAll(signal: NodeJS.Signals): void {
+		this.running.signalAll(signal);
+	}
+
 	/** Settles once no process this service started still runs. */
 	stopped(): Promise<void> {
 		return this.running.stopped();
@@ -398,7 +416,7 @@ export class NativeProcessService implements ProcessService {
 	async terminateTree(pid: number): Promise<void> {
 		if (isWindows) return killWindowsTree(pid);
 		signalTree(pid, "SIGTERM");
-		const deadline = Date.now() + KILL_GRACE_MS;
+		const deadline = Date.now() + this.killGraceMs;
 		while (groupExists(pid) && Date.now() < deadline)
 			await new Promise((resolve) => setTimeout(resolve, 50));
 		if (!groupExists(pid)) return;
