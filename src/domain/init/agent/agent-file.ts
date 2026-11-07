@@ -39,11 +39,12 @@ export class AgentFile {
 			: new AgentFile(AGENTS_MD, agentsText, claudeText, geminiText);
 	}
 
-	/** The file that holds Rogen's rules: this one, else the `CLAUDE.md` beside it. */
+	/** The file that holds Rogen's rules: this one, else the `CLAUDE.md` or `GEMINI.md` beside it. */
 	get blockFileName(): string {
-		return this.claudeText?.includes(MARKER) && !this.text?.includes(MARKER)
-			? CLAUDE_MD
-			: this.fileName;
+		if (this.text?.includes(MARKER)) return this.fileName;
+		if (this.claudeText?.includes(MARKER)) return CLAUDE_MD;
+		if (this.geminiText?.includes(MARKER)) return GEMINI_MD;
+		return this.fileName;
 	}
 
 	get hasBlock(): boolean {
