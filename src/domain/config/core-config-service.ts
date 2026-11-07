@@ -32,6 +32,7 @@ import {
 } from "./config-service.js";
 import { CoreConfigSelection, PickedFolder } from "./core-config-selection.js";
 import { ManagedConfig } from "./managed-config.js";
+import { RojoFile } from "../rojo/rojo.js";
 
 export class CoreConfigService implements ConfigService {
 	declare readonly _serviceBrand: undefined;
@@ -79,12 +80,10 @@ export class CoreConfigService implements ConfigService {
 				files,
 				directory,
 				noneNamed
-					? {
+					? this.defaultFolder(
 							directory,
-							list: (known) => this.defaultIn(directory, known),
-							// An adopted project file is concerned as a file the selection reads; the one a config writes is not.
-							holds: isDefaultConfigFileName,
-						}
+							files.some(isProjectFileConfig)
+						)
 					: undefined,
 				notes,
 				loader
@@ -124,15 +123,22 @@ export class CoreConfigService implements ConfigService {
 		);
 	}
 
-	/** What a fresh run picks in `directory`: its first default config, else the project file it adopts. A project file never takes a config's place, as it may be what that config wrote. */
-	private async defaultIn(
-		directory: string,
-		known: readonly string[]
-	): Promise<string[]> {
-		const [config] = await this.discovery.defaultConfigs(directory);
-		if (config) return [config];
-		const adopted = await this.discovery.adoptable(directory);
-		return adopted && known.includes(adopted) ? [adopted] : [];
+	/** The default of `directory` as a fresh run picks it, except that a project file is adopted only while no config has been picked, as it may be what that config wrote. */
+	private defaultFolder(directory: string, adopted: boolean): PickedFolder {
+		let adopting = adopted;
+		return {
+			directory,
+			list: async () => {
+				const [config] = await this.discovery.defaultConfigs(directory);
+				if (config) adopting = false;
+				if (!adopting) return config ? [config] : [];
+				const project = await this.discovery.adoptable(directory);
+				return project ? [project] : [];
+			},
+			holds: (fileName) =>
+				isDefaultConfigFileName(fileName) ||
+				(adopting && RojoFile.DEFAULT_PROJECTS.includes(fileName)),
+		};
 	}
 
 	async selectCovering(

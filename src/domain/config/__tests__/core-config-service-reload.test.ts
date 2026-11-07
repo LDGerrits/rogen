@@ -191,6 +191,58 @@ describe("CoreConfigService", () => {
 			});
 		});
 
+		it("should pick up the project file it adopted when it comes back, as a fresh run does", async () => {
+			await fs.delete("/repo/default.rogen.json");
+			await write("/repo/default.project.json", {
+				name: "Plain",
+				tree: { $className: "DataModel" },
+			});
+			await start();
+			await fs.delete("/repo/default.project.json");
+			await selection.reload(["/repo/default.project.json"]);
+
+			expect(selection.concerns("/repo/default.project.json")).toBe(true);
+			await write("/repo/default.project.json", {
+				name: "Plain",
+				tree: { $className: "DataModel" },
+			});
+			const reload = await selection.reload([
+				"/repo/default.project.json",
+			]);
+
+			expect(selection.entries.map(({ file }) => file)).toEqual([
+				"/repo/default.project.json",
+			]);
+			expect(reload).toEqual({
+				changed: ["/repo/default.project.json"],
+				notices: [
+					{ kind: "added", file: "/repo/default.project.json" },
+				],
+			});
+		});
+
+		it("should not adopt the project file its config wrote once the config is deleted", async () => {
+			await fs.delete("/repo/default.rogen.json");
+			await write("/repo/default.project.json", {
+				name: "Plain",
+				tree: { $className: "DataModel" },
+			});
+			await start();
+			await write("/repo/default.rogen.json", { routes: ROUTED });
+			await selection.reload(["/repo/default.rogen.json"]);
+
+			await fs.delete("/repo/default.rogen.json");
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
+
+			expect(selection.entries).toEqual([]);
+			expect(selection.concerns("/repo/default.project.json")).toBe(
+				false
+			);
+			expect(reload.notices).toEqual([
+				{ kind: "removed", file: "/repo/default.rogen.json" },
+			]);
+		});
+
 		it("should not look for new configs when the selection named its configs", async () => {
 			await write("/repo/lobby/default.rogen.json", {});
 			await start({ names: ["lobby"] });
