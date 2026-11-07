@@ -82,7 +82,7 @@ export class SyncbackMirror {
 		/** Mirror folders to make even when no file lands in them: plain folders the write made, and the folders nodes are mounted at; relative to the mirror's root. */
 		readonly folders: readonly string[],
 		readonly nodeFolders: readonly NodeFolder[],
-		/** The instance path of each node read from a folder of its own under `~kept`. */
+		/** The instance path of each mirror path a node the project keeps is read from, which no instance names. */
 		private readonly kept: ReadonlyMap<string, readonly string[]>,
 		/** The sync rules of the written file, which apply to the mirror once its files are known. */
 		private readonly rules: readonly SyncRule[]
@@ -148,14 +148,14 @@ export class SyncbackMirror {
 		return rules;
 	}
 
-	/** The instance path a path of the mirror is at: its names, with a node's own folder under `~kept` read as that node. */
+	/** The instance path a path of the mirror is at: its names, with the longest path a kept node is read from read as that node. */
 	instancePathOf(mirror: string): string[] {
 		const names = mirror.split("/");
-		const node =
-			names[0] === KEPT
-				? this.kept.get(names.slice(0, 2).join("/"))
-				: undefined;
-		return node ? [...node, ...names.slice(2)] : names;
+		for (let depth = names.length; depth > 0; depth--) {
+			const node = this.kept.get(names.slice(0, depth).join("/"));
+			if (node) return [...node, ...names.slice(depth)];
+		}
+		return names;
 	}
 
 	/** The project file or folder a path of the mirror stands for: the entry that is it, else the deepest folder entry it is in; none for a path no entry holds, which is a new instance. */
@@ -193,6 +193,14 @@ export class SyncbackMirror {
 /** Where a node the project keeps reads its own file or folder from in the mirror; no instance is named so, as `~` is no safe name. */
 const KEPT = "~kept";
 
+/** How `children` places a child: moved into the folder its parent reads from the file or folder the write made it from, nested there as a folder whose every child moves, or kept as a node. */
+type Placement =
+	| { readonly kind: "moved"; readonly target: string }
+	| { readonly kind: "nested" }
+	| { readonly kind: "kept" };
+
+const KEPT_NODE: Placement = { kind: "kept" };
+
 class MirrorWalk {
 	readonly entries: MirrorEntry[] = [];
 	readonly folders: string[] = [];
@@ -224,15 +232,22 @@ class MirrorWalk {
 		mounted = false
 	): Promise<boolean> {
 		let moved = false;
-		const children = childNodes(node);
+		const children = childNodes(node).map(
+			([name, child]) =>
+				[
+					name,
+					child,
+					folder === undefined
+						? KEPT_NODE
+						: this.classify(name, child, instancePath),
+				] as const
+		);
 		/** A node kept inside the folder its parent reads would be read twice, so it gets a folder of its own. */
 		const mounts =
 			folder !== undefined &&
 			(mounted ||
-				children.some(([name, child]) =>
-					this.movable(name, child, instancePath)
-				));
-		for (const [name, child] of children) {
+				children.some(([, , placement]) => placement.kind !== "kept"));
+		for (const [name, child, placement] of children) {
 			const here = [...instancePath, name];
 			const at =
 				folder !== undefined && SAFE_NAME.test(name)
@@ -240,38 +255,44 @@ class MirrorWalk {
 						? name
 						: `${folder}/${name}`
 					: undefined;
-			if (at !== undefined && folder !== undefined) {
-				const target = this.madeFrom(child, here);
-				if (target !== undefined && this.readsAlike(target, name)) {
-					await this.add(target, at, name, folder);
-					delete node[name];
-					moved = true;
-					continue;
-				}
-				if (instancePath.length > 0 && this.madeWhole(child, here)) {
+			if (at === undefined || folder === undefined) {
+				await this.keep(child, here, undefined);
+				continue;
+			}
+			switch (placement.kind) {
+				case "moved":
+					await this.add(placement.target, at, name, folder);
+					break;
+				case "nested":
 					await this.children(child, here, at);
 					this.addFolder(at);
-					delete node[name];
-					moved = true;
+					break;
+				case "kept":
+					await this.keep(child, here, mounts ? undefined : at);
 					continue;
-				}
 			}
-			await this.keep(child, here, mounts ? undefined : at);
+			delete node[name];
+			moved = true;
 		}
 		return moved;
 	}
 
-	/** Whether `children` moves the child `name` of the node at `instancePath` into the folder it reads. */
-	private movable(
+	/** How `children` places the child `name` of the node at `instancePath` when the node reads a folder of the mirror. */
+	private classify(
 		name: string,
 		child: RojoNode,
 		instancePath: readonly string[]
-	): boolean {
+	): Placement {
+		if (!SAFE_NAME.test(name)) return KEPT_NODE;
 		const here = [...instancePath, name];
-		if (!SAFE_NAME.test(name)) return false;
 		const target = this.madeFrom(child, here);
-		if (target !== undefined) return this.readsAlike(target, name);
-		return instancePath.length > 0 && this.madeWhole(child, here);
+		if (target !== undefined)
+			return this.readsAlike(target, name)
+				? { kind: "moved", target }
+				: KEPT_NODE;
+		return instancePath.length > 0 && this.madeWhole(child, here)
+			? { kind: "nested" }
+			: KEPT_NODE;
 	}
 
 	/** Whether Rojo reads `target` named for its instance `name` as it reads it now; `Lib.project.json` named `Lib.json` would be JSON, and `Odd.meta@server.json` named `Odd.meta.json` a meta file. */
@@ -308,8 +329,9 @@ class MirrorWalk {
 	): boolean {
 		return (
 			isPlainFolder(node) &&
-			childNodes(node).every(([name, child]) =>
-				this.movable(name, child, instancePath)
+			childNodes(node).every(
+				([name, child]) =>
+					this.classify(name, child, instancePath).kind !== "kept"
 			)
 		);
 	}
@@ -350,10 +372,13 @@ class MirrorWalk {
 		const own = this.spare();
 		const base = path.posix.basename(target);
 		const rojoName = this.inputs.fileAt(target).instanceName;
+		const meta = `${own}/${rojoName}${RojoFile.META_SUFFIX}`;
+		this.keptNodes.set(`${own}/${base}`, instancePath);
+		this.keptNodes.set(meta, instancePath);
 		this.entries.push(
 			{ mirror: `${own}/${base}`, target, kind: "file" },
 			{
-				mirror: `${own}/${rojoName}${RojoFile.META_SUFFIX}`,
+				mirror: meta,
 				target: path.posix.join(
 					path.posix.dirname(target),
 					`${rojoName}${RojoFile.META_SUFFIX}`
@@ -431,6 +456,8 @@ class MirrorWalk {
 				{ mirror: at(meta), target: meta, kind: "file" }
 			);
 		}
+		this.keptNodes.set(own, instancePath);
+		this.keptNodes.set(at(target), instancePath);
 		this.addFolder(own);
 		this.repoint(node, at(target), optional);
 		await this.children(node, instancePath, undefined);
