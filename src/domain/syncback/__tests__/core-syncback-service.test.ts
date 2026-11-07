@@ -266,6 +266,24 @@ describe("CoreSyncbackService", () => {
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
 	});
 
+	it("should fail, and plan no removal, when a folder in the mirror can't be read", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		rojo.say = async () => {
+			fs.refuseListing(mirror("ServerScriptService", "Combat"), "EPERM");
+			return [];
+		};
+
+		const planned = await service.plan(request);
+
+		expect(planned.isErr()).toBe(true);
+		expect((planned as ResultError<Error>).error.message).toContain(
+			abs(".rogen-syncback/mirror")
+		);
+		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
+			true
+		);
+	});
+
 	it("should fail, and plan no removal, when the mirror is gone after Rojo ran", async () => {
 		await prepare(["src/Combat/Server/Combat.luau"]);
 		rojo.say = async () => {

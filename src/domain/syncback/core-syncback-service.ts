@@ -1543,7 +1543,7 @@ export class CoreSyncbackService implements SyncbackService {
 			: [...folders, instanceNameOf(name)];
 	}
 
-	/** The files below `dir`, and the folders with nothing in them, relative to it and written with `/`; a folder below it that can't be read counts as empty. */
+	/** The files below `dir`, and the folders with nothing in them, relative to it and written with `/`; a folder below it that can't be read fails the walk. */
 	private async walk(
 		dir: string,
 		below = ""
@@ -1558,8 +1558,9 @@ export class CoreSyncbackService implements SyncbackService {
 			if (!isDirectoryType(type)) found.push({ path: at, folder: false });
 			else {
 				const inside = await this.walk(dir, at);
+				if (inside.isErr()) return inside;
 				found.push(
-					...(inside.isOk() && inside.value.length > 0
+					...(inside.value.length > 0
 						? inside.value
 						: [{ path: at, folder: true }])
 				);
