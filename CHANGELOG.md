@@ -25,7 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `rogen write` with several configs writes the others when one's project file can't be written.
 - A file saved while `serve` or `--watch` starts is in the first project file, and a config saved then takes effect.
 - Ctrl+C on `rogen serve` always exits with 130.
-- Ctrl+C on a Rojo command that Rogen runs once, such as `rogen build -o game.rbxl`, stops Rojo too, so it can't write after the prompt is back.
+- Ctrl+C on a Rojo command that Rogen runs once, such as `rogen build -o game.rbxl`, reaches Rojo as it does when Rojo runs alone, and Rogen waits for Rojo to stop, so it can't write after the prompt is back.
 - `--watch` follows comment-only config edits, a second config of the same name with the other extension, and a broken config that becomes a copy of another.
 - `rogen init` restores the Rogen hook's script when an agent still runs it but it was deleted.
 - `rogen init --dry-run` no longer says it would create a folder that the files it would write already create.
