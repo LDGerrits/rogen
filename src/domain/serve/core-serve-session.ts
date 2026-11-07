@@ -83,7 +83,6 @@ export class CoreServeSession
 	private readonly writtenConfigs = new Set<string>();
 	private readonly reconciling = new Sequencer();
 	private readonly firstLaunch = new DeferredPromise<Result<void, Error>>();
-	private updated = false;
 	private readonly exits = new Sequencer();
 	private stopping = false;
 	private readonly halted = new AbortController();
@@ -102,14 +101,6 @@ export class CoreServeSession
 		this._register(watch);
 		this._register(
 			watch.onDidUpdate((update) => {
-				for (const { outcome } of update.reports) {
-					if (!isWritten(outcome)) {
-						this.writtenConfigs.delete(outcome.config.id);
-						continue;
-					}
-					this.writtenConfigs.add(outcome.config.id);
-				}
-				this.updated = true;
 				this._onDidUpdate.fire(update);
 				this.reconciling
 					.queue(() => this.applyUpdate(update))
@@ -120,7 +111,7 @@ export class CoreServeSession
 		);
 		this._register(
 			watch.onDidError((error) => {
-				if (!this.updated) this.firstLaunch.complete(err(error));
+				this.firstLaunch.complete(err(error));
 				this._onDidError.fire(error);
 			})
 		);
@@ -164,8 +155,15 @@ export class CoreServeSession
 		super[Symbol.dispose]();
 	}
 
-	/** Launches for the first update that writes a config, refusing the Rojo that runs as start does; later updates only report it. */
+	/** Records what the update wrote in its own turn, so a first launch serves only configs it checked; later updates only report the Rojo that runs. */
 	private async applyUpdate(update: WatchUpdate): Promise<void> {
+		for (const { outcome } of update.reports) {
+			if (!isWritten(outcome)) {
+				this.writtenConfigs.delete(outcome.config.id);
+				continue;
+			}
+			this.writtenConfigs.add(outcome.config.id);
+		}
 		if (this.firstLaunch.isSettled) {
 			if (!(await this.firstLaunch.p).isOk()) return;
 			await this.reportIncompatible(update);
@@ -192,6 +190,7 @@ export class CoreServeSession
 			),
 			"serve"
 		);
+		if (this.firstLaunch.isSettled) return undefined;
 		if (incompatible.length > 0) {
 			const refusal = new DiagnosticsError(incompatible);
 			this._onDidError.fire(refusal);
