@@ -267,8 +267,7 @@ class RogenMain {
 			new NativeLifecycleService(
 				() => processService.killAll(),
 				() => processService.stopped(),
-				processService.onDidChangeRunning,
-				(signal) => processService.signalAll(signal)
+				processService.onDidChangeRunning
 			)
 		);
 		services.set(LifecycleService, lifecycleService);
