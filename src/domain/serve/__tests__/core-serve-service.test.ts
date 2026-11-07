@@ -1197,6 +1197,44 @@ describe("CoreServeService", () => {
 			expect(processes.spawned).toEqual([]);
 		});
 
+		it("should start nothing when a write throws while it ends the server a dead serve left", async () => {
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+					pid: 5001,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+			processes.running.add(5001);
+			const terminateTree = processes.terminateTree.bind(processes);
+			jest.spyOn(processes, "terminateTree").mockImplementation(
+				async (pid) => {
+					jest.spyOn(
+						CoreWriteService.prototype,
+						"rewrite"
+					).mockRejectedValue(new Error("disk on fire"));
+					jest.spyOn(
+						CoreWriteService.prototype,
+						"recheck"
+					).mockRejectedValue(new Error("disk on fire"));
+					await memFs.writeFile("/repo/src/B.luau", "");
+					await settle();
+					return terminateTree(pid);
+				}
+			);
+
+			const started = await start();
+			await settle();
+
+			expect(started.isErr() && started.error.message).toBe(
+				"disk on fire"
+			);
+			expect(processes.spawned).toEqual([]);
+		});
+
 		it("should report a server that stops on its own as a failure with its exit code", async () => {
 			await start();
 

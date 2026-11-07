@@ -204,6 +204,7 @@ export class CoreServeSession
 		}
 		if (!isServed(target)) {
 			await this.endOrphanOf(target);
+			if (this.firstLaunch.isSettled) return undefined;
 			this.launch(target);
 		} else
 			this.declined.set(target.config.id, {
