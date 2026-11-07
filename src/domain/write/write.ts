@@ -91,9 +91,13 @@ abstract class AbstractConfigOutcome {
 		return this.findings.warnings;
 	}
 
+	get sync(): SyncWarnings {
+		return this.findings.sync;
+	}
+
 	/** What the compiled path check found for this version of the config; `undefined` while unknown. */
 	get syncWarnings(): readonly Diagnostic[] | undefined {
-		return this.findings.syncWarnings;
+		return SyncWarnings.warningsOf(this.sync);
 	}
 
 	/** Everything the write has to say, in the order it is printed: warnings, compiled path warnings, then the errors that failed it. */
@@ -174,24 +178,49 @@ export class FailedConfig extends AbstractConfigOutcome {
 	constructor(
 		config: ResolvedConfig,
 		errors: readonly Diagnostic[],
-		findings: WriteFindings = { warnings: [], syncWarnings: undefined }
+		findings: WriteFindings = { warnings: [], sync: SyncWarnings.unknown }
 	) {
 		super(config, findings, errors);
 	}
 
-	/** A config that failed before it had warnings of its own; `syncWarnings` is what an earlier write of this version found. */
+	/** A config that failed before it had warnings of its own; `sync` is what an earlier write of this version found. */
 	static before(
 		config: ResolvedConfig,
 		errors: readonly Diagnostic[],
-		syncWarnings?: readonly Diagnostic[]
+		sync: SyncWarnings = SyncWarnings.unknown
 	): FailedConfig {
-		return new FailedConfig(config, errors, { warnings: [], syncWarnings });
+		return new FailedConfig(config, errors, { warnings: [], sync });
 	}
 }
 
+/** What the compiled path check found for one version of a config: nothing yet, nothing until the write has made its placeholders, or its warnings. */
+export type SyncWarnings =
+	| { readonly kind: "unknown" }
+	| { readonly kind: "deferred" }
+	| { readonly kind: "known"; readonly warnings: readonly Diagnostic[] };
+
+const unknown: SyncWarnings = { kind: "unknown" };
+const deferred: SyncWarnings = { kind: "deferred" };
+
+function known(warnings: readonly Diagnostic[]): SyncWarnings {
+	return { kind: "known", warnings };
+}
+
+/** The warnings in `sync`, or `undefined` while they aren't known. */
+function warningsOf(sync: SyncWarnings): readonly Diagnostic[] | undefined {
+	return sync.kind === "known" ? sync.warnings : undefined;
+}
+
+export const SyncWarnings = {
+	unknown,
+	deferred,
+	known,
+	warningsOf,
+} as const;
+
 export interface WriteFindings {
 	readonly warnings: readonly Diagnostic[];
-	readonly syncWarnings: readonly Diagnostic[] | undefined;
+	readonly sync: SyncWarnings;
 }
 
 interface SharedPart {
