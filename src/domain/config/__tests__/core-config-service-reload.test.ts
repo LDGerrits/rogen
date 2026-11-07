@@ -41,6 +41,25 @@ describe("CoreConfigService", () => {
 			expect(selection.concerns("/repo/README.md")).toBe(false);
 		});
 
+		it("should not concern the project file its config writes", async () => {
+			await start();
+
+			expect(selection.concerns("/repo/default.project.json")).toBe(
+				false
+			);
+		});
+
+		it("should concern the project file it adopted", async () => {
+			await fs.delete("/repo/default.rogen.json");
+			await write("/repo/default.project.json", {
+				name: "Plain",
+				tree: { $className: "DataModel" },
+			});
+			await start();
+
+			expect(selection.concerns("/repo/default.project.json")).toBe(true);
+		});
+
 		it("should not concern a config of another name that comes to the folder", async () => {
 			await start();
 
