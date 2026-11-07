@@ -805,6 +805,39 @@ describe("init command", () => {
 				);
 			});
 
+			it("should remove what it ran added to a folder that was there, and put back what it removed after", async () => {
+				await write("notes.txt", "mine");
+				await write("src/shared/README.md", "# Shared");
+				const before = await tree();
+				const processes = npmProcesses();
+				const exec = processes.exec.bind(processes);
+				jest.spyOn(processes, "exec").mockImplementation(
+					async (file, args, options) => {
+						if (file === "/bin/npm") {
+							await write("package.json", "{}");
+							await write("node_modules/roblox-ts/index.js", "");
+							await write("src/client/main.client.ts", "");
+							await write("src/shared/module.ts", "");
+							await write("default.project.json", "{}");
+						}
+						return exec(file, args, options);
+					}
+				);
+				const refused = refuseWrite("default.rogen.json");
+
+				const failed = await runInit(
+					new MockPromptService([], false),
+					new MockLogService(),
+					{ language: "roblox-ts", "skip-git": true },
+					[],
+					processes
+				);
+				refused.mockRestore();
+
+				expect(failed.isErr()).toBe(true);
+				expect(await tree()).toEqual(before);
+			});
+
 			it("should fail with the command to run by hand, and write nothing", async () => {
 				const result = await runInit(
 					new MockPromptService([], false),

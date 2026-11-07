@@ -119,7 +119,9 @@ export class InitWriter {
 			log.createDirectory(directory)
 		);
 		if (created.isErr()) return created;
-		const failed = await this.failureOf(command, directory);
+		const failed = await log.recordAdded(directory, () =>
+			this.failureOf(command, directory)
+		);
 		if (failed !== undefined)
 			return err(
 				new ToolError(
@@ -133,7 +135,7 @@ export class InitWriter {
 			for (const file of replaces) {
 				const target = path.join(directory, file);
 				if (await this.fileSystemService.exists(target))
-					await this.fileSystemService.delete(target, true);
+					await log.delete(target);
 			}
 		});
 	}
