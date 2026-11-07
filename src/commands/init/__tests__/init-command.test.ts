@@ -187,6 +187,19 @@ describe("init command", () => {
 			);
 		});
 
+		it("should name GEMINI.md when only it holds the rules", async () => {
+			await write("GEMINI.md", "<!-- rogen -->\n<!-- /rogen -->\n");
+			const logService = new MockLogService();
+
+			await runInit(new MockPromptService([], false), logService, {
+				"agent-rules": true,
+			});
+
+			expect(logService.lines).toContain(
+				"info: Rogen's rules are in GEMINI.md already. A 'rogen write' keeps them current."
+			);
+		});
+
 		it("should mark an appended agent file in JSON", async () => {
 			await write("CLAUDE.md", "Use tabs.\n");
 			const logService = new MockLogService();
@@ -425,6 +438,54 @@ describe("init command", () => {
 			expect(
 				(await readJson(".codex/hooks.json")).hooks.Stop
 			).toHaveLength(1);
+		});
+
+		it("should restore the script of a registered hook without asking", async () => {
+			await write(
+				".claude/settings.json",
+				JSON.stringify({
+					hooks: {
+						Stop: [
+							{
+								hooks: [
+									{
+										command:
+											"node .agents/hooks/rogen-check.mjs",
+									},
+								],
+							},
+						],
+					},
+				})
+			);
+			const logService = new MockLogService();
+
+			await runInit(new MockPromptService({}), logService);
+
+			expect(await exists(".agents/hooks/rogen-check.mjs")).toBe(true);
+			expect(logService.lines).toContain(
+				"info: The Rogen hook of Claude Code runs .agents/hooks/rogen-check.mjs, which is missing, so init writes it back."
+			);
+		});
+
+		it("should restore the script with --agent-hook rather than say the hook is registered", async () => {
+			await write(
+				".claude/settings.json",
+				JSON.stringify({
+					hooks: {
+						Stop: [{ hooks: [{ command: "x/rogen-check.mjs" }] }],
+					},
+				})
+			);
+			const logService = new MockLogService();
+
+			await withHook(logService);
+
+			expect(await exists(".agents/hooks/rogen-check.mjs")).toBe(true);
+			expect(logService.lines).toContain(
+				"info: The Rogen hook of Claude Code runs .agents/hooks/rogen-check.mjs, which is missing, so init writes it back."
+			);
+			expect(logService.lines.join("\n")).not.toContain("already");
 		});
 
 		it("should leave it out unless given, and say how to add it", async () => {
