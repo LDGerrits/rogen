@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import { DeferredPromise } from "../../../base/async.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ServerInfo } from "../../runner/rojo-server.js";
@@ -154,5 +155,21 @@ describe("ServerRecords", () => {
 				expect(await records.recordOf(address, written)).toBeDefined();
 			}
 		);
+
+		it("should leave a record it can't delete, without failing", async () => {
+			await records.write(address, info, served);
+			jest.spyOn(fs, "delete").mockRejectedValue(new Error("EBUSY"));
+
+			await expect(
+				records.remove(address, info)
+			).resolves.toBeUndefined();
+			expect(await records.recordOf(address, info)).toBeDefined();
+		});
+
+		it("should do nothing when there is no record", async () => {
+			await expect(
+				records.remove(address, info)
+			).resolves.toBeUndefined();
+		});
 	});
 });

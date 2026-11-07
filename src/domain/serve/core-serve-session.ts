@@ -140,9 +140,7 @@ export class CoreServeSession
 				...servers.map((server) => server.terminate()),
 				...this.retirements,
 			]);
-			await Promise.allSettled(
-				servers.map((server) => server.unrecord())
-			);
+			await Promise.all(servers.map((server) => server.unrecord()));
 			await this.exits.queue(async () => undefined);
 			await this.watch.stop();
 		})();

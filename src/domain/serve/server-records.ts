@@ -119,12 +119,12 @@ export class ServerRecords {
 		);
 	}
 
-	/** Forgets the record of `address` when it is the one this serve wrote for the server that answered with `info`, leaving one another serve wrote since. */
+	/** Forgets the record of `address` when it is the one this serve wrote for the server that answered with `info`, leaving one another serve wrote since. Never fails: a record it can't delete stays, as the record of a serve that ended does. */
 	async remove(address: ServeAddress, info: ServerInfo): Promise<void> {
 		const file = this.fileOf(address.port);
 		const record = await this.read(file);
 		if (record?.owner === this.owner && record.session === info.session)
-			await this.fileSystemService.delete(file);
+			await this.fileSystemService.delete(file).catch(() => undefined);
 	}
 
 	private async read(file: string): Promise<ServerRecord | undefined> {

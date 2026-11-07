@@ -187,9 +187,7 @@ export class StartedServer extends AbstractDisposable {
 		const { record } = this;
 		if (!record) return;
 		await record.written;
-		await this.records
-			.remove(this.target.address, record.info)
-			.catch(() => undefined);
+		await this.records.remove(this.target.address, record.info);
 	}
 
 	/** Whether the Rojo that just crashed served what it was taken to: not when that server still answers, so it was another's all along, whose record it then leaves. */
