@@ -1,8 +1,8 @@
 import path from "path";
 import { firstLine } from "../../base/strings.js";
-import { selfAndAncestors } from "../../base/path.js";
 import { ErrorUtils, ToolError, failureReason } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
+import { UndoLog } from "./undo-log.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { GitRepository } from "./git-repository.js";
 import { ProcessService } from "../../platform/process/process-service.js";
@@ -31,64 +31,17 @@ export class InitWriter {
 		private readonly locator: ToolLocator
 	) {}
 
-	/** Stops at the first write that fails, calling `onWritten` after each. A dry run writes nothing and calls it for what it would write. */
+	/** Stops at the first write that fails and undoes the writes before it; `onWritten` hears of each once the writes have all succeeded. A dry run writes nothing and calls it for what it would write. */
 	async write(
 		plan: InitPlan,
 		onWritten: (written: InitWritten) => void,
 		dryRun = false
 	): Promise<Result<void, Error>> {
-		if (plan.scaffold) {
-			const scaffolded = await this.scaffold(
-				plan.scaffold,
-				plan.directory,
-				dryRun
-			);
-			if (scaffolded.isErr()) return scaffolded;
-			onWritten({ kind: "scaffold", scaffold: plan.scaffold });
-		}
-		const at = (relative: string) => path.join(plan.directory, relative);
-		for (const move of plan.moves) {
-			const moved = dryRun
-				? ok(undefined)
-				: await attempt(
-						`Failed to rename ${move.from} to ${move.to}`,
-						() =>
-							this.fileSystemService.rename(
-								at(move.from),
-								at(move.to)
-							)
-					);
-			if (moved.isErr()) return moved;
-			onWritten({ kind: "move", move });
-		}
-		for (const file of plan.files) {
-			const written = dryRun
-				? ok(undefined)
-				: await attempt(`Failed to write ${file.fileName}`, () =>
-						this.fileSystemService.writeFile(
-							at(file.fileName),
-							file.content
-						)
-					);
-			if (written.isErr()) return written;
-			onWritten({ kind: "file", file });
-		}
-		for (const directory of plan.directories) {
-			const created = await attempt(
-				`Failed to create ${directory}`,
-				async () => {
-					if (await this.fileSystemService.exists(at(directory)))
-						return false;
-					if (!dryRun)
-						await this.fileSystemService.createDirectory(
-							at(directory)
-						);
-					return true;
-				}
-			);
-			if (created.isErr()) return created;
-			if (created.value) onWritten({ kind: "directory", directory });
-		}
+		const log = new UndoLog(this.fileSystemService, plan.directory);
+		const written: InitWritten[] = [];
+		const changed = await this.change(plan, log, written, dryRun);
+		if (changed.isErr()) return err(await log.undo(changed.error));
+		for (const item of written) onWritten(item);
 		if (plan.gitInit) {
 			const made = dryRun
 				? ok(undefined)
@@ -103,35 +56,79 @@ export class InitWriter {
 		return ok(undefined);
 	}
 
-	/** Runs the tool in the folder, making it first, then removes what it wrote that `init` replaces; a failed run removes the folders it made, so a second `init` starts clean. */
+	/** The scaffold, moves, files and folders, any of whose failure fails the run. */
+	private async change(
+		plan: InitPlan,
+		log: UndoLog,
+		written: InitWritten[],
+		dryRun: boolean
+	): Promise<Result<void, Error>> {
+		if (plan.scaffold) {
+			const scaffolded = await this.scaffold(
+				plan.scaffold,
+				plan.directory,
+				log,
+				dryRun
+			);
+			if (scaffolded.isErr()) return scaffolded;
+			written.push({ kind: "scaffold", scaffold: plan.scaffold });
+		}
+		const at = (relative: string) => path.join(plan.directory, relative);
+		for (const move of plan.moves) {
+			const moved = dryRun
+				? ok(undefined)
+				: await attempt(
+						`Failed to rename ${move.from} to ${move.to}`,
+						() => log.rename(at(move.from), at(move.to))
+					);
+			if (moved.isErr()) return moved;
+			written.push({ kind: "move", move });
+		}
+		for (const file of plan.files) {
+			const wrote = dryRun
+				? ok(undefined)
+				: await attempt(`Failed to write ${file.fileName}`, () =>
+						log.writeFile(at(file.fileName), file.content)
+					);
+			if (wrote.isErr()) return wrote;
+			written.push({ kind: "file", file });
+		}
+		for (const directory of plan.directories) {
+			const created = await attempt(
+				`Failed to create ${directory}`,
+				async () =>
+					dryRun
+						? !(await this.fileSystemService.exists(at(directory)))
+						: log.createDirectory(at(directory))
+			);
+			if (created.isErr()) return created;
+			if (created.value) written.push({ kind: "directory", directory });
+		}
+		return ok(undefined);
+	}
+
+	/** Runs the tool in the folder, making it first, then removes what it wrote that `init` replaces. */
 	private async scaffold(
 		{ command, replaces }: PlannedScaffold,
 		directory: string,
+		log: UndoLog,
 		dryRun: boolean
 	): Promise<Result<void, Error>> {
 		if (dryRun) return ok(undefined);
-		const outermostNew = await this.firstMissing(directory);
-		if (outermostNew !== undefined) {
-			const created = await attempt(`Failed to create ${directory}`, () =>
-				this.fileSystemService.createDirectory(directory)
-			);
-			if (created.isErr()) return created;
-		}
+		const created = await attempt(`Failed to create ${directory}`, () =>
+			log.createDirectory(directory)
+		);
+		if (created.isErr()) return created;
 		const failed = await this.failureOf(command, directory);
-		if (failed !== undefined) {
-			if (outermostNew !== undefined)
-				await tryWithAsync(() =>
-					this.fileSystemService.delete(outermostNew, true)
-				);
+		if (failed !== undefined)
 			return err(
 				new ToolError(
 					`'${command.command}' failed: ${failed}.`,
-					outermostNew === undefined
-						? `Run it in ${directory} yourself, then run 'rogen init' again.`
-						: `Make ${directory}, run it there yourself, then run 'rogen init' again.`
+					created.value
+						? `Make ${directory}, run it there yourself, then run 'rogen init' again.`
+						: `Run it in ${directory} yourself, then run 'rogen init' again.`
 				)
 			);
-		}
 		return attempt("Failed to clear the starter", async () => {
 			for (const file of replaces) {
 				const target = path.join(directory, file);
@@ -139,16 +136,6 @@ export class InitWriter {
 					await this.fileSystemService.delete(target, true);
 			}
 		});
-	}
-
-	/** The outermost folder of `directory` and its parents that isn't there, which making `directory` makes. */
-	private async firstMissing(directory: string): Promise<string | undefined> {
-		let missing: string | undefined;
-		for (const folder of selfAndAncestors(directory)) {
-			if (await this.fileSystemService.exists(folder)) break;
-			missing = folder;
-		}
-		return missing;
 	}
 
 	/** A command that fails leaves the project written, so it is reported to the caller, which says what to run by hand, and the commands after it are skipped. */

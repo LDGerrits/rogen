@@ -7,6 +7,7 @@ import { ResultError } from "../../../base/result.js";
 import { configStructure } from "../../../domain/config/config-structure.js";
 import { ConfigFileReader } from "../../../platform/config/config-file.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
+import { FileType } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
@@ -62,6 +63,26 @@ describe("init command", () => {
 	const exists = (file: string) => memFs.exists(path.join(cwd, file));
 	const errorMessage = (result: Awaited<ReturnType<typeof runInit>>) =>
 		(result as ResultError<Error>).error.message;
+	const tree = async (folder = "/mock"): Promise<Record<string, string>> => {
+		const entries: Record<string, string> = {};
+		for (const [name, type] of await memFs.readDirectory(folder)) {
+			const at = path.join(folder, name);
+			if (type === FileType.Directory) {
+				entries[`${at}/`] = "";
+				Object.assign(entries, await tree(at));
+			} else entries[at] = await memFs.readFile(at);
+		}
+		return entries;
+	};
+	const refuseWrite = (suffix: string) => {
+		const writeFile = memFs.writeFile.bind(memFs);
+		return jest
+			.spyOn(memFs, "writeFile")
+			.mockImplementation(async (file, content) => {
+				if (file.endsWith(suffix)) throw new Error("disk full");
+				return writeFile(file, content);
+			});
+	};
 
 	beforeEach(async () => {
 		memFs = new MemoryFileSystemService();
@@ -135,7 +156,7 @@ describe("init command", () => {
 			});
 		});
 
-		it("should name the files it wrote before a write failed", async () => {
+		it("should name no files when a failed write puts the folder back", async () => {
 			await write("tsconfig.json", "{}");
 			const writeFile = memFs.writeFile.bind(memFs);
 			jest.spyOn(memFs, "writeFile").mockImplementation(
@@ -150,14 +171,8 @@ describe("init command", () => {
 
 			expect(result.isErr()).toBe(true);
 			expect(JSON.parse(logService.entries[0].text)).toEqual({
-				changed: true,
-				files: [
-					{
-						file: path.join(cwd, "src/.gitkeep"),
-						outcome: "wrote",
-					},
-					{ file: path.join(cwd, ".gitignore"), outcome: "wrote" },
-				],
+				changed: false,
+				files: [],
 				decided: expect.any(Array),
 				directories: [],
 				error: {
@@ -998,6 +1013,39 @@ describe("init command", () => {
 			expect(await exists(".rogen.json")).toBe(true);
 		});
 
+		it("should reverse the earlier renames when a later one fails", async () => {
+			await write("src/Shop/Shop_Client.luau", "return {}");
+			const before = await tree();
+			const move = memFs.rename.bind(memFs);
+			const rename = jest
+				.spyOn(memFs, "rename")
+				.mockImplementation(async (from, to) => {
+					if (from.endsWith("Shop_Client.luau"))
+						throw new Error("Permission denied");
+					return move(from, to);
+				});
+
+			const failed = await runInit();
+			rename.mockRestore();
+
+			expect(failed.isErr()).toBe(true);
+			expect(await tree()).toEqual(before);
+		});
+
+		it("should put the v1 config back when the config fails to write", async () => {
+			const before = await tree();
+			const refused = refuseWrite("default.rogen.json");
+
+			const failed = await runInit();
+			refused.mockRestore();
+
+			expect(failed.isErr()).toBe(true);
+			expect(await tree()).toEqual(before);
+			(await runInit()).unwrap();
+			expect(await exists(".rogen.json.v1")).toBe(true);
+			expect(await exists("src/Combat/Combat@Server.luau")).toBe(true);
+		});
+
 		it("should keep the v1 config when a rename fails, so a second init migrates", async () => {
 			const move = memFs.rename.bind(memFs);
 			const rename = jest
@@ -1046,6 +1094,89 @@ describe("init command", () => {
 		expect(await exists("default.project.json")).toBe(true);
 		expect(await exists(".gitignore")).toBe(true);
 		expect(await exists("AGENTS.md")).toBe(true);
+	});
+
+	describe("a failed run", () => {
+		it("should leave the folder as it was when the config fails to write", async () => {
+			const before = await tree();
+			const refused = refuseWrite("default.rogen.json");
+
+			const failed = await runInit();
+			refused.mockRestore();
+
+			expect(failed.isErr()).toBe(true);
+			expect(await tree()).toEqual(before);
+			(await runInit()).unwrap();
+			expect(await exists("default.project.json")).toBe(true);
+		});
+
+		it("should remove the folder it made for a new project", async () => {
+			const before = await tree();
+			const refused = refuseWrite("default.rogen.json");
+
+			const failed = await runInit(undefined, undefined, {}, ["lobby"]);
+			refused.mockRestore();
+
+			expect(failed.isErr()).toBe(true);
+			expect(await tree()).toEqual(before);
+		});
+
+		it("should give a changed AGENTS.md its earlier text back", async () => {
+			await write("AGENTS.md", "# Rules\n");
+			const refused = refuseWrite("default.rogen.json");
+
+			const failed = await runInit();
+			refused.mockRestore();
+
+			expect(failed.isErr()).toBe(true);
+			expect(await read("AGENTS.md")).toBe("# Rules\n");
+		});
+
+		it("should name a file it could not remove, and put back the rest", async () => {
+			const before = await tree();
+			const refused = refuseWrite("default.rogen.json");
+			const remove = memFs.delete.bind(memFs);
+			const stuck = jest
+				.spyOn(memFs, "delete")
+				.mockImplementation(async (file, recursive) => {
+					if (file.endsWith(".gitignore"))
+						throw new Error("Permission denied");
+					return remove(file, recursive);
+				});
+
+			const failed = await runInit();
+			refused.mockRestore();
+			stuck.mockRestore();
+
+			expect(errorMessage(failed)).toBe(
+				"Failed to write default.rogen.json: disk full. Could not put back .gitignore."
+			);
+			expect(Object.keys(await tree())).toEqual([
+				...Object.keys(before),
+				path.join(cwd, ".gitignore"),
+			]);
+		});
+
+		it("should keep the project when git init fails", async () => {
+			const processes = readyProcesses();
+			processes.installed.set("git", "/bin/git");
+			processes.outputs.set("/bin/git", {
+				code: 128,
+				stdout: "",
+				stderr: "fatal: no",
+			});
+
+			const result = await runInit(
+				undefined,
+				undefined,
+				{},
+				["lobby"],
+				processes
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(await exists("lobby/default.rogen.json")).toBe(true);
+		});
 	});
 
 	it("should return a structured error if writing a file fails", async () => {
