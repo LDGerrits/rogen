@@ -17,8 +17,6 @@ import {
 import {
 	AbstractCommand,
 	registerCommand,
-	signalStop,
-	stoppedBySignal,
 } from "../../platform/commands/commands.js";
 import {
 	CommandLine,
@@ -31,7 +29,6 @@ import {
 	warningDiagnostic,
 	messageRelativeTo,
 } from "../../platform/diagnostics/diagnostic.js";
-import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { OutcomeLog } from "../write/outcome-log.js";
@@ -136,7 +133,6 @@ registerCommand(
 			const ask = !dryRun && line.options["non-interactive"] !== true;
 			const promptService = accessor.get(PromptService);
 			const logService = accessor.get(LogService);
-			const lifecycleService = accessor.get(LifecycleService);
 			if (!json) logService.reserveStdout();
 			if (ask && (!promptService.isInteractive || json))
 				return err(
@@ -169,15 +165,9 @@ registerCommand(
 			const { write: run, outcome } = await accessor
 				.get(SyncbackService)
 				.run(selection.value, { input, cwd, mode });
-			let failure = run.failure();
-			let stopped: Error | undefined;
-			if (outcome.kind === "failed")
-				stopped = stoppedBySignal(lifecycleService, outcome.error);
-			// A run a signal came to while it wrote still ends as the signal says.
-			else
-				failure = failure
-					? stoppedBySignal(lifecycleService, failure)
-					: signalStop(lifecycleService);
+			const failure = run.failure();
+			const stopped =
+				outcome.kind === "failed" ? outcome.error : undefined;
 
 			if (json)
 				return this.printJson(

@@ -880,7 +880,7 @@ describe("init command", () => {
 					lifecycle
 				);
 
-				expect(exitCode(result)).toBe(130);
+				expect(exitCode(result, lifecycle.signal)).toBe(130);
 				expect(await tree()).toEqual(before);
 				expect(text(log)).not.toContain(`Ran ${NPM}.`);
 			});
@@ -1282,7 +1282,7 @@ describe("init command", () => {
 			);
 			writing.mockRestore();
 
-			expect(exitCode(result)).toBe(130);
+			expect(exitCode(result, lifecycle.signal)).toBe(130);
 			expect(await tree()).toEqual(before);
 			expect((result as ResultError<Error>).error.cause).toBeInstanceOf(
 				CancelledError
@@ -1326,7 +1326,7 @@ describe("init command", () => {
 			);
 			checking.mockRestore();
 
-			expect(exitCode(result)).toBe(130);
+			expect(exitCode(result, lifecycle.signal)).toBe(130);
 			expect(await tree()).toEqual(before);
 			expect(processes.execs.map(({ file }) => file)).not.toContain(
 				"/bin/git"
@@ -1376,7 +1376,7 @@ describe("init command", () => {
 			writing.mockRestore();
 			stuck.mockRestore();
 
-			expect(exitCode(result)).toBe(130);
+			expect(exitCode(result, lifecycle.signal)).toBe(130);
 			expect(errorMessage(result)).toBe(
 				"init stopped before it finished. Could not put back .gitignore."
 			);
@@ -1401,7 +1401,7 @@ describe("init command", () => {
 			);
 			writing.mockRestore();
 
-			expect(exitCode(result)).toBe(130);
+			expect(exitCode(result, lifecycle.signal)).toBe(130);
 			expect(await tree()).toEqual(before);
 			expect(JSON.parse(log.entries[0].text).error.kind).toBe(
 				"cancelled"
@@ -1435,7 +1435,7 @@ describe("init command", () => {
 			writing.mockRestore();
 			stuck.mockRestore();
 
-			expect(exitCode(result)).toBe(130);
+			expect(exitCode(result, lifecycle.signal)).toBe(130);
 			expect(JSON.parse(log.entries[0].text).error).toMatchObject({
 				kind: "cancelled",
 				message:

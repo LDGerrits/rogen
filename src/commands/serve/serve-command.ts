@@ -8,7 +8,6 @@ import { ServeEnding, ServeService } from "../../domain/serve/serve-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
-	signalStop,
 } from "../../platform/commands/commands.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import {
@@ -122,10 +121,13 @@ registerCommand(
 			if (tooMany) return err(tooMany);
 			const serveService = accessor.get(ServeService);
 
-			const lifecycle = accessor.get(LifecycleService);
 			const store = new DisposableStore();
 			const shutdown = new AbortController();
-			store.add(lifecycle.onWillShutdown(() => shutdown.abort()));
+			store.add(
+				accessor
+					.get(LifecycleService)
+					.onWillShutdown(() => shutdown.abort())
+			);
 			try {
 				await refreshAgentRules(accessor, Boolean(line.options.json));
 				const plan = await serveService.prepare({
@@ -133,7 +135,7 @@ registerCommand(
 					refs: line.positionals,
 					serverArgs: serverArgsOf(line),
 				});
-				if (shutdown.signal.aborted) return this.stoppedBy(lifecycle);
+				if (shutdown.signal.aborted) return ok(undefined);
 				if (plan.isErr()) return plan;
 
 				const log: ServeReporter = line.options.json
@@ -171,24 +173,13 @@ registerCommand(
 					value.onDidConnect((change) => log.connection(change))
 				);
 				store.add(value.onDidChange((change) => log.changed(change)));
-				return this.ended(
-					lifecycle,
-					log,
-					await value.run(shutdown.signal)
-				);
+				return this.ended(log, await value.run(shutdown.signal));
 			} finally {
 				store[Symbol.dispose]();
 			}
 		}
 
-		/** Ok, unless a signal stopped the run, which ends it as a shell reports a process the signal stopped. */
-		private stoppedBy(lifecycle: LifecycleService): Result<void, Error> {
-			const stopped = signalStop(lifecycle);
-			return stopped ? this.reported(stopped) : ok(undefined);
-		}
-
 		private ended(
-			lifecycle: LifecycleService,
 			log: ServeReporter,
 			ending: ServeEnding
 		): Result<void, Error> {
@@ -200,7 +191,7 @@ registerCommand(
 				if (ending.exit) log.stopped(ending.exit);
 				log.shutdown(ending.ended);
 				log.end("Stopped serving.");
-				return this.stoppedBy(lifecycle);
+				return ok(undefined);
 			}
 			const { exit } = ending;
 			log.stopped(exit);

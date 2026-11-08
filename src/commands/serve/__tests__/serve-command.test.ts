@@ -3,7 +3,10 @@ import "../serve-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 
 import { Result } from "../../../base/result.js";
-import { exitCodeOf } from "../../../platform/commands/command-failure.js";
+import {
+	exitCode,
+	exitCodeOf,
+} from "../../../platform/commands/command-failure.js";
 import { CommandLine } from "../../../platform/environment/args.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
@@ -277,7 +280,7 @@ describe("serve command", () => {
 			lifecycle.shutdown(signal);
 
 			const ended = await result;
-			expect(ended.isErr() && exitCodeOf(ended.error)).toBe(code);
+			expect(exitCode(ended, lifecycle.signal)).toBe(code);
 			expect(logService.lines.at(-1)).toBe("outro: Stopped serving.");
 		}
 	);
@@ -307,7 +310,7 @@ describe("serve command", () => {
 			}
 
 			const ended = await result;
-			expect(ended.isErr() && exitCodeOf(ended.error)).toBe(130);
+			expect(exitCode(ended, lifecycle.signal)).toBe(130);
 			expect(printed().slice(1)).toEqual([
 				{
 					stopped: {
@@ -331,7 +334,7 @@ describe("serve command", () => {
 		processes.spawned[0].exit({ code: 3, signal: null });
 
 		const ended = await result;
-		expect(ended.isErr() && exitCodeOf(ended.error)).toBe(130);
+		expect(exitCode(ended, lifecycle.signal)).toBe(130);
 		expect(logService.lines).toContain(
 			"diagnosticError: /repo/default.rogen.json - error: Rojo stopped serving repo with exit code 3, without saying why. (serve.serverExited)"
 		);
@@ -350,7 +353,7 @@ describe("serve command", () => {
 		processes.spawned[0].exit({ code: 1, signal: null });
 
 		const ended = await result;
-		expect(ended.isErr() && exitCodeOf(ended.error)).toBe(130);
+		expect(exitCode(ended, lifecycle.signal)).toBe(130);
 		expect(printed().slice(1)).toEqual([
 			{
 				stopped: {
@@ -381,7 +384,7 @@ describe("serve command", () => {
 		lifecycle.shutdown("SIGINT");
 
 		const ended = await result;
-		expect(ended.isErr() && exitCodeOf(ended.error)).toBe(130);
+		expect(exitCode(ended, lifecycle.signal)).toBe(130);
 		expect(logService.lines.at(-1)).toBe("outro: Stopped serving.");
 	});
 
@@ -545,7 +548,7 @@ describe("serve command", () => {
 			await settle();
 			await endings[kind].end();
 			const ended = await result;
-			return ended.isOk() ? 0 : exitCodeOf(ended.error);
+			return exitCode(ended, lifecycle.signal);
 		};
 
 		describe.each(Object.keys(endings) as (keyof typeof endings)[])(
@@ -571,7 +574,7 @@ describe("serve command", () => {
 		lifecycle.shutdown("SIGINT");
 
 		const ended = await result;
-		expect(ended.isErr() && exitCodeOf(ended.error)).toBe(130);
+		expect(exitCode(ended, lifecycle.signal)).toBe(130);
 		expect(processes.spawned).toEqual([]);
 	});
 
