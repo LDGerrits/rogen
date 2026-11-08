@@ -696,7 +696,14 @@ export function createProject(files: Readonly<Record<string, string>>): {
 	}
 	return {
 		dir,
-		dispose: () => fs.rmSync(parent, { recursive: true, force: true }),
+		// Windows holds a folder a moment after the program in it has ended.
+		dispose: () =>
+			fs.rmSync(parent, {
+				recursive: true,
+				force: true,
+				maxRetries: 10,
+				retryDelay: 100,
+			}),
 	};
 }
 

@@ -17,25 +17,12 @@ const { MirrorPlan } = await import("../mirror-plan.js");
 const { PlanWriter } = await import("../plan-writer.js");
 
 describe("PlanWriter where the file system ignores case", () => {
-	it("should remove a renamed file's old file before it writes one whose name only differs in case", async () => {
-		const fs = new MemoryFileSystemService();
-		const old = abs("src/Inventory/Bag@server.luau");
-		const fresh = abs("src/Inventory/bag@server.luau");
-		await fs.writeFile(old, "");
-		const config = configOf();
-		const calls: string[] = [];
-		const writeBytes = fs.writeFileBytes.bind(fs);
-		fs.writeFileBytes = async (file, content) => {
-			calls.push(`write ${file}`);
-			return writeBytes(file, content);
-		};
-		const deleted = fs.delete.bind(fs);
-		fs.delete = async (file) => {
-			calls.push(`remove ${file}`);
-			return deleted(file);
-		};
+	const old = abs("src/Inventory/Bag@server.luau");
+	const fresh = abs("src/Inventory/bag@server.luau");
 
-		await new PlanWriter(
+	const writeRename = (fs: InstanceType<typeof MemoryFileSystemService>) => {
+		const config = configOf();
+		return new PlanWriter(
 			fs,
 			writeServiceOf(fs, new CoreIndexService(fs))
 		).write(
@@ -63,7 +50,30 @@ describe("PlanWriter where the file system ignores case", () => {
 				[]
 			)
 		);
+	};
 
-		expect(calls).toEqual([`remove ${old}`, `write ${fresh}`]);
+	it("should give a renamed file the name that only differs in case, then write it", async () => {
+		const fs = new MemoryFileSystemService();
+		await fs.writeFile(old, "return 1");
+
+		await writeRename(fs);
+
+		expect(await fs.exists(old)).toBe(false);
+		expect(await fs.readFile(fresh)).toBe("return 2");
+	});
+
+	it("should keep what a renamed file held when its new content can't be written", async () => {
+		const fs = new MemoryFileSystemService();
+		await fs.writeFile(old, "return 1");
+		fs.writeFileBytes = async () => {
+			throw new Error("disk full");
+		};
+
+		const result = await writeRename(fs);
+
+		expect(await fs.readFile(fresh)).toBe("return 1");
+		expect(result.unplaced).toMatchObject([
+			{ reason: expect.stringContaining("disk full") },
+		]);
 	});
 });

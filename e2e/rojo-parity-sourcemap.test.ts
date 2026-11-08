@@ -1,3 +1,4 @@
+import fs from "fs";
 import { describeWithRojo } from "../src/domain/rojo/__tests__/rojo-cli.js";
 import { PARITY_PROJECTS, parityRunners } from "./rojo-parity.js";
 
@@ -8,9 +9,12 @@ const SOURCEMAP_FLAGS = [
 	["--include-non-scripts", "--absolute"],
 ];
 
-/** `json` without `folder`, which Rojo writes with `/` on every platform. */
+/** `json` without `folder`, in its short or full form, which Rojo writes with `/` on every platform. */
 const withoutFolder = (json: string, folder: string): string =>
-	json.split(folder.replaceAll("\\", "/")).join("");
+	[fs.realpathSync.native(folder), folder].reduce(
+		(text, form) => text.split(form.replaceAll("\\", "/")).join(""),
+		json
+	);
 
 describeWithRojo("Rogen and Rojo on the same project", () => {
 	const { rogen, rojo, copies } = parityRunners();

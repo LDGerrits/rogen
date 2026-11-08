@@ -502,6 +502,129 @@ describe("CoreSyncbackService", () => {
 		expect(await fs.readFile(abs("src/Net/init.luau"))).toBe("return 1");
 	});
 
+	it("should keep a file when one copy was removed and another left alone, and list the removal", async () => {
+		await prepare([
+			"src/Net/init.luau",
+			"src/Net/Types.luau",
+			"src/Net/Server/Remote.luau",
+		]);
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Net", "init.luau"));
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.changes).toEqual([]);
+		expect(plan.unplaced).toMatchObject([
+			{
+				instance: "ServerScriptService/Net",
+				reason: expect.stringContaining("so the file was kept"),
+			},
+		]);
+	});
+
+	it("should not list a folder as removed when another mount of it is still there", async () => {
+		await writeFiles(fs, "Packages/Lib.luau");
+		await prepare(["src/Combat/Server/Combat.luau"], {
+			project: {
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Packages: { $path: "Packages" } },
+					ServerStorage: { Packages: { $path: "Packages" } },
+				},
+			},
+		});
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerStorage", "Packages"), true);
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.changes).toEqual([]);
+	});
+
+	it("should skip a file that went away between listing its folder and copying it", async () => {
+		await writeFiles(fs, "Packages/Lib.luau", "Packages/Gone.luau");
+		await prepare(["src/Combat/Server/Combat.luau"], {
+			project: {
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Packages: { $path: "Packages" } },
+				},
+			},
+		});
+		const copy = fs.copyFile.bind(fs);
+		fs.copyFile = async (from, to) => {
+			if (from === abs("Packages/Gone.luau")) await fs.delete(from);
+			return copy(from, to);
+		};
+
+		await expect(planned()).resolves.toMatchObject({ changes: [] });
+	});
+
+	it("should write nothing when a file is saved while Rojo runs", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+		const file = abs("src/Inventory/Bag@server.luau");
+		rojo.say = async () => {
+			await fs.writeFile(file, "saved");
+			return [];
+		};
+
+		const error = errorOf(await syncback("apply"));
+
+		expect(error.message).toContain("changed while syncback ran");
+		expect(await fs.readFile(file)).toBe("saved");
+	});
+
+	it("should stop with an error when a file can't be copied", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+		fs.copyFile = async () => {
+			throw new Error("denied");
+		};
+
+		const error = errorOf(await syncback());
+
+		expect(error.message).toContain("denied");
+		expect(rojo.requests).toHaveLength(0);
+	});
+
+	it("should say it stopped when a shutdown makes a copy fail", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+		fs.copyFile = async () => {
+			lifecycle.shutdown("SIGINT");
+			throw new Error("gone");
+		};
+
+		const error = errorOf(await syncback());
+
+		expect(error.message).toContain("stopped before it finished");
+	});
+
+	it("should stop with an error when a folder can't be read for the copy", async () => {
+		await writeFiles(fs, "Packages/Lib.luau");
+		await prepare(["src/Combat/Server/Combat.luau"], {
+			project: {
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Packages: { $path: "Packages" } },
+				},
+			},
+		});
+		const read = fs.readDirectory.bind(fs);
+		fs.readDirectory = async (dir) => {
+			if (dir === abs("Packages") && (await fs.exists(mirror())))
+				throw new Error("locked");
+			return read(dir);
+		};
+
+		const error = errorOf(await syncback());
+
+		expect(error.message).toContain("locked");
+		expect(rojo.requests).toHaveLength(0);
+	});
+
 	it("should write a file once when its copies were edited the same way", async () => {
 		await prepare([
 			"src/Net/init.luau",
@@ -1058,6 +1181,34 @@ describe("CoreSyncbackService", () => {
 				}
 			);
 		};
+
+		it("should plan on when a tool rewrites compiled code while Rojo runs", async () => {
+			await compiled();
+			rojo.say = async () => {
+				await fs.writeFile(abs("dist/Combat/Server/Hit.luau"), "built");
+				await fs.writeFile(
+					mirror("ReplicatedStorage", "Packages", "Lib.luau"),
+					"return 2"
+				);
+				return [];
+			};
+
+			const plan = await planned();
+
+			expect(plan.changes).toEqual([
+				{ kind: "write", file: abs("Packages/Lib.luau") },
+			]);
+		});
+
+		it("should plan on when a tool deletes compiled code while Rojo runs", async () => {
+			await compiled();
+			rojo.say = async () => {
+				await fs.delete(abs("dist/Combat/Server/Hit.luau"));
+				return [];
+			};
+
+			await expect(planned()).resolves.toMatchObject({ changes: [] });
+		});
 
 		it("should write an edit to a folder the tree mounts", async () => {
 			await compiled();

@@ -62,6 +62,15 @@ describe("PlanWriter", () => {
 		};
 	});
 
+	it("should remove a file before it makes a folder at its path", async () => {
+		const at = abs("src/Thing");
+		await fs.writeFile(at, "");
+
+		await written({ kind: "folder", file: at, instance: at }, remove(at));
+
+		expect(await fs.isDirectory(at)).toBe(true);
+	});
+
 	it("should write new files before it removes old ones", async () => {
 		const old = abs("src/Old.luau");
 		await fs.writeFile(old, "");
