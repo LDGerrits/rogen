@@ -4,6 +4,8 @@ import { firstLine } from "../../base/strings.js";
 import {
 	CancelledError,
 	ErrorUtils,
+	IoError,
+	KindedError,
 	ToolError,
 	failureReason,
 } from "../../base/errors.js";
@@ -29,12 +31,27 @@ import {
 async function attempt<T>(
 	what: string,
 	run: () => Promise<T>
-): Promise<Result<T, Error>> {
+): Promise<Result<T, IoError>> {
 	const done = await tryWithAsync(run);
-	return done.isErr() ? err(ErrorUtils.wrap(what, done.error)) : done;
+	return done.isErr()
+		? err(ErrorUtils.wrap(what, done.error))
+		: ok(done.value);
 }
 
 const stopped = () => new CancelledError("init stopped before it finished.");
+
+/** `failure`, of its own kind, naming what undo left; a cancel that left nothing says the folder is as it was. */
+function undone(failure: KindedError, left: readonly string[]): KindedError {
+	if (left.length > 0)
+		return failure.withReason(
+			`${failure.reason.replace(/\.?$/, ".")} Could not put back ${left.join(", ")}.`
+		);
+	return failure instanceof CancelledError
+		? failure.withReason(
+				"init stopped before it finished, and put the folder back as it was."
+			)
+		: failure;
+}
 
 export class InitWriter {
 	constructor(
@@ -65,18 +82,12 @@ export class InitWriter {
 				dryRun,
 				stopping.signal
 			);
-			if (stopping.signal.aborted) {
-				const cancelled = stopped();
-				const undone = await log.undo(cancelled);
-				return err(
-					undone === cancelled
-						? new CancelledError(
-								"init stopped before it finished, and put the folder back as it was."
-							)
-						: undone
-				);
-			}
-			if (changed.isErr()) return err(await log.undo(changed.error));
+			const failure = stopping.signal.aborted
+				? stopped()
+				: changed.isErr()
+					? changed.error
+					: undefined;
+			if (failure) return err(undone(failure, await log.undo()));
 		} finally {
 			shutdown[Symbol.dispose]();
 		}
@@ -102,7 +113,7 @@ export class InitWriter {
 		written: InitWritten[],
 		dryRun: boolean,
 		signal: AbortSignal
-	): Promise<Result<void, Error>> {
+	): Promise<Result<void, KindedError>> {
 		if (plan.scaffold) {
 			const scaffolded = await this.scaffold(
 				plan.scaffold,
@@ -171,7 +182,7 @@ export class InitWriter {
 		log: UndoLog,
 		dryRun: boolean,
 		signal: AbortSignal
-	): Promise<Result<void, Error>> {
+	): Promise<Result<void, KindedError>> {
 		if (dryRun) return ok(undefined);
 		const created = await attempt(`Failed to create ${directory}`, () =>
 			log.createDirectory(directory)

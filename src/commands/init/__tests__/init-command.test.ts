@@ -885,6 +885,43 @@ describe("init command", () => {
 				expect(text(log)).not.toContain(`Ran ${NPM}.`);
 			});
 
+			it("should report a failed command as a tool failure in --json, naming what it could not remove", async () => {
+				const processes = npmProcesses(1);
+				const exec = processes.exec.bind(processes);
+				jest.spyOn(processes, "exec").mockImplementation(
+					async (file, args, options) => {
+						if (file === "/bin/npm")
+							await write("package.json", "{}");
+						return exec(file, args, options);
+					}
+				);
+				const remove = memFs.delete.bind(memFs);
+				const stuck = jest
+					.spyOn(memFs, "delete")
+					.mockImplementation(async (file, recursive) => {
+						if (file.endsWith("package.json"))
+							throw new Error("Permission denied");
+						return remove(file, recursive);
+					});
+				const log = new MockLogService();
+
+				const result = await runInit(
+					new MockPromptService([], false),
+					log,
+					{ language: "roblox-ts", "skip-git": true, json: true },
+					[],
+					processes
+				);
+				stuck.mockRestore();
+
+				expect(exitCode(result)).toBe(1);
+				const { error } = JSON.parse(log.entries[0].text);
+				expect(error.kind).toBe("tool");
+				expect(error.message).toMatch(
+					/npm error network\. Could not put back package\.json\.$/
+				);
+			});
+
 			it("should fail with the command to run by hand, and write nothing", async () => {
 				const result = await runInit(
 					new MockPromptService([], false),
@@ -1369,6 +1406,41 @@ describe("init command", () => {
 			expect(JSON.parse(log.entries[0].text).error.kind).toBe(
 				"cancelled"
 			);
+		});
+
+		it("should report a Ctrl+C as cancelled in --json when it could not put a file back", async () => {
+			const lifecycle = new MockLifecycleService();
+			const log = new MockLogService();
+			const writing = shutDownWhileWriting(
+				lifecycle,
+				"default.rogen.json"
+			);
+			const remove = memFs.delete.bind(memFs);
+			const stuck = jest
+				.spyOn(memFs, "delete")
+				.mockImplementation(async (file, recursive) => {
+					if (file.endsWith(".gitignore"))
+						throw new Error("Permission denied");
+					return remove(file, recursive);
+				});
+
+			const result = await runInit(
+				undefined,
+				log,
+				{ json: true },
+				[],
+				readyProcesses(),
+				lifecycle
+			);
+			writing.mockRestore();
+			stuck.mockRestore();
+
+			expect(exitCode(result)).toBe(130);
+			expect(JSON.parse(log.entries[0].text).error).toMatchObject({
+				kind: "cancelled",
+				message:
+					"init stopped before it finished. Could not put back .gitignore.",
+			});
 		});
 
 		it("should name a file it could not remove, and put back the rest", async () => {
