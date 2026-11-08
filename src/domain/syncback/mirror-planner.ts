@@ -1,6 +1,12 @@
 import path from "path";
-import { IoError, failureReason } from "../../base/errors.js";
-import { ancestors, contains, toNative, toPosix } from "../../base/path.js";
+import { IoError, UsageError, failureReason } from "../../base/errors.js";
+import {
+	PathSet,
+	ancestors,
+	contains,
+	toNative,
+	toPosix,
+} from "../../base/path.js";
 import { parse } from "../../base/jsonc.js";
 import { isObject } from "../../base/objects.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
@@ -61,6 +67,12 @@ function withLineEndings(before: Uint8Array, next: Uint8Array): Uint8Array {
 	}
 	return Uint8Array.from(out);
 }
+
+/** A copy Rojo left as it was, or one whose project file was saved while Rojo ran. */
+type Unchanged = {
+	readonly file: string;
+	readonly instance: string;
+} & ({ readonly kind: "same" } | { readonly kind: "saved" });
 
 /** The instance a file of `instance` makes, for the check after the run; none for a meta file, which makes no instance of its own. */
 function instanceOf(
@@ -129,7 +141,7 @@ export class MirrorPlanner {
 			run,
 			walked.isOk() ? walked.value : []
 		);
-		return ok(await planner.make());
+		return planner.make();
 	}
 
 	/** Whether Rojo's file at `at` differs from `file`, or is new where `file` is undefined, only by an empty `SerializedOverrides`. */
@@ -173,14 +185,15 @@ export class MirrorPlanner {
 		)?.node;
 	}
 
-	private async make(): Promise<MirrorPlan> {
+	private async make(): Promise<Result<MirrorPlan, Error>> {
 		const { request } = this;
 		for (const file of [
 			request.project.file,
 			path.resolve(request.cwd, request.input),
 		])
 			this.before.set(file, await bytesOf(this.fileSystemService, file));
-		await this.compareCopies();
+		const compared = await this.compareCopies();
+		if (compared.isErr()) return compared;
 		await this.pruneEmptied();
 		const known = this.knownFolders();
 		const { fresh, metaFiles } = await this.readAdded(known);
@@ -189,19 +202,21 @@ export class MirrorPlanner {
 		const edited = await this.edits.editTree(additions);
 		for (const operation of edited.operations) await this.add(operation);
 		this.unplaced.push(...edited.unplaced);
-		return new MirrorPlan(
-			request.project,
-			this.unplaced,
-			this.compiled,
-			this.operations,
-			this.before,
-			this.expected,
-			this.listed()
+		return ok(
+			new MirrorPlan(
+				request.project,
+				this.unplaced,
+				this.compiled,
+				this.operations,
+				this.before,
+				this.expected,
+				this.listed()
+			)
 		);
 	}
 
-	/** Each copy Rojo edited or removed, as a change of the file it was copied from; a file a project places at more than one instance is copied once for each, and changed once. */
-	private async compareCopies(): Promise<void> {
+	/** Each copy Rojo edited or removed, as a change of the file it was copied from; a file a project places at more than one instance is copied once for each, changed once, and kept while a copy of it is. Fails when a file was saved while Rojo ran, since Rojo's copy would undo the save. */
+	private async compareCopies(): Promise<Result<void, Error>> {
 		const { workspace, operations, unplaced } = this;
 		const { copied, started } = this.run;
 		/** Where in `operations` each file changed so far is. */
@@ -209,37 +224,62 @@ export class MirrorPlanner {
 		const kept = copied.filter(
 			({ target }) => !workspace.isIgnored(target)
 		);
-		const compared = await inBatches(kept, async (copy) => {
-			const { mirror: at, target } = copy;
-			const file = toNative(target);
-			const instance = workspace.instanceAt(at);
-			if (!this.present.has(at))
-				return {
-					kind: "remove" as const,
-					file,
-					instance,
-					from: at,
-				};
-			if (await workspace.isLeftAlone(copy, started)) return undefined;
-			const original = await this.fileSystemService.readFileBytes(file);
-			const next = withLineEndings(original, await workspace.read(at));
-			return sameBytes(next, original) ||
-				(this.isCompiled(file) &&
-					onlySerializedOverrides(
-						decoder.decode(original),
-						decoder.decode(next)
-					))
-				? undefined
-				: {
-						kind: "write" as const,
+		const compared = await inBatches(
+			kept,
+			async (copy): Promise<Operation | Unchanged> => {
+				const { mirror: at, target } = copy;
+				const file = toNative(target);
+				const instance = workspace.instanceAt(at);
+				const there = this.present.has(at);
+				if (there && (await workspace.isLeftAlone(copy, started)))
+					return { kind: "same", file, instance };
+				if (!this.isCompiled(file) && (await workspace.wasSaved(copy)))
+					return { kind: "saved", file, instance };
+				if (!there)
+					return {
+						kind: "remove",
 						file,
-						bytes: next,
 						instance,
 						from: at,
 					};
-		});
+				const original =
+					await this.fileSystemService.readFileBytes(file);
+				const next = withLineEndings(
+					original,
+					await workspace.read(at)
+				);
+				return sameBytes(next, original) ||
+					(this.isCompiled(file) &&
+						onlySerializedOverrides(
+							decoder.decode(original),
+							decoder.decode(next)
+						))
+					? { kind: "same", file, instance }
+					: {
+							kind: "write",
+							file,
+							bytes: next,
+							instance,
+							from: at,
+						};
+			}
+		);
+		const saved = compared.find(({ kind }) => kind === "saved");
+		if (saved)
+			return err(
+				new UsageError(
+					`${saved.file} changed while syncback ran, so nothing was written.`,
+					"Run syncback again."
+				)
+			);
+		const leftAlone = new Map(
+			compared
+				.filter(({ kind }) => kind === "same")
+				.map(({ file, instance }) => [file, instance])
+		);
 		for (const operation of compared) {
-			if (!operation) continue;
+			if (operation.kind === "same" || operation.kind === "saved")
+				continue;
 			if (
 				this.leftOut(
 					operation.file,
@@ -248,6 +288,14 @@ export class MirrorPlanner {
 				)
 			)
 				continue;
+			const copy = leftAlone.get(operation.file);
+			if (operation.kind === "remove" && copy !== undefined) {
+				unplaced.push({
+					instance: operation.instance,
+					reason: `its file ${operation.file} is also ${copy}, which is still there, so the file was kept`,
+				});
+				continue;
+			}
 			const at = claimed.get(operation.file);
 			if (at === undefined) {
 				claimed.set(operation.file, operations.length);
@@ -273,6 +321,7 @@ export class MirrorPlanner {
 				});
 			}
 		}
+		return ok(undefined);
 	}
 
 	/** The folders the place no longer holds, and each folder above a removal that it leaves empty, up to the source path. */
@@ -553,6 +602,11 @@ export class MirrorPlanner {
 			});
 		const router = new ReverseRouter(workspace.layout);
 		const taken = new Set<string>();
+		const removed = new PathSet(
+			this.operations
+				.filter(({ kind }) => kind === "remove")
+				.map(({ file }) => file)
+		);
 		const folders = new Set(
 			fresh.filter(({ folder }) => folder).map(({ path: at }) => at)
 		);
@@ -565,7 +619,13 @@ export class MirrorPlanner {
 				else additions.push(addition);
 				continue;
 			}
-			const placed = await this.place(router, instance, folders, taken);
+			const placed = await this.place(
+				router,
+				instance,
+				folders,
+				taken,
+				removed
+			);
 			if (placed.kind === "unplaced") {
 				unplaced.push(placed.why);
 				continue;
@@ -621,12 +681,14 @@ export class MirrorPlanner {
 		};
 	}
 
-	/** Where routing puts a new instance, as the files to write; left out when routing can't place it, when a file is already there, or when an ignore glob matches where it goes. */
+	/** Where routing puts a new instance, as the files to write; left out when routing can't place it, when a file the plan leaves is already there, or when an ignore glob matches where it goes. */
 	private async place(
 		router: ReverseRouter,
 		instance: AddedInstance,
 		folders: ReadonlySet<string>,
-		taken: Set<string>
+		taken: Set<string>,
+		/** What the plan removes, so a new file can take its place. */
+		removed: PathSet
 	): Promise<
 		| {
 				readonly kind: "placed";
@@ -652,7 +714,10 @@ export class MirrorPlanner {
 			),
 		}));
 		for (const { to } of targets) {
-			if (taken.has(to) || (await this.fileSystemService.exists(to)))
+			if (
+				taken.has(to) ||
+				(!removed.has(to) && (await this.fileSystemService.exists(to)))
+			)
 				return unplaced(`${to} is already there`);
 			if (this.workspace.isIgnored(toPosix(to)))
 				return unplaced(

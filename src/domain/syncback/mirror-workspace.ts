@@ -66,7 +66,12 @@ export interface Copied {
 	readonly target: string;
 	/** When the mirror's copy was written, so a copy Rojo left alone is not read again. */
 	readonly modified: number;
+	/** When the project's file was last saved before it was copied. */
+	readonly saved: number;
 }
+
+/** A file to copy into the mirror. */
+type CopySource = Pick<Copied, "mirror" | "target">;
 
 /** What one syncback of Rojo did on the mirror. */
 export interface MirrorRun {
@@ -228,13 +233,23 @@ export class MirrorWorkspace {
 		const refused: UnplacedInstance[] = [];
 		for (;;) {
 			const ran = await rojo.listOn(this.file, this.layout, signal);
-			if (ran.isOk())
+			if (ran.isOk()) {
+				// With the old file gone, Rojo writes the file it lost as a new one.
+				if (RojoSyncback.lostToCase(ran.value)) {
+					const again = await rojo.listOn(
+						this.file,
+						this.layout,
+						signal
+					);
+					if (again.isErr()) return again;
+				}
 				return ok({
 					copied,
 					started,
 					said: ran.value,
 					skipped: [...refused, ...RojoSyncback.skipped(ran.value)],
 				});
+			}
 			const yaml = RojoSyncback.refusedYaml(ran.error);
 			const file = yaml && this.yamlFileOf(copied, yaml.instance);
 			if (!yaml || !file || ignored.includes(file)) return ran;
@@ -272,6 +287,14 @@ export class MirrorWorkspace {
 				path.join(this.root, at)
 			)) === modified
 		);
+	}
+
+	/** Whether the project's file was saved or removed since it was copied. */
+	async wasSaved({ target, saved }: Copied): Promise<boolean> {
+		const now = await tryWithAsync(() =>
+			this.services.fileSystemService.lastModified(toNative(target))
+		);
+		return now.isErr() || now.value !== saved;
 	}
 
 	/** The tree of the project file Rojo rewrote; none when it can't be read. */
@@ -397,8 +420,11 @@ export class MirrorWorkspace {
 		const entries = await tryWithAsync(() =>
 			fileSystemService.readDirectory(toNative(target))
 		);
-		if (entries.isErr()) return;
-		const files: Omit<Copied, "modified">[] = [];
+		if (entries.isErr()) {
+			if (isMissingPath(entries.error)) return;
+			throw entries.error;
+		}
+		const files: CopySource[] = [];
 		for (const [name, type] of entries.value) {
 			const from = path.posix.join(target, name);
 			const to = `${mirror}/${name}`;
@@ -416,17 +442,19 @@ export class MirrorWorkspace {
 
 	/** Copies a file of the project into the mirror; none when it is gone and `missingOk`. */
 	private async copyInto(
-		file: Omit<Copied, "modified">,
+		file: CopySource,
 		missingOk: true
 	): Promise<Copied | undefined>;
-	private async copyInto(file: Omit<Copied, "modified">): Promise<Copied>;
+	private async copyInto(file: CopySource): Promise<Copied>;
 	private async copyInto(
-		{ mirror, target }: Omit<Copied, "modified">,
+		{ mirror, target }: CopySource,
 		missingOk = false
 	): Promise<Copied | undefined> {
 		const { fileSystemService } = this.services;
 		const to = path.join(this.root, mirror);
+		let saved: number;
 		try {
+			saved = await fileSystemService.lastModified(toNative(target));
 			await fileSystemService.copyFile(toNative(target), to);
 		} catch (error) {
 			if (missingOk && isMissingPath(error as Error)) return undefined;
@@ -436,6 +464,7 @@ export class MirrorWorkspace {
 			mirror,
 			target,
 			modified: await fileSystemService.lastModified(to),
+			saved,
 		};
 	}
 

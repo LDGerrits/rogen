@@ -1,5 +1,10 @@
-import { CancelledError, UsageError } from "../../base/errors.js";
-import { Result, err, ok } from "../../base/result.js";
+import {
+	CancelledError,
+	IoError,
+	UsageError,
+	failureReason,
+} from "../../base/errors.js";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
@@ -177,7 +182,26 @@ export class CoreSyncbackService implements SyncbackService {
 		});
 	}
 
+	/** The plan of a run on the mirror; a file the run can't read fails it, or stops it when a shutdown took the mirror away. */
 	private async planIn(
+		workspace: MirrorWorkspace,
+		signal: AbortSignal
+	): Promise<Result<MirrorPlan, Error>> {
+		const planned = await tryWithAsync(() =>
+			this.planned(workspace, signal)
+		);
+		if (planned.isOk()) return planned.value;
+		return err(
+			signal.aborted
+				? stopped()
+				: new IoError(
+						`Syncback could not read the project or its copy of it: ${failureReason(planned.error)}.`,
+						"Run syncback again."
+					)
+		);
+	}
+
+	private async planned(
 		workspace: MirrorWorkspace,
 		signal: AbortSignal
 	): Promise<Result<MirrorPlan, Error>> {

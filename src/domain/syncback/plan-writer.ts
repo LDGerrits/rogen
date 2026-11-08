@@ -57,12 +57,9 @@ export class PlanWriter {
 		const failed = new Set<string>();
 		const unplaced: UnplacedInstance[] = [];
 		const order = { write: 0, folder: 0, remove: 1, prune: 2 } as const;
-		const written = new PathSet(
-			plan.operations
-				.filter(({ kind }) => kind === "write")
-				.map(({ file }) => file)
-		);
-		// A rename that only changes case writes the old file where the file system folds case, so its removal goes first.
+		const writes = plan.operations.filter(({ kind }) => kind === "write");
+		const written = new PathSet(writes.map(({ file }) => file));
+		// A rename that only changes case writes the old file where the file system folds case, so the old file takes the new name first.
 		const rank = (operation: Operation) =>
 			operation.kind === "remove" && written.has(operation.file)
 				? -1
@@ -91,9 +88,20 @@ export class PlanWriter {
 					await this.fileSystemService.createDirectory(
 						operation.file
 					);
-				else if (operation.kind === "remove")
-					await this.fileSystemService.delete(operation.file);
-				else if (await this.isEmptyFolder(operation.file))
+				else if (operation.kind === "remove") {
+					const renamed = written.has(operation.file)
+						? writes.find(({ file }) =>
+								new PathSet([operation.file]).has(file)
+							)
+						: undefined;
+					if (renamed)
+						await this.fileSystemService.rename(
+							operation.file,
+							renamed.file,
+							true
+						);
+					else await this.fileSystemService.delete(operation.file);
+				} else if (await this.isEmptyFolder(operation.file))
 					await this.fileSystemService.delete(operation.file, true);
 			} catch (error) {
 				if (operation.kind === "write" || operation.kind === "folder")

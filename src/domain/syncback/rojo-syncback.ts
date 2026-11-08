@@ -1,6 +1,6 @@
 import path from "path";
 import { UsageError } from "../../base/errors.js";
-import { toNative } from "../../base/path.js";
+import { PathSet, toNative } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -61,6 +61,19 @@ export class RojoSyncback {
 				},
 			];
 		});
+	}
+
+	/** Whether Rojo renamed a file by only the letter case of its name, where the file system folds case: it writes the new name over the old file, then its removal of the old name takes what it wrote. */
+	static lostToCase(messages: readonly ServerMessage[]): boolean {
+		const listed = RojoSyncback.listed(messages, ".");
+		const written = listed
+			.filter(({ kind }) => kind === "write")
+			.map(({ file }) => file);
+		const folded = new PathSet(written);
+		return listed.some(
+			({ kind, file }) =>
+				kind === "remove" && !written.includes(file) && folded.has(file)
+		);
 	}
 
 	/** The instances Rojo said it skipped, as it can't write back their kind of file. */
