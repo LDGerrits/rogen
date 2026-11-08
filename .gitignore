@@ -1,6 +1,7 @@
 releases/
 node_modules/
 dist/
+coverage/
 .vscode/
 .npmrc
 !e2e/cases/**/dist/

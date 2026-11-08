@@ -16,6 +16,7 @@
 <p align="center">
 	<a href="https://www.npmjs.com/package/@ldgerrits/rogen"><img alt="Beta release" src="https://img.shields.io/npm/v/@ldgerrits/rogen/next?style=flat-square&label=beta" /></a>
 	<a href="https://rogen-roblox.vercel.app/docs/v2"><img alt="Documentation" src="https://img.shields.io/badge/docs-website-blueviolet?style=flat-square" /></a>
+	<a href="https://github.com/LDGerrits/rogen/actions/workflows/test.yml"><img alt="Test coverage" src="https://img.shields.io/endpoint?style=flat-square&url=https%3A%2F%2Fraw.githubusercontent.com%2FLDGerrits%2Frogen%2Fbadges%2Fcoverage.json" /></a>
 	<a href="https://discord.com/channels/385151591524597761/1503801029232295996"><img alt="Discord" src="https://img.shields.io/badge/discord-chat-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
 	<a href="https://github.com/LDGerrits/rogen/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/LDGerrits/rogen?style=flat-square&logo=github" /></a>
 	<a href="https://luau.org"><img alt="Luau" src="https://img.shields.io/badge/Luau-00A2FF?style=flat-square&logo=luau&logoColor=white" /></a>
