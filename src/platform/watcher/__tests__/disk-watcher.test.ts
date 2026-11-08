@@ -25,6 +25,9 @@ function waitFor(predicate: () => boolean, timeoutMs = 3000): Promise<void> {
 	});
 }
 
+const canDenyAccess = process.platform !== "win32";
+const describeLocking = canDenyAccess ? describe : describe.skip;
+
 describe("DiskWatcher", () => {
 	let dir: string;
 	let watcher: DiskWatcher;
@@ -58,7 +61,7 @@ describe("DiskWatcher", () => {
 			expect(changes.some(added)).toBe(true);
 		});
 
-		describe("a folder it may not read", () => {
+		describeLocking("a folder it may not read", () => {
 			const watchLocked = async (options?: WatchOptions) => {
 				const locked = path.join(dir, "locked");
 				await fs.mkdir(locked);
@@ -129,6 +132,7 @@ describe("DiskWatcher", () => {
 		});
 
 		it("should report a file made as soon as a folder is reported added once it can be read", async () => {
+			if (!canDenyAccess) return;
 			const rounds = 12;
 			const made = new Set<string>();
 			const reported = new Set<string>();
@@ -162,6 +166,8 @@ describe("DiskWatcher", () => {
 
 			await waitFor(() => made.size === rounds, 10000);
 			await waitFor(() => reported.size === rounds, 10000);
+
+			expect(reported).toEqual(made);
 		}, 30000);
 
 		it("should report a root that was deleted and made again", async () => {
