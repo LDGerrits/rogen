@@ -5,7 +5,6 @@ import {
 	CancelledError,
 	ErrorUtils,
 	IoError,
-	KindedError,
 	ToolError,
 	failureReason,
 } from "../../base/errors.js";
@@ -38,16 +37,31 @@ async function attempt<T>(
 		: ok(done.value);
 }
 
+/** What can stop the writes: a file that failed, the scaffold that failed, or a shutdown. */
+type WriteFailure = IoError | ToolError | CancelledError;
+
 const stopped = () => new CancelledError("init stopped before it finished.");
 
+/** `failure`, of the same kind and with the same hint, saying `reason` instead. */
+function withReason(failure: WriteFailure, reason: string): WriteFailure {
+	const Kind = failure.constructor as new (
+		reason: string,
+		hint?: string,
+		options?: ErrorOptions
+	) => WriteFailure;
+	return new Kind(reason, failure.hint, { cause: failure });
+}
+
 /** `failure`, of its own kind, naming what undo left; a cancel that left nothing says the folder is as it was. */
-function undone(failure: KindedError, left: readonly string[]): KindedError {
+function undone(failure: WriteFailure, left: readonly string[]): WriteFailure {
 	if (left.length > 0)
-		return failure.withReason(
+		return withReason(
+			failure,
 			`${failure.reason.replace(/\.?$/, ".")} Could not put back ${left.join(", ")}.`
 		);
 	return failure instanceof CancelledError
-		? failure.withReason(
+		? withReason(
+				failure,
 				"init stopped before it finished, and put the folder back as it was."
 			)
 		: failure;
@@ -113,7 +127,7 @@ export class InitWriter {
 		written: InitWritten[],
 		dryRun: boolean,
 		signal: AbortSignal
-	): Promise<Result<void, KindedError>> {
+	): Promise<Result<void, WriteFailure>> {
 		if (plan.scaffold) {
 			const scaffolded = await this.scaffold(
 				plan.scaffold,
@@ -182,7 +196,7 @@ export class InitWriter {
 		log: UndoLog,
 		dryRun: boolean,
 		signal: AbortSignal
-	): Promise<Result<void, KindedError>> {
+	): Promise<Result<void, WriteFailure>> {
 		if (dryRun) return ok(undefined);
 		const created = await attempt(`Failed to create ${directory}`, () =>
 			log.createDirectory(directory)

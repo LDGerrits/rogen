@@ -100,16 +100,6 @@ export abstract class KindedError extends Error {
 	) {
 		super(hint ? `${reason} ${hint}` : reason, options);
 	}
-
-	/** This failure, of the same kind and with the same hint, saying `reason` instead. */
-	withReason(reason: string): KindedError {
-		const Kind = this.constructor as new (
-			reason: string,
-			hint?: string,
-			options?: ErrorOptions
-		) => KindedError;
-		return new Kind(reason, this.hint, { cause: this });
-	}
 }
 
 /** The user backed out; not a failure to report. */
