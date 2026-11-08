@@ -37,8 +37,13 @@ import {
 	ConfigLocations,
 	PlacedLocation,
 } from "../write/write-service.js";
-import { SYNCBACK_FILES, isSyncbackFileName } from "../config/config.js";
-import { ConfigService, validFile } from "../config/config-service.js";
+import { didWrite } from "../write/write.js";
+import { isSyncbackFileName } from "../config/config.js";
+import {
+	ConfigSelection,
+	ConfigService,
+	validFile,
+} from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { instanceKey } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
@@ -53,16 +58,20 @@ import { MetaRequest, featureMetas } from "./feature-metas.js";
 import { ReverseRouter, instanceNameOf } from "./reverse-router.js";
 import {
 	SyncbackChange,
+	SyncbackMode,
+	SyncbackOptions,
+	SyncbackOutcome,
 	SyncbackPlan,
 	SyncbackRequest,
 	SyncbackResult,
+	SyncbackRun,
 	UnplacedInstance,
 	CompiledChange,
 } from "./syncback.js";
 import { SyncbackService } from "./syncback-service.js";
 import { SyncbackLayout } from "./syncback-layout.js";
 import { SyncbackMirror } from "./syncback-mirror.js";
-import { SyncbackStaging } from "./syncback-staging.js";
+import { MIRROR, SyncbackStaging } from "./syncback-staging.js";
 import { TreeChange, applyTreeChanges, treeChanges } from "./tree-changes.js";
 import {
 	onlySerializedOverrides,
@@ -71,8 +80,6 @@ import {
 
 /** The first Rojo release with `syncback`. */
 const SYNCBACK_SINCE = "7.7.0";
-
-const MIRROR = `${SYNCBACK_FILES.staging}/mirror`;
 
 const LISTED = /^(Writing|Removing) (.+)$/;
 
@@ -266,6 +273,87 @@ export class CoreSyncbackService implements SyncbackService {
 		private readonly lifecycleService: LifecycleService
 	) {}
 
+	async run(
+		selection: ConfigSelection,
+		{ input, cwd, mode }: SyncbackOptions
+	): Promise<SyncbackRun> {
+		const write =
+			mode === "dryRun"
+				? await this.writeService.check(selection)
+				: await this.writeService.write(selection);
+		if (write.failure() || selection.requireValid().isErr())
+			return { write, outcome: { kind: "notRun" } };
+		const project = this.rojoService.choose(selection);
+		const outcome = await this.outcomeOf(
+			{ selection, project, input, cwd },
+			mode
+		);
+		if (outcome.kind !== "written") return { write, outcome };
+		// What syncback added to the config's tree changes the project file.
+		const rewritten = await this.writeService.write(selection);
+		return {
+			write:
+				rewritten.failure() || rewritten.outcomes.some(didWrite)
+					? rewritten
+					: write,
+			outcome,
+		};
+	}
+
+	private async outcomeOf(
+		request: SyncbackRequest,
+		mode: SyncbackMode
+	): Promise<SyncbackOutcome> {
+		const failed = (error: Error): SyncbackOutcome => ({
+			kind: "failed",
+			error,
+			configFile: request.project.file,
+		});
+		if (mode === "dryRun") {
+			const planned = await this.plan(request);
+			return planned.isErr()
+				? failed(planned.error)
+				: {
+						kind: "planned",
+						plan: planned.value,
+						warnings: [],
+						asked: false,
+					};
+		}
+		if (mode === "apply") {
+			const applied = await this.apply(request);
+			return applied.isErr()
+				? failed(applied.error)
+				: {
+						kind: "written",
+						plan: applied.value,
+						warnings: applied.value.warnings,
+						asked: false,
+					};
+		}
+		let shown: SyncbackPlan | undefined;
+		const applied = await this.apply(request, async (plan) => {
+			shown = plan;
+			return plan.changes.length > 0 && (await mode.confirm(plan));
+		});
+		if (applied.isErr()) return failed(applied.error);
+		if (applied.value)
+			return {
+				kind: "written",
+				plan: applied.value,
+				warnings: applied.value.warnings,
+				asked: true,
+			};
+		const plan = shown as SyncbackPlan;
+		return {
+			kind: "declined",
+			plan,
+			warnings: [],
+			asked: plan.changes.length > 0,
+		};
+	}
+
+	/** What a run would write and remove, found by a dry run of Rojo's syncback. Writes nothing that stays. Fails when the project's files can't be written, when Rojo can't read the place, or when it holds a change syncback can't make. */
 	async plan(request: SyncbackRequest): Promise<Result<SyncbackPlan, Error>> {
 		if (request.project.isAdopted) return this.runListed(request, true);
 		const prepared = await this.prepare(request);
@@ -275,6 +363,7 @@ export class CoreSyncbackService implements SyncbackService {
 		);
 	}
 
+	/** Runs the syncback, and puts what Rojo had no folder for where routing puts it. Given `confirm`, it plans first and writes the plan only when `confirm` says yes, and nothing, as `undefined`, when it says no; nothing either if the config, the place or a file the plan touches changed meanwhile. The project folder stays held from the plan to the last write. New files are written before old ones are removed. */
 	apply(request: SyncbackRequest): Promise<Result<SyncbackResult, Error>>;
 	apply(
 		request: SyncbackRequest,
@@ -295,7 +384,7 @@ export class CoreSyncbackService implements SyncbackService {
 		const prepared = await this.prepare(request);
 		if (prepared.isErr()) return prepared;
 		return prepared.value.staging.use<SyncbackResult | undefined>(
-			async (signal, writing) => {
+			async (signal) => {
 				const planned = await this.planIn(
 					request,
 					prepared.value,
@@ -317,7 +406,6 @@ export class CoreSyncbackService implements SyncbackService {
 				}
 				// Once writing starts, a stop no longer undoes the run.
 				if (signal.aborted) return err(stopped());
-				writing();
 				return ok(await this.written(request, plan));
 			}
 		);
@@ -548,7 +636,7 @@ export class CoreSyncbackService implements SyncbackService {
 			dir,
 			file: staging.file,
 			staging,
-			root: path.join(dir, MIRROR),
+			root: staging.mirror,
 			unread: written.globIgnorePaths ?? [],
 			unwritten: CoreSyncbackService.ignorePathsOf(written),
 		});
@@ -633,7 +721,7 @@ export class CoreSyncbackService implements SyncbackService {
 		const ignored: string[] = [];
 		const refused: UnplacedInstance[] = [];
 		for (;;) {
-			const ran = await this.run(
+			const ran = await this.runRojo(
 				request,
 				prepared,
 				prepared.file,
@@ -1623,7 +1711,7 @@ export class CoreSyncbackService implements SyncbackService {
 		return ok(found);
 	}
 
-	private async run(
+	private async runRojo(
 		request: SyncbackRequest,
 		prepared: Prepared | undefined,
 		projectFile: string,
@@ -1679,10 +1767,12 @@ export class CoreSyncbackService implements SyncbackService {
 		dryRun: boolean
 	): Promise<Result<SyncbackResult, Error>> {
 		const { project } = request;
-		const ran = await this.run(request, undefined, project.projectFile, [
-			...(dryRun ? ["--dry-run"] : []),
-			"--list",
-		]);
+		const ran = await this.runRojo(
+			request,
+			undefined,
+			project.projectFile,
+			[...(dryRun ? ["--dry-run"] : []), "--list"]
+		);
 		if (ran.isErr()) return ran;
 		const listed = this.rojoLines(ran.value, project.projectDir);
 		return ok({
