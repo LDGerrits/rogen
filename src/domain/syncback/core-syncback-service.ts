@@ -17,8 +17,6 @@ import {
 import { parse, setJsoncValue } from "../../base/jsonc.js";
 import { isObject, isSameJson } from "../../base/objects.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
-import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import {
 	FileSystemService,
 	isDirectoryType,
@@ -72,26 +70,12 @@ import {
 	withoutRemovedInside,
 } from "./mirror-plan.js";
 import { PlanWriter } from "./plan-writer.js";
+import { RojoSyncback } from "./rojo-syncback.js";
 import { TreeChange, applyTreeChanges, treeChanges } from "./tree-changes.js";
 import {
 	onlySerializedOverrides,
 	treeWithoutSerializedOverrides,
 } from "./without-serialized-overrides.js";
-
-/** The first Rojo release with `syncback`. */
-const SYNCBACK_SINCE = "7.7.0";
-
-const LISTED = /^(Writing|Removing) (.+)$/;
-
-/** Rojo's warning for an instance whose kind of file it can't write back. */
-const SKIPPED = /Cannot syncback (?<kind>\S+) at (?<instance>.+?), skipping/;
-/** Rojo's error for a YAML file it can't write back, which it fails on where it skips JSON and TOML. */
-const REFUSED_YAML =
-	/Failed to syncback (?<instance>.+) because cannot syncback Yaml middleware/;
-
-/** Why an instance whose kind of file Rojo can't write back is left out. */
-const unsyncable = (kind: string): string =>
-	`Rojo can't sync back a ${kind} file, so its change stays in the place; copy it by hand`;
 
 /** How far apart two writes must be for every file system to give them different times; a copy younger than this when Rojo starts is compared byte for byte. */
 const COARSEST_CLOCK_MS = 2000;
@@ -129,13 +113,6 @@ const foldersOf = (at: string): string[] => {
 		.slice(1)
 		.map((_, depth) => names.slice(0, depth + 1).join("/"));
 };
-
-/** Every line Rojo's failure said. */
-const linesOf = (failure: DiagnosticsError): string[] =>
-	failure.diagnostics.flatMap(({ message, details }) => [
-		message,
-		...(details ?? []),
-	]);
 
 /** The mirror of one project, with where it and the temporary project file go. */
 interface Prepared {
@@ -283,7 +260,8 @@ export class CoreSyncbackService implements SyncbackService {
 
 	/** What a run would write and remove, found by a dry run of Rojo's syncback. Writes nothing that stays. Fails when the project's files can't be written, when Rojo can't read the place, or when it holds a change syncback can't make. */
 	async plan(request: SyncbackRequest): Promise<Result<SyncbackPlan, Error>> {
-		if (request.project.isAdopted) return this.runListed(request, true);
+		if (request.project.isAdopted)
+			return new RojoSyncback(this.rojoService, request).plain(true);
 		const prepared = await this.prepare(request);
 		if (prepared.isErr()) return prepared;
 		return prepared.value.staging.use<SyncbackPlan>((signal) =>
@@ -303,11 +281,14 @@ export class CoreSyncbackService implements SyncbackService {
 	): Promise<Result<SyncbackResult | undefined, Error>> {
 		if (request.project.isAdopted) {
 			if (confirm) {
-				const planned = await this.runListed(request, true);
+				const planned = await new RojoSyncback(
+					this.rojoService,
+					request
+				).plain(true);
 				if (planned.isErr()) return planned;
 				if (!(await confirm(planned.value))) return ok(undefined);
 			}
-			return this.runListed(request, false);
+			return new RojoSyncback(this.rojoService, request).plain(false);
 		}
 		const prepared = await this.prepare(request);
 		if (prepared.isErr()) return prepared;
@@ -365,7 +346,7 @@ export class CoreSyncbackService implements SyncbackService {
 			prepared,
 			copied,
 			started,
-			[...refused, ...CoreSyncbackService.skipped(messages)],
+			[...refused, ...RojoSyncback.skipped(messages)],
 			messages
 		);
 		return signal.aborted ? err(stopped()) : settled;
@@ -548,36 +529,20 @@ export class CoreSyncbackService implements SyncbackService {
 		const ignored: string[] = [];
 		const refused: UnplacedInstance[] = [];
 		for (;;) {
-			const ran = await this.runRojo(
-				request,
-				prepared,
-				prepared.file,
-				["--list"],
-				signal
-			);
+			const ran = await new RojoSyncback(
+				this.rojoService,
+				request
+			).listOn(prepared.file, prepared.layout, signal);
 			if (ran.isOk()) return ok({ messages: ran.value, refused });
-			const instance = CoreSyncbackService.refusedYaml(ran.error);
+			const yaml = RojoSyncback.refusedYaml(ran.error);
 			const file =
-				instance &&
-				CoreSyncbackService.yamlFileOf(prepared, copied, instance);
-			if (!instance || !file || ignored.includes(file)) return ran;
+				yaml &&
+				CoreSyncbackService.yamlFileOf(prepared, copied, yaml.instance);
+			if (!yaml || !file || ignored.includes(file)) return ran;
 			ignored.push(file);
-			refused.push({
-				instance,
-				reason: unsyncable("Yaml"),
-			});
+			refused.push(yaml);
 			await this.writeProject(prepared, copied, ignored);
 		}
-	}
-
-	/** The instance whose YAML file Rojo's syncback stopped on. */
-	private static refusedYaml(error: Error): string | undefined {
-		if (!(error instanceof DiagnosticsError)) return undefined;
-		for (const line of linesOf(error)) {
-			const found = REFUSED_YAML.exec(line)?.groups;
-			if (found) return found.instance;
-		}
-		return undefined;
 	}
 
 	/** The mirror path of the YAML file that makes `instance`: by the file the write placed or the mirror folder it lies in, else the one YAML file of its name. */
@@ -1433,23 +1398,6 @@ export class CoreSyncbackService implements SyncbackService {
 		return { kind: "placed", operations, expected };
 	}
 
-	/** The instances Rojo said it skipped, as it can't write back their kind of file. */
-	private static skipped(
-		messages: readonly ServerMessage[]
-	): UnplacedInstance[] {
-		return messages.flatMap(({ text }) => {
-			const found = SKIPPED.exec(text)?.groups;
-			return found
-				? [
-						{
-							instance: found.instance,
-							reason: unsyncable(found.kind),
-						},
-					]
-				: [];
-		});
-	}
-
 	/** The instance a path of the mirror is, as an instance key: its folders, then the instance its file makes. */
 	private static instanceAt(mirror: SyncbackMirror, at: string): string {
 		const names = mirror.instancePathOf(at);
@@ -1504,107 +1452,6 @@ export class CoreSyncbackService implements SyncbackService {
 		return ok(found);
 	}
 
-	private async runRojo(
-		request: SyncbackRequest,
-		prepared: Prepared | undefined,
-		projectFile: string,
-		flags: readonly string[],
-		signal?: AbortSignal
-	): Promise<Result<readonly ServerMessage[], Error>> {
-		const ran = await this.rojoService.run(request.selection, {
-			command: "syncback",
-			flags: ["--input", request.input, "--non-interactive", ...flags],
-			cwd: request.cwd,
-			project: request.project,
-			projectFile,
-			since: SYNCBACK_SINCE,
-			signal,
-		});
-		if (ran.isErr()) return ran;
-		if (ran.value.failure)
-			return err(this.explain(ran.value.failure, prepared));
-		return ok(ran.value.messages);
-	}
-
-	/** Rojo's refusal to remove an instance a node of the config's tree defines, with the file that makes it when there is one. */
-	private explain(
-		failure: DiagnosticsError | UsageError,
-		prepared: Prepared | undefined
-	): Error {
-		if (failure instanceof UsageError) return failure;
-		const said = linesOf(failure).join("\n");
-		const refused =
-			/The child '(?<child>[^']+)' of Instance '(?<parent>[^']+)' is present only in a project file/.exec(
-				said
-			)?.groups;
-		if (!refused || !prepared) return failure;
-		const files = prepared.layout.placed.filter(({ instancePath }) => {
-			const at = instancePath.length;
-			return (
-				instancePath[at - 1] === refused.child &&
-				instancePath[at - 2] === refused.parent
-			);
-		});
-		return new DiagnosticsError([
-			errorDiagnostic(
-				"syncback.removedFromProjectFile",
-				{ resource: files[0]?.source ?? prepared.configFile },
-				`the place no longer holds ${refused.parent}/${refused.child}, and the tree of the config defines it, which syncback cannot remove. ${files.length === 1 ? `Delete ${toNative(files[0].source)}` : "Remove its node from the tree"}, then run syncback again.`
-			),
-		]);
-	}
-
-	/** A plain Rojo project is given to Rojo as it is: what it lists, its changes without a folder it lists with a file inside it. */
-	private async runListed(
-		request: SyncbackRequest,
-		dryRun: boolean
-	): Promise<Result<SyncbackResult, Error>> {
-		const { project } = request;
-		const ran = await this.runRojo(
-			request,
-			undefined,
-			project.projectFile,
-			[...(dryRun ? ["--dry-run"] : []), "--list"]
-		);
-		if (ran.isErr()) return ran;
-		const listed = this.rojoLines(ran.value, project.projectDir);
-		return ok({
-			project,
-			changes: listed.filter(
-				({ file }) =>
-					!listed.some(
-						(other) =>
-							other.file !== file &&
-							other.file.startsWith(file + path.sep)
-					)
-			),
-			listed,
-			unplaced: [],
-			compiled: [],
-			warnings: [],
-		});
-	}
-
-	/** Every line Rojo listed, in its order, as an absolute path. */
-	private rojoLines(
-		messages: readonly ServerMessage[],
-		dir: string
-	): SyncbackChange[] {
-		return messages.flatMap(({ text }) => {
-			const found = LISTED.exec(text.trim());
-			if (!found || found[2].startsWith("to the file system")) return [];
-			return [
-				{
-					kind:
-						found[1] === "Writing"
-							? ("write" as const)
-							: ("remove" as const),
-					file: path.resolve(dir, found[2]),
-				},
-			];
-		});
-	}
-
 	/** What `--list` prints for a run on the mirror: the lines Rojo listed, in its order and as the project's own paths, with the project file first as in a plain Rojo project; then the rest of the plan, unless a folder Rojo listed already covers it. */
 	private listedAs(
 		messages: readonly ServerMessage[],
@@ -1637,7 +1484,10 @@ export class CoreSyncbackService implements SyncbackService {
 		};
 
 		let projectFile: SyncbackChange | undefined;
-		for (const { kind, file } of this.rojoLines(messages, prepared.dir)) {
+		for (const { kind, file } of RojoSyncback.listed(
+			messages,
+			prepared.dir
+		)) {
 			if (file === prepared.file) {
 				if (files.has(prepared.configFile))
 					projectFile = { kind, file: prepared.configFile };
