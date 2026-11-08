@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `rogen syncback` stops with an error when it can't read or clear its copy of your files, instead of planning to remove them. Ctrl+C leaves no copy behind, and once syncback writes your files it finishes, says what it wrote and exits with 130.
 - `rogen syncback` writes nothing when the config or the place changed while it asked, and keeps a file it couldn't replace.
 - `rogen syncback` exits with 1 when it can't write the project file again afterwards.
+- `rogen syncback --list` on Windows lists paths with `/`, as Rojo does, instead of `\`.
 - `rogen write` with several configs writes the others when one's project file can't be written.
 - A file saved while `serve` or `--watch` starts is in the first project file, and a config saved then takes effect.
 - Ctrl+C on `rogen serve` always exits with 130.

@@ -33,6 +33,10 @@ export interface ResolvedConfigSpec {
 	readonly warnings?: readonly Diagnostic[];
 }
 
+/** A glob as a resolved config holds it: with `/` on every platform, where `\\` would escape. */
+const asGlob = (glob: string): string =>
+	path.sep === "\\" ? toPosix(glob) : glob;
+
 export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 	const file = spec.file ?? "/repo/default.rogen.json";
 	return new ResolvedConfig({
@@ -50,7 +54,7 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 				Target.parse(text, { resource: file }).unwrap(),
 			])
 		),
-		ignored: spec.ignored ?? [],
+		ignored: (spec.ignored ?? []).map(asGlob),
 		compiledPath: spec.compiledPath,
 		warnings: spec.warnings ?? [],
 	});

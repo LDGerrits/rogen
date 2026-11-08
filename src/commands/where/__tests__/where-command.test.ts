@@ -1,3 +1,4 @@
+import { toNative, toPosix } from "../../../base/path.js";
 import "../where-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { Result } from "../../../base/result.js";
@@ -197,7 +198,7 @@ describe("where command", () => {
 		it("should name the file with the error when the error is inside the directory asked about", async () => {
 			await run({ _: ["src/F"] });
 
-			expect(printed()).toContain(
+			expect(printed()).toContainEqual(
 				"src/F -> not placed · src/F/Shared/Bad@server.luau has an error (route.ignoredAt)"
 			);
 		});
@@ -364,7 +365,7 @@ describe("where command", () => {
 			expect(result.isErr() && result.error).toBeInstanceOf(
 				ReportedError
 			);
-			expect(printed()[0]).toBe("src/A.luau -> does not exist");
+			expect(printed()[0]).toEqual("src/A.luau -> does not exist");
 			expect(printed()[1]).toMatch(/^ {2}error: /);
 		});
 	});
@@ -579,8 +580,10 @@ describe("where command", () => {
 			expect(named).toEqual(printed());
 			expect(named).toEqual(
 				expect.arrayContaining([
-					expect.stringContaining("src/common/Util.luau"),
-					expect.stringContaining("src/game/Server/Main.luau"),
+					expect.stringContaining(toNative("src/common/Util.luau")),
+					expect.stringContaining(
+						toNative("src/game/Server/Main.luau")
+					),
 				])
 			);
 			expect(named.join("\n")).not.toContain("src/lobby");
@@ -657,13 +660,15 @@ describe("where command", () => {
 
 			expect(result.isOk()).toBe(true);
 			const lines = printed();
-			expect(lines.filter((l) => l.includes("src/game"))).toHaveLength(1);
-			expect(lines.filter((l) => l.includes("src/lobby"))).toHaveLength(
-				1
-			);
-			expect(lines.filter((l) => l.includes("src/common"))).toHaveLength(
-				1
-			);
+			expect(
+				lines.filter((l) => toPosix(l).includes("src/game"))
+			).toHaveLength(1);
+			expect(
+				lines.filter((l) => toPosix(l).includes("src/lobby"))
+			).toHaveLength(1);
+			expect(
+				lines.filter((l) => toPosix(l).includes("src/common"))
+			).toHaveLength(1);
 		});
 	});
 
@@ -684,7 +689,10 @@ describe("where command", () => {
 			expect(
 				logService.entries.map(({ kind, text }) => [kind, text])
 			).toEqual([
-				["print", expect.stringContaining("src/Util.luau ->")],
+				[
+					"print",
+					expect.stringContaining(toNative("src/Util.luau ->")),
+				],
 				[
 					"note",
 					'  require(game:GetService("ReplicatedStorage").Shared.Util)',
@@ -709,10 +717,13 @@ describe("where command", () => {
 				[
 					"print",
 					expect.stringContaining(
-						"src/Inventory/Server/Hit.server.luau ->"
+						toNative("src/Inventory/Server/Hit.server.luau ->")
 					),
 				],
-				["print", expect.stringContaining("src/Util.luau ->")],
+				[
+					"print",
+					expect.stringContaining(toNative("src/Util.luau ->")),
+				],
 				[
 					"debug",
 					'require: game:GetService("ReplicatedStorage").Shared.Util',
@@ -904,7 +915,7 @@ describe("where command", () => {
 			);
 
 			expect(result.isOk()).toBe(true);
-			expect(text()).toBe(
+			expect(text()).toEqual(
 				[
 					"12:30:01 Output",
 					"src/Inventory/Server/Save.luau:12: attempt to index nil",
@@ -931,7 +942,9 @@ describe("where command", () => {
 
 				await pipe("Workspace.ldg.Hud.Anim:3: x");
 
-				expect(text()).toBe("src/Hud/Character/Anim.client.luau:3: x");
+				expect(text()).toEqual(
+					"src/Hud/Character/Anim.client.luau:3: x"
+				);
 			});
 
 			it("should leave it as it is when a file places it in Workspace", async () => {
@@ -949,7 +962,7 @@ describe("where command", () => {
 
 				await pipe("Workspace.ldg.Hud.Anim:3: x");
 
-				expect(text()).toBe("src/Hud/World/Anim.luau:3: x");
+				expect(text()).toEqual("src/Hud/World/Anim.luau:3: x");
 			});
 		});
 
@@ -985,7 +998,7 @@ describe("where command", () => {
 			);
 
 			expect(result.isOk()).toBe(true);
-			expect(text()).toBe(
+			expect(text()).toEqual(
 				"ReplicatedStorage.Lib:3: boom\nsrc/Inventory/Server/Save.luau:4: bang"
 			);
 			expect(logService.texts("warn")).toEqual([
@@ -1046,7 +1059,9 @@ describe("where command", () => {
 				);
 
 				expect(result.isOk()).toBe(true);
-				expect(text()).toBe("places/lobby/src/Server/Only.luau:5: b");
+				expect(text()).toEqual(
+					"places/lobby/src/Server/Only.luau:5: b"
+				);
 			});
 
 			it("should rewrite what the place's own file places and what it shares from the place's folder", async () => {
@@ -1056,7 +1071,7 @@ describe("where command", () => {
 				);
 
 				expect(result.isOk()).toBe(true);
-				expect(text()).toBe(
+				expect(text()).toEqual(
 					"../shared/src/Common/Util.luau:2: a\nsrc/Server/Only.luau:5: b"
 				);
 			});
@@ -1069,7 +1084,7 @@ describe("where command", () => {
 			await write("src/Inventory/Server/Save.luau");
 
 			await pipe("a\r\nServerScriptService.Inventory.Save:1\r\n");
-			expect(text()).toBe("a\r\nsrc/Inventory/Server/Save.luau:1");
+			expect(text()).toEqual("a\r\nsrc/Inventory/Server/Save.luau:1");
 
 			logService.clear();
 			await pipe("");

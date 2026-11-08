@@ -1,3 +1,4 @@
+import path from "path";
 import { jest } from "@jest/globals";
 import "../serve-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
@@ -240,11 +241,11 @@ describe("serve command", () => {
 
 		processes.spawned[0].printError(
 			[
-				"[ERROR librojo::change_processor] File is not a valid JSON model: /repo/src/Bad.model.json: JSONC parse error",
+				`[ERROR librojo::change_processor] File is not a valid JSON model: ${path.resolve("/repo/src/Bad.model.json")}: JSONC parse error`,
 				"        ",
 				"        Caused by:",
 				"            Expected colon on line 2 column 1",
-				"[WARN  librojo::snapshot] Unknown file: /repo/src/notes.xyz",
+				`[WARN  librojo::snapshot] Unknown file: ${path.resolve("/repo/src/notes.xyz")}`,
 				"",
 			].join("\n")
 		);
@@ -335,7 +336,7 @@ describe("serve command", () => {
 
 		const ended = await result;
 		expect(exitCode(ended, lifecycle.signal)).toBe(130);
-		expect(logService.lines).toContain(
+		expect(logService.lines).toContainEqual(
 			"diagnosticError: /repo/default.rogen.json - error: Rojo stopped serving repo with exit code 3, without saying why. (serve.serverExited)"
 		);
 		expect(logService.lines.at(-1)).toBe("outro: Stopped serving.");
@@ -1284,7 +1285,7 @@ describe("serve command", () => {
 			true
 		);
 		expect(await memFs.exists("/repo/default.project.json")).toBe(false);
-		expect(logService.lines[0]).toBe(
+		expect(logService.lines[0]).toEqual(
 			"intro: rogen serve · lobby/default.rogen.json"
 		);
 	});

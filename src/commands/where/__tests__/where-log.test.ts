@@ -39,7 +39,7 @@ describe("WhereLog", () => {
 					route: "Client",
 					routeMatch: "suffix",
 				})
-			).toBe(
+			).toEqual(
 				"src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Http · route Client (suffix)"
 			);
 		});
@@ -59,7 +59,7 @@ describe("WhereLog", () => {
 					routeMatch: "marker",
 					hoisted: true,
 				})
-			).toBe(
+			).toEqual(
 				"src/Player/^Animate.client.luau -> StarterPlayer/StarterCharacterScripts/Animate · route character (marker) · hoisted by ^"
 			);
 		});
@@ -75,7 +75,7 @@ describe("WhereLog", () => {
 					route: "server",
 					routeMatch: "copy",
 				})
-			).toBe(
+			).toEqual(
 				"src/Net/init.luau -> ServerScriptService/Net · route server (copy) · also StarterPlayer/StarterPlayerScripts/Net"
 			);
 		});
@@ -88,7 +88,7 @@ describe("WhereLog", () => {
 					exists: true,
 					node: ["ReplicatedStorage", "Vendor"],
 				})
-			).toBe(
+			).toEqual(
 				"src/Vendor/Lib.luau -> mounted · the tree mounts it at ReplicatedStorage/Vendor"
 			);
 		});
@@ -102,7 +102,7 @@ describe("WhereLog", () => {
 					node: ["ReplicatedStorage", "Vendor"],
 					instancePath: ["ReplicatedStorage", "Vendor", "Lib"],
 				})
-			).toBe(
+			).toEqual(
 				"src/Vendor/Lib.luau -> ReplicatedStorage/Vendor/Lib · inside the mount at ReplicatedStorage/Vendor, which Rojo reads"
 			);
 			expect(
@@ -113,7 +113,7 @@ describe("WhereLog", () => {
 					node: ["ReplicatedStorage", "Vendor"],
 					instancePath: ["ReplicatedStorage", "Vendor"],
 				})
-			).toBe(
+			).toEqual(
 				"src/Vendor/init.luau -> ReplicatedStorage/Vendor · mounted, which Rojo reads"
 			);
 		});
@@ -126,7 +126,7 @@ describe("WhereLog", () => {
 					exists: true,
 					pattern: "/repo/**/*.spec.luau",
 				})
-			).toBe("src/A.spec.luau -> ignored · matches **/*.spec.luau");
+			).toEqual("src/A.spec.luau -> ignored · matches **/*.spec.luau");
 		});
 
 		it.each([
@@ -238,7 +238,7 @@ describe("WhereLog", () => {
 				"src/L -> skipped · the link loops or points at nothing",
 			],
 		])("should describe %j", (location, line) => {
-			expect(lineOf(location)).toBe(line);
+			expect(lineOf(location)).toEqual(line);
 		});
 	});
 
@@ -635,7 +635,7 @@ describe("WhereLog", () => {
 					exists: false,
 					folder: true,
 				})
-			).toBe(
+			).toEqual(
 				"src/Combat -> does not exist · name a file in it to see where it would land"
 			);
 		});
@@ -647,7 +647,7 @@ describe("WhereLog", () => {
 					source: "/repo/src/Hit.luau",
 					exists: false,
 				})
-			).toBe("src/Hit.luau -> does not exist");
+			).toEqual("src/Hit.luau -> does not exist");
 		});
 	});
 
@@ -687,7 +687,7 @@ describe("WhereLog", () => {
 			);
 
 			expect(report.lines()).toEqual([]);
-			expect(report.emptyLine()).toBe(
+			expect(report.emptyLine()).toEqual(
 				"No files in the source paths (src, places/lobby)."
 			);
 		});

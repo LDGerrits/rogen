@@ -5,7 +5,7 @@ import { CompiledLayout } from "../compiled-layout.js";
 import { WrittenGlobs } from "../written-globs.js";
 import { WrittenSyncRules } from "../written-sync-rules.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
-import { abs, configOf, syncTools } from "./fixtures.js";
+import { abs, absPosix, configOf, syncTools } from "./fixtures.js";
 
 const module: SyncRule = {
 	pattern: "src/*.module",
@@ -27,19 +27,19 @@ const writtenBy = (
 	const layout = new CompiledLayout(config, syncTools);
 	const entries: ScannedFile[] = sources.map((source) => ({
 		kind: "data",
-		file: RojoFile.at(abs(source), config.syncRules),
+		file: RojoFile.at(absPosix(source), config.syncRules),
 		sourcePath: abs("src"),
 		relativePath: source,
-		source: abs(source),
+		source: absPosix(source),
 	}));
 	return new WrittenSyncRules(
 		config,
 		layout,
 		new WrittenGlobs(
 			layout,
-			mounts.map((mount) => abs(mount))
+			mounts.map((mount) => absPosix(mount))
 		)
-	).of(entries, new Set(legacyClients.map((source) => abs(source))));
+	).of(entries, new Set(legacyClients.map((source) => absPosix(source))));
 };
 
 describe("WrittenSyncRules", () => {
@@ -114,7 +114,7 @@ describe("WrittenSyncRules", () => {
 		it("should escape the characters of a file name that a glob reads", () => {
 			const [rule] = writtenBy([], [], {}, [], ["src/[A].client.luau"]);
 
-			expect(rule.pattern).toBe("src/[[]A[]].client.luau");
+			expect(rule.pattern).toEqual("src/[[]A[]].client.luau");
 		});
 	});
 

@@ -1,3 +1,4 @@
+import path from "path";
 import {
 	useConfigFixture,
 	errors,
@@ -21,6 +22,8 @@ const config = (
 });
 
 const codes = (index: number) => errors(index).map(({ code }) => code);
+
+const onDisk = (file: string): string => path.resolve(file);
 
 describe("configs of one folder", () => {
 	useConfigFixture();
@@ -190,7 +193,9 @@ describe("configs of one folder", () => {
 			config("Lobby", { sourcePaths: ["src/game"] })
 		);
 
-		const reload = await selection.reload(["/repo/lobby.rogen.json"]);
+		const reload = await selection.reload([
+			onDisk("/repo/lobby.rogen.json"),
+		]);
 
 		expect(reload.notices).toEqual([
 			{ kind: "recovered", file: "/repo/lobby.rogen.json" },

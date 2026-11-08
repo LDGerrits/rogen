@@ -8,6 +8,7 @@ import { CompiledPathCheck } from "../compiled-path-check.js";
 import { PLACEHOLDER_SOURCE } from "../../compiled-layout.js";
 import {
 	abs,
+	absPosix,
 	configOf as baseConfigOf,
 	indexOf,
 	placeFiles,
@@ -182,7 +183,7 @@ describe("CompiledPathCheck", () => {
 					);
 
 					expect(warnings).toHaveLength(1);
-					expect(warnings[0].resource).toBe(abs("src"));
+					expect(warnings[0].resource).toEqual(abs("src"));
 					expect(warnings[0].message).toContain('source path "src"');
 					expect(warnings[0].message).toContain('under "out/src"');
 					expect(warnings[0].message).toContain(
@@ -215,7 +216,7 @@ describe("CompiledPathCheck", () => {
 					);
 
 					expect(warnings).toHaveLength(1);
-					expect(warnings[0].resource).toBe(abs("out"));
+					expect(warnings[0].resource).toEqual(abs("out"));
 				});
 
 				it("should skip a source path that holds only dotfiles", async () => {
@@ -525,7 +526,7 @@ describe("CompiledPathCheck", () => {
 						resource: abs("default.project.json"),
 					});
 					expect(warnings[0].message).toContain(
-						`2 meta files have no copy under "dist" (${abs("src/Inventory/Save.meta.json")}, ${abs("src/Inventory/init.meta.json")})`
+						`2 meta files have no copy under "dist" (${absPosix("src/Inventory/Save.meta.json")}, ${absPosix("src/Inventory/init.meta.json")})`
 					);
 					expect(warnings[0].message).not.toContain(".meta.lua");
 				});
@@ -767,7 +768,7 @@ describe("CompiledPathCheck", () => {
 					abs("dist/A"),
 					abs("dist/B"),
 				]);
-				expect(warnings[0].message).toBe(
+				expect(warnings[0].message).toEqual(
 					"dist/A/O1.luau, dist/A/O2.luau, dist/A/O3.luau, … are in the compiled path and no source file makes them, so Rojo may still sync them. Delete them, or compile again from a clean folder."
 				);
 			});
@@ -781,7 +782,7 @@ describe("CompiledPathCheck", () => {
 
 				const [warning] = await check();
 
-				expect(warning.resource).toBe(abs("dist/A/B"));
+				expect(warning.resource).toEqual(abs("dist/A/B"));
 			});
 
 			it("should not warn about a compiled file that has its source", async () => {

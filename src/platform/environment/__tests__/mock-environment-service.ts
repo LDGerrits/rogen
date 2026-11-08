@@ -1,14 +1,16 @@
+import path from "path";
 import { LogLevel } from "../../log/log-service.js";
 import { EnvironmentService } from "../environment-service.js";
 
 export class MockEnvironmentService implements EnvironmentService {
 	declare readonly _serviceBrand: undefined;
 
+	readonly cwd: string;
 	readonly isPlain: boolean;
 	readonly hasColor: boolean;
 
 	constructor(
-		public readonly cwd: string = "/mock/cwd",
+		cwd: string = "/mock/cwd",
 		public readonly logLevel: LogLevel = LogLevel.Info,
 		public readonly isInteractive: boolean = false,
 		public readonly userHome: string = "/mock/home",
@@ -18,6 +20,7 @@ export class MockEnvironmentService implements EnvironmentService {
 		public readonly cacheDir: string = "/mock/cache",
 		public readonly checksForUpdates: boolean = false
 	) {
+		this.cwd = path.isAbsolute(cwd) ? path.resolve(cwd) : cwd;
 		this.isPlain = !isInteractive;
 		this.hasColor = isInteractive;
 	}

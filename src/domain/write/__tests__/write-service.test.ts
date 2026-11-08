@@ -8,7 +8,7 @@ import {
 	FileLocation,
 	LocatedDiagnosis,
 } from "../write-service.js";
-import { abs, configOf } from "./fixtures.js";
+import { abs, absPosix, configOf } from "./fixtures.js";
 
 const placed = (source: string): FileLocation => ({
 	status: "placed",
@@ -30,7 +30,7 @@ const located = (
 	instances: [],
 	queried: queried.map((target) => abs(target)),
 	diagnostics,
-	markers: markers.map((marker) => abs(marker)),
+	markers: markers.map((marker) => absPosix(marker)),
 });
 
 const error = (resource: string, code = "x.error") =>

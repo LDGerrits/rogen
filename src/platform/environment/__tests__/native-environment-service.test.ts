@@ -29,7 +29,7 @@ const piped = (
 
 describe("NativeEnvironmentService", () => {
 	it("should expose the working directory", () => {
-		expect(inTerminal({}).cwd).toBe("/mock/cwd");
+		expect(inTerminal({}).cwd).toEqual("/mock/cwd");
 	});
 
 	it.each([
@@ -228,7 +228,7 @@ describe("NativeEnvironmentService", () => {
 			["linux", "/home/me/.cache"],
 			["darwin", "/home/me/Library/Caches"],
 		] as const)("should be the usual place on %s", (platform, dir) => {
-			expect(cacheDirOn(platform)).toBe(dir);
+			expect(cacheDirOn(platform)).toEqual(dir);
 		});
 
 		it("should be LOCALAPPDATA on Windows", () => {

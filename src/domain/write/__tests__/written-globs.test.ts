@@ -1,6 +1,6 @@
 import { CompiledLayout } from "../compiled-layout.js";
 import { WrittenGlobs } from "../written-globs.js";
-import { abs, configOf, syncTools } from "./fixtures.js";
+import { abs, absPosix, configOf, syncTools } from "./fixtures.js";
 
 const globsOf = (compiledPath?: string, mounts: readonly string[] = []) => {
 	const config = configOf({
@@ -8,7 +8,7 @@ const globsOf = (compiledPath?: string, mounts: readonly string[] = []) => {
 	});
 	return new WrittenGlobs(
 		new CompiledLayout(config, syncTools),
-		mounts.map((mount) => abs(mount))
+		mounts.map((mount) => absPosix(mount))
 	);
 };
 
@@ -70,6 +70,6 @@ describe("WrittenGlobs", () => {
 			[]
 		);
 
-		expect(globs.of("src/*.md", abs(""))).toEqual(["../../src/*.md"]);
+		expect(globs.of("src/*.md", absPosix(""))).toEqual(["../../src/*.md"]);
 	});
 });

@@ -3,6 +3,7 @@ import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.j
 import {
 	ROUTER_ROUTES as ROUTES,
 	abs,
+	absPosix,
 	placedLines,
 	routeFiles,
 	writeFiles,
@@ -101,12 +102,13 @@ describe("Router", () => {
 
 				expect(
 					routed.find(
-						({ entry }) => entry.source === abs("src/A/^B.luau")
+						({ entry }) =>
+							entry.source === absPosix("src/A/^B.luau")
 					)?.hoisted
 				).toBe(true);
 				expect(
 					routed.find(
-						({ entry }) => entry.source === abs("src/A/C.luau")
+						({ entry }) => entry.source === absPosix("src/A/C.luau")
 					)?.hoisted
 				).toBeUndefined();
 			});
@@ -424,7 +426,7 @@ describe("Router", () => {
 				expect(
 					result.routed.map((file) => file.instancePath.join("/"))
 				).toEqual(["ReplicatedStorage/shared/Inventory/Save"]);
-				expect(result.leftOut.get(abs("src/Vendor"))).toEqual({
+				expect(result.leftOut.get(absPosix("src/Vendor"))).toEqual({
 					status: "mounted",
 					node: ["ReplicatedStorage", "Vendor"],
 				});
@@ -457,7 +459,7 @@ describe("Router", () => {
 				).unwrap();
 
 				expect(
-					result.leftOut.get(abs("place/src/Vendor"))
+					result.leftOut.get(absPosix("place/src/Vendor"))
 				).toMatchObject({ status: "mounted" });
 			});
 
@@ -495,7 +497,7 @@ describe("Router", () => {
 				).unwrap();
 
 				expect(
-					result.leftOut.get(abs("src/Third/Vendor"))
+					result.leftOut.get(absPosix("src/Third/Vendor"))
 				).toMatchObject({
 					status: "mounted",
 				});
@@ -792,7 +794,7 @@ describe("Router", () => {
 					.warnings.filter(({ code }) => code === "route.unrouted");
 
 				expect(warnings).toHaveLength(12);
-				expect(warnings[11].resource).toBe(abs("src/F21.luau"));
+				expect(warnings[11].resource).toEqual(abs("src/F21.luau"));
 				expect(
 					warnings.some(({ message }) =>
 						message.includes("more like it")

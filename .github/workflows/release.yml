@@ -27,6 +27,11 @@ jobs:
             - name: Check the Changelog Has Notes
               run: node scripts/changelog.ts "${GITHUB_REF_NAME#v}" > /dev/null
 
+    windows:
+        name: Test on Windows
+        needs: check-version
+        uses: ./.github/workflows/windows.yml
+
     build:
         name: Build Binaries
         needs: check-version
@@ -118,7 +123,7 @@ jobs:
 
     publish:
         name: Publish GitHub Release
-        needs: build
+        needs: [build, windows]
         runs-on: ubuntu-latest
         steps:
             - name: Checkout Code

@@ -289,7 +289,7 @@ describe("CoreConfigService", () => {
 			expect(errors(0)).toEqual([]);
 			expect(resolved(0)?.sourcePaths).toEqual(["/repo/lib"]);
 			expect([...(resolved(0)?.routes.keys() ?? [])]).toEqual(["server"]);
-			expect(resolved(0)?.compiledPath).toBe("/repo/out");
+			expect(resolved(0)?.compiledPath).toEqual("/repo/out");
 		});
 
 		it("should leave Rogen's keys out of the project", async () => {

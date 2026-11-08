@@ -1,0 +1,68 @@
+name: Windows
+
+# Kept out of pull requests so their checks stay fast; a release runs it before it publishes.
+on:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
+    workflow_call:
+
+permissions:
+    contents: read
+
+jobs:
+    unit:
+        name: Unit tests on Windows
+        runs-on: windows-latest
+        steps:
+            # The transcripts are compared byte for byte, so they keep their line endings.
+            - name: Keep Line Endings
+              run: git config --global core.autocrlf false
+
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: "npm"
+
+            - name: Install Rojo and Argon
+              uses: CompeyDev/setup-rokit@v0.2.1
+              with:
+                  cache: true
+
+            - name: Install Dependencies
+              run: npm ci --workspaces=false --prefer-offline --no-audit --no-fund
+
+            - name: Unit Test
+              run: npm run test:unit
+
+    e2e:
+        name: End-to-end tests on Windows
+        runs-on: windows-latest
+        steps:
+            - name: Keep Line Endings
+              run: git config --global core.autocrlf false
+
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: "npm"
+
+            - name: Install Rojo and Argon
+              uses: CompeyDev/setup-rokit@v0.2.1
+              with:
+                  cache: true
+
+            - name: Install Dependencies
+              run: npm ci --workspaces=false --prefer-offline --no-audit --no-fund
+
+            - name: Test
+              run: npm run test:e2e

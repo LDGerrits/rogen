@@ -3,8 +3,10 @@ import {
 	eventually,
 	formatStep,
 	showsStdout,
+	WINDOWS,
 } from "./harness.js";
 
+const describeOnPosix = WINDOWS ? describe.skip : describe;
 describe("e2e harness", () => {
 	describe("showsStdout", () => {
 		it("should leave out the output of build and init, which frame every case alike", () => {
@@ -64,28 +66,33 @@ describe("e2e harness", () => {
 	});
 
 	describe("RunningProcess", () => {
-		it("should hold the output written right before the process ended", async () => {
-			const running = new RunningProcess("sh", [
-				"-c",
-				"(sleep 0.3; echo end) & exit 3",
-			]);
+		describeOnPosix("where it can run", () => {
+			it("should hold the output written right before the process ended", async () => {
+				const running = new RunningProcess(process.execPath, [
+					"-e",
+					`require("child_process").spawn(process.execPath, ["-e", "setTimeout(() => console.log('end'), 300)"], { stdio: "inherit" }); process.exit(3)`,
+				]);
 
-			expect(await running.exited).toBe(3);
-			expect(running.output).toBe("end\n");
-		});
+				expect(await running.exited).toBe(3);
+				expect(running.output.replace(/\r\n/g, "\n")).toBe("end\n");
+			});
 
-		it("should end as a failed start with its reason when the program is missing", async () => {
-			const running = new RunningProcess("rogen-e2e-missing-program", []);
+			it("should end as a failed start with its reason when the program is missing", async () => {
+				const running = new RunningProcess(
+					"rogen-e2e-missing-program",
+					[]
+				);
 
-			expect(await running.exited).toBeNull();
-			expect(running.startError?.message).toContain("ENOENT");
-			expect(await running.stop()).toBeNull();
+				expect(await running.exited).toBeNull();
+				expect(running.startError?.message).toContain("ENOENT");
+				expect(await running.stop()).toBeNull();
+			});
 		});
 
 		it("should stop waiting at once, with its exit code and output, when the process has ended", async () => {
-			const running = new RunningProcess("sh", [
-				"-c",
-				"echo broken; exit 2",
+			const running = new RunningProcess(process.execPath, [
+				"-e",
+				`console.log("broken"); process.exitCode = 2`,
 			]);
 			const started = Date.now();
 
@@ -98,9 +105,9 @@ describe("e2e harness", () => {
 		});
 
 		it("should give what the check returned once it passes", async () => {
-			const running = new RunningProcess("sh", [
-				"-c",
-				"echo ready; sleep 60",
+			const running = new RunningProcess(process.execPath, [
+				"-e",
+				`console.log("ready"); setTimeout(() => {}, 60_000)`,
 			]);
 
 			const line = await running.waitFor(() => {
@@ -114,13 +121,13 @@ describe("e2e harness", () => {
 		});
 
 		it("should end the programs it started when it stops", async () => {
-			const running = new RunningProcess("sh", [
-				"-c",
-				"sleep 60 & echo $!; wait",
+			const running = new RunningProcess(process.execPath, [
+				"-e",
+				`console.log(require("child_process").spawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)"], { stdio: "ignore" }).pid); setTimeout(() => {}, 60_000)`,
 			]);
 			const grandchild = Number(
 				await running.waitFor(() => {
-					expect(running.output).toMatch(/^\d+\n/);
+					expect(running.output).toMatch(/^\d+\r?\n/);
 					return running.output.trim();
 				})
 			);

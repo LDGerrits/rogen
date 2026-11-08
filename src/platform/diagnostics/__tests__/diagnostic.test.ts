@@ -35,7 +35,7 @@ describe("platform/diagnostics/diagnostic", () => {
 				resource: "/repo/src",
 			};
 
-			expect(renderDiagnostic(diagnostic)).toBe(
+			expect(renderDiagnostic(diagnostic)).toEqual(
 				"/repo/src - warning: it contributes nothing. (test.example)"
 			);
 		});
@@ -48,7 +48,7 @@ describe("platform/diagnostics/diagnostic", () => {
 				resource: "/repo/src/Net/HttpClient.luau",
 			};
 
-			expect(renderDiagnostic(diagnostic, "/repo")).toBe(
+			expect(renderDiagnostic(diagnostic, "/repo")).toEqual(
 				"src/Net/HttpClient.luau - warning: it contributes nothing. (test.example)"
 			);
 			expect(
@@ -64,7 +64,7 @@ describe("platform/diagnostics/diagnostic", () => {
 				resource: "/repo/default.rogen.json",
 			};
 
-			expect(renderDiagnostic(diagnostic)).toBe(
+			expect(renderDiagnostic(diagnostic)).toEqual(
 				`${path.normalize("/repo/default.rogen.json")} - warning: 2 names are odd: (test.group)\n  a\n  b`
 			);
 		});
@@ -78,7 +78,7 @@ describe("platform/diagnostics/diagnostic", () => {
 				resource: "/repo/default.project.json",
 			};
 
-			expect(renderDiagnostic(diagnostic, "/repo")).toBe(
+			expect(renderDiagnostic(diagnostic, "/repo")).toEqual(
 				'default.project.json - warning: "a" is defined by src/A.luau and src/B.luau, not /repo2/src/C.luau. (test.example)'
 			);
 			expect(renderDiagnostic(diagnostic)).toContain("/repo/src/A.luau");
@@ -281,7 +281,7 @@ describe("platform/diagnostics/diagnostic", () => {
 				[{ rename: { from: "/repo/a", to: "/repo/b" } }]
 			);
 
-			expect(renderDiagnostic(fixed)).toBe(
+			expect(renderDiagnostic(fixed)).toEqual(
 				`${path.normalize("/repo/a.json")} - warning: near miss. (test.example)`
 			);
 		});

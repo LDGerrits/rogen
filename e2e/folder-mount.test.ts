@@ -9,6 +9,7 @@ import {
 	invocation,
 	sourcemapTree,
 	writeProjectFile,
+	endTree,
 } from "./harness.js";
 
 describeWithRojo("end to end folder mounts", () => {
@@ -88,7 +89,7 @@ describeWithRojo("end to end folder mounts", () => {
 				expect(fs.readFileSync(map, "utf8")).toContain("Pay");
 			});
 		} finally {
-			process.kill(-rojo.pid!, "SIGKILL");
+			endTree(rojo.pid!);
 		}
 	}, 30_000);
 });

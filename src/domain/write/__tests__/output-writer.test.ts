@@ -222,15 +222,17 @@ describe("OutputWriter", () => {
 			it("should create the missing folders and placeholder scripts before the project file", async () => {
 				const events: string[] = [];
 				store.add(
-					fs.onDidMutateFile((event) => events.push(event.path))
+					fs.onDidMutateFile((event) =>
+						events.push(path.resolve(event.path))
+					)
 				);
 
 				await writeWith(treeOf());
 
 				expect(await fs.isDirectory(folder)).toBe(true);
 				expect(await fs.readFile(script)).toBe(PLACEHOLDER_SOURCE);
-				expect(events.indexOf(script)).toBeLessThan(
-					events.indexOf(projectFile)
+				expect(events.indexOf(path.resolve(script))).toBeLessThan(
+					events.indexOf(path.resolve(projectFile))
 				);
 			});
 

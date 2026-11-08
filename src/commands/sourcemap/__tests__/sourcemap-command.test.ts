@@ -139,7 +139,7 @@ describe("sourcemap command", () => {
 			"--output",
 			"map.json",
 		]);
-		expect(rojo.options.cwd).toBe("/repo");
+		expect(rojo.options.cwd).toEqual("/repo");
 	});
 
 	it("should say where it wrote the sourcemap and show Rojo's warnings", async () => {

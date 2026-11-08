@@ -63,8 +63,12 @@ function walkError(
 	);
 }
 
+/** The names along `filePath`, on one drive: on Windows `path.resolve` turns `/repo` into `C:\repo`, and both name one folder. */
 function splitPath(filePath: string): string[] {
-	return toPosix(filePath).split("/").filter(Boolean);
+	return toPosix(filePath)
+		.replace(/^[A-Za-z]:/, "")
+		.split("/")
+		.filter(Boolean);
 }
 
 export class MemoryFileSystemService

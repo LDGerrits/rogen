@@ -406,7 +406,7 @@ describe("MetaReader", () => {
 
 			const metas = result.isOk() ? result.value : [];
 			expect(metas).toHaveLength(1);
-			expect(metas[0].file).toBe(abs("src/Combat/init.meta.jsonc"));
+			expect(metas[0].file).toEqual(abs("src/Combat/init.meta.jsonc"));
 			expect(metas[0].files).toEqual([
 				abs("src/Combat/init.meta.jsonc"),
 				abs("src/Combat/init.meta.json"),

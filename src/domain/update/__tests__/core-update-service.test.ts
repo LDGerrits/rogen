@@ -1,3 +1,4 @@
+import { toNative } from "../../../base/path.js";
 import { jest } from "@jest/globals";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -53,7 +54,7 @@ describe("CoreUpdateService", () => {
 		it("should name the newest release when the installed one is older", async () => {
 			releases.versions = ["2.0.3", "2.0.1", "2.0.2"];
 
-			expect(await check()).toBe(
+			expect(await check()).toEqual(
 				"Rogen 2.0.3 is out (you have 2.0.0). See https://github.com/LDGerrits/rogen/releases/tag/v2.0.3"
 			);
 		});
@@ -129,7 +130,7 @@ describe("CoreUpdateService", () => {
 				'[tools]\nrogen = "ldgerrits/rogen@2.0.0"\n'
 			);
 
-			expect(await check()).toBe(
+			expect(await check()).toEqual(
 				'Rogen 2.0.3 is out (you have 2.0.0). Update the pin in rokit.toml: rogen = "ldgerrits/rogen@2.0.3". Then run rokit install.'
 			);
 		});
@@ -141,7 +142,7 @@ describe("CoreUpdateService", () => {
 			);
 
 			expect(await check()).toContain(
-				'Update the pin in ../aftman.toml: r = "ldgerrits/rogen@2.0.3". Then run aftman install.'
+				`Update the pin in ${toNative("../aftman.toml")}: r = "ldgerrits/rogen@2.0.3". Then run aftman install.`
 			);
 		});
 
@@ -176,7 +177,7 @@ describe("CoreUpdateService", () => {
 				await check({
 					installDir: "/repo/game/node_modules/@ldgerrits/rogen/dist",
 				})
-			).toBe(
+			).toEqual(
 				"Rogen 2.0.3 is out (you have 2.0.0). Update with: npm i @ldgerrits/rogen@2.0.3"
 			);
 		});
@@ -186,7 +187,7 @@ describe("CoreUpdateService", () => {
 				await check({
 					installDir: "/usr/lib/node_modules/@ldgerrits/rogen/dist",
 				})
-			).toBe(
+			).toEqual(
 				"Rogen 2.0.3 is out (you have 2.0.0). Update with: npm i -g @ldgerrits/rogen@2.0.3"
 			);
 		});

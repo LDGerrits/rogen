@@ -1,8 +1,11 @@
 import path from "path";
+import { toPosix } from "../../../base/path.js";
 import { IgnoredPath, WatchFilter } from "../../../platform/watcher/watcher.js";
 import { mockConfig } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import { WatchPlan } from "../watch-plan.js";
+
+const onDisk = (file: string): string => toPosix(path.resolve(file));
 
 const isIgnored = (target: string, ignored: readonly IgnoredPath[]) =>
 	new WatchFilter([], { ignored }).skips(target);
@@ -247,10 +250,16 @@ describe("domain/watch/watch-plan", () => {
 			]);
 
 			expect(
-				isIgnored("/repo/rogen-syncback.project.json", plan.ignored)
+				isIgnored(
+					onDisk("/repo/rogen-syncback.project.json"),
+					plan.ignored
+				)
 			).toBe(true);
 			expect(
-				isIgnored("/repo/.rogen-syncback/new/0/A.luau", plan.ignored)
+				isIgnored(
+					onDisk("/repo/.rogen-syncback/new/0/A.luau"),
+					plan.ignored
+				)
 			).toBe(true);
 		});
 
@@ -259,9 +268,9 @@ describe("domain/watch/watch-plan", () => {
 				config("/repo/default.project.json", ["/repo/src"]),
 			]);
 
-			expect(isIgnored("/repo/default.project.json", plan.ignored)).toBe(
-				false
-			);
+			expect(
+				isIgnored(onDisk("/repo/default.project.json"), plan.ignored)
+			).toBe(false);
 		});
 
 		it("should ignore the staging file of any process writing an output", () => {
@@ -271,13 +280,13 @@ describe("domain/watch/watch-plan", () => {
 
 			expect(
 				isIgnored(
-					"/repo/default.project.json.1234-abcd.tmp",
+					onDisk("/repo/default.project.json.1234-abcd.tmp"),
 					plan.ignored
 				)
 			).toBe(true);
-			expect(isIgnored("/repo/default.project.json", plan.ignored)).toBe(
-				true
-			);
+			expect(
+				isIgnored(onDisk("/repo/default.project.json"), plan.ignored)
+			).toBe(true);
 		});
 
 		it("should not ignore the staging file of an unrelated output", () => {
@@ -286,9 +295,14 @@ describe("domain/watch/watch-plan", () => {
 			]);
 
 			expect(
-				isIgnored("/repo/other.project.json.1234.tmp", plan.ignored)
+				isIgnored(
+					onDisk("/repo/other.project.json.1234.tmp"),
+					plan.ignored
+				)
 			).toBe(false);
-			expect(isIgnored("/repo/src/A.tmp", plan.ignored)).toBe(false);
+			expect(isIgnored(onDisk("/repo/src/A.tmp"), plan.ignored)).toBe(
+				false
+			);
 		});
 
 		it("should escape regex characters in the output path", () => {
@@ -297,10 +311,16 @@ describe("domain/watch/watch-plan", () => {
 			]);
 
 			expect(
-				isIgnored("/repo (x)/default.project.json.1.tmp", plan.ignored)
+				isIgnored(
+					onDisk("/repo (x)/default.project.json.1.tmp"),
+					plan.ignored
+				)
 			).toBe(true);
 			expect(
-				isIgnored("/repoXx)/default.project.json.1.tmp", plan.ignored)
+				isIgnored(
+					onDisk("/repoXx)/default.project.json.1.tmp"),
+					plan.ignored
+				)
 			).toBe(false);
 		});
 
@@ -311,7 +331,11 @@ describe("domain/watch/watch-plan", () => {
 			]);
 
 			expect(
-				plan.ignored.filter((p) => p === "/repo/.rogen-syncback")
+				plan.ignored.filter(
+					(p) =>
+						typeof p === "string" &&
+						toPosix(p).endsWith("/repo/.rogen-syncback")
+				)
 			).toHaveLength(1);
 			expect(
 				plan.ignored.filter((p) => p instanceof RegExp)

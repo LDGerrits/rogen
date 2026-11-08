@@ -1,6 +1,7 @@
 import { defanged, plural } from "../../base/strings.js";
 import path from "path";
 import { UsageError } from "../../base/errors.js";
+import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	ProjectArgument,
@@ -221,7 +222,7 @@ registerCommand(
 			for (const { kind, file } of plan.listed)
 				logService.print(
 					defanged(
-						`${kind === "write" ? "Writing" : "Removing"} ${path.relative(cwd, file)}`
+						`${kind === "write" ? "Writing" : "Removing"} ${toPosix(path.relative(cwd, file))}`
 					)
 				);
 		}

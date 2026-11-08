@@ -1,3 +1,4 @@
+import path from "path";
 import { jest } from "@jest/globals";
 import {
 	useConfigFixture,
@@ -10,6 +11,8 @@ import {
 } from "./config-fixture.js";
 
 const ROUTED = { server: "ServerScriptService" };
+
+const onDisk = (file: string): string => path.resolve(file);
 
 describe("CoreConfigService", () => {
 	useConfigFixture();
@@ -66,7 +69,7 @@ describe("CoreConfigService", () => {
 
 				await start({ names: [file] });
 
-				expect(resolved(0)?.projectFile).toBe(`/repo/${written}`);
+				expect(resolved(0)?.projectFile).toEqual(`/repo/${written}`);
 				expect(resolved(0)?.isAdopted).toBe(false);
 			}
 		);
@@ -95,7 +98,9 @@ describe("CoreConfigService", () => {
 			await start({ names: ["nested.project.json"] });
 
 			expect(resolved(0)?.isAdopted).toBe(true);
-			expect(resolved(0)?.projectFile).toBe("/repo/nested.project.json");
+			expect(resolved(0)?.projectFile).toEqual(
+				"/repo/nested.project.json"
+			);
 		});
 
 		it("should refuse a config other than default that has no name, which Rojo can't read once written", async () => {
@@ -275,7 +280,7 @@ describe("CoreConfigService", () => {
 
 					expect(problems).toHaveLength(1);
 					expect(problems[0][0]).toContain(
-						`${relation} source path "/repo/src"`
+						`${relation} source path "${onDisk("/repo/src")}"`
 					);
 				}
 			);
@@ -340,7 +345,7 @@ describe("CoreConfigService", () => {
 
 				expect(problems).toEqual([
 					[
-						'source path "/repo/src/shared" is inside source path "/repo/src"; a file under it would belong to both. Remove one.',
+						`source path "${onDisk("/repo/src/shared")}" is inside source path "${onDisk("/repo/src")}"; a file under it would belong to both. Remove one.`,
 						"/repo/default.rogen.json",
 						3,
 						25,
@@ -372,7 +377,7 @@ describe("CoreConfigService", () => {
 
 				expect(problems).toHaveLength(1);
 				expect(problems[0][0]).toContain(
-					'source path "/repo/src/shared" is inside source path "/repo/src"'
+					`source path "${onDisk("/repo/src/shared")}" is inside source path "${onDisk("/repo/src")}"`
 				);
 			});
 
@@ -406,7 +411,7 @@ describe("CoreConfigService", () => {
 					sourcePaths: ["a", "a/b"],
 					routes: ROUTED,
 				});
-				await selection.reload(["/repo/default.rogen.json"]);
+				await selection.reload([onDisk("/repo/default.rogen.json")]);
 
 				expect(resolved(0)?.sourcePaths).toEqual(["/repo/a"]);
 				expect(errors(0)).toHaveLength(1);

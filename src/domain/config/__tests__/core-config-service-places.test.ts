@@ -1,3 +1,4 @@
+import path from "path";
 import {
 	errors,
 	fs,
@@ -11,6 +12,8 @@ import {
 } from "./config-fixture.js";
 
 const ROUTES = { server: "ServerScriptService", "*": "ReplicatedStorage" };
+
+const onDisk = (file: string): string => path.resolve(file);
 
 describe("CoreConfigService places", () => {
 	useConfigFixture();
@@ -133,9 +136,9 @@ describe("CoreConfigService selectCovering", () => {
 	it("should group the paths by the config that covers them, in the order given", async () => {
 		const covered = (
 			await service.selectCovering([
-				"/repo/places/arena/src/A.luau",
-				"/repo/places/lobby/src/B.luau",
-				"/repo/places/arena/src/C.luau",
+				onDisk("/repo/places/arena/src/A.luau"),
+				onDisk("/repo/places/lobby/src/B.luau"),
+				onDisk("/repo/places/arena/src/C.luau"),
 			])
 		).unwrap();
 
@@ -162,8 +165,8 @@ describe("CoreConfigService selectCovering", () => {
 	it("should leave out a path that no config covers, by its position", async () => {
 		const covered = (
 			await service.selectCovering([
-				"/repo/places/shared/src/A.luau",
-				"/repo/places/lobby/src/B.luau",
+				onDisk("/repo/places/shared/src/A.luau"),
+				onDisk("/repo/places/lobby/src/B.luau"),
 			])
 		).unwrap();
 
@@ -174,7 +177,7 @@ describe("CoreConfigService selectCovering", () => {
 	it("should mark a config named by its own file as read whole", async () => {
 		const covered = (
 			await service.selectCovering([
-				"/repo/places/lobby/default.rogen.json",
+				onDisk("/repo/places/lobby/default.rogen.json"),
 			])
 		).unwrap();
 
@@ -186,7 +189,7 @@ describe("CoreConfigService selectCovering", () => {
 
 		const covered = (await service.selectCovering([undefined])).unwrap();
 
-		expect(covered.groups[0].selection.entries[0].file).toBe(
+		expect(covered.groups[0].selection.entries[0].file).toEqual(
 			"/repo/places/arena/default.rogen.json"
 		);
 	});
@@ -197,7 +200,7 @@ describe("CoreConfigService selectCovering", () => {
 		const covered = (
 			await service.selectCovering([
 				undefined,
-				"/repo/places/arena/src/A.luau",
+				onDisk("/repo/places/arena/src/A.luau"),
 			])
 		).unwrap();
 
@@ -214,9 +217,9 @@ describe("CoreConfigService selectCovering", () => {
 	it("should answer an undefined target by the configs named with it, which then answer only for it", async () => {
 		const covered = (
 			await service.selectCovering([
-				"/repo/places/lobby/default.rogen.json",
+				onDisk("/repo/places/lobby/default.rogen.json"),
 				undefined,
-				"/repo/places/arena/default.rogen.json",
+				onDisk("/repo/places/arena/default.rogen.json"),
 			])
 		).unwrap();
 
@@ -244,9 +247,9 @@ describe("CoreConfigService selectCovering", () => {
 	it("should keep a path given beside a config named for an undefined target", async () => {
 		const covered = (
 			await service.selectCovering([
-				"/repo/places/lobby/default.rogen.json",
+				onDisk("/repo/places/lobby/default.rogen.json"),
 				undefined,
-				"/repo/places/lobby/src/B.luau",
+				onDisk("/repo/places/lobby/src/B.luau"),
 			])
 		).unwrap();
 
@@ -297,10 +300,10 @@ describe("CoreConfigService coversOf", () => {
 
 	it("should group a path under the nested project with the config above it", async () => {
 		const covered = (
-			await service.selectCovering(["/repo/src/pkg/init.luau"])
+			await service.selectCovering([onDisk("/repo/src/pkg/init.luau")])
 		).unwrap();
 
-		expect(covered.groups[0].selection.entries[0].file).toBe(
+		expect(covered.groups[0].selection.entries[0].file).toEqual(
 			"/repo/default.rogen.json"
 		);
 	});
@@ -408,9 +411,9 @@ describe("CoreConfigService coversOf named configs", () => {
 	it("should put a target in the group of each config that covers it", async () => {
 		const covered = (
 			await service.selectCovering([
-				"/repo/src/common/Util.luau",
-				"/repo/src/lobby/Main.luau",
-				"/repo/README.md",
+				onDisk("/repo/src/common/Util.luau"),
+				onDisk("/repo/src/lobby/Main.luau"),
+				onDisk("/repo/README.md"),
 			])
 		).unwrap();
 

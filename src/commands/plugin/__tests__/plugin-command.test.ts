@@ -51,7 +51,7 @@ describe("plugin command", () => {
 
 			expect((await running).isOk()).toBe(true);
 			expect(rojo.args).toEqual(["plugin", action]);
-			expect(rojo.options.cwd).toBe("/repo");
+			expect(rojo.options.cwd).toEqual("/repo");
 			expect(log.lines).toEqual(["info: Rojo: Done", `success: ${said}`]);
 		}
 	);

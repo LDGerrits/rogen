@@ -277,7 +277,7 @@ describe("OutcomeLog report", () => {
 		it("should head the report with each config's file", () => {
 			const [intro] = entries();
 
-			expect(intro.text).toBe(
+			expect(intro.text).toEqual(
 				"rogen build · lobby/default.rogen.json, arena/default.rogen.json"
 			);
 		});
@@ -301,7 +301,7 @@ describe("OutcomeLog report", () => {
 				]),
 				failedOf([], configNamed("match")),
 			])[1]
-		).toBe(
+		).toEqual(
 			"lobby/default.project.json · not written · arena/default.rogen.json and match/default.rogen.json failed"
 		);
 	});
@@ -464,7 +464,7 @@ describe("OutcomeLog report, warnings", () => {
 				writtenWith("arena", [], [shared]),
 				writtenWith("match", [], [shared]),
 			])[4]
-		).toBe(
+		).toEqual(
 			"success: Wrote match/default.project.json (same warnings as arena/default.rogen.json)."
 		);
 	});
@@ -485,7 +485,7 @@ describe("OutcomeLog report, warnings", () => {
 			all([failed("arena"), failed("match")]).find((line) =>
 				line.startsWith("error: match")
 			)
-		).toBe(
+		).toEqual(
 			"error: match/default.project.json · not written · same errors as arena/default.rogen.json · same warnings as arena/default.rogen.json"
 		);
 	});
@@ -625,7 +625,7 @@ describe("OutcomeLog.diagnostics", () => {
 
 		const lines = text.split("\n");
 		expect(lines).toHaveLength(12);
-		expect(lines[10]).toBe("  /repo/src/F9.luau (bad.)");
+		expect(lines[10]).toEqual("  /repo/src/F9.luau (bad.)");
 		expect(lines[11]).toBe("  2 more like it aren't listed.");
 	});
 

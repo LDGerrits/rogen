@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from "child_process";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { bundleCli, invocation } from "./harness.js";
+import { WINDOWS, bundleCli, invocation } from "./harness.js";
 
 const ROOT = path.join(import.meta.dirname, "..");
 
@@ -13,7 +13,9 @@ const script = fs
 		/```js title="\.agents\/hooks\/rogen-check\.mjs"\n([\s\S]*?)\n```/
 	)?.[1];
 
-const gitPath = spawnSync("which", ["git"], { encoding: "utf8" }).stdout.trim();
+const gitPath = WINDOWS
+	? ""
+	: spawnSync("which", ["git"], { encoding: "utf8" }).stdout.trim();
 const available = gitPath !== "";
 
 (available ? describe : describe.skip)("agent Stop hook", () => {

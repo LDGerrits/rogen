@@ -8,12 +8,16 @@ import {
 	outputProblem,
 	sourcemapTree,
 	writeProjectFile,
+	INTERRUPTED_EXIT,
+	WINDOWS,
 } from "./harness.js";
 
 const CONFIG = JSON.stringify({
 	sourcePaths: ["src"],
 	routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
 });
+
+const describeOnPosix = WINDOWS ? describe.skip : describe;
 
 describeWithRojo("end to end watch", () => {
 	let bundle: ReturnType<typeof bundleCli>;
@@ -578,13 +582,15 @@ describeWithRojo("end to end watch", () => {
 		});
 	}, 30_000);
 
-	it("should exit 130 when interrupted, as a shell reports Ctrl+C", async () => {
-		const running = start(["-o", "game.rbxlx"]);
-		await waitFor(() => {
-			expect(running.output).toContain("Built game.rbxlx.");
-		});
+	describeOnPosix("where it can run", () => {
+		it("should exit 130 when interrupted, as a shell reports Ctrl+C", async () => {
+			const running = start(["-o", "game.rbxlx"]);
+			await waitFor(() => {
+				expect(running.output).toContain("Built game.rbxlx.");
+			});
 
-		expect(await running.stop()).toBe(130);
-		expect(running.output).toContain("Stopped watching.");
-	}, 30_000);
+			expect(await running.stop()).toBe(INTERRUPTED_EXIT);
+			expect(running.output).toContain("Stopped watching.");
+		}, 30_000);
+	});
 });

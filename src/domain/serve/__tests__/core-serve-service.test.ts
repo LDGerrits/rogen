@@ -181,7 +181,7 @@ describe("CoreServeService", () => {
 			});
 
 			expect(served(servePlan)).toEqual(["repo", "0.0.0.0:40000"]);
-			expect(requests.requested[0]).toBe(
+			expect(requests.requested[0]).toEqual(
 				"http://127.0.0.1:40000/api/rojo"
 			);
 		});
@@ -244,7 +244,7 @@ describe("CoreServeService", () => {
 			const error = (await errorOf()) as DiagnosticsError;
 
 			expect(error.diagnostics[0].code).toBe("serve.portTaken");
-			expect(error.diagnostics[0].resource).toBe(
+			expect(error.diagnostics[0].resource).toEqual(
 				"/repo/default.rogen.json"
 			);
 			expect(error.diagnostics[0].message).toBe(
@@ -346,7 +346,7 @@ describe("CoreServeService", () => {
 				refs: ["places/arena"],
 			})) as DiagnosticsError;
 
-			expect(error.diagnostics[0].message).toBe(
+			expect(error.diagnostics[0].message).toEqual(
 				"Port 34872 is taken by Rojo serving Lobby, which rogen serve started for places/lobby/default.rogen.json, so places/arena/default.rogen.json can't be served there. Stop it, set a servePort in places/arena/default.rogen.json, or run 'rogen serve places/arena --port <port>'."
 			);
 		});
@@ -561,7 +561,7 @@ describe("CoreServeService", () => {
 			expect(error).toBeInstanceOf(DiagnosticsError);
 			const [diagnostic] = (error as DiagnosticsError).diagnostics;
 			expect(diagnostic.code).toBe("serve.portTaken");
-			expect(diagnostic.resource).toBe("/repo/default.rogen.json");
+			expect(diagnostic.resource).toEqual("/repo/default.rogen.json");
 			expect(diagnostic.message).toBe(
 				"Port 34872 is held by another process (Rojo serving Other), so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve --port <port>'."
 			);
@@ -615,7 +615,7 @@ describe("CoreServeService", () => {
 
 			const error = (await errorOf()) as DiagnosticsError;
 
-			expect(error.diagnostics[0].resource).toBe(
+			expect(error.diagnostics[0].resource).toEqual(
 				"/repo/default.rogen.json"
 			);
 			expect(error.diagnostics[0].message).toBe(

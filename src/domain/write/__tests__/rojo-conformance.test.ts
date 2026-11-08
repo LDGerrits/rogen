@@ -15,6 +15,7 @@ import {
 	sourcemapError,
 } from "../../rojo/__tests__/rojo-cli.js";
 import { withGlobBody } from "../../../base/glob.js";
+import { toPosix } from "../../../base/path.js";
 import { RojoFile } from "../../rojo/rojo.js";
 import { writeServiceOf } from "./fixtures.js";
 
@@ -339,7 +340,7 @@ describeWithRojo("write against Rojo reading the same directory", () => {
 		);
 		await rogenTree({
 			ignored: globIgnorePaths.map((glob) =>
-				withGlobBody(glob, (body) => `${dir}/${body}`)
+				withGlobBody(glob, (body) => `${toPosix(dir)}/${body}`)
 			),
 		});
 

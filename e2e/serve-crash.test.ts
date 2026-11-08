@@ -8,6 +8,7 @@ import {
 	bundleCli,
 	createProject,
 	writeProjectFile,
+	INTERRUPTED_EXIT,
 } from "./harness.js";
 import { freePort, projectFiles, useServeProject } from "./serve-fixtures.js";
 
@@ -133,6 +134,6 @@ describeWithRojo("end to end serve when Rojo crashes", () => {
 			expect(await servedNames(serve.port)).toContain("Fresh");
 		}, 20_000);
 		expect(serving.output).not.toContain("error");
-		expect(await serving.stop()).toBe(130);
+		expect(await serving.stop()).toBe(INTERRUPTED_EXIT);
 	}, 60_000);
 });
