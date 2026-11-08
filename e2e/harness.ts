@@ -11,6 +11,8 @@ import {
 	Extensions,
 } from "../src/platform/commands/commands.js";
 import { compareStrings } from "../src/base/collections.js";
+import { toPosix } from "../src/base/path.js";
+import { isWindows } from "../src/base/platform.js";
 import { outputJsonSchema } from "../src/platform/output/__tests__/output-json-schema.js";
 import { OutputShape } from "../src/platform/output/output-shape.js";
 import { failureShape } from "../src/platform/diagnostics/diagnostic-json.js";
@@ -646,8 +648,6 @@ function normalize(text: string, dir: string): string {
 		.replace(/^(\s*"version": )"[^"]*"/gm, '$1"<version>"');
 }
 
-const toPosix = (text: string): string => text.replace(/\\/g, "/");
-
 const WINDOWS_NOT_FOUND =
 	"The system cannot find the path specified. (os error 3)";
 
@@ -725,7 +725,7 @@ export async function eventually(
 	}
 }
 
-export const WINDOWS = process.platform === "win32";
+export const WINDOWS = isWindows;
 
 /** How a stopped program ends: 130 after Ctrl+C, 1 on Windows, where only a forced end can reach a program with no console of its own. */
 export const INTERRUPTED_EXIT = WINDOWS ? 1 : 130;

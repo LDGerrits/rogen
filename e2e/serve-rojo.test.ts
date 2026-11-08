@@ -55,6 +55,7 @@ async function servedNames(port: number): Promise<string[]> {
 	);
 }
 
+const describeOnPosix = WINDOWS ? describe.skip : describe;
 describeWithRojo("end to end serve", () => {
 	const serve = useServeProject(35000);
 
@@ -105,58 +106,59 @@ describeWithRojo("end to end serve", () => {
 		}, 10_000);
 	}, 40_000);
 
-	it("should end the Rojo a killed serve left, and serve again so a new file reaches it", async () => {
-		if (WINDOWS) return;
-		const first = serve.start();
-		await first.waitFor(() => {
-			expect(first.output).toContain("Serving ");
-		}, 20_000);
-		await first.kill("SIGKILL");
-		expect(await rojoProject(serve.port)).toBe("Game");
+	describeOnPosix("where it can run", () => {
+		it("should end the Rojo a killed serve left, and serve again so a new file reaches it", async () => {
+			const first = serve.start();
+			await first.waitFor(() => {
+				expect(first.output).toContain("Serving ");
+			}, 20_000);
+			await first.kill("SIGKILL");
+			expect(await rojoProject(serve.port)).toBe("Game");
 
-		const second = serve.start();
-		await second.waitFor(() => {
-			expect(second.output).toContain("that a rogen serve (process");
-			expect(second.output).toContain("Serving ");
-		}, 30_000);
-		writeProjectFile(serve.dir, "src/Fresh.luau");
+			const second = serve.start();
+			await second.waitFor(() => {
+				expect(second.output).toContain("that a rogen serve (process");
+				expect(second.output).toContain("Serving ");
+			}, 30_000);
+			writeProjectFile(serve.dir, "src/Fresh.luau");
 
-		await second.waitFor(async () => {
-			expect(await servedNames(serve.port)).toContain("Fresh");
-		}, 20_000);
-		expect(await second.stop()).toBe(INTERRUPTED_EXIT);
-		expect(await rojoProject(serve.port)).toBeUndefined();
-	}, 60_000);
+			await second.waitFor(async () => {
+				expect(await servedNames(serve.port)).toContain("Fresh");
+			}, 20_000);
+			expect(await second.stop()).toBe(INTERRUPTED_EXIT);
+			expect(await rojoProject(serve.port)).toBeUndefined();
+		}, 60_000);
 
-	it("should wait through a broken first build and serve once it is fixed, printing the errors once", async () => {
-		writeProjectFile(serve.dir, "src/X/@server");
-		writeProjectFile(serve.dir, "src/X/@client");
-		writeProjectFile(
-			serve.dir,
-			"default.rogen.json",
-			config(serve.port, {
-				routes: {
-					server: "ServerScriptService",
-					client: "StarterPlayer/StarterPlayerScripts",
-				},
-			})
-		);
-		const serving = serve.start();
-		await serving.waitFor(() => {
-			expect(serving.output).toContain("route.markerClash");
-		}, 20_000);
-		expect(serving.output).not.toContain("Serving ");
-		expect(await rojoProject(serve.port)).toBeUndefined();
+		it("should wait through a broken first build and serve once it is fixed, printing the errors once", async () => {
+			writeProjectFile(serve.dir, "src/X/@server");
+			writeProjectFile(serve.dir, "src/X/@client");
+			writeProjectFile(
+				serve.dir,
+				"default.rogen.json",
+				config(serve.port, {
+					routes: {
+						server: "ServerScriptService",
+						client: "StarterPlayer/StarterPlayerScripts",
+					},
+				})
+			);
+			const serving = serve.start();
+			await serving.waitFor(() => {
+				expect(serving.output).toContain("route.markerClash");
+			}, 20_000);
+			expect(serving.output).not.toContain("Serving ");
+			expect(await rojoProject(serve.port)).toBeUndefined();
 
-		fs.rmSync(path.join(serve.dir, "src/X/@client"));
+			fs.rmSync(path.join(serve.dir, "src/X/@client"));
 
-		await serving.waitFor(() => {
-			expect(serving.output).toContain("Serving ");
-		}, 20_000);
-		expect(await rojoProject(serve.port)).toBe("Game");
-		expect(serving.output.split("route.markerClash")).toHaveLength(2);
-		expect(await serving.stop()).toBe(INTERRUPTED_EXIT);
-	}, 40_000);
+			await serving.waitFor(() => {
+				expect(serving.output).toContain("Serving ");
+			}, 20_000);
+			expect(await rojoProject(serve.port)).toBe("Game");
+			expect(serving.output.split("route.markerClash")).toHaveLength(2);
+			expect(await serving.stop()).toBe(INTERRUPTED_EXIT);
+		}, 40_000);
+	});
 
 	it("should serve a meta file created beside a script", async () => {
 		const serving = serve.start();

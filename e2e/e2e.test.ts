@@ -73,4 +73,6 @@ describeWithRojo("end to end", () => {
 	else
 		for (const name of downloading)
 			it.todo(`${name} (needs ROGEN_E2E_NETWORK=1)`);
+	for (const name of cases.filter(needsShell))
+		it.todo(`${name} (its fake programs are shell scripts)`);
 });

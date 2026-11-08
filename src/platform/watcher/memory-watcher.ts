@@ -24,7 +24,10 @@ export class MemoryWatcher extends AbstractWatcher {
 		paths: readonly string[],
 		options: WatchOptions
 	): Promise<void> {
-		const filter = new WatchFilter(paths, options);
+		const filter = new WatchFilter(
+			paths.map((watched) => toPosix(onDisk(watched))),
+			options
+		);
 
 		this.fileSystemService.onDidMutateFile((change) => {
 			const reported = toPosix(onDisk(change.path));

@@ -23,6 +23,8 @@ import {
 	toPosix,
 } from "../path.js";
 
+const describeOnPosix = isWindows ? describe.skip : describe;
+
 describe("PathSet", () => {
 	it("should find a path written with either kind of separator", () => {
 		const files = new PathSet(["C:\\repo\\default.rogen.json"]);
@@ -55,11 +57,11 @@ describe("Path", () => {
 			expect(isInside("/repo/Src/a", "/repo/src", true)).toBe(true);
 		});
 
-		it("should tell Src and src apart where the file system does", () => {
-			if (isWindows) return;
-
-			expect(samePath("/repo/Src", "/repo/src", false)).toBe(false);
-			expect(isInside("/repo/Src/a", "/repo/src", false)).toBe(false);
+		describeOnPosix("where it can run", () => {
+			it("should tell Src and src apart where the file system does", () => {
+				expect(samePath("/repo/Src", "/repo/src", false)).toBe(false);
+				expect(isInside("/repo/Src/a", "/repo/src", false)).toBe(false);
+			});
 		});
 	});
 

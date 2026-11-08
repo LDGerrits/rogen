@@ -40,6 +40,7 @@ const fixtures: [string, () => Fixture][] = [
 describe.each(fixtures)("%s: contract", (name, create) => {
 	const onWindowsDisk =
 		name === "DiskFileSystemService" && process.platform === "win32";
+	const describeWithEnotdir = onWindowsDisk ? describe.skip : describe;
 
 	let fixture: Fixture;
 	let at: (...segments: string[]) => string;
@@ -234,13 +235,14 @@ describe.each(fixtures)("%s: contract", (name, create) => {
 			expect(await fixture.fileSystem.exists(at("temp.txt"))).toBe(false);
 		});
 
-		it("should reject with ENOTDIR for a path below a file", async () => {
-			if (onWindowsDisk) return;
-			await fixture.fileSystem.writeFile(at("a.luau"), "");
+		describeWithEnotdir("where it can run", () => {
+			it("should reject with ENOTDIR for a path below a file", async () => {
+				await fixture.fileSystem.writeFile(at("a.luau"), "");
 
-			await expect(
-				fixture.fileSystem.delete(at("a.luau/b"))
-			).rejects.toMatchObject({ code: "ENOTDIR" });
+				await expect(
+					fixture.fileSystem.delete(at("a.luau/b"))
+				).rejects.toMatchObject({ code: "ENOTDIR" });
+			});
 		});
 
 		it("should do nothing for a path whose parent is missing", async () => {
