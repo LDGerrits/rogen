@@ -28,7 +28,7 @@ jobs:
                   node-version: 22
                   cache: "npm"
 
-            - name: Install Rojo and Argon
+            - name: Install Rojo
               uses: CompeyDev/setup-rokit@v0.2.1
               with:
                   cache: true
@@ -62,7 +62,7 @@ jobs:
                   node-version: 22
                   cache: "npm"
 
-            - name: Install Rojo and Argon
+            - name: Install Rojo
               uses: CompeyDev/setup-rokit@v0.2.1
               with:
                   cache: true
@@ -86,7 +86,7 @@ jobs:
                   node-version: 22
                   cache: "npm"
 
-            - name: Install Rojo and Argon
+            - name: Install Rojo
               uses: CompeyDev/setup-rokit@v0.2.1
               with:
                   cache: true
@@ -121,7 +121,7 @@ jobs:
                   node-version: 22
                   cache: "npm"
 
-            - name: Install Rojo and Argon
+            - name: Install Rojo
               uses: CompeyDev/setup-rokit@v0.2.1
               with:
                   cache: true
