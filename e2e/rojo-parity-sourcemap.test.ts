@@ -8,6 +8,10 @@ const SOURCEMAP_FLAGS = [
 	["--include-non-scripts", "--absolute"],
 ];
 
+/** `json` without `folder`, which Rojo writes with `/` on every platform. */
+const withoutFolder = (json: string, folder: string): string =>
+	json.split(folder.replaceAll("\\", "/")).join("");
+
 describeWithRojo("Rogen and Rojo on the same project", () => {
 	const { rogen, rojo, copies } = parityRunners();
 
@@ -26,8 +30,8 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 					return (
 						expected.status !== 0 ||
 						actual.status !== 0 ||
-						actual.stdout.split(byRogen).join("") !==
-							expected.stdout.split(byRojo).join("")
+						withoutFolder(actual.stdout, byRogen) !==
+							withoutFolder(expected.stdout, byRojo)
 					);
 				});
 

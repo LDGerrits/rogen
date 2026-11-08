@@ -8,6 +8,8 @@ import {
 	outputProblem,
 	sourcemapTree,
 	writeProjectFile,
+	INTERRUPTED_EXIT,
+	WINDOWS,
 } from "./harness.js";
 
 const CONFIG = JSON.stringify({
@@ -579,12 +581,13 @@ describeWithRojo("end to end watch", () => {
 	}, 30_000);
 
 	it("should exit 130 when interrupted, as a shell reports Ctrl+C", async () => {
+		if (WINDOWS) return;
 		const running = start(["-o", "game.rbxlx"]);
 		await waitFor(() => {
 			expect(running.output).toContain("Built game.rbxlx.");
 		});
 
-		expect(await running.stop()).toBe(130);
+		expect(await running.stop()).toBe(INTERRUPTED_EXIT);
 		expect(running.output).toContain("Stopped watching.");
 	}, 30_000);
 });

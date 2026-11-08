@@ -7,6 +7,7 @@ import {
 	bundleCli,
 	discoverCases,
 	needsNetwork,
+	needsShell,
 	runCase,
 } from "./harness.js";
 
@@ -17,7 +18,9 @@ const UPDATE = process.env.UPDATE_E2E === "1";
 const online = process.env.ROGEN_E2E_NETWORK === "1";
 const cases = discoverCases();
 const downloading = cases.filter(needsNetwork);
-const local = cases.filter((name) => !downloading.includes(name));
+const local = cases.filter(
+	(name) => !downloading.includes(name) && !needsShell(name)
+);
 
 describeWithRojo("end to end", () => {
 	let bundle: ReturnType<typeof bundleCli>;

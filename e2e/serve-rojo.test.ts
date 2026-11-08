@@ -9,6 +9,9 @@ import {
 	invocation,
 	outputProblem,
 	writeProjectFile,
+	INTERRUPTED_EXIT,
+	endProgram,
+	WINDOWS,
 } from "./harness.js";
 import {
 	config,
@@ -66,7 +69,7 @@ describeWithRojo("end to end serve", () => {
 		expect(await rojoProject(serve.port)).toBe("Game");
 		expect(serving.stdout).not.toContain("Rojo server listening:");
 		expect(serving.stdout).not.toContain(`Port:    ${serve.port}`);
-		expect(await serving.stop()).toBe(130);
+		expect(await serving.stop()).toBe(INTERRUPTED_EXIT);
 		expect(await rojoProject(serve.port)).toBeUndefined();
 	}, 40_000);
 
@@ -86,7 +89,7 @@ describeWithRojo("end to end serve", () => {
 			`warning: Rojo: This server is bound to 0.0.0.0, which is reachable from the network. The serve API is unauthenticated, so anyone who can reach 0.0.0.0:${serve.port} can read and modify your project's source. Prefer binding to localhost and tunneling (e.g. SSH, Tailscale, or WireGuard) when you need remote access.`,
 		]);
 		expect(serving.stdout).not.toContain("WARNING");
-		expect(await serving.stop()).toBe(130);
+		expect(await serving.stop()).toBe(INTERRUPTED_EXIT);
 	}, 40_000);
 
 	it("should end the Rojo with it when the terminal closes", async () => {
@@ -103,6 +106,7 @@ describeWithRojo("end to end serve", () => {
 	}, 40_000);
 
 	it("should end the Rojo a killed serve left, and serve again so a new file reaches it", async () => {
+		if (WINDOWS) return;
 		const first = serve.start();
 		await first.waitFor(() => {
 			expect(first.output).toContain("Serving ");
@@ -120,7 +124,7 @@ describeWithRojo("end to end serve", () => {
 		await second.waitFor(async () => {
 			expect(await servedNames(serve.port)).toContain("Fresh");
 		}, 20_000);
-		expect(await second.stop()).toBe(130);
+		expect(await second.stop()).toBe(INTERRUPTED_EXIT);
 		expect(await rojoProject(serve.port)).toBeUndefined();
 	}, 60_000);
 
@@ -151,7 +155,7 @@ describeWithRojo("end to end serve", () => {
 		}, 20_000);
 		expect(await rojoProject(serve.port)).toBe("Game");
 		expect(serving.output.split("route.markerClash")).toHaveLength(2);
-		expect(await serving.stop()).toBe(130);
+		expect(await serving.stop()).toBe(INTERRUPTED_EXIT);
 	}, 40_000);
 
 	it("should serve a meta file created beside a script", async () => {
@@ -259,9 +263,9 @@ describeWithRojo("end to end serve", () => {
 		expect(await rojoProject(serve.port)).toBe("lobby");
 		expect(await rojoProject(serve.port + 1)).toBe("arena");
 		expect(await servedNames(serve.port)).toContain("Shared");
-		expect(await first.stop()).toBe(130);
+		expect(await first.stop()).toBe(INTERRUPTED_EXIT);
 		expect(await rojoProject(serve.port + 1)).toBe("arena");
-		expect(await second.stop()).toBe(130);
+		expect(await second.stop()).toBe(INTERRUPTED_EXIT);
 	}, 90_000);
 
 	it("should refuse a second project, as Rojo does, and start nothing", async () => {
@@ -294,7 +298,7 @@ describeWithRojo("end to end serve", () => {
 				`Serving Lobby at localhost:${serve.port + 1} · http://localhost:${serve.port + 1}/`
 			);
 		}, 30_000);
-		expect(await serving.stop()).toBe(130);
+		expect(await serving.stop()).toBe(INTERRUPTED_EXIT);
 	}, 60_000);
 
 	it("should find no config for a bare serve at the root of several places", async () => {
@@ -329,7 +333,7 @@ describeWithRojo("end to end serve", () => {
 			);
 		}, 20_000);
 		expect(await rojoProject(serve.port)).toBeUndefined();
-		expect(await serving.stop()).toBe(130);
+		expect(await serving.stop()).toBe(INTERRUPTED_EXIT);
 	}, 40_000);
 
 	it("should name the project after its folder when default.rogen.json sets no name", async () => {
@@ -391,7 +395,7 @@ describeWithRojo("end to end serve", () => {
 		expect(serving.output).toContain(
 			`Stopped serving default.rogen.json at localhost:${serve.port}: its address changed.`
 		);
-		expect(await serving.stop()).toBe(130);
+		expect(await serving.stop()).toBe(INTERRUPTED_EXIT);
 	}, 60_000);
 
 	it("should keep the server where it is when servePort moves to a port another Rojo holds", async () => {
@@ -425,7 +429,7 @@ describeWithRojo("end to end serve", () => {
 			expect(await rojoProject(serve.port)).toBe("Game");
 			expect(await rojoProject(serve.port + 1)).toBe("Other");
 		} finally {
-			rojo.kill("SIGINT");
+			endProgram(rojo);
 			other.dispose();
 		}
 	}, 60_000);
@@ -496,7 +500,7 @@ describeWithRojo("end to end serve", () => {
 				`Port ${serve.port} is held by another process (Rojo serving Game), so default.rogen.json can't be served there.`
 			);
 		} finally {
-			rojo.kill("SIGINT");
+			endProgram(rojo);
 			other.dispose();
 		}
 	}, 40_000);
@@ -512,7 +516,7 @@ describeWithRojo("end to end serve", () => {
 
 			expect(await second.exited).toBe(1);
 			expect(second.output).toContain(
-				`Port ${serve.port} is taken by Rojo serving Game, which rogen serve started for ${serve.dir}/default.rogen.json`
+				`Port ${serve.port} is taken by Rojo serving Game, which rogen serve started for ${serve.dir.replaceAll("\\", "/")}/default.rogen.json`
 			);
 		} finally {
 			checkout.dispose();
@@ -559,7 +563,7 @@ describeWithRojo("end to end serve", () => {
 				`Port ${serve.port} is held by another process (Rojo serving Other), so default.rogen.json can't be served there.`
 			);
 		} finally {
-			rojo.kill("SIGINT");
+			endProgram(rojo);
 			other.dispose();
 		}
 	}, 40_000);

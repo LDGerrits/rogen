@@ -1,5 +1,5 @@
 import Ajv, { ValidateFunction } from "ajv";
-import { ChildProcess, execFile, spawn } from "child_process";
+import { ChildProcess, execFile, execFileSync, spawn } from "child_process";
 import { createHash } from "crypto";
 import { buildSync } from "esbuild";
 import fs from "fs";
@@ -90,6 +90,7 @@ function childEnv(extra: Readonly<Record<string, string>> = {}) {
 		NO_COLOR: "1",
 		FORCE_COLOR: "0",
 		XDG_CACHE_HOME: RUN_CACHE,
+		...(WINDOWS ? { WT_SESSION: "1" } : {}),
 		...extra,
 	};
 	if (!("GITHUB_ACTIONS" in extra)) delete env.GITHUB_ACTIONS;
@@ -217,15 +218,18 @@ export async function runCase(cli: string, name: string): Promise<string> {
 		for (const args of spec.steps ?? [["write"]]) {
 			const [first, program, ...programArgs] = args;
 			const external = first === EXTERNAL_STEP;
-			const result = await run(
-				...(external
-					? ([program, programArgs] as const)
-					: invocation(cli, args)),
-				path.join(dir, spec.cwd ?? ""),
-				{ ...fake?.env, ...spec.env },
-				spec.stdin,
-				spec.network ? NETWORK_TIMEOUT_MS : RUN_TIMEOUT_MS
-			);
+			const cwd = path.join(dir, spec.cwd ?? "");
+			const result =
+				(external && fileStep(program, programArgs, cwd)) ||
+				(await run(
+					...(external
+						? ([program, programArgs] as const)
+						: invocation(cli, args)),
+					cwd,
+					{ ...fake?.env, ...spec.env },
+					spec.stdin,
+					spec.network ? NETWORK_TIMEOUT_MS : RUN_TIMEOUT_MS
+				));
 			if (!external) {
 				const problem = outputProblem(args, result.stdout);
 				if (problem)
@@ -234,7 +238,7 @@ export async function runCase(cli: string, name: string): Promise<string> {
 			sections.push(
 				formatStep(
 					external ? [program, ...programArgs] : ["rogen", ...args],
-					result,
+					external ? result : withPosixPaths(result),
 					!external && showsStdout(args, spec),
 					spec.stdin
 				)
@@ -270,6 +274,26 @@ export async function runCase(cli: string, name: string): Promise<string> {
 	} finally {
 		fs.rmSync(parent, { recursive: true, force: true });
 	}
+}
+
+/** What the steps' POSIX file programs do, where Windows has none of them. */
+function fileStep(
+	program: string,
+	args: readonly string[],
+	cwd: string
+): RunResult | undefined {
+	if (!WINDOWS || !["cp", "rm", "cmp"].includes(program)) return undefined;
+	const [from, to] = args.map((arg) => path.join(cwd, arg));
+	if (program === "rm") fs.rmSync(from);
+	if (program === "cp") fs.copyFileSync(from, to);
+	const same =
+		program !== "cmp" || fs.readFileSync(from).equals(fs.readFileSync(to));
+	return { exitCode: same ? 0 : 1, stdout: "", stderr: "" };
+}
+
+/** Whether the case's programs are shell scripts, which Windows can't run. */
+export function needsShell(name: string): boolean {
+	return WINDOWS && readSpec(path.join(CASES_DIR, name)).tools !== undefined;
 }
 
 const TOOLCHAIN = ["rokit", "aftman", "foreman", "rojo", "darklua"];
@@ -612,12 +636,51 @@ function changedFiles(
 }
 
 function normalize(text: string, dir: string): string {
-	const roots = new Set([dir, fs.realpathSync(dir)]);
+	const real = [dir, fs.realpathSync(dir), fs.realpathSync.native(dir)];
+	const roots = new Set([...real, ...real.map(toPosix)]);
 	let result = text;
-	for (const root of roots) result = result.split(root).join("<dir>");
+	for (const root of [...roots].sort((a, b) => b.length - a.length))
+		result = result.split(root).join("<dir>");
 	return result
 		.replace(/\r\n/g, "\n")
 		.replace(/^(\s*"version": )"[^"]*"/gm, '$1"<version>"');
+}
+
+const toPosix = (text: string): string => text.replace(/\\/g, "/");
+
+const WINDOWS_NOT_FOUND =
+	"The system cannot find the path specified. (os error 3)";
+
+/** A JSON line with the backslashes in its strings made slashes, or the line itself so turned when it is not JSON. */
+function posixLine(line: string): string {
+	try {
+		return JSON.stringify(
+			JSON.parse(line, (_, value: unknown) =>
+				typeof value === "string" ? toPosix(value) : value
+			)
+		);
+	} catch {
+		return toPosix(line);
+	}
+}
+
+/** What a `rogen` run printed, with the paths Windows writes with backslashes written as on every other platform, so one transcript holds for both. */
+function withPosixPaths(result: RunResult): RunResult {
+	if (!WINDOWS) return result;
+	const posix = (text: string) =>
+		text
+			.split("\n")
+			.map(posixLine)
+			.join("\n")
+			.replaceAll(
+				WINDOWS_NOT_FOUND,
+				"No such file or directory (os error 2)"
+			);
+	return {
+		...result,
+		stdout: posix(result.stdout),
+		stderr: posix(result.stderr),
+	};
 }
 
 export function createProject(files: Readonly<Record<string, string>>): {
@@ -662,7 +725,29 @@ export async function eventually(
 	}
 }
 
-const WINDOWS = process.platform === "win32";
+export const WINDOWS = process.platform === "win32";
+
+/** How a stopped program ends: 130 after Ctrl+C, 1 on Windows, where only a forced end can reach a program with no console of its own. */
+export const INTERRUPTED_EXIT = WINDOWS ? 1 : 130;
+
+/** Ends a program a test started itself, with what that program started in turn. */
+export function endProgram(child: ChildProcess): void {
+	if (WINDOWS && child.pid !== undefined) endTree(child.pid);
+	else child.kill("SIGINT");
+}
+
+/** Ends `pid` and every program it started, at once. */
+export function endTree(pid: number): void {
+	try {
+		if (WINDOWS)
+			execFileSync("taskkill", ["/T", "/F", "/PID", String(pid)], {
+				stdio: "ignore",
+			});
+		else process.kill(-pid, "SIGKILL");
+	} catch {
+		// The whole tree has ended already.
+	}
+}
 
 /** Shorter than Jest's hook timeout, so an `afterEach` that stops a process ends it. */
 const STOP_TIMEOUT_MS = 3_000;
@@ -712,7 +797,8 @@ export class RunningProcess {
 
 	/** Everything it printed, on both streams. */
 	get output(): string {
-		return stripVTControlCharacters(this._output);
+		const output = stripVTControlCharacters(this._output);
+		return WINDOWS ? toPosix(output) : output;
 	}
 
 	get stdout(): string {
@@ -776,8 +862,12 @@ export class RunningProcess {
 
 	/** Signals what it started too, as Ctrl+C in a terminal does, so a Rojo it ran can't keep the port. */
 	private signalGroup(signal: NodeJS.Signals): void {
-		if (WINDOWS || this.child.pid === undefined) {
+		if (this.child.pid === undefined) {
 			this.child.kill(signal);
+			return;
+		}
+		if (WINDOWS) {
+			endTree(this.child.pid);
 			return;
 		}
 		try {
