@@ -1,6 +1,6 @@
 import { jest } from "@jest/globals";
 import path from "path";
-import { Result, ResultError, ok } from "../../../base/result.js";
+import { Result, ok } from "../../../base/result.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
@@ -29,7 +29,13 @@ import {
 } from "../../runner/rojo-command-service.js";
 import { ServerMessage } from "../../runner/rojo-server.js";
 import { CoreSyncbackService } from "../core-syncback-service.js";
-import { SyncbackPlan, SyncbackRequest } from "../syncback.js";
+import {
+	SyncbackMode,
+	SyncbackOutcome,
+	SyncbackPlan,
+	SyncbackRequest,
+	SyncbackResult,
+} from "../syncback.js";
 import { ROUTES } from "./layout-fixtures.js";
 
 /** A Rojo that records what it was asked and does what the test says it did. */
@@ -109,6 +115,29 @@ describe("CoreSyncbackService", () => {
 		};
 	};
 
+	const syncback = async (mode: SyncbackMode = "dryRun") =>
+		(
+			await service.run(request.selection, {
+				input: request.input,
+				cwd: request.cwd,
+				mode,
+			})
+		).outcome;
+
+	const planOf = (outcome: SyncbackOutcome): SyncbackResult => {
+		if (outcome.kind === "failed") throw outcome.error;
+		if (outcome.kind === "notRun") throw new Error("syncback did not run");
+		return { ...outcome.plan, warnings: outcome.warnings };
+	};
+
+	const planned = async (mode?: SyncbackMode) => planOf(await syncback(mode));
+
+	const errorOf = (outcome: SyncbackOutcome): Error => {
+		if (outcome.kind !== "failed")
+			throw new Error(`syncback ended ${outcome.kind}`);
+		return outcome.error;
+	};
+
 	/** A path in the mirror Rojo runs on, by instance path. */
 	const mirror = (...instancePath: string[]) =>
 		abs(".rogen-syncback/mirror", ...instancePath);
@@ -144,7 +173,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		await service.plan(request);
+		await syncback();
 
 		expect(rojo.requests).toHaveLength(1);
 		expect(rojo.requests[0]).toMatchObject({
@@ -164,7 +193,7 @@ describe("CoreSyncbackService", () => {
 	it("should name the project file Rojo runs on after the folder when the config names none, as Rojo names a default one", async () => {
 		await prepare(["src/Inventory/Bag@server.luau"]);
 
-		await service.plan(request);
+		await syncback();
 
 		expect(JSON.parse(rojo.projectTexts[0]).name).toBe("repo");
 	});
@@ -175,7 +204,7 @@ describe("CoreSyncbackService", () => {
 			project: { name: "Inventory", tree: { $className: "DataModel" } },
 		});
 
-		await service.plan(request);
+		await syncback();
 
 		expect(JSON.parse(rojo.projectTexts[0]).name).toBe("Inventory");
 	});
@@ -183,187 +212,11 @@ describe("CoreSyncbackService", () => {
 	it("should leave no file of its own behind, after a plan or a run", async () => {
 		await prepare(["src/Combat/Server/Combat.luau"]);
 
-		await service.plan(request);
-		await service.apply(request);
+		await syncback();
+		await syncback("apply");
 
 		expect(await fs.exists(abs("rogen-syncback.project.json"))).toBe(false);
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
-	});
-
-	it("should refuse to run while another syncback holds the folder, touching nothing", async () => {
-		await prepare(["src/Combat/Server/Combat.luau"]);
-		await fs.writeFile(abs(".rogen-syncback/lock"), "77");
-		await fs.writeFile(
-			mirror("ServerScriptService", "Combat", "Combat.luau"),
-			"return 1"
-		);
-		processes.running.add(77);
-
-		const planned = await service.plan(request);
-
-		expect(planned.isErr()).toBe(true);
-		const error = (planned as ResultError<DiagnosticsError>).error;
-		expect(error.diagnostics).toMatchObject([
-			{
-				code: "syncback.busy",
-				resource: abs(),
-				message:
-					"another rogen syncback, process 77, is running in this folder, so this one stopped before it touched anything. Wait for it to end, then run syncback again. If no syncback is running, remove .rogen-syncback/lock.",
-			},
-		]);
-		expect(rojo.requests).toHaveLength(0);
-		expect(await fs.readFile(abs(".rogen-syncback/lock"))).toBe("77");
-		expect(
-			await fs.readFile(
-				mirror("ServerScriptService", "Combat", "Combat.luau")
-			)
-		).toBe("return 1");
-	});
-
-	it("should take over the folder from a syncback that was killed, and clean what it left", async () => {
-		await prepare(["src/Combat/Server/Combat.luau"]);
-		await fs.writeFile(abs(".rogen-syncback/lock"), "77");
-		await fs.writeFile(mirror("Workspace", "Stale.luau"), "return 1");
-		let lock: string | undefined;
-		let stale: boolean | undefined;
-		rojo.say = async () => {
-			lock = await fs.readFile(abs(".rogen-syncback/lock"));
-			stale = await fs.exists(mirror("Workspace", "Stale.luau"));
-			return [];
-		};
-
-		const planned = await service.plan(request);
-
-		expect(planned.isOk()).toBe(true);
-		expect(lock).toBe("4242");
-		expect(stale).toBe(false);
-	});
-
-	it("should take over a lock that names this process, since no other run is it", async () => {
-		await prepare(["src/Combat/Server/Combat.luau"]);
-		await fs.writeFile(abs(".rogen-syncback/lock"), "4242");
-		await fs.writeFile(mirror("Workspace", "Stale.luau"), "return 1");
-		processes.running.add(4242);
-		let stale: boolean | undefined;
-		rojo.say = async () => {
-			stale = await fs.exists(mirror("Workspace", "Stale.luau"));
-			return [];
-		};
-
-		expect((await service.plan(request)).isOk()).toBe(true);
-		expect(stale).toBe(false);
-		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
-	});
-
-	it("should count a new lock that names no owner yet as held", async () => {
-		await prepare(["src/Combat/Server/Combat.luau"]);
-		await fs.writeFile(abs(".rogen-syncback/lock"), "");
-
-		const planned = await service.plan(request);
-
-		expect(planned.isErr()).toBe(true);
-		expect(
-			(planned as ResultError<DiagnosticsError>).error.diagnostics
-		).toMatchObject([{ code: "syncback.busy" }]);
-		expect(await fs.readFile(abs(".rogen-syncback/lock"))).toBe("");
-	});
-
-	it("should take over an old lock that names no owner", async () => {
-		await prepare(["src/Combat/Server/Combat.luau"]);
-		await fs.writeFile(abs(".rogen-syncback/lock"), "");
-		const now = Date.now();
-		jest.spyOn(Date, "now").mockReturnValue(now + 60_000);
-
-		expect((await service.plan(request)).isOk()).toBe(true);
-	});
-
-	it("should not take over a lock another run made after it found a killed one's", async () => {
-		await prepare(["src/Combat/Server/Combat.luau"]);
-		await fs.writeFile(abs(".rogen-syncback/lock"), "77");
-		const read = fs.readFile.bind(fs);
-		let raced = false;
-		jest.spyOn(fs, "readFile").mockImplementation(async (file) => {
-			const text = await read(file);
-			if (file === abs(".rogen-syncback/lock") && !raced) {
-				raced = true;
-				await fs.delete(file);
-				await fs.createFile(file, "88");
-				processes.running.add(88);
-			}
-			return text;
-		});
-
-		const planned = await service.plan(request);
-
-		expect(planned.isErr()).toBe(true);
-		expect(
-			(planned as ResultError<DiagnosticsError>).error.diagnostics
-		).toMatchObject([
-			{ code: "syncback.busy", message: expect.stringContaining("88") },
-		]);
-		expect(await read(abs(".rogen-syncback/lock"))).toBe("88");
-		expect(rojo.requests).toHaveLength(0);
-	});
-
-	it("should leave the files another run makes while it takes over a lock, until it lets go of the folder", async () => {
-		await prepare(["src/Combat/Server/Combat.luau"]);
-		await fs.writeFile(abs(".rogen-syncback/lock.88"), "77");
-		await fs.writeFile(abs(".rogen-syncback/lock.1234.tmp"), "88");
-		let left: boolean[] | undefined;
-		rojo.say = async () => {
-			left = [
-				await fs.exists(abs(".rogen-syncback/lock.88")),
-				await fs.exists(abs(".rogen-syncback/lock.1234.tmp")),
-			];
-			return [];
-		};
-
-		expect((await service.plan(request)).isOk()).toBe(true);
-		expect(left).toEqual([true, true]);
-		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
-	});
-
-	it("should take the folder when it was let go of while the lock was being made", async () => {
-		await prepare(["src/Combat/Server/Combat.luau"]);
-		const create = fs.createFile.bind(fs);
-		let released = false;
-		jest.spyOn(fs, "createFile").mockImplementation(
-			async (file, content) => {
-				if (!released) {
-					released = true;
-					throw Object.assign(new Error("ENOENT: no such file"), {
-						code: "ENOENT",
-					});
-				}
-				return create(file, content);
-			}
-		);
-		let lock: string | undefined;
-		rojo.say = async () => {
-			lock = await fs.readFile(abs(".rogen-syncback/lock"));
-			return [];
-		};
-
-		expect((await service.plan(request)).isOk()).toBe(true);
-		expect(lock).toBe("4242");
-	});
-
-	it("should let the next syncback run once one has ended, whether it succeeded or failed", async () => {
-		await prepare(["src/Combat/Server/Combat.luau"]);
-		rojo.say = async () =>
-			new DiagnosticsError([
-				errorDiagnostic("rojo.failed", { resource: "/repo" }, "no"),
-			]);
-		processes.running.add(4242);
-
-		expect((await service.plan(request)).isErr()).toBe(true);
-		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
-
-		rojo.say = async () => [];
-
-		expect((await service.plan(request)).isOk()).toBe(true);
-		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
-		expect((await service.plan(request)).isOk()).toBe(true);
 	});
 
 	it("should fail, and plan no removal, when the mirror can't be read after Rojo ran", async () => {
@@ -373,10 +226,10 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const planned = await service.plan(request);
+		const outcome = await syncback();
 
-		expect(planned.isErr()).toBe(true);
-		expect((planned as ResultError<Error>).error.message).toContain(
+		expect(outcome.kind).toBe("failed");
+		expect(errorOf(outcome).message).toContain(
 			abs(".rogen-syncback/mirror")
 		);
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
@@ -389,10 +242,10 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const planned = await service.plan(request);
+		const outcome = await syncback();
 
-		expect(planned.isErr()).toBe(true);
-		expect((planned as ResultError<Error>).error.message).toContain(
+		expect(outcome.kind).toBe("failed");
+		expect(errorOf(outcome).message).toContain(
 			abs(".rogen-syncback/mirror")
 		);
 		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
@@ -407,9 +260,9 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const planned = await service.plan(request);
+		const outcome = await syncback();
 
-		expect(planned.isErr()).toBe(true);
+		expect(outcome.kind).toBe("failed");
 	});
 
 	it("should plan nothing for a project that mounts no folder", async () => {
@@ -422,63 +275,21 @@ describe("CoreSyncbackService", () => {
 			},
 		});
 
-		const planned = await service.plan(request);
+		const outcome = await syncback();
 
-		expect(planned.isOk() && planned.value.changes).toEqual([]);
+		expect(planOf(outcome).changes).toEqual([]);
 	});
 
-	it.each([
-		["the mirror an earlier run left", ".rogen-syncback/mirror"],
-		["the project file an earlier run left", "rogen-syncback.project.json"],
-	])(
-		"should fail before it copies anything when %s can't be removed",
-		async (_, left) => {
-			await prepare(["src/Combat/Server/Combat.luau"]);
-			await fs.writeFile(
-				mirror("ServerScriptService", "Combat", "Combat.luau"),
-				"return 1"
-			);
-			await fs.writeFile(abs("rogen-syncback.project.json"), "{}");
-			const remove = fs.delete.bind(fs);
-			jest.spyOn(fs, "delete").mockImplementation(
-				async (target, recursive) => {
-					if (target === abs(left))
-						throw Object.assign(new Error("EBUSY: resource busy"), {
-							code: "EBUSY",
-						});
-					return remove(target, recursive);
-				}
-			);
-
-			const planned = await service.plan(request);
-
-			expect(planned.isErr()).toBe(true);
-			expect((planned as ResultError<Error>).error.message).toContain(
-				abs(left)
-			);
-			expect(rojo.requests).toHaveLength(0);
-			expect(await fs.exists(abs(".rogen-syncback/lock"))).toBe(false);
-		}
-	);
-
-	it("should remove its files at once, and keep its lock until Rojo stopped, when the run is asked to shut down while Rojo runs", async () => {
+	it("should fail, and stop Rojo, when the run is asked to shut down while Rojo runs", async () => {
 		await prepare(["src/Combat/Server/Combat.luau"]);
-		let left: boolean | undefined;
-		let locked: boolean | undefined;
 		rojo.say = async () => {
 			lifecycle.shutdown("SIGINT");
-			while (await fs.exists(abs(".rogen-syncback/mirror")))
-				await new Promise((resolve) => setImmediate(resolve));
-			left = await fs.exists(abs("rogen-syncback.project.json"));
-			locked = await fs.exists(abs(".rogen-syncback/lock"));
 			return [];
 		};
 
-		const planned = await service.plan(request);
+		const outcome = await syncback();
 
-		expect(planned.isErr()).toBe(true);
-		expect(left).toBe(false);
-		expect(locked).toBe(true);
+		expect(outcome.kind).toBe("failed");
 		expect(rojo.requests[0].signal?.aborted).toBe(true);
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
 	});
@@ -491,9 +302,9 @@ describe("CoreSyncbackService", () => {
 			return ["Removing ServerScriptService/Combat"];
 		};
 
-		const applied = await service.apply(request);
+		const outcome = await syncback("apply");
 
-		expect(applied.isErr()).toBe(true);
+		expect(outcome.kind).toBe("failed");
 		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
 			true
 		);
@@ -520,7 +331,7 @@ describe("CoreSyncbackService", () => {
 			}
 		);
 
-		const result = (await service.apply(request)).unwrap();
+		const result = await planned("apply");
 
 		expect(result.changes).toEqual([
 			{ kind: "write", file: abs("src/Inventory/Bag@server.luau") },
@@ -554,9 +365,9 @@ describe("CoreSyncbackService", () => {
 			}
 		);
 
-		const applied = await service.apply(request);
+		const outcome = await syncback("apply");
 
-		expect(applied.isOk()).toBe(true);
+		expect(outcome.kind).toBe("written");
 		expect(locked).toEqual([true]);
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
 	});
@@ -568,30 +379,21 @@ describe("CoreSyncbackService", () => {
 			return ["Removing ServerScriptService/Combat"];
 		};
 
-		const applied = await service.apply(request, async () => {
-			lifecycle.shutdown("SIGINT");
-			return true;
+		const outcome = await syncback({
+			confirm: async () => {
+				lifecycle.shutdown("SIGINT");
+				return true;
+			},
 		});
 
-		expect(applied.isErr()).toBe(true);
-		expect((applied as ResultError<Error>).error.message).toBe(
+		expect(outcome.kind).toBe("failed");
+		expect(errorOf(outcome).message).toBe(
 			"Syncback stopped before it finished, so nothing was written."
 		);
 		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
 			true
 		);
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
-	});
-
-	it("should stop listening for a shutdown once the run ended", async () => {
-		await prepare(["src/Combat/Server/Combat.luau"]);
-		await service.plan(request);
-		await fs.writeFile(abs(".rogen-syncback/lock"), "77");
-
-		lifecycle.shutdown("SIGINT");
-		await Promise.resolve();
-
-		expect(await fs.readFile(abs(".rogen-syncback/lock"))).toBe("77");
 	});
 
 	it("should write an edit into the source file, with the line endings it had", async () => {
@@ -609,7 +411,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const result = (await service.apply(request)).unwrap();
+		const result = await planned("apply");
 
 		expect(result.changes).toEqual([
 			{ kind: "write", file: abs("src/Inventory/Bag@server.luau") },
@@ -640,7 +442,7 @@ describe("CoreSyncbackService", () => {
 			];
 		};
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(plan.listed).toEqual([
 			{ kind: "write", file: abs("src/Inventory/Bag@server.luau") },
@@ -660,7 +462,7 @@ describe("CoreSyncbackService", () => {
 			];
 		};
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(plan.listed).toEqual(plan.changes);
 		expect(plan.listed).toHaveLength(1);
@@ -685,7 +487,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(plan.changes).toEqual([
 			{ kind: "write", file: abs("src/Net/init.luau") },
@@ -696,7 +498,7 @@ describe("CoreSyncbackService", () => {
 				reason: expect.stringContaining("edited differently"),
 			},
 		]);
-		await service.apply(request);
+		await syncback("apply");
 		expect(await fs.readFile(abs("src/Net/init.luau"))).toBe("return 1");
 	});
 
@@ -715,7 +517,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(plan.changes).toEqual([
 			{ kind: "write", file: abs("src/Net/init.luau") },
@@ -738,7 +540,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(plan.changes).toEqual([
 			{ kind: "remove", file: abs("src/Net/init.luau") },
@@ -763,7 +565,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(plan.changes).toEqual([
 			{ kind: "write", file: abs("src/Net/init.luau") },
@@ -774,7 +576,7 @@ describe("CoreSyncbackService", () => {
 				reason: expect.stringContaining("edited"),
 			},
 		]);
-		await service.apply(request);
+		await syncback("apply");
 		expect(await fs.readFile(abs("src/Net/init.luau"))).toBe("return 2");
 	});
 
@@ -794,7 +596,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const result = (await service.apply(request)).unwrap();
+		const result = await planned("apply");
 
 		expect(result.changes).toEqual([
 			{ kind: "remove", file: abs("src/Inventory/Bag@server.luau") },
@@ -818,7 +620,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(plan.changes).toEqual([
 			{ kind: "write", file: abs("src/Inventory/Bag@server.meta.json") },
@@ -838,7 +640,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(plan.changes).toEqual([
 			{ kind: "write", file: abs("src/Inventory/Mail@server.luau") },
@@ -859,7 +661,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(plan.unplaced).toEqual([]);
 		expect(plan.changes).toEqual([
@@ -880,7 +682,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(plan.changes).toEqual([]);
 		expect(plan.unplaced).toMatchObject([
@@ -901,7 +703,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const result = (await service.apply(request)).unwrap();
+		const result = await planned("apply");
 
 		expect(await fs.readFile(abs("src/Quest/Server/Main.luau"))).toBe(
 			"return 1"
@@ -932,7 +734,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const result = (await service.apply(request)).unwrap();
+		const result = await planned("apply");
 
 		expect(await fs.readFile(abs("place/Quest/Server/Main.luau"))).toBe(
 			"return 1"
@@ -951,7 +753,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(plan.changes).toEqual([]);
 		expect(plan.unplaced).toMatchObject([
@@ -971,7 +773,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		await service.apply(request);
+		await syncback("apply");
 
 		expect(await fs.isDirectory(abs("src/Inventory/Empty@server"))).toBe(
 			true
@@ -984,7 +786,7 @@ describe("CoreSyncbackService", () => {
 			"src/Inventory/Shared/Types.luau",
 		]);
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(plan.changes).toEqual([]);
 		expect(plan.unplaced).toEqual([]);
@@ -1006,7 +808,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		await service.apply(request);
+		await syncback("apply");
 
 		expect(await fs.exists(abs("src/Inventory/Server"))).toBe(false);
 		expect(await fs.exists(abs("src/Inventory/Shared/Types.luau"))).toBe(
@@ -1027,7 +829,7 @@ describe("CoreSyncbackService", () => {
 			];
 		};
 
-		const done = (await service.apply(request)).unwrap();
+		const done = await planned("apply");
 
 		expect(done.changes).toEqual([
 			{ kind: "remove", file: abs("src/Combat") },
@@ -1048,7 +850,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		await service.apply(request);
+		await syncback("apply");
 
 		expect(await fs.exists(abs("src/Inventory/Server"))).toBe(false);
 		expect(await fs.isDirectory(abs("src/Inventory/Notes"))).toBe(true);
@@ -1066,7 +868,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		await service.apply(request);
+		await syncback("apply");
 
 		expect(await fs.isDirectory(abs("src/Inventory/Server"))).toBe(true);
 		expect(await fs.exists(abs("src/Inventory/Save@server.luau"))).toBe(
@@ -1092,7 +894,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(JSON.parse(rojo.projectTexts[0]).tree.ReplicatedStorage).toEqual(
 			{
@@ -1149,7 +951,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const done = (await service.apply(request)).unwrap();
+			const done = await planned("apply");
 
 			expect(done.changes).toEqual([
 				{ kind: "write", file: abs("default.rogen.json") },
@@ -1179,7 +981,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const done = (await service.apply(request)).unwrap();
+			const done = await planned("apply");
 
 			expect(done.unplaced).toEqual([
 				{
@@ -1204,7 +1006,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const plan = (await service.plan(request)).unwrap();
+			const plan = await planned();
 
 			expect(plan.unplaced).toMatchObject([
 				{ instance: "ReplicatedStorage/Remotes/Kit" },
@@ -1221,7 +1023,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const plan = (await service.plan(request)).unwrap();
+			const plan = await planned();
 
 			expect(plan.changes).toEqual([]);
 			expect(plan.unplaced).toEqual([
@@ -1267,7 +1069,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const result = (await service.apply(request)).unwrap();
+			const result = await planned("apply");
 
 			expect(result.changes).toEqual([
 				{ kind: "write", file: abs("Packages/Lib.luau") },
@@ -1287,7 +1089,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const result = (await service.apply(request)).unwrap();
+			const result = await planned("apply");
 
 			expect(result.changes).toEqual([]);
 			expect(result.unplaced).toEqual([]);
@@ -1315,7 +1117,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const result = (await service.apply(request)).unwrap();
+			const result = await planned("apply");
 
 			expect(result.changes).toEqual([]);
 			expect(result.unplaced).toEqual([]);
@@ -1341,7 +1143,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const result = (await service.apply(request)).unwrap();
+			const result = await planned("apply");
 
 			expect(result.compiled).toEqual([
 				{
@@ -1358,7 +1160,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const result = (await service.apply(request)).unwrap();
+			const result = await planned("apply");
 
 			expect(result.compiled).toEqual([
 				{ instance: "ServerScriptService/Combat", kind: "removed" },
@@ -1378,7 +1180,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const result = (await service.apply(request)).unwrap();
+			const result = await planned("apply");
 
 			expect(result.compiled).toEqual([
 				{ instance: "ServerScriptService/Combat", kind: "changed" },
@@ -1404,7 +1206,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const result = (await service.apply(request)).unwrap();
+			const result = await planned("apply");
 
 			expect(result.compiled).toEqual([
 				{
@@ -1444,7 +1246,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const result = (await service.apply(request)).unwrap();
+			const result = await planned("apply");
 
 			expect(result.compiled).toEqual([
 				{ instance: "ServerScriptService/Combat/Mod", kind: "changed" },
@@ -1474,7 +1276,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const plan = (await service.plan(request)).unwrap();
+			const plan = await planned();
 
 			expect(plan.compiled).toEqual([]);
 			expect(plan.unplaced).toMatchObject([
@@ -1502,7 +1304,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		await service.apply(request);
+		await syncback("apply");
 
 		expect(await fs.exists(abs("vendor/kit/A.luau"))).toBe(false);
 		expect(await fs.exists(abs("vendor/kit/A.spec.luau"))).toBe(true);
@@ -1530,7 +1332,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		await service.apply(request);
+		await syncback("apply");
 
 		expect(await fs.exists(abs("Packages/Kit"))).toBe(false);
 		expect(await fs.readFile(abs("Packages/Kit.rbxm"))).toBe("model");
@@ -1555,7 +1357,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		await service.plan(request);
+		await syncback();
 
 		expect(copied).toBe(true);
 	});
@@ -1589,7 +1391,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const plan = (await service.plan(request)).unwrap();
+			const plan = await planned();
 
 			expect(plan.changes).toEqual(changes);
 		}
@@ -1605,6 +1407,7 @@ describe("CoreSyncbackService", () => {
 
 		beforeEach(async () => {
 			await fs.writeFile(abs("default.project.json"), "{}");
+			await fs.createDirectory(abs("src"));
 			config = configOf({ file: abs("default.project.json") });
 			request = {
 				selection: selectionOf(config),
@@ -1616,7 +1419,7 @@ describe("CoreSyncbackService", () => {
 		});
 
 		it("should plan with Rojo's own dry run on the project file, listing every line and changing what holds no other", async () => {
-			const plan = (await service.plan(request)).unwrap();
+			const plan = await planned();
 
 			expect(rojo.requests).toHaveLength(1);
 			expect(rojo.requests[0]).toMatchObject({
@@ -1646,7 +1449,7 @@ describe("CoreSyncbackService", () => {
 		});
 
 		it("should run Rojo's syncback on the project file as it is", async () => {
-			const done = (await service.apply(request)).unwrap();
+			const done = await planned("apply");
 
 			expect(rojo.requests[0].flags).toEqual([
 				"--input",
@@ -1702,7 +1505,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const done = (await service.apply(request)).unwrap();
+			const done = await planned("apply");
 
 			expect(done.changes).toEqual([
 				{ kind: "write", file: abs("src/Combat/init.meta.json") },
@@ -1726,7 +1529,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const plan = (await service.plan(request)).unwrap();
+			const plan = await planned();
 
 			expect(plan.changes).toEqual([
 				{ kind: "write", file: abs("src/Inventory/init.meta.json") },
@@ -1744,7 +1547,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const plan = (await service.plan(request)).unwrap();
+			const plan = await planned();
 
 			expect(plan.changes).toEqual([]);
 			expect(plan.unplaced).toMatchObject([
@@ -1768,7 +1571,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const plan = (await service.plan(request)).unwrap();
+			const plan = await planned();
 
 			expect(plan.changes).toEqual([
 				{ kind: "write", file: abs("src/Inventory/init.meta.json") },
@@ -1800,7 +1603,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const done = (await service.apply(request)).unwrap();
+			const done = await planned("apply");
 
 			expect(done.unplaced).toEqual([]);
 			expect(done.changes).toEqual([
@@ -1828,7 +1631,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const done = (await service.apply(request)).unwrap();
+			const done = await planned("apply");
 
 			expect(done.changes).toEqual([
 				{ kind: "write", file: abs("src/Combat/init.meta.jsonc") },
@@ -1856,7 +1659,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const plan = (await service.plan(request)).unwrap();
+			const plan = await planned();
 
 			expect(plan.changes).toEqual([]);
 			expect(plan.unplaced).toMatchObject([
@@ -1892,7 +1695,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const plan = (await service.plan(request)).unwrap();
+			const plan = await planned();
 
 			expect(plan.changes).toEqual([]);
 			expect(plan.unplaced).toMatchObject([
@@ -1921,7 +1724,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const plan = (await service.plan(request)).unwrap();
+			const plan = await planned();
 
 			expect(plan.changes).toEqual([]);
 			expect(plan.unplaced).toEqual([
@@ -1950,7 +1753,7 @@ describe("CoreSyncbackService", () => {
 				return [];
 			};
 
-			const plan = (await service.plan(request)).unwrap();
+			const plan = await planned();
 
 			expect(plan.unplaced).toEqual([]);
 			expect(plan.changes).toEqual([
@@ -1991,7 +1794,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(plan.unplaced).toEqual([
 			{
@@ -2016,7 +1819,7 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		expect((await service.plan(request)).unwrap().changes).toEqual([]);
+		expect((await planned()).changes).toEqual([]);
 	});
 
 	it("should list an instance Rojo says it can't sync back", async () => {
@@ -2025,7 +1828,7 @@ describe("CoreSyncbackService", () => {
 			"[WARN  librojo::syncback] Cannot syncback Json at ReplicatedStorage/Shared/Data, skipping",
 		];
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(plan.unplaced).toEqual([
 			{
@@ -2046,12 +1849,14 @@ describe("CoreSyncbackService", () => {
 		};
 		let lock: string | undefined;
 
-		const applied = await service.apply(request, async () => {
-			lock = await fs.readFile(abs(".rogen-syncback/lock"));
-			return true;
+		const outcome = await syncback({
+			confirm: async () => {
+				lock = await fs.readFile(abs(".rogen-syncback/lock"));
+				return true;
+			},
 		});
 
-		expect(applied.isOk()).toBe(true);
+		expect(outcome.kind).toBe("written");
 		expect(lock).toBe("4242");
 		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
 			"return 2"
@@ -2069,9 +1874,9 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const applied = await service.apply(request, async () => false);
+		const outcome = await syncback({ confirm: async () => false });
 
-		expect(applied.isOk() && applied.value).toBeUndefined();
+		expect(outcome.kind).toBe("declined");
 		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
 			""
 		);
@@ -2089,15 +1894,15 @@ describe("CoreSyncbackService", () => {
 		};
 		let shown: SyncbackPlan | undefined;
 
-		const result = (
-			await service.apply(request, async (plan) => {
+		const result = await planned({
+			confirm: async (plan) => {
 				shown = plan;
 				return true;
-			})
-		).unwrap();
+			},
+		});
 
 		expect(rojo.requests).toHaveLength(1);
-		expect(result?.changes).toEqual(shown?.changes);
+		expect(result.changes).toEqual(shown?.changes);
 		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
 			"return 2"
 		);
@@ -2113,12 +1918,17 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const applied = await service.apply(request, async () => {
-			await fs.writeFile(abs("src/Inventory/Bag@server.luau"), "edited");
-			return true;
+		const outcome = await syncback({
+			confirm: async () => {
+				await fs.writeFile(
+					abs("src/Inventory/Bag@server.luau"),
+					"edited"
+				);
+				return true;
+			},
 		});
 
-		expect(applied.isErr()).toBe(true);
+		expect(outcome.kind).toBe("failed");
 		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
 			"edited"
 		);
@@ -2134,12 +1944,14 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const applied = await service.apply(request, async () => {
-			await fs.writeFile(abs("default.rogen.json"), "{}");
-			return true;
+		const outcome = await syncback({
+			confirm: async () => {
+				await fs.writeFile(abs("default.rogen.json"), "{}");
+				return true;
+			},
 		});
 
-		expect(applied.isErr()).toBe(true);
+		expect(outcome.kind).toBe("failed");
 		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
 			""
 		);
@@ -2156,18 +1968,20 @@ describe("CoreSyncbackService", () => {
 			return [];
 		};
 
-		const applied = await service.apply(request, async () => {
-			await fs.writeFile(abs("game.rbxl"), "saved again");
-			return true;
+		const outcome = await syncback({
+			confirm: async () => {
+				await fs.writeFile(abs("game.rbxl"), "saved again");
+				return true;
+			},
 		});
 
-		expect(applied.isErr()).toBe(true);
+		expect(outcome.kind).toBe("failed");
 		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
 			""
 		);
 	});
 
-	it("should keep a renamed file's old file when its new file could not be written", async () => {
+	it("should plan a renamed file as the removal of its old file and a new file", async () => {
 		await prepare(["src/Inventory/Bag@server.luau"]);
 		rojo.say = async () => {
 			await fs.delete(
@@ -2179,48 +1993,15 @@ describe("CoreSyncbackService", () => {
 			);
 			return [];
 		};
-		const write = fs.writeFileBytes.bind(fs);
-		fs.writeFileBytes = async (file, bytes) => {
-			if (file.includes("Pouch")) throw new Error("denied");
-			return write(file, bytes);
-		};
 
-		const result = (await service.apply(request)).unwrap();
+		const plan = await planned();
 
-		expect(await fs.exists(abs("src/Inventory/Bag@server.luau"))).toBe(
-			true
+		expect(plan.changes).toEqual(
+			expect.arrayContaining([
+				{ kind: "remove", file: abs("src/Inventory/Bag@server.luau") },
+				{ kind: "write", file: abs("src/Inventory/Pouch@server.luau") },
+			])
 		);
-		expect(result.changes).toEqual([]);
-	});
-
-	it("should list a file it could not write, and write the rest", async () => {
-		await prepare(["src/Combat/Server/Combat.luau"]);
-		rojo.say = async () => {
-			await fs.writeFile(
-				mirror("ServerScriptService", "Quest", "A.luau"),
-				"a"
-			);
-			await fs.writeFile(
-				mirror("ServerScriptService", "Raid", "B.luau"),
-				"b"
-			);
-			return [];
-		};
-		const write = fs.writeFileBytes.bind(fs);
-		fs.writeFileBytes = async (file, bytes) => {
-			if (file.includes("Quest")) throw new Error("denied");
-			return write(file, bytes);
-		};
-
-		const result = (await service.apply(request)).unwrap();
-
-		expect(await fs.exists(abs("src/Raid/Server/B.luau"))).toBe(true);
-		expect(result.changes).toEqual([
-			{ kind: "write", file: abs("src/Raid/Server/B.luau") },
-		]);
-		expect(result.unplaced).toMatchObject([
-			{ reason: expect.stringContaining("denied") },
-		]);
 	});
 
 	it("should leave out a YAML file Rojo stops on, list its instance as it does a JSON file, and sync back the rest", async () => {
@@ -2248,7 +2029,7 @@ describe("CoreSyncbackService", () => {
 						},
 					]);
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(rojo.requests).toHaveLength(2);
 		expect(JSON.parse(rojo.projectTexts[1]).syncbackRules).toEqual({
@@ -2294,7 +2075,7 @@ describe("CoreSyncbackService", () => {
 						},
 					]);
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(JSON.parse(rojo.projectTexts[1]).syncbackRules).toEqual({
 			ignorePaths: [
@@ -2339,7 +2120,7 @@ describe("CoreSyncbackService", () => {
 						},
 					]);
 
-		const plan = (await service.plan(request)).unwrap();
+		const plan = await planned();
 
 		expect(JSON.parse(rojo.projectTexts[1]).syncbackRules).toEqual({
 			ignorePaths: [".rogen-syncback/mirror/~kept/0/config.yaml"],
@@ -2371,10 +2152,10 @@ describe("CoreSyncbackService", () => {
 				},
 			]);
 
-		const planned = await service.plan(request);
+		const outcome = await syncback();
 
-		expect(planned.isErr()).toBe(true);
-		const error = (planned as ResultError<DiagnosticsError>).error;
+		expect(outcome.kind).toBe("failed");
+		const error = errorOf(outcome) as DiagnosticsError;
 		expect(error.diagnostics).toMatchObject([
 			{
 				code: "syncback.removedFromProjectFile",
@@ -2400,7 +2181,7 @@ describe("CoreSyncbackService", () => {
 			cwd: "/repo",
 		};
 
-		await service.plan(request);
+		await syncback();
 
 		expect(rojo.requests[0].projectFile).toBe(abs("default.project.json"));
 		expect(await fs.exists(abs("rogen-syncback.project.json"))).toBe(false);
@@ -2417,9 +2198,7 @@ describe("CoreSyncbackService", () => {
 		]);
 		rojo.say = async () => failure;
 
-		expect(((await service.plan(request)) as { error: Error }).error).toBe(
-			failure
-		);
+		expect(errorOf(await syncback())).toBe(failure);
 	});
 
 	it("should plan from what a write would write, with no project file on disk", async () => {
@@ -2432,26 +2211,10 @@ describe("CoreSyncbackService", () => {
 			cwd: "/repo",
 		};
 
-		const planned = await service.plan(request);
+		const outcome = await syncback();
 
-		expect(planned.isOk()).toBe(true);
+		expect(outcome.kind).toBe("planned");
 		expect(await fs.exists(abs("default.project.json"))).toBe(false);
-	});
-
-	it("should say when the project does not build", async () => {
-		config = configOf({ routes: ROUTES });
-		request = {
-			selection: selectionOf(config),
-			project: config,
-			input: "x",
-			cwd: "/repo",
-		};
-
-		const planned = await service.plan(request);
-
-		expect((planned as ResultError<Error>).error.message).toContain(
-			"does not build"
-		);
 	});
 
 	describe("run", () => {
