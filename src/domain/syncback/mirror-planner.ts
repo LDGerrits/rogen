@@ -69,7 +69,7 @@ function withLineEndings(before: Uint8Array, next: Uint8Array): Uint8Array {
 }
 
 /** A copy Rojo left as it was, or one whose project file was saved while Rojo ran. */
-type Unchanged = {
+type NoOperation = {
 	readonly file: string;
 	readonly instance: string;
 } & ({ readonly kind: "same" } | { readonly kind: "saved" });
@@ -226,7 +226,7 @@ export class MirrorPlanner {
 		);
 		const compared = await inBatches(
 			kept,
-			async (copy): Promise<Operation | Unchanged> => {
+			async (copy): Promise<Operation | NoOperation> => {
 				const { mirror: at, target } = copy;
 				const file = toNative(target);
 				const instance = workspace.instanceAt(at);
@@ -242,8 +242,13 @@ export class MirrorPlanner {
 						instance,
 						from: at,
 					};
-				const original =
-					await this.fileSystemService.readFileBytes(file);
+				const read = await tryWithAsync(() =>
+					this.fileSystemService.readFileBytes(file)
+				);
+				// A compiler may replace its output at any time, and syncback never writes it.
+				if (read.isErr() && this.isCompiled(file))
+					return { kind: "same", file, instance };
+				const original = read.unwrap();
 				const next = withLineEndings(
 					original,
 					await workspace.read(at)
@@ -344,11 +349,22 @@ export class MirrorPlanner {
 					)
 				)
 					copiedFolders.add(folder);
+		/** A folder mounted at more than one instance stays while one holds it. */
+		const stillMounted = new Set(
+			[...copiedFolders]
+				.filter((at) => holding.has(at))
+				.map((at) => mirror.targetOf(at))
+		);
 		for (const at of [...copiedFolders].sort(
 			(a, b) => b.length - a.length
 		)) {
 			const target = mirror.targetOf(at);
-			if (target === undefined || holding.has(at)) continue;
+			if (
+				target === undefined ||
+				holding.has(at) ||
+				stillMounted.has(target)
+			)
+				continue;
 			const instance = workspace.instanceAt(at);
 			if (!this.leftOut(toNative(target), instance, "removed"))
 				operations.push({

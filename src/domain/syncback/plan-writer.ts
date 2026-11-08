@@ -1,6 +1,6 @@
 import path from "path";
 import { failureReason } from "../../base/errors.js";
-import { PathSet, toNative } from "../../base/path.js";
+import { PathSet, samePath, toNative } from "../../base/path.js";
 import { tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -58,10 +58,14 @@ export class PlanWriter {
 		const unplaced: UnplacedInstance[] = [];
 		const order = { write: 0, folder: 0, remove: 1, prune: 2 } as const;
 		const writes = plan.operations.filter(({ kind }) => kind === "write");
-		const written = new PathSet(writes.map(({ file }) => file));
+		const created = new PathSet(
+			plan.operations
+				.filter(({ kind }) => kind === "write" || kind === "folder")
+				.map(({ file }) => file)
+		);
 		// A rename that only changes case writes the old file where the file system folds case, so the old file takes the new name first.
 		const rank = (operation: Operation) =>
-			operation.kind === "remove" && written.has(operation.file)
+			operation.kind === "remove" && created.has(operation.file)
 				? -1
 				: order[operation.kind];
 		const operations = [...plan.operations].sort(
@@ -89,11 +93,9 @@ export class PlanWriter {
 						operation.file
 					);
 				else if (operation.kind === "remove") {
-					const renamed = written.has(operation.file)
-						? writes.find(({ file }) =>
-								new PathSet([operation.file]).has(file)
-							)
-						: undefined;
+					const renamed = writes.find(({ file }) =>
+						samePath(file, operation.file)
+					);
 					if (renamed)
 						await this.fileSystemService.rename(
 							operation.file,

@@ -294,7 +294,9 @@ export class MirrorWorkspace {
 		const now = await tryWithAsync(() =>
 			this.services.fileSystemService.lastModified(toNative(target))
 		);
-		return now.isErr() || now.value !== saved;
+		if (now.isOk()) return now.value !== saved;
+		if (isMissingPath(now.error)) return true;
+		throw now.error;
 	}
 
 	/** The tree of the project file Rojo rewrote; none when it can't be read. */
@@ -437,7 +439,10 @@ export class MirrorWorkspace {
 			if (isDirectoryType(type)) await this.copyFolder(from, to, copied);
 			else files.push({ mirror: to, target: from });
 		}
-		copied.push(...(await inBatches(files, (file) => this.copyInto(file))));
+		for (const entry of await inBatches(files, (file) =>
+			this.copyInto(file, true)
+		))
+			if (entry) copied.push(entry);
 	}
 
 	/** Copies a file of the project into the mirror; none when it is gone and `missingOk`. */

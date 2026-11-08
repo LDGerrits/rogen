@@ -11,7 +11,7 @@ const SOURCEMAP_FLAGS = [
 
 /** `json` without `folder`, in its short or full form, which Rojo writes with `/` on every platform. */
 const withoutFolder = (json: string, folder: string): string =>
-	[folder, fs.realpathSync.native(folder)].reduce(
+	[fs.realpathSync.native(folder), folder].reduce(
 		(text, form) => text.split(form.replaceAll("\\", "/")).join(""),
 		json
 	);

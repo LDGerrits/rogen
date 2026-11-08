@@ -195,7 +195,7 @@ export class CoreSyncbackService implements SyncbackService {
 			signal.aborted
 				? stopped()
 				: new IoError(
-						`Syncback could not read the project or its copy of it: ${failureReason(planned.error)}.`,
+						`Syncback could not finish: ${failureReason(planned.error)}.`,
 						"Run syncback again."
 					)
 		);
