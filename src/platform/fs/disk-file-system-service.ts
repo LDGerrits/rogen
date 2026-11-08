@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import * as fs from "fs";
 import * as path from "path";
+import { timeout } from "../../base/async.js";
 import { compareStrings } from "../../base/collections.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { isWindows } from "../../base/platform.js";
@@ -50,18 +51,17 @@ export function isUnfollowableLink(target: string): boolean {
 	}
 }
 
-/** The waits between tries of a rename Windows refuses while another program has either file open: about 2.5 seconds in all. */
-const BUSY_RENAME_WAITS_MS = [10, 20, 40, 80, 160, 320, 640, 1280];
+/** The waits between tries of a replacing rename Windows refuses while another program has either file open: about 2.5 seconds in all. */
+const BUSY_REPLACE_WAITS_MS = [10, 20, 40, 80, 160, 320, 640, 1280];
 
-async function renameOnceFree(from: string, to: string): Promise<void> {
-	for (const wait of isWindows ? BUSY_RENAME_WAITS_MS : []) {
+async function replaceOnceFree(from: string, to: string): Promise<void> {
+	for (const wait of BUSY_REPLACE_WAITS_MS) {
 		try {
 			return await fs.promises.rename(from, to);
 		} catch (error) {
-			if (!ErrorUtils.hasCode(error, "EPERM", "EACCES", "EBUSY"))
-				throw error;
+			if (!ErrorUtils.hasCode(error, "EPERM", "EBUSY")) throw error;
 		}
-		await new Promise((resolve) => setTimeout(resolve, wait));
+		await timeout(wait);
 	}
 	await fs.promises.rename(from, to);
 }
@@ -247,6 +247,7 @@ export class DiskFileSystemService implements FileSystemService {
 		);
 		if (refusal) throw refusal;
 		await this.createDirectory(path.dirname(destination));
-		await renameOnceFree(source, destination);
+		if (overwrite && isWindows) await replaceOnceFree(source, destination);
+		else await fs.promises.rename(source, destination);
 	}
 }

@@ -30,7 +30,7 @@ describe("DiskFileSystemService on Windows", () => {
 		jest.spyOn(global, "setTimeout").mockImplementation(((
 			done: () => void
 		) => {
-			done();
+			setImmediate(done);
 			return 0;
 		}) as never);
 	});
@@ -54,11 +54,26 @@ describe("DiskFileSystemService on Windows", () => {
 	});
 
 	it("should fail with the error when the file stays held", async () => {
-		jest.spyOn(fs.promises, "rename").mockRejectedValue(failure("EPERM"));
+		const spy = jest
+			.spyOn(fs.promises, "rename")
+			.mockRejectedValue(failure("EPERM"));
 
 		await expect(
 			service.rename(source, destination, true)
 		).rejects.toMatchObject({ code: "EPERM" });
+		expect(spy).toHaveBeenCalledTimes(9);
+	});
+
+	it("should not retry a rename that must not replace anything", async () => {
+		fs.rmSync(destination);
+		const spy = jest
+			.spyOn(fs.promises, "rename")
+			.mockRejectedValue(failure("EPERM"));
+
+		await expect(service.rename(source, destination)).rejects.toMatchObject(
+			{ code: "EPERM" }
+		);
+		expect(spy).toHaveBeenCalledTimes(1);
 	});
 
 	it("should not retry a failure that waiting can't fix", async () => {
