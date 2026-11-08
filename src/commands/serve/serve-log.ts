@@ -23,7 +23,6 @@ import {
 	diagnosticShape,
 	diagnosticToJson,
 	diagnosticsJson,
-	failureToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
 
 const S = OutputShape;
@@ -229,7 +228,8 @@ export class ServeLog implements ServeReporter {
 		this.watchLog.error(error);
 	}
 
-	abort(): void {
+	abort(error: Error): void {
+		this.watchLog.error(error);
 		this.logService.closeFrame("serve failed.");
 	}
 
@@ -251,7 +251,6 @@ export class ServeLog implements ServeReporter {
 }
 
 export class ServeJsonLog implements ServeReporter {
-	private readonly told = new WeakSet<Error>();
 	private readonly watchLog: WatchJsonLog;
 
 	constructor(
@@ -365,12 +364,11 @@ export class ServeJsonLog implements ServeReporter {
 	}
 
 	error(error: Error): void {
-		this.told.add(error);
 		this.watchLog.error(error);
 	}
 
 	abort(error: Error): void {
-		if (!this.told.has(error)) this.line(failureToJson(error));
+		this.watchLog.error(error);
 	}
 
 	end(): void {}

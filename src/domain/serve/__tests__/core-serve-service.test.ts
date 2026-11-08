@@ -1,7 +1,6 @@
 import { jest } from "@jest/globals";
 import { DeferredPromise } from "../../../base/async.js";
 import { UsageError } from "../../../base/errors.js";
-import { Result } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
@@ -24,6 +23,7 @@ import {
 	ServePlan,
 	ServeRequest,
 	ServeChangeEvent,
+	ServeEnding,
 	ServeSession,
 	ServerExitEvent,
 	ServerReadyEvent,
@@ -672,6 +672,9 @@ describe("CoreServeService", () => {
 
 	describe("serve", () => {
 		let session: ServeSession;
+		let shutdown: AbortController;
+		let ending: Promise<ServeEnding>;
+		let ended: ServeEnding | undefined;
 		let served: ServerReadyEvent[];
 		let stops: ServerExitEvent[];
 		let said: string[];
@@ -699,10 +702,6 @@ describe("CoreServeService", () => {
 			session.onDidOutput(({ message }) =>
 				said.push(`${message.severity}: ${message.text}`)
 			);
-			session.onDidExit((stop) => {
-				said.push("stopped");
-				stops.push(stop);
-			});
 			errored = [];
 			session.onDidError((error) => errored.push(error));
 			changes = [];
@@ -711,9 +710,30 @@ describe("CoreServeService", () => {
 					`${change.kind} ${change.target.config.label}${change.kind === "retired" ? ` (${change.reason})` : change.kind === "refused" ? `: ${change.diagnostic.message}` : change.kind === "orphan" ? ` (process ${change.pid} of ${change.owner})${change.error ? `: ${change.error}` : ""}` : ""}`
 				)
 			);
-			const started = session.start();
+			shutdown = new AbortController();
+			ended = undefined;
+			ending = session.run(shutdown.signal);
+			void ending.then((ending) => {
+				ended = ending;
+				const exit =
+					ending.kind === "refused" ? undefined : ending.exit;
+				if (!exit) return;
+				said.push("stopped");
+				stops.push(exit);
+			});
 			await settle();
-			return started;
+		};
+
+		const stop = async () => {
+			shutdown.abort();
+			return ending;
+		};
+
+		const refusal = async () => {
+			const settled = await ending;
+			if (settled.kind !== "refused")
+				throw new Error("expected a refusal");
+			return settled.error;
 		};
 
 		beforeEach(() => {
@@ -721,7 +741,8 @@ describe("CoreServeService", () => {
 		});
 
 		afterEach(async () => {
-			await session?.stop();
+			shutdown?.abort();
+			await ending;
 			session?.[Symbol.dispose]();
 			jest.restoreAllMocks();
 			jest.useRealTimers();
@@ -738,7 +759,7 @@ describe("CoreServeService", () => {
 				return spawn(...args);
 			});
 
-			expect((await start()).isOk()).toBe(true);
+			await start();
 
 			expect(await Promise.all(writtenAtSpawn)).toEqual([true]);
 			expect(
@@ -771,10 +792,11 @@ describe("CoreServeService", () => {
 			);
 			service = serviceAt("/repo", new RojoCompatibility(memFs, true));
 
-			const started = await start();
+			await start();
 
-			expect(started.isOk()).toBe(true);
+			expect(ended).toBeUndefined();
 			expect(errored).toEqual([]);
+			expect(processes.spawned).toHaveLength(1);
 		});
 
 		it("should not start a Rojo before 7.5.0 for a file with sync rules", async () => {
@@ -789,17 +811,16 @@ describe("CoreServeService", () => {
 			);
 			service = serviceAt("/repo", new RojoCompatibility(memFs, false));
 
-			const started = await start();
+			await start();
 
-			if (started.isOk()) throw new Error("expected a failure");
 			expect(
-				(started.error as DiagnosticsError).diagnostics.map(
+				((await refusal()) as DiagnosticsError).diagnostics.map(
 					({ code, resource }) => [code, resource]
 				)
 			).toEqual([
 				["rojo.syncRulesUnsupported", "/repo/default.project.json"],
 			]);
-			expect(errored).toEqual([started.error]);
+			expect(errored).toEqual([]);
 			expect(processes.spawned).toEqual([]);
 		});
 
@@ -827,15 +848,14 @@ describe("CoreServeService", () => {
 				await checked.p;
 				return problems;
 			});
-			const started = start();
-			await settle();
+			await start();
 
 			await memFs.writeFile("/repo/default.rogen.json", config());
 			await settle();
 			checked.complete();
 			await settle();
 
-			expect((await started).isErr()).toBe(true);
+			expect((await ending).kind).toBe("refused");
 			expect(processes.spawned).toEqual([]);
 		});
 
@@ -860,20 +880,17 @@ describe("CoreServeService", () => {
 			await memFs.writeFile("/repo/src/X/@server", "");
 			await memFs.writeFile("/repo/src/X/@client", "");
 			service = serviceAt("/repo", new RojoCompatibility(memFs, false));
-			const started = start();
-			await settle();
+			await start();
 
 			await memFs.delete("/repo/src/X/@client");
 			await settle();
 
-			const ended = await started;
-			if (ended.isOk()) throw new Error("expected a failure");
 			expect(
-				(ended.error as DiagnosticsError).diagnostics.map(
+				((await refusal()) as DiagnosticsError).diagnostics.map(
 					({ code }) => code
 				)
 			).toEqual(["rojo.syncRulesUnsupported"]);
-			expect(errored).toEqual([ended.error]);
+			expect(errored).toEqual([]);
 			expect(processes.spawned).toEqual([]);
 		});
 
@@ -908,8 +925,7 @@ describe("CoreServeService", () => {
 				await checked.p;
 				return problems;
 			});
-			const started = start();
-			await settle();
+			await start();
 
 			await memFs.delete("/repo/src/X/@client");
 			await memFs.writeFile(
@@ -923,10 +939,8 @@ describe("CoreServeService", () => {
 			checked.complete();
 			await settle();
 
-			const ended = await started;
-			if (ended.isOk()) throw new Error("expected a failure");
 			expect(
-				(ended.error as DiagnosticsError).diagnostics.map(
+				((await refusal()) as DiagnosticsError).diagnostics.map(
 					({ code }) => code
 				)
 			).toEqual(["rojo.syncRulesUnsupported"]);
@@ -1012,8 +1026,7 @@ describe("CoreServeService", () => {
 			await memFs.writeFile("/repo/src/X/@client", "");
 			const updates: string[] = [];
 
-			const started = start();
-			await settle();
+			await start();
 			session.onDidUpdate(({ reports }) =>
 				updates.push(...reports.map(({ outcome }) => outcome.kind))
 			);
@@ -1023,7 +1036,7 @@ describe("CoreServeService", () => {
 			await memFs.delete("/repo/src/X/@client");
 			await settle();
 
-			expect((await started).isOk()).toBe(true);
+			expect(ended).toBeUndefined();
 			expect(updates).toEqual(["wrote"]);
 			expect(processes.spawned).toHaveLength(1);
 		});
@@ -1051,7 +1064,7 @@ describe("CoreServeService", () => {
 				pid: processes.spawned[0].pid,
 			});
 
-			await session.stop();
+			await stop();
 
 			expect(await memFs.exists("/mock/tmp/rogen-serve/34872.json")).toBe(
 				false
@@ -1098,7 +1111,8 @@ describe("CoreServeService", () => {
 			said = [];
 			session.onDidOutput(({ message }) => said.push(message.text));
 
-			await session.start();
+			shutdown = new AbortController();
+			ending = session.run(shutdown.signal);
 			await settle();
 
 			expect(processes.terminatedTrees).toEqual([]);
@@ -1159,11 +1173,9 @@ describe("CoreServeService", () => {
 				new Error("disk on fire")
 			);
 
-			const started = await start();
+			await start();
 
-			expect(started.isErr() && started.error.message).toBe(
-				"disk on fire"
-			);
+			expect((await refusal()).message).toBe("disk on fire");
 			expect(processes.spawned).toEqual([]);
 		});
 
@@ -1180,9 +1192,7 @@ describe("CoreServeService", () => {
 			);
 			await memFs.writeFile("/repo/src/X/@server", "");
 			await memFs.writeFile("/repo/src/X/@client", "");
-			let ended: Result<void, Error> | undefined;
-			void start().then((result) => (ended = result));
-			await settle();
+			await start();
 			jest.spyOn(CoreWriteService.prototype, "rewrite").mockRejectedValue(
 				new Error("disk on fire")
 			);
@@ -1193,7 +1203,9 @@ describe("CoreServeService", () => {
 			await memFs.writeFile("/repo/src/B.luau", "");
 			await settle();
 
-			expect(ended?.isErr() && ended.error.message).toBe("disk on fire");
+			expect(ended?.kind === "refused" && ended.error.message).toBe(
+				"disk on fire"
+			);
 			expect(processes.spawned).toEqual([]);
 		});
 
@@ -1226,12 +1238,10 @@ describe("CoreServeService", () => {
 				}
 			);
 
-			const started = await start();
+			await start();
 			await settle();
 
-			expect(started.isErr() && started.error.message).toBe(
-				"disk on fire"
-			);
+			expect((await refusal()).message).toBe("disk on fire");
 			expect(processes.spawned).toEqual([]);
 		});
 
@@ -1352,7 +1362,7 @@ describe("CoreServeService", () => {
 			processes.spawned[0].exit({ code: 1, signal: null });
 			await jest.advanceTimersByTimeAsync(300);
 
-			await session.stop();
+			await stop();
 			const asked = requests.requested.length;
 			await jest.advanceTimersByTimeAsync(6_000);
 
@@ -1702,18 +1712,19 @@ describe("CoreServeService", () => {
 					rojoInfo("repo")
 				);
 				processes.running.add(5001);
-				const ended = new DeferredPromise<void>();
-				jest.spyOn(processes, "terminateTree").mockReturnValue(ended.p);
-				const started = start();
-				await settle();
+				const terminated = new DeferredPromise<void>();
+				jest.spyOn(processes, "terminateTree").mockReturnValue(
+					terminated.p
+				);
+				await start();
 
 				await portOf(34901);
 				await settle();
 				requests.responses.delete("http://127.0.0.1:34872/api/rojo");
-				ended.complete();
+				terminated.complete();
 				await settle();
 
-				expect((await started).isOk()).toBe(true);
+				expect(ended).toBeUndefined();
 				expect(spawnedProjects()).toEqual([
 					"default.project.json (ended)",
 					"default.project.json",
@@ -1737,15 +1748,14 @@ describe("CoreServeService", () => {
 					await checked.p;
 					return problems;
 				});
-				const started = start();
-				await settle();
+				await start();
 
 				await replaceWithLobby();
 				await settle();
 				checked.complete();
 				await settle();
 
-				expect((await started).isOk()).toBe(true);
+				expect(ended).toBeUndefined();
 				expect(spawnedProjects()).toEqual([
 					"default.project.json (ended)",
 					"default.project.json",
@@ -1768,13 +1778,93 @@ describe("CoreServeService", () => {
 			});
 		});
 
+		it("should refuse to start, without reporting it as an error, when the watch can't start", async () => {
+			jest.spyOn(watcher, "watch").mockRejectedValue(
+				new Error("no access")
+			);
+
+			await start();
+
+			expect((await refusal()).message).toContain("no access");
+			expect(errored).toEqual([]);
+		});
+
+		it("should end with the exit of a server that stops on its own, and end the others", async () => {
+			await start();
+
+			processes.spawned[0].exit({ code: 0, signal: null });
+
+			expect(await ending).toMatchObject({
+				kind: "exited",
+				exit: { kind: "stopped" },
+			});
+			expect(processes.spawned[0].terminated).toBe(true);
+		});
+
+		it("should end as shut down, telling no exit, when the shutdown comes within a second of a server interrupted with Rogen", async () => {
+			await start();
+
+			processes.spawned[0].exit({
+				code: 130,
+				signal: null,
+				interrupted: true,
+			});
+			await jest.advanceTimersByTimeAsync(900);
+			expect(ended).toBeUndefined();
+			shutdown.abort();
+
+			expect(await ending).toEqual({
+				kind: "shutdown",
+				ended: expect.objectContaining({
+					config: expect.objectContaining({ label: "repo" }),
+				}),
+			});
+		});
+
+		it("should end with the exit of a server interrupted with Rogen when no shutdown comes within a second", async () => {
+			await start();
+
+			processes.spawned[0].exit({
+				code: 130,
+				signal: null,
+				interrupted: true,
+			});
+			await jest.advanceTimersByTimeAsync(1_000);
+
+			expect(ended).toMatchObject({
+				kind: "exited",
+				exit: { kind: "interrupted" },
+			});
+		});
+
+		it("should end as shut down, still telling a failure that came before the shutdown", async () => {
+			await start();
+			const stopWatcher = watcher.stop.bind(watcher);
+			jest.spyOn(watcher, "stop").mockImplementation(async () => {
+				shutdown.abort();
+				return stopWatcher();
+			});
+
+			processes.spawned[0].exit({ code: 3, signal: null });
+
+			expect(await ending).toEqual({
+				kind: "shutdown",
+				exit: expect.objectContaining({ kind: "failed" }),
+			});
+		});
+
 		it("should end the servers on stop, without reporting them as stopped", async () => {
 			await start();
 
-			await session.stop();
+			const settled = await stop();
 
 			expect(processes.spawned[0].terminated).toBe(true);
-			expect(stops).toEqual([]);
+			expect(settled).toEqual({
+				kind: "shutdown",
+				ended: expect.objectContaining({
+					config: expect.objectContaining({ label: "repo" }),
+				}),
+			});
 		});
 	});
 });
