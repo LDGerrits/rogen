@@ -15,10 +15,12 @@ import {
 	writeFiles,
 } from "../../write/__tests__/fixtures.js";
 import {
+	MockConfigSelection,
 	MockConfigService,
 	mockEntry,
 	selectionOf,
 } from "../../config/__tests__/mock-config-service.js";
+import { ConfigSelection } from "../../config/config-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
 	RojoCommandRequest,
@@ -40,8 +42,8 @@ class FakeRojo implements RojoCommandService {
 
 	constructor(private readonly fs: MemoryFileSystemService) {}
 
-	choose(): never {
-		throw new Error("not used");
+	choose(selection: ConfigSelection): ResolvedConfig {
+		return selection.configs[0];
 	}
 
 	projects(): never {
@@ -2450,5 +2452,184 @@ describe("CoreSyncbackService", () => {
 		expect((planned as ResultError<Error>).error.message).toContain(
 			"does not build"
 		);
+	});
+
+	describe("run", () => {
+		const loot = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Loot.luau"),
+				"return 1"
+			);
+			return [];
+		};
+
+		it("should plan a dry run on a check of the project file, and write nothing", async () => {
+			await prepare(["src/Inventory/Bag@server.luau"]);
+			await fs.delete(abs("default.project.json"));
+			rojo.say = loot;
+
+			const { write, outcome } = await service.run(request.selection, {
+				input: "game.rbxl",
+				cwd: "/repo",
+				mode: "dryRun",
+			});
+
+			expect(write.outcomes.map(({ kind }) => kind)).toEqual([
+				"wouldWrite",
+			]);
+			expect(outcome).toMatchObject({
+				kind: "planned",
+				asked: false,
+				plan: {
+					changes: [
+						{
+							kind: "write",
+							file: abs("src/Inventory/Loot@server.luau"),
+						},
+					],
+				},
+			});
+			expect(await fs.exists(abs("default.project.json"))).toBe(false);
+			expect(await fs.exists(abs("src/Inventory/Loot@server.luau"))).toBe(
+				false
+			);
+		});
+
+		it("should write the project file and the changes when told to", async () => {
+			await prepare(["src/Inventory/Bag@server.luau"]);
+			await fs.delete(abs("default.project.json"));
+			rojo.say = loot;
+
+			const { write, outcome } = await service.run(request.selection, {
+				input: "game.rbxl",
+				cwd: "/repo",
+				mode: "apply",
+			});
+
+			expect(write.outcomes.map(({ kind }) => kind)).toEqual(["wrote"]);
+			expect(outcome).toMatchObject({ kind: "written", asked: false });
+			expect(
+				await fs.readFile(abs("src/Inventory/Loot@server.luau"))
+			).toBe("return 1");
+		});
+
+		it("should not run syncback when the project has errors", async () => {
+			await prepare(["src/Inventory/Bag@server.luau"]);
+			const selection = new MockConfigSelection([
+				{
+					status: "broken",
+					file: config.file,
+					errors: [
+						errorDiagnostic(
+							"config.unreadable",
+							{ resource: config.file },
+							"broken"
+						),
+					],
+					lastValid: undefined,
+				},
+			]);
+
+			const { outcome } = await service.run(selection, {
+				input: "game.rbxl",
+				cwd: "/repo",
+				mode: "apply",
+			});
+
+			expect(outcome).toEqual({ kind: "notRun" });
+			expect(rojo.requests).toHaveLength(0);
+		});
+
+		it("should name the config of a syncback that failed", async () => {
+			await prepare(["src/Inventory/Bag@server.luau"]);
+			rojo.say = async () =>
+				new DiagnosticsError([
+					errorDiagnostic("rojo.failed", { resource: "/repo" }, "no"),
+				]);
+
+			const { outcome } = await service.run(request.selection, {
+				input: "game.rbxl",
+				cwd: "/repo",
+				mode: "dryRun",
+			});
+
+			expect(outcome).toMatchObject({
+				kind: "failed",
+				configFile: config.file,
+			});
+		});
+
+		it("should ask with the plan, and write it on a yes", async () => {
+			await prepare(["src/Inventory/Bag@server.luau"]);
+			rojo.say = loot;
+			const shown: SyncbackPlan[] = [];
+
+			const { outcome } = await service.run(request.selection, {
+				input: "game.rbxl",
+				cwd: "/repo",
+				mode: {
+					confirm: async (plan) => {
+						shown.push(plan);
+						return true;
+					},
+				},
+			});
+
+			expect(shown).toHaveLength(1);
+			expect(outcome).toMatchObject({ kind: "written", asked: true });
+			expect(
+				await fs.readFile(abs("src/Inventory/Loot@server.luau"))
+			).toBe("return 1");
+		});
+
+		it("should write nothing on a no, and say it was declined after asking", async () => {
+			await prepare(["src/Inventory/Bag@server.luau"]);
+			rojo.say = loot;
+
+			const { outcome } = await service.run(request.selection, {
+				input: "game.rbxl",
+				cwd: "/repo",
+				mode: { confirm: async () => false },
+			});
+
+			expect(outcome).toMatchObject({
+				kind: "declined",
+				asked: true,
+				plan: {
+					changes: [
+						{
+							kind: "write",
+							file: abs("src/Inventory/Loot@server.luau"),
+						},
+					],
+				},
+			});
+			expect(await fs.exists(abs("src/Inventory/Loot@server.luau"))).toBe(
+				false
+			);
+		});
+
+		it("should not ask when the plan changes nothing", async () => {
+			await prepare(["src/Inventory/Bag@server.luau"]);
+			let asked = false;
+
+			const { outcome } = await service.run(request.selection, {
+				input: "game.rbxl",
+				cwd: "/repo",
+				mode: {
+					confirm: async () => {
+						asked = true;
+						return true;
+					},
+				},
+			});
+
+			expect(asked).toBe(false);
+			expect(outcome).toMatchObject({
+				kind: "declined",
+				asked: false,
+				plan: { changes: [] },
+			});
+		});
 	});
 });

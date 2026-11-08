@@ -1,6 +1,7 @@
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
+import { WriteRun } from "../write/write.js";
 
 export interface SyncbackRequest {
 	readonly selection: ConfigSelection;
@@ -38,6 +39,43 @@ export interface SyncbackPlan {
 export interface SyncbackResult extends SyncbackPlan {
 	/** What a write raises about the files syncback placed: one that lands elsewhere than the place had it. */
 	readonly warnings: readonly Diagnostic[];
+}
+
+/** How a run treats its plan: lists it only, writes it at once, or writes it once `confirm` says yes, which is asked only when the plan changes something. */
+export type SyncbackMode =
+	| "dryRun"
+	| "apply"
+	| { readonly confirm: (plan: SyncbackPlan) => Promise<boolean> };
+
+export interface SyncbackOptions {
+	/** The place or model file Rojo reads, as given. */
+	readonly input: string;
+	/** Where Rojo runs, so `input` is relative to it. */
+	readonly cwd: string;
+	readonly mode: SyncbackMode;
+}
+
+export type SyncbackOutcome =
+	| { readonly kind: "notRun" }
+	| {
+			readonly kind: "failed";
+			readonly error: Error;
+			/** The config Rojo ran on. */
+			readonly configFile: string;
+	  }
+	| {
+			/** `planned` by a dry run, `declined` when nothing was written after the plan, `written` when it was. */
+			readonly kind: "planned" | "declined" | "written";
+			readonly plan: SyncbackPlan;
+			readonly warnings: readonly Diagnostic[];
+			/** Whether `confirm` was shown the plan. */
+			readonly asked: boolean;
+	  };
+
+/** What a syncback did: to the project file, and to the source files. */
+export interface SyncbackRun {
+	readonly write: WriteRun;
+	readonly outcome: SyncbackOutcome;
 }
 
 /** A name that is a place or model file, not a project. */
