@@ -1,3 +1,4 @@
+import { toShellWord } from "../../../base/path.js";
 import { jest } from "@jest/globals";
 import path from "path";
 import "../init-command.js";
@@ -730,7 +731,7 @@ describe("init command", () => {
 				processes
 			);
 
-			expect(await read("rokit.toml")).toBe(
+			expect(await read("rokit.toml")).toEqual(
 				'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
 			);
 			expect(
@@ -1566,7 +1567,9 @@ describe("init command", () => {
 			"my game",
 		]);
 
-		expect(logService.lines).toContain("info:   cd 'my game'");
+		expect(logService.lines).toContain(
+			`info:   cd ${toShellWord("my game")}`
+		);
 	});
 
 	it("should not change folder when it ran in the project's own", async () => {

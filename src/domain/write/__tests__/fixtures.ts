@@ -1,4 +1,5 @@
 import path from "path";
+import { toPosix } from "../../../base/path.js";
 import { Result, err, ok } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
@@ -71,6 +72,10 @@ export async function locateIn(
 
 export const abs = (...segments: string[]): string =>
 	path.resolve("/repo", ...segments);
+
+/** `abs`, as the scan and the tree write a path. */
+export const absPosix = (...segments: string[]): string =>
+	toPosix(abs(...segments));
 
 export const configOf = (overrides: ResolvedConfigSpec = {}): ResolvedConfig =>
 	mockConfig({

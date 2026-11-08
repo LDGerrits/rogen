@@ -1,3 +1,4 @@
+import { isWindows } from "../platform.js";
 import path from "path";
 import {
 	PathSet,
@@ -51,8 +52,13 @@ describe("Path", () => {
 	describe("letter case", () => {
 		it("should take Src and src for one folder when the file system ignores case", () => {
 			expect(samePath("/repo/Src", "/repo/src", true)).toBe(true);
-			expect(samePath("/repo/Src", "/repo/src", false)).toBe(false);
 			expect(isInside("/repo/Src/a", "/repo/src", true)).toBe(true);
+		});
+
+		it("should tell Src and src apart where the file system does", () => {
+			if (isWindows) return;
+
+			expect(samePath("/repo/Src", "/repo/src", false)).toBe(false);
 			expect(isInside("/repo/Src/a", "/repo/src", false)).toBe(false);
 		});
 	});
@@ -71,23 +77,23 @@ describe("Path", () => {
 	describe("toPosix", () => {
 		it("should convert Windows backslashes to forward slashes", () => {
 			const mockWindowsPath = `src${path.sep}core${path.sep}module.ts`;
-			expect(toPosix(mockWindowsPath)).toBe("src/core/module.ts");
+			expect(toPosix(mockWindowsPath)).toEqual("src/core/module.ts");
 		});
 
 		it("should return POSIX paths unmodified", () => {
-			expect(toPosix("src/core/module.ts")).toBe("src/core/module.ts");
+			expect(toPosix("src/core/module.ts")).toEqual("src/core/module.ts");
 		});
 	});
 
 	describe("joinPosix", () => {
 		it("should join segments and write the result with forward slashes", () => {
-			expect(joinPosix("/repo/src", "Inventory", "Save.luau")).toBe(
+			expect(joinPosix("/repo/src", "Inventory", "Save.luau")).toEqual(
 				"/repo/src/Inventory/Save.luau"
 			);
 		});
 
 		it("should resolve dot segments", () => {
-			expect(joinPosix("/repo/src", "./Net/../Save.luau")).toBe(
+			expect(joinPosix("/repo/src", "./Net/../Save.luau")).toEqual(
 				"/repo/src/Save.luau"
 			);
 		});
@@ -95,7 +101,9 @@ describe("Path", () => {
 
 	describe("dirnamePosix", () => {
 		it("should give the directory of a relative path", () => {
-			expect(dirnamePosix("Net/server/Remote.luau")).toBe("Net/server");
+			expect(dirnamePosix("Net/server/Remote.luau")).toEqual(
+				"Net/server"
+			);
 		});
 
 		it("should give an empty directory for a path at the top", () => {
@@ -262,21 +270,21 @@ describe("normalizeDir", () => {
 			path.resolve("/repo", ...segments);
 
 		it("should show a path inside the folder relative to it, with forward slashes", () => {
-			expect(shownFrom(abs(), abs("src", "Save.luau"))).toBe(
+			expect(shownFrom(abs(), abs("src", "Save.luau"))).toEqual(
 				"src/Save.luau"
 			);
 		});
 
 		it("should show the folder itself, one above it and one beside it as given", () => {
-			expect(shownFrom(abs(), abs())).toBe(abs());
-			expect(shownFrom(abs("src"), abs())).toBe(abs());
-			expect(shownFrom(abs("src"), abs("srcs", "a.luau"))).toBe(
+			expect(shownFrom(abs(), abs())).toEqual(abs());
+			expect(shownFrom(abs("src"), abs())).toEqual(abs());
+			expect(shownFrom(abs("src"), abs("srcs", "a.luau"))).toEqual(
 				abs("srcs", "a.luau")
 			);
 		});
 
 		it("should show a folder whose name starts with two dots relative to the folder", () => {
-			expect(shownFrom(abs(), abs("..shared", "a.luau"))).toBe(
+			expect(shownFrom(abs(), abs("..shared", "a.luau"))).toEqual(
 				"..shared/a.luau"
 			);
 		});
@@ -287,7 +295,7 @@ describe("normalizeDir", () => {
 			path.resolve("/repo", ...segments);
 
 		it("should give the path from the folder", () => {
-			expect(relativeTo(abs(), abs("src/Save.luau"))).toBe(
+			expect(relativeTo(abs(), abs("src/Save.luau"))).toEqual(
 				path.join("src", "Save.luau")
 			);
 		});
@@ -313,20 +321,22 @@ describe("normalizeDir", () => {
 			path.resolve("/repo", ...segments);
 
 		it("should be the directory itself when there is one", () => {
-			expect(commonAncestor([abs("src")])).toBe(abs("src"));
+			expect(commonAncestor([abs("src")])).toEqual(abs("src"));
 		});
 
 		it("should be the shared parent of sibling directories", () => {
-			expect(commonAncestor([abs("core"), abs("lobby")])).toBe(abs("."));
+			expect(commonAncestor([abs("core"), abs("lobby")])).toEqual(
+				abs(".")
+			);
 		});
 
 		it("should tell letter cases apart unless asked not to", () => {
-			expect(commonAncestor([abs("Core/a"), abs("core/b")], false)).toBe(
-				abs(".")
-			);
-			expect(commonAncestor([abs("Core/a"), abs("core/b")], true)).toBe(
-				abs("Core")
-			);
+			expect(
+				commonAncestor([abs("Core/a"), abs("core/b")], false)
+			).toEqual(abs("."));
+			expect(
+				commonAncestor([abs("Core/a"), abs("core/b")], true)
+			).toEqual(abs("Core"));
 		});
 
 		it("should be the deepest directory containing every one", () => {
@@ -335,11 +345,11 @@ describe("normalizeDir", () => {
 					abs("places/main/src"),
 					abs("places/common/src"),
 				])
-			).toBe(abs("places"));
+			).toEqual(abs("places"));
 		});
 
 		it("should not match on a shared name prefix that is not a whole segment", () => {
-			expect(commonAncestor([abs("src"), abs("src-extra")])).toBe(
+			expect(commonAncestor([abs("src"), abs("src-extra")])).toEqual(
 				abs(".")
 			);
 		});
@@ -358,7 +368,7 @@ describe("toNative", () => {
 	});
 
 	it("should leave a POSIX path as it is, backslashes and all", () => {
-		expect(toNative("/repo/src/a\\b.luau", path.posix)).toBe(
+		expect(toNative("/repo/src/a\\b.luau", path.posix)).toEqual(
 			"/repo/src/a\\b.luau"
 		);
 	});
@@ -366,7 +376,7 @@ describe("toNative", () => {
 
 describe("toShellWord", () => {
 	it("should leave a plain path as it is", () => {
-		expect(toShellWord("projects/game-2", path.posix)).toBe(
+		expect(toShellWord("projects/game-2", path.posix)).toEqual(
 			"projects/game-2"
 		);
 		expect(toShellWord("projects\\game", path.win32)).toBe(

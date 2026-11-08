@@ -1,3 +1,4 @@
+import { toPosix } from "../../../base/path.js";
 import { jest } from "@jest/globals";
 import { FileType } from "../file-system-service.js";
 import { MemoryFileSystemService } from "../memory-file-system-service.js";
@@ -66,7 +67,9 @@ describe("CoreIndexService", () => {
 			listing = await indexService.list(["src", "src/shared"]);
 
 			expect(
-				readDirectory.mock.calls.filter(([dir]) => dir === "src/shared")
+				readDirectory.mock.calls.filter(
+					([dir]) => toPosix(dir) === "src/shared"
+				)
 			).toHaveLength(1);
 			expect(listing.hasEntry("src/shared", "a.ts")).toBe(true);
 		});

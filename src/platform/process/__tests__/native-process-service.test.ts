@@ -24,7 +24,9 @@ describe("NativeProcessService", () => {
 
 	describe("which", () => {
 		it("should find a command on the PATH", async () => {
-			expect(await service.which(path.basename(node, ".exe"))).toBe(node);
+			const found = await service.which(path.basename(node, ".exe"));
+
+			expect(found?.toLowerCase()).toBe(node.toLowerCase());
 		});
 
 		it("should answer undefined for a command that isn't on the PATH", async () => {
@@ -159,7 +161,11 @@ describe("NativeProcessService", () => {
 
 			const exit = await child.terminate();
 
-			expect(exit.code === 0 || exit.signal !== null).toBe(true);
+			expect(
+				process.platform === "win32"
+					? exit.code !== null
+					: exit.code === 0 || exit.signal !== null
+			).toBe(true);
 			expect(await exited).toEqual(exit);
 			expect(await child.terminate()).toEqual(exit);
 			child[Symbol.dispose]();

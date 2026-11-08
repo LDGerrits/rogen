@@ -30,7 +30,11 @@ const exportedNames = (text: string) =>
 describe("file names", () => {
 	const files = LAYERS.flatMap((layer) =>
 		sourceFiles(path.join("src", layer)).map((file) => ({
-			id: path.relative("src", file).replace(/\.ts$/, ""),
+			id: path
+				.relative("src", file)
+				.split(path.sep)
+				.join("/")
+				.replace(/\.ts$/, ""),
 			module: path.basename(path.dirname(file)),
 			stem: path.basename(file, ".ts"),
 			names: exportedNames(fs.readFileSync(file, "utf8")),

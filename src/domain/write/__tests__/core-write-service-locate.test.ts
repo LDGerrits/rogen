@@ -10,6 +10,7 @@ import { RojoFile } from "../../rojo/rojo.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import {
 	abs,
+	absPosix,
 	writeServiceOf,
 	configOf as baseConfigOf,
 	indexOf,
@@ -332,34 +333,34 @@ describe("CoreWriteService.locate", () => {
 		);
 
 		it("should name the instance a file becomes, as Rojo reads it", async () => {
-			expect(await instanceOf("Packages/A.luau")).toBe(
+			expect(await instanceOf("Packages/A.luau")).toEqual(
 				"ReplicatedStorage/Packages/A"
 			);
-			expect(await instanceOf("Packages/Sub/B.server.luau")).toBe(
+			expect(await instanceOf("Packages/Sub/B.server.luau")).toEqual(
 				"ReplicatedStorage/Packages/Sub/B"
 			);
-			expect(await instanceOf("server/Data.model.json")).toBe(
+			expect(await instanceOf("server/Data.model.json")).toEqual(
 				"ServerScriptService/Server/Data"
 			);
-			expect(await instanceOf("server/Info.txt")).toBe(
+			expect(await instanceOf("server/Info.txt")).toEqual(
 				"ServerScriptService/Server/Info"
 			);
 		});
 
 		it("should make an init file the instance of its folder", async () => {
-			expect(await instanceOf("server/init.server.luau")).toBe(
+			expect(await instanceOf("server/init.server.luau")).toEqual(
 				"ServerScriptService/Server"
 			);
-			expect(await instanceOf("Packages/Group/init.luau")).toBe(
+			expect(await instanceOf("Packages/Group/init.luau")).toEqual(
 				"ReplicatedStorage/Packages/Group"
 			);
-			expect(await instanceOf("Packages/Group/C.luau")).toBe(
+			expect(await instanceOf("Packages/Group/C.luau")).toEqual(
 				"ReplicatedStorage/Packages/Group/C"
 			);
 		});
 
 		it("should name the instance a meta file changes, and none for a file Rojo reads nothing from", async () => {
-			expect(await instanceOf("Packages/A.meta.json")).toBe(
+			expect(await instanceOf("Packages/A.meta.json")).toEqual(
 				"ReplicatedStorage/Packages/A"
 			);
 			expect(await instanceOf("Packages/README.md")).toBeUndefined();
@@ -972,7 +973,7 @@ describe("CoreWriteService.locate", () => {
 				all
 					.unwrap()
 					.files.filter(
-						({ source }) => source === abs("src/Pipe.luau")
+						({ source }) => source === absPosix("src/Pipe.luau")
 					)
 					.map((file) => ({ ...file, named: true }))
 			);

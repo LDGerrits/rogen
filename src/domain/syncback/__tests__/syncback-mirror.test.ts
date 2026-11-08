@@ -1,3 +1,5 @@
+import path from "path";
+import { toPosix } from "../../../base/path.js";
 import { PlacedLocation } from "../../write/write-service.js";
 import { RojoFile } from "../../rojo/rojo.js";
 import { RojoNode, RojoProjectFile } from "../../rojo/rojo-project.js";
@@ -6,9 +8,11 @@ import { SyncbackMirror } from "../syncback-mirror.js";
 
 const ROOT = ".rogen-syncback/mirror";
 
+const onDisk = (file: string): string => toPosix(path.resolve(file));
+
 const placed = (source: string, ...instancePath: string[]): PlacedLocation => ({
 	status: "placed",
-	source: `/repo/${source}`,
+	source: onDisk(`/repo/${source}`),
 	exists: true,
 	instancePath,
 	route: "server",
@@ -25,13 +29,16 @@ const mirrorOf = (
 	SyncbackMirror.of({
 		written,
 		tree,
-		dir: "/repo",
+		dir: onDisk("/repo"),
 		root: ROOT,
 		placed: files,
-		reads: ["/repo/src"],
+		reads: [onDisk("/repo/src")],
 		fileAt: (target) => RojoFile.at(target, SyncRules.DEFAULT),
-		isFolder: async (target) => folders.includes(target),
-		readText: async (target) => texts[target],
+		isFolder: async (target) => folders.map(onDisk).includes(target),
+		readText: async (target) =>
+			Object.entries(texts).find(
+				([file]) => onDisk(file) === target
+			)?.[1],
 	});
 
 const optional = (target: string) => ({ optional: target });
@@ -106,7 +113,7 @@ describe("SyncbackMirror", () => {
 			]
 		);
 
-		expect(mirror.entries[0].mirror).toBe(
+		expect(mirror.entries[0].mirror).toEqual(
 			"ServerScriptService/Boot.server.luau"
 		);
 	});
@@ -824,10 +831,10 @@ describe("SyncbackMirror", () => {
 			["/repo/src/Panel"]
 		);
 
-		expect(mirror.targetOf("ServerScriptService/Bag.luau")).toBe(
+		expect(mirror.targetOf("ServerScriptService/Bag.luau")).toEqual(
 			"/repo/src/Bag@server.luau"
 		);
-		expect(mirror.targetOf("ServerScriptService/Panel/New.luau")).toBe(
+		expect(mirror.targetOf("ServerScriptService/Panel/New.luau")).toEqual(
 			"/repo/src/Panel/New.luau"
 		);
 		expect(

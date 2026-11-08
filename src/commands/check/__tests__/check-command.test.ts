@@ -1,3 +1,5 @@
+import { toPosix } from "../../../base/path.js";
+import path from "path";
 import "../check-command.js";
 import "../../write/write-command.js";
 import {
@@ -42,7 +44,7 @@ describe("check command", () => {
 	const found = (error: DiagnosticsError) =>
 		error.diagnostics.map(({ code, resource }) => [
 			code,
-			resource.replace("/repo/", ""),
+			toPosix(path.relative(path.resolve("/repo"), resource)),
 		]);
 
 	const document = () =>

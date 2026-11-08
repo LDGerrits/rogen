@@ -1,6 +1,8 @@
 import { jest } from "@jest/globals";
+import path from "path";
 import { DeferredPromise } from "../../../base/async.js";
 import { DisposableStore } from "../../../base/disposable.js";
+import { toPosix } from "../../../base/path.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -14,7 +16,9 @@ import { CoreWatchSession } from "../core-watch-session.js";
 import { writeServiceOf } from "../../write/__tests__/fixtures.js";
 
 const isDefaultStaging = (file: string): boolean =>
-	new OutputFile("/repo/default.project.json").stagingPattern.test(file);
+	new OutputFile(
+		path.resolve("/repo/default.project.json")
+	).stagingPattern.test(toPosix(file));
 
 describe("CoreWatchSession", () => {
 	let fs: MemoryFileSystemService;
@@ -379,7 +383,7 @@ describe("CoreWatchSession", () => {
 				changeUpdates()
 					.flatMap(({ reports }) => reports)
 					.map(({ outcome }) => outcome.config.file)
-			).toContain("/repo/default.rogen.jsonc");
+			).toContainEqual("/repo/default.rogen.jsonc");
 			expect(await placed("default")).toEqual(["A"]);
 		});
 
@@ -429,7 +433,7 @@ describe("CoreWatchSession", () => {
 			]);
 			expect(
 				update?.reports.map(({ outcome }) => outcome.config.file)
-			).not.toContain("/repo/default.rogen.jsonc");
+			).not.toContainEqual("/repo/default.rogen.jsonc");
 		});
 
 		it("should not look for configs when the run named them", async () => {
@@ -447,7 +451,7 @@ describe("CoreWatchSession", () => {
 				changeUpdates()
 					.flatMap(({ reports }) => reports)
 					.map(({ outcome }) => outcome.config.file)
-			).not.toContain("/repo/default.rogen.jsonc");
+			).not.toContainEqual("/repo/default.rogen.jsonc");
 		});
 
 		it("should ignore other files added to the folder", async () => {
@@ -834,14 +838,15 @@ describe("CoreWatchSession", () => {
 			await start();
 
 			const [paths, options] = watch.mock.calls[0];
-			expect(paths).toContain("/repo/out");
+			expect(paths).toContainEqual("/repo/out");
 			expect(options?.ignored).toEqual(
 				expect.arrayContaining([
 					"/repo/default.project.json",
-					new OutputFile("/repo/default.project.json").stagingPattern,
+					new OutputFile(path.resolve("/repo/default.project.json"))
+						.stagingPattern,
 				])
 			);
-			expect(options?.ignored).not.toContain("/repo/out");
+			expect(options?.ignored).not.toContainEqual("/repo/out");
 		});
 
 		it("should tell the watcher that the write reports a folder it can't read in the source paths, but not in the compiled path", async () => {

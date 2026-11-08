@@ -1,6 +1,9 @@
+import { isWindows } from "../../../base/platform.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { ToolLocator } from "../tool-locator.js";
+
+const exe = isWindows ? ".exe" : "";
 
 describe("ToolLocator", () => {
 	let fs: MemoryFileSystemService;
@@ -12,20 +15,22 @@ describe("ToolLocator", () => {
 	});
 
 	it("should find a program on the PATH first", async () => {
-		await fs.writeFile("/home/me/.rokit/bin/rokit", "");
+		await fs.writeFile(`/home/me/.rokit/bin/rokit${exe}`, "");
 		processes.installed.set("rokit", "/usr/bin/rokit");
 
 		const locator = new ToolLocator(processes, fs, "/home/me");
 
-		expect(await locator.find("rokit")).toBe("/usr/bin/rokit");
+		expect(await locator.find("rokit")).toEqual("/usr/bin/rokit");
 	});
 
 	it("should look in Rokit's bin folder when the PATH has none", async () => {
-		await fs.writeFile("/home/me/.rokit/bin/rokit", "");
+		await fs.writeFile(`/home/me/.rokit/bin/rokit${exe}`, "");
 
 		const locator = new ToolLocator(processes, fs, "/home/me");
 
-		expect(await locator.find("rokit")).toBe("/home/me/.rokit/bin/rokit");
+		expect(await locator.find("rokit")).toEqual(
+			`/home/me/.rokit/bin/rokit${exe}`
+		);
 	});
 
 	it("should find nothing when neither has it", async () => {
@@ -35,7 +40,7 @@ describe("ToolLocator", () => {
 	});
 
 	it("should look on the PATH alone without a home folder", async () => {
-		await fs.writeFile("/home/me/.rokit/bin/rokit", "");
+		await fs.writeFile(`/home/me/.rokit/bin/rokit${exe}`, "");
 
 		expect(await new ToolLocator(processes).find("rokit")).toBeUndefined();
 	});

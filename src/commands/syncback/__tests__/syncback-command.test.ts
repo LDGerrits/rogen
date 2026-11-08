@@ -1,3 +1,4 @@
+import { toNative } from "../../../base/path.js";
 import { jest } from "@jest/globals";
 import path from "path";
 import "../syncback-command.js";
@@ -428,7 +429,9 @@ describe("syncback command", () => {
 		expect(processes.spawned).toHaveLength(1);
 		expect(
 			said(log).filter(
-				(line) => line === "Writing src/Combat/Server/Loot.luau"
+				(line) =>
+					line ===
+					`Writing ${toNative("src/Combat/Server/Loot.luau")}`
 			)
 		).toHaveLength(1);
 		expect(said(log)).toContain("Syncback wrote 2 changes.");
@@ -506,7 +509,9 @@ describe("syncback command", () => {
 		expect((await running).isOk()).toBe(true);
 
 		expect(processes.spawned).toHaveLength(1);
-		expect(said(log)).toContain("Removing src/Combat/Server/Combat.luau");
+		expect(said(log)).toContainEqual(
+			"Removing src/Combat/Server/Combat.luau"
+		);
 		expect(said(log)).toContain("Nothing was written.");
 		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
 			true

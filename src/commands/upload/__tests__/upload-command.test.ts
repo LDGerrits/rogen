@@ -88,7 +88,7 @@ describe("upload command", () => {
 			"--cookie",
 			"cookie",
 		]);
-		expect(rojo.options.cwd).toBe("/repo");
+		expect(rojo.options.cwd).toEqual("/repo");
 	});
 
 	it("should ask for --asset_id before it writes anything", async () => {

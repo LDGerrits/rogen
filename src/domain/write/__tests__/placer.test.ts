@@ -9,6 +9,7 @@ import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.j
 import { Placement } from "../placement.js";
 import {
 	abs,
+	absPosix,
 	prepareAndPlace,
 	configOf,
 	placeFiles,
@@ -36,7 +37,7 @@ describe("Placer", () => {
 				file: abs("out/default.rogen.json"),
 			}).unwrap();
 
-			expect(layout.projectDir).toBe(abs("out"));
+			expect(layout.projectDir).toEqual(abs("out"));
 		});
 
 		it("should hold the config's tree, and nothing else of its project", () => {
@@ -151,9 +152,9 @@ describe("Placer", () => {
 
 			expect(result.warnings).toMatchObject([
 				{
-					resource: abs("core/Types.lua"),
+					resource: absPosix("core/Types.lua"),
 					message: expect.stringContaining(
-						`as ${abs("core/Types.luau")} does`
+						`as ${absPosix("core/Types.luau")} does`
 					),
 				},
 			]);
@@ -472,7 +473,7 @@ describe("Placer", () => {
 			expect(placedLines(placement.files)).toEqual([
 				"Real.luau -> ReplicatedStorage/Real",
 			]);
-			expect(placement.leftOut.get(abs("src/Draft.skip"))).toEqual({
+			expect(placement.leftOut.get(absPosix("src/Draft.skip"))).toEqual({
 				status: "ignored",
 				pattern: "*.skip",
 			});

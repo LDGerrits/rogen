@@ -68,7 +68,7 @@ describe("ConfigDiscovery", () => {
 		it("should fail, pointing at init, when there is none", async () => {
 			const result = await discovery.discover([]);
 
-			expect(errorOf(result).message).toBe(
+			expect(errorOf(result).message).toEqual(
 				"No default.rogen.json or default.project.json in this folder (/repo). Run 'rogen init' to create one."
 			);
 			expect(errorOf(result)).toBeInstanceOf(ProjectError);
@@ -80,7 +80,7 @@ describe("ConfigDiscovery", () => {
 
 			const result = await discovery.discover([]);
 
-			expect(errorOf(result).message).toBe(
+			expect(errorOf(result).message).toEqual(
 				"No default.rogen.json or default.project.json in this folder (/repo). It holds dist.rogen.json, release.rogen.jsonc. Name one of them, or run 'rogen write' to write them all."
 			);
 		});
@@ -98,7 +98,7 @@ describe("ConfigDiscovery", () => {
 			const result = await discovery.discover([]);
 
 			expect(errorOf(result)).toBeInstanceOf(ProjectError);
-			expect(errorOf(result).message).toBe(
+			expect(errorOf(result).message).toEqual(
 				".rogen.json in /repo: is old."
 			);
 		});
@@ -159,7 +159,7 @@ describe("ConfigDiscovery", () => {
 			const result = await from("/nowhere").discover([]);
 
 			expect(errorOf(result).message).toContain(
-				"Could not look for a config file in /nowhere"
+				`Could not look for a config file in ${path.resolve("/nowhere")}`
 			);
 		});
 
@@ -170,7 +170,7 @@ describe("ConfigDiscovery", () => {
 			const result = await discovery.discover([]);
 
 			expect(errorOf(result)).toBeInstanceOf(ProjectError);
-			expect(errorOf(result).message).toBe(
+			expect(errorOf(result).message).toEqual(
 				"/repo holds both default.rogen.json and default.rogen.jsonc. Keep one of them: both write the same project file."
 			);
 		});
@@ -304,7 +304,7 @@ describe("ConfigDiscovery", () => {
 				const result = await discovery.discover([ref]);
 
 				expect(errorOf(result)).toBeInstanceOf(ProjectError);
-				expect(errorOf(result).message).toBe(
+				expect(errorOf(result).message).toEqual(
 					"/repo holds both dist.rogen.json and dist.rogen.jsonc. Keep one of them: both write the same project file."
 				);
 			}
@@ -354,7 +354,7 @@ describe("ConfigDiscovery", () => {
 
 			const result = await discovery.discover(["pkg"]);
 
-			expect(errorOf(result).message).toBe(
+			expect(errorOf(result).message).toEqual(
 				'No default.rogen.json or default.project.json in "pkg" (/repo/pkg). It holds dist.rogen.json. Name one of them.'
 			);
 		});
@@ -427,7 +427,7 @@ describe("ConfigDiscovery", () => {
 			const result = await discovery.discover(["places/arena"]);
 
 			expect(errorOf(result)).toBeInstanceOf(ProjectError);
-			expect(errorOf(result).message).toBe(
+			expect(errorOf(result).message).toEqual(
 				`No default.rogen.json or default.project.json in "places/arena" (/repo/places/arena). Run 'rogen init' to create one.`
 			);
 		});
@@ -446,7 +446,7 @@ describe("ConfigDiscovery", () => {
 			const result = await discovery.discover(["places/nowhere"]);
 
 			expect(errorOf(result)).toBeInstanceOf(ProjectError);
-			expect(errorOf(result).message).toBe(
+			expect(errorOf(result).message).toEqual(
 				`"places/nowhere" not found. Name a folder with a default.rogen.json, a .rogen.json file, or a *.project.json path.`
 			);
 		});
@@ -529,7 +529,7 @@ describe("ConfigDiscovery", () => {
 				await from("/repo/tools").discover(["../places/lobby"])
 			).unwrap();
 
-			expect(found.home).toBe("/repo/tools");
+			expect(found.home).toEqual("/repo/tools");
 			expect(found.files).toEqual([
 				"/repo/places/lobby/default.rogen.json",
 			]);
@@ -697,8 +697,8 @@ describe("ConfigDiscovery.fileNamedHere", () => {
 		await fs.writeFile("/repo/game.rogen.json", "{}");
 		await fs.writeFile("/repo/lobby.project.json", "{}");
 
-		expect((await named("game")).unwrap()).toBe("/repo/game.rogen.json");
-		expect((await named("lobby")).unwrap()).toBe(
+		expect((await named("game")).unwrap()).toEqual("/repo/game.rogen.json");
+		expect((await named("lobby")).unwrap()).toEqual(
 			"/repo/lobby.project.json"
 		);
 	});
@@ -707,7 +707,7 @@ describe("ConfigDiscovery.fileNamedHere", () => {
 		await fs.writeFile("/repo/game.rogen.json", "{}");
 		await fs.writeFile("/repo/game.project.json", "{}");
 
-		expect((await named("game")).unwrap()).toBe("/repo/game.rogen.json");
+		expect((await named("game")).unwrap()).toEqual("/repo/game.rogen.json");
 	});
 
 	it("should be nothing for a name with no config or a path", async () => {

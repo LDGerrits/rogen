@@ -235,7 +235,7 @@ describe("WriteValidator rules", () => {
 
 				const [warning] = await caseWarnings();
 
-				expect(warning.resource).toBe(abs("src/Inventory/@SERVER"));
+				expect(warning.resource).toEqual(abs("src/Inventory/@SERVER"));
 				expect(warning.message).toContain('route "server"');
 			});
 
@@ -289,7 +289,7 @@ describe("WriteValidator rules", () => {
 
 				const [warning] = await caseWarnings();
 
-				expect(warning.resource).toBe(abs("src/M/@SERVER"));
+				expect(warning.resource).toEqual(abs("src/M/@SERVER"));
 				expect(warning.message).toContain(
 					'Spell it "@server" or "@Server"'
 				);

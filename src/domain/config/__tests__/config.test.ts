@@ -166,14 +166,14 @@ describe("domain/config/config", () => {
 			expect(
 				mockConfig({ file: "/repo/places/lobby/default.rogen.json" })
 					.projectDir
-			).toBe("/repo/places/lobby");
+			).toEqual("/repo/places/lobby");
 		});
 
 		it("should write default.project.json beside its config", () => {
 			expect(
 				mockConfig({ file: "/repo/places/lobby/default.rogen.json" })
 					.projectFile
-			).toBe("/repo/places/lobby/default.project.json");
+			).toEqual("/repo/places/lobby/default.project.json");
 		});
 
 		it("should list the source paths, else the folder it would have scanned", () => {
@@ -190,7 +190,7 @@ describe("domain/config/config", () => {
 			expect(
 				mockConfig({ sourcePaths: ["/repo/a/x", "/repo/a/y"] })
 					.commonRoot
-			).toBe("/repo/a");
+			).toEqual("/repo/a");
 			expect(mockConfig({ sourcePaths: [] }).commonRoot).toBeUndefined();
 		});
 

@@ -52,7 +52,7 @@ describe("CoreRojoCommandService", () => {
 
 		const ran = (await running).unwrap();
 
-		expect(ran.project.projectFile).toBe("/repo/default.project.json");
+		expect(ran.project.projectFile).toEqual("/repo/default.project.json");
 		expect(ran.messages).toEqual([
 			{
 				severity: "info",
@@ -61,14 +61,14 @@ describe("CoreRojoCommandService", () => {
 			},
 		]);
 		const [child] = processes.spawned;
-		expect(child.file).toBe("/bin/rojo");
+		expect(child.file).toEqual("/bin/rojo");
 		expect(child.args).toEqual([
 			"build",
 			"default.project.json",
 			"-o",
 			"a.rbxl",
 		]);
-		expect(child.options.cwd).toBe("/repo");
+		expect(child.options.cwd).toEqual("/repo");
 	});
 
 	describe("Rojo 7.7.0 on Windows", () => {
@@ -310,7 +310,7 @@ describe("CoreRojoCommandService", () => {
 	});
 
 	it("should name the one project before it runs", () => {
-		expect(service.choose(selection()).file).toBe(
+		expect(service.choose(selection()).file).toEqual(
 			"/repo/default.rogen.json"
 		);
 	});
@@ -349,9 +349,9 @@ describe("CoreRojoCommandService", () => {
 				},
 			]);
 			expect(ran.failure).toBeUndefined();
-			expect(processes.spawned[0].file).toBe("/bin/rojo");
+			expect(processes.spawned[0].file).toEqual("/bin/rojo");
 			expect(processes.spawned[0].args).toEqual(["plugin", "install"]);
-			expect(processes.spawned[0].options.cwd).toBe("/repo");
+			expect(processes.spawned[0].options.cwd).toEqual("/repo");
 		});
 
 		it("should return a run with a failure that names no file when Rojo exits with an error", async () => {

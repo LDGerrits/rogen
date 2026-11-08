@@ -1,3 +1,4 @@
+import path from "path";
 import { jest } from "@jest/globals";
 import { ResultError } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
@@ -16,6 +17,8 @@ import {
 
 const ROUTED = { server: "ServerScriptService" };
 
+const onDisk = (file: string): string => path.resolve(file);
+
 describe("CoreConfigService", () => {
 	useConfigFixture();
 
@@ -28,7 +31,7 @@ describe("CoreConfigService", () => {
 			expect(selection.entries.map(({ file }) => file)).toEqual([
 				"/repo/default.rogen.json",
 			]);
-			expect(selection.home).toBe("/repo");
+			expect(selection.home).toEqual("/repo");
 		});
 
 		it("should read a Rojo project file as the config when no default.rogen.json is above, and follow its folder", async () => {
@@ -42,7 +45,7 @@ describe("CoreConfigService", () => {
 			expect(selection.entries.map(({ file }) => file)).toEqual([
 				"/repo/default.project.json",
 			]);
-			expect(selection.followedFolder).toBe("/repo");
+			expect(selection.followedFolder).toEqual("/repo");
 			expect(validFile(selection.entries[0])?.config.isAdopted).toBe(
 				true
 			);
@@ -60,7 +63,7 @@ describe("CoreConfigService", () => {
 
 			const config = validFile(selection.entries[0])?.config;
 			expect(config?.isAdopted).toBe(true);
-			expect(config?.projectFile).toBe("/repo/test.project.json");
+			expect(config?.projectFile).toEqual("/repo/test.project.json");
 			expect(selection.configs).toHaveLength(1);
 		});
 
@@ -90,7 +93,7 @@ describe("CoreConfigService", () => {
 
 				const [entry] = selection.entries;
 				expect(entry.status).toBe("valid");
-				expect(validFile(entry)?.config.projectFile).toBe(
+				expect(validFile(entry)?.config.projectFile).toEqual(
 					`/repo/${name}`
 				);
 			}
@@ -229,7 +232,7 @@ describe("CoreConfigService", () => {
 			await write("/repo/default.rogen.json", {});
 			await start();
 			await write("/repo/default.rogen.json", { bogus: {} });
-			await selection.reload(["/repo/default.rogen.json"]);
+			await selection.reload([onDisk("/repo/default.rogen.json")]);
 
 			expect(selection.requireValid().isErr()).toBe(true);
 		});
@@ -242,7 +245,9 @@ describe("CoreConfigService", () => {
 				routes: ROUTED,
 			});
 
-			const entry = await service.read("/repo/other/default.rogen.json");
+			const entry = await service.read(
+				onDisk("/repo/other/default.rogen.json")
+			);
 
 			expect(validFile(entry)?.config.sourcePaths).toEqual([
 				"/repo/other/lib",
@@ -253,7 +258,9 @@ describe("CoreConfigService", () => {
 		it("should put the problems of a broken config on the entry", async () => {
 			await write("/repo/other/default.rogen.json", "{ nope");
 
-			const entry = await service.read("/repo/other/default.rogen.json");
+			const entry = await service.read(
+				onDisk("/repo/other/default.rogen.json")
+			);
 
 			expect(entry).toMatchObject({
 				status: "broken",
@@ -276,7 +283,9 @@ describe("CoreConfigService", () => {
 			});
 			service.registerFileCheck(({ file }) => [hint(file)]);
 
-			const entry = await service.read("/repo/a/default.rogen.json");
+			const entry = await service.read(
+				onDisk("/repo/a/default.rogen.json")
+			);
 
 			expect(
 				entry.status === "broken" &&
@@ -288,7 +297,9 @@ describe("CoreConfigService", () => {
 			await write("/repo/a/default.rogen.json", { source: ["src"] });
 			service.registerFileCheck(({ file }) => [hint(file)]);
 
-			const entry = await service.read("/repo/a/default.rogen.json");
+			const entry = await service.read(
+				onDisk("/repo/a/default.rogen.json")
+			);
 
 			expect(entry).toMatchObject({
 				status: "broken",
@@ -305,8 +316,8 @@ describe("CoreConfigService", () => {
 				return [];
 			});
 
-			await service.read("/repo/a/default.rogen.json");
-			await service.read("/repo/b/default.rogen.json");
+			await service.read(onDisk("/repo/a/default.rogen.json"));
+			await service.read(onDisk("/repo/b/default.rogen.json"));
 
 			expect(seen).toEqual([{ nope: true }, undefined]);
 		});
@@ -317,7 +328,9 @@ describe("CoreConfigService", () => {
 			});
 			service.registerFileCheck(() => []);
 
-			const entry = await service.read("/repo/a/default.rogen.json");
+			const entry = await service.read(
+				onDisk("/repo/a/default.rogen.json")
+			);
 
 			expect(entry.status).toBe("valid");
 		});
@@ -330,7 +343,7 @@ describe("CoreConfigService", () => {
 			const registration = service.registerFileCheck(check);
 
 			registration[Symbol.dispose]();
-			await service.read("/repo/a/default.rogen.json");
+			await service.read(onDisk("/repo/a/default.rogen.json"));
 
 			expect(check).not.toHaveBeenCalled();
 		});

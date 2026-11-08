@@ -388,7 +388,7 @@ describe("WriteValidator rules", () => {
 			it("should fall back to moving the source path into a folder when its parent is outside the project", async () => {
 				const [warning] = await named(["../outside/server"]);
 
-				expect(warning.message).toBe(
+				expect(warning.message).toEqual(
 					'named after the "server" route: move it into a folder, such as src/../outside/server, and use "sourcePaths": ["src"]'
 				);
 			});
@@ -673,7 +673,7 @@ describe("WriteValidator rules", () => {
 				const warnings = await reserved();
 
 				expect(warnings).toHaveLength(1);
-				expect(warnings[0].resource).toBe(abs("src/$Kit/A.luau"));
+				expect(warnings[0].resource).toEqual(abs("src/$Kit/A.luau"));
 				expect(warnings[0].fixes ?? []).toEqual([]);
 			});
 

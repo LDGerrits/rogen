@@ -171,7 +171,7 @@ describe("WatchLog.update", () => {
 					["a/default.rogen.json", "b/default.rogen.json"],
 					true
 				)
-			).toBe(
+			).toEqual(
 				"03:04:05 · 3 files changed · a/default.rogen.json, b/default.rogen.json changed · reloaded"
 			);
 		});
@@ -205,7 +205,7 @@ describe("WatchLog.update", () => {
 			const listed = lines(changes);
 
 			expect(listed).toHaveLength(21);
-			expect(listed[19]).toBe("changed src/F19.luau");
+			expect(listed[19]).toEqual("changed src/F19.luau");
 			expect(listed[20]).toBe("and 5 more");
 		});
 	});

@@ -1,3 +1,4 @@
+import path from "path";
 import {
 	useConfigFixture,
 	fs,
@@ -10,6 +11,8 @@ import {
 } from "./config-fixture.js";
 
 const ROUTED = { server: "ServerScriptService" };
+
+const onDisk = (file: string): string => path.resolve(file);
 
 describe("CoreConfigService", () => {
 	useConfigFixture();
@@ -24,7 +27,7 @@ describe("CoreConfigService", () => {
 
 		it("should know the folder it was picked from, and not when configs were named", async () => {
 			await start();
-			expect(selection.followedFolder).toBe("/repo");
+			expect(selection.followedFolder).toEqual("/repo");
 
 			await start({ names: ["."] });
 			expect(selection.followedFolder).toBeUndefined();
@@ -33,20 +36,24 @@ describe("CoreConfigService", () => {
 		it("should concern the config files of that folder and the files it reads", async () => {
 			await start();
 
-			expect(selection.concerns("/repo/default.rogen.json")).toBe(true);
-			expect(selection.concerns("/repo/default.rogen.jsonc")).toBe(true);
-			expect(selection.concerns("/repo/src/default.rogen.json")).toBe(
-				false
+			expect(selection.concerns(onDisk("/repo/default.rogen.json"))).toBe(
+				true
 			);
-			expect(selection.concerns("/repo/README.md")).toBe(false);
+			expect(
+				selection.concerns(onDisk("/repo/default.rogen.jsonc"))
+			).toBe(true);
+			expect(
+				selection.concerns(onDisk("/repo/src/default.rogen.json"))
+			).toBe(false);
+			expect(selection.concerns(onDisk("/repo/README.md"))).toBe(false);
 		});
 
 		it("should not concern the project file its config writes", async () => {
 			await start();
 
-			expect(selection.concerns("/repo/default.project.json")).toBe(
-				false
-			);
+			expect(
+				selection.concerns(onDisk("/repo/default.project.json"))
+			).toBe(false);
 		});
 
 		it("should concern the project file it adopted", async () => {
@@ -57,16 +64,22 @@ describe("CoreConfigService", () => {
 			});
 			await start();
 
-			expect(selection.concerns("/repo/default.project.json")).toBe(true);
+			expect(
+				selection.concerns(onDisk("/repo/default.project.json"))
+			).toBe(true);
 		});
 
 		it("should not concern a config of another name that comes to the folder", async () => {
 			await start();
 
 			await write("/repo/dist.rogen.json", { routes: ROUTED });
-			const reload = await selection.reload(["/repo/dist.rogen.json"]);
+			const reload = await selection.reload([
+				onDisk("/repo/dist.rogen.json"),
+			]);
 
-			expect(selection.concerns("/repo/dist.rogen.json")).toBe(false);
+			expect(selection.concerns(onDisk("/repo/dist.rogen.json"))).toBe(
+				false
+			);
 			expect(selection.entries.map(({ file }) => file)).toEqual([
 				"/repo/default.rogen.json",
 			]);
@@ -77,7 +90,9 @@ describe("CoreConfigService", () => {
 			await start();
 
 			await fs.delete("/repo/default.rogen.json");
-			const reload = await selection.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload([
+				onDisk("/repo/default.rogen.json"),
+			]);
 
 			expect(selection.entries).toEqual([]);
 			expect(reload.notices).toEqual([
@@ -89,12 +104,14 @@ describe("CoreConfigService", () => {
 		it("should pick up a config that comes back to the folder, and report it", async () => {
 			await start();
 			await fs.delete("/repo/default.rogen.json");
-			await selection.reload(["/repo/default.rogen.json"]);
+			await selection.reload([onDisk("/repo/default.rogen.json")]);
 
 			await write("/repo/default.rogen.json", {
 				routes: ROUTED,
 			});
-			const reload = await selection.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload([
+				onDisk("/repo/default.rogen.json"),
+			]);
 
 			expect(selection.entries.map(({ file }) => file)).toEqual([
 				"/repo/default.rogen.json",
@@ -108,10 +125,12 @@ describe("CoreConfigService", () => {
 		it("should report a config that comes back broken with its errors, which no earlier version stands in for", async () => {
 			await start();
 			await fs.delete("/repo/default.rogen.json");
-			await selection.reload(["/repo/default.rogen.json"]);
+			await selection.reload([onDisk("/repo/default.rogen.json")]);
 
 			await write("/repo/default.rogen.json", { modes: {} });
-			const reload = await selection.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload([
+				onDisk("/repo/default.rogen.json"),
+			]);
 
 			expect(selection.entries[0].status).toBe("broken");
 			expect(reload.changed).toEqual([]);
@@ -131,7 +150,7 @@ describe("CoreConfigService", () => {
 				routes: ROUTED,
 			});
 			const reload = await selection.reload([
-				"/repo/default.rogen.jsonc",
+				onDisk("/repo/default.rogen.jsonc"),
 			]);
 
 			expect(selection.entries.map(({ file }) => file)).toEqual([
@@ -155,11 +174,11 @@ describe("CoreConfigService", () => {
 		it("should load the config again once the second default config is deleted", async () => {
 			await start();
 			await write("/repo/default.rogen.jsonc", { routes: ROUTED });
-			await selection.reload(["/repo/default.rogen.jsonc"]);
+			await selection.reload([onDisk("/repo/default.rogen.jsonc")]);
 
 			await fs.delete("/repo/default.rogen.jsonc");
 			const reload = await selection.reload([
-				"/repo/default.rogen.jsonc",
+				onDisk("/repo/default.rogen.jsonc"),
 			]);
 
 			expect(errors(0)).toEqual([]);
@@ -177,7 +196,9 @@ describe("CoreConfigService", () => {
 			await start();
 
 			await write("/repo/default.rogen.json", { routes: ROUTED });
-			const reload = await selection.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload([
+				onDisk("/repo/default.rogen.json"),
+			]);
 
 			expect(selection.entries.map(({ file }) => file)).toEqual([
 				"/repo/default.rogen.json",
@@ -199,15 +220,17 @@ describe("CoreConfigService", () => {
 			});
 			await start();
 			await fs.delete("/repo/default.project.json");
-			await selection.reload(["/repo/default.project.json"]);
+			await selection.reload([onDisk("/repo/default.project.json")]);
 
-			expect(selection.concerns("/repo/default.project.json")).toBe(true);
+			expect(
+				selection.concerns(onDisk("/repo/default.project.json"))
+			).toBe(true);
 			await write("/repo/default.project.json", {
 				name: "Plain",
 				tree: { $className: "DataModel" },
 			});
 			const reload = await selection.reload([
-				"/repo/default.project.json",
+				onDisk("/repo/default.project.json"),
 			]);
 
 			expect(selection.entries.map(({ file }) => file)).toEqual([
@@ -229,15 +252,17 @@ describe("CoreConfigService", () => {
 			});
 			await start();
 			await write("/repo/default.rogen.json", { routes: ROUTED });
-			await selection.reload(["/repo/default.rogen.json"]);
+			await selection.reload([onDisk("/repo/default.rogen.json")]);
 
 			await fs.delete("/repo/default.rogen.json");
-			const reload = await selection.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload([
+				onDisk("/repo/default.rogen.json"),
+			]);
 
 			expect(selection.entries).toEqual([]);
-			expect(selection.concerns("/repo/default.project.json")).toBe(
-				false
-			);
+			expect(
+				selection.concerns(onDisk("/repo/default.project.json"))
+			).toBe(false);
 			expect(reload.notices).toEqual([
 				{ kind: "removed", file: "/repo/default.rogen.json" },
 			]);
@@ -249,7 +274,7 @@ describe("CoreConfigService", () => {
 
 			await write("/repo/lobby/default.rogen.jsonc", {});
 			const reload = await selection.reload([
-				"/repo/lobby/default.rogen.jsonc",
+				onDisk("/repo/lobby/default.rogen.jsonc"),
 			]);
 
 			expect(selection.entries.map(({ file }) => file)).toEqual([
@@ -278,7 +303,7 @@ describe("CoreConfigService", () => {
 				routes: ROUTED,
 			});
 			const reload = await selection.reload([
-				"/repo/one/default.rogen.json",
+				onDisk("/repo/one/default.rogen.json"),
 			]);
 
 			expect(reload).toEqual({
@@ -294,7 +319,9 @@ describe("CoreConfigService", () => {
 			await start();
 
 			await write("/repo/default.rogen.json", { name: "A" });
-			const reload = await selection.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload([
+				onDisk("/repo/default.rogen.json"),
+			]);
 
 			expect(reload).toEqual({ changed: [], notices: [] });
 		});
@@ -308,7 +335,9 @@ describe("CoreConfigService", () => {
 			await write("/repo/default.rogen.json", {
 				tree: { $className: "DataModel", Workspace: {} },
 			});
-			const reload = await selection.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload([
+				onDisk("/repo/default.rogen.json"),
+			]);
 
 			expect(reload.changed).toEqual(["/repo/default.rogen.json"]);
 		});
@@ -328,7 +357,9 @@ describe("CoreConfigService", () => {
 					server: "ServerScriptService",
 				},
 			});
-			const reload = await selection.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload([
+				onDisk("/repo/default.rogen.json"),
+			]);
 
 			expect(reload.changed).toEqual(["/repo/default.rogen.json"]);
 		});
@@ -339,13 +370,13 @@ describe("CoreConfigService", () => {
 			const before = resolved(0);
 
 			await write("/repo/default.rogen.json", { name: "A" });
-			await selection.reload(["/repo/default.rogen.json"]);
+			await selection.reload([onDisk("/repo/default.rogen.json")]);
 			expect(resolved(0)).toBe(before);
 
 			await fs.writeFile("/repo/default.rogen.json", "{ nope");
-			await selection.reload(["/repo/default.rogen.json"]);
+			await selection.reload([onDisk("/repo/default.rogen.json")]);
 			await write("/repo/default.rogen.json", { name: "A" });
-			await selection.reload(["/repo/default.rogen.json"]);
+			await selection.reload([onDisk("/repo/default.rogen.json")]);
 			expect(resolved(0)).toBe(before);
 		});
 
@@ -361,7 +392,9 @@ describe("CoreConfigService", () => {
 				"/repo/default.rogen.json",
 				`// comment\n{\n\t"syncRules": [${rule}]\n}`
 			);
-			const reload = await selection.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload([
+				onDisk("/repo/default.rogen.json"),
+			]);
 
 			expect(reload).toEqual({ changed: [], notices: [] });
 			expect(resolved(0)?.warnings).toMatchObject([
@@ -380,7 +413,9 @@ describe("CoreConfigService", () => {
 	"bogus": {}
 }`
 			);
-			const reload = await selection.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload([
+				onDisk("/repo/default.rogen.json"),
+			]);
 
 			expect(resolved(0)?.projectName).toBe("A");
 			expect(errors(0)).toMatchObject([
@@ -405,7 +440,9 @@ describe("CoreConfigService", () => {
 			await start();
 
 			await write("/repo/default.rogen.json", { modes: {}, mode: "x" });
-			const reload = await selection.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload([
+				onDisk("/repo/default.rogen.json"),
+			]);
 
 			expect(errors(0)).toHaveLength(2);
 			expect(
@@ -422,7 +459,9 @@ describe("CoreConfigService", () => {
 			await start();
 
 			await write("/repo/default.rogen.json", { modes: {} });
-			const reload = await selection.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload([
+				onDisk("/repo/default.rogen.json"),
+			]);
 
 			expect(reload).toEqual({ changed: [], notices: [] });
 		});
@@ -431,10 +470,12 @@ describe("CoreConfigService", () => {
 			await write("/repo/default.rogen.json", { name: "A" });
 			await start();
 			await write("/repo/default.rogen.json", { modes: {} });
-			await selection.reload(["/repo/default.rogen.json"]);
+			await selection.reload([onDisk("/repo/default.rogen.json")]);
 
 			await write("/repo/default.rogen.json", { name: "C" });
-			const reload = await selection.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload([
+				onDisk("/repo/default.rogen.json"),
+			]);
 
 			expect(errors(0)).toEqual([]);
 			expect(resolved(0)?.projectName).toBe("C");
@@ -451,7 +492,9 @@ describe("CoreConfigService", () => {
 			await start();
 
 			await write("/repo/default.rogen.json", { name: "A" });
-			const reload = await selection.reload(["/repo/default.rogen.json"]);
+			const reload = await selection.reload([
+				onDisk("/repo/default.rogen.json"),
+			]);
 
 			expect(resolved(0)?.projectName).toBe("A");
 			expect(reload.changed).toEqual(["/repo/default.rogen.json"]);
@@ -464,7 +507,9 @@ describe("CoreConfigService", () => {
 			await start({ names: ["game"] });
 
 			await write("/repo/lobby.rogen.json", game);
-			const reload = await selection.reload(["/repo/lobby.rogen.json"]);
+			const reload = await selection.reload([
+				onDisk("/repo/lobby.rogen.json"),
+			]);
 
 			expect(errors(0).map(({ code }) => code)).toEqual([
 				"config.identicalConfig",
@@ -479,7 +524,7 @@ describe("CoreConfigService", () => {
 			await start();
 			const [before] = selection.entries;
 
-			await selection.reload(["/repo/unrelated.json"]);
+			await selection.reload([onDisk("/repo/unrelated.json")]);
 
 			expect(selection.entries[0]).toBe(before);
 		});
@@ -500,12 +545,14 @@ describe("CoreConfigService", () => {
 			});
 			await fs.delete("/repo/lobby.rogen.json");
 			const reload = await here.reload([
-				"/repo/arena.rogen.json",
-				"/repo/lobby.rogen.json",
+				onDisk("/repo/arena.rogen.json"),
+				onDisk("/repo/lobby.rogen.json"),
 			]);
 
-			expect(here.concerns("/repo/arena.rogen.json")).toBe(true);
-			expect(here.concerns("/repo/src/arena.rogen.json")).toBe(false);
+			expect(here.concerns(onDisk("/repo/arena.rogen.json"))).toBe(true);
+			expect(here.concerns(onDisk("/repo/src/arena.rogen.json"))).toBe(
+				false
+			);
 			expect(here.entries.map(({ file }) => file)).toEqual([
 				"/repo/default.rogen.json",
 				"/repo/arena.rogen.json",

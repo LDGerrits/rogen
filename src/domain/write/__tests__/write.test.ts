@@ -1,3 +1,4 @@
+import { toPosix } from "../../../base/path.js";
 import path from "path";
 import {
 	errorDiagnostic,
@@ -131,8 +132,12 @@ describe("domain/write/write", () => {
 		it("should match the staging files of any writer", () => {
 			const { stagingPattern } = new OutputFile(projectFile);
 
-			expect(stagingPattern.test(staged(projectFile, "a1b2"))).toBe(true);
-			expect(stagingPattern.test(staged(projectFile, "c3d4"))).toBe(true);
+			expect(
+				stagingPattern.test(toPosix(staged(projectFile, "a1b2")))
+			).toBe(true);
+			expect(
+				stagingPattern.test(toPosix(staged(projectFile, "c3d4")))
+			).toBe(true);
 		});
 
 		it("should not match the project file itself or another file", () => {

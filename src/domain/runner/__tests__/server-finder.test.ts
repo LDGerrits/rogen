@@ -1,3 +1,5 @@
+import { isWindows } from "../../../base/platform.js";
+import path from "path";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
@@ -5,6 +7,8 @@ import { ToolLocator } from "../../toolchain/tool-locator.js";
 import { ServerFinder } from "../server-finder.js";
 
 const ROJO_VERSION = { code: 0, stdout: "Rojo 7.7.1\n", stderr: "" };
+
+const rokitRojo = `/home/me/.rokit/bin/rojo${isWindows ? ".exe" : ""}`;
 
 describe("ServerFinder", () => {
 	let fs: MemoryFileSystemService;
@@ -47,8 +51,8 @@ describe("ServerFinder", () => {
 	});
 
 	it("should look in Rokit's bin folder when the PATH has no server", async () => {
-		await fs.writeFile("/home/me/.rokit/bin/rojo", "");
-		processes.outputs.set("/home/me/.rokit/bin/rojo", ROJO_VERSION);
+		await fs.writeFile(rokitRojo, "");
+		processes.outputs.set(path.normalize(rokitRojo), ROJO_VERSION);
 		finder = new ServerFinder(
 			new CoreToolchainService(fs),
 			processes,
@@ -57,7 +61,7 @@ describe("ServerFinder", () => {
 
 		const tool = (await find()).unwrap();
 
-		expect(tool.file).toBe("/home/me/.rokit/bin/rojo");
+		expect(tool.file).toEqual(rokitRojo);
 	});
 
 	it("should prefer the server on the PATH to Rokit's", async () => {
@@ -70,7 +74,7 @@ describe("ServerFinder", () => {
 			new ToolLocator(processes, fs, "/home/me")
 		);
 
-		expect((await find()).unwrap().file).toBe("/usr/bin/rojo");
+		expect((await find()).unwrap().file).toEqual("/usr/bin/rojo");
 	});
 
 	it("should let the caller end the version check", async () => {
@@ -93,7 +97,7 @@ describe("ServerFinder", () => {
 		const diagnostic = await diagnosticOf();
 
 		expect(diagnostic.code).toBe("rojo.notInstalled");
-		expect(diagnostic.resource).toBe("/repo/rokit.toml");
+		expect(diagnostic.resource).toEqual("/repo/rokit.toml");
 		expect(diagnostic.message).toBe(
 			"rokit.toml pins Rojo as rojo, but it isn't installed. Run 'rokit install'."
 		);
@@ -106,8 +110,8 @@ describe("ServerFinder", () => {
 		const diagnostic = await diagnosticOf();
 
 		expect(diagnostic.code).toBe("rojo.notFound");
-		expect(diagnostic.resource).toBe("/repo/game/default.rogen.json");
-		expect(diagnostic.message).toBe(
+		expect(diagnostic.resource).toEqual("/repo/game/default.rogen.json");
+		expect(diagnostic.message).toEqual(
 			"No Rojo found: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
 		);
 		expect(diagnostic.fixes).toEqual([
@@ -124,7 +128,7 @@ describe("ServerFinder", () => {
 		processes.installed.set("rojo", "/bin/rojo");
 		processes.outputs.set("/bin/rojo", ROJO_VERSION);
 
-		expect((await find()).unwrap().file).toBe("/bin/rojo");
+		expect((await find()).unwrap().file).toEqual("/bin/rojo");
 	});
 
 	it("should say that rogen serve only starts Rojo when only Argon is pinned", async () => {
@@ -151,7 +155,7 @@ describe("ServerFinder", () => {
 
 		const diagnostic = await diagnosticOf();
 
-		expect(diagnostic.message).toBe(
+		expect(diagnostic.message).toEqual(
 			"No Rojo found: none is pinned in a toolchain file here or above, or on the PATH. Pin rojo-rbx/rojo in foreman.toml, install it, then run 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
 		);
 		expect(diagnostic.fixes).toEqual([
@@ -170,7 +174,7 @@ describe("ServerFinder", () => {
 		const diagnostic = await diagnosticOf();
 
 		expect(diagnostic.code).toBe("rojo.unusable");
-		expect(diagnostic.message).toBe(
+		expect(diagnostic.message).toEqual(
 			"'rojo --version' failed, so Rojo can't start: ERROR Failed to find tool 'rojo' in any project manifest file. If Rojo isn't pinned yet, run 'rokit add rojo-rbx/rojo'. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
 		);
 		expect(diagnostic.fixes).toEqual([
@@ -187,8 +191,8 @@ describe("ServerFinder", () => {
 
 		const diagnostic = await diagnosticOf();
 
-		expect(diagnostic.resource).toBe("/repo/game/rokit.toml");
-		expect(diagnostic.message).toBe(
+		expect(diagnostic.resource).toEqual("/repo/game/rokit.toml");
+		expect(diagnostic.message).toEqual(
 			"'rojo --version' failed, so Rojo can't start: spawn /bin/rojo ENOENT. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
 		);
 		expect(diagnostic.fixes).toBeUndefined();
