@@ -2,7 +2,7 @@ import { DeferredPromise, Sequencer, timeout } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { isWritten } from "../write/write.js";
@@ -13,6 +13,7 @@ import { ServerInfo } from "../runner/rojo-server.js";
 import { WatchSession, WatchUpdate } from "../watch/watch-service.js";
 import {
 	ServeChangeEvent,
+	ServeEnding,
 	ServePlan,
 	ServeSession,
 	ServeTarget,
@@ -31,6 +32,9 @@ import { StartedServer } from "./started-server.js";
 const RECORD_POLL_MS = 250;
 
 const RECORD_WAIT_MS = 5_000;
+
+/** How long the shutdown that a server interrupted with Rogen means is waited for, since on Windows its exit can come first. */
+const SHUTDOWN_GRACE_MS = 1_000;
 
 /** Watches the plan's configs and keeps a started server for each config to serve. */
 export class CoreServeSession
@@ -69,11 +73,6 @@ export class CoreServeSession
 	);
 	readonly onDidChange: Event<ServeChangeEvent> = this._onDidChange.event;
 
-	private readonly _onDidExit = this._register(
-		new Emitter<ServerExitEvent>()
-	);
-	readonly onDidExit: Event<ServerExitEvent> = this._onDidExit.event;
-
 	private readonly servers = new Map<string, StartedServer>();
 	private readonly retirements = new Set<Promise<void>>();
 	private readonly declined = new Map<
@@ -82,10 +81,12 @@ export class CoreServeSession
 	>();
 	private readonly writtenConfigs = new Set<string>();
 	private readonly reconciling = new Sequencer();
-	private readonly firstLaunch = new DeferredPromise<Result<void, Error>>();
 	private readonly exits = new Sequencer();
-	private stopping = false;
+	/** Whether the first launch is done, so later writes only follow the configs. */
+	private launched = false;
+	/** Aborts once the session ends, for whichever reason came first; every step after it does nothing. */
 	private readonly halted = new AbortController();
+	private readonly ending = new DeferredPromise<ServeEnding>();
 	private stopped: Promise<void> | undefined;
 
 	constructor(
@@ -111,8 +112,9 @@ export class CoreServeSession
 		);
 		this._register(
 			watch.onDidError((error) => {
-				this.firstLaunch.complete(err(error));
-				this._onDidError.fire(error);
+				if (this.launched || this.isHalted)
+					this._onDidError.fire(error);
+				else this.halt({ kind: "refused", error });
 			})
 		);
 	}
@@ -121,20 +123,55 @@ export class CoreServeSession
 		return [...this.servers.values()][0]?.target;
 	}
 
-	async start(): Promise<Result<void, Error>> {
-		const watching = await this.watch.start();
-		if (watching.isErr()) {
-			this._onDidError.fire(watching.error);
-			return watching;
+	async run(shutdown: AbortSignal): Promise<ServeEnding> {
+		const onShutdown = () => this.stop().catch(onUnexpectedError);
+		if (shutdown.aborted) onShutdown();
+		else shutdown.addEventListener("abort", onShutdown, { once: true });
+		try {
+			const watching = await this.watch.start();
+			if (watching.isErr())
+				this.halt({ kind: "refused", error: watching.error });
+			const ending = await this.ending.p;
+			if (ending.kind === "exited" && ending.exit.kind === "interrupted")
+				await timeout(SHUTDOWN_GRACE_MS, shutdown);
+			await this.stop();
+			return shutdown.aborted ? this.shutdownAfter(ending) : ending;
+		} finally {
+			shutdown.removeEventListener("abort", onShutdown);
 		}
-		return this.firstLaunch.p;
 	}
 
-	stop(): Promise<void> {
-		this.stopping = true;
+	private get isHalted(): boolean {
+		return this.halted.signal.aborted;
+	}
+
+	private halt(ending: ServeEnding): void {
+		if (this.isHalted) return;
 		this.halted.abort();
+		this.ending.complete(ending);
+	}
+
+	/** The shutdown's ending, telling a server's stop that came first unless the shutdown caused it, and the server the shutdown ended when it is another. */
+	private shutdownAfter(ending: ServeEnding): ServeEnding {
+		if (ending.kind === "refused") return ending;
+		const exit =
+			ending.kind === "exited" && ending.exit.kind !== "interrupted"
+				? ending.exit
+				: undefined;
+		const ended =
+			this.target ??
+			(ending.kind === "exited" ? ending.exit.target : undefined);
+		return {
+			kind: "shutdown",
+			...(exit && { exit }),
+			...(ended &&
+				ended.config.id !== exit?.target.config.id && { ended }),
+		};
+	}
+
+	private stop(): Promise<void> {
+		this.halt({ kind: "shutdown" });
 		this.stopped ??= (async () => {
-			this.firstLaunch.complete(ok(undefined));
 			const servers = [...this.servers.values()];
 			await Promise.all([
 				...servers.map((server) => server.terminate()),
@@ -162,47 +199,46 @@ export class CoreServeSession
 			}
 			this.writtenConfigs.add(outcome.config.id);
 		}
-		if (this.firstLaunch.isSettled) {
-			if (!(await this.firstLaunch.p).isOk()) return;
+		if (this.isHalted) return;
+		if (this.launched) {
 			await this.reportIncompatible(update);
 			await this.reconcile();
 			return;
 		}
 		try {
-			const launched = await this.launchFirst(update);
-			if (launched) this.firstLaunch.complete(launched);
+			await this.launchFirst(update);
 		} catch (error) {
-			this.firstLaunch.complete(err(ErrorUtils.fromUnknown(error)));
+			this.halt({
+				kind: "refused",
+				error: ErrorUtils.fromUnknown(error),
+			});
 		}
 	}
 
-	/** Ends any orphan, checks the Rojo that runs and starts the target's server; undefined while no config is written yet. */
-	private async launchFirst(
-		update: WatchUpdate
-	): Promise<Result<void, Error> | undefined> {
+	/** Ends any orphan, checks the Rojo that runs and starts the target's server; waits for another write while no config is written yet. */
+	private async launchFirst(update: WatchUpdate): Promise<void> {
 		const incompatible = await this.problemsIn(update);
-		if (this.firstLaunch.isSettled) return undefined;
+		if (this.isHalted) return;
 		if (incompatible.length > 0) {
-			const refusal = new DiagnosticsError(incompatible);
-			this._onDidError.fire(refusal);
-			return err(refusal);
+			this.halt({
+				kind: "refused",
+				error: new DiagnosticsError(incompatible),
+			});
+			return;
 		}
-		if (this.writtenConfigs.size === 0) return undefined;
+		if (this.writtenConfigs.size === 0) return;
 		const { target } = this.plan;
-		if (!this.writtenConfigs.has(target.config.id)) {
-			await this.reconcile();
-			return ok(undefined);
-		}
-		if (!isServed(target)) {
+		if (!this.writtenConfigs.has(target.config.id)) await this.reconcile();
+		else if (!isServed(target)) {
 			await this.endOrphanOf(target);
-			if (this.firstLaunch.isSettled) return undefined;
+			if (this.isHalted) return;
 			this.launch(target);
 		} else
 			this.declined.set(target.config.id, {
 				kind: "elsewhere",
 				address: target.address.toString(),
 			});
-		return ok(undefined);
+		this.launched = true;
 	}
 
 	/** What the Rojo that runs can't serve of the project files `update` wrote. */
@@ -227,13 +263,13 @@ export class CoreServeSession
 		const { configs } = selection;
 		const wanted = new Set(configs.map(({ id }) => id));
 		for (const [file, server] of this.servers) {
-			if (this.stopping) return;
+			if (this.isHalted) return;
 			if (!wanted.has(file)) await this.retire(server, "removed");
 		}
 		for (const file of [...this.declined.keys()])
 			if (!wanted.has(file)) this.declined.delete(file);
 		for (const config of configs) {
-			if (this.stopping) return;
+			if (this.isHalted) return;
 			await this.follow(config);
 		}
 	}
@@ -256,7 +292,7 @@ export class CoreServeSession
 		const samePort = started?.target.address.port === target.address.port;
 		const checked =
 			started && samePort ? ok(target) : await this.ports.check(target);
-		if (this.stopping) return;
+		if (this.isHalted) return;
 		await this.settle(target, started, declinedHere, checked);
 	}
 
@@ -322,7 +358,7 @@ export class CoreServeSession
 		const { orphan } = target;
 		if (
 			!orphan?.pid ||
-			this.stopping ||
+			this.isHalted ||
 			!this.rojoRunner.isRunning(orphan.pid)
 		)
 			return;
@@ -344,25 +380,25 @@ export class CoreServeSession
 		});
 	}
 
-	/** Reports the stop, as a stand-down when the server failed to start because another serve's took its address first; that wait ends with the session. */
+	/** Ends the session with the stop, as a stand-down when the server failed to start because another serve's took its address first; that wait ends with the session. */
 	private stoppedServer(stop: ServerExitEvent, served: boolean): void {
 		if (stop.kind !== "failed" || served) {
-			this._onDidExit.fire(stop);
+			this.halt({ kind: "exited", exit: stop });
 			return;
 		}
 		this.exits
 			.queue(async () => {
 				const servedBy = await this.waitForAnotherServe(stop.target);
-				if (this.stopping) return;
-				this._onDidExit.fire(
-					servedBy
+				this.halt({
+					kind: "exited",
+					exit: servedBy
 						? {
 								kind: "served-elsewhere",
 								target: stop.target,
 								servedBy,
 							}
-						: stop
-				);
+						: stop,
+				});
 			})
 			.catch((error) =>
 				this._onDidError.fire(ErrorUtils.fromUnknown(error))
@@ -388,7 +424,7 @@ export class CoreServeSession
 	}
 
 	private launch(target: ServeTarget): void {
-		if (this.stopping) return;
+		if (this.isHalted) return;
 		const server: StartedServer = new StartedServer(
 			target,
 			this.plan,

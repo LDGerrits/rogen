@@ -1,16 +1,10 @@
-import { DeferredPromise, timeout } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
-import { onUnexpectedError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	ProjectArgument,
 	singleProjectError,
 } from "../../domain/config/config-service.js";
-import {
-	ServerExitEvent,
-	ServeService,
-	ServeSession,
-} from "../../domain/serve/serve-service.js";
+import { ServeEnding, ServeService } from "../../domain/serve/serve-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
@@ -33,8 +27,6 @@ import {
 	serveLineShape,
 } from "./serve-log.js";
 import { refreshAgentRules } from "../write/refresh-agent-rules.js";
-
-const SHUTDOWN_GRACE_MS = 1000;
 
 const AddressOption = {
 	name: "address",
@@ -130,19 +122,18 @@ registerCommand(
 			if (tooMany) return err(tooMany);
 			const serveService = accessor.get(ServeService);
 
+			const lifecycle = accessor.get(LifecycleService);
 			const store = new DisposableStore();
-			const shutdown = this.untilShutdown(accessor, store);
-			const stopChecks = new AbortController();
-			void shutdown.p.then(() => stopChecks.abort());
+			const shutdown = new AbortController();
+			store.add(lifecycle.onWillShutdown(() => shutdown.abort()));
 			try {
 				await refreshAgentRules(accessor, Boolean(line.options.json));
 				const plan = await serveService.prepare({
-					signal: stopChecks.signal,
+					signal: shutdown.signal,
 					refs: line.positionals,
 					serverArgs: serverArgsOf(line),
 				});
-				if (shutdown.isSettled)
-					return this.stoppedBy(accessor.get(LifecycleService));
+				if (shutdown.signal.aborted) return this.stoppedBy(lifecycle);
 				if (plan.isErr()) return plan;
 
 				const log: ServeReporter = line.options.json
@@ -167,12 +158,23 @@ registerCommand(
 				}
 				const session = serveService.serve(plan.value);
 				if (session.isErr()) return session;
-				store.add(session.value);
-				return await this.serve(
-					accessor.get(LifecycleService),
-					session.value,
+				const { value } = session;
+				store.add(value);
+				store.add(value.onDidUpdate((update) => log.update(update)));
+				store.add(value.onDidError((error) => log.error(error)));
+				store.add(value.onDidServe((serving) => log.serving(serving)));
+				store.add(
+					value.onDidRestart((restart) => log.restarted(restart))
+				);
+				store.add(value.onDidOutput((said) => log.said(said)));
+				store.add(
+					value.onDidConnect((change) => log.connection(change))
+				);
+				store.add(value.onDidChange((change) => log.changed(change)));
+				return this.ended(
+					lifecycle,
 					log,
-					shutdown
+					await value.run(shutdown.signal)
 				);
 			} finally {
 				store[Symbol.dispose]();
@@ -185,82 +187,37 @@ registerCommand(
 			return stopped ? this.reported(stopped) : ok(undefined);
 		}
 
-		/** Waits a little for the shutdown that a server interrupted with Rogen means is coming, since on Windows its exit can come first. */
-		private async shutdownAfter(
-			shutdown: DeferredPromise<void>
-		): Promise<void> {
-			const waited = new AbortController();
-			await Promise.race([
-				shutdown.p,
-				timeout(SHUTDOWN_GRACE_MS, waited.signal),
-			]);
-			waited.abort();
-		}
-
-		private async serve(
+		private ended(
 			lifecycle: LifecycleService,
-			session: ServeSession,
 			log: ServeReporter,
-			shutdown: DeferredPromise<void>
-		): Promise<Result<void, Error>> {
-			const store = new DisposableStore();
-			const stopped = new DeferredPromise<ServerExitEvent>();
-			store.add(session.onDidUpdate((update) => log.update(update)));
-			store.add(session.onDidError((error) => log.error(error)));
-			store.add(session.onDidServe((serving) => log.serving(serving)));
-			store.add(
-				session.onDidRestart((restart) => log.restarted(restart))
-			);
-			store.add(session.onDidOutput((said) => log.said(said)));
-			store.add(session.onDidConnect((change) => log.connection(change)));
-			store.add(session.onDidChange((change) => log.changed(change)));
-			store.add(session.onDidExit((stop) => stopped.complete(stop)));
-			void shutdown.p.then(() => session.stop()).catch(onUnexpectedError);
-			try {
-				const started = await session.start();
-				if (started.isErr()) {
-					log.abort(started.error);
-					return this.reported(started.error);
-				}
-				const stop = await Promise.race([
-					shutdown.p.then(() => undefined),
-					stopped.p,
-				]);
-				if (stop?.kind === "interrupted")
-					await this.shutdownAfter(shutdown);
-				await session.stop();
-				if (!stop || shutdown.isSettled) {
-					// A stop that came before the signal is still told, unless the signal caused it.
-					const told =
-						stop && stop.kind !== "interrupted" ? stop : undefined;
-					if (told) log.stopped(told);
-					const running = session.target ?? stop?.target;
-					if (running?.config.id !== told?.target.config.id)
-						log.shutdown(running);
+			ending: ServeEnding
+		): Result<void, Error> {
+			if (ending.kind === "refused") {
+				log.abort(ending.error);
+				return this.reported(ending.error);
+			}
+			if (ending.kind === "shutdown") {
+				if (ending.exit) log.stopped(ending.exit);
+				log.shutdown(ending.ended);
+				log.end("Stopped serving.");
+				return this.stoppedBy(lifecycle);
+			}
+			const { exit } = ending;
+			log.stopped(exit);
+			switch (exit.kind) {
+				case "served-elsewhere":
+					log.end(
+						"Another rogen serve started serving this project first, so this one stops."
+					);
+					return ok(undefined);
+				case "stopped":
+				case "interrupted":
 					log.end("Stopped serving.");
-					return this.stoppedBy(lifecycle);
-				}
-				log.stopped(stop);
-				switch (stop.kind) {
-					case "served-elsewhere":
-						log.end(
-							"Another rogen serve started serving this project first, so this one stops."
-						);
-						return ok(undefined);
-					case "stopped":
-					case "interrupted":
-						log.end("Stopped serving.");
-						return ok(undefined);
-					case "crashed":
-					case "failed":
-						log.end("serve failed.");
-						return this.reported(
-							new DiagnosticsError([stop.failure])
-						);
-				}
-			} finally {
-				await session.stop();
-				store[Symbol.dispose]();
+					return ok(undefined);
+				case "crashed":
+				case "failed":
+					log.end("serve failed.");
+					return this.reported(new DiagnosticsError([exit.failure]));
 			}
 		}
 	}

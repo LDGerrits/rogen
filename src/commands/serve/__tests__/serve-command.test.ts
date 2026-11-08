@@ -14,6 +14,7 @@ import { MockProcessService } from "../../../platform/process/__tests__/mock-pro
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
 import { recordFile } from "../../../domain/serve/__tests__/record-fixtures.js";
 import { CoreWriteService } from "../../../domain/write/core-write-service.js";
+import { RojoCompatibility } from "../../../domain/runner/rojo-compatibility.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { ReportedError } from "../../../platform/commands/commands.js";
 
@@ -1042,6 +1043,27 @@ describe("serve command", () => {
 		expect(error).toBeInstanceOf(ReportedError);
 		expect(logService.texts("error")).toEqual(["no access"]);
 	});
+
+	it.each([
+		["in text", {}],
+		["as JSON", { json: true }],
+	] as const)(
+		"should say once %s why it fails when checking the first write throws",
+		async (_, options) => {
+			jest.spyOn(
+				RojoCompatibility.prototype,
+				"problemsIn"
+			).mockRejectedValue(new Error("no rojo here"));
+
+			const error = await failureOf(serve([], options));
+
+			expect(exitCodeOf(error)).toBe(1);
+			expect(processes.spawned).toEqual([]);
+			expect(
+				logService.lines.filter((line) => line.includes("no rojo here"))
+			).toHaveLength(1);
+		}
+	);
 
 	it("should print the reason once as JSON when the watch can't start", async () => {
 		jest.spyOn(watcher, "watch").mockRejectedValue(new Error("no access"));
