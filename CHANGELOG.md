@@ -10,6 +10,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - A warning when a source path holds files but Rojo reads none of them, such as the files of a language that compiles to Luau. `rogen where` prints it when it has no file to list.
 
+### Changed
+
+- A second Ctrl+C while Rogen stops Rojo ends at once and stops every process Rogen started.
+- Esc while you customise `rogen init` goes back to the summary instead of leaving init.
+- A failed `rogen init`, or one stopped with Ctrl+C while it writes, puts the folder back as it was, so running it again finishes the project. Ctrl+C also stops a starter command it runs, such as create-roblox-ts, and exits with 130.
+
+### Fixed
+
+- A second `rogen syncback` in a project folder where one is running stops with `syncback.busy`, instead of deleting the first one's copy of your files. The error names the lock file to remove when no syncback is running.
+- `rogen syncback` stops with an error when it can't read or clear its copy of your files, instead of planning to remove them. Ctrl+C leaves no copy behind, and once syncback writes your files it finishes, says what it wrote and exits with 130.
+- `rogen syncback` writes nothing when the config or the place changed while it asked, and keeps a file it couldn't replace.
+- `rogen syncback` exits with 1 when it can't write the project file again afterwards.
+- `rogen write` with several configs writes the others when one's project file can't be written.
+- A file saved while `serve` or `--watch` starts is in the first project file, and a config saved then takes effect.
+- Ctrl+C on `rogen serve` always exits with 130.
+- Ctrl+C on a Rojo command that Rogen runs once, such as `rogen build -o game.rbxl`, stops Rojo too, so it can't write after the prompt is back.
+- `--watch` follows comment-only config edits, a second config of the same name with the other extension, and a broken config that becomes a copy of another.
+- `rogen init` restores the Rogen hook's script when an agent still runs it but it was deleted.
+- `rogen init --dry-run` no longer says it would create a folder that the files it would write already create.
+- A file deleted while `serve` or `--watch` reads a new folder no longer stays in the project file.
+- `rogen serve` refuses a Rojo that can't serve the project file once a failed first write is fixed, as it does when the first write succeeds, instead of starting it.
+- `rogen serve --json` prints one `stopped` line for a Rojo that failed just before Ctrl+C, instead of two.
+
 ## [2.0.0-beta.3] - 2026-11-01
 
 ### Changed

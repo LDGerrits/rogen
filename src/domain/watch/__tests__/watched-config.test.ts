@@ -1,5 +1,5 @@
 import { DeferredPromise } from "../../../base/async.js";
-import { WrittenConfig } from "../../write/write.js";
+import { SyncWarnings, WrittenConfig } from "../../write/write.js";
 import { configOf } from "../../write/__tests__/fixtures.js";
 import { WatchedConfig } from "../watched-config.js";
 
@@ -15,7 +15,7 @@ describe("WatchedConfig", () => {
 		new WrittenConfig(
 			configOf(),
 			"wrote",
-			{ warnings: [], syncWarnings: undefined },
+			{ warnings: [], sync: SyncWarnings.unknown },
 			summary,
 			readFiles
 		);
@@ -28,10 +28,17 @@ describe("WatchedConfig", () => {
 		expect(watched.reads("C:/repo/src/other.meta.json")).toBe(false);
 	});
 
+	it("should not know what it reads before its first write", () => {
+		expect(new WatchedConfig().readsKnown).toBe(false);
+	});
+
 	it("should know what it reads only when no rewrite is queued and the latest did not fail", async () => {
 		const watched = new WatchedConfig();
 		const gate = new DeferredPromise<void>();
-		const queued = watched.queue(() => gate.p);
+		const queued = watched.queue(async () => {
+			await gate.p;
+			watched.finished(written([]));
+		});
 
 		expect(watched.readsKnown).toBe(false);
 		gate.complete();

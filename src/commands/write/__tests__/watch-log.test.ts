@@ -7,6 +7,7 @@ import {
 import {
 	LoadedConfig,
 	FailedConfig,
+	SyncWarnings,
 	WrittenConfig,
 } from "../../../domain/write/write.js";
 import {
@@ -45,7 +46,7 @@ const wrote: RewriteReport = {
 	outcome: new WrittenConfig(
 		mockEntry({}, path.join(cwd, "default.rogen.json")).config,
 		"wrote",
-		{ warnings: [], syncWarnings: [] },
+		{ warnings: [], sync: SyncWarnings.known([]) },
 		{ roots: [], routes: [], unrouted: 0, replaced: 0, displaced: 0 },
 		[]
 	),
@@ -239,7 +240,10 @@ describe("WatchLog.update", () => {
 			const outcome = new WrittenConfig(
 				entry.config,
 				"unchanged",
-				{ warnings: [warning("a"), warning("b")], syncWarnings: [] },
+				{
+					warnings: [warning("a"), warning("b")],
+					sync: SyncWarnings.known([]),
+				},
 				{
 					roots: [],
 					routes: [],
@@ -281,7 +285,7 @@ describe("WatchLog.update", () => {
 			new WrittenConfig(
 				entry.config,
 				"wrote",
-				{ warnings, syncWarnings: [] },
+				{ warnings, sync: SyncWarnings.known([]) },
 				{
 					roots: [],
 					routes: [],
@@ -332,7 +336,7 @@ describe("WatchLog.update", () => {
 						reportOf(
 							new FailedConfig(entry.config, [error], {
 								warnings: [warning("a"), warning("b")],
-								syncWarnings: [],
+								sync: SyncWarnings.known([]),
 							}),
 							[error],
 							false,
@@ -416,7 +420,10 @@ describe("WatchLog.update", () => {
 							new WrittenConfig(
 								lobby.config,
 								"wrote",
-								{ warnings: [shared], syncWarnings: [] },
+								{
+									warnings: [shared],
+									sync: SyncWarnings.known([]),
+								},
 								writtenWith([]).summary,
 								[]
 							),

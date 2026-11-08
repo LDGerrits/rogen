@@ -73,12 +73,14 @@ export function launch(
 	});
 }
 
+const taskkillTree = (pid: number) => ["/pid", String(pid), "/T", "/F"];
+
 // A toolchain shim starts the real program as a child that outlives it unless the tree ends.
 function killWindowsTree(pid: number): Promise<void> {
 	return new Promise<void>((resolve) =>
 		childProcess.execFile(
 			"taskkill",
-			["/pid", String(pid), "/T", "/F"],
+			taskkillTree(pid),
 			{ windowsHide: true },
 			() => resolve()
 		)
@@ -125,6 +127,28 @@ class FailedChildProcess extends AbstractDisposable implements ChildProcess {
 	}
 }
 
+/** The processes a service started that still run. */
+class RunningChildren {
+	private readonly children = new Set<NativeChildProcess>();
+	private readonly _onDidChangeRunning = new Emitter<boolean>();
+	readonly onDidChangeRunning: Event<boolean> =
+		this._onDidChangeRunning.event;
+
+	add(child: NativeChildProcess): void {
+		this.children.add(child);
+		if (this.children.size === 1) this._onDidChangeRunning.fire(true);
+	}
+
+	delete(child: NativeChildProcess): void {
+		if (this.children.delete(child) && this.children.size === 0)
+			this._onDidChangeRunning.fire(false);
+	}
+
+	killAll(): void {
+		for (const child of this.children) child.kill();
+	}
+}
+
 class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 	private readonly _onDidOutput = this._register(new Emitter<OutputLine>());
 	readonly onDidOutput: Event<OutputLine> = this._onDidOutput.event;
@@ -140,8 +164,18 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 	private readonly exited: Promise<ProcessExit>;
 	private terminating: Promise<ProcessExit> | undefined;
 
-	constructor(private readonly child: childProcess.ChildProcess) {
+	constructor(
+		private readonly child: childProcess.ChildProcess,
+		running: RunningChildren
+	) {
 		super();
+		running.add(this);
+		// On the child itself, since a dispose before the exit drops the listeners of `onDidExit`.
+		const left = () => running.delete(this);
+		child.once("exit", left);
+		child.once("error", () => {
+			if (child.pid === undefined) left();
+		});
 		for (const [stream, name] of [
 			[child.stdout, "stdout"],
 			[child.stderr, "stderr"],
@@ -218,6 +252,15 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 		}
 	}
 
+	kill(): void {
+		if (this.exit || this.child.pid === undefined) return;
+		if (isWindows)
+			childProcess.spawnSync("taskkill", taskkillTree(this.child.pid), {
+				windowsHide: true,
+			});
+		else signalTree(this.child.pid, "SIGKILL", this.child);
+	}
+
 	override [Symbol.dispose](): void {
 		this.terminate().catch(onUnexpectedError);
 		super[Symbol.dispose]();
@@ -226,6 +269,12 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 
 export class NativeProcessService implements ProcessService {
 	declare readonly _serviceBrand: undefined;
+
+	private readonly running = new RunningChildren();
+
+	/** Fires true when a process this service started is the first to run, and false when the last has ended. */
+	readonly onDidChangeRunning: Event<boolean> =
+		this.running.onDidChangeRunning;
 
 	constructor(
 		private readonly env: Readonly<
@@ -312,7 +361,8 @@ export class NativeProcessService implements ProcessService {
 				stdio: ["ignore", "pipe", "pipe"],
 				detached: !isWindows,
 				windowsHide: true,
-			})
+			}),
+			this.running
 		);
 	}
 
@@ -323,6 +373,11 @@ export class NativeProcessService implements ProcessService {
 		} catch (error) {
 			return (error as NodeJS.ErrnoException).code === "EPERM";
 		}
+	}
+
+	/** Kills every process this service started that still runs, and what each started, without waiting; for a process about to exit. */
+	killAll(): void {
+		this.running.killAll();
 	}
 
 	async terminateTree(pid: number): Promise<void> {

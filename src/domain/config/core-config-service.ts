@@ -1,6 +1,6 @@
 import path from "path";
 import { Disposable } from "../../base/disposable.js";
-import { isInside, samePath, toPosix } from "../../base/path.js";
+import { isInside, samePath, shownFrom, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
@@ -31,6 +31,7 @@ import {
 	validFile,
 } from "./config-service.js";
 import { CoreConfigSelection, PickedFolder } from "./core-config-selection.js";
+import { DefaultFolder } from "./default-folder.js";
 import { ManagedConfig } from "./managed-config.js";
 
 export class CoreConfigService implements ConfigService {
@@ -78,12 +79,14 @@ export class CoreConfigService implements ConfigService {
 			await this.selectionOf(
 				files,
 				directory,
-				noneNamed && !files.some(isProjectFileConfig)
-					? {
+				noneNamed
+					? new DefaultFolder(
 							directory,
-							list: () => this.firstConfigIn(directory),
-							holds: isDefaultConfigFileName,
-						}
+							this.discovery,
+							files.some(isProjectFileConfig)
+								? "adopting"
+								: "configured"
+						)
 					: undefined,
 				notes,
 				loader
@@ -121,10 +124,6 @@ export class CoreConfigService implements ConfigService {
 			folder,
 			notes
 		);
-	}
-
-	private async firstConfigIn(directory: string): Promise<string[]> {
-		return (await this.discovery.defaultConfigs(directory)).slice(0, 1);
 	}
 
 	async selectCovering(
@@ -223,9 +222,7 @@ export class CoreConfigService implements ConfigService {
 		const stem =
 			configStem(base) ??
 			(isProjectFileConfig(base) ? projectStem(base) : undefined);
-		const relative = toPosix(path.relative(folder, file));
-		const fileRef =
-			relative === "" || relative.startsWith("..") ? file : relative;
+		const fileRef = shownFrom(folder, file);
 		return stem !== undefined &&
 			samePath(path.dirname(file), folder) &&
 			!(await this.isPath(path.join(folder, stem))) &&

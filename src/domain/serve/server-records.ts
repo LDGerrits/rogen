@@ -1,7 +1,10 @@
 import path from "path";
 import { isObject } from "../../base/objects.js";
 import { samePath } from "../../base/path.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import {
+	FileSystemService,
+	replaceFile,
+} from "../../platform/fs/file-system-service.js";
 import { ServerInfo } from "../runner/rojo-server.js";
 import { ServeAddress } from "./serve.js";
 
@@ -97,8 +100,12 @@ export class ServerRecords {
 		info: ServerInfo,
 		served: ServedProject
 	): Promise<void> {
-		await this.fileSystemService.writeFile(
-			this.fileOf(address.port),
+		const file = this.fileOf(address.port);
+		// The staging name isn't read as a record.
+		await replaceFile(
+			this.fileSystemService,
+			file,
+			`${file}.${this.owner}.tmp`,
 			JSON.stringify({
 				host: address.host,
 				port: address.port,
@@ -112,12 +119,12 @@ export class ServerRecords {
 		);
 	}
 
-	/** Forgets the record of `address` when it is the one this serve wrote for the server that answered with `info`, leaving one another serve wrote since. */
+	/** Forgets the record of `address` when it is the one this serve wrote for the server that answered with `info`, leaving one another serve wrote since. Never fails: a record it can't delete stays, as the record of a serve that ended does. */
 	async remove(address: ServeAddress, info: ServerInfo): Promise<void> {
 		const file = this.fileOf(address.port);
 		const record = await this.read(file);
 		if (record?.owner === this.owner && record.session === info.session)
-			await this.fileSystemService.delete(file);
+			await this.fileSystemService.delete(file).catch(() => undefined);
 	}
 
 	private async read(file: string): Promise<ServerRecord | undefined> {

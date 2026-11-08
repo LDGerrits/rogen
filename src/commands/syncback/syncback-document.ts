@@ -5,6 +5,7 @@ import { ConfigOutcome } from "../../domain/write/write.js";
 import {
 	CompiledChange,
 	SyncbackChange,
+	SyncbackOutcome,
 	SyncbackPlan,
 	UnplacedInstance,
 } from "../../domain/syncback/syncback.js";
@@ -57,20 +58,6 @@ interface SyncbackEntry {
 	readonly error?: unknown;
 }
 
-export type SyncbackOutcome =
-	| { readonly kind: "notRun" }
-	| {
-			readonly kind: "failed";
-			readonly error: Error;
-			/** The config Rojo ran on. */
-			readonly configFile: string;
-	  }
-	| {
-			readonly kind: "planned" | "written";
-			readonly plan: SyncbackPlan;
-			readonly warnings: readonly Diagnostic[];
-	  };
-
 /** A warning for each change to compiled code that syncback left out of the plan. */
 export function compiledDiagnostics(plan: SyncbackPlan): Diagnostic[] {
 	const { compiledPath, projectDir, file } = plan.project;
@@ -118,7 +105,7 @@ export function syncbackEntry(
 		...outcome.warnings,
 	];
 	return {
-		outcome: outcome.kind === "planned" ? "wouldWrite" : outcome.kind,
+		outcome: outcome.kind === "written" ? "written" : "wouldWrite",
 		config: configPath(cwd, outcome.plan.project.file),
 		input,
 		changes: outcome.plan.changes.map(({ kind, file }) => ({ kind, file })),

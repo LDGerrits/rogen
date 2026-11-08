@@ -1,9 +1,13 @@
+import { jest } from "@jest/globals";
 import path from "path";
 import { Result, ResultError, ok } from "../../../base/result.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
+import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
+import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 import {
 	abs,
 	writeServiceOf,
@@ -11,10 +15,12 @@ import {
 	writeFiles,
 } from "../../write/__tests__/fixtures.js";
 import {
+	MockConfigSelection,
 	MockConfigService,
 	mockEntry,
 	selectionOf,
 } from "../../config/__tests__/mock-config-service.js";
+import { ConfigSelection } from "../../config/config-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
 	RojoCommandRequest,
@@ -23,7 +29,7 @@ import {
 } from "../../runner/rojo-command-service.js";
 import { ServerMessage } from "../../runner/rojo-server.js";
 import { CoreSyncbackService } from "../core-syncback-service.js";
-import { SyncbackRequest } from "../syncback.js";
+import { SyncbackPlan, SyncbackRequest } from "../syncback.js";
 import { ROUTES } from "./layout-fixtures.js";
 
 /** A Rojo that records what it was asked and does what the test says it did. */
@@ -36,8 +42,8 @@ class FakeRojo implements RojoCommandService {
 
 	constructor(private readonly fs: MemoryFileSystemService) {}
 
-	choose(): never {
-		throw new Error("not used");
+	choose(selection: ConfigSelection): ResolvedConfig {
+		return selection.configs[0];
 	}
 
 	projects(): never {
@@ -81,6 +87,8 @@ describe("CoreSyncbackService", () => {
 	let fs: MemoryFileSystemService;
 	let configs: MockConfigService;
 	let rojo: FakeRojo;
+	let processes: MockProcessService;
+	let lifecycle: MockLifecycleService;
 	let service: CoreSyncbackService;
 	let config: ResolvedConfig;
 	let request: SyncbackRequest;
@@ -109,12 +117,21 @@ describe("CoreSyncbackService", () => {
 		fs = new MemoryFileSystemService();
 		rojo = new FakeRojo(fs);
 		configs = new MockConfigService([]);
+		processes = new MockProcessService();
+		lifecycle = new MockLifecycleService();
 		service = new CoreSyncbackService(
 			configs,
 			fs,
 			writeServiceOf(fs, new CoreIndexService(fs)),
-			rojo
+			rojo,
+			new MockEnvironmentService("/repo"),
+			processes,
+			lifecycle
 		);
+	});
+
+	afterEach(() => {
+		jest.restoreAllMocks();
 	});
 
 	it("should run Rojo's syncback once, on a project file that mounts a mirror of the files by instance", async () => {
@@ -171,6 +188,410 @@ describe("CoreSyncbackService", () => {
 
 		expect(await fs.exists(abs("rogen-syncback.project.json"))).toBe(false);
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should refuse to run while another syncback holds the folder, touching nothing", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs(".rogen-syncback/lock"), "77");
+		await fs.writeFile(
+			mirror("ServerScriptService", "Combat", "Combat.luau"),
+			"return 1"
+		);
+		processes.running.add(77);
+
+		const planned = await service.plan(request);
+
+		expect(planned.isErr()).toBe(true);
+		const error = (planned as ResultError<DiagnosticsError>).error;
+		expect(error.diagnostics).toMatchObject([
+			{
+				code: "syncback.busy",
+				resource: abs(),
+				message:
+					"another rogen syncback, process 77, is running in this folder, so this one stopped before it touched anything. Wait for it to end, then run syncback again. If no syncback is running, remove .rogen-syncback/lock.",
+			},
+		]);
+		expect(rojo.requests).toHaveLength(0);
+		expect(await fs.readFile(abs(".rogen-syncback/lock"))).toBe("77");
+		expect(
+			await fs.readFile(
+				mirror("ServerScriptService", "Combat", "Combat.luau")
+			)
+		).toBe("return 1");
+	});
+
+	it("should take over the folder from a syncback that was killed, and clean what it left", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs(".rogen-syncback/lock"), "77");
+		await fs.writeFile(mirror("Workspace", "Stale.luau"), "return 1");
+		let lock: string | undefined;
+		let stale: boolean | undefined;
+		rojo.say = async () => {
+			lock = await fs.readFile(abs(".rogen-syncback/lock"));
+			stale = await fs.exists(mirror("Workspace", "Stale.luau"));
+			return [];
+		};
+
+		const planned = await service.plan(request);
+
+		expect(planned.isOk()).toBe(true);
+		expect(lock).toBe("4242");
+		expect(stale).toBe(false);
+	});
+
+	it("should take over a lock that names this process, since no other run is it", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs(".rogen-syncback/lock"), "4242");
+		await fs.writeFile(mirror("Workspace", "Stale.luau"), "return 1");
+		processes.running.add(4242);
+		let stale: boolean | undefined;
+		rojo.say = async () => {
+			stale = await fs.exists(mirror("Workspace", "Stale.luau"));
+			return [];
+		};
+
+		expect((await service.plan(request)).isOk()).toBe(true);
+		expect(stale).toBe(false);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should count a new lock that names no owner yet as held", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs(".rogen-syncback/lock"), "");
+
+		const planned = await service.plan(request);
+
+		expect(planned.isErr()).toBe(true);
+		expect(
+			(planned as ResultError<DiagnosticsError>).error.diagnostics
+		).toMatchObject([{ code: "syncback.busy" }]);
+		expect(await fs.readFile(abs(".rogen-syncback/lock"))).toBe("");
+	});
+
+	it("should take over an old lock that names no owner", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs(".rogen-syncback/lock"), "");
+		const now = Date.now();
+		jest.spyOn(Date, "now").mockReturnValue(now + 60_000);
+
+		expect((await service.plan(request)).isOk()).toBe(true);
+	});
+
+	it("should not take over a lock another run made after it found a killed one's", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs(".rogen-syncback/lock"), "77");
+		const read = fs.readFile.bind(fs);
+		let raced = false;
+		jest.spyOn(fs, "readFile").mockImplementation(async (file) => {
+			const text = await read(file);
+			if (file === abs(".rogen-syncback/lock") && !raced) {
+				raced = true;
+				await fs.delete(file);
+				await fs.createFile(file, "88");
+				processes.running.add(88);
+			}
+			return text;
+		});
+
+		const planned = await service.plan(request);
+
+		expect(planned.isErr()).toBe(true);
+		expect(
+			(planned as ResultError<DiagnosticsError>).error.diagnostics
+		).toMatchObject([
+			{ code: "syncback.busy", message: expect.stringContaining("88") },
+		]);
+		expect(await read(abs(".rogen-syncback/lock"))).toBe("88");
+		expect(rojo.requests).toHaveLength(0);
+	});
+
+	it("should leave the files another run makes while it takes over a lock, until it lets go of the folder", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs(".rogen-syncback/lock.88"), "77");
+		await fs.writeFile(abs(".rogen-syncback/lock.1234.tmp"), "88");
+		let left: boolean[] | undefined;
+		rojo.say = async () => {
+			left = [
+				await fs.exists(abs(".rogen-syncback/lock.88")),
+				await fs.exists(abs(".rogen-syncback/lock.1234.tmp")),
+			];
+			return [];
+		};
+
+		expect((await service.plan(request)).isOk()).toBe(true);
+		expect(left).toEqual([true, true]);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should take the folder when it was let go of while the lock was being made", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		const create = fs.createFile.bind(fs);
+		let released = false;
+		jest.spyOn(fs, "createFile").mockImplementation(
+			async (file, content) => {
+				if (!released) {
+					released = true;
+					throw Object.assign(new Error("ENOENT: no such file"), {
+						code: "ENOENT",
+					});
+				}
+				return create(file, content);
+			}
+		);
+		let lock: string | undefined;
+		rojo.say = async () => {
+			lock = await fs.readFile(abs(".rogen-syncback/lock"));
+			return [];
+		};
+
+		expect((await service.plan(request)).isOk()).toBe(true);
+		expect(lock).toBe("4242");
+	});
+
+	it("should let the next syncback run once one has ended, whether it succeeded or failed", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		rojo.say = async () =>
+			new DiagnosticsError([
+				errorDiagnostic("rojo.failed", { resource: "/repo" }, "no"),
+			]);
+		processes.running.add(4242);
+
+		expect((await service.plan(request)).isErr()).toBe(true);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+
+		rojo.say = async () => [];
+
+		expect((await service.plan(request)).isOk()).toBe(true);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+		expect((await service.plan(request)).isOk()).toBe(true);
+	});
+
+	it("should fail, and plan no removal, when the mirror can't be read after Rojo ran", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		rojo.say = async () => {
+			fs.refuseListing(abs(".rogen-syncback/mirror"), "EPERM");
+			return [];
+		};
+
+		const planned = await service.plan(request);
+
+		expect(planned.isErr()).toBe(true);
+		expect((planned as ResultError<Error>).error.message).toContain(
+			abs(".rogen-syncback/mirror")
+		);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should fail, and plan no removal, when a folder in the mirror can't be read", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		rojo.say = async () => {
+			fs.refuseListing(mirror("ServerScriptService", "Combat"), "EPERM");
+			return [];
+		};
+
+		const planned = await service.plan(request);
+
+		expect(planned.isErr()).toBe(true);
+		expect((planned as ResultError<Error>).error.message).toContain(
+			abs(".rogen-syncback/mirror")
+		);
+		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
+			true
+		);
+	});
+
+	it("should fail, and plan no removal, when the mirror is gone after Rojo ran", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		rojo.say = async () => {
+			await fs.delete(abs(".rogen-syncback/mirror"), true);
+			return [];
+		};
+
+		const planned = await service.plan(request);
+
+		expect(planned.isErr()).toBe(true);
+	});
+
+	it("should plan nothing for a project that mounts no folder", async () => {
+		await prepare([], {
+			sourcePaths: [],
+			routes: {},
+			project: {
+				name: "Value",
+				tree: { $className: "BinaryStringValue" },
+			},
+		});
+
+		const planned = await service.plan(request);
+
+		expect(planned.isOk() && planned.value.changes).toEqual([]);
+	});
+
+	it.each([
+		["the mirror an earlier run left", ".rogen-syncback/mirror"],
+		["the project file an earlier run left", "rogen-syncback.project.json"],
+	])(
+		"should fail before it copies anything when %s can't be removed",
+		async (_, left) => {
+			await prepare(["src/Combat/Server/Combat.luau"]);
+			await fs.writeFile(
+				mirror("ServerScriptService", "Combat", "Combat.luau"),
+				"return 1"
+			);
+			await fs.writeFile(abs("rogen-syncback.project.json"), "{}");
+			const remove = fs.delete.bind(fs);
+			jest.spyOn(fs, "delete").mockImplementation(
+				async (target, recursive) => {
+					if (target === abs(left))
+						throw Object.assign(new Error("EBUSY: resource busy"), {
+							code: "EBUSY",
+						});
+					return remove(target, recursive);
+				}
+			);
+
+			const planned = await service.plan(request);
+
+			expect(planned.isErr()).toBe(true);
+			expect((planned as ResultError<Error>).error.message).toContain(
+				abs(left)
+			);
+			expect(rojo.requests).toHaveLength(0);
+			expect(await fs.exists(abs(".rogen-syncback/lock"))).toBe(false);
+		}
+	);
+
+	it("should remove its files at once, and keep its lock until Rojo stopped, when the run is asked to shut down while Rojo runs", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		let left: boolean | undefined;
+		let locked: boolean | undefined;
+		rojo.say = async () => {
+			lifecycle.shutdown("SIGINT");
+			while (await fs.exists(abs(".rogen-syncback/mirror")))
+				await new Promise((resolve) => setImmediate(resolve));
+			left = await fs.exists(abs("rogen-syncback.project.json"));
+			locked = await fs.exists(abs(".rogen-syncback/lock"));
+			return [];
+		};
+
+		const planned = await service.plan(request);
+
+		expect(planned.isErr()).toBe(true);
+		expect(left).toBe(false);
+		expect(locked).toBe(true);
+		expect(rojo.requests[0].signal?.aborted).toBe(true);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should write nothing when a run that writes is asked to shut down while Rojo runs", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Combat"), true);
+			lifecycle.shutdown("SIGINT");
+			return ["Removing ServerScriptService/Combat"];
+		};
+
+		const applied = await service.apply(request);
+
+		expect(applied.isErr()).toBe(true);
+		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
+			true
+		);
+		expect(await fs.exists(abs("rogen-syncback.project.json"))).toBe(false);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should report what it wrote when a run is asked to shut down while it writes", async () => {
+		await prepare([]);
+		await fs.writeFile(abs("src/Inventory/Bag@server.luau"), "return 1");
+		await prepare([]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Bag.luau"),
+				"return 2"
+			);
+			return [];
+		};
+		const writeBytes = fs.writeFileBytes.bind(fs);
+		jest.spyOn(fs, "writeFileBytes").mockImplementation(
+			async (file, bytes) => {
+				lifecycle.shutdown("SIGINT");
+				return writeBytes(file, bytes);
+			}
+		);
+
+		const result = (await service.apply(request)).unwrap();
+
+		expect(result.changes).toEqual([
+			{ kind: "write", file: abs("src/Inventory/Bag@server.luau") },
+		]);
+		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+			"return 2"
+		);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should keep its lock until it finished writing when a run is asked to shut down while it writes", async () => {
+		await prepare([]);
+		await fs.writeFile(abs("src/Inventory/Bag@server.luau"), "return 1");
+		await prepare([]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Bag.luau"),
+				"return 2"
+			);
+			return [];
+		};
+		const locked: boolean[] = [];
+		const writeBytes = fs.writeFileBytes.bind(fs);
+		jest.spyOn(fs, "writeFileBytes").mockImplementation(
+			async (file, bytes) => {
+				lifecycle.shutdown("SIGINT");
+				for (let i = 0; i < 20; i++)
+					await new Promise((resolve) => setImmediate(resolve));
+				locked.push(await fs.exists(abs(".rogen-syncback/lock")));
+				return writeBytes(file, bytes);
+			}
+		);
+
+		const applied = await service.apply(request);
+
+		expect(applied.isOk()).toBe(true);
+		expect(locked).toEqual([true]);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should write nothing when a run is asked to shut down after Rojo ran and before it writes", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Combat"), true);
+			return ["Removing ServerScriptService/Combat"];
+		};
+
+		const applied = await service.apply(request, async () => {
+			lifecycle.shutdown("SIGINT");
+			return true;
+		});
+
+		expect(applied.isErr()).toBe(true);
+		expect((applied as ResultError<Error>).error.message).toBe(
+			"Syncback stopped before it finished, so nothing was written."
+		);
+		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
+			true
+		);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should stop listening for a shutdown once the run ended", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await service.plan(request);
+		await fs.writeFile(abs(".rogen-syncback/lock"), "77");
+
+		lifecycle.shutdown("SIGINT");
+		await Promise.resolve();
+
+		expect(await fs.readFile(abs(".rogen-syncback/lock"))).toBe("77");
 	});
 
 	it("should write an edit into the source file, with the line endings it had", async () => {
@@ -1614,6 +2035,49 @@ describe("CoreSyncbackService", () => {
 		]);
 	});
 
+	it("should hold the folder from the plan until it has written, while it waits to go on", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Bag.luau"),
+				"return 2"
+			);
+			return [];
+		};
+		let lock: string | undefined;
+
+		const applied = await service.apply(request, async () => {
+			lock = await fs.readFile(abs(".rogen-syncback/lock"));
+			return true;
+		});
+
+		expect(applied.isOk()).toBe(true);
+		expect(lock).toBe("4242");
+		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+			"return 2"
+		);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should write nothing, and let go of the folder, when told not to go on", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Bag.luau"),
+				"return 2"
+			);
+			return [];
+		};
+
+		const applied = await service.apply(request, async () => false);
+
+		expect(applied.isOk() && applied.value).toBeUndefined();
+		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+			""
+		);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
 	it("should write the plan it was shown without running Rojo again", async () => {
 		await prepare(["src/Inventory/Bag@server.luau"]);
 		rojo.say = async () => {
@@ -1623,12 +2087,17 @@ describe("CoreSyncbackService", () => {
 			);
 			return [];
 		};
-		const shown = (await service.plan(request)).unwrap();
+		let shown: SyncbackPlan | undefined;
 
-		const result = (await service.apply(request, shown)).unwrap();
+		const result = (
+			await service.apply(request, async (plan) => {
+				shown = plan;
+				return true;
+			})
+		).unwrap();
 
 		expect(rojo.requests).toHaveLength(1);
-		expect(result.changes).toEqual(shown.changes);
+		expect(result?.changes).toEqual(shown?.changes);
 		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
 			"return 2"
 		);
@@ -1643,15 +2112,85 @@ describe("CoreSyncbackService", () => {
 			);
 			return [];
 		};
-		const shown = (await service.plan(request)).unwrap();
-		await fs.writeFile(abs("src/Inventory/Bag@server.luau"), "edited");
 
-		const applied = await service.apply(request, shown);
+		const applied = await service.apply(request, async () => {
+			await fs.writeFile(abs("src/Inventory/Bag@server.luau"), "edited");
+			return true;
+		});
 
 		expect(applied.isErr()).toBe(true);
 		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
 			"edited"
 		);
+	});
+
+	it("should write nothing when the config changed since the plan was shown", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Bag.luau"),
+				"return 2"
+			);
+			return [];
+		};
+
+		const applied = await service.apply(request, async () => {
+			await fs.writeFile(abs("default.rogen.json"), "{}");
+			return true;
+		});
+
+		expect(applied.isErr()).toBe(true);
+		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+			""
+		);
+	});
+
+	it("should write nothing when the place changed since the plan was shown", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+		await fs.writeFile(abs("game.rbxl"), "first");
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Bag.luau"),
+				"return 2"
+			);
+			return [];
+		};
+
+		const applied = await service.apply(request, async () => {
+			await fs.writeFile(abs("game.rbxl"), "saved again");
+			return true;
+		});
+
+		expect(applied.isErr()).toBe(true);
+		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+			""
+		);
+	});
+
+	it("should keep a renamed file's old file when its new file could not be written", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+		rojo.say = async () => {
+			await fs.delete(
+				mirror("ServerScriptService", "Inventory", "Bag.luau")
+			);
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Pouch.luau"),
+				"return 2"
+			);
+			return [];
+		};
+		const write = fs.writeFileBytes.bind(fs);
+		fs.writeFileBytes = async (file, bytes) => {
+			if (file.includes("Pouch")) throw new Error("denied");
+			return write(file, bytes);
+		};
+
+		const result = (await service.apply(request)).unwrap();
+
+		expect(await fs.exists(abs("src/Inventory/Bag@server.luau"))).toBe(
+			true
+		);
+		expect(result.changes).toEqual([]);
 	});
 
 	it("should list a file it could not write, and write the rest", async () => {
@@ -1770,6 +2309,49 @@ describe("CoreSyncbackService", () => {
 		]);
 	});
 
+	it("should leave out a YAML file the tree keeps under a name of its own", async () => {
+		await writeFiles(fs, "config.yaml");
+		await prepare(["src/Combat/Server/Combat.luau"], {
+			project: {
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Config: { $path: "config.yaml" } },
+				},
+			},
+		});
+		rojo.say = async () =>
+			rojo.requests.length > 1
+				? []
+				: new DiagnosticsError([
+						{
+							...errorDiagnostic(
+								"rojo.commandFailed",
+								{
+									resource: abs(
+										"rogen-syncback.project.json"
+									),
+								},
+								"Rojo couldn't sync back into this project:"
+							),
+							details: [
+								"Failed to syncback ReplicatedStorage/Config because cannot syncback Yaml middleware",
+							],
+						},
+					]);
+
+		const plan = (await service.plan(request)).unwrap();
+
+		expect(JSON.parse(rojo.projectTexts[1]).syncbackRules).toEqual({
+			ignorePaths: [".rogen-syncback/mirror/~kept/0/config.yaml"],
+		});
+		expect(plan.unplaced).toEqual([
+			{
+				instance: "ReplicatedStorage/Config",
+				reason: "Rojo can't sync back a Yaml file, so its change stays in the place; copy it by hand",
+			},
+		]);
+	});
+
 	it("should name the file to delete when Rojo refuses to remove an instance a project file defines", async () => {
 		await prepare([
 			"src/Inventory/Bag@server.luau",
@@ -1870,5 +2452,184 @@ describe("CoreSyncbackService", () => {
 		expect((planned as ResultError<Error>).error.message).toContain(
 			"does not build"
 		);
+	});
+
+	describe("run", () => {
+		const loot = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Loot.luau"),
+				"return 1"
+			);
+			return [];
+		};
+
+		it("should plan a dry run on a check of the project file, and write nothing", async () => {
+			await prepare(["src/Inventory/Bag@server.luau"]);
+			await fs.delete(abs("default.project.json"));
+			rojo.say = loot;
+
+			const { write, outcome } = await service.run(request.selection, {
+				input: "game.rbxl",
+				cwd: "/repo",
+				mode: "dryRun",
+			});
+
+			expect(write.outcomes.map(({ kind }) => kind)).toEqual([
+				"wouldWrite",
+			]);
+			expect(outcome).toMatchObject({
+				kind: "planned",
+				asked: false,
+				plan: {
+					changes: [
+						{
+							kind: "write",
+							file: abs("src/Inventory/Loot@server.luau"),
+						},
+					],
+				},
+			});
+			expect(await fs.exists(abs("default.project.json"))).toBe(false);
+			expect(await fs.exists(abs("src/Inventory/Loot@server.luau"))).toBe(
+				false
+			);
+		});
+
+		it("should write the project file and the changes when told to", async () => {
+			await prepare(["src/Inventory/Bag@server.luau"]);
+			await fs.delete(abs("default.project.json"));
+			rojo.say = loot;
+
+			const { write, outcome } = await service.run(request.selection, {
+				input: "game.rbxl",
+				cwd: "/repo",
+				mode: "apply",
+			});
+
+			expect(write.outcomes.map(({ kind }) => kind)).toEqual(["wrote"]);
+			expect(outcome).toMatchObject({ kind: "written", asked: false });
+			expect(
+				await fs.readFile(abs("src/Inventory/Loot@server.luau"))
+			).toBe("return 1");
+		});
+
+		it("should not run syncback when the project has errors", async () => {
+			await prepare(["src/Inventory/Bag@server.luau"]);
+			const selection = new MockConfigSelection([
+				{
+					status: "broken",
+					file: config.file,
+					errors: [
+						errorDiagnostic(
+							"config.unreadable",
+							{ resource: config.file },
+							"broken"
+						),
+					],
+					lastValid: undefined,
+				},
+			]);
+
+			const { outcome } = await service.run(selection, {
+				input: "game.rbxl",
+				cwd: "/repo",
+				mode: "apply",
+			});
+
+			expect(outcome).toEqual({ kind: "notRun" });
+			expect(rojo.requests).toHaveLength(0);
+		});
+
+		it("should name the config of a syncback that failed", async () => {
+			await prepare(["src/Inventory/Bag@server.luau"]);
+			rojo.say = async () =>
+				new DiagnosticsError([
+					errorDiagnostic("rojo.failed", { resource: "/repo" }, "no"),
+				]);
+
+			const { outcome } = await service.run(request.selection, {
+				input: "game.rbxl",
+				cwd: "/repo",
+				mode: "dryRun",
+			});
+
+			expect(outcome).toMatchObject({
+				kind: "failed",
+				configFile: config.file,
+			});
+		});
+
+		it("should ask with the plan, and write it on a yes", async () => {
+			await prepare(["src/Inventory/Bag@server.luau"]);
+			rojo.say = loot;
+			const shown: SyncbackPlan[] = [];
+
+			const { outcome } = await service.run(request.selection, {
+				input: "game.rbxl",
+				cwd: "/repo",
+				mode: {
+					confirm: async (plan) => {
+						shown.push(plan);
+						return true;
+					},
+				},
+			});
+
+			expect(shown).toHaveLength(1);
+			expect(outcome).toMatchObject({ kind: "written", asked: true });
+			expect(
+				await fs.readFile(abs("src/Inventory/Loot@server.luau"))
+			).toBe("return 1");
+		});
+
+		it("should write nothing on a no, and say it was declined after asking", async () => {
+			await prepare(["src/Inventory/Bag@server.luau"]);
+			rojo.say = loot;
+
+			const { outcome } = await service.run(request.selection, {
+				input: "game.rbxl",
+				cwd: "/repo",
+				mode: { confirm: async () => false },
+			});
+
+			expect(outcome).toMatchObject({
+				kind: "declined",
+				asked: true,
+				plan: {
+					changes: [
+						{
+							kind: "write",
+							file: abs("src/Inventory/Loot@server.luau"),
+						},
+					],
+				},
+			});
+			expect(await fs.exists(abs("src/Inventory/Loot@server.luau"))).toBe(
+				false
+			);
+		});
+
+		it("should not ask when the plan changes nothing", async () => {
+			await prepare(["src/Inventory/Bag@server.luau"]);
+			let asked = false;
+
+			const { outcome } = await service.run(request.selection, {
+				input: "game.rbxl",
+				cwd: "/repo",
+				mode: {
+					confirm: async () => {
+						asked = true;
+						return true;
+					},
+				},
+			});
+
+			expect(asked).toBe(false);
+			expect(outcome).toMatchObject({
+				kind: "declined",
+				asked: false,
+				plan: { changes: [] },
+			});
+		});
 	});
 });

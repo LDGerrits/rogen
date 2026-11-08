@@ -197,6 +197,20 @@ describe("DiskWatcher", () => {
 			expect(changes.some(added)).toBe(true);
 		});
 
+		it("should report nothing of a root made after a watch stopped before it was ready", async () => {
+			const changes: FileChange[] = [];
+			store.add(watcher.onDidChangeFile((c) => changes.push(...c)));
+			const root = path.join(dir, "later", "src");
+
+			const watching = watcher.watch([root]);
+			await new Promise((resolve) => setImmediate(resolve));
+			await Promise.all([watching, watcher.stop()]);
+			await fs.mkdir(root, { recursive: true });
+			await new Promise((resolve) => setTimeout(resolve, 1200));
+
+			expect(changes).toEqual([]);
+		});
+
 		it("should skip a file and a directory it was told to ignore", async () => {
 			const changes: FileChange[] = [];
 			store.add(watcher.onDidChangeFile((c) => changes.push(...c)));
@@ -348,6 +362,27 @@ describe("DiskWatcher", () => {
 				has(FileChangeType.DELETED, linkPath("Broken"))
 			);
 			expect(has(FileChangeType.DELETED, linkPath("Broken"))).toBe(true);
+		});
+
+		it("should not report a link seen by a replaced watch when it is removed", async () => {
+			await fs.symlink(
+				path.join(dir, "missing"),
+				path.join(root, "Broken"),
+				"junction"
+			);
+			await watcher.watch([root]);
+			await watcher.watch([outside]);
+
+			await fs.rm(path.join(root, "Broken"));
+			await fs.writeFile(path.join(outside, "Later.luau"), "");
+
+			await waitFor(() =>
+				changes.some(
+					(c) => c.path === toPosix(path.join(outside, "Later.luau"))
+				)
+			);
+			await new Promise((resolve) => setTimeout(resolve, 600));
+			expect(has(FileChangeType.DELETED, linkPath("Broken"))).toBe(false);
 		});
 
 		it("should not follow a link that points at its own parent", async () => {

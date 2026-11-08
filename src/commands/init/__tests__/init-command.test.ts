@@ -3,13 +3,15 @@ import path from "path";
 import "../init-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { CancelledError } from "../../../base/errors.js";
-import { ResultError } from "../../../base/result.js";
+import { ResultError, err } from "../../../base/result.js";
 import { configStructure } from "../../../domain/config/config-structure.js";
 import { ConfigFileReader } from "../../../platform/config/config-file.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
+import { FileType } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
+import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 import { PromptService } from "../../../platform/prompt/prompt-service.js";
 import {
 	ACCEPT_DEFAULT,
@@ -17,7 +19,10 @@ import {
 	MockPromptService,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { CommandLine } from "../../../platform/environment/args.js";
-import { exitCodeOf } from "../../../platform/commands/command-failure.js";
+import {
+	exitCode,
+	exitCodeOf,
+} from "../../../platform/commands/command-failure.js";
 
 const readyProcesses = () => {
 	const processes = new MockProcessService();
@@ -39,11 +44,13 @@ describe("init command", () => {
 		log: MockLogService = new MockLogService(),
 		options: CommandLine["options"] = {},
 		positionals: string[] = [],
-		processes: MockProcessService = readyProcesses()
+		processes: MockProcessService = readyProcesses(),
+		lifecycle: MockLifecycleService = new MockLifecycleService()
 	) => {
 		const harness = commandHarness({
 			cwd,
 			processes,
+			lifecycle,
 			fs: memFs,
 			log,
 			prompt,
@@ -62,6 +69,26 @@ describe("init command", () => {
 	const exists = (file: string) => memFs.exists(path.join(cwd, file));
 	const errorMessage = (result: Awaited<ReturnType<typeof runInit>>) =>
 		(result as ResultError<Error>).error.message;
+	const tree = async (folder = "/mock"): Promise<Record<string, string>> => {
+		const entries: Record<string, string> = {};
+		for (const [name, type] of await memFs.readDirectory(folder)) {
+			const at = path.join(folder, name);
+			if (type === FileType.Directory) {
+				entries[`${at}/`] = "";
+				Object.assign(entries, await tree(at));
+			} else entries[at] = await memFs.readFile(at);
+		}
+		return entries;
+	};
+	const refuseWrite = (suffix: string) => {
+		const writeFile = memFs.writeFile.bind(memFs);
+		return jest
+			.spyOn(memFs, "writeFile")
+			.mockImplementation(async (file, content) => {
+				if (file.endsWith(suffix)) throw new Error("disk full");
+				return writeFile(file, content);
+			});
+	};
 
 	beforeEach(async () => {
 		memFs = new MemoryFileSystemService();
@@ -92,15 +119,15 @@ describe("init command", () => {
 				changed: true,
 				files: [
 					{
-						file: path.join(cwd, "default.rogen.json"),
-						outcome: "wrote",
-					},
-					{
 						file: path.join(cwd, "src/.gitkeep"),
 						outcome: "wrote",
 					},
 					{ file: path.join(cwd, ".gitignore"), outcome: "wrote" },
 					{ file: path.join(cwd, "AGENTS.md"), outcome: "wrote" },
+					{
+						file: path.join(cwd, "default.rogen.json"),
+						outcome: "wrote",
+					},
 				],
 				decided: expect.arrayContaining([
 					{
@@ -135,7 +162,7 @@ describe("init command", () => {
 			});
 		});
 
-		it("should name the files it wrote before a write failed", async () => {
+		it("should name no files when a failed write puts the folder back", async () => {
 			await write("tsconfig.json", "{}");
 			const writeFile = memFs.writeFile.bind(memFs);
 			jest.spyOn(memFs, "writeFile").mockImplementation(
@@ -150,18 +177,8 @@ describe("init command", () => {
 
 			expect(result.isErr()).toBe(true);
 			expect(JSON.parse(logService.entries[0].text)).toEqual({
-				changed: true,
-				files: [
-					{
-						file: path.join(cwd, "default.rogen.json"),
-						outcome: "wrote",
-					},
-					{
-						file: path.join(cwd, "src/.gitkeep"),
-						outcome: "wrote",
-					},
-					{ file: path.join(cwd, ".gitignore"), outcome: "wrote" },
-				],
+				changed: false,
+				files: [],
 				decided: expect.any(Array),
 				directories: [],
 				error: {
@@ -184,6 +201,19 @@ describe("init command", () => {
 			);
 			expect(await memFs.readFile(path.join(cwd, "AGENTS.md"))).toMatch(
 				/^# Rules\n\n<!-- rogen -->\n/
+			);
+		});
+
+		it("should name GEMINI.md when only it holds the rules", async () => {
+			await write("GEMINI.md", "<!-- rogen -->\n<!-- /rogen -->\n");
+			const logService = new MockLogService();
+
+			await runInit(new MockPromptService([], false), logService, {
+				"agent-rules": true,
+			});
+
+			expect(logService.lines).toContain(
+				"info: Rogen's rules are in GEMINI.md already. A 'rogen write' keeps them current."
 			);
 		});
 
@@ -272,7 +302,6 @@ describe("init command", () => {
 				"intro: rogen init",
 				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place/, which the tree mounts. Pass --no-sample for an empty src/ and no place/.",
 				"info: Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules).",
-				"success: Created default.rogen.json.",
 				"success: Created .gitignore.",
 				"success: Created src/Greeter/Shared/Greeting.luau.",
 				"success: Created src/Greeter/Server/Greeter.server.luau.",
@@ -283,6 +312,7 @@ describe("init command", () => {
 				"success: Created place/Workspace/init.meta.json.",
 				"success: Created README.md.",
 				"success: Created AGENTS.md.",
+				"success: Created default.rogen.json.",
 				"success: Wrote default.project.json.",
 				"step: Next steps",
 				"info: Run:",
@@ -427,6 +457,54 @@ describe("init command", () => {
 			).toHaveLength(1);
 		});
 
+		it("should restore the script of a registered hook without asking", async () => {
+			await write(
+				".claude/settings.json",
+				JSON.stringify({
+					hooks: {
+						Stop: [
+							{
+								hooks: [
+									{
+										command:
+											"node .agents/hooks/rogen-check.mjs",
+									},
+								],
+							},
+						],
+					},
+				})
+			);
+			const logService = new MockLogService();
+
+			await runInit(new MockPromptService({}), logService);
+
+			expect(await exists(".agents/hooks/rogen-check.mjs")).toBe(true);
+			expect(logService.lines).toContain(
+				"info: The Rogen hook of Claude Code runs .agents/hooks/rogen-check.mjs, which is missing, so init writes it back."
+			);
+		});
+
+		it("should restore the script with --agent-hook rather than say the hook is registered", async () => {
+			await write(
+				".claude/settings.json",
+				JSON.stringify({
+					hooks: {
+						Stop: [{ hooks: [{ command: "x/rogen-check.mjs" }] }],
+					},
+				})
+			);
+			const logService = new MockLogService();
+
+			await withHook(logService);
+
+			expect(await exists(".agents/hooks/rogen-check.mjs")).toBe(true);
+			expect(logService.lines).toContain(
+				"info: The Rogen hook of Claude Code runs .agents/hooks/rogen-check.mjs, which is missing, so init writes it back."
+			);
+			expect(logService.lines.join("\n")).not.toContain("already");
+		});
+
 		it("should leave it out unless given, and say how to add it", async () => {
 			await write(".claude/keep");
 			const logService = new MockLogService();
@@ -459,7 +537,6 @@ describe("init command", () => {
 				"intro: rogen init",
 				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place/, which the tree mounts. Pass --no-sample for an empty src/ and no place/.",
 				"info: Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules).",
-				"success: Would create default.rogen.json.",
 				"success: Would create .gitignore.",
 				"success: Would create src/Greeter/Shared/Greeting.luau.",
 				"success: Would create src/Greeter/Server/Greeter.server.luau.",
@@ -470,7 +547,7 @@ describe("init command", () => {
 				"success: Would create place/Workspace/init.meta.json.",
 				"success: Would create README.md.",
 				"success: Would create AGENTS.md.",
-				"success: Would create src/.",
+				"success: Would create default.rogen.json.",
 				"outro: Would write 11 files. Nothing was written.",
 			]);
 		});
@@ -490,10 +567,6 @@ describe("init command", () => {
 				changed: false,
 				dryRun: true,
 				files: [
-					{
-						file: path.join(cwd, "default.rogen.json"),
-						outcome: "wouldWrite",
-					},
 					{
 						file: path.join(cwd, ".gitignore"),
 						outcome: "wouldWrite",
@@ -549,8 +622,12 @@ describe("init command", () => {
 						file: path.join(cwd, "AGENTS.md"),
 						outcome: "wouldWrite",
 					},
+					{
+						file: path.join(cwd, "default.rogen.json"),
+						outcome: "wouldWrite",
+					},
 				],
-				directories: [path.join(cwd, "src")],
+				directories: [],
 			});
 			expect(document.decided).toContainEqual({
 				question: "language",
@@ -730,6 +807,118 @@ describe("init command", () => {
 				expect(text(log)).toContain(`Would run ${NPM}.`);
 				expect(processes.execs.map(({ file }) => file)).not.toContain(
 					"/bin/npm"
+				);
+			});
+
+			it("should remove what it ran added to a folder that was there, and put back what it removed after", async () => {
+				await write("notes.txt", "mine");
+				await write("src/shared/README.md", "# Shared");
+				const before = await tree();
+				const processes = npmProcesses();
+				const exec = processes.exec.bind(processes);
+				jest.spyOn(processes, "exec").mockImplementation(
+					async (file, args, options) => {
+						if (file === "/bin/npm") {
+							await write("package.json", "{}");
+							await write("node_modules/roblox-ts/index.js", "");
+							await write("src/client/main.client.ts", "");
+							await write("src/shared/module.ts", "");
+							await write("default.project.json", "{}");
+						}
+						return exec(file, args, options);
+					}
+				);
+				const refused = refuseWrite("default.rogen.json");
+
+				const failed = await runInit(
+					new MockPromptService([], false),
+					new MockLogService(),
+					{ language: "roblox-ts", "skip-git": true },
+					[],
+					processes
+				);
+				refused.mockRestore();
+
+				expect(failed.isErr()).toBe(true);
+				expect(await tree()).toEqual(before);
+			});
+
+			it("should stop the command and remove what it added, exiting as a shell reports Ctrl+C, when Ctrl+C comes while it runs", async () => {
+				const before = await tree();
+				const processes = npmProcesses();
+				const lifecycle = new MockLifecycleService();
+				const exec = processes.exec.bind(processes);
+				jest.spyOn(processes, "exec").mockImplementation(
+					async (file, args, options) => {
+						if (file !== "/bin/npm")
+							return exec(file, args, options);
+						await memFs.writeFile(
+							path.join(options.cwd, "package.json"),
+							"{}"
+						);
+						await memFs.writeFile(
+							path.join(
+								options.cwd,
+								"node_modules/roblox-ts/index.js"
+							),
+							""
+						);
+						lifecycle.shutdown("SIGINT");
+						return options.signal?.aborted
+							? err(new Error("The operation was aborted"))
+							: exec(file, args, options);
+					}
+				);
+				const log = new MockLogService();
+
+				const result = await runInit(
+					new MockPromptService([], false),
+					log,
+					{ language: "roblox-ts", "skip-git": true },
+					["new-game"],
+					processes,
+					lifecycle
+				);
+
+				expect(exitCode(result, lifecycle.signal)).toBe(130);
+				expect(await tree()).toEqual(before);
+				expect(text(log)).not.toContain(`Ran ${NPM}.`);
+			});
+
+			it("should report a failed command as a tool failure in --json, naming what it could not remove", async () => {
+				const processes = npmProcesses(1);
+				const exec = processes.exec.bind(processes);
+				jest.spyOn(processes, "exec").mockImplementation(
+					async (file, args, options) => {
+						if (file === "/bin/npm")
+							await write("package.json", "{}");
+						return exec(file, args, options);
+					}
+				);
+				const remove = memFs.delete.bind(memFs);
+				const stuck = jest
+					.spyOn(memFs, "delete")
+					.mockImplementation(async (file, recursive) => {
+						if (file.endsWith("package.json"))
+							throw new Error("Permission denied");
+						return remove(file, recursive);
+					});
+				const log = new MockLogService();
+
+				const result = await runInit(
+					new MockPromptService([], false),
+					log,
+					{ language: "roblox-ts", "skip-git": true, json: true },
+					[],
+					processes
+				);
+				stuck.mockRestore();
+
+				expect(exitCode(result)).toBe(1);
+				const { error } = JSON.parse(log.entries[0].text);
+				expect(error.kind).toBe("tool");
+				expect(error.message).toMatch(
+					/npm error network\. Could not put back package\.json\.$/
 				);
 			});
 
@@ -928,17 +1117,376 @@ describe("init command", () => {
 
 			expect(JSON.parse(log.entries[0].text).moves).toEqual([
 				{
-					from: path.join(cwd, ".rogen.json"),
-					to: path.join(cwd, ".rogen.json.v1"),
-					outcome: "wouldMove",
-				},
-				{
 					from: path.join(cwd, "src/Combat/Combat_Server.luau"),
 					to: path.join(cwd, "src/Combat/Combat@Server.luau"),
 					outcome: "wouldMove",
 				},
+				{
+					from: path.join(cwd, ".rogen.json"),
+					to: path.join(cwd, ".rogen.json.v1"),
+					outcome: "wouldMove",
+				},
 			]);
 			expect(await exists(".rogen.json")).toBe(true);
+		});
+
+		it("should reverse the earlier renames when a later one fails", async () => {
+			await write("src/Shop/Shop_Client.luau", "return {}");
+			const before = await tree();
+			const move = memFs.rename.bind(memFs);
+			const rename = jest
+				.spyOn(memFs, "rename")
+				.mockImplementation(async (from, to) => {
+					if (from.endsWith("Shop_Client.luau"))
+						throw new Error("Permission denied");
+					return move(from, to);
+				});
+
+			const failed = await runInit();
+			rename.mockRestore();
+
+			expect(failed.isErr()).toBe(true);
+			expect(await tree()).toEqual(before);
+		});
+
+		it("should put the v1 config back when the config fails to write", async () => {
+			const before = await tree();
+			const refused = refuseWrite("default.rogen.json");
+
+			const failed = await runInit();
+			refused.mockRestore();
+
+			expect(failed.isErr()).toBe(true);
+			expect(await tree()).toEqual(before);
+			(await runInit()).unwrap();
+			expect(await exists(".rogen.json.v1")).toBe(true);
+			expect(await exists("src/Combat/Combat@Server.luau")).toBe(true);
+		});
+
+		it("should keep the v1 config when a rename fails, so a second init migrates", async () => {
+			const move = memFs.rename.bind(memFs);
+			const rename = jest
+				.spyOn(memFs, "rename")
+				.mockImplementation(async (from, to) => {
+					if (from.endsWith("Combat_Server.luau"))
+						throw new Error("Permission denied");
+					return move(from, to);
+				});
+
+			const failed = await runInit();
+			rename.mockRestore();
+
+			expect(failed.isErr()).toBe(true);
+			expect(await exists(".rogen.json")).toBe(true);
+			expect(await exists(".rogen.json.v1")).toBe(false);
+
+			(await runInit()).unwrap();
+
+			expect(await exists(".rogen.json")).toBe(false);
+			expect(await exists(".rogen.json.v1")).toBe(true);
+			expect(await exists("src/Combat/Combat@Server.luau")).toBe(true);
+			expect(await exists("default.rogen.json")).toBe(true);
+			expect(await exists("default.project.json")).toBe(true);
+		});
+	});
+
+	it("should write no config when another file fails, so a second init makes the whole project", async () => {
+		const writeFile = memFs.writeFile.bind(memFs);
+		const refused = jest
+			.spyOn(memFs, "writeFile")
+			.mockImplementation(async (file, content) => {
+				if (file.endsWith(".gitignore")) throw new Error("disk full");
+				return writeFile(file, content);
+			});
+
+		const failed = await runInit();
+		refused.mockRestore();
+
+		expect(failed.isErr()).toBe(true);
+		expect(await exists("default.rogen.json")).toBe(false);
+
+		(await runInit()).unwrap();
+
+		expect(await exists("default.rogen.json")).toBe(true);
+		expect(await exists("default.project.json")).toBe(true);
+		expect(await exists(".gitignore")).toBe(true);
+		expect(await exists("AGENTS.md")).toBe(true);
+	});
+
+	describe("a failed run", () => {
+		it("should leave the folder as it was when the config fails to write", async () => {
+			const before = await tree();
+			const refused = refuseWrite("default.rogen.json");
+
+			const failed = await runInit();
+			refused.mockRestore();
+
+			expect(failed.isErr()).toBe(true);
+			expect(await tree()).toEqual(before);
+			(await runInit()).unwrap();
+			expect(await exists("default.project.json")).toBe(true);
+		});
+
+		it("should remove the folder it made for a new project", async () => {
+			const before = await tree();
+			const refused = refuseWrite("default.rogen.json");
+
+			const failed = await runInit(undefined, undefined, {}, ["lobby"]);
+			refused.mockRestore();
+
+			expect(failed.isErr()).toBe(true);
+			expect(await tree()).toEqual(before);
+		});
+
+		it("should give a changed AGENTS.md its earlier text back", async () => {
+			await write("AGENTS.md", "# Rules\n");
+			const refused = refuseWrite("default.rogen.json");
+
+			const failed = await runInit();
+			refused.mockRestore();
+
+			expect(failed.isErr()).toBe(true);
+			expect(await read("AGENTS.md")).toBe("# Rules\n");
+		});
+
+		const shutDownWhileWriting = (
+			lifecycle: MockLifecycleService,
+			suffix: string
+		) => {
+			const writeFile = memFs.writeFile.bind(memFs);
+			return jest
+				.spyOn(memFs, "writeFile")
+				.mockImplementation(async (file, content) => {
+					await writeFile(file, content);
+					if (file.endsWith(suffix)) lifecycle.shutdown("SIGINT");
+				});
+		};
+
+		it("should leave the folder as it was and say so, exiting as a shell reports Ctrl+C, when Ctrl+C comes while it writes", async () => {
+			await write("AGENTS.md", "# Rules\n");
+			const before = await tree();
+			const lifecycle = new MockLifecycleService();
+			const log = new MockLogService();
+			const writing = shutDownWhileWriting(
+				lifecycle,
+				"default.rogen.json"
+			);
+
+			const result = await runInit(
+				undefined,
+				log,
+				{},
+				[],
+				readyProcesses(),
+				lifecycle
+			);
+			writing.mockRestore();
+
+			expect(exitCode(result, lifecycle.signal)).toBe(130);
+			expect(await tree()).toEqual(before);
+			expect((result as ResultError<Error>).error.cause).toBeInstanceOf(
+				CancelledError
+			);
+			expect(errorMessage(result)).toBe(
+				"init stopped before it finished, and put the folder back as it was."
+			);
+		});
+
+		const shutDownWhileChecking = (
+			lifecycle: MockLifecycleService,
+			suffix: string
+		) => {
+			const exists = memFs.exists.bind(memFs);
+			return jest
+				.spyOn(memFs, "exists")
+				.mockImplementation(async (file) => {
+					const found = await exists(file);
+					if (file.endsWith(suffix)) lifecycle.shutdown("SIGINT");
+					return found;
+				});
+		};
+
+		it("should leave the folder as it was, run no commands and exit as a shell reports Ctrl+C, when Ctrl+C comes during its last step", async () => {
+			const before = await tree();
+			const lifecycle = new MockLifecycleService();
+			const processes = readyProcesses();
+			processes.installed.set("git", "/bin/git");
+			const checking = shutDownWhileChecking(
+				lifecycle,
+				path.join("lobby", "src")
+			);
+
+			const result = await runInit(
+				undefined,
+				undefined,
+				{},
+				["lobby"],
+				processes,
+				lifecycle
+			);
+			checking.mockRestore();
+
+			expect(exitCode(result, lifecycle.signal)).toBe(130);
+			expect(await tree()).toEqual(before);
+			expect(processes.execs.map(({ file }) => file)).not.toContain(
+				"/bin/git"
+			);
+		});
+
+		it("should leave Ctrl+C to end a dry run as it would any process, since it has nothing to undo", async () => {
+			const lifecycle = new MockLifecycleService();
+			const listening = jest.spyOn(lifecycle, "onWillShutdown");
+
+			const result = await runInit(
+				undefined,
+				undefined,
+				{ "dry-run": true },
+				[],
+				readyProcesses(),
+				lifecycle
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(listening).not.toHaveBeenCalled();
+		});
+
+		it("should name what it could not put back after Ctrl+C, without saying it put the folder back", async () => {
+			const lifecycle = new MockLifecycleService();
+			const writing = shutDownWhileWriting(
+				lifecycle,
+				"default.rogen.json"
+			);
+			const remove = memFs.delete.bind(memFs);
+			const stuck = jest
+				.spyOn(memFs, "delete")
+				.mockImplementation(async (file, recursive) => {
+					if (file.endsWith(".gitignore"))
+						throw new Error("Permission denied");
+					return remove(file, recursive);
+				});
+
+			const result = await runInit(
+				undefined,
+				undefined,
+				{},
+				[],
+				readyProcesses(),
+				lifecycle
+			);
+			writing.mockRestore();
+			stuck.mockRestore();
+
+			expect(exitCode(result, lifecycle.signal)).toBe(130);
+			expect(errorMessage(result)).toBe(
+				"init stopped before it finished. Could not put back .gitignore."
+			);
+		});
+
+		it("should report a Ctrl+C while it writes as cancelled in --json", async () => {
+			const before = await tree();
+			const lifecycle = new MockLifecycleService();
+			const log = new MockLogService();
+			const writing = shutDownWhileWriting(
+				lifecycle,
+				"default.rogen.json"
+			);
+
+			const result = await runInit(
+				undefined,
+				log,
+				{ json: true },
+				[],
+				readyProcesses(),
+				lifecycle
+			);
+			writing.mockRestore();
+
+			expect(exitCode(result, lifecycle.signal)).toBe(130);
+			expect(await tree()).toEqual(before);
+			expect(JSON.parse(log.entries[0].text).error.kind).toBe(
+				"cancelled"
+			);
+		});
+
+		it("should report a Ctrl+C as cancelled in --json when it could not put a file back", async () => {
+			const lifecycle = new MockLifecycleService();
+			const log = new MockLogService();
+			const writing = shutDownWhileWriting(
+				lifecycle,
+				"default.rogen.json"
+			);
+			const remove = memFs.delete.bind(memFs);
+			const stuck = jest
+				.spyOn(memFs, "delete")
+				.mockImplementation(async (file, recursive) => {
+					if (file.endsWith(".gitignore"))
+						throw new Error("Permission denied");
+					return remove(file, recursive);
+				});
+
+			const result = await runInit(
+				undefined,
+				log,
+				{ json: true },
+				[],
+				readyProcesses(),
+				lifecycle
+			);
+			writing.mockRestore();
+			stuck.mockRestore();
+
+			expect(exitCode(result, lifecycle.signal)).toBe(130);
+			expect(JSON.parse(log.entries[0].text).error).toMatchObject({
+				kind: "cancelled",
+				message:
+					"init stopped before it finished. Could not put back .gitignore.",
+			});
+		});
+
+		it("should name a file it could not remove, and put back the rest", async () => {
+			const before = await tree();
+			const refused = refuseWrite("default.rogen.json");
+			const remove = memFs.delete.bind(memFs);
+			const stuck = jest
+				.spyOn(memFs, "delete")
+				.mockImplementation(async (file, recursive) => {
+					if (file.endsWith(".gitignore"))
+						throw new Error("Permission denied");
+					return remove(file, recursive);
+				});
+
+			const failed = await runInit();
+			refused.mockRestore();
+			stuck.mockRestore();
+
+			expect(errorMessage(failed)).toBe(
+				"Failed to write default.rogen.json: disk full. Could not put back .gitignore."
+			);
+			expect(Object.keys(await tree())).toEqual([
+				...Object.keys(before),
+				path.join(cwd, ".gitignore"),
+			]);
+		});
+
+		it("should keep the project when git init fails", async () => {
+			const processes = readyProcesses();
+			processes.installed.set("git", "/bin/git");
+			processes.outputs.set("/bin/git", {
+				code: 128,
+				stdout: "",
+				stderr: "fatal: no",
+			});
+
+			const result = await runInit(
+				undefined,
+				undefined,
+				{},
+				["lobby"],
+				processes
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(await exists("lobby/default.rogen.json")).toBe(true);
 		});
 	});
 
@@ -950,9 +1498,7 @@ describe("init command", () => {
 		const result = await runInit();
 
 		expect(result.isErr()).toBe(true);
-		expect(errorMessage(result)).toContain(
-			"Failed to write default.rogen.json"
-		);
+		expect(errorMessage(result)).toContain("Failed to write .gitignore");
 		expect(errorMessage(result)).toContain("Permission denied");
 	});
 

@@ -79,24 +79,53 @@ export interface ServerOutputEvent {
 	readonly message: ServerMessage;
 }
 
-/** A server the session started that stopped before the session did. */
-export type ServerExitEvent = {
-	readonly target: ServeTarget;
-	/** How its process exited. */
-	readonly exit: ProcessExit;
-	/** It was interrupted along with Rogen, as Ctrl+C does, rather than stopping on its own. */
-	readonly interrupted: boolean;
-	/** It crashed again right after Rogen restarted it after a crash, so Rogen gave up. */
-	readonly crashed?: boolean;
+/** A server the session started that stopped before the session did, by how it stopped. */
+export type ServerExitEvent =
 	/** It couldn't start because another `rogen serve` started a server for its project file on its address first, which serves it; the stop is no failure. */
-	readonly servedBy?: ServerInfo;
-} & (
 	| {
-			/** Why the stop is a failure: the server couldn't start, or exited with an error. */
+			readonly kind: "served-elsewhere";
+			readonly target: ServeTarget;
+			readonly servedBy: ServerInfo;
+	  }
+	/** It stopped on its own without an error. */
+	| {
+			readonly kind: "stopped";
+			readonly target: ServeTarget;
+			readonly exit: ProcessExit;
+	  }
+	/** It was interrupted along with Rogen, as Ctrl+C does, rather than stopping on its own. */
+	| {
+			readonly kind: "interrupted";
+			readonly target: ServeTarget;
+			readonly exit: ProcessExit;
+	  }
+	/** It crashed again right after Rogen restarted it after a crash, so Rogen gave up. */
+	| {
+			readonly kind: "crashed";
+			readonly target: ServeTarget;
+			readonly exit: ProcessExit;
 			readonly failure: Diagnostic;
 	  }
-	| { readonly failure?: undefined }
-);
+	/** It couldn't start, or exited with an error. */
+	| {
+			readonly kind: "failed";
+			readonly target: ServeTarget;
+			readonly exit: ProcessExit;
+			readonly failure: Diagnostic;
+	  };
+
+/** How a serve ended. */
+export type ServeEnding =
+	/** It never served: the watch couldn't start, a write threw before a server started, or the Rojo that runs can't serve a file it wrote. */
+	| { readonly kind: "refused"; readonly error: Error }
+	/** A server stopped before the shutdown, which ended the serve. */
+	| { readonly kind: "exited"; readonly exit: ServerExitEvent }
+	/** The shutdown ended it. `exit` is a server's stop that came first and wasn't the shutdown's doing; `ended` is the server the shutdown ended, when it is another. */
+	| {
+			readonly kind: "shutdown";
+			readonly exit?: ServerExitEvent;
+			readonly ended?: ServeTarget;
+	  };
 
 /** How the servers changed with the configs after the session started them. */
 export type ServeChangeEvent =
@@ -139,16 +168,12 @@ export interface ServeSession extends Disposable {
 	/** Fired for each message a server prints; its own info logs and noise come as `debug`. */
 	readonly onDidOutput: Event<ServerOutputEvent>;
 	readonly onDidChange: Event<ServeChangeEvent>;
-	/** Fired when a server stops before the session does. */
-	readonly onDidExit: Event<ServerExitEvent>;
 
 	/** The target a server of the session runs for; none until one starts. */
 	readonly target: ServeTarget | undefined;
 
-	/** Writes, then starts the servers once a write succeeds, and keeps watching until then. Fails when the first write throws or a file it wrote can't be served by the Rojo that runs. */
-	start(): Promise<Result<void, Error>>;
-	/** Ends every server and its processes, then stops the watch. Safe to call twice. */
-	stop(): Promise<void>;
+	/** Writes, starts the servers once a write succeeds, and serves until `shutdown` aborts or a server stops; resolves once every server and the watch have stopped, with how it ended. */
+	run(shutdown: AbortSignal): Promise<ServeEnding>;
 }
 
 export interface ServeService {

@@ -22,6 +22,10 @@ export class SourcemapStep implements RojoStep {
 		private readonly mayPrint: boolean
 	) {}
 
+	get prints(): boolean {
+		return this.flags.output === undefined && this.mayPrint;
+	}
+
 	plan(selection: ConfigSelection): Result<RojoPlan | undefined, UsageError> {
 		if (selection.requireValid().isErr()) return ok(undefined);
 		const { output, includeNonScripts, absolute } = this.flags;
@@ -43,7 +47,6 @@ export class SourcemapStep implements RojoStep {
 					: [...rojoFlags, "--output", output],
 			cwd: this.cwd,
 			target: { command: this.command, cwd: this.cwd, output },
-			...(output === undefined && { printed: true as const }),
 		});
 	}
 }

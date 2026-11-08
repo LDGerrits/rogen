@@ -5,6 +5,7 @@ import {
 	Sequencer,
 	timeout,
 } from "../async.js";
+import { setUnexpectedErrorHandler } from "../errors.js";
 
 describe("Async Utilities", () => {
 	describe("Sequencer", () => {
@@ -121,6 +122,26 @@ describe("Async Utilities", () => {
 			jest.advanceTimersByTime(10);
 
 			expect(runner).toHaveBeenCalledTimes(1);
+		});
+
+		it("should report what its runner throws as an unexpected error", () => {
+			const reported: Error[] = [];
+			const restore = setUnexpectedErrorHandler((error) => {
+				reported.push(error);
+			});
+			const broken = new Error("The probe failed.");
+			try {
+				const scheduler = new RunOnceScheduler(() => {
+					throw broken;
+				}, 100);
+
+				scheduler.schedule();
+				jest.advanceTimersByTime(100);
+
+				expect(reported).toEqual([broken]);
+			} finally {
+				setUnexpectedErrorHandler(restore);
+			}
 		});
 
 		it("should not run once cancelled or disposed", () => {

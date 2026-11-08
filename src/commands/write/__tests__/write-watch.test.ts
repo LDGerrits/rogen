@@ -15,7 +15,10 @@ import { MockLogService } from "../../../platform/log/__tests__/mock-log-service
 import { LogLevel } from "../../../platform/log/log-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { CommandLine } from "../../../platform/environment/args.js";
-import { exitCodeOf } from "../../../platform/commands/command-failure.js";
+import {
+	exitCode,
+	exitCodeOf,
+} from "../../../platform/commands/command-failure.js";
 
 describe("watch", () => {
 	let memFs: MemoryFileSystemService;
@@ -347,7 +350,7 @@ describe("watch", () => {
 				lifecycle.shutdown(signal);
 				const result = await running;
 
-				expect(result.isErr() && exitCodeOf(result.error)).toBe(code);
+				expect(exitCode(result, lifecycle.signal)).toBe(code);
 				expect(logService.entries.at(-1)).toEqual({
 					kind: "outro",
 					text: "Stopped watching.",
@@ -429,6 +432,47 @@ describe("watch", () => {
 			]);
 			expect(logService.reserved).toBe(true);
 			expect(logService.texts("print")).toEqual(['{"name":"repo"}']);
+		});
+
+		it("should keep stdout for the sourcemap from the start, even when the config is broken", async () => {
+			await write("/repo/default.rogen.json", { bogus: "base" });
+
+			const result = await commandHarness({
+				fs: memFs,
+				log: logService,
+				config: configService,
+				lifecycle,
+				watcher,
+				processes,
+			}).run("sourcemap", { positionals: [], options: { watch: true } });
+
+			expect(result.isErr()).toBe(true);
+			expect(logService.reserved).toBe(true);
+			expect(logService.texts("print")).toEqual([]);
+		});
+
+		it("should leave stdout free for the sourcemap that -o writes to a file", async () => {
+			void commandHarness({
+				fs: memFs,
+				log: logService,
+				config: configService,
+				lifecycle,
+				watcher,
+				processes,
+			}).run("sourcemap", {
+				positionals: [],
+				options: { watch: true, output: "map.json" },
+			});
+			await settle();
+
+			expect(processes.spawned[0].args).toEqual([
+				"sourcemap",
+				"default.project.json",
+				"--output",
+				"map.json",
+				"--watch",
+			]);
+			expect(logService.reserved).toBe(false);
 		});
 
 		it("should run no Rojo without -o or -p", async () => {

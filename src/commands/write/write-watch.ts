@@ -1,4 +1,4 @@
-import { DeferredPromise, Sequencer } from "../../base/async.js";
+import { DeferredPromise, Sequencer, aborted } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -10,14 +10,7 @@ import {
 } from "../../domain/runner/rojo-command-service.js";
 import { WatchService } from "../../domain/watch/watch-service.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import {
-	ExitCodeError,
-	ReportedError,
-} from "../../platform/commands/commands.js";
-import {
-	LifecycleService,
-	exitCodeOfSignal,
-} from "../../platform/lifecycle/lifecycle-service.js";
+import { ReportedError } from "../../platform/commands/commands.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { RojoPlan, RojoStep } from "./rojo-step.js";
@@ -43,10 +36,10 @@ export class WriteWatch {
 		private readonly command = "build"
 	) {}
 
-	/** Runs until `shutdown` settles; `store` is the caller's, and holds what the run subscribes to. */
+	/** Runs until `shutdown` aborts; `store` is the caller's, and holds what the run subscribes to. */
 	async run(
 		store: DisposableStore,
-		shutdown: DeferredPromise<void>
+		shutdown: AbortSignal
 	): Promise<Result<void, Error>> {
 		const { accessor } = this;
 		const logService = accessor.get(LogService);
@@ -62,13 +55,11 @@ export class WriteWatch {
 				: await configService.select(this.configs);
 		if (selection.isErr()) return selection;
 		for (const note of selection.value.notes) logService.warn(note);
-		let planned: RojoPlan | undefined;
 		if (this.step !== undefined) {
 			const stepPlan = this.step.plan(selection.value);
 			if (stepPlan.isErr()) return stepPlan;
-			planned = stepPlan.value;
 		}
-		const printing = planned?.printed ?? false;
+		const printing = this.step?.prints ?? false;
 		if (printing && !this.json) logService.reserveStdout();
 		const log: WatchReporter = this.json
 			? new WatchJsonLog(logService, cwd)
@@ -82,7 +73,7 @@ export class WriteWatch {
 		const watched = watchService.watch(selection.value);
 		if (watched.isErr()) return watched;
 		const session = store.add(watched.value);
-		if (shutdown.isSettled) return ok(undefined);
+		if (shutdown.aborted) return ok(undefined);
 		log.begin(session.configs, selection.value.home);
 
 		const rojoStarts = new Sequencer();
@@ -122,7 +113,7 @@ export class WriteWatch {
 				const watch = started.value;
 				rojo = watch;
 				watch.onDidRun((run) => {
-					if (plan.printed)
+					if (step.prints)
 						for (const { stdout } of run.messages)
 							if (stdout !== undefined) logService.print(stdout);
 					log.rojo(ok(run), plan.target);
@@ -166,7 +157,7 @@ export class WriteWatch {
 			const started = await session.start();
 			if (started.isErr()) return started;
 			failure = await Promise.race([
-				shutdown.p.then(() => undefined),
+				aborted(shutdown).then(() => undefined),
 				failed.p,
 			]);
 		} finally {
@@ -183,16 +174,6 @@ export class WriteWatch {
 			return err(new ReportedError(failure));
 		}
 		log.end();
-		const { signal } = accessor.get(LifecycleService);
-		return signal === undefined
-			? ok(undefined)
-			: err(
-					new ReportedError(
-						new ExitCodeError(
-							exitCodeOfSignal(signal),
-							new Error(`Stopped by ${signal}.`)
-						)
-					)
-				);
+		return ok(undefined);
 	}
 }

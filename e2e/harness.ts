@@ -662,13 +662,134 @@ export async function eventually(
 	}
 }
 
-/** A `rogen` command that keeps running, `build --watch` unless `command` says otherwise. */
-export class RunningRogen {
+const WINDOWS = process.platform === "win32";
+
+/** Shorter than Jest's hook timeout, so an `afterEach` that stops a process ends it. */
+const STOP_TIMEOUT_MS = 3_000;
+
+/** A program that keeps running, whose output the test reads while it runs. */
+export class RunningProcess {
 	private readonly child: ChildProcess;
 	readonly exited: Promise<number | null>;
 	private _output = "";
 	private _stdout = "";
+	private _code: number | null = null;
+	private _signal: NodeJS.Signals | null = null;
+	private _startError: Error | undefined;
 
+	constructor(
+		file: string,
+		args: readonly string[],
+		cwd?: string,
+		env?: Readonly<Record<string, string>>
+	) {
+		this.child = spawn(file, [...args], {
+			cwd,
+			stdio: ["ignore", "pipe", "pipe"],
+			env: childEnv(env),
+			detached: !WINDOWS,
+		});
+		for (const stream of [this.child.stdout, this.child.stderr]) {
+			stream?.setEncoding("utf8");
+			stream?.on("data", (chunk: string) => {
+				this._output += chunk;
+				if (stream === this.child.stdout) this._stdout += chunk;
+			});
+		}
+		this.exited = new Promise((resolve) => {
+			this.child.once("exit", (code, signal) => {
+				this._code = code;
+				this._signal = signal;
+			});
+			// Node may still deliver output after `exit`; `close` comes once the streams are drained.
+			this.child.once("close", () => resolve(this._code));
+			this.child.once("error", (error) => {
+				this._startError = error;
+				resolve(null);
+			});
+		});
+	}
+
+	/** Everything it printed, on both streams. */
+	get output(): string {
+		return stripVTControlCharacters(this._output);
+	}
+
+	get stdout(): string {
+		return this._stdout;
+	}
+
+	/** Why it could not start, such as a missing program. */
+	get startError(): Error | undefined {
+		return this._startError;
+	}
+
+	/** Retries `check` until it passes and gives what it returned, or fails as soon as the process has ended. */
+	async waitFor<T>(
+		check: () => T | Promise<T>,
+		timeoutMs = 10_000
+	): Promise<T> {
+		let ended = false;
+		void this.exited.then(() => (ended = true));
+		const deadline = Date.now() + timeoutMs;
+		for (;;) {
+			try {
+				return await check();
+			} catch (error) {
+				if (ended) throw new Error(this.ending(), { cause: error });
+				if (Date.now() > deadline) throw error;
+			}
+			await Promise.race([
+				new Promise((resolve) => setTimeout(resolve, 100)),
+				this.exited,
+			]);
+		}
+	}
+
+	private ending(): string {
+		if (this._startError)
+			return `The process could not start: ${this._startError.message}`;
+		return `The process ended with ${this._code ?? this._signal} before it was ready:\n${this.output}`;
+	}
+
+	/** Ends it as a closed terminal or a crash does, with no chance to clean up. */
+	async kill(signal: "SIGHUP" | "SIGKILL"): Promise<number | null> {
+		this.child.kill(signal);
+		return this.exited;
+	}
+
+	async stop(): Promise<number | null> {
+		if (this._startError) return null;
+		if (this.child.exitCode === null && this.child.signalCode === null) {
+			this.signalGroup("SIGINT");
+		}
+		const timer = setTimeout(
+			() => this.signalGroup("SIGKILL"),
+			STOP_TIMEOUT_MS
+		);
+		try {
+			return await this.exited;
+		} finally {
+			clearTimeout(timer);
+		}
+	}
+
+	/** Signals what it started too, as Ctrl+C in a terminal does, so a Rojo it ran can't keep the port. */
+	private signalGroup(signal: NodeJS.Signals): void {
+		if (WINDOWS || this.child.pid === undefined) {
+			this.child.kill(signal);
+			return;
+		}
+		try {
+			process.kill(-this.child.pid, signal);
+		} catch {
+			// The whole group has ended already.
+		}
+	}
+}
+
+/** A `rogen` command that keeps running, `build --watch` unless `command` says otherwise. */
+export class RunningRogen extends RunningProcess {
 	constructor(
 		cli: string,
 		dir: string,
@@ -681,47 +802,6 @@ export class RunningRogen {
 			...command.split(" "),
 			...args,
 		]);
-		this.child = spawn(file, [...commandArgs], {
-			cwd,
-			stdio: ["ignore", "pipe", "pipe"],
-			env: childEnv(env),
-		});
-		for (const stream of [this.child.stdout, this.child.stderr]) {
-			stream?.setEncoding("utf8");
-			stream?.on("data", (chunk: string) => {
-				this._output += chunk;
-				if (stream === this.child.stdout) this._stdout += chunk;
-			});
-		}
-		this.exited = new Promise((resolve) =>
-			this.child.once("exit", (code) => resolve(code))
-		);
-	}
-
-	/** Everything it printed, on both streams. */
-	get output(): string {
-		return stripVTControlCharacters(this._output);
-	}
-
-	get stdout(): string {
-		return this._stdout;
-	}
-
-	/** Ends it as a closed terminal or a crash does, with no chance to clean up. */
-	async kill(signal: "SIGHUP" | "SIGKILL"): Promise<number | null> {
-		this.child.kill(signal);
-		return this.exited;
-	}
-
-	async stop(): Promise<number | null> {
-		if (this.child.exitCode === null && this.child.signalCode === null) {
-			this.child.kill("SIGINT");
-		}
-		const timer = setTimeout(() => this.child.kill("SIGKILL"), 5_000);
-		try {
-			return await this.exited;
-		} finally {
-			clearTimeout(timer);
-		}
+		super(file, commandArgs, cwd, env);
 	}
 }

@@ -10,7 +10,7 @@ import { DiagnosticsError } from "../../diagnostics/diagnostics-error.js";
 import { MockLogService } from "../../log/__tests__/mock-log-service.js";
 import { Result, err, ok } from "../../../base/result.js";
 import { CommandFailure, exitCode, exitCodeOf } from "../command-failure.js";
-import { ExitCodeError, ReportedError } from "../commands.js";
+import { ReportedError } from "../commands.js";
 
 describe("CommandFailure", () => {
 	let logService: MockLogService;
@@ -120,17 +120,6 @@ describe("CommandFailure", () => {
 			]);
 		});
 
-		it("should print the failure inside an exit code as the document it is", () => {
-			new CommandFailure(logService, true).report(
-				new ExitCodeError(3, new DiagnosticsError([problem])),
-				"serve"
-			);
-
-			expect(printed()).toMatchObject([
-				{ diagnostics: [{ code: "x.err" }] },
-			]);
-		});
-
 		it("should print only the error for a failure before any command ran", () => {
 			logService.intro("rogen");
 
@@ -191,13 +180,6 @@ describe("exitCodeOf", () => {
 		expect(exitCodeOf(new ReportedError(usage))).toBe(2);
 	});
 
-	it("should be the code a failure carries, reported or not", () => {
-		const stopped = new ExitCodeError(3, new Error("rojo stopped."));
-
-		expect(exitCodeOf(stopped)).toBe(3);
-		expect(exitCodeOf(new ReportedError(stopped))).toBe(3);
-	});
-
 	it("should follow the kind of a failure", () => {
 		for (const [error, code] of [
 			[new UsageError("x"), 2],
@@ -227,8 +209,24 @@ describe("exitCode", () => {
 		expect(exitCode(failed(new UsageError("x")))).toBe(2);
 		expect(exitCode(failed(new ProjectError("x")))).toBe(1);
 		expect(exitCode(failed(new Error("x")))).toBe(1);
-		expect(
-			exitCode(failed(new ExitCodeError(130, new Error("Stopped."))))
-		).toBe(130);
 	});
+
+	it.each([
+		["finished without a signal", ok(undefined), undefined, 0],
+		["failed without a signal", err(new UsageError("x")), undefined, 2],
+		["finished after SIGINT", ok(undefined), "SIGINT", 130],
+		["failed after SIGINT", err(new UsageError("x")), "SIGINT", 130],
+		[
+			"failed in full after SIGTERM",
+			err(new ReportedError(new Error("x"))),
+			"SIGTERM",
+			143,
+		],
+		["finished after SIGHUP", ok(undefined), "SIGHUP", 129],
+	] as const)(
+		"should be, for a run that %s, the code of the signal, else of the outcome",
+		(_, outcome: Result<void, Error>, signal, code) => {
+			expect(exitCode(outcome, signal)).toBe(code);
+		}
+	);
 });

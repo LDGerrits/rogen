@@ -11,6 +11,7 @@ import {
 	CLAUDE_SETTINGS_FILE,
 	CODING_AGENTS,
 	GEMINI_SETTINGS_FILE,
+	HOOK_SCRIPT_FILE,
 } from "./agent/coding-agent.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
@@ -82,8 +83,9 @@ export class AgentSetup implements Setup<AgentChoices> {
 					).map(({ fileName }) => fileName)
 				)
 			);
-		if (hook) builder.addAgentHook(this.hooks);
-		else if (
+		builder.addAgentHook(this.hooks, hook);
+		if (
+			!hook &&
 			this.hooks.offered &&
 			!(
 				this.questions.customising &&
@@ -96,6 +98,7 @@ export class AgentSetup implements Setup<AgentChoices> {
 				`${joinedWithAnd(agents)} ${one ? "is" : "are"} in use here. 'rogen init --agent-hook' adds a hook that reports Rogen's warnings when ${one ? "it ends its turn" : "they end their turn"}.`
 			);
 		}
+		const { restoring } = this.hooks;
 		builder.addSummary(
 			"Agents",
 			[
@@ -107,6 +110,9 @@ export class AgentSetup implements Setup<AgentChoices> {
 					: this.hooks.offered
 						? [`no hook for ${joinedWithAnd(this.hooks.agents)}`]
 						: []),
+				...(restoring.length > 0
+					? [`hook script restored for ${joinedWithAnd(restoring)}`]
+					: []),
 			].join(", ") || "none"
 		);
 		if (this.agentFile.hasBlock && this.questions.choices.agentRules)
@@ -117,6 +123,10 @@ export class AgentSetup implements Setup<AgentChoices> {
 		if (this.questions.choices.agentHook && registered.length > 0)
 			builder.addNote(
 				`The Rogen hook is registered for ${joinedWithAnd(registered)} already.`
+			);
+		if (restoring.length > 0)
+			builder.addNote(
+				`The Rogen hook of ${joinedWithAnd(restoring)} runs ${HOOK_SCRIPT_FILE}, which is missing, so init writes it back.`
 			);
 		for (const note of this.hooks.notes) builder.addNote(note);
 		if (this.hookUnfound)

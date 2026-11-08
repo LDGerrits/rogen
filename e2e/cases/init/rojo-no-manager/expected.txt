@@ -3,10 +3,10 @@ exit 0
 stdout:
   rogen init
   Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), agent rules (--no-agent-rules).
-  Created default.rogen.json.
   Created src/.gitkeep.
   Created AGENTS.md.
   Created rokit.toml.
+  Created default.rogen.json.
   Wrote default.project.json.
   Next steps
     Install Rokit with 'curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash' (https://github.com/rojo-rbx/rokit), then run 'rokit install' here.

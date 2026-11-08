@@ -140,7 +140,10 @@ export class SupervisedRojo
 			this.endedUnserved(exit, lines);
 			return;
 		}
-		this.restarting = this.restart(exit, lines).catch(onUnexpectedError);
+		this.restarting = this.restart(exit, lines).catch((error: unknown) => {
+			onUnexpectedError(error);
+			this._onDidExit.fire({ exit });
+		});
 	}
 
 	/** Ends on a crash of a Rojo that never served: giving up when it was itself a restart. */

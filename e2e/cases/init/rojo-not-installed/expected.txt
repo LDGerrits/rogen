@@ -5,10 +5,6 @@ stdout:
     "changed": true,
     "files": [
       {
-        "file": "<dir>/default.rogen.json",
-        "outcome": "wrote"
-      },
-      {
         "file": "<dir>/src/.gitkeep",
         "outcome": "wrote"
       },
@@ -18,6 +14,10 @@ stdout:
       },
       {
         "file": "<dir>/rokit.toml",
+        "outcome": "wrote"
+      },
+      {
+        "file": "<dir>/default.rogen.json",
         "outcome": "wrote"
       }
     ],

@@ -1,3 +1,5 @@
+import { jest } from "@jest/globals";
+import { DeferredPromise } from "../../../base/async.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ServerInfo } from "../../runner/rojo-server.js";
 import { ServeAddress } from "../serve.js";
@@ -85,6 +87,47 @@ describe("ServerRecords", () => {
 		});
 	});
 
+	describe("write", () => {
+		it("should leave the earlier record readable until the new one is whole", async () => {
+			let held: DeferredPromise<void> | undefined = undefined;
+			const halfWritten = new DeferredPromise<void>();
+			const halting = new (class extends MemoryFileSystemService {
+				override async writeFile(
+					filePath: string,
+					content: string
+				): Promise<void> {
+					if (!held) return super.writeFile(filePath, content);
+					await super.writeFile(
+						filePath,
+						content.slice(0, content.length / 2)
+					);
+					halfWritten.complete();
+					await held.p;
+					await super.writeFile(filePath, content);
+				}
+			})();
+			const reader = new ServerRecords(halting, "/tmp", 4242);
+			await reader.write(address, info, served);
+			held = new DeferredPromise<void>();
+
+			const writing = new ServerRecords(halting, "/tmp", 5000).write(
+				address,
+				info,
+				{ ...served, pid: 1001 }
+			);
+			await halfWritten.p;
+
+			expect(await reader.recordOf(address, info)).toEqual(
+				expect.objectContaining({ owner: 4242 })
+			);
+			held.complete();
+			await writing;
+			expect(await reader.recordOf(address, info)).toEqual(
+				expect.objectContaining({ owner: 5000, pid: 1001 })
+			);
+		});
+	});
+
 	describe("remove", () => {
 		it("should forget a record it wrote for the session", async () => {
 			await records.write(address, info, served);
@@ -112,5 +155,21 @@ describe("ServerRecords", () => {
 				expect(await records.recordOf(address, written)).toBeDefined();
 			}
 		);
+
+		it("should leave a record it can't delete, without failing", async () => {
+			await records.write(address, info, served);
+			jest.spyOn(fs, "delete").mockRejectedValue(new Error("EBUSY"));
+
+			await expect(
+				records.remove(address, info)
+			).resolves.toBeUndefined();
+			expect(await records.recordOf(address, info)).toBeDefined();
+		});
+
+		it("should do nothing when there is no record", async () => {
+			await expect(
+				records.remove(address, info)
+			).resolves.toBeUndefined();
+		});
 	});
 });

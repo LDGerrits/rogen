@@ -188,10 +188,8 @@ class RogenMain {
 
 		setUnexpectedErrorHandler((error) => logService.error(error));
 
-		const { services, updateService } = this.createServices(
-			environmentService,
-			logService
-		);
+		const { services, updateService, lifecycleService } =
+			this.createServices(environmentService, logService);
 		const commandService = new CoreCommandService(
 			services,
 			logService,
@@ -217,7 +215,7 @@ class RogenMain {
 			});
 
 		if (result.isErr()) failure.report(result.error, command);
-		process.exitCode = exitCode(result);
+		process.exitCode = exitCode(result, lifecycleService.signal);
 		if (!notice.printedFirst) await notice.print();
 	}
 
@@ -242,7 +240,11 @@ class RogenMain {
 	private createServices(
 		environmentService: EnvironmentService,
 		logService: LogService
-	): { services: ServiceCollection; updateService: CoreUpdateService } {
+	): {
+		services: ServiceCollection;
+		updateService: CoreUpdateService;
+		lifecycleService: LifecycleService;
+	} {
 		const { disposables } = this;
 		const services = new ServiceCollection();
 		services.set(EnvironmentService, environmentService);
@@ -263,10 +265,13 @@ class RogenMain {
 		const processService = new NativeProcessService();
 		services.set(ProcessService, processService);
 		services.set(BrowserService, new CoreBrowserService(processService));
-		services.set(
-			LifecycleService,
-			disposables.add(new NativeLifecycleService())
+		const lifecycleService = disposables.add(
+			new NativeLifecycleService(
+				() => processService.killAll(),
+				processService.onDidChangeRunning
+			)
 		);
+		services.set(LifecycleService, lifecycleService);
 		const watcher = disposables.add(new DiskWatcher(logService));
 		services.set(Watcher, watcher);
 		const productService = new CoreProductService(
@@ -305,7 +310,8 @@ class RogenMain {
 			processService,
 			toolLocator,
 			configService,
-			writeService
+			writeService,
+			lifecycleService
 		);
 		services.set(InitService, initService);
 		disposables.add(initService.registerMigration(new LegacyMigration()));
@@ -333,7 +339,10 @@ class RogenMain {
 				configService,
 				fileSystemService,
 				writeService,
-				rojoCommandService
+				rojoCommandService,
+				environmentService,
+				processService,
+				lifecycleService
 			)
 		);
 		services.set(
@@ -360,6 +369,6 @@ class RogenMain {
 			fileSystemService,
 			import.meta.dirname
 		);
-		return { services, updateService };
+		return { services, updateService, lifecycleService };
 	}
 }

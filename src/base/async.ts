@@ -1,4 +1,5 @@
 import { Disposable } from "./disposable.js";
+import { onUnexpectedError } from "./errors.js";
 
 export interface Task<T> {
 	(): T;
@@ -64,7 +65,11 @@ export class RunOnceScheduler implements Disposable {
 		if (this.disposed) return;
 		this.timer = setTimeout(() => {
 			this.timer = undefined;
-			this.runner();
+			try {
+				this.runner();
+			} catch (error) {
+				onUnexpectedError(error);
+			}
 		}, delay);
 	}
 
@@ -81,6 +86,14 @@ export class RunOnceScheduler implements Disposable {
 		this.disposed = true;
 		this.cancel();
 	}
+}
+
+/** Resolves once `signal` aborts, at once when it has. */
+export function aborted(signal: AbortSignal): Promise<void> {
+	return new Promise((resolve) => {
+		if (signal.aborted) resolve();
+		else signal.addEventListener("abort", () => resolve(), { once: true });
+	});
 }
 
 /** Resolves after `ms` milliseconds, or at once when `signal` aborts, clearing its timer. */

@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import path from "path";
 import "../syncback-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
@@ -9,6 +10,8 @@ import {
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { CommandLine } from "../../../platform/environment/args.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { exitCode } from "../../../platform/commands/command-failure.js";
+import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
@@ -35,7 +38,8 @@ describe("syncback command", () => {
 	const start = (
 		options: CommandLine["options"] = { input: "game.rbxl" },
 		prompt = new MockPromptService([], false),
-		positionals: string[] = []
+		positionals: string[] = [],
+		lifecycle = new MockLifecycleService()
 	) => {
 		const log = new MockLogService();
 		const running = commandHarness({
@@ -44,6 +48,7 @@ describe("syncback command", () => {
 			config: new MockConfigService([validEntry()]),
 			processes,
 			prompt,
+			lifecycle,
 		}).run("syncback", { positionals, options });
 		return { log, running };
 	};
@@ -226,6 +231,66 @@ describe("syncback command", () => {
 		expect(log.lines).toEqual([
 			"success: Wrote default.project.json.",
 			"info: Syncback wrote 2 changes.",
+		]);
+	});
+
+	const refuseProjectFile = () => {
+		const refused = () =>
+			Promise.reject(new Error("EACCES: permission denied"));
+		const projectFile = abs("default.project.json");
+		for (const method of ["readFile", "writeFile", "rename"] as const) {
+			const original = fs[method].bind(fs) as (
+				...args: unknown[]
+			) => Promise<unknown>;
+			jest.spyOn(fs, method).mockImplementation(((
+				file: string,
+				...rest: unknown[]
+			) =>
+				file.startsWith(projectFile)
+					? refused()
+					: original(file, ...rest)) as never);
+		}
+	};
+
+	it("should exit 1 with the failure in its JSON when the project file can't be written again after syncback", async () => {
+		const { running, log } = start({
+			input: "game.rbxl",
+			"non-interactive": true,
+			json: true,
+		});
+		const [rojo] = await rojoRuns(1);
+		await editMirror();
+		refuseProjectFile();
+		rojo.exit({ code: 0, signal: null });
+		const result = await running;
+
+		expect(result.isErr()).toBe(true);
+		const document = log.json();
+		expect(document.syncback).toMatchObject({ outcome: "written" });
+		expect(document.configs).toMatchObject([
+			{
+				outcome: "notWritten",
+				diagnostics: [{ code: "output.writeFailed" }],
+			},
+		]);
+	});
+
+	it("should say the project file was not written, and exit 1, when the project file can't be written again after syncback", async () => {
+		const { running, log } = start({
+			input: "game.rbxl",
+			"non-interactive": true,
+		});
+		const [rojo] = await rojoRuns(1);
+		await editMirror();
+		refuseProjectFile();
+		rojo.exit({ code: 0, signal: null });
+		const result = await running;
+
+		expect(result.isErr()).toBe(true);
+		expect(said(log)).toEqual([
+			"default.project.json · not written",
+			"/repo/default.project.json - error: the project file could not be written: permission denied. (output.writeFailed)",
+			"Syncback wrote 2 changes.",
 		]);
 	});
 
@@ -446,6 +511,63 @@ describe("syncback command", () => {
 		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
 			true
 		);
+	});
+
+	it("should exit as a shell reports Ctrl+C, write nothing and leave no file of its own, when Ctrl+C comes while Rojo runs", async () => {
+		const lifecycle = new MockLifecycleService();
+		const { running } = start(
+			{ input: "game.rbxl", "non-interactive": true },
+			undefined,
+			[],
+			lifecycle
+		);
+		await rojoRuns(1);
+		await fs.delete(
+			abs(".rogen-syncback/mirror/ServerScriptService/Combat"),
+			true
+		);
+
+		lifecycle.shutdown("SIGINT");
+
+		expect(exitCode(await running, lifecycle.signal)).toBe(130);
+		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
+			true
+		);
+		expect(await fs.exists(abs("rogen-syncback.project.json"))).toBe(false);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should report what it wrote, write the project file and exit as a shell reports Ctrl+C, when Ctrl+C comes while it writes", async () => {
+		const lifecycle = new MockLifecycleService();
+		const { running, log } = start(
+			{ input: "game.rbxl", "non-interactive": true },
+			undefined,
+			[],
+			lifecycle
+		);
+		const [rojo] = await rojoRuns(1);
+		await editMirror();
+		const writeBytes = fs.writeFileBytes.bind(fs);
+		jest.spyOn(fs, "writeFileBytes").mockImplementation(
+			async (file, bytes) => {
+				lifecycle.shutdown("SIGINT");
+				return writeBytes(file, bytes);
+			}
+		);
+		rojo.exit({ code: 0, signal: null });
+
+		expect(exitCode(await running, lifecycle.signal)).toBe(130);
+		expect(log.lines).toEqual([
+			"success: Wrote default.project.json.",
+			"info: Syncback wrote 2 changes.",
+		]);
+		expect(await fs.readFile(abs("src/Combat/Server/Loot.luau"))).toBe(
+			"return 1"
+		);
+		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
+			false
+		);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
 	});
 
 	it("should say when a Rojo is too old", async () => {

@@ -2,7 +2,7 @@ import { DeferredPromise, Sequencer, timeout } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { isWritten } from "../write/write.js";
@@ -13,6 +13,7 @@ import { ServerInfo } from "../runner/rojo-server.js";
 import { WatchSession, WatchUpdate } from "../watch/watch-service.js";
 import {
 	ServeChangeEvent,
+	ServeEnding,
 	ServePlan,
 	ServeSession,
 	ServeTarget,
@@ -23,7 +24,7 @@ import {
 	ServerRestartEvent,
 	isServed,
 } from "./serve-service.js";
-import { ServePorts } from "./serve-ports.js";
+import { ServePorts, refuses } from "./serve-ports.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
 import { StartedServer } from "./started-server.js";
@@ -31,6 +32,9 @@ import { StartedServer } from "./started-server.js";
 const RECORD_POLL_MS = 250;
 
 const RECORD_WAIT_MS = 5_000;
+
+/** How long the shutdown that a server interrupted with Rogen means is waited for, since on Windows its exit can come first. */
+const SHUTDOWN_GRACE_MS = 1_000;
 
 /** Watches the plan's configs and keeps a started server for each config to serve. */
 export class CoreServeSession
@@ -69,11 +73,6 @@ export class CoreServeSession
 	);
 	readonly onDidChange: Event<ServeChangeEvent> = this._onDidChange.event;
 
-	private readonly _onDidExit = this._register(
-		new Emitter<ServerExitEvent>()
-	);
-	readonly onDidExit: Event<ServerExitEvent> = this._onDidExit.event;
-
 	private readonly servers = new Map<string, StartedServer>();
 	private readonly retirements = new Set<Promise<void>>();
 	private readonly declined = new Map<
@@ -81,14 +80,13 @@ export class CoreServeSession
 		{ readonly kind: "refused" | "elsewhere"; readonly address: string }
 	>();
 	private readonly writtenConfigs = new Set<string>();
-	private launched = false;
 	private readonly reconciling = new Sequencer();
-	private readonly firstUpdate = new DeferredPromise<
-		WatchUpdate | Error | undefined
-	>();
 	private readonly exits = new Sequencer();
-	private stopping = false;
+	/** Whether the first launch is done, so later writes only follow the configs. */
+	private launched = false;
+	/** Aborts once the session ends, for whichever reason came first; every step after it does nothing. */
 	private readonly halted = new AbortController();
+	private readonly ending = new DeferredPromise<ServeEnding>();
 	private stopped: Promise<void> | undefined;
 
 	constructor(
@@ -104,32 +102,19 @@ export class CoreServeSession
 		this._register(watch);
 		this._register(
 			watch.onDidUpdate((update) => {
-				for (const { outcome } of update.reports) {
-					if (!isWritten(outcome)) {
-						this.writtenConfigs.delete(outcome.config.id);
-						continue;
-					}
-					this.writtenConfigs.add(outcome.config.id);
-				}
-				if (!this.firstUpdate.isSettled)
-					this.firstUpdate.complete(update);
 				this._onDidUpdate.fire(update);
-				if (this.launched)
-					this.reconciling
-						.queue(async () => {
-							await this.reportIncompatible(update);
-							await this.reconcile();
-						})
-						.catch((error) =>
-							this._onDidError.fire(ErrorUtils.fromUnknown(error))
-						);
+				this.reconciling
+					.queue(() => this.applyUpdate(update))
+					.catch((error) =>
+						this._onDidError.fire(ErrorUtils.fromUnknown(error))
+					);
 			})
 		);
 		this._register(
 			watch.onDidError((error) => {
-				if (!this.firstUpdate.isSettled)
-					this.firstUpdate.complete(error);
-				this._onDidError.fire(error);
+				if (this.launched || this.isHalted)
+					this._onDidError.fire(error);
+				else this.halt({ kind: "refused", error });
 			})
 		);
 	}
@@ -138,59 +123,61 @@ export class CoreServeSession
 		return [...this.servers.values()][0]?.target;
 	}
 
-	async start(): Promise<Result<void, Error>> {
-		const watching = await this.watch.start();
-		if (watching.isErr()) {
-			this._onDidError.fire(watching.error);
-			return watching;
+	async run(shutdown: AbortSignal): Promise<ServeEnding> {
+		const onShutdown = () => this.stop().catch(onUnexpectedError);
+		if (shutdown.aborted) onShutdown();
+		else shutdown.addEventListener("abort", onShutdown, { once: true });
+		try {
+			const watching = await this.watch.start();
+			if (watching.isErr())
+				this.halt({ kind: "refused", error: watching.error });
+			const ending = await this.ending.p;
+			if (ending.kind === "exited" && ending.exit.kind === "interrupted")
+				await timeout(SHUTDOWN_GRACE_MS, shutdown);
+			await this.stop();
+			return shutdown.aborted ? this.shutdownAfter(ending) : ending;
+		} finally {
+			shutdown.removeEventListener("abort", onShutdown);
 		}
-		const first = await this.firstUpdate.p;
-		if (!first || this.stopping) return ok(undefined);
-		if (first instanceof Error) return err(first);
-		const incompatible = await this.compatibility.problemsIn(
-			this.plan.executable,
-			first.reports.flatMap(({ outcome }) =>
-				isWritten(outcome) ? [outcome.config.projectFile] : []
-			),
-			"serve"
-		);
-		if (incompatible.length > 0) {
-			const refusal = new DiagnosticsError(incompatible);
-			this._onDidError.fire(refusal);
-			return err(refusal);
-		}
-		const { target } = this.plan;
-		if (!this.writtenConfigs.has(target.config.id)) {
-			this.launched = true;
-			return ok(undefined);
-		}
-		if (!isServed(target)) {
-			await this.endOrphanOf(target);
-			if (this.stopping) return ok(undefined);
-			this.launch(target);
-		} else
-			this.declined.set(target.config.id, {
-				kind: "elsewhere",
-				address: target.address.toString(),
-			});
-		this.launched = true;
-		return ok(undefined);
 	}
 
-	stop(): Promise<void> {
-		this.stopping = true;
+	private get isHalted(): boolean {
+		return this.halted.signal.aborted;
+	}
+
+	private halt(ending: ServeEnding): void {
+		if (this.isHalted) return;
 		this.halted.abort();
+		this.ending.complete(ending);
+	}
+
+	/** The shutdown's ending, telling a server's stop that came first unless the shutdown caused it, and the server the shutdown ended when it is another. */
+	private shutdownAfter(ending: ServeEnding): ServeEnding {
+		if (ending.kind === "refused") return ending;
+		const exit =
+			ending.kind === "exited" && ending.exit.kind !== "interrupted"
+				? ending.exit
+				: undefined;
+		const ended =
+			this.target ??
+			(ending.kind === "exited" ? ending.exit.target : undefined);
+		return {
+			kind: "shutdown",
+			...(exit && { exit }),
+			...(ended &&
+				ended.config.id !== exit?.target.config.id && { ended }),
+		};
+	}
+
+	private stop(): Promise<void> {
+		this.halt({ kind: "shutdown" });
 		this.stopped ??= (async () => {
-			if (!this.firstUpdate.isSettled)
-				this.firstUpdate.complete(undefined);
 			const servers = [...this.servers.values()];
 			await Promise.all([
 				...servers.map((server) => server.terminate()),
 				...this.retirements,
 			]);
-			await Promise.allSettled(
-				servers.map((server) => server.unrecord())
-			);
+			await Promise.all(servers.map((server) => server.unrecord()));
 			await this.exits.queue(async () => undefined);
 			await this.watch.stop();
 		})();
@@ -203,14 +190,70 @@ export class CoreServeSession
 		super[Symbol.dispose]();
 	}
 
-	private async reportIncompatible(update: WatchUpdate): Promise<void> {
-		const problems = await this.compatibility.problemsIn(
+	/** Records what the update wrote in its own turn, so a first launch serves only configs it checked; later updates only report the Rojo that runs. */
+	private async applyUpdate(update: WatchUpdate): Promise<void> {
+		for (const { outcome } of update.reports) {
+			if (!isWritten(outcome)) {
+				this.writtenConfigs.delete(outcome.config.id);
+				continue;
+			}
+			this.writtenConfigs.add(outcome.config.id);
+		}
+		if (this.isHalted) return;
+		if (this.launched) {
+			await this.reportIncompatible(update);
+			await this.reconcile();
+			return;
+		}
+		try {
+			await this.launchFirst(update);
+		} catch (error) {
+			this.halt({
+				kind: "refused",
+				error: ErrorUtils.fromUnknown(error),
+			});
+		}
+	}
+
+	/** Ends any orphan, checks the Rojo that runs and starts the target's server; waits for another write while no config is written yet. */
+	private async launchFirst(update: WatchUpdate): Promise<void> {
+		const incompatible = await this.problemsIn(update);
+		if (this.isHalted) return;
+		if (incompatible.length > 0) {
+			this.halt({
+				kind: "refused",
+				error: new DiagnosticsError(incompatible),
+			});
+			return;
+		}
+		if (this.writtenConfigs.size === 0) return;
+		const { target } = this.plan;
+		if (!this.writtenConfigs.has(target.config.id)) await this.reconcile();
+		else if (!isServed(target)) {
+			await this.endOrphanOf(target);
+			if (this.isHalted) return;
+			this.launch(target);
+		} else
+			this.declined.set(target.config.id, {
+				kind: "elsewhere",
+				address: target.address.toString(),
+			});
+		this.launched = true;
+	}
+
+	/** What the Rojo that runs can't serve of the project files `update` wrote. */
+	private problemsIn(update: WatchUpdate): Promise<Diagnostic[]> {
+		return this.compatibility.problemsIn(
 			this.plan.executable,
 			update.reports.flatMap(({ outcome }) =>
 				isWritten(outcome) ? [outcome.config.projectFile] : []
 			),
 			"serve"
 		);
+	}
+
+	private async reportIncompatible(update: WatchUpdate): Promise<void> {
+		const problems = await this.problemsIn(update);
 		if (problems.length > 0)
 			this._onDidError.fire(new DiagnosticsError(problems));
 	}
@@ -220,13 +263,13 @@ export class CoreServeSession
 		const { configs } = selection;
 		const wanted = new Set(configs.map(({ id }) => id));
 		for (const [file, server] of this.servers) {
-			if (this.stopping) return;
+			if (this.isHalted) return;
 			if (!wanted.has(file)) await this.retire(server, "removed");
 		}
 		for (const file of [...this.declined.keys()])
 			if (!wanted.has(file)) this.declined.delete(file);
 		for (const config of configs) {
-			if (this.stopping) return;
+			if (this.isHalted) return;
 			await this.follow(config);
 		}
 	}
@@ -249,7 +292,7 @@ export class CoreServeSession
 		const samePort = started?.target.address.port === target.address.port;
 		const checked =
 			started && samePort ? ok(target) : await this.ports.check(target);
-		if (this.stopping) return;
+		if (this.isHalted) return;
 		await this.settle(target, started, declinedHere, checked);
 	}
 
@@ -290,13 +333,8 @@ export class CoreServeSession
 		target: ServeTarget,
 		kind: "refused" | "elsewhere"
 	): Promise<boolean> {
-		const state = await this.probe.probe(target.address);
-		const recorded =
-			state.kind === "serving"
-				? await this.ports.recordFor(target, state.info)
-				: undefined;
-		if (kind === "refused") return state.kind !== "free" && !recorded;
-		return recorded !== undefined && !this.ports.ownerEnded(recorded);
+		const holder = await this.ports.classify(target);
+		return kind === "refused" ? refuses(holder) : holder.kind === "ours";
 	}
 
 	private async retire(
@@ -318,7 +356,12 @@ export class CoreServeSession
 	/** Ends the server a `rogen serve` that ended left holding the target's port, so its own can start; leaves it when it is gone by now. */
 	private async endOrphanOf(target: ServeTarget): Promise<void> {
 		const { orphan } = target;
-		if (!orphan?.pid) return;
+		if (
+			!orphan?.pid ||
+			this.isHalted ||
+			!this.rojoRunner.isRunning(orphan.pid)
+		)
+			return;
 		const state = await this.probe.probe(target.address);
 		if (state.kind !== "serving" || state.info.session !== orphan.session)
 			return;
@@ -337,22 +380,25 @@ export class CoreServeSession
 		});
 	}
 
-	/** Reports the stop, as a stand-down when the server failed to start because another serve's took its address first; that wait ends with the session. */
+	/** Ends the session with the stop, as a stand-down when the server failed to start because another serve's took its address first; that wait ends with the session. */
 	private stoppedServer(stop: ServerExitEvent, served: boolean): void {
-		if (!stop.failure || stop.crashed || served) {
-			this._onDidExit.fire(stop);
+		if (stop.kind !== "failed" || served) {
+			this.halt({ kind: "exited", exit: stop });
 			return;
 		}
 		this.exits
 			.queue(async () => {
 				const servedBy = await this.waitForAnotherServe(stop.target);
-				if (this.stopping) return;
-				const { target, exit } = stop;
-				this._onDidExit.fire(
-					servedBy
-						? { target, exit, interrupted: false, servedBy }
-						: stop
-				);
+				this.halt({
+					kind: "exited",
+					exit: servedBy
+						? {
+								kind: "served-elsewhere",
+								target: stop.target,
+								servedBy,
+							}
+						: stop,
+				});
 			})
 			.catch((error) =>
 				this._onDidError.fire(ErrorUtils.fromUnknown(error))
@@ -369,15 +415,16 @@ export class CoreServeSession
 			waited <= RECORD_WAIT_MS && !signal.aborted;
 			waited += RECORD_POLL_MS
 		) {
-			const served = await this.ports.anotherServeAt(target);
-			if (served !== "pending") return served;
+			const holder = await this.ports.classify(target);
+			if (holder.kind === "ours") return holder.info;
+			if (holder.kind !== "pending") return undefined;
 			await timeout(RECORD_POLL_MS, signal);
 		}
 		return undefined;
 	}
 
 	private launch(target: ServeTarget): void {
-		if (this.stopping) return;
+		if (this.isHalted) return;
 		const server: StartedServer = new StartedServer(
 			target,
 			this.plan,

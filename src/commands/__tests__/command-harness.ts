@@ -117,6 +117,7 @@ export function commandHarness(
 	const watcher = options.watcher ?? new MemoryWatcher(fs, log);
 	const watch = new CoreWatchService(watcher, index, writeService);
 	const processes = options.processes ?? new MockProcessService();
+	const lifecycle = options.lifecycle ?? new MockLifecycleService();
 
 	const services = new ServiceCollection();
 	services.set(EnvironmentService, environment);
@@ -136,14 +137,12 @@ export function commandHarness(
 		processes,
 		undefined,
 		config,
-		writeService
+		writeService,
+		lifecycle
 	);
 	init.registerMigration(new LegacyMigration());
 	services.set(InitService, init);
-	services.set(
-		LifecycleService,
-		options.lifecycle ?? new MockLifecycleService()
-	);
+	services.set(LifecycleService, lifecycle);
 	services.set(Watcher, watcher);
 	services.set(WatchService, watch);
 	services.set(ProcessService, processes);
@@ -158,7 +157,15 @@ export function commandHarness(
 	services.set(RojoCommandService, rojoCommands);
 	services.set(
 		SyncbackService,
-		new CoreSyncbackService(config, fs, writeService, rojoCommands)
+		new CoreSyncbackService(
+			config,
+			fs,
+			writeService,
+			rojoCommands,
+			environment,
+			processes,
+			lifecycle
+		)
 	);
 	services.set(
 		ServeService,

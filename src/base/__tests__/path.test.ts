@@ -13,6 +13,7 @@ import {
 	normalizeDir,
 	outermostDirs,
 	relativeTo,
+	shownFrom,
 	samePath,
 	selfAndAncestors,
 	stemOf,
@@ -253,6 +254,31 @@ describe("normalizeDir", () => {
 					abs("src-extra"),
 				])
 			).toEqual([abs("src"), abs("src-extra")]);
+		});
+	});
+
+	describe("shownFrom", () => {
+		const abs = (...segments: string[]) =>
+			path.resolve("/repo", ...segments);
+
+		it("should show a path inside the folder relative to it, with forward slashes", () => {
+			expect(shownFrom(abs(), abs("src", "Save.luau"))).toBe(
+				"src/Save.luau"
+			);
+		});
+
+		it("should show the folder itself, one above it and one beside it as given", () => {
+			expect(shownFrom(abs(), abs())).toBe(abs());
+			expect(shownFrom(abs("src"), abs())).toBe(abs());
+			expect(shownFrom(abs("src"), abs("srcs", "a.luau"))).toBe(
+				abs("srcs", "a.luau")
+			);
+		});
+
+		it("should show a folder whose name starts with two dots relative to the folder", () => {
+			expect(shownFrom(abs(), abs("..shared", "a.luau"))).toBe(
+				"..shared/a.luau"
+			);
 		});
 	});
 

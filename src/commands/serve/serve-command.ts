@@ -1,20 +1,13 @@
-import { DeferredPromise } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
-import { onUnexpectedError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	ProjectArgument,
 	singleProjectError,
 } from "../../domain/config/config-service.js";
-import {
-	ServerExitEvent,
-	ServeService,
-	ServeSession,
-} from "../../domain/serve/serve-service.js";
+import { ServeEnding, ServeService } from "../../domain/serve/serve-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
-	ExitCodeError,
 } from "../../platform/commands/commands.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import {
@@ -24,10 +17,6 @@ import {
 } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
-import {
-	LifecycleService,
-	exitCodeOfSignal,
-} from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import {
 	ServeJsonLog,
@@ -133,17 +122,14 @@ registerCommand(
 
 			const store = new DisposableStore();
 			const shutdown = this.untilShutdown(accessor, store);
-			const stopChecks = new AbortController();
-			void shutdown.p.then(() => stopChecks.abort());
 			try {
 				await refreshAgentRules(accessor, Boolean(line.options.json));
 				const plan = await serveService.prepare({
-					signal: stopChecks.signal,
+					signal: shutdown,
 					refs: line.positionals,
 					serverArgs: serverArgsOf(line),
 				});
-				if (shutdown.isSettled)
-					return this.stoppedBy(accessor.get(LifecycleService));
+				if (shutdown.aborted) return ok(undefined);
 				if (plan.isErr()) return plan;
 
 				const log: ServeReporter = line.options.json
@@ -168,82 +154,55 @@ registerCommand(
 				}
 				const session = serveService.serve(plan.value);
 				if (session.isErr()) return session;
-				store.add(session.value);
-				return await this.serve(
-					accessor.get(LifecycleService),
-					session.value,
-					log,
-					shutdown
+				const { value } = session;
+				store.add(value);
+				store.add(value.onDidUpdate((update) => log.update(update)));
+				store.add(value.onDidError((error) => log.error(error)));
+				store.add(value.onDidServe((serving) => log.serving(serving)));
+				store.add(
+					value.onDidRestart((restart) => log.restarted(restart))
 				);
+				store.add(value.onDidOutput((said) => log.said(said)));
+				store.add(
+					value.onDidConnect((change) => log.connection(change))
+				);
+				store.add(value.onDidChange((change) => log.changed(change)));
+				return this.ended(log, await value.run(shutdown));
 			} finally {
 				store[Symbol.dispose]();
 			}
 		}
 
-		/** Ok, unless a signal stopped the run, which ends it as a shell reports a process the signal stopped. */
-		private stoppedBy(lifecycle: LifecycleService): Result<void, Error> {
-			const { signal } = lifecycle;
-			return signal === undefined
-				? ok(undefined)
-				: this.reported(
-						new ExitCodeError(
-							exitCodeOfSignal(signal),
-							new Error(`Stopped by ${signal}.`)
-						)
-					);
-		}
-
-		private async serve(
-			lifecycle: LifecycleService,
-			session: ServeSession,
+		private ended(
 			log: ServeReporter,
-			shutdown: DeferredPromise<void>
-		): Promise<Result<void, Error>> {
-			const store = new DisposableStore();
-			const stopped = new DeferredPromise<ServerExitEvent>();
-			store.add(session.onDidUpdate((update) => log.update(update)));
-			store.add(session.onDidError((error) => log.error(error)));
-			store.add(session.onDidServe((serving) => log.serving(serving)));
-			store.add(
-				session.onDidRestart((restart) => log.restarted(restart))
-			);
-			store.add(session.onDidOutput((said) => log.said(said)));
-			store.add(session.onDidConnect((change) => log.connection(change)));
-			store.add(session.onDidChange((change) => log.changed(change)));
-			store.add(
-				session.onDidExit((stop) => {
-					log.stopped(stop);
-					stopped.complete(stop);
-				})
-			);
-			void shutdown.p.then(() => session.stop()).catch(onUnexpectedError);
-			try {
-				const started = await session.start();
-				if (started.isErr()) {
-					log.abort(started.error);
-					return this.reported(started.error);
-				}
-				const stop = await Promise.race([
-					shutdown.p.then(() => undefined),
-					stopped.p,
-				]);
-				await session.stop();
-				if (!stop) log.shutdown(session.target);
-				if (stop?.servedBy) {
+			ending: ServeEnding
+		): Result<void, Error> {
+			if (ending.kind === "refused") {
+				log.abort(ending.error);
+				return this.reported(ending.error);
+			}
+			if (ending.kind === "shutdown") {
+				if (ending.exit) log.stopped(ending.exit);
+				log.shutdown(ending.ended);
+				log.end("Stopped serving.");
+				return ok(undefined);
+			}
+			const { exit } = ending;
+			log.stopped(exit);
+			switch (exit.kind) {
+				case "served-elsewhere":
 					log.end(
 						"Another rogen serve started serving this project first, so this one stops."
 					);
 					return ok(undefined);
-				}
-				if (!stop?.failure) {
+				case "stopped":
+				case "interrupted":
 					log.end("Stopped serving.");
-					return stop ? ok(undefined) : this.stoppedBy(lifecycle);
-				}
-				log.end("serve failed.");
-				return this.reported(new DiagnosticsError([stop.failure]));
-			} finally {
-				await session.stop();
-				store[Symbol.dispose]();
+					return ok(undefined);
+				case "crashed":
+				case "failed":
+					log.end("serve failed.");
+					return this.reported(new DiagnosticsError([exit.failure]));
 			}
 		}
 	}

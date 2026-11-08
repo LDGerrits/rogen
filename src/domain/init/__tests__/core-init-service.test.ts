@@ -32,6 +32,7 @@ import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MigratedProject } from "../project-migration.js";
 import { StarterPlaces } from "../starter-places.js";
 import { InitChoices, InitPlan, InitWritten } from "../init-service.js";
+import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 
 const directory = path.resolve("/mock/my-game");
 
@@ -114,7 +115,8 @@ describe("CoreInitService", () => {
 				new CoreIndexService(fileSystem),
 				toolchain.syncTools,
 				configs
-			)
+			),
+			new MockLifecycleService()
 		);
 		return service;
 	};
@@ -498,13 +500,13 @@ describe("CoreInitService", () => {
 			const plan = await planned();
 
 			expect(names(plan)).toEqual([
-				"default.rogen.json",
 				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				"CLAUDE.md",
 				SCRIPT,
 				CLAUDE,
+				"default.rogen.json",
 			]);
 			expect(fileOf(plan, SCRIPT)).toMatchObject({ content: hookScript });
 			expect(JSON.parse(fileOf(plan, CLAUDE)?.content ?? "")).toEqual({
@@ -576,7 +578,6 @@ describe("CoreInitService", () => {
 			const plan = await planned();
 
 			expect(names(plan)).toEqual([
-				"default.rogen.json",
 				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
@@ -588,6 +589,7 @@ describe("CoreInitService", () => {
 				".gemini/settings.json",
 				".cursor/hooks.json",
 				".github/hooks/rogen.json",
+				"default.rogen.json",
 			]);
 		});
 
@@ -677,17 +679,18 @@ describe("CoreInitService", () => {
 			const plan = await planned();
 
 			expect(names(plan)).toEqual([
-				"default.rogen.json",
 				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				"CLAUDE.md",
 				SCRIPT,
 				CODEX,
+				"default.rogen.json",
 			]);
 		});
 
 		it("should not offer it when every agent in use has it", async () => {
+			await write(SCRIPT, "#!/bin/sh\n");
 			await write(
 				CLAUDE,
 				JSON.stringify({
@@ -712,11 +715,11 @@ describe("CoreInitService", () => {
 			const plan = await planned();
 
 			expect(names(plan)).toEqual([
-				"default.rogen.json",
 				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				CODEX,
+				"default.rogen.json",
 			]);
 		});
 
@@ -727,13 +730,13 @@ describe("CoreInitService", () => {
 			const plan = await planned();
 
 			expect(names(plan)).toEqual([
-				"default.rogen.json",
 				"src/.gitkeep",
 				".gitignore",
 				"AGENTS.md",
 				"CLAUDE.md",
 				SCRIPT,
 				CODEX,
+				"default.rogen.json",
 			]);
 			expect(plan?.notes).toEqual([
 				".claude/settings.json isn't plain JSON, so it was left alone. Register .agents/hooks/rogen-check.mjs in it by hand: https://rogen-roblox.vercel.app/docs/v2/agents",
@@ -1346,11 +1349,11 @@ describe("CoreInitService", () => {
 			).unwrap();
 
 			expect(Object.keys(files(plan))).toEqual([
-				"default.rogen.json",
 				"README.md",
 				".gitignore",
 				"src/init.luau",
 				"AGENTS.md",
+				"default.rogen.json",
 			]);
 			expect(JSON.parse(files(plan)["default.rogen.json"])).toEqual({
 				tree: { $path: "src" },
@@ -1702,7 +1705,6 @@ describe("CoreInitService", () => {
 			const plan = (await serviceFor().plan()).unwrap();
 
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
-				"default.rogen.json",
 				".gitignore",
 				"src/Greeter/Shared/Greeting.luau",
 				"src/Greeter/Server/Greeter.server.luau",
@@ -1713,6 +1715,7 @@ describe("CoreInitService", () => {
 				"place/Workspace/init.meta.json",
 				"README.md",
 				"AGENTS.md",
+				"default.rogen.json",
 			]);
 			expect(plan?.configs).toEqual(["default.rogen.json"]);
 			expect(plan?.nextSteps.run).toEqual(["rogen serve"]);
@@ -1737,7 +1740,10 @@ describe("CoreInitService", () => {
 
 			const plan = (await serviceFor().plan()).unwrap();
 
-			expect(JSON.parse(plan?.files[0].content ?? "{}")).toMatchObject({
+			expect(plan?.files.at(-1)?.fileName).toBe("default.rogen.json");
+			expect(
+				JSON.parse(plan?.files.at(-1)?.content ?? "{}")
+			).toMatchObject({
 				name: "mine",
 				tree: { $className: "DataModel", Workspace: {} },
 			});
@@ -1845,6 +1851,79 @@ describe("CoreInitService", () => {
 				area: "Agents",
 				text: "none",
 			});
+		});
+
+		it("should go back to the summary it showed when Customise is cancelled", async () => {
+			const prompts = new MockPromptService([
+				"luau",
+				"one",
+				"customise",
+				false,
+				CANCEL,
+				"yes",
+			]);
+
+			const plan = (await review(prompts)).unwrap();
+
+			expect(prompts.asked).toEqual([
+				"Language",
+				"One place or several?",
+				CREATE,
+				"Add the Greeter sample?",
+				"Add Rogen's rules for coding agents to AGENTS.md?",
+				CREATE,
+			]);
+			expect(prompts.prompts.at(-1)?.description).toEqual(
+				prompts.prompts[2].description
+			);
+			expect(
+				plan?.files.some(({ fileName }) => fileName.includes("Greeter"))
+			).toBe(true);
+		});
+
+		it("should keep the answers it had when Customise is cancelled", async () => {
+			const prompts = new MockPromptService([
+				"luau",
+				"one",
+				"customise",
+				false,
+				CANCEL,
+				"customise",
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				"yes",
+			]);
+
+			const plan = (await review(prompts)).unwrap();
+
+			expect(
+				plan?.files.some(({ fileName }) => fileName.includes("Greeter"))
+			).toBe(true);
+		});
+
+		it("should read the folder and look at the tools once, however often the plan is shown", async () => {
+			const detect = jest.spyOn(CoreToolchainService.prototype, "detect");
+			const prompts = new MockPromptService([
+				"luau",
+				"one",
+				"customise",
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				"customise",
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				"yes",
+			]);
+
+			await review(prompts);
+
+			expect(prompts.asked.filter((one) => one === CREATE)).toHaveLength(
+				3
+			);
+			expect(detect).toHaveBeenCalledTimes(1);
+			expect(
+				processes.execs.filter(({ file }) => file === "/bin/rojo")
+			).toHaveLength(1);
 		});
 
 		it("should leave the sample out when Customise is answered so", async () => {
@@ -2154,7 +2233,7 @@ describe("CoreInitService", () => {
 			const result = await serviceFor().write(await planned(), onWritten);
 
 			expect((result as ResultError<Error>).error.message).toBe(
-				"Failed to write default.rogen.json: disk full"
+				"Failed to write src/.gitkeep: disk full"
 			);
 			expect(onWritten).not.toHaveBeenCalled();
 		});
@@ -2288,7 +2367,10 @@ describe("CoreInitService", () => {
 
 			const plan = (await service.plan({ ask: false })).unwrap()!;
 
-			expect(plan.moves).toEqual(migrated().moves);
+			expect(plan.moves).toEqual([
+				{ from: "src/A_Server.luau", to: "src/A@Server.luau" },
+				{ from: "old.rogen.json", to: "old.rogen.json.v1" },
+			]);
 			expect(plan.configs).toEqual(["old.rogen.json"]);
 			expect(
 				JSON.parse(

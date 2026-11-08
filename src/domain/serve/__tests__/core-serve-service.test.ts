@@ -1,4 +1,5 @@
 import { jest } from "@jest/globals";
+import { DeferredPromise } from "../../../base/async.js";
 import { UsageError } from "../../../base/errors.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
@@ -22,6 +23,7 @@ import {
 	ServePlan,
 	ServeRequest,
 	ServeChangeEvent,
+	ServeEnding,
 	ServeSession,
 	ServerExitEvent,
 	ServerReadyEvent,
@@ -212,8 +214,11 @@ describe("CoreServeService", () => {
 		});
 
 		it("should find a config a server already serves, and start nothing for it", async () => {
+			processes.running.add(5000);
 			await memFs.writeFile(
-				...recordFile(34872, "repo", "/repo/default.project.json")
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+				})
 			);
 			requests.answer(
 				"http://127.0.0.1:34872/api/rojo",
@@ -346,27 +351,16 @@ describe("CoreServeService", () => {
 			);
 		});
 
-		it("should leave a server alone that another serve recorded for this project file", async () => {
-			await memFs.writeFile(
-				...recordFile(34872, "repo", "/repo/default.project.json")
-			);
-			requests.answer(
-				"http://127.0.0.1:34872/api/rojo",
-				rojoInfo("repo")
-			);
-
-			const servePlan = await plan();
-
-			expect(servePlan.target.servedBy).toBeDefined();
-		});
-
 		it("should leave a server alone that another serve recorded for this project file before its name changed", async () => {
 			await memFs.writeFile(
 				"/repo/default.rogen.json",
 				config({ name: "Game" })
 			);
+			processes.running.add(5000);
 			await memFs.writeFile(
-				...recordFile(34872, "repo", "/repo/default.project.json")
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+				})
 			);
 			requests.answer(
 				"http://127.0.0.1:34872/api/rojo",
@@ -457,10 +451,44 @@ describe("CoreServeService", () => {
 			}
 		);
 
-		it("should refuse a server whose serve ended when the process that leads it is gone too", async () => {
+		it.each([
+			[
+				"the process that leads it is gone too",
+				{ owner: 5000, pid: 5001 },
+			],
+			["the record names no leading process", { owner: 5000 }],
+			["the record names no serve", { pid: 5001 }],
+		])(
+			"should refuse a server recorded for this project file when %s",
+			async (_, recorded) => {
+				await memFs.writeFile(
+					...recordFile(
+						34872,
+						"repo",
+						"/repo/default.project.json",
+						recorded
+					)
+				);
+				requests.answer(
+					"http://127.0.0.1:34872/api/rojo",
+					rojoInfo("repo")
+				);
+
+				const error = (await errorOf()) as DiagnosticsError;
+
+				expect(error.diagnostics[0]).toMatchObject({
+					code: "serve.portTaken",
+					message: expect.stringContaining(
+						"Port 34872 is held by another process (Rojo serving repo)"
+					),
+				});
+			}
+		);
+
+		it("should refuse a server recorded by a serve that named no owner, even while its leading process runs", async () => {
+			processes.running.add(5001);
 			await memFs.writeFile(
 				...recordFile(34872, "repo", "/repo/default.project.json", {
-					owner: 5000,
 					pid: 5001,
 				})
 			);
@@ -471,25 +499,8 @@ describe("CoreServeService", () => {
 
 			const error = (await errorOf()) as DiagnosticsError;
 
-			expect(error.diagnostics[0].message).toContain(
-				"Port 34872 is held by another process (Rojo serving repo)"
-			);
-		});
-
-		it("should refuse a server whose serve ended, and whose leading process the record doesn't name", async () => {
-			await memFs.writeFile(
-				...recordFile(34872, "repo", "/repo/default.project.json", {
-					owner: 5000,
-				})
-			);
-			requests.answer(
-				"http://127.0.0.1:34872/api/rojo",
-				rojoInfo("repo")
-			);
-
-			const error = (await errorOf()) as DiagnosticsError;
-
 			expect(error.diagnostics[0].code).toBe("serve.portTaken");
+			expect(processes.terminatedTrees).toEqual([]);
 		});
 
 		it("should start over a server whose serve ended, and name what it leaves", async () => {
@@ -661,6 +672,9 @@ describe("CoreServeService", () => {
 
 	describe("serve", () => {
 		let session: ServeSession;
+		let shutdown: AbortController;
+		let ending: Promise<ServeEnding>;
+		let ended: ServeEnding | undefined;
 		let served: ServerReadyEvent[];
 		let stops: ServerExitEvent[];
 		let said: string[];
@@ -688,10 +702,6 @@ describe("CoreServeService", () => {
 			session.onDidOutput(({ message }) =>
 				said.push(`${message.severity}: ${message.text}`)
 			);
-			session.onDidExit((stop) => {
-				said.push("stopped");
-				stops.push(stop);
-			});
 			errored = [];
 			session.onDidError((error) => errored.push(error));
 			changes = [];
@@ -700,9 +710,30 @@ describe("CoreServeService", () => {
 					`${change.kind} ${change.target.config.label}${change.kind === "retired" ? ` (${change.reason})` : change.kind === "refused" ? `: ${change.diagnostic.message}` : change.kind === "orphan" ? ` (process ${change.pid} of ${change.owner})${change.error ? `: ${change.error}` : ""}` : ""}`
 				)
 			);
-			const started = session.start();
+			shutdown = new AbortController();
+			ended = undefined;
+			ending = session.run(shutdown.signal);
+			void ending.then((ending) => {
+				ended = ending;
+				const exit =
+					ending.kind === "refused" ? undefined : ending.exit;
+				if (!exit) return;
+				said.push("stopped");
+				stops.push(exit);
+			});
 			await settle();
-			return started;
+		};
+
+		const stop = async () => {
+			shutdown.abort();
+			return ending;
+		};
+
+		const refusal = async () => {
+			const settled = await ending;
+			if (settled.kind !== "refused")
+				throw new Error("expected a refusal");
+			return settled.error;
 		};
 
 		beforeEach(() => {
@@ -710,7 +741,8 @@ describe("CoreServeService", () => {
 		});
 
 		afterEach(async () => {
-			await session?.stop();
+			shutdown?.abort();
+			await ending;
 			session?.[Symbol.dispose]();
 			jest.restoreAllMocks();
 			jest.useRealTimers();
@@ -727,7 +759,7 @@ describe("CoreServeService", () => {
 				return spawn(...args);
 			});
 
-			expect((await start()).isOk()).toBe(true);
+			await start();
 
 			expect(await Promise.all(writtenAtSpawn)).toEqual([true]);
 			expect(
@@ -760,10 +792,11 @@ describe("CoreServeService", () => {
 			);
 			service = serviceAt("/repo", new RojoCompatibility(memFs, true));
 
-			const started = await start();
+			await start();
 
-			expect(started.isOk()).toBe(true);
+			expect(ended).toBeUndefined();
 			expect(errored).toEqual([]);
+			expect(processes.spawned).toHaveLength(1);
 		});
 
 		it("should not start a Rojo before 7.5.0 for a file with sync rules", async () => {
@@ -778,17 +811,139 @@ describe("CoreServeService", () => {
 			);
 			service = serviceAt("/repo", new RojoCompatibility(memFs, false));
 
-			const started = await start();
+			await start();
 
-			if (started.isOk()) throw new Error("expected a failure");
 			expect(
-				(started.error as DiagnosticsError).diagnostics.map(
+				((await refusal()) as DiagnosticsError).diagnostics.map(
 					({ code, resource }) => [code, resource]
 				)
 			).toEqual([
 				["rojo.syncRulesUnsupported", "/repo/default.project.json"],
 			]);
-			expect(errored).toEqual([started.error]);
+			expect(errored).toEqual([]);
+			expect(processes.spawned).toEqual([]);
+		});
+
+		it("should start nothing for a change saved while it refuses a Rojo before 7.5.0", async () => {
+			processes.outputs.set("/bin/rojo", {
+				code: 0,
+				stdout: "Rojo 7.4.4",
+				stderr: "",
+			});
+			await memFs.writeFile(
+				"/repo/default.rogen.json",
+				config({ syncRules: [{ pattern: "*.md", use: "text" }] })
+			);
+			service = serviceAt("/repo", new RojoCompatibility(memFs, false));
+			const checked = new DeferredPromise<void>();
+			const problemsIn = RojoCompatibility.prototype.problemsIn;
+			jest.spyOn(
+				RojoCompatibility.prototype,
+				"problemsIn"
+			).mockImplementation(async function (
+				this: RojoCompatibility,
+				...args
+			) {
+				const problems = await problemsIn.apply(this, args);
+				await checked.p;
+				return problems;
+			});
+			await start();
+
+			await memFs.writeFile("/repo/default.rogen.json", config());
+			await settle();
+			checked.complete();
+			await settle();
+
+			expect((await ending).kind).toBe("refused");
+			expect(processes.spawned).toEqual([]);
+		});
+
+		it("should not start a Rojo before 7.5.0 for a file with sync rules once a failed first write is fixed", async () => {
+			processes.outputs.set("/bin/rojo", {
+				code: 0,
+				stdout: "Rojo 7.4.4",
+				stderr: "",
+			});
+			const routes = {
+				server: "ServerScriptService",
+				client: "StarterPlayer/StarterPlayerScripts",
+				"*": "ReplicatedStorage",
+			};
+			await memFs.writeFile(
+				"/repo/default.rogen.json",
+				config({
+					routes,
+					syncRules: [{ pattern: "*.md", use: "text" }],
+				})
+			);
+			await memFs.writeFile("/repo/src/X/@server", "");
+			await memFs.writeFile("/repo/src/X/@client", "");
+			service = serviceAt("/repo", new RojoCompatibility(memFs, false));
+			await start();
+
+			await memFs.delete("/repo/src/X/@client");
+			await settle();
+
+			expect(
+				((await refusal()) as DiagnosticsError).diagnostics.map(
+					({ code }) => code
+				)
+			).toEqual(["rojo.syncRulesUnsupported"]);
+			expect(errored).toEqual([]);
+			expect(processes.spawned).toEqual([]);
+		});
+
+		it("should not start a Rojo before 7.5.0 for sync rules saved while it checks a failed first write", async () => {
+			processes.outputs.set("/bin/rojo", {
+				code: 0,
+				stdout: "Rojo 7.4.4",
+				stderr: "",
+			});
+			const routes = {
+				server: "ServerScriptService",
+				client: "StarterPlayer/StarterPlayerScripts",
+				"*": "ReplicatedStorage",
+			};
+			await memFs.writeFile(
+				"/repo/default.rogen.json",
+				config({ routes })
+			);
+			await memFs.writeFile("/repo/src/X/@server", "");
+			await memFs.writeFile("/repo/src/X/@client", "");
+			service = serviceAt("/repo", new RojoCompatibility(memFs, false));
+			const checked = new DeferredPromise<void>();
+			const problemsIn = RojoCompatibility.prototype.problemsIn;
+			jest.spyOn(
+				RojoCompatibility.prototype,
+				"problemsIn"
+			).mockImplementation(async function (
+				this: RojoCompatibility,
+				...args
+			) {
+				const problems = await problemsIn.apply(this, args);
+				await checked.p;
+				return problems;
+			});
+			await start();
+
+			await memFs.delete("/repo/src/X/@client");
+			await memFs.writeFile(
+				"/repo/default.rogen.json",
+				config({
+					routes,
+					syncRules: [{ pattern: "*.md", use: "text" }],
+				})
+			);
+			await settle();
+			checked.complete();
+			await settle();
+
+			expect(
+				((await refusal()) as DiagnosticsError).diagnostics.map(
+					({ code }) => code
+				)
+			).toEqual(["rojo.syncRulesUnsupported"]);
 			expect(processes.spawned).toEqual([]);
 		});
 
@@ -871,17 +1026,17 @@ describe("CoreServeService", () => {
 			await memFs.writeFile("/repo/src/X/@client", "");
 			const updates: string[] = [];
 
-			const started = await start();
+			await start();
 			session.onDidUpdate(({ reports }) =>
 				updates.push(...reports.map(({ outcome }) => outcome.kind))
 			);
 
-			expect(started.isOk()).toBe(true);
 			expect(processes.spawned).toEqual([]);
 
 			await memFs.delete("/repo/src/X/@client");
 			await settle();
 
+			expect(ended).toBeUndefined();
 			expect(updates).toEqual(["wrote"]);
 			expect(processes.spawned).toHaveLength(1);
 		});
@@ -909,7 +1064,7 @@ describe("CoreServeService", () => {
 				pid: processes.spawned[0].pid,
 			});
 
-			await session.stop();
+			await stop();
 
 			expect(await memFs.exists("/mock/tmp/rogen-serve/34872.json")).toBe(
 				false
@@ -956,7 +1111,8 @@ describe("CoreServeService", () => {
 			said = [];
 			session.onDidOutput(({ message }) => said.push(message.text));
 
-			await session.start();
+			shutdown = new AbortController();
+			ending = session.run(shutdown.signal);
 			await settle();
 
 			expect(processes.terminatedTrees).toEqual([]);
@@ -1017,11 +1173,75 @@ describe("CoreServeService", () => {
 				new Error("disk on fire")
 			);
 
-			const started = await start();
+			await start();
 
-			expect(started.isErr() && started.error.message).toBe(
+			expect((await refusal()).message).toBe("disk on fire");
+			expect(processes.spawned).toEqual([]);
+		});
+
+		it("should fail to start, starting nothing, when a write throws after a failed first write", async () => {
+			await memFs.writeFile(
+				"/repo/default.rogen.json",
+				config({
+					routes: {
+						server: "ServerScriptService",
+						client: "StarterPlayer/StarterPlayerScripts",
+						"*": "ReplicatedStorage",
+					},
+				})
+			);
+			await memFs.writeFile("/repo/src/X/@server", "");
+			await memFs.writeFile("/repo/src/X/@client", "");
+			await start();
+			jest.spyOn(CoreWriteService.prototype, "rewrite").mockRejectedValue(
+				new Error("disk on fire")
+			);
+			jest.spyOn(CoreWriteService.prototype, "recheck").mockRejectedValue(
+				new Error("disk on fire")
+			);
+
+			await memFs.writeFile("/repo/src/B.luau", "");
+			await settle();
+
+			expect(ended?.kind === "refused" && ended.error.message).toBe(
 				"disk on fire"
 			);
+			expect(processes.spawned).toEqual([]);
+		});
+
+		it("should start nothing when a write throws while it ends the server a dead serve left", async () => {
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+					pid: 5001,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+			processes.running.add(5001);
+			const terminateTree = processes.terminateTree.bind(processes);
+			jest.spyOn(processes, "terminateTree").mockImplementation(
+				async (pid) => {
+					jest.spyOn(
+						CoreWriteService.prototype,
+						"rewrite"
+					).mockRejectedValue(new Error("disk on fire"));
+					jest.spyOn(
+						CoreWriteService.prototype,
+						"recheck"
+					).mockRejectedValue(new Error("disk on fire"));
+					await memFs.writeFile("/repo/src/B.luau", "");
+					await settle();
+					return terminateTree(pid);
+				}
+			);
+
+			await start();
+			await settle();
+
+			expect((await refusal()).message).toBe("disk on fire");
 			expect(processes.spawned).toEqual([]);
 		});
 
@@ -1032,11 +1252,14 @@ describe("CoreServeService", () => {
 			await settle();
 
 			expect(stops).toHaveLength(1);
-			expect(stops[0].interrupted).toBe(false);
-			expect(stops[0].failure?.code).toBe("serve.serverExited");
-			expect(stops[0].failure?.message).toBe(
-				"Rojo stopped serving repo with exit code 1, without saying why."
-			);
+			expect(stops[0]).toMatchObject({
+				kind: "failed",
+				failure: {
+					code: "serve.serverExited",
+					message:
+						"Rojo stopped serving repo with exit code 1, without saying why.",
+				},
+			});
 		});
 
 		it("should pass on what the server said before it stopped, and point to it", async () => {
@@ -1047,9 +1270,12 @@ describe("CoreServeService", () => {
 			await settle();
 
 			expect(said).toEqual(["error: Port in use", "stopped"]);
-			expect(stops[0].failure?.message).toBe(
-				"Rojo stopped serving repo with exit code 1; see what it said above."
-			);
+			expect(stops[0]).toMatchObject({
+				failure: {
+					message:
+						"Rojo stopped serving repo with exit code 1; see what it said above.",
+				},
+			});
 		});
 
 		it("should stand down without a failure when another serve started a server for the project on its port first", async () => {
@@ -1069,11 +1295,9 @@ describe("CoreServeService", () => {
 			await settle();
 
 			expect(stops).toHaveLength(1);
-			expect(stops[0].failure).toBeUndefined();
-			expect(stops[0].servedBy).toEqual({
-				project: "repo",
-				version: "7.7.1",
-				session: "s1",
+			expect(stops[0]).toMatchObject({
+				kind: "served-elsewhere",
+				servedBy: { project: "repo", version: "7.7.1", session: "s1" },
 			});
 		});
 
@@ -1094,7 +1318,10 @@ describe("CoreServeService", () => {
 			);
 			await settle();
 
-			expect(stops[0].servedBy?.project).toBe("repo");
+			expect(stops[0]).toMatchObject({
+				kind: "served-elsewhere",
+				servedBy: { project: "repo" },
+			});
 		});
 
 		it("should stand down, not restart, when the server it took for its own was another serve's that started first", async () => {
@@ -1120,8 +1347,10 @@ describe("CoreServeService", () => {
 
 			expect(processes.spawned).toHaveLength(1);
 			expect(stops).toHaveLength(1);
-			expect(stops[0].failure).toBeUndefined();
-			expect(stops[0].servedBy?.session).toBe("s1");
+			expect(stops[0]).toMatchObject({
+				kind: "served-elsewhere",
+				servedBy: { session: "s1" },
+			});
 		});
 
 		it("should stop waiting for another serve's record, and report nothing, once it is stopped", async () => {
@@ -1133,7 +1362,7 @@ describe("CoreServeService", () => {
 			processes.spawned[0].exit({ code: 1, signal: null });
 			await jest.advanceTimersByTimeAsync(300);
 
-			await session.stop();
+			await stop();
 			const asked = requests.requested.length;
 			await jest.advanceTimersByTimeAsync(6_000);
 
@@ -1151,8 +1380,10 @@ describe("CoreServeService", () => {
 			processes.spawned[0].exit({ code: 1, signal: null });
 			await settle();
 
-			expect(stops[0].failure?.code).toBe("serve.serverExited");
-			expect(stops[0].servedBy).toBeUndefined();
+			expect(stops[0]).toMatchObject({
+				kind: "failed",
+				failure: { code: "serve.serverExited" },
+			});
 		});
 
 		describe("as its configs change", () => {
@@ -1294,8 +1525,11 @@ describe("CoreServeService", () => {
 			});
 
 			it("should start the server of a config another serve served once that server is gone", async () => {
+				processes.running.add(5000);
 				await memFs.writeFile(
-					...recordFile(34872, "repo", "/repo/default.project.json")
+					...recordFile(34872, "repo", "/repo/default.project.json", {
+						owner: 5000,
+					})
 				);
 				requests.answer(
 					"http://127.0.0.1:34872/api/rojo",
@@ -1369,8 +1603,14 @@ describe("CoreServeService", () => {
 				await replaceWithLobby();
 				await settle();
 
+				processes.running.add(5000);
 				await memFs.writeFile(
-					...recordFile(34900, "Lobby", "/repo/default.project.json")
+					...recordFile(
+						34900,
+						"Lobby",
+						"/repo/default.project.json",
+						{ owner: 5000 }
+					)
 				);
 				requests.answer(
 					"http://127.0.0.1:34900/api/rojo",
@@ -1387,8 +1627,11 @@ describe("CoreServeService", () => {
 			});
 
 			it("should refuse a config another serve served once another project's server holds its port", async () => {
+				processes.running.add(5000);
 				await memFs.writeFile(
-					...recordFile(34872, "repo", "/repo/default.project.json")
+					...recordFile(34872, "repo", "/repo/default.project.json", {
+						owner: 5000,
+					})
 				);
 				requests.answer(
 					"http://127.0.0.1:34872/api/rojo",
@@ -1457,6 +1700,70 @@ describe("CoreServeService", () => {
 				]);
 			});
 
+			it("should move the server to the port its config sets while it ends the server a dead serve left", async () => {
+				await memFs.writeFile(
+					...recordFile(34872, "repo", "/repo/default.project.json", {
+						owner: 5000,
+						pid: 5001,
+					})
+				);
+				requests.answer(
+					"http://127.0.0.1:34872/api/rojo",
+					rojoInfo("repo")
+				);
+				processes.running.add(5001);
+				const terminated = new DeferredPromise<void>();
+				jest.spyOn(processes, "terminateTree").mockReturnValue(
+					terminated.p
+				);
+				await start();
+
+				await portOf(34901);
+				await settle();
+				requests.responses.delete("http://127.0.0.1:34872/api/rojo");
+				terminated.complete();
+				await settle();
+
+				expect(ended).toBeUndefined();
+				expect(spawnedProjects()).toEqual([
+					"default.project.json (ended)",
+					"default.project.json",
+				]);
+				expect(session.target?.address.toString()).toBe(
+					"127.0.0.1:34901"
+				);
+			});
+
+			it("should serve a config that takes the place of another while it checks the Rojo that runs", async () => {
+				const checked = new DeferredPromise<void>();
+				const problemsIn = RojoCompatibility.prototype.problemsIn;
+				jest.spyOn(
+					RojoCompatibility.prototype,
+					"problemsIn"
+				).mockImplementation(async function (
+					this: RojoCompatibility,
+					...args
+				) {
+					const problems = await problemsIn.apply(this, args);
+					await checked.p;
+					return problems;
+				});
+				await start();
+
+				await replaceWithLobby();
+				await settle();
+				checked.complete();
+				await settle();
+
+				expect(ended).toBeUndefined();
+				expect(spawnedProjects()).toEqual([
+					"default.project.json (ended)",
+					"default.project.json",
+				]);
+				expect(changes).toEqual(["retired repo (removed)"]);
+				expect(session.target?.config.label).toBe("Lobby");
+			});
+
 			it("should serve only the named configs, not one added beside them", async () => {
 				await start({ refs: ["."] });
 
@@ -1471,13 +1778,93 @@ describe("CoreServeService", () => {
 			});
 		});
 
+		it("should refuse to start, without reporting it as an error, when the watch can't start", async () => {
+			jest.spyOn(watcher, "watch").mockRejectedValue(
+				new Error("no access")
+			);
+
+			await start();
+
+			expect((await refusal()).message).toContain("no access");
+			expect(errored).toEqual([]);
+		});
+
+		it("should end with the exit of a server that stops on its own, and end the others", async () => {
+			await start();
+
+			processes.spawned[0].exit({ code: 0, signal: null });
+
+			expect(await ending).toMatchObject({
+				kind: "exited",
+				exit: { kind: "stopped" },
+			});
+			expect(processes.spawned[0].terminated).toBe(true);
+		});
+
+		it("should end as shut down, telling no exit, when the shutdown comes within a second of a server interrupted with Rogen", async () => {
+			await start();
+
+			processes.spawned[0].exit({
+				code: 130,
+				signal: null,
+				interrupted: true,
+			});
+			await jest.advanceTimersByTimeAsync(900);
+			expect(ended).toBeUndefined();
+			shutdown.abort();
+
+			expect(await ending).toEqual({
+				kind: "shutdown",
+				ended: expect.objectContaining({
+					config: expect.objectContaining({ label: "repo" }),
+				}),
+			});
+		});
+
+		it("should end with the exit of a server interrupted with Rogen when no shutdown comes within a second", async () => {
+			await start();
+
+			processes.spawned[0].exit({
+				code: 130,
+				signal: null,
+				interrupted: true,
+			});
+			await jest.advanceTimersByTimeAsync(1_000);
+
+			expect(ended).toMatchObject({
+				kind: "exited",
+				exit: { kind: "interrupted" },
+			});
+		});
+
+		it("should end as shut down, still telling a failure that came before the shutdown", async () => {
+			await start();
+			const stopWatcher = watcher.stop.bind(watcher);
+			jest.spyOn(watcher, "stop").mockImplementation(async () => {
+				shutdown.abort();
+				return stopWatcher();
+			});
+
+			processes.spawned[0].exit({ code: 3, signal: null });
+
+			expect(await ending).toEqual({
+				kind: "shutdown",
+				exit: expect.objectContaining({ kind: "failed" }),
+			});
+		});
+
 		it("should end the servers on stop, without reporting them as stopped", async () => {
 			await start();
 
-			await session.stop();
+			const settled = await stop();
 
 			expect(processes.spawned[0].terminated).toBe(true);
-			expect(stops).toEqual([]);
+			expect(settled).toEqual({
+				kind: "shutdown",
+				ended: expect.objectContaining({
+					config: expect.objectContaining({ label: "repo" }),
+				}),
+			});
 		});
 	});
 });

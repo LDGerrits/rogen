@@ -3,9 +3,9 @@ exit 0
 stdout:
   rogen init
   Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), agent rules (--no-agent-rules).
-  Created tools/default.rogen.json.
   Created tools/src/.gitkeep.
   Created tools/AGENTS.md.
+  Created tools/default.rogen.json.
   Wrote tools/default.project.json.
   Next steps
     In each terminal, start in the project folder:

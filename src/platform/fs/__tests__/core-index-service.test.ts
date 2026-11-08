@@ -15,6 +15,10 @@ describe("CoreIndexService", () => {
 		indexService = new CoreIndexService(memoryFs);
 	});
 
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
 	describe("list", () => {
 		it("should recursively map the directory structure into memory", async () => {
 			await memoryFs.writeFile("src/main.ts", "");
@@ -440,6 +444,35 @@ describe("CoreIndexService", () => {
 			]);
 
 			expect(listing.hasEntry("src", "gone.luau")).toBe(false);
+		});
+
+		it("should apply a deletion inside an added folder after it is read again", async () => {
+			await memoryFs.writeFile("src/new/x.luau", "");
+			await memoryFs.writeFile("src/new/y.luau", "");
+			const readDirectory = memoryFs.readDirectory.bind(memoryFs);
+			let reads = 0;
+			jest.spyOn(memoryFs, "readDirectory").mockImplementation(
+				async (dir) => {
+					const entries = await readDirectory(dir);
+					if (dir === "src/new" && ++reads === 2)
+						await memoryFs.delete("src/new/y.luau");
+					return entries;
+				}
+			);
+
+			listing = await indexService.update(listing, [
+				added("src/new/x.luau", FileType.File),
+				added("src/new", FileType.Directory),
+				{
+					type: FileChangeType.DELETED,
+					path: "src/new/y.luau",
+					fileType: FileType.File,
+				},
+			]);
+
+			expect(listingOf(["src", "src/new"])).toEqual(
+				await rescanOf(["src", "src/new"])
+			);
 		});
 
 		it("should leave the listing it updates as it was", async () => {

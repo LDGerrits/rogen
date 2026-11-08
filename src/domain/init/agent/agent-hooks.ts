@@ -13,34 +13,32 @@ interface AgentHooksParts {
 	readonly inUse: readonly AgentInUse[];
 }
 
+/** How an agent's settings stand with the hook: `absent` and `added` are a new file or an edit that registers it. */
+type AgentHookStatus =
+	| {
+			readonly agent: CodingAgent;
+			readonly registration: "absent" | "added";
+			readonly text: string;
+	  }
+	| {
+			readonly agent: CodingAgent;
+			readonly registration: "present" | "unreadable";
+	  };
+
 export class AgentHooks {
-	private readonly registering: readonly {
-		readonly target: CodingAgent;
-		readonly text: string;
-		readonly existed: boolean;
-	}[];
-	private readonly unreadable: readonly CodingAgent[];
-	private readonly registeredAlready: readonly CodingAgent[];
+	private readonly statuses: readonly AgentHookStatus[];
 
 	constructor(private readonly state: AgentHooksParts) {
-		const registrations = state.inUse.map(({ agent: target, text }) => ({
-			target,
-			registration: withHook(text, target.hook),
-			existed: text !== undefined,
-		}));
-		this.registering = registrations.flatMap(
-			({ target, registration, existed }) =>
-				registration.kind === "added"
-					? [{ target, text: registration.text, existed }]
-					: []
-		);
-		this.unreadable = registrations.flatMap(({ target, registration }) =>
-			registration.kind === "unreadable" ? [target] : []
-		);
-		this.registeredAlready = registrations.flatMap(
-			({ target, registration }) =>
-				registration.kind === "present" ? [target] : []
-		);
+		this.statuses = state.inUse.map(({ agent, text }): AgentHookStatus => {
+			const registration = withHook(text, agent.hook);
+			if (registration.kind !== "added")
+				return { agent, registration: registration.kind };
+			return {
+				agent,
+				registration: text === undefined ? "absent" : "added",
+				text: registration.text,
+			};
+		});
 	}
 
 	/** Whether a coding agent whose hook file Rogen knows is in use here, whether or not it has the hook. */
@@ -59,41 +57,68 @@ export class AgentHooks {
 		return this.registering.length > 0;
 	}
 
-	/** The agents in use whose hook file registers the script already. */
+	/** The agents in use whose hook file registers the script already, while the script exists. */
 	get registered(): string[] {
-		return this.registeredAlready.map(({ name }) => name);
+		return this.state.scriptExists ? this.registeredNames : [];
+	}
+
+	/** The agents whose registered hook runs a script that is gone, which init writes back without asking. */
+	get restoring(): string[] {
+		return this.state.scriptExists ? [] : this.registeredNames;
 	}
 
 	get agents(): string[] {
-		return this.registering.map(({ target }) => target.name);
+		return this.registering.map(({ agent }) => agent.name);
 	}
 
-	get files(): PlannedFile[] {
+	/** The files that restore the script, and register the hook where `registering`. */
+	files(registering: boolean): PlannedFile[] {
+		const additions = registering ? this.registering : [];
 		return [
-			...(this.state.scriptExists
-				? []
-				: [{ fileName: HOOK_SCRIPT_FILE, content: hookScript }]),
-			...this.registering.map(({ target, text, existed }) => ({
-				fileName: target.settingsFile,
+			...(!this.state.scriptExists &&
+			(additions.length > 0 || this.restoring.length > 0)
+				? [{ fileName: HOOK_SCRIPT_FILE, content: hookScript }]
+				: []),
+			...additions.map(({ agent, registration, text }) => ({
+				fileName: agent.settingsFile,
 				content: text,
-				...(existed && { addition: "the Rogen hook" }),
+				...(registration === "added" && {
+					addition: "the Rogen hook",
+				}),
 			})),
 		];
 	}
 
 	get notes(): string[] {
-		return this.unreadable.map(
-			({ settingsFile }) =>
-				`${settingsFile} isn't plain JSON, so it was left alone. Register ${HOOK_SCRIPT_FILE} in it by hand: ${DOCS_URL}/agents`
+		return this.statuses.flatMap(({ agent, registration }) =>
+			registration === "unreadable"
+				? [
+						`${agent.settingsFile} isn't plain JSON, so it was left alone. Register ${HOOK_SCRIPT_FILE} in it by hand: ${DOCS_URL}/agents`,
+					]
+				: []
 		);
 	}
 
 	get setup(): string[] {
 		return [
 			"The hook runs the Rogen in node_modules/.bin, else the one on the PATH; install Rogen in the project or globally.",
-			...this.registering.flatMap(({ target }) =>
-				target.afterwards ? [target.afterwards] : []
+			...this.registering.flatMap(({ agent }) =>
+				agent.afterwards ? [agent.afterwards] : []
 			),
 		];
+	}
+
+	private get registering() {
+		return this.statuses.flatMap((status) =>
+			status.registration === "absent" || status.registration === "added"
+				? [status]
+				: []
+		);
+	}
+
+	private get registeredNames(): string[] {
+		return this.statuses.flatMap(({ agent, registration }) =>
+			registration === "present" ? [agent.name] : []
+		);
 	}
 }

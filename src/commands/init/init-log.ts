@@ -377,7 +377,10 @@ export class InitJsonLog implements InitReporter {
 
 	failed(error: Error): Result<void, Error> {
 		return this.print(
-			{ ...this.writtenSoFar(), error: errorToJson(error) },
+			{
+				...this.writtenSoFar(),
+				error: errorToJson(error),
+			},
 			error
 		);
 	}

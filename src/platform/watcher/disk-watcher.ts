@@ -5,7 +5,8 @@ import { isUnfollowableLink } from "../fs/disk-file-system-service.js";
 import { FileType } from "../fs/file-system-service.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { containsPath, toPosix } from "../../base/path.js";
-import { FileChangeType } from "../fs/file-changes.js";
+import { FileChange, FileChangeType } from "../fs/file-changes.js";
+import { LogService } from "../log/log-service.js";
 import { AbstractWatcher } from "./abstract-watcher.js";
 import { WatchFilter, WatchOptions } from "./watcher.js";
 
@@ -20,11 +21,41 @@ const CHOKIDAR_EVENTS = [
 ] as const;
 
 export class DiskWatcher extends AbstractWatcher {
-	private watcher: chokidar.FSWatcher | null = null;
+	private session: WatchSession | undefined;
+
+	protected async startWatching(
+		paths: readonly string[],
+		options: WatchOptions
+	): Promise<void> {
+		this.session = new WatchSession(
+			[...paths, ...(options.shallow ?? [])],
+			new WatchFilter(paths, options),
+			options.reportsUnreadable ?? [],
+			this.logService,
+			(change) => this.fireChange(change)
+		);
+		await this.session.start();
+	}
+
+	override stop(): Promise<void> {
+		this.session?.cancelStart();
+		return super.stop();
+	}
+
+	protected async stopWatching(): Promise<void> {
+		const { session } = this;
+		this.session = undefined;
+		await session?.close();
+	}
+}
+
+/** One watch, from its start to its stop; nothing it saw outlives it. */
+class WatchSession {
+	private readonly watcher: chokidar.FSWatcher;
 	/** Links seen that aren't followed; chokidar reports nothing about them, so their coming and going is reported here. */
-	private unfollowed = new Set<string>();
+	private readonly unfollowed = new Set<string>();
 	private ready = false;
-	private roots: string[] = [];
+	private closed = false;
 	private readonly seen = new Map<string, string | undefined>();
 	/** Folders chokidar could not read; chokidar reports nothing when one becomes readable, so that is reported here. */
 	private readonly refused = new Set<string>();
@@ -36,16 +67,16 @@ export class DiskWatcher extends AbstractWatcher {
 	private tick = 0;
 	private revival: NodeJS.Timeout | undefined;
 	/** Ends a start still waiting for chokidar, which never reports ready once closed. */
-	private cancelStart: (() => void) | undefined;
+	private cancel: (() => void) | undefined;
 
-	protected async startWatching(
-		paths: readonly string[],
-		options: WatchOptions
-	): Promise<void> {
-		const filter = new WatchFilter(paths, options);
-		this.roots = [...paths, ...(options.shallow ?? [])];
-
-		this.watcher = chokidar.watch(this.roots, {
+	constructor(
+		private readonly roots: readonly string[],
+		filter: WatchFilter,
+		reportsUnreadable: readonly string[],
+		private readonly logService: LogService,
+		private readonly fire: (change: FileChange) => void
+	) {
+		this.watcher = chokidar.watch([...roots], {
 			ignoreInitial: true,
 			persistent: true,
 			followSymlinks: true,
@@ -60,18 +91,31 @@ export class DiskWatcher extends AbstractWatcher {
 
 		this.watcher.on("error", (error) => {
 			this.recordRefused(error);
-			this.reportError(error, options.reportsUnreadable ?? []);
+			this.reportError(error, reportsUnreadable);
 		});
+	}
 
+	async start(): Promise<void> {
 		// Until chokidar is ready, new files count as initial and are ignored.
-		const watcher = this.watcher;
-		await new Promise<void>((resolve) => {
-			this.cancelStart = resolve;
-			watcher.once("ready", resolve);
+		const cancelled = await new Promise<boolean>((resolve) => {
+			this.cancel = () => resolve(true);
+			this.watcher.once("ready", () => resolve(false));
 		});
-		this.cancelStart = undefined;
+		this.cancel = undefined;
+		if (cancelled || this.closed) return;
 		this.ready = true;
 		this.watchForReturns();
+	}
+
+	cancelStart(): void {
+		this.cancel?.();
+	}
+
+	async close(): Promise<void> {
+		this.closed = true;
+		clearInterval(this.revival);
+		clearThrottles(this.watcher);
+		await this.watcher.close();
 	}
 
 	private reportError(error: Error, reported: readonly string[]): void {
@@ -133,12 +177,12 @@ export class DiskWatcher extends AbstractWatcher {
 	}
 
 	private rewatch(target: string, fileType: FileType): void {
-		this.watcher?.add(target);
+		this.watcher.add(target);
 		this.attaching.set(target, { fileType, tick: this.tick });
 	}
 
 	private reportAttached(): void {
-		if (!this.watcher || this.attaching.size === 0) return;
+		if (this.attaching.size === 0) return;
 		const watched = this.watcher.getWatched();
 		for (const [target, { fileType, tick }] of this.attaching) {
 			if (tick === this.tick) continue;
@@ -152,16 +196,6 @@ export class DiskWatcher extends AbstractWatcher {
 			this.attaching.delete(target);
 			this.fireEvent(FileChangeType.ADDED, target, fileType);
 		}
-	}
-
-	private stopRevival(): void {
-		clearInterval(this.revival);
-		this.revival = undefined;
-	}
-
-	override stop(): Promise<void> {
-		this.cancelStart?.();
-		return super.stop();
 	}
 
 	private skipUnfollowable(target: string): boolean {
@@ -192,21 +226,8 @@ export class DiskWatcher extends AbstractWatcher {
 		rawPath: string,
 		fileType: FileType
 	): void {
-		this.fireChange({ type, path: toPosix(rawPath), fileType });
-	}
-
-	protected async stopWatching(): Promise<void> {
-		this.ready = false;
-		this.stopRevival();
-		this.seen.clear();
-		this.unfollowed = new Set();
-		if (this.watcher) {
-			clearThrottles(this.watcher);
-			await this.watcher.close();
-			this.watcher = null;
-		}
-		this.refused.clear();
-		this.attaching.clear();
+		if (this.closed) return;
+		this.fire({ type, path: toPosix(rawPath), fileType });
 	}
 }
 

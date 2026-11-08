@@ -36,6 +36,11 @@ class ListingDraft {
 		return entries;
 	}
 
+	set(dir: string, entries: Map<string, FileType>): void {
+		this.directories.set(dir, entries);
+		this.edited.set(dir, entries);
+	}
+
 	remove(dir: string): void {
 		this.unreadable.delete(dir);
 		const children = this.directories.get(dir);
@@ -100,7 +105,7 @@ export class CoreIndexService implements IndexService {
 		if (!entries) return;
 
 		const children = new Map<string, FileType>();
-		draft.directories.set(toPosix(currentDir), children);
+		draft.set(toPosix(currentDir), children);
 		const subdirs: string[] = [];
 
 		for (const [name, type] of entries) {
