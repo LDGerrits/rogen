@@ -11,13 +11,11 @@ import {
 import {
 	AbstractCommand,
 	registerCommand,
-	stoppedBySignal,
 } from "../../platform/commands/commands.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import {
 	InitJsonLog,
 	InitLog,
@@ -186,13 +184,7 @@ registerCommand(
 				(item) => reporter.written(item),
 				dryRun
 			);
-			if (written.isErr())
-				return reporter.failed(
-					stoppedBySignal(
-						accessor.get(LifecycleService),
-						written.error
-					)
-				);
+			if (written.isErr()) return reporter.failed(written.error);
 			if (dryRun) return reporter.planned(plan);
 			const run = await this.writeConfigs(accessor, plan);
 			if (run.isErr()) return reporter.failed(run.error);

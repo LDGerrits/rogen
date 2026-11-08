@@ -11,10 +11,7 @@ import {
 	NextSteps,
 } from "../../domain/init/init-service.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import {
-	ReportedError,
-	exitCodeCause,
-} from "../../platform/commands/commands.js";
+import { ReportedError } from "../../platform/commands/commands.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 import {
 	DiagnosticJson,
@@ -382,7 +379,7 @@ export class InitJsonLog implements InitReporter {
 		return this.print(
 			{
 				...this.writtenSoFar(),
-				error: errorToJson(exitCodeCause(error)),
+				error: errorToJson(error),
 			},
 			error
 		);

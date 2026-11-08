@@ -529,7 +529,7 @@ describe("syncback command", () => {
 
 		lifecycle.shutdown("SIGINT");
 
-		expect(exitCode(await running)).toBe(130);
+		expect(exitCode(await running, lifecycle.signal)).toBe(130);
 		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
 			true
 		);
@@ -556,7 +556,7 @@ describe("syncback command", () => {
 		);
 		rojo.exit({ code: 0, signal: null });
 
-		expect(exitCode(await running)).toBe(130);
+		expect(exitCode(await running, lifecycle.signal)).toBe(130);
 		expect(log.lines).toEqual([
 			"success: Wrote default.project.json.",
 			"info: Syncback wrote 2 changes.",

@@ -15,7 +15,10 @@ import { MockLogService } from "../../../platform/log/__tests__/mock-log-service
 import { LogLevel } from "../../../platform/log/log-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { CommandLine } from "../../../platform/environment/args.js";
-import { exitCodeOf } from "../../../platform/commands/command-failure.js";
+import {
+	exitCode,
+	exitCodeOf,
+} from "../../../platform/commands/command-failure.js";
 
 describe("watch", () => {
 	let memFs: MemoryFileSystemService;
@@ -347,7 +350,7 @@ describe("watch", () => {
 				lifecycle.shutdown(signal);
 				const result = await running;
 
-				expect(result.isErr() && exitCodeOf(result.error)).toBe(code);
+				expect(exitCode(result, lifecycle.signal)).toBe(code);
 				expect(logService.entries.at(-1)).toEqual({
 					kind: "outro",
 					text: "Stopped watching.",
