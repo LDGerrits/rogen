@@ -10,7 +10,6 @@ import { ignoringGlob, literalGlob } from "../../base/glob.js";
 import {
 	ancestors,
 	contains,
-	PathSet,
 	samePath,
 	toNative,
 	toPosix,
@@ -18,11 +17,7 @@ import {
 import { parse, setJsoncValue } from "../../base/jsonc.js";
 import { isObject, isSameJson } from "../../base/objects.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
-import {
-	Diagnostic,
-	errorDiagnostic,
-	warningDiagnostic,
-} from "../../platform/diagnostics/diagnostic.js";
+import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import {
 	FileSystemService,
@@ -32,11 +27,7 @@ import {
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
-import {
-	WriteService,
-	ConfigLocations,
-	PlacedLocation,
-} from "../write/write-service.js";
+import { WriteService } from "../write/write-service.js";
 import { didWrite } from "../write/write.js";
 import { isSyncbackFileName } from "../config/config.js";
 import {
@@ -72,6 +63,15 @@ import { SyncbackService } from "./syncback-service.js";
 import { SyncbackLayout } from "./syncback-layout.js";
 import { SyncbackMirror } from "./syncback-mirror.js";
 import { MIRROR, SyncbackStaging } from "./syncback-staging.js";
+import {
+	MirrorPlan,
+	Expected,
+	Operation,
+	bytesOf,
+	sameBytes,
+	withoutRemovedInside,
+} from "./mirror-plan.js";
+import { PlanWriter } from "./plan-writer.js";
 import { TreeChange, applyTreeChanges, treeChanges } from "./tree-changes.js";
 import {
 	onlySerializedOverrides,
@@ -102,71 +102,10 @@ const COPY_BATCH = 256;
 const CR = 13;
 const LF = 10;
 
-/** What applying a plan does to one path of the project, for one instance; paths are absolute, in the system's own form. */
-type Operation = {
-	readonly file: string;
-	readonly instance: string;
-	/** The path of the mirror it comes from, when it comes from one. */
-	readonly from?: string;
-} & (
-	| { readonly kind: "write"; readonly bytes: Uint8Array }
-	| { readonly kind: "folder" }
-	| { readonly kind: "remove" }
-	/** A folder removed only once nothing is left in it, so what syncback leaves alone stays. */
-	| { readonly kind: "prune" }
-);
-
-/** A new file syncback placed, and the instance the place had it as, for the check after the run. */
-interface Expected {
-	readonly file: string;
-	readonly instance: readonly string[];
-}
-
 /** The error of a run stopped before it wrote anything. */
 function stopped(): CancelledError {
 	return new CancelledError(
 		"Syncback stopped before it finished, so nothing was written."
-	);
-}
-
-/** The plan of a run on the mirror: what it writes, with the bytes, and the bytes each path it touches had, so a confirmed plan is written as it was shown. */
-class CoreSyncbackPlan implements SyncbackPlan {
-	readonly changes: readonly SyncbackChange[];
-	readonly listed: readonly SyncbackChange[];
-
-	constructor(
-		readonly project: ResolvedConfig,
-		readonly unplaced: readonly UnplacedInstance[],
-		readonly compiled: readonly CompiledChange[],
-		readonly operations: readonly Operation[],
-		/** The bytes of the config, the place and each path the operations touch when the plan was made; `undefined` for a path that wasn't there. */
-		readonly before: ReadonlyMap<string, Uint8Array | undefined>,
-		readonly expected: readonly Expected[],
-		/** What `--list` prints for the run: see `SyncbackPlan.listed`. */
-		listed: readonly SyncbackChange[]
-	) {
-		this.listed = listed;
-		this.changes = withoutRemovedInside(
-			operations.map(({ kind, file }) => ({
-				kind:
-					kind === "remove" || kind === "prune" ? "remove" : "write",
-				file,
-			}))
-		);
-	}
-}
-
-/** `changes` without a removal inside a folder another one removes, as `--list` shows them. */
-function withoutRemovedInside(
-	changes: readonly SyncbackChange[]
-): SyncbackChange[] {
-	const removed = new Set(
-		changes.filter(({ kind }) => kind === "remove").map(({ file }) => file)
-	);
-	return changes.filter(
-		({ kind, file }) =>
-			kind !== "remove" ||
-			![...ancestors(file)].some((dir) => removed.has(dir))
 	);
 }
 
@@ -220,17 +159,6 @@ interface Copied {
 	readonly target: string;
 	/** When the mirror's copy was written, so a copy Rojo left alone is not read again. */
 	readonly modified: number;
-}
-
-function sameBytes(
-	a: Uint8Array | undefined,
-	b: Uint8Array | undefined
-): boolean {
-	if (a === b) return true;
-	if (a === undefined || b === undefined || a.length !== b.length)
-		return false;
-	for (let at = 0; at < a.length; at++) if (a[at] !== b[at]) return false;
-	return true;
 }
 
 /** The keys of a node that a meta file holds, by the name it holds them under. */
@@ -396,7 +324,7 @@ export class CoreSyncbackService implements SyncbackService {
 					const confirmed = await confirm(plan);
 					if (signal.aborted) return err(stopped());
 					if (!confirmed) return ok(undefined);
-					if (!(await this.unchangedSince(plan)))
+					if (!(await plan.isCurrent(this.fileSystemService)))
 						return err(
 							new UsageError(
 								"The project or the place changed since the list was made, so nothing was written.",
@@ -406,7 +334,12 @@ export class CoreSyncbackService implements SyncbackService {
 				}
 				// Once writing starts, a stop no longer undoes the run.
 				if (signal.aborted) return err(stopped());
-				return ok(await this.written(request, plan));
+				return ok(
+					await new PlanWriter(
+						this.fileSystemService,
+						this.writeService
+					).write(request, plan)
+				);
 			}
 		);
 	}
@@ -415,7 +348,7 @@ export class CoreSyncbackService implements SyncbackService {
 		request: SyncbackRequest,
 		prepared: Prepared,
 		signal: AbortSignal
-	): Promise<Result<CoreSyncbackPlan, Error>> {
+	): Promise<Result<MirrorPlan, Error>> {
 		const copied = await this.copy(prepared);
 		const started = Date.now();
 		const ran = await this.runSkippingYaml(
@@ -438,99 +371,8 @@ export class CoreSyncbackService implements SyncbackService {
 		return signal.aborted ? err(stopped()) : settled;
 	}
 
-	private async written(
-		request: SyncbackRequest,
-		plan: CoreSyncbackPlan
-	): Promise<SyncbackResult> {
-		const done = await this.write(plan);
-		const warnings = await this.verify(
-			request,
-			plan.expected.filter(({ file }) => !done.failed.has(file))
-		);
-		return {
-			project: request.project,
-			changes: plan.changes.filter(({ file }) => !done.failed.has(file)),
-			listed: plan.listed.filter(({ file }) => !done.failed.has(file)),
-			unplaced: [...plan.unplaced, ...done.unplaced],
-			compiled: plan.compiled,
-			warnings,
-		};
-	}
-
-	private async unchangedSince(plan: CoreSyncbackPlan): Promise<boolean> {
-		for (const [file, bytes] of plan.before)
-			if (!sameBytes(await this.bytesOf(file), bytes)) return false;
-		return true;
-	}
-
-	/** The bytes of `file`, or none when it isn't there. */
-	private async bytesOf(file: string): Promise<Uint8Array | undefined> {
-		return (await this.fileSystemService.isFile(file))
-			? await this.fileSystemService.readFileBytes(file)
-			: undefined;
-	}
-
 	private readMirror({ root }: Prepared, at: string): Promise<Uint8Array> {
 		return this.fileSystemService.readFileBytes(path.join(root, at));
-	}
-
-	/** Makes each change of `plan`, writes before removals; one that fails leaves its file listed as not written, and the rest are made, except that no file is removed once a write failed. */
-	private async write(plan: CoreSyncbackPlan): Promise<{
-		failed: Set<string>;
-		unplaced: UnplacedInstance[];
-	}> {
-		const failed = new Set<string>();
-		const unplaced: UnplacedInstance[] = [];
-		const order = { write: 0, folder: 0, remove: 1, prune: 2 } as const;
-		const written = new PathSet(
-			plan.operations
-				.filter(({ kind }) => kind === "write")
-				.map(({ file }) => file)
-		);
-		// A rename that only changes case writes the old file where the file system folds case, so its removal goes first.
-		const rank = (operation: Operation) =>
-			operation.kind === "remove" && written.has(operation.file)
-				? -1
-				: order[operation.kind];
-		const operations = [...plan.operations].sort(
-			(a, b) => rank(a) - rank(b)
-		);
-		let wroteAll = true;
-		for (const operation of operations) {
-			// A rename is a removal and a write, so a failed write keeps the old file.
-			if (!wroteAll && operation.kind === "remove") {
-				failed.add(operation.file);
-				unplaced.push({
-					instance: operation.instance,
-					reason: `${operation.file} was kept, since another file could not be written`,
-				});
-				continue;
-			}
-			try {
-				if (operation.kind === "write")
-					await this.fileSystemService.writeFileBytes(
-						operation.file,
-						operation.bytes
-					);
-				else if (operation.kind === "folder")
-					await this.fileSystemService.createDirectory(
-						operation.file
-					);
-				else if (operation.kind === "remove")
-					await this.fileSystemService.delete(operation.file);
-				else if (await this.isEmptyFolder(operation.file))
-					await this.fileSystemService.delete(operation.file, true);
-			} catch (error) {
-				if (operation.kind === "write" || operation.kind === "folder")
-					wroteAll = false;
-				failed.add(operation.file);
-				unplaced.push({
-					instance: operation.instance,
-					reason: `${operation.file} could not be changed: ${failureReason(error as Error)}`,
-				});
-			}
-		}
-		return { failed, unplaced };
 	}
 
 	/** The configs beside `project` in its folder, which together with it are the places of one game. */
@@ -547,21 +389,6 @@ export class CoreSyncbackService implements SyncbackService {
 			if (config) configs.push(config);
 		}
 		return configs;
-	}
-
-	/** Whether `dir` holds no file, in it or in any folder below it. */
-	private async isEmptyFolder(dir: string): Promise<boolean> {
-		const entries = await tryWithAsync(() =>
-			this.fileSystemService.readDirectory(dir)
-		);
-		if (entries.isErr()) return false;
-		for (const [name, type] of entries.value)
-			if (
-				!isDirectoryType(type) ||
-				!(await this.isEmptyFolder(path.join(dir, name)))
-			)
-				return false;
-		return true;
 	}
 
 	private async prepare(
@@ -873,7 +700,7 @@ export class CoreSyncbackService implements SyncbackService {
 		skipped: readonly UnplacedInstance[],
 		/** All Rojo said, which lists what it wrote and removed. */
 		said: readonly ServerMessage[]
-	): Promise<Result<CoreSyncbackPlan, Error>> {
+	): Promise<Result<MirrorPlan, Error>> {
 		const { mirror, root } = prepared;
 		const walked = await this.walk(root);
 		const mountsNothing =
@@ -924,10 +751,13 @@ export class CoreSyncbackService implements SyncbackService {
 			request.project.file,
 			path.resolve(request.cwd, request.input),
 		])
-			before.set(file, await this.bytesOf(file));
+			before.set(file, await bytesOf(this.fileSystemService, file));
 		const add = async (operation: Operation) => {
 			if (!before.has(operation.file))
-				before.set(operation.file, await this.bytesOf(operation.file));
+				before.set(
+					operation.file,
+					await bytesOf(this.fileSystemService, operation.file)
+				);
 			operations.push(operation);
 		};
 
@@ -1298,10 +1128,10 @@ export class CoreSyncbackService implements SyncbackService {
 		for (const operation of edited.operations) await add(operation);
 		unplaced.push(...edited.unplaced);
 		return ok(
-			new CoreSyncbackPlan(
+			new MirrorPlan(
 				request.project,
 				unplaced,
-				CoreSyncbackService.outermost(compiled),
+				compiled,
 				operations,
 				before,
 				expected,
@@ -1620,43 +1450,6 @@ export class CoreSyncbackService implements SyncbackService {
 		});
 	}
 
-	/** Each instance once, under its strongest kind, a folder before what it holds; none below a removed one, nor a new one below a new one. */
-	private static outermost(
-		changes: readonly CompiledChange[]
-	): CompiledChange[] {
-		// An instance Rojo rewrote in another form is gone in its old one, but still there.
-		const strength = { removed: 0, changed: 1, added: 2 } as const;
-		const kinds = new Map<string, CompiledChange["kind"]>();
-		for (const { instance, kind } of changes) {
-			const listed = kinds.get(instance);
-			if (listed === undefined || strength[kind] > strength[listed])
-				kinds.set(instance, kind);
-		}
-		return [...kinds]
-			.filter(([instance, kind]) => {
-				const names = instance.split("/");
-				return !names.slice(1).some((_, depth) => {
-					const above = kinds.get(
-						instanceKey(names.slice(0, depth + 1))
-					);
-					return (
-						above === "removed" ||
-						(above === "added" && kind === "added")
-					);
-				});
-			})
-			.map(([instance, kind]) => ({ instance, kind }))
-			.sort((a, b) => {
-				const [left, right] = [a, b].map(({ instance }) =>
-					instance.split("/")
-				);
-				for (let at = 0; at < Math.min(left.length, right.length); at++)
-					if (left[at] !== right[at])
-						return compareStrings(left[at], right[at]);
-				return left.length - right.length;
-			});
-	}
-
 	/** The instance a path of the mirror is, as an instance key: its folders, then the instance its file makes. */
 	private static instanceAt(mirror: SyncbackMirror, at: string): string {
 		const names = mirror.instancePathOf(at);
@@ -1880,42 +1673,5 @@ export class CoreSyncbackService implements SyncbackService {
 					...shown.filter(({ file }) => file !== projectFile.file),
 				]
 			: shown;
-	}
-
-	/** Writes again in memory and compares: a file syncback placed that lands elsewhere than the place had it is a warning. A compiled path holds what a tool wrote, which the write does not place. */
-	private async verify(
-		request: SyncbackRequest,
-		expected: readonly Expected[]
-	): Promise<Diagnostic[]> {
-		if (expected.length === 0 || request.project.compiledPath !== undefined)
-			return [];
-		const located = await this.writeService.locate(request.selection, {
-			args: expected.map(({ file }) => file),
-			cwd: request.cwd,
-		});
-		if (located.isErr()) return [];
-		const warnings: Diagnostic[] = [];
-		const here: ConfigLocations | undefined = located.value.configs.find(
-			({ config }) => config.id === request.project.id
-		);
-		for (const { file, instance } of expected) {
-			const found = here?.files.find(
-				(location): location is PlacedLocation =>
-					location.status === "placed" &&
-					toNative(location.source) === file
-			);
-			if (found && found.instancePath.join("/") === instance.join("/"))
-				continue;
-			warnings.push(
-				warningDiagnostic(
-					"syncback.misplaced",
-					{ resource: file },
-					found
-						? `this file was written for ${instanceKey(instance)}, and lands at ${instanceKey(found.instancePath)}. Move it to where routing puts it at ${instanceKey(instance)}.`
-						: `this file was written for ${instanceKey(instance)}, and no instance comes from it. Check the routes of ${request.project.label}.`
-				)
-			);
-		}
-		return warnings;
 	}
 }
