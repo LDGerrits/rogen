@@ -104,3 +104,45 @@ jobs:
               run: npm test -- e2e
               env:
                   ROGEN_E2E_BINARY: ${{ github.workspace }}/rogen-binary/rogen
+
+    coverage:
+        name: Publish test coverage badge
+        if: github.event_name == 'push'
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: "npm"
+
+            - name: Install Rojo and Argon
+              uses: CompeyDev/setup-rokit@v0.2.1
+              with:
+                  cache: true
+
+            - name: Install Dependencies
+              run: npm ci --workspaces=false --prefer-offline --no-audit --no-fund
+
+            - name: Measure Coverage
+              run: npm run test:coverage
+
+            # The badge is a shields endpoint file on a single-commit `badges` branch, replaced on each run.
+            - name: Publish Badge
+              run: |
+                  node -e '
+                    const pct = require("./coverage/coverage-summary.json").total.lines.pct;
+                    const color = pct >= 90 ? "brightgreen" : pct >= 75 ? "yellow" : "orange";
+                    const badge = { schemaVersion: 1, label: "coverage", message: `${Math.floor(pct)}%`, color };
+                    require("fs").writeFileSync("/tmp/coverage.json", JSON.stringify(badge) + "\n");
+                  '
+                  git switch --orphan badges
+                  cp /tmp/coverage.json coverage.json
+                  git add coverage.json
+                  git -c user.name=github-actions -c user.email=github-actions@users.noreply.github.com commit --message "Update coverage badge"
+                  git push --force origin badges

@@ -50,6 +50,8 @@
 		"test:watch": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --watch",
 		"pretest:unit": "npm run generate",
 		"test:unit": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --config jest.unit.config.js",
+		"pretest:coverage": "npm run generate",
+		"test:coverage": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --config jest.unit.config.js --coverage",
 		"pretest:changed": "npm run generate",
 		"test:changed": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --config jest.unit.config.js --onlyChanged --passWithNoTests",
 		"pretest:e2e": "npm run generate",
