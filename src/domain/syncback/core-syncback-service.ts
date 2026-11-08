@@ -65,9 +65,9 @@ export class CoreSyncbackService implements SyncbackService {
 
 	constructor(
 		configService: ConfigService,
-		private readonly fileSystemService: FileSystemService,
-		private readonly writeService: WriteService,
-		private readonly rojoService: RojoCommandService,
+		fileSystemService: FileSystemService,
+		writeService: WriteService,
+		rojoService: RojoCommandService,
 		environmentService: EnvironmentService,
 		processService: ProcessService,
 		lifecycleService: LifecycleService
@@ -89,18 +89,18 @@ export class CoreSyncbackService implements SyncbackService {
 	): Promise<SyncbackRun> {
 		const write =
 			mode === "dryRun"
-				? await this.writeService.check(selection)
-				: await this.writeService.write(selection);
+				? await this.services.writeService.check(selection)
+				: await this.services.writeService.write(selection);
 		if (write.failure() || selection.requireValid().isErr())
 			return { write, outcome: { kind: "notRun" } };
-		const project = this.rojoService.choose(selection);
+		const project = this.services.rojoService.choose(selection);
 		const outcome = await this.outcomeOf(
 			{ selection, project, input, cwd },
 			mode
 		);
 		if (outcome.kind !== "written") return { write, outcome };
 		// What syncback added to the config's tree changes the project file.
-		const rewritten = await this.writeService.write(selection);
+		const rewritten = await this.services.writeService.write(selection);
 		return {
 			write:
 				rewritten.failure() || rewritten.outcomes.some(didWrite)
@@ -131,7 +131,7 @@ export class CoreSyncbackService implements SyncbackService {
 		request: SyncbackRequest,
 		mode: SyncbackMode
 	): Promise<Result<SyncbackOutcome, Error>> {
-		const rojo = new RojoSyncback(this.rojoService, request);
+		const rojo = new RojoSyncback(this.services.rojoService, request);
 		if (mode !== "apply") {
 			const planned = await rojo.plain(true);
 			if (planned.isErr()) return planned;
@@ -151,7 +151,7 @@ export class CoreSyncbackService implements SyncbackService {
 		const workspace = await MirrorWorkspace.open(this.services, request);
 		if (workspace.isErr()) return workspace;
 		return workspace.value.hold<SyncbackOutcome>(async (signal) => {
-			const planned = await this.planIn(request, workspace.value, signal);
+			const planned = await this.planIn(workspace.value, signal);
 			if (planned.isErr()) return planned;
 			const plan = planned.value;
 			if (mode === "dryRun") return ok(listed(plan));
@@ -159,7 +159,7 @@ export class CoreSyncbackService implements SyncbackService {
 				const no = await declined(mode, plan);
 				if (signal.aborted) return err(stopped());
 				if (no) return ok(no);
-				if (!(await plan.isCurrent(this.fileSystemService)))
+				if (!(await plan.isCurrent(this.services.fileSystemService)))
 					return err(
 						new UsageError(
 							"The project or the place changed since the list was made, so nothing was written.",
@@ -170,27 +170,21 @@ export class CoreSyncbackService implements SyncbackService {
 			// Once writing starts, a stop no longer undoes the run.
 			if (signal.aborted) return err(stopped());
 			const result = await new PlanWriter(
-				this.fileSystemService,
-				this.writeService
+				this.services.fileSystemService,
+				this.services.writeService
 			).write(request, plan);
 			return ok(written(result, mode));
 		});
 	}
 
 	private async planIn(
-		request: SyncbackRequest,
 		workspace: MirrorWorkspace,
 		signal: AbortSignal
 	): Promise<Result<MirrorPlan, Error>> {
 		const ran = await workspace.syncback(signal);
 		if (signal.aborted) return err(stopped());
 		if (ran.isErr()) return ran;
-		const planned = await MirrorPlanner.plan(
-			this.fileSystemService,
-			request,
-			workspace,
-			ran.value
-		);
+		const planned = await MirrorPlanner.plan(workspace, ran.value);
 		return signal.aborted ? err(stopped()) : planned;
 	}
 }

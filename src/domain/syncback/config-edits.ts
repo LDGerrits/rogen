@@ -34,11 +34,13 @@ export interface FeatureMeta {
 
 /** The edits syncback makes to what the project declares rather than syncs: the tree of its config, and the metas of its feature folders. */
 export class ConfigEdits {
-	constructor(
-		private readonly fileSystemService: FileSystemService,
-		private readonly request: SyncbackRequest,
-		private readonly workspace: MirrorWorkspace
-	) {}
+	private readonly fileSystemService: FileSystemService;
+	private readonly request: SyncbackRequest;
+
+	constructor(private readonly workspace: MirrorWorkspace) {
+		this.fileSystemService = workspace.services.fileSystemService;
+		this.request = workspace.request;
+	}
 
 	/** The meta file of a feature folder that syncback edits: the `.meta.jsonc` when the folder has one, as Rojo applies it last, else the `.meta.json`. */
 	async featureMeta(folder: string): Promise<FeatureMeta> {

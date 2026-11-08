@@ -82,6 +82,8 @@ function instanceOf(
 
 /** Reads what Rojo's syncback did to the mirror as a plan for the project: an edit or removal of the file each copy came from, a folder it emptied, a new instance where routing puts it, and an edit of the config's tree or a feature's meta. */
 export class MirrorPlanner {
+	private readonly fileSystemService: FileSystemService;
+	private readonly request: SyncbackRequest;
 	private readonly operations: Operation[] = [];
 	private readonly unplaced: UnplacedInstance[];
 	private readonly compiled: CompiledChange[] = [];
@@ -93,23 +95,21 @@ export class MirrorPlanner {
 	private readonly edits: ConfigEdits;
 
 	private constructor(
-		private readonly fileSystemService: FileSystemService,
-		private readonly request: SyncbackRequest,
 		private readonly workspace: MirrorWorkspace,
 		private readonly run: MirrorRun,
 		/** The paths of the mirror after Rojo ran. */
 		private readonly after: readonly AddedPath[]
 	) {
+		this.fileSystemService = workspace.services.fileSystemService;
+		this.request = workspace.request;
 		this.unplaced = [...run.skipped];
 		this.present = new Set(after.map(({ path: at }) => at));
 		this.copiedPaths = new Set(run.copied.map(({ mirror: at }) => at));
-		this.edits = new ConfigEdits(fileSystemService, request, workspace);
+		this.edits = new ConfigEdits(workspace);
 	}
 
 	/** The plan of `run`; fails when the mirror can't be read back, which would read as a place that removed everything. */
 	static async plan(
-		fileSystemService: FileSystemService,
-		request: SyncbackRequest,
 		workspace: MirrorWorkspace,
 		run: MirrorRun
 	): Promise<Result<MirrorPlan, Error>> {
@@ -125,8 +125,6 @@ export class MirrorPlanner {
 				)
 			);
 		const planner = new MirrorPlanner(
-			fileSystemService,
-			request,
 			workspace,
 			run,
 			walked.isOk() ? walked.value : []

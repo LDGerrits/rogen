@@ -92,8 +92,8 @@ export class MirrorWorkspace {
 	private readonly unwritten: readonly string[];
 
 	private constructor(
-		private readonly services: WorkspaceServices,
-		private readonly request: SyncbackRequest,
+		readonly services: WorkspaceServices,
+		readonly request: SyncbackRequest,
 		private readonly staging: SyncbackStaging,
 		written: RojoProjectFile,
 		readonly mirror: SyncbackMirror,
