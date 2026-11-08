@@ -1,4 +1,4 @@
-import { DeferredPromise, Sequencer } from "../../base/async.js";
+import { DeferredPromise, Sequencer, aborted } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -36,10 +36,10 @@ export class WriteWatch {
 		private readonly command = "build"
 	) {}
 
-	/** Runs until `shutdown` settles; `store` is the caller's, and holds what the run subscribes to. */
+	/** Runs until `shutdown` aborts; `store` is the caller's, and holds what the run subscribes to. */
 	async run(
 		store: DisposableStore,
-		shutdown: DeferredPromise<void>
+		shutdown: AbortSignal
 	): Promise<Result<void, Error>> {
 		const { accessor } = this;
 		const logService = accessor.get(LogService);
@@ -73,7 +73,7 @@ export class WriteWatch {
 		const watched = watchService.watch(selection.value);
 		if (watched.isErr()) return watched;
 		const session = store.add(watched.value);
-		if (shutdown.isSettled) return ok(undefined);
+		if (shutdown.aborted) return ok(undefined);
 		log.begin(session.configs, selection.value.home);
 
 		const rojoStarts = new Sequencer();
@@ -157,7 +157,7 @@ export class WriteWatch {
 			const started = await session.start();
 			if (started.isErr()) return started;
 			failure = await Promise.race([
-				shutdown.p.then(() => undefined),
+				aborted(shutdown).then(() => undefined),
 				failed.p,
 			]);
 		} finally {

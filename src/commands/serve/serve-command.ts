@@ -17,7 +17,6 @@ import {
 } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
-import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import {
 	ServeJsonLog,
@@ -122,20 +121,15 @@ registerCommand(
 			const serveService = accessor.get(ServeService);
 
 			const store = new DisposableStore();
-			const shutdown = new AbortController();
-			store.add(
-				accessor
-					.get(LifecycleService)
-					.onWillShutdown(() => shutdown.abort())
-			);
+			const shutdown = this.untilShutdown(accessor, store);
 			try {
 				await refreshAgentRules(accessor, Boolean(line.options.json));
 				const plan = await serveService.prepare({
-					signal: shutdown.signal,
+					signal: shutdown,
 					refs: line.positionals,
 					serverArgs: serverArgsOf(line),
 				});
-				if (shutdown.signal.aborted) return ok(undefined);
+				if (shutdown.aborted) return ok(undefined);
 				if (plan.isErr()) return plan;
 
 				const log: ServeReporter = line.options.json
@@ -173,7 +167,7 @@ registerCommand(
 					value.onDidConnect((change) => log.connection(change))
 				);
 				store.add(value.onDidChange((change) => log.changed(change)));
-				return this.ended(log, await value.run(shutdown.signal));
+				return this.ended(log, await value.run(shutdown));
 			} finally {
 				store[Symbol.dispose]();
 			}

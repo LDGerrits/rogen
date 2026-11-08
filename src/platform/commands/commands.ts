@@ -1,4 +1,3 @@
-import { DeferredPromise } from "../../base/async.js";
 import {
 	Disposable,
 	DisposableStore,
@@ -195,18 +194,18 @@ export abstract class AbstractCommand<
 		line: CommandLine<O>
 	): Promise<Result<void, Error>>;
 
-	/** Settles when the process is asked to shut down; subscribed at once, so a request during later awaits still counts. */
+	/** Aborts when the process is asked to shut down; subscribed at once, so a request during later awaits still counts. */
 	protected untilShutdown(
 		accessor: ServicesAccessor,
 		store: DisposableStore
-	): DeferredPromise<void> {
-		const shutdown = new DeferredPromise<void>();
+	): AbortSignal {
+		const shutdown = new AbortController();
 		store.add(
 			accessor
 				.get(LifecycleService)
-				.onWillShutdown(() => shutdown.complete())
+				.onWillShutdown(() => shutdown.abort())
 		);
-		return shutdown;
+		return shutdown.signal;
 	}
 
 	protected reported(failure: Error): Result<void, Error> {

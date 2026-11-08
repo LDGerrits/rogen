@@ -88,6 +88,14 @@ export class RunOnceScheduler implements Disposable {
 	}
 }
 
+/** Resolves once `signal` aborts, at once when it has. */
+export function aborted(signal: AbortSignal): Promise<void> {
+	return new Promise((resolve) => {
+		if (signal.aborted) resolve();
+		else signal.addEventListener("abort", () => resolve(), { once: true });
+	});
+}
+
 /** Resolves after `ms` milliseconds, or at once when `signal` aborts, clearing its timer. */
 export function timeout(ms: number, signal?: AbortSignal): Promise<void> {
 	return new Promise((resolve) => {
