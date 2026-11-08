@@ -1,11 +1,12 @@
 name: Windows
 
-# Kept out of pull requests so their checks stay fast; never a required check.
+# Kept out of pull requests so their checks stay fast; a release runs it before it publishes.
 on:
     push:
         branches:
             - main
     workflow_dispatch:
+    workflow_call:
 
 permissions:
     contents: read
