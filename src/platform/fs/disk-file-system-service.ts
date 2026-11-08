@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { ErrorUtils } from "../../base/errors.js";
+import { isWindows } from "../../base/platform.js";
 import {
 	FileType,
 	FileSystemService,
@@ -47,6 +48,22 @@ export function isUnfollowableLink(target: string): boolean {
 		}
 		if (path.dirname(ancestor) === ancestor) return false;
 	}
+}
+
+/** The waits between tries of a rename Windows refuses while another program has either file open: about 2.5 seconds in all. */
+const BUSY_RENAME_WAITS_MS = [10, 20, 40, 80, 160, 320, 640, 1280];
+
+async function renameOnceFree(from: string, to: string): Promise<void> {
+	for (const wait of isWindows ? BUSY_RENAME_WAITS_MS : []) {
+		try {
+			return await fs.promises.rename(from, to);
+		} catch (error) {
+			if (!ErrorUtils.hasCode(error, "EPERM", "EACCES", "EBUSY"))
+				throw error;
+		}
+		await new Promise((resolve) => setTimeout(resolve, wait));
+	}
+	await fs.promises.rename(from, to);
 }
 
 export class DiskFileSystemService implements FileSystemService {
@@ -230,6 +247,6 @@ export class DiskFileSystemService implements FileSystemService {
 		);
 		if (refusal) throw refusal;
 		await this.createDirectory(path.dirname(destination));
-		await fs.promises.rename(source, destination);
+		await renameOnceFree(source, destination);
 	}
 }

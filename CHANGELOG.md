@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `rogen syncback` stops with an error when it can't read or clear its copy of your files, instead of planning to remove them. Ctrl+C leaves no copy behind, and once syncback writes your files it finishes, says what it wrote and exits with 130.
 - `rogen syncback` writes nothing when the config or the place changed while it asked, and keeps a file it couldn't replace.
 - `rogen syncback` exits with 1 when it can't write the project file again afterwards.
+- `rogen write`, `--watch` and `serve` on Windows wait a moment for a project file another program has open, such as Rojo reading it, instead of failing with "operation not permitted" and leaving it out of date.
 - `rogen syncback --list` on Windows lists paths with `/`, as Rojo does, instead of `\`.
 - `rogen syncback` on Windows and macOS renames a script whose name changed only in letter case, instead of deleting it, and a write that fails then keeps its old content.
 - `rogen syncback` keeps a file mounted at two instances when one was deleted in Studio and the other is unchanged.
