@@ -1,6 +1,5 @@
 import path from "path";
 import { selfAndAncestors, shownFrom } from "../../base/path.js";
-import { IoError, KindedError } from "../../base/errors.js";
 import { tryWithAsync } from "../../base/result.js";
 import {
 	FileSystemService,
@@ -97,22 +96,19 @@ export class UndoLog {
 		this.changes.push(...removed);
 	}
 
-	/** Undoes the changes, the last first, and returns `error` naming the paths it could not put back. */
-	async undo(error: Error): Promise<Error> {
+	/** Undoes the changes, the last first, and returns the paths it could not put back, as shown to the user. */
+	async undo(): Promise<string[]> {
 		const left: string[] = [];
 		for (const change of this.changes.reverse()) {
 			const undone = await tryWithAsync(() => this.reverse(change));
 			if (undone.isErr())
-				left.push(change.kind === "rename" ? change.to : change.path);
+				left.push(
+					this.shown(
+						change.kind === "rename" ? change.to : change.path
+					)
+				);
 		}
-		if (left.length === 0) return error;
-		const reason =
-			error instanceof KindedError ? error.reason : error.message;
-		return new IoError(
-			`${reason.replace(/\.?$/, ".")} Could not put back ${left.map((at) => this.shown(at)).join(", ")}.`,
-			error instanceof KindedError ? error.hint : undefined,
-			{ cause: error }
-		);
+		return left;
 	}
 
 	private async reverse(change: Change): Promise<void> {
