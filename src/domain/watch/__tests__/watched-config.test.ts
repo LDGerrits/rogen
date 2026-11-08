@@ -28,10 +28,17 @@ describe("WatchedConfig", () => {
 		expect(watched.reads("C:/repo/src/other.meta.json")).toBe(false);
 	});
 
+	it("should not know what it reads before its first write", () => {
+		expect(new WatchedConfig().readsKnown).toBe(false);
+	});
+
 	it("should know what it reads only when no rewrite is queued and the latest did not fail", async () => {
 		const watched = new WatchedConfig();
 		const gate = new DeferredPromise<void>();
-		const queued = watched.queue(() => gate.p);
+		const queued = watched.queue(async () => {
+			await gate.p;
+			watched.finished(written([]));
+		});
 
 		expect(watched.readsKnown).toBe(false);
 		gate.complete();
