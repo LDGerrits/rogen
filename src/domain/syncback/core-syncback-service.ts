@@ -31,6 +31,34 @@ function stopped(): CancelledError {
 	);
 }
 
+/** A plan a dry run lists. */
+const listed = (plan: SyncbackPlan): SyncbackOutcome => ({
+	kind: "planned",
+	plan,
+	warnings: [],
+	asked: false,
+});
+
+/** What a run that confirms does with `plan` when it is not confirmed: declines it, asking only when it changes something; none when it is confirmed. */
+async function declined(
+	mode: Extract<SyncbackMode, object>,
+	plan: SyncbackPlan
+): Promise<SyncbackOutcome | undefined> {
+	const asked = plan.changes.length > 0;
+	if (asked && (await mode.confirm(plan))) return undefined;
+	return { kind: "declined", plan, warnings: [], asked };
+}
+
+const written = (
+	result: SyncbackResult,
+	mode: SyncbackMode
+): SyncbackOutcome => ({
+	kind: "written",
+	plan: result,
+	warnings: result.warnings,
+	asked: mode !== "apply",
+});
+
 export class CoreSyncbackService implements SyncbackService {
 	declare readonly _serviceBrand: undefined;
 	private readonly services: WorkspaceServices;
@@ -86,120 +114,67 @@ export class CoreSyncbackService implements SyncbackService {
 		request: SyncbackRequest,
 		mode: SyncbackMode
 	): Promise<SyncbackOutcome> {
-		const failed = (error: Error): SyncbackOutcome => ({
-			kind: "failed",
-			error,
-			configFile: request.project.file,
-		});
-		if (mode === "dryRun") {
-			const planned = await this.plan(request);
-			return planned.isErr()
-				? failed(planned.error)
-				: {
-						kind: "planned",
-						plan: planned.value,
-						warnings: [],
-						asked: false,
-					};
-		}
-		if (mode === "apply") {
-			const applied = await this.apply(request);
-			return applied.isErr()
-				? failed(applied.error)
-				: {
-						kind: "written",
-						plan: applied.value,
-						warnings: applied.value.warnings,
-						asked: false,
-					};
-		}
-		let shown: SyncbackPlan | undefined;
-		const applied = await this.apply(request, async (plan) => {
-			shown = plan;
-			return plan.changes.length > 0 && (await mode.confirm(plan));
-		});
-		if (applied.isErr()) return failed(applied.error);
-		if (applied.value)
-			return {
-				kind: "written",
-				plan: applied.value,
-				warnings: applied.value.warnings,
-				asked: true,
-			};
-		const plan = shown as SyncbackPlan;
-		return {
-			kind: "declined",
-			plan,
-			warnings: [],
-			asked: plan.changes.length > 0,
-		};
-	}
-
-	/** What a run would write and remove, found by a dry run of Rojo's syncback. Writes nothing that stays. Fails when the project's files can't be written, when Rojo can't read the place, or when it holds a change syncback can't make. */
-	async plan(request: SyncbackRequest): Promise<Result<SyncbackPlan, Error>> {
-		if (request.project.isAdopted)
-			return new RojoSyncback(this.rojoService, request).plain(true);
-		const workspace = await MirrorWorkspace.open(this.services, request);
-		if (workspace.isErr()) return workspace;
-		return workspace.value.hold<SyncbackPlan>((signal) =>
-			this.planIn(request, workspace.value, signal)
-		);
-	}
-
-	/** Runs the syncback, and puts what Rojo had no folder for where routing puts it. Given `confirm`, it plans first and writes the plan only when `confirm` says yes, and nothing, as `undefined`, when it says no; nothing either if the config, the place or a file the plan touches changed meanwhile. The project folder stays held from the plan to the last write. New files are written before old ones are removed. */
-	apply(request: SyncbackRequest): Promise<Result<SyncbackResult, Error>>;
-	apply(
-		request: SyncbackRequest,
-		confirm: (plan: SyncbackPlan) => Promise<boolean>
-	): Promise<Result<SyncbackResult | undefined, Error>>;
-	async apply(
-		request: SyncbackRequest,
-		confirm?: (plan: SyncbackPlan) => Promise<boolean>
-	): Promise<Result<SyncbackResult | undefined, Error>> {
-		if (request.project.isAdopted) {
-			if (confirm) {
-				const planned = await new RojoSyncback(
-					this.rojoService,
-					request
-				).plain(true);
-				if (planned.isErr()) return planned;
-				if (!(await confirm(planned.value))) return ok(undefined);
-			}
-			return new RojoSyncback(this.rojoService, request).plain(false);
-		}
-		const workspace = await MirrorWorkspace.open(this.services, request);
-		if (workspace.isErr()) return workspace;
-		return workspace.value.hold<SyncbackResult | undefined>(
-			async (signal) => {
-				const planned = await this.planIn(
-					request,
-					workspace.value,
-					signal
-				);
-				if (planned.isErr()) return planned;
-				const plan = planned.value;
-				if (confirm) {
-					const confirmed = await confirm(plan);
-					if (signal.aborted) return err(stopped());
-					if (!confirmed) return ok(undefined);
-					if (!(await plan.isCurrent(this.fileSystemService)))
-						return err(
-							new UsageError(
-								"The project or the place changed since the list was made, so nothing was written.",
-								"Run syncback again."
-							)
-						);
+		const outcome = request.project.isAdopted
+			? await this.plainOutcome(request, mode)
+			: await this.mirroredOutcome(request, mode);
+		return outcome.isErr()
+			? {
+					kind: "failed",
+					error: outcome.error,
+					configFile: request.project.file,
 				}
-				// Once writing starts, a stop no longer undoes the run.
+			: outcome.value;
+	}
+
+	/** A plain Rojo project is planned by Rojo's own dry run, then run as it is. */
+	private async plainOutcome(
+		request: SyncbackRequest,
+		mode: SyncbackMode
+	): Promise<Result<SyncbackOutcome, Error>> {
+		const rojo = new RojoSyncback(this.rojoService, request);
+		if (mode !== "apply") {
+			const planned = await rojo.plain(true);
+			if (planned.isErr()) return planned;
+			if (mode === "dryRun") return ok(listed(planned.value));
+			const no = await declined(mode, planned.value);
+			if (no) return ok(no);
+		}
+		const result = await rojo.plain(false);
+		return result.isErr() ? result : ok(written(result.value, mode));
+	}
+
+	/** A Rogen project is planned on a mirror, and its plan written as it was shown, while the project folder stays held. Nothing is written once a shutdown asked to stop, nor when the config, the place or a file the plan touches changed since it was shown. */
+	private async mirroredOutcome(
+		request: SyncbackRequest,
+		mode: SyncbackMode
+	): Promise<Result<SyncbackOutcome, Error>> {
+		const workspace = await MirrorWorkspace.open(this.services, request);
+		if (workspace.isErr()) return workspace;
+		return workspace.value.hold<SyncbackOutcome>(async (signal) => {
+			const planned = await this.planIn(request, workspace.value, signal);
+			if (planned.isErr()) return planned;
+			const plan = planned.value;
+			if (mode === "dryRun") return ok(listed(plan));
+			if (mode !== "apply") {
+				const no = await declined(mode, plan);
 				if (signal.aborted) return err(stopped());
-				return ok(
-					await new PlanWriter(
-						this.fileSystemService,
-						this.writeService
-					).write(request, plan)
-				);
+				if (no) return ok(no);
+				if (!(await plan.isCurrent(this.fileSystemService)))
+					return err(
+						new UsageError(
+							"The project or the place changed since the list was made, so nothing was written.",
+							"Run syncback again."
+						)
+					);
 			}
-		);
+			// Once writing starts, a stop no longer undoes the run.
+			if (signal.aborted) return err(stopped());
+			const result = await new PlanWriter(
+				this.fileSystemService,
+				this.writeService
+			).write(request, plan);
+			return ok(written(result, mode));
+		});
 	}
 
 	private async planIn(
@@ -210,12 +185,12 @@ export class CoreSyncbackService implements SyncbackService {
 		const ran = await workspace.syncback(signal);
 		if (signal.aborted) return err(stopped());
 		if (ran.isErr()) return ran;
-		const settled = await MirrorPlanner.plan(
+		const planned = await MirrorPlanner.plan(
 			this.fileSystemService,
 			request,
 			workspace,
 			ran.value
 		);
-		return signal.aborted ? err(stopped()) : settled;
+		return signal.aborted ? err(stopped()) : planned;
 	}
 }
