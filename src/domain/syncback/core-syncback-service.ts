@@ -37,7 +37,7 @@ import {
 	ConfigLocations,
 	PlacedLocation,
 } from "../write/write-service.js";
-import { SYNCBACK_FILES, isSyncbackFileName } from "../config/config.js";
+import { isSyncbackFileName } from "../config/config.js";
 import { ConfigService, validFile } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { instanceKey } from "../roblox/roblox.js";
@@ -62,7 +62,7 @@ import {
 import { SyncbackService } from "./syncback-service.js";
 import { SyncbackLayout } from "./syncback-layout.js";
 import { SyncbackMirror } from "./syncback-mirror.js";
-import { SyncbackStaging } from "./syncback-staging.js";
+import { MIRROR, SyncbackStaging } from "./syncback-staging.js";
 import { TreeChange, applyTreeChanges, treeChanges } from "./tree-changes.js";
 import {
 	onlySerializedOverrides,
@@ -71,8 +71,6 @@ import {
 
 /** The first Rojo release with `syncback`. */
 const SYNCBACK_SINCE = "7.7.0";
-
-const MIRROR = `${SYNCBACK_FILES.staging}/mirror`;
 
 const LISTED = /^(Writing|Removing) (.+)$/;
 
@@ -295,7 +293,7 @@ export class CoreSyncbackService implements SyncbackService {
 		const prepared = await this.prepare(request);
 		if (prepared.isErr()) return prepared;
 		return prepared.value.staging.use<SyncbackResult | undefined>(
-			async (signal, writing) => {
+			async (signal) => {
 				const planned = await this.planIn(
 					request,
 					prepared.value,
@@ -317,7 +315,6 @@ export class CoreSyncbackService implements SyncbackService {
 				}
 				// Once writing starts, a stop no longer undoes the run.
 				if (signal.aborted) return err(stopped());
-				writing();
 				return ok(await this.written(request, plan));
 			}
 		);
@@ -548,7 +545,7 @@ export class CoreSyncbackService implements SyncbackService {
 			dir,
 			file: staging.file,
 			staging,
-			root: path.join(dir, MIRROR),
+			root: staging.mirror,
 			unread: written.globIgnorePaths ?? [],
 			unwritten: CoreSyncbackService.ignorePathsOf(written),
 		});

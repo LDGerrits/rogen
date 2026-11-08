@@ -459,14 +459,16 @@ describe("CoreSyncbackService", () => {
 		}
 	);
 
-	it("should remove its files and let go of the folder when the run is asked to shut down while Rojo runs", async () => {
+	it("should remove its files at once, and keep its lock until Rojo stopped, when the run is asked to shut down while Rojo runs", async () => {
 		await prepare(["src/Combat/Server/Combat.luau"]);
 		let left: boolean | undefined;
+		let locked: boolean | undefined;
 		rojo.say = async () => {
 			lifecycle.shutdown("SIGINT");
-			while (await fs.exists(abs(".rogen-syncback")))
+			while (await fs.exists(abs(".rogen-syncback/mirror")))
 				await new Promise((resolve) => setImmediate(resolve));
 			left = await fs.exists(abs("rogen-syncback.project.json"));
+			locked = await fs.exists(abs(".rogen-syncback/lock"));
 			return [];
 		};
 
@@ -474,6 +476,7 @@ describe("CoreSyncbackService", () => {
 
 		expect(planned.isErr()).toBe(true);
 		expect(left).toBe(false);
+		expect(locked).toBe(true);
 		expect(rojo.requests[0].signal?.aborted).toBe(true);
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
 	});

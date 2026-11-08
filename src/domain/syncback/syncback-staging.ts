@@ -11,21 +11,22 @@ import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js"
 import { ProcessService } from "../../platform/process/process-service.js";
 import { SYNCBACK_FILES } from "../config/config.js";
 
+/** The copy of the project's files Rojo runs on, relative to the project folder. */
+export const MIRROR = `${SYNCBACK_FILES.staging}/mirror`;
+
 /** The file in the staging folder that holds the id of the process that owns it. */
 const LOCK = "lock";
 
 /** How long a lock that names no owner yet counts as being made, rather than left by a run killed while making it. */
 const NEW_LOCK_MS = 5000;
 
-/** What a run in the staging files does: works in them, or writes the user's files from them. */
-type StagingPhase = "staging" | "writing";
-
 /** The staging files of a project folder, which one syncback at a time owns: it locks them, cleans them, works in them, and releases them. */
 export class SyncbackStaging {
 	/** The temporary project file Rojo runs on. */
 	readonly file: string;
+	readonly mirror: string;
 	/** The folder the mirror and the lock are in. */
-	readonly folder: string;
+	private readonly folder: string;
 	private readonly lock: string;
 
 	constructor(
@@ -38,64 +39,45 @@ export class SyncbackStaging {
 	) {
 		this.file = path.join(dir, SYNCBACK_FILES.project);
 		this.folder = path.join(dir, SYNCBACK_FILES.staging);
+		this.mirror = path.join(dir, MIRROR);
 		this.lock = path.join(this.folder, LOCK);
 	}
 
-	/** Runs `work` while this process owns the staging files, which it finds clean and leaves gone; `syncback.busy` when another syncback owns them, with nothing touched. A shutdown aborts `work`'s signal, which `work` turns into its own result, and removes the files at once, unless `work` said with `writing` that it writes the user's files, which keeps them until it ends. */
+	/** Runs `work` while this process owns the staging files, which it finds clean and leaves gone; `syncback.busy` when another syncback owns them, with nothing touched. A shutdown aborts `work`'s signal, which `work` turns into its own result, and removes the copy of the user's files at once; the lock stays until `work` ends. */
 	async use<T>(
-		work: (
-			signal: AbortSignal,
-			writing: () => void
-		) => Promise<Result<T, Error>>
+		work: (signal: AbortSignal) => Promise<Result<T, Error>>
 	): Promise<Result<T, Error>> {
 		const locked = await this.take();
 		if (locked.isErr()) return locked;
 		const stopping = new AbortController();
-		let phase: StagingPhase = "staging";
-		let released: Promise<void> | undefined;
+		let cleaning: Promise<unknown> | undefined;
 		const shutdown = this.lifecycleService.onWillShutdown(() => {
 			stopping.abort();
-			if (phase === "staging") released = this.release();
+			cleaning = this.clean();
 		});
 		try {
 			const cleaned = await this.clean();
 			if (cleaned.isErr()) return cleaned;
-			return await work(stopping.signal, () => {
-				phase = "writing";
-			});
+			return await work(stopping.signal);
 		} finally {
 			shutdown[Symbol.dispose]();
-			await released;
-			// After a shutdown, what the work wrote since is removed too, unless another run took the folder.
-			if (await this.isOursOrFree()) await this.release();
+			await cleaning;
+			await this.release();
 		}
 	}
 
-	/** Removes what an earlier run left, except the lock and the files beside it; an error, with nothing copied, when something can't be removed. */
-	async clean(): Promise<Result<void, Error>> {
+	/** Removes the temporary project file and the mirror an earlier run left; an error, with nothing copied, when one can't be removed. */
+	private async clean(): Promise<Result<void, Error>> {
 		const removed = await this.remove(this.file);
 		if (removed.isErr()) return removed;
-		const entries = await tryWithAsync(() =>
-			this.fileSystemService.readDirectory(this.folder)
-		);
-		if (entries.isErr())
-			return isMissingPath(entries.error)
-				? ok(undefined)
-				: err(this.uncleared(this.folder, entries.error));
-		for (const [name] of entries.value) {
-			// Another run taking over a stale lock moves it aside, or stages its own, beside it.
-			if (name === LOCK || name.startsWith(`${LOCK}.`)) continue;
-			const left = await this.remove(path.join(this.folder, name));
-			if (left.isErr()) return left;
-		}
-		return ok(undefined);
+		return this.remove(this.mirror);
 	}
 
 	private async remove(target: string): Promise<Result<void, Error>> {
 		const removed = await tryWithAsync(() =>
 			this.fileSystemService.delete(target, true)
 		);
-		return removed.isErr() && !isMissingPath(removed.error)
+		return removed.isErr()
 			? err(this.uncleared(target, removed.error))
 			: ok(undefined);
 	}
@@ -181,15 +163,8 @@ export class SyncbackStaging {
 		]);
 	}
 
-	private async isOursOrFree(): Promise<boolean> {
-		if (!(await this.fileSystemService.exists(this.lock))) return true;
-		return (await this.owner(this.lock)) === this.pid;
-	}
-
 	private async release(): Promise<void> {
 		await this.clean();
-		await this.fileSystemService
-			.delete(this.folder, true)
-			.catch(() => undefined);
+		await this.remove(this.folder);
 	}
 }
