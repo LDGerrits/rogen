@@ -524,6 +524,46 @@ describe("CoreSyncbackService", () => {
 		]);
 	});
 
+	it("should not list a folder as removed when another mount of it is still there", async () => {
+		await writeFiles(fs, "Packages/Lib.luau");
+		await prepare(["src/Combat/Server/Combat.luau"], {
+			project: {
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Packages: { $path: "Packages" } },
+					ServerStorage: { Packages: { $path: "Packages" } },
+				},
+			},
+		});
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerStorage", "Packages"), true);
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.changes).toEqual([]);
+	});
+
+	it("should skip a file that went away between listing its folder and copying it", async () => {
+		await writeFiles(fs, "Packages/Lib.luau", "Packages/Gone.luau");
+		await prepare(["src/Combat/Server/Combat.luau"], {
+			project: {
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Packages: { $path: "Packages" } },
+				},
+			},
+		});
+		const copy = fs.copyFile.bind(fs);
+		fs.copyFile = async (from, to) => {
+			if (from === abs("Packages/Gone.luau")) await fs.delete(from);
+			return copy(from, to);
+		};
+
+		await expect(planned()).resolves.toMatchObject({ changes: [] });
+	});
+
 	it("should write nothing when a file is saved while Rojo runs", async () => {
 		await prepare(["src/Inventory/Bag@server.luau"]);
 		const file = abs("src/Inventory/Bag@server.luau");
@@ -1158,6 +1198,16 @@ describe("CoreSyncbackService", () => {
 			expect(plan.changes).toEqual([
 				{ kind: "write", file: abs("Packages/Lib.luau") },
 			]);
+		});
+
+		it("should plan on when a tool deletes compiled code while Rojo runs", async () => {
+			await compiled();
+			rojo.say = async () => {
+				await fs.delete(abs("dist/Combat/Server/Hit.luau"));
+				return [];
+			};
+
+			await expect(planned()).resolves.toMatchObject({ changes: [] });
 		});
 
 		it("should write an edit to a folder the tree mounts", async () => {
