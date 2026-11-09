@@ -105,7 +105,10 @@ export class RojoFile {
 		this.match = RojoFile.INIT_FILES.has(name)
 			? SyncRules.DEFAULT.match(name)
 			: rules.match(joinPosix(dir, name));
-		this.stem = this.ownMatch ? this.ownMatch.name : stemOf(name);
+		const spelled = this.spelledScriptSuffix;
+		this.stem = this.ownMatch
+			? `${this.ownMatch.name}${spelled ? `.${spelled}` : ""}`
+			: stemOf(name);
 	}
 
 	/** The file at `source`, an absolute POSIX path, as Rojo reads it with `rules`, which are written for a folder. */
@@ -128,6 +131,16 @@ export class RojoFile {
 	/** The match of a rule the project wrote. */
 	private get ownMatch(): SyncRuleMatch | undefined {
 		return this.match?.own ? this.match : undefined;
+	}
+
+	/** The script class that the suffix of the project's rule spells and its `use` gives, as `.server.aly` does for a `serverScript`. */
+	private get spelledScriptSuffix(): RojoScriptSuffix | undefined {
+		if (!this.ownMatch || this.ownMatch.suffixMissed) return undefined;
+		const { use, suffix } = this.ownMatch.rule;
+		const scriptSuffix = SCRIPT_SUFFIX_OF_USE[use];
+		return scriptSuffix && suffix?.startsWith(`.${scriptSuffix}.`)
+			? scriptSuffix
+			: undefined;
 	}
 
 	/** The rule the project wrote that takes this file. */
@@ -248,9 +261,9 @@ export class RojoFile {
 			: RojoFile.scriptSuffixOf(this.stem);
 	}
 
-	/** Whether a rule of the project cut the name, so no script suffix is left on it to strip. */
+	/** Whether a rule of the project cut the name with no script suffix left on it to strip. */
 	get nameCutByRule(): boolean {
-		return this.ownMatch !== undefined;
+		return this.ownMatch !== undefined && !this.spelledScriptSuffix;
 	}
 
 	get isInit(): boolean {
@@ -258,7 +271,7 @@ export class RojoFile {
 	}
 
 	get instanceName(): string {
-		if (this.ownMatch) return this.stem;
+		if (this.nameCutByRule) return this.stem;
 		if (this.kind === "script") return RojoFile.scriptNameOf(this.stem);
 		if (this.kind !== "data") return this.stem;
 		return this.isJson && this.stem.endsWith(".model")

@@ -464,6 +464,29 @@ describe("Placer", () => {
 			]);
 		});
 
+		it("should route a script by the class its rule's suffix spells, whatever the extension", async () => {
+			const { placement } = await placed(
+				["src/Main.server.aly", "src/Hud.client.aly"],
+				[
+					{
+						pattern: "*.server.aly",
+						use: "serverScript",
+						suffix: ".server.aly",
+					},
+					{
+						pattern: "*.client.aly",
+						use: "clientScript",
+						suffix: ".client.aly",
+					},
+				]
+			);
+
+			expect(placedLines(placement.files)).toEqual([
+				"Hud.client.aly -> StarterPlayer/StarterPlayerScripts/Hud",
+				"Main.server.aly -> ServerScriptService/Main",
+			]);
+		});
+
 		it("should leave out a file a rule ignores, and say which rule", async () => {
 			const { placement } = await placed(
 				["src/Draft.skip", "src/Real.luau"],
