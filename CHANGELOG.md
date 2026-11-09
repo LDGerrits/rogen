@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- The warning for a script suffix before an `@` suffix, as in `Start.server@client.ts`, covers every extension. It only knew `.lua` and `.luau`.
 - A script read by a sync rule whose `suffix` spells its class, such as `main.server.aly` under `*.server.aly`, routes by that `.server` or `.client` as a `.luau` script does. It needed `main@server.server.aly`.
 - With a `compiledPath`, a folder named like a file a tool compiles, such as `net.ts`, is mounted at its own path, so its code reaches the game. It was mounted at `out/net.luau` beside an empty placeholder script.
 - A second `rogen syncback` in a project folder where one is running stops with `syncback.busy`, instead of deleting the first one's copy of your files. The error names the lock file to remove when no syncback is running.
