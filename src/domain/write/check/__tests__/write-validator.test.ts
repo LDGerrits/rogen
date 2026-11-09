@@ -679,7 +679,7 @@ describe("WriteValidator rules", () => {
 						expect(warning).toMatchObject({
 							severity: DiagnosticSeverity.Warning,
 							resource: abs("src/Main.server.lang"),
-							message: `the sync rule "${pattern}" also takes Main.server.luau, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Make the pattern name only .lang.`,
+							message: `the sync rule "${pattern}" also takes Main.server.luau, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Narrow the pattern so it no longer takes that file.`,
 						});
 					}
 				);
@@ -701,6 +701,68 @@ describe("WriteValidator rules", () => {
 							),
 						},
 					]);
+				});
+
+				it("should not warn about a broad rule that reads the .luau file as its name does", async () => {
+					await write("src/Util.lang");
+
+					expect(
+						await mismatches(
+							compiled({
+								pattern: "src/**/*",
+								use: "moduleScript",
+							})
+						)
+					).toEqual([]);
+				});
+
+				it("should warn when another rule reads the .luau file as something other than a script", async () => {
+					await write("src/Util.lang");
+
+					expect(
+						await mismatches(
+							compiled(
+								{ pattern: "*.lang", use: "moduleScript" },
+								{ pattern: "*.luau", use: "text" }
+							)
+						)
+					).toMatchObject([
+						{
+							message: expect.stringContaining(
+								'the sync rule "*.luau" also takes Util.luau'
+							),
+						},
+					]);
+				});
+
+				it("should claim the meta file of a mounted file by the name Rojo reads", async () => {
+					await write(
+						"src/Vendor/Boot.server.lang",
+						"src/Vendor/Boot.server.meta.json"
+					);
+
+					expect(
+						(
+							await route({
+								compiledPath: abs("out"),
+								project: {
+									tree: {
+										$className: "DataModel",
+										ServerStorage: {
+											Boot: {
+												$path: "src/Vendor/Boot.server.lang",
+											},
+										},
+									},
+									syncRules: [moduleRule],
+								},
+							})
+						)
+							.unwrap()
+							.warnings.filter(
+								({ code }) => code === "meta.unclaimed"
+							)
+					).toEqual([]);
 				});
 
 				it("should not warn when the name spells the class the rule gives", async () => {

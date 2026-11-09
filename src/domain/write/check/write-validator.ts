@@ -467,8 +467,13 @@ export class WriteValidator {
 
 	private static compiledClassMismatch(file: RojoFile): string | undefined {
 		const emitted = file.renamed(`${file.stem}.luau`);
-		if (emitted.ownRule)
-			return `the sync rule "${emitted.ownRule.pattern}" also takes ${emitted.name}, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Make the pattern name only ${path.extname(file.name)}.`;
+		if (
+			emitted.ownRule &&
+			(emitted.kind !== file.kind ||
+				emitted.scriptSuffix !== file.scriptSuffix ||
+				emitted.instanceName !== file.instanceName)
+		)
+			return `the sync rule "${emitted.ownRule.pattern}" also takes ${emitted.name}, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Narrow the pattern so it no longer takes that file.`;
 		const { ownRule: rule, scriptSuffix: given } = file.uncompiled;
 		if (!rule || !given || given === RojoFile.scriptSuffixOf(file.stem))
 			return undefined;

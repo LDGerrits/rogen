@@ -337,10 +337,10 @@ warning: the sync rule "*.lang" asks for a server script, but the compiler write
 
 Rename the file as the message says, and keep the rule's pattern matching the new name. To keep the name, set the rule's `use` to `moduleScript`, which only says the extension is a script.
 
-Also under a `compiledPath`, a rule's pattern can be broad enough to take the `.luau` file too, as `src/**/*` and `*.{lang,luau}` are. Rojo then reads that file by the rule, not by its name.
+Also under a `compiledPath`, a rule's pattern can be broad enough to take the `.luau` file too, as `src/**/*` and `*.{lang,luau}` are. Rojo then reads that file by the rule, not by its name, and Rogen warns when that gives a different class or name.
 
 ```
-warning: the sync rule "src/**/*" also takes Main.server.luau, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Make the pattern name only .lang. (route.scriptClassMismatch)
+warning: the sync rule "src/**/*" also takes Main.server.luau, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Narrow the pattern so it no longer takes that file. (route.scriptClassMismatch)
 ```
 
 Name the source extension in the pattern, as `*.lang` does.

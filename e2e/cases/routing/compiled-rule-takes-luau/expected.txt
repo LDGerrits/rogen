@@ -2,7 +2,7 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  src/Main.server.lang - warning: the sync rule "src/**/*" also takes Main.server.luau, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Make the pattern name only .lang. (route.scriptClassMismatch)
+  src/Main.server.lang - warning: the sync rule "src/**/*" also takes Main.server.luau, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Narrow the pattern so it no longer takes that file. (route.scriptClassMismatch)
 
 written:
   default.project.json
