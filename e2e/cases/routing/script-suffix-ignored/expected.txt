@@ -1,0 +1,13 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+stderr:
+  src/Main.server.lang - warning: the sync rule "*.lang" makes this file a ModuleScript, so it never runs. For a server script, add { "pattern": "*.server.lang", "use": "serverScript", "suffix": ".server.lang" } before that rule; for a module, remove ".server". (route.scriptClassMismatch)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Main: ModuleScript  <- src/Main.server.lang

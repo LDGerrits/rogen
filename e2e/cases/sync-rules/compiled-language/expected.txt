@@ -1,0 +1,96 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen where src
+exit 0
+stdout:
+  src/Feature/Hud.client.lang -> StarterPlayer/StarterPlayerScripts/Feature/Hud · route client (suffix)
+  src/Feature/Main.server.lang -> ServerScriptService/Feature/Main · route server (suffix)
+  src/Feature/Util.lang -> ReplicatedStorage/shared/Feature/Util · route * (fallback)
+
+$ rogen check
+exit 0
+
+$ rogen build -o game.rbxl
+exit 0
+stdout: (not shown)
+
+written:
+  default.project.json
+  game.rbxl
+
+default.project.json:
+{
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Runtime": {
+        "$path": "build/runtime.luau"
+      },
+      "shared": {
+        "$className": "Folder",
+        "Feature": {
+          "$className": "Folder",
+          "Util": {
+            "$path": {
+              "optional": "build/Feature/Util.luau"
+            }
+          },
+          "$ignoreUnknownInstances": false
+        },
+        "$ignoreUnknownInstances": false
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "Feature": {
+        "$className": "Folder",
+        "Main": {
+          "$path": {
+            "optional": "build/Feature/Main.server.luau"
+          }
+        },
+        "$ignoreUnknownInstances": false
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "Feature": {
+          "$className": "Folder",
+          "Hud": {
+            "$path": {
+              "optional": "build/Feature/Hud.client.luau"
+            }
+          },
+          "$ignoreUnknownInstances": false
+        }
+      }
+    }
+  },
+  "syncRules": [
+    {
+      "pattern": "*.lang",
+      "use": "moduleScript",
+      "suffix": ".lang"
+    }
+  ]
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Runtime: ModuleScript  <- build/runtime.luau
+    shared: Folder
+      Feature: Folder
+        Util: ModuleScript  <- build/Feature/Util.luau
+  ServerScriptService: ServerScriptService
+    Feature: Folder
+      Main: Script  <- build/Feature/Main.server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Feature: Folder
+        Hud: LocalScript  <- build/Feature/Hud.client.luau

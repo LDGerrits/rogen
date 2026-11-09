@@ -157,9 +157,9 @@ describe("WriteValidator rules", () => {
 			it("should warn at the source path, naming its files", async () => {
 				expect(
 					await unsynced([
-						"src/shared/util.aly",
-						"src/server/main.server.aly",
-						"src/client/main.client.aly",
+						"src/shared/util.lang",
+						"src/server/main.server.lang",
+						"src/client/main.client.lang",
 						"src/Notes.md",
 					])
 				).toMatchObject([
@@ -167,71 +167,35 @@ describe("WriteValidator rules", () => {
 						severity: DiagnosticSeverity.Warning,
 						resource: abs("src"),
 						message:
-							'this source path places nothing: Rojo reads none of its files (Notes.md, client/main.client.aly, server/main.server.aly and 1 more). If they are scripts, add a "syncRules" entry for their extension.',
+							'this source path places nothing: Rojo reads none of its files (Notes.md, client/main.client.lang, server/main.server.lang and 1 more). If they are scripts, add a "syncRules" entry for their extension. If a compiler turns them into Luau, set "compiledPath" too.',
 					},
 				]);
 			});
 
 			it("should list every file in related", async () => {
 				const [warning] = await unsynced([
-					"src/A.aly",
-					"src/B.aly",
-					"src/C.aly",
-					"src/D.aly",
+					"src/A.lang",
+					"src/B.lang",
+					"src/C.lang",
+					"src/D.lang",
 				]);
 
 				expect(
 					warning.related?.map(({ resource }) => resource)
 				).toEqual(
-					["A.aly", "B.aly", "C.aly", "D.aly"].map((file) =>
+					["A.lang", "B.lang", "C.lang", "D.lang"].map((file) =>
 						at("src", file)
 					)
 				);
 			});
 
-			it("should send a compiled path to the source paths, since a sync rule keeps the files' names", async () => {
-				const [warning] = await unsynced(["src/util.aly"], {
+			it("should say a sync rule is enough under a compiled path", async () => {
+				const [warning] = await unsynced(["src/util.lang"], {
 					compiledPath: abs("out"),
 				});
 
 				expect(warning.message).toBe(
-					`this source path places nothing: Rojo reads none of its files (util.aly). If they are scripts, a sync rule won't help: Rogen would point the project file at the same names in "out", but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out"], and remove "compiledPath".`
-				);
-			});
-
-			it("should send every source path to its compiled copy", async () => {
-				await write("src/Main.luau");
-				const [warning] = await unsynced(["lib/a.aly", "lib/b.aly"], {
-					compiledPath: abs("out"),
-					sourcePaths: [abs("src"), abs("lib")],
-				});
-
-				expect(warning.message).toContain(
-					'(a.aly and b.aly). If they are scripts, a sync rule won\'t help: Rogen would point the project file at the same names in "out/lib", but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out/src", "out/lib"], and remove "compiledPath".'
-				);
-			});
-
-			it("should name the copy of a folder as a compiler writes it, which renames only files", async () => {
-				await write("src/main/Main.luau");
-				const [warning] = await unsynced(["src/lib.ts/a.aly"], {
-					compiledPath: abs("out"),
-					sourcePaths: [abs("src/main"), abs("src/lib.ts")],
-				});
-
-				expect(warning.message).toContain(
-					'at the same names in "out/lib.ts", but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out/main", "out/lib.ts"]'
-				);
-			});
-
-			it("should write the source paths it suggests as JSON", async () => {
-				await write("src/Main.luau");
-				const [warning] = await unsynced(['my "lib"/a.aly'], {
-					compiledPath: abs("out"),
-					sourcePaths: [abs("src"), abs('my "lib"')],
-				});
-
-				expect(warning.message).toContain(
-					'at the same names in "out/my \\"lib\\"", but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out/src", "out/my \\"lib\\""]'
+					'this source path places nothing: Rojo reads none of its files (util.lang). If they are scripts, add a "syncRules" entry for their extension, and Rogen points the project file at the .luau files your compiler writes.'
 				);
 			});
 
@@ -262,20 +226,20 @@ describe("WriteValidator rules", () => {
 
 			it("should not warn when a file of the source path is synced", async () => {
 				expect(
-					await unsynced(["src/util.aly", "src/Main.luau"])
+					await unsynced(["src/util.lang", "src/Main.luau"])
 				).toEqual([]);
 			});
 
 			it("should not warn when sync rules read the files", async () => {
 				expect(
-					await unsynced(["src/util.aly"], {
+					await unsynced(["src/util.lang"], {
 						project: {
 							tree: {},
 							syncRules: [
 								{
-									pattern: "*.aly",
+									pattern: "*.lang",
 									use: "moduleScript",
-									suffix: ".aly",
+									suffix: ".lang",
 								},
 							],
 						},
@@ -285,8 +249,8 @@ describe("WriteValidator rules", () => {
 
 			it("should not count files that globIgnorePaths matches", async () => {
 				expect(
-					await unsynced(["src/util.aly"], {
-						ignored: [`${toPosix(abs("src"))}/**/*.aly`],
+					await unsynced(["src/util.lang"], {
+						ignored: [`${toPosix(abs("src"))}/**/*.lang`],
 					})
 				).toEqual([]);
 			});
@@ -549,6 +513,279 @@ describe("WriteValidator rules", () => {
 			});
 		});
 
+		describe("a script whose name and rule disagree on its class", () => {
+			const moduleRule = {
+				pattern: "*.lang",
+				use: "moduleScript",
+				suffix: ".lang",
+			};
+			const mismatches = async (overrides: ResolvedConfigSpec) =>
+				(await route(overrides))
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "route.scriptClassMismatch"
+					);
+
+			it("should warn that the rule makes it a ModuleScript, and name the rule to add", async () => {
+				await write("src/Boot/Main.server.lang");
+
+				expect(
+					await mismatches({
+						project: { tree: {}, syncRules: [moduleRule] },
+					})
+				).toMatchObject([
+					{
+						severity: DiagnosticSeverity.Warning,
+						resource: abs("src/Boot/Main.server.lang"),
+						message:
+							'the sync rule "*.lang" makes this file a ModuleScript, so it never runs. For a server script, add { "pattern": "*.server.lang", "use": "serverScript", "suffix": ".server.lang" } before that rule; for a module, remove ".server".',
+					},
+				]);
+			});
+
+			it("should advise a rule that takes a name a longer suffix ends, and stop warning once it is added", async () => {
+				await write("src/Boot/Main.server.mod.lang");
+				const longSuffix = {
+					pattern: "*.mod.lang",
+					use: "moduleScript",
+					suffix: ".mod.lang",
+				};
+				const [{ message }] = await mismatches({
+					project: { tree: {}, syncRules: [longSuffix] },
+				});
+				const advised = JSON.parse(
+					/add (\{.*\}) before/.exec(message)![1]
+				);
+
+				expect(advised).toEqual({
+					pattern: "*.server.mod.lang",
+					use: "serverScript",
+					suffix: ".server.mod.lang",
+				});
+				expect(
+					await mismatches({
+						project: {
+							tree: {},
+							syncRules: [advised, longSuffix],
+						},
+					})
+				).toEqual([]);
+			});
+
+			it("should give a Script named by the file when the advised rule is added word for word", async () => {
+				await write("src/Boot/Main.server.lang");
+				const project = { tree: {}, syncRules: [moduleRule] };
+				const [{ message }] = await mismatches({ project });
+				const advised = JSON.parse(
+					/add (\{.*\}) before/.exec(message)![1]
+				);
+
+				const fixed = {
+					project: { tree: {}, syncRules: [advised, moduleRule] },
+				};
+
+				expect(await mismatches(fixed)).toEqual([]);
+				const [main] = (await route(fixed)).unwrap().routed;
+				expect(main.instancePath.at(-1)).toBe("Main");
+				expect(main.entry.file.scriptSuffix).toBe("server");
+			});
+
+			it("should not warn when a rule makes it the script it spells", async () => {
+				await write("src/Boot/Main.server.lang");
+
+				expect(
+					await mismatches({
+						project: {
+							tree: {},
+							syncRules: [
+								{
+									pattern: "*.server.lang",
+									use: "serverScript",
+									suffix: ".server.lang",
+								},
+								moduleRule,
+							],
+						},
+					})
+				).toEqual([]);
+			});
+
+			it("should not warn under a compiled path, where Rojo reads the name the compiler keeps", async () => {
+				await write("src/Boot/Main.server.lang");
+
+				expect(
+					await mismatches({
+						compiledPath: abs("out"),
+						project: { tree: {}, syncRules: [moduleRule] },
+					})
+				).toEqual([]);
+			});
+
+			describe("under a compiled path", () => {
+				const compiled = (...syncRules: object[]) => ({
+					compiledPath: abs("out"),
+					project: { tree: {}, syncRules },
+				});
+				const serverRule = { pattern: "*.lang", use: "serverScript" };
+
+				it("should warn that a run rule on a plain name gives a ModuleScript, and name the file to rename it to", async () => {
+					await write("src/Boot.lang");
+
+					expect(
+						await mismatches(compiled(serverRule))
+					).toMatchObject([
+						{
+							severity: DiagnosticSeverity.Warning,
+							resource: abs("src/Boot.lang"),
+							message:
+								'the sync rule "*.lang" asks for a server script, but the compiler writes Boot.luau and Rojo reads the class from that name. For a server script, rename it Boot.server.lang; to keep this name, set the rule\'s "use" to "moduleScript".',
+						},
+					]);
+				});
+
+				it("should give a server script when the file is renamed as advised", async () => {
+					await write("src/Boot.server.lang");
+
+					expect(await mismatches(compiled(serverRule))).toEqual([]);
+					const [boot] = (await route(compiled(serverRule))).unwrap()
+						.routed;
+					expect(boot.instancePath.at(-1)).toBe("Boot");
+					expect(boot.entry.file.scriptSuffix).toBe("server");
+				});
+
+				it("should warn when the name spells another run class", async () => {
+					await write("src/Hud.client.lang");
+
+					expect(
+						await mismatches(compiled(serverRule))
+					).toMatchObject([
+						{
+							message:
+								'the sync rule "*.lang" asks for a server script, but the compiler writes Hud.client.luau and Rojo reads the class from that name. For a server script, rename it Hud.server.lang; to keep this name, set the rule\'s "use" to "moduleScript".',
+						},
+					]);
+				});
+
+				it.each(["src/**/*", "*.{lang,luau}"])(
+					"should warn that %s also takes the .luau file the compiler writes",
+					async (pattern) => {
+						await write("src/Main.server.lang");
+
+						const [warning, ...rest] = await mismatches(
+							compiled({ pattern, use: "moduleScript" })
+						);
+
+						expect(rest).toEqual([]);
+						expect(warning).toMatchObject({
+							severity: DiagnosticSeverity.Warning,
+							resource: abs("src/Main.server.lang"),
+							message: `the sync rule "${pattern}" also takes Main.server.luau, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Narrow the pattern so it no longer takes that file.`,
+						});
+					}
+				);
+
+				it("should warn once about a rule that takes the .luau file and gives a class the name does not spell", async () => {
+					await write("src/Boot.lang");
+
+					expect(
+						await mismatches(
+							compiled({
+								pattern: "src/**/*",
+								use: "serverScript",
+							})
+						)
+					).toMatchObject([
+						{
+							message: expect.stringContaining(
+								"also takes Boot.luau"
+							),
+						},
+					]);
+				});
+
+				it("should not warn about a broad rule that reads the .luau file as its name does", async () => {
+					await write("src/Util.lang");
+
+					expect(
+						await mismatches(
+							compiled({
+								pattern: "src/**/*",
+								use: "moduleScript",
+							})
+						)
+					).toEqual([]);
+				});
+
+				it("should warn when another rule reads the .luau file as something other than a script", async () => {
+					await write("src/Util.lang");
+
+					expect(
+						await mismatches(
+							compiled(
+								{ pattern: "*.lang", use: "moduleScript" },
+								{ pattern: "*.luau", use: "text" }
+							)
+						)
+					).toMatchObject([
+						{
+							message: expect.stringContaining(
+								'the sync rule "*.luau" also takes Util.luau'
+							),
+						},
+					]);
+				});
+
+				it("should claim the meta file of a mounted file by the name Rojo reads", async () => {
+					await write(
+						"src/Vendor/Boot.server.lang",
+						"src/Vendor/Boot.server.meta.json"
+					);
+
+					expect(
+						(
+							await route({
+								compiledPath: abs("out"),
+								project: {
+									tree: {
+										$className: "DataModel",
+										ServerStorage: {
+											Boot: {
+												$path: "src/Vendor/Boot.server.lang",
+											},
+										},
+									},
+									syncRules: [moduleRule],
+								},
+							})
+						)
+							.unwrap()
+							.warnings.filter(
+								({ code }) => code === "meta.unclaimed"
+							)
+					).toEqual([]);
+				});
+
+				it("should not warn when the name spells the class the rule gives", async () => {
+					await write("src/Main.server.lang");
+
+					expect(
+						await mismatches(
+							compiled({
+								pattern: "*.server.lang",
+								use: "serverScript",
+							})
+						)
+					).toEqual([]);
+				});
+
+				it("should not warn about a moduleScript rule", async () => {
+					await write("src/Boot.lang");
+
+					expect(await mismatches(compiled(moduleRule))).toEqual([]);
+				});
+			});
+		});
+
 		describe("a script suffix before an @ suffix", () => {
 			const beforeAt = async () =>
 				(await route())
@@ -624,14 +861,14 @@ describe("WriteValidator rules", () => {
 
 			describe("with sync rules for another extension", () => {
 				const moduleRule = {
-					pattern: "*.aly",
+					pattern: "*.lang",
 					use: "moduleScript",
-					suffix: ".aly",
+					suffix: ".lang",
 				};
 				const serverRule = {
-					pattern: "*.server.aly",
+					pattern: "*.server.lang",
 					use: "serverScript",
-					suffix: ".server.aly",
+					suffix: ".server.lang",
 				};
 				const warningsWith = async (syncRules: readonly object[]) =>
 					(await route({ project: { tree: {}, syncRules } }))
@@ -641,7 +878,7 @@ describe("WriteValidator rules", () => {
 						);
 
 				it("should propose the name a rule reads as the script", async () => {
-					await write("src/Boot/Start.server@server.aly");
+					await write("src/Boot/Start.server@server.lang");
 
 					expect(
 						await warningsWith([serverRule, moduleRule])
@@ -651,9 +888,9 @@ describe("WriteValidator rules", () => {
 								{
 									rename: {
 										from: abs(
-											"src/Boot/Start.server@server.aly"
+											"src/Boot/Start.server@server.lang"
 										),
-										to: abs("src/Boot/Start.server.aly"),
+										to: abs("src/Boot/Start.server.lang"),
 									},
 								},
 							],
@@ -662,7 +899,7 @@ describe("WriteValidator rules", () => {
 				});
 
 				it("should not warn when no rule would read that name as the script", async () => {
-					await write("src/Boot/Start.server@server.aly");
+					await write("src/Boot/Start.server@server.lang");
 
 					expect(await warningsWith([moduleRule])).toEqual([]);
 				});

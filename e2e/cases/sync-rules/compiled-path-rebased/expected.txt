@@ -29,7 +29,7 @@ default.project.json:
       "suffix": ".module"
     },
     {
-      "pattern": "*.note",
+      "pattern": "out/*.note",
       "use": "text",
       "suffix": ".note"
     }
@@ -42,4 +42,4 @@ project: DataModel
     shared: Folder
       Combat: Folder
         Greeting: StringValue  <- out/Combat/Greeting.note
-        Hit: ModuleScript  <- out/Combat/Hit.module
+        Hit: ModuleScript  <- out/Combat/Hit.luau

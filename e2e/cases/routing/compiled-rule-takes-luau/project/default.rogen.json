@@ -1,0 +1,9 @@
+{
+	"syncRules": [{ "pattern": "src/**/*", "use": "moduleScript" }],
+	"sourcePaths": ["src"],
+	"compiledPath": "build",
+	"routes": {
+		"server": "ServerScriptService",
+		"*": "ReplicatedStorage/shared"
+	}
+}

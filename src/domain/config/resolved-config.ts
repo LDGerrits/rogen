@@ -2,6 +2,7 @@ import path from "path";
 import { commonAncestor, samePath, toPosix } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { Target } from "../roblox/roblox.js";
+import { RojoFile } from "../rojo/rojo.js";
 import { ParsedProjectFile, RojoProject } from "../rojo/rojo-project.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import { DEFAULT_SOURCE_PATH, projectFileOf } from "./config.js";
@@ -113,6 +114,15 @@ export function compiledPathOf(
 		config.compiledPath,
 		path.relative(config.commonRoot ?? config.projectDir, file)
 	);
+}
+
+/** The file at `source`, an absolute POSIX path of a source the scan found, as Rojo reads what `config` makes of it. */
+export function scannedFileOf(
+	config: Pick<ResolvedConfig, "compiledPath" | "syncRules">,
+	source: string
+): RojoFile {
+	const reading = config.compiledPath === undefined ? "rojo" : "compiled";
+	return RojoFile.at(source, config.syncRules, reading);
 }
 
 /** A `.rogen.json` resolved. */

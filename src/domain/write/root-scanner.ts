@@ -6,6 +6,7 @@ import {
 	joinPosix,
 	samePath,
 	stemOf,
+	toNative,
 	toPosix,
 } from "../../base/path.js";
 import {
@@ -240,13 +241,20 @@ interface Walk {
 
 /** Walks source paths in the index, leaving out what `globIgnorePaths` matches and what the tree mounts. */
 export class RootScanner {
+	private readonly fileAt: FileAt;
+
 	constructor(
 		private readonly index: IndexReader,
 		private readonly ignored: readonly string[],
 		private readonly mounts: TreeMounts,
 		private readonly projectFiles: readonly string[],
-		private readonly fileAt: FileAt
-	) {}
+		scannedFileAt: FileAt
+	) {
+		this.fileAt = (source) => {
+			const file = scannedFileAt(source);
+			return mounts.covering(toNative(source)) ? file.uncompiled : file;
+		};
+	}
 
 	scan(sourcePath: string): ScannedRoot {
 		const walk: Walk = {

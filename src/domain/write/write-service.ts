@@ -15,8 +15,7 @@ import { FileChange } from "../../platform/fs/file-changes.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
-import { ResolvedConfig } from "../config/resolved-config.js";
-import { RojoFile } from "../rojo/rojo.js";
+import { ResolvedConfig, scannedFileOf } from "../config/resolved-config.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ConfigSelection } from "../config/config-service.js";
 import {
@@ -218,7 +217,7 @@ export class LocatedDiagnosis {
 	private isMetaOf(diagnostic: Diagnostic, source: string): boolean {
 		const posixSource = toPosix(source);
 		const dir = path.posix.dirname(posixSource);
-		return RojoFile.at(posixSource, this.located.config.syncRules)
+		return scannedFileOf(this.located.config, posixSource)
 			.metaFiles.map((name) => path.posix.join(dir, name))
 			.includes(toPosix(diagnostic.resource));
 	}

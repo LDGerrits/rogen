@@ -5,9 +5,9 @@ stdout: (not shown)
 $ rogen where src
 exit 0
 stdout:
-  src/Hud.client.aly -> StarterPlayer/StarterPlayerScripts/Hud · route client (suffix)
-  src/Main.server.aly -> ServerScriptService/Main · route server (suffix)
-  src/Util.aly -> ReplicatedStorage/shared/Util · route * (fallback)
+  src/Hud.client.lang -> StarterPlayer/StarterPlayerScripts/Hud · route client (suffix)
+  src/Main.server.lang -> ServerScriptService/Main · route server (suffix)
+  src/Util.lang -> ReplicatedStorage/shared/Util · route * (fallback)
 
 written:
   default.project.json
@@ -16,9 +16,9 @@ $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
-      Util: ModuleScript  <- src/Util.aly
+      Util: ModuleScript  <- src/Util.lang
   ServerScriptService: ServerScriptService
-    Main: Script  <- src/Main.server.aly
+    Main: Script  <- src/Main.server.lang
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
-      Hud: LocalScript  <- src/Hud.client.aly
+      Hud: LocalScript  <- src/Hud.client.lang

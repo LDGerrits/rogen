@@ -301,6 +301,37 @@ describe("CoreWriteService.locate", () => {
 		]);
 	});
 
+	it("should name a file the tree mounts under a compiled path as Rojo reads it", async () => {
+		await write("src/Vendor/Boot.server.lang", "src/Save.luau");
+
+		expect(
+			await locate(["src/Vendor/Boot.server.lang"], {
+				compiledPath: abs("out"),
+				project: {
+					name: "game",
+					syncRules: [
+						{
+							pattern: "*.lang",
+							use: "moduleScript",
+							suffix: ".lang",
+						},
+					],
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: {
+							Vendor: { $path: "src/Vendor" },
+						},
+					},
+				},
+			})
+		).toMatchObject([
+			{
+				status: "mounted",
+				instancePath: ["ReplicatedStorage", "Vendor", "Boot.server"],
+			},
+		]);
+	});
+
 	describe("what a mount makes of the files in it", () => {
 		const project = {
 			name: "game",

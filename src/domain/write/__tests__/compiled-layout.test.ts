@@ -226,6 +226,34 @@ describe("CompiledLayout", () => {
 			});
 		});
 
+		it("should rewrite a script a project rule reads to .luau, keeping the rest of its name", () => {
+			const layout = new CompiledLayout(
+				configOf({
+					sourcePaths: [abs("src")],
+					compiledPath: abs("build"),
+					project: {
+						tree: {},
+						syncRules: [
+							{ pattern: "*.lang", use: "moduleScript" },
+							{ pattern: "**/Runner", use: "moduleScript" },
+							{ pattern: "*.note", use: "text" },
+						],
+					},
+				}),
+				[]
+			);
+
+			expect(layout.rojoPath(abs("src/Main.server.lang"))).toEqual({
+				optional: "build/Main.server.luau",
+			});
+			expect(layout.rojoPath(abs("src/Runner"))).toEqual({
+				optional: "build/Runner.luau",
+			});
+			expect(layout.rojoPath(abs("src/Greeting.note"))).toEqual({
+				optional: "build/Greeting.note",
+			});
+		});
+
 		it("should not rewrite any other extension", () => {
 			const layout = layoutOf({
 				commonRoot: abs("src"),

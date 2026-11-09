@@ -317,6 +317,34 @@ For a module, remove the script suffix, as in `Start@client.luau`. For a Script,
 
 When the suffix routes the file where the `@` does, as `.server` does in `Start.server@server.luau` with a `server` route, the name without the `@` part is enough. Rogen proposes `Start.server.luau`, and in `--json`, `fixes` holds the rename.
 
+### `route.scriptClassMismatch` [#route-scriptclassmismatch]
+
+Warning. A script's name and its sync rule disagree on its class, so the script isn't the kind you asked for. There are three cases.
+
+A sync rule of the project takes a script whose name ends in `.server`, `.client` or `.plugin` and makes it a ModuleScript, so the code in it never runs on its own. That happens when the rule for modules comes first, or when no rule makes that kind of script. The name still routes the file.
+
+```
+warning: the sync rule "*.lang" makes this file a ModuleScript, so it never runs. For a server script, add { "pattern": "*.server.lang", "use": "serverScript", "suffix": ".server.lang" } before that rule; for a module, remove ".server". (route.scriptClassMismatch)
+```
+
+Add the rule the message names, in front of the rule for modules. Its `suffix` keeps `.server` out of the instance name. For a module, remove the suffix from the name.
+
+Under a `compiledPath`, a rule with a run class such as `serverScript` takes a compiled file whose name doesn't spell that class. Rojo reads the `.luau` file the compiler writes by its name, so the name decides the class and the rule's `use` doesn't.
+
+```
+warning: the sync rule "*.lang" asks for a server script, but the compiler writes Boot.luau and Rojo reads the class from that name. For a server script, rename it Boot.server.lang; to keep this name, set the rule's "use" to "moduleScript". (route.scriptClassMismatch)
+```
+
+Rename the file as the message says, and keep the rule's pattern matching the new name. To keep the name, set the rule's `use` to `moduleScript`, which only says the extension is a script.
+
+Also under a `compiledPath`, a rule's pattern can be broad enough to take the `.luau` file too, as `src/**/*` and `*.{lang,luau}` are. Rojo then reads that file by the rule, not by its name, and Rogen warns when that gives a different class or name.
+
+```
+warning: the sync rule "src/**/*" also takes Main.server.luau, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Narrow the pattern so it no longer takes that file. (route.scriptClassMismatch)
+```
+
+Name the source extension in the pattern, as `*.lang` does.
+
 ### `route.caseMismatch` [#route-casemismatch]
 
 Warning. A folder or marker file matches a declared key except for the letter case after the first letter. Rogen reads it as an ordinary name.
@@ -691,17 +719,17 @@ On a plain Rojo project, which has no config, only `rogen check` reports it. Roj
 Warning. A source path holds files, but Rojo reads none of them, so Rogen places nothing from it. Rojo reads a file by its extension, such as `.luau` or `.json`, or by a sync rule. A language that compiles to Luau, with an extension of its own, gets this warning.
 
 ```
-warning: this source path places nothing: Rojo reads none of its files (client/main.client.aly, server/main.server.aly and shared/util.aly). If they are scripts, add a "syncRules" entry for their extension. (scan.noSyncedFiles)
+warning: this source path places nothing: Rojo reads none of its files (client/main.client.lang, server/main.server.lang and shared/util.lang). If they are scripts, add a "syncRules" entry for their extension. If a compiler turns them into Luau, set "compiledPath" too. (scan.noSyncedFiles)
 ```
 
 The message names the first three files. In `--json`, `related` lists every one. When `rogen where` has no file to list, it prints this warning instead of saying the source paths hold no files. An error that stops the write hides it.
 
-If the files are scripts, add [`syncRules`](https://rojo.space/docs/v7/project-format/#sync-rules) that read their extension, so Rogen routes them and Rojo syncs them. Otherwise, remove the folder from `sourcePaths`.
+If the files are scripts, add [`syncRules`](https://rojo.space/docs/v7/project-format/#sync-rules) that read their extension, so Rogen routes them. If a compiler turns them into Luau, also set `compiledPath` to the folder it writes. Otherwise, remove the folder from `sourcePaths`.
 
-With a `compiledPath`, a sync rule doesn't help. Rogen points the project file at each file's copy in the compiled path under the file's own name, but a compiler writes `.luau` files. Route the compiled files instead: set `sourcePaths` to the copy of each source path that the compiler writes, and remove `compiledPath`.
+With a `compiledPath`, one sync rule for the extension is enough. Rogen routes each file by its source name and points the project file at the `.luau` file the compiler writes, keeping the rest of the name, so `Main.server.lang` lands at `Main.server.luau`.
 
 ```
-warning: this source path places nothing: Rojo reads none of its files (util.aly). If they are scripts, a sync rule won't help: Rogen would point the project file at the same names in "out", but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out"], and remove "compiledPath". (scan.noSyncedFiles)
+warning: this source path places nothing: Rojo reads none of its files (util.lang). If they are scripts, add a "syncRules" entry for their extension, and Rogen points the project file at the .luau files your compiler writes. (scan.noSyncedFiles)
 ```
 
 Files that `globIgnorePaths` matches don't count, and neither does a source path that the tree mounts a folder or file of.
@@ -888,7 +916,7 @@ Delete the file. Or empty the compiled path, and run the compiler or processor a
 
 Where a folder collapses into one `$path`, Rojo syncs every file in it, including the stale one. In a folder that doesn't collapse, Rojo skips the stale file, but the file stays on disk.
 
-Rogen matches a file to its source by the name a tool gives it. roblox-ts compiles `.ts` and `.tsx` to `.luau`, and `index.ts` to `init.luau`. Darklua turns a data file into `.lua`. A source that `globIgnorePaths` leaves out still counts as making its file. When Rogen can't tell, it doesn't warn. `rogen check` exits 1 on this warning, and `build` only prints it.
+Rogen matches a file to its source by the name a tool gives it. roblox-ts compiles `.ts` and `.tsx` to `.luau`, and `index.ts` to `init.luau`. Darklua turns a data file into `.lua`. A source that `globIgnorePaths` leaves out still counts as making its file. A file the tree mounts, such as a compiler's runtime library, is no orphan. When Rogen can't tell, it doesn't warn. `rogen check` exits 1 on this warning, and `build` only prints it.
 
 ## Format
 

@@ -1,0 +1,12 @@
+{
+	"syncRules": [
+		{ "pattern": "*.lang", "use": "moduleScript", "suffix": ".lang" }
+	],
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"*": "ReplicatedStorage/shared"
+	}
+}

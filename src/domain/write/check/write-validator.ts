@@ -83,6 +83,7 @@ export class WriteValidator {
 			...this.serverCodeShipped(),
 			...this.deadScript(),
 			...this.scriptSuffixBeforeAt(),
+			...this.scriptClassMismatch(),
 			...this.reservedName(),
 			...this.instanceClash(),
 			...this.emptyName(),
@@ -176,13 +177,11 @@ export class WriteValidator {
 			),
 			LISTED_FILES
 		);
-		const { layout } = this.placement;
-		if (layout.compiledPath === undefined)
-			return `Rojo reads none of its files (${listed}). If they are scripts, add a "syncRules" entry for their extension.`;
-		const copyOf = (dir: string) =>
-			JSON.stringify(layout.compiledFolderOf(dir));
-		const copies = this.config.sourcePaths.map(copyOf).join(", ");
-		return `Rojo reads none of its files (${listed}). If they are scripts, a sync rule won't help: Rogen would point the project file at the same names in ${copyOf(sourcePath)}, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to [${copies}], and remove "compiledPath".`;
+		const advice =
+			this.placement.layout.compiledPath === undefined
+				? 'If they are scripts, add a "syncRules" entry for their extension. If a compiler turns them into Luau, set "compiledPath" too.'
+				: 'If they are scripts, add a "syncRules" entry for their extension, and Rogen points the project file at the .luau files your compiler writes.';
+		return `Rojo reads none of its files (${listed}). ${advice}`;
 	}
 
 	private syncRuleSuffix(): Diagnostic[] {
@@ -437,6 +436,49 @@ export class WriteValidator {
 		return run === "Script" || run === "LocalScript"
 			? `a ${run}`
 			: `a Script with RunContext ${run}`;
+	}
+
+	private scriptClassMismatch(): Diagnostic[] {
+		return this.placement.files.flatMap(({ entry }) => {
+			const { file, source } = entry;
+			const message = file.isCompiled
+				? WriteValidator.compiledClassMismatch(file)
+				: WriteValidator.moduleRuleMismatch(file);
+			return message
+				? [
+						warningDiagnostic(
+							"route.scriptClassMismatch",
+							{ resource: source },
+							message
+						),
+					]
+				: [];
+		});
+	}
+
+	private static moduleRuleMismatch(file: RojoFile): string | undefined {
+		const named = RojoFile.scriptSuffixOf(file.stem);
+		const rule = file.ownRule;
+		if (!named || rule?.use !== "moduleScript") return undefined;
+		const extension = rule.suffix ?? path.extname(file.name);
+		const advised = `{ "pattern": "*.${named}${extension}", "use": "${named}Script", "suffix": ".${named}${extension}" }`;
+		return `the sync rule "${rule.pattern}" makes this file a ModuleScript, so it never runs. For a ${named} script, add ${advised} before that rule; for a module, remove ".${named}".`;
+	}
+
+	private static compiledClassMismatch(file: RojoFile): string | undefined {
+		const emitted = file.renamed(`${file.stem}.luau`);
+		if (
+			emitted.ownRule &&
+			(emitted.kind !== file.kind ||
+				emitted.scriptSuffix !== file.scriptSuffix ||
+				emitted.instanceName !== file.instanceName)
+		)
+			return `the sync rule "${emitted.ownRule.pattern}" also takes ${emitted.name}, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Narrow the pattern so it no longer takes that file.`;
+		const { ownRule: rule, scriptSuffix: given } = file.uncompiled;
+		if (!rule || !given || given === RojoFile.scriptSuffixOf(file.stem))
+			return undefined;
+		const renamed = `${RojoFile.scriptNameOf(file.stem)}.${given}${path.extname(file.name)}`;
+		return `the sync rule "${rule.pattern}" asks for a ${given} script, but the compiler writes ${emitted.name} and Rojo reads the class from that name. For a ${given} script, rename it ${renamed}; to keep this name, set the rule's "use" to "moduleScript".`;
 	}
 
 	private scriptSuffixBeforeAt(): Diagnostic[] {

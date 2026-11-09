@@ -191,11 +191,11 @@ describe("domain/rojo/rojo", () => {
 
 			it("should keep the class a rule's suffix spells on the stem, and off the instance name", () => {
 				const file = new RojoFile(
-					"Main.server.aly",
+					"Main.server.lang",
 					rules({
-						pattern: "*.server.aly",
+						pattern: "*.server.lang",
 						use: "serverScript",
-						suffix: ".server.aly",
+						suffix: ".server.lang",
 					})
 				);
 
@@ -216,11 +216,11 @@ describe("domain/rojo/rojo", () => {
 				"should cut the whole suffix when the rule makes %s",
 				(_, use) => {
 					const file = new RojoFile(
-						"Main.server.aly",
+						"Main.server.lang",
 						rules({
-							pattern: "*.server.aly",
+							pattern: "*.server.lang",
 							use,
-							suffix: ".server.aly",
+							suffix: ".server.lang",
 						})
 					);
 
@@ -228,6 +228,76 @@ describe("domain/rojo/rojo", () => {
 					expect(file.nameCutByRule).toBe(true);
 				}
 			);
+
+			describe("under a compiled path", () => {
+				const compiled = (name: string, ...own: SyncRule[]) =>
+					new RojoFile(name, rules(...own), "", "compiled");
+				const moduleRule: SyncRule = {
+					pattern: "*.lang",
+					use: "moduleScript",
+					suffix: ".lang",
+				};
+
+				it("should read a script by its name, as Rojo reads what the compiler writes", () => {
+					const file = compiled("Main.server.lang", moduleRule);
+
+					expect(file.isCompiled).toBe(true);
+					expect(file.kind).toBe("script");
+					expect(file.stem).toBe("Main.server");
+					expect(file.scriptSuffix).toBe("server");
+					expect(file.instanceName).toBe("Main");
+					expect(file.ownRule).toBeUndefined();
+				});
+
+				it("should read a module as Luau", () => {
+					const file = compiled("Util.lang", moduleRule);
+
+					expect(file.isLuauModule).toBe(true);
+					expect(file.instanceName).toBe("Util");
+				});
+
+				it("should read a file by its rule unless told a compiler writes it", () => {
+					const file = new RojoFile(
+						"Main.server.lang",
+						rules(moduleRule)
+					);
+
+					expect(file.isCompiled).toBe(false);
+					expect(file.instanceName).toBe("Main.server");
+				});
+
+				it("should keep the reading under another name", () => {
+					const file = compiled(
+						"Main.server.lang",
+						moduleRule
+					).renamed("Boot.server.lang");
+
+					expect(file.isCompiled).toBe(true);
+					expect(file.instanceName).toBe("Boot");
+				});
+
+				it("should leave a rule for Luau files to Rojo", () => {
+					const file = compiled("Hit.story.luau", {
+						pattern: "*.story.luau",
+						use: "moduleScript",
+						suffix: ".story.luau",
+					});
+
+					expect(file.isCompiled).toBe(false);
+					expect(file.instanceName).toBe("Hit");
+				});
+
+				it("should leave a rule for data to Rojo", () => {
+					const file = compiled("Greeting.note", {
+						pattern: "*.note",
+						use: "text",
+						suffix: ".note",
+					});
+
+					expect(file.isCompiled).toBe(false);
+					expect(file.ownRule).toBeDefined();
+				});
+			});
 
 			it("should give a script the class its rule gives it", () => {
 				const file = new RojoFile(

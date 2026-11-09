@@ -71,6 +71,11 @@ const SCRIPT_SUFFIX_OF_USE: Readonly<
 
 const COMPILER_EXTENSIONS: readonly string[] = [".ts", ".tsx"];
 
+const LUAU_EXTENSIONS: readonly string[] = [".luau", ".lua"];
+
+/** `rojo` reads the file as it lies; `compiled` reads a source as Rojo reads what a compiler writes for it. */
+type Reading = "rojo" | "compiled";
+
 export class RojoFile {
 	static readonly META_SUFFIX = ".meta.json";
 	/** Rojo reads this over `.meta.json` when a file has both. */
@@ -81,7 +86,7 @@ export class RojoFile {
 	/** The files Rojo reads as their folder's instance. */
 	static readonly INIT_FILES: ReadonlySet<string> = new Set([
 		...["", ".server", ".client", ".plugin"].flatMap((suffix) =>
-			[".luau", ".lua"].map(
+			LUAU_EXTENSIONS.map(
 				(extension) => `${RojoFile.INIT_NAME}${suffix}${extension}`
 			)
 		),
@@ -94,58 +99,53 @@ export class RojoFile {
 	];
 
 	readonly stem: string;
+	/** Whether a compiler turns this script of another language into Luau, so Rojo reads what it writes by that file's name and not by the project's rule. */
+	readonly isCompiled: boolean;
 	private readonly match: SyncRuleMatch | undefined;
+	/** The rule the project wrote that Rojo applies to this file. */
+	readonly ownRule: SyncRule | undefined;
+	/** The script class that the suffix of the project's rule spells and its `use` gives, as `.server.lang` does for a `serverScript`. */
+	private readonly spelledScriptSuffix: RojoScriptSuffix | undefined;
 
 	/** `dir` is the folder the file sits in, relative to the one the sync rules are written for. */
 	constructor(
 		readonly name: string,
 		private readonly rules: SyncRules,
-		private readonly dir = ""
+		private readonly dir = "",
+		private readonly reading: Reading = "rojo"
 	) {
 		this.match = RojoFile.INIT_FILES.has(name)
 			? SyncRules.DEFAULT.match(name)
 			: rules.match(joinPosix(dir, name));
-		const spelled = this.spelledScriptSuffix;
-		this.stem = this.ownMatch
-			? `${this.ownMatch.name}${spelled ? `.${spelled}` : ""}`
-			: stemOf(name);
+		this.isCompiled =
+			reading === "compiled" &&
+			this.match?.own === true &&
+			KIND_OF_USE[this.match.rule.use] === "script" &&
+			!LUAU_EXTENSIONS.includes(path.extname(name));
+		this.ownRule =
+			this.match?.own && !this.isCompiled ? this.match.rule : undefined;
+		const run = this.ownRule && SCRIPT_SUFFIX_OF_USE[this.ownRule.use];
+		const spelled =
+			run &&
+			!this.match?.suffixMissed &&
+			this.ownRule?.suffix?.startsWith(`.${run}.`)
+				? run
+				: undefined;
+		this.spelledScriptSuffix = spelled;
+		this.stem =
+			this.ownRule && this.match
+				? `${this.match.name}${spelled ? `.${spelled}` : ""}`
+				: stemOf(name);
 	}
 
 	/** The file at `source`, an absolute POSIX path, as Rojo reads it with `rules`, which are written for a folder. */
-	static at(source: string, rules: SyncRules): RojoFile {
+	static at(source: string, rules: SyncRules, reading?: Reading): RojoFile {
 		return new RojoFile(
 			path.posix.basename(source),
 			rules,
-			rules.relativeDir(path.posix.dirname(source))
+			rules.relativeDir(path.posix.dirname(source)),
+			reading
 		);
-	}
-
-	/** The meta files Rojo reads beside the file at `source`, an absolute POSIX path. */
-	static metaFilesBeside(source: string, rules: SyncRules): string[] {
-		const dir = path.posix.dirname(source);
-		return RojoFile.at(source, rules).metaFiles.map((name) =>
-			path.posix.join(dir, name)
-		);
-	}
-
-	/** The match of a rule the project wrote. */
-	private get ownMatch(): SyncRuleMatch | undefined {
-		return this.match?.own ? this.match : undefined;
-	}
-
-	/** The script class that the suffix of the project's rule spells and its `use` gives, as `.server.aly` does for a `serverScript`. */
-	private get spelledScriptSuffix(): RojoScriptSuffix | undefined {
-		if (!this.ownMatch || this.ownMatch.suffixMissed) return undefined;
-		const { use, suffix } = this.ownMatch.rule;
-		const scriptSuffix = SCRIPT_SUFFIX_OF_USE[use];
-		return scriptSuffix && suffix?.startsWith(`.${scriptSuffix}.`)
-			? scriptSuffix
-			: undefined;
-	}
-
-	/** The rule the project wrote that takes this file. */
-	get ownRule(): SyncRule | undefined {
-		return this.ownMatch?.rule;
 	}
 
 	/** The rule of the project that takes this file as an `ignore`: Rojo reads nothing of it. */
@@ -155,7 +155,7 @@ export class RojoFile {
 
 	/** The rule of the project that takes this file but whose suffix does not end its name, so Rojo names the instance by the whole file name. */
 	get suffixMissedBy(): SyncRule | undefined {
-		return this.ownMatch?.suffixMissed ? this.ownMatch.rule : undefined;
+		return this.match?.suffixMissed ? this.ownRule : undefined;
 	}
 
 	static scriptSuffixOf(stem: string): RojoScriptSuffix | undefined {
@@ -192,7 +192,12 @@ export class RojoFile {
 
 	/** The file as Rojo would read it under `name` in the same folder. */
 	renamed(name: string): RojoFile {
-		return new RojoFile(name, this.rules, this.dir);
+		return new RojoFile(name, this.rules, this.dir, this.reading);
+	}
+
+	/** The file as Rojo reads it where it lies, not what a compiler writes for it. */
+	get uncompiled(): RojoFile {
+		return new RojoFile(this.name, this.rules, this.dir);
 	}
 
 	/** The name with its extension lowercased when only that keeps Rojo from reading the file: Rojo ignores `Foo.LUAU`. */
@@ -243,9 +248,8 @@ export class RojoFile {
 
 	/** Whether the file is Luau source: a script by a rule of the project, else by its extension. */
 	get isLuau(): boolean {
-		if (this.ownMatch) return this.kind === "script";
-		const extension = path.extname(this.name);
-		return extension === ".luau" || extension === ".lua";
+		if (this.match?.own) return this.kind === "script";
+		return LUAU_EXTENSIONS.includes(path.extname(this.name));
 	}
 
 	get isLuauModule(): boolean {
@@ -261,14 +265,14 @@ export class RojoFile {
 	/** The script class Rojo reads from the file name, or from the rule of the project that takes it; none for a module and any other file. */
 	get scriptSuffix(): RojoScriptSuffix | undefined {
 		if (this.kind !== "script") return undefined;
-		return this.ownMatch
-			? SCRIPT_SUFFIX_OF_USE[this.ownMatch.rule.use]
+		return this.ownRule
+			? SCRIPT_SUFFIX_OF_USE[this.ownRule.use]
 			: RojoFile.scriptSuffixOf(this.stem);
 	}
 
 	/** Whether a rule of the project cut the name with no script suffix left on it to strip. */
 	get nameCutByRule(): boolean {
-		return this.ownMatch !== undefined && !this.spelledScriptSuffix;
+		return this.ownRule !== undefined && !this.spelledScriptSuffix;
 	}
 
 	get isInit(): boolean {
@@ -286,7 +290,7 @@ export class RojoFile {
 
 	/** Rojo only reads `.model` and `.project` as a suffix on `.json` files. */
 	get dataName(): string {
-		return this.isJson && !this.ownMatch
+		return this.isJson && !this.ownRule
 			? RojoFile.dataNameOf(this.stem)
 			: this.stem;
 	}

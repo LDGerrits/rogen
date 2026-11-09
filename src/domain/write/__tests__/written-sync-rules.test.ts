@@ -1,4 +1,4 @@
-import { RojoFile } from "../../rojo/rojo.js";
+import { scannedFileOf } from "../../config/resolved-config.js";
 import { SyncRule } from "../../rojo/sync-rules.js";
 import { ScannedFile } from "../root-scanner.js";
 import { CompiledLayout } from "../compiled-layout.js";
@@ -27,7 +27,7 @@ const writtenBy = (
 	const layout = new CompiledLayout(config, syncTools);
 	const entries: ScannedFile[] = sources.map((source) => ({
 		kind: "data",
-		file: RojoFile.at(absPosix(source), config.syncRules),
+		file: scannedFileOf(config, absPosix(source)),
 		sourcePath: abs("src"),
 		relativePath: source,
 		source: absPosix(source),
@@ -48,15 +48,32 @@ describe("WrittenSyncRules", () => {
 	});
 
 	it("should write literal rules when a wildcard pattern would miss the moved files", () => {
-		const rule: SyncRule = {
-			pattern: "**/src/*.module",
-			use: "moduleScript",
-		};
+		const rule: SyncRule = { pattern: "**/src/*.md", use: "text" };
 
 		expect(
-			writtenBy([rule], ["src/A.module"], { compiledPath: abs("out") })
-		).toEqual([{ pattern: "out/A.module", use: "moduleScript" }]);
+			writtenBy([rule], ["src/A.md"], { compiledPath: abs("out") })
+		).toEqual([{ pattern: "out/A.md", use: "text" }]);
 	});
+
+	it.each([[[]], [["Packages"]]])(
+		"should write the rule of a compiled language as any other rule with mounts %j",
+		(mounts: string[]) => {
+			const rule: SyncRule = {
+				pattern: "src/**/*.lang",
+				use: "moduleScript",
+				suffix: ".lang",
+			};
+
+			expect(
+				writtenBy(
+					[rule],
+					["src/A.lang"],
+					{ compiledPath: abs("build") },
+					mounts
+				)
+			).toEqual([{ ...rule, pattern: "build/**/*.lang" }]);
+		}
+	);
 
 	it("should write a pattern it need not move as it is", () => {
 		const rule: SyncRule = { pattern: "{src,lib}/*.md", use: "text" };
@@ -148,25 +165,25 @@ describe("WrittenSyncRules", () => {
 
 	it("should write a literal rule for each file a pattern that can't be moved takes", () => {
 		const rule: SyncRule = {
-			pattern: "{src,lib}/*.module",
-			use: "moduleScript",
-			suffix: ".module",
+			pattern: "{src,lib}/*.note",
+			use: "text",
+			suffix: ".note",
 		};
 
 		expect(
-			writtenBy([rule], ["src/A.module", "src/B.module", "src/C.luau"], {
+			writtenBy([rule], ["src/A.note", "src/B.note", "src/C.luau"], {
 				compiledPath: abs("out"),
 			})
 		).toEqual([
 			{
-				pattern: "out/A.module",
-				use: "moduleScript",
-				suffix: ".module",
+				pattern: "out/A.note",
+				use: "text",
+				suffix: ".note",
 			},
 			{
-				pattern: "out/B.module",
-				use: "moduleScript",
-				suffix: ".module",
+				pattern: "out/B.note",
+				use: "text",
+				suffix: ".note",
 			},
 		]);
 	});

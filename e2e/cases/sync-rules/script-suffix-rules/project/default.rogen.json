@@ -1,8 +1,8 @@
 {
 	"syncRules": [
-		{ "pattern": "*.server.aly", "use": "serverScript", "suffix": ".server.aly" },
-		{ "pattern": "*.client.aly", "use": "clientScript", "suffix": ".client.aly" },
-		{ "pattern": "*.aly", "use": "moduleScript", "suffix": ".aly" }
+		{ "pattern": "*.server.lang", "use": "serverScript", "suffix": ".server.lang" },
+		{ "pattern": "*.client.lang", "use": "clientScript", "suffix": ".client.lang" },
+		{ "pattern": "*.lang", "use": "moduleScript", "suffix": ".lang" }
 	],
 	"sourcePaths": [
 		"src"

@@ -23,9 +23,10 @@ const located = (
 	files: readonly FileLocation[],
 	diagnostics: readonly Diagnostic[],
 	queried: readonly string[] = [],
-	markers: readonly string[] = []
+	markers: readonly string[] = [],
+	config = configOf()
 ): ConfigLocations => ({
-	config: configOf(),
+	config,
 	files,
 	instances: [],
 	queried: queried.map((target) => abs(target)),
@@ -75,6 +76,43 @@ describe("LocatedDiagnosis", () => {
 			expect(
 				diagnosis.of(placed("src/F/A.luau")).map(({ code }) => code)
 			).toEqual(["x.meta", "x.own"]);
+		});
+
+		describe("for a script of a compiled language", () => {
+			const compiling = configOf({
+				compiledPath: abs("out"),
+				project: {
+					tree: {},
+					syncRules: [
+						{
+							pattern: "*.lang",
+							use: "moduleScript",
+							suffix: ".lang",
+						},
+					],
+				},
+			});
+			const codesOf = (location: FileLocation) =>
+				new LocatedDiagnosis(
+					located(
+						[location],
+						[
+							error("src/Boot.meta.json", "x.compiled"),
+							error("src/Boot.server.meta.json", "x.rojo"),
+						],
+						[],
+						[],
+						compiling
+					)
+				)
+					.of(location)
+					.map(({ code }) => code);
+
+			it("should read a scanned source as the scan does", () => {
+				expect(codesOf(placed("src/Boot.server.lang"))).toEqual([
+					"x.compiled",
+				]);
+			});
 		});
 
 		it("should give a path asked about that is not placed what reaches it", () => {

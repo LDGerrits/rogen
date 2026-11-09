@@ -1,0 +1,16 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+stderr:
+  src/Boot.lang - warning: the sync rule "*.lang" asks for a server script, but the compiler writes Boot.luau and Rojo reads the class from that name. For a server script, rename it Boot.server.lang; to keep this name, set the rule's "use" to "moduleScript". (route.scriptClassMismatch)
+  out - warning: the compiled path "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
+
+written:
+  default.project.json
+  out/Boot.luau
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Boot: ModuleScript  <- out/Boot.luau

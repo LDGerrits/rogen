@@ -1,7 +1,7 @@
 {
 	"syncRules": [
 		{ "pattern": "src/*.module", "use": "moduleScript", "suffix": ".module" },
-		{ "pattern": "*.note", "use": "text", "suffix": ".note" }
+		{ "pattern": "src/*.note", "use": "text", "suffix": ".note" }
 	],
 	"sourcePaths": [
 		"src"

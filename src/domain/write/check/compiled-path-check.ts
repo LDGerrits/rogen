@@ -1,5 +1,10 @@
 import path from "path";
-import { selfAndAncestors, stemOf, toPosix } from "../../../base/path.js";
+import {
+	samePath,
+	selfAndAncestors,
+	stemOf,
+	toPosix,
+} from "../../../base/path.js";
 import { listLimited } from "../../../base/strings.js";
 import {
 	Diagnostic,
@@ -118,6 +123,21 @@ export class CompiledPathCheck {
 		return warnings;
 	}
 
+	/** Whether `meta` belongs to a file the tree mounts beside it, so Rojo reads it where it lies. */
+	private static isMetaOfMount(
+		meta: string,
+		{ config, tree }: Placement
+	): boolean {
+		return tree.mounts.all.some(
+			({ path: mounted }) =>
+				samePath(path.dirname(mounted), path.dirname(meta)) &&
+				RojoFile.at(
+					toPosix(mounted),
+					config.syncRules
+				).metaFiles.includes(path.basename(meta))
+		);
+	}
+
 	private async metaNotSynced({
 		placement,
 		compiledPath,
@@ -136,6 +156,7 @@ export class CompiledPathCheck {
 		for (const { sourcePath, file: source } of placement.metaFiles) {
 			if (!emittedTops.get(sourcePath)?.synced) continue;
 			if (unclaimed.has(toPosix(source))) continue;
+			if (CompiledPathCheck.isMetaOfMount(source, placement)) continue;
 			const emitted = layout.emittedPath(source);
 			if (await this.fileSystemService.exists(emitted)) continue;
 			missing.push(toPosix(source));
@@ -224,7 +245,7 @@ export class CompiledPathCheck {
 	}
 
 	private async orphanCompiledFiles({
-		placement: { config, layout },
+		placement: { config, layout, tree },
 		emittedTops,
 	}: CompiledPathRun): Promise<Diagnostic[]> {
 		const orphans = new Map<string, string[]>();
@@ -235,7 +256,11 @@ export class CompiledPathCheck {
 				continue;
 			const made = await this.madeBy(sourcePath, layout);
 			for (const file of await this.filesUnder(compiledDir, true)) {
-				if (made.has(compiledKey(file)) || layout.isCacheFile(file))
+				if (
+					made.has(compiledKey(file)) ||
+					layout.isCacheFile(file) ||
+					tree.mounts.covering(file)
+				)
 					continue;
 				if (
 					!RojoFile.at(toPosix(file), config.syncRules).isSyncedByRojo

@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- A warning when a script's name and its sync rule disagree on its class: a rule makes a script named `.server`, `.client` or `.plugin` a ModuleScript, so it never runs, or under a `compiledPath` a rule such as `serverScript` takes a file whose name doesn't spell that class, so Rojo reads what the compiler writes as another one, or a broad pattern also takes the `.luau` file the compiler writes.
 - A warning when a source path holds files but Rojo reads none of them, such as the files of a language that compiles to Luau. `rogen where` prints it when it has no file to list.
 
 ### Changed
@@ -18,8 +19,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- With a `compiledPath`, a script rule on an extension other than `.lua` and `.luau` names a compiled language: a file it reads, such as `Main.server.lang`, is mounted at the `.luau` file its compiler writes, and its class comes from that name. It was mounted at `out/Main.server.lang`, with an empty placeholder Rojo synced instead of the compiled code. Only the rule's `pattern` counts for those files, and a tool that copies them unchanged into the `compiledPath` is not supported.
+- `output.metaNotSynced` no longer warns about the meta file of a file the tree mounts, which Rojo reads where it lies.
+- `compiled.orphan` no longer warns about a file in the compiled path that the tree mounts, such as a compiler's runtime library.
 - The warning for a script suffix before an `@` suffix, as in `Start.server@client.ts`, covers every extension. It only knew `.lua` and `.luau`.
-- A script read by a sync rule whose `suffix` spells its class, such as `main.server.aly` under `*.server.aly`, routes by that `.server` or `.client` as a `.luau` script does. It needed `main@server.server.aly`.
+- A script read by a sync rule whose `suffix` spells its class, such as `main.server.lang` under `*.server.lang`, routes by that `.server` or `.client` as a `.luau` script does. It needed `main@server.server.lang`.
 - With a `compiledPath`, a folder named like a file a tool compiles, such as `net.ts`, is mounted at its own path, so its code reaches the game. It was mounted at `out/net.luau` beside an empty placeholder script.
 - A second `rogen syncback` in a project folder where one is running stops with `syncback.busy`, instead of deleting the first one's copy of your files. The error names the lock file to remove when no syncback is running.
 - `rogen syncback` stops with an error when it can't read or clear its copy of your files, instead of planning to remove them. Ctrl+C leaves no copy behind, and once syncback writes your files it finishes, says what it wrote and exits with 130.
