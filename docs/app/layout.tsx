@@ -3,7 +3,7 @@ import { RootProvider } from "fumadocs-ui/provider/next";
 import "./global.css";
 import localFont from "next/font/local";
 import { Analytics } from "@vercel/analytics/next";
-import { siteDescription, siteUrl } from "@/lib/shared";
+import { appName, siteDescription, siteUrl } from "@/lib/shared";
 
 // Self-hosted, so a build never depends on fetching from Google Fonts.
 const geistSans = localFont({
@@ -35,10 +35,15 @@ const seti = localFont({
 export const metadata: Metadata = {
 	metadataBase: new URL(siteUrl),
 	title: {
-		default: "Rogen - Rojo with file-system routing",
+		default: "Rogen - Each feature in one folder",
 		template: "%s | Rogen",
 	},
 	description: siteDescription,
+	openGraph: {
+		siteName: appName,
+		type: "website",
+		url: siteUrl,
+	},
 };
 
 export default function Layout({ children }: LayoutProps<"/">) {
