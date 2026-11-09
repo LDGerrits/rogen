@@ -11,6 +11,7 @@ import {
 	isDirectoryType,
 	isFileType,
 } from "../../../platform/fs/file-system-service.js";
+import { compiledPathOf } from "../../config/resolved-config.js";
 import { RojoFile } from "../../rojo/rojo.js";
 import { MetaReplacement } from "../../toolchain/toolchain.js";
 import { Placement } from "../placement.js";
@@ -229,7 +230,7 @@ export class CompiledPathCheck {
 		const orphans = new Map<string, string[]>();
 		for (const sourcePath of config.sourcePaths) {
 			if (!emittedTops.get(sourcePath)?.synced) continue;
-			const compiledDir = layout.emittedPath(sourcePath);
+			const compiledDir = compiledPathOf(layout, sourcePath);
 			if (!(await this.fileSystemService.isDirectory(compiledDir)))
 				continue;
 			const made = await this.madeBy(sourcePath, layout);
@@ -323,7 +324,11 @@ export class CompiledPathCheck {
 		if (!(await this.fileSystemService.isDirectory(sourcePath))) return [];
 		return (await this.fileSystemService.readDirectory(sourcePath))
 			.filter(([name]) => !name.startsWith("."))
-			.map(([name]) => layout.emittedPath(path.join(sourcePath, name)));
+			.map(([name, type]) =>
+				isDirectoryType(type)
+					? compiledPathOf(layout, path.join(sourcePath, name))
+					: layout.emittedPath(path.join(sourcePath, name))
+			);
 	}
 
 	/** Whether a compiler wrote any of `paths`; the placeholders a write makes for Rojo don't count. */

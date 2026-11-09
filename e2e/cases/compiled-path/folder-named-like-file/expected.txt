@@ -1,0 +1,16 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      net.ts: Folder
+        a: ModuleScript  <- out/net.ts/a.luau
+  ServerScriptService: ServerScriptService
+    game: Folder
+      b: Script  <- out/game/server/b.server.luau

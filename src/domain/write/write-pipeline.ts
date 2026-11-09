@@ -109,7 +109,10 @@ export class WritePipeline {
 						: sync,
 			},
 			readFiles,
-			placeholders: placement.layout.placeholdersOf(projectFile),
+			placeholders: placement.layout.placeholdersOf(
+				projectFile,
+				(source) => placement.isFolder(source)
+			),
 		});
 	}
 

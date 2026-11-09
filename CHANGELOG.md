@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- With a `compiledPath`, a folder named like a file a tool compiles, such as `net.ts`, is mounted at its own path, so its code reaches the game. It was mounted at `out/net.luau` beside an empty placeholder script.
 - A second `rogen syncback` in a project folder where one is running stops with `syncback.busy`, instead of deleting the first one's copy of your files. The error names the lock file to remove when no syncback is running.
 - `rogen syncback` stops with an error when it can't read or clear its copy of your files, instead of planning to remove them. Ctrl+C leaves no copy behind, and once syncback writes your files it finishes, says what it wrote and exits with 130.
 - `rogen syncback` writes nothing when the config or the place changed while it asked, and keeps a file it couldn't replace.

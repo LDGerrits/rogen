@@ -49,6 +49,12 @@ describe("CompiledPathCheck", () => {
 				store[Symbol.dispose]();
 			});
 
+			it("should find the output of a folder named like a file a tool renames", async () => {
+				await writeFiles(fs, "src/net.ts/a.ts", "out/net.ts/a.luau");
+
+				expect(await check(fs, emittedConfigOf())).toEqual([]);
+			});
+
 			describe("rule", () => {
 				it("should report nothing without a compiledPath", async () => {
 					await fs.writeFile(abs("src/Inventory/A.luau"), "");
@@ -796,6 +802,22 @@ describe("CompiledPathCheck", () => {
 				);
 
 				expect(await check()).toEqual([]);
+			});
+
+			it("should warn inside a source path named like a file a tool renames", async () => {
+				await write(
+					"lib.ts/A.ts",
+					"src/B.ts",
+					"dist/lib.ts/A.luau",
+					"dist/lib.ts/Old.luau",
+					"dist/src/B.luau"
+				);
+
+				const [warning] = await check({
+					sourcePaths: [abs("lib.ts"), abs("src")],
+				});
+
+				expect(warning.message).toContain("dist/lib.ts/Old.luau");
 			});
 
 			it("should match a roblox-ts source to the .luau it compiles to", async () => {
