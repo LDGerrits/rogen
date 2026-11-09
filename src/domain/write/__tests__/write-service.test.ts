@@ -85,9 +85,9 @@ describe("LocatedDiagnosis", () => {
 					tree: {},
 					syncRules: [
 						{
-							pattern: "*.aly",
+							pattern: "*.lang",
 							use: "moduleScript",
-							suffix: ".aly",
+							suffix: ".lang",
 						},
 					],
 				},
@@ -109,7 +109,7 @@ describe("LocatedDiagnosis", () => {
 					.map(({ code }) => code);
 
 			it("should read a scanned source as the scan does", () => {
-				expect(codesOf(placed("src/Boot.server.aly"))).toEqual([
+				expect(codesOf(placed("src/Boot.server.lang"))).toEqual([
 					"x.compiled",
 				]);
 			});

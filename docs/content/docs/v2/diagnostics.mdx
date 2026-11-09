@@ -324,7 +324,7 @@ Warning. A script's name and its sync rule disagree on its class, so the script 
 A sync rule of the project takes a script whose name ends in `.server`, `.client` or `.plugin` and makes it a ModuleScript, so the code in it never runs on its own. That happens when the rule for modules comes first, or when no rule makes that kind of script. The name still routes the file.
 
 ```
-warning: the sync rule "*.aly" makes this file a ModuleScript, so it never runs. For a server script, add { "pattern": "*.server.aly", "use": "serverScript", "suffix": ".server.aly" } before that rule; for a module, remove ".server". (route.scriptClassMismatch)
+warning: the sync rule "*.lang" makes this file a ModuleScript, so it never runs. For a server script, add { "pattern": "*.server.lang", "use": "serverScript", "suffix": ".server.lang" } before that rule; for a module, remove ".server". (route.scriptClassMismatch)
 ```
 
 Add the rule the message names, in front of the rule for modules. Its `suffix` keeps `.server` out of the instance name. For a module, remove the suffix from the name.
@@ -332,18 +332,18 @@ Add the rule the message names, in front of the rule for modules. Its `suffix` k
 Under a `compiledPath`, a rule with a run class such as `serverScript` takes a compiled file whose name doesn't spell that class. Rojo reads the `.luau` file the compiler writes by its name, so the name decides the class and the rule's `use` doesn't.
 
 ```
-warning: the sync rule "*.aly" asks for a server script, but the compiler writes Boot.luau and Rojo reads the class from that name. For a server script, rename it Boot.server.aly; to keep this name, set the rule's "use" to "moduleScript". (route.scriptClassMismatch)
+warning: the sync rule "*.lang" asks for a server script, but the compiler writes Boot.luau and Rojo reads the class from that name. For a server script, rename it Boot.server.lang; to keep this name, set the rule's "use" to "moduleScript". (route.scriptClassMismatch)
 ```
 
 Rename the file as the message says, and keep the rule's pattern matching the new name. To keep the name, set the rule's `use` to `moduleScript`, which only says the extension is a script.
 
-Also under a `compiledPath`, a rule's pattern can be broad enough to take the `.luau` file too, as `src/**/*` and `*.{aly,luau}` are. Rojo then reads that file by the rule, not by its name.
+Also under a `compiledPath`, a rule's pattern can be broad enough to take the `.luau` file too, as `src/**/*` and `*.{lang,luau}` are. Rojo then reads that file by the rule, not by its name.
 
 ```
-warning: the sync rule "src/**/*" also takes Main.server.luau, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Make the pattern name only .aly. (route.scriptClassMismatch)
+warning: the sync rule "src/**/*" also takes Main.server.luau, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Make the pattern name only .lang. (route.scriptClassMismatch)
 ```
 
-Name the source extension in the pattern, as `*.aly` does.
+Name the source extension in the pattern, as `*.lang` does.
 
 ### `route.caseMismatch` [#route-casemismatch]
 
@@ -719,17 +719,17 @@ On a plain Rojo project, which has no config, only `rogen check` reports it. Roj
 Warning. A source path holds files, but Rojo reads none of them, so Rogen places nothing from it. Rojo reads a file by its extension, such as `.luau` or `.json`, or by a sync rule. A language that compiles to Luau, with an extension of its own, gets this warning.
 
 ```
-warning: this source path places nothing: Rojo reads none of its files (client/main.client.aly, server/main.server.aly and shared/util.aly). If they are scripts, add a "syncRules" entry for their extension. If a compiler turns them into Luau, set "compiledPath" too. (scan.noSyncedFiles)
+warning: this source path places nothing: Rojo reads none of its files (client/main.client.lang, server/main.server.lang and shared/util.lang). If they are scripts, add a "syncRules" entry for their extension. If a compiler turns them into Luau, set "compiledPath" too. (scan.noSyncedFiles)
 ```
 
 The message names the first three files. In `--json`, `related` lists every one. When `rogen where` has no file to list, it prints this warning instead of saying the source paths hold no files. An error that stops the write hides it.
 
 If the files are scripts, add [`syncRules`](https://rojo.space/docs/v7/project-format/#sync-rules) that read their extension, so Rogen routes them. If a compiler turns them into Luau, also set `compiledPath` to the folder it writes. Otherwise, remove the folder from `sourcePaths`.
 
-With a `compiledPath`, one sync rule for the extension is enough. Rogen routes each file by its source name and points the project file at the `.luau` file the compiler writes, keeping the rest of the name, so `Main.server.aly` lands at `Main.server.luau`.
+With a `compiledPath`, one sync rule for the extension is enough. Rogen routes each file by its source name and points the project file at the `.luau` file the compiler writes, keeping the rest of the name, so `Main.server.lang` lands at `Main.server.luau`.
 
 ```
-warning: this source path places nothing: Rojo reads none of its files (util.aly). If they are scripts, add a "syncRules" entry for their extension, and Rogen points the project file at the .luau files your compiler writes. (scan.noSyncedFiles)
+warning: this source path places nothing: Rojo reads none of its files (util.lang). If they are scripts, add a "syncRules" entry for their extension, and Rogen points the project file at the .luau files your compiler writes. (scan.noSyncedFiles)
 ```
 
 Files that `globIgnorePaths` matches don't count, and neither does a source path that the tree mounts a folder or file of.

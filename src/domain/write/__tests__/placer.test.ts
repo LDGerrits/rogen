@@ -466,24 +466,24 @@ describe("Placer", () => {
 
 		it("should route a script by the class its rule's suffix spells, whatever the extension", async () => {
 			const { placement } = await placed(
-				["src/Main.server.aly", "src/Hud.client.aly"],
+				["src/Main.server.lang", "src/Hud.client.lang"],
 				[
 					{
-						pattern: "*.server.aly",
+						pattern: "*.server.lang",
 						use: "serverScript",
-						suffix: ".server.aly",
+						suffix: ".server.lang",
 					},
 					{
-						pattern: "*.client.aly",
+						pattern: "*.client.lang",
 						use: "clientScript",
-						suffix: ".client.aly",
+						suffix: ".client.lang",
 					},
 				]
 			);
 
 			expect(placedLines(placement.files)).toEqual([
-				"Hud.client.aly -> StarterPlayer/StarterPlayerScripts/Hud",
-				"Main.server.aly -> ServerScriptService/Main",
+				"Hud.client.lang -> StarterPlayer/StarterPlayerScripts/Hud",
+				"Main.server.lang -> ServerScriptService/Main",
 			]);
 		});
 

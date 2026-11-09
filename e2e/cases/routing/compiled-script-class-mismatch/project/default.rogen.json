@@ -1,5 +1,5 @@
 {
-	"syncRules": [{ "pattern": "*.aly", "use": "serverScript" }],
+	"syncRules": [{ "pattern": "*.lang", "use": "serverScript" }],
 	"sourcePaths": ["src"],
 	"compiledPath": "out",
 	"routes": {

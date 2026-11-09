@@ -234,7 +234,7 @@ describe("CompiledLayout", () => {
 					project: {
 						tree: {},
 						syncRules: [
-							{ pattern: "*.aly", use: "moduleScript" },
+							{ pattern: "*.lang", use: "moduleScript" },
 							{ pattern: "**/Runner", use: "moduleScript" },
 							{ pattern: "*.note", use: "text" },
 						],
@@ -243,7 +243,7 @@ describe("CompiledLayout", () => {
 				[]
 			);
 
-			expect(layout.rojoPath(abs("src/Main.server.aly"))).toEqual({
+			expect(layout.rojoPath(abs("src/Main.server.lang"))).toEqual({
 				optional: "build/Main.server.luau",
 			});
 			expect(layout.rojoPath(abs("src/Runner"))).toEqual({

@@ -104,7 +104,7 @@ export class RojoFile {
 	private readonly match: SyncRuleMatch | undefined;
 	/** The rule the project wrote that Rojo applies to this file. */
 	readonly ownRule: SyncRule | undefined;
-	/** The script class that the suffix of the project's rule spells and its `use` gives, as `.server.aly` does for a `serverScript`. */
+	/** The script class that the suffix of the project's rule spells and its `use` gives, as `.server.lang` does for a `serverScript`. */
 	private readonly spelledScriptSuffix: RojoScriptSuffix | undefined;
 
 	/** `dir` is the folder the file sits in, relative to the one the sync rules are written for. */

@@ -1184,21 +1184,21 @@ describe("CoreSyncbackService", () => {
 
 		it("should name the meta of a custom-language file the tree mounts as Rojo reads it", async () => {
 			await prepare(
-				["src/Combat/Server/Combat.luau", "Vendor/Boot.server.aly"],
+				["src/Combat/Server/Combat.luau", "Vendor/Boot.server.lang"],
 				{
 					compiledPath: abs("dist"),
 					project: {
 						syncRules: [
 							{
-								pattern: "*.aly",
+								pattern: "*.lang",
 								use: "moduleScript",
-								suffix: ".aly",
+								suffix: ".lang",
 							},
 						],
 						tree: {
 							$className: "DataModel",
 							ServerStorage: {
-								Boot: { $path: "Vendor/Boot.server.aly" },
+								Boot: { $path: "Vendor/Boot.server.lang" },
 							},
 						},
 					},

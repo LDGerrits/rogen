@@ -1,6 +1,6 @@
 {
 	"syncRules": [
-		{ "pattern": "*.aly", "use": "moduleScript", "suffix": ".aly" }
+		{ "pattern": "*.lang", "use": "moduleScript", "suffix": ".lang" }
 	],
 	"sourcePaths": [
 		"src"

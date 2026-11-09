@@ -191,11 +191,11 @@ describe("domain/rojo/rojo", () => {
 
 			it("should keep the class a rule's suffix spells on the stem, and off the instance name", () => {
 				const file = new RojoFile(
-					"Main.server.aly",
+					"Main.server.lang",
 					rules({
-						pattern: "*.server.aly",
+						pattern: "*.server.lang",
 						use: "serverScript",
-						suffix: ".server.aly",
+						suffix: ".server.lang",
 					})
 				);
 
@@ -216,11 +216,11 @@ describe("domain/rojo/rojo", () => {
 				"should cut the whole suffix when the rule makes %s",
 				(_, use) => {
 					const file = new RojoFile(
-						"Main.server.aly",
+						"Main.server.lang",
 						rules({
-							pattern: "*.server.aly",
+							pattern: "*.server.lang",
 							use,
-							suffix: ".server.aly",
+							suffix: ".server.lang",
 						})
 					);
 
@@ -233,13 +233,13 @@ describe("domain/rojo/rojo", () => {
 				const compiled = (name: string, ...own: SyncRule[]) =>
 					new RojoFile(name, rules(...own), "", "compiled");
 				const moduleRule: SyncRule = {
-					pattern: "*.aly",
+					pattern: "*.lang",
 					use: "moduleScript",
-					suffix: ".aly",
+					suffix: ".lang",
 				};
 
 				it("should read a script by its name, as Rojo reads what the compiler writes", () => {
-					const file = compiled("Main.server.aly", moduleRule);
+					const file = compiled("Main.server.lang", moduleRule);
 
 					expect(file.isCompiled).toBe(true);
 					expect(file.kind).toBe("script");
@@ -250,7 +250,7 @@ describe("domain/rojo/rojo", () => {
 				});
 
 				it("should read a module as Luau", () => {
-					const file = compiled("Util.aly", moduleRule);
+					const file = compiled("Util.lang", moduleRule);
 
 					expect(file.isLuauModule).toBe(true);
 					expect(file.instanceName).toBe("Util");
@@ -258,7 +258,7 @@ describe("domain/rojo/rojo", () => {
 
 				it("should read a file by its rule unless told a compiler writes it", () => {
 					const file = new RojoFile(
-						"Main.server.aly",
+						"Main.server.lang",
 						rules(moduleRule)
 					);
 
@@ -268,9 +268,9 @@ describe("domain/rojo/rojo", () => {
 
 				it("should keep the reading under another name", () => {
 					const file = compiled(
-						"Main.server.aly",
+						"Main.server.lang",
 						moduleRule
-					).renamed("Boot.server.aly");
+					).renamed("Boot.server.lang");
 
 					expect(file.isCompiled).toBe(true);
 					expect(file.instanceName).toBe("Boot");

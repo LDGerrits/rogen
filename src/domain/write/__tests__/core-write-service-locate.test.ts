@@ -302,18 +302,18 @@ describe("CoreWriteService.locate", () => {
 	});
 
 	it("should name a file the tree mounts under a compiled path as Rojo reads it", async () => {
-		await write("src/Vendor/Boot.server.aly", "src/Save.luau");
+		await write("src/Vendor/Boot.server.lang", "src/Save.luau");
 
 		expect(
-			await locate(["src/Vendor/Boot.server.aly"], {
+			await locate(["src/Vendor/Boot.server.lang"], {
 				compiledPath: abs("out"),
 				project: {
 					name: "game",
 					syncRules: [
 						{
-							pattern: "*.aly",
+							pattern: "*.lang",
 							use: "moduleScript",
-							suffix: ".aly",
+							suffix: ".lang",
 						},
 					],
 					tree: {

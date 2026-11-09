@@ -59,19 +59,19 @@ describe("WrittenSyncRules", () => {
 		"should write the rule of a compiled language as any other rule with mounts %j",
 		(mounts: string[]) => {
 			const rule: SyncRule = {
-				pattern: "src/**/*.aly",
+				pattern: "src/**/*.lang",
 				use: "moduleScript",
-				suffix: ".aly",
+				suffix: ".lang",
 			};
 
 			expect(
 				writtenBy(
 					[rule],
-					["src/A.aly"],
+					["src/A.lang"],
 					{ compiledPath: abs("build") },
 					mounts
 				)
-			).toEqual([{ ...rule, pattern: "build/**/*.aly" }]);
+			).toEqual([{ ...rule, pattern: "build/**/*.lang" }]);
 		}
 	);
 

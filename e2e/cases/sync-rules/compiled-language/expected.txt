@@ -5,9 +5,9 @@ stdout: (not shown)
 $ rogen where src
 exit 0
 stdout:
-  src/Feature/Hud.client.aly -> StarterPlayer/StarterPlayerScripts/Feature/Hud · route client (suffix)
-  src/Feature/Main.server.aly -> ServerScriptService/Feature/Main · route server (suffix)
-  src/Feature/Util.aly -> ReplicatedStorage/shared/Feature/Util · route * (fallback)
+  src/Feature/Hud.client.lang -> StarterPlayer/StarterPlayerScripts/Feature/Hud · route client (suffix)
+  src/Feature/Main.server.lang -> ServerScriptService/Feature/Main · route server (suffix)
+  src/Feature/Util.lang -> ReplicatedStorage/shared/Feature/Util · route * (fallback)
 
 $ rogen check
 exit 0
@@ -73,9 +73,9 @@ default.project.json:
   },
   "syncRules": [
     {
-      "pattern": "*.aly",
+      "pattern": "*.lang",
       "use": "moduleScript",
-      "suffix": ".aly"
+      "suffix": ".lang"
     }
   ]
 }

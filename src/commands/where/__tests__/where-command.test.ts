@@ -302,7 +302,7 @@ describe("where command", () => {
 	describe("when no source path places a file", () => {
 		beforeEach(async () => {
 			await writeConfig("default.rogen.json", { routes: ROUTES });
-			await write("src/Server/Main.aly");
+			await write("src/Server/Main.lang");
 		});
 
 		it("should print why instead of saying there are no files", async () => {
@@ -310,7 +310,7 @@ describe("where command", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(printed()).toEqual([
-				'src - warning: this source path places nothing: Rojo reads none of its files (Server/Main.aly). If they are scripts, add a "syncRules" entry for their extension. If a compiler turns them into Luau, set "compiledPath" too. (scan.noSyncedFiles)',
+				'src - warning: this source path places nothing: Rojo reads none of its files (Server/Main.lang). If they are scripts, add a "syncRules" entry for their extension. If a compiler turns them into Luau, set "compiledPath" too. (scan.noSyncedFiles)',
 			]);
 		});
 
