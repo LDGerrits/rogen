@@ -1,7 +1,10 @@
 import { groupBy } from "../../base/collections.js";
 import { isInside, toPosix } from "../../base/path.js";
 import path from "path";
-import { FileType } from "../../platform/fs/file-system-service.js";
+import {
+	FileType,
+	isDirectoryType,
+} from "../../platform/fs/file-system-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { SyncRules } from "../rojo/sync-rules.js";
@@ -178,6 +181,15 @@ export class Placement {
 		return emitted.isInit || emitted.isDefaultProject
 			? file.init.sitsIn
 			: undefined;
+	}
+
+	/** Whether the scan found `source` to be a folder, which its name can't say. */
+	isFolder(source: string): boolean {
+		const type = this.roots
+			.find((root) => isInside(source, toPosix(root.sourcePath)))
+			?.listing(path.normalize(path.posix.dirname(source)))
+			.get(path.posix.basename(source));
+		return type !== undefined && isDirectoryType(type);
 	}
 
 	listing(dir: string): ReadonlyMap<string, FileType> {

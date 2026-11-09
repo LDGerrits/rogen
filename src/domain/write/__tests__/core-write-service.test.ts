@@ -352,6 +352,25 @@ describe("CoreWriteService", () => {
 				syncWarnings: [{ code: "output.nothingEmitted" }],
 			});
 		});
+
+		describe("a compiled folder named like a file", () => {
+			it.each([
+				["src/net.ts/a.ts", "dist/net.ts"],
+				["src/net.luau/a.luau", "dist/net.luau"],
+				["src/net.json/a.luau", "dist/net.json"],
+			])(
+				"should make a folder for %s, where the compiler writes it",
+				async (source, compiled) => {
+					await fs.writeFile(abs(source), "");
+
+					await writeServiceOfFs().write(
+						selectionOf(configOf({ compiledPath: abs("dist") }))
+					);
+
+					expect(await fs.isDirectory(abs(compiled))).toBe(true);
+				}
+			);
+		});
 	});
 
 	describe("check", () => {

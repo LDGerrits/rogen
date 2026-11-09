@@ -137,11 +137,19 @@ export class CompiledLayout {
 		return { optional: this.relativeToProject(this.emittedPath(filePath)) };
 	}
 
+	rojoFolderPath(dir: string): OptionalRojoPath {
+		return { optional: this.compiledFolderOf(dir) };
+	}
+
 	/** The folders and Luau files `projectFile` mounts in the compiled path or a tool's runtime folder; any other file would be read before it is written. */
-	placeholdersOf(projectFile: RojoProjectFile): Placeholder[] {
-		if (this.compiledPath === undefined) return [];
+	placeholdersOf(
+		projectFile: RojoProjectFile,
+		isSourceFolder: (source: string) => boolean
+	): Placeholder[] {
+		const { compiledPath } = this;
+		if (compiledPath === undefined) return [];
 		const written = [
-			this.compiledPath,
+			compiledPath,
 			...this.tools.flatMap(({ runtimeFolder }) =>
 				runtimeFolder
 					? path.resolve(this.projectDir, runtimeFolder)
@@ -155,6 +163,12 @@ export class CompiledLayout {
 			)
 			.filter((target) => written.some((dir) => contains(dir, target)))
 			.flatMap((target): Placeholder[] => {
+				const source = path.join(
+					this.commonRoot,
+					path.relative(compiledPath, target)
+				);
+				if (isSourceFolder(toPosix(source)))
+					return [{ path: target, kind: "folder" }];
 				const file = RojoFile.at(toPosix(target), this.syncRules);
 				if (file.isLuau) return [{ path: target, kind: "script" }];
 				return file.isSyncedByRojo

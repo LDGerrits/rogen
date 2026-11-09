@@ -355,6 +355,8 @@ describe("CompiledLayout", () => {
 	});
 
 	describe("placeholdersOf", () => {
+		const noFolders = () => false;
+
 		const projectOf = (...paths: RojoNode["$path"][]): RojoProjectFile => ({
 			tree: {
 				$className: "DataModel",
@@ -380,7 +382,8 @@ describe("CompiledLayout", () => {
 						{ optional: "out/Shop/Save.server.luau" },
 						{ optional: "out/Shop/prices.json" },
 						"place/Workspace"
-					)
+					),
+					noFolders
 				)
 			).toEqual([
 				{ path: abs("out/Coins/shared"), kind: "folder" },
@@ -394,9 +397,9 @@ describe("CompiledLayout", () => {
 				syncTools
 			);
 
-			expect(layout.placeholdersOf(projectOf("include"))).toEqual([
-				{ path: abs("include"), kind: "folder" },
-			]);
+			expect(
+				layout.placeholdersOf(projectOf("include"), noFolders)
+			).toEqual([{ path: abs("include"), kind: "folder" }]);
 		});
 
 		it("should name nothing without a compiled path", () => {
@@ -404,7 +407,8 @@ describe("CompiledLayout", () => {
 
 			expect(
 				layout.placeholdersOf(
-					projectOf("include", { optional: "out/Coins" })
+					projectOf("include", { optional: "out/Coins" }),
+					noFolders
 				)
 			).toEqual([]);
 		});

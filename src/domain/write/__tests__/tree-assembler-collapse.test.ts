@@ -43,6 +43,16 @@ describe("TreeAssembler", () => {
 				});
 			});
 
+			it("should mount a compiled folder named like a file a tool renames under its own name", async () => {
+				await write("src/net.ts/a.ts");
+
+				const storage = await storageOf({ compiledPath: abs("out") });
+
+				expect(storage["net.ts"]).toEqual({
+					$path: optional("out/net.ts"),
+				});
+			});
+
 			it("should collapse the outermost directory when nested ones would also qualify", async () => {
 				await write(
 					"src/Inventory/Save.luau",
@@ -480,6 +490,17 @@ describe("TreeAssembler", () => {
 				});
 
 				expect(value.globIgnorePaths).toEqual(["src/Save.spec.luau"]);
+			});
+
+			it("should list an ignored folder named like a file under its own name", async () => {
+				await write("src/net.ts/a.ts", "src/Other.ts");
+
+				const { projectFile: value } = await assemble({
+					compiledPath: abs("dist"),
+					ignored: [abs("src/net.ts")],
+				});
+
+				expect(value.globIgnorePaths).toEqual(["dist/net.ts"]);
 			});
 
 			it("should list ignored files in path order, translated to compiled paths", async () => {
