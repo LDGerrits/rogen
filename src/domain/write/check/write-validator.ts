@@ -36,7 +36,7 @@ import { Assembly } from "../tree-assembler.js";
 
 /** A script suffix written before an `@` suffix, as in `Start.server@client.luau`, where Rojo doesn't read it. */
 const SCRIPT_SUFFIX_BEFORE_AT = new RegExp(
-	`^(?<stem>.+)\\.(?<suffix>${SCRIPT_SUFFIXES.join("|")})@[^.@]+(?<extension>\\.luau?)$`
+	`^(?<stem>.+)\\.(?<suffix>${SCRIPT_SUFFIXES.join("|")})@[^.@]+(?<extension>\\.[^.@]+)$`
 );
 
 const LISTED_FILES = 3;
@@ -446,13 +446,16 @@ export class WriteValidator {
 			)
 		);
 		return this.placement.files.flatMap((file) => {
-			if (!file.entry.file.isLuauModule) return [];
+			const read = file.entry.file;
+			if (read.kind !== "script" || read.scriptSuffix !== undefined)
+				return [];
 			const found = SCRIPT_SUFFIX_BEFORE_AT.exec(
 				path.posix.basename(file.entry.source)
 			)?.groups;
 			if (!found) return [];
 			const { stem, suffix, extension } = found;
 			const named = `${stem}.${suffix}${extension}`;
+			if (read.renamed(named).scriptSuffix !== suffix) return [];
 			const to = path.posix.join(
 				path.posix.dirname(file.entry.source),
 				named

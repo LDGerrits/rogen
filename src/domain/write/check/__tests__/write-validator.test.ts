@@ -607,6 +607,67 @@ describe("WriteValidator rules", () => {
 				expect(warning.fixes ?? []).toEqual([]);
 			});
 
+			it.each(["ts", "tsx", "lua"])(
+				"should warn about a .%s file like a .luau one",
+				async (extension) => {
+					await write(`src/Boot/Start.server@client.${extension}`);
+
+					expect(await beforeAt()).toMatchObject([
+						{
+							resource: abs(
+								`src/Boot/Start.server@client.${extension}`
+							),
+						},
+					]);
+				}
+			);
+
+			describe("with sync rules for another extension", () => {
+				const moduleRule = {
+					pattern: "*.aly",
+					use: "moduleScript",
+					suffix: ".aly",
+				};
+				const serverRule = {
+					pattern: "*.server.aly",
+					use: "serverScript",
+					suffix: ".server.aly",
+				};
+				const warningsWith = async (syncRules: readonly object[]) =>
+					(await route({ project: { tree: {}, syncRules } }))
+						.unwrap()
+						.warnings.filter(
+							({ code }) => code === "route.scriptSuffixBeforeAt"
+						);
+
+				it("should propose the name a rule reads as the script", async () => {
+					await write("src/Boot/Start.server@server.aly");
+
+					expect(
+						await warningsWith([serverRule, moduleRule])
+					).toMatchObject([
+						{
+							fixes: [
+								{
+									rename: {
+										from: abs(
+											"src/Boot/Start.server@server.aly"
+										),
+										to: abs("src/Boot/Start.server.aly"),
+									},
+								},
+							],
+						},
+					]);
+				});
+
+				it("should not warn when no rule would read that name as the script", async () => {
+					await write("src/Boot/Start.server@server.aly");
+
+					expect(await warningsWith([moduleRule])).toEqual([]);
+				});
+			});
+
 			it("should read the suffix as the route key it spells in another letter case", async () => {
 				await write("src/Boot/Start.server@Server.luau");
 

@@ -190,6 +190,11 @@ export class RojoFile {
 		return RojoFile.metaStemOf(this.name) !== undefined;
 	}
 
+	/** The file as Rojo would read it under `name` in the same folder. */
+	renamed(name: string): RojoFile {
+		return new RojoFile(name, this.rules, this.dir);
+	}
+
 	/** The name with its extension lowercased when only that keeps Rojo from reading the file: Rojo ignores `Foo.LUAU`. */
 	get lowercasedExtension(): string | undefined {
 		if (this.kind !== undefined || this.isMeta) return undefined;
@@ -199,7 +204,7 @@ export class RojoFile {
 			(suffix) => suffix.toLowerCase()
 		);
 		if (fixed === this.name) return undefined;
-		const lowercased = new RojoFile(fixed, this.rules, this.dir);
+		const lowercased = this.renamed(fixed);
 		return lowercased.kind !== undefined || lowercased.isMeta
 			? fixed
 			: undefined;
