@@ -35,7 +35,7 @@ const seti = localFont({
 export const metadata: Metadata = {
 	metadataBase: new URL(siteUrl),
 	title: {
-		default: "Rogen - Rojo with file-system routing",
+		default: "Rogen - Each feature in one folder",
 		template: "%s | Rogen",
 	},
 	description: siteDescription,
