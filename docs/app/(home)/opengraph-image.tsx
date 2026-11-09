@@ -32,6 +32,7 @@ const files: Row[] = [
 	{ depth: 0, name: "Inventory", open: true, inFeature: true },
 	{ depth: 1, name: "Client", open: true, mark: "Client", inFeature: true },
 	{ depth: 2, name: "InventoryWindow.luau", icon: "luau", inFeature: true },
+	{ depth: 2, name: "ItemSlot.luau", icon: "luau", inFeature: true },
 	{
 		depth: 1,
 		name: "InventoryService@Server.luau",
@@ -53,15 +54,14 @@ const explorer: Row[] = [
 		open: true,
 		icon: "ReplicatedStorage",
 	},
-	{ depth: 1, name: "Shared", open: true, icon: "Folder" },
 	{
-		depth: 2,
+		depth: 1,
 		name: "Inventory",
 		open: true,
 		icon: "Folder",
 		inFeature: true,
 	},
-	{ depth: 3, name: "ItemConfig", icon: "ModuleScript", inFeature: true },
+	{ depth: 2, name: "ItemConfig", icon: "ModuleScript", inFeature: true },
 	{
 		depth: 0,
 		name: "ServerScriptService",
@@ -101,6 +101,7 @@ const explorer: Row[] = [
 		icon: "ModuleScript",
 		inFeature: true,
 	},
+	{ depth: 3, name: "ItemSlot", icon: "ModuleScript", inFeature: true },
 ];
 
 async function studioIcons() {
@@ -379,7 +380,7 @@ export default async function Image() {
 					<Tree
 						rows={files}
 						fontSize={27}
-						rowHeight={44}
+						rowHeight={40}
 						indent={28}
 					/>
 				</Window>
