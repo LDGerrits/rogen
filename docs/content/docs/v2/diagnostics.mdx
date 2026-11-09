@@ -319,7 +319,7 @@ When the suffix routes the file where the `@` does, as `.server` does in `Start.
 
 ### `route.scriptClassMismatch` [#route-scriptclassmismatch]
 
-Warning. A script's name and its sync rule disagree on its class, so the script isn't the kind you asked for. There are two cases.
+Warning. A script's name and its sync rule disagree on its class, so the script isn't the kind you asked for. There are three cases.
 
 A sync rule of the project takes a script whose name ends in `.server`, `.client` or `.plugin` and makes it a ModuleScript, so the code in it never runs on its own. That happens when the rule for modules comes first, or when no rule makes that kind of script. The name still routes the file.
 
@@ -332,10 +332,18 @@ Add the rule the message names, in front of the rule for modules. Its `suffix` k
 Under a `compiledPath`, a rule with a run class such as `serverScript` takes a compiled file whose name doesn't spell that class. Rojo reads the `.luau` file the compiler writes by its name, so the name decides the class and the rule's `use` doesn't.
 
 ```
-warning: the compiler writes Boot.luau, which Rojo reads as a ModuleScript by its name, so it never runs. For a server script, rename it Boot.server.aly; for a ModuleScript, set the "use" of the sync rule "*.aly" to "moduleScript". (route.scriptClassMismatch)
+warning: the sync rule "*.aly" asks for a server script, but the compiler writes Boot.luau and Rojo reads the class from that name. For a server script, rename it Boot.server.aly; to keep this name, set the rule's "use" to "moduleScript". (route.scriptClassMismatch)
 ```
 
-Rename the file as the message says, or set the rule's `use` to the class the name spells.
+Rename the file as the message says, and keep the rule's pattern matching the new name. To keep the name, set the rule's `use` to `moduleScript`, which only says the extension is a script.
+
+Also under a `compiledPath`, a rule's pattern can be broad enough to take the `.luau` file too, as `src/**/*` and `*.{aly,luau}` are. Rojo then reads that file by the rule, not by its name.
+
+```
+warning: the sync rule "src/**/*" also takes Main.server.luau, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Make the pattern name only .aly. (route.scriptClassMismatch)
+```
+
+Name the source extension in the pattern, as `*.aly` does.
 
 ### `route.caseMismatch` [#route-casemismatch]
 

@@ -126,6 +126,7 @@ export class RojoFile {
 			this.match?.own && !this.isCompiled ? this.match.rule : undefined;
 		const run = this.ownRule && SCRIPT_SUFFIX_OF_USE[this.ownRule.use];
 		const spelled =
+			run &&
 			!this.match?.suffixMissed &&
 			this.ownRule?.suffix?.startsWith(`.${run}.`)
 				? run
@@ -192,6 +193,11 @@ export class RojoFile {
 	/** The file as Rojo would read it under `name` in the same folder. */
 	renamed(name: string): RojoFile {
 		return new RojoFile(name, this.rules, this.dir, this.reading);
+	}
+
+	/** The file as Rojo reads it where it lies, not what a compiler writes for it. */
+	get uncompiled(): RojoFile {
+		return new RojoFile(this.name, this.rules, this.dir);
 	}
 
 	/** The name with its extension lowercased when only that keeps Rojo from reading the file: Rojo ignores `Foo.LUAU`. */

@@ -113,17 +113,6 @@ describe("LocatedDiagnosis", () => {
 					"x.compiled",
 				]);
 			});
-
-			it("should read a file the tree mounts as Rojo does", () => {
-				expect(
-					codesOf({
-						status: "mounted",
-						source: absPosix("src/Boot.server.aly"),
-						exists: true,
-						node: ["ServerScriptService", "Boot"],
-					})
-				).toEqual(["x.rojo"]);
-			});
 		});
 
 		it("should give a path asked about that is not placed what reaches it", () => {

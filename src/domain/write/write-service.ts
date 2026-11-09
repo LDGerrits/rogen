@@ -16,7 +16,6 @@ import { FileReader } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig, scannedFileOf } from "../config/resolved-config.js";
-import { RojoFile } from "../rojo/rojo.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ConfigSelection } from "../config/config-service.js";
 import {
@@ -156,18 +155,8 @@ export class LocatedDiagnosis {
 	readonly unshown: readonly Diagnostic[];
 	/** The warnings that a source path holds files but places none of them, which say why a listing of it is empty. */
 	readonly placingNothing: readonly Diagnostic[];
-	private readonly mounted: ReadonlySet<string>;
 
 	constructor(private readonly located: ConfigLocations) {
-		const locations = [
-			...located.files,
-			...located.instances.flatMap(({ files }) => files),
-		];
-		this.mounted = new Set(
-			locations
-				.filter(({ status }) => status === "mounted")
-				.map(({ source }) => toPosix(source))
-		);
 		const targets = [
 			...located.files.map(({ source }) => source),
 			...located.queried,
@@ -186,7 +175,10 @@ export class LocatedDiagnosis {
 			(error) => !this.reaching.includes(error)
 		);
 		const shown = new Set(
-			locations.flatMap((location) => this.of(location))
+			[
+				...located.files,
+				...located.instances.flatMap(({ files }) => files),
+			].flatMap((location) => this.of(location))
 		);
 		this.unshown = located.files.some(({ status }) => status === "blocked")
 			? []
@@ -225,12 +217,8 @@ export class LocatedDiagnosis {
 	private isMetaOf(diagnostic: Diagnostic, source: string): boolean {
 		const posixSource = toPosix(source);
 		const dir = path.posix.dirname(posixSource);
-		const { config } = this.located;
-		const file = this.mounted.has(posixSource)
-			? RojoFile.at(posixSource, config.syncRules)
-			: scannedFileOf(config, posixSource);
-		return file.metaFiles
-			.map((name) => path.posix.join(dir, name))
+		return scannedFileOf(this.located.config, posixSource)
+			.metaFiles.map((name) => path.posix.join(dir, name))
 			.includes(toPosix(diagnostic.resource));
 	}
 }

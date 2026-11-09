@@ -1,0 +1,13 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+stderr:
+  src/Main.server.aly - warning: the sync rule "src/**/*" also takes Main.server.luau, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Make the pattern name only .aly. (route.scriptClassMismatch)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Main: ModuleScript  <- build/Main.server.luau

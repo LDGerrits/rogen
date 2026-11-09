@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- A warning when a script's name and its sync rule disagree on its class: a rule makes a script named `.server`, `.client` or `.plugin` a ModuleScript, so it never runs, or under a `compiledPath` a rule such as `serverScript` takes a file whose name doesn't spell that class, so Rojo reads what the compiler writes as another one.
+- A warning when a script's name and its sync rule disagree on its class: a rule makes a script named `.server`, `.client` or `.plugin` a ModuleScript, so it never runs, or under a `compiledPath` a rule such as `serverScript` takes a file whose name doesn't spell that class, so Rojo reads what the compiler writes as another one, or a broad pattern also takes the `.luau` file the compiler writes.
 - A warning when a source path holds files but Rojo reads none of them, such as the files of a language that compiles to Luau. `rogen where` prints it when it has no file to list.
 
 ### Changed

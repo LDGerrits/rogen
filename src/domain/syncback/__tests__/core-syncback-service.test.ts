@@ -1182,6 +1182,43 @@ describe("CoreSyncbackService", () => {
 			);
 		};
 
+		it("should name the meta of a custom-language file the tree mounts as Rojo reads it", async () => {
+			await prepare(
+				["src/Combat/Server/Combat.luau", "Vendor/Boot.server.aly"],
+				{
+					compiledPath: abs("dist"),
+					project: {
+						syncRules: [
+							{
+								pattern: "*.aly",
+								use: "moduleScript",
+								suffix: ".aly",
+							},
+						],
+						tree: {
+							$className: "DataModel",
+							ServerStorage: {
+								Boot: { $path: "Vendor/Boot.server.aly" },
+							},
+						},
+					},
+				}
+			);
+			rojo.say = async () => {
+				await fs.writeFile(
+					mirror("~kept", "0", "Boot.server.meta.json"),
+					"{}"
+				);
+				return [];
+			};
+
+			const plan = await planned();
+
+			expect(plan.changes).toEqual([
+				{ kind: "write", file: abs("Vendor/Boot.server.meta.json") },
+			]);
+		});
+
 		it("should plan on when a tool rewrites compiled code while Rojo runs", async () => {
 			await compiled();
 			rojo.say = async () => {

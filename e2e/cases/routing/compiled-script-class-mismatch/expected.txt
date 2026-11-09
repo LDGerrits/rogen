@@ -2,7 +2,7 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  src/Boot.aly - warning: the compiler writes Boot.luau, which Rojo reads as a ModuleScript by its name, so it never runs. For a server script, rename it Boot.server.aly; for a ModuleScript, set the "use" of the sync rule "*.aly" to "moduleScript". (route.scriptClassMismatch)
+  src/Boot.aly - warning: the sync rule "*.aly" asks for a server script, but the compiler writes Boot.luau and Rojo reads the class from that name. For a server script, rename it Boot.server.aly; to keep this name, set the rule's "use" to "moduleScript". (route.scriptClassMismatch)
   out - warning: the compiled path "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
 
 written:

@@ -4,7 +4,6 @@ import { PlacedLocation } from "../../write/write-service.js";
 import { RojoFile } from "../../rojo/rojo.js";
 import { RojoNode, RojoProjectFile } from "../../rojo/rojo-project.js";
 import { SyncRules } from "../../rojo/sync-rules.js";
-import { abs, configOf } from "../../write/__tests__/fixtures.js";
 import { SyncbackMirror } from "../syncback-mirror.js";
 
 const ROOT = ".rogen-syncback/mirror";
@@ -25,8 +24,7 @@ const mirrorOf = (
 	files: readonly PlacedLocation[],
 	folders: readonly string[] = [],
 	texts: Readonly<Record<string, string>> = {},
-	tree: RojoNode = written.tree,
-	syncRules: SyncRules = SyncRules.DEFAULT
+	tree: RojoNode = written.tree
 ) =>
 	SyncbackMirror.of({
 		written,
@@ -35,7 +33,7 @@ const mirrorOf = (
 		root: ROOT,
 		placed: files,
 		reads: [onDisk("/repo/src")],
-		fileAt: (target) => RojoFile.at(target, syncRules),
+		fileAt: (target) => RojoFile.at(target, SyncRules.DEFAULT),
 		isFolder: async (target) => folders.map(onDisk).includes(target),
 		readText: async (target) =>
 			Object.entries(texts).find(
@@ -93,33 +91,6 @@ describe("SyncbackMirror", () => {
 			"ServerScriptService/Inventory",
 			"ServerScriptService",
 		]);
-	});
-
-	it("should name a file the tree mounts as Rojo reads it, under a compiled path too", async () => {
-		const tree: RojoNode = {
-			ServerScriptService: {
-				Boot: { $path: "src/Vendor/Boot.server.aly" },
-			},
-		};
-		const { syncRules } = configOf({
-			compiledPath: abs("out"),
-			project: {
-				tree,
-				syncRules: [
-					{ pattern: "*.aly", use: "moduleScript", suffix: ".aly" },
-				],
-			},
-		});
-
-		const mirror = await mirrorOf({ tree }, [], [], {}, tree, syncRules);
-
-		expect(mirror.entries.map(({ target }) => target)).toEqual([
-			"/repo/src/Vendor/Boot.server.aly",
-			"/repo/src/Vendor/Boot.server.meta.json",
-		]);
-		expect(path.posix.basename(mirror.entries[1].mirror)).toBe(
-			"Boot.server.meta.json"
-		);
 	});
 
 	it("should keep the script suffix in the mirror's name", async () => {
