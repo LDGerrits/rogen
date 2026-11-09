@@ -495,6 +495,15 @@ describe("CompiledPathCheck", () => {
 			});
 
 			describe("checkSyncMeta", () => {
+				const mounting = (mounted: string) => ({
+					project: {
+						tree: {
+							$className: "DataModel",
+							ServerStorage: { Boot: { $path: mounted } },
+						},
+					},
+				});
+
 				it("should report nothing without a compiledPath", async () => {
 					await write("src/Save.server.luau", "src/Save.meta.json");
 
@@ -514,6 +523,50 @@ describe("CompiledPathCheck", () => {
 					);
 
 					expect(await check()).toEqual([]);
+				});
+
+				it("should report nothing for the meta file of a file the tree mounts, which Rojo reads beside it", async () => {
+					await write(
+						"src/Vendor/Boot.luau",
+						"src/Vendor/Boot.meta.json",
+						"src/Keep.luau",
+						"dist/Keep.luau"
+					);
+
+					expect(
+						await check(mounting("src/Vendor/Boot.luau"))
+					).toEqual([]);
+				});
+
+				it("should still warn about the meta file of a routed file beside a mounted one", async () => {
+					await write(
+						"src/Vendor/Boot.luau",
+						"src/Vendor/Other.luau",
+						"src/Vendor/Other.meta.json",
+						"dist/Vendor/Other.luau"
+					);
+
+					const [warning, ...rest] = await check(
+						mounting("src/Vendor/Boot.luau")
+					);
+
+					expect(rest).toEqual([]);
+					expect(warning.message).toContain(
+						`1 meta file has no copy under "dist" (${absPosix("src/Vendor/Other.meta.json")})`
+					);
+				});
+
+				it("should still warn about a meta file named like a file mounted from another folder", async () => {
+					await write(
+						"src/Vendor/Boot.luau",
+						"src/Other/Boot.luau",
+						"src/Other/Boot.meta.json",
+						"dist/Other/Boot.luau"
+					);
+
+					expect(
+						await check(mounting("src/Vendor/Boot.luau"))
+					).toMatchObject([{ code: "output.metaNotSynced" }]);
 				});
 
 				it("should warn once for the meta files missing from the compiled path", async () => {
