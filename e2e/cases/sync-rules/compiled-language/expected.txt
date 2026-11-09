@@ -12,8 +12,13 @@ stdout:
 $ rogen check
 exit 0
 
+$ rogen build -o game.rbxl
+exit 0
+stdout: (not shown)
+
 written:
   default.project.json
+  game.rbxl
 
 default.project.json:
 {

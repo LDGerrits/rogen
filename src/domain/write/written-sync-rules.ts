@@ -21,12 +21,6 @@ export class WrittenSyncRules {
 			const taken = entries
 				.filter(({ file }) => file.ownRule === rule)
 				.map(({ source }) => source);
-			if (
-				taken.length === 0 &&
-				!this.globs.hasMounts &&
-				entries.some(({ file }) => file.compiledRule === rule)
-			)
-				return [];
 			return [
 				...(this.moved(rule, taken) ?? this.literal(rule, taken)),
 				...this.original(rule),

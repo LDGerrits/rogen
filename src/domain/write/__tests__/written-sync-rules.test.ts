@@ -55,32 +55,25 @@ describe("WrittenSyncRules", () => {
 		).toEqual([{ pattern: "out/A.md", use: "text" }]);
 	});
 
-	it("should write no rule for scripts a compiler turns into Luau, which Rojo reads by their names", () => {
-		expect(
-			writtenBy([module], ["src/A.module"], { compiledPath: abs("out") })
-		).toEqual([]);
-	});
+	it.each([[[]], [["Packages"]]])(
+		"should write the rule of a compiled language as any other rule with mounts %j",
+		(mounts: string[]) => {
+			const rule: SyncRule = {
+				pattern: "src/**/*.aly",
+				use: "moduleScript",
+				suffix: ".aly",
+			};
 
-	it("should keep the rule of compiled scripts for a folder the tree mounts in the source path", () => {
-		expect(
-			writtenBy(
-				[module],
-				["src/A.module"],
-				{ compiledPath: abs("out") },
-				["src/Vendor"]
-			)
-		).toEqual([{ ...module, pattern: "out/*.module" }, module]);
-	});
-
-	it("should keep a wildcard rule of compiled scripts when the tree mounts files it may take", () => {
-		const rule: SyncRule = { ...module, pattern: "*.module" };
-
-		expect(
-			writtenBy([rule], ["src/A.module"], { compiledPath: abs("out") }, [
-				"vendor/Lib.module",
-			])
-		).toEqual([rule]);
-	});
+			expect(
+				writtenBy(
+					[rule],
+					["src/A.aly"],
+					{ compiledPath: abs("build") },
+					mounts
+				)
+			).toEqual([{ ...rule, pattern: "build/**/*.aly" }]);
+		}
+	);
 
 	it("should write a pattern it need not move as it is", () => {
 		const rule: SyncRule = { pattern: "{src,lib}/*.md", use: "text" };
