@@ -119,9 +119,7 @@ export class TreeAssembler {
 			globIgnorePaths: [
 				...new Set([
 					...tree.globIgnorePaths,
-					...ignored.map((source) =>
-						literalGlob(layout.rojoPath(source).optional)
-					),
+					...ignored.map((source) => this.ignoreGlobOf(source)),
 					...[...initDirs].flatMap(([dir, init]) =>
 						this.besideInit(dir, init)
 					),
@@ -151,7 +149,9 @@ export class TreeAssembler {
 		const { placement } = this;
 		const { layout, nodes } = placement;
 		for (const [dir, instancePath] of collapsed.entries())
-			project.insertNode(instancePath, { $path: layout.rojoPath(dir) });
+			project.insertNode(instancePath, {
+				$path: layout.rojoFolderPath(dir),
+			});
 		const initDirs = new Map<string, string>();
 		for (const file of nodes) {
 			const { entry, instancePath } = file;
@@ -160,7 +160,7 @@ export class TreeAssembler {
 			if (dir !== undefined) {
 				initDirs.set(dir, path.posix.basename(entry.source));
 				project.insertNode(instancePath, {
-					$path: layout.rojoPath(dir),
+					$path: layout.rojoFolderPath(dir),
 				});
 			} else
 				project.insertNode(instancePath, {
@@ -176,13 +176,25 @@ export class TreeAssembler {
 	private besideInit(dir: string, init: string): string[] {
 		if (RojoFile.DEFAULT_PROJECTS.includes(init)) return [];
 		const { placement } = this;
-		const { layout } = placement;
 		return childrenBesideInit(placement.listing(dir), init, (name) =>
 			RojoFile.at(path.posix.join(dir, name), placement.config.syncRules)
 		)
 			.map((name) => path.posix.join(dir, name))
-			.filter((sibling) => !layout.isReadOnly(sibling))
-			.map((sibling) => literalGlob(layout.rojoPath(sibling).optional));
+			.filter(
+				(sibling) =>
+					placement.isFolder(sibling) ||
+					!placement.layout.isReadOnly(sibling)
+			)
+			.map((sibling) => this.ignoreGlobOf(sibling));
+	}
+
+	private ignoreGlobOf(source: string): string {
+		const { placement } = this;
+		const { layout } = placement;
+		const { optional } = placement.isFolder(source)
+			? layout.rojoFolderPath(source)
+			: layout.rojoPath(source);
+		return literalGlob(optional);
 	}
 
 	private collapsibleDirs(

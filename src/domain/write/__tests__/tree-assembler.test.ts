@@ -647,6 +647,48 @@ describe("TreeAssembler", () => {
 				});
 				expect(value.globIgnorePaths).toEqual(["out/Lib/server"]);
 			});
+
+			it("should point at a folder named like a file for an index script inside it", async () => {
+				await write("src/Lib.ts/index.ts", "src/Lib.ts/server/Api.ts");
+
+				const { projectFile: value } = await assemble({
+					routes: SPLIT,
+					compiledPath: abs("out"),
+				});
+
+				expect(
+					(value.tree.ServerScriptService as RojoNode)["Lib.ts"]
+				).toEqual({
+					$path: optional("out/Lib.ts"),
+					Api: { $path: optional("out/Lib.ts/server/Api.luau") },
+				});
+				expect(value.globIgnorePaths).toEqual(["out/Lib.ts/server"]);
+			});
+
+			it("should keep a folder named like a file out of an init script's children under its own name", async () => {
+				await write("src/Lib/index.ts", "src/Lib/net.ts/server/Api.ts");
+
+				const { projectFile: value } = await assemble({
+					routes: SPLIT,
+					compiledPath: abs("out"),
+				});
+
+				expect(value.globIgnorePaths).toEqual(["out/Lib/net.ts"]);
+			});
+
+			it("should keep a folder named like a file a tool only reads out of an init script's children", async () => {
+				await write(
+					"src/Lib/index.ts",
+					"src/Lib/types.d.ts/server/Api.ts"
+				);
+
+				const { projectFile: value } = await assemble({
+					routes: SPLIT,
+					compiledPath: abs("out"),
+				});
+
+				expect(value.globIgnorePaths).toEqual(["out/Lib/types.d.ts"]);
+			});
 		});
 	});
 });
