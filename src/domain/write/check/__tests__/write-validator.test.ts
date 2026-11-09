@@ -513,24 +513,24 @@ describe("WriteValidator rules", () => {
 			});
 		});
 
-		describe("a script suffix no sync rule reads", () => {
+		describe("a script whose name and rule disagree on its class", () => {
 			const moduleRule = {
 				pattern: "*.aly",
 				use: "moduleScript",
 				suffix: ".aly",
 			};
-			const ignored = async (overrides: ResolvedConfigSpec) =>
+			const mismatches = async (overrides: ResolvedConfigSpec) =>
 				(await route(overrides))
 					.unwrap()
 					.warnings.filter(
-						({ code }) => code === "route.scriptSuffixIgnored"
+						({ code }) => code === "route.scriptClassMismatch"
 					);
 
 			it("should warn that the rule makes it a ModuleScript, and name the rule to add", async () => {
 				await write("src/Boot/Main.server.aly");
 
 				expect(
-					await ignored({
+					await mismatches({
 						project: { tree: {}, syncRules: [moduleRule] },
 					})
 				).toMatchObject([
@@ -538,16 +538,34 @@ describe("WriteValidator rules", () => {
 						severity: DiagnosticSeverity.Warning,
 						resource: abs("src/Boot/Main.server.aly"),
 						message:
-							'the sync rule "*.aly" makes this file a ModuleScript, so it never runs. For a Script, add a rule for "*.server.aly" with "use": "serverScript" before that one; for a module, remove ".server".',
+							'the sync rule "*.aly" makes this file a ModuleScript, so it never runs. For a server script, add { "pattern": "*.server.aly", "use": "serverScript", "suffix": ".server.aly" } before that rule; for a module, remove ".server".',
 					},
 				]);
+			});
+
+			it("should give a Script named by the file when the advised rule is added word for word", async () => {
+				await write("src/Boot/Main.server.aly");
+				const project = { tree: {}, syncRules: [moduleRule] };
+				const [{ message }] = await mismatches({ project });
+				const advised = JSON.parse(
+					/add (\{.*\}) before/.exec(message)![1]
+				);
+
+				const fixed = {
+					project: { tree: {}, syncRules: [advised, moduleRule] },
+				};
+
+				expect(await mismatches(fixed)).toEqual([]);
+				const [main] = (await route(fixed)).unwrap().routed;
+				expect(main.instancePath.at(-1)).toBe("Main");
+				expect(main.entry.file.scriptSuffix).toBe("server");
 			});
 
 			it("should not warn when a rule makes it the script it spells", async () => {
 				await write("src/Boot/Main.server.aly");
 
 				expect(
-					await ignored({
+					await mismatches({
 						project: {
 							tree: {},
 							syncRules: [
@@ -567,11 +585,95 @@ describe("WriteValidator rules", () => {
 				await write("src/Boot/Main.server.aly");
 
 				expect(
-					await ignored({
+					await mismatches({
 						compiledPath: abs("out"),
 						project: { tree: {}, syncRules: [moduleRule] },
 					})
 				).toEqual([]);
+			});
+
+			describe("under a compiled path", () => {
+				const compiled = (...syncRules: object[]) => ({
+					compiledPath: abs("out"),
+					project: { tree: {}, syncRules },
+				});
+				const serverRule = { pattern: "*.aly", use: "serverScript" };
+
+				it("should warn that a run rule on a plain name gives a ModuleScript, and name the file to rename it to", async () => {
+					await write("src/Boot.aly");
+
+					expect(
+						await mismatches(compiled(serverRule))
+					).toMatchObject([
+						{
+							severity: DiagnosticSeverity.Warning,
+							resource: abs("src/Boot.aly"),
+							message:
+								'the compiler writes Boot.luau, which Rojo reads as a ModuleScript by its name, so it never runs. For a server script, rename it Boot.server.aly; for a ModuleScript, set the "use" of the sync rule "*.aly" to "moduleScript".',
+						},
+					]);
+				});
+
+				it("should give a server script when the file is renamed as advised", async () => {
+					await write("src/Boot.server.aly");
+
+					expect(await mismatches(compiled(serverRule))).toEqual([]);
+					const [boot] = (await route(compiled(serverRule))).unwrap()
+						.routed;
+					expect(boot.instancePath.at(-1)).toBe("Boot");
+					expect(boot.entry.file.scriptSuffix).toBe("server");
+				});
+
+				it("should say which class the name gives when it spells another run class", async () => {
+					await write("src/Hud.client.aly");
+
+					expect(
+						await mismatches(compiled(serverRule))
+					).toMatchObject([
+						{
+							message:
+								'the compiler writes Hud.client.luau, which Rojo reads as a client script by its name. For a server script, rename it Hud.server.aly; for a client script, set the "use" of the sync rule "*.aly" to "clientScript".',
+						},
+					]);
+				});
+
+				it("should say the rule must read the new name when its pattern does not", async () => {
+					await write("src/Boot.aly");
+
+					expect(
+						await mismatches(
+							compiled({
+								pattern: "src/Boot.aly",
+								use: "serverScript",
+							})
+						)
+					).toMatchObject([
+						{
+							message: expect.stringContaining(
+								'rename it Boot.server.aly and make the pattern of the sync rule "src/Boot.aly" read that name;'
+							),
+						},
+					]);
+				});
+
+				it("should not warn when the name spells the class the rule gives", async () => {
+					await write("src/Main.server.aly");
+
+					expect(
+						await mismatches(
+							compiled({
+								pattern: "*.server.aly",
+								use: "serverScript",
+							})
+						)
+					).toEqual([]);
+				});
+
+				it("should not warn about a moduleScript rule", async () => {
+					await write("src/Boot.aly");
+
+					expect(await mismatches(compiled(moduleRule))).toEqual([]);
+				});
 			});
 		});
 

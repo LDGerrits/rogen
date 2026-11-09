@@ -147,11 +147,6 @@ export class RojoFile {
 		);
 	}
 
-	/** The rule of the project that says a compiler turns this file into Luau. */
-	get compiledRule(): SyncRule | undefined {
-		return this.isCompiled ? this.match?.rule : undefined;
-	}
-
 	/** The rule of the project that takes this file as an `ignore`: Rojo reads nothing of it. */
 	get ignoredBy(): SyncRule | undefined {
 		return this.ownRule?.use === "ignore" ? this.ownRule : undefined;

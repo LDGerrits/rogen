@@ -83,7 +83,7 @@ export class WriteValidator {
 			...this.serverCodeShipped(),
 			...this.deadScript(),
 			...this.scriptSuffixBeforeAt(),
-			...this.scriptSuffixIgnored(),
+			...this.scriptClassMismatches(),
 			...this.reservedName(),
 			...this.instanceClash(),
 			...this.emptyName(),
@@ -438,20 +438,51 @@ export class WriteValidator {
 			: `a Script with RunContext ${run}`;
 	}
 
-	private scriptSuffixIgnored(): Diagnostic[] {
+	private scriptClassMismatches(): Diagnostic[] {
 		return this.placement.files.flatMap(({ entry }) => {
-			const { file } = entry;
-			const suffix = RojoFile.scriptSuffixOf(file.stem);
-			const rule = file.ownRule;
-			if (!suffix || rule?.use !== "moduleScript") return [];
-			return [
-				warningDiagnostic(
-					"route.scriptSuffixIgnored",
-					{ resource: entry.source },
-					`the sync rule "${rule.pattern}" makes this file a ModuleScript, so it never runs. For a Script, add a rule for "*.${suffix}${path.extname(file.name)}" with "use": "${suffix}Script" before that one; for a module, remove ".${suffix}".`
-				),
-			];
+			const { file, source } = entry;
+			const message = file.isCompiled
+				? this.compiledClassMismatch(file, source)
+				: WriteValidator.moduleRuleMismatch(file);
+			return message
+				? [
+						warningDiagnostic(
+							"route.scriptClassMismatch",
+							{ resource: source },
+							message
+						),
+					]
+				: [];
 		});
+	}
+
+	private static moduleRuleMismatch(file: RojoFile): string | undefined {
+		const named = RojoFile.scriptSuffixOf(file.stem);
+		const rule = file.ownRule;
+		if (!named || rule?.use !== "moduleScript") return undefined;
+		const extension = path.extname(file.name);
+		const advised = `{ "pattern": "*.${named}${extension}", "use": "${named}Script", "suffix": ".${named}${extension}" }`;
+		return `the sync rule "${rule.pattern}" makes this file a ModuleScript, so it never runs. For a ${named} script, add ${advised} before that rule; for a module, remove ".${named}".`;
+	}
+
+	private compiledClassMismatch(
+		file: RojoFile,
+		source: string
+	): string | undefined {
+		const named = RojoFile.scriptSuffixOf(file.stem);
+		const { ownRule: rule, scriptSuffix: given } = RojoFile.at(
+			source,
+			this.config.syncRules
+		);
+		if (!rule || !given || given === named) return undefined;
+		const renamed = `${RojoFile.scriptNameOf(file.stem)}.${given}${path.extname(file.name)}`;
+		const rename = file.renamed(renamed).isCompiled
+			? `rename it ${renamed}`
+			: `rename it ${renamed} and make the pattern of the sync rule "${rule.pattern}" read that name`;
+		const read = named ? `a ${named} script` : "a ModuleScript";
+		const never = named ? "" : ", so it never runs";
+		const use = named ? `${named}Script` : "moduleScript";
+		return `the compiler writes ${file.stem}.luau, which Rojo reads as ${read} by its name${never}. For a ${given} script, ${rename}; for ${read}, set the "use" of the sync rule "${rule.pattern}" to "${use}".`;
 	}
 
 	private scriptSuffixBeforeAt(): Diagnostic[] {

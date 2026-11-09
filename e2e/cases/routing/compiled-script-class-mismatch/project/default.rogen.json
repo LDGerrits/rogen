@@ -1,0 +1,9 @@
+{
+	"syncRules": [{ "pattern": "*.aly", "use": "serverScript" }],
+	"sourcePaths": ["src"],
+	"compiledPath": "out",
+	"routes": {
+		"server": "ServerScriptService",
+		"*": "ReplicatedStorage/shared"
+	}
+}

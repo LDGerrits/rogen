@@ -317,15 +317,25 @@ For a module, remove the script suffix, as in `Start@client.luau`. For a Script,
 
 When the suffix routes the file where the `@` does, as `.server` does in `Start.server@server.luau` with a `server` route, the name without the `@` part is enough. Rogen proposes `Start.server.luau`, and in `--json`, `fixes` holds the rename.
 
-### `route.scriptSuffixIgnored` [#route-scriptsuffixignored]
+### `route.scriptClassMismatch` [#route-scriptclassmismatch]
 
-Warning. A sync rule of the project takes a script whose name ends in `.server`, `.client` or `.plugin` and makes it a ModuleScript, so the code in it never runs on its own. That happens when the rule for modules comes first, or when no rule makes that kind of script. The name still routes the file.
+Warning. A script's name and its sync rule disagree on its class, so the script isn't the kind you asked for. There are two cases.
+
+A sync rule of the project takes a script whose name ends in `.server`, `.client` or `.plugin` and makes it a ModuleScript, so the code in it never runs on its own. That happens when the rule for modules comes first, or when no rule makes that kind of script. The name still routes the file.
 
 ```
-warning: the sync rule "*.aly" makes this file a ModuleScript, so it never runs. For a Script, add a rule for "*.server.aly" with "use": "serverScript" before that one; for a module, remove ".server". (route.scriptSuffixIgnored)
+warning: the sync rule "*.aly" makes this file a ModuleScript, so it never runs. For a server script, add { "pattern": "*.server.aly", "use": "serverScript", "suffix": ".server.aly" } before that rule; for a module, remove ".server". (route.scriptClassMismatch)
 ```
 
-Add the rule the message names, in front of the rule for modules. For a module, remove the suffix from the name. A script that a compiler turns into Luau under a `compiledPath` doesn't get this warning, because Rojo reads the name the compiler keeps.
+Add the rule the message names, in front of the rule for modules. Its `suffix` keeps `.server` out of the instance name. For a module, remove the suffix from the name.
+
+Under a `compiledPath`, a rule with a run class such as `serverScript` takes a compiled file whose name doesn't spell that class. Rojo reads the `.luau` file the compiler writes by its name, so the name decides the class and the rule's `use` doesn't.
+
+```
+warning: the compiler writes Boot.luau, which Rojo reads as a ModuleScript by its name, so it never runs. For a server script, rename it Boot.server.aly; for a ModuleScript, set the "use" of the sync rule "*.aly" to "moduleScript". (route.scriptClassMismatch)
+```
+
+Rename the file as the message says, or set the rule's `use` to the class the name spells.
 
 ### `route.caseMismatch` [#route-casemismatch]
 
