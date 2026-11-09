@@ -94,16 +94,26 @@ export const DEFAULT_SYNC_RULES: readonly SyncRule[] = [
 export class SyncRules {
 	static readonly DEFAULT = new SyncRules(DEFAULT_SYNC_RULES);
 
-	/** `dir` is the absolute POSIX folder the paths to match are relative to. */
+	/** `dir` is the absolute POSIX folder the paths to match are relative to; `compiles` says that a compiler writes the project's sources into a compiled path. */
 	constructor(
 		private readonly rules: readonly SyncRule[],
 		private readonly ownCount = 0,
-		readonly dir = ""
+		readonly dir = "",
+		readonly compiles = false
 	) {}
 
 	/** `own` in front of Rojo's rules, the first match winning. */
-	static following(own: readonly SyncRule[], dir: string): SyncRules {
-		return new SyncRules([...own, ...DEFAULT_SYNC_RULES], own.length, dir);
+	static following(
+		own: readonly SyncRule[],
+		dir: string,
+		compiles = false
+	): SyncRules {
+		return new SyncRules(
+			[...own, ...DEFAULT_SYNC_RULES],
+			own.length,
+			dir,
+			compiles
+		);
 	}
 
 	/** The rules a project's `syncRules` holds, and what is wrong with the ones it can't read. */
@@ -157,6 +167,11 @@ export class SyncRules {
 	/** `dir`, an absolute POSIX folder, relative to the folder the rules are written for. */
 	relativeDir(dir: string): string {
 		return path.posix.relative(this.dir, dir);
+	}
+
+	/** These rules for a file no compiler writes, such as one the tree mounts. */
+	get uncompiled(): SyncRules {
+		return new SyncRules(this.rules, this.ownCount, this.dir);
 	}
 
 	/** The rules the project wrote, in front of Rojo's. */

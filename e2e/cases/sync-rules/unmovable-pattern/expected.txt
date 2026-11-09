@@ -20,7 +20,7 @@ default.project.json:
         },
         "Hit": {
           "$path": {
-            "optional": "out/Hit.module"
+            "optional": "out/Hit.note"
           }
         },
         "$ignoreUnknownInstances": false
@@ -29,14 +29,14 @@ default.project.json:
   },
   "syncRules": [
     {
-      "pattern": "out/Combat/Blocked.module",
-      "use": "moduleScript",
-      "suffix": ".module"
+      "pattern": "out/Combat/Blocked.note",
+      "use": "text",
+      "suffix": ".note"
     },
     {
-      "pattern": "out/Hit.module",
-      "use": "moduleScript",
-      "suffix": ".module"
+      "pattern": "out/Hit.note",
+      "use": "text",
+      "suffix": ".note"
     }
   ]
 }
@@ -46,5 +46,5 @@ project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
       Combat: Folder
-        Blocked: ModuleScript  <- out/Combat/Blocked.module
-      Hit: ModuleScript  <- out/Hit.module
+        Blocked: StringValue  <- out/Combat/Blocked.note
+      Hit: StringValue  <- out/Hit.note

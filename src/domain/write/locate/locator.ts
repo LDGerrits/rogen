@@ -214,7 +214,7 @@ class ConfigLocator {
 		return new MountedInstances(
 			this.fileSystemService,
 			locator.mounts,
-			this.config.syncRules
+			this.config.syncRules.uncompiled
 		);
 	}
 

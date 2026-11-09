@@ -93,14 +93,17 @@ export class CompiledLayout {
 	/** The absolute path the tools write for `filePath` under `compiledPath`, or `filePath` itself when nothing syncs elsewhere. */
 	emittedPath(filePath: string): string {
 		if (this.compiledPath === undefined) return filePath;
+		const compiled = compiledPathOf(this, filePath);
+		if (RojoFile.at(toPosix(filePath), this.syncRules).isCompiled)
+			return `${compiled.slice(0, compiled.length - path.extname(compiled).length)}.luau`;
 		return this.tools.reduce(
 			(emitted, tool) => tool.emittedPath?.(emitted) ?? emitted,
-			compiledPathOf(this, filePath)
+			compiled
 		);
 	}
 
 	/** Where the tools write the files of `dir`, relative to the project; they rename files, never folders. */
-	compiledFolderOf(dir: string): string {
+	private compiledFolderOf(dir: string): string {
 		return this.relativeToProject(compiledPathOf(this, dir));
 	}
 

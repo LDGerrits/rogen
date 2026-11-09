@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- A warning when a sync rule makes a script named `.server`, `.client` or `.plugin` a ModuleScript, so it never runs.
 - A warning when a source path holds files but Rojo reads none of them, such as the files of a language that compiles to Luau. `rogen where` prints it when it has no file to list.
 
 ### Changed
@@ -18,6 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- With a `compiledPath`, a script of another language that a sync rule reads, such as `Main.server.aly`, is mounted at the `.luau` file its compiler writes, and its class comes from that name. It was mounted at `out/Main.server.aly`, with an empty placeholder Rojo synced instead of the compiled code.
+- `compiled.orphan` no longer warns about a file in the compiled path that the tree mounts, such as a compiler's runtime library.
 - The warning for a script suffix before an `@` suffix, as in `Start.server@client.ts`, covers every extension. It only knew `.lua` and `.luau`.
 - A script read by a sync rule whose `suffix` spells its class, such as `main.server.aly` under `*.server.aly`, routes by that `.server` or `.client` as a `.luau` script does. It needed `main@server.server.aly`.
 - With a `compiledPath`, a folder named like a file a tool compiles, such as `net.ts`, is mounted at its own path, so its code reaches the game. It was mounted at `out/net.luau` beside an empty placeholder script.

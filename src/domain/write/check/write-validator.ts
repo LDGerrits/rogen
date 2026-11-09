@@ -83,6 +83,7 @@ export class WriteValidator {
 			...this.serverCodeShipped(),
 			...this.deadScript(),
 			...this.scriptSuffixBeforeAt(),
+			...this.scriptSuffixIgnored(),
 			...this.reservedName(),
 			...this.instanceClash(),
 			...this.emptyName(),
@@ -176,13 +177,11 @@ export class WriteValidator {
 			),
 			LISTED_FILES
 		);
-		const { layout } = this.placement;
-		if (layout.compiledPath === undefined)
-			return `Rojo reads none of its files (${listed}). If they are scripts, add a "syncRules" entry for their extension.`;
-		const copyOf = (dir: string) =>
-			JSON.stringify(layout.compiledFolderOf(dir));
-		const copies = this.config.sourcePaths.map(copyOf).join(", ");
-		return `Rojo reads none of its files (${listed}). If they are scripts, a sync rule won't help: Rogen would point the project file at the same names in ${copyOf(sourcePath)}, but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to [${copies}], and remove "compiledPath".`;
+		const advice =
+			this.placement.layout.compiledPath === undefined
+				? 'If they are scripts, add a "syncRules" entry for their extension. If a compiler turns them into Luau, set "compiledPath" too.'
+				: 'If they are scripts, add a "syncRules" entry for their extension, and Rogen points the project file at the .luau files your compiler writes.';
+		return `Rojo reads none of its files (${listed}). ${advice}`;
 	}
 
 	private syncRuleSuffix(): Diagnostic[] {
@@ -437,6 +436,22 @@ export class WriteValidator {
 		return run === "Script" || run === "LocalScript"
 			? `a ${run}`
 			: `a Script with RunContext ${run}`;
+	}
+
+	private scriptSuffixIgnored(): Diagnostic[] {
+		return this.placement.files.flatMap(({ entry }) => {
+			const { file } = entry;
+			const suffix = RojoFile.scriptSuffixOf(file.stem);
+			const rule = file.ownRule;
+			if (!suffix || rule?.use !== "moduleScript") return [];
+			return [
+				warningDiagnostic(
+					"route.scriptSuffixIgnored",
+					{ resource: entry.source },
+					`the sync rule "${rule.pattern}" makes this file a ModuleScript, so it never runs. For a Script, add a rule for "*.${suffix}${path.extname(file.name)}" with "use": "${suffix}Script" before that one; for a module, remove ".${suffix}".`
+				),
+			];
+		});
 	}
 
 	private scriptSuffixBeforeAt(): Diagnostic[] {

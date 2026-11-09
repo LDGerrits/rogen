@@ -24,11 +24,6 @@ default.project.json:
   },
   "syncRules": [
     {
-      "pattern": "out/*.module",
-      "use": "moduleScript",
-      "suffix": ".module"
-    },
-    {
       "pattern": "*.note",
       "use": "text",
       "suffix": ".note"
@@ -42,4 +37,4 @@ project: DataModel
     shared: Folder
       Combat: Folder
         Greeting: StringValue  <- out/Combat/Greeting.note
-        Hit: ModuleScript  <- out/Combat/Hit.module
+        Hit: ModuleScript  <- out/Combat/Hit.luau

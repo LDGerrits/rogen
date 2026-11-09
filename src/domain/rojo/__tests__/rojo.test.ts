@@ -229,6 +229,78 @@ describe("domain/rojo/rojo", () => {
 				}
 			);
 
+			describe("under a compiled path", () => {
+				const compiling = (...own: SyncRule[]) =>
+					SyncRules.following(own, "/repo", true);
+				const moduleRule: SyncRule = {
+					pattern: "*.aly",
+					use: "moduleScript",
+					suffix: ".aly",
+				};
+
+				it("should read a script by its name, as Rojo reads what the compiler writes", () => {
+					const file = new RojoFile(
+						"Main.server.aly",
+						compiling(moduleRule)
+					);
+
+					expect(file.isCompiled).toBe(true);
+					expect(file.kind).toBe("script");
+					expect(file.stem).toBe("Main.server");
+					expect(file.scriptSuffix).toBe("server");
+					expect(file.instanceName).toBe("Main");
+					expect(file.ownRule).toBeUndefined();
+				});
+
+				it("should read a module as Luau", () => {
+					const file = new RojoFile(
+						"Util.aly",
+						compiling(moduleRule)
+					);
+
+					expect(file.isLuauModule).toBe(true);
+					expect(file.instanceName).toBe("Util");
+				});
+
+				it("should read a file no compiler writes by its rule", () => {
+					const file = new RojoFile(
+						"Main.server.aly",
+						compiling(moduleRule).uncompiled
+					);
+
+					expect(file.isCompiled).toBe(false);
+					expect(file.instanceName).toBe("Main.server");
+				});
+
+				it("should leave a rule for Luau files to Rojo", () => {
+					const file = new RojoFile(
+						"Hit.story.luau",
+						compiling({
+							pattern: "*.story.luau",
+							use: "moduleScript",
+							suffix: ".story.luau",
+						})
+					);
+
+					expect(file.isCompiled).toBe(false);
+					expect(file.instanceName).toBe("Hit");
+				});
+
+				it("should leave a rule for data to Rojo", () => {
+					const file = new RojoFile(
+						"Greeting.note",
+						compiling({
+							pattern: "*.note",
+							use: "text",
+							suffix: ".note",
+						})
+					);
+
+					expect(file.isCompiled).toBe(false);
+					expect(file.ownRule).toBeDefined();
+				});
+			});
+
 			it("should give a script the class its rule gives it", () => {
 				const file = new RojoFile(
 					"Menu.hud",

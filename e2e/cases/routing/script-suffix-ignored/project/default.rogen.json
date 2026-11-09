@@ -1,0 +1,12 @@
+{
+	"syncRules": [
+		{ "pattern": "*.aly", "use": "moduleScript", "suffix": ".aly" }
+	],
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"*": "ReplicatedStorage/shared"
+	}
+}

@@ -71,6 +71,8 @@ const SCRIPT_SUFFIX_OF_USE: Readonly<
 
 const COMPILER_EXTENSIONS: readonly string[] = [".ts", ".tsx"];
 
+const LUAU_EXTENSIONS: readonly string[] = [".luau", ".lua"];
+
 export class RojoFile {
 	static readonly META_SUFFIX = ".meta.json";
 	/** Rojo reads this over `.meta.json` when a file has both. */
@@ -81,7 +83,7 @@ export class RojoFile {
 	/** The files Rojo reads as their folder's instance. */
 	static readonly INIT_FILES: ReadonlySet<string> = new Set([
 		...["", ".server", ".client", ".plugin"].flatMap((suffix) =>
-			[".luau", ".lua"].map(
+			LUAU_EXTENSIONS.map(
 				(extension) => `${RojoFile.INIT_NAME}${suffix}${extension}`
 			)
 		),
@@ -128,9 +130,24 @@ export class RojoFile {
 		);
 	}
 
-	/** The match of a rule the project wrote. */
+	/** The match of a rule the project wrote, which Rojo applies to this file. */
 	private get ownMatch(): SyncRuleMatch | undefined {
-		return this.match?.own ? this.match : undefined;
+		return this.match?.own && !this.isCompiled ? this.match : undefined;
+	}
+
+	/** Whether a compiler turns this script of another language into Luau, so Rojo reads what it writes by that file's name and not by the project's rule. */
+	get isCompiled(): boolean {
+		return (
+			this.rules.compiles &&
+			this.match?.own === true &&
+			KIND_OF_USE[this.match.rule.use] === "script" &&
+			!LUAU_EXTENSIONS.includes(path.extname(this.name))
+		);
+	}
+
+	/** The rule of the project that says a compiler turns this file into Luau. */
+	get compiledRule(): SyncRule | undefined {
+		return this.isCompiled ? this.match?.rule : undefined;
 	}
 
 	/** The script class that the suffix of the project's rule spells and its `use` gives, as `.server.aly` does for a `serverScript`. */
@@ -243,9 +260,8 @@ export class RojoFile {
 
 	/** Whether the file is Luau source: a script by a rule of the project, else by its extension. */
 	get isLuau(): boolean {
-		if (this.ownMatch) return this.kind === "script";
-		const extension = path.extname(this.name);
-		return extension === ".luau" || extension === ".lua";
+		if (this.match?.own) return this.kind === "script";
+		return LUAU_EXTENSIONS.includes(path.extname(this.name));
 	}
 
 	get isLuauModule(): boolean {

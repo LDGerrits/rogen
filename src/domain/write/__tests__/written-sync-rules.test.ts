@@ -48,14 +48,38 @@ describe("WrittenSyncRules", () => {
 	});
 
 	it("should write literal rules when a wildcard pattern would miss the moved files", () => {
-		const rule: SyncRule = {
-			pattern: "**/src/*.module",
-			use: "moduleScript",
-		};
+		const rule: SyncRule = { pattern: "**/src/*.md", use: "text" };
 
 		expect(
-			writtenBy([rule], ["src/A.module"], { compiledPath: abs("out") })
-		).toEqual([{ pattern: "out/A.module", use: "moduleScript" }]);
+			writtenBy([rule], ["src/A.md"], { compiledPath: abs("out") })
+		).toEqual([{ pattern: "out/A.md", use: "text" }]);
+	});
+
+	it("should write no rule for scripts a compiler turns into Luau, which Rojo reads by their names", () => {
+		expect(
+			writtenBy([module], ["src/A.module"], { compiledPath: abs("out") })
+		).toEqual([]);
+	});
+
+	it("should keep the rule of compiled scripts for a folder the tree mounts in the source path", () => {
+		expect(
+			writtenBy(
+				[module],
+				["src/A.module"],
+				{ compiledPath: abs("out") },
+				["src/Vendor"]
+			)
+		).toEqual([{ ...module, pattern: "out/*.module" }, module]);
+	});
+
+	it("should keep a wildcard rule of compiled scripts when the tree mounts files it may take", () => {
+		const rule: SyncRule = { ...module, pattern: "*.module" };
+
+		expect(
+			writtenBy([rule], ["src/A.module"], { compiledPath: abs("out") }, [
+				"vendor/Lib.module",
+			])
+		).toEqual([rule]);
 	});
 
 	it("should write a pattern it need not move as it is", () => {
@@ -148,25 +172,25 @@ describe("WrittenSyncRules", () => {
 
 	it("should write a literal rule for each file a pattern that can't be moved takes", () => {
 		const rule: SyncRule = {
-			pattern: "{src,lib}/*.module",
-			use: "moduleScript",
-			suffix: ".module",
+			pattern: "{src,lib}/*.note",
+			use: "text",
+			suffix: ".note",
 		};
 
 		expect(
-			writtenBy([rule], ["src/A.module", "src/B.module", "src/C.luau"], {
+			writtenBy([rule], ["src/A.note", "src/B.note", "src/C.luau"], {
 				compiledPath: abs("out"),
 			})
 		).toEqual([
 			{
-				pattern: "out/A.module",
-				use: "moduleScript",
-				suffix: ".module",
+				pattern: "out/A.note",
+				use: "text",
+				suffix: ".note",
 			},
 			{
-				pattern: "out/B.module",
-				use: "moduleScript",
-				suffix: ".module",
+				pattern: "out/B.note",
+				use: "text",
+				suffix: ".note",
 			},
 		]);
 	});

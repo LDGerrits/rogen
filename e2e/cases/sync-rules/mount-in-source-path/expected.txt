@@ -49,4 +49,4 @@ project: DataModel
       Lib: ModuleScript  <- src/Vendor/Lib.module
     shared: Folder
       Combat: Folder
-        Hit: ModuleScript  <- out/Combat/Hit.module
+        Hit: ModuleScript  <- out/Combat/Hit.luau

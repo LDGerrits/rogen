@@ -715,6 +715,50 @@ describe("CompiledPathCheck", () => {
 				});
 			});
 
+			it("should not warn about a compiled file the tree mounts", async () => {
+				await write(
+					"src/A/Real.luau",
+					"dist/A/Real.luau",
+					"dist/runtime.luau"
+				);
+
+				expect(
+					await check({
+						project: {
+							tree: {
+								$className: "DataModel",
+								ReplicatedStorage: {
+									$className: "ReplicatedStorage",
+									Runtime: { $path: "dist/runtime.luau" },
+								},
+							},
+						},
+					})
+				).toEqual([]);
+			});
+
+			it("should not warn about a compiled file inside a folder the tree mounts", async () => {
+				await write(
+					"src/A/Real.luau",
+					"dist/A/Real.luau",
+					"dist/lib/runtime.luau"
+				);
+
+				expect(
+					await check({
+						project: {
+							tree: {
+								$className: "DataModel",
+								ReplicatedStorage: {
+									$className: "ReplicatedStorage",
+									Lib: { $path: "dist/lib" },
+								},
+							},
+						},
+					})
+				).toEqual([]);
+			});
+
 			it("should not warn about a cache file the compiler writes for itself", async () => {
 				await write(
 					"src/A/Real.luau",

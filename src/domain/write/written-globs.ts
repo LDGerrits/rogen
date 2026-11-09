@@ -13,6 +13,11 @@ export class WrittenGlobs {
 		private readonly mounts: readonly string[]
 	) {}
 
+	/** Whether the tree mounts anything, which a rule may take. */
+	get hasMounts(): boolean {
+		return this.mounts.length > 0;
+	}
+
 	/** The globs for `glob` ahead of the compiled path's move; `from` is the absolute POSIX folder it is relative to, when that is not the project's own. */
 	of(glob: string, from?: string): string[] {
 		const { negated, body } = negationOf(glob);

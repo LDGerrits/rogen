@@ -1,0 +1,1 @@
+{ "steps": [["write"], ["where", "src"], ["check"]], "show": ["default.project.json"] }

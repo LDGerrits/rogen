@@ -1,0 +1,13 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+stderr:
+  src/Main.server.aly - warning: the sync rule "*.aly" makes this file a ModuleScript, so it never runs. For a Script, add a rule for "*.server.aly" with "use": "serverScript" before that one; for a module, remove ".server". (route.scriptSuffixIgnored)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Main: ModuleScript  <- src/Main.server.aly

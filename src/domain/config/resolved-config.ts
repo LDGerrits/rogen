@@ -50,7 +50,8 @@ export class ResolvedConfig {
 		this.keys = new DeclaredKeys(fields.routes.keys());
 		this.syncRules = SyncRules.following(
 			SyncRules.read(fields.project.syncRules).rules,
-			toPosix(this.projectDir)
+			toPosix(this.projectDir),
+			fields.compiledPath !== undefined
 		);
 	}
 

@@ -224,7 +224,7 @@ export class CompiledPathCheck {
 	}
 
 	private async orphanCompiledFiles({
-		placement: { config, layout },
+		placement: { config, layout, tree },
 		emittedTops,
 	}: CompiledPathRun): Promise<Diagnostic[]> {
 		const orphans = new Map<string, string[]>();
@@ -235,7 +235,11 @@ export class CompiledPathCheck {
 				continue;
 			const made = await this.madeBy(sourcePath, layout);
 			for (const file of await this.filesUnder(compiledDir, true)) {
-				if (made.has(compiledKey(file)) || layout.isCacheFile(file))
+				if (
+					made.has(compiledKey(file)) ||
+					layout.isCacheFile(file) ||
+					tree.mounts.covering(file)
+				)
 					continue;
 				if (
 					!RojoFile.at(toPosix(file), config.syncRules).isSyncedByRojo

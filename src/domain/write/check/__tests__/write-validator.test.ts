@@ -167,7 +167,7 @@ describe("WriteValidator rules", () => {
 						severity: DiagnosticSeverity.Warning,
 						resource: abs("src"),
 						message:
-							'this source path places nothing: Rojo reads none of its files (Notes.md, client/main.client.aly, server/main.server.aly and 1 more). If they are scripts, add a "syncRules" entry for their extension.',
+							'this source path places nothing: Rojo reads none of its files (Notes.md, client/main.client.aly, server/main.server.aly and 1 more). If they are scripts, add a "syncRules" entry for their extension. If a compiler turns them into Luau, set "compiledPath" too.',
 					},
 				]);
 			});
@@ -189,49 +189,13 @@ describe("WriteValidator rules", () => {
 				);
 			});
 
-			it("should send a compiled path to the source paths, since a sync rule keeps the files' names", async () => {
+			it("should say a sync rule is enough under a compiled path", async () => {
 				const [warning] = await unsynced(["src/util.aly"], {
 					compiledPath: abs("out"),
 				});
 
 				expect(warning.message).toBe(
-					`this source path places nothing: Rojo reads none of its files (util.aly). If they are scripts, a sync rule won't help: Rogen would point the project file at the same names in "out", but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out"], and remove "compiledPath".`
-				);
-			});
-
-			it("should send every source path to its compiled copy", async () => {
-				await write("src/Main.luau");
-				const [warning] = await unsynced(["lib/a.aly", "lib/b.aly"], {
-					compiledPath: abs("out"),
-					sourcePaths: [abs("src"), abs("lib")],
-				});
-
-				expect(warning.message).toContain(
-					'(a.aly and b.aly). If they are scripts, a sync rule won\'t help: Rogen would point the project file at the same names in "out/lib", but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out/src", "out/lib"], and remove "compiledPath".'
-				);
-			});
-
-			it("should name the copy of a folder as a compiler writes it, which renames only files", async () => {
-				await write("src/main/Main.luau");
-				const [warning] = await unsynced(["src/lib.ts/a.aly"], {
-					compiledPath: abs("out"),
-					sourcePaths: [abs("src/main"), abs("src/lib.ts")],
-				});
-
-				expect(warning.message).toContain(
-					'at the same names in "out/lib.ts", but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out/main", "out/lib.ts"]'
-				);
-			});
-
-			it("should write the source paths it suggests as JSON", async () => {
-				await write("src/Main.luau");
-				const [warning] = await unsynced(['my "lib"/a.aly'], {
-					compiledPath: abs("out"),
-					sourcePaths: [abs("src"), abs('my "lib"')],
-				});
-
-				expect(warning.message).toContain(
-					'at the same names in "out/my \\"lib\\"", but a compiler writes .luau files. Route the compiled files instead: set "sourcePaths" to ["out/src", "out/my \\"lib\\""]'
+					'this source path places nothing: Rojo reads none of its files (util.aly). If they are scripts, add a "syncRules" entry for their extension, and Rogen points the project file at the .luau files your compiler writes.'
 				);
 			});
 
@@ -546,6 +510,68 @@ describe("WriteValidator rules", () => {
 				await write("src/server/Save@server.luau");
 
 				expect(await dead()).toEqual([]);
+			});
+		});
+
+		describe("a script suffix no sync rule reads", () => {
+			const moduleRule = {
+				pattern: "*.aly",
+				use: "moduleScript",
+				suffix: ".aly",
+			};
+			const ignored = async (overrides: ResolvedConfigSpec) =>
+				(await route(overrides))
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "route.scriptSuffixIgnored"
+					);
+
+			it("should warn that the rule makes it a ModuleScript, and name the rule to add", async () => {
+				await write("src/Boot/Main.server.aly");
+
+				expect(
+					await ignored({
+						project: { tree: {}, syncRules: [moduleRule] },
+					})
+				).toMatchObject([
+					{
+						severity: DiagnosticSeverity.Warning,
+						resource: abs("src/Boot/Main.server.aly"),
+						message:
+							'the sync rule "*.aly" makes this file a ModuleScript, so it never runs. For a Script, add a rule for "*.server.aly" with "use": "serverScript" before that one; for a module, remove ".server".',
+					},
+				]);
+			});
+
+			it("should not warn when a rule makes it the script it spells", async () => {
+				await write("src/Boot/Main.server.aly");
+
+				expect(
+					await ignored({
+						project: {
+							tree: {},
+							syncRules: [
+								{
+									pattern: "*.server.aly",
+									use: "serverScript",
+									suffix: ".server.aly",
+								},
+								moduleRule,
+							],
+						},
+					})
+				).toEqual([]);
+			});
+
+			it("should not warn under a compiled path, where Rojo reads the name the compiler keeps", async () => {
+				await write("src/Boot/Main.server.aly");
+
+				expect(
+					await ignored({
+						compiledPath: abs("out"),
+						project: { tree: {}, syncRules: [moduleRule] },
+					})
+				).toEqual([]);
 			});
 		});
 

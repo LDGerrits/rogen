@@ -1,0 +1,21 @@
+{
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"$className": "ReplicatedStorage",
+			"Runtime": { "$path": "build/runtime.luau" }
+		}
+	},
+	"syncRules": [
+		{ "pattern": "*.aly", "use": "moduleScript", "suffix": ".aly" }
+	],
+	"sourcePaths": [
+		"src"
+	],
+	"compiledPath": "build",
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"*": "ReplicatedStorage/shared"
+	}
+}
