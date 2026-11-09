@@ -1,0 +1,15 @@
+{
+	"syncRules": [
+		{ "pattern": "*.server.aly", "use": "serverScript", "suffix": ".server.aly" },
+		{ "pattern": "*.client.aly", "use": "clientScript", "suffix": ".client.aly" },
+		{ "pattern": "*.aly", "use": "moduleScript", "suffix": ".aly" }
+	],
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"*": "ReplicatedStorage/shared"
+	}
+}

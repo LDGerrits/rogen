@@ -189,6 +189,46 @@ describe("domain/rojo/rojo", () => {
 				]);
 			});
 
+			it("should keep the class a rule's suffix spells on the stem, and off the instance name", () => {
+				const file = new RojoFile(
+					"Main.server.aly",
+					rules({
+						pattern: "*.server.aly",
+						use: "serverScript",
+						suffix: ".server.aly",
+					})
+				);
+
+				expect(file.stem).toBe("Main.server");
+				expect(file.nameCutByRule).toBe(false);
+				expect(file.scriptSuffix).toBe("server");
+				expect(file.instanceName).toBe("Main");
+				expect(file.metaFiles).toEqual([
+					"Main.meta.jsonc",
+					"Main.meta.json",
+				]);
+			});
+
+			it.each([
+				["a module", "moduleScript"],
+				["a script of the other class", "clientScript"],
+			] as const)(
+				"should cut the whole suffix when the rule makes %s",
+				(_, use) => {
+					const file = new RojoFile(
+						"Main.server.aly",
+						rules({
+							pattern: "*.server.aly",
+							use,
+							suffix: ".server.aly",
+						})
+					);
+
+					expect(file.stem).toBe("Main");
+					expect(file.nameCutByRule).toBe(true);
+				}
+			);
+
 			it("should give a script the class its rule gives it", () => {
 				const file = new RojoFile(
 					"Menu.hud",

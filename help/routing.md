@@ -15,7 +15,7 @@ A key routes a file in four ways:
 - Routing folder: `Server/` (the key's name) sends everything inside to the key's target and leaves no folder.
 - Suffix: `Combat@server.luau` routes one file, and `@server` comes off the name. `Matchmaking@server/` routes a folder and keeps its name; a bare `@server/` routes and leaves no folder. `@` never changes the script class, so `Combat@server.luau` is a ModuleScript in ServerScriptService.
 - Marker file: an empty `@server` routes its directory and everything below, and the directory keeps its name. A dot-file like `.server` routes nothing and warns.
-- Rojo's `.server` and `.client` at the end of a script name set its class (Script, LocalScript), and also route when a key of that name is declared. No other key routes through a dot, and nothing but a script does: `Types.shared.luau` is named `Types.shared` and `Config.server.json` is `Config.server`, and both warn; write `Types@shared.luau` and `Config@server.json`.
+- Rojo's `.server` and `.client` at the end of a script name set its class (Script, LocalScript), and also route when a key of that name is declared. So does a sync rule whose `suffix` spells the class its `use` gives, such as `.server.aly` with `serverScript`. No other key routes through a dot, and nothing but a script does: `Types.shared.luau` is named `Types.shared` and `Config.server.json` is `Config.server`, and both warn; write `Types@shared.luau` and `Config@server.json`.
 
 `-`, `_`, `+` and a capital letter (`CombatServer`) don't route. Such a file is unrouted, or falls to `*` in a config that declares it, and `rogen where` says `route * (fallback)`.
 
