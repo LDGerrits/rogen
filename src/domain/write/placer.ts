@@ -8,8 +8,7 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import { ResolvedConfig } from "../config/resolved-config.js";
-import { RojoFile } from "../rojo/rojo.js";
+import { ResolvedConfig, scannedFileOf } from "../config/resolved-config.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import { LeftOut } from "./write.js";
 import { WriteTree } from "./write-tree.js";
@@ -121,7 +120,7 @@ export class Placer {
 			this.config.ignored,
 			this.tree.mounts,
 			[this.config.projectFile],
-			(source) => RojoFile.at(source, this.config.syncRules)
+			(source) => scannedFileOf(this.config, source)
 		);
 		return this.config.sourcePaths.map((sourcePath) =>
 			scanner.scan(sourcePath)

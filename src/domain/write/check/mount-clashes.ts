@@ -68,7 +68,7 @@ export class MountClashes {
 				names.add(entry);
 				continue;
 			}
-			const file = RojoFile.at(full, config.syncRules.uncompiled);
+			const file = RojoFile.at(full, config.syncRules);
 			if (
 				file.kind !== undefined &&
 				!file.isInit &&

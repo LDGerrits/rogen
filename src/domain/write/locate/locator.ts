@@ -14,9 +14,8 @@ import {
 } from "../../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../../platform/fs/index-service.js";
 import { DeclaredKeys } from "../../config/declared-keys.js";
-import { ResolvedConfig } from "../../config/resolved-config.js";
+import { ResolvedConfig, scannedFileOf } from "../../config/resolved-config.js";
 import { InstanceReference } from "../../roblox/roblox.js";
-import { RojoFile } from "../../rojo/rojo.js";
 import { SyncTool } from "../../toolchain/toolchain.js";
 import {
 	ConfigLocations,
@@ -177,7 +176,7 @@ class ConfigLocator {
 			this.listing,
 			this.config.sourcePaths,
 			paths,
-			(source) => RojoFile.at(source, this.config.syncRules)
+			(source) => scannedFileOf(this.config, source)
 		);
 		const planned = await this.locatorOf(
 			index,
@@ -214,7 +213,7 @@ class ConfigLocator {
 		return new MountedInstances(
 			this.fileSystemService,
 			locator.mounts,
-			this.config.syncRules.uncompiled
+			this.config.syncRules
 		);
 	}
 
@@ -376,7 +375,7 @@ class ConfigLocator {
 			this.listing,
 			this.config.sourcePaths,
 			[file],
-			(source) => RojoFile.at(source, this.config.syncRules)
+			(source) => scannedFileOf(this.config, source)
 		);
 		const placement = await this.pipelineOf(index).place(this.config);
 		return placement.isOk()

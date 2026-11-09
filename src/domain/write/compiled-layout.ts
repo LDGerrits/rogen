@@ -1,7 +1,11 @@
 import path from "path";
 import { contains, containsPosix, samePath, toPosix } from "../../base/path.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import { ResolvedConfig, compiledPathOf } from "../config/resolved-config.js";
+import {
+	ResolvedConfig,
+	compiledPathOf,
+	scannedFileOf,
+} from "../config/resolved-config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import {
 	OptionalRojoPath,
@@ -50,7 +54,7 @@ export class CompiledLayout {
 	readonly commonRoot: string;
 	readonly compiledPath: string | undefined;
 	readonly projectDir: string;
-	private readonly syncRules: SyncRules;
+	readonly syncRules: SyncRules;
 
 	/** `tools` are what rewrites code on its way to `compiledPath`. */
 	constructor(
@@ -94,7 +98,7 @@ export class CompiledLayout {
 	emittedPath(filePath: string): string {
 		if (this.compiledPath === undefined) return filePath;
 		const compiled = compiledPathOf(this, filePath);
-		if (RojoFile.at(toPosix(filePath), this.syncRules).isCompiled)
+		if (scannedFileOf(this, toPosix(filePath)).isCompiled)
 			return `${compiled.slice(0, compiled.length - path.extname(compiled).length)}.luau`;
 		return this.tools.reduce(
 			(emitted, tool) => tool.emittedPath?.(emitted) ?? emitted,

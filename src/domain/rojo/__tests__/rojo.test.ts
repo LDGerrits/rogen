@@ -230,8 +230,8 @@ describe("domain/rojo/rojo", () => {
 			);
 
 			describe("under a compiled path", () => {
-				const compiling = (...own: SyncRule[]) =>
-					SyncRules.following(own, "/repo", true);
+				const compiled = (name: string, ...own: SyncRule[]) =>
+					new RojoFile(name, rules(...own), "", "compiled");
 				const moduleRule: SyncRule = {
 					pattern: "*.aly",
 					use: "moduleScript",
@@ -239,10 +239,7 @@ describe("domain/rojo/rojo", () => {
 				};
 
 				it("should read a script by its name, as Rojo reads what the compiler writes", () => {
-					const file = new RojoFile(
-						"Main.server.aly",
-						compiling(moduleRule)
-					);
+					const file = compiled("Main.server.aly", moduleRule);
 
 					expect(file.isCompiled).toBe(true);
 					expect(file.kind).toBe("script");
@@ -253,48 +250,49 @@ describe("domain/rojo/rojo", () => {
 				});
 
 				it("should read a module as Luau", () => {
-					const file = new RojoFile(
-						"Util.aly",
-						compiling(moduleRule)
-					);
+					const file = compiled("Util.aly", moduleRule);
 
 					expect(file.isLuauModule).toBe(true);
 					expect(file.instanceName).toBe("Util");
 				});
 
-				it("should read a file no compiler writes by its rule", () => {
+				it("should read a file by its rule unless told a compiler writes it", () => {
 					const file = new RojoFile(
 						"Main.server.aly",
-						compiling(moduleRule).uncompiled
+						rules(moduleRule)
 					);
 
 					expect(file.isCompiled).toBe(false);
 					expect(file.instanceName).toBe("Main.server");
 				});
 
+				it("should keep the reading under another name", () => {
+					const file = compiled(
+						"Main.server.aly",
+						moduleRule
+					).renamed("Boot.server.aly");
+
+					expect(file.isCompiled).toBe(true);
+					expect(file.instanceName).toBe("Boot");
+				});
+
 				it("should leave a rule for Luau files to Rojo", () => {
-					const file = new RojoFile(
-						"Hit.story.luau",
-						compiling({
-							pattern: "*.story.luau",
-							use: "moduleScript",
-							suffix: ".story.luau",
-						})
-					);
+					const file = compiled("Hit.story.luau", {
+						pattern: "*.story.luau",
+						use: "moduleScript",
+						suffix: ".story.luau",
+					});
 
 					expect(file.isCompiled).toBe(false);
 					expect(file.instanceName).toBe("Hit");
 				});
 
 				it("should leave a rule for data to Rojo", () => {
-					const file = new RojoFile(
-						"Greeting.note",
-						compiling({
-							pattern: "*.note",
-							use: "text",
-							suffix: ".note",
-						})
-					);
+					const file = compiled("Greeting.note", {
+						pattern: "*.note",
+						use: "text",
+						suffix: ".note",
+					});
 
 					expect(file.isCompiled).toBe(false);
 					expect(file.ownRule).toBeDefined();
