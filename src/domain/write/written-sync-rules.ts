@@ -26,24 +26,31 @@ export class WrittenSyncRules {
 				...this.original(rule),
 			];
 		});
-		return [...own, ...this.legacyClient(legacyClients)];
+		return [...this.legacyClient(entries, legacyClients), ...own];
 	}
 
-	/** One rule per client script that stays a LocalScript, since a rule applies to every file it matches. */
-	private legacyClient(sources: ReadonlySet<string>): SyncRule[] {
-		return [...sources].flatMap((source) => {
-			const landed = this.landed(source);
-			const suffix = /\.client\.[^.]+$/.exec(landed)?.[0];
-			return suffix === undefined
-				? []
-				: [
-						{
-							pattern: literalGlob(landed),
-							use: "legacyClientScript" as const,
-							suffix,
-						},
+	/** One rule per client script that stays a LocalScript, since a rule applies to every file it matches, in front of the project's own so it wins over a `clientScript` rule. */
+	private legacyClient(
+		entries: readonly ScannedFile[],
+		sources: ReadonlySet<string>
+	): SyncRule[] {
+		return entries
+			.filter(({ source }) => sources.has(source))
+			.flatMap(({ source, file }) => {
+				const landed = this.landed(source);
+				const pattern = literalGlob(landed);
+				const use = "legacyClientScript" as const;
+				if (file.ownRule !== undefined) {
+					const { suffix } = file.ownRule;
+					return [
+						suffix === undefined
+							? { pattern, use }
+							: { pattern, use, suffix },
 					];
-		});
+				}
+				const suffix = /\.client\.[^.]+$/.exec(landed)?.[0];
+				return suffix === undefined ? [] : [{ pattern, use, suffix }];
+			});
 	}
 
 	private landed(source: string): string {

@@ -159,7 +159,8 @@ export class Placement {
 			? this.nodes.filter(
 					(file) =>
 						isPlayerScriptContainer(file.instancePath) &&
-						file.entry.file.ownRule === undefined &&
+						(file.entry.file.ownRule === undefined ||
+							file.entry.file.ownRule.use === "clientScript") &&
 						this.readingOf(file).scriptSuffix === "client"
 				)
 			: [];
