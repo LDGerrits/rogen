@@ -16,7 +16,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Breaking:** `emitLegacyScripts: false` works as it does in Rojo. Rogen no longer keeps routed client scripts LocalScripts, and warns about the ones in `StarterPlayerScripts` or `StarterCharacterScripts`, where they run twice.
 - A failed or stopped `rogen init` puts the folder back as it was.
 - A second Ctrl+C stops every process Rogen started at once.
-- Long diagnostics are shorter.
 
 ### Fixed
 
