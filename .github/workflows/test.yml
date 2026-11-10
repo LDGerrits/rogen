@@ -133,6 +133,7 @@ jobs:
               run: npm run test:coverage
 
             # The badge is a shields endpoint file on a single-commit `badges` branch, replaced on each run.
+            # Its own docs/vercel.json stops Vercel from deploying the branch, which has no docs to build.
             - name: Publish Badge
               run: |
                   node -e '
@@ -143,6 +144,8 @@ jobs:
                   '
                   git switch --orphan badges
                   cp /tmp/coverage.json coverage.json
-                  git add coverage.json
+                  mkdir -p docs
+                  echo '{ "git": { "deploymentEnabled": false } }' > docs/vercel.json
+                  git add coverage.json docs/vercel.json
                   git -c user.name=github-actions -c user.email=github-actions@users.noreply.github.com commit --message "Update coverage badge"
                   git push --force origin badges
