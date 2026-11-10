@@ -86,17 +86,16 @@ describe("WrittenSyncRules", () => {
 	});
 
 	describe("legacy client scripts", () => {
-		it("should write a literal rule that keeps each client script a LocalScript, after the project's own", () => {
+		it("should write a literal rule that keeps each client script a LocalScript, before the project's own", () => {
 			expect(
 				writtenBy(
 					[module],
-					[],
+					["src/Hud.client.luau", "src/ui/Bar.client.lua"],
 					{},
 					[],
 					["src/Hud.client.luau", "src/ui/Bar.client.lua"]
 				)
 			).toEqual([
-				module,
 				{
 					pattern: "src/Hud.client.luau",
 					use: "legacyClientScript",
@@ -107,14 +106,34 @@ describe("WrittenSyncRules", () => {
 					use: "legacyClientScript",
 					suffix: ".client.lua",
 				},
+				module,
 			]);
 		});
+
+		it.each([
+			[".client.lang", "src/Hud.client.lang"],
+			[undefined, "src/Hud.lang"],
+		])(
+			"should keep the suffix %s of the project's clientScript rule that takes the script",
+			(suffix, source) => {
+				const rule: SyncRule = {
+					pattern: "src/*.lang",
+					use: "clientScript",
+					...(suffix !== undefined && { suffix }),
+				};
+
+				expect(writtenBy([rule], [source], {}, [], [source])).toEqual([
+					{ ...rule, pattern: source, use: "legacyClientScript" },
+					rule,
+				]);
+			}
+		);
 
 		it("should write the rule for the file a tool emits under the compiled path", () => {
 			expect(
 				writtenBy(
 					[],
-					[],
+					["src/Hud.client.luau"],
 					{ compiledPath: abs("out") },
 					[],
 					["src/Hud.client.luau"]
@@ -129,7 +148,13 @@ describe("WrittenSyncRules", () => {
 		});
 
 		it("should escape the characters of a file name that a glob reads", () => {
-			const [rule] = writtenBy([], [], {}, [], ["src/[A].client.luau"]);
+			const [rule] = writtenBy(
+				[],
+				["src/[A].client.luau"],
+				{},
+				[],
+				["src/[A].client.luau"]
+			);
 
 			expect(rule.pattern).toEqual("src/[[]A[]].client.luau");
 		});

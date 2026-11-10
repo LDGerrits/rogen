@@ -354,6 +354,33 @@ describe("TreeAssembler", () => {
 				expect(projectFile.syncRules).toEqual([rule]);
 			});
 
+			it("should keep a script the project's clientScript rule takes a LocalScript", async () => {
+				await write("src/Hud.lang");
+				const rule = {
+					pattern: "src/*.lang",
+					use: "clientScript",
+					suffix: ".lang",
+				};
+
+				const { projectFile } = await assemble({
+					routes: { "*": PLAYER },
+					project: {
+						tree: { $className: "DataModel" },
+						emitLegacyScripts: false,
+						syncRules: [rule],
+					},
+				});
+
+				expect(projectFile.syncRules).toEqual([
+					{
+						...rule,
+						pattern: "src/Hud.lang",
+						use: "legacyClientScript",
+					},
+					rule,
+				]);
+			});
+
 			it("should still write the tree", async () => {
 				const { projectFile } = await assembleWith(
 					["src/Hud.client.luau"],
