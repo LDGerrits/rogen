@@ -33,7 +33,7 @@ stdout:
       0        done (warnings included)
       1        the project has errors, or Rojo failed
       2        the command line is wrong
-      128+N    --watch stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP
+      128+N    stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP
   
   EXAMPLES:
       rogen build -o game.rbxl
@@ -96,7 +96,7 @@ stdout:
       "0": "done (warnings included)",
       "1": "the project has errors, or Rojo failed",
       "2": "the command line is wrong",
-      "128+N": "--watch stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP"
+      "128+N": "stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP"
     },
     "output": {
       "document": "{changed:bool,configs:[WriteEntry],rojo?:RojoEntry}",

@@ -33,7 +33,7 @@ stdout:
       0        done (warnings included)
       1        the project has errors, or Rojo failed
       2        the command line is wrong
-      128+N    --watch stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP
+      128+N    stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP
   
   EXAMPLES:
       rogen build -o game.rbxl
@@ -111,9 +111,10 @@ stdout:
       -V, --version             Print the version.
   
   EXIT CODES:
-      0    done (warnings included)
-      1    the folder can't be set up as asked, or you cancelled
-      2    the command line is wrong
+      0        done (warnings included)
+      1        the folder can't be set up as asked, or you cancelled
+      2        the command line is wrong
+      128+N    stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP
   
   EXAMPLES:
       rogen init
@@ -205,7 +206,7 @@ stdout:
       0        done (warnings included)
       1        the project has errors, or Rojo failed
       2        the command line is wrong
-      128+N    --watch stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP
+      128+N    stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP
   
   EXAMPLES:
       rogen build -o game.rbxl
