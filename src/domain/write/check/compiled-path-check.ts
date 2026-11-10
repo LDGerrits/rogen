@@ -180,7 +180,7 @@ export class CompiledPathCheck {
 
 		const them = missing.length === 1 ? "it" : "them";
 		const cause = conversion
-			? `The processor turned ${converted === missing.length ? them : `${converted} of them`} into ${conversion.suffix}, which Rojo syncs as a ModuleScript instead of applying. ${conversion.note}`
+			? `The processor turned ${converted === missing.length ? them : `${converted} of them`} into ${conversion.suffix}, a ModuleScript to Rojo. ${conversion.note}`
 			: "Have the compiler or processor copy .meta.json files into its output.";
 		return [
 			warningDiagnostic(
@@ -201,7 +201,6 @@ export class CompiledPathCheck {
 		if (replacements.length === 0) return [];
 		const converted: {
 			source: string;
-			expected: string;
 			found: string;
 			note: string;
 		}[] = [];
@@ -218,7 +217,6 @@ export class CompiledPathCheck {
 			if (replacement)
 				converted.push({
 					source: entry.source,
-					expected,
 					found: `${base}${replacement.suffix}`,
 					note: replacement.note,
 				});
@@ -230,8 +228,8 @@ export class CompiledPathCheck {
 		const many = converted.length > 1;
 		const listed = listLimited(
 			converted.map(
-				({ source, expected, found }) =>
-					`${layout.relativeToProject(source)}: expected "${shown(expected)}", found "${shown(found)}"`
+				({ source, found }) =>
+					`${layout.relativeToProject(source)} -> ${shown(found)}`
 			),
 			LISTED_PATHS
 		);
@@ -239,7 +237,7 @@ export class CompiledPathCheck {
 			warningDiagnostic(
 				"output.dataFileConverted",
 				{ resource: config.projectFile },
-				`${converted.length} data ${many ? "files were" : "file was"} turned into ${many ? "Lua modules" : "a Lua module"} under "${shown(compiledPath) || "."}" (${listed}). Rojo finds nothing at the path the build expects, or a ModuleScript where a folder collapses. ${note} Copy the data files unchanged into the compiled path after it runs, or require them as modules.`
+				`${converted.length} data ${many ? "files became Lua modules" : "file became a Lua module"} under "${shown(compiledPath) || "."}" (${listed}), so Rojo doesn't find ${many ? "them" : "it"}. ${note} Copy data files into the compiled path unchanged after it runs, or require them as modules.`
 			),
 		];
 	}

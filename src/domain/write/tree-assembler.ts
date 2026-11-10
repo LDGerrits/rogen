@@ -82,14 +82,7 @@ export class TreeAssembler {
 					placement.config,
 					placement.layout,
 					placement.tree.globs
-				).of(
-					placement.roots.flatMap(({ entries }) => entries),
-					new Set(
-						[...placement.playerClientScripts.rulable].filter(
-							(source) => meta.runContextOf(source) === undefined
-						)
-					)
-				)
+				).of(placement.roots.flatMap(({ entries }) => entries))
 			),
 			meta,
 			metaOutcomes: applied.value,

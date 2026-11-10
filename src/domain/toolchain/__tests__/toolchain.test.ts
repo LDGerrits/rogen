@@ -7,7 +7,7 @@ describe("Darklua", () => {
 		it("should say it turns .meta.json into .meta.lua", () => {
 			expect(Darklua.SYNC_TOOL.metaReplacement).toEqual({
 				suffix: ".meta.lua",
-				note: "Darklua converts every .meta.json this way.",
+				note: "Darklua converts every .meta.json.",
 			});
 		});
 	});

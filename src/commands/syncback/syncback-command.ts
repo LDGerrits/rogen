@@ -103,6 +103,8 @@ registerCommand(
 					exitCodes: {
 						"1": "the project has errors, or Rojo failed",
 						"2": "the command line is wrong, or a run with no terminal got neither --non-interactive nor --dry-run",
+						"128+N":
+							"stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP",
 					},
 					examples: [
 						"rogen syncback --input game.rbxl --dry-run",
@@ -238,7 +240,7 @@ registerCommand(
 					warningDiagnostic(
 						"syncback.unplaced",
 						{ resource: plan.project.file },
-						`${instance} is in the place and no folder of the project can take it, so it was left out: ${messageRelativeTo(reason, cwd)}.`
+						`${instance} was left out: ${messageRelativeTo(reason, cwd)}.`
 					)
 				);
 			for (const warning of compiledDiagnostics(plan))

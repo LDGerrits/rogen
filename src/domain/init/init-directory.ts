@@ -14,7 +14,6 @@ import { isProjectFileName } from "../rojo/rojo-project.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
 import { DirectoryLayout } from "./code-finder.js";
 import { StartingRoutes } from "./starting-routes.js";
-import { DOCS_URL } from "../../platform/product/product-service.js";
 
 export class InitDirectory {
 	private readonly names: PathSet;
@@ -67,7 +66,7 @@ export class InitDirectory {
 					? errorDiagnostic(
 							"init.configExists",
 							{ resource: path.join(this.path, fileName) },
-							`this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'; for a new place, copy a config and edit the copy. To add the agent rules or the agent hook to this project, run 'rogen init --agent-rules' or 'rogen init --agent-hook'; to set Rojo up, see ${DOCS_URL}/installation.`
+							"this config already exists, and init never changes one. Edit it and run 'rogen check'. For agent rules or the hook, run 'rogen init --agent-rules' or 'rogen init --agent-hook'."
 						)
 					: errorDiagnostic(
 							"init.fileExists",

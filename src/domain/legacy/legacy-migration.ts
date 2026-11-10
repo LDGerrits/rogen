@@ -522,7 +522,7 @@ class Migration {
 			warningDiagnostic(
 				"legacy.tags",
 				{ resource: this.resource(file) },
-				`v1's tags${tags.length > 0 ? ` (${joinedWithAnd(tags)})` : ""} aren't carried over: v2 has none, and init renames none of the files they pick${tagged.length > 0 ? `, ${joinedBriefly(tagged, LISTED_SHOWN)}` : ""}. Move each into a folder of its own, and list that folder after the other source paths in the configs that should have it: its files replace the ones at the same path.`
+				`v1's tags${tags.length > 0 ? ` (${joinedWithAnd(tags)})` : ""} aren't carried over, since v2 has none${tagged.length > 0 ? ` (${joinedBriefly(tagged, LISTED_SHOWN)})` : ""}. Move each tag's files into a folder, and list it last in "sourcePaths" of the configs that want it.`
 			)
 		);
 	}

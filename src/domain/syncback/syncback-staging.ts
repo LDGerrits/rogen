@@ -158,7 +158,7 @@ export class SyncbackStaging {
 			errorDiagnostic(
 				"syncback.busy",
 				{ resource: this.dir },
-				`another rogen syncback${owner === undefined ? "" : `, process ${owner},`} is running in this folder, so this one stopped before it touched anything. Wait for it to end, then run syncback again. If no syncback is running, remove ${SYNCBACK_FILES.staging}/${LOCK}.`
+				`another rogen syncback${owner === undefined ? "" : ` (process ${owner})`} is running in this folder, so this one stopped. Wait for it to end, or remove ${SYNCBACK_FILES.staging}/${LOCK} if none is running.`
 			),
 		]);
 	}

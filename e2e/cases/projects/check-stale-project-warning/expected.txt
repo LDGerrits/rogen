@@ -1,10 +1,10 @@
 $ rogen check
 exit 1
 stdout:
-  default.project.json - warning: this file differs from what 'rogen write' would write: its sources changed since it was written. Run 'rogen write' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
-  dist.project.json - warning: this file differs from what 'rogen write dist' would write: its sources changed since it was written. Run 'rogen write dist' to write it again; what it holds comes from dist.rogen.json, so change that to change it. (output.differs)
+  default.project.json - warning: this file is out of date: its sources changed. Run 'rogen write'; to change it, edit default.rogen.json. (output.differs)
+  dist.project.json - warning: this file is out of date: its sources changed. Run 'rogen write dist'; to change it, edit dist.rogen.json. (output.differs)
 
 $ rogen check dist.rogen.json
 exit 1
 stdout:
-  dist.project.json - warning: this file differs from what 'rogen write dist' would write: its sources changed since it was written. Run 'rogen write dist' to write it again; what it holds comes from dist.rogen.json, so change that to change it. (output.differs)
+  dist.project.json - warning: this file is out of date: its sources changed. Run 'rogen write dist'; to change it, edit dist.rogen.json. (output.differs)

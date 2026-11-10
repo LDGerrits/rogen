@@ -141,8 +141,8 @@ export class ServerFinder {
 			run: { command: RojoServer.PLUGIN_COMMAND, cwd: directory },
 		};
 		const steps = pin
-			? `Run '${pin.run.command}', then '${RojoServer.PLUGIN_COMMAND}' to install its Studio plugin.`
-			: `Pin ${RojoServer.REPOSITORY} in ${path.basename(manifests[0].file)}, install it, then run '${RojoServer.PLUGIN_COMMAND}' to install its Studio plugin.`;
+			? `Run '${pin.run.command}', then '${RojoServer.PLUGIN_COMMAND}'.`
+			: `Pin ${RojoServer.REPOSITORY} in ${path.basename(manifests[0].file)}, install it, then run '${RojoServer.PLUGIN_COMMAND}'.`;
 		const argon = manifests.some((manifest) =>
 			manifest.nameOf(ARGON_REPOSITORY)
 		)
@@ -151,7 +151,7 @@ export class ServerFinder {
 		return errorDiagnostic(
 			"rojo.notFound",
 			{ resource: manifests[0]?.file ?? resource },
-			`No Rojo found: none is pinned in a toolchain file here or above, or on the PATH. ${steps}${argon} ${SET_UP}`,
+			`No Rojo found in a toolchain file or on the PATH. ${steps}${argon}`,
 			pin ? [pin, plugin] : [plugin]
 		);
 	}

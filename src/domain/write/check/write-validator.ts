@@ -17,6 +17,7 @@ import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
 	InstanceMap,
 	ScriptRun,
+	isPlayerScriptContainer,
 	isServerOnlyService,
 	scriptFate,
 	instanceKey,
@@ -179,8 +180,8 @@ export class WriteValidator {
 		);
 		const advice =
 			this.placement.layout.compiledPath === undefined
-				? 'If they are scripts, add a "syncRules" entry for their extension. If a compiler turns them into Luau, set "compiledPath" too.'
-				: 'If they are scripts, add a "syncRules" entry for their extension, and Rogen points the project file at the .luau files your compiler writes.';
+				? 'Add a "syncRules" entry for their extension, and a "compiledPath" if a compiler turns them into Luau.'
+				: 'Add a "syncRules" entry for their extension.';
 		return `Rojo reads none of its files (${listed}). ${advice}`;
 	}
 
@@ -213,7 +214,7 @@ export class WriteValidator {
 				warningDiagnostic(
 					"scan.nestedProject",
 					{ resource: entry.source },
-					`Rojo reads a ${entry.file.name} as the folder it lies in, but a source path never becomes an instance, so this project becomes ${instanceKey(instancePath)} on its own. Move it into a folder of its own.`
+					`a source path never becomes an instance, so this project becomes ${instanceKey(instancePath)} on its own. Move it into a folder.`
 				)
 			);
 	}
@@ -473,12 +474,12 @@ export class WriteValidator {
 				emitted.scriptSuffix !== file.scriptSuffix ||
 				emitted.instanceName !== file.instanceName)
 		)
-			return `the sync rule "${emitted.ownRule.pattern}" also takes ${emitted.name}, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Narrow the pattern so it no longer takes that file.`;
+			return `the sync rule "${emitted.ownRule.pattern}" also takes the compiled ${emitted.name}, so Rojo reads it by the rule, not by its name. Narrow the pattern to the source extension.`;
 		const { ownRule: rule, scriptSuffix: given } = file.uncompiled;
 		if (!rule || !given || given === RojoFile.scriptSuffixOf(file.stem))
 			return undefined;
 		const renamed = `${RojoFile.scriptNameOf(file.stem)}.${given}${path.extname(file.name)}`;
-		return `the sync rule "${rule.pattern}" asks for a ${given} script, but the compiler writes ${emitted.name} and Rojo reads the class from that name. For a ${given} script, rename it ${renamed}; to keep this name, set the rule's "use" to "moduleScript".`;
+		return `the sync rule "${rule.pattern}" asks for a ${given} script, but Rojo reads the class from the compiled name ${emitted.name}. Rename it ${renamed}, or set the rule's "use" to "moduleScript".`;
 	}
 
 	private scriptSuffixBeforeAt(): Diagnostic[] {
@@ -511,7 +512,7 @@ export class WriteValidator {
 				warningDiagnostic(
 					"route.scriptSuffixBeforeAt",
 					{ resource: file.entry.source },
-					`Rojo reads ".${suffix}" only at the end of a name, so it makes this file a ModuleScript named "${file.instancePath.at(-1)}". For a Script, ${script}; for a module, remove ".${suffix}".`,
+					`Rojo reads ".${suffix}" only at the end of a name, so this is a ModuleScript named "${file.instancePath.at(-1)}". For a Script, ${script}; for a module, remove ".${suffix}".`,
 					suffixRoutesHere && !scanned.has(to)
 						? [{ rename: { from: file.entry.source, to } }]
 						: []
@@ -532,7 +533,7 @@ export class WriteValidator {
 					warningDiagnostic(
 						"tree.reservedName",
 						{ resource: file.entry.source },
-						`the project file gets the instance "${instanceKey(key)}", and Rojo reserves a leading $ for its own fields, so it warns of it on every build. Rename ${isTheNode ? "the file" : "the folder"} without the $.`,
+						`Rojo reserves a leading $, so it warns about "${instanceKey(key)}" on every build. Rename ${isTheNode ? "the file" : "the folder"} without the $.`,
 						isTheNode ? WriteValidator.withoutDollar(file) : []
 					),
 				];
@@ -653,16 +654,22 @@ export class WriteValidator {
 	}
 
 	private runContextTarget(): Diagnostic[] {
-		return this.placement.playerClientScripts.inits
+		if (!this.placement.tree.disablesLegacyScripts) return [];
+		return this.placement.nodes
 			.filter(
-				({ entry }) =>
-					this.assembly.meta.runContextOf(entry.source) === undefined
+				(file) =>
+					isPlayerScriptContainer(file.instancePath) &&
+					(file.entry.file.ownRule === undefined ||
+						file.entry.file.ownRule.use === "clientScript") &&
+					this.assembly.meta.runContextOf(file.entry.source) ===
+						undefined &&
+					this.scriptRunOf(file) === "Client"
 			)
-			.map(({ entry }) =>
+			.map(({ entry, instancePath }) =>
 				warningDiagnostic(
 					"tree.runContextTarget",
 					{ resource: entry.source },
-					"an init script that sync rules can't keep a LocalScript"
+					`lands in ${instancePath[1]}`
 				)
 			);
 	}

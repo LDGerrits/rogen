@@ -112,7 +112,7 @@ describe("ServerFinder", () => {
 		expect(diagnostic.code).toBe("rojo.notFound");
 		expect(diagnostic.resource).toEqual("/repo/game/default.rogen.json");
 		expect(diagnostic.message).toEqual(
-			"No Rojo found: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
+			"No Rojo found in a toolchain file or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install'."
 		);
 		expect(diagnostic.fixes).toEqual([
 			{ run: { command: "rokit add rojo-rbx/rojo", cwd: "/repo/game" } },
@@ -156,7 +156,7 @@ describe("ServerFinder", () => {
 		const diagnostic = await diagnosticOf();
 
 		expect(diagnostic.message).toEqual(
-			"No Rojo found: none is pinned in a toolchain file here or above, or on the PATH. Pin rojo-rbx/rojo in foreman.toml, install it, then run 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
+			"No Rojo found in a toolchain file or on the PATH. Pin rojo-rbx/rojo in foreman.toml, install it, then run 'rogen plugin install'."
 		);
 		expect(diagnostic.fixes).toEqual([
 			{ run: { command: "rogen plugin install", cwd: "/repo/game" } },

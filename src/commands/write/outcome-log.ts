@@ -55,9 +55,9 @@ const GROUPS: Readonly<Record<string, DiagnosticGroup>> = {
 	},
 	"tree.runContextTarget": {
 		headline: (count) =>
-			`emitLegacyScripts: false makes ${either(count, "an init script", "init scripts")} in StarterPlayerScripts or StarterCharacterScripts ${either(count, "a Script", "Scripts")} with RunContext Client, because Rojo reads init scripts without sync rules:`,
+			`emitLegacyScripts: false makes ${either(count, "a client script", "client scripts")} in StarterPlayerScripts or StarterCharacterScripts ${either(count, "a Script", "Scripts")} with RunContext Client, which ${either(count, "runs", "run")} twice there:`,
 		tail: () =>
-			"Route the folder to another service, or remove emitLegacyScripts from the config.",
+			"Route client scripts to ReplicatedStorage, or remove emitLegacyScripts from the config.",
 	},
 	"tree.mountClash": {
 		headline: (count) =>

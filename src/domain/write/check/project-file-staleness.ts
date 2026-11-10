@@ -44,7 +44,7 @@ export class ProjectFileStaleness {
 		return warningDiagnostic(
 			"output.differs",
 			{ resource: projectFile },
-			`this file differs from what '${command}' would write: its sources changed since it was written. Run '${command}' to write it again; what it holds comes from ${path.basename(config.file)}, so change that to change it.`,
+			`this file is out of date: its sources changed. Run '${command}'; to change it, edit ${path.basename(config.file)}.`,
 			[{ run: { command, cwd: path.dirname(config.file) } }]
 		);
 	}

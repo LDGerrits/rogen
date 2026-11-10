@@ -107,7 +107,7 @@ Edit the copy so it describes the place or output it is for, or delete it. A sec
 
 ### `config.bothExtensions` [#config-bothextensions]
 
-Error. A config has a twin with the other extension beside it, such as `default.rogen.json` and `default.rogen.jsonc`. Both write the same project file, so Rogen can't tell which one to write. A command that starts with both refuses to run. A watch reports the error when the second file appears, keeps writing the last valid version, and loads the config again when one of them is deleted.
+Error. A config has a twin with the other extension, such as `default.rogen.json` and `default.rogen.jsonc`. Both would write the same project file. A watch keeps the last valid version until one is deleted.
 
 ```
 error: default.rogen.json and default.rogen.jsonc both write default.project.json. Keep one of them. (config.bothExtensions)
@@ -310,7 +310,7 @@ An `@` that restates the governing route is fine, as in `Shared/Net/Remote@share
 Warning. A script has `.server`, `.client` or `.plugin` before its `@` suffix, as in `Start.server@client.luau`. Rojo reads a script suffix only at the end of a name, so it makes the file a ModuleScript, and the code in it never runs on its own. Rogen warns for any extension when the name without the `@` part would be a Script. For an extension of your own, that takes a sync rule that reads the name.
 
 ```
-warning: Rojo reads ".server" only at the end of a name, so it makes this file a ModuleScript named "Start". For a Script, name it Start.server.luau in a folder that routes it; for a module, remove ".server". (route.scriptSuffixBeforeAt)
+warning: Rojo reads ".server" only at the end of a name, so this is a ModuleScript named "Start". For a Script, name it Start.server.luau in a folder that routes it; for a module, remove ".server". (route.scriptSuffixBeforeAt)
 ```
 
 For a module, remove the script suffix, as in `Start@client.luau`. For a Script, end the name with the suffix and route the file with a [routing folder](/docs/v2/core-concepts/routing/folders) or a [marker file](/docs/v2/core-concepts/routing/names#marker-files), because an `@` suffix must end the name ([`route.strayAt`](#route-strayat)).
@@ -319,31 +319,27 @@ When the suffix routes the file where the `@` does, as `.server` does in `Start.
 
 ### `route.scriptClassMismatch` [#route-scriptclassmismatch]
 
-Warning. A script's name and its sync rule disagree on its class, so the script isn't the kind you asked for. There are three cases.
+Warning. A script's name and its sync rule disagree on its class.
 
-A sync rule of the project takes a script whose name ends in `.server`, `.client` or `.plugin` and makes it a ModuleScript, so the code in it never runs on its own. That happens when the rule for modules comes first, or when no rule makes that kind of script. The name still routes the file.
+A rule makes a script named `.server`, `.client` or `.plugin` a ModuleScript, so it never runs. The name still routes it.
 
 ```
 warning: the sync rule "*.lang" makes this file a ModuleScript, so it never runs. For a server script, add { "pattern": "*.server.lang", "use": "serverScript", "suffix": ".server.lang" } before that rule; for a module, remove ".server". (route.scriptClassMismatch)
 ```
 
-Add the rule the message names, in front of the rule for modules. Its `suffix` keeps `.server` out of the instance name. For a module, remove the suffix from the name.
-
-Under a `compiledPath`, a rule with a run class such as `serverScript` takes a compiled file whose name doesn't spell that class. Rojo reads the `.luau` file the compiler writes by its name, so the name decides the class and the rule's `use` doesn't.
+Under a `compiledPath`, Rojo reads the class from the name of the `.luau` file the compiler writes, not from the rule's `use`.
 
 ```
-warning: the sync rule "*.lang" asks for a server script, but the compiler writes Boot.luau and Rojo reads the class from that name. For a server script, rename it Boot.server.lang; to keep this name, set the rule's "use" to "moduleScript". (route.scriptClassMismatch)
+warning: the sync rule "*.lang" asks for a server script, but Rojo reads the class from the compiled name Boot.luau. Rename it Boot.server.lang, or set the rule's "use" to "moduleScript". (route.scriptClassMismatch)
 ```
 
-Rename the file as the message says, and keep the rule's pattern matching the new name. To keep the name, set the rule's `use` to `moduleScript`, which only says the extension is a script.
-
-Also under a `compiledPath`, a rule's pattern can be broad enough to take the `.luau` file too, as `src/**/*` and `*.{lang,luau}` are. Rojo then reads that file by the rule, not by its name, and Rogen warns when that gives a different class or name.
+A pattern such as `src/**/*` also takes that `.luau` file, so Rojo reads it by the rule instead.
 
 ```
-warning: the sync rule "src/**/*" also takes Main.server.luau, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Narrow the pattern so it no longer takes that file. (route.scriptClassMismatch)
+warning: the sync rule "src/**/*" also takes the compiled Main.server.luau, so Rojo reads it by the rule, not by its name. Narrow the pattern to the source extension. (route.scriptClassMismatch)
 ```
 
-Name the source extension in the pattern, as `*.lang` does.
+Do what the message says.
 
 ### `route.caseMismatch` [#route-casemismatch]
 
@@ -378,7 +374,7 @@ These diagnostics come from the instance tree that Rogen writes: clashes between
 Warning. The project file gets an instance whose name starts with `$`, which Rojo reserves for its own fields. Rojo keeps the instance, but it warns about it on every build and every serve.
 
 ```
-warning: the project file gets the instance "ReplicatedStorage/shared/$Config", and Rojo reserves a leading $ for its own fields, so it warns of it on every build. Rename the file without the $. (tree.reservedName)
+warning: Rojo reserves a leading $, so it warns about "ReplicatedStorage/shared/$Config" on every build. Rename the file without the $. (tree.reservedName)
 ```
 
 Rename the file or folder without the `$`.
@@ -464,24 +460,23 @@ Move the script under a route whose target runs it. Or remove `.server` or `.cli
 
 ### `tree.runContextTarget` [#tree-runcontexttarget]
 
-Warning. The config sets `emitLegacyScripts: false`, and a route puts an `init.client` script in `StarterPlayerScripts` or `StarterCharacterScripts`. Rogen keeps the other `.client` scripts there as LocalScripts, with a sync rule for each. Rojo reads init scripts without sync rules, so this one becomes a Script with RunContext Client.
+Warning. With `emitLegacyScripts: false`, a route puts a client script in `StarterPlayerScripts` or `StarterCharacterScripts`. Rojo makes it a Script with RunContext Client, which runs both there and in the copy each player gets.
 
 ```
-warning: emitLegacyScripts: false makes an init script in StarterPlayerScripts or StarterCharacterScripts a Script with RunContext Client, because Rojo reads init scripts without sync rules: (tree.runContextTarget)
-  src/Panel/init.client.luau (an init script that sync rules can't keep a LocalScript)
-Route the folder to another service, or remove emitLegacyScripts from the config.
+warning: emitLegacyScripts: false makes client scripts in StarterPlayerScripts or StarterCharacterScripts Scripts with RunContext Client, which run twice there: (tree.runContextTarget)
+  src/Hud.client.luau (lands in StarterPlayerScripts)
+  src/Panel/init.client.luau (lands in StarterPlayerScripts)
+Route client scripts to ReplicatedStorage, or remove emitLegacyScripts from the config.
 ```
 
-Route the folder to a service where a Script with RunContext Client runs, such as `ReplicatedStorage`. Or remove `emitLegacyScripts` from `default.rogen.json`.
-
-Rogen skips a script whose meta sets `RunContext`. That script gets no sync rule, because its meta decides how it runs.
+Route client scripts to `ReplicatedStorage`, or remove `emitLegacyScripts`. A script whose meta sets `RunContext`, or that your own `legacyClientScript` or `runContextClientScript` rule reads, is skipped.
 
 ### `tree.mountsSourcePath` [#tree-mountssourcepath]
 
 Error. A `$path` in the `tree` mounts a source path, or a folder that holds one. Rojo would read the whole folder, and Rogen could place nothing in it.
 
 ```
-error: "ReplicatedStorage/All" mounts the source path src, so Rojo would read all of it and Rogen would place nothing there. Mount a folder inside the source path, or remove the source path from "sourcePaths". (tree.mountsSourcePath)
+error: "ReplicatedStorage/All" mounts the source path src, so Rogen would place nothing there. Mount a folder inside it, or remove the source path. (tree.mountsSourcePath)
 ```
 
 Mount a folder inside the source path instead, such as a vendored package. Or remove the source path from `sourcePaths`.
@@ -501,7 +496,7 @@ Give the root `"$className": "DataModel"`. If the project is a model, remove the
 Error. A value in the `$properties` or `$attributes` of a node in the config's `tree` is one that Rojo can't read without the property's type. Examples are a UDim2 written as nested lists, a CFrame written as an object with no type, a type Rojo doesn't know such as `{ "vector3": [1, 2, 3] }`, and `null`. Rojo refuses the project, and `rogen fmt-project` refuses to format it, as `rojo fmt-project` does. Without this check, `rojo build` fails later with "Failed to deserialize JSON", and the message doesn't name the value.
 
 ```
-error: "tree.StarterGui.Hud.Bar.$properties.Size": Rojo can't read this value, so it refuses the project. Write a boolean, a number, a string, a list of numbers (2, 3, 4 or 12), a list of strings, or a { "Type": value } pair. (tree.unreadableValue)
+error: "tree.StarterGui.Hud.Bar.$properties.Size": Rojo can't read this value. Write a boolean, number, string, list of numbers (2, 3, 4 or 12), list of strings, or { "Type": value }. (tree.unreadableValue)
 ```
 
 Write the value with its type, such as `{ "UDim2": [[0, 0], [0.5, -5]] }`, or remove the property.
@@ -568,7 +563,7 @@ Give the field the type that the message names. It is the type that Rojo's meta 
 Error. A value in a meta file's `properties` or `attributes` is one that Rojo can't read, such as `null`, a list of numbers of the wrong length, a `{ "Type": value }` of a type Rojo doesn't know, or an object of several keys that is neither attributes of types Rojo knows nor material colors of whole numbers from 0 to 255. Rojo refuses the meta. Without this check, the build fails later, with a message that doesn't name the file.
 
 ```
-error: "properties.WorldPivotData": Rojo can't read this value, so it refuses this meta. Write a boolean, a number, a string, a list of numbers (2, 3, 4 or 12), a list of strings, or a { "Type": value } pair. (meta.unreadableValue)
+error: "properties.WorldPivotData": Rojo can't read this value, so it refuses this meta. Write a boolean, number, string, list of numbers (2, 3, 4 or 12), list of strings, or { "Type": value }. (meta.unreadableValue)
 ```
 
 Write a value that Rojo can read, or remove the property.
@@ -691,7 +686,7 @@ warning: this source path does not exist or is not a folder, so it contributes n
 ```
 
 ```
-error: this source path does not exist or is not a folder, and no other source path of the config does, so there is nothing to write. default.project.json was left as it was. Check the spelling in "sourcePaths". (scan.missingSourcePath)
+error: no source path of the config exists, so default.project.json was left as it was. Check the spelling in "sourcePaths". (scan.missingSourcePath)
 ```
 
 Create the folder, fix the spelling, or remove the path from `sourcePaths`. Each path is relative to the `.rogen.json` that lists it.
@@ -716,23 +711,13 @@ On a plain Rojo project, which has no config, only `rogen check` reports it. Roj
 
 ### `scan.noSyncedFiles` [#scan-nosyncedfiles]
 
-Warning. A source path holds files, but Rojo reads none of them, so Rogen places nothing from it. Rojo reads a file by its extension, such as `.luau` or `.json`, or by a sync rule. A language that compiles to Luau, with an extension of its own, gets this warning.
+Warning. A source path holds files, but Rojo reads none of them, such as the files of a language that compiles to Luau.
 
 ```
-warning: this source path places nothing: Rojo reads none of its files (client/main.client.lang, server/main.server.lang and shared/util.lang). If they are scripts, add a "syncRules" entry for their extension. If a compiler turns them into Luau, set "compiledPath" too. (scan.noSyncedFiles)
+warning: this source path places nothing: Rojo reads none of its files (client/main.client.lang, server/main.server.lang and shared/util.lang). Add a "syncRules" entry for their extension, and a "compiledPath" if a compiler turns them into Luau. (scan.noSyncedFiles)
 ```
 
-The message names the first three files. In `--json`, `related` lists every one. When `rogen where` has no file to list, it prints this warning instead of saying the source paths hold no files. An error that stops the write hides it.
-
-If the files are scripts, add [`syncRules`](https://rojo.space/docs/v7/project-format/#sync-rules) that read their extension, so Rogen routes them. If a compiler turns them into Luau, also set `compiledPath` to the folder it writes. Otherwise, remove the folder from `sourcePaths`.
-
-With a `compiledPath`, one sync rule for the extension is enough. Rogen routes each file by its source name and points the project file at the `.luau` file the compiler writes, keeping the rest of the name, so `Main.server.lang` lands at `Main.server.luau`.
-
-```
-warning: this source path places nothing: Rojo reads none of its files (util.lang). If they are scripts, add a "syncRules" entry for their extension, and Rogen points the project file at the .luau files your compiler writes. (scan.noSyncedFiles)
-```
-
-Files that `globIgnorePaths` matches don't count, and neither does a source path that the tree mounts a folder or file of.
+Add [`syncRules`](https://rojo.space/docs/v7/project-format/#sync-rules) for their extension, and `compiledPath` if a compiler turns them into Luau. Rogen then points the project file at the `.luau` files it writes. Otherwise, remove the folder from `sourcePaths`.
 
 ### `scan.extensionCase` [#scan-extensioncase]
 
@@ -759,7 +744,7 @@ Change the `suffix` or the `pattern`, so that the suffix ends every file that th
 Warning. A `default.project.json` or `default.project.jsonc` is directly in a source path, not in a folder below it. Rojo reads such a file as the folder it is in. A source path never becomes an instance, so Rogen places the project on its own. The project is named by its `name`, or `default` if it has none.
 
 ```
-warning: Rojo reads a default.project.json as the folder it lies in, but a source path never becomes an instance, so this project becomes ReplicatedStorage/Shared/Arena on its own. Move it into a folder of its own. (scan.nestedProject)
+warning: a source path never becomes an instance, so this project becomes ReplicatedStorage/Shared/Arena on its own. Move it into a folder. (scan.nestedProject)
 ```
 
 Move the file into a folder of its own, or out of the source paths.
@@ -858,7 +843,7 @@ Check that the folder is writable, and that no other program locks the file. Rog
 Warning. `rogen check` found a project file on disk that differs from what `rogen write` would write now, so the file is stale. Without paths, `check` compares the project file of every config in the folder. With paths, it compares the project files of the configs that those paths belong to. `check` writes nothing.
 
 ```
-warning: this file differs from what 'rogen write' would write: its sources changed since it was written. Run 'rogen write' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
+warning: this file is out of date: its sources changed. Run 'rogen write'; to change it, edit default.rogen.json. (output.differs)
 ```
 
 Run `rogen write`. For a project other than `default`, run `rogen write <project>`. In `--json`, the diagnostic carries the command as a `run` fix. If git tracks the project file, commit the result. If git ignores it, a stale copy does no harm.
@@ -889,7 +874,7 @@ Run the compiler or processor first. If the message found the files somewhere el
 Warning. Some `.meta.json` files have no copy in the compiled path, so Rojo doesn't apply them. Either the compiler didn't copy them, or a processor converted them. Darklua turns them into `.meta.lua`, which Rojo reads as a ModuleScript.
 
 ```
-warning: 1 meta file has no copy under "dist" (src/Inventory/Save.meta.json), so Rojo doesn't apply it. The processor turned it into .meta.lua, which Rojo syncs as a ModuleScript instead of applying. Darklua converts every .meta.json this way. (output.metaNotSynced)
+warning: 1 meta file has no copy under "dist" (src/Inventory/Save.meta.json), so Rojo doesn't apply it. The processor turned it into .meta.lua, a ModuleScript to Rojo. Darklua converts every .meta.json. (output.metaNotSynced)
 ```
 
 After the compiler or processor runs, copy the `.meta.json` files unchanged into the compiled path.
@@ -899,7 +884,7 @@ After the compiler or processor runs, copy the `.meta.json` files unchanged into
 Warning. A processor turned data files, such as `.json` or `.txt` files, into Lua modules in the compiled path. Rojo doesn't find them at the path that the write expects.
 
 ```
-warning: 1 data file was turned into a Lua module under "dist" (src/Inventory/Rates.json: expected "dist/Inventory/Rates.json", found "dist/Inventory/Rates.lua"). Rojo finds nothing at the path the write expects, or a ModuleScript where a folder collapses. Darklua converts .txt, .json, .toml, .yaml and .yml files this way, and has no option to copy them. Copy the data files unchanged into the compiled path after it runs, or require them as modules. (output.dataFileConverted)
+warning: 1 data file became a Lua module under "dist" (src/Inventory/Rates.json -> dist/Inventory/Rates.lua), so Rojo doesn't find it. Darklua converts data files and can't copy them. Copy data files into the compiled path unchanged after it runs, or require them as modules. (output.dataFileConverted)
 ```
 
 After the processor runs, copy the data files unchanged into the compiled path. Or require them as modules.
@@ -941,7 +926,7 @@ These diagnostics come from `rogen init`, which starts projects and lifts a hand
 Error. The folder already has a `.rogen.json` or `.rogen.jsonc`, either `default` or named. `init` never overwrites or changes a config, so it stops and writes nothing. With `--agent-rules` or `--agent-hook`, `init` adds only the agent files instead. A flag that shapes a config, such as `--language`, is then an error.
 
 ```
-error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'; for a new place, copy a config and edit the copy. To add the agent rules or the agent hook to this project, run 'rogen init --agent-rules' or 'rogen init --agent-hook'; to set Rojo up, see https://rogen-roblox.vercel.app/docs/v2/installation. (init.configExists)
+error: this config already exists, and init never changes one. Edit it and run 'rogen check'. For agent rules or the hook, run 'rogen init --agent-rules' or 'rogen init --agent-hook'. (init.configExists)
 ```
 
 To change the config, edit it and run `rogen check`. For a new place, copy a config and edit the copy. To add the agent rules or the agent hook later, run `rogen init --agent-rules` or `rogen init --agent-hook`. See [Working with Agents](/docs/v2/agents#add-the-rules). To set up Rojo, see [Installation](/docs/v2/installation).
@@ -994,7 +979,7 @@ Add the settings to the node in the `tree` of `default.rogen.json`.
 Warning. `init` found code that no source path holds and that the tree doesn't mount, so Rogen places none of it. Package folders and a compiler's output don't count. With no `default.project.json`, the source path is `src`, or the only folder that holds code if no route is named after it. When `init` lifts a `default.project.json`, the source path is the closest folder that holds every folder of code that the file mounts. When a route is named after that folder, such as `src/server`, the source path is its parent, `src`, if the routes put the code where the file did. If they don't, the tree keeps the mounts.
 
 ```
-warning: game and lib hold code that no source path holds and the tree doesn't mount, so Rogen places none of it. Move the code into src, or list its folders under "sourcePaths" in default.rogen.json. (init.codeOutsideSourcePaths)
+warning: game and lib hold code outside every source path and mount, so Rogen places none of it. Move it into src, or add its folder to "sourcePaths". (init.codeOutsideSourcePaths)
 ```
 
 Move the code into a source path, or add its folders to `sourcePaths` in the config. If the code isn't part of the game, such as a script that a tool runs, you can leave it where it is.
@@ -1050,8 +1035,8 @@ These diagnostics come from the Rojo that Rogen runs: a Rojo that can't be found
 Error. A command that runs Rojo, such as `rogen serve` or `rogen build -o`, found no Rojo. No `rokit.toml`, `aftman.toml` or `foreman.toml` in the folder or above pins it, and it isn't on the PATH. Rogen starts only Rojo, so a pinned Argon doesn't count. If Argon is pinned, the message says so.
 
 ```
-error: No Rojo found: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation. (rojo.notFound)
-error: No Rojo found: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. Argon is pinned, but rogen serve only starts Rojo: run 'rogen write --watch' to keep the project files current, and 'argon serve' to serve them. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation. (rojo.notFound)
+error: No Rojo found in a toolchain file or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install'. (rojo.notFound)
+error: No Rojo found in a toolchain file or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install'. Argon is pinned, but rogen serve only starts Rojo: run 'rogen write --watch' to keep the project files current, and 'argon serve' to serve them. (rojo.notFound)
 ```
 
 Pin Rojo with your toolchain manager, then install Rojo's Studio plugin with `rogen plugin install`:
@@ -1177,13 +1162,13 @@ These diagnostics come from `rogen syncback`, which writes the changes made in a
 
 ### `syncback.busy` [#syncback-busy]
 
-Error. Another `rogen syncback` is running in the same project folder, such as one in a second terminal or one that a coding agent started. Syncback works on a copy of your files in `.rogen-syncback`, and only one run at a time can own it. The second run stops before it touches anything, and exits 1. The message names the process id of the run that owns the folder.
+Error. Another `rogen syncback` is running in the same project folder, so this one stopped before it touched anything.
 
 ```
-error: another rogen syncback, process 4242, is running in this folder, so this one stopped before it touched anything. Wait for it to end, then run syncback again. If no syncback is running, remove .rogen-syncback/lock. (syncback.busy)
+error: another rogen syncback (process 4242) is running in this folder, so this one stopped. Wait for it to end, or remove .rogen-syncback/lock if none is running. (syncback.busy)
 ```
 
-Wait for the other run to end, then run `rogen syncback` again. A run that was killed leaves its lock behind, and the next run takes it over, since the process that held it no longer runs. If the lock names a process that runs but is not a syncback, such as one that got the same id after a restart, remove `.rogen-syncback/lock` yourself.
+Wait for the other run to end. A killed run's lock is taken over on the next run. If none is running, remove `.rogen-syncback/lock`.
 
 ### `syncback.compiledPath` [#syncback-compiledpath]
 
@@ -1233,7 +1218,7 @@ Syncback also uses this warning for changes that it can't write:
 - a change that Rojo itself can't sync back, such as a `.json` or `.toml` module, which Rojo skips, or a changed `.yaml` or `.yml` module, which makes Rojo's syncback fail
 
 ```
-warning: ServerScriptService/Inventory/Mail is in the place and no folder of the project can take it, so it was left out: files beside it are in more than one place, as many in each: src/Inventory/Server, lib/Inventory/Server. (syncback.unplaced)
+warning: ServerScriptService/Inventory/Mail was left out: files beside it are in more than one place, as many in each: src/Inventory/Server, lib/Inventory/Server. (syncback.unplaced)
 ```
 
 Create the file where you want it, by hand, and run `rogen syncback` again. The other changes from the same run were written.
@@ -1297,7 +1282,7 @@ Copy the config under another name, such as `release.rogen.json`, and change wha
 Warning. The v1 config has tags, which v2 doesn't have. `init` renames none of the files that tags picked, and the message lists them.
 
 ```
-warning: v1's tags (dev) aren't carried over: v2 has none, and init renames none of the files they pick, src/Debug/Cheats_dev.luau. Move each into a folder of its own, and list that folder after the other source paths in the configs that should have it: its files replace the ones at the same path. (legacy.tags)
+warning: v1's tags (dev) aren't carried over, since v2 has none (src/Debug/Cheats_dev.luau). Move each tag's files into a folder, and list it last in "sourcePaths" of the configs that want it. (legacy.tags)
 ```
 
 Move each file into a folder of its own, such as `dev/Teleport/Teleport.luau` for `src/Teleport/TeleportDev.luau`. List that folder after `src` in the `sourcePaths` of each config that should have the file. A later source path's file replaces the one at the same path.

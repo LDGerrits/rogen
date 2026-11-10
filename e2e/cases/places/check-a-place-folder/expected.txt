@@ -1,14 +1,14 @@
 $ rogen check places/lobby
 exit 1
 stdout:
-  places/lobby/default.project.json - warning: this file differs from what 'rogen write' would write: its sources changed since it was written. Run 'rogen write' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
+  places/lobby/default.project.json - warning: this file is out of date: its sources changed. Run 'rogen write'; to change it, edit default.rogen.json. (output.differs)
 
 $ rogen check places/lobby/default.rogen.json
 exit 1
 stdout:
-  places/lobby/default.project.json - warning: this file differs from what 'rogen write' would write: its sources changed since it was written. Run 'rogen write' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
+  places/lobby/default.project.json - warning: this file is out of date: its sources changed. Run 'rogen write'; to change it, edit default.rogen.json. (output.differs)
 
 $ rogen check places/lobby/src/Main.luau
 exit 1
 stdout:
-  places/lobby/default.project.json - warning: this file differs from what 'rogen write' would write: its sources changed since it was written. Run 'rogen write' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
+  places/lobby/default.project.json - warning: this file is out of date: its sources changed. Run 'rogen write'; to change it, edit default.rogen.json. (output.differs)

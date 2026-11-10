@@ -84,6 +84,8 @@ registerCommand(
 					exitCodes: {
 						"1": "the project has errors, or Rojo failed",
 						"2": "the command line is wrong, or Rojo refused it",
+						"128+N":
+							"stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP",
 					},
 					examples: [
 						"rogen upload --asset_id 123456",

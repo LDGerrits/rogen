@@ -130,6 +130,8 @@ registerCommand(
 					effects: ["writesFiles"],
 					exitCodes: {
 						"1": "the folder can't be set up as asked, or you cancelled",
+						"128+N":
+							"stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP",
 					},
 					examples: [
 						"rogen init",

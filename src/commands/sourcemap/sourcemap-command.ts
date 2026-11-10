@@ -108,7 +108,7 @@ registerCommand(
 						"1": "the project has errors, or Rojo failed",
 						"2": "the command line is wrong, or Rojo refused it",
 						"128+N":
-							"--watch stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP",
+							"stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP",
 					},
 					examples: [
 						"rogen sourcemap",

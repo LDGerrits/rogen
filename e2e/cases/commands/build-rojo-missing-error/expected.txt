@@ -2,7 +2,7 @@ $ rogen build -o game.rbxlx
 exit 1
 stdout: (not shown)
 stderr:
-  default.rogen.json - error: No Rojo found: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation. (rojo.notFound)
+  default.rogen.json - error: No Rojo found in a toolchain file or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install'. (rojo.notFound)
 
 $ rogen build -o game.rbxlx --json
 exit 1
@@ -28,7 +28,7 @@ stdout:
           "file": "<dir>/default.rogen.json",
           "severity": "error",
           "code": "rojo.notFound",
-          "message": "No Rojo found: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation.",
+          "message": "No Rojo found in a toolchain file or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install'.",
           "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#rojo-notfound",
           "fixes": [
             {

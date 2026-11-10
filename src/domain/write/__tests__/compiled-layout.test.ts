@@ -91,7 +91,7 @@ describe("CompiledLayout", () => {
 		).toEqual([
 			{
 				suffix: ".meta.lua",
-				note: "Darklua converts every .meta.json this way.",
+				note: "Darklua converts every .meta.json.",
 			},
 		]);
 	});

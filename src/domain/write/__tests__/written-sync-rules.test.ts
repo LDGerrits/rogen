@@ -17,8 +17,7 @@ const writtenBy = (
 	rules: readonly object[],
 	sources: readonly string[] = [],
 	overrides: ResolvedConfigSpec = {},
-	mounts: readonly string[] = [],
-	legacyClients: readonly string[] = []
+	mounts: readonly string[] = []
 ) => {
 	const config = configOf({
 		project: { tree: {}, syncRules: rules },
@@ -39,7 +38,7 @@ const writtenBy = (
 			layout,
 			mounts.map((mount) => absPosix(mount))
 		)
-	).of(entries, new Set(legacyClients.map((source) => absPosix(source))));
+	).of(entries);
 };
 
 describe("WrittenSyncRules", () => {
@@ -83,81 +82,6 @@ describe("WrittenSyncRules", () => {
 
 	it("should write nothing for a project without rules", () => {
 		expect(writtenBy([])).toEqual([]);
-	});
-
-	describe("legacy client scripts", () => {
-		it("should write a literal rule that keeps each client script a LocalScript, before the project's own", () => {
-			expect(
-				writtenBy(
-					[module],
-					["src/Hud.client.luau", "src/ui/Bar.client.lua"],
-					{},
-					[],
-					["src/Hud.client.luau", "src/ui/Bar.client.lua"]
-				)
-			).toEqual([
-				{
-					pattern: "src/Hud.client.luau",
-					use: "legacyClientScript",
-					suffix: ".client.luau",
-				},
-				{
-					pattern: "src/ui/Bar.client.lua",
-					use: "legacyClientScript",
-					suffix: ".client.lua",
-				},
-				module,
-			]);
-		});
-
-		it.each([
-			[".client.lang", "src/Hud.client.lang"],
-			[undefined, "src/Hud.lang"],
-		])(
-			"should keep the suffix %s of the project's clientScript rule that takes the script",
-			(suffix, source) => {
-				const rule: SyncRule = {
-					pattern: "src/*.lang",
-					use: "clientScript",
-					...(suffix !== undefined && { suffix }),
-				};
-
-				expect(writtenBy([rule], [source], {}, [], [source])).toEqual([
-					{ ...rule, pattern: source, use: "legacyClientScript" },
-					rule,
-				]);
-			}
-		);
-
-		it("should write the rule for the file a tool emits under the compiled path", () => {
-			expect(
-				writtenBy(
-					[],
-					["src/Hud.client.luau"],
-					{ compiledPath: abs("out") },
-					[],
-					["src/Hud.client.luau"]
-				)
-			).toEqual([
-				{
-					pattern: "out/Hud.client.luau",
-					use: "legacyClientScript",
-					suffix: ".client.luau",
-				},
-			]);
-		});
-
-		it("should escape the characters of a file name that a glob reads", () => {
-			const [rule] = writtenBy(
-				[],
-				["src/[A].client.luau"],
-				{},
-				[],
-				["src/[A].client.luau"]
-			);
-
-			expect(rule.pattern).toEqual("src/[[]A[]].client.luau");
-		});
 	});
 
 	it("should move a pattern that begins with a folder under the compiled path", () => {

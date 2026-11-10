@@ -187,7 +187,7 @@ export class ConfigValidator {
 			this.problems.error(
 				"tree.unreadableValue",
 				this.locate(...unreadable),
-				`"${unreadable.join(".")}": Rojo can't read this value, so it refuses the project. ${PropertyValues.READABLE_HINT}`
+				`"${unreadable.join(".")}": Rojo can't read this value. ${PropertyValues.READABLE_HINT}`
 			);
 	}
 

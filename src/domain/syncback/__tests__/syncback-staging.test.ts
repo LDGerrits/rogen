@@ -44,7 +44,7 @@ describe("SyncbackStaging", () => {
 				code: "syncback.busy",
 				resource: abs(),
 				message:
-					"another rogen syncback, process 77, is running in this folder, so this one stopped before it touched anything. Wait for it to end, then run syncback again. If no syncback is running, remove .rogen-syncback/lock.",
+					"another rogen syncback (process 77) is running in this folder, so this one stopped. Wait for it to end, or remove .rogen-syncback/lock if none is running.",
 			},
 		]);
 		expect(work).not.toHaveBeenCalled();
