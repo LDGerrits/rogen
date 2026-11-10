@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.0-beta.4] - 2026-11-10
+
 ### Added
 
 - With a `compiledPath`, sync rules can read scripts of any language that compiles to Luau.
@@ -249,7 +251,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Routing files to Roblox services by folder name (`server`, `client`, `shared` or a service name) or by file-name suffix, and generating the Rojo project file from them.
 - Support for Luau, roblox-ts and Darklua.
 
-[unreleased]: https://github.com/LDGerrits/rogen/compare/v2.0.0-beta.3...HEAD
+[unreleased]: https://github.com/LDGerrits/rogen/compare/v2.0.0-beta.4...HEAD
+[2.0.0-beta.4]: https://github.com/LDGerrits/rogen/compare/v2.0.0-beta.3...v2.0.0-beta.4
 [2.0.0-beta.3]: https://github.com/LDGerrits/rogen/compare/v2.0.0-beta.2...v2.0.0-beta.3
 [2.0.0-beta.2]: https://github.com/LDGerrits/rogen/compare/v2.0.0-beta.1...v2.0.0-beta.2
 [2.0.0-beta.1]: https://github.com/LDGerrits/rogen/compare/v1.4.4...v2.0.0-beta.1
