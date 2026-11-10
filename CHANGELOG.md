@@ -13,13 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- With `emitLegacyScripts: false`, Rogen no longer writes a sync rule to keep each `.client` script a route puts in `StarterPlayerScripts` or `StarterCharacterScripts` a LocalScript. Rojo makes those scripts Scripts with RunContext Client, as it does for a script a `$path` mounts there, and `tree.runContextTarget` now warns about every one of them, since they run twice there. Route client scripts to `ReplicatedStorage`.
 - A second Ctrl+C while Rogen stops Rojo ends at once and stops every process Rogen started.
 - Esc while you customise `rogen init` goes back to the summary instead of leaving init.
 - A failed `rogen init`, or one stopped with Ctrl+C while it writes, puts the folder back as it was, so running it again finishes the project. Ctrl+C also stops a starter command it runs, such as create-roblox-ts, and exits with 130.
 
 ### Fixed
 
-- With `emitLegacyScripts: false`, a script your own `clientScript` sync rule reads in `StarterPlayerScripts` or `StarterCharacterScripts` stays a LocalScript, as a `.client` script there does. It became a Script with RunContext Client, which runs twice there.
 - With a `compiledPath`, a script rule on an extension other than `.lua` and `.luau` names a compiled language: a file it reads, such as `Main.server.lang`, is mounted at the `.luau` file its compiler writes, and its class comes from that name. It was mounted at `out/Main.server.lang`, with an empty placeholder Rojo synced instead of the compiled code. Only the rule's `pattern` counts for those files, and a tool that copies them unchanged into the `compiledPath` is not supported.
 - `output.metaNotSynced` no longer warns about the meta file of a file the tree mounts, which Rojo reads where it lies.
 - `compiled.orphan` no longer warns about a file in the compiled path that the tree mounts, such as a compiler's runtime library.

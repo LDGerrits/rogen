@@ -17,6 +17,7 @@ import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
 	InstanceMap,
 	ScriptRun,
+	isPlayerScriptContainer,
 	isServerOnlyService,
 	scriptFate,
 	instanceKey,
@@ -653,16 +654,22 @@ export class WriteValidator {
 	}
 
 	private runContextTarget(): Diagnostic[] {
-		return this.placement.playerClientScripts.inits
+		if (!this.placement.tree.disablesLegacyScripts) return [];
+		return this.placement.nodes
 			.filter(
-				({ entry }) =>
-					this.assembly.meta.runContextOf(entry.source) === undefined
+				(file) =>
+					isPlayerScriptContainer(file.instancePath) &&
+					(file.entry.file.ownRule === undefined ||
+						file.entry.file.ownRule.use === "clientScript") &&
+					this.assembly.meta.runContextOf(file.entry.source) ===
+						undefined &&
+					this.scriptRunOf(file) === "Client"
 			)
-			.map(({ entry }) =>
+			.map(({ entry, instancePath }) =>
 				warningDiagnostic(
 					"tree.runContextTarget",
 					{ resource: entry.source },
-					"an init script that sync rules can't keep a LocalScript"
+					`lands in ${instancePath[1]}`
 				)
 			);
 	}

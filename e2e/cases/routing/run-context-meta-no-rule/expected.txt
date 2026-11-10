@@ -1,6 +1,10 @@
 $ rogen write
 exit 0
 stdout: (not shown)
+stderr:
+  default.rogen.json - warning: emitLegacyScripts: false makes a client script in StarterPlayerScripts or StarterCharacterScripts a Script with RunContext Client, which runs twice there: (tree.runContextTarget)
+    src/F/Client/Plain.client.luau (lands in StarterPlayerScripts)
+  Route client scripts to ReplicatedStorage, or remove emitLegacyScripts from the config.
 
 written:
   default.project.json
@@ -11,4 +15,4 @@ project: DataModel
     StarterPlayerScripts: StarterPlayerScripts
       F: Folder
         Ctx: Script  <- src/F/Client/Ctx.client.luau, src/F/Client/Ctx.meta.json
-        Plain: LocalScript  <- src/F/Client/Plain.client.luau
+        Plain: Script  <- src/F/Client/Plain.client.luau
