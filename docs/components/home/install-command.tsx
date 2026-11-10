@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 const installs = {
 	rokit: {
 		label: "Rokit",
-		command: "rokit add ldgerrits/rogen@2.0.0-beta.3",
+		command: "rokit add ldgerrits/rogen@2.0.0-beta.4",
 	},
 	npm: { label: "npm", command: "npm i @ldgerrits/rogen@next" },
 };
