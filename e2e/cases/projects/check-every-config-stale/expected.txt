@@ -1,7 +1,7 @@
 $ rogen check
 exit 1
 stdout:
-  lobby.project.json - warning: this file differs from what 'rogen write lobby' would write: its sources changed since it was written. Run 'rogen write lobby' to write it again; what it holds comes from lobby.rogen.json, so change that to change it. (output.differs)
+  lobby.project.json - warning: this file is out of date: its sources changed. Run 'rogen write lobby'; to change it, edit lobby.rogen.json. (output.differs)
 
 $ rogen write lobby
 exit 0

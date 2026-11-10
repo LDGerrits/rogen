@@ -870,7 +870,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		return warningDiagnostic(
 			"init.codeOutsideSourcePaths",
 			{ resource: configFile },
-			`${joinedBriefly(found, LISTED_SHOWN)} ${found.length === 1 ? "holds" : "hold"} code that no source path holds and the tree doesn't mount, so Rogen places none of it. Move the code into ${sourcePath}, or list its folders under "sourcePaths" in ${configFile}.`
+			`${joinedBriefly(found, LISTED_SHOWN)} ${found.length === 1 ? "holds" : "hold"} code outside every source path and mount, so Rogen places none of it. Move it into ${sourcePath}, or add its folder to "sourcePaths".`
 		);
 	}
 

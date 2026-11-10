@@ -238,7 +238,7 @@ registerCommand(
 					warningDiagnostic(
 						"syncback.unplaced",
 						{ resource: plan.project.file },
-						`${instance} is in the place and no folder of the project can take it, so it was left out: ${messageRelativeTo(reason, cwd)}.`
+						`${instance} was left out: ${messageRelativeTo(reason, cwd)}.`
 					)
 				);
 			for (const warning of compiledDiagnostics(plan))

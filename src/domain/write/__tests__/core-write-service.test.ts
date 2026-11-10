@@ -613,7 +613,7 @@ describe("CoreWriteService", () => {
 						code: "output.differs",
 						resource: abs("dist.project.json"),
 						message: expect.stringContaining(
-							"Run 'rogen write dist' to write it again; what it holds comes from dist.rogen.json"
+							"Run 'rogen write dist'; to change it, edit dist.rogen.json"
 						),
 						fixes: [
 							{
@@ -652,7 +652,7 @@ describe("CoreWriteService", () => {
 				expect(checked.warnings).toMatchObject([
 					{
 						message: expect.stringContaining(
-							"its sources changed since it was written. Run 'rogen write'"
+							"its sources changed. Run 'rogen write'"
 						),
 						fixes: [
 							{

@@ -123,7 +123,7 @@ describe("WriteValidator rules", () => {
 						severity: DiagnosticSeverity.Warning,
 						resource: at("src", "default.project.json"),
 						message:
-							"Rojo reads a default.project.json as the folder it lies in, but a source path never becomes an instance, so this project becomes ReplicatedStorage/shared/default on its own. Move it into a folder of its own.",
+							"a source path never becomes an instance, so this project becomes ReplicatedStorage/shared/default on its own. Move it into a folder.",
 					},
 				]);
 			});
@@ -167,7 +167,7 @@ describe("WriteValidator rules", () => {
 						severity: DiagnosticSeverity.Warning,
 						resource: abs("src"),
 						message:
-							'this source path places nothing: Rojo reads none of its files (Notes.md, client/main.client.lang, server/main.server.lang and 1 more). If they are scripts, add a "syncRules" entry for their extension. If a compiler turns them into Luau, set "compiledPath" too.',
+							'this source path places nothing: Rojo reads none of its files (Notes.md, client/main.client.lang, server/main.server.lang and 1 more). Add a "syncRules" entry for their extension, and a "compiledPath" if a compiler turns them into Luau.',
 					},
 				]);
 			});
@@ -195,7 +195,7 @@ describe("WriteValidator rules", () => {
 				});
 
 				expect(warning.message).toBe(
-					'this source path places nothing: Rojo reads none of its files (util.lang). If they are scripts, add a "syncRules" entry for their extension, and Rogen points the project file at the .luau files your compiler writes.'
+					'this source path places nothing: Rojo reads none of its files (util.lang). Add a "syncRules" entry for their extension.'
 				);
 			});
 
@@ -638,7 +638,7 @@ describe("WriteValidator rules", () => {
 							severity: DiagnosticSeverity.Warning,
 							resource: abs("src/Boot.lang"),
 							message:
-								'the sync rule "*.lang" asks for a server script, but the compiler writes Boot.luau and Rojo reads the class from that name. For a server script, rename it Boot.server.lang; to keep this name, set the rule\'s "use" to "moduleScript".',
+								'the sync rule "*.lang" asks for a server script, but Rojo reads the class from the compiled name Boot.luau. Rename it Boot.server.lang, or set the rule\'s "use" to "moduleScript".',
 						},
 					]);
 				});
@@ -661,7 +661,7 @@ describe("WriteValidator rules", () => {
 					).toMatchObject([
 						{
 							message:
-								'the sync rule "*.lang" asks for a server script, but the compiler writes Hud.client.luau and Rojo reads the class from that name. For a server script, rename it Hud.server.lang; to keep this name, set the rule\'s "use" to "moduleScript".',
+								'the sync rule "*.lang" asks for a server script, but Rojo reads the class from the compiled name Hud.client.luau. Rename it Hud.server.lang, or set the rule\'s "use" to "moduleScript".',
 						},
 					]);
 				});
@@ -679,7 +679,7 @@ describe("WriteValidator rules", () => {
 						expect(warning).toMatchObject({
 							severity: DiagnosticSeverity.Warning,
 							resource: abs("src/Main.server.lang"),
-							message: `the sync rule "${pattern}" also takes Main.server.luau, the file the compiler writes, so Rojo reads it by the rule rather than by its name. Narrow the pattern so it no longer takes that file.`,
+							message: `the sync rule "${pattern}" also takes the compiled Main.server.luau, so Rojo reads it by the rule, not by its name. Narrow the pattern to the source extension.`,
 						});
 					}
 				);
@@ -697,7 +697,7 @@ describe("WriteValidator rules", () => {
 					).toMatchObject([
 						{
 							message: expect.stringContaining(
-								"also takes Boot.luau"
+								"also takes the compiled Boot.luau"
 							),
 						},
 					]);
@@ -729,7 +729,7 @@ describe("WriteValidator rules", () => {
 					).toMatchObject([
 						{
 							message: expect.stringContaining(
-								'the sync rule "*.luau" also takes Util.luau'
+								'the sync rule "*.luau" also takes the compiled Util.luau'
 							),
 						},
 					]);

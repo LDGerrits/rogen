@@ -201,11 +201,11 @@ export class Darklua {
 		id: "darklua",
 		metaReplacement: {
 			suffix: ".meta.lua",
-			note: "Darklua converts every .meta.json this way.",
+			note: "Darklua converts every .meta.json.",
 		},
 		dataReplacement: {
 			suffix: ".lua",
-			note: "Darklua converts .txt, .json, .toml, .yaml and .yml files this way, and has no option to copy them.",
+			note: "Darklua converts data files and can't copy them.",
 		},
 	};
 

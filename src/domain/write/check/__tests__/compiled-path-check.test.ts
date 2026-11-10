@@ -348,9 +348,11 @@ describe("CompiledPathCheck", () => {
 					resource: abs("default.project.json"),
 				});
 				expect(warning.message).toContain(
-					`1 data file was turned into a Lua module under "dist" (src/Note.txt: expected "dist/Note.txt", found "dist/Note.lua")`
+					`1 data file became a Lua module under "dist" (src/Note.txt -> dist/Note.lua)`
 				);
-				expect(warning.message).toContain("Darklua converts .txt");
+				expect(warning.message).toContain(
+					"Darklua converts data files"
+				);
 			});
 
 			it("should check every data extension", async () => {
@@ -367,7 +369,7 @@ describe("CompiledPathCheck", () => {
 
 				const [warning] = await check();
 
-				expect(warning.message).toContain("3 data files were");
+				expect(warning.message).toContain("3 data files became");
 			});
 
 			it("should find the .lua of a .model.json by its stem", async () => {
@@ -381,7 +383,7 @@ describe("CompiledPathCheck", () => {
 				const [warning] = await check();
 
 				expect(warning.message).toContain(
-					'src/D.model.json: expected "dist/D.model.json", found "dist/D.model.lua"'
+					"src/D.model.json -> dist/D.model.lua"
 				);
 			});
 
@@ -398,7 +400,7 @@ describe("CompiledPathCheck", () => {
 
 				const [warning] = await check();
 
-				expect(warning.message).toContain("5 data files were");
+				expect(warning.message).toContain("5 data files became");
 				expect(warning.message).toContain("…)");
 			});
 
@@ -460,7 +462,7 @@ describe("CompiledPathCheck", () => {
 					},
 				]);
 
-				expect(warning.message).toContain('found "dist/Note.txt.luau"');
+				expect(warning.message).toContain("-> dist/Note.txt.luau");
 				expect(warning.message).toContain("Other converts them.");
 			});
 		});
