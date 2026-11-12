@@ -1,5 +1,5 @@
 import path from "path";
-import { Disposable } from "../../base/disposable.js";
+import { Disposable, toDisposable } from "../../base/disposable.js";
 import { isInside, samePath, shownFrom, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -39,6 +39,8 @@ export class CoreConfigService implements ConfigService {
 	private readonly discovery: ConfigDiscovery;
 	private readonly loader: ConfigLoader;
 	private readonly formatter: ConfigFormatter;
+	private readonly fileChecks = new Set<ConfigFileCheck>();
+	private readonly folderChecks = new Set<ConfigFolderCheck>();
 
 	constructor(
 		@FileSystemService
@@ -50,11 +52,11 @@ export class CoreConfigService implements ConfigService {
 	) {
 		this.discovery = instantiationService.createInstance(
 			ConfigDiscovery,
-			undefined
+			this.folderChecks
 		);
 		this.loader = instantiationService.createInstance(
 			ConfigLoader,
-			undefined
+			this.fileChecks
 		);
 		this.formatter = instantiationService.createInstance(ConfigFormatter);
 	}
@@ -75,11 +77,11 @@ export class CoreConfigService implements ConfigService {
 		);
 		const discovery = scope.createInstance(
 			ConfigDiscovery,
-			this.discovery.folderChecks
+			this.folderChecks
 		);
 		return this.open(
 			await discovery.discover(refs),
-			scope.createInstance(ConfigLoader, this.loader.fileChecks)
+			scope.createInstance(ConfigLoader, this.fileChecks)
 		);
 	}
 
@@ -332,7 +334,8 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	registerFolderCheck(check: ConfigFolderCheck): Disposable {
-		return this.discovery.registerFolderCheck(check);
+		this.folderChecks.add(check);
+		return toDisposable(() => this.folderChecks.delete(check));
 	}
 
 	staleConfigsIn(folder: string): Promise<readonly Diagnostic[]> {
@@ -340,7 +343,8 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	registerFileCheck(check: ConfigFileCheck): Disposable {
-		return this.loader.registerFileCheck(check);
+		this.fileChecks.add(check);
+		return toDisposable(() => this.fileChecks.delete(check));
 	}
 }
 

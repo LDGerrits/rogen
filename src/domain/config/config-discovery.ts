@@ -1,5 +1,4 @@
 import path from "path";
-import { Disposable, toDisposable } from "../../base/disposable.js";
 import { samePath, selfAndAncestors } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { IoError, ProjectError, UsageError } from "../../base/errors.js";
@@ -53,28 +52,14 @@ const isBareName = (ref: string): boolean =>
 
 /** Finds which config file a command reads: the one it names, else the default of the working directory. */
 export class ConfigDiscovery {
-	private readonly checks: Set<ConfigFolderCheck>;
-
 	constructor(
-		/** The checks to start with, such as those of another scope. */
-		folderChecks: Iterable<ConfigFolderCheck> = [],
+		/** The checks the config service holds, which every scope's discovery runs. */
+		private readonly checks: ReadonlySet<ConfigFolderCheck> = new Set(),
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
 		@EnvironmentService
 		private readonly environmentService: EnvironmentService
-	) {
-		this.checks = new Set(folderChecks);
-	}
-
-	/** The checks registered so far. */
-	get folderChecks(): ReadonlySet<ConfigFolderCheck> {
-		return this.checks;
-	}
-
-	registerFolderCheck(check: ConfigFolderCheck): Disposable {
-		this.checks.add(check);
-		return toDisposable(() => this.checks.delete(check));
-	}
+	) {}
 
 	async staleConfigsIn(folder: string): Promise<readonly Diagnostic[]> {
 		const found: Diagnostic[] = [];

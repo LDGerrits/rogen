@@ -1,4 +1,3 @@
-import { Disposable, toDisposable } from "../../base/disposable.js";
 import path from "path";
 import { Result, err, tryWithAsync } from "../../base/result.js";
 import { ConfigFileReader } from "../../platform/config/config-file.js";
@@ -45,30 +44,17 @@ const bothExtensions = (file: string, twin: string): Diagnostic =>
 export class ConfigLoader {
 	private readonly reader: ConfigFileReader;
 
-	private readonly checks: Set<ConfigFileCheck>;
-
 	constructor(
-		/** The checks to start with, such as those of another scope. */
-		fileChecks: Iterable<ConfigFileCheck> = [],
+		/** The checks the config service holds, which every scope's loader runs. */
+		private readonly checks: ReadonlySet<ConfigFileCheck> = new Set(),
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
 		@InstantiationService instantiationService: InstantiationService
 	) {
-		this.checks = new Set(fileChecks);
 		this.reader = instantiationService.createInstance(
 			ConfigFileReader,
 			configStructure
 		);
-	}
-
-	/** The checks registered so far. */
-	get fileChecks(): ReadonlySet<ConfigFileCheck> {
-		return this.checks;
-	}
-
-	registerFileCheck(check: ConfigFileCheck): Disposable {
-		this.checks.add(check);
-		return toDisposable(() => this.checks.delete(check));
 	}
 
 	/** Never throws for a problem the user can cause. A config that copies another of its folder, or has a twin of the other extension, fails, and is reloaded when that one changes. */

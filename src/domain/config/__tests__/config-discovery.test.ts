@@ -88,15 +88,21 @@ describe("ConfigDiscovery", () => {
 
 		it("should name the stale config a registered check finds", async () => {
 			await fs.writeFile("/repo/.rogen.json", "{}");
-			discovery.registerFolderCheck(async (folder) => [
-				errorDiagnostic(
-					"stale",
-					{ resource: path.join(folder, ".rogen.json") },
-					"is old."
-				),
-			]);
+			const checked = discoveryOf(
+				fs,
+				new MockEnvironmentService("/repo"),
+				new Set([
+					async (folder: string) => [
+						errorDiagnostic(
+							"stale",
+							{ resource: path.join(folder, ".rogen.json") },
+							"is old."
+						),
+					],
+				])
+			);
 
-			const result = await discovery.discover([]);
+			const result = await checked.discover([]);
 
 			expect(errorOf(result)).toBeInstanceOf(ProjectError);
 			expect(errorOf(result).message).toEqual(

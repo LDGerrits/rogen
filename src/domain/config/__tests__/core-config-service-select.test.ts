@@ -2,7 +2,10 @@ import path from "path";
 import { jest } from "@jest/globals";
 import { ResultError } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
-import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
+import {
+	DiagnosticSeverity,
+	errorDiagnostic,
+} from "../../../platform/diagnostics/diagnostic.js";
 import { validFile } from "../config-service.js";
 import {
 	useConfigFixture,
@@ -270,6 +273,25 @@ describe("CoreConfigService", () => {
 		});
 	});
 
+	describe("registerFolderCheck", () => {
+		it("should run in a selection that reads through another file system", async () => {
+			await fs.writeFile("/repo/old.json", "{}");
+			service.registerFolderCheck(async (folder) => [
+				errorDiagnostic(
+					"test.stale",
+					{ resource: path.join(folder, "old.json") },
+					"is old."
+				),
+			]);
+
+			const selected = await service.select([], fs);
+
+			expect((selected as ResultError<Error>).error.message).toContain(
+				"is old."
+			);
+		});
+	});
+
 	describe("registerFileCheck", () => {
 		const hint = (file: string) => ({
 			severity: DiagnosticSeverity.Error,
@@ -315,6 +337,21 @@ describe("CoreConfigService", () => {
 			const selected = (
 				await service.select(["/repo/a/default.rogen.json"], fs)
 			).unwrap();
+
+			expect(selected.entries[0]).toMatchObject({
+				status: "broken",
+				errors: [{ code: "test.hint" }],
+			});
+		});
+
+		it("should reach a selection through another file system made before the check was registered", async () => {
+			await write("/repo/a/default.rogen.json", { source: ["src"] });
+			const selected = (
+				await service.select(["/repo/a/default.rogen.json"], fs)
+			).unwrap();
+			service.registerFileCheck(({ file }) => [hint(file)]);
+
+			await selected.reload([onDisk("/repo/a/default.rogen.json")]);
 
 			expect(selected.entries[0]).toMatchObject({
 				status: "broken",
