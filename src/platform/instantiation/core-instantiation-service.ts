@@ -259,7 +259,7 @@ export class CoreInstantiationService
 				);
 				if (!entry) {
 					this.throwIfStrict(
-						`[createInstance] ${id} depends on ${dependency.id} which is NOT registered.`
+						`[createInstance] ${item.id} depends on ${dependency.id} which is NOT registered.`
 					);
 				}
 				if (entry instanceof SyncDescriptor) {
@@ -273,7 +273,7 @@ export class CoreInstantiationService
 			}
 		}
 		for (;;) {
-			const leaves = graph.roots();
+			const leaves = graph.leaves();
 			// with no leaves left, a graph that is not empty is a cycle
 			if (leaves.length === 0) {
 				if (!graph.isEmpty()) throw new CyclicDependencyError(graph);

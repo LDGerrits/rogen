@@ -7,17 +7,17 @@ const graphOf = (...edges: [string, string][]) => {
 };
 
 describe("Graph", () => {
-	it("should list the nodes with nothing outgoing as its roots", () => {
+	it("should list the nodes with nothing outgoing as its leaves", () => {
 		const graph = graphOf(["a", "b"], ["b", "c"]);
 
-		expect(graph.roots().map(({ data }) => data)).toEqual(["c"]);
+		expect(graph.leaves().map(({ data }) => data)).toEqual(["c"]);
 	});
 
-	it("should make a node a root once what it points at is removed", () => {
+	it("should make a node a leaf once what it points at is removed", () => {
 		const graph = graphOf(["a", "b"]);
 		graph.removeNode("b");
 
-		expect(graph.roots().map(({ data }) => data)).toEqual(["a"]);
+		expect(graph.leaves().map(({ data }) => data)).toEqual(["a"]);
 	});
 
 	it("should find no cycle in a chain", () => {

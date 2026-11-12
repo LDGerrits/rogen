@@ -11,7 +11,8 @@ export class Graph<T> {
 
 	constructor(private readonly hashFn: (element: T) => string) {}
 
-	roots(): Node<T>[] {
+	/** The nodes with nothing outgoing: those that depend on nothing, when an edge points at a dependency. */
+	leaves(): Node<T>[] {
 		return [...this.nodes.values()].filter(
 			(node) => node.outgoing.size === 0
 		);

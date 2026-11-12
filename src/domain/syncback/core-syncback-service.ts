@@ -7,8 +7,6 @@ import {
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
-import { ProcessService } from "../../platform/process/process-service.js";
 import { WriteService } from "../write/write-service.js";
 import { didWrite } from "../write/write.js";
 import { ConfigSelection, ConfigService } from "../config/config-service.js";
@@ -75,8 +73,6 @@ export class CoreSyncbackService implements SyncbackService {
 		@WriteService writeService: WriteService,
 		@RojoCommandService rojoService: RojoCommandService,
 		@EnvironmentService environmentService: EnvironmentService,
-		@ProcessService processService: ProcessService,
-		@LifecycleService lifecycleService: LifecycleService,
 		@InstantiationService instantiationService: InstantiationService
 	) {
 		this.services = {
@@ -86,8 +82,6 @@ export class CoreSyncbackService implements SyncbackService {
 			writeService,
 			rojoService,
 			environmentService,
-			processService,
-			lifecycleService,
 		};
 	}
 

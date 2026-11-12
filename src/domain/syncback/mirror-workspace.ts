@@ -10,8 +10,6 @@ import {
 	isDirectoryType,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
-import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
-import { ProcessService } from "../../platform/process/process-service.js";
 import { WriteService } from "../write/write-service.js";
 import { isSyncbackFileName } from "../config/config.js";
 import { ConfigService, validFile } from "../config/config-service.js";
@@ -58,8 +56,6 @@ export interface WorkspaceServices {
 	readonly writeService: WriteService;
 	readonly rojoService: RojoCommandService;
 	readonly environmentService: EnvironmentService;
-	readonly processService: ProcessService;
-	readonly lifecycleService: LifecycleService;
 }
 
 /** A file copied into the mirror, and the path of the project it is. */
