@@ -3,10 +3,7 @@ import { Disposable } from "../../base/disposable.js";
 import { isInside, samePath, shownFrom, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import {
-	FileReader,
-	FileSystemService,
-} from "../../platform/fs/file-system-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 import { ConfigFormatter } from "./config-formatter.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -34,6 +31,7 @@ import { CoreConfigSelection, PickedFolder } from "./core-config-selection.js";
 import { DefaultFolder } from "./default-folder.js";
 import { ManagedConfig } from "./managed-config.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
+import { ServiceCollection } from "../../platform/instantiation/service-collection.js";
 
 export class CoreConfigService implements ConfigService {
 	declare readonly _serviceBrand: undefined;
@@ -47,14 +45,17 @@ export class CoreConfigService implements ConfigService {
 		private readonly fileSystemService: FileSystemService,
 		@EnvironmentService
 		private readonly environmentService: EnvironmentService,
-		@InstantiationService instantiationService: InstantiationService
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
 	) {
 		this.discovery = instantiationService.createInstance(
 			ConfigDiscovery,
-			fileSystemService,
 			undefined
 		);
-		this.loader = new ConfigLoader(fileSystemService);
+		this.loader = instantiationService.createInstance(
+			ConfigLoader,
+			undefined
+		);
 		this.formatter = instantiationService.createInstance(ConfigFormatter);
 	}
 
@@ -64,12 +65,21 @@ export class CoreConfigService implements ConfigService {
 
 	async select(
 		refs: readonly string[],
-		reader?: FileReader
+		reader?: FileSystemService
 	): Promise<Result<ReloadableSelection, Error>> {
-		const discovery = reader ? this.discovery.over(reader) : this.discovery;
+		if (!reader) {
+			return this.open(await this.discovery.discover(refs), this.loader);
+		}
+		const scope = this.instantiationService.createChild(
+			new ServiceCollection([FileSystemService, reader])
+		);
+		const discovery = scope.createInstance(
+			ConfigDiscovery,
+			this.discovery.folderChecks
+		);
 		return this.open(
 			await discovery.discover(refs),
-			reader ? this.loader.over(reader) : this.loader
+			scope.createInstance(ConfigLoader, this.loader.fileChecks)
 		);
 	}
 

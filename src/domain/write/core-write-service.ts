@@ -6,10 +6,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
-import {
-	FileReader,
-	FileSystemService,
-} from "../../platform/fs/file-system-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
@@ -47,6 +44,7 @@ import { LocateTargets } from "./locate/locate-targets.js";
 import { Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
+import { ServiceCollection } from "../../platform/instantiation/service-collection.js";
 
 interface WriteOptions {
 	readonly force?: boolean;
@@ -100,19 +98,29 @@ export class CoreWriteService implements WriteService {
 		});
 	}
 
-	check(selection: ConfigSelection, reader?: FileReader): Promise<WriteRun> {
+	check(
+		selection: ConfigSelection,
+		reader?: FileSystemService
+	): Promise<WriteRun> {
 		return this.writeAll(selection, { write: false, reader });
+	}
+
+	/** A check that reads through `reader`, such as a draft of files not written yet, runs in a scope where it is the file service. */
+	private scopeOf(reader?: FileSystemService): InstantiationService {
+		return reader
+			? this.instantiationService.createChild(
+					new ServiceCollection([FileSystemService, reader])
+				)
+			: this.instantiationService;
 	}
 
 	async projectFileOf(
 		project: ResolvedConfig
 	): Promise<RojoProjectFile | undefined> {
 		const listing = await this.indexService.list([...project.indexedPaths]);
-		return new WritePipeline(
-			this.fileSystemService,
-			listing,
-			this.syncTools
-		).projectFileOf(project);
+		return this.instantiationService
+			.createInstance(WritePipeline, listing, this.syncTools)
+			.projectFileOf(project);
 	}
 
 	/** With `advice`, a plain Rojo project keeps the warnings about Rogen's own model; with `reader`, a check reads through it. */
@@ -127,7 +135,7 @@ export class CoreWriteService implements WriteService {
 			readonly write: boolean;
 			readonly independent?: boolean;
 			readonly advice?: boolean;
-			readonly reader?: FileReader;
+			readonly reader?: FileSystemService;
 		}
 	): Promise<WriteRun> {
 		const { set, unloaded } = WriteSet.partition(selection);
@@ -221,11 +229,9 @@ export class CoreWriteService implements WriteService {
 		);
 
 		const listing = await this.indexService.list(set.indexedPaths);
-		const located = await new Locator(
-			this.fileSystemService,
-			listing,
-			this.syncTools
-		).locate(set.configs, targets);
+		const located = await this.instantiationService
+			.createInstance(Locator, listing, this.syncTools)
+			.locate(set.configs, targets);
 		if (located.isErr())
 			return err(
 				new DiagnosticsError([...errors, ...located.error.diagnostics])
@@ -238,7 +244,8 @@ export class CoreWriteService implements WriteService {
 	}
 
 	askedAbout(query: LocateQuery): Promise<readonly Asked[]> {
-		return new LocateTargets(this.fileSystemService)
+		return this.instantiationService
+			.createInstance(LocateTargets)
 			.classify(query)
 			.then(({ asked }) => asked);
 	}
@@ -304,9 +311,13 @@ export class CoreWriteService implements WriteService {
 		}[],
 		listing: IndexReader,
 		advice = false,
-		reader: FileReader = this.fileSystemService
+		reader?: FileSystemService
 	): Promise<Attempt[]> {
-		const pipeline = new WritePipeline(reader, listing, this.syncTools);
+		const pipeline = this.scopeOf(reader).createInstance(
+			WritePipeline,
+			listing,
+			this.syncTools
+		);
 		const attempts: Attempt[] = [];
 		for (const { config, sync } of configs) {
 			const result = await pipeline.run(config, sync);
@@ -331,7 +342,7 @@ export class CoreWriteService implements WriteService {
 		write: boolean,
 		options: WriteOptions & {
 			readonly independent?: boolean;
-			readonly reader?: FileReader;
+			readonly reader?: FileSystemService;
 		} = {}
 	): Promise<LoadedConfig[]> {
 		const prepared = attempts.filter(
@@ -371,10 +382,10 @@ export class CoreWriteService implements WriteService {
 
 	private async withStaleness(
 		attempt: PreparedConfig,
-		reader: FileReader = this.fileSystemService
+		reader?: FileSystemService
 	): Promise<PreparedConfig> {
-		const stale = await this.instantiationService
-			.createInstance(ProjectFileStaleness, reader)
+		const stale = await this.scopeOf(reader)
+			.createInstance(ProjectFileStaleness)
 			.diagnostic(attempt.config, async () => attempt.projectFile);
 		if (!stale) return attempt;
 		return {
@@ -433,11 +444,9 @@ export class CoreWriteService implements WriteService {
 		config: ResolvedConfig,
 		listing: IndexReader
 	): Promise<SyncWarnings> {
-		return new WritePipeline(
-			this.fileSystemService,
-			listing,
-			this.syncTools
-		).compiledPathWarnings(config);
+		return this.instantiationService
+			.createInstance(WritePipeline, listing, this.syncTools)
+			.compiledPathWarnings(config);
 	}
 
 	/** Whether each of `changes` adds what a write makes in the compiled path before the compiler runs: a folder, or a placeholder script. */

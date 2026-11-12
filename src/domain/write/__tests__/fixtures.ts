@@ -48,7 +48,12 @@ export const pipelineOf = (
 	fs: FileSystemService,
 	index: IndexReader,
 	extraTools: readonly SyncTool[] = []
-) => new WritePipeline(fs, index, [...syncTools, ...extraTools]);
+) =>
+	instantiationOf([FileSystemService, fs]).createInstance(
+		WritePipeline,
+		index,
+		[...syncTools, ...extraTools]
+	);
 
 export const writeServiceOf = (
 	fs: FileSystemService,

@@ -12,7 +12,7 @@ import {
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
 import { FileChange } from "../../platform/fs/file-changes.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { createDecorator } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig, scannedFileOf } from "../config/resolved-config.js";
@@ -342,7 +342,10 @@ export interface WriteService {
 	): Promise<WriteRun>;
 
 	/** Prepares every selected config as `write` does, and writes nothing. With `reader`, such as a draft of files not written yet, reads through it. */
-	check(selection: ConfigSelection, reader?: FileReader): Promise<WriteRun>;
+	check(
+		selection: ConfigSelection,
+		reader?: FileSystemService
+	): Promise<WriteRun>;
 
 	/** The project file a write of `project` would write, or none when it fails. Writes nothing. */
 	projectFileOf(

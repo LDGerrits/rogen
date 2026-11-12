@@ -5,16 +5,17 @@ import {
 	Diagnostic,
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
-import { FileReader } from "../../../platform/fs/file-system-service.js";
 import { ConfigService } from "../../config/config-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import { OutputWriter } from "../output-writer.js";
+import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 
 /** Whether the project file on disk is what a write would write, which a command that writes nothing says by a warning. */
 export class ProjectFileStaleness {
 	constructor(
-		private readonly fileSystemService: FileReader,
+		@FileSystemService
+		private readonly fileSystemService: FileSystemService,
 		@ConfigService private readonly configService: ConfigService
 	) {}
 

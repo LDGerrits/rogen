@@ -8,7 +8,7 @@ import {
 	DiagnosticPosition,
 	errorDiagnostic,
 } from "../diagnostics/diagnostic.js";
-import { FileReader, isMissingPath } from "../fs/file-system-service.js";
+import { FileSystemService, isMissingPath } from "../fs/file-system-service.js";
 import { JsoncDocumentReader } from "../jsonc/jsonc-document-reader.js";
 import { ConfigModel, ConfigSection, sectionPath } from "./config-models.js";
 
@@ -42,8 +42,8 @@ export class ConfigFileReader {
 	private readonly documents: JsoncDocumentReader;
 
 	constructor(
-		private readonly fileReader: FileReader,
-		private readonly structure: JsonStructure
+		private readonly structure: JsonStructure,
+		@FileSystemService private readonly fileReader: FileSystemService
 	) {
 		this.documents = new JsoncDocumentReader({
 			codePrefix: "config",

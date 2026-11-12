@@ -2,8 +2,8 @@ import { jest } from "@jest/globals";
 import { fileSystemError } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
-import { MetaReader } from "../meta-reader.js";
 import { abs, configOf, indexOf, placeFiles, syncTools } from "./fixtures.js";
+import { metaReaderOf } from "./write-of.js";
 
 describe("MetaReader", () => {
 	type Read = Pick<ResolvedConfig, "sourcePaths" | "ignored">;
@@ -18,7 +18,7 @@ describe("MetaReader", () => {
 				...overrides,
 			};
 			const index = await indexOf(fs, config.sourcePaths);
-			const meta = await new MetaReader(fs).read(
+			const meta = await metaReaderOf(fs).read(
 				placeFiles(index, configOf(config), syncTools).unwrap()
 			);
 			return meta.map(({ folderMeta }) => folderMeta);
@@ -113,7 +113,7 @@ describe("MetaReader", () => {
 			await fs.writeFile(abs("src/Combat/Hit.luau"), "");
 
 			const index = await indexOf(fs, [abs("src")]);
-			const meta = await new MetaReader(fs).read(
+			const meta = await metaReaderOf(fs).read(
 				placeFiles(
 					index,
 					configOf({

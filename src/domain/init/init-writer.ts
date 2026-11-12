@@ -170,7 +170,7 @@ export class InitWriter {
 		}
 		// A dry run asks the folder as the files and moves would leave it, as the real run asks after making them.
 		const folder: FileReader = dryRun
-			? new DraftFileReader(this.fileSystemService, {
+			? this.instantiationService.createInstance(DraftFileReader, {
 					files: new Map(
 						plan.files.map(({ fileName }) => [at(fileName), ""])
 					),

@@ -19,11 +19,10 @@ export const discoveryOf = (
 	fs: FileSystemService,
 	environment: EnvironmentService
 ): ConfigDiscovery =>
-	instantiationOf([EnvironmentService, environment]).createInstance(
-		ConfigDiscovery,
-		fs,
-		undefined
-	);
+	instantiationOf(
+		[FileSystemService, fs],
+		[EnvironmentService, environment]
+	).createInstance(ConfigDiscovery, undefined);
 
 export const formatterOf = (fs: FileSystemService): ConfigFormatter =>
 	instantiationOf([FileSystemService, fs]).createInstance(ConfigFormatter);

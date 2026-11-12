@@ -6,10 +6,7 @@ import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import {
-	FileReader,
-	isFileType,
-} from "../../platform/fs/file-system-service.js";
+import { isFileType } from "../../platform/fs/file-system-service.js";
 import {
 	isConfigFileName,
 	isProjectFileConfig,
@@ -20,6 +17,8 @@ import { configStructure } from "./config-structure.js";
 import { ConfigFileCheck } from "./config-service.js";
 import { ResolvedConfigFile } from "./resolved-config.js";
 import { ConfigValidator } from "./config-validator.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 /** One read of one config, with what a reload compares against. */
 export interface LoadedConfig {
@@ -47,15 +46,16 @@ export class ConfigLoader {
 	private readonly reader: ConfigFileReader;
 
 	constructor(
-		private readonly fileSystemService: FileReader,
-		private readonly fileChecks = new Set<ConfigFileCheck>()
+		/** Shared with the loaders of other scopes, which run the same checks. */
+		readonly fileChecks: Set<ConfigFileCheck> = new Set(),
+		@FileSystemService
+		private readonly fileSystemService: FileSystemService,
+		@InstantiationService instantiationService: InstantiationService
 	) {
-		this.reader = new ConfigFileReader(fileSystemService, configStructure);
-	}
-
-	/** A loader that reads through `reader`, with the same checks. */
-	over(reader: FileReader): ConfigLoader {
-		return new ConfigLoader(reader, this.fileChecks);
+		this.reader = instantiationService.createInstance(
+			ConfigFileReader,
+			configStructure
+		);
 	}
 
 	registerFileCheck(check: ConfigFileCheck): Disposable {

@@ -6,6 +6,7 @@ import {
 	DiagnosticSeverity,
 } from "../../diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js";
+import { configFileReaderOf } from "./config-file-reader-of.js";
 
 const FILE = "/repo/a.json";
 
@@ -47,7 +48,7 @@ describe("platform/config/config-file", () => {
 
 		beforeEach(async () => {
 			fs = new MemoryFileSystemService();
-			reader = new ConfigFileReader(fs, STRUCTURE);
+			reader = configFileReaderOf(fs, STRUCTURE);
 			await fs.createDirectory("/repo");
 		});
 

@@ -1,7 +1,6 @@
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
@@ -18,6 +17,7 @@ import { CompiledPathCheck } from "./check/compiled-path-check.js";
 import { TreeAssembler } from "./tree-assembler.js";
 import { UnmountedSources } from "./check/unmounted-sources.js";
 import { Placeholder } from "./compiled-layout.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
 /** One config prepared in memory, which the run goes on to write. */
 export interface PreparedConfig {
@@ -52,14 +52,18 @@ export class WritePipeline {
 	private readonly mountClashes: MountClashes;
 
 	constructor(
-		fileSystemService: FileReader,
 		private readonly index: IndexReader,
-		private readonly tools: readonly SyncTool[]
+		private readonly tools: readonly SyncTool[],
+		@InstantiationService instantiationService: InstantiationService
 	) {
-		this.metaReader = new MetaReader(fileSystemService);
-		this.projectNames = new NestedProjectNames(fileSystemService, index);
-		this.compiledPathCheck = new CompiledPathCheck(fileSystemService);
-		this.mountClashes = new MountClashes(fileSystemService);
+		this.metaReader = instantiationService.createInstance(MetaReader);
+		this.projectNames = instantiationService.createInstance(
+			NestedProjectNames,
+			index
+		);
+		this.compiledPathCheck =
+			instantiationService.createInstance(CompiledPathCheck);
+		this.mountClashes = instantiationService.createInstance(MountClashes);
 	}
 
 	/** Places `config`'s files; its caller checked that it declares routes. */

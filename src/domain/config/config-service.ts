@@ -2,7 +2,10 @@ import { Disposable } from "../../base/disposable.js";
 import { UsageError } from "../../base/errors.js";
 import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
+import {
+	FileReader,
+	FileSystemService,
+} from "../../platform/fs/file-system-service.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createDecorator } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
@@ -161,7 +164,7 @@ export interface ConfigService {
 	/** Loads the configs `refs` names, else the default of the working directory. Fails only when they can't be picked; a broken config lands on its entry. With `reader`, such as a draft of files not written yet, reads through it. */
 	select(
 		refs: readonly string[],
-		reader?: FileReader
+		reader?: FileSystemService
 	): Promise<Result<ReloadableSelection, Error>>;
 	/** Loads every config of the working directory, and follows the configs that come to it and leave it. */
 	selectHere(): Promise<ReloadableSelection>;

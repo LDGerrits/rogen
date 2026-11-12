@@ -478,8 +478,8 @@ export class CoreInitService implements InitService {
 
 	async check(plan: InitPlan): Promise<Result<void, Error>> {
 		if (plan.configs.length === 0) return ok(undefined);
-		const reader = new DraftFileReader(
-			this.fileSystemService,
+		const reader = this.instantiationService.createInstance(
+			DraftFileReader,
 			draftOf(plan)
 		);
 		const selection = await this.configService.select(plan.configs, reader);

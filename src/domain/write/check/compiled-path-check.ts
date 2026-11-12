@@ -11,7 +11,6 @@ import {
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import {
-	FileReader,
 	FileType,
 	isDirectoryType,
 	isFileType,
@@ -21,6 +20,7 @@ import { RojoFile } from "../../rojo/rojo.js";
 import { MetaReplacement } from "../../toolchain/toolchain.js";
 import { Placement } from "../placement.js";
 import { CompiledLayout, isPlaceholder } from "../compiled-layout.js";
+import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 
 const LISTED_PATHS = 3;
 
@@ -40,7 +40,9 @@ interface CompiledPathRun {
 
 /** Checks what the compiled path holds against what the write expects there, which only changes when the compiler runs. */
 export class CompiledPathCheck {
-	constructor(private readonly fileSystemService: FileReader) {}
+	constructor(
+		@FileSystemService private readonly fileSystemService: FileSystemService
+	) {}
 
 	async check(placement: Placement): Promise<Diagnostic[]> {
 		const { compiledPath } = placement.layout;

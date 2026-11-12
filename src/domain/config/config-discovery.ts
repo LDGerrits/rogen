@@ -5,11 +5,7 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { IoError, ProjectError, UsageError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import {
-	FileReader,
-	FileType,
-	isFileType,
-} from "../../platform/fs/file-system-service.js";
+import { FileType, isFileType } from "../../platform/fs/file-system-service.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { isProjectFileName, projectFileName } from "../rojo/rojo-project.js";
 import {
@@ -24,7 +20,7 @@ import {
 	projectStem,
 } from "./config.js";
 import { ConfigCover, ConfigFolderCheck } from "./config-service.js";
-import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 export interface DiscoveredConfigs {
 	/** The working directory. */
@@ -58,22 +54,13 @@ const isBareName = (ref: string): boolean =>
 /** Finds which config file a command reads: the one it names, else the default of the working directory. */
 export class ConfigDiscovery {
 	constructor(
-		private readonly fileSystemService: FileReader,
-		private readonly folderChecks: Set<ConfigFolderCheck> = new Set(),
+		/** Shared with the discoveries of other scopes, which run the same checks. */
+		readonly folderChecks: Set<ConfigFolderCheck> = new Set(),
+		@FileSystemService
+		private readonly fileSystemService: FileSystemService,
 		@EnvironmentService
-		private readonly environmentService: EnvironmentService,
-		@InstantiationService
-		private readonly instantiationService: InstantiationService
+		private readonly environmentService: EnvironmentService
 	) {}
-
-	/** A discovery that reads through `reader`, with the same checks. */
-	over(reader: FileReader): ConfigDiscovery {
-		return this.instantiationService.createInstance(
-			ConfigDiscovery,
-			reader,
-			this.folderChecks
-		);
-	}
 
 	registerFolderCheck(check: ConfigFolderCheck): Disposable {
 		this.folderChecks.add(check);

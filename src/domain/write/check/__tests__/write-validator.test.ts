@@ -3,7 +3,6 @@ import { DiagnosticSeverity } from "../../../../platform/diagnostics/diagnostic.
 import { MemoryFileSystemService } from "../../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../../config/__tests__/mock-config-service.js";
 import { WriteValidator } from "../write-validator.js";
-import { MetaReader } from "../../meta-reader.js";
 import { TreeAssembler } from "../../tree-assembler.js";
 import {
 	abs,
@@ -15,6 +14,7 @@ import {
 	syncTools,
 	writeFiles,
 } from "../../__tests__/fixtures.js";
+import { metaReaderOf } from "../../__tests__/write-of.js";
 
 describe("WriteValidator", () => {
 	describe("validate", () => {
@@ -32,7 +32,7 @@ describe("WriteValidator", () => {
 			});
 			const index = await indexOf(fs, config.sourcePaths);
 			const placement = placeFiles(index, config, syncTools).unwrap();
-			const meta = (await new MetaReader(fs).read(placement)).unwrap();
+			const meta = (await metaReaderOf(fs).read(placement)).unwrap();
 			const assembled = new TreeAssembler(placement, meta)
 				.assemble()
 				.unwrap();
@@ -51,7 +51,7 @@ describe("WriteValidator", () => {
 			const config = baseConfigOf();
 			const index = await indexOf(fs, config.sourcePaths);
 			const placement = placeFiles(index, config, syncTools).unwrap();
-			const meta = (await new MetaReader(fs).read(placement)).unwrap();
+			const meta = (await metaReaderOf(fs).read(placement)).unwrap();
 			const assembled = new TreeAssembler(placement, meta)
 				.assemble()
 				.unwrap();

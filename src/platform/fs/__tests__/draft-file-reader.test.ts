@@ -1,3 +1,5 @@
+import { FileSystemService } from "../file-system-service.js";
+import { instantiationOf } from "../../instantiation/__tests__/instantiation-of.js";
 import path from "path";
 import { DraftFileReader } from "../draft-file-reader.js";
 import { FileType } from "../file-system-service.js";
@@ -15,14 +17,17 @@ describe("DraftFileReader", () => {
 	});
 
 	const draftOf = (
-		draft: Partial<ConstructorParameters<typeof DraftFileReader>[1]>
+		draft: Partial<ConstructorParameters<typeof DraftFileReader>[0]>
 	) =>
-		new DraftFileReader(base, {
-			files: new Map(),
-			directories: [],
-			moves: [],
-			...draft,
-		});
+		instantiationOf([FileSystemService, base]).createInstance(
+			DraftFileReader,
+			{
+				files: new Map(),
+				directories: [],
+				moves: [],
+				...draft,
+			}
+		);
 
 	it("should read a drafted file over the disk, and the folders above it", async () => {
 		const reader = draftOf({
