@@ -20,6 +20,7 @@ import { SyncRules } from "../rojo/sync-rules.js";
 import { AddedInstance, AddedPath, addedInstances } from "./added-instances.js";
 import { WrittenEntry, addedNode, isNodeFile } from "./added-node.js";
 import { ConfigEdits } from "./config-edits.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { MetaRequest, featureMetas } from "./feature-metas.js";
 import {
 	Expected,
@@ -94,7 +95,6 @@ function instanceOf(
 
 /** Reads what Rojo's syncback did to the mirror as a plan for the project: an edit or removal of the file each copy came from, a folder it emptied, a new instance where routing puts it, and an edit of the config's tree or a feature's meta. */
 export class MirrorPlanner {
-	private readonly fileSystemService: FileSystemService;
 	private readonly request: SyncbackRequest;
 	private readonly operations: Operation[] = [];
 	private readonly unplaced: UnplacedInstance[];
@@ -106,18 +106,23 @@ export class MirrorPlanner {
 	private readonly copiedPaths: ReadonlySet<string>;
 	private readonly edits: ConfigEdits;
 
-	private constructor(
+	constructor(
 		private readonly workspace: MirrorWorkspace,
 		private readonly run: MirrorRun,
 		/** The paths of the mirror after Rojo ran. */
-		private readonly after: readonly AddedPath[]
+		private readonly after: readonly AddedPath[],
+		@FileSystemService
+		private readonly fileSystemService: FileSystemService,
+		@InstantiationService instantiationService: InstantiationService
 	) {
-		this.fileSystemService = workspace.services.fileSystemService;
 		this.request = workspace.request;
 		this.unplaced = [...run.skipped];
 		this.present = new Set(after.map(({ path: at }) => at));
 		this.copiedPaths = new Set(run.copied.map(({ mirror: at }) => at));
-		this.edits = new ConfigEdits(workspace);
+		this.edits = instantiationService.createInstance(
+			ConfigEdits,
+			workspace
+		);
 	}
 
 	/** The plan of `run`; fails when the mirror can't be read back, which would read as a place that removed everything. */
@@ -136,7 +141,8 @@ export class MirrorPlanner {
 					"Run syncback again."
 				)
 			);
-		const planner = new MirrorPlanner(
+		const planner = workspace.instantiationService.createInstance(
+			MirrorPlanner,
 			workspace,
 			run,
 			walked.isOk() ? walked.value : []

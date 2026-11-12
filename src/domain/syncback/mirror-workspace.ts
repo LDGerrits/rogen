@@ -1,24 +1,17 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
-import { UsageError } from "../../base/errors.js";
 import { ignoringGlob, literalGlob } from "../../base/glob.js";
-import { samePath, toNative, toPosix } from "../../base/path.js";
-import { Result, err, ok, tryWithAsync } from "../../base/result.js";
-import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import { toNative, toPosix } from "../../base/path.js";
+import { Result, ok, tryWithAsync } from "../../base/result.js";
 import {
 	FileSystemService,
 	isDirectoryType,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
-import { WriteService } from "../write/write-service.js";
 import { isSyncbackFileName } from "../config/config.js";
-import { ConfigService, validFile } from "../config/config-service.js";
-import { ResolvedConfig } from "../config/resolved-config.js";
 import { instanceKey } from "../roblox/roblox.js";
-import { RojoFile } from "../rojo/rojo.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ProjectText } from "../rojo/project-text.js";
-import { RojoCommandService } from "../runner/rojo-command-service.js";
 import { ServerMessage } from "../runner/rojo-server.js";
 import { AddedPath } from "./added-instances.js";
 import { instanceNameOf } from "./reverse-router.js";
@@ -46,16 +39,6 @@ export async function inBatches<T, U>(
 			...(await Promise.all(items.slice(at, at + COPY_BATCH).map(run)))
 		);
 	return done;
-}
-
-/** The services a workspace reads the project with, holds its folder with, and runs Rojo with. */
-export interface WorkspaceServices {
-	readonly instantiationService: InstantiationService;
-	readonly configService: ConfigService;
-	readonly fileSystemService: FileSystemService;
-	readonly writeService: WriteService;
-	readonly rojoService: RojoCommandService;
-	readonly environmentService: EnvironmentService;
 }
 
 /** A file copied into the mirror, and the path of the project it is. */
@@ -94,113 +77,21 @@ export class MirrorWorkspace {
 	/** Syncback's `ignorePaths`, relative to the project folder, which nothing syncback writes may match. */
 	private readonly unwritten: readonly string[];
 
-	private constructor(
-		readonly services: WorkspaceServices,
+	constructor(
 		readonly request: SyncbackRequest,
 		private readonly staging: SyncbackStaging,
 		written: RojoProjectFile,
 		readonly mirror: SyncbackMirror,
-		readonly layout: SyncbackLayout
+		readonly layout: SyncbackLayout,
+		@FileSystemService
+		private readonly fileSystemService: FileSystemService,
+		@InstantiationService
+		readonly instantiationService: InstantiationService
 	) {
 		this.file = staging.file;
 		this.root = staging.mirror;
 		this.unread = written.globIgnorePaths ?? [];
 		this.unwritten = MirrorWorkspace.ignorePathsOf(written);
-	}
-
-	/** The mirror of the request's project, from the project file a write would write; fails when the project does not build, or when two of its files make instances whose names differ only in case. */
-	static async open(
-		services: WorkspaceServices,
-		request: SyncbackRequest
-	): Promise<Result<MirrorWorkspace, Error>> {
-		const { project } = request;
-		const { writeService, fileSystemService } = services;
-		const dir = project.projectDir;
-		const located = await writeService.locate(request.selection);
-		if (located.isErr()) return located;
-		const here = located.value.configs.find(
-			({ config }) => config.id === project.id
-		);
-		if (!here)
-			return err(
-				new Error(`${project.label} was not found among the projects.`)
-			);
-		const fresh = await writeService.projectFileOf(project);
-		if (!fresh)
-			return err(
-				new UsageError(
-					`${project.label} does not build, so there is no project file to read; run 'rogen write' to see why.`
-				)
-			);
-		const written = JSON.parse(ProjectText.of(fresh)) as RojoProjectFile;
-		const layout = new SyncbackLayout(
-			project,
-			here.files,
-			await MirrorWorkspace.otherConfigsOf(
-				services.configService,
-				project
-			)
-		);
-		const mirror = await SyncbackMirror.of({
-			// Rojo crashes on a project file not named default.project.json that names no project.
-			written: { ...written, name: written.name ?? project.projectName },
-			tree: project.project.getFile().tree,
-			dir,
-			root: MIRROR,
-			placed: layout.placed,
-			reads: [
-				...project.sourcePaths,
-				...(project.compiledPath === undefined
-					? []
-					: [project.compiledPath]),
-			].map(toPosix),
-			fileAt: (target) => RojoFile.at(target, project.syncRules),
-			isFolder: (target) =>
-				fileSystemService.isDirectory(toNative(target)),
-			readText: async (target) => {
-				const read = await tryWithAsync(() =>
-					fileSystemService.readFile(toNative(target))
-				);
-				return read.isOk() ? read.value : undefined;
-			},
-		});
-		const [clash] = mirror.clashes;
-		if (clash)
-			return err(
-				new UsageError(
-					`${clash.map((file) => toNative(file)).join(" and ")} make instances whose names differ only in letter case, which syncback can't tell apart on every system.`,
-					"Rename one of them, then run syncback again."
-				)
-			);
-		const staging = services.instantiationService.createInstance(
-			SyncbackStaging,
-			services.environmentService.pid,
-			dir
-		);
-		return ok(
-			new MirrorWorkspace(
-				services,
-				request,
-				staging,
-				written,
-				mirror,
-				layout
-			)
-		);
-	}
-
-	/** The configs beside `project` in its folder, which together with it are the places of one game. */
-	private static async otherConfigsOf(
-		configService: ConfigService,
-		project: ResolvedConfig
-	): Promise<ResolvedConfig[]> {
-		const configs: ResolvedConfig[] = [];
-		for (const file of await configService.configsIn(project.projectDir)) {
-			if (samePath(file, project.file)) continue;
-			const { config } = validFile(await configService.read(file)) ?? {};
-			if (config) configs.push(config);
-		}
-		return configs;
 	}
 
 	/** The `ignorePaths` of the written file's `syncbackRules`, which Rogen applies itself, as Rojo would match them against the mirror's paths: unless `createIgnoreDirPaths` is false, a glob ending in `/**` also names its folder. */
@@ -224,7 +115,7 @@ export class MirrorWorkspace {
 	async syncback(signal: AbortSignal): Promise<Result<MirrorRun, Error>> {
 		const copied = await this.copy();
 		const started = Date.now();
-		const rojo = this.services.instantiationService.createInstance(
+		const rojo = this.instantiationService.createInstance(
 			RojoSyncback,
 			this.request
 		);
@@ -264,15 +155,11 @@ export class MirrorWorkspace {
 	}
 
 	read(at: string): Promise<Uint8Array> {
-		return this.services.fileSystemService.readFileBytes(
-			path.join(this.root, at)
-		);
+		return this.fileSystemService.readFileBytes(path.join(this.root, at));
 	}
 
 	readText(at: string): Promise<string> {
-		return this.services.fileSystemService.readFile(
-			path.join(this.root, at)
-		);
+		return this.fileSystemService.readFile(path.join(this.root, at));
 	}
 
 	/** Whether Rojo surely left the copy alone: it is older than any clock could blur, and its time did not change. */
@@ -282,7 +169,7 @@ export class MirrorWorkspace {
 	): Promise<boolean> {
 		return (
 			modified < started - COARSEST_CLOCK_MS &&
-			(await this.services.fileSystemService.lastModified(
+			(await this.fileSystemService.lastModified(
 				path.join(this.root, at)
 			)) === modified
 		);
@@ -291,7 +178,7 @@ export class MirrorWorkspace {
 	/** Whether the project's file was saved or removed since it was copied. */
 	async wasSaved({ target, saved }: Copied): Promise<boolean> {
 		const now = await tryWithAsync(() =>
-			this.services.fileSystemService.lastModified(toNative(target))
+			this.fileSystemService.lastModified(toNative(target))
 		);
 		if (now.isOk()) return now.value !== saved;
 		if (isMissingPath(now.error)) return true;
@@ -301,9 +188,7 @@ export class MirrorWorkspace {
 	/** The tree of the project file Rojo rewrote; none when it can't be read. */
 	async rewrittenTree(): Promise<RojoProjectFile["tree"] | undefined> {
 		const ran = await tryWithAsync(async () => {
-			const text = await this.services.fileSystemService.readFile(
-				this.file
-			);
+			const text = await this.fileSystemService.readFile(this.file);
 			return (JSON.parse(text) as RojoProjectFile).tree;
 		});
 		return ran.isOk() ? ran.value : undefined;
@@ -343,7 +228,7 @@ export class MirrorWorkspace {
 		const { mirror, root } = this;
 		const copied: Copied[] = [];
 		for (const folder of mirror.folders)
-			await this.services.fileSystemService.createDirectory(
+			await this.fileSystemService.createDirectory(
 				path.join(root, folder)
 			);
 		for (const entry of mirror.entries)
@@ -371,7 +256,7 @@ export class MirrorWorkspace {
 			this.request.project.projectDir
 		);
 		const { syncbackRules } = mirror.file;
-		await this.services.fileSystemService.writeFile(
+		await this.fileSystemService.writeFile(
 			this.file,
 			ProjectText.of({
 				...mirror.file,
@@ -416,7 +301,7 @@ export class MirrorWorkspace {
 		mirror: string,
 		copied: Copied[]
 	): Promise<void> {
-		const { fileSystemService } = this.services;
+		const { fileSystemService } = this;
 		await fileSystemService.createDirectory(path.join(this.root, mirror));
 		const entries = await tryWithAsync(() =>
 			fileSystemService.readDirectory(toNative(target))
@@ -454,7 +339,7 @@ export class MirrorWorkspace {
 		{ mirror, target }: CopySource,
 		missingOk = false
 	): Promise<Copied | undefined> {
-		const { fileSystemService } = this.services;
+		const { fileSystemService } = this;
 		const to = path.join(this.root, mirror);
 		let saved: number;
 		try {
@@ -476,9 +361,7 @@ export class MirrorWorkspace {
 		below: string
 	): Promise<Result<AddedPath[], Error>> {
 		const entries = await tryWithAsync(() =>
-			this.services.fileSystemService.readDirectory(
-				path.join(this.root, below)
-			)
+			this.fileSystemService.readDirectory(path.join(this.root, below))
 		);
 		if (entries.isErr()) return entries;
 		const found: AddedPath[] = [];

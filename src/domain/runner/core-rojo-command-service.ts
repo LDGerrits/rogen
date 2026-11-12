@@ -15,7 +15,6 @@ import {
 	RojoWatch,
 	RojoWatchRequest,
 } from "./rojo-command-service.js";
-import { isWindows } from "../../base/platform.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { RojoCompatibility } from "./rojo-compatibility.js";
 import { RojoVersion } from "./rojo-version.js";
@@ -45,14 +44,11 @@ export class CoreRojoCommandService implements RojoCommandService {
 	private readonly compatibility: RojoCompatibility;
 
 	constructor(
-		windows: boolean = isWindows,
 		@RojoRunner private readonly rojoRunner: RojoRunner,
 		@InstantiationService instantiationService: InstantiationService
 	) {
-		this.compatibility = instantiationService.createInstance(
-			RojoCompatibility,
-			windows
-		);
+		this.compatibility =
+			instantiationService.createInstance(RojoCompatibility);
 	}
 
 	async run(

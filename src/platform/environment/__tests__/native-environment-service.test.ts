@@ -204,6 +204,25 @@ describe("NativeEnvironmentService", () => {
 		});
 	});
 
+	describe("isWindows", () => {
+		it.each([
+			["win32", true],
+			["linux", false],
+			["darwin", false],
+		] as const)("should say %s is Windows: %s", (platform, windows) => {
+			const environment = new NativeEnvironmentService({}, "/repo", {
+				env: {},
+				isTerminal: true,
+				userHome: "/home/me",
+				tmpDir: "/mock/tmp",
+				pid: 4242,
+				platform,
+			});
+
+			expect(environment.isWindows).toBe(windows);
+		});
+	});
+
 	describe("cacheDir", () => {
 		const cacheDirOn = (
 			platform: NodeJS.Platform,

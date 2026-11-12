@@ -106,12 +106,20 @@ export class CoreWriteService implements WriteService {
 	}
 
 	/** A check that reads through `reader`, such as a draft of files not written yet, runs in a scope where it is the file service. */
-	private scopeOf(reader?: FileSystemService): InstantiationService {
-		return reader && reader !== this.fileSystemService
-			? this.instantiationService.createChild(
-					new ServiceCollection([FileSystemService, reader])
-				)
-			: this.instantiationService;
+	private async inScope<T>(
+		reader: FileSystemService | undefined,
+		run: (scope: InstantiationService) => Promise<T>
+	): Promise<T> {
+		if (!reader || reader === this.fileSystemService)
+			return run(this.instantiationService);
+		const scope = this.instantiationService.createChild(
+			new ServiceCollection([FileSystemService, reader])
+		);
+		try {
+			return await run(scope);
+		} finally {
+			scope[Symbol.dispose]();
+		}
 	}
 
 	async projectFileOf(
@@ -313,28 +321,29 @@ export class CoreWriteService implements WriteService {
 		advice = false,
 		reader?: FileSystemService
 	): Promise<Attempt[]> {
-		const scope = this.scopeOf(reader);
-		const pipeline = scope.createInstance(
-			WritePipeline,
-			listing,
-			this.syncTools
-		);
-		const attempts: Attempt[] = [];
-		for (const { config, sync } of configs) {
-			const result = await pipeline.run(config, sync);
-			attempts.push(
-				result.isOk()
-					? advice
-						? result.value
-						: withoutRogenAdvice(result.value)
-					: FailedConfig.before(
-							config,
-							result.error.diagnostics,
-							sync
-						)
+		return this.inScope(reader, async (scope) => {
+			const pipeline = scope.createInstance(
+				WritePipeline,
+				listing,
+				this.syncTools
 			);
-		}
-		return attempts;
+			const attempts: Attempt[] = [];
+			for (const { config, sync } of configs) {
+				const result = await pipeline.run(config, sync);
+				attempts.push(
+					result.isOk()
+						? advice
+							? result.value
+							: withoutRogenAdvice(result.value)
+						: FailedConfig.before(
+								config,
+								result.error.diagnostics,
+								sync
+							)
+				);
+			}
+			return attempts;
+		});
 	}
 
 	private async settle(
@@ -385,9 +394,11 @@ export class CoreWriteService implements WriteService {
 		attempt: PreparedConfig,
 		reader?: FileSystemService
 	): Promise<PreparedConfig> {
-		const stale = await this.scopeOf(reader)
-			.createInstance(ProjectFileStaleness)
-			.diagnostic(attempt.config, async () => attempt.projectFile);
+		const stale = await this.inScope(reader, (scope) =>
+			scope
+				.createInstance(ProjectFileStaleness)
+				.diagnostic(attempt.config, async () => attempt.projectFile)
+		);
 		if (!stale) return attempt;
 		return {
 			...attempt,

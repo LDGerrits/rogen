@@ -11,6 +11,8 @@ export interface EnvironmentService {
 	readonly cacheDir: string;
 	/** Where the repository is checked out, set when this run should write GitHub Actions annotations. */
 	readonly annotationsIn?: string;
+	/** Whether Rogen runs on Windows. */
+	readonly isWindows: boolean;
 	/** This process's id, so a serve's records in `tmpDir` can be told as its own. */
 	readonly pid: number;
 

@@ -87,11 +87,9 @@ describe("CoreServeService", () => {
 	const serviceAt = (cwd: string, windows?: boolean) => {
 		configService = configServiceOf(memFs, new MockEnvironmentService(cwd));
 		const index = new CoreIndexService(memFs);
-		const environment = new MockEnvironmentService(
-			cwd,
-			undefined,
-			false,
-			"/home/me"
+		const environment = Object.assign(
+			new MockEnvironmentService(cwd, undefined, false, "/home/me"),
+			{ isWindows: windows === true }
 		);
 		const services = instantiationOf(
 			[ConfigService, configService],
@@ -104,7 +102,7 @@ describe("CoreServeService", () => {
 			[RojoRunner, rojoRunnerOf(memFs, processes)],
 			[WatchService, new SyncDescriptor(CoreWatchService)]
 		);
-		return services.createInstance(CoreServeService, windows);
+		return services.createInstance(CoreServeService);
 	};
 
 	beforeEach(async () => {

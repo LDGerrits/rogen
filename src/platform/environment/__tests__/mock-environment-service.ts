@@ -18,7 +18,8 @@ export class MockEnvironmentService implements EnvironmentService {
 		public readonly pid: number = 4242,
 		public readonly annotationsIn?: string,
 		public readonly cacheDir: string = "/mock/cache",
-		public readonly checksForUpdates: boolean = false
+		public readonly checksForUpdates: boolean = false,
+		public readonly isWindows: boolean = false
 	) {
 		this.cwd = path.isAbsolute(cwd) ? path.resolve(cwd) : cwd;
 		this.isPlain = !isInteractive;

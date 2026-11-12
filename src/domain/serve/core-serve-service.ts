@@ -6,7 +6,6 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { ConfigService } from "../config/config-service.js";
 import { WatchService } from "../watch/watch-service.js";
 import { CoreServeSession } from "./core-serve-session.js";
-import { isWindows } from "../../base/platform.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { RojoCompatibility } from "../runner/rojo-compatibility.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
@@ -29,7 +28,6 @@ export class CoreServeService implements ServeService {
 	private readonly compatibility: RojoCompatibility;
 
 	constructor(
-		windows: boolean = isWindows,
 		@ConfigService private readonly configService: ConfigService,
 		@RojoRunner private readonly rojoRunner: RojoRunner,
 		@WatchService private readonly watchService: WatchService,
@@ -38,10 +36,8 @@ export class CoreServeService implements ServeService {
 		@InstantiationService
 		private readonly instantiationService: InstantiationService
 	) {
-		this.compatibility = instantiationService.createInstance(
-			RojoCompatibility,
-			windows
-		);
+		this.compatibility =
+			instantiationService.createInstance(RojoCompatibility);
 		this.probe = instantiationService.createInstance(ServerProbe);
 		this.records = instantiationService.createInstance(
 			ServerRecords,

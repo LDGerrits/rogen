@@ -1,4 +1,8 @@
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { EnvironmentService } from "../../../platform/environment/environment-service.js";
+import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
+import { FileSystemService } from "../../../platform/fs/file-system-service.js";
+import { instantiationOf } from "../../../platform/instantiation/__tests__/instantiation-of.js";
 import { RojoCompatibility } from "../rojo-compatibility.js";
 
 const rojo = (version: string) => ({
@@ -9,11 +13,22 @@ const rojo = (version: string) => ({
 describe("RojoCompatibility", () => {
 	let fs: MemoryFileSystemService;
 
+	const compatibility = (windows: boolean) =>
+		instantiationOf(
+			[FileSystemService, fs],
+			[
+				EnvironmentService,
+				Object.assign(new MockEnvironmentService("/repo"), {
+					isWindows: windows,
+				}),
+			]
+		).createInstance(RojoCompatibility);
+
 	const written = (project: object) =>
 		fs.writeFile("/repo/default.project.json", JSON.stringify(project));
 
 	const problems = (version: string, windows = true, command = "sourcemap") =>
-		new RojoCompatibility(windows, fs).problemsIn(
+		compatibility(windows).problemsIn(
 			rojo(version),
 			["/repo/default.project.json"],
 			command
@@ -179,7 +194,7 @@ describe("RojoCompatibility", () => {
 	it("should skip a file that isn't there or isn't JSON", async () => {
 		await fs.writeFile("/repo/other.project.json", "{");
 
-		const found = await new RojoCompatibility(true, fs).problemsIn(
+		const found = await compatibility(true).problemsIn(
 			rojo("7.7.0"),
 			["/repo/missing.project.json", "/repo/other.project.json"],
 			"sourcemap"

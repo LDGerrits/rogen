@@ -7,6 +7,7 @@ import { ConfigService } from "../../config/config-service.js";
 import { RojoCommandService } from "../../runner/rojo-command-service.js";
 import { WriteService } from "../../write/write-service.js";
 import { CoreSyncbackService } from "../core-syncback-service.js";
+import { MirrorWorkspaceOpener } from "../mirror-workspace-opener.js";
 import { SyncbackStaging } from "../syncback-staging.js";
 
 export interface SyncbackFakes {
@@ -34,11 +35,11 @@ const instantiationFor = (fakes: SyncbackFakes) =>
 export const syncbackServiceOf = (fakes: SyncbackFakes): CoreSyncbackService =>
 	instantiationFor(fakes).createInstance(CoreSyncbackService);
 
-/** The services of a mirror workspace, with the container that builds what it needs. */
-export const workspaceServicesOf = (fakes: SyncbackFakes) => ({
-	...fakes,
-	instantiationService: instantiationFor(fakes),
-});
+/** The opener of a mirror workspace over the fakes of a test. */
+export const workspaceOpenerOf = (
+	fakes: SyncbackFakes
+): MirrorWorkspaceOpener =>
+	instantiationFor(fakes).createInstance(MirrorWorkspaceOpener);
 
 export const stagingOf = (
 	fs: FileSystemService,

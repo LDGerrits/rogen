@@ -1,4 +1,4 @@
-import { DisposableStore } from "../../base/disposable.js";
+import { Disposable, DisposableStore } from "../../base/disposable.js";
 import {
 	BrandedService,
 	ServicesAccessor,
@@ -14,7 +14,8 @@ export type LeadingNonServiceArgs<Args extends unknown[]> = Args extends []
 		? LeadingNonServiceArgs<First>
 		: Args;
 
-export interface InstantiationService {
+/** Disposing one disposes the child scopes it made and the services it built. */
+export interface InstantiationService extends Disposable {
 	readonly _serviceBrand: undefined;
 
 	/** Builds `ctor` with `args` for its leading parameters and the services it asks for after them. */
@@ -34,7 +35,7 @@ export interface InstantiationService {
 		...args: Args
 	): R;
 
-	/** An instantiation service of its own that falls back on this one for services `services` lacks, and is disposed with it. */
+	/** An instantiation service of its own that falls back on this one for services `services` lacks, and is disposed with it, or sooner by disposing it. */
 	createChild(
 		services: ServiceCollection,
 		store?: DisposableStore

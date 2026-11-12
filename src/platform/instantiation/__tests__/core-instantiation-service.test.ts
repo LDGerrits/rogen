@@ -427,6 +427,31 @@ describe("CoreInstantiationService", () => {
 
 			expect(disposed).toEqual(["closing"]);
 		});
+
+		it("should dispose on its own, and not again with its parent", () => {
+			const disposed: string[] = [];
+			class Closing {
+				declare readonly _serviceBrand: undefined;
+				readonly name = "closing";
+
+				[Symbol.dispose](): void {
+					disposed.push("closing");
+				}
+			}
+			const parent = new CoreInstantiationService(collection());
+			const child = parent.createChild(
+				new ServiceCollection([
+					NameService,
+					new SyncDescriptor(Closing),
+				])
+			);
+			child.invokeFunction((accessor) => accessor.get(NameService));
+
+			child[Symbol.dispose]();
+			parent[Symbol.dispose]();
+
+			expect(disposed).toEqual(["closing"]);
+		});
 	});
 
 	describe("createDecorator", () => {
