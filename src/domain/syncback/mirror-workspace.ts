@@ -86,7 +86,7 @@ export class MirrorWorkspace {
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
 		@InstantiationService
-		readonly instantiationService: InstantiationService
+		private readonly instantiationService: InstantiationService
 	) {
 		this.file = staging.file;
 		this.root = staging.mirror;

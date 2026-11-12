@@ -199,7 +199,9 @@ export class CoreSyncbackService implements SyncbackService {
 		const ran = await workspace.syncback(signal);
 		if (signal.aborted) return err(stopped());
 		if (ran.isErr()) return ran;
-		const planned = await MirrorPlanner.plan(workspace, ran.value);
+		const planned = await this.instantiationService
+			.createInstance(MirrorPlanner, workspace)
+			.plan(ran.value);
 		return signal.aborted ? err(stopped()) : planned;
 	}
 }

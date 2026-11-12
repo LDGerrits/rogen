@@ -93,8 +93,8 @@ function instanceOf(
 		: [...folders, instanceNameOf(name)];
 }
 
-/** Reads what Rojo's syncback did to the mirror as a plan for the project: an edit or removal of the file each copy came from, a folder it emptied, a new instance where routing puts it, and an edit of the config's tree or a feature's meta. */
-export class MirrorPlanner {
+/** One run's changes to the mirror, read as a plan. */
+class MirrorPlanRun {
 	private readonly request: SyncbackRequest;
 	private readonly operations: Operation[] = [];
 	private readonly unplaced: UnplacedInstance[];
@@ -123,31 +123,6 @@ export class MirrorPlanner {
 			ConfigEdits,
 			workspace
 		);
-	}
-
-	/** The plan of `run`; fails when the mirror can't be read back, which would read as a place that removed everything. */
-	static async plan(
-		workspace: MirrorWorkspace,
-		run: MirrorRun
-	): Promise<Result<MirrorPlan, Error>> {
-		const { mirror, root } = workspace;
-		const walked = await workspace.walk();
-		const mountsNothing =
-			mirror.folders.length === 0 && mirror.entries.length === 0;
-		if (walked.isErr() && !(mountsNothing && isMissingPath(walked.error)))
-			return err(
-				new IoError(
-					`${root}, where Rojo wrote the place's changes, could not be read: ${failureReason(walked.error)}.`,
-					"Run syncback again."
-				)
-			);
-		const planner = workspace.instantiationService.createInstance(
-			MirrorPlanner,
-			workspace,
-			run,
-			walked.isOk() ? walked.value : []
-		);
-		return planner.make();
 	}
 
 	/** Whether Rojo's file at `at` differs from `file`, or is new where `file` is undefined, only by an empty `SerializedOverrides`. */
@@ -191,7 +166,7 @@ export class MirrorPlanner {
 		)?.node;
 	}
 
-	private async make(): Promise<Result<MirrorPlan, Error>> {
+	async make(): Promise<Result<MirrorPlan, Error>> {
 		const { request } = this;
 		for (const file of [
 			request.project.file,
@@ -841,5 +816,38 @@ export class MirrorPlanner {
 					...shown.filter(({ file }) => file !== projectFile.file),
 				]
 			: shown;
+	}
+}
+
+/** Reads what Rojo's syncback did to the mirror as a plan for the project: an edit or removal of the file each copy came from, a folder it emptied, a new instance where routing puts it, and an edit of the config's tree or a feature's meta. */
+export class MirrorPlanner {
+	constructor(
+		private readonly workspace: MirrorWorkspace,
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
+	) {}
+
+	/** The plan of `run`; fails when the mirror can't be read back, which would read as a place that removed everything. */
+	async plan(run: MirrorRun): Promise<Result<MirrorPlan, Error>> {
+		const { workspace } = this;
+		const { mirror, root } = workspace;
+		const walked = await workspace.walk();
+		const mountsNothing =
+			mirror.folders.length === 0 && mirror.entries.length === 0;
+		if (walked.isErr() && !(mountsNothing && isMissingPath(walked.error)))
+			return err(
+				new IoError(
+					`${root}, where Rojo wrote the place's changes, could not be read: ${failureReason(walked.error)}.`,
+					"Run syncback again."
+				)
+			);
+		return this.instantiationService
+			.createInstance(
+				MirrorPlanRun,
+				workspace,
+				run,
+				walked.isOk() ? walked.value : []
+			)
+			.make();
 	}
 }

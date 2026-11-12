@@ -45,22 +45,30 @@ const bothExtensions = (file: string, twin: string): Diagnostic =>
 export class ConfigLoader {
 	private readonly reader: ConfigFileReader;
 
+	private readonly checks: Set<ConfigFileCheck>;
+
 	constructor(
-		/** Shared with the loaders of other scopes, which run the same checks. */
-		readonly fileChecks: Set<ConfigFileCheck> = new Set(),
+		/** The checks to start with, such as those of another scope. */
+		fileChecks: Iterable<ConfigFileCheck> = [],
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
 		@InstantiationService instantiationService: InstantiationService
 	) {
+		this.checks = new Set(fileChecks);
 		this.reader = instantiationService.createInstance(
 			ConfigFileReader,
 			configStructure
 		);
 	}
 
+	/** The checks registered so far. */
+	get fileChecks(): ReadonlySet<ConfigFileCheck> {
+		return this.checks;
+	}
+
 	registerFileCheck(check: ConfigFileCheck): Disposable {
-		this.fileChecks.add(check);
-		return toDisposable(() => this.fileChecks.delete(check));
+		this.checks.add(check);
+		return toDisposable(() => this.checks.delete(check));
 	}
 
 	/** Never throws for a problem the user can cause. A config that copies another of its folder, or has a twin of the other extension, fails, and is reloaded when that one changes. */
@@ -142,8 +150,6 @@ export class ConfigLoader {
 	}
 
 	private hintsOf(file: string, value: unknown): Diagnostic[] {
-		return [...this.fileChecks].flatMap((check) => [
-			...check({ file, value }),
-		]);
+		return [...this.checks].flatMap((check) => [...check({ file, value })]);
 	}
 }

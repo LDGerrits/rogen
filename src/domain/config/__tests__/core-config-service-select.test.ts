@@ -13,6 +13,7 @@ import {
 	start,
 	resolved,
 	errors,
+	fs,
 } from "./config-fixture.js";
 
 const ROUTED = { server: "ServerScriptService" };
@@ -302,6 +303,20 @@ describe("CoreConfigService", () => {
 			);
 
 			expect(entry).toMatchObject({
+				status: "broken",
+				errors: [{ code: "test.hint" }],
+			});
+		});
+
+		it("should run in a selection that reads through another file system", async () => {
+			await write("/repo/a/default.rogen.json", { source: ["src"] });
+			service.registerFileCheck(({ file }) => [hint(file)]);
+
+			const selected = (
+				await service.select(["/repo/a/default.rogen.json"], fs)
+			).unwrap();
+
+			expect(selected.entries[0]).toMatchObject({
 				status: "broken",
 				errors: [{ code: "test.hint" }],
 			});

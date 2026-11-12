@@ -53,23 +53,32 @@ const isBareName = (ref: string): boolean =>
 
 /** Finds which config file a command reads: the one it names, else the default of the working directory. */
 export class ConfigDiscovery {
+	private readonly checks: Set<ConfigFolderCheck>;
+
 	constructor(
-		/** Shared with the discoveries of other scopes, which run the same checks. */
-		readonly folderChecks: Set<ConfigFolderCheck> = new Set(),
+		/** The checks to start with, such as those of another scope. */
+		folderChecks: Iterable<ConfigFolderCheck> = [],
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
 		@EnvironmentService
 		private readonly environmentService: EnvironmentService
-	) {}
+	) {
+		this.checks = new Set(folderChecks);
+	}
+
+	/** The checks registered so far. */
+	get folderChecks(): ReadonlySet<ConfigFolderCheck> {
+		return this.checks;
+	}
 
 	registerFolderCheck(check: ConfigFolderCheck): Disposable {
-		this.folderChecks.add(check);
-		return toDisposable(() => this.folderChecks.delete(check));
+		this.checks.add(check);
+		return toDisposable(() => this.checks.delete(check));
 	}
 
 	async staleConfigsIn(folder: string): Promise<readonly Diagnostic[]> {
 		const found: Diagnostic[] = [];
-		for (const check of this.folderChecks)
+		for (const check of this.checks)
 			found.push(...(await check(folder, this.fileSystemService)));
 		return found;
 	}
