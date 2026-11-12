@@ -429,49 +429,6 @@ describe("CoreInstantiationService", () => {
 		});
 	});
 
-	describe("delayed instantiation", () => {
-		it("should build the service only when it is used", () => {
-			const services = new ServiceCollection();
-			services.set(NameService, new SyncDescriptor(Names, [], true));
-			const instantiation = new CoreInstantiationService(services);
-
-			const names = instantiation.invokeFunction((accessor) =>
-				accessor.get(NameService)
-			);
-			const before = [...created];
-			const name = names.name;
-
-			expect(before).toEqual([]);
-			expect(name).toBe("Ada");
-			expect(created).toEqual(["names"]);
-		});
-
-		it("should subscribe an early listener once the service exists", () => {
-			class Announcing {
-				declare readonly _serviceBrand: undefined;
-				readonly name = "announcing";
-				readonly listeners: ((value: number) => void)[] = [];
-				readonly onDidChange = (listener: (value: number) => void) => {
-					this.listeners.push(listener);
-					return { [Symbol.dispose]() {} };
-				};
-			}
-			const services = new ServiceCollection();
-			services.set(NameService, new SyncDescriptor(Announcing, [], true));
-			const instantiation = new CoreInstantiationService(services);
-			const stand = instantiation.invokeFunction((accessor) =>
-				accessor.get(NameService)
-			) as unknown as Announcing;
-			const heard: number[] = [];
-
-			stand.onDidChange((value) => heard.push(value));
-			expect(stand.name).toBe("announcing");
-			(stand.listeners as ((value: number) => void)[])[0]?.(7);
-
-			expect(heard).toEqual([7]);
-		});
-	});
-
 	describe("createDecorator", () => {
 		it("should give one identifier to one name", () => {
 			expect(createDecorator<NameService>("nameService")).toBe(

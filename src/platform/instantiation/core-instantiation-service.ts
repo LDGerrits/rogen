@@ -1,8 +1,4 @@
-import {
-	Disposable,
-	DisposableStore,
-	toDisposable,
-} from "../../base/disposable.js";
+import { Disposable, DisposableStore } from "../../base/disposable.js";
 import { Graph } from "../../base/graph.js";
 import {
 	InstantiationService,
@@ -32,7 +28,7 @@ class CyclicDependencyError extends Error {
 	}
 }
 
-/** Builds services from descriptors the first time they are asked for, with their dependencies first, as VS Code's `InstantiationService` does. Without VS Code's tracing, and without its idle-time construction of delayed services. */
+/** Builds services from descriptors the first time they are asked for, with their dependencies first, as VS Code's `InstantiationService` does. Without VS Code's tracing, and without its delayed services, which a short run has no use for. */
 export class CoreInstantiationService
 	implements InstantiationService, Disposable
 {
@@ -314,87 +310,9 @@ export class CoreInstantiationService
 	}
 
 	private createServiceInstance(desc: SyncDescriptor<unknown>): unknown {
-		const args = [...desc.staticArguments];
-		if (!desc.supportsDelayedInstantiation) {
-			const result = this.construct(desc.ctor, args);
-			this.servicesToMaybeDispose.add(result);
-			return result;
-		}
-		return this.delayed(desc.ctor, args);
-	}
-
-	/** A stand-in that builds the service when something first uses it. A listener added to one of its events before then is kept and subscribed once it exists. */
-	private delayed(ctor: Ctor, args: unknown[]): unknown {
-		let instance: Record<PropertyKey, unknown> | undefined;
-		const earlyListeners = new Map<
-			string,
-			{ listener: unknown[]; subscription?: Disposable }[]
-		>();
-		const create = (): Record<PropertyKey, unknown> => {
-			if (instance) return instance;
-			const created = this.construct(ctor, args) as Record<
-				PropertyKey,
-				unknown
-			>;
-			instance = created;
-			for (const [key, entries] of earlyListeners) {
-				const event = created[key];
-				if (typeof event === "function") {
-					for (const entry of entries) {
-						entry.subscription = event.apply(
-							created,
-							entry.listener
-						);
-					}
-				}
-			}
-			earlyListeners.clear();
-			this.servicesToMaybeDispose.add(created);
-			return created;
-		};
-		const bound: Record<PropertyKey, unknown> = Object.create(null);
-		return new Proxy(bound, {
-			get: (target, key) => {
-				if (
-					!instance &&
-					typeof key === "string" &&
-					(key.startsWith("onDid") || key.startsWith("onWill"))
-				) {
-					return (...listener: unknown[]) => {
-						if (instance) {
-							return (
-								instance[key] as (...a: unknown[]) => Disposable
-							)(...listener);
-						}
-						const entry: {
-							listener: unknown[];
-							subscription?: Disposable;
-						} = { listener };
-						const entries = earlyListeners.get(key) ?? [];
-						entries.push(entry);
-						earlyListeners.set(key, entries);
-						return toDisposable(() => {
-							const at = entries.indexOf(entry);
-							if (at >= 0) entries.splice(at, 1);
-							entry.subscription?.[Symbol.dispose]();
-						});
-					};
-				}
-				if (key in target) return target[key];
-				const value = create()[key];
-				if (typeof value !== "function") return value;
-				const method = (value as (...a: unknown[]) => unknown).bind(
-					instance
-				);
-				target[key] = method;
-				return method;
-			},
-			set: (_target, key, value) => {
-				create()[key] = value;
-				return true;
-			},
-			getPrototypeOf: () => ctor.prototype as object,
-		});
+		const result = this.construct(desc.ctor, [...desc.staticArguments]);
+		this.servicesToMaybeDispose.add(result);
+		return result;
 	}
 }
 
