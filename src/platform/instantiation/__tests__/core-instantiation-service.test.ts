@@ -258,6 +258,39 @@ describe("CoreInstantiationService", () => {
 	});
 
 	describe("dispose", () => {
+		it("should dispose every service even when one fails", () => {
+			const disposed: string[] = [];
+			const failing = (name: string, fails: boolean) =>
+				class {
+					declare readonly _serviceBrand: undefined;
+					readonly name = name;
+
+					[Symbol.dispose](): void {
+						disposed.push(name);
+						if (fails) throw new Error(`${name} failed`);
+					}
+				};
+			const services = new ServiceCollection();
+			services.set(
+				NameService,
+				new SyncDescriptor(failing("first", true))
+			);
+			services.set(
+				LoopService,
+				new SyncDescriptor(failing("second", false)) as never
+			);
+			const instantiation = new CoreInstantiationService(services);
+			instantiation.invokeFunction((accessor) => {
+				accessor.get(NameService);
+				accessor.get(LoopService);
+			});
+
+			expect(() => instantiation[Symbol.dispose]()).toThrow(
+				"first failed"
+			);
+			expect(disposed).toEqual(["second", "first"]);
+		});
+
 		it("should dispose the services it built, and not the ones it was given", () => {
 			const disposed: string[] = [];
 			class Closing {

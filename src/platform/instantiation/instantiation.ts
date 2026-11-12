@@ -6,7 +6,7 @@ export interface ServiceIdentifier<T> {
 }
 
 export interface ServicesAccessor {
-	/** @throws Error if no service is registered for `id`, or the accessor is used after the function it was passed to returned. */
+	/** @throws Error if no service is registered for `id`. */
 	get<T>(id: ServiceIdentifier<T>): T;
 }
 

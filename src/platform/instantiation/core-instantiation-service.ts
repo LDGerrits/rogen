@@ -40,12 +40,23 @@ export class CoreInstantiationService
 		return fn(accessor, ...args);
 	}
 
-	/** Disposes the services this one built, the last first. */
+	/** Disposes the services this one built from descriptors, the last first, and keeps going when one fails; what `createInstance` returned belongs to its caller. */
 	[Symbol.dispose](): void {
+		const failures: unknown[] = [];
 		for (const service of this.built.reverse()) {
-			if (isDisposable(service)) service[Symbol.dispose]();
+			try {
+				if (isDisposable(service)) service[Symbol.dispose]();
+			} catch (error) {
+				failures.push(error);
+			}
 		}
 		this.built.length = 0;
+		if (failures.length === 1) throw failures[0];
+		if (failures.length > 1)
+			throw new AggregateError(
+				failures,
+				"Several services failed to dispose."
+			);
 	}
 
 	private getOrCreate<T>(id: ServiceIdentifier<T>): T {
