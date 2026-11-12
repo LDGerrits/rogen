@@ -54,7 +54,7 @@ const isBareName = (ref: string): boolean =>
 export class ConfigDiscovery {
 	constructor(
 		/** The checks the config service holds, which every scope's discovery runs. */
-		private readonly checks: ReadonlySet<ConfigFolderCheck> = new Set(),
+		private readonly checks: ReadonlySet<ConfigFolderCheck>,
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
 		@EnvironmentService
@@ -63,7 +63,7 @@ export class ConfigDiscovery {
 
 	async staleConfigsIn(folder: string): Promise<readonly Diagnostic[]> {
 		const found: Diagnostic[] = [];
-		for (const check of this.checks)
+		for (const check of [...this.checks])
 			found.push(...(await check(folder, this.fileSystemService)));
 		return found;
 	}

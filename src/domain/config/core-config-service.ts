@@ -7,7 +7,7 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 import { ConfigFormatter } from "./config-formatter.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { ConfigDiscovery, DiscoveredConfigs } from "./config-discovery.js";
+import { ConfigDiscovery } from "./config-discovery.js";
 import {
 	DEFAULT_PROJECT,
 	configStem,
@@ -70,7 +70,7 @@ export class CoreConfigService implements ConfigService {
 		reader?: FileSystemService
 	): Promise<Result<ReloadableSelection, Error>> {
 		if (!reader) {
-			return this.open(await this.discovery.discover(refs), this.loader);
+			return this.open(this.discovery, this.loader, refs);
 		}
 		const scope = this.instantiationService.createChild(
 			new ServiceCollection([FileSystemService, reader])
@@ -80,15 +80,19 @@ export class CoreConfigService implements ConfigService {
 			this.folderChecks
 		);
 		return this.open(
-			await discovery.discover(refs),
-			scope.createInstance(ConfigLoader, this.fileChecks)
+			discovery,
+			scope.createInstance(ConfigLoader, this.fileChecks),
+			refs
 		);
 	}
 
+	/** Discovers `refs` and lists the default folder with `discovery`, so a selection through another file system reads only that one. */
 	private async open(
-		discovered: Result<DiscoveredConfigs, Error>,
-		loader: ConfigLoader
+		discovery: ConfigDiscovery,
+		loader: ConfigLoader,
+		refs: readonly string[]
 	): Promise<Result<ReloadableSelection, Error>> {
+		const discovered = await discovery.discover(refs);
 		if (discovered.isErr()) return err(discovered.error);
 
 		const { home: directory, files, noneNamed, notes } = discovered.value;
@@ -99,7 +103,7 @@ export class CoreConfigService implements ConfigService {
 				noneNamed
 					? new DefaultFolder(
 							directory,
-							this.discovery,
+							discovery,
 							files.some(isProjectFileConfig)
 								? "adopting"
 								: "configured"

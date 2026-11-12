@@ -46,7 +46,7 @@ export class ConfigLoader {
 
 	constructor(
 		/** The checks the config service holds, which every scope's loader runs. */
-		private readonly checks: ReadonlySet<ConfigFileCheck> = new Set(),
+		private readonly checks: ReadonlySet<ConfigFileCheck>,
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
 		@InstantiationService instantiationService: InstantiationService
