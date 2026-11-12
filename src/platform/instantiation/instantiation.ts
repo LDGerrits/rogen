@@ -6,7 +6,7 @@ export interface ServiceIdentifier<T> {
 }
 
 export interface ServicesAccessor {
-	/** @throws Error if no service is registered for `id`. */
+	/** @throws Error if no service is registered for `id`, or the accessor is used after the function it was passed to returned. */
 	get<T>(id: ServiceIdentifier<T>): T;
 }
 
@@ -21,23 +21,28 @@ interface ServiceDependency {
 }
 
 const dependenciesOf = new WeakMap<object, ServiceDependency[]>();
+const serviceIds = new Map<string, ServiceIdentifier<unknown>>();
 
+/** One identifier per name, so two modules that ask for the same name get the same service. */
 export function createDecorator<T>(serviceId: string): ServiceIdentifier<T> {
+	const known = serviceIds.get(serviceId);
+	if (known) return known as ServiceIdentifier<T>;
 	const decorator = function (
 		target: object,
 		_key: string | symbol | undefined,
 		index: number
 	): void {
-		const known = dependenciesOf.get(target);
 		const dependency = {
 			id: decorator as ServiceIdentifier<unknown>,
 			index,
 		};
-		if (known) known.push(dependency);
+		const dependencies = dependenciesOf.get(target);
+		if (dependencies) dependencies.push(dependency);
 		else dependenciesOf.set(target, [dependency]);
 	} as ServiceIdentifier<T>;
 	Object.defineProperty(decorator, "serviceId", { value: serviceId });
 	decorator.toString = () => serviceId;
+	serviceIds.set(serviceId, decorator as ServiceIdentifier<unknown>);
 	return decorator;
 }
 

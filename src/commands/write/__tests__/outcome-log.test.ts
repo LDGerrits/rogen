@@ -1,3 +1,5 @@
+import { LogService } from "../../../platform/log/log-service.js";
+import { instantiationOf } from "../../../platform/instantiation/__tests__/instantiation-of.js";
 import path from "path";
 import {
 	WriteRun,
@@ -28,7 +30,9 @@ const matchFile = path.join(cwd, "match", "default.rogen.json");
 const debugLines = (dir: string, summary: WriteSummary): string[] => {
 	const logService = new MockLogService();
 	logService.setLevel(LogLevel.Debug);
-	new OutcomeLog(logService, dir).outcome(writtenOf(summary), []);
+	instantiationOf([LogService, logService])
+		.createInstance(OutcomeLog, dir)
+		.outcome(writtenOf(summary), []);
 	return logService.texts("debug");
 };
 
@@ -138,9 +142,11 @@ describe("OutcomeLog.outcome", () => {
 		note?: string
 	) => {
 		const logService = new MockLogService();
-		new OutcomeLog(logService, cwd).outcome(outcome, diagnostics, {
-			notes: [note],
-		});
+		instantiationOf([LogService, logService])
+			.createInstance(OutcomeLog, cwd)
+			.outcome(outcome, diagnostics, {
+				notes: [note],
+			});
 		return logService.entries.map(({ kind, text }) => [kind, text]);
 	};
 
@@ -197,7 +203,9 @@ describe("OutcomeLog report", () => {
 
 	const report = (outcomes: readonly ConfigOutcome[]) => {
 		const logService = new MockLogService();
-		new OutcomeLog(logService, cwd).report(new WriteRun(outcomes));
+		instantiationOf([LogService, logService])
+			.createInstance(OutcomeLog, cwd)
+			.report(new WriteRun(outcomes));
 		return logService.entries
 			.filter(({ kind }) => kind === "error" || kind === "success")
 			.map(({ text }) => text);
@@ -221,14 +229,16 @@ describe("OutcomeLog report", () => {
 		const logService = new MockLogService();
 		logService.setLevel(LogLevel.Debug);
 
-		new OutcomeLog(logService, cwd).report(
-			new WriteRun([
-				writtenOf(summaryOf(), "wouldWrite", configNamed("a")),
-			]),
-			undefined,
-			"syncback",
-			false
-		);
+		instantiationOf([LogService, logService])
+			.createInstance(OutcomeLog, cwd)
+			.report(
+				new WriteRun([
+					writtenOf(summaryOf(), "wouldWrite", configNamed("a")),
+				]),
+				undefined,
+				"syncback",
+				false
+			);
 
 		expect(logService.lines).toEqual([
 			"debug: rogen syncback · a/default.rogen.json",
@@ -239,13 +249,15 @@ describe("OutcomeLog report", () => {
 	it("should say a project file it wrote in one line, and one it left alone only under -v", () => {
 		const said = (kind: "wrote" | "unchanged") => {
 			const logService = new MockLogService();
-			new OutcomeLog(logService, cwd).report(
-				new WriteRun([writtenOf(summaryOf(), kind)]),
-				undefined,
-				"build",
-				true,
-				{ said: "Built game.rbxl", failed: false }
-			);
+			instantiationOf([LogService, logService])
+				.createInstance(OutcomeLog, cwd)
+				.report(
+					new WriteRun([writtenOf(summaryOf(), kind)]),
+					undefined,
+					"build",
+					true,
+					{ said: "Built game.rbxl", failed: false }
+				);
 			return logService.lines;
 		};
 
@@ -265,12 +277,14 @@ describe("OutcomeLog report", () => {
 
 		const entries = () => {
 			const logService = new MockLogService();
-			new OutcomeLog(logService, cwd).report(
-				new WriteRun([
-					writtenOf(summaryOf(), "wrote", twin("lobby")),
-					writtenOf(summaryOf(), "wrote", twin("arena")),
-				])
-			);
+			instantiationOf([LogService, logService])
+				.createInstance(OutcomeLog, cwd)
+				.report(
+					new WriteRun([
+						writtenOf(summaryOf(), "wrote", twin("lobby")),
+						writtenOf(summaryOf(), "wrote", twin("arena")),
+					])
+				);
 			return logService.entries;
 		};
 
@@ -309,7 +323,9 @@ describe("OutcomeLog report", () => {
 	describe("errors", () => {
 		const all = (outcomes: readonly ConfigOutcome[]) => {
 			const logService = new MockLogService();
-			new OutcomeLog(logService, cwd).report(new WriteRun(outcomes));
+			instantiationOf([LogService, logService])
+				.createInstance(OutcomeLog, cwd)
+				.report(new WriteRun(outcomes));
 			return logService.entries
 				.filter(({ kind }) => kind !== "intro")
 				.map(({ kind, text }) => `${kind}: ${text}`);
@@ -403,7 +419,9 @@ describe("OutcomeLog report, warnings", () => {
 
 	const all = (outcomes: readonly ConfigOutcome[]) => {
 		const logService = new MockLogService();
-		new OutcomeLog(logService, cwd).report(new WriteRun(outcomes));
+		instantiationOf([LogService, logService])
+			.createInstance(OutcomeLog, cwd)
+			.report(new WriteRun(outcomes));
 		return logService.entries
 			.filter(({ kind }) => kind !== "intro")
 			.map(({ kind, text }) => `${kind}: ${text}`);
@@ -515,9 +533,9 @@ describe("OutcomeLog report, closing line", () => {
 
 	const closing = (warnings: number) => {
 		const logService = new MockLogService();
-		new OutcomeLog(logService, cwd).report(
-			new WriteRun([written(warnings), written(0, "b")])
-		);
+		instantiationOf([LogService, logService])
+			.createInstance(OutcomeLog, cwd)
+			.report(new WriteRun([written(warnings), written(0, "b")]));
 		return logService.lines.at(-1);
 	};
 
@@ -532,13 +550,12 @@ describe("OutcomeLog report, closing line", () => {
 
 	it("should name what Rojo built, with the warnings", () => {
 		const logService = new MockLogService();
-		new OutcomeLog(logService, cwd).report(
-			new WriteRun([written(1)]),
-			undefined,
-			"build",
-			true,
-			{ said: "Built game.rbxl", failed: false }
-		);
+		instantiationOf([LogService, logService])
+			.createInstance(OutcomeLog, cwd)
+			.report(new WriteRun([written(1)]), undefined, "build", true, {
+				said: "Built game.rbxl",
+				failed: false,
+			});
 
 		expect(logService.lines.at(-1)).toBe(
 			"outro: Built game.rbxl with 1 warning."
@@ -547,26 +564,27 @@ describe("OutcomeLog report, closing line", () => {
 
 	it("should claim nothing when Rojo failed", () => {
 		const logService = new MockLogService();
-		new OutcomeLog(logService, cwd).report(
-			new WriteRun([written(0)]),
-			undefined,
-			"build",
-			true,
-			{ said: "Built game.rbxl", failed: true }
-		);
+		instantiationOf([LogService, logService])
+			.createInstance(OutcomeLog, cwd)
+			.report(new WriteRun([written(0)]), undefined, "build", true, {
+				said: "Built game.rbxl",
+				failed: true,
+			});
 
 		expect(logService.texts("outro")).toEqual([]);
 	});
 
 	it("should close the frame of several configs with the failure when Rojo failed", () => {
 		const logService = new MockLogService();
-		new OutcomeLog(logService, cwd).report(
-			new WriteRun([written(0), written(0, "b")]),
-			undefined,
-			"build",
-			true,
-			{ said: "Built game.rbxl", failed: true }
-		);
+		instantiationOf([LogService, logService])
+			.createInstance(OutcomeLog, cwd)
+			.report(
+				new WriteRun([written(0), written(0, "b")]),
+				undefined,
+				"build",
+				true,
+				{ said: "Built game.rbxl", failed: true }
+			);
 
 		expect(logService.lines.at(-1)).toBe("outro: build failed.");
 	});
@@ -584,10 +602,9 @@ describe("OutcomeLog.diagnostics", () => {
 
 	const printed = (diagnostics: readonly Diagnostic[]) => {
 		const logService = new MockLogService();
-		new OutcomeLog(logService, cwd).diagnostics(
-			diagnostics,
-			"/repo/default.rogen.json"
-		);
+		instantiationOf([LogService, logService])
+			.createInstance(OutcomeLog, cwd)
+			.diagnostics(diagnostics, "/repo/default.rogen.json");
 		return logService.entries.map(({ text }) => text);
 	};
 
@@ -654,26 +671,28 @@ describe("OutcomeLog report, when quiet", () => {
 	const quietly = () => {
 		const logService = new MockLogService();
 		logService.setLevel(LogLevel.Error);
-		new OutcomeLog(logService, cwd).report(
-			new WriteRun([
-				new WrittenConfig(
-					mockConfig(),
-					"wrote",
-					{
-						warnings: [
-							warningDiagnostic(
-								"x.w",
-								{ resource: "/repo/src/F.luau" },
-								"bad."
-							),
-						],
-						sync: SyncWarnings.known([]),
-					},
-					summaryOf(),
-					[]
-				),
-			])
-		);
+		instantiationOf([LogService, logService])
+			.createInstance(OutcomeLog, cwd)
+			.report(
+				new WriteRun([
+					new WrittenConfig(
+						mockConfig(),
+						"wrote",
+						{
+							warnings: [
+								warningDiagnostic(
+									"x.w",
+									{ resource: "/repo/src/F.luau" },
+									"bad."
+								),
+							],
+							sync: SyncWarnings.known([]),
+						},
+						summaryOf(),
+						[]
+					),
+				])
+			);
 		return logService.lines;
 	};
 

@@ -22,6 +22,7 @@ import {
 	errorToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { OutcomeLog } from "../write/outcome-log.js";
 import {
@@ -160,11 +161,12 @@ export class InitLog implements InitReporter {
 	private within = "";
 
 	constructor(
-		private readonly logService: LogService,
 		private readonly cwd: string,
-		private readonly dryRun = false
+		private readonly dryRun: boolean,
+		@LogService private readonly logService: LogService,
+		@InstantiationService instantiationService: InstantiationService
 	) {
-		this.outcomeLog = new OutcomeLog(logService, cwd);
+		this.outcomeLog = instantiationService.createInstance(OutcomeLog, cwd);
 	}
 
 	private shown(name: string): string {
@@ -315,10 +317,10 @@ export class InitJsonLog implements InitReporter {
 		[];
 
 	constructor(
-		private readonly logService: LogService,
 		private readonly cwd: string,
 		private readonly directory: string,
-		private readonly dryRun = false
+		private readonly dryRun: boolean,
+		@LogService private readonly logService: LogService
 	) {}
 
 	begin(plan: InitPlan): void {

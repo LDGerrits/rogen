@@ -3,8 +3,7 @@ import { ResultError } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { RogenConfig } from "../../config/config.js";
 import { InitPlan } from "../init-service.js";
-import { InitQuestions } from "../init-questions.js";
-import { ProjectChoices, ProjectSetup } from "../project-setup.js";
+import { ProjectChoices } from "../project-setup.js";
 import { StarterProject } from "../starter-project.js";
 import { ProjectTree } from "../tree-plan.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
@@ -15,6 +14,8 @@ import {
 	directoryOf,
 	planOf,
 } from "./init-fixtures.js";
+import { questionsOf } from "./init-of.js";
+import { setupOf } from "./init-of.js";
 
 export const LUAU_ROUTES = {
 	Server: "ServerScriptService",
@@ -49,9 +50,9 @@ export const defaultProjectChoices = async (
 	await fileSystem.createDirectory(directory);
 	for (const file of existingFiles)
 		await fileSystem.writeFile(path.join(directory, file), "{}");
-	const setup = new ProjectSetup(
+	const setup = setupOf(
 		directoryOf({ workspace: spec, existing: [...existingFiles] }),
-		new InitQuestions(new MockPromptService([], false), false, {
+		questionsOf(new MockPromptService([], false), false, {
 			sample: false,
 		}),
 		fileSystem
@@ -86,9 +87,9 @@ export const planProject = ({
 		tracksProjectFile,
 	});
 	return planOf(
-		new ProjectSetup(
+		setupOf(
 			target,
-			new InitQuestions(new MockPromptService([], false), false, {
+			questionsOf(new MockPromptService([], false), false, {
 				sample: false,
 			}),
 			new MemoryFileSystemService()

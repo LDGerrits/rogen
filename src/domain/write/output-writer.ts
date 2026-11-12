@@ -23,7 +23,9 @@ export interface OutputWriteOptions {
 
 /** Writes a tree to its output through a staging file, so a reader never sees half a project file. */
 export class OutputWriter {
-	constructor(private readonly fileSystemService: FileSystemService) {}
+	constructor(
+		@FileSystemService private readonly fileSystemService: FileSystemService
+	) {}
 
 	static textOf(projectFile: RojoProjectFile): string {
 		return ProjectText.of(projectFile);

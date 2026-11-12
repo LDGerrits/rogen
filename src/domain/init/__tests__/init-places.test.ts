@@ -3,14 +3,10 @@ import { NativeEnvironmentService } from "../../../platform/environment/native-e
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
-import { CoreToolLocator } from "../../toolchain/core-tool-locator.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
-import { CoreConfigService } from "../../config/core-config-service.js";
-import { CoreInitService } from "../core-init-service.js";
-import { CoreWriteService } from "../../write/core-write-service.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { InitChoices, InitPlan } from "../init-service.js";
 import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
+import { initServiceOf } from "./init-of.js";
+import { configServiceOf } from "../../config/__tests__/config-of.js";
 
 const directory = path.resolve("/mock/my-game");
 
@@ -32,22 +28,13 @@ describe("init for several places", () => {
 
 	const serviceFor = () => {
 		const environmentService = new NativeEnvironmentService({}, directory);
-		const toolchain = new CoreToolchainService(fileSystem);
-		const configs = new CoreConfigService(fileSystem, environmentService);
-		return new CoreInitService(
+		const configs = configServiceOf(fileSystem, environmentService);
+		return initServiceOf(
 			fileSystem,
 			new MockPromptService([], false),
 			environmentService,
-			toolchain,
 			processes,
-			new CoreToolLocator(processes, fileSystem, environmentService),
 			configs,
-			new CoreWriteService(
-				fileSystem,
-				new CoreIndexService(fileSystem),
-				toolchain,
-				configs
-			),
 			new MockLifecycleService()
 		);
 	};

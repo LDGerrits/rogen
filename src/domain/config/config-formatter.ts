@@ -17,7 +17,9 @@ import { ROGEN_KEYS } from "./config.js";
 export class ConfigFormatter {
 	private readonly reader: ConfigFileReader;
 
-	constructor(private readonly fileSystemService: FileSystemService) {
+	constructor(
+		@FileSystemService private readonly fileSystemService: FileSystemService
+	) {
 		this.reader = new ConfigFileReader(fileSystemService, configStructure);
 	}
 

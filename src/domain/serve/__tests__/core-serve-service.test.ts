@@ -12,6 +12,7 @@ import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { writeServiceOf } from "../../write/__tests__/fixtures.js";
 import { CoreWriteService } from "../../write/core-write-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
+import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { instantiationOf } from "../../../platform/instantiation/__tests__/instantiation-of.js";
 import { rojoRunnerOf } from "../../runner/__tests__/rojo-runner-fixtures.js";
 import { RojoCompatibility } from "../../runner/rojo-compatibility.js";
@@ -29,6 +30,16 @@ import {
 	ServerReadyEvent,
 	ServerRestartEvent,
 } from "../serve-service.js";
+import { configServiceOf } from "../../config/__tests__/config-of.js";
+import { ConfigService } from "../../config/config-service.js";
+import { RequestService } from "../../../platform/request/request-service.js";
+import { EnvironmentService } from "../../../platform/environment/environment-service.js";
+import { IndexService } from "../../../platform/fs/index-service.js";
+import { Watcher } from "../../../platform/watcher/watcher.js";
+import { WriteService } from "../../write/write-service.js";
+import { RojoRunner } from "../../runner/rojo-runner.js";
+import { WatchService } from "../../watch/watch-service.js";
+import { SyncDescriptor } from "../../../platform/instantiation/sync-descriptor.js";
 
 type Fields = Record<string, unknown>;
 
@@ -74,21 +85,26 @@ describe("CoreServeService", () => {
 	];
 
 	const serviceAt = (cwd: string, windows?: boolean) => {
-		configService = new CoreConfigService(
-			memFs,
-			new MockEnvironmentService(cwd)
-		);
+		configService = configServiceOf(memFs, new MockEnvironmentService(cwd));
 		const index = new CoreIndexService(memFs);
-		return new CoreServeService(
-			windows,
-			configService,
-			memFs,
-			rojoRunnerOf(memFs, processes),
-			requests,
-			new CoreWatchService(watcher, index, writeServiceOf(memFs, index)),
-			new MockEnvironmentService(cwd, undefined, false, "/home/me"),
-			instantiationOf(memFs)
+		const environment = new MockEnvironmentService(
+			cwd,
+			undefined,
+			false,
+			"/home/me"
 		);
+		const services = instantiationOf(
+			[ConfigService, configService],
+			[FileSystemService, memFs],
+			[RequestService, requests],
+			[EnvironmentService, environment],
+			[IndexService, index],
+			[Watcher, watcher],
+			[WriteService, writeServiceOf(memFs, index)],
+			[RojoRunner, rojoRunnerOf(memFs, processes)],
+			[WatchService, new SyncDescriptor(CoreWatchService)]
+		);
+		return services.createInstance(CoreServeService, windows);
 	};
 
 	beforeEach(async () => {

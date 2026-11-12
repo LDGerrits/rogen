@@ -16,7 +16,9 @@ import {
 	OptionDescriptor,
 } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
+import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import {
 	ServeJsonLog,
@@ -24,7 +26,7 @@ import {
 	ServeReporter,
 	serveLineShape,
 } from "./serve-log.js";
-import { refreshAgentRules } from "../write/refresh-agent-rules.js";
+import { RefreshAgentRules } from "../write/refresh-agent-rules.js";
 
 const AddressOption = {
 	name: "address",
@@ -119,11 +121,19 @@ registerCommand(
 			);
 			if (tooMany) return err(tooMany);
 			const serveService = accessor.get(ServeService);
+			const logService = accessor.get(LogService);
+			const { cwd } = accessor.get(EnvironmentService);
+			const instantiationService = accessor.get(InstantiationService);
 
 			const store = new DisposableStore();
-			const shutdown = this.untilShutdown(accessor, store);
+			const shutdown = this.untilShutdown(
+				accessor.get(LifecycleService),
+				store
+			);
 			try {
-				await refreshAgentRules(accessor, Boolean(line.options.json));
+				await instantiationService
+					.createInstance(RefreshAgentRules)
+					.run(Boolean(line.options.json));
 				const plan = await serveService.prepare({
 					signal: shutdown,
 					refs: line.positionals,
@@ -133,18 +143,18 @@ registerCommand(
 				if (plan.isErr()) return plan;
 
 				const log: ServeReporter = line.options.json
-					? new ServeJsonLog(
-							accessor.get(LogService),
-							accessor.get(EnvironmentService).cwd,
+					? instantiationService.createInstance(
+							ServeJsonLog,
+							cwd,
 							plan.value
 						)
-					: new ServeLog(
-							accessor.get(LogService),
-							accessor.get(EnvironmentService).cwd,
+					: instantiationService.createInstance(
+							ServeLog,
+							cwd,
 							plan.value
 						);
 				for (const note of plan.value.selection.notes)
-					accessor.get(LogService).warn(note);
+					logService.warn(note);
 				log.begin();
 				if (plan.value.isIdle) {
 					log.end(

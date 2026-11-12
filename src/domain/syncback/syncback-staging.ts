@@ -30,12 +30,13 @@ export class SyncbackStaging {
 	private readonly lock: string;
 
 	constructor(
-		private readonly fileSystemService: FileSystemService,
-		private readonly processService: ProcessService,
-		private readonly lifecycleService: LifecycleService,
 		private readonly pid: number,
 		/** The project folder, absolute, in the system's own form. */
-		readonly dir: string
+		readonly dir: string,
+		@FileSystemService
+		private readonly fileSystemService: FileSystemService,
+		@ProcessService private readonly processService: ProcessService,
+		@LifecycleService private readonly lifecycleService: LifecycleService
 	) {
 		this.file = path.join(dir, SYNCBACK_FILES.project);
 		this.folder = path.join(dir, SYNCBACK_FILES.staging);

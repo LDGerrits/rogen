@@ -4,9 +4,10 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { InitQuestions } from "../init-questions.js";
 import { InitChoices } from "../init-service.js";
-import { ProjectSetup } from "../project-setup.js";
 import { SampleGame } from "../sample-game.js";
 import { WorkspaceSpec, directory, directoryOf } from "./init-fixtures.js";
+import { questionsOf } from "./init-of.js";
+import { setupOf } from "./init-of.js";
 
 const luau: WorkspaceSpec = {};
 const withPackages: WorkspaceSpec = {
@@ -22,12 +23,12 @@ async function run(
 	existing: readonly string[] = []
 ) {
 	const prompts = new MockPromptService([], interactive);
-	const questions = new InitQuestions(prompts, interactive, choices);
+	const questions = questionsOf(prompts, interactive, choices);
 	const fileSystem = new MemoryFileSystemService();
 	await fileSystem.createDirectory(directory);
 	for (const file of existing)
 		await fileSystem.writeFile(path.join(directory, file), "{}");
-	const setup = new ProjectSetup(
+	const setup = setupOf(
 		directoryOf({ workspace, existing }),
 		questions,
 		fileSystem
@@ -60,7 +61,7 @@ describe("init choices given as flags", () => {
 		});
 
 		it("should name --no-places when a projects folder makes several places the default", async () => {
-			const questions = new InitQuestions(
+			const questions = questionsOf(
 				new MockPromptService([], false),
 				false,
 				{}
@@ -222,7 +223,7 @@ describe("init choices given as flags", () => {
 
 describe("the yes or no questions", () => {
 	const questions = (choices: InitChoices) =>
-		new InitQuestions(new MockPromptService([], false), false, choices);
+		questionsOf(new MockPromptService([], false), false, choices);
 
 	it("should take the flag, either way, over the default", async () => {
 		expect(

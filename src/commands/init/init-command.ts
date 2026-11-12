@@ -14,8 +14,8 @@ import {
 } from "../../platform/commands/commands.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
-import { LogService } from "../../platform/log/log-service.js";
 import {
 	InitJsonLog,
 	InitLog,
@@ -151,11 +151,14 @@ registerCommand(
 			if (line.positionals.length > 1)
 				return err(new UsageError("init takes one folder."));
 			const initService = accessor.get(InitService);
-			const logService = accessor.get(LogService);
+			const { cwd } = accessor.get(EnvironmentService);
+			const configService = accessor.get(ConfigService);
+			const writeService = accessor.get(WriteService);
+			const instantiationService = accessor.get(InstantiationService);
 			const dryRun = Boolean(line.options["dry-run"]);
-			const log = new InitLog(
-				logService,
-				accessor.get(EnvironmentService).cwd,
+			const log = instantiationService.createInstance(
+				InitLog,
+				cwd,
 				dryRun
 			);
 			const ask = !line.options["non-interactive"] && !line.options.json;
@@ -173,9 +176,9 @@ registerCommand(
 			if (checked.isErr()) return checked;
 
 			const reporter: InitReporter = line.options.json
-				? new InitJsonLog(
-						logService,
-						accessor.get(EnvironmentService).cwd,
+				? instantiationService.createInstance(
+						InitJsonLog,
+						cwd,
 						plan.directory,
 						dryRun
 					)
@@ -188,21 +191,24 @@ registerCommand(
 			);
 			if (written.isErr()) return reporter.failed(written.error);
 			if (dryRun) return reporter.planned(plan);
-			const run = await this.writeConfigs(accessor, plan);
+			const run = await this.writeConfigs(
+				configService,
+				writeService,
+				plan
+			);
 			if (run.isErr()) return reporter.failed(run.error);
 			return reporter.done(plan, run.value);
 		}
 
 		private async writeConfigs(
-			accessor: ServicesAccessor,
+			configService: ConfigService,
+			writeService: WriteService,
 			plan: InitPlan
 		): Promise<Result<WriteRun, Error>> {
 			if (plan.configs.length === 0) return ok(new WriteRun([]));
-			const selection = await accessor
-				.get(ConfigService)
-				.select(plan.configs);
+			const selection = await configService.select(plan.configs);
 			if (selection.isErr()) return selection;
-			return ok(await accessor.get(WriteService).write(selection.value));
+			return ok(await writeService.write(selection.value));
 		}
 	}
 );

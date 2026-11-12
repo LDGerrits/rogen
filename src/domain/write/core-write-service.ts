@@ -46,6 +46,7 @@ import { OutsideSourcePaths } from "./check/outside-source-paths.js";
 import { LocateTargets } from "./locate/locate-targets.js";
 import { Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
 interface WriteOptions {
 	readonly force?: boolean;
@@ -81,10 +82,12 @@ export class CoreWriteService implements WriteService {
 		private readonly fileSystemService: FileSystemService,
 		@IndexService private readonly indexService: IndexService,
 		@ToolchainService toolchainService: ToolchainService,
-		@ConfigService private readonly configService: ConfigService
+		@ConfigService private readonly configService: ConfigService,
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
 	) {
 		this.syncTools = toolchainService.syncTools;
-		this.writer = new OutputWriter(fileSystemService);
+		this.writer = instantiationService.createInstance(OutputWriter);
 	}
 
 	write(
@@ -370,10 +373,9 @@ export class CoreWriteService implements WriteService {
 		attempt: PreparedConfig,
 		reader: FileReader = this.fileSystemService
 	): Promise<PreparedConfig> {
-		const stale = await new ProjectFileStaleness(
-			reader,
-			this.configService
-		).diagnostic(attempt.config, async () => attempt.projectFile);
+		const stale = await this.instantiationService
+			.createInstance(ProjectFileStaleness, reader)
+			.diagnostic(attempt.config, async () => attempt.projectFile);
 		if (!stale) return attempt;
 		return {
 			...attempt,

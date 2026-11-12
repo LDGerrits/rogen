@@ -6,18 +6,18 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import {
-	FileReader,
 	isFileType,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import { StarterProject } from "./starter-project.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 const FIX_OR_MOVE = "Fix the file, or move it away to start a new project.";
 
 export class ProjectReader {
 	constructor(
-		private readonly fileReader: FileReader,
-		private readonly directory: string
+		private readonly directory: string,
+		@FileSystemService private readonly fileReader: FileSystemService
 	) {}
 
 	async read(

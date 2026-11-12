@@ -150,7 +150,7 @@ export function commandHarness(
 			Registry.as<CommandRegistry>(Extensions.Commands),
 		])
 	);
-	const instantiation = new CoreInstantiationService(services);
+	const instantiation = new CoreInstantiationService(services, true);
 	const commands = instantiation.invokeFunction((accessor) => {
 		if (!options.config) legacyChecked(accessor.get(ConfigService));
 		accessor.get(InitService).registerMigration(new LegacyMigration());

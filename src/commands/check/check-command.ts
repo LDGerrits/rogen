@@ -86,13 +86,20 @@ registerCommand(
 		): Promise<Result<void, Error>> {
 			const cwd = accessor.get(EnvironmentService).cwd;
 			const logService = accessor.get(LogService);
+			const configService = accessor.get(ConfigService);
+			const writeService = accessor.get(WriteService);
 
-			const found = await this.diagnose(accessor, line.positionals);
+			const found = await this.diagnose(
+				configService,
+				writeService,
+				cwd,
+				line.positionals
+			);
 			if (found.isErr()) return found;
 
 			const { skipped } = found.value;
 			for (const note of await skippedNotes(
-				accessor.get(ConfigService),
+				configService,
 				skipped,
 				cwd,
 				ASKING
@@ -126,12 +133,11 @@ registerCommand(
 
 		/** With paths, each is answered by the config that covers it, with that config's project file when it is stale, and one that nothing covers is said so and skipped. */
 		private async diagnose(
-			accessor: ServicesAccessor,
+			configService: ConfigService,
+			writeService: WriteService,
+			cwd: string,
 			given: readonly string[]
 		): Promise<Result<Diagnosis, Error>> {
-			const configService = accessor.get(ConfigService);
-			const writeService = accessor.get(WriteService);
-			const { cwd } = accessor.get(EnvironmentService);
 			if (given.length === 0) {
 				const selection = await configService.select(
 					await configService.configsHere()

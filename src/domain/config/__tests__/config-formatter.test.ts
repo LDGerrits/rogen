@@ -1,5 +1,6 @@
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ConfigFormatter } from "../config-formatter.js";
+import { formatterOf } from "./config-of.js";
 
 const TABBED = `{
 	"compiledPath": "out",
@@ -21,7 +22,7 @@ describe("ConfigFormatter", () => {
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo");
-		formatter = new ConfigFormatter(fs);
+		formatter = formatterOf(fs);
 	});
 
 	it("should write Rogen's keys in order after the name and before the tree, with two-space indentation and no trailing newline", async () => {

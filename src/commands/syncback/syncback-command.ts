@@ -25,6 +25,7 @@ import {
 	OptionDescriptor,
 } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import {
 	warningDiagnostic,
@@ -145,6 +146,9 @@ registerCommand(
 					)
 				);
 			const cwd = accessor.get(EnvironmentService).cwd;
+			const configService = accessor.get(ConfigService);
+			const syncbackService = accessor.get(SyncbackService);
+			const instantiationService = accessor.get(InstantiationService);
 			const mode: SyncbackMode = dryRun
 				? "dryRun"
 				: ask
@@ -159,15 +163,14 @@ registerCommand(
 						}
 					: "apply";
 
-			const selection = await accessor
-				.get(ConfigService)
-				.select(line.positionals);
+			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
 			for (const note of selection.value.notes) logService.warn(note);
 
-			const { write: run, outcome } = await accessor
-				.get(SyncbackService)
-				.run(selection.value, { input, cwd, mode });
+			const { write: run, outcome } = await syncbackService.run(
+				selection.value,
+				{ input, cwd, mode }
+			);
 			const failure = run.failure();
 			const stopped =
 				outcome.kind === "failed" ? outcome.error : undefined;
@@ -182,12 +185,9 @@ registerCommand(
 					),
 					failure ?? stopped
 				);
-			new OutcomeLog(logService, cwd).report(
-				run,
-				selection.value.home,
-				"syncback",
-				!dryRun
-			);
+			instantiationService
+				.createInstance(OutcomeLog, cwd)
+				.report(run, selection.value.home, "syncback", !dryRun);
 			if ("plan" in outcome)
 				this.report(
 					logService,

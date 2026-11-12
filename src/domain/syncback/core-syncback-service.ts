@@ -28,6 +28,7 @@ import { PlanWriter } from "./plan-writer.js";
 import { RojoSyncback } from "./rojo-syncback.js";
 import { MirrorPlanner } from "./mirror-planner.js";
 import { MirrorWorkspace, WorkspaceServices } from "./mirror-workspace.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
 /** The error of a run stopped before it wrote anything. */
 function stopped(): CancelledError {
@@ -75,9 +76,11 @@ export class CoreSyncbackService implements SyncbackService {
 		@RojoCommandService rojoService: RojoCommandService,
 		@EnvironmentService environmentService: EnvironmentService,
 		@ProcessService processService: ProcessService,
-		@LifecycleService lifecycleService: LifecycleService
+		@LifecycleService lifecycleService: LifecycleService,
+		@InstantiationService instantiationService: InstantiationService
 	) {
 		this.services = {
+			instantiationService,
 			configService,
 			fileSystemService,
 			writeService,
@@ -136,7 +139,10 @@ export class CoreSyncbackService implements SyncbackService {
 		request: SyncbackRequest,
 		mode: SyncbackMode
 	): Promise<Result<SyncbackOutcome, Error>> {
-		const rojo = new RojoSyncback(this.services.rojoService, request);
+		const rojo = this.services.instantiationService.createInstance(
+			RojoSyncback,
+			request
+		);
 		if (mode !== "apply") {
 			const planned = await rojo.plain(true);
 			if (planned.isErr()) return planned;
@@ -174,10 +180,9 @@ export class CoreSyncbackService implements SyncbackService {
 			}
 			// Once writing starts, a stop no longer undoes the run.
 			if (signal.aborted) return err(stopped());
-			const result = await new PlanWriter(
-				this.services.fileSystemService,
-				this.services.writeService
-			).write(request, plan);
+			const result = await this.services.instantiationService
+				.createInstance(PlanWriter)
+				.write(request, plan);
 			return ok(written(result, mode));
 		});
 	}

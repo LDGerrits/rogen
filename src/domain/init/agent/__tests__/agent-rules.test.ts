@@ -1,9 +1,10 @@
 import path from "path";
 import { MemoryFileSystemService } from "../../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../../platform/process/__tests__/mock-process-service.js";
-import { GitRepository } from "../../git-repository.js";
 import { agentBlock } from "../agent-block.js";
 import { AgentRules } from "../agent-rules.js";
+import { gitOf } from "../../__tests__/init-of.js";
+import { agentRulesOf } from "../../__tests__/init-of.js";
 
 const OLD = "<!-- rogen -->\n## Rogen\n\nOld rules.\n<!-- /rogen -->\n";
 
@@ -18,9 +19,9 @@ describe("AgentRules", () => {
 	beforeEach(async () => {
 		fileSystem = new MemoryFileSystemService();
 		await fileSystem.createDirectory(path.join(root, ".git"));
-		rules = new AgentRules(
+		rules = agentRulesOf(
 			fileSystem,
-			new GitRepository(new MockProcessService(), fileSystem)
+			gitOf(new MockProcessService(), fileSystem)
 		);
 	});
 

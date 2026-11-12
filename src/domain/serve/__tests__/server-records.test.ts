@@ -4,6 +4,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { ServerInfo } from "../../runner/rojo-server.js";
 import { ServeAddress } from "../serve.js";
 import { ServerRecords } from "../server-records.js";
+import { recordsOf } from "./serve-of.js";
 
 describe("ServerRecords", () => {
 	let fs: MemoryFileSystemService;
@@ -19,7 +20,7 @@ describe("ServerRecords", () => {
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
-		records = new ServerRecords(fs, "/tmp", 4242);
+		records = recordsOf(fs, "/tmp", 4242);
 	});
 
 	describe("recordOf", () => {
@@ -106,11 +107,11 @@ describe("ServerRecords", () => {
 					await super.writeFile(filePath, content);
 				}
 			})();
-			const reader = new ServerRecords(halting, "/tmp", 4242);
+			const reader = recordsOf(halting, "/tmp", 4242);
 			await reader.write(address, info, served);
 			held = new DeferredPromise<void>();
 
-			const writing = new ServerRecords(halting, "/tmp", 5000).write(
+			const writing = recordsOf(halting, "/tmp", 5000).write(
 				address,
 				info,
 				{ ...served, pid: 1001 }
@@ -144,7 +145,7 @@ describe("ServerRecords", () => {
 			"should leave a record that %s wrote since",
 			async (_, owner, written) => {
 				await records.write(address, info, served);
-				await new ServerRecords(fs, "/tmp", owner).write(
+				await recordsOf(fs, "/tmp", owner).write(
 					address,
 					written,
 					served

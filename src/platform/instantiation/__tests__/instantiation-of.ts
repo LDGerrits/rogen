@@ -1,12 +1,13 @@
-import { FileSystemService } from "../../fs/file-system-service.js";
 import { CoreInstantiationService } from "../core-instantiation-service.js";
+import { ServiceIdentifier } from "../instantiation.js";
 import { ServiceCollection } from "../service-collection.js";
 
-/** An instantiation service that knows only the file system, enough for instance classes that ask for nothing else. */
+/** A strict instantiation service that knows the services it is given: `instantiationOf([FileSystemService, fs], [LogService, log])`. A service built from the result with `createInstance` asks for these and nothing else. */
 export function instantiationOf(
-	fs: FileSystemService
+	...entries: readonly (readonly [ServiceIdentifier<unknown>, unknown])[]
 ): CoreInstantiationService {
-	const services = new ServiceCollection();
-	services.set(FileSystemService, fs);
-	return new CoreInstantiationService(services);
+	return new CoreInstantiationService(
+		new ServiceCollection(...entries),
+		true
+	);
 }

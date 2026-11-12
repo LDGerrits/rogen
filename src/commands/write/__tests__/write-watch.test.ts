@@ -19,6 +19,7 @@ import {
 	exitCode,
 	exitCodeOf,
 } from "../../../platform/commands/command-failure.js";
+import { configServiceOf } from "../../../domain/config/__tests__/config-of.js";
 
 describe("watch", () => {
 	let memFs: MemoryFileSystemService;
@@ -107,7 +108,7 @@ describe("watch", () => {
 			stdout: "Rojo 7.7.1\n",
 			stderr: "",
 		});
-		configService = new CoreConfigService(
+		configService = configServiceOf(
 			memFs,
 			new MockEnvironmentService("/repo")
 		);
@@ -558,7 +559,7 @@ describe("watch", () => {
 			lifecycle = new MockLifecycleService();
 			await watcher.stop();
 			logService.clear();
-			configService = new CoreConfigService(
+			configService = configServiceOf(
 				memFs,
 				new MockEnvironmentService("/repo")
 			);

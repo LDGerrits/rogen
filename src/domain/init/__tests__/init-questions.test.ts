@@ -7,8 +7,7 @@ import {
 	PromptScript,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { withRobloxTs } from "../../toolchain/__tests__/workspaces.js";
-import { InitQuestions } from "../init-questions.js";
-import { ProjectChoices, ProjectSetup } from "../project-setup.js";
+import { ProjectChoices } from "../project-setup.js";
 import path from "path";
 import {
 	DirectorySpec,
@@ -16,6 +15,8 @@ import {
 	directory,
 	directoryOf,
 } from "./init-fixtures.js";
+import { questionsOf } from "./init-of.js";
+import { setupOf } from "./init-of.js";
 
 type Context = DirectorySpec;
 
@@ -27,9 +28,9 @@ const askInitChoices = async (
 	await fileSystem.createDirectory(directory);
 	for (const file of context.existing ?? [])
 		await fileSystem.writeFile(path.join(directory, file), "{}");
-	const setup = new ProjectSetup(
+	const setup = setupOf(
 		directoryOf(context),
-		new InitQuestions(prompts, prompts.isInteractive, { sample: false }),
+		questionsOf(prompts, prompts.isInteractive, { sample: false }),
 		fileSystem
 	);
 	return setup.ask();
@@ -310,11 +311,8 @@ describe("InitQuestions askProject project file", () => {
 
 describe("InitQuestions addAgentInstructions", () => {
 	it("should add them on Enter, as a run that can't ask does", async () => {
-		const asked = new InitQuestions(new MockPromptService({}), true);
-		const unasked = new InitQuestions(
-			new MockPromptService([], false),
-			false
-		);
+		const asked = questionsOf(new MockPromptService({}), true);
+		const unasked = questionsOf(new MockPromptService([], false), false);
 
 		expect(await asked.addAgentInstructions("AGENTS.md")).toBe(true);
 		expect(await unasked.addAgentInstructions("AGENTS.md")).toBe(true);
@@ -323,11 +321,8 @@ describe("InitQuestions addAgentInstructions", () => {
 
 describe("InitQuestions addAgentHook", () => {
 	it("should leave it out on Enter in a terminal, as in a run that can't ask", async () => {
-		const asked = new InitQuestions(new MockPromptService({}), true);
-		const unasked = new InitQuestions(
-			new MockPromptService([], false),
-			false
-		);
+		const asked = questionsOf(new MockPromptService({}), true);
+		const unasked = questionsOf(new MockPromptService([], false), false);
 
 		expect(await asked.addAgentHook(["Claude Code"])).toBe(false);
 		expect(await unasked.addAgentHook(["Claude Code"])).toBe(false);

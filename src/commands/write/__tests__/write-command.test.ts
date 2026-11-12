@@ -5,7 +5,6 @@ import "../write-command.js";
 import { agentBlock } from "../../../domain/init/agent/agent-block.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { ResultError } from "../../../base/result.js";
-import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { ReportedError } from "../../../platform/commands/commands.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -13,6 +12,7 @@ import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
+import { configServiceOf } from "../../../domain/config/__tests__/config-of.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
@@ -353,7 +353,7 @@ describe("write command", () => {
 				log,
 				lifecycle,
 				watcher,
-				config: new CoreConfigService(
+				config: configServiceOf(
 					fs,
 					new MockEnvironmentService("/repo")
 				),
@@ -384,7 +384,7 @@ describe("write command", () => {
 				log,
 				lifecycle,
 				watcher,
-				config: new CoreConfigService(
+				config: configServiceOf(
 					fs,
 					new MockEnvironmentService("/repo")
 				),
@@ -425,7 +425,7 @@ describe("write command", () => {
 				log,
 				lifecycle,
 				watcher,
-				config: new CoreConfigService(
+				config: configServiceOf(
 					fs,
 					new MockEnvironmentService("/repo")
 				),
@@ -451,7 +451,7 @@ describe("write command", () => {
 				log,
 				lifecycle,
 				watcher,
-				config: new CoreConfigService(
+				config: configServiceOf(
 					fs,
 					new MockEnvironmentService("/repo")
 				),

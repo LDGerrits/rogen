@@ -120,9 +120,9 @@ class UpdateNotice {
 	private readonly found: Promise<string | undefined>;
 
 	constructor(
-		private readonly logService: LogService,
 		check: Promise<string | undefined> | undefined,
-		readonly printedFirst: boolean
+		readonly printedFirst: boolean,
+		@LogService private readonly logService: LogService
 	) {
 		this.found =
 			check?.catch(() => undefined) ?? Promise.resolve(undefined);
@@ -173,7 +173,16 @@ class RogenMain {
 			cwd ?? path.parse(process.execPath).root
 		);
 		const logService = this.createLogService(environmentService, json);
-		const failure = new CommandFailure(logService, json);
+		const instantiationService = this.createInstantiationService(
+			environmentService,
+			logService,
+			commandRegistry
+		);
+		this.disposables.add(instantiationService);
+		const failure = instantiationService.createInstance(
+			CommandFailure,
+			json
+		);
 
 		if (argsResult.isErr()) {
 			failure.report(argsResult.error);
@@ -193,12 +202,6 @@ class RogenMain {
 
 		setUnexpectedErrorHandler((error) => logService.error(error));
 
-		const instantiationService = this.createInstantiationService(
-			environmentService,
-			logService,
-			commandRegistry
-		);
-		this.disposables.add(instantiationService);
 		const { commandService, updateService, lifecycleService } =
 			instantiationService.invokeFunction((accessor) => {
 				this.contribute(accessor);
@@ -209,8 +212,8 @@ class RogenMain {
 				};
 			});
 
-		const notice = new UpdateNotice(
-			logService,
+		const notice = instantiationService.createInstance(
+			UpdateNotice,
 			command === HELP_COMMAND ? undefined : updateService.check(),
 			isLongRunning(
 				commandRegistry.getCommand(command)?.metadata,
@@ -313,7 +316,7 @@ class RogenMain {
 			CommandService,
 			new SyncDescriptor(CoreCommandService, [commandRegistry])
 		);
-		return new CoreInstantiationService(services);
+		return new CoreInstantiationService(services, true);
 	}
 
 	/** What other modules contribute to the services that ask for it. */

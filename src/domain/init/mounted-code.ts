@@ -5,12 +5,13 @@ import {
 	isBelowPosix,
 	normalizeDir,
 } from "../../base/path.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
 import { CodeFinder } from "./code-finder.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { ProcessedFolder } from "./processed-folder.js";
 import { StarterProject } from "./starter-project.js";
 import { StartingRoutes } from "./starting-routes.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 /** Where a hand-written project file keeps its code, as the source paths that hold it. */
 export interface MountedCodeFolders {
@@ -27,10 +28,12 @@ export class MountedCode {
 	private readonly finder: CodeFinder;
 
 	constructor(
-		private readonly reader: FileReader,
-		private readonly directory: string
+		private readonly directory: string,
+		@FileSystemService private readonly reader: FileSystemService,
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
 	) {
-		this.finder = new CodeFinder(reader);
+		this.finder = instantiationService.createInstance(CodeFinder);
 	}
 
 	/** Never the project's own folder, which would scan the whole repository. */
@@ -54,8 +57,8 @@ export class MountedCode {
 		const folders = [
 			...new Set(candidates.filter((_, at) => holding[at])),
 		].sort();
-		const processedFolder = new ProcessedFolder(
-			this.reader,
+		const processedFolder = this.instantiationService.createInstance(
+			ProcessedFolder,
 			this.directory
 		);
 		const unmounted = codeFolders.filter(

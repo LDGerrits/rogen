@@ -3,6 +3,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { ResolvedConfig } from "../resolved-config.js";
 import { ReloadableSelection, validFile } from "../config-service.js";
 import { CoreConfigService } from "../core-config-service.js";
+import { configServiceOf } from "./config-of.js";
 
 export interface Refs {
 	readonly names?: string[];
@@ -22,7 +23,7 @@ async function useFileSystem(
 ): Promise<void> {
 	fs = next;
 	await fs.createDirectory(home);
-	service = new CoreConfigService(fs, new MockEnvironmentService(home));
+	service = configServiceOf(fs, new MockEnvironmentService(home));
 }
 
 export const write = (file: string, config: Record<string, unknown> | string) =>
@@ -46,7 +47,7 @@ export const plain = (config: ResolvedConfig | undefined) =>
 	};
 
 export const start = async ({ names = [] }: Refs = {}, cwd = "/repo") => {
-	service = new CoreConfigService(fs, new MockEnvironmentService(cwd));
+	service = configServiceOf(fs, new MockEnvironmentService(cwd));
 	const result = await service.select(names);
 	if (result.isOk()) selection = result.value;
 	return result;

@@ -39,8 +39,8 @@ const linesOf = (failure: DiagnosticsError): string[] =>
 /** Rojo's own syncback for one request: how it is run, and what it says. */
 export class RojoSyncback {
 	constructor(
-		private readonly rojoService: RojoCommandService,
-		private readonly request: SyncbackRequest
+		private readonly request: SyncbackRequest,
+		@RojoCommandService private readonly rojoService: RojoCommandService
 	) {}
 
 	/** Every line Rojo listed, in its order, as an absolute path. */

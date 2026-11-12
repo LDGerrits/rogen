@@ -63,8 +63,8 @@ export class ServePorts {
 		private readonly records: ServerRecords,
 		serverArgs: readonly string[],
 		private readonly cwd: string,
-		private readonly runner: RojoRunner,
-		private readonly configService: ConfigService
+		@RojoRunner private readonly runner: RojoRunner,
+		@ConfigService private readonly configService: ConfigService
 	) {
 		this.host = ServeFlags.hostIn(serverArgs);
 		this.port = ServeFlags.portIn(serverArgs);

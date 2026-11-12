@@ -19,7 +19,9 @@ import {
 	JsonOption,
 	OptionDescriptor,
 } from "../../platform/environment/args.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
+import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 import { OutcomeLog } from "../write/outcome-log.js";
@@ -132,8 +134,14 @@ registerCommand(
 			const flags = this.rojoFlags(line);
 			if (flags.isErr()) return flags;
 			const cwd = accessor.get(EnvironmentService).cwd;
-			const step = new BuildStep(
-				accessor.get(RojoCommandService),
+			const instantiationService = accessor.get(InstantiationService);
+			const lifecycleService = accessor.get(LifecycleService);
+			const configService = accessor.get(ConfigService);
+			const writeService = accessor.get(WriteService);
+			const logService = accessor.get(LogService);
+			const rojoCommandService = accessor.get(RojoCommandService);
+			const step = instantiationService.createInstance(
+				BuildStep,
 				flags.value,
 				cwd,
 				line.options.output,
@@ -141,22 +149,21 @@ registerCommand(
 			);
 			if (line.options.watch) {
 				const store = new DisposableStore();
-				const shutdown = this.untilShutdown(accessor, store);
+				const shutdown = this.untilShutdown(lifecycleService, store);
 				try {
-					return await new WriteWatch(
-						accessor,
-						line.positionals,
-						Boolean(line.options.json),
-						step
-					).run(store, shutdown);
+					return await instantiationService
+						.createInstance(
+							WriteWatch,
+							line.positionals,
+							Boolean(line.options.json),
+							step,
+							"build"
+						)
+						.run(store, shutdown);
 				} finally {
 					store[Symbol.dispose]();
 				}
 			}
-
-			const configService = accessor.get(ConfigService);
-			const writeService = accessor.get(WriteService);
-			const logService = accessor.get(LogService);
 
 			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
@@ -172,14 +179,12 @@ registerCommand(
 			const built =
 				failure || plan === undefined
 					? undefined
-					: await accessor
-							.get(RojoCommandService)
-							.run(selection.value, {
-								command: "build",
-								flags: plan.flags,
-								cwd,
-								project: plan.project,
-							});
+					: await rojoCommandService.run(selection.value, {
+							command: "build",
+							flags: plan.flags,
+							cwd,
+							project: plan.project,
+						});
 			const rojoFailure =
 				built === undefined
 					? undefined
@@ -207,7 +212,10 @@ registerCommand(
 					failure ?? rojoFailure
 				);
 			}
-			const outcomeLog = new OutcomeLog(logService, cwd);
+			const outcomeLog = instantiationService.createInstance(
+				OutcomeLog,
+				cwd
+			);
 			outcomeLog.outcomes(run, selection.value.home, "build");
 			if (built?.isOk())
 				(rojoFailure ? reportRojoBesideFailure : reportRojo)(

@@ -1,6 +1,5 @@
 import path from "path";
 import { formatJsonFile } from "../../base/json.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
 import {
 	DEFAULT_CONFIG_FILE,
 	DEFAULT_PROJECT_FILE,
@@ -11,6 +10,7 @@ import { projectFileName } from "../rojo/rojo-project.js";
 import { Mount, PlannedFile } from "../toolchain/toolchain.js";
 import { RobloxTsStarter } from "./roblox-ts-starter.js";
 import { SAMPLE_GAME_FOLDER } from "./sample-game.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 /** Where the places of a compiled project start: the folder that holds them, the code they share and the first one. */
 export const PROJECTS_FOLDER = "projects";
@@ -55,7 +55,7 @@ export interface StartingPlaces {
 
 /** The places a project of several starts with: the code they share, and the first place. A compiled project keeps each place in a folder of `projects`, and a Luau one has a config per place at its root. */
 export class StarterPlaces {
-	constructor(private readonly files: FileReader) {}
+	constructor(@FileSystemService private readonly files: FileSystemService) {}
 
 	async plan(
 		root: string,

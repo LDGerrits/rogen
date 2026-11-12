@@ -11,14 +11,12 @@ import {
 	Listing,
 } from "../../../platform/fs/index-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
-import { CoreConfigService } from "../../config/core-config-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
 	ResolvedConfigSpec,
 	mockConfig,
 	selectionOf,
 } from "../../config/__tests__/mock-config-service.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import { SyncTool } from "../../toolchain/toolchain.js";
@@ -32,10 +30,13 @@ import { CoreWriteService } from "../core-write-service.js";
 import { Placement } from "../placement.js";
 import { Placer } from "../placer.js";
 import { RoutedFile } from "../router.js";
+import { toolchainOf } from "../../toolchain/__tests__/toolchain-of.js";
+import { configServiceOf } from "../../config/__tests__/config-of.js";
+import { instantiationOf } from "../../../platform/instantiation/__tests__/instantiation-of.js";
+import { ToolchainService } from "../../toolchain/toolchain-service.js";
+import { ConfigService } from "../../config/config-service.js";
 
-export const { syncTools } = new CoreToolchainService(
-	new MemoryFileSystemService()
-);
+export const { syncTools } = toolchainOf(new MemoryFileSystemService());
 
 export const placeFiles = (
 	index: IndexReader,
@@ -54,14 +55,20 @@ export const writeServiceOf = (
 	index: IndexService,
 	extraTools: readonly SyncTool[] = []
 ) =>
-	new CoreWriteService(
-		fs,
-		index,
-		Object.assign(new CoreToolchainService(fs), {
-			syncTools: [...syncTools, ...extraTools],
-		}),
-		new CoreConfigService(fs, new MockEnvironmentService("/repo"))
-	);
+	instantiationOf(
+		[FileSystemService, fs],
+		[IndexService, index],
+		[
+			ToolchainService,
+			Object.assign(toolchainOf(fs), {
+				syncTools: [...syncTools, ...extraTools],
+			}),
+		],
+		[
+			ConfigService,
+			configServiceOf(fs, new MockEnvironmentService("/repo")),
+		]
+	).createInstance(CoreWriteService);
 
 export async function locateIn(
 	writeService: WriteService,

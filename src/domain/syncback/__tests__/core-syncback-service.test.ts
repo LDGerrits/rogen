@@ -37,6 +37,7 @@ import {
 	SyncbackResult,
 } from "../syncback.js";
 import { ROUTES } from "./layout-fixtures.js";
+import { syncbackServiceOf } from "./syncback-of.js";
 
 /** A Rojo that records what it was asked and does what the test says it did. */
 class FakeRojo implements RojoCommandService {
@@ -148,15 +149,15 @@ describe("CoreSyncbackService", () => {
 		configs = new MockConfigService([]);
 		processes = new MockProcessService();
 		lifecycle = new MockLifecycleService();
-		service = new CoreSyncbackService(
-			configs,
-			fs,
-			writeServiceOf(fs, new CoreIndexService(fs)),
-			rojo,
-			new MockEnvironmentService("/repo"),
-			processes,
-			lifecycle
-		);
+		service = syncbackServiceOf({
+			configService: configs,
+			fileSystemService: fs,
+			writeService: writeServiceOf(fs, new CoreIndexService(fs)),
+			rojoService: rojo,
+			environmentService: new MockEnvironmentService("/repo"),
+			processService: processes,
+			lifecycleService: lifecycle,
+		});
 	});
 
 	afterEach(() => {

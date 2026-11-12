@@ -2,7 +2,7 @@ import path from "path";
 import { parse } from "../../base/jsonc.js";
 import { isObject } from "../../base/objects.js";
 import { ancestors, normalizeDir } from "../../base/path.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import {
 	Compiler,
 	Language,
@@ -167,7 +167,9 @@ export class RobloxTs implements Language {
 }
 
 export class RobloxTsDetector implements LanguageDetector {
-	constructor(private readonly fileSystemService: FileReader) {}
+	constructor(
+		@FileSystemService private readonly fileSystemService: FileSystemService
+	) {}
 
 	async detect(cwd: string): Promise<RobloxTs> {
 		const has = (...segments: string[]) =>

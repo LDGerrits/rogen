@@ -1,5 +1,5 @@
 import path from "path";
-import { FileReader } from "../../platform/fs/file-system-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { PackageManager } from "./toolchain.js";
 
 const RUNNERS = [
@@ -12,7 +12,9 @@ const TOML_SECTION = /^\s*\[([^\]]*)\]/;
 const TOML_STRING = /"([^"]*)"/g;
 
 export class TestRunnerDetector {
-	constructor(private readonly fileSystemService: FileReader) {}
+	constructor(
+		@FileSystemService private readonly fileSystemService: FileSystemService
+	) {}
 
 	async detect(cwd: string): Promise<string | undefined> {
 		const [npm, ...toml] = await Promise.all(

@@ -11,6 +11,7 @@ import {
 import { configOf, writeServiceOf } from "../../write/__tests__/fixtures.js";
 import { MirrorWorkspace } from "../mirror-workspace.js";
 import { ROUTES } from "./layout-fixtures.js";
+import { workspaceServicesOf } from "./syncback-of.js";
 
 describe("MirrorWorkspace", () => {
 	it("should say when the project does not build", async () => {
@@ -18,7 +19,7 @@ describe("MirrorWorkspace", () => {
 		const config = configOf({ routes: ROUTES });
 
 		const opened = await MirrorWorkspace.open(
-			{
+			workspaceServicesOf({
 				configService: new MockConfigService([]),
 				fileSystemService: fs,
 				writeService: writeServiceOf(fs, new CoreIndexService(fs)),
@@ -26,7 +27,7 @@ describe("MirrorWorkspace", () => {
 				environmentService: new MockEnvironmentService("/repo"),
 				processService: new MockProcessService(),
 				lifecycleService: new MockLifecycleService(),
-			},
+			}),
 			{
 				selection: selectionOf(config),
 				project: config,

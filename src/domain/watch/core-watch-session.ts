@@ -49,9 +49,9 @@ export class CoreWatchSession
 	constructor(
 		private readonly selection: ReloadableSelection,
 		private writeSet: WriteSet,
-		private readonly watcher: Watcher,
-		private readonly indexService: IndexService,
-		private readonly writeService: WriteService
+		@Watcher private readonly watcher: Watcher,
+		@IndexService private readonly indexService: IndexService,
+		@WriteService private readonly writeService: WriteService
 	) {
 		super();
 		this.batcher = this._register(new ChangeBatcher());

@@ -26,8 +26,9 @@ import {
 /** Writes a plan into the project's files, and checks that the files it placed land where the place had them. */
 export class PlanWriter {
 	constructor(
+		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
-		private readonly writeService: WriteService
+		@WriteService private readonly writeService: WriteService
 	) {}
 
 	/** Makes each change of `plan`, writes before removals; one that fails leaves its file listed as not written, and the rest are made, except that no file is removed once a write failed. */

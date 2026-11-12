@@ -2,7 +2,7 @@ import { ServiceIdentifier } from "./instantiation.js";
 import { SyncDescriptor } from "./sync-descriptor.js";
 
 /** What a collection holds for a service: the instance, or the descriptor that says how to build it. */
-type ServiceEntry<T> = T | SyncDescriptor<T>;
+export type ServiceEntry<T> = T | SyncDescriptor<T>;
 
 export class ServiceCollection {
 	private readonly entries = new Map<
@@ -10,19 +10,27 @@ export class ServiceCollection {
 		ServiceEntry<unknown>
 	>();
 
-	set<T>(id: ServiceIdentifier<T>, entry: ServiceEntry<T>): void {
+	constructor(
+		...entries: readonly (readonly [ServiceIdentifier<unknown>, unknown])[]
+	) {
+		for (const [id, entry] of entries) this.entries.set(id, entry);
+	}
+
+	/** Returns what `id` held before, if anything. */
+	set<T>(
+		id: ServiceIdentifier<T>,
+		entry: ServiceEntry<T>
+	): ServiceEntry<T> | undefined {
+		const previous = this.entries.get(id);
 		this.entries.set(id, entry);
+		return previous as ServiceEntry<T> | undefined;
 	}
 
 	has(id: ServiceIdentifier<unknown>): boolean {
 		return this.entries.has(id);
 	}
 
-	/** @throws Error if nothing is registered for `id`. */
-	get<T>(id: ServiceIdentifier<T>): ServiceEntry<T> {
-		if (!this.entries.has(id)) {
-			throw new Error(`No service registered for "${id.serviceId}".`);
-		}
-		return this.entries.get(id) as ServiceEntry<T>;
+	get<T>(id: ServiceIdentifier<T>): ServiceEntry<T> | undefined {
+		return this.entries.get(id) as ServiceEntry<T> | undefined;
 	}
 }

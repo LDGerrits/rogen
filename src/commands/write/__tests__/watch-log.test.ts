@@ -1,3 +1,5 @@
+import { LogService } from "../../../platform/log/log-service.js";
+import { instantiationOf } from "../../../platform/instantiation/__tests__/instantiation-of.js";
 import path from "path";
 import { mockEntry } from "../../../domain/config/__tests__/mock-config-service.js";
 import {
@@ -59,9 +61,9 @@ const wrote: RewriteReport = {
 const logged = (update: Partial<WatchUpdate>) => {
 	const logService = new MockLogService();
 	logService.setLevel(LogLevel.Debug);
-	new WatchLog(logService, cwd).update(
-		updateOf({ reports: [wrote], ...update })
-	);
+	instantiationOf([LogService, logService])
+		.createInstance(WatchLog, cwd, "watch")
+		.update(updateOf({ reports: [wrote], ...update }));
 	return logService.entries;
 };
 
@@ -231,7 +233,10 @@ describe("WatchLog.update", () => {
 
 		const session = () => {
 			const logService = new MockLogService();
-			const log = new WatchLog(logService, cwd);
+			const log = instantiationOf([
+				LogService,
+				logService,
+			]).createInstance(WatchLog, cwd, "watch");
 			return { log, logService };
 		};
 
@@ -580,7 +585,9 @@ describe("WatchLog.error", () => {
 	it("should print the message of a step that failed unexpectedly, as an error", () => {
 		const logService = new MockLogService();
 
-		new WatchLog(logService, cwd).error(new Error("the watcher broke"));
+		instantiationOf([LogService, logService])
+			.createInstance(WatchLog, cwd, "watch")
+			.error(new Error("the watcher broke"));
 
 		expect(logService.texts("error")).toEqual(["the watcher broke"]);
 	});
@@ -588,15 +595,17 @@ describe("WatchLog.error", () => {
 	it("should print each diagnostic of a failure once, relative to the working directory", () => {
 		const logService = new MockLogService({ cwd });
 
-		new WatchLog(logService, cwd).error(
-			new DiagnosticsError([
-				errorDiagnostic(
-					"rojo.commandFailed",
-					{ resource: path.join(cwd, "default.project.json") },
-					"Rojo couldn't build this project:"
-				),
-			])
-		);
+		instantiationOf([LogService, logService])
+			.createInstance(WatchLog, cwd, "watch")
+			.error(
+				new DiagnosticsError([
+					errorDiagnostic(
+						"rojo.commandFailed",
+						{ resource: path.join(cwd, "default.project.json") },
+						"Rojo couldn't build this project:"
+					),
+				])
+			);
 
 		expect(logService.lines).toEqual([
 			"diagnosticError: default.project.json - error: Rojo couldn't build this project: (rojo.commandFailed)",

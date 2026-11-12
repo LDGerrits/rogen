@@ -2,6 +2,7 @@ import { ConfigDiscovery } from "../config-discovery.js";
 import { DefaultFolder } from "../default-folder.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { discoveryOf } from "./config-of.js";
 
 describe("DefaultFolder", () => {
 	let fs: MemoryFileSystemService;
@@ -10,10 +11,7 @@ describe("DefaultFolder", () => {
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo");
-		discovery = new ConfigDiscovery(
-			fs,
-			new MockEnvironmentService("/repo")
-		);
+		discovery = discoveryOf(fs, new MockEnvironmentService("/repo"));
 	});
 
 	describe("while adopting", () => {

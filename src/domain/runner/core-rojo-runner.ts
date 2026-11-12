@@ -3,8 +3,6 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { LogLevel } from "../../platform/log/log-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
-import { ToolLocator } from "../toolchain/tool-locator.js";
-import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { RojoServer } from "./rojo-server.js";
 import { StartedRojo } from "./started-rojo.js";
 import {
@@ -16,6 +14,7 @@ import {
 } from "./rojo-runner.js";
 import { ServerFinder } from "./server-finder.js";
 import { SupervisedRojo } from "./supervised-rojo.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
 export class CoreRojoRunner implements RojoRunner {
 	declare readonly _serviceBrand: undefined;
@@ -25,17 +24,12 @@ export class CoreRojoRunner implements RojoRunner {
 	private readonly logLevel: LogLevel;
 
 	constructor(
-		@ToolchainService toolchainService: ToolchainService,
 		@ProcessService private readonly processService: ProcessService,
-		@ToolLocator locator: ToolLocator,
-		@EnvironmentService environmentService: EnvironmentService
+		@EnvironmentService environmentService: EnvironmentService,
+		@InstantiationService instantiationService: InstantiationService
 	) {
 		this.logLevel = environmentService.logLevel;
-		this.finder = new ServerFinder(
-			toolchainService,
-			processService,
-			locator
-		);
+		this.finder = instantiationService.createInstance(ServerFinder);
 	}
 
 	find(

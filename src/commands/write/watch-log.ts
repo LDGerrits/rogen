@@ -9,6 +9,7 @@ import {
 import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
 import { isProjectFileConfig } from "../../domain/config/config.js";
@@ -124,11 +125,12 @@ export class WatchLog implements WatchReporter {
 	protected readonly outcomeLog: OutcomeLog;
 
 	constructor(
-		protected readonly logService: LogService,
 		protected readonly cwd: string,
-		private readonly command = "watch"
+		private readonly command: string,
+		@LogService protected readonly logService: LogService,
+		@InstantiationService instantiationService: InstantiationService
 	) {
-		this.outcomeLog = new OutcomeLog(logService, cwd);
+		this.outcomeLog = instantiationService.createInstance(OutcomeLog, cwd);
 	}
 
 	begin(configs: readonly ResolvedConfig[], home?: string): void {
@@ -286,8 +288,8 @@ export class PrintedWatchLog extends WatchLog {
 
 export class WatchJsonLog implements WatchReporter {
 	constructor(
-		private readonly logService: LogService,
-		private readonly cwd: string
+		private readonly cwd: string,
+		@LogService private readonly logService: LogService
 	) {}
 
 	begin(): void {}

@@ -24,6 +24,7 @@ import {
 	projectStem,
 } from "./config.js";
 import { ConfigCover, ConfigFolderCheck } from "./config-service.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
 export interface DiscoveredConfigs {
 	/** The working directory. */
@@ -58,15 +59,18 @@ const isBareName = (ref: string): boolean =>
 export class ConfigDiscovery {
 	constructor(
 		private readonly fileSystemService: FileReader,
+		private readonly folderChecks: Set<ConfigFolderCheck> = new Set(),
+		@EnvironmentService
 		private readonly environmentService: EnvironmentService,
-		private readonly folderChecks = new Set<ConfigFolderCheck>()
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
 	) {}
 
 	/** A discovery that reads through `reader`, with the same checks. */
 	over(reader: FileReader): ConfigDiscovery {
-		return new ConfigDiscovery(
+		return this.instantiationService.createInstance(
+			ConfigDiscovery,
 			reader,
-			this.environmentService,
 			this.folderChecks
 		);
 	}

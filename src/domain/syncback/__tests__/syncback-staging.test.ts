@@ -6,6 +6,7 @@ import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { abs } from "../../write/__tests__/fixtures.js";
 import { SyncbackStaging } from "../syncback-staging.js";
+import { stagingOf } from "./syncback-of.js";
 
 const LOCK = abs(".rogen-syncback/lock");
 const STALE = abs(".rogen-syncback/mirror/Workspace/Stale.luau");
@@ -23,7 +24,7 @@ describe("SyncbackStaging", () => {
 		fs = new MemoryFileSystemService();
 		processes = new MockProcessService();
 		lifecycle = new MockLifecycleService();
-		staging = new SyncbackStaging(fs, processes, lifecycle, 4242, abs());
+		staging = stagingOf(fs, processes, lifecycle, 4242, abs());
 	});
 
 	afterEach(() => {

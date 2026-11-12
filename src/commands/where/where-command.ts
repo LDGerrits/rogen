@@ -35,6 +35,15 @@ const WhereOptions = [JsonOption] as const;
 
 const ASKING = { command: "where", lead: "See where it lands" };
 
+/** What the command takes from the accessor before its first await. */
+interface Services {
+	readonly configService: ConfigService;
+	readonly writeService: WriteService;
+	readonly logService: LogService;
+	readonly inputService: InputService;
+	readonly cwd: string;
+}
+
 interface Located {
 	readonly locations: Locations;
 	/** The paths asked about that no write reads. */
@@ -88,17 +97,33 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof WhereOptions>
 		): Promise<Result<void, Error>> {
-			if (line.positionals.includes("-"))
-				return this.rewriteInput(accessor, line);
 			const cwd = accessor.get(EnvironmentService).cwd;
 			const logService = accessor.get(LogService);
+			const configService = accessor.get(ConfigService);
+			const writeService = accessor.get(WriteService);
+			if (line.positionals.includes("-"))
+				return this.rewriteInput(
+					{
+						configService,
+						writeService,
+						logService,
+						inputService: accessor.get(InputService),
+						cwd,
+					},
+					line
+				);
 
-			const found = await this.locate(accessor, line.positionals);
+			const found = await this.locate(
+				configService,
+				writeService,
+				cwd,
+				line.positionals
+			);
 			if (found.isErr()) return found;
 			const { locations, skipped } = found.value;
 
 			for (const note of await skippedNotes(
-				accessor.get(ConfigService),
+				configService,
 				skipped,
 				cwd,
 				ASKING
@@ -121,12 +146,11 @@ registerCommand(
 
 		/** With paths, each is answered by the config that covers it, and one that nothing covers is said so and skipped. */
 		private async locate(
-			accessor: ServicesAccessor,
+			configService: ConfigService,
+			writeService: WriteService,
+			cwd: string,
 			given: readonly string[]
 		): Promise<Result<Located, Error>> {
-			const configService = accessor.get(ConfigService);
-			const writeService = accessor.get(WriteService);
-			const { cwd } = accessor.get(EnvironmentService);
 			if (given.length === 0) {
 				const selection = await configService.select(
 					await configService.configsHere()
@@ -165,7 +189,7 @@ registerCommand(
 		}
 
 		private async rewriteInput(
-			accessor: ServicesAccessor,
+			services: Services,
 			line: CommandLine<typeof WhereOptions>
 		): Promise<Result<void, Error>> {
 			if (line.options.json)
@@ -175,10 +199,9 @@ registerCommand(
 						"Run 'rogen where -' without --json, or name the paths without '-'."
 					)
 				);
+			const { configService, logService, inputService: input } = services;
 			const configs = line.positionals.filter((arg) => arg !== "-");
-			const notConfig = await accessor
-				.get(ConfigService)
-				.firstNotConfig(configs);
+			const notConfig = await configService.firstNotConfig(configs);
 			if (notConfig !== undefined)
 				return err(
 					new UsageError(
@@ -186,7 +209,6 @@ registerCommand(
 						"Name a config as game, game.rogen.json or a folder with a default.rogen.json."
 					)
 				);
-			const input = accessor.get(InputService);
 			if (input.isTerminal)
 				return err(
 					new UsageError(
@@ -194,12 +216,11 @@ registerCommand(
 						"Pipe the text in, as 'pbpaste | rogen where -'."
 					)
 				);
-			const logService = accessor.get(LogService);
 			const text = await input.readAll();
 			const paths = studioPathsIn(text);
 			const placed =
 				paths.length > 0
-					? await this.filesPlacing(accessor, configs, text, paths)
+					? await this.filesPlacing(services, configs, text, paths)
 					: ok({
 							files: new Map<string, string>(),
 							failure: undefined,
@@ -217,7 +238,7 @@ registerCommand(
 
 		/** The file that places each instance in `paths` in `configs`, else the default config, relative to the working directory; one that several files place is warned about and left out. Fails when no config can answer; carries the errors of those that didn't load. */
 		private async filesPlacing(
-			accessor: ServicesAccessor,
+			{ configService, writeService, logService, cwd }: Services,
 			configs: readonly string[],
 			text: string,
 			paths: readonly StudioPath[]
@@ -230,8 +251,7 @@ registerCommand(
 				Error
 			>
 		> {
-			const cwd = accessor.get(EnvironmentService).cwd;
-			const selection = await accessor.get(ConfigService).select(configs);
+			const selection = await configService.select(configs);
 			if (selection.isErr()) return selection;
 			const spans = new Map(
 				paths.map(({ reference, start, end }) => [
@@ -239,11 +259,11 @@ registerCommand(
 					text.slice(start, end),
 				])
 			);
-			const located = await accessor
-				.get(WriteService)
-				.locate(selection.value, { args: [...spans.values()], cwd });
+			const located = await writeService.locate(selection.value, {
+				args: [...spans.values()],
+				cwd,
+			});
 			if (located.isErr()) return located;
-			const logService = accessor.get(LogService);
 			const files = new Map<string, string>();
 			for (const [instance, byFile] of new WhereAnswers(
 				located.value

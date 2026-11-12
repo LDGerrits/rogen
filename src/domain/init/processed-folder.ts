@@ -7,13 +7,13 @@ import {
 	normalizeDir,
 } from "../../base/path.js";
 import { tryWithAsync } from "../../base/result.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 /** The folder a processor such as Darklua writes, found as the one a hand-written project file mounts and that repeats the layout of the source paths. */
 export class ProcessedFolder {
 	constructor(
-		private readonly reader: FileReader,
-		private readonly directory: string
+		private readonly directory: string,
+		@FileSystemService private readonly reader: FileSystemService
 	) {}
 
 	/** Only a single match counts, since two folders that both repeat the source can't be told apart. */

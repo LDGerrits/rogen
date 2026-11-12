@@ -23,7 +23,7 @@ export class ReviewPrompts {
 	/** For the questions that are always asked. */
 	readonly essential: PromptService;
 
-	constructor(private readonly real: PromptService) {
+	constructor(@PromptService private readonly real: PromptService) {
 		this.quick = this.view(false);
 		this.essential = this.view(true);
 	}

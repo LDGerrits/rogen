@@ -22,7 +22,7 @@ describe("CoreCommandService", () => {
 		services.set(LogService, logService);
 		commandService = new CoreCommandService(
 			registry,
-			new CoreInstantiationService(services),
+			new CoreInstantiationService(services, true),
 			logService
 		);
 	});

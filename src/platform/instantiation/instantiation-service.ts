@@ -1,11 +1,14 @@
+import { DisposableStore } from "../../base/disposable.js";
 import {
 	BrandedService,
 	ServicesAccessor,
 	createDecorator,
 } from "./instantiation.js";
+import { ServiceCollection } from "./service-collection.js";
+import { SyncDescriptor } from "./sync-descriptor.js";
 
 /** The constructor parameters the caller passes: those before the trailing run of injected services. */
-type LeadingNonServiceArgs<Args extends unknown[]> = Args extends []
+export type LeadingNonServiceArgs<Args extends unknown[]> = Args extends []
 	? []
 	: Args extends [...infer First, BrandedService]
 		? LeadingNonServiceArgs<First>
@@ -23,12 +26,19 @@ export interface InstantiationService {
 		ctor: Ctor,
 		...args: LeadingNonServiceArgs<ConstructorParameters<Ctor>>
 	): R;
+	createInstance<T>(descriptor: SyncDescriptor<T>, ...args: unknown[]): T;
 
-	/** Runs `fn` with an accessor for the services; unlike VS Code's, it keeps working after `fn` returns, since a command handler asks for services across its awaits. */
+	/** Runs `fn` with an accessor that works until `fn` returns, so `fn` takes its services before its first `await`. */
 	invokeFunction<R, Args extends unknown[] = []>(
 		fn: (accessor: ServicesAccessor, ...args: Args) => R,
 		...args: Args
 	): R;
+
+	/** An instantiation service of its own that falls back on this one for services `services` lacks, and is disposed with it. */
+	createChild(
+		services: ServiceCollection,
+		store?: DisposableStore
+	): InstantiationService;
 }
 
 export const InstantiationService = createDecorator<InstantiationService>(

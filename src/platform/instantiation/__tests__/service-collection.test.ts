@@ -31,17 +31,17 @@ describe("ServiceCollection", () => {
 			expect(services.get(FooService)).toBe(descriptor);
 		});
 
-		it("should throw for an identifier with nothing registered", () => {
+		it("should return nothing for an identifier with nothing registered", () => {
 			const services = new ServiceCollection();
 
-			expect(() => services.get(FooService)).toThrow(/fooService/);
+			expect(services.get(FooService)).toBeUndefined();
 		});
 
 		it("should keep identifiers with the same shape apart", () => {
 			const services = new ServiceCollection();
 			services.set(FooService, { name: "foo" });
 
-			expect(() => services.get(BarService)).toThrow(/barService/);
+			expect(services.get(BarService)).toBeUndefined();
 		});
 	});
 
@@ -55,7 +55,24 @@ describe("ServiceCollection", () => {
 		});
 	});
 
+	describe("constructor", () => {
+		it("should hold the entries it is given", () => {
+			const foo = { name: "foo" };
+
+			const services = new ServiceCollection([FooService, foo]);
+
+			expect(services.get(FooService)).toBe(foo);
+		});
+	});
+
 	describe("set", () => {
+		it("should return what the identifier held before", () => {
+			const first = { name: "first" };
+			const services = new ServiceCollection([FooService, first]);
+
+			expect(services.set(FooService, { name: "second" })).toBe(first);
+		});
+
 		it("should replace an earlier instance", () => {
 			const services = new ServiceCollection();
 			const second = { name: "second" };

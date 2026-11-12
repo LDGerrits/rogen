@@ -32,9 +32,9 @@ const ARGON_REPOSITORY = "argon-rbx/argon";
 
 export class ServerFinder {
 	constructor(
-		private readonly toolchainService: ToolchainService,
-		private readonly processService: ProcessService,
-		private readonly locator: ToolLocator
+		@ToolchainService private readonly toolchainService: ToolchainService,
+		@ProcessService private readonly processService: ProcessService,
+		@ToolLocator private readonly locator: ToolLocator
 	) {}
 
 	/** Toolchain files are looked for in `directory`, then in every folder above it. A failure without a toolchain file to point at is about `resource`. */

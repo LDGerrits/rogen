@@ -138,15 +138,37 @@ describe("CoreInstantiationService", () => {
 			);
 		});
 
-		it("should name a service nobody registered", () => {
+		it("should name a service nobody registered when strict", () => {
 			class Lonely {
 				constructor(@LoopService _loop: GreetingService) {}
 			}
-			const instantiation = new CoreInstantiationService(collection());
+			const instantiation = new CoreInstantiationService(
+				collection(),
+				true
+			);
 
 			expect(() => instantiation.createInstance(Lonely)).toThrow(
-				/loopService/
+				/UNKNOWN service loopService/
 			);
+		});
+
+		it("should pass undefined for a service nobody registered when not strict", () => {
+			class Lonely {
+				constructor(@LoopService readonly loop: GreetingService) {}
+			}
+			const instantiation = new CoreInstantiationService(collection());
+
+			expect(instantiation.createInstance(Lonely).loop).toBeUndefined();
+		});
+
+		it("should build from a descriptor, its static arguments first", () => {
+			const instantiation = new CoreInstantiationService(collection());
+
+			const greeting = instantiation.createInstance(
+				new SyncDescriptor(Greeting, ["?"])
+			);
+
+			expect(greeting.greet()).toBe("Hello, Ada?");
 		});
 
 		it("should offer itself as a service", () => {
@@ -207,17 +229,36 @@ describe("CoreInstantiationService", () => {
 			expect(result).toBe(5);
 		});
 
-		it("should keep an accessor working across the awaits of an async function", async () => {
+		it("should refuse an accessor used after the function returned", async () => {
 			const instantiation = new CoreInstantiationService(collection());
 
-			const name = await instantiation.invokeFunction(
-				async (accessor) => {
-					await Promise.resolve();
-					return accessor.get(NameService).name;
-				}
-			);
+			const late = instantiation.invokeFunction(async (accessor) => {
+				await Promise.resolve();
+				return accessor.get(NameService);
+			});
 
-			expect(name).toBe("Ada");
+			await expect(late).rejects.toThrow(
+				"service accessor is only valid during the invocation of its target method"
+			);
+		});
+
+		it("should name a service nobody registered", () => {
+			const instantiation = new CoreInstantiationService(collection());
+
+			expect(() =>
+				instantiation.invokeFunction((accessor) =>
+					accessor.get(LoopService)
+				)
+			).toThrow("[invokeFunction] unknown service 'loopService'");
+		});
+
+		it("should refuse to run once disposed", () => {
+			const instantiation = new CoreInstantiationService(collection());
+			instantiation[Symbol.dispose]();
+
+			expect(() => instantiation.invokeFunction(() => 1)).toThrow(
+				"InstantiationService has been disposed"
+			);
 		});
 
 		it("should name the circle when services depend on each other", () => {
@@ -288,7 +329,7 @@ describe("CoreInstantiationService", () => {
 			expect(() => instantiation[Symbol.dispose]()).toThrow(
 				"first failed"
 			);
-			expect(disposed).toEqual(["second", "first"]);
+			expect(disposed).toEqual(["first", "second"]);
 		});
 
 		it("should dispose the services it built, and not the ones it was given", () => {
@@ -317,6 +358,125 @@ describe("CoreInstantiationService", () => {
 			instantiation[Symbol.dispose]();
 
 			expect(disposed).toEqual(["built"]);
+		});
+	});
+
+	describe("createChild", () => {
+		it("should fall back on the parent for a service the child lacks", () => {
+			const parent = new CoreInstantiationService(collection());
+			const child = parent.createChild(new ServiceCollection());
+
+			const name = child.invokeFunction(
+				(accessor) => accessor.get(NameService).name
+			);
+
+			expect(name).toBe("Ada");
+		});
+
+		it("should prefer the child's own service", () => {
+			const parent = new CoreInstantiationService(collection());
+			const child = parent.createChild(
+				new ServiceCollection([NameService, { name: "Grace" }])
+			);
+
+			const name = child.invokeFunction(
+				(accessor) => accessor.get(NameService).name
+			);
+
+			expect(name).toBe("Grace");
+		});
+
+		it("should build the parent's service with the parent's services, once", () => {
+			const parent = new CoreInstantiationService(collection());
+			const child = parent.createChild(
+				new ServiceCollection([NameService, { name: "Grace" }])
+			);
+
+			const greeting = child.invokeFunction((accessor) =>
+				accessor.get(GreetingService).greet()
+			);
+			const again = parent.invokeFunction((accessor) =>
+				accessor.get(GreetingService).greet()
+			);
+
+			expect(greeting).toBe("Hello, Ada!");
+			expect(again).toBe("Hello, Ada!");
+			expect(created).toEqual(["names", "greeting"]);
+		});
+
+		it("should dispose with its parent", () => {
+			const disposed: string[] = [];
+			class Closing {
+				declare readonly _serviceBrand: undefined;
+				readonly name = "closing";
+
+				[Symbol.dispose](): void {
+					disposed.push("closing");
+				}
+			}
+			const parent = new CoreInstantiationService(collection());
+			const child = parent.createChild(
+				new ServiceCollection([
+					NameService,
+					new SyncDescriptor(Closing),
+				])
+			);
+			child.invokeFunction((accessor) => accessor.get(NameService));
+
+			(parent as CoreInstantiationService)[Symbol.dispose]();
+
+			expect(disposed).toEqual(["closing"]);
+		});
+	});
+
+	describe("delayed instantiation", () => {
+		it("should build the service only when it is used", () => {
+			const services = new ServiceCollection();
+			services.set(NameService, new SyncDescriptor(Names, [], true));
+			const instantiation = new CoreInstantiationService(services);
+
+			const names = instantiation.invokeFunction((accessor) =>
+				accessor.get(NameService)
+			);
+			const before = [...created];
+			const name = names.name;
+
+			expect(before).toEqual([]);
+			expect(name).toBe("Ada");
+			expect(created).toEqual(["names"]);
+		});
+
+		it("should subscribe an early listener once the service exists", () => {
+			class Announcing {
+				declare readonly _serviceBrand: undefined;
+				readonly name = "announcing";
+				readonly listeners: ((value: number) => void)[] = [];
+				readonly onDidChange = (listener: (value: number) => void) => {
+					this.listeners.push(listener);
+					return { [Symbol.dispose]() {} };
+				};
+			}
+			const services = new ServiceCollection();
+			services.set(NameService, new SyncDescriptor(Announcing, [], true));
+			const instantiation = new CoreInstantiationService(services);
+			const stand = instantiation.invokeFunction((accessor) =>
+				accessor.get(NameService)
+			) as unknown as Announcing;
+			const heard: number[] = [];
+
+			stand.onDidChange((value) => heard.push(value));
+			expect(stand.name).toBe("announcing");
+			(stand.listeners as ((value: number) => void)[])[0]?.(7);
+
+			expect(heard).toEqual([7]);
+		});
+	});
+
+	describe("createDecorator", () => {
+		it("should give one identifier to one name", () => {
+			expect(createDecorator<NameService>("nameService")).toBe(
+				NameService
+			);
 		});
 	});
 });

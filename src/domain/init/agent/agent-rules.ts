@@ -20,8 +20,8 @@ function refreshedRules(text: string): string | undefined {
 /** Keeps the Rogen block of a repository's agent files that of the Rogen that runs; a file without the block is never touched. */
 export class AgentRules {
 	constructor(
-		private readonly fileSystemService: FileSystemService,
-		private readonly git: GitRepository
+		private readonly git: GitRepository,
+		@FileSystemService private readonly fileSystemService: FileSystemService
 	) {}
 
 	/** Refreshes the agent files of `folder` and of each folder above it up to the repository root (only `folder` outside one), and returns the files it rewrote. A file it can't read or write is left as it is. */

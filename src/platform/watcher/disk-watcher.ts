@@ -9,6 +9,7 @@ import { FileChange, FileChangeType } from "../fs/file-changes.js";
 import { LogService } from "../log/log-service.js";
 import { AbstractWatcher } from "./abstract-watcher.js";
 import { WatchFilter, WatchOptions } from "./watcher.js";
+import { InstantiationService } from "../instantiation/instantiation-service.js";
 
 const REVIVAL_INTERVAL_MS = 500;
 
@@ -23,15 +24,23 @@ const CHOKIDAR_EVENTS = [
 export class DiskWatcher extends AbstractWatcher {
 	private session: WatchSession | undefined;
 
+	constructor(
+		@LogService logService: LogService,
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
+	) {
+		super(logService);
+	}
+
 	protected async startWatching(
 		paths: readonly string[],
 		options: WatchOptions
 	): Promise<void> {
-		this.session = new WatchSession(
+		this.session = this.instantiationService.createInstance(
+			WatchSession,
 			[...paths, ...(options.shallow ?? [])],
 			new WatchFilter(paths, options),
 			options.reportsUnreadable ?? [],
-			this.logService,
 			(change) => this.fireChange(change)
 		);
 		await this.session.start();
@@ -73,8 +82,8 @@ class WatchSession {
 		private readonly roots: readonly string[],
 		filter: WatchFilter,
 		reportsUnreadable: readonly string[],
-		private readonly logService: LogService,
-		private readonly fire: (change: FileChange) => void
+		private readonly fire: (change: FileChange) => void,
+		@LogService private readonly logService: LogService
 	) {
 		this.watcher = chokidar.watch([...roots], {
 			ignoreInitial: true,

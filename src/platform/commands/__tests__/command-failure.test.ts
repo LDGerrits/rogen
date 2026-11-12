@@ -9,8 +9,9 @@ import { errorDiagnostic } from "../../diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../diagnostics/diagnostics-error.js";
 import { MockLogService } from "../../log/__tests__/mock-log-service.js";
 import { Result, err, ok } from "../../../base/result.js";
-import { CommandFailure, exitCode, exitCodeOf } from "../command-failure.js";
+import { exitCode, exitCodeOf } from "../command-failure.js";
 import { ReportedError } from "../commands.js";
+import { failureOf } from "./failure-of.js";
 
 describe("CommandFailure", () => {
 	let logService: MockLogService;
@@ -25,7 +26,7 @@ describe("CommandFailure", () => {
 
 	describe("report", () => {
 		it("should print the message of each failure", () => {
-			const failure = new CommandFailure(logService, false);
+			const failure = failureOf(logService, false);
 
 			failure.report(new UsageError("bad flag"));
 			failure.report(new Error("no config"), "build");
@@ -38,11 +39,11 @@ describe("CommandFailure", () => {
 
 	describe("report, as told to the user", () => {
 		it("should print nothing for a failure already reported in full", () => {
-			new CommandFailure(logService, false).report(
+			failureOf(logService, false).report(
 				new ReportedError(new DiagnosticsError([problem])),
 				"build"
 			);
-			new CommandFailure(logService, true).report(
+			failureOf(logService, true).report(
 				new ReportedError(new Error("x")),
 				"build"
 			);
@@ -53,7 +54,7 @@ describe("CommandFailure", () => {
 		it("should print each diagnostic of a failure, then close the frame", () => {
 			logService.intro("rogen build");
 
-			new CommandFailure(logService, false).report(
+			failureOf(logService, false).report(
 				new DiagnosticsError([problem]),
 				"build"
 			);
@@ -67,7 +68,7 @@ describe("CommandFailure", () => {
 		it("should print another failure as an error, then close the frame", () => {
 			logService.intro("rogen build");
 
-			new CommandFailure(logService, false).report(
+			failureOf(logService, false).report(
 				new Error("no config"),
 				"build"
 			);
@@ -81,7 +82,7 @@ describe("CommandFailure", () => {
 		it("should close the frame with the message of a cancelled run", () => {
 			logService.intro("rogen init");
 
-			new CommandFailure(logService, false).report(
+			failureOf(logService, false).report(
 				new CancelledError("init cancelled."),
 				"init"
 			);
@@ -92,7 +93,7 @@ describe("CommandFailure", () => {
 		});
 
 		it("should print the diagnostics of a failure as a JSON document", () => {
-			new CommandFailure(logService, true).report(
+			failureOf(logService, true).report(
 				new DiagnosticsError([problem]),
 				"build"
 			);
@@ -104,10 +105,7 @@ describe("CommandFailure", () => {
 		});
 
 		it("should print the message of another failure as a JSON document", () => {
-			new CommandFailure(logService, true).report(
-				new Error("no config"),
-				"build"
-			);
+			failureOf(logService, true).report(new Error("no config"), "build");
 
 			expect(printed()).toEqual([
 				{
@@ -123,9 +121,7 @@ describe("CommandFailure", () => {
 		it("should print only the error for a failure before any command ran", () => {
 			logService.intro("rogen");
 
-			new CommandFailure(logService, false).report(
-				new Error("unknown option")
-			);
+			failureOf(logService, false).report(new Error("unknown option"));
 
 			expect(logService.lines.slice(1)).toEqual([
 				"error: unknown option",
@@ -135,7 +131,7 @@ describe("CommandFailure", () => {
 
 	describe("reportCrash", () => {
 		it("should print the message of a crash as a JSON document", () => {
-			new CommandFailure(logService, true).reportCrash(
+			failureOf(logService, true).reportCrash(
 				new TypeError("x is undefined")
 			);
 
@@ -151,7 +147,7 @@ describe("CommandFailure", () => {
 		});
 
 		it("should print a JSON document for a thrown value that isn't an error", () => {
-			new CommandFailure(logService, true).reportCrash("boom");
+			failureOf(logService, true).reportCrash("boom");
 
 			expect(printed()).toEqual([
 				{
@@ -165,7 +161,7 @@ describe("CommandFailure", () => {
 		});
 
 		it("should print nothing without --json", () => {
-			new CommandFailure(logService, false).reportCrash(new Error("x"));
+			failureOf(logService, false).reportCrash(new Error("x"));
 
 			expect(logService.entries).toEqual([]);
 		});

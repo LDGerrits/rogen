@@ -8,7 +8,6 @@ import {
 	errorDiagnostic,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
 import {
 	DEFAULT_CONFIG_FILE,
 	DEFAULT_PROJECT_FILE,
@@ -54,6 +53,8 @@ import { MountedCode } from "./mounted-code.js";
 import { CodeFinder } from "./code-finder.js";
 import { UnmountedFiles } from "./unmounted-files.js";
 import { ProjectTree, TreeChoice, TreePlan } from "./tree-plan.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 /** The tree init starts from, with the project file a lift takes read. */
 type ReadChoice =
@@ -185,10 +186,19 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	constructor(
 		private readonly directory: InitDirectory,
 		private readonly questions: InitQuestions,
-		private readonly fileSystemService: FileReader
+		@FileSystemService
+		private readonly fileSystemService: FileSystemService,
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
 	) {
-		this.files = new ProjectFiles(fileSystemService, directory.path);
-		this.reader = new ProjectReader(fileSystemService, directory.path);
+		this.files = instantiationService.createInstance(
+			ProjectFiles,
+			directory.path
+		);
+		this.reader = instantiationService.createInstance(
+			ProjectReader,
+			directory.path
+		);
 	}
 
 	async ask(): Promise<Result<ProjectChoices | undefined, Diagnostic[]>> {
@@ -211,10 +221,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const several = await this.severalPlaces(kind, language, starter);
 		if (several === undefined) return ok(undefined);
 		const places = several
-			? await new StarterPlaces(this.fileSystemService).plan(
-					directory.path,
-					starter
-				)
+			? await this.instantiationService
+					.createInstance(StarterPlaces)
+					.plan(directory.path, starter)
 			: undefined;
 		const taken = places ? await this.placeTaken(places) : undefined;
 		if (taken) return err([taken]);
@@ -225,14 +234,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const liftedMounts = lifted?.mountedFolders() ?? [];
 		const code =
 			lifted && !language.compiler
-				? await new MountedCode(
-						this.fileSystemService,
-						directory.path
-					).find(
-						lifted,
-						[...directory.workspace.packageDirs],
-						directory.layout.codeFolders
-					)
+				? await this.instantiationService
+						.createInstance(MountedCode, directory.path)
+						.find(
+							lifted,
+							[...directory.workspace.packageDirs],
+							directory.layout.codeFolders
+						)
 				: undefined;
 		const sourcePaths = places
 			? [...places.sourcePaths]
@@ -245,14 +253,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const processedFolder = code
 			? code.processed
 			: lifted
-				? await new ProcessedFolder(
-						this.fileSystemService,
-						directory.path
-					).find(
-						sourcePaths,
-						liftedMounts,
-						compiledPath ? [compiledPath] : []
-					)
+				? await this.instantiationService
+						.createInstance(ProcessedFolder, directory.path)
+						.find(
+							sourcePaths,
+							liftedMounts,
+							compiledPath ? [compiledPath] : []
+						)
 				: undefined;
 		const processorConfig = directory.workspace.darkluaConfig;
 		const processed = processedFolder
@@ -504,10 +511,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		starter: RobloxTsStarter | undefined
 	): Promise<UnplacedCode> {
 		if (starter) return {};
-		const places = await new StarterPlaces(this.fileSystemService).plan(
-			this.directory.path,
-			starter
-		);
+		const places = await this.instantiationService
+			.createInstance(StarterPlaces)
+			.plan(this.directory.path, starter);
 		const [one, several] = await Promise.all(
 			[
 				[this.directory.defaultSourcePath(language)],
@@ -528,17 +534,19 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		language: Language,
 		skipped: readonly (string | undefined)[] = []
 	): Promise<string[]> {
-		return new CodeFinder(this.fileSystemService).codeOutside(
-			this.directory.path,
-			held.map(normalizeDir),
-			[
-				...this.directory.workspace.packageDirs,
-				...language.reservedFolders,
-				...skipped,
-			]
-				.filter((folder) => folder !== undefined)
-				.map(normalizeDir)
-		);
+		return this.instantiationService
+			.createInstance(CodeFinder)
+			.codeOutside(
+				this.directory.path,
+				held.map(normalizeDir),
+				[
+					...this.directory.workspace.packageDirs,
+					...language.reservedFolders,
+					...skipped,
+				]
+					.filter((folder) => folder !== undefined)
+					.map(normalizeDir)
+			);
 	}
 
 	/** The tool that starts a new place of `language` in a folder with nothing of its own: no code, no `package.json` or `tsconfig.json` (a language that is present has its own) for the tool to write over, and no project file to lift. */

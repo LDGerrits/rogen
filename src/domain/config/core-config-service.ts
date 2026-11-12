@@ -33,6 +33,7 @@ import {
 import { CoreConfigSelection, PickedFolder } from "./core-config-selection.js";
 import { DefaultFolder } from "./default-folder.js";
 import { ManagedConfig } from "./managed-config.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
 export class CoreConfigService implements ConfigService {
 	declare readonly _serviceBrand: undefined;
@@ -45,14 +46,16 @@ export class CoreConfigService implements ConfigService {
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
 		@EnvironmentService
-		private readonly environmentService: EnvironmentService
+		private readonly environmentService: EnvironmentService,
+		@InstantiationService instantiationService: InstantiationService
 	) {
-		this.discovery = new ConfigDiscovery(
+		this.discovery = instantiationService.createInstance(
+			ConfigDiscovery,
 			fileSystemService,
-			environmentService
+			undefined
 		);
 		this.loader = new ConfigLoader(fileSystemService);
-		this.formatter = new ConfigFormatter(fileSystemService);
+		this.formatter = instantiationService.createInstance(ConfigFormatter);
 	}
 
 	format(file: string): Promise<Result<boolean, Diagnostic[]>> {

@@ -17,6 +17,7 @@ import {
 	OptionDescriptor,
 } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { OutcomeLog } from "../write/outcome-log.js";
@@ -121,10 +122,11 @@ registerCommand(
 			const rojoService = accessor.get(RojoCommandService);
 			const logService = accessor.get(LogService);
 			const cwd = accessor.get(EnvironmentService).cwd;
+			const configService = accessor.get(ConfigService);
+			const writeService = accessor.get(WriteService);
+			const instantiationService = accessor.get(InstantiationService);
 
-			const selection = await accessor
-				.get(ConfigService)
-				.select(line.positionals);
+			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
 			for (const note of selection.value.notes) logService.warn(note);
 
@@ -132,9 +134,7 @@ registerCommand(
 				? undefined
 				: rojoService.choose(selection.value);
 
-			const written = await accessor
-				.get(WriteService)
-				.write(selection.value);
+			const written = await writeService.write(selection.value);
 			const failure = written.failure();
 			const uploaded =
 				failure || project === undefined
@@ -162,7 +162,10 @@ registerCommand(
 					),
 					failure ?? rojoFailure
 				);
-			const outcomeLog = new OutcomeLog(logService, cwd);
+			const outcomeLog = instantiationService.createInstance(
+				OutcomeLog,
+				cwd
+			);
 			outcomeLog.outcomes(written, selection.value.home, "upload");
 			if (uploaded?.isOk())
 				(rojoFailure ? reportRojoBesideFailure : reportRojo)(

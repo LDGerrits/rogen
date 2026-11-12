@@ -14,8 +14,8 @@ import { ReportedError } from "./commands.js";
 /** Tells a failed run as one JSON line a program reads, or as lines for a person. */
 export class CommandFailure {
 	constructor(
-		private readonly logService: LogService,
-		private readonly json: boolean
+		private readonly json: boolean,
+		@LogService private readonly logService: LogService
 	) {}
 
 	/** Tells the user why the run failed. `command` is the one that failed; without it the failure came before any command ran, so there is no frame to close. */

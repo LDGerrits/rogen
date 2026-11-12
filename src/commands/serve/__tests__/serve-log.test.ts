@@ -1,3 +1,5 @@
+import { LogService } from "../../../platform/log/log-service.js";
+import { instantiationOf } from "../../../platform/instantiation/__tests__/instantiation-of.js";
 import { ServePlan, ServeTarget } from "../../../domain/serve/serve-service.js";
 import { ServerMessage } from "../../../domain/runner/rojo-server.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
@@ -22,7 +24,9 @@ const framedLog = () => {
 };
 
 const say = (logService: MockLogService, message: ServerMessage) =>
-	new ServeLog(logService, "/repo", plan).said({ target, message });
+	instantiationOf([LogService, logService])
+		.createInstance(ServeLog, "/repo", plan)
+		.said({ target, message });
 
 describe("ServeLog server output", () => {
 	it("should drop the banner where there is no frame", () => {

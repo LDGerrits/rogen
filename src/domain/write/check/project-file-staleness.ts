@@ -15,7 +15,7 @@ import { OutputWriter } from "../output-writer.js";
 export class ProjectFileStaleness {
 	constructor(
 		private readonly fileSystemService: FileReader,
-		private readonly configService: ConfigService
+		@ConfigService private readonly configService: ConfigService
 	) {}
 
 	/** The warning for `config`'s project file when it is on disk and differs from what `expected` gives: that it is out of date. None for a file that isn't there, one Rogen never writes, or a write that fails. `expected` runs only for a file that is there. */

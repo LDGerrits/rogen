@@ -29,6 +29,7 @@ import { SyncbackRequest, UnplacedInstance } from "./syncback.js";
 import { SyncbackLayout } from "./syncback-layout.js";
 import { SyncbackMirror } from "./syncback-mirror.js";
 import { MIRROR, SyncbackStaging } from "./syncback-staging.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
 /** How far apart two writes must be for every file system to give them different times; a copy younger than this when Rojo starts is compared byte for byte. */
 const COARSEST_CLOCK_MS = 2000;
@@ -51,6 +52,7 @@ export async function inBatches<T, U>(
 
 /** The services a workspace reads the project with, holds its folder with, and runs Rojo with. */
 export interface WorkspaceServices {
+	readonly instantiationService: InstantiationService;
 	readonly configService: ConfigService;
 	readonly fileSystemService: FileSystemService;
 	readonly writeService: WriteService;
@@ -174,10 +176,8 @@ export class MirrorWorkspace {
 					"Rename one of them, then run syncback again."
 				)
 			);
-		const staging = new SyncbackStaging(
-			fileSystemService,
-			services.processService,
-			services.lifecycleService,
+		const staging = services.instantiationService.createInstance(
+			SyncbackStaging,
 			services.environmentService.pid,
 			dir
 		);
@@ -228,7 +228,10 @@ export class MirrorWorkspace {
 	async syncback(signal: AbortSignal): Promise<Result<MirrorRun, Error>> {
 		const copied = await this.copy();
 		const started = Date.now();
-		const rojo = new RojoSyncback(this.services.rojoService, this.request);
+		const rojo = this.services.instantiationService.createInstance(
+			RojoSyncback,
+			this.request
+		);
 		const ignored: string[] = [];
 		const refused: UnplacedInstance[] = [];
 		for (;;) {

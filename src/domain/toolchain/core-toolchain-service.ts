@@ -8,6 +8,7 @@ import { Darklua, DetectedWorkspace, SyncTool } from "./toolchain.js";
 import { ToolManifest } from "./tool-manifest.js";
 import { ToolchainService } from "./toolchain-service.js";
 import { WorkspaceDetector } from "./workspace-detector.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
 export class CoreToolchainService implements ToolchainService {
 	declare readonly _serviceBrand: undefined;
@@ -19,12 +20,14 @@ export class CoreToolchainService implements ToolchainService {
 	private readonly detector: WorkspaceDetector;
 
 	constructor(
-		@FileSystemService private readonly fileSystemService: FileSystemService
+		@FileSystemService
+		private readonly fileSystemService: FileSystemService,
+		@InstantiationService instantiationService: InstantiationService
 	) {
-		this.detector = new WorkspaceDetector(
-			fileSystemService,
-			new TestRunnerDetector(fileSystemService),
-			[new Luau(), new RobloxTsDetector(fileSystemService)]
+		this.detector = instantiationService.createInstance(
+			WorkspaceDetector,
+			[new Luau(), instantiationService.createInstance(RobloxTsDetector)],
+			instantiationService.createInstance(TestRunnerDetector)
 		);
 	}
 

@@ -11,6 +11,7 @@ import { NullLogService } from "../../log/null-log-service.js";
 import { MockLogService } from "../../log/__tests__/mock-log-service.js";
 import { DiskWatcher } from "../disk-watcher.js";
 import { WatchOptions } from "../watcher.js";
+import { diskWatcherOf } from "./disk-watcher-of.js";
 
 function waitFor(predicate: () => boolean, timeoutMs = 3000): Promise<void> {
 	const start = Date.now();
@@ -35,7 +36,7 @@ describe("DiskWatcher", () => {
 
 	beforeEach(async () => {
 		dir = await fs.mkdtemp(path.join(os.tmpdir(), "rogen-watcher-"));
-		watcher = new DiskWatcher(new NullLogService());
+		watcher = diskWatcherOf(new NullLogService());
 		store = new DisposableStore();
 	});
 
@@ -68,7 +69,7 @@ describe("DiskWatcher", () => {
 				await fs.chmod(locked, 0);
 				const logService = new MockLogService();
 				logService.setLevel(LogLevel.Debug);
-				const watching = new DiskWatcher(logService);
+				const watching = diskWatcherOf(logService);
 				try {
 					await watching.watch([dir], options);
 				} finally {
