@@ -1,5 +1,5 @@
 import { toPosix } from "../../base/path.js";
-import { createServiceIdentifier } from "../instantiation/instantiation.js";
+import { createDecorator } from "../instantiation/instantiation.js";
 import { FileChange } from "./file-changes.js";
 import { FileReader, FileType } from "./file-system-service.js";
 
@@ -52,5 +52,4 @@ export interface IndexService {
 	update(base: Listing, changes: readonly FileChange[]): Promise<Listing>;
 }
 
-export const IndexService =
-	createServiceIdentifier<IndexService>("indexService");
+export const IndexService = createDecorator<IndexService>("indexService");

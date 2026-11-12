@@ -12,9 +12,9 @@ export class CoreWatchService implements WatchService {
 	declare readonly _serviceBrand: undefined;
 
 	constructor(
-		private readonly watcher: Watcher,
-		private readonly indexService: IndexService,
-		private readonly writeService: WriteService
+		@Watcher private readonly watcher: Watcher,
+		@IndexService private readonly indexService: IndexService,
+		@WriteService private readonly writeService: WriteService
 	) {}
 
 	watch(

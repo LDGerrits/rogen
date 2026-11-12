@@ -13,7 +13,7 @@ describe("RojoCompatibility", () => {
 		fs.writeFile("/repo/default.project.json", JSON.stringify(project));
 
 	const problems = (version: string, windows = true, command = "sourcemap") =>
-		new RojoCompatibility(fs, windows).problemsIn(
+		new RojoCompatibility(windows, fs).problemsIn(
 			rojo(version),
 			["/repo/default.project.json"],
 			command
@@ -179,7 +179,7 @@ describe("RojoCompatibility", () => {
 	it("should skip a file that isn't there or isn't JSON", async () => {
 		await fs.writeFile("/repo/other.project.json", "{");
 
-		const found = await new RojoCompatibility(fs, true).problemsIn(
+		const found = await new RojoCompatibility(true, fs).problemsIn(
 			rojo("7.7.0"),
 			["/repo/missing.project.json", "/repo/other.project.json"],
 			"sourcemap"

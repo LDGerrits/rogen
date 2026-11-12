@@ -4,7 +4,7 @@ import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileChange } from "../../platform/fs/file-changes.js";
-import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
+import { createDecorator } from "../../platform/instantiation/instantiation.js";
 import { LoadedConfig } from "../write/write.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { ConfigNotice, ReloadableSelection } from "../config/config-service.js";
@@ -82,5 +82,4 @@ export interface WatchService {
 	): Result<WatchSession, DiagnosticsError>;
 }
 
-export const WatchService =
-	createServiceIdentifier<WatchService>("watchService");
+export const WatchService = createDecorator<WatchService>("watchService");

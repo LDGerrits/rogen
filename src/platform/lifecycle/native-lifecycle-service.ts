@@ -3,7 +3,8 @@ import {
 	DisposableStore,
 	toDisposable,
 } from "../../base/disposable.js";
-import { Emitter, Event, NullEvent } from "../../base/event.js";
+import { Emitter, Event } from "../../base/event.js";
+import { ProcessService } from "../process/process-service.js";
 import { LifecycleService, exitCodeOfSignal } from "./lifecycle-service.js";
 
 const SHUTDOWN_SIGNALS: readonly NodeJS.Signals[] = [
@@ -30,15 +31,13 @@ export class NativeLifecycleService
 	private handlingOutput = false;
 	signal: NodeJS.Signals | undefined;
 
+	/** A signal that ends Rogen then ends the children too, which the terminal's signal misses in their own process groups; a second signal ends them at once, before it exits. */
 	constructor(
-		/** Ends at once what a graceful shutdown would still be waiting on, before a second signal exits. */
-		private readonly stopNow: () => void = () => undefined,
-		/** Whether a child is running; a signal that ends Rogen then ends the children too, which the terminal's signal misses in their own process groups. */
-		onDidChangeRunning: Event<boolean> = NullEvent
+		@ProcessService private readonly processService: ProcessService
 	) {
 		super();
 		this._register(
-			onDidChangeRunning((running) => {
+			processService.onDidChangeRunning((running) => {
 				this.childrenRunning = running;
 				if (!running) this.draining = false;
 				this.update();
@@ -109,13 +108,13 @@ export class NativeLifecycleService
 
 	/** Dies of the signal as a run that doesn't listen does, but takes the children along. */
 	private exitWithChildren(signal: NodeJS.Signals): void {
-		this.stopNow();
+		this.processService.killAll();
 		process.exit(exitCodeOfSignal(signal));
 	}
 
 	/** A second signal, a common reflex, means the graceful stop is taking too long. */
 	private exitNow(signal: NodeJS.Signals): void {
-		this.stopNow();
+		this.processService.killAll();
 		process.stderr.write("Stopping now\n");
 		process.exit(exitCodeOfSignal(signal));
 	}

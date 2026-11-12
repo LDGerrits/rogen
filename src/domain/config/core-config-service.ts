@@ -42,7 +42,9 @@ export class CoreConfigService implements ConfigService {
 	private readonly formatter: ConfigFormatter;
 
 	constructor(
+		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
+		@EnvironmentService
 		private readonly environmentService: EnvironmentService
 	) {
 		this.discovery = new ConfigDiscovery(

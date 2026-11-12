@@ -34,7 +34,7 @@ export class ServerFinder {
 	constructor(
 		private readonly toolchainService: ToolchainService,
 		private readonly processService: ProcessService,
-		private readonly locator: ToolLocator = new ToolLocator(processService)
+		private readonly locator: ToolLocator
 	) {}
 
 	/** Toolchain files are looked for in `directory`, then in every folder above it. A failure without a toolchain file to point at is about `resource`. */

@@ -1,4 +1,4 @@
-import { createServiceIdentifier } from "../instantiation/instantiation.js";
+import { createDecorator } from "../instantiation/instantiation.js";
 
 export interface BrowserService {
 	readonly _serviceBrand: undefined;
@@ -7,5 +7,4 @@ export interface BrowserService {
 	open(url: string, cwd: string): Promise<boolean>;
 }
 
-export const BrowserService =
-	createServiceIdentifier<BrowserService>("browserService");
+export const BrowserService = createDecorator<BrowserService>("browserService");

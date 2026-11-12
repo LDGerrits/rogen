@@ -15,6 +15,8 @@ import {
 	RojoWatch,
 	RojoWatchRequest,
 } from "./rojo-command-service.js";
+import { isWindows } from "../../base/platform.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { RojoCompatibility } from "./rojo-compatibility.js";
 import { RojoVersion } from "./rojo-version.js";
 import { RojoRunner, ServerExecutable, exitHow } from "./rojo-runner.js";
@@ -40,10 +42,18 @@ const HELP_POINTER = /^For more information,? try '?--help'?\.?$/;
 export class CoreRojoCommandService implements RojoCommandService {
 	declare readonly _serviceBrand: undefined;
 
+	private readonly compatibility: RojoCompatibility;
+
 	constructor(
-		private readonly rojoRunner: RojoRunner,
-		private readonly compatibility: RojoCompatibility
-	) {}
+		windows: boolean = isWindows,
+		@RojoRunner private readonly rojoRunner: RojoRunner,
+		@InstantiationService instantiationService: InstantiationService
+	) {
+		this.compatibility = instantiationService.createInstance(
+			RojoCompatibility,
+			windows
+		);
+	}
 
 	async run(
 		selection: ConfigSelection,

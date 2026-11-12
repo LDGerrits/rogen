@@ -25,6 +25,7 @@ describe("CoreUpdateService", () => {
 			cwd = "/repo/game",
 		} = options;
 		return new CoreUpdateService(
+			options.installDir ?? "/home/me/.rokit/tool-storage/rogen/dist",
 			releases,
 			new MockProductService(version),
 			new MockEnvironmentService(
@@ -39,8 +40,7 @@ describe("CoreUpdateService", () => {
 				checks
 			),
 			new CoreToolchainService(fs),
-			fs,
-			options.installDir ?? "/home/me/.rokit/tool-storage/rogen/dist"
+			fs
 		).check();
 	};
 

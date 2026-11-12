@@ -1,4 +1,4 @@
-import { createServiceIdentifier } from "../instantiation/instantiation.js";
+import { createDecorator } from "../instantiation/instantiation.js";
 import { LogLevel } from "../log/log-service.js";
 
 export interface EnvironmentService {
@@ -26,4 +26,4 @@ export interface EnvironmentService {
 }
 
 export const EnvironmentService =
-	createServiceIdentifier<EnvironmentService>("environmentService");
+	createDecorator<EnvironmentService>("environmentService");

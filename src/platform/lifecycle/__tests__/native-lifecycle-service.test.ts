@@ -1,7 +1,7 @@
 import { jest } from "@jest/globals";
 import os from "os";
 import { DisposableStore } from "../../../base/disposable.js";
-import { Emitter } from "../../../base/event.js";
+import { MockProcessService } from "../../process/__tests__/mock-process-service.js";
 import { NativeProcessService } from "../../process/native-process-service.js";
 import { NativeLifecycleService } from "../native-lifecycle-service.js";
 
@@ -17,7 +17,9 @@ describe("NativeLifecycleService", () => {
 	});
 
 	it("should fire onWillShutdown when the process receives SIGTERM", () => {
-		const service = store.add(new NativeLifecycleService());
+		const service = store.add(
+			new NativeLifecycleService(new MockProcessService())
+		);
 		const listener = jest.fn();
 		store.add(service.onWillShutdown(listener));
 
@@ -29,7 +31,9 @@ describe("NativeLifecycleService", () => {
 	it.each(["SIGINT", "SIGTERM", "SIGHUP"] as const)(
 		"should remember that %s asked for the shutdown",
 		(signal) => {
-			const service = store.add(new NativeLifecycleService());
+			const service = store.add(
+				new NativeLifecycleService(new MockProcessService())
+			);
 			store.add(service.onWillShutdown(() => undefined));
 
 			process.emit(signal);
@@ -39,7 +43,9 @@ describe("NativeLifecycleService", () => {
 	);
 
 	it("should name no signal when the reader of the output quit", () => {
-		const service = store.add(new NativeLifecycleService());
+		const service = store.add(
+			new NativeLifecycleService(new MockProcessService())
+		);
 		store.add(service.onWillShutdown(() => undefined));
 
 		process.stdout.emit(
@@ -51,7 +57,9 @@ describe("NativeLifecycleService", () => {
 	});
 
 	it("should fire onWillShutdown when the terminal closes", () => {
-		const service = store.add(new NativeLifecycleService());
+		const service = store.add(
+			new NativeLifecycleService(new MockProcessService())
+		);
 		const listener = jest.fn();
 		store.add(service.onWillShutdown(listener));
 
@@ -61,7 +69,9 @@ describe("NativeLifecycleService", () => {
 	});
 
 	it("should fire onWillShutdown once when the reader of the output quits", () => {
-		const service = store.add(new NativeLifecycleService());
+		const service = store.add(
+			new NativeLifecycleService(new MockProcessService())
+		);
 		const listener = jest.fn();
 		store.add(service.onWillShutdown(listener));
 		const closed = Object.assign(new Error("write EPIPE"), {
@@ -77,14 +87,14 @@ describe("NativeLifecycleService", () => {
 	it("should leave the signals to the process until something listens", () => {
 		const before = process.listenerCount("SIGTERM");
 
-		store.add(new NativeLifecycleService());
+		store.add(new NativeLifecycleService(new MockProcessService()));
 
 		expect(process.listenerCount("SIGTERM")).toBe(before);
 	});
 
 	it("should stop listening for signals once disposed", () => {
 		const before = process.listenerCount("SIGINT");
-		const service = new NativeLifecycleService();
+		const service = new NativeLifecycleService(new MockProcessService());
 		service.onWillShutdown(() => undefined);
 
 		service[Symbol.dispose]();
@@ -93,7 +103,9 @@ describe("NativeLifecycleService", () => {
 	});
 
 	it("should fire onWillShutdown once for repeated signals and a quit reader", () => {
-		const service = store.add(new NativeLifecycleService());
+		const service = store.add(
+			new NativeLifecycleService(new MockProcessService())
+		);
 		const listener = jest.fn();
 		store.add(service.onWillShutdown(listener));
 		const exit = jest
@@ -122,8 +134,8 @@ describe("NativeLifecycleService", () => {
 	] as const)(
 		"should kill the children and exit at once on a second %s",
 		(signal, code) => {
-			const stopNow = jest.fn();
-			const service = store.add(new NativeLifecycleService(stopNow));
+			const processes = new MockProcessService();
+			const service = store.add(new NativeLifecycleService(processes));
 			store.add(service.onWillShutdown(() => undefined));
 			const exit = jest
 				.spyOn(process, "exit")
@@ -133,7 +145,7 @@ describe("NativeLifecycleService", () => {
 				.mockImplementation(() => true);
 
 			process.emit("SIGINT");
-			const stoppedOnFirst = stopNow.mock.calls.length;
+			const stoppedOnFirst = processes.killedAll;
 			process.emit(signal);
 			const written = write.mock.calls.map(([text]) => String(text));
 			const codes = exit.mock.calls.map(([exitCode]) => exitCode);
@@ -141,7 +153,7 @@ describe("NativeLifecycleService", () => {
 			write.mockRestore();
 
 			expect(stoppedOnFirst).toBe(0);
-			expect(stopNow).toHaveBeenCalledTimes(1);
+			expect(processes.killedAll).toBe(1);
 			expect(written).toEqual(["Stopping now\n"]);
 			expect(codes).toEqual([code]);
 		}
@@ -150,7 +162,9 @@ describe("NativeLifecycleService", () => {
 	it("should leave the signals to the process once the last listener leaves", () => {
 		const signals = process.listenerCount("SIGINT");
 		const errors = process.stdout.listenerCount("error");
-		const service = store.add(new NativeLifecycleService());
+		const service = store.add(
+			new NativeLifecycleService(new MockProcessService())
+		);
 		const first = service.onWillShutdown(() => undefined);
 		const second = service.onWillShutdown(() => undefined);
 
@@ -164,7 +178,9 @@ describe("NativeLifecycleService", () => {
 	});
 
 	it("should take the signals again when something listens after the last left", () => {
-		const service = store.add(new NativeLifecycleService());
+		const service = store.add(
+			new NativeLifecycleService(new MockProcessService())
+		);
 		service.onWillShutdown(() => undefined)[Symbol.dispose]();
 		const listener = jest.fn();
 		store.add(service.onWillShutdown(listener));
@@ -174,7 +190,9 @@ describe("NativeLifecycleService", () => {
 		expect(listener).toHaveBeenCalledTimes(1);
 	});
 	it("should give a listener that comes after the last one left a graceful first signal", async () => {
-		const service = store.add(new NativeLifecycleService());
+		const service = store.add(
+			new NativeLifecycleService(new MockProcessService())
+		);
 		const first = service.onWillShutdown(() => undefined);
 		process.emit("SIGINT");
 		first[Symbol.dispose]();
@@ -194,12 +212,9 @@ describe("NativeLifecycleService", () => {
 	});
 
 	it("should kill the children on a second signal after every listener left, while they stop", () => {
-		const stopNow = jest.fn();
-		const running = store.add(new Emitter<boolean>());
-		const service = store.add(
-			new NativeLifecycleService(stopNow, running.event)
-		);
-		running.fire(true);
+		const processes = new MockProcessService();
+		const service = store.add(new NativeLifecycleService(processes));
+		processes.setRunning(true);
 		const listening = service.onWillShutdown(() => undefined);
 		const exit = jest
 			.spyOn(process, "exit")
@@ -215,17 +230,14 @@ describe("NativeLifecycleService", () => {
 		exit.mockRestore();
 		write.mockRestore();
 
-		expect(stopNow).toHaveBeenCalledTimes(1);
+		expect(processes.killedAll).toBe(1);
 		expect(codes).toEqual([130]);
 	});
 
 	it("should still end the children at once on a second signal after a listener came and went while they stop", () => {
-		const stopNow = jest.fn();
-		const running = store.add(new Emitter<boolean>());
-		const service = store.add(
-			new NativeLifecycleService(stopNow, running.event)
-		);
-		running.fire(true);
+		const processes = new MockProcessService();
+		const service = store.add(new NativeLifecycleService(processes));
+		processes.setRunning(true);
 		const first = service.onWillShutdown(() => undefined);
 		process.emit("SIGINT");
 		first[Symbol.dispose]();
@@ -242,17 +254,14 @@ describe("NativeLifecycleService", () => {
 		exit.mockRestore();
 		write.mockRestore();
 
-		expect(stopNow).toHaveBeenCalledTimes(1);
+		expect(processes.killedAll).toBe(1);
 		expect(written).toEqual(["Stopping now\n"]);
 	});
 
 	it("should give a listener that comes while the children stop a graceful first signal", () => {
-		const stopNow = jest.fn();
-		const running = store.add(new Emitter<boolean>());
-		const service = store.add(
-			new NativeLifecycleService(stopNow, running.event)
-		);
-		running.fire(true);
+		const processes = new MockProcessService();
+		const service = store.add(new NativeLifecycleService(processes));
+		processes.setRunning(true);
 		const first = service.onWillShutdown(() => undefined);
 		process.emit("SIGINT");
 		first[Symbol.dispose]();
@@ -267,23 +276,21 @@ describe("NativeLifecycleService", () => {
 		exit.mockRestore();
 
 		expect(listener).toHaveBeenCalledTimes(1);
-		expect(stopNow).not.toHaveBeenCalled();
+		expect(processes.killedAll).toBe(0);
 		expect(exited).toBe(0);
 	});
 
 	it("should leave the signals to the process once the children it stops have stopped", async () => {
 		const signals = process.listenerCount("SIGINT");
-		const running = store.add(new Emitter<boolean>());
-		const service = store.add(
-			new NativeLifecycleService(() => undefined, running.event)
-		);
-		running.fire(true);
+		const processes = new MockProcessService();
+		const service = store.add(new NativeLifecycleService(processes));
+		processes.setRunning(true);
 		const listening = service.onWillShutdown(() => undefined);
 		process.emit("SIGINT");
 		listening[Symbol.dispose]();
 		const whileStopping = process.listenerCount("SIGINT");
 
-		running.fire(false);
+		processes.setRunning(false);
 
 		expect(whileStopping).toBe(signals + 1);
 		expect(process.listenerCount("SIGINT")).toBe(signals);
@@ -295,10 +302,9 @@ describe("NativeLifecycleService", () => {
 	] as const)(
 		"should kill the children and exit on %s while they run and nothing listens",
 		(signal, code) => {
-			const stopNow = jest.fn();
-			const running = store.add(new Emitter<boolean>());
-			store.add(new NativeLifecycleService(stopNow, running.event));
-			running.fire(true);
+			const processes = new MockProcessService();
+			store.add(new NativeLifecycleService(processes));
+			processes.setRunning(true);
 			const exit = jest
 				.spyOn(process, "exit")
 				.mockImplementation(() => undefined as never);
@@ -312,7 +318,7 @@ describe("NativeLifecycleService", () => {
 			exit.mockRestore();
 			write.mockRestore();
 
-			expect(stopNow).toHaveBeenCalledTimes(1);
+			expect(processes.killedAll).toBe(1);
 			expect(written).toBe(0);
 			expect(codes).toEqual([code]);
 		}
@@ -321,13 +327,13 @@ describe("NativeLifecycleService", () => {
 	it("should leave the signals to the process once the children it didn't stop have ended", () => {
 		const signals = process.listenerCount("SIGINT");
 		const errors = process.stdout.listenerCount("error");
-		const running = store.add(new Emitter<boolean>());
-		store.add(new NativeLifecycleService(() => undefined, running.event));
+		const processes = new MockProcessService();
+		store.add(new NativeLifecycleService(processes));
 
-		running.fire(true);
+		processes.setRunning(true);
 		const whileRunning = process.listenerCount("SIGINT");
 		const errorsWhileRunning = process.stdout.listenerCount("error");
-		running.fire(false);
+		processes.setRunning(false);
 
 		expect(whileRunning).toBe(signals + 1);
 		expect(errorsWhileRunning).toBe(errors);
@@ -335,12 +341,9 @@ describe("NativeLifecycleService", () => {
 	});
 
 	it("should keep a graceful first signal for a listener while children run", () => {
-		const stopNow = jest.fn();
-		const running = store.add(new Emitter<boolean>());
-		const service = store.add(
-			new NativeLifecycleService(stopNow, running.event)
-		);
-		running.fire(true);
+		const processes = new MockProcessService();
+		const service = store.add(new NativeLifecycleService(processes));
+		processes.setRunning(true);
 		const listener = jest.fn();
 		store.add(service.onWillShutdown(listener));
 		const exit = jest
@@ -352,7 +355,7 @@ describe("NativeLifecycleService", () => {
 		exit.mockRestore();
 
 		expect(listener).toHaveBeenCalledTimes(1);
-		expect(stopNow).not.toHaveBeenCalled();
+		expect(processes.killedAll).toBe(0);
 		expect(exited).toBe(0);
 	});
 
@@ -360,12 +363,7 @@ describe("NativeLifecycleService", () => {
 		if (process.platform === "win32") return;
 		const signals = process.listenerCount("SIGINT");
 		const processes = new NativeProcessService();
-		store.add(
-			new NativeLifecycleService(
-				() => processes.killAll(),
-				processes.onDidChangeRunning
-			)
-		);
+		store.add(new NativeLifecycleService(processes));
 		const child = store.add(
 			processes.spawn(
 				process.execPath,

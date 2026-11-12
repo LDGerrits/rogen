@@ -1,7 +1,7 @@
 import { Disposable } from "../../base/disposable.js";
 import { Event } from "../../base/event.js";
 import { Result } from "../../base/result.js";
-import { createServiceIdentifier } from "../instantiation/instantiation.js";
+import { createDecorator } from "../instantiation/instantiation.js";
 
 export interface ProcessExit {
 	readonly code: number | null;
@@ -81,7 +81,10 @@ export interface ProcessService {
 		args: readonly string[],
 		options: SpawnOptions
 	): ChildProcess;
+	/** Fires with whether any process this service started still runs, each time that changes. */
+	readonly onDidChangeRunning: Event<boolean>;
+	/** Ends at once every process this service started. */
+	killAll(): void;
 }
 
-export const ProcessService =
-	createServiceIdentifier<ProcessService>("processService");
+export const ProcessService = createDecorator<ProcessService>("processService");

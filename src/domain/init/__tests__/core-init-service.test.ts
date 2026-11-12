@@ -2,6 +2,7 @@ import { agentBlock } from "../agent/agent-block.js";
 import { hookScript } from "../agent/hook-script.js";
 import { PlannedFile } from "../../toolchain/toolchain.js";
 import { jest } from "@jest/globals";
+import { CoreToolLocator } from "../../toolchain/core-tool-locator.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import path from "path";
 import { ResultError, ok } from "../../../base/result.js";
@@ -108,12 +109,12 @@ describe("CoreInitService", () => {
 			environmentService,
 			toolchain,
 			processes,
-			undefined,
+			new CoreToolLocator(processes, fileSystem, environmentService),
 			configs,
 			new CoreWriteService(
 				fileSystem,
 				new CoreIndexService(fileSystem),
-				toolchain.syncTools,
+				toolchain,
 				configs
 			),
 			new MockLifecycleService()

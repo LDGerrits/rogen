@@ -12,7 +12,7 @@ import {
 } from "../environment/args.js";
 import {
 	ServicesAccessor,
-	createServiceIdentifier,
+	createDecorator,
 } from "../instantiation/instantiation.js";
 import { LifecycleService } from "../lifecycle/lifecycle-service.js";
 import { LogService } from "../log/log-service.js";
@@ -36,8 +36,7 @@ export interface CommandService {
 	): Promise<Result<void, Error>>;
 }
 
-export const CommandService =
-	createServiceIdentifier<CommandService>("commandService");
+export const CommandService = createDecorator<CommandService>("commandService");
 
 type CommandHandler = (
 	accessor: ServicesAccessor,

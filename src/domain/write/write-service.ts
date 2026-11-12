@@ -14,7 +14,7 @@ import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
 import { FileChange } from "../../platform/fs/file-changes.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
+import { createDecorator } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig, scannedFileOf } from "../config/resolved-config.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ConfigSelection } from "../config/config-service.js";
@@ -386,5 +386,4 @@ export interface WriteService {
 	): Promise<Result<Locations, DiagnosticsError>>;
 }
 
-export const WriteService =
-	createServiceIdentifier<WriteService>("writeService");
+export const WriteService = createDecorator<WriteService>("writeService");

@@ -1,4 +1,4 @@
-import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
+import { createDecorator } from "../../platform/instantiation/instantiation.js";
 import { DetectedWorkspace, SyncTool } from "./toolchain.js";
 import { ToolManifest } from "./tool-manifest.js";
 
@@ -15,4 +15,4 @@ export interface ToolchainService {
 }
 
 export const ToolchainService =
-	createServiceIdentifier<ToolchainService>("toolchainService");
+	createDecorator<ToolchainService>("toolchainService");

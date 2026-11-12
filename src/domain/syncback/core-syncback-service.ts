@@ -69,13 +69,13 @@ export class CoreSyncbackService implements SyncbackService {
 	private readonly services: WorkspaceServices;
 
 	constructor(
-		configService: ConfigService,
-		fileSystemService: FileSystemService,
-		writeService: WriteService,
-		rojoService: RojoCommandService,
-		environmentService: EnvironmentService,
-		processService: ProcessService,
-		lifecycleService: LifecycleService
+		@ConfigService configService: ConfigService,
+		@FileSystemService fileSystemService: FileSystemService,
+		@WriteService writeService: WriteService,
+		@RojoCommandService rojoService: RojoCommandService,
+		@EnvironmentService environmentService: EnvironmentService,
+		@ProcessService processService: ProcessService,
+		@LifecycleService lifecycleService: LifecycleService
 	) {
 		this.services = {
 			configService,

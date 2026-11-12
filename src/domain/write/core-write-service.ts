@@ -15,6 +15,7 @@ import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ConfigSelection, ConfigService } from "../config/config-service.js";
 import { SyncTool } from "../toolchain/toolchain.js";
+import { ToolchainService } from "../toolchain/toolchain-service.js";
 import {
 	WriteRun,
 	WriteSet,
@@ -73,13 +74,16 @@ export class CoreWriteService implements WriteService {
 	declare readonly _serviceBrand: undefined;
 
 	private readonly writer: OutputWriter;
+	private readonly syncTools: readonly SyncTool[];
 
 	constructor(
+		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
-		private readonly indexService: IndexService,
-		private readonly syncTools: readonly SyncTool[],
-		private readonly configService: ConfigService
+		@IndexService private readonly indexService: IndexService,
+		@ToolchainService toolchainService: ToolchainService,
+		@ConfigService private readonly configService: ConfigService
 	) {
+		this.syncTools = toolchainService.syncTools;
 		this.writer = new OutputWriter(fileSystemService);
 	}
 

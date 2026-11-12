@@ -7,10 +7,9 @@ import {
 	MockConfigSelection,
 	mockEntry,
 } from "../../config/__tests__/mock-config-service.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreRojoCommandService } from "../core-rojo-command-service.js";
-import { CoreRojoRunner } from "../core-rojo-runner.js";
-import { RojoCompatibility } from "../rojo-compatibility.js";
+import { rojoRunnerOf } from "./rojo-runner-fixtures.js";
+import { instantiationOf } from "../../../platform/instantiation/__tests__/instantiation-of.js";
 
 const VERSION = { code: 0, stdout: "Rojo 7.7.1\n", stderr: "" };
 
@@ -41,8 +40,9 @@ describe("CoreRojoCommandService", () => {
 		processes.installed.set("rojo", "/bin/rojo");
 		processes.outputs.set("/bin/rojo", VERSION);
 		service = new CoreRojoCommandService(
-			new CoreRojoRunner(new CoreToolchainService(fs), processes),
-			new RojoCompatibility(fs, false)
+			false,
+			rojoRunnerOf(fs, processes),
+			instantiationOf(fs)
 		);
 	});
 
@@ -79,8 +79,9 @@ describe("CoreRojoCommandService", () => {
 				stderr: "",
 			});
 			service = new CoreRojoCommandService(
-				new CoreRojoRunner(new CoreToolchainService(fs), processes),
-				new RojoCompatibility(fs, true)
+				true,
+				rojoRunnerOf(fs, processes),
+				instantiationOf(fs)
 			);
 			await fs.writeFile(
 				"/repo/default.project.json",

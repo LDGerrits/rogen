@@ -57,7 +57,9 @@ export const writeServiceOf = (
 	new CoreWriteService(
 		fs,
 		index,
-		[...syncTools, ...extraTools],
+		Object.assign(new CoreToolchainService(fs), {
+			syncTools: [...syncTools, ...extraTools],
+		}),
 		new CoreConfigService(fs, new MockEnvironmentService("/repo"))
 	);
 

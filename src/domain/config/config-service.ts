@@ -4,7 +4,7 @@ import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
+import { createDecorator } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
 
 const PROJECT_DESCRIPTION =
@@ -198,5 +198,4 @@ export interface ConfigService {
 	staleConfigsIn(folder: string): Promise<readonly Diagnostic[]>;
 }
 
-export const ConfigService =
-	createServiceIdentifier<ConfigService>("configService");
+export const ConfigService = createDecorator<ConfigService>("configService");

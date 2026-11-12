@@ -1,6 +1,6 @@
 import path from "path";
 import { selfAndAncestors } from "../../base/path.js";
-import { FileReader } from "../fs/file-system-service.js";
+import { FileSystemService } from "../fs/file-system-service.js";
 import { ProductService } from "./product-service.js";
 
 interface PackageJson {
@@ -14,9 +14,9 @@ export class CoreProductService implements ProductService {
 
 	/** The version comes from the nearest package.json to `installDir`, unless `bakedVersion` is given (a compiled binary has none). */
 	constructor(
-		private readonly fileReader: FileReader,
 		private readonly installDir: string,
-		private readonly bakedVersion?: string
+		private readonly bakedVersion: string | undefined,
+		@FileSystemService private readonly fileReader: FileSystemService
 	) {}
 
 	async readVersion(): Promise<string> {

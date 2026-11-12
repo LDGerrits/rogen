@@ -18,7 +18,9 @@ export class CoreToolchainService implements ToolchainService {
 	];
 	private readonly detector: WorkspaceDetector;
 
-	constructor(private readonly fileSystemService: FileSystemService) {
+	constructor(
+		@FileSystemService private readonly fileSystemService: FileSystemService
+	) {
 		this.detector = new WorkspaceDetector(
 			fileSystemService,
 			new TestRunnerDetector(fileSystemService),

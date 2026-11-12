@@ -3,7 +3,7 @@ import { UsageError } from "../../base/errors.js";
 import { Event } from "../../base/event.js";
 import { Result } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
+import { createDecorator } from "../../platform/instantiation/instantiation.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoRestartEvent } from "./rojo-runner.js";
@@ -96,4 +96,4 @@ export interface RojoCommandService {
 }
 
 export const RojoCommandService =
-	createServiceIdentifier<RojoCommandService>("rojoCommandService");
+	createDecorator<RojoCommandService>("rojoCommandService");

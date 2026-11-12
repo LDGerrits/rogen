@@ -1,8 +1,8 @@
 import { LogLevel } from "../../../platform/log/log-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreRojoRunner } from "../core-rojo-runner.js";
+import { rojoRunnerOf } from "./rojo-runner-fixtures.js";
 import { ServerExecutable } from "../rojo-runner.js";
 import { ServerMessage } from "../rojo-server.js";
 
@@ -17,10 +17,7 @@ describe("CoreRojoRunner", () => {
 
 	beforeEach(() => {
 		processes = new MockProcessService();
-		runner = new CoreRojoRunner(
-			new CoreToolchainService(new MemoryFileSystemService()),
-			processes
-		);
+		runner = rojoRunnerOf(new MemoryFileSystemService(), processes);
 	});
 
 	describe("start", () => {
@@ -50,8 +47,8 @@ describe("CoreRojoRunner", () => {
 		])(
 			"should pass Rogen's log level %s on to Rojo as %j",
 			(level, flags) => {
-				runner = new CoreRojoRunner(
-					new CoreToolchainService(new MemoryFileSystemService()),
+				runner = rojoRunnerOf(
+					new MemoryFileSystemService(),
 					processes,
 					level
 				);
@@ -103,8 +100,8 @@ describe("CoreRojoRunner", () => {
 			let said: ServerMessage[];
 
 			beforeEach(() => {
-				runner = new CoreRojoRunner(
-					new CoreToolchainService(new MemoryFileSystemService()),
+				runner = rojoRunnerOf(
+					new MemoryFileSystemService(),
 					processes,
 					LogLevel.Error
 				);

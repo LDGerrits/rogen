@@ -1,11 +1,13 @@
 import { isWindows } from "../../../base/platform.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
-import { ToolLocator } from "../tool-locator.js";
+import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
+import { CoreToolLocator } from "../core-tool-locator.js";
 
 const exe = isWindows ? ".exe" : "";
+const home = new MockEnvironmentService("/repo", undefined, false, "/home/me");
 
-describe("ToolLocator", () => {
+describe("CoreToolLocator", () => {
 	let fs: MemoryFileSystemService;
 	let processes: MockProcessService;
 
@@ -18,7 +20,7 @@ describe("ToolLocator", () => {
 		await fs.writeFile(`/home/me/.rokit/bin/rokit${exe}`, "");
 		processes.installed.set("rokit", "/usr/bin/rokit");
 
-		const locator = new ToolLocator(processes, fs, "/home/me");
+		const locator = new CoreToolLocator(processes, fs, home);
 
 		expect(await locator.find("rokit")).toEqual("/usr/bin/rokit");
 	});
@@ -26,7 +28,7 @@ describe("ToolLocator", () => {
 	it("should look in Rokit's bin folder when the PATH has none", async () => {
 		await fs.writeFile(`/home/me/.rokit/bin/rokit${exe}`, "");
 
-		const locator = new ToolLocator(processes, fs, "/home/me");
+		const locator = new CoreToolLocator(processes, fs, home);
 
 		expect(await locator.find("rokit")).toEqual(
 			`/home/me/.rokit/bin/rokit${exe}`
@@ -34,14 +36,8 @@ describe("ToolLocator", () => {
 	});
 
 	it("should find nothing when neither has it", async () => {
-		const locator = new ToolLocator(processes, fs, "/home/me");
+		const locator = new CoreToolLocator(processes, fs, home);
 
 		expect(await locator.find("rokit")).toBeUndefined();
-	});
-
-	it("should look on the PATH alone without a home folder", async () => {
-		await fs.writeFile(`/home/me/.rokit/bin/rokit${exe}`, "");
-
-		expect(await new ToolLocator(processes).find("rokit")).toBeUndefined();
 	});
 });

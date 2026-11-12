@@ -1,6 +1,6 @@
 import os from "os";
 import { Event } from "../../base/event.js";
-import { createServiceIdentifier } from "../instantiation/instantiation.js";
+import { createDecorator } from "../instantiation/instantiation.js";
 
 export interface LifecycleService {
 	readonly _serviceBrand: undefined;
@@ -12,7 +12,7 @@ export interface LifecycleService {
 }
 
 export const LifecycleService =
-	createServiceIdentifier<LifecycleService>("lifecycleService");
+	createDecorator<LifecycleService>("lifecycleService");
 
 /** What a shell reports for a process the signal stopped: 128 plus its number. */
 export function exitCodeOfSignal(signal: NodeJS.Signals): number {

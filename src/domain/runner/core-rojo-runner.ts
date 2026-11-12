@@ -1,5 +1,6 @@
 import { Result } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { LogLevel } from "../../platform/log/log-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
@@ -20,14 +21,16 @@ export class CoreRojoRunner implements RojoRunner {
 	declare readonly _serviceBrand: undefined;
 
 	private readonly finder: ServerFinder;
+	/** What Rogen was asked to print: Rojo logs as much as that. */
+	private readonly logLevel: LogLevel;
 
 	constructor(
-		toolchainService: ToolchainService,
-		private readonly processService: ProcessService,
-		/** What Rogen was asked to print: Rojo logs as much as that. */
-		private readonly logLevel: LogLevel = LogLevel.Info,
-		locator?: ToolLocator
+		@ToolchainService toolchainService: ToolchainService,
+		@ProcessService private readonly processService: ProcessService,
+		@ToolLocator locator: ToolLocator,
+		@EnvironmentService environmentService: EnvironmentService
 	) {
+		this.logLevel = environmentService.logLevel;
 		this.finder = new ServerFinder(
 			toolchainService,
 			processService,

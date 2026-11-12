@@ -120,15 +120,17 @@ export class CoreInitService implements InitService {
 	private readonly migrations = new Set<ProjectMigration>();
 
 	constructor(
+		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
-		private readonly promptService: PromptService,
+		@PromptService private readonly promptService: PromptService,
+		@EnvironmentService
 		private readonly environmentService: EnvironmentService,
-		private readonly toolchainService: ToolchainService,
-		processService: ProcessService,
-		private readonly locator: ToolLocator = new ToolLocator(processService),
-		private readonly configService: ConfigService,
-		private readonly writeService: WriteService,
-		lifecycleService: LifecycleService
+		@ToolchainService private readonly toolchainService: ToolchainService,
+		@ProcessService processService: ProcessService,
+		@ToolLocator private readonly locator: ToolLocator,
+		@ConfigService private readonly configService: ConfigService,
+		@WriteService private readonly writeService: WriteService,
+		@LifecycleService lifecycleService: LifecycleService
 	) {
 		this.agentReader = new AgentReader(fileSystemService);
 		this.git = new GitRepository(processService, fileSystemService);

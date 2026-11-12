@@ -8,7 +8,9 @@ import { InitService } from "../../domain/init/init-service.js";
 import { CoreRojoCommandService } from "../../domain/runner/core-rojo-command-service.js";
 import { CoreRojoRunner } from "../../domain/runner/core-rojo-runner.js";
 import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
-import { RojoCompatibility } from "../../domain/runner/rojo-compatibility.js";
+import { RojoRunner } from "../../domain/runner/rojo-runner.js";
+import { CoreToolLocator } from "../../domain/toolchain/core-tool-locator.js";
+import { ToolLocator } from "../../domain/toolchain/tool-locator.js";
 import { CoreToolchainService } from "../../domain/toolchain/core-toolchain-service.js";
 import { ToolchainService } from "../../domain/toolchain/toolchain-service.js";
 import { CoreCommandService } from "../../platform/commands/core-command-service.js";
@@ -19,7 +21,9 @@ import { CoreIndexService } from "../../platform/fs/core-index-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { MemoryFileSystemService } from "../../platform/fs/memory-file-system-service.js";
+import { CoreInstantiationService } from "../../platform/instantiation/core-instantiation-service.js";
 import { ServiceCollection } from "../../platform/instantiation/service-collection.js";
+import { SyncDescriptor } from "../../platform/instantiation/sync-descriptor.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { MockLogService } from "../../platform/log/__tests__/mock-log-service.js";
 import { InputService } from "../../platform/input/input-service.js";
@@ -102,89 +106,56 @@ export function commandHarness(
 
 	const log = options.log ?? new MockLogService();
 	const environment = options.environment ?? new MockEnvironmentService(cwd);
-	const prompt = options.prompt ?? new MockPromptService([], false);
-	const config =
-		options.config ?? legacyChecked(new CoreConfigService(fs, environment));
-	const index = options.index ?? new CoreIndexService(fs);
-	const toolchain = new CoreToolchainService(fs);
-	const requests = options.requests ?? new MockRequestService();
-	const writeService = new CoreWriteService(
-		fs,
-		index,
-		toolchain.syncTools,
-		config
-	);
-	const watcher = options.watcher ?? new MemoryWatcher(fs, log);
-	const watch = new CoreWatchService(watcher, index, writeService);
-	const processes = options.processes ?? new MockProcessService();
-	const lifecycle = options.lifecycle ?? new MockLifecycleService();
-
 	const services = new ServiceCollection();
 	services.set(EnvironmentService, environment);
 	services.set(LogService, log);
-	services.set(PromptService, prompt);
+	services.set(
+		PromptService,
+		options.prompt ?? new MockPromptService([], false)
+	);
 	services.set(InputService, options.input ?? new MockInputService());
 	services.set(FileSystemService, fs);
-	services.set(ConfigService, config);
-	services.set(IndexService, index);
-	services.set(ToolchainService, toolchain);
-	services.set(WriteService, writeService);
-	const init = new CoreInitService(
-		fs,
-		prompt,
-		environment,
-		toolchain,
-		processes,
-		undefined,
-		config,
-		writeService,
-		lifecycle
+	services.set(
+		ConfigService,
+		options.config ?? new SyncDescriptor(CoreConfigService)
 	);
-	init.registerMigration(new LegacyMigration());
-	services.set(InitService, init);
-	services.set(LifecycleService, lifecycle);
-	services.set(Watcher, watcher);
-	services.set(WatchService, watch);
-	services.set(ProcessService, processes);
-	services.set(RequestService, requests);
+	services.set(
+		IndexService,
+		options.index ?? new SyncDescriptor(CoreIndexService)
+	);
+	services.set(ToolchainService, new SyncDescriptor(CoreToolchainService));
+	services.set(WriteService, new SyncDescriptor(CoreWriteService));
+	services.set(InitService, new SyncDescriptor(CoreInitService));
+	services.set(
+		LifecycleService,
+		options.lifecycle ?? new MockLifecycleService()
+	);
+	services.set(Watcher, options.watcher ?? new MemoryWatcher(fs, log));
+	services.set(WatchService, new SyncDescriptor(CoreWatchService));
+	services.set(ProcessService, options.processes ?? new MockProcessService());
+	services.set(RequestService, options.requests ?? new MockRequestService());
 	services.set(BrowserService, options.browser ?? new MockBrowserService());
 	services.set(ProductService, options.product ?? new MockProductService());
-	const rojoRunner = new CoreRojoRunner(toolchain, processes);
-	const rojoCommands = new CoreRojoCommandService(
-		rojoRunner,
-		new RojoCompatibility(fs, false)
-	);
-	services.set(RojoCommandService, rojoCommands);
+	services.set(ToolLocator, new SyncDescriptor(CoreToolLocator));
+	services.set(RojoRunner, new SyncDescriptor(CoreRojoRunner));
 	services.set(
-		SyncbackService,
-		new CoreSyncbackService(
-			config,
-			fs,
-			writeService,
-			rojoCommands,
-			environment,
-			processes,
-			lifecycle
-		)
+		RojoCommandService,
+		new SyncDescriptor(CoreRojoCommandService)
 	);
+	services.set(SyncbackService, new SyncDescriptor(CoreSyncbackService));
+	services.set(ServeService, new SyncDescriptor(CoreServeService));
 	services.set(
-		ServeService,
-		new CoreServeService(
-			config,
-			fs,
-			rojoRunner,
-			requests,
-			watch,
-			environment
-		)
+		CommandService,
+		new SyncDescriptor(CoreCommandService, [
+			Registry.as<CommandRegistry>(Extensions.Commands),
+		])
 	);
-
-	const commands = new CoreCommandService(
-		services,
-		log,
-		Registry.as<CommandRegistry>(Extensions.Commands)
-	);
-	services.set(CommandService, commands);
+	const instantiation = new CoreInstantiationService(services);
+	const commands = instantiation.invokeFunction((accessor) => {
+		if (!options.config) legacyChecked(accessor.get(ConfigService));
+		accessor.get(InitService).registerMigration(new LegacyMigration());
+		return accessor.get(CommandService);
+	});
 	return {
 		fs,
 		log,
@@ -200,7 +171,7 @@ export function commandHarness(
 	};
 }
 
-function legacyChecked(config: CoreConfigService): CoreConfigService {
+function legacyChecked(config: ConfigService): ConfigService {
 	config.registerFileCheck(LegacyConfig.check);
 	config.registerFolderCheck(LegacyConfig.find);
 	return config;

@@ -2,8 +2,7 @@ import { jest } from "@jest/globals";
 import { setUnexpectedErrorHandler } from "../../../base/errors.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
-import { CoreRojoRunner } from "../core-rojo-runner.js";
+import { rojoRunnerOf } from "./rojo-runner-fixtures.js";
 import { RojoRestartEvent, SupervisedExitEvent } from "../rojo-runner.js";
 import { ServerMessage } from "../rojo-server.js";
 import { SupervisedRojo } from "../supervised-rojo.js";
@@ -35,10 +34,7 @@ describe("SupervisedRojo", () => {
 	let rojo: SupervisedRojo;
 
 	const start = () => {
-		const runner = new CoreRojoRunner(
-			new CoreToolchainService(new MemoryFileSystemService()),
-			processes
-		);
+		const runner = rojoRunnerOf(new MemoryFileSystemService(), processes);
 		rojo = new SupervisedRojo(
 			() =>
 				runner.start(
@@ -208,10 +204,7 @@ describe("SupervisedRojo", () => {
 		rojo[Symbol.dispose]();
 		rojo = new SupervisedRojo(
 			() =>
-				new CoreRojoRunner(
-					new CoreToolchainService(new MemoryFileSystemService()),
-					processes
-				).start(
+				rojoRunnerOf(new MemoryFileSystemService(), processes).start(
 					{ file: "/bin/rojo", version: "7.7.1" },
 					"serve",
 					undefined,
@@ -288,10 +281,7 @@ describe("SupervisedRojo", () => {
 		rojo[Symbol.dispose]();
 		rojo = new SupervisedRojo(
 			() =>
-				new CoreRojoRunner(
-					new CoreToolchainService(new MemoryFileSystemService()),
-					processes
-				).start(
+				rojoRunnerOf(new MemoryFileSystemService(), processes).start(
 					{ file: "/bin/rojo", version: "7.7.1" },
 					"serve",
 					undefined,
@@ -320,8 +310,8 @@ describe("SupervisedRojo", () => {
 		try {
 			rojo = new SupervisedRojo(
 				() =>
-					new CoreRojoRunner(
-						new CoreToolchainService(new MemoryFileSystemService()),
+					rojoRunnerOf(
+						new MemoryFileSystemService(),
 						processes
 					).start(
 						{ file: "/bin/rojo", version: "7.7.1" },

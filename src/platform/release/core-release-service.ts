@@ -1,4 +1,5 @@
 import path from "path";
+import { EnvironmentService } from "../environment/environment-service.js";
 import { FileSystemService } from "../fs/file-system-service.js";
 import { REPOSITORY } from "../product/product-service.js";
 import { RequestService, readBody } from "../request/request-service.js";
@@ -39,12 +40,17 @@ export class CoreReleaseService implements ReleaseService {
 	private readonly cacheFile: string;
 
 	constructor(
+		private readonly now: () => number = Date.now,
+		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
-		private readonly requestService: RequestService,
-		cacheDir: string,
-		private readonly now: () => number = Date.now
+		@RequestService private readonly requestService: RequestService,
+		@EnvironmentService environmentService: EnvironmentService
 	) {
-		this.cacheFile = path.join(cacheDir, "rogen", "update-check.json");
+		this.cacheFile = path.join(
+			environmentService.cacheDir,
+			"rogen",
+			"update-check.json"
+		);
 	}
 
 	async published(): Promise<readonly string[]> {

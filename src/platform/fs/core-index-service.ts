@@ -81,7 +81,9 @@ class ListingDraft {
 export class CoreIndexService implements IndexService {
 	declare readonly _serviceBrand: undefined;
 
-	constructor(private readonly fileSystemService: FileSystemService) {}
+	constructor(
+		@FileSystemService private readonly fileSystemService: FileSystemService
+	) {}
 
 	async list(
 		dirs: readonly string[],

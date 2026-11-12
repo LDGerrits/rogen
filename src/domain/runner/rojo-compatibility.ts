@@ -5,7 +5,7 @@ import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { RojoVersion } from "./rojo-version.js";
 import { ServerExecutable } from "./rojo-runner.js";
 
@@ -23,8 +23,8 @@ const NOTHING = {
 /** What the Rojo that will run can't do with the files Rogen wrote for it. */
 export class RojoCompatibility {
 	constructor(
-		private readonly fileReader: FileReader,
-		private readonly windows = isWindows
+		private readonly windows: boolean = isWindows,
+		@FileSystemService private readonly fileReader: FileSystemService
 	) {}
 
 	/** `command` is the Rojo command about to run on the files: Rojo 7.7.0 on Windows gets only `sourcemap` wrong. */

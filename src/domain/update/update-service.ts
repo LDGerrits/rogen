@@ -1,4 +1,4 @@
-import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
+import { createDecorator } from "../../platform/instantiation/instantiation.js";
 
 export interface UpdateService {
 	readonly _serviceBrand: undefined;
@@ -7,5 +7,4 @@ export interface UpdateService {
 	check(): Promise<string | undefined>;
 }
 
-export const UpdateService =
-	createServiceIdentifier<UpdateService>("updateService");
+export const UpdateService = createDecorator<UpdateService>("updateService");

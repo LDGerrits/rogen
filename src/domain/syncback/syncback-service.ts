@@ -1,4 +1,4 @@
-import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
+import { createDecorator } from "../../platform/instantiation/instantiation.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { SyncbackOptions, SyncbackRun } from "./syncback.js";
 
@@ -14,4 +14,4 @@ export interface SyncbackService {
 }
 
 export const SyncbackService =
-	createServiceIdentifier<SyncbackService>("syncbackService");
+	createDecorator<SyncbackService>("syncbackService");

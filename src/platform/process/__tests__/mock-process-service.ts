@@ -75,6 +75,10 @@ export class MockProcessService implements ProcessService {
 	/** The ids of processes started outside this service, that `isRunning` reports. */
 	readonly running = new Set<number>();
 	readonly terminatedTrees: number[] = [];
+	killedAll = 0;
+	private readonly _onDidChangeRunning = new Emitter<boolean>();
+	readonly onDidChangeRunning: Event<boolean> =
+		this._onDidChangeRunning.event;
 	private nextPid = 1000;
 	private readonly spawnWaiters: ((child: MockChildProcess) => void)[] = [];
 	readonly execs: {
@@ -115,6 +119,15 @@ export class MockProcessService implements ProcessService {
 	async terminateTree(pid: number): Promise<void> {
 		this.terminatedTrees.push(pid);
 		this.running.delete(pid);
+	}
+
+	killAll(): void {
+		this.killedAll++;
+	}
+
+	/** Reports, as the real service does, whether a process it started runs. */
+	setRunning(running: boolean): void {
+		this._onDidChangeRunning.fire(running);
 	}
 
 	/** Resolves with the next process spawned. */

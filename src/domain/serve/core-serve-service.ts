@@ -8,6 +8,8 @@ import { RequestService } from "../../platform/request/request-service.js";
 import { ConfigService } from "../config/config-service.js";
 import { WatchService } from "../watch/watch-service.js";
 import { CoreServeSession } from "./core-serve-session.js";
+import { isWindows } from "../../base/platform.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { RojoCompatibility } from "../runner/rojo-compatibility.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
 import { ServeFlags } from "../runner/serve-flags.js";
@@ -26,18 +28,23 @@ export class CoreServeService implements ServeService {
 
 	private readonly probe: ServerProbe;
 	private readonly records: ServerRecords;
+	private readonly compatibility: RojoCompatibility;
 
 	constructor(
-		private readonly configService: ConfigService,
-		fileSystemService: FileSystemService,
-		private readonly rojoRunner: RojoRunner,
-		requestService: RequestService,
-		private readonly watchService: WatchService,
+		windows: boolean = isWindows,
+		@ConfigService private readonly configService: ConfigService,
+		@FileSystemService fileSystemService: FileSystemService,
+		@RojoRunner private readonly rojoRunner: RojoRunner,
+		@RequestService requestService: RequestService,
+		@WatchService private readonly watchService: WatchService,
+		@EnvironmentService
 		private readonly environmentService: EnvironmentService,
-		private readonly compatibility = new RojoCompatibility(
-			fileSystemService
-		)
+		@InstantiationService instantiationService: InstantiationService
 	) {
+		this.compatibility = instantiationService.createInstance(
+			RojoCompatibility,
+			windows
+		);
 		this.probe = new ServerProbe(requestService);
 		this.records = new ServerRecords(
 			fileSystemService,

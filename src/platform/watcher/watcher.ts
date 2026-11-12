@@ -2,7 +2,7 @@ import path from "path";
 import { containsPath, toPosix } from "../../base/path.js";
 import { Event } from "../../base/event.js";
 import { FileChange } from "../fs/file-changes.js";
-import { createServiceIdentifier } from "../instantiation/instantiation.js";
+import { createDecorator } from "../instantiation/instantiation.js";
 
 export type IgnoredPath = string | RegExp;
 
@@ -26,7 +26,7 @@ export interface Watcher {
 	stop(): Promise<void>;
 }
 
-export const Watcher = createServiceIdentifier<Watcher>("watcher");
+export const Watcher = createDecorator<Watcher>("watcher");
 
 function isBeyondShallow(
 	target: string,

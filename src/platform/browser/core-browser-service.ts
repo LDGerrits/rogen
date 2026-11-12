@@ -16,9 +16,9 @@ export class CoreBrowserService implements BrowserService {
 	declare readonly _serviceBrand: undefined;
 
 	constructor(
-		private readonly processes: ProcessService,
 		private readonly platform: NodeJS.Platform = process.platform,
-		private readonly release: string = os.release()
+		private readonly release: string = os.release(),
+		@ProcessService private readonly processes: ProcessService
 	) {}
 
 	async open(url: string, cwd: string): Promise<boolean> {

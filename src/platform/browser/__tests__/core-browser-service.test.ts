@@ -15,9 +15,9 @@ describe("CoreBrowserService", () => {
 		processes.outputs.set("xdg-open", OK);
 
 		const opened = await new CoreBrowserService(
-			processes,
 			"linux",
-			"6.1.0"
+			"6.1.0",
+			processes
 		).open("https://example.com", "/repo");
 
 		expect(opened).toBe(true);
@@ -30,7 +30,10 @@ describe("CoreBrowserService", () => {
 		processes.installed.set("open", "/usr/bin/open");
 		processes.outputs.set("open", OK);
 
-		await new CoreBrowserService(processes, "darwin").open("u", "/repo");
+		await new CoreBrowserService("darwin", undefined, processes).open(
+			"u",
+			"/repo"
+		);
 
 		expect(processes.execs[0].file).toBe("open");
 	});
@@ -38,10 +41,11 @@ describe("CoreBrowserService", () => {
 	it("should open a URL through rundll32 on Windows, which needs no lookup", async () => {
 		processes.outputs.set("rundll32", OK);
 
-		const opened = await new CoreBrowserService(processes, "win32").open(
-			"u",
-			"C:\\repo"
-		);
+		const opened = await new CoreBrowserService(
+			"win32",
+			undefined,
+			processes
+		).open("u", "C:\\repo");
 
 		expect(opened).toBe(true);
 		expect(processes.execs[0]).toMatchObject({
@@ -52,9 +56,9 @@ describe("CoreBrowserService", () => {
 
 	it("should say it could not when the program isn't installed", async () => {
 		const opened = await new CoreBrowserService(
-			processes,
 			"linux",
-			"6.1.0"
+			"6.1.0",
+			processes
 		).open("u", "/repo");
 
 		expect(opened).toBe(false);
@@ -70,9 +74,9 @@ describe("CoreBrowserService", () => {
 			processes.outputs.set("wslview", OK);
 
 			const opened = await new CoreBrowserService(
-				processes,
 				"linux",
-				release
+				release,
+				processes
 			).open("u", "/repo");
 
 			expect(opened).toBe(true);
@@ -86,9 +90,9 @@ describe("CoreBrowserService", () => {
 			processes.outputs.set("explorer.exe", { ...OK, code: 1 });
 
 			const opened = await new CoreBrowserService(
-				processes,
 				"linux",
-				release
+				release,
+				processes
 			).open("https://example.com", "/repo");
 
 			expect(opened).toBe(true);
@@ -108,7 +112,7 @@ describe("CoreBrowserService", () => {
 			processes.outputs.set("explorer.exe", { ...OK, code: 1 });
 
 			expect(
-				await new CoreBrowserService(processes, "linux", release).open(
+				await new CoreBrowserService("linux", release, processes).open(
 					"u",
 					"/repo"
 				)
@@ -117,7 +121,7 @@ describe("CoreBrowserService", () => {
 
 		it("should say it could not when neither is there", async () => {
 			expect(
-				await new CoreBrowserService(processes, "linux", release).open(
+				await new CoreBrowserService("linux", release, processes).open(
 					"u",
 					"/repo"
 				)
@@ -130,7 +134,7 @@ describe("CoreBrowserService", () => {
 		processes.outputs.set("xdg-open", { ...OK, code: 3 });
 
 		expect(
-			await new CoreBrowserService(processes, "linux", "6.1.0").open(
+			await new CoreBrowserService("linux", "6.1.0", processes).open(
 				"u",
 				"/repo"
 			)
