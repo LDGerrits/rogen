@@ -7,10 +7,12 @@ import {
 	MockConfigSelection,
 	mockEntry,
 } from "../../config/__tests__/mock-config-service.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreRojoCommandService } from "../core-rojo-command-service.js";
-import { CoreRojoRunner } from "../core-rojo-runner.js";
-import { RojoCompatibility } from "../rojo-compatibility.js";
+import { rojoRunnerOf } from "./rojo-runner-fixtures.js";
+import { EnvironmentService } from "../../../platform/environment/environment-service.js";
+import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
+import { FileSystemService } from "../../../platform/fs/file-system-service.js";
+import { instantiationOf } from "../../../platform/instantiation/__tests__/instantiation-of.js";
 
 const VERSION = { code: 0, stdout: "Rojo 7.7.1\n", stderr: "" };
 
@@ -41,8 +43,11 @@ describe("CoreRojoCommandService", () => {
 		processes.installed.set("rojo", "/bin/rojo");
 		processes.outputs.set("/bin/rojo", VERSION);
 		service = new CoreRojoCommandService(
-			new CoreRojoRunner(new CoreToolchainService(fs), processes),
-			new RojoCompatibility(fs, false)
+			rojoRunnerOf(fs, processes),
+			instantiationOf(
+				[FileSystemService, fs],
+				[EnvironmentService, new MockEnvironmentService("/repo")]
+			)
 		);
 	});
 
@@ -79,8 +84,16 @@ describe("CoreRojoCommandService", () => {
 				stderr: "",
 			});
 			service = new CoreRojoCommandService(
-				new CoreRojoRunner(new CoreToolchainService(fs), processes),
-				new RojoCompatibility(fs, true)
+				rojoRunnerOf(fs, processes),
+				instantiationOf(
+					[FileSystemService, fs],
+					[
+						EnvironmentService,
+						Object.assign(new MockEnvironmentService("/repo"), {
+							isWindows: true,
+						}),
+					]
+				)
 			);
 			await fs.writeFile(
 				"/repo/default.project.json",

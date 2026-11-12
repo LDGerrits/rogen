@@ -3,7 +3,6 @@ import path from "path";
 import "../write-command.js";
 import { WriteService } from "../../../domain/write/write-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
-import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import {
 	classes,
 	describeWithRojo,
@@ -22,11 +21,15 @@ import { DiskFileSystemService } from "../../../platform/fs/disk-file-system-ser
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { IndexService } from "../../../platform/fs/index-service.js";
 import { InitService } from "../../../domain/init/init-service.js";
+import { CoreInstantiationService } from "../../../platform/instantiation/core-instantiation-service.js";
+import { LifecycleService } from "../../../platform/lifecycle/lifecycle-service.js";
+import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
 import { LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { writeServiceOf } from "../../../domain/write/__tests__/fixtures.js";
+import { configServiceOf } from "../../../domain/config/__tests__/config-of.js";
 
 describeWithRojo("write command against Rojo", () => {
 	let dir: string;
@@ -41,7 +44,7 @@ describeWithRojo("write command against Rojo", () => {
 		const environment = new NativeEnvironmentService(line.options, dir);
 		const fileSystem = new DiskFileSystemService();
 		const logService = new NullLogService();
-		const configService = new CoreConfigService(fileSystem, environment);
+		const configService = configServiceOf(fileSystem, environment);
 
 		const services = new ServiceCollection();
 		services.set(ConfigService, configService);
@@ -51,13 +54,14 @@ describeWithRojo("write command against Rojo", () => {
 		services.set(IndexService, indexService);
 		services.set(WriteService, writeServiceOf(fileSystem, indexService));
 		services.set(LogService, logService);
+		services.set(LifecycleService, new MockLifecycleService());
 		services.set(InitService, {
 			refreshAgentRules: async () => [],
 		} as unknown as InitService);
 		return new CoreCommandService(
-			services,
-			logService,
-			Registry.as<CommandRegistry>(Extensions.Commands)
+			Registry.as<CommandRegistry>(Extensions.Commands),
+			new CoreInstantiationService(services, true),
+			logService
 		).executeCommand("write", line);
 	};
 

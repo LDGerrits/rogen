@@ -22,7 +22,7 @@ export abstract class AbstractWatcher
 	private readonly operations = new Sequencer();
 	private disposed = false;
 
-	constructor(protected readonly logService: LogService) {
+	constructor(@LogService protected readonly logService: LogService) {
 		super();
 	}
 

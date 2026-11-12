@@ -34,11 +34,13 @@ export interface FeatureMeta {
 
 /** The edits syncback makes to what the project declares rather than syncs: the tree of its config, and the metas of its feature folders. */
 export class ConfigEdits {
-	private readonly fileSystemService: FileSystemService;
 	private readonly request: SyncbackRequest;
 
-	constructor(private readonly workspace: MirrorWorkspace) {
-		this.fileSystemService = workspace.services.fileSystemService;
+	constructor(
+		private readonly workspace: MirrorWorkspace,
+		@FileSystemService
+		private readonly fileSystemService: FileSystemService
+	) {
 		this.request = workspace.request;
 	}
 

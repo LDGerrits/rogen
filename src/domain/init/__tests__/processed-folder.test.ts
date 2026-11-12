@@ -1,5 +1,5 @@
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ProcessedFolder } from "../processed-folder.js";
+import { processedFolderOf } from "./init-of.js";
 
 describe("ProcessedFolder", () => {
 	let fs: MemoryFileSystemService;
@@ -8,7 +8,7 @@ describe("ProcessedFolder", () => {
 		mounted: string[],
 		sourcePaths = ["src"],
 		taken: string[] = []
-	) => new ProcessedFolder(fs, "/repo").find(sourcePaths, mounted, taken);
+	) => processedFolderOf(fs, "/repo").find(sourcePaths, mounted, taken);
 
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();

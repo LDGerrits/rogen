@@ -2,12 +2,12 @@ import {
 	ACCEPT_DEFAULT,
 	MockPromptService,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
-import { ReviewPrompts } from "../review-prompts.js";
+import { reviewOf } from "./init-of.js";
 
 describe("ReviewPrompts", () => {
 	it("should take the default of a quick question without asking", async () => {
 		const real = new MockPromptService([]);
-		const review = new ReviewPrompts(real);
+		const review = reviewOf(real);
 
 		expect(
 			await review.quick.confirm({ message: "A", initialValue: false })
@@ -28,7 +28,7 @@ describe("ReviewPrompts", () => {
 
 	it("should ask an essential question, and not ask it twice", async () => {
 		const real = new MockPromptService(["luau"]);
-		const review = new ReviewPrompts(real);
+		const review = reviewOf(real);
 		const language = () =>
 			review.essential.select({
 				message: "Language",
@@ -46,7 +46,7 @@ describe("ReviewPrompts", () => {
 			false,
 			ACCEPT_DEFAULT,
 		]);
-		const review = new ReviewPrompts(real);
+		const review = reviewOf(real);
 		const language = () =>
 			review.essential.select({
 				message: "Language",
@@ -74,7 +74,7 @@ describe("ReviewPrompts", () => {
 
 	it("should remember an answer by the question's id when its message changes", async () => {
 		const real = new MockPromptService([false]);
-		const review = new ReviewPrompts(real);
+		const review = reviewOf(real);
 		const hook = (agents: string) =>
 			review.quick.confirm({
 				id: "hook",
@@ -90,7 +90,7 @@ describe("ReviewPrompts", () => {
 
 	it("should forget what a pass answered when it is undone", async () => {
 		const real = new MockPromptService([false]);
-		const review = new ReviewPrompts(real);
+		const review = reviewOf(real);
 		const hook = () =>
 			review.quick.confirm({ message: "Hook", initialValue: true });
 		review.begin("customise");

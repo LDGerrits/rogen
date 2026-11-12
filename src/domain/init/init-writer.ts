@@ -25,6 +25,7 @@ import {
 	PlannedCommand,
 	PlannedScaffold,
 } from "./init-service.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
 /** What `run` returns, or its failure wrapped with `what`. */
 async function attempt<T>(
@@ -69,11 +70,14 @@ function undone(failure: WriteFailure, left: readonly string[]): WriteFailure {
 
 export class InitWriter {
 	constructor(
-		private readonly fileSystemService: FileSystemService,
 		private readonly git: GitRepository,
-		private readonly processService: ProcessService,
-		private readonly locator: ToolLocator,
-		private readonly lifecycleService: LifecycleService
+		@FileSystemService
+		private readonly fileSystemService: FileSystemService,
+		@ProcessService private readonly processService: ProcessService,
+		@ToolLocator private readonly locator: ToolLocator,
+		@LifecycleService private readonly lifecycleService: LifecycleService,
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
 	) {}
 
 	/** Stops at the first write that fails, or at a shutdown, which also stops the scaffold, and undoes the writes before it; `onWritten` hears of each once the writes have all succeeded. A dry run writes nothing and calls it for what it would write, leaving a shutdown to end the process. */
@@ -82,7 +86,10 @@ export class InitWriter {
 		onWritten: (written: InitWritten) => void,
 		dryRun = false
 	): Promise<Result<void, Error>> {
-		const log = new UndoLog(this.fileSystemService, plan.directory);
+		const log = this.instantiationService.createInstance(
+			UndoLog,
+			plan.directory
+		);
 		const written: InitWritten[] = [];
 		const stopping = new AbortController();
 		const shutdown = dryRun
@@ -163,7 +170,7 @@ export class InitWriter {
 		}
 		// A dry run asks the folder as the files and moves would leave it, as the real run asks after making them.
 		const folder: FileReader = dryRun
-			? new DraftFileReader(this.fileSystemService, {
+			? this.instantiationService.createInstance(DraftFileReader, {
 					files: new Map(
 						plan.files.map(({ fileName }) => [at(fileName), ""])
 					),

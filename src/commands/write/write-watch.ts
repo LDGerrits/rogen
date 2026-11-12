@@ -11,7 +11,7 @@ import {
 import { WatchService } from "../../domain/watch/watch-service.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ReportedError } from "../../platform/commands/commands.js";
-import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { RojoPlan, RojoStep } from "./rojo-step.js";
 import {
@@ -27,13 +27,21 @@ export type WatchedConfigs = readonly string[] | "here";
 /** `rogen build --watch`, `rogen write --watch` and `rogen sourcemap --watch`: writes, then rewrites whenever names, folders or configs change, and runs Rojo's own watch from the first write when asked to. */
 export class WriteWatch {
 	constructor(
-		private readonly accessor: ServicesAccessor,
 		private readonly configs: WatchedConfigs,
 		private readonly json: boolean,
 		/** What to run Rojo's watch for, when the files are not all that is wanted. */
 		private readonly step: RojoStep | undefined,
 		/** The command the header names when no Rojo step does. */
-		private readonly command = "build"
+		private readonly command: string,
+		@LogService private readonly logService: LogService,
+		@ConfigService private readonly configService: ConfigService,
+		@WatchService private readonly watchService: WatchService,
+		@RojoCommandService
+		private readonly rojoCommandService: RojoCommandService,
+		@EnvironmentService
+		private readonly environmentService: EnvironmentService,
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
 	) {}
 
 	/** Runs until `shutdown` aborts; `store` is the caller's, and holds what the run subscribes to. */
@@ -41,12 +49,14 @@ export class WriteWatch {
 		store: DisposableStore,
 		shutdown: AbortSignal
 	): Promise<Result<void, Error>> {
-		const { accessor } = this;
-		const logService = accessor.get(LogService);
-		const configService = accessor.get(ConfigService);
-		const watchService = accessor.get(WatchService);
-		const environment = accessor.get(EnvironmentService);
-		const { cwd } = environment;
+		const {
+			logService,
+			configService,
+			watchService,
+			rojoCommandService,
+			instantiationService,
+		} = this;
+		const { cwd } = this.environmentService;
 		const stopped = new AbortController();
 		store.add({ [Symbol.dispose]: () => stopped.abort() });
 		const selection =
@@ -62,11 +72,15 @@ export class WriteWatch {
 		const printing = this.step?.prints ?? false;
 		if (printing && !this.json) logService.reserveStdout();
 		const log: WatchReporter = this.json
-			? new WatchJsonLog(logService, cwd)
+			? instantiationService.createInstance(WatchJsonLog, cwd)
 			: printing
-				? new PrintedWatchLog(logService, cwd)
-				: new WatchLog(
-						logService,
+				? instantiationService.createInstance(
+						PrintedWatchLog,
+						cwd,
+						"watch"
+					)
+				: instantiationService.createInstance(
+						WatchLog,
 						cwd,
 						`${this.step?.command ?? this.command} --watch`
 					);
@@ -91,16 +105,17 @@ export class WriteWatch {
 					previous[Symbol.dispose]();
 				}
 				if (stopped.signal.aborted) return;
-				const started = await accessor
-					.get(RojoCommandService)
-					.watch(selection.value, {
+				const started = await rojoCommandService.watch(
+					selection.value,
+					{
 						command: step.command,
 						flags: plan.flags,
 						cwd: plan.cwd,
 						project: plan.project,
 						signal: stopped.signal,
 						beforeRestart: () => session.refresh(),
-					});
+					}
+				);
 				if (stopped.signal.aborted) {
 					if (started.isOk()) started.value[Symbol.dispose]();
 					return;

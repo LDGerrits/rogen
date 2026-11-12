@@ -34,9 +34,12 @@ describe("the services", () => {
 
 	it("should each be set in main when a command asks for it", () => {
 		const main = fs.readFileSync(path.join(SRC, "main.ts"), "utf8");
-		const provided = new Set(
-			[...main.matchAll(/services\.set\(\s*(\w+)/g)].map(([, id]) => id)
-		);
+		const provided = new Set([
+			...[...main.matchAll(/services\.set\(\s*(\w+)/g)].map(
+				([, id]) => id
+			),
+			"InstantiationService",
+		]);
 		const asked = new Set(
 			sourcesUnder(path.join(SRC, "commands")).flatMap((file) =>
 				[

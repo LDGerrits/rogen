@@ -2,7 +2,6 @@ import path from "path";
 import { Result, ok } from "../../base/result.js";
 import { commandWith, joinedWithAnd } from "../../base/strings.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
 import { configStem } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
 import { projectFileName } from "../rojo/rojo-project.js";
@@ -12,6 +11,7 @@ import { InitSummary } from "./init-summary.js";
 import { MigratedProject } from "./project-migration.js";
 import { ProjectFiles } from "./project-files.js";
 import { Setup } from "./setup.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
 interface MigrationChoices {
 	readonly projectFilesHint?: string;
@@ -24,15 +24,15 @@ export class MigrationSetup implements Setup<MigrationChoices> {
 	constructor(
 		private readonly directory: InitDirectory,
 		private readonly migrated: MigratedProject,
-		private readonly fileSystemService: FileReader,
-		private readonly configService: ConfigService
+		@ConfigService private readonly configService: ConfigService,
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
 	) {}
 
 	async ask(): Promise<Result<MigrationChoices | undefined, Diagnostic[]>> {
-		const hint = await new ProjectFiles(
-			this.fileSystemService,
-			this.directory.path
-		).projectFilesHint();
+		const hint = await this.instantiationService
+			.createInstance(ProjectFiles, this.directory.path)
+			.projectFilesHint();
 		const [first] = this.migrated.configs;
 		return ok({
 			...(hint && { projectFilesHint: hint }),

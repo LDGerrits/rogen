@@ -11,12 +11,12 @@ export class BuildStep implements RojoStep {
 	readonly prints = false;
 
 	constructor(
-		private readonly rojo: RojoCommandService,
 		/** Rojo's flags for the build. */
 		private readonly flags: readonly string[],
 		private readonly cwd: string,
 		private readonly output: string | undefined,
-		private readonly plugin: string | undefined
+		private readonly plugin: string | undefined,
+		@RojoCommandService private readonly rojo: RojoCommandService
 	) {}
 
 	get target(): RojoTarget {

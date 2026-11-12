@@ -2,7 +2,7 @@ import { ErrorUtils, UsageError } from "../../base/errors.js";
 import { Result, err } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
 import { CommandLine, HELP_COMMAND } from "../environment/args.js";
-import { ServicesAccessor } from "../instantiation/instantiation.js";
+import { InstantiationService } from "../instantiation/instantiation-service.js";
 import { LogService } from "../log/log-service.js";
 import { CommandRegistry, CommandService } from "./commands.js";
 
@@ -10,9 +10,10 @@ export class CoreCommandService implements CommandService {
 	declare readonly _serviceBrand: undefined;
 
 	constructor(
-		private readonly accessor: ServicesAccessor,
-		private readonly logService: LogService,
-		private readonly registry: CommandRegistry
+		private readonly registry: CommandRegistry,
+		@InstantiationService
+		private readonly instantiationService: InstantiationService,
+		@LogService private readonly logService: LogService
 	) {}
 
 	async executeCommand(
@@ -26,7 +27,9 @@ export class CoreCommandService implements CommandService {
 		if (!command) return err(unknownCommand(commandId, this.registry));
 
 		try {
-			return await command.handler(this.accessor, line);
+			return await this.instantiationService.invokeFunction((accessor) =>
+				command.handler(accessor, line)
+			);
 		} catch (error) {
 			if (ErrorUtils.isSystemError(error)) return err(error);
 			throw error;

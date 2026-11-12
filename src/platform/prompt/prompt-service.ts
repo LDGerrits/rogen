@@ -1,4 +1,4 @@
-import { createServiceIdentifier } from "../instantiation/instantiation.js";
+import { createDecorator } from "../instantiation/instantiation.js";
 
 export interface PromptChoice<T extends string> {
 	readonly value: T;
@@ -35,5 +35,4 @@ export interface PromptService {
 	): Promise<T | undefined>;
 }
 
-export const PromptService =
-	createServiceIdentifier<PromptService>("promptService");
+export const PromptService = createDecorator<PromptService>("promptService");

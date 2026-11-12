@@ -1,5 +1,5 @@
 import path from "path";
-import { FileReader } from "../../platform/fs/file-system-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { TestRunnerDetector } from "./test-runner-detector.js";
 import {
 	Darklua,
@@ -11,12 +11,12 @@ import {
 export class WorkspaceDetector {
 	/** `languages` lists the first as the one assumed when none is detected. */
 	constructor(
-		private readonly fileSystemService: FileReader,
-		private readonly testRunnerDetector: TestRunnerDetector,
 		private readonly languages: readonly [
 			LanguageDetector,
 			...LanguageDetector[],
-		]
+		],
+		private readonly testRunnerDetector: TestRunnerDetector,
+		@FileSystemService private readonly fileSystemService: FileSystemService
 	) {}
 
 	async detect(cwd: string): Promise<DetectedWorkspace> {

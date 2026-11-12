@@ -4,7 +4,6 @@ import { MemoryFileSystemService } from "../../../../platform/fs/memory-file-sys
 import { ResolvedConfigSpec } from "../../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../../config/resolved-config.js";
 import { SyncTool } from "../../../toolchain/toolchain.js";
-import { CompiledPathCheck } from "../compiled-path-check.js";
 import { PLACEHOLDER_SOURCE } from "../../compiled-layout.js";
 import {
 	abs,
@@ -15,6 +14,7 @@ import {
 	syncTools,
 	writeFiles,
 } from "../../__tests__/fixtures.js";
+import { compiledPathCheckOf } from "../../__tests__/write-of.js";
 
 describe("CompiledPathCheck", () => {
 	describe("check", () => {
@@ -32,7 +32,7 @@ describe("CompiledPathCheck", () => {
 				config: ResolvedConfig
 			): Promise<Diagnostic[]> => {
 				const index = await indexOf(fs, config.sourcePaths);
-				const warnings = await new CompiledPathCheck(fs).check(
+				const warnings = await compiledPathCheckOf(fs).check(
 					placeFiles(index, config, syncTools).unwrap()
 				);
 				return warnings.filter(
@@ -315,7 +315,7 @@ describe("CompiledPathCheck", () => {
 			) => {
 				const config = distConfigOf(overrides);
 				const index = await indexOf(fs, config.sourcePaths);
-				const warnings = await new CompiledPathCheck(fs).check(
+				const warnings = await compiledPathCheckOf(fs).check(
 					placeFiles(index, config, tools).unwrap()
 				);
 				return warnings.filter(
@@ -479,7 +479,7 @@ describe("CompiledPathCheck", () => {
 			) => {
 				const config = distConfigOf(overrides);
 				const index = await indexOf(fs, config.sourcePaths);
-				const warnings = await new CompiledPathCheck(fs).check(
+				const warnings = await compiledPathCheckOf(fs).check(
 					placeFiles(index, config, tools).unwrap()
 				);
 				return warnings.filter(
@@ -740,7 +740,7 @@ describe("CompiledPathCheck", () => {
 			const check = async (overrides: ResolvedConfigSpec = {}) => {
 				const config = distConfigOf(overrides);
 				const index = await indexOf(fs, config.sourcePaths);
-				const warnings = await new CompiledPathCheck(fs).check(
+				const warnings = await compiledPathCheckOf(fs).check(
 					placeFiles(index, config, syncTools).unwrap()
 				);
 				return warnings.filter(

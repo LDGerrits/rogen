@@ -6,12 +6,9 @@ import {
 } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
-import { ProcessService } from "../../platform/process/process-service.js";
 import { WriteService } from "../write/write-service.js";
 import { didWrite } from "../write/write.js";
-import { ConfigSelection, ConfigService } from "../config/config-service.js";
+import { ConfigSelection } from "../config/config-service.js";
 import { RojoCommandService } from "../runner/rojo-command-service.js";
 import {
 	SyncbackMode,
@@ -27,7 +24,9 @@ import { MirrorPlan } from "./mirror-plan.js";
 import { PlanWriter } from "./plan-writer.js";
 import { RojoSyncback } from "./rojo-syncback.js";
 import { MirrorPlanner } from "./mirror-planner.js";
-import { MirrorWorkspace, WorkspaceServices } from "./mirror-workspace.js";
+import { MirrorWorkspace } from "./mirror-workspace.js";
+import { MirrorWorkspaceOpener } from "./mirror-workspace-opener.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
 /** The error of a run stopped before it wrote anything. */
 function stopped(): CancelledError {
@@ -66,27 +65,15 @@ const written = (
 
 export class CoreSyncbackService implements SyncbackService {
 	declare readonly _serviceBrand: undefined;
-	private readonly services: WorkspaceServices;
 
 	constructor(
-		configService: ConfigService,
-		fileSystemService: FileSystemService,
-		writeService: WriteService,
-		rojoService: RojoCommandService,
-		environmentService: EnvironmentService,
-		processService: ProcessService,
-		lifecycleService: LifecycleService
-	) {
-		this.services = {
-			configService,
-			fileSystemService,
-			writeService,
-			rojoService,
-			environmentService,
-			processService,
-			lifecycleService,
-		};
-	}
+		@FileSystemService
+		private readonly fileSystemService: FileSystemService,
+		@WriteService private readonly writeService: WriteService,
+		@RojoCommandService private readonly rojoService: RojoCommandService,
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
+	) {}
 
 	async run(
 		selection: ConfigSelection,
@@ -94,18 +81,18 @@ export class CoreSyncbackService implements SyncbackService {
 	): Promise<SyncbackRun> {
 		const write =
 			mode === "dryRun"
-				? await this.services.writeService.check(selection)
-				: await this.services.writeService.write(selection);
+				? await this.writeService.check(selection)
+				: await this.writeService.write(selection);
 		if (write.failure() || selection.requireValid().isErr())
 			return { write, outcome: { kind: "notRun" } };
-		const project = this.services.rojoService.choose(selection);
+		const project = this.rojoService.choose(selection);
 		const outcome = await this.outcomeOf(
 			{ selection, project, input, cwd },
 			mode
 		);
 		if (outcome.kind !== "written") return { write, outcome };
 		// What syncback added to the config's tree changes the project file.
-		const rewritten = await this.services.writeService.write(selection);
+		const rewritten = await this.writeService.write(selection);
 		return {
 			write:
 				rewritten.failure() || rewritten.outcomes.some(didWrite)
@@ -136,7 +123,10 @@ export class CoreSyncbackService implements SyncbackService {
 		request: SyncbackRequest,
 		mode: SyncbackMode
 	): Promise<Result<SyncbackOutcome, Error>> {
-		const rojo = new RojoSyncback(this.services.rojoService, request);
+		const rojo = this.instantiationService.createInstance(
+			RojoSyncback,
+			request
+		);
 		if (mode !== "apply") {
 			const planned = await rojo.plain(true);
 			if (planned.isErr()) return planned;
@@ -153,7 +143,9 @@ export class CoreSyncbackService implements SyncbackService {
 		request: SyncbackRequest,
 		mode: SyncbackMode
 	): Promise<Result<SyncbackOutcome, Error>> {
-		const workspace = await MirrorWorkspace.open(this.services, request);
+		const workspace = await this.instantiationService
+			.createInstance(MirrorWorkspaceOpener)
+			.open(request);
 		if (workspace.isErr()) return workspace;
 		return workspace.value.hold<SyncbackOutcome>(async (signal) => {
 			const planned = await this.planIn(workspace.value, signal);
@@ -164,7 +156,7 @@ export class CoreSyncbackService implements SyncbackService {
 				const no = await declined(mode, plan);
 				if (signal.aborted) return err(stopped());
 				if (no) return ok(no);
-				if (!(await plan.isCurrent(this.services.fileSystemService)))
+				if (!(await plan.isCurrent(this.fileSystemService)))
 					return err(
 						new UsageError(
 							"The project or the place changed since the list was made, so nothing was written.",
@@ -174,10 +166,9 @@ export class CoreSyncbackService implements SyncbackService {
 			}
 			// Once writing starts, a stop no longer undoes the run.
 			if (signal.aborted) return err(stopped());
-			const result = await new PlanWriter(
-				this.services.fileSystemService,
-				this.services.writeService
-			).write(request, plan);
+			const result = await this.instantiationService
+				.createInstance(PlanWriter)
+				.write(request, plan);
 			return ok(written(result, mode));
 		});
 	}
@@ -208,7 +199,9 @@ export class CoreSyncbackService implements SyncbackService {
 		const ran = await workspace.syncback(signal);
 		if (signal.aborted) return err(stopped());
 		if (ran.isErr()) return ran;
-		const planned = await MirrorPlanner.plan(workspace, ran.value);
+		const planned = await this.instantiationService
+			.createInstance(MirrorPlanner, workspace)
+			.plan(ran.value);
 		return signal.aborted ? err(stopped()) : planned;
 	}
 }

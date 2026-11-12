@@ -12,7 +12,7 @@ import {
 } from "../environment/args.js";
 import {
 	ServicesAccessor,
-	createServiceIdentifier,
+	createDecorator,
 } from "../instantiation/instantiation.js";
 import { LifecycleService } from "../lifecycle/lifecycle-service.js";
 import { LogService } from "../log/log-service.js";
@@ -36,8 +36,7 @@ export interface CommandService {
 	): Promise<Result<void, Error>>;
 }
 
-export const CommandService =
-	createServiceIdentifier<CommandService>("commandService");
+export const CommandService = createDecorator<CommandService>("commandService");
 
 type CommandHandler = (
 	accessor: ServicesAccessor,
@@ -196,15 +195,11 @@ export abstract class AbstractCommand<
 
 	/** Aborts when the process is asked to shut down; subscribed at once, so a request during later awaits still counts. */
 	protected untilShutdown(
-		accessor: ServicesAccessor,
+		lifecycleService: LifecycleService,
 		store: DisposableStore
 	): AbortSignal {
 		const shutdown = new AbortController();
-		store.add(
-			accessor
-				.get(LifecycleService)
-				.onWillShutdown(() => shutdown.abort())
-		);
+		store.add(lifecycleService.onWillShutdown(() => shutdown.abort()));
 		return shutdown.signal;
 	}
 

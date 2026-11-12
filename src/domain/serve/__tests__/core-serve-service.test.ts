@@ -12,9 +12,10 @@ import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { writeServiceOf } from "../../write/__tests__/fixtures.js";
 import { CoreWriteService } from "../../write/core-write-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
-import { CoreRojoRunner } from "../../runner/core-rojo-runner.js";
+import { FileSystemService } from "../../../platform/fs/file-system-service.js";
+import { instantiationOf } from "../../../platform/instantiation/__tests__/instantiation-of.js";
+import { rojoRunnerOf } from "../../runner/__tests__/rojo-runner-fixtures.js";
 import { RojoCompatibility } from "../../runner/rojo-compatibility.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreWatchService } from "../../watch/core-watch-service.js";
 import { CoreServeService } from "../core-serve-service.js";
 
@@ -29,6 +30,16 @@ import {
 	ServerReadyEvent,
 	ServerRestartEvent,
 } from "../serve-service.js";
+import { configServiceOf } from "../../config/__tests__/config-of.js";
+import { ConfigService } from "../../config/config-service.js";
+import { RequestService } from "../../../platform/request/request-service.js";
+import { EnvironmentService } from "../../../platform/environment/environment-service.js";
+import { IndexService } from "../../../platform/fs/index-service.js";
+import { Watcher } from "../../../platform/watcher/watcher.js";
+import { WriteService } from "../../write/write-service.js";
+import { RojoRunner } from "../../runner/rojo-runner.js";
+import { WatchService } from "../../watch/watch-service.js";
+import { SyncDescriptor } from "../../../platform/instantiation/sync-descriptor.js";
 
 type Fields = Record<string, unknown>;
 
@@ -73,21 +84,25 @@ describe("CoreServeService", () => {
 		target.address.toString(),
 	];
 
-	const serviceAt = (cwd: string, compatibility?: RojoCompatibility) => {
-		configService = new CoreConfigService(
-			memFs,
-			new MockEnvironmentService(cwd)
-		);
+	const serviceAt = (cwd: string, windows?: boolean) => {
+		configService = configServiceOf(memFs, new MockEnvironmentService(cwd));
 		const index = new CoreIndexService(memFs);
-		return new CoreServeService(
-			configService,
-			memFs,
-			new CoreRojoRunner(new CoreToolchainService(memFs), processes),
-			requests,
-			new CoreWatchService(watcher, index, writeServiceOf(memFs, index)),
+		const environment = Object.assign(
 			new MockEnvironmentService(cwd, undefined, false, "/home/me"),
-			compatibility
+			{ isWindows: windows === true }
 		);
+		const services = instantiationOf(
+			[ConfigService, configService],
+			[FileSystemService, memFs],
+			[RequestService, requests],
+			[EnvironmentService, environment],
+			[IndexService, index],
+			[Watcher, watcher],
+			[WriteService, writeServiceOf(memFs, index)],
+			[RojoRunner, rojoRunnerOf(memFs, processes)],
+			[WatchService, new SyncDescriptor(CoreWatchService)]
+		);
+		return services.createInstance(CoreServeService);
 	};
 
 	beforeEach(async () => {
@@ -790,7 +805,7 @@ describe("CoreServeService", () => {
 				"/repo/default.rogen.json",
 				config({ globIgnorePaths: ["../shared/*.md"] })
 			);
-			service = serviceAt("/repo", new RojoCompatibility(memFs, true));
+			service = serviceAt("/repo", true);
 
 			await start();
 
@@ -809,7 +824,7 @@ describe("CoreServeService", () => {
 				"/repo/default.rogen.json",
 				config({ syncRules: [{ pattern: "*.md", use: "text" }] })
 			);
-			service = serviceAt("/repo", new RojoCompatibility(memFs, false));
+			service = serviceAt("/repo", false);
 
 			await start();
 
@@ -834,7 +849,7 @@ describe("CoreServeService", () => {
 				"/repo/default.rogen.json",
 				config({ syncRules: [{ pattern: "*.md", use: "text" }] })
 			);
-			service = serviceAt("/repo", new RojoCompatibility(memFs, false));
+			service = serviceAt("/repo", false);
 			const checked = new DeferredPromise<void>();
 			const problemsIn = RojoCompatibility.prototype.problemsIn;
 			jest.spyOn(
@@ -879,7 +894,7 @@ describe("CoreServeService", () => {
 			);
 			await memFs.writeFile("/repo/src/X/@server", "");
 			await memFs.writeFile("/repo/src/X/@client", "");
-			service = serviceAt("/repo", new RojoCompatibility(memFs, false));
+			service = serviceAt("/repo", false);
 			await start();
 
 			await memFs.delete("/repo/src/X/@client");
@@ -911,7 +926,7 @@ describe("CoreServeService", () => {
 			);
 			await memFs.writeFile("/repo/src/X/@server", "");
 			await memFs.writeFile("/repo/src/X/@client", "");
-			service = serviceAt("/repo", new RojoCompatibility(memFs, false));
+			service = serviceAt("/repo", false);
 			const checked = new DeferredPromise<void>();
 			const problemsIn = RojoCompatibility.prototype.problemsIn;
 			jest.spyOn(
@@ -953,7 +968,7 @@ describe("CoreServeService", () => {
 				stdout: "Rojo 7.4.4",
 				stderr: "",
 			});
-			service = serviceAt("/repo", new RojoCompatibility(memFs, false));
+			service = serviceAt("/repo", false);
 			await start();
 			const errors: Error[] = [];
 			session.onDidError((error) => errors.push(error));

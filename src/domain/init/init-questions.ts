@@ -45,11 +45,11 @@ export class InitQuestions {
 	readonly shown = new Set<ShownQuestion>();
 
 	constructor(
-		private readonly promptService: PromptService,
 		readonly interactive: boolean,
 		readonly choices: InitChoices = {},
 		/** The review of a run that shows its plan first, which takes the default of the questions its summary shows until Customise. */
-		private readonly review?: ReviewPrompts
+		private readonly review: ReviewPrompts | undefined,
+		@PromptService private readonly promptService: PromptService
 	) {}
 
 	/** Whether the quick questions are asked rather than taken by default, as under Customise. */

@@ -5,6 +5,7 @@ import { MockEnvironmentService } from "../../../platform/environment/__tests__/
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ProjectError } from "../../../base/errors.js";
 import { Result, ResultError } from "../../../base/result.js";
+import { discoveryOf } from "./config-of.js";
 
 function errorOf(result: Result<unknown, Error>): Error {
 	return (result as ResultError<Error>).error;
@@ -16,7 +17,7 @@ describe("ConfigDiscovery", () => {
 	const cwd = "/repo";
 
 	const from = (directory: string) =>
-		new ConfigDiscovery(fs, new MockEnvironmentService(directory));
+		discoveryOf(fs, new MockEnvironmentService(directory));
 
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();
@@ -87,15 +88,21 @@ describe("ConfigDiscovery", () => {
 
 		it("should name the stale config a registered check finds", async () => {
 			await fs.writeFile("/repo/.rogen.json", "{}");
-			discovery.registerFolderCheck(async (folder) => [
-				errorDiagnostic(
-					"stale",
-					{ resource: path.join(folder, ".rogen.json") },
-					"is old."
-				),
-			]);
+			const checked = discoveryOf(
+				fs,
+				new MockEnvironmentService("/repo"),
+				new Set([
+					async (folder: string) => [
+						errorDiagnostic(
+							"stale",
+							{ resource: path.join(folder, ".rogen.json") },
+							"is old."
+						),
+					],
+				])
+			);
 
-			const result = await discovery.discover([]);
+			const result = await checked.discover([]);
 
 			expect(errorOf(result)).toBeInstanceOf(ProjectError);
 			expect(errorOf(result).message).toEqual(
@@ -552,9 +559,7 @@ describe("ConfigDiscovery.coverOf", () => {
 	});
 
 	const cover = (target: string) =>
-		new ConfigDiscovery(fs, new MockEnvironmentService("/repo")).coverOf(
-			target
-		);
+		discoveryOf(fs, new MockEnvironmentService("/repo")).coverOf(target);
 
 	it("should take the default config of the nearest folder above a file", async () => {
 		expect(await cover("/repo/places/lobby/src/Foo.luau")).toEqual({
@@ -653,10 +658,9 @@ describe("ConfigDiscovery.namedConfigsAbove", () => {
 	});
 
 	const above = (target: string) =>
-		new ConfigDiscovery(
-			fs,
-			new MockEnvironmentService("/repo")
-		).namedConfigsAbove(target);
+		discoveryOf(fs, new MockEnvironmentService("/repo")).namedConfigsAbove(
+			target
+		);
 
 	it("should list the named configs of the folder and of each folder above, nearest first, and no default", async () => {
 		expect(await above("/repo/src/game/Main.luau")).toEqual([
@@ -688,10 +692,7 @@ describe("ConfigDiscovery.fileNamedHere", () => {
 	});
 
 	const named = (ref: string) =>
-		new ConfigDiscovery(
-			fs,
-			new MockEnvironmentService("/repo")
-		).fileNamedHere(ref);
+		discoveryOf(fs, new MockEnvironmentService("/repo")).fileNamedHere(ref);
 
 	it("should be the config of that name, else the project file", async () => {
 		await fs.writeFile("/repo/game.rogen.json", "{}");
@@ -734,10 +735,9 @@ describe("ConfigDiscovery.plainProjects", () => {
 	});
 
 	const plain = () =>
-		new ConfigDiscovery(
-			fs,
-			new MockEnvironmentService("/repo")
-		).plainProjects("/repo");
+		discoveryOf(fs, new MockEnvironmentService("/repo")).plainProjects(
+			"/repo"
+		);
 
 	it("should list the project files that no config of that name writes", async () => {
 		await fs.writeFile("/repo/game.rogen.json", "{}");

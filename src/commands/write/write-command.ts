@@ -13,7 +13,9 @@ import {
 	OptionDescriptor,
 } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
+import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { WatchedConfigs, WriteWatch } from "../write/write-watch.js";
 import {
@@ -22,7 +24,7 @@ import {
 	writeDocumentShape,
 } from "./write-document.js";
 import { WriteLog } from "./write-log.js";
-import { refreshAgentRules } from "./refresh-agent-rules.js";
+import { RefreshAgentRules } from "./refresh-agent-rules.js";
 
 const WatchOption = {
 	name: "watch",
@@ -50,6 +52,16 @@ interface Targets {
 	readonly configs: readonly string[];
 	/** The project files with no config, which are left alone. */
 	readonly plain: readonly string[];
+}
+
+/** What the command takes from the accessor before its first await. */
+interface Services {
+	readonly configService: ConfigService;
+	readonly writeService: WriteService;
+	readonly logService: LogService;
+	readonly cwd: string;
+	readonly lifecycleService: LifecycleService;
+	readonly instantiationService: InstantiationService;
 }
 
 interface Written {
@@ -95,52 +107,63 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof WriteOptions>
 		): Promise<Result<void, Error>> {
+			const services: Services = {
+				configService: accessor.get(ConfigService),
+				writeService: accessor.get(WriteService),
+				logService: accessor.get(LogService),
+				cwd: accessor.get(EnvironmentService).cwd,
+				lifecycleService: accessor.get(LifecycleService),
+				instantiationService: accessor.get(InstantiationService),
+			};
 			const targets = await this.targets(
-				accessor.get(ConfigService),
+				services.configService,
 				line.positionals
 			);
 			if (targets.isErr()) return targets;
 			const json = Boolean(line.options.json);
-			await refreshAgentRules(accessor, json);
+			await services.instantiationService
+				.createInstance(RefreshAgentRules)
+				.run(json);
 			return line.options.watch
 				? this.watch(
-						accessor,
+						services,
 						line.positionals.length === 0
 							? "here"
 							: line.positionals,
 						json
 					)
-				: this.writeOnce(accessor, targets.value, json);
+				: this.writeOnce(services, targets.value, json);
 		}
 
 		private async watch(
-			accessor: ServicesAccessor,
+			{ lifecycleService, instantiationService }: Services,
 			configs: WatchedConfigs,
 			json: boolean
 		): Promise<Result<void, Error>> {
 			const store = new DisposableStore();
-			const shutdown = this.untilShutdown(accessor, store);
+			const shutdown = this.untilShutdown(lifecycleService, store);
 			try {
-				return await new WriteWatch(
-					accessor,
-					configs,
-					json,
-					undefined,
-					"write"
-				).run(store, shutdown);
+				return await instantiationService
+					.createInstance(
+						WriteWatch,
+						configs,
+						json,
+						undefined,
+						"write"
+					)
+					.run(store, shutdown);
 			} finally {
 				store[Symbol.dispose]();
 			}
 		}
 
 		private async writeOnce(
-			accessor: ServicesAccessor,
+			services: Services,
 			{ configs, plain }: Targets,
 			json: boolean
 		): Promise<Result<void, Error>> {
-			const logService = accessor.get(LogService);
-			const { cwd } = accessor.get(EnvironmentService);
-			const written = await this.writeConfigs(accessor, configs);
+			const { logService, cwd, instantiationService } = services;
+			const written = await this.writeConfigs(services, configs);
 			if (written.isErr()) return written;
 			const { home, run } = written.value;
 
@@ -151,27 +174,25 @@ registerCommand(
 					writeDocument(run, cwd, plain),
 					failure
 				);
-			new WriteLog(logService, cwd).report(run, home, plain);
+			instantiationService
+				.createInstance(WriteLog, cwd)
+				.report(run, home, plain);
 			return failure ? this.reported(failure) : ok(undefined);
 		}
 
 		/** Writes `configs`, each on its own so one that fails does not stop the rest; nothing to write without configs. */
 		private async writeConfigs(
-			accessor: ServicesAccessor,
+			{ configService, writeService, logService, cwd }: Services,
 			configs: readonly string[]
 		): Promise<Result<Written, Error>> {
 			if (configs.length === 0)
-				return ok({
-					home: accessor.get(EnvironmentService).cwd,
-					run: new WriteRun([]),
-				});
-			const selection = await accessor.get(ConfigService).select(configs);
+				return ok({ home: cwd, run: new WriteRun([]) });
+			const selection = await configService.select(configs);
 			if (selection.isErr()) return selection;
-			for (const note of selection.value.notes)
-				accessor.get(LogService).warn(note);
-			const run = await accessor
-				.get(WriteService)
-				.write(selection.value, { independent: true });
+			for (const note of selection.value.notes) logService.warn(note);
+			const run = await writeService.write(selection.value, {
+				independent: true,
+			});
 			return ok({ home: selection.value.home, run });
 		}
 

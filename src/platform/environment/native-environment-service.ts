@@ -86,6 +86,7 @@ export class NativeEnvironmentService implements EnvironmentService {
 	readonly checksForUpdates: boolean;
 	readonly annotationsIn?: string;
 	readonly pid: number;
+	readonly isWindows: boolean;
 
 	constructor(
 		{ json, verbose = [], quiet, color }: OutputFlags,
@@ -105,6 +106,7 @@ export class NativeEnvironmentService implements EnvironmentService {
 		if (env.GITHUB_ACTIONS === "true" && json !== true)
 			this.annotationsIn = env.GITHUB_WORKSPACE || cwd;
 		this.pid = pid;
+		this.isWindows = platform === "win32";
 		this.logLevel = quiet
 			? LogLevel.Error
 			: verbose.length > 1

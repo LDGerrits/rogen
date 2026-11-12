@@ -1,7 +1,6 @@
 import path from "path";
 import { containsPosix, joinPosix } from "../../base/path.js";
 import {
-	FileReader,
 	FileType,
 	isDirectoryType,
 	isFileType,
@@ -11,6 +10,7 @@ import { RojoFile } from "../rojo/rojo.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import { DetectedWorkspace } from "../toolchain/toolchain.js";
 import { ROJO_TEMPLATE_NODES } from "./starter-project.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 export interface DirectoryLayout {
 	readonly codeFolders: readonly string[];
@@ -46,7 +46,9 @@ const isHiddenOrVendored = (name: string): boolean =>
 	name.startsWith(".") || name === "node_modules";
 
 export class CodeFinder {
-	constructor(private readonly fileReader: FileReader) {}
+	constructor(
+		@FileSystemService private readonly fileReader: FileSystemService
+	) {}
 
 	/** Excludes the folders the toolchain uses for packages and compiled code. */
 	async layoutOf(

@@ -1,16 +1,13 @@
 import path from "path";
-import { Disposable } from "../../base/disposable.js";
+import { Disposable, toDisposable } from "../../base/disposable.js";
 import { isInside, samePath, shownFrom, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import {
-	FileReader,
-	FileSystemService,
-} from "../../platform/fs/file-system-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 import { ConfigFormatter } from "./config-formatter.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { ConfigDiscovery, DiscoveredConfigs } from "./config-discovery.js";
+import { ConfigDiscovery } from "./config-discovery.js";
 import {
 	DEFAULT_PROJECT,
 	configStem,
@@ -33,6 +30,8 @@ import {
 import { CoreConfigSelection, PickedFolder } from "./core-config-selection.js";
 import { DefaultFolder } from "./default-folder.js";
 import { ManagedConfig } from "./managed-config.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
+import { ServiceCollection } from "../../platform/instantiation/service-collection.js";
 
 export class CoreConfigService implements ConfigService {
 	declare readonly _serviceBrand: undefined;
@@ -40,17 +39,26 @@ export class CoreConfigService implements ConfigService {
 	private readonly discovery: ConfigDiscovery;
 	private readonly loader: ConfigLoader;
 	private readonly formatter: ConfigFormatter;
+	private readonly fileChecks = new Set<ConfigFileCheck>();
+	private readonly folderChecks = new Set<ConfigFolderCheck>();
 
 	constructor(
+		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
-		private readonly environmentService: EnvironmentService
+		@EnvironmentService
+		private readonly environmentService: EnvironmentService,
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
 	) {
-		this.discovery = new ConfigDiscovery(
-			fileSystemService,
-			environmentService
+		this.discovery = instantiationService.createInstance(
+			ConfigDiscovery,
+			this.folderChecks
 		);
-		this.loader = new ConfigLoader(fileSystemService);
-		this.formatter = new ConfigFormatter(fileSystemService);
+		this.loader = instantiationService.createInstance(
+			ConfigLoader,
+			this.fileChecks
+		);
+		this.formatter = instantiationService.createInstance(ConfigFormatter);
 	}
 
 	format(file: string): Promise<Result<boolean, Diagnostic[]>> {
@@ -59,19 +67,32 @@ export class CoreConfigService implements ConfigService {
 
 	async select(
 		refs: readonly string[],
-		reader?: FileReader
+		reader?: FileSystemService
 	): Promise<Result<ReloadableSelection, Error>> {
-		const discovery = reader ? this.discovery.over(reader) : this.discovery;
+		if (!reader) {
+			return this.open(this.discovery, this.loader, refs);
+		}
+		const scope = this.instantiationService.createChild(
+			new ServiceCollection([FileSystemService, reader])
+		);
+		const discovery = scope.createInstance(
+			ConfigDiscovery,
+			this.folderChecks
+		);
 		return this.open(
-			await discovery.discover(refs),
-			reader ? this.loader.over(reader) : this.loader
+			discovery,
+			scope.createInstance(ConfigLoader, this.fileChecks),
+			refs
 		);
 	}
 
+	/** Discovers `refs` and lists the default folder with `discovery`, so a selection through another file system reads only that one. */
 	private async open(
-		discovered: Result<DiscoveredConfigs, Error>,
-		loader: ConfigLoader
+		discovery: ConfigDiscovery,
+		loader: ConfigLoader,
+		refs: readonly string[]
 	): Promise<Result<ReloadableSelection, Error>> {
+		const discovered = await discovery.discover(refs);
 		if (discovered.isErr()) return err(discovered.error);
 
 		const { home: directory, files, noneNamed, notes } = discovered.value;
@@ -82,7 +103,7 @@ export class CoreConfigService implements ConfigService {
 				noneNamed
 					? new DefaultFolder(
 							directory,
-							this.discovery,
+							discovery,
 							files.some(isProjectFileConfig)
 								? "adopting"
 								: "configured"
@@ -317,7 +338,8 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	registerFolderCheck(check: ConfigFolderCheck): Disposable {
-		return this.discovery.registerFolderCheck(check);
+		this.folderChecks.add(check);
+		return toDisposable(() => this.folderChecks.delete(check));
 	}
 
 	staleConfigsIn(folder: string): Promise<readonly Diagnostic[]> {
@@ -325,7 +347,8 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	registerFileCheck(check: ConfigFileCheck): Disposable {
-		return this.loader.registerFileCheck(check);
+		this.fileChecks.add(check);
+		return toDisposable(() => this.fileChecks.delete(check));
 	}
 }
 

@@ -1,6 +1,7 @@
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
 import { ServeAddress } from "../serve.js";
 import { ServerProbe } from "../server-probe.js";
+import { probeOf } from "./serve-of.js";
 
 describe("ServerProbe", () => {
 	let requests: MockRequestService;
@@ -8,7 +9,7 @@ describe("ServerProbe", () => {
 
 	beforeEach(() => {
 		requests = new MockRequestService();
-		probe = new ServerProbe(requests);
+		probe = probeOf(requests);
 	});
 
 	it("should find a port nothing listens on free", async () => {

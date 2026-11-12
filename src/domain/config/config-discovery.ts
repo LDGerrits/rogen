@@ -1,15 +1,10 @@
 import path from "path";
-import { Disposable, toDisposable } from "../../base/disposable.js";
 import { samePath, selfAndAncestors } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { IoError, ProjectError, UsageError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import {
-	FileReader,
-	FileType,
-	isFileType,
-} from "../../platform/fs/file-system-service.js";
+import { FileType, isFileType } from "../../platform/fs/file-system-service.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { isProjectFileName, projectFileName } from "../rojo/rojo-project.js";
 import {
@@ -24,6 +19,7 @@ import {
 	projectStem,
 } from "./config.js";
 import { ConfigCover, ConfigFolderCheck } from "./config-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 export interface DiscoveredConfigs {
 	/** The working directory. */
@@ -57,28 +53,17 @@ const isBareName = (ref: string): boolean =>
 /** Finds which config file a command reads: the one it names, else the default of the working directory. */
 export class ConfigDiscovery {
 	constructor(
-		private readonly fileSystemService: FileReader,
-		private readonly environmentService: EnvironmentService,
-		private readonly folderChecks = new Set<ConfigFolderCheck>()
+		/** The checks the config service holds, which every scope's discovery runs. */
+		private readonly checks: ReadonlySet<ConfigFolderCheck>,
+		@FileSystemService
+		private readonly fileSystemService: FileSystemService,
+		@EnvironmentService
+		private readonly environmentService: EnvironmentService
 	) {}
-
-	/** A discovery that reads through `reader`, with the same checks. */
-	over(reader: FileReader): ConfigDiscovery {
-		return new ConfigDiscovery(
-			reader,
-			this.environmentService,
-			this.folderChecks
-		);
-	}
-
-	registerFolderCheck(check: ConfigFolderCheck): Disposable {
-		this.folderChecks.add(check);
-		return toDisposable(() => this.folderChecks.delete(check));
-	}
 
 	async staleConfigsIn(folder: string): Promise<readonly Diagnostic[]> {
 		const found: Diagnostic[] = [];
-		for (const check of this.folderChecks)
+		for (const check of [...this.checks])
 			found.push(...(await check(folder, this.fileSystemService)));
 		return found;
 	}

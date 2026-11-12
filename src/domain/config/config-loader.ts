@@ -1,4 +1,3 @@
-import { Disposable, toDisposable } from "../../base/disposable.js";
 import path from "path";
 import { Result, err, tryWithAsync } from "../../base/result.js";
 import { ConfigFileReader } from "../../platform/config/config-file.js";
@@ -6,10 +5,7 @@ import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import {
-	FileReader,
-	isFileType,
-} from "../../platform/fs/file-system-service.js";
+import { isFileType } from "../../platform/fs/file-system-service.js";
 import {
 	isConfigFileName,
 	isProjectFileConfig,
@@ -20,6 +16,8 @@ import { configStructure } from "./config-structure.js";
 import { ConfigFileCheck } from "./config-service.js";
 import { ResolvedConfigFile } from "./resolved-config.js";
 import { ConfigValidator } from "./config-validator.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 /** One read of one config, with what a reload compares against. */
 export interface LoadedConfig {
@@ -47,20 +45,16 @@ export class ConfigLoader {
 	private readonly reader: ConfigFileReader;
 
 	constructor(
-		private readonly fileSystemService: FileReader,
-		private readonly fileChecks = new Set<ConfigFileCheck>()
+		/** The checks the config service holds, which every scope's loader runs. */
+		private readonly checks: ReadonlySet<ConfigFileCheck>,
+		@FileSystemService
+		private readonly fileSystemService: FileSystemService,
+		@InstantiationService instantiationService: InstantiationService
 	) {
-		this.reader = new ConfigFileReader(fileSystemService, configStructure);
-	}
-
-	/** A loader that reads through `reader`, with the same checks. */
-	over(reader: FileReader): ConfigLoader {
-		return new ConfigLoader(reader, this.fileChecks);
-	}
-
-	registerFileCheck(check: ConfigFileCheck): Disposable {
-		this.fileChecks.add(check);
-		return toDisposable(() => this.fileChecks.delete(check));
+		this.reader = instantiationService.createInstance(
+			ConfigFileReader,
+			configStructure
+		);
 	}
 
 	/** Never throws for a problem the user can cause. A config that copies another of its folder, or has a twin of the other extension, fails, and is reloaded when that one changes. */
@@ -142,8 +136,6 @@ export class ConfigLoader {
 	}
 
 	private hintsOf(file: string, value: unknown): Diagnostic[] {
-		return [...this.fileChecks].flatMap((check) => [
-			...check({ file, value }),
-		]);
+		return [...this.checks].flatMap((check) => [...check({ file, value })]);
 	}
 }

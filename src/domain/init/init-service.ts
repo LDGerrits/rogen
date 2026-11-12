@@ -1,7 +1,7 @@
 import { Disposable } from "../../base/disposable.js";
 import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
+import { createDecorator } from "../../platform/instantiation/instantiation.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
 import { PlannedMove, ProjectMigration } from "./project-migration.js";
 
@@ -140,4 +140,4 @@ export interface InitService {
 	refreshAgentRules(folder: string): Promise<string[]>;
 }
 
-export const InitService = createServiceIdentifier<InitService>("initService");
+export const InitService = createDecorator<InitService>("initService");

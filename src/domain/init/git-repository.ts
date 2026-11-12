@@ -1,16 +1,16 @@
 import path from "path";
 import { selfAndAncestors } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 const TIMEOUT_MS = 30_000;
 
 /** The git repository a new project starts, as `rojo init` starts one. */
 export class GitRepository {
 	constructor(
-		private readonly processService: ProcessService,
-		private readonly fileReader: FileReader
+		@ProcessService private readonly processService: ProcessService,
+		@FileSystemService private readonly fileReader: FileSystemService
 	) {}
 
 	/** Whether `git init` would start a repository in `directory`: git is installed and `directory` is in no work tree. */

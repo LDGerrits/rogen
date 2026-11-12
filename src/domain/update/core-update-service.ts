@@ -5,7 +5,7 @@ import {
 	ProductService,
 	REPOSITORY,
 } from "../../platform/product/product-service.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ReleaseService } from "../../platform/release/release-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { UpdateService } from "./update-service.js";
@@ -15,12 +15,13 @@ export class CoreUpdateService implements UpdateService {
 	declare readonly _serviceBrand: undefined;
 
 	constructor(
-		private readonly releaseService: ReleaseService,
-		private readonly productService: ProductService,
+		private readonly installDir: string,
+		@ReleaseService private readonly releaseService: ReleaseService,
+		@ProductService private readonly productService: ProductService,
+		@EnvironmentService
 		private readonly environmentService: EnvironmentService,
-		private readonly toolchainService: ToolchainService,
-		private readonly fileReader: FileReader,
-		private readonly installDir: string
+		@ToolchainService private readonly toolchainService: ToolchainService,
+		@FileSystemService private readonly fileReader: FileSystemService
 	) {}
 
 	async check(): Promise<string | undefined> {

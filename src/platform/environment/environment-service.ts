@@ -1,4 +1,4 @@
-import { createServiceIdentifier } from "../instantiation/instantiation.js";
+import { createDecorator } from "../instantiation/instantiation.js";
 import { LogLevel } from "../log/log-service.js";
 
 export interface EnvironmentService {
@@ -11,6 +11,8 @@ export interface EnvironmentService {
 	readonly cacheDir: string;
 	/** Where the repository is checked out, set when this run should write GitHub Actions annotations. */
 	readonly annotationsIn?: string;
+	/** Whether Rogen runs on Windows. */
+	readonly isWindows: boolean;
 	/** This process's id, so a serve's records in `tmpDir` can be told as its own. */
 	readonly pid: number;
 
@@ -26,4 +28,4 @@ export interface EnvironmentService {
 }
 
 export const EnvironmentService =
-	createServiceIdentifier<EnvironmentService>("environmentService");
+	createDecorator<EnvironmentService>("environmentService");

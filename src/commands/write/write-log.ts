@@ -6,6 +6,7 @@ import {
 	didWrite,
 	isUnchanged,
 } from "../../domain/write/write.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { OutcomeLog } from "../write/outcome-log.js";
 import { isPlain } from "./write-document.js";
@@ -15,10 +16,11 @@ export class WriteLog {
 	private readonly outcomeLog: OutcomeLog;
 
 	constructor(
-		private readonly logService: LogService,
-		private readonly cwd: string
+		private readonly cwd: string,
+		@LogService private readonly logService: LogService,
+		@InstantiationService instantiationService: InstantiationService
 	) {
-		this.outcomeLog = new OutcomeLog(logService, cwd);
+		this.outcomeLog = instantiationService.createInstance(OutcomeLog, cwd);
 	}
 
 	report(

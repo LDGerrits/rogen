@@ -3,7 +3,7 @@ import { Event } from "../../base/event.js";
 import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
+import { createDecorator } from "../../platform/instantiation/instantiation.js";
 import { ProcessExit } from "../../platform/process/process-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { ReloadableSelection } from "../config/config-service.js";
@@ -186,5 +186,4 @@ export interface ServeService {
 	serve(plan: ServePlan): Result<ServeSession, DiagnosticsError>;
 }
 
-export const ServeService =
-	createServiceIdentifier<ServeService>("serveService");
+export const ServeService = createDecorator<ServeService>("serveService");

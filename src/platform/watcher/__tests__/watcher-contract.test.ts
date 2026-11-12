@@ -6,9 +6,9 @@ import { toPosix } from "../../../base/path.js";
 import { FileChange } from "../../fs/file-changes.js";
 import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js";
 import { NullLogService } from "../../log/null-log-service.js";
-import { DiskWatcher } from "../disk-watcher.js";
 import { MemoryWatcher } from "../memory-watcher.js";
 import { Watcher } from "../watcher.js";
+import { diskWatcherOf } from "./disk-watcher-of.js";
 
 interface Fixture {
 	readonly watcher: Watcher & Disposable;
@@ -25,7 +25,7 @@ const fixtures: [string, () => Fixture][] = [
 				fs.mkdtempSync(path.join(os.tmpdir(), "rogen-watch-contract-"))
 			);
 			return {
-				watcher: new DiskWatcher(new NullLogService()),
+				watcher: diskWatcherOf(new NullLogService()),
 				root,
 				write: async (file) => {
 					await fs.promises.mkdir(path.dirname(file), {

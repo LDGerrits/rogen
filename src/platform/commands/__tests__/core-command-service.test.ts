@@ -1,6 +1,7 @@
 import { UsageError } from "../../../base/errors.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { ResultError, err, ok } from "../../../base/result.js";
+import { CoreInstantiationService } from "../../instantiation/core-instantiation-service.js";
 import { ServiceCollection } from "../../instantiation/service-collection.js";
 import { LogService } from "../../log/log-service.js";
 import { NullLogService } from "../../log/null-log-service.js";
@@ -19,7 +20,11 @@ describe("CoreCommandService", () => {
 		store = new DisposableStore();
 		services = new ServiceCollection();
 		services.set(LogService, logService);
-		commandService = new CoreCommandService(services, logService, registry);
+		commandService = new CoreCommandService(
+			registry,
+			new CoreInstantiationService(services, true),
+			logService
+		);
 	});
 
 	afterEach(() => {

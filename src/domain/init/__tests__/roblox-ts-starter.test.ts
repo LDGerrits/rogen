@@ -5,15 +5,12 @@ import { NativeEnvironmentService } from "../../../platform/environment/native-e
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
-import { CoreConfigService } from "../../config/core-config-service.js";
-import { CoreInitService } from "../core-init-service.js";
-import { CoreWriteService } from "../../write/core-write-service.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { InitPlan, InitWritten } from "../init-service.js";
 import { RobloxTsStarter } from "../roblox-ts-starter.js";
 import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
+import { initServiceOf } from "./init-of.js";
+import { configServiceOf } from "../../config/__tests__/config-of.js";
 
 const robloxTs = workspaceOf().languageFor("roblox-ts");
 const luau = workspaceOf().languageFor("luau");
@@ -146,22 +143,13 @@ describe("a new roblox-ts project", () => {
 
 	const serviceFor = () => {
 		const environmentService = new NativeEnvironmentService({}, directory);
-		const toolchain = new CoreToolchainService(fileSystem);
-		const configs = new CoreConfigService(fileSystem, environmentService);
-		return new CoreInitService(
+		const configs = configServiceOf(fileSystem, environmentService);
+		return initServiceOf(
 			fileSystem,
 			new MockPromptService([], false),
 			environmentService,
-			toolchain,
 			processes,
-			undefined,
 			configs,
-			new CoreWriteService(
-				fileSystem,
-				new CoreIndexService(fileSystem),
-				toolchain.syncTools,
-				configs
-			),
 			new MockLifecycleService()
 		);
 	};

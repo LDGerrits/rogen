@@ -6,7 +6,6 @@ import { commandHarness } from "../../__tests__/command-harness.js";
 import { CancelledError } from "../../../base/errors.js";
 import { ResultError, err } from "../../../base/result.js";
 import { configStructure } from "../../../domain/config/config-structure.js";
-import { ConfigFileReader } from "../../../platform/config/config-file.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -24,6 +23,7 @@ import {
 	exitCode,
 	exitCodeOf,
 } from "../../../platform/commands/command-failure.js";
+import { configFileReaderOf } from "../../../platform/config/__tests__/config-file-reader-of.js";
 
 const readyProcesses = () => {
 	const processes = new MockProcessService();
@@ -951,7 +951,7 @@ describe("init command", () => {
 			expect(() => JSON.parse(text)).not.toThrow();
 			expect(
 				(
-					await new ConfigFileReader(memFs, configStructure).read(
+					await configFileReaderOf(memFs, configStructure).read(
 						path.join(cwd, "default.rogen.json")
 					)
 				).isOk()

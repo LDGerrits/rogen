@@ -18,7 +18,6 @@ import {
 	GlobalOptions,
 } from "../../environment/args.js";
 import { ServicesAccessor } from "../../instantiation/instantiation.js";
-import { ServiceCollection } from "../../instantiation/service-collection.js";
 
 function command(id: string): Command {
 	return {
@@ -253,7 +252,11 @@ describe("registerCommand", () => {
 
 	it("should run the command with the accessor and args its handler gets", async () => {
 		store.add(registerCommand(EchoCommand));
-		const accessor: ServicesAccessor = new ServiceCollection();
+		const accessor: ServicesAccessor = {
+			get: () => {
+				throw new Error("No services here.");
+			},
+		};
 		const line: CommandLine = { positionals: ["a"], options: {} };
 
 		const result = await registry

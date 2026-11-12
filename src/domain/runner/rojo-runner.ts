@@ -6,7 +6,7 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
+import { createDecorator } from "../../platform/instantiation/instantiation.js";
 import {
 	ProcessExit,
 	exitCodeText,
@@ -136,4 +136,4 @@ export interface RojoRunner {
 	): SupervisedRojoProcess;
 }
 
-export const RojoRunner = createServiceIdentifier<RojoRunner>("rojoRunner");
+export const RojoRunner = createDecorator<RojoRunner>("rojoRunner");

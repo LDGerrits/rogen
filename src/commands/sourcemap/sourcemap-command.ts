@@ -24,7 +24,9 @@ import {
 } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
+import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { OutcomeLog } from "../write/outcome-log.js";
 import { WriteWatch } from "../write/write-watch.js";
@@ -129,9 +131,15 @@ registerCommand(
 			if (tooMany) return err(tooMany);
 			const { json, watch, output } = line.options;
 			const rojoService = accessor.get(RojoCommandService);
-			const cwd = accessor.get(EnvironmentService).cwd;
-			const step = new SourcemapStep(
-				rojoService,
+			const { cwd, tmpDir } = accessor.get(EnvironmentService);
+			const instantiationService = accessor.get(InstantiationService);
+			const lifecycleService = accessor.get(LifecycleService);
+			const logService = accessor.get(LogService);
+			const fileSystemService = accessor.get(FileSystemService);
+			const configService = accessor.get(ConfigService);
+			const writeService = accessor.get(WriteService);
+			const step = instantiationService.createInstance(
+				SourcemapStep,
 				{
 					output,
 					includeNonScripts: Boolean(
@@ -144,25 +152,24 @@ registerCommand(
 			);
 			if (watch) {
 				const store = new DisposableStore();
-				const shutdown = this.untilShutdown(accessor, store);
+				const shutdown = this.untilShutdown(lifecycleService, store);
 				try {
-					return await new WriteWatch(
-						accessor,
-						line.positionals,
-						Boolean(json),
-						step
-					).run(store, shutdown);
+					return await instantiationService
+						.createInstance(
+							WriteWatch,
+							line.positionals,
+							Boolean(json),
+							step,
+							"build"
+						)
+						.run(store, shutdown);
 				} finally {
 					store[Symbol.dispose]();
 				}
 			}
 
-			const logService = accessor.get(LogService);
 			if (step.prints) logService.reserveStdout();
-			const fileSystemService = accessor.get(FileSystemService);
-			const selection = await accessor
-				.get(ConfigService)
-				.select(line.positionals);
+			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
 			for (const note of selection.value.notes) logService.warn(note);
 
@@ -170,13 +177,11 @@ registerCommand(
 			if (planned.isErr()) return planned;
 			const plan = planned.value;
 
-			const written = await accessor
-				.get(WriteService)
-				.write(selection.value);
+			const written = await writeService.write(selection.value);
 			const failure = written.failure();
 
 			const tmp = path.join(
-				accessor.get(EnvironmentService).tmpDir,
+				tmpDir,
 				`rogen-sourcemap-${randomUUID()}.json`
 			);
 			const ran =
@@ -225,7 +230,10 @@ registerCommand(
 					),
 					failure ?? rojoFailure
 				);
-			const outcomeLog = new OutcomeLog(logService, cwd);
+			const outcomeLog = instantiationService.createInstance(
+				OutcomeLog,
+				cwd
+			);
 			outcomeLog.outcomes(written, selection.value.home, "sourcemap");
 			if (plan && ran?.isOk()) {
 				const { messages, failure: runFailure } = ran.value;

@@ -1,10 +1,10 @@
 import path from "path";
 import { toPosix } from "../../../base/path.js";
-import { FileReader } from "../../../platform/fs/file-system-service.js";
 import { InstanceReference } from "../../roblox/roblox.js";
 import { RojoFile } from "../../rojo/rojo.js";
 import { SyncRules } from "../../rojo/sync-rules.js";
 import { Asked, LocateQuery } from "../write-service.js";
+import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 
 export interface Targets {
 	readonly paths: readonly string[];
@@ -15,7 +15,9 @@ export interface Targets {
 
 /** Reads what a `check` or `where` was asked about: each argument is a path or an instance. */
 export class LocateTargets {
-	constructor(private readonly fileSystemService: FileReader) {}
+	constructor(
+		@FileSystemService private readonly fileSystemService: FileSystemService
+	) {}
 
 	private async withoutPosition(arg: string, cwd: string): Promise<string> {
 		const head = (/^(.+?):\d+(?::\d+)?(?:[:\s].*)?$/.exec(arg) ??

@@ -1,7 +1,7 @@
 import path from "path";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
-import { CodeFinder } from "../code-finder.js";
+import { toolchainOf } from "../../toolchain/__tests__/toolchain-of.js";
+import { codeFinderOf } from "./init-of.js";
 
 describe("CodeFinder.layoutOf", () => {
 	const cwd = path.resolve("/mock/workspace");
@@ -12,10 +12,7 @@ describe("CodeFinder.layoutOf", () => {
 	};
 
 	const layout = async () =>
-		new CodeFinder(fs).layoutOf(
-			cwd,
-			await new CoreToolchainService(fs).detect(cwd)
-		);
+		codeFinderOf(fs).layoutOf(cwd, await toolchainOf(fs).detect(cwd));
 
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();
@@ -102,9 +99,9 @@ describe("CodeFinder.layoutOf", () => {
 
 	describe("a folder that can't be read", () => {
 		it("should have no code folders when the working directory is missing", async () => {
-			const found = await new CodeFinder(fs).layoutOf(
+			const found = await codeFinderOf(fs).layoutOf(
 				path.resolve("/nowhere"),
-				await new CoreToolchainService(fs).detect(cwd)
+				await toolchainOf(fs).detect(cwd)
 			);
 
 			expect(found.codeFolders).toEqual([]);
@@ -112,7 +109,7 @@ describe("CodeFinder.layoutOf", () => {
 
 		it("should hold no code when it is missing", async () => {
 			expect(
-				await new CodeFinder(fs).holdsCode(path.join(cwd, "gone"))
+				await codeFinderOf(fs).holdsCode(path.join(cwd, "gone"))
 			).toBe(false);
 		});
 	});

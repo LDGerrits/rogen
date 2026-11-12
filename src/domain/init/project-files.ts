@@ -1,12 +1,12 @@
 import path from "path";
 import { tryWithAsync } from "../../base/result.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 /** What the files of a project folder say about its tooling. */
 export class ProjectFiles {
 	constructor(
-		private readonly fileSystemService: FileReader,
-		private readonly directory: string
+		private readonly directory: string,
+		@FileSystemService private readonly fileSystemService: FileSystemService
 	) {}
 
 	/** What to tell the user to add to the `.gitignore` here so git leaves out the project files Rogen writes; none when there is no `.gitignore` (init writes one that does) or it lists them. */

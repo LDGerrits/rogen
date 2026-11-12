@@ -1,4 +1,4 @@
-import { createServiceIdentifier } from "../instantiation/instantiation.js";
+import { createDecorator } from "../instantiation/instantiation.js";
 
 export interface ReleaseService {
 	readonly _serviceBrand: undefined;
@@ -10,5 +10,4 @@ export interface ReleaseService {
 	announce(version: string): Promise<boolean>;
 }
 
-export const ReleaseService =
-	createServiceIdentifier<ReleaseService>("releaseService");
+export const ReleaseService = createDecorator<ReleaseService>("releaseService");

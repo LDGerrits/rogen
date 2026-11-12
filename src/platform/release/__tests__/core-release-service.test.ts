@@ -1,5 +1,6 @@
 import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js";
 import { MockRequestService } from "../../request/__tests__/mock-request-service.js";
+import { MockEnvironmentService } from "../../environment/__tests__/mock-environment-service.js";
 import { CoreReleaseService } from "../core-release-service.js";
 
 const URL = "https://api.github.com/repos/LDGerrits/rogen/releases?per_page=30";
@@ -29,7 +30,21 @@ describe("CoreReleaseService", () => {
 		fs = new MemoryFileSystemService();
 		requests = new MockRequestService();
 		clock = 1_000 * DAY;
-		service = new CoreReleaseService(fs, requests, "/cache", () => clock);
+		service = new CoreReleaseService(
+			() => clock,
+			fs,
+			requests,
+			new MockEnvironmentService(
+				"/repo",
+				undefined,
+				false,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				"/cache"
+			)
+		);
 	});
 
 	describe("published", () => {

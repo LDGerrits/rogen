@@ -2,9 +2,10 @@ import { isWindows } from "../../../base/platform.js";
 import path from "path";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
-import { ToolLocator } from "../../toolchain/tool-locator.js";
+import { CoreToolLocator } from "../../toolchain/core-tool-locator.js";
+import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { ServerFinder } from "../server-finder.js";
+import { toolchainOf } from "../../toolchain/__tests__/toolchain-of.js";
 
 const ROJO_VERSION = { code: 0, stdout: "Rojo 7.7.1\n", stderr: "" };
 
@@ -24,11 +25,18 @@ describe("ServerFinder", () => {
 		return result.error.diagnostics[0];
 	};
 
+	const locatorOf = () =>
+		new CoreToolLocator(
+			processes,
+			fs,
+			new MockEnvironmentService("/repo", undefined, false, "/home/me")
+		);
+
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo/game");
 		processes = new MockProcessService();
-		finder = new ServerFinder(new CoreToolchainService(fs), processes);
+		finder = new ServerFinder(toolchainOf(fs), processes, locatorOf());
 	});
 
 	it("should run the server the project pins, by the name it pins it as", async () => {
@@ -53,11 +61,7 @@ describe("ServerFinder", () => {
 	it("should look in Rokit's bin folder when the PATH has no server", async () => {
 		await fs.writeFile(rokitRojo, "");
 		processes.outputs.set(path.normalize(rokitRojo), ROJO_VERSION);
-		finder = new ServerFinder(
-			new CoreToolchainService(fs),
-			processes,
-			new ToolLocator(processes, fs, "/home/me")
-		);
+		finder = new ServerFinder(toolchainOf(fs), processes, locatorOf());
 
 		const tool = (await find()).unwrap();
 
@@ -68,11 +72,7 @@ describe("ServerFinder", () => {
 		await fs.writeFile("/home/me/.rokit/bin/rojo", "");
 		processes.installed.set("rojo", "/usr/bin/rojo");
 		processes.outputs.set("/usr/bin/rojo", ROJO_VERSION);
-		finder = new ServerFinder(
-			new CoreToolchainService(fs),
-			processes,
-			new ToolLocator(processes, fs, "/home/me")
-		);
+		finder = new ServerFinder(toolchainOf(fs), processes, locatorOf());
 
 		expect((await find()).unwrap().file).toEqual("/usr/bin/rojo");
 	});

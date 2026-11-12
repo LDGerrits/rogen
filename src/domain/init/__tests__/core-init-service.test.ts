@@ -27,12 +27,12 @@ import {
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { CoreInitService } from "../core-init-service.js";
-import { CoreWriteService } from "../../write/core-write-service.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MigratedProject } from "../project-migration.js";
 import { StarterPlaces } from "../starter-places.js";
 import { InitChoices, InitPlan, InitWritten } from "../init-service.js";
 import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
+import { initServiceOf } from "./init-of.js";
+import { configServiceOf } from "../../config/__tests__/config-of.js";
 
 const directory = path.resolve("/mock/my-game");
 
@@ -81,7 +81,7 @@ describe("CoreInitService", () => {
 	beforeEach(async () => {
 		fileSystem = new MemoryFileSystemService();
 		processes = new MockProcessService();
-		configs = new CoreConfigService(
+		configs = configServiceOf(
 			fileSystem,
 			new NativeEnvironmentService({}, directory)
 		);
@@ -101,21 +101,12 @@ describe("CoreInitService", () => {
 		cwd = directory
 	) => {
 		const environmentService = new NativeEnvironmentService({}, cwd);
-		const toolchain = new CoreToolchainService(fileSystem);
-		const service = new CoreInitService(
+		const service = initServiceOf(
 			fileSystem,
 			promptService,
 			environmentService,
-			toolchain,
 			processes,
-			undefined,
 			configs,
-			new CoreWriteService(
-				fileSystem,
-				new CoreIndexService(fileSystem),
-				toolchain.syncTools,
-				configs
-			),
 			new MockLifecycleService()
 		);
 		return service;

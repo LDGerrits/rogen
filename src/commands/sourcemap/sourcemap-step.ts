@@ -15,11 +15,11 @@ export class SourcemapStep implements RojoStep {
 	readonly command = "sourcemap";
 
 	constructor(
-		private readonly rojo: RojoCommandService,
 		private readonly flags: SourcemapFlags,
 		private readonly cwd: string,
 		/** Whether the sourcemap may go to the screen, as it does without `-o`. */
-		private readonly mayPrint: boolean
+		private readonly mayPrint: boolean,
+		@RojoCommandService private readonly rojo: RojoCommandService
 	) {}
 
 	get prints(): boolean {

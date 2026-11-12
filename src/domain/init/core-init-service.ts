@@ -14,7 +14,6 @@ import {
 	FileDraft,
 } from "../../platform/fs/draft-file-reader.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { ProcessService } from "../../platform/process/process-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { ConfigService } from "../config/config-service.js";
 import { DEFAULT_PROJECT_FILE } from "../config/config.js";
@@ -47,9 +46,9 @@ import { ProjectSetup } from "./project-setup.js";
 import { ToolchainSetup } from "./toolchain-setup.js";
 import { ServerFinder } from "../runner/server-finder.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
-import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { MigratedProject, ProjectMigration } from "./project-migration.js";
 import { MigrationSetup } from "./migration-setup.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
 /** The flags that shape a new config, by the choice each gives; init takes none of them where a config exists. */
 const SHAPING_FLAGS: Record<
@@ -120,30 +119,22 @@ export class CoreInitService implements InitService {
 	private readonly migrations = new Set<ProjectMigration>();
 
 	constructor(
+		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
-		private readonly promptService: PromptService,
+		@PromptService private readonly promptService: PromptService,
+		@EnvironmentService
 		private readonly environmentService: EnvironmentService,
-		private readonly toolchainService: ToolchainService,
-		processService: ProcessService,
-		private readonly locator: ToolLocator = new ToolLocator(processService),
-		private readonly configService: ConfigService,
-		private readonly writeService: WriteService,
-		lifecycleService: LifecycleService
+		@ToolchainService private readonly toolchainService: ToolchainService,
+		@ToolLocator private readonly locator: ToolLocator,
+		@ConfigService private readonly configService: ConfigService,
+		@WriteService private readonly writeService: WriteService,
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
 	) {
-		this.agentReader = new AgentReader(fileSystemService);
-		this.git = new GitRepository(processService, fileSystemService);
-		this.finder = new ServerFinder(
-			toolchainService,
-			processService,
-			locator
-		);
-		this.writer = new InitWriter(
-			fileSystemService,
-			this.git,
-			processService,
-			locator,
-			lifecycleService
-		);
+		this.agentReader = instantiationService.createInstance(AgentReader);
+		this.git = instantiationService.createInstance(GitRepository);
+		this.finder = instantiationService.createInstance(ServerFinder);
+		this.writer = instantiationService.createInstance(InitWriter, this.git);
 	}
 
 	async plan(
@@ -167,16 +158,26 @@ export class CoreInitService implements InitService {
 		if (!(ask && this.promptService.isInteractive))
 			return this.planWithin(
 				read.value,
-				new InitQuestions(this.promptService, false, choices)
+				this.instantiationService.createInstance(
+					InitQuestions,
+					false,
+					choices,
+					undefined
+				)
 			);
-		const prompts = new ReviewPrompts(this.promptService);
+		const prompts = this.instantiationService.createInstance(ReviewPrompts);
 		let shown: { plan: InitPlan; customisable: boolean } | undefined;
 		let mode: ReviewMode = "quick";
 		for (;;) {
 			prompts.begin(mode);
 			const planned = await this.planWithin(
 				read.value,
-				new InitQuestions(this.promptService, true, choices, prompts)
+				this.instantiationService.createInstance(
+					InitQuestions,
+					true,
+					choices,
+					prompts
+				)
 			);
 			if (planned.isErr()) return planned;
 			if (planned.value) {
@@ -285,11 +286,10 @@ export class CoreInitService implements InitService {
 		const agents = await this.agentSetupIn(read, questions);
 		if (agents.isErr()) return agents;
 		return this.planWith(read, questions, [
-			new MigrationSetup(
+			this.instantiationService.createInstance(
+				MigrationSetup,
 				directory,
-				migrated,
-				this.fileSystemService,
-				this.configService
+				migrated
 			),
 			agents.value,
 			await read.toolchain(),
@@ -376,10 +376,9 @@ export class CoreInitService implements InitService {
 				directory,
 				entries,
 				workspace,
-				await new CodeFinder(this.fileSystemService).layoutOf(
-					directory,
-					workspace
-				),
+				await this.instantiationService
+					.createInstance(CodeFinder)
+					.layoutOf(directory, workspace),
 				entries.has(DEFAULT_PROJECT_FILE) &&
 					(await this.git.tracks(directory, DEFAULT_PROJECT_FILE))
 			)
@@ -393,7 +392,11 @@ export class CoreInitService implements InitService {
 		const agents = await this.agentSetupIn(read, questions);
 		if (agents.isErr()) return agents;
 		return this.planWith(read, questions, [
-			new ProjectSetup(read.directory, questions, this.fileSystemService),
+			this.instantiationService.createInstance(
+				ProjectSetup,
+				read.directory,
+				questions
+			),
 			agents.value,
 			await read.toolchain(),
 		]);
@@ -468,13 +471,15 @@ export class CoreInitService implements InitService {
 	}
 
 	refreshAgentRules(folder: string): Promise<string[]> {
-		return new AgentRules(this.fileSystemService, this.git).refresh(folder);
+		return this.instantiationService
+			.createInstance(AgentRules, this.git)
+			.refresh(folder);
 	}
 
 	async check(plan: InitPlan): Promise<Result<void, Error>> {
 		if (plan.configs.length === 0) return ok(undefined);
-		const reader = new DraftFileReader(
-			this.fileSystemService,
+		const reader = this.instantiationService.createInstance(
+			DraftFileReader,
 			draftOf(plan)
 		);
 		const selection = await this.configService.select(plan.configs, reader);

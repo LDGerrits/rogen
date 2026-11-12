@@ -55,9 +55,9 @@ export class ServerRecords {
 	private readonly dir: string;
 
 	constructor(
-		private readonly fileSystemService: FileSystemService,
 		tmpDir: string,
-		private readonly owner: number
+		private readonly owner: number,
+		@FileSystemService private readonly fileSystemService: FileSystemService
 	) {
 		this.dir = path.join(tmpDir, "rogen-serve");
 	}

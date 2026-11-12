@@ -29,8 +29,8 @@ export class UndoLog {
 	private readonly changes: Change[] = [];
 
 	constructor(
-		private readonly fileSystemService: FileSystemService,
-		private readonly directory: string
+		private readonly directory: string,
+		@FileSystemService private readonly fileSystemService: FileSystemService
 	) {}
 
 	async rename(from: string, to: string): Promise<void> {

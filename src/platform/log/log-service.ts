@@ -1,5 +1,5 @@
 import { Diagnostic } from "../diagnostics/diagnostic.js";
-import { createServiceIdentifier } from "../instantiation/instantiation.js";
+import { createDecorator } from "../instantiation/instantiation.js";
 
 export enum LogLevel {
 	Off = 0,
@@ -42,4 +42,4 @@ export interface LogService {
 	annotate(diagnostic: Diagnostic): void;
 }
 
-export const LogService = createServiceIdentifier<LogService>("logService");
+export const LogService = createDecorator<LogService>("logService");

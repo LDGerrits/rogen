@@ -9,31 +9,28 @@ import {
 	selectionOf,
 } from "../../config/__tests__/mock-config-service.js";
 import { configOf, writeServiceOf } from "../../write/__tests__/fixtures.js";
-import { MirrorWorkspace } from "../mirror-workspace.js";
 import { ROUTES } from "./layout-fixtures.js";
+import { workspaceOpenerOf } from "./syncback-of.js";
 
 describe("MirrorWorkspace", () => {
 	it("should say when the project does not build", async () => {
 		const fs = new MemoryFileSystemService();
 		const config = configOf({ routes: ROUTES });
 
-		const opened = await MirrorWorkspace.open(
-			{
-				configService: new MockConfigService([]),
-				fileSystemService: fs,
-				writeService: writeServiceOf(fs, new CoreIndexService(fs)),
-				rojoService: {} as never,
-				environmentService: new MockEnvironmentService("/repo"),
-				processService: new MockProcessService(),
-				lifecycleService: new MockLifecycleService(),
-			},
-			{
-				selection: selectionOf(config),
-				project: config,
-				input: "x",
-				cwd: "/repo",
-			}
-		);
+		const opened = await workspaceOpenerOf({
+			configService: new MockConfigService([]),
+			fileSystemService: fs,
+			writeService: writeServiceOf(fs, new CoreIndexService(fs)),
+			rojoService: {} as never,
+			environmentService: new MockEnvironmentService("/repo"),
+			processService: new MockProcessService(),
+			lifecycleService: new MockLifecycleService(),
+		}).open({
+			selection: selectionOf(config),
+			project: config,
+			input: "x",
+			cwd: "/repo",
+		});
 
 		expect((opened as ResultError<Error>).error.message).toContain(
 			"does not build"

@@ -1,14 +1,16 @@
 import { ErrorUtils } from "../../base/errors.js";
 import path from "path";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
 import { AgentFile } from "./agent/agent-file.js";
 import { AgentHooks, AgentInUse } from "./agent/agent-hooks.js";
 import { HOOK_SCRIPT_FILE, CODING_AGENTS } from "./agent/coding-agent.js";
 import { InitDirectory } from "./init-directory.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 export class AgentReader {
-	constructor(private readonly fileSystemService: FileReader) {}
+	constructor(
+		@FileSystemService private readonly fileSystemService: FileSystemService
+	) {}
 
 	async fileIn(directory: InitDirectory): Promise<Result<AgentFile, Error>> {
 		const texts = new Map<string, string | undefined>();

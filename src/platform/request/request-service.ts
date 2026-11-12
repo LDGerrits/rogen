@@ -1,6 +1,6 @@
 import { decode } from "@msgpack/msgpack";
 import { Result, err, tryWith } from "../../base/result.js";
-import { createServiceIdentifier } from "../instantiation/instantiation.js";
+import { createDecorator } from "../instantiation/instantiation.js";
 
 export interface HttpResponse {
 	readonly status: number;
@@ -36,8 +36,7 @@ export interface RequestService {
 	): Promise<Result<HttpResponse, RequestError>>;
 }
 
-export const RequestService =
-	createServiceIdentifier<RequestService>("requestService");
+export const RequestService = createDecorator<RequestService>("requestService");
 
 export function readBody(response: HttpResponse): Result<unknown, Error> {
 	const type = response.contentType?.split(";")[0].trim().toLowerCase();

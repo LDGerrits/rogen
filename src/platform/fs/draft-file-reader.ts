@@ -1,7 +1,7 @@
 import path from "path";
 import { isInside } from "../../base/path.js";
 import {
-	FileReader,
+	FileSystemService,
 	FileType,
 	fileSystemError,
 	isMissingPath,
@@ -14,15 +14,17 @@ export interface FileDraft {
 	readonly moves: readonly { readonly from: string; readonly to: string }[];
 }
 
-/** Reads `base` as it would be once `draft` is written, and writes nothing. */
-export class DraftFileReader implements FileReader {
+/** Reads `base` as it would be once `draft` is written, and writes nothing: a file service for a scope that only checks. */
+export class DraftFileReader implements FileSystemService {
+	declare readonly _serviceBrand: undefined;
+
 	private readonly files = new Map<string, string>();
 	private readonly folders = new Set<string>();
 	private readonly moves: readonly { from: string; to: string }[];
 
 	constructor(
-		private readonly base: FileReader,
-		draft: FileDraft
+		draft: FileDraft,
+		@FileSystemService private readonly base: FileSystemService
 	) {
 		this.moves = draft.moves.map(({ from, to }) => ({
 			from: path.resolve(from),
@@ -47,6 +49,51 @@ export class DraftFileReader implements FileReader {
 
 	async isDirectory(filePath: string): Promise<boolean> {
 		return (await this.typeOf(filePath)) === FileType.Directory;
+	}
+
+	async readFileBytes(filePath: string): Promise<Uint8Array> {
+		const drafted = this.files.get(path.resolve(filePath));
+		if (drafted !== undefined) return new TextEncoder().encode(drafted);
+		const source = this.sourceOf(path.resolve(filePath));
+		if (source === undefined) throw DraftFileReader.missing(filePath);
+		return this.base.readFileBytes(source);
+	}
+
+	async lastModified(filePath: string): Promise<number> {
+		const resolved = path.resolve(filePath);
+		if (this.files.has(resolved) || this.folders.has(resolved))
+			return Date.now();
+		const source = this.sourceOf(resolved);
+		if (source === undefined) throw DraftFileReader.missing(filePath);
+		return this.base.lastModified(source);
+	}
+
+	async createDirectory(): Promise<void> {
+		return DraftFileReader.readOnly();
+	}
+
+	async writeFileBytes(): Promise<void> {
+		return DraftFileReader.readOnly();
+	}
+
+	async copyFile(): Promise<void> {
+		return DraftFileReader.readOnly();
+	}
+
+	async writeFile(): Promise<void> {
+		return DraftFileReader.readOnly();
+	}
+
+	async createFile(): Promise<boolean> {
+		return DraftFileReader.readOnly();
+	}
+
+	async delete(): Promise<void> {
+		return DraftFileReader.readOnly();
+	}
+
+	async rename(): Promise<void> {
+		return DraftFileReader.readOnly();
 	}
 
 	async readFile(filePath: string): Promise<string> {
@@ -128,6 +175,10 @@ export class DraftFileReader implements FileReader {
 			this.folders.add(current);
 			if (path.dirname(current) === current) return;
 		}
+	}
+
+	private static readOnly(): never {
+		throw new Error("A draft of files is read-only.");
 	}
 
 	private static missing(filePath: string): Error {

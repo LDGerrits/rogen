@@ -28,6 +28,7 @@ import { ServePorts, refuses } from "./serve-ports.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
 import { StartedServer } from "./started-server.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
 const RECORD_POLL_MS = 250;
 
@@ -92,11 +93,13 @@ export class CoreServeSession
 	constructor(
 		private readonly plan: ServePlan,
 		private readonly watch: WatchSession,
-		private readonly rojoRunner: RojoRunner,
 		private readonly probe: ServerProbe,
 		private readonly records: ServerRecords,
 		private readonly ports: ServePorts,
-		private readonly compatibility: RojoCompatibility
+		private readonly compatibility: RojoCompatibility,
+		@RojoRunner private readonly rojoRunner: RojoRunner,
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
 	) {
 		super();
 		this._register(watch);
@@ -425,10 +428,10 @@ export class CoreServeSession
 
 	private launch(target: ServeTarget): void {
 		if (this.isHalted) return;
-		const server: StartedServer = new StartedServer(
+		const server: StartedServer = this.instantiationService.createInstance(
+			StartedServer,
 			target,
 			this.plan,
-			this.rojoRunner,
 			this.probe,
 			this.records,
 			{

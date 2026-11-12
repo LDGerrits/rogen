@@ -1,6 +1,8 @@
 import path from "path";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { TestRunnerDetector } from "../test-runner-detector.js";
+import { instantiationOf } from "../../../platform/instantiation/__tests__/instantiation-of.js";
+import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 
 describe("TestRunnerDetector", () => {
 	const cwd = path.resolve("/mock/workspace");
@@ -8,7 +10,10 @@ describe("TestRunnerDetector", () => {
 
 	const write = (file: string, content: string) =>
 		fs.writeFile(path.join(cwd, file), content);
-	const detect = () => new TestRunnerDetector(fs).detect(cwd);
+	const detect = () =>
+		instantiationOf([FileSystemService, fs])
+			.createInstance(TestRunnerDetector)
+			.detect(cwd);
 
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();

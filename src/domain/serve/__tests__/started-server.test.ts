@@ -7,8 +7,7 @@ import {
 	mockConfig,
 } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
-import { CoreRojoRunner } from "../../runner/core-rojo-runner.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
+import { rojoRunnerOf } from "../../runner/__tests__/rojo-runner-fixtures.js";
 import { ServeAddress } from "../serve.js";
 import {
 	ServePlan,
@@ -17,9 +16,12 @@ import {
 	ServerExitEvent,
 	ServerReadyEvent,
 } from "../serve-service.js";
-import { ServerProbe } from "../server-probe.js";
 import { ServerRecords } from "../server-records.js";
 import { StartedServer } from "../started-server.js";
+import { probeOf } from "./serve-of.js";
+import { recordsOf } from "./serve-of.js";
+import { instantiationOf } from "../../../platform/instantiation/__tests__/instantiation-of.js";
+import { RojoRunner } from "../../runner/rojo-runner.js";
 
 const ROJO_URL = "http://127.0.0.1:34872/api/rojo";
 
@@ -51,11 +53,14 @@ describe("StartedServer", () => {
 	);
 
 	const start = (project: ResolvedConfig = config) => {
-		server = new StartedServer(
+		server = instantiationOf([
+			RojoRunner,
+			rojoRunnerOf(fileSystem, processes),
+		]).createInstance(
+			StartedServer,
 			{ ...target, config: project },
 			plan,
-			new CoreRojoRunner(new CoreToolchainService(fileSystem), processes),
-			new ServerProbe(requests),
+			probeOf(requests),
 			records,
 			{
 				served: (serving) => served.push(serving),
@@ -80,7 +85,7 @@ describe("StartedServer", () => {
 		fileSystem = new MemoryFileSystemService();
 		processes = new MockProcessService();
 		requests = new MockRequestService();
-		records = new ServerRecords(fileSystem, "/tmp", 4242);
+		records = recordsOf(fileSystem, "/tmp", 4242);
 		served = [];
 		said = [];
 		stops = [];
@@ -262,7 +267,7 @@ describe("StartedServer", () => {
 
 	it("should not take for its own a server recorded for another Rojo while that Rojo runs", async () => {
 		processes.running.add(5001);
-		await new ServerRecords(fileSystem, "/tmp", 5000).write(
+		await recordsOf(fileSystem, "/tmp", 5000).write(
 			target.address,
 			{ project: "repo", version: "7.7.1", session: "s1" },
 			{ projectFile: "/repo/default.project.json", pid: 5001 }

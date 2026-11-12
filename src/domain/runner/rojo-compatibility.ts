@@ -1,11 +1,11 @@
 import path from "path";
 import { isObject } from "../../base/objects.js";
-import { isWindows } from "../../base/platform.js";
+import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { RojoVersion } from "./rojo-version.js";
 import { ServerExecutable } from "./rojo-runner.js";
 
@@ -23,8 +23,9 @@ const NOTHING = {
 /** What the Rojo that will run can't do with the files Rogen wrote for it. */
 export class RojoCompatibility {
 	constructor(
-		private readonly fileReader: FileReader,
-		private readonly windows = isWindows
+		@FileSystemService private readonly fileReader: FileSystemService,
+		@EnvironmentService
+		private readonly environmentService: EnvironmentService
 	) {}
 
 	/** `command` is the Rojo command about to run on the files: Rojo 7.7.0 on Windows gets only `sourcemap` wrong. */
@@ -37,7 +38,9 @@ export class RojoCompatibility {
 		if (!version) return [];
 		const noRules = version.isBefore(SYNC_RULES_SINCE);
 		const brokenOnWindows =
-			this.windows && isBroken(version) && command === "sourcemap";
+			this.environmentService.isWindows &&
+			isBroken(version) &&
+			command === "sourcemap";
 		const noNegation = version.isBefore(NEGATION_SINCE);
 		if (!noRules && !brokenOnWindows && !noNegation) return [];
 		const problems: Diagnostic[] = [];

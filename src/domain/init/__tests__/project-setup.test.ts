@@ -3,10 +3,8 @@ import {
 	withRobloxTs,
 	workspaceOf,
 } from "../../toolchain/__tests__/workspaces.js";
-import { ConfigFormatter } from "../../config/config-formatter.js";
 import { InitPlan } from "../init-service.js";
-import { InitQuestions } from "../init-questions.js";
-import { ProjectChoices, ProjectSetup } from "../project-setup.js";
+import { ProjectChoices } from "../project-setup.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { WorkspaceSpec, directory, directoryOf } from "./init-fixtures.js";
@@ -23,6 +21,9 @@ import {
 	configOf,
 	lifted,
 } from "./project-setup-fixtures.js";
+import { questionsOf } from "./init-of.js";
+import { setupOf } from "./init-of.js";
+import { formatterOf } from "../../config/__tests__/config-of.js";
 
 describe("ProjectSetup plan, unmounted files", () => {
 	const lift = (unmounted: readonly string[]) =>
@@ -183,7 +184,7 @@ describe("ProjectSetup plan", () => {
 
 		const config = new MemoryFileSystemService();
 		await config.writeFile("/repo/default.rogen.json", content);
-		const formatter = new ConfigFormatter(config);
+		const formatter = formatterOf(config);
 
 		await formatter.format("/repo/default.rogen.json");
 		const named = await config.readFile("/repo/default.rogen.json");
@@ -454,9 +455,9 @@ describe("an unattended run", () => {
 
 describe("ProjectSetup project file that can't be read", () => {
 	const askWith = async (fileSystem: MemoryFileSystemService) => {
-		const setup = new ProjectSetup(
+		const setup = setupOf(
 			directoryOf({ existing: ["default.project.json"] }),
-			new InitQuestions(new MockPromptService([], false), false),
+			questionsOf(new MockPromptService([], false), false),
 			fileSystem
 		);
 		const asked = await setup.ask();

@@ -2,12 +2,11 @@ import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { RequestService } from "../../platform/request/request-service.js";
 
 import { ConfigService } from "../config/config-service.js";
 import { WatchService } from "../watch/watch-service.js";
 import { CoreServeSession } from "./core-serve-session.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { RojoCompatibility } from "../runner/rojo-compatibility.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
 import { ServeFlags } from "../runner/serve-flags.js";
@@ -26,34 +25,34 @@ export class CoreServeService implements ServeService {
 
 	private readonly probe: ServerProbe;
 	private readonly records: ServerRecords;
+	private readonly compatibility: RojoCompatibility;
 
 	constructor(
-		private readonly configService: ConfigService,
-		fileSystemService: FileSystemService,
-		private readonly rojoRunner: RojoRunner,
-		requestService: RequestService,
-		private readonly watchService: WatchService,
+		@ConfigService private readonly configService: ConfigService,
+		@RojoRunner private readonly rojoRunner: RojoRunner,
+		@WatchService private readonly watchService: WatchService,
+		@EnvironmentService
 		private readonly environmentService: EnvironmentService,
-		private readonly compatibility = new RojoCompatibility(
-			fileSystemService
-		)
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
 	) {
-		this.probe = new ServerProbe(requestService);
-		this.records = new ServerRecords(
-			fileSystemService,
+		this.compatibility =
+			instantiationService.createInstance(RojoCompatibility);
+		this.probe = instantiationService.createInstance(ServerProbe);
+		this.records = instantiationService.createInstance(
+			ServerRecords,
 			environmentService.tmpDir,
 			environmentService.pid
 		);
 	}
 
 	private portsFor(serverArgs: readonly string[]): ServePorts {
-		return new ServePorts(
+		return this.instantiationService.createInstance(
+			ServePorts,
 			this.probe,
 			this.records,
 			serverArgs,
-			this.environmentService.cwd,
-			this.rojoRunner,
-			this.configService
+			this.environmentService.cwd
 		);
 	}
 
@@ -108,10 +107,10 @@ export class CoreServeService implements ServeService {
 		const watch = this.watchService.watch(plan.selection);
 		if (watch.isErr()) return watch;
 		return ok(
-			new CoreServeSession(
+			this.instantiationService.createInstance(
+				CoreServeSession,
 				plan,
 				watch.value,
-				this.rojoRunner,
 				this.probe,
 				this.records,
 				this.portsFor(plan.serverArgs),

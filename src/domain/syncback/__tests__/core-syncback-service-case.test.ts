@@ -20,7 +20,7 @@ const { abs, writeServiceOf, configOf, writeFiles } =
 	await import("../../write/__tests__/fixtures.js");
 const { MockConfigService, selectionOf } =
 	await import("../../config/__tests__/mock-config-service.js");
-const { CoreSyncbackService } = await import("../core-syncback-service.js");
+const { syncbackServiceOf } = await import("./syncback-of.js");
 const { ROUTES } = await import("./layout-fixtures.js");
 
 describe("CoreSyncbackService where the file system ignores case", () => {
@@ -64,15 +64,15 @@ describe("CoreSyncbackService where the file system ignores case", () => {
 		fs.exists = async (file) =>
 			(await exists(file)) ||
 			(file === newFile && (await exists(oldFile)));
-		const service = new CoreSyncbackService(
-			new MockConfigService([]),
-			fs,
-			writeServiceOf(fs, new CoreIndexService(fs)),
-			rojo as never,
-			new MockEnvironmentService("/repo"),
-			new MockProcessService(),
-			new MockLifecycleService()
-		);
+		const service = syncbackServiceOf({
+			configService: new MockConfigService([]),
+			fileSystemService: fs,
+			writeService: writeServiceOf(fs, new CoreIndexService(fs)),
+			rojoService: rojo as never,
+			environmentService: new MockEnvironmentService("/repo"),
+			processService: new MockProcessService(),
+			lifecycleService: new MockLifecycleService(),
+		});
 
 		const { outcome } = await service.run(selection, {
 			input: "game.rbxl",

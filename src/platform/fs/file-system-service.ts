@@ -1,5 +1,5 @@
 import { ErrorUtils } from "../../base/errors.js";
-import { createServiceIdentifier } from "../instantiation/instantiation.js";
+import { createDecorator } from "../instantiation/instantiation.js";
 
 export enum FileType {
 	Unknown = 0,
@@ -112,4 +112,4 @@ export function isMissingPath(error: Error): boolean {
 }
 
 export const FileSystemService =
-	createServiceIdentifier<FileSystemService>("fileSystemService");
+	createDecorator<FileSystemService>("fileSystemService");

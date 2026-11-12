@@ -8,10 +8,7 @@ import {
 	reaches,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
-import {
-	FileReader,
-	FileType,
-} from "../../../platform/fs/file-system-service.js";
+import { FileType } from "../../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../../platform/fs/index-service.js";
 import { DeclaredKeys } from "../../config/declared-keys.js";
 import { ResolvedConfig, scannedFileOf } from "../../config/resolved-config.js";
@@ -31,6 +28,8 @@ import { MountedInstances } from "./mounted-instances.js";
 import { PlacementLocator, placesInstance } from "./placement-locator.js";
 import { LocateTargets, Targets } from "./locate-targets.js";
 import { PlannedFilesIndex } from "./planned-files-index.js";
+import { InstantiationService } from "../../../platform/instantiation/instantiation-service.js";
+import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 
 /** What `locate` found. */
 export type Located = Omit<Locations, "errors" | "skipped">;
@@ -40,11 +39,12 @@ export class Locator {
 	private readonly targets: LocateTargets;
 
 	constructor(
-		private readonly fileSystemService: FileReader,
 		private readonly listing: IndexReader,
-		private readonly tools: readonly SyncTool[]
+		private readonly tools: readonly SyncTool[],
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
 	) {
-		this.targets = new LocateTargets(fileSystemService);
+		this.targets = instantiationService.createInstance(LocateTargets);
 	}
 
 	/** Fails when a config can't be placed; its caller checked that the configs are written together. */
@@ -57,12 +57,9 @@ export class Locator {
 		);
 		const located: ConfigLocations[] = [];
 		for (const config of configs) {
-			const locations = await new ConfigLocator(
-				config,
-				this.fileSystemService,
-				this.listing,
-				this.tools
-			).locate(targets);
+			const locations = await this.instantiationService
+				.createInstance(ConfigLocator, config, this.listing, this.tools)
+				.locate(targets);
 			if (locations.isErr()) return locations;
 			located.push(locations.value);
 		}
@@ -77,9 +74,12 @@ export class Locator {
 class ConfigLocator {
 	constructor(
 		private readonly config: ResolvedConfig,
-		private readonly fileSystemService: FileReader,
 		private readonly listing: IndexReader,
-		private readonly tools: readonly SyncTool[]
+		private readonly tools: readonly SyncTool[],
+		@FileSystemService
+		private readonly fileSystemService: FileSystemService,
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
 	) {}
 
 	async locate({
@@ -421,7 +421,11 @@ class ConfigLocator {
 	}
 
 	private pipelineOf(index: IndexReader): WritePipeline {
-		return new WritePipeline(this.fileSystemService, index, this.tools);
+		return this.instantiationService.createInstance(
+			WritePipeline,
+			index,
+			this.tools
+		);
 	}
 
 	private async existsOnDisk(

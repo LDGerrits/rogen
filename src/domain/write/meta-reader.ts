@@ -8,10 +8,7 @@ import {
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
-import {
-	FileReader,
-	isMissingPath,
-} from "../../platform/fs/file-system-service.js";
+import { isMissingPath } from "../../platform/fs/file-system-service.js";
 import {
 	RojoFile,
 	RojoMeta,
@@ -21,6 +18,7 @@ import {
 import { FolderMeta } from "./folder-meta.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 export class PlacementMeta {
 	constructor(
@@ -56,7 +54,9 @@ interface FileMetaSource {
 }
 
 export class MetaReader {
-	constructor(private readonly fileSystemService: FileReader) {}
+	constructor(
+		@FileSystemService private readonly fileSystemService: FileSystemService
+	) {}
 
 	/** Fails on a meta Rojo would refuse, a folder's or a file's, and on a RunContext Rojo can't set on a ModuleScript. */
 	async read(

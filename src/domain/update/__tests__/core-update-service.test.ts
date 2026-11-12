@@ -4,8 +4,8 @@ import { MockEnvironmentService } from "../../../platform/environment/__tests__/
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProductService } from "../../../platform/product/__tests__/mock-product-service.js";
 import { MockReleaseService } from "../../../platform/release/__tests__/mock-release-service.js";
-import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreUpdateService } from "../core-update-service.js";
+import { toolchainOf } from "../../toolchain/__tests__/toolchain-of.js";
 
 describe("CoreUpdateService", () => {
 	let fs: MemoryFileSystemService;
@@ -25,6 +25,7 @@ describe("CoreUpdateService", () => {
 			cwd = "/repo/game",
 		} = options;
 		return new CoreUpdateService(
+			options.installDir ?? "/home/me/.rokit/tool-storage/rogen/dist",
 			releases,
 			new MockProductService(version),
 			new MockEnvironmentService(
@@ -38,9 +39,8 @@ describe("CoreUpdateService", () => {
 				undefined,
 				checks
 			),
-			new CoreToolchainService(fs),
-			fs,
-			options.installDir ?? "/home/me/.rokit/tool-storage/rogen/dist"
+			toolchainOf(fs),
+			fs
 		).check();
 	};
 

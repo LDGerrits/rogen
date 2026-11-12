@@ -14,6 +14,7 @@ import { WriteSet, OutputFile } from "../../write/write.js";
 import { WatchUpdate } from "../watch-service.js";
 import { CoreWatchSession } from "../core-watch-session.js";
 import { writeServiceOf } from "../../write/__tests__/fixtures.js";
+import { configServiceOf } from "../../config/__tests__/config-of.js";
 
 const isDefaultStaging = (file: string): boolean =>
 	new OutputFile(
@@ -100,7 +101,7 @@ describe("CoreWatchSession", () => {
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo/src");
 		watcher = new MemoryWatcher(fs, new NullLogService());
-		configService = new CoreConfigService(
+		configService = configServiceOf(
 			fs,
 			new MockEnvironmentService("/repo")
 		);

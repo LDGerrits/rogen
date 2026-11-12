@@ -10,13 +10,13 @@ describe("CoreProductService", () => {
 		);
 
 		expect(
-			await new CoreProductService(fs, "/app", "2.0.0").readVersion()
+			await new CoreProductService("/app", "2.0.0", fs).readVersion()
 		).toBe("2.0.0");
 		expect(
 			await new CoreProductService(
-				new MemoryFileSystemService(),
 				"/app",
-				"2.0.0"
+				"2.0.0",
+				new MemoryFileSystemService()
 			).readVersion()
 		).toBe("2.0.0");
 	});
@@ -28,9 +28,9 @@ describe("CoreProductService", () => {
 			JSON.stringify({ version: "1.2.3" })
 		);
 
-		expect(await new CoreProductService(fs, "/app").readVersion()).toBe(
-			"1.2.3"
-		);
+		expect(
+			await new CoreProductService("/app", undefined, fs).readVersion()
+		).toBe("1.2.3");
 	});
 
 	it("should walk up parent directories to find package.json", async () => {
@@ -42,8 +42,9 @@ describe("CoreProductService", () => {
 
 		expect(
 			await new CoreProductService(
-				fs,
-				"/app/dist/commands/version"
+				"/app/dist/commands/version",
+				undefined,
+				fs
 			).readVersion()
 		).toBe("1.2.3");
 	});
@@ -55,34 +56,34 @@ describe("CoreProductService", () => {
 			JSON.stringify({ version: "4.5.6" })
 		);
 
-		expect(await new CoreProductService(fs, "/a/b").readVersion()).toBe(
-			"4.5.6"
-		);
+		expect(
+			await new CoreProductService("/a/b", undefined, fs).readVersion()
+		).toBe("4.5.6");
 	});
 
 	it("should return 'unknown' when no package.json is found anywhere", async () => {
 		const fs = new MemoryFileSystemService();
 
-		expect(await new CoreProductService(fs, "/a/b/c").readVersion()).toBe(
-			"unknown"
-		);
+		expect(
+			await new CoreProductService("/a/b/c", undefined, fs).readVersion()
+		).toBe("unknown");
 	});
 
 	it("should return 'unknown' when the found package.json has no version field", async () => {
 		const fs = new MemoryFileSystemService();
 		await fs.writeFile("/app/package.json", JSON.stringify({}));
 
-		expect(await new CoreProductService(fs, "/app").readVersion()).toBe(
-			"unknown"
-		);
+		expect(
+			await new CoreProductService("/app", undefined, fs).readVersion()
+		).toBe("unknown");
 	});
 
 	it("should return 'unknown' rather than throw when package.json is malformed", async () => {
 		const fs = new MemoryFileSystemService();
 		await fs.writeFile("/app/package.json", "{ not valid json");
 
-		expect(await new CoreProductService(fs, "/app").readVersion()).toBe(
-			"unknown"
-		);
+		expect(
+			await new CoreProductService("/app", undefined, fs).readVersion()
+		).toBe("unknown");
 	});
 });

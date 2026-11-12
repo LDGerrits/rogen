@@ -2,6 +2,7 @@ import path from "path";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { CoreToolchainService } from "../core-toolchain-service.js";
 import { DetectedWorkspace } from "../toolchain.js";
+import { toolchainOf } from "./toolchain-of.js";
 
 const rbxts = (workspace: DetectedWorkspace) =>
 	workspace.languageFor("roblox-ts");
@@ -9,7 +10,7 @@ const rbxts = (workspace: DetectedWorkspace) =>
 describe("CoreToolchainService.detect", () => {
 	const cwd = path.resolve("/mock/workspace");
 	let fs: MemoryFileSystemService;
-	const toolchain = () => new CoreToolchainService(fs);
+	const toolchain = () => toolchainOf(fs);
 
 	const write = async (file: string, content = "") => {
 		await fs.writeFile(path.join(cwd, file), content);
@@ -358,7 +359,7 @@ describe("CoreToolchainService.detect", () => {
 });
 
 describe("CoreToolchainService", () => {
-	const toolchain = new CoreToolchainService(new MemoryFileSystemService());
+	const toolchain = toolchainOf(new MemoryFileSystemService());
 
 	describe("syncTools", () => {
 		it("should list Darklua and roblox-ts", () => {
@@ -379,7 +380,7 @@ describe("CoreToolchainService.readManifests", () => {
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo/game");
-		toolchain = new CoreToolchainService(fs);
+		toolchain = toolchainOf(fs);
 	});
 
 	it("should list the files of the folder and every folder above, the nearest first", async () => {

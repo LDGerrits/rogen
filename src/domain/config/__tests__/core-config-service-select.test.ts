@@ -2,7 +2,11 @@ import path from "path";
 import { jest } from "@jest/globals";
 import { ResultError } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
-import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
+import {
+	DiagnosticSeverity,
+	errorDiagnostic,
+} from "../../../platform/diagnostics/diagnostic.js";
+import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { validFile } from "../config-service.js";
 import {
 	useConfigFixture,
@@ -18,6 +22,16 @@ import {
 const ROUTED = { server: "ServerScriptService" };
 
 const onDisk = (file: string): string => path.resolve(file);
+
+/** A file system other than the service's, holding only `file`. */
+async function draftWith(
+	file: string,
+	text: string
+): Promise<MemoryFileSystemService> {
+	const draft = new MemoryFileSystemService();
+	await draft.writeFile(file, text);
+	return draft;
+}
 
 describe("CoreConfigService", () => {
 	useConfigFixture();
@@ -269,6 +283,42 @@ describe("CoreConfigService", () => {
 		});
 	});
 
+	describe("select through another file system", () => {
+		it("should follow the default folder in that file system", async () => {
+			const draft = await draftWith("/repo/default.rogen.json", "{}");
+			const selected = (await service.select([], draft)).unwrap();
+
+			await selected.reload([onDisk("/repo/default.rogen.json")]);
+
+			expect(selected.entries.map(({ file }) => file)).toEqual([
+				onDisk("/repo/default.rogen.json"),
+			]);
+		});
+	});
+
+	describe("registerFolderCheck", () => {
+		it("should run in a selection that reads through another file system", async () => {
+			const draft = await draftWith("/repo/old.json", "{}");
+			service.registerFolderCheck(async (folder, reader) =>
+				(await reader.exists(path.join(folder, "old.json")))
+					? [
+							errorDiagnostic(
+								"test.stale",
+								{ resource: path.join(folder, "old.json") },
+								"is old."
+							),
+						]
+					: []
+			);
+
+			const selected = await service.select([], draft);
+
+			expect((selected as ResultError<Error>).error.message).toContain(
+				"is old."
+			);
+		});
+	});
+
 	describe("registerFileCheck", () => {
 		const hint = (file: string) => ({
 			severity: DiagnosticSeverity.Error,
@@ -302,6 +352,41 @@ describe("CoreConfigService", () => {
 			);
 
 			expect(entry).toMatchObject({
+				status: "broken",
+				errors: [{ code: "test.hint" }],
+			});
+		});
+
+		it("should run in a selection that reads through another file system", async () => {
+			const draft = await draftWith(
+				"/repo/a/default.rogen.json",
+				JSON.stringify({ source: ["src"] })
+			);
+			service.registerFileCheck(({ file }) => [hint(file)]);
+
+			const selected = (
+				await service.select(["/repo/a/default.rogen.json"], draft)
+			).unwrap();
+
+			expect(selected.entries[0]).toMatchObject({
+				status: "broken",
+				errors: [{ code: "test.hint" }],
+			});
+		});
+
+		it("should reach a selection through another file system made before the check was registered", async () => {
+			const draft = await draftWith(
+				"/repo/a/default.rogen.json",
+				JSON.stringify({ source: ["src"] })
+			);
+			const selected = (
+				await service.select(["/repo/a/default.rogen.json"], draft)
+			).unwrap();
+			service.registerFileCheck(({ file }) => [hint(file)]);
+
+			await selected.reload([onDisk("/repo/a/default.rogen.json")]);
+
+			expect(selected.entries[0]).toMatchObject({
 				status: "broken",
 				errors: [{ code: "test.hint" }],
 			});

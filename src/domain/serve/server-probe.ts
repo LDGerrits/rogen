@@ -14,7 +14,9 @@ export type PortState =
 	| { readonly kind: "taken" };
 
 export class ServerProbe {
-	constructor(private readonly requestService: RequestService) {}
+	constructor(
+		@RequestService private readonly requestService: RequestService
+	) {}
 
 	async probe(address: ServeAddress): Promise<PortState> {
 		let listening = false;

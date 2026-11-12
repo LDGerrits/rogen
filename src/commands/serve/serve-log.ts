@@ -13,6 +13,7 @@ import {
 } from "../../domain/serve/serve-service.js";
 import { RojoServer, ServerInfo } from "../../domain/runner/rojo-server.js";
 import { WatchUpdate } from "../../domain/watch/watch-service.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ProcessExit } from "../../platform/process/process-service.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
@@ -128,11 +129,16 @@ export class ServeLog implements ServeReporter {
 	private readonly watchLog: WatchLog;
 
 	constructor(
-		private readonly logService: LogService,
 		private readonly cwd: string,
-		private readonly plan: ServePlan
+		private readonly plan: ServePlan,
+		@LogService private readonly logService: LogService,
+		@InstantiationService instantiationService: InstantiationService
 	) {
-		this.watchLog = new WatchLog(logService, cwd, "serve");
+		this.watchLog = instantiationService.createInstance(
+			WatchLog,
+			cwd,
+			"serve"
+		);
 	}
 
 	begin(): void {
@@ -254,11 +260,12 @@ export class ServeJsonLog implements ServeReporter {
 	private readonly watchLog: WatchJsonLog;
 
 	constructor(
-		private readonly logService: LogService,
 		private readonly cwd: string,
-		private readonly plan: ServePlan
+		private readonly plan: ServePlan,
+		@LogService private readonly logService: LogService,
+		@InstantiationService instantiationService: InstantiationService
 	) {
-		this.watchLog = new WatchJsonLog(logService, cwd);
+		this.watchLog = instantiationService.createInstance(WatchJsonLog, cwd);
 	}
 
 	begin(): void {

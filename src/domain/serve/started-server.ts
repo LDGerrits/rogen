@@ -58,12 +58,12 @@ export class StartedServer extends AbstractDisposable {
 	constructor(
 		target: ServeTarget,
 		plan: ServePlan,
-		private readonly rojoRunner: RojoRunner,
 		private readonly probe: ServerProbe,
 		private readonly records: ServerRecords,
 		private readonly listener: StartedServerListener,
 		/** Runs before Rojo starts again after a crash, to write the project file afresh. */
-		beforeRestart?: () => Promise<void>
+		beforeRestart: (() => Promise<void>) | undefined,
+		@RojoRunner private readonly rojoRunner: RojoRunner
 	) {
 		super();
 		this._target = target;

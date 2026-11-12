@@ -187,8 +187,8 @@ export interface RojoDone {
 
 export class OutcomeLog {
 	constructor(
-		private readonly logService: LogService,
-		private readonly cwd: string
+		private readonly cwd: string,
+		@LogService private readonly logService: LogService
 	) {}
 
 	/** The note that a config's `kind` are the ones the configs at `files` raised. */
