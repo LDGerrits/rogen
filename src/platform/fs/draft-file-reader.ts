@@ -60,7 +60,10 @@ export class DraftFileReader implements FileSystemService {
 	}
 
 	async lastModified(filePath: string): Promise<number> {
-		const source = this.sourceOf(path.resolve(filePath));
+		const resolved = path.resolve(filePath);
+		if (this.files.has(resolved) || this.folders.has(resolved))
+			return Date.now();
+		const source = this.sourceOf(resolved);
 		if (source === undefined) throw DraftFileReader.missing(filePath);
 		return this.base.lastModified(source);
 	}

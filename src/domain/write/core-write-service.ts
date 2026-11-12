@@ -107,7 +107,7 @@ export class CoreWriteService implements WriteService {
 
 	/** A check that reads through `reader`, such as a draft of files not written yet, runs in a scope where it is the file service. */
 	private scopeOf(reader?: FileSystemService): InstantiationService {
-		return reader
+		return reader && reader !== this.fileSystemService
 			? this.instantiationService.createChild(
 					new ServiceCollection([FileSystemService, reader])
 				)
@@ -313,7 +313,8 @@ export class CoreWriteService implements WriteService {
 		advice = false,
 		reader?: FileSystemService
 	): Promise<Attempt[]> {
-		const pipeline = this.scopeOf(reader).createInstance(
+		const scope = this.scopeOf(reader);
+		const pipeline = scope.createInstance(
 			WritePipeline,
 			listing,
 			this.syncTools
