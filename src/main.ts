@@ -141,6 +141,80 @@ export default function run(): void {
 	});
 }
 
+/** Registers each service with the class that implements it; a service is built when it is first asked for. */
+export function registerServices(
+	environmentService: EnvironmentService,
+	logService: LogService,
+	commandRegistry: CommandRegistry
+): ServiceCollection {
+	const services = new ServiceCollection();
+	services.set(EnvironmentService, environmentService);
+	services.set(LogService, logService);
+	registerPlatformServices(services, environmentService);
+	registerDomainServices(services, commandRegistry);
+	return services;
+}
+
+/** The services that reach the outside world. */
+function registerPlatformServices(
+	services: ServiceCollection,
+	environmentService: EnvironmentService
+): void {
+	services.set(
+		PromptService,
+		new SyncDescriptor(ConsolePromptService, [
+			{
+				interactive: environmentService.isInteractive,
+				color: environmentService.hasColor,
+			},
+		])
+	);
+	services.set(InputService, new SyncDescriptor(NativeInputService));
+	services.set(FileSystemService, new SyncDescriptor(DiskFileSystemService));
+	services.set(IndexService, new SyncDescriptor(CoreIndexService));
+	services.set(RequestService, new SyncDescriptor(NativeRequestService));
+	services.set(ProcessService, new SyncDescriptor(NativeProcessService));
+	services.set(BrowserService, new SyncDescriptor(CoreBrowserService));
+	services.set(LifecycleService, new SyncDescriptor(NativeLifecycleService));
+	services.set(Watcher, new SyncDescriptor(DiskWatcher));
+	services.set(
+		ProductService,
+		new SyncDescriptor(CoreProductService, [
+			import.meta.dirname,
+			typeof ROGEN_VERSION === "string" ? ROGEN_VERSION : undefined,
+		])
+	);
+}
+
+/** The services that know what Rogen does. */
+function registerDomainServices(
+	services: ServiceCollection,
+	commandRegistry: CommandRegistry
+): void {
+	services.set(ReleaseService, new SyncDescriptor(CoreReleaseService));
+	services.set(ConfigService, new SyncDescriptor(CoreConfigService));
+	services.set(ToolchainService, new SyncDescriptor(CoreToolchainService));
+	services.set(ToolLocator, new SyncDescriptor(CoreToolLocator));
+	services.set(WriteService, new SyncDescriptor(CoreWriteService));
+	services.set(InitService, new SyncDescriptor(CoreInitService));
+	services.set(WatchService, new SyncDescriptor(CoreWatchService));
+	services.set(RojoRunner, new SyncDescriptor(CoreRojoRunner));
+	services.set(
+		RojoCommandService,
+		new SyncDescriptor(CoreRojoCommandService)
+	);
+	services.set(SyncbackService, new SyncDescriptor(CoreSyncbackService));
+	services.set(ServeService, new SyncDescriptor(CoreServeService));
+	services.set(
+		UpdateService,
+		new SyncDescriptor(CoreUpdateService, [import.meta.dirname])
+	);
+	services.set(
+		CommandService,
+		new SyncDescriptor(CoreCommandService, [commandRegistry])
+	);
+}
+
 class RogenMain {
 	private readonly disposables = new DisposableStore();
 
@@ -252,71 +326,15 @@ class RogenMain {
 		return logService;
 	}
 
-	/** Registers each service with the class that implements it; a service is built when it is first asked for. */
 	private createInstantiationService(
 		environmentService: EnvironmentService,
 		logService: LogService,
 		commandRegistry: CommandRegistry
 	): CoreInstantiationService {
-		const services = new ServiceCollection();
-		services.set(EnvironmentService, environmentService);
-		services.set(LogService, logService);
-		services.set(
-			PromptService,
-			new SyncDescriptor(ConsolePromptService, [
-				{
-					interactive: environmentService.isInteractive,
-					color: environmentService.hasColor,
-				},
-			])
+		return new CoreInstantiationService(
+			registerServices(environmentService, logService, commandRegistry),
+			true
 		);
-		services.set(InputService, new SyncDescriptor(NativeInputService));
-		services.set(
-			FileSystemService,
-			new SyncDescriptor(DiskFileSystemService)
-		);
-		services.set(IndexService, new SyncDescriptor(CoreIndexService));
-		services.set(RequestService, new SyncDescriptor(NativeRequestService));
-		services.set(ProcessService, new SyncDescriptor(NativeProcessService));
-		services.set(BrowserService, new SyncDescriptor(CoreBrowserService));
-		services.set(
-			LifecycleService,
-			new SyncDescriptor(NativeLifecycleService)
-		);
-		services.set(Watcher, new SyncDescriptor(DiskWatcher));
-		services.set(
-			ProductService,
-			new SyncDescriptor(CoreProductService, [
-				import.meta.dirname,
-				typeof ROGEN_VERSION === "string" ? ROGEN_VERSION : undefined,
-			])
-		);
-		services.set(ReleaseService, new SyncDescriptor(CoreReleaseService));
-		services.set(ConfigService, new SyncDescriptor(CoreConfigService));
-		services.set(
-			ToolchainService,
-			new SyncDescriptor(CoreToolchainService)
-		);
-		services.set(ToolLocator, new SyncDescriptor(CoreToolLocator));
-		services.set(WriteService, new SyncDescriptor(CoreWriteService));
-		services.set(InitService, new SyncDescriptor(CoreInitService));
-		services.set(WatchService, new SyncDescriptor(CoreWatchService));
-		services.set(RojoRunner, new SyncDescriptor(CoreRojoRunner));
-		services.set(
-			RojoCommandService,
-			new SyncDescriptor(CoreRojoCommandService)
-		);
-		services.set(SyncbackService, new SyncDescriptor(CoreSyncbackService));
-		services.set(ServeService, new SyncDescriptor(CoreServeService));
-		services.set(
-			UpdateService,
-			new SyncDescriptor(CoreUpdateService, [import.meta.dirname])
-		);
-		services.set(
-			CommandService,
-			new SyncDescriptor(CoreCommandService, [commandRegistry])
-		);
-		return new CoreInstantiationService(services, true);
 	}
 
 	/** What other modules contribute to the services that ask for it. */

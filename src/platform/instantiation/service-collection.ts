@@ -33,4 +33,9 @@ export class ServiceCollection {
 	get<T>(id: ServiceIdentifier<T>): ServiceEntry<T> | undefined {
 		return this.entries.get(id) as ServiceEntry<T> | undefined;
 	}
+
+	/** The identifiers set, in the order they were first set. */
+	ids(): IterableIterator<ServiceIdentifier<unknown>> {
+		return this.entries.keys();
+	}
 }
