@@ -142,6 +142,9 @@ export class PlacementLocator {
 
 	private placedAt(file: RoutedFile): PlacedLocation {
 		const others = this.placement.otherNodesOf(file);
+		const folderNodes = [file, ...others].flatMap(
+			({ folderNodes }) => folderNodes
+		);
 		const { isLuau, isLuauModule, isDataModule } = file.entry.file;
 		const code =
 			isLuauModule || isDataModule
@@ -160,6 +163,7 @@ export class PlacementLocator {
 			route: file.route,
 			routeMatch: file.routeMatch,
 			...(file.hoisted && { hoisted: true }),
+			...(folderNodes.length > 0 && { folderNodes }),
 			...(code && { code }),
 		};
 	}

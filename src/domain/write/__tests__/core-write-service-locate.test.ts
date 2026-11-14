@@ -190,6 +190,12 @@ describe("CoreWriteService.locate", () => {
 				instancePath: ["ServerScriptService", "Inventory", "Save"],
 				route: "Server",
 				routeMatch: "folder",
+				folderNodes: [
+					{
+						folder: absPosix("src/Inventory"),
+						instancePath: ["ServerScriptService", "Inventory"],
+					},
+				],
 				named: true,
 				code: "module",
 			},
@@ -205,6 +211,16 @@ describe("CoreWriteService.locate", () => {
 				],
 				route: "Client",
 				routeMatch: "suffix",
+				folderNodes: [
+					{
+						folder: absPosix("src/Net"),
+						instancePath: [
+							"StarterPlayer",
+							"StarterPlayerScripts",
+							"Net",
+						],
+					},
+				],
 				named: true,
 				code: "module",
 			},
@@ -220,6 +236,12 @@ describe("CoreWriteService.locate", () => {
 				instancePath: ["ServerScriptService", "Anti", "Check"],
 				route: "Server",
 				routeMatch: "marker",
+				folderNodes: [
+					{
+						folder: absPosix("src/Anti"),
+						instancePath: ["ServerScriptService", "Anti"],
+					},
+				],
 				named: true,
 				code: "module",
 			},
@@ -1155,6 +1177,14 @@ describe("CoreWriteService.locate", () => {
 					],
 					route: "*",
 					routeMatch: "fallback",
+					folderNodes: [
+						["ReplicatedStorage", "Shared", "Net"],
+						["StarterPlayer", "StarterPlayerScripts", "Net"],
+						["ServerScriptService", "Net"],
+					].map((instancePath) => ({
+						folder: absPosix("src/Net"),
+						instancePath,
+					})),
 					named: true,
 					code: "module",
 				},

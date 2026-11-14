@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- `rogen syncback` puts a property set on a feature folder in that folder's `init.meta.json` when the feature is routed by an `@Server/` or `(Server)/` folder, has an invisible folder around or inside its routing folder, or holds a `^` file.
+- `rogen syncback` writes a new instance beside a `^` file where routing places it, and names a new feature's routing folder the way most of the project's are named.
+
 ## [2.0.0-beta.4] - 2026-11-10
 
 ### Added

@@ -48,3 +48,9 @@ A folder named after a route key sends everything inside it to that route's targ
 The routing folders disappear, and each feature folder appears under every service it runs in. `Data` runs only on the server, so it has only a `Server/` folder.
 
 Code requires the other parts by their path in the game, as in `require(ReplicatedStorage.Shared.Combat.Weapons)`.
+
+## Spelling It `@Server`
+
+A routing folder can also be named `@Server/`. It routes the same as `Server/`, and the `@` shows that the folder is a route, not a feature named Server.
+
+The two differ only inside a route's files, where `Server/` is a plain folder that keeps its name. Under `Shared/`, it ships to clients with a [`route.serverCodeShipped`](/docs/v2/diagnostics#route-servercodeshipped) warning. `@Server/` is an error there instead ([`route.ignoredAt`](/docs/v2/diagnostics#route-ignoredat)), and under `Server/` it repeats the route and disappears.

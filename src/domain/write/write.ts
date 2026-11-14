@@ -13,6 +13,13 @@ type MatchForm = "folder" | "marker" | "suffix";
 /** How the governing route matched the file; `init` is the route suffix of an init script in one of its folders, `copy` an init script placed where its folder's other files route it, and `fallback` the `*` route. */
 export type RouteMatch = MatchForm | "init" | "copy" | "fallback";
 
+/** A folder on disk and the node it becomes. */
+export interface FolderNode {
+	/** An absolute POSIX path. */
+	readonly folder: string;
+	readonly instancePath: readonly string[];
+}
+
 /** Why the scan left a path out; the path is the key it is stored under. */
 export type ScanLeftOut =
 	| { readonly status: "ignored"; readonly pattern: string }

@@ -25,6 +25,9 @@ export interface Donor {
 
 const AT_KEY = /@([A-Za-z][A-Za-z0-9]*)(?=\.|$)/;
 
+/** A folder named in parentheses, which makes no instance. */
+const INVISIBLE_FOLDER = /^\(.+\)$/;
+
 const isPlaced = (location: FileLocation): location is PlacedLocation =>
 	location.status === "placed";
 
@@ -90,7 +93,11 @@ export class SyncbackLayout {
 	donorsAt(node: readonly string[]): Donor[] {
 		const donors: Donor[] = [];
 		for (const file of this.placed) {
-			if (file.routeMatch === "init" || file.routeMatch === "copy")
+			if (
+				file.routeMatch === "init" ||
+				file.routeMatch === "copy" ||
+				this.skipsItsFolders(file)
+			)
 				continue;
 			if (!isSameJson(file.instancePath.slice(0, -1), node)) continue;
 			const sourcePath = this.rootOf(file.source);
@@ -162,33 +169,33 @@ export class SyncbackLayout {
 		if (folders.size !== 1) return undefined;
 		const [folder] = folders;
 		const instances: (readonly string[])[] = [];
-		for (const feature of features)
-			if (
-				feature?.folder === folder &&
-				!instances.some((known) => isSameJson(known, feature.instance))
-			)
-				instances.push(feature.instance);
-		const inFeature = this.placed.every(
-			(file) =>
-				!containsPosix(folder, file.source) ||
-				instances.some((instance) =>
-					instance.every((name, at) => file.instancePath[at] === name)
+		for (const file of this.placed)
+			for (const made of file.folderNodes ?? [])
+				if (
+					made.folder === folder &&
+					!instances.some((known) =>
+						isSameJson(known, made.instancePath)
+					)
 				)
-		);
-		return inFeature ? { folder, instances } : undefined;
+					instances.push(made.instancePath);
+		return { folder, instances };
 	}
 
-	/** The routing folder name used for `route` in this project, else the key itself. */
+	/** The routing folder name most files placed by `route` are in, else the key itself. */
 	folderNameFor(route: string): string {
+		const names = new Map<string, number>();
 		for (const file of this.placed) {
 			if (file.route !== route || file.routeMatch !== "folder") continue;
 			const root = this.rootOf(file.source);
 			if (!root) continue;
 			const segments = path.posix.relative(root, file.source).split("/");
 			const at = this.routingFolderAt(file, segments);
-			if (at >= 0) return segments[at];
+			if (at >= 0)
+				names.set(segments[at], (names.get(segments[at]) ?? 0) + 1);
 		}
-		return route;
+		let most: [string, number] = [route, 0];
+		for (const entry of names) if (entry[1] > most[1]) most = entry;
+		return most[0];
 	}
 
 	private rootOf(source: string): string | undefined {
@@ -206,23 +213,21 @@ export class SyncbackLayout {
 			const key = AT_KEY.exec(segment)?.[1];
 			return key !== undefined && this.keys.resolve(key) === file.route;
 		};
-		let anchor: number;
-		let below: string[];
-		if (file.routeMatch === "folder") {
-			anchor = this.routingFolderAt(file, segments);
-			below = segments.slice(anchor + 1);
-		} else if (file.routeMatch === "suffix") {
-			anchor = segments.findIndex(marked);
-			below = segments.slice(anchor);
-		} else return undefined;
-		if (anchor < 1) return undefined;
-		const isInit = segments[segments.length - 1].startsWith("init.");
-		const depth = below.length - 1 + (isInit ? 0 : 1);
-		if (depth < 1 || depth >= file.instancePath.length) return undefined;
-		return {
-			folder: path.posix.join(root, ...segments.slice(0, anchor)),
-			instance: file.instancePath.slice(0, -depth),
-		};
+		let end: number;
+		if (file.routeMatch === "folder")
+			end = this.routingFolderAt(file, segments);
+		else if (file.routeMatch === "suffix") end = segments.findIndex(marked);
+		else return undefined;
+		while (end > 0 && INVISIBLE_FOLDER.test(segments[end - 1])) end--;
+		if (end < 1) return undefined;
+		const folder = path.posix.join(root, ...segments.slice(0, end));
+		const made = file.folderNodes?.find((node) => node.folder === folder);
+		return made && { folder, instance: made.instancePath };
+	}
+
+	/** A `^` file that lands right at its route's target, so the folders it sits in say nothing about where its siblings go. */
+	private skipsItsFolders(file: PlacedLocation): boolean {
+		return file.hoisted === true && file.folderNodes === undefined;
 	}
 
 	/** Where in `segments`, a file's path below its source path, the first folder that spells its route is, as the router meets it; -1 when none does. */
@@ -233,7 +238,11 @@ export class SyncbackLayout {
 		return segments.findIndex(
 			(segment, at) =>
 				at < segments.length - 1 &&
-				this.keys.resolve(segment) === file.route
+				this.keys.resolve(
+					segment
+						.replace(INVISIBLE_FOLDER, (name) => name.slice(1, -1))
+						.replace(/^@/, "")
+				) === file.route
 		);
 	}
 }

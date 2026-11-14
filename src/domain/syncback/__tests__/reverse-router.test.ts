@@ -217,6 +217,41 @@ describe("ReverseRouter", () => {
 				},
 			});
 		});
+
+		it("should not follow a hoisted file, whose folder routing skips", async () => {
+			const router = await routerOf([
+				"src/Player/@Client",
+				"src/Player/^Animate.client.luau",
+			]);
+
+			expect(
+				router.place({
+					parent: ["StarterPlayer", "StarterPlayerScripts"],
+					name: "Sprint",
+					folder: false,
+				})
+			).toEqual({
+				kind: "placed",
+				home: { dir: posix("src/Client"), contents: false },
+			});
+		});
+
+		it("should follow a file in a hoisted folder, which becomes its parent", async () => {
+			const router = await routerOf([
+				"src/Player/Client/^Ui/Button.luau",
+			]);
+
+			expect(
+				router.place({
+					parent: ["StarterPlayer", "StarterPlayerScripts", "Ui"],
+					name: "Icon",
+					folder: false,
+				})
+			).toEqual({
+				kind: "placed",
+				home: { dir: posix("src/Player/Client/^Ui"), contents: false },
+			});
+		});
 	});
 
 	describe("the style of a new feature", () => {
@@ -292,6 +327,15 @@ describe("ReverseRouter", () => {
 			).toEqual({
 				kind: "placed",
 				home: { dir: posix("src/Quest/Server"), contents: true },
+			});
+		});
+
+		it("should spell the routing folder as the project does, `@` and all", async () => {
+			const router = await routerOf(["src/Inventory/@Server/Bag.luau"]);
+
+			expect(router.place(quest)).toEqual({
+				kind: "placed",
+				home: { dir: posix("src/Quest/@Server"), contents: true },
 			});
 		});
 
