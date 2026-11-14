@@ -22,6 +22,94 @@ describe("featureMetas", () => {
 		});
 	});
 
+	it("should give the feature folder of a routing folder spelled with `@`", async () => {
+		const layout = await layoutOf(["src/Inventory/@Server/Bag.luau"]);
+
+		expect(
+			featureMetas(layout, [{ instance: server, edit: "a" }], same).placed
+		).toEqual([
+			{ folder: posix("src/Inventory"), instance: server, edit: "a" },
+		]);
+	});
+
+	it("should skip an invisible folder that holds the routing folder", async () => {
+		const layout = await layoutOf([
+			"src/Inventory/(Logic)/Server/Bag.luau",
+		]);
+
+		expect(
+			featureMetas(layout, [{ instance: server, edit: "a" }], same).placed
+		).toEqual([
+			{ folder: posix("src/Inventory"), instance: server, edit: "a" },
+		]);
+	});
+
+	it("should not count an invisible folder in the routing folder as a level", async () => {
+		const layout = await layoutOf(["src/Inventory/Server/(Ui)/Bag.luau"]);
+		const service = { instance: ["ServerScriptService"], edit: "a" };
+
+		expect(
+			featureMetas(
+				layout,
+				[service, { instance: server, edit: "b" }],
+				same
+			)
+		).toEqual({
+			placed: [
+				{ folder: posix("src/Inventory"), instance: server, edit: "b" },
+			],
+			unplaced: [],
+			homeless: [service],
+		});
+	});
+
+	it("should not take a hoisted file's target for its feature", async () => {
+		const layout = await layoutOf([
+			"src/Player/Client/^Animate.client.luau",
+			"src/Player/Client/Sprint.client.luau",
+		]);
+		const scripts = {
+			instance: ["StarterPlayer", "StarterPlayerScripts"],
+			edit: "a",
+		};
+		const player = ["StarterPlayer", "StarterPlayerScripts", "Player"];
+
+		expect(
+			featureMetas(
+				layout,
+				[scripts, { instance: player, edit: "b" }],
+				same
+			)
+		).toEqual({
+			placed: [
+				{ folder: posix("src/Player"), instance: player, edit: "b" },
+			],
+			unplaced: [],
+			homeless: [scripts],
+		});
+	});
+
+	it("should give the feature folder of a routing folder in parentheses", async () => {
+		const layout = await layoutOf(["src/Inventory/(Server)/Bag.luau"]);
+
+		expect(
+			featureMetas(layout, [{ instance: server, edit: "a" }], same).placed
+		).toEqual([
+			{ folder: posix("src/Inventory"), instance: server, edit: "a" },
+		]);
+	});
+
+	it("should not count a routing folder that restates its route as a level", async () => {
+		const layout = await layoutOf([
+			"src/Inventory/Server/@Server/Bag.luau",
+		]);
+		const service = { instance: ["ServerScriptService"], edit: "a" };
+
+		expect(featureMetas(layout, [service], same).homeless).toEqual([
+			service,
+		]);
+	});
+
 	it("should place an edit made alike on every instance of a feature once", async () => {
 		const layout = await layoutOf([
 			"src/Inventory/Server/Bag.luau",

@@ -29,6 +29,7 @@ import {
 	LeftOut,
 	LoadedConfig,
 	RouteMatch,
+	FolderNode,
 } from "./write.js";
 
 interface Located {
@@ -47,6 +48,8 @@ export interface PlacedLocation extends Located {
 	readonly routeMatch: RouteMatch;
 	/** A `^` on its name or a folder's took it straight to the route's target. */
 	readonly hoisted?: boolean;
+	/** The folders that become the nodes above it, which a folder's `init.meta.json` applies to. */
+	readonly folderNodes?: readonly FolderNode[];
 	/** The path was named as a file, and not found in a folder or behind an instance. */
 	readonly named?: true;
 	/** For a file Rojo makes a script from: a module to require, or a script that runs on its own. */

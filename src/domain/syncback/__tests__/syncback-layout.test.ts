@@ -132,5 +132,15 @@ describe("SyncbackLayout", () => {
 			expect(layout.folderNameFor("Server")).toBe("server");
 			expect(layout.folderNameFor("Client")).toBe("Client");
 		});
+
+		it("should take the spelling most files are in", async () => {
+			const layout = await layoutOf([
+				"src/A/Server/X.luau",
+				"src/B/@Server/X.luau",
+				"src/C/@Server/X.luau",
+			]);
+
+			expect(layout.folderNameFor("Server")).toBe("@Server");
+		});
 	});
 });

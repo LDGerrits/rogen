@@ -3,7 +3,7 @@ import { dirnamePosix, joinPosix } from "../../base/path.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoScriptSuffix } from "../rojo/rojo.js";
-import { RouteMatch } from "./write.js";
+import { FolderNode, RouteMatch } from "./write.js";
 import { DirClaims, RootClaims } from "./dir-claims.js";
 import { InstanceName, SuffixSpan } from "./instance-name.js";
 import {
@@ -13,11 +13,6 @@ import {
 	NameReadings,
 } from "./name-readings.js";
 import { ScannedFile, ScannedRoot } from "./root-scanner.js";
-
-interface FolderNode {
-	readonly instancePath: readonly string[];
-	readonly folder: string;
-}
 
 export interface RoutedFile {
 	readonly entry: ScannedFile;
