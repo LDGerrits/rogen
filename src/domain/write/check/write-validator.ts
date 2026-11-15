@@ -1,5 +1,5 @@
 import path from "path";
-import { compareStrings, groupBy } from "../../../base/collections.js";
+import { compareStrings } from "../../../base/collections.js";
 import { isObject } from "../../../base/objects.js";
 import { isInside, joinPosix, toPosix } from "../../../base/path.js";
 import {
@@ -82,7 +82,6 @@ export class WriteValidator {
 			...this.folderTypo(),
 			...this.unrouted(),
 			...this.serverCodeShipped(),
-			...this.apartFromInit(),
 			...this.deadScript(),
 			...this.scriptSuffixBeforeAt(),
 			...this.scriptClassMismatch(),
@@ -404,48 +403,6 @@ export class WriteValidator {
 				`ships to clients as ${instanceKey(file.instancePath)}: move it out of the "${file.route}" route's files if it's server code, or keep it there with a "@${file.route}" marker file in its folder`
 			)
 		);
-	}
-
-	/** Files only the fallback places whose nearest init script, on any side, is one its own name routes elsewhere. */
-	private apartFromInit(): Diagnostic[] {
-		const { files, nodes } = this.placement;
-		const initsAt = new InstanceMap<true>();
-		for (const node of nodes)
-			if (node.init) initsAt.set(node.instancePath, true);
-		const selfRouted = groupBy(
-			files.filter(
-				(file) =>
-					file.init !== undefined && file.routeMatch === "suffix"
-			),
-			(file) => file.init!.becomes
-		);
-		const nearestApart = (file: RoutedFile): RoutedFile | undefined => {
-			for (const { folder, instancePath } of [
-				...file.folderNodes,
-			].reverse()) {
-				if (initsAt.get(instancePath)) return undefined;
-				const routed = selfRouted.get(folder);
-				if (routed) return routed[0];
-			}
-			return undefined;
-		};
-		return files.flatMap((file) => {
-			if (file.routeMatch !== "fallback" || file.init) return [];
-			const init = nearestApart(file);
-			if (!init) return [];
-			const name = path.posix.basename(file.entry.source);
-			const leaf = file.instancePath.at(-1)!;
-			const named = name.startsWith(leaf)
-				? `as ${leaf}@${init.route}${name.slice(leaf.length)}`
-				: `with @${init.route}`;
-			return [
-				warningDiagnostic(
-					"route.apartFromInit",
-					{ resource: file.entry.source },
-					`lands at ${instanceKey(file.instancePath)} by the "*" route, apart from ${path.posix.basename(init.entry.source)}, which its name sends to ${instanceKey(init.instancePath)}. Name this file's side, ${named}, or route the folder by its name or a "@${init.route}" marker file`
-				),
-			];
-		});
 	}
 
 	private scriptsThatNeverRun(): { file: RoutedFile; run: ScriptRun }[] {

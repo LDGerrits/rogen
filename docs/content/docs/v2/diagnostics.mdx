@@ -365,16 +365,6 @@ If the folder should replicate, put a marker file in it that restates the govern
 
 A route written with `@`, as in `Shared/Data@server.luau`, gets the [`route.ignoredAt`](#route-ignoredat) error instead. See [The Outermost Route Wins](/docs/v2/core-concepts/routing#the-outermost-route-wins).
 
-### `route.apartFromInit` [#route-apartfrominit]
-
-Warning. A folder's init script has a route in its name, such as `init.server.luau` or `init@server.luau`, and a file in the folder has none. That route places only the init script, so the `*` route places the file, apart from the script. In Rojo's own layout, `Store/init.server.luau` with `Row.luau`, the Script then can't reach `script.Row`, and `Row` ships to clients.
-
-```
-warning: lands at ReplicatedStorage/Shared/Store/Row by the "*" route, apart from init.server.luau, which its name sends to ServerScriptService/Store. Name this file's side, as Row@server.luau, or route the folder by its name or a "@server" marker file (route.apartFromInit)
-```
-
-Name the file's side, as in `Row@server.luau`. To route the whole folder with its init script, name the folder for the route, as in `Store@server/`, or put a `@server` marker file in it. A file that should be shared names that route, as in `Types@shared.luau`. A file beside an init script on its own side, or beside a plain `init.luau`, gets no warning. See [Init Scripts](/docs/v2/core-concepts/routing/names#init-scripts).
-
 ## Tree
 
 These diagnostics come from the instance tree that Rogen writes: clashes between files and nodes, mounts, and scripts that land where they don't run.
