@@ -8,6 +8,8 @@ export interface InstanceClash {
 	readonly instance: string;
 	readonly winner: RoutedFile;
 	readonly losers: readonly RoutedFile[];
+	/** Set when the files are init files of this folder, of which Rojo reads only one, wherever their routes send them. */
+	readonly initFolder?: string;
 }
 
 interface InstanceResolution {
@@ -34,12 +36,20 @@ const byInitRank = (claimants: readonly RoutedFile[]): RoutedFile[] => {
 	return claimants.map((file) => (file.init ? inits.shift()! : file));
 };
 
+/** An init file Rojo reads as its folder, which it reads through the directory, so the folder's other such files are never read. */
+const isRojoInit = (file: RoutedFile): boolean =>
+	file.init !== undefined && file.entry.file.isInit;
+
 export class InstanceResolver {
 	resolve(routed: readonly RoutedFile[]): InstanceResolution {
 		const clashes: InstanceClash[] = [];
+		const { kept, folderLosers } = InstanceResolver.onePerFolder(
+			routed,
+			clashes
+		);
 		const winners = new InstanceMap<RoutedFile>();
 		for (const root of groupBy(
-			routed,
+			kept,
 			(file) => file.entry.sourcePath
 		).values()) {
 			for (const [instance, claimed] of groupBy(root, (file) =>
@@ -56,7 +66,7 @@ export class InstanceResolver {
 				winners.set(claimants[0].instancePath, winner);
 			}
 		}
-		const replaced = routed.flatMap((file): [string, LeftOut][] => {
+		const replaced = kept.flatMap((file): [string, LeftOut][] => {
 			const winner = winners.get(file.instancePath);
 			return winner && winner !== file
 				? [
@@ -69,8 +79,47 @@ export class InstanceResolver {
 		});
 		return {
 			nodes: [...new Set(winners.values())],
-			leftOut: replaced,
+			leftOut: [...folderLosers, ...replaced],
 			clashes,
+		};
+	}
+
+	/** Keeps the one init file of each folder that Rojo reads, in its order, and replaces the folder's others, wherever their routes send them. */
+	private static onePerFolder(
+		routed: readonly RoutedFile[],
+		clashes: InstanceClash[]
+	): { kept: RoutedFile[]; folderLosers: [string, LeftOut][] } {
+		const losing = new Set<string>();
+		const folderLosers: [string, LeftOut][] = [];
+		const folders = groupBy(
+			routed.filter(isRojoInit),
+			(file) => `${file.entry.sourcePath}\0${file.init!.sitsIn}`
+		);
+		for (const files of folders.values()) {
+			const bySource = [
+				...new Map(files.map((file) => [file.entry.source, file])),
+			].map(([, file]) => file);
+			if (bySource.length < 2) continue;
+			const ranked = byInitRank(bySource);
+			const winner = ranked[ranked.length - 1];
+			const losers = ranked.slice(0, -1);
+			clashes.push({
+				instance: instanceKey(winner.instancePath),
+				winner,
+				losers,
+				initFolder: winner.init!.sitsIn,
+			});
+			for (const { entry } of losers) {
+				losing.add(entry.source);
+				folderLosers.push([
+					entry.source,
+					{ status: "replaced", by: winner.entry.source },
+				]);
+			}
+		}
+		return {
+			kept: routed.filter((file) => !losing.has(file.entry.source)),
+			folderLosers,
 		};
 	}
 }

@@ -611,21 +611,24 @@ export class WriteValidator {
 	}
 
 	private replacedInstance(): Diagnostic[] {
-		return this.placement.clashes.flatMap(({ instance, winner, losers }) =>
-			losers.map(({ entry }) =>
-				warningDiagnostic(
-					"tree.instanceClash",
-					{ resource: entry.source },
-					`becomes "${instance}", as ${winner.entry.source} does, which takes its place. Rename one of them to keep both.`,
-					[],
-					[
-						{
-							resource: winner.entry.source,
-							message: `takes its place as "${instance}"`,
-						},
-					]
+		return this.placement.clashes.flatMap(
+			({ instance, winner, losers, initFolder }) =>
+				losers.map(({ entry, instancePath }) =>
+					warningDiagnostic(
+						"tree.instanceClash",
+						{ resource: entry.source },
+						initFolder === undefined
+							? `becomes "${instance}", as ${winner.entry.source} does, which takes its place. Rename one of them to keep both.`
+							: `is an init file of ${initFolder}, as ${winner.entry.source} is, and Rojo reads only that one. ${instanceKey(instancePath) === instance ? "Remove one of them." : "To give each side its own init script, name them with @, as init@server.luau."}`,
+						[],
+						[
+							{
+								resource: winner.entry.source,
+								message: `takes its place as "${instance}"`,
+							},
+						]
+					)
 				)
-			)
 		);
 	}
 

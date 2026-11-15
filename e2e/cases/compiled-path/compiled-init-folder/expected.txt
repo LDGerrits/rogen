@@ -13,4 +13,4 @@ project: DataModel
         Button: ModuleScript  <- out/Ui/Button.luau
   ServerScriptService: ServerScriptService
     Store: Script  <- out/Store/init.server.luau
-      Row: ModuleScript  <- out/Store/Row.luau
+      Row: ModuleScript  <- out/Store/Row@server.luau

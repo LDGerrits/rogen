@@ -1,9 +1,6 @@
 $ rogen write
 exit 0
 stdout: (not shown)
-stderr:
-  default.rogen.json - warning: 1 file under a server-only route ships to clients, because an outer route governs it: (route.serverCodeShipped)
-    src/Inventory/Ui/server/Nested.luau (ships to clients as StarterPlayer/StarterPlayerScripts/Inventory/Ui/server/Nested: move it out of the "client" route's files if it's server code, or keep it there with a "@client" marker file in its folder)
 
 written:
   default.project.json
@@ -18,11 +15,11 @@ project: DataModel
   ServerScriptService: ServerScriptService
     Inventory: Folder
       Store: Script  <- src/Inventory/Store/init.server.luau
-        Row: ModuleScript  <- src/Inventory/Store/Row.luau
+        Row: ModuleScript  <- src/Inventory/Store/Row@server.luau
+      Ui: Folder
+        Nested: ModuleScript  <- src/Inventory/Ui/server/Nested.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Inventory: Folder
         Ui: LocalScript  <- src/Inventory/Ui/init.client.luau
-          Button: ModuleScript  <- src/Inventory/Ui/Button.luau
-          server: Folder
-            Nested: ModuleScript  <- src/Inventory/Ui/server/Nested.luau
+          Button: ModuleScript  <- src/Inventory/Ui/Button@client.luau

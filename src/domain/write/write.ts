@@ -10,8 +10,8 @@ import { ConfigSelection, validConfigs } from "../config/config-service.js";
 
 type MatchForm = "folder" | "marker" | "suffix";
 
-/** How the governing route matched the file; `init` is the route suffix of an init script in one of its folders, `copy` an init script placed where its folder's other files route it, and `fallback` the `*` route. */
-export type RouteMatch = MatchForm | "init" | "copy" | "fallback";
+/** How the governing route matched the file; `copy` is an init script placed where its folder's other files route it, and `fallback` the `*` route. */
+export type RouteMatch = MatchForm | "copy" | "fallback";
 
 /** A folder on disk and the node it becomes. */
 export interface FolderNode {

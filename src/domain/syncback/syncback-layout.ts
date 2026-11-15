@@ -93,11 +93,7 @@ export class SyncbackLayout {
 	donorsAt(node: readonly string[]): Donor[] {
 		const donors: Donor[] = [];
 		for (const file of this.placed) {
-			if (
-				file.routeMatch === "init" ||
-				file.routeMatch === "copy" ||
-				this.skipsItsFolders(file)
-			)
+			if (file.routeMatch === "copy" || this.skipsItsFolders(file))
 				continue;
 			if (!isSameJson(file.instancePath.slice(0, -1), node)) continue;
 			const sourcePath = this.rootOf(file.source);
