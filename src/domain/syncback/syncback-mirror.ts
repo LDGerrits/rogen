@@ -12,6 +12,7 @@ import {
 	rojoPathTarget,
 } from "../rojo/rojo-project.js";
 import { SyncRule } from "../rojo/sync-rules.js";
+import { SyncbackLayout } from "./syncback-layout.js";
 
 /** Names that are safe to use as a folder or file name on every system. */
 const SAFE_NAME = /^[A-Za-z0-9_][A-Za-z0-9_ .-]*$/;
@@ -287,7 +288,7 @@ class MirrorWalk {
 		const here = [...instancePath, name];
 		const target = this.madeFrom(child, here);
 		if (target !== undefined)
-			return this.readsAlike(target, name)
+			return this.readsAlike(target, name) && !this.isInitFile(target)
 				? { kind: "moved", target }
 				: KEPT_NODE;
 		return instancePath.length > 0 && this.madeWhole(child, here)
@@ -369,6 +370,10 @@ class MirrorWalk {
 			await this.keepProject(node, instancePath, target, optional);
 			return;
 		}
+		if (this.isInitFile(target)) {
+			await this.keepInit(node, instancePath, target, optional);
+			return;
+		}
 		const own = this.spare();
 		const base = path.posix.basename(target);
 		const rojoName = this.inputs.fileAt(target).instanceName;
@@ -388,6 +393,43 @@ class MirrorWalk {
 		);
 		this.addFolder(own);
 		this.repoint(node, `${own}/${base}`, optional);
+		await this.children(node, instancePath, undefined);
+	}
+
+	/** Whether the write placed `target` as an init file Rojo doesn't read as one, such as `init@server.luau`, which it mounts alone. */
+	private isInitFile(target: string): boolean {
+		const placed = this.inputs.placed.find(
+			({ source }) => source === target
+		);
+		return placed !== undefined && SyncbackLayout.makesItsFolder(placed);
+	}
+
+	/** An init file the write mounts alone, copied into a mirror folder as the init file Rojo reads, so Rojo writes the children Studio adds to it into that folder. */
+	private async keepInit(
+		node: RojoNode,
+		instancePath: readonly string[],
+		target: string,
+		optional: boolean
+	): Promise<void> {
+		const own = this.spare();
+		const init = `${own}/${RojoFile.INIT_NAME}${this.suffixOf(target)}`;
+		const meta = `${own}/${RojoFile.INIT_META}`;
+		this.keptNodes.set(own, instancePath);
+		this.keptNodes.set(init, instancePath);
+		this.keptNodes.set(meta, instancePath);
+		this.entries.push(
+			{ mirror: init, target, kind: "file" },
+			{
+				mirror: meta,
+				target: path.posix.join(
+					path.posix.dirname(target),
+					`${this.inputs.fileAt(target).instanceName}${RojoFile.META_SUFFIX}`
+				),
+				kind: "file",
+			}
+		);
+		this.addFolder(own);
+		this.repoint(node, own, optional);
 		await this.children(node, instancePath, undefined);
 	}
 

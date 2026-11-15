@@ -1254,6 +1254,26 @@ describe("WriteValidator rules", () => {
 				]);
 			});
 
+			it("should take the nearest init script, and none past one on the file's own side", async () => {
+				await write(
+					"src/Feat/init@server.luau",
+					"src/Feat/Sub/init.luau",
+					"src/Feat/Sub/X.luau",
+					"src/Hub/init@server.luau",
+					"src/Hub/Sub/init@client.luau",
+					"src/Hub/Sub/Y.luau"
+				);
+
+				expect(await apart()).toEqual([
+					expect.objectContaining({
+						resource: abs("src/Hub/Sub/Y.luau"),
+						message: expect.stringContaining(
+							"apart from init@client.luau"
+						),
+					}),
+				]);
+			});
+
 			it("should not warn about a file that names its side, or one an init script lands beside", async () => {
 				await write(
 					"src/Store/init.server.luau",

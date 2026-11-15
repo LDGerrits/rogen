@@ -144,7 +144,7 @@ export class SyncbackLayout {
 	}
 
 	/** Whether `file` is an init file, the instance its folder becomes. */
-	static isItsFolder(file: PlacedLocation): boolean {
+	static makesItsFolder(file: PlacedLocation): boolean {
 		const folder = file.folderNodes?.at(-1);
 		return (
 			folder !== undefined &&
@@ -157,7 +157,7 @@ export class SyncbackLayout {
 		const maker = this.fileMaking(node);
 		return (
 			maker !== undefined &&
-			SyncbackLayout.isItsFolder(maker) &&
+			SyncbackLayout.makesItsFolder(maker) &&
 			maker.routeMatch === "suffix"
 		);
 	}

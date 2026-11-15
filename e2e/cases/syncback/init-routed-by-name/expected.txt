@@ -2,22 +2,34 @@ $ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
   Writing src/Store/Row@server.luau
+  Writing src/Feat/Load@server.luau
 stderr:
   Wrote default.project.json.
-  Syncback wrote 1 change.
+  Syncback wrote 2 changes.
 
 $ rogen where src
 exit 0
 stdout:
+  src/Feat/Load@server.luau -> ServerScriptService/Feat/Load · route server (suffix)
+  src/Feat/Save@server.luau -> ServerScriptService/Feat/Save · route server (suffix)
+  src/Feat/init@client.luau -> StarterPlayer/StarterPlayerScripts/Feat · route client (suffix)
+  src/Feat/init@server.luau -> ServerScriptService/Feat · route server (suffix)
   src/Store/Row@server.luau -> ServerScriptService/Store/Row · route server (suffix)
   src/Store/init.server.luau -> ServerScriptService/Store · route server (suffix)
 
 written:
   default.project.json
+  src/Feat/Load@server.luau
   src/Store/Row@server.luau
 
 $ rojo sourcemap default.project.json
 project: DataModel
   ServerScriptService: ServerScriptService
+    Feat: ModuleScript  <- src/Feat/init@server.luau
+      Load: ModuleScript  <- src/Feat/Load@server.luau
+      Save: ModuleScript  <- src/Feat/Save@server.luau
     Store: Script  <- src/Store/init.server.luau
       Row: ModuleScript  <- src/Store/Row@server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Feat: ModuleScript  <- src/Feat/init@client.luau

@@ -139,7 +139,7 @@ export class ReverseRouter {
 			const node = parent.slice(0, depth);
 			const below = parent.slice(depth);
 			const maker = this.layout.fileMaking(node);
-			if (maker && SyncbackLayout.isItsFolder(maker))
+			if (maker && SyncbackLayout.makesItsFolder(maker))
 				return {
 					kind: "placed",
 					home: {
@@ -148,7 +148,7 @@ export class ReverseRouter {
 							...below
 						),
 						contents: false,
-						...(maker.routeMatch === "suffix" && {
+						...(this.layout.routesOnlyItsInit(node) && {
 							mark: {
 								text: `@${this.layout.spellingOf(maker.route)}`,
 								route: maker.route,

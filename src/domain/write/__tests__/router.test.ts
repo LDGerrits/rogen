@@ -664,7 +664,7 @@ describe("Router", () => {
 						code: "tree.instanceClash",
 						resource: abs("src/Feat/init.client.luau"),
 						message: expect.stringContaining(
-							"name them with @, as init@server.luau"
+							"name them with @, as init@client.client.luau"
 						),
 					},
 				]);
