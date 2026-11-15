@@ -1,0 +1,20 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Feat: Folder
+        Types: ModuleScript  <- src/Feat/Types@shared.luau
+  ServerScriptService: ServerScriptService
+    Feat: ModuleScript  <- src/Feat/init@server.luau
+      Save: ModuleScript  <- src/Feat/Save@server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Feat: LocalScript  <- src/Feat/init@client.client.luau
+        Ui: ModuleScript  <- src/Feat/Ui@client.luau

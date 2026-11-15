@@ -288,7 +288,7 @@ error: "@client" and "@server" route this folder to different places, and nothin
 
 Delete the marker that you don't want. Or move part of the folder into a subfolder with its own marker.
 
-An init script's route suffix counts as a marker, so `@server` beside `init@client.luau` clashes too. Two markers for the same route are fine. See [Marker Files](/docs/v2/core-concepts/routing/names#marker-files).
+Two markers for the same route are fine. An init script's route routes only the script, so `init@server.luau` beside `init@client.luau` doesn't clash. See [Marker Files](/docs/v2/core-concepts/routing/names#marker-files).
 
 ### `route.ignoredAt` [#route-ignoredat]
 
@@ -365,6 +365,16 @@ If the folder should replicate, put a marker file in it that restates the govern
 
 A route written with `@`, as in `Shared/Data@server.luau`, gets the [`route.ignoredAt`](#route-ignoredat) error instead. See [The Outermost Route Wins](/docs/v2/core-concepts/routing#the-outermost-route-wins).
 
+### `route.apartFromInit` [#route-apartfrominit]
+
+Warning. A folder's init script has a route in its name, such as `init.server.luau` or `init@server.luau`, and a file in the folder has none. That route places only the init script, so the `*` route places the file, apart from the script. In Rojo's own layout, `Store/init.server.luau` with `Row.luau`, the Script then can't reach `script.Row`, and `Row` ships to clients.
+
+```
+warning: lands at ReplicatedStorage/Shared/Store/Row by the "*" route, apart from init.server.luau, which its name sends to ServerScriptService/Store. Name this file's side, as Row@server.luau, or route the folder by its name or a "@server" marker file (route.apartFromInit)
+```
+
+Name the file's side, as in `Row@server.luau`. To route the whole folder with its init script, name the folder for the route, as in `Store@server/`, or put a `@server` marker file in it. A file that should be shared names that route, as in `Types@shared.luau`. A file beside an init script on its own side, or beside a plain `init.luau`, gets no warning. See [Init Scripts](/docs/v2/core-concepts/routing/names#init-scripts).
+
 ## Tree
 
 These diagnostics come from the instance tree that Rogen writes: clashes between files and nodes, mounts, and scripts that land where they don't run.
@@ -392,6 +402,12 @@ warning: becomes "ReplicatedStorage/shared/Inventory/Types", as src/Inventory/Ty
 Rename or delete one of the files. In `--json`, `related` names the file that takes the instance. `rogen where` shows the left-out file as `replaced by`.
 
 Across source paths, the last file wins without a warning. That is how a later source path replaces a file of an earlier one.
+
+Rojo reads one init file per folder, such as `init.luau` before `init.server.luau`, wherever their routes send them. The others get this warning, and to give each side its own init script you name them with `@`, as in `init@server.luau`:
+
+```
+warning: is an init file of src/Net, as src/Net/init.luau is, and Rojo reads only that one. To give each side its own init script, name them with @, as init@server.luau. (tree.instanceClash)
+```
 
 It also warns when a file becomes an instance that files from elsewhere land in, so they become its children. That happens when a loose file, such as `src/Server/Inv.luau`, has the name of a feature folder, or when a `^` file hoists into a feature's name.
 

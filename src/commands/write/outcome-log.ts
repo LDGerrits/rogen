@@ -48,6 +48,10 @@ const GROUPS: Readonly<Record<string, DiagnosticGroup>> = {
 		headline: (count) =>
 			`${plural(count, "file")} under a server-only route ${either(count, "ships", "ship")} to clients, because an outer route governs ${either(count, "it", "them")}:`,
 	},
+	"route.apartFromInit": {
+		headline: (count) =>
+			`${plural(count, "file")} that only the "*" route places ${either(count, "lands", "land")} apart from the init script of ${either(count, "its", "their")} folder, whose name routes only the script:`,
+	},
 	"tree.deadScript": {
 		headline: (count) =>
 			`${plural(count, "script")} will never run where ${either(count, "it lands", "they land")}:`,

@@ -1225,5 +1225,49 @@ describe("WriteValidator rules", () => {
 				expect(await shipped()).toEqual([]);
 			});
 		});
+
+		describe("files apart from the init script their folder routes by its name", () => {
+			const apart = async () =>
+				(await route())
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "route.apartFromInit"
+					);
+
+			it("should warn at each file only the fallback places, naming the init script and the name that follows it", async () => {
+				await write(
+					"src/Store/init.server.luau",
+					"src/Store/Row.luau",
+					"src/Store/Rows/Cell.luau"
+				);
+
+				expect(await apart()).toEqual([
+					expect.objectContaining({
+						severity: DiagnosticSeverity.Warning,
+						resource: abs("src/Store/Row.luau"),
+						message:
+							'lands at ReplicatedStorage/shared/Store/Row by the "*" route, apart from init.server.luau, which its name sends to ServerScriptService/Store. Name this file\'s side, as Row@server.luau, or route the folder by its name or a "@server" marker file',
+					}),
+					expect.objectContaining({
+						resource: abs("src/Store/Rows/Cell.luau"),
+					}),
+				]);
+			});
+
+			it("should not warn about a file that names its side, or one an init script lands beside", async () => {
+				await write(
+					"src/Store/init.server.luau",
+					"src/Store/Row@server.luau",
+					"src/Store/Hud@client.luau",
+					"src/Net/init@server.luau",
+					"src/Net/init.luau",
+					"src/Net/Util.luau",
+					"src/Hud/Server/init.luau",
+					"src/Hud/Bar.luau"
+				);
+
+				expect(await apart()).toEqual([]);
+			});
+		});
 	});
 });
