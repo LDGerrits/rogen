@@ -3,13 +3,9 @@ title: Using Luau
 description: The editor, requires and Darklua in a Luau game
 ---
 
-## Keep the Editor's Sourcemap Current
+## The Editor
 
-luau-lsp reads `sourcemap.json` to know where each file sits in the game. Its VS Code extension writes that file by running `rojo sourcemap --watch` on `default.project.json`.
-
-`*.project.json` belongs in `.gitignore`: `rogen init` lists it in a `.gitignore` it creates, and asks you to add it to one that was there. So a fresh clone has no project file and luau-lsp can't find the game. After you clone, run `rogen write`, then **Luau: Regenerate Sourcemap** from the command palette.
-
-A new file in a feature folder reaches the sourcemap by itself. A new feature folder needs a new entry in `default.project.json`, which `rogen serve` writes as you add the folder. When serve isn't running, run `rogen write`.
+luau-lsp builds its sourcemap from `default.project.json`, which git ignores. After you clone, run `rogen write`, then **Luau: Regenerate Sourcemap**. A new feature folder reaches the sourcemap when `rogen serve` or `rogen write` updates the project file.
 
 ## Requires
 
