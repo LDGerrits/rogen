@@ -6,7 +6,12 @@ import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileType, isFileType } from "../../platform/fs/file-system-service.js";
 import { RojoFile } from "../rojo/rojo.js";
-import { isProjectFileName, projectFileName } from "../rojo/rojo-project.js";
+import {
+	RojoProject,
+	isProjectFileName,
+	projectFileName,
+	rojoPathTarget,
+} from "../rojo/rojo-project.js";
 import {
 	DEFAULT_CONFIG_FILE,
 	DEFAULT_CONFIG_FILE_NAMES,
@@ -367,6 +372,58 @@ export class ConfigDiscovery {
 			if (await this.fileSystemService.isFile(file)) return file;
 		}
 		return undefined;
+	}
+
+	/** The configs that write the project files `projectFile` nests, looking through each plain project file it nests, in tree order. */
+	async writersNestedIn(projectFile: string): Promise<string[]> {
+		const writers: string[] = [];
+		const read = new Set<string>();
+		const visit = async (file: string): Promise<void> => {
+			if (read.has(file)) return;
+			read.add(file);
+			const text = await tryWithAsync(() =>
+				this.fileSystemService.readFile(file)
+			);
+			const project = text.isOk()
+				? RojoProject.parse(text.value)
+				: undefined;
+			if (!project?.isOk()) return;
+			for (const mounted of project.value.mountedPaths()) {
+				const target = path.resolve(
+					path.dirname(file),
+					rojoPathTarget(mounted.path)
+				);
+				const nested = await this.nestedAt(target);
+				if (nested?.kind === "plain") await visit(nested.file);
+				else if (nested && !writers.includes(nested.file))
+					writers.push(nested.file);
+			}
+		};
+		await visit(projectFile);
+		return writers;
+	}
+
+	/** What Rojo reads as a nested project at `target`: a project file, or a folder's default one, with the config that writes it when there is one. */
+	private async nestedAt(
+		target: string
+	): Promise<{ kind: "config" | "plain"; file: string } | undefined> {
+		if (await this.fileSystemService.isDirectory(target)) {
+			const [config] = await this.defaultConfigs(target);
+			if (config) return { kind: "config", file: config };
+			const plain = await this.adoptable(target);
+			return plain ? { kind: "plain", file: plain } : undefined;
+		}
+		const base = path.basename(target);
+		if (!isProjectFileName(base)) return undefined;
+		const config = await this.configBeside(
+			path.dirname(target),
+			projectStem(base)
+		);
+		if (config.isOk() && config.value)
+			return { kind: "config", file: config.value };
+		return (await this.fileSystemService.isFile(target))
+			? { kind: "plain", file: target }
+			: undefined;
 	}
 
 	/** The config that answers for `target`: the default of the nearest folder above a path, so an agent hook can check from the root. */

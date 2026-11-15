@@ -263,7 +263,9 @@ export class CoreServeSession
 
 	private async reconcile(): Promise<void> {
 		const { selection } = this.plan;
-		const { configs } = selection;
+		const configs = selection.configs.filter(
+			({ file }) => !selection.nestedWriters.has(file)
+		);
 		const wanted = new Set(configs.map(({ id }) => id));
 		for (const [file, server] of this.servers) {
 			if (this.isHalted) return;

@@ -62,7 +62,9 @@ export class WriteWatch {
 		const selection =
 			this.configs === "here"
 				? ok(await configService.selectHere())
-				: await configService.select(this.configs);
+				: this.step
+					? await configService.selectForRojo(this.configs)
+					: await configService.select(this.configs);
 		if (selection.isErr()) return selection;
 		for (const note of selection.value.notes) logService.warn(note);
 		if (this.step !== undefined) {

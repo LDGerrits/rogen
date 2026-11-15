@@ -1,0 +1,7 @@
+{
+	"steps": [
+		["build", "session/rojo.project.json", "-o", "game.rbxl"],
+		["sourcemap", "session/rojo.project.json"]
+	],
+	"output": ["build"]
+}

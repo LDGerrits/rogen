@@ -86,19 +86,32 @@ export class CoreConfigService implements ConfigService {
 		);
 	}
 
-	/** Discovers `refs` and lists the default folder with `discovery`, so a selection through another file system reads only that one. */
+	async selectForRojo(
+		refs: readonly string[]
+	): Promise<Result<ReloadableSelection, Error>> {
+		return this.open(this.discovery, this.loader, refs, true);
+	}
+
+	/** Discovers `refs` and lists the default folder with `discovery`, so a selection through another file system reads only that one; `withWriters` adds the configs that write what a plain project file nests. */
 	private async open(
 		discovery: ConfigDiscovery,
 		loader: ConfigLoader,
-		refs: readonly string[]
+		refs: readonly string[],
+		withWriters = false
 	): Promise<Result<ReloadableSelection, Error>> {
 		const discovered = await discovery.discover(refs);
 		if (discovered.isErr()) return err(discovered.error);
 
 		const { home: directory, files, noneNamed, notes } = discovered.value;
+		const writers: string[] = [];
+		if (withWriters)
+			for (const file of files.filter(isProjectFileConfig))
+				for (const writer of await discovery.writersNestedIn(file))
+					if (!files.includes(writer) && !writers.includes(writer))
+						writers.push(writer);
 		return ok(
 			await this.selectionOf(
-				files,
+				[...files, ...writers],
 				directory,
 				noneNamed
 					? new DefaultFolder(
@@ -110,7 +123,8 @@ export class CoreConfigService implements ConfigService {
 						)
 					: undefined,
 				notes,
-				loader
+				loader,
+				writers
 			)
 		);
 	}
@@ -133,7 +147,8 @@ export class CoreConfigService implements ConfigService {
 		directory: string,
 		folder: PickedFolder | undefined,
 		notes?: readonly string[],
-		loader: ConfigLoader = this.loader
+		loader: ConfigLoader = this.loader,
+		nestedWriters: readonly string[] = []
 	): Promise<ReloadableSelection> {
 		const opened = await Promise.all(
 			files.map((file) => ManagedConfig.open(file, loader))
@@ -143,7 +158,8 @@ export class CoreConfigService implements ConfigService {
 			loader,
 			directory,
 			folder,
-			notes
+			notes,
+			new Set(nestedWriters)
 		);
 	}
 

@@ -37,7 +37,9 @@ export class CoreConfigSelection implements ReloadableSelection {
 		private readonly loader: ConfigLoader,
 		readonly home: string,
 		private readonly folder: PickedFolder | undefined,
-		readonly notes: readonly string[] = []
+		readonly notes: readonly string[] = [],
+		/** Following the folder never removes them. */
+		readonly nestedWriters: ReadonlySet<string> = new Set()
 	) {
 		this._files = this.readFiles();
 		this.filePaths = new PathSet(this._files);
@@ -138,10 +140,15 @@ export class CoreConfigSelection implements ReloadableSelection {
 				.filter((file) => !known.has(file))
 				.map((file) => ManagedConfig.open(file, this.loader))
 		);
-		const removed = this.managed.filter(({ file }) => !now.has(file));
+		const isKept = ({ file }: ManagedConfig) =>
+			this.nestedWriters.has(file) && !now.has(file);
+		const removed = this.managed.filter(
+			(config) => !now.has(config.file) && !isKept(config)
+		);
 		this.managed = [
 			...this.managed.filter(({ file }) => now.has(file)),
 			...added,
+			...this.managed.filter(isKept),
 		];
 		return { added, removed };
 	}

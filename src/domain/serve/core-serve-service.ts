@@ -57,7 +57,7 @@ export class CoreServeService implements ServeService {
 	}
 
 	async prepare(request: ServeRequest): Promise<Result<ServePlan, Error>> {
-		const selected = await this.configService.select(request.refs);
+		const selected = await this.configService.selectForRojo(request.refs);
 		if (selected.isErr()) return selected;
 		const selection = selected.value;
 		const configs = selection.requireValid();
