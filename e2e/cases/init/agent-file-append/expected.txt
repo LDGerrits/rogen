@@ -46,6 +46,7 @@ After you add, move, rename or delete files, or edit a `*.rogen.json`, run `roge
 
 default.rogen.json:
 {
+  "name": "project",
   "sourcePaths": [
     "src"
   ],

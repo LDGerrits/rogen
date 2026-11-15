@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- `rogen init` writes the project's `name`, the folder's name, as `rojo init` does, so tools that need a name in the project file can read it.
+
 ### Fixed
 
 - `rogen syncback` puts a property set on a feature folder in that folder's `init.meta.json` when the feature is routed by an `@Server/` or `(Server)/` folder, has an invisible folder around or inside its routing folder, or holds a `^` file.

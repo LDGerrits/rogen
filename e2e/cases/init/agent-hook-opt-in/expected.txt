@@ -28,6 +28,7 @@ written:
 
 default.rogen.json:
 {
+  "name": "project",
   "sourcePaths": [
     "src"
   ],

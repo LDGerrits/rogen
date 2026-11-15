@@ -48,6 +48,7 @@ written:
 
 newproj/default.rogen.json:
 {
+  "name": "newproj",
   "sourcePaths": [
     "src"
   ],

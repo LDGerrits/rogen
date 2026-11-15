@@ -54,6 +54,7 @@ For more help, check out [the Rogen documentation](https://rogen-roblox.vercel.a
 
 default.rogen.json:
 {
+  "name": "project",
   "tree": {
     "$path": "src"
   }

@@ -694,9 +694,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const { compiler } = language;
 		const name = path.basename(places?.place ?? this.directory.path);
 		const unmounted = choices.unmounted ?? [];
+		const { name: ownName, ...fields } = tree.fields;
 		const config: RogenConfig = {
-			...((choices.scaffold || places) && { name }),
-			...tree.fields,
+			name: typeof ownName === "string" ? ownName : name,
+			...fields,
 			...(unmounted.length > 0 && {
 				globIgnorePaths: [
 					...(tree.fields.globIgnorePaths ?? []),
