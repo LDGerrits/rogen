@@ -57,7 +57,7 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should refuse two markers that route one folder differently, an init script's suffix among them", async () => {
+			it("should refuse two markers that route one folder differently, and an init script routed apart from its folder's marker", async () => {
 				await write(
 					"src/C/@server",
 					"src/C/@client",
@@ -84,9 +84,9 @@ describe("Router", () => {
 						'"@client" and "@server" route this folder to different places, and nothing decides between them. Keep one.',
 					],
 					[
-						"route.markerClash",
-						abs("src/D"),
-						'"@server" and "init@client.luau" route this folder to different places, and nothing decides between them. Keep one.',
+						"route.ignoredAt",
+						abs("src/D/init@client.luau"),
+						'"@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route\'s files.',
 					],
 				]);
 			});

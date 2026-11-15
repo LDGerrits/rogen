@@ -409,7 +409,7 @@ describe("Placer", () => {
 				})
 			).toEqual([
 				"Net/init@shared.luau -> ReplicatedStorage/Net",
-				"Net/server/Remote.luau -> ReplicatedStorage/Net/server/Remote",
+				"Net/server/Remote.luau -> ServerScriptService/Net/Remote",
 			]);
 		});
 

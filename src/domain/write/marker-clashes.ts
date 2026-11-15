@@ -1,4 +1,3 @@
-import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { joinPosix } from "../../base/path.js";
 import { joinedWithAnd } from "../../base/strings.js";
@@ -23,7 +22,7 @@ export class MarkerClashes {
 		);
 	}
 
-	/** The marker files and init scripts of the clashes, as absolute POSIX paths. */
+	/** The marker files of the clashes, as absolute POSIX paths. */
 	get files(): ReadonlySet<string> {
 		return new Set(
 			this.clashes.flatMap(({ dir, names }) =>
@@ -45,16 +44,9 @@ export class MarkerClashes {
 	private clashesIn(root: ScannedRoot, dirs: DirClaims): MarkerClash[] {
 		const clashes: MarkerClash[] = [];
 		for (const dir of dirs.dirs()) {
-			const claims = [
-				...dirs.markersAt(dir).map(({ fileName, key }) => ({
-					key,
-					name: fileName,
-				})),
-				...dirs.initRoutesAt(dir).map(({ key, source }) => ({
-					key,
-					name: path.posix.basename(source),
-				})),
-			];
+			const claims = dirs
+				.markersAt(dir)
+				.map(({ fileName, key }) => ({ key, name: fileName }));
 			if (new Set(claims.map(({ key }) => key)).size > 1)
 				clashes.push({
 					dir: joinPosix(root.sourcePath, dir),

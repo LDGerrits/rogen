@@ -1,0 +1,7 @@
+{
+	"place": "place.rbxl",
+	"steps": [
+		["syncback", "-i", "place.rbxl", "-y", "--list"],
+		["where", "src"]
+	]
+}

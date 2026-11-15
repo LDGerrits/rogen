@@ -196,7 +196,6 @@ export class Router {
 		const claims = new Claims();
 		const folder = joinPosix(root.sourcePath, dir);
 		const { folders, hoistAt } = this.claimFolders(
-			folder,
 			this.readings.foldersDownTo(root.sourcePath, dir),
 			dirs,
 			claims
@@ -257,7 +256,6 @@ export class Router {
 		const read = this.readings.entryReading(entry.source);
 		const claims = new Claims();
 		const { folders, hoistAt } = this.claimFolders(
-			entry.source,
 			read.folders,
 			dirs,
 			claims
@@ -348,7 +346,6 @@ export class Router {
 	}
 
 	private claimFolders(
-		source: string,
 		readings: readonly FolderReading[],
 		dirs: DirClaims,
 		claims: Claims
@@ -357,7 +354,7 @@ export class Router {
 		readonly hoistAt: number | undefined;
 	} {
 		const claimDirectory = (dir: string) =>
-			this.claimDirectory(source, dir, dirs, claims);
+			this.claimDirectory(dir, dirs, claims);
 		claimDirectory("");
 		const folders: ClaimedFolder[] = [];
 		let hoistAt: number | undefined;
@@ -372,20 +369,10 @@ export class Router {
 		return { folders, hoistAt };
 	}
 
-	private claimDirectory(
-		source: string,
-		dir: string,
-		dirs: DirClaims,
-		claims: Claims
-	): void {
+	private claimDirectory(dir: string, dirs: DirClaims, claims: Claims): void {
 		const depth = depthOf(dir);
 		for (const { fileName, key } of dirs.markersAt(dir)) {
 			claims.signed(key, "marker", depth, { key, dir, marker: fileName });
-		}
-		for (const { key, source: init, at } of dirs.initRoutesAt(dir)) {
-			if (init === source) continue;
-			if (at) claims.signed(key, "init", depth);
-			else claims.unsigned(key, "init", depth);
 		}
 	}
 

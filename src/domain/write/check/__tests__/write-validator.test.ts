@@ -1180,17 +1180,6 @@ describe("WriteValidator rules", () => {
 				]);
 			});
 
-			it("should warn about the files beside an init script whose Rojo suffix an outer route outranks", async () => {
-				await write(
-					"src/ReplicatedFirst/Store/init.server.luau",
-					"src/ReplicatedFirst/Store/Data.luau"
-				);
-
-				expect(await resources()).toEqual([
-					abs("src/ReplicatedFirst/Store/Data.luau"),
-				]);
-			});
-
 			it("should name the marker of the route that governs each file", async () => {
 				await write(
 					"src/ReplicatedFirst/server/A.luau",

@@ -616,7 +616,7 @@ describe("Router", () => {
 				expect(await paths()).toEqual(["ServerScriptService/Combat"]);
 			});
 
-			it("should route the folder by the route suffix on its init script, as a marker beside it would", async () => {
+			it("should route only the init script by its route suffix, and what sits beside it on its own", async () => {
 				await write(
 					"src/Combat/init.server.luau",
 					"src/Combat/Moves/Punch.luau",
@@ -624,18 +624,49 @@ describe("Router", () => {
 					"src/Store/Row.luau"
 				);
 
-				const files = (await route()).unwrap().routed;
+				expect(await placed()).toEqual([
+					"Combat/Moves/Punch.luau -> ReplicatedStorage/shared/Combat/Moves/Punch",
+					"Combat/init.server.luau -> ServerScriptService/Combat",
+					"Store/Row.luau -> ReplicatedStorage/shared/Store/Row",
+					"Store/init@server.luau -> ServerScriptService/Store",
+				]);
+			});
 
-				expect(
-					files.map(
-						(file) =>
-							`${file.instancePath.join("/")} · ${file.routeMatch}`
-					)
-				).toEqual([
-					"ServerScriptService/Combat/Moves/Punch · init",
-					"ServerScriptService/Combat · suffix",
-					"ServerScriptService/Store/Row · init",
-					"ServerScriptService/Store · suffix",
+			it("should make each side's init script the folder on that side", async () => {
+				await write(
+					"src/Feat/init@server.luau",
+					"src/Feat/init@client.luau",
+					"src/Feat/Save@server.luau",
+					"src/Feat/Ui@client.luau"
+				);
+
+				expect(await placed()).toEqual([
+					"Feat/Save@server.luau -> ServerScriptService/Feat/Save",
+					"Feat/Ui@client.luau -> StarterPlayer/StarterPlayerScripts/Feat/Ui",
+					"Feat/init@client.luau -> StarterPlayer/StarterPlayerScripts/Feat",
+					"Feat/init@server.luau -> ServerScriptService/Feat",
+				]);
+			});
+
+			it("should keep the one init file of a folder that Rojo reads, wherever their routes send them", async () => {
+				await write(
+					"src/Feat/init.server.luau",
+					"src/Feat/init.client.luau"
+				);
+
+				const result = (await route()).unwrap();
+
+				expect(placedLines(result.files)).toEqual([
+					"Feat/init.server.luau -> ServerScriptService/Feat",
+				]);
+				expect(result.warnings).toMatchObject([
+					{
+						code: "tree.instanceClash",
+						resource: abs("src/Feat/init.client.luau"),
+						message: expect.stringContaining(
+							"name them with @, as init@client.client.luau"
+						),
+					},
 				]);
 			});
 

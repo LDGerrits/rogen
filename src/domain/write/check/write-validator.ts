@@ -611,22 +611,40 @@ export class WriteValidator {
 	}
 
 	private replacedInstance(): Diagnostic[] {
-		return this.placement.clashes.flatMap(({ instance, winner, losers }) =>
-			losers.map(({ entry }) =>
-				warningDiagnostic(
-					"tree.instanceClash",
-					{ resource: entry.source },
-					`becomes "${instance}", as ${winner.entry.source} does, which takes its place. Rename one of them to keep both.`,
-					[],
-					[
-						{
-							resource: winner.entry.source,
-							message: `takes its place as "${instance}"`,
-						},
-					]
+		return this.placement.clashes.flatMap(
+			({ instance, winner, losers, initFolder }) =>
+				losers.map((loser) =>
+					warningDiagnostic(
+						"tree.instanceClash",
+						{ resource: loser.entry.source },
+						initFolder === undefined
+							? `becomes "${instance}", as ${winner.entry.source} does, which takes its place. Rename one of them to keep both.`
+							: `is an init file of ${initFolder}, as ${winner.entry.source} is, and Rojo reads only that one. ${WriteValidator.initFileFix(loser, instance)}`,
+						[],
+						[
+							{
+								resource: winner.entry.source,
+								message: `takes its place as "${instance}"`,
+							},
+						]
+					)
 				)
-			)
 		);
+	}
+
+	/** How to keep an init file Rojo doesn't read: by removing one when both land on one instance, else by naming its route with `@`. */
+	private static initFileFix(
+		{ entry, route, instancePath }: RoutedFile,
+		instance: string
+	): string {
+		if (instanceKey(instancePath) === instance)
+			return "Remove one of them.";
+		const name = path.posix.basename(entry.source);
+		const spelled =
+			route === DeclaredKeys.FALLBACK_ROUTE
+				? ""
+				: `, as ${RojoFile.INIT_NAME}@${route}${name.slice(RojoFile.INIT_NAME.length)}`;
+		return `To give each side its own init script, name them with @${spelled}.`;
 	}
 
 	private emptyName(): Diagnostic[] {

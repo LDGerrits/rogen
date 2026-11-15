@@ -281,7 +281,7 @@ describeWithRojo("write against Rojo reading the same directory", () => {
 			"Net/client/Listener.luau": "",
 			"Bots/init.server.luau": "",
 			"Bots/init.meta.json": meta,
-			"Bots/Brain.luau": "",
+			"Bots/Brain@server.luau": "",
 		});
 		await rogenTree({
 			routes: {

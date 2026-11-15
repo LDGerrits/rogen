@@ -93,11 +93,7 @@ export class SyncbackLayout {
 	donorsAt(node: readonly string[]): Donor[] {
 		const donors: Donor[] = [];
 		for (const file of this.placed) {
-			if (
-				file.routeMatch === "init" ||
-				file.routeMatch === "copy" ||
-				this.skipsItsFolders(file)
-			)
+			if (file.routeMatch === "copy" || this.skipsItsFolders(file))
 				continue;
 			if (!isSameJson(file.instancePath.slice(0, -1), node)) continue;
 			const sourcePath = this.rootOf(file.source);
@@ -145,6 +141,25 @@ export class SyncbackLayout {
 				spelled !== file.route && spelled === file.route.toLowerCase();
 		}
 		return lowered ? route.toLowerCase() : route;
+	}
+
+	/** Whether `file` is an init file, the instance its folder becomes. */
+	static makesItsFolder(file: PlacedLocation): boolean {
+		const folder = file.folderNodes?.at(-1);
+		return (
+			folder !== undefined &&
+			isSameJson(folder.instancePath, file.instancePath)
+		);
+	}
+
+	/** Whether `node` is made by an init script whose own name routes it, which routes none of its folder's other files. */
+	routesOnlyItsInit(node: readonly string[]): boolean {
+		const maker = this.fileMaking(node);
+		return (
+			maker !== undefined &&
+			SyncbackLayout.makesItsFolder(maker) &&
+			maker.routeMatch === "suffix"
+		);
 	}
 
 	/** The placed file that is the instance `node` itself, such as an init file making a folder. */
