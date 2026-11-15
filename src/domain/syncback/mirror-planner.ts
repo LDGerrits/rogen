@@ -498,6 +498,10 @@ class MirrorPlanRun {
 				} else fresh.push(added);
 				continue;
 			}
+			if (this.inRoutedInitFolder(names, known)) {
+				fresh.push(added);
+				continue;
+			}
 			if (workspace.isIgnored(target)) continue;
 			const file = toNative(target);
 			const instance = workspace.instanceAt(added.path);
@@ -546,6 +550,20 @@ class MirrorPlanRun {
 			);
 		}
 		return { fresh, metaFiles };
+	}
+
+	/** Whether the nearest folder above a path Rojo added is the folder of an init script whose own name routes it, so what Rojo wrote there must name that route to land where Rojo put it. */
+	private inRoutedInitFolder(
+		names: readonly string[],
+		known: ReadonlySet<string>
+	): boolean {
+		const { mirror, layout } = this.workspace;
+		for (let at = names.length - 1; at > 0; at--) {
+			const folder = names.slice(0, at).join("/");
+			if (known.has(folder))
+				return layout.routesOnlyItsInit(mirror.instancePathOf(folder));
+		}
+		return false;
 	}
 
 	/** The metas Rojo wrote for the instances of feature folders, as edits of the features' own metas. */

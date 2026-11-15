@@ -1,0 +1,23 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/Store/Row@server.luau
+stderr:
+  Wrote default.project.json.
+  Syncback wrote 1 change.
+
+$ rogen where src
+exit 0
+stdout:
+  src/Store/Row@server.luau -> ServerScriptService/Store/Row · route server (suffix)
+  src/Store/init.server.luau -> ServerScriptService/Store · route server (suffix)
+
+written:
+  default.project.json
+  src/Store/Row@server.luau
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Store: Script  <- src/Store/init.server.luau
+      Row: ModuleScript  <- src/Store/Row@server.luau

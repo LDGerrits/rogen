@@ -143,6 +143,25 @@ export class SyncbackLayout {
 		return lowered ? route.toLowerCase() : route;
 	}
 
+	/** Whether `file` is an init file, the instance its folder becomes. */
+	static isItsFolder(file: PlacedLocation): boolean {
+		const folder = file.folderNodes?.at(-1);
+		return (
+			folder !== undefined &&
+			isSameJson(folder.instancePath, file.instancePath)
+		);
+	}
+
+	/** Whether `node` is made by an init script whose own name routes it, which routes none of its folder's other files. */
+	routesOnlyItsInit(node: readonly string[]): boolean {
+		const maker = this.fileMaking(node);
+		return (
+			maker !== undefined &&
+			SyncbackLayout.isItsFolder(maker) &&
+			maker.routeMatch === "suffix"
+		);
+	}
+
 	/** The placed file that is the instance `node` itself, such as an init file making a folder. */
 	fileMaking(node: readonly string[]): PlacedLocation | undefined {
 		return this.placed.find((file) => isSameJson(file.instancePath, node));

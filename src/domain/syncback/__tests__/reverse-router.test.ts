@@ -182,6 +182,35 @@ describe("ReverseRouter", () => {
 			});
 		});
 
+		it("should name the route into a file below an init script whose own name routes it", async () => {
+			const router = await routerOf([
+				"src/Store/init.server.luau",
+				"src/Feat/init@Server.luau",
+				"src/Feat/init@Client.luau",
+			]);
+			const item = (parent: string[]) =>
+				router.place({ parent, name: "Item", folder: false });
+
+			expect(item(["ServerScriptService", "Store"])).toEqual({
+				kind: "placed",
+				home: {
+					dir: posix("src/Store"),
+					contents: false,
+					mark: { text: "@Server", route: "Server" },
+				},
+			});
+			expect(
+				item(["StarterPlayer", "StarterPlayerScripts", "Feat"])
+			).toEqual({
+				kind: "placed",
+				home: {
+					dir: posix("src/Feat"),
+					contents: false,
+					mark: { text: "@Client", route: "Client" },
+				},
+			});
+		});
+
 		it("should refuse when a file that holds no other files makes the parent", async () => {
 			const router = await routerOf([
 				"src/Inventory/Bag@server.luau",
