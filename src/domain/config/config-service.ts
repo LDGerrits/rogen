@@ -99,6 +99,8 @@ export interface ConfigSelection {
 	readonly notes: readonly string[];
 	/** The folder configs were looked for in: the working directory. */
 	readonly home: string;
+	/** The configs picked only to write the project files a plain project file nests, so that Rojo reads them up to date: they are written, never run. */
+	readonly nestedWriters: ReadonlySet<string>;
 
 	/** Every config, or every error when any entry is broken now. */
 	requireValid(): Result<ResolvedConfig[], DiagnosticsError>;
@@ -165,6 +167,10 @@ export interface ConfigService {
 	select(
 		refs: readonly string[],
 		reader?: FileSystemService
+	): Promise<Result<ReloadableSelection, Error>>;
+	/** Selects as `select` does for a Rojo verb, which runs Rojo on the first config: a plain project file also brings the configs that write the project files its tree nests, so they are written before Rojo reads them. */
+	selectForRojo(
+		refs: readonly string[]
 	): Promise<Result<ReloadableSelection, Error>>;
 	/** Loads every config of the working directory, and follows the configs that come to it and leave it. */
 	selectHere(): Promise<ReloadableSelection>;

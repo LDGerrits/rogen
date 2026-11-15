@@ -96,6 +96,7 @@ export class MockConfigSelection implements ReloadableSelection {
 	readonly files: ReadonlySet<string>;
 	readonly followedFolder = undefined;
 	readonly notes: readonly string[] = [];
+	readonly nestedWriters: ReadonlySet<string> = new Set();
 
 	constructor(
 		readonly entries: readonly ConfigEntry[] = [mockEntry()],
@@ -140,6 +141,10 @@ export class MockConfigService implements ConfigService {
 
 	async select(): Promise<Result<ReloadableSelection, Error>> {
 		return ok(new MockConfigSelection(this.entries, this.home));
+	}
+
+	selectForRojo(): Promise<Result<ReloadableSelection, Error>> {
+		return this.select();
 	}
 
 	async selectHere(): Promise<ReloadableSelection> {

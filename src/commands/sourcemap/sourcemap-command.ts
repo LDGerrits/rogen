@@ -169,7 +169,9 @@ registerCommand(
 			}
 
 			if (step.prints) logService.reserveStdout();
-			const selection = await configService.select(line.positionals);
+			const selection = await configService.selectForRojo(
+				line.positionals
+			);
 			if (selection.isErr()) return selection;
 			for (const note of selection.value.notes) logService.warn(note);
 

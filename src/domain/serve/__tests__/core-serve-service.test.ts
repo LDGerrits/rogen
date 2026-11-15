@@ -795,6 +795,27 @@ describe("CoreServeService", () => {
 			]);
 		});
 
+		it("should serve a plain project file and keep writing the project file it nests, which it doesn't serve", async () => {
+			await memFs.writeFile(
+				"/repo/.session/rojo.project.json",
+				JSON.stringify({
+					name: "Session",
+					tree: { $path: "../default.project.json" },
+				})
+			);
+
+			await start({ refs: [".session/rojo.project.json"] });
+			await memFs.writeFile("/repo/src/Fresh.luau", "");
+			await settle();
+
+			expect(processes.spawned.map(({ args }) => args)).toEqual([
+				["serve", ".session/rojo.project.json", "--port", "34872"],
+			]);
+			expect(
+				await memFs.readFile("/repo/default.project.json")
+			).toContain("src/Fresh.luau");
+		});
+
 		it("should start Rojo 7.7.0 on Windows for a file with a glob that starts with ../, since serve reads it right", async () => {
 			processes.outputs.set("/bin/rojo", {
 				code: 0,

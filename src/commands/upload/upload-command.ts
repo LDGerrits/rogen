@@ -126,7 +126,9 @@ registerCommand(
 			const writeService = accessor.get(WriteService);
 			const instantiationService = accessor.get(InstantiationService);
 
-			const selection = await configService.select(line.positionals);
+			const selection = await configService.selectForRojo(
+				line.positionals
+			);
 			if (selection.isErr()) return selection;
 			for (const note of selection.value.notes) logService.warn(note);
 

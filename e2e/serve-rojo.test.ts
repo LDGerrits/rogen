@@ -338,6 +338,36 @@ describeWithRojo("end to end serve", () => {
 		expect(await serving.stop()).toBe(INTERRUPTED_EXIT);
 	}, 40_000);
 
+	it("should serve a project file that nests the one a config writes, and write that one as files change, which Rojo reads once the served file is written again", async () => {
+		const wrapper = JSON.stringify({
+			name: "Session",
+			servePort: serve.port + 1,
+			tree: { $path: "../default.project.json" },
+		});
+		writeProjectFile(serve.dir, ".session/rojo.project.json", wrapper);
+
+		const serving = serve.start([".session/rojo.project.json"]);
+		await serving.waitFor(async () => {
+			expect(await rojoProject(serve.port + 1)).toBe("Session");
+		}, 20_000);
+		writeProjectFile(serve.dir, "src/Shop/Fresh.server.luau");
+		await serving.waitFor(() => {
+			expect(
+				fs.readFileSync(
+					path.join(serve.dir, "default.project.json"),
+					"utf8"
+				)
+			).toContain("src/Shop");
+		}, 20_000);
+		writeProjectFile(serve.dir, ".session/rojo.project.json", wrapper);
+
+		await serving.waitFor(async () => {
+			expect(await servedNames(serve.port + 1)).toContain("Fresh");
+		}, 20_000);
+		expect(await rojoProject(serve.port)).toBeUndefined();
+		expect(await serving.stop()).toBe(INTERRUPTED_EXIT);
+	}, 40_000);
+
 	it("should name the project after its folder when default.rogen.json sets no name", async () => {
 		writeProjectFile(
 			serve.dir,

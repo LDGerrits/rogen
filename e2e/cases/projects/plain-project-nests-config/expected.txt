@@ -1,0 +1,24 @@
+$ rogen build session/rojo.project.json -o game.rbxl
+exit 0
+stdout:
+  rogen build · session/rojo.project.json, default.rogen.json
+  default.rogen.json
+    Wrote default.project.json.
+  Built game.rbxl.
+
+$ rogen sourcemap session/rojo.project.json
+exit 0
+stdout:
+  {"name":"Session","className":"DataModel","filePaths":["../default.project.json","rojo.project.json"],"children":[{"name":"ServerScriptService","className":"ServerScriptService","children":[{"name":"Shop","className":"Folder","children":[{"name":"Buy","className":"Script","filePaths":["../src/Shop/Buy.server.luau"]}]}]}]}
+stderr:
+  rogen sourcemap · session/rojo.project.json, default.rogen.json
+
+written:
+  default.project.json
+  game.rbxl
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ServerScriptService: ServerScriptService
+    Shop: Folder
+      Buy: Script  <- src/Shop/Buy.server.luau

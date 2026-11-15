@@ -209,6 +209,92 @@ describe("CoreConfigService", () => {
 		});
 	});
 
+	describe("selectForRojo", () => {
+		const wrapper = (tree: Record<string, unknown>) =>
+			write("/repo/.session/rojo.project.json", {
+				name: "session",
+				tree,
+			});
+
+		const selectWrapper = async () =>
+			(
+				await service.selectForRojo([".session/rojo.project.json"])
+			).unwrap();
+
+		it("should add the config that writes the project file a plain project nests, written only", async () => {
+			await write("/repo/default.rogen.json", {});
+			await wrapper({ $path: "../default.project.json" });
+
+			const selected = await selectWrapper();
+
+			expect(selected.entries.map(({ file }) => file)).toEqual([
+				"/repo/.session/rojo.project.json",
+				"/repo/default.rogen.json",
+			]);
+			expect(selected.nestedWriters).toEqual(
+				new Set(["/repo/default.rogen.json"])
+			);
+		});
+
+		it("should find the writer of a folder's default project, and look through the plain projects nested on the way", async () => {
+			await write("/repo/lobby/default.rogen.json", {});
+			await write("/repo/arena/arena.rogen.json", {});
+			await write("/repo/plain.project.json", {
+				name: "plain",
+				tree: { $path: { optional: "arena/arena.project.json" } },
+			});
+			await wrapper({
+				$className: "DataModel",
+				Lobby: { $path: "../lobby" },
+				Arena: { $path: "../plain.project.json" },
+				Code: { $path: "../src" },
+			});
+
+			const selected = await selectWrapper();
+
+			expect([...selected.nestedWriters]).toEqual([
+				"/repo/lobby/default.rogen.json",
+				"/repo/arena/arena.rogen.json",
+			]);
+		});
+
+		it("should add writers only behind a plain project file, and not through select", async () => {
+			await write("/repo/default.rogen.json", {
+				tree: { $path: "other.project.json" },
+			});
+			await write("/repo/other.rogen.json", {});
+			await wrapper({ $path: "../default.project.json" });
+
+			const named = (await service.selectForRojo([])).unwrap();
+			const selected = (
+				await service.select([".session/rojo.project.json"])
+			).unwrap();
+
+			expect(named.entries.map(({ file }) => file)).toEqual([
+				"/repo/default.rogen.json",
+			]);
+			expect(selected.entries.map(({ file }) => file)).toEqual([
+				"/repo/.session/rojo.project.json",
+			]);
+		});
+
+		it("should keep the writers when it follows the folder of the plain project it adopts", async () => {
+			await write("/repo/default.project.json", {
+				name: "plain",
+				tree: { $path: "game/default.project.json" },
+			});
+			await write("/repo/game/default.rogen.json", {});
+			const selected = (await service.selectForRojo([])).unwrap();
+
+			await selected.reload([onDisk("/repo/default.project.json")]);
+
+			expect(selected.entries.map(({ file }) => file)).toEqual([
+				"/repo/default.project.json",
+				"/repo/game/default.rogen.json",
+			]);
+		});
+	});
+
 	describe("selection", () => {
 		it("should return every config when all are valid", async () => {
 			await write("/repo/a/default.rogen.json", {
