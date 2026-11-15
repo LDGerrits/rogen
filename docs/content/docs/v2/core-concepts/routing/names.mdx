@@ -60,7 +60,7 @@ An empty file named `@Server` routes the folder it's in, and the folder keeps it
 
 ## Init Scripts
 
-An init script is its folder's instance, as in Rojo. A route in its name places only the script, so each side can have its own, and the folder's other files route by their own names:
+A route in an init script's name places only the script, so each side can have its own:
 
 <RouteFigure
 	disk={`
@@ -82,9 +82,7 @@ An init script is its folder's instance, as in Rojo. A route in its name places 
 `}
 />
 
-To send a whole folder with its init script, route the folder: name it `Shop@Server/`, or put a `@Server` marker file in it. A plain `init.luau` becomes the folder on every side that has no init script of its own.
-
-Rojo reads only one file named `init.luau`, `init.server.luau` or `init.client.luau` per folder, so when two sides each have an init script, write the route with `@`. A Script keeps its suffix after the route, as in `init@Server.server.luau`.
+To route the whole folder, route the folder itself.
 
 ## Rojo's Script Suffixes
 
