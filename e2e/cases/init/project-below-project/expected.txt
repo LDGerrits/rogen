@@ -30,6 +30,7 @@ written:
 
 tools/default.rogen.json:
 {
+  "name": "tools",
   "sourcePaths": [
     "src"
   ],

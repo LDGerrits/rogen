@@ -169,6 +169,7 @@ describe("ProjectSetup plan", () => {
 		);
 
 		expect(Object.keys(configOf(planned))).toEqual([
+			"name",
 			"sourcePaths",
 			"routes",
 			"compiledPath",
@@ -176,7 +177,7 @@ describe("ProjectSetup plan", () => {
 		]);
 	});
 
-	it("should write strict JSON as fmt-project writes it, so a first format only adds the name Rojo gives", async () => {
+	it("should write strict JSON as fmt-project writes it, name included, so formatting it changes nothing", async () => {
 		const { files } = await plan(luau);
 		const { content } = files.find(
 			({ fileName }) => fileName === "default.rogen.json"
@@ -186,24 +187,18 @@ describe("ProjectSetup plan", () => {
 		await config.writeFile("/repo/default.rogen.json", content);
 		const formatter = formatterOf(config);
 
-		await formatter.format("/repo/default.rogen.json");
-		const named = await config.readFile("/repo/default.rogen.json");
-
-		expect(JSON.parse(named)).toEqual({
-			...JSON.parse(content),
-			name: "repo",
-		});
 		expect(
 			(await formatter.format("/repo/default.rogen.json")).unwrap()
 		).toBe(false);
+		expect(await config.readFile("/repo/default.rogen.json")).toBe(content);
 	});
 
-	it("should write a bare DataModel tree and no compiled path or name for plain luau", async () => {
+	it("should write a bare DataModel tree, no compiled path and the folder's name for plain luau", async () => {
 		const config = configOf(await plan(luau));
 
 		expect(config.tree).toEqual({ $className: "DataModel" });
 		expect(config.compiledPath).toBeUndefined();
-		expect(config.name).toBeUndefined();
+		expect(config.name).toBe("my-game");
 	});
 
 	it("should write the detected outDir as compiledPath for roblox-ts", async () => {

@@ -109,6 +109,7 @@ game.rogen.json:
 
 lobby/default.rogen.json:
 {
+  "name": "lobby",
   "sourcePaths": [
     "src"
   ],

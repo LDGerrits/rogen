@@ -1079,7 +1079,7 @@ describe("init command", () => {
 			await runInit();
 
 			expect(await read("lobby.project.json")).toBe("{}");
-			expect((await readJson("default.rogen.json")).name).toBeUndefined();
+			expect((await readJson("default.rogen.json")).name).toBe("my-game");
 		});
 	});
 

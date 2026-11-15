@@ -19,7 +19,6 @@ describe("TreePlan", () => {
 			const config = configOf(await plan({ ...luau, ...withPackages }));
 
 			expect(config.tree).toEqual({ $className: "DataModel", ...mounts });
-			expect(config.name).toBeUndefined();
 		});
 
 		it("should write a bare DataModel when nothing was mounted", async () => {

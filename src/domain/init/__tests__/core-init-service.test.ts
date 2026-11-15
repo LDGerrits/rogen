@@ -942,6 +942,28 @@ describe("CoreInitService", () => {
 				})
 			);
 
+		describe("the project's name", () => {
+			it("should name a new project after its folder, as rojo init does", async () => {
+				await write("src/Shop/Server/Main.server.luau", "print(1)");
+
+				expect(configOf(await planOf()).name).toBe("my-game");
+			});
+
+			it("should keep the name of a lifted project file, else take the folder's", async () => {
+				await lift({});
+				const named = configOf(await planOf()).name;
+				await write(
+					"default.project.json",
+					JSON.stringify({ tree: { $className: "DataModel" } })
+				);
+
+				expect([named, configOf(await planOf()).name]).toEqual([
+					"mine",
+					"my-game",
+				]);
+			});
+		});
+
 		describe("Rojo's template layout without a project file", () => {
 			const rojoTemplate = {
 				ReplicatedStorage: { Shared: { $path: "src/shared" } },
@@ -967,9 +989,12 @@ describe("CoreInitService", () => {
 
 					const planned = await planOf();
 					await lift(rojoTemplate);
-					const { name: _name, ...lifted } = configOf(await planOf());
+					const lifted = configOf(await planOf());
 
-					expect(configOf(planned)).toEqual(lifted);
+					expect(configOf(planned)).toEqual({
+						...lifted,
+						name: "my-game",
+					});
 					expect(planned?.action).toBe("create");
 					expect(planned?.liftedFrom).toBeUndefined();
 				}
@@ -1347,6 +1372,7 @@ describe("CoreInitService", () => {
 				"default.rogen.json",
 			]);
 			expect(JSON.parse(files(plan)["default.rogen.json"])).toEqual({
+				name: "my-game",
 				tree: { $path: "src" },
 			});
 			expect(plan?.nextSteps.run).toEqual([
@@ -1363,6 +1389,7 @@ describe("CoreInitService", () => {
 				const plan = (await serviceFor().plan()).unwrap();
 
 				expect(JSON.parse(files(plan)["default.rogen.json"])).toEqual({
+					name: "my-game",
 					tree: { $path: folder },
 				});
 				expect(Object.keys(files(plan))).not.toContain("src/init.luau");

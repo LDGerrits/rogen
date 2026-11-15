@@ -15,6 +15,7 @@ rojo = "rojo-rbx/rojo@7.7.1"
 
 default.rogen.json:
 {
+  "name": "project",
   "sourcePaths": [
     "src"
   ],

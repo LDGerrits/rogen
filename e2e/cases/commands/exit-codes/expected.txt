@@ -145,6 +145,7 @@ written:
 
 fresh/default.rogen.json:
 {
+  "name": "fresh",
   "sourcePaths": [
     "src"
   ],
