@@ -259,7 +259,7 @@ A name inside a folder that a route already governs gets no rename, because `@se
 
 Rojo's `.server` and `.client` at the end of a script's name still route, and Rogen never reports them. Two limits apply:
 
-- Only lowercase counts. Rojo reads `Boot.Server.luau` as a ModuleScript named `Boot.Server`, so Rogen suggests `Boot.server.luau`.
+- Only lowercase counts. Rojo reads `Main.Server.luau` as a ModuleScript named `Main.Server`, so Rogen suggests `Main.server.luau`.
 - Only scripts count. A data file or a model has no `.server` or `.client` handling, so `Config.server.json` is a ModuleScript named `Config.server`, and it warns.
 
 See [Marker Files](/docs/v2/core-concepts/routing/names#marker-files).
@@ -330,7 +330,7 @@ warning: the sync rule "*.lang" makes this file a ModuleScript, so it never runs
 Under a `compiledPath`, Rojo reads the class from the name of the `.luau` file the compiler writes, not from the rule's `use`.
 
 ```
-warning: the sync rule "*.lang" asks for a server script, but Rojo reads the class from the compiled name Boot.luau. Rename it Boot.server.lang, or set the rule's "use" to "moduleScript". (route.scriptClassMismatch)
+warning: the sync rule "*.lang" asks for a server script, but Rojo reads the class from the compiled name Main.luau. Rename it Main.server.lang, or set the rule's "use" to "moduleScript". (route.scriptClassMismatch)
 ```
 
 A pattern such as `src/**/*` also takes that `.luau` file, so Rojo reads it by the rule instead.
@@ -1325,7 +1325,7 @@ Rename one of the two files. When two configs route a file apart, check where it
 
 ### `legacy.outrankedRoute` [#legacy-outrankedroute]
 
-Warning. A file lands somewhere other than where v1 put it. v1 went by the last routing word in a file's path, and v2 goes by the outermost route. So `src/Boot/ReplicatedFirst/Loader.client.luau` went to the client in v1, and goes to `ReplicatedFirst` in v2.
+Warning. A file lands somewhere other than where v1 put it. v1 went by the last routing word in a file's path, and v2 goes by the outermost route. So `src/Loading/ReplicatedFirst/Loader.client.luau` went to the client in v1, and goes to `ReplicatedFirst` in v2.
 
 ```
 warning: v1 put this file in StarterPlayer/StarterPlayerScripts/client, by the last routing word in its path, and v2 puts it in ReplicatedFirst/client: in v2 the outermost route governs. To keep it where it was, move it out of the folder that routes it to ReplicatedFirst/client. (legacy.outrankedRoute)
