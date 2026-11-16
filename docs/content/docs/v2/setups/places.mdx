@@ -29,7 +29,7 @@ It writes a first place, `game`, with its code in `src/game` and shared code in 
 }
 ```
 
-There is no `default.rogen.json`, so name the place in each command:
+There is no `default.rogen.json`, so name the place in each command. To serve two places at once, give the second its own `--port`:
 
 ```bash
 rogen serve game
@@ -45,8 +45,6 @@ cp game.rogen.json lobby.rogen.json
 mkdir src/lobby
 cp -r place/game place/lobby
 ```
-
-To serve two places at once, give the second its own `--port`.
 
 ## Places in roblox-ts
 

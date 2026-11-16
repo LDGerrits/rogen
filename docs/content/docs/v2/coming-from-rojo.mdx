@@ -34,9 +34,7 @@ In the folder that holds `default.project.json`, run `rogen init`. It moves no f
 }
 ```
 
-`src/shared` becomes a route, and every file lands where Rojo put it, so your requires keep working.
-
-From now on you edit `default.rogen.json`, and Rogen writes `default.project.json` from it. Stop tracking the written file:
+`src/shared` becomes a route, and every file lands where Rojo put it, so your requires keep working. From now on you edit `default.rogen.json`, and Rogen writes `default.project.json` from it, so stop tracking the written file:
 
 ```bash
 echo '*.project.json' >> .gitignore
@@ -45,12 +43,10 @@ git rm --cached default.project.json
 
 ## Sort by Feature
 
-Then move code into [feature folders](/docs/v2/core-concepts/routing/folders):
+Then move code into [feature folders](/docs/v2/core-concepts/routing/folders), one feature at a time, since old folders keep working beside them. A move changes the file's path in the game, so update the requires that reach it; `rogen where <file>` prints the new one:
 
 ```bash
 git mv src/server/Services/InventoryService.luau src/Inventory/Server/
 git mv src/client/Controllers/InventoryController.luau src/Inventory/Client/
 git mv src/shared/Types/InventoryTypes.luau src/Inventory/Shared/
 ```
-
-A move changes the file's path in the game, so update the requires that reach it; `rogen where <file>` prints the new one. Old folders keep working beside feature folders, so you can move one feature at a time.

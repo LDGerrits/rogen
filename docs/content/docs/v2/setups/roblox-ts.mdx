@@ -7,26 +7,24 @@ description: Compile with roblox-ts while Rogen routes your TypeScript files
 
 ## Start a Project
 
+Start a new project with the command below. In a folder that already has a `tsconfig.json`, a bare `rogen init` sets Rogen up beside it instead.
+
 ```bash
 rogen init --language roblox-ts
 ```
 
-In a folder that already has a `tsconfig.json`, a bare `rogen init` sets Rogen up beside it.
-
 ## Run the Compiler Beside Rogen
 
-Run each command in its own terminal:
+`rbxtsc` reads the project file, so on a fresh clone run `rogen write` before the first compile. After that, run each command in its own terminal:
 
 ```bash
 npm run watch
 rogen serve
 ```
 
-`rbxtsc` reads the project file, so on a fresh clone, run `rogen write` before the first compile.
-
 ## Add a Feature
 
-The routes that `init` writes for roblox-ts are lowercase:
+The routes that `init` writes for roblox-ts are lowercase. Code imports by relative file path, as in any TypeScript project:
 
 <RouteFigure
 	disk={`
@@ -54,11 +52,9 @@ The routes that `init` writes for roblox-ts are lowercase:
 `}
 />
 
-Import by relative file path, as in any TypeScript project.
-
 ## Packages
 
-Packages in `@rbxts` reach the game by themselves. Another scope, such as `@rbxts-js` for React, needs a mount of its own:
+Packages in `@rbxts` reach the game by themselves. Another scope, such as `@rbxts-js` for React, needs a mount of its own, and with pnpm the scopes must be hoisted side by side, such as with `publicHoistPattern: ["@rbxts*"]` in `pnpm-workspace.yaml`:
 
 ```json title="default.rogen.json"
 "node_modules": {
@@ -67,5 +63,3 @@ Packages in `@rbxts` reach the game by themselves. Another scope, such as `@rbxt
 	"@rbxts-js": { "$path": "node_modules/@rbxts-js" }
 }
 ```
-
-With pnpm, hoist the packages so they sit side by side, such as with `publicHoistPattern: ["@rbxts*"]` in `pnpm-workspace.yaml`.

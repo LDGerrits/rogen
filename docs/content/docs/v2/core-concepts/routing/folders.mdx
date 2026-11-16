@@ -3,7 +3,7 @@ title: Routing Folders
 description: Keep all of a feature's code in one folder
 ---
 
-A folder named after a route key sends everything inside it to that route's target. Give each feature a folder, and inside it one routing folder for each side it runs on:
+A folder named after a route key, such as `Server/`, sends everything inside it to that route's target and leaves no folder of its own. Give each feature a folder, and inside it one routing folder for each side it runs on:
 
 <RouteFigure
 	disk={`
@@ -45,8 +45,4 @@ A folder named after a route key sends everything inside it to that route's targ
 `}
 />
 
-The routing folders disappear, and each feature folder appears under every service it runs in. `Data` runs only on the server, so it has only a `Server/` folder.
-
-Code requires the other parts by their path in the game, as in `require(ReplicatedStorage.Shared.Combat.Weapons)`.
-
-A routing folder can also be spelled `@Server/`, to set it apart from a feature named Server.
+Each feature shows up under every service it runs in, and code requires its other parts by that path, as in `require(ReplicatedStorage.Shared.Combat.Weapons)`. To set a routing folder apart from a feature with the same name, spell it `@Server/`.
