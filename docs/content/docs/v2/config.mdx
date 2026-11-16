@@ -3,7 +3,7 @@ title: Config
 description: The keys Rogen adds to a Rojo project file
 ---
 
-A config, `default.rogen.json`, is a Rojo project file with three more keys. Rogen writes it, with your routed files added to the `tree`, to `default.project.json`, so edit the config, never the project file. Rojo's own keys work as [Rojo documents them](https://rojo.space/docs/v7/project-format/).
+A config, `default.rogen.json`, is a Rojo project file with three more keys. Rogen writes it to `default.project.json` with your routed files added to [the tree](/docs/v2/core-concepts/routing/tree), so edit the config, never the project file. A second config, `X.rogen.json`, writes `X.project.json` and needs its own `name`. Rojo's own keys work as [Rojo documents them](https://rojo.space/docs/v7/project-format/).
 
 | Key | Default | What it does |
 |---|---|---|
@@ -11,26 +11,16 @@ A config, `default.rogen.json`, is a Rojo project file with three more keys. Rog
 | `sourcePaths` | `["src"]` | The folders Rogen reads. A later folder's file replaces an earlier one's at the same path. |
 | `compiledPath` | none | The folder a compiler such as [roblox-ts](/docs/v2/setups/roblox-ts) or [Darklua](/docs/v2/setups/luau#using-darklua) writes your code to, such as `out`. Rogen still reads the source paths to decide where each file goes, and points the project file at the compiled copy of the file in this folder, so Rojo syncs what the compiler wrote. |
 
-## The Tree
+## Routes
 
-The `tree` is the base that Rogen adds your routed files to. [The Tree](/docs/v2/core-concepts/routing/tree) says what goes in it.
+A route key is letters and digits starting with a letter, or `*` for the [fallback route](/docs/v2/core-concepts/routing#files-without-a-route). Its target starts with a service, such as `"ServerScriptService"`, and may add folders, such as `"ReplicatedStorage/Shared"`. Write `StarterPlayer/StarterPlayerScripts` in full, because Rogen doesn't know a service's children.
 
 ## Leaving Files Out
 
-Rojo's `globIgnorePaths` lists globs, relative to the config, for files that Rojo ignores. Rogen doesn't route them or warn about them:
+Rojo's `globIgnorePaths` lists globs, relative to the config, for files that Rojo ignores, and Rogen doesn't route them or warn about them:
 
 ```json title="default.rogen.json"
 {
 	"globIgnorePaths": ["**/*.spec.luau"]
 }
 ```
-
-## Route Keys
-
-A route key is letters and digits, starting with a letter, or `*` for the [fallback route](/docs/v2/core-concepts/routing#files-without-a-route).
-
-## Targets
-
-A target starts with a service, such as `"ServerScriptService"`, and may add folders, such as `"ReplicatedStorage/Shared"`. Write `StarterPlayer/StarterPlayerScripts` in full, because Rogen doesn't know a service's children.
-
-A second config, `X.rogen.json`, writes `X.project.json` and needs its own `name`.
