@@ -3,16 +3,7 @@ title: Diagnostics
 description: Every error and warning Rogen reports, with its cause and fix
 ---
 
-Every problem Rogen reports is a diagnostic with a stable code, such as `route.strayAt`. This page has a section for each code. A section says what causes the diagnostic, shows an example, and says how to fix it.
-
-In a terminal, a diagnostic reads `file:line:col - severity: message (code)`. The line and column appear when Rogen knows them. The examples on this page start at the severity.
-
-- An **error** stops Rogen from writing the project file.
-- A **warning** never stops the write, but it always names something to fix.
-
-To read a code's section offline, run `rogen help <code>`. It prints the section from the version you have installed. With `--json`, each diagnostic has a `url` that points at its section on this page. Some warnings also carry `fixes`: the renames or commands that resolve them.
-
-Each diagnostic is about one file, the one to fix. `--json` and `rogen check` report one diagnostic for each file. When a warning fires for several files, the commands that print a build show it as one block under the config, with a line for each file, up to ten. Those commands are `write`, `build`, `serve`, `sourcemap`, `upload` and `syncback`.
+Each problem Rogen reports has a code, such as `route.strayAt`, and a section here with its cause and fix. An **error** stops the project file from being written; a **warning** doesn't. `rogen help <code>` prints the section offline.
 
 ## Config
 
