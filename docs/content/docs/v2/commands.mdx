@@ -3,7 +3,7 @@ title: Commands
 description: Rojo's commands through Rogen, and Rogen's own
 ---
 
-Rogen runs Rojo's commands with Rojo's flags. Each one writes the project file first, so Rojo always reads what your config says:
+Rogen runs Rojo's commands with Rojo's flags, and `rogen help <command>` lists them all. Each command writes the project file first, so Rojo always reads what your config says:
 
 | Command | What it does |
 |---|---|
@@ -17,7 +17,7 @@ Rogen runs Rojo's commands with Rojo's flags. Each one writes the project file f
 
 In a folder with a plain `default.project.json` and no config, these commands run on that file as Rojo would, and write nothing.
 
-Rogen's own commands:
+Rogen's own commands write and inspect the project file. To sync with Argon or another tool instead of Rojo, run `rogen write --watch` beside it:
 
 | Command | What it does |
 |---|---|
@@ -27,8 +27,6 @@ Rogen's own commands:
 | `rogen where` | Prints where a file lands in the game, and how to require it |
 | `rogen help` | Prints a command's flags, or what a [diagnostic](/docs/v2/diagnostics) code means |
 | `rogen doc` | Opens these docs, or prints a topic offline |
-
-To sync with Argon or another tool instead of Rojo, run `rogen write --watch` beside it. `rogen help <command>` lists every flag.
 
 ## Exit Codes and JSON
 

@@ -9,7 +9,10 @@ A coding agent doesn't know that Rogen generates the Rojo project file, so Rojo 
 
 ## Add the Rules
 
-`rogen init` adds the block to `AGENTS.md` and imports it into the `CLAUDE.md` that Claude Code reads, unless you pass `--no-agent-rules`. In a project that already has a config, run `rogen init --agent-rules`, which adds only the agent files, or paste the block yourself with its markers:
+`rogen init` adds the block to `AGENTS.md` and imports it into the `CLAUDE.md` that Claude Code reads, unless you pass `--no-agent-rules`. In a project that already has a config, run `rogen init --agent-rules`, which adds only the agent files, or paste the block yourself with its markers.
+
+<Accordions>
+<Accordion title="The rules block">
 
 ````md title="AGENTS.md"
 <!-- rogen -->
@@ -42,13 +45,21 @@ After you add, move, rename or delete files, or edit a `*.rogen.json`, run `roge
 <!-- /rogen -->
 ````
 
+</Accordion>
+</Accordions>
+
 ## Keep the Rules Current
 
 `rogen write` and `rogen serve` replace an outdated block with the installed version's and keep your text around it, so pin one Rogen version for the team, as [Installation](/docs/v2/installation) does. To stop the updates, delete the marker lines to keep the rules as your own, or delete the block.
 
 ## Check Changed Files Automatically
 
-An agent can forget to run `rogen check`, so Rogen has a hook that runs it on the files changed in git when the agent ends its turn and sends each new warning back as the agent's next prompt. `rogen init --agent-hook`, or Customise in a terminal, writes the script to `.agents/hooks/rogen-check.mjs` and registers it with each agent it finds. To register it by hand, add the entry under its event:
+An agent can forget to run `rogen check`, so Rogen has a hook that runs it on the files changed in git when the agent ends its turn and sends each new warning back as the agent's next prompt. `rogen init --agent-hook`, or Customise in a terminal, writes the script to `.agents/hooks/rogen-check.mjs` and registers it with each agent it finds.
+
+<Accordions>
+<Accordion title="Register it by hand">
+
+Put the script at `.agents/hooks/rogen-check.mjs`, and add its entry under the agent's event:
 
 | Agent | Hook file | Event | Entry |
 |---|---|---|---|
@@ -57,8 +68,6 @@ An agent can forget to run `rogen check`, so Rogen has a hook that runs it on th
 | Cursor | `.cursor/hooks.json` | `stop` | `node .agents/hooks/rogen-check.mjs cursor` |
 | Copilot | `.github/hooks/rogen.json` | `agentStop` | `node "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.mjs` |
 
-<Accordions>
-<Accordion title="The hook script">
 
 ```js title=".agents/hooks/rogen-check.mjs"
 // Agent Stop hook: report new Rogen diagnostics about changed files before the agent ends its turn.
