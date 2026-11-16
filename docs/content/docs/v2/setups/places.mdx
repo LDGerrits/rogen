@@ -1,9 +1,9 @@
 ---
-title: Several Places
+title: Multi-Place Games
 description: Set up Rogen for a game with more than one place
 ---
 
-A game with a lobby and a match is two places that share code. In Rogen, each place has a config of its own, and the shared code is a plain folder that each place lists in its `sourcePaths`.
+Each place has a config of its own. Shared code is a plain folder that each place lists in its `sourcePaths`; a place's own file replaces a shared one at the same path.
 
 ## Start a Game with Places
 
@@ -13,7 +13,7 @@ In an empty folder, run:
 rogen init --places
 ```
 
-It writes a first place, `game`, with its code in `src/game` and the shared code in `src/common`:
+It writes a first place, `game`, with its code in `src/game` and shared code in `src/common`:
 
 ```json title="game.rogen.json"
 {
@@ -29,12 +29,6 @@ It writes a first place, `game`, with its code in `src/game` and the shared code
 }
 ```
 
-With the sample, the tree also mounts `place/game`, Rojo's sample Baseplate and lighting, as `"Workspace": { "$path": "place/game/Workspace" }` and the same for `Lighting` and `SoundService`.
-
-A place's file replaces a shared file at the same path, because the later source path wins.
-
-## Name the Place
-
 There is no `default.rogen.json`, so name the place in each command:
 
 ```bash
@@ -44,7 +38,7 @@ rogen build game -o game.rbxl
 
 ## Add a Place
 
-Copy the first place's config, set its `"name"` to `"lobby"` and its own folder in `sourcePaths`, and make that folder. If its tree mounts `place/game`, copy that folder too and point each of those `$path`s at `place/lobby`, or the lobby gets the game's map:
+Copy the config, set `"name"` to `"lobby"`, and point `sourcePaths` at `src/lobby`. With the sample, also copy `place/game` and point the tree's `$path`s at `place/lobby`:
 
 ```bash
 cp game.rogen.json lobby.rogen.json
@@ -52,10 +46,10 @@ mkdir src/lobby
 cp -r place/game place/lobby
 ```
 
-To serve two places at once, give the second a port of its own with `--port`, or set Rojo's `servePort` in its config.
+To serve two places at once, give the second its own `--port`.
 
 ## Places in roblox-ts
 
-`rogen init --places --language roblox-ts` puts each place in a folder of `projects`. The shared code is in `projects/common/src`, and the first place is `projects/game`, with its own `default.rogen.json` and `tsconfig.json`, and with the sample a `place` folder. Its `sourcePaths` are `["../common/src", "src"]`. Name the folder in each command, as in `rogen serve projects/game`.
+`rogen init --places --language roblox-ts` puts each place in `projects/<name>`, with its own `default.rogen.json` and `tsconfig.json`, and shared code in `projects/common/src`. Name the folder in each command, as in `rogen serve projects/game`.
 
-To add a place, make `projects/lobby/src`, copy `default.rogen.json`, `tsconfig.json` and, if it is there, `place` from `projects/game` into `projects/lobby`, and set `"name"` to `"lobby"`. Run `rogen write projects/lobby`, then add `rbxtsc -p projects/lobby` to the `build` script in `package.json` and `rbxtsc -w -p projects/lobby` to `watch`.
+To add a place, copy `default.rogen.json`, `tsconfig.json` and any `place` folder from `projects/game` into `projects/lobby`, make `projects/lobby/src`, and set `"name"` to `"lobby"`. Run `rogen write projects/lobby`, and add `rbxtsc -p projects/lobby` to the `build` and `watch` scripts in `package.json`, with `-w` for `watch`.
