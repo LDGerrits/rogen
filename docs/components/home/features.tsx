@@ -367,7 +367,7 @@ export function Features() {
 							a file with the same name in that place&apos;s
 							folder, and it replaces the shared one.
 						</p>
-						<MoreLink href="/docs/v2/setups/places" dl={260}>
+						<MoreLink href="/docs/v2/multi-place" dl={260}>
 							Set up places
 						</MoreLink>
 						<ExplorerAndTerminal figure={PLACES} delayMs={320} />

@@ -66,7 +66,7 @@ Running several agents? Give each one a feature. A lint rule catches any agent t
 }
 ```
 
-A file goes where its [folder or `@` suffix](https://rogen-roblox.vercel.app/docs/v2/core-concepts/routing) says: `Server/` and `@Server` both mean ServerScriptService. Everything else goes to `*`, and a route you add, such as `"Gui": "StarterGui"`, works the same way.
+A file goes where its [folder or `@` suffix](https://rogen-roblox.vercel.app/docs/v2/routing) says: `Server/` and `@Server` both mean ServerScriptService. Everything else goes to `*`, and a route you add, such as `"Gui": "StarterGui"`, works the same way.
 
 ## Installation
 

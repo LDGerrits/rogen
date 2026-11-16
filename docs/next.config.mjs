@@ -16,6 +16,21 @@ const config = {
 				destination: "/docs/v2",
 				permanent: false,
 			},
+			{
+				source: "/docs/v2/core-concepts/routing/:path*",
+				destination: "/docs/v2/routing/:path*",
+				permanent: true,
+			},
+			{
+				source: "/docs/v2/setups/places",
+				destination: "/docs/v2/multi-place",
+				permanent: true,
+			},
+			{
+				source: "/docs/v2/setups/:page(luau|roblox-ts)",
+				destination: "/docs/v2/:page",
+				permanent: true,
+			},
 		];
 	},
 };

@@ -129,7 +129,7 @@ Studio gets the same tree as the hand-written project file, while everything abo
 
 ## How Rogen Does It
 
-You write `default.rogen.json`, a Rojo project file with [`routes`](/docs/v2/config) added, where each route names a folder and where its files go. Rogen adds the routed files to the [`tree`](/docs/v2/core-concepts/routing/tree), which holds what folder names can't place, such as your packages:
+You write `default.rogen.json`, a Rojo project file with [`routes`](/docs/v2/config) added, where each route names a folder and where its files go. Rogen adds the routed files to the [`tree`](/docs/v2/routing/tree), which holds what folder names can't place, such as your packages:
 
 ```json title="default.rogen.json"
 {
@@ -158,7 +158,7 @@ You write `default.rogen.json`, a Rojo project file with [`routes`](/docs/v2/con
 	<Card
 		icon={<BookOpen />}
 		title="How Routing Works"
-		href="/docs/v2/core-concepts/routing"
+		href="/docs/v2/routing"
 	>
 		Name a folder or file after a route, and Rogen puts it where the route points.
 	</Card>

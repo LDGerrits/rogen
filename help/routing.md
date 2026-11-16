@@ -36,4 +36,4 @@ Requires and imports:
 
 `rogen where <path>` prints where a file lands and why, before or after it exists. Given an instance as Studio prints it (`ServerScriptService.Inventory.Save:12`), it prints the file behind it.
 
-The docs page: https://rogen-roblox.vercel.app/docs/v2/core-concepts/routing
+The docs page: https://rogen-roblox.vercel.app/docs/v2/routing
