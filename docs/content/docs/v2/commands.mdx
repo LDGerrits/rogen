@@ -3,7 +3,11 @@ title: Commands
 description: Rojo's commands through Rogen, and Rogen's own
 ---
 
-Rogen runs Rojo's commands with Rojo's flags, and `rogen help <command>` lists them all. Each command writes the project file first, so Rojo always reads what your config says:
+Rogen runs Rojo's commands with Rojo's flags, and adds a few of its own. `rogen help <command>` lists a command's flags.
+
+## Rojo's Commands
+
+Each command writes the project file first, so Rojo always reads what your config says:
 
 | Command | What it does |
 |---|---|
@@ -16,6 +20,8 @@ Rogen runs Rojo's commands with Rojo's flags, and `rogen help <command>` lists t
 | `rogen plugin install` | Installs Rojo's Studio plugin, matching the Rojo your project pins |
 
 In a folder with a plain `default.project.json` and no config, these commands run on that file as Rojo would, and write nothing.
+
+## Rogen's Commands
 
 Rogen's own commands write and inspect the project file. To sync with Argon or another tool instead of Rojo, run `rogen write --watch` beside it:
 

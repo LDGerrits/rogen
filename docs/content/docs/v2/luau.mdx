@@ -11,7 +11,7 @@ luau-lsp builds its sourcemap from `default.project.json`, which git ignores. Af
 
 A Luau `require` names where the module is in the game, not where the file is on disk, and `rogen where <file>` prints it. A string require such as `require("./Prices")` resolves in the game too, so it reaches only the files routed into the same folder.
 
-## Using Darklua
+## Darklua
 
 [Darklua](https://github.com/seaofvoices/darklua) rewrites `src` into `dist`. Its `convert_require` rule turns path requires into instance requires, which it looks up in `sourcemap.json`:
 

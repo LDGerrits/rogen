@@ -56,6 +56,10 @@ An empty file named `@Server` routes the folder it's in, and the folder keeps it
 `}
 />
 
+## Rojo's Script Suffixes
+
+When your config has a `Server` or `Client` key, Rojo's `.server` and `.client` suffixes route a script as well as set its class, so `Main.server.luau` goes to the server. A sync rule's `suffix` routes another language's scripts the same way, such as `.server.lang`.
+
 ## Init Scripts
 
 A route in an init script's name places only the script, not the folder around it; to move the whole folder, route the folder itself. That lets each side have its own init script:
@@ -79,7 +83,3 @@ A route in an init script's name places only the script, not the folder around i
         ShopUi
 `}
 />
-
-## Rojo's Script Suffixes
-
-When your config has a `Server` or `Client` key, Rojo's `.server` and `.client` suffixes route a script as well as set its class, so `Main.server.luau` goes to the server. A sync rule's `suffix` routes another language's scripts the same way, such as `.server.lang`.
