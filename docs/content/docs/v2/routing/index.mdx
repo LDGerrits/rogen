@@ -43,7 +43,11 @@ A route's name in a file's path sends the file there. A `Server/` folder sends e
 `}
 />
 
-Everything else in the path stays, so `Shop` shows up under each service. [Routing Folders](/docs/v2/core-concepts/routing/folders) and [Routing by Name](/docs/v2/core-concepts/routing/names) show each way to route in full, and [Skipping Folders](/docs/v2/core-concepts/routing/skipping-folders) how to leave a folder out.
+Everything else in the path stays, so `Shop` shows up under each service. [Routing Folders](/docs/v2/routing/folders) and [Routing by Name](/docs/v2/routing/names) show each way to route in full, and [Skipping Folders](/docs/v2/routing/skipping-folders) how to leave a folder out.
+
+## Files Without a Route
+
+The `*` route takes every file that no other route matches, so `src/Shop/Prices.luau` lands in `ReplicatedStorage/Shared/Shop`. `rogen init` writes it. Without `*`, Rogen leaves such a file out and warns about it, so a server file that forgets its route never reaches clients. That suits a project where every file names its side.
 
 ## The Outermost Route Wins
 
@@ -64,15 +68,9 @@ A route inside another route is an ordinary folder. Server code under `Shared/` 
 `}
 />
 
-## Files Without a Route
-
-The `*` route takes every file that no other route matches, so `src/Shop/Prices.luau` lands in `ReplicatedStorage/Shared/Shop`. `rogen init` writes it. Without `*`, Rogen leaves such a file out and warns about it, so a server file that forgets its route never reaches clients. That suits a project where every file names its side.
-
-## What Each Side Can Require
-
-Code in `Shared/` runs on the server and on every client, so it can't require anything under `Server/`. A Luau require names the instance, not the file, as in `require(ReplicatedStorage.Shared.Shop.Prices)`.
-
 ## Check Where a File Lands
+
+`rogen where` prints where a file lands in the game, and the require that reaches it:
 
 ```
 $ rogen where src/Shop/Server/ShopService.luau

@@ -19,24 +19,24 @@ Rogen doesn't check your requires. Because every path names its side and its fea
 
 	```luau title=".config.luau"
 	return {
-		lute = {
-			lint = {
-				rulepaths = { "lints" },
-				ruleconfigs = {
-					require_boundaries = {
-						options = {
-							sourcemap = "sourcemap.json",
-							featureRoots = {
-								"ServerScriptService",
-								"StarterPlayer.StarterPlayerScripts",
-								"ReplicatedStorage.Shared",
-							},
-							sharedFeatures = { "Util" },
-						},
-					},
-				},
-			},
-		},
+	  lute = {
+	    lint = {
+	      rulepaths = { "lints" },
+	      ruleconfigs = {
+	        require_boundaries = {
+	          options = {
+	            sourcemap = "sourcemap.json",
+	            featureRoots = {
+	              "ServerScriptService",
+	              "StarterPlayer.StarterPlayerScripts",
+	              "ReplicatedStorage.Shared",
+	            },
+	            sharedFeatures = { "Util" },
+	          },
+	        },
+	      },
+	    },
+	  },
 	}
 	```
 

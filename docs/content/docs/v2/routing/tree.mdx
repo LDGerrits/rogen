@@ -1,0 +1,42 @@
+---
+title: The Tree
+description: Mount packages and the other things that folder names can't place
+---
+
+The `tree` in your config is a Rojo project tree. Rogen adds your routed files to it and writes the result to `default.project.json`. Folder names place only the code in your source paths, so everything else goes in the `tree`: packages, the place's map, and anything a Rojo tree can hold, such as a service's `$properties`.
+
+## Packages
+
+Mount a package folder with `$path` where your code requires it from, as in `require(ReplicatedStorage.Packages.Promise)`. Wally installs into `Packages`, and `optional` lets Rojo build before `wally install` has run:
+
+```json title="default.rogen.json"
+{
+	"routes": {
+		"Server": "ServerScriptService",
+		"Shared": "ReplicatedStorage/Shared"
+	},
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Packages": { "$path": { "optional": "Packages" } }
+		}
+	}
+}
+```
+
+`rogen init` mounts the package folders for you. It reads a `wally.toml` or a `pesde.toml` and mounts `Packages` in ReplicatedStorage and `ServerPackages` in ServerScriptService, before you install anything. In a roblox-ts project, it mounts `node_modules/@rbxts`, as [Using roblox-ts](/docs/v2/roblox-ts) shows.
+
+## The Place
+
+`rogen init` puts the starting map, a baseplate and Rojo's lighting, in a `place` folder and mounts it, unless you pass `--no-sample`. The folder sits outside the source paths, so Rogen doesn't route it:
+
+```json title="default.rogen.json"
+{
+	"tree": {
+		"$className": "DataModel",
+		"Lighting": { "$path": "place/Lighting" },
+		"SoundService": { "$path": "place/SoundService" },
+		"Workspace": { "$path": "place/Workspace" }
+	}
+}
+```

@@ -7,7 +7,7 @@ When a feature is too small for routing folders, route by name instead.
 
 ## The `@` Suffix
 
-`@` and a route key at the end of a name route it, and come off the name:
+`@` and a route key at the end of a file or folder name route it, and come off the name. A file keeps its class, so `TradeService@Server.luau` stays a ModuleScript:
 
 <RouteFigure
 	disk={`
@@ -36,8 +36,6 @@ When a feature is too small for routing folders, route by name instead.
 `}
 />
 
-A file keeps its class, so `TradeService@Server.luau` is still a ModuleScript.
-
 ## Marker Files
 
 An empty file named `@Server` routes the folder it's in, and the folder keeps its name:
@@ -58,9 +56,13 @@ An empty file named `@Server` routes the folder it's in, and the folder keeps it
 `}
 />
 
+## Rojo's Script Suffixes
+
+When your config has a `Server` or `Client` key, Rojo's `.server` and `.client` suffixes route a script as well as set its class, so `Main.server.luau` goes to the server. A sync rule's `suffix` routes another language's scripts the same way, such as `.server.lang`.
+
 ## Init Scripts
 
-A route in an init script's name places only the script, so each side can have its own:
+A route in an init script's name places only the script, not the folder around it; to move the whole folder, route the folder itself. That lets each side have its own init script:
 
 <RouteFigure
 	disk={`
@@ -81,9 +83,3 @@ A route in an init script's name places only the script, so each side can have i
         ShopUi
 `}
 />
-
-To route the whole folder, route the folder itself.
-
-## Rojo's Script Suffixes
-
-When your config has a `Server` or `Client` key, Rojo's `.server` and `.client` suffixes route a script as well as set its class, so `Boot.server.luau` goes to the server. A sync rule's `suffix` routes another language's scripts the same way, such as `.server.lang`.

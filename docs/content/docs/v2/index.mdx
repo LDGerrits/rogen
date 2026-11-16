@@ -6,7 +6,7 @@ description: What Rogen is for, shown on a typical Roblox project
 import { Cards, Card } from "fumadocs-ui/components/card";
 import { BookOpen, History, Rocket, Terminal } from "lucide-react";
 
-Rogen is a command-line tool that writes your Rojo project file for you. Rojo still syncs and builds your game. Here is why that helps.
+Rogen is a command-line tool that writes your Rojo project file for you, while Rojo still syncs and builds your game. Here is why that helps.
 
 ## A Typical Roblox Project
 
@@ -38,43 +38,11 @@ This game has an inventory and a shop. Its project file mounts `src/server` into
 `}
 />
 
-The inventory is spread over six folders, mixed in with the shop. To change or remove it, you hunt through all of them.
+The inventory is spread over six folders, mixed in with the shop, so changing or removing it means hunting through all of them.
 
-## Organize by Feature
+## Feature Folders in Rojo
 
-Sort the same files by feature instead, with a folder per feature on each side:
-
-<RouteFigure
-	disk={`
-  src/
-    client/
-      Inventory/
-        InventoryController.luau
-        InventoryWindow.luau
-      Shop/
-        ShopController.luau
-        ShopWindow.luau
-    server/
-      Inventory/
-        InventoryService.luau
-        InventoryStore.luau
-      Shop/
-        ShopService.luau
-    shared/
-      Inventory/
-        InventoryTypes.luau
-        ItemConfig.luau
-      Shop/
-        ShopConfig.luau
-        ShopTypes.luau
-`}
-/>
-
-That's much better. The inventory's files are no longer mixed in with the shop's, and the project file stays the same.
-
-## Three Inventory Folders
-
-But the inventory still has three folders, one each in `client`, `server` and `shared`. A single `src/Inventory` folder would be better. Rojo can do that, but every side of every feature needs its own entry in `default.project.json`:
+Sorting each side by feature helps, but the inventory still has three folders, one each in `client`, `server` and `shared`. A single `src/Inventory` folder is better, and Rojo can do it if you give every side of every feature its own entry in `default.project.json`:
 
 ```json title="default.project.json"
 {
@@ -106,7 +74,7 @@ Every feature you add, rename or remove means editing this file by hand, and a f
 
 ## One Folder per Feature
 
-Rogen writes those entries for you. Put each feature in one folder, with `Client`, `Server` and `Shared` folders inside:
+Rogen writes those entries for you when you put each feature in one folder, with `Client`, `Server` and `Shared` folders inside:
 
 <RouteFigure
 	disk={`
@@ -157,11 +125,11 @@ Rogen writes those entries for you. Put each feature in one folder, with `Client
 `}
 />
 
-In Studio, the game is the same as when you sorted by feature, so your requires don't change. Everything about the inventory is in `src/Inventory`, and you remove it by deleting one folder.
+Studio gets the same tree as the hand-written project file, while everything about the inventory sits in `src/Inventory` and you remove it by deleting one folder.
 
 ## How Rogen Does It
 
-You write `default.rogen.json`, a Rojo project file with [`routes`](/docs/v2/config) added. Each route names a folder and where its files go:
+You write `default.rogen.json`, a Rojo project file with [`routes`](/docs/v2/config) added, where each route names a folder and where its files go. Rogen adds the routed files to the [`tree`](/docs/v2/routing/tree), which holds what folder names can't place, such as your packages:
 
 ```json title="default.rogen.json"
 {
@@ -174,8 +142,6 @@ You write `default.rogen.json`, a Rojo project file with [`routes`](/docs/v2/con
   "tree": { "$className": "DataModel" }
 }
 ```
-
-Rogen adds the routed files to the [`tree`](/docs/v2/core-concepts/routing/tree), which holds what folder names can't place, such as your packages.
 
 `rogen serve` and `rogen build` write `default.project.json` from it, then run `rojo serve` and `rojo build` with Rojo's flags. To try it on an existing project, [install Rogen](/docs/v2/installation) and run `rogen init`.
 
@@ -192,7 +158,7 @@ Rogen adds the routed files to the [`tree`](/docs/v2/core-concepts/routing/tree)
 	<Card
 		icon={<BookOpen />}
 		title="How Routing Works"
-		href="/docs/v2/core-concepts/routing"
+		href="/docs/v2/routing"
 	>
 		Name a folder or file after a route, and Rogen puts it where the route points.
 	</Card>

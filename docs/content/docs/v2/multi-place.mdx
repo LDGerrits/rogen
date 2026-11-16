@@ -1,0 +1,47 @@
+---
+title: Multi-Place Games
+description: Set up Rogen for a game with more than one place
+---
+
+Each place has a config of its own, and shared code is a plain folder that every place lists in its `sourcePaths`. Where a place and the shared folder have a file at the same path, the place's file wins.
+
+## Start a Multi-Place Game
+
+In an empty folder, `rogen init --places` writes a first place, `game`, with its code in `src/game` and shared code in `src/common`:
+
+```json title="game.rogen.json"
+{
+	"name": "game",
+	"sourcePaths": ["src/common", "src/game"],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"tree": { "$className": "DataModel" }
+}
+```
+
+There is no `default.rogen.json`, so name the place in each command. To serve two places at once, give the second its own `--port`:
+
+```bash
+rogen serve game
+rogen build game -o game.rbxl
+```
+
+## Add a Place
+
+Copy the first config, then set its `"name"` to `"lobby"` and point `sourcePaths` at `src/lobby`. If you kept the sample, copy its place folder too and point the tree's `$path`s at the copy:
+
+```bash
+cp game.rogen.json lobby.rogen.json
+mkdir src/lobby
+cp -r place/game place/lobby
+```
+
+## Places in roblox-ts
+
+`rogen init --places --language roblox-ts` puts each place in `projects/<name>`, with its own `default.rogen.json` and `tsconfig.json`, and shared code in `projects/common/src`. Name the folder in each command, as in `rogen serve projects/game`.
+
+To add a place, copy `default.rogen.json`, `tsconfig.json` and any `place` folder from `projects/game` into `projects/lobby`, make `projects/lobby/src`, and set `"name"` to `"lobby"`. Run `rogen write projects/lobby`, and add `rbxtsc -p projects/lobby` to the `build` and `watch` scripts in `package.json`, with `-w` for `watch`.

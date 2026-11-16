@@ -29,7 +29,7 @@ export function Routing() {
 			<div className="wrap">
 				<RouteViews
 					guide={
-						<MoreLink href="/docs/v2/core-concepts/routing">
+						<MoreLink href="/docs/v2/routing">
 							Read the routing guide
 						</MoreLink>
 					}
