@@ -3,7 +3,7 @@ title: Multi-Place Games
 description: Set up Rogen for a game with more than one place
 ---
 
-Each place has a config of its own. Shared code is a plain folder that each place lists in its `sourcePaths`; a place's own file replaces a shared one at the same path.
+Each place has a config of its own, and shared code is a plain folder that every place lists in its `sourcePaths`. Where a place and the shared folder have a file at the same path, the place's file wins.
 
 ## Start a Game with Places
 
@@ -38,7 +38,7 @@ rogen build game -o game.rbxl
 
 ## Add a Place
 
-Copy the config, set `"name"` to `"lobby"`, and point `sourcePaths` at `src/lobby`. With the sample, also copy `place/game` and point the tree's `$path`s at `place/lobby`:
+Copy the first config, then set its `"name"` to `"lobby"` and point `sourcePaths` at `src/lobby`. If you kept the sample, copy its place folder too and point the tree's `$path`s at the copy:
 
 ```bash
 cp game.rogen.json lobby.rogen.json

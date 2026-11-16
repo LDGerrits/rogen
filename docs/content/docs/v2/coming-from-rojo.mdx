@@ -7,7 +7,7 @@ Use Rogen when you want each feature's server, client and shared code in one fol
 
 ## Run `rogen init`
 
-In the folder that holds `default.project.json`, run `rogen init`. It moves no files, and writes your project file as `default.rogen.json`. For the project that `rojo init` makes:
+In the folder that holds `default.project.json`, run `rogen init`. It moves no files. It turns your project file into `default.rogen.json`, which for the project `rojo init` makes looks like this:
 
 ```json title="default.rogen.json"
 {
@@ -34,9 +34,14 @@ In the folder that holds `default.project.json`, run `rogen init`. It moves no f
 }
 ```
 
-`src/shared` becomes a route, and every file lands where Rojo put it, so your requires still work.
+`src/shared` becomes a route, and every file lands where Rojo put it, so your requires keep working.
 
-From now on, edit `default.rogen.json`. `rogen write` replaces `default.project.json`, so stop tracking it: add `*.project.json` to `.gitignore` and run `git rm --cached default.project.json`.
+From now on you edit `default.rogen.json`, and Rogen writes `default.project.json` from it. Stop tracking the written file:
+
+```bash
+echo '*.project.json' >> .gitignore
+git rm --cached default.project.json
+```
 
 ## Sort by Feature
 
@@ -48,4 +53,4 @@ git mv src/client/Controllers/InventoryController.luau src/Inventory/Client/
 git mv src/shared/Types/InventoryTypes.luau src/Inventory/Shared/
 ```
 
-Moving a file changes its path in the game, so update the requires that reach it. `rogen where` on a module prints its require. Old folders and feature folders work side by side, so you can move one feature at a time.
+A move changes the file's path in the game, so update the requires that reach it; `rogen where <file>` prints the new one. Old folders keep working beside feature folders, so you can move one feature at a time.

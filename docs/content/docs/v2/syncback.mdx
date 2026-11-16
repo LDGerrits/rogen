@@ -20,8 +20,8 @@ Removing src/Greeter/Client
 Syncback would change 5 files (4 to write, 1 to remove).
 ```
 
-Syncback removes the files of instances the place no longer holds, so a place saved from an old copy undoes newer edits. Check the dry run, then run it without `--dry-run` (pass `-y` where it can't ask, such as CI).
+Read the list before you write. Syncback also removes the files of instances the place no longer holds, so a place saved from an old copy undoes newer edits. When it looks right, run it again without `--dry-run`, adding `-y` in CI.
 
-A changed instance goes back to its own file. A new one goes where routing would place it, in the style of the files around it.
+## Where Changes Go
 
-With a [`compiledPath`](/docs/v2/config), syncback leaves compiled code alone and warns with `syncback.compiledPath` for each change to make in the source.
+A changed instance goes back to its own file, and a new one goes where routing would put it, styled like the files around it. Under a [`compiledPath`](/docs/v2/config), syncback leaves the compiled code alone and warns about each change for you to copy into the source.

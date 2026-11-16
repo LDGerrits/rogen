@@ -13,7 +13,7 @@ A Luau `require` names where the module is in the game, not where the file is on
 
 ## Using Darklua
 
-[Darklua](https://github.com/seaofvoices/darklua) rewrites `src` into `dist`, and its `convert_require` rule turns path requires into instance requires using `sourcemap.json`:
+[Darklua](https://github.com/seaofvoices/darklua) rewrites `src` into `dist`. Its `convert_require` rule turns path requires into instance requires, which it looks up in `sourcemap.json`:
 
 ```json title=".darklua.json"
 {
@@ -31,9 +31,9 @@ A Luau `require` names where the module is in the game, not where the file is on
 }
 ```
 
-This needs two configs: `default.rogen.json` for the sourcemap, and `dist.rogen.json`, a copy with `"compiledPath": "dist"` and a `name`, for serving. Keep the two in step. `rogen init` writes both for a Rojo project that already uses Darklua.
+The sourcemap comes from `default.rogen.json`, which reads `src`. Rojo serves from `dist.rogen.json`, a copy that adds `"compiledPath": "dist"` and a `name`, so keep the two in step. On a Rojo project that already uses Darklua, `rogen init` writes both.
 
-Run each in its own terminal, in this order:
+Run each command in its own terminal, the sourcemap first so Darklua can find it:
 
 ```bash
 rogen sourcemap --watch -o sourcemap.json
@@ -41,4 +41,4 @@ darklua process src dist --watch
 rogen serve dist
 ```
 
-For a release, run each once, with `rogen build dist -o game.rbxl` last.
+For a release, run each once without `--watch`, and end with `rogen build dist -o game.rbxl`.
