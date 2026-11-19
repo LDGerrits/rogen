@@ -1,0 +1,28 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen where src
+exit 0
+stdout:
+  src/Shop/Panel/Row.ts -> ReplicatedStorage/shared/Shop/Panel/Row · route * (fallback)
+  src/Shop/Panel/index@client.ts -> StarterPlayer/StarterPlayerScripts/Shop/Panel · route client (suffix)
+  src/Shop/Panel/index@server.ts -> ServerScriptService/Shop/Panel · route server (suffix)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Shop: Folder
+        Panel: Folder
+          Row: ModuleScript  <- out/Shop/Panel/Row.luau
+  ServerScriptService: ServerScriptService
+    Shop: Folder
+      Panel: ModuleScript  <- out/Shop/Panel/index@server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Shop: Folder
+        Panel: ModuleScript  <- out/Shop/Panel/index@client.luau

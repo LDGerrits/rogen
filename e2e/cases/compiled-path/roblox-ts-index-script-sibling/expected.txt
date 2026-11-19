@@ -1,0 +1,23 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen where src
+exit 0
+stdout:
+  src/Shop/Boot/Step.ts -> ReplicatedStorage/shared/Shop/Boot/Step · route * (fallback)
+  src/Shop/Boot/index.server.ts -> ServerScriptService/Shop/Boot · route server (suffix)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Shop: Folder
+        Boot: Folder
+          Step: ModuleScript  <- out/Shop/Boot/Step.luau
+  ServerScriptService: ServerScriptService
+    Shop: Folder
+      Boot: Script  <- out/Shop/Boot/init.server.luau

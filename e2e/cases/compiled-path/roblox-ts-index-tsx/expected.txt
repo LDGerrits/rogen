@@ -1,0 +1,20 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen where src
+exit 0
+stdout:
+  src/Shop/client/Hud/Item.tsx -> StarterPlayer/StarterPlayerScripts/Shop/Hud/Item · route client (folder)
+  src/Shop/client/Hud/index.tsx -> StarterPlayer/StarterPlayerScripts/Shop/Hud · route client (folder)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Shop: Folder
+        Hud: ModuleScript  <- out/Shop/client/Hud/init.luau
+          Item: ModuleScript  <- out/Shop/client/Hud/Item.luau
