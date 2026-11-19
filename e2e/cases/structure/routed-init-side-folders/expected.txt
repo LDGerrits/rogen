@@ -1,0 +1,28 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen where src
+exit 0
+stdout:
+  src/Shop/Client/Keys.luau -> StarterPlayer/StarterPlayerScripts/Shop/Keys · route Client (folder)
+  src/Shop/Server/Remote.luau -> ServerScriptService/Shop/Remote · route Server (folder)
+  src/Shop/Types.luau -> ReplicatedStorage/Shared/Shop/Types · route * (fallback)
+  src/Shop/init@Client.luau -> StarterPlayer/StarterPlayerScripts/Shop · route Client (suffix)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Shop: Folder
+        Types: ModuleScript  <- src/Shop/Types.luau
+  ServerScriptService: ServerScriptService
+    Shop: Folder
+      Remote: ModuleScript  <- src/Shop/Server/Remote.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Shop: ModuleScript  <- src/Shop/init@Client.luau
+        Keys: ModuleScript  <- src/Shop/Client/Keys.luau

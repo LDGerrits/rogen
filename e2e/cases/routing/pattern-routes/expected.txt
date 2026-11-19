@@ -5,9 +5,9 @@ stdout: (not shown)
 $ rogen where src
 exit 0
 stdout:
-  src/Hud/HudController/Bar.luau -> StarterPlayer/StarterPlayerScripts/Hud/HudController/Bar · route *Controller.* (pattern)
+  src/Hud/HudController/Bar@Client.luau -> StarterPlayer/StarterPlayerScripts/Hud/HudController/Bar · route Client (suffix)
   src/Hud/HudController/init.luau -> StarterPlayer/StarterPlayerScripts/Hud/HudController · route *Controller.* (pattern)
-  src/Hud/init.luau -> StarterPlayer/StarterPlayerScripts/Hud · route *Controller.* (copy)
+  src/Hud/init.luau -> StarterPlayer/StarterPlayerScripts/Hud · route Client (copy)
   src/Shop/Card.story.luau -> ReplicatedStorage/Stories/Shop/Card.story · route *.story.luau (pattern)
   src/Shop/Kiosk@Server.luau -> ServerScriptService/Shop/Kiosk · route Server (suffix)
   src/Shop/Prices.luau -> ReplicatedStorage/Shared/Shop/Prices · route * (fallback)
@@ -36,6 +36,6 @@ project: DataModel
     StarterPlayerScripts: StarterPlayerScripts
       Hud: ModuleScript  <- src/Hud/init.luau
         HudController: ModuleScript  <- src/Hud/HudController/init.luau
-          Bar: ModuleScript  <- src/Hud/HudController/Bar.luau
+          Bar: ModuleScript  <- src/Hud/HudController/Bar@Client.luau
       Shop: Folder
         ShopController: ModuleScript  <- src/Shop/ShopController.luau

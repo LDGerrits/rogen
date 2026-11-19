@@ -79,19 +79,29 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should route a folder whose init file makes an instance a pattern matches, children and all", async () => {
+			it("should route an init script by the instance it makes, and only the script, as an @ on it would", async () => {
 				await write(
 					"src/Hud/index.tsx",
 					"src/Hud/Types.luau",
 					"src/Input/InputService/init.luau",
-					"src/Input/InputService/Keys.luau"
+					"src/Input/InputService/Keys.luau",
+					"src/Input/InputService/server/Remote.luau"
 				);
 
 				expect(await routed()).toEqual([
+					"ReplicatedStorage/shared/Hud/Types · * (fallback)",
+					"ReplicatedStorage/shared/Input/InputService/Keys · * (fallback)",
 					"ServerScriptService/Input/InputService · *Service.* (pattern)",
-					"ServerScriptService/Input/InputService/Keys · *Service.* (pattern)",
+					"ServerScriptService/Input/InputService/Remote · server (folder)",
 					"StarterPlayer/StarterPlayerScripts/Hud · *.tsx (pattern)",
-					"StarterPlayer/StarterPlayerScripts/Hud/Types · *.tsx (pattern)",
+				]);
+			});
+
+			it("should not match a name that carries an @, which is meant as a route key", async () => {
+				await write("src/Shop/Foo@sever.tsx");
+
+				expect(await routed()).toEqual([
+					"ReplicatedStorage/shared/Shop/Foo@sever · * (fallback)",
 				]);
 			});
 

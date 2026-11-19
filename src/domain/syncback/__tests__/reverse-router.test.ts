@@ -738,7 +738,7 @@ describe("ReverseRouter", () => {
 			});
 		});
 
-		it("should keep a new folder whose init script a pattern matches together", async () => {
+		it("should name the route into each file of a new folder whose init script a pattern routes alone", async () => {
 			const router = await routerOf(["src/Shop/ShopController.luau"], {
 				routes: PATTERNS,
 			});
@@ -755,7 +755,39 @@ describe("ReverseRouter", () => {
 				})
 			).toEqual({
 				kind: "placed",
-				home: { dir: posix("src/Shop"), contents: false },
+				home: {
+					dir: posix("src/Shop"),
+					contents: false,
+					mark: { text: "@Client", route: "Client" },
+				},
+			});
+		});
+
+		it("should name the route into a new child of an init script a pattern routes, as the child's own name decides", async () => {
+			const router = await routerOf(
+				["src/Input/InputController/init.luau"],
+				{ routes: PATTERNS }
+			);
+
+			expect(
+				router.place({
+					parent: [
+						"StarterPlayer",
+						"StarterPlayerScripts",
+						"Input",
+						"InputController",
+					],
+					name: "Keys",
+					folder: false,
+					files: [["Keys.luau"]],
+				})
+			).toEqual({
+				kind: "placed",
+				home: {
+					dir: posix("src/Input/InputController"),
+					contents: false,
+					mark: { text: "@Client", route: "Client" },
+				},
 			});
 		});
 	});

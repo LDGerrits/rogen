@@ -273,7 +273,7 @@ export class Router {
 		const leaf = this.claimLeaf(read, claims);
 		const pattern = claims.route
 			? undefined
-			: this.patternOf(entry, read, dirs, leaf.isInit);
+			: this.patternOf(entry, read, leaf.isInit);
 		if (pattern?.match.kind === "routed")
 			claims.claim(pattern.match.key, "pattern");
 		const hoistsLeaf = leaf.hoisted && !leaf.isInit;
@@ -298,28 +298,20 @@ export class Router {
 		};
 	}
 
-	/** The pattern that names the outermost folder whose init script makes an instance a pattern matches, so the folder moves whole; else the one the file's own name matches. An init script is its folder, so only the folder's name counts for it. */
+	/** The pattern the name of the instance a file makes matches: its own name, or for an init script its folder's with the script's extension, which routes the script alone. */
 	private patternOf(
 		entry: ScannedFile,
 		read: EntryReading,
-		dirs: DirClaims,
 		isInit: boolean
 	): { readonly match: PatternMatch; readonly at: string } | undefined {
-		for (const folder of read.folders) {
-			if (folder.invisible || folder.route !== undefined) continue;
-			const extension = dirs.initExtensionAt(folder.dir);
-			if (extension === undefined) continue;
-			const match = this.config.patterns.match(
-				`${folder.outrankedName}${extension}`
-			);
-			if (match)
-				return { match, at: joinPosix(entry.sourcePath, folder.dir) };
-		}
-		if (isInit) return undefined;
-		const match = this.config.patterns.match(
-			path.posix.basename(entry.source).replace(/^\^/, "")
-		);
-		return match && { match, at: entry.source };
+		const folder = read.folders.at(-1);
+		const name = !isInit
+			? path.posix.basename(entry.source).replace(/^\^/, "")
+			: folder && !folder.invisible
+				? `${folder.outrankedName}${read.fileName.slice(read.fileName.indexOf("."))}`
+				: undefined;
+		const match = name && this.config.patterns.match(name);
+		return match ? { match, at: entry.source } : undefined;
 	}
 
 	private place(

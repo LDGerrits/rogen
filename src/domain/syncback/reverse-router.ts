@@ -134,33 +134,23 @@ export class ReverseRouter {
 		return deepest?.join("/");
 	}
 
-	/** Where routing sends each file of `instance` when nothing but its names decide, as the write reads them: the outermost folder whose init script makes an instance a pattern matches, else the file's own name, else `*`. A meta file follows its script, and an init script is its folder. */
+	/** Where routing sends each file of `instance` when nothing but its names decide, as the write reads them: by the name of the instance it makes, which for an init script is its folder's with the script's extension, else to `*`. A meta file follows its script. */
 	private targetsOf(instance: NewInstance): (string | undefined)[] {
-		const files = (instance.files ?? []).filter(
-			(file) => RojoFile.metaStemOf(file[file.length - 1]) === undefined
-		);
-		const inits = new Map<string, string>();
-		for (const file of files)
-			if (file.length > 1 && isInitFile(file)) {
+		return (instance.files ?? [])
+			.filter(
+				(file) =>
+					RojoFile.metaStemOf(file[file.length - 1]) === undefined
+			)
+			.map((file) => {
 				const name = file[file.length - 1];
-				inits.set(
-					file.slice(0, -1).join("/"),
-					name.slice(name.indexOf("."))
+				if (!isInitFile(file))
+					return this.targetOfName(unhoisted(name));
+				const folder =
+					file.length > 1 ? file[file.length - 2] : instance.name;
+				return this.targetOfName(
+					`${unhoisted(folder)}${name.slice(name.indexOf("."))}`
 				);
-			}
-		return files.map((file) => {
-			for (let depth = 1; depth < file.length; depth++) {
-				const extension = inits.get(file.slice(0, depth).join("/"));
-				if (extension === undefined) continue;
-				const match = this.layout.config.patterns.match(
-					`${unhoisted(file[depth - 1])}${extension}`
-				);
-				if (match) return this.targetOfMatch(match);
-			}
-			return isInitFile(file)
-				? this.fallbackTarget()
-				: this.targetOfName(unhoisted(file[file.length - 1]));
-		});
+			});
 	}
 
 	private targetOfMatch(match: PatternMatch): string | undefined {
@@ -246,9 +236,7 @@ export class ReverseRouter {
 							...below
 						),
 						contents: false,
-						governed:
-							GOVERNING.has(maker.routeMatch) ||
-							maker.routeMatch === "pattern",
+						governed: GOVERNING.has(maker.routeMatch),
 						...(this.layout.routesOnlyItsInit(node) && {
 							mark: {
 								text: `@${maker.route}`,
