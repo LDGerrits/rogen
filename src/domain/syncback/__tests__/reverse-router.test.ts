@@ -589,6 +589,114 @@ describe("ReverseRouter", () => {
 		});
 	});
 
+	describe("pattern routes", () => {
+		const PATTERNS = {
+			...ROUTES,
+			"*Controller.*": "StarterPlayer/StarterPlayerScripts",
+			"*Service.*": "ServerScriptService",
+		};
+
+		it("should write a new instance plain beside files a pattern placed, when its name routes it back there", async () => {
+			const router = await routerOf(["src/Shop/ShopController.luau"], {
+				routes: PATTERNS,
+			});
+
+			expect(
+				router.place({
+					parent: ["StarterPlayer", "StarterPlayerScripts", "Shop"],
+					name: "CartController",
+					folder: false,
+					files: [["CartController.luau"]],
+				})
+			).toEqual({
+				kind: "placed",
+				home: { dir: posix("src/Shop"), contents: false },
+			});
+		});
+
+		it("should name the route into a new instance whose plain name would land elsewhere", async () => {
+			const router = await routerOf(["src/Shop/ShopController.luau"], {
+				routes: PATTERNS,
+			});
+
+			expect(
+				router.place({
+					parent: ["StarterPlayer", "StarterPlayerScripts", "Shop"],
+					name: "Cart",
+					folder: false,
+					files: [["Cart.luau"]],
+				})
+			).toEqual({
+				kind: "placed",
+				home: {
+					dir: posix("src/Shop"),
+					contents: false,
+					mark: { text: "@Client", route: "Client" },
+				},
+			});
+		});
+
+		it("should name the route into a new instance beside files * placed that a pattern would take away", async () => {
+			const router = await routerOf(["src/Shop/Prices.luau"], {
+				routes: PATTERNS,
+			});
+
+			expect(
+				router.place({
+					parent: ["ReplicatedStorage", "Shared", "Shop"],
+					name: "PriceService",
+					folder: false,
+					files: [["PriceService.luau"]],
+				})
+			).toMatchObject({
+				home: { mark: { text: "@Shared", route: "Shared" } },
+			});
+		});
+
+		it("should refuse when a pattern would take it away and no route key names where it is", async () => {
+			const router = await routerOf(["src/Shop/ShopController.luau"], {
+				routes: {
+					Server: "ServerScriptService",
+					"*Controller.*": "StarterPlayer/StarterPlayerScripts",
+					"*": "ReplicatedStorage/Shared",
+				},
+			});
+
+			expect(
+				router.place({
+					parent: ["StarterPlayer", "StarterPlayerScripts", "Shop"],
+					name: "Cart",
+					folder: false,
+					files: [["Cart.luau"]],
+				})
+			).toEqual({
+				kind: "conflict",
+				reason: "its name would route it elsewhere, and no route key names StarterPlayer/StarterPlayerScripts to write it with",
+			});
+		});
+
+		it("should keep a new folder whose init script a pattern matches together", async () => {
+			const router = await routerOf(["src/Shop/ShopController.luau"], {
+				routes: PATTERNS,
+			});
+
+			expect(
+				router.place({
+					parent: ["StarterPlayer", "StarterPlayerScripts", "Shop"],
+					name: "CartController",
+					folder: true,
+					files: [
+						["CartController", "init.luau"],
+						["CartController", "Items.luau"],
+					],
+				})
+			).toEqual({
+				kind: "placed",
+				home: { dir: posix("src/Shop"), contents: false },
+			});
+		});
+	});
+
 	describe("destination", () => {
 		const unit = (folder: boolean, files: string[][] = []) => ({
 			parent: ["ServerScriptService"],

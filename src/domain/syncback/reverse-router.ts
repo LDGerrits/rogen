@@ -1,6 +1,7 @@
 import path from "path";
 import { RojoFile } from "../rojo/rojo.js";
 import { SyncRules } from "../rojo/sync-rules.js";
+import { DeclaredKeys } from "../config/declared-keys.js";
 import { Donor, NewStyle, Style, SyncbackLayout } from "./syncback-layout.js";
 
 /** An instance the place holds that no file of the project makes. */
@@ -30,11 +31,19 @@ interface NewHome {
 	readonly mark?: Mark;
 }
 
+/** A home and whether a routing folder, marker, mark or the folder of an init script decides where its files go; otherwise their names do. */
+type PlacedHome = NewHome & { readonly governed: boolean };
+
 type NewPlacement =
 	| { readonly kind: "placed"; readonly home: NewHome }
 	| { readonly kind: "conflict"; readonly reason: string };
 
-const conflict = (reason: string): NewPlacement => ({
+type Conflict = { readonly kind: "conflict"; readonly reason: string };
+
+type Placing =
+	{ readonly kind: "placed"; readonly home: PlacedHome } | Conflict;
+
+const conflict = (reason: string): Conflict => ({
 	kind: "conflict",
 	reason,
 });
@@ -43,6 +52,9 @@ const conflict = (reason: string): NewPlacement => ({
 export const instanceNameOf = (fileName: string): string =>
 	RojoFile.metaStemOf(fileName) ??
 	new RojoFile(fileName, SyncRules.DEFAULT).instanceName;
+
+/** The ways a file is routed that decide for a new sibling too, whatever its name. */
+const GOVERNING: ReadonlySet<string> = new Set(["folder", "marker", "suffix"]);
 
 /** Names Rojo gives a kind of file by, which never route a file. */
 const FILE_KINDS = new Set(["meta", "model", "project"]);
@@ -71,16 +83,85 @@ export class ReverseRouter {
 	constructor(private readonly layout: SyncbackLayout) {}
 
 	place(instance: NewInstance): NewPlacement {
-		const placement = this.placeInSources(instance);
-		return placement.kind === "placed"
-			? {
-					...placement,
-					home: {
-						...placement.home,
-						dir: this.layout.synced(placement.home.dir),
-					},
-				}
-			: placement;
+		const placing = this.placeInSources(instance);
+		if (placing.kind !== "placed") return placing;
+		const { governed, ...home } = placing.home;
+		const routed = governed ? home : this.routedBack(instance, home);
+		if ("kind" in routed) return routed;
+		return {
+			kind: "placed",
+			home: { ...routed, dir: this.layout.synced(routed.dir) },
+		};
+	}
+
+	/** `home`, where only the names of the instance's files decide where they go, marked with the route of where it is when a pattern or `*` would send one elsewhere. */
+	private routedBack(
+		instance: NewInstance,
+		home: NewHome
+	): NewHome | Conflict {
+		if (home.mark || !instance.files) return home;
+		const intended = this.targetUnder(instance.parent);
+		if (intended === undefined) return home;
+		const lands = this.targetsOf(instance);
+		if (lands.every((target) => target === intended)) return home;
+		const keys = [...this.layout.config.keys.routeKeys].filter(
+			(key) =>
+				this.layout.config.routes.get(key)?.instancePath.join("/") ===
+				intended
+		);
+		if (keys.length !== 1)
+			return conflict(
+				`its name would route it elsewhere, and no route key names ${intended} to write it with`
+			);
+		return { ...home, mark: { text: `@${keys[0]}`, route: keys[0] } };
+	}
+
+	/** The target of the deepest route whose target holds `parent`, by pattern routes and `*` too. */
+	private targetUnder(parent: readonly string[]): string | undefined {
+		let deepest: readonly string[] | undefined;
+		for (const target of this.layout.config.routes.values()) {
+			const path = target.instancePath;
+			if (
+				path.every((part, at) => parent[at] === part) &&
+				path.length > (deepest?.length ?? -1)
+			)
+				deepest = path;
+		}
+		return deepest?.join("/");
+	}
+
+	/** Where routing sends each file of `instance` when nothing but its names decide: the pattern the instance's name, or the file's, matches, else `*`. */
+	private targetsOf(instance: NewInstance): (string | undefined)[] {
+		const files = instance.files ?? [];
+		const init = instance.folder
+			? files.find((file) => file.length === 2 && isInitFile(file))
+			: undefined;
+		const folderTarget =
+			init &&
+			this.targetOfName(
+				`${instance.name}${init[1].slice(init[1].indexOf("."))}`
+			);
+		if (folderTarget !== undefined) return [folderTarget];
+		return files.map((file) =>
+			isInitFile(file)
+				? this.fallbackTarget()
+				: this.targetOfName(file[file.length - 1])
+		);
+	}
+
+	private targetOfName(name: string): string | undefined {
+		const match = this.layout.config.patterns.match(name);
+		if (match?.kind === "clash") return undefined;
+		if (match) return this.targetOf(match.key);
+		return this.fallbackTarget();
+	}
+
+	private fallbackTarget(): string | undefined {
+		return this.targetOf(DeclaredKeys.FALLBACK_ROUTE);
+	}
+
+	private targetOf(key: string): string | undefined {
+		return this.layout.config.routes.get(key)?.instancePath.join("/");
 	}
 
 	/** Where a file of `instance` goes in `home`: a folder's files drop the folder when the routing folder stands for it, and the mark is spelled into the name of each file, or of a folder that holds a script, as an init file can't carry one. */
@@ -134,7 +215,7 @@ export class ReverseRouter {
 		return `${stem}${mark.text}${name.slice(stem.length)}`;
 	}
 
-	private placeInSources(instance: NewInstance): NewPlacement {
+	private placeInSources(instance: NewInstance): Placing {
 		const { parent } = instance;
 		for (let depth = parent.length; depth >= 1; depth--) {
 			const node = parent.slice(0, depth);
@@ -149,6 +230,9 @@ export class ReverseRouter {
 							...below
 						),
 						contents: false,
+						governed:
+							GOVERNING.has(maker.routeMatch) ||
+							maker.routeMatch === "pattern",
 						...(this.layout.routesOnlyItsInit(node) && {
 							mark: {
 								text: `@${maker.route}`,
@@ -171,7 +255,7 @@ export class ReverseRouter {
 	private besideDonors(
 		donors: readonly Donor[],
 		below: readonly string[]
-	): NewPlacement {
+	): Placing {
 		const layouts = new Map<string, { donor: Donor; count: number }>();
 		for (const donor of donors) {
 			const key = `${donor.dir}\0${donor.style}\0${donor.route}`;
@@ -200,6 +284,7 @@ export class ReverseRouter {
 			home: {
 				dir: path.posix.join(donor.dir, ...below),
 				contents: false,
+				governed: GOVERNING.has(donor.style),
 				...(donor.style === "suffix" && {
 					mark: {
 						text: `@${donor.route}`,
@@ -259,7 +344,7 @@ export class ReverseRouter {
 			: { kind: "keyed", key: keyed[0].key, depth };
 	}
 
-	private asNewFeature(instance: NewInstance): NewPlacement {
+	private asNewFeature(instance: NewInstance): Placing {
 		const { parent, name, folder } = instance;
 		const roots = this.layout.sourcePaths;
 		const route = this.routeTo(parent);
@@ -278,7 +363,11 @@ export class ReverseRouter {
 		if (route.kind === "fallback")
 			return {
 				kind: "placed",
-				home: { dir: path.posix.join(root, ...below), contents: false },
+				home: {
+					dir: path.posix.join(root, ...below),
+					contents: false,
+					governed: false,
+				},
 			};
 		if (this.styleFor(route.key) === "suffix")
 			return {
@@ -286,6 +375,7 @@ export class ReverseRouter {
 				home: {
 					dir: path.posix.join(root, ...below),
 					contents: false,
+					governed: true,
 					mark: {
 						text: `@${route.key}`,
 						route: route.key,
@@ -305,10 +395,12 @@ export class ReverseRouter {
 								routingFolder
 							),
 							contents: true,
+							governed: true,
 						}
 					: {
 							dir: path.posix.join(root, ...below, routingFolder),
 							contents: false,
+							governed: true,
 						},
 		};
 	}
