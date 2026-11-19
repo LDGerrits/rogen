@@ -146,13 +146,13 @@ Fix the rule as the message says.
 
 ### `config.invalidRouteKey` [#config-invalidroutekey]
 
-Error. A route key has a character that isn't a letter or a digit, or it starts with a digit. Keys appear in folder and file names, so they must match exactly.
+Error. A route key is neither a name nor a file-name pattern. A name is letters and digits that start with a letter, because it appears in folder and file names. A pattern such as `*.tsx` or `*Controller.*` has a `*` and the characters of a file name, but no `/`, `**`, `@` or parentheses, since it matches a file's name and never its path.
 
 ```
-error: route key "ser-ver" is invalid: use letters and digits only, starting with a letter. (config.invalidRouteKey)
+error: route key "ser-ver" is invalid: a name uses letters and digits only, starting with a letter, and a file-name pattern has a "*", such as "*.tsx". (config.invalidRouteKey)
 ```
 
-Rename the key, for example to `server`. See [Routing](/docs/v2/routing).
+Rename the key, for example to `server`, or write the pattern on the file name alone. See [Routing](/docs/v2/routing).
 
 ### `config.ambiguousKey` [#config-ambiguouskey]
 

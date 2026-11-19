@@ -249,13 +249,37 @@ describe("CoreConfigService", () => {
 
 				expect(problems).toEqual([
 					[
-						'route key "my-key" is invalid: use letters and digits only, starting with a letter.',
+						'route key "my-key" is invalid: a name uses letters and digits only, starting with a letter, and a file-name pattern has a "*", such as "*.tsx".',
 						"/repo/default.rogen.json",
 						3,
 						13,
 					],
 				]);
 			});
+
+			it("should accept a file-name pattern as a route key", async () => {
+				expect(
+					await diagnosticsFor({
+						routes: {
+							"*.tsx": "StarterPlayer/StarterPlayerScripts",
+							"*Controller.*": "StarterPlayer/StarterPlayerScripts",
+						},
+					})
+				).toEqual([]);
+			});
+
+			it.each(["src/*.tsx", "**.tsx", "*@client"])(
+				"should reject %j, which is no file-name pattern",
+				async (key) => {
+					const problems = await diagnosticsFor({
+						routes: { [key]: "ServerScriptService" },
+					});
+
+					expect(problems.map(([message]) => message)).toEqual([
+						`route key "${key}" is invalid: a name uses letters and digits only, starting with a letter, and a file-name pattern has a "*", such as "*.tsx".`,
+					]);
+				}
+			);
 
 			it("should accept the fallback route key", async () => {
 				expect(

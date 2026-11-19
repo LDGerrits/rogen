@@ -83,8 +83,8 @@ describe("domain/config/config", () => {
 	describe("DeclaredKeys", () => {
 		const routes = new DeclaredKeys(["server", "client", "shared"]);
 
-		it("should hold every key except the fallback route, which no name can spell", () => {
-			const keys = new DeclaredKeys(["*", "server"]);
+		it("should hold the keys that are names, leaving out * and the other patterns", () => {
+			const keys = new DeclaredKeys(["*", "*.tsx", "server"]);
 
 			expect([...keys.routeKeys]).toEqual(["server"]);
 		});

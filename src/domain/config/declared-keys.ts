@@ -1,4 +1,4 @@
-/** The route keys a config declares; a name spells a key exactly as it is declared. */
+/** The route keys a config declares that are names; a name spells a key exactly as it is declared. */
 export class DeclaredKeys {
 	static readonly FALLBACK_ROUTE = "*";
 
@@ -7,9 +7,7 @@ export class DeclaredKeys {
 	readonly routeKeys: ReadonlySet<string>;
 
 	constructor(routeKeys: Iterable<string>) {
-		this.routeKeys = new Set(
-			[...routeKeys].filter((key) => key !== DeclaredKeys.FALLBACK_ROUTE)
-		);
+		this.routeKeys = new Set([...routeKeys].filter(DeclaredKeys.isName));
 	}
 
 	static isName(text: string): boolean {

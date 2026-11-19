@@ -33,11 +33,13 @@ import {
 } from "./config.js";
 import { ConfigKeys } from "./config-keys.js";
 import { DeclaredKeys } from "./declared-keys.js";
+import { RoutePatterns } from "./route-patterns.js";
 import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
 
 const FALLBACK_NAME = "project";
 
-const NAME_RULE = "use letters and digits only, starting with a letter";
+const KEY_RULE =
+	'a name uses letters and digits only, starting with a letter, and a file-name pattern has a "*", such as "*.tsx"';
 
 /** Checks every rule on one project's values that doesn't need the source tree, and returns the config with its route targets parsed. */
 export class ConfigValidator {
@@ -215,16 +217,16 @@ export class ConfigValidator {
 		const targets = new Map<string, Target>();
 		for (const [key, text] of Object.entries(this.routes)) {
 			const location = this.locate("routes", key);
-			if (key !== DeclaredKeys.FALLBACK_ROUTE) {
-				if (DeclaredKeys.isName(key)) this.claim(key, location);
-				else {
-					this.problems.error(
-						"config.invalidRouteKey",
-						location,
-						`route key "${key}" is invalid: ${NAME_RULE}.`
-					);
-				}
-			}
+			if (DeclaredKeys.isName(key)) this.claim(key, location);
+			else if (
+				key !== DeclaredKeys.FALLBACK_ROUTE &&
+				!RoutePatterns.isPattern(key)
+			)
+				this.problems.error(
+					"config.invalidRouteKey",
+					location,
+					`route key "${key}" is invalid: ${KEY_RULE}.`
+				);
 			const target = Target.parse(text, location);
 			if (target.isErr()) this.problems.add(target.error);
 			else targets.set(key, target.value);

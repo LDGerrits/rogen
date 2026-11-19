@@ -7,6 +7,7 @@ import { ParsedProjectFile, RojoProject } from "../rojo/rojo-project.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import { DEFAULT_SOURCE_PATH, projectFileOf } from "./config.js";
 import { DeclaredKeys } from "./declared-keys.js";
+import { RoutePatterns } from "./route-patterns.js";
 
 interface ResolvedConfigFields {
 	readonly file: string;
@@ -36,6 +37,7 @@ export class ResolvedConfig {
 	readonly compiledPath?: string;
 	readonly warnings: readonly Diagnostic[];
 	readonly keys: DeclaredKeys;
+	readonly patterns: RoutePatterns;
 	/** The project's `syncRules` in front of Rojo's. */
 	readonly syncRules: SyncRules;
 
@@ -49,6 +51,7 @@ export class ResolvedConfig {
 		this.compiledPath = fields.compiledPath;
 		this.warnings = fields.warnings;
 		this.keys = new DeclaredKeys(fields.routes.keys());
+		this.patterns = new RoutePatterns(fields.routes);
 		this.syncRules = SyncRules.following(
 			SyncRules.read(fields.project.syncRules).rules,
 			toPosix(this.projectDir)
