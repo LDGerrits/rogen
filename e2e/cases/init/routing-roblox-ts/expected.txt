@@ -1,10 +1,14 @@
 $ rogen init
 exit 0
 stdout: (not shown)
+stderr:
+  src/Inventory/Server - warning: differs from the route "server" only in letter case, so it is read as an ordinary name. Spell it "server", or declare it as written. (route.caseMismatch)
 
 $ rogen write
 exit 0
 stdout: (not shown)
+stderr:
+  src/Inventory/Server - warning: differs from the route "server" only in letter case, so it is read as an ordinary name. Spell it "server", or declare it as written. (route.caseMismatch)
 
 written:
   .git/
@@ -51,9 +55,11 @@ project: DataModel
   ReplicatedStorage: ReplicatedStorage
     rbxts_include: Folder
       node_modules: Folder
+    shared: Folder
+      Inventory: Folder
+        Server: Folder
+          Save: ModuleScript  <- out/Inventory/Server/Save.luau
   ServerScriptService: ServerScriptService
-    Inventory: Folder
-      Save: ModuleScript  <- out/Inventory/Server/Save.luau
     Trading: Folder
       Trade: ModuleScript  <- out/Trading/server/Trade.luau
   StarterPlayer: StarterPlayer

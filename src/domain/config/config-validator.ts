@@ -304,7 +304,7 @@ export class ConfigValidator {
 			this.problems.error(
 				"config.ambiguousKey",
 				location,
-				`"${key}" and "${other}" differ only in the case of their first letter, so both would match the same names; keep one of them.`
+				`"${key}" and "${other}" differ only in letter case, so a name spelled one way would read as a misspelling of the other; keep one of them.`
 			);
 		}
 	}

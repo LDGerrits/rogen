@@ -1114,24 +1114,24 @@ describe("CoreWriteService", () => {
 			server: "ServerScriptService",
 			"*": "ReplicatedStorage/Shared",
 		};
-		const ignoredAt = "src/F/Shared/Bad@server.luau";
+		const ignoredAt = "src/F/shared/Bad@server.luau";
 
 		beforeEach(async () => {
-			await fs.writeFile(abs("src/F/Shared/Good.luau"), "");
+			await fs.writeFile(abs("src/F/shared/Good.luau"), "");
 			await fs.writeFile(abs(ignoredAt), "");
 		});
 
 		it("should tell the path it can't place that the write stops on the neighbour", async () => {
 			const result = (
 				await locateIn(writeServiceOfFs(), configOf({ routes }), {
-					args: ["src/F/Shared/Good.luau"],
+					args: ["src/F/shared/Good.luau"],
 					cwd: abs(),
 				})
 			).unwrap();
 
 			expect(result.files).toMatchObject([
 				{
-					source: toPosix(abs("src/F/Shared/Good.luau")),
+					source: toPosix(abs("src/F/shared/Good.luau")),
 					exists: true,
 					status: "blocked",
 					by: {
@@ -1163,7 +1163,7 @@ describe("CoreWriteService", () => {
 			const found = (
 				await writeServiceOfFs().diagnose(
 					selectionOf(configOf({ routes })),
-					{ args: ["src/F/Shared/Good.luau"], cwd: abs() }
+					{ args: ["src/F/shared/Good.luau"], cwd: abs() }
 				)
 			).unwrap();
 
@@ -1288,7 +1288,7 @@ describe("CoreWriteService", () => {
 				).unwrap();
 
 			it("should report a clash against the file that wins it", async () => {
-				await fs.writeFile(abs("src/Combat/Hit@server.luau"), "");
+				await fs.writeFile(abs("src/Combat/Hit@Server.luau"), "");
 				await fs.writeFile(abs("src/Combat/Server/Hit.luau"), "");
 
 				expect(

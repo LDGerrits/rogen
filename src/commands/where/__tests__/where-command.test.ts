@@ -48,14 +48,14 @@ describe("where command", () => {
 			routes: ROUTES,
 		});
 		await write(
-			"src/Net/Http@client.luau",
+			"src/Net/Http@Client.luau",
 			"src/Net/Http.spec.luau",
 			"src/Util.luau"
 		);
 
 		const result = await run({
 			_: [
-				"src/Net/Http@client.luau",
+				"src/Net/Http@Client.luau",
 				"src/Net/Http.spec.luau",
 				"src/Util.luau",
 				"src/Combat/Server/Hit.luau",
@@ -64,7 +64,7 @@ describe("where command", () => {
 
 		expect(result.isOk()).toBe(true);
 		expect(printed()).toEqual([
-			"src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)",
+			"src/Net/Http@Client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)",
 			"src/Net/Http.spec.luau -> ignored · matches **/*.spec.luau",
 			"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
 			"src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder) · the file does not exist yet",
@@ -166,11 +166,11 @@ describe("where command", () => {
 	describe("when an error elsewhere stops the build", () => {
 		beforeEach(async () => {
 			await writeConfig("default.rogen.json", {
-				routes: { shared: "ReplicatedStorage/Shared", ...ROUTES },
+				routes: { Shared: "ReplicatedStorage/Shared", ...ROUTES },
 			});
 			await write(
 				"src/F/Shared/Good.luau",
-				"src/F/Shared/Bad@server.luau"
+				"src/F/Shared/Bad@Server.luau"
 			);
 		});
 
@@ -181,12 +181,12 @@ describe("where command", () => {
 				ReportedError
 			);
 			expect(printed()).toEqual([
-				"src/F/Shared/Good.luau -> not placed · the write stops on src/F/Shared/Bad@server.luau (route.ignoredAt); run 'rogen check'",
+				"src/F/Shared/Good.luau -> not placed · the write stops on src/F/Shared/Bad@Server.luau (route.ignoredAt); run 'rogen check'",
 			]);
 		});
 
 		it("should leave the other errors that stop it to 'rogen check'", async () => {
-			await write("src/F/Shared/Worse@client.luau");
+			await write("src/F/Shared/Worse@Client.luau");
 
 			const result = await run({ _: ["src/F/Shared/Good.luau"] });
 
@@ -199,7 +199,7 @@ describe("where command", () => {
 			await run({ _: ["src/F"] });
 
 			expect(printed()).toContainEqual(
-				"src/F -> not placed · src/F/Shared/Bad@server.luau has an error (route.ignoredAt)"
+				"src/F -> not placed · src/F/Shared/Bad@Server.luau has an error (route.ignoredAt)"
 			);
 		});
 
@@ -210,7 +210,7 @@ describe("where command", () => {
 				{
 					status: "blocked",
 					blockedBy: {
-						file: "/repo/src/F/Shared/Bad@server.luau",
+						file: "/repo/src/F/Shared/Bad@Server.luau",
 						code: "route.ignoredAt",
 					},
 				}

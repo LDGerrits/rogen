@@ -2,8 +2,10 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  src/SHARED - warning: differs from the route "shared" only in letter case, so it is read as an ordinary name. Spell it "shared" or "Shared", or declare it as written. (route.caseMismatch)
-  default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
+  src/SHARED - warning: differs from the route "shared" only in letter case, so it is read as an ordinary name. Spell it "shared", or declare it as written. (route.caseMismatch)
+  src/Server - warning: differs from the route "server" only in letter case, so it is read as an ordinary name. Spell it "server", or declare it as written. (route.caseMismatch)
+  default.rogen.json - warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)
+    src/Inventory/Hud@Client.luau (did you mean "@client"?)
     src/Inventory/Load@SERVER.luau (did you mean "@server"?)
 
 written:
@@ -15,12 +17,9 @@ project: DataModel
     shared: Folder
       Inventory: Folder
         HttpClient: ModuleScript  <- src/Inventory/HttpClient.luau
+        Hud@Client: ModuleScript  <- src/Inventory/Hud@Client.luau
         Load@SERVER: ModuleScript  <- src/Inventory/Load@SERVER.luau
       SHARED: Folder
         Types: ModuleScript  <- src/SHARED/Types.luau
-  ServerScriptService: ServerScriptService
-    Save: ModuleScript  <- src/Server/Save.luau
-  StarterPlayer: StarterPlayer
-    StarterPlayerScripts: StarterPlayerScripts
-      Inventory: Folder
-        Hud: ModuleScript  <- src/Inventory/Hud@Client.luau
+      Server: Folder
+        Save: ModuleScript  <- src/Server/Save.luau

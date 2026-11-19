@@ -279,24 +279,23 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should match a suffix with the first letter of the key in either case", async () => {
+			it("should read a suffix, folder or marker in another letter case as a name", async () => {
 				await write(
 					"src/Inventory/Load@Server.luau",
-					"src/Inventory/Save@Client.luau"
+					"src/Server/A.luau",
+					"src/Shop/@Server",
+					"src/Shop/B.luau"
 				);
 
-				expect(await paths()).toEqual([
-					"ServerScriptService/Inventory/Load",
-					"StarterPlayer/StarterPlayerScripts/Inventory/Save",
+				expect((await paths()).sort()).toEqual([
+					"ReplicatedStorage/shared/Inventory/Load@Server",
+					"ReplicatedStorage/shared/Server/A",
+					"ReplicatedStorage/shared/Shop/B",
 				]);
 			});
 
-			it("should match a lower-case folder and marker against a key declared with a capital", async () => {
-				await write(
-					"src/server/A.luau",
-					"src/Inventory/@server",
-					"src/Inventory/B.luau"
-				);
+			it("should route Rojo's .server to a key declared with a capital", async () => {
+				await write("src/Inventory/Main.server.luau");
 
 				expect(
 					await paths({
@@ -305,38 +304,7 @@ describe("Router", () => {
 							"*": "Workspace",
 						},
 					})
-				).toEqual([
-					"ServerScriptService/Inventory/B",
-					"ServerScriptService/A",
-				]);
-			});
-
-			it("should remove a routing folder and route below it", async () => {
-				await write("src/Inventory/server/Save.luau");
-
-				expect(await paths()).toEqual([
-					"ServerScriptService/Inventory/Save",
-				]);
-			});
-
-			it("should keep a nested route folder as an ordinary folder", async () => {
-				await write("src/ReplicatedFirst/client/main.luau");
-
-				expect(await paths()).toEqual(["ReplicatedFirst/client/main"]);
-			});
-
-			it("should still hide a nested invisible routing folder", async () => {
-				await write("src/ReplicatedFirst/(server)/main.luau");
-
-				expect(await paths()).toEqual(["ReplicatedFirst/main"]);
-			});
-
-			it("should ignore a suffix under an outer routing folder", async () => {
-				await write("src/server/Inventory/Hud.client.luau");
-
-				expect(await paths()).toEqual([
-					"ServerScriptService/Inventory/Hud",
-				]);
+				).toEqual(["ServerScriptService/Inventory/Main"]);
 			});
 
 			it("should ignore a suffix Rojo doesn't understand but leave it in the name", async () => {
@@ -344,20 +312,6 @@ describe("Router", () => {
 
 				expect(await paths()).toEqual([
 					"ServerScriptService/Hud-client",
-				]);
-			});
-
-			it("should match routing folders and markers with the first letter in either case", async () => {
-				await write("src/Server/Save.luau");
-
-				expect(await paths()).toEqual(["ServerScriptService/Save"]);
-			});
-
-			it("should treat routing folders that differ beyond the first letter as ordinary", async () => {
-				await write("src/SERVER/Save.luau");
-
-				expect(await paths()).toEqual([
-					"ReplicatedStorage/shared/SERVER/Save",
 				]);
 			});
 

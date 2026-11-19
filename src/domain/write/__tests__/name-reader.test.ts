@@ -64,11 +64,8 @@ describe("NameReader marker", () => {
 		expect(readerOf(ROUTE_KEYS).marker("@server").misspellings).toEqual([]);
 	});
 
-	it("matches with the first letter in the other case", () => {
-		expect(matchMarkerKey("@Server", ROUTE_KEYS)).toBe("server");
-	});
-
-	it("does not match any other difference in case", () => {
+	it("does not match a marker in another letter case, and names the key it misses", () => {
+		expect(matchMarkerKey("@Server", ROUTE_KEYS)).toBeUndefined();
 		expect(matchMarkerKey("@SERVER", ROUTE_KEYS)).toBeUndefined();
 		expect(readerOf(ROUTE_KEYS).marker("@SERVER")).toEqual({
 			key: undefined,
@@ -130,17 +127,15 @@ describe("NameReader suffixes", () => {
 		expect(result.matchedKeys.size).toBe(0);
 	});
 
-	it("matches @key with the first letter in the other case", () => {
-		expect(matchSuffixKeys("Foo@Server", ROUTES).matchedKeys).toEqual(
-			new Set(["server"])
-		);
-		expect(
-			matchSuffixKeys("Foo@server", new Set(["Server"])).matchedKeys
-		).toEqual(new Set(["Server"]));
+	it("does not match @key in another letter case", () => {
+		expect(matchSuffixKeys("Foo@Server", ROUTES).matchedKeys.size).toBe(0);
+		expect(matchSuffixKeys("Foo@SERVER", ROUTES).matchedKeys.size).toBe(0);
 	});
 
-	it("does not match @key that differs beyond the first letter", () => {
-		expect(matchSuffixKeys("Foo@SERVER", ROUTES).matchedKeys.size).toBe(0);
+	it("matches Rojo's .server to a key declared in another letter case", () => {
+		expect(
+			matchSuffixKeys("Foo.server", new Set(["Server"])).matchedKeys
+		).toEqual(new Set(["Server"]));
 	});
 
 	it("records where each matched key sits in the stem, the trailing one first", () => {
@@ -249,13 +244,13 @@ describe("NameReader folder", () => {
 	const read = (name: string) => readFolderName(name, ROUTE_KEYS);
 
 	it("should read a folder named after a route as that route, spelled without an @, keeping no name", () => {
-		expect(read("Server")).toEqual({
+		expect(read("server")).toEqual({
 			invisible: false,
 			hoisted: false,
 			at: false,
 			innerRoutes: [],
 			route: "server",
-			outrankedName: "Server",
+			outrankedName: "server",
 			misspellings: [],
 		});
 	});
@@ -302,11 +297,11 @@ describe("NameReader folder", () => {
 		});
 	});
 
-	it("should read @key with the first letter in the other case", () => {
+	it("should read @key in another letter case as an ordinary name", () => {
 		expect(read("Queue@Server")).toMatchObject({
-			route: "server",
-			keptName: "Queue",
+			keptName: "Queue@Server",
 		});
+		expect(read("Queue@Server").route).toBeUndefined();
 	});
 
 	it("should read -server, .server and Rojo's script class as ordinary names", () => {

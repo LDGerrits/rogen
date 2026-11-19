@@ -156,10 +156,10 @@ Rename the key, for example to `server`. See [Routing](/docs/v2/routing).
 
 ### `config.ambiguousKey` [#config-ambiguouskey]
 
-Error. Two declared keys differ only in the case of their first letter. A name matches a key whose first letter is in either case, so both keys would match the same folders.
+Error. Two declared keys differ only in letter case. A name spelled one way would read as a misspelling of the other, and Rojo's `.server` and `.client` would name both.
 
 ```
-error: "Server" and "server" differ only in the case of their first letter, so both would match the same names; keep one of them. (config.ambiguousKey)
+error: "SERVER" and "server" differ only in letter case, so a name spelled one way would read as a misspelling of the other; keep one of them. (config.ambiguousKey)
 ```
 
 Keep one of the keys. See [How Routing Works](/docs/v2/routing).
@@ -297,7 +297,7 @@ error: "@client" does nothing here, because the "server" route already governs t
 
 Remove the `@key`, or move the file out of the governing route's folder. Rogen offers no automatic fix, because the right choice depends on where the code should run.
 
-An `@` that restates the governing route is fine, as in `Shared/Net/Remote@shared.luau`. Rogen also reports a file that another file replaces, because its name is wrong either way. See [The Outermost Route Wins](/docs/v2/routing#the-outermost-route-wins).
+An `@` that restates the governing route is fine, as in `Shared/Net/Remote@Shared.luau`. Rogen also reports a file that another file replaces, because its name is wrong either way. See [The Outermost Route Wins](/docs/v2/routing#the-outermost-route-wins).
 
 ### `route.scriptSuffixBeforeAt` [#route-scriptsuffixbeforeat]
 
@@ -337,10 +337,10 @@ Do what the message says.
 
 ### `route.caseMismatch` [#route-casemismatch]
 
-Warning. A folder or marker file matches a declared key except for the letter case after the first letter. Rogen reads it as an ordinary name.
+Warning. A folder or marker file matches a declared key except for letter case. Keys match exactly, so Rogen reads it as an ordinary name.
 
 ```
-warning: differs from the route "shared" only in letter case, so it is read as an ordinary name. Spell it "shared" or "Shared", or declare it as written. (route.caseMismatch)
+warning: differs from the route "shared" only in letter case, so it is read as an ordinary name. Spell it "shared", or declare it as written. (route.caseMismatch)
 ```
 
 Rename it to the key, as `@Shared` for a marker file. If it should route as it is written, declare that spelling as a key. Rogen offers no automatic fix, because a name like `SHARED/` can be an ordinary folder on purpose. See [How Routing Works](/docs/v2/routing).
@@ -355,9 +355,9 @@ warning: ships to clients as ReplicatedStorage/Shared/Server/Datastore: move it 
 
 Move the file out of the replicating route's folder, for example from `Shared/Server/` to `Server/`.
 
-If the folder should replicate, put a marker file in it that restates the governing route, such as `Shared/Server/@shared`. The marker covers every file below it. To cover one file, name it like `Secret@shared.luau`.
+If the folder should replicate, put a marker file in it that restates the governing route, such as `Shared/Server/@Shared`. The marker covers every file below it. To cover one file, name it like `Secret@Shared.luau`.
 
-A route written with `@`, as in `Shared/Data@server.luau`, gets the [`route.ignoredAt`](#route-ignoredat) error instead. See [The Outermost Route Wins](/docs/v2/routing#the-outermost-route-wins).
+A route written with `@`, as in `Shared/Data@Server.luau`, gets the [`route.ignoredAt`](#route-ignoredat) error instead. See [The Outermost Route Wins](/docs/v2/routing#the-outermost-route-wins).
 
 ## Tree
 

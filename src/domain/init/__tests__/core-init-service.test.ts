@@ -841,9 +841,9 @@ describe("CoreInitService", () => {
 					name: "mine",
 					sourcePaths: ["src"],
 					routes: {
-						Shared: "ReplicatedStorage/Shared",
-						Server: "ServerScriptService/Server",
-						Client: "StarterPlayer/StarterPlayerScripts",
+						shared: "ReplicatedStorage/Shared",
+						server: "ServerScriptService/Server",
+						client: "StarterPlayer/StarterPlayerScripts",
 						"*": "ReplicatedStorage/Shared",
 					},
 					tree: {
@@ -1039,8 +1039,8 @@ describe("CoreInitService", () => {
 			expect(configOf(plan)).toMatchObject({
 				sourcePaths: ["code"],
 				routes: {
-					Server: "ServerScriptService/Server",
-					Client: "StarterPlayer/StarterPlayerScripts/Client",
+					server: "ServerScriptService/Server",
+					client: "StarterPlayer/StarterPlayerScripts/Client",
 				},
 			});
 			expect(plan?.warnings).toEqual([]);
@@ -1057,7 +1057,7 @@ describe("CoreInitService", () => {
 
 			expect(configOf(plan)).toMatchObject({
 				sourcePaths: ["src"],
-				routes: { Server: "ServerScriptService/Server" },
+				routes: { server: "ServerScriptService/Server" },
 				tree: { $className: "DataModel", ServerScriptService: {} },
 			});
 			expect(plan?.warnings).toEqual([]);

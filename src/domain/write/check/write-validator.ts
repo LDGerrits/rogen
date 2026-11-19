@@ -262,7 +262,7 @@ export class WriteValidator {
 			return warningDiagnostic(
 				"route.caseMismatch",
 				{ resource },
-				`differs from the route "${key}" only in letter case, so it is read as an ordinary name. Spell it "${sign}${key}" or "${sign}${DeclaredKeys.flipFirstLetter(key)}", or declare it as written.`
+				`differs from the route "${key}" only in letter case, so it is read as an ordinary name. Spell it "${sign}${key}", or declare it as written.`
 			);
 		});
 	}
@@ -504,7 +504,7 @@ export class WriteValidator {
 				named
 			);
 			const suffixRoutesHere =
-				this.config.keys.resolve(suffix) === file.route;
+				this.config.keys.resolveDotRoute(suffix) === file.route;
 			const script = suffixRoutesHere
 				? `rename it ${named}, which the "${file.route}" route takes`
 				: `name it ${named} in a folder that routes it`;

@@ -1,7 +1,7 @@
-$ rogen check src/game/Server/Match@sever.luau
+$ rogen check src/game/server/Match@sever.luau
 exit 1
 stdout:
-  src/game/Server/Match@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/game/server/Match@sever.luau - warning: did you mean "@server"? (route.strayAt)
 
 $ rogen check src/common/Stray@sever.luau
 exit 1
@@ -35,7 +35,7 @@ $ rogen check src
 exit 1
 stdout:
   src/common/Stray@sever.luau - warning: did you mean "@server"? (route.strayAt)
-  src/game/Server/Match@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/game/server/Match@sever.luau - warning: did you mean "@server"? (route.strayAt)
 
 $ rogen check README.md
 exit 0
@@ -46,4 +46,4 @@ $ rogen check
 exit 1
 stdout:
   src/common/Stray@sever.luau - warning: did you mean "@server"? (route.strayAt)
-  src/game/Server/Match@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/game/server/Match@sever.luau - warning: did you mean "@server"? (route.strayAt)

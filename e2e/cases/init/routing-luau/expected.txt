@@ -1,10 +1,14 @@
 $ rogen init
 exit 0
 stdout: (not shown)
+stderr:
+  src/Trading/server - warning: differs from the route "Server" only in letter case, so it is read as an ordinary name. Spell it "Server", or declare it as written. (route.caseMismatch)
 
 $ rogen write
 exit 0
 stdout: (not shown)
+stderr:
+  src/Trading/server - warning: differs from the route "Server" only in letter case, so it is read as an ordinary name. Spell it "Server", or declare it as written. (route.caseMismatch)
 
 written:
   .git/
@@ -22,7 +26,7 @@ default.rogen.json:
   "routes": {
     "Server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared",
+    "shared": "ReplicatedStorage/Shared",
     "*": "ReplicatedStorage/Shared"
   },
   "tree": {
@@ -38,11 +42,11 @@ project: DataModel
         Types: ModuleScript  <- src/Inventory/Types.luau
       Trading: Folder
         Rules: ModuleScript  <- src/Trading/shared/Rules.luau
+        server: Folder
+          Trade: ModuleScript  <- src/Trading/server/Trade.luau
   ServerScriptService: ServerScriptService
     Inventory: Folder
       Save: ModuleScript  <- src/Inventory/Server/Save.luau
-    Trading: Folder
-      Trade: ModuleScript  <- src/Trading/server/Trade.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Trading: Folder

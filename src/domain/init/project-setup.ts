@@ -42,7 +42,7 @@ import { StarterProject } from "./starter-project.js";
 import { ProjectReader } from "./project-reader.js";
 import { Setup } from "./setup.js";
 import { RobloxTsStarter } from "./roblox-ts-starter.js";
-import { StartingRoutes } from "./starting-routes.js";
+import { STANDARD_ROUTE_IDS, StartingRoutes } from "./starting-routes.js";
 import {
 	PROJECTS_FOLDER,
 	StarterPlaces,
@@ -75,6 +75,8 @@ export interface ProcessedOutput {
 export interface ProjectChoices {
 	readonly language: Language;
 	readonly sourcePaths: readonly string[];
+	/** How the code already spells each standard route key, by the key in lower case. */
+	readonly keySpellings?: Readonly<Record<string, string>>;
 	readonly compiledPath?: string;
 	/** Without `config`, nothing says a processor writes the folder, so its mounts stay. */
 	readonly processed?: ProcessedOutput;
@@ -359,9 +361,19 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			...sampleFiles,
 			...(places?.files ?? []),
 		]);
+		const keySpellings = await this.instantiationService
+			.createInstance(CodeFinder)
+			.keySpellings(
+				this.directory.path,
+				places?.directories ?? sourcePaths,
+				STANDARD_ROUTE_IDS.map((id) => language.routeKey(id))
+			);
 		return ok({
 			language,
 			sourcePaths: [...sourcePaths],
+			...(keySpellings.size > 0 && {
+				keySpellings: Object.fromEntries(keySpellings),
+			}),
 			...(compiledPath && { compiledPath }),
 			...(processed && { processed }),
 			tree:
@@ -682,7 +694,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const dirs = generatedDirs(choices);
 		const derived = derivedRoutesOf(choices.tree, dirs);
 		const routes = takesRoutes(choices.tree)
-			? new StartingRoutes(language, derived).routes
+			? new StartingRoutes(
+					language,
+					derived,
+					new Map(Object.entries(choices.keySpellings ?? {}))
+				).routes
 			: undefined;
 		const tree = TreePlan.of({
 			tree: choices.tree,

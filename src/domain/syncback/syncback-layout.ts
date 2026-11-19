@@ -17,8 +17,6 @@ export interface Donor {
 	readonly style: Style;
 	/** The route key it was placed by. */
 	readonly route: string;
-	/** What the file's name spells after `@`, when it does. */
-	readonly spelled?: string;
 	/** Absolute POSIX path of the source path it lies in. */
 	readonly sourcePath: string;
 }
@@ -106,11 +104,6 @@ export class SyncbackLayout {
 				dir: path.posix.dirname(file.source),
 				style: file.routeMatch,
 				route: file.route,
-				...(file.routeMatch === "suffix" && {
-					spelled:
-						AT_KEY.exec(path.posix.basename(file.source))?.[1] ??
-						file.route,
-				}),
 				sourcePath,
 			});
 		}
@@ -131,20 +124,6 @@ export class SyncbackLayout {
 			: suffix > folder
 				? "suffix"
 				: undefined;
-	}
-
-	/** How the project's names spell `route` after an `@`; with none, the key in the letter case the names of other routes use. */
-	spellingOf(route: string): string {
-		let lowered = false;
-		for (const file of this.placed) {
-			if (file.routeMatch !== "suffix") continue;
-			const spelled = AT_KEY.exec(path.posix.basename(file.source))?.[1];
-			if (!spelled) continue;
-			if (file.route === route) return spelled;
-			lowered ||=
-				spelled !== file.route && spelled === file.route.toLowerCase();
-		}
-		return lowered ? route.toLowerCase() : route;
 	}
 
 	/** Whether `file` is an init file, the instance its folder becomes. */

@@ -95,21 +95,14 @@ describe("Router", () => {
 				await write(
 					"src/C/@server",
 					"src/C/init@server.luau",
-					"src/C/X.luau",
-					"src/E/@server",
-					"src/E/@Server",
-					"src/E/Z.luau"
+					"src/C/X.luau"
 				);
 
 				const result = (await route()).unwrap();
 
 				expect(
 					result.files.map((file) => file.instancePath.join("/"))
-				).toEqual([
-					"ServerScriptService/C/X",
-					"ServerScriptService/C",
-					"ServerScriptService/E/Z",
-				]);
+				).toEqual(["ServerScriptService/C/X", "ServerScriptService/C"]);
 				expect(result.warnings).toEqual([]);
 			});
 

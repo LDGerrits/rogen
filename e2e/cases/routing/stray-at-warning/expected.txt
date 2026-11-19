@@ -99,4 +99,4 @@ project: DataModel
         user@example: ModuleScript  <- src/Vendor/user@example.luau
   ServerScriptService: ServerScriptService
     Inventory: Folder
-      Load: ModuleScript  <- src/Inventory/Load@Server.luau
+      Load: ModuleScript  <- src/Inventory/Load@server.luau

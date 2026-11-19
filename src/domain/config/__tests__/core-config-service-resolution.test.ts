@@ -295,30 +295,19 @@ describe("CoreConfigService", () => {
 				).toEqual([]);
 			});
 
-			it("should reject two route keys that differ only in the case of their first letter", async () => {
+			it("should reject two route keys that differ only in letter case", async () => {
 				const problems = await diagnosticsFor(`{
-	"routes": { "server": "ServerScriptService", "Server": "Workspace" }
+	"routes": { "server": "ServerScriptService", "SERVER": "Workspace" }
 }`);
 
 				expect(problems).toEqual([
 					[
-						'"Server" and "server" differ only in the case of their first letter, so both would match the same names; keep one of them.',
+						'"SERVER" and "server" differ only in letter case, so a name spelled one way would read as a misspelling of the other; keep one of them.',
 						"/repo/default.rogen.json",
 						2,
 						57,
 					],
 				]);
-			});
-
-			it("should accept keys that differ beyond the first letter", async () => {
-				expect(
-					await diagnosticsFor({
-						routes: {
-							server: "ServerScriptService",
-							SERVER: "Workspace",
-						},
-					})
-				).toEqual([]);
 			});
 
 			it("should reject a route target whose service is unsupported", async () => {

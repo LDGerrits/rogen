@@ -136,11 +136,11 @@ describe("check command", () => {
 
 		it("should pass a file that an error elsewhere does not concern, and say how far the check got", async () => {
 			await writeConfig("default.rogen.json", {
-				routes: { shared: "ReplicatedStorage/Shared", ...ROUTES },
+				routes: { Shared: "ReplicatedStorage/Shared", ...ROUTES },
 			});
 			await write(
 				"src/F/Shared/Good.luau",
-				"src/F/Shared/Bad@server.luau"
+				"src/F/Shared/Bad@Server.luau"
 			);
 
 			const result = await run({ _: ["src/F/Shared/Good.luau"] });
@@ -148,17 +148,17 @@ describe("check command", () => {
 			expect(result.isOk()).toBe(true);
 			expect(printed()).toEqual([]);
 			expect(logService.texts("warn")).toEqual([
-				"Checked as far as the write gets: it stops on src/F/Shared/Bad@server.luau (route.ignoredAt). Run 'rogen check' to see everything.",
+				"Checked as far as the write gets: it stops on src/F/Shared/Bad@Server.luau (route.ignoredAt). Run 'rogen check' to see everything.",
 			]);
 		});
 
 		it("should list what stops the build in the JSON document, beside the findings", async () => {
 			await writeConfig("default.rogen.json", {
-				routes: { shared: "ReplicatedStorage/Shared", ...ROUTES },
+				routes: { Shared: "ReplicatedStorage/Shared", ...ROUTES },
 			});
 			await write(
 				"src/F/Shared/Good.luau",
-				"src/F/Shared/Bad@server.luau"
+				"src/F/Shared/Bad@Server.luau"
 			);
 
 			await run({ _: ["src/F/Shared/Good.luau"], json: true });

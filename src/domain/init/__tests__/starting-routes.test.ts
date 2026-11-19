@@ -29,6 +29,21 @@ describe("domain/init/starting-routes", () => {
 			});
 		});
 
+		it("should spell a standard key as the code already spells it", () => {
+			const routes = new StartingRoutes(
+				workspaceOf().languageFor("luau"),
+				undefined,
+				new Map([["server", "server"]])
+			);
+
+			expect(Object.keys(routes.routes)).toEqual([
+				"server",
+				"Client",
+				"Shared",
+				"*",
+			]);
+		});
+
 		describe("with routes derived from a project file", () => {
 			it("should put them first, replace the standard route of the same key, and send * where the shared folder went", () => {
 				const routes = new StartingRoutes(
@@ -44,9 +59,9 @@ describe("domain/init/starting-routes", () => {
 				);
 
 				expect(Object.entries(routes.routes)).toEqual([
-					["Server", "ServerScriptService/Server"],
-					["Shared", "ReplicatedStorage/Common"],
-					["Client", "StarterPlayer/StarterPlayerScripts"],
+					["server", "ServerScriptService/Server"],
+					["shared", "ReplicatedStorage/Common"],
+					["client", "StarterPlayer/StarterPlayerScripts"],
 					["*", "ReplicatedStorage/Common"],
 				]);
 			});
@@ -68,11 +83,8 @@ describe("domain/init/starting-routes", () => {
 						).routes
 					).slice(0, 3);
 
-				it("should share the casing of the standard routes in luau", () => {
-					expect(mounted("luau")).toEqual(["Server", "Map", "Lobby"]);
-				});
-
-				it("should keep the folder's spelling in roblox-ts, but for a standard route", () => {
+				it("should keep each folder's spelling, which a key must match exactly", () => {
+					expect(mounted("luau")).toEqual(["server", "map", "Lobby"]);
 					expect(mounted("roblox-ts")).toEqual([
 						"server",
 						"map",

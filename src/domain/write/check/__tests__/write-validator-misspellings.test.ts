@@ -226,7 +226,7 @@ describe("WriteValidator rules", () => {
 				});
 				expect(warning.message).toContain('"server"');
 				expect(warning.message).toContain(
-					'Spell it "server" or "Server"'
+					'Spell it "server", or declare it as written.'
 				);
 			});
 
@@ -263,14 +263,18 @@ describe("WriteValidator rules", () => {
 				);
 			});
 
-			it("should not warn about a name that only differs in its first letter", async () => {
+			it("should warn about a name that differs in its first letter alone", async () => {
 				await write(
 					"src/Server/Save.luau",
 					"src/Inventory/@Client",
-					"src/Inventory/Load@Client.luau"
+					"src/Inventory/Load.luau"
 				);
 
-				expect(await caseWarnings()).toEqual([]);
+				const warnings = await caseWarnings();
+
+				expect(warnings.map(({ resource }) => resource).sort()).toEqual(
+					[abs("src/Inventory/@Client"), abs("src/Server")]
+				);
 			});
 
 			it("should not warn about a name that matches exactly or not at all", async () => {
@@ -291,7 +295,7 @@ describe("WriteValidator rules", () => {
 
 				expect(warning.resource).toEqual(abs("src/M/@SERVER"));
 				expect(warning.message).toContain(
-					'Spell it "@server" or "@Server"'
+					'Spell it "@server", or declare it as written.'
 				);
 			});
 

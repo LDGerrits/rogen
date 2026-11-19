@@ -167,16 +167,16 @@ describe("CoreWriteService.locate", () => {
 	it("should place a file with its route and how the route matched", async () => {
 		await write(
 			"src/Inventory/Server/Save.luau",
-			"src/Net/Http@client.luau",
+			"src/Net/Http@Client.luau",
 			"src/Net/Socket.client.luau",
-			"src/Anti/@server",
+			"src/Anti/@Server",
 			"src/Anti/Check.luau",
 			"src/Util.luau"
 		);
 
 		const located = await locate([
 			"src/Inventory/Server/Save.luau",
-			"src/Net/Http@client.luau",
+			"src/Net/Http@Client.luau",
 			"src/Net/Socket.client.luau",
 			"src/Anti/Check.luau",
 			"src/Util.luau",
@@ -201,7 +201,7 @@ describe("CoreWriteService.locate", () => {
 			},
 			{
 				status: "placed",
-				source: abs("src/Net/Http@client.luau"),
+				source: abs("src/Net/Http@Client.luau"),
 				exists: true,
 				instancePath: [
 					"StarterPlayer",
@@ -260,20 +260,20 @@ describe("CoreWriteService.locate", () => {
 
 	it("should mark a data file Rojo makes a ModuleScript from as a module, and no other data file", async () => {
 		const files = [
-			"src/Data/Rates@server.json",
-			"src/Data/Opts@server.jsonc",
-			"src/Data/Costs@server.toml",
-			"src/Data/Theme@server.yaml",
-			"src/Data/Skin@server.yml",
-			"src/Data/Note@server.txt",
-			"src/Data/Strings@server.csv",
-			"src/Data/Crate@server.model.json",
-			"src/Data/Tool@server.rbxm",
-			"src/Data/Lib@server.project.json",
+			"src/Data/Rates@Server.json",
+			"src/Data/Opts@Server.jsonc",
+			"src/Data/Costs@Server.toml",
+			"src/Data/Theme@Server.yaml",
+			"src/Data/Skin@Server.yml",
+			"src/Data/Note@Server.txt",
+			"src/Data/Strings@Server.csv",
+			"src/Data/Crate@Server.model.json",
+			"src/Data/Tool@Server.rbxm",
+			"src/Data/Lib@Server.project.json",
 		];
 		await write(...files);
 		await fs.writeFile(
-			abs("src/Data/Lib@server.project.json"),
+			abs("src/Data/Lib@Server.project.json"),
 			JSON.stringify({ name: "Lib", tree: { $className: "Folder" } })
 		);
 

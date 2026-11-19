@@ -231,7 +231,7 @@ export class NameReader {
 			const part = remaining.slice(dot + 1);
 			const key =
 				dotRoutes && RUN_SCRIPT_SUFFIXES.has(part)
-					? this.keys.resolve(part)
+					? this.keys.resolveDotRoute(part)
 					: undefined;
 			return key && dot > 0
 				? { key, start: dot, length: remaining.length - dot }

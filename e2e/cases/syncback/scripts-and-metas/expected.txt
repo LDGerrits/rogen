@@ -1,9 +1,9 @@
 $ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
-  Writing src/Inventory/Bag@server.luau
-  Writing src/Inventory/Bag@server.meta.json
-  Writing src/Inventory/Save@server.meta.json
+  Writing src/Inventory/Bag@Server.luau
+  Writing src/Inventory/Bag@Server.meta.json
+  Writing src/Inventory/Save@Server.meta.json
   Writing src/Shop/Server/Kiosk/New.luau
   Writing src/Hud/Client/Bar.client.luau
   Removing src/Shop/Server/Kiosk/Item.luau
@@ -15,26 +15,26 @@ $ rogen where src
 exit 0
 stdout:
   src/Hud/Client/Bar.client.luau -> StarterPlayer/StarterPlayerScripts/Hud/Bar · route Client (folder)
-  src/Inventory/Bag@server.luau -> ServerScriptService/Inventory/Bag · route Server (suffix)
-  src/Inventory/Save@server.luau -> ServerScriptService/Inventory/Save · route Server (suffix)
+  src/Inventory/Bag@Server.luau -> ServerScriptService/Inventory/Bag · route Server (suffix)
+  src/Inventory/Save@Server.luau -> ServerScriptService/Inventory/Save · route Server (suffix)
   src/Shop/Server/Kiosk/New.luau -> ServerScriptService/Shop/Kiosk/New · route Server (folder)
   src/Shop/Server/Kiosk/init.luau -> ServerScriptService/Shop/Kiosk · route Server (folder)
 
 written:
   default.project.json
   src/Hud/Client/Bar.client.luau
-  src/Inventory/Bag@server.luau
-  src/Inventory/Bag@server.meta.json
-  src/Inventory/Save@server.meta.json
+  src/Inventory/Bag@Server.luau
+  src/Inventory/Bag@Server.meta.json
+  src/Inventory/Save@Server.meta.json
   src/Shop/Server/Kiosk/New.luau
 
 src/Hud/Client/Bar.client.luau:
 print("bar2")
 
-src/Inventory/Bag@server.luau:
+src/Inventory/Bag@Server.luau:
 return 2
 
-src/Inventory/Bag@server.meta.json:
+src/Inventory/Bag@Server.meta.json:
 {
   "attributes": {
     "Level": {
@@ -43,7 +43,7 @@ src/Inventory/Bag@server.meta.json:
   }
 }
 
-src/Inventory/Save@server.meta.json:
+src/Inventory/Save@Server.meta.json:
 {
   "attributes": {
     "Fresh": true
@@ -57,8 +57,8 @@ $ rojo sourcemap default.project.json
 Game: DataModel
   ServerScriptService: ServerScriptService
     Inventory: Folder
-      Bag: ModuleScript  <- src/Inventory/Bag@server.luau, src/Inventory/Bag@server.meta.json
-      Save: ModuleScript  <- src/Inventory/Save@server.luau, src/Inventory/Save@server.meta.json
+      Bag: ModuleScript  <- src/Inventory/Bag@Server.luau, src/Inventory/Bag@Server.meta.json
+      Save: ModuleScript  <- src/Inventory/Save@Server.luau, src/Inventory/Save@Server.meta.json
     Shop: Folder
       Kiosk: ModuleScript  <- src/Shop/Server/Kiosk/init.luau
         New: ModuleScript  <- src/Shop/Server/Kiosk/New.luau

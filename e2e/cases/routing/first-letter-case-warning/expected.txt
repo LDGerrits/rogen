@@ -1,6 +1,8 @@
 $ rogen write
 exit 0
 stdout: (not shown)
+stderr:
+  src/Combat/server - warning: differs from the route "Server" only in letter case, so it is read as an ordinary name. Spell it "Server", or declare it as written. (route.caseMismatch)
 
 written:
   default.project.json
@@ -12,10 +14,11 @@ project: DataModel
       Combat: Folder
         Rules: ModuleScript  <- src/Combat/Rules.luau
         Types: ModuleScript  <- src/Combat/Shared/Types.luau
+        server: Folder
+          Save: ModuleScript  <- src/Combat/server/Save.luau
   ServerScriptService: ServerScriptService
     Combat: Folder
       Load: Script  <- src/Combat/Load.server.luau
-      Save: ModuleScript  <- src/Combat/server/Save.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Combat: Folder

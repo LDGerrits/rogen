@@ -133,10 +133,10 @@ default.rogen.json:
     "src"
   ],
   "routes": {
-    "Props": "Workspace/Level/Props",
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared",
+    "props": "Workspace/Level/Props",
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/Shared",
     "*": "Workspace/Map"
   },
   "tree": {

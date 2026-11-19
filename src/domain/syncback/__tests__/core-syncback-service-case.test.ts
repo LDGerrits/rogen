@@ -26,11 +26,11 @@ const { ROUTES } = await import("./layout-fixtures.js");
 describe("CoreSyncbackService where the file system ignores case", () => {
 	it("should write a renamed file whose name only differs in case, though the old file answers for the new name", async () => {
 		const fs = new MemoryFileSystemService();
-		const oldFile = abs("src/Inventory/Bag@server.luau");
-		const newFile = abs("src/Inventory/bag@server.luau");
+		const oldFile = abs("src/Inventory/Bag@Server.luau");
+		const newFile = abs("src/Inventory/bag@Server.luau");
 		const mirror = (name: string) =>
 			abs(".rogen-syncback/mirror/ServerScriptService/Inventory", name);
-		await writeFiles(fs, "src/Inventory/Bag@server.luau");
+		await writeFiles(fs, "src/Inventory/Bag@Server.luau");
 		const config = configOf({ routes: ROUTES });
 		const selection = selectionOf(config);
 		const listedAt = ".rogen-syncback/mirror/ServerScriptService/Inventory";

@@ -94,16 +94,12 @@ describe("domain/config/config", () => {
 				expect(routes.resolve("server")).toBe("server");
 			});
 
-			it("should match with the first letter in the other case and report the declared key", () => {
-				expect(routes.resolve("Server")).toBe("server");
-				expect(new DeclaredKeys(["Server"]).resolve("server")).toBe(
-					"Server"
-				);
-			});
-
-			it("should not match any other difference in case", () => {
+			it("should not match a name in any other letter case", () => {
+				expect(routes.resolve("Server")).toBeUndefined();
 				expect(routes.resolve("SERVER")).toBeUndefined();
-				expect(routes.resolve("sERVER")).toBeUndefined();
+				expect(
+					new DeclaredKeys(["Server"]).resolve("server")
+				).toBeUndefined();
 			});
 
 			it("should not match an undeclared name or an empty one", () => {
@@ -112,15 +108,27 @@ describe("domain/config/config", () => {
 			});
 		});
 
-		describe("nearMiss", () => {
-			it("should name the key a name only differs from beyond the first letter", () => {
-				expect(routes.nearMiss("SERVER")).toBe("server");
-				expect(routes.nearMiss("sERVER")).toBe("server");
+		describe("resolveDotRoute", () => {
+			it("should match Rojo's lower-case script suffix to a key in any letter case", () => {
+				expect(
+					new DeclaredKeys(["Server"]).resolveDotRoute("server")
+				).toBe("Server");
+				expect(routes.resolveDotRoute("server")).toBe("server");
 			});
 
-			it("should ignore a name that matches, including with the first letter flipped", () => {
+			it("should not match a name no key spells", () => {
+				expect(routes.resolveDotRoute("plugin")).toBeUndefined();
+			});
+		});
+
+		describe("nearMiss", () => {
+			it("should name the key a name differs from in letter case alone", () => {
+				expect(routes.nearMiss("Server")).toBe("server");
+				expect(routes.nearMiss("SERVER")).toBe("server");
+			});
+
+			it("should ignore a name that matches exactly", () => {
 				expect(routes.nearMiss("server")).toBeUndefined();
-				expect(routes.nearMiss("Server")).toBeUndefined();
 			});
 
 			it("should ignore an unrelated name", () => {
@@ -128,18 +136,13 @@ describe("domain/config/config", () => {
 			});
 		});
 
-		it("should share an identity between keys that differ only in the first letter", () => {
+		it("should share an identity between keys that differ in letter case alone", () => {
 			expect(DeclaredKeys.identityOf("Server")).toBe(
-				DeclaredKeys.identityOf("server")
+				DeclaredKeys.identityOf("sERVER")
 			);
 			expect(DeclaredKeys.identityOf("Server")).not.toBe(
 				DeclaredKeys.identityOf("Servers")
 			);
-		});
-
-		it("should flip the first letter", () => {
-			expect(DeclaredKeys.flipFirstLetter("server")).toBe("Server");
-			expect(DeclaredKeys.flipFirstLetter("Server")).toBe("server");
 		});
 
 		it.each(["a", "Server", "level2"])(

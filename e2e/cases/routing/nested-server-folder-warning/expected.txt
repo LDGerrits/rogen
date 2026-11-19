@@ -3,7 +3,7 @@ exit 0
 stdout: (not shown)
 stderr:
   default.rogen.json - warning: 1 file under a server-only route ships to clients, because an outer route governs it: (route.serverCodeShipped)
-    src/Shared/Server/Datastore.luau (ships to clients as ReplicatedStorage/shared/Server/Datastore: move it out of the "shared" route's files if it's server code, or keep it there with a "@shared" marker file in its folder)
+    src/shared/server/Datastore.luau (ships to clients as ReplicatedStorage/shared/server/Datastore: move it out of the "shared" route's files if it's server code, or keep it there with a "@shared" marker file in its folder)
 
 written:
   default.project.json
@@ -13,13 +13,13 @@ project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
       Admin: Folder
-        Server: Folder
-          Ban: ModuleScript  <- src/Shared/Admin/Server/Ban.luau
+        server: Folder
+          Ban: ModuleScript  <- src/shared/Admin/server/Ban.luau
           Deep: Folder
-            Log: ModuleScript  <- src/Shared/Admin/Server/Deep/Log.luau
-      Server: Folder
-        Datastore: ModuleScript  <- src/Shared/Server/Datastore.luau
-        Secret: ModuleScript  <- src/Shared/Server/Secret@shared.luau
+            Log: ModuleScript  <- src/shared/Admin/server/Deep/Log.luau
+      server: Folder
+        Datastore: ModuleScript  <- src/shared/server/Datastore.luau
+        Secret: ModuleScript  <- src/shared/server/Secret@shared.luau
   ServerScriptService: ServerScriptService
     Inventory: Folder
       client: Folder

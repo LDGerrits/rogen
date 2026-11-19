@@ -50,8 +50,8 @@ describe("ReverseRouter", () => {
 
 		it("should name the route the way siblings do when they are named for it", async () => {
 			const router = await routerOf([
-				"src/Inventory/Bag@server.luau",
-				"src/Inventory/Save@server.luau",
+				"src/Inventory/Bag@Server.luau",
+				"src/Inventory/Save@Server.luau",
 			]);
 
 			expect(
@@ -65,7 +65,7 @@ describe("ReverseRouter", () => {
 				home: {
 					dir: posix("src/Inventory"),
 					contents: false,
-					mark: { text: "@server", route: "Server" },
+					mark: { text: "@Server", route: "Server" },
 				},
 			});
 		});
@@ -89,7 +89,7 @@ describe("ReverseRouter", () => {
 			const router = await routerOf([
 				"src/Inventory/Server/Bag.luau",
 				"src/Inventory/Server/Cart.luau",
-				"src/Inventory/Save@server.luau",
+				"src/Inventory/Save@Server.luau",
 			]);
 
 			expect(router.place(mail)).toEqual({
@@ -101,15 +101,15 @@ describe("ReverseRouter", () => {
 		it("should let its relatives decide a tie beside it", async () => {
 			const router = await routerOf([
 				"src/Inventory/Server/Bag.luau",
-				"src/Inventory/Save@server.luau",
-				"src/Combat/Hit@server.luau",
+				"src/Inventory/Save@Server.luau",
+				"src/Combat/Hit@Server.luau",
 			]);
 
 			expect(router.place(mail)).toMatchObject({
 				kind: "placed",
 				home: {
 					dir: posix("src/Inventory"),
-					mark: { text: "@server" },
+					mark: { text: "@Server" },
 				},
 			});
 		});
@@ -117,7 +117,7 @@ describe("ReverseRouter", () => {
 		it("should write folders when nothing decides the style", async () => {
 			const router = await routerOf([
 				"src/Inventory/Server/Bag.luau",
-				"src/Inventory/Save@server.luau",
+				"src/Inventory/Save@Server.luau",
 			]);
 
 			expect(router.place(mail)).toEqual({
@@ -144,7 +144,7 @@ describe("ReverseRouter", () => {
 		it("should place by a fixed order when no style decides a tie", async () => {
 			const router = await routerOf([
 				"src/Net/B.luau",
-				"src/Net/C@shared.luau",
+				"src/Net/C@Shared.luau",
 				"src/X/Shared/One.luau",
 				"src/X/Shared/Two.luau",
 			]);
@@ -157,7 +157,7 @@ describe("ReverseRouter", () => {
 				})
 			).toMatchObject({
 				kind: "placed",
-				home: { dir: posix("src/Net"), mark: { text: "@shared" } },
+				home: { dir: posix("src/Net"), mark: { text: "@Shared" } },
 			});
 		});
 
@@ -213,8 +213,8 @@ describe("ReverseRouter", () => {
 
 		it("should refuse when a file that holds no other files makes the parent", async () => {
 			const router = await routerOf([
-				"src/Inventory/Bag@server.luau",
-				"src/Inventory/Sub@server.luau",
+				"src/Inventory/Bag@Server.luau",
+				"src/Inventory/Sub@Server.luau",
 			]);
 
 			expect(
@@ -225,12 +225,12 @@ describe("ReverseRouter", () => {
 				})
 			).toMatchObject({
 				kind: "conflict",
-				reason: expect.stringContaining("Sub@server.luau"),
+				reason: expect.stringContaining("Sub@Server.luau"),
 			});
 		});
 
 		it("should go below files named for their route, naming the new one so", async () => {
-			const router = await routerOf(["src/Inventory/Bag@server.luau"]);
+			const router = await routerOf(["src/Inventory/Bag@Server.luau"]);
 
 			expect(
 				router.place({
@@ -242,7 +242,7 @@ describe("ReverseRouter", () => {
 				kind: "placed",
 				home: {
 					dir: posix("src/Inventory/Sub"),
-					mark: { text: "@server" },
+					mark: { text: "@Server" },
 				},
 			});
 		});
@@ -286,8 +286,8 @@ describe("ReverseRouter", () => {
 	describe("the style of a new feature", () => {
 		it("should name each file of a new folder for its route when its relatives are", async () => {
 			const router = await routerOf([
-				"src/Inventory/Bag@server.luau",
-				"src/Inventory/Save@server.luau",
+				"src/Inventory/Bag@Server.luau",
+				"src/Inventory/Save@Server.luau",
 			]);
 
 			expect(router.place(quest)).toEqual({
@@ -295,21 +295,21 @@ describe("ReverseRouter", () => {
 				home: {
 					dir: posix("src"),
 					contents: false,
-					mark: { text: "@server", route: "Server" },
+					mark: { text: "@Server", route: "Server" },
 				},
 			});
 		});
 
 		it("should take the style of the features under the same route over the rest of the project", async () => {
 			const router = await routerOf([
-				"src/Inventory/Bag@server.luau",
+				"src/Inventory/Bag@Server.luau",
 				"src/Inventory/Hud/Client/A.luau",
 				"src/Inventory/Hud/Client/B.luau",
 				"src/Combat/Client/C.luau",
 			]);
 
 			expect(router.place(quest)).toMatchObject({
-				home: { mark: { text: "@server" } },
+				home: { mark: { text: "@Server" } },
 			});
 			expect(
 				router.place({
@@ -323,22 +323,22 @@ describe("ReverseRouter", () => {
 			});
 		});
 
-		it("should take the style of the whole project when its relatives have none, spelled as it spells routes", async () => {
-			const router = await routerOf(["src/Hud/Ui@client.luau"]);
+		it("should take the style of the whole project when its relatives have none", async () => {
+			const router = await routerOf(["src/Hud/Ui@Client.luau"]);
 
 			expect(router.place(quest)).toMatchObject({
-				home: { dir: posix("src"), mark: { text: "@server" } },
+				home: { dir: posix("src"), mark: { text: "@Server" } },
 			});
 		});
 
-		it("should spell the route as the project's names do", async () => {
+		it("should spell the mark exactly as the key", async () => {
 			const router = await routerOf([
-				"src/Inventory/Bag@server.luau",
-				"src/Hud/Ui@client.luau",
+				"src/Inventory/Bag@Server.luau",
+				"src/Hud/Ui@Client.luau",
 			]);
 
 			expect(router.place(quest)).toMatchObject({
-				home: { mark: { text: "@server" } },
+				home: { mark: { text: "@Server" } },
 			});
 		});
 	});
@@ -596,7 +596,7 @@ describe("ReverseRouter", () => {
 			folder,
 			files,
 		});
-		const server = { text: "@server", route: "Server" };
+		const server = { text: "@Server", route: "Server" };
 		const destination = async (
 			instance: ReturnType<typeof unit>,
 			file: string[],
@@ -623,7 +623,7 @@ describe("ReverseRouter", () => {
 					contents: false,
 					mark: server,
 				})
-			).toEqual(["Boot@server.meta.json"]);
+			).toEqual(["Boot@Server.meta.json"]);
 		});
 
 		it("should mark each file of a folder, or the folder when a script is in it", async () => {
@@ -635,24 +635,24 @@ describe("ReverseRouter", () => {
 
 			expect(
 				await destination(unit(true, files), files[0], marked)
-			).toEqual(["Quest", "Main@server.luau"]);
+			).toEqual(["Quest", "Main@Server.luau"]);
 			expect(
 				await destination(unit(true, files), files[1], marked)
-			).toEqual(["Quest", "Util", "A@server.luau"]);
+			).toEqual(["Quest", "Util", "A@Server.luau"]);
 			expect(
 				await destination(
 					unit(true, [["Quest", "init.luau"]]),
 					["Quest", "init.luau"],
 					marked
 				)
-			).toEqual(["Quest@server", "init.luau"]);
+			).toEqual(["Quest@Server", "init.luau"]);
 			const nested = [
 				["Quest", "Main.luau"],
 				["Quest", "Util", "init.meta.json"],
 			];
 			expect(
 				await destination(unit(true, nested), nested[1], marked)
-			).toEqual(["Quest@server", "Util", "init.meta.json"]);
+			).toEqual(["Quest@Server", "Util", "init.meta.json"]);
 		});
 
 		it("should read only a script suffix as routing, not the kind of a file", async () => {
@@ -692,7 +692,7 @@ describe("ReverseRouter", () => {
 					["Boot.client.luau"],
 					home
 				)
-			).toEqual(["Boot@server.client.luau"]);
+			).toEqual(["Boot@Server.client.luau"]);
 		});
 
 		it("should keep a name when there is no mark", async () => {

@@ -143,6 +143,45 @@ export class CodeFinder {
 		return false;
 	}
 
+	/** How the code under `dirs` spells each of `keys` as a folder, a marker file or an `@` name, by the key in lower case: the spelling most of them use, a tie going to the key as given. */
+	async keySpellings(
+		cwd: string,
+		dirs: readonly string[],
+		keys: readonly string[]
+	): Promise<Map<string, string>> {
+		const given = new Map(keys.map((key) => [key.toLowerCase(), key]));
+		const counts = new Map<string, Map<string, number>>();
+		const note = (token: string) => {
+			const key = token.toLowerCase();
+			if (!given.has(key)) return;
+			const spelled = counts.get(key) ?? new Map<string, number>();
+			spelled.set(token, (spelled.get(token) ?? 0) + 1);
+			counts.set(key, spelled);
+		};
+		const visit = async (dir: string): Promise<void> => {
+			for (const [name, type] of await this.entriesOf(dir)) {
+				if (isHiddenOrVendored(name)) continue;
+				const at = /@([A-Za-z][A-Za-z0-9]*)(?:\.[^@]*)?$/.exec(name);
+				if (at) note(at[1]);
+				if (isDirectoryType(type)) {
+					note(name.replace(/^\((.*)\)$/, "$1"));
+					await visit(path.join(dir, name));
+				}
+			}
+		};
+		for (const dir of dirs) await visit(path.join(cwd, dir));
+		return new Map(
+			[...counts].map(([key, spelled]) => {
+				const most = Math.max(...spelled.values());
+				const tied = [...spelled]
+					.filter(([, count]) => count === most)
+					.map(([spelling]) => spelling);
+				const preferred = given.get(key) ?? tied[0];
+				return [key, tied.includes(preferred) ? preferred : tied[0]];
+			})
+		);
+	}
+
 	/** Goes down only into folders above a held one, so each stray folder is named once, at its top. */
 	async codeOutside(
 		cwd: string,

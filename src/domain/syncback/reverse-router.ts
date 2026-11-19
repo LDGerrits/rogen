@@ -125,7 +125,8 @@ export class ReverseRouter {
 					.some(
 						(part) =>
 							!FILE_KINDS.has(part) &&
-							this.layout.config.keys.resolve(part) === mark.route
+							this.layout.config.keys.resolveDotRoute(part) ===
+								mark.route
 					)
 			);
 		});
@@ -150,7 +151,7 @@ export class ReverseRouter {
 						contents: false,
 						...(this.layout.routesOnlyItsInit(node) && {
 							mark: {
-								text: `@${this.layout.spellingOf(maker.route)}`,
+								text: `@${maker.route}`,
 								route: maker.route,
 							},
 						}),
@@ -173,7 +174,7 @@ export class ReverseRouter {
 	): NewPlacement {
 		const layouts = new Map<string, { donor: Donor; count: number }>();
 		for (const donor of donors) {
-			const key = `${donor.dir}\0${donor.style}\0${donor.spelled ?? ""}`;
+			const key = `${donor.dir}\0${donor.style}\0${donor.route}`;
 			const known = layouts.get(key);
 			if (known) known.count++;
 			else layouts.set(key, { donor, count: 1 });
@@ -201,7 +202,7 @@ export class ReverseRouter {
 				contents: false,
 				...(donor.style === "suffix" && {
 					mark: {
-						text: `@${donor.spelled ?? donor.route}`,
+						text: `@${donor.route}`,
 						route: donor.route,
 					},
 				}),
@@ -285,7 +286,7 @@ export class ReverseRouter {
 					dir: path.posix.join(root, ...below),
 					contents: false,
 					mark: {
-						text: `@${this.layout.spellingOf(route.key)}`,
+						text: `@${route.key}`,
 						route: route.key,
 					},
 				},

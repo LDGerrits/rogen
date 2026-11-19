@@ -361,12 +361,10 @@ describe("WriteValidator rules", () => {
 				expect(await named(["src"])).toEqual([]);
 			});
 
-			it("should read the name with its first letter in either case", async () => {
+			it("should not read a name in another letter case as the key", async () => {
 				await write("Server/Other.luau");
 
-				const [warning] = await named(["Server"]);
-
-				expect(warning.message).toContain('the "server" route');
+				expect(await named(["Server"])).toEqual([]);
 			});
 
 			it("should not stop the write from placing the files", async () => {
@@ -905,7 +903,7 @@ describe("WriteValidator rules", () => {
 				});
 			});
 
-			it("should read the suffix as the route key it spells in another letter case", async () => {
+			it("should read the suffix as the route key it spells when the key is capitalised", async () => {
 				await write("src/Boot/Start.server@Server.luau");
 
 				const warnings = (
