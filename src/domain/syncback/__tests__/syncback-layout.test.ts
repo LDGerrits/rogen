@@ -30,6 +30,14 @@ describe("SyncbackLayout", () => {
 
 			expect(layout.donorsAt(["ServerScriptService"])).toEqual([]);
 		});
+
+		it("should find none in an init script, which is its folder rather than a file in it", async () => {
+			const layout = await layoutOf(["src/Net/init.luau"]);
+
+			expect(layout.donorsAt(["ReplicatedStorage", "Shared"])).toEqual(
+				[]
+			);
+		});
 	});
 
 	describe("featureMaking", () => {
