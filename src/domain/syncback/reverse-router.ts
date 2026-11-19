@@ -2,6 +2,7 @@ import path from "path";
 import { RojoFile } from "../rojo/rojo.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
+import { PatternMatch } from "../config/route-patterns.js";
 import { Donor, NewStyle, Style, SyncbackLayout } from "./syncback-layout.js";
 
 /** An instance the place holds that no file of the project makes. */
@@ -58,6 +59,9 @@ const GOVERNING: ReadonlySet<string> = new Set(["folder", "marker", "suffix"]);
 
 /** Names Rojo gives a kind of file by, which never route a file. */
 const FILE_KINDS = new Set(["meta", "model", "project"]);
+
+/** A name without the `^` that hoists it, as routing reads it. */
+const unhoisted = (name: string) => name.replace(/^\^/, "");
 
 const isInitFile = (file: readonly string[]) =>
 	file[file.length - 1].startsWith("init.");
@@ -130,30 +134,42 @@ export class ReverseRouter {
 		return deepest?.join("/");
 	}
 
-	/** Where routing sends each file of `instance` when nothing but its names decide: the pattern the instance's name, or the file's, matches, else `*`. */
+	/** Where routing sends each file of `instance` when nothing but its names decide, as the write reads them: the outermost folder whose init script makes an instance a pattern matches, else the file's own name, else `*`. A meta file follows its script, and an init script is its folder. */
 	private targetsOf(instance: NewInstance): (string | undefined)[] {
-		const files = instance.files ?? [];
-		const init = instance.folder
-			? files.find((file) => file.length === 2 && isInitFile(file))
-			: undefined;
-		const folderTarget =
-			init &&
-			this.targetOfName(
-				`${instance.name}${init[1].slice(init[1].indexOf("."))}`
-			);
-		if (folderTarget !== undefined) return [folderTarget];
-		return files.map((file) =>
-			isInitFile(file)
-				? this.fallbackTarget()
-				: this.targetOfName(file[file.length - 1])
+		const files = (instance.files ?? []).filter(
+			(file) => RojoFile.metaStemOf(file[file.length - 1]) === undefined
 		);
+		const inits = new Map<string, string>();
+		for (const file of files)
+			if (file.length > 1 && isInitFile(file)) {
+				const name = file[file.length - 1];
+				inits.set(
+					file.slice(0, -1).join("/"),
+					name.slice(name.indexOf("."))
+				);
+			}
+		return files.map((file) => {
+			for (let depth = 1; depth < file.length; depth++) {
+				const extension = inits.get(file.slice(0, depth).join("/"));
+				if (extension === undefined) continue;
+				const match = this.layout.config.patterns.match(
+					`${unhoisted(file[depth - 1])}${extension}`
+				);
+				if (match) return this.targetOfMatch(match);
+			}
+			return isInitFile(file)
+				? this.fallbackTarget()
+				: this.targetOfName(unhoisted(file[file.length - 1]));
+		});
+	}
+
+	private targetOfMatch(match: PatternMatch): string | undefined {
+		return match.kind === "clash" ? undefined : this.targetOf(match.key);
 	}
 
 	private targetOfName(name: string): string | undefined {
 		const match = this.layout.config.patterns.match(name);
-		if (match?.kind === "clash") return undefined;
-		if (match) return this.targetOf(match.key);
-		return this.fallbackTarget();
+		return match ? this.targetOfMatch(match) : this.fallbackTarget();
 	}
 
 	private fallbackTarget(): string | undefined {
@@ -316,6 +332,11 @@ export class ReverseRouter {
 	private routeTo(parent: readonly string[]): ParentRoute {
 		const { config } = this.layout;
 		const candidates = [...config.routes]
+			.filter(
+				([key]) =>
+					DeclaredKeys.isName(key) ||
+					key === DeclaredKeys.FALLBACK_ROUTE
+			)
 			.filter(([, target]) =>
 				target.instancePath.every((part, at) => parent[at] === part)
 			)

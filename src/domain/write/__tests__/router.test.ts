@@ -109,6 +109,21 @@ describe("Router", () => {
 				]);
 			});
 
+			it("should match a hoisted file by its name without the ^", async () => {
+				await write("src/Shop/^MainHud.luau");
+
+				const [file] = (
+					await route({
+						routes: { ...ROUTES, "Main*": "ServerScriptService" },
+					})
+				).unwrap().routed;
+
+				expect(file).toMatchObject({
+					instancePath: ["ServerScriptService", "MainHud"],
+					route: "Main*",
+				});
+			});
+
 			it("should not route a folder by a pattern", async () => {
 				await write("src/Store.tsx/Cart.luau");
 

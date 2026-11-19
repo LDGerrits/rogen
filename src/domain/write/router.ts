@@ -317,7 +317,7 @@ export class Router {
 		}
 		if (isInit) return undefined;
 		const match = this.config.patterns.match(
-			path.posix.basename(entry.source)
+			path.posix.basename(entry.source).replace(/^\^/, "")
 		);
 		return match && { match, at: entry.source };
 	}

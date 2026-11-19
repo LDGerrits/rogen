@@ -675,6 +675,69 @@ describe("ReverseRouter", () => {
 			});
 		});
 
+		it("should not take a pattern key for a route key when nothing is beside it", async () => {
+			const router = await routerOf([], {
+				routes: {
+					...ROUTES,
+					"*.story.luau": "ReplicatedStorage/Stories",
+				},
+			});
+
+			expect(
+				router.place({
+					parent: ["ReplicatedStorage", "Stories"],
+					name: "Card.story",
+					folder: false,
+					files: [["Card.story.luau"]],
+				})
+			).toEqual({
+				kind: "conflict",
+				reason: "no route puts files where its parent is",
+			});
+		});
+
+		it("should read a meta file as its script's, which it follows", async () => {
+			const router = await routerOf(["src/Shop/Card.story.luau"], {
+				routes: {
+					...ROUTES,
+					Stories: "ReplicatedStorage/Stories",
+					"*.story.luau": "ReplicatedStorage/Stories",
+				},
+			});
+
+			expect(
+				router.place({
+					parent: ["ReplicatedStorage", "Stories", "Shop"],
+					name: "Badge.story",
+					folder: false,
+					files: [["Badge.story.luau"], ["Badge.story.meta.json"]],
+				})
+			).toEqual({
+				kind: "placed",
+				home: { dir: posix("src/Shop"), contents: false },
+			});
+		});
+
+		it("should mark a new folder whose own name matches nothing when a file in it would follow a pattern elsewhere", async () => {
+			const router = await routerOf(["src/Shop/Prices.luau"], {
+				routes: PATTERNS,
+			});
+
+			expect(
+				router.place({
+					parent: ["ReplicatedStorage", "Shared", "Shop"],
+					name: "Hud",
+					folder: true,
+					files: [
+						["Hud", "init.luau"],
+						["Hud", "HudController.luau"],
+					],
+				})
+			).toMatchObject({
+				home: { mark: { text: "@Shared", route: "Shared" } },
+			});
+		});
+
 		it("should keep a new folder whose init script a pattern matches together", async () => {
 			const router = await routerOf(["src/Shop/ShopController.luau"], {
 				routes: PATTERNS,
