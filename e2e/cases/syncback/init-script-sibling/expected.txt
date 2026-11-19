@@ -1,0 +1,30 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/Settings/Shared/Speed.luau
+stderr:
+  Wrote default.project.json.
+  Syncback wrote 1 change.
+
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stderr:
+  Syncback would change nothing.
+
+written:
+  default.project.json
+  src/Settings/Shared/Speed.luau
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Bank: Folder
+        Money: ModuleScript  <- src/Bank/Shared/Money.luau
+      Net: ModuleScript  <- src/Net/init.luau
+      Settings: Folder
+        Speed: ModuleScript  <- src/Settings/Shared/Speed.luau
