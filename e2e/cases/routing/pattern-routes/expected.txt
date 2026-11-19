@@ -1,0 +1,41 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen where src
+exit 0
+stdout:
+  src/Hud/HudController/Bar.luau -> StarterPlayer/StarterPlayerScripts/Hud/HudController/Bar · route *Controller.* (pattern)
+  src/Hud/HudController/init.luau -> StarterPlayer/StarterPlayerScripts/Hud/HudController · route *Controller.* (pattern)
+  src/Hud/init.luau -> StarterPlayer/StarterPlayerScripts/Hud · route *Controller.* (copy)
+  src/Shop/Card.story.luau -> ReplicatedStorage/Stories/Shop/Card.story · route *.story.luau (pattern)
+  src/Shop/Kiosk@Server.luau -> ServerScriptService/Shop/Kiosk · route Server (suffix)
+  src/Shop/Prices.luau -> ReplicatedStorage/Shared/Shop/Prices · route * (fallback)
+  src/Shop/Shared/PriceService.luau -> ReplicatedStorage/Shared/Shop/PriceService · route Shared (folder)
+  src/Shop/ShopController.luau -> StarterPlayer/StarterPlayerScripts/Shop/ShopController · route *Controller.* (pattern)
+  src/Shop/ShopService.luau -> ServerScriptService/Shop/ShopService · route *Service.* (pattern)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Shop: Folder
+        PriceService: ModuleScript  <- src/Shop/Shared/PriceService.luau
+        Prices: ModuleScript  <- src/Shop/Prices.luau
+    Stories: Folder
+      Shop: Folder
+        Card.story: ModuleScript  <- src/Shop/Card.story.luau
+  ServerScriptService: ServerScriptService
+    Shop: Folder
+      Kiosk: ModuleScript  <- src/Shop/Kiosk@Server.luau
+      ShopService: ModuleScript  <- src/Shop/ShopService.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Hud: ModuleScript  <- src/Hud/init.luau
+        HudController: ModuleScript  <- src/Hud/HudController/init.luau
+          Bar: ModuleScript  <- src/Hud/HudController/Bar.luau
+      Shop: Folder
+        ShopController: ModuleScript  <- src/Shop/ShopController.luau

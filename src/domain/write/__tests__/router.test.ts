@@ -32,6 +32,115 @@ describe("Router", () => {
 			fs = new MemoryFileSystemService();
 		});
 
+		describe("patterns", () => {
+			const PATTERNS = {
+				...ROUTES,
+				"*.tsx": "StarterPlayer/StarterPlayerScripts",
+				"*Service.*": "ServerScriptService",
+			};
+
+			const routed = async () =>
+				(await route({ routes: PATTERNS }))
+					.unwrap()
+					.routed.map(
+						({ instancePath, route, routeMatch }) =>
+							`${instancePath.join("/")} · ${route} (${routeMatch})`
+					)
+					.sort();
+
+			it("should route a file nothing written routes by the pattern its name matches, keeping its name", async () => {
+				await write("src/Shop/Hud.tsx", "src/Shop/ShopService.luau");
+
+				expect(await routed()).toEqual([
+					"ServerScriptService/Shop/ShopService · *Service.* (pattern)",
+					"StarterPlayer/StarterPlayerScripts/Shop/Hud · *.tsx (pattern)",
+				]);
+			});
+
+			it("should leave a file a folder, @ name or Rojo suffix routes to that route", async () => {
+				await write(
+					"src/Shop/server/Hud.tsx",
+					"src/Shop/Card@server.tsx",
+					"src/Shop/Boot.server.tsx"
+				);
+
+				expect(await routed()).toEqual([
+					"ServerScriptService/Shop/Boot · server (suffix)",
+					"ServerScriptService/Shop/Card · server (suffix)",
+					"ServerScriptService/Shop/Hud · server (folder)",
+				]);
+			});
+
+			it("should send a file no pattern matches to *", async () => {
+				await write("src/Shop/Types.luau");
+
+				expect(await routed()).toEqual([
+					"ReplicatedStorage/shared/Shop/Types · * (fallback)",
+				]);
+			});
+
+			it("should route a folder whose init file makes an instance a pattern matches, children and all", async () => {
+				await write(
+					"src/Hud/index.tsx",
+					"src/Hud/Types.luau",
+					"src/Input/InputService/init.luau",
+					"src/Input/InputService/Keys.luau"
+				);
+
+				expect(await routed()).toEqual([
+					"ServerScriptService/Input/InputService · *Service.* (pattern)",
+					"ServerScriptService/Input/InputService/Keys · *Service.* (pattern)",
+					"StarterPlayer/StarterPlayerScripts/Hud · *.tsx (pattern)",
+					"StarterPlayer/StarterPlayerScripts/Hud/Types · *.tsx (pattern)",
+				]);
+			});
+
+			it("should leave a folder to its init files when one routes itself", async () => {
+				await write(
+					"src/ShopService/init@server.luau",
+					"src/ShopService/init@client.luau",
+					"src/ShopService/Types.luau"
+				);
+
+				expect(await routed()).toEqual([
+					"ReplicatedStorage/shared/ShopService/Types · * (fallback)",
+					"ServerScriptService/ShopService · server (suffix)",
+					"StarterPlayer/StarterPlayerScripts/ShopService · client (suffix)",
+				]);
+			});
+
+			it("should not route a folder by a pattern", async () => {
+				await write("src/Store.tsx/Cart.luau");
+
+				expect(await routed()).toEqual([
+					"ReplicatedStorage/shared/Store.tsx/Cart · * (fallback)",
+				]);
+			});
+
+			it("should stop on a file that patterns of equal weight send to different places", async () => {
+				await write("src/Shop/MainUi.ts");
+
+				const result = await route({
+					routes: {
+						...ROUTES,
+						"*Ui.*": "StarterPlayer/StarterPlayerScripts",
+						"*.ts": "ServerScriptService",
+					},
+				});
+
+				expect(
+					result.isErr() && result.error.diagnostics
+				).toMatchObject([
+					{
+						code: "route.patternClash",
+						resource: abs("src/Shop/MainUi.ts"),
+						message:
+							'"*.ts" and "*Ui.*" both match this name, are as long as each other, and send it to different places. Lengthen the pattern that should win, or route the file with a folder or an @ name.',
+					},
+				]);
+			});
+		});
+
 		describe("hoisted names", () => {
 			const CHARACTER = {
 				...ROUTES,

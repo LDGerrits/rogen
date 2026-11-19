@@ -297,8 +297,7 @@ export class WriteValidator {
 	/** The route other than `key` that governs `resource` through a folder above it, read from the files below it that no route folder or `@` name of its own sits between. */
 	private governingRoute(resource: string, key: string): string | undefined {
 		return this.placement.files.find(({ entry, route }) => {
-			if (route === key || route === DeclaredKeys.FALLBACK_ROUTE)
-				return false;
+			if (route === key || !DeclaredKeys.isName(route)) return false;
 			if (entry.source === resource) return true;
 			if (!entry.source.startsWith(`${resource}/`)) return false;
 			return entry.source
@@ -640,10 +639,9 @@ export class WriteValidator {
 		if (instanceKey(instancePath) === instance)
 			return "Remove one of them.";
 		const name = path.posix.basename(entry.source);
-		const spelled =
-			route === DeclaredKeys.FALLBACK_ROUTE
-				? ""
-				: `, as ${RojoFile.INIT_NAME}@${route}${name.slice(RojoFile.INIT_NAME.length)}`;
+		const spelled = !DeclaredKeys.isName(route)
+			? ""
+			: `, as ${RojoFile.INIT_NAME}@${route}${name.slice(RojoFile.INIT_NAME.length)}`;
 		return `To give each side its own init script, name them with @${spelled}.`;
 	}
 

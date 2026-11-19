@@ -293,9 +293,7 @@ class ConfigLocator {
 	private async foldersUnderDeclaredRoutes(
 		reference: InstanceReference
 	): Promise<string[]> {
-		const keys = [...this.config.routes.keys()].filter(
-			(key) => key !== DeclaredKeys.FALLBACK_ROUTE
-		);
+		const keys = [...this.config.keys.routeKeys];
 		return (
 			await Promise.all(
 				keys.map((key) => this.foldersUnderRoute(key, reference))

@@ -78,6 +78,7 @@ export class Placer {
 			),
 			...this.withoutFolderErrors(withoutFolder),
 			...this.hoistedInitErrors(hoistedInits),
+			...Placer.patternClashErrors(routed),
 		];
 		if (routeErrors.length > 0) return err(routeErrors);
 		const routedNodes = this.initScripts.withCopies(routed, toCopy);
@@ -139,6 +140,23 @@ export class Placer {
 				)
 			)
 		);
+	}
+
+	private static patternClashErrors(
+		routed: readonly RoutedFile[]
+	): Diagnostic[] {
+		const clashes = new Map<string, readonly string[]>();
+		for (const { patternClash } of routed)
+			if (patternClash) clashes.set(patternClash.at, patternClash.keys);
+		return [...clashes]
+			.sort(([a], [b]) => compareStrings(a, b))
+			.map(([resource, keys]) =>
+				errorDiagnostic(
+					"route.patternClash",
+					{ resource },
+					`${joinedWithAnd(keys.map((key) => `"${key}"`))} ${keys.length > 2 ? "all" : "both"} match this name, are as long as each other, and send it to different places. Lengthen the pattern that should win, or route the file with a folder or an @ name.`
+				)
+			);
 	}
 
 	private ignoredAtErrors(

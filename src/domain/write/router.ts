@@ -2,6 +2,7 @@ import path from "path";
 import { dirnamePosix, joinPosix } from "../../base/path.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
+import { PatternMatch } from "../config/route-patterns.js";
 import { RojoScriptSuffix } from "../rojo/rojo.js";
 import { FolderNode, RouteMatch } from "./write.js";
 import { DirClaims, RootClaims } from "./dir-claims.js";
@@ -24,6 +25,14 @@ export interface RoutedFile {
 	readonly ignoredAts: readonly IgnoredAt[];
 	readonly init?: InitFolders;
 	readonly hoisted?: boolean;
+	/** The patterns that match with equal weight and different targets, which leave the file to `*`, and the folder or file whose name they match. */
+	readonly patternClash?: PatternClash;
+}
+
+export interface PatternClash {
+	readonly keys: readonly string[];
+	/** Absolute POSIX path of the folder or file whose name the patterns match. */
+	readonly at: string;
 }
 
 interface InitFolders {
@@ -130,6 +139,7 @@ interface LeafName {
 
 interface ClaimedPath {
 	readonly claims: Claims;
+	readonly patternClash?: PatternClash;
 	readonly folders: readonly ClaimedFolder[];
 	readonly leaf: LeafName;
 	readonly hoisted: boolean;
@@ -261,6 +271,11 @@ export class Router {
 			claims
 		);
 		const leaf = this.claimLeaf(read, claims);
+		const pattern = claims.route
+			? undefined
+			: this.patternOf(entry, read, dirs, leaf.isInit);
+		if (pattern?.match.kind === "routed")
+			claims.claim(pattern.match.key, "pattern");
 		const hoistsLeaf = leaf.hoisted && !leaf.isInit;
 		const dropped = hoistsLeaf ? folders.length : (hoistAt ?? 0);
 		const kept = folders.slice(dropped);
@@ -277,7 +292,34 @@ export class Router {
 			leaf,
 			hoisted: hoistsLeaf || hoistAt !== undefined,
 			dropped,
+			...(pattern?.match.kind === "clash" && {
+				patternClash: { keys: pattern.match.keys, at: pattern.at },
+			}),
 		};
+	}
+
+	/** The pattern that names the outermost folder whose init script makes an instance a pattern matches, so the folder moves whole; else the one the file's own name matches. An init script is its folder, so only the folder's name counts for it. */
+	private patternOf(
+		entry: ScannedFile,
+		read: EntryReading,
+		dirs: DirClaims,
+		isInit: boolean
+	): { readonly match: PatternMatch; readonly at: string } | undefined {
+		for (const folder of read.folders) {
+			if (folder.invisible || folder.route !== undefined) continue;
+			const extension = dirs.initExtensionAt(folder.dir);
+			if (extension === undefined) continue;
+			const match = this.config.patterns.match(
+				`${folder.outrankedName}${extension}`
+			);
+			if (match)
+				return { match, at: joinPosix(entry.sourcePath, folder.dir) };
+		}
+		if (isInit) return undefined;
+		const match = this.config.patterns.match(
+			path.posix.basename(entry.source)
+		);
+		return match && { match, at: entry.source };
 	}
 
 	private place(
@@ -300,6 +342,7 @@ export class Router {
 			ignoredAts: claims.ignoredAts,
 			init: leaf.isInit ? this.initFolders(entry, folders) : undefined,
 			...(claimed.hoisted && { hoisted: true }),
+			...(claimed.patternClash && { patternClash: claimed.patternClash }),
 		};
 	}
 

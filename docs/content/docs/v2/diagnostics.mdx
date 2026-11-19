@@ -284,6 +284,16 @@ Delete the marker that you don't want. Or move part of the folder into a subfold
 
 Two markers for the same route are fine. An init script's route routes only the script, so `init@server.luau` beside `init@client.luau` doesn't clash. See [Marker Files](/docs/v2/routing/names#marker-files).
 
+### `route.patternClash` [#route-patternclash]
+
+Error. Two or more pattern routes match a file's name with as many characters that aren't `*`, and they send it to different places. The pattern with more such characters wins, so `*.story.tsx` beats `*.tsx`, but nothing decides a tie.
+
+```
+error: "*.ts" and "*Ui.*" both match this name, are as long as each other, and send it to different places. Lengthen the pattern that should win, or route the file with a folder or an @ name. (route.patternClash)
+```
+
+Make the pattern that should win more specific, as in `*Ui.ts`, or route the file with a [routing folder](/docs/v2/routing/folders) or an `@` name, which beat every pattern. Patterns that send a file to the same place don't clash. See [Patterns](/docs/v2/routing/names#patterns).
+
 ### `route.ignoredAt` [#route-ignoredat]
 
 Error. A name or marker file has an `@key` that does nothing, so the name says the file goes somewhere that it doesn't. This happens in two cases:

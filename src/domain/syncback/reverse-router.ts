@@ -223,6 +223,7 @@ export class ReverseRouter {
 			"folder",
 			"suffix",
 			"marker",
+			"pattern",
 			"fallback",
 		].filter((style): style is Style => style !== undefined);
 	}

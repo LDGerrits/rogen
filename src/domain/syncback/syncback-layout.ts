@@ -6,7 +6,7 @@ import { ResolvedConfig, compiledPathOf } from "../config/resolved-config.js";
 import { configStem } from "../config/config.js";
 
 /** How a placed file was routed, which a new file beside it repeats. */
-export type Style = "folder" | "suffix" | "marker" | "fallback";
+export type Style = "folder" | "suffix" | "marker" | "pattern" | "fallback";
 
 /** The styles a new instance can be written in when no file beside it shows one. */
 export type NewStyle = "folder" | "suffix";
