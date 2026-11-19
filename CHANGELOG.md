@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Pattern routes: a route key with a `*`, such as `*.tsx` or `*Controller.*`, routes a file by its name when no folder, `@` name or marker routes it. A folder with an init script is matched by its own name and moves whole. The pattern with more characters that aren't `*` wins, and a tie between different places is the error `route.patternClash`. Syncback writes a new file's `@` route when a pattern would send its plain name elsewhere.
+
 ### Changed
 
 - **Breaking:** a route key matches a folder, `@` name or marker file only when spelled exactly as the key. `server/` under a `Server` route is an ordinary folder and gets `route.caseMismatch`. Rojo's `.server` and `.client` still route a key of that name in any case. `rogen init` spells each key as the folders it finds already do, so a lifted Rojo project gets `server`, `client` and `shared`.

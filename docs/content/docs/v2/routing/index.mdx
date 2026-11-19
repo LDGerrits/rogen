@@ -47,7 +47,7 @@ The name is spelled exactly as the key, so `server/` is an ordinary folder under
 
 ## Files Without a Route
 
-The `*` route takes every file that no other route matches, so `src/Shop/Prices.luau` lands in `ReplicatedStorage/Shared/Shop`. `rogen init` writes it. Without `*`, Rogen leaves such a file out and warns about it, so a server file that forgets its route never reaches clients. That suits a project where every file names its side.
+The `*` route takes every file that no other route matches, so `src/Shop/Prices.luau` lands in `ReplicatedStorage/Shared/Shop`. A [pattern route](/docs/v2/routing/names#patterns) such as `*.tsx` takes a file by its name before `*` does. `rogen init` writes it. Without `*`, Rogen leaves such a file out and warns about it, so a server file that forgets its route never reaches clients. That suits a project where every file names its side.
 
 ## The Outermost Route Wins
 
