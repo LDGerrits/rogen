@@ -828,6 +828,50 @@ describe("ReverseRouter", () => {
 		});
 	});
 
+	describe("names routing reads differently", () => {
+		const added = (name: string, folder = false, files?: string[][]) => ({
+			parent: ["ServerScriptService", "Inventory"],
+			name,
+			folder,
+			files: files ?? [[`${name}.luau`]],
+		});
+
+		it.each([
+			["Foo@Server", added("Foo@Server")],
+			["^Odd", added("^Odd")],
+			["(Group)", added("(Group)", true, [["(Group)", "In.luau"]])],
+			["Server", added("Server", true, [["Server", "In.luau"]])],
+		])(
+			"should refuse %s beside files suffixes route, as routing would read the name as a route",
+			async (_, instance) => {
+				const router = await routerOf([
+					"src/Inventory/Bag@Server.luau",
+				]);
+
+				expect(router.place(instance)).toMatchObject({
+					kind: "conflict",
+					reason: expect.stringContaining("rename it in Studio"),
+				});
+			}
+		);
+
+		it("should take a folder named after a route key inside a routing folder, which it outranks", async () => {
+			const router = await routerOf(["src/Inventory/Server/Bag.luau"]);
+
+			expect(
+				router.place(added("Client", true, [["Client", "In.luau"]]))
+			).toMatchObject({ kind: "placed" });
+		});
+
+		it("should take an @ that names no route key", async () => {
+			const router = await routerOf(["src/Inventory/Server/Bag.luau"]);
+
+			expect(router.place(added("Bar@Zed"))).toMatchObject({
+				kind: "placed",
+			});
+		});
+	});
+
 	describe("destination", () => {
 		const unit = (folder: boolean, files: string[][] = []) => ({
 			parent: ["ServerScriptService"],

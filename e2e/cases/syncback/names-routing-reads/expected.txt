@@ -1,0 +1,47 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/Shop/Bar@Zed@Server.luau
+stderr:
+  Wrote default.project.json.
+  default.rogen.json - warning: ServerScriptService/Shop/(Group) was left out: routing reads its name "(Group)" as a route, so the file would land elsewhere; rename it in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/Client was left out: routing reads its name "Client" as a route, so the file would land elsewhere; rename it in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/Foo@Server was left out: routing reads its name "Foo@Server" as a route, so the file would land elsewhere; rename it in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/^Odd was left out: routing reads its name "^Odd" as a route, so the file would land elsewhere; rename it in Studio. (syncback.unplaced)
+  Syncback wrote 1 change.
+
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stderr:
+  default.rogen.json - warning: ServerScriptService/Shop/(Group) was left out: routing reads its name "(Group)" as a route, so the file would land elsewhere; rename it in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/Client was left out: routing reads its name "Client" as a route, so the file would land elsewhere; rename it in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/Foo@Server was left out: routing reads its name "Foo@Server" as a route, so the file would land elsewhere; rename it in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/^Odd was left out: routing reads its name "^Odd" as a route, so the file would land elsewhere; rename it in Studio. (syncback.unplaced)
+  Syncback would change nothing.
+
+written:
+  default.project.json
+  src/Shop/Bar@Zed@Server.luau
+
+$ rojo sourcemap default.project.json
+G: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Bag: Folder
+        Item: ModuleScript  <- src/Bag/Item.luau
+      Shop: Folder
+        Prices: ModuleScript  <- src/Shop/Prices.luau
+  ServerScriptService: ServerScriptService
+    Bag: Folder
+      Bag: ModuleScript  <- src/Bag/Bag@Server.luau
+    Shop: Folder
+      Bar@Zed: ModuleScript  <- src/Shop/Bar@Zed@Server.luau
+      ShopService: ModuleScript  <- src/Shop/ShopService@Server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Shop: Folder
+        ShopUi: ModuleScript  <- src/Shop/ShopUi@Client.luau

@@ -53,6 +53,8 @@ function renameOf(
 	removed: ReadonlyMap<string, string>,
 	placed: readonly PlacedLocation[]
 ): RenamedInstance | undefined {
+	// A name routing reads as more than a name is left for placement to refuse.
+	if (/^[\^(]|@/.test(instance.name)) return undefined;
 	const oldPath = [...instance.parent, from];
 	const oldMirror = `${instance.parentFolder}/${from}`;
 	const sources: [string, string][] = [];

@@ -511,6 +511,16 @@ class MirrorPlanRun {
 				fresh.push(added);
 				continue;
 			}
+			const misread = this.misreadInPlace(added, names, known, target);
+			if (misread) {
+				if (
+					!unplaced.some(
+						({ instance }) => instance === misread.instance
+					)
+				)
+					unplaced.push(misread);
+				continue;
+			}
 			if (workspace.isIgnored(target)) continue;
 			const file = toNative(target);
 			const instance = workspace.instanceAt(added.path);
@@ -559,6 +569,53 @@ class MirrorPlanRun {
 			);
 		}
 		return { fresh, metaFiles };
+	}
+
+	/** A path Rojo added in place, below a folder of the mirror that a folder of the project is, whose new names routing would read as a route, which syncback leaves out. */
+	private misreadInPlace(
+		added: AddedPath,
+		names: readonly string[],
+		known: ReadonlySet<string>,
+		target: string
+	): UnplacedInstance | undefined {
+		let at = names.length - 1;
+		while (at > 0 && !known.has(names.slice(0, at).join("/"))) at--;
+		if (at === 0) return undefined;
+		const below = names.slice(at);
+		const folder = added.folder || below.length > 1;
+		const leaf = below[below.length - 1];
+		const name = folder ? below[0] : instanceNameOf(leaf);
+		const dir = path.posix.dirname(
+			path.posix.join(target, ...below.slice(1).map(() => ".."))
+		);
+		const { layout } = this.workspace;
+		const governs = layout.placed.some(
+			({ source, routeMatch }) =>
+				(routeMatch === "folder" || routeMatch === "marker") &&
+				path.posix.dirname(source) === dir
+		);
+		const misread = new ReverseRouter(layout).misreadName(
+			{
+				parent: this.workspace.mirror.instancePathOf(
+					names.slice(0, at).join("/")
+				),
+				name,
+				folder,
+				files: [added.folder ? [...below, ".gitkeep"] : below],
+			},
+			governs
+		);
+		return misread === undefined
+			? undefined
+			: {
+					instance: instanceKey([
+						...this.workspace.mirror.instancePathOf(
+							names.slice(0, at).join("/")
+						),
+						name,
+					]),
+					reason: `routing reads its name "${misread}" as a route, so the file would land elsewhere; rename it in Studio`,
+				};
 	}
 
 	/** Whether the nearest folder above a path Rojo added is the folder of an init script whose own name routes it, so what Rojo wrote there must name that route to land where Rojo put it. */

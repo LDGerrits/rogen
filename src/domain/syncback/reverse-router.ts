@@ -54,6 +54,12 @@ export const instanceNameOf = (fileName: string): string =>
 	RojoFile.metaStemOf(fileName) ??
 	new RojoFile(fileName, SyncRules.DEFAULT).instanceName;
 
+/** An `@` and a name at the end of a name, as a route suffix is spelled. */
+const AT_KEY = /@([A-Za-z][A-Za-z0-9]*)$/;
+
+/** A folder named in parentheses, which routing leaves out of the game. */
+const INVISIBLE = /^\(.+\)$/;
+
 /** The file Rojo writes to keep an empty folder. */
 const GITKEEP = ".gitkeep";
 
@@ -93,12 +99,46 @@ export class ReverseRouter {
 		const placing = this.placeInSources(instance);
 		if (placing.kind !== "placed") return placing;
 		const { governed, ...home } = placing.home;
+		const misread = this.misreadName(
+			instance,
+			governed && home.mark === undefined
+		);
+		if (misread !== undefined)
+			return conflict(
+				`routing reads its name "${misread}" as a route, so the file would land elsewhere; rename it in Studio`
+			);
 		const routed = governed ? home : this.routedBack(instance, home);
 		if ("kind" in routed) return routed;
 		return {
 			kind: "placed",
 			home: { ...routed, dir: this.layout.synced(routed.dir) },
 		};
+	}
+
+	/** The first name of `instance` or of what it holds that routing reads as more than a name: one that starts with `^`, a folder in parentheses, an `@` that spells a route key, or a folder named after a route key where no outer route `governs` and outranks it. */
+	misreadName(instance: NewInstance, governs: boolean): string | undefined {
+		const { keys } = this.layout.config;
+		const folders = new Set<string>();
+		const names = new Set([instance.name]);
+		for (const file of instance.files ?? []) {
+			for (const folder of file.slice(0, -1)) folders.add(folder);
+			const leaf = file[file.length - 1];
+			if (!isInitFile(file) && RojoFile.metaStemOf(leaf) === undefined)
+				names.add(instanceNameOf(leaf));
+		}
+		if (instance.folder) folders.add(instance.name);
+		const atKey = (name: string) => {
+			const key = AT_KEY.exec(name)?.[1];
+			return key !== undefined && keys.resolve(key) !== undefined;
+		};
+		for (const name of [...names, ...folders])
+			if (name.startsWith("^") || atKey(name)) return name;
+		for (const folder of folders) {
+			if (INVISIBLE.test(folder)) return folder;
+			const bare = folder.startsWith("@") ? folder.slice(1) : folder;
+			if (!governs && keys.resolve(bare) !== undefined) return folder;
+		}
+		return undefined;
 	}
 
 	/** `home`, where only the names of the instance's files decide where they go, marked with the route of where it is when a pattern or `*` would send one elsewhere. */
