@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- Pattern routes: a route key with a `*`, such as `*.tsx` or `*Controller.*`, routes a file by its name when no folder, `@` name or marker routes it. An init script is matched by its folder's name and, as with an `@` on it, routes alone. A name with an `@` route token is never matched. The pattern with more characters that aren't `*` wins, and a tie between different places is the error `route.patternClash`. Syncback writes a new file's `@` route when a pattern would send its plain name elsewhere.
+- Pattern routes: a route key with a `*`, such as `*.tsx` or `*Controller.*`, routes a file by its name when no folder, `@` name or marker routes it. An init script is matched by its folder's name and, as with an `@` on it, routes alone. A name whose `@` nearly spells a route key is never matched. The pattern with more characters that aren't `*` wins, and a tie between different places is the error `route.patternClash`. Syncback writes a new file's `@` route when a pattern would send its plain name elsewhere.
 
 ### Changed
 
