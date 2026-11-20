@@ -380,7 +380,7 @@ export class WriteValidator {
 			([resource, misspelt]) => {
 				const why = unusable(resource, misspelt);
 				const { renamedTo } = misspelt;
-				return warningDiagnostic(
+				return errorDiagnostic(
 					code,
 					{ resource },
 					why ?? hint(resource, misspelt),

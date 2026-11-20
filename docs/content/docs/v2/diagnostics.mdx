@@ -233,28 +233,23 @@ Rogen doesn't report an `@` that is nowhere near a route key, such as the `@` in
 
 ### `route.dotRoute` [#route-dotroute]
 
-Warning. A name has a route key after a dot, where only `@` routes, so the key routes nothing. The name is one of these:
+Error. A name writes a route key after a dot where a dot can only have meant a route, so the key routes nothing, and Rogen stops until it is fixed. The name is one of these:
 
-- a dot-file such as `.server`, which isn't a marker file
-- a dot-folder such as `.server/`, which isn't a routing folder
-- a name with a dot part, such as `Types.shared.luau` or `Net.server/`, which stays in the name
+- a dot-file named for a key, such as `.server`, which isn't a marker file
+- a dot-folder named for a key, such as `.server/`, which isn't a routing folder
+- Rojo's `.server` or `.client` where Rojo doesn't read it: in another letter case, as `Main.Server.luau`, which Rojo makes a ModuleScript named `Main.Server`; on a data file or model, as `Config.server.json`, since only a script has a class; or on a folder, as `Net.server/`
 
-What the name covers falls through to the route above it, or to `*`. The key matches in any letter case, so `.SERVER/` and `Types.SHARED.luau` warn too.
+Rojo's `.server` and `.client` at the end of a script's name in lower case route, and Rogen never reports them. Any other key after a dot stays in the name with no report, since a tool's own suffix may spell it: `Button.story.luau` beside a `Story` route, or `Types.shared.luau`, is a module of that name.
 
 ```
-warning: 2 names write a route key after a dot, where only "@" routes, so they route nothing: (route.dotRoute)
+error: 2 names write a route key after a dot, where only "@" routes, so Rogen stops until they are fixed: (route.dotRoute)
   src/Inventory/.server (write "@server")
-  src/Inventory/Types.shared.luau (write "Types@shared.luau")
+  src/Inventory/Main.Server.luau (write "Main.server.luau")
 ```
 
-Rename each one to its `@` form. A marker file becomes `@server`, a folder becomes `@server/`, and a name becomes `Types@shared.luau` or `Config@server.json`. In `--json`, `fixes` holds the rename.
+Rename each one as the message says. A marker file becomes `@server`, a folder becomes `Net@server/`, a script takes Rojo's lower case, and a data file becomes `Config@server.json`. In `--json`, `fixes` holds the rename.
 
 A name inside a folder that a route already governs gets no rename, because `@server` there would be a [`route.ignoredAt`](#route-ignoredat) error. Its message says which route governs it, and tells you to move it out of that route's files.
-
-Rojo's `.server` and `.client` at the end of a script's name still route, and Rogen never reports them. Two limits apply:
-
-- Only lowercase counts. Rojo reads `Main.Server.luau` as a ModuleScript named `Main.Server`, so Rogen suggests `Main.server.luau`.
-- Only scripts count. A data file or a model has no `.server` or `.client` handling, so `Config.server.json` is a ModuleScript named `Config.server`, and it warns.
 
 See [Marker Files](/docs/v2/routing/names#marker-files).
 

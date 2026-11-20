@@ -350,14 +350,28 @@ describe("init command", () => {
 		});
 
 		it("should say what is wrong with the routes it wrote", async () => {
-			await write("src/Save.Server.luau");
+			await write("src/Shop/Server/Hud.client.luau");
 			const logService = new MockLogService();
 
 			await runInit(new MockPromptService([], false), logService);
 
 			expect(logService.lines).toContainEqual(
-				expect.stringContaining("(route.dotRoute)")
+				expect.stringContaining("(tree.deadScript)")
 			);
+		});
+
+		it("should write nothing while a name of the code stops the write", async () => {
+			await write("src/Save.Server.luau");
+
+			const failed = await runInit();
+
+			expect(failed.isErr()).toBe(true);
+			expect(failed.isErr() ? String(failed.error) : "").toContain(
+				"route.dotRoute"
+			);
+			expect(
+				await memFs.exists(path.join(cwd, "default.rogen.json"))
+			).toBe(false);
 		});
 
 		it.each([

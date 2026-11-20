@@ -68,6 +68,10 @@ A route inside another route is an ordinary folder. Server code under `Shared/` 
 `}
 />
 
+## When Rogen Stops
+
+Rogen stops the write where a name can only have meant a route and misses it, since the file would land where you didn't send it. That covers a folder, `@` or marker file that misses a key by its case or a typo, and Rojo's `.server` or `.client` where Rojo doesn't read it, as `Main.Server.luau` or `Config.server.json`. It also stops when two files would make one instance and the build would lose one. A name that may be an ordinary name stays one, so a `Servers/` folder or a `Button.story.luau` beside a `Story` route routes nothing and Rogen says nothing about it. Where Rogen only guesses, it warns and writes: for a file that nearly matches a pattern, a file no route takes, or server code that the route above it ships to clients. Each error names the rename that fixes it, and the [diagnostics](/docs/v2/diagnostics) page explains each code.
+
 ## Check Where a File Lands
 
 `rogen where` prints where a file lands in the game, and the require that reaches it:

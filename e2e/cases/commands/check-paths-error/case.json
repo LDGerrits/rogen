@@ -1,7 +1,7 @@
 {
 	"steps": [
-		["check", "src/Inventory/Save.Server.luau", "src/Inventory/Clean.luau", "src/Inventory/New.Server.luau", "src/shared/server/Secret.server.luau"],
-		["check", "src/Inventory", "--json"]
+		["check", "src/shared/Hud.client.luau", "src/Inventory/Clean.luau", "src/shared/New.client.luau", "src/shared/server/Secret.server.luau"],
+		["check", "src/shared", "--json"]
 	],
 	"rojo": false
 }

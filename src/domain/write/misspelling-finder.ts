@@ -48,7 +48,10 @@ export class MisspellingFinder {
 		const dot = remaining.lastIndexOf(".");
 		if (dot <= 0 || dot < remaining.lastIndexOf("@")) return undefined;
 		const text = remaining.slice(dot + 1);
-		const key = this.dotRouteKey(text);
+		const rojo = text.toLowerCase();
+		const key = RUN_SCRIPT_SUFFIXES.has(rojo)
+			? this.keys.resolveDotRoute(rojo)
+			: undefined;
 		return key
 			? MisspellingFinder.dotRouteOf(
 					text,

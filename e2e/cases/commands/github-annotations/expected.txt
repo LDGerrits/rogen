@@ -1,9 +1,9 @@
 $ rogen check
 exit 1
 stdout:
-  src/Save.Server.luau - warning: write "Save.server.luau" (route.dotRoute)
+  src/Save.client.luau - warning: a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing (tree.deadScript)
 stderr:
-  ::warning file=src/Save.Server.luau,title=route.dotRoute::write "Save.server.luau"
+  ::warning file=src/Save.client.luau,title=tree.deadScript::a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing
 
 $ rogen write
 exit 0
@@ -12,9 +12,10 @@ stdout:
   Wrote default.project.json.
   Wrote 1 of 1 project file with 1 warning.
 stderr:
-  ::warning file=src/Save.Server.luau,title=route.dotRoute::write "Save.server.luau"
-  default.rogen.json - warning: 1 name writes a route key after a dot, where only "@" routes, so it routes nothing: (route.dotRoute)
-    src/Save.Server.luau (write "Save.server.luau")
+  ::warning file=src/Save.client.luau,title=tree.deadScript::a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing
+  default.rogen.json - warning: 1 script will never run where it lands: (tree.deadScript)
+    src/Save.client.luau (a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing)
+  A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see.
 
 $ rogen check --json
 exit 1
@@ -22,19 +23,11 @@ stdout:
   {
     "diagnostics": [
       {
-        "file": "<dir>/src/Save.Server.luau",
+        "file": "<dir>/src/Save.client.luau",
         "severity": "warning",
-        "code": "route.dotRoute",
-        "message": "write \"Save.server.luau\"",
-        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
-        "fixes": [
-          {
-            "rename": {
-              "from": "<dir>/src/Save.Server.luau",
-              "to": "<dir>/src/Save.server.luau"
-            }
-          }
-        ]
+        "code": "tree.deadScript",
+        "message": "a LocalScript never runs in ReplicatedStorage: no route is named \"client\", so \".client\" routes nothing",
+        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#tree-deadscript"
       }
     ]
   }

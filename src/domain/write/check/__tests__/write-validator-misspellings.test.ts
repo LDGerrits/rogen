@@ -10,6 +10,8 @@ import {
 	abs,
 	prepareAndPlace,
 	configOf,
+	indexOf,
+	pipelineOf,
 	writeFiles,
 } from "../../__tests__/fixtures.js";
 
@@ -446,51 +448,89 @@ describe("WriteValidator rules", () => {
 		});
 
 		describe("route keys after a dot", () => {
-			const SHARED = { ...ROUTES, shared: "ReplicatedStorage/shared" };
-			const warningsOf = async (code: string) =>
-				(await route({ routes: SHARED }))
+			const SHARED = {
+				...ROUTES,
+				shared: "ReplicatedStorage/shared",
+				Story: "ReplicatedStorage/stories",
+			};
+			const dotErrors = (overrides: ResolvedConfigSpec = {}) =>
+				errorsOf("route.dotRoute", { routes: SHARED, ...overrides });
+			const renamesOf = (errors: readonly Diagnostic[]) =>
+				Object.fromEntries(
+					fixesOf(errors)
+						.filter(isRenameFix)
+						.map(({ rename: { from, to } }) => [
+							from.slice(at("src").length + 1),
+							to.slice(at("src").length + 1),
+						])
+				);
+			/** Where routing places each file, past errors that stop the write. */
+			const placed = async () =>
+				(
+					await pipelineOf(fs, await indexOf(fs, [abs("src")])).place(
+						configOf({ routes: SHARED })
+					)
+				)
 					.unwrap()
-					.warnings.filter((warning) => warning.code === code);
+					.routed.map(({ entry, instancePath }) => [
+						entry.source,
+						instancePath.join("/"),
+					]);
 
-			it("should warn at a dot-file and each name with a dot part that spells a route, naming each @ form", async () => {
+			it("should stop at a dot-file or dot-folder named for a route, and at Rojo's suffix on a folder, naming each @ form", async () => {
 				await write(
 					"src/Inventory/.server",
 					"src/Inventory/Save.luau",
-					"src/Inventory/Types.shared.luau",
-					"src/Net.shared/A.luau",
 					"src/Net.server/B.luau",
+					"src/.client/C.luau",
 					"src/Boot.server.luau"
 				);
 
-				const warnings = await warningsOf("route.dotRoute");
+				const errors = await dotErrors();
 
-				expect(listed(warnings)).toEqual(
+				expect(listed(errors)).toEqual(
 					expect.arrayContaining([
 						[at("src/Inventory/.server"), 'write "@server"'],
-						[
-							at("src/Inventory/Types.shared.luau"),
-							'write "Types@shared.luau"',
-						],
-						[at("src/Net.shared"), 'write "Net@shared"'],
 						[at("src/Net.server"), 'write "Net@server"'],
+						[at("src/.client"), 'write "@client"'],
 					])
 				);
-				expect(warnings).toHaveLength(4);
+				expect(errors).toHaveLength(3);
 				expect(
-					warnings.find(
-						({ resource }) => resource === at("src/Net.server")
-					)?.fixes
-				).toEqual([
-					{
-						rename: {
-							from: at("src/Net.server"),
-							to: at("src/Net@server"),
-						},
-					},
-				]);
+					errors.every(
+						({ severity }) => severity === DiagnosticSeverity.Error
+					)
+				).toBe(true);
+				expect(renamesOf(errors)).toEqual({
+					"Inventory/.server": "Inventory/@server",
+					"Net.server": "Net@server",
+					".client": "@client",
+				});
 			});
 
-			it("should warn about Rojo's .server and .client on a data file or model, which has no script class", async () => {
+			it("should leave any other route key after a dot in the name, as a tool's own suffix may be", async () => {
+				await write(
+					"src/Types.shared.luau",
+					"src/Net.shared/A.luau",
+					"src/Button.story.luau",
+					"src/Hud.Story.luau",
+					"src/Foo.spec.luau",
+					"src/Lib.SHARED.luau"
+				);
+
+				const result = await route({ routes: SHARED });
+
+				expect(result.isOk()).toBe(true);
+				expect(
+					result
+						.unwrap()
+						.warnings.filter(
+							({ code }) => code === "route.dotRoute"
+						)
+				).toEqual([]);
+			});
+
+			it("should stop at Rojo's .server and .client on a data file or model, which has no script class", async () => {
 				await write(
 					"src/Data.server.json",
 					"src/Hud.client.rbxmx",
@@ -498,54 +538,30 @@ describe("WriteValidator rules", () => {
 					"src/Boot.client.luau"
 				);
 
-				const warnings = await warningsOf("route.dotRoute");
-
-				expect(warnings.map(({ message }) => message)).toEqual(
-					expect.arrayContaining([
-						'write "Data@server.json"',
-						'write "Hud@client.rbxmx"',
-					])
-				);
-				expect(warnings).toHaveLength(3);
-				expect(fixesOf(warnings)).toContainEqual({
-					rename: {
-						from: at("src/Gun.server.model.json"),
-						to: at("src/Gun@server.model.json"),
-					},
+				expect(renamesOf(await dotErrors())).toEqual({
+					"Data.server.json": "Data@server.json",
+					"Hud.client.rbxmx": "Hud@client.rbxmx",
+					"Gun.server.model.json": "Gun@server.model.json",
 				});
 			});
 
-			it("should warn about a route key after a dot in any letter case, renaming a script's to Rojo's own spelling", async () => {
+			it("should stop at Rojo's suffix in another letter case, renaming a script's to Rojo's own spelling", async () => {
 				await write(
 					"src/.SERVER/A.luau",
 					"src/C/.SERVER",
 					"src/C/B.luau",
-					"src/Net.SHARED/D.luau",
-					"src/Types.SHARED.luau",
 					"src/Data.Server.json",
 					"src/Boot.Server.luau",
 					"src/Hud.CLIENT.luau",
-					"src/Lib.SHARED.luau"
+					"src/Net.SHARED/D.luau"
 				);
 
-				const renamed = Object.fromEntries(
-					fixesOf(await warningsOf("route.dotRoute"))
-						.filter(isRenameFix)
-						.map(({ rename: { from, to } }) => [
-							from.slice(at("src").length + 1),
-							to.slice(at("src").length + 1),
-						])
-				);
-
-				expect(renamed).toEqual({
+				expect(renamesOf(await dotErrors())).toEqual({
 					".SERVER": "@server",
 					"C/.SERVER": "C/@server",
-					"Net.SHARED": "Net@shared",
-					"Types.SHARED.luau": "Types@shared.luau",
 					"Data.Server.json": "Data@server.json",
 					"Boot.Server.luau": "Boot.server.luau",
 					"Hud.CLIENT.luau": "Hud.client.luau",
-					"Lib.SHARED.luau": "Lib@shared.luau",
 				});
 			});
 
@@ -569,107 +585,51 @@ describe("WriteValidator rules", () => {
 					"src/Odd/Net.server/B.luau"
 				);
 
-				const warnings = (
-					await route({
-						routes: {
-							...SHARED,
-							Shared: "ReplicatedStorage/shared",
-						},
-					})
-				)
-					.unwrap()
-					.warnings.filter(({ code }) => code === "route.dotRoute");
+				const errors = await dotErrors({
+					routes: { ...SHARED, Shared: "ReplicatedStorage/shared" },
+				});
 
-				expect(warnings).toEqual(
+				expect(listed(errors)).toEqual(
 					expect.arrayContaining([
-						expect.objectContaining({
-							resource: at("src/Odd/Shared/Ui.client"),
-							message:
-								'the "Shared" route governs it, so "@client" would do nothing; move it out of that route\'s files to route it',
-						}),
-						expect.objectContaining({
-							resource: at("src/Odd/Net.server"),
-							message: 'write "Net@server"',
-						}),
+						[
+							at("src/Odd/Shared/Ui.client"),
+							'the "Shared" route governs it, so "@client" would do nothing; move it out of that route\'s files to route it',
+						],
+						[at("src/Odd/Net.server"), 'write "Net@server"'],
 					])
 				);
-				expect(fixesOf(warnings)).toEqual([
-					{
-						rename: {
-							from: at("src/Odd/Net.server"),
-							to: at("src/Odd/Net@server"),
-						},
-					},
-				]);
+				expect(renamesOf(errors)).toEqual({
+					"Odd/Net.server": "Odd/Net@server",
+				});
 			});
 
 			it("should still offer the rename when the route below the folder is one of its own", async () => {
 				await write("src/Ui.client/Sub@server/A.luau");
 
-				const [warning] = await warningsOf("route.dotRoute");
+				const [error] = await dotErrors();
 
-				expect(warning.message).toBe('write "Ui@client"');
-				expect(warning.fixes).toEqual([
-					{
-						rename: {
-							from: at("src/Ui.client"),
-							to: at("src/Ui@client"),
-						},
-					},
-				]);
+				expect(error.message).toBe('write "Ui@client"');
+				expect(renamesOf([error])).toEqual({
+					"Ui.client": "Ui@client",
+				});
 			});
 
-			it("should warn about a dot-folder that spells a route, which is no routing folder", async () => {
-				await write("src/.server/A.luau", "src/.Server/B.luau");
-
-				const warnings = await warningsOf("route.dotRoute");
-				const paths = (await route({ routes: SHARED }))
-					.unwrap()
-					.routed.map(({ instancePath }) => instancePath.join("/"));
-
-				expect(fixesOf(warnings)).toEqual([
-					{
-						rename: {
-							from: at("src/.Server"),
-							to: at("src/@server"),
-						},
-					},
-					{
-						rename: {
-							from: at("src/.server"),
-							to: at("src/@server"),
-						},
-					},
-				]);
-				expect(paths).toEqual([
-					"ReplicatedStorage/shared/.Server/B",
-					"ReplicatedStorage/shared/.server/A",
-				]);
-			});
-
-			it("should leave a dot-file's folder and a dot part's name to the route above", async () => {
+			it("should leave a dot-file's folder and a dot-folder's files to the route above", async () => {
 				await write(
 					"src/Inventory/.server",
 					"src/Inventory/Save.luau",
-					"src/Types.shared.luau"
+					"src/.Server/B.luau"
 				);
 
-				const files = (await route({ routes: SHARED }))
-					.unwrap()
-					.routed.map(({ entry, instancePath }) => [
-						entry.source,
-						instancePath.join("/"),
-					]);
-
-				expect(files).toEqual(
+				expect(await placed()).toEqual(
 					expect.arrayContaining([
 						[
 							at("src/Inventory/Save.luau"),
 							"ReplicatedStorage/shared/Inventory/Save",
 						],
 						[
-							at("src/Types.shared.luau"),
-							"ReplicatedStorage/shared/Types.shared",
+							at("src/.Server/B.luau"),
+							"ReplicatedStorage/shared/.Server/B",
 						],
 					])
 				);

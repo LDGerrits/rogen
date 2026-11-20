@@ -170,14 +170,24 @@ export class LocatedDiagnosis {
 			...located.files.map(({ source }) => source),
 			...located.queried,
 		];
+		const proposing = located.diagnostics.filter((diagnostic) =>
+			located.instances.some(({ fixes }) =>
+				fixes.some(
+					({ code, rename }) =>
+						code === diagnostic.code &&
+						rename.from === toPosix(diagnostic.resource)
+				)
+			)
+		);
 		this.reaching = [
-			...new Set(
-				targets.flatMap((target) =>
+			...new Set([
+				...targets.flatMap((target) =>
 					located.diagnostics.filter((diagnostic) =>
 						this.reaches(diagnostic, target)
 					)
-				)
-			),
+				),
+				...proposing,
+			]),
 		];
 		this.stops = located.diagnostics.filter(isError);
 		this.stoppedBy = this.stops.filter(
@@ -191,7 +201,9 @@ export class LocatedDiagnosis {
 		);
 		this.unshown = located.files.some(({ status }) => status === "blocked")
 			? []
-			: this.stops.filter((error) => !shown.has(error));
+			: this.stops.filter(
+					(error) => !shown.has(error) && !proposing.includes(error)
+				);
 		this.placingNothing = located.diagnostics.filter(
 			({ code }) => code === "scan.noSyncedFiles"
 		);

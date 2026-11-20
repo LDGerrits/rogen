@@ -38,7 +38,7 @@ const GROUPS: Readonly<Record<string, DiagnosticGroup>> = {
 	},
 	"route.dotRoute": {
 		headline: (count) =>
-			`${count} ${either(count, "name writes", "names write")} a route key after a dot, where only "@" routes, so ${either(count, "it routes", "they route")} nothing:`,
+			`${count} ${either(count, "name writes", "names write")} a route key after a dot, where only "@" routes, so Rogen stops until ${either(count, "it is", "they are")} fixed:`,
 	},
 	"route.patternClash": {
 		headline: (count) =>

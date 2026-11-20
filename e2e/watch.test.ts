@@ -280,10 +280,10 @@ describeWithRojo("end to end watch", () => {
 	}, 30_000);
 
 	it("should count the warnings a rewrite doesn't repeat", async () => {
-		writeProjectFile(project.dir, "src/Save.Server.luau");
+		writeProjectFile(project.dir, "src/Save.client.luau");
 		const running = start();
 		await waitFor(() => {
-			expect(running.output).toContain("(route.dotRoute)");
+			expect(running.output).toContain("(tree.deadScript)");
 		});
 
 		writeProjectFile(project.dir, "src/B.luau");
@@ -293,7 +293,7 @@ describeWithRojo("end to end watch", () => {
 				"Wrote default.project.json (1 warning as before)."
 			);
 		});
-		expect(running.output.split("(route.dotRoute)").length).toBe(2);
+		expect(running.output.split("(tree.deadScript)").length).toBe(2);
 	}, 30_000);
 
 	it("should reload when the config changes", async () => {

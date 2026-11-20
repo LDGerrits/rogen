@@ -5,14 +5,15 @@ stdout:
   Wrote default.project.json.
   Wrote 1 of 1 project file with 1 warning.
 stderr:
-  default.rogen.json - warning: 1 name writes a route key after a dot, where only "@" routes, so it routes nothing: (route.dotRoute)
-    src/Save.Server.luau (write "Save.server.luau")
+  default.rogen.json - warning: 1 script will never run where it lands: (tree.deadScript)
+    src/Save.client.luau (a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing)
+  A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see.
 
 $ rogen where --color always
 exit 0
 stdout:
-  src/Save.Server.luau -> ReplicatedStorage/Shared/Save.Server · route * (fallback)
-    warning: write "Save.server.luau" (route.dotRoute)
+  src/Save.client.luau -> ReplicatedStorage/Shared/Save · route * (fallback)
+    warning: a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing (tree.deadScript)
 
 written:
   default.project.json

@@ -1,29 +1,28 @@
-$ rogen check src/Inventory/Save.Server.luau src/Inventory/Clean.luau src/Inventory/New.Server.luau src/shared/server/Secret.server.luau
+$ rogen check src/shared/Hud.client.luau src/Inventory/Clean.luau src/shared/New.client.luau src/shared/server/Secret.server.luau
 exit 1
 stdout:
-  src/Inventory/Save.Server.luau - warning: write "Save.server.luau" (route.dotRoute)
-  src/Inventory/New.Server.luau - warning: write "New.server.luau" (route.dotRoute)
+  src/shared/Hud.client.luau - warning: a LocalScript never runs in ReplicatedStorage: the "shared" route governs this file, so ".client" routes nothing here (tree.deadScript)
+  src/shared/New.client.luau - warning: a LocalScript never runs in ReplicatedStorage: the "shared" route governs this file, so ".client" routes nothing here (tree.deadScript)
   src/shared/server/Secret.server.luau - warning: a Script never runs in ReplicatedStorage: the "shared" route governs this file, so ".server" routes nothing here (tree.deadScript)
 
-$ rogen check src/Inventory --json
+$ rogen check src/shared --json
 exit 1
 stdout:
   {
     "diagnostics": [
       {
-        "file": "<dir>/src/Inventory/Save.Server.luau",
+        "file": "<dir>/src/shared/Hud.client.luau",
         "severity": "warning",
-        "code": "route.dotRoute",
-        "message": "write \"Save.server.luau\"",
-        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
-        "fixes": [
-          {
-            "rename": {
-              "from": "<dir>/src/Inventory/Save.Server.luau",
-              "to": "<dir>/src/Inventory/Save.server.luau"
-            }
-          }
-        ]
+        "code": "tree.deadScript",
+        "message": "a LocalScript never runs in ReplicatedStorage: the \"shared\" route governs this file, so \".client\" routes nothing here",
+        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#tree-deadscript"
+      },
+      {
+        "file": "<dir>/src/shared/server/Secret.server.luau",
+        "severity": "warning",
+        "code": "tree.deadScript",
+        "message": "a Script never runs in ReplicatedStorage: the \"shared\" route governs this file, so \".server\" routes nothing here",
+        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#tree-deadscript"
       }
     ]
   }

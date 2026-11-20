@@ -1,52 +1,42 @@
-$ rogen where src/Inventory/Save.Server.luau src/shared/server/Secret.server.luau src/Inventory/New.Server.luau src/Inventory/Clean.luau
+$ rogen where src/shared/Hud.client.luau src/shared/server/Secret.server.luau src/shared/New.client.luau src/Inventory/Clean.luau
 exit 0
 stdout:
-  src/Inventory/Save.Server.luau -> ReplicatedStorage/shared/Inventory/Save.Server · route * (fallback)
-    warning: write "Save.server.luau" (route.dotRoute)
-    require(game:GetService("ReplicatedStorage").shared.Inventory["Save.Server"])
+  src/shared/Hud.client.luau -> ReplicatedStorage/shared/Hud · route shared (folder)
+    warning: a LocalScript never runs in ReplicatedStorage: the "shared" route governs this file, so ".client" routes nothing here (tree.deadScript)
+    no require by this path: a script runs on its own and is not a module
   src/shared/server/Secret.server.luau -> ReplicatedStorage/shared/server/Secret · route shared (folder)
     warning: a Script never runs in ReplicatedStorage: the "shared" route governs this file, so ".server" routes nothing here (tree.deadScript)
     no require by this path: a script runs on its own and is not a module
-  src/Inventory/New.Server.luau -> ReplicatedStorage/shared/Inventory/New.Server · route * (fallback) · the file does not exist yet
-    warning: write "New.server.luau" (route.dotRoute)
-    require(game:GetService("ReplicatedStorage").shared.Inventory["New.Server"])
+  src/shared/New.client.luau -> ReplicatedStorage/shared/New · route shared (folder) · the file does not exist yet
+    warning: a LocalScript never runs in ReplicatedStorage: the "shared" route governs this file, so ".client" routes nothing here (tree.deadScript)
+    no require by this path: a script runs on its own and is not a module
   src/Inventory/Clean.luau -> ReplicatedStorage/shared/Inventory/Clean · route * (fallback)
     require(game:GetService("ReplicatedStorage").shared.Inventory.Clean)
 
-$ rogen where src/Inventory/Save.Server.luau src/shared/server/Secret.server.luau src/Inventory/New.Server.luau src/Inventory/Clean.luau --json
+$ rogen where src/shared/Hud.client.luau src/shared/server/Secret.server.luau src/shared/New.client.luau src/Inventory/Clean.luau --json
 exit 0
 stdout:
   {
     "locations": [
       {
         "config": "default.rogen.json",
-        "source": "<dir>/src/Inventory/Save.Server.luau",
+        "source": "<dir>/src/shared/Hud.client.luau",
         "status": "placed",
         "exists": true,
         "instancePath": [
           "ReplicatedStorage",
           "shared",
-          "Inventory",
-          "Save.Server"
+          "Hud"
         ],
-        "require": "game:GetService(\"ReplicatedStorage\").shared.Inventory[\"Save.Server\"]",
-        "route": "*",
-        "routeMatch": "fallback",
+        "route": "shared",
+        "routeMatch": "folder",
         "diagnostics": [
           {
-            "file": "<dir>/src/Inventory/Save.Server.luau",
+            "file": "<dir>/src/shared/Hud.client.luau",
             "severity": "warning",
-            "code": "route.dotRoute",
-            "message": "write \"Save.server.luau\"",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
-            "fixes": [
-              {
-                "rename": {
-                  "from": "<dir>/src/Inventory/Save.Server.luau",
-                  "to": "<dir>/src/Inventory/Save.server.luau"
-                }
-              }
-            ]
+            "code": "tree.deadScript",
+            "message": "a LocalScript never runs in ReplicatedStorage: the \"shared\" route governs this file, so \".client\" routes nothing here",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#tree-deadscript"
           }
         ]
       },
@@ -75,33 +65,23 @@ stdout:
       },
       {
         "config": "default.rogen.json",
-        "source": "<dir>/src/Inventory/New.Server.luau",
+        "source": "<dir>/src/shared/New.client.luau",
         "status": "placed",
         "exists": false,
         "instancePath": [
           "ReplicatedStorage",
           "shared",
-          "Inventory",
-          "New.Server"
+          "New"
         ],
-        "require": "game:GetService(\"ReplicatedStorage\").shared.Inventory[\"New.Server\"]",
-        "route": "*",
-        "routeMatch": "fallback",
+        "route": "shared",
+        "routeMatch": "folder",
         "diagnostics": [
           {
-            "file": "<dir>/src/Inventory/New.Server.luau",
+            "file": "<dir>/src/shared/New.client.luau",
             "severity": "warning",
-            "code": "route.dotRoute",
-            "message": "write \"New.server.luau\"",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
-            "fixes": [
-              {
-                "rename": {
-                  "from": "<dir>/src/Inventory/New.Server.luau",
-                  "to": "<dir>/src/Inventory/New.server.luau"
-                }
-              }
-            ]
+            "code": "tree.deadScript",
+            "message": "a LocalScript never runs in ReplicatedStorage: the \"shared\" route governs this file, so \".client\" routes nothing here",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#tree-deadscript"
           }
         ]
       },

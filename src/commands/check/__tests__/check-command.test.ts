@@ -180,12 +180,12 @@ describe("check command", () => {
 		});
 
 		it("should print the findings as output, not as warnings", async () => {
-			await write("src/Save.Server.luau");
+			await write("src/Save.client.luau");
 
-			await run({ _: ["src/Save.Server.luau"] });
+			await run({ _: ["src/Save.client.luau"] });
 
 			expect(printed()).toEqual([
-				'src/Save.Server.luau - warning: write "Save.server.luau" (route.dotRoute)',
+				'src/Save.client.luau - warning: a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing (tree.deadScript)',
 			]);
 			expect(logService.entries.map(({ kind }) => kind)).toEqual([
 				"print",
@@ -194,34 +194,34 @@ describe("check command", () => {
 
 		it("should print the findings under --quiet", async () => {
 			logService.setLevel(LogLevel.Error);
-			await write("src/Save.Server.luau");
+			await write("src/Save.client.luau");
 
-			await run({ _: ["src/Save.Server.luau"] });
+			await run({ _: ["src/Save.client.luau"] });
 
 			expect(printed()).toHaveLength(1);
 		});
 
 		it("should fail with the diagnostics about a path", async () => {
-			await write("src/Save.Server.luau", "src/Clean.luau");
+			await write("src/Save.client.luau", "src/Clean.luau");
 
-			const result = await run({ _: ["src/Save.Server.luau"] });
+			const result = await run({ _: ["src/Save.client.luau"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.dotRoute", "src/Save.Server.luau"],
+				["tree.deadScript", "src/Save.client.luau"],
 			]);
 		});
 
 		it("should give only the warnings about the path it is asked about", async () => {
-			await write("src/Save.Server.luau", "src/Load.Server.luau");
+			await write("src/Save.client.luau", "src/Load.client.luau");
 
-			const error = failureOf(await run({ _: ["src/Save.Server.luau"] }));
+			const error = failureOf(await run({ _: ["src/Save.client.luau"] }));
 
-			expect(error.message).toContain("Save.Server");
-			expect(error.message).not.toContain("Load.Server");
+			expect(error.message).toContain("Save.client");
+			expect(error.message).not.toContain("Load.client");
 		});
 
 		it("should pass a clean path", async () => {
-			await write("src/Save.Server.luau", "src/Clean.luau");
+			await write("src/Save.client.luau", "src/Clean.luau");
 
 			const result = await run({ _: ["src/Clean.luau"] });
 
@@ -232,20 +232,20 @@ describe("check command", () => {
 		it("should check a file that does not exist yet as if it were created", async () => {
 			await write("src/Clean.luau");
 
-			const result = await run({ _: ["src/New.Server.luau"] });
+			const result = await run({ _: ["src/New.client.luau"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.dotRoute", "src/New.Server.luau"],
+				["tree.deadScript", "src/New.client.luau"],
 			]);
 		});
 
 		it("should check the files in a directory", async () => {
-			await write("src/Inventory/Save.Server.luau", "src/Clean.luau");
+			await write("src/Inventory/Save.client.luau", "src/Clean.luau");
 
 			const result = await run({ _: ["src/Inventory"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.dotRoute", "src/Inventory/Save.Server.luau"],
+				["tree.deadScript", "src/Inventory/Save.client.luau"],
 			]);
 		});
 
@@ -288,46 +288,46 @@ describe("check command", () => {
 					routes: ROUTES,
 				});
 			await write(
-				"places/shared/src/Stray.Server.luau",
-				"places/lobby/src/Buy.Server.luau",
+				"places/shared/src/Stray.client.luau",
+				"places/lobby/src/Buy.client.luau",
 				"places/lobby/src/Clean.luau",
-				"places/arena/src/Sell.Server.luau"
+				"places/arena/src/Sell.client.luau"
 			);
 		});
 
 		it("should check a file of a place from the root, by the config of that place", async () => {
 			const result = await run({
-				_: ["places/lobby/src/Buy.Server.luau"],
+				_: ["places/lobby/src/Buy.client.luau"],
 			});
 
 			expect(found(failureOf(result))).toEqual([
-				["route.dotRoute", "places/lobby/src/Buy.Server.luau"],
+				["tree.deadScript", "places/lobby/src/Buy.client.luau"],
 			]);
 		});
 
 		it("should check files of two places, each by its own config", async () => {
 			const result = await run({
 				_: [
-					"places/lobby/src/Buy.Server.luau",
-					"places/arena/src/Sell.Server.luau",
+					"places/lobby/src/Buy.client.luau",
+					"places/arena/src/Sell.client.luau",
 				],
 			});
 
 			expect(found(failureOf(result))).toEqual([
-				["route.dotRoute", "places/lobby/src/Buy.Server.luau"],
-				["route.dotRoute", "places/arena/src/Sell.Server.luau"],
+				["tree.deadScript", "places/lobby/src/Buy.client.luau"],
+				["tree.deadScript", "places/arena/src/Sell.client.luau"],
 			]);
 		});
 
 		it("should skip a file that no config covers with a note, and pass", async () => {
 			const result = await run({
-				_: ["places/shared/src/Stray.Server.luau"],
+				_: ["places/shared/src/Stray.client.luau"],
 			});
 
 			expect(result.isOk()).toBe(true);
 			expect(logService.texts("warn")).toEqual([]);
 			expect(logService.texts("notice")).toEqual([
-				"note: places/shared/src/Stray.Server.luau: no config at or above it reads it.",
+				"note: places/shared/src/Stray.client.luau: no config at or above it reads it.",
 			]);
 		});
 
@@ -341,16 +341,16 @@ describe("check command", () => {
 				routes: ROUTES,
 			});
 
-			await run({ _: ["places/shared/src/Stray.Server.luau"] });
+			await run({ _: ["places/shared/src/Stray.client.luau"] });
 
 			expect(logService.texts("notice")).toEqual([
-				"note: places/shared/src/Stray.Server.luau: no config at or above it reads it. Check it through one: rogen check arena.rogen.json or game.rogen.json.",
+				"note: places/shared/src/Stray.client.luau: no config at or above it reads it. Check it through one: rogen check arena.rogen.json or game.rogen.json.",
 			]);
 		});
 
 		it("should list a file that no config covers under skipped in the JSON document", async () => {
 			await run({
-				_: ["places/shared/src/Stray.Server.luau"],
+				_: ["places/shared/src/Stray.client.luau"],
 				json: true,
 			});
 
@@ -358,7 +358,7 @@ describe("check command", () => {
 				diagnostics: [],
 				skipped: [
 					{
-						path: "/repo/places/shared/src/Stray.Server.luau",
+						path: "/repo/places/shared/src/Stray.client.luau",
 						reason: "noConfig",
 					},
 				],
@@ -368,13 +368,13 @@ describe("check command", () => {
 		it("should check the files that have a config and skip the rest", async () => {
 			const result = await run({
 				_: [
-					"places/shared/src/Stray.Server.luau",
-					"places/lobby/src/Buy.Server.luau",
+					"places/shared/src/Stray.client.luau",
+					"places/lobby/src/Buy.client.luau",
 				],
 			});
 
 			expect(found(failureOf(result))).toEqual([
-				["route.dotRoute", "places/lobby/src/Buy.Server.luau"],
+				["tree.deadScript", "places/lobby/src/Buy.client.luau"],
 			]);
 			expect(logService.texts("notice")).toHaveLength(1);
 		});
@@ -388,8 +388,8 @@ describe("check command", () => {
 				new Set(found(failureOf(result)).map(([, file]) => file))
 			).toEqual(
 				new Set([
-					"places/lobby/src/Buy.Server.luau",
-					"places/shared/src/Stray.Server.luau",
+					"places/lobby/src/Buy.client.luau",
+					"places/shared/src/Stray.client.luau",
 				])
 			);
 		});
@@ -398,7 +398,7 @@ describe("check command", () => {
 			const result = await run({ _: ["places/arena"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.dotRoute", "places/arena/src/Sell.Server.luau"],
+				["tree.deadScript", "places/arena/src/Sell.client.luau"],
 			]);
 		});
 
@@ -417,7 +417,7 @@ describe("check command", () => {
 			await fs.writeFile("/repo/places/arena/default.project.json", "{}");
 
 			const result = await run({
-				_: ["places/arena/src/Sell.Server.luau"],
+				_: ["places/arena/src/Sell.client.luau"],
 			});
 
 			expect(found(failureOf(result))).toContainEqual([
@@ -447,15 +447,15 @@ describe("check command", () => {
 				new Set(found(failureOf(result)).map(([, file]) => file))
 			).toEqual(
 				new Set([
-					"places/lobby/src/Buy.Server.luau",
-					"places/shared/src/Stray.Server.luau",
+					"places/lobby/src/Buy.client.luau",
+					"places/shared/src/Stray.client.luau",
 				])
 			);
 		});
 
 		it("should report a skipped file on stderr and still print the JSON document", async () => {
 			const result = await run({
-				_: ["places/shared/src/Stray.Server.luau"],
+				_: ["places/shared/src/Stray.client.luau"],
 				json: true,
 			});
 
@@ -473,42 +473,42 @@ describe("check command", () => {
 					routes: ROUTES,
 				});
 			await write(
-				"src/common/Stray.Server.luau",
-				"src/game/Buy.Server.luau",
+				"src/common/Stray.client.luau",
+				"src/game/Buy.client.luau",
 				"src/lobby/Clean.luau"
 			);
 		});
 
 		it("should check a file of a place by the config that holds it", async () => {
-			const result = await run({ _: ["src/game/Buy.Server.luau"] });
+			const result = await run({ _: ["src/game/Buy.client.luau"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.dotRoute", "src/game/Buy.Server.luau"],
+				["tree.deadScript", "src/game/Buy.client.luau"],
 			]);
 		});
 
 		it("should check a shared file by every config that holds it, and report it once", async () => {
-			const result = await run({ _: ["src/common/Stray.Server.luau"] });
+			const result = await run({ _: ["src/common/Stray.client.luau"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.dotRoute", "src/common/Stray.Server.luau"],
+				["tree.deadScript", "src/common/Stray.client.luau"],
 			]);
 		});
 
 		it("should check a file that does not exist yet", async () => {
-			await write("src/common/New.Server.luau");
+			await write("src/common/New.client.luau");
 
-			const result = await run({ _: ["src/common/New.Server.luau"] });
+			const result = await run({ _: ["src/common/New.client.luau"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.dotRoute", "src/common/New.Server.luau"],
+				["tree.deadScript", "src/common/New.client.luau"],
 			]);
 		});
 
 		it("should skip a file that no config holds with a note, and pass", async () => {
-			await write("tools/Stray.Server.luau");
+			await write("tools/Stray.client.luau");
 
-			const result = await run({ _: ["tools/Stray.Server.luau"] });
+			const result = await run({ _: ["tools/Stray.client.luau"] });
 
 			expect(result.isOk()).toBe(true);
 			expect(logService.texts("notice")).toHaveLength(1);
@@ -521,8 +521,8 @@ describe("check command", () => {
 				new Set(found(failureOf(result)).map(([, file]) => file))
 			).toEqual(
 				new Set([
-					"src/common/Stray.Server.luau",
-					"src/game/Buy.Server.luau",
+					"src/common/Stray.client.luau",
+					"src/game/Buy.client.luau",
 				])
 			);
 		});
@@ -532,12 +532,12 @@ describe("check command", () => {
 				sourcePaths: ["."],
 				routes: ROUTES,
 			});
-			await write("src/lobby/Sell.Server.luau");
+			await write("src/lobby/Sell.client.luau");
 
-			const result = await run({ _: ["src/lobby/Sell.Server.luau"] });
+			const result = await run({ _: ["src/lobby/Sell.client.luau"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.dotRoute", "src/lobby/Sell.Server.luau"],
+				["tree.deadScript", "src/lobby/Sell.client.luau"],
 			]);
 		});
 
@@ -550,8 +550,8 @@ describe("check command", () => {
 				new Set(found(failureOf(byName)).map(([, file]) => file))
 			).toEqual(
 				new Set([
-					"src/common/Stray.Server.luau",
-					"src/game/Buy.Server.luau",
+					"src/common/Stray.client.luau",
+					"src/game/Buy.client.luau",
 				])
 			);
 		});
@@ -575,29 +575,29 @@ describe("check command", () => {
 			await writeConfig("dist/default.rogen.json", {
 				routes: ROUTES,
 			});
-			await write("dist/src/Stray.Server.luau");
+			await write("dist/src/Stray.client.luau");
 
 			const result = await run({ _: ["dist"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.dotRoute", "dist/src/Stray.Server.luau"],
+				["tree.deadScript", "dist/src/Stray.client.luau"],
 			]);
 		});
 
 		it("should still check a file that no config is named for", async () => {
-			await write("src/game/New.Server.luau");
+			await write("src/game/New.client.luau");
 
-			const result = await run({ _: ["src/game/New.Server.luau"] });
+			const result = await run({ _: ["src/game/New.client.luau"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.dotRoute", "src/game/New.Server.luau"],
+				["tree.deadScript", "src/game/New.client.luau"],
 			]);
 		});
 
 		describe("bare, in a folder of several configs", () => {
 			const clean = async () => {
-				await fs.delete("/repo/src/common/Stray.Server.luau");
-				await fs.delete("/repo/src/game/Buy.Server.luau");
+				await fs.delete("/repo/src/common/Stray.client.luau");
+				await fs.delete("/repo/src/game/Buy.client.luau");
 			};
 
 			it("should check every config of the folder", async () => {
@@ -607,8 +607,8 @@ describe("check command", () => {
 					new Set(found(failureOf(result)).map(([, file]) => file))
 				).toEqual(
 					new Set([
-						"src/common/Stray.Server.luau",
-						"src/game/Buy.Server.luau",
+						"src/common/Stray.client.luau",
+						"src/game/Buy.client.luau",
 					])
 				);
 			});
@@ -666,30 +666,30 @@ describe("check command", () => {
 		});
 
 		it("should fail with every diagnostic of the project", async () => {
-			await write("src/Save.Server.luau", "src/Clean.luau");
+			await write("src/Save.client.luau", "src/Clean.luau");
 
 			const result = await run({});
 
 			expect(found(failureOf(result))).toEqual([
-				["route.dotRoute", "src/Save.Server.luau"],
+				["tree.deadScript", "src/Save.client.luau"],
 			]);
 		});
 
 		it("should print one line per file a warning is about", async () => {
-			await write("src/Save.Server.luau", "src/Load.Server.luau");
+			await write("src/Save.client.luau", "src/Load.client.luau");
 
 			await run({});
 
 			expect(printed()).toEqual([
-				'src/Load.Server.luau - warning: write "Load.server.luau" (route.dotRoute)',
-				'src/Save.Server.luau - warning: write "Save.server.luau" (route.dotRoute)',
+				'src/Load.client.luau - warning: a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing (tree.deadScript)',
+				'src/Save.client.luau - warning: a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing (tree.deadScript)',
 			]);
 		});
 
 		it("should not cap the warnings of one code", async () => {
 			const names = Array.from(
 				{ length: 12 },
-				(_, i) => `A${i}.Server.luau`
+				(_, i) => `A${i}.client.luau`
 			);
 			await write(...names.map((name) => `src/${name}`));
 
@@ -777,16 +777,16 @@ describe("check command", () => {
 		});
 
 		it("should print the diagnostics and fail when there are any", async () => {
-			await write("src/Save.Server.luau");
+			await write("src/Save.client.luau");
 
 			const result = await run({
-				_: ["src/Save.Server.luau"],
+				_: ["src/Save.client.luau"],
 				json: true,
 			});
 
 			expect(result.isErr()).toBe(true);
 			expect(document().diagnostics).toMatchObject([
-				{ code: "route.dotRoute" },
+				{ code: "tree.deadScript" },
 			]);
 		});
 
@@ -811,16 +811,6 @@ describe("check command", () => {
 				code: "scan.sourcePathNamedAfterKey",
 				config: { sourcePaths: ["server", "src/client"] },
 				files: ["server/Save.luau", "src/client/Hud.luau"],
-			},
-			{
-				code: "route.dotRoute",
-				config: {},
-				files: ["src/Save.Server.luau", "src/Load.Server.luau"],
-			},
-			{
-				code: "route.dotRoute",
-				config: {},
-				files: ["src/Net.server/Remotes.luau", "src/Types.shared.luau"],
 			},
 			{
 				code: "route.serverCodeShipped",
@@ -905,22 +895,22 @@ describe("check command", () => {
 			await writeConfig("default.rogen.json", {
 				routes: ROUTES,
 			});
-			await write("src/Save.Server.luau");
+			await write("src/Save.client.luau");
 		});
 
 		it("should annotate each finding beside printing it", async () => {
-			await runAnnotated({ _: ["src/Save.Server.luau"] });
+			await runAnnotated({ _: ["src/Save.client.luau"] });
 
 			expect(annotated.texts("print")).toEqual([
-				'src/Save.Server.luau - warning: write "Save.server.luau" (route.dotRoute)',
+				'src/Save.client.luau - warning: a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing (tree.deadScript)',
 			]);
 			expect(annotated.texts("annotation")).toEqual([
-				'::warning file=src/Save.Server.luau,title=route.dotRoute::write "Save.server.luau"',
+				'::warning file=src/Save.client.luau,title=tree.deadScript::a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing',
 			]);
 		});
 
 		it("should write no workflow commands into the JSON document", async () => {
-			await runAnnotated({ _: ["src/Save.Server.luau"], json: true });
+			await runAnnotated({ _: ["src/Save.client.luau"], json: true });
 
 			expect(annotated.texts("annotation")).toEqual([]);
 		});

@@ -4,6 +4,9 @@ import {
 	ROUTER_ROUTES as ROUTES,
 	abs,
 	absPosix,
+	configOf,
+	indexOf,
+	pipelineOf,
 	placedLines,
 	routeFiles,
 	writeFiles,
@@ -25,6 +28,16 @@ describe("Router", () => {
 			sourcePaths?: readonly string[]
 		) =>
 			(await route(overrides, sourcePaths))
+				.unwrap()
+				.routed.map((file) => file.instancePath.join("/"));
+
+		/** Where routing places each file, past errors that stop the write. */
+		const placedPaths = async () =>
+			(
+				await pipelineOf(fs, await indexOf(fs, [abs("src")])).place(
+					configOf({ routes: ROUTES })
+				)
+			)
 				.unwrap()
 				.routed.map((file) => file.instancePath.join("/"));
 
@@ -694,7 +707,7 @@ describe("Router", () => {
 			it("should leave Rojo's .server and .client in a model's or data file's name, since only a script has a class", async () => {
 				await write("src/Gun.server.rbxm", "src/Data.client.json");
 
-				expect(await paths()).toEqual([
+				expect(await placedPaths()).toEqual([
 					"ReplicatedStorage/shared/Data.client",
 					"ReplicatedStorage/shared/Gun.server",
 				]);
@@ -717,7 +730,7 @@ describe("Router", () => {
 			it("should leave an ignored suffix on a model in its Rojo name", async () => {
 				await write("src/server/Gun.client.rbxm");
 
-				expect(await paths()).toEqual([
+				expect(await placedPaths()).toEqual([
 					"ServerScriptService/Gun.client",
 				]);
 			});

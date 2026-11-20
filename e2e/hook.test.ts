@@ -115,7 +115,7 @@ const available = gitPath !== "";
 			})
 		);
 		write(".gitignore", "node_modules\n");
-		write("src/Old.Shared.luau");
+		write("src/Old.client.luau");
 		write("src/Save.luau");
 		git("add", "-A");
 		git("commit", "-qm", "init");
@@ -146,7 +146,7 @@ const available = gitPath !== "";
 		write("src/Clean.luau");
 		stop();
 
-		write("src/Buy.Server.luau");
+		write("src/Buy.client.luau");
 		git("mv", "src/Save.luau", "src/Save.client.luau");
 		const first = stop();
 
@@ -158,44 +158,44 @@ const available = gitPath !== "";
 				/^src\/Save\.client\.luau - warning: .*\(tree\.deadScript\)$/
 			),
 			expect.stringMatching(
-				/^src\/Buy\.Server\.luau - warning: .*\(route\.dotRoute\)$/
+				/^src\/Buy\.client\.luau - warning: .*\(tree\.deadScript\)$/
 			),
 		]);
 
 		expect(stop()).toMatchObject({ exit: 0, reply: undefined });
 
 		fs.renameSync(
-			path.join(dir, "project/src/Buy.Server.luau"),
+			path.join(dir, "project/src/Buy.client.luau"),
 			path.join(dir, "project/src/Buy@Server.luau")
 		);
-		write("src/Tax.shared.luau");
+		write("src/Shared/Server/Tax.luau");
 		const fixed = stop();
 
 		expect(fixed.reply?.decision).toBe("block");
 		expect(fixed.report).toEqual([
 			expect.stringMatching(
-				/^src\/Tax\.shared\.luau - warning: .*\(route\.dotRoute\)$/
+				/^src\/Shared\/Server\/Tax\.luau - warning: .*\(route\.serverCodeShipped\)$/
 			),
 		]);
 	});
 
 	it("should report a warning again once it is fixed and made again", () => {
-		write("src/Buy.Server.luau");
+		write("src/Buy.client.luau");
 		expect(stop().report).toHaveLength(1);
 
 		fs.renameSync(
-			path.join(dir, "project/src/Buy.Server.luau"),
+			path.join(dir, "project/src/Buy.client.luau"),
 			path.join(dir, "project/src/Buy@Server.luau")
 		);
 		expect(stop()).toMatchObject({ exit: 0, reply: undefined });
 
 		fs.renameSync(
 			path.join(dir, "project/src/Buy@Server.luau"),
-			path.join(dir, "project/src/Buy.Server.luau")
+			path.join(dir, "project/src/Buy.client.luau")
 		);
 		expect(stop().report).toEqual([
 			expect.stringMatching(
-				/^src\/Buy\.Server\.luau - warning: .*\(route\.dotRoute\)$/
+				/^src\/Buy\.client\.luau - warning: .*\(tree\.deadScript\)$/
 			),
 		]);
 	});
@@ -217,19 +217,19 @@ const available = gitPath !== "";
 		git("add", "-A");
 		git("commit", "-qm", "places");
 
-		write("src/common/Buy.Server.luau");
+		write("src/common/Buy.client.luau");
 		const { reply, report } = stop();
 
 		expect(reply?.decision).toBe("block");
 		expect(report).toEqual([
 			expect.stringMatching(
-				/^src\/common\/Buy\.Server\.luau - warning: .*\(route\.dotRoute\)$/
+				/^src\/common\/Buy\.client\.luau - warning: .*\(tree\.deadScript\)$/
 			),
 		]);
 	});
 
 	it("should report again in another session", () => {
-		write("src/Buy.Server.luau");
+		write("src/Buy.client.luau");
 		stop({ session_id: "s1" });
 
 		expect(stop({ session_id: "s2" }).reply?.decision).toBe("block");
@@ -239,7 +239,7 @@ const available = gitPath !== "";
 		["Copilot", { sessionId: "a" }],
 		["Cursor", { conversation_id: "a" }],
 	])("should key the session on the id %s sends", (_, payload) => {
-		write("src/Buy.Server.luau");
+		write("src/Buy.client.luau");
 		stop(payload);
 
 		expect(stop(payload).reply).toBeUndefined();
@@ -247,16 +247,16 @@ const available = gitPath !== "";
 	});
 
 	it("should ask Cursor to continue with followup_message", () => {
-		write("src/Buy.Server.luau");
+		write("src/Buy.client.luau");
 
 		const { reply } = stop({ conversation_id: "c" }, ["cursor"]);
 
 		expect(Object.keys(reply ?? {})).toEqual(["followup_message"]);
-		expect(reply?.followup_message).toContain("route.dotRoute");
+		expect(reply?.followup_message).toContain("tree.deadScript");
 	});
 
 	it("should find the project from the payload's cwd where no agent sets CLAUDE_PROJECT_DIR", () => {
-		write("src/Buy.Server.luau");
+		write("src/Buy.client.luau");
 
 		const { reply } = stop(
 			{ session_id: "x", cwd: path.join(dir, "project") },
@@ -268,7 +268,7 @@ const available = gitPath !== "";
 	});
 
 	it("should check a changed file from a folder below the config, which its path finds", () => {
-		write("src/sub/Buy.Server.luau");
+		write("src/sub/Buy.client.luau");
 
 		const { reply } = stop(
 			{ session_id: "x", cwd: path.join(dir, "project/src/sub") },
@@ -296,8 +296,8 @@ const available = gitPath !== "";
 		);
 		git("add", "-A");
 		git("commit", "-qm", "places");
-		write("places/lobby/src/Buy.Server.luau");
-		write("places/shared/src/Stray.Server.luau");
+		write("places/lobby/src/Buy.client.luau");
+		write("places/shared/src/Stray.client.luau");
 
 		const { exit, reply, report } = stop();
 
@@ -305,13 +305,13 @@ const available = gitPath !== "";
 		expect(reply?.decision).toBe("block");
 		expect(report).toEqual([
 			expect.stringMatching(
-				/^places\/lobby\/src\/Buy\.Server\.luau - warning: .*\(route\.dotRoute\)$/
+				/^places\/lobby\/src\/Buy\.client\.luau - warning: .*\(tree\.deadScript\)$/
 			),
 		]);
 	});
 
 	it("should run the project's own rogen before the one on the PATH", () => {
-		write("src/Buy.Server.luau");
+		write("src/Buy.client.luau");
 		const stub = path.join(dir, "stub");
 		fs.mkdirSync(stub);
 		fs.writeFileSync(path.join(stub, "rogen"), "#!/bin/sh\necho wrong\n");
@@ -322,11 +322,11 @@ const available = gitPath !== "";
 			PATH: `${stub}${path.delimiter}${process.env.PATH}`,
 		});
 
-		expect(report).toEqual([expect.stringContaining("route.dotRoute")]);
+		expect(report).toEqual([expect.stringContaining("tree.deadScript")]);
 	});
 
 	it("should run the project's rogen when none is on the PATH", () => {
-		write("src/Buy.Server.luau");
+		write("src/Buy.client.luau");
 		wrapRogen(path.join(dir, "project/node_modules/.bin/rogen"));
 
 		const { reply } = stop({ session_id: "s" }, [], { PATH: gitOnly });
@@ -335,7 +335,7 @@ const available = gitPath !== "";
 	});
 
 	it("should say once per session that it found no rogen, and never block", () => {
-		write("src/Buy.Server.luau");
+		write("src/Buy.client.luau");
 
 		const first = stop({ session_id: "s" }, [], { PATH: gitOnly });
 		const again = stop({ session_id: "s" }, [], { PATH: gitOnly });
@@ -350,7 +350,7 @@ const available = gitPath !== "";
 	});
 
 	it("should still report once rogen is installed after it said it found none", () => {
-		write("src/Buy.Server.luau");
+		write("src/Buy.client.luau");
 		stop({ session_id: "s" }, [], { PATH: gitOnly });
 
 		expect(stop({ session_id: "s" }).reply?.decision).toBe("block");
@@ -366,7 +366,7 @@ const available = gitPath !== "";
 
 	it("should do nothing without a config in the project dir", () => {
 		fs.rmSync(path.join(dir, "project/default.rogen.json"));
-		write("src/Buy.Server.luau");
+		write("src/Buy.client.luau");
 
 		expect(stop()).toMatchObject({ exit: 0, reply: undefined });
 	});
