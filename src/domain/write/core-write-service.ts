@@ -227,7 +227,8 @@ export class CoreWriteService implements WriteService {
 
 	async locate(
 		selection: ConfigSelection,
-		targets?: LocateQuery
+		targets?: LocateQuery,
+		reader?: FileSystemService
 	): Promise<Result<Locations, DiagnosticsError>> {
 		const { set } = WriteSet.partition(selection);
 		const errors = uniqueDiagnostics(
@@ -236,10 +237,12 @@ export class CoreWriteService implements WriteService {
 			)
 		);
 
-		const listing = await this.indexService.list(set.indexedPaths);
-		const located = await this.instantiationService
-			.createInstance(Locator, listing, this.syncTools)
-			.locate(set.configs, targets);
+		const listing = await this.indexService.list(set.indexedPaths, reader);
+		const located = await this.inScope(reader, (scope) =>
+			scope
+				.createInstance(Locator, listing, this.syncTools)
+				.locate(set.configs, targets)
+		);
 		if (located.isErr())
 			return err(
 				new DiagnosticsError([...errors, ...located.error.diagnostics])

@@ -6,7 +6,7 @@ stdout:
   Removing src/common/Greeter
 stderr:
   Wrote game.project.json.
-  Syncback wrote 4 changes.
+  Syncback wrote 3 changes.
 
 $ rogen write game
 exit 0

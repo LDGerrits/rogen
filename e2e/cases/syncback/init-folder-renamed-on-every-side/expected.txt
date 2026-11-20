@@ -8,7 +8,7 @@ stdout:
   Removing src/Net
 stderr:
   Wrote default.project.json.
-  Syncback wrote 8 changes.
+  Syncback wrote 7 changes.
 
 $ rogen write
 exit 0

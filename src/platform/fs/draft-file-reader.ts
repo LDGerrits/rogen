@@ -7,11 +7,13 @@ import {
 	isMissingPath,
 } from "./file-system-service.js";
 
-/** What a run would change on disk, by absolute path: files with their content, folders it makes, and renames. */
+/** What a run would change on disk, by absolute path: files with their content, folders it makes, renames and removals. */
 export interface FileDraft {
 	readonly files: ReadonlyMap<string, string>;
 	readonly directories: readonly string[];
 	readonly moves: readonly { readonly from: string; readonly to: string }[];
+	/** Files and folders it removes, unless it writes them again. */
+	readonly removed?: readonly string[];
 }
 
 /** Reads `base` as it would be once `draft` is written, and writes nothing: a file service for a scope that only checks. */
@@ -21,6 +23,7 @@ export class DraftFileReader implements FileSystemService {
 	private readonly files = new Map<string, string>();
 	private readonly folders = new Set<string>();
 	private readonly moves: readonly { from: string; to: string }[];
+	private readonly removed: readonly string[];
 
 	constructor(
 		draft: FileDraft,
@@ -30,6 +33,7 @@ export class DraftFileReader implements FileSystemService {
 			from: path.resolve(from),
 			to: path.resolve(to),
 		}));
+		this.removed = (draft.removed ?? []).map((at) => path.resolve(at));
 		for (const [file, content] of draft.files) {
 			this.files.set(path.resolve(file), content);
 			this.addFolders(path.dirname(path.resolve(file)));
@@ -156,13 +160,16 @@ export class DraftFileReader implements FileSystemService {
 		}
 	}
 
-	/** Where `resolved` is read from in `base`: a path a move takes it to reads from where it was, and a path it takes away reads from nowhere. */
+	/** Where `resolved` is read from in `base`: a path a move takes it to reads from where it was, and a path it or a removal takes away reads from nowhere. */
 	private sourceOf(resolved: string): string | undefined {
 		for (const { from, to } of this.moves)
 			if (resolved === to || isInside(resolved, to))
 				return path.join(from, path.relative(to, resolved));
-		for (const { from } of this.moves)
-			if (resolved === from || isInside(resolved, from)) return undefined;
+		for (const at of [
+			...this.moves.map(({ from }) => from),
+			...this.removed,
+		])
+			if (resolved === at || isInside(resolved, at)) return undefined;
 		return resolved;
 	}
 

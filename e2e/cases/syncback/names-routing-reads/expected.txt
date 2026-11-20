@@ -4,10 +4,10 @@ stdout:
   Writing src/Shop/Bar@Zed@Server.luau
 stderr:
   Wrote default.project.json.
-  default.rogen.json - warning: ServerScriptService/Shop/(Group) was left out: routing reads its name "(Group)" as a route, so the file would land elsewhere; rename it in Studio. (syncback.unplaced)
-  default.rogen.json - warning: ServerScriptService/Shop/Client was left out: routing reads its name "Client" as a route, so the file would land elsewhere; rename it in Studio. (syncback.unplaced)
-  default.rogen.json - warning: ServerScriptService/Shop/Foo@Server was left out: routing reads its name "Foo@Server" as a route, so the file would land elsewhere; rename it in Studio. (syncback.unplaced)
-  default.rogen.json - warning: ServerScriptService/Shop/^Odd was left out: routing reads its name "^Odd" as a route, so the file would land elsewhere; rename it in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/(Group) was left out: routing would read src/Shop/(Group)/In@Server.luau as ServerScriptService/Shop/In; rename it in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/Client was left out: routing would stop on src/Shop/Client/Inside@Server.luau: "@Server" does nothing here, because the "Client" route already governs this file. Remove it, or move the file out of the "Client" route's files. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/Foo@Server was left out: routing would read src/Shop/Foo@Server@Server.luau as ServerScriptService/Shop/Foo; rename it in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/^Odd was left out: routing would read src/Shop/^Odd@Server.luau as ServerScriptService/Odd; rename it in Studio. (syncback.unplaced)
   Syncback wrote 1 change.
 
 $ rogen write
@@ -17,10 +17,10 @@ stdout: (not shown)
 $ rogen syncback -i place.rbxl --dry-run
 exit 0
 stderr:
-  default.rogen.json - warning: ServerScriptService/Shop/(Group) was left out: routing reads its name "(Group)" as a route, so the file would land elsewhere; rename it in Studio. (syncback.unplaced)
-  default.rogen.json - warning: ServerScriptService/Shop/Client was left out: routing reads its name "Client" as a route, so the file would land elsewhere; rename it in Studio. (syncback.unplaced)
-  default.rogen.json - warning: ServerScriptService/Shop/Foo@Server was left out: routing reads its name "Foo@Server" as a route, so the file would land elsewhere; rename it in Studio. (syncback.unplaced)
-  default.rogen.json - warning: ServerScriptService/Shop/^Odd was left out: routing reads its name "^Odd" as a route, so the file would land elsewhere; rename it in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/(Group) was left out: routing would read src/Shop/(Group)/In@Server.luau as ServerScriptService/Shop/In; rename it in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/Client was left out: routing would stop on src/Shop/Client/Inside@Server.luau: "@Server" does nothing here, because the "Client" route already governs this file. Remove it, or move the file out of the "Client" route's files. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/Foo@Server was left out: routing would read src/Shop/Foo@Server@Server.luau as ServerScriptService/Shop/Foo; rename it in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/^Odd was left out: routing would read src/Shop/^Odd@Server.luau as ServerScriptService/Odd; rename it in Studio. (syncback.unplaced)
   Syncback would change nothing.
 
 written:

@@ -46,6 +46,8 @@ export interface PlacedLocation extends Located {
 	readonly alsoAt?: readonly (readonly string[])[];
 	readonly route: string;
 	readonly routeMatch: RouteMatch;
+	/** Absolute POSIX path of the folder or file whose name took the route, or of the folder a marker sits in; none for `*` or a copy. */
+	readonly routedBy?: string;
 	/** A `^` on its name or a folder's took it straight to the route's target. */
 	readonly hoisted?: boolean;
 	/** The folders that become the nodes above it, which a folder's `init.meta.json` applies to. */
@@ -61,6 +63,8 @@ interface UnplacedLocation extends Located {
 	readonly status: "outside" | "notInstance" | "missing" | "empty";
 	/** A `missing` path that is named as a folder, by ending in a separator. */
 	readonly folder?: true;
+	/** For an `empty` folder: the Folder instance routing makes of it. */
+	readonly instancePath?: readonly string[];
 }
 
 /** The path can't be placed because the write of its config stops on an error; `by` is the first of them. */
@@ -385,10 +389,11 @@ export interface WriteService {
 	/** The project files on disk that differ from what a write would write, as the diagnostics `check` raises for them. Writes nothing. */
 	staleProjectFiles(selection: ConfigSelection): Promise<Diagnostic[]>;
 
-	/** Where each argument lands in every config of `selection`: a path gives its file, a directory what's in it, an instance the files placed at or inside it; no arguments give every file. */
+	/** Where each argument lands in every config of `selection`: a path gives its file, a directory what's in it, an instance the files placed at or inside it; no arguments give every file. With `reader`, such as a draft of files not written yet, reads through it. */
 	locate(
 		selection: ConfigSelection,
-		targets?: LocateQuery
+		targets?: LocateQuery,
+		reader?: FileSystemService
 	): Promise<Result<Locations, DiagnosticsError>>;
 }
 

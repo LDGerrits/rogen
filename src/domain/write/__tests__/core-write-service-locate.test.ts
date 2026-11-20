@@ -190,6 +190,7 @@ describe("CoreWriteService.locate", () => {
 				instancePath: ["ServerScriptService", "Inventory", "Save"],
 				route: "Server",
 				routeMatch: "folder",
+				routedBy: absPosix("src/Inventory/Server"),
 				folderNodes: [
 					{
 						folder: absPosix("src/Inventory"),
@@ -211,6 +212,7 @@ describe("CoreWriteService.locate", () => {
 				],
 				route: "Client",
 				routeMatch: "suffix",
+				routedBy: absPosix("src/Net/Http@Client.luau"),
 				folderNodes: [
 					{
 						folder: absPosix("src/Net"),
@@ -236,6 +238,7 @@ describe("CoreWriteService.locate", () => {
 				instancePath: ["ServerScriptService", "Anti", "Check"],
 				route: "Server",
 				routeMatch: "marker",
+				routedBy: absPosix("src/Anti"),
 				folderNodes: [
 					{
 						folder: absPosix("src/Anti"),
@@ -739,13 +742,23 @@ describe("CoreWriteService.locate", () => {
 		]);
 	});
 
-	it("should say a directory is empty when nothing in it places", async () => {
+	it("should say a directory is empty when nothing in it places, with the Folder routing makes of it", async () => {
 		await write("src/Docs/notes.md");
 		await fs.createDirectory(abs("src/Empty"));
 
 		expect(await locate(["src/Empty", "src/Docs"])).toEqual([
-			{ status: "empty", source: abs("src/Empty"), exists: true },
-			{ status: "empty", source: abs("src/Docs"), exists: true },
+			{
+				status: "empty",
+				source: abs("src/Empty"),
+				exists: true,
+				instancePath: ["ReplicatedStorage", "Shared", "Empty"],
+			},
+			{
+				status: "empty",
+				source: abs("src/Docs"),
+				exists: true,
+				instancePath: ["ReplicatedStorage", "Shared", "Docs"],
+			},
 		]);
 	});
 

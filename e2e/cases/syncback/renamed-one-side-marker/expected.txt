@@ -7,7 +7,7 @@ stdout:
   Writing src/ShopY/@Server
 stderr:
   Wrote default.project.json.
-  Syncback wrote 5 changes.
+  Syncback wrote 4 changes.
 
 $ rogen write
 exit 0

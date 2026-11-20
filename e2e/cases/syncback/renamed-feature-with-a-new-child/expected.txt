@@ -8,7 +8,7 @@ stdout:
   Removing src/Shop
 stderr:
   Wrote default.project.json.
-  Syncback wrote 6 changes.
+  Syncback wrote 5 changes.
 
 $ rogen write
 exit 0

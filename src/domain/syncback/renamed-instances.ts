@@ -50,9 +50,15 @@ function instanceBelow(file: readonly string[]): string[] {
 		: [...folders, instanceNameOf(leaf)];
 }
 
-/** The `@key` a file's name carries before its extension, which a sibling written beside it repeats. */
-const markOf = (fileName: string) =>
-	/(@[A-Za-z][A-Za-z0-9]*)(?=\.[^@]*$)/.exec(fileName)?.[1] ?? "";
+/** The `@key` that routed a placed file, spelled in its own name, which a sibling written beside it repeats. */
+function markOf(file: PlacedLocation): string {
+	const mark = `@${file.route}`;
+	return file.routeMatch === "suffix" &&
+		file.routedBy === file.source &&
+		instanceNameOf(path.posix.basename(file.source)).endsWith(mark)
+		? mark
+		: "";
+}
 
 /** `fileName` with `mark` after the name of the instance it makes, as `Hit@Server.luau`. */
 function withMark(fileName: string, mark: string): string {
@@ -60,20 +66,12 @@ function withMark(fileName: string, mark: string): string {
 	return `${stem}${mark}${fileName.slice(stem.length)}`;
 }
 
-const isInit = (fileName: string) => fileName.startsWith("init.");
-
 /** Whether Rojo writes `written` in the form the file `old` has, its route mark aside. */
-const sameForm = (old: string, written: string) =>
-	old.replace(markOf(old), "") === written;
+const sameForm = (old: PlacedLocation, written: string) =>
+	path.posix.basename(old.source).replace(markOf(old), "") === written;
 
 /** A script, whose source Rojo writes back, unlike a data file it would write in another form. */
 const isScript = (file: string) => /\.luau?$/.test(file);
-
-/** A name routing reads as more than a name: a `^`, parentheses, or an `@`. */
-const misread = (name: string) => /^[\^(]|@/.test(name);
-
-/** The ways routing places a file that a new file beside it, in the same folder, is placed by too. */
-const SHARED_BY_SIBLINGS = new Set(["folder", "marker", "suffix", "fallback"]);
 
 /** What `renamedInstances` reads besides the instances. */
 export interface RenameInputs {
@@ -82,8 +80,6 @@ export interface RenameInputs {
 	readonly placed: readonly PlacedLocation[];
 	/** Whether the plan removes the file at an absolute POSIX path, or a folder above it. */
 	readonly isRemoved: (source: string) => boolean;
-	/** Whether a pattern route matches a file's name. */
-	readonly matchesPattern: (fileName: string) => boolean;
 }
 
 /** The placed files by each instance path they are at, joined with `\0`. */
@@ -105,8 +101,7 @@ function renameOf(
 	inputs: RenameInputs,
 	placedAt: ReadonlyMap<string, PlacedLocation>
 ): RenamedInstance | undefined {
-	if (misread(instance.name)) return undefined;
-	const { sourceOf, placed, isRemoved, matchesPattern } = inputs;
+	const { sourceOf, placed, isRemoved } = inputs;
 	const oldPath = [...instance.parent, from];
 	const oldMirror = `${instance.parentFolder}/${from}`;
 	const folder = placed
@@ -150,7 +145,7 @@ function renameOf(
 		const oldName = path.posix.basename(old.source);
 		mapped.add(old.source);
 		siblings.set(key, old);
-		if (sameForm(oldName, leaf)) {
+		if (sameForm(old, leaf)) {
 			files.set(key, { target: moved(old.source) });
 			continue;
 		}
@@ -158,39 +153,22 @@ function renameOf(
 			files.set(key, { target: moved(old.source), keep: old.source });
 			continue;
 		}
-		// A script Rojo writes in another form keeps Studio's edit under the new name, unless it turned between a file and a folder, or the new name routes it elsewhere.
-		const name = withMark(leaf, markOf(oldName));
-		if (
-			isInit(oldName) !== isInit(leaf) ||
-			matchesPattern(name) !== matchesPattern(oldName)
-		)
-			return undefined;
+		// A script Rojo writes in another form keeps Studio's edit under the new name.
 		files.set(key, {
 			target: path.posix.join(
 				path.posix.dirname(moved(old.source)),
-				name
+				withMark(leaf, markOf(old))
 			),
 		});
 	}
 	for (const file of fresh) {
 		const leaf = file[file.length - 1];
-		if ([...file.slice(1, -1), instanceNameOf(leaf)].some(misread))
-			return undefined;
 		const dir = file.slice(0, -1).join("/");
 		const beside = [...siblings].filter(
 			([other]) => other.slice(0, other.lastIndexOf("/")) === dir
 		);
-		const marks = new Set(
-			beside.map(([, old]) => markOf(path.posix.basename(old.source)))
-		);
-		if (
-			beside.length === 0 ||
-			marks.size !== 1 ||
-			beside.some(([, old]) => !SHARED_BY_SIBLINGS.has(old.routeMatch)) ||
-			(beside.some(([, old]) => old.routeMatch === "fallback") &&
-				matchesPattern(leaf))
-		)
-			return undefined;
+		const marks = new Set(beside.map(([, old]) => markOf(old)));
+		if (beside.length === 0 || marks.size !== 1) return undefined;
 		const [mark] = marks;
 		files.set(file.join("/"), {
 			target: path.posix.join(
@@ -215,7 +193,7 @@ const isUnder = (instancePath: readonly string[], root: readonly string[]) =>
 	root.every((name, at) => instancePath[at] === name) &&
 	instancePath.length > root.length;
 
-/** The new folder instances that are old ones renamed: same parent, every file of the old one under the new name or removed, and a folder of their own whose every instance is renamed the same way. `removed` holds each mirror path the plan removes. */
+/** The new folder instances that are old ones renamed: same parent, every file of the old one under the new name or removed, and a folder of their own whose every instance is renamed the same way. `removed` holds each mirror path the plan removes. Whether the files land where the instance is is for routing to say. */
 export function renamedInstances(
 	instances: readonly AddedInstance[],
 	removed: ReadonlySet<string>,

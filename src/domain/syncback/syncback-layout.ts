@@ -21,13 +21,8 @@ export interface Donor {
 	readonly sourcePath: string;
 }
 
-const AT_KEY = /@([A-Za-z][A-Za-z0-9]*)(?=\.|$)/;
-
 /** The file that keeps an empty folder, which Rojo writes for an empty Folder. */
 export const GITKEEP = ".gitkeep";
-
-/** A folder named in parentheses, which makes no instance. */
-const INVISIBLE_FOLDER = /^\(.+\)$/;
 
 const isPlaced = (location: FileLocation): location is PlacedLocation =>
 	location.status === "placed";
@@ -36,7 +31,6 @@ const isPlaced = (location: FileLocation): location is PlacedLocation =>
 export class SyncbackLayout {
 	readonly placed: readonly PlacedLocation[];
 	private readonly roots: readonly string[];
-	private readonly keys: ResolvedConfig["keys"];
 	private readonly shared: ReadonlySet<string>;
 	private features?: readonly (
 		| { readonly folder: string; readonly instance: readonly string[] }
@@ -51,7 +45,6 @@ export class SyncbackLayout {
 	) {
 		this.placed = locations.filter(isPlaced);
 		this.roots = config.sourcePaths.map(toPosix);
-		this.keys = config.keys;
 		this.shared = new Set(
 			others.flatMap((other) => other.sourcePaths.map(toPosix))
 		);
@@ -194,13 +187,10 @@ export class SyncbackLayout {
 	folderNameFor(route: string): string {
 		const names = new Map<string, number>();
 		for (const file of this.placed) {
-			if (file.route !== route || file.routeMatch !== "folder") continue;
-			const root = this.rootOf(file.source);
-			if (!root) continue;
-			const segments = path.posix.relative(root, file.source).split("/");
-			const at = this.routingFolderAt(file, segments);
-			if (at >= 0)
-				names.set(segments[at], (names.get(segments[at]) ?? 0) + 1);
+			const folder = SyncbackLayout.routingFolderOf(file);
+			if (file.route !== route || folder === undefined) continue;
+			const name = path.posix.basename(folder);
+			names.set(name, (names.get(name) ?? 0) + 1);
 		}
 		let most: [string, number] = [route, 0];
 		for (const entry of names) if (entry[1] > most[1]) most = entry;
@@ -211,47 +201,37 @@ export class SyncbackLayout {
 		return this.roots.find((root) => containsPosix(root, source));
 	}
 
-	/** The feature folder a file is in and the instance that folder is on the file's side: the folder holding the routing folder, or the name, that spells the file's route. */
+	/** The feature folder a file is in and the instance that folder is on the file's side: the nearest folder that becomes a node above the routing folder, or the name, that took the file's route. */
 	private featureOf(
 		file: PlacedLocation
 	): { folder: string; instance: readonly string[] } | undefined {
-		const root = this.rootOf(file.source);
-		if (!root) return undefined;
-		const segments = path.posix.relative(root, file.source).split("/");
-		const marked = (segment: string) => {
-			const key = AT_KEY.exec(segment)?.[1];
-			return key !== undefined && this.keys.resolve(key) === file.route;
-		};
-		let end: number;
-		if (file.routeMatch === "folder")
-			end = this.routingFolderAt(file, segments);
-		else if (file.routeMatch === "suffix") end = segments.findIndex(marked);
-		else return undefined;
-		while (end > 0 && INVISIBLE_FOLDER.test(segments[end - 1])) end--;
-		if (end < 1) return undefined;
-		const folder = path.posix.join(root, ...segments.slice(0, end));
-		const made = file.folderNodes?.find((node) => node.folder === folder);
-		return made && { folder, instance: made.instancePath };
+		const { routedBy } = file;
+		if (
+			routedBy === undefined ||
+			(file.routeMatch !== "folder" && file.routeMatch !== "suffix")
+		)
+			return undefined;
+		const made = file.folderNodes
+			?.filter(
+				({ folder }) =>
+					folder !== routedBy && containsPosix(folder, routedBy)
+			)
+			.at(-1);
+		return made && { folder: made.folder, instance: made.instancePath };
+	}
+
+	/** The routing folder that routed `file`: a folder named for the route alone, which makes no node itself. */
+	private static routingFolderOf(file: PlacedLocation): string | undefined {
+		const { routedBy } = file;
+		return file.routeMatch === "folder" &&
+			routedBy !== undefined &&
+			!(file.folderNodes ?? []).some(({ folder }) => folder === routedBy)
+			? routedBy
+			: undefined;
 	}
 
 	/** A `^` file that lands right at its route's target, so the folders it sits in say nothing about where its siblings go. */
 	private skipsItsFolders(file: PlacedLocation): boolean {
 		return file.hoisted === true && file.folderNodes === undefined;
-	}
-
-	/** Where in `segments`, a file's path below its source path, the first folder that spells its route is, as the router meets it; -1 when none does. */
-	private routingFolderAt(
-		file: PlacedLocation,
-		segments: readonly string[]
-	): number {
-		return segments.findIndex(
-			(segment, at) =>
-				at < segments.length - 1 &&
-				this.keys.resolve(
-					segment
-						.replace(INVISIBLE_FOLDER, (name) => name.slice(1, -1))
-						.replace(/^@/, "")
-				) === file.route
-		);
 	}
 }

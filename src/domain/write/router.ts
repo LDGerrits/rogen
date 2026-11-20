@@ -19,6 +19,8 @@ export interface RoutedFile {
 	readonly entry: ScannedFile;
 	readonly route: string;
 	readonly routeMatch: RouteMatch;
+	/** Absolute POSIX path of the folder or file whose name took the route, or of the folder a marker sits in; none for `*`. */
+	readonly routedBy?: string;
 	readonly instancePath: readonly string[];
 	readonly folderNodes: readonly FolderNode[];
 	readonly outrankedFolderRoutes: readonly string[];
@@ -71,7 +73,14 @@ const speaksForRoute = (standing: Standing, signed: boolean) =>
 	standing === "governs" || (signed && standing === "restates");
 
 class Claims {
-	route: { readonly key: string; readonly match: RouteMatch } | undefined;
+	route:
+		| {
+				readonly key: string;
+				readonly match: RouteMatch;
+				/** The folder or file, relative to the source path, whose name took it. */
+				readonly at: string;
+		  }
+		| undefined;
 	readonly ignoredAts: IgnoredAt[] = [];
 	private readonly outrankedFolders: { key: string; depth: number }[] = [];
 	private restatedDepth = -1;
@@ -80,9 +89,9 @@ class Claims {
 		return this.route?.key ?? DeclaredKeys.FALLBACK_ROUTE;
 	}
 
-	claim(key: string, match: RouteMatch): Standing {
+	claim(key: string, match: RouteMatch, at: string): Standing {
 		if (this.route) return this.standingOf(key);
-		this.route = { key, match };
+		this.route = { key, match, at };
 		return "governs";
 	}
 
@@ -90,17 +99,23 @@ class Claims {
 	signed(
 		key: string,
 		match: RouteMatch,
+		by: string,
 		depth: number,
 		at?: IgnoredAt
 	): Standing {
-		const standing = this.claim(key, match);
+		const standing = this.claim(key, match, by);
 		this.recordSigned(standing, depth, at);
 		return standing;
 	}
 
 	/** A signal that carries no `@`: losing it outranks the folders it would have routed. */
-	unsigned(key: string, match: RouteMatch, depth: number): Standing {
-		const standing = this.claim(key, match);
+	unsigned(
+		key: string,
+		match: RouteMatch,
+		by: string,
+		depth: number
+	): Standing {
+		const standing = this.claim(key, match, by);
 		if (standing === "outranked")
 			this.outrankedFolders.push({ key, depth });
 		return standing;
@@ -275,12 +290,12 @@ export class Router {
 			dirs,
 			claims
 		);
-		const leaf = this.claimLeaf(read, claims);
+		const leaf = this.claimLeaf(read, claims, entry.relativePath);
 		const pattern = claims.route
 			? undefined
 			: this.patternOf(entry, read, leaf.isInit);
 		if (pattern?.match.kind === "routed")
-			claims.claim(pattern.match.key, "pattern");
+			claims.claim(pattern.match.key, "pattern", entry.relativePath);
 		const hoistsLeaf = leaf.hoisted && !leaf.isInit;
 		const dropped = hoistsLeaf ? folders.length : (hoistAt ?? 0);
 		const kept = folders.slice(dropped);
@@ -335,6 +350,9 @@ export class Router {
 			entry,
 			route: claims.routeKey,
 			routeMatch: claims.route?.match ?? "fallback",
+			...(claims.route && {
+				routedBy: joinPosix(entry.sourcePath, claims.route.at),
+			}),
 			instancePath,
 			folderNodes,
 			outrankedFolderRoutes: claims.outrankedFolderRoutes,
@@ -414,7 +432,11 @@ export class Router {
 	private claimDirectory(dir: string, dirs: DirClaims, claims: Claims): void {
 		const depth = depthOf(dir);
 		for (const { fileName, key } of dirs.markersAt(dir)) {
-			claims.signed(key, "marker", depth, { key, dir, marker: fileName });
+			claims.signed(key, "marker", dir, depth, {
+				key,
+				dir,
+				marker: fileName,
+			});
 		}
 	}
 
@@ -423,14 +445,18 @@ export class Router {
 		const { route, dir } = folder;
 		const depth = depthOf(dir);
 		const standing = folder.at
-			? claims.signed(route, "folder", depth, { key: route, dir })
-			: claims.unsigned(route, "folder", depth);
+			? claims.signed(route, "folder", dir, depth, { key: route, dir })
+			: claims.unsigned(route, "folder", dir, depth);
 		for (const key of folder.innerRoutes)
 			claims.outrankSigned(key, depth, { key, dir });
 		return speaksForRoute(standing, folder.at);
 	}
 
-	private claimLeaf(read: EntryReading, claims: Claims): LeafName {
+	private claimLeaf(
+		read: EntryReading,
+		claims: Claims,
+		relativePath: string
+	): LeafName {
 		const {
 			kind,
 			stem,
@@ -445,8 +471,8 @@ export class Router {
 			const { key, start } = span;
 			const signed = stem[start] === "@";
 			const standing = signed
-				? claims.signed(key, "suffix", Infinity, { key })
-				: claims.claim(key, "suffix");
+				? claims.signed(key, "suffix", relativePath, Infinity, { key })
+				: claims.claim(key, "suffix", relativePath);
 			if (speaksForRoute(standing, signed)) routeSpan ??= span;
 		}
 

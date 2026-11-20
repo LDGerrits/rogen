@@ -1033,6 +1033,164 @@ describe("CoreSyncbackService", () => {
 		expect(await fs.readFile(abs("Packages/Lib.luau"))).toBe("");
 	});
 
+	describe("where routing puts what it writes", () => {
+		const PATTERNS = {
+			...ROUTES,
+			"*Controller.*": "StarterPlayer/StarterPlayerScripts",
+			"*Service.*": "ServerScriptService",
+		};
+		const CLIENT = ["StarterPlayer", "StarterPlayerScripts"];
+
+		/** Has Studio add each file of the mirror, given by its instance path. */
+		const added = (...files: string[][]) => {
+			rojo.say = async () => {
+				for (const file of files)
+					await fs.writeFile(mirror(...file), "return nil");
+				return [];
+			};
+		};
+
+		const written = async () =>
+			(await planned()).changes.map(({ file }) => file).sort();
+
+		it("should write a new instance plain beside files a pattern placed, when its name routes it back there", async () => {
+			await prepare(["src/Shop/ShopController.luau"], {
+				routes: PATTERNS,
+			});
+			added([...CLIENT, "Shop", "CartController.luau"]);
+
+			expect(await written()).toEqual([
+				abs("src/Shop/CartController.luau"),
+			]);
+		});
+
+		it("should name the route into a new instance whose plain name a pattern or * would send elsewhere", async () => {
+			await prepare(
+				["src/Shop/ShopController.luau", "src/Shop/Prices.luau"],
+				{ routes: PATTERNS }
+			);
+			added(
+				[...CLIENT, "Shop", "Cart.luau"],
+				["ReplicatedStorage", "Shared", "Shop", "PriceService.luau"]
+			);
+
+			expect(await written()).toEqual([
+				abs("src/Shop/Cart@Client.luau"),
+				abs("src/Shop/PriceService@Shared.luau"),
+			]);
+		});
+
+		it("should leave out what a pattern would take away when no route key names where it is", async () => {
+			await prepare(["src/Shop/ShopController.luau"], {
+				routes: {
+					Server: "ServerScriptService",
+					"*Controller.*": "StarterPlayer/StarterPlayerScripts",
+					"*": "ReplicatedStorage/Shared",
+				},
+			});
+			added([...CLIENT, "Shop", "Cart.luau"]);
+
+			const plan = await planned();
+
+			expect(plan.changes).toEqual([]);
+			expect(plan.unplaced).toMatchObject([
+				{
+					instance: "StarterPlayer/StarterPlayerScripts/Shop/Cart",
+					reason: expect.stringContaining("ReplicatedStorage/Shared"),
+				},
+			]);
+		});
+
+		it("should name the route into a new folder when a file in it, or its init script, would follow a pattern elsewhere", async () => {
+			await prepare(
+				["src/Shop/Prices.luau", "src/Shop/ShopController.luau"],
+				{ routes: PATTERNS }
+			);
+			added(
+				["ReplicatedStorage", "Shared", "Shop", "Hud", "init.luau"],
+				[
+					"ReplicatedStorage",
+					"Shared",
+					"Shop",
+					"Hud",
+					"HudController.luau",
+				],
+				[...CLIENT, "Shop", "CartController", "init.luau"],
+				[...CLIENT, "Shop", "CartController", "Items.luau"]
+			);
+
+			expect(await written()).toEqual([
+				abs("src/Shop/CartController@Client/Items.luau"),
+				abs("src/Shop/CartController@Client/init.luau"),
+				abs("src/Shop/Hud@Shared/HudController.luau"),
+				abs("src/Shop/Hud@Shared/init.luau"),
+			]);
+		});
+
+		it("should name the route into a new child of an init script a pattern routes, as the child's own name decides", async () => {
+			await prepare(["src/Input/InputController/init.luau"], {
+				routes: PATTERNS,
+			});
+			added([...CLIENT, "Input", "InputController", "Keys.luau"]);
+
+			expect(await written()).toEqual([
+				abs("src/Input/InputController/Keys@Client.luau"),
+			]);
+		});
+
+		it.each([
+			["Foo@Server", ["Foo@Server.luau"]],
+			["^Odd", ["^Odd.luau"]],
+			["(Group)", ["(Group)", "In.luau"]],
+			["Server", ["Server", "In.luau"]],
+		])(
+			"should leave out %s beside files suffixes route, as routing would read the name as a route",
+			async (name, file) => {
+				await prepare(["src/Inventory/Bag@Server.luau"]);
+				added(["ServerScriptService", "Inventory", ...file]);
+
+				const plan = await planned();
+
+				expect(plan.changes).toEqual([]);
+				expect(plan.unplaced).toMatchObject([
+					{ instance: `ServerScriptService/Inventory/${name}` },
+				]);
+			}
+		);
+
+		it("should leave out a name routing reads as a route where Rojo wrote it in place", async () => {
+			await prepare(["src/Inventory/Server/Bag.luau"]);
+			added(["ServerScriptService", "Inventory", "Save@Client.luau"]);
+
+			const plan = await planned();
+
+			expect(plan.changes).toEqual([]);
+			expect(plan.unplaced).toMatchObject([
+				{ instance: "ServerScriptService/Inventory/Save@Client" },
+			]);
+		});
+
+		it("should take an @ that names no route key", async () => {
+			await prepare(["src/Shop/ShopService@Server.luau"]);
+			added(["ServerScriptService", "Shop", "Bar@Zed.luau"]);
+
+			const plan = await planned();
+			expect(plan.unplaced).toEqual([]);
+			expect(plan.changes.map(({ file }) => file)).toEqual([
+				abs("src/Shop/Bar@Zed@Server.luau"),
+			]);
+		});
+
+		it("should take a folder named after a route key inside a routing folder, which it outranks", async () => {
+			await prepare(["src/Inventory/Server/Bag.luau"]);
+			added(["ServerScriptService", "Inventory", "Client", "In.luau"]);
+
+			expect(await written()).toEqual([
+				abs("src/Inventory/Server/Client/In.luau"),
+			]);
+		});
+	});
+
 	describe("with a node that has no $path", () => {
 		const tree = {
 			$className: "DataModel",
