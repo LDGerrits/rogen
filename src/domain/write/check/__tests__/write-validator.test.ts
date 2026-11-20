@@ -444,6 +444,33 @@ describe("WriteValidator rules", () => {
 				]);
 			});
 
+			it("should say .server and .client route nothing where no route has their name", async () => {
+				await write(
+					"src/Boot/Main.server.luau",
+					"src/Boot/Hud.client.luau"
+				);
+
+				expect(
+					await dead({
+						routes: {
+							Backend: "ServerScriptService",
+							"*": "ReplicatedStorage/shared",
+						},
+					})
+				).toMatchObject([
+					{
+						resource: at("src/Boot/Hud.client.luau"),
+						message:
+							'a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing',
+					},
+					{
+						resource: at("src/Boot/Main.server.luau"),
+						message:
+							'a Script never runs in ReplicatedStorage: no route is named "server", so ".server" routes nothing',
+					},
+				]);
+			});
+
 			const metaWith = (runContext: string) =>
 				JSON.stringify({ properties: { RunContext: runContext } });
 

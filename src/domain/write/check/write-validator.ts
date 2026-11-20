@@ -502,14 +502,19 @@ export class WriteValidator {
 		);
 	}
 
-	/** Why a script's `.server` or `.client` didn't route it: a route above it governs it. */
+	/** Why a script's `.server` or `.client` didn't route it: no route has its name, or a route above it governs it. */
 	private outrankedSuffix(file: RoutedFile): string {
 		const suffix = this.placement.readingOf(file).scriptSuffix;
 		const key =
 			suffix === undefined
 				? undefined
 				: this.config.keys.resolveDotRoute(suffix);
-		return key === undefined || key === file.route
+		// Rojo's .server and .client route only a key of their name.
+		if (key === undefined)
+			return suffix === "server" || suffix === "client"
+				? `: no route is named "${suffix}", so ".${suffix}" routes nothing`
+				: "";
+		return key === file.route
 			? ""
 			: `: the "${file.route}" route governs this file, so ".${suffix}" routes nothing here`;
 	}

@@ -69,6 +69,17 @@ Each of Rojo's syncback-test projects (`rojo-syncback-tests/`, vendored by the s
 `default.rogen.json`; `rogen syncback -y` must leave the same files as `rojo syncback` apart from the project file, and
 `rogen syncback -n` must change none.
 
+`syncback-round-trip.test.ts` checks routed projects the same way, without a
+transcript. `syncback-matrix.ts` holds one project in each layout routing allows
+(routing folders, `@` names, markers, `Name@Server/` folders, init scripts,
+patterns, invisible folders, lower-case keys, scripts) and some twenty edits made
+in Studio. Each pair is built into a place, edited by Lune, synced back, written
+and built again: the rebuilt place must equal the edited one, read as text by
+`place-dump.luau`, a second syncback must change nothing, and no file may land
+elsewhere. An edit Rojo itself can't write back, or a name syncback must leave
+out, is marked as such in the matrix with why, and checks only what still holds.
+Add a layout or an edit there when syncback learns a new case.
+
 Rojo must be installed (`rokit install`). Without it the suite is skipped locally
 and fails in CI.
 
