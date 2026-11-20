@@ -283,6 +283,42 @@ describe("ReverseRouter", () => {
 		});
 	});
 
+	describe("below an init script", () => {
+		it("should write a new child in the layout of the children already there, not the init's", async () => {
+			const router = await routerOf([
+				"src/Shop/init@Client.luau",
+				"src/Shop/Client/Keys.luau",
+			]);
+
+			expect(
+				router.place({
+					parent: ["StarterPlayer", "StarterPlayerScripts", "Shop"],
+					name: "Mouse",
+					folder: false,
+					files: [["Mouse.luau"]],
+				})
+			).toEqual({
+				kind: "placed",
+				home: { dir: posix("src/Shop/Client"), contents: false },
+			});
+		});
+
+		it("should name the init's route into the first child", async () => {
+			const router = await routerOf(["src/Shop/init@Client.luau"]);
+
+			expect(
+				router.place({
+					parent: ["StarterPlayer", "StarterPlayerScripts", "Shop"],
+					name: "Mouse",
+					folder: false,
+					files: [["Mouse.luau"]],
+				})
+			).toMatchObject({
+				home: { dir: posix("src/Shop"), mark: { text: "@Client" } },
+			});
+		});
+	});
+
 	describe("the style of a new feature", () => {
 		it("should name each file of a new folder for its route when its relatives are", async () => {
 			const router = await routerOf([

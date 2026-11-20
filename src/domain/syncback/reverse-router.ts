@@ -227,6 +227,8 @@ export class ReverseRouter {
 			const node = parent.slice(0, depth);
 			const below = parent.slice(depth);
 			const maker = this.layout.fileMaking(node);
+			const donors = this.layout.donorsAt(node);
+			if (donors.length > 0) return this.besideDonors(donors, below);
 			if (maker && SyncbackLayout.makesItsFolder(maker))
 				return {
 					kind: "placed",
@@ -249,13 +251,11 @@ export class ReverseRouter {
 				return conflict(
 					`${maker.source} makes ${node.join("/")}, and a file holds no other files; make it a folder with an init file`
 				);
-			const donors = this.layout.donorsAt(node);
-			if (donors.length > 0) return this.besideDonors(donors, below);
 		}
 		return this.asNewFeature(instance);
 	}
 
-	/** Beside the files at the nearest node that has some: in the layout most of them share, a tie going to the style of the route, then of the project. */
+	/** Beside the files at the nearest node that has some, an init script's children included: in the layout most of them share, a tie going to the style of the route, then of the project. */
 	private besideDonors(
 		donors: readonly Donor[],
 		below: readonly string[]

@@ -2,7 +2,7 @@ $ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
   Writing src/Shop/Server/Audit.luau
-  Writing src/Shop/Mouse@Client.luau
+  Writing src/Shop/Client/Mouse.luau
   Writing src/Shop/init@Client.luau
 stderr:
   Wrote default.project.json.
@@ -19,7 +19,7 @@ stderr:
 
 written:
   default.project.json
-  src/Shop/Mouse@Client.luau
+  src/Shop/Client/Mouse.luau
   src/Shop/Server/Audit.luau
   src/Shop/init@Client.luau
 
@@ -37,4 +37,4 @@ Game: DataModel
     StarterPlayerScripts: StarterPlayerScripts
       Shop: ModuleScript  <- src/Shop/init@Client.luau
         Keys: ModuleScript  <- src/Shop/Client/Keys.luau
-        Mouse: ModuleScript  <- src/Shop/Mouse@Client.luau
+        Mouse: ModuleScript  <- src/Shop/Client/Mouse.luau
