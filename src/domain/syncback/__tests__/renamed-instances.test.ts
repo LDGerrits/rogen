@@ -59,7 +59,11 @@ describe("renamedInstances", () => {
 			placed
 		);
 
-		expect(renames.map(({ files }) => [...files.values()])).toEqual([
+		expect(
+			renames.map(({ files }) =>
+				[...files.values()].map(({ target }) => target)
+			)
+		).toEqual([
 			[posix("src/Store/Server/Hit.luau")],
 			[posix("src/Store/Client/Hud.luau")],
 		]);
@@ -103,33 +107,67 @@ describe("renamedInstances", () => {
 		);
 
 		expect(rename.renamed).toBe(posix("src/Store@Server"));
-		expect([...rename.files.values()]).toEqual([
+		expect([...rename.files.values()].map(({ target }) => target)).toEqual([
 			posix("src/Store@Server/Hit.luau"),
 			posix("src/Store@Server/Util/Math.luau"),
 		]);
 	});
 
-	it("should not take an instance whose old one lost a file for a rename", async () => {
+	it("should take a rename whose old instance lost a file Studio deleted", async () => {
 		const { placed } = await layoutOf([
 			"src/Shop@Server/Hit.luau",
 			"src/Shop@Server/Gone.luau",
 		]);
 
-		expect(
-			renamesOf(
-				[renamedTo("server", "Store", [["Store", "Hit.luau"]])],
-				new Map([
-					[
-						"m/server/Shop/Hit.luau",
-						posix("src/Shop@Server/Hit.luau"),
-					],
-					[
-						"m/server/Shop/Gone.luau",
-						posix("src/Shop@Server/Gone.luau"),
-					],
+		const [rename] = renamesOf(
+			[renamedTo("server", "Store", [["Store", "Hit.luau"]])],
+			new Map([["m/server/Shop", posix("src/Shop@Server")]]),
+			placed
+		);
+
+		expect([...rename.files.values()]).toEqual([
+			{ target: posix("src/Store@Server/Hit.luau") },
+		]);
+	});
+
+	it("should move a file Rojo writes in another form as it was, and write a new child as its sibling is named", async () => {
+		const { placed } = await layoutOf([
+			"src/Shop/Items.json",
+			"src/Shop/Hud@Client.luau",
+		]);
+
+		const renames = renamesOf(
+			[
+				{
+					parent: ["ReplicatedStorage", "Shared"],
+					name: "Store",
+					folder: true,
+					files: [["Store", "Items.luau"]],
+					parentFolder: "m/shared",
+				},
+				renamedTo("client", "Store", [
+					["Store", "Hud.luau"],
+					["Store", "Fresh.luau"],
 				]),
-				placed
-			)
-		).toEqual([]);
+			],
+			new Map([
+				["m/shared/Shop", posix("src/Shop")],
+				["m/client/Shop/Hud.luau", posix("src/Shop/Hud@Client.luau")],
+			]),
+			placed
+		);
+
+		expect(renames.map(({ files }) => [...files.values()])).toEqual([
+			[
+				{
+					target: posix("src/Store/Items.json"),
+					keep: posix("src/Shop/Items.json"),
+				},
+			],
+			[
+				{ target: posix("src/Store/Hud@Client.luau") },
+				{ target: posix("src/Store/Fresh@Client.luau") },
+			],
+		]);
 	});
 });

@@ -155,7 +155,9 @@ class MirrorPlanRun {
 		kind: CompiledChange["kind"]
 	): boolean {
 		if (!this.isCompiled(file)) return false;
-		this.compiled.push({ instance, kind });
+		// The file Rojo keeps an emptied folder by is no instance to report.
+		if (path.basename(file) !== GITKEEP)
+			this.compiled.push({ instance, kind });
 		return true;
 	}
 
@@ -820,7 +822,7 @@ class MirrorPlanRun {
 				(await this.renameFits(rename, taken, removed, renamedTo))
 			) {
 				await this.placeRenamed(rename, folders, taken, moved);
-				for (const target of rename.files.values())
+				for (const { target } of rename.files.values())
 					renamedTo.add(toNative(target));
 				continue;
 			}
@@ -846,10 +848,14 @@ class MirrorPlanRun {
 				continue;
 			}
 			if (this.request.project.compiledPath !== undefined) {
-				this.compiled.push({
-					instance: instanceKey([...instance.parent, instance.name]),
-					kind: "added",
-				});
+				if (instance.name !== GITKEEP)
+					this.compiled.push({
+						instance: instanceKey([
+							...instance.parent,
+							instance.name,
+						]),
+						kind: "added",
+					});
 				continue;
 			}
 			for (const operation of placed.operations)
@@ -868,7 +874,7 @@ class MirrorPlanRun {
 	): Promise<boolean> {
 		if (await this.fileSystemService.exists(toNative(renamed)))
 			return false;
-		for (const target of files.values()) {
+		for (const { target } of files.values()) {
 			const to = toNative(target);
 			if (renamedTo.has(to)) continue;
 			if (
@@ -890,8 +896,9 @@ class MirrorPlanRun {
 	): Promise<void> {
 		const name = instanceKey([...instance.parent, instance.name]);
 		for (const file of instance.files) {
-			const target = files.get(file.join("/"));
-			if (target === undefined) continue;
+			const renamedFile = files.get(file.join("/"));
+			if (renamedFile === undefined) continue;
+			const { target, keep } = renamedFile;
 			const at = `${instance.parentFolder}/${file.join("/")}`;
 			const to = toNative(target);
 			taken.add(to);
@@ -909,7 +916,12 @@ class MirrorPlanRun {
 				file: to,
 				instance: name,
 				from: at,
-				bytes: await this.workspace.read(at),
+				bytes:
+					keep === undefined
+						? await this.workspace.read(at)
+						: await this.fileSystemService.readFileBytes(
+								toNative(keep)
+							),
 			});
 			const made = instanceOf(instance, file);
 			if (made) this.expected.push({ file: to, instance: made });
