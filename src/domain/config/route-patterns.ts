@@ -30,9 +30,16 @@ export class RoutePatterns {
 		}[];
 	}[];
 	/** The name keys, each with its target, which a pattern's target is also reached by. */
+	private readonly targets: ReadonlyMap<string, string>;
 	private readonly names: readonly (readonly [string, string])[];
 
 	constructor(routes: ReadonlyMap<string, Target>) {
+		this.targets = new Map(
+			[...routes].map(([key, target]) => [
+				key,
+				target.instancePath.join("/"),
+			])
+		);
 		this.names = [...routes]
 			.filter(([key]) => DeclaredKeys.isName(key))
 			.map(([key, target]) => [key, target.instancePath.join("/")]);
@@ -85,11 +92,10 @@ export class RoutePatterns {
 		};
 	}
 
-	/** The name key with the target of the pattern `key`, which routes a folder there, as no pattern does; none when no one name key has it. */
+	/** The name key with the target of the pattern or `*` route `key`, which routes a folder there, as no pattern does; none when no one name key has it. */
 	nameKeyFor(key: string): string | undefined {
-		const target = this.patterns.find(
-			(pattern) => pattern.key === key
-		)?.target;
+		const target = this.targets.get(key);
+		if (target === undefined) return undefined;
 		const names = this.names.filter(([, to]) => to === target);
 		return names.length === 1 ? names[0][0] : undefined;
 	}

@@ -151,15 +151,24 @@ describe("WriteValidator rules", () => {
 				).toEqual([]);
 			});
 
-			it("should leave a folder in another case inside a script folder alone, as a child the script requires", async () => {
+			it("should name a marker beside the rename for a folder inside a script folder, which may be a child the script requires, and give no one fix", async () => {
 				await write(
 					"src/Lib/Net/init.luau",
 					"src/Lib/Net/SERVER/Remote.luau"
 				);
 
-				expect(await caseErrors()).toEqual([]);
-			});
+				const errors = await errorsOf("route.caseMismatch", {
+					routes: { ...ROUTES, shared: "ReplicatedStorage/shared" },
+				});
 
+				expect(listed(errors)).toEqual([
+					[
+						abs("src/Lib/Net/SERVER"),
+						'"SERVER" differs from the route "server" only in letter case, so it would route nothing and its files would go to "*". Spell it "server", or, if the script beside it requires it as a child, add a marker file @shared in it to keep it there.',
+					],
+				]);
+				expect(fixesOf(errors)).toEqual([]);
+			});
 			it("should fix each mismatch by renaming the name to the key's spelling", async () => {
 				await write("src/(SERVER)/A.luau");
 

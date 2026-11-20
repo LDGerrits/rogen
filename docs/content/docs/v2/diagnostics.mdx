@@ -350,13 +350,13 @@ Do what the message says.
 
 ### `route.caseMismatch` [#route-casemismatch]
 
-Error. A folder matches a declared key except for letter case. Keys match exactly, so it would route nothing and its files would go to `*`, which can ship server code to clients. A folder that a route above it, or a marker in it, already routes is left alone, since its name places nothing there, and so is a folder inside a script folder, as `Net/server/` beside `Net/init.luau` in a library, where the name is a child the script requires. A marker file or `@` name in another case is [`route.strayAt`](#route-strayat).
+Error. A folder matches a declared key except for letter case. Keys match exactly, so it would route nothing and its files would go to `*`, which can ship server code to clients. A folder that a route above it, or a marker in it, already routes is left alone, since its name places nothing there. A marker file or `@` name in another case is [`route.strayAt`](#route-strayat).
 
 ```
 error: "SHARED" differs from the route "shared" only in letter case, so it would route nothing and its files would go to "*". Spell it "shared". (route.caseMismatch)
 ```
 
-Rename the folder to the key. In `--json`, `fixes` holds that rename unless a folder of that name is already beside it. To keep the folder's spelling, rename the key in `routes` instead, and every folder spelled the old way with it, since two keys can't differ only in case. `rogen init` renames a project's folders to one spelling when it lifts it. See [How Routing Works](/docs/v2/routing).
+Rename the folder to the key. In `--json`, `fixes` holds that rename unless a folder of that name is already beside it. To keep the folder's spelling, rename the key in `routes` instead, and every folder spelled the old way with it, since two keys can't differ only in case. In a script folder, such as a library's `Net/server/` beside `Net/init.luau`, the folder may be a child the script requires, so the message also names the marker file that keeps it with the script, as `@Shared` in it, and `fixes` holds no rename. `rogen init` renames a project's folders to one spelling when it lifts it. See [How Routing Works](/docs/v2/routing).
 
 ### `route.serverCodeShipped` [#route-servercodeshipped]
 
@@ -368,7 +368,7 @@ warning: ships to clients as ReplicatedStorage/Shared/Server/Datastore: move it 
 
 Move the file out of the replicating route's folder, for example from `Shared/Server/` to `Server/`.
 
-If the folder should replicate, put a marker file in it that restates the governing route, such as `Shared/Server/@Shared`. The marker covers every file below it. To cover one file, name it like `Secret@Shared.luau`.
+If the folder should replicate, put a marker file in it for the route that places it, such as `Shared/Server/@Shared`, or `@Shared` in a library's `Net/server/`. The marker covers every file below it. To cover one file, name it like `Secret@Shared.luau`.
 
 A route written with `@`, as in `Shared/Data@Server.luau`, gets the [`route.ignoredAt`](#route-ignoredat) error instead. See [The Outermost Route Wins](/docs/v2/routing#the-outermost-route-wins).
 

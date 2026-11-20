@@ -31,12 +31,14 @@ export interface MistypedRouteInputs {
 	readonly governed: ReadonlySet<string>;
 	/** Whether a path is already there, so a rename onto it would clash. */
 	readonly exists: (target: string) => boolean;
+	/** The one name key whose target is the `*` route's, whose marker keeps a folder's files where `*` puts them. */
+	readonly fallbackKey?: string;
 }
 
-/** The errors for each name meant as a route that misses its key, which would send its files where their route doesn't reach, as server code to `*`: an `@` that nearly spells a key, in a file, folder or marker name (`route.strayAt`), and a folder named for one in another letter case (`route.caseMismatch`), unless it is a child of a script folder, where it names a child the script requires. Under a route that governs it, an `@` for another route names nothing whatever its spelling (`route.ignoredAt`), a folder's name places nothing, and a file the tree takes the place of is not routed, so none of those is reported as a misspelling. */
+/** The errors for each name meant as a route that misses its key, which would send its files where their route doesn't reach, as server code to `*`: an `@` that nearly spells a key, in a file, folder or marker name (`route.strayAt`), and a folder named for one in another letter case (`route.caseMismatch`), which in a script folder may instead be a child the script requires, so there it names a marker as well and has no one fix. Under a route that governs it, an `@` for another route names nothing whatever its spelling (`route.ignoredAt`), a folder's name places nothing, and a file the tree takes the place of is not routed, so none of those is reported as a misspelling. */
 export function mistypedRouteErrors(
 	readings: NameReadings,
-	{ routed, displaced, governed, exists }: MistypedRouteInputs
+	{ routed, displaced, governed, exists, fallbackKey }: MistypedRouteInputs
 ): Diagnostic[] {
 	const renamed = (from: string, to: string | undefined): DiagnosticFix[] =>
 		to !== undefined && !exists(to) ? [{ rename: { from, to } }] : [];
@@ -102,17 +104,20 @@ export function mistypedRouteErrors(
 	const folders = [...readings.nearMisses]
 		.filter(
 			([resource]) =>
-				!readings.markers.has(resource) &&
-				!governed.has(resource) &&
-				!scriptFolders.has(path.posix.dirname(resource))
+				!readings.markers.has(resource) && !governed.has(resource)
 		)
 		.map(([resource, key]) => {
 			const written = path.posix.basename(resource);
+			const inScript = scriptFolders.has(path.posix.dirname(resource));
+			const keep =
+				inScript && fallbackKey !== undefined
+					? `, or, if the script beside it requires it as a child, add a marker file @${fallbackKey} in it to keep it there`
+					: "";
 			return errorDiagnostic(
 				"route.caseMismatch",
 				{ resource },
-				`"${written}" differs from the route "${key}" only in letter case, so it would route nothing and its files would go to "*". Spell it "${key}".`,
-				renamed(resource, spelledAs(resource, key))
+				`"${written}" differs from the route "${key}" only in letter case, so it would route nothing and its files would go to "*". Spell it "${key}"${keep}.`,
+				inScript ? [] : renamed(resource, spelledAs(resource, key))
 			);
 		});
 	const ignored = [...strays, ...markers].filter(

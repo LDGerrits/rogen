@@ -153,7 +153,7 @@ class MirrorPlanRun {
 	private readonly copiedPaths: ReadonlySet<string>;
 	private readonly edits: ConfigEdits;
 	private readonly routing: DraftRouting;
-	/** The paths Rojo wrote in place for each new instance below a folder of the project, by `inPlaceKey`, which routing checks before they are written. */
+	/** The paths Rojo wrote in place for each new instance below a folder of the project, by its instance path, which routing checks before they are written. */
 	private readonly inPlace = new Map<
 		string,
 		{
@@ -703,8 +703,10 @@ class MirrorPlanRun {
 			folder,
 			files: [],
 		};
-		const held = this.inPlace.get(key) ?? {
-			instance: instanceKey([...parent, made.name]),
+		// A script and its meta file are one instance, which moves as one.
+		const instance = instanceKey([...parent, made.name]);
+		const held = this.inPlace.get(instance) ?? {
+			instance,
 			operations: [],
 			landings: [],
 			made,
@@ -714,13 +716,13 @@ class MirrorPlanRun {
 		held.made.files.push(names.slice(unit.length - 1));
 		if (added.folder) held.folders.push(added.path);
 		const landing = landingOf(
-			made,
+			held.made,
 			names.slice(unit.length - 1),
 			operation.file,
 			added.folder
 		);
 		if (landing) held.landings.push(landing);
-		this.inPlace.set(key, held);
+		this.inPlace.set(instance, held);
 	}
 
 	/** The new instance a path Rojo added below a folder of the mirror is: the nearest folder that was there, and the first name below it. */

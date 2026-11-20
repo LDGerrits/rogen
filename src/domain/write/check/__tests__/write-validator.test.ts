@@ -1268,6 +1268,15 @@ describe("WriteValidator rules", () => {
 				]);
 			});
 
+			it("should not warn about files a marker in the folder routes itself, which keeps them there on purpose", async () => {
+				await write(
+					"src/Net/SERVER/@ReplicatedFirst",
+					"src/Net/SERVER/Remote.luau"
+				);
+
+				expect(await shipped()).toEqual([]);
+			});
+
 			it("should still warn about a server folder below the one a marker covers", async () => {
 				await write(
 					"src/ReplicatedFirst/server/@ReplicatedFirst",

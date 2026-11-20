@@ -425,6 +425,13 @@ const GLOB_FEATURES: MatrixRun[] = [
 		edit: `at("${SPS}/Bag/BagComponent"):Destroy()`,
 		outcome: ROUND_TRIP,
 	},
+	{
+		name: "globs · pattern-into-fallback-side-with-meta",
+		routes: GLOBS,
+		files: ["Shop/Prices.luau"],
+		edit: `mod("${RS}/Shop","PayService"):SetAttribute("Kept",true)`,
+		outcome: ROUND_TRIP,
+	},
 ];
 
 /** Every layout with every edit. */

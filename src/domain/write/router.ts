@@ -83,7 +83,8 @@ class Claims {
 		| undefined;
 	readonly ignoredAts: IgnoredAt[] = [];
 	private readonly outrankedFolders: { key: string; depth: number }[] = [];
-	private restatedDepth = -1;
+	/** The deepest `@` that speaks for the route, which keeps the server-named folders above it there on purpose. */
+	private signedDepth = -1;
 
 	get routeKey(): string {
 		return this.route?.key ?? DeclaredKeys.FALLBACK_ROUTE;
@@ -133,7 +134,7 @@ class Claims {
 
 	get outrankedFolderRoutes(): string[] {
 		return this.outrankedFolders
-			.filter(({ depth }) => depth > this.restatedDepth)
+			.filter(({ depth }) => depth > this.signedDepth)
 			.map(({ key }) => key);
 	}
 
@@ -142,8 +143,8 @@ class Claims {
 	}
 
 	private recordSigned(standing: Standing, depth: number, at?: IgnoredAt) {
-		if (standing === "restates")
-			this.restatedDepth = Math.max(this.restatedDepth, depth);
+		if (speaksForRoute(standing, true))
+			this.signedDepth = Math.max(this.signedDepth, depth);
 		else if (standing === "outranked" && at) this.ignoredAts.push(at);
 	}
 }

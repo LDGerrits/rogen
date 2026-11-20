@@ -9,6 +9,7 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
+import { DeclaredKeys } from "../config/declared-keys.js";
 import { ResolvedConfig, scannedFileOf } from "../config/resolved-config.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import { LeftOut } from "./write.js";
@@ -82,6 +83,9 @@ export class Placer {
 				),
 				governed: governedNearMisses,
 				exists: (target) => Placer.listed(roots, target),
+				fallbackKey: this.config.patterns.nameKeyFor(
+					DeclaredKeys.FALLBACK_ROUTE
+				),
 			}),
 			...markerClashes.diagnostics(),
 			...this.ignoredAtErrors(

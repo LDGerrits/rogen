@@ -66,6 +66,22 @@ async function replaceOnceFree(from: string, to: string): Promise<void> {
 	await fs.promises.rename(from, to);
 }
 
+/** Whether `destination` differs from `source` only in letter case and its folder lists no entry of that exact name, so a case-blind disk found `source` itself there. */
+async function isCaseOnlyRename(
+	source: string,
+	destination: string
+): Promise<boolean> {
+	if (
+		path.resolve(source).toLowerCase() !==
+		path.resolve(destination).toLowerCase()
+	)
+		return false;
+	const names = await fs.promises
+		.readdir(path.dirname(destination))
+		.catch((): string[] => []);
+	return !names.includes(path.basename(destination));
+}
+
 export class DiskFileSystemService implements FileSystemService {
 	declare readonly _serviceBrand: undefined;
 
@@ -237,17 +253,14 @@ export class DiskFileSystemService implements FileSystemService {
 				if (ErrorUtils.hasCode(error, "ENOENT")) return undefined;
 				throw error;
 			});
-		const itself =
-			existing !== undefined &&
-			path.resolve(source).toLowerCase() ===
-				path.resolve(destination).toLowerCase() &&
-			(await sameFile(source, existing));
+		const blocking =
+			existing && !(await isCaseOnlyRename(source, destination))
+				? existing
+				: undefined;
 		const refusal = renameRefusal(
-			itself
-				? undefined
-				: existing?.isDirectory()
-					? FileType.Directory
-					: existing && FileType.File,
+			blocking?.isDirectory()
+				? FileType.Directory
+				: blocking && FileType.File,
 			overwrite,
 			source,
 			destination
@@ -257,10 +270,4 @@ export class DiskFileSystemService implements FileSystemService {
 		if (overwrite && isWindows) await replaceOnceFree(source, destination);
 		else await fs.promises.rename(source, destination);
 	}
-}
-
-/** Whether `stats`, read at a path that differs from `source` only in letter case, are `source`'s own, as on a disk that ignores case. */
-async function sameFile(source: string, stats: fs.Stats): Promise<boolean> {
-	const own = await fs.promises.lstat(source).catch(() => undefined);
-	return own !== undefined && own.dev === stats.dev && own.ino === stats.ino;
 }
