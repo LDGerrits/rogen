@@ -45,7 +45,7 @@ export class MirrorWorkspaceOpener {
 			return err(
 				new Error(`${project.label} was not found among the projects.`)
 			);
-		const fresh = await writeService.projectFileOf(project);
+		const fresh = here.projectFile;
 		if (!fresh)
 			return err(
 				new UsageError(

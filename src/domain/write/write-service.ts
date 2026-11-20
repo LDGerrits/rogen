@@ -149,6 +149,8 @@ export interface ConfigLocations extends RaisedDiagnostics {
 	readonly files: readonly FileLocation[];
 	readonly instances: readonly InstanceLocation[];
 	readonly queried: readonly string[];
+	/** The project file a write would write now; none when the write stops, or when only paths were asked about, which may not exist yet. */
+	readonly projectFile?: RojoProjectFile;
 }
 
 /** Which paths asked about a config's diagnostics reach: what `check` reports, what `where` shows under each line, and which errors stop the write unseen. */
@@ -353,11 +355,6 @@ export interface WriteService {
 		selection: ConfigSelection,
 		reader?: FileSystemService
 	): Promise<WriteRun>;
-
-	/** The project file a write of `project` would write, or none when it fails. Writes nothing. */
-	projectFileOf(
-		project: ResolvedConfig
-	): Promise<RojoProjectFile | undefined>;
 
 	/** Prepares and writes the project at `projectFile` in a watch's `set`; the compiled path is checked only when `previous` holds no answer for this version of the config. With `force`, the file is written even when its bytes are what a build makes. */
 	rewrite(

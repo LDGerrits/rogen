@@ -168,16 +168,6 @@ export class WritePipeline {
 		);
 	}
 
-	/** The project file a write of `config` would write, or none when it fails. */
-	async projectFileOf(
-		config: ResolvedConfig
-	): Promise<RojoProjectFile | undefined> {
-		const examined = await this.examine(config);
-		return examined.isOk() && examined.value.kind === "assembled"
-			? examined.value.projectFile
-			: undefined;
-	}
-
 	private async assemble(placement: Placement) {
 		const meta = await this.metaReader.read(placement);
 		if (meta.isErr()) return err(meta.error);

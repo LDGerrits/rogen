@@ -1,3 +1,4 @@
+import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import path from "path";
 import { compareStrings } from "../../../base/collections.js";
 import { toPosix } from "../../../base/path.js";
@@ -138,6 +139,9 @@ class ConfigLocator {
 			),
 			queried,
 			...(paths.length > 0 ? raised : existing.value.raised),
+			...(existing.value.projectFile && {
+				projectFile: existing.value.projectFile,
+			}),
 		});
 	}
 
@@ -393,6 +397,7 @@ class ConfigLocator {
 			{
 				readonly locator: PlacementLocator;
 				readonly raised: RaisedDiagnostics;
+				readonly projectFile?: RojoProjectFile;
 			},
 			DiagnosticsError
 		>
@@ -414,6 +419,9 @@ class ConfigLocator {
 							: result.errors,
 					markers: locator.markers,
 				},
+				...(result.kind === "assembled" && {
+					projectFile: result.projectFile,
+				}),
 			};
 		});
 	}

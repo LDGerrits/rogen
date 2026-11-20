@@ -9,7 +9,6 @@ import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
-import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ConfigSelection, ConfigService } from "../config/config-service.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
@@ -120,15 +119,6 @@ export class CoreWriteService implements WriteService {
 		} finally {
 			scope[Symbol.dispose]();
 		}
-	}
-
-	async projectFileOf(
-		project: ResolvedConfig
-	): Promise<RojoProjectFile | undefined> {
-		const listing = await this.indexService.list([...project.indexedPaths]);
-		return this.instantiationService
-			.createInstance(WritePipeline, listing, this.syncTools)
-			.projectFileOf(project);
 	}
 
 	/** With `advice`, a plain Rojo project keeps the warnings about Rogen's own model; with `reader`, a check reads through it. */
