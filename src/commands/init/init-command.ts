@@ -1,4 +1,5 @@
 import { CancelledError, UsageError } from "../../base/errors.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { Result, err, ok } from "../../base/result.js";
 import { WriteRun } from "../../domain/write/write.js";
 import { WriteService } from "../../domain/write/write-service.js";
@@ -174,6 +175,9 @@ registerCommand(
 			if (!plan) return err(new CancelledError("init cancelled."));
 			const checked = await initService.check(plan);
 			if (checked.isErr()) return checked;
+			// A dry run stops where the write after a real run would.
+			if (dryRun && checked.value.length > 0)
+				return err(new DiagnosticsError(checked.value));
 
 			const reporter: InitReporter = line.options.json
 				? instantiationService.createInstance(

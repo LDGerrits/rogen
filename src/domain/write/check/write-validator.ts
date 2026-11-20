@@ -82,7 +82,7 @@ export class WriteValidator {
 			...this.patternCase(),
 			...this.folderPattern(),
 			...this.unrouted(),
-			...this.serverCodeShipped(),
+			...this.shippedByFolder(),
 			...this.deadScript(),
 			...this.scriptSuffixBeforeAt(),
 			...this.scriptClassMismatch(),
@@ -434,41 +434,6 @@ export class WriteValidator {
 				!isScript &&
 				!isServerOnlyService(file.instancePath[0])
 			);
-		});
-	}
-
-	private serverCodeShipped(): Diagnostic[] {
-		return [...this.shippedByFolder(), ...this.namedForServer()];
-	}
-
-	/** A file nothing routes whose own name is a server route key, as `Bank/Server.luau`, which reads as server code and lands where clients reach it. */
-	private namedForServer(): Diagnostic[] {
-		const { routes, keys } = this.config;
-		return this.placement.files.flatMap((file) => {
-			const { entry, routeMatch, init, instancePath } = file;
-			// A Script's suffix routes it, and tree.deadScript says where it can't run.
-			if (
-				routeMatch !== "fallback" ||
-				init ||
-				this.placement.readingOf(file).scriptSuffix !== undefined
-			)
-				return [];
-			const name = instancePath.at(-1)!;
-			const key = keys.resolve(name) ?? keys.nearMiss(name);
-			const service =
-				key === undefined ? undefined : routes.get(key)?.service;
-			return key === undefined ||
-				service === undefined ||
-				!isServerOnlyService(service) ||
-				isServerOnlyService(instancePath[0])
-				? []
-				: [
-						warningDiagnostic(
-							"route.serverCodeShipped",
-							{ resource: entry.source },
-							`is named like the "${key}" route, but only a folder, a marker or an "@" routes a file, so it ships to clients as ${instanceKey(instancePath)}. If it's server code, move it into a "${key}" folder.`
-						),
-					];
 		});
 	}
 

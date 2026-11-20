@@ -1,14 +1,19 @@
 import path from "path";
 import { Disposable, toDisposable } from "../../base/disposable.js";
 import { ErrorUtils, UsageError } from "../../base/errors.js";
-import { samePath, selfAndAncestors, toPosix } from "../../base/path.js";
+import {
+	isInside,
+	samePath,
+	selfAndAncestors,
+	toPosix,
+} from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { isRenameFix } from "../../platform/diagnostics/diagnostic.js";
+import { isError, isRenameFix } from "../../platform/diagnostics/diagnostic.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
 	DraftFileReader,
@@ -168,7 +173,7 @@ export class CoreInitService implements InitService {
 		}
 	}
 
-	/** In a terminal the plan is shown once and accepted with Enter; Customise asks the questions it took the default of, each with its answer preselected, and shows the plan again. Backing out of Customise shows the plan it had. */
+	/** In a terminal the plan is shown once and accepted with Enter, also when nothing was asked but it renames files; Customise asks the questions it took the default of, each with its answer preselected, and shows the plan again. Backing out of Customise shows the plan it had. */
 	private async review(
 		options: InitOptions
 	): Promise<Result<InitPlan | undefined, Error>> {
@@ -201,7 +206,8 @@ export class CoreInitService implements InitService {
 			);
 			if (planned.isErr()) return planned;
 			if (planned.value) {
-				if (prompts.asked === 0) return planned;
+				if (prompts.asked === 0 && planned.value.moves.length === 0)
+					return planned;
 				shown = {
 					plan: planned.value,
 					customisable: prompts.customisable > 0,
@@ -498,12 +504,21 @@ export class CoreInitService implements InitService {
 		if (!(failure instanceof DiagnosticsError)) return plan;
 		const relative = (file: string) =>
 			toPosix(path.relative(plan.directory, file));
+		const written = plan.files.map(({ fileName }) => fileName);
+		// What the plan writes is spelled by init, never renamed after.
+		const isWritten = (from: string) =>
+			written.some(
+				(file) => file === from || file.startsWith(`${from}/`)
+			);
 		const renames = new Map<string, PlannedMove>();
 		for (const { code, fixes } of failure.diagnostics) {
 			if (code !== "route.caseMismatch" && code !== "route.strayAt")
 				continue;
 			for (const { rename } of (fixes ?? []).filter(isRenameFix))
-				if (rename.from.toLowerCase() === rename.to.toLowerCase())
+				if (
+					rename.from.toLowerCase() === rename.to.toLowerCase() &&
+					!isWritten(relative(rename.from))
+				)
 					renames.set(rename.from, {
 						from: relative(rename.from),
 						to: relative(rename.to),
@@ -532,8 +547,8 @@ export class CoreInitService implements InitService {
 			.refresh(folder);
 	}
 
-	async check(plan: InitPlan): Promise<Result<void, Error>> {
-		if (plan.configs.length === 0) return ok(undefined);
+	async check(plan: InitPlan): Promise<Result<readonly Diagnostic[], Error>> {
+		if (plan.configs.length === 0) return ok([]);
 		const reader = this.instantiationService.createInstance(
 			DraftFileReader,
 			draftOf(plan)
@@ -543,7 +558,31 @@ export class CoreInitService implements InitService {
 		const failure = (
 			await this.writeService.check(selection.value, reader)
 		).failure();
-		return failure ? err(failure) : ok(undefined);
+		if (!failure) return ok([]);
+		const errors =
+			failure instanceof DiagnosticsError
+				? failure.diagnostics.filter(isError)
+				: [];
+		return errors.length > 0 &&
+			errors.every((error) => CoreInitService.isTheCodes(error, plan))
+			? ok(errors)
+			: err(failure);
+	}
+
+	/** Whether `error` is only about files of the folder that `plan` neither writes nor renames, nor a folder that holds one, as a name of the user's code. */
+	private static isTheCodes(error: Diagnostic, plan: InitPlan): boolean {
+		const made = [
+			...plan.files.map(({ fileName }) => fileName),
+			...plan.moves.map(({ to }) => to),
+		].map((file) => path.join(plan.directory, file));
+		return [
+			error.resource,
+			...(error.related ?? []).map(({ resource }) => resource),
+		].every(
+			(file) =>
+				isInside(file, plan.directory) &&
+				!made.some((one) => samePath(one, file) || isInside(one, file))
+		);
 	}
 
 	write(

@@ -52,7 +52,7 @@ const GROUPS: Readonly<Record<string, DiagnosticGroup>> = {
 	},
 	"route.serverCodeShipped": {
 		headline: (count) =>
-			`${plural(count, "file")} named for a server route, or in a folder that is, ${either(count, "ships", "ship")} to clients:`,
+			`${plural(count, "file")} in a folder named for a server route ${either(count, "ships", "ship")} to clients:`,
 	},
 	"tree.deadScript": {
 		headline: (count) =>

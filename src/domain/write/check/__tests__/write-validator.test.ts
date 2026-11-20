@@ -1216,26 +1216,14 @@ describe("WriteValidator rules", () => {
 				]);
 			});
 
-			it("should warn about a file named like a server route that nothing routes, as its name alone sends it to clients", async () => {
+			it("should leave a file named like a server route to its name, since a module may be named Server on purpose", async () => {
 				await write(
 					"src/Bank/server.luau",
-					"src/Bank/client.luau",
-					"src/Bank/Ledger.luau",
 					"src/Till/SERVER.luau",
-					"src/Till/server.server.luau",
-					"src/server/Vault/server.luau"
+					"src/Net/Server.luau"
 				);
 
-				expect(await shipped()).toEqual([
-					expect.objectContaining({
-						resource: abs("src/Bank/server.luau"),
-						message:
-							'is named like the "server" route, but only a folder, a marker or an "@" routes a file, so it ships to clients as ReplicatedStorage/shared/Bank/server. If it\'s server code, move it into a "server" folder.',
-					}),
-					expect.objectContaining({
-						resource: abs("src/Till/SERVER.luau"),
-					}),
-				]);
+				expect(await shipped()).toEqual([]);
 			});
 
 			it("should warn for a data file and a model in the folder", async () => {

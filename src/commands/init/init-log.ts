@@ -1,7 +1,7 @@
 import path from "path";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
-import { toPosix, toShellWord } from "../../base/path.js";
+import { samePath, toPosix, toShellWord } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
 import { WriteRun, ConfigOutcome } from "../../domain/write/write.js";
 import {
@@ -261,12 +261,20 @@ export class InitLog implements InitReporter {
 			this.outcomeLog.outcome(outcome, foundBy(outcome));
 		const files = plural(plan.files.length, "file");
 		if (run.errors.length > 0) {
+			// A failure of the config or of writing its project file is init's; any other error is the code's.
+			const inCode = run.errors.every(
+				({ resource }) =>
+					!resource.endsWith(".project.json") &&
+					!plan.configs.some((config) =>
+						samePath(path.join(plan.directory, config), resource)
+					)
+			);
 			this.logService.outro(
-				`Wrote ${files}, but writing the project file failed.${
+				`Wrote ${files}, but ${inCode ? "errors in the code stop the project file" : "writing the project file failed"}.${
 					plan.liftedFrom
 						? ` ${plan.liftedFrom} is as it was, so Rojo still reads it.`
 						: ""
-				} Fix default.rogen.json and run rogen write.`
+				} ${inCode ? "Fix the errors above" : "Fix default.rogen.json"} and run rogen write.`
 			);
 			return err(new ReportedError(new DiagnosticsError(run.errors)));
 		}

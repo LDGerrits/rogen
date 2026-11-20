@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Warnings for a pattern route that just misses: `route.patternCase` for a file that matches a pattern only ignoring letter case, and `route.folderPattern` for a folder script whose folder a pattern matches, which no pattern routes, with the rename that does.
 
-- The warning `scan.uncompiled` for a TypeScript file in a project with no `compiledPath`, which Rojo never reads, and `route.serverCodeShipped` for a file named after a server route that nothing routes, such as `Bank/Server.luau`.
+- The warning `scan.uncompiled` for a TypeScript file in a project with no `compiledPath`, which Rojo never reads.
 
 ### Changed
 
@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **Breaking:** two files in one source path that make one instance, as `Types.lua` beside `Types.luau`, or two `^` files that hoist to one place, are an error (`tree.instanceClash`): Rojo would keep both, and the project file can name one, so the build lost the other. Two init files of one folder still only warn, as Rojo itself reads one.
 - `rogen init` says why it renames a folder or name, and a dry run counts renames rather than files.
+- `rogen init` in a terminal shows the plan and asks before it renames anything, even when it has no question to ask. An error about the project's own code, such as `Main.Server.luau`, no longer stops `init`: it writes its files, prints the error with its fix, and exits 1, as a write would. An error about what `init` writes still stops it before it writes, and a dry run stops on both.
 
 - **Breaking:** `route.dotRoute` is an error, and only where a dot can only have meant a route: a dot-file or dot-folder named for a key, such as `.server`, and Rojo's `.server` or `.client` where Rojo doesn't read it, as `Main.Server.luau`, `Config.server.json` or `Net.server/`. Any other key after a dot, such as `Button.story.luau` beside a `Story` route, is a name of its own and no longer warns.
 - The warning `route.folderTypo` is gone. A folder one letter from a route key, such as `Servers/` or `Shard/`, is most often a name of its own, and a warning there couldn't be silenced without renaming a correct folder. Rogen now reports only where a name clearly meant a route: an `@`, a wrong letter case, Rojo's `.server` or `.client` where Rojo doesn't read it, or a pattern that just misses.

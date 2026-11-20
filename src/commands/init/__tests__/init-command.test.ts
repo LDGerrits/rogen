@@ -360,45 +360,68 @@ describe("init command", () => {
 			);
 		});
 
-		it("should write nothing while a name of the code stops the write", async () => {
+		it("should still write its files when a name of the code stops the write, and fail naming the fix", async () => {
 			await write("src/Save.Server.luau");
+			const logService = new MockLogService();
 
-			const failed = await runInit();
+			const failed = await runInit(
+				new MockPromptService([], false),
+				logService
+			);
 
 			expect(failed.isErr()).toBe(true);
-			expect(failed.isErr() ? String(failed.error) : "").toContain(
-				"route.dotRoute"
-			);
 			expect(
 				await memFs.exists(path.join(cwd, "default.rogen.json"))
-			).toBe(false);
+			).toBe(true);
+			expect(logService.lines.join("\n")).toContain(
+				'src/Save.Server.luau (write "Save.server.luau")'
+			);
+			expect(logService.lines.at(-1)).toContain(
+				"Fix the errors above and run rogen write."
+			);
 		});
 
-		it.each([
-			["a real run", {}],
-			["a dry run", { "dry-run": true }],
-			["--json", { json: true }],
-		])(
-			"should fail before it writes when the project it plans fails the write's checks, in %s",
-			async (_, options: CommandLine["options"]) => {
-				await write("src/Inventory/@server");
-				await write("src/Inventory/@client");
-				const logService = new MockLogService();
+		it("should fail before it writes in a dry run when the code has an error the write would stop on", async () => {
+			await write("src/Inventory/@server");
+			await write("src/Inventory/@client");
+			await write("src/Inventory/Bag.luau", "return 1");
+			const logService = new MockLogService();
 
-				const result = await runInit(
-					new MockPromptService([], false),
-					logService,
-					options
-				);
+			const result = await runInit(
+				new MockPromptService([], false),
+				logService,
+				{ "dry-run": true }
+			);
 
-				expect(errorMessage(result)).toContain("(route.markerClash)");
-				expect(await exists("default.rogen.json")).toBe(false);
-				expect(await exists("AGENTS.md")).toBe(false);
-				expect(
-					logService.lines.filter((line) => line.includes("reate"))
-				).toEqual([]);
-			}
-		);
+			expect(errorMessage(result)).toContain("(route.markerClash)");
+			expect(
+				logService.lines.filter((line) => line.includes("reate"))
+			).toEqual([]);
+		});
+
+		it("should write its files and fail with the code's error in --json", async () => {
+			await write("src/Inventory/@server");
+			await write("src/Inventory/@client");
+			await write("src/Inventory/Bag.luau", "return 1");
+			const logService = new MockLogService();
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				logService,
+				{ json: true }
+			);
+			const document = JSON.parse(logService.entries[0].text) as {
+				projects: { diagnostics: { code: string }[] }[];
+			};
+
+			expect(result.isErr()).toBe(true);
+			expect(await exists("default.rogen.json")).toBe(true);
+			expect(document.projects[0].diagnostics).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ code: "route.markerClash" }),
+				])
+			);
+		});
 
 		it("should keep the files and fail when the project file cannot be written", async () => {
 			const writeFile = memFs.writeFile.bind(memFs);

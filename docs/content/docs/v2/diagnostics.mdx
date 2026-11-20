@@ -368,14 +368,6 @@ Move the file out of the replicating route's folder, for example from `Shared/Se
 
 If the folder should replicate, put a marker file in it that restates the governing route, such as `Shared/Server/@Shared`. The marker covers every file below it. To cover one file, name it like `Secret@Shared.luau`.
 
-It also warns about a file named after a server route that nothing routes, such as `Bank/Server.luau`, since a file's own name routes it only with an `@`, so it goes to `*`:
-
-```
-warning: is named like the "Server" route, but only a folder, a marker or an "@" routes a file, so it ships to clients as ReplicatedStorage/Shared/Bank/Server. If it's server code, move it into a "Server" folder. (route.serverCodeShipped)
-```
-
-Move it into the feature's `Server/` folder, or name it for what it does.
-
 A route written with `@`, as in `Shared/Data@Server.luau`, gets the [`route.ignoredAt`](#route-ignoredat) error instead. See [The Outermost Route Wins](/docs/v2/routing#the-outermost-route-wins).
 
 ## Tree
