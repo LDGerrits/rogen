@@ -68,4 +68,29 @@ describe("DraftFileReader", () => {
 			["New.luau", FileType.File],
 		]);
 	});
+
+	it("should make its moves in order, so a file renamed inside a folder moves with the folder renamed after it", async () => {
+		const reader = draftOf({
+			moves: [
+				{ from: at("src", "Old.luau"), to: at("src", "New.luau") },
+				{ from: at("src"), to: at("lib") },
+			],
+		});
+
+		expect(await reader.readFile(at("lib", "New.luau"))).toBe("old");
+		expect(await reader.readDirectory(at("lib"))).toEqual([
+			["Kept.luau", FileType.File],
+			["New.luau", FileType.File],
+		]);
+		expect(await reader.exists(at("src"))).toBe(false);
+	});
+
+	it("should leave out what it removes", async () => {
+		const reader = draftOf({ removed: [at("src", "Old.luau")] });
+
+		expect(await reader.exists(at("src", "Old.luau"))).toBe(false);
+		expect(await reader.readDirectory(at("src"))).toEqual([
+			["Kept.luau", FileType.File],
+		]);
+	});
 });

@@ -40,7 +40,8 @@ export class DraftFileReader implements FileSystemService {
 		}
 		for (const directory of draft.directories)
 			this.addFolders(path.resolve(directory));
-		for (const { to } of this.moves) this.addFolders(path.dirname(to));
+		for (const [index, { to }] of this.moves.entries())
+			this.addFolders(path.dirname(this.movedOn(to, index + 1)));
 	}
 
 	async exists(filePath: string): Promise<boolean> {
@@ -118,11 +119,14 @@ export class DraftFileReader implements FileSystemService {
 		for (const [name, type] of listed ?? [])
 			if (this.sourceOf(path.join(resolved, name)) !== undefined)
 				entries.set(name, type);
-		for (const { from, to } of this.moves)
-			if (path.dirname(to) === resolved) {
-				const type = await this.baseTypeOf(from);
-				if (type !== undefined) entries.set(path.basename(to), type);
-			}
+		for (const [index, { to }] of this.moves.entries()) {
+			const landed = this.movedOn(to, index + 1);
+			if (path.dirname(landed) !== resolved) continue;
+			const from = this.sourceOf(landed);
+			const type =
+				from === undefined ? undefined : await this.baseTypeOf(from);
+			if (type !== undefined) entries.set(path.basename(landed), type);
+		}
 		for (const file of this.files.keys())
 			if (path.dirname(file) === resolved)
 				entries.set(path.basename(file), FileType.File);
@@ -160,17 +164,27 @@ export class DraftFileReader implements FileSystemService {
 		}
 	}
 
-	/** Where `resolved` is read from in `base`: a path a move takes it to reads from where it was, and a path it or a removal takes away reads from nowhere. */
+	/** Where the moves from the one at `next` on take `at`. */
+	private movedOn(at: string, next: number): string {
+		let moved = at;
+		for (const { from, to } of this.moves.slice(next))
+			if (moved === from || isInside(moved, from))
+				moved = path.join(to, path.relative(from, moved));
+		return moved;
+	}
+
+	/** Where `resolved` is read from in `base`, the moves undone from the last: a path a move takes it to reads from where it was, and a path a move or a removal takes away reads from nowhere. */
 	private sourceOf(resolved: string): string | undefined {
-		for (const { from, to } of this.moves)
-			if (resolved === to || isInside(resolved, to))
-				return path.join(from, path.relative(to, resolved));
-		for (const at of [
-			...this.moves.map(({ from }) => from),
-			...this.removed,
-		])
-			if (resolved === at || isInside(resolved, at)) return undefined;
-		return resolved;
+		const within = (at: string, folder: string) =>
+			at === folder || isInside(at, folder);
+		if (this.removed.some((gone) => within(resolved, gone)))
+			return undefined;
+		let at = resolved;
+		for (const { from, to } of [...this.moves].reverse()) {
+			if (within(at, to)) at = path.join(from, path.relative(to, at));
+			else if (within(at, from)) return undefined;
+		}
+		return at;
 	}
 
 	private addFolders(folder: string): void {

@@ -76,7 +76,6 @@ export class WriteValidator {
 			...this.syncRuleSuffix(),
 			...this.nestedProject(),
 			...this.unclaimedMeta(),
-			...this.caseMismatch(),
 			...this.dotRoute(),
 			...this.folderTypo(),
 			...this.unrouted(),
@@ -250,20 +249,6 @@ export class WriteValidator {
 					"meta.unclaimed",
 					{ resource },
 					`belongs to no file, so Rojo ignores it. ${hint ? `${capitalized(hint)}.` : "A file's meta is named after the name Rojo gives the file, without .server, .client or .plugin."}`
-				)
-			);
-	}
-
-	/** A folder named for a route in another case, which may be an ordinary folder; a marker's `@` can only mean a route, so the placement stops on that one. */
-	private caseMismatch(): Diagnostic[] {
-		const { nearMisses, markers } = this.placement.readings;
-		return [...nearMisses]
-			.filter(([resource]) => !markers.has(resource))
-			.map(([resource, key]) =>
-				warningDiagnostic(
-					"route.caseMismatch",
-					{ resource },
-					`differs from the route "${key}" only in letter case, so it is read as an ordinary name. Spell it "${key}", or declare it as written.`
 				)
 			);
 	}

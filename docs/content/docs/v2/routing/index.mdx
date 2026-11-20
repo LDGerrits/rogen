@@ -43,7 +43,7 @@ A route's name in a file's path sends the file there. A `Server/` folder sends e
 `}
 />
 
-The name is spelled exactly as the key, so `server/` is an ordinary folder under a `Server` route, and Rogen warns about it. An `@` always means a route, so `Save@server.luau` or a misspelt `Save@Sever.luau` stops the write until you fix it. Only Rojo's own `.server` and `.client`, which it reads in lower case, route a key of that name in any case. Everything else in the path stays, so `Shop` shows up under each service. [Routing Folders](/docs/v2/routing/folders) and [Routing by Name](/docs/v2/routing/names) show each way to route in full, and [Skipping Folders](/docs/v2/routing/skipping-folders) how to leave a folder out.
+The name is spelled exactly as the key. A folder or `@` that misses it by its case or, for an `@`, a typo, as `server/`, `Save@server.luau` or `Save@Sever.luau` under a `Server` route, would send server code to `*`, so Rogen stops until you fix it. Only Rojo's own `.server` and `.client`, which it reads in lower case, route a key of that name in any case. Everything else in the path stays, so `Shop` shows up under each service. [Routing Folders](/docs/v2/routing/folders) and [Routing by Name](/docs/v2/routing/names) show each way to route in full, and [Skipping Folders](/docs/v2/routing/skipping-folders) how to leave a folder out.
 
 ## Files Without a Route
 

@@ -140,6 +140,25 @@ describe("CoreInitService", () => {
 			expect(plan?.files).toEqual(unasked?.files);
 		});
 
+		it("should rename a folder that spells a route key in the case most of the code doesn't, so the project builds", async () => {
+			await write("src/Shop/Server/A.luau", "return 1");
+			await write("src/Bag/Server/B.luau", "return 1");
+			await write("src/Trading/server/C.luau", "return 1");
+			await write("src/Trading/server/Save@server.luau", "return 1");
+
+			const service = serviceFor();
+			const plan = (await service.plan()).unwrap();
+
+			expect(plan?.moves).toEqual([
+				{
+					from: "src/Trading/server/Save@server.luau",
+					to: "src/Trading/server/Save@Server.luau",
+				},
+				{ from: "src/Trading/server", to: "src/Trading/Server" },
+			]);
+			expect((await service.check(plan!)).isOk()).toBe(true);
+		});
+
 		it("should fail when the directory can't be read", async () => {
 			const result = await serviceFor(
 				undefined,

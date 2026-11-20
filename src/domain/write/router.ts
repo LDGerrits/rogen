@@ -121,6 +121,11 @@ class Claims {
 		return standing;
 	}
 
+	/** A folder named for `key` in another letter case under the route: an ordinary folder that the route outranks, as it outranks one spelled as the key. */
+	outrankName(key: string, depth: number): void {
+		this.outrankedFolders.push({ key, depth });
+	}
+
 	/** A `@` signal that cannot take the route itself, as a folder's inner routes cannot. */
 	outrankSigned(key: string, depth: number, at: IgnoredAt): void {
 		this.recordSigned(this.standingOf(key), depth, at);
@@ -183,9 +188,13 @@ export interface Routing {
 	readonly unrouted: string[];
 	readonly withoutFolder: InitWithoutFolder[];
 	readonly hoistedInits: HoistedInit[];
+	/** The folders named for a route in another letter case that an outer route governs, so their name places nothing; absolute, POSIX-style. */
+	readonly governedNearMisses: ReadonlySet<string>;
 }
 
 export class Router {
+	private readonly governedNearMisses = new Set<string>();
+
 	constructor(
 		private readonly config: ResolvedConfig,
 		private readonly readings: NameReadings
@@ -200,6 +209,7 @@ export class Router {
 			unrouted: [],
 			withoutFolder: [],
 			hoistedInits: [],
+			governedNearMisses: this.governedNearMisses,
 		};
 		for (const root of roots) {
 			const dirs = claims.of(root);
@@ -221,6 +231,7 @@ export class Router {
 		const claims = new Claims();
 		const folder = joinPosix(root.sourcePath, dir);
 		const { folders, hoistAt } = this.claimFolders(
+			root.sourcePath,
 			this.readings.foldersDownTo(root.sourcePath, dir),
 			dirs,
 			claims
@@ -286,6 +297,7 @@ export class Router {
 		const read = this.readings.entryReading(entry.source);
 		const claims = new Claims();
 		const { folders, hoistAt } = this.claimFolders(
+			entry.sourcePath,
 			read.folders,
 			dirs,
 			claims
@@ -402,6 +414,7 @@ export class Router {
 	}
 
 	private claimFolders(
+		sourcePath: string,
 		readings: readonly FolderReading[],
 		dirs: DirClaims,
 		claims: Claims
@@ -421,6 +434,11 @@ export class Router {
 			const named = name !== undefined && !folder.invisible;
 			if (named) folders.push({ name, dir: folder.dir });
 			claimDirectory(folder.dir);
+			// A folder named for a route in another case is an ordinary folder where a route above it, or a marker in it, routes its files.
+			if (folder.nearMissKey !== undefined && claims.route) {
+				claims.outrankName(folder.nearMissKey, depthOf(folder.dir));
+				this.governedNearMisses.add(joinPosix(sourcePath, folder.dir));
+			}
 		}
 		return { folders, hoistAt };
 	}

@@ -9,7 +9,7 @@ stderr:
     src/Inventory/Report@server.bak.luau ("@server" must end the name)
     src/Inventory/Save@sever.luau (did you mean "@server"?)
     src/Queue@clent (did you mean "@client"?)
-  src/Shop/@SERVER - error: differs from the route "server" only in letter case, and an "@" only names a route. Spell it "@server", or declare it as written. (route.caseMismatch)
+  src/Shop/@SERVER - error: differs from the route "server" only in letter case, so it would route nothing. Spell it "@server", or declare it as written. (route.caseMismatch)
 
 $ rogen write --json
 exit 1
@@ -93,8 +93,16 @@ stdout:
             "file": "<dir>/src/Shop/@SERVER",
             "severity": "error",
             "code": "route.caseMismatch",
-            "message": "differs from the route \"server\" only in letter case, and an \"@\" only names a route. Spell it \"@server\", or declare it as written.",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-casemismatch"
+            "message": "differs from the route \"server\" only in letter case, so it would route nothing. Spell it \"@server\", or declare it as written.",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-casemismatch",
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/Shop/@SERVER",
+                  "to": "<dir>/src/Shop/@server"
+                }
+              }
+            ]
           }
         ]
       }

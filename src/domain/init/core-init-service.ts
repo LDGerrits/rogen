@@ -1,13 +1,14 @@
 import path from "path";
 import { Disposable, toDisposable } from "../../base/disposable.js";
 import { ErrorUtils, UsageError } from "../../base/errors.js";
-import { samePath, selfAndAncestors } from "../../base/path.js";
+import { samePath, selfAndAncestors, toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import { isRenameFix } from "../../platform/diagnostics/diagnostic.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
 	DraftFileReader,
@@ -46,7 +47,11 @@ import { ProjectSetup } from "./project-setup.js";
 import { ToolchainSetup } from "./toolchain-setup.js";
 import { ServerFinder } from "../runner/server-finder.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
-import { MigratedProject, ProjectMigration } from "./project-migration.js";
+import {
+	MigratedProject,
+	PlannedMove,
+	ProjectMigration,
+} from "./project-migration.js";
 import { MigrationSetup } from "./migration-setup.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
@@ -455,14 +460,49 @@ export class CoreInitService implements InitService {
 		for (const { setup, choices } of answered) setup.plan(choices, builder);
 		const plan = builder.build();
 		if (plan.isErr()) return err(new DiagnosticsError(plan.error));
+		const renamed = await this.withRouteSpellings(plan.value);
 		return ok(
-			plan.value.gitInit
-				? {
-						...plan.value,
-						gitInit: await read.needsGitInit(),
-					}
-				: plan.value
+			renamed.gitInit
+				? { ...renamed, gitInit: await read.needsGitInit() }
+				: renamed
 		);
+	}
+
+	/** `plan` with each name of the code that spells a route key in another letter case renamed to the key's spelling, as the write's own fix for it says, deepest first, so the project builds: init spells each key as most of the code does, and the write stops on the rest. */
+	private async withRouteSpellings(plan: InitPlan): Promise<InitPlan> {
+		if (plan.configs.length === 0) return plan;
+		const reader = this.instantiationService.createInstance(
+			DraftFileReader,
+			draftOf(plan)
+		);
+		const selection = await this.configService.select(plan.configs, reader);
+		if (selection.isErr()) return plan;
+		const failure = (
+			await this.writeService.check(selection.value, reader)
+		).failure();
+		if (!(failure instanceof DiagnosticsError)) return plan;
+		const relative = (file: string) =>
+			toPosix(path.relative(plan.directory, file));
+		const renames = new Map<string, PlannedMove>();
+		for (const { code, fixes } of failure.diagnostics) {
+			if (code !== "route.caseMismatch" && code !== "route.strayAt")
+				continue;
+			for (const { rename } of (fixes ?? []).filter(isRenameFix))
+				if (rename.from.toLowerCase() === rename.to.toLowerCase())
+					renames.set(rename.from, {
+						from: relative(rename.from),
+						to: relative(rename.to),
+					});
+		}
+		if (renames.size === 0) return plan;
+		const depth = ({ from }: PlannedMove) => from.split("/").length;
+		return {
+			...plan,
+			moves: [
+				...[...renames.values()].sort((a, b) => depth(b) - depth(a)),
+				...plan.moves,
+			],
+		};
 	}
 
 	registerMigration(migration: ProjectMigration): Disposable {

@@ -1,14 +1,12 @@
 $ rogen init
 exit 0
 stdout: (not shown)
-stderr:
-  src/Inventory/Server - warning: differs from the route "server" only in letter case, so it is read as an ordinary name. Spell it "server", or declare it as written. (route.caseMismatch)
 
 $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  src/Inventory/Server - warning: differs from the route "server" only in letter case, so it is read as an ordinary name. Spell it "server", or declare it as written. (route.caseMismatch)
+  out/Inventory/Server - warning: out/Inventory/Server/Save.luau is in the compiled path and no source file makes it, so Rojo may still sync it. Delete it, or compile again from a clean folder. (compiled.orphan)
 
 written:
   .git/
@@ -16,6 +14,7 @@ written:
   AGENTS.md
   default.project.json
   default.rogen.json
+  src/Inventory/server/Save.ts
 
 default.rogen.json:
 {
@@ -55,11 +54,8 @@ project: DataModel
   ReplicatedStorage: ReplicatedStorage
     rbxts_include: Folder
       node_modules: Folder
-    shared: Folder
-      Inventory: Folder
-        Server: Folder
-          Save: ModuleScript  <- out/Inventory/Server/Save.luau
   ServerScriptService: ServerScriptService
+    Inventory: Folder
     Trading: Folder
       Trade: ModuleScript  <- out/Trading/server/Trade.luau
   StarterPlayer: StarterPlayer

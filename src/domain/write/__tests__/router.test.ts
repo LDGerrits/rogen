@@ -445,11 +445,16 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should read a folder named for a route in another letter case as a name", async () => {
-				await write("src/Server/A.luau");
+			it("should read a folder named for a route in another letter case as a name under a route, or one its own marker routes", async () => {
+				await write(
+					"src/client/Server/A.luau",
+					"src/Client/@server",
+					"src/Client/B.luau"
+				);
 
-				expect(await paths()).toEqual([
-					"ReplicatedStorage/shared/Server/A",
+				expect((await paths()).sort()).toEqual([
+					"ServerScriptService/Client/B",
+					"StarterPlayer/StarterPlayerScripts/Server/A",
 				]);
 			});
 

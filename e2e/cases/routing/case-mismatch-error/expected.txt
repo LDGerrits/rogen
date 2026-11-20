@@ -1,0 +1,8 @@
+$ rogen write
+exit 1
+stdout: (not shown)
+stderr:
+  error: default.project.json · not written
+  src/Inventory/@SERVER - error: differs from the route "server" only in letter case, so it would route nothing. Spell it "@server", or declare it as written. (route.caseMismatch)
+  src/SHARED - error: differs from the route "shared" only in letter case, so it would route nothing. Spell it "shared", or declare it as written. (route.caseMismatch)
+  src/Server - error: differs from the route "server" only in letter case, so it would route nothing. Spell it "server", or declare it as written. (route.caseMismatch)

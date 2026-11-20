@@ -100,11 +100,14 @@ describe("NameReadings", () => {
 			});
 
 			it("should note a plain folder that only differs from a key in case", async () => {
-				await write("src/SERVER/Save.luau", "src/Inventory/Save.luau");
+				await write(
+					"src/server/SERVER/Save.luau",
+					"src/Inventory/Save.luau"
+				);
 
 				const { folders } = await read();
 
-				expect(folders.get(at("src/SERVER"))?.nearMissKey).toBe(
+				expect(folders.get(at("src/server/SERVER"))?.nearMissKey).toBe(
 					"server"
 				);
 				expect(
@@ -122,7 +125,6 @@ describe("NameReadings", () => {
 				expect(markers.get(at("src/@server"))?.key).toBe("server");
 				expect(markers.get(at("src/.other"))?.key).toBeUndefined();
 			});
-
 		});
 
 		describe("entries", () => {

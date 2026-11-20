@@ -347,17 +347,17 @@ Do what the message says.
 
 ### `route.caseMismatch` [#route-casemismatch]
 
-Warning, or error. A folder or marker file matches a declared key except for letter case. Keys match exactly, so Rogen reads a folder such as `SHARED/` as an ordinary folder, which it may be on purpose, and warns. A marker's `@` can only mean a route, so a marker such as `@shared` is an error that stops the write.
+Error. A folder or marker file matches a declared key except for letter case. Keys match exactly, so it would route nothing and its files would go to `*`, which can ship server code to clients. A folder that a route above it, or a marker in it, already routes is left alone, since its name places nothing there.
 
 ```
-warning: differs from the route "shared" only in letter case, so it is read as an ordinary name. Spell it "shared", or declare it as written. (route.caseMismatch)
+error: differs from the route "shared" only in letter case, so it would route nothing. Spell it "shared", or declare it as written. (route.caseMismatch)
 ```
 
-Rename it to the key, as `@Shared` for a marker file. If it should route as it is written, declare that spelling as a key. Rogen offers no automatic fix, because a folder like `SHARED/` can be an ordinary folder on purpose. See [How Routing Works](/docs/v2/routing).
+Rename it to the key, as `@Shared` for a marker file. If it should route as it is written, declare that spelling as a key. Rogen offers no automatic fix, since a rename moves the files. See [How Routing Works](/docs/v2/routing).
 
 ### `route.serverCodeShipped` [#route-servercodeshipped]
 
-Warning. A file is in a plain folder named after a server route, such as `Server/` or `(Server)/`, but an outer route outranks that folder. The outer route places the file, and that route replicates to clients. Server code under `Shared/` ships to every client.
+Warning. A file is in a plain folder named after a server route in any letter case, such as `Server/`, `server/` or `(Server)/`, but an outer route outranks that folder. The outer route places the file, and that route replicates to clients. Server code under `Shared/` ships to every client.
 
 ```
 warning: ships to clients as ReplicatedStorage/Shared/Server/Datastore: move it out of the "Shared" route's files if it's server code, or keep it there with a "@Shared" marker file in its folder (route.serverCodeShipped)

@@ -189,7 +189,7 @@ describe("WriteValidator rules", () => {
 			it("should not warn about a declared key, a case-only miss, or the folder a route governs", async () => {
 				await write(
 					"src/Shared/Server/Secret.luau",
-					"src/SERVER/Other.luau"
+					"src/Shared/SERVER/Other.luau"
 				);
 
 				expect(
@@ -221,24 +221,19 @@ describe("WriteValidator rules", () => {
 		});
 
 		describe("letter case mismatches", () => {
-			const caseWarnings = async (overrides: ResolvedConfigSpec = {}) =>
-				(await route(overrides))
-					.unwrap()
-					.warnings.filter(
-						({ code }) => code === "route.caseMismatch"
-					);
+			const caseErrors = () => errorsOf("route.caseMismatch");
 
-			it("should warn about a folder named like a route in different case, at that folder", async () => {
+			it("should stop on a folder named like a route in different case that no route governs, at that folder", async () => {
 				await write("src/SERVER/Save.luau");
 
-				const [warning] = await caseWarnings();
+				const [error] = await caseErrors();
 
-				expect(warning).toMatchObject({
-					severity: DiagnosticSeverity.Warning,
+				expect(error).toMatchObject({
+					severity: DiagnosticSeverity.Error,
 					resource: abs("src/SERVER"),
 				});
-				expect(warning.message).toContain('"server"');
-				expect(warning.message).toContain(
+				expect(error.message).toContain('"server"');
+				expect(error.message).toContain(
 					'Spell it "server", or declare it as written.'
 				);
 			});
@@ -246,7 +241,7 @@ describe("WriteValidator rules", () => {
 			it("should stop on a marker file named like a route in different case, as its @ can only mean a route", async () => {
 				await write("src/Inventory/@SERVER", "src/Inventory/Save.luau");
 
-				const [error] = await errorsOf("route.caseMismatch");
+				const [error] = await caseErrors();
 
 				expect(error).toMatchObject({
 					severity: DiagnosticSeverity.Error,
@@ -255,33 +250,29 @@ describe("WriteValidator rules", () => {
 				expect(error.message).toContain('route "server"');
 			});
 
-			it("should warn once for a folder however many files it holds", async () => {
+			it("should report a folder once however many files it holds", async () => {
 				await write("src/SERVER/A.luau", "src/SERVER/B.luau");
 
-				expect(await caseWarnings()).toHaveLength(1);
+				expect(await caseErrors()).toHaveLength(1);
 			});
 
-			it("should warn once per mismatched name", async () => {
-				await write("src/SERVER/A.luau", "src/CLIENT/B.luau");
-
-				const warnings = await caseWarnings();
-
-				expect(warnings.map(({ resource }) => resource).sort()).toEqual(
-					[abs("src/CLIENT"), abs("src/SERVER")]
+			it("should report each mismatched name, the first letter alone included", async () => {
+				await write(
+					"src/SERVER/A.luau",
+					"src/CLIENT/B.luau",
+					"src/Server/C.luau"
 				);
+
+				expect(
+					(await caseErrors()).map(({ resource }) => resource).sort()
+				).toEqual([
+					abs("src/CLIENT"),
+					abs("src/SERVER"),
+					abs("src/Server"),
+				]);
 			});
 
-			it("should warn about a name that differs in its first letter alone", async () => {
-				await write("src/Server/Save.luau", "src/Client/Load.luau");
-
-				const warnings = await caseWarnings();
-
-				expect(warnings.map(({ resource }) => resource).sort()).toEqual(
-					[abs("src/Client"), abs("src/Server")]
-				);
-			});
-
-			it("should not warn about a name that matches exactly or not at all", async () => {
+			it("should not report a name that matches exactly or not at all", async () => {
 				await write(
 					"src/server/A.luau",
 					"src/Inventory/B.server.luau",
@@ -289,13 +280,42 @@ describe("WriteValidator rules", () => {
 					"src/Inventory/Player.luau"
 				);
 
-				expect(await caseWarnings()).toEqual([]);
+				expect(
+					(await route())
+						.unwrap()
+						.warnings.filter(
+							({ code }) => code === "route.caseMismatch"
+						)
+				).toEqual([]);
+			});
+
+			it("should fix each mismatch by renaming the name to the key's spelling", async () => {
+				await write(
+					"src/(SERVER)/A.luau",
+					"src/M/@Server",
+					"src/M/b.luau"
+				);
+
+				expect(fixesOf(await caseErrors())).toEqual([
+					{
+						rename: {
+							from: at("src/(SERVER)"),
+							to: at("src/(server)"),
+						},
+					},
+					{
+						rename: {
+							from: at("src/M/@Server"),
+							to: at("src/M/@server"),
+						},
+					},
+				]);
 			});
 
 			it("should spell a marker file's mismatch with its @", async () => {
 				await write("src/M/@SERVER", "src/M/a.luau");
 
-				const [error] = await errorsOf("route.caseMismatch");
+				const [error] = await caseErrors();
 
 				expect(error.resource).toEqual(abs("src/M/@SERVER"));
 				expect(error.message).toContain(
@@ -303,16 +323,39 @@ describe("WriteValidator rules", () => {
 				);
 			});
 
-			it("should still report a mismatch on a file that no route governs", async () => {
+			it("should stop on a mismatch where no route would place the file", async () => {
 				await write("src/SERVER/Save.luau");
 
-				const warnings = (
-					await route({ routes: { server: "ServerScriptService" } })
-				).unwrap().warnings;
+				expect(
+					await errorsOf("route.caseMismatch", {
+						routes: { server: "ServerScriptService" },
+					})
+				).toHaveLength(1);
+			});
 
-				expect(warnings.map(({ code }) => code)).toEqual([
-					"route.caseMismatch",
-					"route.unrouted",
+			it("should leave a folder in another case under a route alone, as the outer route places its files whatever its name", async () => {
+				await write("src/server/CLIENT/A.luau");
+
+				const { warnings, routed } = (await route()).unwrap();
+
+				expect(warnings).toEqual([]);
+				expect(routed.map(({ instancePath }) => instancePath)).toEqual([
+					["ServerScriptService", "CLIENT", "A"],
+				]);
+			});
+
+			it("should warn that server code ships to clients from a server folder in any case under a client route", async () => {
+				await write("src/client/SERVER/A.luau");
+
+				const { warnings } = (await route()).unwrap();
+
+				expect(
+					warnings.map(({ code, resource }) => [code, resource])
+				).toEqual([
+					[
+						"route.serverCodeShipped",
+						abs("src/client/SERVER/A.luau"),
+					],
 				]);
 			});
 		});
@@ -526,21 +569,18 @@ describe("WriteValidator rules", () => {
 				});
 			});
 
-			it("should leave the letter-case warning to bare names when a dot route key differs in case", async () => {
+			it("should leave the letter-case error to bare names when a dot route key differs in case", async () => {
 				await write(
 					"src/.SERVER/A.luau",
 					"src/C/.SERVER",
 					"src/SERVER/B.luau"
 				);
 
-				const mismatched = (await route({ routes: SHARED }))
-					.unwrap()
-					.warnings.filter(
-						({ code }) => code === "route.caseMismatch"
-					)
-					.map(({ resource }) => resource);
-
-				expect(mismatched).toEqual([abs("src/SERVER")]);
+				expect(
+					(
+						await errorsOf("route.caseMismatch", { routes: SHARED })
+					).map(({ resource }) => resource)
+				).toEqual([abs("src/SERVER")]);
 			});
 
 			it("should not offer a rename that another route's folder would ignore", async () => {
