@@ -38,19 +38,14 @@ export class RoutePatterns {
 		);
 	}
 
-	/** The name a pattern reads for the instance an init script makes: its folder's name with the script's extension, as `InputController.luau` for `InputController/init.luau`. */
-	static initName(folderName: string, initFileName: string): string {
-		return `${folderName}${initFileName.slice(initFileName.indexOf("."))}`;
-	}
-
 	get keys(): readonly string[] {
 		return this.patterns.map(({ key }) => key);
 	}
 
-	/** The pattern with the most characters that aren't `*` among those matching `fileName`; patterns of that weight with different targets clash. */
-	match(fileName: string): PatternMatch | undefined {
+	/** The pattern with the most characters that aren't `*` among those matching one of `names`, a file's name and the name of the instance it makes; patterns of that weight with different targets clash. */
+	match(...names: readonly string[]): PatternMatch | undefined {
 		const matching = this.patterns.filter(({ regex }) =>
-			regex.test(fileName)
+			names.some((name) => regex.test(name))
 		);
 		if (matching.length === 0) return undefined;
 		const weight = Math.max(...matching.map((pattern) => pattern.weight));

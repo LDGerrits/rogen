@@ -307,7 +307,7 @@ describe("build command", () => {
 
 		it("should annotate every warning of a build, though the text lists only some of them", async () => {
 			for (let i = 1; i <= 12; i++)
-				await fs.writeFile(abs(`src/F${i}@sever.luau`), "");
+				await fs.writeFile(abs(`src/F${i}.Server.luau`), "");
 
 			const { logService } = await annotatedRun([
 				validEntry({
@@ -320,11 +320,11 @@ describe("build command", () => {
 
 			expect(logService.texts("annotation")).toHaveLength(12);
 			expect(logService.texts("annotation")).toContain(
-				'::warning file=src/F9@sever.luau,title=route.strayAt::did you mean "@Server"?'
+				'::warning file=src/F9.Server.luau,title=route.dotRoute::write "F9.server.luau"'
 			);
 			expect(
 				logService.texts("diagnosticWarning").join("\n")
-			).not.toContain("F9@sever");
+			).not.toContain("F9.Server");
 		});
 
 		it("should annotate an error that fails the build", async () => {

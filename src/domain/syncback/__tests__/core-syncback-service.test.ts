@@ -1127,14 +1127,20 @@ describe("CoreSyncbackService", () => {
 			]);
 		});
 
-		it("should name the route into a new child of an init script a pattern routes, as the child's own name decides", async () => {
+		it("should write a new child of a folder script plainly beside it, as no pattern takes the script from its folder", async () => {
 			await prepare(["src/Input/InputController/init.luau"], {
 				routes: PATTERNS,
 			});
-			added([...CLIENT, "Input", "InputController", "Keys.luau"]);
+			added([
+				"ReplicatedStorage",
+				"Shared",
+				"Input",
+				"InputController",
+				"Keys.luau",
+			]);
 
 			expect(await written()).toEqual([
-				abs("src/Input/InputController/Keys@Client.luau"),
+				abs("src/Input/InputController/Keys.luau"),
 			]);
 		});
 

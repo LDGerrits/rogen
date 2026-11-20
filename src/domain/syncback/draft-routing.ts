@@ -44,6 +44,10 @@ const isAboutAny = (diagnostic: Diagnostic, paths: readonly string[]) =>
 		.map(toPosix)
 		.some((file) => paths.some((made) => containsPosix(made, file)));
 
+/** Why a write would stop on `error`, for an instance syncback leaves out. */
+const stopsOn = ({ code, resource, message }: Diagnostic) =>
+	`the write would stop on ${toNative(resource)} (${code}: ${message.replace(/\.$/, "")})`;
+
 /** Why routing doesn't make `landing` the instance it is for, `files` being what it says of the paths it was asked about; none when it does, or when the path is Rojo's to read by its own rules, in a mounted folder, a nested project or outside every source path. A folder is the instance routing makes of it, as an empty folder or as a folder of the files in it. */
 export function landingMiss(
 	{ file, instance, folder }: Landing,
@@ -127,10 +131,7 @@ export class DraftRouting {
 				isAboutAny(diagnostic, made)
 			);
 			if (about) {
-				misses.set(
-					proposal,
-					`routing would stop on ${toNative(about.resource)}: ${about.message.replace(/\.$/, "")}`
-				);
+				misses.set(proposal, stopsOn(about));
 				continue;
 			}
 			for (const landing of proposal.landings) {
@@ -138,10 +139,7 @@ export class DraftRouting {
 					({ source }) => source === this.absolute(landing.file)
 				);
 				if (found?.status === "blocked") {
-					blocked.set(
-						proposal,
-						`routing would stop on ${toNative(found.by.resource)}: ${found.by.message.replace(/\.$/, "")}`
-					);
+					blocked.set(proposal, stopsOn(found.by));
 					break;
 				}
 				const why = landingMiss(

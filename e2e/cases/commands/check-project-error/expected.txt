@@ -1,16 +1,16 @@
 $ rogen check
 exit 1
 stdout:
-  src/Inventory/Save@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/Inventory/Save.Server.luau - warning: write "Save.server.luau" (route.dotRoute)
   out - warning: the compiled path "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
 
 $ rogen check src
 exit 1
 stdout:
-  src/Inventory/Save@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/Inventory/Save.Server.luau - warning: write "Save.server.luau" (route.dotRoute)
 
 $ rogen check -q
 exit 1
 stdout:
-  src/Inventory/Save@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/Inventory/Save.Server.luau - warning: write "Save.server.luau" (route.dotRoute)
   out - warning: the compiled path "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)

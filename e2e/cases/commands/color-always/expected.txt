@@ -5,14 +5,14 @@ stdout:
   Wrote default.project.json.
   Wrote 1 of 1 project file with 1 warning.
 stderr:
-  default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
-    src/Save@sever.luau (did you mean "@Server"?)
+  default.rogen.json - warning: 1 name writes a route key after a dot, where only "@" routes, so it routes nothing: (route.dotRoute)
+    src/Save.Server.luau (write "Save.server.luau")
 
 $ rogen where --color always
 exit 0
 stdout:
-  src/Save@sever.luau -> ReplicatedStorage/Shared/Save@sever · route * (fallback)
-    warning: did you mean "@Server"? (route.strayAt)
+  src/Save.Server.luau -> ReplicatedStorage/Shared/Save.Server · route * (fallback)
+    warning: write "Save.server.luau" (route.dotRoute)
 
 written:
   default.project.json

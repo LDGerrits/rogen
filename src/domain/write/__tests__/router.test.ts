@@ -71,6 +71,35 @@ describe("Router", () => {
 				]);
 			});
 
+			it("should match the instance a file makes as well as its file name, so a pattern needs no extension", async () => {
+				await write(
+					"src/Shop/ShopController.luau",
+					"src/Shop/Card.story.tsx"
+				);
+
+				expect(
+					(
+						await route({
+							routes: {
+								...ROUTES,
+								"*Controller":
+									"StarterPlayer/StarterPlayerScripts",
+								"*.story": "ReplicatedStorage/Stories",
+							},
+						})
+					)
+						.unwrap()
+						.routed.map(
+							({ instancePath, route }) =>
+								`${instancePath.join("/")} · ${route}`
+						)
+						.sort()
+				).toEqual([
+					"ReplicatedStorage/Stories/Shop/Card.story · *.story",
+					"StarterPlayer/StarterPlayerScripts/Shop/ShopController · *Controller",
+				]);
+			});
+
 			it("should send a file no pattern matches to *", async () => {
 				await write("src/Shop/Types.luau");
 
@@ -79,7 +108,7 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should route an init script by the instance it makes, and only the script, as an @ on it would", async () => {
+			it("should not match an init script, which is its folder, so the folder's files stay with it", async () => {
 				await write(
 					"src/Hud/index.tsx",
 					"src/Hud/Types.luau",
@@ -89,23 +118,11 @@ describe("Router", () => {
 				);
 
 				expect(await routed()).toEqual([
+					"ReplicatedStorage/shared/Hud · * (fallback)",
 					"ReplicatedStorage/shared/Hud/Types · * (fallback)",
+					"ReplicatedStorage/shared/Input/InputService · * (fallback)",
 					"ReplicatedStorage/shared/Input/InputService/Keys · * (fallback)",
-					"ServerScriptService/Input/InputService · *Service.* (pattern)",
 					"ServerScriptService/Input/InputService/Remote · server (folder)",
-					"StarterPlayer/StarterPlayerScripts/Hud · *.tsx (pattern)",
-				]);
-			});
-
-			it("should not match a name whose @ nearly spells a route key, which is meant for that key", async () => {
-				await write(
-					"src/Shop/Foo@sever.tsx",
-					"src/Shop/Button@Hover.tsx"
-				);
-
-				expect(await routed()).toEqual([
-					"ReplicatedStorage/shared/Shop/Foo@sever · * (fallback)",
-					"StarterPlayer/StarterPlayerScripts/Shop/Button@Hover · *.tsx (pattern)",
 				]);
 			});
 
@@ -420,30 +437,19 @@ describe("Router", () => {
 				).toEqual(["Workspace/Types.shared"]);
 			});
 
-			it("should not strip a suffix whose letter case differs beyond the first letter", async () => {
-				await write(
-					"src/Inventory/Load@SERVER.luau",
-					"src/Inventory/Saveserver.luau"
-				);
+			it("should not strip a key that ends a name without an @", async () => {
+				await write("src/Inventory/Saveserver.luau");
 
 				expect(await paths()).toEqual([
-					"ReplicatedStorage/shared/Inventory/Load@SERVER",
 					"ReplicatedStorage/shared/Inventory/Saveserver",
 				]);
 			});
 
-			it("should read a suffix, folder or marker in another letter case as a name", async () => {
-				await write(
-					"src/Inventory/Load@Server.luau",
-					"src/Server/A.luau",
-					"src/Shop/@Server",
-					"src/Shop/B.luau"
-				);
+			it("should read a folder named for a route in another letter case as a name", async () => {
+				await write("src/Server/A.luau");
 
-				expect((await paths()).sort()).toEqual([
-					"ReplicatedStorage/shared/Inventory/Load@Server",
+				expect(await paths()).toEqual([
 					"ReplicatedStorage/shared/Server/A",
-					"ReplicatedStorage/shared/Shop/B",
 				]);
 			});
 

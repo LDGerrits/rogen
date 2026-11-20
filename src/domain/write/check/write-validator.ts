@@ -77,7 +77,6 @@ export class WriteValidator {
 			...this.nestedProject(),
 			...this.unclaimedMeta(),
 			...this.caseMismatch(),
-			...this.strayAt(),
 			...this.dotRoute(),
 			...this.folderTypo(),
 			...this.unrouted(),
@@ -255,27 +254,18 @@ export class WriteValidator {
 			);
 	}
 
+	/** A folder named for a route in another case, which may be an ordinary folder; a marker's `@` can only mean a route, so the placement stops on that one. */
 	private caseMismatch(): Diagnostic[] {
 		const { nearMisses, markers } = this.placement.readings;
-		return [...nearMisses].map(([resource, key]) => {
-			const sign = markers.has(resource) ? "@" : "";
-			return warningDiagnostic(
-				"route.caseMismatch",
-				{ resource },
-				`differs from the route "${key}" only in letter case, so it is read as an ordinary name. Spell it "${sign}${key}", or declare it as written.`
+		return [...nearMisses]
+			.filter(([resource]) => !markers.has(resource))
+			.map(([resource, key]) =>
+				warningDiagnostic(
+					"route.caseMismatch",
+					{ resource },
+					`differs from the route "${key}" only in letter case, so it is read as an ordinary name. Spell it "${key}", or declare it as written.`
+				)
 			);
-		});
-	}
-
-	private strayAt(): Diagnostic[] {
-		return this.misspelt(
-			"route.strayAt",
-			"strayAt",
-			(_, { text, suggestion, notLast }) =>
-				notLast
-					? `"@${text}" must end the name`
-					: `did you mean "${suggestion}"?`
-		);
 	}
 
 	private dotRoute(): Diagnostic[] {

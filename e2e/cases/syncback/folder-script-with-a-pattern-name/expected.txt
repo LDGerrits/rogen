@@ -1,7 +1,7 @@
 $ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
-  Writing src/Input/InputController/Keys@Client.luau
+  Writing src/Input/InputController/Keys.luau
 stderr:
   Wrote default.project.json.
   Syncback wrote 1 change.
@@ -17,12 +17,16 @@ stderr:
 
 written:
   default.project.json
-  src/Input/InputController/Keys@Client.luau
+  src/Input/InputController/Keys.luau
 
 $ rojo sourcemap default.project.json
 Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Input: Folder
+        InputController: ModuleScript  <- src/Input/InputController/init.luau
+          Keys: ModuleScript  <- src/Input/InputController/Keys.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Input: Folder
-        InputController: ModuleScript  <- src/Input/InputController/init.luau
-          Keys: ModuleScript  <- src/Input/InputController/Keys@Client.luau
+        MouseController: ModuleScript  <- src/Input/MouseController.luau

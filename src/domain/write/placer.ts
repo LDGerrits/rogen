@@ -1,3 +1,4 @@
+import { mistypedAtErrors } from "./mistyped-at-errors.js";
 import { compareStrings } from "../../base/collections.js";
 import { joinPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -71,6 +72,14 @@ export class Placer {
 		} = new Router(this.config, readings).route(roots, claims);
 		const markerClashes = new MarkerClashes(claims);
 		const routeErrors = [
+			...mistypedAtErrors(
+				readings,
+				new Set(
+					routed
+						.filter((file) => this.tree.displacing(file))
+						.map(({ entry }) => entry.source)
+				)
+			),
 			...markerClashes.diagnostics(),
 			...this.ignoredAtErrors(
 				routed.filter((file) => !this.tree.displacing(file)),

@@ -1342,8 +1342,8 @@ describe("CoreWriteService.locate", () => {
 			expect(await foldersFor("Workspace.Shop.Buy")).toEqual([[]]);
 		});
 
-		it("should name the rename of a file a stray @ left out of place", async () => {
-			await write("src/Shop/Buy@sever.luau");
+		it("should name the rename of a file whose misspelt route left it out of place", async () => {
+			await write("src/Shop/Buy.Server.luau");
 
 			const [instance] = (
 				await locateIn(writeService(), configOf(), {
@@ -1354,10 +1354,10 @@ describe("CoreWriteService.locate", () => {
 
 			expect(instance.fixes).toEqual([
 				{
-					code: "route.strayAt",
+					code: "route.dotRoute",
 					rename: {
-						from: abs("src/Shop/Buy@sever.luau"),
-						to: abs("src/Shop/Buy@Server.luau"),
+						from: abs("src/Shop/Buy.Server.luau"),
+						to: abs("src/Shop/Buy.server.luau"),
 					},
 				},
 			]);
@@ -1365,7 +1365,7 @@ describe("CoreWriteService.locate", () => {
 		});
 
 		it("should not offer a rename that places a different instance", async () => {
-			await write("src/Shop/Cart@sever.luau");
+			await write("src/Shop/Cart.Server.luau");
 
 			const [instance] = (
 				await locateIn(writeService(), configOf(), {

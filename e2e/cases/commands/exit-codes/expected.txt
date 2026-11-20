@@ -37,7 +37,7 @@ exit 0
 $ rogen check warn
 exit 1
 stdout:
-  warn/src/Inventory/Save@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  warn/src/Inventory/Save.Server.luau - warning: write "Save.server.luau" (route.dotRoute)
 
 $ rogen check --nope
 exit 2

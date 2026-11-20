@@ -350,13 +350,13 @@ describe("init command", () => {
 		});
 
 		it("should say what is wrong with the routes it wrote", async () => {
-			await write("src/Save@sever.luau");
+			await write("src/Save.Server.luau");
 			const logService = new MockLogService();
 
 			await runInit(new MockPromptService([], false), logService);
 
 			expect(logService.lines).toContainEqual(
-				expect.stringContaining("(route.strayAt)")
+				expect.stringContaining("(route.dotRoute)")
 			);
 		});
 

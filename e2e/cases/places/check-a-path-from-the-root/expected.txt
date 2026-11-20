@@ -1,23 +1,23 @@
-$ rogen check places/lobby/src/Buy@sever.luau
+$ rogen check places/lobby/src/Buy.Server.luau
 exit 1
 stdout:
-  places/lobby/src/Buy@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  places/lobby/src/Buy.Server.luau - warning: write "Buy.server.luau" (route.dotRoute)
 
-$ rogen check places/shared/src/Stray@sever.luau
+$ rogen check places/shared/src/Stray.Server.luau
 exit 0
 stderr:
-  note: places/shared/src/Stray@sever.luau: no config at or above it reads it.
+  note: places/shared/src/Stray.Server.luau: no config at or above it reads it.
 
-$ rogen check places/shared/src/Stray@sever.luau places/lobby/src/Main.server.luau
+$ rogen check places/shared/src/Stray.Server.luau places/lobby/src/Main.server.luau
 exit 0
 stderr:
-  note: places/shared/src/Stray@sever.luau: no config at or above it reads it.
+  note: places/shared/src/Stray.Server.luau: no config at or above it reads it.
 
 $ rogen check places/lobby/default.rogen.json
 exit 1
 stdout:
-  places/shared/src/Stray@sever.luau - warning: did you mean "@server"? (route.strayAt)
-  places/lobby/src/Buy@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  places/shared/src/Stray.Server.luau - warning: write "Stray.server.luau" (route.dotRoute)
+  places/lobby/src/Buy.Server.luau - warning: write "Buy.server.luau" (route.dotRoute)
 
 $ rogen check
 exit 1

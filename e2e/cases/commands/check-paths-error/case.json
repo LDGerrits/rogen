@@ -1,6 +1,6 @@
 {
 	"steps": [
-		["check", "src/Inventory/Save@sever.luau", "src/Inventory/Clean.luau", "src/Inventory/New@sever.luau", "src/shared/server/Secret.server.luau"],
+		["check", "src/Inventory/Save.Server.luau", "src/Inventory/Clean.luau", "src/Inventory/New.Server.luau", "src/shared/server/Secret.server.luau"],
 		["check", "src/Inventory", "--json"]
 	],
 	"rojo": false

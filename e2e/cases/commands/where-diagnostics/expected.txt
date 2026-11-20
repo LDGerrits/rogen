@@ -1,49 +1,49 @@
-$ rogen where src/Inventory/Save@sever.luau src/shared/server/Secret.server.luau src/Inventory/New@sever.luau src/Inventory/Clean.luau
+$ rogen where src/Inventory/Save.Server.luau src/shared/server/Secret.server.luau src/Inventory/New.Server.luau src/Inventory/Clean.luau
 exit 0
 stdout:
-  src/Inventory/Save@sever.luau -> ReplicatedStorage/shared/Inventory/Save@sever · route * (fallback)
-    warning: did you mean "@server"? (route.strayAt)
-    require(game:GetService("ReplicatedStorage").shared.Inventory["Save@sever"])
+  src/Inventory/Save.Server.luau -> ReplicatedStorage/shared/Inventory/Save.Server · route * (fallback)
+    warning: write "Save.server.luau" (route.dotRoute)
+    require(game:GetService("ReplicatedStorage").shared.Inventory["Save.Server"])
   src/shared/server/Secret.server.luau -> ReplicatedStorage/shared/server/Secret · route shared (folder)
     warning: a Script never runs in ReplicatedStorage (tree.deadScript)
     no require by this path: a script runs on its own and is not a module
-  src/Inventory/New@sever.luau -> ReplicatedStorage/shared/Inventory/New@sever · route * (fallback) · the file does not exist yet
-    warning: did you mean "@server"? (route.strayAt)
-    require(game:GetService("ReplicatedStorage").shared.Inventory["New@sever"])
+  src/Inventory/New.Server.luau -> ReplicatedStorage/shared/Inventory/New.Server · route * (fallback) · the file does not exist yet
+    warning: write "New.server.luau" (route.dotRoute)
+    require(game:GetService("ReplicatedStorage").shared.Inventory["New.Server"])
   src/Inventory/Clean.luau -> ReplicatedStorage/shared/Inventory/Clean · route * (fallback)
     require(game:GetService("ReplicatedStorage").shared.Inventory.Clean)
 
-$ rogen where src/Inventory/Save@sever.luau src/shared/server/Secret.server.luau src/Inventory/New@sever.luau src/Inventory/Clean.luau --json
+$ rogen where src/Inventory/Save.Server.luau src/shared/server/Secret.server.luau src/Inventory/New.Server.luau src/Inventory/Clean.luau --json
 exit 0
 stdout:
   {
     "locations": [
       {
         "config": "default.rogen.json",
-        "source": "<dir>/src/Inventory/Save@sever.luau",
+        "source": "<dir>/src/Inventory/Save.Server.luau",
         "status": "placed",
         "exists": true,
         "instancePath": [
           "ReplicatedStorage",
           "shared",
           "Inventory",
-          "Save@sever"
+          "Save.Server"
         ],
-        "require": "game:GetService(\"ReplicatedStorage\").shared.Inventory[\"Save@sever\"]",
+        "require": "game:GetService(\"ReplicatedStorage\").shared.Inventory[\"Save.Server\"]",
         "route": "*",
         "routeMatch": "fallback",
         "diagnostics": [
           {
-            "file": "<dir>/src/Inventory/Save@sever.luau",
+            "file": "<dir>/src/Inventory/Save.Server.luau",
             "severity": "warning",
-            "code": "route.strayAt",
-            "message": "did you mean \"@server\"?",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "code": "route.dotRoute",
+            "message": "write \"Save.server.luau\"",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
-                  "from": "<dir>/src/Inventory/Save@sever.luau",
-                  "to": "<dir>/src/Inventory/Save@server.luau"
+                  "from": "<dir>/src/Inventory/Save.Server.luau",
+                  "to": "<dir>/src/Inventory/Save.server.luau"
                 }
               }
             ]
@@ -75,30 +75,30 @@ stdout:
       },
       {
         "config": "default.rogen.json",
-        "source": "<dir>/src/Inventory/New@sever.luau",
+        "source": "<dir>/src/Inventory/New.Server.luau",
         "status": "placed",
         "exists": false,
         "instancePath": [
           "ReplicatedStorage",
           "shared",
           "Inventory",
-          "New@sever"
+          "New.Server"
         ],
-        "require": "game:GetService(\"ReplicatedStorage\").shared.Inventory[\"New@sever\"]",
+        "require": "game:GetService(\"ReplicatedStorage\").shared.Inventory[\"New.Server\"]",
         "route": "*",
         "routeMatch": "fallback",
         "diagnostics": [
           {
-            "file": "<dir>/src/Inventory/New@sever.luau",
+            "file": "<dir>/src/Inventory/New.Server.luau",
             "severity": "warning",
-            "code": "route.strayAt",
-            "message": "did you mean \"@server\"?",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "code": "route.dotRoute",
+            "message": "write \"New.server.luau\"",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
-                  "from": "<dir>/src/Inventory/New@sever.luau",
-                  "to": "<dir>/src/Inventory/New@server.luau"
+                  "from": "<dir>/src/Inventory/New.Server.luau",
+                  "to": "<dir>/src/Inventory/New.server.luau"
                 }
               }
             ]

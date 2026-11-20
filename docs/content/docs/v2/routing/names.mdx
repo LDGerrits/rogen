@@ -86,7 +86,7 @@ A route in an init script's name places only the script, not the folder around i
 
 ## Patterns
 
-A route key with a `*` is a pattern on file names, where `*` stands for any run of characters. It takes a file that no folder, `@` or marker routes, so a project that names files by their role needs no `@` on each one:
+A route key with a `*` is a pattern on file names, where `*` stands for any run of characters. It matches a file's name or the name of the instance it makes, so `*Controller` and `*Controller.*` both take `ShopController.luau`. It takes a file that no folder, `@` or marker routes, so a project that names files by their role needs no `@` on each one:
 
 ```json title="default.rogen.json"
 {
@@ -127,4 +127,4 @@ A route key with a `*` is a pattern on file names, where `*` stands for any run 
 `}
 />
 
-A pattern keeps the whole name, so `ShopController.luau` stays `ShopController`, and a route you write always beats it, which is why `PriceService` stays in its `Shared/` folder. An init script is matched by the instance it makes, its folder's name with the script's extension, so `InputController/init.luau` matches `*Controller.*`. As with an `@` on an init script, that routes the script alone, and the folder's other files route by their own names, so name them like `Keys@Client.luau` or put them in a `Client/` folder. A name whose `@` nearly spells a route key, such as `Load@Sever.luau`, is never matched, since that `@` is meant for the key. When several patterns match, the one with more characters that aren't `*` wins, so `*.story.tsx` beats `*.tsx` and every pattern beats `*`; a tie between different places is [`route.patternClash`](/docs/v2/diagnostics#route-patternclash). Patterns match letter case exactly and never a path, and a misspelt name such as `ShopControler.luau` simply falls to `*`.
+A pattern keeps the whole name, so `ShopController.luau` stays `ShopController`, and a route you write always beats it, which is why `PriceService` stays in its `Shared/` folder. A pattern never matches a folder, nor an init script, which is its folder, so a script written as `InputController/init.luau` stays with its children; route that folder by its name, as `InputController@Client/`. When several patterns match, the one with more characters that aren't `*` wins, so `*.story.tsx` beats `*.tsx` and every pattern beats `*`; a tie between different places is [`route.patternClash`](/docs/v2/diagnostics#route-patternclash). Patterns match letter case exactly and never a path, and a misspelt name such as `ShopControler.luau` simply falls to `*`.

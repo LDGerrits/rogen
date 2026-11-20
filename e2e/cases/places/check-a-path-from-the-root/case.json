@@ -2,15 +2,15 @@
 	"steps": [
 		[
 			"check",
-			"places/lobby/src/Buy@sever.luau"
+			"places/lobby/src/Buy.Server.luau"
 		],
 		[
 			"check",
-			"places/shared/src/Stray@sever.luau"
+			"places/shared/src/Stray.Server.luau"
 		],
 		[
 			"check",
-			"places/shared/src/Stray@sever.luau",
+			"places/shared/src/Stray.Server.luau",
 			"places/lobby/src/Main.server.luau"
 		],
 		[

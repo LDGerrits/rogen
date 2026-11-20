@@ -216,13 +216,13 @@ The message names the routing folders of the file's feature. The feature is the 
 
 ### `route.strayAt` [#route-strayat]
 
-Warning. A name, folder or marker file has an `@` that doesn't route, so the `@` stays in the instance name. This happens in two cases:
+Error. A name, folder or marker file has an `@` that doesn't route. An `@` can only mean a route, so Rogen stops rather than send the file where its route doesn't reach, such as server code to clients. This happens in two cases:
 
 - The text after the `@` nearly spells a declared route key, with a typo or the wrong letter case.
 - The text spells a route key, but it isn't at the end of the name, as in `Report@server.bak.luau`.
 
 ```
-warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)
+error: 2 names have an "@" that misses its route, so Rogen stops until they are fixed: (route.strayAt)
   src/Inventory/Load@SERVER.luau (did you mean "@server"?)
   src/Inventory/Report@server.bak.luau ("@server" must end the name)
 ```
@@ -347,13 +347,13 @@ Do what the message says.
 
 ### `route.caseMismatch` [#route-casemismatch]
 
-Warning. A folder or marker file matches a declared key except for letter case. Keys match exactly, so Rogen reads it as an ordinary name.
+Warning, or error. A folder or marker file matches a declared key except for letter case. Keys match exactly, so Rogen reads a folder such as `SHARED/` as an ordinary folder, which it may be on purpose, and warns. A marker's `@` can only mean a route, so a marker such as `@shared` is an error that stops the write.
 
 ```
 warning: differs from the route "shared" only in letter case, so it is read as an ordinary name. Spell it "shared", or declare it as written. (route.caseMismatch)
 ```
 
-Rename it to the key, as `@Shared` for a marker file. If it should route as it is written, declare that spelling as a key. Rogen offers no automatic fix, because a name like `SHARED/` can be an ordinary folder on purpose. See [How Routing Works](/docs/v2/routing).
+Rename it to the key, as `@Shared` for a marker file. If it should route as it is written, declare that spelling as a key. Rogen offers no automatic fix, because a folder like `SHARED/` can be an ordinary folder on purpose. See [How Routing Works](/docs/v2/routing).
 
 ### `route.serverCodeShipped` [#route-servercodeshipped]
 

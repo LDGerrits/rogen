@@ -32,7 +32,7 @@ const GROUPS: Readonly<Record<string, DiagnosticGroup>> = {
 	},
 	"route.strayAt": {
 		headline: (count) =>
-			`${count} ${either(count, "name has", "names have")} an "@" that routes nowhere, so ${either(count, "it is read as an ordinary name", "they are read as ordinary names")}:`,
+			`${count} ${either(count, "name has", "names have")} an "@" that misses its route, so Rogen stops until ${either(count, "it is", "they are")} fixed:`,
 	},
 	"route.dotRoute": {
 		headline: (count) =>

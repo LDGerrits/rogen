@@ -172,12 +172,12 @@ describe("check command", () => {
 		});
 
 		it("should print the findings as output, not as warnings", async () => {
-			await write("src/Save@sever.luau");
+			await write("src/Save.Server.luau");
 
-			await run({ _: ["src/Save@sever.luau"] });
+			await run({ _: ["src/Save.Server.luau"] });
 
 			expect(printed()).toEqual([
-				'src/Save@sever.luau - warning: did you mean "@Server"? (route.strayAt)',
+				'src/Save.Server.luau - warning: write "Save.server.luau" (route.dotRoute)',
 			]);
 			expect(logService.entries.map(({ kind }) => kind)).toEqual([
 				"print",
@@ -186,34 +186,34 @@ describe("check command", () => {
 
 		it("should print the findings under --quiet", async () => {
 			logService.setLevel(LogLevel.Error);
-			await write("src/Save@sever.luau");
+			await write("src/Save.Server.luau");
 
-			await run({ _: ["src/Save@sever.luau"] });
+			await run({ _: ["src/Save.Server.luau"] });
 
 			expect(printed()).toHaveLength(1);
 		});
 
 		it("should fail with the diagnostics about a path", async () => {
-			await write("src/Save@sever.luau", "src/Clean.luau");
+			await write("src/Save.Server.luau", "src/Clean.luau");
 
-			const result = await run({ _: ["src/Save@sever.luau"] });
+			const result = await run({ _: ["src/Save.Server.luau"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.strayAt", "src/Save@sever.luau"],
+				["route.dotRoute", "src/Save.Server.luau"],
 			]);
 		});
 
 		it("should give only the warnings about the path it is asked about", async () => {
-			await write("src/Save@sever.luau", "src/Load@sever.luau");
+			await write("src/Save.Server.luau", "src/Load.Server.luau");
 
-			const error = failureOf(await run({ _: ["src/Save@sever.luau"] }));
+			const error = failureOf(await run({ _: ["src/Save.Server.luau"] }));
 
-			expect(error.message).toContain("Save@sever");
-			expect(error.message).not.toContain("Load@sever");
+			expect(error.message).toContain("Save.Server");
+			expect(error.message).not.toContain("Load.Server");
 		});
 
 		it("should pass a clean path", async () => {
-			await write("src/Save@sever.luau", "src/Clean.luau");
+			await write("src/Save.Server.luau", "src/Clean.luau");
 
 			const result = await run({ _: ["src/Clean.luau"] });
 
@@ -224,20 +224,20 @@ describe("check command", () => {
 		it("should check a file that does not exist yet as if it were created", async () => {
 			await write("src/Clean.luau");
 
-			const result = await run({ _: ["src/New@sever.luau"] });
+			const result = await run({ _: ["src/New.Server.luau"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.strayAt", "src/New@sever.luau"],
+				["route.dotRoute", "src/New.Server.luau"],
 			]);
 		});
 
 		it("should check the files in a directory", async () => {
-			await write("src/Inventory/Save@sever.luau", "src/Clean.luau");
+			await write("src/Inventory/Save.Server.luau", "src/Clean.luau");
 
 			const result = await run({ _: ["src/Inventory"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.strayAt", "src/Inventory/Save@sever.luau"],
+				["route.dotRoute", "src/Inventory/Save.Server.luau"],
 			]);
 		});
 
@@ -280,46 +280,46 @@ describe("check command", () => {
 					routes: ROUTES,
 				});
 			await write(
-				"places/shared/src/Stray@sever.luau",
-				"places/lobby/src/Buy@sever.luau",
+				"places/shared/src/Stray.Server.luau",
+				"places/lobby/src/Buy.Server.luau",
 				"places/lobby/src/Clean.luau",
-				"places/arena/src/Sell@sever.luau"
+				"places/arena/src/Sell.Server.luau"
 			);
 		});
 
 		it("should check a file of a place from the root, by the config of that place", async () => {
 			const result = await run({
-				_: ["places/lobby/src/Buy@sever.luau"],
+				_: ["places/lobby/src/Buy.Server.luau"],
 			});
 
 			expect(found(failureOf(result))).toEqual([
-				["route.strayAt", "places/lobby/src/Buy@sever.luau"],
+				["route.dotRoute", "places/lobby/src/Buy.Server.luau"],
 			]);
 		});
 
 		it("should check files of two places, each by its own config", async () => {
 			const result = await run({
 				_: [
-					"places/lobby/src/Buy@sever.luau",
-					"places/arena/src/Sell@sever.luau",
+					"places/lobby/src/Buy.Server.luau",
+					"places/arena/src/Sell.Server.luau",
 				],
 			});
 
 			expect(found(failureOf(result))).toEqual([
-				["route.strayAt", "places/lobby/src/Buy@sever.luau"],
-				["route.strayAt", "places/arena/src/Sell@sever.luau"],
+				["route.dotRoute", "places/lobby/src/Buy.Server.luau"],
+				["route.dotRoute", "places/arena/src/Sell.Server.luau"],
 			]);
 		});
 
 		it("should skip a file that no config covers with a note, and pass", async () => {
 			const result = await run({
-				_: ["places/shared/src/Stray@sever.luau"],
+				_: ["places/shared/src/Stray.Server.luau"],
 			});
 
 			expect(result.isOk()).toBe(true);
 			expect(logService.texts("warn")).toEqual([]);
 			expect(logService.texts("notice")).toEqual([
-				"note: places/shared/src/Stray@sever.luau: no config at or above it reads it.",
+				"note: places/shared/src/Stray.Server.luau: no config at or above it reads it.",
 			]);
 		});
 
@@ -333,16 +333,16 @@ describe("check command", () => {
 				routes: ROUTES,
 			});
 
-			await run({ _: ["places/shared/src/Stray@sever.luau"] });
+			await run({ _: ["places/shared/src/Stray.Server.luau"] });
 
 			expect(logService.texts("notice")).toEqual([
-				"note: places/shared/src/Stray@sever.luau: no config at or above it reads it. Check it through one: rogen check arena.rogen.json or game.rogen.json.",
+				"note: places/shared/src/Stray.Server.luau: no config at or above it reads it. Check it through one: rogen check arena.rogen.json or game.rogen.json.",
 			]);
 		});
 
 		it("should list a file that no config covers under skipped in the JSON document", async () => {
 			await run({
-				_: ["places/shared/src/Stray@sever.luau"],
+				_: ["places/shared/src/Stray.Server.luau"],
 				json: true,
 			});
 
@@ -350,7 +350,7 @@ describe("check command", () => {
 				diagnostics: [],
 				skipped: [
 					{
-						path: "/repo/places/shared/src/Stray@sever.luau",
+						path: "/repo/places/shared/src/Stray.Server.luau",
 						reason: "noConfig",
 					},
 				],
@@ -360,13 +360,13 @@ describe("check command", () => {
 		it("should check the files that have a config and skip the rest", async () => {
 			const result = await run({
 				_: [
-					"places/shared/src/Stray@sever.luau",
-					"places/lobby/src/Buy@sever.luau",
+					"places/shared/src/Stray.Server.luau",
+					"places/lobby/src/Buy.Server.luau",
 				],
 			});
 
 			expect(found(failureOf(result))).toEqual([
-				["route.strayAt", "places/lobby/src/Buy@sever.luau"],
+				["route.dotRoute", "places/lobby/src/Buy.Server.luau"],
 			]);
 			expect(logService.texts("notice")).toHaveLength(1);
 		});
@@ -380,8 +380,8 @@ describe("check command", () => {
 				new Set(found(failureOf(result)).map(([, file]) => file))
 			).toEqual(
 				new Set([
-					"places/lobby/src/Buy@sever.luau",
-					"places/shared/src/Stray@sever.luau",
+					"places/lobby/src/Buy.Server.luau",
+					"places/shared/src/Stray.Server.luau",
 				])
 			);
 		});
@@ -390,7 +390,7 @@ describe("check command", () => {
 			const result = await run({ _: ["places/arena"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.strayAt", "places/arena/src/Sell@sever.luau"],
+				["route.dotRoute", "places/arena/src/Sell.Server.luau"],
 			]);
 		});
 
@@ -409,7 +409,7 @@ describe("check command", () => {
 			await fs.writeFile("/repo/places/arena/default.project.json", "{}");
 
 			const result = await run({
-				_: ["places/arena/src/Sell@sever.luau"],
+				_: ["places/arena/src/Sell.Server.luau"],
 			});
 
 			expect(found(failureOf(result))).toContainEqual([
@@ -439,15 +439,15 @@ describe("check command", () => {
 				new Set(found(failureOf(result)).map(([, file]) => file))
 			).toEqual(
 				new Set([
-					"places/lobby/src/Buy@sever.luau",
-					"places/shared/src/Stray@sever.luau",
+					"places/lobby/src/Buy.Server.luau",
+					"places/shared/src/Stray.Server.luau",
 				])
 			);
 		});
 
 		it("should report a skipped file on stderr and still print the JSON document", async () => {
 			const result = await run({
-				_: ["places/shared/src/Stray@sever.luau"],
+				_: ["places/shared/src/Stray.Server.luau"],
 				json: true,
 			});
 
@@ -465,42 +465,42 @@ describe("check command", () => {
 					routes: ROUTES,
 				});
 			await write(
-				"src/common/Stray@sever.luau",
-				"src/game/Buy@sever.luau",
+				"src/common/Stray.Server.luau",
+				"src/game/Buy.Server.luau",
 				"src/lobby/Clean.luau"
 			);
 		});
 
 		it("should check a file of a place by the config that holds it", async () => {
-			const result = await run({ _: ["src/game/Buy@sever.luau"] });
+			const result = await run({ _: ["src/game/Buy.Server.luau"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.strayAt", "src/game/Buy@sever.luau"],
+				["route.dotRoute", "src/game/Buy.Server.luau"],
 			]);
 		});
 
 		it("should check a shared file by every config that holds it, and report it once", async () => {
-			const result = await run({ _: ["src/common/Stray@sever.luau"] });
+			const result = await run({ _: ["src/common/Stray.Server.luau"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.strayAt", "src/common/Stray@sever.luau"],
+				["route.dotRoute", "src/common/Stray.Server.luau"],
 			]);
 		});
 
 		it("should check a file that does not exist yet", async () => {
-			await write("src/common/New@sever.luau");
+			await write("src/common/New.Server.luau");
 
-			const result = await run({ _: ["src/common/New@sever.luau"] });
+			const result = await run({ _: ["src/common/New.Server.luau"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.strayAt", "src/common/New@sever.luau"],
+				["route.dotRoute", "src/common/New.Server.luau"],
 			]);
 		});
 
 		it("should skip a file that no config holds with a note, and pass", async () => {
-			await write("tools/Stray@sever.luau");
+			await write("tools/Stray.Server.luau");
 
-			const result = await run({ _: ["tools/Stray@sever.luau"] });
+			const result = await run({ _: ["tools/Stray.Server.luau"] });
 
 			expect(result.isOk()).toBe(true);
 			expect(logService.texts("notice")).toHaveLength(1);
@@ -513,8 +513,8 @@ describe("check command", () => {
 				new Set(found(failureOf(result)).map(([, file]) => file))
 			).toEqual(
 				new Set([
-					"src/common/Stray@sever.luau",
-					"src/game/Buy@sever.luau",
+					"src/common/Stray.Server.luau",
+					"src/game/Buy.Server.luau",
 				])
 			);
 		});
@@ -524,12 +524,12 @@ describe("check command", () => {
 				sourcePaths: ["."],
 				routes: ROUTES,
 			});
-			await write("src/lobby/Sell@sever.luau");
+			await write("src/lobby/Sell.Server.luau");
 
-			const result = await run({ _: ["src/lobby/Sell@sever.luau"] });
+			const result = await run({ _: ["src/lobby/Sell.Server.luau"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.strayAt", "src/lobby/Sell@sever.luau"],
+				["route.dotRoute", "src/lobby/Sell.Server.luau"],
 			]);
 		});
 
@@ -542,8 +542,8 @@ describe("check command", () => {
 				new Set(found(failureOf(byName)).map(([, file]) => file))
 			).toEqual(
 				new Set([
-					"src/common/Stray@sever.luau",
-					"src/game/Buy@sever.luau",
+					"src/common/Stray.Server.luau",
+					"src/game/Buy.Server.luau",
 				])
 			);
 		});
@@ -567,29 +567,29 @@ describe("check command", () => {
 			await writeConfig("dist/default.rogen.json", {
 				routes: ROUTES,
 			});
-			await write("dist/src/Stray@sever.luau");
+			await write("dist/src/Stray.Server.luau");
 
 			const result = await run({ _: ["dist"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.strayAt", "dist/src/Stray@sever.luau"],
+				["route.dotRoute", "dist/src/Stray.Server.luau"],
 			]);
 		});
 
 		it("should still check a file that no config is named for", async () => {
-			await write("src/game/New@sever.luau");
+			await write("src/game/New.Server.luau");
 
-			const result = await run({ _: ["src/game/New@sever.luau"] });
+			const result = await run({ _: ["src/game/New.Server.luau"] });
 
 			expect(found(failureOf(result))).toEqual([
-				["route.strayAt", "src/game/New@sever.luau"],
+				["route.dotRoute", "src/game/New.Server.luau"],
 			]);
 		});
 
 		describe("bare, in a folder of several configs", () => {
 			const clean = async () => {
-				await fs.delete("/repo/src/common/Stray@sever.luau");
-				await fs.delete("/repo/src/game/Buy@sever.luau");
+				await fs.delete("/repo/src/common/Stray.Server.luau");
+				await fs.delete("/repo/src/game/Buy.Server.luau");
 			};
 
 			it("should check every config of the folder", async () => {
@@ -599,8 +599,8 @@ describe("check command", () => {
 					new Set(found(failureOf(result)).map(([, file]) => file))
 				).toEqual(
 					new Set([
-						"src/common/Stray@sever.luau",
-						"src/game/Buy@sever.luau",
+						"src/common/Stray.Server.luau",
+						"src/game/Buy.Server.luau",
 					])
 				);
 			});
@@ -658,30 +658,30 @@ describe("check command", () => {
 		});
 
 		it("should fail with every diagnostic of the project", async () => {
-			await write("src/Save@sever.luau", "src/Clean.luau");
+			await write("src/Save.Server.luau", "src/Clean.luau");
 
 			const result = await run({});
 
 			expect(found(failureOf(result))).toEqual([
-				["route.strayAt", "src/Save@sever.luau"],
+				["route.dotRoute", "src/Save.Server.luau"],
 			]);
 		});
 
 		it("should print one line per file a warning is about", async () => {
-			await write("src/Save@sever.luau", "src/Load@sever.luau");
+			await write("src/Save.Server.luau", "src/Load.Server.luau");
 
 			await run({});
 
 			expect(printed()).toEqual([
-				'src/Load@sever.luau - warning: did you mean "@Server"? (route.strayAt)',
-				'src/Save@sever.luau - warning: did you mean "@Server"? (route.strayAt)',
+				'src/Load.Server.luau - warning: write "Load.server.luau" (route.dotRoute)',
+				'src/Save.Server.luau - warning: write "Save.server.luau" (route.dotRoute)',
 			]);
 		});
 
 		it("should not cap the warnings of one code", async () => {
 			const names = Array.from(
 				{ length: 12 },
-				(_, i) => `A${i}@sever.luau`
+				(_, i) => `A${i}.Server.luau`
 			);
 			await write(...names.map((name) => `src/${name}`));
 
@@ -769,16 +769,16 @@ describe("check command", () => {
 		});
 
 		it("should print the diagnostics and fail when there are any", async () => {
-			await write("src/Save@sever.luau");
+			await write("src/Save.Server.luau");
 
 			const result = await run({
-				_: ["src/Save@sever.luau"],
+				_: ["src/Save.Server.luau"],
 				json: true,
 			});
 
 			expect(result.isErr()).toBe(true);
 			expect(document().diagnostics).toMatchObject([
-				{ code: "route.strayAt" },
+				{ code: "route.dotRoute" },
 			]);
 		});
 
@@ -805,9 +805,9 @@ describe("check command", () => {
 				files: ["server/Save.luau", "src/client/Hud.luau"],
 			},
 			{
-				code: "route.strayAt",
+				code: "route.dotRoute",
 				config: {},
-				files: ["src/Save@sever.luau", "src/Load@sever.luau"],
+				files: ["src/Save.Server.luau", "src/Load.Server.luau"],
 			},
 			{
 				code: "route.dotRoute",
@@ -902,22 +902,22 @@ describe("check command", () => {
 			await writeConfig("default.rogen.json", {
 				routes: ROUTES,
 			});
-			await write("src/Save@sever.luau");
+			await write("src/Save.Server.luau");
 		});
 
 		it("should annotate each finding beside printing it", async () => {
-			await runAnnotated({ _: ["src/Save@sever.luau"] });
+			await runAnnotated({ _: ["src/Save.Server.luau"] });
 
 			expect(annotated.texts("print")).toEqual([
-				'src/Save@sever.luau - warning: did you mean "@Server"? (route.strayAt)',
+				'src/Save.Server.luau - warning: write "Save.server.luau" (route.dotRoute)',
 			]);
 			expect(annotated.texts("annotation")).toEqual([
-				'::warning file=src/Save@sever.luau,title=route.strayAt::did you mean "@Server"?',
+				'::warning file=src/Save.Server.luau,title=route.dotRoute::write "Save.server.luau"',
 			]);
 		});
 
 		it("should write no workflow commands into the JSON document", async () => {
-			await runAnnotated({ _: ["src/Save@sever.luau"], json: true });
+			await runAnnotated({ _: ["src/Save.Server.luau"], json: true });
 
 			expect(annotated.texts("annotation")).toEqual([]);
 		});

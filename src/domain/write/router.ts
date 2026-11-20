@@ -2,7 +2,7 @@ import path from "path";
 import { dirnamePosix, joinPosix } from "../../base/path.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
-import { PatternMatch, RoutePatterns } from "../config/route-patterns.js";
+import { PatternMatch } from "../config/route-patterns.js";
 import { RojoScriptSuffix } from "../rojo/rojo.js";
 import { FolderNode, RouteMatch } from "./write.js";
 import { DirClaims, RootClaims } from "./dir-claims.js";
@@ -293,7 +293,7 @@ export class Router {
 		const leaf = this.claimLeaf(read, claims, entry.relativePath);
 		const pattern = claims.route
 			? undefined
-			: this.patternOf(entry, read, leaf.isInit);
+			: this.patternOf(entry, leaf.isInit);
 		if (pattern?.match.kind === "routed")
 			claims.claim(pattern.match.key, "pattern", entry.relativePath);
 		const hoistsLeaf = leaf.hoisted && !leaf.isInit;
@@ -318,21 +318,17 @@ export class Router {
 		};
 	}
 
-	/** The pattern the name of the instance a file makes matches: its own name, or for an init script its folder's with the script's extension, which routes the script alone. A name whose `@` nearly spells a route key is meant for that key, so no pattern takes it. */
+	/** The pattern a file's name, or the name of the instance it makes, matches. An init script is its folder, which no pattern matches, so it routes with the folder's other files. */
 	private patternOf(
 		entry: ScannedFile,
-		read: EntryReading,
 		isInit: boolean
 	): { readonly match: PatternMatch; readonly at: string } | undefined {
-		if (read.match.misspellings.some(({ kind }) => kind === "strayAt"))
-			return undefined;
-		const folder = read.folders.at(-1);
-		const name = !isInit
-			? path.posix.basename(entry.source).replace(/^\^/, "")
-			: read.kind === "script" && folder && !folder.invisible
-				? RoutePatterns.initName(folder.outrankedName, read.fileName)
-				: undefined;
-		const match = name && this.config.patterns.match(name);
+		if (isInit) return undefined;
+		const match = this.config.patterns.match(
+			...[path.posix.basename(entry.source), entry.file.instanceName].map(
+				(name) => name.replace(/^\^/, "")
+			)
+		);
 		return match ? { match, at: entry.source } : undefined;
 	}
 

@@ -54,6 +54,19 @@ describe("WriteValidator rules", () => {
 				warnings,
 			}));
 
+		/** The errors of `code` that stop the write. */
+		const errorsOf = async (
+			code: string,
+			overrides: ResolvedConfigSpec = {}
+		) => {
+			const result = await route(overrides);
+			return result.isErr()
+				? result.error.diagnostics.filter(
+						(diagnostic) => diagnostic.code === code
+					)
+				: [];
+		};
+
 		beforeEach(() => {
 			fs = new MemoryFileSystemService();
 		});
@@ -230,13 +243,16 @@ describe("WriteValidator rules", () => {
 				);
 			});
 
-			it("should warn about a marker file named like a route in different case", async () => {
+			it("should stop on a marker file named like a route in different case, as its @ can only mean a route", async () => {
 				await write("src/Inventory/@SERVER", "src/Inventory/Save.luau");
 
-				const [warning] = await caseWarnings();
+				const [error] = await errorsOf("route.caseMismatch");
 
-				expect(warning.resource).toEqual(abs("src/Inventory/@SERVER"));
-				expect(warning.message).toContain('route "server"');
+				expect(error).toMatchObject({
+					severity: DiagnosticSeverity.Error,
+					resource: abs("src/Inventory/@SERVER"),
+				});
+				expect(error.message).toContain('route "server"');
 			});
 
 			it("should warn once for a folder however many files it holds", async () => {
@@ -246,34 +262,22 @@ describe("WriteValidator rules", () => {
 			});
 
 			it("should warn once per mismatched name", async () => {
-				await write(
-					"src/SERVER/A.luau",
-					"src/Inventory/@CLIENT",
-					"src/CLIENT/B.luau"
-				);
+				await write("src/SERVER/A.luau", "src/CLIENT/B.luau");
 
 				const warnings = await caseWarnings();
 
 				expect(warnings.map(({ resource }) => resource).sort()).toEqual(
-					[
-						abs("src/CLIENT"),
-						abs("src/Inventory/@CLIENT"),
-						abs("src/SERVER"),
-					]
+					[abs("src/CLIENT"), abs("src/SERVER")]
 				);
 			});
 
 			it("should warn about a name that differs in its first letter alone", async () => {
-				await write(
-					"src/Server/Save.luau",
-					"src/Inventory/@Client",
-					"src/Inventory/Load.luau"
-				);
+				await write("src/Server/Save.luau", "src/Client/Load.luau");
 
 				const warnings = await caseWarnings();
 
 				expect(warnings.map(({ resource }) => resource).sort()).toEqual(
-					[abs("src/Inventory/@Client"), abs("src/Server")]
+					[abs("src/Client"), abs("src/Server")]
 				);
 			});
 
@@ -291,10 +295,10 @@ describe("WriteValidator rules", () => {
 			it("should spell a marker file's mismatch with its @", async () => {
 				await write("src/M/@SERVER", "src/M/a.luau");
 
-				const [warning] = await caseWarnings();
+				const [error] = await errorsOf("route.caseMismatch");
 
-				expect(warning.resource).toEqual(abs("src/M/@SERVER"));
-				expect(warning.message).toContain(
+				expect(error.resource).toEqual(abs("src/M/@SERVER"));
+				expect(error.message).toContain(
 					'Spell it "@server", or declare it as written.'
 				);
 			});
@@ -314,12 +318,9 @@ describe("WriteValidator rules", () => {
 		});
 
 		describe("@ that routes nowhere", () => {
-			const strayWarnings = async () =>
-				(await route())
-					.unwrap()
-					.warnings.filter(({ code }) => code === "route.strayAt");
+			const strayWarnings = () => errorsOf("route.strayAt");
 
-			it("should warn at every file and folder, naming the closest route", async () => {
+			it("should stop the write at every file and folder, naming the closest route", async () => {
 				await write(
 					"src/Inventory/Save@sever.luau",
 					"src/Queue@clent/Load.luau",
@@ -328,13 +329,33 @@ describe("WriteValidator rules", () => {
 
 				const warnings = await strayWarnings();
 
-				expect(warnings[0].severity).toBe(DiagnosticSeverity.Warning);
+				expect(warnings[0].severity).toBe(DiagnosticSeverity.Error);
 				expect(listed(warnings)).toEqual([
 					[
 						at("src/Inventory/Save@sever.luau"),
 						'did you mean "@server"?',
 					],
 					[at("src/Queue@clent"), 'did you mean "@client"?'],
+				]);
+			});
+
+			it("should list every stray @ before a marker in another case, so each code reads as one group", async () => {
+				await write(
+					"src/A@sever.luau",
+					"src/B/@SERVER",
+					"src/B/X.luau",
+					"src/C@sever.luau"
+				);
+
+				const result = await route();
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(({ code }) => code)
+				).toEqual([
+					"route.strayAt",
+					"route.strayAt",
+					"route.caseMismatch",
 				]);
 			});
 
@@ -348,7 +369,7 @@ describe("WriteValidator rules", () => {
 				);
 			});
 
-			it("should not warn for a route that restates the outer one", async () => {
+			it("should not stop on a route that restates the outer one", async () => {
 				await write("src/server/Net/Save@server.luau");
 
 				expect(await strayWarnings()).toEqual([]);
@@ -385,11 +406,9 @@ describe("WriteValidator rules", () => {
 			it("should give no fix when two routes are as close", async () => {
 				await write("src/Save@serer.luau");
 
-				const [warning] = (
-					await route({ routes: { ...ROUTES, sever: "Workspace" } })
-				)
-					.unwrap()
-					.warnings.filter(({ code }) => code === "route.strayAt");
+				const [warning] = await errorsOf("route.strayAt", {
+					routes: { ...ROUTES, sever: "Workspace" },
+				});
 
 				expect(warning.fixes).toBeUndefined();
 			});
@@ -636,16 +655,11 @@ describe("WriteValidator rules", () => {
 				);
 			});
 
-			it("should warn about an @ marker that nearly spells a route", async () => {
+			it("should stop on an @ marker that nearly spells a route", async () => {
 				await write("src/Ui/@sever", "src/Ui/B.luau");
 
-				const warnings = (await route({ routes: SHARED })).unwrap()
-					.warnings;
-
 				expect(
-					listed(
-						warnings.filter(({ code }) => code === "route.strayAt")
-					)
+					listed(await errorsOf("route.strayAt", { routes: SHARED }))
 				).toEqual([[at("src/Ui/@sever"), 'did you mean "@server"?']]);
 			});
 		});

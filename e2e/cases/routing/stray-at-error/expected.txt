@@ -1,15 +1,18 @@
 $ rogen write
-exit 0
+exit 1
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: 4 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)
+  error: default.project.json · not written
+  default.rogen.json - error: 5 names have an "@" that misses its route, so Rogen stops until they are fixed: (route.strayAt)
     src/@sever (did you mean "@server"?)
+    src/Inventory/Hud@Client.luau (did you mean "@client"?)
     src/Inventory/Report@server.bak.luau ("@server" must end the name)
     src/Inventory/Save@sever.luau (did you mean "@server"?)
     src/Queue@clent (did you mean "@client"?)
+  src/Shop/@SERVER - error: differs from the route "server" only in letter case, and an "@" only names a route. Spell it "@server", or declare it as written. (route.caseMismatch)
 
 $ rogen write --json
-exit 0
+exit 1
 stdout:
   {
     "changed": false,
@@ -17,11 +20,11 @@ stdout:
       {
         "config": "default.rogen.json",
         "projectFile": "<dir>/default.project.json",
-        "outcome": "unchanged",
+        "outcome": "notWritten",
         "diagnostics": [
           {
             "file": "<dir>/src/@sever",
-            "severity": "warning",
+            "severity": "error",
             "code": "route.strayAt",
             "message": "did you mean \"@server\"?",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
@@ -35,15 +38,30 @@ stdout:
             ]
           },
           {
+            "file": "<dir>/src/Inventory/Hud@Client.luau",
+            "severity": "error",
+            "code": "route.strayAt",
+            "message": "did you mean \"@client\"?",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/Inventory/Hud@Client.luau",
+                  "to": "<dir>/src/Inventory/Hud@client.luau"
+                }
+              }
+            ]
+          },
+          {
             "file": "<dir>/src/Inventory/Report@server.bak.luau",
-            "severity": "warning",
+            "severity": "error",
             "code": "route.strayAt",
             "message": "\"@server\" must end the name",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat"
           },
           {
             "file": "<dir>/src/Inventory/Save@sever.luau",
-            "severity": "warning",
+            "severity": "error",
             "code": "route.strayAt",
             "message": "did you mean \"@server\"?",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
@@ -58,7 +76,7 @@ stdout:
           },
           {
             "file": "<dir>/src/Queue@clent",
-            "severity": "warning",
+            "severity": "error",
             "code": "route.strayAt",
             "message": "did you mean \"@client\"?",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
@@ -70,33 +88,16 @@ stdout:
                 }
               }
             ]
+          },
+          {
+            "file": "<dir>/src/Shop/@SERVER",
+            "severity": "error",
+            "code": "route.caseMismatch",
+            "message": "differs from the route \"server\" only in letter case, and an \"@\" only names a route. Spell it \"@server\", or declare it as written.",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-casemismatch"
           }
         ]
       }
     ],
     "plainProjects": []
   }
-
-written:
-  default.project.json
-
-$ rojo sourcemap default.project.json
-project: DataModel
-  ReplicatedStorage: ReplicatedStorage
-    shared: Folder
-      @rbxts: Folder
-        B: ModuleScript  <- src/@rbxts/B.luau
-      @sever: Folder
-        A: ModuleScript  <- src/@sever/A.luau
-      Inventory: Folder
-        Plain: ModuleScript  <- src/Inventory/Plain.luau
-        Report@server.bak: ModuleScript  <- src/Inventory/Report@server.bak.luau
-        Save@sever: ModuleScript  <- src/Inventory/Save@sever.luau
-      Queue@clent: Folder
-        Hud: ModuleScript  <- src/Queue@clent/Hud.luau
-      Vendor: Folder
-        sleitnick_knit@1.5.1: ModuleScript  <- src/Vendor/sleitnick_knit@1.5.1/init.luau
-        user@example: ModuleScript  <- src/Vendor/user@example.luau
-  ServerScriptService: ServerScriptService
-    Inventory: Folder
-      Load: ModuleScript  <- src/Inventory/Load@server.luau

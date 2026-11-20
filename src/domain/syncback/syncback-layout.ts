@@ -131,15 +131,11 @@ export class SyncbackLayout {
 		);
 	}
 
-	/** Whether `node` is made by an init script that its folder's other files don't follow there: one its own name routes, by an `@` or a pattern, or a copy on a side the folder's own route doesn't reach. A file Studio adds below it must name its route. */
+	/** Whether `node` is made by an init script that its folder's other files don't follow there: one its own `@` routes, or a copy on a side the folder's own route doesn't reach. A file Studio adds below it must name its route. */
 	initLeavesItsFolder(node: readonly string[]): boolean {
 		const maker = this.fileMaking(node);
 		if (maker && SyncbackLayout.makesItsFolder(maker))
-			return (
-				maker.routeMatch === "suffix" ||
-				maker.routeMatch === "pattern" ||
-				maker.routeMatch === "copy"
-			);
+			return maker.routeMatch === "suffix" || maker.routeMatch === "copy";
 		return this.placed.some(
 			(file) =>
 				file.alsoAt?.some((at) => isSameJson(at, node)) === true &&

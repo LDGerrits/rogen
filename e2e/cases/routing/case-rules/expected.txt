@@ -4,9 +4,6 @@ stdout: (not shown)
 stderr:
   src/SHARED - warning: differs from the route "shared" only in letter case, so it is read as an ordinary name. Spell it "shared", or declare it as written. (route.caseMismatch)
   src/Server - warning: differs from the route "server" only in letter case, so it is read as an ordinary name. Spell it "server", or declare it as written. (route.caseMismatch)
-  default.rogen.json - warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)
-    src/Inventory/Hud@Client.luau (did you mean "@client"?)
-    src/Inventory/Load@SERVER.luau (did you mean "@server"?)
 
 written:
   default.project.json
@@ -17,8 +14,6 @@ project: DataModel
     shared: Folder
       Inventory: Folder
         HttpClient: ModuleScript  <- src/Inventory/HttpClient.luau
-        Hud@Client: ModuleScript  <- src/Inventory/Hud@Client.luau
-        Load@SERVER: ModuleScript  <- src/Inventory/Load@SERVER.luau
       SHARED: Folder
         Types: ModuleScript  <- src/SHARED/Types.luau
       Server: Folder

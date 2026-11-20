@@ -1,8 +1,8 @@
-$ rogen check src/Inventory/Save@sever.luau src/Inventory/Clean.luau src/Inventory/New@sever.luau src/shared/server/Secret.server.luau
+$ rogen check src/Inventory/Save.Server.luau src/Inventory/Clean.luau src/Inventory/New.Server.luau src/shared/server/Secret.server.luau
 exit 1
 stdout:
-  src/Inventory/Save@sever.luau - warning: did you mean "@server"? (route.strayAt)
-  src/Inventory/New@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/Inventory/Save.Server.luau - warning: write "Save.server.luau" (route.dotRoute)
+  src/Inventory/New.Server.luau - warning: write "New.server.luau" (route.dotRoute)
   src/shared/server/Secret.server.luau - warning: a Script never runs in ReplicatedStorage (tree.deadScript)
 
 $ rogen check src/Inventory --json
@@ -11,16 +11,16 @@ stdout:
   {
     "diagnostics": [
       {
-        "file": "<dir>/src/Inventory/Save@sever.luau",
+        "file": "<dir>/src/Inventory/Save.Server.luau",
         "severity": "warning",
-        "code": "route.strayAt",
-        "message": "did you mean \"@server\"?",
-        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+        "code": "route.dotRoute",
+        "message": "write \"Save.server.luau\"",
+        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
         "fixes": [
           {
             "rename": {
-              "from": "<dir>/src/Inventory/Save@sever.luau",
-              "to": "<dir>/src/Inventory/Save@server.luau"
+              "from": "<dir>/src/Inventory/Save.Server.luau",
+              "to": "<dir>/src/Inventory/Save.server.luau"
             }
           }
         ]

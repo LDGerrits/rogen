@@ -4,7 +4,7 @@
 		"Server": "ServerScriptService",
 		"Client": "StarterPlayer/StarterPlayerScripts",
 		"Shared": "ReplicatedStorage/Shared",
-		"*Controller.*": "StarterPlayer/StarterPlayerScripts",
+		"*Controller": "StarterPlayer/StarterPlayerScripts",
 		"*Service.*": "ServerScriptService",
 		"*.story.luau": "ReplicatedStorage/Stories",
 		"*": "ReplicatedStorage/Shared"

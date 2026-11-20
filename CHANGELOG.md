@@ -8,11 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- Pattern routes: a route key with a `*`, such as `*.tsx` or `*Controller.*`, routes a file by its name when no folder, `@` name or marker routes it. An init script is matched by its folder's name and, as with an `@` on it, routes alone. A name whose `@` nearly spells a route key is never matched. The pattern with more characters that aren't `*` wins, and a tie between different places is the error `route.patternClash`. Syncback writes a new file's `@` route when a pattern would send its plain name elsewhere.
+- Pattern routes: a route key with a `*`, such as `*.tsx`, `*Controller` or `*Controller.*`, routes a file by its file name or instance name when no folder, `@` name or marker routes it. A pattern never matches a folder or an init script, so a script written as a folder stays with its children. The pattern with more characters that aren't `*` wins, and a tie between different places is the error `route.patternClash`. Syncback writes a new file's `@` route when a pattern would send its plain name elsewhere.
 
 ### Changed
 
-- **Breaking:** a route key matches a folder, `@` name or marker file only when spelled exactly as the key. `server/` under a `Server` route is an ordinary folder and gets `route.caseMismatch`. Rojo's `.server` and `.client` still route a key of that name in any case. `rogen init` spells each key as the folders it finds already do, so a lifted Rojo project gets `server`, `client` and `shared`.
+- **Breaking:** a route key matches a folder, `@` name or marker file only when spelled exactly as the key. `server/` under a `Server` route is an ordinary folder and gets the warning `route.caseMismatch`. An `@` that misses a key by its case or a typo, as in `Save@server.luau`, `Save@Sever.luau` or a marker `@server`, is now an error that stops the write (`route.strayAt`, `route.caseMismatch`), so a server file can't reach clients by a slip. Rojo's `.server` and `.client` still route a key of that name in any case. `rogen init` spells each key as the folders it finds already do, so a lifted Rojo project gets `server`, `client` and `shared`.
 - `rogen init` writes the project's `name`, the folder's name, as `rojo init` does, so tools that need a name in the project file can read it.
 - **Breaking:** an init script's route routes only the script, not its whole folder. `init@server.luau` and `init.server.luau` become the folder on that side, and the folder's other files route by their own paths, so `init@server.luau` and `init@client.luau` give each side its own init script. To route a whole folder, name it for the route or add a marker file.
 

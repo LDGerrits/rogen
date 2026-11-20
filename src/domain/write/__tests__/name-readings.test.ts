@@ -123,16 +123,6 @@ describe("NameReadings", () => {
 				expect(markers.get(at("src/.other"))?.key).toBeUndefined();
 			});
 
-			it("should note a marker that only differs from a key in case", async () => {
-				await write("src/@SERVER", "src/Save.luau");
-
-				const { markers } = await read();
-
-				expect(markers.get(at("src/@SERVER"))).toMatchObject({
-					key: undefined,
-					nearMissKey: "server",
-				});
-			});
 		});
 
 		describe("entries", () => {
@@ -163,18 +153,6 @@ describe("NameReadings", () => {
 					scriptSuffix: "server",
 				});
 				expect(entry?.match.matchedKeys).toEqual(new Set(["server"]));
-			});
-
-			it("should note an @ that matches no route, with the closest one", async () => {
-				await write("src/Save@sever.luau");
-
-				const { entries } = await read();
-
-				expect(
-					entries.get(at("src/Save@sever.luau"))?.match.misspellings
-				).toMatchObject([
-					{ kind: "strayAt", text: "sever", suggestion: "@server" },
-				]);
 			});
 
 			it("should read a data file without its .json suffix", async () => {

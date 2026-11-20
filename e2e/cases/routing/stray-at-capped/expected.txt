@@ -2,17 +2,17 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: 12 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)
-    src/Save01@sever.luau (did you mean "@server"?)
-    src/Save02@sever.luau (did you mean "@server"?)
-    src/Save03@sever.luau (did you mean "@server"?)
-    src/Save04@sever.luau (did you mean "@server"?)
-    src/Save05@sever.luau (did you mean "@server"?)
-    src/Save06@sever.luau (did you mean "@server"?)
-    src/Save07@sever.luau (did you mean "@server"?)
-    src/Save08@sever.luau (did you mean "@server"?)
-    src/Save09@sever.luau (did you mean "@server"?)
-    src/Save10@sever.luau (did you mean "@server"?)
+  default.rogen.json - warning: 12 names write a route key after a dot, where only "@" routes, so they route nothing: (route.dotRoute)
+    src/Save01.Server.luau (write "Save01.server.luau")
+    src/Save02.Server.luau (write "Save02.server.luau")
+    src/Save03.Server.luau (write "Save03.server.luau")
+    src/Save04.Server.luau (write "Save04.server.luau")
+    src/Save05.Server.luau (write "Save05.server.luau")
+    src/Save06.Server.luau (write "Save06.server.luau")
+    src/Save07.Server.luau (write "Save07.server.luau")
+    src/Save08.Server.luau (write "Save08.server.luau")
+    src/Save09.Server.luau (write "Save09.server.luau")
+    src/Save10.Server.luau (write "Save10.server.luau")
     2 more like it aren't listed.
 
 $ rogen write --json
@@ -27,181 +27,181 @@ stdout:
         "outcome": "unchanged",
         "diagnostics": [
           {
-            "file": "<dir>/src/Save01@sever.luau",
+            "file": "<dir>/src/Save01.Server.luau",
             "severity": "warning",
-            "code": "route.strayAt",
-            "message": "did you mean \"@server\"?",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "code": "route.dotRoute",
+            "message": "write \"Save01.server.luau\"",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
-                  "from": "<dir>/src/Save01@sever.luau",
-                  "to": "<dir>/src/Save01@server.luau"
+                  "from": "<dir>/src/Save01.Server.luau",
+                  "to": "<dir>/src/Save01.server.luau"
                 }
               }
             ]
           },
           {
-            "file": "<dir>/src/Save02@sever.luau",
+            "file": "<dir>/src/Save02.Server.luau",
             "severity": "warning",
-            "code": "route.strayAt",
-            "message": "did you mean \"@server\"?",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "code": "route.dotRoute",
+            "message": "write \"Save02.server.luau\"",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
-                  "from": "<dir>/src/Save02@sever.luau",
-                  "to": "<dir>/src/Save02@server.luau"
+                  "from": "<dir>/src/Save02.Server.luau",
+                  "to": "<dir>/src/Save02.server.luau"
                 }
               }
             ]
           },
           {
-            "file": "<dir>/src/Save03@sever.luau",
+            "file": "<dir>/src/Save03.Server.luau",
             "severity": "warning",
-            "code": "route.strayAt",
-            "message": "did you mean \"@server\"?",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "code": "route.dotRoute",
+            "message": "write \"Save03.server.luau\"",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
-                  "from": "<dir>/src/Save03@sever.luau",
-                  "to": "<dir>/src/Save03@server.luau"
+                  "from": "<dir>/src/Save03.Server.luau",
+                  "to": "<dir>/src/Save03.server.luau"
                 }
               }
             ]
           },
           {
-            "file": "<dir>/src/Save04@sever.luau",
+            "file": "<dir>/src/Save04.Server.luau",
             "severity": "warning",
-            "code": "route.strayAt",
-            "message": "did you mean \"@server\"?",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "code": "route.dotRoute",
+            "message": "write \"Save04.server.luau\"",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
-                  "from": "<dir>/src/Save04@sever.luau",
-                  "to": "<dir>/src/Save04@server.luau"
+                  "from": "<dir>/src/Save04.Server.luau",
+                  "to": "<dir>/src/Save04.server.luau"
                 }
               }
             ]
           },
           {
-            "file": "<dir>/src/Save05@sever.luau",
+            "file": "<dir>/src/Save05.Server.luau",
             "severity": "warning",
-            "code": "route.strayAt",
-            "message": "did you mean \"@server\"?",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "code": "route.dotRoute",
+            "message": "write \"Save05.server.luau\"",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
-                  "from": "<dir>/src/Save05@sever.luau",
-                  "to": "<dir>/src/Save05@server.luau"
+                  "from": "<dir>/src/Save05.Server.luau",
+                  "to": "<dir>/src/Save05.server.luau"
                 }
               }
             ]
           },
           {
-            "file": "<dir>/src/Save06@sever.luau",
+            "file": "<dir>/src/Save06.Server.luau",
             "severity": "warning",
-            "code": "route.strayAt",
-            "message": "did you mean \"@server\"?",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "code": "route.dotRoute",
+            "message": "write \"Save06.server.luau\"",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
-                  "from": "<dir>/src/Save06@sever.luau",
-                  "to": "<dir>/src/Save06@server.luau"
+                  "from": "<dir>/src/Save06.Server.luau",
+                  "to": "<dir>/src/Save06.server.luau"
                 }
               }
             ]
           },
           {
-            "file": "<dir>/src/Save07@sever.luau",
+            "file": "<dir>/src/Save07.Server.luau",
             "severity": "warning",
-            "code": "route.strayAt",
-            "message": "did you mean \"@server\"?",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "code": "route.dotRoute",
+            "message": "write \"Save07.server.luau\"",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
-                  "from": "<dir>/src/Save07@sever.luau",
-                  "to": "<dir>/src/Save07@server.luau"
+                  "from": "<dir>/src/Save07.Server.luau",
+                  "to": "<dir>/src/Save07.server.luau"
                 }
               }
             ]
           },
           {
-            "file": "<dir>/src/Save08@sever.luau",
+            "file": "<dir>/src/Save08.Server.luau",
             "severity": "warning",
-            "code": "route.strayAt",
-            "message": "did you mean \"@server\"?",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "code": "route.dotRoute",
+            "message": "write \"Save08.server.luau\"",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
-                  "from": "<dir>/src/Save08@sever.luau",
-                  "to": "<dir>/src/Save08@server.luau"
+                  "from": "<dir>/src/Save08.Server.luau",
+                  "to": "<dir>/src/Save08.server.luau"
                 }
               }
             ]
           },
           {
-            "file": "<dir>/src/Save09@sever.luau",
+            "file": "<dir>/src/Save09.Server.luau",
             "severity": "warning",
-            "code": "route.strayAt",
-            "message": "did you mean \"@server\"?",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "code": "route.dotRoute",
+            "message": "write \"Save09.server.luau\"",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
-                  "from": "<dir>/src/Save09@sever.luau",
-                  "to": "<dir>/src/Save09@server.luau"
+                  "from": "<dir>/src/Save09.Server.luau",
+                  "to": "<dir>/src/Save09.server.luau"
                 }
               }
             ]
           },
           {
-            "file": "<dir>/src/Save10@sever.luau",
+            "file": "<dir>/src/Save10.Server.luau",
             "severity": "warning",
-            "code": "route.strayAt",
-            "message": "did you mean \"@server\"?",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "code": "route.dotRoute",
+            "message": "write \"Save10.server.luau\"",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
-                  "from": "<dir>/src/Save10@sever.luau",
-                  "to": "<dir>/src/Save10@server.luau"
+                  "from": "<dir>/src/Save10.Server.luau",
+                  "to": "<dir>/src/Save10.server.luau"
                 }
               }
             ]
           },
           {
-            "file": "<dir>/src/Save11@sever.luau",
+            "file": "<dir>/src/Save11.Server.luau",
             "severity": "warning",
-            "code": "route.strayAt",
-            "message": "did you mean \"@server\"?",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "code": "route.dotRoute",
+            "message": "write \"Save11.server.luau\"",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
-                  "from": "<dir>/src/Save11@sever.luau",
-                  "to": "<dir>/src/Save11@server.luau"
+                  "from": "<dir>/src/Save11.Server.luau",
+                  "to": "<dir>/src/Save11.server.luau"
                 }
               }
             ]
           },
           {
-            "file": "<dir>/src/Save12@sever.luau",
+            "file": "<dir>/src/Save12.Server.luau",
             "severity": "warning",
-            "code": "route.strayAt",
-            "message": "did you mean \"@server\"?",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "code": "route.dotRoute",
+            "message": "write \"Save12.server.luau\"",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
-                  "from": "<dir>/src/Save12@sever.luau",
-                  "to": "<dir>/src/Save12@server.luau"
+                  "from": "<dir>/src/Save12.Server.luau",
+                  "to": "<dir>/src/Save12.server.luau"
                 }
               }
             ]

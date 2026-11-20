@@ -1,29 +1,29 @@
-$ rogen check src/game/server/Match@sever.luau
+$ rogen check src/game/server/Match.Server.luau
 exit 1
 stdout:
-  src/game/server/Match@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/game/server/Match.Server.luau - warning: write "Match.server.luau" (route.dotRoute)
 
-$ rogen check src/common/Stray@sever.luau
+$ rogen check src/common/Stray.Server.luau
 exit 1
 stdout:
-  src/common/Stray@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/common/Stray.Server.luau - warning: write "Stray.server.luau" (route.dotRoute)
 
-$ rogen check src/common/Stray@sever.luau --json
+$ rogen check src/common/Stray.Server.luau --json
 exit 1
 stdout:
   {
     "diagnostics": [
       {
-        "file": "<dir>/src/common/Stray@sever.luau",
+        "file": "<dir>/src/common/Stray.Server.luau",
         "severity": "warning",
-        "code": "route.strayAt",
-        "message": "did you mean \"@server\"?",
-        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+        "code": "route.dotRoute",
+        "message": "write \"Stray.server.luau\"",
+        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
         "fixes": [
           {
             "rename": {
-              "from": "<dir>/src/common/Stray@sever.luau",
-              "to": "<dir>/src/common/Stray@server.luau"
+              "from": "<dir>/src/common/Stray.Server.luau",
+              "to": "<dir>/src/common/Stray.server.luau"
             }
           }
         ]
@@ -34,8 +34,8 @@ stdout:
 $ rogen check src
 exit 1
 stdout:
-  src/common/Stray@sever.luau - warning: did you mean "@server"? (route.strayAt)
-  src/game/server/Match@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/common/Stray.Server.luau - warning: write "Stray.server.luau" (route.dotRoute)
+  src/game/server/Match.Server.luau - warning: write "Match.server.luau" (route.dotRoute)
 
 $ rogen check README.md
 exit 0
@@ -45,5 +45,5 @@ stderr:
 $ rogen check
 exit 1
 stdout:
-  src/common/Stray@sever.luau - warning: did you mean "@server"? (route.strayAt)
-  src/game/server/Match@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/common/Stray.Server.luau - warning: write "Stray.server.luau" (route.dotRoute)
+  src/game/server/Match.Server.luau - warning: write "Match.server.luau" (route.dotRoute)

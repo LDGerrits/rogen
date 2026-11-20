@@ -626,6 +626,34 @@ describe("ReverseRouter", () => {
 	});
 
 	describe("pattern routes", () => {
+		it("should advise naming the folder for the route when a child lands under a file a pattern routes", async () => {
+			const router = await routerOf(["src/Input/MouseController.luau"], {
+				routes: {
+					...ROUTES,
+					"*Controller": "StarterPlayer/StarterPlayerScripts",
+				},
+			});
+
+			expect(
+				router.place({
+					parent: [
+						"StarterPlayer",
+						"StarterPlayerScripts",
+						"Input",
+						"MouseController",
+					],
+					name: "Cursor",
+					folder: false,
+					files: [["Cursor.luau"]],
+				})
+			).toMatchObject({
+				kind: "conflict",
+				reason: expect.stringContaining(
+					"make it a folder with an init file, named MouseController@Client/ to keep its route"
+				),
+			});
+		});
+
 		it("should not take a pattern key for a route key when nothing is beside it", async () => {
 			const router = await routerOf([], {
 				routes: {

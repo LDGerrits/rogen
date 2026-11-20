@@ -1,8 +1,8 @@
 {
 	"steps": [
-		["check", "src/game/server/Match@sever.luau"],
-		["check", "src/common/Stray@sever.luau"],
-		["check", "src/common/Stray@sever.luau", "--json"],
+		["check", "src/game/server/Match.Server.luau"],
+		["check", "src/common/Stray.Server.luau"],
+		["check", "src/common/Stray.Server.luau", "--json"],
 		["check", "src"],
 		["check", "README.md"],
 		["check"]

@@ -1297,20 +1297,10 @@ describe("CoreWriteService", () => {
 			});
 
 			it("should report a marker file's warnings against the files of its folder", async () => {
-				await fs.writeFile(abs("src/M/@SERVER"), "");
-				await fs.writeFile(abs("src/M/a.luau"), "");
 				await fs.writeFile(abs("src/I/.server"), "");
 				await fs.writeFile(abs("src/I/L.luau"), "");
 				await fs.writeFile(abs("src/O/b.luau"), "");
 
-				expect(
-					(await diagnose("src/M/a.luau")).diagnostics
-				).toMatchObject([
-					{
-						code: "route.caseMismatch",
-						resource: abs("src/M/@SERVER"),
-					},
-				]);
 				expect(
 					(await diagnose("src/I/L.luau")).diagnostics
 				).toMatchObject([
