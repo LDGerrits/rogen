@@ -164,7 +164,8 @@ stdout:
         "diagnostics": []
       }
     ],
-    "diagnostics": [
+    "diagnostics": [],
+    "stoppedBy": [
       {
         "file": "<dir>/src/Net/Types.lua",
         "severity": "error",
@@ -211,7 +212,8 @@ stdout:
         "diagnostics": []
       }
     ],
-    "diagnostics": [
+    "diagnostics": [],
+    "stoppedBy": [
       {
         "file": "<dir>/src/Net/Types.lua",
         "severity": "error",

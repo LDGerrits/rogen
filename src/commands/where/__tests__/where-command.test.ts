@@ -216,7 +216,7 @@ describe("where command", () => {
 			]);
 		});
 
-		it("should place the file in the JSON document, with what stops the write at the top", async () => {
+		it("should place the file in the JSON document, and list what stops the write elsewhere under stoppedBy, as check does", async () => {
 			const result = await run({
 				_: ["src/F/Shared/Good.luau"],
 				json: true,
@@ -225,7 +225,8 @@ describe("where command", () => {
 			expect(result.isOk()).toBe(true);
 			const document = JSON.parse(printed().join("\n"));
 			expect(document.locations[0]).toMatchObject({ status: "placed" });
-			expect(document.diagnostics).toMatchObject([
+			expect(document.diagnostics).toEqual([]);
+			expect(document.stoppedBy).toMatchObject([
 				{
 					file: "/repo/src/F/Shared/Bad@Server.luau",
 					code: "route.ignoredAt",
@@ -264,13 +265,13 @@ describe("where command", () => {
 			]);
 		});
 
-		it("should put the error that no entry holds at the top of the JSON document", async () => {
+		it("should list the error that stops the write elsewhere under stoppedBy in the JSON document", async () => {
 			const result = await run({ _: ["src/B.luau"], json: true });
 
+			const document = JSON.parse(printed().join("\n"));
 			expect(result.isOk()).toBe(true);
-			expect(JSON.parse(printed().join("\n")).diagnostics).toHaveLength(
-				1
-			);
+			expect(document.diagnostics).toEqual([]);
+			expect(document.stoppedBy).toHaveLength(1);
 		});
 	});
 

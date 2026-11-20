@@ -29,7 +29,8 @@ stdout:
         "diagnostics": []
       }
     ],
-    "diagnostics": [
+    "diagnostics": [],
+    "stoppedBy": [
       {
         "file": "<dir>/src/F/shared/Bad@server.luau",
         "severity": "error",

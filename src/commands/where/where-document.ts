@@ -91,6 +91,7 @@ export const whereDocumentShape = S.object({
 		)
 	),
 	diagnostics: S.array(diagnosticShape),
+	stoppedBy: S.optional(S.array(diagnosticShape)),
 	skipped: S.optional(S.array(skippedPathShape)),
 });
 
@@ -158,7 +159,10 @@ type WhereEntry = WhereFileEntry | WhereInstanceEntry;
 
 interface WhereDocument {
 	readonly locations: readonly WhereEntry[];
+	/** What is wrong with what was asked: a config that didn't load, or why a listing is empty. */
 	readonly diagnostics: readonly DiagnosticJson[];
+	/** The errors about other files that stop the write, as in `check --json`. */
+	readonly stoppedBy?: readonly DiagnosticJson[];
 	readonly skipped?: readonly SkippedPathJson[];
 }
 
@@ -260,9 +264,17 @@ export function whereDocument(
 			.bySource()
 			.flat()
 			.map((answer) => entryOf(answer, cwd)),
-		diagnostics: [...answers.errors, ...answers.whyEmpty].map(
-			(diagnostic) => diagnosticToJson(diagnostic, cwd)
-		),
+		diagnostics: [
+			...answers.errors.filter(
+				(error) => !answers.elsewhere.includes(error)
+			),
+			...answers.whyEmpty,
+		].map((diagnostic) => diagnosticToJson(diagnostic, cwd)),
+		...(answers.elsewhere.length > 0 && {
+			stoppedBy: answers.elsewhere.map((diagnostic) =>
+				diagnosticToJson(diagnostic, cwd)
+			),
+		}),
 		...skippedJson(skipped, cwd),
 	};
 }

@@ -30,7 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - The warning `route.folderTypo` is gone. A folder one letter from a route key, such as `Servers/` or `Shard/`, is most often a name of its own, and a warning there couldn't be silenced without renaming a correct folder. Rogen now warns only where a name clearly meant a route: an `@`, a wrong letter case, a key after a dot, or a pattern that just misses.
 
-- `rogen where` fails only on an error about what you asked. An error about another file that stops the write is printed with a note, and `where` still passes, since `check` is the gate.
+- `rogen where` fails only on an error about what you asked. An error about another file that stops the write is printed with a note, and `where` still passes, since `check` is the gate; `where --json` lists it under `stoppedBy`, as `check --json` does.
 - In `--json`, the paths a message names are relative to the folder you ran in, as the text writes them; `file` stays absolute.
 
 ### Fixed
