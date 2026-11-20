@@ -258,20 +258,6 @@ Rojo's `.server` and `.client` at the end of a script's name still route, and Ro
 
 See [Marker Files](/docs/v2/routing/names#marker-files).
 
-### `route.folderTypo` [#route-foldertypo]
-
-Warning. A folder's name is one edit away from a declared route key, such as `Sever/` when `Server` is a key. Rogen reads it as an ordinary folder, so its files fall through to the route above it, or to `*`.
-
-```
-warning: 1 folder is one edit from a declared route key, so it is read as an ordinary folder: (route.folderTypo)
-  src/Inventory/Sever (did you mean "Server"?)
-Rename a folder to the route key if it should route; a folder named as it is stays an ordinary folder.
-```
-
-Rename the folder to the key that the message suggests. If the typo is in your config, fix the key in `routes` instead. In `--json`, `fixes` holds the rename to the key as it is spelled, when exactly one key is closest and no folder of that name is beside it.
-
-One edit is one letter added, removed or changed, or two neighbouring letters swapped, as in `Sevrer/`. A plural such as `Servers/` or `Clients/` is a name of its own and doesn't warn, and neither does a folder that a route above it already governs, where its name would route nothing. Rogen compares the name without its parentheses and its `^`. It matches only keys of four letters or more, because shorter keys are one edit from real words. A name that matches a key in a different letter case gets [`route.caseMismatch`](#route-casemismatch) instead.
-
 ### `route.markerClash` [#route-markerclash]
 
 Error. Two marker files in one folder name different routes, such as `@server` beside `@client`. Both are at the same level, so nothing decides which one governs.

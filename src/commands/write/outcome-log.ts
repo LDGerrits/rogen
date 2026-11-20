@@ -38,12 +38,6 @@ const GROUPS: Readonly<Record<string, DiagnosticGroup>> = {
 		headline: (count) =>
 			`${count} ${either(count, "name writes", "names write")} a route key after a dot, where only "@" routes, so ${either(count, "it routes", "they route")} nothing:`,
 	},
-	"route.folderTypo": {
-		headline: (count) =>
-			`${count} ${either(count, "folder is", "folders are")} one edit from a declared route key, so ${either(count, "it is read as an ordinary folder", "they are read as ordinary folders")}:`,
-		tail: () =>
-			"Rename a folder to the route key if it should route; a folder named as it is stays an ordinary folder.",
-	},
 	"route.serverCodeShipped": {
 		headline: (count) =>
 			`${plural(count, "file")} named for a server route, or in a folder that is, ${either(count, "ships", "ship")} to clients:`,

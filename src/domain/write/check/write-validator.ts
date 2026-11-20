@@ -26,7 +26,6 @@ import {
 import { RojoFile, SCRIPT_SUFFIXES, scriptRunOf } from "../../rojo/rojo.js";
 import { NODE_FIELDS, RojoNode } from "../../rojo/rojo-project.js";
 import { FolderMeta } from "../folder-meta.js";
-import { governingRouteOf } from "../governing-route-of.js";
 import {
 	MisspellingKind,
 	MisspellingOf,
@@ -80,7 +79,6 @@ export class WriteValidator {
 			...this.nestedProject(),
 			...this.unclaimedMeta(),
 			...this.dotRoute(),
-			...this.folderTypo(),
 			...this.patternCase(),
 			...this.folderPattern(),
 			...this.unrouted(),
@@ -315,25 +313,6 @@ export class WriteValidator {
 		})?.route;
 	}
 
-	/** A folder one edit from a route key, unless a route above it governs it, where its name would route nothing; no rename onto a folder that is there. */
-	private folderTypo(): Diagnostic[] {
-		const { files } = this.placement;
-		return [...this.placement.readings.misspelt("folderTypo")]
-			.filter(
-				([resource]) => governingRouteOf(resource, files) === undefined
-			)
-			.map(([resource, { key, renamedTo }]) =>
-				warningDiagnostic(
-					"route.folderTypo",
-					{ resource },
-					`did you mean "${key}"?`,
-					renamedTo !== undefined && !this.isListed(renamedTo)
-						? [{ rename: { from: resource, to: renamedTo } }]
-						: []
-				)
-			);
-	}
-
 	/** A file that falls to `*` though a pattern would take it but for letter case. */
 	private patternCase(): Diagnostic[] {
 		const { patterns } = this.config;
@@ -382,13 +361,6 @@ export class WriteValidator {
 				),
 			];
 		});
-	}
-
-	/** Whether the scan lists `target`, an absolute POSIX path. */
-	private isListed(target: string): boolean {
-		return this.placement
-			.listing(path.posix.dirname(target))
-			.has(path.posix.basename(target));
 	}
 
 	private misspelt<K extends MisspellingKind>(

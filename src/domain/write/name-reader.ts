@@ -116,11 +116,6 @@ export class NameReader {
 					...suffixed.misspellings.filter(
 						({ kind }) => kind !== "strayAt"
 					),
-					...(routeSpan
-						? []
-						: NameReader.present([
-								this.finder.folderTypo(keptName),
-							])),
 				],
 				offset
 			),

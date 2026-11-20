@@ -823,11 +823,6 @@ describe("check command", () => {
 				files: ["src/Net.server/Remotes.luau", "src/Types.shared.luau"],
 			},
 			{
-				code: "route.folderTypo",
-				config: {},
-				files: ["src/A/Sever/X.luau", "src/B/Sevrer/Y.luau"],
-			},
-			{
 				code: "route.serverCodeShipped",
 				config: {},
 				files: [

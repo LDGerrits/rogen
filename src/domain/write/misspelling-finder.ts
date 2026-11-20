@@ -1,4 +1,4 @@
-import { editDistance, closestMatches } from "../../base/strings.js";
+import { closestMatches } from "../../base/strings.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { RUN_SCRIPT_SUFFIXES } from "../rojo/rojo.js";
 
@@ -17,15 +17,8 @@ interface DotRoute {
 	readonly respelling: Respelling;
 }
 
-interface FolderTypo {
-	readonly kind: "folderTypo";
-	readonly text: string;
-	readonly key: string;
-	readonly respelling?: Respelling;
-}
-
 /** A name that looks like a slip in spelling a declared key. */
-export type Misspelling = StrayAt | DotRoute | FolderTypo;
+export type Misspelling = StrayAt | DotRoute;
 
 export type MisspellingKind = Misspelling["kind"];
 
@@ -43,8 +36,6 @@ export interface Respelling {
 
 /** A misspelled name as the readings note it, with the path it's renamed to when one rename fixes it. */
 export type NotedName<T> = T & { readonly renamedTo?: string };
-
-const MIN_TYPO_KEY_LENGTH = 4;
 
 export class MisspellingFinder {
 	constructor(private readonly keys: DeclaredKeys) {}
@@ -94,31 +85,6 @@ export class MisspellingFinder {
 	dotNameMisspelling(text: string): DotRoute | undefined {
 		const route = this.dotRouteKey(text);
 		return route ? MisspellingFinder.dotRouteOf(text, route, 0) : undefined;
-	}
-
-	folderTypo(name: string): FolderTypo | undefined {
-		if (this.keys.resolve(name) !== undefined || this.keys.nearMiss(name))
-			return undefined;
-		const identity = DeclaredKeys.identityOf(name);
-		// A plural, as `Servers/` or `Clients/`, is a name of its own rather than a typo of the key.
-		const keys = [...this.keys.routeKeys].filter(
-			(key) =>
-				key.length >= MIN_TYPO_KEY_LENGTH &&
-				identity !== `${DeclaredKeys.identityOf(key)}s` &&
-				editDistance(identity, DeclaredKeys.identityOf(key)) === 1
-		);
-		if (keys.length === 0) return undefined;
-		const [key] = keys;
-		const respelling =
-			keys.length === 1
-				? { start: 0, written: name, spelling: key }
-				: undefined;
-		return {
-			kind: "folderTypo",
-			text: name,
-			key,
-			...(respelling && { respelling }),
-		};
 	}
 
 	strayAt(name: string): StrayAt | undefined {

@@ -28,12 +28,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Breaking:** two files in one source path that make one instance, as `Types.lua` beside `Types.luau`, or two `^` files that hoist to one place, are an error (`tree.instanceClash`): Rojo would keep both, and the project file can name one, so the build lost the other. Two init files of one folder still only warn, as Rojo itself reads one.
 - `rogen init` says why it renames a folder or name, and a dry run counts renames rather than files.
 
+- The warning `route.folderTypo` is gone. A folder one letter from a route key, such as `Servers/` or `Shard/`, is most often a name of its own, and a warning there couldn't be silenced without renaming a correct folder. Rogen now warns only where a name clearly meant a route: an `@`, a wrong letter case, a key after a dot, or a pattern that just misses.
+
 ### Fixed
 
 - `rogen where` no longer says a `.ts` or `.tsx` file is placed in a project with no compiler, where Rojo never reads it.
 - `route.unrouted` names a routing folder to move a file into, and `config.invalidRouteKey` says what is wrong with a key that holds a `/`, `**` or `@`.
-- A rename that a diagnostic offers no longer leads into another error: under a route that governs it, a misspelt `@` for another route is `route.ignoredAt` with no rename; `route.folderTypo` renames to the key as it is spelled; and no rename is offered onto a name that is there.
-- `route.folderTypo` no longer warns about a plural such as `Servers/`, or about a folder a route above it governs.
+- A rename that a diagnostic offers no longer leads into another error: under a route that governs it, a misspelt `@` for another route is `route.ignoredAt` with no rename, and no rename is offered onto a name that is there.
 - A `^init` script in a routing folder is `tree.initWithoutFolder`, where the advice to put the `^` on the folder went round in circles.
 - `tree.deadScript` says when the route a script sits under overrode its `.server` or `.client`.
 - `rogen syncback` keeps a project's layout through a Studio rename: the renamed folder keeps its `@` form, marker files, invisible folders and data files in their own form, and a child added with the rename is named like its siblings. A new child of a script placed on several sides goes beside its siblings, a new feature at a route's target is no longer lost, an emptied side of a suffix layout stays as a bare `@` folder, and an instance whose files routing would put elsewhere, as for a name it reads as a route, is left out with a warning rather than written. Syncback asks routing itself where each new file lands before writing it.

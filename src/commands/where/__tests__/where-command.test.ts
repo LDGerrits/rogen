@@ -273,17 +273,17 @@ describe("where command", () => {
 		});
 	});
 
-	it("should show the misspelt folder a named file lies in, but not under a directory's files", async () => {
+	it("should show the warning about a folder a named file lies in, but not under a directory's files", async () => {
 		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await write("src/F/Sever/A.luau");
+		await write("src/F/Net.Server/A.luau");
 
-		await run({ _: ["src/F/Sever/A.luau"] });
+		await run({ _: ["src/F/Net.Server/A.luau"] });
 		const named = printed();
 		logService.clear();
 		await run({ _: ["src/F"] });
 
-		expect(named.join("\n")).toContain("route.folderTypo");
-		expect(printed().join("\n")).not.toContain("route.folderTypo");
+		expect(named.join("\n")).toContain("route.dotRoute");
+		expect(printed().join("\n")).not.toContain("route.dotRoute");
 	});
 
 	it("should read an argument as a path when the working directory holds a folder named after its service", async () => {

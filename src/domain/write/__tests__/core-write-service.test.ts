@@ -1197,7 +1197,7 @@ describe("CoreWriteService", () => {
 
 	describe("diagnose", () => {
 		it("should report a misspelt folder against a file in it, and against the folder above that", async () => {
-			await fs.writeFile(abs("src/F/Sever/A.luau"), "");
+			await fs.writeFile(abs("src/F/Net.Server/A.luau"), "");
 			const routes = {
 				server: "ServerScriptService",
 				"*": "ReplicatedStorage",
@@ -1210,16 +1210,16 @@ describe("CoreWriteService", () => {
 					)
 				).unwrap().diagnostics;
 
-			expect(await diagnose("src/F/Sever/A.luau")).toMatchObject([
-				{ code: "route.folderTypo" },
+			expect(await diagnose("src/F/Net.Server/A.luau")).toMatchObject([
+				{ code: "route.dotRoute" },
 			]);
 			expect(await diagnose("src/F")).toMatchObject([
-				{ code: "route.folderTypo" },
+				{ code: "route.dotRoute" },
 			]);
 		});
 
 		it("should report what a check raises when no path is asked about", async () => {
-			await fs.writeFile(abs("src/F/Sever/A.luau"), "");
+			await fs.writeFile(abs("src/F/Net.Server/A.luau"), "");
 
 			const found = (
 				await writeServiceOfFs().diagnose(
@@ -1235,7 +1235,7 @@ describe("CoreWriteService", () => {
 			).unwrap();
 
 			expect(found.diagnostics).toMatchObject([
-				{ code: "route.folderTypo" },
+				{ code: "route.dotRoute" },
 			]);
 			expect(found.stoppedBy).toEqual([]);
 		});
@@ -1347,7 +1347,7 @@ describe("CoreWriteService", () => {
 		});
 
 		it("should report the error of a config that did not load beside what reaches the path in the others", async () => {
-			await fs.writeFile(abs("src/F/Sever/A.luau"), "");
+			await fs.writeFile(abs("src/F/Net.Server/A.luau"), "");
 			const failure = errorDiagnostic(
 				"config.invalidSyntax",
 				{ resource: abs("broken/default.rogen.json") },
@@ -1369,13 +1369,13 @@ describe("CoreWriteService", () => {
 							},
 						}),
 					]),
-					{ args: ["src/F/Sever/A.luau"], cwd: abs() }
+					{ args: ["src/F/Net.Server/A.luau"], cwd: abs() }
 				)
 			).unwrap();
 
 			expect(result.diagnostics).toMatchObject([
 				{ code: "config.invalidSyntax" },
-				{ code: "route.folderTypo" },
+				{ code: "route.dotRoute" },
 			]);
 			expect(result.stoppedBy).toEqual([]);
 		});
