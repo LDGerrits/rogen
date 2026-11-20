@@ -178,7 +178,8 @@ class MirrorPlanRun {
 		);
 		this.routing = instantiationService.createInstance(
 			DraftRouting,
-			workspace.request
+			workspace.request,
+			workspace.diagnostics
 		);
 	}
 

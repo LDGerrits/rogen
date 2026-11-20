@@ -104,7 +104,8 @@ export class MirrorWorkspaceOpener {
 				staging,
 				written,
 				mirror,
-				layout
+				layout,
+				here.diagnostics
 			)
 		);
 	}

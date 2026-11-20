@@ -82,14 +82,18 @@ export function landingMiss(
 
 /** Asks routing itself where the files of a plan land once it is written, so syncback places nothing by rules of its own. */
 export class DraftRouting {
-	private known?: Promise<ReadonlySet<string>>;
+	/** What the project raises before the plan is made, which no proposal is blamed for. */
+	private readonly known: ReadonlySet<string>;
 
 	constructor(
 		private readonly request: SyncbackRequest,
+		known: readonly Diagnostic[],
 		@WriteService private readonly writeService: WriteService,
 		@InstantiationService
 		private readonly instantiationService: InstantiationService
-	) {}
+	) {
+		this.known = new Set(known.map(keyOf));
+	}
 
 	/** Why routing rejects each of `proposals` once they and `operations` are made: an error it newly raises about what one writes, else that it makes another instance or none of what one writes. An error stops the whole write, so a proposal it isn't about is rejected only when no proposal is. */
 	async misses(
@@ -98,7 +102,6 @@ export class DraftRouting {
 	): Promise<Map<Proposal, string>> {
 		const misses = new Map<Proposal, string>();
 		if (proposals.length === 0) return misses;
-		const known = await this.knownDiagnostics();
 		const located = await this.locate(
 			proposals.flatMap(({ landings }) =>
 				landings.map(({ file }) => this.absolute(file))
@@ -114,7 +117,8 @@ export class DraftRouting {
 			return misses;
 		}
 		const raised = located.diagnostics.filter(
-			(diagnostic) => isError(diagnostic) && !known.has(keyOf(diagnostic))
+			(diagnostic) =>
+				isError(diagnostic) && !this.known.has(keyOf(diagnostic))
 		);
 		const blocked = new Map<Proposal, string>();
 		for (const proposal of proposals) {
@@ -155,13 +159,6 @@ export class DraftRouting {
 	/** A path of the plan as an absolute POSIX path. */
 	private absolute(file: string): string {
 		return toPosix(path.resolve(this.request.cwd, file));
-	}
-
-	private knownDiagnostics(): Promise<ReadonlySet<string>> {
-		this.known ??= this.locate([]).then(
-			(located) => new Set((located?.diagnostics ?? []).map(keyOf))
-		);
-		return this.known;
 	}
 
 	private async locate(
