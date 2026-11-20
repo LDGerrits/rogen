@@ -54,6 +54,14 @@ function instanceBelow(file: readonly string[]): string[] {
 const markOf = (fileName: string) =>
 	/(@[A-Za-z][A-Za-z0-9]*)(?=\.[^@]*$)/.exec(fileName)?.[1] ?? "";
 
+/** `fileName` with `mark` after the name of the instance it makes, as `Hit@Server.luau`. */
+function withMark(fileName: string, mark: string): string {
+	const stem = instanceNameOf(fileName);
+	return `${stem}${mark}${fileName.slice(stem.length)}`;
+}
+
+const isInit = (fileName: string) => fileName.startsWith("init.");
+
 /** Whether Rojo writes `written` in the form the file `old` has, its route mark aside. */
 const sameForm = (old: string, written: string) =>
 	old.replace(markOf(old), "") === written;
@@ -84,8 +92,10 @@ function byInstance(
 ): Map<string, PlacedLocation> {
 	const found = new Map<string, PlacedLocation>();
 	for (const file of placed)
-		for (const at of [file.instancePath, ...(file.alsoAt ?? [])])
-			found.set(at.join("\0"), file);
+		for (const at of [file.instancePath, ...(file.alsoAt ?? [])]) {
+			const key = at.join("\0");
+			if (!found.has(key)) found.set(key, file);
+		}
 	return found;
 }
 
@@ -113,8 +123,10 @@ function renameOf(
 	const moved = (source: string) =>
 		path.posix.join(renamed, path.posix.relative(folder, source));
 	const files = new Map<string, RenamedFile>();
-	/** The old file each file of the instance is, for those a new sibling may be written like. */
+	/** The old file each file of the instance is, which a new sibling is written like. */
 	const siblings = new Map<string, PlacedLocation>();
+	/** Every old file a file of the instance stands for. */
+	const mapped = new Set<string>();
 	const fresh: (readonly string[])[] = [];
 	for (const file of instance.files) {
 		const leaf = file[file.length - 1];
@@ -136,21 +148,29 @@ function renameOf(
 		}
 		if (!containsPosix(folder, old.source)) return undefined;
 		const oldName = path.posix.basename(old.source);
-		const stem = instanceNameOf(leaf);
-		files.set(
-			key,
-			sameForm(oldName, leaf)
-				? { target: moved(old.source) }
-				: isScript(oldName)
-					? {
-							target: path.posix.join(
-								path.posix.dirname(moved(old.source)),
-								`${stem}${markOf(oldName)}${leaf.slice(stem.length)}`
-							),
-						}
-					: { target: moved(old.source), keep: old.source }
-		);
-		if (!leaf.startsWith("init.")) siblings.set(key, old);
+		mapped.add(old.source);
+		siblings.set(key, old);
+		if (sameForm(oldName, leaf)) {
+			files.set(key, { target: moved(old.source) });
+			continue;
+		}
+		if (!isScript(oldName)) {
+			files.set(key, { target: moved(old.source), keep: old.source });
+			continue;
+		}
+		// A script Rojo writes in another form keeps Studio's edit under the new name, unless it turned between a file and a folder, or the new name routes it elsewhere.
+		const name = withMark(leaf, markOf(oldName));
+		if (
+			isInit(oldName) !== isInit(leaf) ||
+			matchesPattern(name) !== matchesPattern(oldName)
+		)
+			return undefined;
+		files.set(key, {
+			target: path.posix.join(
+				path.posix.dirname(moved(old.source)),
+				name
+			),
+		});
 	}
 	for (const file of fresh) {
 		const leaf = file[file.length - 1];
@@ -172,19 +192,19 @@ function renameOf(
 		)
 			return undefined;
 		const [mark] = marks;
-		const stem = instanceNameOf(leaf);
 		files.set(file.join("/"), {
 			target: path.posix.join(
 				path.posix.dirname(files.get(beside[0][0])!.target),
-				`${stem}${mark}${leaf.slice(stem.length)}`
+				withMark(leaf, mark)
 			),
 		});
 	}
-	const kept = new Set([...siblings.values()].map(({ source }) => source));
 	const lost = placed.some(
 		(file) =>
-			isUnder(file.instancePath, oldPath) &&
-			!kept.has(file.source) &&
+			[file.instancePath, ...(file.alsoAt ?? [])].some(
+				(at) => isUnder(at, oldPath) || isSameJson(at, oldPath)
+			) &&
+			!mapped.has(file.source) &&
 			!isRemoved(file.source)
 	);
 	if (lost || files.size === 0) return undefined;

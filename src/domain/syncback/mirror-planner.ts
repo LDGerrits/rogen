@@ -795,6 +795,11 @@ class MirrorPlanRun {
 			fresh.filter(({ folder }) => folder).map(({ path: at }) => at)
 		);
 		const additions: TreeChange[] = [];
+		const gone = new PathSet(
+			this.operations
+				.filter(({ kind }) => kind === "remove" || kind === "prune")
+				.map(({ file }) => file)
+		);
 		const renames = new Map(
 			(this.request.project.compiledPath === undefined
 				? renamedInstances(
@@ -809,18 +814,11 @@ class MirrorPlanRun {
 						{
 							sourceOf: (at) => workspace.mirror.targetOf(at),
 							placed: workspace.layout.placed,
-							isRemoved: (source) => {
-								const native = toNative(source);
-								return this.operations.some(
-									({ kind, file }) =>
-										(kind === "remove" ||
-											kind === "prune") &&
-										(file === native ||
-											native.startsWith(
-												`${file}${path.sep}`
-											))
-								);
-							},
+							isRemoved: (source) =>
+								[
+									toNative(source),
+									...ancestors(toNative(source)),
+								].some((at) => gone.has(at)),
 							matchesPattern: (name) =>
 								workspace.layout.config.patterns.match(name) !==
 								undefined,

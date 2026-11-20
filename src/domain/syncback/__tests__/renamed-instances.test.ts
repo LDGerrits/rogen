@@ -7,7 +7,8 @@ const posix = (...segments: string[]) => abs(...segments).replaceAll("\\", "/");
 const renamesOf = (
 	instances: Parameters<typeof renamedInstances>[0],
 	removed: ReadonlyMap<string, string>,
-	placed: Parameters<typeof renamedInstances>[2]["placed"]
+	placed: Parameters<typeof renamedInstances>[2]["placed"],
+	matchesPattern: (name: string) => boolean = () => false
 ) =>
 	renamedInstances(instances, new Set(removed.keys()), {
 		sourceOf: (at) => {
@@ -23,7 +24,7 @@ const renamesOf = (
 			[...removed.values()].some(
 				(gone) => source === gone || source.startsWith(`${gone}/`)
 			),
-		matchesPattern: () => false,
+		matchesPattern,
 	});
 
 const sides = {
@@ -223,5 +224,50 @@ describe("renamedInstances", () => {
 				placed
 			)
 		).toEqual([]);
+	});
+
+	it("should leave a rename to placing when a script's new form would route by a pattern its old name didn't", async () => {
+		const { placed } = await layoutOf(["src/Shop/Hit.luau"]);
+
+		expect(
+			renamesOf(
+				[renamedTo("client", "Store", [["Store", "Hit.client.luau"]])],
+				new Map([["m/client/Shop", posix("src/Shop")]]),
+				placed,
+				(name) => name.endsWith(".client.luau")
+			)
+		).toEqual([]);
+	});
+
+	it("should leave a rename to placing when a script turned between a folder and a file", async () => {
+		const { placed } = await layoutOf(["src/Shop@Server/Hit/init.luau"]);
+
+		expect(
+			renamesOf(
+				[renamedTo("server", "Store", [["Store", "Hit.luau"]])],
+				new Map([["m/server/Shop", posix("src/Shop@Server")]]),
+				placed
+			)
+		).toEqual([]);
+	});
+
+	it("should write a child added beside an init script alone as the init's route needs", async () => {
+		const { placed } = await layoutOf(["src/Shop/init@Server.luau"]);
+
+		const [rename] = renamesOf(
+			[
+				renamedTo("server", "Store", [
+					["Store", "init.luau"],
+					["Store", "New.luau"],
+				]),
+			],
+			new Map([["m/server/Shop", posix("src/Shop")]]),
+			placed
+		);
+
+		expect([...rename.files.values()]).toEqual([
+			{ target: posix("src/Store/init@Server.luau") },
+			{ target: posix("src/Store/New@Server.luau") },
+		]);
 	});
 });
