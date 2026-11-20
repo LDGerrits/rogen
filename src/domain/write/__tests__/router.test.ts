@@ -97,11 +97,30 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should not match a name that carries an @, which is meant as a route key", async () => {
-				await write("src/Shop/Foo@sever.tsx");
+			it("should not match a name whose @ nearly spells a route key, which is meant for that key", async () => {
+				await write(
+					"src/Shop/Foo@sever.tsx",
+					"src/Shop/Button@Hover.tsx"
+				);
 
 				expect(await routed()).toEqual([
 					"ReplicatedStorage/shared/Shop/Foo@sever · * (fallback)",
+					"StarterPlayer/StarterPlayerScripts/Shop/Button@Hover · *.tsx (pattern)",
+				]);
+			});
+
+			it("should not match a nested project by its folder's name", async () => {
+				await write("src/ShopService/default.project.json");
+				await fs.writeFile(
+					abs("src/ShopService/default.project.json"),
+					JSON.stringify({
+						name: "ShopService",
+						tree: { $className: "Folder" },
+					})
+				);
+
+				expect(await routed()).toEqual([
+					"ReplicatedStorage/shared/ShopService · * (fallback)",
 				]);
 			});
 

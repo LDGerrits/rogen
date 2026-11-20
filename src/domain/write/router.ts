@@ -2,7 +2,7 @@ import path from "path";
 import { dirnamePosix, joinPosix } from "../../base/path.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
-import { PatternMatch } from "../config/route-patterns.js";
+import { PatternMatch, RoutePatterns } from "../config/route-patterns.js";
 import { RojoScriptSuffix } from "../rojo/rojo.js";
 import { FolderNode, RouteMatch } from "./write.js";
 import { DirClaims, RootClaims } from "./dir-claims.js";
@@ -298,17 +298,19 @@ export class Router {
 		};
 	}
 
-	/** The pattern the name of the instance a file makes matches: its own name, or for an init script its folder's with the script's extension, which routes the script alone. */
+	/** The pattern the name of the instance a file makes matches: its own name, or for an init script its folder's with the script's extension, which routes the script alone. A name whose `@` nearly spells a route key is meant for that key, so no pattern takes it. */
 	private patternOf(
 		entry: ScannedFile,
 		read: EntryReading,
 		isInit: boolean
 	): { readonly match: PatternMatch; readonly at: string } | undefined {
+		if (read.match.misspellings.some(({ kind }) => kind === "strayAt"))
+			return undefined;
 		const folder = read.folders.at(-1);
 		const name = !isInit
 			? path.posix.basename(entry.source).replace(/^\^/, "")
-			: folder && !folder.invisible
-				? `${folder.outrankedName}${read.fileName.slice(read.fileName.indexOf("."))}`
+			: read.kind === "script" && folder && !folder.invisible
+				? RoutePatterns.initName(folder.outrankedName, read.fileName)
 				: undefined;
 		const match = name && this.config.patterns.match(name);
 		return match ? { match, at: entry.source } : undefined;

@@ -135,13 +135,13 @@ export class SyncbackLayout {
 		);
 	}
 
-	/** Whether `node` is made by an init script whose own name routes it, which routes none of its folder's other files. */
+	/** Whether `node` is made by an init script whose own name routes it, by an `@` or a pattern, which routes none of its folder's other files. */
 	routesOnlyItsInit(node: readonly string[]): boolean {
 		const maker = this.fileMaking(node);
 		return (
 			maker !== undefined &&
 			SyncbackLayout.makesItsFolder(maker) &&
-			maker.routeMatch === "suffix"
+			(maker.routeMatch === "suffix" || maker.routeMatch === "pattern")
 		);
 	}
 

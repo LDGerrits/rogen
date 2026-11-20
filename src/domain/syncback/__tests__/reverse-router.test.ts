@@ -738,7 +738,7 @@ describe("ReverseRouter", () => {
 			});
 		});
 
-		it("should name the route into each file of a new folder whose init script a pattern routes alone", async () => {
+		it("should name the route into a new folder whose init script a pattern routes alone, so its other files follow", async () => {
 			const router = await routerOf(["src/Shop/ShopController.luau"], {
 				routes: PATTERNS,
 			});

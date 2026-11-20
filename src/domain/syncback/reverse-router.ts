@@ -2,7 +2,7 @@ import path from "path";
 import { RojoFile } from "../rojo/rojo.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
-import { PatternMatch } from "../config/route-patterns.js";
+import { PatternMatch, RoutePatterns } from "../config/route-patterns.js";
 import { Donor, NewStyle, Style, SyncbackLayout } from "./syncback-layout.js";
 
 /** An instance the place holds that no file of the project makes. */
@@ -148,7 +148,7 @@ export class ReverseRouter {
 				const folder =
 					file.length > 1 ? file[file.length - 2] : instance.name;
 				return this.targetOfName(
-					`${unhoisted(folder)}${name.slice(name.indexOf("."))}`
+					RoutePatterns.initName(unhoisted(folder), name)
 				);
 			});
 	}
@@ -237,7 +237,7 @@ export class ReverseRouter {
 						),
 						contents: false,
 						governed: GOVERNING.has(maker.routeMatch),
-						...(this.layout.routesOnlyItsInit(node) && {
+						...(maker.routeMatch === "suffix" && {
 							mark: {
 								text: `@${maker.route}`,
 								route: maker.route,

@@ -8,9 +8,6 @@ export type PatternMatch =
 
 const PATTERN = /^[A-Za-z0-9._*-]+$/;
 
-/** An `@` and a name at the end of a name or before a dot: meant as a route key, so no pattern takes it. */
-const AT_TOKEN = /@[A-Za-z][A-Za-z0-9]*(?=\.|$)/;
-
 /** The route keys that are globs on a file's name, with `*` as their only wildcard. */
 export class RoutePatterns {
 	private readonly patterns: readonly {
@@ -41,13 +38,17 @@ export class RoutePatterns {
 		);
 	}
 
+	/** The name a pattern reads for the instance an init script makes: its folder's name with the script's extension, as `InputController.luau` for `InputController/init.luau`. */
+	static initName(folderName: string, initFileName: string): string {
+		return `${folderName}${initFileName.slice(initFileName.indexOf("."))}`;
+	}
+
 	get keys(): readonly string[] {
 		return this.patterns.map(({ key }) => key);
 	}
 
-	/** The pattern with the most characters that aren't `*` among those matching `fileName`; patterns of that weight with different targets clash. A name with an `@` route token matches none. */
+	/** The pattern with the most characters that aren't `*` among those matching `fileName`; patterns of that weight with different targets clash. */
 	match(fileName: string): PatternMatch | undefined {
-		if (AT_TOKEN.test(fileName)) return undefined;
 		const matching = this.patterns.filter(({ regex }) =>
 			regex.test(fileName)
 		);
