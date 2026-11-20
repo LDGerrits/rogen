@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -46,6 +47,28 @@ describe("DiskFileSystemService", () => {
 				true
 			);
 			expect(await disk.readFile(path.join(dir, "b.txt"))).toBe("new");
+		});
+
+		it("should rename a folder in letter case only where the disk ignores case", async () => {
+			await disk.createDirectory(path.join(dir, "server"));
+			const lstat = fs.promises.lstat;
+			const ignoringCase = jest
+				.spyOn(fs.promises, "lstat")
+				.mockImplementation(((target: string) =>
+					lstat(
+						path.join(
+							path.dirname(target),
+							path.basename(target).toLowerCase()
+						)
+					)) as typeof fs.promises.lstat);
+
+			await disk.rename(
+				path.join(dir, "server"),
+				path.join(dir, "Server")
+			);
+			ignoringCase.mockRestore();
+
+			expect(fs.readdirSync(dir)).toEqual(["Server"]);
 		});
 
 		it("should throw ENOENT when the source is missing", async () => {

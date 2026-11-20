@@ -237,10 +237,17 @@ export class DiskFileSystemService implements FileSystemService {
 				if (ErrorUtils.hasCode(error, "ENOENT")) return undefined;
 				throw error;
 			});
+		const itself =
+			existing !== undefined &&
+			path.resolve(source).toLowerCase() ===
+				path.resolve(destination).toLowerCase() &&
+			(await sameFile(source, existing));
 		const refusal = renameRefusal(
-			existing?.isDirectory()
-				? FileType.Directory
-				: existing && FileType.File,
+			itself
+				? undefined
+				: existing?.isDirectory()
+					? FileType.Directory
+					: existing && FileType.File,
 			overwrite,
 			source,
 			destination
@@ -250,4 +257,10 @@ export class DiskFileSystemService implements FileSystemService {
 		if (overwrite && isWindows) await replaceOnceFree(source, destination);
 		else await fs.promises.rename(source, destination);
 	}
+}
+
+/** Whether `stats`, read at a path that differs from `source` only in letter case, are `source`'s own, as on a disk that ignores case. */
+async function sameFile(source: string, stats: fs.Stats): Promise<boolean> {
+	const own = await fs.promises.lstat(source).catch(() => undefined);
+	return own !== undefined && own.dev === stats.dev && own.ino === stats.ino;
 }

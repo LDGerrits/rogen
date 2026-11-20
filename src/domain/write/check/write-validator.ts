@@ -80,7 +80,6 @@ export class WriteValidator {
 			...this.nestedProject(),
 			...this.unclaimedMeta(),
 			...this.dotRoute(),
-			...this.patternCase(),
 			...this.folderPattern(),
 			...this.unrouted(),
 			...this.shippedByFolder(),
@@ -312,29 +311,6 @@ export class WriteValidator {
 						this.config.keys.resolve(folder) === undefined
 				);
 		})?.route;
-	}
-
-	/** A file that falls to `*` though a pattern would take it but for letter case. */
-	private patternCase(): Diagnostic[] {
-		const { patterns } = this.config;
-		return this.placement.files.flatMap(({ entry, routeMatch, init }) => {
-			if (routeMatch !== "fallback" || init) return [];
-			const key = patterns.matchIgnoringCase(
-				...[
-					path.posix.basename(entry.source),
-					entry.file.instanceName,
-				].map((name) => name.replace(/^\^/, ""))
-			);
-			return key === undefined
-				? []
-				: [
-						warningDiagnostic(
-							"route.patternCase",
-							{ resource: entry.source },
-							`matches the pattern "${key}" only ignoring letter case, so it goes to "*". A pattern matches letter case exactly; fix the pattern's case or the file's.`
-						),
-					];
-		});
 	}
 
 	/** A folder whose files fall to `*` though a pattern matches its name: a folder script's for any pattern, a folder of files' only for a pattern without a `*`, which names a whole word. */

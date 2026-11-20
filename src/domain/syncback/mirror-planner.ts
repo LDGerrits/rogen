@@ -156,7 +156,15 @@ class MirrorPlanRun {
 	/** The paths Rojo wrote in place for each new instance below a folder of the project, by `inPlaceKey`, which routing checks before they are written. */
 	private readonly inPlace = new Map<
 		string,
-		{ instance: string; operations: Operation[]; landings: Landing[] }
+		{
+			instance: string;
+			operations: Operation[];
+			landings: Landing[];
+			/** The instance as a new one, for the other ways to write it when routing misreads the paths Rojo chose. */
+			made: AddedInstance & { files: string[][] };
+			/** Its mirror paths that are folders. */
+			folders: string[];
+		}
 	>();
 
 	constructor(
@@ -688,7 +696,7 @@ class MirrorPlanRun {
 		const leaf = unit[unit.length - 1];
 		const folder = added.folder || names.length > unit.length;
 		const parent = mirror.instancePathOf(unit.slice(0, -1).join("/"));
-		const made: AddedInstance = {
+		const made = {
 			parent,
 			parentFolder: unit.slice(0, -1).join("/"),
 			name: folder ? leaf : instanceNameOf(leaf),
@@ -699,8 +707,12 @@ class MirrorPlanRun {
 			instance: instanceKey([...parent, made.name]),
 			operations: [],
 			landings: [],
+			made,
+			folders: [],
 		};
 		held.operations.push(operation);
+		held.made.files.push(names.slice(unit.length - 1));
+		if (added.folder) held.folders.push(added.path);
 		const landing = landingOf(
 			made,
 			names.slice(unit.length - 1),
@@ -826,12 +838,23 @@ class MirrorPlanRun {
 					)
 			).map((rename) => [rename.instance, rename])
 		);
-		const choices: Choice[] = [...this.inPlace.values()].map(
-			({ instance, operations, landings }) => ({
-				instance,
-				proposals: [{ operations, landings }],
-			})
-		);
+		const choices: Choice[] = [];
+		// Where Rojo's place for it reads as another instance, as a name a pattern sends elsewhere, the marks of the routes reaching its parent may still place it.
+		for (const held of this.inPlace.values()) {
+			const placed = await this.proposalsOf(
+				router,
+				held.made,
+				new Set([...folders, ...held.folders]),
+				removed
+			);
+			choices.push({
+				instance: held.instance,
+				proposals: [
+					{ operations: held.operations, landings: held.landings },
+					...placed.proposals,
+				],
+			});
+		}
 		for (const instance of instances) {
 			// The file Rojo keeps an emptied folder of compiled code by is no instance of its own.
 			if (compiled && instance.name === GITKEEP) continue;

@@ -285,16 +285,6 @@ error: "*.ts" and "*Ui.*" both match this name, are as long as each other, and s
 
 Make the pattern that should win more specific, as in `*Ui.ts`, or route the file with a [routing folder](/docs/v2/routing/folders) or an `@` name, which beat every pattern. Patterns that send a file to the same place don't clash. See [Patterns](/docs/v2/routing/names#patterns).
 
-### `route.patternCase` [#route-patterncase]
-
-Warning. A file goes to `*` though a pattern route would take it if letter case were ignored, as `ShopController.luau` under a `*controller` pattern. Patterns match letter case exactly.
-
-```
-warning: matches the pattern "*controller" only ignoring letter case, so it goes to "*". A pattern matches letter case exactly; fix the pattern's case or the file's. (route.patternCase)
-```
-
-Spell the pattern the way your files are named, or rename the file. See [Patterns](/docs/v2/routing/names#patterns).
-
 ### `route.folderPattern` [#route-folderpattern]
 
 Warning. A folder with an init script goes to `*` though its name matches a pattern route, as `InputController/init.luau` under a `*Controller` pattern. A pattern routes files by name and never a folder, and an init script is its folder, so the script and every file in the folder go to `*`, which can ship server code to clients.
@@ -360,7 +350,7 @@ Do what the message says.
 
 ### `route.caseMismatch` [#route-casemismatch]
 
-Error. A folder matches a declared key except for letter case. Keys match exactly, so it would route nothing and its files would go to `*`, which can ship server code to clients. A folder that a route above it, or a marker in it, already routes is left alone, since its name places nothing there. A marker file or `@` name in another case is [`route.strayAt`](#route-strayat).
+Error. A folder matches a declared key except for letter case. Keys match exactly, so it would route nothing and its files would go to `*`, which can ship server code to clients. A folder that a route above it, or a marker in it, already routes is left alone, since its name places nothing there, and so is a folder inside a script folder, as `Net/server/` beside `Net/init.luau` in a library, where the name is a child the script requires. A marker file or `@` name in another case is [`route.strayAt`](#route-strayat).
 
 ```
 error: "SHARED" differs from the route "shared" only in letter case, so it would route nothing and its files would go to "*". Spell it "shared". (route.caseMismatch)

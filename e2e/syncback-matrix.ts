@@ -6,6 +6,11 @@ const RS = "ReplicatedStorage/Shared";
 
 const NAMES = { Server: SSS, Client: SPS, Shared: RS, "*": RS };
 const LOWER = { server: SSS, client: SPS, shared: RS, "*": RS };
+const GLOBS = {
+	...NAMES,
+	"*[Ss]ervice": SSS,
+	"*{Controller,Component}": SPS,
+};
 
 /** What a run of the matrix expects besides a rebuilt place equal to the edited one. */
 export type Outcome =
@@ -150,6 +155,24 @@ const LAYOUTS: Readonly<Record<string, Layout>> = {
 		serverModule: "ShopService",
 		clientModule: "ShopController",
 		init: `${RS}/Input/InputController`,
+	},
+	globs: {
+		routes: GLOBS,
+		files: [
+			"Shop/ShopService.luau",
+			"Shop/ShopController.luau",
+			"Shop/Prices.luau",
+			"Shop/Server/Store.luau",
+			"Shop/Shared/Types.luau",
+			"Bag/BagService.luau",
+			"Bag/BagComponent.luau",
+		],
+		server: `${SSS}/Shop`,
+		client: `${SPS}/Shop`,
+		shared: `${RS}/Shop`,
+		serverModule: "ShopService",
+		clientModule: "ShopController",
+		other: `${SSS}/Bag`,
 	},
 	invisible: {
 		routes: {
@@ -338,15 +361,91 @@ function editsOf(layout: Layout): [string, string, Outcome][] {
 	return edits;
 }
 
+/** Edits of the globs layout whose names start or stop matching a pattern, or that empty a side only a pattern routes. */
+const GLOB_EDITS: [string, string, Outcome][] = [
+	["pattern-into-shared", `mod("${RS}/Shop","PayService")`, ROUND_TRIP],
+	["pattern-into-server", `mod("${SSS}/Shop","CartController")`, ROUND_TRIP],
+	["pattern-into-client", `mod("${SPS}/Shop","UiService")`, ROUND_TRIP],
+	[
+		"rename-into-pattern",
+		`at("${RS}/Shop/Prices").Name="PriceService"`,
+		ROUND_TRIP,
+	],
+	[
+		"rename-out-of-pattern",
+		`at("${SSS}/Shop/ShopService").Name="Shop"`,
+		ROUND_TRIP,
+	],
+	[
+		"rename-across-patterns",
+		`at("${SSS}/Shop/ShopService").Name="ShopController"`,
+		ROUND_TRIP,
+	],
+	[
+		"pattern-named-folder",
+		`new("Folder","${SSS}/Shop","DataService") mod("${SSS}/Shop/DataService","Inner")`,
+		ROUND_TRIP,
+	],
+	[
+		"pattern-new-feature",
+		`new("Folder","${SSS}","Quest") mod("${SSS}/Quest","QuestController") new("Folder","${RS}","Quest") mod("${RS}/Quest","QuestService")`,
+		ROUND_TRIP,
+	],
+	[
+		"name-with-dot-script",
+		`new("Script","${SSS}/Shop","Main.v2","print(1)\\n")`,
+		ROUND_TRIP,
+	],
+	["name-with-at-pattern", `mod("${SSS}/Shop","Pay@Service")`, ROUND_TRIP],
+	[
+		"pattern-module-child",
+		`mod("${SPS}/Bag/BagComponent","Part")`,
+		NESTED_IN_FILE,
+	],
+	[
+		"delete-last-pattern-file",
+		`at("${SPS}/Bag/BagComponent"):Destroy()`,
+		ROUND_TRIP,
+	],
+];
+
+/** Features whose only files the fallback routes, or one pattern routes. */
+const GLOB_FEATURES: MatrixRun[] = [
+	{
+		name: "globs · pattern-into-fallback-side",
+		routes: GLOBS,
+		files: ["Shop/Prices.luau"],
+		edit: `mod("${RS}/Shop","PayService")`,
+		outcome: ROUND_TRIP,
+	},
+	{
+		name: "globs · delete-only-pattern-file",
+		routes: GLOBS,
+		files: ["Bag/BagComponent.luau", "Shop/Prices.luau"],
+		edit: `at("${SPS}/Bag/BagComponent"):Destroy()`,
+		outcome: ROUND_TRIP,
+	},
+];
+
 /** Every layout with every edit. */
 export function syncbackMatrix(): MatrixRun[] {
-	return Object.entries(LAYOUTS).flatMap(([layoutName, layout]) =>
-		editsOf(layout).map(([editName, edit, outcome]) => ({
+	const runs = (
+		layoutName: string,
+		layout: Layout,
+		edits: [string, string, Outcome][]
+	) =>
+		edits.map(([editName, edit, outcome]) => ({
 			name: `${layoutName} · ${editName}`,
 			routes: layout.routes,
 			files: layout.files,
 			edit,
 			outcome,
-		}))
-	);
+		}));
+	return [
+		...Object.entries(LAYOUTS).flatMap(([layoutName, layout]) =>
+			runs(layoutName, layout, editsOf(layout))
+		),
+		...runs("globs", LAYOUTS.globs, GLOB_EDITS),
+		...GLOB_FEATURES,
+	];
 }

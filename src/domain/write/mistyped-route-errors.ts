@@ -33,7 +33,7 @@ export interface MistypedRouteInputs {
 	readonly exists: (target: string) => boolean;
 }
 
-/** The errors for each name meant as a route that misses its key, which would send its files where their route doesn't reach, as server code to `*`: an `@` that nearly spells a key, in a file, folder or marker name (`route.strayAt`), and a folder named for one in another letter case (`route.caseMismatch`). Under a route that governs it, an `@` for another route names nothing whatever its spelling (`route.ignoredAt`), a folder's name places nothing, and a file the tree takes the place of is not routed, so none of those is reported as a misspelling. */
+/** The errors for each name meant as a route that misses its key, which would send its files where their route doesn't reach, as server code to `*`: an `@` that nearly spells a key, in a file, folder or marker name (`route.strayAt`), and a folder named for one in another letter case (`route.caseMismatch`), unless it is a child of a script folder, where it names a child the script requires. Under a route that governs it, an `@` for another route names nothing whatever its spelling (`route.ignoredAt`), a folder's name places nothing, and a file the tree takes the place of is not routed, so none of those is reported as a misspelling. */
 export function mistypedRouteErrors(
 	readings: NameReadings,
 	{ routed, displaced, governed, exists }: MistypedRouteInputs
@@ -94,10 +94,17 @@ export function mistypedRouteErrors(
 				spelledAs(resource, key)
 			);
 		});
+	const scriptFolders = new Set(
+		[...readings.entries]
+			.filter(([, { isInit }]) => isInit)
+			.map(([source]) => path.posix.dirname(source))
+	);
 	const folders = [...readings.nearMisses]
 		.filter(
 			([resource]) =>
-				!readings.markers.has(resource) && !governed.has(resource)
+				!readings.markers.has(resource) &&
+				!governed.has(resource) &&
+				!scriptFolders.has(path.posix.dirname(resource))
 		)
 		.map(([resource, key]) => {
 			const written = path.posix.basename(resource);

@@ -151,6 +151,15 @@ describe("WriteValidator rules", () => {
 				).toEqual([]);
 			});
 
+			it("should leave a folder in another case inside a script folder alone, as a child the script requires", async () => {
+				await write(
+					"src/Lib/Net/init.luau",
+					"src/Lib/Net/SERVER/Remote.luau"
+				);
+
+				expect(await caseErrors()).toEqual([]);
+			});
+
 			it("should fix each mismatch by renaming the name to the key's spelling", async () => {
 				await write("src/(SERVER)/A.luau");
 
@@ -213,24 +222,6 @@ describe("WriteValidator rules", () => {
 				(await route({ routes }))
 					.unwrap()
 					.warnings.filter((warning) => warning.code === code);
-
-			it("should warn about a file that matches a pattern only ignoring letter case", async () => {
-				await write("src/Shop/ShopController.luau");
-
-				expect(
-					listed(
-						await warningsOf("route.patternCase", {
-							...ROUTES,
-							"*controller": "StarterPlayer/StarterPlayerScripts",
-						})
-					)
-				).toEqual([
-					[
-						abs("src/Shop/ShopController.luau"),
-						'matches the pattern "*controller" only ignoring letter case, so it goes to "*". A pattern matches letter case exactly; fix the pattern\'s case or the file\'s.',
-					],
-				]);
-			});
 
 			it("should warn about a folder script whose folder a pattern matches, which no pattern routes, with the rename that routes it there", async () => {
 				await write(
@@ -321,14 +312,13 @@ describe("WriteValidator rules", () => {
 				expect(await warningsOf("route.folderPattern")).toEqual([]);
 			});
 
-			it("should say nothing about a folder script a name routes, or a file that matches", async () => {
+			it("should say nothing about a folder script a name routes", async () => {
 				await write(
 					"src/Input/InputController@client/init.luau",
 					"src/Shop/ShopController.luau"
 				);
 
 				expect(await warningsOf("route.folderPattern")).toEqual([]);
-				expect(await warningsOf("route.patternCase")).toEqual([]);
 			});
 		});
 

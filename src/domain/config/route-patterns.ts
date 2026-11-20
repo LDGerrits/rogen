@@ -85,18 +85,6 @@ export class RoutePatterns {
 		};
 	}
 
-	/** The first pattern that matches one of `names` only once letter case is ignored, which a file it misses was likely meant for. */
-	matchIgnoringCase(...names: readonly string[]): string | undefined {
-		if (this.match(...names)) return undefined;
-		return this.patterns.find(({ alternatives }) =>
-			alternatives.some(({ glob }) =>
-				names.some((name) =>
-					isGlobsetMatch(name.toLowerCase(), glob.toLowerCase())
-				)
-			)
-		)?.key;
-	}
-
 	/** The name key with the target of the pattern `key`, which routes a folder there, as no pattern does; none when no one name key has it. */
 	nameKeyFor(key: string): string | undefined {
 		const target = this.patterns.find(
