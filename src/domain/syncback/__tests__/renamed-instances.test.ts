@@ -1,6 +1,26 @@
 import { renamedInstances } from "../renamed-instances.js";
 import { abs, layoutOf } from "./layout-fixtures.js";
 
+/** Calls `renamedInstances` with removed mirror paths mapped to the sources they were copied from. */
+const renamesOf = (
+	instances: Parameters<typeof renamedInstances>[0],
+	removed: ReadonlyMap<string, string>,
+	placed: Parameters<typeof renamedInstances>[3]
+) =>
+	renamedInstances(
+		instances,
+		new Set(removed.keys()),
+		(at) => {
+			for (const [mirror, source] of removed) {
+				if (at === mirror) return source;
+				if (at.startsWith(`${mirror}/`))
+					return `${source}${at.slice(mirror.length)}`;
+			}
+			return undefined;
+		},
+		placed
+	);
+
 const posix = (...segments: string[]) => abs(...segments).replaceAll("\\", "/");
 
 const sides = {
@@ -27,7 +47,7 @@ describe("renamedInstances", () => {
 			"src/Shop/Client/Hud.luau",
 		]);
 
-		const renames = renamedInstances(
+		const renames = renamesOf(
 			[
 				renamedTo("server", "Store", [["Store", "Hit.luau"]]),
 				renamedTo("client", "Store", [["Store", "Hud.luau"]]),
@@ -52,7 +72,7 @@ describe("renamedInstances", () => {
 		]);
 
 		expect(
-			renamedInstances(
+			renamesOf(
 				[renamedTo("server", "Store", [["Store", "Hit.luau"]])],
 				new Map([
 					[
@@ -71,7 +91,7 @@ describe("renamedInstances", () => {
 			"src/Shop@Server/Util/Math.luau",
 		]);
 
-		const [rename] = renamedInstances(
+		const [rename] = renamesOf(
 			[
 				renamedTo("server", "Store", [
 					["Store", "Hit.luau"],
@@ -96,7 +116,7 @@ describe("renamedInstances", () => {
 		]);
 
 		expect(
-			renamedInstances(
+			renamesOf(
 				[renamedTo("server", "Store", [["Store", "Hit.luau"]])],
 				new Map([
 					[

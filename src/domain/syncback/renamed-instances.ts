@@ -3,6 +3,7 @@ import { isSameJson } from "../../base/objects.js";
 import { containsPosix } from "../../base/path.js";
 import { PlacedLocation } from "../write/write-service.js";
 import { AddedInstance } from "./added-instances.js";
+import { GITKEEP } from "./syncback-layout.js";
 
 /** A new folder instance that is an old one renamed in Studio: its files go where the old ones were, in the old folder under its new name, so the layout stays. */
 export interface RenamedInstance {
@@ -15,22 +16,6 @@ export interface RenamedInstance {
 	readonly renamed: string;
 	/** Each file of the instance, joined with `/`, and the absolute POSIX path it goes to. */
 	readonly files: ReadonlyMap<string, string>;
-}
-
-const GITKEEP = ".gitkeep";
-
-/** The old source of the mirror path `at`, through the removal of it or of a folder above it; `removed` maps a mirror path to the absolute POSIX path it was. */
-function sourceOf(
-	at: string,
-	removed: ReadonlyMap<string, string>
-): string | undefined {
-	const names = at.split("/");
-	for (let depth = names.length; depth > 0; depth--) {
-		const source = removed.get(names.slice(0, depth).join("/"));
-		if (source !== undefined)
-			return path.posix.join(source, ...names.slice(depth));
-	}
-	return undefined;
 }
 
 /** The folder name `segment` with the instance name `from` in it changed to `to`, as `Shop@Server` → `ShopX@Server`; none when the name isn't spelled in it. */
@@ -50,7 +35,7 @@ function renamedSegment(
 function renameOf(
 	instance: AddedInstance,
 	from: string,
-	removed: ReadonlyMap<string, string>,
+	sourceOf: (mirror: string) => string | undefined,
 	placed: readonly PlacedLocation[]
 ): RenamedInstance | undefined {
 	// A name routing reads as more than a name is left for placement to refuse.
@@ -60,10 +45,7 @@ function renameOf(
 	const sources: [string, string][] = [];
 	for (const file of instance.files) {
 		if (file[file.length - 1] === GITKEEP) continue;
-		const source = sourceOf(
-			[oldMirror, ...file.slice(1)].join("/"),
-			removed
-		);
+		const source = sourceOf([oldMirror, ...file.slice(1)].join("/"));
 		if (source === undefined) return undefined;
 		sources.push([file.join("/"), source]);
 	}
@@ -103,10 +85,11 @@ const isUnder = (instancePath: readonly string[], root: readonly string[]) =>
 	root.every((name, at) => instancePath[at] === name) &&
 	instancePath.length > root.length;
 
-/** The new folder instances that are old ones renamed: same parent, every file of the old one under the new name, and a folder of their own whose every instance is renamed the same way. `removed` maps each mirror path the plan removes to the absolute POSIX path it was. */
+/** The new folder instances that are old ones renamed: same parent, every file of the old one under the new name, and a folder of their own whose every instance is renamed the same way. `removed` holds each mirror path the plan removes, and `sourceOf` gives the absolute POSIX path a mirror path was copied from. */
 export function renamedInstances(
 	instances: readonly AddedInstance[],
-	removed: ReadonlyMap<string, string>,
+	removed: ReadonlySet<string>,
+	sourceOf: (mirror: string) => string | undefined,
 	placed: readonly PlacedLocation[]
 ): RenamedInstance[] {
 	const found: RenamedInstance[] = [];
@@ -114,13 +97,13 @@ export function renamedInstances(
 		if (!instance.folder) continue;
 		const prefix = `${instance.parentFolder}/`;
 		const names = new Set(
-			[...removed.keys()]
+			[...removed]
 				.filter((at) => at.startsWith(prefix))
 				.map((at) => at.slice(prefix.length).split("/")[0])
 				.filter((name) => name !== instance.name)
 		);
 		for (const name of names) {
-			const rename = renameOf(instance, name, removed, placed);
+			const rename = renameOf(instance, name, sourceOf, placed);
 			if (rename) {
 				found.push(rename);
 				break;
@@ -133,19 +116,15 @@ export function renamedInstances(
 				!containsPosix(rename.folder, file.source) ||
 				[file.instancePath, ...(file.alsoAt ?? [])].every(
 					(instancePath) =>
-						found.some(
-							(other) =>
+						found.some((other) => {
+							const old = [...other.instance.parent, other.from];
+							return (
 								other.folder === rename.folder &&
 								other.renamed === rename.renamed &&
-								isUnder(instancePath, [
-									...other.instance.parent,
-									other.from,
-								])
-						) ||
-						isSameJson(instancePath, [
-							...rename.instance.parent,
-							rename.from,
-						])
+								(isUnder(instancePath, old) ||
+									isSameJson(instancePath, old))
+							);
+						})
 				)
 		)
 	);

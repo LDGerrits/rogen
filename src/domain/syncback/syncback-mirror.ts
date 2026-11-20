@@ -30,6 +30,18 @@ const FILE_CONTENT_CLASSES: ReadonlySet<string> = new Set([
 	"LocalizationTable",
 ]);
 
+/** The services Studio fills with instances of its own, such as Workspace's Camera and Terrain, which a route to them must not take for new features. */
+const STUDIO_FILLED: ReadonlySet<string> = new Set([
+	"Workspace",
+	"Lighting",
+	"SoundService",
+	"TextChatService",
+	"Chat",
+	"MaterialService",
+	"Players",
+	"Teams",
+]);
+
 const isPlainFolder = (node: RojoNode): boolean =>
 	node.$className === "Folder" &&
 	Object.keys(node).every(
@@ -490,6 +502,7 @@ class MirrorWalk {
 	): boolean {
 		return (
 			node.$ignoreUnknownInstances !== true &&
+			!STUDIO_FILLED.has(instancePath[0] ?? "") &&
 			this.inputs.routeTargets.some((target) =>
 				isSameJson(target, instancePath)
 			)

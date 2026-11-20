@@ -2,9 +2,10 @@ $ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
   Removing src/Net/Server/Remote.luau
+  Writing src/Net/Server/.gitkeep
 stderr:
   Wrote default.project.json.
-  Syncback wrote 1 change.
+  Syncback wrote 2 changes.
 
 $ rogen write
 exit 0
@@ -17,6 +18,7 @@ stderr:
 
 written:
   default.project.json
+  src/Net/Server/.gitkeep
 
 $ rojo sourcemap default.project.json
 G: DataModel

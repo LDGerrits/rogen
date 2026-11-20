@@ -23,6 +23,9 @@ export interface Donor {
 
 const AT_KEY = /@([A-Za-z][A-Za-z0-9]*)(?=\.|$)/;
 
+/** The file that keeps an empty folder, which Rojo writes for an empty Folder. */
+export const GITKEEP = ".gitkeep";
+
 /** A folder named in parentheses, which makes no instance. */
 const INVISIBLE_FOLDER = /^\(.+\)$/;
 

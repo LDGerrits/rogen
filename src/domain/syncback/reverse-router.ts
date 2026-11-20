@@ -3,7 +3,13 @@ import { RojoFile } from "../rojo/rojo.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { PatternMatch, RoutePatterns } from "../config/route-patterns.js";
-import { Donor, NewStyle, Style, SyncbackLayout } from "./syncback-layout.js";
+import {
+	Donor,
+	GITKEEP,
+	NewStyle,
+	Style,
+	SyncbackLayout,
+} from "./syncback-layout.js";
 
 /** An instance the place holds that no file of the project makes. */
 export interface NewInstance {
@@ -59,9 +65,6 @@ const AT_KEY = /@([A-Za-z][A-Za-z0-9]*)$/;
 
 /** A folder named in parentheses, which routing leaves out of the game. */
 const INVISIBLE = /^\(.+\)$/;
-
-/** The file Rojo writes to keep an empty folder. */
-const GITKEEP = ".gitkeep";
 
 /** The ways a file is routed that decide for a new sibling too, whatever its name. */
 const GOVERNING: ReadonlySet<string> = new Set(["folder", "marker", "suffix"]);
@@ -219,18 +222,20 @@ export class ReverseRouter {
 		file: readonly string[],
 		{ contents, mark }: NewHome
 	): string[] {
-		if (mark && !contents && file[file.length - 1] === GITKEEP)
-			return [...file.slice(0, -1), mark.text, GITKEEP];
 		if (instance.folder) {
 			if (contents) return file.slice(1);
 			if (!mark) return [...file];
 			if (holdsScript(instance))
 				return [`${file[0]}${mark.text}`, ...file.slice(1)];
+			if (file[file.length - 1] === GITKEEP)
+				return [...file.slice(0, -1), mark.text, GITKEEP];
 			return [
 				...file.slice(0, -1),
 				this.marked(file, instance.files ?? [file], mark),
 			];
 		}
+		if (mark && !contents && file[file.length - 1] === GITKEEP)
+			return [...file.slice(0, -1), mark.text, GITKEEP];
 		return mark && file[0].startsWith(instance.name)
 			? [this.marked(file, instance.files ?? [file], mark)]
 			: [...file];

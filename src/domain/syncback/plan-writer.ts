@@ -156,7 +156,12 @@ export class PlanWriter {
 					location.status === "placed" &&
 					toNative(location.source) === file
 			);
-			if (found && found.instancePath.join("/") === instance.join("/"))
+			if (
+				found &&
+				[found.instancePath, ...(found.alsoAt ?? [])].some(
+					(at) => at.join("/") === instance.join("/")
+				)
+			)
 				continue;
 			warnings.push(
 				warningDiagnostic(

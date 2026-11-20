@@ -5,7 +5,8 @@ stdout:
   Writing src/Shared/NetX/init.luau
   Writing src/Server/NetX/Remote.luau
   Writing src/Server/NetX/init.luau
-  Removing src/Net
+  Removing src/Net/Server
+  Removing src/Net/Types.luau
 stderr:
   Wrote default.project.json.
   default.rogen.json - warning: ReplicatedStorage/Shared/Net was left out: its file src/Net/init.luau is also StarterPlayer/StarterPlayerScripts/Net, which is still there, so the file was kept. (syncback.unplaced)
