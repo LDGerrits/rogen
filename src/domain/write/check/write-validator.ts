@@ -34,6 +34,7 @@ import {
 import { Placement } from "../placement.js";
 import { MissingSourcePaths } from "./missing-source-paths.js";
 import { RoutedFile } from "../router.js";
+import { ScannedFile } from "../root-scanner.js";
 import { Assembly } from "../tree-assembler.js";
 
 /** A script suffix written before an `@` suffix, as in `Start.server@client.luau`, where Rojo doesn't read it. */
@@ -336,59 +337,44 @@ export class WriteValidator {
 		});
 	}
 
-	/** A folder that falls to `*` though a pattern matches its name, as no pattern routes a folder: a folder script's for any pattern, and a folder of files' for a pattern without a `*`, which names the whole word; with the rename to the name key of the pattern's place. */
+	/** A folder whose files fall to `*` though a pattern matches its name: a folder script's for any pattern, a folder of files' only for a pattern without a `*`, which names a whole word. */
 	private folderPattern(): Diagnostic[] {
 		const { patterns } = this.config;
-		const folders = new Map<string, boolean>();
-		for (const { entry, routeMatch, init } of this.placement.files) {
+		const scripts = new Set<string>();
+		const plain = new Set<string>();
+		for (const { entry, routeMatch, init } of this.placement.files)
 			if (routeMatch !== "fallback") continue;
-			if (init) folders.set(init.becomes, true);
-			else
-				for (const folder of this.foldersAbove(entry.source))
-					if (!folders.has(folder)) folders.set(folder, false);
-		}
-		return [...folders]
-			.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-			.flatMap(([folder, script]) => {
-				const name = path.posix.basename(folder);
-				const match = patterns.match(name);
-				if (match?.kind !== "routed") return [];
-				if (!script && match.key.includes("*")) return [];
-				const key = patterns.nameKeyFor(match.key);
-				const plain = /^[^^(]/.test(name);
-				return [
-					warningDiagnostic(
-						"route.folderPattern",
-						{ resource: folder },
-						`matches the pattern "${match.key}", but a pattern never routes a folder${script ? " or its init script, so it and its files go" : ", so its files go"} to "*". ${key === undefined ? 'No name key routes to that place: add one to "routes" and name the folder for it.' : `Name it ${name}@${key} to route it there.`}`,
-						key !== undefined && plain
-							? [
-									{
-										rename: {
-											from: folder,
-											to: `${folder}@${key}`,
-										},
-									},
-								]
-							: []
-					),
-				];
+			else if (init) scripts.add(init.becomes);
+			else for (const folder of foldersAbove(entry)) plain.add(folder);
+		const matched = [...new Set([...scripts, ...plain])]
+			.sort(compareStrings)
+			.flatMap((folder) => {
+				const match = patterns.match(path.posix.basename(folder));
+				const script = scripts.has(folder);
+				return match?.kind === "routed" &&
+					(script || !match.key.includes("*")) &&
+					!this.placement.readings.isMistyped(folder)
+					? [{ folder, script, pattern: match.key }]
+					: [];
 			});
-	}
-
-	/** The folders between `source` and the source path that holds it, nearest first. */
-	private foldersAbove(source: string): string[] {
-		const sourcePath = this.config.sourcePaths
-			.map(toPosix)
-			.find((dir) => isInside(source, dir));
-		const folders: string[] = [];
-		for (
-			let folder = path.posix.dirname(source);
-			sourcePath !== undefined && isInside(folder, sourcePath);
-			folder = path.posix.dirname(folder)
-		)
-			folders.push(folder);
-		return folders;
+		return matched
+			.filter(
+				({ folder }) =>
+					!matched.some((outer) => isInside(folder, outer.folder))
+			)
+			.map(({ folder, script, pattern }) => {
+				const name = path.posix.basename(folder);
+				const key = patterns.nameKeyFor(pattern);
+				const renamable = key !== undefined && /^[^^(]/.test(name);
+				return warningDiagnostic(
+					"route.folderPattern",
+					{ resource: folder },
+					`matches the pattern "${pattern}", but a pattern never routes a folder${script ? " or its init script, so it and its files go" : ", so the files in it that no route takes go"} to "*". ${key === undefined ? 'No name key routes to that place: add one to "routes" and name the folder for it.' : `Name it ${name}@${key} to route it there.`}`,
+					renamable
+						? [{ rename: { from: folder, to: `${folder}@${key}` } }]
+						: []
+				);
+			});
 	}
 
 	private misspelt<K extends MisspellingKind>(
@@ -877,4 +863,16 @@ export class WriteValidator {
 			)
 		);
 	}
+}
+
+/** The folders between a scanned file and its source path, nearest first. */
+function foldersAbove({ source, relativePath }: ScannedFile): string[] {
+	const folders: string[] = [];
+	for (
+		let folder = path.posix.dirname(source);
+		folders.length < relativePath.split("/").length - 1;
+		folder = path.posix.dirname(folder)
+	)
+		folders.push(folder);
+	return folders;
 }

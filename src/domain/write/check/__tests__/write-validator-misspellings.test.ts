@@ -267,13 +267,52 @@ describe("WriteValidator rules", () => {
 				expect(listed(warnings)).toEqual([
 					[
 						abs("src/Shop/Server"),
-						'matches the pattern "[Ss]erver", but a pattern never routes a folder, so its files go to "*". No name key routes to that place: add one to "routes" and name the folder for it.',
+						'matches the pattern "[Ss]erver", but a pattern never routes a folder, so the files in it that no route takes go to "*". No name key routes to that place: add one to "routes" and name the folder for it.',
 					],
 					[
 						abs("src/server"),
-						'matches the pattern "[Ss]erver", but a pattern never routes a folder, so its files go to "*". No name key routes to that place: add one to "routes" and name the folder for it.',
+						'matches the pattern "[Ss]erver", but a pattern never routes a folder, so the files in it that no route takes go to "*". No name key routes to that place: add one to "routes" and name the folder for it.',
 					],
 				]);
+			});
+
+			it("should warn only about the outermost folder a pattern without a * matches, with the rename to its name key", async () => {
+				await write("src/backend/backend/Main.luau");
+
+				const warnings = await warningsOf("route.folderPattern", {
+					...ROUTES,
+					"{api,backend}": "ServerScriptService",
+				});
+
+				expect(warnings.map(({ resource }) => resource)).toEqual([
+					abs("src/backend"),
+				]);
+				expect(fixesOf(warnings)).toEqual([
+					{
+						rename: {
+							from: at("src/backend"),
+							to: at("src/backend@server"),
+						},
+					},
+				]);
+			});
+
+			it("should leave a folder whose name already has an error to that error", async () => {
+				await write("src/Server/Main.luau");
+
+				const routes = {
+					...ROUTES,
+					"[Ss]erver": "ServerScriptService",
+				};
+
+				expect(
+					(await errorsOf("route.caseMismatch", { routes })).map(
+						({ resource }) => resource
+					)
+				).toEqual([abs("src/Server")]);
+				expect(
+					await errorsOf("route.folderPattern", { routes })
+				).toEqual([]);
 			});
 
 			it("should say nothing about a folder of files a pattern with a * matches, which may be a name of its own", async () => {

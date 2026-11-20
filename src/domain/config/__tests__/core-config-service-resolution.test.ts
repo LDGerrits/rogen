@@ -397,22 +397,23 @@ describe("CoreConfigService", () => {
 				]);
 			});
 
-			it("should reject a route written twice, at the copy JSON drops", async () => {
+			it("should reject a route written more than once, at each copy JSON drops", async () => {
 				const problems = await diagnosticsFor(`{
 	"routes": {
 		"Server": "ServerScriptService",
-		"Server": "ReplicatedStorage"
+		"Server": "ReplicatedStorage",
+		"Server": "ReplicatedFirst"
 	}
 }`);
 
-				expect(problems).toEqual([
-					[
-						'route "Server" is written twice, and JSON keeps only the last, so this one is lost. Remove one.',
+				expect(problems).toEqual(
+					[3, 4].map((line) => [
+						'route "Server" is written more than once, and JSON keeps only the last, so this one is lost. Remove it.',
 						"/repo/default.rogen.json",
+						line,
 						3,
-						3,
-					],
-				]);
+					])
+				);
 			});
 
 			it("should reject a Rogen key written twice", async () => {
@@ -423,7 +424,7 @@ describe("CoreConfigService", () => {
 
 				expect(problems).toEqual([
 					[
-						'"routes" is written twice, and JSON keeps only the last, so this one is lost. Remove one.',
+						'"routes" is written more than once, and JSON keeps only the last, so this one is lost. Remove it.',
 						"/repo/default.rogen.json",
 						2,
 						2,

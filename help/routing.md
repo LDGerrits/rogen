@@ -6,9 +6,9 @@ Rogen reads the folder and file names under each config's `sourcePaths` and writ
 
 Route with folders. Give each feature one folder per side, named after the config's route keys, and put every file inside one of them:
 
-src/Inventory/Server/InventoryService.luau -> ServerScriptService/Inventory/InventoryService
-src/Inventory/Client/InventoryController.luau -> StarterPlayer/StarterPlayerScripts/Inventory/InventoryController
-src/Inventory/Shared/InventoryTypes.luau -> ReplicatedStorage/Shared/Inventory/InventoryTypes
+  src/Inventory/Server/InventoryService.luau   -> ServerScriptService/Inventory/InventoryService
+  src/Inventory/Client/InventoryController.luau -> StarterPlayer/StarterPlayerScripts/Inventory/InventoryController
+  src/Inventory/Shared/InventoryTypes.luau     -> ReplicatedStorage/Shared/Inventory/InventoryTypes
 
 A key routes a file in four ways:
 

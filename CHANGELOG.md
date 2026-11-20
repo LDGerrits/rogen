@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Warnings for a pattern route that just misses: `route.patternCase` for a file that matches a pattern only ignoring letter case, and `route.folderPattern` for a folder script whose folder a pattern matches, or a folder of files a pattern without a `*` matches (`server/` under `[Ss]erver`), which no pattern routes, with the rename that does.
 
-- The error `config.duplicateKey` for a route key, or one of Rogen's own keys, written twice in one object, which JSON reads as the last copy only. Rojo's keys still keep their last copy without a word, as Rojo reads them.
+- The error `config.duplicateKey` for a route key, or one of Rogen's own keys, written more than once in one object, which JSON reads as the last copy only. Rojo's keys still keep their last copy without a word, as Rojo reads them.
 
 - The warning `scan.uncompiled` for a TypeScript file in a project with no `compiledPath`, which Rojo never reads.
 

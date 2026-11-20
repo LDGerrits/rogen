@@ -73,7 +73,7 @@ export class ConfigValidator {
 	}
 
 	validate(): Result<ResolvedConfig, Diagnostic[]> {
-		this.checkOverriddenKeys();
+		this.checkDuplicateKeys();
 		const routes = this.checkRoutes();
 		const routed = Object.keys(this.routes).length > 0;
 		const project = this.readProject();
@@ -215,7 +215,7 @@ export class ConfigValidator {
 	}
 
 	/** Rojo keeps the last copy of its own keys without a word, so only Rogen's are checked. */
-	private checkOverriddenKeys(): void {
+	private checkDuplicateKeys(): void {
 		const lost = [
 			...this.config
 				.overriddenKeys([])
@@ -224,12 +224,16 @@ export class ConfigValidator {
 			...this.config
 				.overriddenKeys("routes")
 				.map((key) => ({ ...key, described: `route "${key.name}"` })),
-		];
+		].sort(
+			(a, b) =>
+				a.position.line - b.position.line ||
+				a.position.column - b.position.column
+		);
 		for (const { described, position } of lost)
 			this.problems.error(
 				"config.duplicateKey",
 				{ resource: this.config.file, position },
-				`${described} is written twice, and JSON keeps only the last, so this one is lost. Remove one.`
+				`${described} is written more than once, and JSON keeps only the last, so this one is lost. Remove it.`
 			);
 	}
 

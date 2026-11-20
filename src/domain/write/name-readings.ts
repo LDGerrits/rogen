@@ -167,6 +167,13 @@ export class NameReadings {
 		return folder?.route !== undefined ? "a routing folder" : undefined;
 	}
 
+	/** Whether `resource`'s name misses a route by a misspelling or by letter case. */
+	isMistyped(resource: string): boolean {
+		return (
+			this.misspellings.has(resource) || this._nearMisses.has(resource)
+		);
+	}
+
 	/** Each resource whose name has a misspelling of `kind`, with it; first found first. */
 	misspelt<K extends MisspellingKind>(
 		kind: K
