@@ -1,0 +1,39 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Removing src/Net/Server/Remote.luau
+stderr:
+  Wrote default.project.json.
+  Syncback wrote 1 change.
+
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stderr:
+  Syncback would change nothing.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+G: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Boot: Folder
+        Step: ModuleScript  <- src/Boot/Step.luau
+      Net: ModuleScript  <- src/Net/init.luau
+        Types: ModuleScript  <- src/Net/Types.luau
+  ServerScriptService: ServerScriptService
+    Boot: Script  <- src/Boot/init.server.luau
+    Net: ModuleScript  <- src/Net/init.luau
+    Store: Folder
+      Save: ModuleScript  <- src/Store/Server/Save.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Net: ModuleScript  <- src/Net/init.luau
+        Listener: ModuleScript  <- src/Net/Client/Listener.luau
+      Store: ModuleScript  <- src/Store/init@Client.luau
+        Row: ModuleScript  <- src/Store/Client/Row.luau

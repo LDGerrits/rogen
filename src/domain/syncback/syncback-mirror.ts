@@ -1,3 +1,4 @@
+import { isSameJson } from "../../base/objects.js";
 import path from "path";
 import { isGlobsetMatch } from "../../base/glob.js";
 import { commonFolderPosix, containsPosix, toPosix } from "../../base/path.js";
@@ -60,6 +61,8 @@ interface SyncbackMirrorInputs {
 	readonly written: RojoProjectFile;
 	/** The config's own tree, without the nodes routing adds. */
 	readonly tree: RojoNode;
+	/** The instance paths the routes put files at, where Studio's new features belong. */
+	readonly routeTargets: readonly (readonly string[])[];
 	/** The config's folder, where the temporary project file goes. */
 	readonly dir: string;
 	/** Where the mirror goes, relative to `dir` and written with `/`. */
@@ -269,6 +272,10 @@ class MirrorWalk {
 					this.addFolder(at);
 					break;
 				case "kept":
+					if (await this.dissolves(child, here)) {
+						await this.keep(child, here, at);
+						break;
+					}
 					await this.keep(child, here, mounts ? undefined : at);
 					continue;
 			}
@@ -323,6 +330,47 @@ class MirrorWalk {
 			: path.posix.extname(base);
 	}
 
+	/** Whether a node the write made from a folder or an init script it mounts alone, and nothing else, has every child it holds made too, so its own folder can lie inside its parent's and Rojo can rename or remove it as an instance of the file system. */
+	private async dissolves(
+		node: RojoNode,
+		instancePath: readonly string[]
+	): Promise<boolean> {
+		if (node.$path === undefined || this.inOwnTree(instancePath))
+			return false;
+		if (
+			Object.keys(node).some(
+				(key) =>
+					key.startsWith("$") &&
+					key !== "$path" &&
+					key !== "$ignoreUnknownInstances"
+			)
+		)
+			return false;
+		if (!this.made.has(instancePath.join("\0"))) return false;
+		const target = toPosix(
+			path.resolve(this.inputs.dir, rojoPathTarget(node.$path))
+		);
+		if (
+			!this.isInitFile(target) &&
+			!(
+				this.inputs.reads.some((read) => containsPosix(read, target)) &&
+				(await this.inputs.isFolder(target))
+			)
+		)
+			return false;
+		return childNodes(node).every(
+			([name, child]) =>
+				this.classify(name, child, instancePath).kind !== "kept"
+		);
+	}
+
+	private inOwnTree(instancePath: readonly string[]): boolean {
+		let own: RojoNode | undefined = this.inputs.tree;
+		for (const name of instancePath)
+			own = own && childNodes(own).find(([child]) => child === name)?.[1];
+		return own !== undefined;
+	}
+
 	/** Whether `node` is a plain folder whose every child the write made, so its folder can lie inside the one of its parent. */
 	private madeWhole(
 		node: RojoNode,
@@ -351,7 +399,8 @@ class MirrorWalk {
 				const empty = this.spare();
 				this.mount(node, empty, instancePath);
 				this.nodeFolders.push({ mirror: empty, node: instancePath });
-			}
+			} else if (this.isRouteTarget(node, instancePath))
+				this.mount(node, this.spare(), instancePath);
 			return;
 		}
 		const target = toPosix(
@@ -371,7 +420,7 @@ class MirrorWalk {
 			return;
 		}
 		if (this.isInitFile(target)) {
-			await this.keepInit(node, instancePath, target, optional);
+			await this.keepInit(node, instancePath, target, optional, at);
 			return;
 		}
 		const own = this.spare();
@@ -409,9 +458,10 @@ class MirrorWalk {
 		node: RojoNode,
 		instancePath: readonly string[],
 		target: string,
-		optional: boolean
+		optional: boolean,
+		at: string | undefined
 	): Promise<void> {
-		const own = this.spare();
+		const own = at ?? this.spare();
 		const init = `${own}/${RojoFile.INIT_NAME}${this.suffixOf(target)}`;
 		const meta = `${own}/${RojoFile.INIT_META}`;
 		this.keptNodes.set(own, instancePath);
@@ -430,7 +480,20 @@ class MirrorWalk {
 		);
 		this.addFolder(own);
 		this.repoint(node, own, optional);
-		await this.children(node, instancePath, undefined);
+		await this.children(node, instancePath, own, true);
+	}
+
+	/** Whether `node` is where a route puts files, so the features Studio adds to it are for routing to place: it reads an empty folder of its own when nothing else gives it one. */
+	private isRouteTarget(
+		node: RojoNode,
+		instancePath: readonly string[]
+	): boolean {
+		return (
+			node.$ignoreUnknownInstances !== true &&
+			this.inputs.routeTargets.some((target) =>
+				isSameJson(target, instancePath)
+			)
+		);
 	}
 
 	/** Whether a node with no `$path` gets a folder for the children Studio adds to it: a node of the config's own tree below a service, as Studio fills services with instances of its own, which Rojo leaves alone. */

@@ -568,6 +568,23 @@ describe("TreeAssembler", () => {
 				"*": "ReplicatedStorage",
 			};
 
+			it("should copy an init script to the side of a routing folder left empty, so the script stays there with no children", async () => {
+				await write(
+					"src/Net/init.luau",
+					"src/Net/client/Listener.luau"
+				);
+				await fs.createDirectory(abs("src/Net/server"));
+
+				const { projectFile: value } = await assemble({
+					routes: SPLIT,
+				});
+
+				expect(value.tree.ServerScriptService).toEqual({
+					$className: "ServerScriptService",
+					Net: { $path: optional("src/Net") },
+				});
+			});
+
 			it("should point every node an init script is at its directory, and keep what sits beside it out of that read", async () => {
 				await write(
 					"src/Net/init.luau",

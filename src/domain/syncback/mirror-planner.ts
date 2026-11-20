@@ -12,6 +12,7 @@ import { isObject } from "../../base/objects.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	FileSystemService,
+	isDirectoryType,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import { instanceKey } from "../roblox/roblox.js";
@@ -32,6 +33,7 @@ import {
 } from "./mirror-plan.js";
 import { MirrorRun, MirrorWorkspace, inBatches } from "./mirror-workspace.js";
 import { ReverseRouter, instanceNameOf } from "./reverse-router.js";
+import { RenamedInstance, renamedInstances } from "./renamed-instances.js";
 import { RojoSyncback } from "./rojo-syncback.js";
 import {
 	CompiledChange,
@@ -202,8 +204,15 @@ class MirrorPlanRun {
 		const { copied, started } = this.run;
 		/** Where in `operations` each file changed so far is. */
 		const claimed = new Map<string, number>();
+		const mounted = new Set(
+			workspace.mirror.entries
+				.filter(({ kind }) => kind === "file")
+				.map(({ mirror }) => mirror)
+		);
+		// The write hides a file it mounts by itself from the folder around it, so a glob that names it doesn't mean Rojo never read it.
 		const kept = copied.filter(
-			({ target }) => !workspace.isIgnored(target)
+			({ target, mirror }) =>
+				mounted.has(mirror) || !workspace.isIgnored(target)
 		);
 		const compared = await inBatches(
 			kept,
@@ -561,7 +570,9 @@ class MirrorPlanRun {
 		for (let at = names.length - 1; at > 0; at--) {
 			const folder = names.slice(0, at).join("/");
 			if (known.has(folder))
-				return layout.routesOnlyItsInit(mirror.instancePathOf(folder));
+				return layout.initLeavesItsFolder(
+					mirror.instancePathOf(folder)
+				);
 		}
 		return false;
 	}
@@ -626,7 +637,29 @@ class MirrorPlanRun {
 			fresh.filter(({ folder }) => folder).map(({ path: at }) => at)
 		);
 		const additions: TreeChange[] = [];
+		const renames = new Map(
+			(this.request.project.compiledPath === undefined
+				? renamedInstances(
+						instances,
+						new Map(
+							this.operations.flatMap(({ kind, from, file }) =>
+								kind === "remove" && from !== undefined
+									? [[from, toPosix(file)] as const]
+									: []
+							)
+						),
+						workspace.layout.placed
+					)
+				: []
+			).map((rename) => [rename.instance, rename])
+		);
+		const moved = new Set<string>();
 		for (const instance of instances) {
+			const rename = renames.get(instance);
+			if (rename) {
+				await this.placeRenamed(rename, folders, taken, moved);
+				continue;
+			}
 			const node = this.nodeAt(instance.parentFolder);
 			if (node) {
 				const addition = await this.nodeOf(instance, node, folders);
@@ -657,6 +690,96 @@ class MirrorPlanRun {
 			this.expected.push(...placed.expected);
 		}
 		return additions;
+	}
+
+	/** Writes an instance Studio renamed where its old files were, in its folder under the new name, and moves what else that folder holds, such as marker files, with it. */
+	private async placeRenamed(
+		{ instance, folder, renamed, files }: RenamedInstance,
+		folders: ReadonlySet<string>,
+		taken: Set<string>,
+		moved: Set<string>
+	): Promise<void> {
+		const name = instanceKey([...instance.parent, instance.name]);
+		for (const file of instance.files) {
+			const target = files.get(file.join("/"));
+			if (target === undefined) continue;
+			const at = `${instance.parentFolder}/${file.join("/")}`;
+			const to = toNative(target);
+			taken.add(to);
+			if (folders.has(at)) {
+				await this.add({
+					kind: "folder",
+					file: to,
+					instance: name,
+					from: at,
+				});
+				continue;
+			}
+			await this.add({
+				kind: "write",
+				file: to,
+				instance: name,
+				from: at,
+				bytes: await this.workspace.read(at),
+			});
+			const made = instanceOf(instance, file);
+			if (made) this.expected.push({ file: to, instance: made });
+		}
+		if (moved.has(folder)) return;
+		moved.add(folder);
+		const sources = new Set(
+			this.workspace.layout.placed.map(({ source }) => source)
+		);
+		const touched = (kind: Operation["kind"]) =>
+			new Set(
+				this.operations
+					.filter((operation) => operation.kind === kind)
+					.map(({ file }) => toPosix(file))
+			);
+		const written = touched("write");
+		const removed = touched("remove");
+		const dirs: string[] = [];
+		const walk = async (dir: string): Promise<void> => {
+			dirs.push(dir);
+			const entries = await tryWithAsync(() =>
+				this.fileSystemService.readDirectory(toNative(dir))
+			);
+			if (entries.isErr()) return;
+			for (const [entry, type] of entries.value) {
+				const at = path.posix.join(dir, entry);
+				if (isDirectoryType(type)) {
+					await walk(at);
+					continue;
+				}
+				if (sources.has(at) || written.has(at)) continue;
+				const to = path.posix.join(
+					renamed,
+					path.posix.relative(folder, at)
+				);
+				taken.add(toNative(to));
+				await this.add({
+					kind: "write",
+					file: toNative(to),
+					instance: name,
+					bytes: await this.fileSystemService.readFileBytes(
+						toNative(at)
+					),
+				});
+				if (!removed.has(at))
+					await this.add({
+						kind: "remove",
+						file: toNative(at),
+						instance: name,
+					});
+			}
+		};
+		await walk(folder);
+		for (const dir of dirs.reverse())
+			await this.add({
+				kind: "prune",
+				file: toNative(dir),
+				instance: name,
+			});
 	}
 
 	/** A new instance Rojo wrote into the folder of a node with no `$path`, as a child node of that node; one the tree can't describe has no place. */

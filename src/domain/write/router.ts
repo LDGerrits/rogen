@@ -155,7 +155,7 @@ export interface InitToCopy extends Pick<RoutedFile, "entry"> {
 /** A folder that holds nothing Rojo makes an instance from, at the node a file in it would sit in. */
 export interface RoutedFolder extends Pick<
 	RoutedFile,
-	"instancePath" | "folderNodes"
+	"instancePath" | "folderNodes" | "route" | "hoisted"
 > {
 	/** Absolute, POSIX-style. */
 	readonly folder: string;
@@ -216,7 +216,12 @@ export class Router {
 			claims
 		);
 		return placed && placed.folderNodes.length > 0
-			? { folder, ...placed }
+			? {
+					folder,
+					route: claims.routeKey,
+					...placed,
+					...(hoistAt !== undefined && { hoisted: true }),
+				}
 			: undefined;
 	}
 

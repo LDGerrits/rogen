@@ -1,0 +1,47 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/Quest/Server/Tracker.luau
+  Writing src/Quest/Client/Log.luau
+stderr:
+  Wrote default.project.json.
+  Syncback wrote 2 changes.
+
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stderr:
+  Syncback would change nothing.
+
+written:
+  default.project.json
+  src/Quest/Client/Log.luau
+  src/Quest/Server/Tracker.luau
+
+$ rojo sourcemap default.project.json
+G: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Boot: Folder
+        Step: ModuleScript  <- src/Boot/Step.luau
+      Net: ModuleScript  <- src/Net/init.luau
+        Types: ModuleScript  <- src/Net/Types.luau
+  ServerScriptService: ServerScriptService
+    Boot: Script  <- src/Boot/init.server.luau
+    Net: ModuleScript  <- src/Net/init.luau
+      Remote: ModuleScript  <- src/Net/Server/Remote.luau
+    Quest: Folder
+      Tracker: ModuleScript  <- src/Quest/Server/Tracker.luau
+    Store: Folder
+      Save: ModuleScript  <- src/Store/Server/Save.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Net: ModuleScript  <- src/Net/init.luau
+        Listener: ModuleScript  <- src/Net/Client/Listener.luau
+      Quest: Folder
+        Log: ModuleScript  <- src/Quest/Client/Log.luau
+      Store: ModuleScript  <- src/Store/init@Client.luau
+        Row: ModuleScript  <- src/Store/Client/Row.luau

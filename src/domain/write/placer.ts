@@ -81,9 +81,16 @@ export class Placer {
 			...Placer.patternClashErrors(routed),
 		];
 		if (routeErrors.length > 0) return err(routeErrors);
-		const routedNodes = this.initScripts.withCopies(routed, toCopy);
+		const routedNodes = this.initScripts.withCopies(
+			routed,
+			toCopy,
+			emptyFolders
+		);
 		const resolved = new InstanceResolver().resolve(routedNodes);
-		const nodes = this.initScripts.withoutLoneInits(resolved.nodes);
+		const nodes = this.initScripts.withoutLoneInits(
+			resolved.nodes,
+			emptyFolders
+		);
 		const templating = this.yieldToTree(nodes);
 		const placed = new Set(nodes.map(({ entry }) => entry.source));
 		const leftOut = new LeftOutPaths(

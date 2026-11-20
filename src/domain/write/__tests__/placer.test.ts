@@ -413,12 +413,22 @@ describe("Placer", () => {
 			]);
 		});
 
-		it("should copy only to nodes something placed is left at", async () => {
+		it("should copy to a side whose routing folder holds only ignored files, as to an empty one", async () => {
 			await write("src/Net/init.luau", "src/Net/client/Debug.luau");
 
 			expect(
 				await placed({ ignored: [abs("src/Net/client/Debug.luau")] })
-			).toEqual(["Net/init.luau -> ReplicatedStorage/shared/Net"]);
+			).toEqual([
+				"Net/init.luau -> StarterPlayer/StarterPlayerScripts/Net (copy)",
+			]);
+		});
+
+		it("should copy to no side without a file or a routing folder", async () => {
+			await write("src/Net/init.luau");
+
+			expect(await placed()).toEqual([
+				"Net/init.luau -> ReplicatedStorage/shared/Net",
+			]);
 		});
 	});
 

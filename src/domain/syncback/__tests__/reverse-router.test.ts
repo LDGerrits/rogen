@@ -865,6 +865,34 @@ describe("ReverseRouter", () => {
 			).toEqual(["Boot@Server.meta.json"]);
 		});
 
+		it("should keep an emptied folder by a bare @ folder, as a .gitkeep can't carry the route", async () => {
+			expect(
+				await destination(
+					unit(true, [["Quest", ".gitkeep"]]),
+					["Quest", ".gitkeep"],
+					{
+						contents: false,
+						mark: server,
+					}
+				)
+			).toEqual(["Quest", "@Server", ".gitkeep"]);
+		});
+
+		it("should keep the .gitkeep Rojo writes in an emptied folder by a bare @ folder too", async () => {
+			expect(
+				await destination(
+					{
+						parent: ["ServerScriptService", "Quest"],
+						name: ".gitkeep",
+						folder: false,
+						files: [[".gitkeep"]],
+					},
+					[".gitkeep"],
+					{ contents: false, mark: server }
+				)
+			).toEqual(["@Server", ".gitkeep"]);
+		});
+
 		it("should mark each file of a folder, or the folder when a script is in it", async () => {
 			const files = [
 				["Quest", "Main.luau"],

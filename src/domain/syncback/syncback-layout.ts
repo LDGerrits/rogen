@@ -128,20 +128,28 @@ export class SyncbackLayout {
 
 	/** Whether `file` is an init file, the instance its folder becomes. */
 	static makesItsFolder(file: PlacedLocation): boolean {
-		const folder = file.folderNodes?.at(-1);
 		return (
-			folder !== undefined &&
-			isSameJson(folder.instancePath, file.instancePath)
+			file.folderNodes?.some(({ instancePath }) =>
+				isSameJson(instancePath, file.instancePath)
+			) === true
 		);
 	}
 
-	/** Whether `node` is made by an init script whose own name routes it, by an `@` or a pattern, which routes none of its folder's other files. */
-	routesOnlyItsInit(node: readonly string[]): boolean {
+	/** Whether `node` is made by an init script that its folder's other files don't follow there: one its own name routes, by an `@` or a pattern, or a copy on a side the folder's own route doesn't reach. A file Studio adds below it must name its route. */
+	initLeavesItsFolder(node: readonly string[]): boolean {
 		const maker = this.fileMaking(node);
-		return (
-			maker !== undefined &&
-			SyncbackLayout.makesItsFolder(maker) &&
-			(maker.routeMatch === "suffix" || maker.routeMatch === "pattern")
+		if (maker && SyncbackLayout.makesItsFolder(maker))
+			return (
+				maker.routeMatch === "suffix" ||
+				maker.routeMatch === "pattern" ||
+				maker.routeMatch === "copy"
+			);
+		return this.placed.some(
+			(file) =>
+				file.alsoAt?.some((at) => isSameJson(at, node)) === true &&
+				file.folderNodes?.some(({ instancePath }) =>
+					isSameJson(instancePath, node)
+				) === true
 		);
 	}
 

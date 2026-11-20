@@ -24,11 +24,13 @@ const mirrorOf = (
 	files: readonly PlacedLocation[],
 	folders: readonly string[] = [],
 	texts: Readonly<Record<string, string>> = {},
-	tree: RojoNode = written.tree
+	tree: RojoNode = written.tree,
+	routeTargets: readonly (readonly string[])[] = []
 ) =>
 	SyncbackMirror.of({
 		written,
 		tree,
+		routeTargets,
 		dir: onDisk("/repo"),
 		root: ROOT,
 		placed: files,
@@ -235,6 +237,34 @@ describe("SyncbackMirror", () => {
 			{ mirror: "~kept/1", node: ["ReplicatedStorage", "Remotes"] },
 		]);
 		expect(mirror.folders).toEqual(["~kept/0", "~kept/1"]);
+	});
+
+	it("should read a route's target from an empty folder of its own when nothing else gives it one, where Rojo writes the features Studio adds for routing to place", async () => {
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					$className: "DataModel",
+					StarterPlayer: {
+						$className: "StarterPlayer",
+						StarterPlayerScripts: {
+							$className: "StarterPlayerScripts",
+						},
+					},
+				},
+			},
+			[],
+			[],
+			{},
+			{ $className: "DataModel" },
+			[["StarterPlayer", "StarterPlayerScripts"]]
+		);
+
+		expect(mirror.file.tree).toMatchObject({
+			StarterPlayer: {
+				StarterPlayerScripts: { $path: `${ROOT}/~kept/0` },
+			},
+		});
+		expect(mirror.nodeFolders).toEqual([]);
 	});
 
 	it("should give no folder to a service, a node routing made, or a node that ignores unknown instances, as Rojo leaves the instances Studio makes there alone", async () => {

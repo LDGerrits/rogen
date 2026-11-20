@@ -40,6 +40,35 @@ describe("SyncbackLayout", () => {
 		});
 	});
 
+	describe("initLeavesItsFolder", () => {
+		it("should take a copy of an init script on a side its folder's own route doesn't reach", async () => {
+			const alone = await layoutOf([
+				"src/Net/init.luau",
+				"src/Net/Server/Remote.luau",
+			]);
+			const everywhere = await layoutOf([
+				"src/Net/init.luau",
+				"src/Net/Server/Remote.luau",
+				"src/Net/Client/Listener.luau",
+				"src/Net/Types.luau",
+			]);
+
+			expect(
+				alone.initLeavesItsFolder(["ServerScriptService", "Net"])
+			).toBe(true);
+			expect(
+				everywhere.initLeavesItsFolder(["ServerScriptService", "Net"])
+			).toBe(true);
+			expect(
+				everywhere.initLeavesItsFolder([
+					"ReplicatedStorage",
+					"Shared",
+					"Net",
+				])
+			).toBe(false);
+		});
+	});
+
 	describe("featureMaking", () => {
 		it("should find the feature folder whose routing folder makes the instance", async () => {
 			const layout = await layoutOf([

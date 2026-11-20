@@ -62,6 +62,9 @@ export class MirrorWorkspaceOpener {
 			// Rojo crashes on a project file not named default.project.json that names no project.
 			written: { ...written, name: written.name ?? project.projectName },
 			tree: project.project.getFile().tree,
+			routeTargets: [...project.routes.values()].map(
+				({ instancePath }) => instancePath
+			),
 			dir,
 			root: MIRROR,
 			placed: layout.placed,

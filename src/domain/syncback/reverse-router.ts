@@ -54,6 +54,9 @@ export const instanceNameOf = (fileName: string): string =>
 	RojoFile.metaStemOf(fileName) ??
 	new RojoFile(fileName, SyncRules.DEFAULT).instanceName;
 
+/** The file Rojo writes to keep an empty folder. */
+const GITKEEP = ".gitkeep";
+
 /** The ways a file is routed that decide for a new sibling too, whatever its name. */
 const GOVERNING: ReadonlySet<string> = new Set(["folder", "marker", "suffix"]);
 
@@ -176,6 +179,8 @@ export class ReverseRouter {
 		file: readonly string[],
 		{ contents, mark }: NewHome
 	): string[] {
+		if (mark && !contents && file[file.length - 1] === GITKEEP)
+			return [...file.slice(0, -1), mark.text, GITKEEP];
 		if (instance.folder) {
 			if (contents) return file.slice(1);
 			if (!mark) return [...file];
