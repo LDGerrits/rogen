@@ -376,6 +376,22 @@ describe("WriteValidator rules", () => {
 				expect(error.fixes).toBeUndefined();
 			});
 
+			it("should say nothing about an @ in a package, version or other name far from every route key", async () => {
+				await write(
+					"src/Packages/QuickZone@1.7.0/init.luau",
+					"src/Packages/sleitnick_knit@1.5.1/init.luau",
+					"src/Packages/Promise@4.0.0-rc.1/init.luau",
+					"src/Lib/Comm@v2/init.luau",
+					"src/Lib/Tween@Latest.luau",
+					"src/Lib/Mail@example.luau",
+					"src/Lib/Button@Hover.luau"
+				);
+
+				const { warnings } = (await route()).unwrap();
+
+				expect(warnings).toEqual([]);
+			});
+
 			it("should not stop on a route that restates the outer one", async () => {
 				await write("src/server/Net/Save@server.luau");
 

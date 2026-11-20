@@ -20,6 +20,8 @@ const LISTED_PER_CODE = 10;
 interface DiagnosticGroup {
 	readonly headline: (count: number) => string;
 	readonly tail?: (count: number) => string;
+	/** What a file's line says of it, its message by default. */
+	readonly item?: (message: string) => string;
 }
 
 const either = (count: number, one: string, many: string) =>
@@ -37,6 +39,16 @@ const GROUPS: Readonly<Record<string, DiagnosticGroup>> = {
 	"route.dotRoute": {
 		headline: (count) =>
 			`${count} ${either(count, "name writes", "names write")} a route key after a dot, where only "@" routes, so ${either(count, "it routes", "they route")} nothing:`,
+	},
+	"route.patternClash": {
+		headline: (count) =>
+			`${plural(count, "file")} ${either(count, "matches", "match")} patterns as long as each other that send ${either(count, "it", "them")} to different places:`,
+		item: (message) => {
+			const end = message.indexOf(" both match");
+			return end > 0 ? message.slice(0, end) : message;
+		},
+		tail: () =>
+			"Lengthen the pattern that should win, or route the file with a folder or an @ name.",
 	},
 	"route.serverCodeShipped": {
 		headline: (count) =>
@@ -77,7 +89,10 @@ function block(
 			group.headline(run.length),
 			...run
 				.slice(0, LISTED_PER_CODE)
-				.map(({ resource, message }) => `  ${resource} (${message})`),
+				.map(
+					({ resource, message }) =>
+						`  ${resource} (${group.item ? group.item(message) : message})`
+				),
 			...(unlisted > 0 ? [`  ${unlistedNote(unlisted)}`] : []),
 			...(group.tail ? [group.tail(run.length)] : []),
 		].join("\n"),
