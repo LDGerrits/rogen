@@ -380,7 +380,7 @@ describe("NameReader folder typo", () => {
 			kind: "folderTypo",
 			text: "Sever",
 			key: "server",
-			respelling: { start: 0, written: "Sever", spelling: "Server" },
+			respelling: { start: 0, written: "Sever", spelling: "server" },
 		});
 	});
 

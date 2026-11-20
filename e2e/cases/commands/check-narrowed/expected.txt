@@ -1,10 +1,12 @@
 $ rogen check src/F/shared/Good.luau
-exit 0
+exit 1
+stdout:
+  src/F/shared/Bad@server.luau - error: "@server" does nothing here, because the "shared" route already governs this file. Remove it, or move the file out of the "shared" route's files. (route.ignoredAt)
 stderr:
-  warning: Checked as far as the write gets: it stops on src/F/shared/Bad@server.luau (route.ignoredAt). Run 'rogen check' to see everything.
+  warning: The write stops on the error above, so the paths were checked only as far as it gets; fix it and check again.
 
 $ rogen check src/F/shared/Good.luau --json
-exit 0
+exit 1
 stdout:
   {
     "diagnostics": [],

@@ -42,6 +42,8 @@ type ExaminedConfig =
 			readonly kind: "stopped";
 			readonly placement: Placement;
 			readonly errors: readonly Diagnostic[];
+			/** What the rest of the write raises, which still holds where only routing stopped it. */
+			readonly warnings: readonly Diagnostic[];
 	  };
 
 /** Runs the phases of a write on one config from an index, so `write` and `locate` place files the same way. */
@@ -97,7 +99,12 @@ export class WritePipeline {
 		if (examined.isErr()) return examined;
 		const examinedConfig = examined.value;
 		if (examinedConfig.kind === "stopped")
-			return err(new DiagnosticsError(examinedConfig.errors));
+			return err(
+				new DiagnosticsError([
+					...examinedConfig.errors,
+					...examinedConfig.warnings,
+				])
+			);
 		const { placement, projectFile, readFiles, warnings } = examinedConfig;
 		return ok({
 			config,
@@ -127,33 +134,45 @@ export class WritePipeline {
 		const placement = await this.place(config);
 		if (placement.isErr())
 			return err(new DiagnosticsError(placement.error));
+		const { errors } = placement.value;
 		const assembled = await this.assemble(placement.value);
 		if (assembled.isErr())
 			return ok({
 				kind: "stopped",
 				placement: placement.value,
-				errors: assembled.error,
+				errors: [...errors, ...assembled.error],
+				warnings: [],
 			});
 		const missing = WritePipeline.missingOf(config, placement.value);
 		if (missing.stopsWrite)
 			return ok({
 				kind: "stopped",
 				placement: placement.value,
-				errors: missing.diagnostics(),
+				errors: [...errors, ...missing.diagnostics()],
+				warnings: [],
 			});
 		const { meta, assembly } = assembled.value;
+		const warnings = [
+			...config.warnings,
+			...meta.warnings,
+			...new WriteValidator(assembly).validate(),
+			...(await this.mountClashes.diagnostics(placement.value)),
+			...new UnmountedSources(config, this.index).diagnostics(),
+		];
+		// Routing that stops the write still places every file, so the rest of what the write would raise is shown with it.
+		if (errors.length > 0)
+			return ok({
+				kind: "stopped",
+				placement: placement.value,
+				errors,
+				warnings,
+			});
 		return ok({
 			kind: "assembled",
 			placement: placement.value,
 			projectFile: assembly.projectFile,
 			readFiles: meta.files,
-			warnings: [
-				...config.warnings,
-				...meta.warnings,
-				...new WriteValidator(assembly).validate(),
-				...(await this.mountClashes.diagnostics(placement.value)),
-				...new UnmountedSources(config, this.index).diagnostics(),
-			],
+			warnings,
 		});
 	}
 

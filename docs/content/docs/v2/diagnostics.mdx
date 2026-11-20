@@ -218,16 +218,16 @@ The message names the routing folders of the file's feature. The feature is the 
 
 Error. A name, folder or marker file has an `@` that doesn't route. An `@` can only mean a route, so Rogen stops rather than send the file where its route doesn't reach, such as server code to clients. This happens in two cases:
 
-- The text after the `@` nearly spells a declared route key, with a typo or the wrong letter case.
+- The text after the `@` nearly spells a declared route key, with a typo or the wrong letter case, in a file, a folder or a marker file such as `@SERVER`.
 - The text spells a route key, but it isn't at the end of the name, as in `Report@server.bak.luau`.
 
 ```
 error: 2 names have an "@" that misses its route, so Rogen stops until they are fixed: (route.strayAt)
-  src/Inventory/Load@SERVER.luau (did you mean "@server"?)
-  src/Inventory/Report@server.bak.luau ("@server" must end the name)
+  src/Inventory/Load@SERVER.luau ("@SERVER" names no route; did you mean "@server"?)
+  src/Inventory/Report@server.bak.luau ("@server" must end the name to route it)
 ```
 
-Rename the file to the spelling that the message suggests, or move the `@key` to the end of the name. In `--json`, `fixes` holds the rename when exactly one key is closest.
+Rename the file to the spelling that the message suggests, or move the `@key` to the end of the name. In `--json`, `fixes` holds the rename when exactly one key is closest and nothing is at that name already. Inside a folder that another route already governs, an `@` for another route would do nothing however it is spelled, so it is [`route.ignoredAt`](#route-ignoredat) instead, with no rename to follow.
 
 Rogen doesn't report an `@` that is nowhere near a route key, such as the `@` in a package name like `@rbxts`. See [The `@` Suffix](/docs/v2/routing/names#the--suffix).
 
@@ -268,9 +268,9 @@ warning: 1 folder is one edit from a declared route key, so it is read as an ord
 Rename a folder to the route key if it should route; a folder named as it is stays an ordinary folder.
 ```
 
-Rename the folder to the key that the message suggests. If the typo is in your config, fix the key in `routes` instead. In `--json`, `fixes` holds the rename when exactly one key is closest.
+Rename the folder to the key that the message suggests. If the typo is in your config, fix the key in `routes` instead. In `--json`, `fixes` holds the rename to the key as it is spelled, when exactly one key is closest and no folder of that name is beside it.
 
-One edit is one letter added, removed or changed, or two neighbouring letters swapped, as in `Sevrer/`. A plural counts too. `Servers/` is an ordinary folder, so it warns. Rename it if its files belong under the route. Rogen compares the name without its parentheses and its `^`. It matches only keys of four letters or more, because shorter keys are one edit from real words. A name that matches a key in a different letter case gets [`route.caseMismatch`](#route-casemismatch) instead.
+One edit is one letter added, removed or changed, or two neighbouring letters swapped, as in `Sevrer/`. A plural such as `Servers/` or `Clients/` is a name of its own and doesn't warn, and neither does a folder that a route above it already governs, where its name would route nothing. Rogen compares the name without its parentheses and its `^`. It matches only keys of four letters or more, because shorter keys are one edit from real words. A name that matches a key in a different letter case gets [`route.caseMismatch`](#route-casemismatch) instead.
 
 ### `route.markerClash` [#route-markerclash]
 
@@ -294,11 +294,31 @@ error: "*.ts" and "*Ui.*" both match this name, are as long as each other, and s
 
 Make the pattern that should win more specific, as in `*Ui.ts`, or route the file with a [routing folder](/docs/v2/routing/folders) or an `@` name, which beat every pattern. Patterns that send a file to the same place don't clash. See [Patterns](/docs/v2/routing/names#patterns).
 
+### `route.patternCase` [#route-patterncase]
+
+Warning. A file goes to `*` though a pattern route would take it if letter case were ignored, as `ShopController.luau` under a `*controller` pattern. Patterns match letter case exactly.
+
+```
+warning: matches the pattern "*controller" only ignoring letter case, so it goes to "*". A pattern matches letter case exactly; fix the pattern's case or the file's. (route.patternCase)
+```
+
+Spell the pattern the way your files are named, or rename the file. See [Patterns](/docs/v2/routing/names#patterns).
+
+### `route.folderPattern` [#route-folderpattern]
+
+Warning. A folder with an init script goes to `*` though its name matches a pattern route, as `InputController/init.luau` under a `*Controller` pattern. A pattern routes files by name and never a folder, and an init script is its folder, so the script and every file in the folder go to `*`, which can ship server code to clients.
+
+```
+warning: matches the pattern "*Controller", but a pattern never routes a folder or its init script, so it and its files go to "*". Name it InputController@Client to route it there. (route.folderPattern)
+```
+
+Rename the folder with the `@` of the route key that has the pattern's target, as `InputController@Client/`. In `--json`, `fixes` holds that rename when one route key has the target. See [Patterns](/docs/v2/routing/names#patterns).
+
 ### `route.ignoredAt` [#route-ignoredat]
 
 Error. A name or marker file has an `@key` that does nothing, so the name says the file goes somewhere that it doesn't. This happens in two cases:
 
-- The file is inside a folder that another route already governs. Only the outermost route acts.
+- The file is inside a folder that another route already governs. Only the outermost route acts. This is so for an `@` that only nearly spells a key too, as `Server/Up@client.luau`, since fixing its spelling wouldn't route it.
 - The `@key` comes before another `@key` in the same name, as in `Net@client@server/`. Only the last `@key` in a name routes.
 
 ```
@@ -347,13 +367,13 @@ Do what the message says.
 
 ### `route.caseMismatch` [#route-casemismatch]
 
-Error. A folder or marker file matches a declared key except for letter case. Keys match exactly, so it would route nothing and its files would go to `*`, which can ship server code to clients. A folder that a route above it, or a marker in it, already routes is left alone, since its name places nothing there.
+Error. A folder matches a declared key except for letter case. Keys match exactly, so it would route nothing and its files would go to `*`, which can ship server code to clients. A folder that a route above it, or a marker in it, already routes is left alone, since its name places nothing there. A marker file or `@` name in another case is [`route.strayAt`](#route-strayat).
 
 ```
-error: differs from the route "shared" only in letter case, so it would route nothing. Spell it "shared", or declare it as written. (route.caseMismatch)
+error: "SHARED" differs from the route "shared" only in letter case, so it would route nothing and its files would go to "*". Spell it "shared". (route.caseMismatch)
 ```
 
-Rename it to the key, as `@Shared` for a marker file. If it should route as it is written, declare that spelling as a key. Rogen offers no automatic fix, since a rename moves the files. See [How Routing Works](/docs/v2/routing).
+Rename the folder to the key. In `--json`, `fixes` holds that rename unless a folder of that name is already beside it. To keep the folder's spelling, rename the key in `routes` instead, and every folder spelled the old way with it, since two keys can't differ only in case. `rogen init` renames a project's folders to one spelling when it lifts it. See [How Routing Works](/docs/v2/routing).
 
 ### `route.serverCodeShipped` [#route-servercodeshipped]
 

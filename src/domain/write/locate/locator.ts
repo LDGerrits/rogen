@@ -416,7 +416,7 @@ class ConfigLocator {
 					diagnostics:
 						result.kind === "assembled"
 							? result.warnings
-							: result.errors,
+							: [...result.errors, ...result.warnings],
 					markers: locator.markers,
 				},
 				...(result.kind === "assembled" && {

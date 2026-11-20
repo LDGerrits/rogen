@@ -46,7 +46,7 @@ const GROUPS: Readonly<Record<string, DiagnosticGroup>> = {
 	},
 	"route.serverCodeShipped": {
 		headline: (count) =>
-			`${plural(count, "file")} under a server-only route ${either(count, "ships", "ship")} to clients, because an outer route governs ${either(count, "it", "them")}:`,
+			`${plural(count, "file")} in a folder named for a server route ${either(count, "ships", "ship")} to clients, because a route above the folder governs ${either(count, "it", "them")}:`,
 	},
 	"tree.deadScript": {
 		headline: (count) =>

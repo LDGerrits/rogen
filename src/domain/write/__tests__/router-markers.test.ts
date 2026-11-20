@@ -1,3 +1,4 @@
+import { isError } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { abs, routeFiles, writeFiles } from "./fixtures.js";
@@ -135,10 +136,9 @@ describe("Router", () => {
 			const errors = async (overrides: ResolvedConfigSpec = {}) => {
 				const result = await route(overrides);
 				return result.isErr()
-					? result.error.diagnostics.map(({ code, resource }) => [
-							code,
-							resource,
-						])
+					? result.error.diagnostics
+							.filter(isError)
+							.map(({ code, resource }) => [code, resource])
 					: [];
 			};
 

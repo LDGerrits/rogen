@@ -1,5 +1,6 @@
 import { compareStrings } from "../../base/collections.js";
 import { Target } from "../roblox/roblox.js";
+import { DeclaredKeys } from "./declared-keys.js";
 
 /** What the patterns of a config say about a file name: the route that takes it, or the patterns that tie with different targets. */
 export type PatternMatch =
@@ -16,8 +17,13 @@ export class RoutePatterns {
 		readonly weight: number;
 		readonly regex: RegExp;
 	}[];
+	/** The name keys, each with its target, which a pattern's target is also reached by. */
+	private readonly names: readonly (readonly [string, string])[];
 
 	constructor(routes: ReadonlyMap<string, Target>) {
+		this.names = [...routes]
+			.filter(([key]) => DeclaredKeys.isName(key))
+			.map(([key, target]) => [key, target.instancePath.join("/")]);
 		this.patterns = [...routes]
 			.filter(([key]) => RoutePatterns.isPattern(key))
 			.map(([key, target]) => ({
@@ -58,11 +64,27 @@ export class RoutePatterns {
 		};
 	}
 
-	private static regexOf(key: string): RegExp {
+	/** The first pattern that matches one of `names` only once letter case is ignored, which a file it misses was likely meant for. */
+	matchIgnoringCase(...names: readonly string[]): string | undefined {
+		if (this.match(...names)) return undefined;
+		return this.patterns.find(({ key }) =>
+			names.some((name) => RoutePatterns.regexOf(key, "i").test(name))
+		)?.key;
+	}
+
+	/** The name key with the target of the pattern `key`, which routes a folder there, as no pattern does; none when no one name key has it. */
+	nameKeyFor(key: string): string | undefined {
+		const target = this.patterns.find((pattern) => pattern.key === key)
+			?.target;
+		const names = this.names.filter(([, to]) => to === target);
+		return names.length === 1 ? names[0][0] : undefined;
+	}
+
+	private static regexOf(key: string, flags = ""): RegExp {
 		const escaped = key
 			.split("*")
 			.map((part) => part.replace(/[.-]/g, "\\$&"))
 			.join(".*");
-		return new RegExp(`^${escaped}$`);
+		return new RegExp(`^${escaped}$`, flags);
 	}
 }

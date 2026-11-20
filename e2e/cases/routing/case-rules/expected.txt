@@ -2,7 +2,7 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: 2 files under a server-only route ship to clients, because an outer route governs them: (route.serverCodeShipped)
+  default.rogen.json - warning: 2 files in a folder named for a server route ship to clients, because a route above the folder governs them: (route.serverCodeShipped)
     src/Inventory/client/Server/Ui.luau (ships to clients as StarterPlayer/StarterPlayerScripts/Inventory/Server/Ui: move it out of the "client" route's files if it's server code, or keep it there with a "@client" marker file in its folder)
     src/Inventory/shared/SERVER/Secret.luau (ships to clients as ReplicatedStorage/shared/Inventory/SERVER/Secret: move it out of the "shared" route's files if it's server code, or keep it there with a "@shared" marker file in its folder)
 

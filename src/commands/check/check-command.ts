@@ -1,6 +1,5 @@
-import { relativeTo } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
-import { defanged, joinedWithAnd } from "../../base/strings.js";
+import { defanged } from "../../base/strings.js";
 import {
 	WriteService,
 	Diagnosis,
@@ -106,8 +105,13 @@ registerCommand(
 			))
 				logService.notice(note);
 
-			const failure = DiagnosticsError.of(found.value.diagnostics);
 			const { stoppedBy } = found.value;
+			const failure = DiagnosticsError.of(found.value.diagnostics);
+			// An error that stops the write fails the check too, though it is about another file: the paths were checked only as far as the write gets.
+			const failed = DiagnosticsError.of([
+				...(failure?.diagnostics ?? []),
+				...stoppedBy,
+			]);
 			if (line.options.json)
 				return this.printJson(
 					logService,
@@ -118,17 +122,17 @@ registerCommand(
 						}),
 						...skippedJson(skipped, cwd),
 					},
-					failure
+					failed
 				);
-			for (const diagnostic of failure?.diagnostics ?? []) {
+			for (const diagnostic of failed?.diagnostics ?? []) {
 				logService.print(defanged(renderDiagnostic(diagnostic, cwd)));
 				logService.annotate(diagnostic);
 			}
 			if (stoppedBy.length > 0)
 				logService.warn(
-					`Checked as far as the write gets: it stops on ${joinedWithAnd(stoppedBy.map(({ resource, code }) => `${relativeTo(cwd, resource)} (${code})`))}. Run 'rogen check' to see everything.`
+					`The write stops on the ${stoppedBy.length === 1 ? "error" : "errors"} above, so the paths were checked only as far as it gets; fix ${stoppedBy.length === 1 ? "it" : "them"} and check again.`
 				);
-			return failure ? this.reported(failure) : ok(undefined);
+			return failed ? this.reported(failed) : ok(undefined);
 		}
 
 		/** With paths, each is answered by the config that covers it, with that config's project file when it is stale, and one that nothing covers is said so and skipped. */

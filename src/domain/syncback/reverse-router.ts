@@ -106,13 +106,7 @@ export class ReverseRouter {
 	/** For a file a pattern routes, how its folder keeps the route once it holds an init file: no pattern matches a folder, so the folder names a route key with the pattern's target. */
 	private patternAdvice(maker: PlacedLocation): string {
 		if (maker.routeMatch !== "pattern") return "";
-		const target = this.layout.config.routes.get(maker.route)?.instancePath;
-		const key = [...this.layout.config.routes].find(
-			([other, to]) =>
-				DeclaredKeys.isName(other) &&
-				target !== undefined &&
-				to.instancePath.join("/") === target.join("/")
-		)?.[0];
+		const key = this.layout.config.patterns.nameKeyFor(maker.route);
 		const folder = instanceNameOf(path.posix.basename(maker.source));
 		return key === undefined
 			? `, and route that folder by its name, since the pattern ${maker.route} matches no folder`

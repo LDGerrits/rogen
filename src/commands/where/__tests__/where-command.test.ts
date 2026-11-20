@@ -174,47 +174,60 @@ describe("where command", () => {
 			);
 		});
 
-		it("should say what stops it, and fail", async () => {
+		it("should still place the file, and fail with what stops the write", async () => {
 			const result = await run({ _: ["src/F/Shared/Good.luau"] });
 
 			expect(result.isErr() && result.error).toBeInstanceOf(
-				ReportedError
+				DiagnosticsError
 			);
+			expect(
+				result.isErr() &&
+					(result.error as DiagnosticsError).diagnostics.map(
+						({ code }) => code
+					)
+			).toEqual(["route.ignoredAt"]);
 			expect(printed()).toEqual([
-				"src/F/Shared/Good.luau -> not placed · the write stops on src/F/Shared/Bad@Server.luau (route.ignoredAt); run 'rogen check'",
+				"src/F/Shared/Good.luau -> ReplicatedStorage/Shared/F/Good · route Shared (folder)",
 			]);
 		});
 
-		it("should leave the other errors that stop it to 'rogen check'", async () => {
+		it("should report every error that stops it", async () => {
 			await write("src/F/Shared/Worse@Client.luau");
 
 			const result = await run({ _: ["src/F/Shared/Good.luau"] });
 
-			expect(result.isErr() && result.error).toBeInstanceOf(
-				ReportedError
-			);
+			expect(
+				result.isErr() &&
+					(result.error as DiagnosticsError).diagnostics.map(
+						({ resource }) => resource
+					)
+			).toEqual([
+				"/repo/src/F/Shared/Bad@Server.luau",
+				"/repo/src/F/Shared/Worse@Client.luau",
+			]);
 		});
 
-		it("should name the file with the error when the error is inside the directory asked about", async () => {
+		it("should place a file with the error too, the error under it", async () => {
 			await run({ _: ["src/F"] });
 
-			expect(printed()).toContainEqual(
-				"src/F -> not placed · src/F/Shared/Bad@Server.luau has an error (route.ignoredAt)"
-			);
+			expect(printed()).toEqual([
+				"src/F/Shared/Bad@Server.luau -> ReplicatedStorage/Shared/F/Bad@Server · route Shared (folder)",
+				expect.stringMatching(/^ {2}error: .*\(route\.ignoredAt\)$/),
+				"src/F/Shared/Good.luau -> ReplicatedStorage/Shared/F/Good · route Shared (folder)",
+			]);
 		});
 
-		it("should name the error in the JSON document", async () => {
+		it("should place the file in the JSON document, with what stops the write at the top", async () => {
 			await run({ _: ["src/F/Shared/Good.luau"], json: true });
 
-			expect(JSON.parse(printed().join("\n")).locations[0]).toMatchObject(
+			const document = JSON.parse(printed().join("\n"));
+			expect(document.locations[0]).toMatchObject({ status: "placed" });
+			expect(document.diagnostics).toMatchObject([
 				{
-					status: "blocked",
-					blockedBy: {
-						file: "/repo/src/F/Shared/Bad@Server.luau",
-						code: "route.ignoredAt",
-					},
-				}
-			);
+					file: "/repo/src/F/Shared/Bad@Server.luau",
+					code: "route.ignoredAt",
+				},
+			]);
 		});
 	});
 

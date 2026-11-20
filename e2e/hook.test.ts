@@ -179,6 +179,27 @@ const available = gitPath !== "";
 		]);
 	});
 
+	it("should report a warning again once it is fixed and made again", () => {
+		write("src/Buy.Server.luau");
+		expect(stop().report).toHaveLength(1);
+
+		fs.renameSync(
+			path.join(dir, "project/src/Buy.Server.luau"),
+			path.join(dir, "project/src/Buy@Server.luau")
+		);
+		expect(stop()).toMatchObject({ exit: 0, reply: undefined });
+
+		fs.renameSync(
+			path.join(dir, "project/src/Buy@Server.luau"),
+			path.join(dir, "project/src/Buy.Server.luau")
+		);
+		expect(stop().report).toEqual([
+			expect.stringMatching(
+				/^src\/Buy\.Server\.luau - warning: .*\(route\.dotRoute\)$/
+			),
+		]);
+	});
+
 	it("should report a warning in the shared code of root-level places once", () => {
 		fs.rmSync(path.join(dir, "project/default.rogen.json"));
 		for (const place of ["game", "lobby"])

@@ -2,8 +2,7 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: 3 folders are one edit from a declared route key, so they are read as ordinary folders: (route.folderTypo)
-    src/Hud/Servers (did you mean "Server"?)
+  default.rogen.json - warning: 2 folders are one edit from a declared route key, so they are read as ordinary folders: (route.folderTypo)
     src/Hud/Sevrer (did you mean "Server"?)
     src/Inventory/Sever (did you mean "Server"?)
   Rename a folder to the route key if it should route; a folder named as it is stays an ordinary folder.
@@ -19,21 +18,6 @@ stdout:
         "projectFile": "<dir>/default.project.json",
         "outcome": "unchanged",
         "diagnostics": [
-          {
-            "file": "<dir>/src/Hud/Servers",
-            "severity": "warning",
-            "code": "route.folderTypo",
-            "message": "did you mean \"Server\"?",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-foldertypo",
-            "fixes": [
-              {
-                "rename": {
-                  "from": "<dir>/src/Hud/Servers",
-                  "to": "<dir>/src/Hud/Server"
-                }
-              }
-            ]
-          },
           {
             "file": "<dir>/src/Hud/Sevrer",
             "severity": "warning",

@@ -402,11 +402,12 @@ describe("WriteValidator rules", () => {
 					{
 						resource: at("src/server/Hud.client.luau"),
 						message:
-							"a LocalScript never runs in ServerScriptService",
+							'a LocalScript never runs in ServerScriptService: the "server" route governs this file, so ".client" routes nothing here',
 					},
 					{
 						resource: at("src/shared/Secret.server.luau"),
-						message: "a Script never runs in ReplicatedStorage",
+						message:
+							'a Script never runs in ReplicatedStorage: the "shared" route governs this file, so ".server" routes nothing here',
 					},
 				]);
 			});
@@ -464,7 +465,7 @@ describe("WriteValidator rules", () => {
 					{
 						resource: at("src/server/Hud.client.luau"),
 						message:
-							"a Script with RunContext Client never runs in ServerScriptService",
+							'a Script with RunContext Client never runs in ServerScriptService: the "server" route governs this file, so ".client" routes nothing here',
 					},
 				]);
 			});

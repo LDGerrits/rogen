@@ -1,3 +1,4 @@
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { groupBy } from "../../base/collections.js";
 import { isInside, toPosix } from "../../base/path.js";
 import path from "path";
@@ -67,6 +68,7 @@ interface PlacementParts {
 	readonly leftOut: LeftOutPaths;
 	readonly clashes: readonly InstanceClash[];
 	readonly displaced: readonly DisplacedFile[];
+	readonly errors: readonly Diagnostic[];
 }
 
 interface ScannedMetaFile {
@@ -87,6 +89,8 @@ export class Placement {
 	readonly leftOut: LeftOutPaths;
 	readonly clashes: readonly InstanceClash[];
 	readonly displaced: readonly DisplacedFile[];
+	/** What routing found that stops the write, such as a name meant as a route that misses its key; the files are placed as routing reads them, so warnings and `where` still answer. */
+	readonly errors: readonly Diagnostic[];
 	/** As `files`, but every file a route governs, before clashes decide which are placed. */
 	readonly routed: readonly RoutedFile[];
 	/** One per placed file, at its own node, or at its first copy when a route placed it nowhere itself. */
@@ -105,6 +109,7 @@ export class Placement {
 		this.leftOut = parts.leftOut;
 		this.clashes = parts.clashes;
 		this.displaced = parts.displaced;
+		this.errors = parts.errors;
 		this.nodesBySource = groupBy(parts.nodes, ({ entry }) => entry.source);
 		this.routed = Placement.onePerFile(
 			groupBy(parts.routedNodes, ({ entry }) => entry.source)

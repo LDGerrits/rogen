@@ -1121,7 +1121,7 @@ describe("CoreWriteService", () => {
 			await fs.writeFile(abs(ignoredAt), "");
 		});
 
-		it("should tell the path it can't place that the write stops on the neighbour", async () => {
+		it("should still place a path the error isn't about, and raise the error", async () => {
 			const result = (
 				await locateIn(writeServiceOfFs(), configOf({ routes }), {
 					args: ["src/F/shared/Good.luau"],
@@ -1132,17 +1132,19 @@ describe("CoreWriteService", () => {
 			expect(result.files).toMatchObject([
 				{
 					source: toPosix(abs("src/F/shared/Good.luau")),
-					exists: true,
-					status: "blocked",
-					by: {
-						code: "route.ignoredAt",
-						resource: toPosix(abs(ignoredAt)),
-					},
+					status: "placed",
+					instancePath: ["ReplicatedStorage", "Shared", "F", "Good"],
+				},
+			]);
+			expect(result.diagnostics).toMatchObject([
+				{
+					code: "route.ignoredAt",
+					resource: toPosix(abs(ignoredAt)),
 				},
 			]);
 		});
 
-		it("should tell the path with the error that the error is its own", async () => {
+		it("should place the path with the error as routing reads it", async () => {
 			const result = (
 				await locateIn(writeServiceOfFs(), configOf({ routes }), {
 					args: [ignoredAt],
@@ -1151,8 +1153,13 @@ describe("CoreWriteService", () => {
 			).unwrap();
 
 			expect(result.files[0]).toMatchObject({
-				status: "blocked",
-				by: { resource: toPosix(abs(ignoredAt)) },
+				status: "placed",
+				instancePath: [
+					"ReplicatedStorage",
+					"Shared",
+					"F",
+					"Bad@server",
+				],
 			});
 			expect(result.diagnostics).toMatchObject([
 				{ code: "route.ignoredAt" },

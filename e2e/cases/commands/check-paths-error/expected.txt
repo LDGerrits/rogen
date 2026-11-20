@@ -3,7 +3,7 @@ exit 1
 stdout:
   src/Inventory/Save.Server.luau - warning: write "Save.server.luau" (route.dotRoute)
   src/Inventory/New.Server.luau - warning: write "New.server.luau" (route.dotRoute)
-  src/shared/server/Secret.server.luau - warning: a Script never runs in ReplicatedStorage (tree.deadScript)
+  src/shared/server/Secret.server.luau - warning: a Script never runs in ReplicatedStorage: the "shared" route governs this file, so ".server" routes nothing here (tree.deadScript)
 
 $ rogen check src/Inventory --json
 exit 1

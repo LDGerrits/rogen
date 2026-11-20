@@ -5,7 +5,7 @@ stdout:
     warning: write "Save.server.luau" (route.dotRoute)
     require(game:GetService("ReplicatedStorage").shared.Inventory["Save.Server"])
   src/shared/server/Secret.server.luau -> ReplicatedStorage/shared/server/Secret · route shared (folder)
-    warning: a Script never runs in ReplicatedStorage (tree.deadScript)
+    warning: a Script never runs in ReplicatedStorage: the "shared" route governs this file, so ".server" routes nothing here (tree.deadScript)
     no require by this path: a script runs on its own and is not a module
   src/Inventory/New.Server.luau -> ReplicatedStorage/shared/Inventory/New.Server · route * (fallback) · the file does not exist yet
     warning: write "New.server.luau" (route.dotRoute)
@@ -68,7 +68,7 @@ stdout:
             "file": "<dir>/src/shared/server/Secret.server.luau",
             "severity": "warning",
             "code": "tree.deadScript",
-            "message": "a Script never runs in ReplicatedStorage",
+            "message": "a Script never runs in ReplicatedStorage: the \"shared\" route governs this file, so \".server\" routes nothing here",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#tree-deadscript"
           }
         ]

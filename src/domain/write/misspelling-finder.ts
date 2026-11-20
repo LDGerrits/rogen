@@ -100,20 +100,18 @@ export class MisspellingFinder {
 		if (this.keys.resolve(name) !== undefined || this.keys.nearMiss(name))
 			return undefined;
 		const identity = DeclaredKeys.identityOf(name);
+		// A plural, as `Servers/` or `Clients/`, is a name of its own rather than a typo of the key.
 		const keys = [...this.keys.routeKeys].filter(
 			(key) =>
 				key.length >= MIN_TYPO_KEY_LENGTH &&
+				identity !== `${DeclaredKeys.identityOf(key)}s` &&
 				editDistance(identity, DeclaredKeys.identityOf(key)) === 1
 		);
 		if (keys.length === 0) return undefined;
 		const [key] = keys;
-		const spelling =
-			(name[0] === name[0].toUpperCase()
-				? key[0].toUpperCase()
-				: key[0].toLowerCase()) + key.slice(1);
 		const respelling =
 			keys.length === 1
-				? { start: 0, written: name, spelling }
+				? { start: 0, written: name, spelling: key }
 				: undefined;
 		return {
 			kind: "folderTypo",

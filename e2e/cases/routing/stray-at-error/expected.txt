@@ -3,13 +3,13 @@ exit 1
 stdout: (not shown)
 stderr:
   error: default.project.json · not written
-  default.rogen.json - error: 5 names have an "@" that misses its route, so Rogen stops until they are fixed: (route.strayAt)
-    src/@sever (did you mean "@server"?)
-    src/Inventory/Hud@Client.luau (did you mean "@client"?)
-    src/Inventory/Report@server.bak.luau ("@server" must end the name)
-    src/Inventory/Save@sever.luau (did you mean "@server"?)
-    src/Queue@clent (did you mean "@client"?)
-  src/Shop/@SERVER - error: differs from the route "server" only in letter case, so it would route nothing. Spell it "@server", or declare it as written. (route.caseMismatch)
+  default.rogen.json - error: 6 names have an "@" that misses its route, so Rogen stops until they are fixed: (route.strayAt)
+    src/@sever ("@sever" names no route; did you mean "@server"?)
+    src/Inventory/Hud@Client.luau ("@Client" names no route; did you mean "@client"?)
+    src/Inventory/Report@server.bak.luau ("@server" must end the name to route it)
+    src/Inventory/Save@sever.luau ("@sever" names no route; did you mean "@server"?)
+    src/Queue@clent ("@clent" names no route; did you mean "@client"?)
+    src/Shop/@SERVER ("@SERVER" names no route; did you mean "@server"?)
 
 $ rogen write --json
 exit 1
@@ -26,7 +26,7 @@ stdout:
             "file": "<dir>/src/@sever",
             "severity": "error",
             "code": "route.strayAt",
-            "message": "did you mean \"@server\"?",
+            "message": "\"@sever\" names no route; did you mean \"@server\"?",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
             "fixes": [
               {
@@ -41,7 +41,7 @@ stdout:
             "file": "<dir>/src/Inventory/Hud@Client.luau",
             "severity": "error",
             "code": "route.strayAt",
-            "message": "did you mean \"@client\"?",
+            "message": "\"@Client\" names no route; did you mean \"@client\"?",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
             "fixes": [
               {
@@ -56,14 +56,14 @@ stdout:
             "file": "<dir>/src/Inventory/Report@server.bak.luau",
             "severity": "error",
             "code": "route.strayAt",
-            "message": "\"@server\" must end the name",
+            "message": "\"@server\" must end the name to route it",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat"
           },
           {
             "file": "<dir>/src/Inventory/Save@sever.luau",
             "severity": "error",
             "code": "route.strayAt",
-            "message": "did you mean \"@server\"?",
+            "message": "\"@sever\" names no route; did you mean \"@server\"?",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
             "fixes": [
               {
@@ -78,7 +78,7 @@ stdout:
             "file": "<dir>/src/Queue@clent",
             "severity": "error",
             "code": "route.strayAt",
-            "message": "did you mean \"@client\"?",
+            "message": "\"@clent\" names no route; did you mean \"@client\"?",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
             "fixes": [
               {
@@ -92,9 +92,9 @@ stdout:
           {
             "file": "<dir>/src/Shop/@SERVER",
             "severity": "error",
-            "code": "route.caseMismatch",
-            "message": "differs from the route \"server\" only in letter case, so it would route nothing. Spell it \"@server\", or declare it as written.",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-casemismatch",
+            "code": "route.strayAt",
+            "message": "\"@SERVER\" names no route; did you mean \"@server\"?",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
             "fixes": [
               {
                 "rename": {

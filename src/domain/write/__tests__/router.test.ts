@@ -295,6 +295,21 @@ describe("Router", () => {
 				]);
 			});
 
+			it("should refuse a ^ init script in a folder that makes no instance as an init with no folder to be, not point at that folder", async () => {
+				await write("src/Ui/client/^init.luau", "src/Ui/client/A.luau");
+
+				const result = await route();
+
+				expect(
+					result.isErr() && result.error.diagnostics
+				).toMatchObject([
+					{
+						code: "tree.initWithoutFolder",
+						resource: abs("src/Ui/client/^init.luau"),
+					},
+				]);
+			});
+
 			it("should say a copied init script of a ^ folder was hoisted", async () => {
 				await write(
 					"src/K/^Net/init.luau",

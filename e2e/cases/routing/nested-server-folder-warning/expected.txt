@@ -2,7 +2,7 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: 1 file under a server-only route ships to clients, because an outer route governs it: (route.serverCodeShipped)
+  default.rogen.json - warning: 1 file in a folder named for a server route ships to clients, because a route above the folder governs it: (route.serverCodeShipped)
     src/shared/server/Datastore.luau (ships to clients as ReplicatedStorage/shared/server/Datastore: move it out of the "shared" route's files if it's server code, or keep it there with a "@shared" marker file in its folder)
 
 written:

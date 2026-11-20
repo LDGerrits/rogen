@@ -10,14 +10,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Pattern routes: a route key with a `*`, such as `*.tsx`, `*Controller` or `*Controller.*`, routes a file by its file name or instance name when no folder, `@` name or marker routes it. A pattern never matches a folder or an init script, so a script written as a folder stays with its children. The pattern with more characters that aren't `*` wins, and a tie between different places is the error `route.patternClash`. Syncback writes a new file's `@` route when a pattern would send its plain name elsewhere.
 
+- Warnings for a pattern route that just misses: `route.patternCase` for a file that matches a pattern only ignoring letter case, and `route.folderPattern` for a folder script whose folder a pattern matches, which no pattern routes, with the rename that does.
+
 ### Changed
 
 - **Breaking:** a route key matches a folder, `@` name or marker file only when spelled exactly as the key. A folder, marker or `@` that misses a key by its case, or an `@` that misses it by a typo, as `server/`, `@server` or `Save@Sever.luau` under a `Server` route, is an error that stops the write (`route.caseMismatch`, `route.strayAt`), so a server file can't reach clients by a slip. A folder in another case under a route that already governs it is left alone, and a server-named one there warns that its code ships to clients (`route.serverCodeShipped`). Rojo's `.server` and `.client` still route a key of that name in any case. `rogen init` spells each key as the folders it finds already do, so a lifted Rojo project gets `server`, `client` and `shared`, and renames a folder or name spelled in the case the rest of the code doesn't use, so the project builds.
 - `rogen init` writes the project's `name`, the folder's name, as `rojo init` does, so tools that need a name in the project file can read it.
 - **Breaking:** an init script's route routes only the script, not its whole folder. `init@server.luau` and `init.server.luau` become the folder on that side, and the folder's other files route by their own paths, so `init@server.luau` and `init@client.luau` give each side its own init script. To route a whole folder, name it for the route or add a marker file.
 
+- A write that a name's error stops still reports every warning, and `rogen where` still places each file and prints its require, as routing reads it, beside the error.
+- `rogen check <paths>` exits 1 when an error elsewhere stops the write, and prints it, since it couldn't check the paths past it.
+- The agent Stop hook reports a line again once the check stopped printing it and it comes back.
+- A marker file in the wrong case is `route.strayAt`, as every misspelt `@` is, and `route.caseMismatch` is about folders.
+
 ### Fixed
 
+- A rename that a diagnostic offers no longer leads into another error: under a route that governs it, a misspelt `@` for another route is `route.ignoredAt` with no rename; `route.folderTypo` renames to the key as it is spelled; and no rename is offered onto a name that is there.
+- `route.folderTypo` no longer warns about a plural such as `Servers/`, or about a folder a route above it governs.
+- A `^init` script in a routing folder is `tree.initWithoutFolder`, where the advice to put the `^` on the folder went round in circles.
+- `tree.deadScript` says when the route a script sits under overrode its `.server` or `.client`.
 - `rogen syncback` keeps a project's layout through a Studio rename: the renamed folder keeps its `@` form, marker files, invisible folders and data files in their own form, and a child added with the rename is named like its siblings. A new child of a script placed on several sides goes beside its siblings, a new feature at a route's target is no longer lost, an emptied side of a suffix layout stays as a bare `@` folder, and an instance whose files routing would put elsewhere, as for a name it reads as a route, is left out with a warning rather than written. Syncback asks routing itself where each new file lands before writing it.
 - `rogen write` copies an init script to a side whose routing folder is empty, so the script stays there with no children.
 - `rogen serve`, `build`, `sourcemap` and `upload` on a plain Rojo project file, such as a wrapper another tool writes, first write the project files it nests that a `.rogen.json` writes, and `serve` and `--watch` keep writing them as files change.

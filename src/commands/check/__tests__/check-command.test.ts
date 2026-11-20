@@ -134,7 +134,7 @@ describe("check command", () => {
 			expect(document()).not.toHaveProperty("skipped");
 		});
 
-		it("should pass a file that an error elsewhere does not concern, and say how far the check got", async () => {
+		it("should fail on an error elsewhere that stops the write, printing it as a finding, so a hook or CI can't pass a path it never got to check", async () => {
 			await writeConfig("default.rogen.json", {
 				routes: { Shared: "ReplicatedStorage/Shared", ...ROUTES },
 			});
@@ -145,10 +145,14 @@ describe("check command", () => {
 
 			const result = await run({ _: ["src/F/Shared/Good.luau"] });
 
-			expect(result.isOk()).toBe(true);
-			expect(printed()).toEqual([]);
+			expect(result.isErr()).toBe(true);
+			expect(printed()).toEqual([
+				expect.stringMatching(
+					/^src\/F\/Shared\/Bad@Server\.luau - error: .*\(route\.ignoredAt\)$/
+				),
+			]);
 			expect(logService.texts("warn")).toEqual([
-				"Checked as far as the write gets: it stops on src/F/Shared/Bad@Server.luau (route.ignoredAt). Run 'rogen check' to see everything.",
+				"The write stops on the error above, so the paths were checked only as far as it gets; fix it and check again.",
 			]);
 		});
 
@@ -161,8 +165,12 @@ describe("check command", () => {
 				"src/F/Shared/Bad@Server.luau"
 			);
 
-			await run({ _: ["src/F/Shared/Good.luau"], json: true });
+			const result = await run({
+				_: ["src/F/Shared/Good.luau"],
+				json: true,
+			});
 
+			expect(result.isErr()).toBe(true);
 			expect(
 				JSON.parse(printed()[0]) as { stoppedBy: { code: string }[] }
 			).toMatchObject({

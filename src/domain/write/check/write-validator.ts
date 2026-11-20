@@ -25,6 +25,7 @@ import {
 import { RojoFile, SCRIPT_SUFFIXES, scriptRunOf } from "../../rojo/rojo.js";
 import { NODE_FIELDS, RojoNode } from "../../rojo/rojo-project.js";
 import { FolderMeta } from "../folder-meta.js";
+import { governingRouteOf } from "../governing-route-of.js";
 import {
 	MisspellingKind,
 	MisspellingOf,
@@ -78,6 +79,8 @@ export class WriteValidator {
 			...this.unclaimedMeta(),
 			...this.dotRoute(),
 			...this.folderTypo(),
+			...this.patternCase(),
+			...this.folderPattern(),
 			...this.unrouted(),
 			...this.serverCodeShipped(),
 			...this.deadScript(),
@@ -287,12 +290,80 @@ export class WriteValidator {
 		})?.route;
 	}
 
+	/** A folder one edit from a route key, unless a route above it governs it, where its name would route nothing; no rename onto a folder that is there. */
 	private folderTypo(): Diagnostic[] {
-		return this.misspelt(
-			"route.folderTypo",
-			"folderTypo",
-			(_, { key }) => `did you mean "${key}"?`
+		const { files } = this.placement;
+		return [...this.placement.readings.misspelt("folderTypo")]
+			.filter(
+				([resource]) => governingRouteOf(resource, files) === undefined
+			)
+			.map(([resource, { key, renamedTo }]) =>
+				warningDiagnostic(
+					"route.folderTypo",
+					{ resource },
+					`did you mean "${key}"?`,
+					renamedTo !== undefined && !this.isListed(renamedTo)
+						? [{ rename: { from: resource, to: renamedTo } }]
+						: []
+				)
+			);
+	}
+
+	/** A file that falls to `*` though a pattern would take it but for letter case. */
+	private patternCase(): Diagnostic[] {
+		const { patterns } = this.config;
+		return this.placement.files.flatMap(({ entry, routeMatch, init }) => {
+			if (routeMatch !== "fallback" || init) return [];
+			const key = patterns.matchIgnoringCase(
+				...[
+					path.posix.basename(entry.source),
+					entry.file.instanceName,
+				].map((name) => name.replace(/^\^/, ""))
+			);
+			return key === undefined
+				? []
+				: [
+						warningDiagnostic(
+							"route.patternCase",
+							{ resource: entry.source },
+							`matches the pattern "${key}" only ignoring letter case, so it goes to "*". A pattern matches letter case exactly; fix the pattern's case or the file's.`
+						),
+					];
+		});
+	}
+
+	/** A folder of an init script that falls to `*` though a pattern matches its name, as no pattern routes a folder; with the rename to the name key of the pattern's place. */
+	private folderPattern(): Diagnostic[] {
+		const { patterns } = this.config;
+		const folders = new Set(
+			this.placement.files.flatMap(({ routeMatch, init }) =>
+				routeMatch === "fallback" && init ? [init.becomes] : []
+			)
 		);
+		return [...folders].flatMap((folder) => {
+			const name = path.posix.basename(folder);
+			const match = patterns.match(name);
+			if (match?.kind !== "routed") return [];
+			const key = patterns.nameKeyFor(match.key);
+			const plain = /^[^^(]/.test(name);
+			return [
+				warningDiagnostic(
+					"route.folderPattern",
+					{ resource: folder },
+					`matches the pattern "${match.key}", but a pattern never routes a folder or its init script, so it and its files go to "*". ${key === undefined ? "Route it with a folder or marker for that place." : `Name it ${name}@${key} to route it there.`}`,
+					key !== undefined && plain
+						? [{ rename: { from: folder, to: `${folder}@${key}` } }]
+						: []
+				),
+			];
+		});
+	}
+
+	/** Whether the scan lists `target`, an absolute POSIX path. */
+	private isListed(target: string): boolean {
+		return this.placement
+			.listing(path.posix.dirname(target))
+			.has(path.posix.basename(target));
 	}
 
 	private misspelt<K extends MisspellingKind>(
@@ -394,9 +465,21 @@ export class WriteValidator {
 			warningDiagnostic(
 				"tree.deadScript",
 				{ resource: file.entry.source },
-				`${WriteValidator.describeRun(run)} never runs in ${file.instancePath[0]}`
+				`${WriteValidator.describeRun(run)} never runs in ${file.instancePath[0]}${this.outrankedSuffix(file)}`
 			)
 		);
+	}
+
+	/** Why a script's `.server` or `.client` didn't route it: a route above it governs it. */
+	private outrankedSuffix(file: RoutedFile): string {
+		const suffix = this.placement.readingOf(file).scriptSuffix;
+		const key =
+			suffix === undefined
+				? undefined
+				: this.config.keys.resolveDotRoute(suffix);
+		return key === undefined || key === file.route
+			? ""
+			: `: the "${file.route}" route governs this file, so ".${suffix}" routes nothing here`;
 	}
 
 	private scriptRunOf(file: RoutedFile): ScriptRun | undefined {

@@ -257,11 +257,19 @@ export class Router {
 		routing: Routing
 	): void {
 		const claimed = this.claim(entry, dirs);
-		if (claimed.leaf.isInit && claimed.leaf.hoisted) {
+		// A `^` belongs on the folder an init script is, unless that folder makes no instance, which leaves the script no folder to be.
+		if (
+			claimed.leaf.isInit &&
+			claimed.leaf.hoisted &&
+			claimed.folders.at(-1)?.dir === dirnamePosix(entry.relativePath)
+		) {
 			routing.hoistedInits.push({ source: entry.source });
 			return;
 		}
-		if (claimed.leaf.isInit && claimed.folders.length === 0) {
+		if (
+			claimed.leaf.isInit &&
+			(claimed.folders.length === 0 || claimed.leaf.hoisted)
+		) {
 			if (this.config.routes.has(claimed.claims.routeKey))
 				routing.withoutFolder.push({
 					source: entry.source,

@@ -119,7 +119,7 @@ describe("WriteValidator rules", () => {
 				expect(warning.message).toBe('did you mean "Sever"?');
 			});
 
-			it("should keep the folder's own first-letter case in the rename", async () => {
+			it("should rename to the key as it is spelled, which a folder must match exactly", async () => {
 				await write("src/sever/Save.luau");
 
 				const [warning] = await folderTypos({
@@ -130,7 +130,7 @@ describe("WriteValidator rules", () => {
 				});
 
 				expect(warning.fixes).toEqual([
-					{ rename: { from: at("src/sever"), to: at("src/server") } },
+					{ rename: { from: at("src/sever"), to: at("src/Server") } },
 				]);
 			});
 
@@ -147,17 +147,33 @@ describe("WriteValidator rules", () => {
 				expect(warning.code).toBe("route.folderTypo");
 			});
 
-			it("should warn about a plural, which is one edit away like any other", async () => {
-				await write("src/Servers/Save.luau");
+			it("should not warn about a plural, which is a name of its own", async () => {
+				await write("src/Servers/Save.luau", "src/Clientes/Load.luau");
 
-				const [warning] = await folderTypos({
-					routes: {
-						Server: "ServerScriptService",
-						"*": "ReplicatedStorage",
-					},
-				});
+				expect(
+					await folderTypos({
+						routes: {
+							Server: "ServerScriptService",
+							Client: "StarterPlayer/StarterPlayerScripts",
+							"*": "ReplicatedStorage",
+						},
+					})
+				).toEqual([]);
+			});
 
-				expect(warning.code).toBe("route.folderTypo");
+			it("should not warn under a route that governs the folder, where its name would route nothing", async () => {
+				await write("src/server/Clent/Save.luau");
+
+				expect(await folderTypos()).toEqual([]);
+			});
+
+			it("should give no rename onto a folder that is already there", async () => {
+				await write("src/Shop/Sever/A.luau", "src/Shop/server/B.luau");
+
+				const [warning] = await folderTypos();
+
+				expect(warning.resource).toBe(abs("src/Shop/Sever"));
+				expect(warning.fixes).toBeUndefined();
 			});
 
 			it.each([
@@ -232,22 +248,31 @@ describe("WriteValidator rules", () => {
 					severity: DiagnosticSeverity.Error,
 					resource: abs("src/SERVER"),
 				});
-				expect(error.message).toContain('"server"');
-				expect(error.message).toContain(
-					'Spell it "server", or declare it as written.'
+				expect(error.message).toBe(
+					'"SERVER" differs from the route "server" only in letter case, so it would route nothing and its files would go to "*". Spell it "server".'
 				);
 			});
 
-			it("should stop on a marker file named like a route in different case, as its @ can only mean a route", async () => {
+			it("should stop on a marker file named like a route in different case as on any @ that misses its route", async () => {
 				await write("src/Inventory/@SERVER", "src/Inventory/Save.luau");
 
-				const [error] = await caseErrors();
-
-				expect(error).toMatchObject({
-					severity: DiagnosticSeverity.Error,
-					resource: abs("src/Inventory/@SERVER"),
-				});
-				expect(error.message).toContain('route "server"');
+				expect(await caseErrors()).toEqual([]);
+				expect(await errorsOf("route.strayAt")).toMatchObject([
+					{
+						severity: DiagnosticSeverity.Error,
+						resource: abs("src/Inventory/@SERVER"),
+						message:
+							'"@SERVER" names no route; did you mean "@server"?',
+						fixes: [
+							{
+								rename: {
+									from: at("src/Inventory/@SERVER"),
+									to: at("src/Inventory/@server"),
+								},
+							},
+						],
+					},
+				]);
 			});
 
 			it("should report a folder once however many files it holds", async () => {
@@ -290,11 +315,7 @@ describe("WriteValidator rules", () => {
 			});
 
 			it("should fix each mismatch by renaming the name to the key's spelling", async () => {
-				await write(
-					"src/(SERVER)/A.luau",
-					"src/M/@Server",
-					"src/M/b.luau"
-				);
+				await write("src/(SERVER)/A.luau");
 
 				expect(fixesOf(await caseErrors())).toEqual([
 					{
@@ -303,24 +324,7 @@ describe("WriteValidator rules", () => {
 							to: at("src/(server)"),
 						},
 					},
-					{
-						rename: {
-							from: at("src/M/@Server"),
-							to: at("src/M/@server"),
-						},
-					},
 				]);
-			});
-
-			it("should spell a marker file's mismatch with its @", async () => {
-				await write("src/M/@SERVER", "src/M/a.luau");
-
-				const [error] = await caseErrors();
-
-				expect(error.resource).toEqual(abs("src/M/@SERVER"));
-				expect(error.message).toContain(
-					'Spell it "@server", or declare it as written.'
-				);
 			});
 
 			it("should stop on a mismatch where no route would place the file", async () => {
@@ -360,6 +364,71 @@ describe("WriteValidator rules", () => {
 			});
 		});
 
+		describe("patterns that just miss", () => {
+			const PATTERNS = {
+				...ROUTES,
+				"*Controller": "StarterPlayer/StarterPlayerScripts",
+			};
+			const warningsOf = async (
+				code: string,
+				routes: Record<string, string> = PATTERNS
+			) =>
+				(await route({ routes }))
+					.unwrap()
+					.warnings.filter((warning) => warning.code === code);
+
+			it("should warn about a file that matches a pattern only ignoring letter case", async () => {
+				await write("src/Shop/ShopController.luau");
+
+				expect(
+					listed(
+						await warningsOf("route.patternCase", {
+							...ROUTES,
+							"*controller": "StarterPlayer/StarterPlayerScripts",
+						})
+					)
+				).toEqual([
+					[
+						abs("src/Shop/ShopController.luau"),
+						'matches the pattern "*controller" only ignoring letter case, so it goes to "*". A pattern matches letter case exactly; fix the pattern\'s case or the file\'s.',
+					],
+				]);
+			});
+
+			it("should warn about a folder script whose folder a pattern matches, which no pattern routes, with the rename that routes it there", async () => {
+				await write(
+					"src/Input/InputController/init.luau",
+					"src/Input/InputController/Keys.luau"
+				);
+
+				const [warning] = await warningsOf("route.folderPattern");
+
+				expect(warning).toMatchObject({
+					resource: abs("src/Input/InputController"),
+					message:
+						'matches the pattern "*Controller", but a pattern never routes a folder or its init script, so it and its files go to "*". Name it InputController@client to route it there.',
+					fixes: [
+						{
+							rename: {
+								from: at("src/Input/InputController"),
+								to: at("src/Input/InputController@client"),
+							},
+						},
+					],
+				});
+			});
+
+			it("should say nothing about a folder script a name routes, or a file that matches", async () => {
+				await write(
+					"src/Input/InputController@client/init.luau",
+					"src/Shop/ShopController.luau"
+				);
+
+				expect(await warningsOf("route.folderPattern")).toEqual([]);
+				expect(await warningsOf("route.patternCase")).toEqual([]);
+			});
+		});
+
 		describe("@ that routes nowhere", () => {
 			const strayWarnings = () => errorsOf("route.strayAt");
 
@@ -376,17 +445,19 @@ describe("WriteValidator rules", () => {
 				expect(listed(warnings)).toEqual([
 					[
 						at("src/Inventory/Save@sever.luau"),
-						'did you mean "@server"?',
+						'"@sever" names no route; did you mean "@server"?',
 					],
-					[at("src/Queue@clent"), 'did you mean "@client"?'],
+					[
+						at("src/Queue@clent"),
+						'"@clent" names no route; did you mean "@client"?',
+					],
 				]);
 			});
 
-			it("should list every stray @ before a marker in another case, so each code reads as one group", async () => {
+			it("should list every stray @ before a folder in another case, so each code reads as one group", async () => {
 				await write(
 					"src/A@sever.luau",
-					"src/B/@SERVER",
-					"src/B/X.luau",
+					"src/B/SERVER/X.luau",
 					"src/C@sever.luau"
 				);
 
@@ -407,9 +478,67 @@ describe("WriteValidator rules", () => {
 
 				const [warning] = await strayWarnings();
 
-				expect(warning.message).toContain(
-					'"@server" must end the name'
+				expect(warning.message).toBe(
+					'"@server" must end the name to route it'
 				);
+			});
+
+			it("should report a mistyped @ for another route under a route that governs it as one that does nothing there, with no rename to follow", async () => {
+				await write(
+					"src/server/Up@clent.luau",
+					"src/server/M/@CLIENT",
+					"src/server/M/A.luau"
+				);
+
+				const result = await route();
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(
+							({ code, resource, message, fixes }) => ({
+								code,
+								resource,
+								message,
+								fixes,
+							})
+						)
+				).toEqual([
+					{
+						code: "route.ignoredAt",
+						resource: abs("src/server/M/@CLIENT"),
+						message:
+							'"@CLIENT" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route\'s files.',
+						fixes: undefined,
+					},
+					{
+						code: "route.ignoredAt",
+						resource: abs("src/server/Up@clent.luau"),
+						message:
+							'"@clent" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route\'s files.',
+						fixes: undefined,
+					},
+				]);
+			});
+
+			it("should keep the rename of a mistyped @ that restates the route governing it", async () => {
+				await write("src/server/Up@Server.luau");
+
+				expect(fixesOf(await strayWarnings())).toEqual([
+					{
+						rename: {
+							from: at("src/server/Up@Server.luau"),
+							to: at("src/server/Up@server.luau"),
+						},
+					},
+				]);
+			});
+
+			it("should give no rename onto a name that is already there", async () => {
+				await write("src/Save@sever.luau", "src/Save@server.luau");
+
+				const [error] = await strayWarnings();
+
+				expect(error.fixes).toBeUndefined();
 			});
 
 			it("should not stop on a route that restates the outer one", async () => {
@@ -700,7 +829,12 @@ describe("WriteValidator rules", () => {
 
 				expect(
 					listed(await errorsOf("route.strayAt", { routes: SHARED }))
-				).toEqual([[at("src/Ui/@sever"), 'did you mean "@server"?']]);
+				).toEqual([
+					[
+						at("src/Ui/@sever"),
+						'"@sever" names no route; did you mean "@server"?',
+					],
+				]);
 			});
 		});
 	});
