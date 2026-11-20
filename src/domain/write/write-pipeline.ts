@@ -1,5 +1,5 @@
 import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
@@ -152,19 +152,21 @@ export class WritePipeline {
 				warnings: [],
 			});
 		const { meta, assembly } = assembled.value;
-		const warnings = [
+		const raised = [
 			...config.warnings,
 			...meta.warnings,
 			...new WriteValidator(assembly).validate(),
 			...(await this.mountClashes.diagnostics(placement.value)),
 			...new UnmountedSources(config, this.index).diagnostics(),
 		];
+		const warnings = raised.filter((diagnostic) => !isError(diagnostic));
+		const stopping = [...errors, ...raised.filter(isError)];
 		// Routing that stops the write still places every file, so the rest of what the write would raise is shown with it.
-		if (errors.length > 0)
+		if (stopping.length > 0)
 			return ok({
 				kind: "stopped",
 				placement: placement.value,
-				errors,
+				errors: stopping,
 				warnings,
 			});
 		return ok({

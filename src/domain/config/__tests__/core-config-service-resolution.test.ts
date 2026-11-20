@@ -262,21 +262,36 @@ describe("CoreConfigService", () => {
 					await diagnosticsFor({
 						routes: {
 							"*.tsx": "StarterPlayer/StarterPlayerScripts",
-							"*Controller.*": "StarterPlayer/StarterPlayerScripts",
+							"*Controller.*":
+								"StarterPlayer/StarterPlayerScripts",
 						},
 					})
 				).toEqual([]);
 			});
 
-			it.each(["src/*.tsx", "**.tsx", "*@client"])(
-				"should reject %j, which is no file-name pattern",
-				async (key) => {
+			it.each([
+				[
+					"src/*.tsx",
+					'a pattern matches a file\'s name, never its path, so it has no "/"; ',
+				],
+				[
+					"**.tsx",
+					'a pattern has "*" as its only wildcard, so no "**"; ',
+				],
+				[
+					"*@client",
+					'a key is the name an "@" spells, so it has no "@" itself; ',
+				],
+				["Shop-Thing", ""],
+			])(
+				"should reject %j, saying what is wrong with it before the rule",
+				async (key, problem) => {
 					const problems = await diagnosticsFor({
 						routes: { [key]: "ServerScriptService" },
 					});
 
 					expect(problems.map(([message]) => message)).toEqual([
-						`route key "${key}" is invalid: a name uses letters and digits only, starting with a letter, and a file-name pattern has a "*", such as "*.tsx".`,
+						`route key "${key}" is invalid: ${problem}a name uses letters and digits only, starting with a letter, and a file-name pattern has a "*", such as "*.tsx".`,
 					]);
 				}
 			);

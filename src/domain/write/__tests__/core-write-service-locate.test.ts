@@ -742,6 +742,16 @@ describe("CoreWriteService.locate", () => {
 		]);
 	});
 
+	it("should place no TypeScript file in a project with no compiler, as Rojo never reads one", async () => {
+		await write("src/Shop/Hud.tsx", "src/Shop/Cart.ts", "src/Shop/Bag.luau");
+
+		expect(
+			(await locate(["src/Shop/Hud.tsx", "src/Shop/Cart.ts"])).map(
+				({ status }) => status
+			)
+		).toEqual(["notInstance", "notInstance"]);
+	});
+
 	it("should say a directory is empty when nothing in it places, with the Folder routing makes of it", async () => {
 		await write("src/Docs/notes.md");
 		await fs.createDirectory(abs("src/Empty"));

@@ -225,7 +225,7 @@ export class InitLog implements InitReporter {
 		}
 		if (item.kind === "move") {
 			this.logService.success(
-				`${this.dryRun ? "Would rename" : "Renamed"} ${this.shown(item.move.from)} to ${this.shown(item.move.to)}.`
+				`${this.dryRun ? "Would rename" : "Renamed"} ${this.shown(item.move.from)} to ${this.shown(item.move.to)}${item.move.reason ? `, ${item.move.reason}` : ""}.`
 			);
 			return;
 		}
@@ -244,7 +244,7 @@ export class InitLog implements InitReporter {
 	planned(plan: InitPlan): Result<void, Error> {
 		const renames =
 			plan.moves.length > 0
-				? ` and rename ${plural(plan.moves.length, "file")}`
+				? ` and make ${plural(plan.moves.length, "rename")}`
 				: "";
 		this.logService.outro(
 			`Would write ${plural(plan.files.length, "file")}${renames}. Nothing was written.`

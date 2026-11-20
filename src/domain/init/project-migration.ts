@@ -7,6 +7,8 @@ import { RogenConfig } from "../config/config.js";
 export interface PlannedMove {
 	readonly from: string;
 	readonly to: string;
+	/** Why init renames it, said beside the rename, as "to spell the route "Server" as the rest of the code does". */
+	readonly reason?: string;
 }
 
 /** A config a migration writes, named relative to the folder. */

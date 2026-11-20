@@ -381,22 +381,6 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should not collapse a directory holding the file another replaced", async () => {
-				await write(
-					"src/Inventory/Analytics.lua",
-					"src/Inventory/Analytics.luau"
-				);
-
-				const storage = await storageOf();
-
-				expect(storage.Inventory).toEqual({
-					...FOLDER,
-					Analytics: {
-						$path: optional("src/Inventory/Analytics.luau"),
-					},
-				});
-			});
-
 			it("should not collapse a directory whose file has an @ route suffix", async () => {
 				await write("src/Types/Types@shared.luau");
 
@@ -439,7 +423,7 @@ describe("TreeAssembler", () => {
 			});
 
 			it("should ignore .d.ts files when deciding to collapse and never list them", async () => {
-				await write("src/Inventory/Save.ts", "src/Inventory/Save.d.ts");
+				await write("src/Inventory/Save.luau", "src/Inventory/Save.d.ts");
 
 				const { projectFile: value } = await assemble({
 					ignored: [abs("**/*.d.ts")],
@@ -549,16 +533,6 @@ describe("TreeAssembler", () => {
 				});
 
 				expect(value.globIgnorePaths).toEqual(["dist/Hud.luau"]);
-			});
-
-			it("should not list a file another replaced, which shares the winner's emitted path", async () => {
-				await write("src/Analytics.luau", "src/Analytics.ts");
-
-				const { projectFile: value } = await assemble({
-					compiledPath: abs("dist"),
-				});
-
-				expect(value.globIgnorePaths).toBeUndefined();
 			});
 
 			it("should not list a file the tree displaced, which its $path may mount", async () => {

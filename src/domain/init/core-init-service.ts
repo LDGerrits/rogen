@@ -74,6 +74,21 @@ function shapingFlagsOf(choices: InitChoices): string[] {
 	});
 }
 
+/** The word of `to`'s name that a case-only rename of `from` respells, as `Server` for `Save@server.luau` → `Save@Server.luau`. */
+function respelled(from: string, to: string): string {
+	const before = path.basename(from);
+	const after = path.basename(to);
+	const at = [...after].findIndex(
+		(letter, index) => letter !== before[index]
+	);
+	const word = /[A-Za-z0-9]/;
+	let start = at;
+	let end = at;
+	while (start > 0 && word.test(after[start - 1])) start--;
+	while (end < after.length && word.test(after[end])) end++;
+	return after.slice(start, end);
+}
+
 /** The folder as `plan` leaves it, before any program it runs. */
 function draftOf(plan: InitPlan): FileDraft {
 	const at = (relative: string) => path.join(plan.directory, relative);
@@ -492,6 +507,7 @@ export class CoreInitService implements InitService {
 					renames.set(rename.from, {
 						from: relative(rename.from),
 						to: relative(rename.to),
+						reason: `to spell the route "${respelled(rename.from, rename.to)}" as the rest of the code does`,
 					});
 		}
 		if (renames.size === 0) return plan;

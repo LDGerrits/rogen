@@ -225,7 +225,7 @@ export class ConfigValidator {
 				this.problems.error(
 					"config.invalidRouteKey",
 					location,
-					`route key "${key}" is invalid: ${KEY_RULE}.`
+					`route key "${key}" is invalid: ${ConfigValidator.keyProblem(key)}${KEY_RULE}.`
 				);
 			const target = Target.parse(text, location);
 			if (target.isErr()) this.problems.add(target.error);
@@ -309,5 +309,16 @@ export class ConfigValidator {
 				`"${key}" and "${other}" differ only in letter case, so a name spelled one way would read as a misspelling of the other; keep one of them.`
 			);
 		}
+	}
+
+	/** What is wrong with a route key that a reader may not see at once, ending in "; ", before the rule. */
+	private static keyProblem(key: string): string {
+		if (/[/\\]/.test(key))
+			return 'a pattern matches a file\'s name, never its path, so it has no "/"; ';
+		if (key.includes("**"))
+			return 'a pattern has "*" as its only wildcard, so no "**"; ';
+		if (key.includes("@"))
+			return 'a key is the name an "@" spells, so it has no "@" itself; ';
+		return "";
 	}
 }

@@ -189,6 +189,38 @@ describe("WriteValidator rules", () => {
 				);
 			});
 
+			it("should name the compiled path a TypeScript project needs, as Rojo reads only what the compiler writes", async () => {
+				const [warning] = await unsynced([
+					"src/Main.ts",
+					"src/Hud.tsx",
+				]);
+
+				expect(warning.message).toBe(
+					'this source path places nothing: Rojo reads none of its files (Hud.tsx and Main.ts). Rojo reads only the Luau a compiler writes for TypeScript: set "compiledPath" to the folder roblox-ts writes, as "out".'
+				);
+			});
+
+			it("should name both fixes when TypeScript sits beside files of another unknown extension", async () => {
+				const [warning] = await unsynced(["src/A.ts", "src/B.lang"]);
+
+				expect(warning.message).toBe(
+					'this source path places nothing: Rojo reads none of its files (A.ts and B.lang). Rojo reads only the Luau a compiler writes for TypeScript: set "compiledPath" to the folder roblox-ts writes, as "out". For the other files, add a "syncRules" entry for their extension.'
+				);
+			});
+
+			it("should warn at each TypeScript file of a source path that places others, as it is left out", async () => {
+				await write("src/Shop/Hud.tsx", "src/Shop/Bag.luau");
+
+				expect(
+					(await route())
+						.unwrap()
+						.warnings.filter(
+							({ code }) => code === "scan.uncompiled"
+						)
+						.map(({ resource }) => resource)
+				).toEqual([abs("src/Shop/Hud.tsx")]);
+			});
+
 			it("should say a sync rule is enough under a compiled path", async () => {
 				const [warning] = await unsynced(["src/util.lang"], {
 					compiledPath: abs("out"),
@@ -786,12 +818,14 @@ describe("WriteValidator rules", () => {
 		});
 
 		describe("a script suffix before an @ suffix", () => {
-			const beforeAt = async () =>
-				(await route())
-					.unwrap()
-					.warnings.filter(
-						({ code }) => code === "route.scriptSuffixBeforeAt"
-					);
+			const beforeAt = async (overrides: ResolvedConfigSpec = {}) => {
+				const result = await route(overrides);
+				return (
+					result.isOk()
+						? result.value.warnings
+						: result.error.diagnostics
+				).filter(({ code }) => code === "route.scriptSuffixBeforeAt");
+			};
 
 			it("should warn that Rojo reads the file as a ModuleScript, with no rename when the suffix and the @ name different places", async () => {
 				await write(
@@ -848,7 +882,9 @@ describe("WriteValidator rules", () => {
 				async (extension) => {
 					await write(`src/Boot/Start.server@client.${extension}`);
 
-					expect(await beforeAt()).toMatchObject([
+					expect(
+						await beforeAt({ compiledPath: abs("out") })
+					).toMatchObject([
 						{
 							resource: abs(
 								`src/Boot/Start.server@client.${extension}`
@@ -1149,6 +1185,28 @@ describe("WriteValidator rules", () => {
 						resource: abs(
 							"src/ReplicatedFirst/server/Datastore.luau"
 						),
+					}),
+				]);
+			});
+
+			it("should warn about a file named like a server route that nothing routes, as its name alone sends it to clients", async () => {
+				await write(
+					"src/Bank/server.luau",
+					"src/Bank/client.luau",
+					"src/Bank/Ledger.luau",
+					"src/Till/SERVER.luau",
+					"src/Till/server.server.luau",
+					"src/server/Vault/server.luau"
+				);
+
+				expect(await shipped()).toEqual([
+					expect.objectContaining({
+						resource: abs("src/Bank/server.luau"),
+						message:
+							'is named like the "server" route, but only a folder, a marker or an "@" routes a file, so it ships to clients as ReplicatedStorage/shared/Bank/server. If it\'s server code, move it into a "server" folder.',
+					}),
+					expect.objectContaining({
+						resource: abs("src/Till/SERVER.luau"),
 					}),
 				]);
 			});

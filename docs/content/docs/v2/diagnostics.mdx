@@ -203,12 +203,12 @@ Remove the extra slash, or name the folder. See [Routes](/docs/v2/config#routes)
 Warning. No route matches the file, and the config has no `*` route, so Rogen leaves the file out of the project file.
 
 ```
-warning: matched no route, so it is left out. Move it into src/Shop/Server, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route. (route.unrouted)
+warning: matched no route, so it is left out. Move it into a routing folder of its feature, as src/Shop/Server, end its name with a route's @ suffix (@Server, @Client or @Shared), or declare a "*" route. (route.unrouted)
 ```
 
 Do one of these:
 
-- Move the file into one of the routing folders that the message names.
+- Move the file into a routing folder of its feature, as the message names one.
 - Add an `@key` suffix to the file's name.
 - Declare a `"*"` route, if every file like this one belongs in one place.
 
@@ -387,6 +387,14 @@ Move the file out of the replicating route's folder, for example from `Shared/Se
 
 If the folder should replicate, put a marker file in it that restates the governing route, such as `Shared/Server/@Shared`. The marker covers every file below it. To cover one file, name it like `Secret@Shared.luau`.
 
+It also warns about a file named after a server route that nothing routes, such as `Bank/Server.luau`, since a file's own name routes it only with an `@`, so it goes to `*`:
+
+```
+warning: is named like the "Server" route, but only a folder, a marker or an "@" routes a file, so it ships to clients as ReplicatedStorage/Shared/Bank/Server. If it's server code, move it into a "Server" folder. (route.serverCodeShipped)
+```
+
+Move it into the feature's `Server/` folder, or name it for what it does.
+
 A route written with `@`, as in `Shared/Data@Server.luau`, gets the [`route.ignoredAt`](#route-ignoredat) error instead. See [The Outermost Route Wins](/docs/v2/routing#the-outermost-route-wins).
 
 ## Tree
@@ -407,17 +415,17 @@ A `$` later in a name, as in `Cost$`, is fine. So is a file inside a folder that
 
 ### `tree.instanceClash` [#tree-instanceclash]
 
-Warning. Two files in one source path become the same instance, such as `Types.lua` and `Types.luau`. The last one takes the instance, and Rogen leaves the other out.
+Warning, or error. Two files in one source path become the same instance, such as `Types.lua` and `Types.luau`, or two `^` files that hoist to one place. Rojo would keep both, but the project file can name one, so the build would lose the other, and this stops the write.
 
 ```
-warning: becomes "ReplicatedStorage/shared/Inventory/Types", as src/Inventory/Types.luau does, which takes its place. Rename one of them to keep both. (tree.instanceClash)
+error: becomes "ReplicatedStorage/shared/Inventory/Types", as src/Inventory/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both. (tree.instanceClash)
 ```
 
 Rename or delete one of the files. In `--json`, `related` names the file that takes the instance. `rogen where` shows the left-out file as `replaced by`.
 
 Across source paths, the last file wins without a warning. That is how a later source path replaces a file of an earlier one.
 
-Rojo reads one init file per folder, such as `init.luau` before `init.server.luau`, wherever their routes send them. The others get this warning, and to give each side its own init script you name them with `@`, as in `init@server.luau`:
+Rojo reads one init file per folder, such as `init.luau` before `init.server.luau`, wherever their routes send them. As that is Rojo's own behaviour, the others only get this warning, and to give each side its own init script you name them with `@`, as in `init@server.luau`:
 
 ```
 warning: is an init file of src/Net, as src/Net/init.luau is, and Rojo reads only that one. To give each side its own init script, name them with @, as init@server.server.luau. (tree.instanceClash)
@@ -758,6 +766,16 @@ warning: Rojo reads an extension only in lowercase, so it ignores this file. Ren
 ```
 
 Rename the file as the message says. This applies to `.JSON`, `.MODEL.JSON` and every other extension that Rojo reads.
+
+### `scan.uncompiled` [#scan-uncompiled]
+
+Warning. A `.ts` or `.tsx` file sits in a source path, but the config has no `compiledPath`. Rojo never reads TypeScript itself, only the Luau a compiler such as roblox-ts writes for it, so the file is left out.
+
+```
+warning: is TypeScript, which Rojo never reads itself, and the config has no "compiledPath", so it is left out. Set "compiledPath" to the folder roblox-ts writes, as "out", or remove the file. (scan.uncompiled)
+```
+
+In a roblox-ts project, set `compiledPath` to the `outDir` of your `tsconfig.json`. Otherwise remove the file, or move it out of the source paths. A source path that holds nothing else gets [`scan.noSyncedFiles`](#scan-nosyncedfiles) instead. See [Config](/docs/v2/config).
 
 ### `scan.syncRuleSuffix` [#scan-syncrulesuffix]
 

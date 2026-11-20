@@ -10,6 +10,7 @@ import {
 import {
 	Diagnostic,
 	DiagnosticFix,
+	errorDiagnostic,
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { DeclaredKeys } from "../../config/declared-keys.js";
@@ -73,6 +74,7 @@ export class WriteValidator {
 			...this.sourcePathNamedAfterKey(),
 			...this.unresolvedLink(),
 			...this.noSyncedFiles(),
+			...this.uncompiled(),
 			...this.extensionCase(),
 			...this.syncRuleSuffix(),
 			...this.nestedProject(),
@@ -169,6 +171,24 @@ export class WriteValidator {
 		);
 	}
 
+	/** Each TypeScript file where no compiler writes the Luau Rojo would read, in a source path that places other files; one that places nothing gets `scan.noSyncedFiles`. */
+	private uncompiled(): Diagnostic[] {
+		if (this.placement.layout.compiledPath !== undefined) return [];
+		return this.placement.roots
+			.filter(({ entries }) => entries.length > 0)
+			.flatMap(({ unsynced }) =>
+				unsynced
+					.filter((file) => /\.tsx?$/.test(file))
+					.map((resource) =>
+						warningDiagnostic(
+							"scan.uncompiled",
+							{ resource },
+							'is TypeScript, which Rojo never reads itself, and the config has no "compiledPath", so it is left out. Set "compiledPath" to the folder roblox-ts writes, as "out", or remove the file.'
+						)
+					)
+			);
+	}
+
 	private noSyncedFilesAdvice(
 		sourcePath: string,
 		unsynced: readonly string[]
@@ -179,10 +199,15 @@ export class WriteValidator {
 			),
 			LISTED_FILES
 		);
+		const compiled = this.placement.layout.compiledPath !== undefined;
+		const typeScript = unsynced.some((file) => /\.tsx?$/.test(file));
+		const others = unsynced.some((file) => !/\.tsx?$/.test(file));
 		const advice =
-			this.placement.layout.compiledPath === undefined
-				? 'Add a "syncRules" entry for their extension, and a "compiledPath" if a compiler turns them into Luau.'
-				: 'Add a "syncRules" entry for their extension.';
+			!compiled && typeScript
+				? `Rojo reads only the Luau a compiler writes for TypeScript: set "compiledPath" to the folder roblox-ts writes, as "out".${others ? ' For the other files, add a "syncRules" entry for their extension.' : ""}`
+				: !compiled
+					? 'Add a "syncRules" entry for their extension, and a "compiledPath" if a compiler turns them into Luau.'
+					: 'Add a "syncRules" entry for their extension.';
 		return `Rojo reads none of its files (${listed}). ${advice}`;
 	}
 
@@ -403,7 +428,7 @@ export class WriteValidator {
 				warningDiagnostic(
 					"route.unrouted",
 					{ resource },
-					`matched no route, so it is left out. Move it into ${joinedWithOr([path.join(this.featureFolderOf(resource), first), ...rest])}, end its name with a route's @ marker (${joinedWithOr([first, ...rest].map((key) => `@${key}`))}), or declare a "*" route.`
+					`matched no route, so it is left out. Move it into a routing folder, as ${path.join(this.featureFolderOf(resource), first)}, end its name with a route's @ suffix (${joinedWithOr([first, ...rest].map((key) => `@${key}`))}), or declare a "*" route.`
 				)
 			);
 	}
@@ -441,6 +466,41 @@ export class WriteValidator {
 	}
 
 	private serverCodeShipped(): Diagnostic[] {
+		return [...this.shippedByFolder(), ...this.namedForServer()];
+	}
+
+	/** A file nothing routes whose own name is a server route key, as `Bank/Server.luau`, which reads as server code and lands where clients reach it. */
+	private namedForServer(): Diagnostic[] {
+		const { routes, keys } = this.config;
+		return this.placement.files.flatMap((file) => {
+			const { entry, routeMatch, init, instancePath } = file;
+			// A Script's suffix routes it, and tree.deadScript says where it can't run.
+			if (
+				routeMatch !== "fallback" ||
+				init ||
+				this.placement.readingOf(file).scriptSuffix !== undefined
+			)
+				return [];
+			const name = instancePath.at(-1)!;
+			const key = keys.resolve(name) ?? keys.nearMiss(name);
+			const service =
+				key === undefined ? undefined : routes.get(key)?.service;
+			return key === undefined ||
+				service === undefined ||
+				!isServerOnlyService(service) ||
+				isServerOnlyService(instancePath[0])
+				? []
+				: [
+						warningDiagnostic(
+							"route.serverCodeShipped",
+							{ resource: entry.source },
+							`is named like the "${key}" route, but only a folder, a marker or an "@" routes a file, so it ships to clients as ${instanceKey(instancePath)}. If it's server code, move it into a "${key}" folder.`
+						),
+					];
+		});
+	}
+
+	private shippedByFolder(): Diagnostic[] {
 		return this.shipped().map((file) =>
 			warningDiagnostic(
 				"route.serverCodeShipped",
@@ -671,11 +731,14 @@ export class WriteValidator {
 		return this.placement.clashes.flatMap(
 			({ instance, winner, losers, initFolder }) =>
 				losers.map((loser) =>
-					warningDiagnostic(
+					// Rojo keeps both of two files of one name, which Rogen's tree can't, so the build would lose one: that stops the write. Of two init files Rojo itself reads one, as Rogen does, so that only warns.
+					(initFolder === undefined
+						? errorDiagnostic
+						: warningDiagnostic)(
 						"tree.instanceClash",
 						{ resource: loser.entry.source },
 						initFolder === undefined
-							? `becomes "${instance}", as ${winner.entry.source} does, which takes its place. Rename one of them to keep both.`
+							? `becomes "${instance}", as ${winner.entry.source} does, which takes its place, so the build would lose it. Rename one of them to keep both.`
 							: `is an init file of ${initFolder}, as ${winner.entry.source} is, and Rojo reads only that one. ${WriteValidator.initFileFix(loser, instance)}`,
 						[],
 						[

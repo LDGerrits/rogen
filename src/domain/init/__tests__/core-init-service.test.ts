@@ -153,8 +153,13 @@ describe("CoreInitService", () => {
 				{
 					from: "src/Trading/server/Save@server.luau",
 					to: "src/Trading/server/Save@Server.luau",
+					reason: 'to spell the route "Server" as the rest of the code does',
 				},
-				{ from: "src/Trading/server", to: "src/Trading/Server" },
+				{
+					from: "src/Trading/server",
+					to: "src/Trading/Server",
+					reason: 'to spell the route "Server" as the rest of the code does',
+				},
 			]);
 			expect((await service.check(plan!)).isOk()).toBe(true);
 		});

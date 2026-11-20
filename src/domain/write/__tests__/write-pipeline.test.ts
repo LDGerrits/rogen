@@ -581,11 +581,13 @@ describe("WritePipeline", () => {
 				expect(result.unwrap().summary.unrouted).toBe(2);
 			});
 
-			it("should count the files another with the same name replaced", async () => {
-				await fs.writeFile(abs("src/A.lua"), "");
+			it("should count the files a later source path replaced", async () => {
 				await fs.writeFile(abs("src/A.luau"), "");
+				await fs.writeFile(abs("lib/A.luau"), "");
 
-				const result = await prepare(configOf());
+				const result = await prepare(
+					configOf({ sourcePaths: [abs("src"), abs("lib")] })
+				);
 
 				expect(result.unwrap().summary.replaced).toBe(1);
 			});

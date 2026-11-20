@@ -39,8 +39,9 @@ describe("Router", () => {
 				"*Service.*": "ServerScriptService",
 			};
 
+			// A TypeScript project compiles its sources, which Rojo then reads.
 			const routed = async () =>
-				(await route({ routes: PATTERNS }))
+				(await route({ routes: PATTERNS, compiledPath: abs("out") }))
 					.unwrap()
 					.routed.map(
 						({ instancePath, route, routeMatch }) =>
@@ -80,6 +81,7 @@ describe("Router", () => {
 				expect(
 					(
 						await route({
+							compiledPath: abs("out"),
 							routes: {
 								...ROUTES,
 								"*Controller":
@@ -182,6 +184,7 @@ describe("Router", () => {
 				await write("src/Shop/MainUi.ts");
 
 				const result = await route({
+					compiledPath: abs("out"),
 					routes: {
 						...ROUTES,
 						"*Ui.*": "StarterPlayer/StarterPlayerScripts",
@@ -325,12 +328,14 @@ describe("Router", () => {
 				expect(copies.every(({ hoisted }) => hoisted)).toBe(true);
 			});
 
-			it("should warn when two ^ names land on one instance", async () => {
+			it("should stop when two ^ names land on one instance, as the build would lose one", async () => {
 				await write("src/A/^C.luau", "src/B/^C.luau");
 
-				const { warnings } = (await route()).unwrap();
+				const result = await route();
 
-				expect(warnings).toContainEqual(
+				expect(
+					result.isErr() && result.error.diagnostics
+				).toContainEqual(
 					expect.objectContaining({ code: "tree.instanceClash" })
 				);
 			});
@@ -781,7 +786,7 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should keep the one init file of a folder that Rojo reads, wherever their routes send them", async () => {
+			it("should warn about an init file of a folder that Rojo doesn't read, wherever their routes send them, as Rojo reads one", async () => {
 				await write(
 					"src/Feat/init.server.luau",
 					"src/Feat/init.client.luau"
@@ -834,7 +839,7 @@ describe("Router", () => {
 			it("should read roblox-ts's index as init", async () => {
 				await write("src/Lib/index.ts", "src/Lib/Util.ts");
 
-				expect(await placed()).toEqual([
+				expect(await placed({ compiledPath: abs("out") })).toEqual([
 					"Lib/Util.ts -> ReplicatedStorage/shared/Lib/Util",
 					"Lib/index.ts -> ReplicatedStorage/shared/Lib",
 				]);
@@ -939,9 +944,9 @@ describe("Router", () => {
 					.warnings.filter(({ code }) => code === "route.unrouted");
 
 				expect(warnings.map(({ message }) => message)).toEqual([
-					`matched no route, so it is left out. Move it into ${abs("src/Server")}, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route.`,
-					`matched no route, so it is left out. Move it into ${abs("src/Shop/Server")}, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route.`,
-					`matched no route, so it is left out. Move it into ${abs("src/Shop/Server")}, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route.`,
+					`matched no route, so it is left out. Move it into a routing folder, as ${abs("src/Server")}, end its name with a route's @ suffix (@Server, @Client or @Shared), or declare a "*" route.`,
+					`matched no route, so it is left out. Move it into a routing folder, as ${abs("src/Shop/Server")}, end its name with a route's @ suffix (@Server, @Client or @Shared), or declare a "*" route.`,
+					`matched no route, so it is left out. Move it into a routing folder, as ${abs("src/Shop/Server")}, end its name with a route's @ suffix (@Server, @Client or @Shared), or declare a "*" route.`,
 				]);
 			});
 

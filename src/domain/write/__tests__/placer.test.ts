@@ -116,20 +116,17 @@ describe("Placer", () => {
 			);
 		});
 
-		it("should warn at the file left out, naming the one used", async () => {
+		it("should stop the write at the file left out, naming the one used, as the build would lose it", async () => {
 			await write("src/Types.luau", "src/Types.lua");
 
-			const result = (await apply()).unwrap();
+			const result = await apply();
 
-			expect(result.files.map((file) => file.entry.relativePath)).toEqual(
-				["Types.luau"]
-			);
-			expect(result.warnings).toEqual([
+			expect(result.isErr() && result.error.diagnostics).toEqual([
 				{
-					severity: DiagnosticSeverity.Warning,
+					severity: DiagnosticSeverity.Error,
 					code: "tree.instanceClash",
 					resource: abs("src/Types.lua"),
-					message: `becomes "ReplicatedStorage/Types", as ${abs("src/Types.luau")} does, which takes its place. Rename one of them to keep both.`,
+					message: `becomes "ReplicatedStorage/Types", as ${abs("src/Types.luau")} does, which takes its place, so the build would lose it. Rename one of them to keep both.`,
 					related: [
 						{
 							resource: abs("src/Types.luau"),
@@ -148,9 +145,9 @@ describe("Placer", () => {
 				"lobby/Types.luau"
 			);
 
-			const result = (await apply([abs("core"), abs("lobby")])).unwrap();
+			const result = await apply([abs("core"), abs("lobby")]);
 
-			expect(result.warnings).toMatchObject([
+			expect(result.isErr() && result.error.diagnostics).toMatchObject([
 				{
 					resource: absPosix("core/Types.lua"),
 					message: expect.stringContaining(
@@ -160,15 +157,15 @@ describe("Placer", () => {
 			]);
 		});
 
-		it("should warn at every file left out of a clash", async () => {
+		it("should stop at every file left out of a clash", async () => {
 			await write("src/Types.luau", "src/Types.lua", "src/Types.json");
 
-			const result = (await apply()).unwrap();
+			const result = await apply();
 
-			expect(result.warnings.map(({ resource }) => resource)).toEqual([
-				abs("src/Types.json"),
-				abs("src/Types.lua"),
-			]);
+			expect(
+				result.isErr() &&
+					result.error.diagnostics.map(({ resource }) => resource)
+			).toEqual([abs("src/Types.json"), abs("src/Types.lua")]);
 		});
 
 		it("should let the last source path win a clash without a warning", async () => {
