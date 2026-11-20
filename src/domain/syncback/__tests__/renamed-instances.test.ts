@@ -1,16 +1,16 @@
 import { renamedInstances } from "../renamed-instances.js";
 import { abs, layoutOf } from "./layout-fixtures.js";
 
-/** Calls `renamedInstances` with removed mirror paths mapped to the sources they were copied from. */
+const posix = (...segments: string[]) => abs(...segments).replaceAll("\\", "/");
+
+/** Calls `renamedInstances` with removed mirror paths mapped to the sources they were copied from, each of them removed. */
 const renamesOf = (
 	instances: Parameters<typeof renamedInstances>[0],
 	removed: ReadonlyMap<string, string>,
-	placed: Parameters<typeof renamedInstances>[3]
+	placed: Parameters<typeof renamedInstances>[2]["placed"]
 ) =>
-	renamedInstances(
-		instances,
-		new Set(removed.keys()),
-		(at) => {
+	renamedInstances(instances, new Set(removed.keys()), {
+		sourceOf: (at) => {
 			for (const [mirror, source] of removed) {
 				if (at === mirror) return source;
 				if (at.startsWith(`${mirror}/`))
@@ -18,10 +18,13 @@ const renamesOf = (
 			}
 			return undefined;
 		},
-		placed
-	);
-
-const posix = (...segments: string[]) => abs(...segments).replaceAll("\\", "/");
+		placed,
+		isRemoved: (source) =>
+			[...removed.values()].some(
+				(gone) => source === gone || source.startsWith(`${gone}/`)
+			),
+		matchesPattern: () => false,
+	});
 
 const sides = {
 	server: ["ServerScriptService"],
@@ -169,5 +172,56 @@ describe("renamedInstances", () => {
 				{ target: posix("src/Store/Fresh@Client.luau") },
 			],
 		]);
+	});
+
+	it("should write a script Rojo writes in another form under its new name, with its route mark, so Studio's edit stays", async () => {
+		const { placed } = await layoutOf(["src/Shop/Hit@Server.lua"]);
+
+		const [rename] = renamesOf(
+			[renamedTo("server", "Store", [["Store", "Hit.server.luau"]])],
+			new Map([["m/server/Shop", posix("src/Shop")]]),
+			placed
+		);
+
+		expect([...rename.files.values()]).toEqual([
+			{ target: posix("src/Store/Hit@Server.server.luau") },
+		]);
+	});
+
+	it("should leave a rename to placing when a child added with it has a name routing reads as a route", async () => {
+		const { placed } = await layoutOf(["src/Shop@Server/Hit.luau"]);
+
+		expect(
+			renamesOf(
+				[
+					renamedTo("server", "Store", [
+						["Store", "Hit.luau"],
+						["Store", "Save@Server.luau"],
+					]),
+				],
+				new Map([["m/server/Shop", posix("src/Shop@Server")]]),
+				placed
+			)
+		).toEqual([]);
+	});
+
+	it("should leave a rename to placing when a file of the old instance stays, as the plan keeps it", async () => {
+		const { placed } = await layoutOf([
+			"src/Shop@Server/Hit.luau",
+			"src/Shop@Server/Kept.luau",
+		]);
+
+		expect(
+			renamesOf(
+				[renamedTo("server", "Store", [["Store", "Hit.luau"]])],
+				new Map([
+					[
+						"m/server/Shop/Hit.luau",
+						posix("src/Shop@Server/Hit.luau"),
+					],
+				]),
+				placed
+			)
+		).toEqual([]);
 	});
 });

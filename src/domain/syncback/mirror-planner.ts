@@ -806,8 +806,25 @@ class MirrorPlanRun {
 									: []
 							)
 						),
-						(at) => workspace.mirror.targetOf(at),
-						workspace.layout.placed
+						{
+							sourceOf: (at) => workspace.mirror.targetOf(at),
+							placed: workspace.layout.placed,
+							isRemoved: (source) => {
+								const native = toNative(source);
+								return this.operations.some(
+									({ kind, file }) =>
+										(kind === "remove" ||
+											kind === "prune") &&
+										(file === native ||
+											native.startsWith(
+												`${file}${path.sep}`
+											))
+								);
+							},
+							matchesPattern: (name) =>
+								workspace.layout.config.patterns.match(name) !==
+								undefined,
+						}
 					)
 				: []
 			).map((rename) => [rename.instance, rename])
@@ -816,6 +833,12 @@ class MirrorPlanRun {
 		/** The paths renames write, which the copies of one init script share. */
 		const renamedTo = new Set<string>();
 		for (const instance of instances) {
+			// The file Rojo keeps an emptied folder of compiled code by is no instance of its own.
+			if (
+				this.request.project.compiledPath !== undefined &&
+				instance.name === GITKEEP
+			)
+				continue;
 			const rename = renames.get(instance);
 			if (
 				rename &&
@@ -848,14 +871,10 @@ class MirrorPlanRun {
 				continue;
 			}
 			if (this.request.project.compiledPath !== undefined) {
-				if (instance.name !== GITKEEP)
-					this.compiled.push({
-						instance: instanceKey([
-							...instance.parent,
-							instance.name,
-						]),
-						kind: "added",
-					});
+				this.compiled.push({
+					instance: instanceKey([...instance.parent, instance.name]),
+					kind: "added",
+				});
 				continue;
 			}
 			for (const operation of placed.operations)

@@ -58,14 +58,45 @@ const markOf = (fileName: string) =>
 const sameForm = (old: string, written: string) =>
 	old.replace(markOf(old), "") === written;
 
+/** A script, whose source Rojo writes back, unlike a data file it would write in another form. */
+const isScript = (file: string) => /\.luau?$/.test(file);
+
+/** A name routing reads as more than a name: a `^`, parentheses, or an `@`. */
+const misread = (name: string) => /^[\^(]|@/.test(name);
+
+/** The ways routing places a file that a new file beside it, in the same folder, is placed by too. */
+const SHARED_BY_SIBLINGS = new Set(["folder", "marker", "suffix", "fallback"]);
+
+/** What `renamedInstances` reads besides the instances. */
+export interface RenameInputs {
+	/** The absolute POSIX path a mirror path was copied from. */
+	readonly sourceOf: (mirror: string) => string | undefined;
+	readonly placed: readonly PlacedLocation[];
+	/** Whether the plan removes the file at an absolute POSIX path, or a folder above it. */
+	readonly isRemoved: (source: string) => boolean;
+	/** Whether a pattern route matches a file's name. */
+	readonly matchesPattern: (fileName: string) => boolean;
+}
+
+/** The placed files by each instance path they are at, joined with `\0`. */
+function byInstance(
+	placed: readonly PlacedLocation[]
+): Map<string, PlacedLocation> {
+	const found = new Map<string, PlacedLocation>();
+	for (const file of placed)
+		for (const at of [file.instancePath, ...(file.alsoAt ?? [])])
+			found.set(at.join("\0"), file);
+	return found;
+}
+
 function renameOf(
 	instance: AddedInstance,
 	from: string,
-	sourceOf: (mirror: string) => string | undefined,
-	placed: readonly PlacedLocation[]
+	inputs: RenameInputs,
+	placedAt: ReadonlyMap<string, PlacedLocation>
 ): RenamedInstance | undefined {
-	// A name routing reads as more than a name is left for placement to refuse.
-	if (/^[\^(]|@/.test(instance.name)) return undefined;
+	if (misread(instance.name)) return undefined;
+	const { sourceOf, placed, isRemoved, matchesPattern } = inputs;
 	const oldPath = [...instance.parent, from];
 	const oldMirror = `${instance.parentFolder}/${from}`;
 	const folder = placed
@@ -82,56 +113,81 @@ function renameOf(
 	const moved = (source: string) =>
 		path.posix.join(renamed, path.posix.relative(folder, source));
 	const files = new Map<string, RenamedFile>();
+	/** The old file each file of the instance is, for those a new sibling may be written like. */
+	const siblings = new Map<string, PlacedLocation>();
 	const fresh: (readonly string[])[] = [];
 	for (const file of instance.files) {
 		const leaf = file[file.length - 1];
 		if (leaf === GITKEEP) continue;
+		const key = file.join("/");
 		if (RojoFile.metaStemOf(leaf) !== undefined) {
 			const source = sourceOf([oldMirror, ...file.slice(1)].join("/"));
 			if (source === undefined || !containsPosix(folder, source))
 				return undefined;
-			files.set(file.join("/"), { target: moved(source) });
+			files.set(key, { target: moved(source) });
 			continue;
 		}
-		const at = [...oldPath, ...instanceBelow(file)];
-		const old = placed.find((one) =>
-			[one.instancePath, ...(one.alsoAt ?? [])].some((where) =>
-				isSameJson(where, at)
-			)
+		const old = placedAt.get(
+			[...oldPath, ...instanceBelow(file)].join("\0")
 		);
 		if (old === undefined) {
 			fresh.push(file);
 			continue;
 		}
 		if (!containsPosix(folder, old.source)) return undefined;
-		const target = moved(old.source);
+		const oldName = path.posix.basename(old.source);
+		const stem = instanceNameOf(leaf);
 		files.set(
-			file.join("/"),
-			sameForm(path.posix.basename(old.source), leaf)
-				? { target }
-				: { target, keep: old.source }
+			key,
+			sameForm(oldName, leaf)
+				? { target: moved(old.source) }
+				: isScript(oldName)
+					? {
+							target: path.posix.join(
+								path.posix.dirname(moved(old.source)),
+								`${stem}${markOf(oldName)}${leaf.slice(stem.length)}`
+							),
+						}
+					: { target: moved(old.source), keep: old.source }
 		);
+		if (!leaf.startsWith("init.")) siblings.set(key, old);
 	}
 	for (const file of fresh) {
-		const dir = file.slice(0, -1).join("/");
-		const sibling = [...files].find(
-			([other, { keep }]) =>
-				keep === undefined &&
-				other.slice(0, other.lastIndexOf("/")) === dir &&
-				!other.endsWith(`/${RojoFile.INIT_META}`)
-		);
-		if (sibling === undefined) return undefined;
 		const leaf = file[file.length - 1];
+		if ([...file.slice(1, -1), instanceNameOf(leaf)].some(misread))
+			return undefined;
+		const dir = file.slice(0, -1).join("/");
+		const beside = [...siblings].filter(
+			([other]) => other.slice(0, other.lastIndexOf("/")) === dir
+		);
+		const marks = new Set(
+			beside.map(([, old]) => markOf(path.posix.basename(old.source)))
+		);
+		if (
+			beside.length === 0 ||
+			marks.size !== 1 ||
+			beside.some(([, old]) => !SHARED_BY_SIBLINGS.has(old.routeMatch)) ||
+			(beside.some(([, old]) => old.routeMatch === "fallback") &&
+				matchesPattern(leaf))
+		)
+			return undefined;
+		const [mark] = marks;
 		const stem = instanceNameOf(leaf);
-		const mark = markOf(path.posix.basename(sibling[1].target));
 		files.set(file.join("/"), {
 			target: path.posix.join(
-				path.posix.dirname(sibling[1].target),
+				path.posix.dirname(files.get(beside[0][0])!.target),
 				`${stem}${mark}${leaf.slice(stem.length)}`
 			),
 		});
 	}
-	if (files.size === 0) return undefined;
+	const kept = new Set([...siblings.values()].map(({ source }) => source));
+	const lost = placed.some(
+		(file) =>
+			isUnder(file.instancePath, oldPath) &&
+			!kept.has(file.source) &&
+			!isRemoved(file.source)
+	);
+	if (lost || files.size === 0) return undefined;
 	return { instance, from, folder, renamed, files };
 }
 
@@ -139,13 +195,14 @@ const isUnder = (instancePath: readonly string[], root: readonly string[]) =>
 	root.every((name, at) => instancePath[at] === name) &&
 	instancePath.length > root.length;
 
-/** The new folder instances that are old ones renamed: same parent, every file of the old one under the new name, and a folder of their own whose every instance is renamed the same way. `removed` holds each mirror path the plan removes, and `sourceOf` gives the absolute POSIX path a mirror path was copied from. */
+/** The new folder instances that are old ones renamed: same parent, every file of the old one under the new name or removed, and a folder of their own whose every instance is renamed the same way. `removed` holds each mirror path the plan removes. */
 export function renamedInstances(
 	instances: readonly AddedInstance[],
 	removed: ReadonlySet<string>,
-	sourceOf: (mirror: string) => string | undefined,
-	placed: readonly PlacedLocation[]
+	inputs: RenameInputs
 ): RenamedInstance[] {
+	const { placed } = inputs;
+	const placedAt = byInstance(placed);
 	const found: RenamedInstance[] = [];
 	for (const instance of instances) {
 		if (!instance.folder) continue;
@@ -157,7 +214,7 @@ export function renamedInstances(
 				.filter((name) => name !== instance.name)
 		);
 		for (const name of names) {
-			const rename = renameOf(instance, name, sourceOf, placed);
+			const rename = renameOf(instance, name, inputs, placedAt);
 			if (rename) {
 				found.push(rename);
 				break;
