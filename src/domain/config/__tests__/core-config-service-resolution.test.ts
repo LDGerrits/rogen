@@ -249,7 +249,7 @@ describe("CoreConfigService", () => {
 
 				expect(problems).toEqual([
 					[
-						'route key "my-key" is invalid: a name uses letters and digits only, starting with a letter, and a file-name pattern has a "*", such as "*.tsx".',
+						'route key "my-key" is invalid: a name uses letters and digits only, starting with a letter, and a file-name pattern is a glob on the name, such as "*.tsx" or "*[Ss]ervice".',
 						"/repo/default.rogen.json",
 						3,
 						13,
@@ -274,10 +274,10 @@ describe("CoreConfigService", () => {
 					"src/*.tsx",
 					'a pattern matches a file\'s name, never its path, so it has no "/"; ',
 				],
-				[
-					"**.tsx",
-					'a pattern has "*" as its only wildcard, so no "**"; ',
-				],
+				["**.tsx", 'a pattern matches one name, so no "**"; '],
+				["*[Ss", 'a "[" needs its "]"; '],
+				["*{Ui,Hud", 'a "{" needs its "}", with no "{" inside; '],
+				["*{a,{b,c}}", 'a "{" needs its "}", with no "{" inside; '],
 				[
 					"*@client",
 					'a key is the name an "@" spells, so it has no "@" itself; ',
@@ -291,7 +291,7 @@ describe("CoreConfigService", () => {
 					});
 
 					expect(problems.map(([message]) => message)).toEqual([
-						`route key "${key}" is invalid: ${problem}a name uses letters and digits only, starting with a letter, and a file-name pattern has a "*", such as "*.tsx".`,
+						`route key "${key}" is invalid: ${problem}a name uses letters and digits only, starting with a letter, and a file-name pattern is a glob on the name, such as "*.tsx" or "*[Ss]ervice".`,
 					]);
 				}
 			);

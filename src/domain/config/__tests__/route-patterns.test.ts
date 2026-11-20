@@ -12,6 +12,11 @@ describe("RoutePatterns", () => {
 			"*.service.*",
 			"Ui*.luau",
 			"*-view.ts",
+			"*[Ss]ervice",
+			"Test?.luau",
+			"*{Controller,Component}",
+			"*.[jt]sx",
+			"Main[!0-9].luau",
 		])("should take %j as a pattern", (key) => {
 			expect(RoutePatterns.isPattern(key)).toBe(true);
 		});
@@ -25,6 +30,11 @@ describe("RoutePatterns", () => {
 			"*@client",
 			"(*)",
 			"*.*",
+			"*[Ss",
+			"*{Controller,Component",
+			"*{a,{b,c}}",
+			"*Controller}",
+			"*]",
 		])("should not take %j as a pattern", (key) => {
 			expect(RoutePatterns.isPattern(key)).toBe(false);
 		});
@@ -55,6 +65,63 @@ describe("RoutePatterns", () => {
 			expect(patternsOf(routes).match("Button.story.tsx")).toEqual({
 				kind: "routed",
 				key: "*.story.tsx",
+			});
+		});
+
+		it("should read ?, a class and alternatives as Rojo's globs do", () => {
+			const patterns = patternsOf({
+				"*[Ss]ervice": "ServerScriptService",
+				"Test?.luau": "ReplicatedStorage/Tests",
+				"*{Controller,Component}": "StarterPlayer/StarterPlayerScripts",
+				"*": "ReplicatedStorage/Shared",
+			});
+
+			expect(
+				[
+					"ShopService.luau",
+					"shopservice.luau",
+					"Test1.luau",
+					"Test12.luau",
+					"HudController.luau",
+					"HudComponent.luau",
+					"HudControl.luau",
+				].map((name) => {
+					const found = patterns.match(
+						name,
+						name.replace(/\.luau$/, "")
+					);
+					return found?.kind === "routed" ? found.key : undefined;
+				})
+			).toEqual([
+				"*[Ss]ervice",
+				"*[Ss]ervice",
+				"Test?.luau",
+				undefined,
+				"*{Controller,Component}",
+				"*{Controller,Component}",
+				undefined,
+			]);
+		});
+
+		it("should count ? and a class as one character, and weigh each alternative on its own", () => {
+			const patterns = patternsOf({
+				"*[Ss]ervice": "ServerScriptService",
+				"*Service": "ReplicatedStorage/Services",
+				"*{Ui,Controller}": "StarterPlayer/StarterPlayerScripts",
+				"*Ui*": "ReplicatedStorage/Ui",
+			});
+
+			expect(patterns.match("ShopService")).toEqual({
+				kind: "clash",
+				keys: ["*Service", "*[Ss]ervice"],
+			});
+			expect(patterns.match("HudController")).toEqual({
+				kind: "routed",
+				key: "*{Ui,Controller}",
+			});
+			expect(patterns.match("HudUi")).toEqual({
+				kind: "clash",
+				keys: ["*Ui*", "*{Ui,Controller}"],
 			});
 		});
 

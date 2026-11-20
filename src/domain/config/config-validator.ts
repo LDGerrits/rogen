@@ -39,7 +39,7 @@ import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
 const FALLBACK_NAME = "project";
 
 const KEY_RULE =
-	'a name uses letters and digits only, starting with a letter, and a file-name pattern has a "*", such as "*.tsx"';
+	'a name uses letters and digits only, starting with a letter, and a file-name pattern is a glob on the name, such as "*.tsx" or "*[Ss]ervice"';
 
 /** Checks every rule on one project's values that doesn't need the source tree, and returns the config with its route targets parsed. */
 export class ConfigValidator {
@@ -316,7 +316,10 @@ export class ConfigValidator {
 		if (/[/\\]/.test(key))
 			return 'a pattern matches a file\'s name, never its path, so it has no "/"; ';
 		if (key.includes("**"))
-			return 'a pattern has "*" as its only wildcard, so no "**"; ';
+			return 'a pattern matches one name, so no "**"; ';
+		if (/\[[^\]]*$/.test(key)) return 'a "[" needs its "]"; ';
+		if (/\{[^}]*(\{|$)/.test(key))
+			return 'a "{" needs its "}", with no "{" inside; ';
 		if (key.includes("@"))
 			return 'a key is the name an "@" spells, so it has no "@" itself; ';
 		return "";

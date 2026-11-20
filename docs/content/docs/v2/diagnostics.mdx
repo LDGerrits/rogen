@@ -146,10 +146,10 @@ Fix the rule as the message says.
 
 ### `config.invalidRouteKey` [#config-invalidroutekey]
 
-Error. A route key is neither a name nor a file-name pattern. A name is letters and digits that start with a letter, because it appears in folder and file names. A pattern such as `*.tsx` or `*Controller.*` has a `*` and the characters of a file name, but no `/`, `**`, `@` or parentheses, since it matches a file's name and never its path.
+Error. A route key is neither a name nor a file-name pattern. A name is letters and digits that start with a letter, because it appears in folder and file names. A pattern such as `*.tsx`, `*Controller.*` or `*[Ss]ervice` is a glob in Rojo's syntax on the characters of a file name: `*`, `?`, a closed `[...]` class and a closed `{a,b}` group with none nested, but no `/`, `**`, `@` or parentheses, since it matches a file's name and never its path.
 
 ```
-error: route key "ser-ver" is invalid: a name uses letters and digits only, starting with a letter, and a file-name pattern has a "*", such as "*.tsx". (config.invalidRouteKey)
+error: route key "ser-ver" is invalid: a name uses letters and digits only, starting with a letter, and a file-name pattern is a glob on the name, such as "*.tsx" or "*[Ss]ervice". (config.invalidRouteKey)
 ```
 
 Rename the key, for example to `server`, or write the pattern on the file name alone. See [Routing](/docs/v2/routing).
@@ -267,7 +267,7 @@ Two markers for the same route are fine. An init script's route routes only the 
 
 ### `route.patternClash` [#route-patternclash]
 
-Error. Two or more pattern routes match a file's name with as many characters that aren't `*`, and they send it to different places. The pattern with more such characters wins, so `*.story.tsx` beats `*.tsx`, but nothing decides a tie.
+Error. Two or more pattern routes match a file's name with as many characters that aren't `*`, and they send it to different places. The pattern with more such characters wins, so `*.story.tsx` beats `*.tsx`, where `?` and a class such as `[Ss]` count as one character, but nothing decides a tie. Not even the order of the routes: an editor or tool may reorder a JSON object's keys.
 
 ```
 error: "*.ts" and "*Ui.*" both match this name, are as long as each other, and send it to different places. Lengthen the pattern that should win, or route the file with a folder or an @ name. (route.patternClash)

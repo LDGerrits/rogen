@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- Pattern routes: a route key with a `*`, such as `*.tsx`, `*Controller` or `*Controller.*`, routes a file by its file name or instance name when no folder, `@` name or marker routes it. A pattern never matches a folder or an init script, so a script written as a folder stays with its children. The pattern with more characters that aren't `*` wins, and a tie between different places is the error `route.patternClash`. Syncback writes a new file's `@` route when a pattern would send its plain name elsewhere.
+- Pattern routes: a route key with a wildcard, in Rojo's glob syntax for one name (`*`, `?`, `[Ss]`, `{a,b}`), such as `*.tsx`, `*Controller.*` or `*[Ss]ervice`, routes a file by its file name or instance name when no folder, `@` name or marker routes it. A pattern never matches a folder or an init script, so a script written as a folder stays with its children. The pattern with more characters that aren't `*` wins (`?` and a class count one, each `{a,b}` word on its own), and a tie between different places is the error `route.patternClash`. Syncback writes a new file's `@` route when a pattern would send its plain name elsewhere.
 
 - Warnings for a pattern route that just misses: `route.patternCase` for a file that matches a pattern only ignoring letter case, and `route.folderPattern` for a folder script whose folder a pattern matches, which no pattern routes, with the rename that does.
 
