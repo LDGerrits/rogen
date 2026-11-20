@@ -10,7 +10,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Pattern routes: a route key with a wildcard, in Rojo's glob syntax for one name (`*`, `?`, `[Ss]`, `{a,b}`), such as `*.tsx`, `*Controller.*` or `*[Ss]ervice`, routes a file by its file name or instance name when no folder, `@` name or marker routes it. A pattern never matches a folder or an init script, so a script written as a folder stays with its children. The pattern with more characters that aren't `*` wins (`?` and a class count one, each `{a,b}` word on its own), and a tie between different places is the error `route.patternClash`. Syncback writes a new file's `@` route when a pattern would send its plain name elsewhere.
 
-- Warnings for a pattern route that just misses: `route.patternCase` for a file that matches a pattern only ignoring letter case, and `route.folderPattern` for a folder script whose folder a pattern matches, which no pattern routes, with the rename that does.
+- Warnings for a pattern route that just misses: `route.patternCase` for a file that matches a pattern only ignoring letter case, and `route.folderPattern` for a folder script whose folder a pattern matches, or a folder of files a pattern without a `*` matches (`server/` under `[Ss]erver`), which no pattern routes, with the rename that does.
+
+- The error `config.duplicateKey` for a route key, or one of Rogen's own keys, written twice in one object, which JSON reads as the last copy only. Rojo's keys still keep their last copy without a word, as Rojo reads them.
 
 - The warning `scan.uncompiled` for a TypeScript file in a project with no `compiledPath`, which Rojo never reads.
 

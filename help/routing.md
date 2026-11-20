@@ -6,9 +6,9 @@ Rogen reads the folder and file names under each config's `sourcePaths` and writ
 
 Route with folders. Give each feature one folder per side, named after the config's route keys, and put every file inside one of them:
 
-  src/Inventory/Server/InventoryService.luau   -> ServerScriptService/Inventory/InventoryService
-  src/Inventory/Client/InventoryController.luau -> StarterPlayer/StarterPlayerScripts/Inventory/InventoryController
-  src/Inventory/Shared/InventoryTypes.luau     -> ReplicatedStorage/Shared/Inventory/InventoryTypes
+src/Inventory/Server/InventoryService.luau -> ServerScriptService/Inventory/InventoryService
+src/Inventory/Client/InventoryController.luau -> StarterPlayer/StarterPlayerScripts/Inventory/InventoryController
+src/Inventory/Shared/InventoryTypes.luau -> ReplicatedStorage/Shared/Inventory/InventoryTypes
 
 A key routes a file in four ways:
 
@@ -19,7 +19,7 @@ A key routes a file in four ways:
 
 `-`, `_`, `+` and a capital letter (`CombatServer`) don't route by a name key. Such a file goes to a pattern route its name matches, then to `*`, or is unrouted in a config without `*`; `rogen where` says `route * (fallback)`.
 
-A key with a wildcard is a pattern on a file's name or the name of the instance it makes, in Rojo's glob syntax for one name (`*`, `?`, `[Ss]`, `{a,b}`; no `**` or `/`), such as `*.tsx`, `*Controller.*` or `*[Ss]ervice`. It routes only a file that no folder, `@` suffix, marker or `.server`/`.client` routes, and it keeps the name: `ShopController.luau` stays `ShopController`. It never matches a folder or an init script, which is its folder, so `InputController/init.luau` routes with the rest of its folder; name the folder `InputController@Client/` to route it. The pattern with more characters that aren't `*` wins (`*.story.tsx` over `*.tsx`; `?` and a class count one, each `{a,b}` word on its own); a tie between different targets is an error. Patterns match letter case exactly and never a path.
+A key with a wildcard is a pattern on a file's name or the name of the instance it makes, in Rojo's glob syntax for one name (`*`, `?`, `[Ss]`, `{a,b}`; no `**` or `/`), such as `*.tsx`, `*Controller.*` or `*[Ss]ervice`. It routes only a file that no folder, `@` suffix, marker or `.server`/`.client` routes, and it keeps the name: `ShopController.luau` stays `ShopController`. It never matches a folder or an init script, which is its folder, so `InputController/init.luau` routes with the rest of its folder; name the folder `InputController@Client/` to route it. A key without a `*`, such as `[Ss]erver`, is still a pattern, so it never routes a `server/` folder, and Rogen warns about one. The pattern with more characters that aren't `*` wins (`*.story.tsx` over `*.tsx`; `?` and a class count one, each `{a,b}` word on its own); a tie between different targets is an error. Patterns match letter case exactly and never a path.
 
 Matching is exact: key `Server` matches `Server/`, not `server/` or `SERVER/`. Such a folder is an error unless a route above it, or a marker in it, already routes its files, where its name places nothing. Only Rojo's lower-case `.server` and `.client` route a key of that name in any case. An `@` that nearly spells a route (`Save@sever.luau`, `Save@server.luau` under `Server`, or a marker `@server`) is an error naming the closest key, since an `@` only means a route; other `@` names, such as packages, stay silent. A server-named folder in any case under a route that reaches clients warns that its code ships to them.
 

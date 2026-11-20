@@ -336,31 +336,59 @@ export class WriteValidator {
 		});
 	}
 
-	/** A folder of an init script that falls to `*` though a pattern matches its name, as no pattern routes a folder; with the rename to the name key of the pattern's place. */
+	/** A folder that falls to `*` though a pattern matches its name, as no pattern routes a folder: a folder script's for any pattern, and a folder of files' for a pattern without a `*`, which names the whole word; with the rename to the name key of the pattern's place. */
 	private folderPattern(): Diagnostic[] {
 		const { patterns } = this.config;
-		const folders = new Set(
-			this.placement.files.flatMap(({ routeMatch, init }) =>
-				routeMatch === "fallback" && init ? [init.becomes] : []
-			)
-		);
-		return [...folders].flatMap((folder) => {
-			const name = path.posix.basename(folder);
-			const match = patterns.match(name);
-			if (match?.kind !== "routed") return [];
-			const key = patterns.nameKeyFor(match.key);
-			const plain = /^[^^(]/.test(name);
-			return [
-				warningDiagnostic(
-					"route.folderPattern",
-					{ resource: folder },
-					`matches the pattern "${match.key}", but a pattern never routes a folder or its init script, so it and its files go to "*". ${key === undefined ? "Route it with a folder or marker for that place." : `Name it ${name}@${key} to route it there.`}`,
-					key !== undefined && plain
-						? [{ rename: { from: folder, to: `${folder}@${key}` } }]
-						: []
-				),
-			];
-		});
+		const folders = new Map<string, boolean>();
+		for (const { entry, routeMatch, init } of this.placement.files) {
+			if (routeMatch !== "fallback") continue;
+			if (init) folders.set(init.becomes, true);
+			else
+				for (const folder of this.foldersAbove(entry.source))
+					if (!folders.has(folder)) folders.set(folder, false);
+		}
+		return [...folders]
+			.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+			.flatMap(([folder, script]) => {
+				const name = path.posix.basename(folder);
+				const match = patterns.match(name);
+				if (match?.kind !== "routed") return [];
+				if (!script && match.key.includes("*")) return [];
+				const key = patterns.nameKeyFor(match.key);
+				const plain = /^[^^(]/.test(name);
+				return [
+					warningDiagnostic(
+						"route.folderPattern",
+						{ resource: folder },
+						`matches the pattern "${match.key}", but a pattern never routes a folder${script ? " or its init script, so it and its files go" : ", so its files go"} to "*". ${key === undefined ? 'No name key routes to that place: add one to "routes" and name the folder for it.' : `Name it ${name}@${key} to route it there.`}`,
+						key !== undefined && plain
+							? [
+									{
+										rename: {
+											from: folder,
+											to: `${folder}@${key}`,
+										},
+									},
+								]
+							: []
+					),
+				];
+			});
+	}
+
+	/** The folders between `source` and the source path that holds it, nearest first. */
+	private foldersAbove(source: string): string[] {
+		const sourcePath = this.config.sourcePaths
+			.map(toPosix)
+			.find((dir) => isInside(source, dir));
+		const folders: string[] = [];
+		for (
+			let folder = path.posix.dirname(source);
+			sourcePath !== undefined && isInside(folder, sourcePath);
+			folder = path.posix.dirname(folder)
+		)
+			folders.push(folder);
+		return folders;
 	}
 
 	private misspelt<K extends MisspellingKind>(

@@ -397,6 +397,50 @@ describe("CoreConfigService", () => {
 				]);
 			});
 
+			it("should reject a route written twice, at the copy JSON drops", async () => {
+				const problems = await diagnosticsFor(`{
+	"routes": {
+		"Server": "ServerScriptService",
+		"Server": "ReplicatedStorage"
+	}
+}`);
+
+				expect(problems).toEqual([
+					[
+						'route "Server" is written twice, and JSON keeps only the last, so this one is lost. Remove one.',
+						"/repo/default.rogen.json",
+						3,
+						3,
+					],
+				]);
+			});
+
+			it("should reject a Rogen key written twice", async () => {
+				const problems = await diagnosticsFor(`{
+	"routes": { "Server": "ServerScriptService" },
+	"routes": { "Client": "ReplicatedFirst" }
+}`);
+
+				expect(problems).toEqual([
+					[
+						'"routes" is written twice, and JSON keeps only the last, so this one is lost. Remove one.',
+						"/repo/default.rogen.json",
+						2,
+						2,
+					],
+				]);
+			});
+
+			it("should leave a Rojo key written twice to Rojo, which keeps the last", async () => {
+				const problems = await diagnosticsFor(`{
+	"name": "first",
+	"name": "game",
+	"routes": { "Server": "ServerScriptService" }
+}`);
+
+				expect(problems).toEqual([]);
+			});
+
 			it("should catch the nesting whichever order the source paths come in", async () => {
 				const problems = await diagnosticsFor({
 					sourcePaths: ["src/shared", "src"],

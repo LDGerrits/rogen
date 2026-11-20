@@ -73,6 +73,7 @@ export class ConfigValidator {
 	}
 
 	validate(): Result<ResolvedConfig, Diagnostic[]> {
+		this.checkOverriddenKeys();
 		const routes = this.checkRoutes();
 		const routed = Object.keys(this.routes).length > 0;
 		const project = this.readProject();
@@ -211,6 +212,25 @@ export class ConfigValidator {
 				`"${field}" is not a field of a sync rule, so Rojo ignores it.${suggestion ? ` Did you mean "${suggestion}"?` : ""}`
 			);
 		}
+	}
+
+	/** Rojo keeps the last copy of its own keys without a word, so only Rogen's are checked. */
+	private checkOverriddenKeys(): void {
+		const lost = [
+			...this.config
+				.overriddenKeys([])
+				.filter(({ name }) => isRogenKey(name))
+				.map((key) => ({ ...key, described: `"${key.name}"` })),
+			...this.config
+				.overriddenKeys("routes")
+				.map((key) => ({ ...key, described: `route "${key.name}"` })),
+		];
+		for (const { described, position } of lost)
+			this.problems.error(
+				"config.duplicateKey",
+				{ resource: this.config.file, position },
+				`${described} is written twice, and JSON keeps only the last, so this one is lost. Remove one.`
+			);
 	}
 
 	private checkRoutes(): Map<string, Target> {

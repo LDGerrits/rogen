@@ -79,6 +79,16 @@ error: source path "src" is listed twice; a file under it would belong to both. 
 
 Remove one of the entries.
 
+### `config.duplicateKey` [#config-duplicatekey]
+
+Error. A route key, or one of Rogen's own keys such as `routes`, is written twice in one object. JSON keeps only the last copy, so the first is lost without a word, and a `Server` route written twice sends the folder wherever the second one says.
+
+```
+error: route "Server" is written twice, and JSON keeps only the last, so this one is lost. Remove one. (config.duplicateKey)
+```
+
+Remove the copy you don't mean, or merge the two. The error points at each copy JSON drops. Rojo keeps the last copy of its own keys, such as `name` or a child of the `tree`, without a word, so Rogen leaves those as Rojo reads them.
+
 ### `config.nestedSourcePath` [#config-nestedsourcepath]
 
 Error. One source path is inside another, so the files in it would belong to both.
@@ -293,7 +303,9 @@ Warning. A folder with an init script goes to `*` though its name matches a patt
 warning: matches the pattern "*Controller", but a pattern never routes a folder or its init script, so it and its files go to "*". Name it InputController@Client to route it there. (route.folderPattern)
 ```
 
-Rename the folder with the `@` of the route key that has the pattern's target, as `InputController@Client/`. In `--json`, `fixes` holds that rename when one route key has the target. See [Patterns](/docs/v2/routing/names#patterns).
+A folder of plain files gets this warning too when a pattern without a `*` matches its name, as `server/` under `[Ss]erver`. Such a pattern names a whole word, so a folder spelled that way was most likely meant to route its files, which go to `*` instead. A pattern with a `*`, such as `*Controller`, doesn't warn about a folder of plain files, since `ShopController/` may just be a feature's name.
+
+Rename the folder with the `@` of the route key that has the pattern's target, as `InputController@Client/`. In `--json`, `fixes` holds that rename when one route key has the target. When no name key has the target, add one to `routes` and name the folder for it, as a `Server` key and a `Server/` folder. See [Patterns](/docs/v2/routing/names#patterns).
 
 ### `route.ignoredAt` [#route-ignoredat]
 

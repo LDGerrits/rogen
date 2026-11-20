@@ -255,6 +255,33 @@ describe("WriteValidator rules", () => {
 				});
 			});
 
+			it("should warn about a folder of files a pattern without a * matches, as a key written for a folder", async () => {
+				await write("src/server/Main.luau", "src/Shop/Server/Tax.luau");
+
+				const warnings = await warningsOf("route.folderPattern", {
+					"[Ss]erver": "ServerScriptService",
+					Client: "StarterPlayer/StarterPlayerScripts",
+					"*": "ReplicatedStorage/Shared",
+				});
+
+				expect(listed(warnings)).toEqual([
+					[
+						abs("src/Shop/Server"),
+						'matches the pattern "[Ss]erver", but a pattern never routes a folder, so its files go to "*". No name key routes to that place: add one to "routes" and name the folder for it.',
+					],
+					[
+						abs("src/server"),
+						'matches the pattern "[Ss]erver", but a pattern never routes a folder, so its files go to "*". No name key routes to that place: add one to "routes" and name the folder for it.',
+					],
+				]);
+			});
+
+			it("should say nothing about a folder of files a pattern with a * matches, which may be a name of its own", async () => {
+				await write("src/ShopController/Keys.luau");
+
+				expect(await warningsOf("route.folderPattern")).toEqual([]);
+			});
+
 			it("should say nothing about a folder script a name routes, or a file that matches", async () => {
 				await write(
 					"src/Input/InputController@client/init.luau",
