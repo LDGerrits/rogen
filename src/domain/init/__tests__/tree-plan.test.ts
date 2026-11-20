@@ -152,9 +152,9 @@ describe("TreePlan", () => {
 				const files = await planDerived(tree);
 
 				expect(configOf(files).routes).toEqual({
-					Server: "ServerScriptService/Server",
-					Shared: "ReplicatedStorage/Shared",
-					Client: "StarterPlayer/StarterPlayerScripts/Client",
+					server: "ServerScriptService/Server",
+					shared: "ReplicatedStorage/Shared",
+					client: "StarterPlayer/StarterPlayerScripts/Client",
 					"*": "ReplicatedStorage/Shared",
 				});
 			});

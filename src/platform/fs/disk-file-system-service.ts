@@ -66,6 +66,22 @@ async function replaceOnceFree(from: string, to: string): Promise<void> {
 	await fs.promises.rename(from, to);
 }
 
+/** Whether `destination` differs from `source` only in letter case and its folder lists no entry of that exact name, so a case-blind disk found `source` itself there. */
+async function isCaseOnlyRename(
+	source: string,
+	destination: string
+): Promise<boolean> {
+	if (
+		path.resolve(source).toLowerCase() !==
+		path.resolve(destination).toLowerCase()
+	)
+		return false;
+	const names = await fs.promises
+		.readdir(path.dirname(destination))
+		.catch((): string[] => []);
+	return !names.includes(path.basename(destination));
+}
+
 export class DiskFileSystemService implements FileSystemService {
 	declare readonly _serviceBrand: undefined;
 
@@ -237,10 +253,14 @@ export class DiskFileSystemService implements FileSystemService {
 				if (ErrorUtils.hasCode(error, "ENOENT")) return undefined;
 				throw error;
 			});
+		const blocking =
+			existing && !(await isCaseOnlyRename(source, destination))
+				? existing
+				: undefined;
 		const refusal = renameRefusal(
-			existing?.isDirectory()
+			blocking?.isDirectory()
 				? FileType.Directory
-				: existing && FileType.File,
+				: blocking && FileType.File,
 			overwrite,
 			source,
 			destination

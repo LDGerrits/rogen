@@ -1,0 +1,39 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stderr:
+  Wrote default.project.json.
+  default.rogen.json - warning: ServerScriptService/Shop/Pack was left out: routing would read src/Shop/Server/Pack/Bar@Server.luau as ServerScriptService/Shop/Pack/Bar; rename it in Studio. (syncback.unplaced)
+  Syncback changed nothing.
+
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stderr:
+  default.rogen.json - warning: ServerScriptService/Shop/Pack was left out: routing would read src/Shop/Server/Pack/Bar@Server.luau as ServerScriptService/Shop/Pack/Bar; rename it in Studio. (syncback.unplaced)
+  Syncback would change nothing.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+G: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Bag: Folder
+        Item: ModuleScript  <- src/Bag/Shared/Item.luau
+      Shop: Folder
+        Prices: ModuleScript  <- src/Shop/Shared/Prices.luau
+  ServerScriptService: ServerScriptService
+    Bag: Folder
+      Bag: ModuleScript  <- src/Bag/Server/Bag.luau
+    Shop: Folder
+      ShopService: ModuleScript  <- src/Shop/Server/ShopService.luau
+      Util: ModuleScript  <- src/Shop/Server/Util/init.luau
+        Math: ModuleScript  <- src/Shop/Server/Util/Math.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Shop: Folder
+        ShopUi: ModuleScript  <- src/Shop/Client/ShopUi.luau

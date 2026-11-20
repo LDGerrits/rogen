@@ -48,14 +48,14 @@ describe("where command", () => {
 			routes: ROUTES,
 		});
 		await write(
-			"src/Net/Http@client.luau",
+			"src/Net/Http@Client.luau",
 			"src/Net/Http.spec.luau",
 			"src/Util.luau"
 		);
 
 		const result = await run({
 			_: [
-				"src/Net/Http@client.luau",
+				"src/Net/Http@Client.luau",
 				"src/Net/Http.spec.luau",
 				"src/Util.luau",
 				"src/Combat/Server/Hit.luau",
@@ -64,7 +64,7 @@ describe("where command", () => {
 
 		expect(result.isOk()).toBe(true);
 		expect(printed()).toEqual([
-			"src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)",
+			"src/Net/Http@Client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)",
 			"src/Net/Http.spec.luau -> ignored · matches **/*.spec.luau",
 			"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
 			"src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder) · the file does not exist yet",
@@ -166,55 +166,72 @@ describe("where command", () => {
 	describe("when an error elsewhere stops the build", () => {
 		beforeEach(async () => {
 			await writeConfig("default.rogen.json", {
-				routes: { shared: "ReplicatedStorage/Shared", ...ROUTES },
+				routes: { Shared: "ReplicatedStorage/Shared", ...ROUTES },
 			});
 			await write(
 				"src/F/Shared/Good.luau",
-				"src/F/Shared/Bad@server.luau"
+				"src/F/Shared/Bad@Server.luau"
 			);
 		});
 
-		it("should say what stops it, and fail", async () => {
+		it("should place the file and pass, as the error is about another file, still printing what stops the write", async () => {
 			const result = await run({ _: ["src/F/Shared/Good.luau"] });
 
-			expect(result.isErr() && result.error).toBeInstanceOf(
-				ReportedError
-			);
+			expect(result.isOk()).toBe(true);
 			expect(printed()).toEqual([
-				"src/F/Shared/Good.luau -> not placed · the write stops on src/F/Shared/Bad@server.luau (route.ignoredAt); run 'rogen check'",
+				"src/F/Shared/Good.luau -> ReplicatedStorage/Shared/F/Good · route Shared (folder)",
+			]);
+			expect(logService.texts("diagnosticError")).toEqual([
+				expect.stringContaining("(route.ignoredAt)"),
+			]);
+			expect(logService.texts("notice")).toEqual([
+				"The error above stops the write, but none of it is about what you asked; 'rogen check' lists everything to fix.",
 			]);
 		});
 
-		it("should leave the other errors that stop it to 'rogen check'", async () => {
-			await write("src/F/Shared/Worse@client.luau");
+		it("should print every error that stops it", async () => {
+			await write("src/F/Shared/Worse@Client.luau");
 
-			const result = await run({ _: ["src/F/Shared/Good.luau"] });
+			await run({ _: ["src/F/Shared/Good.luau"] });
 
-			expect(result.isErr() && result.error).toBeInstanceOf(
-				ReportedError
-			);
+			expect(logService.texts("diagnosticError")).toEqual([
+				expect.stringContaining("Bad@Server.luau"),
+				expect.stringContaining("Worse@Client.luau"),
+			]);
 		});
 
-		it("should name the file with the error when the error is inside the directory asked about", async () => {
+		it("should fail when the error is about a file asked about", async () => {
+			const result = await run({ _: ["src/F"] });
+
+			expect(result.isErr()).toBe(true);
+		});
+
+		it("should place a file with the error too, the error under it", async () => {
 			await run({ _: ["src/F"] });
 
-			expect(printed()).toContainEqual(
-				"src/F -> not placed · src/F/Shared/Bad@server.luau has an error (route.ignoredAt)"
-			);
+			expect(printed()).toEqual([
+				"src/F/Shared/Bad@Server.luau -> ReplicatedStorage/Shared/F/Bad@Server · route Shared (folder)",
+				expect.stringMatching(/^ {2}error: .*\(route\.ignoredAt\)$/),
+				"src/F/Shared/Good.luau -> ReplicatedStorage/Shared/F/Good · route Shared (folder)",
+			]);
 		});
 
-		it("should name the error in the JSON document", async () => {
-			await run({ _: ["src/F/Shared/Good.luau"], json: true });
+		it("should place the file in the JSON document, and list what stops the write elsewhere under stoppedBy, as check does", async () => {
+			const result = await run({
+				_: ["src/F/Shared/Good.luau"],
+				json: true,
+			});
 
-			expect(JSON.parse(printed().join("\n")).locations[0]).toMatchObject(
+			expect(result.isOk()).toBe(true);
+			const document = JSON.parse(printed().join("\n"));
+			expect(document.locations[0]).toMatchObject({ status: "placed" });
+			expect(document.diagnostics).toEqual([]);
+			expect(document.stoppedBy).toMatchObject([
 				{
-					status: "blocked",
-					blockedBy: {
-						file: "/repo/src/F/Shared/Bad@server.luau",
-						code: "route.ignoredAt",
-					},
-				}
-			);
+					file: "/repo/src/F/Shared/Bad@Server.luau",
+					code: "route.ignoredAt",
+				},
+			]);
 		});
 	});
 
@@ -239,38 +256,36 @@ describe("where command", () => {
 			);
 		});
 
-		it("should fail with the error on its own when no line shows it", async () => {
+		it("should pass with the error on its own when no line shows it", async () => {
 			const result = await run({ _: ["src/B.luau"] });
 
-			expect(result.isErr() && result.error).toBeInstanceOf(
-				DiagnosticsError
-			);
+			expect(result.isOk()).toBe(true);
 			expect(printed()).toEqual([
 				"src/B.luau -> ReplicatedStorage/Shared/B · route * (fallback)",
 			]);
 		});
 
-		it("should put the error that no entry holds at the top of the JSON document", async () => {
+		it("should list the error that stops the write elsewhere under stoppedBy in the JSON document", async () => {
 			const result = await run({ _: ["src/B.luau"], json: true });
 
-			expect(result.isErr()).toBe(true);
-			expect(JSON.parse(printed().join("\n")).diagnostics).toHaveLength(
-				1
-			);
+			const document = JSON.parse(printed().join("\n"));
+			expect(result.isOk()).toBe(true);
+			expect(document.diagnostics).toEqual([]);
+			expect(document.stoppedBy).toHaveLength(1);
 		});
 	});
 
-	it("should show the misspelt folder a named file lies in, but not under a directory's files", async () => {
+	it("should show the warning about a folder a named file lies in, but not under a directory's files", async () => {
 		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await write("src/F/Sever/A.luau");
+		await write("src/F/Net.Server/A.luau");
 
-		await run({ _: ["src/F/Sever/A.luau"] });
+		await run({ _: ["src/F/Net.Server/A.luau"] });
 		const named = printed();
 		logService.clear();
 		await run({ _: ["src/F"] });
 
-		expect(named.join("\n")).toContain("route.folderTypo");
-		expect(printed().join("\n")).not.toContain("route.folderTypo");
+		expect(named.join("\n")).toContain("route.dotRoute");
+		expect(printed().join("\n")).not.toContain("route.dotRoute");
 	});
 
 	it("should read an argument as a path when the working directory holds a folder named after its service", async () => {

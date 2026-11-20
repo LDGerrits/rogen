@@ -170,6 +170,22 @@ describe("domain/rojo/rojo", () => {
 			const rules = (...own: SyncRule[]) =>
 				SyncRules.following(own, "/repo");
 
+			it("should need a compiler for TypeScript only when no rule of the project reads it", () => {
+				expect(
+					new RojoFile("Hud.ts", SyncRules.DEFAULT).needsCompiler
+				).toBe(true);
+				expect(
+					new RojoFile(
+						"Hud.ts",
+						rules({ pattern: "*.ts", use: "moduleScript" })
+					).needsCompiler
+				).toBe(false);
+				expect(
+					new RojoFile("Hud.ts", SyncRules.DEFAULT, "", "compiled")
+						.needsCompiler
+				).toBe(false);
+			});
+
 			it("should read a file by the rule that takes it", () => {
 				const file = new RojoFile(
 					"Combat.module",

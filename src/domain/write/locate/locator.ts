@@ -1,3 +1,4 @@
+import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import path from "path";
 import { compareStrings } from "../../../base/collections.js";
 import { toPosix } from "../../../base/path.js";
@@ -138,6 +139,9 @@ class ConfigLocator {
 			),
 			queried,
 			...(paths.length > 0 ? raised : existing.value.raised),
+			...(existing.value.projectFile && {
+				projectFile: existing.value.projectFile,
+			}),
 		});
 	}
 
@@ -293,9 +297,7 @@ class ConfigLocator {
 	private async foldersUnderDeclaredRoutes(
 		reference: InstanceReference
 	): Promise<string[]> {
-		const keys = [...this.config.routes.keys()].filter(
-			(key) => key !== DeclaredKeys.FALLBACK_ROUTE
-		);
+		const keys = [...this.config.keys.routeKeys];
 		return (
 			await Promise.all(
 				keys.map((key) => this.foldersUnderRoute(key, reference))
@@ -395,6 +397,7 @@ class ConfigLocator {
 			{
 				readonly locator: PlacementLocator;
 				readonly raised: RaisedDiagnostics;
+				readonly projectFile?: RojoProjectFile;
 			},
 			DiagnosticsError
 		>
@@ -413,9 +416,12 @@ class ConfigLocator {
 					diagnostics:
 						result.kind === "assembled"
 							? result.warnings
-							: result.errors,
+							: [...result.errors, ...result.warnings],
 					markers: locator.markers,
 				},
+				...(result.kind === "assembled" && {
+					projectFile: result.projectFile,
+				}),
 			};
 		});
 	}

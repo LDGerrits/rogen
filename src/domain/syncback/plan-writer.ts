@@ -10,13 +10,10 @@ import {
 	FileSystemService,
 	isDirectoryType,
 } from "../../platform/fs/file-system-service.js";
-import {
-	ConfigLocations,
-	PlacedLocation,
-	WriteService,
-} from "../write/write-service.js";
+import { ConfigLocations, WriteService } from "../write/write-service.js";
 import { instanceKey } from "../roblox/roblox.js";
 import { Expected, MirrorPlan, Operation } from "./mirror-plan.js";
+import { landingMiss } from "./draft-routing.js";
 import {
 	SyncbackRequest,
 	SyncbackResult,
@@ -150,14 +147,13 @@ export class PlanWriter {
 		const here: ConfigLocations | undefined = located.value.configs.find(
 			({ config }) => config.id === request.project.id
 		);
-		for (const { file, instance } of expected) {
-			const found = here?.files.find(
-				(location): location is PlacedLocation =>
-					location.status === "placed" &&
-					toNative(location.source) === file
+		for (const landing of expected) {
+			const { file, instance } = landing;
+			if (landingMiss(landing, here?.files ?? []) === undefined) continue;
+			const location = here?.files.find(
+				({ source }) => toNative(source) === file
 			);
-			if (found && found.instancePath.join("/") === instance.join("/"))
-				continue;
+			const found = location?.status === "placed" ? location : undefined;
 			warnings.push(
 				warningDiagnostic(
 					"syncback.misplaced",

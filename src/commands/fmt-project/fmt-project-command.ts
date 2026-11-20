@@ -44,7 +44,8 @@ interface FormattedFile {
 
 function formattedFile(
 	file: string,
-	formatted: Result<boolean, Diagnostic[]>
+	formatted: Result<boolean, Diagnostic[]>,
+	cwd: string
 ): FormattedFile {
 	return {
 		file: toNative(file),
@@ -54,7 +55,9 @@ function formattedFile(
 				? "wrote"
 				: "unchanged",
 		diagnostics: formatted.isErr()
-			? formatted.error.map(diagnosticToJson)
+			? formatted.error.map((diagnostic) =>
+					diagnosticToJson(diagnostic, cwd)
+				)
 			: [],
 	};
 }
@@ -106,7 +109,7 @@ registerCommand(
 			)) {
 				const formatted = await configService.format(file);
 				if (formatted.isErr()) failures.push(...formatted.error);
-				const entry = formattedFile(file, formatted);
+				const entry = formattedFile(file, formatted, cwd);
 				files.push(entry);
 				if (!line.options.json && entry.outcome === "wrote")
 					logService.debug(`Formatted ${relativeTo(cwd, file)}.`);

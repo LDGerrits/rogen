@@ -1,8 +1,8 @@
 $ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
-  Writing src/Store/Row@server.luau
   Writing src/Feat/Load@server.luau
+  Writing src/Store/Row@server.luau
 stderr:
   Wrote default.project.json.
   Syncback wrote 2 changes.

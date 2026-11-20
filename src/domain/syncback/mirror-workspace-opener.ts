@@ -45,7 +45,7 @@ export class MirrorWorkspaceOpener {
 			return err(
 				new Error(`${project.label} was not found among the projects.`)
 			);
-		const fresh = await writeService.projectFileOf(project);
+		const fresh = here.projectFile;
 		if (!fresh)
 			return err(
 				new UsageError(
@@ -62,6 +62,9 @@ export class MirrorWorkspaceOpener {
 			// Rojo crashes on a project file not named default.project.json that names no project.
 			written: { ...written, name: written.name ?? project.projectName },
 			tree: project.project.getFile().tree,
+			routeTargets: [...project.routes.values()].map(
+				({ instancePath }) => instancePath
+			),
 			dir,
 			root: MIRROR,
 			placed: layout.placed,
@@ -101,7 +104,8 @@ export class MirrorWorkspaceOpener {
 				staging,
 				written,
 				mirror,
-				layout
+				layout,
+				here.diagnostics
 			)
 		);
 	}

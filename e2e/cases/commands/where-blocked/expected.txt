@@ -1,26 +1,42 @@
-$ rogen where src/F/Shared/Good.luau src/F/Shared/Bad@server.luau
+$ rogen where src/F/shared/Good.luau src/F/shared/Bad@server.luau
 exit 1
 stdout:
-  src/F/Shared/Good.luau -> not placed · the write stops on src/F/Shared/Bad@server.luau (route.ignoredAt); run 'rogen check'
-  src/F/Shared/Bad@server.luau -> not placed · it has an error (route.ignoredAt)
+  src/F/shared/Good.luau -> ReplicatedStorage/shared/F/Good · route shared (folder)
+    require(game:GetService("ReplicatedStorage").shared.F.Good)
+  src/F/shared/Bad@server.luau -> ReplicatedStorage/shared/F/Bad@server · route shared (folder)
     error: "@server" does nothing here, because the "shared" route already governs this file. Remove it, or move the file out of the "shared" route's files. (route.ignoredAt)
+    require(game:GetService("ReplicatedStorage").shared.F["Bad@server"])
 
-$ rogen where src/F/Shared/Good.luau --json
-exit 1
+$ rogen where src/F/shared/Good.luau --json
+exit 0
 stdout:
   {
     "locations": [
       {
         "config": "default.rogen.json",
-        "source": "<dir>/src/F/Shared/Good.luau",
-        "status": "blocked",
+        "source": "<dir>/src/F/shared/Good.luau",
+        "status": "placed",
         "exists": true,
-        "blockedBy": {
-          "file": "<dir>/src/F/Shared/Bad@server.luau",
-          "code": "route.ignoredAt"
-        },
+        "instancePath": [
+          "ReplicatedStorage",
+          "shared",
+          "F",
+          "Good"
+        ],
+        "require": "game:GetService(\"ReplicatedStorage\").shared.F.Good",
+        "route": "shared",
+        "routeMatch": "folder",
         "diagnostics": []
       }
     ],
-    "diagnostics": []
+    "diagnostics": [],
+    "stoppedBy": [
+      {
+        "file": "<dir>/src/F/shared/Bad@server.luau",
+        "severity": "error",
+        "code": "route.ignoredAt",
+        "message": "\"@server\" does nothing here, because the \"shared\" route already governs this file. Remove it, or move the file out of the \"shared\" route's files.",
+        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-ignoredat"
+      }
+    ]
   }

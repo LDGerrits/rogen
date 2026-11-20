@@ -1,0 +1,111 @@
+$ rogen write
+exit 1
+stdout: (not shown)
+stderr:
+  error: default.project.json · not written
+  default.rogen.json - error: 6 names have an "@" that misses its route, so Rogen stops until they are fixed: (route.strayAt)
+    src/@sever ("@sever" names no route; did you mean "@server"?)
+    src/Inventory/Hud@Client.luau ("@Client" names no route; did you mean "@client"?)
+    src/Inventory/Report@server.bak.luau ("@server" must end the name to route it)
+    src/Inventory/Save@sever.luau ("@sever" names no route; did you mean "@server"?)
+    src/Queue@clent ("@clent" names no route; did you mean "@client"?)
+    src/Shop/@SERVER ("@SERVER" names no route; did you mean "@server"?)
+
+$ rogen write --json
+exit 1
+stdout:
+  {
+    "changed": false,
+    "configs": [
+      {
+        "config": "default.rogen.json",
+        "projectFile": "<dir>/default.project.json",
+        "outcome": "notWritten",
+        "diagnostics": [
+          {
+            "file": "<dir>/src/@sever",
+            "severity": "error",
+            "code": "route.strayAt",
+            "message": "\"@sever\" names no route; did you mean \"@server\"?",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/@sever",
+                  "to": "<dir>/src/@server"
+                }
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Inventory/Hud@Client.luau",
+            "severity": "error",
+            "code": "route.strayAt",
+            "message": "\"@Client\" names no route; did you mean \"@client\"?",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/Inventory/Hud@Client.luau",
+                  "to": "<dir>/src/Inventory/Hud@client.luau"
+                }
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Inventory/Report@server.bak.luau",
+            "severity": "error",
+            "code": "route.strayAt",
+            "message": "\"@server\" must end the name to route it",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat"
+          },
+          {
+            "file": "<dir>/src/Inventory/Save@sever.luau",
+            "severity": "error",
+            "code": "route.strayAt",
+            "message": "\"@sever\" names no route; did you mean \"@server\"?",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/Inventory/Save@sever.luau",
+                  "to": "<dir>/src/Inventory/Save@server.luau"
+                }
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Queue@clent",
+            "severity": "error",
+            "code": "route.strayAt",
+            "message": "\"@clent\" names no route; did you mean \"@client\"?",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/Queue@clent",
+                  "to": "<dir>/src/Queue@client"
+                }
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Shop/@SERVER",
+            "severity": "error",
+            "code": "route.strayAt",
+            "message": "\"@SERVER\" names no route; did you mean \"@server\"?",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/Shop/@SERVER",
+                  "to": "<dir>/src/Shop/@server"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "plainProjects": []
+  }

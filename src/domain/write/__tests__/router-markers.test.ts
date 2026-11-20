@@ -1,3 +1,4 @@
+import { isError } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { abs, routeFiles, writeFiles } from "./fixtures.js";
@@ -95,21 +96,14 @@ describe("Router", () => {
 				await write(
 					"src/C/@server",
 					"src/C/init@server.luau",
-					"src/C/X.luau",
-					"src/E/@server",
-					"src/E/@Server",
-					"src/E/Z.luau"
+					"src/C/X.luau"
 				);
 
 				const result = (await route()).unwrap();
 
 				expect(
 					result.files.map((file) => file.instancePath.join("/"))
-				).toEqual([
-					"ServerScriptService/C/X",
-					"ServerScriptService/C",
-					"ServerScriptService/E/Z",
-				]);
+				).toEqual(["ServerScriptService/C/X", "ServerScriptService/C"]);
 				expect(result.warnings).toEqual([]);
 			});
 
@@ -142,10 +136,9 @@ describe("Router", () => {
 			const errors = async (overrides: ResolvedConfigSpec = {}) => {
 				const result = await route(overrides);
 				return result.isErr()
-					? result.error.diagnostics.map(({ code, resource }) => [
-							code,
-							resource,
-						])
+					? result.error.diagnostics
+							.filter(isError)
+							.map(({ code, resource }) => [code, resource])
 					: [];
 			};
 

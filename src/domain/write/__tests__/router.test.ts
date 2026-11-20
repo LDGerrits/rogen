@@ -4,6 +4,9 @@ import {
 	ROUTER_ROUTES as ROUTES,
 	abs,
 	absPosix,
+	configOf,
+	indexOf,
+	pipelineOf,
 	placedLines,
 	routeFiles,
 	writeFiles,
@@ -28,8 +31,191 @@ describe("Router", () => {
 				.unwrap()
 				.routed.map((file) => file.instancePath.join("/"));
 
+		/** Where routing places each file, past errors that stop the write. */
+		const placedPaths = async () =>
+			(
+				await pipelineOf(fs, await indexOf(fs, [abs("src")])).place(
+					configOf({ routes: ROUTES })
+				)
+			)
+				.unwrap()
+				.routed.map((file) => file.instancePath.join("/"));
+
 		beforeEach(() => {
 			fs = new MemoryFileSystemService();
+		});
+
+		describe("patterns", () => {
+			const PATTERNS = {
+				...ROUTES,
+				"*.tsx": "StarterPlayer/StarterPlayerScripts",
+				"*Service.*": "ServerScriptService",
+			};
+
+			// A TypeScript project compiles its sources, which Rojo then reads.
+			const routed = async () =>
+				(await route({ routes: PATTERNS, compiledPath: abs("out") }))
+					.unwrap()
+					.routed.map(
+						({ instancePath, route, routeMatch }) =>
+							`${instancePath.join("/")} · ${route} (${routeMatch})`
+					)
+					.sort();
+
+			it("should route a file nothing written routes by the pattern its name matches, keeping its name", async () => {
+				await write("src/Shop/Hud.tsx", "src/Shop/ShopService.luau");
+
+				expect(await routed()).toEqual([
+					"ServerScriptService/Shop/ShopService · *Service.* (pattern)",
+					"StarterPlayer/StarterPlayerScripts/Shop/Hud · *.tsx (pattern)",
+				]);
+			});
+
+			it("should leave a file a folder, @ name or Rojo suffix routes to that route", async () => {
+				await write(
+					"src/Shop/server/Hud.tsx",
+					"src/Shop/Card@server.tsx",
+					"src/Shop/Boot.server.tsx"
+				);
+
+				expect(await routed()).toEqual([
+					"ServerScriptService/Shop/Boot · server (suffix)",
+					"ServerScriptService/Shop/Card · server (suffix)",
+					"ServerScriptService/Shop/Hud · server (folder)",
+				]);
+			});
+
+			it("should match the instance a file makes as well as its file name, so a pattern needs no extension", async () => {
+				await write(
+					"src/Shop/ShopController.luau",
+					"src/Shop/Card.story.tsx"
+				);
+
+				expect(
+					(
+						await route({
+							compiledPath: abs("out"),
+							routes: {
+								...ROUTES,
+								"*Controller":
+									"StarterPlayer/StarterPlayerScripts",
+								"*.story": "ReplicatedStorage/Stories",
+							},
+						})
+					)
+						.unwrap()
+						.routed.map(
+							({ instancePath, route }) =>
+								`${instancePath.join("/")} · ${route}`
+						)
+						.sort()
+				).toEqual([
+					"ReplicatedStorage/Stories/Shop/Card.story · *.story",
+					"StarterPlayer/StarterPlayerScripts/Shop/ShopController · *Controller",
+				]);
+			});
+
+			it("should send a file no pattern matches to *", async () => {
+				await write("src/Shop/Types.luau");
+
+				expect(await routed()).toEqual([
+					"ReplicatedStorage/shared/Shop/Types · * (fallback)",
+				]);
+			});
+
+			it("should not match an init script, which is its folder, so the folder's files stay with it", async () => {
+				await write(
+					"src/Hud/index.tsx",
+					"src/Hud/Types.luau",
+					"src/Input/InputService/init.luau",
+					"src/Input/InputService/Keys.luau",
+					"src/Input/InputService/server/Remote.luau"
+				);
+
+				expect(await routed()).toEqual([
+					"ReplicatedStorage/shared/Hud · * (fallback)",
+					"ReplicatedStorage/shared/Hud/Types · * (fallback)",
+					"ReplicatedStorage/shared/Input/InputService · * (fallback)",
+					"ReplicatedStorage/shared/Input/InputService/Keys · * (fallback)",
+					"ServerScriptService/Input/InputService/Remote · server (folder)",
+				]);
+			});
+
+			it("should not match a nested project by its folder's name", async () => {
+				await write("src/ShopService/default.project.json");
+				await fs.writeFile(
+					abs("src/ShopService/default.project.json"),
+					JSON.stringify({
+						name: "ShopService",
+						tree: { $className: "Folder" },
+					})
+				);
+
+				expect(await routed()).toEqual([
+					"ReplicatedStorage/shared/ShopService · * (fallback)",
+				]);
+			});
+
+			it("should leave a folder to its init files when one routes itself", async () => {
+				await write(
+					"src/ShopService/init@server.luau",
+					"src/ShopService/init@client.luau",
+					"src/ShopService/Types.luau"
+				);
+
+				expect(await routed()).toEqual([
+					"ReplicatedStorage/shared/ShopService/Types · * (fallback)",
+					"ServerScriptService/ShopService · server (suffix)",
+					"StarterPlayer/StarterPlayerScripts/ShopService · client (suffix)",
+				]);
+			});
+
+			it("should match a hoisted file by its name without the ^", async () => {
+				await write("src/Shop/^MainHud.luau");
+
+				const [file] = (
+					await route({
+						routes: { ...ROUTES, "Main*": "ServerScriptService" },
+					})
+				).unwrap().routed;
+
+				expect(file).toMatchObject({
+					instancePath: ["ServerScriptService", "MainHud"],
+					route: "Main*",
+				});
+			});
+
+			it("should not route a folder by a pattern", async () => {
+				await write("src/Store.tsx/Cart.luau");
+
+				expect(await routed()).toEqual([
+					"ReplicatedStorage/shared/Store.tsx/Cart · * (fallback)",
+				]);
+			});
+
+			it("should stop on a file that patterns of equal weight send to different places", async () => {
+				await write("src/Shop/MainUi.ts");
+
+				const result = await route({
+					compiledPath: abs("out"),
+					routes: {
+						...ROUTES,
+						"*Ui.*": "StarterPlayer/StarterPlayerScripts",
+						"*.ts": "ServerScriptService",
+					},
+				});
+
+				expect(
+					result.isErr() && result.error.diagnostics
+				).toMatchObject([
+					{
+						code: "route.patternClash",
+						resource: abs("src/Shop/MainUi.ts"),
+						message:
+							'"*.ts" and "*Ui.*" both match this name, are as long as each other, and send it to different places. Lengthen the pattern that should win, or route the file with a folder or an @ name.',
+					},
+				]);
+			});
 		});
 
 		describe("hoisted names", () => {
@@ -125,6 +311,21 @@ describe("Router", () => {
 				]);
 			});
 
+			it("should refuse a ^ init script in a folder that makes no instance as an init with no folder to be, not point at that folder", async () => {
+				await write("src/Ui/client/^init.luau", "src/Ui/client/A.luau");
+
+				const result = await route();
+
+				expect(
+					result.isErr() && result.error.diagnostics
+				).toMatchObject([
+					{
+						code: "tree.initWithoutFolder",
+						resource: abs("src/Ui/client/^init.luau"),
+					},
+				]);
+			});
+
 			it("should say a copied init script of a ^ folder was hoisted", async () => {
 				await write(
 					"src/K/^Net/init.luau",
@@ -140,12 +341,14 @@ describe("Router", () => {
 				expect(copies.every(({ hoisted }) => hoisted)).toBe(true);
 			});
 
-			it("should warn when two ^ names land on one instance", async () => {
+			it("should stop when two ^ names land on one instance, as the build would lose one", async () => {
 				await write("src/A/^C.luau", "src/B/^C.luau");
 
-				const { warnings } = (await route()).unwrap();
+				const result = await route();
 
-				expect(warnings).toContainEqual(
+				expect(
+					result.isErr() && result.error.diagnostics
+				).toContainEqual(
 					expect.objectContaining({ code: "tree.instanceClash" })
 				);
 			});
@@ -267,36 +470,29 @@ describe("Router", () => {
 				).toEqual(["Workspace/Types.shared"]);
 			});
 
-			it("should not strip a suffix whose letter case differs beyond the first letter", async () => {
-				await write(
-					"src/Inventory/Load@SERVER.luau",
-					"src/Inventory/Saveserver.luau"
-				);
+			it("should not strip a key that ends a name without an @", async () => {
+				await write("src/Inventory/Saveserver.luau");
 
 				expect(await paths()).toEqual([
-					"ReplicatedStorage/shared/Inventory/Load@SERVER",
 					"ReplicatedStorage/shared/Inventory/Saveserver",
 				]);
 			});
 
-			it("should match a suffix with the first letter of the key in either case", async () => {
+			it("should read a folder named for a route in another letter case as a name under a route, or one its own marker routes", async () => {
 				await write(
-					"src/Inventory/Load@Server.luau",
-					"src/Inventory/Save@Client.luau"
+					"src/client/Server/A.luau",
+					"src/Client/@server",
+					"src/Client/B.luau"
 				);
 
-				expect(await paths()).toEqual([
-					"ServerScriptService/Inventory/Load",
-					"StarterPlayer/StarterPlayerScripts/Inventory/Save",
+				expect((await paths()).sort()).toEqual([
+					"ServerScriptService/Client/B",
+					"StarterPlayer/StarterPlayerScripts/Server/A",
 				]);
 			});
 
-			it("should match a lower-case folder and marker against a key declared with a capital", async () => {
-				await write(
-					"src/server/A.luau",
-					"src/Inventory/@server",
-					"src/Inventory/B.luau"
-				);
+			it("should route Rojo's .server to a key declared with a capital", async () => {
+				await write("src/Inventory/Main.server.luau");
 
 				expect(
 					await paths({
@@ -305,38 +501,7 @@ describe("Router", () => {
 							"*": "Workspace",
 						},
 					})
-				).toEqual([
-					"ServerScriptService/Inventory/B",
-					"ServerScriptService/A",
-				]);
-			});
-
-			it("should remove a routing folder and route below it", async () => {
-				await write("src/Inventory/server/Save.luau");
-
-				expect(await paths()).toEqual([
-					"ServerScriptService/Inventory/Save",
-				]);
-			});
-
-			it("should keep a nested route folder as an ordinary folder", async () => {
-				await write("src/ReplicatedFirst/client/main.luau");
-
-				expect(await paths()).toEqual(["ReplicatedFirst/client/main"]);
-			});
-
-			it("should still hide a nested invisible routing folder", async () => {
-				await write("src/ReplicatedFirst/(server)/main.luau");
-
-				expect(await paths()).toEqual(["ReplicatedFirst/main"]);
-			});
-
-			it("should ignore a suffix under an outer routing folder", async () => {
-				await write("src/server/Inventory/Hud.client.luau");
-
-				expect(await paths()).toEqual([
-					"ServerScriptService/Inventory/Hud",
-				]);
+				).toEqual(["ServerScriptService/Inventory/Main"]);
 			});
 
 			it("should ignore a suffix Rojo doesn't understand but leave it in the name", async () => {
@@ -344,20 +509,6 @@ describe("Router", () => {
 
 				expect(await paths()).toEqual([
 					"ServerScriptService/Hud-client",
-				]);
-			});
-
-			it("should match routing folders and markers with the first letter in either case", async () => {
-				await write("src/Server/Save.luau");
-
-				expect(await paths()).toEqual(["ServerScriptService/Save"]);
-			});
-
-			it("should treat routing folders that differ beyond the first letter as ordinary", async () => {
-				await write("src/SERVER/Save.luau");
-
-				expect(await paths()).toEqual([
-					"ReplicatedStorage/shared/SERVER/Save",
 				]);
 			});
 
@@ -556,7 +707,7 @@ describe("Router", () => {
 			it("should leave Rojo's .server and .client in a model's or data file's name, since only a script has a class", async () => {
 				await write("src/Gun.server.rbxm", "src/Data.client.json");
 
-				expect(await paths()).toEqual([
+				expect(await placedPaths()).toEqual([
 					"ReplicatedStorage/shared/Data.client",
 					"ReplicatedStorage/shared/Gun.server",
 				]);
@@ -579,7 +730,7 @@ describe("Router", () => {
 			it("should leave an ignored suffix on a model in its Rojo name", async () => {
 				await write("src/server/Gun.client.rbxm");
 
-				expect(await paths()).toEqual([
+				expect(await placedPaths()).toEqual([
 					"ServerScriptService/Gun.client",
 				]);
 			});
@@ -648,7 +799,7 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should keep the one init file of a folder that Rojo reads, wherever their routes send them", async () => {
+			it("should warn about an init file of a folder that Rojo doesn't read, wherever their routes send them, as Rojo reads one", async () => {
 				await write(
 					"src/Feat/init.server.luau",
 					"src/Feat/init.client.luau"
@@ -701,7 +852,7 @@ describe("Router", () => {
 			it("should read roblox-ts's index as init", async () => {
 				await write("src/Lib/index.ts", "src/Lib/Util.ts");
 
-				expect(await placed()).toEqual([
+				expect(await placed({ compiledPath: abs("out") })).toEqual([
 					"Lib/Util.ts -> ReplicatedStorage/shared/Lib/Util",
 					"Lib/index.ts -> ReplicatedStorage/shared/Lib",
 				]);
@@ -806,9 +957,9 @@ describe("Router", () => {
 					.warnings.filter(({ code }) => code === "route.unrouted");
 
 				expect(warnings.map(({ message }) => message)).toEqual([
-					`matched no route, so it is left out. Move it into ${abs("src/Server")}, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route.`,
-					`matched no route, so it is left out. Move it into ${abs("src/Shop/Server")}, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route.`,
-					`matched no route, so it is left out. Move it into ${abs("src/Shop/Server")}, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route.`,
+					`matched no route, so it is left out. Move it into a routing folder, as ${abs("src/Server")}, end its name with a route's @ suffix (@Server, @Client or @Shared), or declare a "*" route.`,
+					`matched no route, so it is left out. Move it into a routing folder, as ${abs("src/Shop/Server")}, end its name with a route's @ suffix (@Server, @Client or @Shared), or declare a "*" route.`,
+					`matched no route, so it is left out. Move it into a routing folder, as ${abs("src/Shop/Server")}, end its name with a route's @ suffix (@Server, @Client or @Shared), or declare a "*" route.`,
 				]);
 			});
 

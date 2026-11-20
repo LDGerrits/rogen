@@ -123,8 +123,8 @@ export interface InitService {
 	/** `ok(undefined)` means the user cancelled; with `ask` false it takes every default. */
 	plan(options?: InitOptions): Promise<Result<InitPlan | undefined, Error>>;
 
-	/** Checks the configs of `plan` as 'write' would, over the folder as the plan leaves it, so a plan that would fail is stopped before it writes anything. */
-	check(plan: InitPlan): Promise<Result<void, Error>>;
+	/** Checks the configs of `plan` as 'write' would, over the folder as the plan leaves it. It fails on an error about what the plan writes or renames, so such a plan is stopped before it writes anything; errors only about the user's code are returned, for the write after init to report. */
+	check(plan: InitPlan): Promise<Result<readonly Diagnostic[], Error>>;
 
 	/** A directory that exists is left alone and not reported. A dry run writes nothing, and reports what it would. */
 	write(

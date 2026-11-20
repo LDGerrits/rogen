@@ -452,7 +452,7 @@ export class RootScanner {
 					walk.metaFiles.push(relativeTo(name));
 					const problem = PortableName.problemWith(name);
 					if (problem) odd(name, problem);
-				} else if (file.kind) {
+				} else if (file.kind && !file.needsCompiler) {
 					const problem = PortableName.problemWith(name);
 					if (problem) odd(name, problem);
 					instanceNames.push(name);

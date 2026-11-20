@@ -1,3 +1,4 @@
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { ignoringGlob, literalGlob } from "../../base/glob.js";
@@ -83,6 +84,8 @@ export class MirrorWorkspace {
 		written: RojoProjectFile,
 		readonly mirror: SyncbackMirror,
 		readonly layout: SyncbackLayout,
+		/** What a write of the project raises before syncback changes anything. */
+		readonly diagnostics: readonly Diagnostic[],
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
 		@InstantiationService

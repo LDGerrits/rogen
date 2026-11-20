@@ -1,0 +1,51 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/Shared/NetX/Types.luau
+  Writing src/Shared/NetX/init.luau
+  Writing src/Server/NetX/Remote.luau
+  Writing src/Server/NetX/init.luau
+  Removing src/Net/Server
+  Removing src/Net/Types.luau
+stderr:
+  Wrote default.project.json.
+  default.rogen.json - warning: ReplicatedStorage/Shared/Net was left out: its file src/Net/init.luau is also StarterPlayer/StarterPlayerScripts/Net, which is still there, so the file was kept. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Net was left out: its file src/Net/init.luau is also StarterPlayer/StarterPlayerScripts/Net, which is still there, so the file was kept. (syncback.unplaced)
+  Syncback wrote 6 changes.
+
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stderr:
+  Syncback would change nothing.
+
+written:
+  default.project.json
+  src/Server/NetX/Remote.luau
+  src/Server/NetX/init.luau
+  src/Shared/NetX/Types.luau
+  src/Shared/NetX/init.luau
+
+$ rojo sourcemap default.project.json
+G: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Boot: Folder
+        Step: ModuleScript  <- src/Boot/Step.luau
+      NetX: ModuleScript  <- src/Shared/NetX/init.luau
+        Types: ModuleScript  <- src/Shared/NetX/Types.luau
+  ServerScriptService: ServerScriptService
+    Boot: Script  <- src/Boot/init.server.luau
+    NetX: ModuleScript  <- src/Server/NetX/init.luau
+      Remote: ModuleScript  <- src/Server/NetX/Remote.luau
+    Store: Folder
+      Save: ModuleScript  <- src/Store/Server/Save.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Net: ModuleScript  <- src/Net/init.luau
+        Listener: ModuleScript  <- src/Net/Client/Listener.luau
+      Store: ModuleScript  <- src/Store/init@Client.luau
+        Row: ModuleScript  <- src/Store/Client/Row.luau

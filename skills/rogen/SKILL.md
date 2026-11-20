@@ -26,6 +26,6 @@ Run `rogen init --agent-rules` in the folder of the `*.rogen.json`. It adds the 
 
 A project moved from Rojo has one folder per side (`src/server`, `src/client`). Grouping it by feature changes instance paths, so agree the feature names with the user first, then for each feature:
 
-1. `git mv` its files into `src/<Feature>/<route key>/`: `src/server/Shop.luau` → `src/Shop/Server/Shop.luau`.
+1. `git mv` its files into `src/<Feature>/<route key>/`, spelled exactly as the key: `src/server/Shop.luau` → `src/Shop/server/Shop.luau` with a `server` key.
 2. Run `rogen where` on each moved file and update every require of it to the expression it prints, `script.Parent` requires included.
 3. Run `rogen check src/<Feature>` and fix what it prints.

@@ -1,18 +1,17 @@
 $ rogen write
-exit 0
+exit 1
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: 7 names write a route key after a dot, where only "@" routes, so they route nothing: (route.dotRoute)
+  error: default.project.json · not written
+  default.rogen.json - error: 5 names write a route key after a dot, where only "@" routes, so Rogen stops until they are fixed: (route.dotRoute)
     src/Inventory/.server (write "@server")
     src/Tools/.SERVER (write "@server")
     src/.server (write "@server")
     src/Config.server.json (write "Config@server.json")
-    src/Inventory/Types.shared.luau (write "Types@shared.luau")
-    src/Net.shared (write "Net@shared")
     src/Start.Server.luau (write "Start.server.luau")
 
 $ rogen write --json
-exit 0
+exit 1
 stdout:
   {
     "changed": false,
@@ -20,11 +19,11 @@ stdout:
       {
         "config": "default.rogen.json",
         "projectFile": "<dir>/default.project.json",
-        "outcome": "unchanged",
+        "outcome": "notWritten",
         "diagnostics": [
           {
             "file": "<dir>/src/Inventory/.server",
-            "severity": "warning",
+            "severity": "error",
             "code": "route.dotRoute",
             "message": "write \"@server\"",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
@@ -39,7 +38,7 @@ stdout:
           },
           {
             "file": "<dir>/src/Tools/.SERVER",
-            "severity": "warning",
+            "severity": "error",
             "code": "route.dotRoute",
             "message": "write \"@server\"",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
@@ -54,7 +53,7 @@ stdout:
           },
           {
             "file": "<dir>/src/.server",
-            "severity": "warning",
+            "severity": "error",
             "code": "route.dotRoute",
             "message": "write \"@server\"",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
@@ -69,7 +68,7 @@ stdout:
           },
           {
             "file": "<dir>/src/Config.server.json",
-            "severity": "warning",
+            "severity": "error",
             "code": "route.dotRoute",
             "message": "write \"Config@server.json\"",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
@@ -83,38 +82,8 @@ stdout:
             ]
           },
           {
-            "file": "<dir>/src/Inventory/Types.shared.luau",
-            "severity": "warning",
-            "code": "route.dotRoute",
-            "message": "write \"Types@shared.luau\"",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
-            "fixes": [
-              {
-                "rename": {
-                  "from": "<dir>/src/Inventory/Types.shared.luau",
-                  "to": "<dir>/src/Inventory/Types@shared.luau"
-                }
-              }
-            ]
-          },
-          {
-            "file": "<dir>/src/Net.shared",
-            "severity": "warning",
-            "code": "route.dotRoute",
-            "message": "write \"Net@shared\"",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
-            "fixes": [
-              {
-                "rename": {
-                  "from": "<dir>/src/Net.shared",
-                  "to": "<dir>/src/Net@shared"
-                }
-              }
-            ]
-          },
-          {
             "file": "<dir>/src/Start.Server.luau",
-            "severity": "warning",
+            "severity": "error",
             "code": "route.dotRoute",
             "message": "write \"Start.server.luau\"",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
@@ -132,24 +101,3 @@ stdout:
     ],
     "plainProjects": []
   }
-
-written:
-  default.project.json
-
-$ rojo sourcemap default.project.json
-project: DataModel
-  ReplicatedStorage: ReplicatedStorage
-    shared: Folder
-      .server: Folder
-        Tool: ModuleScript  <- src/.server/Tool.luau
-      Config.server: ModuleScript  <- src/Config.server.json
-      Inventory: Folder
-        Save: ModuleScript  <- src/Inventory/Save.luau
-        Types.shared: ModuleScript  <- src/Inventory/Types.shared.luau
-      Net.shared: Folder
-        Remotes: ModuleScript  <- src/Net.shared/Remotes.luau
-      Start.Server: ModuleScript  <- src/Start.Server.luau
-      Tools: Folder
-        Wrench: ModuleScript  <- src/Tools/Wrench.luau
-  ServerScriptService: ServerScriptService
-    Boot: Script  <- src/Boot.server.luau

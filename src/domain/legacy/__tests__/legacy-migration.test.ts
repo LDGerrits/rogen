@@ -318,6 +318,20 @@ describe("LegacyMigration", () => {
 			);
 		});
 
+		it("should spell each key as most of the routing folders do, since v2 matches keys exactly", async () => {
+			await write("src/Combat/server/Hit.luau");
+			await write("src/Ragdoll/server/Service.luau");
+			await write("src/Hud/Client/Bar.luau");
+			await write("src/Combat/Combat_Server.luau");
+
+			expect(Object.keys((await configOf())?.routes ?? {})).toEqual(
+				expect.arrayContaining(["server", "Client", "Shared"])
+			);
+			expect(
+				(await renamesOf()).map(({ to }) => path.posix.basename(to))
+			).toEqual(["Combat@server.luau"]);
+		});
+
 		it("should leave Rojo's script suffixes, which v2 routes by too", async () => {
 			await write("src/Boot/Boot.server.luau");
 			await write("src/Boot/Hud.client.lua");

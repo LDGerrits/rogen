@@ -21,6 +21,13 @@ export interface ConfigFile {
 	positionOf(section: ConfigSection): DiagnosticPosition | undefined;
 	/** Where a top-level key starts. */
 	positionOfKey(key: string): DiagnosticPosition | undefined;
+	/** The keys of the object at `section` that a later copy of the same key overrides, since JSON keeps only the last. */
+	overriddenKeys(
+		section: ConfigSection
+	): readonly {
+		readonly name: string;
+		readonly position: DiagnosticPosition;
+	}[];
 }
 
 /** Why a config file didn't load: it couldn't be read at all, or what it holds is wrong. */
@@ -100,6 +107,20 @@ export class ConfigFileReader {
 				return (
 					property && { line: property.line, column: property.column }
 				);
+			},
+			overriddenKeys: (section) => {
+				const node = nodeAt(root, section);
+				if (node?.kind !== "object") return [];
+				return node.properties
+					.filter(({ name }, index) =>
+						node.properties
+							.slice(index + 1)
+							.some((later) => later.name === name)
+					)
+					.map(({ name, line, column }) => ({
+						name,
+						position: { line, column },
+					}));
 			},
 		});
 	}

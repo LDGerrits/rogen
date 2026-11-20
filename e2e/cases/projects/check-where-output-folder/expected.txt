@@ -1,14 +1,14 @@
 $ rogen check dist
 exit 1
 stdout:
-  src/Inventory/Stray@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/Inventory/Stray.Server.luau - error: write "Stray.server.luau" (route.dotRoute)
 
 $ rogen where dist
-exit 0
+exit 1
 stdout:
   src/Inventory/Save.server.luau -> ServerScriptService/Inventory/Save · route server (suffix)
-  src/Inventory/Stray@sever.luau -> ReplicatedStorage/shared/Inventory/Stray@sever · route * (fallback)
-    warning: did you mean "@server"? (route.strayAt)
+  src/Inventory/Stray.Server.luau -> ReplicatedStorage/shared/Inventory/Stray.Server · route * (fallback)
+    error: write "Stray.server.luau" (route.dotRoute)
   src/Inventory/Types.luau -> ReplicatedStorage/shared/Inventory/Types · route * (fallback)
 
 $ rogen check dist --json
@@ -17,16 +17,16 @@ stdout:
   {
     "diagnostics": [
       {
-        "file": "<dir>/src/Inventory/Stray@sever.luau",
-        "severity": "warning",
-        "code": "route.strayAt",
-        "message": "did you mean \"@server\"?",
-        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+        "file": "<dir>/src/Inventory/Stray.Server.luau",
+        "severity": "error",
+        "code": "route.dotRoute",
+        "message": "write \"Stray.server.luau\"",
+        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
         "fixes": [
           {
             "rename": {
-              "from": "<dir>/src/Inventory/Stray@sever.luau",
-              "to": "<dir>/src/Inventory/Stray@server.luau"
+              "from": "<dir>/src/Inventory/Stray.Server.luau",
+              "to": "<dir>/src/Inventory/Stray.server.luau"
             }
           }
         ]

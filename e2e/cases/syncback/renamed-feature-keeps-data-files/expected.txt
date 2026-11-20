@@ -1,0 +1,42 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/ShopX/Shared/Items.json
+  Writing src/ShopX/Shared/Lang.csv
+  Writing src/ShopX/Shared/Motd.txt
+  Writing src/ShopX/Shared/Spawn.model.json
+  Writing src/ShopX/Server/ShopService.luau
+  Removing src/Shop
+stderr:
+  Wrote default.project.json.
+  Syncback wrote 6 changes.
+
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stderr:
+  Syncback would change nothing.
+
+written:
+  default.project.json
+  src/ShopX/Server/ShopService.luau
+  src/ShopX/Shared/Items.json
+  src/ShopX/Shared/Lang.csv
+  src/ShopX/Shared/Motd.txt
+  src/ShopX/Shared/Spawn.model.json
+
+$ rojo sourcemap default.project.json
+G: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      ShopX: Folder
+        Items: ModuleScript  <- src/ShopX/Shared/Items.json
+        Lang: LocalizationTable  <- src/ShopX/Shared/Lang.csv
+        Motd: StringValue  <- src/ShopX/Shared/Motd.txt
+        Spawn: Part  <- src/ShopX/Shared/Spawn.model.json
+  ServerScriptService: ServerScriptService
+    ShopX: Folder
+      ShopService: ModuleScript  <- src/ShopX/Server/ShopService.luau

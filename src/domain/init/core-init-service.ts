@@ -1,13 +1,19 @@
 import path from "path";
 import { Disposable, toDisposable } from "../../base/disposable.js";
 import { ErrorUtils, UsageError } from "../../base/errors.js";
-import { samePath, selfAndAncestors } from "../../base/path.js";
+import {
+	isInside,
+	samePath,
+	selfAndAncestors,
+	toPosix,
+} from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import { isError, isRenameFix } from "../../platform/diagnostics/diagnostic.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
 	DraftFileReader,
@@ -46,7 +52,11 @@ import { ProjectSetup } from "./project-setup.js";
 import { ToolchainSetup } from "./toolchain-setup.js";
 import { ServerFinder } from "../runner/server-finder.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
-import { MigratedProject, ProjectMigration } from "./project-migration.js";
+import {
+	MigratedProject,
+	PlannedMove,
+	ProjectMigration,
+} from "./project-migration.js";
 import { MigrationSetup } from "./migration-setup.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
@@ -67,6 +77,21 @@ function shapingFlagsOf(choices: InitChoices): string[] {
 				: booleanFlag(`--${choice}`, value),
 		];
 	});
+}
+
+/** The word of `to`'s name that a case-only rename of `from` respells, as `Server` for `Save@server.luau` → `Save@Server.luau`. */
+function respelled(from: string, to: string): string {
+	const before = path.basename(from);
+	const after = path.basename(to);
+	const at = [...after].findIndex(
+		(letter, index) => letter !== before[index]
+	);
+	const word = /[A-Za-z0-9]/;
+	let start = at;
+	let end = at;
+	while (start > 0 && word.test(after[start - 1])) start--;
+	while (end < after.length && word.test(after[end])) end++;
+	return after.slice(start, end);
 }
 
 /** The folder as `plan` leaves it, before any program it runs. */
@@ -148,7 +173,7 @@ export class CoreInitService implements InitService {
 		}
 	}
 
-	/** In a terminal the plan is shown once and accepted with Enter; Customise asks the questions it took the default of, each with its answer preselected, and shows the plan again. Backing out of Customise shows the plan it had. */
+	/** In a terminal the plan is shown once and accepted with Enter, also when nothing was asked but it renames files; Customise asks the questions it took the default of, each with its answer preselected, and shows the plan again. Backing out of Customise shows the plan it had. */
 	private async review(
 		options: InitOptions
 	): Promise<Result<InitPlan | undefined, Error>> {
@@ -181,7 +206,8 @@ export class CoreInitService implements InitService {
 			);
 			if (planned.isErr()) return planned;
 			if (planned.value) {
-				if (prompts.asked === 0) return planned;
+				if (prompts.asked === 0 && planned.value.moves.length === 0)
+					return planned;
 				shown = {
 					plan: planned.value,
 					customisable: prompts.customisable > 0,
@@ -455,14 +481,59 @@ export class CoreInitService implements InitService {
 		for (const { setup, choices } of answered) setup.plan(choices, builder);
 		const plan = builder.build();
 		if (plan.isErr()) return err(new DiagnosticsError(plan.error));
+		const renamed = await this.withRouteSpellings(plan.value);
 		return ok(
-			plan.value.gitInit
-				? {
-						...plan.value,
-						gitInit: await read.needsGitInit(),
-					}
-				: plan.value
+			renamed.gitInit
+				? { ...renamed, gitInit: await read.needsGitInit() }
+				: renamed
 		);
+	}
+
+	/** `plan` with each name of the code that spells a route key in another letter case renamed to the key's spelling, as the write's own fix for it says, deepest first, so the project builds: init spells each key as most of the code does, and the write stops on the rest. */
+	private async withRouteSpellings(plan: InitPlan): Promise<InitPlan> {
+		if (plan.configs.length === 0) return plan;
+		const reader = this.instantiationService.createInstance(
+			DraftFileReader,
+			draftOf(plan)
+		);
+		const selection = await this.configService.select(plan.configs, reader);
+		if (selection.isErr()) return plan;
+		const failure = (
+			await this.writeService.check(selection.value, reader)
+		).failure();
+		if (!(failure instanceof DiagnosticsError)) return plan;
+		const relative = (file: string) =>
+			toPosix(path.relative(plan.directory, file));
+		const written = plan.files.map(({ fileName }) => fileName);
+		// What the plan writes is spelled by init, never renamed after.
+		const isWritten = (from: string) =>
+			written.some(
+				(file) => file === from || file.startsWith(`${from}/`)
+			);
+		const renames = new Map<string, PlannedMove>();
+		for (const { code, fixes } of failure.diagnostics) {
+			if (code !== "route.caseMismatch" && code !== "route.strayAt")
+				continue;
+			for (const { rename } of (fixes ?? []).filter(isRenameFix))
+				if (
+					rename.from.toLowerCase() === rename.to.toLowerCase() &&
+					!isWritten(relative(rename.from))
+				)
+					renames.set(rename.from, {
+						from: relative(rename.from),
+						to: relative(rename.to),
+						reason: `to spell the route "${respelled(rename.from, rename.to)}" as the rest of the code does`,
+					});
+		}
+		if (renames.size === 0) return plan;
+		const depth = ({ from }: PlannedMove) => from.split("/").length;
+		return {
+			...plan,
+			moves: [
+				...[...renames.values()].sort((a, b) => depth(b) - depth(a)),
+				...plan.moves,
+			],
+		};
 	}
 
 	registerMigration(migration: ProjectMigration): Disposable {
@@ -476,8 +547,8 @@ export class CoreInitService implements InitService {
 			.refresh(folder);
 	}
 
-	async check(plan: InitPlan): Promise<Result<void, Error>> {
-		if (plan.configs.length === 0) return ok(undefined);
+	async check(plan: InitPlan): Promise<Result<readonly Diagnostic[], Error>> {
+		if (plan.configs.length === 0) return ok([]);
 		const reader = this.instantiationService.createInstance(
 			DraftFileReader,
 			draftOf(plan)
@@ -487,7 +558,33 @@ export class CoreInitService implements InitService {
 		const failure = (
 			await this.writeService.check(selection.value, reader)
 		).failure();
-		return failure ? err(failure) : ok(undefined);
+		if (!failure) return ok([]);
+		const errors =
+			failure instanceof DiagnosticsError
+				? failure.diagnostics.filter(isError)
+				: [];
+		return errors.length > 0 &&
+			errors.every((error) =>
+				CoreInitService.isAboutUserCode(error, plan)
+			)
+			? ok(errors)
+			: err(failure);
+	}
+
+	/** Whether `error` is only about the user's code: files of the folder that `plan` neither writes nor renames, and no folder that holds one. */
+	private static isAboutUserCode(error: Diagnostic, plan: InitPlan): boolean {
+		const made = [
+			...plan.files.map(({ fileName }) => fileName),
+			...plan.moves.map(({ to }) => to),
+		].map((file) => path.join(plan.directory, file));
+		return [
+			error.resource,
+			...(error.related ?? []).map(({ resource }) => resource),
+		].every(
+			(file) =>
+				isInside(file, plan.directory) &&
+				!made.some((one) => samePath(one, file) || isInside(one, file))
+		);
 	}
 
 	write(

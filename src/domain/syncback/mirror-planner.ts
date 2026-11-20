@@ -12,6 +12,7 @@ import { isObject } from "../../base/objects.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	FileSystemService,
+	isDirectoryType,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import { instanceKey } from "../roblox/roblox.js";
@@ -31,7 +32,15 @@ import {
 	withoutRemovedInside,
 } from "./mirror-plan.js";
 import { MirrorRun, MirrorWorkspace, inBatches } from "./mirror-workspace.js";
-import { ReverseRouter, instanceNameOf } from "./reverse-router.js";
+import {
+	Mark,
+	NewHome,
+	ReverseRouter,
+	instanceNameOf,
+} from "./reverse-router.js";
+import { DraftRouting, Landing, Proposal } from "./draft-routing.js";
+import { GITKEEP } from "./syncback-layout.js";
+import { RenamedInstance, renamedInstances } from "./renamed-instances.js";
 import { RojoSyncback } from "./rojo-syncback.js";
 import {
 	CompiledChange,
@@ -93,11 +102,49 @@ function instanceOf(
 		: [...folders, instanceNameOf(name)];
 }
 
+/** Where routing must put a file Rojo wrote for `instance`, written at `to`: its own instance, or for a folder or the `.gitkeep` that keeps one, the Folder it is; none for a meta file or what makes no instance. */
+function landingOf(
+	instance: AddedInstance,
+	file: readonly string[],
+	to: string,
+	folder: boolean
+): Landing | undefined {
+	if (folder || file[file.length - 1] === GITKEEP)
+		return {
+			file: folder ? to : path.dirname(to),
+			instance: [
+				...instance.parent,
+				...(instance.folder ? (folder ? file : file.slice(0, -1)) : []),
+			],
+			folder: true,
+		};
+	const made = instanceOf(instance, file);
+	return made && { file: to, instance: made };
+}
+
+/** A new instance and the ways to write it, the one the layout prefers first; `reason` says why it has none, until routing says why it rejects the last. */
+interface Choice {
+	readonly instance: string;
+	readonly proposals: readonly Proposal[];
+	readonly reason?: string;
+}
+
+/** Whether `operation` can't be made beside `other`, which an earlier choice makes at the same path: only the same folder, or the same bytes, can be made twice. */
+const clashes = (operation: Operation, other: Operation | undefined) =>
+	other !== undefined &&
+	(operation.kind === "write"
+		? other.kind !== "write" || !sameBytes(other.bytes, operation.bytes)
+		: other.kind === "write");
+
 /** One run's changes to the mirror, read as a plan. */
 class MirrorPlanRun {
 	private readonly request: SyncbackRequest;
 	private readonly operations: Operation[] = [];
 	private readonly unplaced: UnplacedInstance[];
+	/** The folders a removal empties while the place still holds what they make, by the instance; each keeps a `.gitkeep` unless the plan writes into it. */
+	private readonly toKeep = new Map<string, string>();
+	/** The new instances placing left out, whose old files stay though Rojo removed them to write the instance another way. */
+	private readonly refused = new Set<string>();
 	private readonly compiled: CompiledChange[] = [];
 	private readonly expected: Expected[] = [];
 	/** The bytes each path the plan reads had: see `MirrorPlan.isCurrent`. */
@@ -105,6 +152,20 @@ class MirrorPlanRun {
 	private readonly present: ReadonlySet<string>;
 	private readonly copiedPaths: ReadonlySet<string>;
 	private readonly edits: ConfigEdits;
+	private readonly routing: DraftRouting;
+	/** The paths Rojo wrote in place for each new instance below a folder of the project, by its instance path, which routing checks before they are written. */
+	private readonly inPlace = new Map<
+		string,
+		{
+			instance: string;
+			operations: Operation[];
+			landings: Landing[];
+			/** The instance as a new one, for the other ways to write it when routing misreads the paths Rojo chose. */
+			made: AddedInstance & { files: string[][] };
+			/** Its mirror paths that are folders. */
+			folders: string[];
+		}
+	>();
 
 	constructor(
 		private readonly workspace: MirrorWorkspace,
@@ -122,6 +183,11 @@ class MirrorPlanRun {
 		this.edits = instantiationService.createInstance(
 			ConfigEdits,
 			workspace
+		);
+		this.routing = instantiationService.createInstance(
+			DraftRouting,
+			workspace.request,
+			workspace.diagnostics
 		);
 	}
 
@@ -147,11 +213,24 @@ class MirrorPlanRun {
 		kind: CompiledChange["kind"]
 	): boolean {
 		if (!this.isCompiled(file)) return false;
-		this.compiled.push({ instance, kind });
+		// The file Rojo keeps an emptied folder by is no instance to report.
+		if (path.basename(file) !== GITKEEP)
+			this.compiled.push({ instance, kind });
 		return true;
 	}
 
 	private async add(operation: Operation): Promise<void> {
+		if (
+			this.operations.some(
+				(other) =>
+					other.kind === operation.kind &&
+					other.file === operation.file &&
+					(other.kind !== "write" ||
+						(operation.kind === "write" &&
+							sameBytes(other.bytes, operation.bytes)))
+			)
+		)
+			return;
 		if (!this.before.has(operation.file))
 			this.before.set(
 				operation.file,
@@ -183,6 +262,8 @@ class MirrorPlanRun {
 		const edited = await this.edits.editTree(additions);
 		for (const operation of edited.operations) await this.add(operation);
 		this.unplaced.push(...edited.unplaced);
+		this.keepRefused();
+		await this.keepEmptied();
 		return ok(
 			new MirrorPlan(
 				request.project,
@@ -196,14 +277,52 @@ class MirrorPlanRun {
 		);
 	}
 
+	/** Writes a `.gitkeep` into each folder a removal emptied that the place still holds and the plan writes nothing into, as git keeps no empty folder. */
+	private async keepEmptied(): Promise<void> {
+		for (const [folder, instance] of this.toKeep) {
+			const fills = this.operations.some(
+				({ kind, file }) =>
+					(kind === "write" || kind === "folder") &&
+					file.startsWith(`${folder}${path.sep}`)
+			);
+			if (!fills)
+				await this.add({
+					kind: "write",
+					file: path.join(folder, GITKEEP),
+					instance,
+					bytes: new Uint8Array(),
+				});
+		}
+	}
+
+	/** Drops the removals of files of a new instance placing left out, or of what it holds: Rojo removed them only to write that instance another way, as one file for a folder with children of one name. */
+	private keepRefused(): void {
+		const refused = [...this.refused];
+		const kept = this.operations.filter(
+			({ kind, instance }) =>
+				(kind !== "remove" && kind !== "prune") ||
+				!refused.some(
+					(key) => instance === key || instance.startsWith(`${key}/`)
+				)
+		);
+		this.operations.splice(0, this.operations.length, ...kept);
+	}
+
 	/** Each copy Rojo edited or removed, as a change of the file it was copied from; a file a project places at more than one instance is copied once for each, changed once, and kept while a copy of it is. Fails when a file was saved while Rojo ran, since Rojo's copy would undo the save. */
 	private async compareCopies(): Promise<Result<void, Error>> {
 		const { workspace, operations, unplaced } = this;
 		const { copied, started } = this.run;
 		/** Where in `operations` each file changed so far is. */
 		const claimed = new Map<string, number>();
+		const mounted = new Set(
+			workspace.mirror.entries
+				.filter(({ kind }) => kind === "file")
+				.map(({ mirror }) => mirror)
+		);
+		// The write hides a file it mounts by itself from the folder around it, so a glob that names it doesn't mean Rojo never read it.
 		const kept = copied.filter(
-			({ target }) => !workspace.isIgnored(target)
+			({ target, mirror }) =>
+				mounted.has(mirror) || !workspace.isIgnored(target)
 		);
 		const compared = await inBatches(
 			kept,
@@ -400,16 +519,22 @@ class MirrorPlanRun {
 		for (const { file, instance, parent } of emptied) {
 			for (
 				let folder = path.dirname(file);
-				!gone.has(folder) &&
-				this.belowSource(folder) &&
-				![...(readAt.get(folder) ?? [])].some((at) =>
-					holding.has(at)
-				) &&
-				(await entriesOf(folder)).every((name) =>
-					gone.has(path.join(folder, name))
-				);
+				!gone.has(folder) && this.belowSource(folder);
 				folder = path.dirname(folder)
 			) {
+				const empty = (await entriesOf(folder)).every((name) =>
+					gone.has(path.join(folder, name))
+				);
+				if (!empty) break;
+				// The place still holds what the folder makes, so it stays; once nothing else goes in it, a file git keeps it by.
+				if (
+					[...(readAt.get(folder) ?? [])].some((at) =>
+						holding.has(at)
+					)
+				) {
+					this.toKeep.set(folder, instance);
+					break;
+				}
 				gone.add(folder);
 				operations.push({
 					kind: "prune",
@@ -537,7 +662,9 @@ class MirrorPlanRun {
 					continue;
 				}
 			}
-			await this.add(
+			await this.addInPlace(
+				added,
+				known,
 				added.folder
 					? { kind: "folder", file, instance, from: added.path }
 					: {
@@ -552,6 +679,62 @@ class MirrorPlanRun {
 		return { fresh, metaFiles };
 	}
 
+	/** Holds a path Rojo wrote in place with the rest of its new instance, for routing to check; one at the top of the mirror is made as it is. */
+	private async addInPlace(
+		added: AddedPath,
+		known: ReadonlySet<string>,
+		operation: Operation
+	): Promise<void> {
+		const { mirror } = this.workspace;
+		const names = added.path.split("/");
+		const key = this.inPlaceKey(names, known);
+		const unit = key.split("/");
+		if (unit.length === 1) {
+			await this.add(operation);
+			return;
+		}
+		const leaf = unit[unit.length - 1];
+		const folder = added.folder || names.length > unit.length;
+		const parent = mirror.instancePathOf(unit.slice(0, -1).join("/"));
+		const made = {
+			parent,
+			parentFolder: unit.slice(0, -1).join("/"),
+			name: folder ? leaf : instanceNameOf(leaf),
+			folder,
+			files: [],
+		};
+		// A script and its meta file are one instance, which moves as one.
+		const instance = instanceKey([...parent, made.name]);
+		const held = this.inPlace.get(instance) ?? {
+			instance,
+			operations: [],
+			landings: [],
+			made,
+			folders: [],
+		};
+		held.operations.push(operation);
+		held.made.files.push(names.slice(unit.length - 1));
+		if (added.folder) held.folders.push(added.path);
+		const landing = landingOf(
+			held.made,
+			names.slice(unit.length - 1),
+			operation.file,
+			added.folder
+		);
+		if (landing) held.landings.push(landing);
+		this.inPlace.set(instance, held);
+	}
+
+	/** The new instance a path Rojo added below a folder of the mirror is: the nearest folder that was there, and the first name below it. */
+	private inPlaceKey(
+		names: readonly string[],
+		known: ReadonlySet<string>
+	): string {
+		let at = names.length - 1;
+		while (at > 0 && !known.has(names.slice(0, at).join("/"))) at--;
+		return names.slice(0, at + 1).join("/");
+	}
+
 	/** Whether the nearest folder above a path Rojo added is the folder of an init script whose own name routes it, so what Rojo wrote there must name that route to land where Rojo put it. */
 	private inRoutedInitFolder(
 		names: readonly string[],
@@ -561,7 +744,9 @@ class MirrorPlanRun {
 		for (let at = names.length - 1; at > 0; at--) {
 			const folder = names.slice(0, at).join("/");
 			if (known.has(folder))
-				return layout.routesOnlyItsInit(mirror.instancePathOf(folder));
+				return layout.initLeavesItsFolder(
+					mirror.instancePathOf(folder)
+				);
 		}
 		return false;
 	}
@@ -605,6 +790,7 @@ class MirrorPlanRun {
 	): Promise<TreeChange[]> {
 		const { workspace, unplaced } = this;
 		const { mirror } = workspace;
+		const compiled = this.request.project.compiledPath !== undefined;
 		const { instances, strays } = addedInstances(
 			fresh,
 			(folder) => known.has(folder),
@@ -616,7 +802,6 @@ class MirrorPlanRun {
 				reason: "no folder of the project holds its parent",
 			});
 		const router = new ReverseRouter(workspace.layout);
-		const taken = new Set<string>();
 		const removed = new PathSet(
 			this.operations
 				.filter(({ kind }) => kind === "remove")
@@ -626,37 +811,270 @@ class MirrorPlanRun {
 			fresh.filter(({ folder }) => folder).map(({ path: at }) => at)
 		);
 		const additions: TreeChange[] = [];
+		const gone = new PathSet(
+			this.operations
+				.filter(({ kind }) => kind === "remove" || kind === "prune")
+				.map(({ file }) => file)
+		);
+		const renames = new Map(
+			(compiled
+				? []
+				: renamedInstances(
+						instances,
+						new Set(
+							this.operations.flatMap(({ kind, from }) =>
+								kind === "remove" && from !== undefined
+									? [from]
+									: []
+							)
+						),
+						{
+							sourceOf: (at) => workspace.mirror.targetOf(at),
+							placed: workspace.layout.placed,
+							isRemoved: (source) =>
+								[
+									toNative(source),
+									...ancestors(toNative(source)),
+								].some((at) => gone.has(at)),
+						}
+					)
+			).map((rename) => [rename.instance, rename])
+		);
+		const choices: Choice[] = [];
+		// Where Rojo's place for it reads as another instance, as a name a pattern sends elsewhere, the marks of the routes reaching its parent may still place it.
+		for (const held of this.inPlace.values()) {
+			const placed = await this.proposalsOf(
+				router,
+				held.made,
+				new Set([...folders, ...held.folders]),
+				removed
+			);
+			choices.push({
+				instance: held.instance,
+				proposals: [
+					{ operations: held.operations, landings: held.landings },
+					...placed.proposals,
+				],
+			});
+		}
 		for (const instance of instances) {
+			// The file Rojo keeps an emptied folder of compiled code by is no instance of its own.
+			if (compiled && instance.name === GITKEEP) continue;
 			const node = this.nodeAt(instance.parentFolder);
 			if (node) {
 				const addition = await this.nodeOf(instance, node, folders);
-				if ("reason" in addition) unplaced.push(addition);
-				else additions.push(addition);
+				if ("reason" in addition) {
+					unplaced.push(addition);
+					this.refused.add(addition.instance);
+				} else additions.push(addition);
 				continue;
 			}
-			const placed = await this.place(
+			const name = instanceKey([...instance.parent, instance.name]);
+			const rename = renames.get(instance);
+			const renamed =
+				rename && (await this.renameFits(rename, removed))
+					? [await this.renamedProposal(rename, folders)]
+					: [];
+			const placed = await this.proposalsOf(
 				router,
 				instance,
 				folders,
-				taken,
 				removed
 			);
-			if (placed.kind === "unplaced") {
-				unplaced.push(placed.why);
+			if (compiled) {
+				if (placed.proposals.length > 0)
+					this.compiled.push({ instance: name, kind: "added" });
+				else {
+					unplaced.push({ instance: name, reason: placed.reason });
+					this.refused.add(name);
+				}
 				continue;
 			}
-			if (this.request.project.compiledPath !== undefined) {
-				this.compiled.push({
-					instance: instanceKey([...instance.parent, instance.name]),
-					kind: "added",
+			choices.push({
+				instance: name,
+				proposals: [...renamed, ...placed.proposals],
+				reason: placed.reason,
+			});
+		}
+		await this.choose(choices);
+		return additions;
+	}
+
+	/** Takes for each choice the first way to write it whose paths no earlier choice takes and whose files routing puts where the place has them, asking routing about every choice at once; one with no such way is left out, with why. */
+	private async choose(choices: readonly Choice[]): Promise<void> {
+		const at = choices.map(() => 0);
+		const reasons = choices.map(({ reason }) => reason);
+		const firstMisses: (string | undefined)[] = choices.map(
+			() => undefined
+		);
+		for (;;) {
+			const taken = new Map<string, Operation>();
+			const chosen = choices.map(({ proposals }, index) => {
+				for (; at[index] < proposals.length; at[index]++) {
+					const proposal = proposals[at[index]];
+					const clash = proposal.operations.find((operation) =>
+						clashes(operation, taken.get(operation.file))
+					);
+					if (clash) {
+						reasons[index] = `${clash.file} is already there`;
+						continue;
+					}
+					for (const operation of proposal.operations)
+						if (
+							operation.kind === "write" ||
+							operation.kind === "folder"
+						)
+							taken.set(operation.file, operation);
+					return proposal;
+				}
+				return undefined;
+			});
+			const misses = await this.routing.misses(
+				this.operations,
+				chosen.filter((proposal) => proposal !== undefined)
+			);
+			let anyMissed = false;
+			chosen.forEach((proposal, index) => {
+				const miss = proposal && misses.get(proposal);
+				if (miss === undefined) return;
+				// The layout's own way says best what is wrong with the name, as the user sees it.
+				firstMisses[index] ??= miss;
+				at[index]++;
+				anyMissed = true;
+			});
+			if (anyMissed) continue;
+			for (const [index, proposal] of chosen.entries()) {
+				if (proposal === undefined) {
+					const { instance } = choices[index];
+					this.unplaced.push({
+						instance,
+						reason:
+							firstMisses[index] ??
+							reasons[index] ??
+							"routing places it nowhere",
+					});
+					this.refused.add(instance);
+					continue;
+				}
+				for (const operation of proposal.operations)
+					await this.add(operation);
+				this.expected.push(
+					...proposal.landings.filter(({ folder }) => !folder)
+				);
+			}
+			return;
+		}
+	}
+
+	/** Whether every file of a renamed instance can go where its rename puts it: nothing the plan keeps is there, and no ignore glob names it. */
+	private async renameFits(
+		{ files, renamed }: RenamedInstance,
+		removed: PathSet
+	): Promise<boolean> {
+		if (await this.fileSystemService.exists(toNative(renamed)))
+			return false;
+		for (const { target } of files.values()) {
+			const to = toNative(target);
+			if (
+				this.workspace.isIgnored(target) ||
+				(!removed.has(to) && (await this.fileSystemService.exists(to)))
+			)
+				return false;
+		}
+		return true;
+	}
+
+	/** An instance Studio renamed, written where its old files were, in its folder under the new name, with what else that folder holds, such as marker files, moved with it. */
+	private async renamedProposal(
+		{ instance, folder, renamed, files }: RenamedInstance,
+		folders: ReadonlySet<string>
+	): Promise<Proposal> {
+		const name = instanceKey([...instance.parent, instance.name]);
+		const operations: Operation[] = [];
+		const landings: Landing[] = [];
+		for (const file of instance.files) {
+			const renamedFile = files.get(file.join("/"));
+			if (renamedFile === undefined) continue;
+			const { target, keep } = renamedFile;
+			const at = `${instance.parentFolder}/${file.join("/")}`;
+			const to = toNative(target);
+			const landing = landingOf(instance, file, to, folders.has(at));
+			if (landing) landings.push(landing);
+			if (folders.has(at)) {
+				operations.push({
+					kind: "folder",
+					file: to,
+					instance: name,
+					from: at,
 				});
 				continue;
 			}
-			for (const operation of placed.operations)
-				await this.add(operation);
-			this.expected.push(...placed.expected);
+			operations.push({
+				kind: "write",
+				file: to,
+				instance: name,
+				from: at,
+				bytes:
+					keep === undefined
+						? await this.workspace.read(at)
+						: await this.fileSystemService.readFileBytes(
+								toNative(keep)
+							),
+			});
 		}
-		return additions;
+		const sources = new Set(
+			this.workspace.layout.placed.map(({ source }) => source)
+		);
+		const touched = (kind: Operation["kind"]) =>
+			new Set(
+				[...this.operations, ...operations]
+					.filter((operation) => operation.kind === kind)
+					.map(({ file }) => toPosix(file))
+			);
+		const written = touched("write");
+		const removed = touched("remove");
+		const dirs: string[] = [];
+		const walk = async (dir: string): Promise<void> => {
+			dirs.push(dir);
+			const entries = await tryWithAsync(() =>
+				this.fileSystemService.readDirectory(toNative(dir))
+			);
+			if (entries.isErr()) return;
+			for (const [entry, type] of entries.value) {
+				const at = path.posix.join(dir, entry);
+				if (isDirectoryType(type)) {
+					await walk(at);
+					continue;
+				}
+				if (sources.has(at) || written.has(at)) continue;
+				const to = path.posix.join(
+					renamed,
+					path.posix.relative(folder, at)
+				);
+				operations.push({
+					kind: "write",
+					file: toNative(to),
+					instance: name,
+					bytes: await this.fileSystemService.readFileBytes(
+						toNative(at)
+					),
+				});
+				if (!removed.has(at))
+					operations.push({
+						kind: "remove",
+						file: toNative(at),
+						instance: name,
+					});
+			}
+		};
+		await walk(folder);
+		for (const dir of dirs.reverse())
+			operations.push({
+				kind: "prune",
+				file: toNative(dir),
+				instance: name,
+			});
+		return { operations, landings };
 	}
 
 	/** A new instance Rojo wrote into the folder of a node with no `$path`, as a child node of that node; one the tree can't describe has no place. */
@@ -696,73 +1114,89 @@ class MirrorPlanRun {
 		};
 	}
 
-	/** Where routing puts a new instance, as the files to write; left out when routing can't place it, when a file the plan leaves is already there, or when an ignore glob matches where it goes. */
-	private async place(
+	/** The ways to write a new instance where routing puts it, as the layout has it first, then with the mark of each route that reaches its parent; with why when it has none, or when the layout's own place has a file the plan leaves, or an ignore glob matches it. */
+	private async proposalsOf(
 		router: ReverseRouter,
 		instance: AddedInstance,
 		folders: ReadonlySet<string>,
-		taken: Set<string>,
 		/** What the plan removes, so a new file can take its place. */
 		removed: PathSet
-	): Promise<
-		| {
-				readonly kind: "placed";
-				readonly operations: Operation[];
-				readonly expected: Expected[];
-		  }
-		| { readonly kind: "unplaced"; readonly why: UnplacedInstance }
-	> {
+	): Promise<{ readonly proposals: Proposal[]; readonly reason: string }> {
 		const name = instanceKey([...instance.parent, instance.name]);
-		const unplaced = (reason: string) => ({
-			kind: "unplaced" as const,
-			why: { instance: name, reason },
-		});
 		const placement = router.place(instance);
-		if (placement.kind === "conflict") return unplaced(placement.reason);
+		if (placement.kind === "conflict") {
+			const [only] = instance.files;
+			const model =
+				instance.files.length === 1 &&
+				/\.rbxmx?$/.test(only[only.length - 1]);
+			return {
+				proposals: [],
+				reason: model
+					? `Rojo writes it as the model file ${only.join("/")}, as it does for a folder whose children share a name or have names a file can't take, and ${placement.reason}; rename those children in Studio`
+					: placement.reason,
+			};
+		}
 		const { home } = placement;
-		const targets = instance.files.map((file) => ({
-			file,
-			at: `${instance.parentFolder}/${file.join("/")}`,
-			to: path.join(
-				toNative(home.dir),
-				...router.destination(instance, file, home)
-			),
-		}));
-		for (const { to } of targets) {
-			if (
-				taken.has(to) ||
-				(!removed.has(to) && (await this.fileSystemService.exists(to)))
-			)
-				return unplaced(`${to} is already there`);
-			if (this.workspace.isIgnored(toPosix(to)))
-				return unplaced(
-					`${to} matches an ignore glob of the project, so it is left alone`
+		const homes: NewHome[] = [
+			home,
+			...(home.mark || home.contents
+				? []
+				: router
+						.marksFor(instance.parent)
+						.map((mark: Mark) => ({ ...home, mark }))),
+		];
+		const proposals: Proposal[] = [];
+		for (const each of homes) {
+			const targets = instance.files.map((file) => ({
+				file,
+				at: `${instance.parentFolder}/${file.join("/")}`,
+				to: path.join(
+					toNative(each.dir),
+					...router.destination(instance, file, each)
+				),
+			}));
+			const blocked = await this.blocked(
+				targets.map(({ to }) => to),
+				removed
+			);
+			// A file already there or an ignore glob says the layout's own place is not to be written, which another spelling would only get around.
+			if (blocked !== undefined) return { proposals, reason: blocked };
+			const operations: Operation[] = [];
+			const landings: Landing[] = [];
+			for (const { file, at, to } of targets) {
+				const landing = landingOf(instance, file, to, folders.has(at));
+				// The routing folder that stands for the instance's own folder is no node of its own.
+				if (landing && to !== toNative(each.dir))
+					landings.push(landing);
+				operations.push(
+					folders.has(at)
+						? { kind: "folder", file: to, instance: name, from: at }
+						: {
+								kind: "write",
+								file: to,
+								instance: name,
+								from: at,
+								bytes: await this.workspace.read(at),
+							}
 				);
-		}
-		const operations: Operation[] = [];
-		const expected: Expected[] = [];
-		for (const { file, at, to } of targets) {
-			taken.add(to);
-			if (folders.has(at)) {
-				operations.push({
-					kind: "folder",
-					file: to,
-					instance: name,
-					from: at,
-				});
-				continue;
 			}
-			operations.push({
-				kind: "write",
-				file: to,
-				instance: name,
-				from: at,
-				bytes: await this.workspace.read(at),
-			});
-			const made = instanceOf(instance, file);
-			if (made) expected.push({ file: to, instance: made });
+			proposals.push({ operations, landings });
 		}
-		return { kind: "placed", operations, expected };
+		return { proposals, reason: "routing places it nowhere" };
+	}
+
+	/** Why a new instance can't be written at `targets`: a file the plan leaves is already there, or an ignore glob matches one. */
+	private async blocked(
+		targets: readonly string[],
+		removed: PathSet
+	): Promise<string | undefined> {
+		for (const to of targets) {
+			if (!removed.has(to) && (await this.fileSystemService.exists(to)))
+				return `${to} is already there`;
+			if (this.workspace.isIgnored(toPosix(to)))
+				return `${to} matches an ignore glob of the project, so it is left alone`;
+		}
+		return undefined;
 	}
 
 	/** What `--list` prints for a run on the mirror: the lines Rojo listed, in its order and as the project's own paths, with the project file first as in a plain Rojo project; then the rest of the plan, unless a folder Rojo listed already covers it. */
@@ -806,9 +1240,13 @@ class MirrorPlanRun {
 			}
 			const at = toPosix(path.relative(workspace.root, file));
 			const target = workspace.mirror.targetOf(at);
+			// A removal Rojo lists stands for the plan only where the plan removes that path itself, not just files inside it.
 			const mapped =
 				byMirror.get(at) ??
-				(target !== undefined && touched(toNative(target))
+				(target !== undefined &&
+				(kind === "remove"
+					? files.has(toNative(target))
+					: touched(toNative(target)))
 					? [toNative(target)]
 					: []);
 			for (const one of mapped) add(kind, one);

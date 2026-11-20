@@ -46,6 +46,8 @@ export interface PlacedLocation extends Located {
 	readonly alsoAt?: readonly (readonly string[])[];
 	readonly route: string;
 	readonly routeMatch: RouteMatch;
+	/** Absolute POSIX path of the folder or file whose name took the route, or of the folder a marker sits in; none for `*` or a copy. */
+	readonly routedBy?: string;
 	/** A `^` on its name or a folder's took it straight to the route's target. */
 	readonly hoisted?: boolean;
 	/** The folders that become the nodes above it, which a folder's `init.meta.json` applies to. */
@@ -61,6 +63,8 @@ interface UnplacedLocation extends Located {
 	readonly status: "outside" | "notInstance" | "missing" | "empty";
 	/** A `missing` path that is named as a folder, by ending in a separator. */
 	readonly folder?: true;
+	/** For an `empty` folder: the Folder instance routing makes of it. */
+	readonly instancePath?: readonly string[];
 }
 
 /** The path can't be placed because the write of its config stops on an error; `by` is the first of them. */
@@ -145,6 +149,8 @@ export interface ConfigLocations extends RaisedDiagnostics {
 	readonly files: readonly FileLocation[];
 	readonly instances: readonly InstanceLocation[];
 	readonly queried: readonly string[];
+	/** The project file a write would write now; none when the write stops, or when only paths were asked about, which may not exist yet. */
+	readonly projectFile?: RojoProjectFile;
 }
 
 /** Which paths asked about a config's diagnostics reach: what `check` reports, what `where` shows under each line, and which errors stop the write unseen. */
@@ -164,14 +170,24 @@ export class LocatedDiagnosis {
 			...located.files.map(({ source }) => source),
 			...located.queried,
 		];
+		const proposing = located.diagnostics.filter((diagnostic) =>
+			located.instances.some(({ fixes }) =>
+				fixes.some(
+					({ code, rename }) =>
+						code === diagnostic.code &&
+						rename.from === toPosix(diagnostic.resource)
+				)
+			)
+		);
 		this.reaching = [
-			...new Set(
-				targets.flatMap((target) =>
+			...new Set([
+				...targets.flatMap((target) =>
 					located.diagnostics.filter((diagnostic) =>
 						this.reaches(diagnostic, target)
 					)
-				)
-			),
+				),
+				...proposing,
+			]),
 		];
 		this.stops = located.diagnostics.filter(isError);
 		this.stoppedBy = this.stops.filter(
@@ -185,7 +201,9 @@ export class LocatedDiagnosis {
 		);
 		this.unshown = located.files.some(({ status }) => status === "blocked")
 			? []
-			: this.stops.filter((error) => !shown.has(error));
+			: this.stops.filter(
+					(error) => !shown.has(error) && !proposing.includes(error)
+				);
 		this.placingNothing = located.diagnostics.filter(
 			({ code }) => code === "scan.noSyncedFiles"
 		);
@@ -350,11 +368,6 @@ export interface WriteService {
 		reader?: FileSystemService
 	): Promise<WriteRun>;
 
-	/** The project file a write of `project` would write, or none when it fails. Writes nothing. */
-	projectFileOf(
-		project: ResolvedConfig
-	): Promise<RojoProjectFile | undefined>;
-
 	/** Prepares and writes the project at `projectFile` in a watch's `set`; the compiled path is checked only when `previous` holds no answer for this version of the config. With `force`, the file is written even when its bytes are what a build makes. */
 	rewrite(
 		set: WriteSet,
@@ -385,10 +398,11 @@ export interface WriteService {
 	/** The project files on disk that differ from what a write would write, as the diagnostics `check` raises for them. Writes nothing. */
 	staleProjectFiles(selection: ConfigSelection): Promise<Diagnostic[]>;
 
-	/** Where each argument lands in every config of `selection`: a path gives its file, a directory what's in it, an instance the files placed at or inside it; no arguments give every file. */
+	/** Where each argument lands in every config of `selection`: a path gives its file, a directory what's in it, an instance the files placed at or inside it; no arguments give every file. With `reader`, such as a draft of files not written yet, reads through it. */
 	locate(
 		selection: ConfigSelection,
-		targets?: LocateQuery
+		targets?: LocateQuery,
+		reader?: FileSystemService
 	): Promise<Result<Locations, DiagnosticsError>>;
 }
 

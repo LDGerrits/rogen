@@ -18,7 +18,8 @@ import {
 } from "./fixtures.js";
 
 describe("RootScanner", () => {
-	type ScanOptions = Pick<ResolvedConfig, "sourcePaths" | "ignored">;
+	type ScanOptions = Pick<ResolvedConfig, "sourcePaths" | "ignored"> &
+		Partial<Pick<ResolvedConfig, "compiledPath">>;
 
 	const scanSourcePaths = (index: IndexReader, options: ScanOptions) =>
 		placeFiles(index, configOf(options), syncTools).unwrap();
@@ -287,7 +288,7 @@ describe("RootScanner", () => {
 					"src/L.yml"
 				);
 
-				const { roots } = await scan();
+				const { roots } = await scan({ compiledPath: abs("out") });
 
 				expect(files(roots[0])).toEqual([
 					"script:A.luau",
@@ -388,10 +389,22 @@ describe("RootScanner", () => {
 				]);
 			});
 
+			it("should keep no TypeScript where no compiler writes the Luau Rojo reads", async () => {
+				await write("src/A.ts", "src/B.tsx", "src/C.luau");
+
+				const { roots } = await scan();
+
+				expect(files(roots[0])).toEqual(["script:C.luau"]);
+				expect(roots[0].unsynced).toEqual([
+					abs("src/A.ts"),
+					abs("src/B.tsx"),
+				]);
+			});
+
 			it("should never keep .d.ts files, in any case", async () => {
 				await write("src/types.d.ts", "src/Foo.D.TS", "src/Real.ts");
 
-				const { roots } = await scan();
+				const { roots } = await scan({ compiledPath: abs("out") });
 
 				expect(files(roots[0])).toEqual(["script:Real.ts"]);
 			});

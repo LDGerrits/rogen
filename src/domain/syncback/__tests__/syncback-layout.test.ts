@@ -7,7 +7,7 @@ describe("SyncbackLayout", () => {
 		it("should describe how the files placed directly under a node were routed", async () => {
 			const layout = await layoutOf([
 				"src/Inventory/Server/Bag.luau",
-				"src/Inventory/Save@server.luau",
+				"src/Inventory/Save@Server.luau",
 			]);
 
 			const donors = layout.donorsAt([
@@ -16,11 +16,11 @@ describe("SyncbackLayout", () => {
 			]);
 
 			expect(
-				donors.map(({ style, spelled }) => ({ style, spelled }))
+				donors.map(({ style, route }) => ({ style, route }))
 			).toEqual(
 				expect.arrayContaining([
-					{ style: "folder", spelled: undefined },
-					{ style: "suffix", spelled: "server" },
+					{ style: "folder", route: "Server" },
+					{ style: "suffix", route: "Server" },
 				])
 			);
 		});
@@ -37,6 +37,35 @@ describe("SyncbackLayout", () => {
 			expect(layout.donorsAt(["ReplicatedStorage", "Shared"])).toEqual(
 				[]
 			);
+		});
+	});
+
+	describe("initLeavesItsFolder", () => {
+		it("should take a copy of an init script on a side its folder's own route doesn't reach", async () => {
+			const alone = await layoutOf([
+				"src/Net/init.luau",
+				"src/Net/Server/Remote.luau",
+			]);
+			const everywhere = await layoutOf([
+				"src/Net/init.luau",
+				"src/Net/Server/Remote.luau",
+				"src/Net/Client/Listener.luau",
+				"src/Net/Types.luau",
+			]);
+
+			expect(
+				alone.initLeavesItsFolder(["ServerScriptService", "Net"])
+			).toBe(true);
+			expect(
+				everywhere.initLeavesItsFolder(["ServerScriptService", "Net"])
+			).toBe(true);
+			expect(
+				everywhere.initLeavesItsFolder([
+					"ReplicatedStorage",
+					"Shared",
+					"Net",
+				])
+			).toBe(false);
 		});
 	});
 
@@ -59,7 +88,7 @@ describe("SyncbackLayout", () => {
 		it("should list every instance the feature folder makes", async () => {
 			const layout = await layoutOf([
 				"src/Inventory/Server/Bag.luau",
-				"src/Inventory/Save@server.luau",
+				"src/Inventory/Save@Server.luau",
 				"src/Inventory/Shared/Item.luau",
 			]);
 
@@ -79,7 +108,7 @@ describe("SyncbackLayout", () => {
 		});
 
 		it("should take a feature written only in names that spell the route", async () => {
-			const layout = await layoutOf(["src/Inventory/Save@server.luau"]);
+			const layout = await layoutOf(["src/Inventory/Save@Server.luau"]);
 
 			expect(
 				layout.featureMaking(["ServerScriptService", "Inventory"])
@@ -129,15 +158,9 @@ describe("SyncbackLayout", () => {
 	});
 
 	describe("folderNameFor", () => {
-		it("should spell the routing folder as the project does, else as the key", async () => {
-			const layout = await layoutOf(["src/A/server/X.luau"], {
-				routes: {
-					Server: "ServerScriptService",
-					"*": "ReplicatedStorage",
-				},
-			});
+		it("should name the routing folder after the key when no file shows a spelling", async () => {
+			const layout = await layoutOf(["src/A/Server/X.luau"]);
 
-			expect(layout.folderNameFor("Server")).toBe("server");
 			expect(layout.folderNameFor("Client")).toBe("Client");
 		});
 

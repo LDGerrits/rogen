@@ -79,6 +79,16 @@ error: source path "src" is listed twice; a file under it would belong to both. 
 
 Remove one of the entries.
 
+### `config.duplicateKey` [#config-duplicatekey]
+
+Error. A route key, or one of Rogen's own keys such as `routes`, is written more than once in one object. JSON keeps only the last copy, so the first is lost without a word, and a `Server` route written twice sends the folder wherever the second one says.
+
+```
+error: route "Server" is written more than once, and JSON keeps only the last, so this one is lost. Remove it. (config.duplicateKey)
+```
+
+The error points at each copy JSON drops, so remove the copies you don't mean or merge them into the last. Rojo keeps the last copy of its own keys, such as `name` or a child of the `tree`, without a word, so Rogen leaves those as Rojo reads them.
+
 ### `config.nestedSourcePath` [#config-nestedsourcepath]
 
 Error. One source path is inside another, so the files in it would belong to both.
@@ -146,20 +156,20 @@ Fix the rule as the message says.
 
 ### `config.invalidRouteKey` [#config-invalidroutekey]
 
-Error. A route key has a character that isn't a letter or a digit, or it starts with a digit. Keys appear in folder and file names, so they must match exactly.
+Error. A route key is neither a name nor a file-name pattern. A name is letters and digits that start with a letter, because it appears in folder and file names. A pattern such as `*.tsx`, `*Controller.*` or `*[Ss]ervice` is a glob in Rojo's syntax on the characters of a file name: `*`, `?`, a closed `[...]` class and a closed `{a,b}` group with none nested, but no `/`, `**`, `@` or parentheses, since it matches a file's name and never its path.
 
 ```
-error: route key "ser-ver" is invalid: use letters and digits only, starting with a letter. (config.invalidRouteKey)
+error: route key "ser-ver" is invalid: a name uses letters and digits only, starting with a letter, and a file-name pattern is a glob on the name, such as "*.tsx" or "*[Ss]ervice". (config.invalidRouteKey)
 ```
 
-Rename the key, for example to `server`. See [Routing](/docs/v2/routing).
+Rename the key, for example to `server`, or write the pattern on the file name alone. See [Routing](/docs/v2/routing).
 
 ### `config.ambiguousKey` [#config-ambiguouskey]
 
-Error. Two declared keys differ only in the case of their first letter. A name matches a key whose first letter is in either case, so both keys would match the same folders.
+Error. Two declared keys differ only in letter case. A name spelled one way would read as a misspelling of the other, and Rojo's `.server` and `.client` would name both.
 
 ```
-error: "Server" and "server" differ only in the case of their first letter, so both would match the same names; keep one of them. (config.ambiguousKey)
+error: "SERVER" and "server" differ only in letter case, so a name spelled one way would read as a misspelling of the other; keep one of them. (config.ambiguousKey)
 ```
 
 Keep one of the keys. See [How Routing Works](/docs/v2/routing).
@@ -203,12 +213,12 @@ Remove the extra slash, or name the folder. See [Routes](/docs/v2/config#routes)
 Warning. No route matches the file, and the config has no `*` route, so Rogen leaves the file out of the project file.
 
 ```
-warning: matched no route, so it is left out. Move it into src/Shop/Server, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route. (route.unrouted)
+warning: matched no route, so it is left out. Move it into a routing folder of its feature, as src/Shop/Server, end its name with a route's @ suffix (@Server, @Client or @Shared), or declare a "*" route. (route.unrouted)
 ```
 
 Do one of these:
 
-- Move the file into one of the routing folders that the message names.
+- Move the file into a routing folder of its feature, as the message names one.
 - Add an `@key` suffix to the file's name.
 - Declare a `"*"` route, if every file like this one belongs in one place.
 
@@ -216,61 +226,42 @@ The message names the routing folders of the file's feature. The feature is the 
 
 ### `route.strayAt` [#route-strayat]
 
-Warning. A name, folder or marker file has an `@` that doesn't route, so the `@` stays in the instance name. This happens in two cases:
+Error. A name, folder or marker file has an `@` that doesn't route. An `@` can only mean a route, so Rogen stops rather than send the file where its route doesn't reach, such as server code to clients. This happens in two cases:
 
-- The text after the `@` nearly spells a declared route key, with a typo or the wrong letter case.
+- The text after the `@` nearly spells a declared route key, with a typo or the wrong letter case, in a file, a folder or a marker file such as `@SERVER`.
 - The text spells a route key, but it isn't at the end of the name, as in `Report@server.bak.luau`.
 
 ```
-warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)
-  src/Inventory/Load@SERVER.luau (did you mean "@server"?)
-  src/Inventory/Report@server.bak.luau ("@server" must end the name)
+error: 2 names have an "@" that misses its route, so Rogen stops until they are fixed: (route.strayAt)
+  src/Inventory/Load@SERVER.luau ("@SERVER" names no route; did you mean "@server"?)
+  src/Inventory/Report@server.bak.luau ("@server" must end the name to route it)
 ```
 
-Rename the file to the spelling that the message suggests, or move the `@key` to the end of the name. In `--json`, `fixes` holds the rename when exactly one key is closest.
+Rename the file to the spelling that the message suggests, or move the `@key` to the end of the name. In `--json`, `fixes` holds the rename when exactly one key is closest and nothing is at that name already. Inside a folder that another route already governs, an `@` for another route would do nothing however it is spelled, so it is [`route.ignoredAt`](#route-ignoredat) instead, with no rename to follow.
 
 Rogen doesn't report an `@` that is nowhere near a route key, such as the `@` in a package name like `@rbxts`. See [The `@` Suffix](/docs/v2/routing/names#the--suffix).
 
 ### `route.dotRoute` [#route-dotroute]
 
-Warning. A name has a route key after a dot, where only `@` routes, so the key routes nothing. The name is one of these:
+Error. A name writes a route key after a dot where a dot can only have meant a route, so the key routes nothing, and Rogen stops until it is fixed. The name is one of these:
 
-- a dot-file such as `.server`, which isn't a marker file
-- a dot-folder such as `.server/`, which isn't a routing folder
-- a name with a dot part, such as `Types.shared.luau` or `Net.server/`, which stays in the name
+- a dot-file named for a key, such as `.server`, which isn't a marker file
+- a dot-folder named for a key, such as `.server/`, which isn't a routing folder
+- Rojo's `.server` or `.client` where Rojo doesn't read it: in another letter case, as `Main.Server.luau`, which Rojo makes a ModuleScript named `Main.Server`; on a data file or model, as `Config.server.json`, since only a script has a class; or on a folder, as `Net.server/`
 
-What the name covers falls through to the route above it, or to `*`. The key matches in any letter case, so `.SERVER/` and `Types.SHARED.luau` warn too.
+Rojo's `.server` and `.client` at the end of a script's name in lower case route, and Rogen never reports them. Any other key after a dot stays in the name with no report, since a tool's own suffix may spell it: `Button.story.luau` beside a `Story` route, or `Types.shared.luau`, is a module of that name.
 
 ```
-warning: 2 names write a route key after a dot, where only "@" routes, so they route nothing: (route.dotRoute)
+error: 2 names write a route key after a dot, where only "@" routes, so Rogen stops until they are fixed: (route.dotRoute)
   src/Inventory/.server (write "@server")
-  src/Inventory/Types.shared.luau (write "Types@shared.luau")
+  src/Inventory/Main.Server.luau (write "Main.server.luau")
 ```
 
-Rename each one to its `@` form. A marker file becomes `@server`, a folder becomes `@server/`, and a name becomes `Types@shared.luau` or `Config@server.json`. In `--json`, `fixes` holds the rename.
+Rename each one as the message says. A marker file becomes `@server`, a folder becomes `Net@server/`, a script takes Rojo's lower case, and a data file becomes `Config@server.json`. In `--json`, `fixes` holds the rename.
 
 A name inside a folder that a route already governs gets no rename, because `@server` there would be a [`route.ignoredAt`](#route-ignoredat) error. Its message says which route governs it, and tells you to move it out of that route's files.
 
-Rojo's `.server` and `.client` at the end of a script's name still route, and Rogen never reports them. Two limits apply:
-
-- Only lowercase counts. Rojo reads `Main.Server.luau` as a ModuleScript named `Main.Server`, so Rogen suggests `Main.server.luau`.
-- Only scripts count. A data file or a model has no `.server` or `.client` handling, so `Config.server.json` is a ModuleScript named `Config.server`, and it warns.
-
 See [Marker Files](/docs/v2/routing/names#marker-files).
-
-### `route.folderTypo` [#route-foldertypo]
-
-Warning. A folder's name is one edit away from a declared route key, such as `Sever/` when `Server` is a key. Rogen reads it as an ordinary folder, so its files fall through to the route above it, or to `*`.
-
-```
-warning: 1 folder is one edit from a declared route key, so it is read as an ordinary folder: (route.folderTypo)
-  src/Inventory/Sever (did you mean "Server"?)
-Rename a folder to the route key if it should route; a folder named as it is stays an ordinary folder.
-```
-
-Rename the folder to the key that the message suggests. If the typo is in your config, fix the key in `routes` instead. In `--json`, `fixes` holds the rename when exactly one key is closest.
-
-One edit is one letter added, removed or changed, or two neighbouring letters swapped, as in `Sevrer/`. A plural counts too. `Servers/` is an ordinary folder, so it warns. Rename it if its files belong under the route. Rogen compares the name without its parentheses and its `^`. It matches only keys of four letters or more, because shorter keys are one edit from real words. A name that matches a key in a different letter case gets [`route.caseMismatch`](#route-casemismatch) instead.
 
 ### `route.markerClash` [#route-markerclash]
 
@@ -284,11 +275,33 @@ Delete the marker that you don't want. Or move part of the folder into a subfold
 
 Two markers for the same route are fine. An init script's route routes only the script, so `init@server.luau` beside `init@client.luau` doesn't clash. See [Marker Files](/docs/v2/routing/names#marker-files).
 
+### `route.patternClash` [#route-patternclash]
+
+Error. Two or more pattern routes match a file's name with as many characters that aren't `*`, and they send it to different places. The pattern with more such characters wins, so `*.story.tsx` beats `*.tsx`, where `?` and a class such as `[Ss]` count as one character, but nothing decides a tie. Not even the order of the routes: an editor or tool may reorder a JSON object's keys.
+
+```
+error: "*.ts" and "*Ui.*" both match this name, are as long as each other, and send it to different places. Lengthen the pattern that should win, or route the file with a folder or an @ name. (route.patternClash)
+```
+
+Make the pattern that should win more specific, as in `*Ui.ts`, or route the file with a [routing folder](/docs/v2/routing/folders) or an `@` name, which beat every pattern. Patterns that send a file to the same place don't clash. See [Patterns](/docs/v2/routing/names#patterns).
+
+### `route.folderPattern` [#route-folderpattern]
+
+Warning. A folder with an init script goes to `*` though its name matches a pattern route, as `InputController/init.luau` under a `*Controller` pattern. A pattern routes files by name and never a folder, and an init script is its folder, so the script and every file in the folder go to `*`, which can ship server code to clients.
+
+```
+warning: matches the pattern "*Controller", but a pattern never routes a folder or its init script, so it and its files go to "*". Name it InputController@Client to route it there. (route.folderPattern)
+```
+
+A folder of plain files gets this warning too when a pattern without a `*` matches its name, as `server/` under `[Ss]erver`. Such a pattern names a whole word, so a folder spelled that way was most likely meant to route its files, and those that no route takes go to `*` instead. Only the outermost such folder warns, and a folder that already has an error for its name, such as [`route.caseMismatch`](#route-casemismatch), doesn't. A pattern with a `*`, such as `*Controller`, doesn't warn about a folder of plain files, since `ShopController/` may just be a feature's name.
+
+Rename the folder with the `@` of the route key that has the pattern's target, as `InputController@Client/`. In `--json`, `fixes` holds that rename when one route key has the target. When no name key has the target, add one to `routes` and name the folder for it, as a `Server` key and a `Server/` folder. See [Patterns](/docs/v2/routing/names#patterns).
+
 ### `route.ignoredAt` [#route-ignoredat]
 
 Error. A name or marker file has an `@key` that does nothing, so the name says the file goes somewhere that it doesn't. This happens in two cases:
 
-- The file is inside a folder that another route already governs. Only the outermost route acts.
+- The file is inside a folder that another route already governs. Only the outermost route acts. This is so for an `@` that only nearly spells a key too, as `Server/Up@client.luau`, since fixing its spelling wouldn't route it.
 - The `@key` comes before another `@key` in the same name, as in `Net@client@server/`. Only the last `@key` in a name routes.
 
 ```
@@ -297,7 +310,7 @@ error: "@client" does nothing here, because the "server" route already governs t
 
 Remove the `@key`, or move the file out of the governing route's folder. Rogen offers no automatic fix, because the right choice depends on where the code should run.
 
-An `@` that restates the governing route is fine, as in `Shared/Net/Remote@shared.luau`. Rogen also reports a file that another file replaces, because its name is wrong either way. See [The Outermost Route Wins](/docs/v2/routing#the-outermost-route-wins).
+An `@` that restates the governing route is fine, as in `Shared/Net/Remote@Shared.luau`. Rogen also reports a file that another file replaces, because its name is wrong either way. See [The Outermost Route Wins](/docs/v2/routing#the-outermost-route-wins).
 
 ### `route.scriptSuffixBeforeAt` [#route-scriptsuffixbeforeat]
 
@@ -337,17 +350,17 @@ Do what the message says.
 
 ### `route.caseMismatch` [#route-casemismatch]
 
-Warning. A folder or marker file matches a declared key except for the letter case after the first letter. Rogen reads it as an ordinary name.
+Error. A folder matches a declared key except for letter case. Keys match exactly, so it would route nothing and its files would go to `*`, which can ship server code to clients. A folder that a route above it, or a marker in it, already routes is left alone, since its name places nothing there. A marker file or `@` name in another case is [`route.strayAt`](#route-strayat).
 
 ```
-warning: differs from the route "shared" only in letter case, so it is read as an ordinary name. Spell it "shared" or "Shared", or declare it as written. (route.caseMismatch)
+error: "SHARED" differs from the route "shared" only in letter case, so it would route nothing and its files would go to "*". Spell it "shared". (route.caseMismatch)
 ```
 
-Rename it to the key, as `@Shared` for a marker file. If it should route as it is written, declare that spelling as a key. Rogen offers no automatic fix, because a name like `SHARED/` can be an ordinary folder on purpose. See [How Routing Works](/docs/v2/routing).
+Rename the folder to the key. In `--json`, `fixes` holds that rename unless a folder of that name is already beside it. To keep the folder's spelling, rename the key in `routes` instead, and every folder spelled the old way with it, since two keys can't differ only in case. In a script folder, such as a library's `Net/server/` beside `Net/init.luau`, the folder may be a child the script requires, so the message also names the marker file that keeps it with the script, as `@Shared` in it, and `fixes` holds no rename. `rogen init` renames a project's folders to one spelling when it lifts it. See [How Routing Works](/docs/v2/routing).
 
 ### `route.serverCodeShipped` [#route-servercodeshipped]
 
-Warning. A file is in a plain folder named after a server route, such as `Server/` or `(Server)/`, but an outer route outranks that folder. The outer route places the file, and that route replicates to clients. Server code under `Shared/` ships to every client.
+Warning. A file is in a plain folder named after a server route in any letter case, such as `Server/`, `server/` or `(Server)/`, but an outer route outranks that folder. The outer route places the file, and that route replicates to clients. Server code under `Shared/` ships to every client.
 
 ```
 warning: ships to clients as ReplicatedStorage/Shared/Server/Datastore: move it out of the "Shared" route's files if it's server code, or keep it there with a "@Shared" marker file in its folder (route.serverCodeShipped)
@@ -355,9 +368,9 @@ warning: ships to clients as ReplicatedStorage/Shared/Server/Datastore: move it 
 
 Move the file out of the replicating route's folder, for example from `Shared/Server/` to `Server/`.
 
-If the folder should replicate, put a marker file in it that restates the governing route, such as `Shared/Server/@shared`. The marker covers every file below it. To cover one file, name it like `Secret@shared.luau`.
+If the folder should replicate, put a marker file in it for the route that places it, such as `Shared/Server/@Shared`, or `@Shared` in a library's `Net/server/`. The marker covers every file below it. To cover one file, name it like `Secret@Shared.luau`.
 
-A route written with `@`, as in `Shared/Data@server.luau`, gets the [`route.ignoredAt`](#route-ignoredat) error instead. See [The Outermost Route Wins](/docs/v2/routing#the-outermost-route-wins).
+A route written with `@`, as in `Shared/Data@Server.luau`, gets the [`route.ignoredAt`](#route-ignoredat) error instead. See [The Outermost Route Wins](/docs/v2/routing#the-outermost-route-wins).
 
 ## Tree
 
@@ -377,17 +390,17 @@ A `$` later in a name, as in `Cost$`, is fine. So is a file inside a folder that
 
 ### `tree.instanceClash` [#tree-instanceclash]
 
-Warning. Two files in one source path become the same instance, such as `Types.lua` and `Types.luau`. The last one takes the instance, and Rogen leaves the other out.
+Warning, or error. Two files in one source path become the same instance, such as `Types.lua` and `Types.luau`, or two `^` files that hoist to one place. Rojo would keep both, but the project file can name one, so the build would lose the other, and this stops the write.
 
 ```
-warning: becomes "ReplicatedStorage/shared/Inventory/Types", as src/Inventory/Types.luau does, which takes its place. Rename one of them to keep both. (tree.instanceClash)
+error: becomes "ReplicatedStorage/shared/Inventory/Types", as src/Inventory/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both. (tree.instanceClash)
 ```
 
 Rename or delete one of the files. In `--json`, `related` names the file that takes the instance. `rogen where` shows the left-out file as `replaced by`.
 
 Across source paths, the last file wins without a warning. That is how a later source path replaces a file of an earlier one.
 
-Rojo reads one init file per folder, such as `init.luau` before `init.server.luau`, wherever their routes send them. The others get this warning, and to give each side its own init script you name them with `@`, as in `init@server.luau`:
+Rojo reads one init file per folder, such as `init.luau` before `init.server.luau`, wherever their routes send them. As that is Rojo's own behaviour, the others only get this warning, and to give each side its own init script you name them with `@`, as in `init@server.luau`:
 
 ```
 warning: is an init file of src/Net, as src/Net/init.luau is, and Rojo reads only that one. To give each side its own init script, name them with @, as init@server.server.luau. (tree.instanceClash)
@@ -728,6 +741,16 @@ warning: Rojo reads an extension only in lowercase, so it ignores this file. Ren
 ```
 
 Rename the file as the message says. This applies to `.JSON`, `.MODEL.JSON` and every other extension that Rojo reads.
+
+### `scan.uncompiled` [#scan-uncompiled]
+
+Warning. A `.ts` or `.tsx` file sits in a source path, but the config has no `compiledPath`. Rojo never reads TypeScript itself, only the Luau a compiler such as roblox-ts writes for it, so the file is left out.
+
+```
+warning: is TypeScript, which Rojo never reads itself, and the config has no "compiledPath", so it is left out. Set "compiledPath" to the folder roblox-ts writes, as "out", or remove the file. (scan.uncompiled)
+```
+
+In a roblox-ts project, set `compiledPath` to the `outDir` of your `tsconfig.json`. Otherwise remove the file, or move it out of the source paths. A source path that holds nothing else gets [`scan.noSyncedFiles`](#scan-nosyncedfiles) instead. See [Config](/docs/v2/config).
 
 ### `scan.syncRuleSuffix` [#scan-syncrulesuffix]
 

@@ -393,5 +393,30 @@ describe("platform/config/config-file", () => {
 				expect(file.positionOfKey("k")).toBeUndefined();
 			});
 		});
+
+		describe("overriddenKeys", () => {
+			it("should return every copy of a key but the last, in the object at the section", async () => {
+				const file = (
+					await read(`{
+	"words": { "k": "1", "j": "2", "k": "3", "k": "4" },
+	"words": { "a": "1", "a": "2" }
+}`)
+				).unwrap();
+
+				expect(file.overriddenKeys([])).toEqual([
+					{ name: "words", position: { line: 2, column: 2 } },
+				]);
+				expect(file.overriddenKeys("words")).toEqual([
+					{ name: "a", position: { line: 3, column: 13 } },
+				]);
+			});
+
+			it("should return nothing for a section that is no object", async () => {
+				const file = (await read(`{ "list": ["a", "a"] }`)).unwrap();
+
+				expect(file.overriddenKeys("list")).toEqual([]);
+				expect(file.overriddenKeys("missing")).toEqual([]);
+			});
+		});
 	});
 });

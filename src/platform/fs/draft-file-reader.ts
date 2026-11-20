@@ -7,11 +7,13 @@ import {
 	isMissingPath,
 } from "./file-system-service.js";
 
-/** What a run would change on disk, by absolute path: files with their content, folders it makes, and renames. */
+/** What a run would change on disk, by absolute path: files with their content, folders it makes, renames and removals. */
 export interface FileDraft {
 	readonly files: ReadonlyMap<string, string>;
 	readonly directories: readonly string[];
 	readonly moves: readonly { readonly from: string; readonly to: string }[];
+	/** Files and folders it removes, unless it writes them again. */
+	readonly removed?: readonly string[];
 }
 
 /** Reads `base` as it would be once `draft` is written, and writes nothing: a file service for a scope that only checks. */
@@ -21,6 +23,7 @@ export class DraftFileReader implements FileSystemService {
 	private readonly files = new Map<string, string>();
 	private readonly folders = new Set<string>();
 	private readonly moves: readonly { from: string; to: string }[];
+	private readonly removed: readonly string[];
 
 	constructor(
 		draft: FileDraft,
@@ -30,13 +33,15 @@ export class DraftFileReader implements FileSystemService {
 			from: path.resolve(from),
 			to: path.resolve(to),
 		}));
+		this.removed = (draft.removed ?? []).map((at) => path.resolve(at));
 		for (const [file, content] of draft.files) {
 			this.files.set(path.resolve(file), content);
 			this.addFolders(path.dirname(path.resolve(file)));
 		}
 		for (const directory of draft.directories)
 			this.addFolders(path.resolve(directory));
-		for (const { to } of this.moves) this.addFolders(path.dirname(to));
+		for (const [index, { to }] of this.moves.entries())
+			this.addFolders(path.dirname(this.movedOn(to, index + 1)));
 	}
 
 	async exists(filePath: string): Promise<boolean> {
@@ -114,11 +119,14 @@ export class DraftFileReader implements FileSystemService {
 		for (const [name, type] of listed ?? [])
 			if (this.sourceOf(path.join(resolved, name)) !== undefined)
 				entries.set(name, type);
-		for (const { from, to } of this.moves)
-			if (path.dirname(to) === resolved) {
-				const type = await this.baseTypeOf(from);
-				if (type !== undefined) entries.set(path.basename(to), type);
-			}
+		for (const [index, { to }] of this.moves.entries()) {
+			const landed = this.movedOn(to, index + 1);
+			if (path.dirname(landed) !== resolved) continue;
+			const from = this.sourceOf(landed);
+			const type =
+				from === undefined ? undefined : await this.baseTypeOf(from);
+			if (type !== undefined) entries.set(path.basename(landed), type);
+		}
 		for (const file of this.files.keys())
 			if (path.dirname(file) === resolved)
 				entries.set(path.basename(file), FileType.File);
@@ -156,14 +164,27 @@ export class DraftFileReader implements FileSystemService {
 		}
 	}
 
-	/** Where `resolved` is read from in `base`: a path a move takes it to reads from where it was, and a path it takes away reads from nowhere. */
+	/** Where the moves from the one at `next` on take `at`. */
+	private movedOn(at: string, next: number): string {
+		let moved = at;
+		for (const { from, to } of this.moves.slice(next))
+			if (moved === from || isInside(moved, from))
+				moved = path.join(to, path.relative(from, moved));
+		return moved;
+	}
+
+	/** Where `resolved` is read from in `base`, the moves undone from the last: a path a move takes it to reads from where it was, and a path a move or a removal takes away reads from nowhere. */
 	private sourceOf(resolved: string): string | undefined {
-		for (const { from, to } of this.moves)
-			if (resolved === to || isInside(resolved, to))
-				return path.join(from, path.relative(to, resolved));
-		for (const { from } of this.moves)
-			if (resolved === from || isInside(resolved, from)) return undefined;
-		return resolved;
+		const within = (at: string, folder: string) =>
+			at === folder || isInside(at, folder);
+		if (this.removed.some((gone) => within(resolved, gone)))
+			return undefined;
+		let at = resolved;
+		for (const { from, to } of [...this.moves].reverse()) {
+			if (within(at, to)) at = path.join(from, path.relative(to, at));
+			else if (within(at, from)) return undefined;
+		}
+		return at;
 	}
 
 	private addFolders(folder: string): void {

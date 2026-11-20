@@ -141,16 +141,21 @@ const foundBy = (outcome: ConfigOutcome): Diagnostic[] => [
 	...outcome.errors,
 ];
 
-const warningsOf = (plan: InitPlan) =>
+const warningsOf = (plan: InitPlan, cwd: string) =>
 	plan.warnings.length > 0
-		? { warnings: plan.warnings.map(diagnosticToJson) }
+		? {
+				warnings: plan.warnings.map((diagnostic) =>
+					diagnosticToJson(diagnostic, cwd)
+				),
+			}
 		: {};
 
 export interface InitReporter {
 	begin(plan: InitPlan): void;
 	written(item: InitWritten): void;
 	failed(error: Error): Result<void, Error>;
-	done(plan: InitPlan, run: WriteRun): Result<void, Error>;
+	/** The end of a run; `inCode` when the check before it found errors in the project's code, which stop the write. */
+	done(plan: InitPlan, run: WriteRun, inCode: boolean): Result<void, Error>;
 	/** The end of a dry run, which `written` told what it would write. */
 	planned(plan: InitPlan): Result<void, Error>;
 }
@@ -225,7 +230,7 @@ export class InitLog implements InitReporter {
 		}
 		if (item.kind === "move") {
 			this.logService.success(
-				`${this.dryRun ? "Would rename" : "Renamed"} ${this.shown(item.move.from)} to ${this.shown(item.move.to)}.`
+				`${this.dryRun ? "Would rename" : "Renamed"} ${this.shown(item.move.from)} to ${this.shown(item.move.to)}${item.move.reason ? `, ${item.move.reason}` : ""}.`
 			);
 			return;
 		}
@@ -244,7 +249,7 @@ export class InitLog implements InitReporter {
 	planned(plan: InitPlan): Result<void, Error> {
 		const renames =
 			plan.moves.length > 0
-				? ` and rename ${plural(plan.moves.length, "file")}`
+				? ` and make ${plural(plan.moves.length, "rename")}`
 				: "";
 		this.logService.outro(
 			`Would write ${plural(plan.files.length, "file")}${renames}. Nothing was written.`
@@ -252,17 +257,17 @@ export class InitLog implements InitReporter {
 		return ok(undefined);
 	}
 
-	done(plan: InitPlan, run: WriteRun): Result<void, Error> {
+	done(plan: InitPlan, run: WriteRun, inCode: boolean): Result<void, Error> {
 		for (const outcome of run.outcomes)
 			this.outcomeLog.outcome(outcome, foundBy(outcome));
 		const files = plural(plan.files.length, "file");
 		if (run.errors.length > 0) {
 			this.logService.outro(
-				`Wrote ${files}, but writing the project file failed.${
+				`Wrote ${files}, but ${inCode ? "errors in the code stop the project file" : "writing the project file failed"}.${
 					plan.liftedFrom
 						? ` ${plan.liftedFrom} is as it was, so Rojo still reads it.`
 						: ""
-				} Fix default.rogen.json and run rogen write.`
+				} ${inCode ? "Fix the errors above" : "Fix default.rogen.json"} and run rogen write.`
 			);
 			return err(new ReportedError(new DiagnosticsError(run.errors)));
 		}
@@ -391,7 +396,7 @@ export class InitJsonLog implements InitReporter {
 		return this.print({
 			...this.writtenSoFar(),
 			notes: plan.notes,
-			...warningsOf(plan),
+			...warningsOf(plan, this.cwd),
 			nextSteps: plan.nextSteps,
 		});
 	}
@@ -405,8 +410,8 @@ export class InitJsonLog implements InitReporter {
 				changed: written.changed || projects.changed,
 				projects: projects.configs,
 				notes: plan.notes,
-				...warningsOf(plan),
-				nextSteps: plan.nextSteps,
+				...warningsOf(plan, this.cwd),
+				...(run.errors.length === 0 && { nextSteps: plan.nextSteps }),
 			},
 			DiagnosticsError.of(run.errors)
 		);

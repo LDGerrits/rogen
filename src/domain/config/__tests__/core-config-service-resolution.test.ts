@@ -249,13 +249,52 @@ describe("CoreConfigService", () => {
 
 				expect(problems).toEqual([
 					[
-						'route key "my-key" is invalid: use letters and digits only, starting with a letter.',
+						'route key "my-key" is invalid: a name uses letters and digits only, starting with a letter, and a file-name pattern is a glob on the name, such as "*.tsx" or "*[Ss]ervice".',
 						"/repo/default.rogen.json",
 						3,
 						13,
 					],
 				]);
 			});
+
+			it("should accept a file-name pattern as a route key", async () => {
+				expect(
+					await diagnosticsFor({
+						routes: {
+							"*.tsx": "StarterPlayer/StarterPlayerScripts",
+							"*Controller.*":
+								"StarterPlayer/StarterPlayerScripts",
+						},
+					})
+				).toEqual([]);
+			});
+
+			it.each([
+				[
+					"src/*.tsx",
+					'a pattern matches a file\'s name, never its path, so it has no "/"; ',
+				],
+				["**.tsx", 'a pattern matches one name, so no "**"; '],
+				["*[Ss", 'a "[" needs its "]"; '],
+				["*{Ui,Hud", 'a "{" needs its "}", with no "{" inside; '],
+				["*{a,{b,c}}", 'a "{" needs its "}", with no "{" inside; '],
+				[
+					"*@client",
+					'a key is the name an "@" spells, so it has no "@" itself; ',
+				],
+				["Shop-Thing", ""],
+			])(
+				"should reject %j, saying what is wrong with it before the rule",
+				async (key, problem) => {
+					const problems = await diagnosticsFor({
+						routes: { [key]: "ServerScriptService" },
+					});
+
+					expect(problems.map(([message]) => message)).toEqual([
+						`route key "${key}" is invalid: ${problem}a name uses letters and digits only, starting with a letter, and a file-name pattern is a glob on the name, such as "*.tsx" or "*[Ss]ervice".`,
+					]);
+				}
+			);
 
 			it("should accept the fallback route key", async () => {
 				expect(
@@ -295,30 +334,19 @@ describe("CoreConfigService", () => {
 				).toEqual([]);
 			});
 
-			it("should reject two route keys that differ only in the case of their first letter", async () => {
+			it("should reject two route keys that differ only in letter case", async () => {
 				const problems = await diagnosticsFor(`{
-	"routes": { "server": "ServerScriptService", "Server": "Workspace" }
+	"routes": { "server": "ServerScriptService", "SERVER": "Workspace" }
 }`);
 
 				expect(problems).toEqual([
 					[
-						'"Server" and "server" differ only in the case of their first letter, so both would match the same names; keep one of them.',
+						'"SERVER" and "server" differ only in letter case, so a name spelled one way would read as a misspelling of the other; keep one of them.',
 						"/repo/default.rogen.json",
 						2,
 						57,
 					],
 				]);
-			});
-
-			it("should accept keys that differ beyond the first letter", async () => {
-				expect(
-					await diagnosticsFor({
-						routes: {
-							server: "ServerScriptService",
-							SERVER: "Workspace",
-						},
-					})
-				).toEqual([]);
 			});
 
 			it("should reject a route target whose service is unsupported", async () => {
@@ -367,6 +395,51 @@ describe("CoreConfigService", () => {
 						25,
 					],
 				]);
+			});
+
+			it("should reject a route written more than once, at each copy JSON drops", async () => {
+				const problems = await diagnosticsFor(`{
+	"routes": {
+		"Server": "ServerScriptService",
+		"Server": "ReplicatedStorage",
+		"Server": "ReplicatedFirst"
+	}
+}`);
+
+				expect(problems).toEqual(
+					[3, 4].map((line) => [
+						'route "Server" is written more than once, and JSON keeps only the last, so this one is lost. Remove it.',
+						"/repo/default.rogen.json",
+						line,
+						3,
+					])
+				);
+			});
+
+			it("should reject a Rogen key written twice", async () => {
+				const problems = await diagnosticsFor(`{
+	"routes": { "Server": "ServerScriptService" },
+	"routes": { "Client": "ReplicatedFirst" }
+}`);
+
+				expect(problems).toEqual([
+					[
+						'"routes" is written more than once, and JSON keeps only the last, so this one is lost. Remove it.',
+						"/repo/default.rogen.json",
+						2,
+						2,
+					],
+				]);
+			});
+
+			it("should leave a Rojo key written twice to Rojo, which keeps the last", async () => {
+				const problems = await diagnosticsFor(`{
+	"name": "first",
+	"name": "game",
+	"routes": { "Server": "ServerScriptService" }
+}`);
+
+				expect(problems).toEqual([]);
 			});
 
 			it("should catch the nesting whichever order the source paths come in", async () => {

@@ -1,0 +1,6 @@
+$ rogen write
+exit 1
+stdout: (not shown)
+stderr:
+  error: default.project.json · not written
+  src/Combat/server - error: "server" differs from the route "Server" only in letter case, so it would route nothing and its files would go to "*". Spell it "Server". (route.caseMismatch)

@@ -162,6 +162,7 @@ export class PlacementLocator {
 			}),
 			route: file.route,
 			routeMatch: file.routeMatch,
+			...(file.routedBy && { routedBy: file.routedBy }),
 			...(file.hoisted && { hoisted: true }),
 			...(folderNodes.length > 0 && { folderNodes }),
 			...(code && { code }),
@@ -202,14 +203,19 @@ export class PlacementLocator {
 				];
 		}
 
-		if (index.getEntries(target))
+		if (index.getEntries(target)) {
+			const made = this.placement.emptyFolders.find(
+				({ folder }) => folder === target
+			);
 			return [
 				{
 					status: "empty",
 					source: target,
 					exists: this.exists(target),
+					...(made && { instancePath: made.instancePath }),
 				},
 			];
+		}
 		const exists =
 			index.hasEntry(
 				path.posix.dirname(target),

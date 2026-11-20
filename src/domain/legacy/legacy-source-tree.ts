@@ -91,6 +91,7 @@ export class LegacySourceTree {
 	/** Files whose new name is taken. */
 	readonly clashes: KeptName[] = [];
 	readonly outranked: OutrankedFile[] = [];
+	private readonly folderSpellings = new Map<string, Map<string, number>>();
 
 	constructor(
 		private readonly files: FileReader,
@@ -104,6 +105,22 @@ export class LegacySourceTree {
 		/** Where v1 put a file that a keyword routed. */
 		private readonly targetOf: (keyword: string) => string
 	) {}
+
+	/** How most routing folders spell `keyword`, in lower case; none when no folder routes by it. */
+	folderSpelling(keyword: string): string | undefined {
+		const spellings = this.folderSpellings.get(keyword);
+		if (!spellings) return undefined;
+		return [...spellings].reduce((most, entry) =>
+			entry[1] > most[1] ? entry : most
+		)[0];
+	}
+
+	private noteFolderSpelling(keyword: string, spelled: string): void {
+		const spellings =
+			this.folderSpellings.get(keyword) ?? new Map<string, number>();
+		spellings.set(spelled, (spellings.get(spelled) ?? 0) + 1);
+		this.folderSpellings.set(keyword, spellings);
+	}
 
 	async scan(sourcePaths: readonly string[]): Promise<this> {
 		for (const sourcePath of sourcePaths)
@@ -151,9 +168,13 @@ export class LegacySourceTree {
 		}
 		for (const [name, type] of entries) {
 			if (!isDirectoryType(type)) continue;
-			const word = name.replace(/^\((.*)\)$/, "$1").toLowerCase();
+			const spelled = name.replace(/^\((.*)\)$/, "$1");
+			const word = spelled.toLowerCase();
 			const routes = !flags.structure && this.keywords.has(word);
-			if (routes) this.used.add(word);
+			if (routes) {
+				this.used.add(word);
+				this.noteFolderSpelling(word, spelled);
+			}
 			await this.walk(path.join(folder, name), {
 				...(routes ? routedBy(flags, word) : flags),
 				tagged: flags.tagged || this.knownTags.has(word),

@@ -1,0 +1,47 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+stderr:
+  src/Hud/HudController - warning: matches the pattern "*Controller", but a pattern never routes a folder or its init script, so it and its files go to "*". Name it HudController@Client to route it there. (route.folderPattern)
+
+$ rogen where src
+exit 0
+stdout:
+  src/Hud/HudController/Bar@Client.luau -> StarterPlayer/StarterPlayerScripts/Hud/HudController/Bar · route Client (suffix)
+  src/Hud/HudController/Keys.luau -> ReplicatedStorage/Shared/Hud/HudController/Keys · route * (fallback)
+  src/Hud/HudController/init.luau -> ReplicatedStorage/Shared/Hud/HudController · route * (fallback) · also StarterPlayer/StarterPlayerScripts/Hud/HudController
+  src/Hud/init.luau -> ReplicatedStorage/Shared/Hud · route * (fallback) · also StarterPlayer/StarterPlayerScripts/Hud
+  src/Shop/Card.story.luau -> ReplicatedStorage/Stories/Shop/Card.story · route *.story.luau (pattern)
+  src/Shop/Kiosk@Server.luau -> ServerScriptService/Shop/Kiosk · route Server (suffix)
+  src/Shop/Prices.luau -> ReplicatedStorage/Shared/Shop/Prices · route * (fallback)
+  src/Shop/Shared/PriceService.luau -> ReplicatedStorage/Shared/Shop/PriceService · route Shared (folder)
+  src/Shop/ShopController.luau -> StarterPlayer/StarterPlayerScripts/Shop/ShopController · route *Controller (pattern)
+  src/Shop/ShopService.luau -> ServerScriptService/Shop/ShopService · route *Service.* (pattern)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Hud: ModuleScript  <- src/Hud/init.luau
+        HudController: ModuleScript  <- src/Hud/HudController/init.luau
+          Keys: ModuleScript  <- src/Hud/HudController/Keys.luau
+      Shop: Folder
+        PriceService: ModuleScript  <- src/Shop/Shared/PriceService.luau
+        Prices: ModuleScript  <- src/Shop/Prices.luau
+    Stories: Folder
+      Shop: Folder
+        Card.story: ModuleScript  <- src/Shop/Card.story.luau
+  ServerScriptService: ServerScriptService
+    Shop: Folder
+      Kiosk: ModuleScript  <- src/Shop/Kiosk@Server.luau
+      ShopService: ModuleScript  <- src/Shop/ShopService.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Hud: ModuleScript  <- src/Hud/init.luau
+        HudController: ModuleScript  <- src/Hud/HudController/init.luau
+          Bar: ModuleScript  <- src/Hud/HudController/Bar@Client.luau
+      Shop: Folder
+        ShopController: ModuleScript  <- src/Shop/ShopController.luau

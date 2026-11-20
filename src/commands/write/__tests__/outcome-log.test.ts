@@ -637,6 +637,29 @@ describe("OutcomeLog.diagnostics", () => {
 		]);
 	});
 
+	it("should print pattern clashes as one block, each file with its patterns and the fix said once", () => {
+		const clash = (file: string, keys: string) =>
+			errorDiagnostic(
+				"route.patternClash",
+				{ resource: `/repo/src/${file}` },
+				`${keys} both match this name, are as long as each other, and send it to different places. Lengthen the pattern that should win, or route the file with a folder or an @ name.`
+			);
+
+		expect(
+			printed([
+				clash("MainUi.ts", '"*.ts" and "*Ui.*"'),
+				clash("HudUi.ts", '"*.ts" and "*Ui.*"'),
+			])
+		).toEqual([
+			[
+				`${path.normalize("/repo/default.rogen.json")} - error: 2 files match patterns as long as each other that send them to different places: (route.patternClash)`,
+				'  /repo/src/MainUi.ts ("*.ts" and "*Ui.*")',
+				'  /repo/src/HudUi.ts ("*.ts" and "*Ui.*")',
+				"Lengthen the pattern that should win, or route the file with a folder or an @ name.",
+			].join("\n"),
+		]);
+	});
+
 	it("should list ten files of a block, then count the rest", () => {
 		const [text] = printed(warnings(12, "route.strayAt"));
 

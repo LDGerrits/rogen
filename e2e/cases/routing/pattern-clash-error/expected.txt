@@ -1,0 +1,13 @@
+$ rogen write
+exit 1
+stdout: (not shown)
+stderr:
+  error: default.project.json · not written
+  default.rogen.json - error: 1 file matches patterns as long as each other that send it to different places: (route.patternClash)
+    src/Shop/MainUi.lua ("*.lua" and "*Main*")
+  Lengthen the pattern that should win, or route the file with a folder or an @ name.
+
+$ rogen check
+exit 1
+stdout:
+  src/Shop/MainUi.lua - error: "*.lua" and "*Main*" both match this name, are as long as each other, and send it to different places. Lengthen the pattern that should win, or route the file with a folder or an @ name. (route.patternClash)

@@ -3,12 +3,12 @@
 
 This repo uses Rogen. Each `*.rogen.json` generates the Rojo project file beside it (`game.rogen.json` → `game.project.json`) from folder and file names, so a file's path on disk is not its path in the game, and adding, moving or deleting a file can leave the project file out of date.
 
-After you add, move, rename or delete files, or edit a `*.rogen.json`, run `rogen check <paths>` from the repo root. Fix each line it prints, or tell the user why it stays. When it says to run `rogen write`, run it.
+After you add, move, rename or delete files, or edit a `*.rogen.json`, run `rogen check <paths>` from the repo root. Fix each line it prints, or tell the user why it stays, and run it again until it prints nothing new: a fix can bring out the next problem. When it says to run `rogen write`, run it.
 
 ### Placing code
 
 - Name new files like their neighbours: same folders, `@` suffixes and casing. Run `rogen where <path>` to see where a file lands and how to require it.
-- A folder or `@` suffix named after a key in `routes` routes its contents: `Shop/Server/`, `Save@Server.luau`.
+- A folder or `@` suffix spelled exactly like a key in `routes` routes its contents: `Shop/Server/`, `Save@Server.luau`. A key with `*`, such as `*Controller`, routes files by name when nothing else does, never a folder or init script. A mistyped `@` stops the write.
 - The outermost route wins, so `Shared/Server/Save.luau` ships to clients. Keep server-only code under a server route.
 - In roblox-ts, import by relative path.
 

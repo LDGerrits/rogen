@@ -20,12 +20,12 @@ A coding agent doesn't know that Rogen generates the Rojo project file, so Rojo 
 
 This repo uses Rogen. Each `*.rogen.json` generates the Rojo project file beside it (`game.rogen.json` → `game.project.json`) from folder and file names, so a file's path on disk is not its path in the game, and adding, moving or deleting a file can leave the project file out of date.
 
-After you add, move, rename or delete files, or edit a `*.rogen.json`, run `rogen check <paths>` from the repo root. Fix each line it prints, or tell the user why it stays. When it says to run `rogen write`, run it.
+After you add, move, rename or delete files, or edit a `*.rogen.json`, run `rogen check <paths>` from the repo root. Fix each line it prints, or tell the user why it stays, and run it again until it prints nothing new: a fix can bring out the next problem. When it says to run `rogen write`, run it.
 
 ### Placing code
 
 - Name new files like their neighbours: same folders, `@` suffixes and casing. Run `rogen where <path>` to see where a file lands and how to require it.
-- A folder or `@` suffix named after a key in `routes` routes its contents: `Shop/Server/`, `Save@Server.luau`.
+- A folder or `@` suffix spelled exactly like a key in `routes` routes its contents: `Shop/Server/`, `Save@Server.luau`. A key with `*`, such as `*Controller`, routes files by name when nothing else does, never a folder or init script. A mistyped `@` stops the write.
 - The outermost route wins, so `Shared/Server/Save.luau` ships to clients. Keep server-only code under a server route.
 - In roblox-ts, import by relative path.
 
@@ -54,7 +54,7 @@ After you add, move, rename or delete files, or edit a `*.rogen.json`, run `roge
 
 ## Check Changed Files Automatically
 
-An agent can forget to run `rogen check`, so Rogen has a hook that runs it on the files changed in git when the agent ends its turn and sends each new warning back as the agent's next prompt. `rogen init --agent-hook`, or Customise in a terminal, writes the script to `.agents/hooks/rogen-check.mjs` and registers it with each agent it finds.
+An agent can forget to run `rogen check`, so Rogen has a hook that runs it on the files changed in git when the agent ends its turn and sends each new warning or error back as the agent's next prompt. A line it already sent stays quiet until the check stops printing it, so one that comes back after a fix is sent again. `rogen init --agent-hook`, or Customise in a terminal, writes the script to `.agents/hooks/rogen-check.mjs` and registers it with each agent it finds.
 
 <Accordions>
 <Accordion title="Register it by hand">
@@ -152,13 +152,13 @@ const run = (command, args) =>
 				stdio: ["ignore", "pipe", "ignore"],
 			});
 const check = run(rogen, ["check", ...changed]);
-const report = (check.stdout ?? "")
-	.split(/\r?\n/)
-	.filter((line) => line && !seen.includes(line));
+const lines = (check.stdout ?? "").split(/\r?\n/).filter(Boolean);
+const report = lines.filter((line) => !seen.includes(line));
+// Keep only what the check still prints, so a problem fixed and made again is new again.
+fs.writeFileSync(seenFile, lines.map((line) => `${line}\n`).join(""));
 if (!report.length) process.exit(0);
 
-const message = `Rogen warns about files you changed. Fix each, or tell the user why it stays:\n${report.join("\n")}`;
-fs.appendFileSync(seenFile, `${report.join("\n")}\n`);
+const message = `Rogen reports these about files you changed. Fix each, or tell the user why it stays:\n${report.join("\n")}`;
 console.log(
 	JSON.stringify(
 		process.argv[2] === "cursor"

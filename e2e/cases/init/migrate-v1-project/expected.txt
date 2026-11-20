@@ -10,10 +10,10 @@ written:
   AGENTS.md
   default.project.json
   default.rogen.json
-  src/Features/Anticheat/@Server
-  src/Features/Combat/Combat@Server.luau
-  src/Features/Combat/Hud@Client.luau
-  src/Features/Combat/Types@Shared.luau
+  src/Features/Anticheat/@server
+  src/Features/Combat/Combat@server.luau
+  src/Features/Combat/Hud@client.luau
+  src/Features/Combat/Types@shared.luau
 
 default.rogen.json:
 {
@@ -22,9 +22,9 @@ default.rogen.json:
     "src"
   ],
   "routes": {
-    "Server": "ServerScriptService/server",
-    "Client": "StarterPlayer/StarterPlayerScripts/client",
-    "Shared": "ReplicatedStorage/shared",
+    "server": "ServerScriptService/server",
+    "client": "StarterPlayer/StarterPlayerScripts/client",
+    "shared": "ReplicatedStorage/shared",
     "*": "ReplicatedStorage/shared"
   },
   "tree": {
@@ -47,7 +47,7 @@ survivors: DataModel
         Util: ModuleScript  <- src/Core/shared/Util.luau
       Features: Folder
         Combat: Folder
-          Types: ModuleScript  <- src/Features/Combat/Types@Shared.luau
+          Types: ModuleScript  <- src/Features/Combat/Types@shared.luau
   ServerScriptService: ServerScriptService
     server: Folder
       Features: Folder
@@ -55,7 +55,7 @@ survivors: DataModel
           Check: ModuleScript  <- src/Features/Anticheat/Check.luau
         Combat: Folder
           Boot: Script  <- src/Features/Combat/Boot.server.luau
-          Combat: ModuleScript  <- src/Features/Combat/Combat@Server.luau
+          Combat: ModuleScript  <- src/Features/Combat/Combat@server.luau
         Ragdoll: Folder
           RagdollService: ModuleScript  <- src/Features/Ragdoll/server/RagdollService.luau
   StarterPlayer: StarterPlayer
@@ -63,6 +63,6 @@ survivors: DataModel
       client: Folder
         Features: Folder
           Combat: Folder
-            Hud: ModuleScript  <- src/Features/Combat/Hud@Client.luau
+            Hud: ModuleScript  <- src/Features/Combat/Hud@client.luau
           Ragdoll: Folder
             RagdollController: ModuleScript  <- src/Features/Ragdoll/client/RagdollController.luau

@@ -323,7 +323,9 @@ export class WatchJsonLog implements WatchReporter {
 				config: configPath(this.cwd, notice.file),
 				...(notice.kind === "broken" && {
 					keptLastValid: notice.keptLastValid,
-					diagnostics: notice.errors.map(diagnosticToJson),
+					diagnostics: notice.errors.map((diagnostic) =>
+						diagnosticToJson(diagnostic, this.cwd)
+					),
 				}),
 			},
 		});

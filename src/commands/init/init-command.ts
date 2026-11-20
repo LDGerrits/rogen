@@ -1,4 +1,5 @@
 import { CancelledError, UsageError } from "../../base/errors.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { Result, err, ok } from "../../base/result.js";
 import { WriteRun } from "../../domain/write/write.js";
 import { WriteService } from "../../domain/write/write-service.js";
@@ -129,7 +130,7 @@ registerCommand(
 					output: { document: initDocumentShape },
 					effects: ["writesFiles"],
 					exitCodes: {
-						"1": "the folder can't be set up as asked, or you cancelled",
+						"1": "the folder can't be set up as asked, you cancelled, or errors in the code stop the project file (init still writes its own files)",
 						"128+N":
 							"stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP",
 					},
@@ -174,6 +175,9 @@ registerCommand(
 			if (!plan) return err(new CancelledError("init cancelled."));
 			const checked = await initService.check(plan);
 			if (checked.isErr()) return checked;
+			// A dry run stops where the write after a real run would.
+			if (dryRun && checked.value.length > 0)
+				return err(new DiagnosticsError(checked.value));
 
 			const reporter: InitReporter = line.options.json
 				? instantiationService.createInstance(
@@ -197,7 +201,7 @@ registerCommand(
 				plan
 			);
 			if (run.isErr()) return reporter.failed(run.error);
-			return reporter.done(plan, run.value);
+			return reporter.done(plan, run.value, checked.value.length > 0);
 		}
 
 		private async writeConfigs(

@@ -189,6 +189,38 @@ describe("WriteValidator rules", () => {
 				);
 			});
 
+			it("should name the compiled path a TypeScript project needs, as Rojo reads only what the compiler writes", async () => {
+				const [warning] = await unsynced([
+					"src/Main.ts",
+					"src/Hud.tsx",
+				]);
+
+				expect(warning.message).toBe(
+					'this source path places nothing: Rojo reads none of its files (Hud.tsx and Main.ts). Rojo reads only the Luau a compiler writes for TypeScript: set "compiledPath" to the folder roblox-ts writes, as "out".'
+				);
+			});
+
+			it("should name both fixes when TypeScript sits beside files of another unknown extension", async () => {
+				const [warning] = await unsynced(["src/A.ts", "src/B.lang"]);
+
+				expect(warning.message).toBe(
+					'this source path places nothing: Rojo reads none of its files (A.ts and B.lang). Rojo reads only the Luau a compiler writes for TypeScript: set "compiledPath" to the folder roblox-ts writes, as "out". For the other files, add a "syncRules" entry for their extension.'
+				);
+			});
+
+			it("should warn at each TypeScript file of a source path that places others, as it is left out", async () => {
+				await write("src/Shop/Hud.tsx", "src/Shop/Bag.luau");
+
+				expect(
+					(await route())
+						.unwrap()
+						.warnings.filter(
+							({ code }) => code === "scan.uncompiled"
+						)
+						.map(({ resource }) => resource)
+				).toEqual([abs("src/Shop/Hud.tsx")]);
+			});
+
 			it("should say a sync rule is enough under a compiled path", async () => {
 				const [warning] = await unsynced(["src/util.lang"], {
 					compiledPath: abs("out"),
@@ -361,12 +393,10 @@ describe("WriteValidator rules", () => {
 				expect(await named(["src"])).toEqual([]);
 			});
 
-			it("should read the name with its first letter in either case", async () => {
+			it("should not read a name in another letter case as the key", async () => {
 				await write("Server/Other.luau");
 
-				const [warning] = await named(["Server"]);
-
-				expect(warning.message).toContain('the "server" route');
+				expect(await named(["Server"])).toEqual([]);
 			});
 
 			it("should not stop the write from placing the files", async () => {
@@ -404,11 +434,39 @@ describe("WriteValidator rules", () => {
 					{
 						resource: at("src/server/Hud.client.luau"),
 						message:
-							"a LocalScript never runs in ServerScriptService",
+							'a LocalScript never runs in ServerScriptService: the "server" route governs this file, so ".client" routes nothing here',
 					},
 					{
 						resource: at("src/shared/Secret.server.luau"),
-						message: "a Script never runs in ReplicatedStorage",
+						message:
+							'a Script never runs in ReplicatedStorage: the "shared" route governs this file, so ".server" routes nothing here',
+					},
+				]);
+			});
+
+			it("should say .server and .client route nothing where no route has their name", async () => {
+				await write(
+					"src/Boot/Main.server.luau",
+					"src/Boot/Hud.client.luau"
+				);
+
+				expect(
+					await dead({
+						routes: {
+							Backend: "ServerScriptService",
+							"*": "ReplicatedStorage/shared",
+						},
+					})
+				).toMatchObject([
+					{
+						resource: at("src/Boot/Hud.client.luau"),
+						message:
+							'a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing',
+					},
+					{
+						resource: at("src/Boot/Main.server.luau"),
+						message:
+							'a Script never runs in ReplicatedStorage: no route is named "server", so ".server" routes nothing',
 					},
 				]);
 			});
@@ -466,7 +524,7 @@ describe("WriteValidator rules", () => {
 					{
 						resource: at("src/server/Hud.client.luau"),
 						message:
-							"a Script with RunContext Client never runs in ServerScriptService",
+							'a Script with RunContext Client never runs in ServerScriptService: the "server" route governs this file, so ".client" routes nothing here',
 					},
 				]);
 			});
@@ -787,12 +845,14 @@ describe("WriteValidator rules", () => {
 		});
 
 		describe("a script suffix before an @ suffix", () => {
-			const beforeAt = async () =>
-				(await route())
-					.unwrap()
-					.warnings.filter(
-						({ code }) => code === "route.scriptSuffixBeforeAt"
-					);
+			const beforeAt = async (overrides: ResolvedConfigSpec = {}) => {
+				const result = await route(overrides);
+				return (
+					result.isOk()
+						? result.value.warnings
+						: result.error.diagnostics
+				).filter(({ code }) => code === "route.scriptSuffixBeforeAt");
+			};
 
 			it("should warn that Rojo reads the file as a ModuleScript, with no rename when the suffix and the @ name different places", async () => {
 				await write(
@@ -849,7 +909,9 @@ describe("WriteValidator rules", () => {
 				async (extension) => {
 					await write(`src/Boot/Start.server@client.${extension}`);
 
-					expect(await beforeAt()).toMatchObject([
+					expect(
+						await beforeAt({ compiledPath: abs("out") })
+					).toMatchObject([
 						{
 							resource: abs(
 								`src/Boot/Start.server@client.${extension}`
@@ -905,7 +967,7 @@ describe("WriteValidator rules", () => {
 				});
 			});
 
-			it("should read the suffix as the route key it spells in another letter case", async () => {
+			it("should read the suffix as the route key it spells when the key is capitalised", async () => {
 				await write("src/Boot/Start.server@Server.luau");
 
 				const warnings = (
@@ -1103,7 +1165,7 @@ describe("WriteValidator rules", () => {
 			it("should warn of a meta file and a marker whose names Windows cannot hold", async () => {
 				await write(
 					"src/Foo?.meta.json",
-					"src/@ser:ver",
+					"src/@odd:name",
 					"src/Foo.luau"
 				);
 
@@ -1111,7 +1173,7 @@ describe("WriteValidator rules", () => {
 					(await named("scan.portableName")).map(
 						({ resource }) => resource
 					)
-				).toEqual([abs("src/@ser:ver"), abs("src/Foo?.meta.json")]);
+				).toEqual([abs("src/@odd:name"), abs("src/Foo?.meta.json")]);
 			});
 
 			it("should leave a name that is fine alone", async () => {
@@ -1154,6 +1216,16 @@ describe("WriteValidator rules", () => {
 				]);
 			});
 
+			it("should leave a file named like a server route to its name, since a module may be named Server on purpose", async () => {
+				await write(
+					"src/Bank/server.luau",
+					"src/Till/SERVER.luau",
+					"src/Net/Server.luau"
+				);
+
+				expect(await shipped()).toEqual([]);
+			});
+
 			it("should warn for a data file and a model in the folder", async () => {
 				await write(
 					"src/ReplicatedFirst/server/Config.json",
@@ -1194,6 +1266,15 @@ describe("WriteValidator rules", () => {
 					expect.stringContaining('a "@ReplicatedFirst" marker file'),
 					expect.stringContaining('a "@client" marker file'),
 				]);
+			});
+
+			it("should not warn about files a marker in the folder routes itself, which keeps them there on purpose", async () => {
+				await write(
+					"src/Net/SERVER/@ReplicatedFirst",
+					"src/Net/SERVER/Remote.luau"
+				);
+
+				expect(await shipped()).toEqual([]);
 			});
 
 			it("should still warn about a server folder below the one a marker covers", async () => {
