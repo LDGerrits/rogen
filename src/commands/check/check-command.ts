@@ -116,9 +116,11 @@ registerCommand(
 				return this.printJson(
 					logService,
 					{
-						...diagnosticsJson(failure?.diagnostics ?? []),
+						...diagnosticsJson(failure?.diagnostics ?? [], cwd),
 						...(stoppedBy.length > 0 && {
-							stoppedBy: stoppedBy.map(diagnosticToJson),
+							stoppedBy: stoppedBy.map((diagnostic) =>
+								diagnosticToJson(diagnostic, cwd)
+							),
 						}),
 						...skippedJson(skipped, cwd),
 					},

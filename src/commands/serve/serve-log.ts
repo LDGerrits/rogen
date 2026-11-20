@@ -328,7 +328,8 @@ export class ServeJsonLog implements ServeReporter {
 		}
 		const reason = stop.kind === "crashed" ? "crashed" : "exited";
 		this.line({ stopped: this.exitedJson(target, reason, stop.exit) });
-		if ("failure" in stop) this.line(diagnosticsJson([stop.failure]));
+		if ("failure" in stop)
+			this.line(diagnosticsJson([stop.failure], this.cwd));
 	}
 
 	changed(change: ServeChangeEvent): void {
@@ -341,7 +342,9 @@ export class ServeJsonLog implements ServeReporter {
 				this.line({
 					refused: {
 						...this.serverFields(target),
-						diagnostics: [diagnosticToJson(change.diagnostic)],
+						diagnostics: [
+							diagnosticToJson(change.diagnostic, this.cwd),
+						],
 					},
 				});
 				return;

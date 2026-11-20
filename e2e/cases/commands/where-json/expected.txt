@@ -90,7 +90,7 @@ stdout:
             "file": "<dir>/src/Net/Types.lua",
             "severity": "error",
             "code": "tree.instanceClash",
-            "message": "becomes \"ReplicatedStorage/Shared/Net/Types\", as <dir>/src/Net/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both.",
+            "message": "becomes \"ReplicatedStorage/Shared/Net/Types\", as src/Net/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both.",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#tree-instanceclash",
             "related": [
               {
@@ -120,7 +120,7 @@ stdout:
             "file": "<dir>/src/Net/Types.lua",
             "severity": "error",
             "code": "tree.instanceClash",
-            "message": "becomes \"ReplicatedStorage/Shared/Net/Types\", as <dir>/src/Net/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both.",
+            "message": "becomes \"ReplicatedStorage/Shared/Net/Types\", as src/Net/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both.",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#tree-instanceclash",
             "related": [
               {
@@ -144,7 +144,7 @@ stdout:
   }
 
 $ rogen where --json src/Net/Http.mock@Client.luau
-exit 1
+exit 0
 stdout:
   {
     "locations": [
@@ -169,7 +169,7 @@ stdout:
         "file": "<dir>/src/Net/Types.lua",
         "severity": "error",
         "code": "tree.instanceClash",
-        "message": "becomes \"ReplicatedStorage/Shared/Net/Types\", as <dir>/src/Net/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both.",
+        "message": "becomes \"ReplicatedStorage/Shared/Net/Types\", as src/Net/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both.",
         "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#tree-instanceclash",
         "related": [
           {
@@ -182,7 +182,7 @@ stdout:
   }
 
 $ rogen where --json ServerScriptService.Combat.Moves:4: attempt to index nil ReplicatedStorage/Shared/Nope
-exit 1
+exit 0
 stdout:
   {
     "locations": [
@@ -216,7 +216,7 @@ stdout:
         "file": "<dir>/src/Net/Types.lua",
         "severity": "error",
         "code": "tree.instanceClash",
-        "message": "becomes \"ReplicatedStorage/Shared/Net/Types\", as <dir>/src/Net/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both.",
+        "message": "becomes \"ReplicatedStorage/Shared/Net/Types\", as src/Net/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both.",
         "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#tree-instanceclash",
         "related": [
           {

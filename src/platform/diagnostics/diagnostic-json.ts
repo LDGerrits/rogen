@@ -14,6 +14,7 @@ import {
 	RunFix,
 	isRenameFix,
 	isReplaceFix,
+	messageRelativeTo,
 } from "./diagnostic.js";
 import { DiagnosticsError } from "./diagnostics-error.js";
 
@@ -90,7 +91,11 @@ const diagnosticAnchor = (code: string): string =>
 export const diagnosticUrl = (code: string): string =>
 	`${DOCS_URL}/diagnostics#${diagnosticAnchor(code)}`;
 
-export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
+/** `diagnostic` as JSON; with `cwd`, the paths its message and details name are relative to it, as the text output writes them, while `file` stays absolute. */
+export function diagnosticToJson(
+	diagnostic: Diagnostic,
+	cwd?: string
+): DiagnosticJson {
 	const {
 		resource,
 		position,
@@ -101,18 +106,20 @@ export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
 		related,
 		fixes,
 	} = diagnostic;
+	const relative = (text: string) =>
+		cwd === undefined ? text : messageRelativeTo(text, cwd);
 	return {
 		file: toNative(resource),
 		...(position && { line: position.line, column: position.column }),
 		severity: SEVERITY_LABELS[severity],
 		code,
-		message,
-		...(details && { details }),
+		message: relative(message),
+		...(details && { details: details.map(relative) }),
 		url: diagnosticUrl(code),
 		...(related && {
 			related: related.map((item) => ({
 				file: toNative(item.resource),
-				message: item.message,
+				message: relative(item.message),
 			})),
 		}),
 		...(fixes && { fixes: fixes.map(fixToJson) }),
@@ -142,10 +149,17 @@ export function fixToJson(fix: DiagnosticFix): DiagnosticFix {
 	};
 }
 
-export function diagnosticsJson(diagnostics: readonly Diagnostic[]): {
+export function diagnosticsJson(
+	diagnostics: readonly Diagnostic[],
+	cwd?: string
+): {
 	readonly diagnostics: DiagnosticJson[];
 } {
-	return { diagnostics: diagnostics.map(diagnosticToJson) };
+	return {
+		diagnostics: diagnostics.map((diagnostic) =>
+			diagnosticToJson(diagnostic, cwd)
+		),
+	};
 }
 
 export interface ErrorJson {

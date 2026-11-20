@@ -111,7 +111,9 @@ export function syncbackEntry(
 		changes: outcome.plan.changes.map(({ kind, file }) => ({ kind, file })),
 		unplaced: outcome.plan.unplaced,
 		...(diagnostics.length > 0 && {
-			diagnostics: diagnostics.map(diagnosticToJson),
+			diagnostics: diagnostics.map((diagnostic) =>
+				diagnosticToJson(diagnostic, cwd)
+			),
 		}),
 	};
 }

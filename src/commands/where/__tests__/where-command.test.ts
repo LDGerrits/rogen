@@ -174,37 +174,36 @@ describe("where command", () => {
 			);
 		});
 
-		it("should still place the file, and fail with what stops the write", async () => {
+		it("should place the file and pass, as the error is about another file, still printing what stops the write", async () => {
 			const result = await run({ _: ["src/F/Shared/Good.luau"] });
 
-			expect(result.isErr() && result.error).toBeInstanceOf(
-				DiagnosticsError
-			);
-			expect(
-				result.isErr() &&
-					(result.error as DiagnosticsError).diagnostics.map(
-						({ code }) => code
-					)
-			).toEqual(["route.ignoredAt"]);
+			expect(result.isOk()).toBe(true);
 			expect(printed()).toEqual([
 				"src/F/Shared/Good.luau -> ReplicatedStorage/Shared/F/Good · route Shared (folder)",
 			]);
+			expect(logService.texts("diagnosticError")).toEqual([
+				expect.stringContaining("(route.ignoredAt)"),
+			]);
+			expect(logService.texts("notice")).toEqual([
+				"The error above stops the write, but none of it is about what you asked; 'rogen check' lists everything to fix.",
+			]);
 		});
 
-		it("should report every error that stops it", async () => {
+		it("should print every error that stops it", async () => {
 			await write("src/F/Shared/Worse@Client.luau");
 
-			const result = await run({ _: ["src/F/Shared/Good.luau"] });
+			await run({ _: ["src/F/Shared/Good.luau"] });
 
-			expect(
-				result.isErr() &&
-					(result.error as DiagnosticsError).diagnostics.map(
-						({ resource }) => resource
-					)
-			).toEqual([
-				"/repo/src/F/Shared/Bad@Server.luau",
-				"/repo/src/F/Shared/Worse@Client.luau",
+			expect(logService.texts("diagnosticError")).toEqual([
+				expect.stringContaining("Bad@Server.luau"),
+				expect.stringContaining("Worse@Client.luau"),
 			]);
+		});
+
+		it("should fail when the error is about a file asked about", async () => {
+			const result = await run({ _: ["src/F"] });
+
+			expect(result.isErr()).toBe(true);
 		});
 
 		it("should place a file with the error too, the error under it", async () => {
@@ -218,8 +217,12 @@ describe("where command", () => {
 		});
 
 		it("should place the file in the JSON document, with what stops the write at the top", async () => {
-			await run({ _: ["src/F/Shared/Good.luau"], json: true });
+			const result = await run({
+				_: ["src/F/Shared/Good.luau"],
+				json: true,
+			});
 
+			expect(result.isOk()).toBe(true);
 			const document = JSON.parse(printed().join("\n"));
 			expect(document.locations[0]).toMatchObject({ status: "placed" });
 			expect(document.diagnostics).toMatchObject([
@@ -252,12 +255,10 @@ describe("where command", () => {
 			);
 		});
 
-		it("should fail with the error on its own when no line shows it", async () => {
+		it("should pass with the error on its own when no line shows it", async () => {
 			const result = await run({ _: ["src/B.luau"] });
 
-			expect(result.isErr() && result.error).toBeInstanceOf(
-				DiagnosticsError
-			);
+			expect(result.isOk()).toBe(true);
 			expect(printed()).toEqual([
 				"src/B.luau -> ReplicatedStorage/Shared/B · route * (fallback)",
 			]);
@@ -266,7 +267,7 @@ describe("where command", () => {
 		it("should put the error that no entry holds at the top of the JSON document", async () => {
 			const result = await run({ _: ["src/B.luau"], json: true });
 
-			expect(result.isErr()).toBe(true);
+			expect(result.isOk()).toBe(true);
 			expect(JSON.parse(printed().join("\n")).diagnostics).toHaveLength(
 				1
 			);

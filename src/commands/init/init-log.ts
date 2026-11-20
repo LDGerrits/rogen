@@ -141,9 +141,13 @@ const foundBy = (outcome: ConfigOutcome): Diagnostic[] => [
 	...outcome.errors,
 ];
 
-const warningsOf = (plan: InitPlan) =>
+const warningsOf = (plan: InitPlan, cwd: string) =>
 	plan.warnings.length > 0
-		? { warnings: plan.warnings.map(diagnosticToJson) }
+		? {
+				warnings: plan.warnings.map((diagnostic) =>
+					diagnosticToJson(diagnostic, cwd)
+				),
+			}
 		: {};
 
 export interface InitReporter {
@@ -391,7 +395,7 @@ export class InitJsonLog implements InitReporter {
 		return this.print({
 			...this.writtenSoFar(),
 			notes: plan.notes,
-			...warningsOf(plan),
+			...warningsOf(plan, this.cwd),
 			nextSteps: plan.nextSteps,
 		});
 	}
@@ -405,7 +409,7 @@ export class InitJsonLog implements InitReporter {
 				changed: written.changed || projects.changed,
 				projects: projects.configs,
 				notes: plan.notes,
-				...warningsOf(plan),
+				...warningsOf(plan, this.cwd),
 				nextSteps: plan.nextSteps,
 			},
 			DiagnosticsError.of(run.errors)

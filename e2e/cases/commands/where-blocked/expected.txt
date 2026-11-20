@@ -8,7 +8,7 @@ stdout:
     require(game:GetService("ReplicatedStorage").shared.F["Bad@server"])
 
 $ rogen where src/F/shared/Good.luau --json
-exit 1
+exit 0
 stdout:
   {
     "locations": [

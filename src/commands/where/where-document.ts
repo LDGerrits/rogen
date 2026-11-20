@@ -231,7 +231,9 @@ function entryOf(answer: Answer, cwd: string): WhereEntry {
 			status,
 			exists: location.exists,
 			...fields,
-			diagnostics: answer.diagnostics.map(diagnosticToJson),
+			diagnostics: answer.diagnostics.map((diagnostic) =>
+				diagnosticToJson(diagnostic, cwd)
+			),
 		} as WhereFileEntry;
 	}
 	return {
@@ -259,7 +261,7 @@ export function whereDocument(
 			.flat()
 			.map((answer) => entryOf(answer, cwd)),
 		diagnostics: [...answers.errors, ...answers.whyEmpty].map(
-			diagnosticToJson
+			(diagnostic) => diagnosticToJson(diagnostic, cwd)
 		),
 		...skippedJson(skipped, cwd),
 	};
