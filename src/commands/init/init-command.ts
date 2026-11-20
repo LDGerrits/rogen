@@ -130,7 +130,7 @@ registerCommand(
 					output: { document: initDocumentShape },
 					effects: ["writesFiles"],
 					exitCodes: {
-						"1": "the folder can't be set up as asked, or you cancelled",
+						"1": "the folder can't be set up as asked, you cancelled, or errors in the code stop the project file (init still writes its own files)",
 						"128+N":
 							"stopped by a signal: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP",
 					},
@@ -201,7 +201,7 @@ registerCommand(
 				plan
 			);
 			if (run.isErr()) return reporter.failed(run.error);
-			return reporter.done(plan, run.value);
+			return reporter.done(plan, run.value, checked.value.length > 0);
 		}
 
 		private async writeConfigs(

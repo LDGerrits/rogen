@@ -564,13 +564,15 @@ export class CoreInitService implements InitService {
 				? failure.diagnostics.filter(isError)
 				: [];
 		return errors.length > 0 &&
-			errors.every((error) => CoreInitService.isTheCodes(error, plan))
+			errors.every((error) =>
+				CoreInitService.isAboutUserCode(error, plan)
+			)
 			? ok(errors)
 			: err(failure);
 	}
 
-	/** Whether `error` is only about files of the folder that `plan` neither writes nor renames, nor a folder that holds one, as a name of the user's code. */
-	private static isTheCodes(error: Diagnostic, plan: InitPlan): boolean {
+	/** Whether `error` is only about the user's code: files of the folder that `plan` neither writes nor renames, and no folder that holds one. */
+	private static isAboutUserCode(error: Diagnostic, plan: InitPlan): boolean {
 		const made = [
 			...plan.files.map(({ fileName }) => fileName),
 			...plan.moves.map(({ to }) => to),

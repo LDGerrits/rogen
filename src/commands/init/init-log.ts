@@ -1,7 +1,7 @@
 import path from "path";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
-import { samePath, toPosix, toShellWord } from "../../base/path.js";
+import { toPosix, toShellWord } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
 import { WriteRun, ConfigOutcome } from "../../domain/write/write.js";
 import {
@@ -154,7 +154,8 @@ export interface InitReporter {
 	begin(plan: InitPlan): void;
 	written(item: InitWritten): void;
 	failed(error: Error): Result<void, Error>;
-	done(plan: InitPlan, run: WriteRun): Result<void, Error>;
+	/** The end of a run; `inCode` when the check before it found errors in the project's code, which stop the write. */
+	done(plan: InitPlan, run: WriteRun, inCode: boolean): Result<void, Error>;
 	/** The end of a dry run, which `written` told what it would write. */
 	planned(plan: InitPlan): Result<void, Error>;
 }
@@ -256,19 +257,11 @@ export class InitLog implements InitReporter {
 		return ok(undefined);
 	}
 
-	done(plan: InitPlan, run: WriteRun): Result<void, Error> {
+	done(plan: InitPlan, run: WriteRun, inCode: boolean): Result<void, Error> {
 		for (const outcome of run.outcomes)
 			this.outcomeLog.outcome(outcome, foundBy(outcome));
 		const files = plural(plan.files.length, "file");
 		if (run.errors.length > 0) {
-			// A failure of the config or of writing its project file is init's; any other error is the code's.
-			const inCode = run.errors.every(
-				({ resource }) =>
-					!resource.endsWith(".project.json") &&
-					!plan.configs.some((config) =>
-						samePath(path.join(plan.directory, config), resource)
-					)
-			);
 			this.logService.outro(
 				`Wrote ${files}, but ${inCode ? "errors in the code stop the project file" : "writing the project file failed"}.${
 					plan.liftedFrom
@@ -418,7 +411,7 @@ export class InitJsonLog implements InitReporter {
 				projects: projects.configs,
 				notes: plan.notes,
 				...warningsOf(plan, this.cwd),
-				nextSteps: plan.nextSteps,
+				...(run.errors.length === 0 && { nextSteps: plan.nextSteps }),
 			},
 			DiagnosticsError.of(run.errors)
 		);
