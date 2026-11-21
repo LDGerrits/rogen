@@ -16,25 +16,18 @@
 		"target": "ESNext",
 		"incremental": true,
 		"typeRoots": [
-			"node_modules/@rbxts",
-			"../../node_modules/@rbxts"
+			"node_modules/@rbxts"
 		],
-		"outDir": "out",
-		"rootDirs": [
-			"src",
-			"../common/src"
+		"types": [
+			"compiler-types",
+			"types"
 		],
-		"baseUrl": ".",
-		"paths": {
-			"*": [
-				"src/*",
-				"../common/src/*"
-			]
-		},
-		"tsBuildInfoFile": "out/tsconfig.tsbuildinfo"
+		"rootDir": "src"
 	},
-	"include": [
-		"src",
-		"../common/src"
+	"files": [],
+	"references": [
+		{
+			"path": "./tsconfig.game.json"
+		}
 	]
 }

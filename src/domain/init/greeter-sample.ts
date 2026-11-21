@@ -9,10 +9,7 @@ const PLACES_VARIANT = "-places";
 
 export const TEMPLATE_SOURCE_PATHS = {
 	one: "src",
-	place: {
-		luau: "src/game",
-		"roblox-ts": "projects/game/src",
-	} as Readonly<Record<string, string>>,
+	place: "src/game",
 } as const;
 
 const FEATURE = "Greeter";
@@ -30,7 +27,7 @@ export class GreeterSample {
 	) {
 		this.variant = language.id;
 		this.placesVariant = `${language.id}${PLACES_VARIANT}`;
-		this.placeSource = TEMPLATE_SOURCE_PATHS.place[language.id];
+		this.placeSource = TEMPLATE_SOURCE_PATHS.place;
 	}
 
 	feature(sourcePath: string): PlannedFile[] {

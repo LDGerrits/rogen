@@ -45,44 +45,32 @@ describe("RobloxTsStarter", () => {
 		]);
 	});
 
-	it("should ignore what create-roblox-ts would have, and each place's own with several", () => {
-		expect(RobloxTsStarter.ignored(false)).toEqual([
+	it("should ignore what create-roblox-ts would have", () => {
+		expect(RobloxTsStarter.ignored()).toEqual([
 			"/node_modules",
 			"/out",
 			"/include",
 			"*.tsbuildinfo",
 		]);
-		expect(RobloxTsStarter.ignored(true)).toEqual([
-			...RobloxTsStarter.ignored(false),
-			"projects/*/out",
-			"projects/*/include",
-		]);
 	});
 
-	it("should ignore the compiler's own output folder at the root and in each place", () => {
-		expect(RobloxTsStarter.ignored(true, "build")).toEqual([
-			"/node_modules",
-			"/build",
-			"/include",
-			"*.tsbuildinfo",
-			"projects/*/build",
-			"projects/*/include",
-		]);
+	it("should ignore the compiler's own output folder", () => {
+		expect(RobloxTsStarter.ignored("build")).toContain("/build");
 	});
 
-	it("should point the build and watch scripts at the place", () => {
-		expect(new RobloxTsStarter().scripts("projects/game")).toMatchObject({
+	it("should point the build and watch scripts at the place's tsconfig", () => {
+		expect(new RobloxTsStarter().scripts("game")).toMatchObject({
 			file: "npm",
 			args: [
 				"pkg",
 				"set",
-				"scripts.build=rbxtsc -p projects/game",
-				"scripts.watch=rbxtsc -w -p projects/game",
+				"scripts.build=rbxtsc -p tsconfig.game.json",
+				"scripts.watch=rbxtsc -w -p tsconfig.game.json",
 			],
 		});
 	});
 
-	it("should also replace the root tsconfig and src with several places, since none is at the root", () => {
+	it("should also replace the root tsconfig and src with several places", () => {
 		expect(new RobloxTsStarter().scaffold(true).replaces).toEqual([
 			"default.project.json",
 			"src",
@@ -91,34 +79,43 @@ describe("RobloxTsStarter", () => {
 	});
 
 	describe("placesTsconfigs", () => {
-		const [common, place] = new RobloxTsStarter().placesTsconfigs();
+		const tsconfigs = new Map(
+			new RobloxTsStarter()
+				.placesTsconfigs()
+				.map(({ fileName, content }) => [fileName, JSON.parse(content)])
+		);
 
-		it("should have the tsconfig of the common code check it for the editor alone", () => {
-			expect(common.fileName).toBe("projects/common/tsconfig.json");
-			const tsconfig = JSON.parse(common.content);
-			expect(tsconfig.compilerOptions).toMatchObject({
+		it("should write a root tsconfig that holds the options and refers to each place", () => {
+			const root = tsconfigs.get("tsconfig.json");
+			expect(root.compilerOptions).toMatchObject({
 				rootDir: "src",
-				baseUrl: "src",
-				noEmit: true,
-				typeRoots: ["node_modules/@rbxts", "../../node_modules/@rbxts"],
+				typeRoots: ["node_modules/@rbxts"],
+				types: ["compiler-types", "types"],
 			});
-			expect(tsconfig.include).toEqual(["src"]);
+			expect(root.files).toEqual([]);
+			expect(root.references).toEqual([{ path: "./tsconfig.game.json" }]);
 		});
 
-		it("should compile the place's own code with the common code into its own out folder", () => {
-			expect(place.fileName).toBe("projects/game/tsconfig.json");
-			const tsconfig = JSON.parse(place.content);
-			expect(tsconfig.compilerOptions).toMatchObject({
-				outDir: "out",
-				rootDirs: ["src", "../common/src"],
-				baseUrl: ".",
-				paths: { "*": ["src/*", "../common/src/*"] },
-				typeRoots: ["node_modules/@rbxts", "../../node_modules/@rbxts"],
-				tsBuildInfoFile: "out/tsconfig.tsbuildinfo",
+		it("should compile the place with the common code below one rootDir into its own out folder", () => {
+			const place = tsconfigs.get("tsconfig.game.json");
+			expect(place).toMatchObject({
+				extends: "./tsconfig.json",
+				compilerOptions: {
+					rootDir: "src",
+					rootDirs: ["src/common", "src/game"],
+					outDir: "out/game",
+					composite: true,
+				},
+				include: ["src/common", "src/game"],
+				rbxts: { rojo: "game.project.json" },
 			});
-			expect(tsconfig.compilerOptions).not.toHaveProperty("rootDir");
-			expect(tsconfig).not.toHaveProperty("extends");
-			expect(tsconfig.include).toEqual(["src", "../common/src"]);
+		});
+
+		it("should write nothing but the two tsconfigs", () => {
+			expect([...tsconfigs.keys()].sort()).toEqual([
+				"tsconfig.game.json",
+				"tsconfig.json",
+			]);
 		});
 	});
 });
