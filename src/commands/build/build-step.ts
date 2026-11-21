@@ -34,7 +34,6 @@ export class BuildStep implements RojoStep {
 			project: this.rojo.choose(selection),
 			flags: this.flags,
 			cwd: this.cwd,
-			target: this.target,
 		});
 	}
 }

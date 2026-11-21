@@ -1,12 +1,9 @@
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import { WriteService } from "../../domain/write/write-service.js";
 import {
 	ProjectArgument,
 	singleProjectError,
-	ConfigService,
 } from "../../domain/config/config-service.js";
-import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
@@ -20,14 +17,10 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { OutcomeLog } from "../write/outcome-log.js";
-import {
-	reportRojo,
-	reportRojoBesideFailure,
-	rojoDone,
-} from "../write/report-rojo.js";
 import { rojoEntry } from "../write/rojo-entry.js";
+import { RojoRun } from "../write/rojo-run.js";
 import { uploadDocument, uploadDocumentShape } from "./upload-document.js";
+import { UploadStep } from "./upload-step.js";
 
 const AssetIdOption = {
 	name: "asset_id",
@@ -119,69 +112,35 @@ registerCommand(
 					: ["--universe_id", universe_id]),
 				...(cookie === undefined ? [] : ["--cookie", cookie]),
 			];
-			const rojoService = accessor.get(RojoCommandService);
 			const logService = accessor.get(LogService);
 			const cwd = accessor.get(EnvironmentService).cwd;
-			const configService = accessor.get(ConfigService);
-			const writeService = accessor.get(WriteService);
 			const instantiationService = accessor.get(InstantiationService);
-
-			const selection = await configService.selectForRojo(
-				line.positionals
+			const step = instantiationService.createInstance(
+				UploadStep,
+				flags,
+				cwd,
+				asset_id
 			);
-			if (selection.isErr()) return selection;
-			for (const note of selection.value.notes) logService.warn(note);
-
-			const project = selection.value.requireValid().isErr()
-				? undefined
-				: rojoService.choose(selection.value);
-
-			const written = await writeService.write(selection.value);
-			const failure = written.failure();
-			const uploaded =
-				failure || project === undefined
-					? undefined
-					: await rojoService.run(selection.value, {
-							command: "upload",
-							flags,
-							cwd,
-							project,
-						});
-			const rojoFailure =
-				uploaded === undefined
-					? undefined
-					: uploaded.isErr()
-						? uploaded.error
-						: uploaded.value.failure;
-
+			const rojoRun = instantiationService.createInstance(
+				RojoRun,
+				line.positionals,
+				step,
+				cwd
+			);
+			const done = await rojoRun.run();
+			if (done.isErr()) return done;
+			const { written, failure, ran, rojoFailure } = done.value;
 			if (line.options.json)
 				return this.printJson(
 					logService,
 					uploadDocument(
 						written.outcomes,
 						cwd,
-						rojoEntry({ command: "upload", cwd }, uploaded)
+						rojoEntry(step.target, ran)
 					),
 					failure ?? rojoFailure
 				);
-			const outcomeLog = instantiationService.createInstance(
-				OutcomeLog,
-				cwd
-			);
-			outcomeLog.outcomes(written, selection.value.home, "upload");
-			if (uploaded?.isOk())
-				(rojoFailure ? reportRojoBesideFailure : reportRojo)(
-					logService,
-					uploaded.value.messages,
-					cwd
-				);
-			outcomeLog.close(written, "upload", true, {
-				said: rojoDone(
-					{ command: "upload", cwd, asset: asset_id },
-					cwd
-				),
-				failed: rojoFailure !== undefined,
-			});
+			rojoRun.report(done.value);
 			if (rojoFailure) return err(rojoFailure);
 			return failure ? this.reported(failure) : ok(undefined);
 		}

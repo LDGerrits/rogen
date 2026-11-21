@@ -11,8 +11,6 @@ export interface RojoPlan {
 	readonly flags: readonly string[];
 	/** Where Rojo runs, so a path in `flags` is relative to it. */
 	readonly cwd: string;
-	/** What the run is for, as the JSON reports it. */
-	readonly target: RojoTarget;
 }
 
 /** The Rojo command a command runs after it has written the project files. */
@@ -20,6 +18,8 @@ export interface RojoStep {
 	readonly command: RojoTarget["command"];
 	/** Whether, from its flags alone, its result is for the screen, which then needs stdout to itself. */
 	readonly prints: boolean;
+	/** What the run is for, as the JSON reports it. */
+	readonly target: RojoTarget;
 	/** The run a selection asks for, or the reason it asks for none; none when its files are broken, which the write reports. */
 	plan(selection: ConfigSelection): Result<RojoPlan | undefined, UsageError>;
 }
