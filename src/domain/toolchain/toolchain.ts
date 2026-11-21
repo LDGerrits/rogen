@@ -68,11 +68,20 @@ export class PackageManager {
 	}
 }
 
-export interface PlannedFile {
+interface PlannedFileFields {
 	readonly fileName: string;
 	readonly content: string;
-	readonly addition?: string;
 }
+
+interface PlannedNewFile extends PlannedFileFields {
+	readonly addition?: undefined;
+}
+
+interface PlannedAdditionToExistingFile extends PlannedFileFields {
+	readonly addition: string;
+}
+
+export type PlannedFile = PlannedNewFile | PlannedAdditionToExistingFile;
 
 export interface Mount {
 	readonly path: string;
@@ -98,8 +107,10 @@ export interface LanguageCopy {
 	readonly detectedHint?: string;
 }
 
+export type LanguageId = "luau" | "roblox-ts";
+
 export interface Language {
-	readonly id: string;
+	readonly id: LanguageId;
 	readonly copy: LanguageCopy;
 	readonly extension: string;
 	readonly defaultPackageManager?: PackageManager;
@@ -119,7 +130,8 @@ export interface LanguageDetector {
 }
 
 interface DetectedWorkspaceFields {
-	readonly languages: readonly Language[];
+	readonly fallbackLanguage: Language;
+	readonly otherLanguages: readonly Language[];
 	readonly darkluaConfig?: string;
 	readonly packageManager?: PackageManager;
 	readonly packageDirs: ReadonlySet<string>;
@@ -127,6 +139,7 @@ interface DetectedWorkspaceFields {
 }
 
 export class DetectedWorkspace {
+	private readonly fallbackLanguage: Language;
 	readonly languages: readonly Language[];
 	readonly darkluaConfig?: string;
 	readonly packageManager?: PackageManager;
@@ -134,10 +147,8 @@ export class DetectedWorkspace {
 	readonly testRunner?: string;
 
 	constructor(fields: DetectedWorkspaceFields) {
-		if (fields.languages.length === 0) {
-			throw new Error("A workspace needs at least one language.");
-		}
-		this.languages = fields.languages;
+		this.fallbackLanguage = fields.fallbackLanguage;
+		this.languages = [fields.fallbackLanguage, ...fields.otherLanguages];
 		this.darkluaConfig = fields.darkluaConfig;
 		this.packageManager = fields.packageManager;
 		this.packageDirs = fields.packageDirs;
@@ -146,11 +157,12 @@ export class DetectedWorkspace {
 
 	get language(): Language {
 		return (
-			this.languages.find(({ present }) => present) ?? this.languages[0]
+			this.languages.find(({ present }) => present) ??
+			this.fallbackLanguage
 		);
 	}
 
-	languageFor(id: string): Language {
+	languageFor(id: LanguageId): Language {
 		const language = this.languages.find(
 			(candidate) => candidate.id === id
 		);

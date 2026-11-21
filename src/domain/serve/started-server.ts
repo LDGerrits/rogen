@@ -103,7 +103,7 @@ export class StartedServer extends AbstractDisposable {
 		);
 		this._register(
 			this.child.onDidMessage((message) => {
-				if (message.severity !== "debug") this.generation.said = true;
+				if (message.severity !== "noise") this.generation.said = true;
 				this.listener.said({ target: this.target, message });
 			})
 		);
@@ -233,17 +233,7 @@ export class StartedServer extends AbstractDisposable {
 						this.sessions.add(info.session);
 					const crashed = generation.restartedAfter;
 					generation.restartedAfter = undefined;
-					this.record = { info, written: this.writeRecord(info) };
-					return this.record.written.then(() => {
-						if (this.stoppedOnPurpose || this.exited) return;
-						const serving = { target, info };
-						if (crashed)
-							this.listener.restarted({
-								...serving,
-								exit: crashed,
-							});
-						else this.listener.served(serving);
-					});
+					return this.recordBeforeAnnouncing(target, info, crashed);
 				}
 				this.warnWhenSlow(generation, state);
 				generation.readyDelay = Math.min(
@@ -255,6 +245,20 @@ export class StartedServer extends AbstractDisposable {
 			.catch((error) =>
 				this.listener.failed(ErrorUtils.fromUnknown(error))
 			);
+	}
+
+	private recordBeforeAnnouncing(
+		target: ServeTarget,
+		info: ServerInfo,
+		crashed: ProcessExit | undefined
+	): Promise<void> {
+		this.record = { info, written: this.writeRecord(info) };
+		return this.record.written.then(() => {
+			if (this.stoppedOnPurpose || this.exited) return;
+			const serving = { target, info };
+			if (crashed) this.listener.restarted({ ...serving, exit: crashed });
+			else this.listener.served(serving);
+		});
 	}
 
 	private warnWhenSlow(generation: Generation, state: PortState): void {

@@ -95,11 +95,10 @@ export class ServerRecords {
 		info: ServerInfo,
 		served: ServedProject
 	): Promise<void> {
-		const file = this.fileOf(address.port);
 		await replaceFile(
 			this.fileSystemService,
-			file,
-			`${file}.${this.owner}.tmp`,
+			this.fileOf(address.port),
+			this.stagingFileOf(address.port),
 			JSON.stringify({
 				host: address.host,
 				port: address.port,
@@ -132,5 +131,9 @@ export class ServerRecords {
 
 	private fileOf(port: number): string {
 		return path.join(this.dir, `${port}.json`);
+	}
+
+	private stagingFileOf(port: number): string {
+		return `${this.fileOf(port)}.${this.owner}.tmp`;
 	}
 }

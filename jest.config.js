@@ -1,5 +1,7 @@
 import os from "os";
 
+const JEST_DEFAULT_MAX_CONCURRENCY = 5;
+
 export default {
 	preset: "ts-jest/presets/default-esm",
 	testEnvironment: "node",
@@ -14,7 +16,10 @@ export default {
 			},
 		],
 	},
-	maxConcurrency: Math.max(5, os.availableParallelism()),
+	maxConcurrency: Math.max(
+		JEST_DEFAULT_MAX_CONCURRENCY,
+		os.availableParallelism()
+	),
 	setupFilesAfterEnv: ["<rootDir>/jest.paths.js"],
 	testPathIgnorePatterns: ["/node_modules/", "/dist/"],
 	collectCoverageFrom: ["src/**/*.ts", "!src/**/__tests__/**"],

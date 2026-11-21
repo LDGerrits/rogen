@@ -1,5 +1,5 @@
 import path from "path";
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { literalGlob } from "../../base/glob.js";
 import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -131,7 +131,7 @@ export class TreeAssembler {
 					needsRojoIgnore(why)
 			)
 			.map(([source]) => source)
-			.sort(compareStrings);
+			.sort(compareByCodePoint);
 	}
 
 	private insertNodes(
@@ -141,7 +141,7 @@ export class TreeAssembler {
 		const { placement } = this;
 		const { layout, files } = placement;
 		for (const [dir, instancePath] of collapsed.entries())
-			project.insertNode(instancePath, {
+			project.insertNodeReplacingFolder(instancePath, {
 				$path: layout.rojoFolderPath(dir),
 			});
 		const initDirs = new Map<string, string>();
@@ -151,11 +151,11 @@ export class TreeAssembler {
 			const dir = placement.initDirOf(file);
 			if (dir !== undefined) {
 				initDirs.set(dir, path.posix.basename(entry.source));
-				project.insertNode(instancePath, {
+				project.insertNodeReplacingFolder(instancePath, {
 					$path: layout.rojoFolderPath(dir),
 				});
 			} else
-				project.insertNode(instancePath, {
+				project.insertNodeReplacingFolder(instancePath, {
 					$path: layout.rojoPath(entry.source),
 				});
 		}

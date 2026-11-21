@@ -45,7 +45,7 @@ describe("CoreSyncbackService where the file system ignores case", () => {
 						messages: [
 							`Writing ${listedAt}/bag.luau`,
 							`Removing ${listedAt}/Bag.luau`,
-						].map((text) => ({ severity: "info", text })),
+						].map((text) => ({ severity: "unrecognised", text })),
 					});
 				}
 				await fs.writeFile(mirror("bag.luau"), "return 2");
@@ -53,7 +53,7 @@ describe("CoreSyncbackService where the file system ignores case", () => {
 					project: config,
 					messages: [
 						{
-							severity: "info",
+							severity: "unrecognised",
 							text: `Writing ${listedAt}/bag.luau`,
 						},
 					],

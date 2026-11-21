@@ -1,7 +1,7 @@
 import { Result, err, ok } from "../../base/result.js";
 import {
 	closestMatches,
-	editDistance,
+	editDistanceWithSwaps,
 	joinedWithOr,
 } from "../../base/strings.js";
 import {
@@ -201,7 +201,7 @@ export class Target {
 	): string | undefined {
 		const closest = closestMatches(name, candidates);
 		if (closest.length === 0) return undefined;
-		const distance = editDistance(
+		const distance = editDistanceWithSwaps(
 			name.toLowerCase(),
 			closest[0].toLowerCase()
 		);

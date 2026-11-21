@@ -1,8 +1,9 @@
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { IpAddress } from "../../base/ip-address.js";
 import { JsoncSpan, parseJsoncSpans } from "../../base/jsonc.js";
 import {
 	JsoncComments,
+	JsoncDocumentMarks,
 	JsoncMarks,
 	JsoncPath,
 } from "../../base/jsonc-comments.js";
@@ -75,7 +76,12 @@ class Commented {
 		return this.comments.at(path);
 	}
 
-	orphansUnder(path: JsoncPath): (readonly string[])[] {
+	takeDocument(): JsoncDocumentMarks {
+		this.used.add(JsoncComments.key([]));
+		return this.comments.aroundDocument();
+	}
+
+	takeOrphansUnder(path: JsoncPath): (readonly string[])[] {
 		const kept: (readonly string[])[] = [];
 		for (const key of this.comments.paths) {
 			const at = JSON.parse(key) as JsoncPath;
@@ -190,12 +196,12 @@ export class ProjectText {
 		const body = ProjectText.file(config, rogenKeys, written);
 		if (!comments || comments.isEmpty) return ProjectText.print(body, "");
 		const commented = new Commented(comments);
-		const root = commented.take([]);
+		const around = commented.takeDocument();
 		const text = ProjectText.print(body, "", commented, []);
 		return [
-			...root.leading.map((comment) => comment.join("\n")),
+			...around.beforeDocument.map((comment) => comment.join("\n")),
 			text,
-			...root.trailing.map((comment) => comment.join("\n")),
+			...around.afterDocument.map((comment) => comment.join("\n")),
 		].join("\n");
 	}
 
@@ -261,7 +267,7 @@ export class ProjectText {
 			if (key in node) entries.push([key, node[key]]);
 		const children = Object.keys(node)
 			.filter((key) => !key.startsWith("$"))
-			.sort(compareStrings);
+			.sort(compareByCodePoint);
 		for (const child of children) {
 			const value = node[child];
 			entries.push([
@@ -339,7 +345,7 @@ export class ProjectText {
 	private static sortedKeys(value: Record<string, unknown>): Ordered {
 		return new Ordered(
 			Object.keys(value)
-				.sort(compareStrings)
+				.sort(compareByCodePoint)
 				.map((key) => [key, value[key]])
 		);
 	}
@@ -349,7 +355,7 @@ export class ProjectText {
 		const typed = PropertyValues.typed(value);
 		return new Ordered(
 			Object.keys(typed)
-				.sort(compareStrings)
+				.sort(compareByCodePoint)
 				.map((key) => [key, typed[key]])
 		);
 	}
@@ -426,7 +432,7 @@ export class ProjectText {
 		});
 		for (const comment of [
 			...(marks?.closing ?? []),
-			...(commented?.orphansUnder(path) ?? []),
+			...(commented?.takeOrphansUnder(path) ?? []),
 		])
 			lines.push(...ProjectText.commentLines(comment, inner));
 		const opening = ProjectText.sameLine(marks?.opening, inner);

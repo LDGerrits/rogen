@@ -101,7 +101,7 @@ export class NameReadings {
 			root.sourcePath,
 			entry.relativePath
 		);
-		const match = this.reader.suffixes(stem, kind === "script");
+		const match = this.reader.trailingSuffixes(stem, kind === "script");
 		const { scriptSuffix, nameCutByRule } = file;
 		const { name: leaf } = InstanceName.leafName(
 			kind,

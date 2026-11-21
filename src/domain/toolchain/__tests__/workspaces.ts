@@ -13,8 +13,8 @@ export interface WorkspaceSpec {
 
 export function workspaceOf(spec: WorkspaceSpec = {}): DetectedWorkspace {
 	return new DetectedWorkspace({
-		languages: [
-			new Luau(),
+		fallbackLanguage: new Luau(),
+		otherLanguages: [
 			new RobloxTs(spec.robloxTs ?? {}, spec.language === "roblox-ts"),
 		],
 		darkluaConfig: spec.darkluaConfig,

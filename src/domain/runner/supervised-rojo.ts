@@ -97,7 +97,7 @@ export class SupervisedRojo
 				const lines = [message.text, ...(message.details ?? [])];
 				if (crash.length > 0 || RojoServer.isCrash(message.text)) {
 					if (message.severity === "error") crash.push(...lines);
-					this._onDidMessage.fire({ ...message, severity: "debug" });
+					this._onDidMessage.fire({ ...message, severity: "noise" });
 					return;
 				}
 				if (message.severity === "error") errors.push(...lines);

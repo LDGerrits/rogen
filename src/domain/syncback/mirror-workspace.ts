@@ -1,6 +1,6 @@
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import path from "path";
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { ignoringGlob, literalGlob } from "../../base/glob.js";
 import { toNative, toPosix } from "../../base/path.js";
 import { Result, ok, tryWithAsync } from "../../base/result.js";
@@ -111,35 +111,20 @@ export class MirrorWorkspace {
 			RojoSyncback,
 			this.request
 		);
-		const ignored: string[] = [];
-		const refused: UnplacedInstance[] = [];
-		for (;;) {
-			const ran = await rojo.listOn(this.file, this.layout, signal);
-			if (ran.isOk()) {
-				// With the old file gone, Rojo writes the file it lost as a new
-				// one.
-				if (RojoSyncback.lostToCase(ran.value)) {
-					const again = await rojo.listOn(
-						this.file,
-						this.layout,
-						signal
-					);
-					if (again.isErr()) return again;
-				}
-				return ok({
-					copied,
-					started,
-					said: ran.value,
-					skipped: [...refused, ...RojoSyncback.skipped(ran.value)],
-				});
-			}
-			const yaml = RojoSyncback.refusedYaml(ran.error);
-			const file = yaml && this.yamlFileOf(copied, yaml.instance);
-			if (!yaml || !file || ignored.includes(file)) return ran;
-			ignored.push(file);
-			refused.push(yaml);
-			await this.writeProject(copied, ignored);
+		const ran = await this.listSkippingRefusedYaml(rojo, copied, signal);
+		if (ran.isErr()) return ran;
+		const { said, refused } = ran.value;
+		// With the old file gone, Rojo writes the file it lost as a new one.
+		if (RojoSyncback.lostToCase(said)) {
+			const again = await rojo.listOn(this.file, this.layout, signal);
+			if (again.isErr()) return again;
 		}
+		return ok({
+			copied,
+			started,
+			said,
+			skipped: [...refused, ...RojoSyncback.skipped(said)],
+		});
 	}
 
 	walk(): Promise<Result<AddedPath[], Error>> {
@@ -208,6 +193,30 @@ export class MirrorWorkspace {
 		);
 	}
 
+	private async listSkippingRefusedYaml(
+		rojo: RojoSyncback,
+		copied: readonly Copied[],
+		signal: AbortSignal
+	): Promise<
+		Result<
+			{ said: readonly ServerMessage[]; refused: UnplacedInstance[] },
+			Error
+		>
+	> {
+		const skippedYaml: string[] = [];
+		const refused: UnplacedInstance[] = [];
+		for (;;) {
+			const ran = await rojo.listOn(this.file, this.layout, signal);
+			if (ran.isOk()) return ok({ said: ran.value, refused });
+			const yaml = RojoSyncback.refusedYaml(ran.error);
+			const file = yaml && this.yamlFileOf(copied, yaml.instance);
+			if (!yaml || !file || skippedYaml.includes(file)) return ran;
+			skippedYaml.push(file);
+			refused.push(yaml);
+			await this.writeProject(copied, skippedYaml);
+		}
+	}
+
 	private async copy(): Promise<Copied[]> {
 		const { mirror, root } = this;
 		const copied: Copied[] = [];
@@ -223,7 +232,7 @@ export class MirrorWorkspace {
 			this.copyInto(file, true)
 		))
 			if (entry) copied.push(entry);
-		copied.sort((a, b) => compareStrings(a.mirror, b.mirror));
+		copied.sort((a, b) => compareByCodePoint(a.mirror, b.mirror));
 		await this.writeProject(copied, []);
 		return copied;
 	}

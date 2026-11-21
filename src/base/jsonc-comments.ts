@@ -11,6 +11,11 @@ export interface JsoncMarks {
 	readonly closing: readonly (readonly string[])[];
 }
 
+export interface JsoncDocumentMarks {
+	readonly beforeDocument: readonly (readonly string[])[];
+	readonly afterDocument: readonly (readonly string[])[];
+}
+
 interface Located {
 	readonly start: number;
 	readonly end: number;
@@ -65,6 +70,11 @@ export class JsoncComments {
 				closing: [],
 			}
 		);
+	}
+
+	aroundDocument(): JsoncDocumentMarks {
+		const { leading, trailing } = this.at([]);
+		return { beforeDocument: leading, afterDocument: trailing };
 	}
 
 	get paths(): string[] {

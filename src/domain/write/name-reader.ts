@@ -83,7 +83,7 @@ export class NameReader {
 		}: { readonly invisible: boolean; readonly hoisted: boolean },
 		offset: number
 	): FolderNameReading {
-		const suffixed = this.suffixes(name, false);
+		const suffixed = this.trailingSuffixes(name, false);
 		const [routeSpan, ...innerRouteSpans] = suffixed.spans;
 		const keptName = InstanceName.withoutSpans(
 			name,
@@ -175,7 +175,7 @@ export class NameReader {
 		};
 	}
 
-	suffixes(stem: string, dotRoutes = true): SuffixMatch {
+	trailingSuffixes(stem: string, dotRoutes = true): SuffixMatch {
 		let remaining = stem;
 		const matched = new Set<string>();
 		const spans: SuffixSpan[] = [];

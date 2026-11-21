@@ -106,11 +106,11 @@ describe("help command", () => {
 
 			const result = await run("help", {
 				positionals: [],
-				bare: true,
+				asksForNothing: true,
 				options: {},
 			});
 
-			expect(log.reserved).toBe(true);
+			expect(log.sendsOwnLinesToStderr).toBe(true);
 			expect(log.texts("print")).toEqual([]);
 			expect(log.texts("info")[0]).toContain("USAGE:");
 			expect(exitCodeOf((result as ResultError<Error>).error)).toBe(2);
@@ -121,7 +121,7 @@ describe("help command", () => {
 
 			const result = await run("help", {
 				positionals: [],
-				bare: true,
+				asksForNothing: true,
 				options: { json: true },
 			});
 

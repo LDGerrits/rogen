@@ -37,7 +37,7 @@ export class ServeAddress {
 		return `http://${host.includes(":") ? `[${host}]` : host}:${this.port}${path}`;
 	}
 
-	get shown(): string {
+	get asInRojoBanner(): string {
 		const bare = this.bareHost;
 		return /^127\./.test(bare) || bare === "::1"
 			? `localhost:${this.port}`
@@ -45,7 +45,7 @@ export class ServeAddress {
 	}
 
 	get url(): string {
-		return `http://${this.shown}/`;
+		return `http://${this.asInRojoBanner}/`;
 	}
 
 	toString(): string {

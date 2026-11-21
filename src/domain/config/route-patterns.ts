@@ -1,4 +1,4 @@
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { isGlobsetMatch } from "../../base/glob.js";
 import { Target } from "../roblox/roblox.js";
 import { DeclaredKeys } from "./declared-keys.js";
@@ -81,7 +81,7 @@ export class RoutePatterns {
 			return { kind: "routed", key: best[0].key };
 		return {
 			kind: "clash",
-			keys: best.map(({ key }) => key).sort(compareStrings),
+			keys: best.map(({ key }) => key).sort(compareByCodePoint),
 		};
 	}
 

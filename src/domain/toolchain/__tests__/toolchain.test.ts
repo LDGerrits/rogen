@@ -1,4 +1,4 @@
-import { Darklua, DetectedWorkspace, PackageManager } from "../toolchain.js";
+import { Darklua, LanguageId, PackageManager } from "../toolchain.js";
 import { Luau } from "../luau.js";
 import { workspaceOf } from "./workspaces.js";
 
@@ -75,17 +75,9 @@ describe("DetectedWorkspace", () => {
 	});
 
 	it("should throw for a language it doesn't know", () => {
-		expect(() => workspaceOf().languageFor("cobol")).toThrow("cobol");
-	});
-
-	it("should need a language", () => {
-		expect(
-			() =>
-				new DetectedWorkspace({
-					languages: [],
-					packageDirs: new Set(),
-				})
-		).toThrow("at least one language");
+		expect(() => workspaceOf().languageFor("cobol" as LanguageId)).toThrow(
+			"cobol"
+		);
 	});
 
 	describe("packageMounts", () => {

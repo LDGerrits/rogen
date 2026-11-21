@@ -237,10 +237,28 @@ export function reaches(
 	target: string,
 	folder: string = diagnostic.resource
 ): boolean {
-	const posixTarget = toPosix(target);
 	return (
-		filesOf(diagnostic).some((file) => containsPath(posixTarget, file)) ||
-		(diagnostic.related === undefined &&
-			containsPath(toPosix(folder), posixTarget))
+		isAboutAnythingIn(diagnostic, target) ||
+		coversFromFolder(diagnostic, folder, target)
 	);
+}
+
+function isAboutAnythingIn(diagnostic: Diagnostic, target: string): boolean {
+	const posixTarget = toPosix(target);
+	return filesOf(diagnostic).some((file) => containsPath(posixTarget, file));
+}
+
+function coversFromFolder(
+	diagnostic: Diagnostic,
+	folder: string,
+	target: string
+): boolean {
+	return (
+		!listsItsFiles(diagnostic) &&
+		containsPath(toPosix(folder), toPosix(target))
+	);
+}
+
+function listsItsFiles(diagnostic: Diagnostic): boolean {
+	return diagnostic.related !== undefined;
 }

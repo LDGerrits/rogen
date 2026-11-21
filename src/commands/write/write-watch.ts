@@ -67,7 +67,7 @@ export class WriteWatch {
 			if (stepPlan.isErr()) return stepPlan;
 		}
 		const printing = this.step?.prints ?? false;
-		if (printing && !this.json) logService.reserveStdout();
+		if (printing && !this.json) logService.sendOwnLinesToStderr();
 		const log: WatchReporter = this.json
 			? instantiationService.createInstance(WatchJsonLog, cwd)
 			: printing

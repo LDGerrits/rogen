@@ -231,7 +231,7 @@ describe("watch", () => {
 			rojo.print("Building project 'repo'\nBuilt project to game.rbxl\n");
 			await settle();
 
-			expect(logService.reserved).toBe(false);
+			expect(logService.sendsOwnLinesToStderr).toBe(false);
 			expect(logService.texts("success")).toEqual([
 				"Wrote default.project.json.",
 				"Built game.rbxl.",
@@ -431,7 +431,7 @@ describe("watch", () => {
 				"default.project.json",
 				"--watch",
 			]);
-			expect(logService.reserved).toBe(true);
+			expect(logService.sendsOwnLinesToStderr).toBe(true);
 			expect(logService.texts("print")).toEqual(['{"name":"repo"}']);
 		});
 
@@ -448,7 +448,7 @@ describe("watch", () => {
 			}).run("sourcemap", { positionals: [], options: { watch: true } });
 
 			expect(result.isErr()).toBe(true);
-			expect(logService.reserved).toBe(true);
+			expect(logService.sendsOwnLinesToStderr).toBe(true);
 			expect(logService.texts("print")).toEqual([]);
 		});
 
@@ -473,7 +473,7 @@ describe("watch", () => {
 				"map.json",
 				"--watch",
 			]);
-			expect(logService.reserved).toBe(false);
+			expect(logService.sendsOwnLinesToStderr).toBe(false);
 		});
 
 		it("should run no Rojo without -o or -p", async () => {

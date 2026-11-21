@@ -1,5 +1,5 @@
 import { mistypedRouteErrors } from "./mistyped-route-errors.js";
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { isInside, joinPosix, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
@@ -172,7 +172,7 @@ export class Placer {
 		for (const { patternClash } of routed)
 			if (patternClash) clashes.set(patternClash.at, patternClash.keys);
 		return [...clashes]
-			.sort(([a], [b]) => compareStrings(a, b))
+			.sort(([a], [b]) => compareByCodePoint(a, b))
 			.map(([resource, keys]) =>
 				errorDiagnostic(
 					"route.patternClash",
@@ -208,11 +208,11 @@ export class Placer {
 				ignored.set(resource, found);
 			}
 		return [...ignored]
-			.sort(([a], [b]) => compareStrings(a, b))
+			.sort(([a], [b]) => compareByCodePoint(a, b))
 			.map(([resource, { keys, route, kind }]) => {
 				const many = keys.size > 1;
 				const quoted = joinedWithAnd(
-					[...keys].sort(compareStrings).map((key) => `"@${key}"`)
+					[...keys].sort(compareByCodePoint).map((key) => `"@${key}"`)
 				);
 				return errorDiagnostic(
 					"route.ignoredAt",

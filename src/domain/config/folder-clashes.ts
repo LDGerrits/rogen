@@ -11,7 +11,9 @@ export interface FolderConfig {
 	readonly value: Readonly<Record<string, unknown>> | undefined;
 }
 
-function otherKeys(value: Readonly<Record<string, unknown>> | undefined) {
+function withoutNameAndSourcePaths(
+	value: Readonly<Record<string, unknown>> | undefined
+) {
 	const { name: _name, sourcePaths: _sourcePaths, ...rest } = value ?? {};
 	return rest;
 }
@@ -30,7 +32,10 @@ export function folderClashes(
 		const location = { resource: mine.config.file };
 		if (
 			isSameJson(sourcesOf(mine.config), sourcesOf(sibling.config)) &&
-			isSameJson(otherKeys(mine.value), otherKeys(sibling.value))
+			isSameJson(
+				withoutNameAndSourcePaths(mine.value),
+				withoutNameAndSourcePaths(sibling.value)
+			)
 		) {
 			found.push(
 				errorDiagnostic(

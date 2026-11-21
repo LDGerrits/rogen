@@ -87,13 +87,13 @@ registerCommand(
 			).getCommands();
 			const pages = new HelpPages(commands);
 
-			if (line.bare) {
+			if (line.asksForNothing) {
 				const missing = new UsageError(
 					"No command given.",
 					`Run 'rogen ${HELP_COMMAND}' to see the commands.`
 				);
 				if (line.options.json) return err(missing);
-				logService.reserveStdout();
+				logService.sendOwnLinesToStderr();
 				logService.info(pages.overview());
 				return this.reported(missing);
 			}

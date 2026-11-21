@@ -1,8 +1,8 @@
 import path from "path";
-import { compareStrings, groupBy } from "../../base/collections.js";
+import { compareByCodePoint, groupBy } from "../../base/collections.js";
 import { ignoringGlob } from "../../base/glob.js";
 import {
-	dirnamePosix,
+	dirnamePosixOrEmpty,
 	joinPosix,
 	samePath,
 	stemOf,
@@ -143,7 +143,7 @@ export class ScannedRoot implements ScannedRootParts {
 	markersByDir(): ReadonlyMap<string, string[]> {
 		return groupBy(
 			this.markers,
-			(marker) => dirnamePosix(marker),
+			(marker) => dirnamePosixOrEmpty(marker),
 			(marker) => path.posix.basename(marker)
 		);
 	}
@@ -270,7 +270,7 @@ export class RootScanner {
 				sourcePath,
 				exists: true,
 				entries: walk.entries.sort((a, b) =>
-					compareStrings(a.relativePath, b.relativePath)
+					compareByCodePoint(a.relativePath, b.relativePath)
 				),
 				markers: walk.markers.sort(),
 				metaFiles: walk.metaFiles.sort(),
@@ -278,7 +278,7 @@ export class RootScanner {
 				emptyDirs: walk.emptyDirs.sort(),
 				leftOut: walk.leftOut,
 				oddNames: walk.oddNames.sort((a, b) =>
-					compareStrings(a.source, b.source)
+					compareByCodePoint(a.source, b.source)
 				),
 				unreadable: walk.unreadable.sort(),
 				unsynced: walk.unsynced.sort(),
