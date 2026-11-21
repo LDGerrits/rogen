@@ -6,35 +6,60 @@ import {
 	IndentGuides,
 	VsCodeWindow,
 } from "../ide";
+import type { Service } from "./explorer";
 import { L, Name } from "./inventory";
 import { delay, MoreLink } from "./more-link";
 
-type Dot = "o" | "s" | "c" | "r";
+interface TreeRow {
+	luau: string;
+	ts: string;
+	depth: number;
+	colour?: Service;
+	selected?: boolean;
+}
 
-const tree: [string, string, number, Dot, string?][] = [
-	["src/", "src/", 0, "o"],
-	["Combat/", "combat/", 1, "o"],
-	["Inventory/", "inventory/", 1, "o", "on"],
-	["UI/", "ui/", 2, "r", "f"],
-	["InventoryHud.luau", "inventory-hud.tsx", 3, "r", "f"],
-	["ItemSlot.luau", "item-slot.tsx", 3, "r", "f"],
-	[
-		"InventoryController@Client.luau",
-		"inventory-controller@client.ts",
-		2,
-		"c",
-		"f",
-	],
-	[
-		"InventoryService@Server.luau",
-		"inventory-service@server.ts",
-		2,
-		"s",
-		"f",
-	],
-	["InventoryTypes.luau", "inventory-types.ts", 2, "r", "f"],
-	["ItemIcons.rbxm", "item-icons.ts", 2, "r", "f"],
-	["Shop/", "shop/", 1, "o"],
+const tree: TreeRow[] = [
+	{ luau: "src/", ts: "src/", depth: 0 },
+	{ luau: "Combat/", ts: "combat/", depth: 1 },
+	{ luau: "Inventory/", ts: "inventory/", depth: 1, selected: true },
+	{ luau: "UI/", ts: "ui/", depth: 2, colour: "replicated" },
+	{
+		luau: "InventoryHud.luau",
+		ts: "inventory-hud.tsx",
+		depth: 3,
+		colour: "replicated",
+	},
+	{
+		luau: "ItemSlot.luau",
+		ts: "item-slot.tsx",
+		depth: 3,
+		colour: "replicated",
+	},
+	{
+		luau: "InventoryController@Client.luau",
+		ts: "inventory-controller@client.ts",
+		depth: 2,
+		colour: "client",
+	},
+	{
+		luau: "InventoryService@Server.luau",
+		ts: "inventory-service@server.ts",
+		depth: 2,
+		colour: "server",
+	},
+	{
+		luau: "InventoryTypes.luau",
+		ts: "inventory-types.ts",
+		depth: 2,
+		colour: "replicated",
+	},
+	{
+		luau: "ItemIcons.rbxm",
+		ts: "item-icons.ts",
+		depth: 2,
+		colour: "replicated",
+	},
+	{ luau: "Shop/", ts: "shop/", depth: 1 },
 ];
 
 const ROJO_RUNS: Run[] = [
@@ -58,34 +83,31 @@ const ROJO_RUNS: Run[] = [
 ];
 
 const depth = (d: number) => ({ "--d": d }) as CSSProperties;
-const depths = tree.map(([, , d]) => ({ depth: d }));
+const depths = tree.map(({ depth }) => ({ depth }));
 
-function TreeName({ name, dot }: { name: string; dot: Dot }) {
+function TreeName({ name, colour }: { name: string; colour?: Service }) {
 	const folder = name.endsWith("/");
 	return (
 		<>
 			{!folder && <FileIcon name={name} />}
-			<Name
-				name={name.replace(/\/$/, "")}
-				colour={dot === "o" ? undefined : dot}
-			/>
+			<Name name={name.replace(/\/$/, "")} colour={colour} />
 		</>
 	);
 }
 
-type Row = [string, number, boolean?];
+type Row = { name: string; depth: number; selected?: boolean };
 type Run = { command: string; output: string[] };
 
 const BOUNDARY: Record<"luau" | "ts", { rows: Row[] } & Run> = {
 	luau: {
 		rows: [
-			["src/", 0],
-			["Combat/", 1],
-			["CombatService@Server.luau", 2, true],
-			["CombatTypes.luau", 2],
-			["Inventory/", 1],
-			["InventoryService@Server.luau", 2],
-			["ItemCatalog.luau", 2],
+			{ name: "src/", depth: 0 },
+			{ name: "Combat/", depth: 1 },
+			{ name: "CombatService@Server.luau", depth: 2, selected: true },
+			{ name: "CombatTypes.luau", depth: 2 },
+			{ name: "Inventory/", depth: 1 },
+			{ name: "InventoryService@Server.luau", depth: 2 },
+			{ name: "ItemCatalog.luau", depth: 2 },
 		],
 		command: "lute lint --no-default-lints src",
 		output: [
@@ -99,13 +121,13 @@ const BOUNDARY: Record<"luau" | "ts", { rows: Row[] } & Run> = {
 	},
 	ts: {
 		rows: [
-			["src/", 0],
-			["combat/", 1],
-			["combat-service@server.ts", 2, true],
-			["combat-types.ts", 2],
-			["inventory/", 1],
-			["inventory-service@server.ts", 2],
-			["item-catalog.ts", 2],
+			{ name: "src/", depth: 0 },
+			{ name: "combat/", depth: 1 },
+			{ name: "combat-service@server.ts", depth: 2, selected: true },
+			{ name: "combat-types.ts", depth: 2 },
+			{ name: "inventory/", depth: 1 },
+			{ name: "inventory-service@server.ts", depth: 2 },
+			{ name: "item-catalog.ts", depth: 2 },
 		],
 		command: "npx eslint src",
 		output: [
@@ -120,17 +142,17 @@ const BOUNDARY: Record<"luau" | "ts", { rows: Row[] } & Run> = {
 const PLACES: Record<"luau" | "ts", { rows: Row[] } & Run> = {
 	luau: {
 		rows: [
-			["src/", 0],
-			["common/", 1],
-			["Shop/", 2],
-			["ItemCatalog.luau", 3],
-			["ShopService@Server.luau", 3],
-			["game/", 1],
-			["Shop/", 2],
-			["ItemCatalog.luau", 3, true],
-			["lobby/", 1],
-			["game.rogen.json", 0],
-			["lobby.rogen.json", 0],
+			{ name: "src/", depth: 0 },
+			{ name: "common/", depth: 1 },
+			{ name: "Shop/", depth: 2 },
+			{ name: "ItemCatalog.luau", depth: 3 },
+			{ name: "ShopService@Server.luau", depth: 3 },
+			{ name: "game/", depth: 1 },
+			{ name: "Shop/", depth: 2 },
+			{ name: "ItemCatalog.luau", depth: 3, selected: true },
+			{ name: "lobby/", depth: 1 },
+			{ name: "game.rogen.json", depth: 0 },
+			{ name: "lobby.rogen.json", depth: 0 },
 		],
 		command: "rogen where game",
 		output: [
@@ -141,19 +163,19 @@ const PLACES: Record<"luau" | "ts", { rows: Row[] } & Run> = {
 	},
 	ts: {
 		rows: [
-			["projects/", 0],
-			["common/", 1],
-			["src/shop/", 2],
-			["item-catalog.ts", 3],
-			["shop-service@server.ts", 3],
-			["tsconfig.json", 2],
-			["game/", 1],
-			["src/shop/", 2],
-			["item-catalog.ts", 3, true],
-			["default.rogen.json", 2],
-			["tsconfig.json", 2],
-			["lobby/", 1],
-			["package.json", 0],
+			{ name: "projects/", depth: 0 },
+			{ name: "common/", depth: 1 },
+			{ name: "src/shop/", depth: 2 },
+			{ name: "item-catalog.ts", depth: 3 },
+			{ name: "shop-service@server.ts", depth: 3 },
+			{ name: "tsconfig.json", depth: 2 },
+			{ name: "game/", depth: 1 },
+			{ name: "src/shop/", depth: 2 },
+			{ name: "item-catalog.ts", depth: 3, selected: true },
+			{ name: "default.rogen.json", depth: 2 },
+			{ name: "tsconfig.json", depth: 2 },
+			{ name: "lobby/", depth: 1 },
+			{ name: "package.json", depth: 0 },
 		],
 		command: "rogen where projects/game/default.rogen.json",
 		output: [
@@ -165,7 +187,11 @@ const PLACES: Record<"luau" | "ts", { rows: Row[] } & Run> = {
 };
 
 const suffixColour = (name: string) =>
-	/@server/i.test(name) ? "s" : /@client/i.test(name) ? "c" : undefined;
+	/@server/i.test(name)
+		? "server"
+		: /@client/i.test(name)
+			? "client"
+			: undefined;
 
 function Terminal({ runs, prompt = false }: { runs: Run[]; prompt?: boolean }) {
 	return (
@@ -209,7 +235,7 @@ function ExplorerAndTerminal({
 		<div className="plate ide rv" style={delay(delayMs)}>
 			{(["luau", "ts"] as const).map((lang) => {
 				const { rows, command, output } = figure[lang];
-				const depths = rows.map(([, depth]) => ({ depth }));
+				const depths = rows.map(({ depth }) => ({ depth }));
 				return (
 					<div key={lang} data-only={lang}>
 						<VsCodeWindow title="my-game">
@@ -218,13 +244,13 @@ function ExplorerAndTerminal({
 								MY-GAME
 							</div>
 							<ul className="ide-tree">
-								{rows.map(([name, depth, chosen], i) => {
+								{rows.map(({ name, depth, selected }, i) => {
 									const isFolder = name.endsWith("/");
 									return (
 										<li
 											key={i}
 											className={
-												chosen ? "sel" : undefined
+												selected ? "sel" : undefined
 											}
 											style={
 												{
@@ -299,33 +325,50 @@ export function Features() {
 								className="ide-tree"
 								aria-label="Example feature folder"
 							>
-								{tree.map(([luau, ts, d, dot, cls], i) => (
-									<li
-										key={luau}
-										className={
-											cls === "on" ? "sel" : undefined
-										}
-										style={depth(d)}
-									>
-										<IndentGuides depth={d} />
-										{luau.endsWith("/") && (
-											<Chevron
-												open={hasChildren(depths, i)}
-											/>
-										)}
-										<L
-											luau={
-												<TreeName
-													name={luau}
-													dot={dot}
+								{tree.map(
+									(
+										{
+											luau,
+											ts,
+											depth: d,
+											colour,
+											selected,
+										},
+										i
+									) => (
+										<li
+											key={luau}
+											className={
+												selected ? "sel" : undefined
+											}
+											style={depth(d)}
+										>
+											<IndentGuides depth={d} />
+											{luau.endsWith("/") && (
+												<Chevron
+													open={hasChildren(
+														depths,
+														i
+													)}
 												/>
-											}
-											ts={
-												<TreeName name={ts} dot={dot} />
-											}
-										/>
-									</li>
-								))}
+											)}
+											<L
+												luau={
+													<TreeName
+														name={luau}
+														colour={colour}
+													/>
+												}
+												ts={
+													<TreeName
+														name={ts}
+														colour={colour}
+													/>
+												}
+											/>
+										</li>
+									)
+								)}
 							</ul>
 						</VsCodeWindow>
 					</div>

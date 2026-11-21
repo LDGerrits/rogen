@@ -30,7 +30,7 @@ type Row = DiskRow;
 function viewsOf(lang: Lang) {
 	const rows = disk[lang];
 	const shared = rows.filter(
-		([, , , colour]) => colour !== "s" && colour !== "c"
+		([, , , colour]) => colour !== "server" && colour !== "client"
 	);
 	const routed = (colour: Service, folder: string): Row[] => [
 		[folder, 2, "", colour],
@@ -57,8 +57,8 @@ function viewsOf(lang: Lang) {
 				desc: `Put files in a ${client} or ${server} folder. In Studio, that folder disappears and its files sit directly in the feature's folder.`,
 				rows: [
 					...shared.slice(0, 5),
-					...routed("c", `${client}/`),
-					...routed("s", `${server}/`),
+					...routed("client", `${client}/`),
+					...routed("server", `${server}/`),
 					...shared.slice(5),
 				],
 			},

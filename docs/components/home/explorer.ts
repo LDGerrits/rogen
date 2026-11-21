@@ -1,2 +1,2 @@
-export type Service = "s" | "c" | "r";
-export type Icon = "svc" | "dir" | "scr" | "mdl";
+export type Service = "server" | "client" | "replicated";
+export type Icon = "service" | "folder" | "script" | "model";
