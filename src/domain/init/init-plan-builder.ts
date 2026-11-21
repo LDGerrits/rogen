@@ -22,6 +22,13 @@ import {
 } from "./init-service.js";
 import { PlannedMove } from "./project-migration.js";
 
+function setUpMarkersLast<T>(
+	others: readonly T[],
+	setUpMarkers: readonly T[]
+): T[] {
+	return [...others, ...setUpMarkers];
+}
+
 export class InitPlanBuilder {
 	private readonly configFiles: {
 		file: PlannedFile;
@@ -155,7 +162,7 @@ export class InitPlanBuilder {
 		const toWrite = this.configFiles
 			.filter(({ writesProjectFile }) => writesProjectFile)
 			.map(({ file }) => file);
-		const moves = [...this.moves, ...this.setAsides];
+		const moves = setUpMarkersLast(this.moves, this.setAsides);
 		const movedAway = new Set(moves.map(({ from }) => from));
 		const taken = this.directory.checkFree(
 			written
@@ -173,14 +180,16 @@ export class InitPlanBuilder {
 			gitInit: this.gitInit,
 			...(this.scaffold && { scaffold: this.scaffold }),
 			moves,
-			files: [
-				...this.templateFiles,
-				...(this.agentFile ? [this.agentFile] : []),
-				...this.agentImports,
-				...this.hookFiles,
-				...(this.toolManifest ? [this.toolManifest] : []),
-				...written,
-			],
+			files: setUpMarkersLast(
+				[
+					...this.templateFiles,
+					...(this.agentFile ? [this.agentFile] : []),
+					...this.agentImports,
+					...this.hookFiles,
+					...(this.toolManifest ? [this.toolManifest] : []),
+				],
+				written
+			),
 			directories: [...this.directories],
 			commands: [...this.commands],
 			configs: toWrite.map(({ fileName }) =>

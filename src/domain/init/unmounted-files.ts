@@ -32,28 +32,29 @@ export class UnmountedFiles {
 	): Promise<string[]> {
 		const roots = sourcePaths.map(normalizeDir);
 		const common = commonFolderPosix(roots);
-		const mountedAt = (relative: string) =>
-			[
-				relative,
-				...compiled.map((folder) =>
-					joinPosix(
-						normalizeDir(folder),
-						path.posix.relative(common, relative)
-					)
-				),
-			].some((place) => mounted.some((target) => holds(target, place)));
+		const isMounted = (place: string) =>
+			mounted.some((target) => holds(target, place));
+		const compiledCopiesOf = (relative: string) =>
+			compiled.map((folder) =>
+				joinPosix(
+					normalizeDir(folder),
+					path.posix.relative(common, relative)
+				)
+			);
+		const countsAsMounted = (relative: string) =>
+			isMounted(relative) || compiledCopiesOf(relative).some(isMounted);
 		const found: string[] = [];
 		for (const root of roots)
-			if (!mounted.some((target) => holds(target, root)))
+			if (!isMounted(root))
 				found.push(
-					...(await this.walk(root, mountedAt, ignored)).paths
+					...(await this.walk(root, countsAsMounted, ignored)).paths
 				);
 		return found.map(literalGlob).sort();
 	}
 
 	private async walk(
 		folder: string,
-		mountedAt: (relative: string) => boolean,
+		countsAsMounted: (relative: string) => boolean,
 		ignored: readonly string[]
 	): Promise<{ whole: boolean; paths: string[] }> {
 		const listing = await tryWithAsync(() =>
@@ -69,9 +70,13 @@ export class UnmountedFiles {
 				ignoringGlob(relative, ignored) !== undefined
 			)
 				continue;
-			if (mountedAt(relative)) whole = false;
+			if (countsAsMounted(relative)) whole = false;
 			else if (isDirectoryType(type)) {
-				const inside = await this.walk(relative, mountedAt, ignored);
+				const inside = await this.walk(
+					relative,
+					countsAsMounted,
+					ignored
+				);
 				if (inside.whole) paths.push(relative);
 				else {
 					whole = false;
