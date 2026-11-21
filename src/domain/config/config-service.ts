@@ -191,6 +191,8 @@ export interface ConfigService {
 	firstNotConfig(refs: readonly string[]): Promise<string | undefined>;
 	/** The configs that answer for `target`, so a command run from the root can take a path of any place: the default of the nearest folder at or above it, else every named config there whose source paths cover it. */
 	coversOf(target: string): Promise<ConfigCover[]>;
+	/** The configs that list `target` in their source paths though none is at or above it, such as the places that share a `common` folder: those in a folder beside a folder above it, up to the repository root or the folder it shares with the working directory, whichever is higher. */
+	readersOf(target: string): Promise<string[]>;
 	/** Loads the configs that answer for each target, one selection per config, so a command can take paths of several places. An undefined target, such as an instance, is answered by the configs named among the targets, else the default of the working directory. */
 	selectCovering(
 		targets: readonly (string | undefined)[]

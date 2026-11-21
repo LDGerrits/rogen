@@ -1,6 +1,6 @@
 import { relativeTo } from "../../base/path.js";
-import { Result } from "../../base/result.js";
-import { joinedWithOr } from "../../base/strings.js";
+import { Result, ok } from "../../base/result.js";
+import { joinedWithAnd, joinedWithOr } from "../../base/strings.js";
 import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
 import { ConfigService, CoveredTargets } from "../config/config-service.js";
 import { Asked, WriteService } from "./write-service.js";
@@ -12,7 +12,9 @@ export class AskedPaths {
 		readonly args: readonly string[],
 		/** One per argument, in order. */
 		readonly asked: readonly Asked[],
-		private readonly covering: CoveredTargets
+		private readonly covering: CoveredTargets,
+		/** For each uncovered argument, the configs beside it that read it. */
+		private readonly readers: ReadonlyMap<number, readonly string[]>
 	) {}
 
 	static async of(
@@ -28,7 +30,14 @@ export class AskedPaths {
 		const covering = await configService.selectCovering(
 			asked.map((one) => ("path" in one ? one.path : undefined))
 		);
-		return covering.map((covered) => new AskedPaths(args, asked, covered));
+		if (covering.isErr()) return covering;
+		const readers = new Map<number, readonly string[]>();
+		for (const index of covering.value.uncovered) {
+			const one = asked[index];
+			if ("path" in one)
+				readers.set(index, await configService.readersOf(one.path));
+		}
+		return ok(new AskedPaths(args, asked, covering.value, readers));
 	}
 
 	/** One per config that answers, with the indexes of the arguments it answers for. */
@@ -51,8 +60,15 @@ export class AskedPaths {
 	get uncovered(): SkippedPath[] {
 		return this.covering.uncovered.flatMap((index): SkippedPath[] => {
 			const one = this.asked[index];
+			const readers = this.readers.get(index) ?? [];
 			return "path" in one
-				? [{ path: one.path, reason: "noConfig" }]
+				? [
+						{
+							path: one.path,
+							reason: "noConfig",
+							...(readers.length > 0 && { readers }),
+						},
+					]
 				: [];
 		});
 	}
@@ -70,14 +86,33 @@ export async function skippedNotes(
 				relativeTo(cwd, file)
 			)
 		: [];
-	return skipped.map((one) => {
-		const path = relativeTo(cwd, one.path);
-		if (one.reason === "outsideSourcePaths")
-			return `note: ${path}: in no source path of ${relativeTo(cwd, one.config ?? "")}, so Rogen leaves it out of the project file.`;
-		const hint =
-			named.length > 0
-				? ` ${ask.lead} through one: rogen ${ask.command} ${joinedWithOr(named)}.`
-				: "";
-		return `note: ${path}: no config at or above it reads it.${hint}`;
-	});
+	return Promise.all(
+		skipped.map(async (one) => {
+			const path = relativeTo(cwd, one.path);
+			if (one.reason === "outsideSourcePaths")
+				return `note: ${path}: in no source path of ${relativeTo(cwd, one.config ?? "")}, so Rogen leaves it out of the project file.`;
+			const readers = one.readers ?? [];
+			if (readers.length > 0) {
+				const commands = await Promise.all(
+					readers.map(async (file) => {
+						const ref = await configService.referenceTo(file, cwd);
+						return ref
+							? `'rogen ${ask.command} ${ref}'`
+							: `'rogen ${ask.command}'`;
+					})
+				);
+				const files = joinedWithAnd(
+					readers.map((file) => relativeTo(cwd, file))
+				);
+				return readers.length === 1
+					? `note: ${path}: no config at or above it reads it, but ${files} lists it in its source paths. ${ask.lead} through that config: ${commands[0]}.`
+					: `note: ${path}: no config at or above it reads it, but ${files} list it in their source paths. ${ask.lead} through one: ${joinedWithOr(commands)}.`;
+			}
+			const hint =
+				named.length > 0
+					? ` ${ask.lead} through one: rogen ${ask.command} ${joinedWithOr(named)}.`
+					: "";
+			return `note: ${path}: no config at or above it reads it.${hint}`;
+		})
+	);
 }

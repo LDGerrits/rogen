@@ -189,6 +189,10 @@ export class MockConfigService implements ConfigService {
 		return undefined;
 	}
 
+	async readersOf(): Promise<string[]> {
+		return [];
+	}
+
 	async coversOf(target: string): Promise<ConfigCover[]> {
 		return this.covers(target);
 	}

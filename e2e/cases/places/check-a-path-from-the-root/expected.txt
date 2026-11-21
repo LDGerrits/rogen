@@ -9,7 +9,7 @@ stderr:
 $ rogen check places/shared/src/Stray.Server.luau
 exit 0
 stderr:
-  note: places/shared/src/Stray.Server.luau: no config at or above it reads it.
+  note: places/shared/src/Stray.Server.luau: no config at or above it reads it, but places/arena/default.rogen.json and places/lobby/default.rogen.json list it in their source paths. Check it through one: 'rogen check places/arena' or 'rogen check places/lobby'.
 
 $ rogen check places/shared/src/Stray.Server.luau places/lobby/src/Main.server.luau
 exit 1
@@ -17,7 +17,7 @@ stdout:
   places/shared/src/Stray.Server.luau - error: write "Stray.server.luau" (route.dotRoute)
   places/lobby/src/Buy.Server.luau - error: write "Buy.server.luau" (route.dotRoute)
 stderr:
-  note: places/shared/src/Stray.Server.luau: no config at or above it reads it.
+  note: places/shared/src/Stray.Server.luau: no config at or above it reads it, but places/arena/default.rogen.json and places/lobby/default.rogen.json list it in their source paths. Check it through one: 'rogen check places/arena' or 'rogen check places/lobby'.
   warning: The write stops on the errors above, so the paths were checked only as far as it gets; fix them and check again.
 
 $ rogen check places/lobby/default.rogen.json

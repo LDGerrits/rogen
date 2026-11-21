@@ -476,7 +476,7 @@ describe("where command", () => {
 			expect(printed()).toEqual([]);
 			expect(logService.texts("warn")).toEqual([]);
 			expect(logService.texts("notice")).toEqual([
-				"note: places/shared/src/Common/Util.luau: no config at or above it reads it.",
+				"note: places/shared/src/Common/Util.luau: no config at or above it reads it, but places/arena/default.rogen.json and places/lobby/default.rogen.json list it in their source paths. See where it lands through one: 'rogen where places/arena' or 'rogen where places/lobby'.",
 			]);
 		});
 
@@ -486,10 +486,12 @@ describe("where command", () => {
 				routes: ROUTES,
 			});
 
-			await run({ _: ["places/shared/src/Common/Util.luau"] });
+			await write("places/shared/Common/Util.luau");
+
+			await run({ _: ["places/shared/Common/Util.luau"] });
 
 			expect(logService.texts("notice")).toEqual([
-				"note: places/shared/src/Common/Util.luau: no config at or above it reads it. See where it lands through one: rogen where game.rogen.json.",
+				"note: places/shared/Common/Util.luau: no config at or above it reads it. See where it lands through one: rogen where game.rogen.json.",
 			]);
 		});
 
