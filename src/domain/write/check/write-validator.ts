@@ -322,11 +322,7 @@ export class WriteValidator {
 		for (const { entry, routeMatch, init } of this.placement.files)
 			if (routeMatch !== "fallback") continue;
 			else if (init)
-				scripts.set(
-					init.becomes,
-					path.posix.basename(init.becomes) +
-						path.posix.extname(entry.source)
-				);
+				scripts.set(init.becomes, asFileOf(init.becomes, entry.source));
 			else for (const folder of foldersAbove(entry)) plain.add(folder);
 		const matched = [...new Set([...scripts.keys(), ...plain])]
 			.sort(compareStrings)
@@ -355,7 +351,7 @@ export class WriteValidator {
 				return warningDiagnostic(
 					"route.folderPattern",
 					{ resource: folder },
-					`matches the pattern "${pattern}", but a pattern never routes a folder${script ? " or its init script, so it and its files go" : ", so the files in it that no route takes go"} to "*". ${key === undefined ? 'No name key routes to that place: add one to "routes" and name the folder for it.' : `Name it ${name}@${key} to route it there.`}`,
+					`matches the pattern "${pattern}", but a pattern never routes a folder${script ? " or its init script, so it goes" : ", so the files in it that no route takes go"} to "*". ${key === undefined ? 'No name key routes to that place: add one to "routes" and name the folder for it.' : `Name it ${name}@${key} to route it there.`}`,
 					renamable
 						? [{ rename: { from: folder, to: `${folder}@${key}` } }]
 						: []
@@ -849,6 +845,12 @@ export class WriteValidator {
 			)
 		);
 	}
+}
+
+/** The name the init script `source` of the folder `folder` would have as a file of its own, as `Hud.server.luau` for `Hud/init.server.luau`. */
+function asFileOf(folder: string, source: string): string {
+	const fileName = path.posix.basename(source);
+	return path.posix.basename(folder) + fileName.slice(fileName.indexOf("."));
 }
 
 /** The folders between a scanned file and its source path, nearest first. */

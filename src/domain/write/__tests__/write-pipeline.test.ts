@@ -549,7 +549,7 @@ describe("WritePipeline", () => {
 				]);
 			});
 
-			it("should count a copied init script once, at the route that places it", async () => {
+			it("should count a split folder's init script once, at its own route", async () => {
 				await fs.writeFile(abs("src/Net/init.luau"), "");
 				await fs.writeFile(abs("src/Net/Util.luau"), "");
 				await fs.writeFile(abs("src/Net/server/Remote.luau"), "");

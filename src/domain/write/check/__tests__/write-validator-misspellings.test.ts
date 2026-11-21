@@ -243,7 +243,7 @@ describe("WriteValidator rules", () => {
 				expect(warning).toMatchObject({
 					resource: abs("src/Input/InputController"),
 					message:
-						'matches the pattern "*Controller", but a pattern never routes a folder or its init script, so it and its files go to "*". Name it InputController@client to route it there.',
+						'matches the pattern "*Controller", but a pattern never routes a folder or its init script, so it goes to "*". Name it InputController@client to route it there.',
 					fixes: [
 						{
 							rename: {
@@ -265,6 +265,19 @@ describe("WriteValidator rules", () => {
 
 				expect(warnings.map(({ resource }) => resource)).toEqual([
 					abs("src/Input/InputController"),
+				]);
+			});
+
+			it("should keep an init script's own suffix when it matches a folder script by its file name", async () => {
+				await write("src/Boot/init.server.luau");
+
+				const warnings = await warningsOf("route.folderPattern", {
+					"*.server.luau": "ServerScriptService",
+					"*": "ReplicatedStorage/shared",
+				});
+
+				expect(warnings.map(({ resource }) => resource)).toEqual([
+					abs("src/Boot"),
 				]);
 			});
 

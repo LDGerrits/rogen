@@ -290,7 +290,7 @@ Make the pattern that should win more specific, as in `*Ui.ts`, or route the fil
 Warning. A folder with an init script goes to `*` though its name matches a pattern route, as `InputController/init.luau` under a `*Controller` pattern. A pattern routes files by name and never a folder, and an init script is its folder, so the script and every file in the folder go to `*`, which can ship server code to clients.
 
 ```
-warning: matches the pattern "*Controller", but a pattern never routes a folder or its init script, so it and its files go to "*". Name it InputController@Client to route it there. (route.folderPattern)
+warning: matches the pattern "*Controller", but a pattern never routes a folder or its init script, so it goes to "*". Name it InputController@Client to route it there. (route.folderPattern)
 ```
 
 A folder of plain files gets this warning too when a pattern without a `*` matches its name, as `server/` under `[Ss]erver`. Such a pattern names a whole word, so a folder spelled that way was most likely meant to route its files, and those that no route takes go to `*` instead. Only the outermost such folder warns, and a folder that already has an error for its name, such as [`route.caseMismatch`](#route-casemismatch), doesn't. A pattern with a `*`, such as `*Controller`, doesn't warn about a folder of plain files, since `ShopController/` may just be a feature's name.

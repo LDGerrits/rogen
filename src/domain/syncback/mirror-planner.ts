@@ -481,14 +481,14 @@ class MirrorPlanRun {
 			if (
 				target === undefined ||
 				holding.has(at) ||
-				stillMounted.has(target) ||
-				// Syncback writes nothing compiled, so a compiled folder is only listed as removed.
-				!(
-					this.isCompiled(toNative(target)) ||
-					(await emptiedBy(toNative(target)))
-				)
+				stillMounted.has(target)
 			)
 				continue;
+			// Syncback writes nothing compiled, so a compiled folder is only listed as removed.
+			const prunable =
+				this.isCompiled(toNative(target)) ||
+				(await emptiedBy(toNative(target)));
+			if (!prunable) continue;
 			const instance = workspace.instanceAt(at);
 			if (!this.leftOut(toNative(target), instance, "removed")) {
 				gone.add(toNative(target));

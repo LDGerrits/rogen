@@ -140,13 +140,13 @@ export class TreeAssembler {
 		collapsed: Collapsed
 	): Map<string, string> {
 		const { placement } = this;
-		const { layout, files: nodes } = placement;
+		const { layout, files } = placement;
 		for (const [dir, instancePath] of collapsed.entries())
 			project.insertNode(instancePath, {
 				$path: layout.rojoFolderPath(dir),
 			});
 		const initDirs = new Map<string, string>();
-		for (const file of nodes) {
+		for (const file of files) {
 			const { entry, instancePath } = file;
 			if (collapsed.covers(entry.source)) continue;
 			const dir = placement.initDirOf(file);

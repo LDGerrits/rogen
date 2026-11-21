@@ -2,7 +2,7 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  src/Hud/HudController - warning: matches the pattern "*Controller", but a pattern never routes a folder or its init script, so it and its files go to "*". Name it HudController@Client to route it there. (route.folderPattern)
+  src/Hud/HudController - warning: matches the pattern "*Controller", but a pattern never routes a folder or its init script, so it goes to "*". Name it HudController@Client to route it there. (route.folderPattern)
 
 $ rogen where src
 exit 0
