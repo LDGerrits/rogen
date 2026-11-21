@@ -7,8 +7,12 @@ import { expect } from "@jest/globals";
 const spelled = (text) =>
 	text.replace(/(?<![\w])[A-Za-z]:(?=[\\/])/g, "").replace(/\\+/g, "/");
 
-if (path.sep === "\\") {
+const poseAsWindowsTerminal = () => {
 	process.env.WT_SESSION ??= "1";
+};
+
+if (path.sep === "\\") {
+	poseAsWindowsTerminal();
 	expect.addEqualityTesters([
 		(a, b) =>
 			typeof a === "string" && typeof b === "string"
