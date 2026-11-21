@@ -15,13 +15,14 @@ import { ReviewPrompts } from "./review-prompts.js";
 import { COMMON_FOLDER, PROJECTS_FOLDER } from "./starter-places.js";
 import { TreeChoice } from "./tree-plan.js";
 
-function oneOf(
+function oneOf<T extends string>(
 	value: string,
-	known: readonly string[],
+	known: readonly T[],
 	what: string,
 	flag: string
-): string {
-	if (known.includes(value)) return value;
+): T {
+	const found = known.find((candidate) => candidate === value);
+	if (found !== undefined) return found;
 	throw new UsageError(
 		`'${value}' is not ${what}.`,
 		`The values of ${flag} are ${joinedClosestFirst(value, known)}.`
