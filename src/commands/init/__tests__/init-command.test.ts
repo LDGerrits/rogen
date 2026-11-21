@@ -270,14 +270,6 @@ describe("init command", () => {
 			});
 		});
 
-		it("should name --no-places when the default is several places", async () => {
-			await write("projects/keep");
-
-			const flags = await flagsByQuestion({ language: "roblox-ts" });
-
-			expect(flags.places).toBe("--no-places");
-		});
-
 		it("should name in the text each choice with the same flag", async () => {
 			const logService = new MockLogService();
 

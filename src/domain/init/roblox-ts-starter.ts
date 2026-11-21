@@ -10,20 +10,12 @@ const OUT_DIR = "out";
 const PLACES_VARIANT = "roblox-ts-places";
 
 export class RobloxTsStarter {
-	static readonly OWN_FOLDERS: readonly string[] = ["include"];
-
 	static of(language: Language): RobloxTsStarter | undefined {
 		return language.id === "roblox-ts" ? new RobloxTsStarter() : undefined;
 	}
 
-	static ignored(several: boolean, outDir = OUT_DIR): string[] {
-		return [
-			"/node_modules",
-			`/${outDir}`,
-			"/include",
-			"*.tsbuildinfo",
-			...(several ? [`projects/*/${outDir}`, "projects/*/include"] : []),
-		];
+	static ignored(outDir = OUT_DIR): string[] {
+		return ["/node_modules", `/${outDir}`, "/include", "*.tsbuildinfo"];
 	}
 
 	scaffold(several = false): PlannedScaffold {
@@ -57,9 +49,10 @@ export class RobloxTsStarter {
 	}
 
 	scripts(place: string): PlannedCommand {
+		const tsconfig = RobloxTsStarter.placeTsconfig(place);
 		const settings = [
-			`scripts.build=rbxtsc -p ${place}`,
-			`scripts.watch=rbxtsc -w -p ${place}`,
+			`scripts.build=rbxtsc -p ${tsconfig}`,
+			`scripts.watch=rbxtsc -w -p ${tsconfig}`,
 		];
 		return {
 			command: `npm pkg set ${settings.map((setting) => `"${setting}"`).join(" ")}`,
@@ -69,9 +62,19 @@ export class RobloxTsStarter {
 		};
 	}
 
+	static placeTsconfig(place: string): string {
+		return `tsconfig.${place}.json`;
+	}
+
+	addPlaceStep(place: string, other: string, otherConfig: string): string {
+		const from = RobloxTsStarter.placeTsconfig(place);
+		const to = RobloxTsStarter.placeTsconfig(other);
+		return `Copy ${from} to ${to}, change each ${place} in it to ${other}, add it to the references in tsconfig.json, and set "compiledPath" in ${otherConfig} to ${OUT_DIR}/${other}. Add ' && rbxtsc -p ${to}' to the end of the build script in package.json. 'rbxtsc -w' runs until you stop it, so watch the place from a terminal of its own with 'npx rbxtsc -w -p ${to}'.`;
+	}
+
 	placesTsconfigs(): PlannedFile[] {
 		return [...templateFiles(PLACES_VARIANT)]
-			.filter(([file]) => file.endsWith("/tsconfig.json"))
+			.filter(([file]) => /^tsconfig(\.[^/]+)?\.json$/.test(file))
 			.map(([fileName, content]) => ({ fileName, content }));
 	}
 }

@@ -60,24 +60,6 @@ describe("init choices given as flags", () => {
 			]);
 		});
 
-		it("should name --no-places when a projects folder makes several places the default", async () => {
-			const questions = questionsOf(
-				new MockPromptService([], false),
-				false,
-				{}
-			);
-			const target = directoryOf({
-				workspace: { ...rbxts, codeFolders: ["projects"] },
-				existing: ["projects"],
-			});
-
-			await questions.places(target, target.workspace.language);
-
-			expect(questions.decided).toEqual([
-				{ question: "places", value: true, flag: "--no-places" },
-			]);
-		});
-
 		it("should write down nothing for a choice it was given", async () => {
 			const { questions } = await run(luau, {
 				kind: "place",
