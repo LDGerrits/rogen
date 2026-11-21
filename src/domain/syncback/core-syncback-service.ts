@@ -88,11 +88,11 @@ export class CoreSyncbackService implements SyncbackService {
 			mode
 		);
 		if (outcome.kind !== "written") return { write, outcome };
-		const rewritten = await this.writeService.write(selection);
+		const afterSyncback = await this.writeService.write(selection);
 		return {
 			write:
-				rewritten.failure() || rewritten.outcomes.some(didWrite)
-					? rewritten
+				afterSyncback.failure() || afterSyncback.outcomes.some(didWrite)
+					? afterSyncback
 					: write,
 			outcome,
 		};
@@ -158,12 +158,21 @@ export class CoreSyncbackService implements SyncbackService {
 						)
 					);
 			}
-			if (signal.aborted) return err(stopped());
-			const result = await this.instantiationService
-				.createInstance(PlanWriter)
-				.write(request, plan);
-			return ok(written(result, mode));
+			return this.writeUnlessStopped(request, plan, mode, signal);
 		});
+	}
+
+	private async writeUnlessStopped(
+		request: SyncbackRequest,
+		plan: MirrorPlan,
+		mode: SyncbackMode,
+		signal: AbortSignal
+	): Promise<Result<SyncbackOutcome, Error>> {
+		if (signal.aborted) return err(stopped());
+		const result = await this.instantiationService
+			.createInstance(PlanWriter)
+			.write(request, plan);
+		return ok(written(result, mode));
 	}
 
 	private async planIn(

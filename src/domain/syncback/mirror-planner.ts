@@ -290,17 +290,17 @@ class MirrorPlanRun {
 		const { workspace, operations, unplaced } = this;
 		const { copied, started } = this.run;
 		const claimed = new Map<string, number>();
-		const mounted = new Set(
+		const mountedByThemselves = new Set(
 			workspace.mirror.entries
 				.filter(({ kind }) => kind === "file")
 				.map(({ mirror }) => mirror)
 		);
-		const kept = copied.filter(
+		const readByRojo = copied.filter(
 			({ target, mirror }) =>
-				mounted.has(mirror) || !workspace.isIgnored(target)
+				mountedByThemselves.has(mirror) || !workspace.isIgnored(target)
 		);
 		const compared = await inBatches(
-			kept,
+			readByRojo,
 			async (copy): Promise<Operation | NoOperation> => {
 				const { mirror: at, target } = copy;
 				const file = toNative(target);
@@ -408,9 +408,10 @@ class MirrorPlanRun {
 	private async pruneEmptied(): Promise<void> {
 		const { workspace, operations } = this;
 		const { mirror } = workspace;
-		const holding = new Set<string>();
+		const heldByPlace = new Set<string>();
 		for (const { path: at } of this.after)
-			for (const folder of [...foldersOf(at), at]) holding.add(folder);
+			for (const folder of [...foldersOf(at), at])
+				heldByPlace.add(folder);
 		const copiedFolders = new Set(
 			mirror.entries
 				.filter(({ kind }) => kind === "folder")
@@ -426,7 +427,7 @@ class MirrorPlanRun {
 					copiedFolders.add(folder);
 		const stillMounted = new Set(
 			[...copiedFolders]
-				.filter((at) => holding.has(at))
+				.filter((at) => heldByPlace.has(at))
 				.map((at) => mirror.targetOf(at))
 		);
 		const gone = new Set(
@@ -455,24 +456,21 @@ class MirrorPlanRun {
 			const target = mirror.targetOf(at);
 			if (
 				target === undefined ||
-				holding.has(at) ||
+				heldByPlace.has(at) ||
 				stillMounted.has(target)
 			)
 				continue;
-			const prunable =
-				this.isCompiled(toNative(target)) ||
-				(await emptiedBy(toNative(target)));
-			if (!prunable) continue;
+			const folder = toNative(target);
 			const instance = workspace.instanceAt(at);
-			if (!this.leftOut(toNative(target), instance, "removed")) {
-				gone.add(toNative(target));
-				operations.push({
-					kind: "prune",
-					file: toNative(target),
-					instance,
-					from: at,
-				});
-			}
+			if (this.leftOut(folder, instance, "removed")) continue;
+			if (!(await emptiedBy(folder))) continue;
+			gone.add(folder);
+			operations.push({
+				kind: "prune",
+				file: folder,
+				instance,
+				from: at,
+			});
 		}
 		const readAt = new Map<string, Set<string>>();
 		const readsAt = (folder: string, at: string) =>
@@ -481,6 +479,8 @@ class MirrorPlanRun {
 			const target = mirror.targetOf(at);
 			if (target !== undefined) readsAt(toNative(target), at);
 		}
+		const placeStillHolds = (folder: string) =>
+			[...(readAt.get(folder) ?? [])].some((at) => heldByPlace.has(at));
 		const emptied: { file: string; instance: string; parent?: string }[] =
 			[];
 		for (const { kind, file, from } of operations) {
@@ -505,11 +505,7 @@ class MirrorPlanRun {
 				folder = path.dirname(folder)
 			) {
 				if (!(await emptiedBy(folder))) break;
-				if (
-					[...(readAt.get(folder) ?? [])].some((at) =>
-						holding.has(at)
-					)
-				) {
+				if (placeStillHolds(folder)) {
 					this.toKeep.set(folder, instance);
 					break;
 				}
@@ -558,7 +554,10 @@ class MirrorPlanRun {
 		const fresh: AddedPath[] = [];
 		const metaFiles: MetaRequest<{ from: string; bytes: Uint8Array }>[] =
 			[];
-		const askMeta = async (at: string, parent: readonly string[]) => {
+		const takeAsFeatureMeta = async (
+			at: string,
+			parent: readonly string[]
+		) => {
 			const feature = workspace.layout.featureMaking(parent);
 			const meta =
 				feature && (await this.edits.featureMeta(feature.folder));
@@ -570,7 +569,8 @@ class MirrorPlanRun {
 		};
 		for (const added of this.after) {
 			if (this.copiedPaths.has(added.path)) continue;
-			if (added.folder && known.has(added.path)) continue;
+			const mirroredFolder = added.folder && known.has(added.path);
+			if (mirroredFolder) continue;
 			const target = mirror.targetOf(added.path);
 			const names = added.path.split("/");
 			if (target === undefined) {
@@ -592,7 +592,7 @@ class MirrorPlanRun {
 							]),
 							reason: `its name makes Rojo write it as ${name}, which Rojo reads as the folder ${instanceKey(parent)} itself; rename it in Studio`,
 						});
-					else await askMeta(added.path, parent);
+					else await takeAsFeatureMeta(added.path, parent);
 				} else fresh.push(added);
 				continue;
 			}
@@ -604,11 +604,10 @@ class MirrorPlanRun {
 			const file = toNative(target);
 			const instance = workspace.instanceAt(added.path);
 			if (this.isCompiled(file)) {
-				if (
+				const folderInProject =
 					added.folder &&
-					(await this.fileSystemService.isDirectory(file))
-				)
-					continue;
+					(await this.fileSystemService.isDirectory(file));
+				if (folderInProject) continue;
 				if (
 					!added.folder &&
 					(await this.onlyOverrides(added.path, file))
@@ -629,7 +628,7 @@ class MirrorPlanRun {
 					names.slice(0, -1).join("/")
 				);
 				if (workspace.layout.featureMaking(parent)) {
-					await askMeta(added.path, parent);
+					await takeAsFeatureMeta(added.path, parent);
 					continue;
 				}
 			}
@@ -722,12 +721,14 @@ class MirrorPlanRun {
 		metaFiles: readonly MetaRequest<{ from: string; bytes: Uint8Array }>[]
 	): Promise<void> {
 		const { unplaced } = this;
+		const compilerMakesFeatures =
+			this.request.project.compiledPath !== undefined;
 		const metas = featureMetas(this.workspace.layout, metaFiles, (a, b) =>
 			sameBytes(a.bytes, b.bytes)
 		);
 		for (const { folder, instance, edit } of metas.placed) {
 			const key = instanceKey(instance);
-			if (this.request.project.compiledPath !== undefined) {
+			if (compilerMakesFeatures) {
 				this.compiled.push({ instance: key, kind: "changed" });
 				continue;
 			}
@@ -806,7 +807,11 @@ class MirrorPlanRun {
 		);
 		const choices: Choice[] = [];
 		for (const held of this.inPlace.values()) {
-			const placed = await this.proposalsOf(
+			const whereRojoWroteIt: Proposal = {
+				operations: held.operations,
+				landings: held.landings,
+			};
+			const whereRoutingPutsIt = await this.proposalsOf(
 				router,
 				held.made,
 				new Set([...folders, ...held.folders]),
@@ -814,10 +819,7 @@ class MirrorPlanRun {
 			);
 			choices.push({
 				instance: held.instance,
-				proposals: [
-					{ operations: held.operations, landings: held.landings },
-					...placed.proposals,
-				],
+				proposals: [whereRojoWroteIt, ...whereRoutingPutsIt.proposals],
 			});
 		}
 		for (const instance of instances) {
@@ -865,7 +867,7 @@ class MirrorPlanRun {
 	private async choose(choices: readonly Choice[]): Promise<void> {
 		const at = choices.map(() => 0);
 		const reasons = choices.map(({ reason }) => reason);
-		const firstMisses: (string | undefined)[] = choices.map(
+		const preferredMisses: (string | undefined)[] = choices.map(
 			() => undefined
 		);
 		for (;;) {
@@ -898,7 +900,7 @@ class MirrorPlanRun {
 			chosen.forEach((proposal, index) => {
 				const miss = proposal && misses.get(proposal);
 				if (miss === undefined) return;
-				firstMisses[index] ??= miss;
+				preferredMisses[index] ??= miss;
 				at[index]++;
 				anyMissed = true;
 			});
@@ -909,7 +911,7 @@ class MirrorPlanRun {
 					this.unplaced.push({
 						instance,
 						reason:
-							firstMisses[index] ??
+							preferredMisses[index] ??
 							reasons[index] ??
 							"routing places it nowhere",
 					});
@@ -1110,17 +1112,18 @@ class MirrorPlanRun {
 					...router.destination(instance, file, each)
 				),
 			}));
-			const blocked = await this.blocked(
+			const forbidden = await this.forbidden(
 				targets.map(({ to }) => to),
 				removed
 			);
-			if (blocked !== undefined) return { proposals, reason: blocked };
+			if (forbidden !== undefined)
+				return { proposals, reason: forbidden };
 			const operations: Operation[] = [];
 			const landings: Landing[] = [];
 			for (const { file, at, to } of targets) {
 				const landing = landingOf(instance, file, to, folders.has(at));
-				if (landing && to !== toNative(each.dir))
-					landings.push(landing);
+				const isRoutingFolder = to === toNative(each.dir);
+				if (landing && !isRoutingFolder) landings.push(landing);
 				operations.push(
 					folders.has(at)
 						? { kind: "folder", file: to, instance: name, from: at }
@@ -1138,7 +1141,7 @@ class MirrorPlanRun {
 		return { proposals, reason: "routing places it nowhere" };
 	}
 
-	private async blocked(
+	private async forbidden(
 		targets: readonly string[],
 		removed: PathSet
 	): Promise<string | undefined> {
@@ -1169,6 +1172,8 @@ class MirrorPlanRun {
 			else byMirror.set(from, [file]);
 		}
 		const touched = (file: string) => files.has(file) || folders.has(file);
+		const standsForPlan = (kind: SyncbackChange["kind"], file: string) =>
+			kind === "remove" ? files.has(file) : touched(file);
 
 		const listed: SyncbackChange[] = [];
 		const seen = new Set<string>();
@@ -1193,10 +1198,7 @@ class MirrorPlanRun {
 			const target = workspace.mirror.targetOf(at);
 			const mapped =
 				byMirror.get(at) ??
-				(target !== undefined &&
-				(kind === "remove"
-					? files.has(toNative(target))
-					: touched(toNative(target)))
+				(target !== undefined && standsForPlan(kind, toNative(target))
 					? [toNative(target)]
 					: []);
 			for (const one of mapped) add(kind, one);

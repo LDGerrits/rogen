@@ -68,9 +68,9 @@ export class PlanWriter {
 		const operations = [...plan.operations].sort(
 			(a, b) => rank(a) - rank(b)
 		);
-		let wroteAll = true;
+		let mayRemoveOldFiles = true;
 		for (const operation of operations) {
-			if (!wroteAll && operation.kind === "remove") {
+			if (!mayRemoveOldFiles && operation.kind === "remove") {
 				failed.add(operation.file);
 				unplaced.push({
 					instance: operation.instance,
@@ -103,7 +103,7 @@ export class PlanWriter {
 					await this.fileSystemService.delete(operation.file, true);
 			} catch (error) {
 				if (operation.kind === "write" || operation.kind === "folder")
-					wroteAll = false;
+					mayRemoveOldFiles = false;
 				failed.add(operation.file);
 				unplaced.push({
 					instance: operation.instance,
