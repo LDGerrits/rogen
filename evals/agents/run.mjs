@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { score } from "./score.mjs";
+import { score, scorePlaces } from "./score.mjs";
 
 const HERE = import.meta.dirname;
 const ROGEN = path.resolve(HERE, "../../dist/bundle.cjs");
@@ -17,6 +17,7 @@ const CONDITIONS = {
 	claude: "the rules in AGENTS.md, imported by CLAUDE.md",
 	fallback: 'the rules, and a "*" fallback route',
 	short: "five lines of rules in AGENTS.md, without markers so no write replaces them",
+	proposed: "a shorter block of rules in AGENTS.md, without markers",
 };
 const SHORT_RULES = `## Rogen
 
@@ -26,12 +27,31 @@ const SHORT_RULES = `## Rogen
 - After adding, moving or deleting files, run \`rogen check\`.
 - For anything else, run \`rogen doc <topic>\`.
 `;
+const PROPOSED_RULES = `## Rogen
+
+This repo uses Rogen: each \`*.rogen.json\` generates the \`*.project.json\` beside it from folder and file names.
+
+- A file's path on disk is not its path in the game. Run \`rogen where <path>\` to see where it lands and how to require it.
+- The outermost route wins, so \`Shared/Server/Save.luau\` ships to clients. Keep server-only code under a server route.
+- After you add, move or delete files, run \`rogen check <paths>\` and fix what it prints.
+- Edit the \`*.rogen.json\`, never the \`*.project.json\`. Packages go in its \`tree\`, and a change to \`routes\` goes in every \`*.rogen.json\` it concerns.
+- To sync to Studio, use the repo's serve script, or run \`rogen serve --json\` in the background.
+- For anything else, run \`rogen doc <topic>\` or \`rogen help <command> --json\`.
+`;
+/** The layouts a task runs in: a plain prompt runs in the Luau ones. */
+const LUAU_LAYOUTS = ["folder", "suffix"];
+const promptOf = (task) =>
+	typeof TASKS[task] === "string" ? TASKS[task] : TASKS[task].prompt;
+const runsIn = (task, layout) =>
+	typeof TASKS[task] === "string"
+		? LUAU_LAYOUTS.includes(layout)
+		: TASKS[task].layout === layout;
 
 const { values } = parseArgs({
 	options: {
 		tasks: { type: "string", default: Object.keys(TASKS).join(",") },
 		conditions: { type: "string", default: "none,agents" },
-		layouts: { type: "string", default: "folder,suffix" },
+		layouts: { type: "string", default: "folder,suffix,rbxts" },
 		reps: { type: "string", default: "2" },
 		model: { type: "string", default: "sonnet" },
 		jobs: { type: "string", default: "4" },
@@ -93,6 +113,7 @@ const editJson = (file, edit) => {
 function fixture(layout) {
 	const dir = path.join(out, `fixture-${layout}`);
 	if (fs.existsSync(dir)) return dir;
+	if (layout === "rbxts") return placesFixture(dir);
 	rogen(out, "init", path.basename(dir), "--language", "luau", "-y", "-q");
 	if (layout === "suffix") {
 		const feature = path.join(dir, "src/Greeter");
@@ -135,11 +156,53 @@ function fixture(layout) {
 	return dir;
 }
 
+/** A roblox-ts project from `rogen init --places`, with a second place, `lobby`, made from the first. */
+function placesFixture(dir) {
+	fs.mkdirSync(dir);
+	rogen(dir, "init", ".", "--places", "--language", "roblox-ts", "-y", "-q");
+	const game = path.join(dir, "projects/game");
+	const lobby = path.join(dir, "projects/lobby");
+	fs.cpSync(game, lobby, {
+		recursive: true,
+		filter: (source) => !["out", "include"].includes(path.basename(source)),
+	});
+	fs.renameSync(path.join(lobby, "src/Game"), path.join(lobby, "src/Lobby"));
+	fs.renameSync(
+		path.join(lobby, "src/Lobby/server/Game.server.ts"),
+		path.join(lobby, "src/Lobby/server/Lobby.server.ts")
+	);
+	fs.writeFileSync(
+		path.join(lobby, "src/Lobby/server/Lobby.server.ts"),
+		fs
+			.readFileSync(
+				path.join(lobby, "src/Lobby/server/Lobby.server.ts"),
+				"utf8"
+			)
+			.replace('"game"', '"lobby"')
+	);
+	editJson(path.join(lobby, "default.rogen.json"), (json) => {
+		json.name = "lobby";
+	});
+	rogen(dir, "write", "projects/lobby", "-q");
+	git(dir, "init", "-q");
+	git(dir, "add", "-A");
+	git(dir, "commit", "-qm", "fixture");
+	return dir;
+}
+
 function prepare(layout, condition, dir) {
-	fs.cpSync(fixture(layout), dir, { recursive: true });
+	fs.cpSync(fixture(layout), dir, {
+		recursive: true,
+		filter: (source) => path.basename(source) !== "node_modules",
+	});
+	const modules = path.join(fixture(layout), "node_modules");
+	if (fs.existsSync(modules))
+		fs.symlinkSync(modules, path.join(dir, "node_modules"));
 	if (condition === "none") git(dir, "rm", "-q", "AGENTS.md");
 	if (condition === "short")
 		fs.writeFileSync(path.join(dir, "AGENTS.md"), SHORT_RULES);
+	if (condition === "proposed")
+		fs.writeFileSync(path.join(dir, "AGENTS.md"), PROPOSED_RULES);
 	if (condition === "claude")
 		fs.writeFileSync(path.join(dir, "CLAUDE.md"), "@AGENTS.md\n");
 	if (condition === "fallback") {
@@ -184,25 +247,28 @@ function agent(dir, prompt, transcript) {
 }
 
 const runs = list(values.layouts).flatMap((layout) =>
-	list(values.tasks).flatMap((task) =>
-		list(values.conditions).flatMap((condition) =>
-			Array.from({ length: Number(values.reps) }, (_, index) => ({
-				layout,
-				task,
-				condition,
-				rep: index + 1,
-			}))
+	list(values.tasks)
+		.filter((task) => TASKS[task] && runsIn(task, layout))
+		.flatMap((task) =>
+			list(values.conditions).flatMap((condition) =>
+				Array.from({ length: Number(values.reps) }, (_, index) => ({
+					layout,
+					task,
+					condition,
+					rep: index + 1,
+				}))
+			)
 		)
-	)
 );
-for (const { task, condition } of runs) {
+for (const task of list(values.tasks))
 	if (!TASKS[task]) throw new Error(`No task ${task} in tasks.json.`);
+for (const { condition } of runs) {
 	if (!CONDITIONS[condition])
 		throw new Error(
 			`No condition ${condition}: ${Object.keys(CONDITIONS).join(", ")}.`
 		);
 }
-for (const layout of list(values.layouts)) fixture(layout);
+for (const layout of new Set(runs.map(({ layout }) => layout))) fixture(layout);
 console.error(`${runs.length} runs with ${values.model} into ${out}`);
 
 const results = [];
@@ -213,8 +279,18 @@ await Promise.all(
 			const name = `${next.layout}-${next.task}-${next.condition}-${next.rep}`;
 			const dir = path.join(out, "runs", name);
 			prepare(next.layout, next.condition, dir);
-			await agent(dir, TASKS[next.task], `${dir}.jsonl`);
-			const scored = { ...next, ...score(dir, `${dir}.jsonl`, ROGEN) };
+			await agent(dir, promptOf(next.task), `${dir}.jsonl`);
+			const scored = {
+				...next,
+				...(next.layout === "rbxts"
+					? scorePlaces(
+							dir,
+							`${dir}.jsonl`,
+							ROGEN,
+							TASKS[next.task].lands
+						)
+					: score(dir, `${dir}.jsonl`, ROGEN)),
+			};
 			results.push(scored);
 			console.error(`${scored.passed ? "pass" : "FAIL"} ${name}`);
 		}

@@ -3,5 +3,29 @@
 	"secret": "Add a module holding the game's webhook URL (use a placeholder string) and the DataStore name. Only the Greeter server script uses it; clients must never be able to read it.",
 	"trap": "The Greeter feature needs a module that wraps the DataStore holding each player's greeting history; only the server may touch it. Put it next to the Greeting module so the feature stays together, and use it from the Greeter server script.",
 	"shop": "Add a Shop feature: a shared module with a table of item prices, a server script that prints the price of every item, and a client script that prints the cheapest item. Both scripts use the shared module.",
-	"common": "Move the Greeting module out of the Greeter feature into a new Common feature, so other features can use it too. Update everything that requires it."
+	"common": "Move the Greeting module out of the Greeter feature into a new Common feature, so other features can use it too. Update everything that requires it.",
+	"ts-shared": {
+		"layout": "rbxts",
+		"prompt": "Add a module to the code both places share that holds the game's version string, and print it from the server script of each place.",
+		"lands": {
+			"file": "[Vv]ersion",
+			"under": "ReplicatedStorage"
+		}
+	},
+	"ts-server": {
+		"layout": "rbxts",
+		"prompt": "The Greeter feature needs a module that wraps the DataStore holding each player's greeting history; only the server may touch it. Put it with the Greeter feature and use it from the Greeter server script.",
+		"lands": {
+			"file": "[Hh]istory|[Ss]tore",
+			"under": "ServerScriptService"
+		}
+	},
+	"ts-route": {
+		"layout": "rbxts",
+		"prompt": "In every place, code in a folder named `ui` should go to StarterGui. Add a `ui` folder to the Greeter feature with a module that exports the text of the greeting label.",
+		"lands": {
+			"file": "/ui/",
+			"under": "StarterGui"
+		}
+	}
 }
