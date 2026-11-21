@@ -13,7 +13,11 @@ import {
 	DiagnosticSeverity,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { isError, isRenameFix } from "../../platform/diagnostics/diagnostic.js";
+import {
+	RenameFix,
+	isError,
+	isRenameFix,
+} from "../../platform/diagnostics/diagnostic.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
 	DraftFileReader,
@@ -89,6 +93,21 @@ function respelled(from: string, to: string): string {
 	while (start > 0 && word.test(after[start - 1])) start--;
 	while (end < after.length && word.test(after[end])) end++;
 	return after.slice(start, end);
+}
+
+const ROUTE_SPELLING_CODES: ReadonlySet<string> = new Set([
+	"route.caseMismatch",
+	"route.strayAt",
+]);
+
+function routeRespellings(
+	diagnostics: readonly Diagnostic[]
+): RenameFix["rename"][] {
+	return diagnostics
+		.filter(({ code }) => ROUTE_SPELLING_CODES.has(code))
+		.flatMap(({ fixes }) => (fixes ?? []).filter(isRenameFix))
+		.map(({ rename }) => rename)
+		.filter(({ from, to }) => from.toLowerCase() === to.toLowerCase());
 }
 
 function draftOf(plan: InitPlan): FileDraft {
@@ -477,17 +496,9 @@ export class CoreInitService implements InitService {
 	}
 
 	private async withRouteSpellings(plan: InitPlan): Promise<InitPlan> {
-		if (plan.configs.length === 0) return plan;
-		const reader = this.instantiationService.createInstance(
-			DraftFileReader,
-			draftOf(plan)
-		);
-		const selection = await this.configService.select(plan.configs, reader);
-		if (selection.isErr()) return plan;
-		const failure = (
-			await this.writeService.check(selection.value, reader)
-		).failure();
-		if (!(failure instanceof DiagnosticsError)) return plan;
+		const failure = await this.writeCheckOf(plan);
+		if (failure.isErr() || !(failure.value instanceof DiagnosticsError))
+			return plan;
 		const relative = (file: string) =>
 			toPosix(path.relative(plan.directory, file));
 		const written = plan.files.map(({ fileName }) => fileName);
@@ -496,20 +507,13 @@ export class CoreInitService implements InitService {
 				(file) => file === from || file.startsWith(`${from}/`)
 			);
 		const renames = new Map<string, PlannedMove>();
-		for (const { code, fixes } of failure.diagnostics) {
-			if (code !== "route.caseMismatch" && code !== "route.strayAt")
-				continue;
-			for (const { rename } of (fixes ?? []).filter(isRenameFix))
-				if (
-					rename.from.toLowerCase() === rename.to.toLowerCase() &&
-					!isWritten(relative(rename.from))
-				)
-					renames.set(rename.from, {
-						from: relative(rename.from),
-						to: relative(rename.to),
-						reason: `to spell the route "${respelled(rename.from, rename.to)}" as the rest of the code does`,
-					});
-		}
+		for (const rename of routeRespellings(failure.value.diagnostics))
+			if (!isWritten(relative(rename.from)))
+				renames.set(rename.from, {
+					from: relative(rename.from),
+					to: relative(rename.to),
+					reason: `to spell the route "${respelled(rename.from, rename.to)}" as the rest of the code does`,
+				});
 		if (renames.size === 0) return plan;
 		const depth = ({ from }: PlannedMove) => from.split("/").length;
 		return {
@@ -519,6 +523,21 @@ export class CoreInitService implements InitService {
 				...plan.moves,
 			],
 		};
+	}
+
+	private async writeCheckOf(
+		plan: InitPlan
+	): Promise<Result<Error | undefined, Error>> {
+		if (plan.configs.length === 0) return ok(undefined);
+		const reader = this.instantiationService.createInstance(
+			DraftFileReader,
+			draftOf(plan)
+		);
+		const selection = await this.configService.select(plan.configs, reader);
+		if (selection.isErr()) return err(selection.error);
+		return ok(
+			(await this.writeService.check(selection.value, reader)).failure()
+		);
 	}
 
 	registerMigration(migration: ProjectMigration): Disposable {
@@ -533,16 +552,9 @@ export class CoreInitService implements InitService {
 	}
 
 	async check(plan: InitPlan): Promise<Result<readonly Diagnostic[], Error>> {
-		if (plan.configs.length === 0) return ok([]);
-		const reader = this.instantiationService.createInstance(
-			DraftFileReader,
-			draftOf(plan)
-		);
-		const selection = await this.configService.select(plan.configs, reader);
-		if (selection.isErr()) return selection;
-		const failure = (
-			await this.writeService.check(selection.value, reader)
-		).failure();
+		const checked = await this.writeCheckOf(plan);
+		if (checked.isErr()) return checked;
+		const failure = checked.value;
 		if (!failure) return ok([]);
 		const errors =
 			failure instanceof DiagnosticsError
