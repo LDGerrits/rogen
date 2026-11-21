@@ -51,9 +51,37 @@ export interface RojoEntry {
 	readonly project: string | null;
 	readonly output?: string;
 	readonly plugin?: string;
-	readonly messages: readonly ServerMessage[];
+	readonly messages: readonly ServerMessageJson[];
 	readonly diagnostics?: readonly DiagnosticJson[];
 	readonly error?: ErrorJson;
+}
+
+export interface ServerMessageJson {
+	readonly severity: "error" | "warning" | "info";
+	readonly text: string;
+	readonly details?: readonly string[];
+}
+
+export function severityJson(
+	severity: Exclude<ServerMessage["severity"], "noise">
+): ServerMessageJson["severity"] {
+	return severity === "unrecognised" ? "info" : severity;
+}
+
+export function serverMessagesJson(
+	messages: readonly ServerMessage[]
+): ServerMessageJson[] {
+	return messages.flatMap(({ severity, text, details }) =>
+		severity === "noise"
+			? []
+			: [
+					{
+						severity: severityJson(severity),
+						text,
+						...(details && { details }),
+					},
+				]
+	);
 }
 
 export function rojoEntry(
@@ -82,13 +110,7 @@ export function rojoEntry(
 		...named,
 		outcome: failure ? "failed" : "built",
 		project: toNative(project.projectFile),
-		messages: messages
-			.filter(({ severity }) => severity !== "debug")
-			.map(({ severity, text, details }) => ({
-				severity,
-				text,
-				...(details && { details }),
-			})),
+		messages: serverMessagesJson(messages),
 		...(failure && failureToJson(failure)),
 	};
 }

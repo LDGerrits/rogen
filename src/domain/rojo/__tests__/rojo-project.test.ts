@@ -65,13 +65,14 @@ describe("RojoProject", () => {
 		});
 	});
 
-	describe("insertNode", () => {
+	describe("insertNodeReplacingFolder", () => {
 		it("should create missing ancestors with the container factory", () => {
 			const project = new RojoProject({ name: "x", tree: {} }, folders);
 
-			project.insertNode(["ReplicatedStorage", "shared", "Foo"], {
-				$path: "foo.luau",
-			});
+			project.insertNodeReplacingFolder(
+				["ReplicatedStorage", "shared", "Foo"],
+				{ $path: "foo.luau" }
+			);
 
 			expect(project.getFile().tree).toEqual({
 				ReplicatedStorage: {
@@ -90,7 +91,7 @@ describe("RojoProject", () => {
 				return {};
 			});
 
-			project.insertNode(["A", "B", "C"], { $path: "c" });
+			project.insertNodeReplacingFolder(["A", "B", "C"], { $path: "c" });
 
 			expect(created).toEqual(["A", "A/B"]);
 		});
@@ -98,7 +99,9 @@ describe("RojoProject", () => {
 		it("should merge into a node that already exists", () => {
 			const project = new RojoProject(baseTree, folders);
 
-			project.insertNode(["ServerScriptService"], { $path: "server" });
+			project.insertNodeReplacingFolder(["ServerScriptService"], {
+				$path: "server",
+			});
 
 			expect(project.getNode(["ServerScriptService"])).toEqual({
 				$className: "ServerScriptService",
@@ -109,11 +112,13 @@ describe("RojoProject", () => {
 		it("should strip a Folder class when a node gets a $path", () => {
 			const project = new RojoProject(baseTree, folders);
 
-			project.insertNode(["Workspace", "Map"], {
+			project.insertNodeReplacingFolder(["Workspace", "Map"], {
 				$className: "Folder",
 				$ignoreUnknownInstances: false,
 			});
-			project.insertNode(["Workspace", "Map"], { $path: "map.rbxm" });
+			project.insertNodeReplacingFolder(["Workspace", "Map"], {
+				$path: "map.rbxm",
+			});
 
 			expect(project.getNode(["Workspace", "Map"])).toEqual({
 				$path: "map.rbxm",
@@ -267,9 +272,10 @@ describe("RojoProject", () => {
 		it("should create ancestors the plain way unless told otherwise", () => {
 			const project = RojoProject.parse('{ "tree": {} }').unwrap();
 
-			project.insertNode(["ReplicatedStorage", "shared", "Foo"], {
-				$path: "foo.luau",
-			});
+			project.insertNodeReplacingFolder(
+				["ReplicatedStorage", "shared", "Foo"],
+				{ $path: "foo.luau" }
+			);
 
 			expect(project.getFile().tree).toEqual({
 				ReplicatedStorage: {
@@ -415,9 +421,10 @@ describe("InstanceMap", () => {
 				folders
 			);
 
-			project.insertNode(["ReplicatedStorage", "__proto__"], {
-				$path: "src/__proto__.luau",
-			});
+			project.insertNodeReplacingFolder(
+				["ReplicatedStorage", "__proto__"],
+				{ $path: "src/__proto__.luau" }
+			);
 
 			expect(project.getNode(["ReplicatedStorage", "__proto__"])).toEqual(
 				{ $path: "src/__proto__.luau" }

@@ -3,11 +3,20 @@ import { safeStringify } from "../../base/json.js";
 import { ConfigVersion } from "./config-change.js";
 import { ConfigLoader, LoadedConfig } from "./config-loader.js";
 import { ConfigEntry, validFile } from "./config-service.js";
+import { ResolvedConfigFile } from "./resolved-config.js";
 
 interface WrittenVersion {
 	readonly value: string | undefined;
 	readonly text: string | undefined;
 }
+
+const sameVersion = (
+	before: WrittenVersion | undefined,
+	after: WrittenVersion
+): boolean =>
+	before !== undefined &&
+	before.value === after.value &&
+	before.text === after.text;
 
 export class ManagedConfig {
 	private _entry: ConfigEntry;
@@ -78,12 +87,11 @@ export class ManagedConfig {
 		const written = ManagedConfig.writtenOf(loaded);
 		if (!written) return;
 		this.written = written;
-		if (
-			before.valid &&
-			before.written &&
-			before.written.value === written.value &&
-			before.written.text === written.text
-		)
-			this._entry = { ...this._entry, ...before.valid };
+		if (before.valid && sameVersion(before.written, written))
+			this.keepWrittenObjects(before.valid);
+	}
+
+	private keepWrittenObjects(previous: ResolvedConfigFile): void {
+		this._entry = { ...this._entry, ...previous };
 	}
 }
