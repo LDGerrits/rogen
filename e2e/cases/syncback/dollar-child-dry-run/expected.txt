@@ -1,0 +1,8 @@
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stdout:
+  Writing lib/Mod/New.luau
+  Writing lib/Mod/Util.luau
+stderr:
+  default.rogen.json:7:12 - warning: "tree.ReplicatedStorage.$Foo": Rojo reserves keys that start with $ for its own fields, so it warns about this one on every build. Rename it without the $. (tree.reservedName)
+  Syncback would change 2 files (2 to write).

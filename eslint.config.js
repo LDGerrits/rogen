@@ -114,7 +114,7 @@ const domainDependencies = {
 	init: ["write", "config", "roblox", "rojo", "runner", "toolchain"],
 	legacy: ["config", "init", "roblox"],
 	roblox: [],
-	runner: ["config", "toolchain"],
+	runner: ["config", "rojo", "toolchain"],
 	rojo: ["roblox"],
 	serve: ["write", "config", "runner", "watch"],
 	syncback: ["write", "config", "roblox", "rojo", "runner"],

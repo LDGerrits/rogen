@@ -1,6 +1,5 @@
 import path from "path";
 import { compareByCodePoint } from "../../../base/collections.js";
-import { isObject } from "../../../base/objects.js";
 import { ancestors, isInside, joinPosix, toPosix } from "../../../base/path.js";
 import {
 	capitalized,
@@ -24,7 +23,7 @@ import {
 	instanceKey,
 } from "../../roblox/roblox.js";
 import { RojoFile, SCRIPT_SUFFIXES, scriptRunOf } from "../../rojo/rojo.js";
-import { NODE_FIELDS, RojoNode } from "../../rojo/rojo-project.js";
+import { RojoProject } from "../../rojo/rojo-project.js";
 import { FolderMeta } from "../folder-meta.js";
 import {
 	MisspellingKind,
@@ -42,20 +41,6 @@ const SCRIPT_SUFFIX_BEFORE_AT = new RegExp(
 );
 
 const LISTED_FILES = 3;
-
-function reservedKeys(
-	node: RojoNode,
-	at: readonly string[]
-): (readonly string[])[] {
-	return Object.entries(node).flatMap(([key, value]) => {
-		if (!isObject(value) || NODE_FIELDS.has(key)) return [];
-		const here = [...at, key];
-		return [
-			...(key.startsWith("$") ? [here] : []),
-			...reservedKeys(value, here),
-		];
-	});
-}
 
 export class WriteValidator {
 	private readonly placement: Placement;
@@ -567,23 +552,25 @@ export class WriteValidator {
 	}
 
 	private reservedName(): Diagnostic[] {
-		return reservedKeys(this.assembly.projectFile.tree, []).flatMap(
-			(key) => {
-				const file = this.fileNamedBy(key);
-				if (!file) return [];
-				const isTheNode =
-					file.instancePath.length === key.length &&
-					file.init === undefined;
-				return [
-					warningDiagnostic(
-						"tree.reservedName",
-						{ resource: file.entry.source },
-						`Rojo reserves a leading $, so it warns about "${instanceKey(key)}" on every build. Rename ${isTheNode ? "the file" : "the folder"} without the $.`,
-						isTheNode ? WriteValidator.withoutDollar(file) : []
-					),
-				];
-			}
-		);
+		return RojoProject.findReservedKeys(
+			this.assembly.projectFile.tree,
+			[]
+		).flatMap((key) => {
+			if (this.config.project.getNode(key)) return [];
+			const file = this.fileNamedBy(key);
+			if (!file) return [];
+			const isTheNode =
+				file.instancePath.length === key.length &&
+				file.init === undefined;
+			return [
+				warningDiagnostic(
+					"tree.reservedName",
+					{ resource: file.entry.source },
+					`Rojo reserves a leading $, so it warns about "${instanceKey(key)}" on every build. Rename ${isTheNode ? "the file" : "the folder"} without the $.`,
+					isTheNode ? WriteValidator.withoutDollar(file) : []
+				),
+			];
+		});
 	}
 
 	private fileNamedBy(key: readonly string[]): RoutedFile | undefined {

@@ -1037,6 +1037,30 @@ describe("WriteValidator rules", () => {
 				expect(warnings[0].fixes ?? []).toEqual([]);
 			});
 
+			it("should leave a key the config names to the config's own warning, not blame the files routed into it", async () => {
+				await write("src/A.luau");
+
+				const warnings = (
+					await route({
+						routes: { "*": "ReplicatedStorage/$Kit" },
+						project: {
+							tree: {
+								$className: "DataModel",
+								ReplicatedStorage: {
+									$Kit: { $className: "Folder" },
+								},
+							},
+						},
+					})
+				)
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "tree.reservedName"
+					);
+
+				expect(warnings).toEqual([]);
+			});
+
 			it("should leave a $ inside a name, and a file Rojo reads from a folder it was given whole, alone", async () => {
 				await write("src/Cost$.luau", "src/Kit/$Inner.luau");
 

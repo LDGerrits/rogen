@@ -1,6 +1,6 @@
 import { isObject } from "../../base/objects.js";
 import { parse, setJsoncValue } from "../../base/jsonc.js";
-import { RojoNode, childNodes } from "../rojo/rojo-project.js";
+import { NODE_FIELDS, RojoNode, childNodes } from "../rojo/rojo-project.js";
 
 export interface TreeChange {
 	readonly node: readonly string[];
@@ -12,7 +12,7 @@ export interface TreeChange {
 	}[];
 }
 
-const isKey = (key: string) => key.startsWith("$") && key !== "$path";
+const isKey = (key: string) => NODE_FIELDS.has(key) && key !== "$path";
 
 const same = (a: unknown, b: unknown): boolean => {
 	if (isObject(a) && isObject(b)) {
