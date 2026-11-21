@@ -1,4 +1,4 @@
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { isObject } from "../../base/objects.js";
 
 /**
@@ -257,7 +257,7 @@ export class PropertyValues {
 		if (!isObject(value)) return value;
 		return Object.fromEntries(
 			Object.keys(value)
-				.sort(compareStrings)
+				.sort(compareByCodePoint)
 				.map((name) => [name, PropertyValues.value(value[name])])
 		);
 	}

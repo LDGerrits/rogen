@@ -1,5 +1,5 @@
 import path from "path";
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { literalGlob } from "../../base/glob.js";
 import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -131,7 +131,7 @@ export class TreeAssembler {
 					needsRojoIgnore(why)
 			)
 			.map(([source]) => source)
-			.sort(compareStrings);
+			.sort(compareByCodePoint);
 	}
 
 	private insertNodes(

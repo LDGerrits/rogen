@@ -34,7 +34,7 @@ export function unlistedNote(count: number): string {
 	return `${count} more like it ${count === 1 ? "isn't" : "aren't"} listed.`;
 }
 
-export function editDistance(a: string, b: string): number {
+export function editDistanceWithSwaps(a: string, b: string): number {
 	let twoBack: number[] = [];
 	let previous = Array.from({ length: b.length + 1 }, (_, j) => j);
 	for (let i = 1; i <= a.length; i++) {
@@ -67,15 +67,17 @@ export function closestMatch(
 	return closestMatches(word, candidates)[0];
 }
 
+const MAX_EDITS_PER_LETTER = 0.4;
+
 export function closestMatches(
 	word: string,
 	candidates: Iterable<string>
 ): string[] {
 	const lower = word.toLowerCase();
 	let best: string[] = [];
-	let bestDistance = Math.floor(word.length * 0.4) + 1;
+	let bestDistance = Math.floor(word.length * MAX_EDITS_PER_LETTER) + 1;
 	for (const candidate of candidates) {
-		const distance = editDistance(lower, candidate.toLowerCase());
+		const distance = editDistanceWithSwaps(lower, candidate.toLowerCase());
 		if (distance < bestDistance) {
 			best = [candidate];
 			bestDistance = distance;

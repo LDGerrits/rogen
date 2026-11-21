@@ -22,7 +22,7 @@ export function groupBy<T, K, V>(
 	return groups;
 }
 
-export function compareStrings(a: string, b: string): number {
+export function compareByCodePoint(a: string, b: string): number {
 	const shared = Math.min(a.length, b.length);
 	for (let at = 0; at < shared; at++) {
 		const first = a.charCodeAt(at);

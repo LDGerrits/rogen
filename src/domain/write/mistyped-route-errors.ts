@@ -1,5 +1,5 @@
 import path from "path";
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import {
 	Diagnostic,
 	DiagnosticFix,
@@ -10,7 +10,7 @@ import { NameReadings } from "./name-readings.js";
 import { RoutedFile } from "./router.js";
 
 const byResource = (a: Diagnostic, b: Diagnostic) =>
-	compareStrings(a.resource, b.resource);
+	compareByCodePoint(a.resource, b.resource);
 
 function spelledAs(resource: string, key: string): string {
 	const name = path.posix.basename(resource);

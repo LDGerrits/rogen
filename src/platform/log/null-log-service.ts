@@ -5,7 +5,7 @@ export class NullLogService implements LogService {
 	declare readonly _serviceBrand: undefined;
 
 	setLevel(_level: LogLevel): void {}
-	reserveStdout(): void {}
+	sendOwnLinesToStderr(): void {}
 	error(_message: string | Error, ..._args: unknown[]): void {}
 	warn(_message: string, ..._args: unknown[]): void {}
 	info(_message: string, ..._args: unknown[]): void {}

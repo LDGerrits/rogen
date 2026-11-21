@@ -406,7 +406,7 @@ describe("syncback command", () => {
 		rojo.exit({ code: 0, signal: null });
 		await running;
 
-		expect(log.reserved).toBe(true);
+		expect(log.sendsOwnLinesToStderr).toBe(true);
 		expect(log.texts("print")).toEqual([
 			"Removing src/Combat/Server/Combat.luau",
 			"Writing src/Combat/Server/Loot.luau",

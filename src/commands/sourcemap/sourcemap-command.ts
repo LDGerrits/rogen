@@ -167,7 +167,7 @@ registerCommand(
 				}
 			}
 
-			if (step.prints) logService.reserveStdout();
+			if (step.prints) logService.sendOwnLinesToStderr();
 			const selection = await configService.selectForRojo(
 				line.positionals
 			);

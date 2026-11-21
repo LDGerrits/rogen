@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { CommandExitCodes, UsageError } from "../../../base/errors.js";
+import { DefaultCommandExitCodes, UsageError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import {
 	CommandRegistry,
@@ -191,7 +191,7 @@ describe("rogen help --json", () => {
 		it("should give a command that says nothing different the general meaning of each code", async () => {
 			await help("doc");
 
-			expect(document().exitCodes).toEqual(CommandExitCodes);
+			expect(document().exitCodes).toEqual(DefaultCommandExitCodes);
 		});
 
 		it("should not say Rojo or a terminal in the exit codes of a command that needs neither", async () => {

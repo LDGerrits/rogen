@@ -120,7 +120,7 @@ describe("serve command", () => {
 			"success: Wrote default.project.json.",
 			"success: Serving repo at localhost:34872 · http://localhost:34872/\n  In Studio, press Connect in the Rojo plugin.",
 		]);
-		expect(logService.reserved).toBe(false);
+		expect(logService.sendsOwnLinesToStderr).toBe(false);
 	});
 
 	it("should print the agent files it updated as an agentRules line first under --json", async () => {

@@ -14,12 +14,30 @@ export interface FileDraft {
 	readonly removed?: readonly string[];
 }
 
+interface Move {
+	readonly from: string;
+	readonly to: string;
+}
+
+const isAtOrInside = (at: string, folder: string) =>
+	at === folder || isInside(at, folder);
+
+const isTakenAwayBy = (at: string, move: Move) => isAtOrInside(at, move.from);
+
+const isBroughtBy = (at: string, move: Move) => isAtOrInside(at, move.to);
+
+const afterMove = (at: string, { from, to }: Move) =>
+	path.join(to, path.relative(from, at));
+
+const beforeMove = (at: string, { from, to }: Move) =>
+	path.join(from, path.relative(to, at));
+
 export class DraftFileReader implements FileSystemService {
 	declare readonly _serviceBrand: undefined;
 
 	private readonly files = new Map<string, string>();
 	private readonly folders = new Set<string>();
-	private readonly moves: readonly { from: string; to: string }[];
+	private readonly moves: readonly Move[];
 	private readonly removed: readonly string[];
 
 	constructor(
@@ -163,21 +181,26 @@ export class DraftFileReader implements FileSystemService {
 
 	private movedOn(at: string, next: number): string {
 		let moved = at;
-		for (const { from, to } of this.moves.slice(next))
-			if (moved === from || isInside(moved, from))
-				moved = path.join(to, path.relative(from, moved));
+		for (const move of this.moves.slice(next))
+			if (isTakenAwayBy(moved, move)) moved = afterMove(moved, move);
 		return moved;
 	}
 
 	private sourceOf(resolved: string): string | undefined {
-		const within = (at: string, folder: string) =>
-			at === folder || isInside(at, folder);
-		if (this.removed.some((gone) => within(resolved, gone)))
-			return undefined;
+		return this.isRemoved(resolved)
+			? undefined
+			: this.beforeEveryMove(resolved);
+	}
+
+	private isRemoved(resolved: string): boolean {
+		return this.removed.some((gone) => isAtOrInside(resolved, gone));
+	}
+
+	private beforeEveryMove(resolved: string): string | undefined {
 		let at = resolved;
-		for (const { from, to } of [...this.moves].reverse()) {
-			if (within(at, to)) at = path.join(from, path.relative(to, at));
-			else if (within(at, from)) return undefined;
+		for (const move of [...this.moves].reverse()) {
+			if (isBroughtBy(at, move)) at = beforeMove(at, move);
+			else if (isTakenAwayBy(at, move)) return undefined;
 		}
 		return at;
 	}

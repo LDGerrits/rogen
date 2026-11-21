@@ -9,15 +9,20 @@ export function failureReason(error: Error): string {
 	return error.message.replace(code, "").replace(/, [a-z]+( '.*')?$/, "");
 }
 
+// Jest runs each test file in a vm context of its own, where an error thrown
+// by one of Node's modules fails `instanceof Error`.
+function isErrorFromAnotherRealm(value: unknown): value is Error {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		Object.prototype.toString.call(value) === "[object Error]"
+	);
+}
+
 export const ErrorUtils = {
 	fromUnknown(error: unknown): Error {
-		if (
-			error instanceof Error ||
-			(typeof error === "object" &&
-				error !== null &&
-				Object.prototype.toString.call(error) === "[object Error]")
-		) {
-			return error as Error;
+		if (error instanceof Error || isErrorFromAnotherRealm(error)) {
+			return error;
 		}
 		if (typeof error === "string") {
 			return new Error(error);
@@ -59,7 +64,7 @@ export const ExitCodes = {
 	2: "the command line is wrong, or a terminal is needed and there is none",
 } as const;
 
-export const CommandExitCodes = {
+export const DefaultCommandExitCodes = {
 	0: "done (warnings included)",
 	1: "an error stopped it",
 	2: "the command line is wrong",

@@ -1,4 +1,4 @@
-import { compareStrings, groupBy } from "../../base/collections.js";
+import { compareByCodePoint, groupBy } from "../../base/collections.js";
 import { joinPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -254,7 +254,7 @@ export class FolderMetaApplier {
 		return [...groupBy(metas, ({ sourcePath }) => sourcePath).values()]
 			.filter((group) => group.length > 1)
 			.map((group) =>
-				group.sort((a, b) => compareStrings(a.file, b.file))
+				group.sort((a, b) => compareByCodePoint(a.file, b.file))
 			);
 	}
 }

@@ -1,6 +1,6 @@
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import path from "path";
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { ignoringGlob, literalGlob } from "../../base/glob.js";
 import { toNative, toPosix } from "../../base/path.js";
 import { Result, ok, tryWithAsync } from "../../base/result.js";
@@ -223,7 +223,7 @@ export class MirrorWorkspace {
 			this.copyInto(file, true)
 		))
 			if (entry) copied.push(entry);
-		copied.sort((a, b) => compareStrings(a.mirror, b.mirror));
+		copied.sort((a, b) => compareByCodePoint(a.mirror, b.mirror));
 		await this.writeProject(copied, []);
 		return copied;
 	}

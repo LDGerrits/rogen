@@ -14,7 +14,7 @@ export class PlainLogService extends AbstractLogService {
 	private inStep = false;
 
 	protected write(kind: LogKind, text: string): void {
-		const own = this.stdoutReserved ? console.error : console.info;
+		const own = this.ownLinesToStderr ? console.error : console.info;
 		switch (kind) {
 			case "intro":
 			case "outro":
