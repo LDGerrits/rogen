@@ -174,6 +174,43 @@ describe("CoreConfigService selectCovering", () => {
 		expect(covered.groups).toHaveLength(1);
 	});
 
+	it("should name the places that read shared code through their source paths", async () => {
+		expect(
+			await service.readersOf(onDisk("/repo/places/shared/src/A.luau"))
+		).toEqual([
+			"/repo/places/arena/default.rogen.json",
+			"/repo/places/lobby/default.rogen.json",
+		]);
+	});
+
+	it("should name no reader for a file in no place's source paths", async () => {
+		await start();
+
+		expect(
+			await service.readersOf(onDisk("/repo/places/shared/A.luau"))
+		).toEqual([]);
+	});
+
+	it("should find the readers from inside the shared folder up to the repository root", async () => {
+		await fs.createDirectory("/repo/.git");
+		await start({}, "/repo/places/shared");
+
+		expect(
+			await service.readersOf(onDisk("/repo/places/shared/src/A.luau"))
+		).toEqual([
+			"/repo/places/arena/default.rogen.json",
+			"/repo/places/lobby/default.rogen.json",
+		]);
+	});
+
+	it("should look no higher than the folder shared with the working directory outside a repository", async () => {
+		await start({}, "/repo/places/shared");
+
+		expect(
+			await service.readersOf(onDisk("/repo/places/shared/src/A.luau"))
+		).toEqual([]);
+	});
+
 	it("should mark a config named by its own file as read whole", async () => {
 		const covered = (
 			await service.selectCovering([

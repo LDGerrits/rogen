@@ -1,10 +1,14 @@
 import path from "path";
-import { samePath, selfAndAncestors } from "../../base/path.js";
+import { isInside, samePath, selfAndAncestors } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { IoError, ProjectError, UsageError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { FileType, isFileType } from "../../platform/fs/file-system-service.js";
+import {
+	FileType,
+	isDirectoryType,
+	isFileType,
+} from "../../platform/fs/file-system-service.js";
 import { RojoFile } from "../rojo/rojo.js";
 import {
 	RojoProject,
@@ -463,6 +467,38 @@ export class ConfigDiscovery {
 					(file) => !isDefaultConfigFileName(path.basename(file))
 				)
 			);
+		return found;
+	}
+
+	/** Every config in a folder beside the folder of `target` or one above it, where a place that lists shared code in its source paths keeps its config. It looks up to the repository root, or to `stop` where that is higher or there is no repository. */
+	async configsBeside(target: string, stop: string): Promise<string[]> {
+		const folders = await this.foldersUp(target);
+		const stopAt = folders.findIndex((folder) => samePath(folder, stop));
+		let last = stopAt < 0 ? folders.length - 1 : stopAt;
+		for (const [index, folder] of folders.entries())
+			if (
+				await this.fileSystemService.exists(path.join(folder, ".git"))
+			) {
+				last = Math.max(last, index);
+				break;
+			}
+		const found: string[] = [];
+		for (const directory of folders.slice(0, last + 1)) {
+			const listing = await tryWithAsync(() =>
+				this.fileSystemService.readDirectory(directory)
+			);
+			for (const [name, type] of listing.isOk() ? listing.value : []) {
+				const child = path.join(directory, name);
+				if (
+					isDirectoryType(type) &&
+					!name.startsWith(".") &&
+					name !== "node_modules" &&
+					!samePath(child, target) &&
+					!isInside(target, child)
+				)
+					found.push(...(await this.list(child)));
+			}
+		}
 		return found;
 	}
 

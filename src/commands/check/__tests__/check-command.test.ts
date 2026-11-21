@@ -327,7 +327,7 @@ describe("check command", () => {
 			expect(result.isOk()).toBe(true);
 			expect(logService.texts("warn")).toEqual([]);
 			expect(logService.texts("notice")).toEqual([
-				"note: places/shared/src/Stray.client.luau: no config at or above it reads it.",
+				"note: places/shared/src/Stray.client.luau: no config at or above it reads it, but other configs list it in their source paths. Check it through one: 'rogen check places/arena/default.rogen.json' or 'rogen check places/lobby/default.rogen.json'.",
 			]);
 		});
 
@@ -341,10 +341,12 @@ describe("check command", () => {
 				routes: ROUTES,
 			});
 
-			await run({ _: ["places/shared/src/Stray.client.luau"] });
+			await write("places/shared/Stray.client.luau");
+
+			await run({ _: ["places/shared/Stray.client.luau"] });
 
 			expect(logService.texts("notice")).toEqual([
-				"note: places/shared/src/Stray.client.luau: no config at or above it reads it. Check it through one: rogen check arena.rogen.json or game.rogen.json.",
+				"note: places/shared/Stray.client.luau: no config at or above it reads it. Check it through one: rogen check arena.rogen.json or game.rogen.json.",
 			]);
 		});
 
@@ -360,6 +362,10 @@ describe("check command", () => {
 					{
 						path: "/repo/places/shared/src/Stray.client.luau",
 						reason: "noConfig",
+						readers: [
+							"places/arena/default.rogen.json",
+							"places/lobby/default.rogen.json",
+						],
 					},
 				],
 			});
