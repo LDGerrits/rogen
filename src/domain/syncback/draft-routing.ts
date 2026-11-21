@@ -63,7 +63,7 @@ export function landingMiss(
 		return undefined;
 	const landed =
 		found?.status === "placed"
-			? [found.instancePath, ...(found.alsoAt ?? [])]
+			? [found.instancePath]
 			: found?.status === "empty" && found.instancePath
 				? [found.instancePath]
 				: [];

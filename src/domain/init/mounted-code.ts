@@ -11,7 +11,6 @@ import { ProcessedFolder } from "./processed-folder.js";
 import { StarterProject } from "./starter-project.js";
 import { StartingRoutes } from "./starting-routes.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 /** Where a hand-written project file keeps its code, as the source paths that hold it. */
 export interface MountedCodeFolders {
@@ -29,7 +28,6 @@ export class MountedCode {
 
 	constructor(
 		private readonly directory: string,
-		@FileSystemService private readonly reader: FileSystemService,
 		@InstantiationService
 		private readonly instantiationService: InstantiationService
 	) {

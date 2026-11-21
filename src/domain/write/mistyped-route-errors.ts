@@ -116,7 +116,7 @@ export function mistypedRouteErrors(
 			return errorDiagnostic(
 				"route.caseMismatch",
 				{ resource },
-				`"${written}" differs from the route "${key}" only in letter case, so it would route nothing and its files would go to "*". Spell it "${key}"${keep}.`,
+				`"${written}" differs from the route "${key}" only in letter case, so it routes nothing, and the files in it that nothing else routes go to "*". Spell it "${key}"${keep}.`,
 				inScript ? [] : renamed(resource, spelledAs(resource, key))
 			);
 		});

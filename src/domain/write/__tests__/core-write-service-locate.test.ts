@@ -743,7 +743,11 @@ describe("CoreWriteService.locate", () => {
 	});
 
 	it("should place no TypeScript file in a project with no compiler, as Rojo never reads one", async () => {
-		await write("src/Shop/Hud.tsx", "src/Shop/Cart.ts", "src/Shop/Bag.luau");
+		await write(
+			"src/Shop/Hud.tsx",
+			"src/Shop/Cart.ts",
+			"src/Shop/Bag.luau"
+		);
 
 		expect(
 			(await locate(["src/Shop/Hud.tsx", "src/Shop/Cart.ts"])).map(
@@ -1172,7 +1176,7 @@ describe("CoreWriteService.locate", () => {
 			]);
 		});
 
-		it("should list every node an init script is copied to, and find it at each", async () => {
+		it("should place an init script only at its own route, and find the other sides' files at their own nodes", async () => {
 			await write(
 				"src/Net/init.luau",
 				"src/Net/Types.luau",
@@ -1194,30 +1198,25 @@ describe("CoreWriteService.locate", () => {
 					source: abs("src/Net/init.luau"),
 					exists: true,
 					instancePath: ["ReplicatedStorage", "Shared", "Net"],
-					alsoAt: [
-						["StarterPlayer", "StarterPlayerScripts", "Net"],
-						["ServerScriptService", "Net"],
-					],
 					route: "*",
 					routeMatch: "fallback",
 					folderNodes: [
-						["ReplicatedStorage", "Shared", "Net"],
-						["StarterPlayer", "StarterPlayerScripts", "Net"],
-						["ServerScriptService", "Net"],
-					].map((instancePath) => ({
-						folder: absPosix("src/Net"),
-						instancePath,
-					})),
+						{
+							folder: absPosix("src/Net"),
+							instancePath: [
+								"ReplicatedStorage",
+								"Shared",
+								"Net",
+							],
+						},
+					],
 					named: true,
 					code: "module",
 				},
 			]);
 			expect(
 				located.instances[0].files.map(({ source }) => source)
-			).toEqual([
-				abs("src/Net/Server/Remote.luau"),
-				abs("src/Net/init.luau"),
-			]);
+			).toEqual([abs("src/Net/Server/Remote.luau")]);
 		});
 	});
 

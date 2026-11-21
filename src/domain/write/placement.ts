@@ -1,5 +1,4 @@
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { groupBy } from "../../base/collections.js";
 import { isInside, toPosix } from "../../base/path.js";
 import path from "path";
 import {
@@ -62,8 +61,8 @@ interface PlacementParts {
 	readonly tree: WriteTree;
 	readonly roots: readonly ScannedRoot[];
 	readonly readings: NameReadings;
-	readonly routedNodes: readonly RoutedFile[];
-	readonly nodes: readonly RoutedFile[];
+	readonly routed: readonly RoutedFile[];
+	readonly files: readonly RoutedFile[];
 	readonly emptyFolders: readonly RoutedFolder[];
 	readonly leftOut: LeftOutPaths;
 	readonly clashes: readonly InstanceClash[];
@@ -84,7 +83,6 @@ export class Placement {
 	readonly tree: WriteTree;
 	readonly roots: readonly ScannedRoot[];
 	readonly readings: NameReadings;
-	readonly nodes: readonly RoutedFile[];
 	readonly emptyFolders: readonly RoutedFolder[];
 	readonly leftOut: LeftOutPaths;
 	readonly clashes: readonly InstanceClash[];
@@ -93,9 +91,8 @@ export class Placement {
 	readonly errors: readonly Diagnostic[];
 	/** As `files`, but every file a route governs, before clashes decide which are placed. */
 	readonly routed: readonly RoutedFile[];
-	/** One per placed file, at its own node, or at its first copy when a route placed it nowhere itself. */
+	/** Every placed file, at its node. */
 	readonly files: readonly RoutedFile[];
-	private readonly nodesBySource: ReadonlyMap<string, readonly RoutedFile[]>;
 	private unclaimed: UnclaimedMeta[] | undefined;
 
 	constructor(parts: PlacementParts) {
@@ -104,27 +101,13 @@ export class Placement {
 		this.tree = parts.tree;
 		this.roots = parts.roots;
 		this.readings = parts.readings;
-		this.nodes = parts.nodes;
 		this.emptyFolders = parts.emptyFolders;
 		this.leftOut = parts.leftOut;
 		this.clashes = parts.clashes;
 		this.displaced = parts.displaced;
 		this.errors = parts.errors;
-		this.nodesBySource = groupBy(parts.nodes, ({ entry }) => entry.source);
-		this.routed = Placement.onePerFile(
-			groupBy(parts.routedNodes, ({ entry }) => entry.source)
-		);
-		this.files = Placement.onePerFile(this.nodesBySource);
-	}
-
-	private static onePerFile(
-		bySource: ReadonlyMap<string, readonly RoutedFile[]>
-	): RoutedFile[] {
-		return [...bySource.values()].map(
-			(nodes) =>
-				nodes.find(({ routeMatch }) => routeMatch !== "copy") ??
-				nodes[0]
-		);
+		this.routed = parts.routed;
+		this.files = parts.files;
 	}
 
 	readingOf(file: RoutedFile): EntryReading {
@@ -139,12 +122,6 @@ export class Placement {
 				relativePath,
 				file: path.join(sourcePath, relativePath),
 			}))
-		);
-	}
-
-	otherNodesOf(file: RoutedFile): readonly RoutedFile[] {
-		return (this.nodesBySource.get(file.entry.source) ?? []).filter(
-			(node) => node !== file
 		);
 	}
 

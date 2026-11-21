@@ -41,26 +41,24 @@ describe("SyncbackLayout", () => {
 	});
 
 	describe("initLeavesItsFolder", () => {
-		it("should take a copy of an init script on a side its folder's own route doesn't reach", async () => {
-			const alone = await layoutOf([
-				"src/Net/init.luau",
-				"src/Net/Server/Remote.luau",
-			]);
-			const everywhere = await layoutOf([
-				"src/Net/init.luau",
-				"src/Net/Server/Remote.luau",
-				"src/Net/Client/Listener.luau",
+		it("should take an init script its own @ routes, and not one its folder's route places", async () => {
+			const suffixed = await layoutOf([
+				"src/Net/init@Server.luau",
 				"src/Net/Types.luau",
+			]);
+			const plain = await layoutOf([
+				"src/Net/init.luau",
+				"src/Net/Server/Remote.luau",
 			]);
 
 			expect(
-				alone.initLeavesItsFolder(["ServerScriptService", "Net"])
+				suffixed.initLeavesItsFolder(["ServerScriptService", "Net"])
 			).toBe(true);
 			expect(
-				everywhere.initLeavesItsFolder(["ServerScriptService", "Net"])
-			).toBe(true);
+				plain.initLeavesItsFolder(["ServerScriptService", "Net"])
+			).toBe(false);
 			expect(
-				everywhere.initLeavesItsFolder([
+				plain.initLeavesItsFolder([
 					"ReplicatedStorage",
 					"Shared",
 					"Net",

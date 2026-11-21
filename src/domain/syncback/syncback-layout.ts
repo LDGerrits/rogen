@@ -88,7 +88,6 @@ export class SyncbackLayout {
 		const donors: Donor[] = [];
 		for (const file of this.placed) {
 			if (
-				file.routeMatch === "copy" ||
 				this.skipsItsFolders(file) ||
 				SyncbackLayout.makesItsFolder(file)
 			)
@@ -131,17 +130,13 @@ export class SyncbackLayout {
 		);
 	}
 
-	/** Whether `node` is made by an init script that its folder's other files don't follow there: one its own `@` routes, or a copy on a side the folder's own route doesn't reach. A file Studio adds below it must name its route. */
+	/** Whether `node` is made by an init script that its folder's other files don't follow there, one its own `@` routes. A file Studio adds below it must name its route. */
 	initLeavesItsFolder(node: readonly string[]): boolean {
 		const maker = this.fileMaking(node);
-		if (maker && SyncbackLayout.makesItsFolder(maker))
-			return maker.routeMatch === "suffix" || maker.routeMatch === "copy";
-		return this.placed.some(
-			(file) =>
-				file.alsoAt?.some((at) => isSameJson(at, node)) === true &&
-				file.folderNodes?.some(({ instancePath }) =>
-					isSameJson(instancePath, node)
-				) === true
+		return (
+			maker !== undefined &&
+			SyncbackLayout.makesItsFolder(maker) &&
+			maker.routeMatch === "suffix"
 		);
 	}
 

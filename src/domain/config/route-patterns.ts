@@ -17,6 +17,8 @@ interface Glob {
 const LITERAL = /[A-Za-z0-9._-]/;
 const CLASS_BODY = /^[!^]?[A-Za-z0-9._-]+$/;
 const WILDCARD = /[*?[{]/;
+/** One word of a `{a,b}` group: literals, `*`, `?` and classes, with no group inside. */
+const CHOICE = /^(?:[A-Za-z0-9._*?-]|\[[!^]?[A-Za-z0-9._-]+\])*$/;
 
 /** The route keys that are Rojo globs on a file's name. */
 export class RoutePatterns {
@@ -122,11 +124,7 @@ export class RoutePatterns {
 				const close = key.indexOf("}", at + 1);
 				if (close < 0) return undefined;
 				const choices = key.slice(at + 1, close).split(",");
-				if (
-					choices.some(
-						(choice) => !/^[A-Za-z0-9._*?-]*$/.test(choice)
-					)
-				)
+				if (choices.some((choice) => !CHOICE.test(choice)))
 					return undefined;
 				alternatives = alternatives.flatMap((one) =>
 					choices.map((choice) => one + choice)

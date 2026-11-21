@@ -143,6 +143,19 @@ describe("CoreSyncbackService", () => {
 	const mirror = (...instancePath: string[]) =>
 		abs(".rogen-syncback/mirror", ...instancePath);
 
+	const mountedTwice = async () => {
+		await writeFiles(fs, "Packages/Lib.luau");
+		await prepare(["src/Combat/Server/Combat.luau"], {
+			project: {
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Packages: { $path: "Packages" } },
+					ServerStorage: { Packages: { $path: "Packages" } },
+				},
+			},
+		});
+	};
+
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
 		rojo = new FakeRojo(fs);
@@ -470,19 +483,15 @@ describe("CoreSyncbackService", () => {
 		expect(plan.listed[0].file).toContain("Added");
 	});
 
-	it("should keep one change and list the other when two copies of an init script were edited differently", async () => {
-		await prepare([
-			"src/Net/init.luau",
-			"src/Net/Types.luau",
-			"src/Net/Server/Remote.luau",
-		]);
+	it("should keep one change and list the other when two mounts of a file were edited differently", async () => {
+		await mountedTwice();
 		rojo.say = async () => {
 			await fs.writeFile(
-				mirror("ReplicatedStorage", "Shared", "Net", "init.luau"),
+				mirror("ReplicatedStorage", "Packages", "Lib.luau"),
 				"return 1"
 			);
 			await fs.writeFile(
-				mirror("ServerScriptService", "Net", "init.luau"),
+				mirror("ServerStorage", "Packages", "Lib.luau"),
 				"return 2"
 			);
 			return [];
@@ -491,26 +500,22 @@ describe("CoreSyncbackService", () => {
 		const plan = await planned();
 
 		expect(plan.changes).toEqual([
-			{ kind: "write", file: abs("src/Net/init.luau") },
+			{ kind: "write", file: abs("Packages/Lib.luau") },
 		]);
 		expect(plan.unplaced).toMatchObject([
 			{
-				instance: "ServerScriptService/Net",
+				instance: "ServerStorage/Packages/Lib",
 				reason: expect.stringContaining("edited differently"),
 			},
 		]);
 		await syncback("apply");
-		expect(await fs.readFile(abs("src/Net/init.luau"))).toBe("return 1");
+		expect(await fs.readFile(abs("Packages/Lib.luau"))).toBe("return 1");
 	});
 
-	it("should keep a file when one copy was removed and another left alone, and list the removal", async () => {
-		await prepare([
-			"src/Net/init.luau",
-			"src/Net/Types.luau",
-			"src/Net/Server/Remote.luau",
-		]);
+	it("should keep a file when one mount of it was removed and another left alone, and list the removal", async () => {
+		await mountedTwice();
 		rojo.say = async () => {
-			await fs.delete(mirror("ServerScriptService", "Net", "init.luau"));
+			await fs.delete(mirror("ServerStorage", "Packages", "Lib.luau"));
 			return [];
 		};
 
@@ -519,9 +524,28 @@ describe("CoreSyncbackService", () => {
 		expect(plan.changes).toEqual([]);
 		expect(plan.unplaced).toMatchObject([
 			{
-				instance: "ServerScriptService/Net",
+				instance: "ServerStorage/Packages/Lib",
 				reason: expect.stringContaining("so the file was kept"),
 			},
+		]);
+	});
+
+	it("should not list an init script's folder as removed while files of it routed elsewhere stay", async () => {
+		await prepare([
+			"src/Net/init.luau",
+			"src/Net/Types.luau",
+			"src/Net/Server/Remote.luau",
+		]);
+		rojo.say = async () => {
+			await fs.delete(mirror("ReplicatedStorage", "Shared", "Net"), true);
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.changes).toEqual([
+			{ kind: "remove", file: abs("src/Net/Types.luau") },
+			{ kind: "remove", file: abs("src/Net/init.luau") },
 		]);
 	});
 
@@ -626,64 +650,49 @@ describe("CoreSyncbackService", () => {
 		expect(rojo.requests).toHaveLength(0);
 	});
 
-	it("should write a file once when its copies were edited the same way", async () => {
-		await prepare([
-			"src/Net/init.luau",
-			"src/Net/Types.luau",
-			"src/Net/Server/Remote.luau",
-		]);
+	it("should write a file once when its mounts were edited the same way", async () => {
+		await mountedTwice();
 		rojo.say = async () => {
-			for (const folder of [
-				["ReplicatedStorage", "Shared", "Net"],
-				["ServerScriptService", "Net"],
-			])
-				await fs.writeFile(mirror(...folder, "init.luau"), "return 1");
+			for (const service of ["ReplicatedStorage", "ServerStorage"])
+				await fs.writeFile(
+					mirror(service, "Packages", "Lib.luau"),
+					"return 1"
+				);
 			return [];
 		};
 
 		const plan = await planned();
 
 		expect(plan.changes).toEqual([
-			{ kind: "write", file: abs("src/Net/init.luau") },
+			{ kind: "write", file: abs("Packages/Lib.luau") },
 		]);
 		expect(plan.unplaced).toEqual([]);
 	});
 
-	it("should remove a file once when all its copies were deleted", async () => {
-		await prepare([
-			"src/Net/init.luau",
-			"src/Net/Types.luau",
-			"src/Net/Server/Remote.luau",
-		]);
+	it("should remove a file once when all its mounts were deleted", async () => {
+		await mountedTwice();
 		rojo.say = async () => {
-			for (const folder of [
-				["ReplicatedStorage", "Shared", "Net"],
-				["ServerScriptService", "Net"],
-			])
-				await fs.delete(mirror(...folder, "init.luau"));
+			for (const service of ["ReplicatedStorage", "ServerStorage"])
+				await fs.delete(mirror(service, "Packages", "Lib.luau"));
 			return [];
 		};
 
 		const plan = await planned();
 
 		expect(plan.changes).toEqual([
-			{ kind: "remove", file: abs("src/Net/init.luau") },
+			{ kind: "remove", file: abs("Packages/Lib.luau") },
 		]);
 		expect(plan.unplaced).toEqual([]);
 	});
 
-	it("should keep a file that one copy edited and another deleted", async () => {
-		await prepare([
-			"src/Net/init.luau",
-			"src/Net/Types.luau",
-			"src/Net/Server/Remote.luau",
-		]);
+	it("should keep a file that one mount edited and another deleted", async () => {
+		await mountedTwice();
 		rojo.say = async () => {
 			await fs.delete(
-				mirror("ReplicatedStorage", "Shared", "Net", "init.luau")
+				mirror("ReplicatedStorage", "Packages", "Lib.luau")
 			);
 			await fs.writeFile(
-				mirror("ServerScriptService", "Net", "init.luau"),
+				mirror("ServerStorage", "Packages", "Lib.luau"),
 				"return 2"
 			);
 			return [];
@@ -692,16 +701,16 @@ describe("CoreSyncbackService", () => {
 		const plan = await planned();
 
 		expect(plan.changes).toEqual([
-			{ kind: "write", file: abs("src/Net/init.luau") },
+			{ kind: "write", file: abs("Packages/Lib.luau") },
 		]);
 		expect(plan.unplaced).toMatchObject([
 			{
-				instance: "ReplicatedStorage/Shared/Net",
+				instance: "ReplicatedStorage/Packages/Lib",
 				reason: expect.stringContaining("edited"),
 			},
 		]);
 		await syncback("apply");
-		expect(await fs.readFile(abs("src/Net/init.luau"))).toBe("return 2");
+		expect(await fs.readFile(abs("Packages/Lib.luau"))).toBe("return 2");
 	});
 
 	it("should delete the files of an instance the place no longer holds, in any layout", async () => {

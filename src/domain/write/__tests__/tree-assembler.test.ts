@@ -568,7 +568,7 @@ describe("TreeAssembler", () => {
 				"*": "ReplicatedStorage",
 			};
 
-			it("should copy an init script to the side of a routing folder left empty, so the script stays there with no children", async () => {
+			it("should make a folder, not the init script, on the side of a routing folder left empty", async () => {
 				await write(
 					"src/Net/init.luau",
 					"src/Net/client/Listener.luau"
@@ -581,11 +581,14 @@ describe("TreeAssembler", () => {
 
 				expect(value.tree.ServerScriptService).toEqual({
 					$className: "ServerScriptService",
-					Net: { $path: optional("src/Net") },
+					Net: {
+						$className: "Folder",
+						$ignoreUnknownInstances: false,
+					},
 				});
 			});
 
-			it("should point every node an init script is at its directory, and keep what sits beside it out of that read", async () => {
+			it("should point an init script's node at its directory, keep what sits beside it out of that read, and make its folder plain on the other sides", async () => {
 				await write(
 					"src/Net/init.luau",
 					"src/Net/Types.luau",
@@ -611,10 +614,8 @@ describe("TreeAssembler", () => {
 				expect(value.tree.ServerScriptService).toEqual({
 					$className: "ServerScriptService",
 					Net: {
-						$path: optional("src/Net"),
-						Remote: {
-							$path: optional("src/Net/server/Remote.luau"),
-						},
+						$path: optional("src/Net/server"),
+						$attributes: { Remote: true },
 					},
 				});
 				expect([...(value.globIgnorePaths ?? [])].sort()).toEqual([
@@ -632,12 +633,12 @@ describe("TreeAssembler", () => {
 					compiledPath: abs("out"),
 				});
 
+				expect((value.tree.ReplicatedStorage as RojoNode).Lib).toEqual({
+					$path: optional("out/Lib"),
+				});
 				expect(
 					(value.tree.ServerScriptService as RojoNode).Lib
-				).toEqual({
-					$path: optional("out/Lib"),
-					Api: { $path: optional("out/Lib/server/Api.luau") },
-				});
+				).toEqual({ $path: optional("out/Lib/server") });
 				expect(value.globIgnorePaths).toEqual(["out/Lib/server"]);
 			});
 
@@ -650,11 +651,8 @@ describe("TreeAssembler", () => {
 				});
 
 				expect(
-					(value.tree.ServerScriptService as RojoNode)["Lib.ts"]
-				).toEqual({
-					$path: optional("out/Lib.ts"),
-					Api: { $path: optional("out/Lib.ts/server/Api.luau") },
-				});
+					(value.tree.ReplicatedStorage as RojoNode)["Lib.ts"]
+				).toEqual({ $path: optional("out/Lib.ts") });
 				expect(value.globIgnorePaths).toEqual(["out/Lib.ts/server"]);
 			});
 

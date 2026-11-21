@@ -106,7 +106,7 @@ export class FolderMetaApplier {
 		project: RojoProject,
 		problems: DiagnosticCollector
 	): FolderMetaOutcome[] {
-		const { tree, nodes, displaced, emptyFolders } = this.placement;
+		const { tree, files: nodes, displaced, emptyFolders } = this.placement;
 		const sharedWithFile = new InstanceMap<RoutedFile>();
 		for (const file of nodes) sharedWithFile.set(file.instancePath, file);
 

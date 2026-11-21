@@ -14,7 +14,6 @@ import { ResolvedConfig, scannedFileOf } from "../config/resolved-config.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import { LeftOut } from "./write.js";
 import { WriteTree } from "./write-tree.js";
-import { InitScripts } from "./init-scripts.js";
 import { NameReadings } from "./name-readings.js";
 import { RootScanner, ScannedRoot } from "./root-scanner.js";
 import {
@@ -33,7 +32,6 @@ import { DisplacedFile, LeftOutPaths, Placement } from "./placement.js";
 export class Placer {
 	private readonly layout: CompiledLayout;
 	private readonly tree: WriteTree;
-	private readonly initScripts: InitScripts;
 
 	constructor(
 		private readonly index: IndexReader,
@@ -43,7 +41,6 @@ export class Placer {
 	) {
 		this.layout = new CompiledLayout(config, tools);
 		this.tree = new WriteTree(config, this.layout);
-		this.initScripts = new InitScripts(this.tree);
 	}
 
 	place(): Result<Placement, Diagnostic[]> {
@@ -66,7 +63,6 @@ export class Placer {
 		const {
 			routed,
 			emptyFolders,
-			toCopy,
 			unrouted,
 			withoutFolder,
 			hoistedInits,
@@ -96,18 +92,9 @@ export class Placer {
 			...this.hoistedInitErrors(hoistedInits),
 			...Placer.patternClashErrors(routed),
 		];
-		const routedNodes = this.initScripts.withCopies(
-			routed,
-			toCopy,
-			emptyFolders
-		);
-		const resolved = new InstanceResolver().resolve(routedNodes);
-		const nodes = this.initScripts.withoutLoneInits(
-			resolved.nodes,
-			emptyFolders
-		);
-		const templating = this.yieldToTree(nodes);
-		const placed = new Set(nodes.map(({ entry }) => entry.source));
+		const resolved = new InstanceResolver().resolve(routed);
+		const templating = this.yieldToTree(resolved.nodes);
+		const placed = new Set(resolved.nodes.map(({ entry }) => entry.source));
 		const leftOut = new LeftOutPaths(
 			roots.flatMap((root) => [...root.leftOut]),
 			unrouted
@@ -127,8 +114,8 @@ export class Placer {
 				tree: this.tree,
 				roots,
 				readings,
-				routedNodes,
-				nodes: templating.nodes,
+				routed,
+				files: templating.nodes,
 				emptyFolders,
 				leftOut,
 				clashes: resolved.clashes,

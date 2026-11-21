@@ -54,8 +54,18 @@ export const instanceNameOf = (fileName: string): string =>
 	RojoFile.metaStemOf(fileName) ??
 	new RojoFile(fileName, SyncRules.DEFAULT).instanceName;
 
+const isInitName = (fileName: string) =>
+	fileName.startsWith(`${RojoFile.INIT_NAME}.`);
+
+/** The instance path of the file `fileName` in the folder that is the instance `folder`: an init file is the folder itself. */
+export const instancePathIn = (
+	folder: readonly string[],
+	fileName: string
+): string[] =>
+	isInitName(fileName) ? [...folder] : [...folder, instanceNameOf(fileName)];
+
 const isInitFile = (file: readonly string[]) =>
-	file[file.length - 1].startsWith("init.");
+	isInitName(file[file.length - 1]);
 
 /** Whether an init file makes the folder instance, or a folder in it, a script. */
 const holdsScript = (instance: NewInstance) =>

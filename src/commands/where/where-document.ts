@@ -47,7 +47,6 @@ export const whereDocumentShape = S.object({
 			fileEntryShape(S.enum("placed"), {
 				instancePath: instancePathShape,
 				require: S.optional(S.string),
-				alsoAt: S.optional(S.array(instancePathShape)),
 				route: S.string,
 				routeMatch: S.string,
 				hoisted: S.optional(S.boolean),
@@ -107,7 +106,6 @@ type LocationFields =
 			readonly status: "placed";
 			readonly instancePath: readonly string[];
 			readonly require?: string;
-			readonly alsoAt?: readonly (readonly string[])[];
 			readonly route: string;
 			readonly routeMatch: string;
 			readonly hoisted?: true;
@@ -174,7 +172,6 @@ function fieldsOf(location: FileLocation): LocationFields {
 				status: "placed",
 				instancePath: location.instancePath,
 				...(require && { require }),
-				...(location.alsoAt && { alsoAt: location.alsoAt }),
 				route: location.route,
 				routeMatch: location.routeMatch,
 				...(location.hoisted && { hoisted: true as const }),

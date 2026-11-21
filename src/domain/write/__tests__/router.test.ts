@@ -326,19 +326,21 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should say a copied init script of a ^ folder was hoisted", async () => {
+			it("should say an init script of a ^ folder was hoisted", async () => {
 				await write(
 					"src/K/^Net/init.luau",
 					"src/K/^Net/server/A.luau",
 					"src/K/^Net/client/B.luau"
 				);
 
-				const copies = (await route())
+				const init = (await route())
 					.unwrap()
-					.files.filter(({ routeMatch }) => routeMatch === "copy");
+					.files.find(
+						({ entry }) =>
+							entry.source === abs("src/K/^Net/init.luau")
+					);
 
-				expect(copies.length).toBeGreaterThan(0);
-				expect(copies.every(({ hoisted }) => hoisted)).toBe(true);
+				expect(init?.hoisted).toBe(true);
 			});
 
 			it("should stop when two ^ names land on one instance, as the build would lose one", async () => {

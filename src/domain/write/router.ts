@@ -167,12 +167,6 @@ interface ClaimedPath {
 	readonly dropped: number;
 }
 
-/** An init ModuleScript that no route of its own sends anywhere: it is every node its folder becomes. */
-export interface InitToCopy extends Pick<RoutedFile, "entry"> {
-	readonly init: InitFolders;
-	readonly placed: RoutedFile | undefined;
-}
-
 /** A folder that holds nothing Rojo makes an instance from, at the node a file in it would sit in. */
 export interface RoutedFolder extends Pick<
 	RoutedFile,
@@ -185,7 +179,6 @@ export interface RoutedFolder extends Pick<
 export interface Routing {
 	readonly routed: RoutedFile[];
 	readonly emptyFolders: RoutedFolder[];
-	readonly toCopy: InitToCopy[];
 	readonly unrouted: string[];
 	readonly withoutFolder: InitWithoutFolder[];
 	readonly hoistedInits: HoistedInit[];
@@ -201,12 +194,11 @@ export class Router {
 		private readonly readings: NameReadings
 	) {}
 
-	/** Every file a route governs, in scan order; the empty folders it governs; the init scripts to copy; the sources of the files no route governs; the init scripts with no folder to be; and the init scripts written `^init`. */
+	/** Every file a route governs, in scan order; the empty folders it governs; the sources of the files no route governs; the init scripts with no folder to be; and the init scripts written `^init`. */
 	route(roots: readonly ScannedRoot[], claims: RootClaims): Routing {
 		const routing: Routing = {
 			routed: [],
 			emptyFolders: [],
-			toCopy: [],
 			unrouted: [],
 			withoutFolder: [],
 			hoistedInits: [],
@@ -282,12 +274,6 @@ export class Router {
 		const placed = this.place(entry, claimed);
 		if (placed) routing.routed.push(placed);
 		else routing.unrouted.push(entry.source);
-		if (this.isCopied(claimed))
-			routing.toCopy.push({
-				entry,
-				init: this.initFolders(entry, claimed.folders),
-				placed,
-			});
 	}
 
 	private instancelessFolderOf(entry: ScannedFile): InstancelessFolder {
@@ -339,7 +325,7 @@ export class Router {
 		};
 	}
 
-	/** The pattern a file's name, or the name of the instance it makes, matches. An init script is its folder, which no pattern matches, so it routes with the folder's other files. */
+	/** The pattern a file's name, or the name of the instance it makes, matches. An init script is its folder, which no pattern matches, so it routes with its folder. */
 	private patternOf(
 		entry: ScannedFile,
 		isInit: boolean
@@ -347,7 +333,7 @@ export class Router {
 		if (isInit) return undefined;
 		const match = this.config.patterns.match(
 			...[path.posix.basename(entry.source), entry.file.instanceName].map(
-				(name) => name.replace(/^\^/, "")
+				(name) => InstanceName.unhoisted(name).name
 			)
 		);
 		return match ? { match, at: entry.source } : undefined;
@@ -412,14 +398,6 @@ export class Router {
 			),
 			sitsIn: path.posix.dirname(entry.source),
 		};
-	}
-
-	private isCopied({ claims, leaf }: ClaimedPath): boolean {
-		return (
-			leaf.isInit &&
-			claims.route === undefined &&
-			leaf.scriptSuffix === undefined
-		);
 	}
 
 	private claimFolders(

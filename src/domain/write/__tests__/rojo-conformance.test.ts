@@ -262,7 +262,7 @@ describeWithRojo("write against Rojo reading the same directory", () => {
 		]);
 	});
 
-	it("should make an init script every node its folder becomes, alone or through its directory", async () => {
+	it("should make an init script the node its own route gives its folder, and the folder plain on the other sides", async () => {
 		const meta = '{"attributes":{"a":1}}';
 		writeFiles({
 			"Net/init.luau": "",
@@ -291,19 +291,17 @@ describeWithRojo("write against Rojo reading the same directory", () => {
 				"ServerScriptService: ServerScriptService",
 				"ServerScriptService/Bots: Script",
 				"ServerScriptService/Bots/Brain: ModuleScript",
-				"ServerScriptService/Net: ModuleScript",
+				"ServerScriptService/Net: Folder",
 				"ServerScriptService/Net/Remote: ModuleScript",
 				"StarterPlayer: StarterPlayer",
 				"StarterPlayer/StarterPlayerScripts: StarterPlayerScripts",
-				"StarterPlayer/StarterPlayerScripts/Net: ModuleScript",
+				"StarterPlayer/StarterPlayerScripts/Net: Folder",
 				"StarterPlayer/StarterPlayerScripts/Net/Listener: ModuleScript",
 			].sort()
 		);
 		expect(metaApplied(tree)).toEqual([
 			"ReplicatedStorage/Net <- src/Net/init.meta.json",
 			"ServerScriptService/Bots <- src/Bots/init.meta.json",
-			"ServerScriptService/Net <- src/Net/init.meta.json",
-			"StarterPlayer/StarterPlayerScripts/Net <- src/Net/init.meta.json",
 		]);
 	});
 
@@ -381,7 +379,7 @@ describeWithRojo("write against Rojo reading the same directory", () => {
 		);
 	});
 
-	it("should make an init.csv the LocalizationTable of every node its folder becomes", async () => {
+	it("should make an init.csv the LocalizationTable of the node its own route gives its folder only", async () => {
 		writeFiles({
 			"Loc/init.csv": "Key,Source,Context,Example,de\nYes,Yes,,,Ja",
 			"Loc/server/B.luau": "",
@@ -400,13 +398,13 @@ describeWithRojo("write against Rojo reading the same directory", () => {
 				"ReplicatedStorage/Loc: LocalizationTable",
 				"ReplicatedStorage/Loc/Shared: ModuleScript",
 				"ServerScriptService: ServerScriptService",
-				"ServerScriptService/Loc: LocalizationTable",
+				"ServerScriptService/Loc: Folder",
 				"ServerScriptService/Loc/B: ModuleScript",
 			].sort()
 		);
 	});
 
-	it("should refuse a RunContext in the meta of an init.luau, so no meta makes a copied init script run", () => {
+	it("should refuse a RunContext in the meta of an init.luau, so no meta makes an init ModuleScript run", () => {
 		writeFiles({
 			"Net/init.luau": "",
 			"Net/init.meta.json": '{"properties":{"RunContext":"Server"}}',

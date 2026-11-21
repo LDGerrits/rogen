@@ -4,7 +4,7 @@ import { containsPosix } from "../../base/path.js";
 import { PlacedLocation } from "../write/write-service.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { AddedInstance } from "./added-instances.js";
-import { instanceNameOf } from "./reverse-router.js";
+import { instanceNameOf, instancePathIn } from "./reverse-router.js";
 import { GITKEEP } from "./syncback-layout.js";
 
 /** A new folder instance that is an old one renamed in Studio: its files go where the old ones were, in the old folder under its new name, so the layout stays. */
@@ -41,15 +41,6 @@ function renamedSegment(
 	return undefined;
 }
 
-/** The instance path below the instance a file Rojo wrote for it makes: an init file is its folder. */
-function instanceBelow(file: readonly string[]): string[] {
-	const leaf = file[file.length - 1];
-	const folders = file.slice(1, -1);
-	return leaf.startsWith("init.")
-		? folders
-		: [...folders, instanceNameOf(leaf)];
-}
-
 /** The `@key` that routed a placed file, spelled in its own name, which a sibling written beside it repeats. */
 function markOf(file: PlacedLocation): string {
 	const mark = `@${file.route}`;
@@ -82,16 +73,15 @@ export interface RenameInputs {
 	readonly isRemoved: (source: string) => boolean;
 }
 
-/** The placed files by each instance path they are at, joined with `\0`. */
+/** The placed files by the instance path each is at, joined with `\0`. */
 function byInstance(
 	placed: readonly PlacedLocation[]
 ): Map<string, PlacedLocation> {
 	const found = new Map<string, PlacedLocation>();
-	for (const file of placed)
-		for (const at of [file.instancePath, ...(file.alsoAt ?? [])]) {
-			const key = at.join("\0");
-			if (!found.has(key)) found.set(key, file);
-		}
+	for (const file of placed) {
+		const key = file.instancePath.join("\0");
+		if (!found.has(key)) found.set(key, file);
+	}
 	return found;
 }
 
@@ -135,7 +125,10 @@ function renameOf(
 			continue;
 		}
 		const old = placedAt.get(
-			[...oldPath, ...instanceBelow(file)].join("\0")
+			instancePathIn(
+				[...oldPath, ...file.slice(1, -1)],
+				file[file.length - 1]
+			).join("\0")
 		);
 		if (old === undefined) {
 			fresh.push(file);
@@ -179,9 +172,8 @@ function renameOf(
 	}
 	const lost = placed.some(
 		(file) =>
-			[file.instancePath, ...(file.alsoAt ?? [])].some(
-				(at) => isUnder(at, oldPath) || isSameJson(at, oldPath)
-			) &&
+			(isUnder(file.instancePath, oldPath) ||
+				isSameJson(file.instancePath, oldPath)) &&
 			!mapped.has(file.source) &&
 			!isRemoved(file.source)
 	);
@@ -223,18 +215,15 @@ export function renamedInstances(
 		placed.every(
 			(file) =>
 				!containsPosix(rename.folder, file.source) ||
-				[file.instancePath, ...(file.alsoAt ?? [])].every(
-					(instancePath) =>
-						found.some((other) => {
-							const old = [...other.instance.parent, other.from];
-							return (
-								other.folder === rename.folder &&
-								other.renamed === rename.renamed &&
-								(isUnder(instancePath, old) ||
-									isSameJson(instancePath, old))
-							);
-						})
-				)
+				found.some((other) => {
+					const old = [...other.instance.parent, other.from];
+					return (
+						other.folder === rename.folder &&
+						other.renamed === rename.renamed &&
+						(isUnder(file.instancePath, old) ||
+							isSameJson(file.instancePath, old))
+					);
+				})
 		)
 	);
 }

@@ -64,22 +64,6 @@ describe("WhereLog", () => {
 			);
 		});
 
-		it("should list the other nodes a copied init script is", () => {
-			expect(
-				lineOf({
-					status: "placed",
-					source: "/repo/src/Net/init.luau",
-					exists: true,
-					instancePath: ["ServerScriptService", "Net"],
-					alsoAt: [["StarterPlayer", "StarterPlayerScripts", "Net"]],
-					route: "server",
-					routeMatch: "copy",
-				})
-			).toEqual(
-				"src/Net/init.luau -> ServerScriptService/Net · route server (copy) · also StarterPlayer/StarterPlayerScripts/Net"
-			);
-		});
-
 		it("should name the tree node that mounts a path", () => {
 			expect(
 				lineOf({

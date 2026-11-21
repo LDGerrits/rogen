@@ -86,7 +86,7 @@ describe("WriteValidator rules", () => {
 					resource: abs("src/SERVER"),
 				});
 				expect(error.message).toBe(
-					'"SERVER" differs from the route "server" only in letter case, so it would route nothing and its files would go to "*". Spell it "server".'
+					'"SERVER" differs from the route "server" only in letter case, so it routes nothing, and the files in it that nothing else routes go to "*". Spell it "server".'
 				);
 			});
 
@@ -164,7 +164,7 @@ describe("WriteValidator rules", () => {
 				expect(listed(errors)).toEqual([
 					[
 						abs("src/Lib/Net/SERVER"),
-						'"SERVER" differs from the route "server" only in letter case, so it would route nothing and its files would go to "*". Spell it "server", or, if the script beside it requires it as a child, add a marker file @shared in it to keep it there.',
+						'"SERVER" differs from the route "server" only in letter case, so it routes nothing, and the files in it that nothing else routes go to "*". Spell it "server", or, if the script beside it requires it as a child, add a marker file @shared in it to keep it there.',
 					],
 				]);
 				expect(fixesOf(errors)).toEqual([]);
@@ -253,6 +253,19 @@ describe("WriteValidator rules", () => {
 						},
 					],
 				});
+			});
+
+			it("should warn about a folder script a pattern with an extension matches by its init script's file name", async () => {
+				await write("src/Input/InputController/init.luau");
+
+				const warnings = await warningsOf("route.folderPattern", {
+					...ROUTES,
+					"*Controller.*": "StarterPlayer/StarterPlayerScripts",
+				});
+
+				expect(warnings.map(({ resource }) => resource)).toEqual([
+					abs("src/Input/InputController"),
+				]);
 			});
 
 			it("should warn about a folder of files a pattern without a * matches, as a key written for a folder", async () => {

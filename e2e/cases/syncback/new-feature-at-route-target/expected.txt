@@ -31,7 +31,7 @@ G: DataModel
         Types: ModuleScript  <- src/Net/Types.luau
   ServerScriptService: ServerScriptService
     Boot: Script  <- src/Boot/init.server.luau
-    Net: ModuleScript  <- src/Net/init.luau
+    Net: Folder
       Remote: ModuleScript  <- src/Net/Server/Remote.luau
     Quest: Folder
       Tracker: ModuleScript  <- src/Quest/Server/Tracker.luau
@@ -39,7 +39,7 @@ G: DataModel
       Save: ModuleScript  <- src/Store/Server/Save.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
-      Net: ModuleScript  <- src/Net/init.luau
+      Net: Folder
         Listener: ModuleScript  <- src/Net/Client/Listener.luau
       Quest: Folder
         Log: ModuleScript  <- src/Quest/Client/Log.luau

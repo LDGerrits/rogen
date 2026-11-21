@@ -37,6 +37,7 @@ import {
 	NewHome,
 	ReverseRouter,
 	instanceNameOf,
+	instancePathIn,
 } from "./reverse-router.js";
 import { DraftRouting, Landing, Proposal } from "./draft-routing.js";
 import { GITKEEP } from "./syncback-layout.js";
@@ -96,10 +97,7 @@ function instanceOf(
 	)
 		return undefined;
 	if (!instance.folder) return [...instance.parent, instance.name];
-	const folders = [...instance.parent, ...file.slice(0, -1)];
-	return name.startsWith("init.")
-		? folders
-		: [...folders, instanceNameOf(name)];
+	return instancePathIn([...instance.parent, ...file.slice(0, -1)], name);
 }
 
 /** Where routing must put a file Rojo wrote for `instance`, written at `to`: its own instance, or for a folder or the `.gitkeep` that keeps one, the Folder it is; none for a meta file or what makes no instance. */
@@ -455,6 +453,27 @@ class MirrorPlanRun {
 				.filter((at) => holding.has(at))
 				.map((at) => mirror.targetOf(at))
 		);
+		const gone = new Set(
+			operations
+				.filter(({ kind }) => kind === "remove" || kind === "prune")
+				.map(({ file }) => file)
+		);
+		const entries = new Map<string, string[]>();
+		const entriesOf = async (folder: string) => {
+			let names = entries.get(folder);
+			if (names) return names;
+			const read = await tryWithAsync(() =>
+				this.fileSystemService.readDirectory(folder)
+			);
+			names = read.isOk() ? read.value.map(([name]) => name) : [];
+			entries.set(folder, names);
+			return names;
+		};
+		/** Whether nothing is left in `folder` once the plan removes what it does, such as the files of an init script's folder that routes elsewhere. */
+		const emptiedBy = async (folder: string) =>
+			(await entriesOf(folder)).every((name) =>
+				gone.has(path.join(folder, name))
+			);
 		for (const at of [...copiedFolders].sort(
 			(a, b) => b.length - a.length
 		)) {
@@ -462,23 +481,25 @@ class MirrorPlanRun {
 			if (
 				target === undefined ||
 				holding.has(at) ||
-				stillMounted.has(target)
+				stillMounted.has(target) ||
+				// Syncback writes nothing compiled, so a compiled folder is only listed as removed.
+				!(
+					this.isCompiled(toNative(target)) ||
+					(await emptiedBy(toNative(target)))
+				)
 			)
 				continue;
 			const instance = workspace.instanceAt(at);
-			if (!this.leftOut(toNative(target), instance, "removed"))
+			if (!this.leftOut(toNative(target), instance, "removed")) {
+				gone.add(toNative(target));
 				operations.push({
 					kind: "prune",
 					file: toNative(target),
 					instance,
 					from: at,
 				});
+			}
 		}
-		const gone = new Set(
-			operations
-				.filter(({ kind }) => kind === "remove" || kind === "prune")
-				.map(({ file }) => file)
-		);
 		/** The mirror folders each project folder is read at, which say whether the place still holds it. */
 		const readAt = new Map<string, Set<string>>();
 		const readsAt = (folder: string, at: string) =>
@@ -505,27 +526,13 @@ class MirrorPlanRun {
 				parent,
 			});
 		}
-		const entries = new Map<string, string[]>();
-		const entriesOf = async (folder: string) => {
-			let names = entries.get(folder);
-			if (names) return names;
-			const read = await tryWithAsync(() =>
-				this.fileSystemService.readDirectory(folder)
-			);
-			names = read.isOk() ? read.value.map(([name]) => name) : [];
-			entries.set(folder, names);
-			return names;
-		};
 		for (const { file, instance, parent } of emptied) {
 			for (
 				let folder = path.dirname(file);
 				!gone.has(folder) && this.belowSource(folder);
 				folder = path.dirname(folder)
 			) {
-				const empty = (await entriesOf(folder)).every((name) =>
-					gone.has(path.join(folder, name))
-				);
-				if (!empty) break;
+				if (!(await emptiedBy(folder))) break;
 				// The place still holds what the folder makes, so it stays; once nothing else goes in it, a file git keeps it by.
 				if (
 					[...(readAt.get(folder) ?? [])].some((at) =>

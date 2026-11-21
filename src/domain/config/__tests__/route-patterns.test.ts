@@ -17,6 +17,7 @@ describe("RoutePatterns", () => {
 			"*{Controller,Component}",
 			"*.[jt]sx",
 			"Main[!0-9].luau",
+			"{[Mm]ain,Boot}.luau",
 		])("should take %j as a pattern", (key) => {
 			expect(RoutePatterns.isPattern(key)).toBe(true);
 		});
@@ -33,6 +34,7 @@ describe("RoutePatterns", () => {
 			"*[Ss",
 			"*{Controller,Component",
 			"*{a,{b,c}}",
+			"{[Mm,Boot}.luau",
 			"*Controller}",
 			"*]",
 		])("should not take %j as a pattern", (key) => {
@@ -101,6 +103,19 @@ describe("RoutePatterns", () => {
 				"*{Controller,Component}",
 				undefined,
 			]);
+		});
+
+		it("should read a class inside alternatives, as Rojo's globs do", () => {
+			const patterns = patternsOf({
+				"{[Mm]ain,Boot}.luau": "ServerScriptService",
+				"*": "ReplicatedStorage/Shared",
+			});
+
+			expect(
+				["main.luau", "Main.luau", "Boot.luau", "boot.luau"].map(
+					(name) => patterns.match(name)?.kind
+				)
+			).toEqual(["routed", "routed", "routed", undefined]);
 		});
 
 		it("should count ? and a class as one character, and weigh each alternative on its own", () => {

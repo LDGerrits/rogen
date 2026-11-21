@@ -42,11 +42,9 @@ interface Located {
 export interface PlacedLocation extends Located {
 	readonly status: "placed";
 	readonly instancePath: readonly string[];
-	/** The other nodes an init script is, where its folder becomes a node in another route. */
-	readonly alsoAt?: readonly (readonly string[])[];
 	readonly route: string;
 	readonly routeMatch: RouteMatch;
-	/** Absolute POSIX path of the folder or file whose name took the route, or of the folder a marker sits in; none for `*` or a copy. */
+	/** Absolute POSIX path of the folder or file whose name took the route, or of the folder a marker sits in; none for `*`. */
 	readonly routedBy?: string;
 	/** A `^` on its name or a folder's took it straight to the route's target. */
 	readonly hoisted?: boolean;

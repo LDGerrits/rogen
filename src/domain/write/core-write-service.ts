@@ -9,7 +9,7 @@ import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
-import { ConfigSelection, ConfigService } from "../config/config-service.js";
+import { ConfigSelection } from "../config/config-service.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import {
@@ -79,7 +79,6 @@ export class CoreWriteService implements WriteService {
 		private readonly fileSystemService: FileSystemService,
 		@IndexService private readonly indexService: IndexService,
 		@ToolchainService toolchainService: ToolchainService,
-		@ConfigService private readonly configService: ConfigService,
 		@InstantiationService
 		private readonly instantiationService: InstantiationService
 	) {

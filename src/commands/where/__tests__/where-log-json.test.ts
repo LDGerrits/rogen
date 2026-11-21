@@ -83,22 +83,6 @@ describe("WhereLog", () => {
 			expect(jsonOf(placed)[0]).not.toHaveProperty("hoisted");
 		});
 
-		it("should give the other nodes a copied init script is", () => {
-			expect(
-				jsonOf({
-					status: "placed",
-					source: "/repo/src/Net/init.luau",
-					exists: true,
-					instancePath: ["ServerScriptService", "Net"],
-					alsoAt: [["StarterPlayer", "StarterPlayerScripts", "Net"]],
-					route: "server",
-					routeMatch: "copy",
-				})[0]
-			).toMatchObject({
-				alsoAt: [["StarterPlayer", "StarterPlayerScripts", "Net"]],
-			});
-		});
-
 		it.each<[FileLocation, Record<string, unknown>]>([
 			[
 				{

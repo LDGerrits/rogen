@@ -29,9 +29,9 @@ Game: DataModel
       Net: ModuleScript  <- src/Net/init.luau
         Types: ModuleScript  <- src/Net/Types.luau
   ServerScriptService: ServerScriptService
-    Net: ModuleScript  <- src/Net/init.luau
+    Net: Folder
       Remote: ModuleScript  <- src/Net/Server/Remote.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
-      Net: ModuleScript  <- src/Net/init.luau
+      Net: Folder
         Listener: ModuleScript  <- src/Net/Client/Listener.luau
