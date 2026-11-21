@@ -20,7 +20,7 @@ export class MockEnvironmentService implements EnvironmentService {
 		public readonly cacheDir: string = "/mock/cache",
 		public readonly checksForUpdates: boolean = false,
 		public readonly isWindows: boolean = false,
-		public readonly underCi: boolean = false
+		public readonly isCi: boolean = false
 	) {
 		this.cwd = path.isAbsolute(cwd) ? path.resolve(cwd) : cwd;
 		this.isPlain = !isInteractive;

@@ -42,10 +42,9 @@ export const watchLineShapes = {
 	diagnostics: S.object({ diagnostics: S.array(diagnosticShape) }),
 };
 
-/** The line `write --watch --json` and `serve --json` print first when they bring the Rogen block of agent files up to date. */
+/** What `write --watch --json` and `serve --json` print first after refreshing the agent rules. */
 export const agentRulesLineShape = S.object({ agentRules: S.array(S.string) });
 
-/** That line, for the agent files `refreshed` names; `undefined` when there are none. */
 export function agentRulesLine(
 	refreshed: readonly string[]
 ): { agentRules: string[] } | undefined {
@@ -131,8 +130,7 @@ export function writeDocument(
 	run: WriteRun,
 	cwd: string,
 	plainProjects: readonly string[],
-	/** The agent files whose Rogen block this run brought up to date. */
-	agentRules: readonly string[] = []
+	agentRules: readonly string[]
 ) {
 	const left = [
 		...run.outcomes.filter(isPlain).map(({ file }) => file),

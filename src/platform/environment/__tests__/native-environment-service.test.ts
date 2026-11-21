@@ -204,7 +204,7 @@ describe("NativeEnvironmentService", () => {
 		});
 	});
 
-	describe("underCi", () => {
+	describe("isCi", () => {
 		it.each([
 			[{ CI: "true" }, true],
 			[{ CI: "1" }, true],
@@ -213,7 +213,7 @@ describe("NativeEnvironmentService", () => {
 			[{}, false],
 			[{ CLAUDECODE: "1" }, false],
 		])("should read %j as %s", (env, expected) => {
-			expect(piped(env).underCi).toBe(expected);
+			expect(piped(env).isCi).toBe(expected);
 		});
 	});
 

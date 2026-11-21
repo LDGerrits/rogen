@@ -27,7 +27,6 @@ import {
 	serveLineShape,
 } from "./serve-log.js";
 import { RefreshAgentRules } from "../write/refresh-agent-rules.js";
-import { agentRulesLine } from "../write/write-document.js";
 
 const AddressOption = {
 	name: "address",
@@ -132,13 +131,9 @@ registerCommand(
 				store
 			);
 			try {
-				const refreshed = agentRulesLine(
-					await instantiationService
-						.createInstance(RefreshAgentRules)
-						.run(Boolean(line.options.json))
-				);
-				if (line.options.json && refreshed)
-					logService.print(JSON.stringify(refreshed));
+				await instantiationService
+					.createInstance(RefreshAgentRules)
+					.run(line.options.json ? "lines" : "text");
 				const plan = await serveService.prepare({
 					signal: shutdown,
 					refs: line.positionals,

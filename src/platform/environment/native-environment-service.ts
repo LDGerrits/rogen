@@ -77,7 +77,7 @@ export class NativeEnvironmentService implements EnvironmentService {
 	declare readonly _serviceBrand: undefined;
 
 	readonly logLevel: LogLevel;
-	readonly underCi: boolean;
+	readonly isCi: boolean;
 	readonly isInteractive: boolean;
 	readonly isPlain: boolean;
 	readonly hasColor: boolean;
@@ -115,7 +115,7 @@ export class NativeEnvironmentService implements EnvironmentService {
 				: verbose.length === 1
 					? LogLevel.Debug
 					: LogLevel.Info;
-		this.underCi = isOn(env.CI);
+		this.isCi = isOn(env.CI);
 		this.isInteractive =
 			isTerminal && env.TERM !== "dumb" && !isAutomated(env);
 		this.isPlain = json === true || !this.isInteractive;

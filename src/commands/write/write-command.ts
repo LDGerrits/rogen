@@ -19,7 +19,6 @@ import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js"
 import { LogService } from "../../platform/log/log-service.js";
 import { WatchedConfigs, WriteWatch } from "../write/write-watch.js";
 import {
-	agentRulesLine,
 	writeLineShape,
 	writeDocument,
 	writeDocumentShape,
@@ -124,10 +123,9 @@ registerCommand(
 			const json = Boolean(line.options.json);
 			const agentRules = await services.instantiationService
 				.createInstance(RefreshAgentRules)
-				.run(json);
-			const refreshed = agentRulesLine(agentRules);
-			if (json && line.options.watch && refreshed)
-				services.logService.print(JSON.stringify(refreshed));
+				.run(
+					!json ? "text" : line.options.watch ? "lines" : "document"
+				);
 			return line.options.watch
 				? this.watch(
 						services,

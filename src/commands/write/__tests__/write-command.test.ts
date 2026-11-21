@@ -25,6 +25,8 @@ const named = (name: string) =>
 
 const config = named("Game");
 
+const OLD = "<!-- rogen -->\n## Rogen\n\nOld.\n<!-- /rogen -->\n";
+
 describe("write command", () => {
 	let fs: MemoryFileSystemService;
 
@@ -35,8 +37,6 @@ describe("write command", () => {
 	});
 
 	describe("agent rules", () => {
-		const OLD = "<!-- rogen -->\n## Rogen\n\nOld.\n<!-- /rogen -->\n";
-
 		beforeEach(async () => {
 			await fs.writeFile(abs("default.rogen.json"), config);
 			await fs.createDirectory(abs(".git"));
@@ -63,7 +63,7 @@ describe("write command", () => {
 				environment: Object.assign(
 					new MockEnvironmentService("/repo"),
 					{
-						underCi: true,
+						isCi: true,
 					}
 				),
 			});
@@ -76,7 +76,7 @@ describe("write command", () => {
 			).toEqual([]);
 		});
 
-		it("should update it silently under --json", async () => {
+		it("should update it without a notice under --json", async () => {
 			await fs.writeFile(abs("AGENTS.md"), OLD);
 			const { run, log } = commandHarness({ fs });
 
@@ -387,10 +387,7 @@ describe("write command", () => {
 
 		it("should print the agent files it updated as an agentRules line under --json", async () => {
 			await fs.createDirectory(abs(".git"));
-			await fs.writeFile(
-				abs("AGENTS.md"),
-				"<!-- rogen -->\n## Rogen\n\nOld.\n<!-- /rogen -->\n"
-			);
+			await fs.writeFile(abs("AGENTS.md"), OLD);
 			const { run } = commandHarness({
 				fs,
 				log,
