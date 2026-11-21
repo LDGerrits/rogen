@@ -67,10 +67,6 @@ export class RoutePatterns {
 		return RoutePatterns.parse(key) !== undefined;
 	}
 
-	get keys(): readonly string[] {
-		return this.patterns.map(({ key }) => key);
-	}
-
 	/** The pattern whose matching alternative has the most characters that aren't `*` (`?` and a class count one each), among those matching one of `names`, a file's name and the name of the instance it makes; patterns of that weight with different targets clash. */
 	match(...names: readonly string[]): PatternMatch | undefined {
 		const matching = this.patterns.flatMap((pattern) => {

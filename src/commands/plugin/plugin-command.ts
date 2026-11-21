@@ -22,19 +22,14 @@ import {
 import { LogService } from "../../platform/log/log-service.js";
 import { OutputShape as S } from "../../platform/output/output-shape.js";
 import { reportRojo, reportRojoBesideFailure } from "../write/report-rojo.js";
+import { rojoMessagesShape } from "../write/rojo-entry.js";
 
 const PluginOptions = [JsonOption] as const;
 
 const pluginDocumentShape = S.object({
 	action: S.enum("install", "uninstall"),
 	outcome: S.enum("done", "failed"),
-	messages: S.array(
-		S.object({
-			severity: S.enum("error", "warning", "info"),
-			text: S.string,
-			details: S.optional(S.array(S.string)),
-		})
-	),
+	messages: rojoMessagesShape,
 	diagnostics: S.optional(S.array(diagnosticShape)),
 	error: S.optional(errorShape),
 });

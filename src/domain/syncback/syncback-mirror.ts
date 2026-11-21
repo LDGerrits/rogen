@@ -517,10 +517,7 @@ class MirrorWalk {
 		if (instancePath.length < 2) return false;
 		if (node.$ignoreUnknownInstances === true) return false;
 		if (FILE_CONTENT_CLASSES.has(node.$className ?? "")) return false;
-		let own: RojoNode | undefined = this.inputs.tree;
-		for (const name of instancePath)
-			own = own && childNodes(own).find(([child]) => child === name)?.[1];
-		return own !== undefined;
+		return this.inOwnTree(instancePath);
 	}
 
 	/** A nested project file, copied with every file and folder it and the project files it nests read, laid out as they lie on disk, since its `$path`s are relative to it. */

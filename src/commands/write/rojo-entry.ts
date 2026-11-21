@@ -14,6 +14,15 @@ import { OutputShape } from "../../platform/output/output-shape.js";
 
 const S = OutputShape;
 
+/** What Rojo printed, a message to a line. */
+export const rojoMessagesShape = S.array(
+	S.object({
+		severity: S.enum("error", "warning", "info"),
+		text: S.string,
+		details: S.optional(S.array(S.string)),
+	})
+);
+
 /** What a run of Rojo's `build`, `sourcemap` or `upload` reports: `built` when Rojo ran without an error. */
 export const rojoEntryShape = (command: RojoTarget["command"]) =>
 	S.named(
@@ -24,13 +33,7 @@ export const rojoEntryShape = (command: RojoTarget["command"]) =>
 			project: S.nullable(S.string),
 			output: S.optional(S.string),
 			plugin: S.optional(S.string),
-			messages: S.array(
-				S.object({
-					severity: S.enum("error", "warning", "info"),
-					text: S.string,
-					details: S.optional(S.array(S.string)),
-				})
-			),
+			messages: rojoMessagesShape,
 			diagnostics: S.optional(S.array(diagnosticShape)),
 			error: S.optional(errorShape),
 		})

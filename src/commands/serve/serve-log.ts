@@ -287,12 +287,7 @@ export class ServeJsonLog implements ServeReporter {
 	restarted({ target, info, exit }: ServerRestartEvent): void {
 		this.line({
 			restarted: {
-				...this.serverFields(target),
-				version: info.version,
-				project: info.project,
-				host: target.address.host,
-				port: target.address.port,
-				...(info.session && { session: info.session }),
+				...this.runningServerJson(target, info),
 				code: exit.code,
 			},
 		});
@@ -420,10 +415,9 @@ export class ServeJsonLog implements ServeReporter {
 		return { config: configPath(this.cwd, target.config.file) };
 	}
 
-	private servingJson(
+	private runningServerJson(
 		target: ServeTarget,
-		info: ServerInfo,
-		alreadyRunning: boolean
+		info: ServerInfo
 	): Record<string, unknown> {
 		return {
 			...this.serverFields(target),
@@ -432,6 +426,16 @@ export class ServeJsonLog implements ServeReporter {
 			host: target.address.host,
 			port: target.address.port,
 			...(info.session && { session: info.session }),
+		};
+	}
+
+	private servingJson(
+		target: ServeTarget,
+		info: ServerInfo,
+		alreadyRunning: boolean
+	): Record<string, unknown> {
+		return {
+			...this.runningServerJson(target, info),
 			reportsConnections:
 				!alreadyRunning && RojoServer.reportsConnections(info.version),
 			...(alreadyRunning && { alreadyRunning }),
