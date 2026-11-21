@@ -84,7 +84,7 @@ export class FolderMetaApplier {
 		if (problems.hasErrors) return err([...problems.diagnostics]);
 
 		for (const { instancePath, meta, treeNode } of this.copies(outcomes))
-			project.insertNode(
+			project.insertNodeReplacingFolder(
 				instancePath,
 				RojoMeta.fieldsUnder(meta.fields, treeNode)
 			);

@@ -26,7 +26,8 @@ export class CoreToolchainService implements ToolchainService {
 	) {
 		this.detector = instantiationService.createInstance(
 			WorkspaceDetector,
-			[new Luau(), instantiationService.createInstance(RobloxTsDetector)],
+			new Luau(),
+			[instantiationService.createInstance(RobloxTsDetector)],
 			instantiationService.createInstance(TestRunnerDetector)
 		);
 	}
