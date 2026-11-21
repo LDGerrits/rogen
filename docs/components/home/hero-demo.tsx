@@ -89,7 +89,7 @@ function studioRows(lang: Lang): HeroStudioRow[] {
 			icon: studioClass(icon, name),
 			key: key || undefined,
 			colour,
-			arrives: icon !== "svc",
+			arrives: icon !== "service",
 		});
 		if (name === "ReplicatedStorage")
 			rows.push({

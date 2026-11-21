@@ -114,39 +114,89 @@ const STEPS: { kicker: string; line: () => string; tracks: Track[] }[] = [
 	},
 ];
 
-const project = (i: string, wrap = false) => ({
+const projectExcerpt = (indent: string, wrapOptional = false) => ({
 	head: [
 		`"<span class="feat">${W.feature}</span>": {`,
-		`${i}<span class="k">"$className"</span>: <span class="s">"Folder"</span>,`,
+		`${indent}<span class="k">"$className"</span>: <span class="s">"Folder"</span>,`,
 	],
-	key: `${i}<span class="q">"</span><span class="key">${W.file}</span><span class="q">": {</span>`,
+	key: `${indent}<span class="q">"</span><span class="key">${W.file}</span><span class="q">": {</span>`,
 	entry: [
-		`${i}${i}<span class="k">"$path"</span>: {`,
-		...(wrap
+		`${indent}${indent}<span class="k">"$path"</span>: {`,
+		...(wrapOptional
 			? [
-					`${i}${i}${i}<span class="k">"optional"</span>:`,
-					`${i}${i}${i}${i}<span class="val">"${W.path}"</span>`,
+					`${indent}${indent}${indent}<span class="k">"optional"</span>:`,
+					`${indent}${indent}${indent}${indent}<span class="val">"${W.path}"</span>`,
 				]
 			: [
-					`${i}${i}${i}<span class="k">"optional"</span>: <span class="val">"${W.path}"</span>`,
+					`${indent}${indent}${indent}<span class="k">"optional"</span>: <span class="val">"${W.path}"</span>`,
 				]),
-		`${i}${i}}`,
-		`${i}},`,
+		`${indent}${indent}}`,
+		`${indent}},`,
 	],
-	tail: [`${i}…`, "}"],
+	tail: [`${indent}…`, "}"],
 });
 
-const explorer = (): [string, number, Icon, string][] => [
-	["ReplicatedStorage", 0, "svc", "service"],
-	[W.shared, 1, "dir", "arrive open"],
-	[W.feature, 2, "dir", "arrive feature shut"],
-	["ServerScriptService", 0, "svc", "service"],
-	[W.feature, 1, "dir", "arrive feature open"],
-	[W.file, 2, "scr", "file"],
-	[W.disk[4].replace(/@.*/, ""), 2, "scr", "arrive dim"],
-	["StarterPlayer", 0, "svc", "service"],
-	["StarterPlayerScripts", 1, "svc", "default open"],
-	[W.feature, 2, "dir", "arrive feature shut"],
+type ExplorerRole =
+	| "service"
+	| "default"
+	| "arrive"
+	| "feature"
+	| "file"
+	| "dim"
+	| "open"
+	| "shut";
+interface ExplorerRow {
+	name: string;
+	depth: number;
+	icon: Icon;
+	roles: ExplorerRole[];
+}
+const explorer = (): ExplorerRow[] => [
+	{
+		name: "ReplicatedStorage",
+		depth: 0,
+		icon: "service",
+		roles: ["service"],
+	},
+	{ name: W.shared, depth: 1, icon: "folder", roles: ["arrive", "open"] },
+	{
+		name: W.feature,
+		depth: 2,
+		icon: "folder",
+		roles: ["arrive", "feature", "shut"],
+	},
+	{
+		name: "ServerScriptService",
+		depth: 0,
+		icon: "service",
+		roles: ["service"],
+	},
+	{
+		name: W.feature,
+		depth: 1,
+		icon: "folder",
+		roles: ["arrive", "feature", "open"],
+	},
+	{ name: W.file, depth: 2, icon: "script", roles: ["file"] },
+	{
+		name: W.disk[4].replace(/@.*/, ""),
+		depth: 2,
+		icon: "script",
+		roles: ["arrive", "dim"],
+	},
+	{ name: "StarterPlayer", depth: 0, icon: "service", roles: ["service"] },
+	{
+		name: "StarterPlayerScripts",
+		depth: 1,
+		icon: "service",
+		roles: ["default", "open"],
+	},
+	{
+		name: W.feature,
+		depth: 2,
+		icon: "folder",
+		roles: ["arrive", "feature", "shut"],
+	},
 ];
 
 interface Metrics {
@@ -206,7 +256,7 @@ const METRICS: Record<"normal" | "compact" | "mini", Metrics> = {
 
 type Rect = [x: number, y: number, w: number, h: number];
 interface SceneSpec {
-	m: keyof typeof METRICS;
+	metrics: keyof typeof METRICS;
 	w: number;
 	h: number;
 	disk?: Rect;
@@ -221,7 +271,7 @@ interface SceneSpec {
 }
 const SCENES: Record<string, SceneSpec> = {
 	wide: {
-		m: "normal",
+		metrics: "normal",
 		w: 760,
 		h: 596,
 		disk: [0, 0, 300, 296],
@@ -231,7 +281,7 @@ const SCENES: Record<string, SceneSpec> = {
 		lane2: 446,
 	},
 	compact: {
-		m: "compact",
+		metrics: "compact",
 		w: 610,
 		h: 494,
 		disk: [0, 0, 276, 272],
@@ -240,24 +290,24 @@ const SCENES: Record<string, SceneSpec> = {
 		lane1: 276,
 		lane2: 370,
 	},
-	mini1: { m: "mini", w: 326, h: 264, disk: [28, 0, 270, 264] },
+	mini1: { metrics: "mini", w: 326, h: 264, disk: [28, 0, 270, 264] },
 	mini2: {
-		m: "mini",
+		metrics: "mini",
 		w: 326,
 		h: 260,
 		strip: [0, 0, 326, 32],
 		routes: [0, 64, 326, 196],
 	},
-	mini3: { m: "mini", w: 326, h: 246, project: [0, 0, 326, 246] },
+	mini3: { metrics: "mini", w: 326, h: 246, project: [0, 0, 326, 246] },
 	mini4: {
-		m: "mini",
+		metrics: "mini",
 		w: 326,
 		h: 356,
 		key: [0, 0, 326, 32],
 		explorer: [16, 80, 310, 276],
 	},
 };
-const FLOOR = 0.92;
+const MIN_PINNED_SCALE = 0.92;
 
 const clamp = (v: number, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const bez = (x1: number, y1: number, x2: number, y2: number) => (t: number) => {
@@ -280,10 +330,10 @@ const EASE: Record<Ease, (t: number) => number> = {
 	out: bez(0.16, 1, 0.3, 1),
 };
 
-const stateAt = (g: number) => {
+const stateAfter = (stepsPlayed: number) => {
 	const S: State = {};
 	STEPS.forEach((st, i) => {
-		const t = clamp(g - i);
+		const t = clamp(stepsPlayed - i);
 		const fit = 1 / Math.max(...st.tracks.map((tr) => tr[2]));
 		st.tracks.forEach(([k, a, b, e]) => {
 			S[k] = EASE[e](clamp((t - a * fit) / ((b - a) * fit)));
@@ -360,7 +410,7 @@ const classIcon = (name: string) => {
 	return `<span class="ide-ci" style="--il:${style["--il"]};--id:${style["--id"]}"></span>`;
 };
 const studioClass = (icon: Icon, name: string) =>
-	icon === "svc" ? name : icon === "dir" ? "Folder" : "ModuleScript";
+	icon === "service" ? name : icon === "folder" ? "Folder" : "ModuleScript";
 const diskRow = (n: string, depth: number, cls = "") => {
 	const folder = n.endsWith("/");
 	const name = n.replace(/\/$/, "");
@@ -399,7 +449,7 @@ const routesHTML = (M: Metrics) => {
 	return `<div class="routes">${out + line("}", r)}</div>`;
 };
 const projHTML = (M: Metrics, top = 0) => {
-	const P = project(M.ind, M === METRICS.mini);
+	const P = projectExcerpt(M.ind, M === METRICS.mini);
 	const E = 1 + P.entry.length;
 	let out =
 		P.head.map((h, r) => line(h, r)).join("") +
@@ -412,14 +462,14 @@ const projHTML = (M: Metrics, top = 0) => {
 };
 const exHTML = () =>
 	`${bar("Explorer")}<div class="ide-search"><span>Search</span><span>•••</span></div><ul class="xt">${explorer()
-		.map(([name, d, ic, roles]) => {
-			const r = ` ${roles} `;
-			const has = (role: string) => r.includes(` ${role} `);
+		.map(({ name, depth, icon, roles }) => {
+			const has = (role: ExplorerRole) => roles.includes(role);
 			const arrow =
 				has("service") || has("open") || has("shut")
 					? `<span class="ar c${has("open") ? "" : " shut"}"></span>`
 					: '<span class="ar"></span>';
-			return `<li class="x ${roles}" data-r="${roles}" style="--d:${d}">${has("file") ? '<span class="band2"></span><span class="slot"></span>' : ""}${arrow}${classIcon(studioClass(ic, name))}<span class="nm">${name}</span></li>`;
+			const roleClasses = roles.join(" ");
+			return `<li class="x ${roleClasses}" data-r="${roleClasses}" style="--d:${depth}">${has("file") ? '<span class="band2"></span><span class="slot"></span>' : ""}${arrow}${classIcon(studioClass(icon, name))}<span class="nm">${name}</span></li>`;
 		})
 		.join("")}</ul>`;
 const crumb =
@@ -448,7 +498,7 @@ interface Scene {
 
 function makeScene(name: string): Scene {
 	const C = SCENES[name];
-	const M = METRICS[C.m];
+	const M = METRICS[C.metrics];
 	const el = document.createElement("div");
 	el.className = "stage ide";
 	el.style.cssText = `width:${C.w}px;height:${C.h}px;--tree:${M.tree}px;--code:${M.code}px;--row:${M.row}px;--line:${M.line}px;--head:${M.head}px;--pad:${M.pad}px;--cpad:${M.cpad}px;--pady:${M.pady}px;--tab:${M.tab}px`;
@@ -463,7 +513,7 @@ function makeScene(name: string): Scene {
 	if (C.project)
 		h += `<div class="pane p-proj ide-win ide-ed" style="${px(C.project)}"><div class="ed-tabs">${trafficLights}<span class="tab front">default.project.json</span></div><div class="code">${line(crumb, 0)}${projHTML(M, M.line)}</div></div>`;
 	if (C.key)
-		h += `<div class="pane p-key ide-win ide-ed" style="${px(C.key)}"><div class="code" style="margin:6px 0">${line(project(M.ind).key, 0)}</div></div>`;
+		h += `<div class="pane p-key ide-win ide-ed" style="${px(C.key)}"><div class="code" style="margin:6px 0">${line(projectExcerpt(M.ind).key, 0)}</div></div>`;
 	if (C.explorer)
 		h += `<div class="pane p-ex ide-win ide-st" style="${px(C.explorer)}">${exHTML()}</div>`;
 	if (C.editor) {
@@ -771,7 +821,7 @@ export function mountStory(root: HTMLElement, lang: Lang) {
 	let minis: (Player & { view: HTMLElement; i: number })[] | null = null;
 	let mode = "";
 	let per = 300;
-	const LEAD = 0.4;
+	const STEP_ACTIVATION_LEAD = 0.4;
 	const short = () => innerHeight < 760;
 	const start = () =>
 		root.getBoundingClientRect().top +
@@ -800,7 +850,7 @@ export function mountStory(root: HTMLElement, lang: Lang) {
 				Math.abs(d) <= rate * dt
 					? p.target
 					: p.shown + Math.sign(d) * rate * dt;
-			p.sc.paint(stateAt(p.shown));
+			p.sc.paint(stateAfter(p.shown));
 			moving ||= p.shown !== p.target;
 		});
 		loop = moving ? requestAnimationFrame(tick) : 0;
@@ -812,9 +862,19 @@ export function mountStory(root: HTMLElement, lang: Lang) {
 	};
 
 	const captions = (r: number) => {
-		const n = clamp(Math.floor(r + LEAD), 0, STEPS.length - 1);
+		const n = clamp(
+			Math.floor(r + STEP_ACTIVATION_LEAD),
+			0,
+			STEPS.length - 1
+		);
 		const fill = (i: number) =>
-			String(i < n ? 1 : i === n ? clamp(r + LEAD - n).toFixed(3) : 0);
+			String(
+				i < n
+					? 1
+					: i === n
+						? clamp(r + STEP_ACTIVATION_LEAD - n).toFixed(3)
+						: 0
+			);
 		stepEls.forEach((el, i) => {
 			el.classList.toggle("on", i === n);
 			el.classList.toggle("done", i < n);
@@ -841,10 +901,10 @@ export function mountStory(root: HTMLElement, lang: Lang) {
 			Math.min(1, fw / SCENES[n].w, fh / SCENES[n].h);
 		const name = tight
 			? "compact"
-			: scale("wide") >= FLOOR
+			: scale("wide") >= MIN_PINNED_SCALE
 				? "wide"
 				: "compact";
-		if (scale(name) < FLOOR) return false;
+		if (scale(name) < MIN_PINNED_SCALE) return false;
 		if (!main || main.sc.name !== name) {
 			main?.sc.el.remove();
 			main = { sc: makeScene(name), shown: 0, target: 0 };
@@ -860,7 +920,11 @@ export function mountStory(root: HTMLElement, lang: Lang) {
 		if (mode === "pinned" && main) {
 			const r = raw();
 			captions(r);
-			main.target = clamp(Math.floor(r + LEAD) + 1, 0, STEPS.length);
+			main.target = clamp(
+				Math.floor(r + STEP_ACTIVATION_LEAD) + 1,
+				0,
+				STEPS.length
+			);
 		} else if (mode === "minis" && minis)
 			minis.forEach((m) => {
 				const b = m.view.getBoundingClientRect();
@@ -874,7 +938,7 @@ export function mountStory(root: HTMLElement, lang: Lang) {
 		root.classList.toggle("short", mode === "pinned" && short());
 		root.style.height =
 			mode === "pinned"
-				? `calc(var(--ph) + ${(STEPS.length - LEAD - 0.2) * per}px)`
+				? `calc(var(--ph) + ${(STEPS.length - STEP_ACTIVATION_LEAD - 0.2) * per}px)`
 				: "";
 	};
 	const setup = () => {
@@ -894,7 +958,7 @@ export function mountStory(root: HTMLElement, lang: Lang) {
 		update();
 		players().forEach((p) => {
 			p.shown = p.target;
-			p.sc.paint(stateAt(p.shown));
+			p.sc.paint(stateAfter(p.shown));
 		});
 	};
 
