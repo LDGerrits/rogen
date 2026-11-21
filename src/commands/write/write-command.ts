@@ -19,6 +19,7 @@ import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js"
 import { LogService } from "../../platform/log/log-service.js";
 import { WatchedConfigs, WriteWatch } from "../write/write-watch.js";
 import {
+	agentRulesLine,
 	writeLineShape,
 	writeDocument,
 	writeDocumentShape,
@@ -121,9 +122,12 @@ registerCommand(
 			);
 			if (targets.isErr()) return targets;
 			const json = Boolean(line.options.json);
-			await services.instantiationService
+			const agentRules = await services.instantiationService
 				.createInstance(RefreshAgentRules)
 				.run(json);
+			const refreshed = agentRulesLine(agentRules);
+			if (json && line.options.watch && refreshed)
+				services.logService.print(JSON.stringify(refreshed));
 			return line.options.watch
 				? this.watch(
 						services,
@@ -132,7 +136,7 @@ registerCommand(
 							: line.positionals,
 						json
 					)
-				: this.writeOnce(services, targets.value, json);
+				: this.writeOnce(services, targets.value, json, agentRules);
 		}
 
 		private async watch(
@@ -160,7 +164,8 @@ registerCommand(
 		private async writeOnce(
 			services: Services,
 			{ configs, plain }: Targets,
-			json: boolean
+			json: boolean,
+			agentRules: readonly string[]
 		): Promise<Result<void, Error>> {
 			const { logService, cwd, instantiationService } = services;
 			const written = await this.writeConfigs(services, configs);
@@ -171,7 +176,7 @@ registerCommand(
 			if (json)
 				return this.printJson(
 					logService,
-					writeDocument(run, cwd, plain),
+					writeDocument(run, cwd, plain, agentRules),
 					failure
 				);
 			instantiationService

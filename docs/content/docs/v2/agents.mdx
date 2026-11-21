@@ -50,7 +50,7 @@ After you add, move, rename or delete files, or edit a `*.rogen.json`, run `roge
 
 ## Keep the Rules Current
 
-`rogen write` and `rogen serve` replace an outdated block with the installed version's and keep your text around it, so pin one Rogen version for the team, as [Installation](/docs/v2/installation) does. To stop the updates, delete the marker lines to keep the rules as your own, or delete the block.
+`rogen write` and `rogen serve` replace an outdated block with the installed version's and keep your text around it. They say so in a line, or under `agentRules` with `--json`, and leave the block alone under CI (`CI` set), so a pipeline never finds a changed file. Pin one Rogen version for the team, as [Installation](/docs/v2/installation) does. Rogen adds a block only when `init` asks; to stop the updates, delete the marker lines to keep the rules as your own, or delete the block.
 
 ## Check Changed Files Automatically
 

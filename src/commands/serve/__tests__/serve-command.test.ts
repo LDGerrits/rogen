@@ -123,6 +123,18 @@ describe("serve command", () => {
 		expect(logService.reserved).toBe(false);
 	});
 
+	it("should print the agent files it updated as an agentRules line first under --json", async () => {
+		await memFs.createDirectory("/repo/.git");
+		await memFs.writeFile(
+			"/repo/AGENTS.md",
+			"<!-- rogen -->\n## Rogen\n\nOld.\n<!-- /rogen -->\n"
+		);
+		void serve([], { json: true });
+		await settle();
+
+		expect(printed()[0]).toEqual({ agentRules: ["AGENTS.md"] });
+	});
+
 	it("should name the Rojo that serves only with --verbose", async () => {
 		logService.setLevel(LogLevel.Debug);
 		void serve();

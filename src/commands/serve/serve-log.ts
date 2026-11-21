@@ -17,7 +17,10 @@ import { InstantiationService } from "../../platform/instantiation/instantiation
 import { LogService } from "../../platform/log/log-service.js";
 import { ProcessExit } from "../../platform/process/process-service.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
-import { watchLineShapes } from "../write/write-document.js";
+import {
+	agentRulesLineShape,
+	watchLineShapes,
+} from "../write/write-document.js";
 import { reportRojo } from "../write/report-rojo.js";
 import { WatchJsonLog, WatchLog } from "../write/watch-log.js";
 import {
@@ -38,6 +41,7 @@ const connectionFields = {
 
 /** One line of `serve --json`. */
 export const serveLineShape = S.union(
+	agentRulesLineShape,
 	watchLineShapes.write,
 	watchLineShapes.notice,
 	watchLineShapes.error,

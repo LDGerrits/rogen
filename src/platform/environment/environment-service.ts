@@ -17,6 +17,8 @@ export interface EnvironmentService {
 	readonly pid: number;
 
 	readonly logLevel: LogLevel;
+	/** Whether a CI service runs the process: `CI` is set and not `0` or `false`. */
+	readonly underCi: boolean;
 	/** Whether a person can answer a question: stdin and stdout are terminals, the terminal isn't dumb, and no agent or CI runs the process. */
 	readonly isInteractive: boolean;
 	/** Whether to print plain lines rather than draw: JSON, or not interactive. */
