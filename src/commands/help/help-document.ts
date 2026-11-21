@@ -1,4 +1,8 @@
-import { CommandExitCodes, ErrorKinds, ExitCodes } from "../../base/errors.js";
+import {
+	DefaultCommandExitCodes,
+	ErrorKinds,
+	ExitCodes,
+} from "../../base/errors.js";
 import { Command } from "../../platform/commands/commands.js";
 import {
 	GlobalOptions,
@@ -103,7 +107,6 @@ const topicShape = S.object({ topic: S.string, text: S.string });
 
 const versionShape = S.object({ version: S.string });
 
-/** The document of `help --json`: the commands, one command in full, one diagnostic code, the list of codes, one topic, or with `--version` the version alone. */
 export const helpDocumentShape = S.union(
 	overviewShape,
 	detailShape,
@@ -146,7 +149,6 @@ const argBrief = ({
 const SECTION_OPENING =
 	/^(Error|Warning)(?:, or error)?[.,]\s+(.*?[.!?])(?:\s|$)/s;
 
-/** A diagnostic code with its severity and the first sentence of what it means, read from its help text. */
 function codeBrief(code: string) {
 	const [, paragraph = ""] = helpTexts.diagnostics[code].split("\n\n");
 	const [, severity, summary] = SECTION_OPENING.exec(paragraph) ?? [];
@@ -167,7 +169,6 @@ const effectsOf = ({ metadata }: Command) => [
 ];
 
 export const HelpDocument = {
-	/** Every command and what it takes, without the prose of its arguments and options. */
 	overview(commands: ReadonlyMap<string, Command>, version: string) {
 		return {
 			version,
@@ -184,7 +185,6 @@ export const HelpDocument = {
 		};
 	},
 
-	/** One command in full: its arguments and options with their prose, examples and the shape of what it prints. */
 	command(command: Command) {
 		const { options = [], examples = [], output } = command.metadata;
 		const shapes = output
@@ -204,7 +204,10 @@ export const HelpDocument = {
 			})),
 			effects: effectsOf(command),
 			examples,
-			exitCodes: { ...CommandExitCodes, ...command.metadata.exitCodes },
+			exitCodes: {
+				...DefaultCommandExitCodes,
+				...command.metadata.exitCodes,
+			},
 			...(output && {
 				output: OutputNotation.describe(output),
 				failure: OutputNotation.of(failureShape),
@@ -213,7 +216,6 @@ export const HelpDocument = {
 		};
 	},
 
-	/** Every diagnostic code, or those that start with `prefix`, with the severity and the first sentence of what it means. */
 	codes(prefix = "") {
 		const start = prefix.toLowerCase();
 		return {
@@ -223,12 +225,10 @@ export const HelpDocument = {
 		};
 	},
 
-	/** One topic of `rogen doc`, as that command prints it. */
 	topic(name: string, text: string) {
 		return { topic: name.toLowerCase(), text };
 	},
 
-	/** What a diagnostic code means, and where the docs explain it. */
 	code(code: string) {
 		return {
 			code,

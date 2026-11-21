@@ -7,7 +7,6 @@ import {
 	warningDiagnostic,
 } from "./diagnostic.js";
 
-/** Gathers what a check finds, so it can keep going after the first problem and report them all. */
 export class DiagnosticCollector {
 	private readonly collected: Diagnostic[] = [];
 

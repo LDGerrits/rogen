@@ -17,7 +17,6 @@ interface DotRoute {
 	readonly respelling: Respelling;
 }
 
-/** A name that looks like a slip in spelling a declared key. */
 export type Misspelling = StrayAt | DotRoute;
 
 export type MisspellingKind = Misspelling["kind"];
@@ -27,14 +26,12 @@ export type MisspellingOf<K extends MisspellingKind> = Extract<
 	{ readonly kind: K }
 >;
 
-/** Part of a name, written at `start`, and how to spell it instead. */
 export interface Respelling {
 	readonly start: number;
 	readonly written: string;
 	readonly spelling: string;
 }
 
-/** A misspelled name as the readings note it, with the path it's renamed to when one rename fixes it. */
 export type NotedName<T> = T & { readonly renamedTo?: string };
 
 export class MisspellingFinder {

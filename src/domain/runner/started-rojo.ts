@@ -29,7 +29,6 @@ export class StartedRojo extends AbstractDisposable implements RojoProcess {
 		return this.child.pid;
 	}
 
-	/** `quiet` drops what it prints on stdout, where it says what it did; its errors come on stderr. */
 	constructor(
 		private readonly child: ChildProcess,
 		quiet = false

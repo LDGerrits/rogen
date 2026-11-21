@@ -28,7 +28,6 @@ class CyclicDependencyError extends Error {
 	}
 }
 
-/** Builds services from descriptors the first time they are asked for, with their dependencies first, as VS Code's `InstantiationService` does. Without VS Code's tracing, and without its delayed services, which a short run has no use for. */
 export class CoreInstantiationService
 	implements InstantiationService, Disposable
 {
@@ -44,7 +43,6 @@ export class CoreInstantiationService
 	>();
 	private isDisposed = false;
 
-	/** With `strict`, a service nobody registered throws instead of arriving as `undefined`. */
 	constructor(
 		services: ServiceCollection = new ServiceCollection(),
 		strict = false,
@@ -61,12 +59,11 @@ export class CoreInstantiationService
 		store?: DisposableStore
 	): InstantiationService {
 		this.throwIfDisposed();
-		// eslint-disable-next-line @typescript-eslint/no-this-alias
-		const that = this;
+		const siblings = this.children;
 		const child: CoreInstantiationService =
 			new (class extends CoreInstantiationService {
 				override [Symbol.dispose](): void {
-					that.children.delete(child);
+					siblings.delete(child);
 					super[Symbol.dispose]();
 				}
 			})(services, this.strict, this);
@@ -75,11 +72,10 @@ export class CoreInstantiationService
 		return child;
 	}
 
-	createInstance<
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		C extends new (...args: any[]) => unknown,
-		R extends InstanceType<C>,
-	>(ctor: C, ...args: LeadingNonServiceArgs<ConstructorParameters<C>>): R;
+	createInstance<C extends Ctor, R extends InstanceType<C>>(
+		ctor: C,
+		...args: LeadingNonServiceArgs<ConstructorParameters<C>>
+	): R;
 	createInstance<T>(descriptor: SyncDescriptor<T>, ...args: unknown[]): T;
 	createInstance(
 		ctorOrDescriptor: Ctor | SyncDescriptor<unknown>,
@@ -123,7 +119,6 @@ export class CoreInstantiationService
 		}
 	}
 
-	/** Disposes the children, then the services built from descriptors, in the order they were built; what `createInstance` returned belongs to its caller. */
 	[Symbol.dispose](): void {
 		if (this.isDisposed) return;
 		this.isDisposed = true;
@@ -181,7 +176,6 @@ export class CoreInstantiationService
 				`${ctor.name} takes ${firstService} argument(s) before its services, and was given ${staticArguments.length}.`
 			);
 		}
-		// An argument left out is undefined, so the default of its parameter applies.
 		const args = [...staticArguments];
 		while (args.length < firstService) args.push(undefined);
 		return Reflect.construct(ctor, [...args, ...serviceArgs]);
@@ -239,7 +233,6 @@ export class CoreInstantiationService
 		desc: SyncDescriptor<unknown>
 	): unknown {
 		const graph = new Graph<Pending>((data) => String(data.id));
-		let cycleCount = 0;
 		const stack: Pending[] = [{ id, desc }];
 		const seen = new Set<string>();
 		while (stack.length) {
@@ -247,8 +240,6 @@ export class CoreInstantiationService
 			if (seen.has(String(item.id))) continue;
 			seen.add(String(item.id));
 			graph.lookupOrInsertNode(item);
-			// a weak but working heuristic for cycle checks
-			if (cycleCount++ > 1000) throw new CyclicDependencyError(graph);
 			for (const dependency of getServiceDependencies(item.desc.ctor)) {
 				const entry = this.getServiceInstanceOrDescriptor(
 					dependency.id
@@ -270,17 +261,12 @@ export class CoreInstantiationService
 		}
 		for (;;) {
 			const leaves = graph.leaves();
-			// with no leaves left, a graph that is not empty is a cycle
 			if (leaves.length === 0) {
 				if (!graph.isEmpty()) throw new CyclicDependencyError(graph);
 				break;
 			}
 			for (const { data } of leaves) {
-				// it may have been built in the meantime
-				if (
-					this.getServiceInstanceOrDescriptor(data.id) instanceof
-					SyncDescriptor
-				) {
+				if (this.isNotBuiltYet(data.id)) {
 					const instance = this.createServiceInstanceWithOwner(
 						data.id,
 						data.desc
@@ -293,7 +279,12 @@ export class CoreInstantiationService
 		return this.getServiceInstanceOrDescriptor(id);
 	}
 
-	/** A service registered in a parent is built by the parent, so it does not depend on this scope's services. */
+	private isNotBuiltYet(id: ServiceIdentifier<unknown>): boolean {
+		return (
+			this.getServiceInstanceOrDescriptor(id) instanceof SyncDescriptor
+		);
+	}
+
 	private createServiceInstanceWithOwner(
 		id: ServiceIdentifier<unknown>,
 		desc: SyncDescriptor<unknown>

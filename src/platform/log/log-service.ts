@@ -15,8 +15,7 @@ export interface LogService {
 
 	setLevel(level: LogLevel): void;
 
-	/** For a run whose stdout a program reads: from here on, Rogen's own lines (frame, steps, info, success) go to stderr where stdout is not a terminal, and only `print` and `note` write to stdout. */
-	reserveStdout(): void;
+	sendOwnLinesToStderr(): void;
 
 	error(message: string | Error, ...args: unknown[]): void;
 	warn(message: string, ...args: unknown[]): void;
@@ -24,11 +23,8 @@ export interface LogService {
 	debug(message: string, ...args: unknown[]): void;
 	trace(message: string, ...args: unknown[]): void;
 
-	/** Text the user asked for (help, version, JSON), written as is. */
 	print(text: string): void;
-	/** Text that goes with what `print` wrote, dimmed where the output has colour. */
 	note(text: string): void;
-	/** A line on stderr that is neither a warning nor an error, such as a newer version or a line Rojo printed there, dimmed where the output has colour; `--quiet` hides it. */
 	notice(text: string): void;
 	intro(title: string): void;
 	step(title: string): void;
@@ -36,9 +32,7 @@ export interface LogService {
 	success(message: string): void;
 	outro(message: string): void;
 	closeFrame(message: string): void;
-	/** Written as `file:line:col - severity: message` so editors and CI can parse it; a warning is hidden by `--quiet`. */
 	diagnostic(diagnostic: Diagnostic): void;
-	/** Writes GitHub Actions workflow commands on stderr if the run asked for them; takes the diagnostic as the command found it, and a warning is hidden by `--quiet`. */
 	annotate(diagnostic: Diagnostic): void;
 }
 

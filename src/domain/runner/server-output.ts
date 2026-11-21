@@ -12,12 +12,11 @@ const SEVERITIES: Readonly<Record<string, ServerMessage["severity"]>> = {
 	ERROR: "error",
 	WARN: "warning",
 	WARNING: "warning",
-	INFO: "debug",
-	DEBUG: "debug",
-	TRACE: "debug",
+	INFO: "noise",
+	DEBUG: "noise",
+	TRACE: "noise",
 };
 
-/** Rust's own lines: a CLI error or warning; in capitals, a message the server wrote itself, as a paragraph that ends at the blank line. */
 const RUST_RECORD = /^(?<level>error|warning|ERROR|WARNING): (?<text>.*)$/;
 const PARAGRAPH_RECORD = /^(ERROR|WARNING): /;
 const RUST_NOISE = /^note: run with `RUST_BACKTRACE=1`/;
@@ -28,7 +27,6 @@ interface PendingRecord {
 	readonly paragraph: boolean;
 }
 
-/** Reads what a server prints into messages; its banner, info logs and the noise Rogen causes come as `debug`. */
 export class ServerOutput extends AbstractDisposable {
 	private readonly _onDidMessage = this._register(
 		new Emitter<ServerMessage>()
@@ -53,7 +51,6 @@ export class ServerOutput extends AbstractDisposable {
 		);
 	}
 
-	/** `stream` is the one `line` came on, when known. */
 	readLine(line: string, stream?: "stdout" | "stderr"): void {
 		this.read(stripVTControlCharacters(line), stream);
 		this.quiet.cancel();
@@ -70,7 +67,7 @@ export class ServerOutput extends AbstractDisposable {
 			this.pending?.paragraph || PARAGRAPH_RECORD.test(line);
 		if (stream === "stdout" && !logged && !ownMessage) {
 			this.flush();
-			this.say("info", line.trim(), false, line);
+			this.say("unrecognised", line.trim(), false, line);
 			return;
 		}
 		const record = logged ?? RUST_RECORD.exec(line)?.groups;
@@ -78,7 +75,8 @@ export class ServerOutput extends AbstractDisposable {
 			this.flush();
 			const level = record.level.toUpperCase();
 			this.pending = {
-				severity: level in SEVERITIES ? SEVERITIES[level] : "info",
+				severity:
+					level in SEVERITIES ? SEVERITIES[level] : "unrecognised",
 				parts: [record.text],
 				paragraph: logged === undefined && record.level === level,
 			};
@@ -89,13 +87,12 @@ export class ServerOutput extends AbstractDisposable {
 			else this.pending.parts.push(line.trim());
 			return;
 		}
-		// A record's cause chain follows it, indented.
 		if (this.pending && (line.trim() === "" || /^\s/.test(line))) {
 			this.pending.parts.push(line.trim());
 			return;
 		}
 		this.flush();
-		this.say("info", line.trim(), false);
+		this.say("unrecognised", line.trim(), false);
 	}
 
 	private flush(): void {
@@ -138,12 +135,12 @@ export class ServerOutput extends AbstractDisposable {
 			const banner = RojoServer.tidied(said) === undefined;
 			if (banner || (this.inBanner && said === "")) {
 				this.inBanner = true;
-				this._onDidMessage.fire({ severity: "debug", text: said });
+				this._onDidMessage.fire({ severity: "noise", text: said });
 				return;
 			}
 			this.inBanner = false;
 			this._onDidMessage.fire({
-				severity: text && severity !== "debug" ? severity : "debug",
+				severity: text && severity !== "noise" ? severity : "noise",
 				text: text ?? said,
 				stdout,
 			});
@@ -152,8 +149,8 @@ export class ServerOutput extends AbstractDisposable {
 		if (said === "") return;
 		const change = isLogRecord ? RojoServer.connectionIn(said) : undefined;
 		if (change) this._onDidConnection.fire(change);
-		if (severity === "debug" || !text) {
-			this._onDidMessage.fire({ severity: "debug", text: said });
+		if (severity === "noise" || !text) {
+			this._onDidMessage.fire({ severity: "noise", text: said });
 			return;
 		}
 		const key = [severity, text, ...details].join("\n");

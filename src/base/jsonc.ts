@@ -37,7 +37,6 @@ export type JsoncNode = JsoncPosition &
 		| {
 				readonly kind: "string" | "number" | "boolean" | "null";
 				readonly value: unknown;
-				/** The value as it is written in the text. */
 				readonly text: string;
 		  }
 	);
@@ -67,21 +66,17 @@ const SYNTAX_MESSAGES: Record<string, string> = {
 	InvalidCharacter: "invalid character",
 };
 
-/** A value with the place it has in the text, so a caller can copy it as written. */
 export interface JsoncSpan {
-	/** Offsets into `text` of the parsed document, from the first character of the value to just after its last. */
 	readonly start: number;
 	readonly end: number;
 	readonly value: unknown;
 	readonly properties?: readonly {
 		readonly name: string;
-		/** The offset of the key, where the entry starts. */
 		readonly start: number;
 		readonly value: JsoncSpan;
 	}[];
 }
 
-/** The document without a byte order mark, which the offsets of `root` index, and its root value. `undefined` when the text isn't valid. */
 export function parseJsoncSpans(
 	text: string
 ): { text: string; root: JsoncSpan } | undefined {
@@ -160,7 +155,10 @@ export function parseJsonc(text: string): JsoncDocument {
 	};
 }
 
-/** The parser reports one close-brace error per object still open at the end of the text. */
+/**
+ * The parser reports one close-brace error per object still open at the end of
+ * the text.
+ */
 function withoutRepeats(errors: readonly JsoncError[]): JsoncError[] {
 	const seen = new Set<string>();
 	return errors.filter(({ message, line, column }) => {
@@ -251,7 +249,6 @@ export function parse(text: string): Result<unknown, Error> {
 	return ok(value);
 }
 
-/** The indentation and line ending a document is written with, to write an edit the same way. */
 function formattingOf(text: string) {
 	const indent = /^([ \t]+)["}\]]/m.exec(text)?.[1] ?? "  ";
 	return {
@@ -261,7 +258,6 @@ function formattingOf(text: string) {
 	};
 }
 
-/** `text` with the value at `at` set, or removed when `value` is undefined; comments and the rest of the formatting stay, and an object written on one line, or a value in one, stays on one line. */
 export function setJsoncValue(
 	text: string,
 	at: readonly string[],
@@ -290,7 +286,6 @@ export function setJsoncValue(
 const onOneLineIn = (text: string, node: Node): boolean =>
 	!text.slice(node.offset, node.offset + node.length).includes("\n");
 
-/** Whether the deepest object of `at` the text has is written on one line. */
 function writtenOnOneLine(
 	text: string,
 	tree: Node,

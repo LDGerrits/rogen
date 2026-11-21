@@ -1,6 +1,6 @@
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import path from "path";
-import { compareStrings } from "../../../base/collections.js";
+import { compareByCodePoint } from "../../../base/collections.js";
 import { toPosix } from "../../../base/path.js";
 import { Result, err, ok } from "../../../base/result.js";
 import {
@@ -32,10 +32,8 @@ import { PlannedFilesIndex } from "./planned-files-index.js";
 import { InstantiationService } from "../../../platform/instantiation/instantiation-service.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 
-/** What `locate` found. */
 export type Located = Omit<Locations, "errors" | "skipped">;
 
-/** Answers `where` for a set of configs over one listing, placing files exactly as a write does. */
 export class Locator {
 	private readonly targets: LocateTargets;
 
@@ -48,7 +46,6 @@ export class Locator {
 		this.targets = instantiationService.createInstance(LocateTargets);
 	}
 
-	/** Fails when a config can't be placed; its caller checked that the configs are written together. */
 	async locate(
 		configs: readonly ResolvedConfig[],
 		query?: LocateQuery
@@ -197,7 +194,6 @@ class ConfigLocator {
 		});
 	}
 
-	/** Each mounted file with the instance Rojo makes of it. */
 	private async withMountedInstances(
 		files: readonly FileLocation[],
 		locator: PlacementLocator
@@ -291,7 +287,7 @@ class ConfigLocator {
 						DeclaredKeys.FALLBACK_ROUTE,
 						reference
 					);
-		return [...new Set(found)].sort(compareStrings);
+		return [...new Set(found)].sort(compareByCodePoint);
 	}
 
 	private async foldersUnderDeclaredRoutes(

@@ -8,7 +8,6 @@ import { AgentFile } from "./agent-file.js";
 
 const BLOCK = /<!-- rogen -->\r?\n[\s\S]*?<!-- \/rogen -->(\r?\n)?/;
 
-/** `text` with its Rogen block replaced by this version's, in the file's line endings; `undefined` when it has none or it is current. */
 function refreshedRules(text: string): string | undefined {
 	const eol = text.includes("\r\n") ? "\r\n" : "\n";
 	const current = agentBlock.replaceAll("\n", eol);
@@ -17,14 +16,12 @@ function refreshedRules(text: string): string | undefined {
 	return `${text.slice(0, match.index)}${current}${text.slice(match.index + match[0].length)}`;
 }
 
-/** Keeps the Rogen block of a repository's agent files that of the Rogen that runs; a file without the block is never touched. */
 export class AgentRules {
 	constructor(
 		private readonly git: GitRepository,
 		@FileSystemService private readonly fileSystemService: FileSystemService
 	) {}
 
-	/** Refreshes the agent files of `folder` and of each folder above it up to the repository root (only `folder` outside one), and returns the files it rewrote. A file it can't read or write is left as it is. */
 	async refresh(folder: string): Promise<string[]> {
 		const updated: string[] = [];
 		for (const directory of await this.foldersUp(folder)) {

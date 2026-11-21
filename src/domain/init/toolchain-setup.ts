@@ -13,26 +13,19 @@ import { Setup } from "./setup.js";
 const ROKIT_INSTALLER =
 	"https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install";
 
-/** The managers, in the order a folder with none of their files picks one. */
 const MANAGERS = ["rokit", "aftman", "foreman"] as const;
 
 type ToolManager = (typeof MANAGERS)[number];
 
-/** How the tools the project needs stand. */
 export interface ToolState {
-	/** Rojo runs, or a toolchain file there or above pins it. */
 	readonly rojoReady: boolean;
-	/** The manager whose file takes the pins: the one whose file is in the folder, else the first one on the machine, else Rokit. */
 	readonly manager: {
 		readonly id: ToolManager;
-		/** The manager's file in the project's folder, when it has one. */
 		readonly manifest?: ToolManifest;
-		/** Whether the manager runs on this machine. */
 		readonly installed: boolean;
 	};
 }
 
-/** Rokit's own installer for the OS, which is printed and never run. */
 const ROKIT_INSTALL = isWindows
 	? `Invoke-RestMethod ${ROKIT_INSTALLER}.ps1 | Invoke-Expression`
 	: `curl -sSf ${ROKIT_INSTALLER}.sh | bash`;
@@ -45,19 +38,17 @@ const MANAGER_COPY: Readonly<
 	foreman: { label: "Foreman", page: "https://github.com/Roblox/foreman" },
 };
 
-/** Writes Rojo's pin into the toolchain file of the manager the machine has, when Rojo isn't ready. It runs nothing and installs nothing; the next step names the command to run. */
-export class ToolchainSetup implements Setup<ToolState> {
-	/** `stateOf` is called only when a plan needs it, since looking at the tools runs them. */
-	constructor(private readonly stateOf: () => Promise<ToolState>) {}
+type LazyToolProbe = () => Promise<ToolState>;
 
-	/** Whether a toolchain file in `manifests` already pins Rojo. */
+export class ToolchainSetup implements Setup<ToolState> {
+	constructor(private readonly probeTools: LazyToolProbe) {}
+
 	static isPinned(manifests: readonly ToolManifest[]): boolean {
 		return manifests.some((manifest) =>
 			manifest.nameOf(RojoServer.REPOSITORY)
 		);
 	}
 
-	/** How things stand in `directory`, whose first existing folder up, `existing`, is where the tools are asked for their version. */
 	static async stateOf(
 		directory: string,
 		manifests: readonly ToolManifest[],
@@ -91,7 +82,7 @@ export class ToolchainSetup implements Setup<ToolState> {
 	}
 
 	async ask(): Promise<Result<ToolState | undefined, Diagnostic[]>> {
-		return ok(await this.stateOf());
+		return ok(await this.probeTools());
 	}
 
 	plan({ rojoReady, manager }: ToolState, builder: InitPlanBuilder): void {

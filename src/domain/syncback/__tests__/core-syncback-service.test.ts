@@ -39,7 +39,6 @@ import {
 import { ROUTES } from "./layout-fixtures.js";
 import { syncbackServiceOf } from "./syncback-of.js";
 
-/** A Rojo that records what it was asked and does what the test says it did. */
 class FakeRojo implements RojoCommandService {
 	declare readonly _serviceBrand: undefined;
 	readonly requests: RojoCommandRequest[] = [];
@@ -83,7 +82,7 @@ class FakeRojo implements RojoCommandService {
 		return ok({
 			project,
 			messages: said.map((text): ServerMessage => ({
-				severity: "info",
+				severity: "unrecognised",
 				text,
 			})),
 		});
@@ -139,7 +138,6 @@ describe("CoreSyncbackService", () => {
 		return outcome.error;
 	};
 
-	/** A path in the mirror Rojo runs on, by instance path. */
 	const mirror = (...instancePath: string[]) =>
 		abs(".rogen-syncback/mirror", ...instancePath);
 
@@ -1050,7 +1048,6 @@ describe("CoreSyncbackService", () => {
 		};
 		const CLIENT = ["StarterPlayer", "StarterPlayerScripts"];
 
-		/** Has Studio add each file of the mirror, given by its instance path. */
 		const added = (...files: string[][]) => {
 			rojo.say = async () => {
 				for (const file of files)
@@ -1227,7 +1224,6 @@ describe("CoreSyncbackService", () => {
 			);
 		});
 
-		/** Writes a file where Rojo writes the new children of the node at `node`. */
 		const writeIntoNode = async (
 			node: readonly string[],
 			file: string,
@@ -1843,7 +1839,6 @@ describe("CoreSyncbackService", () => {
 		const writeMeta = (...instancePath: string[]) =>
 			fs.writeFile(mirror(...instancePath, "init.meta.json"), meta);
 
-		/** Has Rojo set `$attributes` on the nodes at each instance path of the project file it ran on. */
 		const rewriteNodes = async (
 			attributes: Record<string, unknown>,
 			...nodes: string[][]

@@ -4,7 +4,6 @@ import jestPlugin from "eslint-plugin-jest";
 import { defineConfig } from "eslint/config";
 import { existsSync, readdirSync } from "node:fs";
 
-// What each layer must not import.
 const layersAbove = {
 	base: ["platform", "domain", "commands"],
 	platform: ["domain", "commands"],
@@ -12,7 +11,6 @@ const layersAbove = {
 	commands: [],
 };
 
-// The files other modules of a layer may import; everything else in a module is internal.
 const modules = {
 	domain: {
 		write: ["asked-paths", "write", "write-service"],
@@ -53,7 +51,6 @@ const modules = {
 		update: ["update-service"],
 		watch: ["watch-service"],
 	},
-	// A command's own file is imported only by the composition root, for its side effect.
 	commands: {
 		build: [],
 		check: [],
@@ -79,7 +76,6 @@ const modules = {
 	},
 };
 
-// Every file of these layers sits in a module, and every module lists its public files.
 for (const [layer, layerModules] of Object.entries(modules)) {
 	for (const entry of readdirSync(`src/${layer}`, { withFileTypes: true })) {
 		if (entry.isFile()) {
@@ -111,7 +107,6 @@ for (const [layer, layerModules] of Object.entries(modules)) {
 	}
 }
 
-// The domain modules each domain module may import. A new edge is a design decision, made here.
 const domainDependencies = {
 	write: ["config", "roblox", "rojo", "toolchain"],
 	config: ["roblox", "rojo"],
@@ -147,13 +142,11 @@ const visit = (name, path = []) => {
 };
 Object.keys(domainDependencies).forEach((name) => visit(name));
 
-// Modules that only the composition root imports, so that dropping one is deleting its folder and a line of main.ts.
 const MAIN_ONLY_MODULES = ["legacy"];
 
 const up = (count) => `^(\\.\\./){${count}}`;
 const publicFiles = (files) => `(?!(${files.join("|")})\\.js$)`;
 
-// A file `depth` folders below its layer reaches src/ with depth + 1 `../`.
 const layerPatterns = (layer, depth) => [
 	...(layersAbove[layer].length > 0
 		? [
@@ -169,7 +162,6 @@ const layerPatterns = (layer, depth) => [
 	},
 ];
 
-// From a file `depth` folders below its layer: other modules of the layer, and domain modules from commands, only through their public files.
 const importRule = (prefix, name, files) =>
 	MAIN_ONLY_MODULES.includes(name)
 		? {
@@ -202,7 +194,6 @@ const internalsPatterns = (layer, module, depth) => [
 		: []),
 ];
 
-// Platform contract files are ports; the files named for how they fulfil one are the outermost ring.
 const IMPLEMENTATION_PREFIXES = [
 	"core",
 	"console",
@@ -219,7 +210,6 @@ const platformImplementationPattern = {
 		"Domain and commands depend on platform contract files, never on an implementation. Only main.ts and tests name one.",
 };
 
-// The outside world is reached through platform services, never directly.
 const OUTSIDE_WORLD_MODULES = [
 	"fs",
 	"fs/promises",
@@ -259,7 +249,6 @@ const layerConfigs = Object.keys(layersAbove).flatMap((layer) =>
 				outsideWorldImports
 			),
 		});
-		// A contract must not depend on what it hides.
 		const publicOnly = (module) => ({
 			files: modules[layer][module].map(
 				(file) => `src/${layer}/${module}/${file}.ts`
@@ -340,7 +329,6 @@ export default defineConfig(
 	},
 	...layerConfigs,
 	{
-		// A class reads top down: its fields, its constructor, then its methods. Accessors sit wherever they read best.
 		files: ["src/**/*.ts"],
 		ignores: ["**/__tests__/**"],
 		rules: {

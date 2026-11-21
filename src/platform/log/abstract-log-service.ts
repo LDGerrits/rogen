@@ -28,7 +28,6 @@ export type LogKind =
 	| "diagnosticError"
 	| "annotation";
 
-/** Diagnostics print relative to `cwd`; annotations are written when `annotationsIn` names the folder their paths are relative to; `color` is off unless given. */
 export interface LogServiceOptions {
 	readonly cwd?: string;
 	readonly annotationsIn?: string;
@@ -39,7 +38,7 @@ export abstract class AbstractLogService implements LogService {
 	declare readonly _serviceBrand: undefined;
 
 	protected level: LogLevel = LogLevel.Info;
-	protected stdoutReserved = false;
+	protected ownLinesToStderr = false;
 	protected readonly style: Styler;
 	private readonly cwd?: string;
 	private readonly annotationsIn?: string;
@@ -52,7 +51,6 @@ export abstract class AbstractLogService implements LogService {
 		this.style = color ? style : unstyled;
 	}
 
-	/** Whether a frame is open and drawn, as on a terminal. */
 	protected get framed(): boolean {
 		return this.drawsFrame && this.frameOpen;
 	}
@@ -61,8 +59,8 @@ export abstract class AbstractLogService implements LogService {
 		this.level = level;
 	}
 
-	reserveStdout(): void {
-		this.stdoutReserved = true;
+	sendOwnLinesToStderr(): void {
+		this.ownLinesToStderr = true;
 	}
 
 	protected canLog(level: LogLevel): boolean {
@@ -111,7 +109,6 @@ export abstract class AbstractLogService implements LogService {
 
 	protected abstract write(kind: LogKind, text: string): void;
 
-	/** Writes `text` with the control characters and workflow commands a file name could put in it made harmless; `print` is the stdout channel, which carries text that is not Rogen's to change, so its callers defang what they print. */
 	private emit(kind: LogKind, text: string): void {
 		this.write(kind, kind === "print" ? text : defanged(text));
 	}
@@ -196,7 +193,6 @@ export abstract class AbstractLogService implements LogService {
 		);
 	}
 
-	/** Colours the severity as the `error:` and `warning:` prefixes are, so the text around it is made harmless first. */
 	diagnostic(diagnostic: Diagnostic): void {
 		const isError = diagnostic.severity === DiagnosticSeverity.Error;
 		if (!this.canLog(isError ? LogLevel.Error : LogLevel.Warn)) return;

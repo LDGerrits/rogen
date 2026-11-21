@@ -4,7 +4,7 @@ import {
 	fileSystemError,
 	renameRefusal,
 } from "./file-system-service.js";
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import { containsPosix, toPosix } from "../../base/path.js";
@@ -12,12 +12,12 @@ import { FileChange, FileChangeType } from "./file-changes.js";
 
 let lastWrite = 0;
 
-/** Now, in milliseconds since the epoch, and later than any write before it. */
-const writeTime = () => (lastWrite = Math.max(Date.now(), lastWrite + 1));
+const increasingWriteTime = () =>
+	(lastWrite = Math.max(Date.now(), lastWrite + 1));
 
 class FileNode {
 	readonly type = FileType.File;
-	modified = writeTime();
+	modified = increasingWriteTime();
 	constructor(public content: string = "") {}
 }
 
@@ -63,7 +63,10 @@ function walkError(
 	);
 }
 
-/** The names along `filePath`, on one drive: on Windows `path.resolve` turns `/repo` into `C:\repo`, and both name one folder. */
+/**
+ * The names along `filePath`, on one drive: on Windows `path.resolve` turns
+ * `/repo` into `C:\repo`, and both name one folder.
+ */
 function splitPath(filePath: string): string[] {
 	return toPosix(filePath)
 		.replace(/^[A-Za-z]:/, "")
@@ -214,7 +217,7 @@ export class MemoryFileSystemService
 		const { refusal } = node as DirectoryNode;
 		if (refusal) throw walkError(refusal, "scandir", filePath);
 		return Array.from((node as DirectoryNode).entries.entries())
-			.sort(([a], [b]) => compareStrings(a, b))
+			.sort(([a], [b]) => compareByCodePoint(a, b))
 			.map(([name, child]): [string, FileType] => [
 				name,
 				this.leadsBack(filePath, child)
@@ -223,7 +226,6 @@ export class MemoryFileSystemService
 			]);
 	}
 
-	/** Makes listing the folder fail with `code`, as for a folder without read permission; `undefined` lifts it. */
 	refuseListing(dirPath: string, code: ListingRefusal | undefined): void {
 		const node = this.lookupOrThrow(dirPath);
 		if (node.type === FileType.Directory) node.refusal = code;
@@ -346,7 +348,6 @@ export class MemoryFileSystemService
 		const name = parts.pop()!;
 		const leading = toPosix(filePath).startsWith("/") ? "/" : "";
 		await this.createDirectory(leading + parts.join("/"));
-		// Checked and set with no await between, as an exclusive open is.
 		const parent = this.parentOf(filePath);
 		if (parent.entries.has(name)) return false;
 		parent.entries.set(name, new FileNode(content));
@@ -516,7 +517,6 @@ export class MemoryFileSystemService
 		return links;
 	}
 
-	/** A target starting with `.` or `..` is relative to the link's directory; any other is a path from the root. */
 	async createSymbolicLink(target: string, linkPath: string): Promise<void> {
 		const parent = this.parentOrCreate(linkPath);
 		const name = splitPath(linkPath).pop()!;

@@ -5,13 +5,11 @@ interface Node<T> {
 	readonly outgoing: Map<string, Node<T>>;
 }
 
-/** A directed graph that keeps one node per key, as VS Code's `Graph` does. */
 export class Graph<T> {
 	private readonly nodes = new Map<string, Node<T>>();
 
 	constructor(private readonly hashFn: (element: T) => string) {}
 
-	/** The nodes with nothing outgoing: those that depend on nothing, when an edge points at a dependency. */
 	leaves(): Node<T>[] {
 		return [...this.nodes.values()].filter(
 			(node) => node.outgoing.size === 0
@@ -53,7 +51,6 @@ export class Graph<T> {
 		return this.nodes.size === 0;
 	}
 
-	/** The first cycle found, as `a -> b -> a`, or `undefined`; it tries every node, so it is for errors only. */
 	findCycleSlow(): string | undefined {
 		for (const [key, node] of this.nodes) {
 			const seen = new Set<string>([key]);

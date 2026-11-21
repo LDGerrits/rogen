@@ -18,36 +18,27 @@ import {
 import { InstanceName } from "./instance-name.js";
 import { ScannedFile, ScannedRoot } from "./root-scanner.js";
 
-/** A folder that never becomes an instance, as a warning names it. */
 export type InstancelessFolder =
 	"a source path" | "a routing folder" | "an invisible folder";
 
-/** A folder read once: what its name means, and the declared key it only differs from in case. */
 export type FolderReading = FolderNameReading & {
 	readonly segment: string;
-	/** The folder relative to the source path. */
 	readonly dir: string;
 	readonly nearMissKey?: string;
 };
 
 export interface EntryReading {
-	/** The folders above the entry, outermost first. */
 	readonly folders: readonly FolderReading[];
 	readonly fileName: string;
 	readonly kind: RojoFileKind;
 	readonly stem: string;
-	/** The script class Rojo reads from the file name or its sync rule; none for any other file. */
 	readonly scriptSuffix: RojoScriptSuffix | undefined;
-	/** Whether a sync rule of the project cut the stem, so no script suffix is left on it. */
 	readonly nameCutByRule: boolean;
 	readonly match: SuffixMatch;
-	/** Whether it is an init script once its route keys are off its name, or a project file Rojo reads as its folder. */
 	readonly isInit: boolean;
-	/** The `name` of the nested project it is, which names its instance, or its folder's for a default project file. */
 	readonly projectName?: string;
 }
 
-/** Every folder, marker and suffix the route keys can claim, read once. */
 export class NameReadings {
 	private readonly _folders = new Map<string, FolderReading>();
 	private readonly _markers = new Map<string, MarkerReading>();
@@ -77,22 +68,18 @@ export class NameReadings {
 		}
 	}
 
-	/** By absolute POSIX path; holds every folder above an entry, marker or meta file, and every empty folder. */
 	get folders(): ReadonlyMap<string, FolderReading> {
 		return this._folders;
 	}
 
-	/** By the entry's source. */
 	get entries(): ReadonlyMap<string, EntryReading> {
 		return this._entries;
 	}
 
-	/** By absolute POSIX path. */
 	get markers(): ReadonlyMap<string, MarkerReading> {
 		return this._markers;
 	}
 
-	/** Each marker or folder above an entry whose name differs from a declared key only in letter case, with that key; first found first. */
 	get nearMisses(): ReadonlyMap<string, string> {
 		return this._nearMisses;
 	}
@@ -114,7 +101,7 @@ export class NameReadings {
 			root.sourcePath,
 			entry.relativePath
 		);
-		const match = this.reader.suffixes(stem, kind === "script");
+		const match = this.reader.trailingSuffixes(stem, kind === "script");
 		const { scriptSuffix, nameCutByRule } = file;
 		const { name: leaf } = InstanceName.leafName(
 			kind,
@@ -148,14 +135,12 @@ export class NameReadings {
 		this.noteMisspellings(entry.source, match.misspellings);
 	}
 
-	/** The entry's reading. Every scanned entry has one, so a miss is a programmer error. */
 	entryReading(source: string): EntryReading {
 		const read = this._entries.get(source);
 		if (!read) throw new Error(`${source} was not scanned.`);
 		return read;
 	}
 
-	/** Why the folder `dir` of a source path never becomes an instance by its name; `undefined` for one that can. */
 	instanceless(
 		sourcePath: string,
 		dir: string
@@ -167,14 +152,12 @@ export class NameReadings {
 		return folder?.route !== undefined ? "a routing folder" : undefined;
 	}
 
-	/** Whether `resource`'s name misses a route by a misspelling or by letter case. */
 	isMistyped(resource: string): boolean {
 		return (
 			this.misspellings.has(resource) || this._nearMisses.has(resource)
 		);
 	}
 
-	/** Each resource whose name has a misspelling of `kind`, with it; first found first. */
 	misspelt<K extends MisspellingKind>(
 		kind: K
 	): ReadonlyMap<string, NotedName<MisspellingOf<K>>> {
@@ -257,7 +240,6 @@ export class NameReadings {
 		return this.foldersDownTo(sourcePath, path.posix.dirname(relativePath));
 	}
 
-	/** The folders from the source path down to `relativeDir`, outermost first. */
 	foldersDownTo(sourcePath: string, relativeDir: string): FolderReading[] {
 		const folders: FolderReading[] = [];
 		if (relativeDir === "." || relativeDir === "") return folders;

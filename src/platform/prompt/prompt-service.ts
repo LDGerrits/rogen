@@ -7,7 +7,6 @@ export interface PromptChoice<T extends string> {
 }
 
 export interface PromptDetails {
-	/** Names the question where its message names values that may change. */
 	readonly id?: string;
 	readonly description?: string;
 	readonly hint?: string;
@@ -24,7 +23,6 @@ export interface SelectPromptOptions<T extends string> extends PromptDetails {
 	readonly initialValue?: T;
 }
 
-/** Every prompt resolves to `undefined` when the user cancels. */
 export interface PromptService {
 	readonly _serviceBrand: undefined;
 	readonly isInteractive: boolean;

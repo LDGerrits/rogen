@@ -2,16 +2,10 @@ import { classIconStyle, LUAU_ICON, setiOf } from "../ide";
 import type { Icon } from "./explorer";
 import type { Lang } from "./lang-script";
 
-/*
- * The routing story: one file, InventoryService@Server.luau or its roblox-ts twin, goes from disk through
- * the routes and the project file into the Studio Explorer as the reader scrolls.
- * Each step has tracks, [state, from, to, easing] as fractions of the step's scroll.
- */
 type Ease = "io" | "out";
 type Track = [state: string, from: number, to: number, ease: Ease];
 type State = Record<string, number>;
 
-// The words of the story in one language: the file that travels, its route and where it lands.
 interface Words {
 	feature: string;
 	file: string;
@@ -47,7 +41,6 @@ const WORDS: Record<Lang, Words> = {
 		path: "src/Inventory/InventoryService@Server.luau",
 		shared: "Shared",
 	},
-	// roblox-ts: lowercase keys and folders, kebab-case files as in Next.js; Rojo reads the compiled .luau in out/.
 	ts: {
 		feature: "inventory",
 		file: "inventory-service",
@@ -73,9 +66,7 @@ const WORDS: Record<Lang, Words> = {
 		shared: "shared",
 	},
 };
-// The language of the mounted story; mountStory sets it before building anything.
 let W = WORDS.luau;
-// The row that travels.
 const FILE = 3;
 
 const STEPS: { kicker: string; line: () => string; tracks: Track[] }[] = [
@@ -123,45 +114,89 @@ const STEPS: { kicker: string; line: () => string; tracks: Track[] }[] = [
 	},
 ];
 
-// The project-file excerpt; i is the indent unit, wrap splits the "optional" value onto its own line.
-const project = (i: string, wrap = false) => ({
+const projectExcerpt = (indent: string, wrapOptional = false) => ({
 	head: [
 		`"<span class="feat">${W.feature}</span>": {`,
-		`${i}<span class="k">"$className"</span>: <span class="s">"Folder"</span>,`,
+		`${indent}<span class="k">"$className"</span>: <span class="s">"Folder"</span>,`,
 	],
-	key: `${i}<span class="q">"</span><span class="key">${W.file}</span><span class="q">": {</span>`,
+	key: `${indent}<span class="q">"</span><span class="key">${W.file}</span><span class="q">": {</span>`,
 	entry: [
-		`${i}${i}<span class="k">"$path"</span>: {`,
-		...(wrap
+		`${indent}${indent}<span class="k">"$path"</span>: {`,
+		...(wrapOptional
 			? [
-					`${i}${i}${i}<span class="k">"optional"</span>:`,
-					`${i}${i}${i}${i}<span class="val">"${W.path}"</span>`,
+					`${indent}${indent}${indent}<span class="k">"optional"</span>:`,
+					`${indent}${indent}${indent}${indent}<span class="val">"${W.path}"</span>`,
 				]
 			: [
-					`${i}${i}${i}<span class="k">"optional"</span>: <span class="val">"${W.path}"</span>`,
+					`${indent}${indent}${indent}<span class="k">"optional"</span>: <span class="val">"${W.path}"</span>`,
 				]),
-		`${i}${i}}`,
-		`${i}},`,
+		`${indent}${indent}}`,
+		`${indent}},`,
 	],
-	tail: [`${i}…`, "}"],
+	tail: [`${indent}…`, "}"],
 });
 
-/*
- * Explorer rows: [name, depth, icon, roles]. service: always there; default: appears when
- * its service expands; arrive: placed by the sync; feature: the feature colour; file: where
- * the chip lands; dim; open/shut: the arrow.
- */
-const explorer = (): [string, number, Icon, string][] => [
-	["ReplicatedStorage", 0, "svc", "service"],
-	[W.shared, 1, "dir", "arrive open"],
-	[W.feature, 2, "dir", "arrive feature shut"],
-	["ServerScriptService", 0, "svc", "service"],
-	[W.feature, 1, "dir", "arrive feature open"],
-	[W.file, 2, "scr", "file"],
-	[W.disk[4].replace(/@.*/, ""), 2, "scr", "arrive dim"],
-	["StarterPlayer", 0, "svc", "service"],
-	["StarterPlayerScripts", 1, "svc", "default open"],
-	[W.feature, 2, "dir", "arrive feature shut"],
+type ExplorerRole =
+	| "service"
+	| "default"
+	| "arrive"
+	| "feature"
+	| "file"
+	| "dim"
+	| "open"
+	| "shut";
+interface ExplorerRow {
+	name: string;
+	depth: number;
+	icon: Icon;
+	roles: ExplorerRole[];
+}
+const explorer = (): ExplorerRow[] => [
+	{
+		name: "ReplicatedStorage",
+		depth: 0,
+		icon: "service",
+		roles: ["service"],
+	},
+	{ name: W.shared, depth: 1, icon: "folder", roles: ["arrive", "open"] },
+	{
+		name: W.feature,
+		depth: 2,
+		icon: "folder",
+		roles: ["arrive", "feature", "shut"],
+	},
+	{
+		name: "ServerScriptService",
+		depth: 0,
+		icon: "service",
+		roles: ["service"],
+	},
+	{
+		name: W.feature,
+		depth: 1,
+		icon: "folder",
+		roles: ["arrive", "feature", "open"],
+	},
+	{ name: W.file, depth: 2, icon: "script", roles: ["file"] },
+	{
+		name: W.disk[4].replace(/@.*/, ""),
+		depth: 2,
+		icon: "script",
+		roles: ["arrive", "dim"],
+	},
+	{ name: "StarterPlayer", depth: 0, icon: "service", roles: ["service"] },
+	{
+		name: "StarterPlayerScripts",
+		depth: 1,
+		icon: "service",
+		roles: ["default", "open"],
+	},
+	{
+		name: W.feature,
+		depth: 2,
+		icon: "folder",
+		roles: ["arrive", "feature", "shut"],
+	},
 ];
 
 interface Metrics {
@@ -221,7 +256,7 @@ const METRICS: Record<"normal" | "compact" | "mini", Metrics> = {
 
 type Rect = [x: number, y: number, w: number, h: number];
 interface SceneSpec {
-	m: keyof typeof METRICS;
+	metrics: keyof typeof METRICS;
 	w: number;
 	h: number;
 	disk?: Rect;
@@ -234,10 +269,9 @@ interface SceneSpec {
 	lane1?: number;
 	lane2?: number;
 }
-// Pane rects; wide and compact are the pinned stage (two over one), mini1-4 the small scenes.
 const SCENES: Record<string, SceneSpec> = {
 	wide: {
-		m: "normal",
+		metrics: "normal",
 		w: 760,
 		h: 596,
 		disk: [0, 0, 300, 296],
@@ -247,7 +281,7 @@ const SCENES: Record<string, SceneSpec> = {
 		lane2: 446,
 	},
 	compact: {
-		m: "compact",
+		metrics: "compact",
 		w: 610,
 		h: 494,
 		disk: [0, 0, 276, 272],
@@ -256,25 +290,24 @@ const SCENES: Record<string, SceneSpec> = {
 		lane1: 276,
 		lane2: 370,
 	},
-	mini1: { m: "mini", w: 326, h: 264, disk: [28, 0, 270, 264] },
+	mini1: { metrics: "mini", w: 326, h: 264, disk: [28, 0, 270, 264] },
 	mini2: {
-		m: "mini",
+		metrics: "mini",
 		w: 326,
 		h: 260,
 		strip: [0, 0, 326, 32],
 		routes: [0, 64, 326, 196],
 	},
-	mini3: { m: "mini", w: 326, h: 246, project: [0, 0, 326, 246] },
+	mini3: { metrics: "mini", w: 326, h: 246, project: [0, 0, 326, 246] },
 	mini4: {
-		m: "mini",
+		metrics: "mini",
 		w: 326,
 		h: 356,
 		key: [0, 0, 326, 32],
 		explorer: [16, 80, 310, 276],
 	},
 };
-// The smallest scale the pinned stage may shrink to before the story falls back to minis.
-const FLOOR = 0.92;
+const MIN_PINNED_SCALE = 0.92;
 
 const clamp = (v: number, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const bez = (x1: number, y1: number, x2: number, y2: number) => (t: number) => {
@@ -297,12 +330,10 @@ const EASE: Record<Ease, (t: number) => number> = {
 	out: bez(0.16, 1, 0.3, 1),
 };
 
-// g runs 0..4 over the story; each state is its track's eased progress. A step's tracks
-// are stretched to fill it, so playing from i to i + 1 never pauses.
-const stateAt = (g: number) => {
+const stateAfter = (stepsPlayed: number) => {
 	const S: State = {};
 	STEPS.forEach((st, i) => {
-		const t = clamp(g - i);
+		const t = clamp(stepsPlayed - i);
 		const fit = 1 / Math.max(...st.tracks.map((tr) => tr[2]));
 		st.tracks.forEach(([k, a, b, e]) => {
 			S[k] = EASE[e](clamp((t - a * fit) / ((b - a) * fit)));
@@ -340,7 +371,6 @@ const along = (pts: Pt[], f: number): Pt => {
 	}
 	return pts[pts.length - 1];
 };
-// A polyline with rounded corners.
 const corner = (pts: Pt[]) => {
 	const f = (n: number) => n.toFixed(1);
 	let d = `M${f(pts[0][0])} ${f(pts[0][1])}`;
@@ -364,7 +394,6 @@ const line = (html: string, row: number, attrs = "") =>
 const sfx = (n: string) =>
 	n.replace(W.suffix, `<span class="sfx">${W.suffix}</span>`);
 
-// VS Code's and Studio's pieces as markup, as components/ide.tsx draws them.
 const trafficLights = '<span class="ide-tl"><i></i><i></i><i></i></span>';
 const bar = (title: string) =>
 	`<div class="ide-bar">${trafficLights}<b>${title}</b></div>`;
@@ -381,7 +410,7 @@ const classIcon = (name: string) => {
 	return `<span class="ide-ci" style="--il:${style["--il"]};--id:${style["--id"]}"></span>`;
 };
 const studioClass = (icon: Icon, name: string) =>
-	icon === "svc" ? name : icon === "dir" ? "Folder" : "ModuleScript";
+	icon === "service" ? name : icon === "folder" ? "Folder" : "ModuleScript";
 const diskRow = (n: string, depth: number, cls = "") => {
 	const folder = n.endsWith("/");
 	const name = n.replace(/\/$/, "");
@@ -420,7 +449,7 @@ const routesHTML = (M: Metrics) => {
 	return `<div class="routes">${out + line("}", r)}</div>`;
 };
 const projHTML = (M: Metrics, top = 0) => {
-	const P = project(M.ind, M === METRICS.mini);
+	const P = projectExcerpt(M.ind, M === METRICS.mini);
 	const E = 1 + P.entry.length;
 	let out =
 		P.head.map((h, r) => line(h, r)).join("") +
@@ -433,14 +462,14 @@ const projHTML = (M: Metrics, top = 0) => {
 };
 const exHTML = () =>
 	`${bar("Explorer")}<div class="ide-search"><span>Search</span><span>•••</span></div><ul class="xt">${explorer()
-		.map(([name, d, ic, roles]) => {
-			const r = ` ${roles} `;
-			const has = (role: string) => r.includes(` ${role} `);
+		.map(({ name, depth, icon, roles }) => {
+			const has = (role: ExplorerRole) => roles.includes(role);
 			const arrow =
 				has("service") || has("open") || has("shut")
 					? `<span class="ar c${has("open") ? "" : " shut"}"></span>`
 					: '<span class="ar"></span>';
-			return `<li class="x ${roles}" data-r="${roles}" style="--d:${d}">${has("file") ? '<span class="band2"></span><span class="slot"></span>' : ""}${arrow}${classIcon(studioClass(ic, name))}<span class="nm">${name}</span></li>`;
+			const roleClasses = roles.join(" ");
+			return `<li class="x ${roleClasses}" data-r="${roleClasses}" style="--d:${depth}">${has("file") ? '<span class="band2"></span><span class="slot"></span>' : ""}${arrow}${classIcon(studioClass(icon, name))}<span class="nm">${name}</span></li>`;
 		})
 		.join("")}</ul>`;
 const crumb =
@@ -467,10 +496,9 @@ interface Scene {
 	paint: (S: State) => void;
 }
 
-// One scene: its DOM, measure() for its paths and paint(S) to draw state S.
 function makeScene(name: string): Scene {
 	const C = SCENES[name];
-	const M = METRICS[C.m];
+	const M = METRICS[C.metrics];
 	const el = document.createElement("div");
 	el.className = "stage ide";
 	el.style.cssText = `width:${C.w}px;height:${C.h}px;--tree:${M.tree}px;--code:${M.code}px;--row:${M.row}px;--line:${M.line}px;--head:${M.head}px;--pad:${M.pad}px;--cpad:${M.cpad}px;--pady:${M.pady}px;--tab:${M.tab}px`;
@@ -485,7 +513,7 @@ function makeScene(name: string): Scene {
 	if (C.project)
 		h += `<div class="pane p-proj ide-win ide-ed" style="${px(C.project)}"><div class="ed-tabs">${trafficLights}<span class="tab front">default.project.json</span></div><div class="code">${line(crumb, 0)}${projHTML(M, M.line)}</div></div>`;
 	if (C.key)
-		h += `<div class="pane p-key ide-win ide-ed" style="${px(C.key)}"><div class="code" style="margin:6px 0">${line(project(M.ind).key, 0)}</div></div>`;
+		h += `<div class="pane p-key ide-win ide-ed" style="${px(C.key)}"><div class="code" style="margin:6px 0">${line(projectExcerpt(M.ind).key, 0)}</div></div>`;
 	if (C.explorer)
 		h += `<div class="pane p-ex ide-win ide-st" style="${px(C.explorer)}">${exHTML()}</div>`;
 	if (C.editor) {
@@ -570,7 +598,6 @@ function makeScene(name: string): Scene {
 			sx = o(svc.li.querySelector<HTMLElement>(".nm")).x;
 		}
 		if (C.editor && C.disk) {
-			// The lanes run right of the default.project.json tab, so the lines never cross it.
 			const tab = q(".ed-bar .t2")!;
 			const lane1 = Math.max(C.lane1!, o(tab).x + tab.offsetWidth + 16);
 			const lane2 = Math.max(C.lane2!, lane1 + 24);
@@ -674,7 +701,6 @@ function makeScene(name: string): Scene {
 		const band = q(".p-disk .band");
 		if (band)
 			band.style.transform = `translateY(${(S.walk * FILE * M.row).toFixed(1)}px)`;
-		// Editor tabs.
 		if (C.editor) {
 			const t2 = q(".ed-bar .t2")!;
 			t2.style.opacity = v(S.tab);
@@ -685,7 +711,6 @@ function makeScene(name: string): Scene {
 			q(".p-ed .routes")!.style.opacity = v(1 - S.tab);
 			q(".p-ed .proj")!.style.opacity = v(S.tab);
 		}
-		// The project file: the gap opens, the entry fades in.
 		lines.forEach(({ l, role, row }) => {
 			if (role === "tail")
 				l.style.top = `calc(var(--line) * ${(row + E * S.gap).toFixed(3)})`;
@@ -694,7 +719,6 @@ function makeScene(name: string): Scene {
 		qa(".proj .q").forEach((e) => (e.style.opacity = v(S.strip)));
 		const key = q(".proj .key");
 		if (key) key.style.opacity = S.strip >= 1 ? "1" : "0";
-		// The name tag: lifts, travels, drops, strips.
 		if (g.tag1 || g.tag2) {
 			const p =
 				g.tag2 && (S.drop > 0 || !g.tag1)
@@ -713,7 +737,6 @@ function makeScene(name: string): Scene {
 		}
 		if (g.trail && g.tag1)
 			stroke(trail, g.trail, S.trail * total(g.tag1) - g.trail.off);
-		// Explorer: services expand, rows part, the sync places the folders.
 		let fileTop = 0;
 		if (rows.length) {
 			let y = M.xpad;
@@ -738,7 +761,6 @@ function makeScene(name: string): Scene {
 				y += M.row * (service ? 1 : S.expand);
 			});
 		}
-		// The chip rides the Rojo wire.
 		if (g.chip && g.wire && g.xy !== undefined) {
 			const ty = g.xy + fileTop + M.row / 2;
 			const pts = g.chip.map((p) => p.slice() as Pt);
@@ -746,7 +768,6 @@ function makeScene(name: string): Scene {
 			pts[pts.length - 1][1] = pts[pts.length - 2][1] = ty;
 			wpts[wpts.length - 1][1] = wpts[wpts.length - 2][1] = ty;
 			draw(wire, g.wire);
-			// The last leg, into the row, takes the last quarter of the ride, while the rows part.
 			const head = pts.slice(0, -1);
 			const lh = total(head);
 			const ll = total(pts.slice(-2));
@@ -775,13 +796,6 @@ const num = (i: number) => String(i + 1).padStart(2, "0");
 const kick = (i: number) =>
 	`<p class="skick"><span class="n">${num(i)}</span> · ${STEPS[i].kicker}</p>`;
 
-/*
- * Mounts the story in root. From 600x600 up the stage pins (CSS sticky) and the scroll
- * picks the step: each step gets a stretch of scroll, and entering it plays the step
- * as a short animation of its own, so the motion is the same however fast or slow the
- * reader scrolls, and the page is never scrolled for them. Below that, each step has
- * its own small scene that plays as it comes into view.
- */
 export function mountStory(root: HTMLElement, lang: Lang) {
 	W = WORDS[lang];
 	const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -807,17 +821,14 @@ export function mountStory(root: HTMLElement, lang: Lang) {
 	let minis: (Player & { view: HTMLElement; i: number })[] | null = null;
 	let mode = "";
 	let per = 300;
-	// A step becomes active this far (in steps) before its stretch of scroll starts.
-	const LEAD = 0.4;
+	const STEP_ACTIVATION_LEAD = 0.4;
 	const short = () => innerHeight < 760;
-	// Where the scroll reaches the story: when the pin sticks, centred in the viewport.
 	const start = () =>
 		root.getBoundingClientRect().top +
 		scrollY -
 		parseFloat(getComputedStyle(pin).top);
 	const raw = () => (scrollY - start()) / per;
 
-	// A scene and how far it has played (shown) towards where the scroll wants it (target).
 	interface Player {
 		sc: Scene;
 		shown: number;
@@ -825,7 +836,6 @@ export function mountStory(root: HTMLElement, lang: Lang) {
 	}
 	const players = () => [...(main ? [main] : []), ...(minis ?? [])];
 
-	// Played at one step per 0.8s, faster when a quick scroll skips steps, so it never lags far behind.
 	let last = 0;
 	let loop = 0;
 	const tick = (now: number) => {
@@ -840,7 +850,7 @@ export function mountStory(root: HTMLElement, lang: Lang) {
 				Math.abs(d) <= rate * dt
 					? p.target
 					: p.shown + Math.sign(d) * rate * dt;
-			p.sc.paint(stateAt(p.shown));
+			p.sc.paint(stateAfter(p.shown));
 			moving ||= p.shown !== p.target;
 		});
 		loop = moving ? requestAnimationFrame(tick) : 0;
@@ -851,11 +861,20 @@ export function mountStory(root: HTMLElement, lang: Lang) {
 		loop = requestAnimationFrame(tick);
 	};
 
-	// Captions and the step bars follow the scroll directly; they are the scroll's feedback.
 	const captions = (r: number) => {
-		const n = clamp(Math.floor(r + LEAD), 0, STEPS.length - 1);
+		const n = clamp(
+			Math.floor(r + STEP_ACTIVATION_LEAD),
+			0,
+			STEPS.length - 1
+		);
 		const fill = (i: number) =>
-			String(i < n ? 1 : i === n ? clamp(r + LEAD - n).toFixed(3) : 0);
+			String(
+				i < n
+					? 1
+					: i === n
+						? clamp(r + STEP_ACTIVATION_LEAD - n).toFixed(3)
+						: 0
+			);
 		stepEls.forEach((el, i) => {
 			el.classList.toggle("on", i === n);
 			el.classList.toggle("done", i < n);
@@ -872,7 +891,6 @@ export function mountStory(root: HTMLElement, lang: Lang) {
 		field.style.setProperty("--drift", (r * 60).toFixed(1));
 	};
 
-	// Picks the layout and scales the stage into the field; false when even compact falls below the floor.
 	const fit = () => {
 		const tight = short();
 		const ix = tight ? 24 : 40;
@@ -883,10 +901,10 @@ export function mountStory(root: HTMLElement, lang: Lang) {
 			Math.min(1, fw / SCENES[n].w, fh / SCENES[n].h);
 		const name = tight
 			? "compact"
-			: scale("wide") >= FLOOR
+			: scale("wide") >= MIN_PINNED_SCALE
 				? "wide"
 				: "compact";
-		if (scale(name) < FLOOR) return false;
+		if (scale(name) < MIN_PINNED_SCALE) return false;
 		if (!main || main.sc.name !== name) {
 			main?.sc.el.remove();
 			main = { sc: makeScene(name), shown: 0, target: 0 };
@@ -898,12 +916,15 @@ export function mountStory(root: HTMLElement, lang: Lang) {
 		return true;
 	};
 
-	// Step i plays from i to i + 1; before the first step the stage shows its opening picture.
 	const update = () => {
 		if (mode === "pinned" && main) {
 			const r = raw();
 			captions(r);
-			main.target = clamp(Math.floor(r + LEAD) + 1, 0, STEPS.length);
+			main.target = clamp(
+				Math.floor(r + STEP_ACTIVATION_LEAD) + 1,
+				0,
+				STEPS.length
+			);
 		} else if (mode === "minis" && minis)
 			minis.forEach((m) => {
 				const b = m.view.getBoundingClientRect();
@@ -917,10 +938,9 @@ export function mountStory(root: HTMLElement, lang: Lang) {
 		root.classList.toggle("short", mode === "pinned" && short());
 		root.style.height =
 			mode === "pinned"
-				? `calc(var(--ph) + ${(STEPS.length - LEAD - 0.2) * per}px)`
+				? `calc(var(--ph) + ${(STEPS.length - STEP_ACTIVATION_LEAD - 0.2) * per}px)`
 				: "";
 	};
-	// Lays the story out and shows where the scroll is now, without playing anything.
 	const setup = () => {
 		per = clamp(innerHeight * 0.32, 220, 320);
 		setMode(innerWidth < 600 || innerHeight < 600 ? "minis" : "pinned");
@@ -938,7 +958,7 @@ export function mountStory(root: HTMLElement, lang: Lang) {
 		update();
 		players().forEach((p) => {
 			p.shown = p.target;
-			p.sc.paint(stateAt(p.shown));
+			p.sc.paint(stateAfter(p.shown));
 		});
 	};
 

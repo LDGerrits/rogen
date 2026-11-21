@@ -1,26 +1,19 @@
 export interface MetaReplacement {
 	readonly suffix: string;
-	/** Says why, in the warning about the meta Rojo no longer applies. */
 	readonly note: string;
 }
 
 export interface DataReplacement {
-	/** What the module's name ends in instead of the data file's extension. */
 	readonly suffix: string;
-	/** Says which data files, in the warning about the file Rojo no longer finds. */
 	readonly note: string;
 }
 
-/** A tool that rewrites code between the source paths and the compiled path. */
 export interface SyncTool {
 	readonly id: string;
 	emittedPath?(source: string): string;
 	readsOnly?(source: string): boolean;
-	/** A script name the tool writes as Rojo's `init`, which makes the file its folder too. */
 	readonly initName?: string;
-	/** The folder beside the project file that the tool writes its runtime library to, outside the compiled path. */
 	readonly runtimeFolder?: string;
-	/** The files the tool writes at the root of the compiled path for itself, such as sloptor's copy cache. */
 	readonly cacheFiles?: readonly string[];
 	readonly metaReplacement?: MetaReplacement;
 	readonly dataReplacement?: DataReplacement;
@@ -51,13 +44,10 @@ export class PackageManager {
 	private constructor(
 		readonly id: string,
 		readonly manifest: string,
-		/** Installed packages every side requires. */
 		readonly shared: string,
-		/** Installed packages only the server requires. */
 		readonly server: string
 	) {}
 
-	/** Its package folders; a manifest means packages are coming, so they are mounted before they are installed. */
 	mounts(
 		installedDirs: ReadonlySet<string>,
 		hasManifest: boolean
@@ -78,18 +68,24 @@ export class PackageManager {
 	}
 }
 
-export interface PlannedFile {
+interface PlannedFileFields {
 	readonly fileName: string;
 	readonly content: string;
-	/** Set when the file already exists: names what `content` adds to it. */
-	readonly addition?: string;
 }
 
-/** A folder placed in the game as it is, never scanned or routed. */
+interface PlannedNewFile extends PlannedFileFields {
+	readonly addition?: undefined;
+}
+
+interface PlannedAdditionToExistingFile extends PlannedFileFields {
+	readonly addition: string;
+}
+
+export type PlannedFile = PlannedNewFile | PlannedAdditionToExistingFile;
+
 export interface Mount {
 	readonly path: string;
 	readonly optional: boolean;
-	/** The instance path the folder becomes, such as `ReplicatedStorage/Packages`. */
 	readonly landing: string;
 }
 
@@ -97,12 +93,10 @@ export interface MountCandidate {
 	readonly path: string;
 	readonly installed: boolean;
 	readonly landing: string;
-	/** Whether init mounts it. */
 	readonly mounted: boolean;
 }
 
 export interface Compiler {
-	/** Names the compiler in notes, such as "Syncing from out, where roblox-ts compiles to." */
 	readonly name: string;
 	readonly outDir: string;
 	readonly compileCommand: string;
@@ -113,27 +107,21 @@ export interface LanguageCopy {
 	readonly detectedHint?: string;
 }
 
+export type LanguageId = "luau" | "roblox-ts";
+
 export interface Language {
-	readonly id: string;
+	readonly id: LanguageId;
 	readonly copy: LanguageCopy;
-	/** The script extension written in examples, such as `Analytics.mock.luau`. */
 	readonly extension: string;
 	readonly defaultPackageManager?: PackageManager;
 	readonly compiler?: Compiler;
-	/** Whether the workspace uses this language. Whether or not it does, the user may still pick it. */
 	readonly present: boolean;
-	/** Top-level folders holding the language's own files, never offered as code folders. */
 	readonly reservedFolders: readonly string[];
 
-	/** The language as it is once its own starter tool has run, which makes the folders that tool is known to make. */
 	scaffolded?(): Language;
-	/** How a route key is spelled, such as Luau's `Server` or roblox-ts's `server`. */
 	routeKey(id: string): string;
-	/** The source path the language's own config names, if any; `init` prefers it. */
 	configuredSourcePath(): string | undefined;
-	/** Folders mounted whether or not they are installed. */
 	alwaysMounted(): readonly MountCandidate[];
-	/** Folders mounted only once they are installed. */
 	installedMounts(): readonly MountCandidate[];
 }
 
@@ -142,15 +130,16 @@ export interface LanguageDetector {
 }
 
 interface DetectedWorkspaceFields {
-	readonly languages: readonly Language[];
+	readonly fallbackLanguage: Language;
+	readonly otherLanguages: readonly Language[];
 	readonly darkluaConfig?: string;
 	readonly packageManager?: PackageManager;
 	readonly packageDirs: ReadonlySet<string>;
 	readonly testRunner?: string;
 }
 
-/** What `init` found in the workspace: facts only, never decisions. */
 export class DetectedWorkspace {
+	private readonly fallbackLanguage: Language;
 	readonly languages: readonly Language[];
 	readonly darkluaConfig?: string;
 	readonly packageManager?: PackageManager;
@@ -158,25 +147,22 @@ export class DetectedWorkspace {
 	readonly testRunner?: string;
 
 	constructor(fields: DetectedWorkspaceFields) {
-		if (fields.languages.length === 0) {
-			throw new Error("A workspace needs at least one language.");
-		}
-		this.languages = fields.languages;
+		this.fallbackLanguage = fields.fallbackLanguage;
+		this.languages = [fields.fallbackLanguage, ...fields.otherLanguages];
 		this.darkluaConfig = fields.darkluaConfig;
 		this.packageManager = fields.packageManager;
 		this.packageDirs = fields.packageDirs;
 		this.testRunner = fields.testRunner;
 	}
 
-	/** The language the workspace uses, or the first one when it uses none. */
 	get language(): Language {
 		return (
-			this.languages.find(({ present }) => present) ?? this.languages[0]
+			this.languages.find(({ present }) => present) ??
+			this.fallbackLanguage
 		);
 	}
 
-	/** @throws Error if `id` isn't a language Rogen knows, which is a programmer error. */
-	languageFor(id: string): Language {
+	languageFor(id: LanguageId): Language {
 		const language = this.languages.find(
 			(candidate) => candidate.id === id
 		);
@@ -195,7 +181,6 @@ export class DetectedWorkspace {
 	}
 }
 
-/** Darklua, a processor: Rogen never runs it, and only knows its config files and what it writes. */
 export class Darklua {
 	static readonly SYNC_TOOL: SyncTool = {
 		id: "darklua",
@@ -209,7 +194,6 @@ export class Darklua {
 		},
 	};
 
-	/** In the order Darklua reads them. */
 	static readonly CONFIG_FILES: readonly string[] = [
 		".darklua.json",
 		".darklua.json5",

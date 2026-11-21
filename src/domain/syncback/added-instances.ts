@@ -1,20 +1,15 @@
 import { NewInstance, instanceNameOf } from "./reverse-router.js";
 
-/** A path Rojo created in the mirror: a file, or a folder with nothing in it. */
 export interface AddedPath {
-	/** Relative to the mirror's root, written with `/`. */
 	readonly path: string;
 	readonly folder: boolean;
 }
 
-/** An instance the place holds that no file of the project made, with the mirror paths Rojo wrote for it. */
 export interface AddedInstance extends NewInstance {
 	readonly files: readonly (readonly string[])[];
-	/** The mirror folder its parent is, so `files` resolve against it. */
 	readonly parentFolder: string;
 }
 
-/** Groups what Rojo created in the mirror by the instance each path makes: the first name below a folder that was there before is the instance. `known` says whether a mirror folder was there before the run; a path below none is a stray. `instancePathOf` reads a mirror folder as the instance it stands for. */
 export function addedInstances(
 	added: readonly AddedPath[],
 	known: (folder: string) => boolean,

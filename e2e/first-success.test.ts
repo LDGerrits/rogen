@@ -2,8 +2,6 @@ import { describeWithRojo } from "../src/domain/rojo/__tests__/rojo-cli.js";
 import { NETWORK_TIMEOUT_MS, bundleCli } from "./harness.js";
 import { Variant, follow } from "./first-success.js";
 
-const GAME = "projects/game";
-
 const VARIANTS: readonly Variant[] = [
 	{ name: "Luau, one place", flags: [], steps: [], served: "project" },
 	{
@@ -24,9 +22,9 @@ const VARIANTS: readonly Variant[] = [
 	{
 		name: "roblox-ts, several places",
 		flags: ["--language", "roblox-ts", "--places"],
-		steps: [["npx", "rbxtsc", "-p", GAME]],
+		steps: [["npx", "rbxtsc", "-p", "tsconfig.game.json"]],
 		network: true,
-		project: [GAME],
+		project: ["game"],
 		served: "game",
 	},
 ];

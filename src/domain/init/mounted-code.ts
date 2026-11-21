@@ -12,17 +12,12 @@ import { StarterProject } from "./starter-project.js";
 import { StartingRoutes } from "./starting-routes.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
-/** Where a hand-written project file keeps its code, as the source paths that hold it. */
 export interface MountedCodeFolders {
-	/** Empty when no folder below the project's own holds every folder of code it mounts. */
 	readonly sourcePaths: readonly string[];
-	/** The folder a processor writes, whose mounts repeat the source path. */
 	readonly processed?: string;
-	/** The folders of code it mounts, sorted. */
 	readonly folders: readonly string[];
 }
 
-/** The folders of code that a hand-written project file mounts, found on disk. */
 export class MountedCode {
 	private readonly finder: CodeFinder;
 
@@ -34,7 +29,6 @@ export class MountedCode {
 		this.finder = instantiationService.createInstance(CodeFinder);
 	}
 
-	/** Never the project's own folder, which would scan the whole repository. */
 	async find(
 		project: StarterProject,
 		excluded: readonly string[],
@@ -81,31 +75,48 @@ export class MountedCode {
 				return { sourcePaths: [source], processed, folders };
 		}
 		const common = folders.length > 0 ? commonFolderPosix(folders) : ".";
-		const sourcePath = MountedCode.unkeyed(common, project, folders);
+		const sourcePath = MountedCode.routingSourcePath(
+			common,
+			project,
+			folders
+		);
 		return { sourcePaths: sourcePath ? [sourcePath] : [], folders };
 	}
 
-	/** A source path named after a route key routes nothing, so its parent takes its place where that routes each folder to where the project file mounted it. */
-	private static unkeyed(
+	private static routingSourcePath(
 		common: string,
 		project: StarterProject,
 		folders: readonly string[]
 	): string | undefined {
 		if (common === ".") return undefined;
-		if (
-			!StartingRoutes.isKey(
-				path.posix.basename(common),
-				DerivedRoutes.of(project, [common])
-			)
-		)
-			return common;
+		if (!MountedCode.isNamedAfterRouteKey(common, project)) return common;
 		const parent = path.posix.dirname(common);
 		if (parent === ".") return undefined;
-		const derived = DerivedRoutes.of(project, [parent]);
-		return derived?.unrouted.every(
-			({ target }) => !folders.includes(target)
-		)
+		return MountedCode.routesEachWhereMounted(parent, project, folders)
 			? parent
 			: undefined;
+	}
+
+	private static isNamedAfterRouteKey(
+		folder: string,
+		project: StarterProject
+	): boolean {
+		return StartingRoutes.isKey(
+			path.posix.basename(folder),
+			DerivedRoutes.of(project, [folder])
+		);
+	}
+
+	private static routesEachWhereMounted(
+		sourcePath: string,
+		project: StarterProject,
+		folders: readonly string[]
+	): boolean {
+		const derived = DerivedRoutes.of(project, [sourcePath]);
+		return (
+			derived?.unrouted.every(
+				({ target }) => !folders.includes(target)
+			) ?? false
+		);
 	}
 }

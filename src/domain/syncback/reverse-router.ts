@@ -11,29 +11,20 @@ import {
 	SyncbackLayout,
 } from "./syncback-layout.js";
 
-/** An instance the place holds that no file of the project makes. */
 export interface NewInstance {
-	/** The instance path of the node it is a child of. */
 	readonly parent: readonly string[];
 	readonly name: string;
-	/** Whether it is a folder of other instances rather than a file. */
 	readonly folder: boolean;
-	/** Its files, each as the path from its own file or folder down. */
 	readonly files?: readonly (readonly string[])[];
 }
 
-/** The route spelled into the names of what is written, such as `@server`. */
 export interface Mark {
 	readonly text: string;
-	/** The route key it spells. */
 	readonly route: string;
 }
 
-/** Where a new instance is written, as the folder it goes into. */
 export interface NewHome {
-	/** Absolute POSIX path of the folder to write into. */
 	readonly dir: string;
-	/** For a folder: its files go into `dir` and the folder itself is not made, as the routing folder is the folder. */
 	readonly contents: boolean;
 	readonly mark?: Mark;
 }
@@ -49,7 +40,6 @@ const conflict = (reason: string): Conflict => ({
 	reason,
 });
 
-/** The name of the instance a file is, for a file of a folder as for a file of its own. */
 export const instanceNameOf = (fileName: string): string =>
 	RojoFile.metaStemOf(fileName) ??
 	new RojoFile(fileName, SyncRules.DEFAULT).instanceName;
@@ -57,7 +47,6 @@ export const instanceNameOf = (fileName: string): string =>
 const isInitName = (fileName: string) =>
 	fileName.startsWith(`${RojoFile.INIT_NAME}.`);
 
-/** The instance path of the file `fileName` in the folder that is the instance `folder`: an init file is the folder itself. */
 export const instancePathIn = (
 	folder: readonly string[],
 	fileName: string
@@ -67,23 +56,19 @@ export const instancePathIn = (
 const isInitFile = (file: readonly string[]) =>
 	isInitName(file[file.length - 1]);
 
-/** Whether an init file makes the folder instance, or a folder in it, a script. */
 const holdsScript = (instance: NewInstance) =>
 	(instance.files ?? []).some(isInitFile);
 
-/** Whether an init file right in the folder makes the folder instance itself a script. */
 const isScript = (instance: NewInstance) =>
 	(instance.files ?? []).some(
 		(file) => file.length === 2 && isInitFile(file)
 	);
 
-/** The route that puts files where `parent` is, and how deep its target is. */
 type ParentRoute =
 	| { readonly kind: "keyed"; readonly key: string; readonly depth: number }
 	| { readonly kind: "fallback"; readonly depth: number }
 	| { readonly kind: "conflict"; readonly reason: string };
 
-/** Runs routing backwards: from the instance path of an instance the place added to the folder a file for it goes in, written like the nearest code that shows a style. Whether the files land there is for routing itself to say. */
 export class ReverseRouter {
 	constructor(private readonly layout: SyncbackLayout) {}
 
@@ -99,7 +84,6 @@ export class ReverseRouter {
 		};
 	}
 
-	/** The marks of the name keys whose targets hold `parent`, deepest first: what a home's files are marked with when routing would send their names elsewhere. */
 	marksFor(parent: readonly string[]): Mark[] {
 		return [...this.layout.config.routes]
 			.filter(
@@ -113,7 +97,6 @@ export class ReverseRouter {
 			.map(([key]) => ({ text: `@${key}`, route: key }));
 	}
 
-	/** For a file a pattern routes, how its folder keeps the route once it holds an init file: no pattern matches a folder, so the folder names a route key with the pattern's target. */
 	private patternAdvice(maker: PlacedLocation): string {
 		if (maker.routeMatch !== "pattern") return "";
 		const key = this.layout.config.patterns.nameKeyFor(maker.route);
@@ -123,7 +106,6 @@ export class ReverseRouter {
 			: `, named ${folder}@${key}/ to keep its route, since the pattern ${maker.route} matches no folder`;
 	}
 
-	/** Where a file of `instance` goes in `home`: a folder's files drop the folder when the routing folder stands for it, and the mark is spelled into the name of each file, or of a folder that holds a script, as an init file can't carry one. */
 	destination(
 		instance: NewInstance,
 		file: readonly string[],
@@ -148,7 +130,6 @@ export class ReverseRouter {
 			: [...file];
 	}
 
-	/** The last name of `file` with the mark after its instance name, unless a script suffix of a file of the same instance already routes it there. */
 	private marked(
 		file: readonly string[],
 		files: readonly (readonly string[])[],
@@ -205,7 +186,6 @@ export class ReverseRouter {
 		return this.asNewFeature(instance);
 	}
 
-	/** Beside the files at the nearest node that has some, an init script's children included: in the layout most of them share, a tie going to the style of the route, then of the project. */
 	private besideDonors(
 		donors: readonly Donor[],
 		below: readonly string[]
@@ -248,12 +228,10 @@ export class ReverseRouter {
 		};
 	}
 
-	/** The style the files of `route` are written in most, else the whole project's, else folders. */
 	private styleFor(route: string): NewStyle {
 		return this.layout.styleOf(route) ?? this.layout.styleOf() ?? "folder";
 	}
 
-	/** The styles that break a tie, in order: the route's, the project's, then each style in a fixed order. */
 	private tieBreakers(route: string): Style[] {
 		return [
 			this.layout.styleOf(route),

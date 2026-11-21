@@ -19,13 +19,11 @@ import { UnmountedSources } from "./check/unmounted-sources.js";
 import { Placeholder } from "./compiled-layout.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
-/** One config prepared in memory, which the run goes on to write. */
 export interface PreparedConfig {
 	readonly config: ResolvedConfig;
 	readonly projectFile: RojoProjectFile;
 	readonly findings: WriteFindings;
 	readonly summary: WriteSummary;
-	/** The files the write read; a change to one must rewrite it. */
 	readonly readFiles: readonly string[];
 	readonly placeholders: readonly Placeholder[];
 }
@@ -42,11 +40,9 @@ type ExaminedConfig =
 			readonly kind: "stopped";
 			readonly placement: Placement;
 			readonly errors: readonly Diagnostic[];
-			/** What the rest of the write raises, which still holds where only routing stopped it. */
 			readonly warnings: readonly Diagnostic[];
 	  };
 
-/** Runs the phases of a write on one config from an index, so `write` and `locate` place files the same way. */
 export class WritePipeline {
 	private readonly metaReader: MetaReader;
 	private readonly projectNames: NestedProjectNames;
@@ -68,7 +64,6 @@ export class WritePipeline {
 		this.mountClashes = instantiationService.createInstance(MountClashes);
 	}
 
-	/** Places `config`'s files; its caller checked that it declares routes. */
 	async place(
 		config: ResolvedConfig
 	): Promise<Result<Placement, Diagnostic[]>> {
@@ -80,7 +75,6 @@ export class WritePipeline {
 		).place();
 	}
 
-	/** What the compiled path check finds for `config` now; unknown when its files can't be placed. */
 	async compiledPathWarnings(config: ResolvedConfig): Promise<SyncWarnings> {
 		const placement = await this.place(config);
 		return placement.isOk()
@@ -90,7 +84,6 @@ export class WritePipeline {
 			: SyncWarnings.unknown;
 	}
 
-	/** Prepares `config`: `examine`, then the compiled path check while `sync` is unknown. Fails when any phase does, or when no source path of the config exists. */
 	async run(
 		config: ResolvedConfig,
 		sync: SyncWarnings = SyncWarnings.unknown
@@ -127,7 +120,6 @@ export class WritePipeline {
 		});
 	}
 
-	/** Runs every phase of `run` but the compiled path check. A meta or assembly error, or no source path that exists, doesn't fail it; the result is `stopped`. Fails only when the files can't be placed. */
 	async examine(
 		config: ResolvedConfig
 	): Promise<Result<ExaminedConfig, DiagnosticsError>> {
@@ -161,7 +153,6 @@ export class WritePipeline {
 		];
 		const warnings = raised.filter((diagnostic) => !isError(diagnostic));
 		const stopping = [...errors, ...raised.filter(isError)];
-		// Routing that stops the write still places every file, so the rest of what the write would raise is shown with it.
 		if (stopping.length > 0)
 			return ok({
 				kind: "stopped",

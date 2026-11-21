@@ -12,7 +12,6 @@ const escapeData = (text: string): string =>
 const escapeProperty = (text: string): string =>
 	escapeData(text).replace(/:/g, "%3A").replace(/,/g, "%2C");
 
-/** A GitHub Actions workflow command that shows `diagnostic` on the pull request. */
 export function diagnosticAnnotationLine(
 	diagnostic: Diagnostic,
 	workspace: string

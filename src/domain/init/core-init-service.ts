@@ -13,7 +13,11 @@ import {
 	DiagnosticSeverity,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { isError, isRenameFix } from "../../platform/diagnostics/diagnostic.js";
+import {
+	RenameFix,
+	isError,
+	isRenameFix,
+} from "../../platform/diagnostics/diagnostic.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
 	DraftFileReader,
@@ -60,13 +64,11 @@ import {
 import { MigrationSetup } from "./migration-setup.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
-/** The flags that shape a new config, by the choice each gives; init takes none of them where a config exists. */
 const SHAPING_FLAGS: Record<
 	Exclude<keyof InitChoices, "agentRules" | "agentHook" | "skipGit">,
 	true
 > = { kind: true, language: true, sample: true, places: true };
 
-/** The shaping flags given, as typed. */
 function shapingFlagsOf(choices: InitChoices): string[] {
 	return Object.keys(SHAPING_FLAGS).flatMap((choice) => {
 		const value = choices[choice as keyof typeof SHAPING_FLAGS];
@@ -79,7 +81,6 @@ function shapingFlagsOf(choices: InitChoices): string[] {
 	});
 }
 
-/** The word of `to`'s name that a case-only rename of `from` respells, as `Server` for `Save@server.luau` → `Save@Server.luau`. */
 function respelled(from: string, to: string): string {
 	const before = path.basename(from);
 	const after = path.basename(to);
@@ -94,7 +95,21 @@ function respelled(from: string, to: string): string {
 	return after.slice(start, end);
 }
 
-/** The folder as `plan` leaves it, before any program it runs. */
+const ROUTE_SPELLING_CODES: ReadonlySet<string> = new Set([
+	"route.caseMismatch",
+	"route.strayAt",
+]);
+
+function routeRespellings(
+	diagnostics: readonly Diagnostic[]
+): RenameFix["rename"][] {
+	return diagnostics
+		.filter(({ code }) => ROUTE_SPELLING_CODES.has(code))
+		.flatMap(({ fixes }) => (fixes ?? []).filter(isRenameFix))
+		.map(({ rename }) => rename)
+		.filter(({ from, to }) => from.toLowerCase() === to.toLowerCase());
+}
+
 function draftOf(plan: InitPlan): FileDraft {
 	const at = (relative: string) => path.join(plan.directory, relative);
 	return {
@@ -109,7 +124,6 @@ function draftOf(plan: InitPlan): FileDraft {
 	};
 }
 
-/** What init reads of the folder and its tools, read once in a run however often it plans. */
 interface FolderRead {
 	readonly directory: InitDirectory;
 	readonly migrated: MigratedProject | undefined;
@@ -120,13 +134,11 @@ interface FolderRead {
 	readonly needsGitInit: () => Promise<boolean>;
 }
 
-/** `make`, run the first time the result is asked for and then kept. */
 function once<T>(make: () => Promise<T>): () => Promise<T> {
 	let made: Promise<T> | undefined;
 	return () => (made ??= make());
 }
 
-/** What the summary asks before init writes, which names what it does. */
 const QUESTIONS: Readonly<Record<InitAction, string>> = {
 	create: "Create this project?",
 	lift: "Set up Rogen in this project?",
@@ -173,7 +185,6 @@ export class CoreInitService implements InitService {
 		}
 	}
 
-	/** In a terminal the plan is shown once and accepted with Enter, also when nothing was asked but it renames files; Customise asks the questions it took the default of, each with its answer preselected, and shows the plan again. Backing out of Customise shows the plan it had. */
 	private async review(
 		options: InitOptions
 	): Promise<Result<InitPlan | undefined, Error>> {
@@ -285,7 +296,6 @@ export class CoreInitService implements InitService {
 		return this.planIn(read, questions);
 	}
 
-	/** The project the first registered migration finds in `folder`. */
 	private async migrationIn(
 		folder: string
 	): Promise<Result<MigratedProject | undefined, Diagnostic[]>> {
@@ -296,7 +306,6 @@ export class CoreInitService implements InitService {
 		return ok(undefined);
 	}
 
-	/** A project that another tool set up: the migration's configs in place of a new project's. */
 	private async planMigrationIn(
 		read: FolderRead,
 		questions: InitQuestions,
@@ -322,7 +331,6 @@ export class CoreInitService implements InitService {
 		]);
 	}
 
-	/** A project that has a config: the agent rules and the hook only, which change no config, and only when a flag asks for them. */
 	private async planAgentsIn(
 		read: FolderRead,
 		questions: InitQuestions
@@ -378,7 +386,6 @@ export class CoreInitService implements InitService {
 		);
 	}
 
-	/** `mayBeNew`: the folder was named, and is made if it is not there. */
 	private async prepare(
 		directory: string,
 		mayBeNew: boolean
@@ -449,7 +456,6 @@ export class CoreInitService implements InitService {
 		);
 	}
 
-	/** The folder itself, else the nearest one above it that is there, where a program can run before the folder is made. */
 	private async existingFolder(folder: string): Promise<string> {
 		const folders = [...selfAndAncestors(folder)];
 		for (const existing of folders)
@@ -489,42 +495,25 @@ export class CoreInitService implements InitService {
 		);
 	}
 
-	/** `plan` with each name of the code that spells a route key in another letter case renamed to the key's spelling, as the write's own fix for it says, deepest first, so the project builds: init spells each key as most of the code does, and the write stops on the rest. */
 	private async withRouteSpellings(plan: InitPlan): Promise<InitPlan> {
-		if (plan.configs.length === 0) return plan;
-		const reader = this.instantiationService.createInstance(
-			DraftFileReader,
-			draftOf(plan)
-		);
-		const selection = await this.configService.select(plan.configs, reader);
-		if (selection.isErr()) return plan;
-		const failure = (
-			await this.writeService.check(selection.value, reader)
-		).failure();
-		if (!(failure instanceof DiagnosticsError)) return plan;
+		const failure = await this.writeCheckOf(plan);
+		if (failure.isErr() || !(failure.value instanceof DiagnosticsError))
+			return plan;
 		const relative = (file: string) =>
 			toPosix(path.relative(plan.directory, file));
 		const written = plan.files.map(({ fileName }) => fileName);
-		// What the plan writes is spelled by init, never renamed after.
 		const isWritten = (from: string) =>
 			written.some(
 				(file) => file === from || file.startsWith(`${from}/`)
 			);
 		const renames = new Map<string, PlannedMove>();
-		for (const { code, fixes } of failure.diagnostics) {
-			if (code !== "route.caseMismatch" && code !== "route.strayAt")
-				continue;
-			for (const { rename } of (fixes ?? []).filter(isRenameFix))
-				if (
-					rename.from.toLowerCase() === rename.to.toLowerCase() &&
-					!isWritten(relative(rename.from))
-				)
-					renames.set(rename.from, {
-						from: relative(rename.from),
-						to: relative(rename.to),
-						reason: `to spell the route "${respelled(rename.from, rename.to)}" as the rest of the code does`,
-					});
-		}
+		for (const rename of routeRespellings(failure.value.diagnostics))
+			if (!isWritten(relative(rename.from)))
+				renames.set(rename.from, {
+					from: relative(rename.from),
+					to: relative(rename.to),
+					reason: `to spell the route "${respelled(rename.from, rename.to)}" as the rest of the code does`,
+				});
 		if (renames.size === 0) return plan;
 		const depth = ({ from }: PlannedMove) => from.split("/").length;
 		return {
@@ -534,6 +523,21 @@ export class CoreInitService implements InitService {
 				...plan.moves,
 			],
 		};
+	}
+
+	private async writeCheckOf(
+		plan: InitPlan
+	): Promise<Result<Error | undefined, Error>> {
+		if (plan.configs.length === 0) return ok(undefined);
+		const reader = this.instantiationService.createInstance(
+			DraftFileReader,
+			draftOf(plan)
+		);
+		const selection = await this.configService.select(plan.configs, reader);
+		if (selection.isErr()) return err(selection.error);
+		return ok(
+			(await this.writeService.check(selection.value, reader)).failure()
+		);
 	}
 
 	registerMigration(migration: ProjectMigration): Disposable {
@@ -548,16 +552,9 @@ export class CoreInitService implements InitService {
 	}
 
 	async check(plan: InitPlan): Promise<Result<readonly Diagnostic[], Error>> {
-		if (plan.configs.length === 0) return ok([]);
-		const reader = this.instantiationService.createInstance(
-			DraftFileReader,
-			draftOf(plan)
-		);
-		const selection = await this.configService.select(plan.configs, reader);
-		if (selection.isErr()) return selection;
-		const failure = (
-			await this.writeService.check(selection.value, reader)
-		).failure();
+		const checked = await this.writeCheckOf(plan);
+		if (checked.isErr()) return checked;
+		const failure = checked.value;
 		if (!failure) return ok([]);
 		const errors =
 			failure instanceof DiagnosticsError
@@ -571,7 +568,6 @@ export class CoreInitService implements InitService {
 			: err(failure);
 	}
 
-	/** Whether `error` is only about the user's code: files of the folder that `plan` neither writes nor renames, and no folder that holds one. */
 	private static isAboutUserCode(error: Diagnostic, plan: InitPlan): boolean {
 		const made = [
 			...plan.files.map(({ fileName }) => fileName),

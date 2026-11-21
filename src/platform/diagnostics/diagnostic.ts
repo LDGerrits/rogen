@@ -16,7 +16,6 @@ export interface DiagnosticPosition {
 	readonly column: number;
 }
 
-/** `position` is optional: a diagnostic about a whole file or directory has no line to point at. */
 export interface DiagnosticLocation {
 	readonly resource: string;
 	readonly position?: DiagnosticPosition;
@@ -40,7 +39,6 @@ export interface ReplaceFix {
 	};
 }
 
-/** What resolves a diagnostic: renaming a file or folder, replacing text in a file, or running a command in a directory. Paths are absolute. */
 export type DiagnosticFix = RenameFix | ReplaceFix | RunFix;
 
 export const isRenameFix = (fix: DiagnosticFix): fix is RenameFix =>
@@ -49,7 +47,6 @@ export const isRenameFix = (fix: DiagnosticFix): fix is RenameFix =>
 export const isReplaceFix = (fix: DiagnosticFix): fix is ReplaceFix =>
 	"replace" in fix;
 
-/** Replaces the JSON text that starts at `location` with `to`; none when the location has no position. */
 export function replaceFixes(
 	location: DiagnosticLocation,
 	from: string,
@@ -68,14 +65,10 @@ export interface DiagnosticRelated {
 
 export interface Diagnostic extends DiagnosticLocation {
 	readonly severity: DiagnosticSeverity;
-	/** Stable identifier such as `config.unknownField`; tests assert on it. */
 	readonly code: string;
 	readonly message: string;
-	/** Lines that follow the message, each indented on its own, such as what Rojo said and each cause of its chain. */
 	readonly details?: readonly string[];
-	/** The other files the problem involves, each with its part in it. */
 	readonly related?: readonly DiagnosticRelated[];
-	/** Given only when they are the one answer; the rendered line leaves them out. */
 	readonly fixes?: readonly DiagnosticFix[];
 }
 
@@ -153,7 +146,6 @@ function messageWithCode(message: string, code: string): string {
 		: `${message.slice(0, end)} (${code})${message.slice(end)}`;
 }
 
-/** `severity` writes the severity label, as a log service colours it. */
 export function diagnosticSummary(
 	diagnostic: Diagnostic,
 	cwd?: string,
@@ -193,7 +185,6 @@ export function renderDiagnostics(diagnostics: readonly Diagnostic[]): string {
 		.join("\n");
 }
 
-/** What makes two diagnostics one as the user reads them; a diagnostic about `ignoredResource` is the same wherever that file is. */
 export function diagnosticKey(
 	diagnostic: Diagnostic,
 	ignoredResource?: string
@@ -231,28 +222,43 @@ export function newDiagnostics(
 	return after.filter((diagnostic) => !seen.has(diagnosticKey(diagnostic)));
 }
 
-/** Its own file and its related files, as POSIX paths. */
 function filesOf({ resource, related }: Diagnostic): string[] {
 	return [resource, ...(related ?? []).map(({ resource }) => resource)].map(
 		toPosix
 	);
 }
 
-/** Whether `diagnostic` is about `source`: its own file or a related one. */
 export function isAbout(diagnostic: Diagnostic, source: string): boolean {
 	return filesOf(diagnostic).includes(toPosix(source));
 }
 
-/** Whether `diagnostic` is about `target` or inside it, or about `folder`, which `target` lies in; one that lists its files in `related` reaches only them from its folder. `folder` is its own file unless that file stands for its folder. */
 export function reaches(
 	diagnostic: Diagnostic,
 	target: string,
 	folder: string = diagnostic.resource
 ): boolean {
-	const posixTarget = toPosix(target);
 	return (
-		filesOf(diagnostic).some((file) => containsPath(posixTarget, file)) ||
-		(diagnostic.related === undefined &&
-			containsPath(toPosix(folder), posixTarget))
+		isAboutAnythingIn(diagnostic, target) ||
+		coversFromFolder(diagnostic, folder, target)
 	);
+}
+
+function isAboutAnythingIn(diagnostic: Diagnostic, target: string): boolean {
+	const posixTarget = toPosix(target);
+	return filesOf(diagnostic).some((file) => containsPath(posixTarget, file));
+}
+
+function coversFromFolder(
+	diagnostic: Diagnostic,
+	folder: string,
+	target: string
+): boolean {
+	return (
+		!listsItsFiles(diagnostic) &&
+		containsPath(toPosix(folder), toPosix(target))
+	);
+}
+
+function listsItsFiles(diagnostic: Diagnostic): boolean {
+	return diagnostic.related !== undefined;
 }

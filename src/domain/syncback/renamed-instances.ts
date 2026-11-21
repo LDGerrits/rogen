@@ -7,27 +7,19 @@ import { AddedInstance } from "./added-instances.js";
 import { instanceNameOf, instancePathIn } from "./reverse-router.js";
 import { GITKEEP } from "./syncback-layout.js";
 
-/** A new folder instance that is an old one renamed in Studio: its files go where the old ones were, in the old folder under its new name, so the layout stays. */
 export interface RenamedInstance {
 	readonly instance: AddedInstance;
-	/** The name it had. */
 	readonly from: string;
-	/** Absolute POSIX path of the folder the old instance came from. */
 	readonly folder: string;
-	/** That folder with the new name. */
 	readonly renamed: string;
-	/** Each file of the instance, joined with `/`, and where it goes. */
 	readonly files: ReadonlyMap<string, RenamedFile>;
 }
 
-/** Where a file of a renamed instance goes, as an absolute POSIX path. */
 export interface RenamedFile {
 	readonly target: string;
-	/** The old file, moved as it is, when Rojo writes the instance in another form than the file had, as a module for a JSON file. */
 	readonly keep?: string;
 }
 
-/** The folder name `segment` with the instance name `from` in it changed to `to`, as `Shop@Server` → `ShopX@Server`; none when the name isn't spelled in it. */
 function renamedSegment(
 	segment: string,
 	from: string,
@@ -41,7 +33,6 @@ function renamedSegment(
 	return undefined;
 }
 
-/** The `@key` that routed a placed file, spelled in its own name, which a sibling written beside it repeats. */
 function markOf(file: PlacedLocation): string {
 	const mark = `@${file.route}`;
 	return file.routeMatch === "suffix" &&
@@ -51,29 +42,22 @@ function markOf(file: PlacedLocation): string {
 		: "";
 }
 
-/** `fileName` with `mark` after the name of the instance it makes, as `Hit@Server.luau`. */
 function withMark(fileName: string, mark: string): string {
 	const stem = instanceNameOf(fileName);
 	return `${stem}${mark}${fileName.slice(stem.length)}`;
 }
 
-/** Whether Rojo writes `written` in the form the file `old` has, its route mark aside. */
 const sameForm = (old: PlacedLocation, written: string) =>
 	path.posix.basename(old.source).replace(markOf(old), "") === written;
 
-/** A script, whose source Rojo writes back, unlike a data file it would write in another form. */
 const isScript = (file: string) => /\.luau?$/.test(file);
 
-/** What `renamedInstances` reads besides the instances. */
 export interface RenameInputs {
-	/** The absolute POSIX path a mirror path was copied from. */
 	readonly sourceOf: (mirror: string) => string | undefined;
 	readonly placed: readonly PlacedLocation[];
-	/** Whether the plan removes the file at an absolute POSIX path, or a folder above it. */
 	readonly isRemoved: (source: string) => boolean;
 }
 
-/** The placed files by the instance path each is at, joined with `\0`. */
 function byInstance(
 	placed: readonly PlacedLocation[]
 ): Map<string, PlacedLocation> {
@@ -108,9 +92,7 @@ function renameOf(
 	const moved = (source: string) =>
 		path.posix.join(renamed, path.posix.relative(folder, source));
 	const files = new Map<string, RenamedFile>();
-	/** The old file each file of the instance is, which a new sibling is written like. */
 	const siblings = new Map<string, PlacedLocation>();
-	/** Every old file a file of the instance stands for. */
 	const mapped = new Set<string>();
 	const fresh: (readonly string[])[] = [];
 	for (const file of instance.files) {
@@ -146,13 +128,11 @@ function renameOf(
 			files.set(key, { target: moved(old.source), keep: old.source });
 			continue;
 		}
-		// A script Rojo writes in another form keeps Studio's edit under the new name.
-		files.set(key, {
-			target: path.posix.join(
-				path.posix.dirname(moved(old.source)),
-				withMark(leaf, markOf(old))
-			),
-		});
+		const studioEdit = path.posix.join(
+			path.posix.dirname(moved(old.source)),
+			withMark(leaf, markOf(old))
+		);
+		files.set(key, { target: studioEdit });
 	}
 	for (const file of fresh) {
 		const leaf = file[file.length - 1];
@@ -185,7 +165,6 @@ const isUnder = (instancePath: readonly string[], root: readonly string[]) =>
 	root.every((name, at) => instancePath[at] === name) &&
 	instancePath.length > root.length;
 
-/** The new folder instances that are old ones renamed: same parent, every file of the old one under the new name or removed, and a folder of their own whose every instance is renamed the same way. `removed` holds each mirror path the plan removes. Whether the files land where the instance is is for routing to say. */
 export function renamedInstances(
 	instances: readonly AddedInstance[],
 	removed: ReadonlySet<string>,

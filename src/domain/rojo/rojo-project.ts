@@ -32,7 +32,10 @@ export interface RojoNode {
 	[key: string]: unknown;
 }
 
-/** The `$` fields of a node; another `$` key holding an object is a child that Rojo warns of. */
+/**
+ * The `$` fields of a node; another `$` key holding an object is a child that
+ * Rojo warns of.
+ */
 export const NODE_FIELDS: ReadonlySet<string> = new Set([
 	"$className",
 	"$path",
@@ -42,7 +45,6 @@ export const NODE_FIELDS: ReadonlySet<string> = new Set([
 	"$id",
 ]);
 
-/** The child nodes of a node: its keys that are not `$` fields and hold an object. */
 export function childNodes(node: RojoNode): [string, RojoNode][] {
 	return Object.entries(node).filter(
 		(entry): entry is [string, RojoNode] =>
@@ -64,22 +66,17 @@ export interface RojoProjectFile {
 	syncbackRules?: { ignorePaths?: string[]; createIgnoreDirPaths?: boolean };
 }
 
-/** The node to create for a missing ancestor, named by its instance path. */
 export type ContainerFactory = (instancePath: readonly string[]) => RojoNode;
 
 export interface MountedPath {
 	readonly path: RojoPath;
-	/** Where the node sits; the root node is `[]`. */
 	readonly instancePath: readonly string[];
 }
 
-/** A node that mounted a path, as `removeNodes` took it from a tree. */
 export interface RemovedMount extends MountedPath {
-	/** What the node carried besides its `$path`: its class, properties, attributes and children. */
 	readonly settings: Readonly<RojoNode>;
 }
 
-/** Any project file: Rogen's own output, or one read from disk with fields Rogen doesn't model. */
 export interface ProjectFile {
 	readonly tree: RojoNode;
 	readonly name?: unknown;
@@ -94,7 +91,10 @@ export interface ParsedProjectFile extends ProjectFile {
 	readonly [key: string]: unknown;
 }
 
-/** Services stay bare, since Rojo knows their class; deeper containers are folders. */
+/**
+ * Services stay bare, since Rojo knows their class; deeper containers are
+ * folders.
+ */
 const plainContainer: ContainerFactory = (instancePath) =>
 	instancePath.length === 1 ? {} : { $className: "Folder" };
 
@@ -103,12 +103,10 @@ const PROJECT_SUFFIX = ".project.json";
 export const projectFileName = (stem: string): string =>
 	`${stem}${PROJECT_SUFFIX}`;
 
-/** Whether Rojo reads the file as a project file: `.project.json`, or `.project.jsonc` since it allows comments. */
 export const isProjectFileName = (fileName: string): boolean =>
 	fileName.endsWith(PROJECT_SUFFIX) ||
 	fileName.endsWith(`${PROJECT_SUFFIX}c`);
 
-/** A Rojo project file being edited; the owner decides what an ancestor created on its behalf looks like. */
 export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 	private readonly project: T;
 
@@ -119,7 +117,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		this.project = structuredClone(project);
 	}
 
-	/** A file without a `tree` gets a bare DataModel. */
 	static parse(text: string): Result<RojoProject<ParsedProjectFile>, Error> {
 		const parsed = parse(text);
 		if (parsed.isErr()) return err(parsed.error);
@@ -140,7 +137,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		);
 	}
 
-	/** The path to the first child below `node` that isn't an object; `at` is where `node` is. */
 	static findNonNode(
 		node: RojoNode,
 		at: readonly string[]
@@ -155,7 +151,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return undefined;
 	}
 
-	/** The first `$` key that is no field and holds nothing Rojo reads as a child, which Rojo refuses. */
 	static findUnknownField(
 		node: RojoNode,
 		at: readonly string[]
@@ -173,7 +168,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return undefined;
 	}
 
-	/** Each value of a `$properties` or `$attributes` table under `node` that Rojo can't read, as the path to it. */
 	static findUnreadableValues(
 		node: RojoNode,
 		at: readonly string[]
@@ -223,7 +217,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 			: [];
 	}
 
-	/** The entries of `syncRules` as written, valid or not. */
 	get syncRules(): unknown[] {
 		const { syncRules } = this.project;
 		return Array.isArray(syncRules) ? syncRules : [];
@@ -236,7 +229,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 			: undefined;
 	}
 
-	/** This project's fields with the given tree, globs and sync rules; fields Rogen doesn't model pass through. */
 	toFile(parts: {
 		readonly tree: RojoNode;
 		readonly globIgnorePaths: readonly string[];
@@ -261,7 +253,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return structuredClone(this.project);
 	}
 
-	/** `undefined` when no node is there, or the path crosses a value that isn't a node. */
 	getNode(instancePath: readonly string[]): Readonly<RojoNode> | undefined {
 		let current: unknown = this.project.tree;
 		for (const segment of instancePath) {
@@ -271,8 +262,10 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return isObject(current) ? current : undefined;
 	}
 
-	/** Merges `data` into the node at `instancePath`, creating missing ancestors; a node that gets a `$path` loses a `Folder` class. */
-	insertNode(instancePath: readonly string[], data: Partial<RojoNode>): void {
+	insertNodeReplacingFolder(
+		instancePath: readonly string[],
+		data: Partial<RojoNode>
+	): void {
 		if (instancePath.length === 0) return;
 		const parent = this.ensureContainer(instancePath.slice(0, -1));
 		const leaf = instancePath[instancePath.length - 1];
@@ -281,10 +274,10 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 			...(isObject(existing) ? existing : {}),
 			...data,
 		};
-		setOwn(parent, leaf, RojoProject.withoutFolderClass(updated));
+		setOwn(parent, leaf, RojoProject.replacingFolder(updated));
 	}
 
-	private static withoutFolderClass(node: RojoNode): RojoNode {
+	private static replacingFolder(node: RojoNode): RojoNode {
 		if (!node.$path || node.$className !== "Folder") return node;
 		const withoutClass = { ...node };
 		delete withoutClass.$className;
@@ -304,7 +297,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return found;
 	}
 
-	/** Removes each node below the root whose `$path` target matches, with its children, and returns each one's `$path`, where it was and what else it carried. */
 	removeNodes(matches: (target: string) => boolean): RemovedMount[] {
 		const removed: RemovedMount[] = [];
 		const visit = (node: RojoNode, instancePath: readonly string[]) => {
@@ -330,7 +322,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return removed;
 	}
 
-	/** Adds the `$path` nodes of `additions` this project lacks; a node already there wins and its `$path` is skipped. */
 	mergeMissing(additions: RojoProject<ProjectFile>): {
 		added: MountedPath[];
 		skipped: MountedPath[];
@@ -373,7 +364,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return { added, skipped };
 	}
 
-	/** Makes the node at `instancePath`, and each ancestor it lacks, a container when it is absent. */
 	ensureContainer(instancePath: readonly string[]): RojoNode {
 		let current = this.project.tree;
 		instancePath.forEach((segment, depth) => {

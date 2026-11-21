@@ -4,7 +4,6 @@ import path from "path";
 const PAGE = path.resolve("docs/content/docs/v2/agents.mdx");
 export const OUTPUT = path.resolve("src/domain/init/agent/hook-script.ts");
 
-/** The Stop hook script of the agents page, as the module that embeds it holds it. */
 export function renderAgentHookModule(page: string): string {
 	const script =
 		/```js title="\.agents\/hooks\/rogen-check\.mjs"\n([\s\S]*?)\n```/.exec(

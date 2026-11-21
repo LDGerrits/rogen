@@ -1,4 +1,3 @@
-// Runs coding agents on Rogen tasks, with and without Rogen's agent rules, and scores what they leave behind. See README.md.
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -38,7 +37,6 @@ This repo uses Rogen: each \`*.rogen.json\` generates the \`*.project.json\` bes
 - To sync to Studio, use the repo's serve script, or run \`rogen serve --json\` in the background.
 - For anything else, run \`rogen doc <topic>\` or \`rogen help <command> --json\`.
 `;
-/** The layouts a task runs in: a plain prompt runs in the Luau ones. */
 const LUAU_LAYOUTS = ["folder", "suffix"];
 const promptOf = (task) =>
 	typeof TASKS[task] === "string" ? TASKS[task] : TASKS[task].prompt;
@@ -77,7 +75,8 @@ fs.writeFileSync(
 	{ mode: 0o755 }
 );
 
-// An empty Claude Code config, so the user's own CLAUDE.md, skills, hooks and memory stay out of the runs.
+// An empty Claude Code config, so the user's own CLAUDE.md, skills, hooks and
+// memory stay out of the runs.
 const config = path.join(out, "claude-config");
 fs.mkdirSync(config, { recursive: true });
 const credentials = path.join(os.homedir(), ".claude", ".credentials.json");
@@ -109,7 +108,6 @@ const editJson = (file, edit) => {
 	fs.writeFileSync(file, `${JSON.stringify(json, null, 2)}\n`);
 };
 
-/** A fresh one-place Luau project from `rogen init`; `suffix` renames its Greeter to route by name instead of by folder. */
 function fixture(layout) {
 	const dir = path.join(out, `fixture-${layout}`);
 	if (fs.existsSync(dir)) return dir;
@@ -156,7 +154,6 @@ function fixture(layout) {
 	return dir;
 }
 
-/** A roblox-ts project from `rogen init --places`, with a second place, `lobby`, made from the first. */
 function placesFixture(dir) {
 	fs.mkdirSync(dir);
 	rogen(dir, "init", ".", "--places", "--language", "roblox-ts", "-y", "-q");

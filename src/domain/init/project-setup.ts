@@ -43,11 +43,7 @@ import { ProjectReader } from "./project-reader.js";
 import { Setup } from "./setup.js";
 import { RobloxTsStarter } from "./roblox-ts-starter.js";
 import { STANDARD_ROUTE_IDS, StartingRoutes } from "./starting-routes.js";
-import {
-	PROJECTS_FOLDER,
-	StarterPlaces,
-	StartingPlaces,
-} from "./starter-places.js";
+import { StarterPlaces, StartingPlaces } from "./starter-places.js";
 import { ProcessedFolder } from "./processed-folder.js";
 import { MountedCode } from "./mounted-code.js";
 import { CodeFinder } from "./code-finder.js";
@@ -56,7 +52,6 @@ import { ProjectTree, TreeChoice, TreePlan } from "./tree-plan.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
-/** The tree init starts from, with the project file a lift takes read. */
 type ReadChoice =
 	| { readonly kind: "new" }
 	| {
@@ -65,50 +60,35 @@ type ReadChoice =
 			readonly project: StarterProject;
 	  };
 
-/** The folder a processor writes, which the lifted project file mounts. */
 export interface ProcessedOutput {
 	readonly folder: string;
-	/** The processor's config file. */
 	readonly config?: string;
 }
 
 export interface ProjectChoices {
 	readonly language: Language;
 	readonly sourcePaths: readonly string[];
-	/** How the code already spells each standard route key, by the key in lower case. */
 	readonly keySpellings?: Readonly<Record<string, string>>;
 	readonly compiledPath?: string;
-	/** Without `config`, nothing says a processor writes the folder, so its mounts stay. */
 	readonly processed?: ProcessedOutput;
 	readonly tree: ProjectTree;
 	readonly mounts: readonly Mount[];
-	/** Folders of code the lifted project file mounts, which no source path holds and the tree keeps mounting. */
 	readonly keptCode?: readonly string[];
-	/** Code Rogen places nowhere, which init warns about. */
 	readonly outside?: readonly string[];
-	/** What the source paths hold that the lifted project file mounts nowhere, as globs: Rojo ignored it, so `globIgnorePaths` leaves it out. */
 	readonly unmounted?: readonly string[];
-	/** The template of a new project; its files and git step are left out when none is given. */
 	readonly kind?: InitKind;
 	readonly skipGit?: boolean;
-	/** The files of the template that are not there yet, which `init` writes. */
 	readonly templateFiles?: readonly PlannedFile[];
-	/** The source folders init makes with nothing in them, which a `.gitkeep` keeps in git. */
 	readonly emptyFolders?: readonly string[];
-	/** Whether the Greeter sample is written. */
 	readonly sample?: boolean;
-	/** The places a project of several starts with. */
 	readonly places?: StartingPlaces;
-	/** The tool that writes the project's own files first, and what runs once the files are in. */
 	readonly scaffold?: {
 		readonly tool: PlannedScaffold;
 		readonly after: readonly PlannedCommand[];
 	};
-	/** What to add to it so git leaves the project files Rogen writes out. */
 	readonly projectFilesHint?: string;
 }
 
-/** The project a tree carries over: a lifted file's, or the one `rojo init` writes for Rojo's template layout. */
 function carriedProject(tree: ProjectTree): StarterProject | undefined {
 	return tree.kind === "lift" || tree.kind === "rojoTemplate"
 		? tree.project
@@ -123,7 +103,6 @@ function derivedRoutesOf(
 	return carried ? DerivedRoutes.of(carried, dirs) : undefined;
 }
 
-/** The folders placed as they are: the language's own, and the packages that are installed or that a manifest says are coming. */
 function mountsOf(directory: InitDirectory, language: Language): Mount[] {
 	return [
 		...language.alwaysMounted(),
@@ -138,7 +117,6 @@ function mountsOf(directory: InitDirectory, language: Language): Mount[] {
 	}));
 }
 
-/** Whether routes can place code in the tree: a lifted file whose root isn't a DataModel, such as a model or plugin, is Rojo's own and has no service to route to. */
 function takesRoutes(tree: ProjectTree): boolean {
 	return tree.kind === "new" || carriedProject(tree)?.takesRoutes === true;
 }
@@ -150,7 +128,6 @@ const BUILD_COMMANDS: Readonly<
 	plugin: (name) => `rogen build -p "${name}.rbxm"`,
 };
 
-/** The folder the processed config reads, when a processor's config says one writes it. */
 function processedPathOf({
 	processed,
 }: Pick<ProjectChoices, "processed">): string | undefined {
@@ -167,13 +144,10 @@ function generatedDirs(
 	].filter((dir) => dir !== undefined);
 }
 
-/** How many files a warning names before it counts the rest, so it stays one line. */
 const LISTED_SHOWN = 5;
 
-/** The empty file that keeps an empty folder in git, as Rojo's syncback writes it. */
 const GITKEEP = ".gitkeep";
 
-/** A Luau script Rojo makes a Script of, which runs in a plugin. */
 const isServerScript = (name: string): boolean => {
 	const file = new RojoFile(name, SyncRules.DEFAULT);
 	return file.isLuau && file.scriptSuffix === "server";
@@ -225,12 +199,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const places = several
 			? await this.instantiationService
 					.createInstance(StarterPlaces)
-					.plan(directory.path, starter)
+					.plan(directory.path, language, starter)
 			: undefined;
 		const taken = places ? await this.placeTaken(places) : undefined;
 		if (taken) return err([taken]);
 
-		const compiledPath = language.compiler?.outDir;
+		const compiledPath = places?.compiledPath ?? language.compiler?.outDir;
 		const routed = takesRoutes(tree.value);
 		const lifted = routed ? carriedProject(tree.value) : undefined;
 		const liftedMounts = lifted?.mountedFolders() ?? [];
@@ -270,14 +244,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					...(processorConfig && { config: processorConfig }),
 				}
 			: undefined;
-		const mounted = routed ? mountsOf(directory, language) : [];
-		const mounts = places
-			? StarterPlaces.mountsFor(
-					places,
-					mounted,
-					RobloxTsStarter.OWN_FOLDERS
-				)
-			: mounted;
+		const mounts = routed ? mountsOf(directory, language) : [];
 
 		const unmounted =
 			lifted && tree.value.kind === "lift"
@@ -332,7 +299,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 						places?.commonSourcePath ?? sourcePaths[0]
 					),
 					...(places ? sampleOf.place(places.placeSourcePath) : []),
-					...game.written(places?.folder ?? ""),
+					...game.written(""),
 					sampleOf.readme(
 						places?.commonSourcePath ?? sourcePaths[0],
 						ProjectSetup.serveCommand(places),
@@ -348,10 +315,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					kind,
 					path.basename(directory.path),
 					RobloxTsStarter.of(language)
-						? RobloxTsStarter.ignored(
-								places !== undefined,
-								compiledPath
-							)
+						? RobloxTsStarter.ignored(language.compiler?.outDir)
 						: []
 				),
 				tree.value,
@@ -391,7 +355,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			...(starter && {
 				scaffold: {
 					tool: starter.scaffold(places !== undefined),
-					after: places ? [starter.scripts(places.folder)] : [],
+					after: places ? [starter.scripts(places.place)] : [],
 				},
 			}),
 			projectFilesHint: await this.files.projectFilesHint(),
@@ -403,7 +367,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		});
 	}
 
-	/** The folders of `folders` that init makes and no file of `files` goes in. */
 	private async emptyFolders(
 		folders: readonly string[],
 		files: readonly PlannedFile[]
@@ -422,7 +385,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		);
 	}
 
-	/** The command that serves the project: a place by its folder or name, and the processed config by its name. */
 	private static serveCommand(
 		places: StartingPlaces | undefined,
 		processedPath?: string
@@ -433,35 +395,31 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			: "rogen serve";
 	}
 
-	/** How to add a second place, which `init` starts but never adds; `game`: whether the first place has the sample game, which the second copies. */
-	private static addPlaceStep(places: StartingPlaces, game: boolean): string {
+	private static addPlaceStep(
+		places: StartingPlaces,
+		game: boolean,
+		starter: RobloxTsStarter | undefined
+	): string {
 		const port = "from a second terminal with its own --port";
-		if (places.folder === "") {
-			const { outputPrefix, gameFolder } = places;
-			const lobby = (file: string) =>
-				file.replace(outputPrefix, "lobby.");
-			const release = configFileName(`${outputPrefix}${RELEASE_OUTPUT}`);
-			const lobbyGame = path.posix.join(
-				path.posix.dirname(gameFolder),
-				"lobby"
-			);
-			const edited =
-				'Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common.';
-			const copy = game
-				? `copy ${places.configFile} to ${lobby(places.configFile)}, point each ${gameFolder} in its tree to ${lobbyGame}, make src/lobby and copy ${gameFolder} to ${lobbyGame}. ${edited}`
-				: `copy ${places.configFile} to ${lobby(places.configFile)} and make src/lobby. ${edited}`;
-			return `Add another place: ${copy} Do the same for ${release} if there is one. Serve it ${port}: 'rogen serve lobby --port <port>'.`;
-		}
-		const lobby = `${PROJECTS_FOLDER}/lobby`;
-		const copied = [
-			`${places.folder}/${DEFAULT_CONFIG_FILE}`,
-			`${places.folder}/tsconfig.json`,
-			...(game ? [`${places.folder}/${places.gameFolder}`] : []),
-		];
-		return `Add another place: make ${lobby}/src, copy ${joinedWithAnd(copied)} into ${lobby} (with the release config, if the place has one), and change the "name" in each config to lobby. Run 'rogen write ${lobby}' for its project file, and add ' && rbxtsc -p ${lobby}' to the end of the build script in package.json. 'rbxtsc -w' runs until you stop it, so watch the place from a terminal of its own with 'npx rbxtsc -w -p ${lobby}', and serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
+		const { outputPrefix, gameFolder } = places;
+		const lobby = (file: string) => file.replace(outputPrefix, "lobby.");
+		const release = configFileName(`${outputPrefix}${RELEASE_OUTPUT}`);
+		const lobbyGame = path.posix.join(
+			path.posix.dirname(gameFolder),
+			"lobby"
+		);
+		const edited =
+			'Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common.';
+		const copied = `copy ${places.configFile} to ${lobby(places.configFile)}`;
+		const copy = game
+			? `${copied}, point each ${gameFolder} in its tree to ${lobbyGame}, make src/lobby and copy ${gameFolder} to ${lobbyGame}. ${edited}`
+			: `${copied} and make src/lobby. ${edited}`;
+		const compile = starter
+			? ` ${starter.addPlaceStep(places.place, "lobby", lobby(places.configFile))}`
+			: "";
+		return `Add another place: ${copy} Do the same for ${release} if there is one.${compile} Serve it ${port}: 'rogen serve lobby --port <port>'.`;
 	}
 
-	/** An error when the first place has a config already, which init never overwrites. */
 	private async placeTaken(
 		places: StartingPlaces
 	): Promise<Diagnostic | undefined> {
@@ -475,7 +433,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			: undefined;
 	}
 
-	/** Why a new project can't be several places, which `--places` would be an error for. */
 	private noPlacesBecause(
 		kind: InitKind,
 		language: Language,
@@ -493,7 +450,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		return undefined;
 	}
 
-	/** Whether the new project is several places; `undefined` when the user cancelled. */
 	private async severalPlaces(
 		kind: InitKind,
 		language: Language,
@@ -517,7 +473,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		return false;
 	}
 
-	/** The code that one place, and several, would leave where no source path holds it; none where a starter tool sets up an empty folder. */
 	private async unplacedBy(
 		language: Language,
 		starter: RobloxTsStarter | undefined
@@ -525,7 +480,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		if (starter) return {};
 		const places = await this.instantiationService
 			.createInstance(StarterPlaces)
-			.plan(this.directory.path, starter);
+			.plan(this.directory.path, language, starter);
 		const [one, several] = await Promise.all(
 			[
 				[this.directory.defaultSourcePath(language)],
@@ -540,7 +495,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		};
 	}
 
-	/** The code here that `held` doesn't hold, past the package folders, the language's own folders and `skipped`. */
 	private codeOutside(
 		held: readonly string[],
 		language: Language,
@@ -561,7 +515,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 	}
 
-	/** The tool that starts a new place of `language` in a folder with nothing of its own: no code, no `package.json` or `tsconfig.json` (a language that is present has its own) for the tool to write over, and no project file to lift. */
 	private starterFor(
 		kind: InitKind,
 		language: Language
@@ -576,7 +529,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			: undefined;
 	}
 
-	/** Whether the Greeter sample is written: in a new place, in a folder with no code, and for a compiled language only when its starter tool has set the folder up. */
 	private async wantsSample(
 		kind: InitKind,
 		tree: ProjectTree,
@@ -591,7 +543,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		return writable && this.questions.sample();
 	}
 
-	/** `hasModule`: the folder's code is a module already, which takes the place of the template's script. */
 	private static templateFiles(
 		template: ProjectTemplate,
 		tree: ProjectTree,
@@ -625,7 +576,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		);
 	}
 
-	/** The kind a lifted project is: a place where routes place its code, else a plugin where its root is a script that runs, as in Rojo's plugin template, else a model. */
 	private async kindOf(project: StarterProject): Promise<InitKind> {
 		if (project.takesRoutes) return "place";
 		const root = project.rootPath;
@@ -643,7 +593,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		return scripts.some(Boolean) ? "plugin" : "model";
 	}
 
-	/** `chosen` with the project file a lift takes, read. */
 	private async read(
 		chosen: TreeChoice
 	): Promise<Result<ReadChoice, Diagnostic[]>> {
@@ -744,10 +693,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.setConfig(
 				output,
 				written,
-				path.posix.join(
-					places?.folder ?? "",
-					configFileName(`${places?.outputPrefix ?? ""}${stem}`)
-				),
+				configFileName(`${places?.outputPrefix ?? ""}${stem}`),
 				false
 			);
 		this.summarise(builder, choices, routes);
@@ -828,7 +774,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					: ` Pass --no-sample for an empty ${here(sourcePaths[0])}/ and no ${here(SAMPLE_GAME_FOLDER)}/.`;
 			builder.addNote(
 				places
-					? `The Greeter sample is the feature in ${here(places.commonSourcePath)}, which every place shares, Game in ${here(places.placeSourcePath)}, and Rojo's sample Baseplate and lighting in ${here(places.folder, places.gameFolder)}.${flag}`
+					? `The Greeter sample is the feature in ${here(places.commonSourcePath)}, which every place shares, Game in ${here(places.placeSourcePath)}, and Rojo's sample Baseplate and lighting in ${here(places.gameFolder)}.${flag}`
 					: `The Greeter sample is in ${here(sourcePaths[0], "Greeter")}, and Rojo's sample Baseplate and lighting in ${here(SAMPLE_GAME_FOLDER)}/, which the tree mounts.${flag}`
 			);
 		}
@@ -939,7 +885,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addEdit(
 				ProjectSetup.addPlaceStep(
 					places,
-					chosen.kind === "new" && chosen.game !== undefined
+					chosen.kind === "new" && chosen.game !== undefined,
+					RobloxTsStarter.of(language)
 				)
 			);
 		if (chosen.kind === "lift" && !takesRoutes(chosen)) {

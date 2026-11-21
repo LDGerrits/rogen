@@ -11,22 +11,15 @@ import { RoutePatterns } from "./route-patterns.js";
 
 interface ResolvedConfigFields {
 	readonly file: string;
-	/** The name Rojo and Rogen know the project by: the file's `name`, else its folder's. */
 	readonly projectName: string;
-	/** The Rojo project file the config describes; every `$path` and glob is relative to the config's folder. */
 	readonly project: RojoProject<ParsedProjectFile>;
-	/** Absolute. */
 	readonly sourcePaths: readonly string[];
-	/** In declaration order. */
 	readonly routes: ReadonlyMap<string, Target>;
-	/** `globIgnorePaths` as globs on absolute POSIX paths. */
 	readonly ignored: readonly string[];
-	/** Absolute. */
 	readonly compiledPath?: string;
 	readonly warnings: readonly Diagnostic[];
 }
 
-/** A config with its values validated: paths are absolute and route targets are parsed. */
 export class ResolvedConfig {
 	readonly file: string;
 	readonly projectName: string;
@@ -38,7 +31,6 @@ export class ResolvedConfig {
 	readonly warnings: readonly Diagnostic[];
 	readonly keys: DeclaredKeys;
 	readonly patterns: RoutePatterns;
-	/** The project's `syncRules` in front of Rojo's. */
 	readonly syncRules: SyncRules;
 
 	constructor(fields: ResolvedConfigFields) {
@@ -58,12 +50,10 @@ export class ResolvedConfig {
 		);
 	}
 
-	/** What the project is asked for by: the name of the game. */
 	get label(): string {
 		return this.projectName;
 	}
 
-	/** Tells this project from every other that is served or written: its config file. */
 	get id(): string {
 		return this.file;
 	}
@@ -72,12 +62,10 @@ export class ResolvedConfig {
 		return path.dirname(this.file);
 	}
 
-	/** The Rojo project file the config writes; see `projectFileOf`. */
 	get projectFile(): string {
 		return projectFileOf(this.file);
 	}
 
-	/** Whether the only source path is the default one, which a config without `sourcePaths` has. */
 	get usesDefaultSourcePath(): boolean {
 		return (
 			this.sourcePaths.length === 1 &&
@@ -88,12 +76,10 @@ export class ResolvedConfig {
 		);
 	}
 
-	/** Whether the config is a Rojo project file Rogen was not given a config for: it is its own output and is never written. */
 	get isAdopted(): boolean {
 		return samePath(this.file, this.projectFile);
 	}
 
-	/** The folders a write lists to find files nothing mounts: its source paths, else the default folder. */
 	get indexedPaths(): readonly string[] {
 		return this.routes.size > 0
 			? this.sourcePaths
@@ -107,7 +93,6 @@ export class ResolvedConfig {
 	}
 }
 
-/** Where `compiledPath` repeats `file`: under the common folder of the source paths, as tsc's `outDir` does under `rootDir`; `file` itself without a compiled path. */
 export function compiledPathOf(
 	config: Pick<ResolvedConfig, "commonRoot" | "compiledPath" | "projectDir">,
 	file: string
@@ -119,7 +104,6 @@ export function compiledPathOf(
 	);
 }
 
-/** The file at `source`, an absolute POSIX path of a source the scan found, as Rojo reads what `config` makes of it. */
 export function scannedFileOf(
 	config: Pick<ResolvedConfig, "compiledPath" | "syncRules">,
 	source: string
@@ -128,7 +112,6 @@ export function scannedFileOf(
 	return RojoFile.at(source, config.syncRules, reading);
 }
 
-/** A `.rogen.json` resolved. */
 export interface ResolvedConfigFile {
 	readonly config: ResolvedConfig;
 }

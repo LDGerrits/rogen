@@ -106,17 +106,16 @@ registerCommand(
 				logService.notice(note);
 
 			const { stoppedBy } = found.value;
-			const failure = DiagnosticsError.of(found.value.diagnostics);
-			// An error that stops the write fails the check too, though it is about another file: the paths were checked only as far as the write gets.
-			const failed = DiagnosticsError.of([
-				...(failure?.diagnostics ?? []),
+			const aboutPaths = DiagnosticsError.of(found.value.diagnostics);
+			const failsCheck = DiagnosticsError.of([
+				...(aboutPaths?.diagnostics ?? []),
 				...stoppedBy,
 			]);
 			if (line.options.json)
 				return this.printJson(
 					logService,
 					{
-						...diagnosticsJson(failure?.diagnostics ?? [], cwd),
+						...diagnosticsJson(aboutPaths?.diagnostics ?? [], cwd),
 						...(stoppedBy.length > 0 && {
 							stoppedBy: stoppedBy.map((diagnostic) =>
 								diagnosticToJson(diagnostic, cwd)
@@ -124,9 +123,9 @@ registerCommand(
 						}),
 						...skippedJson(skipped, cwd),
 					},
-					failed
+					failsCheck
 				);
-			for (const diagnostic of failed?.diagnostics ?? []) {
+			for (const diagnostic of failsCheck?.diagnostics ?? []) {
 				logService.print(defanged(renderDiagnostic(diagnostic, cwd)));
 				logService.annotate(diagnostic);
 			}
@@ -134,10 +133,9 @@ registerCommand(
 				logService.warn(
 					`The write stops on the ${stoppedBy.length === 1 ? "error" : "errors"} above, so the paths were checked only as far as it gets; fix ${stoppedBy.length === 1 ? "it" : "them"} and check again.`
 				);
-			return failed ? this.reported(failed) : ok(undefined);
+			return failsCheck ? this.reported(failsCheck) : ok(undefined);
 		}
 
-		/** With paths, each is answered by the config that covers it, with that config's project file when it is stale, and one that nothing covers is said so and skipped. */
 		private async diagnose(
 			configService: ConfigService,
 			writeService: WriteService,

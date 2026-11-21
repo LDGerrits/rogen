@@ -21,7 +21,6 @@ export interface OutputWriteOptions {
 	readonly placeholders?: readonly Placeholder[];
 }
 
-/** Writes a tree to its output through a staging file, so a reader never sees half a project file. */
 export class OutputWriter {
 	constructor(
 		@FileSystemService private readonly fileSystemService: FileSystemService
@@ -31,7 +30,6 @@ export class OutputWriter {
 		return ProjectText.of(projectFile);
 	}
 
-	/** Writes the file when its bytes differ; `force` writes unchanged bytes so a watcher sees them. The missing `placeholders` are created first, whether or not the file is written. */
 	async write(
 		output: OutputFile,
 		tree: RojoProjectFile,

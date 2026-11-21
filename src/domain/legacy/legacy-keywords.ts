@@ -1,4 +1,3 @@
-/** v1's words for where a file goes, and the service each sends it to. */
 const SERVICES: Readonly<Record<string, string>> = {
 	Server: "ServerScriptService",
 	Client: "StarterPlayerScripts",
@@ -37,37 +36,29 @@ const SERVER = "server";
 const CLIENT = "client";
 const FALLBACK = "shared";
 
-/** The keywords that name their own wrapper folder where the service doesn't. */
 const WRAPPERS = new Set([SERVER, CLIENT, FALLBACK]);
 
 export type Casing = "PascalCase" | "camelCase";
 
-/** How v1 laid out a service: its wrapper folders, and whether client scripts left StarterPlayer. */
 export interface LayoutSettings {
 	readonly casing: Casing;
 	readonly unwrap: boolean;
 	readonly emitLegacyScripts: boolean;
 }
 
-/** A keyword at the start or end of a file's name, which v1 routed the file by. */
 export interface Affix {
-	/** The keyword, in lower case. */
 	readonly keyword: string;
-	/** The name without the keyword and its separator. */
 	readonly stripped: string;
-	/** The keyword with its separator, as written. */
 	readonly written: string;
 }
 
 interface Keyword {
-	/** As the config or v1 spells it, which is the route key. */
 	readonly key: string;
 	readonly service: string;
 }
 
 const escaped = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** v1's routing keywords: its built-in services and words, and a config's aliases over them. */
 export class LegacyKeywords {
 	private readonly byLower = new Map<string, Keyword>();
 	private readonly separatorSuffix: RegExp;
@@ -99,12 +90,10 @@ export class LegacyKeywords {
 		return this.byLower.has(word.toLowerCase());
 	}
 
-	/** The route key for `word`, spelled as the config or v1 spells it. */
 	keyOf(word: string): string {
 		return this.byLower.get(word.toLowerCase())?.key ?? word;
 	}
 
-	/** Where v1 put a file that `word` routed, as a route target. */
 	targetOf(word: string, settings: LayoutSettings): string {
 		const lower = word.toLowerCase();
 		let service = this.byLower.get(lower)?.service ?? SERVICES.Shared;
@@ -123,17 +112,14 @@ export class LegacyKeywords {
 		return LegacyKeywords.join(service, wrapper, settings);
 	}
 
-	/** Whether v1 placed a service by itself under another, as StarterPlayerScripts under StarterPlayer. */
 	static isNestedService(name: string): boolean {
 		return SERVICE_PARENTS[name] !== undefined;
 	}
 
-	/** Where v1 put a file that no keyword routed. */
 	static fallbackTarget(settings: LayoutSettings): string {
 		return LegacyKeywords.join(SERVICES.Shared, FALLBACK, settings);
 	}
 
-	/** The keyword v1 read at the end or start of `name`, a file's name without its extension. */
 	affixOf(name: string): Affix | undefined {
 		const separatorSuffix = this.separatorSuffix.exec(name);
 		if (separatorSuffix && separatorSuffix[0].length < name.length)

@@ -20,7 +20,6 @@ export function setLang(lang: Lang) {
 	dispatchEvent(new Event(EVENT));
 }
 
-/** Picks up a choice made elsewhere, such as in the docs' tabs before a client-side navigation here. */
 export function syncLang() {
 	let stored: string | null = null;
 	try {
@@ -36,6 +35,5 @@ export function onLang(listener: () => void) {
 	return () => removeEventListener(EVENT, listener);
 }
 
-/** The current language; Luau on the server. */
 export const useLang = () =>
 	useSyncExternalStore(onLang, getLang, () => "luau" as Lang);

@@ -3,7 +3,6 @@ import { InitPlan } from "./init-service.js";
 
 const LABEL_WIDTH = 10;
 
-/** `text` cut into lines of at most `width` characters at its spaces, the later lines indented under the label. */
 function wrapped(label: string, text: string, width: number): string[] {
 	const room = width - LABEL_WIDTH;
 	const lines: string[] = [];
@@ -21,7 +20,6 @@ function wrapped(label: string, text: string, width: number): string[] {
 }
 
 export class InitSummary {
-	/** The plan as the user is shown it before it is written: what each area gets, then every file and command, so nothing happens that wasn't shown, then what init could not do as asked. Lines are at most `width` characters. */
 	static lines(plan: InitPlan, width = 76): string[] {
 		const git = [
 			plan.files.some(({ fileName }) => fileName === ".gitignore")
@@ -74,7 +72,6 @@ export class InitSummary {
 		return rows.flatMap(([area, text]) => wrapped(area, text, width));
 	}
 
-	/** The source paths `dirs` and the keys of their `routes`, then where the files no route takes go. */
 	static code(
 		dirs: readonly string[],
 		routes: Readonly<Record<string, string>>

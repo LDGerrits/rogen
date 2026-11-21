@@ -22,7 +22,7 @@ import {
 import { LogService } from "../../platform/log/log-service.js";
 import { OutputShape as S } from "../../platform/output/output-shape.js";
 import { reportRojo, reportRojoBesideFailure } from "../write/report-rojo.js";
-import { rojoMessagesShape } from "../write/rojo-entry.js";
+import { rojoMessagesShape, serverMessagesJson } from "../write/rojo-entry.js";
 
 const PluginOptions = [JsonOption] as const;
 
@@ -42,7 +42,6 @@ const SUBCOMMANDS = [
 const isSubcommand = (word: string) =>
 	SUBCOMMANDS.some(({ name }) => name === word);
 
-/** The words that may follow `rogen plugin`. */
 const ACTIONS = [...SUBCOMMANDS.map(({ name }) => name), HELP_COMMAND];
 
 registerCommand(
@@ -114,15 +113,7 @@ registerCommand(
 						outcome: failed ? "failed" : "done",
 						messages: ran.isErr()
 							? []
-							: ran.value.messages
-									.filter(
-										({ severity }) => severity !== "debug"
-									)
-									.map(({ severity, text, details }) => ({
-										severity,
-										text,
-										...(details && { details }),
-									})),
+							: serverMessagesJson(ran.value.messages),
 						...(failed && failureToJson(failed)),
 					},
 					failed

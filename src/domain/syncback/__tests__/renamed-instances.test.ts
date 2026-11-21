@@ -3,7 +3,6 @@ import { abs, layoutOf } from "./layout-fixtures.js";
 
 const posix = (...segments: string[]) => abs(...segments).replaceAll("\\", "/");
 
-/** Calls `renamedInstances` with removed mirror paths mapped to the sources they were copied from, each of them removed. */
 const renamesOf = (
 	instances: Parameters<typeof renamedInstances>[0],
 	removed: ReadonlyMap<string, string>,

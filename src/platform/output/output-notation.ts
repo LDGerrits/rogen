@@ -35,11 +35,9 @@ function write(shape: OutputShape): string {
 	}
 }
 
-/** A shape in the compact text an agent reads: `{configs:[{config:string,outcome:"wrote"|"unchanged"}]}`, with a shape that has a name written as the name. */
 export const OutputNotation = {
 	of: write,
 
-	/** What a declaration prints, in the notation. */
 	describe(declaration: OutputDeclaration): {
 		readonly document?: string;
 		readonly lines?: string;
@@ -52,7 +50,6 @@ export const OutputNotation = {
 		};
 	},
 
-	/** Each named shape the declaration reaches, and those of `others`, written out once. */
 	shapesOf(
 		declaration: OutputDeclaration,
 		...others: readonly OutputShape[]

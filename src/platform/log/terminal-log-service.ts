@@ -7,7 +7,6 @@ import {
 	LogServiceOptions,
 } from "./abstract-log-service.js";
 
-/** Stdout with the colours clack draws taken out. */
 class UncolouredStdout extends Writable {
 	get columns(): number | undefined {
 		return process.stdout.columns;
@@ -33,7 +32,6 @@ export class TerminalLogService extends AbstractLogService {
 	>;
 	private readonly output?: Writable;
 
-	/** Without `color` it draws the same layout without colour. */
 	constructor(options: LogServiceOptions = {}) {
 		super(options);
 		this.symbols = {
@@ -101,13 +99,12 @@ export class TerminalLogService extends AbstractLogService {
 		}
 	}
 
-	/** A line outside a frame, written plainly as Rojo writes its own; false for the kinds that always draw one. */
 	private writeUnframed(kind: LogKind, text: string): boolean {
 		switch (kind) {
 			case "success":
 			case "info":
 			case "outro":
-				(this.stdoutReserved ? console.error : console.info)(text);
+				(this.ownLinesToStderr ? console.error : console.info)(text);
 				return true;
 			case "debug":
 			case "trace":

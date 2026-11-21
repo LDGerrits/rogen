@@ -15,7 +15,6 @@ import { FailedConfigFile } from "../config/config-service.js";
 export class LegacyConfig {
 	static readonly MIGRATION_URL = `${DOCS_URL}/migrating-from-v1`;
 
-	/** The name of every config v1 read: `.rogen.json`, or one named with `-c`. */
 	static readonly FILE_NAME = /\.rogen\.jsonc?$/;
 	private static readonly KEYS = ["source", "aliases"];
 	private static readonly MODE_KEYS = ["output", "build"];
@@ -31,7 +30,6 @@ export class LegacyConfig {
 		);
 	}
 
-	/** The v1 configs of a folder: `.rogen.json` and any `*.rogen.json`, by what they hold. */
 	static async find(
 		folder: string,
 		files: FileReader

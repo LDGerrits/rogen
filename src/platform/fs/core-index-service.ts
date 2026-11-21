@@ -67,7 +67,6 @@ class ListingDraft {
 		this.remove(joinPosix(dir, name));
 	}
 
-	/** Records `dir` as a fresh listing would: refused, with nothing under it. */
 	markUnreadable(dir: string): void {
 		this.remove(dir);
 		this.unreadable.add(dir);
@@ -121,7 +120,6 @@ export class CoreIndexService implements IndexService {
 		);
 	}
 
-	/** `undefined` for a directory that is missing, or that can't be read, which `draft` then records as unreadable until a read succeeds. */
 	private async readDirectory(
 		dir: string,
 		draft: ListingDraft,
@@ -153,6 +151,10 @@ export class CoreIndexService implements IndexService {
 			}
 			return listings.get(dir);
 		};
+		const isUnreadableNow = async (dir: string) => {
+			await listingOf(dir).catch(() => undefined);
+			return draft.unreadable.has(dir);
+		};
 
 		for (const change of changes) {
 			const posixPath = toPosix(change.path);
@@ -165,15 +167,11 @@ export class CoreIndexService implements IndexService {
 				if (listed === undefined) continue;
 				await this.addEntry(draft, dir, name, listed);
 			} else if (change.type === FileChangeType.DELETED) {
-				// A folder that can no longer be read is reported deleted; listing records it, and any other failure lets the deletion stand.
-				await listingOf(dir).catch(() => undefined);
-				if (isDirectoryType(change.fileType))
-					await listingOf(posixPath).catch(() => undefined);
-				if (
-					!draft.unreadable.has(dir) &&
-					!draft.unreadable.has(posixPath)
-				)
-					draft.delete(dir, name);
+				const dirUnreadable = await isUnreadableNow(dir);
+				const pathUnreadable = isDirectoryType(change.fileType)
+					? await isUnreadableNow(posixPath)
+					: draft.unreadable.has(posixPath);
+				if (!dirUnreadable && !pathUnreadable) draft.delete(dir, name);
 			}
 		}
 		return draft.toListing();

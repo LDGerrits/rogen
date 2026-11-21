@@ -7,7 +7,6 @@ export function toPosix(filePath: string): string {
 	return filePath.replace(/\\/g, POSIX_SEP);
 }
 
-/** Paths compared however written: POSIX from watchers, case-folded where the file system ignores case. */
 export class PathSet {
 	private readonly keys: ReadonlySet<string>;
 
@@ -37,7 +36,6 @@ export function toNative(
 		: filePath.replace(/\//g, platform.sep);
 }
 
-/** `filePath` as one word of the shell on `platform`, in that platform's separators and quoted when the shell would split or expand it. */
 export function toShellWord(
 	filePath: string,
 	platform: typeof path.posix = path
@@ -53,13 +51,15 @@ export function joinPosix(...segments: string[]): string {
 	return toPosix(path.join(...segments));
 }
 
-/** The directory of a relative POSIX path, `""` rather than `"."` at the top, so a root reads like the dirs below it. */
-export function dirnamePosix(relativePath: string): string {
+export function dirnamePosixOrEmpty(relativePath: string): string {
 	const dir = path.posix.dirname(relativePath);
 	return dir === "." ? "" : dir;
 }
 
-/** Folds `a` and `b` where the file system ignores case, which `path.relative` gets wrong on macOS. */
+/**
+ * Folds `a` and `b` where the file system ignores case, which `path.relative`
+ * gets wrong on macOS.
+ */
 function foldedForRelative(
 	a: string,
 	b: string,
@@ -68,7 +68,6 @@ function foldedForRelative(
 	return caseInsensitive ? [a.toLowerCase(), b.toLowerCase()] : [a, b];
 }
 
-/** Whether two paths name one place, folding case where the file system does. */
 export function samePath(
 	a: string,
 	b: string,
@@ -77,7 +76,6 @@ export function samePath(
 	return path.relative(...foldedForRelative(a, b, caseInsensitive)) === "";
 }
 
-/** Whether `dir` lies strictly inside `parent`; both must be absolute. */
 export function isInside(
 	dir: string,
 	parent: string,
@@ -94,12 +92,10 @@ export function isInside(
 	);
 }
 
-/** A relative directory with forward slashes, no leading `./` and no trailing `/`. */
 export function normalizeDir(entry: string): string {
 	return path.posix.normalize(toPosix(entry.trim())).replace(/(.)\/+$/, "$1");
 }
 
-/** The parent folder of `filePath`, then its parent, up to and including the root. */
 export function* ancestors(filePath: string): Generator<string> {
 	let current = filePath;
 	for (;;) {
@@ -110,23 +106,19 @@ export function* ancestors(filePath: string): Generator<string> {
 	}
 }
 
-/** `folder`, then each folder above it up to and including the root. */
 export function* selfAndAncestors(folder: string): Generator<string> {
 	yield folder;
 	yield* ancestors(folder);
 }
 
-/** Whether `child` is `parent` or lies inside it; both must be absolute, and may be written with either kind of separator. */
 export function contains(parent: string, child: string): boolean {
 	return samePath(child, parent) || isInside(child, parent);
 }
 
-/** Whether the POSIX path `child` is `parent` or lies under it, compared as text. */
 export function containsPosix(parent: string, child: string): boolean {
 	return child === parent || child.startsWith(`${parent}/`);
 }
 
-/** As `containsPosix`, folding case where the file system does. */
 export function containsPath(
 	parent: string,
 	child: string,
@@ -137,7 +129,6 @@ export function containsPath(
 		: containsPosix(parent, child);
 }
 
-/** The deepest relative POSIX folder that holds every one of `dirs`, compared as text; `.` when they share none. */
 export function commonFolderPosix(dirs: readonly string[]): string {
 	let folder = dirs[0];
 	for (const dir of dirs)
@@ -146,12 +137,10 @@ export function commonFolderPosix(dirs: readonly string[]): string {
 	return folder;
 }
 
-/** Whether a relative POSIX folder lies below the folder it is relative to, not at or above it. */
 export function isBelowPosix(relative: string): boolean {
 	return relative !== "." && relative !== ".." && !relative.startsWith("../");
 }
 
-/** `dirs` without repeats and without any dir that lies inside another, in their first order. */
 export function outermostDirs(dirs: readonly string[]): string[] {
 	const unique = [...new Set(dirs)];
 	return unique.filter(
@@ -159,12 +148,10 @@ export function outermostDirs(dirs: readonly string[]): string[] {
 	);
 }
 
-/** `filePath` from `from`, with `.` for `from` itself. */
 export function relativeTo(from: string, filePath: string): string {
 	return path.relative(from, filePath) || ".";
 }
 
-/** `filePath` as Rogen shows it: relative to `from`, with forward slashes, when it lies inside `from`, else as given. */
 export function shownFrom(from: string, filePath: string): string {
 	return isInside(filePath, from, false)
 		? toPosix(path.relative(from, filePath))
@@ -175,7 +162,6 @@ export function stemOf(fileName: string): string {
 	return fileName.slice(0, fileName.length - path.extname(fileName).length);
 }
 
-/** The deepest directory containing every one of `dirs`. All paths must be absolute. Throws when `dirs` is empty. */
 export function commonAncestor(
 	dirs: readonly string[],
 	caseInsensitive = ignoresPathCase

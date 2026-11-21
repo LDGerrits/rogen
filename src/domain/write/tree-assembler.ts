@@ -1,5 +1,5 @@
 import path from "path";
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { literalGlob } from "../../base/glob.js";
 import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -55,7 +55,6 @@ const needsRojoIgnore = (why: LeftOut): boolean =>
 	why.status !== "mounted" &&
 	why.status !== "inProject";
 
-/** Turns a placement and the meta it read into its Rojo tree. */
 export class TreeAssembler {
 	constructor(
 		private readonly placement: Placement,
@@ -132,7 +131,7 @@ export class TreeAssembler {
 					needsRojoIgnore(why)
 			)
 			.map(([source]) => source)
-			.sort(compareStrings);
+			.sort(compareByCodePoint);
 	}
 
 	private insertNodes(
@@ -142,7 +141,7 @@ export class TreeAssembler {
 		const { placement } = this;
 		const { layout, files } = placement;
 		for (const [dir, instancePath] of collapsed.entries())
-			project.insertNode(instancePath, {
+			project.insertNodeReplacingFolder(instancePath, {
 				$path: layout.rojoFolderPath(dir),
 			});
 		const initDirs = new Map<string, string>();
@@ -152,11 +151,11 @@ export class TreeAssembler {
 			const dir = placement.initDirOf(file);
 			if (dir !== undefined) {
 				initDirs.set(dir, path.posix.basename(entry.source));
-				project.insertNode(instancePath, {
+				project.insertNodeReplacingFolder(instancePath, {
 					$path: layout.rojoFolderPath(dir),
 				});
 			} else
-				project.insertNode(instancePath, {
+				project.insertNodeReplacingFolder(instancePath, {
 					$path: layout.rojoPath(entry.source),
 				});
 		}
@@ -230,7 +229,6 @@ export class TreeAssembler {
 		return collapsed;
 	}
 
-	/** The folders a node may be mounted at: those that name one, and routing folders whose own meta Rojo wouldn't read as the node's. */
 	private routingDirs(
 		entriesByDir: ReadonlyMap<string, readonly PlacedEntry[]>,
 		namedDirs: ReadonlySet<string>
@@ -279,7 +277,6 @@ export class TreeAssembler {
 		return { entriesByDir, namedDirs };
 	}
 
-	/** The files whose instance holds other files' instances, as `X.luau` beside `X/` does, which a `$path` to their folder would make two siblings. */
 	private static scriptsWithChildren(
 		placed: readonly PlacedEntry[],
 		claims: InstanceMap<number>

@@ -114,9 +114,7 @@ export interface WatchReporter {
 	begin(configs: readonly ResolvedConfig[], home?: string): void;
 	update(update: WatchUpdate): void;
 	error(error: Error): void;
-	/** One of Rojo's builds, or why it couldn't run. */
 	rojo(ran: Result<RojoCommandRun, Error>, target: RojoTarget): void;
-	/** Rojo crashed, and another started in its place. */
 	restarted(): void;
 	end(message?: string): void;
 }
@@ -255,7 +253,6 @@ export class WatchLog implements WatchReporter {
 	}
 }
 
-/** For a watch whose standard output is what Rojo prints: only the problems, none of the frame around them. */
 export class PrintedWatchLog extends WatchLog {
 	override begin(): void {}
 

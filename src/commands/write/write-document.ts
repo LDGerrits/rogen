@@ -27,7 +27,6 @@ export const writeEntryShape = S.named(
 	})
 );
 
-/** The lines `build --watch --json` and `serve --json` have in common, each keyed by what it reports. */
 export const watchLineShapes = {
 	write: S.object({ write: writeEntryShape }),
 	notice: S.object({
@@ -42,7 +41,6 @@ export const watchLineShapes = {
 	diagnostics: S.object({ diagnostics: S.array(diagnosticShape) }),
 };
 
-/** What `write --watch --json` and `serve --json` print first after refreshing the agent rules. */
 export const agentRulesLineShape = S.object({ agentRules: S.array(S.string) });
 
 export function agentRulesLine(
@@ -51,7 +49,6 @@ export function agentRulesLine(
 	return refreshed.length > 0 ? { agentRules: [...refreshed] } : undefined;
 }
 
-/** One line of `write --watch --json`. */
 export const writeLineShape = S.union(
 	agentRulesLineShape,
 	watchLineShapes.write,
@@ -61,7 +58,6 @@ export const writeLineShape = S.union(
 );
 
 export interface WriteEntry {
-	/** The config file's path relative to the working folder. */
 	readonly config: string;
 	readonly projectFile: string | null;
 	readonly outcome: "wrote" | "unchanged" | "wouldWrite" | "notWritten";
@@ -70,7 +66,6 @@ export interface WriteEntry {
 }
 
 interface ConfigsDocument {
-	/** Whether any project file was written. */
 	readonly changed: boolean;
 	readonly configs: readonly WriteEntry[];
 }
@@ -113,7 +108,6 @@ export function configsDocument(
 	};
 }
 
-/** The document of `write --json`. */
 export const writeDocumentShape = S.object({
 	changed: S.boolean,
 	configs: S.array(writeEntryShape),
@@ -121,11 +115,9 @@ export const writeDocumentShape = S.object({
 	agentRules: S.optional(S.array(S.string)),
 });
 
-/** A project file with no config of its name, which is its own output and is not written. */
 export const isPlain = (outcome: ConfigOutcome): boolean =>
 	outcome.kind !== "notLoaded" && outcome.config.isAdopted;
 
-/** The configs document with the project files the run left alone: those named as configs and those beside them, as paths relative to the working folder. */
 export function writeDocument(
 	run: WriteRun,
 	cwd: string,

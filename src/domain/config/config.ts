@@ -7,14 +7,12 @@ import {
 	projectFileName,
 } from "../rojo/rojo-project.js";
 
-/** The keys Rogen adds to a Rojo project file, beside Rojo's. */
 export interface RogenKeys {
 	readonly sourcePaths?: string[];
 	readonly routes?: Record<string, string>;
 	readonly compiledPath?: string;
 }
 
-/** What a `.rogen.json` holds: a Rojo project file, plus the keys Rogen reads. */
 export interface RogenConfig extends RogenKeys {
 	readonly name?: string;
 	readonly tree?: RojoNode;
@@ -33,26 +31,21 @@ export interface RogenConfig extends RogenKeys {
 
 const CONFIG_FILE_PATTERN = /^(.+)\.rogen\.jsonc?$/;
 
-/** The stem of a config file's name: `dist` for `dist.rogen.json`. */
 export const configStem = (fileName: string): string | undefined =>
 	CONFIG_FILE_PATTERN.exec(path.basename(fileName))?.[1];
 
 export const isConfigFileName = (fileName: string): boolean =>
 	configStem(fileName) !== undefined;
 
-/** The stem of the project file a config writes when it is named `default`. */
 export const DEFAULT_PROJECT = "default";
 
-/** The name of the config file for the project file `stem`: `dist.rogen.json` for `dist`. */
 export const configFileName = (stem: string): string => `${stem}.rogen.json`;
 
 export const DEFAULT_CONFIG_FILE = configFileName(DEFAULT_PROJECT);
 
-/** The stem of a project file's name: `dist` for `dist.project.json`. */
 export const projectStem = (projectFile: string): string =>
 	path.basename(projectFile).replace(/\.project\.jsonc?$/, "");
 
-/** A folder's default config, in either extension. */
 export const DEFAULT_CONFIG_FILE_NAMES: readonly string[] = [
 	DEFAULT_CONFIG_FILE,
 	`${DEFAULT_CONFIG_FILE}c`,
@@ -61,7 +54,6 @@ export const DEFAULT_CONFIG_FILE_NAMES: readonly string[] = [
 export const isDefaultConfigFileName = (fileName: string): boolean =>
 	DEFAULT_CONFIG_FILE_NAMES.includes(fileName);
 
-/** What `rogen syncback` writes beside a config while it runs: the project file Rojo reads, and the folder it writes new instances into. */
 export const SYNCBACK_FILES = {
 	project: "rogen-syncback.project.json",
 	staging: ".rogen-syncback",
@@ -70,16 +62,13 @@ export const SYNCBACK_FILES = {
 export const isSyncbackFileName = (name: string): boolean =>
 	name === SYNCBACK_FILES.project || name === SYNCBACK_FILES.staging;
 
-/** The folder Rogen scans when a config declares routes and no source paths. */
 export const DEFAULT_SOURCE_PATH = "src";
 
 export const DEFAULT_PROJECT_FILE = projectFileName(DEFAULT_PROJECT);
 
-/** Whether a file is named as a Rojo project file is. A config that is one was given no `.rogen.json`, and is its own output. */
 export const isProjectFileConfig = (file: string): boolean =>
 	isProjectFileName(path.basename(file));
 
-/** The Rojo project file a config writes, beside it and named for its stem; for a config that is a Rojo project file, that file. */
 export const projectFileOf = (configFile: string): string =>
 	isProjectFileConfig(configFile)
 		? configFile
@@ -88,7 +77,6 @@ export const projectFileOf = (configFile: string): string =>
 				projectFileName(configStem(configFile) ?? DEFAULT_PROJECT)
 			);
 
-/** Rogen's keys, in the order `rogen fmt-project` writes them, before the `tree`. */
 export const ROGEN_KEYS: readonly (keyof RogenKeys)[] = [
 	"sourcePaths",
 	"routes",
@@ -98,7 +86,6 @@ export const ROGEN_KEYS: readonly (keyof RogenKeys)[] = [
 export const isRogenKey = (key: string): boolean =>
 	(ROGEN_KEYS as readonly string[]).includes(key);
 
-/** A config as `rogen fmt-project` writes it, so the first format changes nothing. `written`: the tree of the project file the config was lifted from, which stays as the user wrote it where it is unchanged. */
 export function configFileContent(
 	config: RogenConfig,
 	written?: WrittenTree
@@ -110,7 +97,6 @@ type SourcePathOverlap =
 	| { readonly kind: "duplicate" }
 	| { readonly kind: "nested"; readonly outer: string };
 
-/** How the source path at `index` overlaps an earlier or enclosing one. Paths are absolute. */
 export function sourcePathOverlap(
 	sourcePaths: readonly string[],
 	index: number

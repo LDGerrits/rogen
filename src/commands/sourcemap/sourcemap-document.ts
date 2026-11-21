@@ -11,14 +11,12 @@ const S = OutputShape;
 
 const sourcemapEntryShape = rojoEntryShape("sourcemap");
 
-/** The document of `sourcemap --json`. */
 export const sourcemapDocumentShape = S.object({
 	changed: S.boolean,
 	configs: S.array(writeEntryShape),
 	rojo: sourcemapEntryShape,
 });
 
-/** One line of `sourcemap --watch --json`. */
 export const sourcemapLineShape = S.union(
 	watchLineShapes.write,
 	S.object({ rojo: sourcemapEntryShape }),

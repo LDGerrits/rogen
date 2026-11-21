@@ -3,14 +3,6 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
-/**
- * Turns dist/bundle.cjs into a single executable: a Node binary with the bundle injected as a Node single-executable application.
- *
- *   node scripts/make-binary.ts <out-file> [--node <node binary>] [--platform darwin|linux|win32]
- *
- * Without `--node` it uses the Node that runs it, so build on the platform it targets, or pass the target's `node`.
- */
-
 /** Marks a Node binary as carrying an injected blob; fixed by Node. */
 const SEA_FUSE = "NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2";
 const POSTJECT = "postject@1.0.0-alpha.6";
@@ -55,7 +47,8 @@ try {
 	fs.mkdirSync(path.dirname(path.resolve(projectFile)), { recursive: true });
 	fs.copyFileSync(nodeBinary, projectFile);
 	fs.chmodSync(projectFile, 0o755);
-	// A macOS binary must lose its signature to take the blob, and gets an ad-hoc one back to run.
+	// A macOS binary must lose its signature to take the blob, and gets an
+	// ad-hoc one back to run.
 	if (platform === "darwin")
 		execFileSync("codesign", ["--remove-signature", projectFile], {
 			stdio: "inherit",

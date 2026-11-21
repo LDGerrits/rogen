@@ -83,7 +83,6 @@ export interface CommandHarness<L extends LogService> {
 	): Promise<Result<void, Error>>;
 }
 
-/** Parses `argv` as `rogen` does, over the commands registered so far. */
 export function parseCommandLine(...argv: string[]) {
 	const registry = Registry.as<CommandRegistry>(Extensions.Commands);
 	return parseArgs(argv, (command) => registry.getOptions(command), [

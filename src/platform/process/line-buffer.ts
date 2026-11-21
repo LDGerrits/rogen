@@ -1,7 +1,6 @@
 export class LineBuffer {
 	private partial = "";
 
-	/** The lines `text` completes, without line ends; a `\r` ends a line too, but one ending `text` waits for a possible `\n`. */
 	push(text: string): string[] {
 		const all = this.partial + text;
 		const held = all.endsWith("\r") ? "\r" : "";

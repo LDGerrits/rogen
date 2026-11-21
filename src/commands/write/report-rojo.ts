@@ -5,13 +5,12 @@ import { LogService } from "../../platform/log/log-service.js";
 import { RojoServer, ServerMessage } from "../../domain/runner/rojo-server.js";
 import { RojoTarget } from "./rojo-entry.js";
 
-/** One thing Rojo said, at the level it said it, and on stderr when Rojo said it there. */
 function reportServerMessage(
 	logService: LogService,
 	{ severity, text, details = [], stdout }: ServerMessage,
 	cwd: string
 ): void {
-	if (severity === "debug") {
+	if (severity === "noise") {
 		logService.debug(`Rojo: ${text}`);
 		return;
 	}
@@ -25,11 +24,9 @@ function reportServerMessage(
 	else logService.info(said);
 }
 
-// Rojo's progress lines, which the line Rogen closes with says again.
 const isProgress = ({ severity, text }: ServerMessage) =>
-	severity === "info" && RojoServer.isProgress(text);
+	severity === "unrecognised" && RojoServer.isProgress(text);
 
-/** What Rojo said while it ran: its progress lines only under `-v`, everything else in Rogen's style. */
 export function reportRojo(
 	logService: LogService,
 	messages: readonly ServerMessage[],
@@ -42,7 +39,6 @@ export function reportRojo(
 	}
 }
 
-/** What Rojo said that its failure doesn't repeat: the failure carries its errors. */
 export function reportRojoBesideFailure(
 	logService: LogService,
 	messages: readonly ServerMessage[],
@@ -55,7 +51,6 @@ export function reportRojoBesideFailure(
 	);
 }
 
-/** What Rojo made, as the line that closes the run says it, such as `Built game.rbxl`. */
 export function rojoDone(target: RojoTarget, cwd: string): string {
 	const named = (file: string) =>
 		relativeTo(cwd, path.resolve(target.cwd, file));

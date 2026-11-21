@@ -20,19 +20,23 @@ import {
 
 const KILL_GRACE_MS = 5_000;
 
-/** How long to wait for a group that SIGKILL ended to leave. */
 const KILL_WAIT_MS = 2_000;
 
-/** How long an exited process's output may take to drain; a process it started can hold the pipes open for good. */
+/**
+ * How long an exited process's output may take to drain; a process it started
+ * can hold the pipes open for good.
+ */
 const DRAIN_MS = 250;
 
 /** Windows runs a batch file only through its shell. */
 const needsShell = (file: string, windows: boolean) =>
 	windows && /\.(cmd|bat)$/i.test(file);
 
-const shellQuoted = (arg: string) => `"${arg.replace(/"/g, '""')}"`;
+const cmdQuoted = (arg: string) => `"${arg.replace(/"/g, '""')}"`;
 
-/** `cmd.exe` expands `%NAME%` even inside quotes, and nothing escapes it there. */
+/**
+ * `cmd.exe` expands `%NAME%` even inside quotes, and nothing escapes it there.
+ */
 const expandedByShell = (arg: string) => /%[^%\s]+%/.test(arg);
 
 interface Launch {
@@ -41,41 +45,49 @@ interface Launch {
 	readonly windowsVerbatimArguments: boolean;
 }
 
-/** Runs a batch file through `cmd.exe` with the line quoted here, as Node's `shell` option warns against; fails for an argument `cmd.exe` would rewrite. */
+const directLaunch = (file: string, args: readonly string[]): Launch => ({
+	command: file,
+	args: [...args],
+	windowsVerbatimArguments: false,
+});
+
+// After `/s /c`, cmd.exe drops the first and last quote of the line and runs
+// what is between them as typed.
+const cmdCommandLine = (file: string, args: readonly string[]) =>
+	`"${[file, ...args].map(cmdQuoted).join(" ")}"`;
+
+const cmdLaunch = (
+	file: string,
+	args: readonly string[],
+	env: NodeJS.ProcessEnv
+): Launch => ({
+	command: env.ComSpec ?? "cmd.exe",
+	args: ["/d", "/s", "/c", cmdCommandLine(file, args)],
+	windowsVerbatimArguments: true,
+});
+
+const percentExpansionRefusal = (file: string, expanded: string) =>
+	new ToolError(
+		`${path.basename(file)} is a batch file, which Windows runs through cmd.exe, and cmd.exe would expand the % in "${expanded}" as a variable. Run the program itself (an .exe) or leave the % out of its path and arguments.`
+	);
+
 export function launch(
 	file: string,
 	args: readonly string[],
 	env: NodeJS.ProcessEnv,
 	windows = isWindows
 ): Result<Launch, Error> {
-	if (!needsShell(file, windows))
-		return ok({
-			command: file,
-			args: [...args],
-			windowsVerbatimArguments: false,
-		});
+	if (!needsShell(file, windows)) return ok(directLaunch(file, args));
 	const expanded = [file, ...args].find(expandedByShell);
 	if (expanded !== undefined)
-		return err(
-			new ToolError(
-				`${path.basename(file)} is a batch file, which Windows runs through cmd.exe, and cmd.exe would expand the % in "${expanded}" as a variable. Run the program itself (an .exe) or leave the % out of its path and arguments.`
-			)
-		);
-	return ok({
-		command: env.ComSpec ?? "cmd.exe",
-		args: [
-			"/d",
-			"/s",
-			"/c",
-			`"${[file, ...args].map(shellQuoted).join(" ")}"`,
-		],
-		windowsVerbatimArguments: true,
-	});
+		return err(percentExpansionRefusal(file, expanded));
+	return ok(cmdLaunch(file, args, env));
 }
 
 const taskkillTree = (pid: number) => ["/pid", String(pid), "/T", "/F"];
 
-// A toolchain shim starts the real program as a child that outlives it unless the tree ends.
+// A toolchain shim starts the real program as a child that outlives it unless
+// the tree ends.
 function killWindowsTree(pid: number): Promise<void> {
 	return new Promise<void>((resolve) =>
 		childProcess.execFile(
@@ -87,7 +99,10 @@ function killWindowsTree(pid: number): Promise<void> {
 	);
 }
 
-/** The child leads a process group of its own, so the signal reaches what a wrapper started without handing over to it. */
+/**
+ * The child leads a process group of its own, so the signal reaches what a
+ * wrapper started without handing over to it.
+ */
 function signalTree(
 	pid: number,
 	signal: NodeJS.Signals,
@@ -109,6 +124,16 @@ function groupExists(pid: number): boolean {
 	}
 }
 
+function onChildEndEvenIfDisposed(
+	child: childProcess.ChildProcess,
+	listener: () => void
+): void {
+	child.once("exit", listener);
+	child.once("error", () => {
+		if (child.pid === undefined) listener();
+	});
+}
+
 class FailedChildProcess extends AbstractDisposable implements ChildProcess {
 	readonly pid = undefined;
 	private readonly _onDidExit = this._register(new Emitter<ProcessExit>());
@@ -127,7 +152,6 @@ class FailedChildProcess extends AbstractDisposable implements ChildProcess {
 	}
 }
 
-/** The processes a service started that still run. */
 class RunningChildren {
 	private readonly children = new Set<NativeChildProcess>();
 	private readonly _onDidChangeRunning = new Emitter<boolean>();
@@ -170,12 +194,7 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 	) {
 		super();
 		running.add(this);
-		// On the child itself, since a dispose before the exit drops the listeners of `onDidExit`.
-		const left = () => running.delete(this);
-		child.once("exit", left);
-		child.once("error", () => {
-			if (child.pid === undefined) left();
-		});
+		onChildEndEvenIfDisposed(child, () => running.delete(this));
 		for (const [stream, name] of [
 			[child.stdout, "stdout"],
 			[child.stderr, "stderr"],
@@ -272,7 +291,6 @@ export class NativeProcessService implements ProcessService {
 
 	private readonly running = new RunningChildren();
 
-	/** Fires true when a process this service started is the first to run, and false when the last has ended. */
 	readonly onDidChangeRunning: Event<boolean> =
 		this.running.onDidChangeRunning;
 
@@ -375,7 +393,6 @@ export class NativeProcessService implements ProcessService {
 		}
 	}
 
-	/** Kills every process this service started that still runs, and what each started, without waiting; for a process about to exit. */
 	killAll(): void {
 		this.running.killAll();
 	}

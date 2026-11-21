@@ -46,9 +46,9 @@ describe("PlainLogService", () => {
 		]);
 	});
 
-	it("should write its own lines on stderr once stdout is reserved, and leave print and note on stdout", () => {
+	it("should write its own lines on stderr once its own lines go to stderr, and leave print and note on stdout", () => {
 		const logService = new PlainLogService();
-		logService.reserveStdout();
+		logService.sendOwnLinesToStderr();
 
 		logService.intro("rogen build · game");
 		logService.step("building");

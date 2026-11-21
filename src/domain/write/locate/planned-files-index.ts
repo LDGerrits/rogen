@@ -4,7 +4,6 @@ import { FileType } from "../../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../../platform/fs/index-service.js";
 import { FileAt } from "../root-scanner.js";
 
-/** `index` with the source files that don't exist yet, and their folders, added on top, in source paths that are folders; `index` itself is untouched. */
 export class PlannedFilesIndex implements IndexReader {
 	private readonly added = new Map<string, Map<string, FileType>>();
 

@@ -1,37 +1,30 @@
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { isGlobsetMatch } from "../../base/glob.js";
 import { Target } from "../roblox/roblox.js";
 import { DeclaredKeys } from "./declared-keys.js";
 
-/** What the patterns of a config say about a file name: the route that takes it, or the patterns that tie with different targets. */
 export type PatternMatch =
 	| { readonly kind: "routed"; readonly key: string }
 	| { readonly kind: "clash"; readonly keys: readonly string[] };
 
-/** A route key read as one of Rojo's globs on a single name: `*`, `?`, a `[...]` class and `{a,b}` alternatives, with no path. */
 interface Glob {
-	/** The key with each choice of its `{a,b}` groups made, as globs without braces. */
 	readonly alternatives: readonly string[];
 }
 
 const LITERAL = /[A-Za-z0-9._-]/;
 const CLASS_BODY = /^[!^]?[A-Za-z0-9._-]+$/;
 const WILDCARD = /[*?[{]/;
-/** One word of a `{a,b}` group: literals, `*`, `?` and classes, with no group inside. */
 const CHOICE = /^(?:[A-Za-z0-9._*?-]|\[[!^]?[A-Za-z0-9._-]+\])*$/;
 
-/** The route keys that are Rojo globs on a file's name. */
 export class RoutePatterns {
 	private readonly patterns: readonly {
 		readonly key: string;
 		readonly target: string;
-		/** Each alternative of the key, with the characters it matches that aren't `*`. */
 		readonly alternatives: readonly {
 			readonly glob: string;
 			readonly weight: number;
 		}[];
 	}[];
-	/** The name keys, each with its target, which a pattern's target is also reached by. */
 	private readonly targets: ReadonlyMap<string, string>;
 	private readonly names: readonly (readonly [string, string])[];
 
@@ -62,12 +55,10 @@ export class RoutePatterns {
 		});
 	}
 
-	/** A key with a wildcard and a letter or digit, written in the characters of a file name and Rojo's glob syntax for one name: no `/` or `**`, closed classes and `{a,b}` groups, none nested. */
 	static isPattern(key: string): boolean {
 		return RoutePatterns.parse(key) !== undefined;
 	}
 
-	/** The pattern whose matching alternative has the most characters that aren't `*` (`?` and a class count one each), among those matching one of `names`, a file's name and the name of the instance it makes; patterns of that weight with different targets clash. */
 	match(...names: readonly string[]): PatternMatch | undefined {
 		const matching = this.patterns.flatMap((pattern) => {
 			const weights = pattern.alternatives
@@ -86,11 +77,10 @@ export class RoutePatterns {
 			return { kind: "routed", key: best[0].key };
 		return {
 			kind: "clash",
-			keys: best.map(({ key }) => key).sort(compareStrings),
+			keys: best.map(({ key }) => key).sort(compareByCodePoint),
 		};
 	}
 
-	/** The name key with the target of the pattern or `*` route `key`, which routes a folder there, as no pattern does; none when no one name key has it. */
 	nameKeyFor(key: string): string | undefined {
 		const target = this.targets.get(key);
 		if (target === undefined) return undefined;
@@ -98,7 +88,6 @@ export class RoutePatterns {
 		return names.length === 1 ? names[0][0] : undefined;
 	}
 
-	/** `key` as a glob on one name, or none when it isn't one. */
 	private static parse(key: string): Glob | undefined {
 		if (
 			!WILDCARD.test(key) ||
@@ -134,7 +123,6 @@ export class RoutePatterns {
 		return { alternatives: [...new Set(alternatives)] };
 	}
 
-	/** The characters `glob` matches that aren't `*`: a literal, a `?` or a class each count one. */
 	private static weightOf(glob: string): number {
 		let weight = 0;
 		for (let at = 0; at < glob.length; at++) {

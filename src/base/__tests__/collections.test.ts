@@ -1,4 +1,4 @@
-import { compareStrings, groupBy } from "../collections.js";
+import { compareByCodePoint, groupBy } from "../collections.js";
 
 describe("groupBy", () => {
 	it("should group items under their key in the order they appear", () => {
@@ -38,23 +38,23 @@ describe("groupBy", () => {
 	});
 });
 
-describe("compareStrings", () => {
+describe("compareByCodePoint", () => {
 	it("should order code points and return 0 for equal strings", () => {
-		expect(["b", "B", "a", "a"].sort(compareStrings)).toEqual([
+		expect(["b", "B", "a", "a"].sort(compareByCodePoint)).toEqual([
 			"B",
 			"a",
 			"a",
 			"b",
 		]);
-		expect(compareStrings("a", "a")).toBe(0);
+		expect(compareByCodePoint("a", "a")).toBe(0);
 	});
 
 	it("should order by UTF-8 bytes, so a character past the basic plane follows one before the surrogates", () => {
-		expect(["\u{1F600}", "\uFF41"].sort(compareStrings)).toEqual([
+		expect(["\u{1F600}", "\uFF41"].sort(compareByCodePoint)).toEqual([
 			"\uFF41",
 			"\u{1F600}",
 		]);
-		expect(compareStrings("a", "ab")).toBe(-1);
-		expect(compareStrings("ab", "a")).toBe(1);
+		expect(compareByCodePoint("a", "ab")).toBe(-1);
+		expect(compareByCodePoint("ab", "a")).toBe(1);
 	});
 });

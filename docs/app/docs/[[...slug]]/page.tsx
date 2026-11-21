@@ -47,7 +47,6 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
 			<DocsBody>
 				<MDX
 					components={getMDXComponents({
-						// this allows you to link to other pages with relative file paths
 						a: createRelativeLink(source, page),
 					})}
 				/>
@@ -56,7 +55,8 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
 	);
 }
 
-// Rendered on the server, unlike Fumadocs' PageLastUpdate, so the date is in the HTML.
+// Rendered on the server, unlike Fumadocs' PageLastUpdate, so the date is in
+// the HTML.
 function LastUpdated({ date }: { date: Date }) {
 	return (
 		<p className="ms-auto text-sm text-fd-muted-foreground">

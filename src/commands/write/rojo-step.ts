@@ -4,22 +4,15 @@ import { ConfigSelection } from "../../domain/config/config-service.js";
 import { ResolvedConfig } from "../../domain/config/resolved-config.js";
 import { RojoTarget } from "./rojo-entry.js";
 
-/** One run of Rojo on one project. */
 export interface RojoPlan {
 	readonly project: ResolvedConfig;
-	/** Rojo's flags, after the project file. */
 	readonly flags: readonly string[];
-	/** Where Rojo runs, so a path in `flags` is relative to it. */
 	readonly cwd: string;
-	/** What the run is for, as the JSON reports it. */
 	readonly target: RojoTarget;
 }
 
-/** The Rojo command a command runs after it has written the project files. */
 export interface RojoStep {
 	readonly command: RojoTarget["command"];
-	/** Whether, from its flags alone, its result is for the screen, which then needs stdout to itself. */
 	readonly prints: boolean;
-	/** The run a selection asks for, or the reason it asks for none; none when its files are broken, which the write reports. */
 	plan(selection: ConfigSelection): Result<RojoPlan | undefined, UsageError>;
 }

@@ -29,7 +29,6 @@ const isScript = (name: string) =>
 const isTypeScript = (name: string) =>
 	/\.tsx?$/i.test(name) && !isDeclaration(name);
 
-/** The files v1 synced: scripts, models and data files. */
 const isSource = (name: string) =>
 	isScript(name) ||
 	/\.(rbxm|rbxmx)$/i.test(name) ||
@@ -37,26 +36,20 @@ const isSource = (name: string) =>
 		!name.startsWith(".") &&
 		DATA_EXTENSIONS.has(path.extname(name).toLowerCase()));
 
-/** A script v1 took as its folder, and stopped looking inside. */
 const isInitFile = (name: string) =>
 	isScript(name) && /^(index|init)([.-][a-z0-9_]+)?\./i.test(name);
 
-/** Rojo's script suffixes, which v1 also routed by and v2 reads the same way. */
 const ROJO_SUFFIXES = new Set([".server", ".client"]);
 
-/** v1's marker files that change how it read a folder, rather than where it sent it. */
 export type LegacyMarker = "structure" | "unwrap" | "sync";
 
 const MARKERS = new Set(["structure", "verbatim", "unwrap"]);
 
-/** A file whose v1 name routed it, and that a rename can't carry over. */
 export interface KeptName {
 	readonly file: string;
-	/** The name v2 reads it by, which the file would need. */
 	readonly name: string;
 }
 
-/** A file that v1's deepest routing word and v2's outermost route send to different places. */
 export interface OutrankedFile {
 	readonly file: string;
 	readonly before: string;
@@ -67,46 +60,36 @@ interface Flags {
 	readonly structure: boolean;
 	readonly verbatim: boolean;
 	readonly tagged: boolean;
-	/** The first routing word on the way down, which governs in v2. */
 	readonly outer?: string;
-	/** The last routing word on the way down, which v1 went by. */
 	readonly deepest?: string;
 }
 
-/** The flags of a folder that `word` routes. */
 const routedBy = (flags: Flags, word: string): Flags => ({
 	...flags,
 	outer: flags.outer ?? word,
 	deepest: word,
 });
 
-/** What v1 read from the names in the source folders: the keywords used, and the renames that keep each file where v1 put it. */
 export class LegacySourceTree {
 	readonly used = new Set<string>();
 	readonly moves: PlannedMove[] = [];
 	readonly markers: { marker: LegacyMarker; folder: string }[] = [];
 	readonly tagged: string[] = [];
-	/** TypeScript files: renaming one breaks the imports of it. */
 	readonly typeScript: KeptName[] = [];
-	/** Files whose new name is taken. */
 	readonly clashes: KeptName[] = [];
 	readonly outranked: OutrankedFile[] = [];
 	private readonly folderSpellings = new Map<string, Map<string, number>>();
 
 	constructor(
 		private readonly files: FileReader,
-		/** The folder paths are relative to. */
 		private readonly root: string,
 		private readonly keywords: LegacyKeywords,
 		private readonly knownTags: ReadonlySet<string>,
 		private readonly verbatim: boolean,
-		/** The route key a keyword, in lower case, becomes. */
 		private readonly keyOf: (keyword: string) => string,
-		/** Where v1 put a file that a keyword routed. */
 		private readonly targetOf: (keyword: string) => string
 	) {}
 
-	/** How most routing folders spell `keyword`, in lower case; none when no folder routes by it. */
 	folderSpelling(keyword: string): string | undefined {
 		const spellings = this.folderSpellings.get(keyword);
 		if (!spellings) return undefined;
@@ -182,7 +165,6 @@ export class LegacySourceTree {
 		}
 	}
 
-	/** The flags of `folder` once its marker files are read; a routing marker becomes v2's `@` marker. */
 	private readMarkers(
 		folder: string,
 		names: readonly string[],
@@ -225,7 +207,6 @@ export class LegacySourceTree {
 		return { ...routed, structure, verbatim, tagged };
 	}
 
-	/** Notes a file that v1 and v2 place apart: v1 by the word in its name or its deepest folder, v2 by its outermost. */
 	private compare(file: string, flags: Flags, named?: string): void {
 		const before = named ?? flags.deepest;
 		const after = flags.outer ?? named;

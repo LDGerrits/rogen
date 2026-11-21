@@ -10,7 +10,6 @@ export const config = (port: number, fields: Record<string, unknown> = {}) =>
 		...fields,
 	});
 
-/** A Rojo project file that serves on `port`. */
 export const rojoProjectFile = (port: number, name: string) =>
 	JSON.stringify({
 		name,
@@ -18,7 +17,6 @@ export const rojoProjectFile = (port: number, name: string) =>
 		tree: { $className: "DataModel" },
 	});
 
-/** The files of a project that serves on `port`. */
 export const projectFiles = (port: number) => ({
 	"default.rogen.json": config(port),
 	"src/A.server.luau": "",
@@ -31,7 +29,6 @@ const isFree = (port: number) =>
 		probe.listen(port, "127.0.0.1", () => probe.close(() => resolve(true)));
 	});
 
-/** A port within 2000 of `firstPort` and the two after it, which a test may serve on, that nothing listens on. */
 export async function freePort(firstPort: number): Promise<number> {
 	for (;;) {
 		const port = firstPort + Math.floor(Math.random() * 2000);
@@ -40,7 +37,6 @@ export async function freePort(firstPort: number): Promise<number> {
 	}
 }
 
-/** A fresh project per test, served on a free port from `firstPort`; `start` takes another checkout's `dir`. */
 export function useServeProject(
 	firstPort: number,
 	files: Readonly<Record<string, string>> = {}

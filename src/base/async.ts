@@ -5,7 +5,6 @@ export interface Task<T> {
 	(): T;
 }
 
-/** A queue that handles one promise at a time. */
 export class Sequencer {
 	private current: Promise<unknown> = Promise.resolve(null);
 
@@ -50,7 +49,6 @@ export class DeferredPromise<T> {
 	}
 }
 
-/** Runs `runner` once, `delay` ms after the last `schedule`; disposing it cancels a run that is still waiting. */
 export class RunOnceScheduler implements Disposable {
 	private timer: ReturnType<typeof setTimeout> | undefined;
 	private disposed = false;
@@ -88,7 +86,6 @@ export class RunOnceScheduler implements Disposable {
 	}
 }
 
-/** Resolves once `signal` aborts, at once when it has. */
 export function aborted(signal: AbortSignal): Promise<void> {
 	return new Promise((resolve) => {
 		if (signal.aborted) resolve();
@@ -96,7 +93,6 @@ export function aborted(signal: AbortSignal): Promise<void> {
 	});
 }
 
-/** Resolves after `ms` milliseconds, or at once when `signal` aborts, clearing its timer. */
 export function timeout(ms: number, signal?: AbortSignal): Promise<void> {
 	return new Promise((resolve) => {
 		if (signal?.aborted) {

@@ -27,7 +27,6 @@ import {
 } from "./init-service.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
-/** What `run` returns, or its failure wrapped with `what`. */
 async function attempt<T>(
 	what: string,
 	run: () => Promise<T>
@@ -38,12 +37,10 @@ async function attempt<T>(
 		: ok(done.value);
 }
 
-/** What can stop the writes: a file that failed, the scaffold that failed, or a shutdown. */
 type WriteFailure = IoError | ToolError | CancelledError;
 
 const stopped = () => new CancelledError("init stopped before it finished.");
 
-/** `failure`, of the same kind and with the same hint, saying `reason` instead. */
 function withReason(failure: WriteFailure, reason: string): WriteFailure {
 	const Kind = failure.constructor as new (
 		reason: string,
@@ -53,7 +50,6 @@ function withReason(failure: WriteFailure, reason: string): WriteFailure {
 	return new Kind(reason, failure.hint, { cause: failure });
 }
 
-/** `failure`, of its own kind, naming what undo left; a cancel that left nothing says the folder is as it was. */
 function undone(failure: WriteFailure, left: readonly string[]): WriteFailure {
 	if (left.length > 0)
 		return withReason(
@@ -80,7 +76,6 @@ export class InitWriter {
 		private readonly instantiationService: InstantiationService
 	) {}
 
-	/** Stops at the first write that fails, or at a shutdown, which also stops the scaffold, and undoes the writes before it; `onWritten` hears of each once the writes have all succeeded. A dry run writes nothing and calls it for what it would write, leaving a shutdown to end the process. */
 	async write(
 		plan: InitPlan,
 		onWritten: (written: InitWritten) => void,
@@ -127,7 +122,6 @@ export class InitWriter {
 		return ok(undefined);
 	}
 
-	/** The scaffold, moves, files and folders, any of whose failure fails the run. */
 	private async change(
 		plan: InitPlan,
 		log: UndoLog,
@@ -168,7 +162,6 @@ export class InitWriter {
 			if (wrote.isErr()) return wrote;
 			written.push({ kind: "file", file });
 		}
-		// A dry run asks the folder as the files and moves would leave it, as the real run asks after making them.
 		const folder: FileReader = dryRun
 			? this.instantiationService.createInstance(DraftFileReader, {
 					files: new Map(
@@ -196,7 +189,6 @@ export class InitWriter {
 		return ok(undefined);
 	}
 
-	/** Runs the tool in the folder, making it first, then removes what it wrote that `init` replaces. */
 	private async scaffold(
 		{ command, replaces }: PlannedScaffold,
 		directory: string,
@@ -230,7 +222,6 @@ export class InitWriter {
 		});
 	}
 
-	/** A command that fails leaves the project written, so it is reported to the caller, which says what to run by hand, and the commands after it are skipped. */
 	private async runCommands(
 		plan: InitPlan,
 		onWritten: (written: InitWritten) => void,
@@ -254,7 +245,6 @@ export class InitWriter {
 		}
 	}
 
-	/** Why `command` did not finish, or `undefined` when it did. */
 	private async failureOf(
 		command: PlannedCommand,
 		cwd: string,

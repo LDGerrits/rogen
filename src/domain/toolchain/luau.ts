@@ -7,7 +7,6 @@ import {
 	PackageManager,
 } from "./toolchain.js";
 
-/** Plain Luau, the language assumed when no other is found. */
 export class Luau implements Language, LanguageDetector {
 	readonly id = "luau";
 	readonly copy: LanguageCopy = { label: "Luau" };

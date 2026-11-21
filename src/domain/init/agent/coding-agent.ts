@@ -19,7 +19,6 @@ function indentOf(text: string): string {
 	return /^\t/m.test(text) ? "\t" : (/^( +)\S/m.exec(text)?.[1] ?? "\t");
 }
 
-/** `text` is `undefined` when the file doesn't exist. */
 export function withHook(
 	text: string | undefined,
 	{ event, entry, version }: HookEntry
@@ -52,7 +51,6 @@ export function withHook(
 	};
 }
 
-/** The file Claude Code reads its hooks from, which marks it among the agents. */
 export const CLAUDE_SETTINGS_FILE = ".claude/settings.json";
 export const GEMINI_SETTINGS_FILE = ".gemini/settings.json";
 
@@ -64,7 +62,6 @@ export interface CodingAgent {
 	readonly hook: HookEntry;
 }
 
-/** The shape Claude Code, Codex and Gemini CLI share: a group of command hooks. */
 const group = (command: string) => ({
 	hooks: [{ type: "command", command }],
 });

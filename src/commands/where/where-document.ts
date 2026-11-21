@@ -40,7 +40,6 @@ const fileEntryShape = (
 	fields: Readonly<Record<string, OutputShape | OptionalKey>> = {}
 ) => S.object({ ...fileEntryBase, status, ...fields });
 
-/** The document of `where --json`. */
 export const whereDocumentShape = S.object({
 	locations: S.array(
 		S.union(
@@ -157,9 +156,7 @@ type WhereEntry = WhereFileEntry | WhereInstanceEntry;
 
 interface WhereDocument {
 	readonly locations: readonly WhereEntry[];
-	/** What is wrong with what was asked: a config that didn't load, or why a listing is empty. */
 	readonly diagnostics: readonly DiagnosticJson[];
-	/** The errors about other files that stop the write, as in `check --json`. */
 	readonly stoppedBy?: readonly DiagnosticJson[];
 	readonly skipped?: readonly SkippedPathJson[];
 }

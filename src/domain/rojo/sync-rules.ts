@@ -31,34 +31,27 @@ export const SYNC_RULE_FIELDS: readonly string[] = [
 	"suffix",
 ];
 
-/** What a sync rule turns a file into, spelled as Rojo spells the `use` of a rule. */
 export type SyncRuleUse = (typeof SYNC_RULE_USES)[number];
 
 export interface SyncRule {
 	readonly pattern: string;
-	/** A file this matches is left to the rules after this one. */
 	readonly exclude?: string;
 	readonly use: SyncRuleUse;
-	/** What is cut off the end of the file name to give the instance its name, the extension included; without it only the extension goes. */
 	readonly suffix?: string;
 }
 
 export interface SyncRuleMatch {
 	readonly rule: SyncRule;
 	readonly name: string;
-	/** Whether the rule is one the project wrote rather than one of Rojo's. */
 	readonly own: boolean;
-	/** Whether the rule has a suffix the file name does not end with, so the whole file name is the instance name. */
 	readonly suffixMissed: boolean;
 }
 
-/** What is wrong with the rule at `index` of a project's `syncRules`. */
 interface SyncRuleProblem {
 	readonly index: number;
 	readonly message: string;
 }
 
-/** The rules Rojo applies after a project's own, in its order. */
 export const DEFAULT_SYNC_RULES: readonly SyncRule[] = [
 	{ pattern: "*.server.lua", use: "serverScript", suffix: ".server.lua" },
 	{ pattern: "*.server.luau", use: "serverScript", suffix: ".server.luau" },
@@ -94,19 +87,16 @@ export const DEFAULT_SYNC_RULES: readonly SyncRule[] = [
 export class SyncRules {
 	static readonly DEFAULT = new SyncRules(DEFAULT_SYNC_RULES);
 
-	/** `dir` is the absolute POSIX folder the paths to match are relative to. */
 	constructor(
 		private readonly rules: readonly SyncRule[],
 		private readonly ownCount = 0,
 		readonly dir = ""
 	) {}
 
-	/** `own` in front of Rojo's rules, the first match winning. */
 	static following(own: readonly SyncRule[], dir: string): SyncRules {
 		return new SyncRules([...own, ...DEFAULT_SYNC_RULES], own.length, dir);
 	}
 
-	/** The rules a project's `syncRules` holds, and what is wrong with the ones it can't read. */
 	static read(values: readonly unknown[]): {
 		readonly rules: SyncRule[];
 		readonly problems: SyncRuleProblem[];
@@ -122,7 +112,6 @@ export class SyncRules {
 		return { rules, problems };
 	}
 
-	/** The fields of the rules in `values` that a rule does not have, which Rojo ignores. */
 	static unknownFields(
 		values: readonly unknown[]
 	): { readonly index: number; readonly field: string }[] {
@@ -154,17 +143,14 @@ export class SyncRules {
 		};
 	}
 
-	/** `dir`, an absolute POSIX folder, relative to the folder the rules are written for. */
 	relativeDir(dir: string): string {
 		return path.posix.relative(this.dir, dir);
 	}
 
-	/** The rules the project wrote, in front of Rojo's. */
 	get own(): readonly SyncRule[] {
 		return this.rules.slice(0, this.ownCount);
 	}
 
-	/** The first rule that takes `filePath`, a path relative to the folder the rules are written for, written with `/`. */
 	match(filePath: string): SyncRuleMatch | undefined {
 		const index = this.rules.findIndex((rule) =>
 			SyncRules.takes(rule, filePath)

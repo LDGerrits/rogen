@@ -58,24 +58,31 @@ export class DiskWatcher extends AbstractWatcher {
 	}
 }
 
-/** One watch, from its start to its stop; nothing it saw outlives it. */
 class WatchSession {
 	private readonly watcher: chokidar.FSWatcher;
-	/** Links seen that aren't followed; chokidar reports nothing about them, so their coming and going is reported here. */
+	/**
+	 * Links seen that aren't followed; chokidar reports nothing about them, so
+	 * their coming and going is reported here.
+	 */
 	private readonly unfollowed = new Set<string>();
 	private ready = false;
 	private closed = false;
 	private readonly seen = new Map<string, string | undefined>();
-	/** Folders chokidar could not read; chokidar reports nothing when one becomes readable, so that is reported here. */
+	/**
+	 * Folders chokidar could not read; chokidar reports nothing when one
+	 * becomes readable, so that is reported here.
+	 */
 	private readonly refused = new Set<string>();
-	/** Paths handed back to chokidar and not yet reported, with the tick that did it: they are reported added a tick later, once watched, so what appears in them meanwhile is not lost. */
-	private readonly attaching = new Map<
+	private readonly unreportedUntilWatched = new Map<
 		string,
-		{ fileType: FileType; tick: number }
+		{ fileType: FileType; handedBackAt: number }
 	>();
 	private tick = 0;
 	private revival: NodeJS.Timeout | undefined;
-	/** Ends a start still waiting for chokidar, which never reports ready once closed. */
+	/**
+	 * Ends a start still waiting for chokidar, which never reports ready once
+	 * closed.
+	 */
 	private cancel: (() => void) | undefined;
 
 	constructor(
@@ -144,14 +151,17 @@ class WatchSession {
 			this.refused.add(failed);
 	}
 
-	/** Rewatches roots that came back or began as a new place, and folders that became readable: chokidar sees none of them. */
+	/**
+	 * Rewatches roots that came back or began as a new place, and folders that
+	 * became readable: chokidar sees none of them.
+	 */
 	private watchForReturns(): void {
 		for (const root of this.roots) this.seen.set(root, identityOf(root));
 		this.revival = setInterval(() => {
 			this.tick++;
 			this.reviveRoots();
 			this.reviveRefused();
-			this.reportAttached();
+			this.reportNowWatched();
 		}, REVIVAL_INTERVAL_MS);
 		this.revival.unref();
 	}
@@ -187,22 +197,21 @@ class WatchSession {
 
 	private rewatch(target: string, fileType: FileType): void {
 		this.watcher.add(target);
-		this.attaching.set(target, { fileType, tick: this.tick });
+		this.unreportedUntilWatched.set(target, {
+			fileType,
+			handedBackAt: this.tick,
+		});
 	}
 
-	private reportAttached(): void {
-		if (this.attaching.size === 0) return;
+	private reportNowWatched(): void {
+		if (this.unreportedUntilWatched.size === 0) return;
 		const watched = this.watcher.getWatched();
-		for (const [target, { fileType, tick }] of this.attaching) {
-			if (tick === this.tick) continue;
-			const attached =
-				fileType === FileType.Directory
-					? watched[target] !== undefined
-					: watched[path.dirname(target)]?.includes(
-							path.basename(target)
-						);
-			if (!attached) continue;
-			this.attaching.delete(target);
+		for (const [target, { fileType, handedBackAt }] of this
+			.unreportedUntilWatched) {
+			const handedBackThisTick = handedBackAt === this.tick;
+			if (handedBackThisTick || !isWatched(watched, target, fileType))
+				continue;
+			this.unreportedUntilWatched.delete(target);
 			this.fireEvent(FileChangeType.ADDED, target, fileType);
 		}
 	}
@@ -240,7 +249,10 @@ class WatchSession {
 	}
 }
 
-/** chokidar forgets its throttle timers on close without clearing them, which keeps the process alive for up to a second. */
+/**
+ * chokidar forgets its throttle timers on close without clearing them, which
+ * keeps the process alive for up to a second.
+ */
 function clearThrottles(watcher: chokidar.FSWatcher): void {
 	const { _throttled: throttled } = watcher as unknown as {
 		readonly _throttled?: ReadonlyMap<
@@ -252,7 +264,17 @@ function clearThrottles(watcher: chokidar.FSWatcher): void {
 		for (const { clear } of [...actions.values()]) clear();
 }
 
-/** Whether the failed path of `error` lies in one of `dirs`. */
+function isWatched(
+	watched: Record<string, string[]>,
+	target: string,
+	fileType: FileType
+): boolean {
+	return fileType === FileType.Directory
+		? watched[target] !== undefined
+		: (watched[path.dirname(target)]?.includes(path.basename(target)) ??
+				false);
+}
+
 function isUnder(error: Error, dirs: readonly string[]): boolean {
 	const failed = (error as NodeJS.ErrnoException).path;
 	return (

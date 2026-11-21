@@ -16,11 +16,9 @@ import { RoutedFile, RoutedFolder } from "./router.js";
 import { CompiledLayout } from "./compiled-layout.js";
 import { InstanceClash } from "./instance-resolver.js";
 
-/** Why each path is left out of the tree, by absolute POSIX path. */
 export class LeftOutPaths implements Iterable<[string, LeftOut]> {
 	private readonly reasons = new Map<string, LeftOut>();
 
-	/** A path listed by a later source keeps the later reason. */
 	constructor(...sources: Iterable<[string, LeftOut]>[]) {
 		for (const source of sources)
 			for (const [path, why] of source) this.reasons.set(path, why);
@@ -48,7 +46,6 @@ export class LeftOutPaths implements Iterable<[string, LeftOut]> {
 	}
 }
 
-/** A routed file the tree displaced: the node the tree defines, and the file or folder that names it. */
 export interface DisplacedFile {
 	readonly file: RoutedFile;
 	readonly node: readonly string[];
@@ -76,7 +73,6 @@ interface ScannedMetaFile {
 	readonly file: string;
 }
 
-/** Where every scanned file lands, or why it lands nowhere; `where` stops here. */
 export class Placement {
 	readonly config: ResolvedConfig;
 	readonly layout: CompiledLayout;
@@ -87,11 +83,8 @@ export class Placement {
 	readonly leftOut: LeftOutPaths;
 	readonly clashes: readonly InstanceClash[];
 	readonly displaced: readonly DisplacedFile[];
-	/** What routing found that stops the write, such as a name meant as a route that misses its key; the files are placed as routing reads them, so warnings and `where` still answer. */
 	readonly errors: readonly Diagnostic[];
-	/** As `files`, but every file a route governs, before clashes decide which are placed. */
 	readonly routed: readonly RoutedFile[];
-	/** Every placed file, at its node. */
 	readonly files: readonly RoutedFile[];
 	private unclaimed: UnclaimedMeta[] | undefined;
 
@@ -114,7 +107,6 @@ export class Placement {
 		return this.readings.entryReading(file.entry.source);
 	}
 
-	/** Every meta file of every source path, in source path order. */
 	get metaFiles(): ScannedMetaFile[] {
 		return this.roots.flatMap(({ sourcePath, metaFiles }) =>
 			metaFiles.map((relativePath) => ({
@@ -125,7 +117,6 @@ export class Placement {
 		);
 	}
 
-	/** The directory Rojo reads an init script or a default project file through, if it does. */
 	initDirOf(file: RoutedFile): string | undefined {
 		if (!file.init) return undefined;
 		const emitted = new RojoFile(
@@ -137,7 +128,6 @@ export class Placement {
 			: undefined;
 	}
 
-	/** Whether the scan found `source` to be a folder, which its name can't say. */
 	isFolder(source: string): boolean {
 		const type = this.roots
 			.find((root) => isInside(source, toPosix(root.sourcePath)))

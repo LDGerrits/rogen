@@ -5,13 +5,11 @@ import { RojoCommandService } from "../../domain/runner/rojo-command-service.js"
 import { RojoTarget } from "../write/rojo-entry.js";
 import { RojoPlan, RojoStep } from "../write/rojo-step.js";
 
-/** Rojo's build into the place, model or plugin `-o` or `-p` names. */
 export class BuildStep implements RojoStep {
 	readonly command = "build";
 	readonly prints = false;
 
 	constructor(
-		/** Rojo's flags for the build. */
 		private readonly flags: readonly string[],
 		private readonly cwd: string,
 		private readonly output: string | undefined,

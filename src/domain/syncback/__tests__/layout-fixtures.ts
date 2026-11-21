@@ -17,7 +17,6 @@ export const ROUTES = {
 	"*": "ReplicatedStorage/Shared",
 };
 
-/** The layout the write finds for `files`, paths from the repo root and each an empty file, beside the other configs of the project in `others`. */
 export async function layoutOf(
 	files: readonly string[],
 	spec: ResolvedConfigSpec = {},

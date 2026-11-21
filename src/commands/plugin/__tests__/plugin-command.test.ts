@@ -112,7 +112,7 @@ describe("plugin command", () => {
 				messages: [{ severity: "info", text: "Done" }],
 			},
 		]);
-		expect(log.reserved).toBe(false);
+		expect(log.sendsOwnLinesToStderr).toBe(false);
 	});
 
 	it("should print the failure as the JSON document of an error with --json", async () => {
@@ -137,7 +137,7 @@ describe("plugin command", () => {
 		rojo.exit({ code: 0, signal: null });
 		await running;
 
-		expect(log.reserved).toBe(false);
+		expect(log.sendsOwnLinesToStderr).toBe(false);
 	});
 
 	it("should report the failure when Rojo fails", async () => {

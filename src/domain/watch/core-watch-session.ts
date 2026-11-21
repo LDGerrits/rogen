@@ -21,7 +21,6 @@ import {
 	ChangeBurst,
 } from "./watch-service.js";
 
-/** A running watch; rewrites of one config never overlap. */
 export class CoreWatchSession
 	extends AbstractDisposable
 	implements WatchSession
@@ -33,9 +32,8 @@ export class CoreWatchSession
 	readonly onDidError: Event<Error> = this._onDidError.event;
 
 	private readonly batcher: ChangeBatcher;
-	/** Batches compiled output apart from the sources: it only starts a check, so any amount of it is one round. */
 	private readonly compiledBatcher: ChangeBatcher;
-	private readonly intake = new Sequencer();
+	private readonly rounds = new Sequencer();
 	private readonly updates = new Sequencer();
 	private readonly watched = new Map<string, WatchedConfig>();
 	private readonly pending = new Set<Promise<void>>();
@@ -84,22 +82,21 @@ export class CoreWatchSession
 		);
 		this._register(
 			this.batcher.onDidEmitChanges((changes) =>
-				this.enqueue(() => this.onChanges(changes))
+				this.queueRound(() => this.onChanges(changes))
 			)
 		);
 		this._register(
 			this.compiledBatcher.onDidEmitChanges((changes) =>
-				this.enqueue(() => this.onCompiledChanges(changes))
+				this.queueRound(() => this.onCompiledChanges(changes))
 			)
 		);
 		this._register(
 			this.batcher.onDidOverflow((burst) =>
-				this.enqueue(() => this.onBurst(burst))
+				this.queueRound(() => this.onBurst(burst))
 			)
 		);
 
-		// On the intake queue, so changes saved while listing run after the initial round.
-		const listed = this.intake.queue(() =>
+		const initialRound = this.rounds.queue(() =>
 			tryWithAsync(async () => {
 				await this.watchPlan();
 				this.announce(
@@ -110,13 +107,13 @@ export class CoreWatchSession
 				);
 			})
 		);
-		this.track(listed);
-		return listed;
+		this.track(initialRound);
+		return initialRound;
 	}
 
 	async refresh(): Promise<void> {
 		let announced: Promise<void> | undefined;
-		const listed = this.intake.queue(
+		const listed = this.rounds.queue(
 			this.guarded(async () => {
 				this.listing = await this.indexService.list(this.plan.roots);
 				announced = this.announce(
@@ -267,8 +264,8 @@ export class CoreWatchSession
 		return queued;
 	}
 
-	private enqueue(task: () => Promise<void>): void {
-		this.track(this.intake.queue(this.guarded(task)));
+	private queueRound(task: () => Promise<void>): void {
+		this.track(this.rounds.queue(this.guarded(task)));
 	}
 
 	private announce(
@@ -315,7 +312,8 @@ export class CoreWatchSession
 		];
 	}
 
-	// JSON.stringify drops a RegExp's source, so patterns are stringified explicitly.
+	// JSON.stringify drops a RegExp's source, so patterns are stringified
+	// explicitly.
 	private watchKey(): string {
 		return JSON.stringify([
 			this.watchPaths(),
@@ -354,7 +352,6 @@ export class CoreWatchSession
 			if (!current.has(projectFile)) this.watched.delete(projectFile);
 	}
 
-	/** A reload that changed only a config's text gives a new object for the same version. */
 	private rebaseUnchanged(reloaded: ReadonlySet<string>): void {
 		for (const config of this.selection.configs)
 			if (!reloaded.has(config.file))

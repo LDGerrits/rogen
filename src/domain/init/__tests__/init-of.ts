@@ -26,7 +26,6 @@ import { CoreWriteService } from "../../write/core-write-service.js";
 import { WriteService } from "../../write/write-service.js";
 import { CoreInitService } from "../core-init-service.js";
 
-/** The init classes built as Rogen builds them, over the fakes a test hands them. */
 export const questionsOf = (
 	prompt: PromptService,
 	interactive: boolean,
@@ -81,7 +80,6 @@ export const agentRulesOf = (
 ): AgentRules =>
 	instantiationOf([FileSystemService, fs]).createInstance(AgentRules, git);
 
-/** The init service over the fakes of a test, with the real services it builds on. */
 export const initServiceOf = (
 	fs: FileSystemService,
 	prompt: PromptService,

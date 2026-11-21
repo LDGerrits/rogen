@@ -1,5 +1,5 @@
-import { compareStrings } from "../../base/collections.js";
-import { CommandExitCodes, UsageError } from "../../base/errors.js";
+import { compareByCodePoint } from "../../base/collections.js";
+import { DefaultCommandExitCodes, UsageError } from "../../base/errors.js";
 import { closestMatch } from "../../base/strings.js";
 import { Command } from "../../platform/commands/commands.js";
 import {
@@ -11,10 +11,8 @@ import { HelpDocument } from "./help-document.js";
 import { DocTopics } from "./doc-topics.js";
 import { helpTexts } from "./help-texts.js";
 
-/** A diagnostic code has a dot, which no command or topic does. */
 const isCode = (name: string) => name.includes(".");
 
-/** A name without its module stands for the one code that ends in it. */
 function codeNamed(name: string): string | undefined {
 	const codes = Object.keys(helpTexts.diagnostics);
 	const lower = name.toLowerCase();
@@ -38,17 +36,14 @@ export type HelpTarget =
 	| { readonly kind: "codes"; readonly prefix?: string }
 	| { readonly kind: "topic"; readonly name: string };
 
-/** The name of the page that lists every diagnostic code. */
 const CODES_PAGE = "codes";
 
 const SHORT_HELP_NOTE = "Run with --help for details.";
 
 const INDENT = "    ";
 const GAP = "    ";
-/** The width help is wrapped to, as Rojo's is. */
 const WIDTH = 100;
 
-/** `text` broken at spaces into lines of at most `width`, a longer word on a line of its own; a line break in `text` stays, and a bullet's later lines are indented under its text. */
 function wrapped(text: string, width: number): string[] {
 	if (text.includes("\n"))
 		return text.split("\n").flatMap((line) => wrapped(line, width));
@@ -67,7 +62,6 @@ function wrapped(text: string, width: number): string[] {
 	return [...lines, line];
 }
 
-/** A name as a value or argument is written: `allowed-hosts` is `ALLOWED_HOSTS`. */
 const capitalised = (name: string) =>
 	name.toUpperCase().replace(/[\s-]+/g, "_");
 
@@ -82,13 +76,11 @@ function usageArgs(command: Command): string[] {
 	});
 }
 
-/** `text` up to its first full stop followed by a space, or all of it. */
 export function firstSentence(text: string): string {
 	const end = text.indexOf(". ");
 	return end === -1 ? text : text.slice(0, end + 1);
 }
 
-/** How much of each description help prints. */
 export type HelpForm = "short" | "long";
 
 const describedAs = (text: string, form: HelpForm) =>
@@ -140,7 +132,7 @@ function formatColumns(rows: [string, string][]): string[] {
 }
 
 const sortedOptions = (options: readonly OptionDescriptor[]) =>
-	[...options].sort((a, b) => compareStrings(a.name, b.name));
+	[...options].sort((a, b) => compareByCodePoint(a.name, b.name));
 
 function formatSections(
 	header: string,
@@ -161,7 +153,7 @@ function formatHelp(
 	globalOptions: readonly OptionDescriptor[]
 ): string {
 	const subcommands = [...commands.values()]
-		.sort((a, b) => compareStrings(a.id, b.id))
+		.sort((a, b) => compareByCodePoint(a.id, b.id))
 		.map((command): [string, string] => [
 			command.id,
 			command.metadata.summary,
@@ -239,7 +231,7 @@ function formatCommandHelp(
 			"EXIT CODES",
 			formatColumns(
 				Object.entries({
-					...CommandExitCodes,
+					...DefaultCommandExitCodes,
 					...command.metadata.exitCodes,
 				})
 			),
@@ -256,7 +248,6 @@ export class HelpPages {
 		return formatHelp(this.commands, GlobalOptions);
 	}
 
-	/** The command or diagnostic code `target` names. */
 	resolve(target: string, prefix?: string): HelpTarget | undefined {
 		if (target.toLowerCase() === CODES_PAGE)
 			return { kind: "codes", ...(prefix && { prefix }) };

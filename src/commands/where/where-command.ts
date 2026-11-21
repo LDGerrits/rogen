@@ -35,7 +35,6 @@ const WhereOptions = [JsonOption] as const;
 
 const ASKING = { command: "where", lead: "See where it lands" };
 
-/** What the command takes from the accessor before its first await. */
 interface Services {
 	readonly configService: ConfigService;
 	readonly writeService: WriteService;
@@ -46,7 +45,6 @@ interface Services {
 
 interface Located {
 	readonly locations: Locations;
-	/** The paths asked about that no write reads. */
 	readonly skipped: readonly SkippedPath[];
 }
 
@@ -139,14 +137,12 @@ registerCommand(
 					failure
 				);
 			new WhereLog(cwd, answers).print(logService);
-			// An error about another file stops the write but not this answer, so it is shown and `where` passes; `check` is the gate.
 			for (const error of answers.elsewhere) logService.diagnostic(error);
 			if (answers.elsewhere.length > 0)
 				logService.notice(
 					`The ${answers.elsewhere.length === 1 ? "error" : "errors"} above ${answers.elsewhere.length === 1 ? "stops" : "stop"} the write, but none of it is about what you asked; 'rogen check' lists everything to fix.`
 				);
 			if (!failure) return ok(undefined);
-			// An error no line shows prints on its own; one under a line is already printed.
 			const unprinted = DiagnosticsError.of(
 				failure.diagnostics.filter(
 					(error) =>
@@ -157,7 +153,6 @@ registerCommand(
 			return unprinted ? err(unprinted) : this.reported(failure);
 		}
 
-		/** With paths, each is answered by the config that covers it, and one that nothing covers is said so and skipped. */
 		private async locate(
 			configService: ConfigService,
 			writeService: WriteService,
@@ -249,7 +244,6 @@ registerCommand(
 				: ok(undefined);
 		}
 
-		/** The file that places each instance in `paths` in `configs`, else the default config, relative to the working directory; one that several files place is warned about and left out. Fails when no config can answer; carries the errors of those that didn't load. */
 		private async filesPlacing(
 			{ configService, writeService, logService, cwd }: Services,
 			configs: readonly string[],

@@ -4,15 +4,12 @@ import { FileChange } from "./file-changes.js";
 import { FileReader, FileType } from "./file-system-service.js";
 
 export interface IndexReader {
-	/** `undefined` when the directory was never listed or doesn't exist. */
 	getEntries(dirPath: string): ReadonlyMap<string, FileType> | undefined;
 	hasEntry(dirPath: string, name: string): boolean;
 	getEntryType(dirPath: string, name: string): FileType | undefined;
-	/** Whether listing the directory was refused, as for a folder without read permission. */
 	isUnreadable(dirPath: string): boolean;
 }
 
-/** The entries of every listed directory, by posix path. A listing never changes: an update makes a new one. */
 export class Listing implements IndexReader {
 	static readonly EMPTY = new Listing(new Map());
 
@@ -21,7 +18,6 @@ export class Listing implements IndexReader {
 			string,
 			ReadonlyMap<string, FileType>
 		>,
-		/** The directories whose listing was refused, by posix path. */
 		readonly unreadable: ReadonlySet<string> = new Set()
 	) {}
 
@@ -42,13 +38,10 @@ export class Listing implements IndexReader {
 	}
 }
 
-/** Lists directories into memory so a write reads memory, not the disk. Holds nothing itself. */
 export interface IndexService {
 	readonly _serviceBrand: undefined;
 
-	/** Lists through `reader` when given, such as a draft of files not written yet. */
 	list(dirs: readonly string[], reader?: FileReader): Promise<Listing>;
-	/** `base` with `changes` applied as a fresh listing would have them; `base` is unchanged. */
 	update(base: Listing, changes: readonly FileChange[]): Promise<Listing>;
 }
 

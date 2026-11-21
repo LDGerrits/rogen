@@ -10,9 +10,7 @@ import { ServeAddress } from "./serve.js";
 
 interface ServedProject {
 	readonly projectFile: string;
-	/** The config the project file was written from. */
 	readonly configFile?: string;
-	/** The process that leads the server. */
 	readonly pid?: number;
 }
 
@@ -21,7 +19,6 @@ export interface ServerRecord extends ServedProject {
 	readonly port: number;
 	readonly project: string;
 	readonly session?: string;
-	/** The `rogen serve` process that started the server. */
 	readonly owner?: number;
 }
 
@@ -62,7 +59,6 @@ export class ServerRecords {
 		this.dir = path.join(tmpDir, "rogen-serve");
 	}
 
-	/** The record of the serve that started the server on `address`, when its project and session match `info`. */
 	async recordOf(
 		address: ServeAddress,
 		info: ServerInfo
@@ -75,7 +71,6 @@ export class ServerRecords {
 			: undefined;
 	}
 
-	/** Every record whose project file is `projectFile`, whatever port it is on. */
 	async recordsFor(projectFile: string): Promise<ServerRecord[]> {
 		let names: string[];
 		try {
@@ -100,12 +95,10 @@ export class ServerRecords {
 		info: ServerInfo,
 		served: ServedProject
 	): Promise<void> {
-		const file = this.fileOf(address.port);
-		// The staging name isn't read as a record.
 		await replaceFile(
 			this.fileSystemService,
-			file,
-			`${file}.${this.owner}.tmp`,
+			this.fileOf(address.port),
+			this.stagingFileOf(address.port),
 			JSON.stringify({
 				host: address.host,
 				port: address.port,
@@ -119,7 +112,6 @@ export class ServerRecords {
 		);
 	}
 
-	/** Forgets the record of `address` when it is the one this serve wrote for the server that answered with `info`, leaving one another serve wrote since. Never fails: a record it can't delete stays, as the record of a serve that ended does. */
 	async remove(address: ServeAddress, info: ServerInfo): Promise<void> {
 		const file = this.fileOf(address.port);
 		const record = await this.read(file);
@@ -139,5 +131,9 @@ export class ServerRecords {
 
 	private fileOf(port: number): string {
 		return path.join(this.dir, `${port}.json`);
+	}
+
+	private stagingFileOf(port: number): string {
+		return `${this.fileOf(port)}.${this.owner}.tmp`;
 	}
 }

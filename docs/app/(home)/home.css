@@ -131,13 +131,13 @@ html:not([data-lang="ts"]) .home [data-only="ts"] {
 	outline-offset: 3px;
 	border-radius: 2px;
 }
-.home .c-s {
+.home .c-server {
 	color: var(--t-s);
 }
-.home .c-c {
+.home .c-client {
 	color: var(--t-c);
 }
-.home .c-r {
+.home .c-replicated {
 	color: var(--t-r);
 }
 .home .sr {
@@ -404,13 +404,13 @@ html[data-lang="ts"] .home .seg [data-v="ts"],
 }
 
 /* the hero window: rogen serve, then src/ wired to the Explorer; --hc is the row's service colour */
-.home .k-s {
+.home .k-server {
 	--hc: var(--t-s);
 }
-.home .k-c {
+.home .k-client {
 	--hc: var(--t-c);
 }
-.home .k-r {
+.home .k-replicated {
 	--hc: var(--t-r);
 }
 /* on the hero's columns: VS Code under the heading, the Explorer under the install box */
@@ -542,13 +542,13 @@ html[data-lang="ts"] .home .seg [data-v="ts"],
 		stroke 0.35s var(--ease-out),
 		stroke-width 0.35s var(--ease-out);
 }
-.home .wires .w-s {
+.home .wires .w-server {
 	--wc: var(--t-s);
 }
-.home .wires .w-c {
+.home .wires .w-client {
 	--wc: var(--t-c);
 }
-.home .wires .w-r {
+.home .wires .w-replicated {
 	--wc: var(--t-r);
 }
 .home .wires path.on {

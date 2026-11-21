@@ -3,105 +3,66 @@ exit 0
 stdout:
   rogen init
   Starts from create-roblox-ts, which writes package.json and the compiler's settings.
-  Syncing from out, where roblox-ts compiles to.
-  The Greeter sample is the feature in projects/common/src, which every place shares, Game in projects/game/src, and Rojo's sample Baseplate and lighting in projects/game/place. Pass --no-sample for empty source folders.
+  Syncing from out/game, where roblox-ts compiles to.
+  The Greeter sample is the feature in src/common, which every place shares, Game in src/game, and Rojo's sample Baseplate and lighting in place/game. Pass --no-sample for empty source folders.
   Took the defaults, each with the flag that changes it: a place (--kind), the Greeter sample (--no-sample), agent rules (--no-agent-rules).
   Ran npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild.
-  Created projects/common/src/Greeter/shared/Greeting.ts.
-  Created projects/common/src/Greeter/server/Greeter.server.ts.
-  Created projects/common/src/Greeter/client/Greeter.client.ts.
-  Created projects/game/src/Game/server/Game.server.ts.
-  Created projects/game/place/Lighting/init.meta.json.
-  Created projects/game/place/SoundService/init.meta.json.
-  Created projects/game/place/Workspace/Baseplate.model.json.
-  Created projects/game/place/Workspace/init.meta.json.
+  Created src/common/Greeter/shared/Greeting.ts.
+  Created src/common/Greeter/server/Greeter.server.ts.
+  Created src/common/Greeter/client/Greeter.client.ts.
+  Created src/game/Game/server/Game.server.ts.
+  Created place/game/Lighting/init.meta.json.
+  Created place/game/SoundService/init.meta.json.
+  Created place/game/Workspace/Baseplate.model.json.
+  Created place/game/Workspace/init.meta.json.
   Created README.md.
-  Created projects/common/tsconfig.json.
-  Created projects/game/tsconfig.json.
+  Created tsconfig.game.json.
+  Created tsconfig.json.
   Created AGENTS.md.
   Created rokit.toml.
-  Created projects/game/default.rogen.json.
-  Ran npm pkg set "scripts.build=rbxtsc -p projects/game" "scripts.watch=rbxtsc -w -p projects/game".
-  Wrote projects/game/default.project.json.
+  Created game.rogen.json.
+  Ran npm pkg set "scripts.build=rbxtsc -p tsconfig.game.json" "scripts.watch=rbxtsc -w -p tsconfig.game.json".
+  Wrote game.project.json.
   Next steps
     Install Rokit with 'curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash' (https://github.com/rojo-rbx/rokit), then run 'rokit install' here.
     Run 'rogen plugin install' to install Rojo's Studio plugin.
     Run each in its own terminal:
       npm run watch
-      rogen serve projects/game
+      rogen serve game
     In Studio, press Connect in the Rojo plugin.
-    To change where code goes, edit "routes" in projects/game/default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".
-    Edit projects/game/default.rogen.json and leave projects/game/default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write projects/game' so the editor's projects/game/default.project.json follows.
-    Add another place: make projects/lobby/src, copy projects/game/default.rogen.json, projects/game/tsconfig.json and projects/game/place into projects/lobby (with the release config, if the place has one), and change the "name" in each config to lobby. Run 'rogen write projects/lobby' for its project file, and add ' && rbxtsc -p projects/lobby' to the end of the build script in package.json. 'rbxtsc -w' runs until you stop it, so watch the place from a terminal of its own with 'npx rbxtsc -w -p projects/lobby', and serve it from a second terminal with its own --port: 'rogen serve projects/lobby --port <port>'.
+    To change where code goes, edit "routes" in game.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".
+    Edit game.rogen.json and leave game.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write game' so the editor's game.project.json follows.
+    Add another place: copy game.rogen.json to lobby.rogen.json, point each place/game in its tree to place/lobby, make src/lobby and copy place/game to place/lobby. Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common. Do the same for game.release.rogen.json if there is one. Copy tsconfig.game.json to tsconfig.lobby.json, change each game in it to lobby, add it to the references in tsconfig.json, and set "compiledPath" in lobby.rogen.json to out/lobby. Add ' && rbxtsc -p tsconfig.lobby.json' to the end of the build script in package.json. 'rbxtsc -w' runs until you stop it, so watch the place from a terminal of its own with 'npx rbxtsc -w -p tsconfig.lobby.json'. Serve it from a second terminal with its own --port: 'rogen serve lobby --port <port>'.
   Wrote 14 files.
 
 ran:
   npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild
-  npm pkg set scripts.build=rbxtsc -p projects/game scripts.watch=rbxtsc -w -p projects/game
+  npm pkg set scripts.build=rbxtsc -p tsconfig.game.json scripts.watch=rbxtsc -w -p tsconfig.game.json
 
 written:
   AGENTS.md
   README.md
+  game.project.json
+  game.rogen.json
   package.json
-  projects/common/src/Greeter/client/Greeter.client.ts
-  projects/common/src/Greeter/server/Greeter.server.ts
-  projects/common/src/Greeter/shared/Greeting.ts
-  projects/common/tsconfig.json
-  projects/game/default.project.json
-  projects/game/default.rogen.json
-  projects/game/place/Lighting/init.meta.json
-  projects/game/place/SoundService/init.meta.json
-  projects/game/place/Workspace/Baseplate.model.json
-  projects/game/place/Workspace/init.meta.json
-  projects/game/src/Game/server/Game.server.ts
-  projects/game/tsconfig.json
+  place/game/Lighting/init.meta.json
+  place/game/SoundService/init.meta.json
+  place/game/Workspace/Baseplate.model.json
+  place/game/Workspace/init.meta.json
   rokit.toml
+  src/common/Greeter/client/Greeter.client.ts
+  src/common/Greeter/server/Greeter.server.ts
+  src/common/Greeter/shared/Greeting.ts
+  src/game/Game/server/Game.server.ts
+  tsconfig.game.json
+  tsconfig.json
 
-package.json:
-{"scripts":{"build":"rbxtsc -p projects/game","watch":"rbxtsc -w -p projects/game"}}
-
-projects/common/src/Greeter/shared/Greeting.ts:
-export function greeting(who: string): string {
-	return `Hello, ${who}!`;
-}
-
-projects/common/tsconfig.json:
-{
-	"compilerOptions": {
-		"allowSyntheticDefaultImports": true,
-		"downlevelIteration": true,
-		"jsx": "react",
-		"jsxFactory": "React.createElement",
-		"jsxFragmentFactory": "React.Fragment",
-		"module": "commonjs",
-		"moduleResolution": "Node",
-		"noLib": true,
-		"resolveJsonModule": true,
-		"experimentalDecorators": true,
-		"forceConsistentCasingInFileNames": true,
-		"moduleDetection": "force",
-		"strict": true,
-		"target": "ESNext",
-		"incremental": true,
-		"typeRoots": [
-			"node_modules/@rbxts",
-			"../../node_modules/@rbxts"
-		],
-		"rootDir": "src",
-		"baseUrl": "src",
-		"noEmit": true
-	},
-	"include": [
-		"src"
-	]
-}
-
-projects/game/default.rogen.json:
+game.rogen.json:
 {
   "name": "game",
   "sourcePaths": [
-    "../common/src",
-    "src"
+    "src/common",
+    "src/game"
   ],
   "routes": {
     "server": "ServerScriptService",
@@ -109,42 +70,68 @@ projects/game/default.rogen.json:
     "shared": "ReplicatedStorage/shared",
     "*": "ReplicatedStorage/shared"
   },
-  "compiledPath": "out",
+  "compiledPath": "out/game",
   "tree": {
     "$className": "DataModel",
     "Lighting": {
-      "$path": "place/Lighting"
+      "$path": "place/game/Lighting"
     },
     "ReplicatedStorage": {
       "rbxts_include": {
         "node_modules": {
           "$className": "Folder",
           "@rbxts": {
-            "$path": {
-              "optional": "../../node_modules/@rbxts"
-            }
+            "$path": "node_modules/@rbxts"
           }
         },
-        "$path": {
-          "optional": "include"
-        }
+        "$path": "include"
       }
     },
     "SoundService": {
-      "$path": "place/SoundService"
+      "$path": "place/game/SoundService"
     },
     "Workspace": {
-      "$path": "place/Workspace"
+      "$path": "place/game/Workspace"
     }
   }
 }
 
-projects/game/src/Game/server/Game.server.ts:
+package.json:
+{"scripts":{"build":"rbxtsc -p tsconfig.game.json","watch":"rbxtsc -w -p tsconfig.game.json"}}
+
+src/common/Greeter/shared/Greeting.ts:
+export function greeting(who: string): string {
+	return `Hello, ${who}!`;
+}
+
+src/game/Game/server/Game.server.ts:
 import { greeting } from "../../Greeter/shared/Greeting";
 
 print(greeting("game"));
 
-projects/game/tsconfig.json:
+tsconfig.game.json:
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"rootDir": "src",
+		"rootDirs": [
+			"src/common",
+			"src/game"
+		],
+		"outDir": "out/game",
+		"tsBuildInfoFile": "out/game/tsconfig.tsbuildinfo",
+		"composite": true
+	},
+	"include": [
+		"src/common",
+		"src/game"
+	],
+	"rbxts": {
+		"rojo": "game.project.json"
+	}
+}
+
+tsconfig.json:
 {
 	"compilerOptions": {
 		"allowSyntheticDefaultImports": true,
@@ -163,25 +150,18 @@ projects/game/tsconfig.json:
 		"target": "ESNext",
 		"incremental": true,
 		"typeRoots": [
-			"node_modules/@rbxts",
-			"../../node_modules/@rbxts"
+			"node_modules/@rbxts"
 		],
-		"outDir": "out",
-		"rootDirs": [
-			"src",
-			"../common/src"
+		"types": [
+			"compiler-types",
+			"types"
 		],
-		"baseUrl": ".",
-		"paths": {
-			"*": [
-				"src/*",
-				"../common/src/*"
-			]
-		},
-		"tsBuildInfoFile": "out/tsconfig.tsbuildinfo"
+		"rootDir": "src"
 	},
-	"include": [
-		"src",
-		"../common/src"
+	"files": [],
+	"references": [
+		{
+			"path": "./tsconfig.game.json"
+		}
 	]
 }

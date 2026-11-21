@@ -34,10 +34,12 @@ const RECORD_POLL_MS = 250;
 
 const RECORD_WAIT_MS = 5_000;
 
-/** How long the shutdown that a server interrupted with Rogen means is waited for, since on Windows its exit can come first. */
+/**
+ * How long the shutdown that a server interrupted with Rogen means is waited
+ * for, since on Windows its exit can come first.
+ */
 const SHUTDOWN_GRACE_MS = 1_000;
 
-/** Watches the plan's configs and keeps a started server for each config to serve. */
 export class CoreServeSession
 	extends AbstractDisposable
 	implements ServeSession
@@ -83,9 +85,7 @@ export class CoreServeSession
 	private readonly writtenConfigs = new Set<string>();
 	private readonly reconciling = new Sequencer();
 	private readonly exits = new Sequencer();
-	/** Whether the first launch is done, so later writes only follow the configs. */
 	private launched = false;
-	/** Aborts once the session ends, for whichever reason came first; every step after it does nothing. */
 	private readonly halted = new AbortController();
 	private readonly ending = new DeferredPromise<ServeEnding>();
 	private stopped: Promise<void> | undefined;
@@ -154,7 +154,6 @@ export class CoreServeSession
 		this.ending.complete(ending);
 	}
 
-	/** The shutdown's ending, telling a server's stop that came first unless the shutdown caused it, and the server the shutdown ended when it is another. */
 	private shutdownAfter(ending: ServeEnding): ServeEnding {
 		if (ending.kind === "refused") return ending;
 		const exit =
@@ -193,7 +192,6 @@ export class CoreServeSession
 		super[Symbol.dispose]();
 	}
 
-	/** Records what the update wrote in its own turn, so a first launch serves only configs it checked; later updates only report the Rojo that runs. */
 	private async applyUpdate(update: WatchUpdate): Promise<void> {
 		for (const { outcome } of update.reports) {
 			if (!isWritten(outcome)) {
@@ -218,7 +216,6 @@ export class CoreServeSession
 		}
 	}
 
-	/** Ends any orphan, checks the Rojo that runs and starts the target's server; waits for another write while no config is written yet. */
 	private async launchFirst(update: WatchUpdate): Promise<void> {
 		const incompatible = await this.problemsIn(update);
 		if (this.isHalted) return;
@@ -244,7 +241,6 @@ export class CoreServeSession
 		this.launched = true;
 	}
 
-	/** What the Rojo that runs can't serve of the project files `update` wrote. */
 	private problemsIn(update: WatchUpdate): Promise<Diagnostic[]> {
 		return this.compatibility.problemsIn(
 			this.plan.executable,
@@ -358,7 +354,6 @@ export class CoreServeSession
 		this._onDidChange.fire({ kind: "retired", target, reason });
 	}
 
-	/** Ends the server a `rogen serve` that ended left holding the target's port, so its own can start; leaves it when it is gone by now. */
 	private async endOrphanOf(target: ServeTarget): Promise<void> {
 		const { orphan } = target;
 		if (
@@ -385,7 +380,6 @@ export class CoreServeSession
 		});
 	}
 
-	/** Ends the session with the stop, as a stand-down when the server failed to start because another serve's took its address first; that wait ends with the session. */
 	private stoppedServer(stop: ServerExitEvent, served: boolean): void {
 		if (stop.kind !== "failed" || served) {
 			this.halt({ kind: "exited", exit: stop });
@@ -410,7 +404,6 @@ export class CoreServeSession
 			);
 	}
 
-	/** The server another `rogen serve` started on the target's address first, which kept this one from starting; waits a little for its record, until the session stops. */
 	private async waitForAnotherServe(
 		target: ServeTarget
 	): Promise<ServerInfo | undefined> {
