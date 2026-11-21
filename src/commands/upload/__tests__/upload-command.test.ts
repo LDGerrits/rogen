@@ -143,7 +143,7 @@ describe("upload command", () => {
 		rojo.exit({ code: 0, signal: null });
 		await running;
 
-		expect(log.reserved).toBe(false);
+		expect(log.sendsOwnLinesToStderr).toBe(false);
 		expect(log.lines).toEqual([
 			"success: Wrote default.project.json.",
 			"outro: Uploaded to asset 123.",

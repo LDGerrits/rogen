@@ -1,4 +1,4 @@
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { ancestors } from "../../base/path.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
@@ -9,6 +9,12 @@ import {
 	SyncbackPlan,
 	UnplacedInstance,
 } from "./syncback.js";
+
+const KIND_PRECEDENCE: Readonly<Record<CompiledChange["kind"], number>> = {
+	removed: 0,
+	changed: 1,
+	added: 2,
+};
 
 export type Operation = {
 	readonly file: string;
@@ -91,11 +97,13 @@ export async function bytesOf(
 }
 
 function outermost(changes: readonly CompiledChange[]): CompiledChange[] {
-	const strength = { removed: 0, changed: 1, added: 2 } as const;
 	const kinds = new Map<string, CompiledChange["kind"]>();
 	for (const { instance, kind } of changes) {
 		const listed = kinds.get(instance);
-		if (listed === undefined || strength[kind] > strength[listed])
+		if (
+			listed === undefined ||
+			KIND_PRECEDENCE[kind] > KIND_PRECEDENCE[listed]
+		)
 			kinds.set(instance, kind);
 	}
 	return [...kinds]
@@ -116,7 +124,7 @@ function outermost(changes: readonly CompiledChange[]): CompiledChange[] {
 			);
 			for (let at = 0; at < Math.min(left.length, right.length); at++)
 				if (left[at] !== right[at])
-					return compareStrings(left[at], right[at]);
+					return compareByCodePoint(left[at], right[at]);
 			return left.length - right.length;
 		});
 }

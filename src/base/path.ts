@@ -51,7 +51,7 @@ export function joinPosix(...segments: string[]): string {
 	return toPosix(path.join(...segments));
 }
 
-export function dirnamePosix(relativePath: string): string {
+export function dirnamePosixOrEmpty(relativePath: string): string {
 	const dir = path.posix.dirname(relativePath);
 	return dir === "." ? "" : dir;
 }

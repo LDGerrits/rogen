@@ -1,4 +1,4 @@
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 
 export class Version {
 	private constructor(
@@ -58,5 +58,5 @@ function compareIdentifiers(a: string, b: string): number {
 	if (isNumeric(a) && isNumeric(b)) return Number(a) - Number(b);
 	if (isNumeric(a)) return -1;
 	if (isNumeric(b)) return 1;
-	return compareStrings(a, b);
+	return compareByCodePoint(a, b);
 }

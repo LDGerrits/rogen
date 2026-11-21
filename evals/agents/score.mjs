@@ -3,6 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+const NOTHING_EMITTED_SCORED_BY_COMPILE = "output.nothingEmitted";
+
 export function score(dir, transcript, rogen) {
 	const run = (args, cwd = dir) =>
 		spawnSync(process.execPath, [rogen, ...args], {
@@ -187,15 +189,13 @@ export function scorePlaces(dir, transcript, rogen, lands) {
 			compileErrors[place] = (compile.stdout + compile.stderr)
 				.trim()
 				.slice(0, 600);
-		const check = run(
-			["check", `${place}/default.rogen.json`, "--json"],
-			copy
-		);
+		const configWithSharedCode = `${place}/default.rogen.json`;
+		const check = run(["check", configWithSharedCode, "--json"], copy);
 		const document = JSON.parse(check.stdout || "{}");
 		const found = [
 			...(document.diagnostics ?? []),
 			...(document.stoppedBy ?? []),
-		].filter(({ code }) => code !== "output.nothingEmitted");
+		].filter(({ code }) => code !== NOTHING_EMITTED_SCORED_BY_COMPILE);
 		checks[place] = {
 			passed: found.length === 0,
 			found: found.map(({ code, file }) => `${code} ${file ?? ""}`),

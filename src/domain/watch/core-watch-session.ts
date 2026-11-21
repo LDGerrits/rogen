@@ -33,7 +33,7 @@ export class CoreWatchSession
 
 	private readonly batcher: ChangeBatcher;
 	private readonly compiledBatcher: ChangeBatcher;
-	private readonly intake = new Sequencer();
+	private readonly rounds = new Sequencer();
 	private readonly updates = new Sequencer();
 	private readonly watched = new Map<string, WatchedConfig>();
 	private readonly pending = new Set<Promise<void>>();
@@ -82,21 +82,21 @@ export class CoreWatchSession
 		);
 		this._register(
 			this.batcher.onDidEmitChanges((changes) =>
-				this.enqueue(() => this.onChanges(changes))
+				this.queueRound(() => this.onChanges(changes))
 			)
 		);
 		this._register(
 			this.compiledBatcher.onDidEmitChanges((changes) =>
-				this.enqueue(() => this.onCompiledChanges(changes))
+				this.queueRound(() => this.onCompiledChanges(changes))
 			)
 		);
 		this._register(
 			this.batcher.onDidOverflow((burst) =>
-				this.enqueue(() => this.onBurst(burst))
+				this.queueRound(() => this.onBurst(burst))
 			)
 		);
 
-		const listed = this.intake.queue(() =>
+		const initialRound = this.rounds.queue(() =>
 			tryWithAsync(async () => {
 				await this.watchPlan();
 				this.announce(
@@ -107,13 +107,13 @@ export class CoreWatchSession
 				);
 			})
 		);
-		this.track(listed);
-		return listed;
+		this.track(initialRound);
+		return initialRound;
 	}
 
 	async refresh(): Promise<void> {
 		let announced: Promise<void> | undefined;
-		const listed = this.intake.queue(
+		const listed = this.rounds.queue(
 			this.guarded(async () => {
 				this.listing = await this.indexService.list(this.plan.roots);
 				announced = this.announce(
@@ -264,8 +264,8 @@ export class CoreWatchSession
 		return queued;
 	}
 
-	private enqueue(task: () => Promise<void>): void {
-		this.track(this.intake.queue(this.guarded(task)));
+	private queueRound(task: () => Promise<void>): void {
+		this.track(this.rounds.queue(this.guarded(task)));
 	}
 
 	private announce(

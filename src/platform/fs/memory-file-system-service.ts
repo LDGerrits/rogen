@@ -4,7 +4,7 @@ import {
 	fileSystemError,
 	renameRefusal,
 } from "./file-system-service.js";
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import { containsPosix, toPosix } from "../../base/path.js";
@@ -12,11 +12,12 @@ import { FileChange, FileChangeType } from "./file-changes.js";
 
 let lastWrite = 0;
 
-const writeTime = () => (lastWrite = Math.max(Date.now(), lastWrite + 1));
+const increasingWriteTime = () =>
+	(lastWrite = Math.max(Date.now(), lastWrite + 1));
 
 class FileNode {
 	readonly type = FileType.File;
-	modified = writeTime();
+	modified = increasingWriteTime();
 	constructor(public content: string = "") {}
 }
 
@@ -216,7 +217,7 @@ export class MemoryFileSystemService
 		const { refusal } = node as DirectoryNode;
 		if (refusal) throw walkError(refusal, "scandir", filePath);
 		return Array.from((node as DirectoryNode).entries.entries())
-			.sort(([a], [b]) => compareStrings(a, b))
+			.sort(([a], [b]) => compareByCodePoint(a, b))
 			.map(([name, child]): [string, FileType] => [
 				name,
 				this.leadsBack(filePath, child)

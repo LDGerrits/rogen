@@ -1,3 +1,4 @@
+import { defanged } from "../../base/strings.js";
 import { InstanceReference } from "../../domain/roblox/roblox.js";
 
 export interface StudioPath {
@@ -45,7 +46,7 @@ export function rewriteStudioPaths(
 	for (const { start, end, reference, line } of paths) {
 		const file = fileOf(reference.text);
 		if (file === undefined) continue;
-		rewritten += `${text.slice(from, start)}${file}:${line}`;
+		rewritten += `${text.slice(from, start)}${defanged(file)}:${line}`;
 		from = end;
 	}
 	return rewritten + text.slice(from);

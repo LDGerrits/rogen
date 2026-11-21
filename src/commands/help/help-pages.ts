@@ -1,5 +1,5 @@
-import { compareStrings } from "../../base/collections.js";
-import { CommandExitCodes, UsageError } from "../../base/errors.js";
+import { compareByCodePoint } from "../../base/collections.js";
+import { DefaultCommandExitCodes, UsageError } from "../../base/errors.js";
 import { closestMatch } from "../../base/strings.js";
 import { Command } from "../../platform/commands/commands.js";
 import {
@@ -132,7 +132,7 @@ function formatColumns(rows: [string, string][]): string[] {
 }
 
 const sortedOptions = (options: readonly OptionDescriptor[]) =>
-	[...options].sort((a, b) => compareStrings(a.name, b.name));
+	[...options].sort((a, b) => compareByCodePoint(a.name, b.name));
 
 function formatSections(
 	header: string,
@@ -153,7 +153,7 @@ function formatHelp(
 	globalOptions: readonly OptionDescriptor[]
 ): string {
 	const subcommands = [...commands.values()]
-		.sort((a, b) => compareStrings(a.id, b.id))
+		.sort((a, b) => compareByCodePoint(a.id, b.id))
 		.map((command): [string, string] => [
 			command.id,
 			command.metadata.summary,
@@ -231,7 +231,7 @@ function formatCommandHelp(
 			"EXIT CODES",
 			formatColumns(
 				Object.entries({
-					...CommandExitCodes,
+					...DefaultCommandExitCodes,
 					...command.metadata.exitCodes,
 				})
 			),

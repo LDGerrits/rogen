@@ -1,7 +1,9 @@
 import { spawnSync } from "child_process";
 import fs from "fs";
 
-if (!fs.existsSync("node_modules/.bin/tsx")) process.exit(0);
+const devDependenciesInstalled = fs.existsSync("node_modules/.bin/tsx");
+
+if (!devDependenciesInstalled) process.exit(0);
 
 const { status } = spawnSync("npm", ["run", "generate"], {
 	stdio: "inherit",

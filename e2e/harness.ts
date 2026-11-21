@@ -10,7 +10,7 @@ import {
 	CommandRegistry,
 	Extensions,
 } from "../src/platform/commands/commands.js";
-import { compareStrings } from "../src/base/collections.js";
+import { compareByCodePoint } from "../src/base/collections.js";
 import { toPosix } from "../src/base/path.js";
 import { isWindows } from "../src/base/platform.js";
 import { outputJsonSchema } from "../src/platform/output/__tests__/output-json-schema.js";
@@ -74,17 +74,28 @@ process.on("exit", () =>
 	fs.rmSync(RUN_CACHE, { recursive: true, force: true })
 );
 
+const POSE_AS_WINDOWS_TERMINAL = { WT_SESSION: "1" };
+
 function childEnv(extra: Readonly<Record<string, string>> = {}) {
-	const env: NodeJS.ProcessEnv = {
-		...process.env,
-		NO_COLOR: "1",
-		FORCE_COLOR: "0",
-		XDG_CACHE_HOME: RUN_CACHE,
-		...(WINDOWS ? { WT_SESSION: "1" } : {}),
-		...extra,
-	};
-	if (!("GITHUB_ACTIONS" in extra)) delete env.GITHUB_ACTIONS;
-	if (!("CI" in extra)) delete env.CI;
+	return withoutCiVariables(
+		{
+			...process.env,
+			NO_COLOR: "1",
+			FORCE_COLOR: "0",
+			XDG_CACHE_HOME: RUN_CACHE,
+			...(WINDOWS ? POSE_AS_WINDOWS_TERMINAL : {}),
+			...extra,
+		},
+		extra
+	);
+}
+
+function withoutCiVariables(
+	env: NodeJS.ProcessEnv,
+	caseEnv: Readonly<Record<string, string>>
+): NodeJS.ProcessEnv {
+	if (!("GITHUB_ACTIONS" in caseEnv)) delete env.GITHUB_ACTIONS;
+	if (!("CI" in caseEnv)) delete env.CI;
 	delete env.GITHUB_WORKSPACE;
 	return env;
 }
@@ -574,7 +585,7 @@ function renderNode(
 	const suffix = files.length > 0 ? `  <- ${files.join(", ")}` : "";
 	const line = `${"  ".repeat(depth)}${node.name}: ${node.className}${suffix}`;
 	const children = [...(node.children ?? [])].sort((a, b) =>
-		compareStrings(a.name, b.name)
+		compareByCodePoint(a.name, b.name)
 	);
 	return [line, ...children.flatMap((child) => renderNode(child, depth + 1))];
 }
