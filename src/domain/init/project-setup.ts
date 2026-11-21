@@ -398,7 +398,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	private static addPlaceStep(
 		places: StartingPlaces,
 		game: boolean,
-		compiled: boolean
+		starter: RobloxTsStarter | undefined
 	): string {
 		const port = "from a second terminal with its own --port";
 		const { outputPrefix, gameFolder } = places;
@@ -408,18 +408,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			path.posix.dirname(gameFolder),
 			"lobby"
 		);
-		const tsconfig = RobloxTsStarter.placeTsconfig(places.place);
-		const lobbyTsconfig = RobloxTsStarter.placeTsconfig("lobby");
 		const edited =
 			'Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common.';
-		const copied = compiled
-			? `copy ${places.configFile} to ${lobby(places.configFile)} and ${tsconfig} to ${lobbyTsconfig}`
-			: `copy ${places.configFile} to ${lobby(places.configFile)}`;
+		const copied = `copy ${places.configFile} to ${lobby(places.configFile)}`;
 		const copy = game
 			? `${copied}, point each ${gameFolder} in its tree to ${lobbyGame}, make src/lobby and copy ${gameFolder} to ${lobbyGame}. ${edited}`
 			: `${copied} and make src/lobby. ${edited}`;
-		const compile = compiled
-			? ` In ${lobbyTsconfig}, change each game to lobby, add it to the references in tsconfig.json, and add ' && rbxtsc -p ${lobbyTsconfig}' to the end of the build script in package.json. 'rbxtsc -w' runs until you stop it, so watch the place from a terminal of its own with 'npx rbxtsc -w -p ${lobbyTsconfig}'.`
+		const compile = starter
+			? ` ${starter.addPlaceStep(places.place, "lobby", lobby(places.configFile))}`
 			: "";
 		return `Add another place: ${copy} Do the same for ${release} if there is one.${compile} Serve it ${port}: 'rogen serve lobby --port <port>'.`;
 	}
@@ -890,7 +886,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				ProjectSetup.addPlaceStep(
 					places,
 					chosen.kind === "new" && chosen.game !== undefined,
-					places.compiledPath !== undefined
+					RobloxTsStarter.of(language)
 				)
 			);
 		if (chosen.kind === "lift" && !takesRoutes(chosen)) {

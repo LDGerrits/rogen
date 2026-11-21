@@ -400,8 +400,12 @@ describe("init for several places", () => {
 		it("should say how to add a place, which copies its config and its tsconfig", async () => {
 			const edits = (await planned()).nextSteps.edits.join("\n");
 
+			expect(edits).toContain("copy game.rogen.json to lobby.rogen.json");
 			expect(edits).toContain(
-				"copy game.rogen.json to lobby.rogen.json and tsconfig.game.json to tsconfig.lobby.json"
+				"Copy tsconfig.game.json to tsconfig.lobby.json, change each game in it to lobby"
+			);
+			expect(edits).toContain(
+				'set "compiledPath" in lobby.rogen.json to out/lobby'
 			);
 			expect(edits).toContain("rbxtsc -w -p tsconfig.lobby.json");
 			expect(edits).toContain("rogen serve lobby --port");
