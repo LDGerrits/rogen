@@ -119,7 +119,7 @@ export class WriteWatch {
 				}
 				if (started.isErr()) {
 					rojoProject = undefined;
-					log.rojo(started, plan.target);
+					log.rojo(started, step.target);
 					return;
 				}
 				const watch = started.value;
@@ -128,7 +128,7 @@ export class WriteWatch {
 					if (step.prints)
 						for (const { stdout } of run.messages)
 							if (stdout !== undefined) logService.print(stdout);
-					log.rojo(ok(run), plan.target);
+					log.rojo(ok(run), step.target);
 				}, rojoListeners);
 				watch.onDidRestart(() => log.restarted(), rojoListeners);
 				watch.onDidExit(({ failure }) => {

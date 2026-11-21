@@ -8,11 +8,11 @@ export interface RojoPlan {
 	readonly project: ResolvedConfig;
 	readonly flags: readonly string[];
 	readonly cwd: string;
-	readonly target: RojoTarget;
 }
 
 export interface RojoStep {
 	readonly command: RojoTarget["command"];
 	readonly prints: boolean;
+	readonly target: RojoTarget;
 	plan(selection: ConfigSelection): Result<RojoPlan | undefined, UsageError>;
 }

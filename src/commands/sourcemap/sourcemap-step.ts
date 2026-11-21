@@ -2,6 +2,7 @@ import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { ConfigSelection } from "../../domain/config/config-service.js";
 import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
+import { RojoTarget } from "../write/rojo-entry.js";
 import { RojoPlan, RojoStep } from "../write/rojo-step.js";
 
 export interface SourcemapFlags {
@@ -24,6 +25,14 @@ export class SourcemapStep implements RojoStep {
 		return this.flags.output === undefined && this.mayPrint;
 	}
 
+	get target(): RojoTarget {
+		return {
+			command: this.command,
+			cwd: this.cwd,
+			output: this.flags.output,
+		};
+	}
+
 	plan(selection: ConfigSelection): Result<RojoPlan | undefined, UsageError> {
 		if (selection.requireValid().isErr()) return ok(undefined);
 		const { output, includeNonScripts, absolute } = this.flags;
@@ -44,7 +53,6 @@ export class SourcemapStep implements RojoStep {
 					? rojoFlags
 					: [...rojoFlags, "--output", output],
 			cwd: this.cwd,
-			target: { command: this.command, cwd: this.cwd, output },
 		});
 	}
 }
