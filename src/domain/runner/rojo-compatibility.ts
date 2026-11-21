@@ -6,6 +6,7 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { childNodes } from "../rojo/rojo-project.js";
 import { RojoVersion } from "./rojo-version.js";
 import { ServerExecutable } from "./rojo-runner.js";
 
@@ -117,9 +118,7 @@ function pathsOutside(folder: string, node: unknown): string[] {
 		typeof own === "string" && leavesFolder(folder, own) ? [own] : [];
 	return [
 		...outside,
-		...Object.entries(node)
-			.filter(([key]) => !key.startsWith("$"))
-			.flatMap(([, child]) => pathsOutside(folder, child)),
+		...childNodes(node).flatMap(([, child]) => pathsOutside(folder, child)),
 	];
 }
 

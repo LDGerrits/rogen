@@ -1,7 +1,7 @@
 import { parse } from "../../base/jsonc.js";
 import { isObject, setOwn } from "../../base/objects.js";
 import { RojoFile } from "../rojo/rojo.js";
-import { RojoNode } from "../rojo/rojo-project.js";
+import { NODE_FIELDS, RojoNode } from "../rojo/rojo-project.js";
 import { instanceNameOf } from "./reverse-router.js";
 
 export interface WrittenEntry {
@@ -44,7 +44,7 @@ const objectOf = (
 	return parsed.isOk() && isObject(parsed.value) ? parsed.value : undefined;
 };
 
-const isChildName = (name: string) => !name.startsWith("$");
+const isChildName = (name: string) => !NODE_FIELDS.has(name);
 
 function fieldsOf(
 	file: Record<string, unknown>,

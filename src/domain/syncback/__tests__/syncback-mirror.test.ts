@@ -540,6 +540,54 @@ describe("SyncbackMirror", () => {
 		).toThrow('"src"');
 	});
 
+	it("should refuse a $path outside the mirror below a child whose key starts with $", () => {
+		expect(() =>
+			SyncbackMirror.assertInside(
+				{
+					tree: {
+						$className: "DataModel",
+						$Foo: { Inner: { $path: "lib/Mod" } },
+					},
+				},
+				ROOT
+			)
+		).toThrow('"lib/Mod"');
+	});
+
+	it("should point a mount below a child whose key starts with $ at a copy in the mirror", async () => {
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					ReplicatedStorage: {
+						$Foo: {
+							$className: "Folder",
+							Inner: { $path: "lib/Mod" },
+						},
+					},
+				},
+			},
+			[],
+			["/repo/lib/Mod"]
+		);
+
+		expect(mirror.file.tree).toEqual({
+			ReplicatedStorage: {
+				$Foo: {
+					$className: "Folder",
+					$path: `${ROOT}/~kept/1`,
+					Inner: { $path: `${ROOT}/~kept/0/Inner` },
+				},
+			},
+		});
+		expect(mirror.entries).toEqual([
+			{
+				mirror: "~kept/0/Inner",
+				target: "/repo/lib/Mod",
+				kind: "folder",
+			},
+		]);
+	});
+
 	it("should copy a nested project with what it reads, laid out as on disk", async () => {
 		const mirror = await mirrorOf(
 			{

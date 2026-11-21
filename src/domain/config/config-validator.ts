@@ -92,6 +92,7 @@ export class ConfigValidator {
 		this.checkNodes(project);
 		this.checkNodeFields(project);
 		this.checkPropertyValues(project);
+		this.checkReservedKeys(project);
 		this.checkRoot(project, routed);
 		this.checkSourcePaths(routed);
 		const compiledPath = this.checkCompiledPath();
@@ -192,6 +193,18 @@ export class ConfigValidator {
 				"tree.unreadableValue",
 				this.locate(...unreadable),
 				`"${unreadable.join(".")}": Rojo can't read this value. ${PropertyValues.READABLE_HINT}`
+			);
+	}
+
+	private checkReservedKeys(project: RojoProject<ParsedProjectFile>): void {
+		for (const reserved of RojoProject.findReservedKeys(
+			project.getNode([]) ?? {},
+			["tree"]
+		))
+			this.problems.warning(
+				"tree.reservedName",
+				this.locate(...reserved),
+				`"${reserved.join(".")}": Rojo reserves keys that start with $ for its own fields, so it warns about this one on every build. Rename it without the $.`
 			);
 	}
 

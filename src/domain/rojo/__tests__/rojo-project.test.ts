@@ -3,6 +3,7 @@ import {
 	RojoNode,
 	RojoProject,
 	RojoProjectFile,
+	childNodes,
 	projectFileName,
 } from "../rojo-project.js";
 import { InstanceMap } from "../../roblox/roblox.js";
@@ -13,6 +14,24 @@ const folders: ContainerFactory = (instancePath) =>
 describe("project file names", () => {
 	it("should name the project file of a stem", () => {
 		expect(projectFileName("lobby")).toBe("lobby.project.json");
+	});
+});
+
+describe("childNodes", () => {
+	it("should read every key that holds an object as a child, but Rojo's fields", () => {
+		const node: RojoNode = {
+			$className: "Folder",
+			$path: { optional: "lib" },
+			$properties: { Name: "x" },
+			$attributes: { Level: 1 },
+			$Foo: { $className: "Folder" },
+			Bar: { $path: "bar" },
+		};
+
+		expect(childNodes(node)).toEqual([
+			["$Foo", { $className: "Folder" }],
+			["Bar", { $path: "bar" }],
+		]);
 	});
 });
 
@@ -158,6 +177,54 @@ describe("RojoProject", () => {
 					instancePath: ["ReplicatedStorage", "Lib", "Inner"],
 				},
 			]);
+		});
+	});
+
+	describe("a child whose key starts with $", () => {
+		const project = () =>
+			new RojoProject({
+				tree: {
+					ReplicatedStorage: {
+						$Shared: { $path: "src/Shared" },
+						Kit: { $Inner: { Deep: { $path: "kit" } } },
+					},
+				},
+			});
+
+		it("should list the paths it mounts, as Rojo reads it as a child", () => {
+			expect(project().mountedPaths()).toEqual([
+				{
+					path: "src/Shared",
+					instancePath: ["ReplicatedStorage", "$Shared"],
+				},
+				{
+					path: "kit",
+					instancePath: [
+						"ReplicatedStorage",
+						"Kit",
+						"$Inner",
+						"Deep",
+					],
+				},
+			]);
+		});
+
+		it("should be found as a key Rojo warns about", () => {
+			expect(
+				RojoProject.findReservedKeys(project().getFile().tree, ["tree"])
+			).toEqual([
+				["tree", "ReplicatedStorage", "$Shared"],
+				["tree", "ReplicatedStorage", "Kit", "$Inner"],
+			]);
+		});
+
+		it("should not be found as one when Rojo can't read it as a node", () => {
+			expect(
+				RojoProject.findReservedKeys(
+					{ Workspace: { $propertes: { Anchored: true } } },
+					[]
+				)
+			).toEqual([]);
 		});
 	});
 
