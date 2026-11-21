@@ -49,10 +49,8 @@ interface WriteOptions {
 	readonly force?: boolean;
 }
 
-/** Warnings about Rogen's own model, which a plain Rojo project hears only from a diagnosis, as Rojo says nothing of them. */
 const ROGEN_ADVICE: ReadonlySet<string> = new Set(["scan.unmountedSource"]);
 
-/** `prepared` without Rogen's advice when its config is a plain Rojo project. */
 function withoutRogenAdvice(prepared: PreparedConfig): PreparedConfig {
 	if (!prepared.config.isAdopted) return prepared;
 	return {
@@ -103,7 +101,6 @@ export class CoreWriteService implements WriteService {
 		return this.writeAll(selection, { write: false, reader });
 	}
 
-	/** A check that reads through `reader`, such as a draft of files not written yet, runs in a scope where it is the file service. */
 	private async inScope<T>(
 		reader: FileSystemService | undefined,
 		run: (scope: InstantiationService) => Promise<T>
@@ -120,7 +117,6 @@ export class CoreWriteService implements WriteService {
 		}
 	}
 
-	/** With `advice`, a plain Rojo project keeps the warnings about Rogen's own model; with `reader`, a check reads through it. */
 	private async writeAll(
 		selection: ConfigSelection,
 		{
@@ -174,7 +170,6 @@ export class CoreWriteService implements WriteService {
 			previous && CoreWriteService.sameVersion(previous, config)
 				? previous.sync
 				: SyncWarnings.unknown;
-		// Unless known, checked after the write, which creates the compiled path's placeholders.
 		const sync =
 			previousSync.kind === "known"
 				? previousSync
@@ -208,7 +203,6 @@ export class CoreWriteService implements WriteService {
 		)
 			return previous;
 		const sync = await this.compiledPathWarnings(config, listing);
-		// A recheck writes nothing, so a config it wrote before is unchanged now.
 		return sync.kind === "known"
 			? CoreWriteService.withSyncWarnings(previous, sync, "unchanged")
 			: previous;
@@ -453,7 +447,6 @@ export class CoreWriteService implements WriteService {
 			.compiledPathWarnings(config);
 	}
 
-	/** Whether each of `changes` adds what a write makes in the compiled path before the compiler runs: a folder, or a placeholder script. */
 	private async onlyPlaceholders(
 		changes: readonly FileChange[]
 	): Promise<boolean> {
@@ -465,7 +458,6 @@ export class CoreWriteService implements WriteService {
 		return true;
 	}
 
-	/** Whether `outcome` is of `config` as it is now; a config is immutable, so its object is its version. */
 	private static sameVersion(
 		outcome: LoadedConfig,
 		config: ResolvedConfig | undefined

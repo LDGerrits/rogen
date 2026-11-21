@@ -9,7 +9,6 @@ import {
 } from "./toolchain.js";
 
 export class WorkspaceDetector {
-	/** `languages` lists the first as the one assumed when none is detected. */
 	constructor(
 		private readonly languages: readonly [
 			LanguageDetector,

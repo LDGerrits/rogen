@@ -23,7 +23,6 @@ export function Hero() {
 						<InstallCommand className="in-4" />
 					</div>
 				</div>
-				{/* over the demo it rewrites, and every example below it */}
 				<LangSwitch className="in-5" />
 				<HeroDemo />
 			</div>

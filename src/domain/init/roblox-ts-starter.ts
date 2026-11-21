@@ -7,20 +7,15 @@ const SCRIPT_TIMEOUT = 60_000;
 
 const OUT_DIR = "out";
 
-/** The variant whose `tsconfig.json` files make the places of `projects` compile with their common code. */
 const PLACES_VARIANT = "roblox-ts-places";
 
-/** What `init` takes from create-roblox-ts, which writes the project's `package.json`, `tsconfig.json` and compiler settings, and what it adds for places that share code. */
 export class RobloxTsStarter {
-	/** What a place compiles into its own folder, which its project file mounts from there. */
 	static readonly OWN_FOLDERS: readonly string[] = ["include"];
 
-	/** The starter of `language`, when it has one. */
 	static of(language: Language): RobloxTsStarter | undefined {
 		return language.id === "roblox-ts" ? new RobloxTsStarter() : undefined;
 	}
 
-	/** Lines for the `.gitignore` that create-roblox-ts would have written, with the folder the compiler writes. */
 	static ignored(several: boolean, outDir = OUT_DIR): string[] {
 		return [
 			"/node_modules",
@@ -31,7 +26,6 @@ export class RobloxTsStarter {
 		];
 	}
 
-	/** Runs create-roblox-ts in the folder, and drops its sample, which Rogen's replaces; with `several` places also its root `tsconfig.json` and the `src` folder, since no place is at the root. Git stays Rogen's step. */
 	scaffold(several = false): PlannedScaffold {
 		const args = [
 			"create",
@@ -62,7 +56,6 @@ export class RobloxTsStarter {
 		};
 	}
 
-	/** Points the `build` and `watch` scripts of `package.json` at `place`, since the root has no single folder for `rbxtsc` to compile. */
 	scripts(place: string): PlannedCommand {
 		const settings = [
 			`scripts.build=rbxtsc -p ${place}`,
@@ -76,7 +69,6 @@ export class RobloxTsStarter {
 		};
 	}
 
-	/** The `tsconfig.json` of the common code of several places, which the editor reads to check it and `rbxtsc` never does, and of the first place, which compiles its own code with the common code. */
 	placesTsconfigs(): PlannedFile[] {
 		return [...templateFiles(PLACES_VARIANT)]
 			.filter(([file]) => file.endsWith("/tsconfig.json"))

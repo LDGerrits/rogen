@@ -12,10 +12,8 @@ import {
 } from "./rojo-runner.js";
 import { RojoServer, ServerMessage } from "./rojo-server.js";
 
-/** How long it waits before a restart that follows soon after the last: doubling from `first` up to `max`. */
 const RESTART_DELAY_MS = { first: 500, max: 10_000 };
 
-/** How long a Rojo serves before its crash is no longer one soon after the last restart. */
 const SERVED_LONG_MS = 10_000;
 
 export class SupervisedRojo
@@ -25,7 +23,6 @@ export class SupervisedRojo
 	private readonly _onDidMessage = this._register(
 		new Emitter<ServerMessage>()
 	);
-	/** What the current Rojo says; the lines of a crash come as `debug`. */
 	readonly onDidMessage: Event<ServerMessage> = this._onDidMessage.event;
 
 	private readonly _onDidConnection = this._register(
@@ -37,13 +34,11 @@ export class SupervisedRojo
 	private readonly _onDidRestart = this._register(
 		new Emitter<RojoRestartEvent>()
 	);
-	/** Fired once the Rojo that replaces a crashed one has started. */
 	readonly onDidRestart: Event<RojoRestartEvent> = this._onDidRestart.event;
 
 	private readonly _onDidExit = this._register(
 		new Emitter<SupervisedExitEvent>()
 	);
-	/** Fired once, when a Rojo stops and none is started in its place. */
 	readonly onDidExit: Event<SupervisedExitEvent> = this._onDidExit.event;
 
 	private current: RojoProcess | undefined;
@@ -65,12 +60,10 @@ export class SupervisedRojo
 		this.launch();
 	}
 
-	/** The id of the current Rojo's process. */
 	get pid(): number | undefined {
 		return this.current?.pid;
 	}
 
-	/** Marks the current Rojo as serving, so a crash from now on is one to restart from; false, marking nothing, when it has exited. */
 	markReady(): boolean {
 		if (this.exited) return false;
 		this.ready = true;
@@ -78,7 +71,6 @@ export class SupervisedRojo
 		return true;
 	}
 
-	/** Ends the current Rojo, and starts no other. */
 	async terminate(): Promise<void> {
 		this.stopping = true;
 		this.halted.abort();
@@ -146,7 +138,6 @@ export class SupervisedRojo
 		});
 	}
 
-	/** Ends on a crash of a Rojo that never served: giving up when it was itself a restart. */
 	private endedUnserved(exit: ProcessExit, lines: readonly string[]): void {
 		this._onDidExit.fire(
 			this.restarted ? { exit, gaveUp: lines } : { exit }
@@ -173,7 +164,6 @@ export class SupervisedRojo
 		this._onDidRestart.fire({ exit, lines });
 	}
 
-	/** None for a crash after a Rojo served a while, else twice the last, from `first` up to `max`. */
 	private nextRestartDelay(): number {
 		if (Date.now() - this.readyAt >= SERVED_LONG_MS) this.restartDelay = 0;
 		const delay = this.restartDelay;

@@ -165,7 +165,8 @@ function RowName({ name, mark }: Pick<Row, "name" | "mark">) {
 	return (
 		<div style={{ display: "flex" }}>
 			{parts.map((part, index) => (
-				// Each piece is measured apart, which leaves a gap that reads as a space.
+				// Each piece is measured apart, which leaves a gap that reads
+				// as a space.
 				<span
 					key={part.text}
 					style={{ marginLeft: index && -5, color: part.color }}

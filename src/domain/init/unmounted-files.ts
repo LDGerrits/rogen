@@ -15,18 +15,15 @@ import {
 import { RojoFile } from "../rojo/rojo.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 
-/** Whether a mount of `target` holds `place`; `.` is the project's folder, which holds everything. */
 const holds = (target: string, place: string): boolean =>
 	target === "." || containsPosix(target, place);
 
-/** The files of the source paths that no node of a hand-written project file mounts: Rojo ignores them, and routes would place them. */
 export class UnmountedFiles {
 	constructor(
 		private readonly reader: FileReader,
 		private readonly directory: string
 	) {}
 
-	/** Each as a glob that matches only it: a folder where nothing is mounted, else the file. A file whose compiled copy is mounted counts as mounted, since Rojo synced that copy. */
 	async find(
 		sourcePaths: readonly string[],
 		mounted: readonly string[],
@@ -54,7 +51,6 @@ export class UnmountedFiles {
 		return found.map(literalGlob).sort();
 	}
 
-	/** `whole`: nothing in `folder` is mounted, so `paths` can be the folder itself. */
 	private async walk(
 		folder: string,
 		mountedAt: (relative: string) => boolean,

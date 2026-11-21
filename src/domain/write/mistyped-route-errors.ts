@@ -12,7 +12,6 @@ import { RoutedFile } from "./router.js";
 const byResource = (a: Diagnostic, b: Diagnostic) =>
 	compareStrings(a.resource, b.resource);
 
-/** `resource` with the name of the route in it spelled as `key`, as `src/A/(SERVER)` → `src/A/(server)`. */
 function spelledAs(resource: string, key: string): string {
 	const name = path.posix.basename(resource);
 	const at = name.toLowerCase().indexOf(key.toLowerCase());
@@ -22,20 +21,14 @@ function spelledAs(resource: string, key: string): string {
 	);
 }
 
-/** What the errors read besides the readings. */
 export interface MistypedRouteInputs {
 	readonly routed: readonly RoutedFile[];
-	/** The files the tree takes the place of, which Rogen doesn't route. */
 	readonly displaced: ReadonlySet<string>;
-	/** The folders named for a route in another case that a route above, or a marker in them, governs. */
 	readonly governed: ReadonlySet<string>;
-	/** Whether a path is already there, so a rename onto it would clash. */
 	readonly exists: (target: string) => boolean;
-	/** The one name key whose target is the `*` route's, whose marker keeps a folder's files where `*` puts them. */
 	readonly fallbackKey?: string;
 }
 
-/** The errors for each name meant as a route that misses its key, which would send its files where their route doesn't reach, as server code to `*`: an `@` that nearly spells a key, in a file, folder or marker name (`route.strayAt`), and a folder named for one in another letter case (`route.caseMismatch`), which in a script folder may instead be a child the script requires, so there it names a marker as well and has no one fix. Under a route that governs it, an `@` for another route names nothing whatever its spelling (`route.ignoredAt`), a folder's name places nothing, and a file the tree takes the place of is not routed, so none of those is reported as a misspelling. */
 export function mistypedRouteErrors(
 	readings: NameReadings,
 	{ routed, displaced, governed, exists, fallbackKey }: MistypedRouteInputs

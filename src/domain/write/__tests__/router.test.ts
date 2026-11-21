@@ -31,7 +31,6 @@ describe("Router", () => {
 				.unwrap()
 				.routed.map((file) => file.instancePath.join("/"));
 
-		/** Where routing places each file, past errors that stop the write. */
 		const placedPaths = async () =>
 			(
 				await pipelineOf(fs, await indexOf(fs, [abs("src")])).place(
@@ -52,7 +51,6 @@ describe("Router", () => {
 				"*Service.*": "ServerScriptService",
 			};
 
-			// A TypeScript project compiles its sources, which Rojo then reads.
 			const routed = async () =>
 				(await route({ routes: PATTERNS, compiledPath: abs("out") }))
 					.unwrap()

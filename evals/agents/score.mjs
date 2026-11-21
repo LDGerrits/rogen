@@ -1,4 +1,3 @@
-// Scores one finished run: whether it checks clean, whether the project file is current, whether every require resolves, where new files landed, and which Rogen commands the agent ran.
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -105,7 +104,6 @@ export function score(dir, transcript, rogen) {
 	};
 }
 
-/** What a transcript says: the run's turns, cost and outcome, its shell commands, and the files it wrote or edited, relative to `dir`. */
 function readTranscript(dir, transcript) {
 	const events = fs
 		.readFileSync(transcript, "utf8")
@@ -148,7 +146,6 @@ function rogenCommandsOf(commands) {
 	];
 }
 
-/** Scores a run in a project of several roblox-ts places: every place checks clean, has a current project file and compiles, and the files `lands` names land under its service in every place. */
 export function scorePlaces(dir, transcript, rogen, lands) {
 	const { result, commands, edited } = readTranscript(dir, transcript);
 	const run = (args, cwd = dir) =>
@@ -190,7 +187,6 @@ export function scorePlaces(dir, transcript, rogen, lands) {
 			compileErrors[place] = (compile.stdout + compile.stderr)
 				.trim()
 				.slice(0, 600);
-		// The config file, not the folder, so the check covers the shared code too. Whether it compiled is scored above, so a warning that nothing was emitted doesn't count.
 		const check = run(
 			["check", `${place}/default.rogen.json`, "--json"],
 			copy

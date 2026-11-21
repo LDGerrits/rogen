@@ -8,17 +8,13 @@ const README = "README.md";
 const ROBLOX_LOCKS =
 	"# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n";
 
-/** The files `rojo init --kind` writes beside the project file, where none exists: Rojo's own contents, with Rogen's commands in the README. */
 export class ProjectTemplate {
 	constructor(
 		readonly kind: InitKind,
-		/** The project's name, which Rojo takes from the folder. */
 		readonly name: string,
-		/** Lines the language adds to the `.gitignore`. */
 		readonly ignored: readonly string[] = []
 	) {}
 
-	/** The README of a model or a plugin; a place's comes with its sample. */
 	get readme(): PlannedFile | undefined {
 		return this.ownFile((file) => file === README);
 	}
@@ -41,7 +37,6 @@ export class ProjectTemplate {
 		};
 	}
 
-	/** The one script of a model or a plugin, which the project mounts as `src`; a place's code is its routes'. */
 	get script(): PlannedFile | undefined {
 		return this.ownFile((file) => file !== README);
 	}

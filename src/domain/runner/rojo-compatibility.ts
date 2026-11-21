@@ -20,7 +20,6 @@ const NOTHING = {
 	outsidePaths: [],
 };
 
-/** What the Rojo that will run can't do with the files Rogen wrote for it. */
 export class RojoCompatibility {
 	constructor(
 		@FileSystemService private readonly fileReader: FileSystemService,
@@ -28,7 +27,6 @@ export class RojoCompatibility {
 		private readonly environmentService: EnvironmentService
 	) {}
 
-	/** `command` is the Rojo command about to run on the files: Rojo 7.7.0 on Windows gets only `sourcemap` wrong. */
 	async problemsIn(
 		executable: ServerExecutable,
 		projectFiles: readonly string[],
@@ -83,10 +81,8 @@ export class RojoCompatibility {
 
 	private async read(file: string): Promise<{
 		syncRules: unknown[];
-		/** How many sync rules and ignore globs the file has. */
 		patterns: number;
 		ignored: string[];
-		/** The `$path`s of the tree that lead out of the file's folder. */
 		outsidePaths: string[];
 	}> {
 		let project: unknown;
@@ -113,7 +109,6 @@ export class RojoCompatibility {
 const isBroken = (version: RojoVersion): boolean =>
 	!version.isBefore(BROKEN) && version.isBefore(FIXED);
 
-/** The `$path`s in a tree that point out of `folder`, in tree order. */
 function pathsOutside(folder: string, node: unknown): string[] {
 	if (!isObject(node)) return [];
 	const { $path: target } = node;

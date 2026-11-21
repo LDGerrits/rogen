@@ -17,7 +17,6 @@ const SEVERITIES: Readonly<Record<string, ServerMessage["severity"]>> = {
 	TRACE: "debug",
 };
 
-/** Rust's own lines: a CLI error or warning; in capitals, a message the server wrote itself, as a paragraph that ends at the blank line. */
 const RUST_RECORD = /^(?<level>error|warning|ERROR|WARNING): (?<text>.*)$/;
 const PARAGRAPH_RECORD = /^(ERROR|WARNING): /;
 const RUST_NOISE = /^note: run with `RUST_BACKTRACE=1`/;
@@ -28,7 +27,6 @@ interface PendingRecord {
 	readonly paragraph: boolean;
 }
 
-/** Reads what a server prints into messages; its banner, info logs and the noise Rogen causes come as `debug`. */
 export class ServerOutput extends AbstractDisposable {
 	private readonly _onDidMessage = this._register(
 		new Emitter<ServerMessage>()
@@ -53,7 +51,6 @@ export class ServerOutput extends AbstractDisposable {
 		);
 	}
 
-	/** `stream` is the one `line` came on, when known. */
 	readLine(line: string, stream?: "stdout" | "stderr"): void {
 		this.read(stripVTControlCharacters(line), stream);
 		this.quiet.cancel();
@@ -89,7 +86,6 @@ export class ServerOutput extends AbstractDisposable {
 			else this.pending.parts.push(line.trim());
 			return;
 		}
-		// A record's cause chain follows it, indented.
 		if (this.pending && (line.trim() === "" || /^\s/.test(line))) {
 			this.pending.parts.push(line.trim());
 			return;

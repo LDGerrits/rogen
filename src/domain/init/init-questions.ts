@@ -15,7 +15,6 @@ import { ReviewPrompts } from "./review-prompts.js";
 import { COMMON_FOLDER, PROJECTS_FOLDER } from "./starter-places.js";
 import { TreeChoice } from "./tree-plan.js";
 
-/** `value` is one of `known`, else a usage error naming them, the closest first. */
 function oneOf(
 	value: string,
 	known: readonly string[],
@@ -29,46 +28,37 @@ function oneOf(
 	);
 }
 
-/** The code each layout would leave where no source path holds it, listed for a hint. */
 export interface UnplacedCode {
 	readonly one?: string;
 	readonly several?: string;
 }
 
-/** A question whose answer the plan's summary would repeat. */
 export type ShownQuestion = "language" | "places" | "sample";
 
-/** Everything `init` asks. A question the user answered with a flag is not asked, and one a run that can't ask takes the default of is written to `decided`. A flag with a value that doesn't fit throws a `UsageError`. */
 export class InitQuestions {
 	readonly decided: InitDecision[] = [];
-	/** The questions answered in the terminal, above the summary, which needn't repeat them. */
 	readonly shown = new Set<ShownQuestion>();
 
 	constructor(
 		readonly interactive: boolean,
 		readonly choices: InitChoices = {},
-		/** The review of a run that shows its plan first, which takes the default of the questions its summary shows until Customise. */
 		private readonly review: ReviewPrompts | undefined,
 		@PromptService private readonly promptService: PromptService
 	) {}
 
-	/** Whether the quick questions are asked rather than taken by default, as under Customise. */
 	get customising(): boolean {
 		return this.review?.mode === "customise";
 	}
 
-	/** Where a question is asked: an `essential` one always, else as a default a summary shows. */
 	private view(essential: boolean): PromptService {
 		if (!this.review) return this.promptService;
 		return essential ? this.review.essential : this.review.quick;
 	}
 
-	/** Whether the user sees a question: every `essential` one, and every one outside a review's quick pass. */
 	private sees(essential: boolean): boolean {
 		return essential || this.review?.mode !== "quick";
 	}
 
-	/** Asks a question, noting it when the user sees it. */
 	private async ask<T>(
 		question: ShownQuestion,
 		essential: boolean,
@@ -88,7 +78,6 @@ export class InitQuestions {
 		return value;
 	}
 
-	/** The template of a new project; it is never asked, since Rojo's `init` doesn't ask it. A lifted project file is the kind it is, `lifted`; else a folder whose code is one module is a model. */
 	kind(directory: InitDirectory, lifted?: InitKind): InitKind {
 		const given = this.choices.kind;
 		if (given !== undefined) return given;
@@ -101,7 +90,6 @@ export class InitQuestions {
 		return kind;
 	}
 
-	/** Whether to leave git out: no `.gitignore` and no `git init`. */
 	skipGit(): boolean {
 		const given = this.choices.skipGit;
 		if (given !== undefined) return given;
@@ -137,7 +125,6 @@ export class InitQuestions {
 		});
 	}
 
-	/** Whether the Greeter sample is written. */
 	async sample(): Promise<boolean | undefined> {
 		const given = this.choices.sample;
 		if (given !== undefined) return given;
@@ -154,12 +141,10 @@ export class InitQuestions {
 		);
 	}
 
-	/** Whether `places` is asked up front: only in a folder without code, else as a default the summary shows. */
 	private placesEssential(directory: InitDirectory): boolean {
 		return !directory.holdsCode;
 	}
 
-	/** Whether the user sees `places`: in a terminal, when no flag answers it, up front or under Customise. */
 	showsPlaces(directory: InitDirectory): boolean {
 		return (
 			this.interactive &&
@@ -168,7 +153,6 @@ export class InitQuestions {
 		);
 	}
 
-	/** Whether a new project is several places, asked up front only in a folder without code; a `projects` folder here makes it the default for a compiled language. */
 	async places(
 		directory: InitDirectory,
 		language: Language,

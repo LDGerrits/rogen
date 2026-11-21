@@ -1,6 +1,5 @@
 const VERSION = /(\d+)\.(\d+)(?:\.(\d+))?/;
 
-/** A release number such as 7.7.1, or 7.7 for 7.7.0; a pre-release tag is not part of it. */
 export class RojoVersion {
 	private constructor(
 		readonly major: number,
@@ -19,7 +18,6 @@ export class RojoVersion {
 			: undefined;
 	}
 
-	/** For a version written in the code, which is always well formed. */
 	static of(text: string): RojoVersion {
 		const version = RojoVersion.parse(text);
 		if (!version) throw new Error(`${text} is not a version.`);

@@ -6,7 +6,6 @@ export class Version {
 		private readonly prerelease: readonly string[]
 	) {}
 
-	/** Build metadata after a plus is dropped. */
 	static parse(text: string): Version | undefined {
 		const match =
 			/^v?(\d+)\.(\d+)\.(\d+)(?:-([\w.-]+))?(?:\+[\w.-]+)?$/.exec(

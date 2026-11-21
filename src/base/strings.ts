@@ -9,30 +9,31 @@ const escaped = (char: string) =>
 		? char
 		: `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`;
 
-/** `text` with each control character other than a newline or tab, each line separator and each bidirectional override written as an escape, and no line left to start a CI workflow command (`::error::`), since a file name can hold both. */
+/**
+ * `text` with each control character other than a newline or tab, each line
+ * separator and each bidirectional override written as an escape, and no line
+ * left to start a CI workflow command (`::error::`), since a file name can hold
+ * both.
+ */
 export function defanged(text: string): string {
 	return text
 		.replace(/[\p{Cc}\u2028\u2029\u202a-\u202e\u2066-\u2069]/gu, escaped)
 		.replace(/^([ \t]*):(?=:)/gm, "$1\\u003a");
 }
 
-/** The first `limit` of `items` joined by commas, then an ellipsis when there are more. */
 export function listLimited(items: readonly string[], limit: number): string {
 	const listed = items.slice(0, limit).join(", ");
 	return items.length > limit ? `${listed}, …` : listed;
 }
 
-/** `1 file`, `3 files`. */
 export function plural(count: number, noun: string): string {
 	return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
-/** `1 more like it isn't listed.` */
 export function unlistedNote(count: number): string {
 	return `${count} more like it ${count === 1 ? "isn't" : "aren't"} listed.`;
 }
 
-/** Edits between `a` and `b`, counting two swapped neighbours as one. */
 export function editDistance(a: string, b: string): number {
 	let twoBack: number[] = [];
 	let previous = Array.from({ length: b.length + 1 }, (_, j) => j);
@@ -59,7 +60,6 @@ export function editDistance(a: string, b: string): number {
 	return previous[b.length];
 }
 
-/** The candidate `word` most likely misspells, as TypeScript judges it. */
 export function closestMatch(
 	word: string,
 	candidates: Iterable<string>
@@ -67,7 +67,6 @@ export function closestMatch(
 	return closestMatches(word, candidates)[0];
 }
 
-/** Every candidate as close to `word` as the closest one. */
 export function closestMatches(
 	word: string,
 	candidates: Iterable<string>
@@ -87,7 +86,6 @@ export function closestMatches(
 	return best;
 }
 
-/** `items` with the one `word` most likely misspells first, as a sentence: `folder and glob`. */
 export function joinedClosestFirst(
 	word: string,
 	items: readonly string[]
@@ -100,12 +98,10 @@ export function joinedClosestFirst(
 	);
 }
 
-/** `a`, `a and b`, `a, b and c`. */
 export function joinedWithAnd(items: readonly string[]): string {
 	return joinedWith(items, "and");
 }
 
-/** `a, b and c`, or the first `shown` of them and how many more: `a, b, c and 2 more`. */
 export function joinedBriefly(items: readonly string[], shown: number): string {
 	const more = items.length - shown;
 	return more > 0
@@ -113,7 +109,6 @@ export function joinedBriefly(items: readonly string[], shown: number): string {
 		: joinedWithAnd(items);
 }
 
-/** `a`, `a or b`, `a, b or c`. */
 export function joinedWithOr(items: readonly string[]): string {
 	return joinedWith(items, "or");
 }
@@ -123,7 +118,6 @@ function joinedWith(items: readonly string[], word: string): string {
 	return `${items.slice(0, -1).join(", ")} ${word} ${items[items.length - 1]}`;
 }
 
-/** The first line of `text` with something on it, trimmed and without terminal colours. */
 export function firstLine(text: string): string | undefined {
 	return stripVTControlCharacters(text)
 		.split(/\r?\n/)
@@ -131,10 +125,8 @@ export function firstLine(text: string): string | undefined {
 		.find((line) => line !== "");
 }
 
-/** `arg` as one word of a shell command line. */
 export const shellWord = (arg: string): string =>
 	/^[\w@%+=:,./-]+$/.test(arg) ? arg : `'${arg.replace(/'/g, "'\\''")}'`;
 
-/** `command` followed by `argument` as one word, or by nothing when there is none. */
 export const commandWith = (command: string, argument: string): string =>
 	argument === "" ? command : `${command} ${shellWord(argument)}`;

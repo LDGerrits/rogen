@@ -56,7 +56,6 @@ describe("WriteValidator rules", () => {
 				warnings,
 			}));
 
-		/** The errors of `code` that stop the write. */
 		const errorsOf = async (
 			code: string,
 			overrides: ResolvedConfigSpec = {}
@@ -555,7 +554,6 @@ describe("WriteValidator rules", () => {
 							to.slice(at("src").length + 1),
 						])
 				);
-			/** Where routing places each file, past errors that stop the write. */
 			const placed = async () =>
 				(
 					await pipelineOf(fs, await indexOf(fs, [abs("src")])).place(

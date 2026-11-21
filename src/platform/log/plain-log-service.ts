@@ -6,7 +6,6 @@ const indented = (text: string) =>
 		.map((line) => `  ${line}`)
 		.join("\n");
 
-/** For output that isn't a terminal (CI, pipes, redirects): plain lines, no gutter, and colour only when asked for. */
 export class PlainLogService extends AbstractLogService {
 	declare readonly _serviceBrand: undefined;
 

@@ -24,7 +24,10 @@ import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 
 const LISTED_PATHS = 3;
 
-/** A compiled file's path with `.luau` read as `.lua`, since a processor may write either. */
+/**
+ * A compiled file's path with `.luau` read as `.lua`, since a processor may
+ * write either.
+ */
 const compiledKey = (file: string): string => file.replace(/\.luau$/, ".lua");
 
 interface EmittedTops {
@@ -38,7 +41,6 @@ interface CompiledPathRun {
 	readonly emittedTops: ReadonlyMap<string, EmittedTops>;
 }
 
-/** Checks what the compiled path holds against what the write expects there, which only changes when the compiler runs. */
 export class CompiledPathCheck {
 	constructor(
 		@FileSystemService private readonly fileSystemService: FileSystemService
@@ -125,7 +127,6 @@ export class CompiledPathCheck {
 		return warnings;
 	}
 
-	/** Whether `meta` belongs to a file the tree mounts beside it, so Rojo reads it where it lies. */
 	private static isMetaOfMount(
 		meta: string,
 		{ config, tree }: Placement
@@ -283,7 +284,6 @@ export class CompiledPathCheck {
 		});
 	}
 
-	/** The compiled keys of everything the files under `sourcePath` can produce, by whatever name a tool gives them. */
 	private async madeBy(
 		sourcePath: string,
 		layout: CompiledLayout
@@ -309,7 +309,6 @@ export class CompiledPathCheck {
 		return made;
 	}
 
-	/** Every file under `dir`, folders and hidden entries of a compiled folder skipped as asked; links are not followed. */
 	private async filesUnder(
 		dir: string,
 		skipHidden: boolean
@@ -356,7 +355,6 @@ export class CompiledPathCheck {
 			);
 	}
 
-	/** Whether a compiler wrote any of `paths`; the placeholders a write makes for Rojo don't count. */
 	private async anyEmitted(paths: readonly string[]): Promise<boolean> {
 		for (const target of paths) {
 			const files = (await this.fileSystemService.isFile(target))
@@ -397,7 +395,6 @@ export class CompiledPathCheck {
 		return undefined;
 	}
 
-	/** The nearest folder above `target` that exists, when `target` itself doesn't. */
 	private async nearestExistingAncestor(
 		target: string
 	): Promise<string | undefined> {

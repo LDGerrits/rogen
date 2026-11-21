@@ -1,7 +1,6 @@
 import { Diagnostic } from "../diagnostics/diagnostic.js";
 import { LogLevel, LogService } from "./log-service.js";
 
-/** For `--json`: the document on stdout and nothing else, so no line beside it, `--verbose`'s included, can break what a program reads. */
 export class JsonLogService implements LogService {
 	declare readonly _serviceBrand: undefined;
 

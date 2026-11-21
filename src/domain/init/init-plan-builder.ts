@@ -51,11 +51,9 @@ export class InitPlanBuilder {
 		private readonly directory: InitDirectory,
 		private readonly asked: boolean,
 		private readonly decided: readonly InitDecision[],
-		/** The folder the user ran in, which `configs` are relative to. */
 		private readonly cwd: string = directory.path
 	) {}
 
-	/** The config `fileName` (relative to the plan's folder, `default.rogen.json` when not given). `written`: the tree of the project file the config was lifted from. `writesProjectFile`: whether `init` writes its project file once the config is written, which only the default of a folder is. */
 	setConfig(
 		config: RogenConfig,
 		written?: WrittenTree,
@@ -72,13 +70,11 @@ export class InitPlanBuilder {
 		return this.configFiles.length;
 	}
 
-	/** `imports`: the files of the agents that read their own, pointed at the agent file. */
 	addAgentFile(file: AgentFile, imports: readonly PlannedFile[] = []): void {
 		this.agentFile = file.planned;
 		this.agentImports = imports;
 	}
 
-	/** `registering`: whether the hook is added to the agents that lack it; a missing script is restored either way. */
 	addAgentHook(hooks: AgentHooks, registering: boolean): void {
 		this.hookFiles = hooks.files(registering);
 		if (registering) this.addSetup(...hooks.setup);
@@ -88,37 +84,30 @@ export class InitPlanBuilder {
 		this.toolManifest = file;
 	}
 
-	/** A file of the project's template, which is written after the config. */
 	addFile(file: PlannedFile): void {
 		this.templateFiles.push(file);
 	}
 
-	/** A file to rename before any file is written; a config may then be written under its old name. */
 	addMove(move: PlannedMove): void {
 		this.moves.push(move);
 	}
 
-	/** A rename that sets aside a config the plan replaces, which runs after every other move. */
 	addSetAside(move: PlannedMove): void {
 		this.setAsides.push(move);
 	}
 
-	/** A line of the summary: what the plan sets up in `area`. */
 	addSummary(area: string, text: string): void {
 		this.summary.push({ area, text });
 	}
 
-	/** The tool that writes the project's own files first. */
 	setScaffold(scaffold: PlannedScaffold): void {
 		this.scaffold = scaffold;
 	}
 
-	/** A program to run after the files are written, after those added before it. */
 	addCommand(command: PlannedCommand): void {
 		this.commands.push(command);
 	}
 
-	/** Asks for a `git init` in the folder, which the plan drops where a work tree holds it already. */
 	requestGitInit(): void {
 		this.gitInit = true;
 	}
@@ -127,7 +116,6 @@ export class InitPlanBuilder {
 		this.directories.add(directory);
 	}
 
-	/** `relative`, a path in the plan's folder, as it is written from the folder the user ran in. */
 	fromHere(relative: string): string {
 		return toPosix(
 			path.relative(this.cwd, path.join(this.directory.path, relative))
@@ -138,7 +126,6 @@ export class InitPlanBuilder {
 		this.notes.push(note);
 	}
 
-	/** The project file whose tree went into the config; init leaves it as it was. */
 	setLiftedFrom(fileName: string): void {
 		this.liftedFrom = fileName;
 	}
@@ -147,7 +134,6 @@ export class InitPlanBuilder {
 		this.warnings.push(warning);
 	}
 
-	/** The same edit from two setups is said once. */
 	addSetup(...lines: readonly string[]): void {
 		for (const line of lines) this.setup.add(line);
 	}
@@ -186,7 +172,6 @@ export class InitPlanBuilder {
 			decided: this.decided,
 			gitInit: this.gitInit,
 			...(this.scaffold && { scaffold: this.scaffold }),
-			// The set-asides end the moves and the configs end the files, since they mark a folder as set up: a run killed before it could undo is likelier to leave a folder init reads as not yet done.
 			moves,
 			files: [
 				...this.templateFiles,

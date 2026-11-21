@@ -5,18 +5,15 @@ import { RojoFile } from "../rojo/rojo.js";
 import { UnplacedInstance } from "./syncback.js";
 import { SyncbackLayout } from "./syncback-layout.js";
 
-/** A property edit Rojo made on an instance, which the meta file of the folder that makes it would hold. */
 export interface MetaRequest<T> {
 	readonly instance: readonly string[];
 	readonly edit: T;
 }
 
-/** An edit that goes into the `init.meta.json` of a feature folder, which sets it on every instance the folder makes. */
 interface PlacedMeta<T> extends MetaRequest<T> {
 	readonly folder: string;
 }
 
-/** Where property edits on the instances of feature folders go: a feature's meta when every instance it makes got the same edit, left out otherwise; an edit on an instance no feature folder makes comes back as `homeless`. */
 export function featureMetas<T>(
 	layout: SyncbackLayout,
 	requests: readonly MetaRequest<T>[],

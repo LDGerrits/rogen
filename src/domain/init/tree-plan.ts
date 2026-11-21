@@ -28,7 +28,6 @@ export type TreeChoice =
 export type ProjectTree =
 	| {
 			readonly kind: "new";
-			/** The sample game the tree mounts, which the Greeter sample comes with. */
 			readonly game?: SampleGame;
 	  }
 	| {
@@ -42,12 +41,10 @@ export type ProjectTree =
 			readonly project: StarterProject;
 	  }
 	| {
-			/** A folder laid out as Rojo's place template with no project file: the tree of the one `rojo init` writes, which init lifts. */
 			readonly kind: "rojoTemplate";
 			readonly project: StarterProject;
 	  };
 
-/** A tree init lifts from a project: a project file's, or the one `rojo init` writes for this folder, which isn't on disk. */
 type LiftedTree = Extract<ProjectTree, { kind: "lift" | "rojoTemplate" }>;
 
 interface TreeInputs {
@@ -55,11 +52,9 @@ interface TreeInputs {
 	readonly mounts: readonly Mount[];
 	readonly dirs: readonly string[];
 	readonly derived: DerivedRoutes | undefined;
-	/** Where the routes the config writes put code. */
 	readonly landings: readonly string[];
 }
 
-/** The name of the folder a mount at `target` lies in or is; a file's folder is where its marker goes. */
 function folderNameOf(target: string): string {
 	const name = path.posix.basename(target);
 	return path.posix.extname(name) === ""
@@ -223,7 +218,6 @@ export class TreePlan {
 		);
 	}
 
-	/** Why init lifts the project file `from`, and what of it the config leaves out. */
 	private static liftNotes(
 		from: string,
 		project: StarterProject,
@@ -245,7 +239,6 @@ export class TreePlan {
 		];
 	}
 
-	/** Rojo put the folders of a whole mounted source path inside its node as well, and routes take them out of it. */
 	private static narrowedWarnings(
 		from: string,
 		derived: DerivedRoutes | undefined,

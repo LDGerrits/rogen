@@ -107,7 +107,6 @@ registerCommand(
 
 			const { stoppedBy } = found.value;
 			const failure = DiagnosticsError.of(found.value.diagnostics);
-			// An error that stops the write fails the check too, though it is about another file: the paths were checked only as far as the write gets.
 			const failed = DiagnosticsError.of([
 				...(failure?.diagnostics ?? []),
 				...stoppedBy,
@@ -137,7 +136,6 @@ registerCommand(
 			return failed ? this.reported(failed) : ok(undefined);
 		}
 
-		/** With paths, each is answered by the config that covers it, with that config's project file when it is stale, and one that nothing covers is said so and skipped. */
 		private async diagnose(
 			configService: ConfigService,
 			writeService: WriteService,

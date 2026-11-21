@@ -157,7 +157,6 @@ describe("syncback command", () => {
 		);
 	});
 
-	/** What the test's Rojo does to the mirror it runs on: Loot added, Combat removed. */
 	const editMirror = async () => {
 		await fs.writeFile(
 			abs(".rogen-syncback/mirror/ServerScriptService/Combat/Loot.luau"),

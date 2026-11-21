@@ -56,7 +56,6 @@ import { ProjectTree, TreeChoice, TreePlan } from "./tree-plan.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
-/** The tree init starts from, with the project file a lift takes read. */
 type ReadChoice =
 	| { readonly kind: "new" }
 	| {
@@ -65,50 +64,35 @@ type ReadChoice =
 			readonly project: StarterProject;
 	  };
 
-/** The folder a processor writes, which the lifted project file mounts. */
 export interface ProcessedOutput {
 	readonly folder: string;
-	/** The processor's config file. */
 	readonly config?: string;
 }
 
 export interface ProjectChoices {
 	readonly language: Language;
 	readonly sourcePaths: readonly string[];
-	/** How the code already spells each standard route key, by the key in lower case. */
 	readonly keySpellings?: Readonly<Record<string, string>>;
 	readonly compiledPath?: string;
-	/** Without `config`, nothing says a processor writes the folder, so its mounts stay. */
 	readonly processed?: ProcessedOutput;
 	readonly tree: ProjectTree;
 	readonly mounts: readonly Mount[];
-	/** Folders of code the lifted project file mounts, which no source path holds and the tree keeps mounting. */
 	readonly keptCode?: readonly string[];
-	/** Code Rogen places nowhere, which init warns about. */
 	readonly outside?: readonly string[];
-	/** What the source paths hold that the lifted project file mounts nowhere, as globs: Rojo ignored it, so `globIgnorePaths` leaves it out. */
 	readonly unmounted?: readonly string[];
-	/** The template of a new project; its files and git step are left out when none is given. */
 	readonly kind?: InitKind;
 	readonly skipGit?: boolean;
-	/** The files of the template that are not there yet, which `init` writes. */
 	readonly templateFiles?: readonly PlannedFile[];
-	/** The source folders init makes with nothing in them, which a `.gitkeep` keeps in git. */
 	readonly emptyFolders?: readonly string[];
-	/** Whether the Greeter sample is written. */
 	readonly sample?: boolean;
-	/** The places a project of several starts with. */
 	readonly places?: StartingPlaces;
-	/** The tool that writes the project's own files first, and what runs once the files are in. */
 	readonly scaffold?: {
 		readonly tool: PlannedScaffold;
 		readonly after: readonly PlannedCommand[];
 	};
-	/** What to add to it so git leaves the project files Rogen writes out. */
 	readonly projectFilesHint?: string;
 }
 
-/** The project a tree carries over: a lifted file's, or the one `rojo init` writes for Rojo's template layout. */
 function carriedProject(tree: ProjectTree): StarterProject | undefined {
 	return tree.kind === "lift" || tree.kind === "rojoTemplate"
 		? tree.project
@@ -123,7 +107,6 @@ function derivedRoutesOf(
 	return carried ? DerivedRoutes.of(carried, dirs) : undefined;
 }
 
-/** The folders placed as they are: the language's own, and the packages that are installed or that a manifest says are coming. */
 function mountsOf(directory: InitDirectory, language: Language): Mount[] {
 	return [
 		...language.alwaysMounted(),
@@ -138,7 +121,6 @@ function mountsOf(directory: InitDirectory, language: Language): Mount[] {
 	}));
 }
 
-/** Whether routes can place code in the tree: a lifted file whose root isn't a DataModel, such as a model or plugin, is Rojo's own and has no service to route to. */
 function takesRoutes(tree: ProjectTree): boolean {
 	return tree.kind === "new" || carriedProject(tree)?.takesRoutes === true;
 }
@@ -150,7 +132,6 @@ const BUILD_COMMANDS: Readonly<
 	plugin: (name) => `rogen build -p "${name}.rbxm"`,
 };
 
-/** The folder the processed config reads, when a processor's config says one writes it. */
 function processedPathOf({
 	processed,
 }: Pick<ProjectChoices, "processed">): string | undefined {
@@ -167,13 +148,10 @@ function generatedDirs(
 	].filter((dir) => dir !== undefined);
 }
 
-/** How many files a warning names before it counts the rest, so it stays one line. */
 const LISTED_SHOWN = 5;
 
-/** The empty file that keeps an empty folder in git, as Rojo's syncback writes it. */
 const GITKEEP = ".gitkeep";
 
-/** A Luau script Rojo makes a Script of, which runs in a plugin. */
 const isServerScript = (name: string): boolean => {
 	const file = new RojoFile(name, SyncRules.DEFAULT);
 	return file.isLuau && file.scriptSuffix === "server";
@@ -403,7 +381,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		});
 	}
 
-	/** The folders of `folders` that init makes and no file of `files` goes in. */
 	private async emptyFolders(
 		folders: readonly string[],
 		files: readonly PlannedFile[]
@@ -422,7 +399,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		);
 	}
 
-	/** The command that serves the project: a place by its folder or name, and the processed config by its name. */
 	private static serveCommand(
 		places: StartingPlaces | undefined,
 		processedPath?: string
@@ -433,7 +409,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			: "rogen serve";
 	}
 
-	/** How to add a second place, which `init` starts but never adds; `game`: whether the first place has the sample game, which the second copies. */
 	private static addPlaceStep(places: StartingPlaces, game: boolean): string {
 		const port = "from a second terminal with its own --port";
 		if (places.folder === "") {
@@ -461,7 +436,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		return `Add another place: make ${lobby}/src, copy ${joinedWithAnd(copied)} into ${lobby} (with the release config, if the place has one), and change the "name" in each config to lobby. Run 'rogen write ${lobby}' for its project file, and add ' && rbxtsc -p ${lobby}' to the end of the build script in package.json. 'rbxtsc -w' runs until you stop it, so watch the place from a terminal of its own with 'npx rbxtsc -w -p ${lobby}', and serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
 	}
 
-	/** An error when the first place has a config already, which init never overwrites. */
 	private async placeTaken(
 		places: StartingPlaces
 	): Promise<Diagnostic | undefined> {
@@ -475,7 +449,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			: undefined;
 	}
 
-	/** Why a new project can't be several places, which `--places` would be an error for. */
 	private noPlacesBecause(
 		kind: InitKind,
 		language: Language,
@@ -493,7 +466,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		return undefined;
 	}
 
-	/** Whether the new project is several places; `undefined` when the user cancelled. */
 	private async severalPlaces(
 		kind: InitKind,
 		language: Language,
@@ -517,7 +489,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		return false;
 	}
 
-	/** The code that one place, and several, would leave where no source path holds it; none where a starter tool sets up an empty folder. */
 	private async unplacedBy(
 		language: Language,
 		starter: RobloxTsStarter | undefined
@@ -540,7 +511,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		};
 	}
 
-	/** The code here that `held` doesn't hold, past the package folders, the language's own folders and `skipped`. */
 	private codeOutside(
 		held: readonly string[],
 		language: Language,
@@ -561,7 +531,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 	}
 
-	/** The tool that starts a new place of `language` in a folder with nothing of its own: no code, no `package.json` or `tsconfig.json` (a language that is present has its own) for the tool to write over, and no project file to lift. */
 	private starterFor(
 		kind: InitKind,
 		language: Language
@@ -576,7 +545,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			: undefined;
 	}
 
-	/** Whether the Greeter sample is written: in a new place, in a folder with no code, and for a compiled language only when its starter tool has set the folder up. */
 	private async wantsSample(
 		kind: InitKind,
 		tree: ProjectTree,
@@ -591,7 +559,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		return writable && this.questions.sample();
 	}
 
-	/** `hasModule`: the folder's code is a module already, which takes the place of the template's script. */
 	private static templateFiles(
 		template: ProjectTemplate,
 		tree: ProjectTree,
@@ -625,7 +592,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		);
 	}
 
-	/** The kind a lifted project is: a place where routes place its code, else a plugin where its root is a script that runs, as in Rojo's plugin template, else a model. */
 	private async kindOf(project: StarterProject): Promise<InitKind> {
 		if (project.takesRoutes) return "place";
 		const root = project.rootPath;
@@ -643,7 +609,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		return scripts.some(Boolean) ? "plugin" : "model";
 	}
 
-	/** `chosen` with the project file a lift takes, read. */
 	private async read(
 		chosen: TreeChoice
 	): Promise<Result<ReadChoice, Diagnostic[]>> {

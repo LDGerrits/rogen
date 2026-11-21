@@ -12,48 +12,34 @@ import { RobloxTsStarter } from "./roblox-ts-starter.js";
 import { SAMPLE_GAME_FOLDER } from "./sample-game.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
-/** Where the places of a compiled project start: the folder that holds them, the code they share and the first one. */
 export const PROJECTS_FOLDER = "projects";
 export const COMMON_FOLDER = "common";
 
-/** Where the places of a Luau project keep their code: the code they share, and each place's own below `src`. */
 const SOURCE_FOLDER = DEFAULT_SOURCE_PATH;
 const FIRST_PLACE = "game";
 const SETTINGS_FILE = ".vscode/settings.json";
 
-/** The source paths of a place in `projects`, as every place lists them: the common code, then its own. */
 const PROJECT_SOURCE_PATHS: readonly string[] = [
 	`../${COMMON_FOLDER}/${DEFAULT_SOURCE_PATH}`,
 	DEFAULT_SOURCE_PATH,
 ];
 
 export interface StartingPlaces {
-	/** The first place as `serve` and `build` take it: its name, or its folder in `projects`. */
 	readonly place: string;
-	/** The folder the place's own files are in, relative to the project; empty when they are at its root. */
 	readonly folder: string;
-	/** The place's config and the project file it writes, relative to the project. */
 	readonly configFile: string;
 	readonly projectFile: string;
-	/** What the stem of the place's other configs, such as `release`, starts with. */
 	readonly outputPrefix: string;
-	/** The source paths the place lists. */
 	readonly sourcePaths: readonly string[];
-	/** The source path of the code the places share. */
 	readonly commonSourcePath: string;
-	/** The first place's source path, relative to the project. */
 	readonly placeSourcePath: string;
-	/** Where the first place keeps its sample game, relative to its config. */
 	readonly gameFolder: string;
-	/** The editor settings of a Luau project and the tsconfig files of a compiled one. */
 	readonly files: readonly PlannedFile[];
 	readonly directories: readonly string[];
 	readonly notes: readonly string[];
-	/** Whether the editor settings written for the place keep luau-lsp's sourcemap current. */
 	readonly settings: boolean;
 }
 
-/** The places a project of several starts with: the code they share, and the first place. A compiled project keeps each place in a folder of `projects`, and a Luau one has a config per place at its root. */
 export class StarterPlaces {
 	constructor(@FileSystemService private readonly files: FileSystemService) {}
 
@@ -122,12 +108,10 @@ export class StarterPlaces {
 		};
 	}
 
-	/** The command luau-lsp runs to keep `sourcemap.json` current for `place`. */
 	static sourcemapCommand(place: string): string {
 		return `rogen sourcemap ${place} --watch -o sourcemap.json`;
 	}
 
-	/** `mounts` of a project's root as a place reads them; `own` are the folders the place has itself, such as roblox-ts's `include`. All are optional, as a place is not compiled yet. A place at the root reads them as they are. */
 	static mountsFor(
 		places: StartingPlaces,
 		mounts: readonly Mount[],

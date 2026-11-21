@@ -13,26 +13,22 @@ import { SyncbackRequest, UnplacedInstance } from "./syncback.js";
 import { TreeChange, applyTreeChanges, treeChanges } from "./tree-changes.js";
 import { treeWithoutSerializedOverrides } from "./without-serialized-overrides.js";
 
-/** The keys of a node that a meta file holds, by the name it holds them under. */
 const META_KEYS: Readonly<Record<string, string>> = {
 	$properties: "properties",
 	$attributes: "attributes",
 };
 
-/** Whether a change to a node is only to what a meta file can hold. */
 const isMetaChange = ({ set, remove, added }: TreeChange): boolean =>
 	added.length === 0 &&
 	[...Object.keys(set), ...remove].every((key) =>
 		Object.hasOwn(META_KEYS, key)
 	);
 
-/** The meta file of a feature folder, with its text when it is there. */
 export interface FeatureMeta {
 	readonly file: string;
 	readonly text?: string;
 }
 
-/** The edits syncback makes to what the project declares rather than syncs: the tree of its config, and the metas of its feature folders. */
 export class ConfigEdits {
 	private readonly request: SyncbackRequest;
 
@@ -44,7 +40,10 @@ export class ConfigEdits {
 		this.request = workspace.request;
 	}
 
-	/** The meta file of a feature folder that syncback edits: the `.meta.jsonc` when the folder has one, as Rojo applies it last, else the `.meta.json`. */
+	/**
+	 * The meta file of a feature folder that syncback edits: the `.meta.jsonc`
+	 * when the folder has one, as Rojo applies it last, else the `.meta.json`.
+	 */
 	async featureMeta(folder: string): Promise<FeatureMeta> {
 		for (const name of [RojoFile.INIT_META_JSONC, RojoFile.INIT_META]) {
 			const file = toNative(path.posix.join(folder, name));
@@ -57,7 +56,6 @@ export class ConfigEdits {
 		return { file: toNative(path.posix.join(folder, RojoFile.INIT_META)) };
 	}
 
-	/** The write that sets `keys` in a feature's meta and keeps what else it holds, a key set to `undefined` taken off; `fresh` is the text of a meta that isn't there yet. None when nothing changes, and left out where an ignore glob matches the meta. */
 	metaWrite(
 		meta: FeatureMeta,
 		instance: string,
@@ -88,7 +86,6 @@ export class ConfigEdits {
 		};
 	}
 
-	/** What Rojo changed in the nodes of the project file it ran on, and the nodes `added` for new instances, as an edit of the config's own tree; a node the tree does not have, which routing made, goes into the meta of the feature folder that makes it, or has no place. */
 	async editTree(added: readonly TreeChange[]): Promise<{
 		operations: Operation[];
 		unplaced: UnplacedInstance[];

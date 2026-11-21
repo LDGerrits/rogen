@@ -15,10 +15,8 @@ import type { Service } from "./explorer";
 import { disk, Name, studio, studioClass } from "./inventory";
 import { getLang, onLang, type Lang } from "./lang";
 
-// Both languages are in the page; the stylesheet shows the current one, so it is right before the page runs.
 const LANGS: Lang[] = ["luau", "ts"];
 
-// The order the highlight visits the files in.
 const cycle = [
 	"svc",
 	"ctrl",
@@ -32,7 +30,6 @@ const cycle = [
 ];
 const COMMAND = "rogen serve";
 
-// What sits around src/Inventory in a project: the packages, and the files at the top.
 const AROUND: Record<
 	Lang,
 	{ packages: string; files: string[]; studioPackages: string }
@@ -107,7 +104,6 @@ function studioRows(lang: Lang): HeroStudioRow[] {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** VS Code with src/Inventory and rogen serve in its terminal, each file wired to where it lands in the Studio Explorer. */
 export function HeroDemo() {
 	const ref = useRef<HTMLElement>(null);
 
@@ -170,7 +166,6 @@ export function HeroDemo() {
 			setActive(active);
 		};
 
-		// Types the command, prints the serve log and fills the Explorer once.
 		const play = async () => {
 			stage.classList.add("play");
 			typed.textContent = "";

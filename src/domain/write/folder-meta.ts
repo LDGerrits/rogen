@@ -10,12 +10,10 @@ import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 
-/** An `init.meta.json`: the fields it sets on the instance its folder becomes. */
 export class FolderMeta {
 	constructor(
 		readonly file: string,
 		readonly sourcePath: string,
-		/** The folder, relative to the source path; the source path itself is "". */
 		readonly dir: string,
 		readonly fields: RojoMetaFields,
 		private readonly merged: readonly string[] = []
@@ -25,7 +23,6 @@ export class FolderMeta {
 		return [this.file, ...this.merged];
 	}
 
-	/** The folder as an absolute POSIX path. */
 	get folder(): string {
 		return joinPosix(this.sourcePath, this.dir);
 	}
@@ -33,13 +30,10 @@ export class FolderMeta {
 
 type Copy = Extract<FolderMetaOutcome, { kind: "copied" }>;
 
-/** The directories written as one `$path`, whose content Rojo reads itself. */
 export interface CollapsedDirs {
-	/** Whether `path` is a collapsed directory, or lies inside one. */
 	covers(path: string): boolean;
 }
 
-/** What became of the folder meta that reaches one node Rojo wouldn't apply it to. */
 export type FolderMetaOutcome =
 	| {
 			readonly kind: "copied";
@@ -47,7 +41,6 @@ export type FolderMetaOutcome =
 			readonly meta: FolderMeta;
 			readonly treeNode: RojoNode;
 	  }
-	/** A file other than the folder's init script is what Rojo reads at the node, so no meta reaching it applies. */
 	| {
 			readonly kind: "shared";
 			readonly instance: string;
@@ -59,7 +52,6 @@ export type FolderMetaOutcome =
 			readonly instance: string;
 			readonly meta: FolderMeta;
 	  }
-	/** The meta's folder never becomes an instance, by its name or because no route places anything through it. */
 	| {
 			readonly kind: "appliesToNothing";
 			readonly meta: FolderMeta;
@@ -68,11 +60,9 @@ export type FolderMetaOutcome =
 
 interface ReachedNode {
 	readonly instancePath: readonly string[];
-	/** The folders that name the node, as absolute POSIX paths. */
 	readonly dirs: Set<string>;
 }
 
-/** Copies each folder's meta onto the nodes it names that Rojo wouldn't apply it to; the last source path wins, and the tree beats both. */
 export class FolderMetaApplier {
 	private readonly metaByDir: ReadonlyMap<string, FolderMeta>;
 
@@ -84,7 +74,6 @@ export class FolderMetaApplier {
 		this.metaByDir = new Map(folderMeta.map((meta) => [meta.folder, meta]));
 	}
 
-	/** Edits `project`, and reports what each meta came to. Fails when two metas from one source path reach one node, or a ref would repeat. */
 	apply(project: RojoProject): Result<FolderMetaOutcome[], Diagnostic[]> {
 		const problems = new DiagnosticCollector();
 		const outcomes = [

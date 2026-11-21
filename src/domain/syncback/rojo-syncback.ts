@@ -14,36 +14,33 @@ import {
 } from "./syncback.js";
 import { SyncbackLayout } from "./syncback-layout.js";
 
-/** The first Rojo release with `syncback`. */
 const SYNCBACK_SINCE = "7.7.0";
 
 const LISTED = /^(Writing|Removing) (.+)$/;
 
-/** Rojo's warning for an instance whose kind of file it can't write back. */
 const SKIPPED = /Cannot syncback (?<kind>\S+) at (?<instance>.+?), skipping/;
-/** Rojo's error for a YAML file it can't write back, which it fails on where it skips JSON and TOML. */
+/**
+ * Rojo's error for a YAML file it can't write back, which it fails on where it
+ * skips JSON and TOML.
+ */
 const REFUSED_YAML =
 	/Failed to syncback (?<instance>.+) because cannot syncback Yaml middleware/;
 
-/** Why an instance whose kind of file Rojo can't write back is left out. */
 const unsyncable = (kind: string): string =>
 	`Rojo can't sync back a ${kind} file, so its change stays in the place; copy it by hand`;
 
-/** Every line Rojo's failure said. */
 const linesOf = (failure: DiagnosticsError): string[] =>
 	failure.diagnostics.flatMap(({ message, details }) => [
 		message,
 		...(details ?? []),
 	]);
 
-/** Rojo's own syncback for one request: how it is run, and what it says. */
 export class RojoSyncback {
 	constructor(
 		private readonly request: SyncbackRequest,
 		@RojoCommandService private readonly rojoService: RojoCommandService
 	) {}
 
-	/** Every line Rojo listed, in its order, as an absolute path. */
 	static listed(
 		messages: readonly ServerMessage[],
 		dir: string
@@ -63,7 +60,11 @@ export class RojoSyncback {
 		});
 	}
 
-	/** Whether Rojo renamed a file by only the letter case of its name, where the file system folds case: it writes the new name over the old file, then its removal of the old name takes what it wrote. */
+	/**
+	 * Whether Rojo renamed a file by only the letter case of its name, where
+	 * the file system folds case: it writes the new name over the old file,
+	 * then its removal of the old name takes what it wrote.
+	 */
 	static lostToCase(messages: readonly ServerMessage[]): boolean {
 		const listed = RojoSyncback.listed(messages, ".");
 		const written = listed
@@ -76,7 +77,6 @@ export class RojoSyncback {
 		);
 	}
 
-	/** The instances Rojo said it skipped, as it can't write back their kind of file. */
 	static skipped(messages: readonly ServerMessage[]): UnplacedInstance[] {
 		return messages.flatMap(({ text }) => {
 			const found = SKIPPED.exec(text)?.groups;
@@ -86,7 +86,6 @@ export class RojoSyncback {
 		});
 	}
 
-	/** The instance whose YAML file Rojo's syncback stopped on, with why it is left out. */
 	static refusedYaml(error: Error): UnplacedInstance | undefined {
 		if (!(error instanceof DiagnosticsError)) return undefined;
 		for (const line of linesOf(error)) {
@@ -97,7 +96,6 @@ export class RojoSyncback {
 		return undefined;
 	}
 
-	/** A plain Rojo project is given to Rojo as it is: what it lists, its changes without a folder it lists with a file inside it. */
 	async plain(dryRun: boolean): Promise<Result<SyncbackResult, Error>> {
 		const { project } = this.request;
 		const ran = await this.run(project.projectFile, [
@@ -123,7 +121,6 @@ export class RojoSyncback {
 		});
 	}
 
-	/** Lists what Rojo's syncback does to the project file at `projectFile`, which mounts the mirror `layout` was made for. */
 	listOn(
 		projectFile: string,
 		layout: SyncbackLayout,
@@ -154,7 +151,6 @@ export class RojoSyncback {
 		return ok(ran.value.messages);
 	}
 
-	/** Rojo's refusal to remove an instance a node of the config's tree defines, with the file that makes it when there is one. */
 	private explain(
 		failure: DiagnosticsError | UsageError,
 		layout: SyncbackLayout | undefined

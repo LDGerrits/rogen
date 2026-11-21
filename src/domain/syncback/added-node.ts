@@ -4,11 +4,8 @@ import { RojoFile } from "../rojo/rojo.js";
 import { RojoNode } from "../rojo/rojo-project.js";
 import { instanceNameOf } from "./reverse-router.js";
 
-/** A file or an empty folder Rojo wrote for a new instance. */
 export interface WrittenEntry {
-	/** The names from the instance's own file or folder down. */
 	readonly path: readonly string[];
-	/** None for an empty folder. */
 	readonly text?: string;
 }
 
@@ -28,10 +25,12 @@ const INIT_META_KEYS: ReadonlySet<string> = new Set([
 	...META_KEYS,
 ]);
 
-/** The prefix of the attributes Rojo keeps a reference between instances in, which a node can't hold. */
+/**
+ * The prefix of the attributes Rojo keeps a reference between instances in,
+ * which a node can't hold.
+ */
 const REFERENCE = "Rojo_";
 
-/** Whether a node could describe a file of this name, so it is worth reading: a model, text or meta file. */
 export const isNodeFile = (name: string): boolean =>
 	[MODEL_SUFFIX, TEXT_SUFFIX, RojoFile.META_SUFFIX].some((suffix) =>
 		name.endsWith(suffix)
@@ -47,7 +46,6 @@ const objectOf = (
 
 const isChildName = (name: string) => !name.startsWith("$");
 
-/** The `$properties` and `$attributes` of a model or meta file; none when it has a key outside `keys` or a reference. */
 function fieldsOf(
 	file: Record<string, unknown>,
 	keys: ReadonlySet<string>
@@ -144,7 +142,6 @@ function folderNode(entries: readonly WrittenEntry[]): RojoNode | undefined {
 	return node;
 }
 
-/** The node of the config's tree that makes the instance Rojo wrote `entries` for, in Rojo's node form; none when the tree can't describe it, as for a script or a binary model. */
 export function addedNode(
 	entries: readonly WrittenEntry[]
 ): RojoNode | undefined {

@@ -3,10 +3,8 @@ import { isDefaultConfigFileName } from "./config.js";
 import { ConfigDiscovery } from "./config-discovery.js";
 import { PickedFolder } from "./core-config-selection.js";
 
-/** `adopting` while the folder's project file stands in for a config; `configured` once a config has been picked, for good. */
 export type DefaultFolderState = "adopting" | "configured";
 
-/** The default of a folder as a fresh run picks it, except that a project file is adopted only while no config has been picked, as it may be what that config wrote. */
 export class DefaultFolder implements PickedFolder {
 	constructor(
 		readonly directory: string,

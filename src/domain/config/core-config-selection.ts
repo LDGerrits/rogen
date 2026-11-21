@@ -20,13 +20,10 @@ const errorsOf = (entry: ConfigEntry): readonly Diagnostic[] =>
 
 export interface PickedFolder {
 	readonly directory: string;
-	/** Absolute and sorted; empty when the folder has no config or can't be read. */
 	list(): Promise<readonly string[]>;
-	/** Whether a file of this name in the folder is one `list` would give. */
 	holds(fileName: string): boolean;
 }
 
-/** The configs one invocation picked, each loading and reloading itself. */
 export class CoreConfigSelection implements ReloadableSelection {
 	private readonly reloads = new Sequencer();
 	private _files: ReadonlySet<string>;
@@ -38,7 +35,6 @@ export class CoreConfigSelection implements ReloadableSelection {
 		readonly home: string,
 		private readonly folder: PickedFolder | undefined,
 		readonly notes: readonly string[] = [],
-		/** Following the folder never removes them. */
 		readonly nestedWriters: ReadonlySet<string> = new Set()
 	) {
 		this._files = this.readFiles();

@@ -7,21 +7,16 @@ import { createDecorator } from "../instantiation/instantiation.js";
 export type IgnoredPath = string | RegExp;
 
 export interface WatchOptions {
-	/** Paths to skip; a directory skips everything under it, and a pattern matches whole paths. */
 	readonly ignored?: readonly IgnoredPath[];
-	/** Directories to watch for their own entries only, unless `paths` also reaches a subfolder. */
 	readonly shallow?: readonly string[];
-	/** Directories under which the caller reports a folder it can't read, so the watcher only writes a debug line for one. */
 	readonly reportsUnreadable?: readonly string[];
 }
 
 export interface Watcher {
 	readonly _serviceBrand: undefined;
 
-	/** Changes as they come, normally one at a time; a consumer that wants them batched debounces them. */
 	readonly onDidChangeFile: Event<readonly FileChange[]>;
 
-	/** Replaces what was watched, in call order with `stop`; resolves once changes to `paths` are reported: a file's own, and everything under a directory. */
 	watch(paths: readonly string[], options?: WatchOptions): Promise<void>;
 	stop(): Promise<void>;
 }
@@ -54,7 +49,6 @@ function isIgnored(target: string, ignored: readonly IgnoredPath[]): boolean {
 	});
 }
 
-/** What a watch of `paths` with `options` looks at, the same for every watcher. */
 export class WatchFilter {
 	private readonly paths: readonly string[];
 	private readonly shallow: readonly string[];

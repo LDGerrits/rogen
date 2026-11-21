@@ -39,7 +39,6 @@ const connectionFields = {
 	port: S.integer,
 };
 
-/** One line of `serve --json`. */
 export const serveLineShape = S.union(
 	agentRulesLineShape,
 	watchLineShapes.write,

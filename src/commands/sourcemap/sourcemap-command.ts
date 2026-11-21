@@ -80,7 +80,6 @@ const SourcemapOptions = [
 	WatchOption,
 ] as const;
 
-/** What went wrong with the run: its error, else its failure. */
 function failureOf(
 	ran: Result<RojoCommandRun, Error> | undefined
 ): Error | undefined {

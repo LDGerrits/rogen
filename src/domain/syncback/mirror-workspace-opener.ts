@@ -16,7 +16,6 @@ import { SyncbackLayout } from "./syncback-layout.js";
 import { SyncbackMirror } from "./syncback-mirror.js";
 import { MIRROR, SyncbackStaging } from "./syncback-staging.js";
 
-/** Opens the mirror of a project: the project file a write would write, the layout of its places, and the staging folder it syncs back in. */
 export class MirrorWorkspaceOpener {
 	constructor(
 		@ConfigService private readonly configService: ConfigService,
@@ -29,7 +28,6 @@ export class MirrorWorkspaceOpener {
 		private readonly instantiationService: InstantiationService
 	) {}
 
-	/** The mirror of the request's project, from the project file a write would write; fails when the project does not build, or when two of its files make instances whose names differ only in case. */
 	async open(
 		request: SyncbackRequest
 	): Promise<Result<MirrorWorkspace, Error>> {
@@ -59,7 +57,8 @@ export class MirrorWorkspaceOpener {
 			await this.otherConfigsOf(project)
 		);
 		const mirror = await SyncbackMirror.of({
-			// Rojo crashes on a project file not named default.project.json that names no project.
+			// Rojo crashes on a project file not named default.project.json
+			// that names no project.
 			written: { ...written, name: written.name ?? project.projectName },
 			tree: project.project.getFile().tree,
 			routeTargets: [...project.routes.values()].map(
@@ -110,7 +109,6 @@ export class MirrorWorkspaceOpener {
 		);
 	}
 
-	/** The configs beside `project` in its folder, which together with it are the places of one game. */
 	private async otherConfigsOf(
 		project: ResolvedConfig
 	): Promise<ResolvedConfig[]> {

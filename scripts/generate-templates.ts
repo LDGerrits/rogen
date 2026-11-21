@@ -10,7 +10,6 @@ export const OUTPUT = path.resolve("src/domain/init/starter-templates.ts");
 
 const PLACES_SUFFIX = "-places";
 
-/** The folder of the Greeter feature, wherever a variant puts it. */
 const FEATURE = "/Greeter/";
 
 function listed(dir: string, prefix = ""): string[] {
@@ -23,7 +22,6 @@ function listed(dir: string, prefix = ""): string[] {
 		);
 }
 
-/** Every file below `templates/` but its README, by path, read as LF whatever git checked out. */
 export function readTemplates(dir: string): Record<string, string> {
 	return Object.fromEntries(
 		listed(dir)
@@ -83,7 +81,6 @@ function checkFeatures(files: Readonly<Record<string, string>>): void {
 	}
 }
 
-/** The files as the module that embeds them holds them. */
 export function renderTemplatesModule(
 	files: Readonly<Record<string, string>>
 ): string {

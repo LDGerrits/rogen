@@ -6,14 +6,11 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "./resolved-config.js";
 
-/** One config of a folder as it loaded. */
 export interface FolderConfig {
 	readonly config: ResolvedConfig;
-	/** What the file holds. */
 	readonly value: Readonly<Record<string, unknown>> | undefined;
 }
 
-/** What a config says apart from its name and source paths, so two configs that differ in routes, tree or any other key are two outputs. */
 function otherKeys(value: Readonly<Record<string, unknown>> | undefined) {
 	const { name: _name, sourcePaths: _sourcePaths, ...rest } = value ?? {};
 	return rest;
@@ -22,7 +19,6 @@ function otherKeys(value: Readonly<Record<string, unknown>> | undefined) {
 const sourcesOf = (config: ResolvedConfig): string[] =>
 	[...config.sourcePaths].sort();
 
-/** The errors for `mine` where a sibling config of its folder is a copy that was not edited: it names the same project and repeats it entirely. */
 export function folderClashes(
 	mine: FolderConfig,
 	siblings: readonly FolderConfig[]

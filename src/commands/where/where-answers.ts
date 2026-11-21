@@ -15,7 +15,6 @@ import {
 
 interface FileAnswer {
 	readonly kind: "file";
-	/** The config file that answered. */
 	readonly config: string;
 	readonly location: FileLocation;
 	readonly instance?: string;
@@ -36,15 +35,10 @@ const sourceOf = (answer: Answer): string =>
 	answer.kind === "file" ? answer.location.source : answer.instance;
 
 export class WhereAnswers {
-	/** The errors no line shows, so they print on their own. */
 	readonly errors: readonly Diagnostic[];
-	/** The errors that stop the write of a config that answered. */
 	readonly stops: readonly Diagnostic[];
-	/** What fails `where`: a config that didn't load, or an error that stops the write and is about what was asked. */
 	readonly failing: readonly Diagnostic[];
-	/** The errors that stop the write but are about nothing asked, which `where` prints and passes. */
 	readonly elsewhere: readonly Diagnostic[];
-	/** When no file answered and no error stops the write, the warnings that say why. */
 	readonly whyEmpty: readonly Diagnostic[];
 	readonly configCount: number;
 	readonly sourcePaths: readonly string[];
@@ -75,7 +69,6 @@ export class WhereAnswers {
 		const unshown = uniqueDiagnostics(
 			diagnoses.flatMap(({ unshown }) => unshown)
 		);
-		// Asked about everything, every error is about what was asked.
 		this.elsewhere = everyFile ? [] : unshown;
 		this.errors = uniqueDiagnostics([...errors, ...unshown]);
 		this.failing = uniqueDiagnostics([
@@ -86,7 +79,6 @@ export class WhereAnswers {
 		]);
 	}
 
-	/** In the order asked, or sorted; a directory's files stay together. */
 	bySource(): Answer[][] {
 		const bySource = groupBy(this.answers, sourceOf);
 		const sources = [...bySource.keys()];
@@ -118,7 +110,6 @@ export class WhereAnswers {
 		return at === -1 ? this.asked.length : at;
 	};
 
-	/** For each instance asked about that a file places: the answers that place it, by file. */
 	byInstance(): Map<string, Map<string, FileAnswer[]>> {
 		const placing = this.answers.filter(
 			(answer): answer is FileAnswer & { readonly instance: string } =>

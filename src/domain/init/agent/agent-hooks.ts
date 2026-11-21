@@ -13,7 +13,6 @@ interface AgentHooksParts {
 	readonly inUse: readonly AgentInUse[];
 }
 
-/** How an agent's settings stand with the hook: `absent` and `added` are a new file or an edit that registers it. */
 type AgentHookStatus =
 	| {
 			readonly agent: CodingAgent;
@@ -41,12 +40,10 @@ export class AgentHooks {
 		});
 	}
 
-	/** Whether a coding agent whose hook file Rogen knows is in use here, whether or not it has the hook. */
 	get inUse(): boolean {
 		return this.state.inUse.length > 0;
 	}
 
-	/** Whether the agent whose settings live in `settingsFile` is in use here. */
 	uses(settingsFile: string): boolean {
 		return this.state.inUse.some(
 			({ agent }) => agent.settingsFile === settingsFile
@@ -57,12 +54,10 @@ export class AgentHooks {
 		return this.registering.length > 0;
 	}
 
-	/** The agents in use whose hook file registers the script already, while the script exists. */
 	get registered(): string[] {
 		return this.state.scriptExists ? this.registeredNames : [];
 	}
 
-	/** The agents whose registered hook runs a script that is gone, which init writes back without asking. */
 	get restoring(): string[] {
 		return this.state.scriptExists ? [] : this.registeredNames;
 	}
@@ -71,7 +66,6 @@ export class AgentHooks {
 		return this.registering.map(({ agent }) => agent.name);
 	}
 
-	/** The files that restore the script, and register the hook where `registering`. */
 	files(registering: boolean): PlannedFile[] {
 		const additions = registering ? this.registering : [];
 		return [

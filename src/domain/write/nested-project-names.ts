@@ -13,7 +13,6 @@ import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
-/** The `name` of each nested project file under the source paths, by absolute POSIX path: Rojo names the instance of one it finds in a folder by it. */
 export class NestedProjectNames {
 	constructor(
 		private readonly index: IndexReader,

@@ -11,7 +11,6 @@ import { delay, MoreLink } from "./more-link";
 
 type Dot = "o" | "s" | "c" | "r";
 
-// [Luau name, roblox-ts name, depth, marker, class]
 const tree: [string, string, number, Dot, string?][] = [
 	["src/", "src/", 0, "o"],
 	["Combat/", "combat/", 1, "o"],
@@ -38,7 +37,6 @@ const tree: [string, string, number, Dot, string?][] = [
 	["Shop/", "shop/", 1, "o"],
 ];
 
-// Rojo's commands through Rogen, with what each prints.
 const ROJO_RUNS: Run[] = [
 	{ command: "rogen build -o game.rbxl", output: ["Built game.rbxl."] },
 	{
@@ -75,12 +73,9 @@ function TreeName({ name, dot }: { name: string; dot: Dot }) {
 	);
 }
 
-// A row of VS Code's explorer: [name, depth, selected].
 type Row = [string, number, boolean?];
-// A command typed in the terminal, and what it prints.
 type Run = { command: string; output: string[] };
 
-// A feature that requires another, and what each language's linter prints about it.
 const BOUNDARY: Record<"luau" | "ts", { rows: Row[] } & Run> = {
 	luau: {
 		rows: [
@@ -122,7 +117,6 @@ const BOUNDARY: Record<"luau" | "ts", { rows: Row[] } & Run> = {
 	},
 };
 
-// Two places that share src/common, in the layout each language's init writes, and what rogen where says of the game place.
 const PLACES: Record<"luau" | "ts", { rows: Row[] } & Run> = {
 	luau: {
 		rows: [
@@ -204,7 +198,6 @@ function Terminal({ runs, prompt = false }: { runs: Run[]; prompt?: boolean }) {
 	);
 }
 
-/** VS Code's explorer over a terminal, in each language, as Boundaries and Places show them. */
 function ExplorerAndTerminal({
 	figure,
 	delayMs,

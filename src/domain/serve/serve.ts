@@ -4,7 +4,6 @@ export class ServeAddress {
 		readonly port: number
 	) {}
 
-	/** The host without the brackets of an IPv6 address. */
 	private get bareHost(): string {
 		return this.host.replace(/^\[(.*)\]$/, "$1");
 	}
@@ -38,7 +37,6 @@ export class ServeAddress {
 		return `http://${host.includes(":") ? `[${host}]` : host}:${this.port}${path}`;
 	}
 
-	/** The address as Rojo's banner shows it: `localhost` for a loopback host. */
 	get shown(): string {
 		const bare = this.bareHost;
 		return /^127\./.test(bare) || bare === "::1"
@@ -46,7 +44,6 @@ export class ServeAddress {
 			: this.toString();
 	}
 
-	/** Where a browser reaches it, as Rojo's banner says. */
 	get url(): string {
 		return `http://${this.shown}/`;
 	}

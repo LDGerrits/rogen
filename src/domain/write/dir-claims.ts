@@ -7,7 +7,6 @@ interface FolderMarker {
 	readonly key: string;
 }
 
-/** What the marker files of one source path's folders offer to claim, by folder relative to the source path. */
 export class DirClaims {
 	private readonly markers: ReadonlyMap<string, string[]>;
 
@@ -32,7 +31,6 @@ export class DirClaims {
 	}
 }
 
-/** The claims of every source path, built once for the routing and the checks. */
 export class RootClaims {
 	private readonly byRoot = new Map<ScannedRoot, DirClaims>();
 

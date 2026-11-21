@@ -11,7 +11,6 @@ import { SyncRules } from "../../rojo/sync-rules.js";
 import { MountedLocation } from "../write-service.js";
 import { TreeMount, TreeMounts } from "../write-tree.js";
 
-/** Reads the folders and files a tree's `$path`s mount as Rojo does, so `where` answers for what Rogen leaves to Rojo: a package, a folder with an init file, a plain Rojo project. */
 export class MountedInstances {
 	constructor(
 		private readonly fileReader: FileReader,
@@ -19,7 +18,6 @@ export class MountedInstances {
 		private readonly rules: SyncRules
 	) {}
 
-	/** The instance that `source`, inside the mount covering it, becomes; none when Rojo reads no instance from it. */
 	async instanceOf(source: string): Promise<readonly string[] | undefined> {
 		const mount = this.mounts.covering(source);
 		if (!mount) return undefined;
@@ -49,7 +47,6 @@ export class MountedInstances {
 		return [...folder, file.instanceName];
 	}
 
-	/** The mounted files and folders that make `reference`, or a mount inside it. */
 	async filesAt(reference: InstanceReference): Promise<MountedLocation[]> {
 		const names = reference.text.split(reference.separator);
 		const found: MountedLocation[] = [];
@@ -76,7 +73,6 @@ export class MountedInstances {
 		return found;
 	}
 
-	/** The init file of a mounted folder, which is the instance of the folder itself, else the mounted path. */
 	private async rootOf(mount: TreeMount): Promise<string> {
 		const root = toPosix(mount.path);
 		return (await this.fileReader.isDirectory(root))

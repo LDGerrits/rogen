@@ -4,7 +4,6 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import { FileIcon, VsCodeWindow } from "../ide";
 import { useLang, type Lang } from "./lang";
 
-// One agent per feature, each writing one file of its own feature, which requires only that feature.
 const AGENTS: {
 	feature: Record<Lang, string>;
 	colour: string;
@@ -114,7 +113,6 @@ export function openShop(offer: Offer) {
 	},
 ];
 
-// What VS Code's Modern themes colour as keywords: storage in blue, control flow in purple.
 const KEYWORDS: Record<Lang, Set<string>> = {
 	luau: new Set([
 		"local",
@@ -149,7 +147,6 @@ const TOKEN =
 const escape = (text: string) =>
 	text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-/** A line of code as VS Code colours it, as markup; word wrap may break after a dot, a bracket or a colon, as VS Code's does. */
 function highlight(line: string, lang: Lang) {
 	let out = "";
 	for (const m of line.matchAll(TOKEN)) {
@@ -171,7 +168,6 @@ function highlight(line: string, lang: Lang) {
 	return out;
 }
 
-/** The first typed characters of an agent's file, as numbered lines with the agent's cursor at the end. */
 function render(k: number, lang: Lang, typed: number) {
 	const lines = AGENTS[k].code[lang].slice(0, typed).split("\n");
 	return lines
@@ -186,11 +182,9 @@ function render(k: number, lang: Lang, typed: number) {
 		.join("");
 }
 
-// The same opening state on the server and the client, so hydration matches.
 const opening = (k: number, lang: Lang) =>
 	Math.floor(AGENTS[k].code[lang].length * (0.3 + k * 0.2));
 
-/** Three VS Code windows, one per feature folder, each with an agent writing a file of that feature. */
 export function AgentWindows() {
 	const ref = useRef<HTMLDivElement>(null);
 	const lang = useLang();
@@ -205,7 +199,6 @@ export function AgentWindows() {
 			codes[k].innerHTML = render(k, lang, typed[k]);
 			codes[k].scrollTop = codes[k].scrollHeight;
 		};
-		// Each agent types at its own pace, waits at the end of a line and of the file, then starts again.
 		const step = (k: number) => {
 			const code = AGENTS[k].code[lang];
 			if (holds[k] > 0) {

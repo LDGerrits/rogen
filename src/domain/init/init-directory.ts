@@ -23,9 +23,7 @@ export class InitDirectory {
 		private readonly entries: ReadonlySet<string>,
 		readonly workspace: DetectedWorkspace,
 		readonly layout: DirectoryLayout,
-		/** Whether git tracks the hand-written default.project.json here. */
 		readonly tracksProjectFile: boolean,
-		/** Whether the file system takes `Src` and `src` for one name, as Windows' and macOS' do. */
 		caseInsensitive = ignoresPathCase
 	) {
 		this.names = new PathSet(entries, caseInsensitive);
@@ -43,7 +41,6 @@ export class InitDirectory {
 		return [...this.entries].filter(isConfigFileName).sort();
 	}
 
-	/** The Rojo project files here other than `except`, which init does not lift. */
 	otherProjectFiles(...except: string[]): string[] {
 		return [...this.entries]
 			.filter(
@@ -76,13 +73,11 @@ export class InitDirectory {
 			);
 	}
 
-	/** Whether the folder holds code: in a folder, or as a script at its top. */
 	get holdsCode(): boolean {
 		const { codeFolders, rootScripts } = this.layout;
 		return codeFolders.length > 0 || rootScripts.length > 0;
 	}
 
-	/** The folder a model mounts where the code is one module: `src`, else the only code folder, when an init module is at its top. */
 	get moduleRoot(): string | undefined {
 		const { codeFolders, moduleFolders } = this.layout;
 		const root = this.has(DEFAULT_SOURCE_PATH)
@@ -95,7 +90,6 @@ export class InitDirectory {
 			: undefined;
 	}
 
-	/** Whether the folder's only code is the module at `moduleRoot`, which makes it a model. */
 	get isOneModule(): boolean {
 		const { codeFolders, rootScripts } = this.layout;
 		return (
@@ -105,7 +99,6 @@ export class InitDirectory {
 		);
 	}
 
-	/** The first that applies: the language's own config, `src`, the only code folder unless a route is named after it, else `src`. */
 	defaultSourcePath(language: Language): string {
 		const configured = language.configuredSourcePath();
 		if (configured !== undefined) return configured;

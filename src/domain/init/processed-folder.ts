@@ -9,14 +9,12 @@ import {
 import { tryWithAsync } from "../../base/result.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
-/** The folder a processor such as Darklua writes, found as the one a hand-written project file mounts and that repeats the layout of the source paths. */
 export class ProcessedFolder {
 	constructor(
 		private readonly directory: string,
 		@FileSystemService private readonly reader: FileSystemService
 	) {}
 
-	/** Only a single match counts, since two folders that both repeat the source can't be told apart. */
 	async find(
 		sourcePaths: readonly string[],
 		mounted: readonly string[],
@@ -49,7 +47,6 @@ export class ProcessedFolder {
 		return mirrors.length === 1 ? mirrors[0] : undefined;
 	}
 
-	/** Whether `target` in `top` has its counterpart in `common`; a mount of the whole folder must also share a name with it, which a package folder doesn't. */
 	private async mirrors(
 		top: string,
 		target: string,

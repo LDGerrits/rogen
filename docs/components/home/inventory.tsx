@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import type { Icon, Service } from "./explorer";
 import type { Lang } from "./lang-script";
 
-// The example feature, src/Inventory, on disk and in the Studio Explorer.
 export type DiskRow = [
 	name: string,
 	depth: number,
@@ -32,7 +31,6 @@ const luauDisk: DiskRow[] = [
 	["ItemIcons.rbxm", 2, "icons", "r"],
 ];
 
-// roblox-ts: lowercase folders and route keys, kebab-case files as in Next.js.
 const tsDisk: DiskRow[] = [
 	["src/", 0],
 	["inventory/", 1],
@@ -96,7 +94,6 @@ export const studio: Record<Lang, StudioRow[]> = {
 	ts: tsStudio,
 };
 
-/** Both versions of a piece of text; the stylesheet shows the one for the current language. */
 export function L({ luau, ts }: { luau: ReactNode; ts: ReactNode }) {
 	return (
 		<>
@@ -106,7 +103,6 @@ export function L({ luau, ts }: { luau: ReactNode; ts: ReactNode }) {
 	);
 }
 
-/** A file name with its @Server or @Client suffix in that route's colour. */
 export function Name({ name, colour }: { name: string; colour?: Service }) {
 	const at = name.indexOf("@");
 	if (at < 0) return <span className="nm">{name}</span>;
@@ -120,7 +116,6 @@ export function Name({ name, colour }: { name: string; colour?: Service }) {
 	);
 }
 
-/** The Studio class an Explorer row shows the icon of. */
 export function studioClass(icon: Icon, name: string): string {
 	if (icon === "svc") return name;
 	if (icon === "dir") return "Folder";

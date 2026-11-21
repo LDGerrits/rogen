@@ -87,11 +87,9 @@ export const diagnosticShape = OutputShape.named(
 const diagnosticAnchor = (code: string): string =>
 	code.replace(".", "-").toLowerCase();
 
-/** Where the docs explain `code`. */
 export const diagnosticUrl = (code: string): string =>
 	`${DOCS_URL}/diagnostics#${diagnosticAnchor(code)}`;
 
-/** `diagnostic` as JSON; with `cwd`, the paths its message and details name are relative to it, as the text output writes them, while `file` stays absolute. */
 export function diagnosticToJson(
 	diagnostic: Diagnostic,
 	cwd?: string
@@ -168,7 +166,6 @@ export interface ErrorJson {
 	readonly hint?: string;
 }
 
-/** A failure that isn't a list of diagnostics, as a program reads it; a bug says where to report it. */
 export function errorToJson(error: Error): ErrorJson {
 	const kind = errorKind(error);
 	if (error instanceof KindedError)
@@ -186,7 +183,6 @@ export function errorToJson(error: Error): ErrorJson {
 	};
 }
 
-/** What a `--json` run prints when it fails before it has anything else to show. */
 export function failureToJson(
 	error: Error
 ):
@@ -206,7 +202,6 @@ export const errorShape = OutputShape.named(
 	})
 );
 
-/** What a `--json` run prints when it fails before it has anything else to show. */
 export const failureShape = OutputShape.union(
 	OutputShape.object({ diagnostics: OutputShape.array(diagnosticShape) }),
 	OutputShape.object({ error: errorShape })

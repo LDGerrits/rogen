@@ -199,7 +199,6 @@ registerCommand(
 			return failure ? this.reported(failure) : ok(undefined);
 		}
 
-		/** Lists the plan and warns about what it leaves out, then asks whether to write it. */
 		private async confirmed(
 			logService: LogService,
 			promptService: PromptService,
@@ -215,7 +214,6 @@ registerCommand(
 			return answer === true;
 		}
 
-		/** Prints what Rojo's `--list` prints: a line for each file and folder, `Writing` or `Removing`, on stdout. */
 		private listChanges(
 			logService: LogService,
 			plan: SyncbackPlan,
@@ -229,7 +227,6 @@ registerCommand(
 				);
 		}
 
-		/** Warns about what the plan leaves out, which a user should see before saying yes to the rest. */
 		private warnLeftOut(
 			logService: LogService,
 			plan: SyncbackPlan,

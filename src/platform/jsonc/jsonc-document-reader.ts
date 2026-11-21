@@ -9,10 +9,8 @@ import {
 	errorDiagnostic,
 } from "../diagnostics/diagnostic.js";
 
-/** What kind of file is read, which words its diagnostics: `config` gives `config.wrongType` and "a config must be a JSON object". */
 interface JsoncDocumentKind {
 	readonly codePrefix: string;
-	/** The file as a sentence starts with it, article included. */
 	readonly noun: string;
 }
 
@@ -30,7 +28,6 @@ const KIND_NAMES: Record<JsoncNode["kind"], string> = {
 	null: "null",
 };
 
-/** Parses JSONC into a JSON object checked against a structure; every problem is a diagnostic. */
 export class JsoncDocumentReader {
 	constructor(private readonly kind: JsoncDocumentKind) {}
 

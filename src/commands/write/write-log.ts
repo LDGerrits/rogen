@@ -11,7 +11,6 @@ import { LogService } from "../../platform/log/log-service.js";
 import { OutcomeLog } from "../write/outcome-log.js";
 import { isPlain } from "./write-document.js";
 
-/** What `rogen write` says: a line for each config and each project file it left alone, then how many it wrote. */
 export class WriteLog {
 	private readonly outcomeLog: OutcomeLog;
 
@@ -49,7 +48,6 @@ export class WriteLog {
 		else this.outcomeLog.end(count, run.warningCount);
 	}
 
-	/** How many project files the write wrote, and how many it left as they were. */
 	private static count(configs: readonly ConfigOutcome[]): string {
 		const wrote = configs.filter(didWrite).length;
 		const unchanged = configs.filter(isUnchanged).length;

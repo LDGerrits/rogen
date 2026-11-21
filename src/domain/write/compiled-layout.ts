@@ -20,7 +20,10 @@ import {
 	SyncTool,
 } from "../toolchain/toolchain.js";
 
-/** Rojo never watches a `$path` missing at load, so the write makes a folder or script there first. */
+/**
+ * Rojo never watches a `$path` missing at load, so the write makes a folder or
+ * script there first.
+ */
 export interface Placeholder {
 	readonly path: string;
 	readonly kind: "folder" | "script";
@@ -29,10 +32,8 @@ export interface Placeholder {
 export const PLACEHOLDER_SOURCE =
 	"-- Rogen wrote this so Rojo watches it. Your compiler replaces it.\n";
 
-/** What is at a path a write may hold for Rojo: nothing, a folder, Rogen's placeholder script, or a file something else wrote. */
 export type PlaceholderState = "absent" | "folder" | "placeholder" | "written";
 
-/** Whether `content` is the script a write makes for Rojo, which no compiler has replaced yet. */
 export function isPlaceholder(content: string): boolean {
 	return content === PLACEHOLDER_SOURCE;
 }
@@ -49,14 +50,12 @@ export async function placeholderState(
 	return (await reader.exists(target)) ? "written" : "absent";
 }
 
-/** Where a write's files are synced from: the source paths themselves, or the `compiledPath` that tools write them into. */
 export class CompiledLayout {
 	readonly commonRoot: string;
 	readonly compiledPath: string | undefined;
 	readonly projectDir: string;
 	readonly syncRules: SyncRules;
 
-	/** `tools` are what rewrites code on its way to `compiledPath`. */
 	constructor(
 		config: Pick<
 			ResolvedConfig,
@@ -70,7 +69,6 @@ export class CompiledLayout {
 		this.syncRules = config.syncRules;
 	}
 
-	/** The script names that make a file its folder: Rojo's `init`, and any name a tool writes as it. */
 	get initNames(): ReadonlySet<string> {
 		return new Set([
 			RojoFile.INIT_NAME,
@@ -94,7 +92,6 @@ export class CompiledLayout {
 		return toPosix(path.relative(this.projectDir, absolutePath));
 	}
 
-	/** The absolute path the tools write for `filePath` under `compiledPath`, or `filePath` itself when nothing syncs elsewhere. */
 	emittedPath(filePath: string): string {
 		if (this.compiledPath === undefined) return filePath;
 		const compiled = compiledPathOf(this, filePath);
@@ -106,12 +103,10 @@ export class CompiledLayout {
 		);
 	}
 
-	/** Where the tools write the files of `dir`, relative to the project; they rename files, never folders. */
 	private compiledFolderOf(dir: string): string {
 		return this.relativeToProject(compiledPathOf(this, dir));
 	}
 
-	/** A glob of the project written as it matches the files under the compiled path. */
 	syncedGlob(glob: string): string {
 		if (this.compiledPath === undefined) return glob;
 		const root = toPosix(this.commonRoot);
@@ -127,7 +122,6 @@ export class CompiledLayout {
 		);
 	}
 
-	/** Whether `file` is one a tool writes at the root of the compiled path for itself. */
 	isCacheFile(file: string): boolean {
 		if (this.compiledPath === undefined) return false;
 		if (!samePath(path.dirname(file), this.compiledPath)) return false;
@@ -135,7 +129,6 @@ export class CompiledLayout {
 		return this.tools.some(({ cacheFiles }) => cacheFiles?.includes(name));
 	}
 
-	/** Whether a tool reads `source` without writing anything for it. */
 	isReadOnly(source: string): boolean {
 		return this.tools.some((tool) => tool.readsOnly?.(source));
 	}
@@ -148,7 +141,6 @@ export class CompiledLayout {
 		return { optional: this.compiledFolderOf(dir) };
 	}
 
-	/** The folders and Luau files `projectFile` mounts in the compiled path or a tool's runtime folder; any other file would be read before it is written. */
 	placeholdersOf(
 		projectFile: RojoProjectFile,
 		isSourceFolder: (source: string) => boolean

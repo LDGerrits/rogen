@@ -6,7 +6,6 @@ const isEmptyBinaryString = (value: unknown): boolean =>
 	Object.keys(value).length === 1 &&
 	value.BinaryString === "";
 
-/** `holder` without the empty `SerializedOverrides` in its `key` map, and without the map when that leaves it empty. */
 function strip(
 	holder: Record<string, unknown>,
 	key: string
@@ -30,7 +29,10 @@ function strip(
 	);
 }
 
-/** A project tree without the empty `SerializedOverrides` Studio saves on every instance, which Rojo doesn't know and so writes as a change. */
+/**
+ * A project tree without the empty `SerializedOverrides` Studio saves on every
+ * instance, which Rojo doesn't know and so writes as a change.
+ */
 export function treeWithoutSerializedOverrides<T>(node: T): T {
 	if (!isObject(node)) return node;
 	return Object.fromEntries(
@@ -41,7 +43,6 @@ export function treeWithoutSerializedOverrides<T>(node: T): T {
 	) as T;
 }
 
-/** A meta or model file without the empty `SerializedOverrides` Studio saves, in it and in each of its `children`. */
 export function withoutSerializedOverrides<T>(file: T): T {
 	if (!isObject(file)) return file;
 	const stripped = strip(file, "properties");
@@ -58,7 +59,6 @@ export function withoutSerializedOverrides<T>(file: T): T {
 	) as T;
 }
 
-/** Whether a meta or model file Rojo wrote, new when `before` is undefined, changes nothing but an empty `SerializedOverrides`. */
 export function onlySerializedOverrides(
 	before: string | undefined,
 	after: string

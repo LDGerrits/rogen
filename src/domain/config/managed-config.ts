@@ -4,13 +4,11 @@ import { ConfigVersion } from "./config-change.js";
 import { ConfigLoader, LoadedConfig } from "./config-loader.js";
 import { ConfigEntry, validFile } from "./config-service.js";
 
-/** What a valid load is told apart by: the value decides what is written, the text where its warnings point. */
 interface WrittenVersion {
 	readonly value: string | undefined;
 	readonly text: string | undefined;
 }
 
-/** One config file that loads and reloads itself, and keeps its last valid version while the file is broken. */
 export class ManagedConfig {
 	private _entry: ConfigEntry;
 	private written: WrittenVersion | undefined;
@@ -72,7 +70,6 @@ export class ManagedConfig {
 		};
 	}
 
-	/** A reload of the same text keeps the previous valid version, so what was written stays the same object. */
 	async reload(): Promise<void> {
 		const before = { written: this.written, valid: validFile(this._entry) };
 		const loaded = await this.loader.load(this.file);

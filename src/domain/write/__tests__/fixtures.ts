@@ -87,7 +87,6 @@ export async function locateIn(
 export const abs = (...segments: string[]): string =>
 	path.resolve("/repo", ...segments);
 
-/** `abs`, as the scan and the tree write a path. */
 export const absPosix = (...segments: string[]): string =>
 	toPosix(abs(...segments));
 
@@ -113,7 +112,6 @@ export function indexOf(
 	return new CoreIndexService(fs).list(sourcePaths);
 }
 
-/** Makes the source paths of a test config folders, since a write of a config none of them exists for fails. */
 async function withSourceFolders(
 	fs: MemoryFileSystemService,
 	config: ResolvedConfig

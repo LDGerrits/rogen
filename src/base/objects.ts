@@ -8,7 +8,6 @@ export function isObject(obj: unknown): obj is Record<string, unknown> {
 	);
 }
 
-/** Whether two JSON values are the same, whatever prototypes their objects have. */
 export function isSameJson(a: unknown, b: unknown): boolean {
 	if (Array.isArray(a))
 		return (
@@ -43,7 +42,6 @@ export function setOwn<T>(
 	});
 }
 
-/** The own property `key` of `source`, ignoring the prototype chain. */
 export function getOwn<T>(
 	source: Readonly<Record<string, T>>,
 	key: string

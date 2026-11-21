@@ -19,18 +19,14 @@ import { ConfigValidator } from "./config-validator.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
-/** One read of one config, with what a reload compares against. */
 export interface LoadedConfig {
 	readonly files: readonly string[];
 	readonly value?: Readonly<Record<string, unknown>>;
-	/** What the file holds, when it parses. */
 	readonly text?: string;
 	readonly resolved: Result<ResolvedConfigFile, Diagnostic[]>;
-	/** The source paths of a config that only a copy beside it breaks. */
 	readonly sourcePaths?: readonly string[];
 }
 
-/** The same config under the other extension: `dist.rogen.jsonc` for `dist.rogen.json`. */
 const twinOf = (file: string): string =>
 	file.endsWith("c") ? file.slice(0, -1) : `${file}c`;
 
@@ -45,7 +41,6 @@ export class ConfigLoader {
 	private readonly reader: ConfigFileReader;
 
 	constructor(
-		/** The checks the config service holds, which every scope's loader runs. */
 		private readonly checks: ReadonlySet<ConfigFileCheck>,
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
@@ -57,7 +52,6 @@ export class ConfigLoader {
 		);
 	}
 
-	/** Never throws for a problem the user can cause. A config that copies another of its folder, or has a twin of the other extension, fails, and is reloaded when that one changes. */
 	async load(file: string): Promise<LoadedConfig> {
 		const loaded = await this.loadFile(file);
 		if (isProjectFileConfig(file)) return loaded;
@@ -84,7 +78,6 @@ export class ConfigLoader {
 			: { ...loaded, files };
 	}
 
-	/** The configs beside `file` that load, and every config file read for them, so fixing a broken one reloads `file`. */
 	private async siblingsOf(
 		file: string
 	): Promise<{ siblings: FolderConfig[]; read: string[] }> {

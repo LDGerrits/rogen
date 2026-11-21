@@ -41,7 +41,6 @@ const FALLBACK_NAME = "project";
 const KEY_RULE =
 	'a name uses letters and digits only, starting with a letter, and a file-name pattern is a glob on the name, such as "*.tsx" or "*[Ss]ervice"';
 
-/** Checks every rule on one project's values that doesn't need the source tree, and returns the config with its route targets parsed. */
 export class ConfigValidator {
 	private readonly problems = new DiagnosticCollector();
 	private readonly claimed = new Map<string, string>();
@@ -58,7 +57,6 @@ export class ConfigValidator {
 		).map((sourcePath) => path.resolve(this.dir, sourcePath));
 	}
 
-	/** Validates one config file; a key neither Rojo's nor Rogen's fails it before anything else is checked. */
 	static validateFile(
 		source: ConfigFile
 	): Result<ResolvedConfigFile, Diagnostic[]> {
@@ -138,7 +136,10 @@ export class ConfigValidator {
 		});
 	}
 
-	/** Rojo crashes on a project file of another name than `default` that has no `name`, so Rogen won't write or read one either. */
+	/**
+	 * Rojo crashes on a project file of another name than `default` that has no
+	 * `name`, so Rogen won't write or read one either.
+	 */
 	private checkName(project: RojoProject<ParsedProjectFile>): void {
 		const { file } = this.config;
 		const target = path.basename(projectFileOf(file));
@@ -214,7 +215,10 @@ export class ConfigValidator {
 		}
 	}
 
-	/** Rojo keeps the last copy of its own keys without a word, so only Rogen's are checked. */
+	/**
+	 * Rojo keeps the last copy of its own keys without a word, so only Rogen's
+	 * are checked.
+	 */
 	private checkDuplicateKeys(): void {
 		const lost = [
 			...this.config
@@ -335,7 +339,6 @@ export class ConfigValidator {
 		}
 	}
 
-	/** What is wrong with a route key that a reader may not see at once, ending in "; ", before the rule. */
 	private static keyProblem(key: string): string {
 		if (/[/\\]/.test(key))
 			return 'a pattern matches a file\'s name, never its path, so it has no "/"; ';

@@ -5,7 +5,6 @@ import localFont from "next/font/local";
 import { Analytics } from "@vercel/analytics/next";
 import { appName, siteDescription, siteUrl } from "@/lib/shared";
 
-// Self-hosted, so a build never depends on fetching from Google Fonts.
 const geistSans = localFont({
 	src: "./fonts/geist.woff2",
 	weight: "100 900",
@@ -18,7 +17,6 @@ const geistMono = localFont({
 	variable: "--font-geist-mono",
 });
 
-// For the VS Code and Studio windows; loaded only where one is drawn.
 const studioSans = localFont({
 	src: "./fonts/source-sans-3.woff2",
 	weight: "200 900",

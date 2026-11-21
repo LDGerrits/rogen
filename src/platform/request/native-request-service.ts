@@ -12,7 +12,10 @@ import {
 
 const REFUSED_CODES = ["ECONNREFUSED", "EADDRNOTAVAIL"];
 
-/** The socket's error carries the code, or the aggregate of the addresses tried does. */
+/**
+ * The socket's error carries the code, or the aggregate of the addresses tried
+ * does.
+ */
 function failureOf(error: unknown): RequestFailure {
 	const name = (error as { name?: unknown } | null)?.name;
 	if (name === "TimeoutError" || name === "AbortError") return "timeout";
@@ -25,7 +28,10 @@ function failureOf(error: unknown): RequestFailure {
 		: "failed";
 }
 
-/** HTTP over Node's own client, as `fetch` refuses ports a browser would, such as 6000 or 10080. */
+/**
+ * HTTP over Node's own client, as `fetch` refuses ports a browser would, such
+ * as 6000 or 10080.
+ */
 export class NativeRequestService implements RequestService {
 	declare readonly _serviceBrand: undefined;
 

@@ -68,7 +68,6 @@ type ServeLine = CommandLine<typeof ServeOptions>;
 
 const ServerFlags = [AddressOption, PortOption, AllowedHostsOption] as const;
 
-/** What the server gets: the flags given to serve, in Rojo's own spelling. */
 function serverArgsOf(line: ServeLine): string[] {
 	const given: string[] = [];
 	for (const { name } of ServerFlags) {

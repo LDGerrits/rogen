@@ -10,16 +10,13 @@ interface CheckedSourcePath {
 	readonly exists: boolean;
 }
 
-/** The source paths a config lists that are no folder: a warning each, or an error each when none is, since the file would be written empty over a good one. */
 export class MissingSourcePaths {
 	constructor(
 		private readonly sourcePaths: readonly CheckedSourcePath[],
 		private readonly projectFile: string,
-		/** Whether the only source path is the default one, which the user may never have written. */
 		private readonly isDefault = false
 	) {}
 
-	/** Whether the config lists source paths and none of them is a folder. */
 	get stopsWrite(): boolean {
 		return (
 			this.sourcePaths.length > 0 &&
@@ -27,12 +24,10 @@ export class MissingSourcePaths {
 		);
 	}
 
-	/** An error each when the write stops, else a warning each. */
 	diagnostics(): Diagnostic[] {
 		return this.stopsWrite ? this.errors() : this.warnings();
 	}
 
-	/** A warning each, whatever the others are, for a report that does not stop. */
 	warnings(): Diagnostic[] {
 		return this.missing().map(({ sourcePath }) =>
 			warningDiagnostic(

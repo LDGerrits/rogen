@@ -14,7 +14,6 @@ import { TreeMounts } from "../write-tree.js";
 import { Placement } from "../placement.js";
 import { RoutedFile } from "../router.js";
 
-/** Whether `location` is a file placed at `reference` or inside it. */
 export function placesInstance(
 	location: FileLocation,
 	reference: InstanceReference
@@ -25,7 +24,6 @@ export function placesInstance(
 	);
 }
 
-/** Answers where paths land in a placement, so `where` reports what `write` does. */
 export class PlacementLocator {
 	private readonly scanned: Map<string, FileLocation>;
 	private readonly initOf = new Map<string, string>();
@@ -38,10 +36,8 @@ export class PlacementLocator {
 		this.scanned = this.locateScanned();
 	}
 
-	/** Where each of `paths` lands, or every scanned path without `paths`. A directory stands for what's in it. */
 	locate(
 		paths?: readonly string[],
-		/** The paths among `paths` that were asked about as folders. */
 		folders: ReadonlySet<string> = new Set()
 	): FileLocation[] {
 		if (!paths) return [...this.scanned.values()].sort(this.bySource);
@@ -58,12 +54,10 @@ export class PlacementLocator {
 		return [...found.values()];
 	}
 
-	/** The marker files of the source paths, absolute POSIX. */
 	get markers(): string[] {
 		return [...this.placement.readings.markers.keys()];
 	}
 
-	/** The paths the tree's `$path`s mount. */
 	get mounts(): TreeMounts {
 		return this.placement.tree.mounts;
 	}
@@ -74,7 +68,6 @@ export class PlacementLocator {
 			.sort(this.bySource);
 	}
 
-	/** The folders a new file for `reference` goes in: those of the files placed directly under its nearest parent that has any. */
 	foldersFor(reference: InstanceReference): string[] {
 		const { separator } = reference;
 		const placed = [...this.scanned.values()].filter(
@@ -220,7 +213,6 @@ export class PlacementLocator {
 		];
 	}
 
-	/** The mounts inside the folder `target`, each as the instance its node is. */
 	private mountsBelow(target: string): MountedLocation[] {
 		return this.mounts.inside(target).map(({ path: mounted, node }) => ({
 			status: "mounted",
@@ -251,7 +243,6 @@ export class PlacementLocator {
 			: [{ status: "outside", source: target, exists }];
 	}
 
-	/** What the tools write for placed files at `target` or inside it, under the compiled path. */
 	private compiledIn(target: string): CompiledLocation[] {
 		const { layout, files } = this.placement;
 		if (

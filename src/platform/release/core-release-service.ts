@@ -33,7 +33,6 @@ function versionsOf(listing: unknown): string[] {
 	return versions;
 }
 
-/** Reads GitHub's release listing once a day into the user's cache folder; a failure never reaches the caller. */
 export class CoreReleaseService implements ReleaseService {
 	declare readonly _serviceBrand: undefined;
 
@@ -75,7 +74,9 @@ export class CoreReleaseService implements ReleaseService {
 		return true;
 	}
 
-	/** Reads the listing, not `releases/latest`, which never names a prerelease. */
+	/**
+	 * Reads the listing, not `releases/latest`, which never names a prerelease.
+	 */
 	private async refresh(): Promise<void> {
 		const response = await this.requestService.request(RELEASES_URL, {
 			timeout: CHECK_TIMEOUT_MS,
@@ -120,13 +121,8 @@ export class CoreReleaseService implements ReleaseService {
 	}
 
 	private async write(cache: Cache): Promise<void> {
-		try {
-			await this.fileSystemService.writeFile(
-				this.cacheFile,
-				JSON.stringify(cache)
-			);
-		} catch {
-			// Nothing to do: a cache that can't be written only costs a new check.
-		}
+		await this.fileSystemService
+			.writeFile(this.cacheFile, JSON.stringify(cache))
+			.catch(() => undefined);
 	}
 }

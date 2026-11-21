@@ -90,7 +90,6 @@ const InitOptions = [
 	},
 ] as const;
 
-/** The flags, as the choices `init` is not to ask about. Their values were checked against `values` when the line was parsed. */
 function choicesOf(
 	options: CommandLine<typeof InitOptions>["options"]
 ): InitChoices {
@@ -175,7 +174,6 @@ registerCommand(
 			if (!plan) return err(new CancelledError("init cancelled."));
 			const checked = await initService.check(plan);
 			if (checked.isErr()) return checked;
-			// A dry run stops where the write after a real run would.
 			if (dryRun && checked.value.length > 0)
 				return err(new DiagnosticsError(checked.value));
 

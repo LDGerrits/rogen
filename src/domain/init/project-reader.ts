@@ -45,7 +45,6 @@ export class ProjectReader {
 				]);
 	}
 
-	/** `project` told which of the folders it mounts hold an init file, since Rojo reads such a folder as one instance. */
 	async withInitFolders(project: StarterProject): Promise<StarterProject> {
 		const folders = project.mountedFolders();
 		const holds = await Promise.all(

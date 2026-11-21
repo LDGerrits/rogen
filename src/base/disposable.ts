@@ -6,7 +6,6 @@ export const NullDisposable: Disposable = Object.freeze({
 	[Symbol.dispose]() {},
 });
 
-/** A disposable that runs `fn` once, the first time it is disposed. */
 export function toDisposable(fn: () => void): Disposable {
 	let done = false;
 	return {
@@ -31,7 +30,6 @@ export class DisposableStore implements Disposable {
 		return disposable;
 	}
 
-	/** Disposes everything added so far; the store stays usable. */
 	clear(): void {
 		const disposables = [...this.disposables];
 		this.disposables.clear();
@@ -55,7 +53,6 @@ export class DisposableStore implements Disposable {
 	}
 }
 
-/** A disposable whose subclasses `_register` what is disposed with it. */
 export abstract class AbstractDisposable implements Disposable {
 	protected readonly _store = new DisposableStore();
 

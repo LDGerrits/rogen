@@ -15,7 +15,6 @@ import { rojoPathTarget } from "../../rojo/rojo-project.js";
 
 const LISTED_PATHS = 3;
 
-/** Finds the files Rojo reads in the folder a config without routes would have scanned, which go unsynced unless its tree mounts them; a nested project in the tree may mount what lies in its folder. */
 export class UnmountedSources {
 	constructor(
 		private readonly config: ResolvedConfig,

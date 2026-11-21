@@ -8,7 +8,6 @@ const LINK_DEFINITION = /^\[[^\]]+\]: \S+$/;
 
 const linesOf = (changelog: string): string[] => changelog.split(/\r?\n/);
 
-/** The line of the first `## ` heading after `start`, or the end. */
 const nextHeading = (lines: readonly string[], start: number): number => {
 	const found = lines.findIndex(
 		(line, index) => index > start && line.startsWith("## ")
@@ -16,7 +15,6 @@ const nextHeading = (lines: readonly string[], start: number): number => {
 	return found === -1 ? lines.length : found;
 };
 
-/** What the changelog says under `version`, without its heading; undefined when it says nothing. */
 export function releaseNotes(
 	changelog: string,
 	version: string
@@ -34,10 +32,6 @@ export function releaseNotes(
 	return notes === "" ? undefined : notes;
 }
 
-/**
- * The changelog with the notes under Unreleased moved under a heading for `version`, released on `date`, and its compare links moved on.
- * @throws Error when the changelog has notes for neither, or no `[unreleased]` compare link, so a release can't go out without them.
- */
 export function withRelease(
 	changelog: string,
 	version: string,
@@ -82,7 +76,6 @@ export function withRelease(
 	].join("\n");
 }
 
-// The release workflow takes a tag's notes from here: `node scripts/changelog.ts <version>`.
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
 	const version = process.argv[2] ?? "";
 	const notes = releaseNotes(

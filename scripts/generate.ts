@@ -21,7 +21,6 @@ const modules = [
 	[TEMPLATES, currentTemplatesModule],
 ] as const;
 
-// Skips a module that is already current, so a watcher doesn't see a change.
 for (const [output, render] of modules) {
 	const source = render();
 	if (fs.existsSync(output) && fs.readFileSync(output, "utf8") === source)

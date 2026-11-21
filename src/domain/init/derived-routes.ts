@@ -6,26 +6,20 @@ import { RemovedMount, rojoPathTarget } from "../rojo/rojo-project.js";
 import { StarterProject } from "./starter-project.js";
 import { instanceKey } from "../roblox/roblox.js";
 
-/** A mount of a hand-written project file that no route can reproduce. */
 export interface UnroutedMount {
 	readonly target: string;
 	readonly node: string;
 	readonly mount: RemovedMount;
-	/** The mount is a whole source path, which a mount in the tree can't be. */
 	readonly atRoot: boolean;
-	/** Why no route can make it. */
 	readonly reason: string;
 }
 
-/** A node that mounted a whole source path, and the folders in it that routes take elsewhere. */
 export interface NarrowedMount {
-	/** The node, as an instance path written with `/`. */
 	readonly node: string;
 	readonly target: string;
 	readonly folders: readonly { folder: string; landing: string }[];
 }
 
-/** The routes that reproduce the mounts of a hand-written project file, which a lift leaves out. */
 export class DerivedRoutes {
 	readonly routes = new Map<string, string>();
 	readonly fallback: string | undefined;

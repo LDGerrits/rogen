@@ -20,7 +20,6 @@ export class CoreRojoRunner implements RojoRunner {
 	declare readonly _serviceBrand: undefined;
 
 	private readonly finder: ServerFinder;
-	/** What Rogen was asked to print: Rojo logs as much as that. */
 	private readonly logLevel: LogLevel;
 
 	constructor(

@@ -98,7 +98,6 @@ export class CoreConfigService implements ConfigService {
 		return this.open(this.discovery, this.loader, refs, true);
 	}
 
-	/** Discovers `refs` and lists the default folder with `discovery`, so a selection through another file system reads only that one; `withWriters` adds the configs that write what a plain project file nests. */
 	private async open(
 		discovery: ConfigDiscovery,
 		loader: ConfigLoader,
@@ -322,7 +321,6 @@ export class CoreConfigService implements ConfigService {
 		return readers;
 	}
 
-	/** With no default config to answer, the named configs at and above `target` whose source paths cover it; one that is broken is kept unless its source paths can be told. */
 	private async namedCovers(target: string): Promise<ConfigCover[]> {
 		const covers: ConfigCover[] = [];
 		for (const file of await this.discovery.namedConfigsAbove(target)) {
@@ -337,7 +335,6 @@ export class CoreConfigService implements ConfigService {
 		return covers;
 	}
 
-	/** Whether a path lies in a source path, or, for a folder, holds one. */
 	private async covers(
 		sourcePaths: readonly string[],
 		target: string
@@ -351,7 +348,6 @@ export class CoreConfigService implements ConfigService {
 		);
 	}
 
-	/** A plain project file inside the source paths of a `.rogen.json` above it belongs to that config. */
 	private async configAbove(
 		projectFile: string
 	): Promise<ConfigCover | undefined> {
@@ -389,7 +385,6 @@ export class CoreConfigService implements ConfigService {
 	}
 }
 
-/** Whether `folder` is a source path or lies inside one. */
 function coversFolder(sourcePaths: readonly string[], folder: string): boolean {
 	return sourcePaths.some(
 		(sourcePath) =>

@@ -22,7 +22,6 @@ import { RojoRunner, ServerExecutable, exitHow } from "./rojo-runner.js";
 import { RojoServer, ServerMessage } from "./rojo-server.js";
 import { WatchingRojo } from "./watching-rojo.js";
 
-/** How Rojo exited, and each line of the errors it wrote, in order. */
 interface RojoFailure {
 	readonly how: string;
 	readonly said: readonly string[];
@@ -35,7 +34,6 @@ const WHAT_FAILED: Readonly<Record<string, string>> = {
 	syncback: "sync back into",
 };
 
-/** The line under a command line Rojo refused, which points at Rojo's help, not Rogen's. */
 const HELP_POINTER = /^For more information,? try '?--help'?\.?$/;
 
 export class CoreRojoCommandService implements RojoCommandService {
@@ -114,7 +112,6 @@ export class CoreRojoCommandService implements RojoCommandService {
 		);
 	}
 
-	/** The project, the Rojo that runs on it and the file it reads, once the checks pass. */
 	private async prepare(
 		selection: ConfigSelection,
 		request: RojoCommandRequest
@@ -184,7 +181,6 @@ export class CoreRojoCommandService implements RojoCommandService {
 		);
 	}
 
-	/** Rojo's own words for a command line it can't read, which is no fault of the project. */
 	private static refused({ how, said }: RojoFailure): UsageError {
 		return new UsageError(
 			said.length > 0
@@ -196,7 +192,6 @@ export class CoreRojoCommandService implements RojoCommandService {
 		);
 	}
 
-	/** Why the Rojo that will run has no `request.command`, when it is older than the release that added it. */
 	private missingCommand(
 		executable: ServerExecutable,
 		request: RojoCommandRequest
@@ -242,14 +237,12 @@ export class CoreRojoCommandService implements RojoCommandService {
 		return ok({ messages: ran.messages, failure: new ToolError(failure) });
 	}
 
-	/** Rogen's sentence about what failed: it ends in a colon when Rojo's own lines follow it. */
 	private failed(what: string, { how, said }: RojoFailure): string {
 		return said.length > 0
 			? `Rojo couldn't ${what}:`
 			: `Rojo couldn't ${what} (${how}).`;
 	}
 
-	/** Runs `command`, and says why it failed when Rojo exited with an error. */
 	private async spawn(
 		executable: ServerExecutable,
 		command: string,
@@ -260,7 +253,6 @@ export class CoreRojoCommandService implements RojoCommandService {
 	): Promise<{
 		messages: ServerMessage[];
 		failure?: RojoFailure;
-		/** Whether Rojo exited 2, as it does for a command line it can't read. */
 		refusedArguments?: boolean;
 	}> {
 		if (signal?.aborted) return { messages: [] };
@@ -284,7 +276,6 @@ export class CoreRojoCommandService implements RojoCommandService {
 		rojo[Symbol.dispose]();
 
 		if (exit.code === 0 || signal?.aborted) return { messages };
-		// Rojo exits 2 on a command line it can't read, and all it says is about that.
 		const refusedArguments = exit.code === 2;
 		const explainsFailure = ({ severity }: ServerMessage) =>
 			refusedArguments ? severity !== "debug" : severity === "error";

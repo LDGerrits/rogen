@@ -12,7 +12,10 @@ import {
 } from "./harness.js";
 import { freePort, projectFiles, useServeProject } from "./serve-fixtures.js";
 
-/** A Rojo that serves its project for a moment, then crashes as Rojo 7.7.1 does on a deleted folder; started again, it crashes before it serves. */
+/**
+ * A Rojo that serves its project for a moment, then crashes as Rojo 7.7.1 does
+ * on a deleted folder; started again, it crashes before it serves.
+ */
 const CRASHING_ROJO = `#!/usr/bin/env node
 const fs = require("fs");
 const http = require("http");
