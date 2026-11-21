@@ -75,30 +75,48 @@ export class MountedCode {
 				return { sourcePaths: [source], processed, folders };
 		}
 		const common = folders.length > 0 ? commonFolderPosix(folders) : ".";
-		const sourcePath = MountedCode.unkeyed(common, project, folders);
+		const sourcePath = MountedCode.routingSourcePath(
+			common,
+			project,
+			folders
+		);
 		return { sourcePaths: sourcePath ? [sourcePath] : [], folders };
 	}
 
-	private static unkeyed(
+	private static routingSourcePath(
 		common: string,
 		project: StarterProject,
 		folders: readonly string[]
 	): string | undefined {
 		if (common === ".") return undefined;
-		if (
-			!StartingRoutes.isKey(
-				path.posix.basename(common),
-				DerivedRoutes.of(project, [common])
-			)
-		)
-			return common;
+		if (!MountedCode.isNamedAfterRouteKey(common, project)) return common;
 		const parent = path.posix.dirname(common);
 		if (parent === ".") return undefined;
-		const derived = DerivedRoutes.of(project, [parent]);
-		return derived?.unrouted.every(
-			({ target }) => !folders.includes(target)
-		)
+		return MountedCode.routesEachWhereMounted(parent, project, folders)
 			? parent
 			: undefined;
+	}
+
+	private static isNamedAfterRouteKey(
+		folder: string,
+		project: StarterProject
+	): boolean {
+		return StartingRoutes.isKey(
+			path.posix.basename(folder),
+			DerivedRoutes.of(project, [folder])
+		);
+	}
+
+	private static routesEachWhereMounted(
+		sourcePath: string,
+		project: StarterProject,
+		folders: readonly string[]
+	): boolean {
+		const derived = DerivedRoutes.of(project, [sourcePath]);
+		return (
+			derived?.unrouted.every(
+				({ target }) => !folders.includes(target)
+			) ?? false
+		);
 	}
 }
