@@ -40,7 +40,7 @@ After you add, move, rename or delete files, or edit a `*.rogen.json`, run `roge
 
 - In roblox-ts, check `projects/common` through a place that uses it: `rogen check projects/game`.
 - Run other commands in the folder of the `*.rogen.json`, or name it: `rogen write projects/game`.
-- To sync to Studio, run `rogen serve --json` in the background and leave it running. `rogen help serve` explains its output.
+- To sync to Studio, use the repo's own serve script if it has one. Otherwise run `rogen serve --json` in the background and leave it running; `rogen help serve` explains its output.
 - `rogen doc <topic>` covers `routing`, `config`, `layout` and `output`; `rogen help <command> --json` lists a command's flags and JSON output.
 <!-- /rogen -->
 ````
@@ -91,11 +91,15 @@ const session = String(
 		payload.conversation_id ??
 		"agent",
 ).replace(/[^\w.-]/g, "_");
+// The session's own folder comes first: in a worktree, CLAUDE_PROJECT_DIR can name the main checkout.
 try {
-	process.chdir(process.env.CLAUDE_PROJECT_DIR || payload.cwd || ".");
+	process.chdir(payload.cwd || process.env.CLAUDE_PROJECT_DIR || ".");
 } catch {
 	process.exit(0);
 }
+const start = process.cwd();
+const top = git("rev-parse", "--show-toplevel").trim();
+if (top) process.chdir(top);
 
 const changed = [
 	...git(
@@ -124,9 +128,11 @@ const locate = (dirs) =>
 	dirs
 		.flatMap((dir) => names.map((name) => path.join(dir, name)))
 		.find((file) => fs.existsSync(file));
+const folders = [start];
+for (let dir = start; dir !== process.cwd() && path.dirname(dir) !== dir; )
+	folders.push((dir = path.dirname(dir)));
 const rogen = locate([
-	path.resolve("node_modules/.bin"),
-	path.join(git("rev-parse", "--show-toplevel").trim(), "node_modules/.bin"),
+	...folders.map((dir) => path.join(dir, "node_modules/.bin")),
 	...(process.env.PATH ?? "").split(path.delimiter).filter(Boolean),
 ]);
 if (!rogen) {
