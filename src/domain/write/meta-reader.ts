@@ -1,6 +1,6 @@
 import { failureReason } from "../../base/errors.js";
 import path from "path";
-import { dirnamePosix, toPosix } from "../../base/path.js";
+import { dirnamePosixOrEmpty, toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -182,7 +182,7 @@ export class MetaReader {
 				problems.add(meta.error);
 				return;
 			}
-			const dir = dirnamePosix(toPosix(relativePath));
+			const dir = dirnamePosixOrEmpty(toPosix(relativePath));
 			const beside = folderMeta.findIndex(
 				(other) => other.sourcePath === sourcePath && other.dir === dir
 			);

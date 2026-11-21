@@ -1,5 +1,5 @@
 import path from "path";
-import { dirnamePosix, joinPosix } from "../../base/path.js";
+import { dirnamePosixOrEmpty, joinPosix } from "../../base/path.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { PatternMatch } from "../config/route-patterns.js";
@@ -166,7 +166,7 @@ const hoistBelongsOnFolder = (
 ) =>
 	leaf.isInit &&
 	leaf.hoisted &&
-	folders.at(-1)?.dir === dirnamePosix(entry.relativePath);
+	folders.at(-1)?.dir === dirnamePosixOrEmpty(entry.relativePath);
 
 export interface RoutedFolder extends Pick<
 	RoutedFile,
@@ -271,7 +271,7 @@ export class Router {
 	private instancelessFolderOf(entry: ScannedFile): InstancelessFolder {
 		const folder = this.readings.instanceless(
 			entry.sourcePath,
-			dirnamePosix(entry.relativePath)
+			dirnamePosixOrEmpty(entry.relativePath)
 		);
 		if (!folder)
 			throw new Error(

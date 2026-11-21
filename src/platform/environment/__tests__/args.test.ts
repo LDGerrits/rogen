@@ -177,13 +177,13 @@ describe("parseArgs", () => {
 		).toEqual(["--yes"]);
 	});
 
-	it("should mark a line with no command, --help or --version as bare", () => {
-		expect(parse([]).unwrap().line.bare).toBe(true);
-		expect(parse(["-q"]).unwrap().line.bare).toBe(true);
-		expect(parse(["--help"]).unwrap().line.bare).toBeUndefined();
-		expect(parse(["-V"]).unwrap().line.bare).toBeUndefined();
-		expect(parse(["help"]).unwrap().line.bare).toBeUndefined();
-		expect(parse(["build"]).unwrap().line.bare).toBeUndefined();
+	it("should mark a line with no command, --help or --version as asking for nothing", () => {
+		expect(parse([]).unwrap().line.asksForNothing).toBe(true);
+		expect(parse(["-q"]).unwrap().line.asksForNothing).toBe(true);
+		expect(parse(["--help"]).unwrap().line.asksForNothing).toBeUndefined();
+		expect(parse(["-V"]).unwrap().line.asksForNothing).toBeUndefined();
+		expect(parse(["help"]).unwrap().line.asksForNothing).toBeUndefined();
+		expect(parse(["build"]).unwrap().line.asksForNothing).toBeUndefined();
 	});
 
 	it("should leave the positionals empty for a bare line", () => {

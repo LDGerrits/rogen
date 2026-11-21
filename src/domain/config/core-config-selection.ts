@@ -1,6 +1,6 @@
 import path from "path";
 import { Sequencer } from "../../base/async.js";
-import { PathSet, dirnamePosix, toPosix } from "../../base/path.js";
+import { PathSet, dirnamePosixOrEmpty, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -63,7 +63,9 @@ export class CoreConfigSelection implements ReloadableSelection {
 		return (
 			this.folder !== undefined &&
 			this.folder.holds(path.posix.basename(posixFile)) &&
-			new PathSet([this.folder.directory]).has(dirnamePosix(posixFile))
+			new PathSet([this.folder.directory]).has(
+				dirnamePosixOrEmpty(posixFile)
+			)
 		);
 	}
 

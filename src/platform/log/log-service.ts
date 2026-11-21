@@ -15,7 +15,7 @@ export interface LogService {
 
 	setLevel(level: LogLevel): void;
 
-	reserveStdout(): void;
+	sendOwnLinesToStderr(): void;
 
 	error(message: string | Error, ...args: unknown[]): void;
 	warn(message: string, ...args: unknown[]): void;

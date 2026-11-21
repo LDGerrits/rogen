@@ -1,5 +1,5 @@
 import path from "path";
-import { compareStrings } from "../../../base/collections.js";
+import { compareByCodePoint } from "../../../base/collections.js";
 import { ignoringAllOf, ignoringGlob } from "../../../base/glob.js";
 import { ancestors, contains, toPosix } from "../../../base/path.js";
 import { IndexReader } from "../../../platform/fs/index-service.js";
@@ -108,7 +108,7 @@ export class PlacementLocator {
 				);
 			}
 		}
-		return [...folders].sort(compareStrings);
+		return [...folders].sort(compareByCodePoint);
 	}
 
 	private locateScanned(): Map<string, FileLocation> {
@@ -267,6 +267,6 @@ export class PlacementLocator {
 	}
 
 	private bySource(a: FileLocation, b: FileLocation): number {
-		return compareStrings(a.source, b.source);
+		return compareByCodePoint(a.source, b.source);
 	}
 }

@@ -17,7 +17,7 @@ export interface InstantiationService extends Disposable {
 	readonly _serviceBrand: undefined;
 
 	createInstance<
-		Ctor extends new (...args: any[]) => unknown,
+		Ctor extends new (...args: never[]) => unknown,
 		R extends InstanceType<Ctor>,
 	>(
 		ctor: Ctor,

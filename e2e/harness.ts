@@ -10,7 +10,7 @@ import {
 	CommandRegistry,
 	Extensions,
 } from "../src/platform/commands/commands.js";
-import { compareStrings } from "../src/base/collections.js";
+import { compareByCodePoint } from "../src/base/collections.js";
 import { toPosix } from "../src/base/path.js";
 import { isWindows } from "../src/base/platform.js";
 import { outputJsonSchema } from "../src/platform/output/__tests__/output-json-schema.js";
@@ -585,7 +585,7 @@ function renderNode(
 	const suffix = files.length > 0 ? `  <- ${files.join(", ")}` : "";
 	const line = `${"  ".repeat(depth)}${node.name}: ${node.className}${suffix}`;
 	const children = [...(node.children ?? [])].sort((a, b) =>
-		compareStrings(a.name, b.name)
+		compareByCodePoint(a.name, b.name)
 	);
 	return [line, ...children.flatMap((child) => renderNode(child, depth + 1))];
 }

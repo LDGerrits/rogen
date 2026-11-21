@@ -32,7 +32,7 @@ const DRAIN_MS = 250;
 const needsShell = (file: string, windows: boolean) =>
 	windows && /\.(cmd|bat)$/i.test(file);
 
-const shellQuoted = (arg: string) => `"${arg.replace(/"/g, '""')}"`;
+const cmdQuoted = (arg: string) => `"${arg.replace(/"/g, '""')}"`;
 
 /**
  * `cmd.exe` expands `%NAME%` even inside quotes, and nothing escapes it there.
@@ -45,35 +45,43 @@ interface Launch {
 	readonly windowsVerbatimArguments: boolean;
 }
 
+const directLaunch = (file: string, args: readonly string[]): Launch => ({
+	command: file,
+	args: [...args],
+	windowsVerbatimArguments: false,
+});
+
+// After `/s /c`, cmd.exe drops the first and last quote of the line and runs
+// what is between them as typed.
+const cmdCommandLine = (file: string, args: readonly string[]) =>
+	`"${[file, ...args].map(cmdQuoted).join(" ")}"`;
+
+const cmdLaunch = (
+	file: string,
+	args: readonly string[],
+	env: NodeJS.ProcessEnv
+): Launch => ({
+	command: env.ComSpec ?? "cmd.exe",
+	args: ["/d", "/s", "/c", cmdCommandLine(file, args)],
+	windowsVerbatimArguments: true,
+});
+
+const percentExpansionRefusal = (file: string, expanded: string) =>
+	new ToolError(
+		`${path.basename(file)} is a batch file, which Windows runs through cmd.exe, and cmd.exe would expand the % in "${expanded}" as a variable. Run the program itself (an .exe) or leave the % out of its path and arguments.`
+	);
+
 export function launch(
 	file: string,
 	args: readonly string[],
 	env: NodeJS.ProcessEnv,
 	windows = isWindows
 ): Result<Launch, Error> {
-	if (!needsShell(file, windows))
-		return ok({
-			command: file,
-			args: [...args],
-			windowsVerbatimArguments: false,
-		});
+	if (!needsShell(file, windows)) return ok(directLaunch(file, args));
 	const expanded = [file, ...args].find(expandedByShell);
 	if (expanded !== undefined)
-		return err(
-			new ToolError(
-				`${path.basename(file)} is a batch file, which Windows runs through cmd.exe, and cmd.exe would expand the % in "${expanded}" as a variable. Run the program itself (an .exe) or leave the % out of its path and arguments.`
-			)
-		);
-	return ok({
-		command: env.ComSpec ?? "cmd.exe",
-		args: [
-			"/d",
-			"/s",
-			"/c",
-			`"${[file, ...args].map(shellQuoted).join(" ")}"`,
-		],
-		windowsVerbatimArguments: true,
-	});
+		return err(percentExpansionRefusal(file, expanded));
+	return ok(cmdLaunch(file, args, env));
 }
 
 const taskkillTree = (pid: number) => ["/pid", String(pid), "/T", "/F"];
@@ -114,6 +122,16 @@ function groupExists(pid: number): boolean {
 	} catch (error) {
 		return (error as NodeJS.ErrnoException).code === "EPERM";
 	}
+}
+
+function onChildEndEvenIfDisposed(
+	child: childProcess.ChildProcess,
+	listener: () => void
+): void {
+	child.once("exit", listener);
+	child.once("error", () => {
+		if (child.pid === undefined) listener();
+	});
 }
 
 class FailedChildProcess extends AbstractDisposable implements ChildProcess {
@@ -176,11 +194,7 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 	) {
 		super();
 		running.add(this);
-		const left = () => running.delete(this);
-		child.once("exit", left);
-		child.once("error", () => {
-			if (child.pid === undefined) left();
-		});
+		onChildEndEvenIfDisposed(child, () => running.delete(this));
 		for (const [stream, name] of [
 			[child.stdout, "stdout"],
 			[child.stderr, "stderr"],

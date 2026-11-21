@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import { timeout } from "../../base/async.js";
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { isWindows } from "../../base/platform.js";
 import {
@@ -88,6 +88,10 @@ async function isCaseOnlyRename(
 	return !names.includes(path.basename(destination));
 }
 
+function isHardLinkUnsupported(error: unknown): boolean {
+	return ErrorUtils.hasCode(error, "EPERM", "ENOTSUP", "ENOSYS");
+}
+
 export class DiskFileSystemService implements FileSystemService {
 	declare readonly _serviceBrand: undefined;
 
@@ -122,7 +126,7 @@ export class DiskFileSystemService implements FileSystemService {
 		const dirents = await fs.promises.readdir(filePath, {
 			withFileTypes: true,
 		});
-		dirents.sort((a, b) => compareStrings(a.name, b.name));
+		dirents.sort((a, b) => compareByCodePoint(a.name, b.name));
 		return Promise.all(
 			dirents.map(async (dirent): Promise<[string, FileType]> => {
 				if (dirent.isSymbolicLink()) {
@@ -199,6 +203,13 @@ export class DiskFileSystemService implements FileSystemService {
 
 	async createFile(filePath: string, content: string): Promise<boolean> {
 		await this.createDirectory(path.dirname(filePath));
+		return this.linkInWrittenCopy(filePath, content);
+	}
+
+	private async linkInWrittenCopy(
+		filePath: string,
+		content: string
+	): Promise<boolean> {
 		const staged = `${filePath}.${randomUUID()}.tmp`;
 		await fs.promises.writeFile(staged, content, "utf-8");
 		try {
@@ -206,15 +217,14 @@ export class DiskFileSystemService implements FileSystemService {
 			return true;
 		} catch (error) {
 			if (ErrorUtils.hasCode(error, "EEXIST")) return false;
-			if (!ErrorUtils.hasCode(error, "EPERM", "ENOTSUP", "ENOSYS"))
-				throw error;
-			return this.createExclusive(filePath, content);
+			if (!isHardLinkUnsupported(error)) throw error;
+			return this.createExclusiveWithoutLink(filePath, content);
 		} finally {
 			await fs.promises.rm(staged, { force: true });
 		}
 	}
 
-	private async createExclusive(
+	private async createExclusiveWithoutLink(
 		filePath: string,
 		content: string
 	): Promise<boolean> {

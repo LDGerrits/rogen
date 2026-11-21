@@ -151,6 +151,10 @@ export class CoreIndexService implements IndexService {
 			}
 			return listings.get(dir);
 		};
+		const isUnreadableNow = async (dir: string) => {
+			await listingOf(dir).catch(() => undefined);
+			return draft.unreadable.has(dir);
+		};
 
 		for (const change of changes) {
 			const posixPath = toPosix(change.path);
@@ -163,14 +167,11 @@ export class CoreIndexService implements IndexService {
 				if (listed === undefined) continue;
 				await this.addEntry(draft, dir, name, listed);
 			} else if (change.type === FileChangeType.DELETED) {
-				await listingOf(dir).catch(() => undefined);
-				if (isDirectoryType(change.fileType))
-					await listingOf(posixPath).catch(() => undefined);
-				if (
-					!draft.unreadable.has(dir) &&
-					!draft.unreadable.has(posixPath)
-				)
-					draft.delete(dir, name);
+				const dirUnreadable = await isUnreadableNow(dir);
+				const pathUnreadable = isDirectoryType(change.fileType)
+					? await isUnreadableNow(posixPath)
+					: draft.unreadable.has(posixPath);
+				if (!dirUnreadable && !pathUnreadable) draft.delete(dir, name);
 			}
 		}
 		return draft.toListing();

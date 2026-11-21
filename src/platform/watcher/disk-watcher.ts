@@ -73,9 +73,9 @@ class WatchSession {
 	 * becomes readable, so that is reported here.
 	 */
 	private readonly refused = new Set<string>();
-	private readonly attaching = new Map<
+	private readonly unreportedUntilWatched = new Map<
 		string,
-		{ fileType: FileType; tick: number }
+		{ fileType: FileType; handedBackAt: number }
 	>();
 	private tick = 0;
 	private revival: NodeJS.Timeout | undefined;
@@ -161,7 +161,7 @@ class WatchSession {
 			this.tick++;
 			this.reviveRoots();
 			this.reviveRefused();
-			this.reportAttached();
+			this.reportNowWatched();
 		}, REVIVAL_INTERVAL_MS);
 		this.revival.unref();
 	}
@@ -197,22 +197,21 @@ class WatchSession {
 
 	private rewatch(target: string, fileType: FileType): void {
 		this.watcher.add(target);
-		this.attaching.set(target, { fileType, tick: this.tick });
+		this.unreportedUntilWatched.set(target, {
+			fileType,
+			handedBackAt: this.tick,
+		});
 	}
 
-	private reportAttached(): void {
-		if (this.attaching.size === 0) return;
+	private reportNowWatched(): void {
+		if (this.unreportedUntilWatched.size === 0) return;
 		const watched = this.watcher.getWatched();
-		for (const [target, { fileType, tick }] of this.attaching) {
-			if (tick === this.tick) continue;
-			const attached =
-				fileType === FileType.Directory
-					? watched[target] !== undefined
-					: watched[path.dirname(target)]?.includes(
-							path.basename(target)
-						);
-			if (!attached) continue;
-			this.attaching.delete(target);
+		for (const [target, { fileType, handedBackAt }] of this
+			.unreportedUntilWatched) {
+			const handedBackThisTick = handedBackAt === this.tick;
+			if (handedBackThisTick || !isWatched(watched, target, fileType))
+				continue;
+			this.unreportedUntilWatched.delete(target);
 			this.fireEvent(FileChangeType.ADDED, target, fileType);
 		}
 	}
@@ -263,6 +262,17 @@ function clearThrottles(watcher: chokidar.FSWatcher): void {
 	};
 	for (const actions of throttled?.values() ?? [])
 		for (const { clear } of [...actions.values()]) clear();
+}
+
+function isWatched(
+	watched: Record<string, string[]>,
+	target: string,
+	fileType: FileType
+): boolean {
+	return fileType === FileType.Directory
+		? watched[target] !== undefined
+		: (watched[path.dirname(target)]?.includes(path.basename(target)) ??
+				false);
 }
 
 function isUnder(error: Error, dirs: readonly string[]): boolean {

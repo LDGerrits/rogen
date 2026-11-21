@@ -19,7 +19,7 @@ interface Subscription<T> {
 }
 
 export class Emitter<T> implements Disposable {
-	private readonly _listeners = new Set<Subscription<T>>();
+	private readonly _subscriptions = new Set<Subscription<T>>();
 	private _disposed = false;
 	private _event?: Event<T>;
 
@@ -31,10 +31,10 @@ export class Emitter<T> implements Disposable {
 			if (this._disposed) return NullDisposable;
 
 			const subscription: Subscription<T> = { listener };
-			this._listeners.add(subscription);
+			this._subscriptions.add(subscription);
 
 			const disposable = toDisposable(() => {
-				this._listeners.delete(subscription);
+				this._subscriptions.delete(subscription);
 			});
 
 			if (disposables) {
@@ -50,8 +50,8 @@ export class Emitter<T> implements Disposable {
 	fire(event: T): void {
 		if (this._disposed) return;
 
-		for (const subscription of [...this._listeners]) {
-			if (!this._listeners.has(subscription)) continue;
+		for (const subscription of [...this._subscriptions]) {
+			if (!this._subscriptions.has(subscription)) continue;
 			try {
 				const result = subscription.listener(event) as unknown;
 				if (result instanceof Promise) {
@@ -75,7 +75,7 @@ export class Emitter<T> implements Disposable {
 	[Symbol.dispose](): void {
 		if (!this._disposed) {
 			this._disposed = true;
-			this._listeners.clear();
+			this._subscriptions.clear();
 		}
 	}
 }
