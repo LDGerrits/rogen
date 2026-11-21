@@ -96,7 +96,11 @@ export class CoreConfigSelection implements ReloadableSelection {
 						await config.reload();
 						return {
 							file: config.file,
-							...configChange(before, config.version),
+							...configChange({
+								kind: "reloaded",
+								before,
+								after: config.version,
+							}),
 						};
 					})
 			);
@@ -105,12 +109,15 @@ export class CoreConfigSelection implements ReloadableSelection {
 			const changes = [
 				...membership.removed.map((config) => ({
 					file: config.file,
-					...configChange(config.version, undefined),
+					...configChange({
+						kind: "removed",
+						before: config.version,
+					}),
 				})),
 				...reloaded,
 				...membership.added.map((config) => ({
 					file: config.file,
-					...configChange(undefined, config.version),
+					...configChange({ kind: "added", after: config.version }),
 				})),
 			];
 			return {

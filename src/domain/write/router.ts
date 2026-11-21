@@ -112,7 +112,7 @@ class Claims {
 		return standing;
 	}
 
-	outrankName(key: string, depth: number): void {
+	outrankNearMiss(key: string, depth: number): void {
 		this.outrankedFolders.push({ key, depth });
 	}
 
@@ -137,6 +137,12 @@ class Claims {
 	}
 }
 
+const isGovernedNearMiss = (
+	folder: FolderReading,
+	claims: Claims
+): folder is FolderReading & { readonly nearMissKey: string } =>
+	folder.nearMissKey !== undefined && claims.route !== undefined;
+
 interface LeafName {
 	readonly name: string;
 	readonly hoisted: boolean;
@@ -153,6 +159,14 @@ interface ClaimedPath {
 	readonly hoisted: boolean;
 	readonly dropped: number;
 }
+
+const hoistBelongsOnFolder = (
+	entry: ScannedFile,
+	{ leaf, folders }: ClaimedPath
+) =>
+	leaf.isInit &&
+	leaf.hoisted &&
+	folders.at(-1)?.dir === dirnamePosixOrEmpty(entry.relativePath);
 
 export interface RoutedFolder extends Pick<
 	RoutedFile,
@@ -233,12 +247,7 @@ export class Router {
 		routing: Routing
 	): void {
 		const claimed = this.claim(entry, dirs);
-		if (
-			claimed.leaf.isInit &&
-			claimed.leaf.hoisted &&
-			claimed.folders.at(-1)?.dir ===
-				dirnamePosixOrEmpty(entry.relativePath)
-		) {
+		if (hoistBelongsOnFolder(entry, claimed)) {
 			routing.hoistedInits.push({ source: entry.source });
 			return;
 		}
@@ -402,8 +411,8 @@ export class Router {
 			const named = name !== undefined && !folder.invisible;
 			if (named) folders.push({ name, dir: folder.dir });
 			claimDirectory(folder.dir);
-			if (folder.nearMissKey !== undefined && claims.route) {
-				claims.outrankName(folder.nearMissKey, depthOf(folder.dir));
+			if (isGovernedNearMiss(folder, claims)) {
+				claims.outrankNearMiss(folder.nearMissKey, depthOf(folder.dir));
 				this.governedNearMisses.add(joinPosix(sourcePath, folder.dir));
 			}
 		}

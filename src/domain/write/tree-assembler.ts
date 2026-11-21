@@ -141,7 +141,7 @@ export class TreeAssembler {
 		const { placement } = this;
 		const { layout, files } = placement;
 		for (const [dir, instancePath] of collapsed.entries())
-			project.insertNode(instancePath, {
+			project.insertNodeReplacingFolder(instancePath, {
 				$path: layout.rojoFolderPath(dir),
 			});
 		const initDirs = new Map<string, string>();
@@ -151,11 +151,11 @@ export class TreeAssembler {
 			const dir = placement.initDirOf(file);
 			if (dir !== undefined) {
 				initDirs.set(dir, path.posix.basename(entry.source));
-				project.insertNode(instancePath, {
+				project.insertNodeReplacingFolder(instancePath, {
 					$path: layout.rojoFolderPath(dir),
 				});
 			} else
-				project.insertNode(instancePath, {
+				project.insertNodeReplacingFolder(instancePath, {
 					$path: layout.rojoPath(entry.source),
 				});
 		}

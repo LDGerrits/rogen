@@ -262,7 +262,10 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return isObject(current) ? current : undefined;
 	}
 
-	insertNode(instancePath: readonly string[], data: Partial<RojoNode>): void {
+	insertNodeReplacingFolder(
+		instancePath: readonly string[],
+		data: Partial<RojoNode>
+	): void {
 		if (instancePath.length === 0) return;
 		const parent = this.ensureContainer(instancePath.slice(0, -1));
 		const leaf = instancePath[instancePath.length - 1];
@@ -271,10 +274,10 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 			...(isObject(existing) ? existing : {}),
 			...data,
 		};
-		setOwn(parent, leaf, RojoProject.withoutFolderClass(updated));
+		setOwn(parent, leaf, RojoProject.replacingFolder(updated));
 	}
 
-	private static withoutFolderClass(node: RojoNode): RojoNode {
+	private static replacingFolder(node: RojoNode): RojoNode {
 		if (!node.$path || node.$className !== "Folder") return node;
 		const withoutClass = { ...node };
 		delete withoutClass.$className;

@@ -10,7 +10,7 @@ const plan = {} as ServePlan;
 const target = {} as ServeTarget;
 
 const banner: ServerMessage = {
-	severity: "debug",
+	severity: "noise",
 	text: "Port:    34872",
 	stdout: "Port:    34872",
 };
@@ -41,7 +41,7 @@ describe("ServeLog server output", () => {
 		const logService = new MockLogService();
 
 		say(logService, {
-			severity: "info",
+			severity: "unrecognised",
 			text: "Something new",
 			stdout: "Something new",
 		});
@@ -66,7 +66,7 @@ describe("ServeLog server output", () => {
 		const logService = framedLog();
 
 		say(logService, {
-			severity: "info",
+			severity: "unrecognised",
 			text: "Something new",
 			stdout: "Something new",
 		});
@@ -77,7 +77,7 @@ describe("ServeLog server output", () => {
 	it("should leave out a blank stdout line inside a frame", () => {
 		const logService = framedLog();
 
-		say(logService, { severity: "debug", text: "", stdout: "" });
+		say(logService, { severity: "noise", text: "", stdout: "" });
 
 		expect(logService.lines).toEqual([]);
 	});

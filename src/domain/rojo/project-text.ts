@@ -81,7 +81,7 @@ class Commented {
 		return this.comments.aroundDocument();
 	}
 
-	orphansUnder(path: JsoncPath): (readonly string[])[] {
+	takeOrphansUnder(path: JsoncPath): (readonly string[])[] {
 		const kept: (readonly string[])[] = [];
 		for (const key of this.comments.paths) {
 			const at = JSON.parse(key) as JsoncPath;
@@ -432,7 +432,7 @@ export class ProjectText {
 		});
 		for (const comment of [
 			...(marks?.closing ?? []),
-			...(commented?.orphansUnder(path) ?? []),
+			...(commented?.takeOrphansUnder(path) ?? []),
 		])
 			lines.push(...ProjectText.commentLines(comment, inner));
 		const opening = ProjectText.sameLine(marks?.opening, inner);

@@ -10,7 +10,7 @@ function reportServerMessage(
 	{ severity, text, details = [], stdout }: ServerMessage,
 	cwd: string
 ): void {
-	if (severity === "debug") {
+	if (severity === "noise") {
 		logService.debug(`Rojo: ${text}`);
 		return;
 	}
@@ -25,7 +25,7 @@ function reportServerMessage(
 }
 
 const isProgress = ({ severity, text }: ServerMessage) =>
-	severity === "info" && RojoServer.isProgress(text);
+	severity === "unrecognised" && RojoServer.isProgress(text);
 
 export function reportRojo(
 	logService: LogService,

@@ -42,7 +42,7 @@ export type FolderMetaOutcome =
 			readonly treeNode: RojoNode;
 	  }
 	| {
-			readonly kind: "shared";
+			readonly kind: "fileAtNode";
 			readonly instance: string;
 			readonly metas: readonly FolderMeta[];
 			readonly file: RoutedFile;
@@ -84,7 +84,7 @@ export class FolderMetaApplier {
 		if (problems.hasErrors) return err([...problems.diagnostics]);
 
 		for (const { instancePath, meta, treeNode } of this.copies(outcomes))
-			project.insertNode(
+			project.insertNodeReplacingFolder(
 				instancePath,
 				RojoMeta.fieldsUnder(meta.fields, treeNode)
 			);
@@ -96,8 +96,8 @@ export class FolderMetaApplier {
 		problems: DiagnosticCollector
 	): FolderMetaOutcome[] {
 		const { tree, files, displaced, emptyFolders } = this.placement;
-		const sharedWithFile = new InstanceMap<RoutedFile>();
-		for (const file of files) sharedWithFile.set(file.instancePath, file);
+		const fileAt = new InstanceMap<RoutedFile>();
+		for (const file of files) fileAt.set(file.instancePath, file);
 
 		const outcomes: FolderMetaOutcome[] = [];
 		const reportedClashes = new Set<string>();
@@ -107,8 +107,8 @@ export class FolderMetaApplier {
 			...emptyFolders,
 		])) {
 			const instance = instanceKey(nodePath);
-			const shared = sharedWithFile.get(nodePath);
-			const ownDir = shared?.init?.becomes;
+			const fileAtNode = fileAt.get(nodePath);
+			const ownDir = fileAtNode?.init?.becomes;
 			const reached = this.metasReaching(node);
 			if (reached.length === 0) continue;
 			this.reportSameRootClashes(
@@ -118,18 +118,18 @@ export class FolderMetaApplier {
 				problems
 			);
 
-			const others = shared
+			const others = fileAtNode
 				? reached.filter(({ folder }) => folder !== ownDir)
 				: [];
-			if (shared && others.length > 0)
+			if (fileAtNode && others.length > 0)
 				outcomes.push({
-					kind: "shared",
+					kind: "fileAtNode",
 					instance,
 					metas: others,
-					file: shared,
+					file: fileAtNode,
 				});
-			const initDir = shared && this.placement.initDirOf(shared);
-			const metas = shared
+			const initDir = fileAtNode && this.placement.initDirOf(fileAtNode);
+			const metas = fileAtNode
 				? reached.filter(
 						({ folder }) => folder === ownDir && folder !== initDir
 					)

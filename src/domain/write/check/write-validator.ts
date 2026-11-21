@@ -759,7 +759,7 @@ export class WriteValidator {
 
 	private metaNotCopied(): Diagnostic[] {
 		return this.assembly.metaOutcomes.flatMap((outcome) => {
-			if (outcome.kind === "shared")
+			if (outcome.kind === "fileAtNode")
 				return outcome.metas.map((meta) =>
 					this.sharedWithFile(meta, outcome.file, outcome.instance)
 				);

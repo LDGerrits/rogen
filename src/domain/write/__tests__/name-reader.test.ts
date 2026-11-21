@@ -13,7 +13,7 @@ const readerOf = (keys: DeclaredKeys) => new NameReader(keys);
 const matchMarkerKey = (fileName: string, keys: DeclaredKeys) =>
 	readerOf(keys).marker(fileName).key;
 const matchSuffixKeys = (stem: string, keys: ReadonlySet<string>) =>
-	readerOf(new DeclaredKeys(keys)).suffixes(stem);
+	readerOf(new DeclaredKeys(keys)).trailingSuffixes(stem);
 const misspelt = <K extends MisspellingKind>(
 	read: { readonly misspellings: readonly Misspelling[] },
 	kind: K
@@ -83,7 +83,7 @@ describe("NameReader marker", () => {
 	});
 });
 
-describe("NameReader suffixes", () => {
+describe("NameReader trailingSuffixes", () => {
 	it("strips @key and names what stands before the @", () => {
 		const result = matchSuffixKeys("Combat@server", ROUTES);
 		expect(result.baseName).toBe("Combat");
@@ -139,7 +139,8 @@ describe("NameReader suffixes", () => {
 	});
 
 	it("records where each matched key sits in the stem, the trailing one first", () => {
-		const result = readerOf(ROUTE_KEYS).suffixes("Foo@client@server");
+		const result =
+			readerOf(ROUTE_KEYS).trailingSuffixes("Foo@client@server");
 		expect(result.spans).toEqual([
 			{ key: "server", start: 10, length: 7 },
 			{ key: "client", start: 3, length: 7 },
@@ -147,13 +148,13 @@ describe("NameReader suffixes", () => {
 	});
 
 	it("does not recognise an undeclared dot part", () => {
-		const result = readerOf(ROUTE_KEYS).suffixes("Analytics.beta");
+		const result = readerOf(ROUTE_KEYS).trailingSuffixes("Analytics.beta");
 		expect(result.matchedKeys.size).toBe(0);
 		expect(result.baseName).toBe("Analytics.beta");
 	});
 
 	it("does not route @key when a dot part follows it", () => {
-		const result = readerOf(ROUTE_KEYS).suffixes("Foo@server.bak");
+		const result = readerOf(ROUTE_KEYS).trailingSuffixes("Foo@server.bak");
 		expect(result.matchedKeys.size).toBe(0);
 		expect(misspelt(result, "strayAt")).toEqual({
 			kind: "strayAt",
@@ -328,7 +329,7 @@ describe("NameReader folder", () => {
 	it("should note each misspelling of a name once", () => {
 		expect(
 			readerOf(ROUTE_KEYS)
-				.suffixes("Save@sever.Server")
+				.trailingSuffixes("Save@sever.Server")
 				.misspellings.map(({ kind }) => kind)
 		).toEqual(["strayAt", "dotRoute"]);
 	});
@@ -413,18 +414,21 @@ describe("NameReader routes in one name", () => {
 
 	it("should read a bare @key before another as a route, and alone as a name", () => {
 		expect([
-			...readerOf(ROUTE_KEYS).suffixes("@client@server").matchedKeys,
+			...readerOf(ROUTE_KEYS).trailingSuffixes("@client@server")
+				.matchedKeys,
 		]).toEqual(["server", "client"]);
 		expect([
-			...readerOf(ROUTE_KEYS).suffixes("@server").matchedKeys,
+			...readerOf(ROUTE_KEYS).trailingSuffixes("@server").matchedKeys,
 		]).toEqual([]);
 	});
 });
 
 describe("NameReader dot routes", () => {
 	const dotRoute = (stem: string, script: boolean) =>
-		misspelt(readerOf(ROUTE_KEYS).suffixes(stem, script), "dotRoute")
-			?.respelling;
+		misspelt(
+			readerOf(ROUTE_KEYS).trailingSuffixes(stem, script),
+			"dotRoute"
+		)?.respelling;
 
 	it("should read Rojo's suffix after a dot in any letter case, and no other key", () => {
 		expect(dotRoute("Types.SERVER", false)).toEqual({

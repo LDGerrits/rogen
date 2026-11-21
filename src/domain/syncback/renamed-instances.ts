@@ -128,12 +128,11 @@ function renameOf(
 			files.set(key, { target: moved(old.source), keep: old.source });
 			continue;
 		}
-		files.set(key, {
-			target: path.posix.join(
-				path.posix.dirname(moved(old.source)),
-				withMark(leaf, markOf(old))
-			),
-		});
+		const studioEdit = path.posix.join(
+			path.posix.dirname(moved(old.source)),
+			withMark(leaf, markOf(old))
+		);
+		files.set(key, { target: studioEdit });
 	}
 	for (const file of fresh) {
 		const leaf = file[file.length - 1];

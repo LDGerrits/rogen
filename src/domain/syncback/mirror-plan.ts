@@ -10,6 +10,12 @@ import {
 	UnplacedInstance,
 } from "./syncback.js";
 
+const KIND_PRECEDENCE: Readonly<Record<CompiledChange["kind"], number>> = {
+	removed: 0,
+	changed: 1,
+	added: 2,
+};
+
 export type Operation = {
 	readonly file: string;
 	readonly instance: string;
@@ -91,11 +97,13 @@ export async function bytesOf(
 }
 
 function outermost(changes: readonly CompiledChange[]): CompiledChange[] {
-	const strength = { removed: 0, changed: 1, added: 2 } as const;
 	const kinds = new Map<string, CompiledChange["kind"]>();
 	for (const { instance, kind } of changes) {
 		const listed = kinds.get(instance);
-		if (listed === undefined || strength[kind] > strength[listed])
+		if (
+			listed === undefined ||
+			KIND_PRECEDENCE[kind] > KIND_PRECEDENCE[listed]
+		)
 			kinds.set(instance, kind);
 	}
 	return [...kinds]

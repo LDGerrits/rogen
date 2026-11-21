@@ -11,15 +11,24 @@ export interface ConfigChange {
 	readonly notice?: ConfigNotice;
 }
 
-export function configChange(
-	before: ConfigVersion | undefined,
-	after: ConfigVersion | undefined
-): ConfigChange {
-	if (!after)
+export type ConfigTransition =
+	| { readonly kind: "added"; readonly after: ConfigVersion }
+	| { readonly kind: "removed"; readonly before: ConfigVersion }
+	| {
+			readonly kind: "reloaded";
+			readonly before: ConfigVersion;
+			readonly after: ConfigVersion;
+	  };
+
+export function configChange(transition: ConfigTransition): ConfigChange {
+	if (transition.kind === "removed")
 		return {
 			changed: false,
-			notice: before && { kind: "removed", file: before.entry.file },
+			notice: { kind: "removed", file: transition.before.entry.file },
 		};
+	const { after } = transition;
+	const before =
+		transition.kind === "reloaded" ? transition.before : undefined;
 	const { entry } = after;
 	const changed =
 		validFile(entry) !== undefined && before?.written !== after.written;

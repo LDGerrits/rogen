@@ -23,7 +23,11 @@ const SAFE_NAME = /^[A-Za-z0-9_][A-Za-z0-9_ .-]*$/;
  */
 const UNSYNCABLE_USE = "legacyClientScript";
 
-const FILE_CONTENT_CLASSES: ReadonlySet<string> = new Set([
+/**
+ * Rojo's syncback drops the property that holds these classes' contents
+ * (`Value`, `Source`, `Contents`) from a node that has a `$path`.
+ */
+const PATH_DROPS_CONTENT: ReadonlySet<string> = new Set([
 	"StringValue",
 	"Script",
 	"LocalScript",
@@ -481,7 +485,7 @@ class MirrorWalk {
 	): boolean {
 		if (instancePath.length < 2) return false;
 		if (node.$ignoreUnknownInstances === true) return false;
-		if (FILE_CONTENT_CLASSES.has(node.$className ?? "")) return false;
+		if (PATH_DROPS_CONTENT.has(node.$className ?? "")) return false;
 		let own: RojoNode | undefined = this.inputs.tree;
 		for (const name of instancePath)
 			own = own && childNodes(own).find(([child]) => child === name)?.[1];

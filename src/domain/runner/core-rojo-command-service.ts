@@ -278,7 +278,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 		if (exit.code === 0 || signal?.aborted) return { messages };
 		const refusedArguments = exit.code === 2;
 		const explainsFailure = ({ severity }: ServerMessage) =>
-			refusedArguments ? severity !== "debug" : severity === "error";
+			refusedArguments ? severity !== "noise" : severity === "error";
 		const said = messages
 			.filter(explainsFailure)
 			.flatMap(({ text, details }) => [text, ...(details ?? [])])
