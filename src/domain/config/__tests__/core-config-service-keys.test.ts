@@ -1,3 +1,4 @@
+import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import {
 	errors,
 	resolved,
@@ -201,6 +202,32 @@ describe("CoreConfigService", () => {
 			await start();
 
 			expect(errors(0)).toEqual([]);
+		});
+
+		it("should warn at a child key that starts with $, as Rojo warns on every build", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				`{
+	"tree": {
+		"ReplicatedStorage": {
+			"$Shared": { "$path": "src/Shared" }
+		}
+	}
+}`
+			);
+
+			await start();
+
+			expect(warningsOf(0)).toEqual([
+				{
+					severity: DiagnosticSeverity.Warning,
+					code: "tree.reservedName",
+					resource: "/repo/default.rogen.json",
+					position: { line: 4, column: 15 },
+					message:
+						'"tree.ReplicatedStorage.$Shared": Rojo reserves keys that start with $ for its own fields, so it warns about this one on every build. Rename it without the $.',
+				},
+			]);
 		});
 
 		it.each([

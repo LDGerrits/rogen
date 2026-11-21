@@ -386,6 +386,12 @@ warning: Rojo reserves a leading $, so it warns about "ReplicatedStorage/shared/
 
 Rename the file or folder without the `$`.
 
+A key you write in the tree yourself, such as `"$Shared": { "$path": "src/Shared" }`, gets the same warning at that key in the config:
+
+```
+warning: "tree.ReplicatedStorage.$Shared": Rojo reserves keys that start with $ for its own fields, so it warns about this one on every build. Rename it without the $. (tree.reservedName)
+```
+
 A `$` later in a name, as in `Cost$`, is fine. So is a file inside a folder that Rogen gives to Rojo whole, as one `$path`.
 
 ### `tree.instanceClash` [#tree-instanceclash]
