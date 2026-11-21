@@ -60,7 +60,7 @@ describe("CoreRojoCommandService", () => {
 		expect(ran.project.projectFile).toEqual("/repo/default.project.json");
 		expect(ran.messages).toEqual([
 			{
-				severity: "info",
+				severity: "unrecognised",
 				text: "Built project to a.rbxl",
 				stdout: "Built project to a.rbxl",
 			},
@@ -356,7 +356,7 @@ describe("CoreRojoCommandService", () => {
 
 			expect(ran.messages).toEqual([
 				{
-					severity: "info",
+					severity: "unrecognised",
 					text: "Installed Rojo plugin",
 					stdout: "Installed Rojo plugin",
 				},

@@ -101,7 +101,7 @@ describe("SupervisedRojo", () => {
 
 		await crash(0);
 
-		expect(messages.filter(({ severity }) => severity !== "debug")).toEqual(
+		expect(messages.filter(({ severity }) => severity !== "noise")).toEqual(
 			[]
 		);
 		expect(messages.map(({ text }) => text)).toEqual(

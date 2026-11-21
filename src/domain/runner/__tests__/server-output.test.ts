@@ -18,7 +18,7 @@ describe("ServerOutput", () => {
 		said = [];
 		dropped = [];
 		output.onDidMessage((message) =>
-			message.severity === "debug"
+			message.severity === "noise"
 				? dropped.push(message.text)
 				: said.push(message)
 		);
@@ -45,7 +45,7 @@ describe("ServerOutput", () => {
 
 				expect(said).toEqual([
 					{
-						severity: "info",
+						severity: "unrecognised",
 						text: "Built project to a.rbxl",
 						stdout: "Built project to a.rbxl",
 					},
@@ -102,7 +102,7 @@ describe("ServerOutput", () => {
 				jest.advanceTimersByTime(100);
 
 				expect(said).toEqual([
-					{ severity: "info", text: "something odd" },
+					{ severity: "unrecognised", text: "something odd" },
 					{ severity: "error", text: "it broke" },
 				]);
 			});
@@ -382,11 +382,11 @@ describe("ServerOutput", () => {
 					text: "unexpected argument '--nope' found",
 				},
 				{
-					severity: "info",
+					severity: "unrecognised",
 					text: "Usage: rojo serve [OPTIONS] [PROJECT]",
 				},
 				{
-					severity: "info",
+					severity: "unrecognised",
 					text: "thread 'main' panicked at src/serve.rs:10:5:",
 				},
 			]);

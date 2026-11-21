@@ -3,7 +3,7 @@ import { LogLevel } from "../../platform/log/log-service.js";
 import { RojoVersion } from "./rojo-version.js";
 
 export interface ServerMessage {
-	readonly severity: "error" | "warning" | "info" | "debug";
+	readonly severity: "error" | "warning" | "unrecognised" | "noise";
 	readonly text: string;
 	readonly details?: readonly string[];
 	readonly stdout?: string;
