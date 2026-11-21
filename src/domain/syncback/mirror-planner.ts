@@ -325,10 +325,18 @@ class MirrorPlanRun {
 				if (read.isErr() && this.isCompiled(file))
 					return { kind: "same", file, instance };
 				const original = read.unwrap();
-				const next = withLineEndings(
-					original,
-					await workspace.read(at)
+				const written = await workspace.read(at);
+				const rojoFile = RojoFile.at(
+					target,
+					this.request.project.syncRules
 				);
+				// Rojo builds a script's \r\n source as \n and reads JSON's line
+				// endings as whitespace, but keeps the \r of a text or CSV file
+				// in the place.
+				const next =
+					rojoFile.isText || rojoFile.isCsv
+						? written
+						: withLineEndings(original, written);
 				return sameBytes(next, original) ||
 					(this.isCompiled(file) &&
 						onlySerializedOverrides(
