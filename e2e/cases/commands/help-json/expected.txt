@@ -503,7 +503,7 @@ stdout:
     "shapes": {
       "Diagnostic": "{file:string,line?:int,column?:int,severity:\"error\"|\"warning\",code:string,message:string,details?:[string],url:string,related?:[{file:string,message:string}],fixes?:[Fix]}",
       "Fix": "{rename:{from:string,to:string}}|{replace:{file:string,line:int,column:int,from:string,to:string}}|{run:{command:string,cwd:string}}",
-      "SkippedPath": "{path:string,reason:\"outsideSourcePaths\"|\"noConfig\",config?:string}",
+      "SkippedPath": "{path:string,reason:\"outsideSourcePaths\"|\"noConfig\",config?:string,readers?:[string]}",
       "Error": "{kind:\"usage\"|\"project\"|\"tool\"|\"io\"|\"cancelled\"|\"internal\",message:string,hint?:string}"
     }
   }
@@ -549,7 +549,7 @@ stdout:
     "shapes": {
       "Diagnostic": "{file:string,line?:int,column?:int,severity:\"error\"|\"warning\",code:string,message:string,details?:[string],url:string,related?:[{file:string,message:string}],fixes?:[Fix]}",
       "Fix": "{rename:{from:string,to:string}}|{replace:{file:string,line:int,column:int,from:string,to:string}}|{run:{command:string,cwd:string}}",
-      "SkippedPath": "{path:string,reason:\"outsideSourcePaths\"|\"noConfig\",config?:string}",
+      "SkippedPath": "{path:string,reason:\"outsideSourcePaths\"|\"noConfig\",config?:string,readers?:[string]}",
       "Error": "{kind:\"usage\"|\"project\"|\"tool\"|\"io\"|\"cancelled\"|\"internal\",message:string,hint?:string}"
     }
   }

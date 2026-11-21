@@ -1,6 +1,12 @@
 import path from "path";
 import { Disposable, toDisposable } from "../../base/disposable.js";
-import { isInside, samePath, shownFrom, toPosix } from "../../base/path.js";
+import {
+	commonAncestor,
+	isInside,
+	samePath,
+	shownFrom,
+	toPosix,
+} from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -299,6 +305,21 @@ export class CoreConfigService implements ConfigService {
 				: cover;
 		if (!isProjectFileConfig(cover.file)) return cover;
 		return (await this.configAbove(cover.file)) ?? cover;
+	}
+
+	async readersOf(target: string): Promise<string[]> {
+		const folder = (await this.fileSystemService.isDirectory(target))
+			? target
+			: path.dirname(target);
+		const stop = commonAncestor([folder, this.environmentService.cwd]);
+		const readers: string[] = [];
+		for (const file of await this.discovery.configsBeside(target, stop)) {
+			const sourcePaths = validFile(await this.read(file))?.config
+				.sourcePaths;
+			if (sourcePaths && (await this.covers(sourcePaths, target)))
+				readers.push(file);
+		}
+		return readers;
 	}
 
 	/** With no default config to answer, the named configs at and above `target` whose source paths cover it; one that is broken is kept unless its source paths can be told. */
