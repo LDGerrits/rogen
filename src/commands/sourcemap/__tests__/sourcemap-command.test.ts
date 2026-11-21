@@ -71,7 +71,7 @@ describe("sourcemap command", () => {
 		rojo.exit({ code: 0, signal: null });
 		await running;
 
-		expect(log.reserved).toBe(false);
+		expect(log.sendsOwnLinesToStderr).toBe(false);
 		expect(log.lines).toEqual([
 			"success: Wrote default.project.json.",
 			"outro: Wrote map.json.",
@@ -87,7 +87,7 @@ describe("sourcemap command", () => {
 		rojo.exit({ code: 0, signal: null });
 		await running;
 
-		expect(log.reserved).toBe(true);
+		expect(log.sendsOwnLinesToStderr).toBe(true);
 		expect(log.lines).toEqual([
 			'print: {"name":"repo"}',
 			"success: Wrote default.project.json.",

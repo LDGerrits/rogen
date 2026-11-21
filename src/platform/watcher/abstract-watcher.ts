@@ -6,7 +6,6 @@ import { FileChange } from "../fs/file-changes.js";
 import { LogService } from "../log/log-service.js";
 import { WatchOptions, Watcher } from "./watcher.js";
 
-/** The events, ordering and disposal every watcher shares; a subclass reports what it sees through `fireChange`. */
 export abstract class AbstractWatcher
 	extends AbstractDisposable
 	implements Watcher

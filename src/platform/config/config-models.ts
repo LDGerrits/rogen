@@ -1,4 +1,3 @@
-/** A section is a dotted path, or its segments when a key may itself contain a dot. */
 export type ConfigSection = string | readonly string[];
 
 export function sectionPath(section: ConfigSection): readonly string[] {

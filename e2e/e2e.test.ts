@@ -11,7 +11,6 @@ import {
 	runCase,
 } from "./harness.js";
 
-/** Cases run side by side, so a busy machine takes longer than jest's default for one that spawns several programs. */
 const LOCAL_TIMEOUT_MS = 30_000;
 
 const UPDATE = process.env.UPDATE_E2E === "1";

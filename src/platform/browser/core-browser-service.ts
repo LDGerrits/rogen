@@ -7,11 +7,13 @@ const TIMEOUT_MS = 10_000;
 interface Launcher {
 	readonly file: string;
 	readonly args: readonly string[];
-	/** Whether starting the program is enough, because it exits with 1 even after it opened the page. */
+	/**
+	 * Whether starting the program is enough, because it exits with 1 even
+	 * after it opened the page.
+	 */
 	readonly ignoresExitCode?: true;
 }
 
-/** Opens a URL with the program the system uses for it. */
 export class CoreBrowserService implements BrowserService {
 	declare readonly _serviceBrand: undefined;
 

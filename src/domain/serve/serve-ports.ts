@@ -20,7 +20,6 @@ const FREE_PORT_SEARCH = 20;
 
 type RecordStanding = "ours" | "orphan" | "stale" | "unowned";
 
-/** Who holds a serve port: nothing, a program that isn't Rojo, a Rojo no `rogen serve` recorded for the project file, one that answers for the project before its record is written, or one recorded for the project file, standing by whether its serve and leading process still run. */
 export type PortHolder =
 	| { readonly kind: "free" }
 	| { readonly kind: "taken" }
@@ -36,7 +35,10 @@ export type PortHolder =
 			readonly record: ServerRecord;
 	  };
 
-/** Whether serving is refused while `holder` holds the port. A stale or unowned record frees nothing: the real Rojo can outlive the shim the record names. */
+/**
+ * Whether serving is refused while `holder` holds the port. A stale or unowned
+ * record frees nothing: the real Rojo can outlive the shim the record names.
+ */
 export function refuses(holder: PortHolder): boolean {
 	switch (holder.kind) {
 		case "taken":
@@ -55,7 +57,6 @@ export function refuses(holder: PortHolder): boolean {
 export class ServePorts {
 	private readonly host: string | undefined;
 	private readonly port: Result<number | undefined, UsageError>;
-	/** The flags other than the port that a command offered for another port repeats. */
 	private readonly otherArgs: readonly string[];
 
 	constructor(
@@ -75,7 +76,6 @@ export class ServePorts {
 		return this.port.isErr() ? this.port.error : undefined;
 	}
 
-	/** The server a `rogen serve` that still runs started for `config`, on whatever port, when no `--port` was given to pick one. */
 	async runningServeOf(
 		config: ResolvedConfig
 	): Promise<ServeTarget | undefined> {
@@ -95,7 +95,6 @@ export class ServePorts {
 		return undefined;
 	}
 
-	/** The address the server will listen on: the flags given to serve, then the project file, then the server's own defaults. */
 	targetOf(config: ResolvedConfig): ServeTarget {
 		const { project } = config;
 		return {
@@ -110,7 +109,6 @@ export class ServePorts {
 		};
 	}
 
-	/** What holds `target`'s port, told from the server that answers there and the record a `rogen serve` left for it. */
 	async classify(target: ServeTarget): Promise<PortHolder> {
 		const state = await this.probe.probe(target.address);
 		if (state.kind !== "serving") return state;
@@ -123,7 +121,6 @@ export class ServePorts {
 		return { kind: "foreign", info, record };
 	}
 
-	/** `target` once its port is free, with `servedBy` set when another `rogen serve` serves it there, or with `orphan` set when a server whose serve ended still runs there; else why it can't be served. */
 	async check(target: ServeTarget): Promise<Result<ServeTarget, Diagnostic>> {
 		const holder = await this.classify(target);
 		switch (holder.kind) {
@@ -148,7 +145,6 @@ export class ServePorts {
 		}
 	}
 
-	/** How a record for this project file stands: by whether its serve, else its leading process, still runs. */
 	private standingOf(record: ServerRecord): RecordStanding {
 		if (record.owner === undefined) return "unowned";
 		if (this.runner.isRunning(record.owner)) return "ours";

@@ -1,7 +1,6 @@
 import { ServiceIdentifier } from "./instantiation.js";
 import { SyncDescriptor } from "./sync-descriptor.js";
 
-/** What a collection holds for a service: the instance, or the descriptor that says how to build it. */
 export type ServiceEntry<T> = T | SyncDescriptor<T>;
 
 export class ServiceCollection {
@@ -16,7 +15,6 @@ export class ServiceCollection {
 		for (const [id, entry] of entries) this.entries.set(id, entry);
 	}
 
-	/** Returns what `id` held before, if anything. */
 	set<T>(
 		id: ServiceIdentifier<T>,
 		entry: ServiceEntry<T>
@@ -34,7 +32,6 @@ export class ServiceCollection {
 		return this.entries.get(id) as ServiceEntry<T> | undefined;
 	}
 
-	/** The identifiers set, in the order they were first set. */
 	ids(): IterableIterator<ServiceIdentifier<unknown>> {
 		return this.entries.keys();
 	}

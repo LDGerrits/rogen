@@ -4,28 +4,16 @@ import os from "os";
 import path from "path";
 import { pathToFileURL } from "url";
 
-/**
- * Sums up how the e2e transcripts differ from the last commit, as the distinct edits and how many transcripts each is in.
- *
- *   node scripts/summarize-transcripts.ts [--update]
- *
- * With `--update` it regenerates the transcripts first. A wording change that touches dozens of them then reads as a line or two, and an edit that only a few transcripts have stands out.
- */
-
 const CASES_DIR = "e2e/cases";
 const TRANSCRIPT = "expected.txt";
-/** An edit in this many transcripts or fewer is listed with them. */
 const NAMED_UP_TO = 3;
-/** Words kept on each side of an edit, so it reads on its own. */
 const CONTEXT_WORDS = 2;
 
-/** One edit to a line: `removed` became `added` between `before` and `after`. A line that appears or disappears whole has only one of the two. */
 export interface TranscriptChange {
 	readonly before: string;
 	readonly removed: string;
 	readonly added: string;
 	readonly after: string;
-	/** The transcripts it is in, as `<area>/<case>`. */
 	readonly cases: readonly string[];
 }
 
@@ -36,10 +24,8 @@ const nameOf = (file: string): string => {
 		: relative;
 };
 
-/** The words and the spaces between them, so that joining them gives the line back. */
 const tokens = (line: string) => line.trim().split(/(\s+)/);
 
-/** The last `words` words of `parts`, with the space before them. */
 const lastWords = (parts: string[], words: number) =>
 	parts.slice(-(2 * words)).join("");
 
@@ -61,7 +47,6 @@ const whole = (
 const words = (parts: readonly string[]) =>
 	parts.filter((part) => part.trim() !== "").length;
 
-/** Narrows a replaced line to the words that differ, keeping a little around them. None when the two lines share too little to be one line edited. */
 function editOf(
 	removed: string,
 	added: string
@@ -90,7 +75,6 @@ function editOf(
 
 	const dropped = from.slice(start, from.length - end).join("");
 	const gained = to.slice(start, to.length - end).join("");
-	// Only the spacing changed.
 	if (!dropped && !gained)
 		return {
 			before: "",
@@ -110,7 +94,6 @@ function editOf(
 	};
 }
 
-/** Reads a `git diff -U0` of the cases folder. The edit in the most transcripts comes first. */
 export function summarizeTranscriptDiff(diff: string): TranscriptChange[] {
 	const edits = new Map<
 		string,
@@ -172,7 +155,6 @@ const show = (change: TranscriptChange): string => {
 const plural = (count: number, noun: string) =>
 	`${count} ${noun}${count === 1 ? "" : "s"}`;
 
-/** Transcripts and case files that exist only on one side of the diff, as `<area>/<case>`. */
 export interface TranscriptFiles {
 	readonly added: readonly string[];
 	readonly deleted: readonly string[];
@@ -222,7 +204,6 @@ const git = (...args: string[]): string =>
 		maxBuffer: 64 * 1024 * 1024,
 	});
 
-/** Runs the e2e suite so that it rewrites the transcripts. The exit code is non-zero when it fails or when Rojo is missing and it skipped every case. */
 function regenerate(): number {
 	const report = path.join(os.tmpdir(), `rogen-e2e-${process.pid}.json`);
 	const status =
@@ -262,7 +243,6 @@ function regenerate(): number {
 	return status;
 }
 
-/** What differs from the last commit, staged or not. */
 function changesSinceCommit(): { diff: string; files: TranscriptFiles } {
 	const named = (filter: string) =>
 		git(

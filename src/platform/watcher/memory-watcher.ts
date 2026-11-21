@@ -6,7 +6,10 @@ import { LogService } from "../log/log-service.js";
 import { AbstractWatcher } from "./abstract-watcher.js";
 import { WatchFilter, WatchOptions } from "./watcher.js";
 
-/** `filePath` as a disk watcher reports it, with the drive Windows gives `/repo`. */
+/**
+ * `filePath` as a disk watcher reports it, with the drive Windows gives
+ * `/repo`.
+ */
 const onDisk = (filePath: string): string =>
 	path.isAbsolute(filePath) ? path.resolve(filePath) : filePath;
 

@@ -5,7 +5,6 @@ import { ScannedFile } from "./root-scanner.js";
 import { CompiledLayout } from "./compiled-layout.js";
 import { WrittenGlobs } from "./written-globs.js";
 
-/** The sync rules as the written file carries them, moved to where the file's folders are so Rojo reads the files Rogen did. */
 export class WrittenSyncRules {
 	constructor(
 		private readonly config: ResolvedConfig,
@@ -29,7 +28,6 @@ export class WrittenSyncRules {
 		return this.layout.relativeToProject(this.layout.emittedPath(source));
 	}
 
-	/** The rule with its globs moved, when the moved rule still takes every file the rule takes. */
 	private moved(
 		rule: SyncRule,
 		taken: readonly string[]
@@ -62,7 +60,6 @@ export class WrittenSyncRules {
 		}));
 	}
 
-	/** The rule as it is in the project, for the files a mount brings in under the pattern's old place. */
 	private original(rule: SyncRule): SyncRule[] {
 		const from = this.config.syncRules.dir;
 		const pattern = this.globs.original(rule.pattern, from);

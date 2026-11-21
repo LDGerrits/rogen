@@ -121,4 +121,19 @@ describe("rewriteStudioPaths", () => {
 			)
 		).toBe("ServerScriptService.A:1 and src/B.luau:2");
 	});
+
+	it("should escape control characters in the file it puts in", () => {
+		const text = "ServerScriptService.Feature.Name:12: oops";
+
+		expect(
+			rewriteStudioPaths(
+				text,
+				studioPathsIn(text),
+				fileOf({
+					"ServerScriptService.Feature.Name":
+						"src/(\u001b[31mred)/Name.luau",
+				})
+			)
+		).toBe("src/(\\u001b[31mred)/Name.luau:12: oops");
+	});
 });

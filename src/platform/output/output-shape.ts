@@ -1,4 +1,3 @@
-/** The shape of a JSON document a command prints, declared once so that its text for agents and the schema tests check it against both come from it. */
 export type OutputShape =
 	| { readonly kind: "string" | "integer" | "boolean" | "null" }
 	| { readonly kind: "enum"; readonly values: readonly string[] }
@@ -17,13 +16,11 @@ export type OutputShape =
 			readonly shape: OutputShape;
 	  };
 
-/** A key an object may leave out. */
 export interface OptionalKey {
 	readonly kind: "optional";
 	readonly of: OutputShape;
 }
 
-/** What a command prints with `--json`: one document, or one line per event for a command that runs until it is stopped. */
 export interface OutputDeclaration {
 	readonly document?: OutputShape;
 	readonly lines?: OutputShape;
@@ -42,14 +39,12 @@ export const OutputShape = {
 
 	array: (of: OutputShape): OutputShape => ({ kind: "array", of }),
 
-	/** An object whose keys are not known ahead, each holding `of`. */
 	record: (of: OutputShape): OutputShape => ({ kind: "record", of }),
 
 	object: (
 		fields: Readonly<Record<string, OutputShape | OptionalKey>>
 	): OutputShape => ({ kind: "object", fields }),
 
-	/** A key of an object that is there only sometimes. */
 	optional: (of: OutputShape): OptionalKey => ({ kind: "optional", of }),
 
 	union: (...of: readonly OutputShape[]): OutputShape => ({
@@ -62,7 +57,6 @@ export const OutputShape = {
 		of: [of, { kind: "null" }],
 	}),
 
-	/** A shape written out once under its name wherever it is used, such as `Diagnostic`. */
 	named: (name: string, shape: OutputShape): OutputShape => ({
 		kind: "named",
 		name,
@@ -70,7 +64,6 @@ export const OutputShape = {
 	}),
 } as const;
 
-/** The shapes in `shape`, by name, each reached once; two different shapes under one name are a mistake in a declaration. */
 export function namedShapes(
 	shape: OutputShape,
 	found = new Map<string, OutputShape>()

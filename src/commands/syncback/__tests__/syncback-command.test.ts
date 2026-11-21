@@ -157,7 +157,6 @@ describe("syncback command", () => {
 		);
 	});
 
-	/** What the test's Rojo does to the mirror it runs on: Loot added, Combat removed. */
 	const editMirror = async () => {
 		await fs.writeFile(
 			abs(".rogen-syncback/mirror/ServerScriptService/Combat/Loot.luau"),
@@ -407,7 +406,7 @@ describe("syncback command", () => {
 		rojo.exit({ code: 0, signal: null });
 		await running;
 
-		expect(log.reserved).toBe(true);
+		expect(log.sendsOwnLinesToStderr).toBe(true);
 		expect(log.texts("print")).toEqual([
 			"Removing src/Combat/Server/Combat.luau",
 			"Writing src/Combat/Server/Loot.luau",

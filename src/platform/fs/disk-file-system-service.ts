@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import { timeout } from "../../base/async.js";
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { isWindows } from "../../base/platform.js";
 import {
@@ -23,7 +23,15 @@ const UNRESOLVED_CODES = [
 	"EINVAL",
 ];
 
-/** Whether `target` is a link that nothing may descend into: one to nothing, or back to an ancestor, which would list the tree again forever. Synchronous, because a watcher's filter can't wait. */
+function realpathOrUndefined(target: string): string | undefined {
+	try {
+		return fs.realpathSync(target);
+	} catch {
+		return undefined;
+	}
+}
+
+/** Synchronous, because a watcher's filter can't wait. */
 export function isUnfollowableLink(target: string): boolean {
 	try {
 		if (!fs.lstatSync(target).isSymbolicLink()) return false;
@@ -42,16 +50,15 @@ export function isUnfollowableLink(target: string): boolean {
 		;
 		ancestor = path.dirname(ancestor)
 	) {
-		try {
-			if (fs.realpathSync(ancestor) === real) return true;
-		} catch {
-			// An ancestor that can't be resolved can't be the link's target.
-		}
+		if (realpathOrUndefined(ancestor) === real) return true;
 		if (path.dirname(ancestor) === ancestor) return false;
 	}
 }
 
-/** The waits between tries of a replacing rename Windows refuses while another program has either file open: about 2.5 seconds in all. */
+/**
+ * The waits between tries of a replacing rename Windows refuses while another
+ * program has either file open: about 2.5 seconds in all.
+ */
 const BUSY_REPLACE_WAITS_MS = [10, 20, 40, 80, 160, 320, 640, 1280];
 
 async function replaceOnceFree(from: string, to: string): Promise<void> {
@@ -66,7 +73,6 @@ async function replaceOnceFree(from: string, to: string): Promise<void> {
 	await fs.promises.rename(from, to);
 }
 
-/** Whether `destination` differs from `source` only in letter case and its folder lists no entry of that exact name, so a case-blind disk found `source` itself there. */
 async function isCaseOnlyRename(
 	source: string,
 	destination: string
@@ -80,6 +86,10 @@ async function isCaseOnlyRename(
 		.readdir(path.dirname(destination))
 		.catch((): string[] => []);
 	return !names.includes(path.basename(destination));
+}
+
+function isHardLinkUnsupported(error: unknown): boolean {
+	return ErrorUtils.hasCode(error, "EPERM", "ENOTSUP", "ENOSYS");
 }
 
 export class DiskFileSystemService implements FileSystemService {
@@ -116,7 +126,7 @@ export class DiskFileSystemService implements FileSystemService {
 		const dirents = await fs.promises.readdir(filePath, {
 			withFileTypes: true,
 		});
-		dirents.sort((a, b) => compareStrings(a.name, b.name));
+		dirents.sort((a, b) => compareByCodePoint(a.name, b.name));
 		return Promise.all(
 			dirents.map(async (dirent): Promise<[string, FileType]> => {
 				if (dirent.isSymbolicLink()) {
@@ -193,7 +203,13 @@ export class DiskFileSystemService implements FileSystemService {
 
 	async createFile(filePath: string, content: string): Promise<boolean> {
 		await this.createDirectory(path.dirname(filePath));
-		// Written beside it and linked in, so the file never shows without its content.
+		return this.linkInWrittenCopy(filePath, content);
+	}
+
+	private async linkInWrittenCopy(
+		filePath: string,
+		content: string
+	): Promise<boolean> {
 		const staged = `${filePath}.${randomUUID()}.tmp`;
 		await fs.promises.writeFile(staged, content, "utf-8");
 		try {
@@ -201,16 +217,14 @@ export class DiskFileSystemService implements FileSystemService {
 			return true;
 		} catch (error) {
 			if (ErrorUtils.hasCode(error, "EEXIST")) return false;
-			if (!ErrorUtils.hasCode(error, "EPERM", "ENOTSUP", "ENOSYS"))
-				throw error;
-			return this.createExclusive(filePath, content);
+			if (!isHardLinkUnsupported(error)) throw error;
+			return this.createExclusiveWithoutLink(filePath, content);
 		} finally {
 			await fs.promises.rm(staged, { force: true });
 		}
 	}
 
-	/** Creates the file with an exclusive open, for a file system without hard links. */
-	private async createExclusive(
+	private async createExclusiveWithoutLink(
 		filePath: string,
 		content: string
 	): Promise<boolean> {

@@ -31,11 +31,9 @@ import { ConfigCover, ConfigFolderCheck } from "./config-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 export interface DiscoveredConfigs {
-	/** The working directory. */
 	readonly home: string;
 	readonly files: readonly string[];
 	readonly noneNamed: boolean;
-	/** What picking had to say, such as a name matching both a folder and a file. */
 	readonly notes: readonly string[];
 }
 
@@ -59,10 +57,8 @@ const keepOne = (directory: string, names: readonly string[]): ProjectError =>
 const isBareName = (ref: string): boolean =>
 	ref !== "" && ref !== "." && ref !== ".." && ref === path.basename(ref);
 
-/** Finds which config file a command reads: the one it names, else the default of the working directory. */
 export class ConfigDiscovery {
 	constructor(
-		/** The checks the config service holds, which every scope's discovery runs. */
 		private readonly checks: ReadonlySet<ConfigFolderCheck>,
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
@@ -77,7 +73,6 @@ export class ConfigDiscovery {
 		return found;
 	}
 
-	/** The config files `refs` names, else the default of the working directory, as Rojo finds its project file. */
 	async discover(
 		refs: readonly string[]
 	): Promise<Result<DiscoveredConfigs, Error>> {
@@ -182,7 +177,6 @@ export class ConfigDiscovery {
 		const config = await this.configBeside(folder, projectStem(base));
 		if (config.isErr()) return err(config.error);
 		if (config.value) return ok({ file: config.value });
-		// A project file with no config beside it is read as it is, as `rojo build test.project.json` reads it.
 		return (await this.fileSystemService.isFile(target))
 			? ok({ file: target })
 			: err(notFound(ref));
@@ -205,7 +199,6 @@ export class ConfigDiscovery {
 		return ok({ file: target });
 	}
 
-	/** The config of `stem` in `folder`; both extensions of one stem fail, as the two would write one file. */
 	private async configBeside(
 		folder: string,
 		stem: string
@@ -225,7 +218,6 @@ export class ConfigDiscovery {
 			: ok(present[0]);
 	}
 
-	/** The file a bare `ref` names here, as `build` reads it. */
 	async fileNamedHere(
 		ref: string
 	): Promise<Result<string | undefined, Error>> {
@@ -234,7 +226,6 @@ export class ConfigDiscovery {
 			: ok(undefined);
 	}
 
-	/** Whether the bare `stem` in `folder` reads `file`; a config not written yet is read by its stem unless a twin of the other extension would be. */
 	async stemReads(
 		folder: string,
 		stem: string,
@@ -249,7 +240,6 @@ export class ConfigDiscovery {
 		);
 	}
 
-	/** Whether `ref` names a config as `select` reads it: a config or project file, a folder with a default config, or a bare name that stands for a config; one that is broken still names it. */
 	async namesConfig(ref: string): Promise<boolean> {
 		const target = path.resolve(this.environmentService.cwd, ref);
 		const isDirectory = await this.fileSystemService.isDirectory(target);
@@ -271,7 +261,6 @@ export class ConfigDiscovery {
 		return file.isErr() || file.value !== undefined;
 	}
 
-	/** What a bare name stands for in `folder`: its config of that name, else its project file of that name. */
 	private async fileNamed(
 		folder: string,
 		name: string
@@ -285,7 +274,6 @@ export class ConfigDiscovery {
 		return ok(undefined);
 	}
 
-	/** The default of `directory`: its config, else the plain project file Rogen adopts; `named` words the error. */
 	private async defaultIn(
 		directory: string,
 		named: string | undefined
@@ -329,14 +317,12 @@ export class ConfigDiscovery {
 		);
 	}
 
-	/** The default configs of a folder, absolute and sorted: one, or two when it holds both extensions. */
 	async defaultConfigs(directory: string): Promise<string[]> {
 		return (await this.list(directory)).filter((file) =>
 			isDefaultConfigFileName(path.basename(file))
 		);
 	}
 
-	/** Every config file of a folder, absolute and sorted; none when it can't be read. */
 	async list(directory: string): Promise<string[]> {
 		const listing = await tryWithAsync(() =>
 			this.fileSystemService.readDirectory(directory)
@@ -348,7 +334,6 @@ export class ConfigDiscovery {
 				);
 	}
 
-	/** The project files of a folder that no config writes, absolute and sorted. */
 	async plainProjects(directory: string): Promise<string[]> {
 		const listing = await tryWithAsync(() =>
 			this.fileSystemService.readDirectory(directory)
@@ -369,7 +354,6 @@ export class ConfigDiscovery {
 			.sort();
 	}
 
-	/** The Rojo project file of a folder with no config: Rogen reads it as a config whose output is itself, and writes nothing. */
 	async adoptable(directory: string): Promise<string | undefined> {
 		for (const name of RojoFile.DEFAULT_PROJECTS) {
 			const file = path.join(directory, name);
@@ -378,7 +362,6 @@ export class ConfigDiscovery {
 		return undefined;
 	}
 
-	/** The configs that write the project files `projectFile` nests, looking through each plain project file it nests, in tree order. */
 	async writersNestedIn(projectFile: string): Promise<string[]> {
 		const writers: string[] = [];
 		const read = new Set<string>();
@@ -407,7 +390,6 @@ export class ConfigDiscovery {
 		return writers;
 	}
 
-	/** What Rojo reads as a nested project at `target`: a project file, or a folder's default one, with the config that writes it when there is one. */
 	private async nestedAt(
 		target: string
 	): Promise<{ kind: "config" | "plain"; file: string } | undefined> {
@@ -430,7 +412,6 @@ export class ConfigDiscovery {
 			: undefined;
 	}
 
-	/** The config that answers for `target`: the default of the nearest folder above a path, so an agent hook can check from the root. */
 	async coverOf(target: string): Promise<ConfigCover | undefined> {
 		if (isConfigFileName(path.basename(target)))
 			return (await this.fileSystemService.isFile(target))
@@ -458,7 +439,6 @@ export class ConfigDiscovery {
 		return undefined;
 	}
 
-	/** Every named config in the folder of `target` and in each folder above it, nearest folder first: the candidates for a path no default config answers for. */
 	async namedConfigsAbove(target: string): Promise<string[]> {
 		const found: string[] = [];
 		for (const directory of await this.foldersUp(target))
@@ -470,7 +450,6 @@ export class ConfigDiscovery {
 		return found;
 	}
 
-	/** Every config in a folder beside the folder of `target` or one above it, where a place that lists shared code in its source paths keeps its config. It looks up to the repository root, or to `stop` where that is higher or there is no repository. */
 	async configsBeside(target: string, stop: string): Promise<string[]> {
 		const folders = await this.foldersUp(target);
 		const stopAt = folders.findIndex((folder) => samePath(folder, stop));
@@ -502,7 +481,6 @@ export class ConfigDiscovery {
 		return found;
 	}
 
-	/** The folder of `target`, or `target` when it is one, then each folder above it. */
 	private async foldersUp(target: string): Promise<string[]> {
 		const start = (await this.fileSystemService.isDirectory(target))
 			? target

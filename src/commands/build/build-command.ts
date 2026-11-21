@@ -32,14 +32,12 @@ import { BuildStep } from "./build-step.js";
 
 const S = OutputShape;
 
-/** The document of `build --json`. */
 const buildDocumentShape = S.object({
 	changed: S.boolean,
 	configs: S.array(writeEntryShape),
 	rojo: S.optional(buildRojoEntryShape),
 });
 
-/** One line of `build --watch --json`. */
 const buildLineShape = S.union(
 	watchLineShapes.write,
 	S.object({ rojo: buildRojoEntryShape }),
@@ -180,7 +178,6 @@ registerCommand(
 			return failure ? this.reported(failure) : ok(undefined);
 		}
 
-		/** Rojo's flags for the build, which needs one of `-o` and `-p`, as `rojo build` does. */
 		private rojoFlags(
 			line: CommandLine<typeof BuildOptions>
 		): Result<readonly string[], UsageError> {

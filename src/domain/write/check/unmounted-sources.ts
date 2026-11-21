@@ -1,7 +1,7 @@
 import path from "path";
 import { ignoringGlob } from "../../../base/glob.js";
 import { contains, joinPosix, toPosix } from "../../../base/path.js";
-import { compareStrings } from "../../../base/collections.js";
+import { compareByCodePoint } from "../../../base/collections.js";
 import { listLimited, plural } from "../../../base/strings.js";
 import {
 	Diagnostic,
@@ -15,7 +15,6 @@ import { rojoPathTarget } from "../../rojo/rojo-project.js";
 
 const LISTED_PATHS = 3;
 
-/** Finds the files Rojo reads in the folder a config without routes would have scanned, which go unsynced unless its tree mounts them; a nested project in the tree may mount what lies in its folder. */
 export class UnmountedSources {
 	constructor(
 		private readonly config: ResolvedConfig,
@@ -43,7 +42,7 @@ export class UnmountedSources {
 					!mounts.some((mount) => contains(mount, file)) &&
 					ignoringGlob(file, this.config.ignored) === undefined
 			)
-			.sort(compareStrings);
+			.sort(compareByCodePoint);
 		const listed = listLimited(
 			loose.map((file) =>
 				path.posix.relative(toPosix(defaultPath), file)

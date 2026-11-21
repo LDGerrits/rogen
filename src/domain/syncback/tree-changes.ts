@@ -2,15 +2,10 @@ import { isObject } from "../../base/objects.js";
 import { parse, setJsoncValue } from "../../base/jsonc.js";
 import { RojoNode, childNodes } from "../rojo/rojo-project.js";
 
-/** What Rojo's syncback changed at one node of the project file it ran on. */
 export interface TreeChange {
-	/** The names from the root to the node; none for the root. */
 	readonly node: readonly string[];
-	/** The `$` keys it set to a new value. */
 	readonly set: Readonly<Record<string, unknown>>;
-	/** The `$` keys it took off. */
 	readonly remove: readonly string[];
-	/** The child nodes it added. */
 	readonly added: readonly {
 		readonly name: string;
 		readonly node: RojoNode;
@@ -19,7 +14,6 @@ export interface TreeChange {
 
 const isKey = (key: string) => key.startsWith("$") && key !== "$path";
 
-/** Whether two values hold the same data, whatever order their keys are in. */
 const same = (a: unknown, b: unknown): boolean => {
 	if (isObject(a) && isObject(b)) {
 		const keys = Object.keys(a);
@@ -35,14 +29,12 @@ const same = (a: unknown, b: unknown): boolean => {
 	return a === b;
 };
 
-/** The keys Rojo takes off a node when Studio clears them; any other key it leaves out is not an edit. */
 const CLEARABLE = ["$properties", "$attributes"];
 
 const holdsPath = (node: RojoNode): boolean =>
 	node.$path !== undefined ||
 	childNodes(node).some(([, child]) => holdsPath(child));
 
-/** The changes that turn `before` into `after`, node by node. A node Rojo left out is not a change, as it can't remove one a project file defines; `$path` is not one either, as it points into the mirror. */
 export function treeChanges(
 	before: RojoNode,
 	after: RojoNode,
@@ -71,7 +63,6 @@ export function treeChanges(
 	];
 }
 
-/** The text of a config with the changes made to the tree at `treeAt`, and the nodes it has no place for. */
 export function applyTreeChanges(
 	text: string,
 	treeAt: readonly string[],

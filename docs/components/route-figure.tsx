@@ -14,7 +14,6 @@ import {
 	VsCodeWindow,
 } from "./ide";
 
-// A project in VS Code beside the Studio Explorer it makes, for docs pages.
 const KEYS: Record<string, string> = {
 	server: "s",
 	client: "c",
@@ -28,7 +27,6 @@ function DiskName({ name }: { name: string }) {
 	const folder = /^\(?([A-Za-z]+)\)?$/.exec(name);
 	if (folder && keyColour(folder[1]))
 		return <span className={`nm c-${keyColour(folder[1])}`}>{name}</span>;
-	// An @key, or Rojo's .server and .client on a script, in its route's colour.
 	const at =
 		/@([A-Za-z]+)/.exec(name) ?? /\.(server|client)(?=\.\w+$)/.exec(name);
 	if (!at || !keyColour(at[1])) return <span className="nm">{name}</span>;
@@ -50,7 +48,6 @@ export function RouteFigure({
 	studio?: string;
 }) {
 	const diskRows = outlineOf(disk);
-	// Each script in the Explorer takes the class its file makes, and an init file gives its folder's.
 	const classes = new Map<string, string>();
 	diskRows.forEach((row, i) => {
 		if (row.name.endsWith("/")) return;

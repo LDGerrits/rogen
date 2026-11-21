@@ -6,12 +6,10 @@ const HOST_FLAGS = ["--address"];
 
 const PORT_FLAGS = ["--port"];
 
-/** Its flags that older releases reject, with the release that added each. */
 const FLAGS_SINCE: Readonly<Record<string, RojoVersion>> = {
 	"--allowed-hosts": RojoVersion.of("7.7.0"),
 };
 
-/** The value of the last of `flags` in `args`, written `--flag value` or `--flag=value`. */
 function flagValue(
 	args: readonly string[],
 	flags: readonly string[]
@@ -27,9 +25,7 @@ function flagValue(
 	return value;
 }
 
-/** What `rogen serve` reads from the flags it passes to Rojo. */
 export class ServeFlags {
-	/** The first of `serverArgs` that `version` rejects, with the release that added it. */
 	static tooNewIn(
 		serverArgs: readonly string[],
 		version: string
@@ -48,7 +44,6 @@ export class ServeFlags {
 		return undefined;
 	}
 
-	/** `serverArgs` without its port flags and their values. */
 	static withoutPort(serverArgs: readonly string[]): string[] {
 		const kept: string[] = [];
 		for (let index = 0; index < serverArgs.length; index++) {

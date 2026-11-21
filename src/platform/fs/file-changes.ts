@@ -12,7 +12,6 @@ export interface FileChange {
 	readonly fileType: FileType;
 }
 
-/** `changes` without the redundant ones: a path added and then deleted is as it was, and an add then an update stays an add. */
 export function normalizeFileChanges(
 	changes: readonly FileChange[]
 ): FileChange[] {

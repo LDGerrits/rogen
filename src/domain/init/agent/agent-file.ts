@@ -7,17 +7,18 @@ const GEMINI_MD = "GEMINI.md";
 const IMPORT = `@${AGENTS_MD}`;
 const MARKER = "<!-- rogen -->";
 
-/** The file of an agent that reads it in place of `AGENTS.md`. */
 export type OwnFile = typeof CLAUDE_MD | typeof GEMINI_MD;
 
-/** Appended after a blank line, every byte before it kept. */
 function appended(text: string, addition: string): string {
 	const eol = text.includes("\r\n") ? "\r\n" : "\n";
 	const gap = text === "" ? "" : text.endsWith("\n") ? eol : `${eol}${eol}`;
 	return `${text}${gap}${addition.replaceAll("\n", eol)}`;
 }
 
-/** The file a repo's coding agents read: `AGENTS.md`, else a lone `CLAUDE.md`, else a new `AGENTS.md`. Claude Code and Gemini CLI read their own file in its place, so theirs import it. */
+/**
+ * Claude Code and Gemini CLI read `CLAUDE.md` and `GEMINI.md` in place of
+ * `AGENTS.md`, so theirs import it.
+ */
 export class AgentFile {
 	static readonly FILE_NAMES = [AGENTS_MD, CLAUDE_MD, GEMINI_MD] as const;
 
@@ -39,7 +40,6 @@ export class AgentFile {
 			: new AgentFile(AGENTS_MD, agentsText, claudeText, geminiText);
 	}
 
-	/** The file that holds Rogen's rules: this one, else the `CLAUDE.md` or `GEMINI.md` beside it. */
 	get blockFileName(): string {
 		if (this.text?.includes(MARKER)) return this.fileName;
 		if (this.claudeText?.includes(MARKER)) return CLAUDE_MD;
@@ -63,7 +63,6 @@ export class AgentFile {
 		};
 	}
 
-	/** The files that point Claude Code and Gemini CLI at `AGENTS.md` when the block goes there: an import appended to each of `CLAUDE.md` and `GEMINI.md` that has neither it nor the block, and a file holding only the import for each agent of `using` that has no file of its own. */
 	imports(using: readonly OwnFile[]): PlannedFile[] {
 		if (this.fileName !== AGENTS_MD) return [];
 		return (

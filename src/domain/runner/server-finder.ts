@@ -37,7 +37,6 @@ export class ServerFinder {
 		@ToolLocator private readonly locator: ToolLocator
 	) {}
 
-	/** Toolchain files are looked for in `directory`, then in every folder above it. A failure without a toolchain file to point at is about `resource`. */
 	async find(
 		directory: string,
 		resource: string,

@@ -10,32 +10,21 @@ import {
 	run,
 } from "./harness.js";
 
-/** A way to start a project, followed from an empty folder to a served place. */
 export interface Variant {
 	readonly name: string;
-	/** Flags after `init -y`. */
 	readonly flags: readonly string[];
-	/** What the printed steps run between `init` and `serve`: a compiler as program and arguments, or a Rogen command as `rogen` and its arguments. */
 	readonly steps: readonly (readonly string[])[];
 	readonly project?: readonly string[];
-	/** The variant downloads packages, so it runs only with ROGEN_E2E_NETWORK=1. */
 	readonly network?: boolean;
-	/** The project name Rojo reports once served. */
 	readonly served: string;
-	/** Places whose sourcemap the editor reads, from `rogen sourcemap <place>`. */
 	readonly mapped?: readonly string[];
 }
 
 export interface Success {
-	/** The commands the user ran, besides compilers. */
 	readonly commands: readonly string[];
-	/** What Rogen asked the user to run in `init`'s Next steps, as they print. */
 	readonly printed: readonly string[];
-	/** The steps that were run but that `init` did not print. */
 	readonly unprinted: readonly string[];
-	/** The `serving` line of `serve --json`. */
 	readonly serving: Readonly<Record<string, unknown>>;
-	/** The instance paths of the sourcemap of each `mapped` place, as `ReplicatedStorage/Shared/Greeter`. */
 	readonly mappedPaths: Readonly<Record<string, readonly string[]>>;
 }
 
@@ -50,7 +39,6 @@ const pathsOf = (nodes: readonly MapNode[], parent = ""): string[] =>
 		return [own, ...pathsOf(node.children ?? [], own)];
 	});
 
-/** The commands `init` prints under Next steps, each as the line shows. */
 function printedSteps(stdout: string): string[] {
 	const lines = stripVTControlCharacters(stdout).split("\n");
 	const from = lines.findIndex((line) => line.trim() === "Next steps");
@@ -68,7 +56,6 @@ function printedSteps(stdout: string): string[] {
 		.filter((line) => line !== "");
 }
 
-/** The line of the printed steps that tells the user to run `step`, or none: a Rogen command by its name, and a compiler by `rbxtsc` or the package script that runs it. */
 function printedLine(step: readonly string[], printed: readonly string[]) {
 	const [program, first] = step;
 	const wanted = program === "rogen" ? `${program} ${first}` : undefined;
@@ -83,7 +70,6 @@ function fail(step: string, result: { stdout: string; stderr: string }) {
 	return new Error(`${step} failed:\n${result.stdout}\n${result.stderr}`);
 }
 
-/** The `serving` line of a `serve --json`, read from its complete lines, or an error as soon as it ends without one. */
 function servingLine(serving: RunningRogen): Promise<Record<string, unknown>> {
 	return serving.waitFor(() => {
 		for (const one of serving.stdout.split("\n").slice(0, -1)) {
@@ -98,7 +84,6 @@ function servingLine(serving: RunningRogen): Promise<Record<string, unknown>> {
 	}, 30_000);
 }
 
-/** Follows `variant` in a new empty folder: `init -y`, the compilers, a build, then `serve --json` until its `serving` line. */
 export async function follow(cli: string, variant: Variant): Promise<Success> {
 	const parent = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-first-"));
 	const dir = path.join(parent, "project");

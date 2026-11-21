@@ -41,7 +41,6 @@ export class CoreUpdateService implements UpdateService {
 		return `Rogen ${newest} is out (you have ${current}). ${await this.fix(newest)}`;
 	}
 
-	/** A stable version hears of stable releases only; a prerelease of the later prereleases too. */
 	private newestVisibleTo(
 		current: Version,
 		published: readonly string[]

@@ -1,6 +1,6 @@
 import path from "path";
 import { Sequencer } from "../../base/async.js";
-import { PathSet, dirnamePosix, toPosix } from "../../base/path.js";
+import { PathSet, dirnamePosixOrEmpty, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -20,13 +20,10 @@ const errorsOf = (entry: ConfigEntry): readonly Diagnostic[] =>
 
 export interface PickedFolder {
 	readonly directory: string;
-	/** Absolute and sorted; empty when the folder has no config or can't be read. */
 	list(): Promise<readonly string[]>;
-	/** Whether a file of this name in the folder is one `list` would give. */
 	holds(fileName: string): boolean;
 }
 
-/** The configs one invocation picked, each loading and reloading itself. */
 export class CoreConfigSelection implements ReloadableSelection {
 	private readonly reloads = new Sequencer();
 	private _files: ReadonlySet<string>;
@@ -38,7 +35,6 @@ export class CoreConfigSelection implements ReloadableSelection {
 		readonly home: string,
 		private readonly folder: PickedFolder | undefined,
 		readonly notes: readonly string[] = [],
-		/** Following the folder never removes them. */
 		readonly nestedWriters: ReadonlySet<string> = new Set()
 	) {
 		this._files = this.readFiles();
@@ -67,7 +63,9 @@ export class CoreConfigSelection implements ReloadableSelection {
 		return (
 			this.folder !== undefined &&
 			this.folder.holds(path.posix.basename(posixFile)) &&
-			new PathSet([this.folder.directory]).has(dirnamePosix(posixFile))
+			new PathSet([this.folder.directory]).has(
+				dirnamePosixOrEmpty(posixFile)
+			)
 		);
 	}
 
@@ -98,7 +96,11 @@ export class CoreConfigSelection implements ReloadableSelection {
 						await config.reload();
 						return {
 							file: config.file,
-							...configChange(before, config.version),
+							...configChange({
+								kind: "reloaded",
+								before,
+								after: config.version,
+							}),
 						};
 					})
 			);
@@ -107,12 +109,15 @@ export class CoreConfigSelection implements ReloadableSelection {
 			const changes = [
 				...membership.removed.map((config) => ({
 					file: config.file,
-					...configChange(config.version, undefined),
+					...configChange({
+						kind: "removed",
+						before: config.version,
+					}),
 				})),
 				...reloaded,
 				...membership.added.map((config) => ({
 					file: config.file,
-					...configChange(undefined, config.version),
+					...configChange({ kind: "added", after: config.version }),
 				})),
 			];
 			return {

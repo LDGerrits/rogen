@@ -31,7 +31,6 @@ const SLOW_START_MS = 10_000;
 
 interface StartedServerListener {
 	served(serving: ServerReadyEvent): void;
-	/** Rojo crashed, and the one started in its place serves. */
 	restarted(serving: ServerRestartEvent): void;
 	said(said: ServerOutputEvent): void;
 	stopped(stop: ServerExitEvent): void;
@@ -39,19 +38,14 @@ interface StartedServerListener {
 	failed(error: Error): void;
 }
 
-/** A server the session started to serve a config with. */
 export class StartedServer extends AbstractDisposable {
 	private _target: ServeTarget;
-	/** The project name the server last answered with, which a running Rojo keeps when its project file renames it. */
 	private servedProject: string;
 	private readonly child: SupervisedRojoProcess;
 	private exited = false;
 	private stoppedOnPurpose = false;
-	/** The server its record was last written for, while a Rojo it started serves. */
 	private record: { info: ServerInfo; written: Promise<void> } | undefined;
-	/** The sessions its Rojos were taken to serve, which no later one of them can serve again. */
 	private readonly sessions = new Set<string>();
-	/** The current Rojo; an answer to an earlier one's probe isn't taken for it. */
 	private generation = new Generation();
 	private readonly ready: RunOnceScheduler;
 
@@ -61,7 +55,6 @@ export class StartedServer extends AbstractDisposable {
 		private readonly probe: ServerProbe,
 		private readonly records: ServerRecords,
 		private readonly listener: StartedServerListener,
-		/** Runs before Rojo starts again after a crash, to write the project file afresh. */
 		beforeRestart: (() => Promise<void>) | undefined,
 		@RojoRunner private readonly rojoRunner: RojoRunner
 	) {
@@ -110,7 +103,7 @@ export class StartedServer extends AbstractDisposable {
 		);
 		this._register(
 			this.child.onDidMessage((message) => {
-				if (message.severity !== "debug") this.generation.said = true;
+				if (message.severity !== "noise") this.generation.said = true;
 				this.listener.said({ target: this.target, message });
 			})
 		);
@@ -147,12 +140,10 @@ export class StartedServer extends AbstractDisposable {
 		return this._target;
 	}
 
-	/** Whether a Rojo it started has answered for its project. */
 	get hasServed(): boolean {
 		return this.record !== undefined;
 	}
 
-	/** Takes the target its config gives now, at the same address, such as one with a new project name. */
 	follow(target: ServeTarget): void {
 		this._target = target;
 	}
@@ -163,7 +154,6 @@ export class StartedServer extends AbstractDisposable {
 		await this.child.terminate();
 	}
 
-	/** Terminates it and drops its record and everything it holds. */
 	async retire(): Promise<void> {
 		await this.terminate();
 		await this.unrecord();
@@ -190,7 +180,6 @@ export class StartedServer extends AbstractDisposable {
 		await this.records.remove(this.target.address, record.info);
 	}
 
-	/** Whether the Rojo that just crashed served what it was taken to: not when that server still answers, so it was another's all along, whose record it then leaves. */
 	private async servedUntilExit(): Promise<boolean> {
 		const taken = this.generation.serving;
 		if (taken?.session === undefined) return true;
@@ -203,7 +192,6 @@ export class StartedServer extends AbstractDisposable {
 		return false;
 	}
 
-	/** Whether the server that answered can be the current Rojo's: not one an earlier Rojo of it served, nor one recorded for another Rojo that still runs. */
 	private async mayServe(info: ServerInfo): Promise<boolean> {
 		const { target } = this;
 		if (
@@ -245,18 +233,7 @@ export class StartedServer extends AbstractDisposable {
 						this.sessions.add(info.session);
 					const crashed = generation.restartedAfter;
 					generation.restartedAfter = undefined;
-					// Recorded before it is announced, so a serve killed right after still leaves its server's record.
-					this.record = { info, written: this.writeRecord(info) };
-					return this.record.written.then(() => {
-						if (this.stoppedOnPurpose || this.exited) return;
-						const serving = { target, info };
-						if (crashed)
-							this.listener.restarted({
-								...serving,
-								exit: crashed,
-							});
-						else this.listener.served(serving);
-					});
+					return this.recordBeforeAnnouncing(target, info, crashed);
 				}
 				this.warnWhenSlow(generation, state);
 				generation.readyDelay = Math.min(
@@ -268,6 +245,20 @@ export class StartedServer extends AbstractDisposable {
 			.catch((error) =>
 				this.listener.failed(ErrorUtils.fromUnknown(error))
 			);
+	}
+
+	private recordBeforeAnnouncing(
+		target: ServeTarget,
+		info: ServerInfo,
+		crashed: ProcessExit | undefined
+	): Promise<void> {
+		this.record = { info, written: this.writeRecord(info) };
+		return this.record.written.then(() => {
+			if (this.stoppedOnPurpose || this.exited) return;
+			const serving = { target, info };
+			if (crashed) this.listener.restarted({ ...serving, exit: crashed });
+			else this.listener.served(serving);
+		});
 	}
 
 	private warnWhenSlow(generation: Generation, state: PortState): void {
@@ -327,18 +318,13 @@ export class StartedServer extends AbstractDisposable {
 	}
 }
 
-/** One Rojo the supervisor started; a crash replaces it with the next. */
 class Generation {
 	said = false;
 	connected = 0;
 	readyDelay = READY_POLL_MS.first;
 	toldSlow = false;
 	readonly startedAt = Date.now();
-	/** What this Rojo was taken to serve. */
 	serving: ServerInfo | undefined;
 
-	constructor(
-		/** The exit of the Rojo it replaced, until it serves. */
-		public restartedAfter?: ProcessExit
-	) {}
+	constructor(public restartedAfter?: ProcessExit) {}
 }

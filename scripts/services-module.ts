@@ -1,6 +1,5 @@
 type ClassEntry = readonly [name: string, tags: readonly string[]];
 
-/** The decoded reflection database Rojo bundles: a tuple whose second element maps each class name to `[name, tags, ...]`. */
 export type ReflectionDatabase = readonly [
 	unknown,
 	Readonly<Record<string, ClassEntry>>,
@@ -10,7 +9,6 @@ export type ReflectionDatabase = readonly [
 // Tagged Service like any other, but reserved for Roblox's own scripts.
 const RESERVED_SERVICES: readonly string[] = ["CoreGui", "CorePackages"];
 
-/** Throws when a reserved service is missing, so a renamed one is noticed rather than let through. */
 export function selectServices(database: ReflectionDatabase): string[] {
 	const services = Object.values(database[1])
 		.filter(([, tags]) => tags.includes("Service"))

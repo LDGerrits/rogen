@@ -2,19 +2,18 @@ import { Node, ParseError, parseTree, visit } from "jsonc-parser";
 
 const BYTE_ORDER_MARK = 0xfeff;
 
-/** A step down a document: a key of an object or an index of an array. */
 export type JsoncPath = readonly (string | number)[];
 
-/** The comments around one value, each as its lines with their indentation relative to the first. */
 export interface JsoncMarks {
-	/** On their own lines before the entry (for the root: before the document). */
 	readonly leading: readonly (readonly string[])[];
-	/** At the end of the entry's line (for the root: after the document). */
 	readonly trailing: readonly (readonly string[])[];
-	/** After the `{` or `[` of the value, on its line. */
 	readonly opening: readonly (readonly string[])[];
-	/** Before the `}` or `]` of the value. */
 	readonly closing: readonly (readonly string[])[];
+}
+
+export interface JsoncDocumentMarks {
+	readonly beforeDocument: readonly (readonly string[])[];
+	readonly afterDocument: readonly (readonly string[])[];
 }
 
 interface Located {
@@ -31,16 +30,13 @@ interface Found {
 
 type Bucket = "leading" | "trailing" | "opening" | "closing";
 
-/** What may stand between a comment and the end of the entry on its line: spaces and the entry's comma. */
 const ONLY_A_COMMA = /^[ \t\r]*,?[ \t\r]*$/;
 
-/** The comments of a JSONC document, each attached to the entry it goes with: the entry after a comment on its own line, the entry on a comment's line, the end of the object or array a comment closes. */
 export class JsoncComments {
 	private readonly marks = new Map<string, Record<Bucket, string[][]>>();
 
 	private constructor(private readonly text: string) {}
 
-	/** `undefined` when the text isn't valid JSONC. */
 	static of(text: string): JsoncComments | undefined {
 		const source =
 			text.charCodeAt(0) === BYTE_ORDER_MARK ? text.slice(1) : text;
@@ -65,7 +61,6 @@ export class JsoncComments {
 		return this.marks.size === 0;
 	}
 
-	/** The comments that go with the value at `path`. */
 	at(path: JsoncPath): JsoncMarks {
 		return (
 			this.marks.get(JsoncComments.key(path)) ?? {
@@ -77,7 +72,11 @@ export class JsoncComments {
 		);
 	}
 
-	/** Every path with comments, in the order of the text. */
+	aroundDocument(): JsoncDocumentMarks {
+		const { leading, trailing } = this.at([]);
+		return { beforeDocument: leading, afterDocument: trailing };
+	}
+
 	get paths(): string[] {
 		return [...this.marks.keys()];
 	}
@@ -146,7 +145,6 @@ export class JsoncComments {
 		return !this.text.slice(comment.end, next.start).includes("\n");
 	}
 
-	/** The text from `from` to `to` with the comments in it replaced by spaces, so what is left is the tokens. */
 	private blanked(from: number, to: number, all: readonly Found[]): string {
 		let text = this.text.slice(from, to);
 		for (const other of all) {
@@ -173,7 +171,6 @@ export class JsoncComments {
 		this.marks.set(key, marks);
 	}
 
-	/** The lines of a comment, with the indentation of the line it starts on taken off the lines after the first. */
 	private linesOf({ start, end }: Found): string[] {
 		const lineStart = this.text.lastIndexOf("\n", start - 1) + 1;
 		const base = /^[ \t]*/.exec(this.text.slice(lineStart))?.[0] ?? "";

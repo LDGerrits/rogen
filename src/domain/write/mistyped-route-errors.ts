@@ -1,18 +1,20 @@
 import path from "path";
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import {
 	Diagnostic,
 	DiagnosticFix,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { governingRouteOf } from "./governing-route-of.js";
+import {
+	governingRouteOf,
+	governingRouteOfMarkerFolder,
+} from "./governing-route-of.js";
 import { NameReadings } from "./name-readings.js";
 import { RoutedFile } from "./router.js";
 
 const byResource = (a: Diagnostic, b: Diagnostic) =>
-	compareStrings(a.resource, b.resource);
+	compareByCodePoint(a.resource, b.resource);
 
-/** `resource` with the name of the route in it spelled as `key`, as `src/A/(SERVER)` → `src/A/(server)`. */
 function spelledAs(resource: string, key: string): string {
 	const name = path.posix.basename(resource);
 	const at = name.toLowerCase().indexOf(key.toLowerCase());
@@ -22,40 +24,43 @@ function spelledAs(resource: string, key: string): string {
 	);
 }
 
-/** What the errors read besides the readings. */
 export interface MistypedRouteInputs {
 	readonly routed: readonly RoutedFile[];
-	/** The files the tree takes the place of, which Rogen doesn't route. */
 	readonly displaced: ReadonlySet<string>;
-	/** The folders named for a route in another case that a route above, or a marker in them, governs. */
 	readonly governed: ReadonlySet<string>;
-	/** Whether a path is already there, so a rename onto it would clash. */
 	readonly exists: (target: string) => boolean;
-	/** The one name key whose target is the `*` route's, whose marker keeps a folder's files where `*` puts them. */
 	readonly fallbackKey?: string;
 }
 
-/** The errors for each name meant as a route that misses its key, which would send its files where their route doesn't reach, as server code to `*`: an `@` that nearly spells a key, in a file, folder or marker name (`route.strayAt`), and a folder named for one in another letter case (`route.caseMismatch`), which in a script folder may instead be a child the script requires, so there it names a marker as well and has no one fix. Under a route that governs it, an `@` for another route names nothing whatever its spelling (`route.ignoredAt`), a folder's name places nothing, and a file the tree takes the place of is not routed, so none of those is reported as a misspelling. */
 export function mistypedRouteErrors(
 	readings: NameReadings,
 	{ routed, displaced, governed, exists, fallbackKey }: MistypedRouteInputs
 ): Diagnostic[] {
+	const isMarker = (resource: string) => readings.markers.has(resource);
+	const isDisplaced = (resource: string) => displaced.has(resource);
+	const isGovernedFolder = (resource: string) => governed.has(resource);
+	const governingRoute = (resource: string) =>
+		isMarker(resource)
+			? governingRouteOfMarkerFolder(path.posix.dirname(resource), routed)
+			: governingRouteOf(resource, routed);
+	const isIgnoredAt = (
+		governing: string | undefined,
+		key: string
+	): governing is string => governing !== undefined && governing !== key;
+	const isCaseMismatch = (resource: string) =>
+		!isMarker(resource) && !isGovernedFolder(resource);
+
 	const renamed = (from: string, to: string | undefined): DiagnosticFix[] =>
 		to !== undefined && !exists(to) ? [{ rename: { from, to } }] : [];
-	const stray = (
+	const atError = (
 		resource: string,
 		written: string,
 		key: string,
 		message: string,
 		to: string | undefined
 	): Diagnostic => {
-		const marker = readings.markers.has(resource);
-		const governing = governingRouteOf(
-			marker ? path.posix.dirname(resource) : resource,
-			routed,
-			marker
-		);
-		if (governing === undefined || governing === key)
+		const governing = governingRoute(resource);
+		if (!isIgnoredAt(governing, key))
 			return errorDiagnostic(
 				"route.strayAt",
 				{ resource },
@@ -72,9 +77,9 @@ export function mistypedRouteErrors(
 		);
 	};
 	const strays = [...readings.misspelt("strayAt")]
-		.filter(([resource]) => !displaced.has(resource))
+		.filter(([resource]) => !isDisplaced(resource))
 		.map(([resource, { text, suggestion, notLast, renamedTo }]) =>
-			stray(
+			atError(
 				resource,
 				`@${text}`,
 				suggestion.slice(1),
@@ -85,10 +90,10 @@ export function mistypedRouteErrors(
 			)
 		);
 	const markers = [...readings.nearMisses]
-		.filter(([resource]) => readings.markers.has(resource))
+		.filter(([resource]) => isMarker(resource))
 		.map(([resource, key]) => {
 			const written = path.posix.basename(resource);
-			return stray(
+			return atError(
 				resource,
 				written,
 				key,
@@ -102,10 +107,7 @@ export function mistypedRouteErrors(
 			.map(([source]) => path.posix.dirname(source))
 	);
 	const folders = [...readings.nearMisses]
-		.filter(
-			([resource]) =>
-				!readings.markers.has(resource) && !governed.has(resource)
-		)
+		.filter(([resource]) => isCaseMismatch(resource))
 		.map(([resource, key]) => {
 			const written = path.posix.basename(resource);
 			const inScript = scriptFolders.has(path.posix.dirname(resource));

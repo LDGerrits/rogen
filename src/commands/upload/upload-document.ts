@@ -5,7 +5,6 @@ import { configsDocument, writeEntryShape } from "../write/write-document.js";
 
 const S = OutputShape;
 
-/** The document of `upload --json`. */
 export const uploadDocumentShape = S.object({
 	changed: S.boolean,
 	configs: S.array(writeEntryShape),

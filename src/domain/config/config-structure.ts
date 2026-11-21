@@ -78,10 +78,8 @@ const rogenFields: Readonly<Record<string, JsonStructure>> = {
 	compiledPath: { type: "string" },
 };
 
-/** The keys of a project file that are Rojo's; Rojo accepts a `$schema` and ignores it. */
 export const rojoKeys: readonly string[] = Object.keys(rojoFields);
 
-/** The types a config holds, checked when it is read. */
 export const configStructure: JsonStructure = {
 	type: "object",
 	properties: {

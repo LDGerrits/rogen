@@ -12,7 +12,6 @@ const UNKNOWN_VERSION = "unknown";
 export class CoreProductService implements ProductService {
 	declare readonly _serviceBrand: undefined;
 
-	/** The version comes from the nearest package.json to `installDir`, unless `bakedVersion` is given (a compiled binary has none). */
 	constructor(
 		private readonly installDir: string,
 		private readonly bakedVersion: string | undefined,

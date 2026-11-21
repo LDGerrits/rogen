@@ -1,4 +1,3 @@
-/** A service identifier is also the parameter decorator that asks for the service: `@LogService private readonly logService: LogService`. */
 export interface ServiceIdentifier<T> {
 	(target: object, key: string | symbol | undefined, index: number): void;
 	readonly serviceId: string;
@@ -6,11 +5,9 @@ export interface ServiceIdentifier<T> {
 }
 
 export interface ServicesAccessor {
-	/** @throws Error if no service is registered for `id`, or the accessor is used after the function it was passed to returned. */
 	get<T>(id: ServiceIdentifier<T>): T;
 }
 
-/** Every service interface carries this, so `createInstance` can tell its injected parameters from the ones the caller passes. */
 export interface BrandedService {
 	readonly _serviceBrand: undefined;
 }
@@ -23,7 +20,6 @@ interface ServiceDependency {
 const dependenciesOf = new WeakMap<object, ServiceDependency[]>();
 const serviceIds = new Map<string, ServiceIdentifier<unknown>>();
 
-/** One identifier per name, so two modules that ask for the same name get the same service. */
 export function createDecorator<T>(serviceId: string): ServiceIdentifier<T> {
 	const known = serviceIds.get(serviceId);
 	if (known) return known as ServiceIdentifier<T>;
@@ -46,7 +42,6 @@ export function createDecorator<T>(serviceId: string): ServiceIdentifier<T> {
 	return decorator;
 }
 
-/** The services a class asks for, by parameter position; a subclass without a constructor of its own asks for its base class's. */
 export function getServiceDependencies(
 	ctor: object
 ): readonly ServiceDependency[] {

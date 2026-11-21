@@ -33,7 +33,6 @@ export interface ResolvedConfigSpec {
 	readonly warnings?: readonly Diagnostic[];
 }
 
-/** A glob as a resolved config holds it: with `/` on every platform, where `\\` would escape. */
 const asGlob = (glob: string): string =>
 	path.sep === "\\" ? toPosix(glob) : glob;
 

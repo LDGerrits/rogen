@@ -1,5 +1,5 @@
 import { mistypedRouteErrors } from "./mistyped-route-errors.js";
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { isInside, joinPosix, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
@@ -28,7 +28,6 @@ import { CompiledLayout } from "./compiled-layout.js";
 import { InstanceResolver } from "./instance-resolver.js";
 import { DisplacedFile, LeftOutPaths, Placement } from "./placement.js";
 
-/** Finds where every file of a config lands: scans the source paths, routes each file, then resolves clashes across files. */
 export class Placer {
 	private readonly layout: CompiledLayout;
 	private readonly tree: WriteTree;
@@ -138,7 +137,6 @@ export class Placer {
 		);
 	}
 
-	/** Whether the scan of `roots` lists `target`, an absolute POSIX path. */
 	private static listed(
 		roots: readonly ScannedRoot[],
 		target: string
@@ -174,7 +172,7 @@ export class Placer {
 		for (const { patternClash } of routed)
 			if (patternClash) clashes.set(patternClash.at, patternClash.keys);
 		return [...clashes]
-			.sort(([a], [b]) => compareStrings(a, b))
+			.sort(([a], [b]) => compareByCodePoint(a, b))
 			.map(([resource, keys]) =>
 				errorDiagnostic(
 					"route.patternClash",
@@ -210,11 +208,11 @@ export class Placer {
 				ignored.set(resource, found);
 			}
 		return [...ignored]
-			.sort(([a], [b]) => compareStrings(a, b))
+			.sort(([a], [b]) => compareByCodePoint(a, b))
 			.map(([resource, { keys, route, kind }]) => {
 				const many = keys.size > 1;
 				const quoted = joinedWithAnd(
-					[...keys].sort(compareStrings).map((key) => `"@${key}"`)
+					[...keys].sort(compareByCodePoint).map((key) => `"@${key}"`)
 				);
 				return errorDiagnostic(
 					"route.ignoredAt",

@@ -9,7 +9,6 @@ const SOURCEMAP_FLAGS = [
 	["--include-non-scripts", "--absolute"],
 ];
 
-/** `json` without `folder`, in its short or full form, which Rojo writes with `/` on every platform. */
 const withoutFolder = (json: string, folder: string): string =>
 	[fs.realpathSync.native(folder), folder].reduce(
 		(text, form) => text.split(form.replaceAll("\\", "/")).join(""),

@@ -8,7 +8,6 @@ const LABELS: [Lang, string][] = [
 	["ts", "roblox-ts"],
 ];
 
-/** Works with Luau and roblox-ts; picking one rewrites the page's examples in it. */
 export function LangSwitch({ className }: { className?: string }) {
 	const lang = useLang();
 	useEffect(syncLang, []);

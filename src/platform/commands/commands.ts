@@ -19,7 +19,6 @@ import { LogService } from "../log/log-service.js";
 import { Registry } from "../registry/registry.js";
 import { OutputDeclaration } from "../output/output-shape.js";
 
-/** A failure already reported in full; only the exit code is left to set. */
 export class ReportedError extends Error {
 	override readonly name = "ReportedError";
 
@@ -49,13 +48,11 @@ export interface Command {
 	readonly metadata: CommandMetadata;
 }
 
-/** What a run of a command can do beyond printing; a command that does none of them is read-only. `longRunning` is not declared here, since a command says it with `longRunning` and `longRunningWith`. */
 type CommandEffect = "writesFiles" | "runsProcesses" | "opensBrowser";
 
 interface CommandMetadata<
 	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],
 > {
-	/** One line for the list of commands in the root help, without a full stop, as Rojo's are. */
 	readonly summary: string;
 	readonly description: string;
 	readonly args?: readonly {
@@ -63,7 +60,6 @@ interface CommandMetadata<
 		readonly description: string;
 		readonly isOptional?: boolean;
 		readonly isVariadic?: boolean;
-		/** For a word that picks what to do, as `install` does for `plugin`: help lists them as subcommands. */
 		readonly subcommands?: readonly {
 			readonly name: string;
 			readonly description: string;
@@ -71,24 +67,16 @@ interface CommandMetadata<
 	}[];
 	readonly options?: O;
 	readonly examples?: readonly string[];
-	/** What an exit code means for this command where that differs from the general table, by the code as typed (`0`, `1`, `128+N`). */
 	readonly exitCodes?: Readonly<Record<string, string>>;
-	/** The JSON this command prints with `--json`; a command with a `--json` option declares it. */
 	readonly output?: OutputDeclaration;
-	/** What it can do beyond printing, declared by every command: `[]` for one that only reads. */
 	readonly effects?: readonly CommandEffect[];
-	/** What this command would do with a first word that names no command, offered in its place: "To write a config" offers `rogen write <word>`. */
 	readonly unknownWordOffer?: string;
-	/** Whether the command runs until it is stopped, so anything to tell the user comes before it starts, not after it ends. */
 	readonly longRunning?: boolean;
-	/** The boolean option that makes the command run until it is stopped, as `longRunning` says of every run. */
 	readonly longRunningWith?: string;
-	/** What to say of a first word that was a command and now is a flag or another command, by that word. */
 	readonly formerCommands?: Readonly<Record<string, string>>;
 }
 
 export interface CommandRegistry {
-	/** @throws Error if `id` is already registered, or an option conflicts with another command's. */
 	registerCommand(command: Command): Disposable;
 	getCommand(id: string): Command | undefined;
 	getCommands(): ReadonlyMap<string, Command>;
@@ -193,7 +181,6 @@ export abstract class AbstractCommand<
 		line: CommandLine<O>
 	): Promise<Result<void, Error>>;
 
-	/** Aborts when the process is asked to shut down; subscribed at once, so a request during later awaits still counts. */
 	protected untilShutdown(
 		lifecycleService: LifecycleService,
 		store: DisposableStore
@@ -207,7 +194,6 @@ export abstract class AbstractCommand<
 		return err(new ReportedError(failure));
 	}
 
-	/** Prints the run's one JSON document; a failed run passes `failure`, which then only sets the exit code. */
 	protected printJson(
 		logService: LogService,
 		document: unknown,
@@ -218,7 +204,6 @@ export abstract class AbstractCommand<
 	}
 }
 
-/** Contributes one instance of `ctor` to the command registry. */
 export function registerCommand<O extends readonly OptionDescriptor[]>(
 	ctor: new () => AbstractCommand<O>
 ): Disposable {

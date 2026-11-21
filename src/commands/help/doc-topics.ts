@@ -2,7 +2,6 @@ import { UsageError } from "../../base/errors.js";
 import { closestMatch } from "../../base/strings.js";
 import { helpTexts } from "./help-texts.js";
 
-/** The topics `rogen doc` prints offline. */
 export class DocTopics {
 	static readonly NAMES: readonly string[] = [
 		"routing",

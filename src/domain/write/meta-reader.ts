@@ -1,6 +1,6 @@
 import { failureReason } from "../../base/errors.js";
 import path from "path";
-import { dirnamePosix, toPosix } from "../../base/path.js";
+import { dirnamePosixOrEmpty, toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -25,7 +25,6 @@ export class PlacementMeta {
 		readonly folderMeta: readonly FolderMeta[],
 		private readonly runContexts: ReadonlyMap<string, unknown>,
 		private readonly scriptMetaFiles: readonly string[],
-		/** What the metas read say that is not a reason to stop. */
 		readonly warnings: readonly Diagnostic[] = []
 	) {}
 
@@ -36,7 +35,6 @@ export class PlacementMeta {
 		];
 	}
 
-	/** What the meta of the script at `source` sets as its `RunContext`, unchecked. */
 	runContextOf(source: string): unknown {
 		return this.runContexts.get(source);
 	}
@@ -58,7 +56,6 @@ export class MetaReader {
 		@FileSystemService private readonly fileSystemService: FileSystemService
 	) {}
 
-	/** Fails on a meta Rojo would refuse, a folder's or a file's, and on a RunContext Rojo can't set on a ModuleScript. */
 	async read(
 		placement: Placement
 	): Promise<Result<PlacementMeta, Diagnostic[]>> {
@@ -185,7 +182,7 @@ export class MetaReader {
 				problems.add(meta.error);
 				return;
 			}
-			const dir = dirnamePosix(toPosix(relativePath));
+			const dir = dirnamePosixOrEmpty(toPosix(relativePath));
 			const beside = folderMeta.findIndex(
 				(other) => other.sourcePath === sourcePath && other.dir === dir
 			);

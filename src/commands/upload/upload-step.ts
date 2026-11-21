@@ -5,13 +5,11 @@ import { RojoCommandService } from "../../domain/runner/rojo-command-service.js"
 import { RojoTarget } from "../write/rojo-entry.js";
 import { RojoPlan, RojoStep } from "../write/rojo-step.js";
 
-/** Rojo's upload of the project to the asset `--asset_id` names. */
 export class UploadStep implements RojoStep {
 	readonly command = "upload";
 	readonly prints = false;
 
 	constructor(
-		/** Rojo's flags for the upload. */
 		private readonly flags: readonly string[],
 		private readonly cwd: string,
 		private readonly asset: string,

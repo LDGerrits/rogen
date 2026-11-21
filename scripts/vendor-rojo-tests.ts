@@ -2,23 +2,13 @@ import fs from "fs";
 import path from "path";
 import { pathToFileURL } from "url";
 
-/**
- * Copies Rojo's build-test and syncback-test projects, at the Rojo version `rokit.toml` pins, into `e2e/rojo-build-tests` and `e2e/rojo-syncback-tests`, each with Rojo's licence (MPL-2.0).
- *
- *   node scripts/vendor-rojo-tests.ts
- *
- * Run it again after the pin moves; the conformance test fails until the copies are of the pinned version.
- */
-
 const REPOSITORY = "rojo-rbx/rojo";
-/** Each folder of Rojo's repository that is copied, and where it goes. */
 const VENDORED: readonly { readonly source: string; readonly dir: string }[] = [
 	{ source: "rojo-test/build-tests/", dir: "e2e/rojo-build-tests" },
 	{ source: "rojo-test/syncback-tests/", dir: "e2e/rojo-syncback-tests" },
 ];
 const VERSION_FILE = "VERSION";
 
-/** The Rojo version a `rokit.toml` pins. */
 export function pinnedRojoVersion(manifest: string): string {
 	const version = /rojo-rbx\/rojo@(\S+?)"/.exec(manifest)?.[1];
 	if (!version) throw new Error("rokit.toml does not pin Rojo.");

@@ -10,17 +10,12 @@ import {
 export interface OptionDescriptor {
 	readonly name: string;
 	readonly short?: string;
-	/** Other long names the option answers to, which help leaves out. */
 	readonly aliases?: readonly string[];
 	readonly type: "string" | "boolean";
 	readonly multiple?: boolean;
-	/** For a flag: whether `--no-<name>` also means false, as against not given, or is its only form, for an opt-out whose positive form would repeat the default. */
 	readonly negation?: "also" | "only";
-	/** For a string option: the only values it takes. */
 	readonly values?: readonly string[];
-	/** What help writes for a string option's value: `--output <path>`. Defaults to `value`. */
 	readonly placeholder?: string;
-	/** For a string option: what it is when not given, which help shows. */
 	readonly default?: string;
 	readonly description: string;
 }
@@ -92,16 +87,12 @@ export const JsonOption = {
 	description: "Print one JSON document instead of text.",
 } as const satisfies OptionDescriptor;
 
-/** One command line: the positionals after the command word, and the options it gives, typed by the table `O` the command declares. */
 export interface CommandLine<
 	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],
 > {
-	/** The words after the command word, and everything after the first `--`, which ends the options. */
 	readonly positionals: readonly string[];
-	/** Whether help was asked for with `-h` alone, which prints the short form. */
 	readonly shortHelp?: true;
-	/** Whether the line names no command and asks for neither help nor the version, which Rojo refuses after printing its help. */
-	readonly bare?: true;
+	readonly asksForNothing?: true;
 	readonly options: OptionValues<O> & OptionValues<typeof GlobalOptions>;
 }
 
@@ -133,7 +124,6 @@ function tokenize(args: string[], options: readonly OptionDescriptor[]) {
 	});
 }
 
-/** `rewrite` applied to each argument before `--`; `--` and what follows it are left alone. */
 function beforeSeparator(
 	args: readonly string[],
 	rewrite: (arg: string) => string
@@ -144,7 +134,6 @@ function beforeSeparator(
 	return end === -1 ? rewritten : [...rewritten, ...args.slice(end)];
 }
 
-/** `-o=value` for a short string option, as `--output=value`, which keeps a value that starts with `-`; past `--` the line is left alone. */
 function withShortValues(
 	args: readonly string[],
 	options: readonly OptionDescriptor[]
@@ -159,7 +148,6 @@ function withShortValues(
 	});
 }
 
-/** `--alias` and `--alias=value` as the option they name; past `--` the line is left alone. */
 function withAliases(
 	args: readonly string[],
 	options: readonly OptionDescriptor[]
@@ -173,36 +161,24 @@ function withAliases(
 	});
 }
 
-/** The command a line runs, the one it names, whose options it is checked against, and whether the first positional is the word that runs: `rogen build --help` runs help on `build`, but must still be a valid build line. Help gets only the name, so `rogen plugin install --help` is help on `plugin`. */
-function commandOf(
-	values: { version?: unknown; help?: unknown },
-	positionals: readonly string[]
-): {
-	readonly runs: string;
-	readonly names: string;
-	readonly consumesWord: boolean;
-} {
-	const named = positionals[0]?.toLowerCase();
-	if (named === undefined)
-		return { runs: HELP_COMMAND, names: HELP_COMMAND, consumesWord: false };
-	const redirected = Boolean(values.version || values.help);
-	return {
-		runs: redirected ? HELP_COMMAND : named,
-		names: named,
-		consumesWord: !redirected,
-	};
+function namedCommand(positionals: readonly string[]): string {
+	return positionals[0]?.toLowerCase() ?? HELP_COMMAND;
 }
 
-/** The option's name as typed, `no-sample` for one that only opts out. */
+function asksForHelpOrVersion(values: {
+	version?: unknown;
+	help?: unknown;
+}): boolean {
+	return Boolean(values.version || values.help);
+}
+
 export const flagName = (
 	option: Pick<OptionDescriptor, "name" | "negation">
 ): string => (option.negation === "only" ? `no-${option.name}` : option.name);
 
-/** Whether the token is `--no-<flag>` for a flag called `<flag>`. */
 const isNegated = (token: OptionToken): boolean =>
 	token.rawName.startsWith("--no-") && token.rawName !== `--${token.name}`;
 
-/** `command` is `undefined` when the line names none. */
 function unknownOption(
 	{ name, rawName }: OptionToken,
 	options: readonly OptionDescriptor[],
@@ -239,7 +215,10 @@ function unknownOption(
 /** Options a line may give more than once, as Rojo takes `--help` twice. */
 const REPEATABLE: ReadonlySet<string> = new Set(["help", "version"]);
 
-/** Node's wording varies by version and talks about positionals, so options are checked here. */
+/**
+ * Node's wording varies by version and talks about positionals, so options are
+ * checked here.
+ */
 function findOptionProblem(
 	tokens: NonNullable<Token>,
 	options: readonly OptionDescriptor[],
@@ -305,7 +284,6 @@ function findOptionProblem(
 	return undefined;
 }
 
-/** Finds the command with every known option, then checks the line against that command's options; a line for an unknown command is returned unchecked. */
 export function parseArgs(
 	args: string[],
 	optionsFor: (command?: string) => readonly OptionDescriptor[],
@@ -357,7 +335,9 @@ export function parseArgs(
 					"Remove the '--' before it."
 				)
 			);
-		const { runs, names, consumesWord } = commandOf(values, positionals);
+		const commandNamed = namedCommand(positionals);
+		const runsHelp =
+			positionals.length === 0 || asksForHelpOrVersion(values);
 		const helpRawNames = tokens.flatMap((token) =>
 			token.kind === "option" && token.name === "help"
 				? [token.rawName]
@@ -367,12 +347,12 @@ export function parseArgs(
 			helpRawNames.length > 0 &&
 			helpRawNames.every((rawName) => rawName === "-h");
 
-		if (commands.includes(names)) {
+		if (commands.includes(commandNamed)) {
 			const problem = findOptionProblem(
 				tokens,
-				optionsFor(names),
+				optionsFor(commandNamed),
 				ownersOf,
-				positionals.length > 0 ? names : undefined
+				positionals.length > 0 ? commandNamed : undefined
 			);
 			if (problem) return err(problem);
 		}
@@ -382,18 +362,19 @@ export function parseArgs(
 			);
 		}
 		return ok({
-			command: runs,
+			command: runsHelp ? HELP_COMMAND : commandNamed,
 			line: {
 				positionals: [
-					...(consumesWord
-						? positionals.slice(1)
-						: positionals.slice(0, 1)),
+					...(runsHelp
+						? positionals.slice(0, 1)
+						: positionals.slice(1)),
 					...afterTerminator,
 				],
 				...(shortHelp && { shortHelp: true as const }),
 				...(positionals.length === 0 &&
-					!values.version &&
-					!values.help && { bare: true as const }),
+					!asksForHelpOrVersion(values) && {
+						asksForNothing: true as const,
+					}),
 				options: values as CommandLine["options"],
 			},
 		});
@@ -402,7 +383,6 @@ export function parseArgs(
 	}
 }
 
-/** `argv` up to the first `--`, which ends the options. */
 const ownArgs = (argv: readonly string[]): readonly string[] => {
 	const end = argv.indexOf("--");
 	return end === -1 ? argv : argv.slice(0, end);
@@ -415,7 +395,6 @@ export function hasFlag(
 	return ownArgs(argv).includes(`--${option.name}`);
 }
 
-/** The last valid value of a string option with choices in `argv`, read without parsing, so a line the parser rejects still has it. */
 export function choiceIn<V extends string>(
 	argv: readonly string[],
 	option: { readonly name: string; readonly values: readonly V[] }

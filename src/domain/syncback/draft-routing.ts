@@ -9,10 +9,8 @@ import { FileLocation, WriteService } from "../write/write-service.js";
 import { Expected, Operation } from "./mirror-plan.js";
 import { SyncbackRequest } from "./syncback.js";
 
-/** A path a plan writes and the instance routing must make of it: a file's own instance, or the Folder a folder with no file in it becomes. */
 export type Landing = Expected & { readonly folder?: true };
 
-/** One way to write a new instance: what the plan does for it, and where routing must put what it writes. */
 export interface Proposal {
 	readonly operations: readonly Operation[];
 	readonly landings: readonly Landing[];
@@ -23,7 +21,6 @@ const decoder = new TextDecoder();
 const keyOf = ({ code, resource, message }: Diagnostic) =>
 	`${code}\0${resource}\0${message}`;
 
-/** The paths a proposal makes, as absolute POSIX paths: the files and folders it writes, and the folders it must make instances of. */
 const madeBy = (
 	{ operations, landings }: Proposal,
 	absolute: (file: string) => string
@@ -35,7 +32,6 @@ const madeBy = (
 		...landings.filter(({ folder }) => folder).map(({ file }) => file),
 	].map(absolute);
 
-/** Whether `diagnostic` is about one of `paths` or a file inside one. */
 const isAboutAny = (diagnostic: Diagnostic, paths: readonly string[]) =>
 	[
 		diagnostic.resource,
@@ -44,11 +40,9 @@ const isAboutAny = (diagnostic: Diagnostic, paths: readonly string[]) =>
 		.map(toPosix)
 		.some((file) => paths.some((made) => containsPosix(made, file)));
 
-/** Why a write would stop on `error`, for an instance syncback leaves out. */
 const stopsOn = ({ code, resource, message }: Diagnostic) =>
 	`the write would stop on ${toNative(resource)} (${code}: ${message.replace(/\.$/, "")})`;
 
-/** Why routing doesn't make `landing` the instance it is for, `files` being what it says of the paths it was asked about; none when it does, or when the path is Rojo's to read by its own rules, in a mounted folder, a nested project or outside every source path. A folder is the instance routing makes of it, as an empty folder or as a folder of the files in it. */
 export function landingMiss(
 	{ file, instance, folder }: Landing,
 	files: readonly FileLocation[]
@@ -84,9 +78,7 @@ export function landingMiss(
 		: `routing would make no instance of ${file}`;
 }
 
-/** Asks routing itself where the files of a plan land once it is written, so syncback places nothing by rules of its own. */
 export class DraftRouting {
-	/** What the project raises before the plan is made, which no proposal is blamed for. */
 	private readonly known: ReadonlySet<string>;
 
 	constructor(
@@ -99,7 +91,6 @@ export class DraftRouting {
 		this.known = new Set(known.map(keyOf));
 	}
 
-	/** Why routing rejects each of `proposals` once they and `operations` are made: an error it newly raises about what one writes, else that it makes another instance or none of what one writes. An error stops the whole write, so a proposal it isn't about is rejected only when no proposal is. */
 	async misses(
 		operations: readonly Operation[],
 		proposals: readonly Proposal[]
@@ -154,7 +145,6 @@ export class DraftRouting {
 		return misses.size > 0 ? misses : blocked;
 	}
 
-	/** A path of the plan as an absolute POSIX path. */
 	private absolute(file: string): string {
 		return toPosix(path.resolve(this.request.cwd, file));
 	}

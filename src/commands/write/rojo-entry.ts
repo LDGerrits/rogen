@@ -14,7 +14,6 @@ import { OutputShape } from "../../platform/output/output-shape.js";
 
 const S = OutputShape;
 
-/** What a run of Rojo's `build`, `sourcemap` or `upload` reports: `built` when Rojo ran without an error. */
 export const rojoEntryShape = (command: RojoTarget["command"]) =>
 	S.named(
 		"RojoEntry",
@@ -38,30 +37,51 @@ export const rojoEntryShape = (command: RojoTarget["command"]) =>
 
 export const buildRojoEntryShape = rojoEntryShape("build");
 
-/** What `-o` or `-p` asked Rojo to write. */
 export interface RojoTarget {
 	readonly command: "build" | "sourcemap" | "upload";
 	readonly cwd: string;
 	readonly output?: string;
 	readonly plugin?: string;
-	/** The asset `--asset_id` uploads to. */
 	readonly asset?: string;
 }
 
-/** Rojo's build for `-o` or `-p`: `notRun` when the project files had errors, so Rojo had nothing to build. */
 export interface RojoEntry {
 	readonly command: RojoTarget["command"];
 	readonly outcome: "built" | "failed" | "notRun";
 	readonly project: string | null;
-	/** The absolute path `-o` names. */
 	readonly output?: string;
-	/** The file name `-p` names. */
 	readonly plugin?: string;
-	/** What Rojo said, bar its debug output. */
-	readonly messages: readonly ServerMessage[];
+	readonly messages: readonly ServerMessageJson[];
 	readonly diagnostics?: readonly DiagnosticJson[];
-	/** Why it failed, when that isn't a diagnostic. */
 	readonly error?: ErrorJson;
+}
+
+export interface ServerMessageJson {
+	readonly severity: "error" | "warning" | "info";
+	readonly text: string;
+	readonly details?: readonly string[];
+}
+
+export function severityJson(
+	severity: Exclude<ServerMessage["severity"], "noise">
+): ServerMessageJson["severity"] {
+	return severity === "unrecognised" ? "info" : severity;
+}
+
+export function serverMessagesJson(
+	messages: readonly ServerMessage[]
+): ServerMessageJson[] {
+	return messages.flatMap(({ severity, text, details }) =>
+		severity === "noise"
+			? []
+			: [
+					{
+						severity: severityJson(severity),
+						text,
+						...(details && { details }),
+					},
+				]
+	);
 }
 
 export function rojoEntry(
@@ -90,13 +110,7 @@ export function rojoEntry(
 		...named,
 		outcome: failure ? "failed" : "built",
 		project: toNative(project.projectFile),
-		messages: messages
-			.filter(({ severity }) => severity !== "debug")
-			.map(({ severity, text, details }) => ({
-				severity,
-				text,
-				...(details && { details }),
-			})),
+		messages: serverMessagesJson(messages),
 		...(failure && failureToJson(failure)),
 	};
 }

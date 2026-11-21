@@ -6,7 +6,6 @@ const GROUP = /^[0-9a-fA-F]{1,4}$/;
 export class IpAddress {
 	private constructor(private readonly text: string) {}
 
-	/** `undefined` when `text` is no address, such as a host name, or has a zone or a leading zero in a number. */
 	static parse(text: string): IpAddress | undefined {
 		const v4 = IpAddress.octets(text);
 		if (v4) return new IpAddress(v4.join("."));
@@ -25,7 +24,6 @@ export class IpAddress {
 		return octets.every((octet) => octet <= 255) ? octets : undefined;
 	}
 
-	/** The eight 16-bit groups of an IPv6 address. */
 	private static groups(text: string): number[] | undefined {
 		const halves = text.split("::");
 		if (halves.length > 2) return undefined;
@@ -63,7 +61,11 @@ export class IpAddress {
 		];
 	}
 
-	/** The groups printed as Rust does: the longest run of two or more zero groups (the first, on a tie) as `::`, and an IPv4-mapped address in dotted form. */
+	/**
+	 * The groups printed as Rust does: the longest run of two or more zero
+	 * groups (the first, on a tie) as `::`, and an IPv4-mapped address in
+	 * dotted form.
+	 */
 	private static printed(groups: readonly number[]): string {
 		const hex = (list: readonly number[]) =>
 			list.map((group) => group.toString(16)).join(":");

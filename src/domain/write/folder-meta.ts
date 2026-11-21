@@ -1,4 +1,4 @@
-import { compareStrings, groupBy } from "../../base/collections.js";
+import { compareByCodePoint, groupBy } from "../../base/collections.js";
 import { joinPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -10,12 +10,10 @@ import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 
-/** An `init.meta.json`: the fields it sets on the instance its folder becomes. */
 export class FolderMeta {
 	constructor(
 		readonly file: string,
 		readonly sourcePath: string,
-		/** The folder, relative to the source path; the source path itself is "". */
 		readonly dir: string,
 		readonly fields: RojoMetaFields,
 		private readonly merged: readonly string[] = []
@@ -25,7 +23,6 @@ export class FolderMeta {
 		return [this.file, ...this.merged];
 	}
 
-	/** The folder as an absolute POSIX path. */
 	get folder(): string {
 		return joinPosix(this.sourcePath, this.dir);
 	}
@@ -33,13 +30,10 @@ export class FolderMeta {
 
 type Copy = Extract<FolderMetaOutcome, { kind: "copied" }>;
 
-/** The directories written as one `$path`, whose content Rojo reads itself. */
 export interface CollapsedDirs {
-	/** Whether `path` is a collapsed directory, or lies inside one. */
 	covers(path: string): boolean;
 }
 
-/** What became of the folder meta that reaches one node Rojo wouldn't apply it to. */
 export type FolderMetaOutcome =
 	| {
 			readonly kind: "copied";
@@ -47,9 +41,8 @@ export type FolderMetaOutcome =
 			readonly meta: FolderMeta;
 			readonly treeNode: RojoNode;
 	  }
-	/** A file other than the folder's init script is what Rojo reads at the node, so no meta reaching it applies. */
 	| {
-			readonly kind: "shared";
+			readonly kind: "fileAtNode";
 			readonly instance: string;
 			readonly metas: readonly FolderMeta[];
 			readonly file: RoutedFile;
@@ -59,7 +52,6 @@ export type FolderMetaOutcome =
 			readonly instance: string;
 			readonly meta: FolderMeta;
 	  }
-	/** The meta's folder never becomes an instance, by its name or because no route places anything through it. */
 	| {
 			readonly kind: "appliesToNothing";
 			readonly meta: FolderMeta;
@@ -68,11 +60,9 @@ export type FolderMetaOutcome =
 
 interface ReachedNode {
 	readonly instancePath: readonly string[];
-	/** The folders that name the node, as absolute POSIX paths. */
 	readonly dirs: Set<string>;
 }
 
-/** Copies each folder's meta onto the nodes it names that Rojo wouldn't apply it to; the last source path wins, and the tree beats both. */
 export class FolderMetaApplier {
 	private readonly metaByDir: ReadonlyMap<string, FolderMeta>;
 
@@ -84,7 +74,6 @@ export class FolderMetaApplier {
 		this.metaByDir = new Map(folderMeta.map((meta) => [meta.folder, meta]));
 	}
 
-	/** Edits `project`, and reports what each meta came to. Fails when two metas from one source path reach one node, or a ref would repeat. */
 	apply(project: RojoProject): Result<FolderMetaOutcome[], Diagnostic[]> {
 		const problems = new DiagnosticCollector();
 		const outcomes = [
@@ -95,7 +84,7 @@ export class FolderMetaApplier {
 		if (problems.hasErrors) return err([...problems.diagnostics]);
 
 		for (const { instancePath, meta, treeNode } of this.copies(outcomes))
-			project.insertNode(
+			project.insertNodeReplacingFolder(
 				instancePath,
 				RojoMeta.fieldsUnder(meta.fields, treeNode)
 			);
@@ -107,8 +96,8 @@ export class FolderMetaApplier {
 		problems: DiagnosticCollector
 	): FolderMetaOutcome[] {
 		const { tree, files, displaced, emptyFolders } = this.placement;
-		const sharedWithFile = new InstanceMap<RoutedFile>();
-		for (const file of files) sharedWithFile.set(file.instancePath, file);
+		const fileAt = new InstanceMap<RoutedFile>();
+		for (const file of files) fileAt.set(file.instancePath, file);
 
 		const outcomes: FolderMetaOutcome[] = [];
 		const reportedClashes = new Set<string>();
@@ -118,8 +107,8 @@ export class FolderMetaApplier {
 			...emptyFolders,
 		])) {
 			const instance = instanceKey(nodePath);
-			const shared = sharedWithFile.get(nodePath);
-			const ownDir = shared?.init?.becomes;
+			const fileAtNode = fileAt.get(nodePath);
+			const ownDir = fileAtNode?.init?.becomes;
 			const reached = this.metasReaching(node);
 			if (reached.length === 0) continue;
 			this.reportSameRootClashes(
@@ -129,18 +118,18 @@ export class FolderMetaApplier {
 				problems
 			);
 
-			const others = shared
+			const others = fileAtNode
 				? reached.filter(({ folder }) => folder !== ownDir)
 				: [];
-			if (shared && others.length > 0)
+			if (fileAtNode && others.length > 0)
 				outcomes.push({
-					kind: "shared",
+					kind: "fileAtNode",
 					instance,
 					metas: others,
-					file: shared,
+					file: fileAtNode,
 				});
-			const initDir = shared && this.placement.initDirOf(shared);
-			const metas = shared
+			const initDir = fileAtNode && this.placement.initDirOf(fileAtNode);
+			const metas = fileAtNode
 				? reached.filter(
 						({ folder }) => folder === ownDir && folder !== initDir
 					)
@@ -265,7 +254,7 @@ export class FolderMetaApplier {
 		return [...groupBy(metas, ({ sourcePath }) => sourcePath).values()]
 			.filter((group) => group.length > 1)
 			.map((group) =>
-				group.sort((a, b) => compareStrings(a.file, b.file))
+				group.sort((a, b) => compareByCodePoint(a.file, b.file))
 			);
 	}
 }

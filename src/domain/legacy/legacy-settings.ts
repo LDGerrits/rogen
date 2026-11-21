@@ -1,6 +1,5 @@
 import { Casing, LayoutSettings } from "./legacy-keywords.js";
 
-/** A v1 mode: the project file it wrote, and the folder its `$path`s pointed into. */
 export interface LegacyMode {
 	readonly name: string;
 	readonly output: string;
@@ -9,7 +8,6 @@ export interface LegacyMode {
 	readonly tags: Readonly<Record<string, boolean>>;
 }
 
-/** v1's own modes, with the defaults a config's mode was merged over. */
 const BUILT_IN_MODES: Readonly<Record<string, Omit<LegacyMode, "name">>> = {
 	luau: {
 		output: "default.project.json",
@@ -74,7 +72,6 @@ const words = (value: unknown): Record<string, string> =>
 			)
 		: {};
 
-/** What a v1 config said, with v1's defaults for what it left out. */
 export class LegacySettings {
 	readonly source: readonly string[];
 	readonly casing: Casing;
@@ -83,9 +80,7 @@ export class LegacySettings {
 	readonly aliases: Readonly<Record<string, string>>;
 	readonly tags: Readonly<Record<string, boolean>>;
 	readonly globIgnorePaths: readonly string[];
-	/** The base project: inline, the path of a file, or none for v1's fallback. */
 	readonly project: Fields | string | undefined;
-	/** Every mode the config has, v1's own first; which ones ran depends on the folder. */
 	readonly modes: readonly LegacyMode[];
 
 	constructor(fields: Fields) {
@@ -108,7 +103,6 @@ export class LegacySettings {
 		return { casing: this.casing, unwrap: this.unwrap, emitLegacyScripts };
 	}
 
-	/** The tags a v1 build knew, in lower case. */
 	get knownTags(): ReadonlySet<string> {
 		return new Set(Object.keys(this.tags).map((tag) => tag.toLowerCase()));
 	}

@@ -1,8 +1,9 @@
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { IpAddress } from "../../base/ip-address.js";
 import { JsoncSpan, parseJsoncSpans } from "../../base/jsonc.js";
 import {
 	JsoncComments,
+	JsoncDocumentMarks,
 	JsoncMarks,
 	JsoncPath,
 } from "../../base/jsonc-comments.js";
@@ -29,7 +30,6 @@ const FILE_KEYS = [
 	"syncRules",
 ];
 
-/** The lists Rojo writes only when they hold something. */
 const EMPTY_OMITTED = ["serveAllowedHosts", "globIgnorePaths", "syncRules"];
 
 /** The sets of place IDs, which Rojo writes with each ID once. */
@@ -60,27 +60,28 @@ class Ordered {
 	constructor(readonly entries: Entries) {}
 }
 
-/** A list whose items keep the index they had in the text, which their comments are filed under. */
 class Listed {
 	constructor(readonly items: Entries) {}
 }
 
 const INDENT = "  ";
 
-/** The comments of the text a document is printed from, and which of them were printed. */
 class Commented {
 	private readonly used = new Set<string>();
 
 	constructor(private readonly comments: JsoncComments) {}
 
-	/** The comments filed under `path`, which count as printed once asked for. */
 	take(path: JsoncPath): JsoncMarks {
 		this.used.add(JsoncComments.key(path));
 		return this.comments.at(path);
 	}
 
-	/** The comments below `path` that nothing printed asked for, because formatting leaves their entry out; they count as printed now. */
-	orphansUnder(path: JsoncPath): (readonly string[])[] {
+	takeDocument(): JsoncDocumentMarks {
+		this.used.add(JsoncComments.key([]));
+		return this.comments.aroundDocument();
+	}
+
+	takeOrphansUnder(path: JsoncPath): (readonly string[])[] {
 		const kept: (readonly string[])[] = [];
 		for (const key of this.comments.paths) {
 			const at = JSON.parse(key) as JsoncPath;
@@ -103,19 +104,16 @@ class Commented {
 	}
 }
 
-/** Text taken as it was written, whose lines after the first are relative to the entry it is printed in. */
 class Raw {
 	constructor(readonly lines: readonly string[]) {}
 }
 
-/** The `tree` of a project file, which a config that keeps it prints as the file had it. */
 export class WrittenTree {
 	private constructor(
 		private readonly text: string,
 		private readonly span: JsoncSpan
 	) {}
 
-	/** `undefined` when `text` isn't a project file with a tree, or writes its tree on one line, which is printed afresh. */
 	static of(text: string): WrittenTree | undefined {
 		const parsed = parseJsoncSpans(text);
 		const tree = parsed?.root.properties?.find(
@@ -128,7 +126,6 @@ export class WrittenTree {
 			: undefined;
 	}
 
-	/** `tree` with each part of it that is as it was written taken from the text, with its numbers, key order, comments and trailing commas; only what differs is printed afresh. */
 	printed(tree: unknown): unknown {
 		return this.keep(tree, this.span);
 	}
@@ -180,36 +177,31 @@ export class WrittenTree {
 		]);
 	}
 
-	/** One level of the text's own indentation: the leading whitespace of its first indented line. */
 	private unit(): string {
 		return /^([ \t]+)["}\]]/m.exec(this.text)?.[1] ?? "";
 	}
 }
 
-/** A project file as text, formatted as `rojo fmt-project` would. */
 export class ProjectText {
 	static of(file: RojoProjectFile): string {
 		return ProjectText.print(ProjectText.file({ ...file }, []), "");
 	}
 
-	/** A config as text: Rojo's keys in Rojo's order with `rogenKeys` in the order given before the `tree`, then any other key. */
 	static ofConfig(
 		config: Record<string, unknown>,
 		rogenKeys: readonly string[],
-		/** The tree of a project file the config was lifted from, printed as it was written where it is unchanged. */
 		written?: WrittenTree,
-		/** The comments of the text the config was read from, each printed with the entry it was written with. */
 		comments?: JsoncComments
 	): string {
 		const body = ProjectText.file(config, rogenKeys, written);
 		if (!comments || comments.isEmpty) return ProjectText.print(body, "");
 		const commented = new Commented(comments);
-		const root = commented.take([]);
+		const around = commented.takeDocument();
 		const text = ProjectText.print(body, "", commented, []);
 		return [
-			...root.leading.map((comment) => comment.join("\n")),
+			...around.beforeDocument.map((comment) => comment.join("\n")),
 			text,
-			...root.trailing.map((comment) => comment.join("\n")),
+			...around.afterDocument.map((comment) => comment.join("\n")),
 		].join("\n");
 	}
 
@@ -238,7 +230,6 @@ export class ProjectText {
 		return new Ordered(entries);
 	}
 
-	/** Rojo leaves a list out of a project file when it has nothing in it. */
 	private static isOmitted(key: string, value: unknown): boolean {
 		return (
 			EMPTY_OMITTED.includes(key) &&
@@ -270,14 +261,13 @@ export class ProjectText {
 		return value;
 	}
 
-	/** The entries of a tree node in Rojo's order. */
 	static node(node: Record<string, unknown>): Ordered {
 		const entries: [string, unknown][] = [];
 		for (const key of NODE_KEYS_BEFORE)
 			if (key in node) entries.push([key, node[key]]);
 		const children = Object.keys(node)
 			.filter((key) => !key.startsWith("$"))
-			.sort(compareStrings);
+			.sort(compareByCodePoint);
 		for (const child of children) {
 			const value = node[child];
 			entries.push([
@@ -301,7 +291,6 @@ export class ProjectText {
 		return new Ordered(entries);
 	}
 
-	/** Rojo leaves the properties and attributes of a node out when there are none. */
 	private static isEmptyMap(key: string, value: unknown): boolean {
 		return (
 			(key === "$properties" || key === "$attributes") &&
@@ -310,7 +299,6 @@ export class ProjectText {
 		);
 	}
 
-	/** A `$path` written with `/`, as Rojo writes it on every system. */
 	private static slashed(value: unknown): unknown {
 		if (typeof value === "string") return value.replaceAll("\\", "/");
 		if (isObject(value) && typeof value.optional === "string")
@@ -342,7 +330,6 @@ export class ProjectText {
 		);
 	}
 
-	/** `value` with `keys` first, in that order, then any others as they were. */
 	private static inOrder(
 		value: Record<string, unknown>,
 		keys: readonly string[]
@@ -358,7 +345,7 @@ export class ProjectText {
 	private static sortedKeys(value: Record<string, unknown>): Ordered {
 		return new Ordered(
 			Object.keys(value)
-				.sort(compareStrings)
+				.sort(compareByCodePoint)
 				.map((key) => [key, value[key]])
 		);
 	}
@@ -368,12 +355,11 @@ export class ProjectText {
 		const typed = PropertyValues.typed(value);
 		return new Ordered(
 			Object.keys(typed)
-				.sort(compareStrings)
+				.sort(compareByCodePoint)
 				.map((key) => [key, typed[key]])
 		);
 	}
 
-	/** `serde_json`'s pretty form: two spaces, one entry per line, and `{}` and `[]` for nothing; with `commented`, the comments of the text each next to its entry. */
 	private static print(
 		value: unknown,
 		indent: string,
@@ -446,7 +432,7 @@ export class ProjectText {
 		});
 		for (const comment of [
 			...(marks?.closing ?? []),
-			...(commented?.orphansUnder(path) ?? []),
+			...(commented?.takeOrphansUnder(path) ?? []),
 		])
 			lines.push(...ProjectText.commentLines(comment, inner));
 		const opening = ProjectText.sameLine(marks?.opening, inner);
@@ -464,7 +450,6 @@ export class ProjectText {
 		return comment.map((line) => (line === "" ? "" : indent + line));
 	}
 
-	/** Comments that stand on the line of the entry, after what is printed there. */
 	private static sameLine(
 		comments: readonly (readonly string[])[] | undefined,
 		indent: string

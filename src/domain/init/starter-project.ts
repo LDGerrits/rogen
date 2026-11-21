@@ -23,7 +23,6 @@ const mountNode = ({ path, optional }: Mount): Partial<RojoNode> => ({
 const describe = ({ path, instancePath }: MountedPath): string =>
 	`${normalizeDir(rojoPathTarget(path))} at ${instanceKey(instancePath)}`;
 
-/** Where the project file of `rojo init` mounts each folder of `src` for a place, by the folder's name. */
 export const ROJO_TEMPLATE_NODES: Readonly<Record<string, readonly string[]>> =
 	{
 		shared: ["ReplicatedStorage", "Shared"],
@@ -34,13 +33,10 @@ export const ROJO_TEMPLATE_NODES: Readonly<Record<string, readonly string[]>> =
 export class StarterProject {
 	private constructor(
 		private readonly project: RojoProject<ParsedProjectFile>,
-		/** The folders that hold an init file, as `normalizeDir` writes them. */
 		private readonly holdingInit: ReadonlySet<string> = new Set(),
-		/** The tree of the file this project was parsed from, as written. */
 		readonly written?: WrittenTree
 	) {}
 
-	/** `game`: the sample game of `rojo init`, whose services the tree also mounts. */
 	static fromMounts(
 		mounts: readonly Mount[],
 		game?: SampleGame
@@ -50,13 +46,15 @@ export class StarterProject {
 		});
 		if (game)
 			for (const [service, node] of Object.entries(game.nodes()))
-				project.insertNode([service], node);
+				project.insertNodeReplacingFolder([service], node);
 		for (const mount of mounts)
-			project.insertNode(mount.landing.split("/"), mountNode(mount));
+			project.insertNodeReplacingFolder(
+				mount.landing.split("/"),
+				mountNode(mount)
+			);
 		return new StarterProject(project);
 	}
 
-	/** The project `rojo init` makes for a place, mounting only `folders`, each one of its folders of `src`. */
 	static ofRojoTemplate(folders: readonly string[]): StarterProject {
 		const tree: RojoNode = { $className: "DataModel" };
 		for (const folder of folders) {
@@ -72,7 +70,6 @@ export class StarterProject {
 		return new StarterProject(new RojoProject<ParsedProjectFile>({ tree }));
 	}
 
-	/** The project `rojo init` makes for a model or a plugin: the folder, `src` in Rojo's, is the instance itself. */
 	static ofScript(folder = "src"): StarterProject {
 		return new StarterProject(
 			new RojoProject<ParsedProjectFile>({ tree: { $path: folder } })
@@ -86,7 +83,6 @@ export class StarterProject {
 		);
 	}
 
-	/** Whether routes can place code in the tree: its root is a DataModel, or names no class and mounts nothing. A model or a plugin has a `$path` at its root instead. */
 	get takesRoutes(): boolean {
 		const root = this.project.getNode([]);
 		return (
@@ -95,19 +91,16 @@ export class StarterProject {
 		);
 	}
 
-	/** What the root mounts, as a model or a plugin does. */
 	get rootPath(): string | undefined {
 		const mounted = this.project.getNode([])?.$path;
 		return mounted === undefined ? undefined : rojoPathTarget(mounted);
 	}
 
-	/** The name the project gives itself, which Rojo builds it as. */
 	get name(): string | undefined {
 		const { name } = this.project.getFile();
 		return typeof name === "string" ? name : undefined;
 	}
 
-	/** Every folder the tree mounts, as `normalizeDir` writes it. */
 	mountedFolders(): string[] {
 		return [
 			...new Set(
@@ -118,7 +111,6 @@ export class StarterProject {
 		];
 	}
 
-	/** The same project, told which of its mounted folders hold an init file: Rojo reads such a folder as one instance, which a route can't make, so the mount stays in the tree. */
 	withInitIn(folders: readonly string[]): StarterProject {
 		return new StarterProject(
 			this.copy(),
@@ -127,7 +119,6 @@ export class StarterProject {
 		);
 	}
 
-	/** The mounts below `dirs` that stay in the tree because their folder holds an init file. */
 	keptMounts(dirs: readonly string[]): MountedPath[] {
 		const claimed = dirs.map(normalizeDir);
 		if (claimed.includes(".")) return [];
@@ -143,7 +134,6 @@ export class StarterProject {
 			);
 	}
 
-	/** Takes the mounts into `dirs` out of the tree, but those that hold an init file. */
 	withoutNodesIn(
 		dirs: readonly string[]
 	): { project: StarterProject; removed: RemovedMount[] } | undefined {
@@ -162,7 +152,6 @@ export class StarterProject {
 		};
 	}
 
-	/** Puts each removed mount back on the tree: with its `$path` when `withPath`, else as the settings it carried. A mount with none of those is left out. */
 	withMountsReturned(
 		mounts: readonly RemovedMount[],
 		withPath: boolean
@@ -173,12 +162,11 @@ export class StarterProject {
 				? { ...settings, $path: path }
 				: StarterProject.folderOf(instancePath, settings);
 			if (Object.keys(node).length > 0)
-				edited.insertNode(instancePath, node);
+				edited.insertNodeReplacingFolder(instancePath, node);
 		}
 		return new StarterProject(edited, this.holdingInit, this.written);
 	}
 
-	/** A node already there wins and its mounts are `skipped`. */
 	withMounts(mounts: readonly Mount[]): {
 		project: StarterProject;
 		added: string[];
@@ -195,7 +183,10 @@ export class StarterProject {
 		);
 		const additions = new RojoProject<ProjectFile>({ tree: {} });
 		for (const mount of missing)
-			additions.insertNode(mount.landing.split("/"), mountNode(mount));
+			additions.insertNodeReplacingFolder(
+				mount.landing.split("/"),
+				mountNode(mount)
+			);
 
 		const edited = this.copy();
 		const { added, skipped } = edited.mergeMissing(additions);
@@ -206,7 +197,6 @@ export class StarterProject {
 		};
 	}
 
-	/** What a node with no `$path` left is: a folder, which is what Rojo made of the `$path`, unless it carries a class or is a service. */
 	private static folderOf(
 		instancePath: readonly string[],
 		settings: Readonly<RojoNode>

@@ -25,15 +25,13 @@ import { useLang, type Lang } from "./lang";
 import { delay } from "./more-link";
 
 type ViewId = "name" | "folder";
-// Folder rows with a colour are the Client/ and Server/ routing folders.
 type Row = DiskRow;
 
 function viewsOf(lang: Lang) {
 	const rows = disk[lang];
 	const shared = rows.filter(
-		([, , , colour]) => colour !== "s" && colour !== "c"
+		([, , , colour]) => colour !== "server" && colour !== "client"
 	);
-	// A routing folder in the route's colour, with its files in it and their @ suffixes gone.
 	const routed = (colour: Service, folder: string): Row[] => [
 		[folder, 2, "", colour],
 		...rows
@@ -59,8 +57,8 @@ function viewsOf(lang: Lang) {
 				desc: `Put files in a ${client} or ${server} folder. In Studio, that folder disappears and its files sit directly in the feature's folder.`,
 				rows: [
 					...shared.slice(0, 5),
-					...routed("c", `${client}/`),
-					...routed("s", `${server}/`),
+					...routed("client", `${client}/`),
+					...routed("server", `${server}/`),
 					...shared.slice(5),
 				],
 			},
@@ -68,7 +66,6 @@ function viewsOf(lang: Lang) {
 	return views;
 }
 const ids: ViewId[] = ["name", "folder"];
-// The tree keeps the height of the longer view, so switching views never resizes the section.
 const MAX_ROWS = Math.max(...ids.map((id) => viewsOf("luau")[id].rows.length));
 
 function DiskRows({ rows }: { rows: Row[] }) {
@@ -99,7 +96,6 @@ function DiskRows({ rows }: { rows: Row[] }) {
 	});
 }
 
-/** The Route by name / Route by folder toggle over src/Inventory on disk and its result in Studio. */
 export function RouteViews({ guide }: { guide: ReactNode }) {
 	const lang = useLang();
 	const views = viewsOf(lang);
@@ -125,7 +121,6 @@ export function RouteViews({ guide }: { guide: ReactNode }) {
 		return () => removeEventListener("resize", measure);
 	}, [view]);
 
-	// New rows mount hidden, then fade up on the next frame.
 	useEffect(() => {
 		if (!entering) return;
 		let raf = requestAnimationFrame(() => {
@@ -196,7 +191,6 @@ export function RouteViews({ guide }: { guide: ReactNode }) {
 							<DiskRows rows={views[shown].rows} />
 						</ul>
 					</VsCodeWindow>
-					{/* Every description sits in one cell, so the longest sets the height and nothing below moves. */}
 					<p className="vdesc" aria-live="polite">
 						{ids.map((id) => (
 							<span

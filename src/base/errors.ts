@@ -1,22 +1,28 @@
 import { safeStringify } from "./json.js";
 
-/** Node's `EACCES: permission denied, open '/x'` becomes `permission denied`. */
+/**
+ * Node's `EACCES: permission denied, open '/x'` becomes `permission denied`.
+ */
 export function failureReason(error: Error): string {
 	const code = /^[A-Z][A-Z0-9]+: /;
 	if (!code.test(error.message)) return error.message;
 	return error.message.replace(code, "").replace(/, [a-z]+( '.*')?$/, "");
 }
 
+// Jest runs each test file in a vm context of its own, where an error thrown
+// by one of Node's modules fails `instanceof Error`.
+function isErrorFromAnotherRealm(value: unknown): value is Error {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		Object.prototype.toString.call(value) === "[object Error]"
+	);
+}
+
 export const ErrorUtils = {
 	fromUnknown(error: unknown): Error {
-		// Errors from another realm fail instanceof.
-		if (
-			error instanceof Error ||
-			(typeof error === "object" &&
-				error !== null &&
-				Object.prototype.toString.call(error) === "[object Error]")
-		) {
-			return error as Error;
+		if (error instanceof Error || isErrorFromAnotherRealm(error)) {
+			return error;
 		}
 		if (typeof error === "string") {
 			return new Error(error);
@@ -36,7 +42,6 @@ export const ErrorUtils = {
 		);
 	},
 
-	/** Whether `error` is a failed system call, which the environment causes and a bug does not. */
 	isSystemError(error: unknown): error is Error & { readonly code: string } {
 		return (
 			error instanceof Error &&
@@ -46,7 +51,6 @@ export const ErrorUtils = {
 		);
 	},
 
-	/** `Failed to write a.json: permission denied` for `what` and `cause`. */
 	wrap(what: string, cause: Error): IoError {
 		return new IoError(`${what}: ${failureReason(cause)}`, undefined, {
 			cause,
@@ -54,21 +58,18 @@ export const ErrorUtils = {
 	},
 };
 
-/** What each exit code of a run means. */
 export const ExitCodes = {
 	0: "done (warnings included)",
 	1: "the project has a problem: an error, or Rojo failing",
 	2: "the command line is wrong, or a terminal is needed and there is none",
 } as const;
 
-/** What each exit code means for one command, where the command says nothing different. */
-export const CommandExitCodes = {
+export const DefaultCommandExitCodes = {
 	0: "done (warnings included)",
 	1: "an error stopped it",
 	2: "the command line is wrong",
 } as const;
 
-/** What went wrong in a word a program can branch on, each with the exit code its run ends with. */
 export const ErrorKinds = {
 	usage: { exitCode: 2, meaning: "the command line is wrong" },
 	project: {
@@ -89,7 +90,6 @@ export const ErrorKinds = {
 
 export type ErrorKind = keyof typeof ErrorKinds;
 
-/** A failure that knows its kind, and the one next step to name when there is one; `message` reads as `reason` then `hint`. */
 export abstract class KindedError extends Error {
 	abstract readonly kind: ErrorKind;
 
@@ -102,37 +102,31 @@ export abstract class KindedError extends Error {
 	}
 }
 
-/** The user backed out; not a failure to report. */
 export class CancelledError extends KindedError {
 	override readonly name = "CancelledError";
 	readonly kind = "cancelled";
 }
 
-/** The command line is wrong rather than the project. */
 export class UsageError extends KindedError {
 	override readonly name = "UsageError";
 	readonly kind = "usage";
 }
 
-/** The project can't be run on as it is, such as no config where one is needed. */
 export class ProjectError extends KindedError {
 	override readonly name = "ProjectError";
 	readonly kind = "project";
 }
 
-/** A program Rogen needs is missing or failed without a diagnostic to say so. */
 export class ToolError extends KindedError {
 	override readonly name = "ToolError";
 	readonly kind = "tool";
 }
 
-/** A file or directory could not be read or written. */
 export class IoError extends KindedError {
 	override readonly name = "IoError";
 	readonly kind = "io";
 }
 
-/** The kind of `error`: the one it carries, `io` for a failed system call, else `internal`. */
 export function errorKind(error: Error): ErrorKind {
 	if (error instanceof KindedError) return error.kind;
 	return ErrorUtils.isSystemError(error) ? "io" : "internal";

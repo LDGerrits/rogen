@@ -8,10 +8,6 @@ exit 0
 $ rogen build -o place.rbxlx
 exit 0
 stdout: (not shown)
-stderr:
-  rogen build · project
-  default.project.json · unchanged
-  Built 1 project.
 
 written:
   .eslintrc
@@ -49,7 +45,8 @@ default.rogen.json:
   "routes": {
     "server": "ServerScriptService",
     "client": "StarterPlayer/StarterPlayerScripts",
-    "shared": "ReplicatedStorage/shared"
+    "shared": "ReplicatedStorage/shared",
+    "*": "ReplicatedStorage/shared"
   },
   "compiledPath": "out",
   "tree": {

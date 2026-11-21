@@ -21,7 +21,6 @@ export interface TreeMount {
 	readonly node: readonly string[];
 }
 
-/** The paths the tree's own `$path`s mount, which Rojo reads and Rogen leaves alone. */
 export class TreeMounts {
 	constructor(
 		private readonly mounts: readonly TreeMount[],
@@ -32,12 +31,10 @@ export class TreeMounts {
 		return this.mounts;
 	}
 
-	/** The mount at `absolutePath` or above it, which makes Rojo read it. */
 	covering(absolutePath: string): TreeMount | undefined {
 		return this.mounts.find((mount) => contains(mount.path, absolutePath));
 	}
 
-	/** Every mounted path, as an absolute POSIX path. */
 	get paths(): string[] {
 		return this.mounts.map((mount) => toPosix(mount.path));
 	}
@@ -46,7 +43,6 @@ export class TreeMounts {
 		return this.mounts.filter((mount) => isInside(mount.path, dir));
 	}
 
-	/** The mount at `absolutePath`, compared as paths so `Vendor` and `vendor` match on a case-insensitive file system. */
 	at(absolutePath: string): TreeMount | undefined {
 		return this.mounts.find((mount) => samePath(mount.path, absolutePath));
 	}
@@ -76,14 +72,10 @@ function generatedContainer(instancePath: readonly string[]): RojoNode {
 		: { $className };
 }
 
-/** The tree a write merges its routed nodes into: the config's own, with its `$path`s kept relative to the project dir. */
 export class WriteTree {
 	private readonly project: RojoProject;
-	/** The config's `globIgnorePaths` as Rojo reads them, relative to the project dir. */
 	readonly globIgnorePaths: string[];
-	/** Every path the tree's own `$path`s mount. Rojo reads these, not Rogen. */
 	readonly mounts: TreeMounts;
-	/** How the project's globs are written once the tree mounts what it mounts. */
 	readonly globs: WrittenGlobs;
 
 	constructor(
@@ -130,7 +122,6 @@ export class WriteTree {
 		return new RojoProject(this.project.getFile(), generatedContainer);
 	}
 
-	/** The node of `file` the tree defines: its own, or a folder of its that the tree gives a `$path`; `source` is the file, or the folder, that names the node. */
 	displacing(file: {
 		readonly entry: {
 			readonly source: string;
@@ -162,7 +153,6 @@ export class WriteTree {
 		};
 	}
 
-	/** The project file to write; Rojo names `default.project.json` after its folder. */
 	toFile(
 		tree: RojoNode,
 		globIgnorePaths: readonly string[],

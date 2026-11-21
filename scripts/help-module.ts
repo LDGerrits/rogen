@@ -3,7 +3,6 @@ import { DOCS_URL } from "../src/platform/product/product-service.js";
 const SECTION = /^### `([^`]+)` \[#[a-z-]+\]$/;
 const SITE = DOCS_URL.replace(/\/docs\/v2$/, "");
 
-/** A docs page's markdown as plain lines: a link becomes its text and its address, and an example is indented instead of fenced. */
 function asPlainText(markdown: string): string {
 	const lines: string[] = [];
 	let inExample = false;
@@ -23,7 +22,6 @@ function asPlainText(markdown: string): string {
 	return lines.join("\n").trim();
 }
 
-/** Each code's section of the diagnostics page, headed by the code, as `rogen help <code>` prints it. */
 export function diagnosticSections(page: string): Record<string, string> {
 	const sections: Record<string, string> = {};
 	let code: string | undefined;
@@ -43,7 +41,6 @@ export function diagnosticSections(page: string): Record<string, string> {
 	return sections;
 }
 
-/** The module that embeds the help topics and the diagnostics page, so a binary needs no file beside it. */
 export function renderHelpModule(
 	topics: Readonly<Record<string, string>>,
 	diagnosticsPage: string

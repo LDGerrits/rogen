@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `rogen check <paths>` exits 1 when an error elsewhere stops the write, and prints it, since it couldn't check the paths past it.
 - The agent Stop hook reports a line again once the check stopped printing it and it comes back.
 - A marker file in the wrong case is `route.strayAt`, as every misspelt `@` is, and `route.caseMismatch` is about folders.
+- `rogen init --places --language roblox-ts` writes the same layout as Luau: shared code in `src/common`, the first place in `src/game`, `game.rogen.json` at the root with `compiledPath` `out/game`, and `tsconfig.game.json` with `rootDir` `src`, which TypeScript 6 and later need set. A root `tsconfig.json` holds the shared options and refers to each place. The `projects/<place>` layout it wrote before left `rootDir` unset, so it compiles only with TypeScript 5. A folder named `projects` no longer makes several places the default.
 
 - **Breaking:** two files in one source path that make one instance, as `Types.lua` beside `Types.luau`, or two `^` files that hoist to one place, are an error (`tree.instanceClash`): Rojo would keep both, and the project file can name one, so the build lost the other. Two init files of one folder still only warn, as Rojo itself reads one.
 - `rogen init` says why it renames a folder or name, and a dry run counts renames rather than files.

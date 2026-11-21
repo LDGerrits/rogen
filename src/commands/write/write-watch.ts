@@ -21,17 +21,13 @@ import {
 	WatchReporter,
 } from "./watch-log.js";
 
-/** The configs a watch writes: those the refs name (the folder's default when none), or `here`, every config of the working directory, following the ones that come and go. */
 export type WatchedConfigs = readonly string[] | "here";
 
-/** `rogen build --watch`, `rogen write --watch` and `rogen sourcemap --watch`: writes, then rewrites whenever names, folders or configs change, and runs Rojo's own watch from the first write when asked to. */
 export class WriteWatch {
 	constructor(
 		private readonly configs: WatchedConfigs,
 		private readonly json: boolean,
-		/** What to run Rojo's watch for, when the files are not all that is wanted. */
 		private readonly step: RojoStep | undefined,
-		/** The command the header names when no Rojo step does. */
 		private readonly command: string,
 		@LogService private readonly logService: LogService,
 		@ConfigService private readonly configService: ConfigService,
@@ -44,7 +40,6 @@ export class WriteWatch {
 		private readonly instantiationService: InstantiationService
 	) {}
 
-	/** Runs until `shutdown` aborts; `store` is the caller's, and holds what the run subscribes to. */
 	async run(
 		store: DisposableStore,
 		shutdown: AbortSignal
@@ -72,7 +67,7 @@ export class WriteWatch {
 			if (stepPlan.isErr()) return stepPlan;
 		}
 		const printing = this.step?.prints ?? false;
-		if (printing && !this.json) logService.reserveStdout();
+		if (printing && !this.json) logService.sendOwnLinesToStderr();
 		const log: WatchReporter = this.json
 			? instantiationService.createInstance(WatchJsonLog, cwd)
 			: printing

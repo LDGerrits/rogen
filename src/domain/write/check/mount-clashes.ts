@@ -11,13 +11,11 @@ import { RojoFile } from "../../rojo/rojo.js";
 import { Placement } from "../placement.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 
-/** Finds the placed files that would sit next to an instance of the same name that a `$path` mount of the tree already holds, which Rojo builds twice. */
 export class MountClashes {
 	constructor(
 		@FileSystemService private readonly fileReader: FileSystemService
 	) {}
 
-	/** One warning for each placed file that sits beside a name a mount holds. */
 	async diagnostics(placement: Placement): Promise<Diagnostic[]> {
 		const { config } = placement;
 		const found: Diagnostic[] = [];
@@ -47,7 +45,6 @@ export class MountClashes {
 		return found;
 	}
 
-	/** The names of the instances Rojo reads from the folder at `directory`, leaving out what the config ignores. */
 	private async namesIn(
 		directory: string,
 		{ config }: Placement

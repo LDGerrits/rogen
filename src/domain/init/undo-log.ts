@@ -6,7 +6,6 @@ import {
 	FileType,
 } from "../../platform/fs/file-system-service.js";
 
-/** A folder too big to list, which a run that adds it records as one entry. */
 const UNLISTED = "node_modules";
 
 type Change =
@@ -24,7 +23,6 @@ type Change =
 			readonly earlier: string;
 	  };
 
-/** Makes init's changes to the file system and records each, so a failed run can put the folder back as it was. */
 export class UndoLog {
 	private readonly changes: Change[] = [];
 
@@ -52,14 +50,12 @@ export class UndoLog {
 		);
 	}
 
-	/** Whether the folder was missing, and so made. */
 	async createDirectory(directory: string): Promise<boolean> {
 		if (await this.fileSystemService.exists(directory)) return false;
 		await this.recordMissing(directory);
 		return true;
 	}
 
-	/** Runs `run`, which writes into `directory`, and records what it added there: a new folder as one entry, and a folder named `node_modules` never looked into. */
 	async recordAdded<T>(directory: string, run: () => Promise<T>): Promise<T> {
 		const before = await this.listing(directory);
 		const done = await run();
@@ -75,7 +71,6 @@ export class UndoLog {
 		return done;
 	}
 
-	/** Removes `target`, a file or a folder, keeping what it held to put back. */
 	async delete(target: string): Promise<void> {
 		const removed: Change[] = [];
 		const keep = async (at: string): Promise<void> => {
@@ -96,7 +91,6 @@ export class UndoLog {
 		this.changes.push(...removed);
 	}
 
-	/** Undoes the changes, the last first, and returns the paths it could not put back, as shown to the user. */
 	async undo(): Promise<string[]> {
 		const left: string[] = [];
 		for (const change of this.changes.reverse()) {
@@ -129,7 +123,6 @@ export class UndoLog {
 		return this.fileSystemService.delete(change.path, true);
 	}
 
-	/** Makes `directory` with the folders above it that are missing, recording the outermost, whose removal removes them all. */
 	private async recordMissing(directory: string): Promise<void> {
 		let missing: string | undefined;
 		for (const folder of selfAndAncestors(directory)) {
@@ -141,7 +134,6 @@ export class UndoLog {
 		this.changes.push({ kind: "created", path: missing });
 	}
 
-	/** Every file and folder below `directory`, in name order, without looking into a folder named `node_modules` or behind a link; empty when it isn't there. */
 	private async listing(directory: string): Promise<Set<string>> {
 		const found = new Set<string>();
 		const walk = async (folder: string): Promise<void> => {

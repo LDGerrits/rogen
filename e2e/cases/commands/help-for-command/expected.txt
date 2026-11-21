@@ -92,13 +92,11 @@ stdout:
       -y, --non-interactive     Write the defaults without asking. A run without a terminal, or under
                                 a coding agent or CI, does so anyway. --json implies it. Any flag
                                 still answers its own question.
-          --[no-]places         Whether a new project is several places. Luau: the code they share in
-                                src/common, a first place in src/game, a game.rogen.json at the root
-                                for it, and editor settings for luau-lsp; more places by copying that
-                                file. roblox-ts: the code they share in projects/common and a first
-                                place in projects/game with its own default.rogen.json and
-                                tsconfig.json, more by copying that folder. One place when not given,
-                                or several where a projects folder exists for roblox-ts.
+          --[no-]places         Whether a new project is several places. The code they share goes in
+                                src/common, a first place in src/game and a game.rogen.json at the
+                                root for it. Luau adds editor settings for luau-lsp, and roblox-ts a
+                                tsconfig.game.json that compiles the place into out/game. More places
+                                by copying those files. One place when not given.
       -q, --quiet               Only print errors.
           --no-sample           Leave the Greeter sample out: empty source folders, and no place/
                                 folder. The sample is a Greeter feature folder of three hello-world

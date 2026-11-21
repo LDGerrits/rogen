@@ -7,7 +7,11 @@ export interface ProcessExit {
 	readonly code: number | null;
 	readonly signal: string | null;
 	readonly error?: Error;
-	/** Ended by Ctrl+C or a termination request: Windows' console sends one to every process on it, elsewhere only this process's own request ends a child. */
+	/**
+	 * Ended by Ctrl+C or a termination request: Windows' console sends one to
+	 * every process on it, elsewhere only this process's own request ends a
+	 * child.
+	 */
 	readonly interrupted?: boolean;
 }
 
@@ -19,7 +23,6 @@ export interface ProcessOutput {
 
 export interface SpawnOptions {
 	readonly cwd: string;
-	/** Variables the program gets, each worked out from what the environment already holds under that name. */
 	readonly env?: Readonly<
 		Record<string, (inherited: string | undefined) => string>
 	>;
@@ -31,7 +34,10 @@ export interface ExecOptions {
 	readonly signal?: AbortSignal;
 }
 
-/** The exit codes of a program that Ctrl+C or a termination request ended: 128 plus the signal on POSIX, `STATUS_CONTROL_C_EXIT` on Windows. */
+/**
+ * The exit codes of a program that Ctrl+C or a termination request ended: 128
+ * plus the signal on POSIX, `STATUS_CONTROL_C_EXIT` on Windows.
+ */
 const INTERRUPTED_CODES: ReadonlySet<number> = new Set([130, 143, 0xc000013a]);
 const INTERRUPTING_SIGNALS: ReadonlySet<string> = new Set([
 	"SIGINT",
@@ -45,20 +51,16 @@ export const wasInterrupted = ({ code, signal }: ProcessExit): boolean =>
 export const exitCodeText = (code: number): string =>
 	code > 0x7fffffff ? `0x${code.toString(16).toUpperCase()}` : String(code);
 
-/** One line a process printed, and the stream it printed it on. */
 export interface OutputLine {
 	readonly line: string;
 	readonly stream: "stdout" | "stderr";
 }
 
 export interface ChildProcess extends Disposable {
-	/** Its process id; none when it couldn't start. */
 	readonly pid: number | undefined;
-	/** Each line it printed, with the stream it came on, as the line completes; one the process left unfinished comes when it exits. */
 	readonly onDidOutput: Event<OutputLine>;
 	readonly onDidExit: Event<ProcessExit>;
 
-	/** Ends the process and every process it started, and resolves once it has exited. Safe to call after it exited. */
 	terminate(): Promise<ProcessExit>;
 }
 
@@ -71,19 +73,14 @@ export interface ProcessService {
 		args: readonly string[],
 		options: ExecOptions
 	): Promise<Result<ProcessOutput, Error>>;
-	/** Whether a process with this id exists, whoever started it. */
 	isRunning(pid: number): boolean;
-	/** Ends the process of this id, which leads a group of its own, and everything it started, and resolves once they are gone. */
 	terminateTree(pid: number): Promise<void>;
-	/** Starts `file`, with no input; what it prints comes through `onDidOutput`. */
 	spawn(
 		file: string,
 		args: readonly string[],
 		options: SpawnOptions
 	): ChildProcess;
-	/** Fires with whether any process this service started still runs, each time that changes. */
 	readonly onDidChangeRunning: Event<boolean>;
-	/** Ends at once every process this service started. */
 	killAll(): void;
 }
 

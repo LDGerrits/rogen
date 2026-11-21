@@ -33,7 +33,6 @@ import {
 
 const S = OutputShape;
 
-/** The document of `init --json`. */
 export const initDocumentShape = S.object({
 	changed: S.boolean,
 	dryRun: S.optional(S.boolean),
@@ -87,7 +86,6 @@ export const initDocumentShape = S.object({
 	),
 });
 
-/** How the defaults line names each choice's value. */
 const VALUE_NAMES: Record<
 	InitDecision["question"],
 	(value: InitDecision["value"]) => string
@@ -104,7 +102,6 @@ const VALUE_NAMES: Record<
 const describedChoice = ({ question, value, flag }: InitDecision) =>
 	`${VALUE_NAMES[question](value)} (${flag})`;
 
-/** The tool that scaffolds the project is reported as the command it is. */
 const asCommand = (
 	written: InitWritten
 ): Exclude<InitWritten, { kind: "scaffold" }> =>
@@ -154,15 +151,12 @@ export interface InitReporter {
 	begin(plan: InitPlan): void;
 	written(item: InitWritten): void;
 	failed(error: Error): Result<void, Error>;
-	/** The end of a run; `inCode` when the check before it found errors in the project's code, which stop the write. */
 	done(plan: InitPlan, run: WriteRun, inCode: boolean): Result<void, Error>;
-	/** The end of a dry run, which `written` told what it would write. */
 	planned(plan: InitPlan): Result<void, Error>;
 }
 
 export class InitLog implements InitReporter {
 	private readonly outcomeLog: OutcomeLog;
-	/** Where the plan's folder lies from the folder the user ran in, which its file names are shown after. */
 	private within = "";
 
 	constructor(
@@ -282,7 +276,6 @@ export class InitLog implements InitReporter {
 interface InitFile {
 	readonly file: string;
 	readonly outcome: "wrote" | "wouldWrite";
-	/** Set when the file existed and something was added to it. */
 	readonly appended?: true;
 }
 

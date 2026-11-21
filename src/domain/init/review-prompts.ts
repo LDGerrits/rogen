@@ -4,23 +4,17 @@ import {
 	SelectPromptOptions,
 } from "../../platform/prompt/prompt-service.js";
 
-/** How a run that shows its plan first asks: `quick` takes the default of every question the plan shows, `customise` asks those, each with the answer given before preselected. */
 export type ReviewMode = "quick" | "customise";
 
-/** Answers questions for a run that shows its whole plan once and lets the user accept it, so only what can't be detected is asked. A question that is always asked is asked once in either mode and remembered by its id, else its message, so the plan shown again doesn't ask it twice. */
 export class ReviewPrompts {
 	mode: ReviewMode = "quick";
-	/** How many questions this pass put, answered or taken by default. */
 	asked = 0;
-	/** How many of them were quick ones, which Customise asks. */
 	customisable = 0;
 	private answers = new Map<string, unknown>();
 	private before = new Map<string, unknown>();
 
-	/** For the questions whose default the plan shows. */
 	readonly quick: PromptService;
 
-	/** For the questions that are always asked. */
 	readonly essential: PromptService;
 
 	constructor(@PromptService private readonly real: PromptService) {
@@ -28,7 +22,6 @@ export class ReviewPrompts {
 		this.essential = this.view(true);
 	}
 
-	/** A new pass over the questions. */
 	begin(mode: ReviewMode): void {
 		this.mode = mode;
 		this.asked = 0;
@@ -36,7 +29,6 @@ export class ReviewPrompts {
 		this.before = new Map(this.answers);
 	}
 
-	/** Forgets what this pass answered, as when the user backs out of it. */
 	undo(): void {
 		this.answers = new Map(this.before);
 	}

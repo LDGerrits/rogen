@@ -1,5 +1,5 @@
 import path from "path";
-import { dirnamePosix, joinPosix } from "../../base/path.js";
+import { dirnamePosixOrEmpty, joinPosix } from "../../base/path.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { PatternMatch } from "../config/route-patterns.js";
@@ -19,7 +19,6 @@ export interface RoutedFile {
 	readonly entry: ScannedFile;
 	readonly route: string;
 	readonly routeMatch: RouteMatch;
-	/** Absolute POSIX path of the folder or file whose name took the route, or of the folder a marker sits in; none for `*`. */
 	readonly routedBy?: string;
 	readonly instancePath: readonly string[];
 	readonly folderNodes: readonly FolderNode[];
@@ -27,13 +26,11 @@ export interface RoutedFile {
 	readonly ignoredAts: readonly IgnoredAt[];
 	readonly init?: InitFolders;
 	readonly hoisted?: boolean;
-	/** The patterns that match with equal weight and different targets, which leave the file to `*`, and the folder or file whose name they match. */
 	readonly patternClash?: PatternClash;
 }
 
 export interface PatternClash {
 	readonly keys: readonly string[];
-	/** Absolute POSIX path of the folder or file whose name the patterns match. */
 	readonly at: string;
 }
 
@@ -48,12 +45,10 @@ interface IgnoredAt {
 	readonly marker?: string;
 }
 
-/** An init script written `^init`: the script is its folder, so only the folder can take the `^`. */
 export interface HoistedInit {
 	readonly source: string;
 }
 
-/** An init script that no folder of its own becomes a node for, so it has no instance to be. */
 export interface InitWithoutFolder {
 	readonly source: string;
 	readonly folder: InstancelessFolder;
@@ -66,7 +61,6 @@ interface ClaimedFolder {
 	readonly dir: string;
 }
 
-/** Where a path's signal for a route stands: it took the route, repeats the one that governs, or lost to it. */
 type Standing = "governs" | "restates" | "outranked";
 
 const speaksForRoute = (standing: Standing, signed: boolean) =>
@@ -77,13 +71,11 @@ class Claims {
 		| {
 				readonly key: string;
 				readonly match: RouteMatch;
-				/** The folder or file, relative to the source path, whose name took it. */
 				readonly at: string;
 		  }
 		| undefined;
 	readonly ignoredAts: IgnoredAt[] = [];
 	private readonly outrankedFolders: { key: string; depth: number }[] = [];
-	/** The deepest `@` that speaks for the route, which keeps the server-named folders above it there on purpose. */
 	private signedDepth = -1;
 
 	get routeKey(): string {
@@ -96,7 +88,6 @@ class Claims {
 		return "governs";
 	}
 
-	/** A `@` signal: losing it is reported as an ignored `@` when `at` says where. */
 	signed(
 		key: string,
 		match: RouteMatch,
@@ -109,7 +100,6 @@ class Claims {
 		return standing;
 	}
 
-	/** A signal that carries no `@`: losing it outranks the folders it would have routed. */
 	unsigned(
 		key: string,
 		match: RouteMatch,
@@ -122,12 +112,10 @@ class Claims {
 		return standing;
 	}
 
-	/** A folder named for `key` in another letter case under the route: an ordinary folder that the route outranks, as it outranks one spelled as the key. */
-	outrankName(key: string, depth: number): void {
+	outrankNearMiss(key: string, depth: number): void {
 		this.outrankedFolders.push({ key, depth });
 	}
 
-	/** A `@` signal that cannot take the route itself, as a folder's inner routes cannot. */
 	outrankSigned(key: string, depth: number, at: IgnoredAt): void {
 		this.recordSigned(this.standingOf(key), depth, at);
 	}
@@ -149,12 +137,17 @@ class Claims {
 	}
 }
 
+const isGovernedNearMiss = (
+	folder: FolderReading,
+	claims: Claims
+): folder is FolderReading & { readonly nearMissKey: string } =>
+	folder.nearMissKey !== undefined && claims.route !== undefined;
+
 interface LeafName {
 	readonly name: string;
 	readonly hoisted: boolean;
 	readonly scriptSuffix: RojoScriptSuffix | undefined;
 	readonly isInit: boolean;
-	/** The name of the folder an init file becomes, when not the folder's own: a nested project's `name`. */
 	readonly folderName?: string;
 }
 
@@ -167,12 +160,18 @@ interface ClaimedPath {
 	readonly dropped: number;
 }
 
-/** A folder that holds nothing Rojo makes an instance from, at the node a file in it would sit in. */
+const hoistBelongsOnFolder = (
+	entry: ScannedFile,
+	{ leaf, folders }: ClaimedPath
+) =>
+	leaf.isInit &&
+	leaf.hoisted &&
+	folders.at(-1)?.dir === dirnamePosixOrEmpty(entry.relativePath);
+
 export interface RoutedFolder extends Pick<
 	RoutedFile,
 	"instancePath" | "folderNodes" | "route" | "hoisted"
 > {
-	/** Absolute, POSIX-style. */
 	readonly folder: string;
 }
 
@@ -182,7 +181,6 @@ export interface Routing {
 	readonly unrouted: string[];
 	readonly withoutFolder: InitWithoutFolder[];
 	readonly hoistedInits: HoistedInit[];
-	/** The folders named for a route in another letter case that an outer route governs, so their name places nothing; absolute, POSIX-style. */
 	readonly governedNearMisses: ReadonlySet<string>;
 }
 
@@ -194,7 +192,6 @@ export class Router {
 		private readonly readings: NameReadings
 	) {}
 
-	/** Every file a route governs, in scan order; the empty folders it governs; the sources of the files no route governs; the init scripts with no folder to be; and the init scripts written `^init`. */
 	route(roots: readonly ScannedRoot[], claims: RootClaims): Routing {
 		const routing: Routing = {
 			routed: [],
@@ -250,12 +247,7 @@ export class Router {
 		routing: Routing
 	): void {
 		const claimed = this.claim(entry, dirs);
-		// A `^` belongs on the folder an init script is, unless that folder makes no instance, which leaves the script no folder to be.
-		if (
-			claimed.leaf.isInit &&
-			claimed.leaf.hoisted &&
-			claimed.folders.at(-1)?.dir === dirnamePosix(entry.relativePath)
-		) {
+		if (hoistBelongsOnFolder(entry, claimed)) {
 			routing.hoistedInits.push({ source: entry.source });
 			return;
 		}
@@ -279,7 +271,7 @@ export class Router {
 	private instancelessFolderOf(entry: ScannedFile): InstancelessFolder {
 		const folder = this.readings.instanceless(
 			entry.sourcePath,
-			dirnamePosix(entry.relativePath)
+			dirnamePosixOrEmpty(entry.relativePath)
 		);
 		if (!folder)
 			throw new Error(
@@ -325,7 +317,6 @@ export class Router {
 		};
 	}
 
-	/** The pattern a file's name, or the name of the instance it makes, matches. An init script is its folder, which no pattern matches, so it routes with its folder. */
 	private patternOf(
 		entry: ScannedFile,
 		isInit: boolean
@@ -366,7 +357,6 @@ export class Router {
 		};
 	}
 
-	/** The nodes `folders` become under the route `claims` names, and the node a file in the last sits in; none when no route is declared for it. */
 	private placeFolders(
 		sourcePath: string,
 		folders: readonly ClaimedFolder[],
@@ -421,9 +411,8 @@ export class Router {
 			const named = name !== undefined && !folder.invisible;
 			if (named) folders.push({ name, dir: folder.dir });
 			claimDirectory(folder.dir);
-			// A folder named for a route in another case is an ordinary folder where a route above it, or a marker in it, routes its files.
-			if (folder.nearMissKey !== undefined && claims.route) {
-				claims.outrankName(folder.nearMissKey, depthOf(folder.dir));
+			if (isGovernedNearMiss(folder, claims)) {
+				claims.outrankNearMiss(folder.nearMissKey, depthOf(folder.dir));
 				this.governedNearMisses.add(joinPosix(sourcePath, folder.dir));
 			}
 		}

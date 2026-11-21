@@ -1,7 +1,7 @@
 import { Result, err, ok } from "../../base/result.js";
 import {
 	closestMatches,
-	editDistance,
+	editDistanceWithSwaps,
 	joinedWithOr,
 } from "../../base/strings.js";
 import {
@@ -46,14 +46,20 @@ const SERVER_SCRIPT_SERVICES: readonly string[] = [
 	"Workspace",
 ];
 
-/** The containers whose LocalScripts run: the player's own, which clone from the Starter containers, and ReplicatedFirst. */
+/**
+ * The containers whose LocalScripts run: the player's own, which clone from the
+ * Starter containers, and ReplicatedFirst.
+ */
 const CLIENT_SCRIPT_SERVICES: readonly string[] = [
 	"StarterGui",
 	"StarterPack",
 	"ReplicatedFirst",
 ];
 
-/** How a script runs: a legacy `Script` or a `LocalScript` by its class, any other `Script` by its `RunContext`. */
+/**
+ * How a script runs: a legacy `Script` or a `LocalScript` by its class, any
+ * other `Script` by its `RunContext`.
+ */
 export type ScriptRun =
 	"Script" | "LocalScript" | "Server" | "Client" | "Plugin";
 
@@ -106,7 +112,6 @@ export class Target {
 		readonly folders: readonly string[]
 	) {}
 
-	/** `location` is where the target was written, for the diagnostic. */
 	static parse(
 		text: string,
 		location: DiagnosticLocation
@@ -190,14 +195,13 @@ export class Target {
 		return Target.couldHaveMeant(name, SUPPORTED_SERVICES);
 	}
 
-	/** The candidate a typo of at most a quarter of `name` could be, a routed service first on a tie. */
 	private static couldHaveMeant(
 		name: string,
 		candidates: readonly string[]
 	): string | undefined {
 		const closest = closestMatches(name, candidates);
 		if (closest.length === 0) return undefined;
-		const distance = editDistance(
+		const distance = editDistanceWithSwaps(
 			name.toLowerCase(),
 			closest[0].toLowerCase()
 		);
@@ -254,7 +258,6 @@ const CLONED_AT_RUNTIME: readonly {
 	{ container: ["StarterPack"], into: "each player" },
 ];
 
-/** Why a path under a runtime-cloned container can't be required, or `undefined` elsewhere. */
 export function whyNotRequirable(
 	instancePath: readonly string[]
 ): string | undefined {
@@ -267,7 +270,6 @@ export function whyNotRequirable(
 	);
 }
 
-/** The Luau expression that reaches `instancePath`, or `undefined` under a runtime-cloned container. */
 export function requireExpression(
 	instancePath: readonly string[]
 ): string | undefined {
@@ -284,7 +286,6 @@ export function requireExpression(
 	].join("");
 }
 
-/** The class of a node Rogen creates to hold children: services and StarterPlayer's script containers keep their own, the rest are folders. */
 export function containerClassName(instancePath: readonly string[]): string {
 	if (instancePath.length === 1) return instancePath[0];
 	if (instancePath.length === 2 && isPlayerScriptContainer(instancePath))
@@ -292,7 +293,6 @@ export function containerClassName(instancePath: readonly string[]): string {
 	return "Folder";
 }
 
-/** An instance named the way Studio prints it, `ServerScriptService.Inventory.Save`, or with slashes, the way Rogen does. A running game's copy of a player's `PlayerScripts`, `PlayerGui` or `Backpack` is read as the Starter container it comes from; a character's copy of StarterCharacterScripts is offered as `characterScript`. */
 export class InstanceReference {
 	private static readonly GAME_PREFIX = /^game[./]/;
 	private static readonly QUOTED = /'([^']+)'/;
@@ -311,14 +311,11 @@ export class InstanceReference {
 	};
 
 	private constructor(
-		/** The reference without `game.` or a line number. */
 		readonly text: string,
 		readonly separator: "." | "/",
-		/** Whether a line number came with it, which only a script has: what is inside the instance is not asked about. */
 		readonly namesScript = false
 	) {}
 
-	/** Reads a pasted error line or stack frame; `undefined` unless it starts with a supported service. */
 	static parse(input: string): InstanceReference | undefined {
 		const quote = InstanceReference.QUOTED.exec(input);
 		const unquoted = input
@@ -351,7 +348,6 @@ export class InstanceReference {
 		return this.text.split(this.separator)[0];
 	}
 
-	/** For an instance inside a model in Workspace, the StarterCharacterScripts path a character's copy of a script there comes from. */
 	get characterScript(): InstanceReference | undefined {
 		const [service, , ...names] = this.text.split(this.separator);
 		if (service !== "Workspace" || names.length === 0) return undefined;
@@ -364,7 +360,6 @@ export class InstanceReference {
 		);
 	}
 
-	/** Whether `instancePath` is this instance, or inside it unless a line number says it is a script. */
 	contains(instancePath: readonly string[]): boolean {
 		const key = instancePath.join(this.separator);
 		return (
@@ -380,7 +375,6 @@ export function instanceKey(instancePath: readonly string[]): string {
 	return instancePath.join(INSTANCE_SEPARATOR);
 }
 
-/** A map keyed by instance path, kept in the order paths were first set. */
 export class InstanceMap<V> implements Iterable<[readonly string[], V]> {
 	private readonly entries = new Map<
 		string,

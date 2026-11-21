@@ -17,7 +17,6 @@ import {
 } from "./rojo-runner.js";
 import { RojoServer, ServerMessage } from "./rojo-server.js";
 
-/** A Rojo that runs its command with `--watch`, read into one run per build. */
 export class WatchingRojo extends AbstractDisposable implements RojoWatch {
 	private readonly _onDidRun = this._register(new Emitter<RojoCommandRun>());
 	readonly onDidRun: Event<RojoCommandRun> = this._onDidRun.event;
@@ -33,11 +32,9 @@ export class WatchingRojo extends AbstractDisposable implements RojoWatch {
 	private messages: ServerMessage[] = [];
 	private stopping = false;
 
-	/** Takes `child`, a Rojo already started with `--watch`, to own. */
 	constructor(
 		private readonly project: ResolvedConfig,
 		child: SupervisedRojoProcess,
-		/** The failure of a build, from the lines of the error Rojo printed. */
 		private readonly failed: (said: readonly string[]) => DiagnosticsError
 	) {
 		super();

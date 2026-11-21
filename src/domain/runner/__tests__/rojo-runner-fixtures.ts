@@ -11,7 +11,6 @@ import { ToolLocator } from "../../toolchain/tool-locator.js";
 import { ToolchainService } from "../../toolchain/toolchain-service.js";
 import { CoreRojoRunner } from "../core-rojo-runner.js";
 
-/** A runner over `fs` and `processes`, as Rogen wires it, printing at `logLevel`. */
 export function rojoRunnerOf(
 	fs: FileSystemService,
 	processes: ProcessService,

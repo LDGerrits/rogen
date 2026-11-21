@@ -91,10 +91,8 @@ import "./commands/upload/upload-command.js";
 import "./commands/where/where-command.js";
 import "./commands/write/write-command.js";
 
-/** Baked in by `scripts/bundle.ts`; undefined in a run from source. */
 declare const ROGEN_VERSION: string | undefined;
 
-/** The folder rogen runs in, or `undefined` when it was deleted under the shell. */
 function currentFolder(): string | undefined {
 	try {
 		return process.cwd();
@@ -103,7 +101,6 @@ function currentFolder(): string | undefined {
 	}
 }
 
-/** Whether the command runs until it is stopped, so the update notice comes before it starts. */
 function isLongRunning(
 	metadata: { longRunning?: boolean; longRunningWith?: string } | undefined,
 	options: Readonly<Record<string, unknown>>
@@ -115,7 +112,6 @@ function isLongRunning(
 	);
 }
 
-/** The update notice of a run, looked up while the command runs. */
 class UpdateNotice {
 	private readonly found: Promise<string | undefined>;
 
@@ -141,7 +137,6 @@ export default function run(): void {
 	});
 }
 
-/** Registers each service with the class that implements it; a service is built when it is first asked for. */
 export function registerServices(
 	environmentService: EnvironmentService,
 	logService: LogService,
@@ -155,7 +150,6 @@ export function registerServices(
 	return services;
 }
 
-/** The services that reach the outside world. */
 function registerPlatformServices(
 	services: ServiceCollection,
 	environmentService: EnvironmentService
@@ -186,7 +180,6 @@ function registerPlatformServices(
 	);
 }
 
-/** The services that know what Rogen does. */
 function registerDomainServices(
 	services: ServiceCollection,
 	commandRegistry: CommandRegistry
@@ -337,7 +330,6 @@ class RogenMain {
 		);
 	}
 
-	/** What other modules contribute to the services that ask for it. */
 	private contribute(accessor: ServicesAccessor): void {
 		const { disposables } = this;
 		const configService = accessor.get(ConfigService);

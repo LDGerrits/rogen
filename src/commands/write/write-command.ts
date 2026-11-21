@@ -45,16 +45,13 @@ const WriteArguments = [
 	},
 ] as const;
 
-/** The refs of a selection that takes the working directory's default config. */
 const FOLDER_DEFAULT: readonly string[] = [];
 
 interface Targets {
 	readonly configs: readonly string[];
-	/** The project files with no config, which are left alone. */
 	readonly plain: readonly string[];
 }
 
-/** What the command takes from the accessor before its first await. */
 interface Services {
 	readonly configService: ConfigService;
 	readonly writeService: WriteService;
@@ -183,7 +180,6 @@ registerCommand(
 			return failure ? this.reported(failure) : ok(undefined);
 		}
 
-		/** Writes `configs`, each on its own so one that fails does not stop the rest; nothing to write without configs. */
 		private async writeConfigs(
 			{ configService, writeService, logService, cwd }: Services,
 			configs: readonly string[]
@@ -199,7 +195,6 @@ registerCommand(
 			return ok({ home: selection.value.home, run });
 		}
 
-		/** The configs to write: the ones named, else every one of the working directory, and the plain project files that are left alone. Fails when the folder holds neither. */
 		private async targets(
 			configService: ConfigService,
 			given: readonly string[]

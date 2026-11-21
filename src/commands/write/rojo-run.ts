@@ -20,20 +20,15 @@ import {
 } from "./report-rojo.js";
 import { RojoPlan, RojoStep } from "./rojo-step.js";
 
-/** What the write and the Rojo run after it did. */
 export interface RojoRunResult {
 	readonly selection: ConfigSelection;
 	readonly plan: RojoPlan | undefined;
 	readonly written: WriteRun;
-	/** Why the write failed, which leaves Rojo unrun. */
 	readonly failure: Error | undefined;
-	/** Rojo's run; none when the write failed or the files are broken. */
 	readonly ran: Result<RojoCommandRun, Error> | undefined;
-	/** Why Rojo's run failed: its error, else its failure. */
 	readonly rojoFailure: Error | undefined;
 }
 
-/** One write of the selected project file and the step's Rojo command on it, as `WriteWatch` runs them on every change. */
 export class RojoRun {
 	constructor(
 		private readonly configs: readonly string[],
@@ -48,11 +43,10 @@ export class RojoRun {
 		private readonly instantiationService: InstantiationService
 	) {}
 
-	/** `extraFlags` follow the plan's own. */
 	async run(
 		extraFlags: readonly string[] = []
 	): Promise<Result<RojoRunResult, Error>> {
-		if (this.step.prints) this.logService.reserveStdout();
+		if (this.step.prints) this.logService.sendOwnLinesToStderr();
 		const selection = await this.configService.selectForRojo(this.configs);
 		if (selection.isErr()) return selection;
 		for (const note of selection.value.notes) this.logService.warn(note);
@@ -88,7 +82,6 @@ export class RojoRun {
 		});
 	}
 
-	/** The write's outcomes, then the messages of Rojo's that `shown` keeps, then the closing line unless the run's result went to the screen. */
 	report(
 		{ selection, plan, written, ran, rojoFailure }: RojoRunResult,
 		shown: (
