@@ -7,24 +7,24 @@ import { withRelease } from "./changelog.js";
 export interface VersionedFile {
 	readonly path: string;
 	readonly pattern: RegExp;
-	readonly stableOnly: boolean;
+	readonly keepsStableOverPrereleases: boolean;
 }
 
 export const VERSIONED_FILES: readonly VersionedFile[] = [
 	{
 		path: "docs/content/docs/v2/installation.mdx",
 		pattern: /(ldgerrits\/rogen@)(\d[^"]*)(")/g,
-		stableOnly: true,
+		keepsStableOverPrereleases: true,
 	},
 	{
 		path: "docs/components/home/install-command.tsx",
 		pattern: /(ldgerrits\/rogen@)(\d[^"]*)(")/g,
-		stableOnly: true,
+		keepsStableOverPrereleases: true,
 	},
 	{
 		path: "README.md",
 		pattern: /(ldgerrits\/rogen@)(\d[^\s`"]*)()/g,
-		stableOnly: true,
+		keepsStableOverPrereleases: true,
 	},
 ];
 
@@ -39,7 +39,8 @@ export function syncVersion(root: string, version: string): string[] {
 		const pinsStable = [...text.matchAll(file.pattern)].every(
 			(match) => !match[2].includes("-")
 		);
-		if (prerelease && file.stableOnly && pinsStable) continue;
+		if (prerelease && file.keepsStableOverPrereleases && pinsStable)
+			continue;
 
 		const next = text.replace(file.pattern, `$1${version}$3`);
 		if (next === text) continue;

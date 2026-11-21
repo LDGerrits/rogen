@@ -74,17 +74,28 @@ process.on("exit", () =>
 	fs.rmSync(RUN_CACHE, { recursive: true, force: true })
 );
 
+const POSE_AS_WINDOWS_TERMINAL = { WT_SESSION: "1" };
+
 function childEnv(extra: Readonly<Record<string, string>> = {}) {
-	const env: NodeJS.ProcessEnv = {
-		...process.env,
-		NO_COLOR: "1",
-		FORCE_COLOR: "0",
-		XDG_CACHE_HOME: RUN_CACHE,
-		...(WINDOWS ? { WT_SESSION: "1" } : {}),
-		...extra,
-	};
-	if (!("GITHUB_ACTIONS" in extra)) delete env.GITHUB_ACTIONS;
-	if (!("CI" in extra)) delete env.CI;
+	return withoutCiVariables(
+		{
+			...process.env,
+			NO_COLOR: "1",
+			FORCE_COLOR: "0",
+			XDG_CACHE_HOME: RUN_CACHE,
+			...(WINDOWS ? POSE_AS_WINDOWS_TERMINAL : {}),
+			...extra,
+		},
+		extra
+	);
+}
+
+function withoutCiVariables(
+	env: NodeJS.ProcessEnv,
+	caseEnv: Readonly<Record<string, string>>
+): NodeJS.ProcessEnv {
+	if (!("GITHUB_ACTIONS" in caseEnv)) delete env.GITHUB_ACTIONS;
+	if (!("CI" in caseEnv)) delete env.CI;
 	delete env.GITHUB_WORKSPACE;
 	return env;
 }
