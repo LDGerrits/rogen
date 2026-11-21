@@ -85,7 +85,7 @@ process.on("exit", () =>
 	fs.rmSync(RUN_CACHE, { recursive: true, force: true })
 );
 
-/** What the CLI runs with: this process's environment without the variables that make it write GitHub Actions' workflow commands, which this repo's own CI sets, so a transcript holds the same lines wherever it is made. */
+/** What the CLI runs with: this process's environment without the variables that make it write GitHub Actions' workflow commands or act as under CI, which this repo's own CI sets, so a transcript holds the same lines wherever it is made. */
 function childEnv(extra: Readonly<Record<string, string>> = {}) {
 	const env: NodeJS.ProcessEnv = {
 		...process.env,
@@ -96,6 +96,7 @@ function childEnv(extra: Readonly<Record<string, string>> = {}) {
 		...extra,
 	};
 	if (!("GITHUB_ACTIONS" in extra)) delete env.GITHUB_ACTIONS;
+	if (!("CI" in extra)) delete env.CI;
 	delete env.GITHUB_WORKSPACE;
 	return env;
 }

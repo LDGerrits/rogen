@@ -25,6 +25,8 @@ const named = (name: string) =>
 
 const config = named("Game");
 
+const OLD = "<!-- rogen -->\n## Rogen\n\nOld.\n<!-- /rogen -->\n";
+
 describe("write command", () => {
 	let fs: MemoryFileSystemService;
 
@@ -35,8 +37,6 @@ describe("write command", () => {
 	});
 
 	describe("agent rules", () => {
-		const OLD = "<!-- rogen -->\n## Rogen\n\nOld.\n<!-- /rogen -->\n";
-
 		beforeEach(async () => {
 			await fs.writeFile(abs("default.rogen.json"), config);
 			await fs.createDirectory(abs(".git"));
@@ -56,7 +56,27 @@ describe("write command", () => {
 			);
 		});
 
-		it("should update it silently under --json", async () => {
+		it("should leave it alone under CI", async () => {
+			await fs.writeFile(abs("AGENTS.md"), OLD);
+			const { run, log } = commandHarness({
+				fs,
+				environment: Object.assign(
+					new MockEnvironmentService("/repo"),
+					{
+						isCi: true,
+					}
+				),
+			});
+
+			await run("write");
+
+			expect(await fs.readFile(abs("AGENTS.md"))).toBe(OLD);
+			expect(
+				log.lines.filter((line) => line.startsWith("notice:"))
+			).toEqual([]);
+		});
+
+		it("should update it without a notice under --json", async () => {
 			await fs.writeFile(abs("AGENTS.md"), OLD);
 			const { run, log } = commandHarness({ fs });
 
@@ -66,6 +86,24 @@ describe("write command", () => {
 			expect(
 				log.lines.filter((line) => line.startsWith("notice:"))
 			).toEqual([]);
+		});
+
+		it("should name the files it updated under agentRules in the --json document", async () => {
+			await fs.writeFile(abs("AGENTS.md"), OLD);
+			const { run, log } = commandHarness({ fs });
+
+			await run("write", { options: { json: true } });
+
+			expect(log.json()).toMatchObject({ agentRules: ["AGENTS.md"] });
+		});
+
+		it("should leave agentRules out of the --json document when the rules are current", async () => {
+			await fs.writeFile(abs("AGENTS.md"), agentBlock);
+			const { run, log } = commandHarness({ fs });
+
+			await run("write", { options: { json: true } });
+
+			expect(log.json()).not.toHaveProperty("agentRules");
 		});
 	});
 
@@ -345,6 +383,33 @@ describe("write command", () => {
 			await watcher.stop();
 			jest.runOnlyPendingTimers();
 			jest.useRealTimers();
+		});
+
+		it("should print the agent files it updated as an agentRules line under --json", async () => {
+			await fs.createDirectory(abs(".git"));
+			await fs.writeFile(abs("AGENTS.md"), OLD);
+			const { run } = commandHarness({
+				fs,
+				log,
+				lifecycle,
+				watcher,
+				config: configServiceOf(
+					fs,
+					new MockEnvironmentService("/repo")
+				),
+			});
+			void run("write", {
+				positionals: [],
+				options: { watch: true, json: true },
+			});
+			await settle();
+
+			expect(
+				log
+					.texts("print")
+					.map((text) => JSON.parse(text))
+					.filter((line) => "agentRules" in line)
+			).toEqual([{ agentRules: ["AGENTS.md"] }]);
 		});
 
 		it("should keep the project file of every config current", async () => {

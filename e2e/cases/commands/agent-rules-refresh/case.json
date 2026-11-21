@@ -1,0 +1,8 @@
+{
+	"steps": [
+		["write", "--json"],
+		["write", "--json"]
+	],
+	"output": ["write"],
+	"rojo": false
+}

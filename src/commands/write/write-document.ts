@@ -42,8 +42,18 @@ export const watchLineShapes = {
 	diagnostics: S.object({ diagnostics: S.array(diagnosticShape) }),
 };
 
+/** What `write --watch --json` and `serve --json` print first after refreshing the agent rules. */
+export const agentRulesLineShape = S.object({ agentRules: S.array(S.string) });
+
+export function agentRulesLine(
+	refreshed: readonly string[]
+): { agentRules: string[] } | undefined {
+	return refreshed.length > 0 ? { agentRules: [...refreshed] } : undefined;
+}
+
 /** One line of `write --watch --json`. */
 export const writeLineShape = S.union(
+	agentRulesLineShape,
 	watchLineShapes.write,
 	watchLineShapes.notice,
 	watchLineShapes.error,
@@ -108,6 +118,7 @@ export const writeDocumentShape = S.object({
 	changed: S.boolean,
 	configs: S.array(writeEntryShape),
 	plainProjects: S.array(S.string),
+	agentRules: S.optional(S.array(S.string)),
 });
 
 /** A project file with no config of its name, which is its own output and is not written. */
@@ -118,7 +129,8 @@ export const isPlain = (outcome: ConfigOutcome): boolean =>
 export function writeDocument(
 	run: WriteRun,
 	cwd: string,
-	plainProjects: readonly string[]
+	plainProjects: readonly string[],
+	agentRules: readonly string[]
 ) {
 	const left = [
 		...run.outcomes.filter(isPlain).map(({ file }) => file),
@@ -127,5 +139,6 @@ export function writeDocument(
 	return {
 		...configsDocument(run.outcomes, cwd),
 		plainProjects: [...new Set(left.map((file) => configPath(cwd, file)))],
+		...agentRulesLine(agentRules),
 	};
 }

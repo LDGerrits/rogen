@@ -204,6 +204,19 @@ describe("NativeEnvironmentService", () => {
 		});
 	});
 
+	describe("isCi", () => {
+		it.each([
+			[{ CI: "true" }, true],
+			[{ CI: "1" }, true],
+			[{ CI: "false" }, false],
+			[{ CI: "0" }, false],
+			[{}, false],
+			[{ CLAUDECODE: "1" }, false],
+		])("should read %j as %s", (env, expected) => {
+			expect(piped(env).isCi).toBe(expected);
+		});
+	});
+
 	describe("isWindows", () => {
 		it.each([
 			["win32", true],

@@ -2,8 +2,12 @@ import path from "path";
 import { InitService } from "../../domain/init/init-service.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { LogService } from "../../platform/log/log-service.js";
+import { agentRulesLine } from "./write-document.js";
 
-/** Brings an outdated Rogen block in the repository's agent files up to this version. */
+/** How a run reports a refresh: a line of text, a key of its JSON document, or a JSON line of its own. */
+export type AgentRulesOutput = "text" | "document" | "lines";
+
+/** Brings an outdated Rogen block in the repository's agent files up to this version; never under CI, where a changed file would surprise the pipeline. */
 export class RefreshAgentRules {
 	constructor(
 		@InitService private readonly initService: InitService,
@@ -12,14 +16,21 @@ export class RefreshAgentRules {
 		private readonly environmentService: EnvironmentService
 	) {}
 
-	/** Says what it updated, unless the run prints JSON. */
-	async run(json: boolean): Promise<void> {
-		const { cwd } = this.environmentService;
-		const updated = await this.initService.refreshAgentRules(cwd);
-		if (json) return;
-		for (const file of updated)
-			this.logService.notice(
-				`Updated Rogen's rules in ${path.relative(cwd, file) || file} to this version.`
-			);
+	/** Reports the files it updated as `output` says, and returns them relative to the working folder. */
+	async run(output: AgentRulesOutput): Promise<string[]> {
+		const { cwd, isCi } = this.environmentService;
+		if (isCi) return [];
+		const updated = (await this.initService.refreshAgentRules(cwd)).map(
+			(file) => path.relative(cwd, file) || file
+		);
+		const line = agentRulesLine(updated);
+		if (output === "lines" && line)
+			this.logService.print(JSON.stringify(line));
+		if (output === "text")
+			for (const file of updated)
+				this.logService.notice(
+					`Updated Rogen's rules in ${file} to this version.`
+				);
+		return updated;
 	}
 }

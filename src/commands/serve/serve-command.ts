@@ -133,7 +133,7 @@ registerCommand(
 			try {
 				await instantiationService
 					.createInstance(RefreshAgentRules)
-					.run(Boolean(line.options.json));
+					.run(line.options.json ? "lines" : "text");
 				const plan = await serveService.prepare({
 					signal: shutdown,
 					refs: line.positionals,
