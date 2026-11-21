@@ -60,7 +60,10 @@ export function score(dir, transcript, rogen) {
 		"src"
 	)
 		.split("\n")
-		.filter((file) => file.endsWith(".luau"));
+		.filter(
+			(file) =>
+				file.endsWith(".luau") && fs.existsSync(path.join(dir, file))
+		);
 	const where = JSON.parse(run(["where", "--json", ...files]).stdout || "{}");
 	const instanceOf = {};
 	for (const location of where.locations ?? [])

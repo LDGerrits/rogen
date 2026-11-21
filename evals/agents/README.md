@@ -22,6 +22,7 @@ Each run costs about $0.08 with Sonnet. The default set is 40 runs, about $3.20.
   | `agents` | The rules in `AGENTS.md`, as `init` writes them. |
   | `claude` | The same, plus a `CLAUDE.md` that imports `AGENTS.md`. |
   | `fallback` | The rules, plus a `"*"` route. |
+  | `short` | Five lines of rules in `AGENTS.md`, without the markers so `rogen write` keeps them. |
 
 - **Task:** one prompt from `tasks.json`. Most of them add or move code that must land on one side, and two of them add a feature folder.
 

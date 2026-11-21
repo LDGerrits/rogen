@@ -16,7 +16,16 @@ const CONDITIONS = {
 	agents: "the rules in AGENTS.md, as init writes them",
 	claude: "the rules in AGENTS.md, imported by CLAUDE.md",
 	fallback: 'the rules, and a "*" fallback route',
+	short: "five lines of rules in AGENTS.md, without markers so no write replaces them",
 };
+const SHORT_RULES = `## Rogen
+
+- A file's path on disk is not its path in the game. Run \`rogen where <path>\`.
+- The outermost route wins, so keep server code under a server route.
+- Edit the \`*.rogen.json\`, never the \`*.project.json\`.
+- After adding, moving or deleting files, run \`rogen check\`.
+- For anything else, run \`rogen doc <topic>\`.
+`;
 
 const { values } = parseArgs({
 	options: {
@@ -84,16 +93,7 @@ const editJson = (file, edit) => {
 function fixture(layout) {
 	const dir = path.join(out, `fixture-${layout}`);
 	if (fs.existsSync(dir)) return dir;
-	rogen(
-		out,
-		"init",
-		path.basename(dir),
-		"--language",
-		"luau",
-		"--no-agent-hook",
-		"-y",
-		"-q"
-	);
+	rogen(out, "init", path.basename(dir), "--language", "luau", "-y", "-q");
 	if (layout === "suffix") {
 		const feature = path.join(dir, "src/Greeter");
 		const read = (file) =>
@@ -138,6 +138,8 @@ function fixture(layout) {
 function prepare(layout, condition, dir) {
 	fs.cpSync(fixture(layout), dir, { recursive: true });
 	if (condition === "none") git(dir, "rm", "-q", "AGENTS.md");
+	if (condition === "short")
+		fs.writeFileSync(path.join(dir, "AGENTS.md"), SHORT_RULES);
 	if (condition === "claude")
 		fs.writeFileSync(path.join(dir, "CLAUDE.md"), "@AGENTS.md\n");
 	if (condition === "fallback") {

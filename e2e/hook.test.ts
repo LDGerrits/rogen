@@ -279,6 +279,34 @@ const available = gitPath !== "";
 		expect(reply?.decision).toBe("block");
 	});
 
+	it("should check the session's worktree, not the checkout CLAUDE_PROJECT_DIR names", () => {
+		const main = path.join(dir, "main");
+		fs.mkdirSync(main);
+		execFileSync("git", ["init", "-q"], { cwd: main });
+		write("src/Buy.client.luau");
+
+		const { reply } = stop(
+			{ session_id: "x", cwd: path.join(dir, "project") },
+			[],
+			{ CLAUDE_PROJECT_DIR: main }
+		);
+
+		expect(reply?.decision).toBe("block");
+	});
+
+	it("should check a change outside the folder the agent is in", () => {
+		fs.mkdirSync(path.join(dir, "project/src/sub"), { recursive: true });
+		write("src/Buy.client.luau");
+
+		const { reply } = stop(
+			{ session_id: "x", cwd: path.join(dir, "project/src/sub") },
+			[],
+			{ CLAUDE_PROJECT_DIR: undefined }
+		);
+
+		expect(reply?.decision).toBe("block");
+	});
+
 	it("should answer for a changed file of a place from the repo root, and skip shared code that no config covers", () => {
 		fs.rmSync(path.join(dir, "project/default.rogen.json"));
 		fs.rmSync(path.join(dir, "project/src"), { recursive: true });
