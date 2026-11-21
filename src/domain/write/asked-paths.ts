@@ -1,6 +1,6 @@
 import { relativeTo } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
-import { joinedWithAnd, joinedWithOr } from "../../base/strings.js";
+import { joinedWithOr } from "../../base/strings.js";
 import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
 import { ConfigService, CoveredTargets } from "../config/config-service.js";
 import { Asked, WriteService } from "./write-service.js";
@@ -93,20 +93,13 @@ export async function skippedNotes(
 				return `note: ${path}: in no source path of ${relativeTo(cwd, one.config ?? "")}, so Rogen leaves it out of the project file.`;
 			const readers = one.readers ?? [];
 			if (readers.length > 0) {
-				const commands = await Promise.all(
-					readers.map(async (file) => {
-						const ref = await configService.referenceTo(file, cwd);
-						return ref
-							? `'rogen ${ask.command} ${ref}'`
-							: `'rogen ${ask.command}'`;
-					})
-				);
-				const files = joinedWithAnd(
-					readers.map((file) => relativeTo(cwd, file))
+				// A folder asks about its own files only, so the command names the config file, which answers for the shared code too.
+				const commands = readers.map(
+					(file) => `'rogen ${ask.command} ${relativeTo(cwd, file)}'`
 				);
 				return readers.length === 1
-					? `note: ${path}: no config at or above it reads it, but ${files} lists it in its source paths. ${ask.lead} through that config: ${commands[0]}.`
-					: `note: ${path}: no config at or above it reads it, but ${files} list it in their source paths. ${ask.lead} through one: ${joinedWithOr(commands)}.`;
+					? `note: ${path}: no config at or above it reads it, but another config lists it in its source paths. ${ask.lead} through that config: ${commands[0]}.`
+					: `note: ${path}: no config at or above it reads it, but other configs list it in their source paths. ${ask.lead} through one: ${joinedWithOr(commands)}.`;
 			}
 			const hint =
 				named.length > 0

@@ -476,7 +476,7 @@ describe("where command", () => {
 			expect(printed()).toEqual([]);
 			expect(logService.texts("warn")).toEqual([]);
 			expect(logService.texts("notice")).toEqual([
-				"note: places/shared/src/Common/Util.luau: no config at or above it reads it, but places/arena/default.rogen.json and places/lobby/default.rogen.json list it in their source paths. See where it lands through one: 'rogen where places/arena' or 'rogen where places/lobby'.",
+				"note: places/shared/src/Common/Util.luau: no config at or above it reads it, but other configs list it in their source paths. See where it lands through one: 'rogen where places/arena/default.rogen.json' or 'rogen where places/lobby/default.rogen.json'.",
 			]);
 		});
 

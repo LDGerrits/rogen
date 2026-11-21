@@ -21,7 +21,7 @@ After you add, move, rename or delete files, or edit a `*.rogen.json`, run `roge
 
 ### Commands
 
-- In roblox-ts, check `projects/common` through a place that uses it: `rogen check projects/game`.
+- In roblox-ts, check `projects/common` through the config of a place that uses it: `rogen check projects/game/default.rogen.json`.
 - Run other commands in the folder of the `*.rogen.json`, or name it: `rogen write projects/game`.
 - To sync to Studio, use the repo's own serve script if it has one. Otherwise run `rogen serve --json` in the background and leave it running; `rogen help serve` explains its output.
 - `rogen doc <topic>` covers `routing`, `config`, `layout` and `output`; `rogen help <command> --json` lists a command's flags and JSON output.

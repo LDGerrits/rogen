@@ -327,7 +327,7 @@ describe("check command", () => {
 			expect(result.isOk()).toBe(true);
 			expect(logService.texts("warn")).toEqual([]);
 			expect(logService.texts("notice")).toEqual([
-				"note: places/shared/src/Stray.client.luau: no config at or above it reads it, but places/arena/default.rogen.json and places/lobby/default.rogen.json list it in their source paths. Check it through one: 'rogen check places/arena' or 'rogen check places/lobby'.",
+				"note: places/shared/src/Stray.client.luau: no config at or above it reads it, but other configs list it in their source paths. Check it through one: 'rogen check places/arena/default.rogen.json' or 'rogen check places/lobby/default.rogen.json'.",
 			]);
 		});
 
