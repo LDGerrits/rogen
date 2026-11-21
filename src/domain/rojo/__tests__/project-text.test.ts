@@ -476,6 +476,28 @@ describe("domain/rojo/project-text", () => {
 			]);
 		});
 
+		it("should sort a child whose key starts with $ with the other children, as Rojo does", () => {
+			const text = ProjectText.of({
+				tree: {
+					$path: "x",
+					zed: { $className: "Folder" },
+					$Foo: { Z: {}, $path: "y", A: {} },
+					Abc: { $className: "Folder" },
+					$className: "ReplicatedStorage",
+				},
+			});
+
+			const tree = JSON.parse(text).tree;
+			expect(Object.keys(tree)).toEqual([
+				"$className",
+				"$Foo",
+				"Abc",
+				"zed",
+				"$path",
+			]);
+			expect(Object.keys(tree.$Foo)).toEqual(["A", "Z", "$path"]);
+		});
+
 		it("should keep a child that is not a node, and a node key it doesn't know, as they are", () => {
 			const text = ProjectText.of({
 				tree: {
