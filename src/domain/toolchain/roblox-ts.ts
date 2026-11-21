@@ -27,11 +27,9 @@ const scopeLanding = (scope: string) =>
 
 export interface RobloxTsFacts {
 	readonly outDir?: string;
-	/** The `rootDir` of tsconfig.json, which roblox-ts compiles. */
 	readonly sourcePath?: string;
 	readonly rbxtsScopes?: readonly string[];
 	readonly includeInstalled?: boolean;
-	/** Whether `package.json` has a `watch` script, as create-roblox-ts writes one. */
 	readonly watchScript?: boolean;
 }
 
@@ -77,7 +75,6 @@ export class RobloxTsCompiler implements Compiler {
 
 	constructor(private readonly facts: RobloxTsFacts) {}
 
-	/** The project's watch script, else the compiler of its own `node_modules`, which isn't on the PATH. */
 	get compileCommand(): string {
 		return this.facts.watchScript ? "npm run watch" : "npx rbxtsc -w";
 	}

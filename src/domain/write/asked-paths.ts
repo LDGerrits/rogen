@@ -5,15 +5,11 @@ import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
 import { ConfigService, CoveredTargets } from "../config/config-service.js";
 import { Asked, WriteService } from "./write-service.js";
 
-/** The paths given to `check` or `where`, each with the configs that answer for it. */
 export class AskedPaths {
 	private constructor(
-		/** The arguments, a bare config name replaced by its file. */
 		readonly args: readonly string[],
-		/** One per argument, in order. */
 		readonly asked: readonly Asked[],
 		private readonly covering: CoveredTargets,
-		/** For each uncovered argument, the configs beside it that read it. */
 		private readonly readers: ReadonlyMap<number, readonly string[]>
 	) {}
 
@@ -40,23 +36,19 @@ export class AskedPaths {
 		return ok(new AskedPaths(args, asked, covering.value, readers));
 	}
 
-	/** One per config that answers, with the indexes of the arguments it answers for. */
 	get groups(): CoveredTargets["groups"] {
 		return this.covering.groups;
 	}
 
-	/** The arguments at `indexes`. */
 	argsAt(indexes: readonly number[]): string[] {
 		return indexes.map((index) => this.args[index]);
 	}
 
-	/** What was asked about that a config answers for. */
 	get covered(): Asked[] {
 		const uncovered = new Set(this.covering.uncovered);
 		return this.asked.filter((_, index) => !uncovered.has(index));
 	}
 
-	/** The paths no config is at or above. */
 	get uncovered(): SkippedPath[] {
 		return this.covering.uncovered.flatMap((index): SkippedPath[] => {
 			const one = this.asked[index];
@@ -74,7 +66,6 @@ export class AskedPaths {
 	}
 }
 
-/** What a command says of each skipped path; `ask` words the way to ask instead through a named config of the working folder, which `noConfig` offers. */
 export async function skippedNotes(
 	configService: ConfigService,
 	skipped: readonly SkippedPath[],
@@ -93,7 +84,6 @@ export async function skippedNotes(
 				return `note: ${path}: in no source path of ${relativeTo(cwd, one.config ?? "")}, so Rogen leaves it out of the project file.`;
 			const readers = one.readers ?? [];
 			if (readers.length > 0) {
-				// A folder asks about its own files only, so the command names the config file, which answers for the shared code too.
 				const commands = readers.map(
 					(file) => `'rogen ${ask.command} ${relativeTo(cwd, file)}'`
 				);

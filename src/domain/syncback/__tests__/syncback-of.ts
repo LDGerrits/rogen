@@ -31,11 +31,9 @@ const instantiationFor = (fakes: SyncbackFakes) =>
 		[LifecycleService, fakes.lifecycleService]
 	);
 
-/** The syncback service over the fakes of a test. */
 export const syncbackServiceOf = (fakes: SyncbackFakes): CoreSyncbackService =>
 	instantiationFor(fakes).createInstance(CoreSyncbackService);
 
-/** The opener of a mirror workspace over the fakes of a test. */
 export const workspaceOpenerOf = (
 	fakes: SyncbackFakes
 ): MirrorWorkspaceOpener =>

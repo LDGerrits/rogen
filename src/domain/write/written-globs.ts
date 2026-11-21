@@ -5,15 +5,12 @@ import { CompiledLayout } from "./compiled-layout.js";
 
 const GLOB_MAGIC = /[*?[\]{}]/;
 
-/** The globs of a project as its written file carries them: moved under the compiled path, and kept as they were where the tree mounts a folder the move leaves behind. */
 export class WrittenGlobs {
-	/** `mounts` are the absolute POSIX paths the tree mounts. */
 	constructor(
 		private readonly layout: CompiledLayout,
 		private readonly mounts: readonly string[]
 	) {}
 
-	/** The globs for `glob` ahead of the compiled path's move; `from` is the absolute POSIX folder it is relative to, when that is not the project's own. */
 	of(glob: string, from?: string): string[] {
 		const { negated, body } = negationOf(glob);
 		if (negated) return this.of(body, from).map((each) => `!${each}`);
@@ -27,7 +24,6 @@ export class WrittenGlobs {
 		);
 	}
 
-	/** A glob that begins with a wildcard takes the same files wherever they sit; one that begins with a folder name is moved with that folder; any other can't be moved. */
 	moved(glob: string, from?: string): string | undefined {
 		if (this.isAbsolute(glob) || glob.startsWith("*")) return glob;
 		const inProject = this.inProject(glob, from);
@@ -36,7 +32,6 @@ export class WrittenGlobs {
 		return this.layout.syncedGlob(inProject);
 	}
 
-	/** The glob as it is in the project, when a mount lies where it reaches and the move would leave that mount without it. */
 	original(glob: string, from?: string): string | undefined {
 		if (this.isAbsolute(glob) || glob.startsWith("*")) return undefined;
 		const inProject = this.inProject(glob, from);
@@ -46,7 +41,6 @@ export class WrittenGlobs {
 			: undefined;
 	}
 
-	/** The glob as the project writes it, relative to the project's own folder. */
 	inProject(glob: string, from?: string): string {
 		if (this.isAbsolute(glob) || from === undefined) return glob;
 		const prefix = path.posix.relative(

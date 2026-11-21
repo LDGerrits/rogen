@@ -11,7 +11,6 @@ import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import { OutputWriter } from "../output-writer.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 
-/** Whether the project file on disk is what a write would write, which a command that writes nothing says by a warning. */
 export class ProjectFileStaleness {
 	constructor(
 		@FileSystemService
@@ -19,7 +18,6 @@ export class ProjectFileStaleness {
 		@ConfigService private readonly configService: ConfigService
 	) {}
 
-	/** The warning for `config`'s project file when it is on disk and differs from what `expected` gives: that it is out of date. None for a file that isn't there, one Rogen never writes, or a write that fails. `expected` runs only for a file that is there. */
 	async diagnostic(
 		config: ResolvedConfig,
 		expected: () => Promise<RojoProjectFile | undefined>

@@ -22,7 +22,6 @@ export class MarkerClashes {
 		);
 	}
 
-	/** The marker files of the clashes, as absolute POSIX paths. */
 	get files(): ReadonlySet<string> {
 		return new Set(
 			this.clashes.flatMap(({ dir, names }) =>

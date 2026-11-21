@@ -23,7 +23,6 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 				.find((file) => fs.existsSync(file)) as string;
 		};
 
-		/** The tree of the project file a side keeps, which Rojo rewrites with what Studio changed on its nodes. */
 		const treeOf = (dir: string, file: string): unknown =>
 			(
 				JSON.parse(fs.readFileSync(path.join(dir, file), "utf8")) as {
@@ -142,7 +141,6 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 			"src/client/Main.client.luau": 'print("c")',
 			"src/data/Data.json": '{"a":1}',
 		};
-		/** An edit no folder of the project can take, which neither tool writes. */
 		const LEFT_ALONE = "add an instance outside the project";
 		const SCENARIOS: Record<string, string> = {
 			"edit a source":

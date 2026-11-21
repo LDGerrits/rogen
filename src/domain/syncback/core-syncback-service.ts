@@ -28,14 +28,12 @@ import { MirrorWorkspace } from "./mirror-workspace.js";
 import { MirrorWorkspaceOpener } from "./mirror-workspace-opener.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
-/** The error of a run stopped before it wrote anything. */
 function stopped(): CancelledError {
 	return new CancelledError(
 		"Syncback stopped before it finished, so nothing was written."
 	);
 }
 
-/** A plan a dry run lists. */
 const listed = (plan: SyncbackPlan): SyncbackOutcome => ({
 	kind: "planned",
 	plan,
@@ -43,7 +41,6 @@ const listed = (plan: SyncbackPlan): SyncbackOutcome => ({
 	asked: false,
 });
 
-/** What a run that confirms does with `plan` when it is not confirmed: declines it, asking only when it changes something; none when it is confirmed. */
 async function declined(
 	mode: Extract<SyncbackMode, object>,
 	plan: SyncbackPlan
@@ -91,7 +88,6 @@ export class CoreSyncbackService implements SyncbackService {
 			mode
 		);
 		if (outcome.kind !== "written") return { write, outcome };
-		// What syncback added to the config's tree changes the project file.
 		const rewritten = await this.writeService.write(selection);
 		return {
 			write:
@@ -118,7 +114,6 @@ export class CoreSyncbackService implements SyncbackService {
 			: outcome.value;
 	}
 
-	/** A plain Rojo project is planned by Rojo's own dry run, then run as it is. */
 	private async plainOutcome(
 		request: SyncbackRequest,
 		mode: SyncbackMode
@@ -138,7 +133,6 @@ export class CoreSyncbackService implements SyncbackService {
 		return result.isErr() ? result : ok(written(result.value, mode));
 	}
 
-	/** A Rogen project is planned on a mirror, and its plan written as it was shown, while the project folder stays held. Nothing is written once a shutdown asked to stop, nor when the config, the place or a file the plan touches changed since it was shown. */
 	private async mirroredOutcome(
 		request: SyncbackRequest,
 		mode: SyncbackMode
@@ -164,7 +158,6 @@ export class CoreSyncbackService implements SyncbackService {
 						)
 					);
 			}
-			// Once writing starts, a stop no longer undoes the run.
 			if (signal.aborted) return err(stopped());
 			const result = await this.instantiationService
 				.createInstance(PlanWriter)
@@ -173,7 +166,6 @@ export class CoreSyncbackService implements SyncbackService {
 		});
 	}
 
-	/** The plan of a run on the mirror; a file the run can't read fails it, or stops it when a shutdown took the mirror away. */
 	private async planIn(
 		workspace: MirrorWorkspace,
 		signal: AbortSignal

@@ -40,7 +40,6 @@ const syncbackEntryShape = S.named(
 	})
 );
 
-/** The document of `syncback --json`. */
 export const syncbackDocumentShape = S.object({
 	changed: S.boolean,
 	configs: S.array(writeEntryShape),
@@ -49,7 +48,6 @@ export const syncbackDocumentShape = S.object({
 
 interface SyncbackEntry {
 	readonly outcome: "written" | "wouldWrite" | "failed" | "notRun";
-	/** The config file's path relative to the working folder. */
 	readonly config: string | null;
 	readonly input: string;
 	readonly changes: readonly SyncbackChange[];
@@ -58,7 +56,6 @@ interface SyncbackEntry {
 	readonly error?: unknown;
 }
 
-/** A warning for each change to compiled code that syncback left out of the plan. */
 export function compiledDiagnostics(plan: SyncbackPlan): Diagnostic[] {
 	const { compiledPath, projectDir, file } = plan.project;
 	if (compiledPath === undefined) return [];

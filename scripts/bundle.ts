@@ -5,7 +5,6 @@ const { version } = JSON.parse(fs.readFileSync("package.json", "utf8")) as {
 	version: string;
 };
 
-// The bundle runs from `dist/`, where package.json is a folder up. A compiled binary has none, so it carries the version.
 buildSync({
 	entryPoints: ["bin/rogen.ts"],
 	bundle: true,

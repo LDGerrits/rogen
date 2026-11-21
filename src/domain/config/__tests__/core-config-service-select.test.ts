@@ -23,7 +23,6 @@ const ROUTED = { server: "ServerScriptService" };
 
 const onDisk = (file: string): string => path.resolve(file);
 
-/** A file system other than the service's, holding only `file`. */
 async function draftWith(
 	file: string,
 	text: string

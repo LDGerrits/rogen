@@ -3,34 +3,24 @@ import { RUN_SCRIPT_SUFFIXES } from "../rojo/rojo.js";
 import { InstanceName, SuffixSpan } from "./instance-name.js";
 import { Misspelling, MisspellingFinder } from "./misspelling-finder.js";
 
-/** What a folder's name declares once its parentheses are off: the route it claims, and the name it keeps. */
 export interface FolderNameReading {
 	readonly invisible: boolean;
-	/** Written `^Name`: it lands at its route's target, and the folders above it are dropped. */
 	readonly hoisted: boolean;
-	/** Its whole name, or an `@key` at its end. */
 	readonly route?: string;
-	/** Whether its route is spelled `@key`; a bare `server` may only be a name. */
 	readonly at: boolean;
-	/** Route keys its name spells before the one it routes by, which that one outranks. */
 	readonly innerRoutes: readonly string[];
-	/** Its name with its route off; none for a folder named after a key alone. */
 	readonly keptName?: string;
-	/** The name it keeps when an outer route outranks its own: its whole name, with its parentheses and `^` off. */
 	readonly outrankedName: string;
-	/** What its name misspells, measured on the folder's whole name. */
 	readonly misspellings: readonly Misspelling[];
 }
 
 export interface SuffixMatch {
 	readonly baseName: string;
 	readonly matchedKeys: ReadonlySet<string>;
-	/** In match order: the trailing key first. */
 	readonly spans: readonly SuffixSpan[];
 	readonly misspellings: readonly Misspelling[];
 }
 
-/** Finds the config's route keys in folder names, marker files and file suffixes. */
 export class NameReader {
 	private readonly finder: MisspellingFinder;
 
@@ -58,7 +48,6 @@ export class NameReader {
 		};
 	}
 
-	/** A folder declares a route as its whole name (`server`, `@server`) or as a suffix after a name it keeps (`Name@server`); parentheses come off first. */
 	folder(folderName: string): FolderNameReading {
 		const { name, invisible, hoisted, offset } =
 			NameReader.readFolderName(folderName);
@@ -164,7 +153,6 @@ export class NameReader {
 		return misspellings.filter((misspelt) => misspelt !== undefined);
 	}
 
-	/** The route a marker file spells with its `@`; a dot-file claims nothing. */
 	marker(fileName: string): MarkerReading {
 		const text = fileName.slice(1);
 		if (!fileName.startsWith("@"))
@@ -187,7 +175,6 @@ export class NameReader {
 		};
 	}
 
-	/** Only a trailing run counts: in `Foo.mock.Bar`, `Bar` stops it before `mock`. */
 	suffixes(stem: string, dotRoutes = true): SuffixMatch {
 		let remaining = stem;
 		const matched = new Set<string>();

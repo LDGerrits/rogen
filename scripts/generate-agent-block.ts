@@ -4,7 +4,6 @@ import path from "path";
 const RULES = path.resolve("skills/rogen/agent-rules.md");
 export const OUTPUT = path.resolve("src/domain/init/agent/agent-block.ts");
 
-/** The agent rules with their markers, as the module that embeds it holds it. */
 export function renderAgentBlockModule(rules: string): string {
 	const block = /<!-- rogen -->\n[\s\S]*?\n<!-- \/rogen -->/.exec(
 		rules.replace(/\r\n/g, "\n")

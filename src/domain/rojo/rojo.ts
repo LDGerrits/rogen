@@ -73,17 +73,14 @@ const COMPILER_EXTENSIONS: readonly string[] = [".ts", ".tsx"];
 
 const LUAU_EXTENSIONS: readonly string[] = [".luau", ".lua"];
 
-/** `rojo` reads the file as it lies; `compiled` reads a source as Rojo reads what a compiler writes for it. */
 type Reading = "rojo" | "compiled";
 
 export class RojoFile {
 	static readonly META_SUFFIX = ".meta.json";
-	/** Rojo reads this over `.meta.json` when a file has both. */
 	static readonly META_SUFFIX_JSONC = ".meta.jsonc";
 	static readonly INIT_NAME = "init";
 	static readonly INIT_META = `${RojoFile.INIT_NAME}${RojoFile.META_SUFFIX}`;
 	static readonly INIT_META_JSONC = `${RojoFile.INIT_NAME}${RojoFile.META_SUFFIX_JSONC}`;
-	/** The files Rojo reads as their folder's instance. */
 	static readonly INIT_FILES: ReadonlySet<string> = new Set([
 		...["", ".server", ".client", ".plugin"].flatMap((suffix) =>
 			LUAU_EXTENSIONS.map(
@@ -92,22 +89,17 @@ export class RojoFile {
 		),
 		`${RojoFile.INIT_NAME}.csv`,
 	]);
-	/** The project files Rojo reads as their folder, in the order it looks for them. */
 	static readonly DEFAULT_PROJECTS: readonly string[] = [
 		"default.project.json",
 		"default.project.jsonc",
 	];
 
 	readonly stem: string;
-	/** Whether a compiler turns this script of another language into Luau, so Rojo reads what it writes by that file's name and not by the project's rule. */
 	readonly isCompiled: boolean;
 	private readonly match: SyncRuleMatch | undefined;
-	/** The rule the project wrote that Rojo applies to this file. */
 	readonly ownRule: SyncRule | undefined;
-	/** The script class that the suffix of the project's rule spells and its `use` gives, as `.server.lang` does for a `serverScript`. */
 	private readonly spelledScriptSuffix: RojoScriptSuffix | undefined;
 
-	/** `dir` is the folder the file sits in, relative to the one the sync rules are written for. */
 	constructor(
 		readonly name: string,
 		private readonly rules: SyncRules,
@@ -138,7 +130,6 @@ export class RojoFile {
 				: stemOf(name);
 	}
 
-	/** The file at `source`, an absolute POSIX path, as Rojo reads it with `rules`, which are written for a folder. */
 	static at(source: string, rules: SyncRules, reading?: Reading): RojoFile {
 		return new RojoFile(
 			path.posix.basename(source),
@@ -148,12 +139,10 @@ export class RojoFile {
 		);
 	}
 
-	/** The rule of the project that takes this file as an `ignore`: Rojo reads nothing of it. */
 	get ignoredBy(): SyncRule | undefined {
 		return this.ownRule?.use === "ignore" ? this.ownRule : undefined;
 	}
 
-	/** The rule of the project that takes this file but whose suffix does not end its name, so Rojo names the instance by the whole file name. */
 	get suffixMissedBy(): SyncRule | undefined {
 		return this.match?.suffixMissed ? this.ownRule : undefined;
 	}
@@ -167,7 +156,6 @@ export class RojoFile {
 		return suffix ? stem.slice(0, -(suffix.length + 1)) : stem;
 	}
 
-	/** Rojo reads `.model.json` and `.project.json` as a model and a nested project. */
 	static dataNameOf(stem: string): string {
 		return stem.replace(/(?<=.)\.(model|project)$/, "");
 	}
@@ -190,17 +178,18 @@ export class RojoFile {
 		return RojoFile.metaStemOf(this.name) !== undefined;
 	}
 
-	/** The file as Rojo would read it under `name` in the same folder. */
 	renamed(name: string): RojoFile {
 		return new RojoFile(name, this.rules, this.dir, this.reading);
 	}
 
-	/** The file as Rojo reads it where it lies, not what a compiler writes for it. */
 	get uncompiled(): RojoFile {
 		return new RojoFile(this.name, this.rules, this.dir);
 	}
 
-	/** The name with its extension lowercased when only that keeps Rojo from reading the file: Rojo ignores `Foo.LUAU`. */
+	/**
+	 * The name with its extension lowercased when only that keeps Rojo from
+	 * reading the file: Rojo ignores `Foo.LUAU`.
+	 */
 	get lowercasedExtension(): string | undefined {
 		if (this.kind !== undefined || this.isMeta) return undefined;
 		if (this.name.toLowerCase().endsWith(".d.ts")) return undefined;
@@ -223,7 +212,6 @@ export class RojoFile {
 		return this.match && KIND_OF_USE[this.match.rule.use];
 	}
 
-	/** Whether only a compiler reads the file, a `.ts` or `.tsx` source, where no compiler writes the Luau Rojo would read: Rojo itself never reads one. */
 	get needsCompiler(): boolean {
 		return (
 			this.reading === "rojo" &&
@@ -233,7 +221,6 @@ export class RojoFile {
 		);
 	}
 
-	/** Whether Rojo reads the file at all: a sync rule that is not `ignore` takes it, or it is a meta file. A `.ts` or `.tsbuildinfo` file is read by no rule. */
 	get isSyncedByRojo(): boolean {
 		return (
 			this.isMeta ||
@@ -241,22 +228,18 @@ export class RojoFile {
 		);
 	}
 
-	/** Whether Rojo reads the file as a nested project. */
 	get isProject(): boolean {
 		return this.match?.rule.use === "project";
 	}
 
-	/** Whether Rojo reads the file as the folder it lies in. */
 	get isDefaultProject(): boolean {
 		return RojoFile.DEFAULT_PROJECTS.includes(this.name);
 	}
 
-	/** Whether Rojo reads the file as a LocalizationTable. */
 	get isCsv(): boolean {
 		return this.match?.rule.use === "csv";
 	}
 
-	/** Whether the file is Luau source: a script by a rule of the project, else by its extension. */
 	get isLuau(): boolean {
 		if (this.match?.own) return this.kind === "script";
 		return LUAU_EXTENSIONS.includes(path.extname(this.name));
@@ -266,13 +249,11 @@ export class RojoFile {
 		return this.isLuau && this.scriptSuffix === undefined;
 	}
 
-	/** Whether Rojo makes a ModuleScript that returns the file's data, as from `.json`, `.toml` or `.yaml`. */
 	get isDataModule(): boolean {
 		const use = this.match?.rule.use;
 		return use === "json" || use === "toml" || use === "yaml";
 	}
 
-	/** The script class Rojo reads from the file name, or from the rule of the project that takes it; none for a module and any other file. */
 	get scriptSuffix(): RojoScriptSuffix | undefined {
 		if (this.kind !== "script") return undefined;
 		return this.ownRule
@@ -280,7 +261,6 @@ export class RojoFile {
 			: RojoFile.scriptSuffixOf(this.stem);
 	}
 
-	/** Whether a rule of the project cut the name with no script suffix left on it to strip. */
 	get nameCutByRule(): boolean {
 		return this.ownRule !== undefined && !this.spelledScriptSuffix;
 	}
@@ -376,7 +356,6 @@ export class RojoMeta {
 		noun: "a meta file",
 	});
 
-	/** Warns of each field that looks like a slip for one Rojo reads; the error is why Rojo would refuse `file`. */
 	static parse(text: string, file: string): Result<ParsedMeta, Diagnostic[]> {
 		if (text.startsWith(BYTE_ORDER_MARK))
 			return err([
@@ -416,7 +395,6 @@ export class RojoMeta {
 		});
 	}
 
-	/** The values of a meta file's `properties` and `attributes` that Rojo refuses to read, one error each at the value. */
 	private static unreadableValues(
 		root: Extract<JsoncNode, { kind: "object" }>,
 		value: Readonly<Record<string, unknown>>,
@@ -442,7 +420,10 @@ export class RojoMeta {
 		});
 	}
 
-	/** Applies `over` after `base`, as Rojo applies a `.meta.jsonc` after a `.meta.json`; properties merge. */
+	/**
+	 * Applies `over` after `base`, as Rojo applies a `.meta.jsonc` after a
+	 * `.meta.json`; properties merge.
+	 */
 	static merged(base: RojoMetaFields, over: RojoMetaFields): RojoMetaFields {
 		return {
 			...base,
@@ -453,7 +434,6 @@ export class RojoMeta {
 		};
 	}
 
-	/** The fields `meta` adds to `node`; a field the project sets wins. */
 	static fieldsUnder(
 		meta: RojoMetaFields,
 		node: RojoNode
@@ -483,7 +463,6 @@ const RUN_CONTEXTS: Readonly<Record<string, ScriptRun>> = {
 	Plugin: "Plugin",
 };
 
-/** How Rojo makes a `.server` or `.client` script run; `undefined` for any other. */
 export function scriptRunOf(
 	suffix: RojoScriptSuffix | undefined,
 	legacyScripts: boolean,
@@ -499,7 +478,6 @@ export function scriptRunOf(
 	return suffix === "server" ? "Server" : "Client";
 }
 
-/** What Rojo reads as children of an init script's directory: every directory and every other instance file. */
 export function childrenBesideInit(
 	listing: ReadonlyMap<string, FileType>,
 	init: string,

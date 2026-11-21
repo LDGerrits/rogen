@@ -41,7 +41,6 @@ function convert(shape: OutputShape): Schema {
 	}
 }
 
-/** The JSON Schema that any one of `shapes` satisfies, closed so that a key nobody declared fails it; the named shapes they reach are its `$defs`. */
 export function outputJsonSchema(shapes: readonly OutputShape[]): Schema {
 	const named = new Map<string, OutputShape>();
 	shapes.forEach((shape) => namedShapes(shape, named));

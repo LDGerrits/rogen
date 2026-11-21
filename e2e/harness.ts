@@ -33,38 +33,28 @@ import "../src/commands/write/write-command.js";
 
 const execFileAsync = promisify(execFile);
 
-/** A step that starts with this runs the program after it, such as `["$", "darklua", "process", "src", "dist"]`, with its output left out. */
 const EXTERNAL_STEP = "$";
 
 export const CASES_DIR = path.resolve("e2e/cases");
 
 const RUN_TIMEOUT_MS = 20_000;
 
-/** A step that downloads packages takes longer. */
 export const NETWORK_TIMEOUT_MS = 180_000;
 
 export interface CaseSpec {
-	/** The arguments of each `rogen` run, or `["$", program, ...arguments]` for a program that runs between them. */
 	readonly steps?: readonly (readonly string[])[];
 	readonly cwd?: string;
 	readonly links?: Readonly<Record<string, string>>;
 	readonly rojo?: boolean;
 	readonly show?: readonly string[];
-	/** Commands, of those whose output is left out, that this case checks the output of. */
 	readonly output?: readonly FramedCommand[];
-	/** Variables the commands run with, on top of an environment that is not GitHub Actions'. */
 	readonly env?: Readonly<Record<string, string>>;
-	/** The text each step reads on its standard input. */
 	readonly stdin?: string;
-	/** A place file the steps read, made before they run: the project as built from its default config, or its only config, synced into a place by Rojo, then changed by the case's `place.luau` as in Studio's command bar. */
 	readonly place?: string;
-	/** Programs that stand in for the toolchain on a machine that has none: each name is a script on the PATH that logs its call, then runs the body given (shell, so not on Windows). The case gets no Rokit file pinning Rojo, and a home folder of its own, so Rogen sees a machine with only these. The calls are in the transcript under `ran:`. */
 	readonly tools?: Readonly<Record<string, string>>;
-	/** The steps download packages (npm), so the case runs only when `ROGEN_E2E_NETWORK=1` is set, and its steps may take longer. */
 	readonly network?: boolean;
 }
 
-/** Every option a case may set; a key outside it is a typo, which would otherwise be ignored. */
 const SPEC_KEYS: Record<keyof CaseSpec, true> = {
 	steps: true,
 	cwd: true,
@@ -79,13 +69,11 @@ const SPEC_KEYS: Record<keyof CaseSpec, true> = {
 	network: true,
 };
 
-/** A cache folder for this run alone, so what Rogen remembers of the files it wrote is not shared by runs, and is gone when the run ends. */
 const RUN_CACHE = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-e2e-cache-"));
 process.on("exit", () =>
 	fs.rmSync(RUN_CACHE, { recursive: true, force: true })
 );
 
-/** What the CLI runs with: this process's environment without the variables that make it write GitHub Actions' workflow commands or act as under CI, which this repo's own CI sets, so a transcript holds the same lines wherever it is made. */
 function childEnv(extra: Readonly<Record<string, string>> = {}) {
 	const env: NodeJS.ProcessEnv = {
 		...process.env,
@@ -101,12 +89,10 @@ function childEnv(extra: Readonly<Record<string, string>> = {}) {
 	return env;
 }
 
-/** The output of these is the same frame in nearly every case, so it is left out of a transcript unless the case lists the command under `output`. The unit tests of the command own its wording. */
 const FRAMED_COMMANDS = ["build", "init", "write"] as const;
 
 type FramedCommand = (typeof FRAMED_COMMANDS)[number];
 
-/** Whether a step's stdout belongs in the transcript. A document (`--json`) and help are what a case runs them for, so they always do. */
 export function showsStdout(args: readonly string[], spec: CaseSpec): boolean {
 	const [command = ""] = args;
 	if (!(FRAMED_COMMANDS as readonly string[]).includes(command)) return true;
@@ -146,10 +132,8 @@ export function discoverCases(root = CASES_DIR): string[] {
 	return found.sort();
 }
 
-/** A compiled `rogen` to test in place of the bundle, which runs on whatever Node the tests run on. */
 const BINARY = process.env.ROGEN_E2E_BINARY;
 
-/** The command and arguments that run `cli` with `args`: the binary itself, or the bundle on this Node. */
 export function invocation(
 	cli: string,
 	args: readonly string[]
@@ -177,7 +161,6 @@ export function bundleCli(): { readonly cli: string; dispose(): void } {
 	};
 }
 
-/** Whether the case downloads packages, which it can do only where there is a network. */
 export function needsNetwork(name: string): boolean {
 	return readSpec(path.join(CASES_DIR, name)).network === true;
 }
@@ -294,14 +277,12 @@ function fileStep(
 	return { exitCode: same ? 0 : 1, stdout: "", stderr: "" };
 }
 
-/** Whether the case's programs are shell scripts, which Windows can't run. */
 export function needsShell(name: string): boolean {
 	return WINDOWS && readSpec(path.join(CASES_DIR, name)).tools !== undefined;
 }
 
 const TOOLCHAIN = ["rokit", "aftman", "foreman", "rojo", "darklua"];
 
-/** Fake programs for a case: a folder of scripts in front of the PATH, which has lost every folder that holds a real toolchain program, and a home folder with no Rokit in it. */
 function fakeTools(
 	parent: string,
 	tools: Readonly<Record<string, string>>
@@ -344,7 +325,6 @@ function fakeTools(
 	};
 }
 
-/** The case's project built into a place in a folder of its own, then changed by its `place.luau` and saved at `file`. */
 async function makePlace(
 	cli: string,
 	caseDir: string,
@@ -398,7 +378,6 @@ async function makePlace(
 	}
 }
 
-/** The config a place is built from: the default one, else the only config of a project of places. */
 function placeStem(project: string): string {
 	const stems = fs
 		.readdirSync(project)
@@ -467,7 +446,6 @@ export async function run(
 const ajv = new Ajv.default({ strict: true });
 const checks = new Map<string, ValidateFunction>();
 
-/** What a command prints, or a failure instead; a command that declares nothing is held to the failure alone. */
 function checkFor(command: string, lines: boolean): ValidateFunction {
 	const key = `${command} ${lines}`;
 	const known = checks.get(key);
@@ -485,7 +463,6 @@ function checkFor(command: string, lines: boolean): ValidateFunction {
 	return check;
 }
 
-/** What is wrong with the stdout of a `--json` step against the output its command declares, if anything. */
 export function outputProblem(
 	args: readonly string[],
 	stdout: string
@@ -518,7 +495,6 @@ export function outputProblem(
 	return undefined;
 }
 
-/** The one JSON document of a `rogen --json` step, indented so a transcript stays readable. */
 function readable(body: string, command: readonly string[]): string {
 	if (command[0] !== "rogen" || !command.includes("--json")) return body;
 	try {
@@ -652,7 +628,6 @@ function normalize(text: string, dir: string): string {
 const WINDOWS_NOT_FOUND =
 	"The system cannot find the path specified. (os error 3)";
 
-/** A JSON line with the backslashes in its strings made slashes, or the line itself so turned when it is not JSON. */
 function posixLine(line: string): string {
 	try {
 		return JSON.stringify(
@@ -665,7 +640,6 @@ function posixLine(line: string): string {
 	}
 }
 
-/** What a `rogen` run printed, with the paths Windows writes with backslashes written as on every other platform, so one transcript holds for both. */
 function withPosixPaths(result: RunResult): RunResult {
 	if (!WINDOWS) return result;
 	const posix = (text: string) =>
@@ -735,16 +709,17 @@ export async function eventually(
 
 export const WINDOWS = isWindows;
 
-/** How a stopped program ends: 130 after Ctrl+C, 1 on Windows, where only a forced end can reach a program with no console of its own. */
+/**
+ * How a stopped program ends: 130 after Ctrl+C, 1 on Windows, where only a
+ * forced end can reach a program with no console of its own.
+ */
 export const INTERRUPTED_EXIT = WINDOWS ? 1 : 130;
 
-/** Ends a program a test started itself, with what that program started in turn. */
 export function endProgram(child: ChildProcess): void {
 	if (WINDOWS && child.pid !== undefined) endTree(child.pid);
 	else child.kill("SIGINT");
 }
 
-/** Ends `pid` and every program it started, at once. */
 export function endTree(pid: number): void {
 	try {
 		if (WINDOWS)
@@ -757,10 +732,12 @@ export function endTree(pid: number): void {
 	}
 }
 
-/** Shorter than Jest's hook timeout, so an `afterEach` that stops a process ends it. */
+/**
+ * Shorter than Jest's hook timeout, so an `afterEach` that stops a process ends
+ * it.
+ */
 const STOP_TIMEOUT_MS = 3_000;
 
-/** A program that keeps running, whose output the test reads while it runs. */
 export class RunningProcess {
 	private readonly child: ChildProcess;
 	readonly exited: Promise<number | null>;
@@ -794,7 +771,8 @@ export class RunningProcess {
 				this._code = code;
 				this._signal = signal;
 			});
-			// Node may still deliver output after `exit`; `close` comes once the streams are drained.
+			// Node may still deliver output after `exit`; `close` comes once
+			// the streams are drained.
 			this.child.once("close", () => resolve(this._code));
 			this.child.once("error", (error) => {
 				this._startError = error;
@@ -803,7 +781,6 @@ export class RunningProcess {
 		});
 	}
 
-	/** Everything it printed, on both streams. */
 	get output(): string {
 		const output = stripVTControlCharacters(this._output);
 		return WINDOWS ? toPosix(output) : output;
@@ -813,12 +790,10 @@ export class RunningProcess {
 		return this._stdout;
 	}
 
-	/** Why it could not start, such as a missing program. */
 	get startError(): Error | undefined {
 		return this._startError;
 	}
 
-	/** Retries `check` until it passes and gives what it returned, or fails as soon as the process has ended. */
 	async waitFor<T>(
 		check: () => T | Promise<T>,
 		timeoutMs = 10_000
@@ -846,7 +821,6 @@ export class RunningProcess {
 		return `The process ended with ${this._code ?? this._signal} before it was ready:\n${this.output}`;
 	}
 
-	/** Ends it as a closed terminal or a crash does, with no chance to clean up. */
 	async kill(signal: "SIGHUP" | "SIGKILL"): Promise<number | null> {
 		this.child.kill(signal);
 		return this.exited;
@@ -868,7 +842,6 @@ export class RunningProcess {
 		}
 	}
 
-	/** Signals what it started too, as Ctrl+C in a terminal does, so a Rojo it ran can't keep the port. */
 	private signalGroup(signal: NodeJS.Signals): void {
 		if (this.child.pid === undefined) {
 			this.child.kill(signal);
@@ -886,7 +859,6 @@ export class RunningProcess {
 	}
 }
 
-/** A `rogen` command that keeps running, `build --watch` unless `command` says otherwise. */
 export class RunningRogen extends RunningProcess {
 	constructor(
 		cli: string,

@@ -6,20 +6,17 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 const TIMEOUT_MS = 30_000;
 
-/** The git repository a new project starts, as `rojo init` starts one. */
 export class GitRepository {
 	constructor(
 		@ProcessService private readonly processService: ProcessService,
 		@FileSystemService private readonly fileReader: FileSystemService
 	) {}
 
-	/** Whether `git init` would start a repository in `directory`: git is installed and `directory` is in no work tree. */
 	async needsInit(directory: string): Promise<boolean> {
 		if (!(await this.processService.which("git"))) return false;
 		return (await this.workTreeOf(directory)) === undefined;
 	}
 
-	/** Whether git tracks `file` in `directory`'s work tree. */
 	async tracks(directory: string, file: string): Promise<boolean> {
 		const git = await this.processService.which("git");
 		if (!git) return false;
@@ -31,7 +28,6 @@ export class GitRepository {
 		return listed.isOk() && listed.value.code === 0;
 	}
 
-	/** The nearest folder from `directory` up that holds a `.git`, which marks a work tree; none outside one. */
 	async workTreeOf(directory: string): Promise<string | undefined> {
 		for (const folder of selfAndAncestors(directory))
 			if (await this.fileReader.exists(path.join(folder, ".git")))

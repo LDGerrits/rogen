@@ -12,13 +12,13 @@ interface ChangeBatcherOptions {
 	readonly debounceMs: number;
 }
 
-// Longer than chokidar's 100 ms atomic-write delay, so an editor's temporary file add and delete cancel out.
+// Longer than chokidar's 100 ms atomic-write delay, so an editor's temporary
+// file add and delete cancel out.
 const DEFAULT_OPTIONS: ChangeBatcherOptions = {
 	burstThreshold: 200,
 	debounceMs: 200,
 };
 
-/** Emits file changes together once they stop arriving; past a threshold it reports an overflow instead. */
 export class ChangeBatcher extends AbstractDisposable {
 	private buffer: FileChange[] = [];
 	private droppedInBurst: number | undefined;
@@ -54,7 +54,8 @@ export class ChangeBatcher extends AbstractDisposable {
 			this.flush.schedule();
 			return;
 		}
-		// Not `push(...changes)`: a burst can be larger than the call stack allows.
+		// Not `push(...changes)`: a burst can be larger than the call stack
+		// allows.
 		for (const change of changes) this.buffer.push(change);
 
 		if (this.buffer.length > this.options.burstThreshold) {

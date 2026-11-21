@@ -4,12 +4,9 @@ import path from "path";
 import { pathToFileURL } from "url";
 import { withRelease } from "./changelog.js";
 
-/** A file outside package.json that names the release. */
 export interface VersionedFile {
 	readonly path: string;
-	/** Matches every version in the file, with the text before and after it. */
 	readonly pattern: RegExp;
-	/** The install docs keep pointing at the latest stable release while a pre-release is out, and follow pre-releases until there is one. */
 	readonly stableOnly: boolean;
 }
 
@@ -31,10 +28,6 @@ export const VERSIONED_FILES: readonly VersionedFile[] = [
 	},
 ];
 
-/**
- * Rewrites the files under `root` to name `version`, and returns the ones that changed.
- * @throws Error when a file no longer names a version, even one this release leaves alone, so a moved line stops the release instead of going stale.
- */
 export function syncVersion(root: string, version: string): string[] {
 	const prerelease = version.includes("-");
 	const changed: string[] = [];
@@ -56,7 +49,8 @@ export function syncVersion(root: string, version: string): string[] {
 	return changed;
 }
 
-// `npm version` runs this between the bump and its commit, which takes what is staged.
+// `npm version` runs this between the bump and its commit, which takes what is
+// staged.
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
 	const { version } = JSON.parse(fs.readFileSync("package.json", "utf8")) as {
 		version: string;

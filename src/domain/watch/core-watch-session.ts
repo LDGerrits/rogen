@@ -21,7 +21,6 @@ import {
 	ChangeBurst,
 } from "./watch-service.js";
 
-/** A running watch; rewrites of one config never overlap. */
 export class CoreWatchSession
 	extends AbstractDisposable
 	implements WatchSession
@@ -33,7 +32,6 @@ export class CoreWatchSession
 	readonly onDidError: Event<Error> = this._onDidError.event;
 
 	private readonly batcher: ChangeBatcher;
-	/** Batches compiled output apart from the sources: it only starts a check, so any amount of it is one round. */
 	private readonly compiledBatcher: ChangeBatcher;
 	private readonly intake = new Sequencer();
 	private readonly updates = new Sequencer();
@@ -98,7 +96,6 @@ export class CoreWatchSession
 			)
 		);
 
-		// On the intake queue, so changes saved while listing run after the initial round.
 		const listed = this.intake.queue(() =>
 			tryWithAsync(async () => {
 				await this.watchPlan();
@@ -315,7 +312,8 @@ export class CoreWatchSession
 		];
 	}
 
-	// JSON.stringify drops a RegExp's source, so patterns are stringified explicitly.
+	// JSON.stringify drops a RegExp's source, so patterns are stringified
+	// explicitly.
 	private watchKey(): string {
 		return JSON.stringify([
 			this.watchPaths(),
@@ -354,7 +352,6 @@ export class CoreWatchSession
 			if (!current.has(projectFile)) this.watched.delete(projectFile);
 	}
 
-	/** A reload that changed only a config's text gives a new object for the same version. */
 	private rebaseUnchanged(reloaded: ReadonlySet<string>): void {
 		for (const config of this.selection.configs)
 			if (!reloaded.has(config.file))

@@ -11,27 +11,20 @@ import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js"
 import { ProcessService } from "../../platform/process/process-service.js";
 import { SYNCBACK_FILES } from "../config/config.js";
 
-/** The copy of the project's files Rojo runs on, relative to the project folder. */
 export const MIRROR = `${SYNCBACK_FILES.staging}/mirror`;
 
-/** The file in the staging folder that holds the id of the process that owns it. */
 const LOCK = "lock";
 
-/** How long a lock that names no owner yet counts as being made, rather than left by a run killed while making it. */
 const NEW_LOCK_MS = 5000;
 
-/** The staging files of a project folder, which one syncback at a time owns: it locks them, cleans them, works in them, and releases them. */
 export class SyncbackStaging {
-	/** The temporary project file Rojo runs on. */
 	readonly file: string;
 	readonly mirror: string;
-	/** The folder the mirror and the lock are in. */
 	private readonly folder: string;
 	private readonly lock: string;
 
 	constructor(
 		private readonly pid: number,
-		/** The project folder, absolute, in the system's own form. */
 		readonly dir: string,
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
@@ -44,7 +37,6 @@ export class SyncbackStaging {
 		this.lock = path.join(this.folder, LOCK);
 	}
 
-	/** Runs `work` while this process owns the staging files, which it finds clean and leaves gone; `syncback.busy` when another syncback owns them, with nothing touched. A shutdown aborts `work`'s signal, which `work` turns into its own result, and removes the copy of the user's files at once; the lock stays until `work` ends. */
 	async use<T>(
 		work: (signal: AbortSignal) => Promise<Result<T, Error>>
 	): Promise<Result<T, Error>> {
@@ -67,7 +59,6 @@ export class SyncbackStaging {
 		}
 	}
 
-	/** Removes the temporary project file and the mirror an earlier run left; an error, with nothing copied, when one can't be removed. */
 	private async clean(): Promise<Result<void, Error>> {
 		const removed = await this.remove(this.file);
 		if (removed.isErr()) return removed;
@@ -94,7 +85,6 @@ export class SyncbackStaging {
 		if (await this.create()) return ok(undefined);
 		const found = await this.holder(this.lock);
 		if (found.held) return err(this.busy(found.owner));
-		// Moved aside rather than deleted, so of two runs taking over a killed owner's lock only one gets it, and a lock made meanwhile goes back.
 		const aside = `${this.lock}.${this.pid}`;
 		const moved = await tryWithAsync(() =>
 			this.fileSystemService.rename(this.lock, aside)
@@ -119,18 +109,17 @@ export class SyncbackStaging {
 		try {
 			return await created();
 		} catch (error) {
-			// The folder was let go of between making it and making the lock in it.
 			if (!isMissingPath(error as Error)) throw error;
 			return created();
 		}
 	}
 
-	/** Whether the lock at `file` is held: by a running owner other than this process, or, while it names none yet, for a moment after it was made. */
 	private async holder(
 		file: string
 	): Promise<{ held: boolean; owner?: number }> {
 		const owner = await this.owner(file);
-		// A lock naming this process was left by an earlier one whose id it reuses.
+		// A lock naming this process was left by an earlier one whose id it
+		// reuses.
 		if (owner !== undefined)
 			return {
 				held:
@@ -145,7 +134,6 @@ export class SyncbackStaging {
 		};
 	}
 
-	/** The id the lock at `file` holds; none when it can't be read as one. */
 	private async owner(file: string): Promise<number | undefined> {
 		const read = await tryWithAsync(() =>
 			this.fileSystemService.readFile(file)

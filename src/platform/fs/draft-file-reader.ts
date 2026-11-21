@@ -7,16 +7,13 @@ import {
 	isMissingPath,
 } from "./file-system-service.js";
 
-/** What a run would change on disk, by absolute path: files with their content, folders it makes, renames and removals. */
 export interface FileDraft {
 	readonly files: ReadonlyMap<string, string>;
 	readonly directories: readonly string[];
 	readonly moves: readonly { readonly from: string; readonly to: string }[];
-	/** Files and folders it removes, unless it writes them again. */
 	readonly removed?: readonly string[];
 }
 
-/** Reads `base` as it would be once `draft` is written, and writes nothing: a file service for a scope that only checks. */
 export class DraftFileReader implements FileSystemService {
 	declare readonly _serviceBrand: undefined;
 
@@ -164,7 +161,6 @@ export class DraftFileReader implements FileSystemService {
 		}
 	}
 
-	/** Where the moves from the one at `next` on take `at`. */
 	private movedOn(at: string, next: number): string {
 		let moved = at;
 		for (const { from, to } of this.moves.slice(next))
@@ -173,7 +169,6 @@ export class DraftFileReader implements FileSystemService {
 		return moved;
 	}
 
-	/** Where `resolved` is read from in `base`, the moves undone from the last: a path a move takes it to reads from where it was, and a path a move or a removal takes away reads from nowhere. */
 	private sourceOf(resolved: string): string | undefined {
 		const within = (at: string, folder: string) =>
 			at === folder || isInside(at, folder);

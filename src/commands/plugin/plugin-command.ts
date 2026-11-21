@@ -47,7 +47,6 @@ const SUBCOMMANDS = [
 const isSubcommand = (word: string) =>
 	SUBCOMMANDS.some(({ name }) => name === word);
 
-/** The words that may follow `rogen plugin`. */
 const ACTIONS = [...SUBCOMMANDS.map(({ name }) => name), HELP_COMMAND];
 
 registerCommand(

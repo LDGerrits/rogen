@@ -11,7 +11,6 @@ import { ROGEN_KEYS } from "./config.js";
 const knownKeys: readonly string[] = [...rojoKeys, ...ROGEN_KEYS];
 
 export class ConfigKeys {
-	/** A key neither Rojo's nor Rogen's, which Rojo would reject in the written file. */
 	static check(
 		keys: readonly string[],
 		locationOf: (key: string) => DiagnosticLocation

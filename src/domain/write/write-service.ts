@@ -33,9 +33,7 @@ import {
 } from "./write.js";
 
 interface Located {
-	/** An absolute POSIX path. */
 	readonly source: string;
-	/** Whether the path is there now, rather than only placed as it would be once created. */
 	readonly exists: boolean;
 }
 
@@ -44,50 +42,37 @@ export interface PlacedLocation extends Located {
 	readonly instancePath: readonly string[];
 	readonly route: string;
 	readonly routeMatch: RouteMatch;
-	/** Absolute POSIX path of the folder or file whose name took the route, or of the folder a marker sits in; none for `*`. */
 	readonly routedBy?: string;
-	/** A `^` on its name or a folder's took it straight to the route's target. */
 	readonly hoisted?: boolean;
-	/** The folders that become the nodes above it, which a folder's `init.meta.json` applies to. */
 	readonly folderNodes?: readonly FolderNode[];
-	/** The path was named as a file, and not found in a folder or behind an instance. */
 	readonly named?: true;
-	/** For a file Rojo makes a script from: a module to require, or a script that runs on its own. */
 	readonly code?: "module" | "script";
 }
 
 interface UnplacedLocation extends Located {
-	/** `notInstance` exists but isn't an instance. */
 	readonly status: "outside" | "notInstance" | "missing" | "empty";
-	/** A `missing` path that is named as a folder, by ending in a separator. */
 	readonly folder?: true;
-	/** For an `empty` folder: the Folder instance routing makes of it. */
 	readonly instancePath?: readonly string[];
 }
 
-/** The path can't be placed because the write of its config stops on an error; `by` is the first of them. */
 interface BlockedLocation extends Located {
 	readonly status: "blocked";
 	readonly by: Diagnostic;
-	/** `by` is about the path itself, not about a file the write stops on instead. */
 	readonly own: boolean;
 }
 
-/** A file or folder inside a `$path` of the tree, which Rojo reads: `node` is the node that mounts it, `instancePath` the instance it becomes when Rojo reads one from it. */
 export interface MountedLocation extends Located {
 	readonly status: "mounted";
 	readonly node: readonly string[];
 	readonly instancePath?: readonly string[];
 }
 
-/** A file the tools write under the compiled path for a placed source file, `from`; Rojo reads it as the instance `instancePath`. */
 export interface CompiledLocation extends Located {
 	readonly status: "compiled";
 	readonly from: string;
 	readonly instancePath: readonly string[];
 }
 
-/** Where a path lands in the tree, or why it lands nowhere. */
 export type FileLocation =
 	| PlacedLocation
 	| MountedLocation
@@ -96,7 +81,6 @@ export type FileLocation =
 	| UnplacedLocation
 	| BlockedLocation;
 
-/** The expression that requires the module a placed location is, if its path holds at runtime. */
 export function requireExpressionOf(
 	location: FileLocation
 ): string | undefined {
@@ -105,7 +89,6 @@ export function requireExpressionOf(
 		: undefined;
 }
 
-/** For a file the user named: the call that requires it, or why none can. */
 export function requireNoteOf(location: FileLocation): string | undefined {
 	if (location.status !== "placed" || !location.named) return undefined;
 	if (location.code === undefined) return undefined;
@@ -117,50 +100,36 @@ export function requireNoteOf(location: FileLocation): string | undefined {
 	return reason && `no require by this path: ${reason}`;
 }
 
-/** The files placed at an instance or inside it; none when no file places it. */
 export interface InstanceLocation {
 	readonly reference: InstanceReference;
 	readonly files: readonly (PlacedLocation | MountedLocation)[];
-	/** When no file places it: the absolute POSIX folders a new file for it goes in. */
 	readonly folders: readonly string[];
-	/** When no file places it: the renames of files that would, from the diagnostics that propose them. */
 	readonly fixes: readonly InstanceFix[];
 }
 
-/** A rename, proposed by the diagnostic `code`, after which a file places the instance. Paths are absolute POSIX. */
 export interface InstanceFix {
 	readonly code: string;
 	readonly rename: RenameFix["rename"];
 }
 
-/** What a write of a config raises, with what says which paths each diagnostic reaches. */
 export interface RaisedDiagnostics {
-	/** Without the compiled path's: the errors that stopped the later phases, else the warnings. */
 	readonly diagnostics: readonly Diagnostic[];
-	/** The marker files of the source paths, absolute POSIX; one stands for its folder. */
 	readonly markers: readonly string[];
 }
 
 export interface ConfigLocations extends RaisedDiagnostics {
 	readonly config: ResolvedConfig;
-	/** One per path argument; every file when no argument was given. */
 	readonly files: readonly FileLocation[];
 	readonly instances: readonly InstanceLocation[];
 	readonly queried: readonly string[];
-	/** The project file a write would write now; none when the write stops, or when only paths were asked about, which may not exist yet. */
 	readonly projectFile?: RojoProjectFile;
 }
 
-/** Which paths asked about a config's diagnostics reach: what `check` reports, what `where` shows under each line, and which errors stop the write unseen. */
 export class LocatedDiagnosis {
-	/** What reaches a path asked about or a file of its answer, by path. */
 	readonly reaching: readonly Diagnostic[];
 	readonly stops: readonly Diagnostic[];
-	/** The errors that stop the write and reach nothing asked about. */
 	readonly stoppedBy: readonly Diagnostic[];
-	/** The errors that stop the write and that no location shows; none beside a blocked location, which names the error and sends to `check`. */
 	readonly unshown: readonly Diagnostic[];
-	/** The warnings that a source path holds files but places none of them, which say why a listing of it is empty. */
 	readonly placingNothing: readonly Diagnostic[];
 
 	constructor(private readonly located: ConfigLocations) {
@@ -207,7 +176,6 @@ export class LocatedDiagnosis {
 		);
 	}
 
-	/** What a write raises about `location`: for a path asked about, everything that reaches it; for a file found in a folder or behind an instance, only what is about it or its meta file. */
 	of(location: FileLocation): Diagnostic[] {
 		const asked = this.located.queried.includes(location.source);
 		return this.located.diagnostics.filter((diagnostic) =>
@@ -218,7 +186,6 @@ export class LocatedDiagnosis {
 		);
 	}
 
-	/** About `target` or inside it, about a folder it lies in or a marker file that routes that folder, or about its meta file. */
 	private reaches(diagnostic: Diagnostic, target: string): boolean {
 		const resource = toPosix(diagnostic.resource);
 		return (
@@ -232,7 +199,6 @@ export class LocatedDiagnosis {
 		);
 	}
 
-	/** About a meta file Rojo reads for the file at `source`. */
 	private isMetaOf(diagnostic: Diagnostic, source: string): boolean {
 		const posixSource = toPosix(source);
 		const dir = path.posix.dirname(posixSource);
@@ -242,22 +208,16 @@ export class LocatedDiagnosis {
 	}
 }
 
-/** One thing `where` was asked about: a path, resolved and written with slashes, or an instance. */
 export type Asked = { readonly path: string } | { readonly instance: string };
 
 export interface Locations {
-	/** No path or instance was asked about, so `files` holds every file. */
 	readonly everyFile: boolean;
-	/** Everything asked about, in the order it was given. */
 	readonly asked: readonly Asked[];
 	readonly configs: readonly ConfigLocations[];
-	/** Why the configs that didn't load did not answer. */
 	readonly errors: readonly Diagnostic[];
-	/** The paths asked about that no config's source paths hold. */
 	readonly skipped: readonly SkippedPath[];
 }
 
-/** What `locate` is asked about; `cwd` resolves relative paths and tells a path from an instance. */
 export interface LocateQuery {
 	readonly args: readonly string[];
 	readonly cwd: string;
@@ -265,13 +225,10 @@ export interface LocateQuery {
 
 export interface Diagnosis {
 	readonly diagnostics: readonly Diagnostic[];
-	/** Errors that stop a write but are not about the paths asked about, so the check went only as far as the write gets. */
 	readonly stoppedBy: readonly Diagnostic[];
-	/** The paths asked about that no write reads and that no diagnostic is about. */
 	readonly skipped: readonly SkippedPath[];
 }
 
-/** The files asked about that no selected config reads: outside the source paths of every one. */
 export function outsideEveryConfig(
 	configs: readonly ConfigLocations[]
 ): string[] {
@@ -290,7 +247,6 @@ export function outsideEveryConfig(
 		);
 }
 
-/** Each of `sources`, outside every config, once for each config that covers its folder. */
 export function skippedOutside(
 	sources: readonly string[],
 	configs: readonly ConfigLocations[]
@@ -304,14 +260,12 @@ export function skippedOutside(
 	);
 }
 
-/** The files asked about that every config leaves out, once for each config that covers its folder. */
 export function skippedByEveryConfig(
 	configs: readonly ConfigLocations[]
 ): SkippedPath[] {
 	return skippedOutside(outsideEveryConfig(configs), configs);
 }
 
-/** One `diagnose` for what several configs were each asked about. */
 export function mergeDiagnoses(parts: readonly Diagnosis[]): Diagnosis {
 	return {
 		diagnostics: uniqueDiagnostics(
@@ -324,7 +278,6 @@ export function mergeDiagnoses(parts: readonly Diagnosis[]): Diagnosis {
 	};
 }
 
-/** `skipped` without the repeats. */
 export function uniqueSkipped(skipped: readonly SkippedPath[]): SkippedPath[] {
 	const seen = new Set<string>();
 	return skipped.filter(({ path, reason, config }) => {
@@ -335,7 +288,6 @@ export function uniqueSkipped(skipped: readonly SkippedPath[]): SkippedPath[] {
 	});
 }
 
-/** One `locate` for what several configs were each asked about, the configs in the order given. */
 export function mergeLocations(
 	parts: readonly Locations[],
 	asked: readonly Asked[]
@@ -350,23 +302,19 @@ export function mergeLocations(
 	};
 }
 
-/** Prepares configs from the index and writes them; `write`, `rewrite` and `locate` place files the same way. */
 export interface WriteService {
 	readonly _serviceBrand: undefined;
 
-	/** Prepares each selected config that loads and writes them in order; a config that fails or doesn't load writes nothing, and a failed write leaves the rest unwritten. With `independent`, a config that fails, doesn't load or can't be written leaves the others to be written. A plain Rojo project gets no warning about Rogen's own model, which only `diagnose` raises. */
 	write(
 		selection: ConfigSelection,
 		options?: { readonly independent?: boolean }
 	): Promise<WriteRun>;
 
-	/** Prepares every selected config as `write` does, and writes nothing. With `reader`, such as a draft of files not written yet, reads through it. */
 	check(
 		selection: ConfigSelection,
 		reader?: FileSystemService
 	): Promise<WriteRun>;
 
-	/** Prepares and writes the project at `projectFile` in a watch's `set`; the compiled path is checked only when `previous` holds no answer for this version of the config. With `force`, the file is written even when its bytes are what a build makes. */
 	rewrite(
 		set: WriteSet,
 		projectFile: string,
@@ -375,7 +323,6 @@ export interface WriteService {
 		force?: boolean
 	): Promise<LoadedConfig>;
 
-	/** `previous` with what the compiled path holds now, for when only `changes` in the compiled path happened; writes nothing, and returns `previous` when it failed, is of another version of the config, or `changes` only add what a write makes there. */
 	recheck(
 		set: WriteSet,
 		projectFile: string,
@@ -384,19 +331,15 @@ export interface WriteService {
 		changes: readonly FileChange[]
 	): Promise<LoadedConfig>;
 
-	/** What a write raises about each of `targets.args`, and why any config didn't load; with no arguments, about every config, with Rogen's advice on a plain Rojo project. Writes nothing; fails as `locate` does. */
 	diagnose(
 		selection: ConfigSelection,
 		targets?: LocateQuery
 	): Promise<Result<Diagnosis, DiagnosticsError>>;
 
-	/** What each of `query.args` is, one entry each and in order: a path, resolved, or an instance. */
 	askedAbout(query: LocateQuery): Promise<readonly Asked[]>;
 
-	/** The project files on disk that differ from what a write would write, as the diagnostics `check` raises for them. Writes nothing. */
 	staleProjectFiles(selection: ConfigSelection): Promise<Diagnostic[]>;
 
-	/** Where each argument lands in every config of `selection`: a path gives its file, a directory what's in it, an instance the files placed at or inside it; no arguments give every file. With `reader`, such as a draft of files not written yet, reads through it. */
 	locate(
 		selection: ConfigSelection,
 		targets?: LocateQuery,

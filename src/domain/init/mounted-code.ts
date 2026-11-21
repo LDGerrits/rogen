@@ -12,17 +12,12 @@ import { StarterProject } from "./starter-project.js";
 import { StartingRoutes } from "./starting-routes.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
-/** Where a hand-written project file keeps its code, as the source paths that hold it. */
 export interface MountedCodeFolders {
-	/** Empty when no folder below the project's own holds every folder of code it mounts. */
 	readonly sourcePaths: readonly string[];
-	/** The folder a processor writes, whose mounts repeat the source path. */
 	readonly processed?: string;
-	/** The folders of code it mounts, sorted. */
 	readonly folders: readonly string[];
 }
 
-/** The folders of code that a hand-written project file mounts, found on disk. */
 export class MountedCode {
 	private readonly finder: CodeFinder;
 
@@ -34,7 +29,6 @@ export class MountedCode {
 		this.finder = instantiationService.createInstance(CodeFinder);
 	}
 
-	/** Never the project's own folder, which would scan the whole repository. */
 	async find(
 		project: StarterProject,
 		excluded: readonly string[],
@@ -85,7 +79,6 @@ export class MountedCode {
 		return { sourcePaths: sourcePath ? [sourcePath] : [], folders };
 	}
 
-	/** A source path named after a route key routes nothing, so its parent takes its place where that routes each folder to where the project file mounted it. */
 	private static unkeyed(
 		common: string,
 		project: StarterProject,

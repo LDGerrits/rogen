@@ -23,26 +23,20 @@ import { PortableName } from "./portable-name.js";
 
 export interface ScannedFile {
 	readonly kind: RojoFileKind;
-	/** The file as Rojo reads it with the project's sync rules, read once for the whole write. */
 	readonly file: RojoFile;
 	readonly sourcePath: string;
 	readonly relativePath: string;
-	/** The absolute POSIX source path. */
 	readonly source: string;
 }
 
-/** The file at an absolute POSIX path, read as Rojo reads it. */
 export type FileAt = (source: string) => RojoFile;
 
 export interface UnclaimedMeta {
-	/** Absolute, POSIX-style. */
 	readonly path: string;
 	readonly hint?: string;
 }
 
-/** A file or folder whose name does not hold on every system; a backslash makes Rogen leave it out. */
 export interface OddName {
-	/** The absolute POSIX path, with the name as it is on disk. */
 	readonly source: string;
 	readonly reason: string;
 	readonly leftOut: boolean;
@@ -50,26 +44,18 @@ export interface OddName {
 
 interface ScannedRootParts {
 	readonly sourcePath: string;
-	/** False for a source path the index doesn't hold, which contributes nothing. */
 	readonly exists: boolean;
 	readonly entries: readonly ScannedFile[];
 	readonly markers: readonly string[];
-	/** `.meta.json` and `.meta.jsonc` files, `init.meta.json` included; they are never entries. */
 	readonly metaFiles: readonly string[];
-	/** The meta files that `globIgnorePaths` matches, which Rojo still applies; one that no file claims is not reported. */
 	readonly ignoredMeta: readonly string[];
-	/** The folders below the source path that hold no file or folder Rojo makes an instance from, relative to it; Rojo builds each as an empty Folder. */
 	readonly emptyDirs: readonly string[];
-	/** The paths the scan left out, by absolute POSIX path. */
 	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
 	readonly oddNames: readonly OddName[];
-	/** The folders whose listing was refused, by absolute POSIX path; Rojo fails to build any of them. */
 	readonly unreadable: readonly string[];
-	/** The files no sync rule takes, other than meta files, markers and what the scan left out, by absolute POSIX path. */
 	readonly unsynced: readonly string[];
 }
 
-/** What a scan found under one source path, and the questions it answers about it. */
 export class ScannedRoot implements ScannedRootParts {
 	readonly sourcePath: string;
 	readonly exists: boolean;
@@ -132,7 +118,6 @@ export class ScannedRoot implements ScannedRootParts {
 		return this.countLeftOut("ignored");
 	}
 
-	/** The tree nodes that mount a path under this source path; a node counts once. */
 	get mountedCount(): number {
 		const nodes = new Set<string>();
 		for (const [mounted, why] of this.leftOut)
@@ -151,12 +136,10 @@ export class ScannedRoot implements ScannedRootParts {
 		return this.countLeftOut("skipped");
 	}
 
-	/** What the index holds in `dir`, or nothing for a dir it doesn't hold. */
 	listing(dir: string): ReadonlyMap<string, FileType> {
 		return this.index.getEntries(dir) ?? new Map<string, FileType>();
 	}
 
-	/** Marker file names per directory, both relative to the source path; the root itself is "". */
 	markersByDir(): ReadonlyMap<string, string[]> {
 		return groupBy(
 			this.markers,
@@ -165,7 +148,6 @@ export class ScannedRoot implements ScannedRootParts {
 		);
 	}
 
-	/** Meta no sibling on disk claims under Rojo's naming rule; ignored siblings still claim theirs. */
 	unclaimedMeta(): UnclaimedMeta[] {
 		return this.metaFiles.flatMap((metaFile) => {
 			const fileName = path.posix.basename(metaFile);
@@ -239,7 +221,6 @@ interface Walk {
 	readonly unsynced: string[];
 }
 
-/** Walks source paths in the index, leaving out what `globIgnorePaths` matches and what the tree mounts. */
 export class RootScanner {
 	private readonly fileAt: FileAt;
 
@@ -365,7 +346,6 @@ export class RootScanner {
 		return kept;
 	}
 
-	/** Takes a folder that holds a default project file as that project alone, as Rojo reads it; false when it holds none. */
 	private visitProject(
 		walk: Walk,
 		dir: string,

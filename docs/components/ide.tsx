@@ -1,8 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
 
-// VS Code's explorer and Roblox Studio's Explorer as they look, in the site's light or dark theme.
-// Class icons are Studio's own; file icons are VS Code's Seti theme and luau-lsp's Luau icon.
-
 const SERVICES = new Set([
 	"Workspace",
 	"Players",
@@ -22,7 +19,6 @@ const SERVICES = new Set([
 
 export const isService = (name: string) => SERVICES.has(name);
 
-/** One row of an outline indented two spaces per level, measured from its least indented line. */
 export interface OutlineRow {
 	depth: number;
 	name: string;
@@ -38,11 +34,9 @@ export function outlineOf(text: string): OutlineRow[] {
 	}));
 }
 
-/** Whether the row after i is inside it. */
 export const hasChildren = (rows: { depth: number }[], i: number) =>
 	(rows[i + 1]?.depth ?? -1) > rows[i].depth;
 
-/** The class Rojo makes from a file, by its name, or undefined when it makes none. */
 export function classOfFile(file: string): string | undefined {
 	const name = file.replace(/@\w+(?=\.|$)/, "");
 	if (/\.(meta|project)\.json$/.test(name) || name.startsWith("@"))
@@ -55,7 +49,6 @@ export function classOfFile(file: string): string | undefined {
 	return "ModuleScript";
 }
 
-/** The instance name Rojo gives a file: its name without the extension, Rojo's suffixes or an @ suffix. */
 export const instanceName = (file: string) =>
 	file
 		.replace(/@\w+(?=\.|$)/, "")
@@ -71,7 +64,6 @@ export function TrafficLights() {
 	);
 }
 
-/** The CSS that shows a Studio class's icon, light or dark with the site. */
 export const classIconStyle = (name: string) =>
 	({
 		"--il": `url(/studio/light/${name}.png)`,
@@ -88,11 +80,9 @@ export function ClassIcon({ name }: { name: string }) {
 	);
 }
 
-// luau-lsp's Luau file icon, on a 60x60 grid.
 export const LUAU_ICON =
 	"M15.86 5.51 5.51 44.14l38.63 10.35 10.35-38.63zm20.84 9.89 12.67 3.4-3.4 12.67-12.67-3.4z";
 
-// Seti's glyph and colour class for each kind of file VS Code shows.
 const SETI: [RegExp, string, string][] = [
 	[/\.jsonc?$/, "\ue055", "json"],
 	[/\.toml$/, "\ue019", "config"],
@@ -103,7 +93,6 @@ const SETI: [RegExp, string, string][] = [
 	[/\.ya?ml$/, "\ue0a7", "yml"],
 ];
 
-/** The Seti glyph and its colour class for a file, or undefined for a Luau file, which has luau-lsp's icon. */
 export function setiOf(
 	name: string
 ): [glyph: string, kind: string] | undefined {
@@ -151,7 +140,6 @@ export function Triangle({ open }: { open?: boolean }) {
 	);
 }
 
-/** VS Code's indent guides in front of a row at this depth, one per open folder above it. */
 export function IndentGuides({ depth }: { depth: number }) {
 	return (
 		<>
@@ -166,7 +154,6 @@ export function IndentGuides({ depth }: { depth: number }) {
 	);
 }
 
-/** A window of VS Code: its title bar, then what it shows. */
 export function VsCodeWindow({
 	title,
 	children,
@@ -187,7 +174,6 @@ export function VsCodeWindow({
 	);
 }
 
-/** Roblox Studio's Explorer: its title bar and search field, then what it shows. */
 export function StudioWindow({
 	children,
 	className,

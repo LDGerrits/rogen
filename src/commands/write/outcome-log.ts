@@ -16,11 +16,9 @@ import { LogService } from "../../platform/log/log-service.js";
 
 const LISTED_PER_CODE = 10;
 
-/** What heads a run of warnings with one code, and what follows the files it lists. */
 interface DiagnosticGroup {
 	readonly headline: (count: number) => string;
 	readonly tail?: (count: number) => string;
-	/** What a file's line says of it, its message by default. */
 	readonly item?: (message: string) => string;
 }
 
@@ -73,7 +71,6 @@ const GROUPS: Readonly<Record<string, DiagnosticGroup>> = {
 	},
 };
 
-/** One diagnostic, filed under `file`, that heads and lists `run`, a run of diagnostics with the code of `group`. */
 function block(
 	run: readonly Diagnostic[],
 	group: DiagnosticGroup,
@@ -99,7 +96,6 @@ function block(
 	};
 }
 
-/** The diagnostics as printed: each run of consecutive ones with a code in `GROUPS` becomes one block. */
 function grouped(
 	diagnostics: readonly Diagnostic[],
 	file: string
@@ -186,11 +182,8 @@ function inFolder(cwd: string, home: string | undefined): string | undefined {
 		: `in ${relativeTo(cwd, home)}`;
 }
 
-/** What the Rojo run after the write did, for the closing line. */
 export interface RojoDone {
-	/** The closing line without its warnings, such as `Built game.rbxl`. */
 	readonly said: string;
-	/** Whether Rojo failed, so there is nothing to claim. */
 	readonly failed: boolean;
 }
 
@@ -200,7 +193,6 @@ export class OutcomeLog {
 		@LogService private readonly logService: LogService
 	) {}
 
-	/** The note that a config's `kind` are the ones the configs at `files` raised. */
 	sameAs(
 		kind: "errors" | "warnings",
 		files: readonly string[]
@@ -222,7 +214,6 @@ export class OutcomeLog {
 		);
 	}
 
-	/** With `writes` false, the run only checked: a config that prepared is reported as one that would be written. */
 	report(
 		run: WriteRun,
 		home?: string,
@@ -234,7 +225,6 @@ export class OutcomeLog {
 		this.close(run, command, writes, done);
 	}
 
-	/** What the write said before Rojo runs: for one config only a project file it wrote and what went wrong, the rest under `-v`; for several, a frame with a line for each. */
 	outcomes(run: WriteRun, home?: string, command = "build"): void {
 		const framed = run.outcomes.length > 1;
 		if (framed)
@@ -284,7 +274,6 @@ export class OutcomeLog {
 		}
 	}
 
-	/** The closing line: what Rojo did, else how many configs the run wrote; nothing after a failure, or for one config with nothing to claim. */
 	close(
 		run: WriteRun,
 		command = "build",
@@ -318,7 +307,6 @@ export class OutcomeLog {
 			quiet = false,
 		}: {
 			readonly notes?: readonly (string | undefined)[];
-			/** Whether a project file left as it was, or only checked, is said only under `-v`. */
 			readonly quiet?: boolean;
 		} = {}
 	): void {
@@ -364,7 +352,6 @@ export class OutcomeLog {
 		this.diagnostics(diagnostics, outcome.file);
 	}
 
-	/** Prints what the write of the config at `file` found, filing a grouped block under it. */
 	diagnostics(diagnostics: readonly Diagnostic[], file: string): void {
 		for (const diagnostic of diagnostics)
 			this.logService.annotate(diagnostic);

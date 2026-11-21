@@ -37,7 +37,6 @@ export class CoreCommandService implements CommandService {
 	}
 }
 
-/** What to say of `commandId`: the version flag, its closest command, or what the command that takes the word would do. */
 function unknownCommand(
 	commandId: string,
 	registry: CommandRegistry

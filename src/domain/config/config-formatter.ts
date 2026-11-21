@@ -14,7 +14,6 @@ import { ConfigValidator } from "./config-validator.js";
 import { ROGEN_KEYS } from "./config.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 
-/** Writes a `default.rogen.json` the way `rojo fmt-project` writes a project file, with Rogen's keys before the `tree`. */
 export class ConfigFormatter {
 	private readonly reader: ConfigFileReader;
 
@@ -29,7 +28,6 @@ export class ConfigFormatter {
 		);
 	}
 
-	/** Whether the file changed. A config that `rogen check` refuses fails. The comments stay, each with the entry it was written with; a trailing comma is dropped. */
 	async format(file: string): Promise<Result<boolean, Diagnostic[]>> {
 		const read = await tryWithAsync(() =>
 			this.fileSystemService.readFile(file)

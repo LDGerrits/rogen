@@ -7,10 +7,8 @@ export interface ToolchainService {
 
 	readonly syncTools: readonly SyncTool[];
 
-	/** What `directory` uses: facts only, never decisions. */
 	detect(directory: string): Promise<DetectedWorkspace>;
 
-	/** The manifests for `directory` and every folder above it, nearest first. */
 	readManifests(directory: string): Promise<readonly ToolManifest[]>;
 }
 

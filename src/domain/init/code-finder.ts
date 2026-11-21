@@ -14,11 +14,8 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 export interface DirectoryLayout {
 	readonly codeFolders: readonly string[];
-	/** The code folders with an init module at their top, which Rojo reads as one module. */
 	readonly moduleFolders: readonly string[];
-	/** The scripts at the top of the folder that Rojo reads, outside every code folder. */
 	readonly rootScripts: readonly string[];
-	/** The folders of Rojo's place template that hold code, such as `src/server`, when `src` holds code only in them. */
 	readonly templateFolders: readonly string[];
 }
 
@@ -27,13 +24,11 @@ const TEMPLATE_FOLDERS = Object.keys(ROJO_TEMPLATE_NODES);
 const isScript = (name: string): boolean =>
 	new RojoFile(name, SyncRules.DEFAULT).kind === "script";
 
-/** A script Rojo syncs itself, leaving out what only a compiler reads. */
 const isRojoScript = (name: string): boolean => {
 	const file = new RojoFile(name, SyncRules.DEFAULT);
 	return file.kind === "script" && file.isSyncedByRojo;
 };
 
-/** An init file Rojo reads as a module, which a model's folder is. */
 const isModuleInit = (name: string): boolean => {
 	const file = new RojoFile(name, SyncRules.DEFAULT);
 	return file.isInit && file.isLuauModule;
@@ -50,7 +45,6 @@ export class CodeFinder {
 		@FileSystemService private readonly fileReader: FileSystemService
 	) {}
 
-	/** Excludes the folders the toolchain uses for packages and compiled code. */
 	async layoutOf(
 		cwd: string,
 		workspace: DetectedWorkspace
@@ -91,7 +85,6 @@ export class CodeFinder {
 		);
 	}
 
-	/** The folders of Rojo's template in `src`, when they hold all of its code and it is code Rojo syncs itself, not a compiler's. */
 	private async templateFoldersIn(cwd: string): Promise<string[]> {
 		const source = path.join(cwd, DEFAULT_SOURCE_PATH);
 		if (await this.holdsCode(source, isCompiledScript)) return [];
@@ -128,7 +121,6 @@ export class CodeFinder {
 		}
 	}
 
-	/** `script`: what counts as code, any script by default. */
 	async holdsCode(dir: string, script = isScript): Promise<boolean> {
 		const entries = await this.entriesOf(dir);
 		const visible = entries.filter(([name]) => !isHiddenOrVendored(name));
@@ -143,7 +135,6 @@ export class CodeFinder {
 		return false;
 	}
 
-	/** How the code under `dirs` spells each of `keys` as a folder, a marker file or an `@` name, by the key in lower case: the spelling most of them use, a tie going to the key as given. */
 	async keySpellings(
 		cwd: string,
 		dirs: readonly string[],
@@ -182,7 +173,6 @@ export class CodeFinder {
 		);
 	}
 
-	/** Goes down only into folders above a held one, so each stray folder is named once, at its top. */
 	async codeOutside(
 		cwd: string,
 		held: readonly string[],

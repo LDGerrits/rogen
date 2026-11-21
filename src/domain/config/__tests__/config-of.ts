@@ -6,7 +6,6 @@ import { ConfigFormatter } from "../config-formatter.js";
 import { ConfigFolderCheck } from "../config-service.js";
 import { CoreConfigService } from "../core-config-service.js";
 
-/** The config classes built as Rogen builds them, over the fakes of a test. */
 export const configServiceOf = (
 	fs: FileSystemService,
 	environment: EnvironmentService

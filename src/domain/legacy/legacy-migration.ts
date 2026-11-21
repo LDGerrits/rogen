@@ -32,10 +32,8 @@ const SET_ASIDE = ".v1";
 
 const MIGRATION_PAGE = LegacyConfig.MIGRATION_URL;
 
-/** How many tagged files a warning names before it counts the rest. */
 const LISTED_SHOWN = 5;
 
-/** The words every migrated config routes by, as v1 always did. */
 const ALWAYS_ROUTED = ["server", "client", "shared"];
 
 const isObject = (value: unknown): value is Fields =>
@@ -43,17 +41,14 @@ const isObject = (value: unknown): value is Fields =>
 
 const posix = (file: string) => file.split(path.sep).join("/");
 
-/** One v1 config, read with what the folder told v1 about it. */
 interface FoundConfig {
 	readonly file: string;
 	readonly settings: LegacySettings;
 	readonly project: Fields;
-	/** The file the project came from, `inline` for the config's own, `fallback` for the one v1 made. */
 	readonly projectFrom: string;
 	readonly modes: readonly LegacyMode[];
 }
 
-/** Turns the Rogen 1 configs of a folder into v2 configs that place every file where v1 did. */
 export class LegacyMigration implements ProjectMigration {
 	async find(
 		folder: string,
@@ -71,7 +66,6 @@ export class LegacyMigration implements ProjectMigration {
 		return ok(await new Migration(folder, files, found).run());
 	}
 
-	/** The `.rogen.json` files of `folder`, `.rogen.json` first. */
 	private static async configsIn(
 		folder: string,
 		files: FileReader
@@ -134,7 +128,6 @@ export class LegacyMigration implements ProjectMigration {
 		});
 	}
 
-	/** The base project v1 merged its routes into: the config's, the file it names, or the one v1 made from the folder. */
 	private static async projectOf(
 		folder: string,
 		file: string,
@@ -161,7 +154,6 @@ export class LegacyMigration implements ProjectMigration {
 		return ok(await LegacyMigration.fallbackProject(folder, files));
 	}
 
-	/** The project v1 made for a config without one, from the packages and compiler the folder has. */
 	private static async fallbackProject(
 		folder: string,
 		files: FileReader
@@ -213,7 +205,6 @@ export class LegacyMigration implements ProjectMigration {
 	}
 }
 
-/** What to do about a v1 marker file that no rename carries over. */
 const MARKER_ADVICE: Readonly<Record<LegacyMarker, string>> = {
 	structure:
 		"v1 kept the names in this folder from routing. v2 has no such marker: a folder's route covers everything inside it, so put an @ marker of the route here, such as @Shared, and delete this file.",
@@ -221,7 +212,6 @@ const MARKER_ADVICE: Readonly<Record<LegacyMarker, string>> = {
 	sync: "v1 mounted this folder as it is. v2 has no such marker: mount the folder with a $path node in the tree, and delete this file.",
 };
 
-/** One run over the v1 configs of a folder. */
 class Migration {
 	private readonly warnings: Diagnostic[] = [];
 	private readonly configs: MigratedConfig[] = [];
@@ -300,7 +290,6 @@ class Migration {
 		return path.join(this.folder, file);
 	}
 
-	/** The project files v1 wrote that are there now. */
 	private async outputsThere(): Promise<string[]> {
 		const outputs = [
 			...new Set(
@@ -354,7 +343,6 @@ class Migration {
 		for (const mode of modes) this.addConfig(found, mode, routes);
 	}
 
-	/** The aliases a route can carry over: a valid route key, to a service, as v1 needed. */
 	private routableAliases(
 		file: string,
 		aliases: Readonly<Record<string, string>>

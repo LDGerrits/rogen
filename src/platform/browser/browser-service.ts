@@ -3,7 +3,6 @@ import { createDecorator } from "../instantiation/instantiation.js";
 export interface BrowserService {
 	readonly _serviceBrand: undefined;
 
-	/** Opens `url` in the user's browser; whether a program was started for it. */
 	open(url: string, cwd: string): Promise<boolean>;
 }
 

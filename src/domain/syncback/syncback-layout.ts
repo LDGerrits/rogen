@@ -5,29 +5,25 @@ import { FileLocation, PlacedLocation } from "../write/write-service.js";
 import { ResolvedConfig, compiledPathOf } from "../config/resolved-config.js";
 import { configStem } from "../config/config.js";
 
-/** How a placed file was routed, which a new file beside it repeats. */
 export type Style = "folder" | "suffix" | "marker" | "pattern" | "fallback";
 
-/** The styles a new instance can be written in when no file beside it shows one. */
 export type NewStyle = "folder" | "suffix";
 
-/** A file placed directly under a node, and how: what a new instance there is written like. */
 export interface Donor {
 	readonly dir: string;
 	readonly style: Style;
-	/** The route key it was placed by. */
 	readonly route: string;
-	/** Absolute POSIX path of the source path it lies in. */
 	readonly sourcePath: string;
 }
 
-/** The file that keeps an empty folder, which Rojo writes for an empty Folder. */
+/**
+ * The file that keeps an empty folder, which Rojo writes for an empty Folder.
+ */
 export const GITKEEP = ".gitkeep";
 
 const isPlaced = (location: FileLocation): location is PlacedLocation =>
 	location.status === "placed";
 
-/** What the placed files of one project say about where their instances live on disk. */
 export class SyncbackLayout {
 	readonly placed: readonly PlacedLocation[];
 	private readonly roots: readonly string[];
@@ -40,7 +36,6 @@ export class SyncbackLayout {
 	constructor(
 		readonly config: ResolvedConfig,
 		locations: readonly FileLocation[],
-		/** The other configs of the project, whose source paths are shared code where this config lists them too. */
 		others: readonly ResolvedConfig[] = []
 	) {
 		this.placed = locations.filter(isPlaced);
@@ -50,7 +45,6 @@ export class SyncbackLayout {
 		);
 	}
 
-	/** Where Rojo reads the source folder `dir` from: under the compiled path when a tool writes the files there. */
 	synced(dir: string): string {
 		return toPosix(compiledPathOf(this.config, dir));
 	}
@@ -59,7 +53,6 @@ export class SyncbackLayout {
 		return this.roots;
 	}
 
-	/** The source path a new feature with nothing beside it goes in: the only one, else the one named for the place, else the one inside the config's folder, else the one no other config of the project lists; none when that gives no one answer. */
 	get ownSourcePath(): string | undefined {
 		if (this.roots.length === 1) return this.roots[0];
 		const names = [configStem(this.config.file), this.config.projectName];
@@ -74,7 +67,6 @@ export class SyncbackLayout {
 		return own.length === 1 ? own[0] : undefined;
 	}
 
-	/** The one source path whose folder `folder`, relative to it, holds a placed file; none when no source path or several do. */
 	sourcePathHolding(folder: string): string | undefined {
 		const holding = this.roots.filter((root) => {
 			const dir = path.posix.join(root, folder);
@@ -83,7 +75,6 @@ export class SyncbackLayout {
 		return holding.length === 1 ? holding[0] : undefined;
 	}
 
-	/** The files placed directly under `node`, each as the donor of the layout a new sibling is written in. */
 	donorsAt(node: readonly string[]): Donor[] {
 		const donors: Donor[] = [];
 		for (const file of this.placed) {
@@ -105,7 +96,6 @@ export class SyncbackLayout {
 		return donors;
 	}
 
-	/** The style most files placed by `route` are written in, or most files of the project with no `route`; none when as many are in each, or none has one. */
 	styleOf(route?: string): NewStyle | undefined {
 		let folder = 0;
 		let suffix = 0;
@@ -121,7 +111,6 @@ export class SyncbackLayout {
 				: undefined;
 	}
 
-	/** Whether `file` is an init file, the instance its folder becomes. */
 	static makesItsFolder(file: PlacedLocation): boolean {
 		return (
 			file.folderNodes?.some(({ instancePath }) =>
@@ -130,7 +119,6 @@ export class SyncbackLayout {
 		);
 	}
 
-	/** Whether `node` is made by an init script that its folder's other files don't follow there, one its own `@` routes. A file Studio adds below it must name its route. */
 	initLeavesItsFolder(node: readonly string[]): boolean {
 		const maker = this.fileMaking(node);
 		return (
@@ -140,12 +128,10 @@ export class SyncbackLayout {
 		);
 	}
 
-	/** The placed file that is the instance `node` itself, such as an init file making a folder. */
 	fileMaking(node: readonly string[]): PlacedLocation | undefined {
 		return this.placed.find((file) => isSameJson(file.instancePath, node));
 	}
 
-	/** The feature folder whose routing makes `node`, with every instance it makes, as its `init.meta.json` applies to each; none when `node` is not such an instance, such as one a script makes, or when its files say more than one folder. */
 	featureMaking(
 		node: readonly string[]
 	): { folder: string; instances: (readonly string[])[] } | undefined {
@@ -174,7 +160,6 @@ export class SyncbackLayout {
 		return { folder, instances };
 	}
 
-	/** The routing folder name most files placed by `route` are in, else the key itself. */
 	folderNameFor(route: string): string {
 		const names = new Map<string, number>();
 		for (const file of this.placed) {
@@ -192,7 +177,6 @@ export class SyncbackLayout {
 		return this.roots.find((root) => containsPosix(root, source));
 	}
 
-	/** The feature folder a file is in and the instance that folder is on the file's side: the nearest folder that becomes a node above the routing folder, or the name, that took the file's route. */
 	private featureOf(
 		file: PlacedLocation
 	): { folder: string; instance: readonly string[] } | undefined {
@@ -211,7 +195,6 @@ export class SyncbackLayout {
 		return made && { folder: made.folder, instance: made.instancePath };
 	}
 
-	/** The routing folder that routed `file`: a folder named for the route alone, which makes no node itself. */
 	private static routingFolderOf(file: PlacedLocation): string | undefined {
 		const { routedBy } = file;
 		return file.routeMatch === "folder" &&
@@ -221,7 +204,6 @@ export class SyncbackLayout {
 			: undefined;
 	}
 
-	/** A `^` file that lands right at its route's target, so the folders it sits in say nothing about where its siblings go. */
 	private skipsItsFolders(file: PlacedLocation): boolean {
 		return file.hoisted === true && file.folderNodes === undefined;
 	}

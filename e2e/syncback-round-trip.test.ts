@@ -5,7 +5,6 @@ import { describeWithRojo } from "../src/domain/rojo/__tests__/rojo-cli.js";
 import { bundleCli, invocation, run } from "./harness.js";
 import { MatrixRun, PRELUDE, syncbackMatrix } from "./syncback-matrix.js";
 
-/** Each run spawns about ten programs, side by side with the others. */
 const RUN_TIMEOUT_MS = 120_000;
 
 const runs = syncbackMatrix();
@@ -24,7 +23,6 @@ describeWithRojo("syncback round trip", () => {
 		fs.rmSync(parent, { recursive: true, force: true });
 	});
 
-	/** Runs `command`, failing with what it printed when it fails. */
 	const step = async (
 		command: string,
 		args: readonly string[],
@@ -44,7 +42,6 @@ describeWithRojo("syncback round trip", () => {
 	const lune = (script: string, args: readonly string[], cwd: string) =>
 		step("lune", ["run", path.resolve("e2e", script), ...args], cwd);
 
-	/** The project of `entry` in a folder of its own, written and built into a place, then edited as Studio would. */
 	const editedPlace = async (entry: MatrixRun): Promise<string> => {
 		const dir = fs.mkdtempSync(path.join(parent, "run-"));
 		fs.writeFileSync(
@@ -93,7 +90,6 @@ describeWithRojo("syncback round trip", () => {
 		return dir;
 	};
 
-	/** Syncs `entry`'s edited place back, writes and rebuilds the project, and syncs back again as a dry run: what each syncback said, and the places as text. */
 	const roundTrip = async (entry: MatrixRun) => {
 		const dir = await editedPlace(entry);
 		const said = await rogen(["syncback", "-i", "edited.rbxl", "-y"], dir);

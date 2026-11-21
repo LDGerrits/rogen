@@ -10,14 +10,12 @@ export interface SourcemapFlags {
 	readonly absolute: boolean;
 }
 
-/** Rojo's sourcemap of the project the selection names. */
 export class SourcemapStep implements RojoStep {
 	readonly command = "sourcemap";
 
 	constructor(
 		private readonly flags: SourcemapFlags,
 		private readonly cwd: string,
-		/** Whether the sourcemap may go to the screen, as it does without `-o`. */
 		private readonly mayPrint: boolean,
 		@RojoCommandService private readonly rojo: RojoCommandService
 	) {}

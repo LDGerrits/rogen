@@ -14,23 +14,16 @@ import { ConfigModel, ConfigSection, sectionPath } from "./config-models.js";
 
 export interface ConfigFile {
 	readonly file: string;
-	/** What the file holds as read. */
 	readonly text: string;
 	readonly model: ConfigModel;
-	/** Where the value at `section` starts in the file, for pointing a diagnostic at it. */
 	positionOf(section: ConfigSection): DiagnosticPosition | undefined;
-	/** Where a top-level key starts. */
 	positionOfKey(key: string): DiagnosticPosition | undefined;
-	/** The keys of the object at `section` that a later copy of the same key overrides, since JSON keeps only the last. */
-	overriddenKeys(
-		section: ConfigSection
-	): readonly {
+	overriddenKeys(section: ConfigSection): readonly {
 		readonly name: string;
 		readonly position: DiagnosticPosition;
 	}[];
 }
 
-/** Why a config file didn't load: it couldn't be read at all, or what it holds is wrong. */
 export type ConfigFileFailure =
 	| {
 			readonly kind: "unreadable";
@@ -41,7 +34,6 @@ export type ConfigFileFailure =
 	| {
 			readonly kind: "invalid";
 			readonly diagnostics: readonly Diagnostic[];
-			/** What the file holds when it parses as JSON; `undefined` when it doesn't. */
 			readonly value: unknown;
 	  };
 
@@ -58,7 +50,6 @@ export class ConfigFileReader {
 		});
 	}
 
-	/** Problems the user can cause come back as diagnostics, never thrown. */
 	async read(file: string): Promise<Result<ConfigFile, ConfigFileFailure>> {
 		const text = await tryWithAsync(() => this.fileReader.readFile(file));
 		if (text.isErr()) {
@@ -79,7 +70,6 @@ export class ConfigFileReader {
 		return this.parse(text.value, file);
 	}
 
-	/** Reads `text` as the config `file` holds. */
 	parse(text: string, file: string): Result<ConfigFile, ConfigFileFailure> {
 		const document = this.documents.read(text, file, this.structure);
 		if (document.isErr()) {
@@ -155,7 +145,6 @@ function nodeAt(
 	return node;
 }
 
-/** `reason` is why it could not be read; none when the file does not exist. */
 const unreadable = (location: DiagnosticLocation, reason?: string) =>
 	errorDiagnostic(
 		"config.unreadable",

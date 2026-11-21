@@ -1,15 +1,10 @@
 import { relativeTo, toNative } from "../../base/path.js";
 import { OutputShape } from "../output/output-shape.js";
 
-/** A path given to `check` or `where` that no write reads. */
 export interface SkippedPath {
-	/** An absolute POSIX path. */
 	readonly path: string;
-	/** `outsideSourcePaths`: a config covers its folder but no source path holds it. `noConfig`: no config at or above it. */
 	readonly reason: "outsideSourcePaths" | "noConfig";
-	/** For `outsideSourcePaths`: the absolute POSIX path of the config that covers its folder (in a document, relative to the working folder). */
 	readonly config?: string;
-	/** For `noConfig`: the absolute POSIX paths of the configs beside it that list it in their source paths, through which it can be asked about. */
 	readonly readers?: readonly string[];
 }
 
@@ -44,7 +39,6 @@ function skippedPathToJson(
 	};
 }
 
-/** For a document: `skipped`, and only when something was. */
 export function skippedJson(
 	skipped: readonly SkippedPath[],
 	cwd: string

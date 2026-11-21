@@ -13,7 +13,6 @@ type WatchPlanConfig = Pick<
 
 export class WatchPlan {
 	readonly roots: readonly string[];
-	/** The compiled paths outside every root, watched only to check them again. */
 	readonly compiledRoots: readonly string[];
 	readonly ignored: readonly IgnoredPath[];
 	private readonly claims: readonly {
@@ -63,7 +62,6 @@ export class WatchPlan {
 		];
 	}
 
-	/** The projects whose roots hold `changePath`; none for compiled output, which only starts a check. */
 	projectsFor(changePath: string): readonly string[] {
 		const target = path.resolve(changePath);
 		if (this.isCompiled(target)) return [];
@@ -72,7 +70,6 @@ export class WatchPlan {
 			.map(({ projectFile }) => projectFile);
 	}
 
-	/** The projects whose compiled path holds `changePath`, unless a root inside that compiled path does. */
 	compiledFor(changePath: string): readonly string[] {
 		const target = path.resolve(changePath);
 		return this.claims

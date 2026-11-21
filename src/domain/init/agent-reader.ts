@@ -53,7 +53,6 @@ export class AgentReader {
 		);
 	}
 
-	/** `undefined` when absent; fails on an unreadable file rather than report it missing. */
 	private async readIfThere(
 		directory: InitDirectory,
 		fileName: string,

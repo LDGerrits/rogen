@@ -2,22 +2,18 @@ type GlobPattern = string;
 
 const MAGIC = /[(){}|[\]*?!+@]/g;
 
-/** `directory` as a glob prefix matching only itself, so `a (1)` or `{b}` isn't read as pattern. */
 export function escapedGlobPrefix(directory: string): string {
 	return directory.replace(MAGIC, "[$&]");
 }
 
-/** `glob` as written, without the escapes of `escapedGlobPrefix`. */
 export function unescapedGlob(glob: GlobPattern): string {
 	return glob.replace(/\[([(){}|[\]*?!+@])\]/g, "$1");
 }
 
-/** `filePath` as a glob that matches only itself under Rust's globset. */
 export function literalGlob(filePath: string): string {
 	return filePath.replace(/[[\]{}*?]/g, "[$&]");
 }
 
-/** `glob` without the `!` that makes it re-include, and whether it had one; `\\!` is a literal `!`. */
 export function negationOf(glob: GlobPattern): {
 	readonly negated: boolean;
 	readonly body: GlobPattern;
@@ -29,7 +25,6 @@ export function negationOf(glob: GlobPattern): {
 	};
 }
 
-/** `glob` with `change` applied to its pattern, keeping a leading `!`. */
 export function withGlobBody(
 	glob: GlobPattern,
 	change: (body: GlobPattern) => GlobPattern
@@ -38,7 +33,10 @@ export function withGlobBody(
 	return negated ? `!${change(body)}` : change(glob);
 }
 
-/** The glob of `globs` that ignores `path`, as Rojo reads `globIgnorePaths`: the last one that matches decides, and a `!` one re-includes. */
+/**
+ * The glob of `globs` that ignores `path`, as Rojo reads `globIgnorePaths`: the
+ * last one that matches decides, and a `!` one re-includes.
+ */
 export function ignoringGlob(
 	path: string,
 	globs: readonly GlobPattern[]
@@ -51,7 +49,10 @@ export function ignoringGlob(
 	return ignoring;
 }
 
-/** Whether `glob` ignores everything in the folder `path`: it ends in `/**` and matches the folder before that. Rojo ignores nothing of a mounted folder for a glob that only names it, so naming it is not enough. */
+/**
+ * Rojo ignores nothing of a mounted folder for a glob that only names it, so
+ * naming it is not enough.
+ */
 export function ignoresAllOf(glob: GlobPattern, path: string): boolean {
 	return (
 		!negationOf(glob).negated &&
@@ -60,7 +61,6 @@ export function ignoresAllOf(glob: GlobPattern, path: string): boolean {
 	);
 }
 
-/** The glob of `globs` that ignores everything in the folder `path`, when no `!` glob after it could re-include something. */
 export function ignoringAllOf(
 	path: string,
 	globs: readonly GlobPattern[]
@@ -74,7 +74,6 @@ export function ignoringAllOf(
 
 const regExpCache = new Map<string, RegExp>();
 
-/** Whether `path`, written with `/`, matches `glob` as Rust's globset, and so Rojo, reads it. */
 export function isGlobsetMatch(path: string, glob: GlobPattern): boolean {
 	let expression = regExpCache.get(glob);
 	if (!expression) {

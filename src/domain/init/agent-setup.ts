@@ -17,7 +17,6 @@ import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
 import { Setup } from "./setup.js";
 
-/** The agents that read a file of their own in place of `AGENTS.md`. */
 const OWN_FILES = [
 	{ fileName: "CLAUDE.md", settingsFile: CLAUDE_SETTINGS_FILE },
 	{ fileName: "GEMINI.md", settingsFile: GEMINI_SETTINGS_FILE },
@@ -33,11 +32,9 @@ export class AgentSetup implements Setup<AgentChoices> {
 		private readonly agentFile: AgentFile,
 		private readonly hooks: AgentHooks,
 		private readonly questions: InitQuestions,
-		/** The folder init sets up, which the agents are looked for in. */
 		private readonly folder: string
 	) {}
 
-	/** Why `--agent-hook` adds nothing in `folder`: no coding agent is in use there. A warning where init writes the rest anyway. */
 	static noCodingAgent(
 		folder: string,
 		severity: DiagnosticSeverity
@@ -54,7 +51,6 @@ export class AgentSetup implements Setup<AgentChoices> {
 		};
 	}
 
-	/** `--agent-hook` was given and no coding agent is in use here. */
 	get hookUnfound(): boolean {
 		return this.questions.choices.agentHook === true && !this.hooks.inUse;
 	}

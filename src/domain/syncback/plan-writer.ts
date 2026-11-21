@@ -20,7 +20,6 @@ import {
 	UnplacedInstance,
 } from "./syncback.js";
 
-/** Writes a plan into the project's files, and checks that the files it placed land where the place had them. */
 export class PlanWriter {
 	constructor(
 		@FileSystemService
@@ -28,7 +27,6 @@ export class PlanWriter {
 		@WriteService private readonly writeService: WriteService
 	) {}
 
-	/** Makes each change of `plan`, writes before removals; one that fails leaves its file listed as not written, and the rest are made, except that no file is removed once a write failed. */
 	async write(
 		request: SyncbackRequest,
 		plan: MirrorPlan
@@ -61,7 +59,8 @@ export class PlanWriter {
 				.filter(({ kind }) => kind === "write" || kind === "folder")
 				.map(({ file }) => file)
 		);
-		// A rename that only changes case writes the old file where the file system folds case, so the old file takes the new name first.
+		// A rename that only changes case writes the old file where the file
+		// system folds case, so the old file takes the new name first.
 		const rank = (operation: Operation) =>
 			operation.kind === "remove" && created.has(operation.file)
 				? -1
@@ -71,7 +70,6 @@ export class PlanWriter {
 		);
 		let wroteAll = true;
 		for (const operation of operations) {
-			// A rename is a removal and a write, so a failed write keeps the old file.
 			if (!wroteAll && operation.kind === "remove") {
 				failed.add(operation.file);
 				unplaced.push({
@@ -116,7 +114,6 @@ export class PlanWriter {
 		return { failed, unplaced };
 	}
 
-	/** Whether `dir` holds no file, in it or in any folder below it. */
 	private async isEmptyFolder(dir: string): Promise<boolean> {
 		const entries = await tryWithAsync(() =>
 			this.fileSystemService.readDirectory(dir)
@@ -131,7 +128,6 @@ export class PlanWriter {
 		return true;
 	}
 
-	/** Writes again in memory and compares: a file syncback placed that lands elsewhere than the place had it is a warning. A compiled path holds what a tool wrote, which the write does not place. */
 	private async verify(
 		request: SyncbackRequest,
 		expected: readonly Expected[]

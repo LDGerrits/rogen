@@ -36,7 +36,6 @@ export class ToolManifest {
 		private readonly text: string
 	) {}
 
-	/** `undefined` when `file` is not the manifest of a known manager. */
 	static parse(file: string, text: string): ToolManifest | undefined {
 		const manager = MANAGERS.find(
 			({ fileName }) => fileName === path.basename(file)
@@ -65,7 +64,6 @@ export class ToolManifest {
 		return undefined;
 	}
 
-	/** Whether a tool is listed under `name`, whatever it is. */
 	uses(name: string): boolean {
 		return this.tools.has(name);
 	}
@@ -76,7 +74,6 @@ export class ToolManifest {
 			: `${name} = "${repository}@${version}"`;
 	}
 
-	/** The file's text with the entry added at the end of its tools section. */
 	withPin(name: string, repository: string, version: string): string {
 		const entry = this.pinOf(name, repository, version);
 		const eol = this.text.includes("\r\n") ? "\r\n" : "\n";

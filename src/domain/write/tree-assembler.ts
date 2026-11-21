@@ -55,7 +55,6 @@ const needsRojoIgnore = (why: LeftOut): boolean =>
 	why.status !== "mounted" &&
 	why.status !== "inProject";
 
-/** Turns a placement and the meta it read into its Rojo tree. */
 export class TreeAssembler {
 	constructor(
 		private readonly placement: Placement,
@@ -230,7 +229,6 @@ export class TreeAssembler {
 		return collapsed;
 	}
 
-	/** The folders a node may be mounted at: those that name one, and routing folders whose own meta Rojo wouldn't read as the node's. */
 	private routingDirs(
 		entriesByDir: ReadonlyMap<string, readonly PlacedEntry[]>,
 		namedDirs: ReadonlySet<string>
@@ -279,7 +277,6 @@ export class TreeAssembler {
 		return { entriesByDir, namedDirs };
 	}
 
-	/** The files whose instance holds other files' instances, as `X.luau` beside `X/` does, which a `$path` to their folder would make two siblings. */
 	private static scriptsWithChildren(
 		placed: readonly PlacedEntry[],
 		claims: InstanceMap<number>

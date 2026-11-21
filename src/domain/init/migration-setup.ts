@@ -15,11 +15,9 @@ import { InstantiationService } from "../../platform/instantiation/instantiation
 
 interface MigrationChoices {
 	readonly projectFilesHint?: string;
-	/** The command that serves the first config. */
 	readonly serve?: string;
 }
 
-/** A project another tool set up, carried over into the configs its migration writes, in place of a new project. */
 export class MigrationSetup implements Setup<MigrationChoices> {
 	constructor(
 		private readonly directory: InitDirectory,

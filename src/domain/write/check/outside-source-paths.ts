@@ -6,12 +6,9 @@ import {
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 
-/** Files named to `check` that no config reads, when their folder looks like a source path with a typo in it. */
 export class OutsideSourcePaths {
-	/** `sourcePaths` are absolute POSIX paths, every one of every config that was asked. */
 	constructor(private readonly sourcePaths: readonly string[]) {}
 
-	/** A warning for `file` when its first folder below a source path's parent is one edit from that source path's name. */
 	about(file: string): Diagnostic[] {
 		const posix = toPosix(file);
 		for (const sourcePath of this.sourcePaths.map(toPosix)) {

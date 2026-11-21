@@ -18,7 +18,6 @@ import { LogService } from "../../platform/log/log-service.js";
 import { instanceKey } from "../../domain/roblox/roblox.js";
 import { Answer, WhereAnswers } from "./where-answers.js";
 
-/** A glob that exclusion matched, from `cwd`; it keeps its slashes, which path.relative would turn into backslashes on Windows. */
 function patternRelativeTo(cwd: string, escaped: string): string {
 	const pattern = unescapedGlob(escaped);
 	if (!/^([A-Za-z]:)?\//.test(pattern)) return pattern;
@@ -27,7 +26,6 @@ function patternRelativeTo(cwd: string, escaped: string): string {
 	return path.posix.relative(rooted(toPosix(cwd)), rooted(pattern)) || ".";
 }
 
-/** `diagnostic` reaches `source` as a related file, so its line names the file it is about. */
 function aboutRelatedFile(diagnostic: Diagnostic, source: string): boolean {
 	return (
 		toPosix(diagnostic.resource) !== source &&
@@ -192,7 +190,6 @@ export class WhereLog {
 			: undefined;
 	}
 
-	/** The config that answered, by its file. */
 	private nameOf(answer: Answer): string {
 		return configPath(this.cwd, answer.config);
 	}

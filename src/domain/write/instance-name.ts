@@ -2,7 +2,6 @@ import { RojoFile, RojoFileKind } from "../rojo/rojo.js";
 
 const INVISIBLE_FOLDER = /^\((.+)\)$/;
 
-/** A key and its sign in a stem. */
 export interface SuffixSpan {
 	readonly key: string;
 	readonly start: number;

@@ -6,15 +6,12 @@ import { invocation } from "./harness.js";
 
 export const PROJECTS_DIR = path.resolve("e2e/rojo-build-tests");
 
-/** Rojo's syncback-test projects, each an `input-project` folder and the place it syncs back. */
 export const SYNCBACK_PROJECTS_DIR = path.resolve("e2e/rojo-syncback-tests");
 
-/** Projects of ours that Rojo reads one way and a port might read another, each a `globIgnorePaths` shape. */
 export const GLOB_PROJECTS_DIR = path.resolve("e2e/rojo-glob-tests");
 
 const readJson = (file: string) => JSON.parse(fs.readFileSync(file, "utf8"));
 
-/** The place `rojo build` makes of the project in `project`, written to `output` in `dir`, as text; `undefined` when Rojo failed. */
 function placeOf(dir: string, project: string, output: string) {
 	const result = runRojo(project, [
 		"build",
@@ -28,12 +25,9 @@ function placeOf(dir: string, project: string, output: string) {
 }
 
 export interface RoundTrip {
-	/** The project file as Rojo's test has it. */
 	readonly original: unknown;
-	/** The project file `rogen build` wrote from it. */
 	readonly written: unknown;
 	readonly rogen: { readonly status: number | null; readonly stderr: string };
-	/** The place `rojo build` makes of each, as text; `undefined` when Rojo failed. */
 	readonly placeOfOriginal?: string;
 	readonly placeOfWritten?: string;
 }
@@ -73,7 +67,6 @@ export function roundTrip(
 	}
 }
 
-/** Projects of ours, written as a person would, that `rogen init` lifts; each is a folder with its own `default.project.json`. */
 export const INIT_PROJECTS_DIR = path.resolve("e2e/rojo-init-tests");
 
 export type RojoTemplate = "place" | "model" | "plugin";
@@ -84,12 +77,10 @@ export interface InitRoundTrip {
 		readonly status: number | null;
 		readonly stderr: string;
 	};
-	/** The place `rojo build` makes of the template, and of what `rogen init` left, as text. */
 	readonly placeOfTemplate?: string;
 	readonly placeOfInit?: string;
 }
 
-/** Makes the project `rojo init` makes for `kind`, or copies the project `name` of `INIT_PROJECTS_DIR`, lifts it with `rogen init --non-interactive`, and builds the project and the written file with Rojo. */
 export function initRoundTrip(
 	cli: string,
 	source: RojoTemplate | { readonly project: string }
@@ -129,7 +120,6 @@ export interface KindRoundTrip {
 		readonly status: number | null;
 		readonly stderr: string;
 	};
-	/** The place each builds from the project it made, as text. */
 	readonly placeOfRojo?: string;
 	readonly placeOfRogen?: string;
 	readonly filesOfRojo: Record<string, string>;
@@ -144,7 +134,6 @@ const TEMPLATE_FILES = [
 	"src/init.server.luau",
 ] as const;
 
-/** Makes a project with `rojo init --kind` and another with `rogen init --kind` in folders of one name, and builds both. */
 export function kindRoundTrip(
 	cli: string,
 	kind: RojoTemplate,

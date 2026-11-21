@@ -37,7 +37,6 @@ import { RoutedFile } from "../router.js";
 import { ScannedFile } from "../root-scanner.js";
 import { Assembly } from "../tree-assembler.js";
 
-/** A script suffix written before an `@` suffix, as in `Start.server@client.luau`, where Rojo doesn't read it. */
 const SCRIPT_SUFFIX_BEFORE_AT = new RegExp(
 	`^(?<stem>.+)\\.(?<suffix>${SCRIPT_SUFFIXES.join("|")})@[^.@]+(?<extension>\\.[^.@]+)$`
 );
@@ -58,7 +57,6 @@ function reservedKeys(
 	});
 }
 
-/** Reports on a finished placement without re-deciding what its phases decided. */
 export class WriteValidator {
 	private readonly placement: Placement;
 	private readonly config: ResolvedConfig;
@@ -169,7 +167,6 @@ export class WriteValidator {
 		);
 	}
 
-	/** Each TypeScript file where no compiler writes the Luau Rojo would read, in a source path that places other files; one that places nothing gets `scan.noSyncedFiles`. */
 	private uncompiled(): Diagnostic[] {
 		if (this.placement.layout.compiledPath !== undefined) return [];
 		return this.placement.roots
@@ -295,7 +292,6 @@ export class WriteValidator {
 		);
 	}
 
-	/** The route other than `key` that governs `resource` through a folder above it, read from the files below it that no route folder or `@` name of its own sits between. */
 	private governingRoute(resource: string, key: string): string | undefined {
 		return this.placement.files.find(({ entry, route }) => {
 			if (route === key || !DeclaredKeys.isName(route)) return false;
@@ -313,10 +309,8 @@ export class WriteValidator {
 		})?.route;
 	}
 
-	/** A folder whose files fall to `*` though a pattern matches its name: a folder script's for any pattern, a folder of files' only for a pattern without a `*`, which names a whole word. */
 	private folderPattern(): Diagnostic[] {
 		const { patterns } = this.config;
-		/** Each folder script's folder, with the name its init script would have as a file of its own. */
 		const scripts = new Map<string, string>();
 		const plain = new Set<string>();
 		for (const { entry, routeMatch, init } of this.placement.files)
@@ -366,7 +360,6 @@ export class WriteValidator {
 			resource: string,
 			misspelt: NotedName<MisspellingOf<K>>
 		) => string,
-		/** Why the fix the hint names would not work, which replaces the hint and the rename. */
 		unusable: (
 			resource: string,
 			misspelt: NotedName<MisspellingOf<K>>
@@ -401,7 +394,6 @@ export class WriteValidator {
 			);
 	}
 
-	/** The folder directly in a source path that holds `source`, or the source path for a file at its top. */
 	private featureFolderOf(source: string): string {
 		const sourcePath =
 			this.config.sourcePaths.find((dir) => isInside(source, dir)) ??
@@ -463,14 +455,12 @@ export class WriteValidator {
 		);
 	}
 
-	/** Why a script's `.server` or `.client` didn't route it: no route has its name, or a route above it governs it. */
 	private outrankedSuffix(file: RoutedFile): string {
 		const suffix = this.placement.readingOf(file).scriptSuffix;
 		const key =
 			suffix === undefined
 				? undefined
 				: this.config.keys.resolveDotRoute(suffix);
-		// Rojo's .server and .client route only a key of their name.
 		if (key === undefined)
 			return suffix === "server" || suffix === "client"
 				? `: no route is named "${suffix}", so ".${suffix}" routes nothing`
@@ -669,7 +659,6 @@ export class WriteValidator {
 		return this.placement.clashes.flatMap(
 			({ instance, winner, losers, initFolder }) =>
 				losers.map((loser) =>
-					// Rojo keeps both of two files of one name, which Rogen's tree can't, so the build would lose one: that stops the write. Of two init files Rojo itself reads one, as Rogen does, so that only warns.
 					(initFolder === undefined
 						? errorDiagnostic
 						: warningDiagnostic)(
@@ -690,7 +679,6 @@ export class WriteValidator {
 		);
 	}
 
-	/** How to keep an init file Rojo doesn't read: by removing one when both land on one instance, else by naming its route with `@`. */
 	private static initFileFix(
 		{ entry, route, instancePath }: RoutedFile,
 		instance: string
@@ -847,13 +835,11 @@ export class WriteValidator {
 	}
 }
 
-/** The name the init script `source` of the folder `folder` would have as a file of its own, as `Hud.server.luau` for `Hud/init.server.luau`. */
 function asFileOf(folder: string, source: string): string {
 	const fileName = path.posix.basename(source);
 	return path.posix.basename(folder) + fileName.slice(fileName.indexOf("."));
 }
 
-/** The folders between a scanned file and its source path, nearest first. */
 function foldersAbove({ source, relativePath }: ScannedFile): string[] {
 	return [...ancestors(source)].slice(0, relativePath.split("/").length - 1);
 }

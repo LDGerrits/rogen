@@ -3,7 +3,6 @@ const CONTROL_CHARACTER = 32;
 const WINDOWS_DEVICES = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
 
 export const PortableName = {
-	/** Why `name` cannot be a file or folder name on every system Roblox developers use, or nothing when it can. */
 	problemWith(name: string): string | undefined {
 		if (name.includes("\\"))
 			return "has a backslash, which is read as a folder separator, so Rogen leaves it out";

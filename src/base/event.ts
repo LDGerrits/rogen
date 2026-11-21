@@ -14,7 +14,6 @@ export const NullEvent: Event<never> = () => NullDisposable;
 
 type Listener<T> = (e: T) => void;
 
-/** One subscription, so a function subscribed twice is told twice. */
 interface Subscription<T> {
 	readonly listener: Listener<T>;
 }

@@ -28,7 +28,6 @@ import { CompiledLayout } from "./compiled-layout.js";
 import { InstanceResolver } from "./instance-resolver.js";
 import { DisplacedFile, LeftOutPaths, Placement } from "./placement.js";
 
-/** Finds where every file of a config lands: scans the source paths, routes each file, then resolves clashes across files. */
 export class Placer {
 	private readonly layout: CompiledLayout;
 	private readonly tree: WriteTree;
@@ -138,7 +137,6 @@ export class Placer {
 		);
 	}
 
-	/** Whether the scan of `roots` lists `target`, an absolute POSIX path. */
 	private static listed(
 		roots: readonly ScannedRoot[],
 		target: string

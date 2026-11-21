@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 
-/** Fades content below the fold up once as it scrolls into view. */
 export function Reveals() {
 	useEffect(() => {
 		const io = new IntersectionObserver(

@@ -13,7 +13,6 @@ export interface Targets {
 	readonly asked: readonly Asked[];
 }
 
-/** Reads what a `check` or `where` was asked about: each argument is a path or an instance. */
 export class LocateTargets {
 	constructor(
 		@FileSystemService private readonly fileSystemService: FileSystemService

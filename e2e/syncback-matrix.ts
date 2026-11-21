@@ -1,5 +1,3 @@
-/** Projects in each layout routing allows, and the edits a person makes in Studio, which syncback must write back so the rebuilt place is the edited one. */
-
 const SSS = "ServerScriptService";
 const SPS = "StarterPlayer/StarterPlayerScripts";
 const RS = "ReplicatedStorage/Shared";
@@ -12,25 +10,27 @@ const GLOBS = {
 	"*{Controller,Component}": SPS,
 };
 
-/** What a run of the matrix expects besides a rebuilt place equal to the edited one. */
 export type Outcome =
 	| { readonly kind: "roundTrip" }
-	/** Syncback leaves the instance out with a warning, as no file name can hold it. */
+	/**
+	 * Syncback leaves the instance out with a warning, as no file name can hold
+	 * it.
+	 */
 	| { readonly kind: "refused"; readonly why: string }
-	/** Rojo's own syncback drops the change, which Rogen can't see without reading the place. */
+	/**
+	 * Rojo's own syncback drops the change, which Rogen can't see without
+	 * reading the place.
+	 */
 	| { readonly kind: "rojoLimit"; readonly why: string };
 
 export interface MatrixRun {
 	readonly name: string;
 	readonly routes: Readonly<Record<string, string>>;
-	/** Paths below `src`. */
 	readonly files: readonly string[];
-	/** Luau run in the place with `game`, as in Studio's command bar, after `PRELUDE`. */
 	readonly edit: string;
 	readonly outcome: Outcome;
 }
 
-/** Helpers the edits use: `at` finds an instance by its path, `new` and `mod` make one. */
 export const PRELUDE = `local function at(p) local i=game for part in string.gmatch(p,"[^/]+") do local n=i:FindFirstChild(part) if not n then error("no "..part.." in "..p) end i=n end return i end
 local function new(class,parent,name,src) local m=Instance.new(class) m.Name=name if src then m.Source=src end m.Parent=at(parent) return m end
 local function mod(parent,name) return new("ModuleScript",parent,name,"return {}\\n") end
@@ -39,14 +39,12 @@ local function mod(parent,name) return new("ModuleScript",parent,name,"return {}
 interface Layout {
 	readonly routes: Readonly<Record<string, string>>;
 	readonly files: readonly string[];
-	/** The feature's node on the server, the client and in Shared, a server module, a client module, and an init script's node. */
 	readonly server: string;
 	readonly client: string;
 	readonly shared?: string;
 	readonly serverModule: string;
 	readonly clientModule: string;
 	readonly init?: string;
-	/** Another feature on the server, for moves between features. */
 	readonly other?: string;
 }
 
@@ -361,7 +359,6 @@ function editsOf(layout: Layout): [string, string, Outcome][] {
 	return edits;
 }
 
-/** Edits of the globs layout whose names start or stop matching a pattern, or that empty a side only a pattern routes. */
 const GLOB_EDITS: [string, string, Outcome][] = [
 	["pattern-into-shared", `mod("${RS}/Shop","PayService")`, ROUND_TRIP],
 	["pattern-into-server", `mod("${SSS}/Shop","CartController")`, ROUND_TRIP],
@@ -409,7 +406,6 @@ const GLOB_EDITS: [string, string, Outcome][] = [
 	],
 ];
 
-/** Features whose only files the fallback routes, or one pattern routes. */
 const GLOB_FEATURES: MatrixRun[] = [
 	{
 		name: "globs · pattern-into-fallback-side",
@@ -434,7 +430,6 @@ const GLOB_FEATURES: MatrixRun[] = [
 	},
 ];
 
-/** Every layout with every edit. */
 export function syncbackMatrix(): MatrixRun[] {
 	const runs = (
 		layoutName: string,

@@ -3,24 +3,23 @@ import { LeftOut } from "./write.js";
 import { RoutedFile } from "./router.js";
 import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 
-/** Files from one source path that claim one instance path; the last one wins and the others are replaced. */
 export interface InstanceClash {
 	readonly instance: string;
 	readonly winner: RoutedFile;
 	readonly losers: readonly RoutedFile[];
-	/** Set when the files are init files of this folder, of which Rojo reads only one, wherever their routes send them. */
 	readonly initFolder?: string;
 }
 
 interface InstanceResolution {
-	/** Every instance path appears once per write; the last source path wins across roots. */
 	readonly nodes: readonly RoutedFile[];
-	/** The files another file replaced. */
 	readonly leftOut: [string, LeftOut][];
 	readonly clashes: InstanceClash[];
 }
 
-/** Rojo reads an init file in this order when a folder has several: a module, then a script that isn't a LocalScript, then a LocalScript, then any other. */
+/**
+ * Rojo reads an init file in this order when a folder has several: a module,
+ * then a script that isn't a LocalScript, then a LocalScript, then any other.
+ */
 const initRank = ({ entry }: RoutedFile): number => {
 	const { isLuauModule, scriptSuffix } = entry.file;
 	if (isLuauModule) return 4;
@@ -28,7 +27,6 @@ const initRank = ({ entry }: RoutedFile): number => {
 	return scriptSuffix ? 3 : 1;
 };
 
-/** `claimants` with the init files among them in Rojo's order, each in a place an init file held. */
 const byInitRank = (claimants: readonly RoutedFile[]): RoutedFile[] => {
 	const inits = claimants
 		.filter((file) => file.init)
@@ -36,7 +34,6 @@ const byInitRank = (claimants: readonly RoutedFile[]): RoutedFile[] => {
 	return claimants.map((file) => (file.init ? inits.shift()! : file));
 };
 
-/** An init file Rojo reads as its folder, which it reads through the directory, so the folder's other such files are never read. */
 const isRojoInit = (file: RoutedFile): boolean =>
 	file.init !== undefined && file.entry.file.isInit;
 
@@ -85,7 +82,6 @@ export class InstanceResolver {
 		};
 	}
 
-	/** Keeps the one init file of each folder that Rojo reads, in its order, and replaces the folder's others, wherever their routes send them. */
 	private static onePerFolder(routed: readonly RoutedFile[]): {
 		kept: RoutedFile[];
 		folderLosers: [string, LeftOut][];
