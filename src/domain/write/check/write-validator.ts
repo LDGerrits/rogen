@@ -1,5 +1,5 @@
 import path from "path";
-import { compareStrings } from "../../../base/collections.js";
+import { compareByCodePoint } from "../../../base/collections.js";
 import { isObject } from "../../../base/objects.js";
 import { ancestors, isInside, joinPosix, toPosix } from "../../../base/path.js";
 import {
@@ -128,7 +128,7 @@ export class WriteValidator {
 		return this.placement.leftOut
 			.withStatus("skipped")
 			.map(([link]) => link)
-			.sort(compareStrings)
+			.sort(compareByCodePoint)
 			.map((link) =>
 				warningDiagnostic(
 					"scan.unresolvedLink",
@@ -209,7 +209,7 @@ export class WriteValidator {
 	private syncRuleSuffix(): Diagnostic[] {
 		return this.placement.roots
 			.flatMap(({ entries }) => entries)
-			.sort((a, b) => compareStrings(a.source, b.source))
+			.sort((a, b) => compareByCodePoint(a.source, b.source))
 			.flatMap(({ source, file }) => {
 				const rule = file.suffixMissedBy;
 				return rule
@@ -243,7 +243,7 @@ export class WriteValidator {
 	private extensionCase(): Diagnostic[] {
 		return this.placement.leftOut
 			.withStatus("extensionCase")
-			.sort(([a], [b]) => compareStrings(a, b))
+			.sort(([a], [b]) => compareByCodePoint(a, b))
 			.map(([file, { rename }]) =>
 				warningDiagnostic(
 					"scan.extensionCase",
@@ -319,7 +319,7 @@ export class WriteValidator {
 				scripts.set(init.becomes, asFileOf(init.becomes, entry.source));
 			else for (const folder of foldersAbove(entry)) plain.add(folder);
 		const matched = [...new Set([...scripts.keys(), ...plain])]
-			.sort(compareStrings)
+			.sort(compareByCodePoint)
 			.flatMap((folder) => {
 				const asFile = scripts.get(folder);
 				const match = patterns.match(
@@ -759,7 +759,7 @@ export class WriteValidator {
 
 	private metaNotCopied(): Diagnostic[] {
 		return this.assembly.metaOutcomes.flatMap((outcome) => {
-			if (outcome.kind === "shared")
+			if (outcome.kind === "fileAtNode")
 				return outcome.metas.map((meta) =>
 					this.sharedWithFile(meta, outcome.file, outcome.instance)
 				);

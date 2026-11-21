@@ -67,9 +67,21 @@ export class NativeLifecycleService
 		this.update();
 	}
 
+	private get hasListeners(): boolean {
+		return this.listeners > 0;
+	}
+
+	private get holdsClosedOutput(): boolean {
+		return this.hasListeners || this.draining;
+	}
+
+	private get holdsSignals(): boolean {
+		return this.holdsClosedOutput || this.childrenRunning;
+	}
+
 	private update(): void {
-		const output = this.listeners > 0 || this.draining;
-		const signals = output || this.childrenRunning;
+		const output = this.holdsClosedOutput;
+		const signals = this.holdsSignals;
 		if (output !== this.handlingOutput) {
 			this.handlingOutput = output;
 			if (output) this.listenForClosedOutput();
@@ -83,7 +95,7 @@ export class NativeLifecycleService
 	}
 
 	private shutdown(): void {
-		if (this.shuttingDown || this.listeners === 0) return;
+		if (this.shuttingDown || !this.hasListeners) return;
 		this.shuttingDown = true;
 		this._onWillShutdown.fire();
 	}
@@ -92,7 +104,7 @@ export class NativeLifecycleService
 		for (const signal of SHUTDOWN_SIGNALS) {
 			const listener = () => {
 				if (this.shuttingDown) return this.exitNow(signal);
-				if (this.listeners === 0)
+				if (!this.hasListeners)
 					return this.draining
 						? this.exitNow(signal)
 						: this.exitWithChildren(signal);

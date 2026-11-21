@@ -42,6 +42,22 @@ cp -r place/game place/lobby
 
 ## Places in roblox-ts
 
-`rogen init --places --language roblox-ts` puts each place in `projects/<name>`, with its own `default.rogen.json` and `tsconfig.json`, and shared code in `projects/common/src`. Name the folder in each command, as in `rogen serve projects/game`.
+`rogen init --places --language roblox-ts` uses the same layout and adds a tsconfig per place. `tsconfig.game.json` compiles `src/common` and `src/game` into `out/game`, which is the place's `compiledPath`, and `tsconfig.json` holds the options every place shares and refers to each place, so the editor checks a file against its own place:
 
-To add a place, copy `default.rogen.json`, `tsconfig.json` and any `place` folder from `projects/game` into `projects/lobby`, make `projects/lobby/src`, and set `"name"` to `"lobby"`. Run `rogen write projects/lobby`, and add `rbxtsc -p projects/lobby` to the `build` and `watch` scripts in `package.json`, with `-w` for `watch`.
+```json title="tsconfig.game.json"
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"rootDir": "src",
+		"rootDirs": ["src/common", "src/game"],
+		"outDir": "out/game",
+		"composite": true
+	},
+	"include": ["src/common", "src/game"],
+	"rbxts": { "rojo": "game.project.json" }
+}
+```
+
+`rootDir` is the folder that holds every source path of the place. Rogen mirrors the source paths below that folder into the `compiledPath`, as the compiler does, so the two agree. TypeScript 6 and later no longer work `rootDir` out when it is left unset, so set it. `rbxts.rojo` names the project file the compiler reads, since every place's project file is at the root.
+
+To add a place, also set `"compiledPath"` in `lobby.rogen.json` to `out/lobby`, copy `tsconfig.game.json` to `tsconfig.lobby.json`, change each `game` in it to `lobby`, add it to the `references` in `tsconfig.json`, and add `rbxtsc -p tsconfig.lobby.json` to the `build` and `watch` scripts in `package.json`, with `-w` for `watch`.

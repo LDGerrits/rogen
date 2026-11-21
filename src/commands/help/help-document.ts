@@ -1,4 +1,8 @@
-import { CommandExitCodes, ErrorKinds, ExitCodes } from "../../base/errors.js";
+import {
+	DefaultCommandExitCodes,
+	ErrorKinds,
+	ExitCodes,
+} from "../../base/errors.js";
 import { Command } from "../../platform/commands/commands.js";
 import {
 	GlobalOptions,
@@ -200,7 +204,10 @@ export const HelpDocument = {
 			})),
 			effects: effectsOf(command),
 			examples,
-			exitCodes: { ...CommandExitCodes, ...command.metadata.exitCodes },
+			exitCodes: {
+				...DefaultCommandExitCodes,
+				...command.metadata.exitCodes,
+			},
 			...(output && {
 				output: OutputNotation.describe(output),
 				failure: OutputNotation.of(failureShape),

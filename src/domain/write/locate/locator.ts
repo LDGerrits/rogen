@@ -1,6 +1,6 @@
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import path from "path";
-import { compareStrings } from "../../../base/collections.js";
+import { compareByCodePoint } from "../../../base/collections.js";
 import { toPosix } from "../../../base/path.js";
 import { Result, err, ok } from "../../../base/result.js";
 import {
@@ -287,7 +287,7 @@ class ConfigLocator {
 						DeclaredKeys.FALLBACK_ROUTE,
 						reference
 					);
-		return [...new Set(found)].sort(compareStrings);
+		return [...new Set(found)].sort(compareByCodePoint);
 	}
 
 	private async foldersUnderDeclaredRoutes(

@@ -1,4 +1,4 @@
-import { compareStrings } from "../../base/collections.js";
+import { compareByCodePoint } from "../../base/collections.js";
 import { joinPosix } from "../../base/path.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import {
@@ -49,7 +49,9 @@ export class MarkerClashes {
 			if (new Set(claims.map(({ key }) => key)).size > 1)
 				clashes.push({
 					dir: joinPosix(root.sourcePath, dir),
-					names: claims.map(({ name }) => name).sort(compareStrings),
+					names: claims
+						.map(({ name }) => name)
+						.sort(compareByCodePoint),
 				});
 		}
 		return clashes;

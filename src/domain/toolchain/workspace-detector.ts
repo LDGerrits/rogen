@@ -10,10 +10,8 @@ import {
 
 export class WorkspaceDetector {
 	constructor(
-		private readonly languages: readonly [
-			LanguageDetector,
-			...LanguageDetector[],
-		],
+		private readonly fallbackLanguage: LanguageDetector,
+		private readonly otherLanguages: readonly LanguageDetector[],
 		private readonly testRunnerDetector: TestRunnerDetector,
 		@FileSystemService private readonly fileSystemService: FileSystemService
 	) {}
@@ -21,18 +19,25 @@ export class WorkspaceDetector {
 	async detect(cwd: string): Promise<DetectedWorkspace> {
 		const has = (name: string) =>
 			this.fileSystemService.exists(path.join(cwd, name));
-		const [languages, darkluaConfig, packages, testRunner] =
-			await Promise.all([
-				Promise.all(
-					this.languages.map((detector) => detector.detect(cwd))
-				),
-				this.darkluaConfigIn(has),
-				this.packagesIn(has),
-				this.testRunnerDetector.detect(cwd),
-			]);
+		const [
+			fallbackLanguage,
+			otherLanguages,
+			darkluaConfig,
+			packages,
+			testRunner,
+		] = await Promise.all([
+			this.fallbackLanguage.detect(cwd),
+			Promise.all(
+				this.otherLanguages.map((detector) => detector.detect(cwd))
+			),
+			this.darkluaConfigIn(has),
+			this.packagesIn(has),
+			this.testRunnerDetector.detect(cwd),
+		]);
 
 		return new DetectedWorkspace({
-			languages,
+			fallbackLanguage,
+			otherLanguages,
 			darkluaConfig,
 			packageManager: packages.packageManager,
 			packageDirs: new Set(packages.packageDirs),

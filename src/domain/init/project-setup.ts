@@ -43,11 +43,7 @@ import { ProjectReader } from "./project-reader.js";
 import { Setup } from "./setup.js";
 import { RobloxTsStarter } from "./roblox-ts-starter.js";
 import { STANDARD_ROUTE_IDS, StartingRoutes } from "./starting-routes.js";
-import {
-	PROJECTS_FOLDER,
-	StarterPlaces,
-	StartingPlaces,
-} from "./starter-places.js";
+import { StarterPlaces, StartingPlaces } from "./starter-places.js";
 import { ProcessedFolder } from "./processed-folder.js";
 import { MountedCode } from "./mounted-code.js";
 import { CodeFinder } from "./code-finder.js";
@@ -203,12 +199,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const places = several
 			? await this.instantiationService
 					.createInstance(StarterPlaces)
-					.plan(directory.path, starter)
+					.plan(directory.path, language, starter)
 			: undefined;
 		const taken = places ? await this.placeTaken(places) : undefined;
 		if (taken) return err([taken]);
 
-		const compiledPath = language.compiler?.outDir;
+		const compiledPath = places?.compiledPath ?? language.compiler?.outDir;
 		const routed = takesRoutes(tree.value);
 		const lifted = routed ? carriedProject(tree.value) : undefined;
 		const liftedMounts = lifted?.mountedFolders() ?? [];
@@ -248,14 +244,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					...(processorConfig && { config: processorConfig }),
 				}
 			: undefined;
-		const mounted = routed ? mountsOf(directory, language) : [];
-		const mounts = places
-			? StarterPlaces.mountsFor(
-					places,
-					mounted,
-					RobloxTsStarter.OWN_FOLDERS
-				)
-			: mounted;
+		const mounts = routed ? mountsOf(directory, language) : [];
 
 		const unmounted =
 			lifted && tree.value.kind === "lift"
@@ -310,7 +299,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 						places?.commonSourcePath ?? sourcePaths[0]
 					),
 					...(places ? sampleOf.place(places.placeSourcePath) : []),
-					...game.written(places?.folder ?? ""),
+					...game.written(""),
 					sampleOf.readme(
 						places?.commonSourcePath ?? sourcePaths[0],
 						ProjectSetup.serveCommand(places),
@@ -326,10 +315,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					kind,
 					path.basename(directory.path),
 					RobloxTsStarter.of(language)
-						? RobloxTsStarter.ignored(
-								places !== undefined,
-								compiledPath
-							)
+						? RobloxTsStarter.ignored(language.compiler?.outDir)
 						: []
 				),
 				tree.value,
@@ -369,7 +355,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			...(starter && {
 				scaffold: {
 					tool: starter.scaffold(places !== undefined),
-					after: places ? [starter.scripts(places.folder)] : [],
+					after: places ? [starter.scripts(places.place)] : [],
 				},
 			}),
 			projectFilesHint: await this.files.projectFilesHint(),
@@ -409,31 +395,29 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			: "rogen serve";
 	}
 
-	private static addPlaceStep(places: StartingPlaces, game: boolean): string {
+	private static addPlaceStep(
+		places: StartingPlaces,
+		game: boolean,
+		starter: RobloxTsStarter | undefined
+	): string {
 		const port = "from a second terminal with its own --port";
-		if (places.folder === "") {
-			const { outputPrefix, gameFolder } = places;
-			const lobby = (file: string) =>
-				file.replace(outputPrefix, "lobby.");
-			const release = configFileName(`${outputPrefix}${RELEASE_OUTPUT}`);
-			const lobbyGame = path.posix.join(
-				path.posix.dirname(gameFolder),
-				"lobby"
-			);
-			const edited =
-				'Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common.';
-			const copy = game
-				? `copy ${places.configFile} to ${lobby(places.configFile)}, point each ${gameFolder} in its tree to ${lobbyGame}, make src/lobby and copy ${gameFolder} to ${lobbyGame}. ${edited}`
-				: `copy ${places.configFile} to ${lobby(places.configFile)} and make src/lobby. ${edited}`;
-			return `Add another place: ${copy} Do the same for ${release} if there is one. Serve it ${port}: 'rogen serve lobby --port <port>'.`;
-		}
-		const lobby = `${PROJECTS_FOLDER}/lobby`;
-		const copied = [
-			`${places.folder}/${DEFAULT_CONFIG_FILE}`,
-			`${places.folder}/tsconfig.json`,
-			...(game ? [`${places.folder}/${places.gameFolder}`] : []),
-		];
-		return `Add another place: make ${lobby}/src, copy ${joinedWithAnd(copied)} into ${lobby} (with the release config, if the place has one), and change the "name" in each config to lobby. Run 'rogen write ${lobby}' for its project file, and add ' && rbxtsc -p ${lobby}' to the end of the build script in package.json. 'rbxtsc -w' runs until you stop it, so watch the place from a terminal of its own with 'npx rbxtsc -w -p ${lobby}', and serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
+		const { outputPrefix, gameFolder } = places;
+		const lobby = (file: string) => file.replace(outputPrefix, "lobby.");
+		const release = configFileName(`${outputPrefix}${RELEASE_OUTPUT}`);
+		const lobbyGame = path.posix.join(
+			path.posix.dirname(gameFolder),
+			"lobby"
+		);
+		const edited =
+			'Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common.';
+		const copied = `copy ${places.configFile} to ${lobby(places.configFile)}`;
+		const copy = game
+			? `${copied}, point each ${gameFolder} in its tree to ${lobbyGame}, make src/lobby and copy ${gameFolder} to ${lobbyGame}. ${edited}`
+			: `${copied} and make src/lobby. ${edited}`;
+		const compile = starter
+			? ` ${starter.addPlaceStep(places.place, "lobby", lobby(places.configFile))}`
+			: "";
+		return `Add another place: ${copy} Do the same for ${release} if there is one.${compile} Serve it ${port}: 'rogen serve lobby --port <port>'.`;
 	}
 
 	private async placeTaken(
@@ -496,7 +480,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		if (starter) return {};
 		const places = await this.instantiationService
 			.createInstance(StarterPlaces)
-			.plan(this.directory.path, starter);
+			.plan(this.directory.path, language, starter);
 		const [one, several] = await Promise.all(
 			[
 				[this.directory.defaultSourcePath(language)],
@@ -709,10 +693,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.setConfig(
 				output,
 				written,
-				path.posix.join(
-					places?.folder ?? "",
-					configFileName(`${places?.outputPrefix ?? ""}${stem}`)
-				),
+				configFileName(`${places?.outputPrefix ?? ""}${stem}`),
 				false
 			);
 		this.summarise(builder, choices, routes);
@@ -793,7 +774,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					: ` Pass --no-sample for an empty ${here(sourcePaths[0])}/ and no ${here(SAMPLE_GAME_FOLDER)}/.`;
 			builder.addNote(
 				places
-					? `The Greeter sample is the feature in ${here(places.commonSourcePath)}, which every place shares, Game in ${here(places.placeSourcePath)}, and Rojo's sample Baseplate and lighting in ${here(places.folder, places.gameFolder)}.${flag}`
+					? `The Greeter sample is the feature in ${here(places.commonSourcePath)}, which every place shares, Game in ${here(places.placeSourcePath)}, and Rojo's sample Baseplate and lighting in ${here(places.gameFolder)}.${flag}`
 					: `The Greeter sample is in ${here(sourcePaths[0], "Greeter")}, and Rojo's sample Baseplate and lighting in ${here(SAMPLE_GAME_FOLDER)}/, which the tree mounts.${flag}`
 			);
 		}
@@ -904,7 +885,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addEdit(
 				ProjectSetup.addPlaceStep(
 					places,
-					chosen.kind === "new" && chosen.game !== undefined
+					chosen.kind === "new" && chosen.game !== undefined,
+					RobloxTsStarter.of(language)
 				)
 			);
 		if (chosen.kind === "lift" && !takesRoutes(chosen)) {

@@ -7,7 +7,7 @@ import {
 	contains,
 	containsPath,
 	containsPosix,
-	dirnamePosix,
+	dirnamePosixOrEmpty,
 	isBelowPosix,
 	isInside,
 	joinPosix,
@@ -101,15 +101,15 @@ describe("Path", () => {
 		});
 	});
 
-	describe("dirnamePosix", () => {
+	describe("dirnamePosixOrEmpty", () => {
 		it("should give the directory of a relative path", () => {
-			expect(dirnamePosix("Net/server/Remote.luau")).toEqual(
+			expect(dirnamePosixOrEmpty("Net/server/Remote.luau")).toEqual(
 				"Net/server"
 			);
 		});
 
 		it("should give an empty directory for a path at the top", () => {
-			expect(dirnamePosix("Remote.luau")).toBe("");
+			expect(dirnamePosixOrEmpty("Remote.luau")).toBe("");
 		});
 	});
 

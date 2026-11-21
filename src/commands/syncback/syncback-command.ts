@@ -137,7 +137,7 @@ registerCommand(
 			const ask = !dryRun && line.options["non-interactive"] !== true;
 			const promptService = accessor.get(PromptService);
 			const logService = accessor.get(LogService);
-			if (!json) logService.reserveStdout();
+			if (!json) logService.sendOwnLinesToStderr();
 			if (ask && (!promptService.isInteractive || json))
 				return err(
 					new UsageError(

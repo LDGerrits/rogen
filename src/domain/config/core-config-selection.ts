@@ -1,6 +1,6 @@
 import path from "path";
 import { Sequencer } from "../../base/async.js";
-import { PathSet, dirnamePosix, toPosix } from "../../base/path.js";
+import { PathSet, dirnamePosixOrEmpty, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -63,7 +63,9 @@ export class CoreConfigSelection implements ReloadableSelection {
 		return (
 			this.folder !== undefined &&
 			this.folder.holds(path.posix.basename(posixFile)) &&
-			new PathSet([this.folder.directory]).has(dirnamePosix(posixFile))
+			new PathSet([this.folder.directory]).has(
+				dirnamePosixOrEmpty(posixFile)
+			)
 		);
 	}
 
@@ -94,7 +96,11 @@ export class CoreConfigSelection implements ReloadableSelection {
 						await config.reload();
 						return {
 							file: config.file,
-							...configChange(before, config.version),
+							...configChange({
+								kind: "reloaded",
+								before,
+								after: config.version,
+							}),
 						};
 					})
 			);
@@ -103,12 +109,15 @@ export class CoreConfigSelection implements ReloadableSelection {
 			const changes = [
 				...membership.removed.map((config) => ({
 					file: config.file,
-					...configChange(config.version, undefined),
+					...configChange({
+						kind: "removed",
+						before: config.version,
+					}),
 				})),
 				...reloaded,
 				...membership.added.map((config) => ({
 					file: config.file,
-					...configChange(undefined, config.version),
+					...configChange({ kind: "added", after: config.version }),
 				})),
 			];
 			return {

@@ -114,16 +114,14 @@ describe("GreeterSample", () => {
 
 		it("should say how to add a place with its map, and to watch it from a terminal of its own", () => {
 			const { content } = typescript.readme(
-				"projects/common/src",
-				"rogen serve projects/game",
-				"projects/game"
+				"src/common",
+				"rogen serve game",
+				"game"
 			);
 
+			expect(content).toContain("Copy `place/game` to `place/lobby`");
 			expect(content).toContain(
-				"the `projects/game/place` folder into `projects/lobby`"
-			);
-			expect(content).toContain(
-				"```bash\nnpx rbxtsc -w -p projects/lobby\n```"
+				"```bash\nnpx rbxtsc -w -p tsconfig.lobby.json\n```"
 			);
 		});
 
@@ -143,9 +141,9 @@ describe("GreeterSample", () => {
 		});
 
 		it("should print no Luau", () => {
-			expect(
-				typescript.place("projects/game/src")[0].content
-			).not.toContain("local ");
+			expect(typescript.place("src/game")[0].content).not.toContain(
+				"local "
+			);
 		});
 	});
 
@@ -155,7 +153,7 @@ describe("GreeterSample", () => {
 		it("should keep each variant's code where its template has it", () => {
 			expect(TEMPLATE_SOURCE_PATHS).toEqual({
 				one: DEFAULT_SOURCE_PATH,
-				place: { luau: "src/game", "roblox-ts": "projects/game/src" },
+				place: "src/game",
 			});
 		});
 

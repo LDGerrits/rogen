@@ -38,8 +38,10 @@ const MANAGER_COPY: Readonly<
 	foreman: { label: "Foreman", page: "https://github.com/Roblox/foreman" },
 };
 
+type LazyToolProbe = () => Promise<ToolState>;
+
 export class ToolchainSetup implements Setup<ToolState> {
-	constructor(private readonly stateOf: () => Promise<ToolState>) {}
+	constructor(private readonly probeTools: LazyToolProbe) {}
 
 	static isPinned(manifests: readonly ToolManifest[]): boolean {
 		return manifests.some((manifest) =>
@@ -80,7 +82,7 @@ export class ToolchainSetup implements Setup<ToolState> {
 	}
 
 	async ask(): Promise<Result<ToolState | undefined, Diagnostic[]>> {
-		return ok(await this.stateOf());
+		return ok(await this.probeTools());
 	}
 
 	plan({ rojoReady, manager }: ToolState, builder: InitPlanBuilder): void {

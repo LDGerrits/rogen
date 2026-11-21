@@ -39,7 +39,7 @@ describe("ServeAddress", () => {
 	])("should show %s as Rojo does, as %s at %s", (host, shown, url) => {
 		const address = new ServeAddress(host, 34872);
 
-		expect(address.shown).toBe(shown);
+		expect(address.asInRojoBanner).toBe(shown);
 		expect(address.url).toBe(url);
 	});
 });

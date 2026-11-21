@@ -46,9 +46,12 @@ export class StarterProject {
 		});
 		if (game)
 			for (const [service, node] of Object.entries(game.nodes()))
-				project.insertNode([service], node);
+				project.insertNodeReplacingFolder([service], node);
 		for (const mount of mounts)
-			project.insertNode(mount.landing.split("/"), mountNode(mount));
+			project.insertNodeReplacingFolder(
+				mount.landing.split("/"),
+				mountNode(mount)
+			);
 		return new StarterProject(project);
 	}
 
@@ -159,7 +162,7 @@ export class StarterProject {
 				? { ...settings, $path: path }
 				: StarterProject.folderOf(instancePath, settings);
 			if (Object.keys(node).length > 0)
-				edited.insertNode(instancePath, node);
+				edited.insertNodeReplacingFolder(instancePath, node);
 		}
 		return new StarterProject(edited, this.holdingInit, this.written);
 	}
@@ -180,7 +183,10 @@ export class StarterProject {
 		);
 		const additions = new RojoProject<ProjectFile>({ tree: {} });
 		for (const mount of missing)
-			additions.insertNode(mount.landing.split("/"), mountNode(mount));
+			additions.insertNodeReplacingFolder(
+				mount.landing.split("/"),
+				mountNode(mount)
+			);
 
 		const edited = this.copy();
 		const { added, skipped } = edited.mergeMissing(additions);

@@ -85,32 +85,33 @@ export class SyncbackStaging {
 		if (await this.create()) return ok(undefined);
 		const found = await this.holder(this.lock);
 		if (found.held) return err(this.busy(found.owner));
-		const aside = `${this.lock}.${this.pid}`;
-		const moved = await tryWithAsync(() =>
-			this.fileSystemService.rename(this.lock, aside)
+		const claimed = `${this.lock}.${this.pid}`;
+		const claim = await tryWithAsync(() =>
+			this.fileSystemService.rename(this.lock, claimed)
 		);
-		if (moved.isOk()) {
-			const taken = await this.holder(aside);
-			if (taken.held) {
+		if (claim.isOk()) {
+			const madeMeanwhile = await this.holder(claimed);
+			if (madeMeanwhile.held) {
 				await this.fileSystemService
-					.rename(aside, this.lock)
+					.rename(claimed, this.lock)
 					.catch(() => undefined);
-				return err(this.busy(taken.owner));
+				return err(this.busy(madeMeanwhile.owner));
 			}
-			await this.fileSystemService.delete(aside).catch(() => undefined);
+			await this.fileSystemService.delete(claimed).catch(() => undefined);
 		}
 		if (await this.create()) return ok(undefined);
 		return err(this.busy(await this.owner(this.lock)));
 	}
 
 	private async create(): Promise<boolean> {
-		const created = () =>
+		const createLock = () =>
 			this.fileSystemService.createFile(this.lock, String(this.pid));
 		try {
-			return await created();
+			return await createLock();
 		} catch (error) {
-			if (!isMissingPath(error as Error)) throw error;
-			return created();
+			const folderReleasedMeanwhile = isMissingPath(error as Error);
+			if (!folderReleasedMeanwhile) throw error;
+			return createLock();
 		}
 	}
 

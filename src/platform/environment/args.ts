@@ -92,7 +92,7 @@ export interface CommandLine<
 > {
 	readonly positionals: readonly string[];
 	readonly shortHelp?: true;
-	readonly bare?: true;
+	readonly asksForNothing?: true;
 	readonly options: OptionValues<O> & OptionValues<typeof GlobalOptions>;
 }
 
@@ -161,23 +161,15 @@ function withAliases(
 	});
 }
 
-function commandOf(
-	values: { version?: unknown; help?: unknown },
-	positionals: readonly string[]
-): {
-	readonly runs: string;
-	readonly names: string;
-	readonly consumesWord: boolean;
-} {
-	const named = positionals[0]?.toLowerCase();
-	if (named === undefined)
-		return { runs: HELP_COMMAND, names: HELP_COMMAND, consumesWord: false };
-	const redirected = Boolean(values.version || values.help);
-	return {
-		runs: redirected ? HELP_COMMAND : named,
-		names: named,
-		consumesWord: !redirected,
-	};
+function namedCommand(positionals: readonly string[]): string {
+	return positionals[0]?.toLowerCase() ?? HELP_COMMAND;
+}
+
+function asksForHelpOrVersion(values: {
+	version?: unknown;
+	help?: unknown;
+}): boolean {
+	return Boolean(values.version || values.help);
 }
 
 export const flagName = (
@@ -343,7 +335,9 @@ export function parseArgs(
 					"Remove the '--' before it."
 				)
 			);
-		const { runs, names, consumesWord } = commandOf(values, positionals);
+		const commandNamed = namedCommand(positionals);
+		const runsHelp =
+			positionals.length === 0 || asksForHelpOrVersion(values);
 		const helpRawNames = tokens.flatMap((token) =>
 			token.kind === "option" && token.name === "help"
 				? [token.rawName]
@@ -353,12 +347,12 @@ export function parseArgs(
 			helpRawNames.length > 0 &&
 			helpRawNames.every((rawName) => rawName === "-h");
 
-		if (commands.includes(names)) {
+		if (commands.includes(commandNamed)) {
 			const problem = findOptionProblem(
 				tokens,
-				optionsFor(names),
+				optionsFor(commandNamed),
 				ownersOf,
-				positionals.length > 0 ? names : undefined
+				positionals.length > 0 ? commandNamed : undefined
 			);
 			if (problem) return err(problem);
 		}
@@ -368,18 +362,19 @@ export function parseArgs(
 			);
 		}
 		return ok({
-			command: runs,
+			command: runsHelp ? HELP_COMMAND : commandNamed,
 			line: {
 				positionals: [
-					...(consumesWord
-						? positionals.slice(1)
-						: positionals.slice(0, 1)),
+					...(runsHelp
+						? positionals.slice(0, 1)
+						: positionals.slice(1)),
 					...afterTerminator,
 				],
 				...(shortHelp && { shortHelp: true as const }),
 				...(positionals.length === 0 &&
-					!values.version &&
-					!values.help && { bare: true as const }),
+					!asksForHelpOrVersion(values) && {
+						asksForNothing: true as const,
+					}),
 				options: values as CommandLine["options"],
 			},
 		});

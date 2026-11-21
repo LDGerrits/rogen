@@ -135,11 +135,11 @@ describe("TerminalLogService", () => {
 		]);
 	});
 
-	it("should write plain lines on stderr once stdout is reserved", () => {
+	it("should write plain lines on stderr once its own lines go to stderr", () => {
 		const info = jest.spyOn(console, "info").mockImplementation(() => {});
 		const error = jest.spyOn(console, "error").mockImplementation(() => {});
 		const logService = new TerminalLogService();
-		logService.reserveStdout();
+		logService.sendOwnLinesToStderr();
 
 		logService.success("Wrote default.project.json.");
 		logService.info("Syncing 2 instances.");

@@ -38,7 +38,7 @@ export abstract class AbstractLogService implements LogService {
 	declare readonly _serviceBrand: undefined;
 
 	protected level: LogLevel = LogLevel.Info;
-	protected stdoutReserved = false;
+	protected ownLinesToStderr = false;
 	protected readonly style: Styler;
 	private readonly cwd?: string;
 	private readonly annotationsIn?: string;
@@ -59,8 +59,8 @@ export abstract class AbstractLogService implements LogService {
 		this.level = level;
 	}
 
-	reserveStdout(): void {
-		this.stdoutReserved = true;
+	sendOwnLinesToStderr(): void {
+		this.ownLinesToStderr = true;
 	}
 
 	protected canLog(level: LogLevel): boolean {

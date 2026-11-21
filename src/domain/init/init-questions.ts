@@ -12,16 +12,17 @@ import {
 	booleanFlag,
 } from "./init-service.js";
 import { ReviewPrompts } from "./review-prompts.js";
-import { COMMON_FOLDER, PROJECTS_FOLDER } from "./starter-places.js";
+import { COMMON_FOLDER } from "./starter-places.js";
 import { TreeChoice } from "./tree-plan.js";
 
-function oneOf(
+function oneOf<T extends string>(
 	value: string,
-	known: readonly string[],
+	known: readonly T[],
 	what: string,
 	flag: string
-): string {
-	if (known.includes(value)) return value;
+): T {
+	const found = known.find((candidate) => candidate === value);
+	if (found !== undefined) return found;
 	throw new UsageError(
 		`'${value}' is not ${what}.`,
 		`The values of ${flag} are ${joinedClosestFirst(value, known)}.`
@@ -160,18 +161,8 @@ export class InitQuestions {
 	): Promise<boolean | undefined> {
 		const given = this.choices.places;
 		if (given !== undefined) return given;
-		const several =
-			language.compiler !== undefined &&
-			directory.has(PROJECTS_FOLDER) &&
-			directory.layout.codeFolders.every(
-				(folder) => folder === PROJECTS_FOLDER
-			);
 		if (!this.interactive)
-			return this.decide(
-				"places",
-				several,
-				booleanFlag("--places", !several)
-			);
+			return this.decide("places", false, booleanFlag("--places", true));
 		const answer = await this.ask(
 			"places",
 			this.placesEssential(directory),
@@ -188,14 +179,10 @@ export class InitQuestions {
 						{
 							value: "several",
 							label: "Several places",
-							hint: `${
-								language.compiler
-									? `${PROJECTS_FOLDER}/${COMMON_FOLDER} holds the shared code, ${PROJECTS_FOLDER}/game the first place`
-									: `src/${COMMON_FOLDER} holds the shared code, src/game the first place`
-							}${unplaced.several ? `; leaves ${unplaced.several} unplaced` : ""}`,
+							hint: `src/${COMMON_FOLDER} holds the shared code, src/game the first place${unplaced.several ? `; leaves ${unplaced.several} unplaced` : ""}`,
 						},
 					],
-					initialValue: several ? "several" : "one",
+					initialValue: "one",
 				})
 		);
 		return answer === undefined ? undefined : answer === "several";

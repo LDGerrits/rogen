@@ -12,8 +12,8 @@ export class MockLogService extends AbstractLogService {
 
 	drawsFrame = false;
 
-	get reserved(): boolean {
-		return this.stdoutReserved;
+	get sendsOwnLinesToStderr(): boolean {
+		return this.ownLinesToStderr;
 	}
 
 	get lines(): string[] {
