@@ -51,6 +51,8 @@ interface WriteOptions {
 
 const ROGEN_ADVICE: ReadonlySet<string> = new Set(["scan.unmountedSource"]);
 
+const RECHECK_WRITES_NOTHING: WrittenConfig["kind"] = "unchanged";
+
 function withoutRogenAdvice(prepared: PreparedConfig): PreparedConfig {
 	if (!prepared.config.isAdopted) return prepared;
 	return {
@@ -176,16 +178,9 @@ export class CoreWriteService implements WriteService {
 				: SyncWarnings.deferred;
 		const attempts = await this.attempt([{ config, sync }], listing);
 		const [outcome] = await this.settle(attempts, [], true, { force });
-		if (sync.kind === "known") return outcome;
-		if (isFailed(outcome))
-			return new FailedConfig(config, outcome.errors, {
-				warnings: outcome.warnings,
-				sync: SyncWarnings.unknown,
-			});
-		return CoreWriteService.withSyncWarnings(
-			outcome,
-			await this.compiledPathWarnings(config, listing)
-		);
+		return sync.kind === "known"
+			? outcome
+			: this.checkCompiledPathAfterWrite(config, outcome, listing);
 	}
 
 	async recheck(
@@ -204,7 +199,11 @@ export class CoreWriteService implements WriteService {
 			return previous;
 		const sync = await this.compiledPathWarnings(config, listing);
 		return sync.kind === "known"
-			? CoreWriteService.withSyncWarnings(previous, sync, "unchanged")
+			? CoreWriteService.withSyncWarnings(
+					previous,
+					sync,
+					RECHECK_WRITES_NOTHING
+				)
 			: previous;
 	}
 
@@ -445,6 +444,22 @@ export class CoreWriteService implements WriteService {
 		return this.instantiationService
 			.createInstance(WritePipeline, listing, this.syncTools)
 			.compiledPathWarnings(config);
+	}
+
+	private async checkCompiledPathAfterWrite(
+		config: ResolvedConfig,
+		outcome: LoadedConfig,
+		listing: IndexReader
+	): Promise<LoadedConfig> {
+		if (isFailed(outcome))
+			return new FailedConfig(config, outcome.errors, {
+				warnings: outcome.warnings,
+				sync: SyncWarnings.unknown,
+			});
+		return CoreWriteService.withSyncWarnings(
+			outcome,
+			await this.compiledPathWarnings(config, listing)
+		);
 	}
 
 	private async onlyPlaceholders(
