@@ -433,6 +433,25 @@ describe("CoreSyncbackService", () => {
 		);
 	});
 
+	it("should write a text file's edit as Rojo wrote it, whatever line endings the file had", async () => {
+		await prepare([]);
+		await fs.writeFile(abs("src/Inventory/Note@Server.txt"), "one\r\n");
+		await prepare([]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Note.txt"),
+				"one\ntwo\n"
+			);
+			return [];
+		};
+
+		await planned("apply");
+
+		expect(await fs.readFile(abs("src/Inventory/Note@Server.txt"))).toBe(
+			"one\ntwo\n"
+		);
+	});
+
 	it("should list what Rojo listed, in its order and as the project's paths, and leave out what the plan does not touch", async () => {
 		await prepare([
 			"src/Inventory/Bag@Server.luau",
