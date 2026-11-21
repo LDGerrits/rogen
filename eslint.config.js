@@ -71,6 +71,7 @@ const modules = {
 			"rojo-step",
 			"watch-log",
 			"write-document",
+			"rojo-run",
 			"write-watch",
 		],
 	},
