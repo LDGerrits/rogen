@@ -82,7 +82,7 @@ class FakeRojo implements RojoCommandService {
 		return ok({
 			project,
 			messages: said.map((text): ServerMessage => ({
-				severity: "info",
+				severity: "unrecognised",
 				text,
 			})),
 		});

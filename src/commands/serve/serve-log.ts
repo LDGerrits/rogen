@@ -22,6 +22,7 @@ import {
 	watchLineShapes,
 } from "../write/write-document.js";
 import { reportRojo } from "../write/report-rojo.js";
+import { severityJson } from "../write/rojo-entry.js";
 import { WatchJsonLog, WatchLog } from "../write/watch-log.js";
 import {
 	diagnosticShape,
@@ -158,7 +159,7 @@ export class ServeLog implements ServeReporter {
 	serving({ target, info }: ServerReadyEvent): void {
 		const { label } = target.config;
 		this.logService.success(
-			`Serving ${label} at ${target.address.shown} · ${target.address.url}\n  In Studio, press Connect in the Rojo plugin.`
+			`Serving ${label} at ${target.address.asInRojoBanner} · ${target.address.url}\n  In Studio, press Connect in the Rojo plugin.`
 		);
 		this.logService.debug(
 			`${serverOf(info)} serves ${label}${info.session ? ` (session ${info.session})` : ""}.`
@@ -167,7 +168,7 @@ export class ServeLog implements ServeReporter {
 
 	restarted({ target }: ServerRestartEvent): void {
 		this.logService.info(
-			`Rojo crashed, so Rogen restarted it on ${target.address.shown}.\n  In Studio, press Connect in the Rojo plugin.`
+			`Rojo crashed, so Rogen restarted it on ${target.address.asInRojoBanner}.\n  In Studio, press Connect in the Rojo plugin.`
 		);
 	}
 
@@ -214,7 +215,7 @@ export class ServeLog implements ServeReporter {
 				return;
 			case "retired":
 				this.logService.info(
-					`Stopped serving ${label}${change.reason === "moved" ? ` at ${target.address.shown}` : ""}: ${RETIRED_BECAUSE[change.reason]}.`
+					`Stopped serving ${label}${change.reason === "moved" ? ` at ${target.address.asInRojoBanner}` : ""}: ${RETIRED_BECAUSE[change.reason]}.`
 				);
 				return;
 			case "orphan": {
@@ -252,7 +253,7 @@ export class ServeLog implements ServeReporter {
 
 	private running(target: ServedTarget): void {
 		const { servedBy: info } = target;
-		const served = `${serverOf(info)} serves a project named ${info.project} at ${target.address.shown}${info.session ? ` (session ${info.session})` : ""}.`;
+		const served = `${serverOf(info)} serves a project named ${info.project} at ${target.address.asInRojoBanner}${info.session ? ` (session ${info.session})` : ""}.`;
 		this.logService.info(
 			`${this.nameOf(target)} is already served by another rogen serve: ${served}`
 		);
@@ -299,14 +300,14 @@ export class ServeJsonLog implements ServeReporter {
 
 	said(said: ServerOutputEvent): void {
 		const { target, message } = said;
-		if (message.severity === "debug") {
+		if (message.severity === "noise") {
 			this.logService.debug(`Rojo: ${message.text}`);
 			return;
 		}
 		this.line({
 			output: {
 				...this.serverFields(target),
-				severity: message.severity,
+				severity: severityJson(message.severity),
 				message: message.text,
 			},
 		});
