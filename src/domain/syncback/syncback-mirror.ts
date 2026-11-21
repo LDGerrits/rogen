@@ -8,7 +8,9 @@ import {
 	RojoNode,
 	RojoProject,
 	RojoProjectFile,
+	NODE_FIELDS,
 	childNodes,
+	isChildNode,
 	isProjectFileName,
 	rojoPathTarget,
 } from "../rojo/rojo-project.js";
@@ -52,9 +54,9 @@ const STUDIO_FILLED: ReadonlySet<string> = new Set([
 
 const isPlainFolder = (node: RojoNode): boolean =>
 	node.$className === "Folder" &&
-	Object.keys(node).every(
-		(key) =>
-			!key.startsWith("$") ||
+	Object.entries(node).every(
+		([key, value]) =>
+			isChildNode(key, value) ||
 			key === "$className" ||
 			key === "$ignoreUnknownInstances"
 	);
@@ -327,7 +329,7 @@ class MirrorWalk {
 		if (
 			Object.keys(node).some(
 				(key) =>
-					key.startsWith("$") &&
+					NODE_FIELDS.has(key) &&
 					key !== "$path" &&
 					key !== "$ignoreUnknownInstances"
 			)

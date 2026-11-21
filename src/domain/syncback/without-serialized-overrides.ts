@@ -1,5 +1,6 @@
 import { isObject, isSameJson } from "../../base/objects.js";
 import { tryWith } from "../../base/result.js";
+import { isChildNode } from "../rojo/rojo-project.js";
 
 const isEmptyBinaryString = (value: unknown): boolean =>
 	isObject(value) &&
@@ -38,7 +39,9 @@ export function treeWithoutSerializedOverrides<T>(node: T): T {
 	return Object.fromEntries(
 		Object.entries(strip(node, "$properties")).map(([key, child]) => [
 			key,
-			key.startsWith("$") ? child : treeWithoutSerializedOverrides(child),
+			isChildNode(key, child)
+				? treeWithoutSerializedOverrides(child)
+				: child,
 		])
 	) as T;
 }

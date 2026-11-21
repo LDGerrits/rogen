@@ -9,7 +9,7 @@ import {
 } from "../../base/jsonc-comments.js";
 import { isObject, isSameJson } from "../../base/objects.js";
 import { FloatText, PropertyValues } from "./property-values.js";
-import { NODE_FIELDS, RojoProjectFile } from "./rojo-project.js";
+import { NODE_FIELDS, RojoProjectFile, isChildNode } from "./rojo-project.js";
 import { SYNC_RULE_FIELDS } from "./sync-rules.js";
 
 /** The keys of a project file in the order Rojo writes them. */
@@ -265,8 +265,10 @@ export class ProjectText {
 		const entries: [string, unknown][] = [];
 		for (const key of NODE_KEYS_BEFORE)
 			if (key in node) entries.push([key, node[key]]);
+		const isChild = (key: string) =>
+			isChildNode(key, node[key]) || !key.startsWith("$");
 		const children = Object.keys(node)
-			.filter((key) => !key.startsWith("$"))
+			.filter(isChild)
 			.sort(compareByCodePoint);
 		for (const child of children) {
 			const value = node[child];
@@ -286,7 +288,7 @@ export class ProjectText {
 							: node[key],
 				]);
 		for (const key of Object.keys(node))
-			if (key.startsWith("$") && !NODE_FIELDS.has(key))
+			if (!NODE_FIELDS.has(key) && !isChild(key))
 				entries.push([key, node[key]]);
 		return new Ordered(entries);
 	}

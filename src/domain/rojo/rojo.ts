@@ -240,6 +240,10 @@ export class RojoFile {
 		return this.match?.rule.use === "csv";
 	}
 
+	get isText(): boolean {
+		return this.match?.rule.use === "text";
+	}
+
 	get isLuau(): boolean {
 		if (this.match?.own) return this.kind === "script";
 		return LUAU_EXTENSIONS.includes(path.extname(this.name));

@@ -45,10 +45,13 @@ export const NODE_FIELDS: ReadonlySet<string> = new Set([
 	"$id",
 ]);
 
+export function isChildNode(key: string, value: unknown): value is RojoNode {
+	return !NODE_FIELDS.has(key) && isObject(value);
+}
+
 export function childNodes(node: RojoNode): [string, RojoNode][] {
-	return Object.entries(node).filter(
-		(entry): entry is [string, RojoNode] =>
-			!entry[0].startsWith("$") && isObject(entry[1])
+	return Object.entries(node).filter((entry): entry is [string, RojoNode] =>
+		isChildNode(...entry)
 	);
 }
 
@@ -168,6 +171,21 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return undefined;
 	}
 
+	static findReservedKeys(
+		node: RojoNode,
+		at: readonly string[]
+	): (readonly string[])[] {
+		return childNodes(node).flatMap(([key, child]) => {
+			const here = [...at, key];
+			return [
+				...(key.startsWith("$") && !RojoProject.findNonNode(child, [])
+					? [here]
+					: []),
+				...RojoProject.findReservedKeys(child, here),
+			];
+		});
+	}
+
 	static findUnreadableValues(
 		node: RojoNode,
 		at: readonly string[]
@@ -182,7 +200,7 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 							)
 							.map(([name]) => [...here, name])
 					: [];
-			return !key.startsWith("$") && isObject(value)
+			return isChildNode(key, value)
 				? RojoProject.findUnreadableValues(value, here)
 				: [];
 		});
