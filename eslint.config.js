@@ -21,6 +21,7 @@ const modules = {
 			"config-service",
 			"declared-keys",
 			"resolved-config",
+			"route-patterns",
 		],
 		init: ["init-service", "project-migration"],
 		legacy: ["legacy-config"],

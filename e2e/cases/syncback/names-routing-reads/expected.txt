@@ -1,0 +1,47 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/Shop/Bar@Zed@Server.luau
+stderr:
+  Wrote default.project.json.
+  default.rogen.json - warning: ServerScriptService/Shop/(Group) was left out: routing would read src/Shop/(Group)/In@Server.luau as ServerScriptService/Shop/In; rename it in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/Client was left out: the write would stop on src/Shop/Client/Inside@Server.luau (route.ignoredAt: "@Server" does nothing here, because the "Client" route already governs this file. Remove it, or move the file out of the "Client" route's files). (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/Foo@Server was left out: routing would read src/Shop/Foo@Server@Server.luau as ServerScriptService/Shop/Foo; rename it in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/^Odd was left out: routing would read src/Shop/^Odd@Server.luau as ServerScriptService/Odd; rename it in Studio. (syncback.unplaced)
+  Syncback wrote 1 change.
+
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stderr:
+  default.rogen.json - warning: ServerScriptService/Shop/(Group) was left out: routing would read src/Shop/(Group)/In@Server.luau as ServerScriptService/Shop/In; rename it in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/Client was left out: the write would stop on src/Shop/Client/Inside@Server.luau (route.ignoredAt: "@Server" does nothing here, because the "Client" route already governs this file. Remove it, or move the file out of the "Client" route's files). (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/Foo@Server was left out: routing would read src/Shop/Foo@Server@Server.luau as ServerScriptService/Shop/Foo; rename it in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService/Shop/^Odd was left out: routing would read src/Shop/^Odd@Server.luau as ServerScriptService/Odd; rename it in Studio. (syncback.unplaced)
+  Syncback would change nothing.
+
+written:
+  default.project.json
+  src/Shop/Bar@Zed@Server.luau
+
+$ rojo sourcemap default.project.json
+G: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Bag: Folder
+        Item: ModuleScript  <- src/Bag/Item.luau
+      Shop: Folder
+        Prices: ModuleScript  <- src/Shop/Prices.luau
+  ServerScriptService: ServerScriptService
+    Bag: Folder
+      Bag: ModuleScript  <- src/Bag/Bag@Server.luau
+    Shop: Folder
+      Bar@Zed: ModuleScript  <- src/Shop/Bar@Zed@Server.luau
+      ShopService: ModuleScript  <- src/Shop/ShopService@Server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Shop: Folder
+        ShopUi: ModuleScript  <- src/Shop/ShopUi@Client.luau

@@ -143,6 +143,19 @@ describe("CoreSyncbackService", () => {
 	const mirror = (...instancePath: string[]) =>
 		abs(".rogen-syncback/mirror", ...instancePath);
 
+	const mountedTwice = async () => {
+		await writeFiles(fs, "Packages/Lib.luau");
+		await prepare(["src/Combat/Server/Combat.luau"], {
+			project: {
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Packages: { $path: "Packages" } },
+					ServerStorage: { Packages: { $path: "Packages" } },
+				},
+			},
+		});
+	};
+
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
 		rojo = new FakeRojo(fs);
@@ -165,7 +178,7 @@ describe("CoreSyncbackService", () => {
 	});
 
 	it("should run Rojo's syncback once, on a project file that mounts a mirror of the files by instance", async () => {
-		await prepare(["src/Inventory/Bag@server.luau"]);
+		await prepare(["src/Inventory/Bag@Server.luau"]);
 		let copied: string | undefined;
 		rojo.say = async () => {
 			copied = await fs.readFile(
@@ -192,7 +205,7 @@ describe("CoreSyncbackService", () => {
 	});
 
 	it("should name the project file Rojo runs on after the folder when the config names none, as Rojo names a default one", async () => {
-		await prepare(["src/Inventory/Bag@server.luau"]);
+		await prepare(["src/Inventory/Bag@Server.luau"]);
 
 		await syncback();
 
@@ -200,7 +213,7 @@ describe("CoreSyncbackService", () => {
 	});
 
 	it("should keep the name the config gives the project", async () => {
-		await prepare(["src/Inventory/Bag@server.luau"], {
+		await prepare(["src/Inventory/Bag@Server.luau"], {
 			name: "Inventory",
 			project: { name: "Inventory", tree: { $className: "DataModel" } },
 		});
@@ -315,7 +328,7 @@ describe("CoreSyncbackService", () => {
 
 	it("should report what it wrote when a run is asked to shut down while it writes", async () => {
 		await prepare([]);
-		await fs.writeFile(abs("src/Inventory/Bag@server.luau"), "return 1");
+		await fs.writeFile(abs("src/Inventory/Bag@Server.luau"), "return 1");
 		await prepare([]);
 		rojo.say = async () => {
 			await fs.writeFile(
@@ -335,9 +348,9 @@ describe("CoreSyncbackService", () => {
 		const result = await planned("apply");
 
 		expect(result.changes).toEqual([
-			{ kind: "write", file: abs("src/Inventory/Bag@server.luau") },
+			{ kind: "write", file: abs("src/Inventory/Bag@Server.luau") },
 		]);
-		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+		expect(await fs.readFile(abs("src/Inventory/Bag@Server.luau"))).toBe(
 			"return 2"
 		);
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
@@ -345,7 +358,7 @@ describe("CoreSyncbackService", () => {
 
 	it("should keep its lock until it finished writing when a run is asked to shut down while it writes", async () => {
 		await prepare([]);
-		await fs.writeFile(abs("src/Inventory/Bag@server.luau"), "return 1");
+		await fs.writeFile(abs("src/Inventory/Bag@Server.luau"), "return 1");
 		await prepare([]);
 		rojo.say = async () => {
 			await fs.writeFile(
@@ -400,7 +413,7 @@ describe("CoreSyncbackService", () => {
 	it("should write an edit into the source file, with the line endings it had", async () => {
 		await prepare([]);
 		await fs.writeFile(
-			abs("src/Inventory/Bag@server.luau"),
+			abs("src/Inventory/Bag@Server.luau"),
 			"return 1\r\n"
 		);
 		await prepare([]);
@@ -415,17 +428,17 @@ describe("CoreSyncbackService", () => {
 		const result = await planned("apply");
 
 		expect(result.changes).toEqual([
-			{ kind: "write", file: abs("src/Inventory/Bag@server.luau") },
+			{ kind: "write", file: abs("src/Inventory/Bag@Server.luau") },
 		]);
-		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+		expect(await fs.readFile(abs("src/Inventory/Bag@Server.luau"))).toBe(
 			"return 2\r\n"
 		);
 	});
 
 	it("should list what Rojo listed, in its order and as the project's paths, and leave out what the plan does not touch", async () => {
 		await prepare([
-			"src/Inventory/Bag@server.luau",
-			"src/Combat/Hit@server.luau",
+			"src/Inventory/Bag@Server.luau",
+			"src/Combat/Hit@Server.luau",
 		]);
 		rojo.say = async () => {
 			await fs.writeFile(
@@ -446,13 +459,13 @@ describe("CoreSyncbackService", () => {
 		const plan = await planned();
 
 		expect(plan.listed).toEqual([
-			{ kind: "write", file: abs("src/Inventory/Bag@server.luau") },
-			{ kind: "write", file: abs("src/Combat/Hit@server.luau") },
+			{ kind: "write", file: abs("src/Inventory/Bag@Server.luau") },
+			{ kind: "write", file: abs("src/Combat/Hit@Server.luau") },
 		]);
 	});
 
 	it("should list a new instance at the file routing puts it in, where Rojo listed it", async () => {
-		await prepare(["src/Inventory/Bag@server.luau"]);
+		await prepare(["src/Inventory/Bag@Server.luau"]);
 		rojo.say = async () => {
 			await fs.writeFile(
 				mirror("ServerScriptService", "Inventory", "Added.luau"),
@@ -470,19 +483,15 @@ describe("CoreSyncbackService", () => {
 		expect(plan.listed[0].file).toContain("Added");
 	});
 
-	it("should keep one change and list the other when two copies of an init script were edited differently", async () => {
-		await prepare([
-			"src/Net/init.luau",
-			"src/Net/Types.luau",
-			"src/Net/Server/Remote.luau",
-		]);
+	it("should keep one change and list the other when two mounts of a file were edited differently", async () => {
+		await mountedTwice();
 		rojo.say = async () => {
 			await fs.writeFile(
-				mirror("ReplicatedStorage", "Shared", "Net", "init.luau"),
+				mirror("ReplicatedStorage", "Packages", "Lib.luau"),
 				"return 1"
 			);
 			await fs.writeFile(
-				mirror("ServerScriptService", "Net", "init.luau"),
+				mirror("ServerStorage", "Packages", "Lib.luau"),
 				"return 2"
 			);
 			return [];
@@ -491,26 +500,22 @@ describe("CoreSyncbackService", () => {
 		const plan = await planned();
 
 		expect(plan.changes).toEqual([
-			{ kind: "write", file: abs("src/Net/init.luau") },
+			{ kind: "write", file: abs("Packages/Lib.luau") },
 		]);
 		expect(plan.unplaced).toMatchObject([
 			{
-				instance: "ServerScriptService/Net",
+				instance: "ServerStorage/Packages/Lib",
 				reason: expect.stringContaining("edited differently"),
 			},
 		]);
 		await syncback("apply");
-		expect(await fs.readFile(abs("src/Net/init.luau"))).toBe("return 1");
+		expect(await fs.readFile(abs("Packages/Lib.luau"))).toBe("return 1");
 	});
 
-	it("should keep a file when one copy was removed and another left alone, and list the removal", async () => {
-		await prepare([
-			"src/Net/init.luau",
-			"src/Net/Types.luau",
-			"src/Net/Server/Remote.luau",
-		]);
+	it("should keep a file when one mount of it was removed and another left alone, and list the removal", async () => {
+		await mountedTwice();
 		rojo.say = async () => {
-			await fs.delete(mirror("ServerScriptService", "Net", "init.luau"));
+			await fs.delete(mirror("ServerStorage", "Packages", "Lib.luau"));
 			return [];
 		};
 
@@ -519,9 +524,28 @@ describe("CoreSyncbackService", () => {
 		expect(plan.changes).toEqual([]);
 		expect(plan.unplaced).toMatchObject([
 			{
-				instance: "ServerScriptService/Net",
+				instance: "ServerStorage/Packages/Lib",
 				reason: expect.stringContaining("so the file was kept"),
 			},
+		]);
+	});
+
+	it("should not list an init script's folder as removed while files of it routed elsewhere stay", async () => {
+		await prepare([
+			"src/Net/init.luau",
+			"src/Net/Types.luau",
+			"src/Net/Server/Remote.luau",
+		]);
+		rojo.say = async () => {
+			await fs.delete(mirror("ReplicatedStorage", "Shared", "Net"), true);
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.changes).toEqual([
+			{ kind: "remove", file: abs("src/Net/Types.luau") },
+			{ kind: "remove", file: abs("src/Net/init.luau") },
 		]);
 	});
 
@@ -566,8 +590,8 @@ describe("CoreSyncbackService", () => {
 	});
 
 	it("should write nothing when a file is saved while Rojo runs", async () => {
-		await prepare(["src/Inventory/Bag@server.luau"]);
-		const file = abs("src/Inventory/Bag@server.luau");
+		await prepare(["src/Inventory/Bag@Server.luau"]);
+		const file = abs("src/Inventory/Bag@Server.luau");
 		rojo.say = async () => {
 			await fs.writeFile(file, "saved");
 			return [];
@@ -580,7 +604,7 @@ describe("CoreSyncbackService", () => {
 	});
 
 	it("should stop with an error when a file can't be copied", async () => {
-		await prepare(["src/Inventory/Bag@server.luau"]);
+		await prepare(["src/Inventory/Bag@Server.luau"]);
 		fs.copyFile = async () => {
 			throw new Error("denied");
 		};
@@ -592,7 +616,7 @@ describe("CoreSyncbackService", () => {
 	});
 
 	it("should say it stopped when a shutdown makes a copy fail", async () => {
-		await prepare(["src/Inventory/Bag@server.luau"]);
+		await prepare(["src/Inventory/Bag@Server.luau"]);
 		fs.copyFile = async () => {
 			lifecycle.shutdown("SIGINT");
 			throw new Error("gone");
@@ -626,64 +650,49 @@ describe("CoreSyncbackService", () => {
 		expect(rojo.requests).toHaveLength(0);
 	});
 
-	it("should write a file once when its copies were edited the same way", async () => {
-		await prepare([
-			"src/Net/init.luau",
-			"src/Net/Types.luau",
-			"src/Net/Server/Remote.luau",
-		]);
+	it("should write a file once when its mounts were edited the same way", async () => {
+		await mountedTwice();
 		rojo.say = async () => {
-			for (const folder of [
-				["ReplicatedStorage", "Shared", "Net"],
-				["ServerScriptService", "Net"],
-			])
-				await fs.writeFile(mirror(...folder, "init.luau"), "return 1");
+			for (const service of ["ReplicatedStorage", "ServerStorage"])
+				await fs.writeFile(
+					mirror(service, "Packages", "Lib.luau"),
+					"return 1"
+				);
 			return [];
 		};
 
 		const plan = await planned();
 
 		expect(plan.changes).toEqual([
-			{ kind: "write", file: abs("src/Net/init.luau") },
+			{ kind: "write", file: abs("Packages/Lib.luau") },
 		]);
 		expect(plan.unplaced).toEqual([]);
 	});
 
-	it("should remove a file once when all its copies were deleted", async () => {
-		await prepare([
-			"src/Net/init.luau",
-			"src/Net/Types.luau",
-			"src/Net/Server/Remote.luau",
-		]);
+	it("should remove a file once when all its mounts were deleted", async () => {
+		await mountedTwice();
 		rojo.say = async () => {
-			for (const folder of [
-				["ReplicatedStorage", "Shared", "Net"],
-				["ServerScriptService", "Net"],
-			])
-				await fs.delete(mirror(...folder, "init.luau"));
+			for (const service of ["ReplicatedStorage", "ServerStorage"])
+				await fs.delete(mirror(service, "Packages", "Lib.luau"));
 			return [];
 		};
 
 		const plan = await planned();
 
 		expect(plan.changes).toEqual([
-			{ kind: "remove", file: abs("src/Net/init.luau") },
+			{ kind: "remove", file: abs("Packages/Lib.luau") },
 		]);
 		expect(plan.unplaced).toEqual([]);
 	});
 
-	it("should keep a file that one copy edited and another deleted", async () => {
-		await prepare([
-			"src/Net/init.luau",
-			"src/Net/Types.luau",
-			"src/Net/Server/Remote.luau",
-		]);
+	it("should keep a file that one mount edited and another deleted", async () => {
+		await mountedTwice();
 		rojo.say = async () => {
 			await fs.delete(
-				mirror("ReplicatedStorage", "Shared", "Net", "init.luau")
+				mirror("ReplicatedStorage", "Packages", "Lib.luau")
 			);
 			await fs.writeFile(
-				mirror("ServerScriptService", "Net", "init.luau"),
+				mirror("ServerStorage", "Packages", "Lib.luau"),
 				"return 2"
 			);
 			return [];
@@ -692,23 +701,23 @@ describe("CoreSyncbackService", () => {
 		const plan = await planned();
 
 		expect(plan.changes).toEqual([
-			{ kind: "write", file: abs("src/Net/init.luau") },
+			{ kind: "write", file: abs("Packages/Lib.luau") },
 		]);
 		expect(plan.unplaced).toMatchObject([
 			{
-				instance: "ReplicatedStorage/Shared/Net",
+				instance: "ReplicatedStorage/Packages/Lib",
 				reason: expect.stringContaining("edited"),
 			},
 		]);
 		await syncback("apply");
-		expect(await fs.readFile(abs("src/Net/init.luau"))).toBe("return 2");
+		expect(await fs.readFile(abs("Packages/Lib.luau"))).toBe("return 2");
 	});
 
 	it("should delete the files of an instance the place no longer holds, in any layout", async () => {
-		await fs.writeFile(abs("src/Inventory/Bag@server.meta.json"), "{}");
+		await fs.writeFile(abs("src/Inventory/Bag@Server.meta.json"), "{}");
 		await prepare([
-			"src/Inventory/Bag@server.luau",
-			"src/Inventory/Save@server.luau",
+			"src/Inventory/Bag@Server.luau",
+			"src/Inventory/Save@Server.luau",
 		]);
 		rojo.say = async () => {
 			await fs.delete(
@@ -723,19 +732,19 @@ describe("CoreSyncbackService", () => {
 		const result = await planned("apply");
 
 		expect(result.changes).toEqual([
-			{ kind: "remove", file: abs("src/Inventory/Bag@server.luau") },
-			{ kind: "remove", file: abs("src/Inventory/Bag@server.meta.json") },
+			{ kind: "remove", file: abs("src/Inventory/Bag@Server.luau") },
+			{ kind: "remove", file: abs("src/Inventory/Bag@Server.meta.json") },
 		]);
-		expect(await fs.exists(abs("src/Inventory/Bag@server.luau"))).toBe(
+		expect(await fs.exists(abs("src/Inventory/Bag@Server.luau"))).toBe(
 			false
 		);
-		expect(await fs.exists(abs("src/Inventory/Save@server.luau"))).toBe(
+		expect(await fs.exists(abs("src/Inventory/Save@Server.luau"))).toBe(
 			true
 		);
 	});
 
 	it("should write a meta file Rojo adds beside the source file, under its name", async () => {
-		await prepare(["src/Inventory/Bag@server.luau"]);
+		await prepare(["src/Inventory/Bag@Server.luau"]);
 		rojo.say = async () => {
 			await fs.writeFile(
 				mirror("ServerScriptService", "Inventory", "Bag.meta.json"),
@@ -747,14 +756,14 @@ describe("CoreSyncbackService", () => {
 		const plan = await planned();
 
 		expect(plan.changes).toEqual([
-			{ kind: "write", file: abs("src/Inventory/Bag@server.meta.json") },
+			{ kind: "write", file: abs("src/Inventory/Bag@Server.meta.json") },
 		]);
 	});
 
 	it("should place a new instance beside its siblings, in their style", async () => {
 		await prepare([
-			"src/Inventory/Bag@server.luau",
-			"src/Inventory/Save@server.luau",
+			"src/Inventory/Bag@Server.luau",
+			"src/Inventory/Save@Server.luau",
 		]);
 		rojo.say = async () => {
 			await fs.writeFile(
@@ -767,15 +776,15 @@ describe("CoreSyncbackService", () => {
 		const plan = await planned();
 
 		expect(plan.changes).toEqual([
-			{ kind: "write", file: abs("src/Inventory/Mail@server.luau") },
+			{ kind: "write", file: abs("src/Inventory/Mail@Server.luau") },
 		]);
 	});
 
 	it("should place a new instance beside its siblings in a folder the mirror keeps apart", async () => {
 		await prepare([
-			"src/Inventory/Bag@server.luau",
-			"src/Inventory/Rates.model@server.json",
-			"src/Shop/Cart@server.luau",
+			"src/Inventory/Bag@Server.luau",
+			"src/Inventory/Rates.model@Server.json",
+			"src/Shop/Cart@Server.luau",
 		]);
 		rojo.say = async () => {
 			const tree = JSON.parse(rojo.projectTexts[0]).tree;
@@ -789,7 +798,7 @@ describe("CoreSyncbackService", () => {
 
 		expect(plan.unplaced).toEqual([]);
 		expect(plan.changes).toEqual([
-			{ kind: "write", file: abs("src/Inventory/Mail@server.luau") },
+			{ kind: "write", file: abs("src/Inventory/Mail@Server.luau") },
 		]);
 	});
 
@@ -887,8 +896,8 @@ describe("CoreSyncbackService", () => {
 
 	it("should place an empty folder the place added", async () => {
 		await prepare([
-			"src/Inventory/Bag@server.luau",
-			"src/Inventory/Save@server.luau",
+			"src/Inventory/Bag@Server.luau",
+			"src/Inventory/Save@Server.luau",
 		]);
 		rojo.say = async () => {
 			await fs.createDirectory(
@@ -899,7 +908,7 @@ describe("CoreSyncbackService", () => {
 
 		await syncback("apply");
 
-		expect(await fs.isDirectory(abs("src/Inventory/Empty@server"))).toBe(
+		expect(await fs.isDirectory(abs("src/Inventory/Empty@Server"))).toBe(
 			true
 		);
 	});
@@ -919,7 +928,7 @@ describe("CoreSyncbackService", () => {
 	it("should remove a route folder it emptied when the place no longer holds its instance", async () => {
 		await prepare([
 			"src/Inventory/Server/Bag.luau",
-			"src/Inventory/Save@server.luau",
+			"src/Inventory/Save@Server.luau",
 			"src/Inventory/Shared/Types.luau",
 		]);
 		rojo.say = async () => {
@@ -966,7 +975,7 @@ describe("CoreSyncbackService", () => {
 	it("should keep an empty folder it did not remove in a folder it emptied", async () => {
 		await prepare([
 			"src/Inventory/Server/Bag.luau",
-			"src/Inventory/Save@server.luau",
+			"src/Inventory/Save@Server.luau",
 		]);
 		await fs.createDirectory(abs("src/Inventory/Notes"));
 		rojo.say = async () => {
@@ -983,7 +992,7 @@ describe("CoreSyncbackService", () => {
 	it("should keep a route folder it emptied when the place still holds its instance", async () => {
 		await prepare([
 			"src/Inventory/Server/Bag.luau",
-			"src/Inventory/Save@server.luau",
+			"src/Inventory/Save@Server.luau",
 		]);
 		rojo.say = async () => {
 			await fs.delete(
@@ -995,7 +1004,7 @@ describe("CoreSyncbackService", () => {
 		await syncback("apply");
 
 		expect(await fs.isDirectory(abs("src/Inventory/Server"))).toBe(true);
-		expect(await fs.exists(abs("src/Inventory/Save@server.luau"))).toBe(
+		expect(await fs.exists(abs("src/Inventory/Save@Server.luau"))).toBe(
 			true
 		);
 	});
@@ -1031,6 +1040,170 @@ describe("CoreSyncbackService", () => {
 			{ kind: "write", file: abs("Packages/Lib.luau") },
 		]);
 		expect(await fs.readFile(abs("Packages/Lib.luau"))).toBe("");
+	});
+
+	describe("where routing puts what it writes", () => {
+		const PATTERNS = {
+			...ROUTES,
+			"*Controller.*": "StarterPlayer/StarterPlayerScripts",
+			"*Service.*": "ServerScriptService",
+		};
+		const CLIENT = ["StarterPlayer", "StarterPlayerScripts"];
+
+		/** Has Studio add each file of the mirror, given by its instance path. */
+		const added = (...files: string[][]) => {
+			rojo.say = async () => {
+				for (const file of files)
+					await fs.writeFile(mirror(...file), "return nil");
+				return [];
+			};
+		};
+
+		const written = async () =>
+			(await planned()).changes.map(({ file }) => file).sort();
+
+		it("should write a new instance plain beside files a pattern placed, when its name routes it back there", async () => {
+			await prepare(["src/Shop/ShopController.luau"], {
+				routes: PATTERNS,
+			});
+			added([...CLIENT, "Shop", "CartController.luau"]);
+
+			expect(await written()).toEqual([
+				abs("src/Shop/CartController.luau"),
+			]);
+		});
+
+		it("should name the route into a new instance whose plain name a pattern or * would send elsewhere", async () => {
+			await prepare(
+				["src/Shop/ShopController.luau", "src/Shop/Prices.luau"],
+				{ routes: PATTERNS }
+			);
+			added(
+				[...CLIENT, "Shop", "Cart.luau"],
+				["ReplicatedStorage", "Shared", "Shop", "PriceService.luau"]
+			);
+
+			expect(await written()).toEqual([
+				abs("src/Shop/Cart@Client.luau"),
+				abs("src/Shop/PriceService@Shared.luau"),
+			]);
+		});
+
+		it("should leave out what a pattern would take away when no route key names where it is", async () => {
+			await prepare(["src/Shop/ShopController.luau"], {
+				routes: {
+					Server: "ServerScriptService",
+					"*Controller.*": "StarterPlayer/StarterPlayerScripts",
+					"*": "ReplicatedStorage/Shared",
+				},
+			});
+			added([...CLIENT, "Shop", "Cart.luau"]);
+
+			const plan = await planned();
+
+			expect(plan.changes).toEqual([]);
+			expect(plan.unplaced).toMatchObject([
+				{
+					instance: "StarterPlayer/StarterPlayerScripts/Shop/Cart",
+					reason: expect.stringContaining("ReplicatedStorage/Shared"),
+				},
+			]);
+		});
+
+		it("should name the route into a new folder when a file in it, or its init script, would follow a pattern elsewhere", async () => {
+			await prepare(
+				["src/Shop/Prices.luau", "src/Shop/ShopController.luau"],
+				{ routes: PATTERNS }
+			);
+			added(
+				["ReplicatedStorage", "Shared", "Shop", "Hud", "init.luau"],
+				[
+					"ReplicatedStorage",
+					"Shared",
+					"Shop",
+					"Hud",
+					"HudController.luau",
+				],
+				[...CLIENT, "Shop", "CartController", "init.luau"],
+				[...CLIENT, "Shop", "CartController", "Items.luau"]
+			);
+
+			expect(await written()).toEqual([
+				abs("src/Shop/CartController@Client/Items.luau"),
+				abs("src/Shop/CartController@Client/init.luau"),
+				abs("src/Shop/Hud@Shared/HudController.luau"),
+				abs("src/Shop/Hud@Shared/init.luau"),
+			]);
+		});
+
+		it("should write a new child of a folder script plainly beside it, as no pattern takes the script from its folder", async () => {
+			await prepare(["src/Input/InputController/init.luau"], {
+				routes: PATTERNS,
+			});
+			added([
+				"ReplicatedStorage",
+				"Shared",
+				"Input",
+				"InputController",
+				"Keys.luau",
+			]);
+
+			expect(await written()).toEqual([
+				abs("src/Input/InputController/Keys.luau"),
+			]);
+		});
+
+		it.each([
+			["Foo@Server", ["Foo@Server.luau"]],
+			["^Odd", ["^Odd.luau"]],
+			["(Group)", ["(Group)", "In.luau"]],
+			["Server", ["Server", "In.luau"]],
+		])(
+			"should leave out %s beside files suffixes route, as routing would read the name as a route",
+			async (name, file) => {
+				await prepare(["src/Inventory/Bag@Server.luau"]);
+				added(["ServerScriptService", "Inventory", ...file]);
+
+				const plan = await planned();
+
+				expect(plan.changes).toEqual([]);
+				expect(plan.unplaced).toMatchObject([
+					{ instance: `ServerScriptService/Inventory/${name}` },
+				]);
+			}
+		);
+
+		it("should leave out a name routing reads as a route where Rojo wrote it in place", async () => {
+			await prepare(["src/Inventory/Server/Bag.luau"]);
+			added(["ServerScriptService", "Inventory", "Save@Client.luau"]);
+
+			const plan = await planned();
+
+			expect(plan.changes).toEqual([]);
+			expect(plan.unplaced).toMatchObject([
+				{ instance: "ServerScriptService/Inventory/Save@Client" },
+			]);
+		});
+
+		it("should take an @ that names no route key", async () => {
+			await prepare(["src/Shop/ShopService@Server.luau"]);
+			added(["ServerScriptService", "Shop", "Bar@Zed.luau"]);
+
+			const plan = await planned();
+			expect(plan.unplaced).toEqual([]);
+			expect(plan.changes.map(({ file }) => file)).toEqual([
+				abs("src/Shop/Bar@Zed@Server.luau"),
+			]);
+		});
+
+		it("should take a folder named after a route key inside a routing folder, which it outranks", async () => {
+			await prepare(["src/Inventory/Server/Bag.luau"]);
+			added(["ServerScriptService", "Inventory", "Client", "In.luau"]);
+
+			expect(await written()).toEqual([
+				abs("src/Inventory/Server/Client/In.luau"),
+			]);
+		});
 	});
 
 	describe("with a node that has no $path", () => {
@@ -1710,8 +1883,8 @@ describe("CoreSyncbackService", () => {
 
 		it("should write the meta of a feature written only in names that spell the route into its folder", async () => {
 			await prepare([
-				"src/Inventory/Bag@server.luau",
-				"src/Inventory/Save@server.luau",
+				"src/Inventory/Bag@Server.luau",
+				"src/Inventory/Save@Server.luau",
 			]);
 			rojo.say = async () => {
 				await writeMeta("ServerScriptService", "Inventory");
@@ -1902,8 +2075,8 @@ describe("CoreSyncbackService", () => {
 		"should list an instance whose name makes Rojo write %s for a folder no one folder of the project is",
 		async (file) => {
 			await prepare([
-				"src/Inventory/Bag@server.luau",
-				"src/Inventory/Save@server.luau",
+				"src/Inventory/Bag@Server.luau",
+				"src/Inventory/Save@Server.luau",
 			]);
 			rojo.say = async () => {
 				await fs.writeFile(
@@ -1929,8 +2102,8 @@ describe("CoreSyncbackService", () => {
 		"should place an instance whose name makes Rojo write %s, which Rojo reads as a child of the folder",
 		async (file) => {
 			await prepare([
-				"src/Inventory/Bag@server.luau",
-				"src/Inventory/Save@server.luau",
+				"src/Inventory/Bag@Server.luau",
+				"src/Inventory/Save@Server.luau",
 			]);
 			rojo.say = async () => {
 				await fs.writeFile(
@@ -1949,7 +2122,7 @@ describe("CoreSyncbackService", () => {
 				{
 					kind: "write",
 					file: abs(
-						`src/Inventory/${file.replace("init", "init@server")}`
+						`src/Inventory/${file.replace("init", "init@Server")}`
 					),
 				},
 			]);
@@ -1996,7 +2169,7 @@ describe("CoreSyncbackService", () => {
 	it("should not write a file whose only difference is its line endings", async () => {
 		await prepare([]);
 		await fs.writeFile(
-			abs("src/Inventory/Bag@server.luau"),
+			abs("src/Inventory/Bag@Server.luau"),
 			"return 1\r\n"
 		);
 		await prepare([]);
@@ -2012,7 +2185,7 @@ describe("CoreSyncbackService", () => {
 	});
 
 	it("should list an instance Rojo says it can't sync back", async () => {
-		await prepare(["src/Inventory/Bag@server.luau"]);
+		await prepare(["src/Inventory/Bag@Server.luau"]);
 		rojo.say = async () => [
 			"[WARN  librojo::syncback] Cannot syncback Json at ReplicatedStorage/Shared/Data, skipping",
 		];
@@ -2028,7 +2201,7 @@ describe("CoreSyncbackService", () => {
 	});
 
 	it("should hold the folder from the plan until it has written, while it waits to go on", async () => {
-		await prepare(["src/Inventory/Bag@server.luau"]);
+		await prepare(["src/Inventory/Bag@Server.luau"]);
 		rojo.say = async () => {
 			await fs.writeFile(
 				mirror("ServerScriptService", "Inventory", "Bag.luau"),
@@ -2047,14 +2220,14 @@ describe("CoreSyncbackService", () => {
 
 		expect(outcome.kind).toBe("written");
 		expect(lock).toBe("4242");
-		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+		expect(await fs.readFile(abs("src/Inventory/Bag@Server.luau"))).toBe(
 			"return 2"
 		);
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
 	});
 
 	it("should write nothing, and let go of the folder, when told not to go on", async () => {
-		await prepare(["src/Inventory/Bag@server.luau"]);
+		await prepare(["src/Inventory/Bag@Server.luau"]);
 		rojo.say = async () => {
 			await fs.writeFile(
 				mirror("ServerScriptService", "Inventory", "Bag.luau"),
@@ -2066,14 +2239,14 @@ describe("CoreSyncbackService", () => {
 		const outcome = await syncback({ confirm: async () => false });
 
 		expect(outcome.kind).toBe("declined");
-		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+		expect(await fs.readFile(abs("src/Inventory/Bag@Server.luau"))).toBe(
 			""
 		);
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
 	});
 
 	it("should write the plan it was shown without running Rojo again", async () => {
-		await prepare(["src/Inventory/Bag@server.luau"]);
+		await prepare(["src/Inventory/Bag@Server.luau"]);
 		rojo.say = async () => {
 			await fs.writeFile(
 				mirror("ServerScriptService", "Inventory", "Bag.luau"),
@@ -2092,13 +2265,13 @@ describe("CoreSyncbackService", () => {
 
 		expect(rojo.requests).toHaveLength(1);
 		expect(result.changes).toEqual(shown?.changes);
-		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+		expect(await fs.readFile(abs("src/Inventory/Bag@Server.luau"))).toBe(
 			"return 2"
 		);
 	});
 
 	it("should write nothing when a source changed since the plan was shown", async () => {
-		await prepare(["src/Inventory/Bag@server.luau"]);
+		await prepare(["src/Inventory/Bag@Server.luau"]);
 		rojo.say = async () => {
 			await fs.writeFile(
 				mirror("ServerScriptService", "Inventory", "Bag.luau"),
@@ -2110,7 +2283,7 @@ describe("CoreSyncbackService", () => {
 		const outcome = await syncback({
 			confirm: async () => {
 				await fs.writeFile(
-					abs("src/Inventory/Bag@server.luau"),
+					abs("src/Inventory/Bag@Server.luau"),
 					"edited"
 				);
 				return true;
@@ -2118,13 +2291,13 @@ describe("CoreSyncbackService", () => {
 		});
 
 		expect(outcome.kind).toBe("failed");
-		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+		expect(await fs.readFile(abs("src/Inventory/Bag@Server.luau"))).toBe(
 			"edited"
 		);
 	});
 
 	it("should write nothing when the config changed since the plan was shown", async () => {
-		await prepare(["src/Inventory/Bag@server.luau"]);
+		await prepare(["src/Inventory/Bag@Server.luau"]);
 		rojo.say = async () => {
 			await fs.writeFile(
 				mirror("ServerScriptService", "Inventory", "Bag.luau"),
@@ -2141,13 +2314,13 @@ describe("CoreSyncbackService", () => {
 		});
 
 		expect(outcome.kind).toBe("failed");
-		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+		expect(await fs.readFile(abs("src/Inventory/Bag@Server.luau"))).toBe(
 			""
 		);
 	});
 
 	it("should write nothing when the place changed since the plan was shown", async () => {
-		await prepare(["src/Inventory/Bag@server.luau"]);
+		await prepare(["src/Inventory/Bag@Server.luau"]);
 		await fs.writeFile(abs("game.rbxl"), "first");
 		rojo.say = async () => {
 			await fs.writeFile(
@@ -2165,13 +2338,13 @@ describe("CoreSyncbackService", () => {
 		});
 
 		expect(outcome.kind).toBe("failed");
-		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
+		expect(await fs.readFile(abs("src/Inventory/Bag@Server.luau"))).toBe(
 			""
 		);
 	});
 
 	it("should plan a renamed file as the removal of its old file and a new file", async () => {
-		await prepare(["src/Inventory/Bag@server.luau"]);
+		await prepare(["src/Inventory/Bag@Server.luau"]);
 		rojo.say = async () => {
 			await fs.delete(
 				mirror("ServerScriptService", "Inventory", "Bag.luau")
@@ -2187,16 +2360,16 @@ describe("CoreSyncbackService", () => {
 
 		expect(plan.changes).toEqual(
 			expect.arrayContaining([
-				{ kind: "remove", file: abs("src/Inventory/Bag@server.luau") },
-				{ kind: "write", file: abs("src/Inventory/Pouch@server.luau") },
+				{ kind: "remove", file: abs("src/Inventory/Bag@Server.luau") },
+				{ kind: "write", file: abs("src/Inventory/Pouch@Server.luau") },
 			])
 		);
 	});
 
 	it("should leave out a YAML file Rojo stops on, list its instance as it does a JSON file, and sync back the rest", async () => {
 		await prepare([
-			"src/Inventory/Bag@server.luau",
-			"src/Inventory/Rates@server.yaml",
+			"src/Inventory/Bag@Server.luau",
+			"src/Inventory/Rates@Server.yaml",
 		]);
 		rojo.say = async () =>
 			rojo.requests.length > 1
@@ -2324,8 +2497,8 @@ describe("CoreSyncbackService", () => {
 
 	it("should name the file to delete when Rojo refuses to remove an instance a project file defines", async () => {
 		await prepare([
-			"src/Inventory/Bag@server.luau",
-			"src/Inventory/Save@server.luau",
+			"src/Inventory/Bag@Server.luau",
+			"src/Inventory/Save@Server.luau",
 		]);
 		rojo.say = async () =>
 			new DiagnosticsError([
@@ -2350,7 +2523,7 @@ describe("CoreSyncbackService", () => {
 				code: "syncback.removedFromProjectFile",
 				message: expect.stringContaining(
 					path
-						.join("src", "Inventory", "Bag@server.luau")
+						.join("src", "Inventory", "Bag@Server.luau")
 						.replaceAll("\\", "/")
 						.split("/")
 						.join(path.sep)
@@ -2416,7 +2589,7 @@ describe("CoreSyncbackService", () => {
 		};
 
 		it("should plan a dry run on a check of the project file, and write nothing", async () => {
-			await prepare(["src/Inventory/Bag@server.luau"]);
+			await prepare(["src/Inventory/Bag@Server.luau"]);
 			await fs.delete(abs("default.project.json"));
 			rojo.say = loot;
 
@@ -2436,19 +2609,19 @@ describe("CoreSyncbackService", () => {
 					changes: [
 						{
 							kind: "write",
-							file: abs("src/Inventory/Loot@server.luau"),
+							file: abs("src/Inventory/Loot@Server.luau"),
 						},
 					],
 				},
 			});
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
-			expect(await fs.exists(abs("src/Inventory/Loot@server.luau"))).toBe(
+			expect(await fs.exists(abs("src/Inventory/Loot@Server.luau"))).toBe(
 				false
 			);
 		});
 
 		it("should write the project file and the changes when told to", async () => {
-			await prepare(["src/Inventory/Bag@server.luau"]);
+			await prepare(["src/Inventory/Bag@Server.luau"]);
 			await fs.delete(abs("default.project.json"));
 			rojo.say = loot;
 
@@ -2461,12 +2634,12 @@ describe("CoreSyncbackService", () => {
 			expect(write.outcomes.map(({ kind }) => kind)).toEqual(["wrote"]);
 			expect(outcome).toMatchObject({ kind: "written", asked: false });
 			expect(
-				await fs.readFile(abs("src/Inventory/Loot@server.luau"))
+				await fs.readFile(abs("src/Inventory/Loot@Server.luau"))
 			).toBe("return 1");
 		});
 
 		it("should not run syncback when the project has errors", async () => {
-			await prepare(["src/Inventory/Bag@server.luau"]);
+			await prepare(["src/Inventory/Bag@Server.luau"]);
 			const selection = new MockConfigSelection([
 				{
 					status: "broken",
@@ -2493,7 +2666,7 @@ describe("CoreSyncbackService", () => {
 		});
 
 		it("should name the config of a syncback that failed", async () => {
-			await prepare(["src/Inventory/Bag@server.luau"]);
+			await prepare(["src/Inventory/Bag@Server.luau"]);
 			rojo.say = async () =>
 				new DiagnosticsError([
 					errorDiagnostic("rojo.failed", { resource: "/repo" }, "no"),
@@ -2512,7 +2685,7 @@ describe("CoreSyncbackService", () => {
 		});
 
 		it("should ask with the plan, and write it on a yes", async () => {
-			await prepare(["src/Inventory/Bag@server.luau"]);
+			await prepare(["src/Inventory/Bag@Server.luau"]);
 			rojo.say = loot;
 			const shown: SyncbackPlan[] = [];
 
@@ -2530,12 +2703,12 @@ describe("CoreSyncbackService", () => {
 			expect(shown).toHaveLength(1);
 			expect(outcome).toMatchObject({ kind: "written", asked: true });
 			expect(
-				await fs.readFile(abs("src/Inventory/Loot@server.luau"))
+				await fs.readFile(abs("src/Inventory/Loot@Server.luau"))
 			).toBe("return 1");
 		});
 
 		it("should write nothing on a no, and say it was declined after asking", async () => {
-			await prepare(["src/Inventory/Bag@server.luau"]);
+			await prepare(["src/Inventory/Bag@Server.luau"]);
 			rojo.say = loot;
 
 			const { outcome } = await service.run(request.selection, {
@@ -2551,18 +2724,18 @@ describe("CoreSyncbackService", () => {
 					changes: [
 						{
 							kind: "write",
-							file: abs("src/Inventory/Loot@server.luau"),
+							file: abs("src/Inventory/Loot@Server.luau"),
 						},
 					],
 				},
 			});
-			expect(await fs.exists(abs("src/Inventory/Loot@server.luau"))).toBe(
+			expect(await fs.exists(abs("src/Inventory/Loot@Server.luau"))).toBe(
 				false
 			);
 		});
 
 		it("should not ask when the plan changes nothing", async () => {
-			await prepare(["src/Inventory/Bag@server.luau"]);
+			await prepare(["src/Inventory/Bag@Server.luau"]);
 			let asked = false;
 
 			const { outcome } = await service.run(request.selection, {

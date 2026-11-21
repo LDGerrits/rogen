@@ -10,13 +10,13 @@ project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
       Bar: Folder
-        Health: ModuleScript  <- src/Shared/Bar/Health.luau
+        Health: ModuleScript  <- src/shared/Bar/Health.luau
       Net: Folder
-        Remote: ModuleScript  <- src/Shared/Net/Remote@shared.luau
-      Store: ModuleScript  <- src/Shared/Store/init@shared.luau
-        Cart: ModuleScript  <- src/Shared/Store/Cart.luau
+        Remote: ModuleScript  <- src/shared/Net/Remote@shared.luau
+      Store: ModuleScript  <- src/shared/Store/init@shared.luau
+        Cart: ModuleScript  <- src/shared/Store/Cart.luau
       Ui: Folder
-        Hud: ModuleScript  <- src/Shared/Ui@shared/Hud.luau
+        Hud: ModuleScript  <- src/shared/Ui@shared/Hud.luau
   ServerScriptService: ServerScriptService
     Net: Folder
       Queue: ModuleScript  <- src/Net@server/Queue.luau

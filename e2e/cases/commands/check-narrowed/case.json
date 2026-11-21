@@ -1,1 +1,1 @@
-{ "steps": [["check", "src/F/Shared/Good.luau"], ["check", "src/F/Shared/Good.luau", "--json"], ["check", "src/F/Shared/Bad@server.luau"], ["check"]], "rojo": false }
+{ "steps": [["check", "src/F/shared/Good.luau"], ["check", "src/F/shared/Good.luau", "--json"], ["check", "src/F/shared/Bad@server.luau"], ["check"]], "rojo": false }

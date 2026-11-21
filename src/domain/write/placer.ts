@@ -1,5 +1,6 @@
+import { mistypedRouteErrors } from "./mistyped-route-errors.js";
 import { compareStrings } from "../../base/collections.js";
-import { joinPosix } from "../../base/path.js";
+import { isInside, joinPosix, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import path from "path";
@@ -8,11 +9,11 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
+import { DeclaredKeys } from "../config/declared-keys.js";
 import { ResolvedConfig, scannedFileOf } from "../config/resolved-config.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import { LeftOut } from "./write.js";
 import { WriteTree } from "./write-tree.js";
-import { InitScripts } from "./init-scripts.js";
 import { NameReadings } from "./name-readings.js";
 import { RootScanner, ScannedRoot } from "./root-scanner.js";
 import {
@@ -31,7 +32,6 @@ import { DisplacedFile, LeftOutPaths, Placement } from "./placement.js";
 export class Placer {
 	private readonly layout: CompiledLayout;
 	private readonly tree: WriteTree;
-	private readonly initScripts: InitScripts;
 
 	constructor(
 		private readonly index: IndexReader,
@@ -41,7 +41,6 @@ export class Placer {
 	) {
 		this.layout = new CompiledLayout(config, tools);
 		this.tree = new WriteTree(config, this.layout);
-		this.initScripts = new InitScripts(this.tree);
 	}
 
 	place(): Result<Placement, Diagnostic[]> {
@@ -64,13 +63,26 @@ export class Placer {
 		const {
 			routed,
 			emptyFolders,
-			toCopy,
 			unrouted,
 			withoutFolder,
 			hoistedInits,
+			governedNearMisses,
 		} = new Router(this.config, readings).route(roots, claims);
 		const markerClashes = new MarkerClashes(claims);
 		const routeErrors = [
+			...mistypedRouteErrors(readings, {
+				routed,
+				displaced: new Set(
+					routed
+						.filter((file) => this.tree.displacing(file))
+						.map(({ entry }) => entry.source)
+				),
+				governed: governedNearMisses,
+				exists: (target) => Placer.listed(roots, target),
+				fallbackKey: this.config.patterns.nameKeyFor(
+					DeclaredKeys.FALLBACK_ROUTE
+				),
+			}),
 			...markerClashes.diagnostics(),
 			...this.ignoredAtErrors(
 				routed.filter((file) => !this.tree.displacing(file)),
@@ -78,13 +90,11 @@ export class Placer {
 			),
 			...this.withoutFolderErrors(withoutFolder),
 			...this.hoistedInitErrors(hoistedInits),
+			...Placer.patternClashErrors(routed),
 		];
-		if (routeErrors.length > 0) return err(routeErrors);
-		const routedNodes = this.initScripts.withCopies(routed, toCopy);
-		const resolved = new InstanceResolver().resolve(routedNodes);
-		const nodes = this.initScripts.withoutLoneInits(resolved.nodes);
-		const templating = this.yieldToTree(nodes);
-		const placed = new Set(nodes.map(({ entry }) => entry.source));
+		const resolved = new InstanceResolver().resolve(routed);
+		const templating = this.yieldToTree(resolved.nodes);
+		const placed = new Set(resolved.nodes.map(({ entry }) => entry.source));
 		const leftOut = new LeftOutPaths(
 			roots.flatMap((root) => [...root.leftOut]),
 			unrouted
@@ -104,12 +114,13 @@ export class Placer {
 				tree: this.tree,
 				roots,
 				readings,
-				routedNodes,
-				nodes: templating.nodes,
+				routed,
+				files: templating.nodes,
 				emptyFolders,
 				leftOut,
 				clashes: resolved.clashes,
 				displaced: templating.displaced,
+				errors: routeErrors,
 			})
 		);
 	}
@@ -127,6 +138,21 @@ export class Placer {
 		);
 	}
 
+	/** Whether the scan of `roots` lists `target`, an absolute POSIX path. */
+	private static listed(
+		roots: readonly ScannedRoot[],
+		target: string
+	): boolean {
+		const root = roots.find((candidate) =>
+			isInside(target, toPosix(candidate.sourcePath))
+		);
+		return (
+			root
+				?.listing(path.normalize(path.posix.dirname(target)))
+				.has(path.posix.basename(target)) === true
+		);
+	}
+
 	private static unreadableErrors(
 		roots: readonly ScannedRoot[]
 	): Diagnostic[] {
@@ -139,6 +165,23 @@ export class Placer {
 				)
 			)
 		);
+	}
+
+	private static patternClashErrors(
+		routed: readonly RoutedFile[]
+	): Diagnostic[] {
+		const clashes = new Map<string, readonly string[]>();
+		for (const { patternClash } of routed)
+			if (patternClash) clashes.set(patternClash.at, patternClash.keys);
+		return [...clashes]
+			.sort(([a], [b]) => compareStrings(a, b))
+			.map(([resource, keys]) =>
+				errorDiagnostic(
+					"route.patternClash",
+					{ resource },
+					`${joinedWithAnd(keys.map((key) => `"${key}"`))} ${keys.length > 2 ? "all" : "both"} match this name, are as long as each other, and send it to different places. Lengthen the pattern that should win, or route the file with a folder or an @ name.`
+				)
+			);
 	}
 
 	private ignoredAtErrors(

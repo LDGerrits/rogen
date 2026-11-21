@@ -1,5 +1,5 @@
 import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
@@ -42,6 +42,8 @@ type ExaminedConfig =
 			readonly kind: "stopped";
 			readonly placement: Placement;
 			readonly errors: readonly Diagnostic[];
+			/** What the rest of the write raises, which still holds where only routing stopped it. */
+			readonly warnings: readonly Diagnostic[];
 	  };
 
 /** Runs the phases of a write on one config from an index, so `write` and `locate` place files the same way. */
@@ -97,7 +99,12 @@ export class WritePipeline {
 		if (examined.isErr()) return examined;
 		const examinedConfig = examined.value;
 		if (examinedConfig.kind === "stopped")
-			return err(new DiagnosticsError(examinedConfig.errors));
+			return err(
+				new DiagnosticsError([
+					...examinedConfig.errors,
+					...examinedConfig.warnings,
+				])
+			);
 		const { placement, projectFile, readFiles, warnings } = examinedConfig;
 		return ok({
 			config,
@@ -127,33 +134,47 @@ export class WritePipeline {
 		const placement = await this.place(config);
 		if (placement.isErr())
 			return err(new DiagnosticsError(placement.error));
+		const { errors } = placement.value;
 		const assembled = await this.assemble(placement.value);
 		if (assembled.isErr())
 			return ok({
 				kind: "stopped",
 				placement: placement.value,
-				errors: assembled.error,
+				errors: [...errors, ...assembled.error],
+				warnings: [],
 			});
 		const missing = WritePipeline.missingOf(config, placement.value);
 		if (missing.stopsWrite)
 			return ok({
 				kind: "stopped",
 				placement: placement.value,
-				errors: missing.diagnostics(),
+				errors: [...errors, ...missing.diagnostics()],
+				warnings: [],
 			});
 		const { meta, assembly } = assembled.value;
+		const raised = [
+			...config.warnings,
+			...meta.warnings,
+			...new WriteValidator(assembly).validate(),
+			...(await this.mountClashes.diagnostics(placement.value)),
+			...new UnmountedSources(config, this.index).diagnostics(),
+		];
+		const warnings = raised.filter((diagnostic) => !isError(diagnostic));
+		const stopping = [...errors, ...raised.filter(isError)];
+		// Routing that stops the write still places every file, so the rest of what the write would raise is shown with it.
+		if (stopping.length > 0)
+			return ok({
+				kind: "stopped",
+				placement: placement.value,
+				errors: stopping,
+				warnings,
+			});
 		return ok({
 			kind: "assembled",
 			placement: placement.value,
 			projectFile: assembly.projectFile,
 			readFiles: meta.files,
-			warnings: [
-				...config.warnings,
-				...meta.warnings,
-				...new WriteValidator(assembly).validate(),
-				...(await this.mountClashes.diagnostics(placement.value)),
-				...new UnmountedSources(config, this.index).diagnostics(),
-			],
+			warnings,
 		});
 	}
 
@@ -166,16 +187,6 @@ export class WritePipeline {
 			config.projectFile,
 			config.usesDefaultSourcePath
 		);
-	}
-
-	/** The project file a write of `config` would write, or none when it fails. */
-	async projectFileOf(
-		config: ResolvedConfig
-	): Promise<RojoProjectFile | undefined> {
-		const examined = await this.examine(config);
-		return examined.isOk() && examined.value.kind === "assembled"
-			? examined.value.projectFile
-			: undefined;
 	}
 
 	private async assemble(placement: Placement) {

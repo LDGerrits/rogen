@@ -1,0 +1,35 @@
+$ rogen syncback game -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/common/Hello/Shared/Greeting.luau
+  Writing src/common/Hello/Server/Greet.luau
+  Removing src/common/Greeter
+stderr:
+  Wrote game.project.json.
+  Syncback wrote 3 changes.
+
+$ rogen write game
+exit 0
+stdout: (not shown)
+
+$ rogen syncback game -i place.rbxl --dry-run
+exit 0
+stderr:
+  Syncback would change nothing.
+
+written:
+  game.project.json
+  src/common/Hello/Server/Greet.luau
+  src/common/Hello/Shared/Greeting.luau
+
+$ rojo sourcemap game.project.json
+game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Hello: Folder
+        Greeting: ModuleScript  <- src/common/Hello/Shared/Greeting.luau
+  ServerScriptService: ServerScriptService
+    Hello: Folder
+      Greet: ModuleScript  <- src/common/Hello/Server/Greet.luau
+    Match: Folder
+      Match: ModuleScript  <- src/game/Match/Server/Match.luau

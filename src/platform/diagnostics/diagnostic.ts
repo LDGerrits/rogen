@@ -86,13 +86,15 @@ export function errorDiagnostic(
 	code: string,
 	location: DiagnosticLocation,
 	message: string,
-	fixes: readonly DiagnosticFix[] = []
+	fixes: readonly DiagnosticFix[] = [],
+	related: readonly DiagnosticRelated[] = []
 ): Diagnostic {
 	return {
 		...location,
 		severity: DiagnosticSeverity.Error,
 		code,
 		message,
+		...(related.length > 0 && { related }),
 		...(fixes.length > 0 && { fixes }),
 	};
 }

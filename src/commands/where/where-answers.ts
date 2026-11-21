@@ -40,6 +40,10 @@ export class WhereAnswers {
 	readonly errors: readonly Diagnostic[];
 	/** The errors that stop the write of a config that answered. */
 	readonly stops: readonly Diagnostic[];
+	/** What fails `where`: a config that didn't load, or an error that stops the write and is about what was asked. */
+	readonly failing: readonly Diagnostic[];
+	/** The errors that stop the write but are about nothing asked, which `where` prints and passes. */
+	readonly elsewhere: readonly Diagnostic[];
 	/** When no file answered and no error stops the write, the warnings that say why. */
 	readonly whyEmpty: readonly Diagnostic[];
 	readonly configCount: number;
@@ -68,9 +72,17 @@ export class WhereAnswers {
 							({ placingNothing }) => placingNothing
 						)
 					);
-		this.errors = uniqueDiagnostics([
+		const unshown = uniqueDiagnostics(
+			diagnoses.flatMap(({ unshown }) => unshown)
+		);
+		// Asked about everything, every error is about what was asked.
+		this.elsewhere = everyFile ? [] : unshown;
+		this.errors = uniqueDiagnostics([...errors, ...unshown]);
+		this.failing = uniqueDiagnostics([
 			...errors,
-			...diagnoses.flatMap(({ unshown }) => unshown),
+			...diagnoses.flatMap(({ stops, unshown: hidden }) =>
+				stops.filter((error) => everyFile || !hidden.includes(error))
+			),
 		]);
 	}
 

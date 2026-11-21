@@ -1,6 +1,7 @@
 import { toPosix } from "../../base/path.js";
 import {
 	Diagnostic,
+	isError,
 	diagnosticKey,
 } from "../../platform/diagnostics/diagnostic.js";
 import { Result } from "../../base/result.js";
@@ -10,8 +11,8 @@ import { ConfigSelection, validConfigs } from "../config/config-service.js";
 
 type MatchForm = "folder" | "marker" | "suffix";
 
-/** How the governing route matched the file; `copy` is an init script placed where its folder's other files route it, and `fallback` the `*` route. */
-export type RouteMatch = MatchForm | "copy" | "fallback";
+/** How the governing route matched the file; `pattern` is a route key its name matches and `fallback` the `*` route. */
+export type RouteMatch = MatchForm | "pattern" | "fallback";
 
 /** A folder on disk and the node it becomes. */
 export interface FolderNode {
@@ -206,13 +207,16 @@ export class FailedConfig extends AbstractConfigOutcome {
 		super(config, findings, errors);
 	}
 
-	/** A config that failed before it had warnings of its own; `sync` is what an earlier write of this version found. */
+	/** A config that failed before it was written, with the warnings among `diagnostics` kept apart from its errors; `sync` is what an earlier write of this version found. */
 	static before(
 		config: ResolvedConfig,
-		errors: readonly Diagnostic[],
+		diagnostics: readonly Diagnostic[],
 		sync: SyncWarnings = SyncWarnings.unknown
 	): FailedConfig {
-		return new FailedConfig(config, errors, { warnings: [], sync });
+		return new FailedConfig(config, diagnostics.filter(isError), {
+			warnings: diagnostics.filter((diagnostic) => !isError(diagnostic)),
+			sync,
+		});
 	}
 }
 

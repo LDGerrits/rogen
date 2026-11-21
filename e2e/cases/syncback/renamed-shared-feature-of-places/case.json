@@ -1,0 +1,1 @@
+{"place": "place.rbxl", "steps": [["syncback", "game", "-i", "place.rbxl", "-y", "--list"], ["write", "game"], ["syncback", "game", "-i", "place.rbxl", "--dry-run"]]}

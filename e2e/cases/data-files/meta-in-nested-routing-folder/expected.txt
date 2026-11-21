@@ -2,9 +2,9 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: 2 files under a server-only route ship to clients, because an outer route governs them: (route.serverCodeShipped)
-    src/Shared/Server/Datastore.luau (ships to clients as ReplicatedStorage/shared/Server/Datastore: move it out of the "shared" route's files if it's server code, or keep it there with a "@shared" marker file in its folder)
-    src/Shared/Server/Other.mock.luau (ships to clients as ReplicatedStorage/shared/Server/Other.mock: move it out of the "shared" route's files if it's server code, or keep it there with a "@shared" marker file in its folder)
+  default.rogen.json - warning: 2 files in a folder named for a server route ship to clients: (route.serverCodeShipped)
+    src/shared/server/Datastore.luau (ships to clients as ReplicatedStorage/shared/server/Datastore: move it out of the "shared" route's files if it's server code, or keep it there with a "@shared" marker file in its folder)
+    src/shared/server/Other.mock.luau (ships to clients as ReplicatedStorage/shared/server/Other.mock: move it out of the "shared" route's files if it's server code, or keep it there with a "@shared" marker file in its folder)
 
 written:
   default.project.json
@@ -13,6 +13,6 @@ $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
-      Server: Actor  <- src/Shared/Server/init.meta.json
-        Datastore: ModuleScript  <- src/Shared/Server/Datastore.luau
-        Other.mock: ModuleScript  <- src/Shared/Server/Other.mock.luau
+      server: Actor  <- src/shared/server/init.meta.json
+        Datastore: ModuleScript  <- src/shared/server/Datastore.luau
+        Other.mock: ModuleScript  <- src/shared/server/Other.mock.luau

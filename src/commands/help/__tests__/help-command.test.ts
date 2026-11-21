@@ -245,7 +245,7 @@ describe("help command", () => {
 				)
 			).toEqual([]);
 			expect(lines).toContain(
-				'  warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)'
+				'  error: 2 names have an "@" that misses its route, so Rogen stops until they are fixed: (route.strayAt)'
 			);
 		});
 
@@ -590,7 +590,7 @@ describe("help command", () => {
 			await help("route.strayAt");
 
 			expect(printed().split("\n")[0]).toBe("route.strayAt");
-			expect(printed()).toContain("Warning.");
+			expect(printed()).toContain("Error.");
 		});
 
 		it("should print the code written in another case", async () => {

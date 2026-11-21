@@ -1,7 +1,7 @@
 import path from "path";
 import { compareStrings } from "../../../base/collections.js";
 import { isObject } from "../../../base/objects.js";
-import { isInside, joinPosix, toPosix } from "../../../base/path.js";
+import { ancestors, isInside, joinPosix, toPosix } from "../../../base/path.js";
 import {
 	capitalized,
 	joinedBriefly,
@@ -10,6 +10,7 @@ import {
 import {
 	Diagnostic,
 	DiagnosticFix,
+	errorDiagnostic,
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { DeclaredKeys } from "../../config/declared-keys.js";
@@ -33,6 +34,7 @@ import {
 import { Placement } from "../placement.js";
 import { MissingSourcePaths } from "./missing-source-paths.js";
 import { RoutedFile } from "../router.js";
+import { ScannedFile } from "../root-scanner.js";
 import { Assembly } from "../tree-assembler.js";
 
 /** A script suffix written before an `@` suffix, as in `Start.server@client.luau`, where Rojo doesn't read it. */
@@ -72,16 +74,15 @@ export class WriteValidator {
 			...this.sourcePathNamedAfterKey(),
 			...this.unresolvedLink(),
 			...this.noSyncedFiles(),
+			...this.uncompiled(),
 			...this.extensionCase(),
 			...this.syncRuleSuffix(),
 			...this.nestedProject(),
 			...this.unclaimedMeta(),
-			...this.caseMismatch(),
-			...this.strayAt(),
 			...this.dotRoute(),
-			...this.folderTypo(),
+			...this.folderPattern(),
 			...this.unrouted(),
-			...this.serverCodeShipped(),
+			...this.shippedByFolder(),
 			...this.deadScript(),
 			...this.scriptSuffixBeforeAt(),
 			...this.scriptClassMismatch(),
@@ -168,6 +169,24 @@ export class WriteValidator {
 		);
 	}
 
+	/** Each TypeScript file where no compiler writes the Luau Rojo would read, in a source path that places other files; one that places nothing gets `scan.noSyncedFiles`. */
+	private uncompiled(): Diagnostic[] {
+		if (this.placement.layout.compiledPath !== undefined) return [];
+		return this.placement.roots
+			.filter(({ entries }) => entries.length > 0)
+			.flatMap(({ unsynced }) =>
+				unsynced
+					.filter((file) => /\.tsx?$/.test(file))
+					.map((resource) =>
+						warningDiagnostic(
+							"scan.uncompiled",
+							{ resource },
+							'is TypeScript, which Rojo never reads itself, and the config has no "compiledPath", so it is left out. Set "compiledPath" to the folder roblox-ts writes, as "out", or remove the file.'
+						)
+					)
+			);
+	}
+
 	private noSyncedFilesAdvice(
 		sourcePath: string,
 		unsynced: readonly string[]
@@ -178,10 +197,15 @@ export class WriteValidator {
 			),
 			LISTED_FILES
 		);
+		const compiled = this.placement.layout.compiledPath !== undefined;
+		const typeScript = unsynced.some((file) => /\.tsx?$/.test(file));
+		const others = unsynced.some((file) => !/\.tsx?$/.test(file));
 		const advice =
-			this.placement.layout.compiledPath === undefined
-				? 'Add a "syncRules" entry for their extension, and a "compiledPath" if a compiler turns them into Luau.'
-				: 'Add a "syncRules" entry for their extension.';
+			!compiled && typeScript
+				? `Rojo reads only the Luau a compiler writes for TypeScript: set "compiledPath" to the folder roblox-ts writes, as "out".${others ? ' For the other files, add a "syncRules" entry for their extension.' : ""}`
+				: !compiled
+					? 'Add a "syncRules" entry for their extension, and a "compiledPath" if a compiler turns them into Luau.'
+					: 'Add a "syncRules" entry for their extension.';
 		return `Rojo reads none of its files (${listed}). ${advice}`;
 	}
 
@@ -255,29 +279,6 @@ export class WriteValidator {
 			);
 	}
 
-	private caseMismatch(): Diagnostic[] {
-		const { nearMisses, markers } = this.placement.readings;
-		return [...nearMisses].map(([resource, key]) => {
-			const sign = markers.has(resource) ? "@" : "";
-			return warningDiagnostic(
-				"route.caseMismatch",
-				{ resource },
-				`differs from the route "${key}" only in letter case, so it is read as an ordinary name. Spell it "${sign}${key}" or "${sign}${DeclaredKeys.flipFirstLetter(key)}", or declare it as written.`
-			);
-		});
-	}
-
-	private strayAt(): Diagnostic[] {
-		return this.misspelt(
-			"route.strayAt",
-			"strayAt",
-			(_, { text, suggestion, notLast }) =>
-				notLast
-					? `"@${text}" must end the name`
-					: `did you mean "${suggestion}"?`
-		);
-	}
-
 	private dotRoute(): Diagnostic[] {
 		return this.misspelt(
 			"route.dotRoute",
@@ -297,8 +298,7 @@ export class WriteValidator {
 	/** The route other than `key` that governs `resource` through a folder above it, read from the files below it that no route folder or `@` name of its own sits between. */
 	private governingRoute(resource: string, key: string): string | undefined {
 		return this.placement.files.find(({ entry, route }) => {
-			if (route === key || route === DeclaredKeys.FALLBACK_ROUTE)
-				return false;
+			if (route === key || !DeclaredKeys.isName(route)) return false;
 			if (entry.source === resource) return true;
 			if (!entry.source.startsWith(`${resource}/`)) return false;
 			return entry.source
@@ -313,12 +313,50 @@ export class WriteValidator {
 		})?.route;
 	}
 
-	private folderTypo(): Diagnostic[] {
-		return this.misspelt(
-			"route.folderTypo",
-			"folderTypo",
-			(_, { key }) => `did you mean "${key}"?`
-		);
+	/** A folder whose files fall to `*` though a pattern matches its name: a folder script's for any pattern, a folder of files' only for a pattern without a `*`, which names a whole word. */
+	private folderPattern(): Diagnostic[] {
+		const { patterns } = this.config;
+		/** Each folder script's folder, with the name its init script would have as a file of its own. */
+		const scripts = new Map<string, string>();
+		const plain = new Set<string>();
+		for (const { entry, routeMatch, init } of this.placement.files)
+			if (routeMatch !== "fallback") continue;
+			else if (init)
+				scripts.set(init.becomes, asFileOf(init.becomes, entry.source));
+			else for (const folder of foldersAbove(entry)) plain.add(folder);
+		const matched = [...new Set([...scripts.keys(), ...plain])]
+			.sort(compareStrings)
+			.flatMap((folder) => {
+				const asFile = scripts.get(folder);
+				const match = patterns.match(
+					path.posix.basename(folder),
+					...(asFile === undefined ? [] : [asFile])
+				);
+				const script = asFile !== undefined;
+				return match?.kind === "routed" &&
+					(script || !match.key.includes("*")) &&
+					!this.placement.readings.isMistyped(folder)
+					? [{ folder, script, pattern: match.key }]
+					: [];
+			});
+		return matched
+			.filter(
+				({ folder }) =>
+					!matched.some((outer) => isInside(folder, outer.folder))
+			)
+			.map(({ folder, script, pattern }) => {
+				const name = path.posix.basename(folder);
+				const key = patterns.nameKeyFor(pattern);
+				const renamable = key !== undefined && /^[^^(]/.test(name);
+				return warningDiagnostic(
+					"route.folderPattern",
+					{ resource: folder },
+					`matches the pattern "${pattern}", but a pattern never routes a folder${script ? " or its init script, so it goes" : ", so the files in it that no route takes go"} to "*". ${key === undefined ? 'No name key routes to that place: add one to "routes" and name the folder for it.' : `Name it ${name}@${key} to route it there.`}`,
+					renamable
+						? [{ rename: { from: folder, to: `${folder}@${key}` } }]
+						: []
+				);
+			});
 	}
 
 	private misspelt<K extends MisspellingKind>(
@@ -338,7 +376,7 @@ export class WriteValidator {
 			([resource, misspelt]) => {
 				const why = unusable(resource, misspelt);
 				const { renamedTo } = misspelt;
-				return warningDiagnostic(
+				return errorDiagnostic(
 					code,
 					{ resource },
 					why ?? hint(resource, misspelt),
@@ -358,7 +396,7 @@ export class WriteValidator {
 				warningDiagnostic(
 					"route.unrouted",
 					{ resource },
-					`matched no route, so it is left out. Move it into ${joinedWithOr([path.join(this.featureFolderOf(resource), first), ...rest])}, end its name with a route's @ marker (${joinedWithOr([first, ...rest].map((key) => `@${key}`))}), or declare a "*" route.`
+					`matched no route, so it is left out. Move it into a routing folder, as ${path.join(this.featureFolderOf(resource), first)}, end its name with a route's @ suffix (${joinedWithOr([first, ...rest].map((key) => `@${key}`))}), or declare a "*" route.`
 				)
 			);
 	}
@@ -395,7 +433,7 @@ export class WriteValidator {
 		});
 	}
 
-	private serverCodeShipped(): Diagnostic[] {
+	private shippedByFolder(): Diagnostic[] {
 		return this.shipped().map((file) =>
 			warningDiagnostic(
 				"route.serverCodeShipped",
@@ -420,9 +458,26 @@ export class WriteValidator {
 			warningDiagnostic(
 				"tree.deadScript",
 				{ resource: file.entry.source },
-				`${WriteValidator.describeRun(run)} never runs in ${file.instancePath[0]}`
+				`${WriteValidator.describeRun(run)} never runs in ${file.instancePath[0]}${this.outrankedSuffix(file)}`
 			)
 		);
+	}
+
+	/** Why a script's `.server` or `.client` didn't route it: no route has its name, or a route above it governs it. */
+	private outrankedSuffix(file: RoutedFile): string {
+		const suffix = this.placement.readingOf(file).scriptSuffix;
+		const key =
+			suffix === undefined
+				? undefined
+				: this.config.keys.resolveDotRoute(suffix);
+		// Rojo's .server and .client route only a key of their name.
+		if (key === undefined)
+			return suffix === "server" || suffix === "client"
+				? `: no route is named "${suffix}", so ".${suffix}" routes nothing`
+				: "";
+		return key === file.route
+			? ""
+			: `: the "${file.route}" route governs this file, so ".${suffix}" routes nothing here`;
 	}
 
 	private scriptRunOf(file: RoutedFile): ScriptRun | undefined {
@@ -504,7 +559,7 @@ export class WriteValidator {
 				named
 			);
 			const suffixRoutesHere =
-				this.config.keys.resolve(suffix) === file.route;
+				this.config.keys.resolveDotRoute(suffix) === file.route;
 			const script = suffixRoutesHere
 				? `rename it ${named}, which the "${file.route}" route takes`
 				: `name it ${named} in a folder that routes it`;
@@ -614,11 +669,14 @@ export class WriteValidator {
 		return this.placement.clashes.flatMap(
 			({ instance, winner, losers, initFolder }) =>
 				losers.map((loser) =>
-					warningDiagnostic(
+					// Rojo keeps both of two files of one name, which Rogen's tree can't, so the build would lose one: that stops the write. Of two init files Rojo itself reads one, as Rogen does, so that only warns.
+					(initFolder === undefined
+						? errorDiagnostic
+						: warningDiagnostic)(
 						"tree.instanceClash",
 						{ resource: loser.entry.source },
 						initFolder === undefined
-							? `becomes "${instance}", as ${winner.entry.source} does, which takes its place. Rename one of them to keep both.`
+							? `becomes "${instance}", as ${winner.entry.source} does, which takes its place, so the build would lose it. Rename one of them to keep both.`
 							: `is an init file of ${initFolder}, as ${winner.entry.source} is, and Rojo reads only that one. ${WriteValidator.initFileFix(loser, instance)}`,
 						[],
 						[
@@ -640,10 +698,9 @@ export class WriteValidator {
 		if (instanceKey(instancePath) === instance)
 			return "Remove one of them.";
 		const name = path.posix.basename(entry.source);
-		const spelled =
-			route === DeclaredKeys.FALLBACK_ROUTE
-				? ""
-				: `, as ${RojoFile.INIT_NAME}@${route}${name.slice(RojoFile.INIT_NAME.length)}`;
+		const spelled = !DeclaredKeys.isName(route)
+			? ""
+			: `, as ${RojoFile.INIT_NAME}@${route}${name.slice(RojoFile.INIT_NAME.length)}`;
 		return `To give each side its own init script, name them with @${spelled}.`;
 	}
 
@@ -673,7 +730,7 @@ export class WriteValidator {
 
 	private runContextTarget(): Diagnostic[] {
 		if (!this.placement.tree.disablesLegacyScripts) return [];
-		return this.placement.nodes
+		return this.placement.files
 			.filter(
 				(file) =>
 					isPlayerScriptContainer(file.instancePath) &&
@@ -788,4 +845,15 @@ export class WriteValidator {
 			)
 		);
 	}
+}
+
+/** The name the init script `source` of the folder `folder` would have as a file of its own, as `Hud.server.luau` for `Hud/init.server.luau`. */
+function asFileOf(folder: string, source: string): string {
+	const fileName = path.posix.basename(source);
+	return path.posix.basename(folder) + fileName.slice(fileName.indexOf("."));
+}
+
+/** The folders between a scanned file and its source path, nearest first. */
+function foldersAbove({ source, relativePath }: ScannedFile): string[] {
+	return [...ancestors(source)].slice(0, relativePath.split("/").length - 1);
 }

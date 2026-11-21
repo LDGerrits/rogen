@@ -2,14 +2,14 @@ $ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
   Writing src/Inventory/Server/Mail.luau
-  Writing src/Inventory/Save@server.luau
+  Writing src/Inventory/Save@Server.luau
 stderr:
   Wrote default.project.json.
   Syncback wrote 2 changes.
 
 written:
   default.project.json
-  src/Inventory/Save@server.luau
+  src/Inventory/Save@Server.luau
   src/Inventory/Server/Mail.luau
 
 $ rojo sourcemap default.project.json
@@ -18,4 +18,4 @@ Game: DataModel
     Inventory: Folder
       Bag: ModuleScript  <- src/Inventory/Server/Bag.luau
       Mail: ModuleScript  <- src/Inventory/Server/Mail.luau
-      Save: ModuleScript  <- src/Inventory/Save@server.luau
+      Save: ModuleScript  <- src/Inventory/Save@Server.luau

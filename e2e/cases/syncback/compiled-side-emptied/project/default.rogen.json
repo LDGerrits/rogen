@@ -1,0 +1,16 @@
+{
+	"name": "c",
+	"tree": {
+		"$className": "DataModel"
+	},
+	"sourcePaths": [
+		"src"
+	],
+	"compiledPath": "out",
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	}
+}

@@ -24,11 +24,13 @@ const mirrorOf = (
 	files: readonly PlacedLocation[],
 	folders: readonly string[] = [],
 	texts: Readonly<Record<string, string>> = {},
-	tree: RojoNode = written.tree
+	tree: RojoNode = written.tree,
+	routeTargets: readonly (readonly string[])[] = []
 ) =>
 	SyncbackMirror.of({
 		written,
 		tree,
+		routeTargets,
 		dir: onDisk("/repo"),
 		root: ROOT,
 		placed: files,
@@ -54,7 +56,7 @@ describe("SyncbackMirror", () => {
 							$className: "Folder",
 							Bag: {
 								$path: optional(
-									"src/Inventory/Bag@server.luau"
+									"src/Inventory/Bag@Server.luau"
 								),
 							},
 						},
@@ -63,7 +65,7 @@ describe("SyncbackMirror", () => {
 			},
 			[
 				placed(
-					"src/Inventory/Bag@server.luau",
+					"src/Inventory/Bag@Server.luau",
 					"ServerScriptService",
 					"Inventory",
 					"Bag"
@@ -78,12 +80,12 @@ describe("SyncbackMirror", () => {
 		expect(mirror.entries).toEqual([
 			{
 				mirror: "ServerScriptService/Inventory/Bag.luau",
-				target: "/repo/src/Inventory/Bag@server.luau",
+				target: "/repo/src/Inventory/Bag@Server.luau",
 				kind: "file",
 			},
 			{
 				mirror: "ServerScriptService/Inventory/Bag.meta.json",
-				target: "/repo/src/Inventory/Bag@server.meta.json",
+				target: "/repo/src/Inventory/Bag@Server.meta.json",
 				kind: "file",
 			},
 		]);
@@ -99,14 +101,14 @@ describe("SyncbackMirror", () => {
 				tree: {
 					ServerScriptService: {
 						Boot: {
-							$path: optional("src/Boot@server.server.luau"),
+							$path: optional("src/Boot@Server.server.luau"),
 						},
 					},
 				},
 			},
 			[
 				placed(
-					"src/Boot@server.server.luau",
+					"src/Boot@Server.server.luau",
 					"ServerScriptService",
 					"Boot"
 				),
@@ -237,6 +239,34 @@ describe("SyncbackMirror", () => {
 		expect(mirror.folders).toEqual(["~kept/0", "~kept/1"]);
 	});
 
+	it("should read a route's target from an empty folder of its own when nothing else gives it one, where Rojo writes the features Studio adds for routing to place", async () => {
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					$className: "DataModel",
+					StarterPlayer: {
+						$className: "StarterPlayer",
+						StarterPlayerScripts: {
+							$className: "StarterPlayerScripts",
+						},
+					},
+				},
+			},
+			[],
+			[],
+			{},
+			{ $className: "DataModel" },
+			[["StarterPlayer", "StarterPlayerScripts"]]
+		);
+
+		expect(mirror.file.tree).toMatchObject({
+			StarterPlayer: {
+				StarterPlayerScripts: { $path: `${ROOT}/~kept/0` },
+			},
+		});
+		expect(mirror.nodeFolders).toEqual([]);
+	});
+
 	it("should give no folder to a service, a node routing made, or a node that ignores unknown instances, as Rojo leaves the instances Studio makes there alone", async () => {
 		const routed = {
 			$className: "Folder",
@@ -303,21 +333,21 @@ describe("SyncbackMirror", () => {
 				tree: {
 					ServerScriptService: {
 						bag: { $path: optional("src/Server/bag.luau") },
-						Bag: { $path: optional("src/Bag@server.luau") },
+						Bag: { $path: optional("src/Bag@Server.luau") },
 					},
 				},
 			},
 			[
 				placed("src/Server/bag.luau", "ServerScriptService", "bag"),
-				placed("src/Bag@server.luau", "ServerScriptService", "Bag"),
+				placed("src/Bag@Server.luau", "ServerScriptService", "Bag"),
 			]
 		);
 
 		expect(mirror.clashes).toEqual([
-			["/repo/src/Server/bag.luau", "/repo/src/Bag@server.luau"],
+			["/repo/src/Server/bag.luau", "/repo/src/Bag@Server.luau"],
 			[
 				"/repo/src/Server/bag.meta.json",
-				"/repo/src/Bag@server.meta.json",
+				"/repo/src/Bag@Server.meta.json",
 			],
 		]);
 	});
@@ -360,7 +390,7 @@ describe("SyncbackMirror", () => {
 							$className: "Folder",
 							Bag: {
 								$path: optional(
-									"src/Inventory/Bag@server.luau"
+									"src/Inventory/Bag@Server.luau"
 								),
 							},
 							Lib: { $path: "vendor/lib" },
@@ -370,7 +400,7 @@ describe("SyncbackMirror", () => {
 			},
 			[
 				placed(
-					"src/Inventory/Bag@server.luau",
+					"src/Inventory/Bag@Server.luau",
 					"ServerScriptService",
 					"Inventory",
 					"Bag"
@@ -575,7 +605,7 @@ describe("SyncbackMirror", () => {
 							$className: "Folder",
 							Widget: {
 								$path: optional(
-									"src/Vendor/Widget@server.project.json"
+									"src/Vendor/Widget@Server.project.json"
 								),
 							},
 						},
@@ -584,7 +614,7 @@ describe("SyncbackMirror", () => {
 			},
 			[
 				placed(
-					"src/Vendor/Widget@server.project.json",
+					"src/Vendor/Widget@Server.project.json",
 					"ServerScriptService",
 					"Vendor",
 					"Widget"
@@ -592,7 +622,7 @@ describe("SyncbackMirror", () => {
 			],
 			[],
 			{
-				"/repo/src/Vendor/Widget@server.project.json": JSON.stringify({
+				"/repo/src/Vendor/Widget@Server.project.json": JSON.stringify({
 					name: "Widget",
 					tree: { $className: "Folder" },
 				}),
@@ -602,8 +632,8 @@ describe("SyncbackMirror", () => {
 
 		expect(mirror.entries).toEqual([
 			{
-				mirror: "~kept/0/Widget@server.project.json",
-				target: "/repo/src/Vendor/Widget@server.project.json",
+				mirror: "~kept/0/Widget@Server.project.json",
+				target: "/repo/src/Vendor/Widget@Server.project.json",
 				kind: "file",
 			},
 		]);
@@ -614,7 +644,7 @@ describe("SyncbackMirror", () => {
 					$className: "Folder",
 					Widget: {
 						$path: optional(
-							`${ROOT}/~kept/0/Widget@server.project.json`
+							`${ROOT}/~kept/0/Widget@Server.project.json`
 						),
 					},
 				},
@@ -624,9 +654,9 @@ describe("SyncbackMirror", () => {
 
 	it("should keep a file under its own name when the name of its instance would make Rojo read it as another kind of file", async () => {
 		const files = [
-			"Rates.model@server.json",
-			"Odd.meta@server.json",
-			"Odd.project@server.json",
+			"Rates.model@Server.json",
+			"Odd.meta@Server.json",
+			"Odd.project@Server.json",
 		];
 		const mirror = await mirrorOf(
 			{
@@ -814,13 +844,13 @@ describe("SyncbackMirror", () => {
 			{
 				tree: {
 					ServerScriptService: {
-						Bag: { $path: optional("src/Bag@server.luau") },
+						Bag: { $path: optional("src/Bag@Server.luau") },
 						Panel: { $path: optional("src/Panel") },
 					},
 				},
 			},
 			[
-				placed("src/Bag@server.luau", "ServerScriptService", "Bag"),
+				placed("src/Bag@Server.luau", "ServerScriptService", "Bag"),
 				placed(
 					"src/Panel/Row.luau",
 					"ServerScriptService",
@@ -832,7 +862,7 @@ describe("SyncbackMirror", () => {
 		);
 
 		expect(mirror.targetOf("ServerScriptService/Bag.luau")).toEqual(
-			"/repo/src/Bag@server.luau"
+			"/repo/src/Bag@Server.luau"
 		);
 		expect(mirror.targetOf("ServerScriptService/Panel/New.luau")).toEqual(
 			"/repo/src/Panel/New.luau"

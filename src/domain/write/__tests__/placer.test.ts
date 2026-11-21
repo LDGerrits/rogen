@@ -116,20 +116,17 @@ describe("Placer", () => {
 			);
 		});
 
-		it("should warn at the file left out, naming the one used", async () => {
+		it("should stop the write at the file left out, naming the one used, as the build would lose it", async () => {
 			await write("src/Types.luau", "src/Types.lua");
 
-			const result = (await apply()).unwrap();
+			const result = await apply();
 
-			expect(result.files.map((file) => file.entry.relativePath)).toEqual(
-				["Types.luau"]
-			);
-			expect(result.warnings).toEqual([
+			expect(result.isErr() && result.error.diagnostics).toEqual([
 				{
-					severity: DiagnosticSeverity.Warning,
+					severity: DiagnosticSeverity.Error,
 					code: "tree.instanceClash",
 					resource: abs("src/Types.lua"),
-					message: `becomes "ReplicatedStorage/Types", as ${abs("src/Types.luau")} does, which takes its place. Rename one of them to keep both.`,
+					message: `becomes "ReplicatedStorage/Types", as ${abs("src/Types.luau")} does, which takes its place, so the build would lose it. Rename one of them to keep both.`,
 					related: [
 						{
 							resource: abs("src/Types.luau"),
@@ -148,9 +145,9 @@ describe("Placer", () => {
 				"lobby/Types.luau"
 			);
 
-			const result = (await apply([abs("core"), abs("lobby")])).unwrap();
+			const result = await apply([abs("core"), abs("lobby")]);
 
-			expect(result.warnings).toMatchObject([
+			expect(result.isErr() && result.error.diagnostics).toMatchObject([
 				{
 					resource: absPosix("core/Types.lua"),
 					message: expect.stringContaining(
@@ -160,15 +157,15 @@ describe("Placer", () => {
 			]);
 		});
 
-		it("should warn at every file left out of a clash", async () => {
+		it("should stop at every file left out of a clash", async () => {
 			await write("src/Types.luau", "src/Types.lua", "src/Types.json");
 
-			const result = (await apply()).unwrap();
+			const result = await apply();
 
-			expect(result.warnings.map(({ resource }) => resource)).toEqual([
-				abs("src/Types.json"),
-				abs("src/Types.lua"),
-			]);
+			expect(
+				result.isErr() &&
+					result.error.diagnostics.map(({ resource }) => resource)
+			).toEqual([abs("src/Types.json"), abs("src/Types.lua")]);
 		});
 
 		it("should let the last source path win a clash without a warning", async () => {
@@ -212,7 +209,7 @@ describe("Placer", () => {
 		});
 	});
 
-	describe("copied init scripts", () => {
+	describe("plain init scripts", () => {
 		const ROUTES = {
 			server: "ServerScriptService",
 			client: "StarterPlayer/StarterPlayerScripts",
@@ -232,7 +229,7 @@ describe("Placer", () => {
 			).unwrap();
 			return {
 				routed: placement.routed,
-				nodes: placement.nodes,
+				nodes: placement.files,
 				leftOut: placement.leftOut,
 				unrouted: placement.leftOut
 					.withStatus("unrouted")
@@ -252,7 +249,7 @@ describe("Placer", () => {
 			store[Symbol.dispose]();
 		});
 
-		it("should copy an init script no route sends anywhere to every node its folder becomes", async () => {
+		it("should place an init script no route sends anywhere only where its own route puts it", async () => {
 			await write(
 				"src/Net/init.luau",
 				"src/Net/Types.luau",
@@ -265,65 +262,40 @@ describe("Placer", () => {
 				"Net/client/Listener.luau -> StarterPlayer/StarterPlayerScripts/Net/Listener",
 				"Net/init.luau -> ReplicatedStorage/shared/Net",
 				"Net/server/Remote.luau -> ServerScriptService/Net/Remote",
-				"Net/init.luau -> StarterPlayer/StarterPlayerScripts/Net (copy)",
-				"Net/init.luau -> ServerScriptService/Net (copy)",
 			]);
 		});
 
-		it("should leave out the fallback's own placement of a copied init script that nothing else is left beside", async () => {
-			await write(
-				"src/Net/init.luau",
-				"src/Net/server/Remote.luau",
-				"src/Net/client/Listener.luau"
-			);
-
-			const result = await route();
-
-			expect(await placed()).toEqual([
-				"Net/client/Listener.luau -> StarterPlayer/StarterPlayerScripts/Net/Listener",
-				"Net/server/Remote.luau -> ServerScriptService/Net/Remote",
-				"Net/init.luau -> StarterPlayer/StarterPlayerScripts/Net (copy)",
-				"Net/init.luau -> ServerScriptService/Net (copy)",
-			]);
-			expect(result.leftOut.count("unrouted")).toBe(0);
-		});
-
-		it("should leave out the fallback's own placements of nested copied init scripts that nothing else is left beside", async () => {
+		it("should keep an init script at the fallback when all its folder's other files route elsewhere", async () => {
 			await write(
 				"src/Net/init.luau",
 				"src/Net/Inner/init.luau",
 				"src/Net/Inner/server/A.luau"
 			);
 
+			const result = await route();
+
 			expect(await placed()).toEqual([
+				"Net/Inner/init.luau -> ReplicatedStorage/shared/Net/Inner",
 				"Net/Inner/server/A.luau -> ServerScriptService/Net/Inner/A",
-				"Net/Inner/init.luau -> ServerScriptService/Net/Inner (copy)",
-				"Net/init.luau -> ServerScriptService/Net (copy)",
+				"Net/init.luau -> ReplicatedStorage/shared/Net",
 			]);
+			expect(result.leftOut.count("unrouted")).toBe(0);
 		});
 
-		it("should keep the fallback's own placement of an init script whose copies the tree displaces", async () => {
+		it("should leave an init script unrouted with no fallback route, wherever its folder's other files go", async () => {
 			await write("src/Net/init.luau", "src/Net/server/Remote.luau");
 
+			const result = await route({
+				routes: { server: "ServerScriptService" },
+			});
+
 			expect(
-				await placed({
-					project: {
-						name: "game",
-						tree: {
-							$className: "DataModel",
-							ServerScriptService: {
-								Net: { $className: "Folder" },
-							},
-						},
-					},
-				})
-			).toEqual([
-				"Net/init.luau -> ReplicatedStorage/shared/Net",
-				"Net/server/Remote.luau -> ServerScriptService/Net/Remote",
-			]);
+				result.routed.map((file) => file.instancePath.join("/"))
+			).toEqual(["ServerScriptService/Net/Remote"]);
+			expect(result.unrouted).toEqual([abs("src/Net/init.luau")]);
 		});
 
-		it("should not copy an init script to a node another init script it can be placed with already is", async () => {
+		it("should give each side the init script routed there", async () => {
 			await write(
 				"src/Net/init.luau",
 				"src/Net/server/init.luau",
@@ -342,62 +314,7 @@ describe("Placer", () => {
 			expect(result.leftOut.withStatus("replaced")).toEqual([]);
 		});
 
-		it("should say a copy is one", async () => {
-			await write("src/Net/init.luau", "src/Net/server/Remote.luau");
-
-			const [, copy] = (await route()).nodes;
-
-			expect([copy.route, copy.routeMatch]).toEqual(["server", "copy"]);
-		});
-
-		it("should give a copy the folder nodes down to the node it is, and none outranked", async () => {
-			await write(
-				"src/Net/Inner/init.luau",
-				"src/Net/Inner/server/Remote.luau"
-			);
-
-			const [, copy] = (await route()).nodes;
-
-			expect(copy.folderNodes.map(({ folder }) => folder)).toEqual([
-				`${abs("src")}/Net`,
-				`${abs("src")}/Net/Inner`,
-			]);
-			expect(copy.outrankedFolderRoutes).toEqual([]);
-		});
-
-		it("should copy only an init script that is a ModuleScript, since a copied Script runs once per copy", async () => {
-			await write("src/Net/init.client.luau", "src/Net/game/Remote.luau");
-
-			expect(
-				await placed({
-					routes: {
-						game: "ServerScriptService",
-						"*": "ReplicatedStorage/shared",
-					},
-				})
-			).toEqual([
-				"Net/game/Remote.luau -> ServerScriptService/Net/Remote",
-				"Net/init.client.luau -> ReplicatedStorage/shared/Net",
-			]);
-		});
-
-		it("should copy an init script to its folder's nodes even with no fallback route to place it", async () => {
-			await write("src/Net/init.luau", "src/Net/server/Remote.luau");
-
-			const result = await route({
-				routes: { server: "ServerScriptService" },
-			});
-
-			expect(
-				result.routed.map((file) => file.instancePath.join("/"))
-			).toEqual([
-				"ServerScriptService/Net/Remote",
-				"ServerScriptService/Net",
-			]);
-			expect(result.unrouted).toEqual([]);
-		});
-
-		it("should not copy an init script that a route of its own sends somewhere", async () => {
+		it("should place an init script a route of its own sends somewhere only there", async () => {
 			await write(
 				"src/Net/init@shared.luau",
 				"src/Net/server/Remote.luau"
@@ -411,14 +328,6 @@ describe("Placer", () => {
 				"Net/init@shared.luau -> ReplicatedStorage/Net",
 				"Net/server/Remote.luau -> ServerScriptService/Net/Remote",
 			]);
-		});
-
-		it("should copy only to nodes something placed is left at", async () => {
-			await write("src/Net/init.luau", "src/Net/client/Debug.luau");
-
-			expect(
-				await placed({ ignored: [abs("src/Net/client/Debug.luau")] })
-			).toEqual(["Net/init.luau -> ReplicatedStorage/shared/Net"]);
 		});
 	});
 

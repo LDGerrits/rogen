@@ -33,11 +33,13 @@ import {
 } from "./config.js";
 import { ConfigKeys } from "./config-keys.js";
 import { DeclaredKeys } from "./declared-keys.js";
+import { RoutePatterns } from "./route-patterns.js";
 import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
 
 const FALLBACK_NAME = "project";
 
-const NAME_RULE = "use letters and digits only, starting with a letter";
+const KEY_RULE =
+	'a name uses letters and digits only, starting with a letter, and a file-name pattern is a glob on the name, such as "*.tsx" or "*[Ss]ervice"';
 
 /** Checks every rule on one project's values that doesn't need the source tree, and returns the config with its route targets parsed. */
 export class ConfigValidator {
@@ -71,6 +73,7 @@ export class ConfigValidator {
 	}
 
 	validate(): Result<ResolvedConfig, Diagnostic[]> {
+		this.checkDuplicateKeys();
 		const routes = this.checkRoutes();
 		const routed = Object.keys(this.routes).length > 0;
 		const project = this.readProject();
@@ -211,20 +214,43 @@ export class ConfigValidator {
 		}
 	}
 
+	/** Rojo keeps the last copy of its own keys without a word, so only Rogen's are checked. */
+	private checkDuplicateKeys(): void {
+		const lost = [
+			...this.config
+				.overriddenKeys([])
+				.filter(({ name }) => isRogenKey(name))
+				.map((key) => ({ ...key, described: `"${key.name}"` })),
+			...this.config
+				.overriddenKeys("routes")
+				.map((key) => ({ ...key, described: `route "${key.name}"` })),
+		].sort(
+			(a, b) =>
+				a.position.line - b.position.line ||
+				a.position.column - b.position.column
+		);
+		for (const { described, position } of lost)
+			this.problems.error(
+				"config.duplicateKey",
+				{ resource: this.config.file, position },
+				`${described} is written more than once, and JSON keeps only the last, so this one is lost. Remove it.`
+			);
+	}
+
 	private checkRoutes(): Map<string, Target> {
 		const targets = new Map<string, Target>();
 		for (const [key, text] of Object.entries(this.routes)) {
 			const location = this.locate("routes", key);
-			if (key !== DeclaredKeys.FALLBACK_ROUTE) {
-				if (DeclaredKeys.isName(key)) this.claim(key, location);
-				else {
-					this.problems.error(
-						"config.invalidRouteKey",
-						location,
-						`route key "${key}" is invalid: ${NAME_RULE}.`
-					);
-				}
-			}
+			if (DeclaredKeys.isName(key)) this.claim(key, location);
+			else if (
+				key !== DeclaredKeys.FALLBACK_ROUTE &&
+				!RoutePatterns.isPattern(key)
+			)
+				this.problems.error(
+					"config.invalidRouteKey",
+					location,
+					`route key "${key}" is invalid: ${ConfigValidator.keyProblem(key)}${KEY_RULE}.`
+				);
 			const target = Target.parse(text, location);
 			if (target.isErr()) this.problems.add(target.error);
 			else targets.set(key, target.value);
@@ -304,8 +330,22 @@ export class ConfigValidator {
 			this.problems.error(
 				"config.ambiguousKey",
 				location,
-				`"${key}" and "${other}" differ only in the case of their first letter, so both would match the same names; keep one of them.`
+				`"${key}" and "${other}" differ only in letter case, so a name spelled one way would read as a misspelling of the other; keep one of them.`
 			);
 		}
+	}
+
+	/** What is wrong with a route key that a reader may not see at once, ending in "; ", before the rule. */
+	private static keyProblem(key: string): string {
+		if (/[/\\]/.test(key))
+			return 'a pattern matches a file\'s name, never its path, so it has no "/"; ';
+		if (key.includes("**"))
+			return 'a pattern matches one name, so no "**"; ';
+		if (/\[[^\]]*$/.test(key)) return 'a "[" needs its "]"; ';
+		if (/\{[^}]*(\{|$)/.test(key))
+			return 'a "{" needs its "}", with no "{" inside; ';
+		if (key.includes("@"))
+			return 'a key is the name an "@" spells, so it has no "@" itself; ';
+		return "";
 	}
 }

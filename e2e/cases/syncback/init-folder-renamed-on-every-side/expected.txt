@@ -1,0 +1,48 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/NetX/Types.luau
+  Writing src/NetX/init.luau
+  Writing src/NetX/Server/Remote.luau
+  Writing src/NetX/Client/Listener.luau
+  Removing src/Net
+stderr:
+  Wrote default.project.json.
+  Syncback wrote 5 changes.
+
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stderr:
+  Syncback would change nothing.
+
+written:
+  default.project.json
+  src/NetX/Client/Listener.luau
+  src/NetX/Server/Remote.luau
+  src/NetX/Types.luau
+  src/NetX/init.luau
+
+$ rojo sourcemap default.project.json
+G: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Boot: Folder
+        Step: ModuleScript  <- src/Boot/Step.luau
+      NetX: ModuleScript  <- src/NetX/init.luau
+        Types: ModuleScript  <- src/NetX/Types.luau
+  ServerScriptService: ServerScriptService
+    Boot: Script  <- src/Boot/init.server.luau
+    NetX: Folder
+      Remote: ModuleScript  <- src/NetX/Server/Remote.luau
+    Store: Folder
+      Save: ModuleScript  <- src/Store/Server/Save.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      NetX: Folder
+        Listener: ModuleScript  <- src/NetX/Client/Listener.luau
+      Store: ModuleScript  <- src/Store/init@Client.luau
+        Row: ModuleScript  <- src/Store/Client/Row.luau

@@ -167,16 +167,16 @@ describe("CoreWriteService.locate", () => {
 	it("should place a file with its route and how the route matched", async () => {
 		await write(
 			"src/Inventory/Server/Save.luau",
-			"src/Net/Http@client.luau",
+			"src/Net/Http@Client.luau",
 			"src/Net/Socket.client.luau",
-			"src/Anti/@server",
+			"src/Anti/@Server",
 			"src/Anti/Check.luau",
 			"src/Util.luau"
 		);
 
 		const located = await locate([
 			"src/Inventory/Server/Save.luau",
-			"src/Net/Http@client.luau",
+			"src/Net/Http@Client.luau",
 			"src/Net/Socket.client.luau",
 			"src/Anti/Check.luau",
 			"src/Util.luau",
@@ -190,6 +190,7 @@ describe("CoreWriteService.locate", () => {
 				instancePath: ["ServerScriptService", "Inventory", "Save"],
 				route: "Server",
 				routeMatch: "folder",
+				routedBy: absPosix("src/Inventory/Server"),
 				folderNodes: [
 					{
 						folder: absPosix("src/Inventory"),
@@ -201,7 +202,7 @@ describe("CoreWriteService.locate", () => {
 			},
 			{
 				status: "placed",
-				source: abs("src/Net/Http@client.luau"),
+				source: abs("src/Net/Http@Client.luau"),
 				exists: true,
 				instancePath: [
 					"StarterPlayer",
@@ -211,6 +212,7 @@ describe("CoreWriteService.locate", () => {
 				],
 				route: "Client",
 				routeMatch: "suffix",
+				routedBy: absPosix("src/Net/Http@Client.luau"),
 				folderNodes: [
 					{
 						folder: absPosix("src/Net"),
@@ -236,6 +238,7 @@ describe("CoreWriteService.locate", () => {
 				instancePath: ["ServerScriptService", "Anti", "Check"],
 				route: "Server",
 				routeMatch: "marker",
+				routedBy: absPosix("src/Anti"),
 				folderNodes: [
 					{
 						folder: absPosix("src/Anti"),
@@ -260,20 +263,20 @@ describe("CoreWriteService.locate", () => {
 
 	it("should mark a data file Rojo makes a ModuleScript from as a module, and no other data file", async () => {
 		const files = [
-			"src/Data/Rates@server.json",
-			"src/Data/Opts@server.jsonc",
-			"src/Data/Costs@server.toml",
-			"src/Data/Theme@server.yaml",
-			"src/Data/Skin@server.yml",
-			"src/Data/Note@server.txt",
-			"src/Data/Strings@server.csv",
-			"src/Data/Crate@server.model.json",
-			"src/Data/Tool@server.rbxm",
-			"src/Data/Lib@server.project.json",
+			"src/Data/Rates@Server.json",
+			"src/Data/Opts@Server.jsonc",
+			"src/Data/Costs@Server.toml",
+			"src/Data/Theme@Server.yaml",
+			"src/Data/Skin@Server.yml",
+			"src/Data/Note@Server.txt",
+			"src/Data/Strings@Server.csv",
+			"src/Data/Crate@Server.model.json",
+			"src/Data/Tool@Server.rbxm",
+			"src/Data/Lib@Server.project.json",
 		];
 		await write(...files);
 		await fs.writeFile(
-			abs("src/Data/Lib@server.project.json"),
+			abs("src/Data/Lib@Server.project.json"),
 			JSON.stringify({ name: "Lib", tree: { $className: "Folder" } })
 		);
 
@@ -739,13 +742,37 @@ describe("CoreWriteService.locate", () => {
 		]);
 	});
 
-	it("should say a directory is empty when nothing in it places", async () => {
+	it("should place no TypeScript file in a project with no compiler, as Rojo never reads one", async () => {
+		await write(
+			"src/Shop/Hud.tsx",
+			"src/Shop/Cart.ts",
+			"src/Shop/Bag.luau"
+		);
+
+		expect(
+			(await locate(["src/Shop/Hud.tsx", "src/Shop/Cart.ts"])).map(
+				({ status }) => status
+			)
+		).toEqual(["notInstance", "notInstance"]);
+	});
+
+	it("should say a directory is empty when nothing in it places, with the Folder routing makes of it", async () => {
 		await write("src/Docs/notes.md");
 		await fs.createDirectory(abs("src/Empty"));
 
 		expect(await locate(["src/Empty", "src/Docs"])).toEqual([
-			{ status: "empty", source: abs("src/Empty"), exists: true },
-			{ status: "empty", source: abs("src/Docs"), exists: true },
+			{
+				status: "empty",
+				source: abs("src/Empty"),
+				exists: true,
+				instancePath: ["ReplicatedStorage", "Shared", "Empty"],
+			},
+			{
+				status: "empty",
+				source: abs("src/Docs"),
+				exists: true,
+				instancePath: ["ReplicatedStorage", "Shared", "Docs"],
+			},
 		]);
 	});
 
@@ -1149,7 +1176,7 @@ describe("CoreWriteService.locate", () => {
 			]);
 		});
 
-		it("should list every node an init script is copied to, and find it at each", async () => {
+		it("should place an init script only at its own route, and find the other sides' files at their own nodes", async () => {
 			await write(
 				"src/Net/init.luau",
 				"src/Net/Types.luau",
@@ -1171,30 +1198,25 @@ describe("CoreWriteService.locate", () => {
 					source: abs("src/Net/init.luau"),
 					exists: true,
 					instancePath: ["ReplicatedStorage", "Shared", "Net"],
-					alsoAt: [
-						["StarterPlayer", "StarterPlayerScripts", "Net"],
-						["ServerScriptService", "Net"],
-					],
 					route: "*",
 					routeMatch: "fallback",
 					folderNodes: [
-						["ReplicatedStorage", "Shared", "Net"],
-						["StarterPlayer", "StarterPlayerScripts", "Net"],
-						["ServerScriptService", "Net"],
-					].map((instancePath) => ({
-						folder: absPosix("src/Net"),
-						instancePath,
-					})),
+						{
+							folder: absPosix("src/Net"),
+							instancePath: [
+								"ReplicatedStorage",
+								"Shared",
+								"Net",
+							],
+						},
+					],
 					named: true,
 					code: "module",
 				},
 			]);
 			expect(
 				located.instances[0].files.map(({ source }) => source)
-			).toEqual([
-				abs("src/Net/Server/Remote.luau"),
-				abs("src/Net/init.luau"),
-			]);
+			).toEqual([abs("src/Net/Server/Remote.luau")]);
 		});
 	});
 
@@ -1329,8 +1351,8 @@ describe("CoreWriteService.locate", () => {
 			expect(await foldersFor("Workspace.Shop.Buy")).toEqual([[]]);
 		});
 
-		it("should name the rename of a file a stray @ left out of place", async () => {
-			await write("src/Shop/Buy@sever.luau");
+		it("should name the rename of a file whose misspelt route left it out of place", async () => {
+			await write("src/Shop/Buy.Server.luau");
 
 			const [instance] = (
 				await locateIn(writeService(), configOf(), {
@@ -1341,10 +1363,10 @@ describe("CoreWriteService.locate", () => {
 
 			expect(instance.fixes).toEqual([
 				{
-					code: "route.strayAt",
+					code: "route.dotRoute",
 					rename: {
-						from: abs("src/Shop/Buy@sever.luau"),
-						to: abs("src/Shop/Buy@Server.luau"),
+						from: abs("src/Shop/Buy.Server.luau"),
+						to: abs("src/Shop/Buy.server.luau"),
 					},
 				},
 			]);
@@ -1352,7 +1374,7 @@ describe("CoreWriteService.locate", () => {
 		});
 
 		it("should not offer a rename that places a different instance", async () => {
-			await write("src/Shop/Cart@sever.luau");
+			await write("src/Shop/Cart.Server.luau");
 
 			const [instance] = (
 				await locateIn(writeService(), configOf(), {

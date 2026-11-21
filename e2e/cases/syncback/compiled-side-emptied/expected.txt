@@ -1,0 +1,29 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stderr:
+  Wrote default.project.json.
+  default.rogen.json - warning: ServerScriptService/Shop/Hit was removed from the place, but it is compiled into out, so syncback left it out. Remove it from the source files. (syncback.compiledPath)
+  Syncback changed nothing.
+
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stderr:
+  default.rogen.json - warning: ServerScriptService/Shop/Hit was removed from the place, but it is compiled into out, so syncback left it out. Remove it from the source files. (syncback.compiledPath)
+  Syncback would change nothing.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+c: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Shop: Folder
+        Types: ModuleScript  <- out/Shop/Shared/Types.luau
+  ServerScriptService: ServerScriptService
+    Shop: Folder
+      Hit: ModuleScript  <- out/Shop/Server/Hit.luau

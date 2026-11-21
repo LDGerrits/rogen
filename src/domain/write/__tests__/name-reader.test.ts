@@ -64,11 +64,8 @@ describe("NameReader marker", () => {
 		expect(readerOf(ROUTE_KEYS).marker("@server").misspellings).toEqual([]);
 	});
 
-	it("matches with the first letter in the other case", () => {
-		expect(matchMarkerKey("@Server", ROUTE_KEYS)).toBe("server");
-	});
-
-	it("does not match any other difference in case", () => {
+	it("does not match a marker in another letter case, and names the key it misses", () => {
+		expect(matchMarkerKey("@Server", ROUTE_KEYS)).toBeUndefined();
 		expect(matchMarkerKey("@SERVER", ROUTE_KEYS)).toBeUndefined();
 		expect(readerOf(ROUTE_KEYS).marker("@SERVER")).toEqual({
 			key: undefined,
@@ -130,17 +127,15 @@ describe("NameReader suffixes", () => {
 		expect(result.matchedKeys.size).toBe(0);
 	});
 
-	it("matches @key with the first letter in the other case", () => {
-		expect(matchSuffixKeys("Foo@Server", ROUTES).matchedKeys).toEqual(
-			new Set(["server"])
-		);
-		expect(
-			matchSuffixKeys("Foo@server", new Set(["Server"])).matchedKeys
-		).toEqual(new Set(["Server"]));
+	it("does not match @key in another letter case", () => {
+		expect(matchSuffixKeys("Foo@Server", ROUTES).matchedKeys.size).toBe(0);
+		expect(matchSuffixKeys("Foo@SERVER", ROUTES).matchedKeys.size).toBe(0);
 	});
 
-	it("does not match @key that differs beyond the first letter", () => {
-		expect(matchSuffixKeys("Foo@SERVER", ROUTES).matchedKeys.size).toBe(0);
+	it("matches Rojo's .server to a key declared in another letter case", () => {
+		expect(
+			matchSuffixKeys("Foo.server", new Set(["Server"])).matchedKeys
+		).toEqual(new Set(["Server"]));
 	});
 
 	it("records where each matched key sits in the stem, the trailing one first", () => {
@@ -249,13 +244,13 @@ describe("NameReader folder", () => {
 	const read = (name: string) => readFolderName(name, ROUTE_KEYS);
 
 	it("should read a folder named after a route as that route, spelled without an @, keeping no name", () => {
-		expect(read("Server")).toEqual({
+		expect(read("server")).toEqual({
 			invisible: false,
 			hoisted: false,
 			at: false,
 			innerRoutes: [],
 			route: "server",
-			outrankedName: "Server",
+			outrankedName: "server",
 			misspellings: [],
 		});
 	});
@@ -302,11 +297,11 @@ describe("NameReader folder", () => {
 		});
 	});
 
-	it("should read @key with the first letter in the other case", () => {
+	it("should read @key in another letter case as an ordinary name", () => {
 		expect(read("Queue@Server")).toMatchObject({
-			route: "server",
-			keptName: "Queue",
+			keptName: "Queue@Server",
 		});
+		expect(read("Queue@Server").route).toBeUndefined();
 	});
 
 	it("should read -server, .server and Rojo's script class as ordinary names", () => {
@@ -333,7 +328,7 @@ describe("NameReader folder", () => {
 	it("should note each misspelling of a name once", () => {
 		expect(
 			readerOf(ROUTE_KEYS)
-				.suffixes("Save@sever.Shared")
+				.suffixes("Save@sever.Server")
 				.misspellings.map(({ kind }) => kind)
 		).toEqual(["strayAt", "dotRoute"]);
 	});
@@ -374,36 +369,6 @@ describe("NameReader folder", () => {
 			outrankedName: "Inventory",
 			misspellings: [],
 		});
-	});
-});
-
-describe("NameReader folder typo", () => {
-	it("should offer the one rename that fixes a folder one edit from a route key", () => {
-		const keys = new DeclaredKeys(new Set(["server"]));
-
-		expect(misspelt(readerOf(keys).folder("Sever"), "folderTypo")).toEqual({
-			kind: "folderTypo",
-			text: "Sever",
-			key: "server",
-			respelling: { start: 0, written: "Sever", spelling: "Server" },
-		});
-	});
-
-	it("should offer no rename when two route keys are as close", () => {
-		const keys = new DeclaredKeys(new Set(["bests", "tests"]));
-
-		const typo = misspelt(readerOf(keys).folder("rests"), "folderTypo");
-
-		expect(typo?.key).toBe("bests");
-		expect(typo?.respelling).toBeUndefined();
-	});
-
-	it("should not offer a key shorter than four letters", () => {
-		const keys = new DeclaredKeys(new Set(["abc"]));
-
-		expect(
-			misspelt(readerOf(keys).folder("abd"), "folderTypo")
-		).toBeUndefined();
 	});
 });
 
@@ -461,12 +426,14 @@ describe("NameReader dot routes", () => {
 		misspelt(readerOf(ROUTE_KEYS).suffixes(stem, script), "dotRoute")
 			?.respelling;
 
-	it("should read a route key after a dot in any letter case", () => {
-		expect(dotRoute("Types.SHARED", false)).toEqual({
+	it("should read Rojo's suffix after a dot in any letter case, and no other key", () => {
+		expect(dotRoute("Types.SERVER", false)).toEqual({
 			start: 5,
-			written: ".SHARED",
-			spelling: "@shared",
+			written: ".SERVER",
+			spelling: "@server",
 		});
+		expect(dotRoute("Types.shared", false)).toBeUndefined();
+		expect(dotRoute("Button.story", true)).toBeUndefined();
 	});
 
 	it("should respell Rojo's suffix on a script in Rojo's case, moved past any route suffix", () => {

@@ -6,13 +6,47 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Pattern routes: a route key with a wildcard, in Rojo's glob syntax for one name (`*`, `?`, `[Ss]`, `{a,b}`), such as `*.tsx`, `*Controller.*` or `*[Ss]ervice`, routes a file by its file name or instance name when no folder, `@` name or marker routes it. A pattern never matches a folder or an init script, so a script written as a folder routes with its folder. The pattern with more characters that aren't `*` wins (`?` and a class count one, each `{a,b}` word on its own), and a tie between different places is the error `route.patternClash`. Syncback writes a new file's `@` route when a pattern would send its plain name elsewhere.
+
+- The warning `route.folderPattern` for a folder script whose folder a pattern matches, or a folder of files a pattern without a `*` matches (`server/` under `[Ss]erver`), which no pattern routes, with the rename that does.
+
+- The error `config.duplicateKey` for a route key, or one of Rogen's own keys, written more than once in one object, which JSON reads as the last copy only. Rojo's keys still keep their last copy without a word, as Rojo reads them.
+
+- The warning `scan.uncompiled` for a TypeScript file in a project with no `compiledPath`, which Rojo never reads.
+
 ### Changed
 
+- **Breaking:** a route key matches a folder, `@` name or marker file only when spelled exactly as the key. A folder, marker or `@` that misses a key by its case, or an `@` that misses it by a typo, as `server/`, `@server` or `Save@Sever.luau` under a `Server` route, is an error that stops the write (`route.caseMismatch`, `route.strayAt`), so a server file can't reach clients by a slip. A folder in another case under a route that already governs it is left alone, and a server-named one there warns that its code ships to clients (`route.serverCodeShipped`) unless a marker file in it keeps it there. A folder inside a script folder, such as a library's `Net/server/`, may be a child the script requires, so its error also names that marker. Rojo's `.server` and `.client` still route a key of that name in any case. `rogen init` spells each key as the folders it finds already do, so a lifted Rojo project gets `server`, `client` and `shared`, and renames a folder or name spelled in the case the rest of the code doesn't use, so the project builds.
 - `rogen init` writes the project's `name`, the folder's name, as `rojo init` does, so tools that need a name in the project file can read it.
 - **Breaking:** an init script's route routes only the script, not its whole folder. `init@server.luau` and `init.server.luau` become the folder on that side, and the folder's other files route by their own paths, so `init@server.luau` and `init@client.luau` give each side its own init script. To route a whole folder, name it for the route or add a marker file.
+- **Breaking:** a plain `init.luau` is its folder only where its own route puts it, `*` unless something routes it, and is no longer copied to every side its folder has files on. On the other sides the folder is a plain Folder of those files. Each copy held only its own side's children, the server could load two copies with two states, and luau-lsp checked the script against just one of them.
+
+- A write that a name's error stops still reports every warning, and `rogen where` still places each file and prints its require, as routing reads it, beside the error.
+- `rogen check <paths>` exits 1 when an error elsewhere stops the write, and prints it, since it couldn't check the paths past it.
+- The agent Stop hook reports a line again once the check stopped printing it and it comes back.
+- A marker file in the wrong case is `route.strayAt`, as every misspelt `@` is, and `route.caseMismatch` is about folders.
+
+- **Breaking:** two files in one source path that make one instance, as `Types.lua` beside `Types.luau`, or two `^` files that hoist to one place, are an error (`tree.instanceClash`): Rojo would keep both, and the project file can name one, so the build lost the other. Two init files of one folder still only warn, as Rojo itself reads one.
+- `rogen init` says why it renames a folder or name, and a dry run counts renames rather than files.
+- `rogen init` in a terminal shows the plan and asks before it renames anything, even when it has no question to ask. An error about the project's own code, such as `Main.Server.luau`, no longer stops `init`: it writes its files, prints the error with its fix, and exits 1, as a write would. An error about what `init` writes still stops it before it writes, and a dry run stops on both.
+
+- **Breaking:** `route.dotRoute` is an error, and only where a dot can only have meant a route: a dot-file or dot-folder named for a key, such as `.server`, and Rojo's `.server` or `.client` where Rojo doesn't read it, as `Main.Server.luau`, `Config.server.json` or `Net.server/`. Any other key after a dot, such as `Button.story.luau` beside a `Story` route, is a name of its own and no longer warns.
+- The warning `route.folderTypo` is gone. A folder one letter from a route key, such as `Servers/` or `Shard/`, is most often a name of its own, and a warning there couldn't be silenced without renaming a correct folder. Rogen now reports only where a name clearly meant a route: an `@`, a wrong letter case, Rojo's `.server` or `.client` where Rojo doesn't read it, or a folder a pattern names but can't route. A file a pattern misses by letter case or a typo falls to `*` without a word, as a pattern is a guess.
+
+- `rogen where` fails only on an error about what you asked. An error about another file that stops the write is printed with a note, and `where` still passes, since `check` is the gate; `where --json` lists it under `stoppedBy`, as `check --json` does.
+- In `--json`, the paths a message names are relative to the folder you ran in, as the text writes them; `file` stays absolute.
 
 ### Fixed
 
+- `rogen where` no longer says a `.ts` or `.tsx` file is placed in a project with no compiler, where Rojo never reads it.
+- `route.unrouted` names a routing folder to move a file into, and `config.invalidRouteKey` says what is wrong with a key that holds a `/`, `**` or `@`.
+- A rename that a diagnostic offers no longer leads into another error: under a route that governs it, a misspelt `@` for another route is `route.ignoredAt` with no rename, and no rename is offered onto a name that is there.
+- A `^init` script in a routing folder is `tree.initWithoutFolder`, where the advice to put the `^` on the folder went round in circles.
+- `tree.deadScript` says when the route a script sits under overrode its `.server` or `.client`, or when no route has the name `.server` or `.client` would route by.
+- `rogen syncback` keeps a project's layout through a Studio rename: the renamed folder keeps its `@` form, marker files, invisible folders and data files in their own form, and a child added with the rename is named like its siblings. A new feature at a route's target is no longer lost, an emptied side of a suffix layout stays as a bare `@` folder, and an instance whose files routing would put elsewhere, as for a name it reads as a route, is left out with a warning rather than written. Syncback asks routing itself where each new file lands before writing it.
+- `rogen syncback` no longer lists a folder as removed when files in it that the place left alone stay; it lists the files it removes.
 - `rogen serve`, `build`, `sourcemap` and `upload` on a plain Rojo project file, such as a wrapper another tool writes, first write the project files it nests that a `.rogen.json` writes, and `serve` and `--watch` keep writing them as files change.
 - `rogen syncback` puts a property set on a feature folder in that folder's `init.meta.json` when the feature is routed by an `@Server/` or `(Server)/` folder, has an invisible folder around or inside its routing folder, or holds a `^` file.
 - `rogen syncback` writes a new instance beside a `^` file where routing places it, and names a new feature's routing folder the way most of the project's are named.

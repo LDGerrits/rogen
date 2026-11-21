@@ -1,1 +1,1 @@
-game:GetService("ServerScriptService").Net.Source = 'return "init2"\n'
+game:GetService("ReplicatedStorage").Shared.Net.Source = 'return "init2"\n'

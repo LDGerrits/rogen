@@ -141,28 +141,19 @@ describeWithRojo("write against Rojo reading the same directory", () => {
 		expect(placed(storage!)).toEqual(rojo);
 	});
 
-	it("should name a data file or model with .server or .client as Rojo does, since only a script has a class", async () => {
+	it("should name a data file or model with .server or .client as Rojo does when no route takes the suffix", async () => {
 		writeFiles({
 			"Data.server.json": "{}",
 			"Notes.client.txt": "text",
 			"Gun.server.model.json": '{"className":"Folder"}',
-			"Boot.server.luau": "",
 		});
 		fs.writeFileSync(
 			path.join(dir, "rojo.project.json"),
 			JSON.stringify({ name: "t", tree: { $path: "src" } })
 		);
-		await rogenTree({
-			routes: {
-				server: "ServerScriptService",
-				client: "StarterPlayer/StarterPlayerScripts",
-				"*": "ReplicatedStorage",
-			},
-		});
+		await rogenTree();
 
-		const rojo = placed(sourcemap(dir, "rojo.project.json")).filter(
-			(line) => !line.startsWith("Boot")
-		);
+		const rojo = placed(sourcemap(dir, "rojo.project.json"));
 		const storage = sourcemap(dir, "default.project.json").children?.find(
 			(child) => child.name === "ReplicatedStorage"
 		);
@@ -211,8 +202,8 @@ describeWithRojo("write against Rojo reading the same directory", () => {
 			"Inv/Analytics.mock.meta.json": meta,
 			"Inv/Tool.plugin.luau": "",
 			"Inv/Tool.meta.json": meta,
-			"Inv/Stats.server.json": "{}",
-			"Inv/Stats.server.meta.json": meta,
+			"Inv/Stats.beta.json": "{}",
+			"Inv/Stats.beta.meta.json": meta,
 			"Inv/Gun@server.json": "{}",
 			"Inv/Gun@server.meta.json": meta,
 			"Inv/Notes.txt": "text",
@@ -229,7 +220,7 @@ describeWithRojo("write against Rojo reading the same directory", () => {
 			"ReplicatedStorage/Inv/Items <- src/Inv/Items.meta.json",
 			"ReplicatedStorage/Inv/Notes <- src/Inv/Notes.meta.json",
 			"ReplicatedStorage/Inv/Plain <- src/Inv/Plain.meta.json",
-			"ReplicatedStorage/Inv/Stats.server <- src/Inv/Stats.server.meta.json",
+			"ReplicatedStorage/Inv/Stats.beta <- src/Inv/Stats.beta.meta.json",
 			"ReplicatedStorage/Inv/Tool <- src/Inv/Tool.meta.json",
 			"ServerScriptService/Inv/Combat <- src/Inv/Combat@server.meta.json",
 			"ServerScriptService/Inv/Foo.mock <- src/Inv/Foo.mock.meta.json",
@@ -271,7 +262,7 @@ describeWithRojo("write against Rojo reading the same directory", () => {
 		]);
 	});
 
-	it("should make an init script every node its folder becomes, alone or through its directory", async () => {
+	it("should make an init script the node its own route gives its folder, and the folder plain on the other sides", async () => {
 		const meta = '{"attributes":{"a":1}}';
 		writeFiles({
 			"Net/init.luau": "",
@@ -300,19 +291,17 @@ describeWithRojo("write against Rojo reading the same directory", () => {
 				"ServerScriptService: ServerScriptService",
 				"ServerScriptService/Bots: Script",
 				"ServerScriptService/Bots/Brain: ModuleScript",
-				"ServerScriptService/Net: ModuleScript",
+				"ServerScriptService/Net: Folder",
 				"ServerScriptService/Net/Remote: ModuleScript",
 				"StarterPlayer: StarterPlayer",
 				"StarterPlayer/StarterPlayerScripts: StarterPlayerScripts",
-				"StarterPlayer/StarterPlayerScripts/Net: ModuleScript",
+				"StarterPlayer/StarterPlayerScripts/Net: Folder",
 				"StarterPlayer/StarterPlayerScripts/Net/Listener: ModuleScript",
 			].sort()
 		);
 		expect(metaApplied(tree)).toEqual([
 			"ReplicatedStorage/Net <- src/Net/init.meta.json",
 			"ServerScriptService/Bots <- src/Bots/init.meta.json",
-			"ServerScriptService/Net <- src/Net/init.meta.json",
-			"StarterPlayer/StarterPlayerScripts/Net <- src/Net/init.meta.json",
 		]);
 	});
 
@@ -390,7 +379,7 @@ describeWithRojo("write against Rojo reading the same directory", () => {
 		);
 	});
 
-	it("should make an init.csv the LocalizationTable of every node its folder becomes", async () => {
+	it("should make an init.csv the LocalizationTable of the node its own route gives its folder only", async () => {
 		writeFiles({
 			"Loc/init.csv": "Key,Source,Context,Example,de\nYes,Yes,,,Ja",
 			"Loc/server/B.luau": "",
@@ -409,13 +398,13 @@ describeWithRojo("write against Rojo reading the same directory", () => {
 				"ReplicatedStorage/Loc: LocalizationTable",
 				"ReplicatedStorage/Loc/Shared: ModuleScript",
 				"ServerScriptService: ServerScriptService",
-				"ServerScriptService/Loc: LocalizationTable",
+				"ServerScriptService/Loc: Folder",
 				"ServerScriptService/Loc/B: ModuleScript",
 			].sort()
 		);
 	});
 
-	it("should refuse a RunContext in the meta of an init.luau, so no meta makes a copied init script run", () => {
+	it("should refuse a RunContext in the meta of an init.luau, so no meta makes an init ModuleScript run", () => {
 		writeFiles({
 			"Net/init.luau": "",
 			"Net/init.meta.json": '{"properties":{"RunContext":"Server"}}',

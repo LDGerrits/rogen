@@ -50,11 +50,8 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 	const relative = (file: string) => relativeTo(cwd, file);
 	switch (location.status) {
 		case "placed": {
-			const alsoAt = location.alsoAt
-				? ` · also ${location.alsoAt.map(instanceKey).join(", ")}`
-				: "";
 			const hoisted = location.hoisted ? " · hoisted by ^" : "";
-			return `${instanceKey(location.instancePath)} · route ${location.route} (${location.routeMatch})${hoisted}${alsoAt}${absentNote(location)}`;
+			return `${instanceKey(location.instancePath)} · route ${location.route} (${location.routeMatch})${hoisted}${absentNote(location)}`;
 		}
 		case "compiled":
 			return `${instanceKey(location.instancePath)} · compiled from ${relative(location.from)}${absentNote(location)}`;

@@ -1,0 +1,38 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen where src
+exit 0
+stdout:
+  src/Bank/bankservice.luau -> ServerScriptService/Bank/bankservice · route *[Ss]ervice (pattern)
+  src/Shop/Prices.luau -> ReplicatedStorage/Shared/Shop/Prices · route * (fallback)
+  src/Shop/ShopComponent.luau -> StarterPlayer/StarterPlayerScripts/Shop/ShopComponent · route *{Controller,Component} (pattern)
+  src/Shop/ShopController.luau -> StarterPlayer/StarterPlayerScripts/Shop/ShopController · route *{Controller,Component} (pattern)
+  src/Shop/ShopService.luau -> ServerScriptService/Shop/ShopService · route *[Ss]ervice (pattern)
+  src/Shop/Test1.luau -> ReplicatedStorage/Tests/Shop/Test1 · route Test? (pattern)
+  src/Shop/Test12.luau -> ReplicatedStorage/Shared/Shop/Test12 · route * (fallback)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Shop: Folder
+        Prices: ModuleScript  <- src/Shop/Prices.luau
+        Test12: ModuleScript  <- src/Shop/Test12.luau
+    Tests: Folder
+      Shop: Folder
+        Test1: ModuleScript  <- src/Shop/Test1.luau
+  ServerScriptService: ServerScriptService
+    Bank: Folder
+      bankservice: ModuleScript  <- src/Bank/bankservice.luau
+    Shop: Folder
+      ShopService: ModuleScript  <- src/Shop/ShopService.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Shop: Folder
+        ShopComponent: ModuleScript  <- src/Shop/ShopComponent.luau
+        ShopController: ModuleScript  <- src/Shop/ShopController.luau

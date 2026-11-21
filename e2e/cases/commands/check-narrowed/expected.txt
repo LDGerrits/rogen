@@ -1,16 +1,18 @@
-$ rogen check src/F/Shared/Good.luau
-exit 0
+$ rogen check src/F/shared/Good.luau
+exit 1
+stdout:
+  src/F/shared/Bad@server.luau - error: "@server" does nothing here, because the "shared" route already governs this file. Remove it, or move the file out of the "shared" route's files. (route.ignoredAt)
 stderr:
-  warning: Checked as far as the write gets: it stops on src/F/Shared/Bad@server.luau (route.ignoredAt). Run 'rogen check' to see everything.
+  warning: The write stops on the error above, so the paths were checked only as far as it gets; fix it and check again.
 
-$ rogen check src/F/Shared/Good.luau --json
-exit 0
+$ rogen check src/F/shared/Good.luau --json
+exit 1
 stdout:
   {
     "diagnostics": [],
     "stoppedBy": [
       {
-        "file": "<dir>/src/F/Shared/Bad@server.luau",
+        "file": "<dir>/src/F/shared/Bad@server.luau",
         "severity": "error",
         "code": "route.ignoredAt",
         "message": "\"@server\" does nothing here, because the \"shared\" route already governs this file. Remove it, or move the file out of the \"shared\" route's files.",
@@ -19,12 +21,12 @@ stdout:
     ]
   }
 
-$ rogen check src/F/Shared/Bad@server.luau
+$ rogen check src/F/shared/Bad@server.luau
 exit 1
 stdout:
-  src/F/Shared/Bad@server.luau - error: "@server" does nothing here, because the "shared" route already governs this file. Remove it, or move the file out of the "shared" route's files. (route.ignoredAt)
+  src/F/shared/Bad@server.luau - error: "@server" does nothing here, because the "shared" route already governs this file. Remove it, or move the file out of the "shared" route's files. (route.ignoredAt)
 
 $ rogen check
 exit 1
 stdout:
-  src/F/Shared/Bad@server.luau - error: "@server" does nothing here, because the "shared" route already governs this file. Remove it, or move the file out of the "shared" route's files. (route.ignoredAt)
+  src/F/shared/Bad@server.luau - error: "@server" does nothing here, because the "shared" route already governs this file. Remove it, or move the file out of the "shared" route's files. (route.ignoredAt)

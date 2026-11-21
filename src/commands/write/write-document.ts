@@ -81,7 +81,9 @@ export function writeEntry(
 		...(outcome.kind === "notWritten" && {
 			blockedBy: outcome.blockedBy.map((file) => configPath(cwd, file)),
 		}),
-		diagnostics: diagnostics.map(diagnosticToJson),
+		diagnostics: diagnostics.map((diagnostic) =>
+			diagnosticToJson(diagnostic, cwd)
+		),
 	};
 }
 

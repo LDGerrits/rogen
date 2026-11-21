@@ -324,17 +324,23 @@ class Migration {
 		);
 		const aliases = this.routableAliases(file, settings.aliases);
 		const keywords = new LegacyKeywords(aliases);
-		const tree = await new LegacySourceTree(
-			this.files,
-			this.folder,
-			keywords,
-			settings.knownTags,
-			settings.verbatim,
-			(word) => keywords.keyOf(word),
-			(word) => keywords.targetOf(word, layout)
-		).scan(settings.source);
+		const sourceTree = (keyOf: (word: string) => string) =>
+			new LegacySourceTree(
+				this.files,
+				this.folder,
+				keywords,
+				settings.knownTags,
+				settings.verbatim,
+				keyOf,
+				(word) => keywords.targetOf(word, layout)
+			).scan(settings.source);
+		const folders = await sourceTree((word) => keywords.keyOf(word));
+		const keyOf = (word: string) =>
+			folders.folderSpelling(word.toLowerCase()) ?? keywords.keyOf(word);
+		const tree = await sourceTree(keyOf);
 		const routes = Migration.routesOf(
 			Object.keys(aliases),
+			keyOf,
 			keywords,
 			layout,
 			tree.used
@@ -379,6 +385,7 @@ class Migration {
 
 	private static routesOf(
 		aliases: readonly string[],
+		keyOf: (word: string) => string,
 		keywords: LegacyKeywords,
 		layout: LayoutSettings,
 		used: ReadonlySet<string>
@@ -396,7 +403,7 @@ class Migration {
 		];
 		const routes: Record<string, string> = {};
 		for (const word of new Set(words))
-			routes[keywords.keyOf(word)] = keywords.targetOf(word, layout);
+			routes[keyOf(word)] = keywords.targetOf(word, layout);
 		routes[DeclaredKeys.FALLBACK_ROUTE] =
 			LegacyKeywords.fallbackTarget(layout);
 		return routes;

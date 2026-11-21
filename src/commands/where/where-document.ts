@@ -47,7 +47,6 @@ export const whereDocumentShape = S.object({
 			fileEntryShape(S.enum("placed"), {
 				instancePath: instancePathShape,
 				require: S.optional(S.string),
-				alsoAt: S.optional(S.array(instancePathShape)),
 				route: S.string,
 				routeMatch: S.string,
 				hoisted: S.optional(S.boolean),
@@ -91,6 +90,7 @@ export const whereDocumentShape = S.object({
 		)
 	),
 	diagnostics: S.array(diagnosticShape),
+	stoppedBy: S.optional(S.array(diagnosticShape)),
 	skipped: S.optional(S.array(skippedPathShape)),
 });
 
@@ -106,7 +106,6 @@ type LocationFields =
 			readonly status: "placed";
 			readonly instancePath: readonly string[];
 			readonly require?: string;
-			readonly alsoAt?: readonly (readonly string[])[];
 			readonly route: string;
 			readonly routeMatch: string;
 			readonly hoisted?: true;
@@ -158,7 +157,10 @@ type WhereEntry = WhereFileEntry | WhereInstanceEntry;
 
 interface WhereDocument {
 	readonly locations: readonly WhereEntry[];
+	/** What is wrong with what was asked: a config that didn't load, or why a listing is empty. */
 	readonly diagnostics: readonly DiagnosticJson[];
+	/** The errors about other files that stop the write, as in `check --json`. */
+	readonly stoppedBy?: readonly DiagnosticJson[];
 	readonly skipped?: readonly SkippedPathJson[];
 }
 
@@ -170,7 +172,6 @@ function fieldsOf(location: FileLocation): LocationFields {
 				status: "placed",
 				instancePath: location.instancePath,
 				...(require && { require }),
-				...(location.alsoAt && { alsoAt: location.alsoAt }),
 				route: location.route,
 				routeMatch: location.routeMatch,
 				...(location.hoisted && { hoisted: true as const }),
@@ -231,7 +232,9 @@ function entryOf(answer: Answer, cwd: string): WhereEntry {
 			status,
 			exists: location.exists,
 			...fields,
-			diagnostics: answer.diagnostics.map(diagnosticToJson),
+			diagnostics: answer.diagnostics.map((diagnostic) =>
+				diagnosticToJson(diagnostic, cwd)
+			),
 		} as WhereFileEntry;
 	}
 	return {
@@ -258,9 +261,17 @@ export function whereDocument(
 			.bySource()
 			.flat()
 			.map((answer) => entryOf(answer, cwd)),
-		diagnostics: [...answers.errors, ...answers.whyEmpty].map(
-			diagnosticToJson
-		),
+		diagnostics: [
+			...answers.errors.filter(
+				(error) => !answers.elsewhere.includes(error)
+			),
+			...answers.whyEmpty,
+		].map((diagnostic) => diagnosticToJson(diagnostic, cwd)),
+		...(answers.elsewhere.length > 0 && {
+			stoppedBy: answers.elsewhere.map((diagnostic) =>
+				diagnosticToJson(diagnostic, cwd)
+			),
+		}),
 		...skippedJson(skipped, cwd),
 	};
 }

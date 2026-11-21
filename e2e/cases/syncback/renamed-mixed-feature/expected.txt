@@ -4,7 +4,7 @@ stdout:
   Writing src/Bags/Server/Bag.luau
   Writing src/Bags/Server/Save.luau
   Removing src/Inventory/Server
-  Removing src/Inventory/Save@server.luau
+  Removing src/Inventory/Save@Server.luau
 stderr:
   Wrote default.project.json.
   Syncback wrote 4 changes.

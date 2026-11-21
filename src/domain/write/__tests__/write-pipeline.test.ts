@@ -341,8 +341,8 @@ describe("WritePipeline", () => {
 						"src/Tool.meta.json",
 						"src/Items.csv",
 						"src/Items.meta.json",
-						"src/Stats.server.json",
-						"src/Stats.server.meta.json",
+						"src/Stats.beta.json",
+						"src/Stats.beta.meta.json",
 						"src/Bots/init.meta.json",
 						"src/Bots/A.luau",
 					],
@@ -549,7 +549,7 @@ describe("WritePipeline", () => {
 				]);
 			});
 
-			it("should count a copied init script once, at the route that places it", async () => {
+			it("should count a split folder's init script once, at its own route", async () => {
 				await fs.writeFile(abs("src/Net/init.luau"), "");
 				await fs.writeFile(abs("src/Net/Util.luau"), "");
 				await fs.writeFile(abs("src/Net/server/Remote.luau"), "");
@@ -581,11 +581,13 @@ describe("WritePipeline", () => {
 				expect(result.unwrap().summary.unrouted).toBe(2);
 			});
 
-			it("should count the files another with the same name replaced", async () => {
-				await fs.writeFile(abs("src/A.lua"), "");
+			it("should count the files a later source path replaced", async () => {
 				await fs.writeFile(abs("src/A.luau"), "");
+				await fs.writeFile(abs("lib/A.luau"), "");
 
-				const result = await prepare(configOf());
+				const result = await prepare(
+					configOf({ sourcePaths: [abs("src"), abs("lib")] })
+				);
 
 				expect(result.unwrap().summary.replaced).toBe(1);
 			});

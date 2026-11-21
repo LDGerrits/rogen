@@ -7,7 +7,7 @@ exit 0
 stdout:
   src/Net/Types.luau -> ReplicatedStorage/shared/Net/Types · route * (fallback)
   src/Net/client/Listener.luau -> StarterPlayer/StarterPlayerScripts/Net/Listener · route client (folder)
-  src/Net/init.luau -> ReplicatedStorage/shared/Net · route * (fallback) · also StarterPlayer/StarterPlayerScripts/Net, ServerScriptService/Net
+  src/Net/init.luau -> ReplicatedStorage/shared/Net · route * (fallback)
   src/Net/server/Remote.luau -> ServerScriptService/Net/Remote · route server (folder)
 
 written:
@@ -20,9 +20,9 @@ project: DataModel
       Net: ModuleScript  <- src/Net/init.luau, src/Net/init.meta.json
         Types: ModuleScript  <- src/Net/Types.luau
   ServerScriptService: ServerScriptService
-    Net: ModuleScript  <- src/Net/init.luau, src/Net/init.meta.json
+    Net: Folder
       Remote: ModuleScript  <- src/Net/server/Remote.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
-      Net: ModuleScript  <- src/Net/init.luau, src/Net/init.meta.json
+      Net: Folder
         Listener: ModuleScript  <- src/Net/client/Listener.luau

@@ -223,6 +223,16 @@ export class RojoFile {
 		return this.match && KIND_OF_USE[this.match.rule.use];
 	}
 
+	/** Whether only a compiler reads the file, a `.ts` or `.tsx` source, where no compiler writes the Luau Rojo would read: Rojo itself never reads one. */
+	get needsCompiler(): boolean {
+		return (
+			this.reading === "rojo" &&
+			this.match?.own !== true &&
+			this.kind === "script" &&
+			COMPILER_EXTENSIONS.includes(path.extname(this.name))
+		);
+	}
+
 	/** Whether Rojo reads the file at all: a sync rule that is not `ignore` takes it, or it is a meta file. A `.ts` or `.tsbuildinfo` file is read by no rule. */
 	get isSyncedByRojo(): boolean {
 		return (

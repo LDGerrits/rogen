@@ -1,29 +1,52 @@
-$ rogen check src/game/Server/Match@sever.luau
+$ rogen check src/game/server/Match.Server.luau
 exit 1
 stdout:
-  src/game/Server/Match@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/game/server/Match.Server.luau - error: write "Match.server.luau" (route.dotRoute)
+  src/common/Stray.Server.luau - error: write "Stray.server.luau" (route.dotRoute)
+stderr:
+  warning: The write stops on the error above, so the paths were checked only as far as it gets; fix it and check again.
 
-$ rogen check src/common/Stray@sever.luau
+$ rogen check src/common/Stray.Server.luau
 exit 1
 stdout:
-  src/common/Stray@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/common/Stray.Server.luau - error: write "Stray.server.luau" (route.dotRoute)
+  src/game/server/Match.Server.luau - error: write "Match.server.luau" (route.dotRoute)
+stderr:
+  warning: The write stops on the error above, so the paths were checked only as far as it gets; fix it and check again.
 
-$ rogen check src/common/Stray@sever.luau --json
+$ rogen check src/common/Stray.Server.luau --json
 exit 1
 stdout:
   {
     "diagnostics": [
       {
-        "file": "<dir>/src/common/Stray@sever.luau",
-        "severity": "warning",
-        "code": "route.strayAt",
-        "message": "did you mean \"@server\"?",
-        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
+        "file": "<dir>/src/common/Stray.Server.luau",
+        "severity": "error",
+        "code": "route.dotRoute",
+        "message": "write \"Stray.server.luau\"",
+        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
         "fixes": [
           {
             "rename": {
-              "from": "<dir>/src/common/Stray@sever.luau",
-              "to": "<dir>/src/common/Stray@server.luau"
+              "from": "<dir>/src/common/Stray.Server.luau",
+              "to": "<dir>/src/common/Stray.server.luau"
+            }
+          }
+        ]
+      }
+    ],
+    "stoppedBy": [
+      {
+        "file": "<dir>/src/game/server/Match.Server.luau",
+        "severity": "error",
+        "code": "route.dotRoute",
+        "message": "write \"Match.server.luau\"",
+        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-dotroute",
+        "fixes": [
+          {
+            "rename": {
+              "from": "<dir>/src/game/server/Match.Server.luau",
+              "to": "<dir>/src/game/server/Match.server.luau"
             }
           }
         ]
@@ -34,8 +57,8 @@ stdout:
 $ rogen check src
 exit 1
 stdout:
-  src/common/Stray@sever.luau - warning: did you mean "@server"? (route.strayAt)
-  src/game/Server/Match@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/common/Stray.Server.luau - error: write "Stray.server.luau" (route.dotRoute)
+  src/game/server/Match.Server.luau - error: write "Match.server.luau" (route.dotRoute)
 
 $ rogen check README.md
 exit 0
@@ -45,5 +68,5 @@ stderr:
 $ rogen check
 exit 1
 stdout:
-  src/common/Stray@sever.luau - warning: did you mean "@server"? (route.strayAt)
-  src/game/Server/Match@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/common/Stray.Server.luau - error: write "Stray.server.luau" (route.dotRoute)
+  src/game/server/Match.Server.luau - error: write "Match.server.luau" (route.dotRoute)

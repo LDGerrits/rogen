@@ -72,5 +72,13 @@ stdout:
 $ rogen where src/server/Util@client.luau
 exit 1
 stdout:
-  src/server/Util@client.luau -> not placed · it has an error (route.ignoredAt)
+  src/server/Util@client.luau -> ServerScriptService/Util@client · route server (folder)
     error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files. (route.ignoredAt)
+    require(game:GetService("ServerScriptService")["Util@client"])
+stderr:
+  src/Net@client@server - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
+  src/server/@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
+  src/server/Net/@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
+  src/server/Store/init@client.luau - error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files. (route.ignoredAt)
+  src/server/Ui@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
+  The errors above stop the write, but none of it is about what you asked; 'rogen check' lists everything to fix.

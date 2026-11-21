@@ -16,4 +16,4 @@ project: DataModel
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Lobby: Folder
-        Hud: ModuleScript  <- src/Lobby@Client/Hud.luau
+        Hud: ModuleScript  <- src/Lobby@client/Hud.luau

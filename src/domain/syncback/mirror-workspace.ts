@@ -1,3 +1,4 @@
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { ignoringGlob, literalGlob } from "../../base/glob.js";
@@ -14,7 +15,7 @@ import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ProjectText } from "../rojo/project-text.js";
 import { ServerMessage } from "../runner/rojo-server.js";
 import { AddedPath } from "./added-instances.js";
-import { instanceNameOf } from "./reverse-router.js";
+import { instanceNameOf, instancePathIn } from "./reverse-router.js";
 import { RojoSyncback } from "./rojo-syncback.js";
 import { SyncbackRequest, UnplacedInstance } from "./syncback.js";
 import { SyncbackLayout } from "./syncback-layout.js";
@@ -83,6 +84,8 @@ export class MirrorWorkspace {
 		written: RojoProjectFile,
 		readonly mirror: SyncbackMirror,
 		readonly layout: SyncbackLayout,
+		/** What a write of the project raises before syncback changes anything. */
+		readonly diagnostics: readonly Diagnostic[],
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
 		@InstantiationService
@@ -205,11 +208,9 @@ export class MirrorWorkspace {
 	/** The instance a path of the mirror is, as an instance key: its folders, then the instance its file makes. */
 	instanceAt(at: string): string {
 		const names = this.mirror.instancePathOf(at);
-		const last = names[names.length - 1];
-		return instanceKey([
-			...names.slice(0, -1),
-			...(last.startsWith("init.") ? [] : [instanceNameOf(last)]),
-		]);
+		return instanceKey(
+			instancePathIn(names.slice(0, -1), names[names.length - 1])
+		);
 	}
 
 	private isUnread(target: string): boolean {

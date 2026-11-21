@@ -61,10 +61,10 @@ describeWithRojo("end to end folder mounts", () => {
 			JSON.stringify({
 				sourcePaths: ["src"],
 				compiledPath: "out",
-				routes: { server: "ServerScriptService" },
+				routes: { Server: "ServerScriptService" },
 			})
 		);
-		writeProjectFile(project.dir, "src/Coins/server/Pay.luau");
+		writeProjectFile(project.dir, "src/Coins/Server/Pay.luau");
 		const [command, args] = invocation(bundle.cli, ["write"]);
 		spawnSync(command, args, { cwd: project.dir });
 		const map = path.join(project.dir, "sourcemap.json");
@@ -84,7 +84,7 @@ describeWithRojo("end to end folder mounts", () => {
 				expect(fs.existsSync(map)).toBe(true);
 			});
 
-			writeProjectFile(project.dir, "out/Coins/server/Pay.luau");
+			writeProjectFile(project.dir, "out/Coins/Server/Pay.luau");
 			await eventually(() => {
 				expect(fs.readFileSync(map, "utf8")).toContain("Pay");
 			});

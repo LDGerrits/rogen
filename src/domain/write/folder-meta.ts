@@ -106,14 +106,14 @@ export class FolderMetaApplier {
 		project: RojoProject,
 		problems: DiagnosticCollector
 	): FolderMetaOutcome[] {
-		const { tree, nodes, displaced, emptyFolders } = this.placement;
+		const { tree, files, displaced, emptyFolders } = this.placement;
 		const sharedWithFile = new InstanceMap<RoutedFile>();
-		for (const file of nodes) sharedWithFile.set(file.instancePath, file);
+		for (const file of files) sharedWithFile.set(file.instancePath, file);
 
 		const outcomes: FolderMetaOutcome[] = [];
 		const reportedClashes = new Set<string>();
 		for (const [nodePath, node] of this.reachedNodes([
-			...nodes,
+			...files,
 			...displaced.map(({ file }) => file),
 			...emptyFolders,
 		])) {

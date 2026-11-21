@@ -5,6 +5,8 @@ stdout: (not shown)
 $ rogen write
 exit 0
 stdout: (not shown)
+stderr:
+  out/Inventory/Server - warning: out/Inventory/Server/Save.luau is in the compiled path and no source file makes it, so Rojo may still sync it. Delete it, or compile again from a clean folder. (compiled.orphan)
 
 written:
   .git/
@@ -12,6 +14,7 @@ written:
   AGENTS.md
   default.project.json
   default.rogen.json
+  src/Inventory/server/Save.ts
 
 default.rogen.json:
 {
@@ -53,7 +56,6 @@ project: DataModel
       node_modules: Folder
   ServerScriptService: ServerScriptService
     Inventory: Folder
-      Save: ModuleScript  <- out/Inventory/Server/Save.luau
     Trading: Folder
       Trade: ModuleScript  <- out/Trading/server/Trade.luau
   StarterPlayer: StarterPlayer

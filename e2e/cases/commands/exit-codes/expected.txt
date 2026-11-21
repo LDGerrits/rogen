@@ -37,7 +37,7 @@ exit 0
 $ rogen check warn
 exit 1
 stdout:
-  warn/src/Inventory/Save@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  warn/src/Inventory/Save.client.luau - warning: a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing (tree.deadScript)
 
 $ rogen check --nope
 exit 2

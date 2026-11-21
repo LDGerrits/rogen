@@ -5,8 +5,9 @@ stdout:
   Wrote default.project.json.
   Wrote 1 of 1 project file with 1 warning.
 stderr:
-  default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
-    src/Save@sever.luau (did you mean "@Server"?)
+  default.rogen.json - warning: 1 script will never run where it lands: (tree.deadScript)
+    src/Save.client.luau (a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing)
+  A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see.
 
 $ rogen write --json
 exit 0
@@ -20,19 +21,11 @@ stdout:
         "outcome": "unchanged",
         "diagnostics": [
           {
-            "file": "<dir>/src/Save@sever.luau",
+            "file": "<dir>/src/Save.client.luau",
             "severity": "warning",
-            "code": "route.strayAt",
-            "message": "did you mean \"@Server\"?",
-            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-strayat",
-            "fixes": [
-              {
-                "rename": {
-                  "from": "<dir>/src/Save@sever.luau",
-                  "to": "<dir>/src/Save@Server.luau"
-                }
-              }
-            ]
+            "code": "tree.deadScript",
+            "message": "a LocalScript never runs in ReplicatedStorage: no route is named \"client\", so \".client\" routes nothing",
+            "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#tree-deadscript"
           }
         ]
       }

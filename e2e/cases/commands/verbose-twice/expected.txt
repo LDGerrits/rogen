@@ -6,8 +6,9 @@ stderr:
   [debug] src: 1 file
   [debug] route Server -> ServerScriptService: 0 files
   [debug] route * -> ReplicatedStorage/Shared: 1 file
-  default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
-    src/Save@sever.luau (did you mean "@Server"?)
+  default.rogen.json - warning: 1 script will never run where it lands: (tree.deadScript)
+    src/Save.client.luau (a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing)
+  A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see.
 
 $ rogen write -v -v
 exit 0
@@ -17,8 +18,9 @@ stderr:
   [debug] src: 1 file
   [debug] route Server -> ServerScriptService: 0 files
   [debug] route * -> ReplicatedStorage/Shared: 1 file
-  default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
-    src/Save@sever.luau (did you mean "@Server"?)
+  default.rogen.json - warning: 1 script will never run where it lands: (tree.deadScript)
+    src/Save.client.luau (a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing)
+  A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see.
 
 written:
   default.project.json

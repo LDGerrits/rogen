@@ -6,7 +6,7 @@ $ rogen where src/Loc src/Strings
 exit 0
 stdout:
   src/Loc/Format.luau -> ReplicatedStorage/shared/Loc/Format · route * (fallback)
-  src/Loc/init.csv -> ReplicatedStorage/shared/Loc · route * (fallback) · also ServerScriptService/Loc
+  src/Loc/init.csv -> ReplicatedStorage/shared/Loc · route * (fallback)
   src/Loc/server/Lookup.luau -> ServerScriptService/Loc/Lookup · route server (folder)
   src/Strings/init.csv -> ReplicatedStorage/shared/Strings · route * (fallback)
 
@@ -21,5 +21,5 @@ project: DataModel
         Format: ModuleScript  <- src/Loc/Format.luau
       Strings: LocalizationTable  <- src/Strings/init.csv
   ServerScriptService: ServerScriptService
-    Loc: LocalizationTable  <- src/Loc/init.csv
+    Loc: Folder
       Lookup: ModuleScript  <- src/Loc/server/Lookup.luau

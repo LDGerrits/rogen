@@ -1,0 +1,10 @@
+{
+	"sourcePaths": ["src"],
+	"routes": {
+		"Server": "ServerScriptService",
+		"*{Controller,Component}": "StarterPlayer/StarterPlayerScripts",
+		"*[Ss]ervice": "ServerScriptService",
+		"Test?": "ReplicatedStorage/Tests",
+		"*": "ReplicatedStorage/Shared"
+	}
+}

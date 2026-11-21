@@ -141,7 +141,7 @@ export async function prepareAndPlace(
 export const placedLines = (files: readonly RoutedFile[]): string[] =>
 	files.map(
 		(file) =>
-			`${file.entry.source.slice(abs("src").length + 1)} -> ${file.instancePath.join("/")}${file.routeMatch === "copy" ? " (copy)" : ""}`
+			`${file.entry.source.slice(abs("src").length + 1)} -> ${file.instancePath.join("/")}`
 	);
 
 export const ROUTER_ROUTES = {

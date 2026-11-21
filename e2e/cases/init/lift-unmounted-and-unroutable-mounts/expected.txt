@@ -30,8 +30,8 @@ stdout:
   src/my-lib -> ReplicatedStorage/MyLib · mounted, which Rojo reads
   src/scratch -> ignored · matches src/scratch
   src/server/Admin -> ServerScriptService/Admin · mounted, which Rojo reads
-  src/server/Main.server.luau -> ServerScriptService/Server/Main · route Server (folder)
-  src/shared/S.luau -> ReplicatedStorage/Shared/S · route Shared (folder)
+  src/server/Main.server.luau -> ServerScriptService/Server/Main · route server (folder)
+  src/shared/S.luau -> ReplicatedStorage/Shared/S · route shared (folder)
 
 written:
   .git/
@@ -47,9 +47,9 @@ default.rogen.json:
     "src"
   ],
   "routes": {
-    "Shared": "ReplicatedStorage/Shared",
-    "Server": "ServerScriptService/Server",
-    "Client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/Shared",
+    "server": "ServerScriptService/Server",
+    "client": "StarterPlayer/StarterPlayerScripts",
     "*": "ReplicatedStorage/Shared"
   },
   "tree": {

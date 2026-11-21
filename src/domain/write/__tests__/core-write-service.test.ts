@@ -1114,35 +1114,37 @@ describe("CoreWriteService", () => {
 			server: "ServerScriptService",
 			"*": "ReplicatedStorage/Shared",
 		};
-		const ignoredAt = "src/F/Shared/Bad@server.luau";
+		const ignoredAt = "src/F/shared/Bad@server.luau";
 
 		beforeEach(async () => {
-			await fs.writeFile(abs("src/F/Shared/Good.luau"), "");
+			await fs.writeFile(abs("src/F/shared/Good.luau"), "");
 			await fs.writeFile(abs(ignoredAt), "");
 		});
 
-		it("should tell the path it can't place that the write stops on the neighbour", async () => {
+		it("should still place a path the error isn't about, and raise the error", async () => {
 			const result = (
 				await locateIn(writeServiceOfFs(), configOf({ routes }), {
-					args: ["src/F/Shared/Good.luau"],
+					args: ["src/F/shared/Good.luau"],
 					cwd: abs(),
 				})
 			).unwrap();
 
 			expect(result.files).toMatchObject([
 				{
-					source: toPosix(abs("src/F/Shared/Good.luau")),
-					exists: true,
-					status: "blocked",
-					by: {
-						code: "route.ignoredAt",
-						resource: toPosix(abs(ignoredAt)),
-					},
+					source: toPosix(abs("src/F/shared/Good.luau")),
+					status: "placed",
+					instancePath: ["ReplicatedStorage", "Shared", "F", "Good"],
+				},
+			]);
+			expect(result.diagnostics).toMatchObject([
+				{
+					code: "route.ignoredAt",
+					resource: toPosix(abs(ignoredAt)),
 				},
 			]);
 		});
 
-		it("should tell the path with the error that the error is its own", async () => {
+		it("should place the path with the error as routing reads it", async () => {
 			const result = (
 				await locateIn(writeServiceOfFs(), configOf({ routes }), {
 					args: [ignoredAt],
@@ -1151,8 +1153,13 @@ describe("CoreWriteService", () => {
 			).unwrap();
 
 			expect(result.files[0]).toMatchObject({
-				status: "blocked",
-				by: { resource: toPosix(abs(ignoredAt)) },
+				status: "placed",
+				instancePath: [
+					"ReplicatedStorage",
+					"Shared",
+					"F",
+					"Bad@server",
+				],
 			});
 			expect(result.diagnostics).toMatchObject([
 				{ code: "route.ignoredAt" },
@@ -1163,7 +1170,7 @@ describe("CoreWriteService", () => {
 			const found = (
 				await writeServiceOfFs().diagnose(
 					selectionOf(configOf({ routes })),
-					{ args: ["src/F/Shared/Good.luau"], cwd: abs() }
+					{ args: ["src/F/shared/Good.luau"], cwd: abs() }
 				)
 			).unwrap();
 
@@ -1190,7 +1197,7 @@ describe("CoreWriteService", () => {
 
 	describe("diagnose", () => {
 		it("should report a misspelt folder against a file in it, and against the folder above that", async () => {
-			await fs.writeFile(abs("src/F/Sever/A.luau"), "");
+			await fs.writeFile(abs("src/F/Net.Server/A.luau"), "");
 			const routes = {
 				server: "ServerScriptService",
 				"*": "ReplicatedStorage",
@@ -1203,16 +1210,16 @@ describe("CoreWriteService", () => {
 					)
 				).unwrap().diagnostics;
 
-			expect(await diagnose("src/F/Sever/A.luau")).toMatchObject([
-				{ code: "route.folderTypo" },
+			expect(await diagnose("src/F/Net.Server/A.luau")).toMatchObject([
+				{ code: "route.dotRoute" },
 			]);
 			expect(await diagnose("src/F")).toMatchObject([
-				{ code: "route.folderTypo" },
+				{ code: "route.dotRoute" },
 			]);
 		});
 
 		it("should report what a check raises when no path is asked about", async () => {
-			await fs.writeFile(abs("src/F/Sever/A.luau"), "");
+			await fs.writeFile(abs("src/F/Net.Server/A.luau"), "");
 
 			const found = (
 				await writeServiceOfFs().diagnose(
@@ -1228,7 +1235,7 @@ describe("CoreWriteService", () => {
 			).unwrap();
 
 			expect(found.diagnostics).toMatchObject([
-				{ code: "route.folderTypo" },
+				{ code: "route.dotRoute" },
 			]);
 			expect(found.stoppedBy).toEqual([]);
 		});
@@ -1288,7 +1295,7 @@ describe("CoreWriteService", () => {
 				).unwrap();
 
 			it("should report a clash against the file that wins it", async () => {
-				await fs.writeFile(abs("src/Combat/Hit@server.luau"), "");
+				await fs.writeFile(abs("src/Combat/Hit@Server.luau"), "");
 				await fs.writeFile(abs("src/Combat/Server/Hit.luau"), "");
 
 				expect(
@@ -1297,20 +1304,10 @@ describe("CoreWriteService", () => {
 			});
 
 			it("should report a marker file's warnings against the files of its folder", async () => {
-				await fs.writeFile(abs("src/M/@SERVER"), "");
-				await fs.writeFile(abs("src/M/a.luau"), "");
 				await fs.writeFile(abs("src/I/.server"), "");
 				await fs.writeFile(abs("src/I/L.luau"), "");
 				await fs.writeFile(abs("src/O/b.luau"), "");
 
-				expect(
-					(await diagnose("src/M/a.luau")).diagnostics
-				).toMatchObject([
-					{
-						code: "route.caseMismatch",
-						resource: abs("src/M/@SERVER"),
-					},
-				]);
 				expect(
 					(await diagnose("src/I/L.luau")).diagnostics
 				).toMatchObject([
@@ -1350,7 +1347,7 @@ describe("CoreWriteService", () => {
 		});
 
 		it("should report the error of a config that did not load beside what reaches the path in the others", async () => {
-			await fs.writeFile(abs("src/F/Sever/A.luau"), "");
+			await fs.writeFile(abs("src/F/Net.Server/A.luau"), "");
 			const failure = errorDiagnostic(
 				"config.invalidSyntax",
 				{ resource: abs("broken/default.rogen.json") },
@@ -1372,13 +1369,13 @@ describe("CoreWriteService", () => {
 							},
 						}),
 					]),
-					{ args: ["src/F/Sever/A.luau"], cwd: abs() }
+					{ args: ["src/F/Net.Server/A.luau"], cwd: abs() }
 				)
 			).unwrap();
 
 			expect(result.diagnostics).toMatchObject([
 				{ code: "config.invalidSyntax" },
-				{ code: "route.folderTypo" },
+				{ code: "route.dotRoute" },
 			]);
 			expect(result.stoppedBy).toEqual([]);
 		});

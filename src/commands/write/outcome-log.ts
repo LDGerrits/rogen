@@ -20,6 +20,8 @@ const LISTED_PER_CODE = 10;
 interface DiagnosticGroup {
 	readonly headline: (count: number) => string;
 	readonly tail?: (count: number) => string;
+	/** What a file's line says of it, its message by default. */
+	readonly item?: (message: string) => string;
 }
 
 const either = (count: number, one: string, many: string) =>
@@ -32,21 +34,25 @@ const GROUPS: Readonly<Record<string, DiagnosticGroup>> = {
 	},
 	"route.strayAt": {
 		headline: (count) =>
-			`${count} ${either(count, "name has", "names have")} an "@" that routes nowhere, so ${either(count, "it is read as an ordinary name", "they are read as ordinary names")}:`,
+			`${count} ${either(count, "name has", "names have")} an "@" that misses its route, so Rogen stops until ${either(count, "it is", "they are")} fixed:`,
 	},
 	"route.dotRoute": {
 		headline: (count) =>
-			`${count} ${either(count, "name writes", "names write")} a route key after a dot, where only "@" routes, so ${either(count, "it routes", "they route")} nothing:`,
+			`${count} ${either(count, "name writes", "names write")} a route key after a dot, where only "@" routes, so Rogen stops until ${either(count, "it is", "they are")} fixed:`,
 	},
-	"route.folderTypo": {
+	"route.patternClash": {
 		headline: (count) =>
-			`${count} ${either(count, "folder is", "folders are")} one edit from a declared route key, so ${either(count, "it is read as an ordinary folder", "they are read as ordinary folders")}:`,
+			`${plural(count, "file")} ${either(count, "matches", "match")} patterns as long as each other that send ${either(count, "it", "them")} to different places:`,
+		item: (message) => {
+			const end = message.indexOf(" both match");
+			return end > 0 ? message.slice(0, end) : message;
+		},
 		tail: () =>
-			"Rename a folder to the route key if it should route; a folder named as it is stays an ordinary folder.",
+			"Lengthen the pattern that should win, or route the file with a folder or an @ name.",
 	},
 	"route.serverCodeShipped": {
 		headline: (count) =>
-			`${plural(count, "file")} under a server-only route ${either(count, "ships", "ship")} to clients, because an outer route governs ${either(count, "it", "them")}:`,
+			`${plural(count, "file")} in a folder named for a server route ${either(count, "ships", "ship")} to clients:`,
 	},
 	"tree.deadScript": {
 		headline: (count) =>
@@ -83,7 +89,10 @@ function block(
 			group.headline(run.length),
 			...run
 				.slice(0, LISTED_PER_CODE)
-				.map(({ resource, message }) => `  ${resource} (${message})`),
+				.map(
+					({ resource, message }) =>
+						`  ${resource} (${group.item ? group.item(message) : message})`
+				),
 			...(unlisted > 0 ? [`  ${unlistedNote(unlisted)}`] : []),
 			...(group.tail ? [group.tail(run.length)] : []),
 		].join("\n"),

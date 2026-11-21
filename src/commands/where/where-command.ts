@@ -81,7 +81,7 @@ registerCommand(
 					effects: [],
 					exitCodes: {
 						"0": "every path answered, one that no file places included",
-						"1": "the config has errors, or an error stops its write",
+						"1": "the config has errors, or an error about what you asked stops its write",
 					},
 					examples: [
 						"rogen where src/Inventory/Server/Save.luau",
@@ -131,17 +131,30 @@ registerCommand(
 				logService.notice(note);
 
 			const answers = new WhereAnswers(locations);
-			const failure = DiagnosticsError.of(answers.errors);
-			const stopped = DiagnosticsError.of(answers.stops);
+			const failure = DiagnosticsError.of(answers.failing);
 			if (line.options.json)
 				return this.printJson(
 					logService,
 					whereDocument(answers, cwd, skipped),
-					failure ?? stopped
+					failure
 				);
 			new WhereLog(cwd, answers).print(logService);
-			if (failure) return err(failure);
-			return stopped ? this.reported(stopped) : ok(undefined);
+			// An error about another file stops the write but not this answer, so it is shown and `where` passes; `check` is the gate.
+			for (const error of answers.elsewhere) logService.diagnostic(error);
+			if (answers.elsewhere.length > 0)
+				logService.notice(
+					`The ${answers.elsewhere.length === 1 ? "error" : "errors"} above ${answers.elsewhere.length === 1 ? "stops" : "stop"} the write, but none of it is about what you asked; 'rogen check' lists everything to fix.`
+				);
+			if (!failure) return ok(undefined);
+			// An error no line shows prints on its own; one under a line is already printed.
+			const unprinted = DiagnosticsError.of(
+				failure.diagnostics.filter(
+					(error) =>
+						answers.errors.includes(error) &&
+						!answers.elsewhere.includes(error)
+				)
+			);
+			return unprinted ? err(unprinted) : this.reported(failure);
 		}
 
 		/** With paths, each is answered by the config that covers it, and one that nothing covers is said so and skipped. */

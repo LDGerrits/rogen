@@ -140,6 +140,65 @@ describe("CoreInitService", () => {
 			expect(plan?.files).toEqual(unasked?.files);
 		});
 
+		it("should rename a folder that spells a route key in the case most of the code doesn't, so the project builds", async () => {
+			await write("src/Shop/Server/A.luau", "return 1");
+			await write("src/Bag/Server/B.luau", "return 1");
+			await write("src/Trading/server/C.luau", "return 1");
+			await write("src/Trading/server/Save@server.luau", "return 1");
+
+			const service = serviceFor();
+			const plan = (await service.plan()).unwrap();
+
+			expect(plan?.moves).toEqual([
+				{
+					from: "src/Trading/server/Save@server.luau",
+					to: "src/Trading/server/Save@Server.luau",
+					reason: 'to spell the route "Server" as the rest of the code does',
+				},
+				{
+					from: "src/Trading/server",
+					to: "src/Trading/Server",
+					reason: 'to spell the route "Server" as the rest of the code does',
+				},
+			]);
+			expect((await service.check(plan!)).isOk()).toBe(true);
+		});
+
+		it("should rename only what is there, never a folder it writes itself", async () => {
+			await write("src/Inventory/@server", "");
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(plan?.moves).toEqual([]);
+		});
+
+		it("should show its renames and ask before making them, though it has no question to ask", async () => {
+			await write("src/Shop/Server/A.luau", "return 1");
+			await write("src/Bag/Server/B.luau", "return 1");
+			await write("src/Trading/server/C.luau", "return 1");
+			const prompts = new MockPromptService({
+				"Create this project?": "cancel",
+			});
+
+			const plan = (
+				await serviceFor(prompts).plan({
+					choices: {
+						kind: "place",
+						language: "luau",
+						sample: false,
+						places: false,
+						skipGit: true,
+						agentRules: false,
+					},
+				})
+			).unwrap();
+
+			expect(plan).toBeUndefined();
+			expect(prompts.prompts.at(-1)?.description).toContain(
+				"src/Trading/server → src/Trading/Server"
+			);
+		});
+
 		it("should fail when the directory can't be read", async () => {
 			const result = await serviceFor(
 				undefined,
@@ -841,9 +900,9 @@ describe("CoreInitService", () => {
 					name: "mine",
 					sourcePaths: ["src"],
 					routes: {
-						Shared: "ReplicatedStorage/Shared",
-						Server: "ServerScriptService/Server",
-						Client: "StarterPlayer/StarterPlayerScripts",
+						shared: "ReplicatedStorage/Shared",
+						server: "ServerScriptService/Server",
+						client: "StarterPlayer/StarterPlayerScripts",
 						"*": "ReplicatedStorage/Shared",
 					},
 					tree: {
@@ -1039,8 +1098,8 @@ describe("CoreInitService", () => {
 			expect(configOf(plan)).toMatchObject({
 				sourcePaths: ["code"],
 				routes: {
-					Server: "ServerScriptService/Server",
-					Client: "StarterPlayer/StarterPlayerScripts/Client",
+					server: "ServerScriptService/Server",
+					client: "StarterPlayer/StarterPlayerScripts/Client",
 				},
 			});
 			expect(plan?.warnings).toEqual([]);
@@ -1057,7 +1116,7 @@ describe("CoreInitService", () => {
 
 			expect(configOf(plan)).toMatchObject({
 				sourcePaths: ["src"],
-				routes: { Server: "ServerScriptService/Server" },
+				routes: { server: "ServerScriptService/Server" },
 				tree: { $className: "DataModel", ServerScriptService: {} },
 			});
 			expect(plan?.warnings).toEqual([]);
@@ -2182,17 +2241,28 @@ describe("CoreInitService", () => {
 	});
 
 	describe("check", () => {
-		it("should fail with the write's diagnostics when the project it plans fails them", async () => {
+		it("should leave the code's own errors to the write after init, and return them", async () => {
 			await write("src/Inventory/@server");
 			await write("src/Inventory/@client");
+			await write("src/Inventory/Bag.luau", "return 1");
 			const service = serviceFor();
 			const plan = (await service.plan()).unwrap();
 
 			const checked = await service.check(plan!);
 
-			expect((checked as ResultError<Error>).error.message).toContain(
-				"(route.markerClash)"
+			expect(checked.unwrap().map(({ code }) => code)).toContain(
+				"route.markerClash"
 			);
+		});
+
+		it("should fail on an error about a folder of the files it writes", async () => {
+			await write("src/Inventory/@server", "");
+			const service = serviceFor();
+			const plan = (await service.plan()).unwrap();
+
+			const checked = await service.check(plan!);
+
+			expect(checked.isErr()).toBe(true);
 		});
 
 		it("should check the project with the files it plans in place", async () => {

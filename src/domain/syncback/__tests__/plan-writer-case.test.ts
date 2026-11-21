@@ -17,8 +17,8 @@ const { MirrorPlan } = await import("../mirror-plan.js");
 const { PlanWriter } = await import("../plan-writer.js");
 
 describe("PlanWriter where the file system ignores case", () => {
-	const old = abs("src/Inventory/Bag@server.luau");
-	const fresh = abs("src/Inventory/bag@server.luau");
+	const old = abs("src/Inventory/Bag@Server.luau");
+	const fresh = abs("src/Inventory/bag@Server.luau");
 
 	const writeRename = (fs: InstanceType<typeof MemoryFileSystemService>) => {
 		const config = configOf();

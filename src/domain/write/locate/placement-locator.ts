@@ -14,16 +14,14 @@ import { TreeMounts } from "../write-tree.js";
 import { Placement } from "../placement.js";
 import { RoutedFile } from "../router.js";
 
-/** Whether `location` is a file placed at `reference` or inside it, as itself or as a copied init script. */
+/** Whether `location` is a file placed at `reference` or inside it. */
 export function placesInstance(
 	location: FileLocation,
 	reference: InstanceReference
 ): location is PlacedLocation {
 	return (
 		location.status === "placed" &&
-		[location.instancePath, ...(location.alsoAt ?? [])].some(
-			(instancePath) => reference.contains(instancePath)
-		)
+		reference.contains(location.instancePath)
 	);
 }
 
@@ -102,23 +100,19 @@ export class PlacementLocator {
 		separator: string
 	): string[] {
 		const folders = new Set<string>();
-		for (const { source, instancePath, alsoAt } of placed) {
+		for (const { source, instancePath } of placed) {
 			const becomes = this.initOf.get(source);
 			const folder = becomes ?? path.posix.dirname(source);
-			for (const nodePath of [instancePath, ...(alsoAt ?? [])]) {
-				const key = nodePath.join(separator);
-				if (key === parent) {
-					if (becomes !== undefined) folders.add(folder);
-				} else if (
-					key.startsWith(parent + separator) &&
-					!key.slice(parent.length + 1).includes(separator)
-				) {
-					folders.add(
-						becomes !== undefined
-							? path.posix.dirname(folder)
-							: folder
-					);
-				}
+			const key = instancePath.join(separator);
+			if (key === parent) {
+				if (becomes !== undefined) folders.add(folder);
+			} else if (
+				key.startsWith(parent + separator) &&
+				!key.slice(parent.length + 1).includes(separator)
+			) {
+				folders.add(
+					becomes !== undefined ? path.posix.dirname(folder) : folder
+				);
 			}
 		}
 		return [...folders].sort(compareStrings);
@@ -141,10 +135,7 @@ export class PlacementLocator {
 	}
 
 	private placedAt(file: RoutedFile): PlacedLocation {
-		const others = this.placement.otherNodesOf(file);
-		const folderNodes = [file, ...others].flatMap(
-			({ folderNodes }) => folderNodes
-		);
+		const { folderNodes } = file;
 		const { isLuau, isLuauModule, isDataModule } = file.entry.file;
 		const code =
 			isLuauModule || isDataModule
@@ -157,11 +148,9 @@ export class PlacementLocator {
 			source: file.entry.source,
 			exists: this.exists(file.entry.source),
 			instancePath: file.instancePath,
-			...(others.length > 0 && {
-				alsoAt: others.map(({ instancePath }) => instancePath),
-			}),
 			route: file.route,
 			routeMatch: file.routeMatch,
+			...(file.routedBy && { routedBy: file.routedBy }),
 			...(file.hoisted && { hoisted: true }),
 			...(folderNodes.length > 0 && { folderNodes }),
 			...(code && { code }),
@@ -202,14 +191,19 @@ export class PlacementLocator {
 				];
 		}
 
-		if (index.getEntries(target))
+		if (index.getEntries(target)) {
+			const made = this.placement.emptyFolders.find(
+				({ folder }) => folder === target
+			);
 			return [
 				{
 					status: "empty",
 					source: target,
 					exists: this.exists(target),
+					...(made && { instancePath: made.instancePath }),
 				},
 			];
+		}
 		const exists =
 			index.hasEntry(
 				path.posix.dirname(target),

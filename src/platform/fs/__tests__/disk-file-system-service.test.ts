@@ -1,8 +1,12 @@
+import { jest } from "@jest/globals";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import { ignoresPathCase } from "../../../base/platform.js";
 import { FileType } from "../file-system-service.js";
 import { DiskFileSystemService } from "../disk-file-system-service.js";
+
+const describeOnCaseSensitiveDisk = ignoresPathCase ? describe.skip : describe;
 
 describe("DiskFileSystemService", () => {
 	let dir: string;
@@ -47,6 +51,48 @@ describe("DiskFileSystemService", () => {
 			);
 			expect(await disk.readFile(path.join(dir, "b.txt"))).toBe("new");
 		});
+
+		it("should rename a folder in letter case only where the disk ignores case", async () => {
+			await disk.createDirectory(path.join(dir, "server"));
+			const lstat = fs.promises.lstat;
+			const ignoringCase = jest
+				.spyOn(fs.promises, "lstat")
+				.mockImplementation(((target: string) =>
+					lstat(
+						path.join(
+							path.dirname(target),
+							path.basename(target).toLowerCase()
+						)
+					)) as typeof fs.promises.lstat);
+
+			try {
+				await disk.rename(
+					path.join(dir, "server"),
+					path.join(dir, "Server")
+				);
+			} finally {
+				ignoringCase.mockRestore();
+			}
+
+			expect(fs.readdirSync(dir)).toEqual(["Server"]);
+		});
+
+		describeOnCaseSensitiveDisk(
+			"where letter case tells names apart",
+			() => {
+				it("should refuse a name in another letter case that is a file of its own", async () => {
+					await disk.writeFile(path.join(dir, "foo.txt"), "a");
+					await disk.writeFile(path.join(dir, "Foo.txt"), "b");
+
+					await expect(
+						disk.rename(
+							path.join(dir, "foo.txt"),
+							path.join(dir, "Foo.txt")
+						)
+					).rejects.toMatchObject({ code: "EEXIST" });
+				});
+			}
+		);
 
 		it("should throw ENOENT when the source is missing", async () => {
 			await expect(

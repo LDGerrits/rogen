@@ -1,0 +1,6 @@
+$ rogen write
+exit 1
+stdout: (not shown)
+stderr:
+  error: default.project.json · not written
+  src/Inventory/Types.lua - error: becomes "ReplicatedStorage/shared/Inventory/Types", as src/Inventory/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both. (tree.instanceClash)

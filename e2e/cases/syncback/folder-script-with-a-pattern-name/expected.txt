@@ -1,0 +1,36 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/Input/InputController/Keys.luau
+stderr:
+  Wrote default.project.json.
+  src/Input/InputController - warning: matches the pattern "*Controller.*", but a pattern never routes a folder or its init script, so it goes to "*". Name it InputController@Client to route it there. (route.folderPattern)
+  Syncback wrote 1 change.
+
+$ rogen write
+exit 0
+stdout: (not shown)
+stderr:
+  src/Input/InputController - warning: matches the pattern "*Controller.*", but a pattern never routes a folder or its init script, so it goes to "*". Name it InputController@Client to route it there. (route.folderPattern)
+
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stderr:
+  src/Input/InputController - warning: matches the pattern "*Controller.*", but a pattern never routes a folder or its init script, so it goes to "*". Name it InputController@Client to route it there. (route.folderPattern)
+  Syncback would change nothing.
+
+written:
+  default.project.json
+  src/Input/InputController/Keys.luau
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Input: Folder
+        InputController: ModuleScript  <- src/Input/InputController/init.luau
+          Keys: ModuleScript  <- src/Input/InputController/Keys.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Input: Folder
+        MouseController: ModuleScript  <- src/Input/MouseController.luau

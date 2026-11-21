@@ -3,6 +3,7 @@ import path from "path";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
+	errorDiagnostic,
 	isAbout,
 	reaches,
 	renderDiagnostic,
@@ -124,6 +125,33 @@ describe("platform/diagnostics/diagnostic", () => {
 	});
 
 	describe("diagnosticToJson", () => {
+		it("should name the paths in its message and related messages relative to the folder it runs in, as text does, and keep file absolute", () => {
+			const cwd = path.resolve("/repo");
+			const diagnostic = {
+				...errorDiagnostic(
+					"tree.instanceClash",
+					{ resource: path.join(cwd, "src", "Types.lua") },
+					`becomes "X", as ${path.join(cwd, "src", "Types.luau")} does.`
+				),
+				related: [
+					{
+						resource: path.join(cwd, "src", "Types.luau"),
+						message: `takes ${path.join(cwd, "src", "Types.lua")}'s place`,
+					},
+				],
+			};
+
+			const json = diagnosticToJson(diagnostic, cwd);
+
+			expect(json.file).toBe(path.join(cwd, "src", "Types.lua"));
+			expect(json.message).toBe(
+				`becomes "X", as ${path.join("src", "Types.luau")} does.`
+			);
+			expect(json.related?.[0].message).toBe(
+				`takes ${path.join("src", "Types.lua")}'s place`
+			);
+		});
+
 		it("should name the file, position, severity, code, message and the code's docs", () => {
 			const diagnostic: Diagnostic = {
 				severity: DiagnosticSeverity.Error,

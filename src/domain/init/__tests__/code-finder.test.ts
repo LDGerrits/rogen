@@ -114,3 +114,54 @@ describe("CodeFinder.layoutOf", () => {
 		});
 	});
 });
+
+describe("CodeFinder.keySpellings", () => {
+	const cwd = path.resolve("/mock/workspace");
+	let fs: MemoryFileSystemService;
+
+	const write = async (file: string) => {
+		await fs.writeFile(path.join(cwd, file), "");
+	};
+
+	const spellings = () =>
+		codeFinderOf(fs).keySpellings(
+			cwd,
+			["src"],
+			["server", "client", "shared"]
+		);
+
+	beforeEach(async () => {
+		fs = new MemoryFileSystemService();
+		await fs.createDirectory(cwd);
+	});
+
+	it("should take each key as most folders, marker files and @ names in the code spell it", async () => {
+		await write("src/Shop/server/A.luau");
+		await write("src/Bag/server/B.luau");
+		await write("src/Hud/Server/C.luau");
+		await write("src/Inventory/@client");
+		await write("src/Inventory/Save@Shared.luau");
+
+		expect(Object.fromEntries(await spellings())).toEqual({
+			server: "server",
+			client: "client",
+			shared: "Shared",
+		});
+	});
+
+	it("should break a tie with the spelling it was given", async () => {
+		await write("src/Shop/server/A.luau");
+		await write("src/Bag/Server/B.luau");
+
+		expect(
+			await codeFinderOf(fs).keySpellings(cwd, ["src"], ["Server"])
+		).toEqual(new Map([["server", "Server"]]));
+	});
+
+	it("should name no spelling for a key the code doesn't spell", async () => {
+		await write("src/Shop/Main.luau");
+		await write("src/Servers/A.luau");
+
+		expect(await spellings()).toEqual(new Map());
+	});
+});
