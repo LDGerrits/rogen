@@ -318,6 +318,37 @@ const available = gitPath !== "";
 		]);
 	});
 
+	it("should run the project's rogen from a folder reached through a symlink", () => {
+		wrapRogen(path.join(dir, "project/node_modules/.bin/rogen"));
+		fs.mkdirSync(path.join(dir, "project/src/sub"));
+		fs.symlinkSync(path.join(dir, "project"), path.join(dir, "link"));
+		write("src/Buy.client.luau");
+
+		const { reply } = stop(
+			{ session_id: "x", cwd: path.join(dir, "link/src/sub") },
+			[],
+			{ CLAUDE_PROJECT_DIR: undefined, PATH: gitOnly }
+		);
+
+		expect(reply?.decision).toBe("block");
+	});
+
+	it("should run the project's rogen from a folder spelled in another case where the file system ignores case", () => {
+		const other = path.join(dir, "PROJECT");
+		if (!fs.existsSync(other)) return;
+		wrapRogen(path.join(dir, "project/node_modules/.bin/rogen"));
+		fs.mkdirSync(path.join(dir, "project/src/sub"));
+		write("src/Buy.client.luau");
+
+		const { reply } = stop(
+			{ session_id: "x", cwd: path.join(other, "src/sub") },
+			[],
+			{ CLAUDE_PROJECT_DIR: undefined, PATH: gitOnly }
+		);
+
+		expect(reply?.decision).toBe("block");
+	});
+
 	it("should check a change outside the folder the agent is in", () => {
 		fs.mkdirSync(path.join(dir, "project/src/sub"), { recursive: true });
 		write("src/Buy.client.luau");
