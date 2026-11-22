@@ -117,10 +117,8 @@ export class MountedCode {
 		folders: readonly string[]
 	): boolean {
 		const derived = DerivedRoutes.of(project, [sourcePath]);
-		return (
-			derived?.unrouted.every(
-				({ target }) => !folders.includes(target)
-			) ?? false
+		return derived!.unrouted.every(
+			({ target }) => !folders.includes(target)
 		);
 	}
 }

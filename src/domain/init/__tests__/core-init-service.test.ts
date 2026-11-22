@@ -1273,6 +1273,22 @@ describe("CoreInitService", () => {
 			);
 		});
 
+		it("should take the project's only code folder when the folder above a route-named one cannot route the mounts inside", async () => {
+			const tree = {
+				ReplicatedStorage: {
+					X: { $path: "code/server/x" },
+					Y: { $path: "code/server/y" },
+				},
+			};
+			await lift(tree);
+			await write("code/server/x/A.luau");
+			await write("code/server/y/B.luau");
+
+			const plan = await planOf();
+
+			expect(configOf(plan).sourcePaths).toEqual(["code"]);
+		});
+
 		it("should never take the project's own folder or a package folder", async () => {
 			await lift({
 				Workspace: { Map: { $path: "." } },
