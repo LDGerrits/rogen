@@ -118,20 +118,16 @@ registerCommand(
 			);
 			if (targets.isErr()) return targets;
 			const json = Boolean(line.options.json);
-			const agentRules = await services.instantiationService
+			if (!line.options.watch)
+				return this.writeOnce(services, targets.value, json);
+			await services.instantiationService
 				.createInstance(RefreshAgentRules)
-				.run(
-					!json ? "text" : line.options.watch ? "lines" : "document"
-				);
-			return line.options.watch
-				? this.watch(
-						services,
-						line.positionals.length === 0
-							? "here"
-							: line.positionals,
-						json
-					)
-				: this.writeOnce(services, targets.value, json, agentRules);
+				.run(json ? "lines" : "text");
+			return this.watch(
+				services,
+				line.positionals.length === 0 ? "here" : line.positionals,
+				json
+			);
 		}
 
 		private async watch(
@@ -159,13 +155,15 @@ registerCommand(
 		private async writeOnce(
 			services: Services,
 			{ configs, plain }: Targets,
-			json: boolean,
-			agentRules: readonly string[]
+			json: boolean
 		): Promise<Result<void, Error>> {
 			const { logService, cwd, instantiationService } = services;
 			const written = await this.writeConfigs(services, configs);
 			if (written.isErr()) return written;
 			const { home, run } = written.value;
+			const agentRules = await instantiationService
+				.createInstance(RefreshAgentRules)
+				.run(json ? "document" : "text");
 
 			const failure = run.failure();
 			if (json)

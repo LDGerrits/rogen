@@ -128,8 +128,10 @@ export function writeDocument(
 		...run.outcomes.filter(isPlain).map(({ file }) => file),
 		...plainProjects,
 	];
+	const document = configsDocument(run.outcomes, cwd);
 	return {
-		...configsDocument(run.outcomes, cwd),
+		changed: document.changed || agentRules.length > 0,
+		configs: document.configs,
 		plainProjects: [...new Set(left.map((file) => configPath(cwd, file)))],
 		...agentRulesLine(agentRules),
 	};

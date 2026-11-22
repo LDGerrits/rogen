@@ -104,7 +104,19 @@ describe("write command", () => {
 
 			await run("write", { options: { json: true } });
 
-			expect(log.json()).toMatchObject({ agentRules: ["AGENTS.md"] });
+			expect(log.json()).toMatchObject({
+				changed: true,
+				agentRules: ["AGENTS.md"],
+			});
+		});
+
+		it("should leave it alone when the configs it was given don't load", async () => {
+			await fs.writeFile(abs("AGENTS.md"), OLD);
+			const { run } = commandHarness({ fs });
+
+			await run("write", { positionals: ["nosuch"] });
+
+			expect(await fs.readFile(abs("AGENTS.md"))).toBe(OLD);
 		});
 
 		it("should leave agentRules out of the --json document when the rules are current", async () => {
