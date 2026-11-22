@@ -51,10 +51,18 @@ export class ConfigValidator {
 	constructor(private readonly config: ConfigFile) {
 		this.dir = path.dirname(config.file);
 		this.routes = this.field("routes") ?? {};
-		const routed = Object.keys(this.routes).length > 0;
-		this.sourcePaths = (
-			this.field("sourcePaths") ?? (routed ? [DEFAULT_SOURCE_PATH] : [])
-		).map((sourcePath) => path.resolve(this.dir, sourcePath));
+		this.sourcePaths = ConfigValidator.sourcePathsOf(config);
+	}
+
+	static sourcePathsOf(config: ConfigFile): readonly string[] {
+		const field = <K extends keyof RogenKeys>(key: K) =>
+			config.model.getValue<RogenKeys[K]>(key);
+		const routed = Object.keys(field("routes") ?? {}).length > 0;
+		return (
+			field("sourcePaths") ?? (routed ? [DEFAULT_SOURCE_PATH] : [])
+		).map((sourcePath) =>
+			path.resolve(path.dirname(config.file), sourcePath)
+		);
 	}
 
 	static validateFile(

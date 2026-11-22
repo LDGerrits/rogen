@@ -117,14 +117,18 @@ export class ConfigLoader {
 		const config = loaded.value;
 		const value = config.model.contents;
 		const hints = this.hintsOf(file, value);
+		const resolved =
+			hints.length > 0
+				? err(hints)
+				: ConfigValidator.validateFile(config);
 		return {
 			files: [file],
 			value,
 			text: config.text,
-			resolved:
-				hints.length > 0
-					? err(hints)
-					: ConfigValidator.validateFile(config),
+			resolved,
+			...(resolved.isErr() && {
+				sourcePaths: ConfigValidator.sourcePathsOf(config),
+			}),
 		};
 	}
 

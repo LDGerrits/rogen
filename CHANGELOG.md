@@ -45,6 +45,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- `rogen check <paths>` and `rogen where <paths>` no longer fail on a named config that doesn't load, such as one with an unknown key, when its source paths don't read the paths asked about. One whose source paths can't be read still fails every path, and `rogen check` alone still fails on it.
 - `rogen write --watch` and `rogen serve` no longer crash when a watched config's folder can't be read for a moment; they pick it up again once it can.
 - `rogen write` and `rogen serve` count Azure Pipelines, Jenkins, TeamCity and Bamboo as CI, as they do any pipeline that sets `CI`, and leave `AGENTS.md` alone there.
 - `rogen syncback` no longer hangs when a nested project mounts a folder that shares no folder but the root with the project, such as one under `/mnt/c` beside a project under `/home`.

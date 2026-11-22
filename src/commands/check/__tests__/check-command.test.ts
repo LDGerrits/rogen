@@ -326,6 +326,38 @@ describe("check command", () => {
 		});
 	});
 
+	describe("with named configs, one of which doesn't load", () => {
+		beforeEach(async () => {
+			await writeConfig("game.rogen.json", {
+				name: "game",
+				routes: ROUTES,
+				sourcePaths: ["src/game"],
+			});
+			await writeConfig("lobby.rogen.json", {
+				name: "lobby",
+				routes: ROUTES,
+				sourcePaths: ["src/lobby"],
+				unknownKey: true,
+			});
+			await write("src/game/Clean.luau", "src/lobby/Clean.luau");
+		});
+
+		it("should pass a path that a named config which doesn't load can't read, by its source paths", async () => {
+			const result = await run({ _: ["src/game"] });
+
+			expect(result.isOk()).toBe(true);
+		});
+
+		it("should still fail on a path a named config which doesn't load reads", async () => {
+			const result = await run({ _: ["src/lobby"] });
+
+			expect(found(failureOf(result))).toContainEqual([
+				"config.unknownField",
+				"lobby.rogen.json",
+			]);
+		});
+	});
+
 	describe("with several places", () => {
 		beforeEach(async () => {
 			for (const place of ["lobby", "arena"])
