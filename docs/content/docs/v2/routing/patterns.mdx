@@ -46,6 +46,8 @@ When your files are named for their role, a pattern route sends each one where i
 
 `*Controller` matches the name of the instance a file makes, so `ShopController.luau` needs no `.*` after it. The file keeps its whole name, and its feature folder comes along as it does with any route.
 
+A routing folder or `@` name still beats a pattern, which is why `Shared/PriceService.luau` stays shared. When two patterns match one file, the longer one wins, so `*.story.luau` beats `*.luau`. A pattern matches files, never folders, so route a folder script such as `InputController/init.luau` by its folder's name, as `InputController@Client/`.
+
 ## File Extensions
 
 A pattern with a dot matches the file's name with its extension, so it can route a kind of file, such as every story or, in roblox-ts, every React component:
@@ -59,4 +61,17 @@ A pattern with a dot matches the file's name with its extension, so it can route
 }
 ```
 
-A routing folder or `@` name still beats a pattern, which is why `Shared/PriceService.luau` above stays shared. When two patterns match one file, the longer one wins, so `*.story.luau` beats `*.luau`. A pattern matches files, never folders, so route a folder script such as `InputController/init.luau` by its folder's name, as `InputController@Client/`. Patterns use Rojo's glob syntax (`*`, `?`, `[Ss]`, `{a,b}`) and match letter case exactly.
+## Pattern Syntax
+
+Patterns use Rojo's glob syntax, on a file's name:
+
+| Write | Matches | Example |
+|---|---|---|
+| `*` | any run of characters, or none | `*Controller` matches `ShopController` |
+| `?` | exactly one character | `Data?` matches `DataA` |
+| `[Ss]` | one character from the set | `[Hh]ud*` matches `HudBar` and `hudBar` |
+| `[0-9]` | one character in the range | `Item[0-9]` matches `Item7` |
+| `[!_]` | one character not in the set | `[!_]*Util` matches `MathUtil`, not `_MathUtil` |
+| `{Ui,Menu}` | either word | `{Ui,Menu}Kit` matches `UiKit` and `MenuKit` |
+
+Everything else is matched as written, letter case included, and may be a letter, a digit, `.`, `_` or `-`. A pattern never holds `/` or `**`, since it matches a file's name, not its path.
