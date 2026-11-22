@@ -128,7 +128,7 @@ stderr:
 
 ran:
   rojo --version
-  rojo build ok/default.project.json --output game.rbxl
+  rojo build ok/default.project.json --output=game.rbxl
   rojo --version
   rojo --version
   rojo --version
