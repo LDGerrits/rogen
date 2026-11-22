@@ -1237,6 +1237,24 @@ describe("CoreInitService", () => {
 			expect(plan?.warnings).toEqual([]);
 		});
 
+		it("should keep a lone mounted folder with an init file in the tree and route nothing", async () => {
+			const tree = { ReplicatedStorage: { MyLib: { $path: "src" } } };
+			await lift(tree);
+			await write("src/init.luau");
+			await write("src/Util.luau");
+
+			const plan = await planOf();
+
+			expect(configOf(plan)).toMatchObject({
+				sourcePaths: [],
+				tree: { $className: "DataModel", ...tree },
+			});
+			expect(plan?.notes).toContain(
+				"Kept the mounts of src in the tree as they are: a folder with an init file is one instance, so Rogen routes no code in it."
+			);
+			expect(plan?.warnings).toEqual([]);
+		});
+
 		it("should never take the project's own folder or a package folder", async () => {
 			await lift({
 				Workspace: { Map: { $path: "." } },

@@ -218,7 +218,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			? [...places.sourcePaths]
 			: !routed
 				? []
-				: code && code.sourcePaths.length > 0
+				: code && (code.sourcePaths.length > 0 || code.keptOnly)
 					? [...code.sourcePaths]
 					: [directory.defaultSourcePath(language)];
 
@@ -707,7 +707,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 		if (choices.keptCode?.length)
 			builder.addNote(
-				`Kept the mounts of ${joinedWithAnd(choices.keptCode)} in the tree as they are: only the project's own folder holds them all, and a source path is a folder below it. To route their code, move the folders into ${sourcePaths[0]}.`
+				sourcePaths.length === 0
+					? `Kept the mounts of ${joinedWithAnd(choices.keptCode)} in the tree as they are: a folder with an init file is one instance, so Rogen routes no code in it.`
+					: `Kept the mounts of ${joinedWithAnd(choices.keptCode)} in the tree as they are: only the project's own folder holds them all, and a source path is a folder below it. To route their code, move the folders into ${sourcePaths[0]}.`
 			);
 		const others = places
 			? []

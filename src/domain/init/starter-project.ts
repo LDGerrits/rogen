@@ -209,7 +209,7 @@ export class StarterProject {
 			: { ...settings };
 	}
 
-	private holdsInit(target: string): boolean {
+	holdsInit(target: string): boolean {
 		return this.holdingInit.has(normalizeDir(target));
 	}
 
