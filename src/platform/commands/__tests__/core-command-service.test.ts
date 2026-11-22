@@ -130,6 +130,25 @@ describe("CoreCommandService", () => {
 			);
 		});
 
+		it("should point a command in another case at its lowercase name", async () => {
+			store.add(
+				registry.registerCommand({
+					id: "write",
+					metadata: { summary: "Writes", description: "write" },
+					handler: async () => ok(undefined),
+				})
+			);
+
+			const result = await commandService.executeCommand("WRITE", {
+				positionals: [],
+				options: {},
+			});
+
+			expect((result as ResultError<Error>).error.message).toBe(
+				"Unknown command \"WRITE\". Did you mean 'rogen write'?"
+			);
+		});
+
 		it("should point the old version command at the flag", async () => {
 			const result = await commandService.executeCommand("version", {
 				positionals: [],

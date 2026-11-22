@@ -140,6 +140,10 @@ describe("parseArgs", () => {
 		expect(line.positionals).toEqual(["extra_arg"]);
 	});
 
+	it("should take the command in the case it was typed, as Rojo does", () => {
+		expect(parse(["WRITE"]).unwrap().command).toBe("WRITE");
+	});
+
 	it("should run help for a bare line, and let --help and --version win", () => {
 		expect(parse([]).unwrap().command).toBe("help");
 		expect(parse(["-q"]).unwrap().command).toBe("help");
