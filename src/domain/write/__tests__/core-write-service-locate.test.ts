@@ -1497,6 +1497,26 @@ describe("CoreWriteService.locate", () => {
 			]);
 		});
 
+		it("should block a file below the folder, though it can't be listed", async () => {
+			const located = (
+				await locateIn(writeService(), configOf(), {
+					args: [abs("src/Locked/Deep/New.luau")],
+					cwd: abs(),
+				})
+			).unwrap();
+
+			expect(located.diagnostics).toMatchObject([
+				{ code: "scan.unreadable" },
+			]);
+			expect(located.files).toMatchObject([
+				{
+					source: absPosix("src/Locked/Deep/New.luau"),
+					status: "blocked",
+					own: true,
+				},
+			]);
+		});
+
 		it("should fail when an instance is asked for beside the path", async () => {
 			const located = await locateIn(writeService(), configOf(), {
 				args: [abs("src/B.luau"), "ReplicatedStorage.Shared.B"],

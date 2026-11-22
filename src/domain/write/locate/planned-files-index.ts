@@ -41,6 +41,7 @@ export class PlannedFilesIndex implements IndexReader {
 	}
 
 	getEntries(dir: string): ReadonlyMap<string, FileType> | undefined {
+		if (this.index.isUnreadable(dir)) return undefined;
 		const base = this.index.getEntries(dir);
 		const extra = this.added.get(toPosix(dir));
 		return extra ? new Map([...(base ?? []), ...extra]) : base;

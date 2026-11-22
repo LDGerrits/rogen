@@ -197,7 +197,7 @@ describe("ServerFinder", () => {
 		expect(diagnostic.fixes).toBeUndefined();
 	});
 
-	it("should report a server that prints no version, and say so when it printed nothing", async () => {
+	it("should say that a server which exits cleanly printed no version", async () => {
 		await fs.writeFile(
 			"/repo/game/rokit.toml",
 			'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
@@ -208,7 +208,22 @@ describe("ServerFinder", () => {
 		const diagnostic = await diagnosticOf();
 
 		expect(diagnostic.message).toEqual(
-			"'rojo --version' failed, so Rojo can't start. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
+			"'rojo --version' printed no version, so Rojo can't start. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
+		);
+	});
+
+	it("should not repeat what a server printed in place of its version", async () => {
+		processes.installed.set("rojo", "/bin/rojo");
+		processes.outputs.set("/bin/rojo", {
+			code: 0,
+			stdout: "hello\n",
+			stderr: "",
+		});
+
+		const diagnostic = await diagnosticOf();
+
+		expect(diagnostic.message).toContain(
+			"'rojo --version' printed no version, so Rojo can't start. "
 		);
 	});
 });
