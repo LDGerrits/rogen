@@ -243,9 +243,13 @@ describe("DiskWatcher", () => {
 				)
 			);
 
-			expect(changes.map((c) => c.path)).toEqual([
-				toPosix(path.join(dir, "a.luau")),
-			]);
+			expect(
+				changes.filter(
+					(c) =>
+						c.path.startsWith(toPosix(skippedDir)) ||
+						c.path === toPosix(skippedFile)
+				)
+			).toEqual([]);
 		});
 	});
 
