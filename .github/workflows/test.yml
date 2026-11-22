@@ -47,7 +47,7 @@ jobs:
               run: npm run typecheck
 
             - name: Unit Test
-              run: npm run test:unit
+              run: npm run test:coverage
 
     e2e:
         name: End-to-end tests on the bundle
