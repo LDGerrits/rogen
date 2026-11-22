@@ -3,6 +3,7 @@ import { PathSet, toNative } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import { PlacedLocation } from "../write/write-service.js";
 import { RojoCommandService } from "../runner/rojo-command-service.js";
 import { ServerMessage } from "../runner/rojo-server.js";
 import {
@@ -14,6 +15,8 @@ import {
 import { SyncbackLayout } from "./syncback-layout.js";
 
 const SYNCBACK_SINCE = "7.7.0";
+
+const SHOWN = 3;
 
 const LISTED = /^(Writing|Removing) (.+)$/;
 
@@ -181,18 +184,33 @@ export class RojoSyncback {
 	explain(failure: Error, layout: SyncbackLayout): Error {
 		const refused = RojoSyncback.refusedNode(failure);
 		if (!refused) return failure;
-		const files = layout.placed.filter(({ instancePath }) => {
-			const at = instancePath.length;
-			return (
-				instancePath[at - 1] === refused.child &&
-				instancePath[at - 2] === refused.parent
-			);
-		});
+		const holds = ({ instancePath }: PlacedLocation, at: number) =>
+			instancePath[at] === refused.child &&
+			(at === 0 || instancePath[at - 1] === refused.parent);
+		const files = layout.placed.filter((file) =>
+			holds(file, file.instancePath.length - 1)
+		);
+		const held = [
+			...new Set(
+				layout.placed
+					.filter((file) =>
+						file.instancePath.some((_, at) => holds(file, at))
+					)
+					.map(({ source }) => toNative(source))
+			),
+		];
+		const gone = `the place no longer holds ${refused.parent}/${refused.child}`;
+		const advice =
+			files.length === 1
+				? `${gone}, and the tree of the config defines it, which syncback cannot remove. Delete ${toNative(files[0].source)}, then run syncback again.`
+				: held.length === 0
+					? `${gone}, and the tree of the config defines it, which syncback cannot remove. Remove its node from the tree, then run syncback again.`
+					: `${gone}, and the project file Rogen writes holds it as a node of its own, since it has a nested project file or is a service the routes make, which syncback cannot remove. Delete ${held.slice(0, SHOWN).join(", ")}${held.length > SHOWN ? ` and ${held.length - SHOWN} more` : ""}, or put it back in Studio, then run syncback again.`;
 		return new DiagnosticsError([
 			errorDiagnostic(
 				"syncback.removedFromProjectFile",
 				{ resource: files[0]?.source ?? this.request.project.file },
-				`the place no longer holds ${refused.parent}/${refused.child}, and the tree of the config defines it, which syncback cannot remove. ${files.length === 1 ? `Delete ${toNative(files[0].source)}` : "Remove its node from the tree"}, then run syncback again.`
+				advice
 			),
 		]);
 	}
