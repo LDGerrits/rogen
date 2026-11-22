@@ -52,7 +52,7 @@ jobs:
     # Each end-to-end suite runs in two shards, which halves its wall time; the
     # job named for the suite is the required check and passes when both do.
     e2e:
-        name: End-to-end tests on the bundle (${{ matrix.shard }}/2)
+        name: End-to-end tests on the bundle (${{ matrix.shard }}/${{ strategy.job-total }})
         runs-on: ubuntu-latest
         strategy:
             matrix:
@@ -76,7 +76,7 @@ jobs:
               run: npm ci --workspaces=false --prefer-offline --no-audit --no-fund
 
             - name: Test
-              run: npm run test:e2e -- --shard=${{ matrix.shard }}/2
+              run: npm run test:e2e -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
 
     e2e-result:
         name: End-to-end tests on the bundle
@@ -84,10 +84,11 @@ jobs:
         if: always()
         runs-on: ubuntu-latest
         steps:
-            - run: test "${{ needs.e2e.result }}" = success
+            - name: Check the Shards Passed
+              run: test "${{ needs.e2e.result }}" = success
 
     binary:
-        name: End-to-end tests on the compiled binary (${{ matrix.shard }}/2)
+        name: End-to-end tests on the compiled binary (${{ matrix.shard }}/${{ strategy.job-total }})
         runs-on: ubuntu-latest
         strategy:
             matrix:
@@ -117,7 +118,7 @@ jobs:
               run: node scripts/make-binary.ts rogen-binary/rogen
 
             - name: Test the Binary
-              run: npm test -- e2e --shard=${{ matrix.shard }}/2
+              run: npm test -- e2e --shard=${{ matrix.shard }}/${{ strategy.job-total }}
               env:
                   ROGEN_E2E_BINARY: ${{ github.workspace }}/rogen-binary/rogen
 
@@ -127,7 +128,8 @@ jobs:
         if: always()
         runs-on: ubuntu-latest
         steps:
-            - run: test "${{ needs.binary.result }}" = success
+            - name: Check the Shards Passed
+              run: test "${{ needs.binary.result }}" = success
 
     # macOS ignores case in paths and links /tmp elsewhere, which the unit tests
     # and the agent hook meet; the rest of the end-to-end suite stays on Linux.

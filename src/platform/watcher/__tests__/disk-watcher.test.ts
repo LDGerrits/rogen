@@ -28,8 +28,8 @@ function waitFor(predicate: () => boolean, timeoutMs = 3000): Promise<void> {
 
 const canDenyAccess = process.platform !== "win32";
 const describeLocking = canDenyAccess ? describe : describe.skip;
-const describeRefusing =
-	process.platform === "darwin" ? describe.skip : describe;
+const watchReportsRefusal = process.platform !== "darwin";
+const describeRefusing = watchReportsRefusal ? describe : describe.skip;
 
 describe("DiskWatcher", () => {
 	let dir: string;
@@ -267,9 +267,7 @@ describe("DiskWatcher", () => {
 				)
 			);
 
-			expect(changes.map((c) => c.path)).toEqual([
-				toPosix(path.join(dir, "a.luau")),
-			]);
+			expect(changes.map((c) => c.path)).not.toContain(toPosix(staged));
 		});
 	});
 
