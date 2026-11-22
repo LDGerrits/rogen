@@ -88,14 +88,6 @@ describe("RojoSyncback", () => {
 	});
 
 	describe("listOn", () => {
-		const refusal = new DiagnosticsError([
-			errorDiagnostic(
-				"rojo.failed",
-				{ resource: "/repo" },
-				"The child 'Gone' of Instance 'Workspace' is present only in a project file"
-			),
-		]);
-
 		it("should pass on a usage error of Rojo's run as it is", async () => {
 			const failure = new UsageError("Rojo is too old", "Update it.");
 			const rojo = new RojoSyncback(
@@ -105,11 +97,41 @@ describe("RojoSyncback", () => {
 
 			const listed = await rojo.listOn(
 				"/repo/x.project.json",
-				await layoutOf([]),
 				new AbortController().signal
 			);
 
 			expect(errorOf(listed)).toBe(failure);
+		});
+	});
+
+	describe("explain", () => {
+		const refusal = new DiagnosticsError([
+			errorDiagnostic(
+				"rojo.failed",
+				{ resource: "/repo" },
+				"The child 'Gone' of Instance 'Workspace' is present only in a project file"
+			),
+		]);
+
+		it("should find the node Rojo would not remove", () => {
+			expect(RojoSyncback.refusedNode(refusal)).toEqual({
+				parent: "Workspace",
+				child: "Gone",
+			});
+			expect(
+				RojoSyncback.refusedNode(new Error(refusal.message))
+			).toBeUndefined();
+		});
+
+		it("should pass on an error about anything else as it is", async () => {
+			const failure = new UsageError("Rojo is too old", "Update it.");
+
+			expect(
+				new RojoSyncback(
+					request,
+					new FakeRojo(failingWith(failure))
+				).explain(failure, await layoutOf([]))
+			).toBe(failure);
 		});
 
 		it("should say to remove the node from the tree when no file makes the instance Rojo would not remove", async () => {
@@ -118,15 +140,12 @@ describe("RojoSyncback", () => {
 				new FakeRojo(failingWith(refusal))
 			);
 
-			const listed = await rojo.listOn(
-				"/repo/x.project.json",
-				await layoutOf(["src/Inventory/Server/Bag.luau"]),
-				new AbortController().signal
+			const explained = rojo.explain(
+				refusal,
+				await layoutOf(["src/Inventory/Server/Bag.luau"])
 			);
 
-			expect(
-				(errorOf(listed) as DiagnosticsError).diagnostics
-			).toMatchObject([
+			expect((explained as DiagnosticsError).diagnostics).toMatchObject([
 				{
 					code: "syncback.removedFromProjectFile",
 					resource: config.file,

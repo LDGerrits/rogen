@@ -554,7 +554,7 @@ class MirrorPlanRun {
 		);
 		for (const folder of known)
 			existing.add(instanceKey(mirror.instancePathOf(folder)));
-		for (const { mirror: at } of mirror.nodeFolders)
+		for (const at of mirror.folders)
 			for (const folder of foldersOf(at)) known.add(folder);
 
 		const fresh: AddedPath[] = [];

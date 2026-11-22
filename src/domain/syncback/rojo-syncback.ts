@@ -1,5 +1,4 @@
 import path from "path";
-import { UsageError } from "../../base/errors.js";
 import { PathSet, toNative } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -25,6 +24,14 @@ const SKIPPED = /Cannot syncback (?<kind>\S+) at (?<instance>.+?), skipping/;
  */
 const REFUSED_YAML =
 	/Failed to syncback (?<instance>.+) because cannot syncback Yaml middleware/;
+
+const ONLY_IN_PROJECT =
+	/The child '(?<child>[^']+)' of Instance '(?<parent>[^']+)' is present only in a project file/;
+
+export interface RefusedNode {
+	readonly parent: string;
+	readonly child: string;
+}
 
 const unsyncable = (kind: string): string =>
 	`Rojo can't sync back a ${kind} file, so its change stays in the place; copy it by hand`;
@@ -123,16 +130,14 @@ export class RojoSyncback {
 
 	listOn(
 		projectFile: string,
-		layout: SyncbackLayout,
 		signal: AbortSignal
 	): Promise<Result<readonly ServerMessage[], Error>> {
-		return this.run(projectFile, ["--list"], layout, signal);
+		return this.run(projectFile, ["--list"], signal);
 	}
 
 	private async run(
 		projectFile: string,
 		flags: readonly string[],
-		layout?: SyncbackLayout,
 		signal?: AbortSignal
 	): Promise<Result<readonly ServerMessage[], Error>> {
 		const { request } = this;
@@ -146,22 +151,19 @@ export class RojoSyncback {
 			signal,
 		});
 		if (ran.isErr()) return ran;
-		if (ran.value.failure)
-			return err(this.explain(ran.value.failure, layout));
+		if (ran.value.failure) return err(ran.value.failure);
 		return ok(ran.value.messages);
 	}
 
-	private explain(
-		failure: DiagnosticsError | UsageError,
-		layout: SyncbackLayout | undefined
-	): Error {
-		if (failure instanceof UsageError) return failure;
-		const said = linesOf(failure).join("\n");
-		const refused =
-			/The child '(?<child>[^']+)' of Instance '(?<parent>[^']+)' is present only in a project file/.exec(
-				said
-			)?.groups;
-		if (!refused || !layout) return failure;
+	static refusedNode(error: Error): RefusedNode | undefined {
+		if (!(error instanceof DiagnosticsError)) return undefined;
+		const found = ONLY_IN_PROJECT.exec(linesOf(error).join("\n"))?.groups;
+		return found && { parent: found.parent, child: found.child };
+	}
+
+	explain(failure: Error, layout: SyncbackLayout): Error {
+		const refused = RojoSyncback.refusedNode(failure);
+		if (!refused) return failure;
 		const files = layout.placed.filter(({ instancePath }) => {
 			const at = instancePath.length;
 			return (
