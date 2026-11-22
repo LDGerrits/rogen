@@ -158,6 +158,21 @@ describe("CodeFinder.keySpellings", () => {
 		).toEqual(new Map([["server", "Server"]]));
 	});
 
+	it("should leave the folders it is told to skip out, with what they hold", async () => {
+		await write("src/server/A.luau");
+		await write("src/Shop/client/B.luau");
+		await write("src/Hud/Shared/C.luau");
+
+		expect(
+			await codeFinderOf(fs).keySpellings(
+				cwd,
+				["src"],
+				["server", "client", "shared"],
+				["src/server", "src/Shop"]
+			)
+		).toEqual(new Map([["shared", "Shared"]]));
+	});
+
 	it("should name no spelling for a key the code doesn't spell", async () => {
 		await write("src/Shop/Main.luau");
 		await write("src/Servers/A.luau");

@@ -1,0 +1,35 @@
+$ rogen init --non-interactive
+exit 0
+stdout: (not shown)
+
+written:
+  .git/
+  .gitignore
+  AGENTS.md
+  default.project.json
+  default.rogen.json
+
+default.rogen.json:
+{
+  "name": "lib",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Lib"
+  },
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {}
+  }
+}
+
+$ rojo sourcemap default.project.json
+lib: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Lib: Folder
+      Signal: ModuleScript  <- src/Signal.luau
+      comm: ModuleScript  <- src/comm/init.luau
+        Client: ModuleScript  <- src/comm/Client/init.luau
+        Server: ModuleScript  <- src/comm/Server/init.luau

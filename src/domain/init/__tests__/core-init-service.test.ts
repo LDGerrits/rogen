@@ -1255,6 +1255,24 @@ describe("CoreInitService", () => {
 			expect(plan?.warnings).toEqual([]);
 		});
 
+		it("should leave out a standard route that folders in the lifted source path would move, with a note", async () => {
+			await lift({ ReplicatedStorage: { Lib: { $path: "src" } } });
+			await write("src/Signal.luau");
+			await write("src/comm/init.luau");
+			await write("src/comm/Server/init.luau");
+			await write("src/comm/Client/init.luau");
+
+			const plan = await planOf();
+
+			expect(configOf(plan).routes).toEqual({
+				Shared: "ReplicatedStorage/Shared",
+				"*": "ReplicatedStorage/Lib",
+			});
+			expect(plan?.notes).toContain(
+				'Left out the routes Server and Client, since src holds folders or names spelled so, which Rojo places with the rest of their mount and a route would move. To route code that way, rename them and add the key to "routes".'
+			);
+		});
+
 		it("should never take the project's own folder or a package folder", async () => {
 			await lift({
 				Workspace: { Map: { $path: "." } },

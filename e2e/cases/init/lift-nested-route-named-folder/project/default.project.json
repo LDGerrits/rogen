@@ -1,0 +1,7 @@
+{
+  "name": "lib",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": { "Lib": { "$path": "src" } }
+  }
+}
