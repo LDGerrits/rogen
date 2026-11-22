@@ -1,3 +1,4 @@
+import { afterAll } from "@jest/globals";
 import Ajv, { ValidateFunction } from "ajv";
 import { ChildProcess, execFile, execFileSync, spawn } from "child_process";
 import { createHash } from "crypto";
@@ -70,9 +71,7 @@ const SPEC_KEYS: Record<keyof CaseSpec, true> = {
 };
 
 const RUN_CACHE = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-e2e-cache-"));
-process.on("exit", () =>
-	fs.rmSync(RUN_CACHE, { recursive: true, force: true })
-);
+afterAll(() => fs.rmSync(RUN_CACHE, { recursive: true, force: true }));
 
 const POSE_AS_WINDOWS_TERMINAL = { WT_SESSION: "1" };
 
