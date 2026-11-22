@@ -582,6 +582,38 @@ describeWithRojo("end to end watch", () => {
 		});
 	}, 30_000);
 
+	it("should mount a routing folder again after a misspelling of it is fixed", async () => {
+		project.dispose();
+		project = createProject({
+			"default.rogen.json": JSON.stringify({
+				sourcePaths: ["src"],
+				routes: {
+					Server: "ServerScriptService",
+					Client: "StarterPlayer/StarterPlayerScripts",
+					"*": "ReplicatedStorage/Shared",
+				},
+			}),
+			"src/Shop/Server/Save.luau": 'return "server"',
+			"src/Shop/Client/Ui.luau": 'return "client"',
+		});
+		const place = path.join(project.dir, "game.rbxlx");
+		start(["-o", "game.rbxlx"]);
+		await waitFor(() => {
+			expect(fs.readFileSync(place, "utf8")).toContain('"client"');
+		});
+
+		const client = path.join(project.dir, "src/Shop/Client");
+		const lower = path.join(project.dir, "src/Shop/client");
+		fs.renameSync(client, lower);
+		await waitFor(() => {
+			expect(session?.output).toContain("route.caseMismatch");
+		});
+		fs.renameSync(lower, client);
+		await waitFor(() => {
+			expect(fs.readFileSync(place, "utf8")).toContain('"client"');
+		});
+	}, 30_000);
+
 	describeOnPosix("where it can run", () => {
 		it("should exit 130 when interrupted, as a shell reports Ctrl+C", async () => {
 			const running = start(["-o", "game.rbxlx"]);

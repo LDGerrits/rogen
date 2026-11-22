@@ -184,7 +184,7 @@ export class CoreWatchSession
 				projectFile,
 				this.listing,
 				watched.latest,
-				force
+				force || watched.stopped
 			)
 		);
 	}

@@ -45,6 +45,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- `rogen serve`, `build --watch` and `sourcemap --watch` no longer lose a folder a route mounts after an error that stopped the write is fixed. Rojo drops a mount whose folder vanished while the project file stood and reads it again only when the file is rewritten, so the first write after a stopped one now replaces the project file even when its text is the same.
+
 - `route.caseMismatch` on a folder in a script folder names a route key to add with its marker file when no key routes where `*` does, where it said only to rename the folder, which would move a child the script requires.
 - `rogen where` and `rogen check` with a config and a shared file, as `rogen where places/a/default.rogen.json places/shared/M.luau`, no longer note that no config reads the file when the config named beside it does, and leave it out of `skipped`.
 - `rogen check <paths>` and `rogen where <paths>` no longer fail on a named config that doesn't load, such as one with an unknown key, when its source paths don't read the paths asked about. One whose source paths can't be read still fails every path, and `rogen check` alone still fails on it.
