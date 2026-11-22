@@ -2,7 +2,7 @@ $ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
   Writing src/Bags/Server/Bag.luau
-  Writing src/Bags/Server/Save.luau
+  Writing src/Bags/Save@Server.luau
   Removing src/Inventory/Server
   Removing src/Inventory/Save@Server.luau
 stderr:
@@ -20,8 +20,8 @@ stderr:
 
 written:
   default.project.json
+  src/Bags/Save@Server.luau
   src/Bags/Server/Bag.luau
-  src/Bags/Server/Save.luau
 
 $ rojo sourcemap default.project.json
 Game: DataModel
@@ -32,4 +32,4 @@ Game: DataModel
   ServerScriptService: ServerScriptService
     Bags: Folder
       Bag: ModuleScript  <- src/Bags/Server/Bag.luau
-      Save: ModuleScript  <- src/Bags/Server/Save.luau
+      Save: ModuleScript  <- src/Bags/Save@Server.luau

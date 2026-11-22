@@ -1,8 +1,8 @@
 $ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
-  Writing src/Shared/NetX/Types.luau
-  Writing src/Shared/NetX/init.luau
+  Writing src/NetX/Types.luau
+  Writing src/NetX/init.luau
   Writing src/NetX/Server/Remote.luau
   Removing src/Net/Server
   Removing src/Net/Types.luau
@@ -23,8 +23,8 @@ stderr:
 written:
   default.project.json
   src/NetX/Server/Remote.luau
-  src/Shared/NetX/Types.luau
-  src/Shared/NetX/init.luau
+  src/NetX/Types.luau
+  src/NetX/init.luau
 
 $ rojo sourcemap default.project.json
 G: DataModel
@@ -32,8 +32,8 @@ G: DataModel
     Shared: Folder
       Boot: Folder
         Step: ModuleScript  <- src/Boot/Step.luau
-      NetX: ModuleScript  <- src/Shared/NetX/init.luau
-        Types: ModuleScript  <- src/Shared/NetX/Types.luau
+      NetX: ModuleScript  <- src/NetX/init.luau
+        Types: ModuleScript  <- src/NetX/Types.luau
   ServerScriptService: ServerScriptService
     Boot: Script  <- src/Boot/init.server.luau
     NetX: Folder

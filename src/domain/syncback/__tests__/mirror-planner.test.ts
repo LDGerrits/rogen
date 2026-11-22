@@ -715,6 +715,50 @@ describe("MirrorPlanner", () => {
 			expect(await fs.exists(abs("src/Shop"))).toBe(false);
 		});
 
+		it("should move only the side Studio renamed, keeping its data files' form and leaving the other side's files", async () => {
+			await prepare([
+				"src/Shop/Server/ShopService.luau",
+				"src/Shop/Server/Items.json",
+				"src/Shop/Client/Hud.luau",
+			]);
+			await writeFiles(
+				fs,
+				"src/Shop/Server/Art/notes.md",
+				"src/Shop/Docs/notes.md",
+				"src/Shop/README.md"
+			);
+			await fs.writeFile(abs("src/Shop/Client/Hud.meta.json"), "{}");
+			await fs.writeFile(abs("src/Shop/Server/Items.json"), "[1]");
+			rojo.say = async () => {
+				await fs.delete(mirror("ServerScriptService", "Shop"), true);
+				await fs.writeFile(
+					mirror("ServerScriptService", "Store", "ShopService.luau"),
+					""
+				);
+				await fs.writeFile(
+					mirror("ServerScriptService", "Store", "Items.luau"),
+					"return {1}"
+				);
+				return [];
+			};
+
+			await planned("apply");
+
+			expect(await fs.readFile(abs("src/Store/Server/Items.json"))).toBe(
+				"[1]"
+			);
+			for (const file of [
+				"src/Store/Server/ShopService.luau",
+				"src/Store/Server/Art/notes.md",
+				"src/Shop/Client/Hud.luau",
+				"src/Shop/Client/Hud.meta.json",
+				"src/Shop/Docs/notes.md",
+				"src/Shop/README.md",
+			])
+				expect(await fs.exists(abs(file))).toBe(true);
+			expect(await fs.exists(abs("src/Shop/Server"))).toBe(false);
+		});
+
 		it("should rename a feature whose old instance lost a script Studio deleted", async () => {
 			await prepare([
 				"src/Shop/Server/ShopService.luau",

@@ -62,6 +62,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `rogen syncback` writes a new instance beside a `^` file where routing places it, and names a new feature's routing folder the way most of the project's are named.
 - `rogen syncback` no longer writes a new instance into the folder of an init script beside it, such as `src/Net/` for a new `Settings` folder next to `Net`, where the next build put it inside `Net`.
 - A node whose key starts with `$` but isn't one of Rojo's fields, such as `"$Shared": { "$path": "src/Shared" }`, is a child as it is to Rojo. `rogen syncback --dry-run` no longer writes into the folder such a node mounts, and lists the files; `check` and `where` see what it mounts; `fmt-project` sorts it with the other children; and `check` warns about it with `tree.reservedName`, as Rojo does on every build.
+- `rogen syncback` no longer writes a new folder whose name routing rejects, such as a Studio folder `server` inside a script folder under a `Server` route, which stopped every later write with `route.caseMismatch`. It leaves the instance out with a `syncback.unplaced` warning.
+- `rogen syncback` writes new code that Studio adds at a route's target the project has no code for yet, such as a first `ReplicatedStorage/Shared/Shop/Types` or a LocalScript in `StarterPlayerScripts` of a project with only server code, where routing puts it. It used to say it would change nothing.
+- `rogen syncback` keeps a data file's form when Studio renames a feature on one side only, such as `ServerScriptService/Shop` while the feature's other sides keep `Shop`: `src/Shop/Server/Cfg.json` moves to `src/ShopX/Server/Cfg.json` and the other sides' files stay, where it used to write `Cfg.luau`.
 
 ## [2.0.0-beta.4] - 2026-11-10
 
