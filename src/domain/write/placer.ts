@@ -8,6 +8,7 @@ import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
+import { FileType } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { ResolvedConfig, scannedFileOf } from "../config/resolved-config.js";
@@ -89,7 +90,9 @@ export class Placer {
 			...this.hoistedInitErrors(hoistedInits),
 			...Placer.patternClashErrors(routed),
 		];
-		const resolved = new InstanceResolver().resolve(routed);
+		const resolved = new InstanceResolver((dir) =>
+			Placer.listingOf(roots, dir)
+		).resolve(routed);
 		const templating = this.yieldToTree(resolved.nodes);
 		const placed = new Set(resolved.nodes.map(({ entry }) => entry.source));
 		const leftOut = new LeftOutPaths(
@@ -161,6 +164,16 @@ export class Placer {
 				?.listing(path.normalize(path.posix.dirname(target)))
 				.has(path.posix.basename(target)) === true
 		);
+	}
+
+	private static listingOf(
+		roots: readonly ScannedRoot[],
+		dir: string
+	): ReadonlyMap<string, FileType> {
+		const root = roots.find((candidate) =>
+			isInside(dir, toPosix(candidate.sourcePath))
+		);
+		return root?.listing(path.normalize(dir)) ?? new Map();
 	}
 
 	private static unreadableErrors(

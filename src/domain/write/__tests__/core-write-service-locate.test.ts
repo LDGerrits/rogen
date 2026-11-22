@@ -633,6 +633,46 @@ describe("CoreWriteService.locate", () => {
 		]);
 	});
 
+	it("should say an init file Rojo reads first replaces one that routes, even when no route takes it", async () => {
+		await write("src/Hud/init.luau", "src/Hud/init.server.luau");
+
+		expect(
+			await locate(["src/Hud/init.luau", "src/Hud/init.server.luau"], {
+				routes: {
+					Server: "ServerScriptService",
+					Client: "StarterPlayer/StarterPlayerScripts",
+				},
+			})
+		).toMatchObject([
+			{ status: "unrouted" },
+			{ status: "replaced", by: abs("src/Hud/init.luau") },
+		]);
+	});
+
+	it("should say an init file that a glob ignores replaces one that routes, since Rojo reads it anyway", async () => {
+		await write("src/Hud/init.luau", "src/Hud/init.server.luau");
+
+		expect(
+			await locate(["src/Hud/init.server.luau"], {
+				ignored: ["**/init.luau"],
+			})
+		).toMatchObject([{ status: "replaced", by: abs("src/Hud/init.luau") }]);
+	});
+
+	it("should place an init file that no init file Rojo reads first sits beside", async () => {
+		await write(
+			"src/Hud/init.server.luau",
+			"src/Hud/init.client.luau",
+			"src/Hud/init.meta.json"
+		);
+
+		expect(
+			await locate(["src/Hud/init.server.luau"], {
+				routes: { Server: "ServerScriptService" },
+			})
+		).toMatchObject([{ status: "placed" }]);
+	});
+
 	it("should say the tree displaced a file whose node it defines, or a folder under its $path", async () => {
 		await write("src/Save.luau", "src/Packages/A.luau", "src/Kept.luau");
 		const project = {
