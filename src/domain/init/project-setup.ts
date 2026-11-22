@@ -68,6 +68,7 @@ export interface ProjectChoices {
 	readonly language: Language;
 	readonly sourcePaths: readonly string[];
 	readonly keySpellings?: Readonly<Record<string, string>>;
+	readonly capturedKeys?: readonly string[];
 	readonly compiledPath?: string;
 	readonly processed?: ProcessedOutput;
 	readonly tree: ProjectTree;
@@ -218,7 +219,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			? [...places.sourcePaths]
 			: !routed
 				? []
-				: code && code.sourcePaths.length > 0
+				: code && (code.sourcePaths.length > 0 || code.keptOnly)
 					? [...code.sourcePaths]
 					: [directory.defaultSourcePath(language)];
 
@@ -323,19 +324,33 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			...sampleFiles,
 			...(places?.files ?? []),
 		]);
-		const keySpellings = await this.instantiationService
-			.createInstance(CodeFinder)
-			.keySpellings(
-				this.directory.path,
-				places?.directories ?? sourcePaths,
-				STANDARD_ROUTE_IDS.map((id) => language.routeKey(id))
-			);
+		const finder = this.instantiationService.createInstance(CodeFinder);
+		const routeKeys = STANDARD_ROUTE_IDS.map((id) => language.routeKey(id));
+		const keySpellings = await finder.keySpellings(
+			this.directory.path,
+			places?.directories ?? sourcePaths,
+			routeKeys
+		);
+		const capturedKeys =
+			tree.kind === "lift"
+				? [
+						...(
+							await finder.keySpellings(
+								this.directory.path,
+								sourcePaths,
+								routeKeys,
+								liftedMounts
+							)
+						).keys(),
+					]
+				: [];
 		return ok({
 			language,
 			sourcePaths: [...sourcePaths],
 			...(keySpellings.size > 0 && {
 				keySpellings: Object.fromEntries(keySpellings),
 			}),
+			...(capturedKeys.length > 0 && { capturedKeys }),
 			...(compiledPath && { compiledPath }),
 			...(processed && { processed }),
 			tree: game && tree.kind === "new" ? { ...tree, game } : tree,
@@ -622,13 +637,16 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const { language, sourcePaths, compiledPath, places } = choices;
 		const dirs = generatedDirs(choices);
 		const derived = derivedRoutesOf(choices.tree, dirs);
-		const routes = takesRoutes(choices.tree)
+		const spellings = new Map(Object.entries(choices.keySpellings ?? {}));
+		const starting = takesRoutes(choices.tree)
 			? new StartingRoutes(
 					language,
 					derived,
-					new Map(Object.entries(choices.keySpellings ?? {}))
-				).routes
+					spellings,
+					new Set(choices.capturedKeys)
+				)
 			: undefined;
+		const routes = starting?.routes;
 		const tree = TreePlan.of({
 			tree: choices.tree,
 			mounts: choices.mounts,
@@ -696,6 +714,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.setLiftedFrom(choices.tree.from);
 			builder.setAction("lift");
 		}
+		const leftOut = starting?.leftOut ?? [];
+		if (leftOut.length > 0)
+			builder.addNote(
+				`Left out the ${leftOut.length === 1 ? "route" : "routes"} ${joinedWithAnd(leftOut)}, since ${joinedWithAnd(sourcePaths)} holds folders or names spelled so, which Rojo places with the rest of their mount and a route would move. To route code that way, rename them and add the key to "routes".`
+			);
 		for (const note of tree.notes) builder.addNote(note);
 		if (choices.tree.kind === "lift" && choices.processed)
 			builder.addNote(
@@ -707,7 +730,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 		if (choices.keptCode?.length)
 			builder.addNote(
-				`Kept the mounts of ${joinedWithAnd(choices.keptCode)} in the tree as they are: only the project's own folder holds them all, and a source path is a folder below it. To route their code, move the folders into ${sourcePaths[0]}.`
+				sourcePaths.length === 0
+					? `Kept the mounts of ${joinedWithAnd(choices.keptCode)} in the tree as they are: a folder with an init file is one instance, so Rogen routes no code in it.`
+					: `Kept the mounts of ${joinedWithAnd(choices.keptCode)} in the tree as they are: only the project's own folder holds them all, and a source path is a folder below it. To route their code, move the folders into ${sourcePaths[0]}.`
 			);
 		const others = places
 			? []

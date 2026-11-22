@@ -29,6 +29,31 @@ describe("domain/init/starting-routes", () => {
 			});
 		});
 
+		it("should leave out the standard routes it is told to withhold, and name them", () => {
+			const routes = new StartingRoutes(
+				workspaceOf().languageFor("luau"),
+				undefined,
+				new Map([["server", "Server"]]),
+				new Set(["server", "client"])
+			);
+
+			expect(Object.keys(routes.routes)).toEqual(["Shared", "*"]);
+			expect(routes.leftOut).toEqual(["Server", "Client"]);
+		});
+
+		it("should not name a withheld route that a mounted folder took", () => {
+			const routes = new StartingRoutes(
+				workspaceOf().languageFor("luau"),
+				lifted({
+					ServerScriptService: { Server: { $path: "src/Server" } },
+				}),
+				undefined,
+				new Set(["server"])
+			);
+
+			expect(routes.leftOut).toEqual([]);
+		});
+
 		it("should spell a standard key as the code already spells it, and the others in the same case", () => {
 			const routes = new StartingRoutes(
 				workspaceOf().languageFor("luau"),

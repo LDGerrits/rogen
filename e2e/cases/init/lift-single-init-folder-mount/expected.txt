@@ -1,0 +1,36 @@
+$ rogen init --non-interactive
+exit 0
+stdout: (not shown)
+
+written:
+  .git/
+  .gitignore
+  AGENTS.md
+  default.project.json
+  default.rogen.json
+
+default.rogen.json:
+{
+  "name": "lib",
+  "sourcePaths": [],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "MyLib": {
+        "$path": "src"
+      }
+    }
+  }
+}
+
+$ rojo sourcemap default.project.json
+lib: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    MyLib: ModuleScript  <- src/init.luau
+      Util: ModuleScript  <- src/Util.luau

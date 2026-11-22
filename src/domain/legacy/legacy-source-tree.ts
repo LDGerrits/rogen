@@ -244,7 +244,15 @@ export class LegacySourceTree {
 		this.used.add(affix.keyword);
 		if (ROJO_SUFFIXES.has(affix.written.toLowerCase()) && isScript(name))
 			return;
-		const renamed = `${hoisted ? "^" : ""}${flags.verbatim ? bare : affix.stripped}@${this.keyOf(affix.keyword)}`;
+		const key = this.keyOf(affix.keyword);
+		const governed =
+			flags.outer !== undefined && this.keyOf(flags.outer) !== key;
+		if (
+			governed &&
+			this.targetOf(flags.outer!) !== this.targetOf(affix.keyword)
+		)
+			return;
+		const renamed = `${hoisted ? "^" : ""}${flags.verbatim ? bare : affix.stripped}${governed ? "" : `@${key}`}`;
 		const to = `${renamed}${extension}`;
 		if (isTypeScript(name)) {
 			this.typeScript.push({ file, name: to });

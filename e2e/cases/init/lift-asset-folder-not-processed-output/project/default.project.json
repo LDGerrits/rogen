@@ -1,0 +1,7 @@
+{
+  "name": "game",
+  "tree": {
+    "$className": "DataModel",
+    "ServerStorage": { "Assets": { "$path": "assets/server" } }
+  }
+}

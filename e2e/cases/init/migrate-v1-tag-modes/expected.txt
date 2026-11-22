@@ -1,0 +1,48 @@
+$ rogen init
+exit 0
+stdout: (not shown)
+stderr:
+  .rogen.json - warning: v1's tags aren't carried over, since v2 has none. Move each tag's files into a folder, and list it last in "sourcePaths" of the configs that want it. (legacy.tags)
+  .rogen.json - warning: its luau-dev mode wrote dev.project.json, which comes out the same as default.rogen.json once v1's tags are gone, so init writes only default.rogen.json. To keep both, copy default.rogen.json, give the copy another name and edit what differs. (legacy.outputClash)
+  .rogen.json - warning: its luau-prod mode wrote prod.project.json, which comes out the same as default.rogen.json once v1's tags are gone, so init writes only default.rogen.json. To keep both, copy default.rogen.json, give the copy another name and edit what differs. (legacy.outputClash)
+
+$ rogen check
+exit 0
+
+written:
+  .rogen.json.v1
+  AGENTS.md
+  default.project.json
+  default.rogen.json
+  src/Combat/Combat@Server.luau
+
+default.rogen.json:
+{
+  "name": "project",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService/server",
+    "Client": "StarterPlayer/StarterPlayerScripts/client",
+    "Shared": "ReplicatedStorage/shared",
+    "*": "ReplicatedStorage/shared"
+  },
+  "tree": {
+    "$className": "DataModel"
+  }
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      core: Folder
+        dev: Folder
+          AnalyticsService: ModuleScript  <- src/core/dev/AnalyticsService.luau
+        prod: Folder
+          AnalyticsService: ModuleScript  <- src/core/prod/AnalyticsService.luau
+  ServerScriptService: ServerScriptService
+    server: Folder
+      Combat: Folder
+        Combat: ModuleScript  <- src/Combat/Combat@Server.luau

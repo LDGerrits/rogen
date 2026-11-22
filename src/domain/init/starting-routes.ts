@@ -24,7 +24,8 @@ export class StartingRoutes {
 	constructor(
 		private readonly language: Language,
 		private readonly derived?: DerivedRoutes,
-		private readonly spellings: ReadonlyMap<string, string> = new Map()
+		private readonly spellings: ReadonlyMap<string, string> = new Map(),
+		private readonly withheld: ReadonlySet<string> = new Set()
 	) {}
 
 	static isKey(name: string, derived?: DerivedRoutes): boolean {
@@ -63,15 +64,31 @@ export class StartingRoutes {
 		);
 	}
 
+	private get free(): readonly StandardRouteId[] {
+		const taken = new Set(
+			[...(this.derived?.routes.keys() ?? [])].map((key) =>
+				DeclaredKeys.identityOf(key)
+			)
+		);
+		return ROUTES.map(({ id }) => id).filter(
+			(id) => !taken.has(DeclaredKeys.identityOf(this.standardKey(id)))
+		);
+	}
+
+	get leftOut(): string[] {
+		return this.free
+			.filter((id) => this.withheld.has(id))
+			.map((id) => this.standardKey(id));
+	}
+
 	get routes(): Record<string, string> {
 		const derived = [...(this.derived?.routes ?? [])];
-		const taken = new Set(
-			derived.map(([key]) => DeclaredKeys.identityOf(key))
-		);
-		const standard = ROUTES.map(
+		const standard = ROUTES.filter(
+			({ id }) => this.free.includes(id) && !this.withheld.has(id)
+		).map(
 			({ id, target }) =>
 				[this.standardKey(id), target ?? this.sharedTarget] as const
-		).filter(([key]) => !taken.has(DeclaredKeys.identityOf(key)));
+		);
 		return {
 			...Object.fromEntries([...derived, ...standard]),
 			[DeclaredKeys.FALLBACK_ROUTE]: this.fallbackTarget,

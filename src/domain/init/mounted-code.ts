@@ -16,6 +16,7 @@ export interface MountedCodeFolders {
 	readonly sourcePaths: readonly string[];
 	readonly processed?: string;
 	readonly folders: readonly string[];
+	readonly keptOnly?: true;
 }
 
 export class MountedCode {
@@ -74,11 +75,14 @@ export class MountedCode {
 			)
 				return { sourcePaths: [source], processed, folders };
 		}
-		const common = folders.length > 0 ? commonFolderPosix(folders) : ".";
+		const routable = folders.filter((folder) => !project.holdsInit(folder));
+		if (folders.length > 0 && routable.length === 0)
+			return { sourcePaths: [], folders, keptOnly: true };
+		const common = routable.length > 0 ? commonFolderPosix(routable) : ".";
 		const sourcePath = MountedCode.routingSourcePath(
 			common,
 			project,
-			folders
+			routable
 		);
 		return { sourcePaths: sourcePath ? [sourcePath] : [], folders };
 	}
@@ -113,10 +117,8 @@ export class MountedCode {
 		folders: readonly string[]
 	): boolean {
 		const derived = DerivedRoutes.of(project, [sourcePath]);
-		return (
-			derived?.unrouted.every(
-				({ target }) => !folders.includes(target)
-			) ?? false
+		return derived!.unrouted.every(
+			({ target }) => !folders.includes(target)
 		);
 	}
 }

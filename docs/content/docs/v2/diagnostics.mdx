@@ -1304,13 +1304,13 @@ Add the route you want to `routes`, under a key that is letters and digits, such
 
 ### `legacy.outputClash` [#legacy-outputclash]
 
-Warning. Two modes of the v1 config wrote the same project file, so `init` writes one config for it, from the first mode.
+Warning. Two modes of the v1 config wrote the same project file, or wrote project files that come out as the same config once v1's tags are gone, so `init` writes one config for them, from the first mode.
 
 ```
 warning: its release mode wrote default.project.json, as an earlier mode did, so init writes only one default.rogen.json. To keep both, copy default.rogen.json, give the copy another name and edit it. (legacy.outputClash)
 ```
 
-Copy the config under another name, such as `release.rogen.json`, and change what differs, such as its `compiledPath`.
+Copy the config under another name, such as `release.rogen.json`, and change what differs, such as its `compiledPath`. Modes that differed only in their `tags` need a folder for each tag's files, as `legacy.tags` says, before their configs differ.
 
 ### `legacy.tags` [#legacy-tags]
 

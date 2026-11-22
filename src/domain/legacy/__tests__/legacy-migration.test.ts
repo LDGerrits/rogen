@@ -382,6 +382,35 @@ describe("LegacyMigration", () => {
 		});
 	});
 
+	describe("modes that differ only in their tags", () => {
+		it("should write one config for the modes that come out the same, and warn", async () => {
+			await writeConfig({
+				source: "src",
+				"luau-dev": {
+					output: "dev.project.json",
+					build: "src",
+					tags: { dev: true },
+				},
+				"luau-prod": {
+					output: "prod.project.json",
+					build: "src",
+					tags: { dev: false },
+				},
+			});
+
+			const found = await migrate();
+
+			expect(found.configs.map(({ fileName }) => fileName)).toEqual([
+				"default.rogen.json",
+			]);
+			expect(found.warnings.map(({ code }) => code)).toEqual([
+				"legacy.tags",
+				"legacy.outputClash",
+				"legacy.outputClash",
+			]);
+		});
+	});
+
 	describe("renames", () => {
 		beforeEach(() => writeConfig({ source: "src" }));
 
@@ -622,6 +651,35 @@ describe("LegacyMigration", () => {
 			await write("src/Lib/Signal_Server.luau");
 
 			expect(await renamesOf()).toEqual([]);
+		});
+
+		it("should leave a file whose name routes it elsewhere than the folder around it, and warn", async () => {
+			await writeConfig({ source: "src" });
+			await write("src/Shop/client/Shop_Server.luau");
+
+			const migrated = await migrate();
+
+			expect(await renamesOf()).toEqual([]);
+			expect(migrated.warnings).toMatchObject([
+				{ code: "legacy.outrankedRoute" },
+			]);
+		});
+
+		it("should drop the word of a file whose folder routes it to the same service already", async () => {
+			await writeConfig({
+				source: "src",
+				aliases: { Service: "ServerScriptService" },
+			});
+			await write("src/Shop/server/ShopService.luau");
+
+			expect(
+				(await renamesOf()).map(({ from, to }) => [from, to])
+			).toEqual([
+				[
+					"src/Shop/server/ShopService.luau",
+					"src/Shop/server/Shop.luau",
+				],
+			]);
 		});
 
 		it("should warn about a file that v1 placed by its deepest routing word", async () => {

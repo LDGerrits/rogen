@@ -34,6 +34,18 @@ describe("ProcessedFolder", () => {
 		expect(await find(["build/server", "build/assets"])).toBeUndefined();
 	});
 
+	it("should find a folder written already whose mount holds what the source path holds", async () => {
+		await fs.writeFile("/repo/build/server/Main.server.luau", "");
+
+		expect(await find(["build/server"])).toBe("build");
+	});
+
+	it("should not take a folder whose mount holds files the source path doesn't", async () => {
+		await fs.writeFile("/repo/assets/server/Health.server.luau", "");
+
+		expect(await find(["assets/server"])).toBeUndefined();
+	});
+
 	it("should not take a source path or a folder another tool writes", async () => {
 		expect(await find(["src/server", "out/server"], ["src"], ["out"])).toBe(
 			undefined

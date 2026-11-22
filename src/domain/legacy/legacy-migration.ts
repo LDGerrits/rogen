@@ -336,7 +336,8 @@ class Migration {
 			Object.keys(settings.tags).length > 0 ||
 			modes.some(({ tags }) => Object.keys(tags).length > 0);
 		if (tagged) this.warnTags(file, settings, tree.tagged);
-		for (const mode of modes) this.addConfig(found, mode, routes);
+		const written = this.configs.length;
+		for (const mode of modes) this.addConfig(found, mode, routes, written);
 	}
 
 	private routableAliases(
@@ -396,7 +397,8 @@ class Migration {
 	private addConfig(
 		{ file, settings, project }: FoundConfig,
 		mode: LegacyMode,
-		routes: Record<string, string>
+		routes: Record<string, string>,
+		written: number
 	): void {
 		const output = posix(path.normalize(mode.output));
 		const outputDir = path.posix.dirname(output);
@@ -449,6 +451,22 @@ class Migration {
 			...(globIgnorePaths.length > 0 && { globIgnorePaths }),
 			...(isObject(tree) && { tree: tree as RogenConfig["tree"] }),
 		};
+		const same = this.configs
+			.slice(written)
+			.find(
+				(other) =>
+					JSON.stringify(other.config) === JSON.stringify(config)
+			);
+		if (same) {
+			this.warnings.push(
+				warningDiagnostic(
+					"legacy.outputClash",
+					{ resource: this.resource(file) },
+					`its ${mode.name} mode wrote ${output}, which comes out the same as ${same.fileName} once v1's tags are gone, so init writes only ${same.fileName}. To keep both, copy ${same.fileName}, give the copy another name and edit what differs.`
+				)
+			);
+			return;
+		}
 		this.configs.push({ fileName, config });
 	}
 
