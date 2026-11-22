@@ -41,6 +41,7 @@ docs/            # the website (Next.js and Fumadocs)
 ## Working on a change
 
 - While working, run `npm run test:changed`, or `npm run test:unit -- <folder>`.
+- In Claude Code, a Stop hook (`.claude/hooks/check.ts`) runs the linter, the type checks and the unit tests your changes touch when files changed, and hands a failure back before you stop. It leaves out the end-to-end cases and the coverage gate, which `npm run check` runs.
 - `npm run test:e2e` builds the bundle and runs the end-to-end cases against Rojo, which `rokit install` installs. When you change printed output on purpose, `npm run test:e2e:update` rewrites the transcripts. Read the summary it prints, and don't edit `expected.txt` files by hand.
 - A new diagnostic code needs a section on the docs' diagnostics page, and a test checks that it has one.
 - Run Prettier only on the files you changed. Formatting the whole tree touches files you didn't mean to change.
