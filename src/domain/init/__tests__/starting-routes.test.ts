@@ -77,6 +77,26 @@ describe("domain/init/starting-routes", () => {
 			]);
 		});
 
+		it.each([
+			["server", "shared"],
+			["Server", "Shared"],
+		])(
+			"should weigh a derived key with the code's spellings, so a derived %s gives %s",
+			(derivedKey, shared) => {
+				const routes = new StartingRoutes(
+					workspaceOf().languageFor("luau"),
+					lifted({
+						ServerScriptService: {
+							Server: { $path: `src/${derivedKey}` },
+						},
+					}),
+					new Map([["client", "client"]])
+				);
+
+				expect(Object.keys(routes.routes)).toContain(shared);
+			}
+		);
+
 		describe("with routes derived from a project file", () => {
 			it("should put them first, replace the standard route of the same key, and send * where the shared folder went", () => {
 				const routes = new StartingRoutes(
