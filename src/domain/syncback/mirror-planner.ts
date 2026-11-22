@@ -58,6 +58,15 @@ const LF = 10;
 
 const decoder = new TextDecoder();
 
+function* posixAncestors(at: string): Generator<string> {
+	for (
+		let dir = path.posix.dirname(at);
+		dir !== ".";
+		dir = path.posix.dirname(dir)
+	)
+		yield dir;
+}
+
 const foldersOf = (at: string): string[] => {
 	const names = at.split("/");
 	return names
@@ -278,22 +287,42 @@ class MirrorPlanRun {
 	}
 
 	private async keepMovedFrom(made: AddedInstance): Promise<void> {
-		const sources: Uint8Array[] = [];
-		for (const file of made.files)
-			sources.push(
-				await this.workspace.read(
-					`${made.parentFolder}/${file.join("/")}`
+		const wanted: { rel?: string; bytes: Uint8Array }[] = [];
+		for (const file of made.files) {
+			const bytes = await this.workspace.read(
+				`${made.parentFolder}/${file.join("/")}`
+			);
+			if (bytes.length > 0)
+				wanted.push({
+					bytes,
+					...(file.length > 1 && { rel: file.slice(1).join("/") }),
+				});
+		}
+		const removals = this.operations.flatMap((operation) => {
+			const bytes = this.before.get(operation.file);
+			return operation.kind === "remove" &&
+				operation.from !== undefined &&
+				bytes !== undefined &&
+				bytes.length > 0
+				? [{ file: operation.file, from: operation.from, bytes }]
+				: [];
+		});
+		const folders = new Set(
+			removals.flatMap(({ from }) => [...posixAncestors(from)])
+		);
+		for (const folder of [...folders].sort((a, b) => b.length - a.length)) {
+			const found = wanted.map(({ rel, bytes }) =>
+				removals.find(
+					(removal) =>
+						sameBytes(removal.bytes, bytes) &&
+						(rel === undefined
+							? path.posix.dirname(removal.from) === folder
+							: path.posix.relative(folder, removal.from) === rel)
 				)
 			);
-		for (const { kind, file } of this.operations) {
-			const before = this.before.get(file);
-			if (
-				kind === "remove" &&
-				before !== undefined &&
-				before.length > 0 &&
-				sources.some((bytes) => sameBytes(bytes, before))
-			)
-				this.keptFiles.add(file);
+			if (found.includes(undefined)) continue;
+			for (const removal of found) this.keptFiles.add(removal!.file);
+			return;
 		}
 	}
 
