@@ -26,6 +26,22 @@ export class FolderMeta {
 	get folder(): string {
 		return joinPosix(this.sourcePath, this.dir);
 	}
+
+	get withoutScriptFields(): FolderMeta {
+		const { attributes, ignoreUnknownInstances } = this.fields;
+		return new FolderMeta(
+			this.file,
+			this.sourcePath,
+			this.dir,
+			{
+				...(attributes !== undefined && { attributes }),
+				...(ignoreUnknownInstances !== undefined && {
+					ignoreUnknownInstances,
+				}),
+			},
+			this.merged
+		);
+	}
 }
 
 type Copy = Extract<FolderMetaOutcome, { kind: "copied" }>;
@@ -98,6 +114,9 @@ export class FolderMetaApplier {
 		const { tree, files, displaced, emptyFolders } = this.placement;
 		const fileAt = new InstanceMap<RoutedFile>();
 		for (const file of files) fileAt.set(file.instancePath, file);
+		const scriptFolders = new Set(
+			files.flatMap((file) => file.init?.becomes ?? [])
+		);
 
 		const outcomes: FolderMetaOutcome[] = [];
 		const reportedClashes = new Set<string>();
@@ -136,7 +155,11 @@ export class FolderMetaApplier {
 				: reached;
 			if (metas.length === 0) continue;
 
-			const meta = metas[metas.length - 1];
+			const last = metas[metas.length - 1];
+			const meta =
+				!fileAtNode && scriptFolders.has(last.folder)
+					? last.withoutScriptFields
+					: last;
 			const treeNode = tree.getNode(node.instancePath);
 			if (treeNode?.$path !== undefined)
 				outcomes.push({ kind: "treePath", instance, meta });

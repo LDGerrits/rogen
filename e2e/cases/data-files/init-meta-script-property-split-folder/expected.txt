@@ -1,0 +1,20 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen build --output game.rbxl
+exit 0
+stdout: (not shown)
+
+written:
+  default.project.json
+  game.rbxl
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Net: Script  <- src/Net/init.meta.json, src/Net/init.server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Net: Folder
+        Ui: ModuleScript  <- src/Net/Client/Ui.luau
