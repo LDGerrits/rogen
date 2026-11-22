@@ -31,13 +31,6 @@ default.rogen.json:
       "Packages": {
         "$path": "Packages"
       }
-    },
-    "ServerScriptService": {
-      "ServerPackages": {
-        "$path": {
-          "optional": "ServerPackages"
-        }
-      }
     }
   }
 }
@@ -49,4 +42,3 @@ project: DataModel
       Roact: ModuleScript  <- Packages/Roact.luau
     Shared: Folder
       A: ModuleScript  <- src/A.luau
-  ServerScriptService: ServerScriptService

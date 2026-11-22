@@ -23,6 +23,9 @@ const globProjects = fs
 	.filter((entry) => entry.isDirectory())
 	.map((entry) => entry.name);
 
+const withoutPlaceFiles = (gitignore?: string) =>
+	gitignore?.replace(/^# (Project place file|Place files)\n(\/.*\n)+\n/, "");
+
 describe("Rojo's build tests", () => {
 	it("should be the ones of the Rojo version the project pins", () => {
 		expect(
@@ -88,8 +91,8 @@ describeWithRojo("end to end Rojo conformance", () => {
 
 			expect(result.rojo.status).toBe(0);
 			expect(result.rogen).toMatchObject({ status: 0, stderr: "" });
-			expect(result.filesOfRogen[".gitignore"]).toBe(
-				result.filesOfRojo[".gitignore"]
+			expect(withoutPlaceFiles(result.filesOfRogen[".gitignore"])).toBe(
+				withoutPlaceFiles(result.filesOfRojo[".gitignore"])
 			);
 			expect(result.gitOfRogen).toBe(true);
 			expect(result.gitOfRogen).toBe(result.gitOfRojo);

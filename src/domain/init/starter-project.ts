@@ -16,9 +16,7 @@ import { instanceKey } from "../roblox/roblox.js";
 import { WrittenTree } from "../rojo/project-text.js";
 import { SampleGame } from "./sample-game.js";
 
-const mountNode = ({ path, optional }: Mount): Partial<RojoNode> => ({
-	$path: optional ? { optional: path } : path,
-});
+const mountNode = ({ path }: Mount): Partial<RojoNode> => ({ $path: path });
 
 const describe = ({ path, instancePath }: MountedPath): string =>
 	`${normalizeDir(rojoPathTarget(path))} at ${instanceKey(instancePath)}`;

@@ -36,13 +36,6 @@ default.rogen.json:
       "Packages": {
         "$path": "Packages"
       }
-    },
-    "ServerScriptService": {
-      "ServerPackages": {
-        "$path": {
-          "optional": "ServerPackages"
-        }
-      }
     }
   },
   "globIgnorePaths": [
@@ -56,4 +49,3 @@ my-game: DataModel
   ReplicatedStorage: ReplicatedStorage
     Packages: Folder
       Roact: ModuleScript  <- Packages/Roact.luau
-  ServerScriptService: ServerScriptService

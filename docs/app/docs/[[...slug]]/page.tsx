@@ -7,6 +7,8 @@ import {
 	MarkdownCopyButton,
 	ViewOptionsPopover,
 } from "fumadocs-ui/layouts/docs/page";
+import { Callout } from "fumadocs-ui/components/callout";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getMDXComponents } from "@/components/mdx";
 import type { Metadata } from "next";
@@ -44,6 +46,18 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
 					<LastUpdated date={page.data.lastModified} />
 				)}
 			</div>
+			{page.slugs[0] === "v1" && page.slugs[1] !== "migrating-to-v2" && (
+				<Callout
+					type="warn"
+					title="You're reading the docs for Rogen v1"
+				>
+					Rogen v2 is the recommended version.{" "}
+					<Link href="/docs/v1/migrating-to-v2">
+						Migrate a project to v2
+					</Link>{" "}
+					or <Link href="/docs/v2">read the v2 docs</Link>.
+				</Callout>
+			)}
 			<DocsBody>
 				<MDX
 					components={getMDXComponents({

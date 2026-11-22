@@ -505,12 +505,10 @@ describe("TreePlan", () => {
 				[
 					{
 						path: "Packages",
-						optional: false,
 						landing: "ReplicatedStorage/Packages",
 					},
 					{
 						path: "ServerPackages",
-						optional: true,
 						landing: "ServerScriptService/ServerPackages",
 					},
 				]
@@ -523,7 +521,7 @@ describe("TreePlan", () => {
 					Packages: { $path: "Packages" },
 				},
 				ServerScriptService: {
-					ServerPackages: { $path: { optional: "ServerPackages" } },
+					ServerPackages: { $path: "ServerPackages" },
 				},
 			});
 			expect(files.notes[1]).toBe(
@@ -535,12 +533,10 @@ describe("TreePlan", () => {
 			const files = await liftWithMounts({ name: "my-game", tree: {} }, [
 				{
 					path: "include",
-					optional: false,
 					landing: "ReplicatedStorage/rbxts_include",
 				},
 				{
 					path: "node_modules/@rbxts",
-					optional: false,
 					landing:
 						"ReplicatedStorage/rbxts_include/node_modules/@rbxts",
 				},
@@ -562,12 +558,10 @@ describe("TreePlan", () => {
 			const files = await liftWithMounts({ name: "my-game", tree }, [
 				{
 					path: "Packages",
-					optional: false,
 					landing: "ReplicatedStorage/Packages",
 				},
 				{
 					path: "ServerPackages",
-					optional: false,
 					landing: "ServerScriptService/ServerPackages",
 				},
 			]);
@@ -589,12 +583,10 @@ describe("TreePlan", () => {
 			const files = await liftWithMounts({ name: "my-game", tree }, [
 				{
 					path: "include",
-					optional: false,
 					landing: "ReplicatedStorage/rbxts_include",
 				},
 				{
 					path: "node_modules/@rbxts",
-					optional: false,
 					landing:
 						"ReplicatedStorage/rbxts_include/node_modules/@rbxts",
 				},
@@ -611,7 +603,6 @@ describe("TreePlan", () => {
 			const files = await liftWithMounts({ name: "my-game", tree }, [
 				{
 					path: "Packages",
-					optional: false,
 					landing: "ReplicatedStorage/Packages",
 				},
 			]);
@@ -640,12 +631,10 @@ describe("TreePlan", () => {
 				mounts: [
 					{
 						path: "Packages",
-						optional: false,
 						landing: "ReplicatedStorage/Packages",
 					},
 					{
 						path: "ServerPackages",
-						optional: false,
 						landing: "ServerScriptService/ServerPackages",
 					},
 				],
@@ -658,7 +647,89 @@ describe("TreePlan", () => {
 		);
 	});
 
+	describe("ignored files", () => {
+		const gitignoreOf = async (workspace: WorkspaceSpec) =>
+			(await plan({ ...luau, ...workspace })).files.find(
+				({ fileName }) => fileName === ".gitignore"
+			)!.content;
+
+		it("should ignore the package manager's folders", async () => {
+			expect(await gitignoreOf({ packageManager: "wally" })).toContain(
+				"# Installed packages\n/Packages\n/ServerPackages\n/DevPackages\n"
+			);
+			expect(await gitignoreOf({ packageManager: "pesde" })).toContain(
+				"# Installed packages\n/roblox_packages\n/roblox_server_packages\n"
+			);
+		});
+
+		it("should ignore node_modules when it is there", async () => {
+			expect(await gitignoreOf({ nodeModules: true })).toContain(
+				"# Installed packages\n/node_modules\n"
+			);
+		});
+
+		it("should ignore no packages without a manager or node_modules", async () => {
+			expect(await gitignoreOf(luau)).not.toContain("Installed packages");
+		});
+
+		it("should ignore roblox-ts's output and node_modules", async () => {
+			expect(
+				await gitignoreOf({
+					language: "roblox-ts",
+					robloxTs: { rbxtsScopes: ["@rbxts"] },
+				})
+			).toContain(
+				"# Compiler output\n/out\n/include\n*.tsbuildinfo\n\n# Installed packages\n/node_modules\n"
+			);
+		});
+	});
+
 	describe("package mounts", () => {
+		const uninstalledNote = (notes: readonly string[]) =>
+			notes.filter((note) => note.includes("isn't installed"));
+
+		it("should say it left out a manager's packages folder that isn't installed", async () => {
+			expect(
+				uninstalledNote((await plan({ packageManager: "wally" })).notes)
+			).toEqual([
+				"Didn't mount Packages, since it isn't installed. Once you run wally install, mount it at ReplicatedStorage/Packages.",
+			]);
+			expect(
+				uninstalledNote((await plan({ packageManager: "pesde" })).notes)
+			).toEqual([
+				"Didn't mount roblox_packages, since it isn't installed. Once you run pesde install, mount it at ReplicatedStorage/Packages.",
+			]);
+		});
+
+		it("should say nothing of packages that are installed, or without a manifest", async () => {
+			expect(uninstalledNote((await plan(withPackages)).notes)).toEqual(
+				[]
+			);
+			expect(uninstalledNote((await plan(luau)).notes)).toEqual([]);
+		});
+
+		it("should say nothing of packages a lifted tree already mounts", async () => {
+			const workspace: WorkspaceSpec = { packageManager: "wally" };
+			const files = planProject({
+				choices: {
+					...(await defaultProjectChoices(workspace)),
+					tree: lifted({
+						name: "my-game",
+						tree: {
+							$className: "DataModel",
+							ReplicatedStorage: {
+								Deps: { $path: "./Packages" },
+							},
+						},
+					}),
+				},
+				existingFiles: new Set(["default.project.json"]),
+				workspace,
+			}).unwrap();
+
+			expect(uninstalledNote(files.notes)).toEqual([]);
+		});
+
 		const rbxts: WorkspaceSpec = { language: "roblox-ts" };
 
 		it("should mount include and @rbxts for roblox-ts, and the scopes it found", async () => {
@@ -667,7 +738,6 @@ describe("TreePlan", () => {
 					...rbxts,
 					robloxTs: {
 						rbxtsScopes: ["@rbxts", "@flamework"],
-						includeInstalled: true,
 					},
 				})
 			).toEqual({
@@ -685,15 +755,13 @@ describe("TreePlan", () => {
 			});
 		});
 
-		it("should mount include and @rbxts as optional for roblox-ts when missing", async () => {
+		it("should mount include and @rbxts for roblox-ts even when missing", async () => {
 			expect(await (await treeOf(rbxts)).ReplicatedStorage).toEqual({
 				rbxts_include: {
-					$path: { optional: "include" },
+					$path: "include",
 					node_modules: {
 						$className: "Folder",
-						"@rbxts": {
-							$path: { optional: "node_modules/@rbxts" },
-						},
+						"@rbxts": { $path: "node_modules/@rbxts" },
 					},
 				},
 			});
@@ -705,7 +773,6 @@ describe("TreePlan", () => {
 					...rbxts,
 					robloxTs: {
 						rbxtsScopes: ["@rbxts"],
-						includeInstalled: true,
 					},
 				})
 			).ReplicatedStorage.rbxts_include.node_modules;
@@ -717,7 +784,6 @@ describe("TreePlan", () => {
 			expect(
 				await treeOf({
 					robloxTs: {
-						includeInstalled: true,
 						rbxtsScopes: ["@rbxts"],
 					},
 				})
@@ -739,22 +805,16 @@ describe("TreePlan", () => {
 			});
 		});
 
-		it("should mount the wally directories that are missing as optional", async () => {
+		it("should mount only the wally directories that are installed", async () => {
 			expect(await treeOf(withPackages)).toEqual({
 				$className: "DataModel",
 				...mounts,
 			});
 		});
 
-		it("should mount wally packages as optional when only wally.toml exists", async () => {
+		it("should mount nothing when wally.toml exists but nothing is installed", async () => {
 			expect(await treeOf({ packageManager: "wally" })).toEqual({
 				$className: "DataModel",
-				ReplicatedStorage: {
-					Packages: { $path: { optional: "Packages" } },
-				},
-				ServerScriptService: {
-					ServerPackages: { $path: { optional: "ServerPackages" } },
-				},
 			});
 		});
 
@@ -782,17 +842,7 @@ describe("TreePlan", () => {
 					packageManager: "pesde",
 					packageDirs: new Set(["Packages", "ServerPackages"]),
 				})
-			).toEqual({
-				$className: "DataModel",
-				ReplicatedStorage: {
-					Packages: { $path: { optional: "roblox_packages" } },
-				},
-				ServerScriptService: {
-					ServerPackages: {
-						$path: { optional: "roblox_server_packages" },
-					},
-				},
-			});
+			).toEqual({ $className: "DataModel" });
 		});
 
 		it("should assume wally for luau without a manager", async () => {
@@ -813,7 +863,6 @@ describe("TreePlan", () => {
 						language: "roblox-ts",
 						robloxTs: {
 							rbxtsScopes: ["@rbxts"],
-							includeInstalled: true,
 						},
 						packageDirs: new Set(["Packages"]),
 					})
@@ -831,7 +880,6 @@ describe("TreePlan", () => {
 			expect(Object.keys(tree)).toEqual([
 				"$className",
 				"ReplicatedStorage",
-				"ServerScriptService",
 			]);
 			expect(tree.ReplicatedStorage).toMatchObject({
 				rbxts_include: expect.anything(),

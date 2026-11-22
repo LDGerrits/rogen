@@ -14,7 +14,7 @@
 	Rogen generates the Rojo project file from your file system, and sends each file to the right place in Studio.
 </p>
 <p align="center">
-	<a href="https://www.npmjs.com/package/@ldgerrits/rogen"><img alt="Beta release" src="https://img.shields.io/npm/v/@ldgerrits/rogen/next?style=flat-square&label=beta" /></a>
+	<a href="https://www.npmjs.com/package/@ldgerrits/rogen"><img alt="Release candidate" src="https://img.shields.io/npm/v/@ldgerrits/rogen/next?style=flat-square&label=rc" /></a>
 	<a href="https://rogen-roblox.vercel.app/docs/v2"><img alt="Documentation" src="https://img.shields.io/badge/docs-website-blueviolet?style=flat-square" /></a>
 	<a href="https://github.com/LDGerrits/rogen/actions/workflows/test.yml"><img alt="Test coverage" src="https://img.shields.io/endpoint?style=flat-square&url=https%3A%2F%2Fraw.githubusercontent.com%2FLDGerrits%2Frogen%2Fbadges%2Fcoverage.json" /></a>
 	<a href="https://discord.com/channels/385151591524597761/1503801029232295996"><img alt="Discord" src="https://img.shields.io/badge/discord-chat-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
@@ -71,7 +71,7 @@ A file goes where its [folder or `@` suffix](https://rogen-roblox.vercel.app/doc
 ## Installation
 
 ```bash
-rokit add ldgerrits/rogen@2.0.0-beta.4
+rokit add ldgerrits/rogen@2.0.0-rc.1
 rogen init
 ```
 

@@ -9,11 +9,11 @@ import {
 	FileReader,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import { DOCS_URL } from "../../platform/product/product-service.js";
+import { SITE_URL } from "../../platform/product/product-service.js";
 import { FailedConfigFile } from "../config/config-service.js";
 
 export class LegacyConfig {
-	static readonly MIGRATION_URL = `${DOCS_URL}/migrating-from-v1`;
+	static readonly MIGRATION_URL = `${SITE_URL}/docs/v1/migrating-to-v2`;
 
 	static readonly FILE_NAME = /\.rogen\.jsonc?$/;
 	private static readonly KEYS = ["source", "aliases"];

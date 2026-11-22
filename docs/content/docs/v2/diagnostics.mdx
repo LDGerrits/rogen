@@ -283,7 +283,7 @@ Error. Two or more pattern routes match a file's name with as many characters th
 error: "*.ts" and "*Ui.*" both match this name, are as long as each other, and send it to different places. Lengthen the pattern that should win, or route the file with a folder or an @ name. (route.patternClash)
 ```
 
-Make the pattern that should win more specific, as in `*Ui.ts`, or route the file with a [routing folder](/docs/v2/routing/folders) or an `@` name, which beat every pattern. Patterns that send a file to the same place don't clash. See [Patterns](/docs/v2/routing/names#patterns).
+Make the pattern that should win more specific, as in `*Ui.ts`, or route the file with a [routing folder](/docs/v2/routing/folders) or an `@` name, which beat every pattern. Patterns that send a file to the same place don't clash. See [Routing by Pattern](/docs/v2/routing/patterns).
 
 ### `route.folderPattern` [#route-folderpattern]
 
@@ -295,7 +295,7 @@ warning: matches the pattern "*Controller", but a pattern never routes a folder 
 
 A folder of plain files gets this warning too when a pattern without a `*` matches its name, as `server/` under `[Ss]erver`. Such a pattern names a whole word, so a folder spelled that way was most likely meant to route its files, and those that no route takes go to `*` instead. Only the outermost such folder warns, and a folder that already has an error for its name, such as [`route.caseMismatch`](#route-casemismatch), doesn't. A pattern with a `*`, such as `*Controller`, doesn't warn about a folder of plain files, since `ShopController/` may just be a feature's name.
 
-Rename the folder with the `@` of the route key that has the pattern's target, as `InputController@Client/`. In `--json`, `fixes` holds that rename when one route key has the target. When no name key has the target, add one to `routes` and name the folder for it, as a `Server` key and a `Server/` folder. See [Patterns](/docs/v2/routing/names#patterns).
+Rename the folder with the `@` of the route key that has the pattern's target, as `InputController@Client/`. In `--json`, `fixes` holds that rename when one route key has the target. When no name key has the target, add one to `routes` and name the folder for it, as a `Server` key and a `Server/` folder. See [Routing by Pattern](/docs/v2/routing/patterns).
 
 ### `route.ignoredAt` [#route-ignoredat]
 
@@ -350,10 +350,10 @@ Do what the message says.
 
 ### `route.caseMismatch` [#route-casemismatch]
 
-Error. A folder matches a declared key except for letter case. Keys match exactly, so it routes nothing, and the files in it that nothing else routes go to `*`, which can ship server code to clients. A folder that a route above it, or a marker in it, already routes is left alone, since its name places nothing there. A marker file or `@` name in another case is [`route.strayAt`](#route-strayat).
+Error. A folder matches a declared key except for letter case. Keys match exactly, so it routes nothing, and the files in it that nothing else routes would go to `*`, which can ship server code to clients. A folder that a route above it, or a marker in it, already routes is left alone, since its name places nothing there. A marker file or `@` name in another case is [`route.strayAt`](#route-strayat).
 
 ```
-error: "SHARED" differs from the route "shared" only in letter case, so it routes nothing, and the files in it that nothing else routes go to "*". Spell it "shared". (route.caseMismatch)
+error: "SHARED" differs from the route "shared" only in letter case, so it routes nothing, and the files in it that nothing else routes would go to "*". Spell it "shared". (route.caseMismatch)
 ```
 
 Rename the folder to the key. In `--json`, `fixes` holds that rename unless a folder of that name is already beside it. To keep the folder's spelling, rename the key in `routes` instead, and every folder spelled the old way with it, since two keys can't differ only in case. In a script folder, such as a library's `Net/server/` beside `Net/init.luau`, the folder may be a child the script requires, so the message also names the marker file that keeps it with the script, as `@Shared` in it, and `fixes` holds no rename. A marker needs a key that routes where `*` does; when no key does, the message says to add one to `routes` with the marker, and names it when the target's last name can be a key. `rogen init` renames a project's folders to one spelling when it lifts it. See [How Routing Works](/docs/v2/routing).
@@ -1270,14 +1270,14 @@ Move or rename the file. Run `rogen where` on it to see which route places it. S
 
 ## Migration
 
-These diagnostics come from a config written for Rogen 1, and from `rogen init` when it migrates one. See [Migrating from v1](/docs/v2/migrating-from-v1).
+These diagnostics come from a config written for Rogen 1, and from `rogen init` when it migrates one. See [Migrating from v1](/docs/v1/migrating-to-v2).
 
 ### `legacy.config` [#legacy-config]
 
 Error. A `.rogen.json` has keys from Rogen 1, such as `source`, `aliases` or a mode. It is a v1 config, which v2 doesn't read.
 
 ```
-error: this looks like a config for Rogen 1, which v2 doesn't read. Run 'rogen init' to migrate it, as https://rogen-roblox.vercel.app/docs/v2/migrating-from-v1 says. (legacy.config)
+error: this looks like a config for Rogen 1, which v2 doesn't read. Run 'rogen init' to migrate it, as https://rogen-roblox.vercel.app/docs/v1/migrating-to-v2 says. (legacy.config)
 ```
 
 Run `rogen init` in the config's folder. It writes a v2 config in its place and renames the v1 config to `.rogen.json.v1`.

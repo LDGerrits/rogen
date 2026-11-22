@@ -33,14 +33,10 @@ default.rogen.json:
         "node_modules": {
           "$className": "Folder",
           "@rbxts": {
-            "$path": {
-              "optional": "node_modules/@rbxts"
-            }
+            "$path": "node_modules/@rbxts"
           }
         },
-        "$path": {
-          "optional": "include"
-        }
+        "$path": "include"
       }
     },
     "ServerScriptService": {}
@@ -51,7 +47,10 @@ $ rojo sourcemap default.project.json
 my-game: DataModel
   ReplicatedStorage: ReplicatedStorage
     rbxts_include: Folder
+      RuntimeLib: ModuleScript  <- include/RuntimeLib.lua
       node_modules: Folder
+        @rbxts: Folder
+          services: ModuleScript  <- node_modules/@rbxts/services/init.lua
     shared: Folder
       util: ModuleScript  <- out/shared/util.luau
   ServerScriptService: ServerScriptService

@@ -59,8 +59,9 @@ written:
   tsconfig.json
 
 .gitignore:
-# Project place file
-/project.rbxlx
+# Place files
+/*.rbxl
+/*.rbxlx
 
 # Roblox Studio lock files
 /*.rbxlx.lock
@@ -69,11 +70,13 @@ written:
 sourcemap.json
 *.project.json
 
-# Compiler output and installed packages
-/node_modules
+# Compiler output
 /out
 /include
 *.tsbuildinfo
+
+# Installed packages
+/node_modules
 
 README.md:
 # project

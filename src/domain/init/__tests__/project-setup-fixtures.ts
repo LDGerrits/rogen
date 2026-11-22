@@ -37,9 +37,6 @@ export const withPackages: WorkspaceSpec = {
 };
 export const mounts = {
 	ReplicatedStorage: { Packages: { $path: "Packages" } },
-	ServerScriptService: {
-		ServerPackages: { $path: { optional: "ServerPackages" } },
-	},
 };
 
 export const defaultProjectChoices = async (

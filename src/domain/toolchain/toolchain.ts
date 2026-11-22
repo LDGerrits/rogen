@@ -24,7 +24,8 @@ export class PackageManager {
 		"wally",
 		"wally.toml",
 		"Packages",
-		"ServerPackages"
+		"ServerPackages",
+		["DevPackages"]
 	);
 	static readonly PESDE = new PackageManager(
 		"pesde",
@@ -45,26 +46,23 @@ export class PackageManager {
 		readonly id: string,
 		readonly manifest: string,
 		readonly shared: string,
-		readonly server: string
+		readonly server: string,
+		private readonly otherDirs: readonly string[] = []
 	) {}
 
-	mounts(
-		installedDirs: ReadonlySet<string>,
-		hasManifest: boolean
-	): MountCandidate[] {
-		const candidate = (dir: string, landing: string): MountCandidate => {
-			const installed = installedDirs.has(dir);
-			return {
-				path: dir,
-				installed,
-				landing,
-				mounted: installed || hasManifest,
-			};
-		};
+	get installedDirs(): string[] {
+		return [this.shared, this.server, ...this.otherDirs];
+	}
+
+	get sharedMount(): Mount {
+		return { path: this.shared, landing: PackageManager.SHARED_LANDING };
+	}
+
+	mounts(installedDirs: ReadonlySet<string>): Mount[] {
 		return [
-			candidate(this.shared, PackageManager.SHARED_LANDING),
-			candidate(this.server, PackageManager.SERVER_LANDING),
-		];
+			this.sharedMount,
+			{ path: this.server, landing: PackageManager.SERVER_LANDING },
+		].filter(({ path }) => installedDirs.has(path));
 	}
 }
 
@@ -85,15 +83,7 @@ export type PlannedFile = PlannedNewFile | PlannedAdditionToExistingFile;
 
 export interface Mount {
 	readonly path: string;
-	readonly optional: boolean;
 	readonly landing: string;
-}
-
-export interface MountCandidate {
-	readonly path: string;
-	readonly installed: boolean;
-	readonly landing: string;
-	readonly mounted: boolean;
 }
 
 export interface Compiler {
@@ -121,8 +111,7 @@ export interface Language {
 	scaffolded?(): Language;
 	routeKey(id: string): string;
 	configuredSourcePath(): string | undefined;
-	alwaysMounted(): readonly MountCandidate[];
-	installedMounts(): readonly MountCandidate[];
+	mounts(): readonly Mount[];
 }
 
 export interface LanguageDetector {
@@ -135,6 +124,7 @@ interface DetectedWorkspaceFields {
 	readonly darkluaConfig?: string;
 	readonly packageManager?: PackageManager;
 	readonly packageDirs: ReadonlySet<string>;
+	readonly nodeModules?: boolean;
 	readonly testRunner?: string;
 }
 
@@ -144,6 +134,7 @@ export class DetectedWorkspace {
 	readonly darkluaConfig?: string;
 	readonly packageManager?: PackageManager;
 	readonly packageDirs: ReadonlySet<string>;
+	readonly nodeModules: boolean;
 	readonly testRunner?: string;
 
 	constructor(fields: DetectedWorkspaceFields) {
@@ -152,6 +143,7 @@ export class DetectedWorkspace {
 		this.darkluaConfig = fields.darkluaConfig;
 		this.packageManager = fields.packageManager;
 		this.packageDirs = fields.packageDirs;
+		this.nodeModules = fields.nodeModules ?? false;
 		this.testRunner = fields.testRunner;
 	}
 
@@ -170,14 +162,9 @@ export class DetectedWorkspace {
 		return language;
 	}
 
-	packageMounts(language: Language): MountCandidate[] {
+	packageMounts(language: Language): Mount[] {
 		const manager = this.packageManager ?? language.defaultPackageManager;
-		return (
-			manager?.mounts(
-				this.packageDirs,
-				this.packageManager !== undefined
-			) ?? []
-		);
+		return manager?.mounts(this.packageDirs) ?? [];
 	}
 }
 

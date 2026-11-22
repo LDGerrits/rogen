@@ -8,7 +8,7 @@ import {
 	Language,
 	LanguageCopy,
 	LanguageDetector,
-	MountCandidate,
+	Mount,
 	SyncTool,
 } from "./toolchain.js";
 
@@ -29,7 +29,6 @@ export interface RobloxTsFacts {
 	readonly outDir?: string;
 	readonly sourcePath?: string;
 	readonly rbxtsScopes?: readonly string[];
-	readonly includeInstalled?: boolean;
 	readonly watchScript?: boolean;
 }
 
@@ -109,9 +108,7 @@ export class RobloxTs implements Language {
 		return new RobloxTs(
 			{
 				...this.facts,
-				includeInstalled: true,
 				watchScript: true,
-				rbxtsScopes: [...(this.facts.rbxtsScopes ?? []), "@rbxts"],
 			},
 			true
 		);
@@ -126,40 +123,19 @@ export class RobloxTs implements Language {
 		return sourcePath === undefined ? undefined : normalizeDir(sourcePath);
 	}
 
-	alwaysMounted(): MountCandidate[] {
-		const { includeInstalled: hasInclude = false, rbxtsScopes = [] } =
-			this.facts;
-		return [
-			{
-				path: INCLUDE_DIR,
-				installed: hasInclude,
-				landing: INCLUDE_LANDING,
-				mounted: hasInclude,
-			},
-			...ALWAYS_MOUNTED_SCOPES.map((scope) => {
-				const installed = rbxtsScopes.includes(scope);
-				return {
-					path: scopePath(scope),
-					installed,
-					landing: scopeLanding(scope),
-					mounted: installed,
-				};
-			}),
-		];
-	}
-
-	installedMounts(): MountCandidate[] {
+	mounts(): Mount[] {
 		const { rbxtsScopes = [] } = this.facts;
-		return SCOPES.filter(
-			(scope) =>
-				!ALWAYS_MOUNTED_SCOPES.includes(scope) &&
-				rbxtsScopes.includes(scope)
-		).map((scope) => ({
-			path: scopePath(scope),
-			installed: true,
-			landing: scopeLanding(scope),
-			mounted: true,
-		}));
+		return [
+			{ path: INCLUDE_DIR, landing: INCLUDE_LANDING },
+			...SCOPES.filter(
+				(scope) =>
+					ALWAYS_MOUNTED_SCOPES.includes(scope) ||
+					rbxtsScopes.includes(scope)
+			).map((scope) => ({
+				path: scopePath(scope),
+				landing: scopeLanding(scope),
+			})),
+		];
 	}
 }
 
@@ -171,14 +147,13 @@ export class RobloxTsDetector implements LanguageDetector {
 	async detect(cwd: string): Promise<RobloxTs> {
 		const has = (...segments: string[]) =>
 			this.fileSystemService.exists(path.join(cwd, ...segments));
-		const [isTs, installed, hasInclude, watchScript] = await Promise.all([
+		const [isTs, installed, watchScript] = await Promise.all([
 			has(TSCONFIG),
 			Promise.all(
 				SCOPES.map(async (scope) =>
 					(await has("node_modules", scope)) ? scope : undefined
 				)
 			),
-			has(INCLUDE_DIR),
 			this.hasWatchScript(path.join(cwd, PACKAGE_JSON)),
 		]);
 		const tsconfig = isTs
@@ -187,7 +162,6 @@ export class RobloxTsDetector implements LanguageDetector {
 		return new RobloxTs(
 			{
 				rbxtsScopes: installed.filter((scope) => scope !== undefined),
-				includeInstalled: hasInclude,
 				...(watchScript && { watchScript }),
 				...(tsconfig && {
 					outDir: tsconfig.outDir,
