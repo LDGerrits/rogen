@@ -28,7 +28,7 @@ interface InstanceResolution {
  * Rojo reads an init file in this order when a folder has several: a module,
  * then a script that isn't a LocalScript, then a LocalScript, then any other.
  */
-const initRank = ({ isLuauModule, scriptSuffix }: RojoFile): number => {
+export const initRank = ({ isLuauModule, scriptSuffix }: RojoFile): number => {
 	if (isLuauModule) return 4;
 	if (scriptSuffix === "client") return 2;
 	return scriptSuffix ? 3 : 1;

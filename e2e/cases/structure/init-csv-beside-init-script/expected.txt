@@ -1,0 +1,16 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen where src/F/init.csv
+exit 0
+stdout:
+  src/F/init.csv -> replaced by src/F/init.server.luau
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    F: Script  <- src/F/init.csv, src/F/init.server.luau

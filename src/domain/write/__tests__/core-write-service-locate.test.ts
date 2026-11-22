@@ -649,6 +649,18 @@ describe("CoreWriteService.locate", () => {
 		]);
 	});
 
+	it("should say an init file that no route takes is replaced by the init file Rojo reads before it", async () => {
+		await write("src/Hud/init.server.luau", "src/Hud/init.csv");
+
+		expect(
+			await locate(["src/Hud/init.csv"], {
+				routes: { Server: "ServerScriptService" },
+			})
+		).toMatchObject([
+			{ status: "replaced", by: abs("src/Hud/init.server.luau") },
+		]);
+	});
+
 	it("should say an init file that a glob ignores replaces one that routes, since Rojo reads it anyway", async () => {
 		await write("src/Hud/init.luau", "src/Hud/init.server.luau");
 
