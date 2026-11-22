@@ -45,6 +45,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- `rogen init` no longer takes a hand-written folder as Darklua's output because a folder beside it has the same name, such as `assets/server` next to `modules/server`: it takes one only when its files share names with the source's. It kept dropping the folder's own code from the tree.
 - `rogen init` on a Rojo project that mounts one folder with an init script, such as `src/init.luau` at `ReplicatedStorage/MyLib`, no longer fails with `tree.mountsSourcePath`. It keeps the mount in the tree and routes nothing, as Rojo reads it.
 - `route.caseMismatch` on a folder in a script folder names a route key to add with its marker file when no key routes where `*` does, where it said only to rename the folder, which would move a child the script requires.
 - `rogen where` and `rogen check` with a config and a shared file, as `rogen where places/a/default.rogen.json places/shared/M.luau`, no longer note that no config reads the file when the config named beside it does, and leave it out of `skipped`.

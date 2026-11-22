@@ -1,0 +1,36 @@
+$ rogen init --non-interactive
+exit 0
+stdout: (not shown)
+stderr:
+  default.rogen.json - warning: modules holds code outside every source path and mount, so Rogen places none of it. Move it into assets, or add its folder to "sourcePaths". (init.codeOutsideSourcePaths)
+
+written:
+  .git/
+  .gitignore
+  AGENTS.md
+  default.project.json
+  default.rogen.json
+
+default.rogen.json:
+{
+  "name": "game",
+  "sourcePaths": [
+    "assets"
+  ],
+  "routes": {
+    "server": "ServerStorage/Assets",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "tree": {
+    "$className": "DataModel",
+    "ServerStorage": {}
+  }
+}
+
+$ rojo sourcemap default.project.json
+game: DataModel
+  ServerStorage: ServerStorage
+    Assets: Folder
+      Health: Script  <- assets/server/Health.server.luau

@@ -55,9 +55,8 @@ export class ProcessedFolder {
 		const rest = path.posix.relative(top, target);
 		const counterpart = rest === "" ? common : joinPosix(common, rest);
 		if (!(await this.reader.exists(this.at(counterpart)))) return false;
-		if (rest !== "") return true;
 		const [own, theirs] = await Promise.all(
-			[top, common].map(async (folder) => {
+			[target, counterpart].map(async (folder) => {
 				const listing = await tryWithAsync(() =>
 					this.reader.readDirectory(this.at(folder))
 				);
@@ -66,7 +65,10 @@ export class ProcessedFolder {
 					: [];
 			})
 		);
-		return own.some((name) => theirs.includes(name));
+		return (
+			(rest !== "" && own.length === 0) ||
+			own.some((name) => theirs.includes(name))
+		);
 	}
 
 	private at(relative: string): string {
