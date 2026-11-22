@@ -1,3 +1,4 @@
+import { afterAll } from "@jest/globals";
 import Ajv, { ValidateFunction } from "ajv";
 import { ChildProcess, execFile, execFileSync, spawn } from "child_process";
 import { createHash } from "crypto";
@@ -69,10 +70,8 @@ const SPEC_KEYS: Record<keyof CaseSpec, true> = {
 	network: true,
 };
 
-const RUN_CACHE = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-e2e-cache-"));
-process.on("exit", () =>
-	fs.rmSync(RUN_CACHE, { recursive: true, force: true })
-);
+const FILE_CACHE = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-e2e-cache-"));
+afterAll(() => fs.rmSync(FILE_CACHE, { recursive: true, force: true }));
 
 const POSE_AS_WINDOWS_TERMINAL = { WT_SESSION: "1" };
 
@@ -82,7 +81,7 @@ function childEnv(extra: Readonly<Record<string, string>> = {}) {
 			...process.env,
 			NO_COLOR: "1",
 			FORCE_COLOR: "0",
-			XDG_CACHE_HOME: RUN_CACHE,
+			XDG_CACHE_HOME: FILE_CACHE,
 			...(WINDOWS ? POSE_AS_WINDOWS_TERMINAL : {}),
 			...extra,
 		},

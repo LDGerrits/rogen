@@ -49,9 +49,14 @@ jobs:
             - name: Unit Test
               run: npm run test:coverage
 
+    # Each end-to-end suite runs in two shards, which halves its wall time; the
+    # job named for the suite is the required check and passes when both do.
     e2e:
-        name: End-to-end tests on the bundle
+        name: End-to-end tests on the bundle (${{ matrix.shard }}/${{ strategy.job-total }})
         runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                shard: [1, 2]
         steps:
             - name: Checkout Code
               uses: actions/checkout@v4
@@ -71,11 +76,23 @@ jobs:
               run: npm ci --workspaces=false --prefer-offline --no-audit --no-fund
 
             - name: Test
-              run: npm run test:e2e
+              run: npm run test:e2e -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+
+    e2e-result:
+        name: End-to-end tests on the bundle
+        needs: e2e
+        if: always()
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check the Shards Passed
+              run: test "${{ needs.e2e.result }}" = success
 
     binary:
-        name: End-to-end tests on the compiled binary
+        name: End-to-end tests on the compiled binary (${{ matrix.shard }}/${{ strategy.job-total }})
         runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                shard: [1, 2]
         steps:
             - name: Checkout Code
               uses: actions/checkout@v4
@@ -101,9 +118,47 @@ jobs:
               run: node scripts/make-binary.ts rogen-binary/rogen
 
             - name: Test the Binary
-              run: npm test -- e2e
+              run: npm test -- e2e --shard=${{ matrix.shard }}/${{ strategy.job-total }}
               env:
                   ROGEN_E2E_BINARY: ${{ github.workspace }}/rogen-binary/rogen
+
+    binary-result:
+        name: End-to-end tests on the compiled binary
+        needs: binary
+        if: always()
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check the Shards Passed
+              run: test "${{ needs.binary.result }}" = success
+
+    # macOS ignores case in paths and links /tmp elsewhere, which the unit tests
+    # and the agent hook meet; the rest of the end-to-end suite stays on Linux.
+    macos:
+        name: Unit and hook tests on macOS
+        runs-on: macos-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: "npm"
+
+            - name: Install Rojo
+              uses: CompeyDev/setup-rokit@v0.2.1
+              with:
+                  cache: true
+
+            - name: Install Dependencies
+              run: npm ci --workspaces=false --prefer-offline --no-audit --no-fund
+
+            - name: Unit Test
+              run: npm run test:unit
+
+            - name: Agent Hook Test
+              run: npm run test:e2e -- e2e/hook.test.ts
 
     coverage:
         name: Publish test coverage badge

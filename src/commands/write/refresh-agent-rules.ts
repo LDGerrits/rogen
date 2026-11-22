@@ -26,7 +26,7 @@ export class RefreshAgentRules {
 		if (output === "text")
 			for (const file of updated)
 				this.logService.notice(
-					`Updated Rogen's rules in ${file} to this version.`
+					`Updated ${file} to this version of Rogen.`
 				);
 		return updated;
 	}

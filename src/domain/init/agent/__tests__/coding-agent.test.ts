@@ -1,5 +1,6 @@
 import { hookScript } from "../hook-script.js";
 import {
+	withHookUpgraded,
 	HOOK_SCRIPT_FILE,
 	CODING_AGENTS,
 	HookEntry,
@@ -28,7 +29,7 @@ const added = (text: string | undefined, spec = SPEC) => {
 };
 
 describe("hook targets", () => {
-	it("should register Claude Code's Stop hook in .claude/settings.json", () => {
+	it("should register Claude Code's Stop hook in .claude/settings.json, run without a shell", () => {
 		expect(target("Claude Code").settingsFile).toBe(
 			".claude/settings.json"
 		);
@@ -39,8 +40,10 @@ describe("hook targets", () => {
 						hooks: [
 							{
 								type: "command",
-								command:
-									'node "$CLAUDE_PROJECT_DIR"/.agents/hooks/rogen-check.mjs',
+								command: "node",
+								args: [
+									"${CLAUDE_PROJECT_DIR}/.agents/hooks/rogen-check.mjs",
+								],
 							},
 						],
 					},
@@ -54,15 +57,15 @@ describe("hook targets", () => {
 		expect(registered("Codex").hooks.Stop[0].hooks[0]).toEqual({
 			type: "command",
 			command:
-				'node "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.mjs',
+				'node "$(git rev-parse --show-toplevel)/.agents/hooks/rogen-check.mjs"',
 		});
 	});
 
-	it("should register Gemini CLI's AfterAgent hook in .gemini/settings.json", () => {
+	it("should register Gemini CLI's AfterAgent hook in .gemini/settings.json, from the project dir it runs in", () => {
 		expect(target("Gemini CLI").settingsFile).toBe(".gemini/settings.json");
 		expect(registered("Gemini CLI").hooks.AfterAgent[0].hooks[0]).toEqual({
 			type: "command",
-			command: 'node "$GEMINI_PROJECT_DIR"/.agents/hooks/rogen-check.mjs',
+			command: "node .agents/hooks/rogen-check.mjs",
 		});
 	});
 
@@ -78,7 +81,7 @@ describe("hook targets", () => {
 		});
 	});
 
-	it("should register Copilot's agentStop hook in its own file under .github/hooks", () => {
+	it("should register Copilot's agentStop hook in its own file under .github/hooks, for bash and PowerShell", () => {
 		expect(target("Copilot").settingsFile).toBe(".github/hooks/rogen.json");
 		expect(registered("Copilot")).toEqual({
 			version: 1,
@@ -86,7 +89,9 @@ describe("hook targets", () => {
 				agentStop: [
 					{
 						type: "command",
-						bash: 'node "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.mjs',
+						bash: 'node "$(git rev-parse --show-toplevel)/.agents/hooks/rogen-check.mjs"',
+						powershell:
+							'node "$(git rev-parse --show-toplevel)/.agents/hooks/rogen-check.mjs"',
 					},
 				],
 			},
@@ -219,5 +224,17 @@ describe("registerHook", () => {
 		["an event that is not a list", '{ "hooks": { "Stop": {} } }'],
 	])("should not edit settings with %s", (_, settings) => {
 		expect(withHook(settings, SPEC).kind).toBe("unreadable");
+	});
+});
+
+describe("withHookUpgraded", () => {
+	const claude = CODING_AGENTS.find(({ name }) => name === "Claude Code")!;
+
+	it("should leave settings alone where the upgrade would not be JSON", () => {
+		const settings = JSON.stringify({
+			notes: [JSON.parse(claude.upgrade!.from)],
+		});
+
+		expect(withHookUpgraded(settings, claude.upgrade!)).toBeUndefined();
 	});
 });

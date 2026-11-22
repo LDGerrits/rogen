@@ -27,6 +27,8 @@ const named = (name: string) =>
 const config = named("Game");
 
 const OLD = "<!-- rogen -->\n## Rogen\n\nOld.\n<!-- /rogen -->\n";
+const OLD_SCRIPT =
+	"// Agent Stop hook: report new Rogen diagnostics about changed files before the agent ends its turn.\n";
 
 describe("write command", () => {
 	let fs: MemoryFileSystemService;
@@ -53,12 +55,16 @@ describe("write command", () => {
 				`# Team\n\n${agentBlock}`
 			);
 			expect(log.lines).toContain(
-				"notice: Updated Rogen's rules in AGENTS.md to this version."
+				"notice: Updated AGENTS.md to this version of Rogen."
 			);
 		});
 
-		it("should leave it alone under CI", async () => {
+		it("should leave it, and the hook script, alone under CI", async () => {
 			await fs.writeFile(abs("AGENTS.md"), OLD);
+			await fs.writeFile(
+				abs(".agents/hooks/rogen-check.mjs"),
+				OLD_SCRIPT
+			);
 			const { run, log } = commandHarness({
 				fs,
 				environment: Object.assign(
@@ -72,6 +78,9 @@ describe("write command", () => {
 			await run("write");
 
 			expect(await fs.readFile(abs("AGENTS.md"))).toBe(OLD);
+			expect(
+				await fs.readFile(abs(".agents/hooks/rogen-check.mjs"))
+			).toBe(OLD_SCRIPT);
 			expect(
 				log.lines.filter((line) => line.startsWith("notice:"))
 			).toEqual([]);

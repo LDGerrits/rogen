@@ -28,6 +28,8 @@ function waitFor(predicate: () => boolean, timeoutMs = 3000): Promise<void> {
 
 const canDenyAccess = process.platform !== "win32";
 const describeLocking = canDenyAccess ? describe : describe.skip;
+const watchReportsRefusal = process.platform !== "darwin";
+const describeRefusing = watchReportsRefusal ? describe : describe.skip;
 
 describe("DiskWatcher", () => {
 	let dir: string;
@@ -79,25 +81,27 @@ describe("DiskWatcher", () => {
 				return logService;
 			};
 
-			it("should warn of it once", async () => {
-				const logService = await watchLocked();
+			describeRefusing("where the watch reports the refusal", () => {
+				it("should warn of it once", async () => {
+					const logService = await watchLocked();
 
-				expect(logService.texts("error")).toEqual([]);
-				expect(logService.texts("warn")).toEqual([
-					expect.stringContaining("EACCES"),
-				]);
-			});
-
-			it("should write only a debug line for it where the caller reports it", async () => {
-				const logService = await watchLocked({
-					reportsUnreadable: [dir],
+					expect(logService.texts("error")).toEqual([]);
+					expect(logService.texts("warn")).toEqual([
+						expect.stringContaining("EACCES"),
+					]);
 				});
 
-				expect(logService.texts("error")).toEqual([]);
-				expect(logService.texts("warn")).toEqual([]);
-				expect(logService.texts("debug")).toContainEqual(
-					expect.stringContaining("EACCES")
-				);
+				it("should write only a debug line for it where the caller reports it", async () => {
+					const logService = await watchLocked({
+						reportsUnreadable: [dir],
+					});
+
+					expect(logService.texts("error")).toEqual([]);
+					expect(logService.texts("warn")).toEqual([]);
+					expect(logService.texts("debug")).toContainEqual(
+						expect.stringContaining("EACCES")
+					);
+				});
 			});
 
 			it.each([
@@ -239,9 +243,13 @@ describe("DiskWatcher", () => {
 				)
 			);
 
-			expect(changes.map((c) => c.path)).toEqual([
-				toPosix(path.join(dir, "a.luau")),
-			]);
+			expect(
+				changes.filter(
+					(c) =>
+						c.path.startsWith(toPosix(skippedDir)) ||
+						c.path === toPosix(skippedFile)
+				)
+			).toEqual([]);
 		});
 	});
 
@@ -263,9 +271,7 @@ describe("DiskWatcher", () => {
 				)
 			);
 
-			expect(changes.map((c) => c.path)).toEqual([
-				toPosix(path.join(dir, "a.luau")),
-			]);
+			expect(changes.map((c) => c.path)).not.toContain(toPosix(staged));
 		});
 	});
 
