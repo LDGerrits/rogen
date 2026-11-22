@@ -113,6 +113,7 @@ registerCommand(
 					summary: "Starts a project with a default.rogen.json",
 					description: [
 						"Starts a project with a default.rogen.json, as 'rojo init' does. It reads what the folder holds and, in a terminal, shows the plan and asks before it writes.",
+						"- Beside code and no project file: writes the Server, Client and Shared routes, spelling each key as the code's folders do, and renames a folder spelled in another case to match. It mounts the package folders that are installed.",
 						"- Beside a hand-written default.project.json: lifts its tree into default.rogen.json, with the closest folder that holds the code it mounts as the source path. 'rogen write' then writes default.project.json from the config.",
 						"- Beside a Rogen 1 .rogen.json: migrates it to a config for each v1 mode, with routes that put every file where v1 did and the tree from v1's project. It renames the files v1 routed by their names to the @ form, and keeps the v1 config as .rogen.json.v1.",
 						"- Beside a config: writes nothing, but --agent-rules and --agent-hook still add the agent files. To change a config, edit the .rogen.json and run 'rogen check'.",

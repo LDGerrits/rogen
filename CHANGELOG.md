@@ -10,30 +10,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- Pattern routes: a key such as `*Controller.*` or `*.tsx` routes files by their name, so code named by its role needs no `@` on each file.
+- Pattern routes: a key such as `*Controller` or `*.tsx` routes files by their name, so code named for its role needs no `@` on each file.
 
 ### Changed
 
-- **Breaking:** a folder, `@` name or marker file routes only when spelled exactly as its key. A near miss, such as `server/` or `Save@Sever.luau` under a `Server` route, is an error rather than code sent to `*`.
-- **Breaking:** an init script's route routes only the script, so `init@Server.luau` and `init@Client.luau` give each side its own. A plain `init.luau` exists once, where its own route puts it.
-- **Breaking:** two files that make one instance, such as `Types.lua` beside `Types.luau`, and Rojo's `.server` or `.client` where Rojo doesn't read it, such as `Main.Server.luau`, are errors.
+- **Breaking:** a folder, `@` name or marker file routes only when spelled exactly as its key. A near miss, such as `server/` or `Save@Sever.luau` under a `Server` route, is an error rather than code sent to `*`. `rogen init` renames such folders for you.
+- **Breaking:** an init script's route routes only the script, so `init@Server.luau` and `init@Client.luau` give each side its own.
+- **Breaking:** two files that make one instance, such as `Types.lua` beside `Types.luau`, are an error, and so is a `.Server` or `.Client` that Rojo doesn't read, such as in `Main.Server.luau`.
 - **Breaking:** command names are lower case only, as in Rojo.
-- `rogen init --places --language roblox-ts` uses the same layout as Luau and works with TypeScript 6.
-- `rogen init` explains each rename and asks before it renames anything. When a rename only changes letter case, git follows it, also on Windows and macOS.
-- `rogen init` mounts only the package folders that are installed, each with a plain `$path`, so a missing one stops `serve` and `build` instead of failing in Studio. It says so when it finds a `wally.toml` or `pesde.toml` whose packages aren't installed yet.
-- `rogen init`'s `.gitignore` ignores every place file at the project's root, `node_modules`, and the folders of the project's package manager.
+- `rogen init` mounts only the package folders that are installed, so a missing one stops `serve` instead of failing in Studio. Its `.gitignore` also covers built places, `node_modules` and package folders.
+- `rogen init --places` for roblox-ts uses the Luau layout and works with TypeScript 6.
 - `rogen where` fails only on an error about what you asked. `rogen check` stays the gate.
-- The agent rules are much shorter. `rogen write` and `rogen serve` keep them and the agent hook up to date, except under CI, and the hook works on Windows and in git worktrees.
+- The agent rules are much shorter, and `rogen write` and `rogen serve` keep them up to date. The agent hook works on Windows and in git worktrees.
 
 ### Fixed
 
-- A folder with `init.luau` beside `init.server.luau` and no `*` route no longer builds as a ModuleScript.
 - `rogen init` keeps every file of an existing Rojo project where Rojo put it, and migrates more v1 projects.
-- Many `rogen syncback` fixes. Renames keep the project's layout, new code at an empty route is written, and files are never removed for an instance it can't place. A name that would make Rojo write outside the project stops the run, and large places sync back in seconds.
+- Many `rogen syncback` fixes: renames keep the project's layout, nothing is removed for an instance it can't place, and large places sync back in seconds.
 - `serve` and `--watch` no longer lose a folder after you fix an error that stopped the write.
-- `rogen where` is much faster on large projects, and finds a path typed in another letter case on Windows and macOS.
+- `rogen where` is much faster on large projects.
 - `--json` prints only its document, even when Rogen crashes.
-- Many fixes to diagnostics and the renames they offer.
+- Many diagnostic fixes.
 
 ## [2.0.0-beta.4] - 2026-11-10
 
