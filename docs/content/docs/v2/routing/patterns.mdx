@@ -59,11 +59,4 @@ A pattern with a dot matches the file's name with its extension, so it can route
 }
 ```
 
-## Which Route Wins
-
-- A routing folder, `@` name or marker file beats every pattern, so `Shared/PriceService.luau` above stays shared.
-- A pattern matches files, never folders. A script written as `InputController/init.luau` goes with its folder, so name the folder `InputController@Client/` to route it.
-- When two patterns match, the longer one wins, so `*.story.luau` beats `*.luau`. A tie that sends a file to two places is an error.
-- Every pattern beats `*`.
-
-Patterns use Rojo's glob syntax for one name (`*`, `?`, `[Ss]`, `{a,b}`) and match letter case exactly.
+A routing folder or `@` name still beats a pattern, which is why `Shared/PriceService.luau` above stays shared. When two patterns match one file, the longer one wins, so `*.story.luau` beats `*.luau`. A pattern matches files, never folders, so route a folder script such as `InputController/init.luau` by its folder's name, as `InputController@Client/`. Patterns use Rojo's glob syntax (`*`, `?`, `[Ss]`, `{a,b}`) and match letter case exactly.
