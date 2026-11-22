@@ -566,8 +566,10 @@ describe("CoreInitService", () => {
 							hooks: [
 								{
 									type: "command",
-									command:
-										'node "$CLAUDE_PROJECT_DIR"/.agents/hooks/rogen-check.mjs',
+									command: "node",
+									args: [
+										"${CLAUDE_PROJECT_DIR}/.agents/hooks/rogen-check.mjs",
+									],
 								},
 							],
 						},

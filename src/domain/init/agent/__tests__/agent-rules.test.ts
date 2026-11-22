@@ -3,7 +3,7 @@ import { MemoryFileSystemService } from "../../../../platform/fs/memory-file-sys
 import { MockProcessService } from "../../../../platform/process/__tests__/mock-process-service.js";
 import { agentBlock } from "../agent-block.js";
 import { AgentRules } from "../agent-rules.js";
-import { HOOK_SCRIPT_FILE } from "../coding-agent.js";
+import { CODING_AGENTS, HOOK_SCRIPT_FILE, withHook } from "../coding-agent.js";
 import { hookScript } from "../hook-script.js";
 import { gitOf } from "../../__tests__/init-of.js";
 import { agentRulesOf } from "../../__tests__/init-of.js";
@@ -104,5 +104,66 @@ describe("AgentRules", () => {
 
 		expect(await rules.refresh(root)).toEqual([]);
 		expect(await read(HOOK_SCRIPT_FILE)).toBe(own);
+	});
+
+	const settingsOf = (event: string, entry: unknown) =>
+		JSON.stringify(
+			{ model: "opus", hooks: { [event]: [entry] } },
+			null,
+			"\t"
+		) + "\n";
+	const commandGroup = (command: string) => ({
+		hooks: [{ type: "command", command }],
+	});
+	const current = (name: string) => {
+		const agent = CODING_AGENTS.find(
+			(candidate) => candidate.name === name
+		)!;
+		const registration = withHook('{ "model": "opus" }', agent.hook);
+		if (registration.kind !== "added") throw new Error(registration.kind);
+		return { agent, settings: JSON.parse(registration.text) };
+	};
+
+	it.each([
+		[
+			"Claude Code",
+			"Stop",
+			'node "$CLAUDE_PROJECT_DIR"/.agents/hooks/rogen-check.mjs',
+		],
+		[
+			"Codex",
+			"Stop",
+			'node "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.mjs',
+		],
+		[
+			"Gemini CLI",
+			"AfterAgent",
+			'node "$GEMINI_PROJECT_DIR"/.agents/hooks/rogen-check.mjs',
+		],
+	])(
+		"should bring the hook an earlier init registered for %s up to this version, keeping the rest",
+		async (name, event, old) => {
+			const { agent, settings } = current(name);
+			await write(
+				agent.settingsFile,
+				settingsOf(event, commandGroup(old))
+			);
+
+			const updated = await rules.refresh(root);
+
+			expect(updated).toEqual([path.join(root, agent.settingsFile)]);
+			expect(JSON.parse(await read(agent.settingsFile))).toEqual(
+				settings
+			);
+			expect(await rules.refresh(root)).toEqual([]);
+		}
+	);
+
+	it("should leave settings alone that hold no hook an earlier init registered", async () => {
+		const mine = settingsOf("Stop", commandGroup("node mine.mjs"));
+		await write(".claude/settings.json", mine);
+
+		expect(await rules.refresh(root)).toEqual([]);
+		expect(await read(".claude/settings.json")).toBe(mine);
 	});
 });

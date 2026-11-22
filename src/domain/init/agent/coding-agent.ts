@@ -9,6 +9,11 @@ type HookRegistration =
 	| { readonly kind: "present" }
 	| { readonly kind: "unreadable" };
 
+interface HookUpgrade {
+	readonly from: string;
+	readonly to: string;
+}
+
 export interface HookEntry {
 	readonly event: string;
 	readonly entry: unknown;
@@ -51,6 +56,21 @@ export function withHook(
 	};
 }
 
+export function withHookUpgraded(
+	text: string,
+	{ from, to }: HookUpgrade
+): string | undefined {
+	if (!text.includes(from)) return undefined;
+	let settings: unknown;
+	try {
+		settings = JSON.parse(text.replaceAll(from, to));
+	} catch {
+		return undefined;
+	}
+	const json = JSON.stringify(settings, null, indentOf(text));
+	return text.endsWith("\n") ? `${json}\n` : json;
+}
+
 export const CLAUDE_SETTINGS_FILE = ".claude/settings.json";
 export const GEMINI_SETTINGS_FILE = ".gemini/settings.json";
 
@@ -60,10 +80,19 @@ export interface CodingAgent {
 	readonly signs: readonly string[];
 	readonly afterwards?: string;
 	readonly hook: HookEntry;
+	readonly upgrade?: HookUpgrade;
 }
 
-const group = (command: string) => ({
-	hooks: [{ type: "command", command }],
+const group = (command: string, args?: readonly string[]) => ({
+	hooks: [{ type: "command", command, ...(args && { args }) }],
+});
+
+const fromRoot = `node "$(git rev-parse --show-toplevel)/${HOOK_SCRIPT_FILE}"`;
+const fromClaudeProject = `\${CLAUDE_PROJECT_DIR}/${HOOK_SCRIPT_FILE}`;
+
+const upgrade = (from: string, to: string): HookUpgrade => ({
+	from: JSON.stringify(from),
+	to: JSON.stringify(to),
 });
 
 export const CODING_AGENTS: readonly CodingAgent[] = [
@@ -73,7 +102,13 @@ export const CODING_AGENTS: readonly CodingAgent[] = [
 		signs: [".claude", "CLAUDE.md"],
 		hook: {
 			event: "Stop",
-			entry: group(`node "$CLAUDE_PROJECT_DIR"/${HOOK_SCRIPT_FILE}`),
+			entry: group("node", [fromClaudeProject]),
+		},
+		upgrade: {
+			from: JSON.stringify(
+				`node "$CLAUDE_PROJECT_DIR"/${HOOK_SCRIPT_FILE}`
+			),
+			to: `"node", "args": [${JSON.stringify(fromClaudeProject)}]`,
 		},
 	},
 	{
@@ -82,12 +117,11 @@ export const CODING_AGENTS: readonly CodingAgent[] = [
 		signs: [".codex"],
 		afterwards:
 			"Codex runs a new hook only once you trust it: open /hooks in Codex to review it.",
-		hook: {
-			event: "Stop",
-			entry: group(
-				`node "$(git rev-parse --show-toplevel)"/${HOOK_SCRIPT_FILE}`
-			),
-		},
+		hook: { event: "Stop", entry: group(fromRoot) },
+		upgrade: upgrade(
+			`node "$(git rev-parse --show-toplevel)"/${HOOK_SCRIPT_FILE}`,
+			fromRoot
+		),
 	},
 	{
 		name: "Gemini CLI",
@@ -95,8 +129,12 @@ export const CODING_AGENTS: readonly CodingAgent[] = [
 		signs: [".gemini", "GEMINI.md"],
 		hook: {
 			event: "AfterAgent",
-			entry: group(`node "$GEMINI_PROJECT_DIR"/${HOOK_SCRIPT_FILE}`),
+			entry: group(`node ${HOOK_SCRIPT_FILE}`),
 		},
+		upgrade: upgrade(
+			`node "$GEMINI_PROJECT_DIR"/${HOOK_SCRIPT_FILE}`,
+			`node ${HOOK_SCRIPT_FILE}`
+		),
 	},
 	{
 		name: "Cursor",
@@ -114,10 +152,7 @@ export const CODING_AGENTS: readonly CodingAgent[] = [
 		signs: [".github/copilot-instructions.md", ".github/hooks"],
 		hook: {
 			event: "agentStop",
-			entry: {
-				type: "command",
-				bash: `node "$(git rev-parse --show-toplevel)"/${HOOK_SCRIPT_FILE}`,
-			},
+			entry: { type: "command", bash: fromRoot, powershell: fromRoot },
 			version: 1,
 		},
 	},

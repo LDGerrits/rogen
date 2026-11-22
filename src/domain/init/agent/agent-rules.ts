@@ -5,7 +5,11 @@ import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { GitRepository } from "../git-repository.js";
 import { agentBlock } from "./agent-block.js";
 import { AgentFile } from "./agent-file.js";
-import { HOOK_SCRIPT_FILE } from "./coding-agent.js";
+import {
+	CODING_AGENTS,
+	HOOK_SCRIPT_FILE,
+	withHookUpgraded,
+} from "./coding-agent.js";
 import { hookScript } from "./hook-script.js";
 
 const BLOCK = /<!-- rogen -->\r?\n[\s\S]*?<!-- \/rogen -->(\r?\n)?/;
@@ -32,6 +36,17 @@ const REFRESHED = [
 		refresh: refreshedRules,
 	})),
 	{ fileName: HOOK_SCRIPT_FILE, refresh: refreshedScript },
+	...CODING_AGENTS.flatMap(({ settingsFile, upgrade }) =>
+		upgrade
+			? [
+					{
+						fileName: settingsFile,
+						refresh: (text: string) =>
+							withHookUpgraded(text, upgrade),
+					},
+				]
+			: []
+	),
 ];
 
 export class AgentRules {

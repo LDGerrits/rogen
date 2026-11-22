@@ -38,7 +38,7 @@ This repo uses Rogen: each `*.rogen.json` generates the `*.project.json` beside 
 
 ## Check Changed Files Automatically
 
-An agent can forget to run `rogen check`, so Rogen has a hook that runs it on the files changed in git when the agent ends its turn and sends each new warning or error back as the agent's next prompt. A line it already sent stays quiet until the check stops printing it, so one that comes back after a fix is sent again. `rogen init --agent-hook`, or Customise in a terminal, writes the script to `.agents/hooks/rogen-check.mjs` and registers it with each agent it finds. It checks the session's own folder, so an agent in a git worktree is checked there, and where the worktree has no `node_modules` it runs the main checkout's Rogen. `rogen write` and `rogen serve` replace an outdated script as they do the rules; delete its first line to keep it as your own.
+An agent can forget to run `rogen check`, so Rogen has a hook that runs it on the files changed in git when the agent ends its turn and sends each new warning or error back as the agent's next prompt. A line it already sent stays quiet until the check stops printing it, so one that comes back after a fix is sent again. `rogen init --agent-hook`, or Customise in a terminal, writes the script to `.agents/hooks/rogen-check.mjs` and registers it with each agent it finds. It checks the session's own folder, so an agent in a git worktree is checked there, and where the worktree has no `node_modules` it runs the main checkout's Rogen. `rogen write` and `rogen serve` replace an outdated script as they do the rules, and an entry an earlier version registered; delete the script's first line to keep it as your own.
 
 <Accordions>
 <Accordion title="Register it by hand">
@@ -47,10 +47,13 @@ Put the script at `.agents/hooks/rogen-check.mjs`, and add its entry under the a
 
 | Agent | Hook file | Event | Entry |
 |---|---|---|---|
-| Claude Code | `.claude/settings.json` | `Stop` | `node "$CLAUDE_PROJECT_DIR"/.agents/hooks/rogen-check.mjs` |
-| Codex | `.codex/hooks.json` | `Stop` | `node "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.mjs` |
+| Claude Code | `.claude/settings.json` | `Stop` | `"command": "node"`, `"args": ["${CLAUDE_PROJECT_DIR}/.agents/hooks/rogen-check.mjs"]` |
+| Codex | `.codex/hooks.json` | `Stop` | `node "$(git rev-parse --show-toplevel)/.agents/hooks/rogen-check.mjs"` |
+| Gemini CLI | `.gemini/settings.json` | `AfterAgent` | `node .agents/hooks/rogen-check.mjs` |
 | Cursor | `.cursor/hooks.json` | `stop` | `node .agents/hooks/rogen-check.mjs cursor` |
-| Copilot | `.github/hooks/rogen.json` | `agentStop` | `node "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.mjs` |
+| Copilot | `.github/hooks/rogen.json` | `agentStop` | `node "$(git rev-parse --show-toplevel)/.agents/hooks/rogen-check.mjs"`, as both `bash` and `powershell` |
+
+Each entry works in PowerShell as well as bash, so the hook runs on Windows without Git Bash. Claude Code's runs `node` without a shell.
 
 
 ```js title=".agents/hooks/rogen-check.mjs"
