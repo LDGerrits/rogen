@@ -168,6 +168,16 @@ describe("domain/init/derived-routes", () => {
 			});
 		});
 
+		it("should send files that match no route where the source path was first mounted, when it is mounted twice", () => {
+			const derived = derive({
+				ReplicatedStorage: { Common: { $path: "src" } },
+				ServerStorage: { Copy: { $path: "src" } },
+			});
+
+			expect(derived?.fallback).toBe("ReplicatedStorage/Common");
+			expect(derived?.unrouted).toEqual([]);
+		});
+
 		it("should ignore a mount outside the source paths", () => {
 			expect(
 				derive({

@@ -408,6 +408,69 @@ describe("CoreSyncbackService", () => {
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
 	});
 
+	it("should write nothing when a run is asked to shut down while it checks that the plan is still current", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Combat"), true);
+			return ["Removing ServerScriptService/Combat"];
+		};
+
+		const outcome = await syncback({
+			confirm: async () => {
+				const isFile = fs.isFile.bind(fs);
+				jest.spyOn(fs, "isFile").mockImplementation(async (file) => {
+					lifecycle.shutdown("SIGINT");
+					return isFile(file);
+				});
+				return true;
+			},
+		});
+
+		expect(errorOf(outcome).message).toBe(
+			"Syncback stopped before it finished, so nothing was written."
+		);
+		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
+			true
+		);
+	});
+
+	it("should fail when a run is asked to shut down while it plans", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		let ran = false;
+		rojo.say = async () => {
+			ran = true;
+			return [];
+		};
+		const readDirectory = fs.readDirectory.bind(fs);
+		jest.spyOn(fs, "readDirectory").mockImplementation(async (dir) => {
+			if (ran) lifecycle.shutdown("SIGINT");
+			return readDirectory(dir);
+		});
+
+		const outcome = await syncback("apply");
+
+		expect(errorOf(outcome).message).toBe(
+			"Syncback stopped before it finished, so nothing was written."
+		);
+		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
+	});
+
+	it("should fail when the project Rojo is to run on is not among the configs", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		const other = configOf({
+			routes: ROUTES,
+			file: abs("other.rogen.json"),
+		});
+		rojo.choose = () => other;
+
+		const outcome = await syncback();
+
+		expect(errorOf(outcome).message).toBe(
+			`${other.label} was not found among the projects.`
+		);
+		expect(rojo.requests).toHaveLength(0);
+	});
+
 	it("should write an edit into the source file, with the line endings it had", async () => {
 		await prepare([]);
 		await fs.writeFile(
@@ -1307,6 +1370,38 @@ describe("CoreSyncbackService", () => {
 			).toEqual({ $className: "RemoteEvent" });
 		});
 
+		it("should list what it would write into the tree when the config can't be read", async () => {
+			rojo.say = async () => {
+				await writeIntoNode(
+					["ReplicatedStorage", "Remotes"],
+					"Buy.model.json",
+					JSON.stringify({ className: "RemoteEvent" })
+				);
+				const project = JSON.parse(rojo.projectTexts[0]);
+				project.tree.$attributes = { Mode: "test" };
+				await fs.writeFile(
+					abs("rogen-syncback.project.json"),
+					JSON.stringify(project)
+				);
+				await fs.delete(abs("default.rogen.json"));
+				return [];
+			};
+
+			const plan = await planned();
+
+			expect(plan.changes).toEqual([]);
+			expect(plan.unplaced).toEqual([
+				{
+					instance: config.projectName,
+					reason: `${config.file} could not be read`,
+				},
+				{
+					instance: "ReplicatedStorage/Remotes/Buy",
+					reason: `${config.file} could not be read`,
+				},
+			]);
+		});
+
 		it("should say that a node Rojo added with a $path under a node of the tree has no place", async () => {
 			rojo.say = async () => {
 				const project = JSON.parse(rojo.projectTexts[0]);
@@ -1634,6 +1729,38 @@ describe("CoreSyncbackService", () => {
 			]);
 		});
 
+		it("should list a property set in Studio on an instance routing made, and write no meta for it", async () => {
+			await compiled();
+			await fs.writeFile(
+				abs("default.rogen.json"),
+				JSON.stringify({
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: { Packages: { $path: "Packages" } },
+					},
+				})
+			);
+			rojo.say = async () => {
+				const project = JSON.parse(rojo.projectTexts[0]);
+				project.tree.ServerScriptService.$attributes = { Level: 3 };
+				await fs.writeFile(
+					abs("rogen-syncback.project.json"),
+					JSON.stringify(project)
+				);
+				return [];
+			};
+
+			const plan = await planned();
+
+			expect(plan.changes).toEqual([]);
+			expect(plan.unplaced).toEqual([
+				{
+					instance: "ServerScriptService",
+					reason: `a property or attribute changed in Studio, and the tree of ${abs("default.rogen.json")} has no node for it, since routing made it; add a node for it to the tree`,
+				},
+			]);
+		});
+
 		it("should say why a new instance has no place, as without a compiled path", async () => {
 			await prepare(
 				[
@@ -1825,6 +1952,64 @@ describe("CoreSyncbackService", () => {
 			});
 		});
 
+		it("should fail with Rojo's error when its dry run fails", async () => {
+			const failure = new DiagnosticsError([
+				errorDiagnostic("rojo.failed", { resource: "/repo" }, "no"),
+			]);
+			rojo.say = async () => failure;
+
+			const outcome = await syncback();
+
+			expect(errorOf(outcome)).toBe(failure);
+		});
+
+		it("should ask with Rojo's dry run, and run its syncback on a yes", async () => {
+			const shown: SyncbackPlan[] = [];
+
+			const outcome = await syncback({
+				confirm: async (plan) => {
+					shown.push(plan);
+					return true;
+				},
+			});
+
+			expect(shown.map(({ changes }) => changes)).toEqual([
+				[
+					{ kind: "write", file: abs("src/A.luau") },
+					{ kind: "remove", file: abs("src/B.luau") },
+				],
+			]);
+			expect(rojo.requests.map(({ flags }) => flags)).toEqual([
+				[
+					"--input",
+					"game.rbxl",
+					"--non-interactive",
+					"--dry-run",
+					"--list",
+				],
+				["--input", "game.rbxl", "--non-interactive", "--list"],
+			]);
+			expect(outcome).toMatchObject({ kind: "written", asked: true });
+		});
+
+		it("should not run Rojo's syncback on a no", async () => {
+			const outcome = await syncback({ confirm: async () => false });
+
+			expect(rojo.requests).toHaveLength(1);
+			expect(outcome).toMatchObject({ kind: "declined", asked: true });
+		});
+
+		it("should fail with Rojo's error when its syncback fails", async () => {
+			const failure = new DiagnosticsError([
+				errorDiagnostic("rojo.failed", { resource: "/repo" }, "no"),
+			]);
+			rojo.say = async () => failure;
+
+			const outcome = await syncback("apply");
+
+			expect(errorOf(outcome)).toBe(failure);
+		});
+
 		it("should run Rojo's syncback on the project file as it is", async () => {
 			const done = await planned("apply");
 
@@ -1990,6 +2175,106 @@ describe("CoreSyncbackService", () => {
 			);
 		});
 
+		const withFeatureMeta = async (
+			text: string,
+			spec: Parameters<typeof configOf>[0] = {}
+		) => {
+			await prepare(
+				[
+					"src/Combat/Server/Main.server.luau",
+					"src/Combat/init.meta.json",
+				],
+				spec
+			);
+			await fs.writeFile(abs("src/Combat/init.meta.json"), text);
+			await fs.writeFile(
+				abs("default.rogen.json"),
+				'{"tree":{"$className":"DataModel"}}'
+			);
+			await writeServiceOf(fs, new CoreIndexService(fs)).write(
+				request.selection
+			);
+		};
+
+		it("should take a key off the feature's meta when Rojo took it off the feature's instance", async () => {
+			await withFeatureMeta('{"attributes":{"Owner":"me"}}');
+			rojo.say = async () => {
+				const project = JSON.parse(rojo.projectTexts[0]);
+				delete project.tree.ServerScriptService.Combat.$attributes;
+				await fs.writeFile(
+					abs("rogen-syncback.project.json"),
+					JSON.stringify(project)
+				);
+				return [];
+			};
+
+			const done = await planned("apply");
+
+			expect(done.changes).toEqual([
+				{ kind: "write", file: abs("src/Combat/init.meta.json") },
+			]);
+			expect(
+				JSON.parse(await fs.readFile(abs("src/Combat/init.meta.json")))
+			).toEqual({});
+		});
+
+		it("should take a key Rojo took off the feature's instance off its meta.json when a meta.jsonc sits beside it", async () => {
+			await withFeatureMeta('{"attributes":{"Owner":"me"}}');
+			await fs.writeFile(
+				abs("src/Combat/init.meta.jsonc"),
+				'{"ignoreUnknownInstances":true}'
+			);
+			rojo.say = async () => {
+				const project = JSON.parse(rojo.projectTexts[0]);
+				delete project.tree.ServerScriptService.Combat.$attributes;
+				await fs.writeFile(
+					abs("rogen-syncback.project.json"),
+					JSON.stringify(project)
+				);
+				return [];
+			};
+
+			const done = await planned("apply");
+
+			expect(done.changes).toEqual([
+				{ kind: "write", file: abs("src/Combat/init.meta.json") },
+			]);
+			expect(
+				JSON.parse(await fs.readFile(abs("src/Combat/init.meta.json")))
+			).toEqual({});
+			expect(
+				JSON.parse(await fs.readFile(abs("src/Combat/init.meta.jsonc")))
+			).toEqual({ ignoreUnknownInstances: true });
+		});
+
+		it("should leave a feature's meta alone where an ignore glob matches it when Rojo changed what it set", async () => {
+			await withFeatureMeta('{"attributes":{"Owner":"me"}}', {
+				project: {
+					tree: { $className: "DataModel" },
+					syncbackRules: {
+						ignorePaths: ["src/Combat/init.meta.json"],
+					},
+				},
+			});
+			rojo.say = async () => {
+				await rewriteNodes({ Owner: "you" }, [
+					"ServerScriptService",
+					"Combat",
+				]);
+				return [];
+			};
+
+			const plan = await planned();
+
+			expect(plan.changes).toEqual([]);
+			expect(plan.unplaced).toEqual([
+				{
+					instance: "ServerScriptService/Combat",
+					reason: `${abs("src/Combat/init.meta.json")} matches an ignore glob of the project, so it is left alone`,
+				},
+			]);
+		});
+
 		it("should write into the feature's meta.jsonc, keeping its comments and other keys", async () => {
 			await prepare([
 				"src/Combat/Server/Main.server.luau",
@@ -2019,6 +2304,39 @@ describe("CoreSyncbackService", () => {
 			expect(await fs.exists(abs("src/Combat/init.meta.json"))).toBe(
 				false
 			);
+		});
+
+		it("should move what Rojo wrote from the feature's meta.json into its meta.jsonc", async () => {
+			await prepare([
+				"src/Combat/Server/Main.server.luau",
+				"src/Combat/init.meta.json",
+				"src/Combat/init.meta.jsonc",
+			]);
+			await fs.writeFile(
+				abs("src/Combat/init.meta.json"),
+				'{"attributes":{"Owner":"me"},"ignoreUnknownInstances":true}'
+			);
+			await fs.writeFile(abs("src/Combat/init.meta.jsonc"), "{}");
+			await writeServiceOf(fs, new CoreIndexService(fs)).write(
+				request.selection
+			);
+			rojo.say = async () => {
+				await writeMeta("ServerScriptService", "Combat");
+				return [];
+			};
+
+			const done = await planned("apply");
+
+			expect(done.changes).toEqual([
+				{ kind: "write", file: abs("src/Combat/init.meta.jsonc") },
+				{ kind: "write", file: abs("src/Combat/init.meta.json") },
+			]);
+			expect(
+				JSON.parse(await fs.readFile(abs("src/Combat/init.meta.jsonc")))
+			).toEqual(JSON.parse(meta));
+			expect(
+				JSON.parse(await fs.readFile(abs("src/Combat/init.meta.json")))
+			).toEqual({ ignoreUnknownInstances: true });
 		});
 
 		it("should leave a feature's meta alone where an ignore glob matches it", async () => {

@@ -72,6 +72,7 @@ export interface CommandHarnessOptions<L extends LogService> {
 	readonly requests?: RequestService;
 	readonly browser?: BrowserService;
 	readonly product?: ProductService;
+	readonly rojoCommands?: RojoCommandService;
 }
 
 export interface CommandHarness<L extends LogService> {
@@ -99,6 +100,34 @@ export function commandHarness<L extends LogService>(
 export function commandHarness(
 	options: CommandHarnessOptions<LogService> = {}
 ): CommandHarness<LogService> {
+	const { fs, log, ready, instantiation } = harnessServices(options);
+	const commands = instantiation.invokeFunction((accessor) =>
+		accessor.get(CommandService)
+	);
+	return {
+		fs,
+		log,
+		run: (command, line = {}) => {
+			const execute = () =>
+				commands.executeCommand(command, {
+					positionals: [],
+					options: {},
+					...line,
+				});
+			return ready ? ready.then(execute) : execute();
+		},
+	};
+}
+
+export async function harnessInstantiation(
+	options: CommandHarnessOptions<LogService> = {}
+): Promise<CoreInstantiationService> {
+	const { ready, instantiation } = harnessServices(options);
+	await ready;
+	return instantiation;
+}
+
+function harnessServices(options: CommandHarnessOptions<LogService>) {
 	const { cwd = "/repo" } = options;
 	const fs = options.fs ?? new MemoryFileSystemService();
 	const ready = options.fs ? undefined : fs.createDirectory(cwd);
@@ -139,7 +168,7 @@ export function commandHarness(
 	services.set(RojoRunner, new SyncDescriptor(CoreRojoRunner));
 	services.set(
 		RojoCommandService,
-		new SyncDescriptor(CoreRojoCommandService)
+		options.rojoCommands ?? new SyncDescriptor(CoreRojoCommandService)
 	);
 	services.set(SyncbackService, new SyncDescriptor(CoreSyncbackService));
 	services.set(ServeService, new SyncDescriptor(CoreServeService));
@@ -150,24 +179,11 @@ export function commandHarness(
 		])
 	);
 	const instantiation = new CoreInstantiationService(services, true);
-	const commands = instantiation.invokeFunction((accessor) => {
+	instantiation.invokeFunction((accessor) => {
 		if (!options.config) legacyChecked(accessor.get(ConfigService));
 		accessor.get(InitService).registerMigration(new LegacyMigration());
-		return accessor.get(CommandService);
 	});
-	return {
-		fs,
-		log,
-		run: (command, line = {}) => {
-			const execute = () =>
-				commands.executeCommand(command, {
-					positionals: [],
-					options: {},
-					...line,
-				});
-			return ready ? ready.then(execute) : execute();
-		},
-	};
+	return { fs, log, ready, instantiation };
 }
 
 function legacyChecked(config: ConfigService): ConfigService {

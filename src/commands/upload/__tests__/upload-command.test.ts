@@ -192,4 +192,14 @@ describe("upload command", () => {
 		});
 		expect(JSON.stringify(log.json())).not.toContain("secret");
 	});
+
+	it("should fail before it writes anything when the named config is not there", async () => {
+		const result = await commandHarness({ fs, processes }).run("upload", {
+			positionals: ["missing"],
+			options: { asset_id: "123" },
+		});
+
+		expect(result.isErr()).toBe(true);
+		expect(processes.spawned).toEqual([]);
+	});
 });

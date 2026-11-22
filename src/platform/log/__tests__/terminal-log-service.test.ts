@@ -218,4 +218,31 @@ describe("TerminalLogService", () => {
 		);
 		expect(drawn()).toBe("");
 	});
+
+	it("should nest warnings, information and debug lines under an open frame", () => {
+		const logService = new TerminalLogService();
+		logService.setLevel(LogLevel.Trace);
+
+		logService.intro("rogen serve");
+		logService.warn("careful");
+		logService.info("Serving.");
+		logService.debug("detail");
+		logService.trace("more detail");
+
+		expect(drawn().split("\n").filter(Boolean)).toEqual([
+			"┌  rogen serve",
+			"│  ▲ careful",
+			"│  Serving.",
+			"│  detail",
+			"│  more detail",
+		]);
+	});
+
+	it("should write a warning on stderr when no frame is open", () => {
+		const error = jest.spyOn(console, "error").mockImplementation(() => {});
+
+		new TerminalLogService().warn("careful");
+
+		expect(error).toHaveBeenCalledWith("▲ careful");
+	});
 });

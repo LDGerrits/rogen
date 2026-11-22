@@ -124,4 +124,25 @@ describe("ChangeBatcher", () => {
 
 		expect(changeListener).toHaveBeenCalledWith([change]);
 	});
+
+	it("should emit nothing for a file added and deleted again before the delay ends", () => {
+		const changeListener = jest.fn();
+		batcher.onDidEmitChanges(changeListener);
+
+		batcher.queueEvents([
+			{
+				type: FileChangeType.ADDED,
+				path: "src/a.ts~",
+				fileType: FileType.File,
+			},
+			{
+				type: FileChangeType.DELETED,
+				path: "src/a.ts~",
+				fileType: FileType.File,
+			},
+		]);
+		jest.advanceTimersByTime(100);
+
+		expect(changeListener).not.toHaveBeenCalled();
+	});
 });

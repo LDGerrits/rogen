@@ -55,6 +55,14 @@ describe("studioPathsIn", () => {
 		expect(found.map(({ line }) => line)).toEqual([1, 2, 3]);
 	});
 
+	it("should read a quoted frame once, not again as the path inside it", () => {
+		const found = studioPathsIn(
+			"Script 'Workspace.Model ReplicatedStorage.Part:3', Line 7"
+		);
+
+		expect(found.map(({ line }) => line)).toEqual([7]);
+	});
+
 	it("should leave out what is not an instance path with a line", () => {
 		expect(
 			studioPathsIn(

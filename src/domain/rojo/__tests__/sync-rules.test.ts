@@ -4,6 +4,17 @@ import { DEFAULT_SYNC_RULES, SyncRule, SyncRules } from "../sync-rules.js";
 
 describe("domain/rojo/sync-rules", () => {
 	describe("SyncRules", () => {
+		describe("unknownFields", () => {
+			it("should name the fields a rule doesn't have, by the rule's index, and pass over a rule that isn't an object", () => {
+				expect(
+					SyncRules.unknownFields([
+						"*.txt",
+						{ pattern: "*.md", use: "text", sufix: ".md" },
+					])
+				).toEqual([{ index: 1, field: "sufix" }]);
+			});
+		});
+
 		describe("match", () => {
 			it.each([
 				["Save.luau", "moduleScript", "Save"],

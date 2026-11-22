@@ -41,19 +41,49 @@ export class ConfigEdits {
 	}
 
 	/**
-	 * The meta file of a feature folder that syncback edits: the `.meta.jsonc`
-	 * when the folder has one, as Rojo applies it last, else the `.meta.json`.
+	 * Rojo applies a feature folder's `.meta.json` and then its `.meta.jsonc`,
+	 * one property at a time, so syncback edits the `.meta.jsonc` when the
+	 * folder has one and takes the edited keys off the `.meta.json`.
 	 */
 	async featureMeta(folder: string): Promise<FeatureMeta> {
+		return (await this.featureMetaFiles(folder))[0];
+	}
+
+	async featureMetaWrites(
+		folder: string,
+		instance: string,
+		keys: Readonly<Record<string, unknown>>,
+		fresh?: Uint8Array
+	): Promise<(Operation | UnplacedInstance)[]> {
+		const [meta, ...shadowed] = await this.featureMetaFiles(folder);
+		const cleared = Object.fromEntries(
+			Object.keys(keys).map((key) => [key, undefined])
+		);
+		return [
+			this.metaWrite(meta, instance, keys, fresh),
+			...shadowed.map((file) => this.metaWrite(file, instance, cleared)),
+		].filter((written) => written !== undefined);
+	}
+
+	private async featureMetaFiles(
+		folder: string
+	): Promise<[FeatureMeta, ...FeatureMeta[]]> {
+		const found: FeatureMeta[] = [];
 		for (const name of [RojoFile.INIT_META_JSONC, RojoFile.INIT_META]) {
 			const file = toNative(path.posix.join(folder, name));
 			if (await this.fileSystemService.isFile(file))
-				return {
+				found.push({
 					file,
 					text: await this.fileSystemService.readFile(file),
-				};
+				});
 		}
-		return { file: toNative(path.posix.join(folder, RojoFile.INIT_META)) };
+		const [
+			first = {
+				file: toNative(path.posix.join(folder, RojoFile.INIT_META)),
+			},
+			...rest
+		] = found;
+		return [first, ...rest];
 	}
 
 	metaWrite(
@@ -181,14 +211,13 @@ export class ConfigEdits {
 			for (const [key, value] of Object.entries(edit.set))
 				keys[META_KEYS[key]] = value;
 			for (const key of edit.remove) keys[META_KEYS[key]] = undefined;
-			const written = this.metaWrite(
-				await this.featureMeta(folder),
+			for (const written of await this.featureMetaWrites(
+				folder,
 				instanceKey(instance),
 				keys
-			);
-			if (written === undefined) continue;
-			if ("reason" in written) unplaced.push(written);
-			else operations.push(written);
+			))
+				if ("reason" in written) unplaced.push(written);
+				else operations.push(written);
 		}
 		const handled = new Set(
 			routed

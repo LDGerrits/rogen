@@ -759,3 +759,118 @@ describe("ConfigDiscovery.plainProjects", () => {
 		expect(await plain()).toEqual([]);
 	});
 });
+
+describe("ConfigDiscovery.namesConfig", () => {
+	let fs: MemoryFileSystemService;
+
+	beforeEach(async () => {
+		fs = new MemoryFileSystemService();
+		await fs.createDirectory("/repo/tools");
+	});
+
+	it("should name a config for a folder that holds only a plain default.project.json", async () => {
+		await fs.writeFile("/repo/tools/default.project.json", "{}");
+
+		expect(
+			await discoveryOf(
+				fs,
+				new MockEnvironmentService("/repo")
+			).namesConfig("tools")
+		).toBe(true);
+	});
+});
+
+describe("ConfigDiscovery.plainProjects of a folder that can't be read", () => {
+	it("should list none", async () => {
+		const fs = new MemoryFileSystemService();
+
+		expect(
+			await discoveryOf(
+				fs,
+				new MockEnvironmentService("/repo")
+			).plainProjects("/missing")
+		).toEqual([]);
+	});
+});
+
+describe("ConfigDiscovery.writersNestedIn", () => {
+	let fs: MemoryFileSystemService;
+
+	const project = (mounts: Record<string, string>) =>
+		JSON.stringify({
+			name: "game",
+			tree: {
+				$className: "DataModel",
+				...Object.fromEntries(
+					Object.entries(mounts).map(([key, $path]) => [
+						key,
+						{ $path },
+					])
+				),
+			},
+		});
+
+	const writers = (file: string) =>
+		discoveryOf(fs, new MockEnvironmentService("/repo")).writersNestedIn(
+			file
+		);
+
+	beforeEach(async () => {
+		fs = new MemoryFileSystemService();
+		await fs.createDirectory("/repo");
+	});
+
+	it("should follow plain projects, visit each once, and skip mounts that write nothing", async () => {
+		await fs.writeFile(
+			"/repo/default.project.json",
+			project({ A: "lib", B: "empty", C: "gone.project.json" })
+		);
+		await fs.createDirectory("/repo/empty");
+		await fs.writeFile(
+			"/repo/lib/default.project.json",
+			project({ Back: "..", Inner: "inner" })
+		);
+		await fs.writeFile("/repo/lib/inner/default.rogen.json", "{}");
+
+		expect(await writers("/repo/default.project.json")).toEqual([
+			"/repo/lib/inner/default.rogen.json",
+		]);
+	});
+
+	it("should find no writers in a project file that can't be read or parsed", async () => {
+		await fs.writeFile("/repo/broken.project.json", "{");
+
+		expect(await writers("/repo/missing.project.json")).toEqual([]);
+		expect(await writers("/repo/broken.project.json")).toEqual([]);
+	});
+});
+
+describe("ConfigDiscovery.coverOf a project file whose config is doubled", () => {
+	it("should cover the project file itself", async () => {
+		const fs = new MemoryFileSystemService();
+		await fs.writeFile("/repo/game.project.json", "{}");
+		await fs.writeFile("/repo/game.rogen.json", "{}");
+		await fs.writeFile("/repo/game.rogen.jsonc", "{}");
+
+		expect(
+			await discoveryOf(fs, new MockEnvironmentService("/repo")).coverOf(
+				"/repo/game.project.json"
+			)
+		).toEqual({ file: "/repo/game.project.json", whole: true });
+	});
+});
+
+describe("ConfigDiscovery.configsBeside with a stop outside the target's folders", () => {
+	it("should search every folder up to the root", async () => {
+		const fs = new MemoryFileSystemService();
+		await fs.createDirectory("/repo/a/src");
+		await fs.writeFile("/repo/b/default.rogen.json", "{}");
+
+		expect(
+			await discoveryOf(
+				fs,
+				new MockEnvironmentService("/repo")
+			).configsBeside("/repo/a/src", "/elsewhere")
+		).toEqual(["/repo/b/default.rogen.json"]);
+	});
+});

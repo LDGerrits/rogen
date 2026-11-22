@@ -86,6 +86,16 @@ describe("domain/write/write", () => {
 			expect(run.warningCount).toBe(1);
 		});
 
+		it("should say a warning a config raises twice once, as its own", () => {
+			const run = new WriteRun([written(lobby, [shared], [shared])]);
+
+			expect(run.warningCount).toBe(1);
+			expect(run.shares[0].warnings).toEqual({
+				fresh: [shared],
+				sameAs: [],
+			});
+		});
+
 		it("should count compiled path warnings with the rest", () => {
 			const run = new WriteRun([written(lobby, [], [shared])]);
 

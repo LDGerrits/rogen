@@ -179,6 +179,50 @@ describe("RootScanner", () => {
 			});
 		});
 
+		describe("a nested project that a sync rule ignores", () => {
+			it("should still take the folder as the project, read as data", async () => {
+				await write("src/Pkg/default.project.json", "src/Pkg/A.luau");
+				const index = await newIndex().list([abs("src")]);
+				const config = configOf({
+					sourcePaths: [abs("src")],
+					ignored: [],
+					project: {
+						tree: { $className: "DataModel" },
+						syncRules: [
+							{
+								pattern: "**/default.project.json",
+								use: "ignore",
+							},
+						],
+					},
+				});
+
+				const [root] = (
+					await pipelineOf(fs, index).place(config)
+				).unwrap().roots;
+
+				expect(files(root)).toEqual(["data:Pkg/default.project.json"]);
+			});
+		});
+
+		describe("the listing of a folder it never read", () => {
+			it("should be empty", async () => {
+				await write("src/A.luau");
+				const index = await newIndex().list([abs("src")]);
+
+				const placement = (
+					await pipelineOf(fs, index).place(
+						configOf({ sourcePaths: [abs("src")], ignored: [] })
+					)
+				).unwrap();
+
+				expect(
+					placement.roots[0].listing(abs("src/Nowhere")).size
+				).toBe(0);
+				expect(placement.listing(abs("elsewhere")).size).toBe(0);
+			});
+		});
+
 		describe("the project file it writes", () => {
 			it("should be left out when a source path holds it", async () => {
 				await write("src/A.luau", "src/default.project.json");

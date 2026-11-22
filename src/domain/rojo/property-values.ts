@@ -36,7 +36,7 @@ export class FloatText {
 
 	private static shortest(magnitude: number, bits: 32 | 64): string {
 		if (bits === 64) return magnitude.toExponential();
-		for (let digits = 0; digits < 9; digits++) {
+		for (let digits = 0; digits < 8; digits++) {
 			const text = magnitude.toExponential(digits);
 			if (Math.fround(Number(text)) === magnitude) return text;
 		}

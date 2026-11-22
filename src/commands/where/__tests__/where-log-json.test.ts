@@ -66,6 +66,57 @@ describe("WhereLog", () => {
 			]);
 		});
 
+		it.each([
+			[
+				{
+					status: "extensionCase",
+					source: "/repo/src/A.LUAU",
+					exists: true,
+					rename: "A.luau",
+				},
+				{ status: "extensionCase", rename: "A.luau" },
+			],
+			[
+				{
+					status: "blocked",
+					source: "/repo/src/A.luau",
+					exists: true,
+					own: true,
+					by: errorDiagnostic(
+						"route.strayAt",
+						{ resource: "/repo/src/A.luau" },
+						"Stray."
+					),
+				},
+				{
+					status: "blocked",
+					blockedBy: {
+						file: path.normalize("/repo/src/A.luau"),
+						code: "route.strayAt",
+					},
+				},
+			],
+			[
+				{
+					status: "inProject",
+					source: "/repo/src/Pkg/A.luau",
+					exists: true,
+					project: "/repo/src/Pkg/default.project.json",
+				},
+				{
+					status: "inProject",
+					project: path.normalize(
+						"/repo/src/Pkg/default.project.json"
+					),
+				},
+			],
+		] as [FileLocation, object][])(
+			"should give what keeps a path out in json: %j",
+			(location, fields) => {
+				expect(jsonOf(location)[0]).toMatchObject(fields);
+			}
+		);
+
 		it("should mark a hoisted name in json, and leave the mark off an unhoisted one", () => {
 			const placed: FileLocation = {
 				status: "placed",

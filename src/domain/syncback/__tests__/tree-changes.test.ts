@@ -51,6 +51,40 @@ describe("treeChanges", () => {
 		expect(treeChanges(before, {})).toEqual([]);
 	});
 
+	it("should compare lists item by item", () => {
+		const before: RojoNode = {
+			$properties: { Color: [1, 0, 0], Size: [1, 2] },
+		};
+
+		expect(
+			treeChanges(before, {
+				$properties: { Color: [1, 0, 0], Size: [1, 2] },
+			})
+		).toEqual([]);
+		expect(
+			treeChanges(before, {
+				$properties: { Color: [1, 0, 1], Size: [1, 2] },
+			})
+		).toEqual([
+			{
+				node: [],
+				set: { $properties: { Color: [1, 0, 1], Size: [1, 2] } },
+				remove: [],
+				added: [],
+			},
+		]);
+		expect(
+			treeChanges(before, {
+				$properties: { Color: [1, 0], Size: [1, 2] },
+			})
+		).toHaveLength(1);
+		expect(
+			treeChanges(before, {
+				$properties: { Color: { R: 1 }, Size: [1, 2] },
+			})
+		).toHaveLength(1);
+	});
+
 	it("should find a key Rojo took off a node", () => {
 		const before: RojoNode = {
 			$className: "Folder",
@@ -154,6 +188,16 @@ describe("applyTreeChanges", () => {
 		});
 	});
 
+	it("should leave the text alone when a key to remove is not in the file", () => {
+		const applied = applyTreeChanges(
+			TEXT,
+			["tree"],
+			[{ node: ["Value"], set: {}, remove: ["$properties"], added: [] }]
+		);
+
+		expect(applied).toEqual({ text: TEXT, unhomed: [] });
+	});
+
 	it("should add a node under a node the tree has", () => {
 		const applied = applyTreeChanges(
 			TEXT,
@@ -248,6 +292,21 @@ describe("applyTreeChanges", () => {
 
 		expect(applied.text).toBe(TEXT);
 		expect(applied.unhomed).toEqual([["Made"]]);
+	});
+
+	it("should leave out a change to a node the file holds as something other than an object", () => {
+		const text = TEXT.replace(
+			'"$className": "Folder",',
+			'"$className": "Folder", "Odd": 3,'
+		);
+
+		const applied = applyTreeChanges(
+			text,
+			["tree"],
+			[set(["Odd"], { $properties: { Value: "x" } })]
+		);
+
+		expect(applied).toEqual({ text, unhomed: [["Odd"]] });
 	});
 
 	it("should leave the text alone when there are no changes", () => {

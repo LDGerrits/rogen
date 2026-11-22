@@ -27,6 +27,8 @@ interface JsoncProperty extends JsoncPosition {
 	readonly value: JsoncNode;
 }
 
+type JsoncScalarKind = "string" | "number" | "boolean" | "null";
+
 export type JsoncNode = JsoncPosition &
 	(
 		| {
@@ -35,7 +37,7 @@ export type JsoncNode = JsoncPosition &
 		  }
 		| { readonly kind: "array"; readonly items: readonly JsoncNode[] }
 		| {
-				readonly kind: "string" | "number" | "boolean" | "null";
+				readonly kind: JsoncScalarKind;
 				readonly value: unknown;
 				readonly text: string;
 		  }
@@ -98,17 +100,13 @@ function toSpan(node: Node): JsoncSpan {
 	if (node.type !== "object") return span;
 	return {
 		...span,
-		properties: (node.children ?? []).flatMap((property) => {
-			const [key, value] = property.children ?? [];
-			return key && value
-				? [
-						{
-							name: String(key.value),
-							start: property.offset,
-							value: toSpan(value),
-						},
-					]
-				: [];
+		properties: node.children!.map((property) => {
+			const [key, value] = property.children!;
+			return {
+				name: String(key.value),
+				start: property.offset,
+				value: toSpan(value),
+			};
 		}),
 	};
 }
@@ -128,8 +126,7 @@ export function parseJsonc(text: string): JsoncDocument {
 			value = getNodeValue(tree);
 			root = toJsoncNode(tree, positionAt, source);
 		}
-	} catch (error) {
-		if (!(error instanceof RangeError)) throw error;
+	} catch {
 		return {
 			root: undefined,
 			value: undefined,
@@ -180,9 +177,9 @@ function toJsoncNode(
 			return {
 				...position,
 				kind: "object",
-				properties: (node.children ?? []).flatMap((property) => {
-					const [key, value] = property.children ?? [];
-					if (!key || !value) return [];
+				properties: node.children!.flatMap((property) => {
+					const [key, value] = property.children!;
+					if (!value) return [];
 					return {
 						name: String(key.value),
 						...positionAt(key.offset),
@@ -194,27 +191,22 @@ function toJsoncNode(
 			return {
 				...position,
 				kind: "array",
-				items: (node.children ?? []).map((item) =>
+				items: node.children!.map((item) =>
 					toJsoncNode(item, positionAt, source)
 				),
 			};
-		case "string":
-		case "number":
-		case "boolean":
-		case "null":
+		default:
 			return {
 				...position,
-				kind: node.type,
+				kind: node.type as JsoncScalarKind,
 				value: node.value,
 				text: source.slice(node.offset, node.offset + node.length),
 			};
-		default:
-			throw new Error(`Unexpected JSONC node type "${node.type}".`);
 	}
 }
 
 function describeSyntaxError(code: ParseErrorCode): string {
-	return SYNTAX_MESSAGES[printParseErrorCode(code)] ?? "syntax error";
+	return SYNTAX_MESSAGES[printParseErrorCode(code)];
 }
 
 type PositionAt = (offset: number) => JsoncPosition;
@@ -236,7 +228,7 @@ function positionsIn(text: string): PositionAt {
 }
 
 export function parse(text: string): Result<unknown, Error> {
-	const { root, value, errors } = parseJsonc(text);
+	const { value, errors } = parseJsonc(text);
 	const [first] = errors;
 	if (first) {
 		return err(
@@ -245,7 +237,6 @@ export function parse(text: string): Result<unknown, Error> {
 			)
 		);
 	}
-	if (!root) return err(new Error("invalid JSONC: the document is empty."));
 	return ok(value);
 }
 
@@ -294,7 +285,6 @@ function writtenOnOneLine(
 	for (let path = [...at]; ; path = path.slice(0, -1)) {
 		const node = findNodeAtLocation(tree, path);
 		if (node) return onOneLineIn(text, node);
-		if (path.length === 0) return false;
 	}
 }
 

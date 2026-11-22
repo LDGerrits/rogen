@@ -257,11 +257,12 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 	}
 
 	private async end(): Promise<ProcessExit> {
-		if (this.exit || this.child.pid === undefined) return this.exited;
-		if (isWindows) await killWindowsTree(this.child.pid);
-		else signalTree(this.child.pid, "SIGTERM", this.child);
+		const { pid } = this.child;
+		if (this.exit || pid === undefined) return this.exited;
+		if (isWindows) await killWindowsTree(pid);
+		else signalTree(pid, "SIGTERM", this.child);
 		const timer = setTimeout(
-			() => signalTree(this.child.pid ?? 0, "SIGKILL", this.child),
+			() => signalTree(pid, "SIGKILL", this.child),
 			KILL_GRACE_MS
 		);
 		try {
@@ -272,7 +273,7 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 	}
 
 	kill(): void {
-		if (this.exit || this.child.pid === undefined) return;
+		if (this.child.pid === undefined) return;
 		if (isWindows)
 			childProcess.spawnSync("taskkill", taskkillTree(this.child.pid), {
 				windowsHide: true,

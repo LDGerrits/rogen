@@ -143,6 +143,17 @@ describe("RojoProject", () => {
 				$path: "map.rbxm",
 			});
 		});
+
+		it("should refuse to insert below a key that is not a node", () => {
+			const project = new RojoProject(
+				{ name: "x", tree: { A: 5 } } as unknown as RojoProjectFile,
+				folders
+			);
+
+			expect(() =>
+				project.insertNodeReplacingFolder(["A", "B"], { $path: "b" })
+			).toThrow("Can't insert below \"A\": it isn't a node.");
+		});
 	});
 
 	describe("getPaths", () => {
@@ -225,6 +236,23 @@ describe("RojoProject", () => {
 					[]
 				)
 			).toEqual([]);
+		});
+	});
+
+	describe("findUnreadableValues", () => {
+		it("should name each property Rojo can't read, and pass over a table that isn't an object", () => {
+			expect(
+				RojoProject.findUnreadableValues(
+					{
+						$className: "DataModel",
+						A: {
+							$properties: { Size: [1, 2, 3, 4, 5], Name: "a" },
+						},
+						B: { $attributes: 5 } as unknown as RojoNode,
+					},
+					["tree"]
+				)
+			).toEqual([["tree", "A", "$properties", "Size"]]);
 		});
 	});
 
@@ -449,6 +477,35 @@ describe("RojoProject", () => {
 				},
 			]);
 			expect(result.added).toEqual([]);
+		});
+
+		it("should give a container it creates the class of the node it adds", () => {
+			const project = new RojoProject(baseTree, folders);
+
+			project.mergeMissing(
+				additions({
+					Lighting: { $className: "Lighting", Sky: { $path: "sky" } },
+				})
+			);
+
+			expect(project.getNode(["Lighting"])).toEqual({
+				$className: "Lighting",
+				Sky: { $path: "sky" },
+			});
+		});
+
+		it("should add nothing below a key that is not a node", () => {
+			const project = new RojoProject(
+				{ name: "x", tree: { A: 5 } } as unknown as RojoProjectFile,
+				folders
+			);
+
+			const result = project.mergeMissing(
+				additions({ A: { B: { $path: "b" } } })
+			);
+
+			expect(result).toEqual({ added: [], skipped: [] });
+			expect(project.getFile().tree).toEqual({ A: 5 });
 		});
 
 		it("should not create a container when nothing goes in it", () => {

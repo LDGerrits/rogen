@@ -56,6 +56,21 @@ describe("NativeLifecycleService", () => {
 		expect(service.signal).toBeUndefined();
 	});
 
+	it("should pass on a failure to write the output other than a reader that quit", () => {
+		const service = store.add(
+			new NativeLifecycleService(new MockProcessService())
+		);
+		store.add(service.onWillShutdown(() => undefined));
+
+		expect(() =>
+			process.stdout.emit(
+				"error",
+				Object.assign(new Error("write EIO"), { code: "EIO" })
+			)
+		).toThrow("write EIO");
+		expect(service.signal).toBeUndefined();
+	});
+
 	it("should fire onWillShutdown when the terminal closes", () => {
 		const service = store.add(
 			new NativeLifecycleService(new MockProcessService())

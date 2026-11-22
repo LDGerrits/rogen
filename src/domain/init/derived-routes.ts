@@ -1,5 +1,5 @@
 import path from "path";
-import { containsPosix, normalizeDir } from "../../base/path.js";
+import { normalizeDir } from "../../base/path.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { isSupportedService } from "../roblox/supported-services.js";
 import { RemovedMount, rojoPathTarget } from "../rojo/rojo-project.js";
@@ -61,7 +61,6 @@ export class DerivedRoutes {
 					});
 				continue;
 			}
-			if (!roots.some((root) => containsPosix(root, target))) continue;
 			const key = path.posix.basename(target);
 			const direct = roots.includes(path.posix.dirname(target));
 			const identity = DeclaredKeys.identityOf(key);
@@ -74,7 +73,7 @@ export class DerivedRoutes {
 					? `${key} is not a valid route name`
 					: !reachable
 						? "no service holds the node it lands on"
-						: (mountsOf.get(target) ?? 0) > 1
+						: mountsOf.get(target)! > 1
 							? "its folder is mounted more than once"
 							: taken
 								? `another folder already took the route name ${key}`

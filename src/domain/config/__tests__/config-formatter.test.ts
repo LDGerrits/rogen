@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ConfigFormatter } from "../config-formatter.js";
 import { formatterOf } from "./config-of.js";
@@ -299,5 +300,15 @@ describe("ConfigFormatter", () => {
 
 		const [diagnostic] = result.isErr() ? result.error : [];
 		expect(diagnostic.code).toBe("config.unreadable");
+	});
+	it("should report a formatted file it can't write and leave the file", async () => {
+		await fs.writeFile("/repo/default.rogen.json", TABBED);
+		jest.spyOn(fs, "writeFile").mockRejectedValue(new Error("disk full"));
+
+		const result = await format();
+
+		const [diagnostic] = result.isErr() ? result.error : [];
+		expect(diagnostic.code).toBe("format.writeFailed");
+		expect(diagnostic.message).toContain("disk full");
 	});
 });

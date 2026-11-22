@@ -143,6 +143,16 @@ describe("domain/roblox/roblox", () => {
 			});
 		});
 
+		it("should suggest nothing for a target that starts with a slash and no service", () => {
+			const result = Target.parse("/Nowhere", location);
+
+			expect(result.isErr() && result.error[0]).toMatchObject({
+				message:
+					'"/Nowhere" is not a supported service; a target starts with the service, not with "/".',
+			});
+			expect(result.isErr() && result.error[0].fixes).toBeUndefined();
+		});
+
 		it("should offer no replacement when nothing is close", () => {
 			const result = Target.parse("Zzzzzzzzzz", location);
 
@@ -416,6 +426,10 @@ describe("scriptFate", () => {
 		expect(scriptFate("Client", ["ServerScriptService", "A"])).toBe(
 			"neverRuns"
 		);
+	});
+
+	it("should run a plugin script wherever it is", () => {
+		expect(scriptFate("Plugin", ["ReplicatedStorage", "A"])).toBe("runs");
 	});
 });
 

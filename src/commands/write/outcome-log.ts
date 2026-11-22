@@ -137,7 +137,7 @@ function capped(diagnostics: readonly Diagnostic[]): Diagnostic[] {
 		const position = (seen.get(code) ?? 0) + 1;
 		seen.set(code, position);
 		if (position > LISTED_PER_CODE) return [];
-		const unlisted = (totals.get(code) ?? 0) - LISTED_PER_CODE;
+		const unlisted = totals.get(code)! - LISTED_PER_CODE;
 		return position === LISTED_PER_CODE && unlisted > 0
 			? [noted(diagnostic, unlistedNote(unlisted))]
 			: [diagnostic];
@@ -225,7 +225,7 @@ export class OutcomeLog {
 		this.close(run, command, writes, done);
 	}
 
-	outcomes(run: WriteRun, home?: string, command = "build"): void {
+	outcomes(run: WriteRun, home: string | undefined, command: string): void {
 		const framed = run.outcomes.length > 1;
 		if (framed)
 			this.begin(
@@ -276,8 +276,8 @@ export class OutcomeLog {
 
 	close(
 		run: WriteRun,
-		command = "build",
-		writes = true,
+		command: string,
+		writes: boolean,
 		done?: RojoDone
 	): void {
 		if (run.outcomes.length > 1) {

@@ -403,6 +403,49 @@ describe("TreeAssembler", () => {
 				);
 			});
 
+			it("should name two metas that clash on several nodes once", async () => {
+				await write(
+					"src/Combat/server/A.luau",
+					"src/Combat/client/B.luau",
+					"src/Kit/^Combat/server/C.luau",
+					"src/Kit/^Combat/client/D.luau"
+				);
+				await writeMeta("src/Combat/init.meta.json", {
+					className: "Actor",
+				});
+				await writeMeta("src/Kit/^Combat/init.meta.json", {
+					className: "Actor",
+				});
+
+				const result = await assembleResult({ routes: SPLIT });
+
+				expect(
+					result.isErr() ? result.error.diagnostics : []
+				).toMatchObject([{ code: "meta.sameNode" }]);
+			});
+
+			it("should copy nothing for the meta of a folder under a node the tree mounts", async () => {
+				await write("src/Gui/Hud/X.luau", "src/A.luau");
+				await writeMeta("src/Gui/Hud/init.meta.json", {
+					className: "Actor",
+				});
+
+				const storage = await storageOf({
+					routes: SPLIT,
+					project: {
+						tree: {
+							$className: "DataModel",
+							ReplicatedStorage: {
+								$className: "ReplicatedStorage",
+								Gui: { $path: "gui" },
+							},
+						},
+					},
+				});
+
+				expect(storage.Gui).toEqual({ $path: "gui" });
+			});
+
 			it("should let the tree's fields win on its container, merging properties", async () => {
 				await write("src/Gui/client/Hud.luau");
 				await writeMeta("src/Gui/init.meta.json", {

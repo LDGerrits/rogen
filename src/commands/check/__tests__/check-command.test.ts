@@ -156,6 +156,53 @@ describe("check command", () => {
 			]);
 		});
 
+		it("should say them when several errors elsewhere stop the write", async () => {
+			await writeConfig("default.rogen.json", {
+				routes: { Shared: "ReplicatedStorage/Shared", ...ROUTES },
+			});
+			await write(
+				"src/F/Shared/Good.luau",
+				"src/F/Shared/Bad@Server.luau",
+				"src/F/Shared/Worse@Server.luau"
+			);
+
+			const result = await run({ _: ["src/F/Shared/Good.luau"] });
+
+			expect(result.isErr()).toBe(true);
+			expect(logService.texts("warn")).toEqual([
+				"The write stops on the errors above, so the paths were checked only as far as it gets; fix them and check again.",
+			]);
+		});
+
+		it("should fail when a path's config is named by two files", async () => {
+			await writeConfig("game.rogen.json", { routes: ROUTES });
+			await writeConfig("game.rogen.jsonc", { routes: ROUTES });
+
+			const result = await run({ _: ["game"] });
+
+			expect((result as { error: Error }).error.message).toContain(
+				"game.rogen.json"
+			);
+			expect(printed()).toEqual([]);
+		});
+
+		it("should fail when the tree mounts the source path of an instance it checks", async () => {
+			await writeConfig("default.rogen.json", {
+				routes: ROUTES,
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { $path: "src" },
+				},
+			});
+			await write("src/F/Shared/Good.luau");
+
+			const result = await run({ _: ["ServerScriptService.Main"] });
+
+			expect(failureOf(result).diagnostics).toMatchObject([
+				{ code: "tree.mountsSourcePath" },
+			]);
+		});
+
 		it("should list what stops the build in the JSON document, beside the findings", async () => {
 			await writeConfig("default.rogen.json", {
 				routes: { Shared: "ReplicatedStorage/Shared", ...ROUTES },

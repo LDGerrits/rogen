@@ -1,6 +1,6 @@
 import { isObject, isSameJson } from "../../base/objects.js";
 import { tryWith } from "../../base/result.js";
-import { isChildNode } from "../rojo/rojo-project.js";
+import { RojoNode, isChildNode } from "../rojo/rojo-project.js";
 
 const isEmptyBinaryString = (value: unknown): boolean =>
 	isObject(value) &&
@@ -34,8 +34,7 @@ function strip(
  * A project tree without the empty `SerializedOverrides` Studio saves on every
  * instance, which Rojo doesn't know and so writes as a change.
  */
-export function treeWithoutSerializedOverrides<T>(node: T): T {
-	if (!isObject(node)) return node;
+export function treeWithoutSerializedOverrides(node: RojoNode): RojoNode {
 	return Object.fromEntries(
 		Object.entries(strip(node, "$properties")).map(([key, child]) => [
 			key,
@@ -43,7 +42,7 @@ export function treeWithoutSerializedOverrides<T>(node: T): T {
 				? treeWithoutSerializedOverrides(child)
 				: child,
 		])
-	) as T;
+	);
 }
 
 export function withoutSerializedOverrides<T>(file: T): T {

@@ -155,7 +155,7 @@ export class CoreWriteService implements WriteService {
 			(outcome) => outcome.file
 		);
 		return new WriteRun(
-			selection.entries.flatMap((entry) => outcomes.get(entry.file) ?? [])
+			selection.entries.flatMap((entry) => outcomes.get(entry.file)!)
 		);
 	}
 
@@ -338,7 +338,7 @@ export class CoreWriteService implements WriteService {
 		options: WriteOptions & {
 			readonly independent?: boolean;
 			readonly reader?: FileSystemService;
-		} = {}
+		}
 	): Promise<LoadedConfig[]> {
 		const prepared = attempts.filter(
 			(attempt): attempt is PreparedConfig => !isFailed(attempt)

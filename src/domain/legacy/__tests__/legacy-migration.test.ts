@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import path from "path";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MigratedProject } from "../../init/project-migration.js";
@@ -57,6 +58,15 @@ describe("LegacyMigration", () => {
 				{ from: ".rogen.json", to: ".rogen.json.v1" },
 				{ from: "lobby.rogen.json", to: "lobby.rogen.json.v1" },
 			]);
+		});
+
+		it("should find nothing when the v1 config can't be read", async () => {
+			await writeConfig({ source: "src" });
+			jest.spyOn(fs, "readFile").mockRejectedValue(new Error("denied"));
+
+			expect((await new LegacyMigration().find(ROOT, fs)).unwrap()).toBe(
+				undefined
+			);
 		});
 
 		it("should fail when the project file the config names can't be read", async () => {
@@ -124,6 +134,77 @@ describe("LegacyMigration", () => {
 				$className: "DataModel",
 				ReplicatedStorage: { Packages: { $path: "Packages" } },
 			});
+		});
+
+		it("should read the source from src when the config names none", async () => {
+			await writeConfig({ aliases: {} });
+
+			expect((await configOf())?.sourcePaths).toEqual(["src"]);
+		});
+
+		it("should mount the roblox-ts packages v1 mounted for a config without a project", async () => {
+			await write("tsconfig.json", "{}");
+			await fs.createDirectory(path.join(ROOT, "node_modules/@rbxts"));
+			await writeConfig({ source: "src" });
+
+			expect(await configOf()).toMatchObject({
+				globIgnorePaths: ["**/package.json", "**/tsconfig.json"],
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: {
+						rbxts_include: {
+							$path: "include",
+							node_modules: {
+								$className: "Folder",
+								"@rbxts": { $path: "node_modules/@rbxts" },
+							},
+						},
+					},
+				},
+			});
+		});
+
+		it("should mount the pesde packages v1 mounted for a config without a project", async () => {
+			await write("pesde.toml", "");
+			await fs.createDirectory(path.join(ROOT, "roblox_packages"));
+			await writeConfig({ source: "src" });
+
+			expect((await configOf())?.tree).toEqual({
+				$className: "DataModel",
+				ReplicatedStorage: { Packages: { $path: "roblox_packages" } },
+			});
+		});
+
+		it("should name the project roblox-game when its folder has no name", async () => {
+			await fs.writeFile(
+				path.resolve("/.rogen.json"),
+				JSON.stringify({ source: "src" })
+			);
+
+			const found = (
+				await new LegacyMigration().find(path.resolve("/"), fs)
+			).unwrap();
+
+			expect(found?.configs[0].config.name).toBe("roblox-game");
+		});
+
+		it("should note the routes that keep files where v1 put them", async () => {
+			await writeConfig({ source: "src" });
+
+			expect((await migrate()).notes).toContain(
+				"The routes send each file where v1 did, such as Server files to ServerScriptService/server, so requires keep working."
+			);
+		});
+
+		it("should note that 'rogen write' writes the project files v1 wrote", async () => {
+			await write(".darklua.json", "{}");
+			await write("default.project.json", "{}");
+			await write("build.project.json", "{}");
+			await writeConfig({ source: "src" });
+
+			expect((await migrate()).notes).toContain(
+				"v1 wrote default.project.json and build.project.json, which init doesn't lift: 'rogen write' writes them now."
+			);
 		});
 
 		it("should keep the globs v1 wrote into its project file", async () => {
@@ -272,6 +353,20 @@ describe("LegacyMigration", () => {
 			});
 		});
 
+		it("should sync from the folder of a mode's output when it is a source folder", async () => {
+			await writeConfig({
+				source: "lib",
+				release: { output: "lib/release.project.json", build: "lib" },
+			});
+
+			expect(await configOf("lib/release.rogen.json")).toMatchObject({
+				sourcePaths: ["."],
+			});
+			expect(
+				(await configOf("lib/release.rogen.json"))?.compiledPath
+			).toBeUndefined();
+		});
+
 		it("should write one config when two modes wrote one project file", async () => {
 			await writeConfig({
 				source: "src",
@@ -316,6 +411,19 @@ describe("LegacyMigration", () => {
 					["server-Hit.luau", "Hit@Server.luau"],
 				])
 			);
+		});
+
+		it("should spell a key as most folders do when they spell it three ways", async () => {
+			await write("src/A/Server/Hit.luau");
+			await write("src/B/server/Hit.luau");
+			await write("src/C/server/Hit.luau");
+			await write("src/D/SERVER/Hit.luau");
+
+			const routes = Object.keys((await configOf())?.routes ?? {});
+
+			expect(routes).toContain("server");
+			expect(routes).not.toContain("Server");
+			expect(routes).not.toContain("SERVER");
 		});
 
 		it("should spell each key as most of the routing folders do, since v2 matches keys exactly", async () => {
@@ -415,6 +523,22 @@ describe("LegacyMigration", () => {
 			expect(await codesOf()).toEqual(["legacy.renameClash"]);
 		});
 
+		it("should rename a shared file once, without a warning, when two configs route it alike", async () => {
+			await writeConfig(
+				{ source: "src", luau: { output: "lobby.project.json" } },
+				"lobby.rogen.json"
+			);
+			await write("src/Combat/Combat_Server.luau");
+
+			expect(await renamesOf()).toEqual([
+				{
+					from: "src/Combat/Combat_Server.luau",
+					to: "src/Combat/Combat@Server.luau",
+				},
+			]);
+			expect(await codesOf()).toEqual([]);
+		});
+
 		it("should warn when two configs route a shared file apart", async () => {
 			await writeConfig({ source: "src" });
 			await writeConfig(
@@ -446,6 +570,38 @@ describe("LegacyMigration", () => {
 				"src/Debug/Cheats_dev.luau and src/dev/Tool_Server.luau"
 			);
 			expect(await renamesOf()).toEqual([]);
+		});
+
+		it("should take every file in a folder with a tag's marker file as tagged", async () => {
+			await writeConfig({ source: "src", tags: { dev: false } });
+			await write("src/Debug/.dev", "");
+			await write("src/Debug/Tool_Server.luau");
+
+			const [warning] = (await migrate()).warnings;
+
+			expect(warning.message).toContain("(src/Debug/Tool_Server.luau)");
+			expect(await renamesOf()).toEqual([]);
+		});
+
+		it("should warn about a mode's tags, naming no tag or file", async () => {
+			await writeConfig({ source: "src", luau: { tags: { dev: true } } });
+
+			expect((await migrate()).warnings).toMatchObject([
+				{
+					code: "legacy.tags",
+					message:
+						"v1's tags aren't carried over, since v2 has none. Move each tag's files into a folder, and list it last in \"sourcePaths\" of the configs that want it.",
+				},
+			]);
+		});
+
+		it("should route a service files go to with no wrapper of their own, into the shared wrapper", async () => {
+			await writeConfig({ source: "src" });
+			await write("src/Map/Workspace/Spawn.luau");
+
+			expect((await configOf())?.routes?.Workspace).toBe(
+				"Workspace/shared"
+			);
 		});
 
 		it("should warn about v1's markers that change how a folder is read", async () => {

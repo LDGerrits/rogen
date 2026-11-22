@@ -31,7 +31,7 @@ export class StartedRojo extends AbstractDisposable implements RojoProcess {
 
 	constructor(
 		private readonly child: ChildProcess,
-		quiet = false
+		quiet: boolean
 	) {
 		super();
 		this._register(child);

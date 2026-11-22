@@ -3,7 +3,10 @@ import { jest } from "@jest/globals";
 import "../serve-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 
-import { Result } from "../../../base/result.js";
+import { Result, err } from "../../../base/result.js";
+import { CoreServeService } from "../../../domain/serve/core-serve-service.js";
+import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
+import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import {
 	exitCode,
 	exitCodeOf,
@@ -121,6 +124,73 @@ describe("serve command", () => {
 			"success: Serving repo at localhost:34872 · http://localhost:34872/\n  In Studio, press Connect in the Rojo plugin.",
 		]);
 		expect(logService.sendsOwnLinesToStderr).toBe(false);
+	});
+
+	it("should refuse to serve a config with errors, and write nothing", async () => {
+		await memFs.writeFile(
+			"/repo/default.rogen.json",
+			JSON.stringify({ bogus: "base" })
+		);
+
+		const error = await failureOf(serve());
+
+		expect(error.message).toContain("bogus");
+		expect(await memFs.exists("/repo/default.project.json")).toBe(false);
+	});
+
+	it("should warn which config it took when a name is both a folder and a file", async () => {
+		await memFs.writeFile(
+			"/repo/lobby/default.rogen.json",
+			JSON.stringify({
+				sourcePaths: ["../src"],
+				routes: { "*": "ReplicatedStorage" },
+			})
+		);
+		await memFs.writeFile("/repo/lobby.rogen.json", "{}");
+
+		void serve(["lobby"]);
+		await settle();
+
+		expect(logService.texts("warn")).toContain(
+			'"lobby" is a folder with a default config and also lobby.rogen.json: using the folder. To use the file, name it: lobby.rogen.json.'
+		);
+	});
+
+	it("should report a rewrite that throws once it serves, and go on serving", async () => {
+		void serve();
+		await settle();
+		logService.clear();
+		jest.spyOn(CoreWriteService.prototype, "rewrite").mockRejectedValueOnce(
+			new Error("disk on fire")
+		);
+		jest.spyOn(CoreWriteService.prototype, "recheck").mockRejectedValueOnce(
+			new Error("disk on fire")
+		);
+
+		await memFs.writeFile("/repo/src/B.luau", "");
+		await settle();
+
+		expect(logService.texts("error")).toEqual(["disk on fire"]);
+		expect(processes.spawned[0].terminated).toBe(false);
+	});
+
+	it("should fail when the session can't start", async () => {
+		jest.spyOn(CoreServeService.prototype, "serve").mockReturnValueOnce(
+			err(
+				new DiagnosticsError([
+					errorDiagnostic(
+						"x.err",
+						{ resource: "/repo/default.rogen.json" },
+						"Can't watch."
+					),
+				])
+			)
+		);
+
+		const error = await failureOf(serve());
+
+		expect(error.message).toContain("Can't watch.");
+		expect(processes.spawned).toEqual([]);
 	});
 
 	it("should print the agent files it updated as an agentRules line first under --json", async () => {

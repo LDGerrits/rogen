@@ -1,6 +1,6 @@
 import { parseArgs as nodeParseArgs } from "util";
 import { Result, err, ok } from "../../base/result.js";
-import { ErrorUtils, UsageError } from "../../base/errors.js";
+import { UsageError } from "../../base/errors.js";
 import {
 	closestMatch,
 	joinedClosestFirst,
@@ -289,98 +289,85 @@ export function parseArgs(
 	optionsFor: (command?: string) => readonly OptionDescriptor[],
 	commands: readonly string[]
 ): Result<ParsedCli, Error> {
-	try {
-		const allOptions = optionsFor();
-		const ownersOf = (name: string, negated: boolean) =>
-			commands
-				.filter((owner) =>
-					optionsFor(owner).some(
-						(option) =>
-							option.name === name &&
-							(negated
-								? option.negation !== undefined
-								: option.negation !== "only")
-					)
+	const allOptions = optionsFor();
+	const ownersOf = (name: string, negated: boolean) =>
+		commands
+			.filter((owner) =>
+				optionsFor(owner).some(
+					(option) =>
+						option.name === name &&
+						(negated
+							? option.negation !== undefined
+							: option.negation !== "only")
 				)
-				.sort();
-		const named = tokenize(withShortValues(args, allOptions), allOptions)
-			.tokens?.find((token) => token.kind === "positional")
-			?.value.toLowerCase();
-		const typed = withShortValues(
-			withAliases(
-				args,
-				named !== undefined && commands.includes(named)
-					? optionsFor(named)
-					: []
-			),
-			allOptions
-		);
-		const { values, tokens = [] } = tokenize(typed, allOptions);
-		const terminator = tokens.find(
-			(token) => token.kind === "option-terminator"
-		);
-		const positionals = tokens.flatMap((token) =>
-			token.kind === "positional" &&
-			(!terminator || token.index < terminator.index)
-				? [token.value]
+			)
+			.sort();
+	const named = tokenize(withShortValues(args, allOptions), allOptions)
+		.tokens?.find((token) => token.kind === "positional")
+		?.value.toLowerCase();
+	const typed = withShortValues(
+		withAliases(
+			args,
+			named !== undefined && commands.includes(named)
+				? optionsFor(named)
 				: []
+		),
+		allOptions
+	);
+	const { values, tokens } = tokenize(typed, allOptions);
+	const terminator = tokens.find(
+		(token) => token.kind === "option-terminator"
+	);
+	const positionals = tokens.flatMap((token) =>
+		token.kind === "positional" &&
+		(!terminator || token.index < terminator.index)
+			? [token.value]
+			: []
+	);
+	const afterTerminator = terminator ? typed.slice(terminator.index + 1) : [];
+	if (positionals.length === 0 && afterTerminator.length > 0)
+		return err(
+			new UsageError(
+				`'${afterTerminator[0]}' comes after '--', which ends the options, so it can't be the command.`,
+				"Remove the '--' before it."
+			)
 		);
-		const afterTerminator = terminator
-			? typed.slice(terminator.index + 1)
-			: [];
-		if (positionals.length === 0 && afterTerminator.length > 0)
-			return err(
-				new UsageError(
-					`'${afterTerminator[0]}' comes after '--', which ends the options, so it can't be the command.`,
-					"Remove the '--' before it."
-				)
-			);
-		const commandNamed = namedCommand(positionals);
-		const runsHelp =
-			positionals.length === 0 || asksForHelpOrVersion(values);
-		const helpRawNames = tokens.flatMap((token) =>
-			token.kind === "option" && token.name === "help"
-				? [token.rawName]
-				: []
-		);
-		const shortHelp =
-			helpRawNames.length > 0 &&
-			helpRawNames.every((rawName) => rawName === "-h");
+	const commandNamed = namedCommand(positionals);
+	const runsHelp = positionals.length === 0 || asksForHelpOrVersion(values);
+	const helpRawNames = tokens.flatMap((token) =>
+		token.kind === "option" && token.name === "help" ? [token.rawName] : []
+	);
+	const shortHelp =
+		helpRawNames.length > 0 &&
+		helpRawNames.every((rawName) => rawName === "-h");
 
-		if (commands.includes(commandNamed)) {
-			const problem = findOptionProblem(
-				tokens,
-				optionsFor(commandNamed),
-				ownersOf,
-				positionals.length > 0 ? commandNamed : undefined
-			);
-			if (problem) return err(problem);
-		}
-		if (values.verbose && values.quiet) {
-			return err(
-				new UsageError("--verbose can't be combined with --quiet.")
-			);
-		}
-		return ok({
-			command: runsHelp ? HELP_COMMAND : commandNamed,
-			line: {
-				positionals: [
-					...(runsHelp
-						? positionals.slice(0, 1)
-						: positionals.slice(1)),
-					...afterTerminator,
-				],
-				...(shortHelp && { shortHelp: true as const }),
-				...(positionals.length === 0 &&
-					!asksForHelpOrVersion(values) && {
-						asksForNothing: true as const,
-					}),
-				options: values as CommandLine["options"],
-			},
-		});
-	} catch (error) {
-		return err(ErrorUtils.fromUnknown(error));
+	if (commands.includes(commandNamed)) {
+		const problem = findOptionProblem(
+			tokens,
+			optionsFor(commandNamed),
+			ownersOf,
+			positionals.length > 0 ? commandNamed : undefined
+		);
+		if (problem) return err(problem);
 	}
+	if (values.verbose && values.quiet) {
+		return err(new UsageError("--verbose can't be combined with --quiet."));
+	}
+	return ok({
+		command: runsHelp ? HELP_COMMAND : commandNamed,
+		line: {
+			positionals: [
+				...(runsHelp ? positionals.slice(0, 1) : positionals.slice(1)),
+				...afterTerminator,
+			],
+			...(shortHelp && { shortHelp: true as const }),
+			...(positionals.length === 0 &&
+				!asksForHelpOrVersion(values) && {
+					asksForNothing: true as const,
+				}),
+			options: values as CommandLine["options"],
+		},
+	});
 }
 
 const ownArgs = (argv: readonly string[]): readonly string[] => {

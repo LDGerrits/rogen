@@ -26,6 +26,7 @@ describe("RoutePatterns", () => {
 			"*",
 			"Server",
 			"**.tsx",
+			"Main{.luau,*}*",
 			"*.",
 			"src/*.tsx",
 			"*@client",

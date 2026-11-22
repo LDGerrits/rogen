@@ -124,7 +124,7 @@ export class ServerOutput extends AbstractDisposable {
 	private say(
 		severity: ServerMessage["severity"],
 		said: string,
-		isLogRecord = true,
+		isLogRecord: boolean,
 		stdout?: string,
 		details: readonly string[] = []
 	): void {

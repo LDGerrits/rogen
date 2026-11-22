@@ -54,8 +54,7 @@ export class CoreReleaseService implements ReleaseService {
 
 	async published(): Promise<readonly string[]> {
 		const cache = await this.read();
-		if (this.now() - cache.checkedAt >= DAY_MS)
-			this.refresh().catch(() => {});
+		if (this.now() - cache.checkedAt >= DAY_MS) void this.refresh();
 		return cache.versions;
 	}
 

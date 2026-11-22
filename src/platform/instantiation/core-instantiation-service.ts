@@ -21,10 +21,7 @@ interface Pending {
 
 class CyclicDependencyError extends Error {
 	constructor(graph: Graph<Pending>) {
-		super("cyclic dependency between services");
-		this.message =
-			graph.findCycleSlow() ??
-			`UNABLE to detect cycle, dumping graph: \n${graph.toString()}`;
+		super(graph.findCycleSlow());
 	}
 }
 
@@ -44,7 +41,7 @@ export class CoreInstantiationService
 	private isDisposed = false;
 
 	constructor(
-		services: ServiceCollection = new ServiceCollection(),
+		services: ServiceCollection,
 		strict = false,
 		parent?: CoreInstantiationService
 	) {
@@ -191,19 +188,6 @@ export class CoreInstantiationService
 		return entry;
 	}
 
-	private setCreatedServiceInstance(
-		id: ServiceIdentifier<unknown>,
-		instance: unknown
-	): void {
-		if (this.services.get(id) instanceof SyncDescriptor) {
-			this.services.set(id, instance);
-		} else if (this.parent) {
-			this.parent.setCreatedServiceInstance(id, instance);
-		} else {
-			throw new Error("illegal state - setting UNKNOWN service instance");
-		}
-	}
-
 	private getOrCreateServiceInstance<T>(id: ServiceIdentifier<T>): T {
 		const thing = this.getServiceInstanceOrDescriptor(id);
 		return thing instanceof SyncDescriptor
@@ -266,13 +250,8 @@ export class CoreInstantiationService
 				break;
 			}
 			for (const { data } of leaves) {
-				if (this.isNotBuiltYet(data.id)) {
-					const instance = this.createServiceInstanceWithOwner(
-						data.id,
-						data.desc
-					);
-					this.setCreatedServiceInstance(data.id, instance);
-				}
+				if (this.isNotBuiltYet(data.id))
+					this.buildServiceInstanceWithOwner(data.id, data.desc);
 				graph.removeNode(data);
 			}
 		}
@@ -285,19 +264,13 @@ export class CoreInstantiationService
 		);
 	}
 
-	private createServiceInstanceWithOwner(
+	private buildServiceInstanceWithOwner(
 		id: ServiceIdentifier<unknown>,
 		desc: SyncDescriptor<unknown>
-	): unknown {
-		if (this.services.get(id) instanceof SyncDescriptor) {
-			return this.createServiceInstance(desc);
-		}
-		if (this.parent) {
-			return this.parent.createServiceInstanceWithOwner(id, desc);
-		}
-		throw new Error(
-			`illegal state - creating UNKNOWN service instance ${id}`
-		);
+	): void {
+		if (this.services.get(id) instanceof SyncDescriptor)
+			this.services.set(id, this.createServiceInstance(desc));
+		else this.parent!.buildServiceInstanceWithOwner(id, desc);
 	}
 
 	private createServiceInstance(desc: SyncDescriptor<unknown>): unknown {

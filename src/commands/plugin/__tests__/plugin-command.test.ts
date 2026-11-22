@@ -159,4 +159,22 @@ describe("plugin command", () => {
 		expect((await running).isErr()).toBe(true);
 		expect(processes.spawned).toEqual([]);
 	});
+
+	it("should print no Rojo found as diagnostics in the JSON document with --json", async () => {
+		processes.installed.clear();
+
+		const { log, running } = start(["install"], { json: true });
+
+		expect((await running).isErr()).toBe(true);
+		expect(log.texts("print").map((text) => JSON.parse(text))).toEqual([
+			{
+				action: "install",
+				outcome: "failed",
+				messages: [],
+				diagnostics: [
+					expect.objectContaining({ code: "rojo.notFound" }),
+				],
+			},
+		]);
+	});
 });

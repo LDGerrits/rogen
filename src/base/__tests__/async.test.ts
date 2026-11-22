@@ -3,6 +3,7 @@ import {
 	DeferredPromise,
 	RunOnceScheduler,
 	Sequencer,
+	aborted,
 	timeout,
 } from "../async.js";
 import { setUnexpectedErrorHandler } from "../errors.js";
@@ -204,6 +205,25 @@ describe("Async Utilities", () => {
 			await timeout(10_000, stop.signal);
 
 			expect(jest.getTimerCount()).toBe(0);
+		});
+	});
+
+	describe("aborted", () => {
+		it("should resolve once its signal aborts", async () => {
+			const stop = new AbortController();
+			const done = jest.fn();
+			const settled = aborted(stop.signal).then(done);
+
+			await Promise.resolve();
+			expect(done).not.toHaveBeenCalled();
+			stop.abort();
+			await settled;
+
+			expect(done).toHaveBeenCalled();
+		});
+
+		it("should resolve at once when its signal has aborted already", async () => {
+			await expect(aborted(AbortSignal.abort())).resolves.toBeUndefined();
 		});
 	});
 });

@@ -36,7 +36,7 @@ export class SyncbackLayout {
 	constructor(
 		readonly config: ResolvedConfig,
 		locations: readonly FileLocation[],
-		others: readonly ResolvedConfig[] = []
+		others: readonly ResolvedConfig[]
 	) {
 		this.placed = locations.filter(isPlaced);
 		this.roots = config.sourcePaths.map(toPosix);

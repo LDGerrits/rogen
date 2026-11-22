@@ -167,7 +167,7 @@ export class CodeFinder {
 				const tied = [...spelled]
 					.filter(([, count]) => count === most)
 					.map(([spelling]) => spelling);
-				const preferred = given.get(key) ?? tied[0];
+				const preferred = given.get(key)!;
 				return [key, tied.includes(preferred) ? preferred : tied[0]];
 			})
 		);

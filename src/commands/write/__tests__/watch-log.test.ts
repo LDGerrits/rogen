@@ -25,7 +25,8 @@ import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-erro
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { LogLevel } from "../../../platform/log/log-service.js";
-import { WatchLog } from "../watch-log.js";
+import { err } from "../../../base/result.js";
+import { PrintedWatchLog, WatchJsonLog, WatchLog } from "../watch-log.js";
 
 const cwd = path.resolve("/repo");
 
@@ -610,5 +611,75 @@ describe("WatchLog.error", () => {
 		expect(logService.lines).toEqual([
 			"diagnosticError: default.project.json - error: Rojo couldn't build this project: (rojo.commandFailed)",
 		]);
+	});
+});
+
+describe("PrintedWatchLog", () => {
+	const printedLog = () => {
+		const logService = new MockLogService();
+		const log = instantiationOf([LogService, logService]).createInstance(
+			PrintedWatchLog,
+			cwd,
+			"watch"
+		);
+		return { log, logService };
+	};
+
+	it("should print only a broken config's errors, and leave out the other notices", () => {
+		const { log, logService } = printedLog();
+		const file = path.join(cwd, "default.rogen.json");
+
+		log.update(
+			updateOf({
+				notices: [
+					{
+						kind: "added",
+						file: path.join(cwd, "a/default.rogen.json"),
+					},
+					{
+						kind: "broken",
+						file,
+						errors: [
+							errorDiagnostic(
+								"x.err",
+								{ resource: file },
+								"bad."
+							),
+						],
+						keptLastValid: true,
+					},
+				],
+			})
+		);
+
+		expect(
+			logService.entries.map(({ kind, text }) => [kind, text])
+		).toEqual([
+			["diagnosticError", expect.stringContaining("bad.")],
+			["error", "Still writing from the last valid default.rogen.json."],
+		]);
+	});
+
+	it("should print a Rojo that could not start as an error", () => {
+		const { log, logService } = printedLog();
+
+		log.rojo(err(new Error("no rojo")), {
+			command: "sourcemap",
+			cwd,
+		});
+
+		expect(logService.lines).toEqual(["error: no rojo"]);
+	});
+});
+
+describe("WatchJsonLog", () => {
+	it("should print nothing when Rojo restarts", () => {
+		const logService = new MockLogService();
+
+		instantiationOf([LogService, logService])
+			.createInstance(WatchJsonLog, cwd)
+			.restarted();
+
+		expect(logService.lines).toEqual([]);
 	});
 });

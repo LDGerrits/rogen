@@ -113,4 +113,38 @@ describe("AbstractLogService formatting", () => {
 		);
 		consoleSpy.mockRestore();
 	});
+
+	it("should append each argument after the message, as JSON for objects", () => {
+		const consoleSpy = jest
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
+		const circular: Record<string, unknown> = {};
+		circular.self = circular;
+		const cause = new Error("inner");
+		cause.stack = "";
+
+		new PlainLogService().error("failed", { a: 1 }, 7, circular, cause);
+
+		expect(consoleSpy.mock.calls[0][0]).toBe(
+			'error: failed {"a":1} 7 [Unserializable Object] inner'
+		);
+		consoleSpy.mockRestore();
+	});
+
+	it("should use the message of an error or cause that has no stack", () => {
+		const consoleSpy = jest
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
+		const cause = new Error("root");
+		cause.stack = undefined;
+		const error = new Error("outer", { cause });
+		error.stack = undefined;
+
+		new PlainLogService().error(error);
+
+		expect(consoleSpy.mock.calls[0][0]).toBe(
+			"error: outer\nCaused by: root"
+		);
+		consoleSpy.mockRestore();
+	});
 });

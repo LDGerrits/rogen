@@ -1,4 +1,4 @@
-import { ReverseRouter } from "../reverse-router.js";
+import { NewInstance, ReverseRouter } from "../reverse-router.js";
 import { ROUTES, abs, layoutOf } from "./layout-fixtures.js";
 
 const posix = (...segments: string[]) => abs(...segments).replaceAll("\\", "/");
@@ -485,6 +485,32 @@ describe("ReverseRouter", () => {
 			});
 		});
 
+		it("should write a new feature plainly into the source path when only the fallback route reaches its parent", async () => {
+			const router = await routerOf([], {
+				routes: { "*": "ReplicatedStorage" },
+			});
+
+			expect(
+				router.place({
+					parent: ["ReplicatedStorage", "Net"],
+					name: "Types",
+					folder: false,
+				})
+			).toEqual({
+				kind: "placed",
+				home: { dir: posix("src/Net"), contents: false },
+			});
+		});
+
+		it("should refuse when the project has no source path", async () => {
+			const router = await routerOf([], { sourcePaths: [] });
+
+			expect(router.place(quest)).toEqual({
+				kind: "conflict",
+				reason: "the project has no source path",
+			});
+		});
+
 		it("should refuse when no route reaches the parent", async () => {
 			const router = await routerOf(["src/A/Server/X.luau"]);
 
@@ -654,6 +680,26 @@ describe("ReverseRouter", () => {
 			});
 		});
 
+		it("should advise routing the folder by its name when no route key names where the pattern puts it", async () => {
+			const router = await routerOf(["src/Input/MouseController.luau"], {
+				routes: { ...ROUTES, "*Controller": "Workspace" },
+			});
+
+			expect(
+				router.place({
+					parent: ["Workspace", "Input", "MouseController"],
+					name: "Cursor",
+					folder: false,
+					files: [["Cursor.luau"]],
+				})
+			).toMatchObject({
+				kind: "conflict",
+				reason: expect.stringContaining(
+					"make it a folder with an init file, and route that folder by its name, since the pattern *Controller matches no folder"
+				),
+			});
+		});
+
 		it("should not take a pattern key for a route key when nothing is beside it", async () => {
 			const router = await routerOf([], {
 				routes: {
@@ -698,6 +744,24 @@ describe("ReverseRouter", () => {
 		});
 	});
 
+	describe("marksFor", () => {
+		it("should offer the route that reaches deepest first", async () => {
+			const router = await routerOf([], {
+				routes: {
+					Shared: "ReplicatedStorage/Shared",
+					Rep: "ReplicatedStorage",
+				},
+			});
+
+			expect(
+				router.marksFor(["ReplicatedStorage", "Shared", "Net"])
+			).toEqual([
+				{ text: "@Shared", route: "Shared" },
+				{ text: "@Rep", route: "Rep" },
+			]);
+		});
+	});
+
 	describe("destination", () => {
 		const unit = (folder: boolean, files: string[][] = []) => ({
 			parent: ["ServerScriptService"],
@@ -707,7 +771,7 @@ describe("ReverseRouter", () => {
 		});
 		const server = { text: "@Server", route: "Server" };
 		const destination = async (
-			instance: ReturnType<typeof unit>,
+			instance: NewInstance,
 			file: string[],
 			home: { contents: boolean; mark?: typeof server }
 		) =>
@@ -830,6 +894,27 @@ describe("ReverseRouter", () => {
 					home
 				)
 			).toEqual(["Boot@Server.client.luau"]);
+		});
+
+		it("should mark a file or folder whose files are not known by its own name", async () => {
+			const marked = { contents: false, mark: server };
+			const quest = {
+				parent: ["ServerScriptService"],
+				name: "Quest",
+				folder: true,
+			};
+			const boot = {
+				parent: ["ServerScriptService"],
+				name: "Boot",
+				folder: false,
+			};
+
+			expect(
+				await destination(quest, ["Quest", "Main.luau"], marked)
+			).toEqual(["Quest", "Main@Server.luau"]);
+			expect(await destination(boot, ["Boot.luau"], marked)).toEqual([
+				"Boot@Server.luau",
+			]);
 		});
 
 		it("should keep a name when there is no mark", async () => {

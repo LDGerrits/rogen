@@ -18,7 +18,7 @@ const increasingWriteTime = () =>
 class FileNode {
 	readonly type = FileType.File;
 	modified = increasingWriteTime();
-	constructor(public content: string = "") {}
+	constructor(public content: string) {}
 }
 
 class DirectoryNode {
@@ -464,13 +464,11 @@ export class MemoryFileSystemService
 
 	private resolve(node: Node): FileNode | DirectoryNode | undefined {
 		if (node.type !== FileType.SymbolicLink) return node;
-		const target = this.lookup(node.target);
-		return target?.type === FileType.SymbolicLink ? undefined : target;
+		return this.lookup(node.target) as FileNode | DirectoryNode | undefined;
 	}
 
 	private fire(change: FileChange): void {
 		const links = this.collectLinks(this.root, "");
-		const seen = new Set([splitPath(change.path).join("/")]);
 		const pending = [{ change, via: new Set<string>() }];
 		const leading = change.path.startsWith("/") ? "/" : "";
 
@@ -485,8 +483,6 @@ export class MemoryFileSystemService
 					continue;
 				}
 				const aliasKey = link.key + key.slice(link.targetKey.length);
-				if (seen.has(aliasKey)) continue;
-				seen.add(aliasKey);
 				pending.push({
 					change: { ...current, path: leading + aliasKey },
 					via: new Set([...via, link.key]),

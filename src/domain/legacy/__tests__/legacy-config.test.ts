@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { LegacyConfig } from "../legacy-config.js";
@@ -103,6 +104,17 @@ describe("LegacyConfig", () => {
 			await fs.writeFile("/repo/.rogen.json", '{ "sourcePaths": [] }');
 			await fs.writeFile("/repo/rogen.json", "not json");
 			await fs.writeFile("/repo/notes.json", '{ "source": [] }');
+
+			expect(await LegacyConfig.find("/repo", fs)).toEqual([]);
+		});
+
+		it("should say nothing of a v1-named file that can't be read or isn't JSON", async () => {
+			await fs.writeFile("/repo/.rogen.json", '{ "source": [] }');
+			await fs.writeFile("/repo/game.rogen.json", "not json");
+			jest.spyOn(fs, "readFile").mockImplementation(async (file) => {
+				if (file === "/repo/.rogen.json") throw new Error("denied");
+				return "not json";
+			});
 
 			expect(await LegacyConfig.find("/repo", fs)).toEqual([]);
 		});

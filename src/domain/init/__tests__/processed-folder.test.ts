@@ -52,4 +52,8 @@ describe("ProcessedFolder", () => {
 	it("should take none when two folders repeat the source path", async () => {
 		expect(await find(["build/server", "dist/shared"])).toBeUndefined();
 	});
+
+	it("should take none when there is no source path to repeat", async () => {
+		expect(await find(["build/server"], [])).toBeUndefined();
+	});
 });

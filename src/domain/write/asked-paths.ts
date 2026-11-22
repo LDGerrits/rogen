@@ -28,12 +28,16 @@ export class AskedPaths {
 		);
 		if (covering.isErr()) return covering;
 		const readers = new Map<number, readonly string[]>();
-		for (const index of covering.value.uncovered) {
-			const one = asked[index];
-			if ("path" in one)
-				readers.set(index, await configService.readersOf(one.path));
-		}
+		for (const index of covering.value.uncovered)
+			readers.set(
+				index,
+				await configService.readersOf(AskedPaths.pathAt(asked, index))
+			);
 		return ok(new AskedPaths(args, asked, covering.value, readers));
+	}
+
+	private static pathAt(asked: readonly Asked[], index: number): string {
+		return (asked[index] as { readonly path: string }).path;
 	}
 
 	get groups(): CoveredTargets["groups"] {
@@ -50,18 +54,13 @@ export class AskedPaths {
 	}
 
 	get uncovered(): SkippedPath[] {
-		return this.covering.uncovered.flatMap((index): SkippedPath[] => {
-			const one = this.asked[index];
-			const readers = this.readers.get(index) ?? [];
-			return "path" in one
-				? [
-						{
-							path: one.path,
-							reason: "noConfig",
-							...(readers.length > 0 && { readers }),
-						},
-					]
-				: [];
+		return this.covering.uncovered.map((index): SkippedPath => {
+			const readers = this.readers.get(index)!;
+			return {
+				path: AskedPaths.pathAt(this.asked, index),
+				reason: "noConfig",
+				...(readers.length > 0 && { readers }),
+			};
 		});
 	}
 }
@@ -81,7 +80,7 @@ export async function skippedNotes(
 		skipped.map(async (one) => {
 			const path = relativeTo(cwd, one.path);
 			if (one.reason === "outsideSourcePaths")
-				return `note: ${path}: in no source path of ${relativeTo(cwd, one.config ?? "")}, so Rogen leaves it out of the project file.`;
+				return `note: ${path}: in no source path of ${relativeTo(cwd, one.config!)}, so Rogen leaves it out of the project file.`;
 			const readers = one.readers ?? [];
 			if (readers.length > 0) {
 				const commands = readers.map(

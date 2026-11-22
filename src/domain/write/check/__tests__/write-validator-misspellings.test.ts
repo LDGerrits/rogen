@@ -692,6 +692,29 @@ describe("WriteValidator rules", () => {
 				});
 			});
 
+			it("should not offer a rename for a file, or a folder deeper in, that another route governs", async () => {
+				await write(
+					"src/Shared/Data.server.json",
+					"src/Shared/Ui.client/Deep/A.luau"
+				);
+
+				const errors = await dotErrors({
+					routes: { ...SHARED, Shared: "ReplicatedStorage/shared" },
+				});
+
+				expect(listed(errors)).toEqual([
+					[
+						at("src/Shared/Data.server.json"),
+						'the "Shared" route governs it, so "@server" would do nothing; move it out of that route\'s files to route it',
+					],
+					[
+						at("src/Shared/Ui.client"),
+						'the "Shared" route governs it, so "@client" would do nothing; move it out of that route\'s files to route it',
+					],
+				]);
+				expect(renamesOf(errors)).toEqual({});
+			});
+
 			it("should still offer the rename when the route below the folder is one of its own", async () => {
 				await write("src/Ui.client/Sub@server/A.luau");
 
