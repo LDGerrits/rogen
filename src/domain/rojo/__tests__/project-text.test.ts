@@ -408,6 +408,13 @@ describe("domain/rojo/project-text", () => {
 
 				expect(formatted(text)).toBe(text);
 			});
+
+			it("should keep a comment inside an empty object", () => {
+				const text =
+					'{\n  "name": "Game",\n  "tree": {\n    // none\n  }\n}';
+
+				expect(formatted(text)).toBe(text);
+			});
 		});
 
 		it("should indent with two spaces and end without a newline", () => {
