@@ -1,9 +1,9 @@
 import { ProjectTemplate } from "../project-template.js";
 
 describe("ProjectTemplate", () => {
-	it("should write the .gitignore Rojo writes for each kind", () => {
+	it("should write the .gitignore Rojo writes for each kind, with every place file ignored", () => {
 		expect(new ProjectTemplate("place", "game").gitignore.content).toBe(
-			"# Project place file\n/game.rbxlx\n\n# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n\nsourcemap.json\n*.project.json\n"
+			"# Place files\n/*.rbxl\n/*.rbxlx\n\n# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n\nsourcemap.json\n*.project.json\n"
 		);
 		expect(new ProjectTemplate("model", "lib").gitignore.content).toBe(
 			"# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n\nsourcemap.json\n*.project.json\n"
@@ -13,15 +13,25 @@ describe("ProjectTemplate", () => {
 		);
 	});
 
-	it("should list the lines the language ignores after the rest", () => {
-		const { content } = new ProjectTemplate("place", "game", [
-			"/node_modules",
-			"/out",
-		]).gitignore;
+	it("should list compiler output and installed packages after the rest", () => {
+		const { content } = new ProjectTemplate("model", "lib", {
+			compiled: ["/out"],
+			installed: ["/node_modules", "/Packages"],
+		}).gitignore;
 
 		expect(content).toBe(
-			"# Project place file\n/game.rbxlx\n\n# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n\nsourcemap.json\n*.project.json\n\n# Compiler output and installed packages\n/node_modules\n/out\n"
+			"# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n\nsourcemap.json\n*.project.json\n\n# Compiler output\n/out\n\n# Installed packages\n/node_modules\n/Packages\n"
 		);
+	});
+
+	it("should leave out a section with nothing in it", () => {
+		const { content } = new ProjectTemplate("model", "lib", {
+			compiled: [],
+			installed: ["/Packages"],
+		}).gitignore;
+
+		expect(content).not.toContain("Compiler output");
+		expect(content).toContain("# Installed packages\n/Packages\n");
 	});
 
 	it("should write the one script of a model or a plugin, and none for a place", () => {

@@ -37,7 +37,7 @@ import { InitQuestions, UnplacedCode } from "./init-questions.js";
 import { InitSummary } from "./init-summary.js";
 import { InitKind, PlannedCommand, PlannedScaffold } from "./init-service.js";
 import { ProjectFiles } from "./project-files.js";
-import { ProjectTemplate } from "./project-template.js";
+import { IgnoredFiles, ProjectTemplate } from "./project-template.js";
 import { StarterProject } from "./starter-project.js";
 import { ProjectReader } from "./project-reader.js";
 import { Setup } from "./setup.js";
@@ -109,6 +109,23 @@ function mountsOf(directory: InitDirectory, language: Language): Mount[] {
 		...language.mounts(),
 		...directory.workspace.packageMounts(language),
 	];
+}
+
+function ignoredFilesOf(
+	directory: InitDirectory,
+	language: Language
+): IgnoredFiles {
+	const { workspace } = directory;
+	const robloxTs = RobloxTsStarter.of(language) !== undefined;
+	return {
+		compiled: robloxTs
+			? RobloxTsStarter.ignored(language.compiler?.outDir)
+			: [],
+		installed: [
+			...(robloxTs || workspace.nodeModules ? ["node_modules"] : []),
+			...(workspace.packageManager?.installedDirs ?? []),
+		].map((dir) => `/${dir}`),
+	};
 }
 
 function takesRoutes(tree: ProjectTree): boolean {
@@ -307,9 +324,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				new ProjectTemplate(
 					kind,
 					path.basename(directory.path),
-					RobloxTsStarter.of(language)
-						? RobloxTsStarter.ignored(language.compiler?.outDir)
-						: []
+					ignoredFilesOf(directory, language)
 				),
 				tree,
 				skipGit,

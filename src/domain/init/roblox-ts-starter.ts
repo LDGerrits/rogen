@@ -15,7 +15,7 @@ export class RobloxTsStarter {
 	}
 
 	static ignored(outDir = OUT_DIR): string[] {
-		return ["/node_modules", `/${outDir}`, "/include", "*.tsbuildinfo"];
+		return [`/${outDir}`, "/include", "*.tsbuildinfo"];
 	}
 
 	scaffold(several = false): PlannedScaffold {

@@ -7,6 +7,7 @@ export interface WorkspaceSpec {
 	readonly darkluaConfig?: string;
 	readonly packageManager?: "wally" | "pesde";
 	readonly packageDirs?: Iterable<string>;
+	readonly nodeModules?: boolean;
 	readonly testRunner?: string;
 	readonly robloxTs?: RobloxTsFacts;
 }
@@ -25,6 +26,7 @@ export function workspaceOf(spec: WorkspaceSpec = {}): DetectedWorkspace {
 						spec.packageManager === "wally" ? "WALLY" : "PESDE"
 					],
 		packageDirs: new Set(spec.packageDirs),
+		nodeModules: spec.nodeModules,
 		testRunner: spec.testRunner,
 	});
 }

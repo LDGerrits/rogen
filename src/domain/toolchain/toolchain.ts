@@ -24,7 +24,8 @@ export class PackageManager {
 		"wally",
 		"wally.toml",
 		"Packages",
-		"ServerPackages"
+		"ServerPackages",
+		["DevPackages"]
 	);
 	static readonly PESDE = new PackageManager(
 		"pesde",
@@ -45,8 +46,13 @@ export class PackageManager {
 		readonly id: string,
 		readonly manifest: string,
 		readonly shared: string,
-		readonly server: string
+		readonly server: string,
+		private readonly otherDirs: readonly string[] = []
 	) {}
+
+	get installedDirs(): string[] {
+		return [this.shared, this.server, ...this.otherDirs];
+	}
 
 	get sharedMount(): Mount {
 		return { path: this.shared, landing: PackageManager.SHARED_LANDING };
@@ -118,6 +124,7 @@ interface DetectedWorkspaceFields {
 	readonly darkluaConfig?: string;
 	readonly packageManager?: PackageManager;
 	readonly packageDirs: ReadonlySet<string>;
+	readonly nodeModules?: boolean;
 	readonly testRunner?: string;
 }
 
@@ -127,6 +134,7 @@ export class DetectedWorkspace {
 	readonly darkluaConfig?: string;
 	readonly packageManager?: PackageManager;
 	readonly packageDirs: ReadonlySet<string>;
+	readonly nodeModules: boolean;
 	readonly testRunner?: string;
 
 	constructor(fields: DetectedWorkspaceFields) {
@@ -135,6 +143,7 @@ export class DetectedWorkspace {
 		this.darkluaConfig = fields.darkluaConfig;
 		this.packageManager = fields.packageManager;
 		this.packageDirs = fields.packageDirs;
+		this.nodeModules = fields.nodeModules ?? false;
 		this.testRunner = fields.testRunner;
 	}
 

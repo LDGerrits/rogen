@@ -338,6 +338,14 @@ describe("CoreToolchainService.detect", () => {
 			expect(workspace.packageManager?.id).toBe("pesde");
 		});
 
+		it("should report whether node_modules exists", async () => {
+			expect((await toolchain().detect(cwd)).nodeModules).toBe(false);
+
+			await mkdir("node_modules");
+
+			expect((await toolchain().detect(cwd)).nodeModules).toBe(true);
+		});
+
 		it("should report the package directories that exist", async () => {
 			await mkdir("Packages");
 			await mkdir("roblox_server_packages");

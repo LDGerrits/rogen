@@ -8,11 +8,19 @@ const README = "README.md";
 const ROBLOX_LOCKS =
 	"# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n";
 
+export interface IgnoredFiles {
+	readonly compiled: readonly string[];
+	readonly installed: readonly string[];
+}
+
+const section = (heading: string, lines: readonly string[]): string =>
+	lines.length > 0 ? `\n# ${heading}\n${lines.join("\n")}\n` : "";
+
 export class ProjectTemplate {
 	constructor(
 		readonly kind: InitKind,
 		readonly name: string,
-		readonly ignored: readonly string[] = []
+		readonly ignored: IgnoredFiles = { compiled: [], installed: [] }
 	) {}
 
 	get readme(): PlannedFile | undefined {
@@ -23,17 +31,14 @@ export class ProjectTemplate {
 		const { name } = this;
 		const project =
 			this.kind === "place"
-				? `# Project place file\n/${name}.rbxlx\n\n${ROBLOX_LOCKS}`
+				? `# Place files\n/*.rbxl\n/*.rbxlx\n\n${ROBLOX_LOCKS}`
 				: this.kind === "plugin"
 					? `# Plugin model files\n/${name}.rbxmx\n/${name}.rbxm\n`
 					: ROBLOX_LOCKS;
-		const language =
-			this.ignored.length > 0
-				? `\n# Compiler output and installed packages\n${this.ignored.join("\n")}\n`
-				: "";
+		const { compiled, installed } = this.ignored;
 		return {
 			fileName: ".gitignore",
-			content: `${project}\nsourcemap.json\n*.project.json\n${language}`,
+			content: `${project}\nsourcemap.json\n*.project.json\n${section("Compiler output", compiled)}${section("Installed packages", installed)}`,
 		};
 	}
 

@@ -647,6 +647,43 @@ describe("TreePlan", () => {
 		);
 	});
 
+	describe("ignored files", () => {
+		const gitignoreOf = async (workspace: WorkspaceSpec) =>
+			(await plan({ ...luau, ...workspace })).files.find(
+				({ fileName }) => fileName === ".gitignore"
+			)!.content;
+
+		it("should ignore the package manager's folders", async () => {
+			expect(await gitignoreOf({ packageManager: "wally" })).toContain(
+				"# Installed packages\n/Packages\n/ServerPackages\n/DevPackages\n"
+			);
+			expect(await gitignoreOf({ packageManager: "pesde" })).toContain(
+				"# Installed packages\n/roblox_packages\n/roblox_server_packages\n"
+			);
+		});
+
+		it("should ignore node_modules when it is there", async () => {
+			expect(await gitignoreOf({ nodeModules: true })).toContain(
+				"# Installed packages\n/node_modules\n"
+			);
+		});
+
+		it("should ignore no packages without a manager or node_modules", async () => {
+			expect(await gitignoreOf(luau)).not.toContain("Installed packages");
+		});
+
+		it("should ignore roblox-ts's output and node_modules", async () => {
+			expect(
+				await gitignoreOf({
+					language: "roblox-ts",
+					robloxTs: { rbxtsScopes: ["@rbxts"] },
+				})
+			).toContain(
+				"# Compiler output\n/out\n/include\n*.tsbuildinfo\n\n# Installed packages\n/node_modules\n"
+			);
+		});
+	});
+
 	describe("package mounts", () => {
 		const uninstalledNote = (notes: readonly string[]) =>
 			notes.filter((note) => note.includes("isn't installed"));

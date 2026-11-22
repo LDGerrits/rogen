@@ -45,9 +45,8 @@ describe("RobloxTsStarter", () => {
 		]);
 	});
 
-	it("should ignore what create-roblox-ts would have", () => {
+	it("should ignore the compiler output create-roblox-ts would have", () => {
 		expect(RobloxTsStarter.ignored()).toEqual([
-			"/node_modules",
 			"/out",
 			"/include",
 			"*.tsbuildinfo",
@@ -220,7 +219,7 @@ describe("a new roblox-ts project", () => {
 			const planned = await plan({ skipGit: false });
 
 			expect(fileOf(planned, ".gitignore")?.content).toContain(
-				"/node_modules\n/out\n/include\n*.tsbuildinfo\n"
+				"/out\n/include\n*.tsbuildinfo\n\n# Installed packages\n/node_modules\n"
 			);
 		});
 
