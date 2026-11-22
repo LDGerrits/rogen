@@ -83,6 +83,15 @@ describe("domain/config/config", () => {
 	describe("DeclaredKeys", () => {
 		const routes = new DeclaredKeys(["server", "client", "shared"]);
 
+		it.each([
+			["Common", true],
+			["server", false],
+			["Server", false],
+			["My Lib", false],
+		])("should take %p as free to add as a key: %p", (name, free) => {
+			expect(routes.isFree(name)).toBe(free);
+		});
+
 		it("should hold the keys that are names, leaving out * and the other patterns", () => {
 			const keys = new DeclaredKeys(["*", "*.tsx", "server"]);
 

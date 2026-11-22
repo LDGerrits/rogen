@@ -1,4 +1,5 @@
 import path from "path";
+import { toNative } from "../../base/path.js";
 import { InitService } from "../../domain/init/init-service.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -18,7 +19,7 @@ export class RefreshAgentRules {
 		const { cwd, isCi } = this.environmentService;
 		if (isCi) return [];
 		const updated = (await this.initService.refreshAgentRules(cwd)).map(
-			(file) => path.relative(cwd, file)
+			(file) => toNative(file)
 		);
 		const line = agentRulesLine(updated);
 		if (output === "lines" && line)
@@ -26,7 +27,7 @@ export class RefreshAgentRules {
 		if (output === "text")
 			for (const file of updated)
 				this.logService.notice(
-					`Updated ${file} to this version of Rogen.`
+					`Updated ${path.relative(cwd, file)} to this version of Rogen.`
 				);
 		return updated;
 	}

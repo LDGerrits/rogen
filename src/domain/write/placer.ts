@@ -1,4 +1,4 @@
-import { mistypedRouteErrors } from "./mistyped-route-errors.js";
+import { FallbackRoute, mistypedRouteErrors } from "./mistyped-route-errors.js";
 import { compareByCodePoint } from "../../base/collections.js";
 import { isInside, joinPosix, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -78,9 +78,7 @@ export class Placer {
 				),
 				governed: governedNearMisses,
 				exists: (target) => Placer.listed(roots, target),
-				fallbackKey: this.config.patterns.nameKeyFor(
-					DeclaredKeys.FALLBACK_ROUTE
-				),
+				fallback: this.fallbackRoute(),
 			}),
 			...markerClashes.diagnostics(),
 			...this.ignoredAtErrors(
@@ -122,6 +120,20 @@ export class Placer {
 				errors: routeErrors,
 			})
 		);
+	}
+
+	private fallbackRoute(): FallbackRoute | undefined {
+		const key = this.config.patterns.nameKeyFor(
+			DeclaredKeys.FALLBACK_ROUTE
+		);
+		if (key !== undefined) return { key };
+		const target = this.config.routes.get(DeclaredKeys.FALLBACK_ROUTE);
+		if (target === undefined) return undefined;
+		const name = target.folders.at(-1) ?? target.service;
+		return {
+			target: target.toString(),
+			...(this.config.keys.isFree(name) && { freeKey: name }),
+		};
 	}
 
 	private scan(): ScannedRoot[] {

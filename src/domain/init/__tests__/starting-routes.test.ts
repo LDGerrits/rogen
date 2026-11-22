@@ -29,11 +29,44 @@ describe("domain/init/starting-routes", () => {
 			});
 		});
 
-		it("should spell a standard key as the code already spells it", () => {
+		it("should spell a standard key as the code already spells it, and the others in the same case", () => {
 			const routes = new StartingRoutes(
 				workspaceOf().languageFor("luau"),
 				undefined,
 				new Map([["server", "server"]])
+			);
+
+			expect(Object.keys(routes.routes)).toEqual([
+				"server",
+				"client",
+				"shared",
+				"*",
+			]);
+		});
+
+		it("should give the keys the code doesn't spell its first letter's case only", () => {
+			const routes = new StartingRoutes(
+				workspaceOf().languageFor("roblox-ts"),
+				undefined,
+				new Map([["server", "SERVER"]])
+			);
+
+			expect(Object.keys(routes.routes)).toEqual([
+				"SERVER",
+				"Client",
+				"Shared",
+				"*",
+			]);
+		});
+
+		it("should spell the keys the code doesn't spell the language's way when the code mixes cases", () => {
+			const routes = new StartingRoutes(
+				workspaceOf().languageFor("luau"),
+				undefined,
+				new Map([
+					["server", "server"],
+					["client", "Client"],
+				])
 			);
 
 			expect(Object.keys(routes.routes)).toEqual([
@@ -43,6 +76,26 @@ describe("domain/init/starting-routes", () => {
 				"*",
 			]);
 		});
+
+		it.each([
+			["server", "shared"],
+			["Server", "Shared"],
+		])(
+			"should weigh a derived key with the code's spellings, so a derived %s gives %s",
+			(derivedKey, shared) => {
+				const routes = new StartingRoutes(
+					workspaceOf().languageFor("luau"),
+					lifted({
+						ServerScriptService: {
+							Server: { $path: `src/${derivedKey}` },
+						},
+					}),
+					new Map([["client", "client"]])
+				);
+
+				expect(Object.keys(routes.routes)).toContain(shared);
+			}
+		);
 
 		describe("with routes derived from a project file", () => {
 			it("should put them first, replace the standard route of the same key, and send * where the shared folder went", () => {

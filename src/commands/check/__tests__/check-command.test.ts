@@ -326,6 +326,59 @@ describe("check command", () => {
 		});
 	});
 
+	describe("with named configs, one of which doesn't load", () => {
+		const lobby = (broken: Record<string, unknown>) =>
+			writeConfig("lobby.rogen.json", {
+				name: "lobby",
+				routes: ROUTES,
+				sourcePaths: ["src/lobby"],
+				...broken,
+			});
+
+		beforeEach(async () => {
+			await writeConfig("game.rogen.json", {
+				name: "game",
+				routes: ROUTES,
+				sourcePaths: ["src/game"],
+			});
+			await write("src/game/Clean.luau", "src/lobby/Clean.luau");
+		});
+
+		it.each([
+			["an unknown key", { unknownKey: true }],
+			["a key of the wrong type", { name: 5 }],
+			["routes of the wrong type", { routes: "x" }],
+		])(
+			"should pass a path its source paths don't read, when it has %s",
+			async (_, broken) => {
+				await lobby(broken);
+
+				const result = await run({ _: ["src/game"] });
+
+				expect(result.isOk()).toBe(true);
+			}
+		);
+
+		it("should fail on a path its source paths read", async () => {
+			await lobby({ unknownKey: true });
+
+			const result = await run({ _: ["src/lobby"] });
+
+			expect(found(failureOf(result))).toContainEqual([
+				"config.unknownField",
+				"lobby.rogen.json",
+			]);
+		});
+
+		it("should fail on every path when its source paths can't be read", async () => {
+			await lobby({ sourcePaths: "src/lobby" });
+
+			const result = await run({ _: ["src/game"] });
+
+			expect(result.isErr()).toBe(true);
+		});
+	});
+
 	describe("with several places", () => {
 		beforeEach(async () => {
 			for (const place of ["lobby", "arena"])
@@ -430,6 +483,18 @@ describe("check command", () => {
 				["tree.deadScript", "places/lobby/src/Buy.client.luau"],
 			]);
 			expect(logService.texts("notice")).toHaveLength(1);
+		});
+
+		it("should skip no file that a config named beside it reads", async () => {
+			await run({
+				_: [
+					"places/lobby/default.rogen.json",
+					"places/shared/src/Stray.client.luau",
+				],
+				json: true,
+			});
+
+			expect(document()).not.toHaveProperty("skipped");
 		});
 
 		it("should check a config named by its file whole", async () => {

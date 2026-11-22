@@ -12,6 +12,14 @@ const ROUTES: readonly { id: StandardRouteId; target?: string }[] = [
 
 export const STANDARD_ROUTE_IDS: readonly string[] = ROUTES.map(({ id }) => id);
 
+type KeyCase = "lower" | "upper";
+
+const caseOf = (key: string): KeyCase =>
+	key[0] === key[0].toLowerCase() ? "lower" : "upper";
+
+const inCase = (keyCase: KeyCase, id: StandardRouteId): string =>
+	keyCase === "lower" ? id : id[0].toUpperCase() + id.slice(1);
+
 export class StartingRoutes {
 	constructor(
 		private readonly language: Language,
@@ -39,11 +47,20 @@ export class StartingRoutes {
 		const spelled = this.spellings.get(id);
 		if (spelled !== undefined) return spelled;
 		const derived = [...(this.derived?.routes.keys() ?? [])];
+		if (this.spellings.size > 0) {
+			const cases = new Set(
+				[...this.spellings.values(), ...derived].map(caseOf)
+			);
+			return cases.size === 1
+				? inCase([...cases][0], id)
+				: this.language.routeKey(id);
+		}
 		if (derived.length === 0) return this.language.routeKey(id);
-		const lower = derived.filter((key) => key[0] === key[0].toLowerCase());
-		return lower.length * 2 >= derived.length
-			? id
-			: id[0].toUpperCase() + id.slice(1);
+		const lower = derived.filter((key) => caseOf(key) === "lower");
+		return inCase(
+			lower.length * 2 >= derived.length ? "lower" : "upper",
+			id
+		);
 	}
 
 	get routes(): Record<string, string> {

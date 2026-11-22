@@ -104,6 +104,10 @@ export class ConfigLoader {
 		const loaded = await this.reader.read(file);
 		if (loaded.isErr()) {
 			const failure = loaded.error;
+			const sourcePaths =
+				failure.kind === "invalid"
+					? ConfigValidator.sourcePathsIn(file, failure.value)
+					: undefined;
 			return {
 				files: [file],
 				resolved: err([
@@ -112,19 +116,24 @@ export class ConfigLoader {
 						? this.hintsOf(file, failure.value)
 						: []),
 				]),
+				...(sourcePaths && { sourcePaths }),
 			};
 		}
 		const config = loaded.value;
 		const value = config.model.contents;
 		const hints = this.hintsOf(file, value);
+		const resolved =
+			hints.length > 0
+				? err(hints)
+				: ConfigValidator.validateFile(config);
 		return {
 			files: [file],
 			value,
 			text: config.text,
-			resolved:
-				hints.length > 0
-					? err(hints)
-					: ConfigValidator.validateFile(config),
+			resolved,
+			...(resolved.isErr() && {
+				sourcePaths: ConfigValidator.sourcePathsIn(file, value),
+			}),
 		};
 	}
 
