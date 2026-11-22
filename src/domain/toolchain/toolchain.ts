@@ -48,9 +48,13 @@ export class PackageManager {
 		readonly server: string
 	) {}
 
+	get sharedMount(): Mount {
+		return { path: this.shared, landing: PackageManager.SHARED_LANDING };
+	}
+
 	mounts(installedDirs: ReadonlySet<string>): Mount[] {
 		return [
-			{ path: this.shared, landing: PackageManager.SHARED_LANDING },
+			this.sharedMount,
 			{ path: this.server, landing: PackageManager.SERVER_LANDING },
 		].filter(({ path }) => installedDirs.has(path));
 	}

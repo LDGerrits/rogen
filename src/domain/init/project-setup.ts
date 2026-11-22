@@ -20,6 +20,7 @@ import {
 	Darklua,
 	Language,
 	Mount,
+	PackageManager,
 	PlannedFile,
 } from "../toolchain/toolchain.js";
 import { DerivedRoutes } from "./derived-routes.js";
@@ -713,6 +714,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				`Left out the ${leftOut.length === 1 ? "route" : "routes"} ${joinedWithAnd(leftOut)}, since ${joinedWithAnd(sourcePaths)} holds folders or names spelled so, which Rojo places with the rest of their mount and a route would move. To route code that way, rename them and add the key to "routes".`
 			);
 		for (const note of tree.notes) builder.addNote(note);
+		const uninstalled = this.uninstalledPackages(choices.tree);
+		if (uninstalled) {
+			const { path: folder, landing } = uninstalled.sharedMount;
+			builder.addNote(
+				`Didn't mount ${folder}, since it isn't installed. Once you run ${uninstalled.id} install, mount it at ${landing}.`
+			);
+		}
 		if (choices.tree.kind === "lift" && choices.processed)
 			builder.addNote(
 				ProjectSetup.processedNote(
@@ -776,6 +784,21 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 		}
 		this.planNextSteps(builder, choices, tree);
+	}
+
+	private uninstalledPackages(tree: ProjectTree): PackageManager | undefined {
+		const { packageManager, packageDirs } = this.directory.workspace;
+		if (
+			!packageManager ||
+			packageDirs.has(packageManager.shared) ||
+			!takesRoutes(tree)
+		)
+			return undefined;
+		return carriedProject(tree)
+			?.mountedFolders()
+			.includes(packageManager.shared)
+			? undefined
+			: packageManager;
 	}
 
 	private summarise(

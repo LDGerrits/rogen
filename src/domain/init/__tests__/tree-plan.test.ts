@@ -648,6 +648,51 @@ describe("TreePlan", () => {
 	});
 
 	describe("package mounts", () => {
+		const uninstalledNote = (notes: readonly string[]) =>
+			notes.filter((note) => note.includes("isn't installed"));
+
+		it("should say it left out a manager's packages folder that isn't installed", async () => {
+			expect(
+				uninstalledNote((await plan({ packageManager: "wally" })).notes)
+			).toEqual([
+				"Didn't mount Packages, since it isn't installed. Once you run wally install, mount it at ReplicatedStorage/Packages.",
+			]);
+			expect(
+				uninstalledNote((await plan({ packageManager: "pesde" })).notes)
+			).toEqual([
+				"Didn't mount roblox_packages, since it isn't installed. Once you run pesde install, mount it at ReplicatedStorage/Packages.",
+			]);
+		});
+
+		it("should say nothing of packages that are installed, or without a manifest", async () => {
+			expect(uninstalledNote((await plan(withPackages)).notes)).toEqual(
+				[]
+			);
+			expect(uninstalledNote((await plan(luau)).notes)).toEqual([]);
+		});
+
+		it("should say nothing of packages a lifted tree already mounts", async () => {
+			const workspace: WorkspaceSpec = { packageManager: "wally" };
+			const files = planProject({
+				choices: {
+					...(await defaultProjectChoices(workspace)),
+					tree: lifted({
+						name: "my-game",
+						tree: {
+							$className: "DataModel",
+							ReplicatedStorage: {
+								Deps: { $path: "./Packages" },
+							},
+						},
+					}),
+				},
+				existingFiles: new Set(["default.project.json"]),
+				workspace,
+			}).unwrap();
+
+			expect(uninstalledNote(files.notes)).toEqual([]);
+		});
+
 		const rbxts: WorkspaceSpec = { language: "roblox-ts" };
 
 		it("should mount include and @rbxts for roblox-ts, and the scopes it found", async () => {
