@@ -3,6 +3,7 @@ import path from "path";
 import { compareByCodePoint } from "../../base/collections.js";
 import { ignoringGlob, literalGlob } from "../../base/glob.js";
 import { toNative, toPosix } from "../../base/path.js";
+import { UsageError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	FileSystemService,
@@ -207,7 +208,7 @@ export class MirrorWorkspace {
 		const skippedYaml: string[] = [];
 		const refused: UnplacedInstance[] = [];
 		for (;;) {
-			const ran = await rojo.listOn(this.file, signal);
+			const ran = await this.listChecked(rojo, signal);
 			if (ran.isOk()) return ok({ said: ran.value, refused });
 			// Rojo refuses a node of the project that the place doesn't hold,
 			// so a route's target the place lacks goes before the next run.
@@ -222,6 +223,60 @@ export class MirrorWorkspace {
 				await this.writeProject(copied, skippedYaml);
 			} else return err(rojo.explain(ran.error, this.layout));
 		}
+	}
+
+	/**
+	 * A name with a backslash, or one Rojo writes after a `.` or `..` that
+	 * is itself listed as written. A `$path` of a nested project may climb
+	 * out of the mirror too, but it leads to folders that already exist.
+	 */
+	private static isMisnamed(file: string, listed: ReadonlySet<string>) {
+		const names = file.split(path.sep);
+		const climbs = Math.max(
+			names.lastIndexOf(".."),
+			names.lastIndexOf(".")
+		);
+		return (
+			names.some((name) => name.includes("\\")) ||
+			(climbs >= 0 &&
+				listed.has(names.slice(0, climbs + 2).join(path.sep)))
+		);
+	}
+
+	/**
+	 * Rojo writes an instance named `..` or `../x` outside the folder it is
+	 * given, and one named `a/b` as the folders `a` and `b`, so a dry run
+	 * first finds the names whose files it would put elsewhere.
+	 */
+	private async listChecked(
+		rojo: RojoSyncback,
+		signal: AbortSignal
+	): Promise<Result<readonly ServerMessage[], Error>> {
+		const dry = await rojo.dryOn(this.file, signal);
+		if (dry.isErr()) return dry;
+		const { projectDir } = this.request.project;
+		const written = RojoSyncback.written(dry.value);
+		const made = new Set(
+			written.map((file) => path.resolve(projectDir, file))
+		);
+		const listed = new Set(written);
+		for (const file of written) {
+			const parent = path.dirname(path.resolve(projectDir, file));
+			if (
+				MirrorWorkspace.isMisnamed(file, listed) ||
+				!(
+					made.has(parent) ||
+					(await this.fileSystemService.isDirectory(parent))
+				)
+			)
+				return err(
+					new UsageError(
+						`The place holds an instance whose name Rojo can't write as one file or folder: it would write ${file.split(path.sep).slice(MIRROR.split("/").length).join("/")}, so nothing was written.`,
+						"Rename the instance in Studio, then run syncback again."
+					)
+				);
+		}
+		return rojo.listOn(this.file, signal);
 	}
 
 	private async copy(): Promise<Copied[]> {

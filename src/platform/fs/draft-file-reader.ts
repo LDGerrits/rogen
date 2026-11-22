@@ -1,6 +1,6 @@
 import { compareByCodePoint } from "../../base/collections.js";
 import path from "path";
-import { isInside } from "../../base/path.js";
+import { PathSet, isInside, selfAndAncestors } from "../../base/path.js";
 import {
 	FileSystemService,
 	FileType,
@@ -39,7 +39,7 @@ export class DraftFileReader implements FileSystemService {
 	private readonly files = new Map<string, string>();
 	private readonly folders = new Set<string>();
 	private readonly moves: readonly Move[];
-	private readonly removed: readonly string[];
+	private readonly removed: PathSet;
 
 	constructor(
 		draft: FileDraft,
@@ -49,7 +49,9 @@ export class DraftFileReader implements FileSystemService {
 			from: path.resolve(from),
 			to: path.resolve(to),
 		}));
-		this.removed = (draft.removed ?? []).map((at) => path.resolve(at));
+		this.removed = new PathSet(
+			(draft.removed ?? []).map((at) => path.resolve(at))
+		);
 		for (const [file, content] of draft.files) {
 			this.files.set(path.resolve(file), content);
 			this.addFolders(path.dirname(path.resolve(file)));
@@ -194,7 +196,9 @@ export class DraftFileReader implements FileSystemService {
 	}
 
 	private isRemoved(resolved: string): boolean {
-		return this.removed.some((gone) => isAtOrInside(resolved, gone));
+		for (const at of selfAndAncestors(resolved))
+			if (this.removed.has(at)) return true;
+		return false;
 	}
 
 	private beforeEveryMove(resolved: string): string | undefined {

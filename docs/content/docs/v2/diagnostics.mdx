@@ -1227,7 +1227,7 @@ error: the place no longer holds Workspace/Map, and the tree of the config defin
 
 Remove the node from the `tree` of the `.rogen.json`, or put the instance back in the place. Then run `rogen syncback` again.
 
-This error is only about the nodes that you wrote in the `tree`. Rogen syncs the files it placed through a mirror, so it can always remove them.
+Rogen syncs the files it placed through a mirror, so it can remove them, except where the project file it writes holds the instance as a node of its own: a folder with a nested project file in it, such as `src/Shop/Server/Lib.project.json`, and a service that a route makes when the place holds nothing in it. For those, the message names the files to delete, and renaming or deleting that feature in Studio has to wait until they are gone.
 
 ### `syncback.unplaced` [#syncback-unplaced]
 

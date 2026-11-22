@@ -56,10 +56,20 @@ describe("syncback command", () => {
 		return { log, running };
 	};
 
+	const checked = new WeakSet<object>();
+
 	const rojoRuns = async (count: number) => {
-		for (let i = 0; i < 100 && processes.spawned.length < count; i++)
+		const syncbacks = () =>
+			processes.spawned.filter(({ args }) => !args.includes("--dry-run"));
+		for (let i = 0; i < 100 && syncbacks().length < count; i++) {
+			for (const dry of processes.spawned)
+				if (dry.args.includes("--dry-run") && !checked.has(dry)) {
+					checked.add(dry);
+					dry.exit({ code: 0, signal: null });
+				}
 			await new Promise((resolve) => setImmediate(resolve));
-		return processes.spawned;
+		}
+		return syncbacks();
 	};
 
 	const said = (log: MockLogService) => log.entries.map(({ text }) => text);
@@ -392,7 +402,9 @@ describe("syncback command", () => {
 
 		expect((await running).isOk()).toBe(true);
 
-		expect(processes.spawned).toHaveLength(1);
+		expect(
+			processes.spawned.filter(({ args }) => !args.includes("--dry-run"))
+		).toHaveLength(1);
 		expect(await fs.readFile(abs("src/Combat/Server/Loot.luau"))).toBe(
 			"return 1"
 		);
@@ -427,7 +439,9 @@ describe("syncback command", () => {
 
 		expect((await running).isOk()).toBe(true);
 
-		expect(processes.spawned).toHaveLength(1);
+		expect(
+			processes.spawned.filter(({ args }) => !args.includes("--dry-run"))
+		).toHaveLength(1);
 		expect(
 			said(log).filter(
 				(line) => line === "Writing src/Combat/Server/Loot.luau"
@@ -507,7 +521,9 @@ describe("syncback command", () => {
 
 		expect((await running).isOk()).toBe(true);
 
-		expect(processes.spawned).toHaveLength(1);
+		expect(
+			processes.spawned.filter(({ args }) => !args.includes("--dry-run"))
+		).toHaveLength(1);
 		expect(said(log)).toContain("Removing src/Combat/Server/Combat.luau");
 		expect(said(log)).toContain("Nothing was written.");
 		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(

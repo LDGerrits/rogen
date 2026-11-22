@@ -65,7 +65,7 @@ async function dryRunOf(command: string) {
 		input: "game.rbxl",
 	};
 	const before = await snapshot(fs, cwd);
-	const spawned = processes.nextSpawned();
+	const checking = processes.nextSpawned();
 	const running = commandHarness({
 		cwd,
 		fs,
@@ -85,7 +85,10 @@ async function dryRunOf(command: string) {
 		}),
 	}).run(command, { positionals: [], options });
 	if (command === "syncback") {
-		(await spawned).exit({ code: 0, signal: null });
+		const dry = await checking;
+		const syncing = processes.nextSpawned();
+		dry.exit({ code: 0, signal: null });
+		(await syncing).exit({ code: 0, signal: null });
 	}
 	await running;
 	return { before, after: await snapshot(fs, cwd) };

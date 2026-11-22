@@ -142,7 +142,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 				new DiagnosticsError([
 					errorDiagnostic(
 						"rojo.commandUnsupported",
-						{ resource: projectFile },
+						{ resource: project.file },
 						missing
 					),
 				])

@@ -1,0 +1,39 @@
+$ rogen syncback --dry-run --input place.rbxl
+exit 1
+stderr:
+  default.rogen.json - error: Rojo 7.6.1 has no 'syncback' command; Rojo 7.7.0 added it. Change your Rojo pin to 7.7.0 or later, or update the Rojo on the PATH. (rojo.commandUnsupported)
+
+$ rogen syncback --json --dry-run --input place.rbxl
+exit 1
+stdout:
+  {
+    "changed": false,
+    "configs": [
+      {
+        "config": "default.rogen.json",
+        "projectFile": "<dir>/default.project.json",
+        "outcome": "wouldWrite",
+        "diagnostics": []
+      }
+    ],
+    "syncback": {
+      "outcome": "failed",
+      "config": "default.rogen.json",
+      "input": "place.rbxl",
+      "changes": [],
+      "unplaced": [],
+      "diagnostics": [
+        {
+          "file": "<dir>/default.rogen.json",
+          "severity": "error",
+          "code": "rojo.commandUnsupported",
+          "message": "Rojo 7.6.1 has no 'syncback' command; Rojo 7.7.0 added it. Change your Rojo pin to 7.7.0 or later, or update the Rojo on the PATH.",
+          "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#rojo-commandunsupported"
+        }
+      ]
+    }
+  }
+
+ran:
+  rojo --version
+  rojo --version

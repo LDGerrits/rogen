@@ -386,6 +386,24 @@ describe("MirrorPlanner", () => {
 		});
 	});
 
+	it("should list a new empty folder Studio added under the compiled code as an addition", async () => {
+		await compiled();
+		rojo.say = async () => {
+			await writeFiles(
+				fs,
+				".rogen-syncback/mirror/ServerScriptService/Combat/Bag/.gitkeep"
+			);
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.changes).toEqual([]);
+		expect(plan.compiled).toEqual([
+			{ instance: "ServerScriptService/Combat/Bag", kind: "added" },
+		]);
+	});
+
 	it("should change nothing for an empty folder of the compiled code that the mirror holds as it was", async () => {
 		await writeFiles(fs, "dist/Combat/Server/Combat.luau");
 		await fs.createDirectory(abs("dist/Combat/Server/Empty"));
@@ -638,6 +656,75 @@ describe("MirrorPlanner", () => {
 		);
 	});
 
+	describe("an instance Studio moved where its script type has no place", () => {
+		it("should keep the files of a script moved into a shared folder, and say why", async () => {
+			await prepare([
+				"src/Shop/Prices.luau",
+				"src/Shop@Server/Main.server.luau",
+				"src/Shop@Server/ShopService.luau",
+			]);
+			await fs.writeFile(
+				abs("src/Shop@Server/Main.server.luau"),
+				"print(1)"
+			);
+			await fs.writeFile(
+				abs("src/Shop@Server/ShopService.luau"),
+				"return 1"
+			);
+			rojo.say = async () => {
+				await fs.delete(mirror("ServerScriptService", "Shop"), true);
+				const moved = [
+					"ReplicatedStorage",
+					"Shared",
+					"Shop",
+					"ServerBits",
+				];
+				await fs.writeFile(
+					mirror(...moved, "Main.server.luau"),
+					"print(1)"
+				);
+				await fs.writeFile(
+					mirror(...moved, "ShopService.luau"),
+					"return 1"
+				);
+				return [];
+			};
+
+			const plan = await planned("apply");
+
+			expect(plan.changes).toEqual([]);
+			expect(
+				await fs.exists(abs("src/Shop@Server/Main.server.luau"))
+			).toBe(true);
+			expect(
+				await fs.exists(abs("src/Shop@Server/ShopService.luau"))
+			).toBe(true);
+			expect(plan.unplaced).toHaveLength(1);
+		});
+	});
+
+	it("should leave a route's folder alone when Studio emptied it, as an empty route makes no instance", async () => {
+		await prepare(["src/Combat/Shared/Hit.luau"]);
+		rojo.say = async () => {
+			await fs.delete(
+				mirror("ReplicatedStorage", "Shared", "Combat"),
+				true
+			);
+			await writeFiles(
+				fs,
+				".rogen-syncback/mirror/ReplicatedStorage/Shared/.gitkeep"
+			);
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.unplaced).toEqual([]);
+		expect(plan.changes).toEqual([
+			{ kind: "remove", file: abs("src/Combat") },
+		]);
+	});
+
 	describe("a renamed feature", () => {
 		it("should move the files of a feature Studio renamed into a folder of the new name", async () => {
 			await prepare(["src/Shop/Server/ShopService.luau"]);
@@ -659,6 +746,26 @@ describe("MirrorPlanner", () => {
 			expect(
 				await fs.readFile(abs("src/Store/Server/ShopService.luau"))
 			).toBe("return 1");
+			expect(await fs.exists(abs("src/Shop"))).toBe(false);
+		});
+
+		it("should move a renamed feature though a new empty folder in it has no sibling file to follow", async () => {
+			await prepare(["src/Shop/Server/A/Hit.luau"]);
+			rojo.say = async () => {
+				await fs.delete(mirror("ServerScriptService", "Shop"), true);
+				await writeFiles(
+					fs,
+					".rogen-syncback/mirror/ServerScriptService/Store/A/Hit.luau",
+					".rogen-syncback/mirror/ServerScriptService/Store/Bag/.gitkeep"
+				);
+				return [];
+			};
+
+			await planned("apply");
+
+			expect(await fs.exists(abs("src/Store/Server/A/Hit.luau"))).toBe(
+				true
+			);
 			expect(await fs.exists(abs("src/Shop"))).toBe(false);
 		});
 
@@ -834,6 +941,10 @@ describe("MirrorPlanner", () => {
 			expect(plan.changes).toEqual(
 				expect.arrayContaining([
 					{ kind: "write", file: abs("src/Store/Server/notes.md") },
+					{
+						kind: "write",
+						file: abs("src/Store/Server/Empty/.gitkeep"),
+					},
 					{
 						kind: "write",
 						file: abs("src/Store/Server/ShopService.luau"),

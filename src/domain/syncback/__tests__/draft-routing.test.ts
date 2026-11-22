@@ -110,6 +110,18 @@ describe("landingMiss", () => {
 		);
 	});
 
+	it("should blame the script type, not the name, for a script file routing reads as another instance", () => {
+		const file = posix("src/Quest/Boot.server.luau");
+
+		expect(
+			landingMiss({ file, instance: quest }, [
+				placed(file, ["ServerScriptService", "Quest", "Boot"]),
+			])
+		).toBe(
+			`routing would read ${file} as ServerScriptService/Quest/Boot, as it places a script by its type; make it a ModuleScript or move it to where that type runs`
+		);
+	});
+
 	it("should say no instance comes from a new folder no file inside makes", () => {
 		expect(
 			landingMiss(

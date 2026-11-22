@@ -41,7 +41,7 @@ describe("MirrorWorkspace where the file system ignores case", () => {
 			choose: () => config,
 			run: async () =>
 				ok(
-					runs++ === 0
+					runs++ < 2
 						? {
 								project: config,
 								messages: [
@@ -72,7 +72,7 @@ describe("MirrorWorkspace where the file system ignores case", () => {
 		});
 
 		expect(outcome).toMatchObject({ kind: "failed", error: failure });
-		expect(runs).toBe(2);
+		expect(runs).toBe(3);
 		expect(await fs.readFile(abs("src/Inventory/Bag@Server.luau"))).toBe(
 			""
 		);
