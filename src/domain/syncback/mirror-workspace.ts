@@ -234,15 +234,14 @@ export class MirrorWorkspace {
 	 * out of the mirror too, but it leads to folders that already exist.
 	 */
 	private static isMisnamed(file: string, listed: ReadonlySet<string>) {
-		const names = file.split(path.sep);
+		const names = file.split("/");
 		const climbs = Math.max(
 			names.lastIndexOf(".."),
 			names.lastIndexOf(".")
 		);
 		return (
 			names.some((name) => name.includes("\\")) ||
-			(climbs >= 0 &&
-				listed.has(names.slice(0, climbs + 2).join(path.sep)))
+			(climbs >= 0 && listed.has(names.slice(0, climbs + 2).join("/")))
 		);
 	}
 
@@ -277,7 +276,7 @@ export class MirrorWorkspace {
 			)
 				return err(
 					new UsageError(
-						`The place holds an instance that Rojo can't write back as files of the project, such as one named with a / or \\ or as . or .., or a folder with a child named so: it would write ${file.split(path.sep).slice(MIRROR.split("/").length).join("/")}, so nothing was written.`,
+						`The place holds an instance that Rojo can't write back as files of the project, such as one named with a / or \\ or as . or .., or a folder with a child named so: it would write ${file.split("/").slice(MIRROR.split("/").length).join("/")}, so nothing was written.`,
 						"Rename the instance in Studio, then run syncback again."
 					)
 				);

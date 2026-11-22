@@ -1,5 +1,4 @@
 import { jest } from "@jest/globals";
-import path from "path";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
@@ -250,8 +249,8 @@ describe("MirrorPlanner", () => {
 					mirror("ServerStorage", "Packages", "Lib.luau")
 				);
 				return [
-					`Writing ${path.join(".rogen-syncback", "mirror", "ReplicatedStorage", "Packages")}`,
-					`Removing ${path.join(".rogen-syncback", "mirror", "ServerStorage", "Packages", "Lib.luau")}`,
+					`Writing .rogen-syncback/mirror/ReplicatedStorage/Packages`,
+					`Removing .rogen-syncback/mirror/ServerStorage/Packages/Lib.luau`,
 					"Writing rogen-syncback.project.json",
 				];
 			};
@@ -477,7 +476,7 @@ describe("MirrorPlanner", () => {
 		rojo.say = async () => {
 			await fs.delete(mirror("ServerScriptService", "Inventory"), true);
 			return [
-				`Removing ${path.join(".rogen-syncback", "mirror", "ServerScriptService", "Inventory")}`,
+				`Removing .rogen-syncback/mirror/ServerScriptService/Inventory`,
 			];
 		};
 
@@ -526,7 +525,7 @@ describe("MirrorPlanner", () => {
 				await intoNode("Kit/");
 				return [
 					"Writing rogen-syncback.project.json",
-					`Writing ${path.join(".rogen-syncback", "mirror")}`,
+					`Writing .rogen-syncback/mirror`,
 				];
 			};
 
