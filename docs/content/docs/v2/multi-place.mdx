@@ -42,7 +42,7 @@ cp -r place/game place/lobby
 
 ## Places in roblox-ts
 
-`rogen init --places --language roblox-ts` uses the same layout and adds a tsconfig per place. `tsconfig.game.json` compiles `src/common` and `src/game` into `out/game`, which is the place's `compiledPath`, and `tsconfig.json` holds the options every place shares and refers to each place, so the editor checks a file against its own place:
+With `--language roblox-ts`, each place also gets a tsconfig that compiles the shared code and the place's own code into the place's `compiledPath`:
 
 ```json title="tsconfig.game.json"
 {
@@ -58,6 +58,11 @@ cp -r place/game place/lobby
 }
 ```
 
-`rootDir` is the folder that holds every source path of the place. Rogen mirrors the source paths below that folder into the `compiledPath`, as the compiler does, so the two agree. TypeScript 6 and later no longer work `rootDir` out when it is left unset, so set it. `rbxts.rojo` names the project file the compiler reads, since every place's project file is at the root.
+Keep `rootDir` at `src`, the folder that holds both source paths, so the compiled files keep the folders they have in `src`; TypeScript 6 and later also refuse to compile without it. The root `tsconfig.json` holds the options every place shares and lists each place under `references`, so the editor checks a file against its own place.
 
-To add a place, also set `"compiledPath"` in `lobby.rogen.json` to `out/lobby`, copy `tsconfig.game.json` to `tsconfig.lobby.json`, change each `game` in it to `lobby`, add it to the `references` in `tsconfig.json`, and add `rbxtsc -p tsconfig.lobby.json` to the `build` and `watch` scripts in `package.json`, with `-w` for `watch`.
+To add a place, after copying the config as above:
+
+1. Set `"compiledPath"` in `lobby.rogen.json` to `out/lobby`.
+2. Copy `tsconfig.game.json` to `tsconfig.lobby.json` and change each `game` in it to `lobby`.
+3. Add `{ "path": "./tsconfig.lobby.json" }` to the `references` in `tsconfig.json`.
+4. Add ` && rbxtsc -p tsconfig.lobby.json` to the `build` script in `package.json`. `rbxtsc -w` runs until you stop it, so watch the new place from a terminal of its own with `npx rbxtsc -w -p tsconfig.lobby.json`.

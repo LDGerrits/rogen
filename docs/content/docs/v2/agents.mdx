@@ -9,7 +9,7 @@ A coding agent doesn't know that Rogen generates the Rojo project file, so Rojo 
 
 ## Add the Rules
 
-`rogen init` adds the block to `AGENTS.md` and imports it into the `CLAUDE.md` that Claude Code reads, unless you pass `--no-agent-rules`. In a project that already has a config, run `rogen init --agent-rules`, which adds only the agent files, or paste the block yourself with its markers.
+`rogen init` adds the block to `AGENTS.md` and imports it into the `CLAUDE.md` that Claude Code reads, unless you pass `--no-agent-rules`. In a project that already has a config, run `rogen init --agent-rules`. `rogen write` and `rogen serve` keep the block up to date with the Rogen you run; delete its marker lines to keep it as your own.
 
 <Accordions>
 <Accordion title="The rules block">
@@ -32,13 +32,9 @@ This repo uses Rogen: each `*.rogen.json` generates the `*.project.json` beside 
 </Accordion>
 </Accordions>
 
-## Keep the Rules Current
-
-`rogen write` and `rogen serve` replace an outdated block with the installed version's and keep your text around it. They say so in a line, or under `agentRules` with `--json`, and leave the block alone under CI (`CI` set), so a pipeline never finds a changed file. Pin one Rogen version for the team, as [Installation](/docs/v2/installation) does. Rogen adds a block only when `init` asks; to stop the updates, delete the marker lines to keep the rules as your own, or delete the block.
-
 ## Check Changed Files Automatically
 
-An agent can forget to run `rogen check`, so Rogen has a hook that runs it on the files changed in git when the agent ends its turn and sends each new warning or error back as the agent's next prompt. A line it already sent stays quiet until the check stops printing it, so one that comes back after a fix is sent again. `rogen init --agent-hook`, or Customise in a terminal, writes the script to `.agents/hooks/rogen-check.mjs` and registers it with each agent it finds. It checks the session's own folder, so an agent in a git worktree is checked there, and where the worktree has no `node_modules` it runs the main checkout's Rogen. `rogen write` and `rogen serve` replace an outdated script as they do the rules, and an entry an earlier version registered; delete the script's first line to keep it as your own.
+An agent can forget to run `rogen check`, so `rogen init --agent-hook` adds a hook that runs it on the files changed in git when the agent ends its turn, and sends each new warning or error back to the agent. It registers the hook with Claude Code, Codex, Gemini CLI, Cursor or Copilot, whichever the project uses, and `rogen write` keeps the script up to date; delete its first line to keep it as your own.
 
 <Accordions>
 <Accordion title="Register it by hand">
