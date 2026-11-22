@@ -8,6 +8,20 @@ import { describeWithRojo, makeRojoDir, runRojo } from "./rojo-cli.js";
 
 describe("domain/rojo/project-text", () => {
 	describe("ProjectText", () => {
+		it("should write a tree nested as deep as Rojo builds", () => {
+			const depth = 3000;
+			let tree: RojoNode = { $className: "Folder" };
+			for (let level = 0; level < depth; level++)
+				tree = { $className: "Folder", A: tree };
+			const text = ProjectText.of({
+				name: "Deep",
+				tree: { $className: "DataModel", Workspace: tree },
+			} as RojoProjectFile);
+
+			expect(text.match(/"A": \{/g)).toHaveLength(depth);
+			expect(text).toContain(`${"  ".repeat(depth + 2)}"A": {\n`);
+		});
+
 		it("should write Rojo's keys in Rojo's order", () => {
 			const file = {
 				globIgnorePaths: ["**/*.spec.luau"],

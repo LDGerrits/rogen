@@ -108,6 +108,27 @@ class Raw {
 	constructor(readonly lines: readonly string[]) {}
 }
 
+type BlockItems = readonly (readonly [string | number, string, unknown])[];
+
+class OpenBlock {
+	readonly inner: string;
+	readonly marks: JsoncMarks | undefined;
+	at = 0;
+	own: JsoncMarks | undefined;
+
+	constructor(
+		readonly open: string,
+		readonly close: string,
+		readonly items: BlockItems,
+		readonly indent: string,
+		readonly path: JsoncPath,
+		commented: Commented | undefined
+	) {
+		this.inner = indent + INDENT;
+		this.marks = commented?.take(path);
+	}
+}
+
 export class WrittenTree {
 	private constructor(
 		private readonly text: string,
@@ -263,6 +284,28 @@ export class ProjectText {
 
 	static node(node: Record<string, unknown>): Ordered {
 		const entries: [string, unknown][] = [];
+		const pending: (readonly [Record<string, unknown>, Entries])[] = [
+			[node, entries],
+		];
+		const descend = (child: Record<string, unknown>): Ordered => {
+			const inner: [string, unknown][] = [];
+			pending.push([child, inner]);
+			return new Ordered(inner);
+		};
+		for (let next = pending.pop(); next; next = pending.pop())
+			ProjectText.fillNode(
+				next[0],
+				next[1] as [string, unknown][],
+				descend
+			);
+		return new Ordered(entries);
+	}
+
+	private static fillNode(
+		node: Record<string, unknown>,
+		entries: [string, unknown][],
+		descend: (child: Record<string, unknown>) => Ordered
+	): void {
 		for (const key of NODE_KEYS_BEFORE)
 			if (key in node) entries.push([key, node[key]]);
 		const isChild = (key: string) =>
@@ -272,10 +315,7 @@ export class ProjectText {
 			.sort(compareByCodePoint);
 		for (const child of children) {
 			const value = node[child];
-			entries.push([
-				child,
-				isObject(value) ? ProjectText.node(value) : value,
-			]);
+			entries.push([child, isObject(value) ? descend(value) : value]);
 		}
 		for (const key of NODE_KEYS_AFTER)
 			if (key in node && !ProjectText.isEmptyMap(key, node[key]))
@@ -290,7 +330,6 @@ export class ProjectText {
 		for (const key of Object.keys(node))
 			if (!NODE_FIELDS.has(key) && !isChild(key))
 				entries.push([key, node[key]]);
-		return new Ordered(entries);
 	}
 
 	private static isEmptyMap(key: string, value: unknown): boolean {
@@ -368,18 +407,79 @@ export class ProjectText {
 		commented?: Commented,
 		path: JsoncPath = []
 	): string {
-		if (value instanceof FloatText) return value.toString();
+		const out: string[] = [];
+		const open: OpenBlock[] = [];
+		ProjectText.emit(value, indent, path, commented, out, open);
+		while (open.length > 0) {
+			const block = open[open.length - 1];
+			const item = block.items[block.at];
+			if (item === undefined) {
+				ProjectText.close(block, commented, out);
+				open.pop();
+				const parent = open[open.length - 1];
+				if (parent) ProjectText.endItem(parent, out);
+				continue;
+			}
+			const [segment, label, entry] = item;
+			if (block.at === 0) out.push("\n");
+			block.own = commented?.take([...block.path, segment]);
+			for (const comment of block.own?.leading ?? [])
+				for (const line of ProjectText.commentLines(
+					comment,
+					block.inner
+				))
+					out.push(line, "\n");
+			out.push(block.inner, label);
+			const depth = open.length;
+			ProjectText.emit(
+				entry,
+				block.inner,
+				[...block.path, segment],
+				commented,
+				out,
+				open
+			);
+			if (open.length === depth) ProjectText.endItem(block, out);
+		}
+		return out.join("");
+	}
+
+	private static emit(
+		value: unknown,
+		indent: string,
+		path: JsoncPath,
+		commented: Commented | undefined,
+		out: string[],
+		open: OpenBlock[]
+	): void {
+		if (value instanceof FloatText) return void out.push(value.toString());
 		if (value instanceof Raw)
-			return value.lines
-				.map((line, at) =>
-					at === 0 || line === "" ? line : indent + line
-				)
-				.join("\n");
+			return void out.push(
+				value.lines
+					.map((line, at) =>
+						at === 0 || line === "" ? line : indent + line
+					)
+					.join("\n")
+			);
 		const block = (
-			open: string,
-			close: string,
-			items: readonly (readonly [string | number, string, unknown])[]
-		) => ProjectText.block(open, close, items, indent, commented, path);
+			opener: string,
+			closer: string,
+			items: BlockItems
+		): void => {
+			const opened = new OpenBlock(
+				opener,
+				closer,
+				items,
+				indent,
+				path,
+				commented
+			);
+			out.push(
+				opener,
+				ProjectText.sameLine(opened.marks?.opening, opened.inner)
+			);
+			open.push(opened);
+		};
 		if (value instanceof Ordered)
 			return block(
 				"{",
@@ -403,46 +503,44 @@ export class ProjectText {
 				value.map((entry, at) => [at, "", entry])
 			);
 		if (isObject(value))
-			return ProjectText.print(
+			return ProjectText.emit(
 				new Ordered(Object.entries(value)),
 				indent,
+				path,
 				commented,
-				path
+				out,
+				open
 			);
-		return JSON.stringify(value);
+		out.push(JSON.stringify(value));
 	}
 
-	private static block(
-		open: string,
-		close: string,
-		items: readonly (readonly [string | number, string, unknown])[],
-		indent: string,
+	private static endItem(block: OpenBlock, out: string[]): void {
+		const comma = block.at < block.items.length - 1 ? "," : "";
+		out.push(
+			comma,
+			ProjectText.sameLine(block.own?.trailing, block.inner),
+			"\n"
+		);
+		block.at++;
+	}
+
+	private static close(
+		{ close, items, marks, path, indent, inner }: OpenBlock,
 		commented: Commented | undefined,
-		path: JsoncPath
-	): string {
-		const marks = commented?.take(path);
-		const inner = indent + INDENT;
-		const lines: string[] = [];
-		items.forEach(([segment, label, entry], at) => {
-			const own = commented?.take([...path, segment]);
-			for (const comment of own?.leading ?? [])
-				lines.push(...ProjectText.commentLines(comment, inner));
-			const comma = at < items.length - 1 ? "," : "";
-			lines.push(
-				`${inner}${label}${ProjectText.print(entry, inner, commented, [...path, segment])}${comma}${ProjectText.sameLine(own?.trailing, inner)}`
-			);
-		});
-		for (const comment of [
+		out: string[]
+	): void {
+		const lines = [
 			...(marks?.closing ?? []),
 			...(commented?.takeOrphansUnder(path) ?? []),
-		])
-			lines.push(...ProjectText.commentLines(comment, inner));
-		const opening = ProjectText.sameLine(marks?.opening, inner);
-		if (lines.length === 0)
-			return opening
-				? `${open}${opening}\n${indent}${close}`
-				: `${open}${close}`;
-		return `${open}${opening}\n${lines.join("\n")}\n${indent}${close}`;
+		].flatMap((comment) => ProjectText.commentLines(comment, inner));
+		if (items.length === 0 && lines.length === 0) {
+			const opening = ProjectText.sameLine(marks?.opening, inner);
+			out.push(opening ? `\n${indent}${close}` : close);
+			return;
+		}
+		if (items.length === 0) out.push("\n");
+		for (const line of lines) out.push(line, "\n");
+		out.push(indent, close);
 	}
 
 	private static commentLines(
