@@ -61,14 +61,13 @@ export function withHookUpgraded(
 	{ from, to }: HookUpgrade
 ): string | undefined {
 	if (!text.includes(from)) return undefined;
-	let settings: unknown;
+	const upgraded = text.replaceAll(from, to);
 	try {
-		settings = JSON.parse(text.replaceAll(from, to));
+		JSON.parse(upgraded);
 	} catch {
 		return undefined;
 	}
-	const json = JSON.stringify(settings, null, indentOf(text));
-	return text.endsWith("\n") ? `${json}\n` : json;
+	return upgraded;
 }
 
 export const CLAUDE_SETTINGS_FILE = ".claude/settings.json";
@@ -87,8 +86,10 @@ const group = (command: string, args?: readonly string[]) => ({
 	hooks: [{ type: "command", command, ...(args && { args }) }],
 });
 
-const fromRoot = `node "$(git rev-parse --show-toplevel)/${HOOK_SCRIPT_FILE}"`;
-const fromClaudeProject = `\${CLAUDE_PROJECT_DIR}/${HOOK_SCRIPT_FILE}`;
+// PowerShell splits "quoted"/rest into two arguments, so each path is quoted
+// whole.
+const rootCommand = `node "$(git rev-parse --show-toplevel)/${HOOK_SCRIPT_FILE}"`;
+const claudeScriptPath = `\${CLAUDE_PROJECT_DIR}/${HOOK_SCRIPT_FILE}`;
 
 const upgrade = (from: string, to: string): HookUpgrade => ({
 	from: JSON.stringify(from),
@@ -100,15 +101,17 @@ export const CODING_AGENTS: readonly CodingAgent[] = [
 		name: "Claude Code",
 		settingsFile: CLAUDE_SETTINGS_FILE,
 		signs: [".claude", "CLAUDE.md"],
+		// Claude Code runs a hook in PowerShell where Git Bash is missing; the
+		// exec form (2.1.139+) runs node without a shell.
 		hook: {
 			event: "Stop",
-			entry: group("node", [fromClaudeProject]),
+			entry: group("node", [claudeScriptPath]),
 		},
 		upgrade: {
 			from: JSON.stringify(
 				`node "$CLAUDE_PROJECT_DIR"/${HOOK_SCRIPT_FILE}`
 			),
-			to: `"node", "args": [${JSON.stringify(fromClaudeProject)}]`,
+			to: `"node", "args": [${JSON.stringify(claudeScriptPath)}]`,
 		},
 	},
 	{
@@ -117,16 +120,18 @@ export const CODING_AGENTS: readonly CodingAgent[] = [
 		signs: [".codex"],
 		afterwards:
 			"Codex runs a new hook only once you trust it: open /hooks in Codex to review it.",
-		hook: { event: "Stop", entry: group(fromRoot) },
+		hook: { event: "Stop", entry: group(rootCommand) },
 		upgrade: upgrade(
 			`node "$(git rev-parse --show-toplevel)"/${HOOK_SCRIPT_FILE}`,
-			fromRoot
+			rootCommand
 		),
 	},
 	{
 		name: "Gemini CLI",
 		settingsFile: GEMINI_SETTINGS_FILE,
 		signs: [".gemini", "GEMINI.md"],
+		// Gemini CLI puts a quoted path in place of $GEMINI_PROJECT_DIR, and
+		// runs the hook in that folder.
 		hook: {
 			event: "AfterAgent",
 			entry: group(`node ${HOOK_SCRIPT_FILE}`),
@@ -152,7 +157,11 @@ export const CODING_AGENTS: readonly CodingAgent[] = [
 		signs: [".github/copilot-instructions.md", ".github/hooks"],
 		hook: {
 			event: "agentStop",
-			entry: { type: "command", bash: fromRoot, powershell: fromRoot },
+			entry: {
+				type: "command",
+				bash: rootCommand,
+				powershell: rootCommand,
+			},
 			version: 1,
 		},
 	},

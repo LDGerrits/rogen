@@ -159,6 +159,21 @@ describe("AgentRules", () => {
 		}
 	);
 
+	it("should keep the rest of the settings file byte for byte", async () => {
+		const old =
+			'{\r\n  "model":"opus",\r\n  "hooks": { "AfterAgent": [{ "hooks": [{ "type": "command", "command": "node \\"$GEMINI_PROJECT_DIR\\"/.agents/hooks/rogen-check.mjs" }] }] }\r\n}\r\n';
+		await write(".gemini/settings.json", old);
+
+		await rules.refresh(root);
+
+		expect(await read(".gemini/settings.json")).toBe(
+			old.replace(
+				'node \\"$GEMINI_PROJECT_DIR\\"/.agents',
+				"node .agents"
+			)
+		);
+	});
+
 	it("should leave settings alone that hold no hook an earlier init registered", async () => {
 		const mine = settingsOf("Stop", commandGroup("node mine.mjs"));
 		await write(".claude/settings.json", mine);

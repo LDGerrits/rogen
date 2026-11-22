@@ -53,7 +53,7 @@ Put the script at `.agents/hooks/rogen-check.mjs`, and add its entry under the a
 | Cursor | `.cursor/hooks.json` | `stop` | `node .agents/hooks/rogen-check.mjs cursor` |
 | Copilot | `.github/hooks/rogen.json` | `agentStop` | `node "$(git rev-parse --show-toplevel)/.agents/hooks/rogen-check.mjs"`, as both `bash` and `powershell` |
 
-Each entry works in PowerShell as well as bash, so the hook runs on Windows without Git Bash. Claude Code's runs `node` without a shell.
+Each entry works in PowerShell as well as bash, so the hook runs on Windows without Git Bash. Claude Code's runs `node` without a shell, which needs Claude Code 2.1.139 or later.
 
 
 ```js title=".agents/hooks/rogen-check.mjs"
