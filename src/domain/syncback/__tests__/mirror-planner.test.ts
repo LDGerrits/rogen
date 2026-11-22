@@ -709,6 +709,26 @@ describe("MirrorPlanner", () => {
 			expect(await fs.exists(abs("src/Shop"))).toBe(false);
 		});
 
+		it("should move a renamed feature though a new empty folder in it has no sibling file to follow", async () => {
+			await prepare(["src/Shop/Server/A/Hit.luau"]);
+			rojo.say = async () => {
+				await fs.delete(mirror("ServerScriptService", "Shop"), true);
+				await writeFiles(
+					fs,
+					".rogen-syncback/mirror/ServerScriptService/Store/A/Hit.luau",
+					".rogen-syncback/mirror/ServerScriptService/Store/Bag/.gitkeep"
+				);
+				return [];
+			};
+
+			await planned("apply");
+
+			expect(await fs.exists(abs("src/Store/Server/A/Hit.luau"))).toBe(
+				true
+			);
+			expect(await fs.exists(abs("src/Shop"))).toBe(false);
+		});
+
 		it("should carry the metas, data files and other files of a renamed feature into its new folder", async () => {
 			await prepare([
 				"src/Shop/Server/ShopService.luau",
@@ -881,6 +901,10 @@ describe("MirrorPlanner", () => {
 			expect(plan.changes).toEqual(
 				expect.arrayContaining([
 					{ kind: "write", file: abs("src/Store/Server/notes.md") },
+					{
+						kind: "write",
+						file: abs("src/Store/Server/Empty/.gitkeep"),
+					},
 					{
 						kind: "write",
 						file: abs("src/Store/Server/ShopService.luau"),

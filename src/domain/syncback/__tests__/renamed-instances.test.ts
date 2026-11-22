@@ -399,4 +399,63 @@ describe("renamedInstances", () => {
 			)
 		).toEqual([]);
 	});
+	it("should carry a new empty folder to the folder of the sibling files beside it, and drop one with no sibling", async () => {
+		const { placed } = await layoutOf([
+			"src/Shop/Server/Hit.luau",
+			"src/Shop/Server/Deep/Cfg.luau",
+		]);
+
+		const [rename] = renamesOf(
+			[
+				renamedTo("server", "Store", [
+					["Store", "Hit.luau"],
+					["Store", "Deep", "Cfg.luau"],
+					["Store", "Bag", ".gitkeep"],
+					["Store", "Deep", "Pack", ".gitkeep"],
+				]),
+			],
+			new Map([
+				["m/server/Shop/Hit.luau", posix("src/Shop/Server/Hit.luau")],
+				[
+					"m/server/Shop/Deep/Cfg.luau",
+					posix("src/Shop/Server/Deep/Cfg.luau"),
+				],
+			]),
+			placed
+		);
+
+		expect(
+			[...rename.files].map(([key, { target }]) => [key, target])
+		).toEqual(
+			expect.arrayContaining([
+				["Store/Bag/.gitkeep", posix("src/Store/Server/Bag/.gitkeep")],
+				[
+					"Store/Deep/Pack/.gitkeep",
+					posix("src/Store/Server/Deep/Pack/.gitkeep"),
+				],
+			])
+		);
+	});
+
+	it("should drop a new empty folder that has no sibling file in any folder above it", async () => {
+		const { placed } = await layoutOf(["src/Shop/Server/A/Hit.luau"]);
+
+		const [rename] = renamesOf(
+			[
+				renamedTo("server", "Store", [
+					["Store", "A", "Hit.luau"],
+					["Store", "Bag", ".gitkeep"],
+				]),
+			],
+			new Map([
+				[
+					"m/server/Shop/A/Hit.luau",
+					posix("src/Shop/Server/A/Hit.luau"),
+				],
+			]),
+			placed
+		);
+
+		expect([...rename.files.keys()]).toEqual(["Store/A/Hit.luau"]);
+	});
 });
