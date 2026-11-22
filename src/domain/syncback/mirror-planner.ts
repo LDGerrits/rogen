@@ -198,8 +198,7 @@ class MirrorPlanRun {
 		kind: CompiledChange["kind"]
 	): boolean {
 		if (!this.isCompiled(file)) return false;
-		if (path.basename(file) !== GITKEEP)
-			this.compiled.push({ instance, kind });
+		this.compiled.push({ instance, kind });
 		return true;
 	}
 
@@ -281,12 +280,11 @@ class MirrorPlanRun {
 	private async keepMovedFrom(made: AddedInstance): Promise<void> {
 		const sources: Uint8Array[] = [];
 		for (const file of made.files)
-			if (file[file.length - 1] !== GITKEEP)
-				sources.push(
-					await this.workspace.read(
-						`${made.parentFolder}/${file.join("/")}`
-					)
-				);
+			sources.push(
+				await this.workspace.read(
+					`${made.parentFolder}/${file.join("/")}`
+				)
+			);
 		for (const { kind, file } of this.operations) {
 			const before = this.before.get(file);
 			if (
@@ -655,6 +653,20 @@ class MirrorPlanRun {
 					added.folder &&
 					(await this.fileSystemService.isDirectory(file));
 				if (folderInProject) continue;
+				if (!added.folder && names[names.length - 1] === GITKEEP) {
+					if (
+						!(await this.fileSystemService.isDirectory(
+							path.dirname(file)
+						))
+					)
+						this.compiled.push({
+							instance: workspace.instanceAt(
+								names.slice(0, -1).join("/")
+							),
+							kind: "added",
+						});
+					continue;
+				}
 				if (
 					!added.folder &&
 					(await this.onlyOverrides(added.path, file))
@@ -875,7 +887,6 @@ class MirrorPlanRun {
 			});
 		}
 		for (const instance of instances) {
-			if (compiled && instance.name === GITKEEP) continue;
 			const node = this.nodeAt(instance.parentFolder);
 			if (node) {
 				const addition = await this.nodeOf(instance, node, folders);

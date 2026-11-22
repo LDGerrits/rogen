@@ -386,6 +386,24 @@ describe("MirrorPlanner", () => {
 		});
 	});
 
+	it("should list a new empty folder Studio added under the compiled code as an addition", async () => {
+		await compiled();
+		rojo.say = async () => {
+			await writeFiles(
+				fs,
+				".rogen-syncback/mirror/ServerScriptService/Combat/Bag/.gitkeep"
+			);
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.changes).toEqual([]);
+		expect(plan.compiled).toEqual([
+			{ instance: "ServerScriptService/Combat/Bag", kind: "added" },
+		]);
+	});
+
 	it("should change nothing for an empty folder of the compiled code that the mirror holds as it was", async () => {
 		await writeFiles(fs, "dist/Combat/Server/Combat.luau");
 		await fs.createDirectory(abs("dist/Combat/Server/Empty"));
