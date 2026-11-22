@@ -4,7 +4,6 @@ stdout:
   Removing src/Greeter/Shared
 stderr:
   Wrote default.project.json.
-  default.rogen.json - warning: ReplicatedStorage/Shared/.gitkeep was left out: routing would make no instance of src/Shared. (syncback.unplaced)
   Syncback wrote 1 change.
 
 $ rogen write

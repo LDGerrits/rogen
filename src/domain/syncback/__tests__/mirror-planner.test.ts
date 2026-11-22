@@ -685,6 +685,28 @@ describe("MirrorPlanner", () => {
 		});
 	});
 
+	it("should leave a route's folder alone when Studio emptied it, as an empty route makes no instance", async () => {
+		await prepare(["src/Combat/Shared/Hit.luau"]);
+		rojo.say = async () => {
+			await fs.delete(
+				mirror("ReplicatedStorage", "Shared", "Combat"),
+				true
+			);
+			await writeFiles(
+				fs,
+				".rogen-syncback/mirror/ReplicatedStorage/Shared/.gitkeep"
+			);
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.unplaced).toEqual([]);
+		expect(plan.changes).toEqual([
+			{ kind: "remove", file: abs("src/Combat") },
+		]);
+	});
+
 	describe("a renamed feature", () => {
 		it("should move the files of a feature Studio renamed into a folder of the new name", async () => {
 			await prepare(["src/Shop/Server/ShopService.luau"]);

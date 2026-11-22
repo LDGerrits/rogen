@@ -9,7 +9,7 @@ import {
 	toPosix,
 } from "../../base/path.js";
 import { parse } from "../../base/jsonc.js";
-import { isObject } from "../../base/objects.js";
+import { isObject, isSameJson } from "../../base/objects.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	FileSystemService,
@@ -555,6 +555,12 @@ class MirrorPlanRun {
 		}
 	}
 
+	private isRouteTarget(instancePath: readonly string[]): boolean {
+		return [...this.request.project.routes.values()].some((route) =>
+			isSameJson(route.instancePath, instancePath)
+		);
+	}
+
 	private belowSource(folder: string): boolean {
 		return this.request.project.sourcePaths.some(
 			(source) => contains(source, folder) && !contains(folder, source)
@@ -610,6 +616,13 @@ class MirrorPlanRun {
 			if (target === undefined) {
 				const name = names[names.length - 1];
 				const folder = names.slice(0, -1).join("/");
+				if (
+					!added.folder &&
+					name === GITKEEP &&
+					known.has(folder) &&
+					this.isRouteTarget(mirror.instancePathOf(folder))
+				)
+					continue;
 				if (
 					!added.folder &&
 					(RojoFile.INIT_FILES.has(name) ||
