@@ -4,6 +4,7 @@ import {
 	PathSet,
 	ancestors,
 	contains,
+	containsPosix,
 	toNative,
 	toPosix,
 } from "../../base/path.js";
@@ -953,7 +954,7 @@ class MirrorPlanRun {
 	}
 
 	private async renamedProposal(
-		{ instance, folder, renamed, files }: RenamedInstance,
+		{ instance, folder, renamed, files, kept }: RenamedInstance,
 		folders: ReadonlySet<string>
 	): Promise<Proposal> {
 		const name = instanceKey([...instance.parent, instance.name]);
@@ -1000,9 +1001,15 @@ class MirrorPlanRun {
 			);
 		const written = touched("write");
 		const removed = touched("remove");
+		const holds = (dir: string, own: boolean) =>
+			[...sources].some(
+				(source) =>
+					containsPosix(dir, source) && kept.includes(source) !== own
+			);
 		const dirs: string[] = [];
 		const walk = async (dir: string): Promise<void> => {
-			dirs.push(dir);
+			const mixed = holds(dir, false);
+			if (!mixed) dirs.push(dir);
 			const entries = await tryWithAsync(() =>
 				this.fileSystemService.readDirectory(toNative(dir))
 			);
@@ -1010,10 +1017,10 @@ class MirrorPlanRun {
 			for (const [entry, type] of entries.value) {
 				const at = path.posix.join(dir, entry);
 				if (isDirectoryType(type)) {
-					await walk(at);
+					if (!mixed || holds(at, true)) await walk(at);
 					continue;
 				}
-				if (sources.has(at) || written.has(at)) continue;
+				if (mixed || sources.has(at) || written.has(at)) continue;
 				const to = path.posix.join(
 					renamed,
 					path.posix.relative(folder, at)

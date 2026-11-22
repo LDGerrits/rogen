@@ -70,7 +70,43 @@ describe("renamedInstances", () => {
 		]);
 	});
 
-	it("should leave a feature folder alone when a side it makes keeps the old name", async () => {
+	it("should move only the files of the side Studio renamed, in their own form, when another side keeps the old name", async () => {
+		const { placed } = await layoutOf([
+			"src/Shop/Server/Cfg.json",
+			"src/Shop/Client/Hud.luau",
+			"src/Bag/Cfg@Server.json",
+			"src/Bag/Y.luau",
+		]);
+
+		const renames = renamesOf(
+			[
+				renamedTo("server", "BagX", [["BagX", "Cfg.luau"]]),
+				renamedTo("server", "ShopX", [["ShopX", "Cfg.luau"]]),
+			],
+			new Map([
+				["m/server/Shop/Cfg.json", posix("src/Shop/Server/Cfg.json")],
+				["m/server/Bag/Cfg.json", posix("src/Bag/Cfg@Server.json")],
+			]),
+			placed
+		);
+
+		expect(renames.map(({ files }) => [...files.values()])).toEqual([
+			[
+				{
+					target: posix("src/BagX/Cfg@Server.json"),
+					keep: posix("src/Bag/Cfg@Server.json"),
+				},
+			],
+			[
+				{
+					target: posix("src/ShopX/Server/Cfg.json"),
+					keep: posix("src/Shop/Server/Cfg.json"),
+				},
+			],
+		]);
+	});
+
+	it("should leave a feature folder alone when its sides are renamed to different names", async () => {
 		const { placed } = await layoutOf([
 			"src/Shop/Server/Hit.luau",
 			"src/Shop/Client/Hud.luau",
@@ -78,11 +114,18 @@ describe("renamedInstances", () => {
 
 		expect(
 			renamesOf(
-				[renamedTo("server", "Store", [["Store", "Hit.luau"]])],
+				[
+					renamedTo("server", "Store", [["Store", "Hit.luau"]]),
+					renamedTo("client", "Mall", [["Mall", "Hud.luau"]]),
+				],
 				new Map([
 					[
 						"m/server/Shop/Hit.luau",
 						posix("src/Shop/Server/Hit.luau"),
+					],
+					[
+						"m/client/Shop/Hud.luau",
+						posix("src/Shop/Client/Hud.luau"),
 					],
 				]),
 				placed
