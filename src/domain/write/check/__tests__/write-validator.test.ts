@@ -1163,6 +1163,23 @@ describe("WriteValidator rules", () => {
 					},
 				]);
 			});
+
+			it("should say to remove one when an @ sends the other to the same place", async () => {
+				await write("src/Foo/init.luau", "src/Foo/init@Shared.luau");
+
+				const result = await route({
+					routes: { ...ROUTES, Shared: "ReplicatedStorage/shared" },
+				});
+
+				expect(
+					result.isErr() && result.error.diagnostics
+				).toMatchObject([
+					{
+						code: "tree.instanceClash",
+						message: expect.stringMatching(/Remove one of them\.$/),
+					},
+				]);
+			});
 		});
 
 		describe("a folder that shares its instance with a model", () => {
