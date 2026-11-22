@@ -103,7 +103,8 @@ function landingOf(
 	to: string,
 	folder: boolean
 ): Landing | undefined {
-	if (folder || file[file.length - 1] === GITKEEP)
+	const leaf = file[file.length - 1];
+	if (folder || leaf === GITKEEP || leaf === RojoFile.INIT_META)
 		return {
 			file: folder ? to : path.dirname(to),
 			instance: [

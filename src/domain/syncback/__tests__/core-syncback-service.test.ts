@@ -1228,6 +1228,27 @@ describe("CoreSyncbackService", () => {
 			]);
 		});
 
+		it("should name the route into a new folder that holds only a meta file, which a pattern's files beside it would send elsewhere", async () => {
+			await prepare(
+				["src/Shop/Prices.luau", "src/Shop/ShopController.luau"],
+				{ routes: PATTERNS }
+			);
+			rojo.say = async () => {
+				await fs.writeFile(
+					mirror(...CLIENT, "Shop", "Settings", "init.meta.json"),
+					'{"className":"Configuration"}'
+				);
+				return [];
+			};
+
+			const plan = await planned();
+
+			expect(plan.unplaced).toEqual([]);
+			expect(plan.changes.map(({ file }) => file)).toEqual([
+				abs("src/Shop/Settings@Client/init.meta.json"),
+			]);
+		});
+
 		it("should write a new child of a folder script plainly beside it, as no pattern takes the script from its folder", async () => {
 			await prepare(["src/Input/InputController/init.luau"], {
 				routes: PATTERNS,
