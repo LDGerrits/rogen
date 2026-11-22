@@ -442,18 +442,78 @@ describe("StartedServer", () => {
 		expect(said).toEqual([]);
 	});
 
-	it("should pass on what the server says", async () => {
-		const child = start();
+	const answerAs = (project: string) =>
+		requests.answer(ROJO_URL, {
+			projectName: project,
+			serverVersion: "7.7.1",
+			sessionId: "s1",
+		});
 
+	const broke = {
+		target,
+		message: { severity: "error", text: "it broke" },
+	};
+
+	it("should pass on what the server says once it serves", async () => {
+		const child = start();
 		child.print("[ERROR rojo] it broke\n");
+		await jest.advanceTimersByTimeAsync(60);
+		expect(said).toEqual([]);
+
+		answerAs("repo");
+		await jest.advanceTimersByTimeAsync(250);
+		child.print("[ERROR rojo] it broke again\n");
 		await jest.advanceTimersByTimeAsync(60);
 
 		expect(said).toEqual([
-			{
-				target,
-				message: { severity: "error", text: "it broke" },
-			},
+			broke,
+			{ ...broke, message: { ...broke.message, text: "it broke again" } },
 		]);
+	});
+
+	it("should pass on what the server said before it stops on purpose", async () => {
+		const child = start();
+		child.print("[ERROR rojo] it broke\n");
+		await jest.advanceTimersByTimeAsync(60);
+
+		await server.terminate();
+
+		expect(said).toEqual([broke]);
+	});
+
+	it("should pass on what the server said before it stops without failing", async () => {
+		const child = start();
+		child.print("[ERROR rojo] it broke\n");
+		await jest.advanceTimersByTimeAsync(60);
+
+		child.exit({ code: 0, signal: null });
+
+		expect(said).toEqual([broke]);
+		expect(stops[0].kind).toBe("stopped");
+	});
+
+	it("should hold what the server said before it failed until told to show it", async () => {
+		const child = start();
+		child.print("[ERROR rojo] it broke\n");
+		await jest.advanceTimersByTimeAsync(60);
+
+		child.exit({ code: 1, signal: null });
+		expect(said).toEqual([]);
+		server.release(true);
+
+		expect(said).toEqual([broke]);
+	});
+
+	it("should drop what the server said before it failed when told not to show it", async () => {
+		const child = start();
+		child.print("[ERROR rojo] it broke\n");
+		await jest.advanceTimersByTimeAsync(60);
+
+		child.exit({ code: 1, signal: null });
+		server.release(false);
+		server.release(true);
+
+		expect(said).toEqual([]);
 	});
 
 	it("should stop with the server's code and why when it exits on its own", () => {

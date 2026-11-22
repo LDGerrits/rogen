@@ -378,14 +378,15 @@ export class CoreServeSession
 		});
 	}
 
-	private stoppedServer(stop: ServerExitEvent, served: boolean): void {
-		if (stop.kind !== "failed" || served) {
+	private stoppedServer(stop: ServerExitEvent, server: StartedServer): void {
+		if (stop.kind !== "failed" || server.hasServed) {
 			this.halt({ kind: "exited", exit: stop });
 			return;
 		}
 		this.exits
 			.queue(async () => {
 				const servedBy = await this.waitForAnotherServe(stop.target);
+				server.release(!servedBy);
 				this.halt({
 					kind: "exited",
 					exit: servedBy
@@ -431,7 +432,7 @@ export class CoreServeSession
 				served: (serving) => this._onDidServe.fire(serving),
 				said: (said) => this._onDidOutput.fire(said),
 				connection: (change) => this._onDidConnect.fire(change),
-				stopped: (stop) => this.stoppedServer(stop, server.hasServed),
+				stopped: (stop) => this.stoppedServer(stop, server),
 				failed: (error) => this._onDidError.fire(error),
 				restarted: (serving) => this._onDidRestart.fire(serving),
 			},

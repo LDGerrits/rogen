@@ -1387,9 +1387,13 @@ describe("CoreServeService", () => {
 				rojoInfo("repo")
 			);
 
+			processes.spawned[0].print(
+				"[ERROR librojo] Address already in use"
+			);
 			processes.spawned[0].exit({ code: 1, signal: null });
 			await settle();
 
+			expect(said).toEqual(["stopped"]);
 			expect(stops).toHaveLength(1);
 			expect(stops[0]).toMatchObject({
 				kind: "served-elsewhere",
