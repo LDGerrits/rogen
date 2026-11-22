@@ -1,5 +1,6 @@
 import { hookScript } from "../hook-script.js";
 import {
+	withHookUpgraded,
 	HOOK_SCRIPT_FILE,
 	CODING_AGENTS,
 	HookEntry,
@@ -223,5 +224,17 @@ describe("registerHook", () => {
 		["an event that is not a list", '{ "hooks": { "Stop": {} } }'],
 	])("should not edit settings with %s", (_, settings) => {
 		expect(withHook(settings, SPEC).kind).toBe("unreadable");
+	});
+});
+
+describe("withHookUpgraded", () => {
+	const claude = CODING_AGENTS.find(({ name }) => name === "Claude Code")!;
+
+	it("should leave settings alone where the upgrade would not be JSON", () => {
+		const settings = JSON.stringify({
+			notes: [JSON.parse(claude.upgrade!.from)],
+		});
+
+		expect(withHookUpgraded(settings, claude.upgrade!)).toBeUndefined();
 	});
 });
