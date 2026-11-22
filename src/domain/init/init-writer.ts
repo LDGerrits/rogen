@@ -108,6 +108,10 @@ export class InitWriter {
 			shutdown[Symbol.dispose]();
 		}
 		for (const item of written) onWritten(item);
+		if (!dryRun)
+			for (const { from, to } of plan.moves)
+				if (from.toLowerCase() === to.toLowerCase())
+					await this.git.moveTracked(plan.directory, from, to);
 		if (plan.gitInit) {
 			const made = dryRun
 				? ok(undefined)

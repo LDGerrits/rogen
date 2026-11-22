@@ -156,7 +156,7 @@ Fix the rule as the message says.
 
 ### `config.invalidRouteKey` [#config-invalidroutekey]
 
-Error. A route key is neither a name nor a file-name pattern. A name is letters and digits that start with a letter, because it appears in folder and file names. A pattern such as `*.tsx`, `*Controller.*` or `*[Ss]ervice` is a glob in Rojo's syntax on the characters of a file name: `*`, `?`, a closed `[...]` class and a closed `{a,b}` group with none nested, but no `/`, `**`, `@` or parentheses, since it matches a file's name and never its path.
+Error. A route key is neither a name nor a file-name pattern. A name is letters and digits that start with a letter, because it appears in folder and file names. A pattern such as `*.tsx`, `*Controller` or `*[Ss]ervice` is a glob in Rojo's syntax on the characters of a file name: `*`, `?`, a closed `[...]` class and a closed `{a,b}` group with none nested, but no `/`, `**`, `@` or parentheses, since it matches a file's name and never its path.
 
 ```
 error: route key "ser-ver" is invalid: a name uses letters and digits only, starting with a letter, and a file-name pattern is a glob on the name, such as "*.tsx" or "*[Ss]ervice". (config.invalidRouteKey)

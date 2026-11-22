@@ -68,7 +68,7 @@ registerCommand(
 					effects: [],
 					exitCodes: {
 						"0": "no diagnostics",
-						"1": "any diagnostic, a warning included, and the project file of a config it checks that is out of date",
+						"1": "any diagnostic, a warning included, or an out-of-date project file of a config it checks",
 					},
 					examples: [
 						"rogen check src/Inventory/Server/Save.luau",

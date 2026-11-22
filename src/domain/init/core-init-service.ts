@@ -512,7 +512,7 @@ export class CoreInitService implements InitService {
 				renames.set(rename.from, {
 					from: relative(rename.from),
 					to: relative(rename.to),
-					reason: `to spell the route "${respelled(rename.from, rename.to)}" as the rest of the code does`,
+					reason: `to match the route "${respelled(rename.from, rename.to)}"`,
 				});
 		if (renames.size === 0) return plan;
 		const depth = ({ from }: PlannedMove) => from.split("/").length;
