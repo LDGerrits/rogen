@@ -335,7 +335,7 @@ describe("Router", () => {
 					.unwrap()
 					.files.find(
 						({ entry }) =>
-							entry.source === abs("src/K/^Net/init.luau")
+							entry.source === absPosix("src/K/^Net/init.luau")
 					);
 
 				expect(init?.hoisted).toBe(true);

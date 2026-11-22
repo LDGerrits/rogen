@@ -148,7 +148,7 @@ describe("check command", () => {
 			expect(result.isErr()).toBe(true);
 			expect(printed()).toEqual([
 				expect.stringMatching(
-					/^src\/F\/Shared\/Bad@Server\.luau - error: .*\(route\.ignoredAt\)$/
+					/^src[\\/]F[\\/]Shared[\\/]Bad@Server\.luau - error: .*\(route\.ignoredAt\)$/
 				),
 			]);
 			expect(logService.texts("warn")).toEqual([
