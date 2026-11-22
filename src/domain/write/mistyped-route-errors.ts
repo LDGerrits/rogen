@@ -29,22 +29,16 @@ export interface MistypedRouteInputs {
 	readonly displaced: ReadonlySet<string>;
 	readonly governed: ReadonlySet<string>;
 	readonly exists: (target: string) => boolean;
-	readonly fallbackKey?: string;
-	readonly fallbackTarget?: string;
-	readonly freeKey?: string;
+	readonly fallback?: FallbackRoute;
 }
+
+export type FallbackRoute =
+	| { readonly key: string }
+	| { readonly target: string; readonly freeKey?: string };
 
 export function mistypedRouteErrors(
 	readings: NameReadings,
-	{
-		routed,
-		displaced,
-		governed,
-		exists,
-		fallbackKey,
-		fallbackTarget,
-		freeKey,
-	}: MistypedRouteInputs
+	{ routed, displaced, governed, exists, fallback }: MistypedRouteInputs
 ): Diagnostic[] {
 	const isMarker = (resource: string) => readings.markers.has(resource);
 	const isDisplaced = (resource: string) => displaced.has(resource);
@@ -121,15 +115,7 @@ export function mistypedRouteErrors(
 		.map(([resource, key]) => {
 			const written = path.posix.basename(resource);
 			const inScript = scriptFolders.has(path.posix.dirname(resource));
-			const keep = !inScript
-				? ""
-				: fallbackKey !== undefined
-					? `, or, if the script beside it requires it as a child, add a marker file @${fallbackKey} in it to keep it there`
-					: fallbackTarget === undefined
-						? ""
-						: freeKey !== undefined
-							? `, or, if the script beside it requires it as a child, add the route "${freeKey}": "${fallbackTarget}" and a marker file @${freeKey} in it to keep it there`
-							: `, or, if the script beside it requires it as a child, add a route key for "${fallbackTarget}" and a marker file of @ and that key in it to keep it there`;
+			const keep = inScript && fallback ? keepAsChild(fallback) : "";
 			return errorDiagnostic(
 				"route.caseMismatch",
 				{ resource },
@@ -147,4 +133,14 @@ export function mistypedRouteErrors(
 		...folders.sort(byResource),
 		...ignored.sort(byResource),
 	];
+}
+
+function keepAsChild(fallback: FallbackRoute): string {
+	const add =
+		"key" in fallback
+			? `a marker file @${fallback.key}`
+			: fallback.freeKey !== undefined
+				? `the route "${fallback.freeKey}": "${fallback.target}" and a marker file @${fallback.freeKey}`
+				: `a route key for "${fallback.target}" and a marker file of @ and that key`;
+	return `, or, if the script beside it requires it as a child, add ${add} in it to keep it there`;
 }

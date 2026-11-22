@@ -54,23 +54,23 @@ export class AskedPaths {
 	}
 
 	get uncovered(): SkippedPath[] {
-		const named = this.asked.flatMap((one) =>
+		const askedPaths = this.asked.flatMap((one) =>
 			"path" in one ? [one.path] : []
 		);
-		const readByNamed = (index: number) =>
-			this.readers
-				.get(index)!
-				.some((reader) => named.some((one) => samePath(one, reader)));
-		return this.covering.uncovered
-			.filter((index) => !readByNamed(index))
-			.map((index): SkippedPath => {
-				const readers = this.readers.get(index)!;
-				return {
+		return this.covering.uncovered.flatMap((index): SkippedPath[] => {
+			const readers = this.readers.get(index)!;
+			const askedReader = readers.some((reader) =>
+				askedPaths.some((asked) => samePath(asked, reader))
+			);
+			if (askedReader) return [];
+			return [
+				{
 					path: AskedPaths.pathAt(this.asked, index),
 					reason: "noConfig",
 					...(readers.length > 0 && { readers }),
-				};
-			});
+				},
+			];
+		});
 	}
 }
 

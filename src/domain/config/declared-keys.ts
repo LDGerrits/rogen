@@ -35,6 +35,14 @@ export class DeclaredKeys {
 		);
 	}
 
+	isFree(name: string): boolean {
+		return (
+			DeclaredKeys.isName(name) &&
+			!this.isRoute(name) &&
+			this.nearMiss(name) === undefined
+		);
+	}
+
 	nearMiss(name: string): string | undefined {
 		if (this.resolve(name) !== undefined) return undefined;
 		const identity = DeclaredKeys.identityOf(name);
