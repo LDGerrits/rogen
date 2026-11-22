@@ -121,6 +121,47 @@ describe("InitWriter", () => {
 		]);
 	});
 
+	it("should have git follow a rename that differs only in case, after every change is made", async () => {
+		install("git", 0, "100644 aaa 0\tsrc/server/A.luau\0");
+		await fileSystem.writeFile(
+			path.join(directory, "src/server/A.luau"),
+			""
+		);
+		await fileSystem.writeFile(path.join(directory, "B.luau"), "");
+
+		(
+			await write(
+				planOf({
+					moves: [
+						{ from: "src/server", to: "src/Server" },
+						{ from: "B.luau", to: "C.luau" },
+					],
+					files: [{ fileName: "a.txt", content: "a" }],
+				})
+			)
+		).unwrap();
+
+		expect(processes.execs.map(({ args }) => args[0])).toEqual([
+			"ls-files",
+			"update-index",
+			"update-index",
+		]);
+		expect(processes.execs[0].args).toContain("src/server");
+	});
+
+	it("should leave git alone in a dry run", async () => {
+		install("git", 0, "100644 aaa 0\tsrc/server/A.luau\0");
+
+		(
+			await write(
+				planOf({ moves: [{ from: "src/server", to: "src/Server" }] }),
+				true
+			)
+		).unwrap();
+
+		expect(processes.execs).toEqual([]);
+	});
+
 	it("should report the commands without running them in a dry run", async () => {
 		install("npm", 1);
 		const npm = commandOf("npm", "install");

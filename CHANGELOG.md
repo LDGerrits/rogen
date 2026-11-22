@@ -19,7 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Breaking:** two files that make one instance, such as `Types.lua` beside `Types.luau`, and Rojo's `.server` or `.client` where Rojo doesn't read it, such as `Main.Server.luau`, are errors.
 - **Breaking:** command names are lower case only, as in Rojo.
 - `rogen init --places --language roblox-ts` uses the same layout as Luau and works with TypeScript 6.
-- `rogen init` explains each rename and asks before it renames anything.
+- `rogen init` explains each rename and asks before it renames anything. When a rename only changes letter case, git follows it, also on Windows and macOS.
 - `rogen init` mounts only the package folders that are installed, each with a plain `$path`, so a missing one stops `serve` and `build` instead of failing in Studio. It says so when it finds a `wally.toml` or `pesde.toml` whose packages aren't installed yet.
 - `rogen init`'s `.gitignore` ignores every place file at the project's root, `node_modules`, and the folders of the project's package manager.
 - `rogen where` fails only on an error about what you asked. `rogen check` stays the gate.

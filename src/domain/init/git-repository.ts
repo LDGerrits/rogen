@@ -5,6 +5,25 @@ import { ProcessService } from "../../platform/process/process-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 const TIMEOUT_MS = 30_000;
+const ENTRIES_PER_RUN = 100;
+
+interface IndexEntry {
+	readonly mode: string;
+	readonly sha: string;
+	readonly stage: string;
+	readonly file: string;
+}
+
+function indexEntriesOf(listing: string): IndexEntry[] {
+	return listing
+		.split("\0")
+		.filter((line) => line !== "")
+		.map((line) => {
+			const tab = line.indexOf("\t");
+			const [mode, sha, stage] = line.slice(0, tab).split(" ");
+			return { mode, sha, stage, file: line.slice(tab + 1) };
+		});
+}
 
 export class GitRepository {
 	constructor(
@@ -26,6 +45,44 @@ export class GitRepository {
 			{ cwd: directory, timeout: TIMEOUT_MS }
 		);
 		return listed.isOk() && listed.value.code === 0;
+	}
+
+	// Git on a case-blind disk takes a folder renamed only in case for the
+	// same folder and keeps the old name, so the index entries move by hand.
+	async moveTracked(
+		directory: string,
+		from: string,
+		to: string
+	): Promise<void> {
+		const git = await this.processService.which("git");
+		if (!git) return;
+		const run = (args: string[]) =>
+			this.processService.exec(git, args, {
+				cwd: directory,
+				timeout: TIMEOUT_MS,
+			});
+		const listed = await run(["ls-files", "-s", "-z", "--", from]);
+		if (listed.isErr() || listed.value.code !== 0) return;
+		const entries = indexEntriesOf(listed.value.stdout).filter(
+			({ stage }) => stage === "0"
+		);
+		for (let start = 0; start < entries.length; start += ENTRIES_PER_RUN) {
+			const batch = entries.slice(start, start + ENTRIES_PER_RUN);
+			await run([
+				"update-index",
+				"--force-remove",
+				"--",
+				...batch.map(({ file }) => file),
+			]);
+			await run([
+				"update-index",
+				"--add",
+				...batch.flatMap(({ mode, sha, file }) => [
+					"--cacheinfo",
+					`${mode},${sha},${to}${file.slice(from.length)}`,
+				]),
+			]);
+		}
 	}
 
 	async workTreeOf(directory: string): Promise<string | undefined> {
