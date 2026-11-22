@@ -1,5 +1,6 @@
 import path from "path";
 import {
+	PathSet,
 	samePath,
 	selfAndAncestors,
 	stemOf,
@@ -287,26 +288,26 @@ export class CompiledPathCheck {
 	private async madeBy(
 		sourcePath: string,
 		layout: CompiledLayout
-	): Promise<Set<string>> {
-		const made = new Set<string>();
+	): Promise<PathSet> {
+		const made: string[] = [];
 		for (const source of await this.filesUnder(sourcePath, false)) {
 			const emitted = layout.emittedPath(source);
-			made.add(compiledKey(emitted));
+			made.push(compiledKey(emitted));
 			for (const { suffix } of layout.dataReplacements)
-				made.add(compiledKey(`${stemOf(emitted)}${suffix}`));
+				made.push(compiledKey(`${stemOf(emitted)}${suffix}`));
 			for (const { suffix } of layout.metaReplacements)
 				for (const metaSuffix of [
 					RojoFile.META_SUFFIX,
 					RojoFile.META_SUFFIX_JSONC,
 				])
 					if (emitted.endsWith(metaSuffix))
-						made.add(
+						made.push(
 							compiledKey(
 								`${emitted.slice(0, -metaSuffix.length)}${suffix}`
 							)
 						);
 		}
-		return made;
+		return new PathSet(made);
 	}
 
 	private async filesUnder(

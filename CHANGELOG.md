@@ -42,6 +42,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- On Windows and macOS, `compiled.orphan` no longer warns about a compiled file whose folder is spelled in another case than its source's, such as one compiled before `rogen init` renamed `Server/` to `server/`, since the file system and Rojo read them as one.
 - `rogen where` no longer says a `.ts` or `.tsx` file is placed in a project with no compiler, where Rojo never reads it.
 - `route.unrouted` names a routing folder to move a file into, and `config.invalidRouteKey` says what is wrong with a key that holds a `/`, `**` or `@`.
 - A rename that a diagnostic offers no longer leads into another error: under a route that governs it, a misspelt `@` for another route is `route.ignoredAt` with no rename, and no rename is offered onto a name that is there.
