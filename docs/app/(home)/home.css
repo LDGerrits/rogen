@@ -473,6 +473,15 @@ html[data-lang="ts"] .home .seg [data-v="ts"],
 .home .hero-ide.play .ln[data-l]:not(.in) {
 	visibility: hidden;
 }
+/* keep what the demo plays in hidden until it hydrates and plays it */
+@media (scripting: enabled) {
+	.home .hero-ide:not(.play) :is(.ln[data-l], [data-typed]) {
+		visibility: hidden;
+	}
+	.home .hero-ide:not(.play) .arr {
+		opacity: 0;
+	}
+}
 .home .hero-ide .arr {
 	transition: opacity 0.35s var(--ease-out);
 }
