@@ -5,6 +5,7 @@ import { RojoFile } from "../../rojo/rojo.js";
 import { SyncRules } from "../../rojo/sync-rules.js";
 import { Asked, LocateQuery } from "../write-service.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
+import { onDiskCase } from "../../../platform/fs/on-disk-case.js";
 
 export interface Targets {
 	readonly paths: readonly string[];
@@ -46,7 +47,10 @@ export class LocateTargets {
 				asked.push({ instance: reference.text });
 			} else {
 				const arg = await this.withoutPosition(toPosix(given), cwd);
-				const resolved = path.resolve(cwd, arg);
+				const resolved = await onDiskCase(
+					this.fileSystemService,
+					path.resolve(cwd, arg)
+				);
 				paths.push(resolved);
 				asked.push({ path: toPosix(resolved) });
 				if (arg.endsWith("/")) folders.add(toPosix(resolved));

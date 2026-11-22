@@ -74,6 +74,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `rogen syncback` no longer writes a new folder whose name routing rejects, such as a Studio folder `server` inside a script folder under a `Server` route, which stopped every later write with `route.caseMismatch`. It leaves the instance out with a `syncback.unplaced` warning.
 - `rogen syncback` writes new code that Studio adds at a route's target the project has no code for yet, such as a first `ReplicatedStorage/Shared/Shop/Types` or a LocalScript in `StarterPlayerScripts` of a project with only server code, where routing puts it. It used to say it would change nothing.
 - `rogen syncback` keeps a data file's form when Studio renames a feature on one side only, such as `ServerScriptService/Shop` while the feature's other sides keep `Shop`: `src/Shop/Server/Cfg.json` moves to `src/ShopX/Server/Cfg.json` and the other sides' files stay, where it used to write `Cfg.luau`.
+- `rogen where` and `rogen check` find a file given in another letter case than it has on disk, such as `src/greeter/server/greeter.server.luau` for `src/Greeter/Server/Greeter.server.luau`, on Windows and macOS, instead of reporting a file that does not exist yet and a route error.
 
 ## [2.0.0-beta.4] - 2026-11-10
 
