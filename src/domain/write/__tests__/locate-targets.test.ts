@@ -32,4 +32,21 @@ describe("LocateTargets", () => {
 		expect(paths).toEqual([onDisk]);
 		expect(asked).toEqual([{ path: toPosix(onDisk) }]);
 	});
+
+	it("should read a path with Windows' extended prefix as the path without it", async () => {
+		const targets = instantiationOf([
+			FileSystemService,
+			new MemoryFileSystemService(),
+		]).createInstance(LocateTargets);
+		const file = path.join(root, "src", "A.luau");
+
+		const { paths } = await targets.classify({
+			args: [`\\\\?\\${file}`, "\\\\?\\UNC\\host\\share\\A.luau"],
+			cwd: root,
+		});
+
+		expect(paths[0]).toBe(file);
+		expect(toPosix(paths[1])).toMatch(/host\/share\/A\.luau$/);
+		expect(toPosix(paths[1])).not.toContain("?");
+	});
 });

@@ -14,6 +14,13 @@ export interface Targets {
 	readonly asked: readonly Asked[];
 }
 
+/** Windows' `\\?\` prefix names the same file as the path without it. */
+function withoutExtendedPrefix(posix: string): string {
+	return posix.replace(/^\/\/\?\/(UNC\/)?/, (_prefix, unc) =>
+		unc ? "//" : ""
+	);
+}
+
 export class LocateTargets {
 	constructor(
 		@FileSystemService private readonly fileSystemService: FileSystemService
@@ -46,7 +53,10 @@ export class LocateTargets {
 				instances.push(reference);
 				asked.push({ instance: reference.text });
 			} else {
-				const arg = await this.withoutPosition(toPosix(given), cwd);
+				const arg = await this.withoutPosition(
+					withoutExtendedPrefix(toPosix(given)),
+					cwd
+				);
 				const resolved = await onDiskCase(
 					this.fileSystemService,
 					path.resolve(cwd, arg)
