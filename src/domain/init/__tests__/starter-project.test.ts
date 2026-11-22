@@ -1,10 +1,6 @@
 import { StarterProject } from "../starter-project.js";
 
-const mount = (path: string, landing: string, optional = false) => ({
-	path,
-	optional,
-	landing,
-});
+const mount = (path: string, landing: string) => ({ path, landing });
 const include = mount("include", "ReplicatedStorage/rbxts_include");
 const rbxts = mount(
 	"node_modules/@rbxts",
@@ -26,11 +22,7 @@ describe("StarterProject", () => {
 		it("should start at the DataModel that mounts each folder at its landing", () => {
 			const project = StarterProject.fromMounts([
 				packages,
-				mount(
-					"ServerPackages",
-					"ServerScriptService/ServerPackages",
-					true
-				),
+				mount("ServerPackages", "ServerScriptService/ServerPackages"),
 			]);
 
 			expect(project.toConfig()).toEqual({
@@ -38,9 +30,7 @@ describe("StarterProject", () => {
 					$className: "DataModel",
 					ReplicatedStorage: { Packages: { $path: "Packages" } },
 					ServerScriptService: {
-						ServerPackages: {
-							$path: { optional: "ServerPackages" },
-						},
+						ServerPackages: { $path: "ServerPackages" },
 					},
 				},
 			});

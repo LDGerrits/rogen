@@ -338,6 +338,14 @@ describe("CoreToolchainService.detect", () => {
 			expect(workspace.packageManager?.id).toBe("pesde");
 		});
 
+		it("should report whether node_modules exists", async () => {
+			expect((await toolchain().detect(cwd)).nodeModules).toBe(false);
+
+			await mkdir("node_modules");
+
+			expect((await toolchain().detect(cwd)).nodeModules).toBe(true);
+		});
+
 		it("should report the package directories that exist", async () => {
 			await mkdir("Packages");
 			await mkdir("roblox_server_packages");
@@ -359,26 +367,23 @@ describe("CoreToolchainService.detect", () => {
 
 			expect(
 				rbxts(workspace)
-					.alwaysMounted()
-					.filter(({ installed }) => installed)
+					.mounts()
 					.map(({ path }) => path)
-			).toEqual(["node_modules/@rbxts"]);
-			expect(
-				rbxts(workspace)
-					.installedMounts()
-					.map(({ path }) => path)
-			).toEqual(["node_modules/@flamework"]);
+			).toEqual([
+				"include",
+				"node_modules/@rbxts",
+				"node_modules/@flamework",
+			]);
 		});
 
-		it("should report whether include exists", async () => {
-			await mkdir("include");
-
+		it("should mount include and @rbxts even before they are installed", async () => {
 			const workspace = await toolchain().detect(cwd);
 
-			expect(rbxts(workspace).alwaysMounted()[0]).toMatchObject({
-				path: "include",
-				installed: true,
-			});
+			expect(
+				rbxts(workspace)
+					.mounts()
+					.map(({ path }) => path)
+			).toEqual(["include", "node_modules/@rbxts"]);
 		});
 	});
 });

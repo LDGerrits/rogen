@@ -7,7 +7,7 @@ The `tree` in your config is a Rojo project tree. Rogen adds your routed files t
 
 ## Packages
 
-Mount a package folder with `$path` where your code requires it from, as in `require(ReplicatedStorage.Packages.Promise)`. Wally installs into `Packages`, and `optional` lets Rojo build before `wally install` has run:
+Mount a package folder with `$path` where your code requires it from, as in `require(ReplicatedStorage.Packages.Promise)`. Wally installs into `Packages`:
 
 ```json title="default.rogen.json"
 {
@@ -18,13 +18,13 @@ Mount a package folder with `$path` where your code requires it from, as in `req
 	"tree": {
 		"$className": "DataModel",
 		"ReplicatedStorage": {
-			"Packages": { "$path": { "optional": "Packages" } }
+			"Packages": { "$path": "Packages" }
 		}
 	}
 }
 ```
 
-`rogen init` mounts the package folders for you. It reads a `wally.toml` or a `pesde.toml` and mounts `Packages` in ReplicatedStorage and `ServerPackages` in ServerScriptService, before you install anything. In a roblox-ts project, it mounts `node_modules/@rbxts`, as [Using roblox-ts](/docs/v2/roblox-ts) shows.
+`rogen init` mounts the package folders it finds, so install your packages before you run it. Wally makes `ServerPackages` only once you add a server dependency, so mount it in ServerScriptService then. A mounted folder that's missing stops `rogen serve` and `rogen build` with Rojo's error, rather than leaving your requires to fail in Studio. In a roblox-ts project, init mounts `node_modules/@rbxts`, as [Using roblox-ts](/docs/v2/roblox-ts) shows.
 
 ## The Place
 

@@ -1791,7 +1791,9 @@ describe("CoreInitService", () => {
 			expect(
 				plan?.files.find(({ fileName }) => fileName === ".gitignore")
 					?.content
-			).toContain("/node_modules\n/build\n/include\n");
+			).toContain(
+				"/build\n/include\n*.tsbuildinfo\n\n# Installed packages\n/node_modules\n"
+			);
 		});
 
 		it("should watch with the project's own watch script", async () => {

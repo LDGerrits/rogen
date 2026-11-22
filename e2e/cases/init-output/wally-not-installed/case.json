@@ -1,0 +1,11 @@
+{
+	"steps": [
+		[
+			"init"
+		],
+		[
+			"write"
+		]
+	],
+	"output": ["init"]
+}

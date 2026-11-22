@@ -14,44 +14,30 @@ describe("Darklua", () => {
 });
 
 describe("PackageManager", () => {
-	const none = new Set<string>();
-
-	it("should name its shared and server folders", () => {
+	it("should land each installed folder where its packages are required from", () => {
 		expect(
-			PackageManager.WALLY.mounts(none, false).map(({ path }) => path)
-		).toEqual(["Packages", "ServerPackages"]);
+			PackageManager.WALLY.mounts(new Set(["Packages", "ServerPackages"]))
+		).toEqual([
+			{ path: "Packages", landing: "ReplicatedStorage/Packages" },
+			{
+				path: "ServerPackages",
+				landing: "ServerScriptService/ServerPackages",
+			},
+		]);
 		expect(
-			PackageManager.PESDE.mounts(none, false).map(({ path }) => path)
+			PackageManager.PESDE.mounts(
+				new Set(["roblox_packages", "roblox_server_packages"])
+			).map(({ path }) => path)
 		).toEqual(["roblox_packages", "roblox_server_packages"]);
 	});
 
-	it("should land each folder where the manager's packages are required from", () => {
+	it("should mount only the folders that are installed", () => {
 		expect(
-			PackageManager.WALLY.mounts(none, false).map(
-				({ landing }) => landing
+			PackageManager.WALLY.mounts(new Set(["Packages"])).map(
+				({ path }) => path
 			)
-		).toEqual([
-			"ReplicatedStorage/Packages",
-			"ServerScriptService/ServerPackages",
-		]);
-	});
-
-	it("should mount a folder when it is installed or a manifest promises it", () => {
-		const installed = new Set(["Packages"]);
-
-		expect(
-			PackageManager.WALLY.mounts(installed, false).map(
-				({ installed, mounted }) => ({ installed, mounted })
-			)
-		).toEqual([
-			{ installed: true, mounted: true },
-			{ installed: false, mounted: false },
-		]);
-		expect(
-			PackageManager.WALLY.mounts(none, true).map(
-				({ mounted }) => mounted
-			)
-		).toEqual([true, true]);
+		).toEqual(["Packages"]);
+		expect(PackageManager.WALLY.mounts(new Set())).toEqual([]);
 	});
 
 	it("should rank Pesde before Wally", () => {
@@ -81,33 +67,25 @@ describe("DetectedWorkspace", () => {
 	});
 
 	describe("packageMounts", () => {
-		it("should mount the folders of the workspace's own manager", () => {
+		it("should mount the installed folders of the workspace's own manager", () => {
 			const workspace = workspaceOf({
 				packageManager: "pesde",
-				packageDirs: ["roblox_packages"],
+				packageDirs: ["roblox_packages", "Packages"],
 			});
 
 			expect(
 				workspace
 					.packageMounts(workspace.language)
-					.map(({ path, mounted }) => [path, mounted])
-			).toEqual([
-				["roblox_packages", true],
-				["roblox_server_packages", true],
-			]);
+					.map(({ path }) => path)
+			).toEqual(["roblox_packages"]);
 		});
 
-		it("should name the folders of the language's default manager, unmounted, when the workspace has none", () => {
-			const workspace = workspaceOf();
+		it("should mount the installed folders of the language's default manager when the workspace has none", () => {
+			const workspace = workspaceOf({ packageDirs: ["Packages"] });
 
 			expect(
-				workspace
-					.packageMounts(new Luau())
-					.map(({ path, mounted }) => [path, mounted])
-			).toEqual([
-				["Packages", false],
-				["ServerPackages", false],
-			]);
+				workspace.packageMounts(new Luau()).map(({ path }) => path)
+			).toEqual(["Packages"]);
 		});
 
 		it("should mount nothing for a language with no manager and a workspace with none", () => {

@@ -315,17 +315,12 @@ describe("ProjectSetup plan", () => {
 			expect(configOf(files).compiledPath).toBe("lib");
 		});
 
-		it("should write optional mounts as optional paths", async () => {
+		it("should write each mount as a plain path where it lands", async () => {
 			const files = await planChoices({
 				mounts: [
-					{
-						path: "Packages",
-						optional: true,
-						landing: "ReplicatedStorage/Packages",
-					},
+					{ path: "Packages", landing: "ReplicatedStorage/Packages" },
 					{
 						path: "ServerPackages",
-						optional: false,
 						landing: "ServerScriptService/ServerPackages",
 					},
 				],
@@ -334,7 +329,7 @@ describe("ProjectSetup plan", () => {
 			expect(configOf(files).tree).toEqual({
 				$className: "DataModel",
 				ReplicatedStorage: {
-					Packages: { $path: { optional: "Packages" } },
+					Packages: { $path: "Packages" },
 				},
 				ServerScriptService: {
 					ServerPackages: { $path: "ServerPackages" },

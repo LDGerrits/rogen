@@ -22,6 +22,11 @@ const config = {
 				permanent: true,
 			},
 			{
+				source: "/docs/v2/migrating-from-v1",
+				destination: "/docs/v1/migrating-to-v2",
+				permanent: true,
+			},
+			{
 				source: "/docs/v2/setups/places",
 				destination: "/docs/v2/multi-place",
 				permanent: true,

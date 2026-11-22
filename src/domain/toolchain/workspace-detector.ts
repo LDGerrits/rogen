@@ -24,6 +24,7 @@ export class WorkspaceDetector {
 			otherLanguages,
 			darkluaConfig,
 			packages,
+			nodeModules,
 			testRunner,
 		] = await Promise.all([
 			this.fallbackLanguage.detect(cwd),
@@ -32,6 +33,7 @@ export class WorkspaceDetector {
 			),
 			this.darkluaConfigIn(has),
 			this.packagesIn(has),
+			has("node_modules"),
 			this.testRunnerDetector.detect(cwd),
 		]);
 
@@ -41,6 +43,7 @@ export class WorkspaceDetector {
 			darkluaConfig,
 			packageManager: packages.packageManager,
 			packageDirs: new Set(packages.packageDirs),
+			nodeModules,
 			testRunner,
 		});
 	}
