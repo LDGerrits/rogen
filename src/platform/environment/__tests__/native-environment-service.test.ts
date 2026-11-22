@@ -210,6 +210,8 @@ describe("NativeEnvironmentService", () => {
 			[{ CI: "1" }, true],
 			[{ CI: "false" }, false],
 			[{ CI: "0" }, false],
+			[{ TF_BUILD: "True" }, true],
+			[{ JENKINS_URL: "http://ci/", BUILD_ID: "1" }, true],
 			[{}, false],
 			[{ CLAUDECODE: "1" }, false],
 		])("should read %j as %s", (env, expected) => {

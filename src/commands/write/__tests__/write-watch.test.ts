@@ -197,8 +197,7 @@ describe("watch", () => {
 				[
 					"build",
 					"default.project.json",
-					"--output",
-					"game.rbxl",
+					"--output=game.rbxl",
 					"--watch",
 				],
 			]);
@@ -470,8 +469,7 @@ describe("watch", () => {
 			expect(processes.spawned[0].args).toEqual([
 				"sourcemap",
 				"default.project.json",
-				"--output",
-				"map.json",
+				"--output=map.json",
 				"--watch",
 			]);
 			expect(logService.sendsOwnLinesToStderr).toBe(false);

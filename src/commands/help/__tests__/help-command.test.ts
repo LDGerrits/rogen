@@ -1,6 +1,8 @@
 import { jest } from "@jest/globals";
 import fs from "fs";
 import path from "path";
+import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
+import { LogLevel } from "../../../platform/log/log-service.js";
 import { MockProductService } from "../../../platform/product/__tests__/mock-product-service.js";
 import {
 	CommandHarness,
@@ -114,6 +116,29 @@ describe("help command", () => {
 			expect(log.texts("print")).toEqual([]);
 			expect(log.texts("info")[0]).toContain("USAGE:");
 			expect(exitCodeOf((result as ResultError<Error>).error)).toBe(2);
+		});
+
+		it("should fail with the usage error itself for a line with no command under --quiet", async () => {
+			const { run, log } = commandHarness({
+				environment: new MockEnvironmentService(
+					"/repo",
+					LogLevel.Error
+				),
+			});
+
+			const result = await run("help", {
+				positionals: [],
+				asksForNothing: true,
+				options: {},
+			});
+
+			expect(log.entries).toEqual([]);
+			expect((result as ResultError<Error>).error).toEqual(
+				new UsageError(
+					"No command given.",
+					"Run 'rogen help' to see the commands."
+				)
+			);
 		});
 
 		it("should print a usage failure document for a line with no command under --json", async () => {

@@ -174,9 +174,7 @@ class WatchSession {
 			if (now === undefined) continue;
 			this.rewatch(
 				root,
-				fs.statSync(root, { throwIfNoEntry: false })?.isDirectory()
-					? FileType.Directory
-					: FileType.File
+				statOf(root)?.isDirectory() ? FileType.Directory : FileType.File
 			);
 		}
 	}
@@ -284,8 +282,18 @@ function isUnder(error: Error, dirs: readonly string[]): boolean {
 }
 
 function identityOf(target: string): string | undefined {
-	const stats = fs.statSync(target, { throwIfNoEntry: false });
+	const stats = statOf(target);
 	return stats && `${stats.ino}:${stats.birthtimeMs}`;
+}
+
+// Windows refuses a stat on a file it is deleting, and a folder made
+// unreadable refuses one everywhere: either reads as missing until it settles.
+function statOf(target: string): fs.Stats | undefined {
+	try {
+		return fs.statSync(target, { throwIfNoEntry: false });
+	} catch {
+		return undefined;
+	}
 }
 
 function isSymbolicLink(target: string): boolean {

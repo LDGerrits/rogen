@@ -79,14 +79,10 @@ describe("upload command", () => {
 		expect(rojo.args).toEqual([
 			"upload",
 			"default.project.json",
-			"--asset_id",
-			"123",
-			"--api_key",
-			"key",
-			"--universe_id",
-			"45",
-			"--cookie",
-			"cookie",
+			"--asset_id=123",
+			"--api_key=key",
+			"--universe_id=45",
+			"--cookie=cookie",
 		]);
 		expect(rojo.options.cwd).toEqual("/repo");
 	});

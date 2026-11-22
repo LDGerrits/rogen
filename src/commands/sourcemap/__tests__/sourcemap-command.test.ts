@@ -140,8 +140,7 @@ describe("sourcemap command", () => {
 		expect(rojo.args.slice(2)).toEqual([
 			"--include-non-scripts",
 			"--absolute",
-			"--output",
-			"map.json",
+			"--output=map.json",
 		]);
 		expect(rojo.options.cwd).toEqual("/repo");
 	});

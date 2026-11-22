@@ -1319,14 +1319,10 @@ describe("serve command", () => {
 		expect(processes.spawned[0].args).toEqual([
 			"serve",
 			"default.project.json",
-			"--address",
-			"0.0.0.0",
-			"--port",
-			"40000",
-			"--allowed-hosts",
-			"studio.local",
-			"--allowed-hosts",
-			"pc.lan",
+			"--address=0.0.0.0",
+			"--port=40000",
+			"--allowed-hosts=studio.local",
+			"--allowed-hosts=pc.lan",
 		]);
 	});
 

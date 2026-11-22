@@ -74,7 +74,7 @@ function serverArgsOf(line: ServeLine): string[] {
 		const value = line.options[name];
 		if (value === undefined) continue;
 		for (const one of typeof value === "string" ? [value] : value)
-			given.push(`--${name}`, one);
+			given.push(`--${name}=${one}`);
 	}
 	return given;
 }

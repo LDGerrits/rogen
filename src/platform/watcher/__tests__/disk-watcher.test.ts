@@ -136,6 +136,33 @@ describe("DiskWatcher", () => {
 			);
 		});
 
+		describeLocking(
+			"a root in a folder it may not read for a while",
+			() => {
+				it("should keep watching and report the root once it can be read", async () => {
+					const outer = path.join(dir, "outer");
+					const root = path.join(outer, "default.rogen.json");
+					await fs.mkdir(outer);
+					await fs.writeFile(root, "{}");
+					await watcher.watch([root]);
+
+					await fs.chmod(outer, 0);
+					await new Promise((resolve) => setTimeout(resolve, 1200));
+					await fs.chmod(outer, 0o755);
+					const changes: FileChange[] = [];
+					store.add(
+						watcher.onDidChangeFile((c) => changes.push(...c))
+					);
+					await fs.writeFile(root, "{ }");
+
+					await waitFor(
+						() => changes.some((c) => c.path === toPosix(root)),
+						10000
+					);
+				}, 20000);
+			}
+		);
+
 		it("should report a file made as soon as a folder is reported added once it can be read", async () => {
 			if (!canDenyAccess) return;
 			const rounds = 12;

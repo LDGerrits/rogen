@@ -7,6 +7,14 @@ type Variables = Readonly<Record<string, string | undefined>>;
 
 const GENERIC_VARIABLES = ["CI", "AGENT", "AI_AGENT"];
 
+// Pipelines that don't set CI: Azure Pipelines, Jenkins, TeamCity, Bamboo.
+const CI_VARIABLES = [
+	"TF_BUILD",
+	"JENKINS_URL",
+	"TEAMCITY_VERSION",
+	"bamboo_buildKey",
+];
+
 const HARNESS_VARIABLES = [
 	"CLAUDECODE",
 	"CODEX_SANDBOX",
@@ -115,7 +123,8 @@ export class NativeEnvironmentService implements EnvironmentService {
 				: verbose.length === 1
 					? LogLevel.Debug
 					: LogLevel.Info;
-		this.isCi = isOn(env.CI);
+		this.isCi =
+			isOn(env.CI) || CI_VARIABLES.some((name) => isSet(env[name]));
 		this.isInteractive =
 			isTerminal && env.TERM !== "dumb" && !isAutomated(env);
 		this.isPlain = json === true || !this.isInteractive;

@@ -642,8 +642,7 @@ describe("build command", () => {
 			expect(rojo.args).toEqual([
 				"build",
 				"default.project.json",
-				"--output",
-				"game.rbxl",
+				"--output=game.rbxl",
 			]);
 			expect(await fs.exists(abs("default.project.json"))).toBe(true);
 		});
@@ -740,7 +739,7 @@ describe("build command", () => {
 			rojo.exit({ code: 0, signal: null });
 			await running;
 
-			expect(rojo.args.slice(2)).toEqual(["--plugin", "Tool.rbxm"]);
+			expect(rojo.args.slice(2)).toEqual(["--plugin=Tool.rbxm"]);
 		});
 
 		it("should show what Rojo said", async () => {

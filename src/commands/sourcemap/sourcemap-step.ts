@@ -51,7 +51,7 @@ export class SourcemapStep implements RojoStep {
 			flags:
 				output === undefined
 					? rojoFlags
-					: [...rojoFlags, "--output", output],
+					: [...rojoFlags, `--output=${output}`],
 			cwd: this.cwd,
 		});
 	}
