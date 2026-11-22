@@ -38,7 +38,11 @@ const isAboutAny = (diagnostic: Diagnostic, paths: readonly string[]) =>
 		...(diagnostic.related ?? []).map(({ resource }) => resource),
 	]
 		.map(toPosix)
-		.some((file) => paths.some((made) => containsPosix(made, file)));
+		.some((file) =>
+			paths.some(
+				(made) => containsPosix(made, file) || containsPosix(file, made)
+			)
+		);
 
 const stopsOn = ({ code, resource, message }: Diagnostic) =>
 	`the write would stop on ${toNative(resource)} (${code}: ${message.replace(/\.$/, "")})`;
