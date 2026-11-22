@@ -378,13 +378,19 @@ These diagnostics come from the instance tree that Rogen writes: clashes between
 
 ### `tree.reservedName` [#tree-reservedname]
 
-Warning. The project file gets an instance whose name starts with `$`, which Rojo reserves for its own fields. Rojo keeps the instance, but it warns about it on every build and every serve.
+Warning, or error. The project file gets an instance whose name starts with `$`, which Rojo reserves for its own fields. Rojo keeps the instance, but it warns about it on every build and every serve.
 
 ```
 warning: Rojo reserves a leading $, so it warns about "ReplicatedStorage/shared/$Config" on every build. Rename the file without the $. (tree.reservedName)
 ```
 
 Rename the file or folder without the `$`.
+
+It is an error when the name is one of those fields, such as `$className` or `$path`, and the project file has to name the instance: a file or folder of that name that Rogen gives to Rojo whole, as part of one `$path`, is fine, but a node of that name would be read as a field and corrupt the file.
+
+```
+error: "ReplicatedStorage/Shared/Trade/$className" has "$className" in its path, which Rojo reads as a field of a node, so the project file can't name an instance of that name. Rename it. (tree.reservedName)
+```
 
 A key you write in the tree yourself, such as `"$Shared": { "$path": "src/Shared" }`, gets the same warning at that key in the config:
 

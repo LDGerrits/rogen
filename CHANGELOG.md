@@ -45,6 +45,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- A file or folder named for one of Rojo's `$` fields, such as `$className.luau` or `$path@Server.luau` in a folder split across services, is an error (`tree.reservedName`). It wrote a node that Rojo read as a field, so the project file couldn't be read. Inside a folder Rogen gives to Rojo whole, the name is still fine.
 - A route target with one of Rojo's `$` fields as a folder, such as `ReplicatedStorage/$className`, is a config error (`roblox.invalidFolder`). It crashed `rogen write` or wrote a project file Rojo couldn't read.
 - A folder with an init script and an `init.meta.json` that sets script properties, such as `Disabled`, no longer fails `rojo build` with `Unknown property Folder.Disabled` when its other files land on another side. That side's folder gets the meta's `attributes` and `ignoreUnknownInstances` only, and the script keeps the properties.
 - A folder with an `init.server.luau` and an `init.luau` that no route takes, or that `globIgnorePaths` ignores, no longer builds as a ModuleScript while `rogen where` says it is a Script. Rojo reads `init.luau` of a folder whatever `globIgnorePaths` says, so `init.server.luau` now gets the `tree.instanceClash` warning and is left out, as when both are routed.
