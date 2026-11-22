@@ -1,4 +1,5 @@
 import path from "path";
+import { Result } from "./base/result.js";
 import { DisposableStore } from "./base/disposable.js";
 import { IoError, setUnexpectedErrorHandler } from "./base/errors.js";
 import {
@@ -33,7 +34,7 @@ import { CoreInstantiationService } from "./platform/instantiation/core-instanti
 import { ServicesAccessor } from "./platform/instantiation/instantiation.js";
 import { ServiceCollection } from "./platform/instantiation/service-collection.js";
 import { SyncDescriptor } from "./platform/instantiation/sync-descriptor.js";
-import { LogService } from "./platform/log/log-service.js";
+import { LogLevel, LogService } from "./platform/log/log-service.js";
 import { JsonLogService } from "./platform/log/json-log-service.js";
 import { PlainLogService } from "./platform/log/plain-log-service.js";
 import { TerminalLogService } from "./platform/log/terminal-log-service.js";
@@ -293,12 +294,16 @@ class RogenMain {
 		);
 		if (notice.printedFirst) await notice.print();
 
-		const result = await commandService
-			.executeCommand(command, line)
-			.catch((error: unknown) => {
-				failure.reportCrash(error);
+		let result: Result<void, Error>;
+		try {
+			result = await commandService.executeCommand(command, line);
+		} catch (error) {
+			failure.reportCrash(error);
+			if (!json || environmentService.logLevel >= LogLevel.Debug)
 				throw error;
-			});
+			process.exitCode = 1;
+			return;
+		}
 
 		if (result.isErr()) failure.report(result.error, command);
 		process.exitCode = exitCode(result, lifecycleService.signal);

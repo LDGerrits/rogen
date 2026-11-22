@@ -76,6 +76,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `rogen syncback` keeps a data file's form when Studio renames a feature on one side only, such as `ServerScriptService/Shop` while the feature's other sides keep `Shop`: `src/Shop/Server/Cfg.json` moves to `src/ShopX/Server/Cfg.json` and the other sides' files stay, where it used to write `Cfg.luau`.
 - `rogen where` and `rogen check` find a file given in another letter case than it has on disk, such as `src/greeter/server/greeter.server.luau` for `src/Greeter/Server/Greeter.server.luau`, on Windows and macOS, instead of reporting a file that does not exist yet and a route error.
 - `rogen check` and `rogen where` report the error for a file in a folder that cannot be read, as they do for the folder, instead of exiting 0 and calling the file new.
+- With `--json`, a crash prints only its JSON document: the `Fatal Error` stack no longer follows it on stderr, unless `-v` asks for it.
 
 ## [2.0.0-beta.4] - 2026-11-10
 
