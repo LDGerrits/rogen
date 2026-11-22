@@ -327,34 +327,55 @@ describe("check command", () => {
 	});
 
 	describe("with named configs, one of which doesn't load", () => {
+		const lobby = (broken: Record<string, unknown>) =>
+			writeConfig("lobby.rogen.json", {
+				name: "lobby",
+				routes: ROUTES,
+				sourcePaths: ["src/lobby"],
+				...broken,
+			});
+
 		beforeEach(async () => {
 			await writeConfig("game.rogen.json", {
 				name: "game",
 				routes: ROUTES,
 				sourcePaths: ["src/game"],
 			});
-			await writeConfig("lobby.rogen.json", {
-				name: "lobby",
-				routes: ROUTES,
-				sourcePaths: ["src/lobby"],
-				unknownKey: true,
-			});
 			await write("src/game/Clean.luau", "src/lobby/Clean.luau");
 		});
 
-		it("should pass a path that a named config which doesn't load can't read, by its source paths", async () => {
-			const result = await run({ _: ["src/game"] });
+		it.each([
+			["an unknown key", { unknownKey: true }],
+			["a key of the wrong type", { name: 5 }],
+			["routes of the wrong type", { routes: "x" }],
+		])(
+			"should pass a path its source paths don't read, when it has %s",
+			async (_, broken) => {
+				await lobby(broken);
 
-			expect(result.isOk()).toBe(true);
-		});
+				const result = await run({ _: ["src/game"] });
 
-		it("should still fail on a path a named config which doesn't load reads", async () => {
+				expect(result.isOk()).toBe(true);
+			}
+		);
+
+		it("should fail on a path its source paths read", async () => {
+			await lobby({ unknownKey: true });
+
 			const result = await run({ _: ["src/lobby"] });
 
 			expect(found(failureOf(result))).toContainEqual([
 				"config.unknownField",
 				"lobby.rogen.json",
 			]);
+		});
+
+		it("should fail on every path when its source paths can't be read", async () => {
+			await lobby({ sourcePaths: "src/lobby" });
+
+			const result = await run({ _: ["src/game"] });
+
+			expect(result.isErr()).toBe(true);
 		});
 	});
 

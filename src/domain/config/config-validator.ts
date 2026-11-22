@@ -4,6 +4,7 @@ import {
 	ignoringAllOf,
 	withGlobBody,
 } from "../../base/glob.js";
+import { isObject } from "../../base/objects.js";
 import { contains, isInside, toPosix } from "../../base/path.js";
 import { Result, err } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
@@ -51,17 +52,31 @@ export class ConfigValidator {
 	constructor(private readonly config: ConfigFile) {
 		this.dir = path.dirname(config.file);
 		this.routes = this.field("routes") ?? {};
-		this.sourcePaths = ConfigValidator.sourcePathsOf(config);
+		this.sourcePaths = ConfigValidator.sourcePathsIn(
+			config.file,
+			config.model.contents
+		)!;
 	}
 
-	static sourcePathsOf(config: ConfigFile): readonly string[] {
-		const field = <K extends keyof RogenKeys>(key: K) =>
-			config.model.getValue<RogenKeys[K]>(key);
-		const routed = Object.keys(field("routes") ?? {}).length > 0;
-		return (
-			field("sourcePaths") ?? (routed ? [DEFAULT_SOURCE_PATH] : [])
-		).map((sourcePath) =>
-			path.resolve(path.dirname(config.file), sourcePath)
+	static sourcePathsIn(
+		file: string,
+		value: unknown
+	): readonly string[] | undefined {
+		if (!isObject(value)) return undefined;
+		const { sourcePaths, routes } = value;
+		const given =
+			sourcePaths === undefined
+				? routes === undefined || isObject(routes)
+					? Object.keys(routes ?? {}).length > 0
+						? [DEFAULT_SOURCE_PATH]
+						: []
+					: undefined
+				: Array.isArray(sourcePaths) &&
+					  sourcePaths.every((one) => typeof one === "string")
+					? sourcePaths
+					: undefined;
+		return given?.map((sourcePath) =>
+			path.resolve(path.dirname(file), sourcePath)
 		);
 	}
 
