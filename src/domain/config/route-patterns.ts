@@ -59,10 +59,6 @@ export class RoutePatterns {
 		return RoutePatterns.parse(key) !== undefined;
 	}
 
-	get keys(): readonly string[] {
-		return this.patterns.map(({ key }) => key);
-	}
-
 	match(...names: readonly string[]): PatternMatch | undefined {
 		const matching = this.patterns.flatMap((pattern) => {
 			const weights = pattern.alternatives

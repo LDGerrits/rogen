@@ -488,10 +488,7 @@ class MirrorWalk {
 		if (instancePath.length < 2) return false;
 		if (node.$ignoreUnknownInstances === true) return false;
 		if (PATH_DROPS_CONTENT.has(node.$className ?? "")) return false;
-		let own: RojoNode | undefined = this.inputs.tree;
-		for (const name of instancePath)
-			own = own && childNodes(own).find(([child]) => child === name)?.[1];
-		return own !== undefined;
+		return this.inOwnTree(instancePath);
 	}
 
 	private async keepProject(

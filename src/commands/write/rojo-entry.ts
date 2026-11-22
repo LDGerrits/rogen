@@ -14,6 +14,14 @@ import { OutputShape } from "../../platform/output/output-shape.js";
 
 const S = OutputShape;
 
+export const rojoMessagesShape = S.array(
+	S.object({
+		severity: S.enum("error", "warning", "info"),
+		text: S.string,
+		details: S.optional(S.array(S.string)),
+	})
+);
+
 export const rojoEntryShape = (command: RojoTarget["command"]) =>
 	S.named(
 		"RojoEntry",
@@ -23,13 +31,7 @@ export const rojoEntryShape = (command: RojoTarget["command"]) =>
 			project: S.nullable(S.string),
 			output: S.optional(S.string),
 			plugin: S.optional(S.string),
-			messages: S.array(
-				S.object({
-					severity: S.enum("error", "warning", "info"),
-					text: S.string,
-					details: S.optional(S.array(S.string)),
-				})
-			),
+			messages: rojoMessagesShape,
 			diagnostics: S.optional(S.array(diagnosticShape)),
 			error: S.optional(errorShape),
 		})
