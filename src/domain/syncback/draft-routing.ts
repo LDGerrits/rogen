@@ -76,6 +76,23 @@ export function landingMiss(
 						.filter((node) => node.folder === source)
 						.map(({ instancePath }) => instancePath)
 				);
+	if (folder && found?.status === "empty" && !found.instancePath)
+		for (const location of files)
+			if (
+				location.status === "empty" &&
+				location.instancePath &&
+				location.source !== source &&
+				containsPosix(source, location.source)
+			)
+				landed.push(
+					location.instancePath.slice(
+						0,
+						location.instancePath.length -
+							path.posix
+								.relative(source, location.source)
+								.split("/").length
+					)
+				);
 	if (landed.some((at) => isSameJson(at, instance))) return undefined;
 	if (landed.length === 0) return `routing would make no instance of ${file}`;
 	const read = `routing would read ${file} as ${instanceKey(landed[0])}`;

@@ -122,6 +122,39 @@ describe("landingMiss", () => {
 		);
 	});
 
+	describe("a new folder that holds only an empty folder", () => {
+		const bag = posix("src/Quest/Bag");
+		const inside = (instance: string[]): FileLocation[] => [
+			{
+				status: "empty",
+				source: `${bag}/Inner`,
+				exists: true,
+				instancePath: instance,
+			},
+			{ status: "empty", source: bag, exists: true },
+		];
+
+		it("should take it at the instance its empty folder implies", () => {
+			expect(
+				landingMiss(
+					{ file: bag, instance: [...quest, "Bag"], folder: true },
+					inside([...quest, "Bag", "Inner"])
+				)
+			).toBeUndefined();
+		});
+
+		it("should name the instance its empty folder implies when it is another", () => {
+			expect(
+				landingMiss(
+					{ file: bag, instance: [...quest, "Bag"], folder: true },
+					inside(["ReplicatedStorage", "Bag", "Inner"])
+				)
+			).toBe(
+				`routing would read ${bag} as ReplicatedStorage/Bag; rename it in Studio`
+			);
+		});
+	});
+
 	it("should say no instance comes from a new folder no file inside makes", () => {
 		expect(
 			landingMiss(

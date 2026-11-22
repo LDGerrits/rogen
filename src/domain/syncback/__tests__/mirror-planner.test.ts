@@ -766,6 +766,29 @@ describe("MirrorPlanner", () => {
 		);
 	});
 
+	it("should write a new folder that holds an attribute and an empty folder where Rojo wrote it", async () => {
+		await prepare(["src/Shop/Main.luau", "src/Shop/@Server"]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Shop", "Bag", "init.meta.json"),
+				'{"attributes":{"Level":3}}'
+			);
+			await writeFiles(
+				fs,
+				".rogen-syncback/mirror/ServerScriptService/Shop/Bag/Inner/.gitkeep"
+			);
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.unplaced).toEqual([]);
+		expect(plan.changes.map(({ file }) => file).sort()).toEqual([
+			abs("src/Shop/Bag/Inner/.gitkeep"),
+			abs("src/Shop/Bag/init.meta.json"),
+		]);
+	});
+
 	describe("a renamed feature", () => {
 		it("should move the files of a feature Studio renamed into a folder of the new name", async () => {
 			await prepare(["src/Shop/Server/ShopService.luau"]);
