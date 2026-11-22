@@ -30,11 +30,21 @@ export interface MistypedRouteInputs {
 	readonly governed: ReadonlySet<string>;
 	readonly exists: (target: string) => boolean;
 	readonly fallbackKey?: string;
+	readonly fallbackTarget?: string;
+	readonly freeKey?: string;
 }
 
 export function mistypedRouteErrors(
 	readings: NameReadings,
-	{ routed, displaced, governed, exists, fallbackKey }: MistypedRouteInputs
+	{
+		routed,
+		displaced,
+		governed,
+		exists,
+		fallbackKey,
+		fallbackTarget,
+		freeKey,
+	}: MistypedRouteInputs
 ): Diagnostic[] {
 	const isMarker = (resource: string) => readings.markers.has(resource);
 	const isDisplaced = (resource: string) => displaced.has(resource);
@@ -111,10 +121,15 @@ export function mistypedRouteErrors(
 		.map(([resource, key]) => {
 			const written = path.posix.basename(resource);
 			const inScript = scriptFolders.has(path.posix.dirname(resource));
-			const keep =
-				inScript && fallbackKey !== undefined
+			const keep = !inScript
+				? ""
+				: fallbackKey !== undefined
 					? `, or, if the script beside it requires it as a child, add a marker file @${fallbackKey} in it to keep it there`
-					: "";
+					: fallbackTarget === undefined
+						? ""
+						: freeKey !== undefined
+							? `, or, if the script beside it requires it as a child, add the route "${freeKey}": "${fallbackTarget}" and a marker file @${freeKey} in it to keep it there`
+							: `, or, if the script beside it requires it as a child, add a route key for "${fallbackTarget}" and a marker file of @ and that key in it to keep it there`;
 			return errorDiagnostic(
 				"route.caseMismatch",
 				{ resource },

@@ -81,6 +81,7 @@ export class Placer {
 				fallbackKey: this.config.patterns.nameKeyFor(
 					DeclaredKeys.FALLBACK_ROUTE
 				),
+				...this.fallbackAdvice(),
 			}),
 			...markerClashes.diagnostics(),
 			...this.ignoredAtErrors(
@@ -122,6 +123,20 @@ export class Placer {
 				errors: routeErrors,
 			})
 		);
+	}
+
+	private fallbackAdvice(): { fallbackTarget?: string; freeKey?: string } {
+		const target = this.config.routes.get(DeclaredKeys.FALLBACK_ROUTE);
+		if (target === undefined) return {};
+		const name = target.folders.at(-1) ?? target.service;
+		const free =
+			DeclaredKeys.isName(name) &&
+			!this.config.keys.isRoute(name) &&
+			this.config.keys.nearMiss(name) === undefined;
+		return {
+			fallbackTarget: target.toString(),
+			...(free && { freeKey: name }),
+		};
 	}
 
 	private scan(): ScannedRoot[] {

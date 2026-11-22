@@ -168,6 +168,50 @@ describe("WriteValidator rules", () => {
 				]);
 				expect(fixesOf(errors)).toEqual([]);
 			});
+			it("should name a route key for * and its marker for a folder inside a script folder when no key routes where * does", async () => {
+				await write(
+					"src/Lib/Net/init.luau",
+					"src/Lib/Net/SERVER/Remote.luau"
+				);
+
+				const errors = await errorsOf("route.caseMismatch");
+
+				expect(listed(errors)).toEqual([
+					[
+						abs("src/Lib/Net/SERVER"),
+						'"SERVER" differs from the route "server" only in letter case, so it routes nothing, and the files in it that nothing else routes go to "*". Spell it "server", or, if the script beside it requires it as a child, add the route "shared": "ReplicatedStorage/shared" and a marker file @shared in it to keep it there.',
+					],
+				]);
+			});
+
+			it("should name no key for * when the name of its target is a route already", async () => {
+				await write(
+					"src/Lib/Net/init.luau",
+					"src/Lib/Net/SERVER/Remote.luau"
+				);
+
+				const errors = await errorsOf("route.caseMismatch", {
+					routes: { ...ROUTES, "*": "ReplicatedStorage/server" },
+				});
+
+				expect(listed(errors)[0][1]).toMatch(
+					/add a route key for "ReplicatedStorage\/server" and a marker file of @ and that key in it to keep it there\.$/
+				);
+			});
+
+			it("should name no marker when no route places what is left", async () => {
+				await write(
+					"src/Lib/Net/init.luau",
+					"src/Lib/Net/SERVER/Remote.luau"
+				);
+
+				const errors = await errorsOf("route.caseMismatch", {
+					routes: { server: "ServerScriptService" },
+				});
+
+				expect(listed(errors)[0][1]).toMatch(/Spell it "server"\.$/);
+			});
+
 			it("should fix each mismatch by renaming the name to the key's spelling", async () => {
 				await write("src/(SERVER)/A.luau");
 
