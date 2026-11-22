@@ -464,6 +464,18 @@ describe("check command", () => {
 			expect(logService.texts("notice")).toHaveLength(1);
 		});
 
+		it("should skip no file that a config named beside it reads", async () => {
+			await run({
+				_: [
+					"places/lobby/default.rogen.json",
+					"places/shared/src/Stray.client.luau",
+				],
+				json: true,
+			});
+
+			expect(document()).not.toHaveProperty("skipped");
+		});
+
 		it("should check a config named by its file whole", async () => {
 			const result = await run({
 				_: ["places/lobby/default.rogen.json"],

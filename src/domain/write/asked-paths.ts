@@ -1,4 +1,4 @@
-import { relativeTo } from "../../base/path.js";
+import { relativeTo, samePath } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
 import { joinedWithOr } from "../../base/strings.js";
 import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
@@ -54,14 +54,23 @@ export class AskedPaths {
 	}
 
 	get uncovered(): SkippedPath[] {
-		return this.covering.uncovered.map((index): SkippedPath => {
-			const readers = this.readers.get(index)!;
-			return {
-				path: AskedPaths.pathAt(this.asked, index),
-				reason: "noConfig",
-				...(readers.length > 0 && { readers }),
-			};
-		});
+		const named = this.asked.flatMap((one) =>
+			"path" in one ? [one.path] : []
+		);
+		const readByNamed = (index: number) =>
+			this.readers
+				.get(index)!
+				.some((reader) => named.some((one) => samePath(one, reader)));
+		return this.covering.uncovered
+			.filter((index) => !readByNamed(index))
+			.map((index): SkippedPath => {
+				const readers = this.readers.get(index)!;
+				return {
+					path: AskedPaths.pathAt(this.asked, index),
+					reason: "noConfig",
+					...(readers.length > 0 && { readers }),
+				};
+			});
 	}
 }
 
