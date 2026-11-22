@@ -67,6 +67,16 @@ export class RojoSyncback {
 		});
 	}
 
+	static written(messages: readonly ServerMessage[]): string[] {
+		return messages.flatMap(({ text }) => {
+			const found = LISTED.exec(text.trim());
+			return found?.[1] === "Writing" &&
+				!found[2].startsWith("to the file system")
+				? [found[2]]
+				: [];
+		});
+	}
+
 	/**
 	 * Whether Rojo renamed a file by only the letter case of its name, where
 	 * the file system folds case: it writes the new name over the old file,
@@ -126,6 +136,13 @@ export class RojoSyncback {
 			compiled: [],
 			warnings: [],
 		});
+	}
+
+	dryOn(
+		projectFile: string,
+		signal: AbortSignal
+	): Promise<Result<readonly ServerMessage[], Error>> {
+		return this.run(projectFile, ["--dry-run", "--list"], signal);
 	}
 
 	listOn(

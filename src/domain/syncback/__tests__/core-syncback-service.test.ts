@@ -187,10 +187,19 @@ describe("CoreSyncbackService", () => {
 
 		await syncback();
 
-		expect(rojo.requests).toHaveLength(1);
+		expect(rojo.requests).toHaveLength(2);
+		expect(rojo.requests.map(({ flags }) => flags)).toEqual([
+			[
+				"--input",
+				"game.rbxl",
+				"--non-interactive",
+				"--dry-run",
+				"--list",
+			],
+			["--input", "game.rbxl", "--non-interactive", "--list"],
+		]);
 		expect(rojo.requests[0]).toMatchObject({
 			command: "syncback",
-			flags: ["--input", "game.rbxl", "--non-interactive", "--list"],
 			projectFile: abs("rogen-syncback.project.json"),
 			since: "7.7.0",
 		});
@@ -2599,7 +2608,7 @@ describe("CoreSyncbackService", () => {
 			},
 		});
 
-		expect(rojo.requests).toHaveLength(1);
+		expect(rojo.requests).toHaveLength(2);
 		expect(result.changes).toEqual(shown?.changes);
 		expect(await fs.readFile(abs("src/Inventory/Bag@Server.luau"))).toBe(
 			"return 2"
@@ -2729,7 +2738,7 @@ describe("CoreSyncbackService", () => {
 
 		const plan = await planned();
 
-		expect(rojo.requests).toHaveLength(2);
+		expect(rojo.requests).toHaveLength(3);
 		expect(JSON.parse(rojo.projectTexts[1]).syncbackRules).toEqual({
 			ignorePaths: [
 				".rogen-syncback/mirror/ServerScriptService/Inventory/Rates.yaml",
