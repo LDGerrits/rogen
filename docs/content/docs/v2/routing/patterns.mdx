@@ -1,0 +1,69 @@
+---
+title: Routing by Pattern
+description: Route files by what they're called, such as every Controller to the client
+---
+
+When your files are named for their role, a pattern route sends each one where it belongs, without a routing folder or an `@` on every file. A route key with a `*` is a pattern:
+
+```json title="default.rogen.json"
+{
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*Controller": "StarterPlayer/StarterPlayerScripts",
+		"*Service": "ServerScriptService",
+		"*": "ReplicatedStorage/Shared"
+	}
+}
+```
+
+<RouteFigure
+	disk={`
+  src/
+    Shop/
+      ShopController.luau
+      ShopService.luau
+      Prices.luau
+      Shared/
+        PriceService.luau
+`}
+	studio={`
+  ReplicatedStorage
+    Shared/
+      Shop/
+        PriceService
+        Prices
+  ServerScriptService
+    Shop/
+      ShopService
+  StarterPlayer
+    StarterPlayerScripts
+      Shop/
+        ShopController
+`}
+/>
+
+`*Controller` matches the name of the instance a file makes, so `ShopController.luau` needs no `.*` after it. The file keeps its whole name, and its feature folder comes along as it does with any route.
+
+## File Extensions
+
+A pattern with a dot matches the file's name with its extension, so it can route a kind of file, such as every story or, in roblox-ts, every React component:
+
+```json title="default.rogen.json"
+{
+	"routes": {
+		"*.story.luau": "ReplicatedStorage/Stories",
+		"*.tsx": "StarterPlayer/StarterPlayerScripts"
+	}
+}
+```
+
+## Which Route Wins
+
+- A routing folder, `@` name or marker file beats every pattern, so `Shared/PriceService.luau` above stays shared.
+- A pattern matches files, never folders. A script written as `InputController/init.luau` goes with its folder, so name the folder `InputController@Client/` to route it.
+- When two patterns match, the longer one wins, so `*.story.luau` beats `*.luau`. A tie that sends a file to two places is an error.
+- Every pattern beats `*`.
+
+Patterns use Rojo's glob syntax for one name (`*`, `?`, `[Ss]`, `{a,b}`) and match letter case exactly.

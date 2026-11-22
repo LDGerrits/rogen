@@ -12,6 +12,7 @@
 		"routing/index",
 		"routing/folders",
 		"routing/names",
+		"routing/patterns",
 		"routing/skipping-folders",
 		"routing/tree",
 		"---Guides---",

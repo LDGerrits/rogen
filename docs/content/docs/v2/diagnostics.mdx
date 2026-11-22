@@ -283,7 +283,7 @@ Error. Two or more pattern routes match a file's name with as many characters th
 error: "*.ts" and "*Ui.*" both match this name, are as long as each other, and send it to different places. Lengthen the pattern that should win, or route the file with a folder or an @ name. (route.patternClash)
 ```
 
-Make the pattern that should win more specific, as in `*Ui.ts`, or route the file with a [routing folder](/docs/v2/routing/folders) or an `@` name, which beat every pattern. Patterns that send a file to the same place don't clash. See [Patterns](/docs/v2/routing/names#patterns).
+Make the pattern that should win more specific, as in `*Ui.ts`, or route the file with a [routing folder](/docs/v2/routing/folders) or an `@` name, which beat every pattern. Patterns that send a file to the same place don't clash. See [Routing by Pattern](/docs/v2/routing/patterns).
 
 ### `route.folderPattern` [#route-folderpattern]
 
@@ -295,7 +295,7 @@ warning: matches the pattern "*Controller", but a pattern never routes a folder 
 
 A folder of plain files gets this warning too when a pattern without a `*` matches its name, as `server/` under `[Ss]erver`. Such a pattern names a whole word, so a folder spelled that way was most likely meant to route its files, and those that no route takes go to `*` instead. Only the outermost such folder warns, and a folder that already has an error for its name, such as [`route.caseMismatch`](#route-casemismatch), doesn't. A pattern with a `*`, such as `*Controller`, doesn't warn about a folder of plain files, since `ShopController/` may just be a feature's name.
 
-Rename the folder with the `@` of the route key that has the pattern's target, as `InputController@Client/`. In `--json`, `fixes` holds that rename when one route key has the target. When no name key has the target, add one to `routes` and name the folder for it, as a `Server` key and a `Server/` folder. See [Patterns](/docs/v2/routing/names#patterns).
+Rename the folder with the `@` of the route key that has the pattern's target, as `InputController@Client/`. In `--json`, `fixes` holds that rename when one route key has the target. When no name key has the target, add one to `routes` and name the folder for it, as a `Server` key and a `Server/` folder. See [Routing by Pattern](/docs/v2/routing/patterns).
 
 ### `route.ignoredAt` [#route-ignoredat]
 

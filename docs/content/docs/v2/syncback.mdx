@@ -23,4 +23,6 @@ Read the list before you write. Syncback also removes the files of instances the
 
 ## Where Changes Go
 
-A changed instance goes back to its own file. A new one goes where routing would put it, styled like the files around it, and a folder renamed in Studio is renamed on disk with everything in it. Syncback leaves out an instance whose name routing would misread, such as `Save@Server`, with a warning. It stops before it changes anything when a name has a `/` or `\` or is `.` or `..`, since Rojo would write outside the folder, or when a folder holds two children with one name, since Rojo would turn the folder into one model file. Rename those instances in Studio and run it again. Under a [`compiledPath`](/docs/v2/config), syncback leaves the compiled code alone and warns about each change for you to copy into the source.
+A changed instance goes back to its own file, and a new one goes where routing would put it, next to the files like it. A folder renamed in Studio is renamed on disk.
+
+Syncback skips an instance whose name Rogen would read as a route, such as `Save@Server`, with a warning. It stops without changing anything when a name has a slash or backslash, is `.` or `..`, or two instances in one folder share a name; rename them in Studio and run it again. Under a [`compiledPath`](/docs/v2/config), it leaves the compiled code alone and warns about each change for you to copy into the source.

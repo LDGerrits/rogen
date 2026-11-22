@@ -43,11 +43,13 @@ A route's name in a file's path sends the file there. A `Server/` folder sends e
 `}
 />
 
-The name is spelled exactly as the key. A folder or `@` that misses it by its case or, for an `@`, a typo, as `server/`, `Save@server.luau` or `Save@Sever.luau` under a `Server` route, would send server code to `*`, so Rogen stops until you fix it. Only Rojo's own `.server` and `.client`, which it reads in lower case, route a key of that name in any case. Everything else in the path stays, so `Shop` shows up under each service. [Routing Folders](/docs/v2/routing/folders) and [Routing by Name](/docs/v2/routing/names) show each way to route in full, and [Skipping Folders](/docs/v2/routing/skipping-folders) how to leave a folder out.
+Everything else in the path stays, so `Shop` shows up under each service. The route's name must be spelled exactly as its key: a `server/` folder or `Save@Sever.luau` under a `Server` route is an error, so a typo never sends server code somewhere else.
+
+Each way to route has its own page: [Routing Folders](/docs/v2/routing/folders), [Routing by Name](/docs/v2/routing/names) and [Routing by Pattern](/docs/v2/routing/patterns). [Skipping Folders](/docs/v2/routing/skipping-folders) shows how to leave a folder out of the game.
 
 ## Files Without a Route
 
-The `*` route takes every file that no other route matches, so `src/Shop/Prices.luau` lands in `ReplicatedStorage/Shared/Shop`. A [pattern route](/docs/v2/routing/names#patterns) such as `*.tsx` takes a file by its name before `*` does. `rogen init` writes it. Without `*`, Rogen leaves such a file out and warns about it, so a server file that forgets its route never reaches clients. That suits a project where every file names its side.
+The `*` route takes every file that no other route matches, so `src/Shop/Prices.luau` lands in `ReplicatedStorage/Shared/Shop`. A [pattern route](/docs/v2/routing/patterns) such as `*.tsx` takes a file by its name before `*` does. `rogen init` writes it. Without `*`, Rogen leaves such a file out and warns about it, so a server file that forgets its route never reaches clients. That suits a project where every file names its side.
 
 ## The Outermost Route Wins
 
