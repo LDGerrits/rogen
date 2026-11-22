@@ -671,8 +671,14 @@ describe("MirrorPlanner", () => {
 				abs("src/Shop@Server/ShopService.luau"),
 				"return 1"
 			);
+			await fs.writeFile(abs("src/Log@Server.luau"), "print(1)");
+			await fs.writeFile(
+				abs("src/Shop@Server/Deep/Other.luau"),
+				"return 9"
+			);
 			rojo.say = async () => {
 				await fs.delete(mirror("ServerScriptService", "Shop"), true);
+				await fs.delete(mirror("ServerScriptService", "Log.luau"));
 				const moved = [
 					"ReplicatedStorage",
 					"Shared",
@@ -692,7 +698,13 @@ describe("MirrorPlanner", () => {
 
 			const plan = await planned("apply");
 
-			expect(plan.changes).toEqual([]);
+			expect(plan.changes).toEqual(
+				expect.arrayContaining([
+					{ kind: "remove", file: abs("src/Log@Server.luau") },
+					{ kind: "remove", file: abs("src/Shop@Server/Deep") },
+				])
+			);
+			expect(plan.changes).toHaveLength(2);
 			expect(
 				await fs.exists(abs("src/Shop@Server/Main.server.luau"))
 			).toBe(true);
@@ -700,6 +712,7 @@ describe("MirrorPlanner", () => {
 				await fs.exists(abs("src/Shop@Server/ShopService.luau"))
 			).toBe(true);
 			expect(plan.unplaced).toHaveLength(1);
+			expect(await fs.exists(abs("src/Log@Server.luau"))).toBe(false);
 		});
 	});
 
@@ -723,6 +736,34 @@ describe("MirrorPlanner", () => {
 		expect(plan.changes).toEqual([
 			{ kind: "remove", file: abs("src/Combat") },
 		]);
+	});
+
+	it("should keep the file of a lone script moved where its script type has no place", async () => {
+		await prepare([
+			"src/Shop/Prices.luau",
+			"src/Shop@Server/Main.server.luau",
+		]);
+		await fs.writeFile(abs("src/Shop@Server/Main.server.luau"), "print(1)");
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Shop"), true);
+			await fs.writeFile(
+				mirror(
+					"ReplicatedStorage",
+					"Shared",
+					"Shop",
+					"Moved.server.luau"
+				),
+				"print(1)"
+			);
+			return [];
+		};
+
+		const plan = await planned("apply");
+
+		expect(plan.changes).toEqual([]);
+		expect(await fs.exists(abs("src/Shop@Server/Main.server.luau"))).toBe(
+			true
+		);
 	});
 
 	describe("a renamed feature", () => {
