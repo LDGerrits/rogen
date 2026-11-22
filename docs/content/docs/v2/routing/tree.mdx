@@ -7,7 +7,7 @@ The `tree` in your config is a Rojo project tree. Rogen adds your routed files t
 
 ## Packages
 
-Mount a package folder with `$path` where your code requires it from, as in `require(ReplicatedStorage.Packages.Promise)`. Wally installs into `Packages`, and `optional` lets Rojo build before `wally install` has run:
+Mount a package folder with `$path` where your code requires it from, as in `require(ReplicatedStorage.Packages.Promise)`. Wally installs into `Packages`:
 
 ```json title="default.rogen.json"
 {
@@ -18,7 +18,7 @@ Mount a package folder with `$path` where your code requires it from, as in `req
 	"tree": {
 		"$className": "DataModel",
 		"ReplicatedStorage": {
-			"Packages": { "$path": { "optional": "Packages" } }
+			"Packages": { "$path": "Packages" }
 		}
 	}
 }
