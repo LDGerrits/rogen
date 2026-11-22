@@ -412,8 +412,10 @@ class MirrorWalk {
 
 	private inOwnTree(instancePath: readonly string[]): boolean {
 		let own: RojoNode | undefined = this.inputs.tree;
-		for (const name of instancePath)
-			own = own && childNodes(own).find(([child]) => child === name)?.[1];
+		for (const name of instancePath) {
+			const child: unknown = own && Object.hasOwn(own, name) && own[name];
+			own = isChildNode(name, child) ? child : undefined;
+		}
 		return own !== undefined;
 	}
 

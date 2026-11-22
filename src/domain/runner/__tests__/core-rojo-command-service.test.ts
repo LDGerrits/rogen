@@ -174,6 +174,26 @@ describe("CoreRojoCommandService", () => {
 		expect(processes.spawned).toEqual([]);
 	});
 
+	it("should name the config, not the temporary project file the command runs on, when Rojo is too old", async () => {
+		processes.outputs.set("/bin/rojo", {
+			code: 0,
+			stdout: "Rojo 7.6.1\n",
+			stderr: "",
+		});
+
+		const refused = await service.run(selection(), {
+			command: "syncback",
+			flags: [],
+			cwd: "/repo",
+			since: "7.7.0",
+			projectFile: "/repo/temporary.project.json",
+		});
+
+		expect(
+			(refused as ResultError<DiagnosticsError>).error.diagnostics
+		).toMatchObject([{ resource: selection().configs[0].file }]);
+	});
+
 	it("should return a run with a failure, and what Rojo said, when it exits with an error", async () => {
 		const running = run();
 		await finish(["ERROR: could not write a.rbxl"], 1);

@@ -1,0 +1,10 @@
+{
+	"steps": [
+		["syncback", "--dry-run", "--input", "place.rbxl"],
+		["syncback", "--json", "--dry-run", "--input", "place.rbxl"]
+	],
+	"rojo": false,
+	"tools": {
+		"rojo": "case \"$1\" in --version) echo 'Rojo 7.6.1';; esac; exit 0"
+	}
+}
