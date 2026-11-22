@@ -188,8 +188,8 @@ registerCommand(
 						"-o builds a place or model file and -p a plugin: give one of them."
 					)
 				);
-			if (output !== undefined) return ok(["--output", output]);
-			if (plugin !== undefined) return ok(["--plugin", plugin]);
+			if (output !== undefined) return ok([`--output=${output}`]);
+			if (plugin !== undefined) return ok([`--plugin=${plugin}`]);
 			return err(
 				new UsageError(
 					"build needs -o <file> or -p <name>, as 'rojo build' does.",

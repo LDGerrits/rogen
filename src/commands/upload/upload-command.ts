@@ -104,13 +104,12 @@ registerCommand(
 					)
 				);
 			const flags = [
-				"--asset_id",
-				asset_id,
-				...(api_key === undefined ? [] : ["--api_key", api_key]),
+				`--asset_id=${asset_id}`,
+				...(api_key === undefined ? [] : [`--api_key=${api_key}`]),
 				...(universe_id === undefined
 					? []
-					: ["--universe_id", universe_id]),
-				...(cookie === undefined ? [] : ["--cookie", cookie]),
+					: [`--universe_id=${universe_id}`]),
+				...(cookie === undefined ? [] : [`--cookie=${cookie}`]),
 			];
 			const logService = accessor.get(LogService);
 			const cwd = accessor.get(EnvironmentService).cwd;

@@ -4,6 +4,7 @@ import {
 	PathSet,
 	ancestors,
 	commonAncestor,
+	commonFolderPosix,
 	contains,
 	containsPath,
 	containsPosix,
@@ -248,6 +249,21 @@ describe("normalizeDir", () => {
 			expect(isBelowPosix(".")).toBe(false);
 			expect(isBelowPosix("..")).toBe(false);
 			expect(isBelowPosix("../lib")).toBe(false);
+		});
+	});
+
+	describe("commonFolderPosix", () => {
+		it("should find the folder that holds every one", () => {
+			expect(commonFolderPosix(["/a/x", "/a/y/z"])).toBe("/a");
+			expect(commonFolderPosix(["a/x", "b"])).toBe(".");
+		});
+
+		it("should stop at the root when only the root is shared", () => {
+			expect(commonFolderPosix(["/a/x", "/b/y"])).toBe("/");
+		});
+
+		it("should read no folders as the current one", () => {
+			expect(commonFolderPosix([])).toBe(".");
 		});
 	});
 

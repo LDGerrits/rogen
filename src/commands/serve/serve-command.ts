@@ -74,7 +74,7 @@ function serverArgsOf(line: ServeLine): string[] {
 		const value = line.options[name];
 		if (value === undefined) continue;
 		for (const one of typeof value === "string" ? [value] : value)
-			given.push(`--${name}`, one);
+			given.push(`--${name}=${one}`);
 	}
 	return given;
 }
@@ -130,9 +130,6 @@ registerCommand(
 				store
 			);
 			try {
-				await instantiationService
-					.createInstance(RefreshAgentRules)
-					.run(line.options.json ? "lines" : "text");
 				const plan = await serveService.prepare({
 					signal: shutdown,
 					refs: line.positionals,
@@ -140,6 +137,10 @@ registerCommand(
 				});
 				if (shutdown.aborted) return ok(undefined);
 				if (plan.isErr()) return plan;
+				if (!plan.value.isIdle)
+					await instantiationService
+						.createInstance(RefreshAgentRules)
+						.run(line.options.json ? "lines" : "text");
 
 				const log: ServeReporter = line.options.json
 					? instantiationService.createInstance(

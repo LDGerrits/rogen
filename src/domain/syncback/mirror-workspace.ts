@@ -3,7 +3,7 @@ import path from "path";
 import { compareByCodePoint } from "../../base/collections.js";
 import { ignoringGlob, literalGlob } from "../../base/glob.js";
 import { toNative, toPosix } from "../../base/path.js";
-import { Result, ok, tryWithAsync } from "../../base/result.js";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	FileSystemService,
 	isDirectoryType,
@@ -116,8 +116,9 @@ export class MirrorWorkspace {
 		const { said, refused } = ran.value;
 		// With the old file gone, Rojo writes the file it lost as a new one.
 		if (RojoSyncback.lostToCase(said)) {
-			const again = await rojo.listOn(this.file, this.layout, signal);
-			if (again.isErr()) return again;
+			const again = await rojo.listOn(this.file, signal);
+			if (again.isErr())
+				return err(rojo.explain(again.error, this.layout));
 		}
 		return ok({
 			copied,
@@ -206,14 +207,20 @@ export class MirrorWorkspace {
 		const skippedYaml: string[] = [];
 		const refused: UnplacedInstance[] = [];
 		for (;;) {
-			const ran = await rojo.listOn(this.file, this.layout, signal);
+			const ran = await rojo.listOn(this.file, signal);
 			if (ran.isOk()) return ok({ said: ran.value, refused });
+			// Rojo refuses a node of the project that the place doesn't hold,
+			// so a route's target the place lacks goes before the next run.
+			const missing = RojoSyncback.refusedNode(ran.error);
 			const yaml = RojoSyncback.refusedYaml(ran.error);
 			const file = yaml && this.yamlFileOf(copied, yaml.instance);
-			if (!yaml || !file || skippedYaml.includes(file)) return ran;
-			skippedYaml.push(file);
-			refused.push(yaml);
-			await this.writeProject(copied, skippedYaml);
+			if (missing && this.mirror.dropAdded(missing.parent, missing.child))
+				await this.writeProject(copied, skippedYaml);
+			else if (yaml && file && !skippedYaml.includes(file)) {
+				skippedYaml.push(file);
+				refused.push(yaml);
+				await this.writeProject(copied, skippedYaml);
+			} else return err(rojo.explain(ran.error, this.layout));
 		}
 	}
 

@@ -235,7 +235,7 @@ describe("InitLog", () => {
 
 		expect(result.isErr()).toBe(true);
 		expect(logService.texts("outro")).toEqual([
-			"Wrote 0 files, but writing the project file failed. default.project.json is as it was, so Rojo still reads it. Fix default.rogen.json and run rogen write.",
+			"Wrote 0 files, but writing the project file failed. default.project.json is as it was, so Rojo still reads it. Fix default.rogen.json and run 'rogen write'.",
 		]);
 	});
 

@@ -11,8 +11,9 @@ import {
 	HELP_COMMAND,
 	JsonOption,
 } from "../../platform/environment/args.js";
+import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
-import { LogService } from "../../platform/log/log-service.js";
+import { LogLevel, LogService } from "../../platform/log/log-service.js";
 import { ProductService } from "../../platform/product/product-service.js";
 import { Registry } from "../../platform/registry/registry.js";
 import { HelpDocument, helpDocumentShape } from "./help-document.js";
@@ -92,7 +93,11 @@ registerCommand(
 					"No command given.",
 					`Run 'rogen ${HELP_COMMAND}' to see the commands.`
 				);
-				if (line.options.json) return err(missing);
+				if (
+					line.options.json ||
+					accessor.get(EnvironmentService).logLevel === LogLevel.Error
+				)
+					return err(missing);
 				logService.sendOwnLinesToStderr();
 				logService.info(pages.overview());
 				return this.reported(missing);

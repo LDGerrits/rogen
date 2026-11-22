@@ -233,6 +233,17 @@ describe("where command", () => {
 			expect(result.isErr()).toBe(true);
 		});
 
+		it("should fail on an error about a folder inside the folder asked about", async () => {
+			await write("src/G/.server/X.luau");
+
+			const result = await run({ _: ["src/G"] });
+
+			expect(result.isErr()).toBe(true);
+			expect(logService.texts("notice")).toEqual([
+				"The error above stops the write, but none of it is about what you asked; 'rogen check' lists everything to fix.",
+			]);
+		});
+
 		it("should place a file with the error too, the error under it", async () => {
 			await run({ _: ["src/F"] });
 

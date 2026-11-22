@@ -378,7 +378,7 @@ describe("init command", () => {
 				'src/Save.Server.luau (write "Save.server.luau")'
 			);
 			expect(logService.lines.at(-1)).toContain(
-				"Fix the errors above and run rogen write."
+				"Fix the errors above and run 'rogen write'."
 			);
 		});
 

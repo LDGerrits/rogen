@@ -686,6 +686,9 @@ describe("serve command", () => {
 	});
 
 	it("should start nothing and exit 0 when another serve already serves the project", async () => {
+		await memFs.createDirectory("/repo/.git");
+		const old = "<!-- rogen -->\n## Rogen\n\nOld.\n<!-- /rogen -->\n";
+		await memFs.writeFile("/repo/AGENTS.md", old);
 		processes.running.add(5000);
 		await memFs.writeFile(
 			...recordFile(34872, "repo", "/repo/default.project.json", {
@@ -703,6 +706,7 @@ describe("serve command", () => {
 		expect(result.isOk()).toBe(true);
 		expect(processes.spawned).toEqual([]);
 		expect(await memFs.exists("/repo/default.project.json")).toBe(false);
+		expect(await memFs.readFile("/repo/AGENTS.md")).toBe(old);
 		expect(logService.lines).toEqual([
 			"intro: rogen serve · default.rogen.json",
 			"info: default.rogen.json is already served by another rogen serve: Rojo 7.7.1 serves a project named repo at localhost:34872 (session s1).",
@@ -1319,14 +1323,10 @@ describe("serve command", () => {
 		expect(processes.spawned[0].args).toEqual([
 			"serve",
 			"default.project.json",
-			"--address",
-			"0.0.0.0",
-			"--port",
-			"40000",
-			"--allowed-hosts",
-			"studio.local",
-			"--allowed-hosts",
-			"pc.lan",
+			"--address=0.0.0.0",
+			"--port=40000",
+			"--allowed-hosts=studio.local",
+			"--allowed-hosts=pc.lan",
 		]);
 	});
 

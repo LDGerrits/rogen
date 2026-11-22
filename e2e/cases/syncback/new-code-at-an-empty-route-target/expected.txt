@@ -1,0 +1,36 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/Shop/Client/Hud.client.luau
+  Writing src/Shop/Types.luau
+stderr:
+  Wrote default.project.json.
+  Syncback wrote 2 changes.
+
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stderr:
+  Syncback would change nothing.
+
+written:
+  default.project.json
+  src/Shop/Client/Hud.client.luau
+  src/Shop/Types.luau
+
+$ rojo sourcemap default.project.json
+G: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Shop: Folder
+        Types: ModuleScript  <- src/Shop/Types.luau
+  ServerScriptService: ServerScriptService
+    Shop: Folder
+      Checkout: ModuleScript  <- src/Shop/Server/Checkout.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Shop: Folder
+        Hud: LocalScript  <- src/Shop/Client/Hud.client.luau

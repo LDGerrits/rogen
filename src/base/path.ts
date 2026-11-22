@@ -130,10 +130,13 @@ export function containsPath(
 }
 
 export function commonFolderPosix(dirs: readonly string[]): string {
-	let folder = dirs[0];
+	let folder = dirs[0] ?? ".";
 	for (const dir of dirs)
-		while (folder !== "." && !containsPosix(folder, dir))
-			folder = path.posix.dirname(folder);
+		while (folder !== "." && !containsPosix(folder, dir)) {
+			const parent = path.posix.dirname(folder);
+			if (parent === folder) return folder;
+			folder = parent;
+		}
 	return folder;
 }
 

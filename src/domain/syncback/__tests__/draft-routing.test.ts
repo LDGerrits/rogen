@@ -213,6 +213,32 @@ describe("DraftRouting", () => {
 		);
 	});
 
+	it("should say what stops the write when a new folder it makes is a route in the wrong case", async () => {
+		await writeFiles(fs, "src/Net/init.luau", "src/Net/A.luau");
+		const file = abs("src/Net/server/Impl.luau");
+		const proposal: Proposal = {
+			operations: [write(file)],
+			landings: [
+				{
+					file,
+					instance: [
+						"ReplicatedStorage",
+						"Shared",
+						"Net",
+						"server",
+						"Impl",
+					],
+				},
+			],
+		};
+
+		const misses = await routingOf().misses([], [proposal]);
+
+		expect(misses.get(proposal)).toMatch(
+			/^the write would stop on .*server \(route\.caseMismatch: /
+		);
+	});
+
 	it("should miss every proposal when the project would fail to load", async () => {
 		mountSourcePath();
 		const proposal: Proposal = {

@@ -267,6 +267,126 @@ describe("SyncbackMirror", () => {
 		expect(mirror.nodeFolders).toEqual([]);
 	});
 
+	it("should add a node for a route's target the write made no node for, read from an empty folder of its own", async () => {
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					$className: "DataModel",
+					ServerScriptService: { $className: "ServerScriptService" },
+				},
+			},
+			[],
+			[],
+			{},
+			{ $className: "DataModel" },
+			[
+				["ReplicatedStorage", "Shared"],
+				["StarterPlayer", "StarterPlayerScripts"],
+				["ReplicatedStorage", "Shared"],
+				["ServerScriptService"],
+			]
+		);
+
+		expect(mirror.file.tree).toEqual({
+			$className: "DataModel",
+			ServerScriptService: {
+				$className: "ServerScriptService",
+				$path: `${ROOT}/~kept/0`,
+			},
+			ReplicatedStorage: {
+				$className: "ReplicatedStorage",
+				Shared: {
+					$className: "Folder",
+					$path: `${ROOT}/~kept/1`,
+				},
+			},
+			StarterPlayer: {
+				$className: "StarterPlayer",
+				StarterPlayerScripts: {
+					$className: "StarterPlayerScripts",
+					$path: `${ROOT}/~kept/2`,
+				},
+			},
+		});
+		expect(mirror.instancePathOf("~kept/1/Shop/Types.luau")).toEqual([
+			"ReplicatedStorage",
+			"Shared",
+			"Shop",
+			"Types.luau",
+		]);
+	});
+
+	it("should drop a node it added for a route's target, with the nodes it added inside it, and no node of the project's own", async () => {
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					$className: "DataModel",
+					Workspace: { $className: "Workspace", Shared: {} },
+				},
+			},
+			[],
+			[],
+			{},
+			{ $className: "DataModel" },
+			[
+				["ServerStorage", "Shared"],
+				["ReplicatedStorage", "Shared", "Net"],
+			]
+		);
+
+		expect(mirror.dropAdded("Workspace", "Shared")).toBe(false);
+		expect(mirror.dropAdded("Game", "ReplicatedStorage")).toBe(true);
+		expect(mirror.dropAdded("ReplicatedStorage", "Shared")).toBe(false);
+		expect(mirror.dropAdded("ServerStorage", "Shared")).toBe(true);
+		expect(mirror.file.tree).toEqual({
+			$className: "DataModel",
+			Workspace: { $className: "Workspace", Shared: {} },
+			ServerStorage: { $className: "ServerStorage" },
+		});
+	});
+
+	it("should add no node for a route's target in a service Studio fills, below a node with a $path, or below one that ignores unknown instances", async () => {
+		const tree: RojoNode = {
+			$className: "DataModel",
+			ReplicatedStorage: { $path: "vendor" },
+			ServerStorage: {
+				$className: "ServerStorage",
+				$ignoreUnknownInstances: true,
+			},
+		};
+		const mirror = await mirrorOf(
+			{ tree: structuredClone(tree) },
+			[],
+			[],
+			{},
+			{ $className: "DataModel" },
+			[
+				["Workspace", "Shared"],
+				["ReplicatedStorage", "Shared"],
+				["ServerStorage", "Modules"],
+			]
+		);
+
+		expect(mirror.file.tree.Workspace).toBeUndefined();
+		expect(mirror.file.tree.ReplicatedStorage).toEqual({
+			$path: `${ROOT}/~kept/0/vendor`,
+		});
+		expect(mirror.file.tree.ServerStorage).toEqual(tree.ServerStorage);
+	});
+
+	it("should add no node for a route's target when the project's root mounts a path", async () => {
+		const mirror = await mirrorOf(
+			{ tree: { $path: "src" } },
+			[],
+			["/repo/src"],
+			{},
+			{ $path: "src" },
+			[["ReplicatedStorage", "Shared"]]
+		);
+
+		expect(mirror.file.tree).toEqual({ $path: `${ROOT}/~kept/0` });
+	});
+
 	it("should give no folder to a service, a node routing made, or a node that ignores unknown instances, as Rojo leaves the instances Studio makes there alone", async () => {
 		const routed = {
 			$className: "Folder",

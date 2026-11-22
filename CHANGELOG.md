@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- `rogen write` and `rogen serve` no longer refresh the Rogen block of `AGENTS.md` under CI, so a pipeline never finds a file changed. With `--json`, they now report a refresh: `write --json` lists the files under `agentRules`, and `write --watch --json` and `serve --json` print an `agentRules` line first.
+- `rogen write` and `rogen serve` no longer refresh the Rogen block of `AGENTS.md` under CI, so a pipeline never finds a file changed. They refresh it only once the configs load and, for `serve`, when it has something to serve. With `--json`, they now report a refresh: `write --json` lists the files under `agentRules` and sets `changed`, and `write --watch --json` and `serve --json` print an `agentRules` line first.
 - **Breaking:** a route key matches a folder, `@` name or marker file only when spelled exactly as the key. A folder, marker or `@` that misses a key by its case, or an `@` that misses it by a typo, as `server/`, `@server` or `Save@Sever.luau` under a `Server` route, is an error that stops the write (`route.caseMismatch`, `route.strayAt`), so a server file can't reach clients by a slip. A folder in another case under a route that already governs it is left alone, and a server-named one there warns that its code ships to clients (`route.serverCodeShipped`) unless a marker file in it keeps it there. A folder inside a script folder, such as a library's `Net/server/`, may be a child the script requires, so its error also names that marker. Rojo's `.server` and `.client` still route a key of that name in any case. `rogen init` spells each key as the folders it finds already do, so a lifted Rojo project gets `server`, `client` and `shared`, and renames a folder or name spelled in the case the rest of the code doesn't use, so the project builds.
 - `rogen init` writes the project's `name`, the folder's name, as `rojo init` does, so tools that need a name in the project file can read it.
 - **Breaking:** an init script's route routes only the script, not its whole folder. `init@server.luau` and `init.server.luau` become the folder on that side, and the folder's other files route by their own paths, so `init@server.luau` and `init@client.luau` give each side its own init script. To route a whole folder, name it for the route or add a marker file.
@@ -45,6 +45,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- `rogen write --watch` and `rogen serve` no longer crash when a watched config's folder can't be read for a moment; they pick it up again once it can.
+- `rogen write` and `rogen serve` count Azure Pipelines, Jenkins, TeamCity and Bamboo as CI, as they do any pipeline that sets `CI`, and leave `AGENTS.md` alone there.
+- `rogen syncback` no longer hangs when a nested project mounts a folder that shares no folder but the root with the project, such as one under `/mnt/c` beside a project under `/home`.
+- A value Rogen passes on to Rojo stays attached to its flag, so `rogen build --output=-x.rbxl` works as `rojo build` does.
+- `rogen -q` with no command prints its usage error, where it printed nothing.
+- `tree.instanceClash` about two init scripts of one folder, such as `init.luau` beside an `init@Shared.luau` routed to the same place, says to remove one, since a rename can't keep both.
+- `rogen where <folder>` fails on an error about a folder inside it, such as `src/A/.server`, where it said none of the errors was about what you asked.
 - On Windows and macOS, `compiled.orphan` no longer warns about a compiled file whose folder is spelled in another case than its source's, such as one compiled before `rogen init` renamed `Server/` to `server/`, since the file system and Rojo read them as one.
 - `rogen where` no longer says a `.ts` or `.tsx` file is placed in a project with no compiler, where Rojo never reads it.
 - `route.unrouted` names a routing folder to move a file into, and `config.invalidRouteKey` says what is wrong with a key that holds a `/`, `**` or `@`.
@@ -61,6 +68,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `rogen syncback` writes a new instance beside a `^` file where routing places it, and names a new feature's routing folder the way most of the project's are named.
 - `rogen syncback` no longer writes a new instance into the folder of an init script beside it, such as `src/Net/` for a new `Settings` folder next to `Net`, where the next build put it inside `Net`.
 - A node whose key starts with `$` but isn't one of Rojo's fields, such as `"$Shared": { "$path": "src/Shared" }`, is a child as it is to Rojo. `rogen syncback --dry-run` no longer writes into the folder such a node mounts, and lists the files; `check` and `where` see what it mounts; `fmt-project` sorts it with the other children; and `check` warns about it with `tree.reservedName`, as Rojo does on every build.
+- `rogen syncback` no longer writes a new folder whose name routing rejects, such as a Studio folder `server` inside a script folder under a `Server` route, which stopped every later write with `route.caseMismatch`. It leaves the instance out with a `syncback.unplaced` warning.
+- `rogen syncback` writes new code that Studio adds at a route's target the project has no code for yet, such as a first `ReplicatedStorage/Shared/Shop/Types` or a LocalScript in `StarterPlayerScripts` of a project with only server code, where routing puts it. It used to say it would change nothing.
+- `rogen syncback` keeps a data file's form when Studio renames a feature on one side only, such as `ServerScriptService/Shop` while the feature's other sides keep `Shop`: `src/Shop/Server/Cfg.json` moves to `src/ShopX/Server/Cfg.json` and the other sides' files stay, where it used to write `Cfg.luau`.
 
 ## [2.0.0-beta.4] - 2026-11-10
 

@@ -1,3 +1,4 @@
+import { compareByCodePoint } from "../../base/collections.js";
 import path from "path";
 import { isInside } from "../../base/path.js";
 import {
@@ -150,7 +151,7 @@ export class DraftFileReader implements FileSystemService {
 				entries.set(path.basename(folder), FileType.Directory);
 		if (listed === undefined && !this.folders.has(resolved))
 			throw DraftFileReader.missing(filePath);
-		return [...entries].sort(([a], [b]) => (a < b ? -1 : 1));
+		return [...entries].sort(([a], [b]) => compareByCodePoint(a, b));
 	}
 
 	private async typeOf(filePath: string): Promise<FileType | undefined> {

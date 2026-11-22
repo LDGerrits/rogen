@@ -13,7 +13,10 @@ export interface RenamedInstance {
 	readonly folder: string;
 	readonly renamed: string;
 	readonly files: ReadonlyMap<string, RenamedFile>;
+	readonly kept: readonly string[];
 }
+
+type Found = Omit<RenamedInstance, "kept">;
 
 export interface RenamedFile {
 	readonly target: string;
@@ -69,12 +72,26 @@ function byInstance(
 	return found;
 }
 
+const isUnder = (instancePath: readonly string[], root: readonly string[]) =>
+	root.every((name, at) => instancePath[at] === name) &&
+	instancePath.length > root.length;
+
+const isOf = (
+	file: PlacedLocation,
+	{ instance, from }: Pick<RenamedInstance, "instance" | "from">
+) => {
+	const old = [...instance.parent, from];
+	return (
+		isUnder(file.instancePath, old) || isSameJson(file.instancePath, old)
+	);
+};
+
 function renameOf(
 	instance: AddedInstance,
 	from: string,
 	inputs: RenameInputs,
 	placedAt: ReadonlyMap<string, PlacedLocation>
-): RenamedInstance | undefined {
+): Found | undefined {
 	const { sourceOf, placed, isRemoved } = inputs;
 	const oldPath = [...instance.parent, from];
 	const oldMirror = `${instance.parentFolder}/${from}`;
@@ -152,8 +169,7 @@ function renameOf(
 	}
 	const lost = placed.some(
 		(file) =>
-			(isUnder(file.instancePath, oldPath) ||
-				isSameJson(file.instancePath, oldPath)) &&
+			isOf(file, { instance, from }) &&
 			!mapped.has(file.source) &&
 			!isRemoved(file.source)
 	);
@@ -161,9 +177,11 @@ function renameOf(
 	return { instance, from, folder, renamed, files };
 }
 
-const isUnder = (instancePath: readonly string[], root: readonly string[]) =>
-	root.every((name, at) => instancePath[at] === name) &&
-	instancePath.length > root.length;
+function sharedStart(a: string, b: string): number {
+	let at = 0;
+	while (at < a.length && a[at] === b[at]) at++;
+	return at;
+}
 
 export function renamedInstances(
 	instances: readonly AddedInstance[],
@@ -172,15 +190,26 @@ export function renamedInstances(
 ): RenamedInstance[] {
 	const { placed } = inputs;
 	const placedAt = byInstance(placed);
-	const found: RenamedInstance[] = [];
+	const found: Found[] = [];
 	for (const instance of instances) {
 		if (!instance.folder) continue;
 		const prefix = `${instance.parentFolder}/`;
-		const names = new Set(
-			[...removed]
-				.filter((at) => at.startsWith(prefix))
-				.map((at) => at.slice(prefix.length).split("/")[0])
-				.filter((name) => name !== instance.name)
+		const claimed = (name: string) =>
+			found.some(
+				(other) =>
+					other.from === name &&
+					other.instance.parentFolder === instance.parentFolder
+			);
+		const names = [
+			...new Set(
+				[...removed]
+					.filter((at) => at.startsWith(prefix))
+					.map((at) => at.slice(prefix.length).split("/")[0])
+					.filter((name) => name !== instance.name && !claimed(name))
+			),
+		].sort(
+			(a, b) =>
+				sharedStart(b, instance.name) - sharedStart(a, instance.name)
 		);
 		for (const name of names) {
 			const rename = renameOf(instance, name, inputs, placedAt);
@@ -190,19 +219,26 @@ export function renamedInstances(
 			}
 		}
 	}
-	return found.filter((rename) =>
-		placed.every(
-			(file) =>
-				!containsPosix(rename.folder, file.source) ||
-				found.some((other) => {
-					const old = [...other.instance.parent, other.from];
-					return (
-						other.folder === rename.folder &&
-						other.renamed === rename.renamed &&
-						(isUnder(file.instancePath, old) ||
-							isSameJson(file.instancePath, old))
-					);
-				})
+	return found
+		.filter((rename) =>
+			found.every(
+				(other) =>
+					other.folder !== rename.folder ||
+					other.renamed === rename.renamed
+			)
 		)
-	);
+		.map((rename) => ({
+			...rename,
+			kept: placed
+				.filter(
+					(file) =>
+						containsPosix(rename.folder, file.source) &&
+						!found.some(
+							(other) =>
+								other.folder === rename.folder &&
+								isOf(file, other)
+						)
+				)
+				.map(({ source }) => source),
+		}));
 }

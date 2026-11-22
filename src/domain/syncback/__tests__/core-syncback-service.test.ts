@@ -1114,6 +1114,10 @@ describe("CoreSyncbackService", () => {
 				Packages: {
 					$path: ".rogen-syncback/mirror/ReplicatedStorage/Packages",
 				},
+				Shared: {
+					$className: "Folder",
+					$path: ".rogen-syncback/mirror/~kept/0",
+				},
 			}
 		);
 		expect(plan.changes).toEqual([
@@ -2825,6 +2829,39 @@ describe("CoreSyncbackService", () => {
 				reason: "Rojo can't sync back a Yaml file, so its change stays in the place; copy it by hand",
 			},
 		]);
+	});
+
+	it("should run Rojo again without the node of a route's target the place doesn't hold", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		const refusing = (child: string, parent: string) =>
+			new DiagnosticsError([
+				{
+					...errorDiagnostic(
+						"rojo.commandFailed",
+						{ resource: abs("rogen-syncback.project.json") },
+						"Rojo couldn't sync back into this project:"
+					),
+					details: [
+						`Failed to syncback because The child '${child}' of Instance '${parent}' is present only in a project file, and not the provided file.`,
+					],
+				},
+			]);
+		rojo.say = async () =>
+			[
+				refusing("Shared", "ReplicatedStorage"),
+				refusing("StarterPlayer", "Game"),
+			][rojo.requests.length - 1] ?? [];
+
+		const plan = await planned();
+
+		const tree = (at: number) => JSON.parse(rojo.projectTexts[at]).tree;
+		expect(tree(0).ReplicatedStorage.Shared).toBeDefined();
+		expect(tree(0).StarterPlayer).toBeDefined();
+		expect(tree(2).ReplicatedStorage).toEqual({
+			$className: "ReplicatedStorage",
+		});
+		expect(tree(2).StarterPlayer).toBeUndefined();
+		expect(plan.changes).toEqual([]);
 	});
 
 	it("should name the file to delete when Rojo refuses to remove an instance a project file defines", async () => {

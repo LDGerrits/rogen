@@ -2,6 +2,7 @@ import { isSameJson } from "../../base/objects.js";
 import path from "path";
 import { isGlobsetMatch } from "../../base/glob.js";
 import { commonFolderPosix, containsPosix, toPosix } from "../../base/path.js";
+import { containerClassName } from "../roblox/roblox.js";
 import { PlacedLocation } from "../write/write-service.js";
 import { RojoFile } from "../rojo/rojo.js";
 import {
@@ -92,7 +93,8 @@ export class SyncbackMirror {
 		readonly folders: readonly string[],
 		readonly nodeFolders: readonly NodeFolder[],
 		private readonly kept: ReadonlyMap<string, readonly string[]>,
-		private readonly rules: readonly SyncRule[]
+		private readonly rules: readonly SyncRule[],
+		private readonly added: Map<RojoNode, readonly string[]>
 	) {}
 
 	static async of(inputs: SyncbackMirrorInputs): Promise<SyncbackMirror> {
@@ -101,7 +103,11 @@ export class SyncbackMirror {
 			(rule) => rule.use !== UNSYNCABLE_USE
 		);
 		delete file.syncRules;
-		const walk = new MirrorWalk(inputs);
+		const added =
+			file.tree.$path === undefined
+				? SyncbackMirror.addRouteTargets(file.tree, inputs.routeTargets)
+				: new Map<RojoNode, readonly string[]>();
+		const walk = new MirrorWalk(inputs, added);
 		if (file.tree.$path === undefined)
 			await walk.children(file.tree, [], "");
 		else await walk.keep(file.tree, [], undefined);
@@ -112,8 +118,41 @@ export class SyncbackMirror {
 			walk.folders,
 			walk.nodeFolders,
 			walk.keptNodes,
-			rules
+			rules,
+			added
 		);
+	}
+
+	private static addRouteTargets(
+		tree: RojoNode,
+		routeTargets: readonly (readonly string[])[]
+	): Map<RojoNode, readonly string[]> {
+		const added = new Map<RojoNode, readonly string[]>();
+		for (const target of routeTargets) {
+			if (STUDIO_FILLED.has(target[0])) continue;
+			let node = tree;
+			for (let depth = 1; depth <= target.length; depth++) {
+				if (
+					node.$path !== undefined ||
+					node.$ignoreUnknownInstances === true
+				)
+					break;
+				const name = target[depth - 1];
+				const child = childNodes(node).find(([key]) => key === name);
+				if (child) {
+					node = child[1];
+					continue;
+				}
+				const instancePath = target.slice(0, depth);
+				const made: RojoNode = {
+					$className: containerClassName(instancePath),
+				};
+				node[name] = made;
+				added.set(made, instancePath);
+				node = made;
+			}
+		}
+		return added;
 	}
 
 	static assertInside(file: RojoProjectFile, root: string): void {
@@ -128,6 +167,26 @@ export class SyncbackMirror {
 			for (const [, child] of childNodes(node)) check(child);
 		};
 		check(file.tree);
+	}
+
+	dropAdded(parent: string, child: string): boolean {
+		for (const instancePath of this.added.values()) {
+			const at = instancePath.length;
+			if (
+				instancePath[at - 1] !== child ||
+				(at > 1 && instancePath[at - 2] !== parent)
+			)
+				continue;
+			let holder = this.file.tree;
+			for (const name of instancePath.slice(0, -1))
+				holder = holder[name] as RojoNode;
+			delete holder[child];
+			for (const [other, below] of this.added)
+				if (isSameJson(below.slice(0, at), instancePath))
+					this.added.delete(other);
+			return true;
+		}
+		return false;
 	}
 
 	rulesFor(
@@ -210,7 +269,10 @@ class MirrorWalk {
 
 	private readonly made = new Set<string>();
 
-	constructor(private readonly inputs: SyncbackMirrorInputs) {
+	constructor(
+		private readonly inputs: SyncbackMirrorInputs,
+		private readonly added: ReadonlyMap<RojoNode, readonly string[]>
+	) {
 		for (const { instancePath } of inputs.placed)
 			for (let depth = 1; depth <= instancePath.length; depth++)
 				this.made.add(instancePath.slice(0, depth).join("\0"));
@@ -280,7 +342,7 @@ class MirrorWalk {
 		child: RojoNode,
 		instancePath: readonly string[]
 	): Placement {
-		if (!SAFE_NAME.test(name)) return KEPT_NODE;
+		if (!SAFE_NAME.test(name) || this.added.has(child)) return KEPT_NODE;
 		const here = [...instancePath, name];
 		const target = this.madeFrom(child, here);
 		if (target !== undefined)
