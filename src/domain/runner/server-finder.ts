@@ -92,7 +92,8 @@ export class ServerFinder {
 		const printed = output.isOk()
 			? (firstLine(output.value.stderr) ?? firstLine(output.value.stdout))
 			: firstLine(output.error.message);
-		if (output.isOk() && output.value.code === 0) {
+		const exitedCleanly = output.isOk() && output.value.code === 0;
+		if (exitedCleanly) {
 			const version = /\d+\.\d+\.\d+(?:[-+][\w.-]+)?/.exec(
 				output.value.stdout
 			);
@@ -106,7 +107,7 @@ export class ServerFinder {
 				errorDiagnostic(
 					"rojo.unusable",
 					{ resource: manifest?.file ?? resource },
-					`'${command} --version' failed, so Rojo can't start${printed ? `: ${printed}${/[.!?]$/.test(printed) ? "" : "."}` : "."}${pin ? ` If Rojo isn't pinned yet, run '${pin.run.command}'.` : ""} ${SET_UP}`,
+					`'${command} --version' ${exitedCleanly ? "printed no version" : "failed"}, so Rojo can't start${printed && !exitedCleanly ? `: ${printed}${/[.!?]$/.test(printed) ? "" : "."}` : "."}${pin ? ` If Rojo isn't pinned yet, run '${pin.run.command}'.` : ""} ${SET_UP}`,
 					pin ? [pin] : []
 				),
 			])
