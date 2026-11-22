@@ -69,13 +69,14 @@ export class WhereAnswers {
 		const unshown = uniqueDiagnostics(
 			diagnoses.flatMap(({ unshown }) => unshown)
 		);
-		this.elsewhere = everyFile ? [] : unshown;
+		const stoppedBy = diagnoses.flatMap(({ stoppedBy }) => stoppedBy);
+		this.elsewhere = everyFile
+			? []
+			: unshown.filter((error) => stoppedBy.includes(error));
 		this.errors = uniqueDiagnostics([...errors, ...unshown]);
 		this.failing = uniqueDiagnostics([
 			...errors,
-			...diagnoses.flatMap(({ stops, unshown: hidden }) =>
-				stops.filter((error) => everyFile || !hidden.includes(error))
-			),
+			...this.stops.filter((error) => !this.elsewhere.includes(error)),
 		]);
 	}
 
