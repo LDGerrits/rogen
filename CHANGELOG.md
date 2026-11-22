@@ -45,6 +45,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- `rogen write --watch` and `rogen serve` no longer crash when a watched config's folder can't be read for a moment; they pick it up again once it can.
+- `rogen write` and `rogen serve` count Azure Pipelines, Jenkins, TeamCity and Bamboo as CI, as they do any pipeline that sets `CI`, and leave `AGENTS.md` alone there.
+- `rogen syncback` no longer hangs when a nested project mounts a folder that shares no folder but the root with the project, such as one under `/mnt/c` beside a project under `/home`.
+- A value Rogen passes on to Rojo stays attached to its flag, so `rogen build --output=-x.rbxl` works as `rojo build` does.
+- `rogen -q` with no command prints its usage error, where it printed nothing.
+- `tree.instanceClash` about two init scripts of one folder, such as `init.luau` beside an `init@Shared.luau` routed to the same place, says to remove one, since a rename can't keep both.
 - `rogen where <folder>` fails on an error about a folder inside it, such as `src/A/.server`, where it said none of the errors was about what you asked.
 - On Windows and macOS, `compiled.orphan` no longer warns about a compiled file whose folder is spelled in another case than its source's, such as one compiled before `rogen init` renamed `Server/` to `server/`, since the file system and Rojo read them as one.
 - `rogen where` no longer says a `.ts` or `.tsx` file is placed in a project with no compiler, where Rojo never reads it.
