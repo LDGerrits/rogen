@@ -52,7 +52,7 @@ describe("write command", () => {
 				`# Team\n\n${agentBlock}`
 			);
 			expect(log.lines).toContain(
-				"notice: Updated Rogen's rules in AGENTS.md to this version."
+				"notice: Updated AGENTS.md to this version of Rogen."
 			);
 		});
 

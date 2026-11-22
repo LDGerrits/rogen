@@ -27,6 +27,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A write that a name's error stops still reports every warning, and `rogen where` still places each file and prints its require, as routing reads it, beside the error.
 - `rogen check <paths>` exits 1 when an error elsewhere stops the write, and prints it, since it couldn't check the paths past it.
 - The agent Stop hook reports a line again once the check stopped printing it and it comes back.
+- `rogen write` and `rogen serve` replace an outdated agent hook script, `.agents/hooks/rogen-check.mjs`, as they do the rules, so a project set up with an earlier version gets the hook's fixes, such as checking a git worktree rather than the main checkout. They list it under `agentRules` with `--json`. Delete the script's first line to keep it as your own.
+- In a git worktree with no `node_modules`, the agent Stop hook runs the main checkout's Rogen.
 - A marker file in the wrong case is `route.strayAt`, as every misspelt `@` is, and `route.caseMismatch` is about folders.
 - `rogen init --places --language roblox-ts` writes the same layout as Luau: shared code in `src/common`, the first place in `src/game`, `game.rogen.json` at the root with `compiledPath` `out/game`, and `tsconfig.game.json` with `rootDir` `src`, which TypeScript 6 and later need set. A root `tsconfig.json` holds the shared options and refers to each place. The `projects/<place>` layout it wrote before left `rootDir` unset, so it compiles only with TypeScript 5. A folder named `projects` no longer makes several places the default.
 

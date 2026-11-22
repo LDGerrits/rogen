@@ -38,7 +38,7 @@ This repo uses Rogen: each `*.rogen.json` generates the `*.project.json` beside 
 
 ## Check Changed Files Automatically
 
-An agent can forget to run `rogen check`, so Rogen has a hook that runs it on the files changed in git when the agent ends its turn and sends each new warning or error back as the agent's next prompt. A line it already sent stays quiet until the check stops printing it, so one that comes back after a fix is sent again. `rogen init --agent-hook`, or Customise in a terminal, writes the script to `.agents/hooks/rogen-check.mjs` and registers it with each agent it finds.
+An agent can forget to run `rogen check`, so Rogen has a hook that runs it on the files changed in git when the agent ends its turn and sends each new warning or error back as the agent's next prompt. A line it already sent stays quiet until the check stops printing it, so one that comes back after a fix is sent again. `rogen init --agent-hook`, or Customise in a terminal, writes the script to `.agents/hooks/rogen-check.mjs` and registers it with each agent it finds. It checks the session's own folder, so an agent in a git worktree is checked there, and where the worktree has no `node_modules` it runs the main checkout's Rogen. `rogen write` and `rogen serve` replace an outdated script as they do the rules; delete its first line to keep it as your own.
 
 <Accordions>
 <Accordion title="Register it by hand">
@@ -115,6 +115,14 @@ const locate = (dirs) =>
 const folders = [start];
 for (let dir = start; dir !== process.cwd() && path.dirname(dir) !== dir; )
 	folders.push((dir = path.dirname(dir)));
+// A new git worktree has no node_modules, so look in the main checkout's too.
+const main = top
+	? path.dirname(path.resolve(git("rev-parse", "--git-common-dir").trim()))
+	: process.cwd();
+if (main !== process.cwd())
+	folders.push(
+		...folders.map((dir) => path.join(main, path.relative(top, dir))),
+	);
 const rogen = locate([
 	...folders.map((dir) => path.join(dir, "node_modules/.bin")),
 	...(process.env.PATH ?? "").split(path.delimiter).filter(Boolean),

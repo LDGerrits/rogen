@@ -294,6 +294,30 @@ const available = gitPath !== "";
 		expect(reply?.decision).toBe("block");
 	});
 
+	it("should check a git worktree with the main checkout's rogen and remember it apart", () => {
+		wrapRogen(path.join(dir, "project/node_modules/.bin/rogen"));
+		const tree = path.join(dir, "tree");
+		git("worktree", "add", "-q", tree);
+		fs.writeFileSync(path.join(tree, "src/Buy.client.luau"), "return {}\n");
+		write("src/Sell.client.luau");
+		const payload = { session_id: "s", cwd: tree };
+		const env = { PATH: gitOnly };
+
+		const first = stop(payload, [], env);
+
+		expect(first.report).toEqual([
+			expect.stringMatching(
+				/^src\/Buy\.client\.luau - .*\(tree\.deadScript\)$/
+			),
+		]);
+		expect(stop(payload, [], env).reply).toBeUndefined();
+		expect(stop({ session_id: "s" }, [], env).report).toEqual([
+			expect.stringMatching(
+				/^src\/Sell\.client\.luau - .*\(tree\.deadScript\)$/
+			),
+		]);
+	});
+
 	it("should check a change outside the folder the agent is in", () => {
 		fs.mkdirSync(path.join(dir, "project/src/sub"), { recursive: true });
 		write("src/Buy.client.luau");
