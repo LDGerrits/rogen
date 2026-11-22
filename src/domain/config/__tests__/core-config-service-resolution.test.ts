@@ -365,6 +365,25 @@ describe("CoreConfigService", () => {
 				]);
 			});
 
+			it.each(["$className", "$path", "$properties", "$id"])(
+				"should reject a route target with the Rojo field %s as a folder name",
+				async (field) => {
+					const problems = await diagnosticsFor(`{
+	"routes": { "server": "ServerScriptService/${field}" }
+}`);
+
+					expect(problems).toHaveLength(1);
+					expect(problems[0][0]).toContain(
+						`"${field}" as a folder name, which the project file reads as a field of the node`
+					);
+					expect(problems[0].slice(1)).toEqual([
+						"/repo/default.rogen.json",
+						2,
+						24,
+					]);
+				}
+			);
+
 			it("should reject a source path inside another, naming both", async () => {
 				const problems = await diagnosticsFor(`{
 	"routes": { "server": "ServerScriptService" },

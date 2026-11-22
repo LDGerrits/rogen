@@ -1,0 +1,1 @@
+{ "tree": { "$className": "DataModel" }, "routes": { "X": "ReplicatedStorage/$className", "Y": "ReplicatedStorage/$path" } }

@@ -200,7 +200,7 @@ Start the target with a service, then any folders, such as `"StarterPlayer/Start
 
 ### `roblox.invalidFolder` [#roblox-invalidfolder]
 
-Error. A route's target has a folder whose name is empty, `.` or `..`. Rojo would make an instance with that name.
+Error. A route's target has a folder whose name is empty, `.` or `..`, or one of Rojo's `$` fields (`$className`, `$path`, `$properties`, `$attributes`, `$ignoreUnknownInstances`, `$id`). Rojo would make an instance with that name, or read the name as a field of the node.
 
 ```
 error: the target "ServerScriptService/" has an empty folder name; write each folder between single slashes, such as "ServerScriptService/Folder". (roblox.invalidFolder)
