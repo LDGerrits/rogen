@@ -1,0 +1,38 @@
+$ rogen init
+exit 0
+stdout: (not shown)
+
+$ rogen check
+exit 0
+
+written:
+  .rogen.json.v1
+  AGENTS.md
+  default.project.json
+  default.rogen.json
+  src/Shop/server/Shop.luau
+
+default.rogen.json:
+{
+  "name": "project",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "server": "ServerScriptService/server",
+    "Client": "StarterPlayer/StarterPlayerScripts/client",
+    "Shared": "ReplicatedStorage/shared",
+    "Service": "ServerScriptService/server",
+    "*": "ReplicatedStorage/shared"
+  },
+  "tree": {
+    "$className": "DataModel"
+  }
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    server: Folder
+      Shop: Folder
+        Shop: ModuleScript  <- src/Shop/server/Shop.luau

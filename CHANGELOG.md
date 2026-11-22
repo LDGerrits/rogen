@@ -45,6 +45,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- `rogen init` on a v1 project with a file that a routing word in its name sent elsewhere than its folder did, such as `src/Shop/client/Shop_Server.luau` or `ShopService.luau` under `server/` with an alias `Service`, no longer stops with `route.ignoredAt`. It leaves a file that v1 placed by its name with the `legacy.outrankedRoute` warning, and drops the alias word from one that its folder already routes to the same service, so the instance keeps its name.
+- `rogen init` on a v1 config with modes that differ only in their `tags`, such as the `luau-dev` and `luau-prod` of the v1 docs, no longer fails with `config.identicalConfig`. It writes one config for the modes that come out the same, with the `legacy.tags` warning and a `legacy.outputClash` warning for each mode it left out.
 - `rogen init` on a Rojo project no longer adds a `Server`, `Client` or `Shared` route when the source path holds folders or names spelled like it that Rojo places with their mount, such as `src/comm/Server`, which the route moved to another service without a word. It leaves the route out and says so.
 - `rogen init` no longer takes a hand-written folder as Darklua's output because a folder beside it has the same name, such as `assets/server` next to `modules/server`: it takes one only when its files share names with the source's. It kept dropping the folder's own code from the tree.
 - `rogen init` on a Rojo project that mounts one folder with an init script, such as `src/init.luau` at `ReplicatedStorage/MyLib`, no longer fails with `tree.mountsSourcePath`. It keeps the mount in the tree and routes nothing, as Rojo reads it.
