@@ -222,7 +222,7 @@ export function newDiagnostics(
 	return after.filter((diagnostic) => !seen.has(diagnosticKey(diagnostic)));
 }
 
-function filesOf({ resource, related }: Diagnostic): string[] {
+export function filesOf({ resource, related }: Diagnostic): string[] {
 	return [resource, ...(related ?? []).map(({ resource }) => resource)].map(
 		toPosix
 	);
@@ -259,6 +259,6 @@ function coversFromFolder(
 	);
 }
 
-function listsItsFiles(diagnostic: Diagnostic): boolean {
+export function listsItsFiles(diagnostic: Diagnostic): boolean {
 	return diagnostic.related !== undefined;
 }
