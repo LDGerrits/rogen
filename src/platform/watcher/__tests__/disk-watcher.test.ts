@@ -155,10 +155,11 @@ describe("DiskWatcher", () => {
 					);
 					await fs.writeFile(root, "{ }");
 
-					await waitFor(
-						() => changes.some((c) => c.path === toPosix(root)),
-						10000
-					);
+					const reported = () =>
+						changes.some((c) => c.path === toPosix(root));
+					await waitFor(reported, 10000);
+
+					expect(reported()).toBe(true);
 				}, 20000);
 			}
 		);
