@@ -10,7 +10,7 @@ function add(positions: Positions, key: string, at: number): void {
 	else positions.set(key, [at]);
 }
 
-function selfAndAncestors(path: string): string[] {
+function posixFolderPrefixes(path: string): string[] {
 	const found = [path];
 	for (
 		let at = path.indexOf("/", 1);
@@ -39,7 +39,7 @@ export class DiagnosticIndex {
 		diagnostics.forEach((diagnostic, at) => {
 			for (const file of filesOf(diagnostic)) {
 				add(this.named, file, at);
-				for (const above of selfAndAncestors(file))
+				for (const above of posixFolderPrefixes(file))
 					add(this.within, this.folded(above), at);
 			}
 			if (!listsItsFiles(diagnostic))
@@ -67,7 +67,7 @@ export class DiagnosticIndex {
 		const posix = toPosix(target);
 		return this.pick([
 			this.within.get(this.folded(posix)),
-			...selfAndAncestors(posix).map((above) =>
+			...posixFolderPrefixes(posix).map((above) =>
 				this.covering.get(this.folded(above))
 			),
 			...metaPaths.map((meta) => this.resources.get(meta)),
