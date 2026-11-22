@@ -12,7 +12,7 @@ import {
 import { configOf } from "../../write/__tests__/fixtures.js";
 import { RojoSyncback } from "../rojo-syncback.js";
 import { SyncbackRequest } from "../syncback.js";
-import { layoutOf } from "./layout-fixtures.js";
+import { abs, layoutOf } from "./layout-fixtures.js";
 
 class FakeRojo implements RojoCommandService {
 	declare readonly _serviceBrand: undefined;
@@ -154,5 +154,52 @@ describe("RojoSyncback", () => {
 				},
 			]);
 		});
+
+		it.each([
+			[
+				"a feature side that holds a nested project",
+				"ServerScriptService",
+				"Shop",
+				["src/Shop/Server/A.luau", "src/Shop/Server/B.luau"],
+				`Delete ${abs("src/Shop/Server/A.luau")}, ${abs("src/Shop/Server/B.luau")}, or put it back`,
+			],
+			[
+				"a service a route makes",
+				"Game",
+				"ReplicatedStorage",
+				[
+					"src/A/Shared/A.luau",
+					"src/B/Shared/B.luau",
+					"src/C/Shared/C.luau",
+					"src/D/Shared/D.luau",
+				],
+				"and 1 more, or put it back",
+			],
+		])(
+			"should name the files of %s that Rojo would not remove",
+			async (_, parent, child, files, advice) => {
+				const failure = new DiagnosticsError([
+					errorDiagnostic(
+						"rojo.failed",
+						{ resource: "/repo" },
+						`The child '${child}' of Instance '${parent}' is present only in a project file`
+					),
+				]);
+				const rojo = new RojoSyncback(
+					request,
+					new FakeRojo(failingWith(failure))
+				);
+
+				const explained = rojo.explain(
+					failure,
+					await layoutOf(files)
+				) as DiagnosticsError;
+
+				expect(explained.diagnostics[0].message).toContain(advice);
+				expect(explained.diagnostics[0].message).not.toContain(
+					"Remove its node"
+				);
+			}
+		);
 	});
 });

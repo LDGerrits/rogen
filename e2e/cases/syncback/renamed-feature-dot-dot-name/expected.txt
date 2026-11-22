@@ -1,0 +1,31 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 2
+stderr:
+  Wrote default.project.json.
+  error: The place holds an instance that Rojo can't write back as files of the project, such as one named with a / or \ or as . or .., or a folder with a child named so: it would write ServerScriptService/../Escaped/Greeter.server.luau, so nothing was written. Rename the instance in Studio, then run syncback again.
+
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen syncback -i place.rbxl --dry-run
+exit 2
+stderr:
+  error: The place holds an instance that Rojo can't write back as files of the project, such as one named with a / or \ or as . or .., or a folder with a child named so: it would write ServerScriptService/../Escaped/Greeter.server.luau, so nothing was written. Rename the instance in Studio, then run syncback again.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Greeter: Folder
+        Greeting: ModuleScript  <- src/Greeter/Shared/Greeting.luau
+  ServerScriptService: ServerScriptService
+    Greeter: Folder
+      Greeter: Script  <- src/Greeter/Server/Greeter.server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Greeter: Folder
+        Greeter: LocalScript  <- src/Greeter/Client/Greeter.client.luau

@@ -1,0 +1,38 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/Greeting/Server/Bag/.gitkeep
+  Writing src/Greeting/Server/Greeter.server.luau
+  Removing src/Greeter/Server
+stderr:
+  Wrote default.project.json.
+  Syncback wrote 3 changes.
+
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stderr:
+  Syncback would change nothing.
+
+written:
+  default.project.json
+  src/Greeting/Server/Bag/.gitkeep
+  src/Greeting/Server/Greeter.server.luau
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Greeter: Folder
+        Greeting: ModuleScript  <- src/Greeter/Shared/Greeting.luau
+  ServerScriptService: ServerScriptService
+    Greeting: Folder
+      Bag: Folder
+      Greeter: Script  <- src/Greeting/Server/Greeter.server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Greeter: Folder
+        Greeter: LocalScript  <- src/Greeter/Client/Greeter.client.luau

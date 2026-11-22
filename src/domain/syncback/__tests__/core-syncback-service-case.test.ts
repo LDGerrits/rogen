@@ -38,8 +38,8 @@ describe("CoreSyncbackService where the file system ignores case", () => {
 		const rojo = {
 			choose: () => config,
 			run: async () => {
-				if (runs++ === 0) {
-					await fs.delete(mirror("Bag.luau"));
+				if (runs++ < 2) {
+					await fs.delete(mirror("Bag.luau")).catch(() => undefined);
 					return ok({
 						project: config,
 						messages: [
@@ -84,7 +84,7 @@ describe("CoreSyncbackService where the file system ignores case", () => {
 			kind: "written",
 			plan: { unplaced: [] },
 		});
-		expect(runs).toBe(2);
+		expect(runs).toBe(3);
 		expect(await fs.readFile(newFile)).toBe("return 2");
 	});
 });

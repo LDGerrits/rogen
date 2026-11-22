@@ -296,6 +296,12 @@ describe("serve command", () => {
 	it("should say Rojo's warning that the network reaches the server as one warning", async () => {
 		void serve([], { address: "0.0.0.0" });
 		await settle();
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+			sessionId: "s1",
+		});
+		await settle();
 		logService.clear();
 
 		processes.spawned[0].print(
@@ -321,6 +327,12 @@ describe("serve command", () => {
 
 	it("should show what the server says as its own lines, besides its banner", async () => {
 		void serve();
+		await settle();
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+			sessionId: "s1",
+		});
 		await settle();
 
 		processes.spawned[0].printError(
@@ -737,13 +749,6 @@ describe("serve command", () => {
 		expect((await result).isOk()).toBe(true);
 		expect(printed().slice(1)).toEqual([
 			{
-				output: {
-					config: "default.rogen.json",
-					severity: "error",
-					message: "Address already in use",
-				},
-			},
-			{
 				serving: {
 					config: "default.rogen.json",
 					version: "7.7.1",
@@ -936,6 +941,12 @@ describe("serve command", () => {
 
 	it("should print what the server says as JSON lines, without what Rogen drops", async () => {
 		void serve([], { json: true });
+		await settle();
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+			sessionId: "s1",
+		});
 		await settle();
 
 		processes.spawned[0].print(

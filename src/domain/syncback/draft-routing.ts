@@ -76,10 +76,29 @@ export function landingMiss(
 						.filter((node) => node.folder === source)
 						.map(({ instancePath }) => instancePath)
 				);
+	if (folder && found?.status === "empty" && !found.instancePath)
+		for (const location of files)
+			if (
+				location.status === "empty" &&
+				location.instancePath &&
+				location.source !== source &&
+				containsPosix(source, location.source)
+			)
+				landed.push(
+					location.instancePath.slice(
+						0,
+						location.instancePath.length -
+							path.posix
+								.relative(source, location.source)
+								.split("/").length
+					)
+				);
 	if (landed.some((at) => isSameJson(at, instance))) return undefined;
-	return landed.length > 0
-		? `routing would read ${file} as ${instanceKey(landed[0])}; rename it in Studio`
-		: `routing would make no instance of ${file}`;
+	if (landed.length === 0) return `routing would make no instance of ${file}`;
+	const read = `routing would read ${file} as ${instanceKey(landed[0])}`;
+	return /\.(server|client)\.luau?$/.test(file)
+		? `${read}, as it places a script by its type; make it a ModuleScript or move it to where that type runs`
+		: `${read}; rename it in Studio`;
 }
 
 export class DraftRouting {

@@ -3,11 +3,18 @@ import { compareByCodePoint } from "../../base/collections.js";
 import { literalGlob } from "../../base/glob.js";
 import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	errorDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import { isDirectoryType } from "../../platform/fs/file-system-service.js";
 import { LeftOut } from "./write.js";
 import { RojoFile, childrenBesideInit } from "../rojo/rojo.js";
-import { RojoProject, RojoProjectFile } from "../rojo/rojo-project.js";
+import {
+	NODE_FIELDS,
+	RojoProject,
+	RojoProjectFile,
+} from "../rojo/rojo-project.js";
 import {
 	CollapsedDirs,
 	FolderMetaApplier,
@@ -49,6 +56,9 @@ interface PlacedEntry {
 	readonly rojoName: string | undefined;
 }
 
+const fieldNamed = (instancePath: readonly string[]): string | undefined =>
+	instancePath.find((name) => NODE_FIELDS.has(name));
+
 const needsRojoIgnore = (why: LeftOut): boolean =>
 	why.status !== "replaced" &&
 	why.status !== "displaced" &&
@@ -64,7 +74,8 @@ export class TreeAssembler {
 	assemble(): Result<Assembly, Diagnostic[]> {
 		const { placement, meta } = this;
 		const project = placement.tree.edit();
-		const { collapsed, globIgnorePaths } = this.merge(project);
+		const { collapsed, globIgnorePaths, errors } = this.merge(project);
+		if (errors.length > 0) return err(errors);
 		const applied = new FolderMetaApplier(
 			placement,
 			collapsed,
@@ -91,6 +102,7 @@ export class TreeAssembler {
 	private merge(project: RojoProject): {
 		collapsed: Collapsed;
 		globIgnorePaths: string[];
+		errors: Diagnostic[];
 	} {
 		const { placement } = this;
 		const { layout, tree, leftOut: allLeftOut } = placement;
@@ -104,10 +116,11 @@ export class TreeAssembler {
 				(instancePath) => tree.getNode(instancePath) !== undefined
 			)
 		);
-		const initDirs = this.insertNodes(project, collapsed);
+		const { initDirs, errors } = this.insertNodes(project, collapsed);
 
 		return {
 			collapsed,
+			errors,
 			globIgnorePaths: [
 				...new Set([
 					...tree.globIgnorePaths,
@@ -137,9 +150,22 @@ export class TreeAssembler {
 	private insertNodes(
 		project: RojoProject,
 		collapsed: Collapsed
-	): Map<string, string> {
+	): { initDirs: Map<string, string>; errors: Diagnostic[] } {
 		const { placement } = this;
 		const { layout, files } = placement;
+		const errors: Diagnostic[] = [];
+		const named = (instancePath: readonly string[], resource: string) => {
+			const field = fieldNamed(instancePath);
+			if (field !== undefined)
+				errors.push(
+					errorDiagnostic(
+						"tree.reservedName",
+						{ resource },
+						`"${instanceKey(instancePath)}" has "${field}" in its path, which Rojo reads as a field of a node, so the project file can't name an instance of that name. Rename it.`
+					)
+				);
+			return field !== undefined;
+		};
 		for (const [dir, instancePath] of collapsed.entries())
 			project.insertNodeReplacingFolder(instancePath, {
 				$path: layout.rojoFolderPath(dir),
@@ -148,6 +174,7 @@ export class TreeAssembler {
 		for (const file of files) {
 			const { entry, instancePath } = file;
 			if (collapsed.covers(entry.source)) continue;
+			if (named(instancePath, entry.source)) continue;
 			const dir = placement.initDirOf(file);
 			if (dir !== undefined) {
 				initDirs.set(dir, path.posix.basename(entry.source));
@@ -160,9 +187,9 @@ export class TreeAssembler {
 				});
 		}
 		for (const { folder, instancePath } of placement.emptyFolders)
-			if (!collapsed.covers(folder))
+			if (!collapsed.covers(folder) && !named(instancePath, folder))
 				project.ensureContainer(instancePath);
-		return initDirs;
+		return { initDirs, errors };
 	}
 
 	private besideInit(dir: string, init: string): string[] {
@@ -221,6 +248,7 @@ export class TreeAssembler {
 			const instancePath = this.instancePathOf(dir, entries);
 			if (
 				instancePath &&
+				fieldNamed(instancePath) === undefined &&
 				!isReserved(instancePath) &&
 				claims.get(instancePath) === entries.length
 			)

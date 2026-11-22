@@ -7,6 +7,7 @@ import {
 	FOLDER,
 	abs,
 	assembleFilesOf,
+	assembleResultOf,
 	optional,
 	writeFiles,
 } from "./fixtures.js";
@@ -21,6 +22,9 @@ describe("TreeAssembler", () => {
 			overrides: ResolvedConfigSpec = {},
 			extraTools: readonly SyncTool[] = []
 		) => assembleFilesOf(fs, overrides, extraTools);
+
+		const assembleResult = (overrides: ResolvedConfigSpec = {}) =>
+			assembleResultOf(fs, overrides);
 
 		const storageOf = async (overrides: ResolvedConfigSpec = {}) =>
 			(await assemble(overrides)).projectFile.tree
@@ -558,6 +562,73 @@ describe("TreeAssembler", () => {
 				expect(storage.Gun).toEqual({
 					$path: optional("src/Gun.model.json"),
 				});
+			});
+		});
+
+		describe("a name that is a field of a Rojo node", () => {
+			it.each(["$className", "$path"])(
+				"should refuse a file whose instance is %s where the project file must name it",
+				async (field) => {
+					await write(
+						`src/Trade/${field}.luau`,
+						"src/Trade/Other@server.luau"
+					);
+
+					const result = await assembleResult({
+						routes: {
+							server: "ServerScriptService",
+							"*": "ReplicatedStorage",
+						},
+					});
+
+					expect(
+						result.isErr() ? result.error.diagnostics : []
+					).toMatchObject([
+						{
+							code: "tree.reservedName",
+							resource: abs(`src/Trade/${field}.luau`),
+							message: expect.stringContaining(`"${field}"`),
+						},
+					]);
+				}
+			);
+
+			it("should refuse a folder named for a field that holds files in a service", async () => {
+				await write("src/$id/Save.server.luau", "src/Other.luau");
+				await fs.createDirectory(abs("src/$properties/server"));
+
+				const result = await assembleResult({
+					routes: {
+						server: "ServerScriptService",
+						"*": "ReplicatedStorage",
+					},
+				});
+
+				expect(
+					result.isErr()
+						? result.error.diagnostics.map(
+								({ resource }) => resource
+							)
+						: []
+				).toEqual([
+					abs("src/$id/Save.server.luau"),
+					abs("src/$properties/server"),
+				]);
+			});
+
+			it("should accept such a name in a folder Rojo reads whole", async () => {
+				await write(
+					"src/Trade/$className.luau",
+					"src/Trade/Other.luau"
+				);
+
+				const { projectFile: value } = await assemble({
+					routes: { "*": "ReplicatedStorage" },
+				});
+
+				expect(
+					(value.tree.ReplicatedStorage as RojoNode).Trade
+				).toEqual({ $path: optional("src/Trade") });
 			});
 		});
 

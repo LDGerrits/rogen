@@ -1,5 +1,5 @@
 import path from "path";
-import { containsPosix, joinPosix } from "../../base/path.js";
+import { containsPosix, joinPosix, toPosix } from "../../base/path.js";
 import {
 	FileType,
 	isDirectoryType,
@@ -138,7 +138,8 @@ export class CodeFinder {
 	async keySpellings(
 		cwd: string,
 		dirs: readonly string[],
-		keys: readonly string[]
+		keys: readonly string[],
+		skipped: readonly string[] = []
 	): Promise<Map<string, string>> {
 		const given = new Map(keys.map((key) => [key.toLowerCase(), key]));
 		const counts = new Map<string, Map<string, number>>();
@@ -152,6 +153,12 @@ export class CodeFinder {
 		const visit = async (dir: string): Promise<void> => {
 			for (const [name, type] of await this.entriesOf(dir)) {
 				if (isHiddenOrVendored(name)) continue;
+				if (
+					skipped.includes(
+						toPosix(path.relative(cwd, path.join(dir, name)))
+					)
+				)
+					continue;
 				const at = /@([A-Za-z][A-Za-z0-9]*)(?:\.[^@]*)?$/.exec(name);
 				if (at) note(at[1]);
 				if (isDirectoryType(type)) {

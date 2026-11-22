@@ -8,6 +8,7 @@ import {
 	CommandRegistry,
 	Extensions,
 } from "../platform/commands/commands.js";
+import { JsonOption } from "../platform/environment/args.js";
 import { Registry } from "../platform/registry/registry.js";
 import { MockLogService } from "../platform/log/__tests__/mock-log-service.js";
 import run, { UpdateNotice, isLongRunning } from "../main.js";
@@ -151,6 +152,47 @@ describe("run", () => {
 		);
 
 		await run(["main-test-crashes"]);
+
+		expect(errors.join("\n")).toContain("Fatal Error: Error: kaboom");
+		expect(process.exitCode).toBe(1);
+	});
+
+	it("should print only the JSON document for a crash under --json", async () => {
+		store.add(
+			registry.registerCommand(
+				testCommand(
+					"main-test-json-crash",
+					async () => {
+						throw new Error("kaboom");
+					},
+					{ options: [JsonOption] }
+				)
+			)
+		);
+
+		await run(["main-test-json-crash", "--json"]);
+
+		expect(errors).toEqual([]);
+		expect(JSON.parse(out.join("\n"))).toMatchObject({
+			error: { kind: "internal" },
+		});
+		expect(process.exitCode).toBe(1);
+	});
+
+	it("should add the stack of a crash under --json -v", async () => {
+		store.add(
+			registry.registerCommand(
+				testCommand(
+					"main-test-json-crash-verbose",
+					async () => {
+						throw new Error("kaboom");
+					},
+					{ options: [JsonOption] }
+				)
+			)
+		);
+
+		await run(["main-test-json-crash-verbose", "--json", "-v"]);
 
 		expect(errors.join("\n")).toContain("Fatal Error: Error: kaboom");
 		expect(process.exitCode).toBe(1);

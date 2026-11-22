@@ -251,6 +251,84 @@ describe("MirrorWorkspace", () => {
 		});
 	});
 
+	describe("with an instance whose name Rojo can't write as files", () => {
+		const root = ".rogen-syncback/mirror/ServerScriptService/Inventory";
+
+		it.each([
+			["..", [`${root}/../Escaped`, `${root}/../Escaped/Bag.luau`]],
+			[".", [`${root}/./Bag.luau`]],
+			["a backslash", [`${root}/a\\b/Bag.luau`]],
+			["a slash", [`${root}/a/b`, `${root}/a/b/Bag.luau`]],
+		])("should write nothing for a name with %s", async (_, files) => {
+			const config = await prepared(["src/Inventory/Bag@Server.luau"]);
+			rojo.say = async () => files.map((file) => `Writing ${file}`);
+
+			const outcome = await syncback(config);
+
+			expect(failureOf(outcome).message).toContain(
+				files[0].replace(".rogen-syncback/mirror/", "")
+			);
+			expect(await fs.exists(abs("src/Inventory"))).toBe(true);
+		});
+
+		it.each(["rbxm", "rbxmx"])(
+			"should write nothing when Rojo would write a folder of the project as a .%s model",
+			async (extension) => {
+				const config = await prepared([
+					"src/Inventory/Bag@Server.luau",
+				]);
+				const model = `${root}.${extension}`;
+				rojo.say = async () => [`Writing ${model}`];
+
+				const outcome = await syncback(config);
+
+				expect(failureOf(outcome).message).toContain(
+					`ServerScriptService/Inventory.${extension}`
+				);
+			}
+		);
+
+		it("should let a model through that stands for the folder of a route", async () => {
+			const config = await prepared([
+				"src/Inventory/Bag@Server.luau",
+				"src/Inventory/Types@Shared.luau",
+			]);
+			rojo.say = async () =>
+				[".rogen-syncback/mirror/ReplicatedStorage/Shared.rbxm"].map(
+					(file) => `Writing ${file}`
+				);
+
+			expect((await syncback(config)).kind).toBe("planned");
+		});
+
+		it("should let a model through that is not a folder of the project", async () => {
+			const config = await prepared(["src/Inventory/Bag@Server.luau"]);
+			rojo.say = async () => [`Writing ${root}/Gear.rbxm`];
+
+			expect((await syncback(config)).kind).toBe("planned");
+		});
+
+		it("should let a path through that a project file's $path climbs out by", async () => {
+			const config = await prepared(["src/Inventory/Bag@Server.luau"]);
+			await writeFiles(fs, "vendor/Note.txt");
+			rojo.say = async () => [
+				`Writing ${root}/../../../../vendor/Note.txt`,
+			];
+
+			expect((await syncback(config)).kind).toBe("planned");
+		});
+
+		it("should run again for names whose folders Rojo writes too", async () => {
+			const config = await prepared(["src/Inventory/Bag@Server.luau"]);
+			rojo.say = async () => [
+				`Writing ${root}/Pack`,
+				`Writing ${root}/Pack/Bag.luau`,
+			];
+
+			expect((await syncback(config)).kind).toBe("planned");
+		});
+	});
+
 	describe("with a YAML file Rojo stops on", () => {
 		const refusing = (instance: string) =>
 			new DiagnosticsError([
@@ -305,7 +383,7 @@ describe("MirrorWorkspace", () => {
 						],
 					},
 				});
-				expect(runs).toBe(2);
+				expect(runs).toBe(3);
 			}
 		);
 

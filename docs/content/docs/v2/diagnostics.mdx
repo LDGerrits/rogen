@@ -200,7 +200,7 @@ Start the target with a service, then any folders, such as `"StarterPlayer/Start
 
 ### `roblox.invalidFolder` [#roblox-invalidfolder]
 
-Error. A route's target has a folder whose name is empty, `.` or `..`. Rojo would make an instance with that name.
+Error. A route's target has a folder whose name is empty, `.` or `..`, or one of Rojo's `$` fields (`$className`, `$path`, `$properties`, `$attributes`, `$ignoreUnknownInstances`, `$id`). Rojo would make an instance with that name, or read the name as a field of the node.
 
 ```
 error: the target "ServerScriptService/" has an empty folder name; write each folder between single slashes, such as "ServerScriptService/Folder". (roblox.invalidFolder)
@@ -378,13 +378,19 @@ These diagnostics come from the instance tree that Rogen writes: clashes between
 
 ### `tree.reservedName` [#tree-reservedname]
 
-Warning. The project file gets an instance whose name starts with `$`, which Rojo reserves for its own fields. Rojo keeps the instance, but it warns about it on every build and every serve.
+Warning, or error. The project file gets an instance whose name starts with `$`, which Rojo reserves for its own fields. Rojo keeps the instance, but it warns about it on every build and every serve.
 
 ```
 warning: Rojo reserves a leading $, so it warns about "ReplicatedStorage/shared/$Config" on every build. Rename the file without the $. (tree.reservedName)
 ```
 
 Rename the file or folder without the `$`.
+
+It is an error when the name is one of those fields, such as `$className` or `$path`, and the project file has to name the instance: a file or folder of that name that Rogen gives to Rojo whole, as part of one `$path`, is fine, but a node of that name would be read as a field and corrupt the file.
+
+```
+error: "ReplicatedStorage/Shared/Trade/$className" has "$className" in its path, which Rojo reads as a field of a node, so the project file can't name an instance of that name. Rename it. (tree.reservedName)
+```
 
 A key you write in the tree yourself, such as `"$Shared": { "$path": "src/Shared" }`, gets the same warning at that key in the config:
 
@@ -1221,7 +1227,7 @@ error: the place no longer holds Workspace/Map, and the tree of the config defin
 
 Remove the node from the `tree` of the `.rogen.json`, or put the instance back in the place. Then run `rogen syncback` again.
 
-This error is only about the nodes that you wrote in the `tree`. Rogen syncs the files it placed through a mirror, so it can always remove them.
+Rogen syncs the files it placed through a mirror, so it can remove them, except where the project file it writes holds the instance as a node of its own: a folder with a nested project file in it, such as `src/Shop/Server/Lib.project.json`, and a service that a route makes when the place holds nothing in it. For those, the message names the files to delete, and renaming or deleting that feature in Studio has to wait until they are gone.
 
 ### `syncback.unplaced` [#syncback-unplaced]
 
@@ -1298,13 +1304,13 @@ Add the route you want to `routes`, under a key that is letters and digits, such
 
 ### `legacy.outputClash` [#legacy-outputclash]
 
-Warning. Two modes of the v1 config wrote the same project file, so `init` writes one config for it, from the first mode.
+Warning. Two modes of the v1 config wrote the same project file, or wrote project files that come out as the same config once v1's tags are gone, so `init` writes one config for them, from the first mode.
 
 ```
 warning: its release mode wrote default.project.json, as an earlier mode did, so init writes only one default.rogen.json. To keep both, copy default.rogen.json, give the copy another name and edit it. (legacy.outputClash)
 ```
 
-Copy the config under another name, such as `release.rogen.json`, and change what differs, such as its `compiledPath`.
+Copy the config under another name, such as `release.rogen.json`, and change what differs, such as its `compiledPath`. Modes that differed only in their `tags` need a folder for each tag's files, as `legacy.tags` says, before their configs differ.
 
 ### `legacy.tags` [#legacy-tags]
 

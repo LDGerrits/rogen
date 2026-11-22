@@ -31,6 +31,7 @@ export class ScriptedTerminal {
 	}
 
 	async press(...keys: string[]): Promise<void> {
+		await new Promise((resolve) => setTimeout(resolve, 20));
 		for (const key of keys) {
 			this.input.write(key);
 			await new Promise((resolve) => setImmediate(resolve));

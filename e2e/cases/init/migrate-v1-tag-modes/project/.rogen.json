@@ -1,0 +1,5 @@
+{
+	"source": ["src"],
+	"luau-dev": { "output": "dev.project.json", "build": "src", "tags": { "dev": true, "prod": false } },
+	"luau-prod": { "output": "prod.project.json", "build": "src", "tags": { "dev": false, "prod": true } }
+}

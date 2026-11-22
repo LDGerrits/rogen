@@ -162,7 +162,7 @@ function withAliases(
 }
 
 function namedCommand(positionals: readonly string[]): string {
-	return positionals[0]?.toLowerCase() ?? HELP_COMMAND;
+	return positionals[0] ?? HELP_COMMAND;
 }
 
 function asksForHelpOrVersion(values: {
@@ -302,9 +302,10 @@ export function parseArgs(
 				)
 			)
 			.sort();
-	const named = tokenize(withShortValues(args, allOptions), allOptions)
-		.tokens?.find((token) => token.kind === "positional")
-		?.value.toLowerCase();
+	const named = tokenize(
+		withShortValues(args, allOptions),
+		allOptions
+	).tokens?.find((token) => token.kind === "positional")?.value;
 	const typed = withShortValues(
 		withAliases(
 			args,

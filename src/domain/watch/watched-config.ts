@@ -5,7 +5,7 @@ import {
 	newDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
-import { LoadedConfig, isFailed } from "../write/write.js";
+import { LoadedConfig, isFailed, isWritten } from "../write/write.js";
 import { RewriteReport } from "./watch-service.js";
 
 export class WatchedConfig {
@@ -34,6 +34,13 @@ export class WatchedConfig {
 
 	get failing(): boolean {
 		return this.latest !== undefined && isFailed(this.latest);
+	}
+
+	// Rojo reads again an optional $path that vanished only when the project
+	// file's content changes, and a mount can vanish and return while the old
+	// project file stands, so the first write after a stopped one is forced.
+	get stopped(): boolean {
+		return this.latest !== undefined && !isWritten(this.latest);
 	}
 
 	get readsKnown(): boolean {

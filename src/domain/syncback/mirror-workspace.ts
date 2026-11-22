@@ -2,7 +2,9 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import path from "path";
 import { compareByCodePoint } from "../../base/collections.js";
 import { ignoringGlob, literalGlob } from "../../base/glob.js";
+import { isSameJson } from "../../base/objects.js";
 import { toNative, toPosix } from "../../base/path.js";
+import { UsageError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	FileSystemService,
@@ -30,6 +32,8 @@ import { InstantiationService } from "../../platform/instantiation/instantiation
 const COARSEST_CLOCK_MS = 2000;
 
 const COPY_BATCH = 256;
+
+const MODEL = /\.rbxmx?$/;
 
 export async function inBatches<T, U>(
 	items: readonly T[],
@@ -207,7 +211,7 @@ export class MirrorWorkspace {
 		const skippedYaml: string[] = [];
 		const refused: UnplacedInstance[] = [];
 		for (;;) {
-			const ran = await rojo.listOn(this.file, signal);
+			const ran = await this.listChecked(rojo, signal);
 			if (ran.isOk()) return ok({ said: ran.value, refused });
 			// Rojo refuses a node of the project that the place doesn't hold,
 			// so a route's target the place lacks goes before the next run.
@@ -222,6 +226,85 @@ export class MirrorWorkspace {
 				await this.writeProject(copied, skippedYaml);
 			} else return err(rojo.explain(ran.error, this.layout));
 		}
+	}
+
+	/**
+	 * A name with a backslash, or one Rojo writes after a `.` or `..` that
+	 * is itself listed as written. A `$path` of a nested project may climb
+	 * out of the mirror too, but it leads to folders that already exist.
+	 */
+	private static isMisnamed(file: string, listed: ReadonlySet<string>) {
+		const names = file.split("/");
+		const climbs = Math.max(
+			names.lastIndexOf(".."),
+			names.lastIndexOf(".")
+		);
+		return (
+			names.some((name) => name.includes("\\")) ||
+			(climbs >= 0 && listed.has(names.slice(0, climbs + 2).join("/")))
+		);
+	}
+
+	/**
+	 * Rojo writes an instance named `..` or `../x` outside the folder it is
+	 * given, and one named `a/b` as the folders `a` and `b`. A folder with
+	 * such a child, or with children that share a name, it writes as one model
+	 * file in place of the folder, and removes the folder's files. A dry run
+	 * first finds all of these.
+	 */
+	private async listChecked(
+		rojo: RojoSyncback,
+		signal: AbortSignal
+	): Promise<Result<readonly ServerMessage[], Error>> {
+		const dry = await rojo.dryOn(this.file, signal);
+		if (dry.isErr()) return dry;
+		const { projectDir } = this.request.project;
+		const written = RojoSyncback.written(dry.value);
+		const made = new Set(
+			written.map((file) => path.resolve(projectDir, file))
+		);
+		const listed = new Set(written);
+		for (const file of written) {
+			const parent = path.dirname(path.resolve(projectDir, file));
+			if (
+				MirrorWorkspace.isMisnamed(file, listed) ||
+				!(
+					made.has(parent) ||
+					(await this.fileSystemService.isDirectory(parent))
+				) ||
+				(await this.replacesFolder(path.resolve(projectDir, file)))
+			)
+				return err(
+					new UsageError(
+						`The place holds an instance that Rojo can't write back as files of the project, such as one named with a / or \\ or as . or .., or a folder with a child named so: it would write ${file.split("/").slice(MIRROR.split("/").length).join("/")}, so nothing was written.`,
+						"Rename the instance in Studio, then run syncback again."
+					)
+				);
+		}
+		return rojo.listOn(this.file, signal);
+	}
+
+	/**
+	 * Whether a model file stands for a folder of the project's files. Rojo
+	 * does that for any folder whose children share a name, and a plain
+	 * project follows it, but a routed project would lose its files, and a
+	 * route's own folder holds none.
+	 */
+	private async replacesFolder(file: string): Promise<boolean> {
+		const { project } = this.request;
+		const folder = file.replace(MODEL, "");
+		if (
+			folder === file ||
+			project.routes.size === 0 ||
+			!(await this.fileSystemService.isDirectory(folder))
+		)
+			return false;
+		const instance = this.mirror.instancePathOf(
+			toPosix(path.relative(this.root, folder))
+		);
+		return ![...project.routes.values()].some((route) =>
+			isSameJson(route.instancePath, instance)
+		);
 	}
 
 	private async copy(): Promise<Copied[]> {

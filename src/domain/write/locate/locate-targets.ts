@@ -5,12 +5,20 @@ import { RojoFile } from "../../rojo/rojo.js";
 import { SyncRules } from "../../rojo/sync-rules.js";
 import { Asked, LocateQuery } from "../write-service.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
+import { onDiskCase } from "../../../platform/fs/on-disk-case.js";
 
 export interface Targets {
 	readonly paths: readonly string[];
 	readonly folders: ReadonlySet<string>;
 	readonly instances: readonly InstanceReference[];
 	readonly asked: readonly Asked[];
+}
+
+/** Windows' `\\?\` prefix names the same file as the path without it. */
+function withoutExtendedPrefix(posix: string): string {
+	return posix.replace(/^\/\/\?\/(UNC\/)?/, (_prefix, unc) =>
+		unc ? "//" : ""
+	);
 }
 
 export class LocateTargets {
@@ -45,8 +53,14 @@ export class LocateTargets {
 				instances.push(reference);
 				asked.push({ instance: reference.text });
 			} else {
-				const arg = await this.withoutPosition(toPosix(given), cwd);
-				const resolved = path.resolve(cwd, arg);
+				const arg = await this.withoutPosition(
+					withoutExtendedPrefix(toPosix(given)),
+					cwd
+				);
+				const resolved = await onDiskCase(
+					this.fileSystemService,
+					path.resolve(cwd, arg)
+				);
 				paths.push(resolved);
 				asked.push({ path: toPosix(resolved) });
 				if (arg.endsWith("/")) folders.add(toPosix(resolved));

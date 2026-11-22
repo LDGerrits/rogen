@@ -9,7 +9,7 @@ import {
 	toPosix,
 } from "../../base/path.js";
 import { parse } from "../../base/jsonc.js";
-import { isObject } from "../../base/objects.js";
+import { isObject, isSameJson } from "../../base/objects.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	FileSystemService,
@@ -58,6 +58,15 @@ const LF = 10;
 
 const decoder = new TextDecoder();
 
+function* posixAncestors(at: string): Generator<string> {
+	for (
+		let dir = path.posix.dirname(at);
+		dir !== ".";
+		dir = path.posix.dirname(dir)
+	)
+		yield dir;
+}
+
 const foldersOf = (at: string): string[] => {
 	const names = at.split("/");
 	return names
@@ -103,7 +112,8 @@ function landingOf(
 	to: string,
 	folder: boolean
 ): Landing | undefined {
-	if (folder || file[file.length - 1] === GITKEEP)
+	const leaf = file[file.length - 1];
+	if (folder || leaf === GITKEEP || leaf === RojoFile.INIT_META)
 		return {
 			file: folder ? to : path.dirname(to),
 			instance: [
@@ -118,6 +128,7 @@ function landingOf(
 
 interface Choice {
 	readonly instance: string;
+	readonly made: AddedInstance;
 	readonly proposals: readonly Proposal[];
 	readonly reason: string;
 }
@@ -134,6 +145,7 @@ class MirrorPlanRun {
 	private readonly unplaced: UnplacedInstance[];
 	private readonly toKeep = new Map<string, string>();
 	private readonly refused = new Set<string>();
+	private readonly keptFiles = new Set<string>();
 	private readonly compiled: CompiledChange[] = [];
 	private readonly expected: Expected[] = [];
 	private readonly before = new Map<string, Uint8Array | undefined>();
@@ -195,8 +207,7 @@ class MirrorPlanRun {
 		kind: CompiledChange["kind"]
 	): boolean {
 		if (!this.isCompiled(file)) return false;
-		if (path.basename(file) !== GITKEEP)
-			this.compiled.push({ instance, kind });
+		this.compiled.push({ instance, kind });
 		return true;
 	}
 
@@ -275,13 +286,56 @@ class MirrorPlanRun {
 		}
 	}
 
+	private async keepMovedFrom(made: AddedInstance): Promise<void> {
+		const wanted: { rel?: string; bytes: Uint8Array }[] = [];
+		for (const file of made.files) {
+			const bytes = await this.workspace.read(
+				`${made.parentFolder}/${file.join("/")}`
+			);
+			if (bytes.length > 0)
+				wanted.push({
+					bytes,
+					...(file.length > 1 && { rel: file.slice(1).join("/") }),
+				});
+		}
+		const removals = this.operations.flatMap((operation) => {
+			const bytes = this.before.get(operation.file);
+			return operation.kind === "remove" &&
+				operation.from !== undefined &&
+				bytes !== undefined &&
+				bytes.length > 0
+				? [{ file: operation.file, from: operation.from, bytes }]
+				: [];
+		});
+		const folders = new Set(
+			removals.flatMap(({ from }) => [...posixAncestors(from)])
+		);
+		for (const folder of [...folders].sort((a, b) => b.length - a.length)) {
+			const found = wanted.map(({ rel, bytes }) =>
+				removals.find(
+					(removal) =>
+						sameBytes(removal.bytes, bytes) &&
+						(rel === undefined
+							? path.posix.dirname(removal.from) === folder
+							: path.posix.relative(folder, removal.from) === rel)
+				)
+			);
+			if (found.includes(undefined)) continue;
+			for (const removal of found) this.keptFiles.add(removal!.file);
+			return;
+		}
+	}
+
 	private keepRefused(): void {
 		const refused = [...this.refused];
 		const kept = this.operations.filter(
-			({ kind, instance }) =>
+			({ kind, file, instance }) =>
 				(kind !== "remove" && kind !== "prune") ||
-				!refused.some(
-					(key) => instance === key || instance.startsWith(`${key}/`)
+				!(
+					refused.some(
+						(key) =>
+							instance === key || instance.startsWith(`${key}/`)
+					) || [...this.keptFiles].some((at) => contains(file, at))
 				)
 		);
 		this.operations.splice(0, this.operations.length, ...kept);
@@ -528,6 +582,12 @@ class MirrorPlanRun {
 		}
 	}
 
+	private isRouteTarget(instancePath: readonly string[]): boolean {
+		return [...this.request.project.routes.values()].some((route) =>
+			isSameJson(route.instancePath, instancePath)
+		);
+	}
+
 	private belowSource(folder: string): boolean {
 		return this.request.project.sourcePaths.some(
 			(source) => contains(source, folder) && !contains(folder, source)
@@ -585,6 +645,13 @@ class MirrorPlanRun {
 				const folder = names.slice(0, -1).join("/");
 				if (
 					!added.folder &&
+					name === GITKEEP &&
+					known.has(folder) &&
+					this.isRouteTarget(mirror.instancePathOf(folder))
+				)
+					continue;
+				if (
+					!added.folder &&
 					(RojoFile.INIT_FILES.has(name) ||
 						name === RojoFile.INIT_META) &&
 					known.has(folder) &&
@@ -615,6 +682,20 @@ class MirrorPlanRun {
 					added.folder &&
 					(await this.fileSystemService.isDirectory(file));
 				if (folderInProject) continue;
+				if (!added.folder && names[names.length - 1] === GITKEEP) {
+					if (
+						!(await this.fileSystemService.isDirectory(
+							path.dirname(file)
+						))
+					)
+						this.compiled.push({
+							instance: workspace.instanceAt(
+								names.slice(0, -1).join("/")
+							),
+							kind: "added",
+						});
+					continue;
+				}
 				if (
 					!added.folder &&
 					(await this.onlyOverrides(added.path, file))
@@ -829,12 +910,12 @@ class MirrorPlanRun {
 			);
 			choices.push({
 				instance: held.instance,
+				made: held.made,
 				proposals: [whereRojoWroteIt, ...whereRoutingPutsIt.proposals],
 				reason: whereRoutingPutsIt.reason,
 			});
 		}
 		for (const instance of instances) {
-			if (compiled && instance.name === GITKEEP) continue;
 			const node = this.nodeAt(instance.parentFolder);
 			if (node) {
 				const addition = await this.nodeOf(instance, node, folders);
@@ -867,6 +948,7 @@ class MirrorPlanRun {
 			}
 			choices.push({
 				instance: name,
+				made: instance,
 				proposals: [...renamed, ...placed.proposals],
 				reason: placed.reason,
 			});
@@ -918,12 +1000,13 @@ class MirrorPlanRun {
 			if (anyMissed) continue;
 			for (const [index, proposal] of chosen.entries()) {
 				if (proposal === undefined) {
-					const { instance } = choices[index];
+					const { instance, made } = choices[index];
 					this.unplaced.push({
 						instance,
 						reason: preferredMisses[index] ?? reasons[index],
 					});
 					this.refused.add(instance);
+					await this.keepMovedFrom(made);
 					continue;
 				}
 				for (const operation of proposal.operations)

@@ -8,9 +8,12 @@ import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
+import { FileType } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { ResolvedConfig, scannedFileOf } from "../config/resolved-config.js";
+import { RojoFile } from "../rojo/rojo.js";
+import { SyncRules } from "../rojo/sync-rules.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import { LeftOut } from "./write.js";
 import { WriteTree } from "./write-tree.js";
@@ -25,7 +28,7 @@ import {
 import { RootClaims } from "./dir-claims.js";
 import { MarkerClashes } from "./marker-clashes.js";
 import { CompiledLayout } from "./compiled-layout.js";
-import { InstanceResolver } from "./instance-resolver.js";
+import { InstanceResolver, initRank } from "./instance-resolver.js";
 import { DisplacedFile, LeftOutPaths, Placement } from "./placement.js";
 
 export class Placer {
@@ -89,17 +92,24 @@ export class Placer {
 			...this.hoistedInitErrors(hoistedInits),
 			...Placer.patternClashErrors(routed),
 		];
-		const resolved = new InstanceResolver().resolve(routed);
+		const resolved = new InstanceResolver((dir) =>
+			Placer.listingOf(roots, dir)
+		).resolve(routed);
 		const templating = this.yieldToTree(resolved.nodes);
 		const placed = new Set(resolved.nodes.map(({ entry }) => entry.source));
 		const leftOut = new LeftOutPaths(
 			roots.flatMap((root) => [...root.leftOut]),
 			unrouted
 				.filter((source) => !placed.has(source))
-				.map((source): [string, LeftOut] => [
-					source,
-					{ status: "unrouted" },
-				]),
+				.map((source): [string, LeftOut] => {
+					const by = Placer.initReadFirst(source, resolved.nodes);
+					return [
+						source,
+						by === undefined
+							? { status: "unrouted" }
+							: { status: "replaced", by },
+					];
+				}),
 			resolved.leftOut,
 			templating.leftOut
 		);
@@ -161,6 +171,37 @@ export class Placer {
 				?.listing(path.normalize(path.posix.dirname(target)))
 				.has(path.posix.basename(target)) === true
 		);
+	}
+
+	/**
+	 * Rojo lists the init files of a folder it reads after the one it reads
+	 * as the folder itself on that instance, and builds nothing from them.
+	 */
+	private static initReadFirst(
+		source: string,
+		nodes: readonly RoutedFile[]
+	): string | undefined {
+		const file = new RojoFile(
+			path.posix.basename(source),
+			SyncRules.DEFAULT
+		);
+		if (!file.isInit) return undefined;
+		const dir = path.posix.dirname(source);
+		return nodes.find(
+			(node) =>
+				node.init?.sitsIn === dir &&
+				node.entry.file.isInit &&
+				initRank(node.entry.file) > initRank(file)
+		)?.entry.source;
+	}
+
+	private static listingOf(
+		roots: readonly ScannedRoot[],
+		dir: string
+	): ReadonlyMap<string, FileType> {
+		return roots
+			.find((candidate) => isInside(dir, toPosix(candidate.sourcePath)))!
+			.listing(path.normalize(dir));
 	}
 
 	private static unreadableErrors(

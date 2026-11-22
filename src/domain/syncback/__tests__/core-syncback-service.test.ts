@@ -187,10 +187,19 @@ describe("CoreSyncbackService", () => {
 
 		await syncback();
 
-		expect(rojo.requests).toHaveLength(1);
+		expect(rojo.requests).toHaveLength(2);
+		expect(rojo.requests.map(({ flags }) => flags)).toEqual([
+			[
+				"--input",
+				"game.rbxl",
+				"--non-interactive",
+				"--dry-run",
+				"--list",
+			],
+			["--input", "game.rbxl", "--non-interactive", "--list"],
+		]);
 		expect(rojo.requests[0]).toMatchObject({
 			command: "syncback",
-			flags: ["--input", "game.rbxl", "--non-interactive", "--list"],
 			projectFile: abs("rogen-syncback.project.json"),
 			since: "7.7.0",
 		});
@@ -1216,6 +1225,27 @@ describe("CoreSyncbackService", () => {
 				abs("src/Shop/CartController@Client/init.luau"),
 				abs("src/Shop/Hud@Shared/HudController.luau"),
 				abs("src/Shop/Hud@Shared/init.luau"),
+			]);
+		});
+
+		it("should name the route into a new folder that holds only a meta file, which a pattern's files beside it would send elsewhere", async () => {
+			await prepare(
+				["src/Shop/Prices.luau", "src/Shop/ShopController.luau"],
+				{ routes: PATTERNS }
+			);
+			rojo.say = async () => {
+				await fs.writeFile(
+					mirror(...CLIENT, "Shop", "Settings", "init.meta.json"),
+					'{"className":"Configuration"}'
+				);
+				return [];
+			};
+
+			const plan = await planned();
+
+			expect(plan.unplaced).toEqual([]);
+			expect(plan.changes.map(({ file }) => file)).toEqual([
+				abs("src/Shop/Settings@Client/init.meta.json"),
 			]);
 		});
 
@@ -2599,7 +2629,7 @@ describe("CoreSyncbackService", () => {
 			},
 		});
 
-		expect(rojo.requests).toHaveLength(1);
+		expect(rojo.requests).toHaveLength(2);
 		expect(result.changes).toEqual(shown?.changes);
 		expect(await fs.readFile(abs("src/Inventory/Bag@Server.luau"))).toBe(
 			"return 2"
@@ -2729,7 +2759,7 @@ describe("CoreSyncbackService", () => {
 
 		const plan = await planned();
 
-		expect(rojo.requests).toHaveLength(2);
+		expect(rojo.requests).toHaveLength(3);
 		expect(JSON.parse(rojo.projectTexts[1]).syncbackRules).toEqual({
 			ignorePaths: [
 				".rogen-syncback/mirror/ServerScriptService/Inventory/Rates.yaml",

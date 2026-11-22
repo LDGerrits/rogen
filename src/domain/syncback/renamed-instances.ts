@@ -112,9 +112,13 @@ function renameOf(
 	const siblings = new Map<string, PlacedLocation>();
 	const mapped = new Set<string>();
 	const fresh: (readonly string[])[] = [];
+	const empty: (readonly string[])[] = [];
 	for (const file of instance.files) {
 		const leaf = file[file.length - 1];
-		if (leaf === GITKEEP) continue;
+		if (leaf === GITKEEP) {
+			empty.push(file);
+			continue;
+		}
 		const key = file.join("/");
 		if (RojoFile.metaStemOf(leaf) !== undefined) {
 			const source = sourceOf([oldMirror, ...file.slice(1)].join("/"));
@@ -166,6 +170,22 @@ function renameOf(
 				withMark(leaf, mark)
 			),
 		});
+	}
+	for (const file of empty) {
+		for (let depth = file.length - 1; depth > 0; depth--) {
+			const dir = file.slice(0, depth).join("/");
+			const beside = [...siblings.keys()].find(
+				(other) => other.slice(0, other.lastIndexOf("/")) === dir
+			);
+			if (beside === undefined) continue;
+			files.set(file.join("/"), {
+				target: path.posix.join(
+					path.posix.dirname(files.get(beside)!.target),
+					...file.slice(depth)
+				),
+			});
+			break;
+		}
 	}
 	const lost = placed.some(
 		(file) =>

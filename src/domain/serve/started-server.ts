@@ -47,6 +47,7 @@ export class StartedServer extends AbstractDisposable {
 	private record: { info: ServerInfo; written: Promise<void> } | undefined;
 	private readonly sessions = new Set<string>();
 	private generation = new Generation();
+	private held: ServerOutputEvent[] | undefined = [];
 	private readonly ready: RunOnceScheduler;
 
 	constructor(
@@ -104,7 +105,7 @@ export class StartedServer extends AbstractDisposable {
 		this._register(
 			this.child.onDidMessage((message) => {
 				if (message.severity !== "noise") this.generation.said = true;
-				this.listener.said({ target: this.target, message });
+				this.say({ target: this.target, message });
 			})
 		);
 		this._register(
@@ -124,10 +125,10 @@ export class StartedServer extends AbstractDisposable {
 		this._register(
 			this.child.onDidExit((exit) => {
 				this.exited = true;
-				if (!this.stoppedOnPurpose)
-					this.listener.stopped(
-						this.stopOf(exit, this.generation.said)
-					);
+				if (this.stoppedOnPurpose) return;
+				const stop = this.stopOf(exit, this.generation.said);
+				if (stop.kind !== "failed") this.release(true);
+				this.listener.stopped(stop);
 			})
 		);
 		this.ready = this._register(
@@ -148,8 +149,15 @@ export class StartedServer extends AbstractDisposable {
 		this._target = target;
 	}
 
+	release(show: boolean): void {
+		const { held } = this;
+		this.held = undefined;
+		if (show) for (const said of held ?? []) this.listener.said(said);
+	}
+
 	async terminate(): Promise<void> {
 		this.stoppedOnPurpose = true;
+		this.release(true);
 		this.ready.cancel();
 		await this.child.terminate();
 	}
@@ -158,6 +166,11 @@ export class StartedServer extends AbstractDisposable {
 		await this.terminate();
 		await this.unrecord();
 		this[Symbol.dispose]();
+	}
+
+	private say(said: ServerOutputEvent): void {
+		if (this.held) this.held.push(said);
+		else this.listener.said(said);
 	}
 
 	private writeRecord(info: ServerInfo): Promise<void> {
@@ -255,6 +268,7 @@ export class StartedServer extends AbstractDisposable {
 		this.record = { info, written: this.writeRecord(info) };
 		return this.record.written.then(() => {
 			if (this.stoppedOnPurpose || this.exited) return;
+			this.release(true);
 			const serving = { target, info };
 			if (crashed) this.listener.restarted({ ...serving, exit: crashed });
 			else this.listener.served(serving);
@@ -268,6 +282,7 @@ export class StartedServer extends AbstractDisposable {
 		)
 			return;
 		generation.toldSlow = true;
+		this.release(true);
 		const { target } = this;
 		const where = `port ${target.address.port}`;
 		this.listener.said({

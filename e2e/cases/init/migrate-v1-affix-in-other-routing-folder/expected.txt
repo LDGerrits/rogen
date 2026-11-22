@@ -1,0 +1,39 @@
+$ rogen init
+exit 0
+stdout: (not shown)
+stderr:
+  src/Shop/client/Shop_Server.luau - warning: v1 put this file in ServerScriptService/server, by the last routing word in its path, and v2 puts it in StarterPlayer/StarterPlayerScripts/client: in v2 the outermost route governs. To keep it where it was, move it out of the folder that routes it to StarterPlayer/StarterPlayerScripts/client. (legacy.outrankedRoute)
+
+$ rogen check
+exit 0
+
+written:
+  .rogen.json.v1
+  AGENTS.md
+  default.project.json
+  default.rogen.json
+
+default.rogen.json:
+{
+  "name": "project",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService/server",
+    "client": "StarterPlayer/StarterPlayerScripts/client",
+    "Shared": "ReplicatedStorage/shared",
+    "*": "ReplicatedStorage/shared"
+  },
+  "tree": {
+    "$className": "DataModel"
+  }
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      client: Folder
+        Shop: Folder
+          Shop_Server: ModuleScript  <- src/Shop/client/Shop_Server.luau

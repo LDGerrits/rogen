@@ -991,6 +991,22 @@ describe("CoreWatchSession", () => {
 			]);
 		});
 
+		it("should write the project file again, though its bytes match, for the first write after one that did not happen", async () => {
+			await fs.createDirectory("/repo/src/Combat");
+			await fs.writeFile("/repo/src/Combat/init.meta.json", "{}");
+			await fs.writeFile("/repo/src/Combat/Hit.luau", "");
+			await start();
+			await fs.writeFile("/repo/src/Combat/init.meta.json", "{ broken");
+			await settle();
+			expect(updates.at(-1)?.reports[0].outcome.kind).toBe("failed");
+			const rename = jest.spyOn(fs, "rename");
+
+			await fs.writeFile("/repo/src/Combat/init.meta.json", "{}");
+			await settle();
+			expect(updates.at(-1)?.reports[0].outcome.kind).toBe("wrote");
+			expect(rename).toHaveBeenCalledTimes(1);
+		});
+
 		it("should not rewrite a project file whose bytes would not change", async () => {
 			await start();
 			const rename = jest.spyOn(fs, "rename");

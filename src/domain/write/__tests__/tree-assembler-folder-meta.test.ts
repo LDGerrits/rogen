@@ -146,6 +146,30 @@ describe("TreeAssembler", () => {
 				expect(storage.Bots).toEqual({ $path: optional("src/Bots") });
 			});
 
+			it("should copy an init script folder's meta onto no node but the script's, so another side keeps a plain folder", async () => {
+				await write(
+					"src/Net/init.server.luau",
+					"src/Net/client/Ui.luau"
+				);
+				await writeMeta("src/Net/init.meta.json", {
+					properties: { Disabled: true },
+				});
+
+				const { projectFile: value, warnings } = await assemble({
+					routes: SPLIT,
+				});
+
+				expect(warnings).toEqual([]);
+				expect(
+					nodeAt(
+						value.tree,
+						"StarterPlayer",
+						"StarterPlayerScripts",
+						"Net"
+					)
+				).toEqual({ $path: optional("src/Net/client") });
+			});
+
 			it("should copy nothing onto a node whose $path is a script, and warn with the fix", async () => {
 				await write(
 					"src/Combat.server.luau",

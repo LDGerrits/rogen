@@ -4,11 +4,10 @@ import { Result } from "../../base/result.js";
 import {
 	Diagnostic,
 	RenameFix,
-	isAbout,
 	isError,
-	reaches,
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
+import { DiagnosticIndex } from "../../platform/diagnostics/diagnostic-index.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
 import { FileChange } from "../../platform/fs/file-changes.js";
@@ -132,34 +131,43 @@ export class LocatedDiagnosis {
 	readonly unshown: readonly Diagnostic[];
 	readonly placingNothing: readonly Diagnostic[];
 
+	private readonly index: DiagnosticIndex;
+	private readonly queried: ReadonlySet<string>;
+
 	constructor(private readonly located: ConfigLocations) {
+		const markers = new Set(located.markers);
+		this.index = new DiagnosticIndex(located.diagnostics, (diagnostic) => {
+			const resource = toPosix(diagnostic.resource);
+			return markers.has(resource)
+				? path.posix.dirname(resource)
+				: resource;
+		});
+		this.queried = new Set(located.queried);
 		const targets = [
 			...located.files.map(({ source }) => source),
 			...located.queried,
 		];
-		const proposing = located.diagnostics.filter((diagnostic) =>
-			located.instances.some(({ fixes }) =>
-				fixes.some(
-					({ code, rename }) =>
-						code === diagnostic.code &&
-						rename.from === toPosix(diagnostic.resource)
+		const renames = new Set(
+			located.instances.flatMap(({ fixes }) =>
+				fixes.map(({ code, rename }) => `${code}\0${rename.from}`)
+			)
+		);
+		const proposing = new Set(
+			located.diagnostics.filter((diagnostic) =>
+				renames.has(
+					`${diagnostic.code}\0${toPosix(diagnostic.resource)}`
 				)
 			)
 		);
-		this.reaching = [
-			...new Set([
-				...targets.flatMap((target) =>
-					located.diagnostics.filter((diagnostic) =>
-						this.reaches(diagnostic, target)
-					)
-				),
-				...proposing,
-			]),
-		];
+		const reaching = new Set([
+			...targets.flatMap((target) =>
+				this.index.reaching(target, this.metaPathsOf(target))
+			),
+			...proposing,
+		]);
+		this.reaching = [...reaching];
 		this.stops = located.diagnostics.filter(isError);
-		this.stoppedBy = this.stops.filter(
-			(error) => !this.reaching.includes(error)
-		);
+		this.stoppedBy = this.stops.filter((error) => !reaching.has(error));
 		const shown = new Set(
 			[
 				...located.files,
@@ -169,7 +177,7 @@ export class LocatedDiagnosis {
 		this.unshown = located.files.some(({ status }) => status === "blocked")
 			? []
 			: this.stops.filter(
-					(error) => !shown.has(error) && !proposing.includes(error)
+					(error) => !shown.has(error) && !proposing.has(error)
 				);
 		this.placingNothing = located.diagnostics.filter(
 			({ code }) => code === "scan.noSyncedFiles"
@@ -177,34 +185,19 @@ export class LocatedDiagnosis {
 	}
 
 	of(location: FileLocation): Diagnostic[] {
-		const asked = this.located.queried.includes(location.source);
-		return this.located.diagnostics.filter((diagnostic) =>
-			asked
-				? this.reaches(diagnostic, location.source)
-				: isAbout(diagnostic, location.source) ||
-					this.isMetaOf(diagnostic, location.source)
-		);
+		const { source } = location;
+		const metaPaths = this.metaPathsOf(source);
+		return this.queried.has(source)
+			? this.index.reaching(source, metaPaths)
+			: this.index.about(source, metaPaths);
 	}
 
-	private reaches(diagnostic: Diagnostic, target: string): boolean {
-		const resource = toPosix(diagnostic.resource);
-		return (
-			reaches(
-				diagnostic,
-				target,
-				this.located.markers.includes(resource)
-					? path.posix.dirname(resource)
-					: resource
-			) || this.isMetaOf(diagnostic, target)
-		);
-	}
-
-	private isMetaOf(diagnostic: Diagnostic, source: string): boolean {
+	private metaPathsOf(source: string): string[] {
 		const posixSource = toPosix(source);
 		const dir = path.posix.dirname(posixSource);
-		return scannedFileOf(this.located.config, posixSource)
-			.metaFiles.map((name) => path.posix.join(dir, name))
-			.includes(toPosix(diagnostic.resource));
+		return scannedFileOf(this.located.config, posixSource).metaFiles.map(
+			(name) => path.posix.join(dir, name)
+		);
 	}
 }
 

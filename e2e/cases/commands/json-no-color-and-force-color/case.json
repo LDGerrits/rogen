@@ -1,0 +1,4 @@
+{
+	"steps": [["write", "--json"], ["check", "--json"], ["--version", "--json"]],
+	"env": { "NO_COLOR": "1", "FORCE_COLOR": "1" }
+}
