@@ -313,7 +313,7 @@ export class InstanceReference {
 	private constructor(
 		readonly text: string,
 		readonly separator: "." | "/",
-		readonly namesScript = false
+		readonly namesScript: boolean
 	) {}
 
 	static parse(input: string): InstanceReference | undefined {

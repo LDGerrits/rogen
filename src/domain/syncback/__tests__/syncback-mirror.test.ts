@@ -963,4 +963,221 @@ describe("SyncbackMirror", () => {
 		]);
 		expect(mirror.file).not.toHaveProperty("syncRules");
 	});
+
+	it("should leave out a mirror file a sync rule's exclude matches", async () => {
+		const mirror = await mirrorOf(
+			{
+				syncRules: [
+					{
+						pattern: "src/**/*.luau",
+						exclude: "src/**/*.spec.luau",
+						use: "moduleScript",
+					},
+				],
+				tree: {},
+			},
+			[]
+		);
+
+		expect(
+			mirror.rulesFor(
+				[
+					{
+						mirror: "ServerScriptService/A.luau",
+						target: "/repo/src/A.luau",
+					},
+					{
+						mirror: "ServerScriptService/A.spec.luau",
+						target: "/repo/src/A.spec.luau",
+					},
+				],
+				ROOT,
+				"/repo"
+			)
+		).toEqual([
+			{
+				pattern: `${ROOT}/ServerScriptService/A.luau`,
+				use: "moduleScript",
+			},
+		]);
+	});
+
+	it("should give a path in a folder mounted inside another the target of the inner folder", async () => {
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					ServerScriptService: {
+						Panel: {
+							$path: "src/Panel",
+							Inner: { $path: optional("src/Other") },
+						},
+					},
+				},
+			},
+			[
+				placed(
+					"src/Other/Row.luau",
+					"ServerScriptService",
+					"Panel",
+					"Inner",
+					"Row"
+				),
+			],
+			["/repo/src/Panel", "/repo/src/Other"]
+		);
+
+		expect(
+			mirror.targetOf("ServerScriptService/Panel/Inner/New.luau")
+		).toEqual("/repo/src/Other/New.luau");
+	});
+
+	it("should give a node below a kept file a folder of its own for the children Studio adds", async () => {
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					ServerScriptService: {
+						Lib: {
+							$path: "lib/Lib.luau",
+							Child: { $className: "Folder" },
+						},
+					},
+				},
+			},
+			[]
+		);
+
+		const [folder] = mirror.nodeFolders;
+		expect(folder.node).toEqual(["ServerScriptService", "Lib", "Child"]);
+		expect(
+			(mirror.file.tree.ServerScriptService as RojoNode).Lib
+		).toMatchObject({
+			$path: `${ROOT}/~kept/0/Lib.luau`,
+			Child: { $className: "Folder", $path: `${ROOT}/${folder.mirror}` },
+		});
+	});
+
+	it("should keep a file in a source path that the write did not place as a file of its own", async () => {
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					ServerScriptService: { Other: { $path: "src/Other.luau" } },
+				},
+			},
+			[],
+			[],
+			{},
+			{ $className: "DataModel" }
+		);
+
+		expect(mirror.entries).toEqual([
+			{
+				mirror: "~kept/0/Other.luau",
+				target: "/repo/src/Other.luau",
+				kind: "file",
+			},
+			{
+				mirror: "~kept/0/Other.meta.json",
+				target: "/repo/src/Other.meta.json",
+				kind: "file",
+			},
+		]);
+	});
+
+	it("should read an init script of the user's tree beside a moved sibling from a spare folder named for the init", async () => {
+		const shop = "/repo/src/Shop/init@Server.luau";
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					ServerScriptService: {
+						Shop: { $path: optional("src/Shop/init@Server.luau") },
+						Bag: { $path: optional("src/Bag@Server.luau") },
+					},
+				},
+			},
+			[
+				{
+					...placed(
+						"src/Shop/init@Server.luau",
+						"ServerScriptService",
+						"Shop"
+					),
+					folderNodes: [
+						{
+							instancePath: ["ServerScriptService", "Shop"],
+							folder: "/repo/src/Shop",
+						},
+					],
+				},
+				placed("src/Bag@Server.luau", "ServerScriptService", "Bag"),
+			]
+		);
+
+		expect(mirror.entries).toEqual(
+			expect.arrayContaining([
+				{ mirror: "~kept/0/init.luau", target: shop, kind: "file" },
+				{
+					mirror: "~kept/0/init.meta.json",
+					target: "/repo/src/Shop/init@Server.meta.json",
+					kind: "file",
+				},
+			])
+		);
+		expect(mirror.instancePathOf("~kept/0/New.luau")).toEqual([
+			"ServerScriptService",
+			"Shop",
+			"New.luau",
+		]);
+	});
+
+	it("should copy each project and path a nested project reads once, and a project it names that is missing or broken", async () => {
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					ReplicatedStorage: { Kit: { $path: "kit.project.json" } },
+				},
+			},
+			[],
+			["/repo/lib"],
+			{
+				"/repo/kit.project.json": JSON.stringify({
+					tree: {
+						A: { $path: "lib" },
+						B: { $path: "lib" },
+						C: { $path: "gone.project.json" },
+						D: { $path: "bad.project.json" },
+						E: { $path: "inner.project.json" },
+						F: { $path: "inner.project.json" },
+					},
+				}),
+				"/repo/bad.project.json": "{",
+				"/repo/inner.project.json": JSON.stringify({
+					tree: { $path: "lib" },
+				}),
+			}
+		);
+
+		expect(mirror.entries).toEqual([
+			{
+				mirror: "~kept/0/kit.project.json",
+				target: "/repo/kit.project.json",
+				kind: "file",
+			},
+			{
+				mirror: "~kept/0/gone.project.json",
+				target: "/repo/gone.project.json",
+				kind: "file",
+			},
+			{
+				mirror: "~kept/0/bad.project.json",
+				target: "/repo/bad.project.json",
+				kind: "file",
+			},
+			{
+				mirror: "~kept/0/inner.project.json",
+				target: "/repo/inner.project.json",
+				kind: "file",
+			},
+			{ mirror: "~kept/0/lib", target: "/repo/lib", kind: "folder" },
+		]);
+	});
 });

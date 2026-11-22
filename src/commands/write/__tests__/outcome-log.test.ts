@@ -161,6 +161,27 @@ describe("OutcomeLog.outcome", () => {
 		]);
 	});
 
+	it("should say an unchanged config in a line when it has something to show", () => {
+		const logService = new MockLogService();
+		instantiationOf([LogService, logService])
+			.createInstance(OutcomeLog, cwd)
+			.outcome(writtenOf(summaryOf(), "unchanged"), [error], {
+				quiet: false,
+			});
+
+		expect(logService.entries[0]).toEqual({
+			kind: "success",
+			text: "default.project.json · unchanged",
+		});
+	});
+
+	it("should say a checked config would be written unless told to keep quiet", () => {
+		expect(lines(writtenOf(summaryOf(), "wouldWrite"))[0]).toEqual([
+			"success",
+			"default.project.json · would write",
+		]);
+	});
+
 	it("should say a failed config, and one another config stopped, were not written", () => {
 		expect(lines(failed)[0]).toEqual([
 			"error",
@@ -588,6 +609,57 @@ describe("OutcomeLog report, closing line", () => {
 
 		expect(logService.lines.at(-1)).toBe("outro: build failed.");
 	});
+
+	it("should count the configs it checked when it wrote none", () => {
+		const logService = new MockLogService();
+		instantiationOf([LogService, logService])
+			.createInstance(OutcomeLog, cwd)
+			.report(
+				new WriteRun([written(0), written(0, "b")]),
+				undefined,
+				"syncback",
+				false
+			);
+
+		expect(logService.lines.at(-1)).toBe("outro: Checked 2 projects.");
+	});
+
+	it("should name the folder it ran in when that is not the working directory", () => {
+		const logService = new MockLogService();
+		logService.setLevel(LogLevel.Debug);
+		instantiationOf([LogService, logService])
+			.createInstance(OutcomeLog, cwd)
+			.report(new WriteRun([written(0)]), path.join(cwd, "games"));
+
+		expect(logService.lines[0]).toEqual(
+			"debug: rogen build · a/default.rogen.json · in games"
+		);
+	});
+
+	it("should head an unchanged config of several only under -v", () => {
+		const logService = new MockLogService();
+		logService.setLevel(LogLevel.Debug);
+		const unchanged = (label: string) =>
+			writtenOf(
+				summaryOf(),
+				"unchanged",
+				mockConfig({
+					name: label,
+					file: path.join(cwd, label, "default.rogen.json"),
+				})
+			);
+		instantiationOf([LogService, logService])
+			.createInstance(OutcomeLog, cwd)
+			.report(new WriteRun([unchanged("a"), unchanged("b")]));
+
+		expect(logService.texts("step")).toEqual([]);
+		expect(logService.texts("debug")).toEqual(
+			expect.arrayContaining([
+				"a/default.rogen.json",
+				"b/default.rogen.json",
+			])
+		);
+	});
 });
 
 describe("OutcomeLog.diagnostics", () => {
@@ -658,6 +730,62 @@ describe("OutcomeLog.diagnostics", () => {
 				"Lengthen the pattern that should win, or route the file with a folder or an @ name.",
 			].join("\n"),
 		]);
+	});
+
+	it.each([
+		[
+			"scan.sourcePathNamedAfterKey",
+			1,
+			"1 source path is named after a route key, but routing starts below a source path, so its name routes nothing:",
+			undefined,
+		],
+		[
+			"route.dotRoute",
+			2,
+			'2 names write a route key after a dot, where only "@" routes, so Rogen stops until they are fixed:',
+			undefined,
+		],
+		[
+			"route.serverCodeShipped",
+			1,
+			"1 file in a folder named for a server route ships to clients:",
+			undefined,
+		],
+		[
+			"tree.runContextTarget",
+			1,
+			"emitLegacyScripts: false makes a client script in StarterPlayerScripts or StarterCharacterScripts a Script with RunContext Client, which runs twice there:",
+			"Route client scripts to ReplicatedStorage, or remove emitLegacyScripts from the config.",
+		],
+		[
+			"tree.mountClash",
+			2,
+			"2 files sit next to an instance of the same name that a mount of the tree holds, so Rojo builds two of each:",
+			"Rename one of each pair, or route outside the mounted folder.",
+		],
+	])(
+		"should head a block of %s and close it with its fix",
+		(code, count, headline, tail) => {
+			const [text] = printed(warnings(count, code));
+			const lines = text.split("\n");
+
+			expect(lines[0]).toBe(
+				`${path.normalize("/repo/default.rogen.json")} - warning: ${headline} (${code})`
+			);
+			expect(lines.slice(count + 1)).toEqual(tail ? [tail] : []);
+		}
+	);
+
+	it("should list a pattern clash whose message names no patterns as it is", () => {
+		const [text] = printed([
+			errorDiagnostic(
+				"route.patternClash",
+				{ resource: "/repo/src/A.ts" },
+				"clashes."
+			),
+		]);
+
+		expect(text.split("\n")[1]).toBe("  /repo/src/A.ts (clashes.)");
 	});
 
 	it("should list ten files of a block, then count the rest", () => {

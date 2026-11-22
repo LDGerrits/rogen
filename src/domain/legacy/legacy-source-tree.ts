@@ -222,7 +222,7 @@ export class LegacySourceTree {
 		taken: Set<string>
 	): void {
 		const extension = path.extname(name);
-		const stem = name.slice(0, -extension.length || undefined);
+		const stem = name.slice(0, -extension.length);
 		const hoisted = stem.startsWith("^");
 		const bare = hoisted ? stem.slice(1) : stem;
 		const file = this.relative(path.join(folder, name));

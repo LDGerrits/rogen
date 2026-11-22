@@ -227,9 +227,9 @@ class Migration {
 		for (const config of this.found) await this.migrate(config);
 		const from = this.found.map(({ file }) => file);
 		const outputs = await this.outputsThere();
-		const [server] = Object.entries(
-			this.configs[0]?.config.routes ?? {}
-		).filter(([key]) => key.toLowerCase() === "server");
+		const [server, serverTarget] = Object.entries(
+			this.configs[0].config.routes!
+		).find(([key]) => key.toLowerCase() === "server")!;
 		return {
 			label:
 				from.length === 1
@@ -251,11 +251,7 @@ class Migration {
 							`v1 wrote ${joinedWithAnd(outputs)}, which init doesn't lift: 'rogen write' writes ${outputs.length === 1 ? "it" : "them"} now.`,
 						]
 					: []),
-				...(server
-					? [
-							`The routes send each file where v1 did, such as ${server[0]} files to ${server[1]}, so requires keep working.`,
-						]
-					: []),
+				`The routes send each file where v1 did, such as ${server} files to ${serverTarget}, so requires keep working.`,
 				...(this.renames.size > 0
 					? [
 							`Renames ${plural(this.renames.size, "file")} that v1 routed by a word in the name or by a marker file to v2's @ form, which keeps each instance's name.`,

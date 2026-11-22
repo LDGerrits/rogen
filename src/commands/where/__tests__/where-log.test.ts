@@ -113,6 +113,78 @@ describe("WhereLog", () => {
 			).toEqual("src/A.spec.luau -> ignored · matches **/*.spec.luau");
 		});
 
+		it("should name a glob that matches the working directory itself as a dot", () => {
+			expect(
+				lineOf({
+					status: "ignored",
+					source: "/repo/src/A.luau",
+					exists: true,
+					pattern: "/repo",
+				})
+			).toEqual("src/A.luau -> ignored · matches .");
+		});
+
+		it("should say a file with an uppercase extension is not an instance", () => {
+			expect(
+				lineOf({
+					status: "extensionCase",
+					source: "/repo/src/A.LUAU",
+					exists: true,
+					rename: "A.luau",
+				})
+			).toEqual(
+				"src/A.LUAU -> not an instance · its extension is not in lowercase"
+			);
+		});
+
+		it("should name the nested project that decides a path", () => {
+			expect(
+				lineOf({
+					status: "inProject",
+					source: "/repo/src/Pkg/A.luau",
+					exists: true,
+					project: "/repo/src/Pkg/default.project.json",
+				})
+			).toEqual(
+				"src/Pkg/A.luau -> in a nested project · src/Pkg/default.project.json decides what Rojo reads of its folder"
+			);
+		});
+
+		it.each([
+			[
+				true,
+				"/repo/src/A.luau",
+				"not placed · it has an error (route.strayAt)",
+			],
+			[
+				true,
+				"/repo/src/B.luau",
+				"not placed · src/B.luau has an error (route.strayAt)",
+			],
+			[
+				false,
+				"/repo/src/B.luau",
+				"not placed · the write stops on src/B.luau (route.strayAt); run 'rogen check'",
+			],
+		])(
+			"should say why a blocked path is not placed (own: %s, error in %s)",
+			(own, resource, said) => {
+				expect(
+					lineOf({
+						status: "blocked",
+						source: "/repo/src/A.luau",
+						exists: true,
+						own,
+						by: errorDiagnostic(
+							"route.strayAt",
+							{ resource },
+							"Stray."
+						),
+					})
+				).toEqual(`src/A.luau -> ${said}`);
+			}
+		);
+
 		it.each([
 			["**/*.tmp", "**/*.tmp"],
 			["C:/repo/**/*.spec.luau", "**/*.spec.luau"],

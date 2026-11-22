@@ -157,9 +157,7 @@ export class ConfigValidator {
 	}
 
 	private checkNodes(project: RojoProject<ParsedProjectFile>): void {
-		const notNode = RojoProject.findNonNode(project.getNode([]) ?? {}, [
-			"tree",
-		]);
+		const notNode = RojoProject.findNonNode(project.getNode([])!, ["tree"]);
 		if (!notNode) return;
 		const value = this.config.model.getValue(notNode);
 		this.problems.error(
@@ -170,10 +168,9 @@ export class ConfigValidator {
 	}
 
 	private checkNodeFields(project: RojoProject<ParsedProjectFile>): void {
-		const unknown = RojoProject.findUnknownField(
-			project.getNode([]) ?? {},
-			["tree"]
-		);
+		const unknown = RojoProject.findUnknownField(project.getNode([])!, [
+			"tree",
+		]);
 		if (!unknown) return;
 		const key = unknown[unknown.length - 1];
 		const suggestion = closestMatch(key, [...NODE_FIELDS]);
@@ -186,7 +183,7 @@ export class ConfigValidator {
 
 	private checkPropertyValues(project: RojoProject<ParsedProjectFile>): void {
 		for (const unreadable of RojoProject.findUnreadableValues(
-			project.getNode([]) ?? {},
+			project.getNode([])!,
 			["tree"]
 		))
 			this.problems.error(
@@ -198,7 +195,7 @@ export class ConfigValidator {
 
 	private checkReservedKeys(project: RojoProject<ParsedProjectFile>): void {
 		for (const reserved of RojoProject.findReservedKeys(
-			project.getNode([]) ?? {},
+			project.getNode([])!,
 			["tree"]
 		))
 			this.problems.warning(

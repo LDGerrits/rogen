@@ -73,6 +73,6 @@ export class MigrationSetup implements Setup<MigrationChoices> {
 	}
 
 	private static projectFileOf(fileName: string): string {
-		return projectFileName(configStem(fileName) ?? fileName);
+		return projectFileName(configStem(fileName)!);
 	}
 }

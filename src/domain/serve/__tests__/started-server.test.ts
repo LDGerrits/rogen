@@ -16,6 +16,7 @@ import {
 	ServerExitEvent,
 	ServerReadyEvent,
 } from "../serve-service.js";
+import { ServerProbe } from "../server-probe.js";
 import { ServerRecords } from "../server-records.js";
 import { StartedServer } from "../started-server.js";
 import { probeOf } from "./serve-of.js";
@@ -97,6 +98,7 @@ describe("StartedServer", () => {
 
 	afterEach(() => {
 		server[Symbol.dispose]();
+		jest.restoreAllMocks();
 		jest.useRealTimers();
 	});
 
@@ -189,9 +191,20 @@ describe("StartedServer", () => {
 			const child = start();
 			await answer();
 
-			await server.terminate();
-			child.print(websocket("closed by client"));
+			const terminate = child.terminate.bind(child);
+			let exit = () => {};
+			jest.spyOn(child, "terminate").mockImplementation(async () => {
+				child.print(websocket("closed by client"));
+				await new Promise<void>((resolve) => {
+					exit = resolve;
+				});
+				return terminate();
+			});
+
+			const terminating = server.terminate();
 			await jest.advanceTimersByTimeAsync(100);
+			exit();
+			await terminating;
 
 			expect(connections).toEqual([]);
 		});
@@ -310,6 +323,45 @@ describe("StartedServer", () => {
 		expect(
 			await records.recordOf(target.address, served[0].info)
 		).toBeUndefined();
+	});
+
+	it("should not take the server for its own when it was stopped while it looked for the server's record", async () => {
+		let finishLookup = () => {};
+		jest.spyOn(records, "recordOf").mockReturnValue(
+			new Promise((resolve) => {
+				finishLookup = () => resolve(undefined);
+			})
+		);
+		const write = jest.spyOn(records, "write");
+		start();
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+			sessionId: "s1",
+		});
+		await jest.advanceTimersByTimeAsync(250);
+
+		await server.terminate();
+		finishLookup();
+		await jest.advanceTimersByTimeAsync(0);
+
+		expect(served).toEqual([]);
+		expect(server.hasServed).toBe(false);
+		expect(write).not.toHaveBeenCalled();
+	});
+
+	it("should report a failure to ask whether the server answers", async () => {
+		jest.spyOn(ServerProbe.prototype, "probe").mockRejectedValue(
+			new Error("no sockets left")
+		);
+		start();
+
+		await jest.advanceTimersByTimeAsync(250);
+
+		expect(failures.map((error) => error.message)).toEqual([
+			"no sockets left",
+		]);
+		expect(served).toEqual([]);
 	});
 
 	it("should keep asking while it answers for another project", async () => {
@@ -544,6 +596,25 @@ describe("StartedServer", () => {
 			expect(
 				await records.recordOf(target.address, restarted[0].info)
 			).toMatchObject({ pid: processes.spawned[1].pid });
+		});
+
+		it("should start a Rojo that answered without a session again, without asking whether it outlived its exit", async () => {
+			start();
+			requests.answer(ROJO_URL, {
+				projectName: "repo",
+				serverVersion: "7.7.1",
+			});
+			await jest.advanceTimersByTimeAsync(1_000);
+			requests.requested.length = 0;
+
+			processes.spawned[0].printError(crashText);
+			processes.spawned[0].exit({ code: 1, signal: null });
+			await jest.advanceTimersByTimeAsync(0);
+
+			expect(requests.requested).toEqual([]);
+			expect(refreshes).toBe(1);
+			expect(processes.spawned).toHaveLength(2);
+			expect(stops).toEqual([]);
 		});
 
 		it("should not take the server an earlier Rojo of it served for the restarted one", async () => {

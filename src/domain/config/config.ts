@@ -74,7 +74,7 @@ export const projectFileOf = (configFile: string): string =>
 		? configFile
 		: path.join(
 				path.dirname(configFile),
-				projectFileName(configStem(configFile) ?? DEFAULT_PROJECT)
+				projectFileName(configStem(configFile)!)
 			);
 
 export const ROGEN_KEYS: readonly (keyof RogenKeys)[] = [

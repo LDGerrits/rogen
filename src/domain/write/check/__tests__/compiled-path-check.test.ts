@@ -1,5 +1,7 @@
+import { jest } from "@jest/globals";
 import { DisposableStore } from "../../../../base/disposable.js";
 import { Diagnostic } from "../../../../platform/diagnostics/diagnostic.js";
+import { FileType } from "../../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../../config/resolved-config.js";
@@ -608,6 +610,23 @@ describe("CompiledPathCheck", () => {
 					);
 				});
 
+				it("should find the module a processor made of a .meta.jsonc", async () => {
+					await write(
+						"src/Inventory/Save.server.luau",
+						"src/Inventory/Save.meta.jsonc",
+						"dist/Inventory/Save.server.luau",
+						"dist/Inventory/Save.meta.lua"
+					);
+
+					const warnings = await check();
+
+					expect(warnings).toHaveLength(1);
+					expect(warnings[0].message).toContain("Save.meta.jsonc)");
+					expect(warnings[0].message).toContain(
+						"The processor turned it into .meta.lua"
+					);
+				});
+
 				it("should count only the meta files the processor converted", async () => {
 					await write(
 						"src/Inventory/Save.server.luau",
@@ -1027,6 +1046,30 @@ describe("CompiledPathCheck", () => {
 				expect(await check()).toEqual([]);
 			});
 
+			it("should pass over a link or an entry that is neither file nor folder in the compiled path", async () => {
+				await write("src/A/Real.luau", "dist/A/Real.luau");
+				await fs.createSymbolicLink(
+					abs("dist/A/Real.luau"),
+					abs("dist/A/Link.luau")
+				);
+				const readDirectory = fs.readDirectory.bind(fs);
+				jest.spyOn(fs, "readDirectory").mockImplementation(
+					async (dir) => [
+						...(await readDirectory(dir)),
+						...(dir === abs("dist/A")
+							? [
+									["Pipe.luau", FileType.Unknown] as [
+										string,
+										FileType,
+									],
+								]
+							: []),
+					]
+				);
+
+				expect(await check()).toEqual([]);
+			});
+
 			it("should ignore hidden compiled files", async () => {
 				await write(
 					"src/A/Real.luau",
@@ -1035,6 +1078,69 @@ describe("CompiledPathCheck", () => {
 				);
 
 				expect(await check()).toEqual([]);
+			});
+		});
+
+		describe("a compiled path that is the project's own folder", () => {
+			let fs: MemoryFileSystemService;
+
+			const write = (...paths: string[]) => writeFiles(fs, ...paths);
+
+			const check = async (code: string) => {
+				const config = baseConfigOf({
+					file: abs("game/default.rogen.json"),
+					sourcePaths: [abs("src")],
+					compiledPath: abs("game"),
+				});
+				const index = await indexOf(fs, config.sourcePaths);
+				const warnings = await compiledPathCheckOf(fs).check(
+					placeFiles(index, config, syncTools).unwrap()
+				);
+				return warnings
+					.filter((warning) => warning.code === code)
+					.map(({ message }) => message);
+			};
+
+			beforeEach(async () => {
+				fs = new MemoryFileSystemService();
+				await write("game/default.rogen.json");
+			});
+
+			it("should name it . when nothing was emitted into it", async () => {
+				await write("src/A.ts");
+
+				expect(await check("output.nothingEmitted")).toEqual([
+					expect.stringContaining('has no output under ".".'),
+				]);
+			});
+
+			it("should name it . when meta files have no copy in it", async () => {
+				await write(
+					"src/A.server.luau",
+					"src/A.meta.json",
+					"game/A.server.luau"
+				);
+
+				expect(await check("output.metaNotSynced")).toEqual([
+					expect.stringContaining(
+						'1 meta file has no copy under "."'
+					),
+				]);
+			});
+
+			it("should name it . when a data file became a module in it", async () => {
+				await write(
+					"src/Note.txt",
+					"src/A.luau",
+					"game/Note.lua",
+					"game/A.luau"
+				);
+
+				expect(await check("output.dataFileConverted")).toEqual([
+					expect.stringContaining(
+						'1 data file became a Lua module under "."'
+					),
+				]);
 			});
 		});
 	});

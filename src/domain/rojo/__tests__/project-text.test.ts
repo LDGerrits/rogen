@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { parseJsonc } from "../../../base/jsonc.js";
+import { JsoncComments } from "../../../base/jsonc-comments.js";
 import { ProjectText, WrittenTree } from "../project-text.js";
 import { RojoNode, RojoProjectFile } from "../rojo-project.js";
 import { describeWithRojo, makeRojoDir, runRojo } from "./rojo-cli.js";
@@ -102,6 +103,22 @@ describe("domain/rojo/project-text", () => {
 				[{ P: { Float32: 1e-6 } }, '{"P":{"Float32":0.000001}}'],
 				[{ P: { Float32: 1e-7 } }, '{"P":{"Float32":1e-7}}'],
 				[{ P: { Float64: -0 } }, '{"P":{"Float64":-0.0}}'],
+				[
+					{ P: { Float32: 118.1619644165039 } },
+					'{"P":{"Float32":118.161964}}',
+				],
+				[{ P: -2.5 }, '{"P":-2.5}'],
+				[{ P: { Float32: -1e13 } }, '{"P":{"Float32":-1e13}}'],
+				[{ P: Infinity }, '{"P":null}'],
+				[
+					{ P: { Attributes: { b: 1, a: { Float32: 2 } } } },
+					'{"P":{"Attributes":{"a":{"Float32":2.0},"b":1.0}}}',
+				],
+				[{ P: { Attributes: 5 } }, '{"P":{"Attributes":5}}'],
+				[{ P: { Float32: "x" } }, '{"P":{"Float32":"x"}}'],
+				[{ P: { Vector3: "x" } }, '{"P":{"Vector3":"x"}}'],
+				[{ P: { UDim: "x" } }, '{"P":{"UDim":"x"}}'],
+				[{ P: { CFrame: 5 } }, '{"P":{"CFrame":5}}'],
 				[{ P: "Voxel" }, '{"P":"Voxel"}'],
 				[{ P: true }, '{"P":true}'],
 			])("should write %j as %s", (properties, expected) => {
@@ -228,6 +245,15 @@ describe("domain/rojo/project-text", () => {
 				).toEqual(["pattern", "exclude", "use", "suffix"]);
 			});
 
+			it("should leave a sync rule that is not an object as it is", () => {
+				const text = ProjectText.of({
+					tree: { $className: "Folder" },
+					syncRules: ["*.t"],
+				} as unknown as RojoProjectFile);
+
+				expect(JSON.parse(text).syncRules).toEqual(["*.t"]);
+			});
+
 			it("should write syncbackRules in Rojo's order, and the classes of ignoreProperties sorted", () => {
 				const text = ProjectText.of({
 					tree: { $className: "Folder" },
@@ -332,6 +358,41 @@ describe("domain/rojo/project-text", () => {
 				expect(ProjectText.ofConfig({ ...file }, ROGEN)).toBe(
 					ProjectText.of(file)
 				);
+			});
+		});
+
+		it("should leave a serveAddress that is not an IP address as it is", () => {
+			const text = ProjectText.of({
+				tree: { $className: "Folder" },
+				serveAddress: "localhost",
+			} as RojoProjectFile);
+
+			expect(JSON.parse(text).serveAddress).toBe("localhost");
+		});
+
+		describe("comments", () => {
+			const formatted = (text: string) =>
+				ProjectText.ofConfig(
+					parseJsonc(text).value as Record<string, unknown>,
+					[],
+					undefined,
+					JsoncComments.of(text)
+				);
+
+			it("should indent the later lines of a block comment at the end of a line, and leave its empty lines empty", () => {
+				const text =
+					'{\n    "name": "Game", /* one\n\n         two */\n    "tree": {}\n}';
+
+				expect(formatted(text)).toBe(
+					'{\n  "name": "Game", /* one\n\n       two */\n  "tree": {}\n}'
+				);
+			});
+
+			it("should leave the empty lines of a comment before a closing brace empty", () => {
+				const text =
+					'{\n  "name": "Game",\n  "tree": {\n    "A": {}\n    /* end\n\n       here */\n  }\n}';
+
+				expect(formatted(text)).toBe(text);
 			});
 		});
 
@@ -814,7 +875,7 @@ describe("domain/rojo/project-text", () => {
 
 		it("should print a node afresh when the file repeats a key in it", () => {
 			const repeated =
-				'{"tree": {"$className": "DataModel", "A": {"x": 1}, "A": {"x": 2}}}';
+				'{"tree": {\n"$className": "DataModel", "A": {"x": 1}, "A": {"x": 2}}}';
 
 			const text = ProjectText.ofConfig(
 				{ tree: { $className: "DataModel", A: { x: 3 } } },
@@ -850,6 +911,39 @@ describe("domain/rojo/project-text", () => {
 			);
 
 			expect(text).toBe(ProjectText.ofConfig(config, []));
+		});
+
+		it("should print a value that changed type or content afresh", () => {
+			const text = textOf({
+				$className: "DataModel",
+				Workspace: {
+					$properties: { Gravity: 60 },
+					Baseplate: {
+						$className: "Part",
+						$properties: { Size: [1, 2, 3] },
+					},
+				},
+				Lighting: { $properties: { Brightness: 2 } },
+			});
+
+			expect(text).toContain('"Gravity": 60\n');
+			expect(text).toContain('"Size": [\n');
+			expect(text).toContain('"Brightness": 2 }');
+		});
+
+		it("should keep the lines of a tree written without indentation as they are", () => {
+			const flat =
+				'{"tree": {\n"$className": "DataModel",\n"A": {\n"x": 1\n}\n}}';
+
+			const text = ProjectText.ofConfig(
+				parseJsonc(flat).value as Record<string, unknown>,
+				[],
+				WrittenTree.of(flat)
+			);
+
+			expect(text).toBe(
+				'{\n  "tree": {\n  "$className": "DataModel",\n  "A": {\n  "x": 1\n  }\n  }\n}'
+			);
 		});
 
 		it("should be undefined for a text that holds no tree", () => {

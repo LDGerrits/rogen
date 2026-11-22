@@ -88,12 +88,9 @@ export class ConfigFileReader {
 			model: new ConfigModel(value),
 			positionOf: (section) => positionIn(root, section),
 			positionOfKey: (key) => {
-				const property =
-					root.kind === "object"
-						? [...root.properties]
-								.reverse()
-								.find(({ name }) => name === key)
-						: undefined;
+				const property = [...root.properties]
+					.reverse()
+					.find(({ name }) => name === key);
 				return (
 					property && { line: property.line, column: property.column }
 				);

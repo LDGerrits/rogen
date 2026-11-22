@@ -17,6 +17,11 @@ const ROUTES = {
 	"*": "ReplicatedStorage/Shared",
 };
 
+const MOUNTS_SOURCE_PATH = {
+	routes: ROUTES,
+	tree: { $className: "DataModel", ReplicatedStorage: { $path: "src" } },
+};
+
 describe("where command", () => {
 	let fs: MemoryFileSystemService;
 	let logService: MockLogService;
@@ -69,6 +74,28 @@ describe("where command", () => {
 			"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
 			"src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder) · the file does not exist yet",
 		]);
+	});
+
+	it("should fail when a config is named by two files", async () => {
+		await writeConfig("game.rogen.json", { routes: ROUTES });
+		await writeConfig("game.rogen.jsonc", { routes: ROUTES });
+
+		const result = await run({ _: ["game"] });
+
+		expect((result as { error: Error }).error.message).toContain(
+			"game.rogen.json"
+		);
+		expect(printed()).toEqual([]);
+	});
+
+	it("should fail when an error stops the write of the config an instance is asked of", async () => {
+		await writeConfig("default.rogen.json", MOUNTS_SOURCE_PATH);
+		await write("src/Main.server.luau");
+
+		const result = await run({ _: ["ServerScriptService.Main"] });
+
+		expect(result.isErr()).toBe(true);
+		expect(printed()).toEqual([]);
 	});
 
 	it("should print a file name's control characters as escapes", async () => {
@@ -1115,6 +1142,27 @@ describe("where command", () => {
 
 			expect(result.isErr()).toBe(true);
 			expect(text()).toBe("ServerScriptService.Inventory.Save:12: x");
+		});
+
+		it("should print the text as it is, then fail, when an error stops the write", async () => {
+			await writeConfig("default.rogen.json", MOUNTS_SOURCE_PATH);
+			await write("src/Inventory/Server/Save.luau");
+
+			const result = await pipe("ServerScriptService.Inventory.Save:1");
+
+			expect(text()).toBe("ServerScriptService.Inventory.Save:1");
+			expect(result.isErr()).toBe(true);
+		});
+
+		it("should print the text as it is, then fail, when the config does not load", async () => {
+			await fs.writeFile("/repo/default.rogen.json", "{ bad");
+
+			const result = await pipe("ServerScriptService.Inventory.Save:1");
+
+			expect(text()).toBe("ServerScriptService.Inventory.Save:1");
+			expect((result as { error: Error }).error).toBeInstanceOf(
+				DiagnosticsError
+			);
 		});
 
 		it("should fail for - when stdin is a terminal", async () => {

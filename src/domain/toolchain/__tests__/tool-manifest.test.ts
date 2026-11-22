@@ -43,6 +43,16 @@ describe("ToolManifest", () => {
 			expect(manifest.nameOf("argon-rbx/argon")).toBeUndefined();
 		});
 
+		it("should pass over an entry whose source it can't read", () => {
+			const manifest = parse(
+				"/repo/rokit.toml",
+				'[tools]\nrojo = 7\nwally = "UpliftGames/wally@0.3.2"\n'
+			);
+
+			expect(manifest.uses("rojo")).toBe(false);
+			expect(manifest.uses("wally")).toBe(true);
+		});
+
 		it("should not read a file of another name", () => {
 			expect(
 				ToolManifest.parse("/repo/wally.toml", "[tools]\n")
@@ -127,6 +137,9 @@ describe("ToolManifest", () => {
 				'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
 			);
 			expect(pinned("/repo/rokit.toml", "# nothing yet")).toBe(
+				'# nothing yet\n\n[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
+			);
+			expect(pinned("/repo/rokit.toml", "# nothing yet\n")).toBe(
 				'# nothing yet\n\n[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
 			);
 		});

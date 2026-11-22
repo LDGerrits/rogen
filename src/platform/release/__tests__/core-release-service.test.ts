@@ -121,6 +121,40 @@ describe("CoreReleaseService", () => {
 			}
 		);
 
+		it("should skip what in the listing is not a release", async () => {
+			answer(
+				JSON.stringify([null, { tag_name: "v2.0.0", draft: false }])
+			);
+			await service.published();
+			await settle();
+
+			expect(await service.published()).toEqual(["2.0.0"]);
+		});
+
+		it("should read a cache file of another shape as empty, and check", async () => {
+			answer(listing("v2.0.1"));
+			await fs.writeFile(
+				CACHE_FILE,
+				'{ "checkedAt": "today", "versions": "2.0.0" }'
+			);
+
+			expect(await service.published()).toEqual([]);
+			await settle();
+
+			expect(requests.requested).toEqual([URL]);
+		});
+
+		it("should go on without a cache it can't write", async () => {
+			answer(listing("v2.0.1"));
+			await fs.writeFile("/cache/rogen", "");
+
+			await service.published();
+			await settle();
+
+			expect(await service.announce("2.0.1")).toBe(true);
+			expect(await service.published()).toEqual([]);
+		});
+
 		it("should read a cache file that is damaged as empty", async () => {
 			await fs.writeFile(CACHE_FILE, "{ nope");
 

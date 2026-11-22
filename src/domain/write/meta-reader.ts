@@ -25,7 +25,7 @@ export class PlacementMeta {
 		readonly folderMeta: readonly FolderMeta[],
 		private readonly runContexts: ReadonlyMap<string, unknown>,
 		private readonly scriptMetaFiles: readonly string[],
-		readonly warnings: readonly Diagnostic[] = []
+		readonly warnings: readonly Diagnostic[]
 	) {}
 
 	get files(): string[] {
@@ -124,9 +124,7 @@ export class MetaReader {
 		if (problems.hasErrors) return err([...problems.diagnostics]);
 		const typos = [
 			...folders.value.typos,
-			...[...parsed.values()].flatMap((meta) =>
-				meta.isOk() ? meta.value.typos : []
-			),
+			...[...parsed.values()].flatMap((meta) => meta.unwrap().typos),
 		];
 		return ok(
 			new PlacementMeta(
@@ -192,16 +190,12 @@ export class MetaReader {
 				);
 			else {
 				const existing = folderMeta[beside];
-				const isJsonc =
-					path.basename(file) === RojoFile.INIT_META_JSONC;
 				folderMeta[beside] = new FolderMeta(
-					isJsonc ? file : existing.file,
+					file,
 					sourcePath,
 					dir,
-					isJsonc
-						? RojoMeta.merged(existing.fields, meta.value.fields)
-						: RojoMeta.merged(meta.value.fields, existing.fields),
-					isJsonc ? existing.files : [file]
+					RojoMeta.merged(existing.fields, meta.value.fields),
+					existing.files
 				);
 			}
 		});
@@ -209,9 +203,7 @@ export class MetaReader {
 			? err([...problems.diagnostics])
 			: ok({
 					metas: folderMeta,
-					typos: parsed.flatMap((meta) =>
-						meta.isOk() ? meta.value.typos : []
-					),
+					typos: parsed.flatMap((meta) => meta.unwrap().typos),
 				});
 	}
 

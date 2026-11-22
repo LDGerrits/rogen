@@ -140,7 +140,7 @@ export class WritePipeline {
 			return ok({
 				kind: "stopped",
 				placement: placement.value,
-				errors: [...errors, ...missing.diagnostics()],
+				errors: [...errors, ...missing.errors()],
 				warnings: [],
 			});
 		const { meta, assembly } = assembled.value;

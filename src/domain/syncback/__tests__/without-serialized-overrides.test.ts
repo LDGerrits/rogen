@@ -63,6 +63,15 @@ describe("withoutSerializedOverrides", () => {
 		expect(withoutSerializedOverrides(meta)).toEqual(meta);
 	});
 
+	it("should keep a child of a model file that is not an object as it is", () => {
+		expect(
+			withoutSerializedOverrides({
+				className: "Model",
+				children: [3, { properties: { SerializedOverrides: empty } }],
+			})
+		).toEqual({ className: "Model", children: [3, {}] });
+	});
+
 	it("should keep an attribute named SerializedOverrides", () => {
 		const meta = { attributes: { SerializedOverrides: empty } };
 

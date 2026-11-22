@@ -5,7 +5,10 @@ import {
 } from "../../toolchain/__tests__/workspaces.js";
 import { InitPlan } from "../init-service.js";
 import { ProjectChoices } from "../project-setup.js";
-import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
+import {
+	CANCEL,
+	MockPromptService,
+} from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { WorkspaceSpec, directory, directoryOf } from "./init-fixtures.js";
 import {
@@ -659,4 +662,78 @@ describe("ProjectSetup plan, second config files", () => {
 			)
 		);
 	});
+});
+
+describe("ProjectSetup ask", () => {
+	const askIn = async (
+		files: Readonly<Record<string, string>>,
+		prompts = new MockPromptService([], false)
+	) => {
+		const fileSystem = new MemoryFileSystemService();
+		await fileSystem.createDirectory(directory);
+		for (const [file, content] of Object.entries(files))
+			await fileSystem.writeFile(path.join(directory, file), content);
+		const setup = setupOf(
+			directoryOf({ existing: Object.keys(files) }),
+			questionsOf(prompts, prompts.isInteractive, {}),
+			fileSystem
+		);
+		return (await setup.ask()).unwrap();
+	};
+
+	it("should answer nothing when the sample question is cancelled", async () => {
+		expect(
+			await askIn({}, new MockPromptService({ sample: CANCEL }))
+		).toBeUndefined();
+	});
+
+	it.each([
+		["a root that mounts nothing", { $className: "Folder" }, "model"],
+		[
+			"a root that mounts a server script",
+			{ $path: "Plugin.server.luau" },
+			"plugin",
+		],
+	])("should lift %s as a %s", async (_, tree, kind) => {
+		const choices = await askIn({
+			"default.project.json": JSON.stringify({ tree }),
+		});
+
+		expect(choices?.kind).toBe(kind);
+	});
+
+	it("should build a lifted model under the folder's name when the project file names none", async () => {
+		const choices = await askIn({
+			"default.project.json": JSON.stringify({
+				tree: { $className: "Folder" },
+			}),
+		});
+
+		const planned = planProject({
+			choices: choices!,
+			existingFiles: new Set(["default.project.json"]),
+		}).unwrap();
+
+		expect(planned.nextSteps.run).toEqual([
+			'rogen build -o "my-game.rbxmx"',
+		]);
+	});
+
+	it.each([
+		["node_modules\n", true],
+		["node_modules\n *.project.json \n", false],
+	])(
+		"should say to ignore the project files when .gitignore holds %j (told: %s)",
+		async (gitignore, told) => {
+			const choices = await askIn({ ".gitignore": gitignore });
+
+			const planned = planProject({ choices: choices! }).unwrap();
+
+			expect(
+				planned.nextSteps.edits.includes(
+					"Add *.project.json to .gitignore: Rogen writes those files, and they change with the tree. A clone runs 'rogen write' to make them."
+				)
+			).toBe(told);
+		}
+	);
 });

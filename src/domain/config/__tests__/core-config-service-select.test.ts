@@ -93,6 +93,7 @@ describe("CoreConfigService", () => {
 				entry.status === "broken" &&
 					entry.errors.map(({ code }) => code)
 			).toEqual(["config.unnamedProjectFile"]);
+			expect(selection.configs).toEqual([]);
 		});
 
 		it.each(["default.project.json", "default.project.jsonc"])(
@@ -257,6 +258,24 @@ describe("CoreConfigService", () => {
 			]);
 		});
 
+		it("should not add a writer twice when it is also named", async () => {
+			await write("/repo/default.project.json", {
+				name: "plain",
+				tree: { $path: "lib" },
+			});
+			await write("/repo/lib/default.rogen.json", {});
+
+			const selected = (
+				await service.selectForRojo([".", "lib"])
+			).unwrap();
+
+			expect(selected.entries.map(({ file }) => file)).toEqual([
+				"/repo/default.project.json",
+				"/repo/lib/default.rogen.json",
+			]);
+			expect(selected.nestedWriters.size).toBe(0);
+		});
+
 		it("should add writers only behind a plain project file, and not through select", async () => {
 			await write("/repo/default.rogen.json", {
 				tree: { $path: "other.project.json" },
@@ -402,6 +421,24 @@ describe("CoreConfigService", () => {
 				"is old."
 			);
 		});
+
+		it("should stop running a check once it is disposed", async () => {
+			const check = jest.fn(async () => [
+				errorDiagnostic(
+					"test.stale",
+					{ resource: "/repo/old.json" },
+					"is old."
+				),
+			]);
+			service.registerFolderCheck(check)[Symbol.dispose]();
+
+			const selected = await service.select([]);
+
+			expect(check).not.toHaveBeenCalled();
+			expect(
+				(selected as ResultError<Error>).error.message
+			).not.toContain("is old.");
+		});
 	});
 
 	describe("registerFileCheck", () => {
@@ -490,6 +527,21 @@ describe("CoreConfigService", () => {
 			await service.read(onDisk("/repo/b/default.rogen.json"));
 
 			expect(seen).toEqual([{ nope: true }, undefined]);
+		});
+
+		it("should not run the check on a file that can't be read", async () => {
+			const check = jest.fn(() => []);
+			service.registerFileCheck(check);
+
+			const entry = await service.read(
+				onDisk("/repo/a/default.rogen.json")
+			);
+
+			expect(entry).toMatchObject({
+				status: "broken",
+				errors: [{ code: "config.unreadable" }],
+			});
+			expect(check).not.toHaveBeenCalled();
 		});
 
 		it("should leave a config alone that the check has nothing to say about", async () => {

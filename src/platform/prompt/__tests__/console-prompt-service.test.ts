@@ -208,6 +208,15 @@ describe("ConsolePromptService", () => {
 			const answer = service.select({ message: "Pick", choices });
 			await terminal.press(KEY.ctrlC);
 			expect(await answer).toBeUndefined();
+			expect(terminal.raw).toContain("\u001b[9m\u001b[2mA");
+		});
+
+		it("should strike out no answer when a select without choices is cancelled", async () => {
+			const answer = service.select({ message: "Pick", choices: [] });
+			await terminal.press(KEY.ctrlC);
+
+			expect(await answer).toBeUndefined();
+			expect(terminal.raw).not.toContain("\u001b[9m");
 		});
 	});
 });

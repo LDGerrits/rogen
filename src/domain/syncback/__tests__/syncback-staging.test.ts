@@ -132,6 +132,128 @@ describe("SyncbackStaging", () => {
 		expect(work).not.toHaveBeenCalled();
 	});
 
+	it("should still refuse when the lock another run made can't be put back", async () => {
+		await fs.writeFile(LOCK, "77");
+		const read = fs.readFile.bind(fs);
+		let raced = false;
+		jest.spyOn(fs, "readFile").mockImplementation(async (file) => {
+			const text = await read(file);
+			if (file === LOCK && !raced) {
+				raced = true;
+				await fs.delete(file);
+				await fs.createFile(file, "88");
+				processes.running.add(88);
+			}
+			return text;
+		});
+		const rename = fs.rename.bind(fs);
+		jest.spyOn(fs, "rename").mockImplementation(async (from, to) => {
+			if (to === LOCK) throw new Error("EPERM: not permitted");
+			return rename(from, to);
+		});
+
+		const used = await staging.use(async () => ok(undefined));
+
+		expect(busyDiagnostics(used)).toMatchObject([
+			{ code: "syncback.busy", message: expect.stringContaining("88") },
+		]);
+	});
+
+	it("should take the folder when a killed run's lock is gone before it claims it", async () => {
+		await fs.writeFile(LOCK, "77");
+		jest.spyOn(fs, "rename").mockImplementation(async (from) => {
+			await fs.delete(from);
+			throw Object.assign(new Error("ENOENT: no such file"), {
+				code: "ENOENT",
+			});
+		});
+		let lock: string | undefined;
+
+		const used = await staging.use(async () => {
+			lock = await fs.readFile(LOCK);
+			return ok(undefined);
+		});
+
+		expect(used.isOk()).toBe(true);
+		expect(lock).toBe("4242");
+	});
+
+	it("should take the folder when the killed run's claimed lock can't be removed", async () => {
+		await fs.writeFile(LOCK, "77");
+		const remove = fs.delete.bind(fs);
+		jest.spyOn(fs, "delete").mockImplementation(
+			async (target, recursive) => {
+				if (target === abs(".rogen-syncback/lock.4242"))
+					throw new Error("EBUSY: resource busy");
+				return remove(target, recursive);
+			}
+		);
+		let lock: string | undefined;
+
+		const used = await staging.use(async () => {
+			lock = await fs.readFile(LOCK);
+			return ok(undefined);
+		});
+
+		expect(used.isOk()).toBe(true);
+		expect(lock).toBe("4242");
+	});
+
+	it("should refuse when another run takes the folder while it removes a killed run's lock", async () => {
+		await fs.writeFile(LOCK, "77");
+		const remove = fs.delete.bind(fs);
+		jest.spyOn(fs, "delete").mockImplementation(
+			async (target, recursive) => {
+				await remove(target, recursive);
+				if (target === abs(".rogen-syncback/lock.4242"))
+					await fs.createFile(LOCK, "88");
+			}
+		);
+		const work = jest.fn(async () => ok(undefined));
+
+		const used = await staging.use(work);
+
+		expect(busyDiagnostics(used)).toMatchObject([
+			{ code: "syncback.busy", message: expect.stringContaining("88") },
+		]);
+		expect(work).not.toHaveBeenCalled();
+	});
+
+	it("should take the folder when the lock it found is gone before it reads it", async () => {
+		await fs.writeFile(LOCK, "77");
+		processes.running.add(77);
+		const read = fs.readFile.bind(fs);
+		let gone = false;
+		jest.spyOn(fs, "readFile").mockImplementation(async (file) => {
+			if (file === LOCK && !gone) {
+				gone = true;
+				await fs.delete(file);
+			}
+			return read(file);
+		});
+		let lock: string | undefined;
+
+		const used = await staging.use(async () => {
+			lock = await read(LOCK);
+			return ok(undefined);
+		});
+
+		expect(used.isOk()).toBe(true);
+		expect(lock).toBe("4242");
+	});
+
+	it("should fail when the lock can't be made for another reason than a missing folder", async () => {
+		jest.spyOn(fs, "createFile").mockRejectedValue(
+			Object.assign(new Error("EACCES: permission denied"), {
+				code: "EACCES",
+			})
+		);
+		const work = jest.fn(async () => ok(undefined));
+
+		await expect(staging.use(work)).rejects.toThrow("EACCES");
+		expect(work).not.toHaveBeenCalled();
+	});
+
 	it("should leave the files another run makes while it takes over a lock, until it lets go of the folder", async () => {
 		await fs.writeFile(abs(".rogen-syncback/lock.88"), "77");
 		await fs.writeFile(abs(".rogen-syncback/lock.1234.tmp"), "88");

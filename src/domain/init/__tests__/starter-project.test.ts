@@ -283,4 +283,20 @@ describe("StarterProject", () => {
 			expect(treeOf(project)).toEqual({});
 		});
 	});
+
+	describe("rootPath and name", () => {
+		it("should have neither when the root mounts nothing and the file names nothing", () => {
+			const project = parsed({ tree: { $className: "Folder" } });
+
+			expect(project.rootPath).toBeUndefined();
+			expect(project.name).toBeUndefined();
+		});
+
+		it("should read the folder the root mounts, and the name", () => {
+			const project = parsed({ name: "Tool", tree: { $path: "src" } });
+
+			expect(project.rootPath).toBe("src");
+			expect(project.name).toBe("Tool");
+		});
+	});
 });

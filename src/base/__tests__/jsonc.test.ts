@@ -208,4 +208,22 @@ describe("setJsoncValue", () => {
 			)
 		);
 	});
+
+	it("should keep the line endings of a file written with CRLF", () => {
+		expect(setJsoncValue('{\r\n  "a": 1\r\n}', ["b"], 2)).toBe(
+			'{\r\n  "a": 1,\r\n  "b": 2\r\n}'
+		);
+	});
+
+	it("should write a new nested key on one line when the nearest object that exists is on one line", () => {
+		const text = setJsoncValue(
+			TEXT,
+			["tree", "Lighting", "$attributes", "Level"],
+			1
+		);
+
+		expect(text).toContain(
+			'"Lighting": { "$properties": { "ClockTime": 14 }, "$attributes": { "Level": 1 } },'
+		);
+	});
 });

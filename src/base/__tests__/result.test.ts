@@ -57,4 +57,8 @@ describe("Result", () => {
 		expect(result.isErr()).toBe(true);
 		expect(result.isErr() && result.error.message).toBe("nope");
 	});
+
+	it("should throw an error made from a value that is not an error on unwrap", () => {
+		expect(() => err("broken").unwrap()).toThrow(new Error("broken"));
+	});
 });

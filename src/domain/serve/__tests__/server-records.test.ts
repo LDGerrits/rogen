@@ -54,6 +54,27 @@ describe("ServerRecords", () => {
 			expect(await records.recordOf(address, answering)).toBeUndefined();
 		});
 
+		it.each([
+			["no host", { port: 34872, project: "Game", projectFile: "/p" }],
+			[
+				"a session that isn't text",
+				{
+					host: "127.0.0.1",
+					port: 34872,
+					project: "Game",
+					projectFile: "/p",
+					session: 1,
+				},
+			],
+		])("should give nothing for a record with %s", async (_, written) => {
+			await fs.writeFile(
+				"/tmp/rogen-serve/34872.json",
+				JSON.stringify(written)
+			);
+
+			expect(await records.recordOf(address, info)).toBeUndefined();
+		});
+
 		it("should give nothing for a record it can't read", async () => {
 			await fs.writeFile("/tmp/rogen-serve/34872.json", "{");
 
@@ -79,6 +100,25 @@ describe("ServerRecords", () => {
 					.map(({ port }) => port)
 					.sort()
 			).toEqual([34872, 37001]);
+		});
+
+		it("should pass over a file that is no record, such as one half written", async () => {
+			await records.write(address, info, served);
+			await fs.writeFile(
+				"/tmp/rogen-serve/37001.json.5000.tmp",
+				JSON.stringify({
+					host: "127.0.0.1",
+					port: 37001,
+					project: "Game",
+					projectFile: "/repo/default.project.json",
+				})
+			);
+
+			expect(
+				(await records.recordsFor("/repo/default.project.json")).map(
+					({ port }) => port
+				)
+			).toEqual([34872]);
 		});
 
 		it("should give none when nothing was recorded", async () => {

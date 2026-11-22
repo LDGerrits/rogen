@@ -2,6 +2,7 @@ import path from "path";
 import {
 	useConfigFixture,
 	errors,
+	fs,
 	selection,
 	start,
 	write,
@@ -40,6 +41,18 @@ describe("configs of one folder", () => {
 		expect(errors(1)[0].message).toContain("game.rogen.json");
 		expect(errors(1)[0].message).toContain("lobby.rogen.json");
 		expect(selection.requireValid().isErr()).toBe(true);
+	});
+
+	it("should load a config whose folder can't be listed, with no sibling to clash with", async () => {
+		await write(
+			"/repo/game.rogen.json",
+			config("Game", { sourcePaths: ["src/game"] })
+		);
+		fs.refuseListing("/repo", "EACCES");
+
+		await start({ names: ["game.rogen.json"] });
+
+		expect(selection.requireValid().isOk()).toBe(true);
 	});
 
 	it("should pass a copy with its sources changed and the name kept", async () => {

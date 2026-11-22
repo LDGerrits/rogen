@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import { ResultError } from "../../../base/result.js";
 import { LogLevel } from "../../../platform/log/log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
@@ -156,5 +157,31 @@ describe("fmt-project command", () => {
 		const result = await fmt();
 
 		expect(result.isErr()).toBe(true);
+	});
+
+	it("should warn which config it took when a name is both a folder and a file", async () => {
+		await harness.fs.writeFile("/repo/lobby/default.rogen.json", CONFIG);
+		await harness.fs.writeFile("/repo/lobby.rogen.json", CONFIG);
+
+		await fmt("lobby");
+
+		expect(logService.texts("warn")).toEqual([
+			'"lobby" is a folder with a default config and also lobby.rogen.json: using the folder. To use the file, name it: lobby.rogen.json.',
+		]);
+	});
+
+	it("should leave out a config that is gone by the time it formats", async () => {
+		await harness.fs.writeFile("/repo/default.rogen.json", CONFIG);
+		const exists = harness.fs.exists.bind(harness.fs);
+		jest.spyOn(harness.fs, "exists").mockImplementation(async (file) =>
+			file.endsWith("default.rogen.json") ? false : exists(file)
+		);
+
+		const result = await fmt();
+
+		expect(result.isOk()).toBe(true);
+		expect(await harness.fs.readFile("/repo/default.rogen.json")).toBe(
+			CONFIG
+		);
 	});
 });

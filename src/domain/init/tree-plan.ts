@@ -55,13 +55,6 @@ interface TreeInputs {
 	readonly landings: readonly string[];
 }
 
-function folderNameOf(target: string): string {
-	const name = path.posix.basename(target);
-	return path.posix.extname(name) === ""
-		? name
-		: path.posix.basename(path.posix.dirname(target));
-}
-
 const describeMount = ({ instancePath }: MountedPath): string =>
 	instanceKey(instancePath);
 
@@ -186,7 +179,7 @@ export class TreePlan {
 					? [
 							`Couldn't route ${joinedWithOr(
 								unroutable.map(({ node }) => node)
-							)}, and a mount of a whole source path can't stay in the tree: ${unroutable[0].reason}. Give ${unroutable.length === 1 ? "its folder" : "each folder"} a marker file such as ${folderNameOf(unroutable[0].target)}/@server, or move ${unroutable.length === 1 ? "it" : "them"} up into a source path.`,
+							)}, and a mount of a whole source path can't stay in the tree: ${unroutable[0].reason}. Give ${unroutable.length === 1 ? "its folder" : "each folder"} a marker file such as ${path.posix.basename(unroutable[0].target)}/@server, or move ${unroutable.length === 1 ? "it" : "them"} up into a source path.`,
 						]
 					: []),
 				...(added.length > 0
@@ -246,10 +239,7 @@ export class TreePlan {
 	): Diagnostic[] {
 		const narrowed = derived?.narrowed;
 		if (!narrowed || !landings.includes(narrowed.node)) return [];
-		const folders = narrowed.folders.filter(({ landing }) =>
-			landings.includes(landing)
-		);
-		if (folders.length === 0) return [];
+		const { folders } = narrowed;
 		const one = folders.length === 1;
 		return [
 			warningDiagnostic(

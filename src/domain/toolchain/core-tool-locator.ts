@@ -1,5 +1,4 @@
 import path from "path";
-import { isWindows } from "../../base/platform.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
@@ -23,7 +22,7 @@ export class CoreToolLocator implements ToolLocator {
 			this.environmentService.userHome,
 			".rokit",
 			"bin",
-			isWindows && path.extname(command) === ""
+			this.environmentService.isWindows && path.extname(command) === ""
 				? `${command}.exe`
 				: command
 		);

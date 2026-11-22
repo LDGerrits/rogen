@@ -35,7 +35,7 @@ export class CoreConfigSelection implements ReloadableSelection {
 		readonly home: string,
 		private readonly folder: PickedFolder | undefined,
 		readonly notes: readonly string[] = [],
-		readonly nestedWriters: ReadonlySet<string> = new Set()
+		readonly nestedWriters: ReadonlySet<string>
 	) {
 		this._files = this.readFiles();
 		this.filePaths = new PathSet(this._files);

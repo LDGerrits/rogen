@@ -4,10 +4,19 @@ import path from "path";
 import "../init-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { CancelledError } from "../../../base/errors.js";
-import { ResultError, err } from "../../../base/result.js";
+import { Result, ResultError, err } from "../../../base/result.js";
 import { configStructure } from "../../../domain/config/config-structure.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
-import { FileType } from "../../../platform/fs/file-system-service.js";
+import {
+	FileSystemService,
+	FileType,
+} from "../../../platform/fs/file-system-service.js";
+import { CoreConfigService } from "../../../domain/config/core-config-service.js";
+import { ReloadableSelection } from "../../../domain/config/config-service.js";
+import { EnvironmentService } from "../../../platform/environment/environment-service.js";
+import { InstantiationService } from "../../../platform/instantiation/instantiation-service.js";
+import { instantiationOf } from "../../../platform/instantiation/__tests__/instantiation-of.js";
+import { LogService } from "../../../platform/log/log-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
@@ -745,6 +754,22 @@ describe("init command", () => {
 			);
 
 			expect(exitCodeOf((result as ResultError<Error>).error)).toBe(1);
+		});
+
+		it("should add only the agent rules beside a config, and write no project file", async () => {
+			await write("default.rogen.json", "{}");
+			const logService = new MockLogService();
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				logService,
+				{ "agent-rules": true }
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(await exists("AGENTS.md")).toBe(true);
+			expect(await read("default.rogen.json")).toBe("{}");
+			expect(await exists("default.project.json")).toBe(false);
 		});
 
 		it("should write Rojo's pin and run no program", async () => {
@@ -1645,6 +1670,69 @@ describe("init command", () => {
 
 		expect(logService.lines).toContain(
 			"info: The Greeter sample is in lobby/src/Greeter, and Rojo's sample Baseplate and lighting in lobby/place/, which the tree mounts. Pass --no-sample for an empty lobby/src/ and no lobby/place/."
+		);
+	});
+});
+
+describe("init command when the config can't be read", () => {
+	const cwd = path.resolve("/mock/my-game");
+
+	class SelectFailing extends CoreConfigService {
+		constructor(
+			private readonly failsWith: (reader?: FileSystemService) => boolean,
+			@FileSystemService fileSystemService: FileSystemService,
+			@EnvironmentService environmentService: EnvironmentService,
+			@InstantiationService instantiationService: InstantiationService
+		) {
+			super(fileSystemService, environmentService, instantiationService);
+		}
+
+		override async select(
+			refs: readonly string[],
+			reader?: FileSystemService
+		): Promise<Result<ReloadableSelection, Error>> {
+			if (this.failsWith(reader)) return err(new Error("unreadable"));
+			return super.select(refs, reader);
+		}
+	}
+
+	const runWith = async (
+		failsWith: (reader?: FileSystemService) => boolean
+	) => {
+		const fs = new MemoryFileSystemService();
+		await fs.createDirectory(cwd);
+		const environment = new NativeEnvironmentService({}, cwd);
+		const config = instantiationOf(
+			[FileSystemService, fs],
+			[EnvironmentService, environment],
+			[LogService, new MockLogService()]
+		).createInstance(SelectFailing, failsWith);
+		const harness = commandHarness({
+			cwd,
+			fs,
+			config,
+			environment,
+			processes: readyProcesses(),
+		});
+		const result = await harness.run("init");
+		return { result, fs };
+	};
+
+	it("should stop before it writes when the planned config can't be checked", async () => {
+		const { result, fs } = await runWith((reader) => reader !== undefined);
+
+		expect((result as ResultError<Error>).error.message).toBe("unreadable");
+		expect(await fs.exists(path.join(cwd, "default.rogen.json"))).toBe(
+			false
+		);
+	});
+
+	it("should fail after it writes its files when the written config can't be read", async () => {
+		const { result, fs } = await runWith((reader) => reader === undefined);
+
+		expect((result as ResultError<Error>).error.message).toBe("unreadable");
+		expect(await fs.exists(path.join(cwd, "default.rogen.json"))).toBe(
+			true
 		);
 	});
 });

@@ -266,7 +266,7 @@ export class WriteValidator {
 			"route.dotRoute",
 			"dotRoute",
 			(resource, { renamedTo }) =>
-				`write "${path.posix.basename(renamedTo ?? resource)}"`,
+				`write "${path.posix.basename(renamedTo!)}"`,
 			(resource, { key, respelling }) => {
 				if (!respelling.spelling.startsWith("@")) return undefined;
 				const governing = this.governingRoute(resource, key);
@@ -348,7 +348,7 @@ export class WriteValidator {
 		unusable: (
 			resource: string,
 			misspelt: NotedName<MisspellingOf<K>>
-		) => string | undefined = () => undefined
+		) => string | undefined
 	): Diagnostic[] {
 		return [...this.placement.readings.misspelt(kind)].map(
 			([resource, misspelt]) => {
@@ -380,9 +380,9 @@ export class WriteValidator {
 	}
 
 	private featureFolderOf(source: string): string {
-		const sourcePath =
-			this.config.sourcePaths.find((dir) => isInside(source, dir)) ??
-			path.dirname(source);
+		const sourcePath = this.config.sourcePaths.find((dir) =>
+			isInside(source, dir)
+		)!;
 		const [top, ...below] = path
 			.relative(sourcePath, source)
 			.split(path.sep);
@@ -441,15 +441,10 @@ export class WriteValidator {
 	}
 
 	private outrankedSuffix(file: RoutedFile): string {
-		const suffix = this.placement.readingOf(file).scriptSuffix;
-		const key =
-			suffix === undefined
-				? undefined
-				: this.config.keys.resolveDotRoute(suffix);
+		const suffix = this.placement.readingOf(file).scriptSuffix!;
+		const key = this.config.keys.resolveDotRoute(suffix);
 		if (key === undefined)
-			return suffix === "server" || suffix === "client"
-				? `: no route is named "${suffix}", so ".${suffix}" routes nothing`
-				: "";
+			return `: no route is named "${suffix}", so ".${suffix}" routes nothing`;
 		return key === file.route
 			? ""
 			: `: the "${file.route}" route governs this file, so ".${suffix}" routes nothing here`;

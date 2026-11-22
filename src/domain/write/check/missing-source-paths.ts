@@ -14,7 +14,7 @@ export class MissingSourcePaths {
 	constructor(
 		private readonly sourcePaths: readonly CheckedSourcePath[],
 		private readonly projectFile: string,
-		private readonly isDefault = false
+		private readonly isDefault: boolean
 	) {}
 
 	get stopsWrite(): boolean {
@@ -22,10 +22,6 @@ export class MissingSourcePaths {
 			this.sourcePaths.length > 0 &&
 			this.sourcePaths.every(({ exists }) => !exists)
 		);
-	}
-
-	diagnostics(): Diagnostic[] {
-		return this.stopsWrite ? this.errors() : this.warnings();
 	}
 
 	warnings(): Diagnostic[] {
@@ -38,7 +34,7 @@ export class MissingSourcePaths {
 		);
 	}
 
-	private errors(): Diagnostic[] {
+	errors(): Diagnostic[] {
 		return this.missing().map(({ sourcePath }) =>
 			errorDiagnostic(
 				"scan.missingSourcePath",

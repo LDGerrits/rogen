@@ -1386,12 +1386,84 @@ describe("CoreWriteService.locate", () => {
 			expect(instance.fixes).toEqual([]);
 		});
 
+		it("should go up past a parent that is a module, which holds no folder", async () => {
+			await write("src/Util.luau");
+
+			expect(
+				await foldersFor("ReplicatedStorage.Shared.Util.Child")
+			).toEqual([[abs("src")]]);
+		});
+
+		it("should name the folder under the fallback route for an instance only it leads to", async () => {
+			await write("src/Other/Types.luau");
+
+			expect(
+				await foldersFor("ReplicatedStorage.Shared.Cart.Helper")
+			).toEqual([[abs("src/Cart")]]);
+		});
+
+		it("should name nothing when no route leads the instance and there is no fallback", async () => {
+			await write("src/Other/Types.luau");
+
+			expect(
+				await foldersIn(
+					configOf({ routes: { Server: "ServerScriptService" } }),
+					"Workspace.Map.Tree"
+				)
+			).toEqual([[]]);
+		});
+
 		it("should name nothing when files place the instance", async () => {
 			await write("src/Inventory/Server/Save.luau");
 
 			expect(
 				await foldersFor("ServerScriptService.Inventory.Save")
 			).toEqual([[]]);
+		});
+	});
+
+	describe("a path in a config that can't be placed", () => {
+		beforeEach(async () => {
+			await write("src/Locked/A.luau", "src/B.luau");
+			fs.refuseListing(abs("src/Locked"), "EACCES");
+		});
+
+		it("should block each path asked for, by the error that reaches it or else the first", async () => {
+			const located = (
+				await locateIn(writeService(), configOf(), {
+					args: [abs("src/Locked"), abs("src/B.luau")],
+					cwd: abs(),
+				})
+			).unwrap();
+
+			expect(located.diagnostics).toMatchObject([
+				{ code: "scan.unreadable" },
+			]);
+			expect(located.files).toEqual([
+				{
+					source: absPosix("src/Locked"),
+					exists: true,
+					status: "blocked",
+					by: located.diagnostics[0],
+					own: true,
+				},
+				{
+					source: absPosix("src/B.luau"),
+					exists: true,
+					status: "blocked",
+					by: located.diagnostics[0],
+					own: false,
+				},
+			]);
+		});
+
+		it("should fail when an instance is asked for beside the path", async () => {
+			const located = await locateIn(writeService(), configOf(), {
+				args: [abs("src/B.luau"), "ReplicatedStorage.Shared.B"],
+				cwd: abs(),
+			});
+
+			expect(located.isErr()).toBe(true);
 		});
 	});
 

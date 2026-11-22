@@ -9,11 +9,6 @@ export interface OutputConfig {
 }
 
 export interface OutputSettings {
-	/**
-	 * The name the second files carry, since Rojo names only a default project
-	 * file after its folder.
-	 */
-	readonly name: string;
 	readonly processedPath?: string;
 	readonly releasePath?: string;
 	readonly releaseIgnore?: string;
@@ -24,7 +19,6 @@ export class OutputConfigs {
 		const routed = base.sourcePaths !== undefined;
 		const copy = (compiledPath: string | undefined): RogenConfig => ({
 			...base,
-			name: base.name ?? settings.name,
 			...(routed && compiledPath && { compiledPath }),
 		});
 		const { processedPath, releasePath, releaseIgnore } = settings;

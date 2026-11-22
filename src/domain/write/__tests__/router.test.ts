@@ -1,3 +1,6 @@
+import { toPosix } from "../../../base/path.js";
+import { FileType } from "../../../platform/fs/file-system-service.js";
+import { Listing } from "../../../platform/fs/index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import {
@@ -214,6 +217,29 @@ describe("Router", () => {
 					},
 				]);
 			});
+
+			it("should stop on each clashing file in order of its path, saying all when more than two patterns clash", async () => {
+				await write("src/Z/MainUi.ts", "src/A/MainUi.ts");
+
+				const result = await route({
+					compiledPath: abs("out"),
+					routes: {
+						...ROUTES,
+						"*Ui.*": "StarterPlayer/StarterPlayerScripts",
+						"*.ts": "ServerScriptService",
+						"Mai*": "ReplicatedFirst",
+					},
+				});
+
+				const clashes = result.isErr() ? result.error.diagnostics : [];
+				expect(clashes.map(({ resource }) => resource)).toEqual([
+					abs("src/A/MainUi.ts"),
+					abs("src/Z/MainUi.ts"),
+				]);
+				expect(clashes[0].message).toContain(
+					"all match this name, are as long as each other"
+				);
+			});
 		});
 
 		describe("hoisted names", () => {
@@ -221,6 +247,21 @@ describe("Router", () => {
 				...ROUTES,
 				character: "StarterPlayer/StarterCharacterScripts",
 			};
+
+			it("should mark an empty folder below a ^ name as hoisted", async () => {
+				await write("src/Ui/^Hud/Health.luau");
+				await fs.createDirectory(abs("src/Ui/^Hud/Empty"));
+
+				const placement = (
+					await pipelineOf(fs, await indexOf(fs, [abs("src")])).place(
+						configOf({ routes: CHARACTER })
+					)
+				).unwrap();
+
+				expect(placement.emptyFolders).toMatchObject([
+					{ folder: absPosix("src/Ui/^Hud/Empty"), hoisted: true },
+				]);
+			});
 
 			it("should land a ^ name at its route's target, dropping every folder between", async () => {
 				await write(
@@ -725,6 +766,29 @@ describe("Router", () => {
 				expect(await paths()).toEqual([
 					"ReplicatedStorage/shared/Outer",
 				]);
+			});
+
+			it("should name a nested project file it can't read after the part before .project", async () => {
+				const listing = new Listing(
+					new Map([
+						[
+							toPosix(abs("src")),
+							new Map([["Gone.project.json", FileType.File]]),
+						],
+					])
+				);
+
+				const placement = (
+					await pipelineOf(fs, listing).place(
+						configOf({ routes: ROUTES })
+					)
+				).unwrap();
+
+				expect(
+					placement.routed.map(({ instancePath }) =>
+						instancePath.join("/")
+					)
+				).toEqual(["ReplicatedStorage/shared/Gone"]);
 			});
 
 			it("should leave an ignored suffix on a model in its Rojo name", async () => {

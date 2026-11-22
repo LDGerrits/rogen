@@ -173,7 +173,7 @@ export class JsoncComments {
 
 	private linesOf({ start, end }: Found): string[] {
 		const lineStart = this.text.lastIndexOf("\n", start - 1) + 1;
-		const base = /^[ \t]*/.exec(this.text.slice(lineStart))?.[0] ?? "";
+		const base = /^[ \t]*/.exec(this.text.slice(lineStart))![0];
 		return this.text
 			.slice(start, end)
 			.split(/\r?\n/)
@@ -183,24 +183,22 @@ export class JsoncComments {
 	}
 
 	private static valueOf(node: Node): Node {
-		return node.type === "property" ? (node.children?.[1] ?? node) : node;
+		return node.type === "property" ? node.children![1] : node;
 	}
 
 	private static children(node: Node): Located[] {
 		if (node.type === "object")
-			return (node.children ?? []).map((property) => ({
+			return node.children!.map((property) => ({
 				start: property.offset,
 				end: property.offset + property.length,
 				node: property,
-				segment: String(property.children?.[0]?.value),
+				segment: String(property.children![0].value),
 			}));
-		if (node.type === "array")
-			return (node.children ?? []).map((item, at) => ({
-				start: item.offset,
-				end: item.offset + item.length,
-				node: item,
-				segment: at,
-			}));
-		return [];
+		return node.children!.map((item, at) => ({
+			start: item.offset,
+			end: item.offset + item.length,
+			node: item,
+			segment: at,
+		}));
 	}
 }

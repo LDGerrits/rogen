@@ -1,6 +1,6 @@
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import path from "path";
-import { compareByCodePoint } from "../../../base/collections.js";
+import { compareByCodePoint, groupBy } from "../../../base/collections.js";
 import { toPosix } from "../../../base/path.js";
 import { Result, err, ok } from "../../../base/result.js";
 import {
@@ -250,28 +250,25 @@ class ConfigLocator {
 		diagnostics: readonly Diagnostic[],
 		reference: InstanceReference
 	): Promise<InstanceFix[]> {
+		const proposed = diagnostics.flatMap(({ code, fixes }) =>
+			(fixes ?? [])
+				.filter(isRenameFix)
+				.map(({ rename }): InstanceFix => ({
+					code,
+					rename: {
+						from: toPosix(rename.from),
+						to: toPosix(rename.to),
+					},
+				}))
+		);
 		const found: InstanceFix[] = [];
-		for (const { code, fixes } of diagnostics) {
-			for (const { rename } of (fixes ?? []).filter(isRenameFix)) {
-				const posix = {
-					from: toPosix(rename.from),
-					to: toPosix(rename.to),
-				};
-				if (
-					found.some(
-						({ rename: other }) =>
-							other.from === posix.from && other.to === posix.to
-					)
-				)
-					continue;
-				const placed = await this.placeNew(posix.to);
-				if (
-					placed.some((location) =>
-						placesInstance(location, reference)
-					)
-				)
-					found.push({ code, rename: posix });
-			}
+		for (const [fix] of groupBy(
+			proposed,
+			({ rename }) => `${rename.from}\0${rename.to}`
+		).values()) {
+			const placed = await this.placeNew(fix.rename.to);
+			if (placed.some((location) => placesInstance(location, reference)))
+				found.push(fix);
 		}
 		return found;
 	}
@@ -376,13 +373,11 @@ class ConfigLocator {
 			(source) => scannedFileOf(this.config, source)
 		);
 		const placement = await this.pipelineOf(index).place(this.config);
-		return placement.isOk()
-			? new PlacementLocator(
-					placement.value,
-					index,
-					await this.existsOnDisk(index, [file])
-				).locate([file])
-			: [];
+		return new PlacementLocator(
+			placement.unwrap(),
+			index,
+			await this.existsOnDisk(index, [file])
+		).locate([file]);
 	}
 
 	private async locatorOf(

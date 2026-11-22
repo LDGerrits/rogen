@@ -63,7 +63,7 @@
 		"eval:agents": "node evals/agents/run.mjs",
 		"pretypecheck": "npm run generate",
 		"typecheck": "tsc -p e2e && tsc -p scripts",
-		"check": "npm run lint && npm run build && npm run typecheck && npm test",
+		"check": "npm run lint && npm run build && npm run typecheck && npm run test:coverage && npm run test:e2e",
 		"prelint": "npm run generate",
 		"lint": "eslint --concurrency=auto .",
 		"generate": "tsx scripts/generate.ts",

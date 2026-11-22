@@ -342,12 +342,11 @@ const META_STRUCTURE: JsonStructure = {
 
 const VALUE_TABLES = ["properties", "attributes"];
 
-const lastNamed = (node: JsoncNode | undefined, name: string) =>
-	node?.kind === "object"
-		? [...node.properties]
-				.reverse()
-				.find((property) => property.name === name)
-		: undefined;
+type JsoncObject = Extract<JsoncNode, { kind: "object" }>;
+
+const lastNamed = (node: JsoncObject, name: string): JsoncNode =>
+	[...node.properties].reverse().find((property) => property.name === name)!
+		.value;
 
 export interface ParsedMeta {
 	readonly fields: RojoMetaFields;
@@ -375,7 +374,7 @@ export class RojoMeta {
 		const { root, value } = document.value;
 		const unreadable = RojoMeta.unreadableValues(root, value, file);
 		if (unreadable.length > 0) return err(unreadable);
-		const known = Object.keys(META_STRUCTURE.properties ?? {});
+		const known = Object.keys(META_STRUCTURE.properties!);
 		return ok({
 			fields: Object.fromEntries(
 				known
@@ -400,18 +399,18 @@ export class RojoMeta {
 	}
 
 	private static unreadableValues(
-		root: Extract<JsoncNode, { kind: "object" }>,
+		root: JsoncObject,
 		value: Readonly<Record<string, unknown>>,
 		file: string
 	): Diagnostic[] {
 		return VALUE_TABLES.flatMap((table) => {
 			const values = getOwn(value, table);
 			if (!isObject(values)) return [];
-			const node = lastNamed(root, table)?.value;
+			const node = lastNamed(root, table) as JsoncObject;
 			return Object.entries(values)
 				.filter(([, found]) => !PropertyValues.isReadable(found))
 				.map(([name]) => {
-					const at = lastNamed(node, name)?.value ?? root;
+					const at = lastNamed(node, name);
 					return errorDiagnostic(
 						"meta.unreadableValue",
 						{

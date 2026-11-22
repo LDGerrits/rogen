@@ -271,8 +271,8 @@ function isWatched(
 ): boolean {
 	return fileType === FileType.Directory
 		? watched[target] !== undefined
-		: (watched[path.dirname(target)]?.includes(path.basename(target)) ??
-				false);
+		: watched[path.dirname(target)]?.includes(path.basename(target)) ===
+				true;
 }
 
 function isUnder(error: Error, dirs: readonly string[]): boolean {

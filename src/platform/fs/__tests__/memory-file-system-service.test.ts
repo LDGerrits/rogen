@@ -5,6 +5,7 @@ import {
 	FileType,
 	fileSystemError,
 	isMissingPath,
+	replaceFile,
 } from "../file-system-service.js";
 import { FileChange, FileChangeType } from "../file-changes.js";
 
@@ -242,7 +243,111 @@ describe("MemoryFileSystemService: core operations", () => {
 	});
 });
 
+describe("MemoryFileSystemService: paths and links", () => {
+	let memFs: MemoryFileSystemService;
+
+	beforeEach(async () => {
+		memFs = new MemoryFileSystemService();
+		await memFs.writeFile("/repo/file", "text");
+		await memFs.createDirectory("/repo/dir");
+	});
+
+	const codeOf = (failing: Promise<unknown>) =>
+		failing.then(
+			() => undefined,
+			(error: { code?: string }) => error.code
+		);
+
+	it("should refuse a path that goes on through a file", async () => {
+		expect(await codeOf(memFs.readFile("/repo/file/a"))).toBe("ENOTDIR");
+		expect(await codeOf(memFs.createDirectory("/repo/file/a/b"))).toBe(
+			"ENOTDIR"
+		);
+		expect(
+			await codeOf(
+				memFs.createSymbolicLink("/repo/dir", "/repo/file/a/l")
+			)
+		).toBe("ENOTDIR");
+	});
+
+	it("should refuse to follow links that lead to each other", async () => {
+		await memFs.createSymbolicLink("/repo/b", "/repo/a");
+		await memFs.createSymbolicLink("/repo/a", "/repo/b");
+
+		expect(await memFs.exists("/repo/a")).toBe(false);
+		expect(await codeOf(memFs.readFile("/repo/a"))).toBe("ELOOP");
+	});
+
+	it("should refuse a link where something is already", async () => {
+		expect(
+			await codeOf(memFs.createSymbolicLink("/repo/dir", "/repo/file"))
+		).toBe("EEXIST");
+	});
+
+	it("should resolve a link that starts with ./ against its folder", async () => {
+		await memFs.writeFile("/repo/dir/a.txt", "a");
+		await memFs.createSymbolicLink("./dir", "/repo/here");
+
+		expect(await memFs.readFile("/repo/here/a.txt")).toBe("a");
+	});
+
+	it("should create a folder through a link to a folder", async () => {
+		await memFs.createSymbolicLink("/repo/dir", "/repo/link");
+
+		await memFs.createDirectory("/repo/link/sub");
+
+		expect(await memFs.isDirectory("/repo/dir/sub")).toBe(true);
+	});
+
+	it("should write through a link to a file", async () => {
+		await memFs.createSymbolicLink("/repo/file", "/repo/link");
+
+		await memFs.writeFile("/repo/link", "new");
+
+		expect(await memFs.readFile("/repo/file")).toBe("new");
+	});
+
+	it("should date a folder at 0", async () => {
+		expect(await memFs.lastModified("/repo/dir")).toBe(0);
+	});
+
+	it("should create a file at a relative path", async () => {
+		expect(await memFs.createFile("rel/a.txt", "a")).toBe(true);
+		expect(await memFs.readFile("rel/a.txt")).toBe("a");
+	});
+
+	it("should ignore a refused listing for a file", async () => {
+		memFs.refuseListing("/repo/file", "EACCES");
+
+		expect(await memFs.readFile("/repo/file")).toBe("text");
+	});
+
+	it("should report nothing for a deleted link that leads nowhere", async () => {
+		await memFs.createSymbolicLink("/repo/missing", "/repo/dangling");
+		const changes: FileChange[] = [];
+		memFs.onDidMutateFile((change) => changes.push(change));
+
+		await memFs.delete("/repo/dangling");
+
+		expect(changes).toEqual([]);
+		expect(
+			(await memFs.readDirectory("/repo")).map(([name]) => name)
+		).toEqual(["dir", "file"]);
+	});
+});
+
 describe("file system failures", () => {
+	it("should leave the file as it was when its staging copy can't be written", async () => {
+		const memFs = new MemoryFileSystemService();
+		await memFs.writeFile("/repo/a.json", "old");
+		await memFs.writeFile("/repo/file", "");
+
+		await expect(
+			replaceFile(memFs, "/repo/a.json", "/repo/file/staging", "new")
+		).rejects.toThrow("ENOTDIR");
+		expect(await memFs.readFile("/repo/a.json")).toBe("old");
+	});
+
 	it("should tell a missing path by its code and not its message", () => {
 		expect(isMissingPath(fileSystemError("ENOENT", "gone"))).toBe(true);
 		expect(

@@ -96,6 +96,20 @@ describe("WhereAnswers", () => {
 		]);
 	});
 
+	it("should put a file nothing asked about after the ones asked", () => {
+		expect(
+			sources(
+				[
+					placed("/repo/lib/X.luau", "X"),
+					placed("/repo/src/B.luau", "B"),
+					placed("/repo/src/A.luau", "A"),
+				],
+				[],
+				[{ path: "/repo/src/A.luau" }, { path: "/repo/src/B.luau" }]
+			)
+		).toEqual(["/repo/src/A.luau", "/repo/src/B.luau", "/repo/lib/X.luau"]);
+	});
+
 	it("should answer a file once per config when a path and an instance both ask about it", () => {
 		const hit = placed("/repo/src/Hit.luau", "Hit");
 

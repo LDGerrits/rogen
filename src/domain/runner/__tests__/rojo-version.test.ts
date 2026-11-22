@@ -14,6 +14,14 @@ describe("RojoVersion", () => {
 		});
 	});
 
+	describe("of", () => {
+		it("should refuse text without a version", () => {
+			expect(() => RojoVersion.of("Rojo")).toThrow(
+				"Rojo is not a version."
+			);
+		});
+	});
+
 	describe("isBefore", () => {
 		it.each([
 			["7.4.4", "7.5.0", true],

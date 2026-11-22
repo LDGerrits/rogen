@@ -6,6 +6,7 @@ import { commandHarness } from "../../__tests__/command-harness.js";
 import { DeferredPromise } from "../../../base/async.js";
 import { ResultError } from "../../../base/result.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
+import { CoreWriteService } from "../../../domain/write/core-write-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
@@ -546,6 +547,58 @@ describe("watch", () => {
 			expect((result as ResultError<Error>).error.message).toContain(
 				"No default.rogen.json or default.project.json in this folder"
 			);
+		});
+
+		it("should refuse to start when a named config is not there", async () => {
+			const watch = jest.spyOn(watcher, "watch");
+
+			const result = await startWatch(["missing"]);
+
+			expect(result.isErr()).toBe(true);
+			expect(watch).not.toHaveBeenCalled();
+		});
+
+		it("should warn which config it took when a name is both a folder and a file", async () => {
+			await writeProjects(["lobby"]);
+			await write("/repo/lobby.rogen.json", config());
+
+			await run(["lobby"]);
+
+			expect(logService.texts("warn")).toEqual([
+				'"lobby" is a folder with a default config and also lobby.rogen.json: using the folder. To use the file, name it: lobby.rogen.json.',
+			]);
+		});
+
+		it("should refuse to watch a printed sourcemap with --json", async () => {
+			const watch = jest.spyOn(watcher, "watch");
+
+			const result = await commandHarness({
+				fs: memFs,
+				log: logService,
+				config: configService,
+				lifecycle,
+				watcher,
+				processes,
+			}).run("sourcemap", {
+				positionals: [],
+				options: { watch: true, json: true },
+			});
+
+			expect((result as ResultError<Error>).error.message).toContain(
+				"leaves no room for --json"
+			);
+			expect(watch).not.toHaveBeenCalled();
+		});
+
+		it("should report a write that throws as an error line", async () => {
+			jest.spyOn(
+				CoreWriteService.prototype,
+				"rewrite"
+			).mockRejectedValueOnce(new Error("disk on fire"));
+
+			await run();
+
+			expect(logService.texts("error")).toEqual(["disk on fire"]);
 		});
 
 		const restartUnchanged = async (

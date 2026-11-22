@@ -87,16 +87,18 @@ export class WhereAnswers {
 			const rank = new Map(
 				sources.map((source) => [
 					source,
-					Math.min(...(bySource.get(source) ?? []).map(this.askedAt)),
+					Math.min(...bySource.get(source)!.map(this.askedAt)),
 				])
 			);
-			sources.sort((a, b) => (rank.get(a) ?? 0) - (rank.get(b) ?? 0));
+			sources.sort((a, b) => rank.get(a)! - rank.get(b)!);
 		}
 		return sources.map((source) =>
-			(bySource.get(source) ?? []).filter(
-				({ config }, at, all) =>
-					all.findIndex((other) => other.config === config) === at
-			)
+			bySource
+				.get(source)!
+				.filter(
+					({ config }, at, all) =>
+						all.findIndex((other) => other.config === config) === at
+				)
 		);
 	}
 

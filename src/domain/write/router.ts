@@ -93,7 +93,7 @@ class Claims {
 		match: RouteMatch,
 		by: string,
 		depth: number,
-		at?: IgnoredAt
+		at: IgnoredAt
 	): Standing {
 		const standing = this.claim(key, match, by);
 		this.recordSigned(standing, depth, at);
@@ -130,10 +130,10 @@ class Claims {
 		return this.route?.key === key ? "restates" : "outranked";
 	}
 
-	private recordSigned(standing: Standing, depth: number, at?: IgnoredAt) {
+	private recordSigned(standing: Standing, depth: number, at: IgnoredAt) {
 		if (speaksForRoute(standing, true))
 			this.signedDepth = Math.max(this.signedDepth, depth);
-		else if (standing === "outranked" && at) this.ignoredAts.push(at);
+		else this.ignoredAts.push(at);
 	}
 }
 
@@ -269,15 +269,10 @@ export class Router {
 	}
 
 	private instancelessFolderOf(entry: ScannedFile): InstancelessFolder {
-		const folder = this.readings.instanceless(
+		return this.readings.instanceless(
 			entry.sourcePath,
 			dirnamePosixOrEmpty(entry.relativePath)
-		);
-		if (!folder)
-			throw new Error(
-				`${entry.source} has no folder to be, but the folder it sits in can become one.`
-			);
-		return folder;
+		)!;
 	}
 
 	private claim(entry: ScannedFile, dirs: DirClaims): ClaimedPath {

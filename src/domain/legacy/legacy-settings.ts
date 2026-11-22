@@ -124,36 +124,36 @@ export class LegacySettings {
 				return LegacySettings.modeOf(name, given, defaults);
 			}
 		);
-		const custom = Object.entries(fields)
-			.filter(
-				([name, value]) =>
-					!SETTINGS_KEYS.has(name) &&
-					!(name in BUILT_IN_MODES) &&
-					isObject(value) &&
-					typeof value.output === "string" &&
-					typeof value.build === "string"
-			)
-			.map(([name, value]) =>
-				LegacySettings.modeOf(name, value as Fields, undefined)
-			);
+		const custom = Object.entries(fields).flatMap(([name, value]) =>
+			!SETTINGS_KEYS.has(name) &&
+			!(name in BUILT_IN_MODES) &&
+			isObject(value) &&
+			typeof value.output === "string" &&
+			typeof value.build === "string"
+				? [
+						LegacySettings.modeOf(name, value, {
+							output: value.output,
+							build: value.build,
+						}),
+					]
+				: []
+		);
 		return [...builtIn, ...custom];
 	}
 
 	private static modeOf(
 		name: string,
 		given: Fields,
-		defaults: Omit<LegacyMode, "name"> | undefined
+		defaults: Pick<LegacyMode, "output" | "build">
 	): LegacyMode {
 		return {
 			name,
 			output:
 				typeof given.output === "string"
 					? given.output
-					: (defaults?.output ?? ""),
+					: defaults.output,
 			build:
-				typeof given.build === "string"
-					? given.build
-					: (defaults?.build ?? ""),
+				typeof given.build === "string" ? given.build : defaults.build,
 			globIgnorePaths: strings(given.globIgnorePaths),
 			tags: booleans(given.tags),
 		};

@@ -7,6 +7,8 @@ import {
 	errorDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
+import { FileChangeType } from "../../../platform/fs/file-changes.js";
+import { FileType } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import {
 	MockConfigSelection,
@@ -781,6 +783,95 @@ describe("CoreWriteService", () => {
 			const again = await rewriteOf(set, first);
 
 			expect(again.kind).toBe("unchanged");
+		});
+	});
+
+	describe("recheck", () => {
+		const added = (file: string) => ({
+			type: FileChangeType.ADDED,
+			path: abs(file),
+			fileType: FileType.File,
+		});
+
+		const recheckOf = async (
+			config: ResolvedConfig,
+			previous: LoadedConfig,
+			file = "dist/A.luau"
+		) =>
+			writeServiceOfFs().recheck(
+				new WriteSet([config]),
+				config.projectFile,
+				await new CoreIndexService(fs).list(config.sourcePaths),
+				previous,
+				[added(file)]
+			);
+
+		beforeEach(async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+		});
+
+		it("should check the compiled path of a checked config again once a compiler writes into it", async () => {
+			const config = configOf({ compiledPath: abs("dist") });
+			const [checked] = (
+				await writeServiceOfFs().check(selectionOf(config))
+			).outcomes as LoadedConfig[];
+			await fs.writeFile(abs("dist/A.luau"), "return 1");
+
+			const outcome = await recheckOf(config, checked);
+
+			expect(checked.syncWarnings).toMatchObject([
+				{ code: "output.nothingEmitted" },
+			]);
+			expect(outcome.kind).toBe("wouldWrite");
+			expect(outcome.syncWarnings).toEqual([]);
+		});
+
+		it("should keep a config another config stopped from writing as not written, with what stopped it", async () => {
+			const config = configOf({ compiledPath: abs("dist") });
+			const lobby = configOf({
+				file: abs("lobby/default.rogen.json"),
+				name: "lobby",
+				sourcePaths: [abs("lobby/src")],
+			});
+			await fs.writeFile(abs("lobby/src/init.meta.json"), "{ nope");
+			const [blocked] = (
+				await writeServiceOfFs().write(selectionOf(config, lobby))
+			).outcomes as LoadedConfig[];
+			await fs.writeFile(abs("dist/A.luau"), "return 1");
+
+			const outcome = await recheckOf(config, blocked);
+
+			expect(outcome).toMatchObject({
+				kind: "notWritten",
+				blockedBy: [abs("lobby/default.rogen.json")],
+				syncWarnings: [],
+			});
+		});
+
+		it("should keep what it knew when the config can no longer be placed", async () => {
+			const config = configOf({ compiledPath: abs("dist") });
+			const [checked] = (
+				await writeServiceOfFs().check(selectionOf(config))
+			).outcomes as LoadedConfig[];
+			await fs.writeFile(abs("src/Locked/B.luau"), "");
+			fs.refuseListing(abs("src/Locked"), "EACCES");
+			await fs.writeFile(abs("dist/A.luau"), "return 1");
+
+			expect(await recheckOf(config, checked)).toBe(checked);
+		});
+	});
+
+	describe("rewrite of a project file not in the set", () => {
+		it("should refuse it", async () => {
+			await expect(
+				writeServiceOfFs().rewrite(
+					new WriteSet([configOf()]),
+					abs("other.project.json"),
+					await new CoreIndexService(fs).list([abs("src")])
+				)
+			).rejects.toThrow(
+				`${abs("other.project.json")} is not in the set.`
+			);
 		});
 	});
 

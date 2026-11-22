@@ -2,6 +2,7 @@ import { jest } from "@jest/globals";
 import { DefaultCommandExitCodes, UsageError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import {
+	Command,
 	CommandRegistry,
 	Extensions,
 } from "../../../platform/commands/commands.js";
@@ -19,6 +20,7 @@ import "../../init/init-command.js";
 import "../../serve/serve-command.js";
 import "../../where/where-command.js";
 import "../../write/write-command.js";
+import { HelpDocument } from "../help-document.js";
 import { helpTexts } from "../help-texts.js";
 
 describe("rogen help --json", () => {
@@ -322,5 +324,64 @@ describe("rogen help --json", () => {
 			);
 			expect(print).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe("HelpDocument", () => {
+	const commandOf = (metadata: Partial<Command["metadata"]>): Command => ({
+		id: "demo",
+		handler: {} as never,
+		metadata: {
+			summary: "Demo a thing.",
+			description: "Demo a thing.",
+			...metadata,
+		},
+	});
+
+	it("should list empty arguments, options, effects and examples for a command that declares none", () => {
+		const command = commandOf({});
+
+		expect(HelpDocument.command(command)).toEqual({
+			name: "demo",
+			summary: "Demo a thing.",
+			description: "Demo a thing.",
+			args: [],
+			options: [],
+			effects: [],
+			examples: [],
+			exitCodes: DefaultCommandExitCodes,
+		});
+		expect(
+			HelpDocument.overview(new Map([["demo", command]]), "1.0.0")
+				.commands
+		).toEqual([
+			{
+				name: "demo",
+				summary: "Demo a thing.",
+				args: [],
+				options: [],
+				effects: [],
+			},
+		]);
+	});
+
+	it("should list an argument's subcommands as its values", () => {
+		const command = commandOf({
+			args: [
+				{
+					name: "action",
+					description: "What to do.",
+					subcommands: [
+						{ name: "install", description: "Install it." },
+						{ name: "open", description: "Open it." },
+					],
+				},
+			],
+		});
+
+		expect(
+			HelpDocument.overview(new Map([["demo", command]]), "1.0.0")
+				.commands[0].args
+		).toEqual([{ name: "action", enum: ["install", "open"] }]);
 	});
 });

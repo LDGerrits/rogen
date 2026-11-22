@@ -28,8 +28,18 @@ describe("JsonLogService", () => {
 	it("should print the document on stdout and nothing else, debug lines included", () => {
 		const logService = new JsonLogService();
 		logService.setLevel(LogLevel.Trace);
+		logService.sendOwnLinesToStderr();
 
 		logService.intro("rogen build");
+		logService.step("12:04:31");
+		logService.section("default.rogen.json", "source paths: src");
+		logService.info("Serving.");
+		logService.success("Wrote default.project.json.");
+		logService.outro("Built.");
+		logService.closeFrame("Stopped.");
+		logService.annotate(
+			warningDiagnostic("x.y", { resource: "/repo/a" }, "w")
+		);
 		logService.note("beside it");
 		logService.notice("note: nope.luau: in no source path");
 		logService.warn("careful");

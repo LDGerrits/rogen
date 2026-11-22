@@ -143,5 +143,15 @@ describe("platform/diagnostics/diagnostics-error", () => {
 				},
 			});
 		});
+
+		it("should add no second full stop to an internal error that ends a sentence", () => {
+			expect(failureToJson(new Error("x is undefined!"))).toEqual({
+				error: {
+					kind: "internal",
+					message:
+						"x is undefined! This is a bug in Rogen: report it at https://github.com/LDGerrits/rogen/issues.",
+				},
+			});
+		});
 	});
 });

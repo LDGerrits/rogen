@@ -336,6 +336,31 @@ describe("TreePlan", () => {
 				]);
 			});
 
+			it("should name each source path it couldn't route, and the first one's folder, dot and all, for its marker file", async () => {
+				const choices = await defaultProjectChoices(luau);
+				const files = planProject({
+					choices: {
+						...choices,
+						sourcePaths: ["src", "lib.v2"],
+						tree: lifted({
+							name: "my-game",
+							tree: {
+								$className: "DataModel",
+								Custom: {
+									Library: { $path: "lib.v2" },
+									Common: { $path: "src" },
+								},
+							},
+						}),
+					},
+					existingFiles: new Set(["default.project.json"]),
+				}).unwrap();
+
+				expect(files.notes).toContain(
+					"Couldn't route Custom/Library or Custom/Common, and a mount of a whole source path can't stay in the tree: no service holds the node it lands on. Give each folder a marker file such as lib.v2/@server, or move them up into a source path."
+				);
+			});
+
 			it("should lift a root that is no DataModel as it is, with no routes or source paths", async () => {
 				const files = await planDerived({ $path: "src" });
 
@@ -596,6 +621,41 @@ describe("TreePlan", () => {
 				"Didn't add Packages at ReplicatedStorage/Packages to default.rogen.json, since it already has a node there."
 			);
 		});
+	});
+
+	it("should say which mounts it left out when the lifted tree has nodes in the place of several", async () => {
+		const files = planProject({
+			choices: {
+				...(await defaultProjectChoices(luau)),
+				tree: lifted({
+					name: "my-game",
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: { Packages: { $path: "vendor" } },
+						ServerScriptService: {
+							ServerPackages: { $path: "server-vendor" },
+						},
+					},
+				}),
+				mounts: [
+					{
+						path: "Packages",
+						optional: false,
+						landing: "ReplicatedStorage/Packages",
+					},
+					{
+						path: "ServerPackages",
+						optional: false,
+						landing: "ServerScriptService/ServerPackages",
+					},
+				],
+			},
+			existingFiles: new Set(["default.project.json"]),
+		}).unwrap();
+
+		expect(files.notes[1]).toBe(
+			"Didn't add Packages at ReplicatedStorage/Packages and ServerPackages at ServerScriptService/ServerPackages to default.rogen.json, since it already has nodes there."
+		);
 	});
 
 	describe("package mounts", () => {

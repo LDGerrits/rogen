@@ -349,6 +349,23 @@ describe("ServerOutput", () => {
 			expect(dropped).toEqual(["Listening", "Tick"]);
 		});
 
+		it("should keep a log record of a level it doesn't know as unrecognised", () => {
+			write("[FATAL librojo] Gone\n");
+			output.end();
+
+			expect(said).toEqual([{ severity: "unrecognised", text: "Gone" }]);
+		});
+
+		it("should drop the backtrace hint from stdout, as it is", () => {
+			const hint =
+				"note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace";
+
+			output.readLine(hint, "stdout");
+
+			expect(said).toEqual([]);
+			expect(dropped).toEqual([hint]);
+		});
+
 		it("should say the same message once while it repeats", () => {
 			const twice =
 				"[ERROR librojo] Bad model\n[ERROR librojo] Bad model\n";

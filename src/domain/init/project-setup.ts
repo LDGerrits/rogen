@@ -5,7 +5,6 @@ import { Result, err, ok } from "../../base/result.js";
 import { joinedBriefly, joinedWithAnd } from "../../base/strings.js";
 import {
 	Diagnostic,
-	errorDiagnostic,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import {
@@ -75,10 +74,10 @@ export interface ProjectChoices {
 	readonly mounts: readonly Mount[];
 	readonly keptCode?: readonly string[];
 	readonly outside?: readonly string[];
-	readonly unmounted?: readonly string[];
+	readonly unmounted: readonly string[];
 	readonly kind?: InitKind;
 	readonly skipGit?: boolean;
-	readonly templateFiles?: readonly PlannedFile[];
+	readonly templateFiles: readonly PlannedFile[];
 	readonly emptyFolders?: readonly string[];
 	readonly sample?: boolean;
 	readonly places?: StartingPlaces;
@@ -188,11 +187,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				: undefined
 		);
 		const tree = await this.resolveTree(chosen.value, kind);
-		if (tree.isErr()) return tree;
 		const picked = await questions.language(directory);
 		if (picked === undefined) return ok(undefined);
 		const starter = this.starterFor(kind, picked);
-		const language = starter ? (picked.scaffolded?.() ?? picked) : picked;
+		const language = starter ? picked.scaffolded!() : picked;
 
 		const several = await this.severalPlaces(kind, language, starter);
 		if (several === undefined) return ok(undefined);
@@ -201,12 +199,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					.createInstance(StarterPlaces)
 					.plan(directory.path, language, starter)
 			: undefined;
-		const taken = places ? await this.placeTaken(places) : undefined;
-		if (taken) return err([taken]);
 
 		const compiledPath = places?.compiledPath ?? language.compiler?.outDir;
-		const routed = takesRoutes(tree.value);
-		const lifted = routed ? carriedProject(tree.value) : undefined;
+		const routed = takesRoutes(tree);
+		const lifted = routed ? carriedProject(tree) : undefined;
 		const liftedMounts = lifted?.mountedFolders() ?? [];
 		const code =
 			lifted && !language.compiler
@@ -234,7 +230,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 						.find(
 							sourcePaths,
 							liftedMounts,
-							compiledPath ? [compiledPath] : []
+							[compiledPath].filter(
+								(folder) => folder !== undefined
+							)
 						)
 				: undefined;
 		const processorConfig = directory.workspace.darkluaConfig;
@@ -247,7 +245,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const mounts = routed ? mountsOf(directory, language) : [];
 
 		const unmounted =
-			lifted && tree.value.kind === "lift"
+			lifted && tree.kind === "lift"
 				? await new UnmountedFiles(
 						this.fileSystemService,
 						directory.path
@@ -281,7 +279,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 		const sample = await this.wantsSample(
 			kind,
-			tree.value,
+			tree,
 			language,
 			starter !== undefined
 		);
@@ -318,7 +316,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 						? RobloxTsStarter.ignored(language.compiler?.outDir)
 						: []
 				),
-				tree.value,
+				tree,
 				skipGit,
 				directory.moduleRoot !== undefined
 			),
@@ -340,10 +338,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			}),
 			...(compiledPath && { compiledPath }),
 			...(processed && { processed }),
-			tree:
-				game && tree.value.kind === "new"
-					? { ...tree.value, game }
-					: tree.value,
+			tree: game && tree.kind === "new" ? { ...tree, game } : tree,
 			mounts,
 			keptCode,
 			outside,
@@ -418,19 +413,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			? ` ${starter.addPlaceStep(places.place, "lobby", lobby(places.configFile))}`
 			: "";
 		return `Add another place: ${copy} Do the same for ${release} if there is one.${compile} Serve it ${port}: 'rogen serve lobby --port <port>'.`;
-	}
-
-	private async placeTaken(
-		places: StartingPlaces
-	): Promise<Diagnostic | undefined> {
-		const file = path.join(this.directory.path, places.configFile);
-		return (await this.fileSystemService.exists(file))
-			? errorDiagnostic(
-					"init.configExists",
-					{ resource: file },
-					"this config already exists, and init never overwrites one."
-				)
-			: undefined;
 	}
 
 	private noPlacesBecause(
@@ -606,36 +588,34 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	private async resolveTree(
 		chosen: ReadChoice,
 		kind: InitKind
-	): Promise<Result<ProjectTree, Diagnostic[]>> {
+	): Promise<ProjectTree> {
 		const { reader } = this;
 		const { templateFolders } = this.directory.layout;
 		if (chosen.kind === "new" && kind === "place" && templateFolders.length)
-			return ok({
+			return {
 				kind: "rojoTemplate",
 				project: await reader.withInitFolders(
 					StarterProject.ofRojoTemplate(templateFolders)
 				),
-			});
+			};
 		if (chosen.kind === "new")
-			return ok(
-				kind === "place"
-					? chosen
-					: {
-							kind: "template",
-							template: kind,
-							project: StarterProject.ofScript(
-								this.directory.moduleRoot
-							),
-						}
-			);
+			return kind === "place"
+				? chosen
+				: {
+						kind: "template",
+						template: kind,
+						project: StarterProject.ofScript(
+							this.directory.moduleRoot
+						),
+					};
 		if (kind !== "place" && chosen.project.takesRoutes)
 			throw new UsageError(
 				`--kind ${kind} starts a new ${kind}, and ${DEFAULT_PROJECT_FILE} is here, which init lifts as a place. Move ${DEFAULT_PROJECT_FILE} away first, or leave --kind out.`
 			);
-		return ok({
+		return {
 			...chosen,
 			project: await reader.withInitFolders(chosen.project),
-		});
+		};
 	}
 
 	plan(choices: ProjectChoices, builder: InitPlanBuilder): void {
@@ -658,7 +638,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		});
 		const { compiler } = language;
 		const name = path.basename(places?.place ?? this.directory.path);
-		const unmounted = choices.unmounted ?? [];
+		const { unmounted } = choices;
 		const { name: ownName, ...fields } = tree.fields;
 		const config: RogenConfig = {
 			name: typeof ownName === "string" ? ownName : name,
@@ -683,7 +663,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		);
 		const processedPath = processedPathOf(choices);
 		for (const { stem, config: output } of OutputConfigs.of(config, {
-			name,
 			processedPath,
 			releasePath: processedPath ?? compiledPath,
 			releaseIgnore: this.directory.workspace.testRunner
@@ -710,7 +689,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			for (const command of choices.scaffold.after)
 				builder.addCommand(command);
 		}
-		for (const file of choices.templateFiles ?? []) builder.addFile(file);
+		for (const file of choices.templateFiles) builder.addFile(file);
 		if (choices.kind !== undefined && !choices.skipGit)
 			builder.requestGitInit();
 		if (choices.tree.kind === "lift") {

@@ -1,5 +1,7 @@
 import { toPosix } from "../../../../base/path.js";
 import { DiagnosticSeverity } from "../../../../platform/diagnostics/diagnostic.js";
+import { FileType } from "../../../../platform/fs/file-system-service.js";
+import { Listing } from "../../../../platform/fs/index-service.js";
 import { MemoryFileSystemService } from "../../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../../config/__tests__/mock-config-service.js";
 import { WriteValidator } from "../write-validator.js";
@@ -10,6 +12,7 @@ import {
 	configOf,
 	configOf as baseConfigOf,
 	indexOf,
+	pipelineOf,
 	placeFiles,
 	syncTools,
 	writeFiles,
@@ -584,6 +587,27 @@ describe("WriteValidator rules", () => {
 						({ code }) => code === "route.scriptClassMismatch"
 					);
 
+			it("should name the rule to add by the file's extension when the rule has no suffix", async () => {
+				await write("src/Boot/Main.server.lang");
+
+				expect(
+					await mismatches({
+						project: {
+							tree: {},
+							syncRules: [
+								{ pattern: "*.lang", use: "moduleScript" },
+							],
+						},
+					})
+				).toMatchObject([
+					{
+						message: expect.stringContaining(
+							'add { "pattern": "*.server.lang", "use": "serverScript", "suffix": ".server.lang" } before that rule'
+						),
+					},
+				]);
+			});
+
 			it("should warn that the rule makes it a ModuleScript, and name the rule to add", async () => {
 				await write("src/Boot/Main.server.lang");
 
@@ -1061,10 +1085,107 @@ describe("WriteValidator rules", () => {
 				expect(warnings).toEqual([]);
 			});
 
+			it("should blame no file for an empty folder keyed with a $", async () => {
+				await write("src/Fine.luau");
+				await fs.createDirectory(abs("src/$Empty"));
+
+				expect(await reserved()).toEqual([]);
+			});
+
+			it("should propose no rename for a file named only $", async () => {
+				await write("src/$", "src/Fine.luau");
+
+				const warnings = (
+					await route({
+						project: {
+							tree: { $className: "DataModel" },
+							syncRules: [{ pattern: "*", use: "text" }],
+						},
+					})
+				)
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "tree.reservedName"
+					);
+
+				expect(warnings).toMatchObject([
+					{
+						resource: abs("src/$"),
+						message: expect.stringContaining("Rename the file"),
+					},
+				]);
+				expect(warnings[0].fixes ?? []).toEqual([]);
+			});
+
+			it("should propose no rename for a nested project whose name has the $", async () => {
+				await fs.writeFile(
+					abs("src/Kit.project.json"),
+					JSON.stringify({
+						name: "$Kit",
+						tree: { $className: "Folder" },
+					})
+				);
+
+				const warnings = await reserved();
+
+				expect(warnings).toMatchObject([
+					{
+						resource: abs("src/Kit.project.json"),
+						message: expect.stringContaining(
+							'"ReplicatedStorage/shared/$Kit" on every build. Rename the file'
+						),
+					},
+				]);
+				expect(warnings[0].fixes ?? []).toEqual([]);
+			});
+
 			it("should leave a $ inside a name, and a file Rojo reads from a folder it was given whole, alone", async () => {
 				await write("src/Cost$.luau", "src/Kit/$Inner.luau");
 
 				expect(await reserved()).toEqual([]);
+			});
+		});
+
+		describe("two init files of one folder", () => {
+			it("should say to remove one when both become the folder's instance", async () => {
+				await write("src/Foo/init.luau", "src/Foo/init.lua");
+
+				expect(
+					(await route())
+						.unwrap()
+						.warnings.filter(
+							({ code }) => code === "tree.instanceClash"
+						)
+				).toMatchObject([
+					{
+						resource: abs("src/Foo/init.lua"),
+						message: expect.stringMatching(/Remove one of them\.$/),
+					},
+				]);
+			});
+		});
+
+		describe("a folder that shares its instance with a model", () => {
+			it("should name the meta beside the model by its whole file name", async () => {
+				await write("src/Foo.rbxm", "src/Foo/Bar.luau");
+				await fs.writeFile(
+					abs("src/Foo/init.meta.json"),
+					JSON.stringify({ className: "Folder" })
+				);
+
+				expect(
+					(await route())
+						.unwrap()
+						.warnings.filter(
+							({ code }) => code === "meta.sharedWithScript"
+						)
+				).toMatchObject([
+					{
+						message: expect.stringContaining(
+							"Put it in Foo.rbxm.meta.json beside the script"
+						),
+					},
+				]);
 			});
 		});
 
@@ -1198,6 +1319,38 @@ describe("WriteValidator rules", () => {
 						({ resource }) => resource
 					)
 				).toEqual([abs("src/@odd:name"), abs("src/Foo?.meta.json")]);
+			});
+
+			it("should say a name left out of the game must be renamed to put it there", async () => {
+				const index = new Listing(
+					new Map([
+						[
+							toPosix(abs("src")),
+							new Map([
+								["Fine.luau", FileType.File],
+								["a\\b.luau", FileType.File],
+							]),
+						],
+					])
+				);
+
+				const prepared = await pipelineOf(fs, index).run(
+					configOf({ routes: ROUTES, sourcePaths: [abs("src")] })
+				);
+
+				expect(
+					prepared
+						.unwrap()
+						.findings.warnings.filter(
+							({ code }) => code === "scan.portableName"
+						)
+				).toMatchObject([
+					{
+						message: expect.stringMatching(
+							/Rename it to put it in the game\.$/
+						),
+					},
+				]);
 			});
 
 			it("should leave a name that is fine alone", async () => {

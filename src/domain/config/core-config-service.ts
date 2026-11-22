@@ -261,12 +261,9 @@ export class CoreConfigService implements ConfigService {
 		const base = path.basename(file);
 		if (base.startsWith(`${DEFAULT_PROJECT}.`))
 			return toPosix(path.relative(folder, path.dirname(file)));
-		const stem =
-			configStem(base) ??
-			(isProjectFileConfig(base) ? projectStem(base) : undefined);
+		const stem = configStem(base) ?? projectStem(base);
 		const fileRef = shownFrom(folder, file);
-		return stem !== undefined &&
-			samePath(path.dirname(file), folder) &&
+		return samePath(path.dirname(file), folder) &&
 			!(await this.isPath(path.join(folder, stem))) &&
 			(await this.discovery.stemReads(folder, stem, file))
 			? stem
@@ -326,8 +323,9 @@ export class CoreConfigService implements ConfigService {
 		for (const file of await this.discovery.namedConfigsAbove(target)) {
 			const entry = await this.read(file);
 			const sourcePaths =
-				validFile(entry)?.config.sourcePaths ??
-				(entry.status === "broken" ? entry.sourcePaths : undefined);
+				entry.status === "valid"
+					? entry.config.sourcePaths
+					: entry.sourcePaths;
 			if (sourcePaths && !(await this.covers(sourcePaths, target)))
 				continue;
 			covers.push({ file, whole: false });

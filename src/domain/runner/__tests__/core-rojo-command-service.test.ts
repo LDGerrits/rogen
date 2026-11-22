@@ -5,8 +5,10 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import {
 	MockConfigSelection,
+	brokenEntry,
 	mockEntry,
 } from "../../config/__tests__/mock-config-service.js";
+import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { CoreRojoCommandService } from "../core-rojo-command-service.js";
 import { rojoRunnerOf } from "./rojo-runner-fixtures.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
@@ -286,6 +288,68 @@ describe("CoreRojoCommandService", () => {
 		);
 	});
 
+	it("should fail without running Rojo when a config is broken", async () => {
+		const broken = new MockConfigSelection([
+			brokenEntry([
+				errorDiagnostic(
+					"config.invalidSyntax",
+					{ resource: "/repo/default.rogen.json" },
+					"is not JSON."
+				),
+			]),
+		]);
+
+		const result = await run(broken);
+
+		expect(result.isErr()).toBe(true);
+		expect(processes.spawned).toEqual([]);
+	});
+
+	it("should say why Rojo couldn't be run when the process failed", async () => {
+		const running = run();
+		await new Promise((resolve) => setImmediate(resolve));
+		processes.spawned[0].exit({
+			code: null,
+			signal: null,
+			error: new Error("spawn EACCES"),
+		});
+
+		const ran = (await running).unwrap();
+
+		expect(
+			(ran.failure as DiagnosticsError | undefined)?.diagnostics[0]
+		).toMatchObject({
+			message: "Rojo couldn't build this project (spawn EACCES).",
+		});
+	});
+
+	it("should name a command it has no words for by the command", async () => {
+		const running = service.run(selection(), {
+			command: "fmt-project",
+			flags: [],
+			cwd: "/repo",
+		});
+		await finish([], 1);
+
+		const ran = (await running).unwrap();
+
+		expect(
+			(ran.failure as DiagnosticsError | undefined)?.diagnostics[0]
+		).toMatchObject({
+			message:
+				"Rojo couldn't run 'fmt-project' on this project (exit code 1).",
+		});
+	});
+
+	it("should say how Rojo refused the command line when it said nothing", async () => {
+		const running = run();
+		await finish([], 2);
+
+		expect((await running).unwrap().failure).toEqual(
+			new UsageError("Rojo refused the command line (exit code 2).")
+		);
+	});
+
 	it("should fail without running Rojo when no Rojo is found", async () => {
 		processes.installed.clear();
 
@@ -342,6 +406,35 @@ describe("CoreRojoCommandService", () => {
 
 		expect((await running).isOk()).toBe(true);
 		expect(processes.spawned[0].terminated).toBe(true);
+	});
+
+	describe("watch", () => {
+		const watch = (signal?: AbortSignal) =>
+			service.watch(selection(), {
+				command: "sourcemap",
+				flags: [],
+				cwd: "/repo",
+				signal,
+			});
+
+		it("should fail without starting Rojo when no Rojo is found", async () => {
+			processes.installed.clear();
+
+			expect((await watch()).isErr()).toBe(true);
+			expect(processes.spawned).toEqual([]);
+		});
+
+		it("should not start Rojo when the signal aborted while it looked for Rojo", async () => {
+			const controller = new AbortController();
+			controller.abort();
+
+			const result = await watch(controller.signal);
+
+			expect((result as ResultError<Error>).error.message).toBe(
+				"The watch stopped before Rojo started."
+			);
+			expect(processes.spawned).toEqual([]);
+		});
 	});
 
 	describe("runBare", () => {

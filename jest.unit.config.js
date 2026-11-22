@@ -8,4 +8,7 @@ export default {
 		"<rootDir>/src/**/__tests__/**/*.test.ts",
 		"<rootDir>/scripts/**/__tests__/**/*.test.ts",
 	],
+	coverageThreshold: {
+		global: { statements: 100, branches: 100, functions: 100, lines: 100 },
+	},
 };

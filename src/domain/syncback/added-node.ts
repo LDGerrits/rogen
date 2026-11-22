@@ -36,10 +36,12 @@ export const isNodeFile = (name: string): boolean =>
 		name.endsWith(suffix)
 	);
 
-const objectOf = (
-	text: string | undefined
-): Record<string, unknown> | undefined => {
-	if (text === undefined) return undefined;
+type WrittenFile = WrittenEntry & { readonly text: string };
+
+const isWrittenFile = (entry: WrittenEntry): entry is WrittenFile =>
+	entry.path.length <= 1 && entry.text !== undefined;
+
+const objectOf = (text: string): Record<string, unknown> | undefined => {
 	const parsed = parse(text);
 	return parsed.isOk() && isObject(parsed.value) ? parsed.value : undefined;
 };
@@ -89,14 +91,14 @@ function modelNode(model: unknown): RojoNode | undefined {
 	return node;
 }
 
-function fileNode(entries: readonly WrittenEntry[]): RojoNode | undefined {
+function fileNode(entries: readonly WrittenFile[]): RojoNode | undefined {
 	const named = (suffix: string) =>
 		entries.find(({ path }) => path[0].endsWith(suffix));
 	const model = named(MODEL_SUFFIX);
 	if (model && entries.length === 1) return modelNode(objectOf(model.text));
 	const text = named(TEXT_SUFFIX);
 	const meta = named(RojoFile.META_SUFFIX);
-	if (text?.text === undefined || entries.length !== (meta ? 2 : 1))
+	if (text === undefined || entries.length !== (meta ? 2 : 1))
 		return undefined;
 	const metaFile = meta ? objectOf(meta.text) : {};
 	const fields = metaFile && fieldsOf(metaFile, META_KEYS);
@@ -145,9 +147,7 @@ function folderNode(entries: readonly WrittenEntry[]): RojoNode | undefined {
 export function addedNode(
 	entries: readonly WrittenEntry[]
 ): RojoNode | undefined {
-	return entries.some(
-		({ path, text }) => path.length > 1 || text === undefined
-	)
-		? folderNode(entries)
-		: fileNode(entries);
+	return entries.every(isWrittenFile)
+		? fileNode(entries)
+		: folderNode(entries);
 }

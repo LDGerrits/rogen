@@ -54,7 +54,7 @@ export class SupervisedRojo
 
 	constructor(
 		private readonly start: () => RojoProcess,
-		private readonly options: SupervisedRojoOptions = {}
+		private readonly options: SupervisedRojoOptions
 	) {
 		super();
 		this.launch();

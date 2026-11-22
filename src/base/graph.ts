@@ -60,15 +60,6 @@ export class Graph<T> {
 		return undefined;
 	}
 
-	toString(): string {
-		return [...this.nodes.entries()]
-			.map(
-				([key, node]) =>
-					`${key}\n\t(-> incoming)[${[...node.incoming.keys()].join(", ")}]\n\t(outgoing ->)[${[...node.outgoing.keys()].join(",")}]\n`
-			)
-			.join("\n");
-	}
-
 	private findCycle(node: Node<T>, seen: Set<string>): string | undefined {
 		for (const [key, next] of node.outgoing) {
 			if (seen.has(key)) return [...seen, key].join(" -> ");

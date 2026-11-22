@@ -123,8 +123,7 @@ export class CompiledLayout {
 	}
 
 	isCacheFile(file: string): boolean {
-		if (this.compiledPath === undefined) return false;
-		if (!samePath(path.dirname(file), this.compiledPath)) return false;
+		if (!samePath(path.dirname(file), this.compiledPath!)) return false;
 		const name = path.basename(file);
 		return this.tools.some(({ cacheFiles }) => cacheFiles?.includes(name));
 	}

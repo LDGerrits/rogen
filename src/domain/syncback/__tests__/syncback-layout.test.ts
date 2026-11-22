@@ -1,4 +1,6 @@
-import { abs, layoutOf } from "./layout-fixtures.js";
+import { configOf } from "../../write/__tests__/fixtures.js";
+import { SyncbackLayout } from "../syncback-layout.js";
+import { ROUTES, abs, layoutOf } from "./layout-fixtures.js";
 
 const posix = (...segments: string[]) => abs(...segments).replaceAll("\\", "/");
 
@@ -23,6 +25,31 @@ describe("SyncbackLayout", () => {
 					{ style: "suffix", route: "Server" },
 				])
 			);
+		});
+
+		it("should find none in a file outside the source paths", () => {
+			const layout = new SyncbackLayout(
+				configOf({ routes: ROUTES }),
+				[
+					{
+						status: "placed",
+						source: posix("vendor/Inventory/Bag.luau"),
+						exists: true,
+						instancePath: [
+							"ServerScriptService",
+							"Inventory",
+							"Bag",
+						],
+						route: "Server",
+						routeMatch: "suffix",
+					},
+				],
+				[]
+			);
+
+			expect(
+				layout.donorsAt(["ServerScriptService", "Inventory"])
+			).toEqual([]);
 		});
 
 		it("should find none under a node that only holds folders", async () => {
@@ -146,6 +173,24 @@ describe("SyncbackLayout", () => {
 			).toBeUndefined();
 		});
 
+		it("should pass over a file only the fallback route places", async () => {
+			const layout = await layoutOf([
+				"src/Util.luau",
+				"src/Inventory/Shared/Item.luau",
+			]);
+
+			expect(
+				layout.featureMaking([
+					"ReplicatedStorage",
+					"Shared",
+					"Inventory",
+				])
+			).toEqual({
+				folder: posix("src/Inventory"),
+				instances: [["ReplicatedStorage", "Shared", "Inventory"]],
+			});
+		});
+
 		it("should find none when the routing folder sits at the source path", async () => {
 			const layout = await layoutOf(["src/Server/Loose.luau"]);
 
@@ -160,6 +205,22 @@ describe("SyncbackLayout", () => {
 			const layout = await layoutOf(["src/A/Server/X.luau"]);
 
 			expect(layout.folderNameFor("Client")).toBe("Client");
+		});
+
+		it("should keep the spelling most files are in when fewer files come after", async () => {
+			const layout = await layoutOf([
+				"src/A/Server/X.luau",
+				"src/B/Server/X.luau",
+				"src/C/@Server/X.luau",
+			]);
+
+			expect(layout.folderNameFor("Server")).toBe("Server");
+		});
+
+		it("should take the spelling of a routing folder at the source path", async () => {
+			const layout = await layoutOf(["src/@Server/Loose.luau"]);
+
+			expect(layout.folderNameFor("Server")).toBe("@Server");
 		});
 
 		it("should take the spelling most files are in", async () => {

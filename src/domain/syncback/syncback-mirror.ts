@@ -29,7 +29,7 @@ const UNSYNCABLE_USE = "legacyClientScript";
  * Rojo's syncback drops the property that holds these classes' contents
  * (`Value`, `Source`, `Contents`) from a node that has a `$path`.
  */
-const PATH_DROPS_CONTENT: ReadonlySet<string> = new Set([
+const PATH_DROPS_CONTENT: ReadonlySet<string | undefined> = new Set([
 	"StringValue",
 	"Script",
 	"LocalScript",
@@ -209,7 +209,6 @@ class MirrorWalk {
 	private kept = 0;
 
 	private readonly made = new Set<string>();
-	private readonly folderSet = new Set<string>();
 
 	constructor(private readonly inputs: SyncbackMirrorInputs) {
 		for (const { instancePath } of inputs.placed)
@@ -218,8 +217,6 @@ class MirrorWalk {
 	}
 
 	private addFolder(folder: string): void {
-		if (this.folderSet.has(folder)) return;
-		this.folderSet.add(folder);
 		this.folders.push(folder);
 	}
 
@@ -313,11 +310,9 @@ class MirrorWalk {
 	}
 
 	private suffixOf(target: string): string {
-		const base = path.posix.basename(target);
-		const rojoName = this.inputs.fileAt(target).instanceName;
-		return base.startsWith(rojoName)
-			? base.slice(rojoName.length)
-			: path.posix.extname(base);
+		return path.posix
+			.basename(target)
+			.slice(this.inputs.fileAt(target).instanceName.length);
 	}
 
 	private async dissolves(
@@ -474,7 +469,7 @@ class MirrorWalk {
 	): boolean {
 		return (
 			node.$ignoreUnknownInstances !== true &&
-			!STUDIO_FILLED.has(instancePath[0] ?? "") &&
+			!STUDIO_FILLED.has(instancePath[0]) &&
 			this.inputs.routeTargets.some((target) =>
 				isSameJson(target, instancePath)
 			)
@@ -487,7 +482,7 @@ class MirrorWalk {
 	): boolean {
 		if (instancePath.length < 2) return false;
 		if (node.$ignoreUnknownInstances === true) return false;
-		if (PATH_DROPS_CONTENT.has(node.$className ?? "")) return false;
+		if (PATH_DROPS_CONTENT.has(node.$className)) return false;
 		return this.inOwnTree(instancePath);
 	}
 

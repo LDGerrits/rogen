@@ -1,4 +1,3 @@
-import { isWindows } from "../../../base/platform.js";
 import path from "path";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
@@ -9,7 +8,7 @@ import { toolchainOf } from "../../toolchain/__tests__/toolchain-of.js";
 
 const ROJO_VERSION = { code: 0, stdout: "Rojo 7.7.1\n", stderr: "" };
 
-const rokitRojo = `/home/me/.rokit/bin/rojo${isWindows ? ".exe" : ""}`;
+const rokitRojo = "/home/me/.rokit/bin/rojo";
 
 describe("ServerFinder", () => {
 	let fs: MemoryFileSystemService;
@@ -196,5 +195,20 @@ describe("ServerFinder", () => {
 			"'rojo --version' failed, so Rojo can't start: spawn /bin/rojo ENOENT. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
 		);
 		expect(diagnostic.fixes).toBeUndefined();
+	});
+
+	it("should report a server that prints no version, and say so when it printed nothing", async () => {
+		await fs.writeFile(
+			"/repo/game/rokit.toml",
+			'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
+		);
+		processes.installed.set("rojo", "/bin/rojo");
+		processes.outputs.set("/bin/rojo", { code: 0, stdout: "", stderr: "" });
+
+		const diagnostic = await diagnosticOf();
+
+		expect(diagnostic.message).toEqual(
+			"'rojo --version' failed, so Rojo can't start. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
+		);
 	});
 });
