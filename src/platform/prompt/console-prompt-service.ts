@@ -1,21 +1,4 @@
-import {
-	ConfirmPrompt,
-	Prompt,
-	SelectPrompt,
-	isCancel,
-	wrapTextWithPrefix,
-} from "@clack/core";
-import {
-	SELECT_INSTRUCTIONS,
-	S_BAR,
-	S_BAR_END,
-	S_RADIO_ACTIVE,
-	S_RADIO_INACTIVE,
-	formatInstructionFooter,
-	limitOptions,
-	symbol,
-	symbolBar,
-} from "@clack/prompts";
+import type { Prompt } from "@clack/core";
 import { Readable, Writable } from "stream";
 import { Styler, style, unstyled } from "../../base/style.js";
 import {
@@ -27,6 +10,19 @@ import {
 } from "./prompt-service.js";
 
 type State = Prompt<unknown>["state"];
+
+/**
+ * Loaded when a prompt is shown: the library styles text as it loads, and Node
+ * warns about `NO_COLOR` beside `FORCE_COLOR` the first time anything is styled.
+ */
+async function loadClack() {
+	return {
+		...(await import("@clack/core")),
+		...(await import("@clack/prompts")),
+	};
+}
+
+type Clack = Awaited<ReturnType<typeof loadClack>>;
 
 const choiceText = <T extends string>(
 	{ label, hint }: PromptChoice<T>,
@@ -43,7 +39,13 @@ interface Frame {
 	readonly footer?: readonly string[];
 }
 
-function drawFrame(output: Writable, frame: Frame, style: Styler): string {
+function drawFrame(
+	clack: Clack,
+	output: Writable,
+	frame: Frame,
+	style: Styler
+): string {
+	const { S_BAR, S_BAR_END, symbol, symbolBar, wrapTextWithPrefix } = clack;
 	const dim = (text: string) => style("dim", text);
 	const struck = (text: string) => style(["strikethrough", "dim"], text);
 	const { state, message, details } = frame;
@@ -108,6 +110,9 @@ export class ConsolePromptService implements PromptService {
 	}
 
 	async confirm(options: ConfirmPromptOptions): Promise<boolean | undefined> {
+		const clack = await loadClack();
+		const { ConfirmPrompt, isCancel, S_RADIO_ACTIVE, S_RADIO_INACTIVE } =
+			clack;
 		const { output } = this.streams;
 		const { style } = this;
 		const dim = (text: string) => style("dim", text);
@@ -123,6 +128,7 @@ export class ConsolePromptService implements PromptService {
 						? `${style("green", S_RADIO_ACTIVE)} ${label}`
 						: `${dim(S_RADIO_INACTIVE)} ${dim(label)}`;
 				return drawFrame(
+					clack,
 					output,
 					{
 						state: this.state,
@@ -143,6 +149,16 @@ export class ConsolePromptService implements PromptService {
 	async select<T extends string>(
 		options: SelectPromptOptions<T>
 	): Promise<T | undefined> {
+		const clack = await loadClack();
+		const {
+			SELECT_INSTRUCTIONS,
+			S_RADIO_ACTIVE,
+			S_RADIO_INACTIVE,
+			SelectPrompt,
+			formatInstructionFooter,
+			isCancel,
+			limitOptions,
+		} = clack;
 		const { output } = this.streams;
 		const { style } = this;
 		const dim = (text: string) => style("dim", text);
@@ -161,6 +177,7 @@ export class ConsolePromptService implements PromptService {
 							: `${dim(S_RADIO_INACTIVE)} ${choiceText(choice, dim, dim)}`,
 				});
 				return drawFrame(
+					clack,
 					output,
 					{
 						state: this.state,

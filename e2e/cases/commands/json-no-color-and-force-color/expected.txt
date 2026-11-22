@@ -1,0 +1,42 @@
+$ rogen write --json
+exit 0
+stdout:
+  {
+    "changed": true,
+    "configs": [
+      {
+        "config": "default.rogen.json",
+        "projectFile": "<dir>/default.project.json",
+        "outcome": "wrote",
+        "diagnostics": []
+      }
+    ],
+    "plainProjects": []
+  }
+
+$ rogen check --json
+exit 0
+stdout:
+  {
+    "diagnostics": []
+  }
+
+$ rogen --version --json
+exit 0
+stdout:
+  {
+    "version": "<version>"
+  }
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Greeter: Folder
+        Greeting: ModuleScript  <- src/Greeter/Shared/Greeting.luau
+  ServerScriptService: ServerScriptService
+    Greeter: Folder
+      Greeter: Script  <- src/Greeter/Server/Greeter.server.luau

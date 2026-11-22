@@ -36,8 +36,8 @@ import { ServiceCollection } from "./platform/instantiation/service-collection.j
 import { SyncDescriptor } from "./platform/instantiation/sync-descriptor.js";
 import { LogLevel, LogService } from "./platform/log/log-service.js";
 import { JsonLogService } from "./platform/log/json-log-service.js";
+import { LogServiceOptions } from "./platform/log/abstract-log-service.js";
 import { PlainLogService } from "./platform/log/plain-log-service.js";
-import { TerminalLogService } from "./platform/log/terminal-log-service.js";
 import { InputService } from "./platform/input/input-service.js";
 import { NativeInputService } from "./platform/input/native-input-service.js";
 import { ConsolePromptService } from "./platform/prompt/console-prompt-service.js";
@@ -244,7 +244,10 @@ class RogenMain {
 			{ ...options, json },
 			cwd ?? path.parse(process.execPath).root
 		);
-		const logService = this.createLogService(environmentService, json);
+		const logService = await this.createLogService(
+			environmentService,
+			json
+		);
 		const instantiationService = this.createInstantiationService(
 			environmentService,
 			logService,
@@ -310,22 +313,34 @@ class RogenMain {
 		if (!notice.printedFirst) await notice.print();
 	}
 
-	private createLogService(
+	private async createLogService(
 		environmentService: EnvironmentService,
 		json: boolean
-	): LogService {
+	): Promise<LogService> {
 		const logOptions = {
 			cwd: environmentService.cwd,
 			annotationsIn: environmentService.annotationsIn,
 			color: environmentService.hasColor,
 		};
-		const logService: LogService = json
-			? new JsonLogService()
-			: environmentService.isPlain
-				? new PlainLogService(logOptions)
-				: new TerminalLogService(logOptions);
+		const logService = await this.logServiceOf(
+			json,
+			environmentService.isPlain,
+			logOptions
+		);
 		logService.setLevel(environmentService.logLevel);
 		return logService;
+	}
+
+	private async logServiceOf(
+		json: boolean,
+		plain: boolean,
+		options: LogServiceOptions
+	): Promise<LogService> {
+		if (json) return new JsonLogService();
+		if (plain) return new PlainLogService(options);
+		const { TerminalLogService } =
+			await import("./platform/log/terminal-log-service.js");
+		return new TerminalLogService(options);
 	}
 
 	private createInstantiationService(
