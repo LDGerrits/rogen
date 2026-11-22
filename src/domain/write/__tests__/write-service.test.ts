@@ -3,10 +3,13 @@ import {
 	errorDiagnostic,
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
+import { InstanceReference } from "../../roblox/roblox.js";
 import {
 	ConfigLocations,
 	FileLocation,
 	LocatedDiagnosis,
+	outsideEveryConfig,
+	uniqueSkipped,
 } from "../write-service.js";
 import { abs, absPosix, configOf } from "./fixtures.js";
 
@@ -185,5 +188,62 @@ describe("LocatedDiagnosis", () => {
 			expect(diagnosis.unshown).toEqual([]);
 			expect(diagnosis.stops).toEqual([stop, other]);
 		});
+	});
+});
+
+describe("LocatedDiagnosis of an instance asked about", () => {
+	it("should give it the diagnostic whose rename places it, and no other", () => {
+		const proposing = error("src/Buy.Server.luau", "route.dotRoute");
+		const sameCode = error("src/Other.Server.luau", "route.dotRoute");
+		const sameFile = warning("src/Buy.Server.luau", "x.other");
+		const asked: ConfigLocations = {
+			...located([], [proposing, sameCode, sameFile]),
+			instances: [
+				{
+					reference: InstanceReference.parse(
+						"ServerScriptService.Buy"
+					)!,
+					files: [],
+					folders: [],
+					fixes: [
+						{
+							code: "route.dotRoute",
+							rename: {
+								from: absPosix("src/Buy.Server.luau"),
+								to: absPosix("src/Buy.server.luau"),
+							},
+						},
+					],
+				},
+			],
+		};
+
+		expect(new LocatedDiagnosis(asked).reaching).toEqual([proposing]);
+	});
+});
+
+describe("outsideEveryConfig", () => {
+	const outside = (source: string): FileLocation => ({
+		status: "outside",
+		source: abs(source),
+		exists: true,
+	});
+
+	it("should keep a path only when every config leaves it outside", () => {
+		const lobby = located([outside("a.luau"), outside("b.luau")], []);
+		const arena = located([outside("a.luau"), placed("b.luau")], []);
+
+		expect(outsideEveryConfig([lobby, arena])).toEqual([abs("a.luau")]);
+	});
+});
+
+describe("uniqueSkipped", () => {
+	it("should keep each skipped path once", () => {
+		const skipped = {
+			path: abs("a.luau"),
+			reason: "noConfig" as const,
+		};
+
+		expect(uniqueSkipped([skipped, { ...skipped }])).toEqual([skipped]);
 	});
 });

@@ -40,5 +40,6 @@ describe("isSameJson", () => {
 		expect(isSameJson([1], [1, 2])).toBe(false);
 		expect(isSameJson([], {})).toBe(false);
 		expect(isSameJson(null, {})).toBe(false);
+		expect(isSameJson({}, 1)).toBe(false);
 	});
 });

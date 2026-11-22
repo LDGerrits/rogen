@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -38,6 +39,84 @@ describe("NativeProcessService", () => {
 			fs.writeFileSync(path.join(dir, "plain"), "");
 
 			expect(await service.which("plain")).toBeUndefined();
+		});
+
+		it("should skip a folder named as the command", async () => {
+			fs.mkdirSync(path.join(dir, "tool"));
+
+			expect(await service.which("tool")).toBeUndefined();
+		});
+
+		it("should read the PATH that Windows spells Path", async () => {
+			if (process.platform === "win32") return;
+			fs.writeFileSync(path.join(dir, "tool"), "", { mode: 0o755 });
+			const spelled = new NativeProcessService({ Path: dir });
+
+			expect(await spelled.which("tool")).toBe(path.join(dir, "tool"));
+		});
+
+		it("should find nothing without a PATH", async () => {
+			expect(
+				await new NativeProcessService({}).which("node")
+			).toBeUndefined();
+		});
+	});
+
+	describe("terminateTree", () => {
+		const pid = 424242;
+		let signals: (string | number | undefined)[];
+		let alive: (signal: string | number | undefined) => boolean;
+
+		beforeEach(() => {
+			if (process.platform === "win32") return;
+			signals = [];
+			jest.useFakeTimers();
+			jest.spyOn(process, "kill").mockImplementation((target, signal) => {
+				if (target !== -pid) throw new Error("not this test's process");
+				if (signal === 0) {
+					if (alive(signals[signals.length - 1])) return true;
+					throw Object.assign(new Error("ESRCH"), { code: "ESRCH" });
+				}
+				signals.push(signal);
+				return true;
+			});
+		});
+
+		afterEach(() => {
+			jest.useRealTimers();
+			jest.restoreAllMocks();
+		});
+
+		it("should kill a process group that outlives its grace period", async () => {
+			if (process.platform === "win32") return;
+			alive = (last) => last !== "SIGKILL";
+
+			const done = service.terminateTree(pid);
+			await jest.advanceTimersByTimeAsync(5_000);
+			await done;
+
+			expect(signals).toEqual(["SIGTERM", "SIGKILL"]);
+		});
+
+		it("should give up on a process group that outlives being killed", async () => {
+			if (process.platform === "win32") return;
+			alive = () => true;
+
+			const done = service.terminateTree(pid);
+			await jest.advanceTimersByTimeAsync(7_000);
+			await done;
+
+			expect(signals).toEqual(["SIGTERM", "SIGKILL"]);
+		});
+
+		it("should do nothing more for a process that is already gone", async () => {
+			if (process.platform === "win32") return;
+			alive = () => false;
+			jest.mocked(process.kill).mockImplementation(() => {
+				throw Object.assign(new Error("ESRCH"), { code: "ESRCH" });
+			});
+
+			await expect(service.terminateTree(pid)).resolves.toBeUndefined();
 		});
 	});
 
@@ -332,6 +411,16 @@ describe("NativeProcessService", () => {
 			child[Symbol.dispose]();
 		});
 
+		it("should have nothing to kill in a file that can't start", async () => {
+			const child = service.spawn(path.join(dir, "missing"), [], {
+				cwd: dir,
+			});
+
+			expect(() => service.killAll()).not.toThrow();
+			expect((await exitOf(child)).error?.message).toContain("ENOENT");
+			child[Symbol.dispose]();
+		});
+
 		it("should pass on what the process prints, on either stream, before its exit", async () => {
 			const child = service.spawn(
 				node,
@@ -443,6 +532,12 @@ describe("NativeProcessService", () => {
 			expect(
 				launch("rojo.cmd", ["50% of 60%", "100%%"], env, true).isOk()
 			).toBe(true);
+		});
+
+		it("should run a batch file through cmd.exe when ComSpec is unset", () => {
+			expect(launch("rojo.cmd", [], {}, true).unwrap().command).toBe(
+				"cmd.exe"
+			);
 		});
 
 		it("should pass a percent sign that names no variable", () => {

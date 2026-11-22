@@ -4,6 +4,7 @@ import {
 	closestMatches,
 	defanged,
 	joinedBriefly,
+	joinedClosestFirst,
 	joinedWithAnd,
 	commandWith,
 	listLimited,
@@ -126,6 +127,20 @@ describe("closestMatch", () => {
 		).toBeUndefined();
 		expect(closestMatch("ab", ["cd"])).toBeUndefined();
 		expect(closestMatch("x", [])).toBeUndefined();
+	});
+});
+
+describe("joinedClosestFirst", () => {
+	it("should put the closest item first", () => {
+		expect(joinedClosestFirst("biuld", ["init", "build"])).toBe(
+			"build and init"
+		);
+	});
+
+	it("should keep the order when nothing is close", () => {
+		expect(joinedClosestFirst("prod", ["init", "build"])).toBe(
+			"init and build"
+		);
 	});
 });
 

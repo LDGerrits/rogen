@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import path from "path";
 import { MemoryFileSystemService } from "../../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../../platform/process/__tests__/mock-process-service.js";
@@ -180,5 +181,31 @@ describe("AgentRules", () => {
 
 		expect(await rules.refresh(root)).toEqual([]);
 		expect(await read(".claude/settings.json")).toBe(mine);
+	});
+
+	it("should skip a file it can't read", async () => {
+		await write("AGENTS.md", OLD);
+		jest.spyOn(fileSystem, "readFile").mockRejectedValue(
+			new Error("EACCES")
+		);
+
+		expect(await rules.refresh(root)).toEqual([]);
+	});
+
+	it("should leave out a file it can't write", async () => {
+		await write("AGENTS.md", OLD);
+		await write("CLAUDE.md", OLD);
+		const writeFile = fileSystem.writeFile.bind(fileSystem);
+		jest.spyOn(fileSystem, "writeFile").mockImplementation(
+			async (file, text) => {
+				if (file.endsWith("AGENTS.md")) throw new Error("EACCES");
+				return writeFile(file, text);
+			}
+		);
+
+		expect(await rules.refresh(root)).toEqual([
+			path.join(root, "CLAUDE.md"),
+		]);
+		expect(await read("AGENTS.md")).toBe(OLD);
 	});
 });

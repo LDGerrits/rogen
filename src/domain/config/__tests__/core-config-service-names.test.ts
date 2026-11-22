@@ -46,6 +46,13 @@ describe("CoreConfigService.resolveNames", () => {
 			"New.luau",
 		]);
 	});
+
+	it("should fail on a name both extensions of a config have", async () => {
+		await write("/repo/game.rogen.json", {});
+		await write("/repo/game.rogen.jsonc", {});
+
+		expect((await service.resolveNames(["game"])).isErr()).toBe(true);
+	});
 });
 
 describe("CoreConfigService.firstNotConfig", () => {

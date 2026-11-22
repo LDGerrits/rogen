@@ -273,6 +273,97 @@ describe("CoreInstantiationService", () => {
 			).toThrow(/loopService -> loopService/);
 		});
 
+		it("should name a service a described service depends on that nobody registered, when strict", () => {
+			const services = new ServiceCollection();
+			services.set(GreetingService, new SyncDescriptor(Looping));
+			const instantiation = new CoreInstantiationService(services, true);
+
+			expect(() =>
+				instantiation.invokeFunction((accessor) =>
+					accessor.get(GreetingService)
+				)
+			).toThrow(
+				"[createInstance] greetingService depends on loopService which is NOT registered."
+			);
+		});
+
+		it("should refuse a service that asks for itself while it is built", () => {
+			class Selfish {
+				declare readonly _serviceBrand: undefined;
+				readonly name = "selfish";
+
+				constructor(
+					@InstantiationService instantiation: InstantiationService
+				) {
+					instantiation.invokeFunction((accessor) =>
+						accessor.get(NameService)
+					);
+				}
+			}
+			const services = new ServiceCollection();
+			services.set(NameService, new SyncDescriptor(Selfish));
+			const instantiation = new CoreInstantiationService(services);
+
+			expect(() =>
+				instantiation.invokeFunction((accessor) =>
+					accessor.get(NameService)
+				)
+			).toThrow(
+				"illegal state - RECURSIVELY instantiating service 'nameService'"
+			);
+		});
+
+		it("should not build again a dependency that another dependency built first", () => {
+			class Eager {
+				declare readonly _serviceBrand: undefined;
+				readonly name = "eager";
+
+				constructor(
+					@InstantiationService instantiation: InstantiationService
+				) {
+					created.push("eager");
+					instantiation.invokeFunction((accessor) =>
+						accessor.get(LoopService)
+					);
+				}
+			}
+			class Late implements GreetingService {
+				declare readonly _serviceBrand: undefined;
+
+				constructor() {
+					created.push("late");
+				}
+
+				greet(): string {
+					return "late";
+				}
+			}
+			class Both {
+				declare readonly _serviceBrand: undefined;
+
+				constructor(
+					@NameService readonly names: NameService,
+					@LoopService readonly late: GreetingService
+				) {}
+
+				greet(): string {
+					return this.late.greet();
+				}
+			}
+			const services = new ServiceCollection();
+			services.set(NameService, new SyncDescriptor(Eager));
+			services.set(LoopService, new SyncDescriptor(Late));
+			services.set(GreetingService, new SyncDescriptor(Both));
+			const instantiation = new CoreInstantiationService(services);
+
+			const greeting = instantiation.invokeFunction((accessor) =>
+				accessor.get(GreetingService)
+			);
+
+			expect(greeting.greet()).toBe("late");
+			expect(created).toEqual(["eager", "late"]);
+		});
+
 		it("should build a service again after a failed attempt", () => {
 			class Flaky {
 				declare readonly _serviceBrand: undefined;
@@ -330,6 +421,66 @@ describe("CoreInstantiationService", () => {
 				"first failed"
 			);
 			expect(disposed).toEqual(["first", "second"]);
+		});
+
+		it("should throw every failure together when several services fail to dispose", () => {
+			const failing = (name: string) =>
+				class {
+					declare readonly _serviceBrand: undefined;
+					readonly name = name;
+
+					[Symbol.dispose](): void {
+						throw new Error(`${name} failed`);
+					}
+				};
+			const services = new ServiceCollection();
+			services.set(NameService, new SyncDescriptor(failing("first")));
+			services.set(
+				LoopService,
+				new SyncDescriptor(failing("second")) as never
+			);
+			const instantiation = new CoreInstantiationService(services);
+			instantiation.invokeFunction((accessor) => {
+				accessor.get(NameService);
+				accessor.get(LoopService);
+			});
+
+			let thrown: unknown;
+			try {
+				instantiation[Symbol.dispose]();
+			} catch (error) {
+				thrown = error;
+			}
+
+			expect(thrown).toBeInstanceOf(AggregateError);
+			expect(
+				(thrown as AggregateError).errors.map(
+					(error: Error) => error.message
+				)
+			).toEqual(["first failed", "second failed"]);
+		});
+
+		it("should dispose its services only once when disposed twice", () => {
+			const disposed: string[] = [];
+			class Closing {
+				declare readonly _serviceBrand: undefined;
+				readonly name = "closing";
+
+				[Symbol.dispose](): void {
+					disposed.push("closing");
+				}
+			}
+			const services = new ServiceCollection();
+			services.set(NameService, new SyncDescriptor(Closing));
+			const instantiation = new CoreInstantiationService(services);
+			instantiation.invokeFunction((accessor) =>
+				accessor.get(NameService)
+			);
+
+			instantiation[Symbol.dispose]();
+			instantiation[Symbol.dispose]();
+
+			expect(disposed).toEqual(["closing"]);
 		});
 
 		it("should dispose the services it built, and not the ones it was given", () => {

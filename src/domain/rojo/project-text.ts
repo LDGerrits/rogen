@@ -158,7 +158,7 @@ export class WrittenTree {
 
 	private raw({ start, end }: JsoncSpan): Raw {
 		const lineStart = this.text.lastIndexOf("\n", start - 1) + 1;
-		const base = /^[ \t]*/.exec(this.text.slice(lineStart))?.[0] ?? "";
+		const base = /^[ \t]*/.exec(this.text.slice(lineStart))![0];
 		const unit = this.unit();
 		const [first, ...rest] = this.text.slice(start, end).split(/\r?\n/);
 		return new Raw([

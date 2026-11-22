@@ -8,6 +8,9 @@ import {
 	mockEntry,
 } from "../../../domain/config/__tests__/mock-config-service.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
+import { warningDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
+import { CoreSyncbackService } from "../../../domain/syncback/core-syncback-service.js";
+import { WriteRun } from "../../../domain/write/write.js";
 import { CommandLine } from "../../../platform/environment/args.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { exitCode } from "../../../platform/commands/command-failure.js";
@@ -582,5 +585,91 @@ describe("syncback command", () => {
 		expect(failed.error.diagnostics).toMatchObject([
 			{ code: "rojo.commandUnsupported" },
 		]);
+	});
+
+	it("should list what it leaves out and the warnings of the plan, and count what it would remove", async () => {
+		const project = validEntry().config;
+		jest.spyOn(CoreSyncbackService.prototype, "run").mockResolvedValueOnce({
+			write: new WriteRun([]),
+			outcome: {
+				kind: "planned",
+				plan: {
+					project,
+					changes: [
+						{
+							kind: "remove",
+							file: abs("src/Combat/Server/Combat.luau"),
+						},
+					],
+					listed: [],
+					unplaced: [
+						{
+							instance: "Workspace.Part",
+							reason: "it has no route",
+						},
+					],
+					compiled: [],
+				},
+				warnings: [
+					warningDiagnostic(
+						"x.warn",
+						{ resource: project.file },
+						"Careful."
+					),
+				],
+				asked: false,
+			},
+		});
+		const { running, log } = start({
+			input: "game.rbxl",
+			"dry-run": true,
+		});
+		await running;
+
+		expect(said(log)).toEqual([
+			"/repo/default.rogen.json - warning: Workspace.Part was left out: it has no route. (syncback.unplaced)",
+			"/repo/default.rogen.json - warning: Careful. (x.warn)",
+			"Syncback would change 1 file (1 to remove).",
+		]);
+	});
+
+	describe("with the configs on disk", () => {
+		const run = (positionals: string[]) => {
+			const log = new MockLogService();
+			const running = commandHarness({
+				fs,
+				log,
+				processes,
+				prompt: new MockPromptService([], false),
+			}).run("syncback", {
+				positionals,
+				options: { input: "game.rbxl", "dry-run": true },
+			});
+			return { log, running };
+		};
+
+		it("should fail and run no Rojo when the named config is not there", async () => {
+			const { running } = run(["missing"]);
+
+			expect((await running).isErr()).toBe(true);
+			expect(processes.spawned).toEqual([]);
+		});
+
+		it("should warn which config it took when a name is both a folder and a file", async () => {
+			const config = JSON.stringify({
+				sourcePaths: ["../src"],
+				routes: { "*": "ReplicatedStorage" },
+			});
+			await fs.writeFile(abs("lobby/default.rogen.json"), config);
+			await fs.writeFile(abs("lobby.rogen.json"), config);
+			const { running, log } = run(["lobby"]);
+			const [rojo] = await rojoRuns(1);
+			rojo.exit({ code: 0, signal: null });
+			await running;
+
+			expect(log.texts("warn")).toEqual([
+				'"lobby" is a folder with a default config and also lobby.rogen.json: using the folder. To use the file, name it: lobby.rogen.json.',
+			]);
+		});
 	});
 });

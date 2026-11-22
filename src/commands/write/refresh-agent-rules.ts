@@ -18,7 +18,7 @@ export class RefreshAgentRules {
 		const { cwd, isCi } = this.environmentService;
 		if (isCi) return [];
 		const updated = (await this.initService.refreshAgentRules(cwd)).map(
-			(file) => path.relative(cwd, file) || file
+			(file) => path.relative(cwd, file)
 		);
 		const line = agentRulesLine(updated);
 		if (output === "lines" && line)

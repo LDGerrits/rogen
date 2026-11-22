@@ -24,6 +24,16 @@ describe("TestRunnerDetector", () => {
 		expect(await detect()).toBeUndefined();
 	});
 
+	it("should pass over a manifest that can't be read", async () => {
+		await fs.createDirectory(path.join(cwd, "wally.toml"));
+		await write(
+			"pesde.toml",
+			'[dev_dependencies]\nTestEZ = { name = "roblox/testez" }\n'
+		);
+
+		expect(await detect()).toBe("TestEZ");
+	});
+
 	it("should find Jest among the dependencies of a Wally manifest", async () => {
 		await write(
 			"wally.toml",

@@ -18,7 +18,7 @@ export class ProcessedFolder {
 	async find(
 		sourcePaths: readonly string[],
 		mounted: readonly string[],
-		taken: readonly string[] = []
+		taken: readonly string[]
 	): Promise<string | undefined> {
 		const roots = sourcePaths.map(normalizeDir);
 		if (roots.length === 0) return undefined;

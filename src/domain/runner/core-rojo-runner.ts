@@ -72,7 +72,7 @@ export class CoreRojoRunner implements RojoRunner {
 
 	supervise(
 		start: () => RojoProcess,
-		options?: SupervisedRojoOptions
+		options: SupervisedRojoOptions
 	): SupervisedRojoProcess {
 		return new SupervisedRojo(start, options);
 	}

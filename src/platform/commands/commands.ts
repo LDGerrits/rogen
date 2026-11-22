@@ -126,11 +126,7 @@ class CoreCommandRegistry implements CommandRegistry {
 
 		this.commands.set(id, command);
 
-		return toDisposable(() => {
-			if (this.commands.get(id) === command) {
-				this.commands.delete(id);
-			}
-		});
+		return toDisposable(() => this.commands.delete(id));
 	}
 
 	getCommand(id: string): Command | undefined {

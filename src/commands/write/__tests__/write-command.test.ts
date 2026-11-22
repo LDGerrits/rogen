@@ -13,6 +13,7 @@ import { MockLogService } from "../../../platform/log/__tests__/mock-log-service
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { configServiceOf } from "../../../domain/config/__tests__/config-of.js";
+import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
@@ -338,6 +339,62 @@ describe("write command", () => {
 
 		expect(log.texts("info")).toEqual([
 			"default.project.json · plain project, not written",
+		]);
+	});
+
+	it("should list a named plain project in the --json document", async () => {
+		await fs.writeFile(
+			abs("default.project.json"),
+			'{"name":"P","tree":{}}'
+		);
+		const { run, log } = commandHarness({ fs });
+
+		await run("write", {
+			positionals: ["default"],
+			options: { json: true },
+		});
+
+		expect(log.json()).toMatchObject({
+			plainProjects: ["default.project.json"],
+		});
+	});
+
+	it("should write nothing when the folder's config appears only after it listed the folder", async () => {
+		await fs.writeFile(abs("default.rogen.json"), config);
+		const listing = jest
+			.spyOn(CoreConfigService.prototype, "configsHere")
+			.mockResolvedValue([]);
+		const { run } = commandHarness({ fs });
+
+		const result = await run("write");
+		listing.mockRestore();
+
+		expect(result.isOk()).toBe(true);
+		expect(await fs.exists(abs("default.project.json"))).toBe(false);
+	});
+
+	it("should fail and write nothing when a named config is not there", async () => {
+		await fs.writeFile(abs("default.rogen.json"), config);
+		const { run } = commandHarness({ fs });
+
+		const result = await run("write", {
+			positionals: ["missing"],
+			options: {},
+		});
+
+		expect(result.isErr()).toBe(true);
+		expect(await fs.exists(abs("default.project.json"))).toBe(false);
+	});
+
+	it("should warn which config it took when a name is both a folder and a file", async () => {
+		await fs.writeFile(abs("lobby/default.rogen.json"), config);
+		await fs.writeFile(abs("lobby.rogen.json"), config);
+		const { run, log } = commandHarness({ fs });
+
+		await run("write", { positionals: ["lobby"], options: {} });
+
+		expect(log.texts("warn")).toEqual([
+			'"lobby" is a folder with a default config and also lobby.rogen.json: using the folder. To use the file, name it: lobby.rogen.json.',
 		]);
 	});
 

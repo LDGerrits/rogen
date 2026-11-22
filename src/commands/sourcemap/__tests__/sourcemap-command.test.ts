@@ -2,10 +2,14 @@ import path from "path";
 import "../sourcemap-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { ResultError } from "../../../base/result.js";
+import { jest } from "@jest/globals";
 import {
 	MockConfigService,
+	brokenEntry,
 	mockEntry,
 } from "../../../domain/config/__tests__/mock-config-service.js";
+import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
+import { exitCodeOf } from "../../../platform/commands/command-failure.js";
 import { CommandLine } from "../../../platform/environment/args.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
@@ -211,5 +215,66 @@ describe("sourcemap command", () => {
 			},
 		});
 		expect(log.json()).not.toHaveProperty("sourcemaps");
+	});
+
+	it("should print nothing and report the failure when Rojo fails to make the sourcemap it prints", async () => {
+		const { log, running } = start(new MockConfigService([validEntry()]));
+		const [rojo] = await spawnedCount(1);
+		rojo.printError("ERROR: no such folder\n");
+		rojo.exit({ code: 1, signal: null });
+
+		expect((await running).isErr()).toBe(true);
+		expect(log.texts("print")).toEqual([]);
+	});
+
+	it("should print the sourcemap even when its file of its own can't be removed", async () => {
+		const { log, running } = start(new MockConfigService([validEntry()]));
+		const [rojo] = await spawnedCount(1);
+		const output = rojo.args[rojo.args.indexOf("--output") + 1];
+		await fs.writeFile(output, '{"name":"repo"}\n');
+		jest.spyOn(fs, "delete").mockRejectedValueOnce(new Error("EBUSY"));
+		rojo.exit({ code: 0, signal: null });
+
+		expect((await running).isOk()).toBe(true);
+		expect(log.texts("print")).toEqual(['{"name":"repo"}']);
+	});
+
+	it("should run no Rojo and exit 1 when the config has errors", async () => {
+		const { running } = start(
+			new MockConfigService([
+				brokenEntry([
+					errorDiagnostic(
+						"config.invalidSyntax",
+						{ resource: abs("default.rogen.json") },
+						"bad"
+					),
+				]),
+			])
+		);
+
+		expect(exitCodeOf(((await running) as ResultError<Error>).error)).toBe(
+			1
+		);
+		expect(processes.spawned).toEqual([]);
+	});
+
+	it("should count a sourcemap Rojo made as a change even when the project file was current", async () => {
+		const config = new MockConfigService([validEntry()]);
+		const first = start(config, { output: "map.json" });
+		(await spawnedCount(1))[0].exit({ code: 0, signal: null });
+		await first.running;
+
+		const { log, running } = start(config, {
+			output: "map.json",
+			json: true,
+		});
+		(await spawnedCount(2))[1].exit({ code: 0, signal: null });
+		await running;
+
+		expect(log.json()).toMatchObject({
+			changed: true,
+			configs: [{ outcome: "unchanged" }],
+			rojo: { outcome: "built" },
+		});
 	});
 });

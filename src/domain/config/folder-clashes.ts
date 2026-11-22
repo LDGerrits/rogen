@@ -8,13 +8,11 @@ import { ResolvedConfig } from "./resolved-config.js";
 
 export interface FolderConfig {
 	readonly config: ResolvedConfig;
-	readonly value: Readonly<Record<string, unknown>> | undefined;
+	readonly value: Readonly<Record<string, unknown>>;
 }
 
-function withoutNameAndSourcePaths(
-	value: Readonly<Record<string, unknown>> | undefined
-) {
-	const { name: _name, sourcePaths: _sourcePaths, ...rest } = value ?? {};
+function withoutNameAndSourcePaths(value: Readonly<Record<string, unknown>>) {
+	const { name: _name, sourcePaths: _sourcePaths, ...rest } = value;
 	return rest;
 }
 

@@ -107,7 +107,7 @@ export interface RojoRunner {
 
 	supervise(
 		start: () => RojoProcess,
-		options?: SupervisedRojoOptions
+		options: SupervisedRojoOptions
 	): SupervisedRojoProcess;
 }
 

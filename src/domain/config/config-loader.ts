@@ -62,7 +62,7 @@ export class ConfigLoader {
 		const clashes = [
 			...(read.includes(twin) ? [bothExtensions(file, twin)] : []),
 			...folderClashes(
-				{ config: loaded.resolved.value.config, value: loaded.value },
+				{ config: loaded.resolved.value.config, value: loaded.value! },
 				siblings
 			),
 		];
@@ -95,7 +95,7 @@ export class ConfigLoader {
 			read.push(other);
 			const { resolved, value } = await this.loadFile(other);
 			if (resolved.isOk())
-				siblings.push({ config: resolved.value.config, value });
+				siblings.push({ config: resolved.value.config, value: value! });
 		}
 		return { siblings, read };
 	}

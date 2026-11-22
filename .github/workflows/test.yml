@@ -47,7 +47,7 @@ jobs:
               run: npm run typecheck
 
             - name: Unit Test
-              run: npm run test:unit
+              run: npm run test:coverage
 
     # Each end-to-end suite runs in two shards, which halves its wall time; the
     # job named for the suite is the required check and passes when both do.

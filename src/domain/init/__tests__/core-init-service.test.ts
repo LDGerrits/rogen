@@ -4,7 +4,7 @@ import { PlannedFile } from "../../toolchain/toolchain.js";
 import { jest } from "@jest/globals";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import path from "path";
-import { ResultError, ok } from "../../../base/result.js";
+import { ResultError, err, ok } from "../../../base/result.js";
 import { UsageError } from "../../../base/errors.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -21,6 +21,7 @@ import {
 } from "../../../platform/prompt/prompt-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
+import { CoreWriteService } from "../../write/core-write-service.js";
 import {
 	DiagnosticSeverity,
 	errorDiagnostic,
@@ -115,6 +116,14 @@ describe("CoreInitService", () => {
 	const write = (file: string, content = "") =>
 		fileSystem.writeFile(path.join(directory, file), content);
 
+	const failReading = (file: string) => {
+		const readFile = fileSystem.readFile.bind(fileSystem);
+		jest.spyOn(fileSystem, "readFile").mockImplementation(async (at) => {
+			if (at === path.join(directory, file)) throw new Error("busy");
+			return readFile(at);
+		});
+	};
+
 	describe("plan, before it asks", () => {
 		it("should read the directory's toolchain", async () => {
 			await write("tsconfig.json", "{}");
@@ -162,6 +171,33 @@ describe("CoreInitService", () => {
 				},
 			]);
 			expect((await service.check(plan!)).isOk()).toBe(true);
+		});
+
+		it("should name the whole route a rename respells when it changes a letter inside it", async () => {
+			await write("src/Shop/Server/A.luau", "return 1");
+			await write("src/Bag/Server/B.luau", "return 1");
+			await write("src/Trading/SERVER/C.luau", "return 1");
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(plan?.moves).toEqual([
+				{
+					from: "src/Trading/SERVER",
+					to: "src/Trading/Server",
+					reason: 'to spell the route "Server" as the rest of the code does',
+				},
+			]);
+		});
+
+		it("should not rename a stray route suffix when its respelled name is taken", async () => {
+			await write("src/Shop/Server/A.luau", "return 1");
+			await write("src/Bag/Server/B.luau", "return 1");
+			await write("src/Trading/Save@server.luau", "return 1");
+			await write("src/Trading/Save@Server.luau", "return 1");
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(plan?.moves).toEqual([]);
 		});
 
 		it("should rename only what is there, never a folder it writes itself", async () => {
@@ -699,6 +735,23 @@ describe("CoreInitService", () => {
 			expect(names(added)).toContain(SCRIPT);
 		});
 
+		it("should go back to the plan it showed when the question is dismissed under Customise", async () => {
+			await write(".claude/keep", "");
+			const dismissed = new MockPromptService({
+				"Add a hook that reports Rogen warnings to Claude Code?":
+					CANCEL,
+			});
+
+			const taken = await asking(answersEverything());
+			const plan = await asking(dismissed);
+
+			expect(names(plan)).toEqual(names(taken));
+			expect(names(plan)).not.toContain(SCRIPT);
+			expect(dismissed.prompts.map(({ message }) => message)).toContain(
+				"Add a hook that reports Rogen warnings to Claude Code?"
+			);
+		});
+
 		it("should register it in a file that exists, keeping what it holds", async () => {
 			await write(
 				CLAUDE,
@@ -1122,6 +1175,22 @@ describe("CoreInitService", () => {
 				tree: { $className: "DataModel", ServerScriptService: {} },
 			});
 			expect(plan?.warnings).toEqual([]);
+		});
+
+		it("should take the parent of a lone mounted folder named after a route when the parent also mounts a folder no route reaches, if that folder holds no code", async () => {
+			await lift({
+				ServerScriptService: { Server: { $path: "src/server" } },
+				Workspace: { Map: { $path: "src/assets/map" } },
+			});
+			await write("src/server/Main.server.luau");
+			await write("src/assets/map/Map.rbxm");
+
+			const plan = await planOf();
+
+			expect(configOf(plan)).toMatchObject({
+				sourcePaths: ["src"],
+				routes: { server: "ServerScriptService/Server" },
+			});
 		});
 
 		it("should keep a lone folder named after a route at the top of the project in the tree, with a note", async () => {
@@ -1777,6 +1846,15 @@ describe("CoreInitService", () => {
 				'rogen build -o "newproj.rbxmx"',
 			]);
 		});
+		it("should look for Rojo from the root when no folder of the path is there, as on a drive that isn't mounted", async () => {
+			jest.spyOn(fileSystem, "exists").mockResolvedValue(false);
+
+			(await serviceFor().plan({ place: "newproj" })).unwrap();
+
+			expect(processes.execs.map(({ cwd }) => cwd)).toContain(
+				path.parse(directory).root
+			);
+		});
 	});
 
 	describe("plan", () => {
@@ -2257,6 +2335,30 @@ describe("CoreInitService", () => {
 			);
 		});
 
+		it("should leave to the write after init an error that names two files of the code, beside the renames it plans", async () => {
+			await write("src/Shop/Server/A.luau", "return 1");
+			await write("src/Bag/Server/B.luau", "return 1");
+			await write("src/Trading/server/C.luau", "return 1");
+			await write("src/Inventory/Server/Bag.luau", "return 1");
+			await write("src/Inventory/Server/Bag.lua", "return 1");
+			const service = serviceFor();
+			const plan = (await service.plan()).unwrap()!;
+
+			const checked = await service.check(plan);
+
+			expect(plan.moves).not.toEqual([]);
+			expect(checked.unwrap()).toContainEqual(
+				expect.objectContaining({
+					code: "tree.instanceClash",
+					related: [
+						expect.objectContaining({
+							resource: expect.any(String),
+						}),
+					],
+				})
+			);
+		});
+
 		it("should fail on an error about a folder of the files it writes", async () => {
 			await write("src/Inventory/@server", "");
 			const service = serviceFor();
@@ -2480,6 +2582,39 @@ describe("CoreInitService", () => {
 			expect(plan.nextSteps.run).toEqual(["rogen serve old"]);
 		});
 
+		it("should sum up a config that names no source paths and no routes", async () => {
+			const { service } = migrating(
+				migrated({
+					configs: [{ fileName: "old.rogen.json", config: {} }],
+				})
+			);
+
+			const plan = (await service.plan({ ask: false })).unwrap()!;
+
+			expect(plan.summary.filter(({ area }) => area === "Code")).toEqual([
+				{ area: "Code", text: "old.rogen.json:  → " },
+			]);
+		});
+
+		it("should serve nothing when the migration writes no config", async () => {
+			const { service } = migrating(migrated({ configs: [] }));
+
+			const plan = (await service.plan({ ask: false })).unwrap()!;
+
+			expect(plan.nextSteps.run).toEqual([]);
+		});
+
+		it("should ask to ignore the project files in a .gitignore that doesn't", async () => {
+			await write(".gitignore", "node_modules\n");
+			const { service } = migrating();
+
+			const plan = (await service.plan({ ask: false })).unwrap()!;
+
+			expect(plan.nextSteps.edits).toContainEqual(
+				expect.stringContaining("Add *.project.json to .gitignore")
+			);
+		});
+
 		it("should serve a config by its file when a folder of its name holds a project", async () => {
 			await write("old/default.project.json", "{}");
 			const { service } = migrating();
@@ -2626,6 +2761,61 @@ describe("CoreInitService", () => {
 			).toBe(true);
 		});
 
+		it("should fail with what the migration finds wrong with the old config", async () => {
+			const service = serviceFor();
+			service.registerMigration({
+				find: async (folder) =>
+					err([
+						errorDiagnostic(
+							"old.broken",
+							{ resource: path.join(folder, "old.rogen.json") },
+							"can't be read."
+						),
+					]),
+			});
+
+			const planned = await service.plan({ ask: false });
+
+			expect(
+				planned.isErr() &&
+					planned.error instanceof DiagnosticsError &&
+					planned.error.diagnostics.map(({ code }) => code)
+			).toEqual(["old.broken"]);
+		});
+
+		it("should fail rather than write over an agent file it can't read", async () => {
+			await write("AGENTS.md", "# Rules\n");
+			failReading("AGENTS.md");
+
+			const planned = await migrating().service.plan({ ask: false });
+
+			expect(planned.isErr() && planned.error.message).toBe(
+				"Failed to read AGENTS.md: busy"
+			);
+		});
+
+		it("should fail when a config it migrates to would write over a file it doesn't move", async () => {
+			await write("game.rogen.json", "{}");
+			const { service } = migrating(
+				migrated({
+					configs: [
+						{
+							fileName: "game.rogen.json",
+							config: { sourcePaths: ["src"] },
+						},
+					],
+				})
+			);
+
+			const planned = await service.plan({ ask: false });
+
+			expect(
+				planned.isErr() &&
+					planned.error instanceof DiagnosticsError &&
+					planned.error.diagnostics.map(({ code }) => code)
+			).toEqual(["init.configExists"]);
+		});
+
 		it("should plan a new project once it is removed", async () => {
 			await fileSystem.delete(path.join(directory, "old.rogen.json"));
 			const { service, asked, registration } = migrating();
@@ -2635,6 +2825,71 @@ describe("CoreInitService", () => {
 
 			expect(asked).toEqual([]);
 			expect(plan.moves).toEqual([]);
+		});
+	});
+
+	describe("when something fails", () => {
+		it("should throw an error that is not about how it was called", async () => {
+			jest.spyOn(configs, "staleConfigsIn").mockRejectedValue(
+				new Error("disk on fire")
+			);
+
+			await expect(serviceFor().plan()).rejects.toThrow("disk on fire");
+		});
+
+		it("should plan nothing when the summary's question is dismissed", async () => {
+			const prompts = new MockPromptService({
+				Language: "luau",
+				"One place or several?": "one",
+				"Create this project?": CANCEL,
+			});
+
+			expect((await serviceFor(prompts).plan()).unwrap()).toBeUndefined();
+		});
+
+		it("should fail beside a config rather than write over an agent file it can't read", async () => {
+			await write("default.rogen.json", "{}");
+			await write("AGENTS.md", "# Rules\n");
+			failReading("AGENTS.md");
+
+			const planned = await serviceFor().plan({
+				choices: { agentRules: true },
+			});
+
+			expect(planned.isErr() && planned.error.message).toBe(
+				"Failed to read AGENTS.md: busy"
+			);
+		});
+
+		it("should fail the check when the configs it plans can't be selected", async () => {
+			const service = serviceFor();
+			const plan = (
+				await service.plan({ choices: { sample: false } })
+			).unwrap()!;
+			jest.spyOn(configs, "select").mockResolvedValue(
+				err(new UsageError("no such config"))
+			);
+
+			const checked = await service.check(plan);
+
+			expect(checked.isErr() && checked.error.message).toBe(
+				"no such config"
+			);
+		});
+
+		it("should fail the check with a write failure that names no diagnostics", async () => {
+			const service = serviceFor();
+			const plan = (
+				await service.plan({ choices: { sample: false } })
+			).unwrap()!;
+			const failure = new Error("write broke");
+			jest.spyOn(CoreWriteService.prototype, "check").mockResolvedValue({
+				failure: () => failure,
+			} as unknown as Awaited<ReturnType<CoreWriteService["check"]>>);
+
+			const checked = await service.check(plan);
+
+			expect(checked.isErr() && checked.error).toBe(failure);
 		});
 	});
 });

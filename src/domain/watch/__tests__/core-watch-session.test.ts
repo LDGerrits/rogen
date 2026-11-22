@@ -13,6 +13,7 @@ import { CoreConfigService } from "../../config/core-config-service.js";
 import { WriteSet, OutputFile } from "../../write/write.js";
 import { WatchUpdate } from "../watch-service.js";
 import { CoreWatchSession } from "../core-watch-session.js";
+import { CoreWriteService } from "../../write/core-write-service.js";
 import { writeServiceOf } from "../../write/__tests__/fixtures.js";
 import { configServiceOf } from "../../config/__tests__/config-of.js";
 
@@ -1343,5 +1344,93 @@ describe("CoreWatchSession", () => {
 
 			expect(await placed("default")).toEqual(["L"]);
 		});
+	});
+
+	describe("bursts", () => {
+		const manyFiles = async (folder: string, count: number) => {
+			for (let i = 0; i < count; i++)
+				await fs.writeFile(`/repo/${folder}/M${i}.luau`, "");
+		};
+
+		it("should list the source paths again after more changes than a burst, and write every file", async () => {
+			await start();
+			const list = jest.spyOn(CoreIndexService.prototype, "list");
+
+			await manyFiles("src", 201);
+			await settle();
+
+			expect(updates.map(({ cause }) => cause)).toEqual([
+				{ kind: "initial" },
+				{ kind: "burst", dropped: 201, threshold: 200, ended: false },
+			]);
+			expect(list).toHaveBeenCalled();
+			expect(await placed("default")).toHaveLength(201);
+		});
+
+		it("should watch again, not list on top, when a config changed within a burst moves its source path", async () => {
+			await fs.createDirectory("/repo/lib");
+			await fs.writeFile("/repo/lib/L.luau", "");
+			await start();
+			const watch = jest.spyOn(watcher, "watch");
+			const list = jest.spyOn(CoreIndexService.prototype, "list");
+
+			await write(
+				"/repo/default.rogen.json",
+				config({ sourcePaths: ["lib"] })
+			);
+			await manyFiles("src", 200);
+			await settle();
+
+			expect(watch).toHaveBeenCalledTimes(1);
+			expect(list).toHaveBeenCalledTimes(1);
+			expect(await placed("default")).toEqual(["L"]);
+		});
+	});
+
+	it("should not write a config removed while a change to it waited for an earlier write", async () => {
+		await start([]);
+		const gate = new DeferredPromise<void>();
+		const writeFile = fs.writeFile.bind(fs);
+		const staged = jest.fn();
+		jest.spyOn(fs, "writeFile").mockImplementation(
+			async (file, content) => {
+				if (isDefaultStaging(file)) {
+					staged();
+					await gate.p;
+				}
+				return writeFile(file, content);
+			}
+		);
+
+		await fs.writeFile("/repo/src/A.luau", "");
+		await settle();
+		await fs.writeFile("/repo/src/B.luau", "");
+		await settle();
+		await fs.delete("/repo/default.rogen.json");
+		await settle();
+		gate.complete();
+		await settle();
+
+		expect(staged).toHaveBeenCalledTimes(1);
+		expect(await placed("default")).toEqual(["A"]);
+		expect(errors).toEqual([]);
+	});
+
+	it("should not check the compiled path of a config whose first write threw", async () => {
+		await writeConfig("/repo/default.rogen.json", {
+			compiledPath: "dist",
+		});
+		jest.spyOn(CoreWriteService.prototype, "rewrite").mockRejectedValueOnce(
+			new Error("disk on fire")
+		);
+		const recheck = jest.spyOn(CoreWriteService.prototype, "recheck");
+		await start();
+
+		await fs.writeFile("/repo/dist/A.luau", "return 1");
+		await settle();
+
+		expect(errors.map(({ message }) => message)).toEqual(["disk on fire"]);
+		expect(recheck).not.toHaveBeenCalled();
+		expect(updates).toEqual([]);
 	});
 });

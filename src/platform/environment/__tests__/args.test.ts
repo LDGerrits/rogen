@@ -304,6 +304,23 @@ describe("parseArgs", () => {
 		);
 	});
 
+	it("should name every command that takes an option given before any command", () => {
+		const result = parseArgs(
+			["--help", "--variant", "a"],
+			(command) =>
+				command === undefined ||
+				command === "build" ||
+				command === "init"
+					? [...globals, ...buildOptions]
+					: globals,
+			commands
+		);
+
+		expect(result.isErr() && result.error.message).toBe(
+			"'--variant' goes after a command. build and init take it."
+		);
+	});
+
 	it("should read everything after the first -- as positionals, as Rojo does", () => {
 		const { line } = parse([
 			"build",

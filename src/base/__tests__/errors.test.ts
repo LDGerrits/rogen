@@ -184,6 +184,18 @@ describe("errorKind", () => {
 	});
 });
 
+describe("ErrorUtils.fromUnknown", () => {
+	it("should keep an error, wrap a string and describe any other value", () => {
+		const error = new Error("boom");
+
+		expect(ErrorUtils.fromUnknown(error)).toBe(error);
+		expect(ErrorUtils.fromUnknown("text").message).toBe("text");
+		expect(ErrorUtils.fromUnknown({ code: 7 }).message).toBe(
+			'An unexpected error occurred: {"code":7}'
+		);
+	});
+});
+
 describe("KindedError", () => {
 	it("should read as its reason then its hint", () => {
 		const error = new UsageError(

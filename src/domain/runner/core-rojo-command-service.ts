@@ -270,7 +270,6 @@ export class CoreRojoCommandService implements RojoCommandService {
 		);
 		const onAbort = () => void rojo.terminate();
 		signal?.addEventListener("abort", onAbort, { once: true });
-		if (signal?.aborted) onAbort();
 		const exit = await ended;
 		signal?.removeEventListener("abort", onAbort);
 		rojo[Symbol.dispose]();

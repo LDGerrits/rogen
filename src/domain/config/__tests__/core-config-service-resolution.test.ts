@@ -416,6 +416,19 @@ describe("CoreConfigService", () => {
 				);
 			});
 
+			it("should report copies dropped on one line in the order they are written", async () => {
+				const problems = await diagnosticsFor(
+					`{ "routes": { "A": "Workspace", "A": "Workspace", "A": "Workspace" } }`
+				);
+
+				expect(
+					problems.map(([, , line, column]) => [line, column])
+				).toEqual([
+					[1, 15],
+					[1, 33],
+				]);
+			});
+
 			it("should reject a Rogen key written twice", async () => {
 				const problems = await diagnosticsFor(`{
 	"routes": { "Server": "ServerScriptService" },

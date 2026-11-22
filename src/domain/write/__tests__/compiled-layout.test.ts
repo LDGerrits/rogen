@@ -473,4 +473,16 @@ describe("placeholderState", () => {
 
 		expect(await placeholderState(fs, abs("out/A.luau"))).toBe("written");
 	});
+
+	it("should count something there that is neither file nor folder as written by something else", async () => {
+		const special = Object.assign(fs, {
+			isFile: async () => false,
+			isDirectory: async () => false,
+			exists: async () => true,
+		});
+
+		expect(await placeholderState(special, abs("out/Pipe"))).toBe(
+			"written"
+		);
+	});
 });

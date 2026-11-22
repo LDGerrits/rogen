@@ -36,7 +36,7 @@ export class CoreWatchSession
 	private readonly rounds = new Sequencer();
 	private readonly updates = new Sequencer();
 	private readonly watched = new Map<string, WatchedConfig>();
-	private readonly pending = new Set<Promise<void>>();
+	private readonly pending = new Set<Promise<unknown>>();
 	private phase: "idle" | "started" | "stopping" = "idle";
 	private notices: ConfigNotice[] = [];
 	private plan: WatchPlan;
@@ -223,12 +223,11 @@ export class CoreWatchSession
 	}
 
 	private track(queued: Promise<unknown>): void {
-		const tracked = queued.then(
-			() => undefined,
-			() => undefined
-		);
-		this.pending.add(tracked);
-		void tracked.finally(() => this.pending.delete(tracked));
+		this.pending.add(queued);
+		const done = () => {
+			this.pending.delete(queued);
+		};
+		void queued.then(done, done);
 	}
 
 	private queueRewrite(
@@ -278,21 +277,17 @@ export class CoreWatchSession
 		if (notices.length === 0 && results.length === 0)
 			return Promise.resolve();
 		const announced = this.updates.queue(async () => {
-			try {
-				const reports = (await Promise.all(results)).filter(
-					(report) => report !== undefined
-				);
-				if (notices.length === 0 && reports.length === 0) return;
-				this._onDidUpdate.fire({
-					at,
-					cause,
-					changes,
-					notices,
-					reports,
-				});
-			} catch (error) {
-				this._onDidError.fire(ErrorUtils.fromUnknown(error));
-			}
+			const reports = (await Promise.all(results)).filter(
+				(report) => report !== undefined
+			);
+			if (notices.length === 0 && reports.length === 0) return;
+			this._onDidUpdate.fire({
+				at,
+				cause,
+				changes,
+				notices,
+				reports,
+			});
 		});
 		this.track(announced);
 		return announced;

@@ -67,6 +67,7 @@ export class WriteWatch {
 			if (stepPlan.isErr()) return stepPlan;
 		}
 		const printing = this.step?.prints ?? false;
+		const command = this.step?.command ?? this.command;
 		if (printing && !this.json) logService.sendOwnLinesToStderr();
 		const log: WatchReporter = this.json
 			? instantiationService.createInstance(WatchJsonLog, cwd)
@@ -79,7 +80,7 @@ export class WriteWatch {
 				: instantiationService.createInstance(
 						WatchLog,
 						cwd,
-						`${this.step?.command ?? this.command} --watch`
+						`${command} --watch`
 					);
 		const watched = watchService.watch(selection.value);
 		if (watched.isErr()) return watched;
@@ -182,7 +183,7 @@ export class WriteWatch {
 		}
 		if (failure) {
 			log.error(failure);
-			log.end(`${this.step?.command ?? this.command} --watch failed.`);
+			log.end(`${command} --watch failed.`);
 			return err(new ReportedError(failure));
 		}
 		log.end();

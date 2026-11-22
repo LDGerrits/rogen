@@ -118,7 +118,7 @@ function landingOf(
 interface Choice {
 	readonly instance: string;
 	readonly proposals: readonly Proposal[];
-	readonly reason?: string;
+	readonly reason: string;
 }
 
 const clashes = (operation: Operation, other: Operation | undefined) =>
@@ -483,10 +483,8 @@ class MirrorPlanRun {
 		const readAt = new Map<string, Set<string>>();
 		const readsAt = (folder: string, at: string) =>
 			readAt.set(folder, (readAt.get(folder) ?? new Set()).add(at));
-		for (const at of copiedFolders) {
-			const target = mirror.targetOf(at);
-			if (target !== undefined) readsAt(toNative(target), at);
-		}
+		for (const at of copiedFolders)
+			readsAt(toNative(mirror.targetOf(at)!), at);
 		const placeStillHolds = (folder: string) =>
 			[...(readAt.get(folder) ?? [])].some((at) => heldByPlace.has(at));
 		const emptied: { file: string; instance: string; parent?: string }[] =
@@ -740,13 +738,16 @@ class MirrorPlanRun {
 				this.compiled.push({ instance: key, kind: "changed" });
 				continue;
 			}
-			const meta = await this.edits.featureMeta(folder);
 			const keys = parse(decoder.decode(edit.bytes)).unwrapOr(undefined);
 			if (!isObject(keys)) continue;
-			const written = this.edits.metaWrite(meta, key, keys, edit.bytes);
-			if (written === undefined) continue;
-			if ("reason" in written) unplaced.push(written);
-			else await this.add({ ...written, from: edit.from });
+			for (const written of await this.edits.featureMetaWrites(
+				folder,
+				key,
+				keys,
+				edit.bytes
+			))
+				if ("reason" in written) unplaced.push(written);
+				else await this.add({ ...written, from: edit.from });
 		}
 		unplaced.push(
 			...metas.unplaced,
@@ -828,6 +829,7 @@ class MirrorPlanRun {
 			choices.push({
 				instance: held.instance,
 				proposals: [whereRojoWroteIt, ...whereRoutingPutsIt.proposals],
+				reason: whereRoutingPutsIt.reason,
 			});
 		}
 		for (const instance of instances) {
@@ -918,10 +920,7 @@ class MirrorPlanRun {
 					const { instance } = choices[index];
 					this.unplaced.push({
 						instance,
-						reason:
-							preferredMisses[index] ??
-							reasons[index] ??
-							"routing places it nowhere",
+						reason: preferredMisses[index] ?? reasons[index],
 					});
 					this.refused.add(instance);
 					continue;

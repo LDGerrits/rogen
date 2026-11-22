@@ -229,7 +229,7 @@ export class MirrorWorkspace {
 				await this.copyFolder(entry.target, entry.mirror, copied);
 		const files = mirror.entries.filter(({ kind }) => kind === "file");
 		for (const entry of await inBatches(files, (file) =>
-			this.copyInto(file, true)
+			this.copyInto(file)
 		))
 			if (entry) copied.push(entry);
 		copied.sort((a, b) => compareByCodePoint(a.mirror, b.mirror));
@@ -314,20 +314,15 @@ export class MirrorWorkspace {
 			else files.push({ mirror: to, target: from });
 		}
 		for (const entry of await inBatches(files, (file) =>
-			this.copyInto(file, true)
+			this.copyInto(file)
 		))
 			if (entry) copied.push(entry);
 	}
 
-	private async copyInto(
-		file: CopySource,
-		missingOk: true
-	): Promise<Copied | undefined>;
-	private async copyInto(file: CopySource): Promise<Copied>;
-	private async copyInto(
-		{ mirror, target }: CopySource,
-		missingOk = false
-	): Promise<Copied | undefined> {
+	private async copyInto({
+		mirror,
+		target,
+	}: CopySource): Promise<Copied | undefined> {
 		const { fileSystemService } = this;
 		const to = path.join(this.root, mirror);
 		let saved: number;
@@ -335,7 +330,7 @@ export class MirrorWorkspace {
 			saved = await fileSystemService.lastModified(toNative(target));
 			await fileSystemService.copyFile(toNative(target), to);
 		} catch (error) {
-			if (missingOk && isMissingPath(error as Error)) return undefined;
+			if (isMissingPath(error as Error)) return undefined;
 			throw error;
 		}
 		return {

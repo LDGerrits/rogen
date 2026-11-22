@@ -66,6 +66,12 @@ describe("JsoncComments", () => {
 			]);
 		});
 
+		it("should find the entries of an object inside an array by their path", () => {
+			const comments = of('[\n  {\n    // first\n    "a": 1\n  }\n]');
+
+			expect(comments.at([0, "a"]).leading).toEqual([["// first"]]);
+		});
+
 		it("should put a comment between a key and its value with the entry", () => {
 			const comments = of('{ "a": /* why */ 1 }');
 

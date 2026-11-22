@@ -452,6 +452,75 @@ describe("CoreConfigService", () => {
 			]);
 		});
 
+		it("should refuse routes under a root with neither a class nor a $path", async () => {
+			await write("/repo/default.rogen.json", {
+				tree: {},
+				routes: ROUTED,
+			});
+
+			await start();
+
+			expect(errors(0)).toMatchObject([
+				{
+					code: "tree.rootNotDataModel",
+					message: expect.stringContaining(
+						"is a node without a class"
+					),
+				},
+			]);
+		});
+
+		it.each([
+			[
+				null,
+				' null removes nothing: to leave a mounted node out of a project, list its folder in "globIgnorePaths".',
+			],
+			[5, ""],
+		])(
+			"should refuse a nested child that is %s rather than a node",
+			async (value, hint) => {
+				await write("/repo/default.rogen.json", {
+					tree: {
+						$className: "DataModel",
+						Workspace: { Thing: value },
+					},
+				});
+
+				await start();
+
+				expect(errors(0)).toMatchObject([
+					{
+						code: "config.wrongType",
+						message: `"tree.Workspace.Thing" must be an object.${hint}`,
+					},
+				]);
+			}
+		);
+
+		it("should suggest nothing for a $ field of a node that nothing is close to", async () => {
+			await write("/repo/default.rogen.json", {
+				tree: { $className: "DataModel", Workspace: { $zzzzzzzz: 1 } },
+			});
+
+			await start();
+
+			expect(errors(0)[0].message).toBe(
+				'"tree.Workspace.$zzzzzzzz" is not a field of a node, and Rojo rejects a project file with a field it doesn\'t know.'
+			);
+		});
+
+		it("should suggest nothing for a field of a sync rule that nothing is close to", async () => {
+			await write("/repo/default.rogen.json", {
+				syncRules: [{ pattern: "*.md", use: "text", zzzzzzzz: 1 }],
+			});
+
+			await start();
+
+			expect(warningsOf(0)[0].message).toBe(
+				'"zzzzzzzz" is not a field of a sync rule, so Rojo ignores it.'
+			);
+		});
+
 		it("should accept any root without routes", async () => {
 			await write("/repo/default.rogen.json", { tree: { $path: "lib" } });
 

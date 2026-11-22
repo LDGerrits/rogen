@@ -219,6 +219,12 @@ describe("exitCode", () => {
 			143,
 		],
 		["finished after SIGHUP", ok(undefined), "SIGHUP", 129],
+		[
+			"finished after a signal the system lacks",
+			ok(undefined),
+			"SIGLOST",
+			128,
+		],
 	] as const)(
 		"should be, for a run that %s, the code of the signal, else of the outcome",
 		(_, outcome: Result<void, Error>, signal, code) => {

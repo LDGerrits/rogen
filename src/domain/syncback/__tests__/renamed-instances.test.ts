@@ -225,4 +225,135 @@ describe("renamedInstances", () => {
 			{ target: posix("src/Store/New@Server.luau") },
 		]);
 	});
+
+	it("should keep the ^ of a hoisted folder it renames", async () => {
+		const { placed } = await layoutOf(["src/Ui/^Hud/Health.luau"]);
+
+		const [rename] = renamesOf(
+			[
+				{
+					parent: ["ReplicatedStorage", "Shared"],
+					name: "Bar",
+					folder: true,
+					files: [["Bar", "Health.luau"]],
+					parentFolder: "m/shared",
+				},
+			],
+			new Map([["m/shared/Hud", posix("src/Ui/^Hud")]]),
+			placed
+		);
+
+		expect(rename.renamed).toBe(posix("src/Ui/^Bar"));
+	});
+
+	it("should take the first of two files that make the same instance as its old file", async () => {
+		const { placed } = await layoutOf(["src/Shop@Server/Hit.luau"]);
+		const [hit] = placed;
+
+		const [rename] = renamesOf(
+			[renamedTo("server", "Store", [["Store", "Hit.luau"]])],
+			new Map([["m/server/Shop", posix("src/Shop@Server")]]),
+			[hit, { ...hit, source: posix("src/Shop@Server/Hit.server.luau") }]
+		);
+
+		expect([...rename.files.values()]).toEqual([
+			{ target: posix("src/Store@Server/Hit.luau") },
+		]);
+	});
+
+	it("should find no rename in a removed file that made no folder", async () => {
+		const { placed } = await layoutOf([
+			"src/Shop@Server/Hit.luau",
+			"src/Old@Server.luau",
+		]);
+
+		expect(
+			renamesOf(
+				[renamedTo("server", "Store", [["Store", "Hit.luau"]])],
+				new Map([["m/server/Old.luau", posix("src/Old@Server.luau")]]),
+				placed
+			)
+		).toEqual([]);
+	});
+
+	it("should find no rename from a folder whose name doesn't spell the old instance", async () => {
+		const { placed } = await layoutOf(["src/Shop@Server/Hit.luau"]);
+
+		expect(
+			renamesOf(
+				[renamedTo("server", "Store", [["Store", "Hit.luau"]])],
+				new Map([["m/server/Shop", posix("src/Shop@Server")]]),
+				placed.map((file) => ({
+					...file,
+					folderNodes: file.folderNodes?.map((node) => ({
+						...node,
+						folder: posix("src/Market@Server"),
+					})),
+				}))
+			)
+		).toEqual([]);
+	});
+
+	it("should find no rename when a meta of the new instance has no file in the old folder", async () => {
+		const { placed } = await layoutOf(["src/Shop@Server/Hit.luau"]);
+
+		expect(
+			renamesOf(
+				[
+					renamedTo("server", "Store", [
+						["Store", "Hit.luau"],
+						["Store", "Hit.meta.json"],
+					]),
+				],
+				new Map([
+					[
+						"m/server/Shop/Hit.luau",
+						posix("src/Shop@Server/Hit.luau"),
+					],
+				]),
+				placed
+			)
+		).toEqual([]);
+	});
+
+	it("should find no rename when a file of the old instance lies outside its folder", async () => {
+		const { placed } = await layoutOf(
+			["src/Shop/Server/Hit.luau", "lib/Shop/Server/Util.luau"],
+			{ sourcePaths: [abs("src"), abs("lib")] }
+		);
+
+		expect(
+			renamesOf(
+				[
+					renamedTo("server", "Store", [
+						["Store", "Hit.luau"],
+						["Store", "Util.luau"],
+					]),
+				],
+				new Map([
+					[
+						"m/server/Shop/Hit.luau",
+						posix("src/Shop/Server/Hit.luau"),
+					],
+					[
+						"m/server/Shop/Util.luau",
+						posix("lib/Shop/Server/Util.luau"),
+					],
+				]),
+				placed
+			)
+		).toEqual([]);
+	});
+
+	it("should find no rename when the new instance holds only children it can't name by a sibling", async () => {
+		const { placed } = await layoutOf(["src/Shop@Server/Hit.luau"]);
+
+		expect(
+			renamesOf(
+				[renamedTo("server", "Store", [["Store", "New.luau"]])],
+				new Map([["m/server/Shop", posix("src/Shop@Server")]]),
+				placed
+			)
+		).toEqual([]);
+	});
 });

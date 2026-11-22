@@ -226,7 +226,7 @@ export class StartedServer extends AbstractDisposable {
 						: undefined;
 				if (!current()) return;
 				if (info) {
-					if (!this.child.markReady()) return;
+					this.child.markReady();
 					this.servedProject = info.project;
 					generation.serving = info;
 					if (info.session !== undefined)

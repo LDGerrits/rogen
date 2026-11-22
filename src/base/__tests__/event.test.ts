@@ -192,6 +192,20 @@ describe("Emitter and Event", () => {
 	});
 });
 
+describe("Emitter disposal", () => {
+	it("should do nothing when disposed a second time", () => {
+		const emitter = new Emitter<number>();
+		const listener = jest.fn();
+		emitter.event(listener);
+
+		emitter[Symbol.dispose]();
+		emitter[Symbol.dispose]();
+		emitter.fire(1);
+
+		expect(listener).not.toHaveBeenCalled();
+	});
+});
+
 describe("NullEvent", () => {
 	it("should never tell a listener anything, and hand back something to dispose", () => {
 		const listener = jest.fn();

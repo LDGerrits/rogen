@@ -1,11 +1,5 @@
 import path from "path";
-import {
-	PathSet,
-	samePath,
-	selfAndAncestors,
-	stemOf,
-	toPosix,
-} from "../../../base/path.js";
+import { PathSet, samePath, stemOf, toPosix } from "../../../base/path.js";
 import { listLimited } from "../../../base/strings.js";
 import {
 	Diagnostic,
@@ -254,8 +248,6 @@ export class CompiledPathCheck {
 		for (const sourcePath of config.sourcePaths) {
 			if (!emittedTops.get(sourcePath)?.synced) continue;
 			const compiledDir = compiledPathOf(layout, sourcePath);
-			if (!(await this.fileSystemService.isDirectory(compiledDir)))
-				continue;
 			const made = await this.madeBy(sourcePath, layout);
 			for (const file of await this.filesUnder(compiledDir, true)) {
 				if (
@@ -269,8 +261,7 @@ export class CompiledPathCheck {
 				)
 					continue;
 				const dir = path.dirname(file);
-				const listed = orphans.get(dir) ?? [];
-				if (!listed.includes(file)) orphans.set(dir, [...listed, file]);
+				orphans.set(dir, [...(orphans.get(dir) ?? []), file]);
 			}
 		}
 
@@ -381,14 +372,11 @@ export class CompiledPathCheck {
 				path.join(compiledPath, ...segments.slice(index + 1))
 			);
 
-		if (await this.fileSystemService.isDirectory(compiledPath)) {
-			for (const [
-				name,
-				type,
-			] of await this.fileSystemService.readDirectory(compiledPath))
-				if (isDirectoryType(type))
-					candidates.push(path.join(compiledPath, name, ...segments));
-		}
+		for (const [name, type] of await this.fileSystemService.readDirectory(
+			compiledPath
+		))
+			if (isDirectoryType(type))
+				candidates.push(path.join(compiledPath, name, ...segments));
 
 		for (const candidate of candidates)
 			if (await this.fileSystemService.exists(candidate))
@@ -400,8 +388,9 @@ export class CompiledPathCheck {
 		target: string
 	): Promise<string | undefined> {
 		if (await this.fileSystemService.exists(target)) return undefined;
-		for (const dir of [...selfAndAncestors(target)].slice(1))
-			if (await this.fileSystemService.exists(dir)) return dir;
-		return undefined;
+		let dir = path.dirname(target);
+		while (!(await this.fileSystemService.exists(dir)))
+			dir = path.dirname(dir);
+		return dir;
 	}
 }

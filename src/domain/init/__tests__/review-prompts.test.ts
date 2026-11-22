@@ -26,6 +26,13 @@ describe("ReviewPrompts", () => {
 		expect(review.asked).toBe(2);
 	});
 
+	it("should take yes for a quick confirm that names no default", async () => {
+		const real = new MockPromptService([]);
+
+		expect(await reviewOf(real).quick.confirm({ message: "A" })).toBe(true);
+		expect(real.asked).toEqual([]);
+	});
+
 	it("should ask an essential question, and not ask it twice", async () => {
 		const real = new MockPromptService(["luau"]);
 		const review = reviewOf(real);

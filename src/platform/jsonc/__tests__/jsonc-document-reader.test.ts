@@ -82,6 +82,26 @@ describe("platform/jsonc/jsonc-document-reader", () => {
 				});
 			});
 
+			it("should take any value where the structure names no type", () => {
+				const result = read('{ "any": [1, "two"] }', {
+					type: "object",
+					properties: { any: {} },
+				});
+
+				expect(result.isOk()).toBe(true);
+			});
+
+			it("should reject every field of an object that takes none", () => {
+				const result = read('{ "name": "a" }', {
+					type: "object",
+					additionalProperties: false,
+				});
+
+				expect(result.isErr() && result.error[0].message).toBe(
+					'unknown field "name".'
+				);
+			});
+
 			it("should suggest the listed field a misspelled one is closest to", () => {
 				const [diagnostic] = failures('{ "nmae": "a" }');
 

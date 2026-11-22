@@ -177,6 +177,49 @@ describe("addedNode", () => {
 			],
 		],
 		["a model file that is no JSON", [file("Buy.model.json", "{")]],
+		[
+			"a model file whose properties are no object",
+			[
+				file(
+					"Buy.model.json",
+					JSON.stringify({ className: "RemoteEvent", properties: 3 })
+				),
+			],
+		],
+		[
+			"a model file with a child that has no class",
+			[
+				file(
+					"Shop.model.json",
+					JSON.stringify({
+						className: "Configuration",
+						children: [{ name: "Buy" }],
+					})
+				),
+			],
+		],
+		[
+			"a text file whose meta file sets what a StringValue node can't",
+			[
+				file("Label.txt", "hello"),
+				file(
+					"Label.meta.json",
+					JSON.stringify({ className: "Configuration" })
+				),
+			],
+		],
+		[
+			"a file beside a folder",
+			[folder("Group"), file("Label.txt", "hello")],
+		],
+		[
+			"a folder whose init meta file gives a class that is no name",
+			[file("Group/init.meta.json", JSON.stringify({ className: 3 }))],
+		],
+		[
+			"a folder that holds a child named as a field of a node",
+			[folder("Group"), folder("Group/$className")],
+		],
 	])("should make no node of %s", (_, entries) => {
 		expect(addedNode(entries)).toBeUndefined();
 	});

@@ -256,6 +256,10 @@ describe("InitQuestions askProject", () => {
 		});
 	});
 
+	it("should resolve undefined when the places question is cancelled", async () => {
+		expect((await ask(luau, { places: CANCEL })).unwrap()).toBeUndefined();
+	});
+
 	it("should resolve undefined when the language question is cancelled", async () => {
 		expect((await ask(rbxts, [CANCEL])).unwrap()).toBeUndefined();
 	});

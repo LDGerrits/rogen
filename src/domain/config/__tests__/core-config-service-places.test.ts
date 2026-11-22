@@ -183,6 +183,26 @@ describe("CoreConfigService selectCovering", () => {
 		]);
 	});
 
+	it("should name the readers of a folder by the folder itself", async () => {
+		expect(
+			await service.readersOf(onDisk("/repo/places/shared/src"))
+		).toEqual([
+			"/repo/places/arena/default.rogen.json",
+			"/repo/places/lobby/default.rogen.json",
+		]);
+	});
+
+	it("should fail when the config covering a path can't be selected", async () => {
+		await write("/repo/places/lobby/dist.rogen.json", {});
+		await write("/repo/places/lobby/dist.rogen.jsonc", {});
+
+		const result = await service.selectCovering([
+			onDisk("/repo/places/lobby/dist.rogen.json"),
+		]);
+
+		expect(result.isErr()).toBe(true);
+	});
+
 	it("should name no reader for a file in no place's source paths", async () => {
 		await start();
 
@@ -359,6 +379,22 @@ describe("CoreConfigService coversOf", () => {
 
 		expect(await service.coversOf("/repo/gone.project.json")).toEqual([
 			{ file: "/repo/gone.project.json", whole: true },
+		]);
+	});
+	it("should keep a plain project file when only plain projects lie above it, up to the root", async () => {
+		await write("/default.project.json", { name: "Root" });
+
+		expect(await service.coversOf("/repo/tools/run.luau")).toEqual([
+			{ file: "/repo/tools/default.project.json", whole: false },
+		]);
+	});
+
+	it("should keep a plain project file when the config above it is broken", async () => {
+		await fs.delete("/repo/default.rogen.json");
+		await write("/default.rogen.json", "{");
+
+		expect(await service.coversOf("/repo/tools/run.luau")).toEqual([
+			{ file: "/repo/tools/default.project.json", whole: false },
 		]);
 	});
 });

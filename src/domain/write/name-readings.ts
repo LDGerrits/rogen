@@ -55,7 +55,7 @@ export class NameReadings {
 		private readonly keys: DeclaredKeys,
 		private readonly initNames: ReadonlySet<string>,
 		roots: readonly ScannedRoot[],
-		private readonly projectNames: ReadonlyMap<string, string> = new Map()
+		private readonly projectNames: ReadonlyMap<string, string>
 	) {
 		this.reader = new NameReader(keys);
 		for (const root of roots) {
@@ -146,10 +146,9 @@ export class NameReadings {
 		dir: string
 	): InstancelessFolder | undefined {
 		if (dir === "") return "a source path";
-		const folder = this._folders.get(joinPosix(sourcePath, dir));
-		if (folder?.keptName !== undefined)
-			return folder.invisible ? "an invisible folder" : undefined;
-		return folder?.route !== undefined ? "a routing folder" : undefined;
+		const folder = this._folders.get(joinPosix(sourcePath, dir))!;
+		if (folder.keptName === undefined) return "a routing folder";
+		return folder.invisible ? "an invisible folder" : undefined;
 	}
 
 	isMistyped(resource: string): boolean {

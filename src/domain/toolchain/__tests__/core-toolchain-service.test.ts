@@ -70,6 +70,15 @@ describe("CoreToolchainService.detect", () => {
 			}
 		);
 
+		it("should watch through the local compiler when package.json can't be read", async () => {
+			await write("tsconfig.json", "{}");
+			await fs.createDirectory(path.join(cwd, "package.json"));
+
+			expect(
+				rbxts(await toolchain().detect(cwd)).compiler?.compileCommand
+			).toBe("npx rbxtsc -w");
+		});
+
 		it("should detect roblox-ts from tsconfig.json", async () => {
 			await write("tsconfig.json", "{}");
 
@@ -247,6 +256,22 @@ describe("CoreToolchainService.detect", () => {
 				rbxts(await toolchain().detect(cwd)).configuredSourcePath()
 			).toBe("../node_modules/@acme/tsconfig/shared");
 		});
+
+		it.each([
+			["a folder", undefined],
+			["not an object", "5"],
+		])(
+			"should compile to out when tsconfig.json is %s",
+			async (_, text) => {
+				if (text === undefined)
+					await fs.createDirectory(path.join(cwd, "tsconfig.json"));
+				else await write("tsconfig.json", text);
+
+				expect(
+					rbxts(await toolchain().detect(cwd)).compiler?.outDir
+				).toBe("out");
+			}
+		);
 
 		it("should stop at a loop or a base that is missing", async () => {
 			await write(

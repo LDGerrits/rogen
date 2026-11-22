@@ -19,13 +19,7 @@ const REFUSED_CODES = ["ECONNREFUSED", "EADDRNOTAVAIL"];
 function failureOf(error: unknown): RequestFailure {
 	const name = (error as { name?: unknown } | null)?.name;
 	if (name === "TimeoutError" || name === "AbortError") return "timeout";
-	return ErrorUtils.hasCode(error, ...REFUSED_CODES) ||
-		ErrorUtils.hasCode(
-			(error as { cause?: unknown } | null)?.cause,
-			...REFUSED_CODES
-		)
-		? "refused"
-		: "failed";
+	return ErrorUtils.hasCode(error, ...REFUSED_CODES) ? "refused" : "failed";
 }
 
 /**
@@ -41,14 +35,10 @@ export class NativeRequestService implements RequestService {
 	): Promise<Result<HttpResponse, RequestError>> {
 		return new Promise((resolve) => {
 			const fail = (caught: unknown) => {
-				const message = (caught as { message?: unknown } | null)
-					?.message;
 				resolve(
 					err(
 						new RequestError(
-							typeof message === "string" && message !== ""
-								? message
-								: ErrorUtils.fromUnknown(caught).message,
+							ErrorUtils.fromUnknown(caught).message,
 							failureOf(caught),
 							{ cause: caught }
 						)
@@ -73,7 +63,7 @@ export class NativeRequestService implements RequestService {
 							response.on("end", () =>
 								resolve(
 									ok({
-										status: response.statusCode ?? 0,
+										status: response.statusCode!,
 										contentType:
 											response.headers["content-type"],
 										body: new Uint8Array(

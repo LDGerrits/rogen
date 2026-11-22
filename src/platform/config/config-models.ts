@@ -7,7 +7,7 @@ export function sectionPath(section: ConfigSection): readonly string[] {
 export class ConfigModel {
 	public readonly keys: string[];
 
-	constructor(public readonly contents: Record<string, unknown> = {}) {
+	constructor(public readonly contents: Record<string, unknown>) {
 		this.keys = Object.keys(contents);
 	}
 

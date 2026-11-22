@@ -284,7 +284,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		instancePath: readonly string[],
 		data: Partial<RojoNode>
 	): void {
-		if (instancePath.length === 0) return;
 		const parent = this.ensureContainer(instancePath.slice(0, -1));
 		const leaf = instancePath[instancePath.length - 1];
 		const existing = getOwn(parent, leaf);

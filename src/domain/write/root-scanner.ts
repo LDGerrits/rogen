@@ -93,7 +93,7 @@ export class ScannedRoot implements ScannedRootParts {
 		sourcePath: string,
 		index: IndexReader,
 		fileAt: FileAt,
-		unreadable: readonly string[] = []
+		unreadable: readonly string[]
 	): ScannedRoot {
 		return new ScannedRoot(
 			{
@@ -160,12 +160,11 @@ export class ScannedRoot implements ScannedRootParts {
 				this.sourcePath,
 				path.posix.dirname(metaFile)
 			);
-			const listing =
-				this.index.getEntries(dir) ?? new Map<string, FileType>();
+			const listing = this.index.getEntries(dir)!;
 			const siblings = [...listing]
 				.filter(([, type]) => isFileType(type))
 				.map(([sibling]) => this.fileAt(joinPosix(dir, sibling)));
-			const name = RojoFile.metaStemOf(fileName) ?? fileName;
+			const name = RojoFile.metaStemOf(fileName)!;
 			if (siblings.some((file) => file.metaName === name)) return [];
 
 			const folder = listing.get(name);
@@ -407,7 +406,7 @@ export class RootScanner {
 					isDirectoryType(type) ||
 					this.fileAt(joinPosix(dir, name)).kind
 				)
-					odd(name, PortableName.problemWith(name) ?? "", true);
+					odd(name, PortableName.problemWith(name)!, true);
 			} else if (type === FileType.SymbolicLink) {
 				walk.leftOut.set(joinPosix(dir, name), { status: "skipped" });
 			} else if (isDirectoryType(type)) {

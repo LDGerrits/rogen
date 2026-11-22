@@ -86,27 +86,32 @@ export class MountedInstances {
 	): Promise<string | undefined> {
 		let directory = toPosix(mount.path);
 		if (!(await this.fileReader.isDirectory(directory))) return undefined;
-		for (const [at, name] of names.entries()) {
+		for (const name of names.slice(0, -1)) {
 			const entries = await this.fileReader.readDirectory(directory);
-			const last = at === names.length - 1;
-			const folder = entries.find(
-				([entry, type]) => entry === name && isDirectoryType(type)
-			);
-			if (folder) {
-				const inside = path.posix.join(directory, name);
-				if (last) return (await this.initFileIn(inside)) ?? inside;
-				directory = inside;
-				continue;
-			}
-			if (!last) return undefined;
-			const file = entries.find(
-				([entry, type]: [string, FileType]) =>
-					!isDirectoryType(type) &&
-					this.instanceNameOf(directory, entry) === name
-			);
-			return file && path.posix.join(directory, file[0]);
+			if (
+				!entries.some(
+					([entry, type]) => entry === name && isDirectoryType(type)
+				)
+			)
+				return undefined;
+			directory = path.posix.join(directory, name);
 		}
-		return undefined;
+		const name = names[names.length - 1];
+		const entries = await this.fileReader.readDirectory(directory);
+		if (
+			entries.some(
+				([entry, type]) => entry === name && isDirectoryType(type)
+			)
+		) {
+			const inside = path.posix.join(directory, name);
+			return (await this.initFileIn(inside)) ?? inside;
+		}
+		const file = entries.find(
+			([entry, type]: [string, FileType]) =>
+				!isDirectoryType(type) &&
+				this.instanceNameOf(directory, entry) === name
+		);
+		return file && path.posix.join(directory, file[0]);
 	}
 
 	private instanceNameOf(

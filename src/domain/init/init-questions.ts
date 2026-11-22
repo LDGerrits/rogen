@@ -42,7 +42,7 @@ export class InitQuestions {
 
 	constructor(
 		readonly interactive: boolean,
-		readonly choices: InitChoices = {},
+		readonly choices: InitChoices,
 		private readonly review: ReviewPrompts | undefined,
 		@PromptService private readonly promptService: PromptService
 	) {}
@@ -157,7 +157,7 @@ export class InitQuestions {
 	async places(
 		directory: InitDirectory,
 		language: Language,
-		unplaced: UnplacedCode = {}
+		unplaced: UnplacedCode
 	): Promise<boolean | undefined> {
 		const given = this.choices.places;
 		if (given !== undefined) return given;

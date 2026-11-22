@@ -150,13 +150,13 @@ const SECTION_OPENING =
 	/^(Error|Warning)(?:, or error)?[.,]\s+(.*?[.!?])(?:\s|$)/s;
 
 function codeBrief(code: string) {
-	const [, paragraph = ""] = helpTexts.diagnostics[code].split("\n\n");
-	const [, severity, summary] = SECTION_OPENING.exec(paragraph) ?? [];
+	const [, paragraph] = helpTexts.diagnostics[code].split("\n\n");
+	const [, severity, summary] = SECTION_OPENING.exec(paragraph)!;
 	return {
 		code,
 		severity:
 			severity === "Error" ? ("error" as const) : ("warning" as const),
-		summary: (summary ?? paragraph).replace(/\s+/g, " "),
+		summary: summary.replace(/\s+/g, " "),
 		url: diagnosticUrl(code),
 	};
 }

@@ -188,7 +188,7 @@ export class FailedConfig extends AbstractConfigOutcome {
 	static before(
 		config: ResolvedConfig,
 		diagnostics: readonly Diagnostic[],
-		sync: SyncWarnings = SyncWarnings.unknown
+		sync: SyncWarnings
 	): FailedConfig {
 		return new FailedConfig(config, diagnostics.filter(isError), {
 			warnings: diagnostics.filter((diagnostic) => !isError(diagnostic)),

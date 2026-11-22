@@ -104,6 +104,29 @@ describe("WrittenSyncRules", () => {
 		]);
 	});
 
+	it("should move the exclude with the pattern when the moved pattern still takes every file", () => {
+		const rule: SyncRule = {
+			pattern: "src/*.md",
+			exclude: "src/*.spec.md",
+			use: "text",
+		};
+
+		expect(
+			writtenBy([rule], ["src/A.md"], { compiledPath: abs("out") })
+		).toEqual([{ ...rule, pattern: "out/*.md", exclude: "out/*.spec.md" }]);
+	});
+
+	it("should keep the exclude of the rule it keeps where a mount lies", () => {
+		const rule = { ...module, exclude: "src/*.spec.module" };
+
+		expect(
+			writtenBy([rule], [], { compiledPath: abs("out") }, ["src/Vendor"])
+		).toEqual([
+			{ ...rule, pattern: "out/*.module", exclude: "out/*.spec.module" },
+			rule,
+		]);
+	});
+
 	it("should leave a pattern that begins with a wildcard where it is", () => {
 		const rule: SyncRule = { pattern: "**/*.note", use: "text" };
 

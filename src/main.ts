@@ -101,7 +101,7 @@ function currentFolder(): string | undefined {
 	}
 }
 
-function isLongRunning(
+export function isLongRunning(
 	metadata: { longRunning?: boolean; longRunningWith?: string } | undefined,
 	options: Readonly<Record<string, unknown>>
 ): boolean {
@@ -112,7 +112,7 @@ function isLongRunning(
 	);
 }
 
-class UpdateNotice {
+export class UpdateNotice {
 	private readonly found: Promise<string | undefined>;
 
 	constructor(
@@ -130,8 +130,10 @@ class UpdateNotice {
 	}
 }
 
-export default function run(): void {
-	new RogenMain().main().catch((error) => {
+export default function run(
+	args: readonly string[] = process.argv.slice(2)
+): Promise<void> {
+	return new RogenMain(args).main().catch((error) => {
 		console.error("Fatal Error:", error);
 		process.exitCode = 1;
 	});
@@ -211,6 +213,8 @@ function registerDomainServices(
 class RogenMain {
 	private readonly disposables = new DisposableStore();
 
+	constructor(private readonly rawArgs: readonly string[]) {}
+
 	async main(): Promise<void> {
 		try {
 			await this.startup();
@@ -223,12 +227,12 @@ class RogenMain {
 		const commandRegistry = Registry.as<CommandRegistry>(
 			Extensions.Commands
 		);
-		const rawArgs = process.argv.slice(2);
-		const parse = (args: string[]) =>
-			parseArgs(args, (command) => commandRegistry.getOptions(command), [
-				...commandRegistry.getCommands().keys(),
-			]);
-		const argsResult = parse(rawArgs);
+		const rawArgs = [...this.rawArgs];
+		const argsResult = parseArgs(
+			rawArgs,
+			(command) => commandRegistry.getOptions(command),
+			[...commandRegistry.getCommands().keys()]
+		);
 
 		const json = hasFlag(rawArgs, JsonOption);
 		const options = argsResult.isOk()

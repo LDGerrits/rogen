@@ -146,6 +146,8 @@ describe("isGlobsetMatch", () => {
 		["/p/src/deep/x.luau", "/p/src/deep/**", true],
 		["a!b.luau", "a[!]b.luau", true],
 		["axb.luau", "a[!]b.luau", false],
+		["a[b", "a[b", true],
+		["ab", "a[b", false],
 	])("should test %s against %s as %s", (name, glob, matches) => {
 		expect(isGlobsetMatch(name, glob)).toBe(matches);
 	});

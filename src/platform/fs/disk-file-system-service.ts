@@ -218,7 +218,7 @@ export class DiskFileSystemService implements FileSystemService {
 		} catch (error) {
 			if (ErrorUtils.hasCode(error, "EEXIST")) return false;
 			if (!isHardLinkUnsupported(error)) throw error;
-			return this.createExclusiveWithoutLink(filePath, content);
+			return await this.createExclusiveWithoutLink(filePath, content);
 		} finally {
 			await fs.promises.rm(staged, { force: true });
 		}

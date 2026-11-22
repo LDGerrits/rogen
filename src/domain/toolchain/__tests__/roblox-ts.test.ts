@@ -58,6 +58,10 @@ describe("RobloxTs", () => {
 			new RobloxTs({ outDir: "build/game" }, true).reservedFolders
 		).toEqual(["include", "build"]);
 		expect(new RobloxTs({}, false).reservedFolders).toEqual(["include"]);
+		expect(new RobloxTs({ outDir: "." }, true).reservedFolders).toEqual([
+			"include",
+			".",
+		]);
 	});
 
 	it("should offer the source path tsconfig.json names, without a leading ./", () => {

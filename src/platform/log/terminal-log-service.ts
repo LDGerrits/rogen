@@ -8,10 +8,6 @@ import {
 } from "./abstract-log-service.js";
 
 class UncolouredStdout extends Writable {
-	get columns(): number | undefined {
-		return process.stdout.columns;
-	}
-
 	override _write(
 		chunk: unknown,
 		_encoding: BufferEncoding,
@@ -91,11 +87,8 @@ export class TerminalLogService extends AbstractLogService {
 			case "trace":
 				nested(this.style("dim", text));
 				break;
-			case "info":
-				nested(text);
-				break;
 			default:
-				kind satisfies never;
+				nested(text);
 		}
 	}
 

@@ -160,9 +160,7 @@ export class CoreServeSession
 			ending.kind === "exited" && ending.exit.kind !== "interrupted"
 				? ending.exit
 				: undefined;
-		const ended =
-			this.target ??
-			(ending.kind === "exited" ? ending.exit.target : undefined);
+		const ended = this.target;
 		return {
 			kind: "shutdown",
 			...(exit && { exit }),

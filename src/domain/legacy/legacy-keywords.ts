@@ -67,7 +67,7 @@ export class LegacyKeywords {
 	private readonly camelPrefix: RegExp;
 	private readonly spelled: Readonly<Record<string, string>>;
 
-	constructor(aliases: Readonly<Record<string, string>> = {}) {
+	constructor(aliases: Readonly<Record<string, string>>) {
 		this.spelled = { ...SERVICES, ...aliases };
 		for (const [key, service] of Object.entries(this.spelled))
 			this.byLower.set(key.toLowerCase(), { key, service });
@@ -91,12 +91,12 @@ export class LegacyKeywords {
 	}
 
 	keyOf(word: string): string {
-		return this.byLower.get(word.toLowerCase())?.key ?? word;
+		return this.byLower.get(word.toLowerCase())!.key;
 	}
 
 	targetOf(word: string, settings: LayoutSettings): string {
 		const lower = word.toLowerCase();
-		let service = this.byLower.get(lower)?.service ?? SERVICES.Shared;
+		let service = this.byLower.get(lower)!.service;
 		const wrapper = SERVER_CONTAINERS.has(service)
 			? SERVER
 			: CLIENT_CONTAINERS.has(service)

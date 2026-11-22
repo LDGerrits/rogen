@@ -101,6 +101,27 @@ describe("NativeRequestService", () => {
 		expect(result.isErr() && result.error.reason).toBe("refused");
 	});
 
+	it("should say a port nothing listens on refused over https too", async () => {
+		const server = net.createServer();
+		const port = await listen(server);
+		await close(server);
+
+		const result = await service.request(`https://127.0.0.1:${port}/`, {
+			timeout: 2_000,
+		});
+
+		expect(result.isErr() && result.error.reason).toBe("refused");
+	});
+
+	it("should fail on an address that is not a URL", async () => {
+		const result = await service.request("not a url", { timeout: 2_000 });
+
+		expect(result.isErr() && result.error).toMatchObject({
+			reason: "failed",
+			message: "Invalid URL",
+		});
+	});
+
 	it("should give up on a server that never answers", async () => {
 		const sockets: net.Socket[] = [];
 		const server = net.createServer((socket) => sockets.push(socket));
@@ -117,6 +138,18 @@ describe("NativeRequestService", () => {
 });
 
 describe("readBody", () => {
+	it("should refuse a body without a type", () => {
+		const result = readBody({
+			status: 200,
+			contentType: undefined,
+			body: new Uint8Array(),
+		});
+
+		expect(result.isErr() && result.error.message).toBe(
+			"Unexpected content type (none)."
+		);
+	});
+
 	it("should refuse a body of another type", () => {
 		const result = readBody({
 			status: 200,

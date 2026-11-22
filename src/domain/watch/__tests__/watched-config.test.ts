@@ -1,4 +1,5 @@
 import { DeferredPromise } from "../../../base/async.js";
+import { warningDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { SyncWarnings, WrittenConfig } from "../../write/write.js";
 import { configOf } from "../../write/__tests__/fixtures.js";
 import { WatchedConfig } from "../watched-config.js";
@@ -63,5 +64,28 @@ describe("WatchedConfig", () => {
 		]);
 
 		expect(order).toEqual([1, 2]);
+	});
+
+	it("should call a warning fixed when one of its code now names another file", () => {
+		const watched = new WatchedConfig();
+		const warned = (resource: string) =>
+			new WrittenConfig(
+				configOf(),
+				"wrote",
+				{
+					warnings: [
+						warningDiagnostic("x.warned", { resource }, "Warned."),
+					],
+					sync: SyncWarnings.unknown,
+				},
+				summary,
+				[]
+			);
+		watched.finished(warned("/repo/a.luau"));
+
+		const report = watched.finished(warned("/repo/b.luau"));
+
+		expect(report.unreported).toMatchObject([{ resource: "/repo/b.luau" }]);
+		expect(report.fixed).toMatchObject([{ resource: "/repo/a.luau" }]);
 	});
 });

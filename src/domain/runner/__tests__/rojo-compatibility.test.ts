@@ -134,6 +134,22 @@ describe("RojoCompatibility", () => {
 		);
 	});
 
+	it("should count the ! globs a Rojo before 7.7.0 ignores", async () => {
+		await written({ name: "game", globIgnorePaths: ["!a", "!b"] });
+
+		const [problem] = await problems("7.6.1", false);
+
+		expect(problem.message).toContain(
+			'ignores what this file\'s 2 re-include: "!a", "!b".'
+		);
+	});
+
+	it("should say nothing of a Rojo whose version it can't read", async () => {
+		await written({ name: "game", globIgnorePaths: ["!a"] });
+
+		expect(await problems("unknown", false)).toEqual([]);
+	});
+
 	it.each(["7.7.0", "7.7.1"])(
 		"should accept a ! glob from Rojo %s",
 		async (version) => {
@@ -191,12 +207,17 @@ describe("RojoCompatibility", () => {
 		expect(await problems("7.7.0")).toEqual([]);
 	});
 
-	it("should skip a file that isn't there or isn't JSON", async () => {
+	it("should skip a file that isn't there, isn't JSON or isn't an object", async () => {
 		await fs.writeFile("/repo/other.project.json", "{");
+		await fs.writeFile("/repo/list.project.json", "[]");
 
 		const found = await compatibility(true).problemsIn(
 			rojo("7.7.0"),
-			["/repo/missing.project.json", "/repo/other.project.json"],
+			[
+				"/repo/missing.project.json",
+				"/repo/other.project.json",
+				"/repo/list.project.json",
+			],
 			"sourcemap"
 		);
 

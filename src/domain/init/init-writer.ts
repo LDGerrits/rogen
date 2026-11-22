@@ -79,7 +79,7 @@ export class InitWriter {
 	async write(
 		plan: InitPlan,
 		onWritten: (written: InitWritten) => void,
-		dryRun = false
+		dryRun: boolean
 	): Promise<Result<void, Error>> {
 		const log = this.instantiationService.createInstance(
 			UndoLog,

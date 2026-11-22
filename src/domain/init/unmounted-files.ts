@@ -28,7 +28,7 @@ export class UnmountedFiles {
 		sourcePaths: readonly string[],
 		mounted: readonly string[],
 		ignored: readonly string[],
-		compiled: readonly string[] = []
+		compiled: readonly string[]
 	): Promise<string[]> {
 		const roots = sourcePaths.map(normalizeDir);
 		const common = commonFolderPosix(roots);

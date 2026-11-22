@@ -199,6 +199,27 @@ describe("PlainLogService", () => {
 		expect(errors).toEqual(["/repo/a - error: e (x.z)"]);
 	});
 
+	it("should print nothing at all when logging is off", () => {
+		const logService = new PlainLogService();
+		logService.setLevel(LogLevel.Off);
+
+		logService.error("broken");
+		logService.info("Serving.");
+		logService.debug("detail");
+		logService.trace("more detail");
+		logService.step("12:04:31");
+		logService.section("default.rogen.json", "source paths: src");
+
+		expect(out).toEqual([]);
+		expect(errors).toEqual([]);
+	});
+
+	it("should print a section without a body as its title alone", () => {
+		new PlainLogService().section("default.rogen.json");
+
+		expect(out).toEqual(["default.rogen.json"]);
+	});
+
 	it("should print raw text as is", () => {
 		new PlainLogService().print("rogen 2.0.0");
 

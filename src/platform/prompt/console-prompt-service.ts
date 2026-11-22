@@ -47,7 +47,7 @@ function drawFrame(output: Writable, frame: Frame, style: Styler): string {
 	const dim = (text: string) => style("dim", text);
 	const struck = (text: string) => style(["strikethrough", "dim"], text);
 	const { state, message, details } = frame;
-	const bar = `${symbolBar(state) ?? style("gray", S_BAR)}  `;
+	const bar = `${symbolBar(state)!}  `;
 	const gray = `${style("gray", S_BAR)}  `;
 	const wrap = (text: string, prefix: string, first = prefix) =>
 		wrapTextWithPrefix(output, text, prefix, first);
