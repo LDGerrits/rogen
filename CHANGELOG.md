@@ -46,6 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- `rogen where` says an init file that no route takes, such as `init.csv` beside `init.server.luau`, is replaced by the init file Rojo reads first, rather than unrouted, and no longer warns that it is left out. Rojo lists it on the folder's instance and builds nothing from it.
 - `rogen serve` no longer prints Rojo's "Address already in use" error before saying another `rogen serve` started first, when several start at the same instant. Rojo's output is shown once the server answers, or when it stops without another serve having taken its place.
 
 - `rogen serve`, `build --watch` and `sourcemap --watch` no longer lose a folder a route mounts after an error that stopped the write is fixed. Rojo drops a mount whose folder vanished while the project file stood and reads it again only when the file is rewritten, so the first write after a stopped one now replaces the project file even when its text is the same.
