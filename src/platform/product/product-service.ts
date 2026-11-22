@@ -1,6 +1,8 @@
 import { createDecorator } from "../instantiation/instantiation.js";
 
-export const DOCS_URL = "https://rogen-roblox.vercel.app/docs/v2";
+export const SITE_URL = "https://rogen-roblox.vercel.app";
+
+export const DOCS_URL = `${SITE_URL}/docs/v2`;
 
 export const REPOSITORY = "LDGerrits/rogen";
 

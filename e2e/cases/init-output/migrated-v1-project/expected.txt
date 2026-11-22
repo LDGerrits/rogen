@@ -16,7 +16,7 @@ stdout:
       rogen serve
     In Studio, press Connect in the Rojo plugin.
     Run 'rogen check' and fix what it reports.
-    Serve the project and compare Studio's Explorer with your v1 build. When every script sits where it did, delete .rogen.json.v1. See https://rogen-roblox.vercel.app/docs/v2/migrating-from-v1.
+    Serve the project and compare Studio's Explorer with your v1 build. When every script sits where it did, delete .rogen.json.v1. See https://rogen-roblox.vercel.app/docs/v1/migrating-to-v2.
     Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's project file follows.
   Wrote 2 files.
 stderr:

@@ -4,6 +4,7 @@
 	"pages": [
 		"---Overview---",
 		"index",
+		"migrating-to-v2",
 		"core-concepts",
 		"---Getting Started---",
 		"installation",

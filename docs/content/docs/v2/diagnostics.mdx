@@ -1270,14 +1270,14 @@ Move or rename the file. Run `rogen where` on it to see which route places it. S
 
 ## Migration
 
-These diagnostics come from a config written for Rogen 1, and from `rogen init` when it migrates one. See [Migrating from v1](/docs/v2/migrating-from-v1).
+These diagnostics come from a config written for Rogen 1, and from `rogen init` when it migrates one. See [Migrating from v1](/docs/v1/migrating-to-v2).
 
 ### `legacy.config` [#legacy-config]
 
 Error. A `.rogen.json` has keys from Rogen 1, such as `source`, `aliases` or a mode. It is a v1 config, which v2 doesn't read.
 
 ```
-error: this looks like a config for Rogen 1, which v2 doesn't read. Run 'rogen init' to migrate it, as https://rogen-roblox.vercel.app/docs/v2/migrating-from-v1 says. (legacy.config)
+error: this looks like a config for Rogen 1, which v2 doesn't read. Run 'rogen init' to migrate it, as https://rogen-roblox.vercel.app/docs/v1/migrating-to-v2 says. (legacy.config)
 ```
 
 Run `rogen init` in the config's folder. It writes a v2 config in its place and renames the v1 config to `.rogen.json.v1`.
