@@ -118,6 +118,7 @@ function landingOf(
 
 interface Choice {
 	readonly instance: string;
+	readonly made: AddedInstance;
 	readonly proposals: readonly Proposal[];
 	readonly reason: string;
 }
@@ -134,6 +135,7 @@ class MirrorPlanRun {
 	private readonly unplaced: UnplacedInstance[];
 	private readonly toKeep = new Map<string, string>();
 	private readonly refused = new Set<string>();
+	private readonly keptFiles = new Set<string>();
 	private readonly compiled: CompiledChange[] = [];
 	private readonly expected: Expected[] = [];
 	private readonly before = new Map<string, Uint8Array | undefined>();
@@ -275,13 +277,37 @@ class MirrorPlanRun {
 		}
 	}
 
+	private async keepMovedFrom(made: AddedInstance): Promise<void> {
+		const sources: Uint8Array[] = [];
+		for (const file of made.files)
+			if (file[file.length - 1] !== GITKEEP)
+				sources.push(
+					await this.workspace.read(
+						`${made.parentFolder}/${file.join("/")}`
+					)
+				);
+		for (const { kind, file } of this.operations) {
+			const before = this.before.get(file);
+			if (
+				kind === "remove" &&
+				before !== undefined &&
+				before.length > 0 &&
+				sources.some((bytes) => sameBytes(bytes, before))
+			)
+				this.keptFiles.add(file);
+		}
+	}
+
 	private keepRefused(): void {
 		const refused = [...this.refused];
 		const kept = this.operations.filter(
-			({ kind, instance }) =>
+			({ kind, file, instance }) =>
 				(kind !== "remove" && kind !== "prune") ||
-				!refused.some(
-					(key) => instance === key || instance.startsWith(`${key}/`)
+				!(
+					refused.some(
+						(key) =>
+							instance === key || instance.startsWith(`${key}/`)
+					) || [...this.keptFiles].some((at) => contains(file, at))
 				)
 		);
 		this.operations.splice(0, this.operations.length, ...kept);
@@ -829,6 +855,7 @@ class MirrorPlanRun {
 			);
 			choices.push({
 				instance: held.instance,
+				made: held.made,
 				proposals: [whereRojoWroteIt, ...whereRoutingPutsIt.proposals],
 				reason: whereRoutingPutsIt.reason,
 			});
@@ -867,6 +894,7 @@ class MirrorPlanRun {
 			}
 			choices.push({
 				instance: name,
+				made: instance,
 				proposals: [...renamed, ...placed.proposals],
 				reason: placed.reason,
 			});
@@ -918,12 +946,13 @@ class MirrorPlanRun {
 			if (anyMissed) continue;
 			for (const [index, proposal] of chosen.entries()) {
 				if (proposal === undefined) {
-					const { instance } = choices[index];
+					const { instance, made } = choices[index];
 					this.unplaced.push({
 						instance,
 						reason: preferredMisses[index] ?? reasons[index],
 					});
 					this.refused.add(instance);
+					await this.keepMovedFrom(made);
 					continue;
 				}
 				for (const operation of proposal.operations)

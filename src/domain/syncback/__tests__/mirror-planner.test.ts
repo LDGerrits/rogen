@@ -638,6 +638,53 @@ describe("MirrorPlanner", () => {
 		);
 	});
 
+	describe("an instance Studio moved where its script type has no place", () => {
+		it("should keep the files of a script moved into a shared folder, and say why", async () => {
+			await prepare([
+				"src/Shop/Prices.luau",
+				"src/Shop@Server/Main.server.luau",
+				"src/Shop@Server/ShopService.luau",
+			]);
+			await fs.writeFile(
+				abs("src/Shop@Server/Main.server.luau"),
+				"print(1)"
+			);
+			await fs.writeFile(
+				abs("src/Shop@Server/ShopService.luau"),
+				"return 1"
+			);
+			rojo.say = async () => {
+				await fs.delete(mirror("ServerScriptService", "Shop"), true);
+				const moved = [
+					"ReplicatedStorage",
+					"Shared",
+					"Shop",
+					"ServerBits",
+				];
+				await fs.writeFile(
+					mirror(...moved, "Main.server.luau"),
+					"print(1)"
+				);
+				await fs.writeFile(
+					mirror(...moved, "ShopService.luau"),
+					"return 1"
+				);
+				return [];
+			};
+
+			const plan = await planned("apply");
+
+			expect(plan.changes).toEqual([]);
+			expect(
+				await fs.exists(abs("src/Shop@Server/Main.server.luau"))
+			).toBe(true);
+			expect(
+				await fs.exists(abs("src/Shop@Server/ShopService.luau"))
+			).toBe(true);
+			expect(plan.unplaced).toHaveLength(1);
+		});
+	});
+
 	describe("a renamed feature", () => {
 		it("should move the files of a feature Studio renamed into a folder of the new name", async () => {
 			await prepare(["src/Shop/Server/ShopService.luau"]);
