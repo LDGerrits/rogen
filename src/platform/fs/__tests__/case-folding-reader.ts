@@ -1,43 +1,28 @@
 import path from "path";
-import { FileReader, FileType } from "../file-system-service.js";
+import { FileSystemService } from "../file-system-service.js";
 import { MemoryFileSystemService } from "../memory-file-system-service.js";
 
-export class CaseFoldingReader implements FileReader {
-	private readonly names = new Map<string, string>();
-
-	constructor(private readonly disk: MemoryFileSystemService) {}
-
-	async writeFile(filePath: string, content: string): Promise<void> {
-		for (
-			let ancestor = filePath;
-			path.dirname(ancestor) !== ancestor;
-			ancestor = path.dirname(ancestor)
-		)
-			this.names.set(ancestor.toLowerCase(), ancestor);
-		await this.disk.writeFile(filePath, content);
-	}
-
-	private real(filePath: string): string {
-		return this.names.get(filePath.toLowerCase()) ?? filePath;
-	}
-
-	exists(filePath: string): Promise<boolean> {
-		return this.disk.exists(this.real(filePath));
-	}
-
-	isFile(filePath: string): Promise<boolean> {
-		return this.disk.isFile(this.real(filePath));
-	}
-
-	isDirectory(filePath: string): Promise<boolean> {
-		return this.disk.isDirectory(this.real(filePath));
-	}
-
-	readDirectory(filePath: string): Promise<[string, FileType][]> {
-		return this.disk.readDirectory(this.real(filePath));
-	}
-
-	readFile(filePath: string): Promise<string> {
-		return this.disk.readFile(this.real(filePath));
-	}
+export function caseFoldingReader(
+	disk: MemoryFileSystemService
+): FileSystemService {
+	const names = new Map<string, string>();
+	const real = (filePath: string) =>
+		names.get(filePath.toLowerCase()) ?? filePath;
+	return new Proxy(disk, {
+		get(target, property, receiver) {
+			const member = Reflect.get(target, property, receiver) as (
+				...args: unknown[]
+			) => unknown;
+			return async (filePath: string, ...rest: unknown[]) => {
+				if (property === "writeFile")
+					for (
+						let ancestor = filePath;
+						path.dirname(ancestor) !== ancestor;
+						ancestor = path.dirname(ancestor)
+					)
+						names.set(ancestor.toLowerCase(), ancestor);
+				return member.call(target, real(filePath), ...rest);
+			};
+		},
+	});
 }

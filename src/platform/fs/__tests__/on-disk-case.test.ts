@@ -1,16 +1,17 @@
 import path from "path";
+import { FileSystemService, FileType } from "../file-system-service.js";
 import { onDiskCase } from "../on-disk-case.js";
 import { MemoryFileSystemService } from "../memory-file-system-service.js";
-import { CaseFoldingReader } from "./case-folding-reader.js";
+import { caseFoldingReader } from "./case-folding-reader.js";
 
 describe("onDiskCase", () => {
 	const at = (...parts: string[]) => path.resolve("/project", ...parts);
 	let disk: MemoryFileSystemService;
-	let folding: CaseFoldingReader;
+	let folding: FileSystemService;
 
 	beforeEach(async () => {
 		disk = new MemoryFileSystemService();
-		folding = new CaseFoldingReader(disk);
+		folding = caseFoldingReader(disk);
 		await folding.writeFile(at("src", "Greeter", "Server.luau"), "");
 	});
 
@@ -43,5 +44,16 @@ describe("onDiskCase", () => {
 		expect(await onDiskCase(disk, at("src", "Greeter"))).toBe(
 			at("src", "Greeter")
 		);
+	});
+
+	it("should keep a name that exists but is listed under no name like it", async () => {
+		const unlisted = {
+			exists: async () => true,
+			readDirectory: async (): Promise<[string, FileType][]> => [
+				["Other", FileType.File],
+			],
+		};
+
+		expect(await onDiskCase(unlisted as never, at("src"))).toBe(at("src"));
 	});
 });

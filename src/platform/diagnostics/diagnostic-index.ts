@@ -10,10 +10,6 @@ function add(positions: Positions, key: string, at: number): void {
 	else positions.set(key, [at]);
 }
 
-function folded(path: string): string {
-	return ignoresPathCase ? path.toLowerCase() : path;
-}
-
 function selfAndAncestors(path: string): string[] {
 	const found = [path];
 	for (
@@ -37,18 +33,27 @@ export class DiagnosticIndex {
 
 	constructor(
 		private readonly diagnostics: readonly Diagnostic[],
-		folderOf: (diagnostic: Diagnostic) => string
+		folderOf: (diagnostic: Diagnostic) => string,
+		private readonly caseInsensitive = ignoresPathCase
 	) {
 		diagnostics.forEach((diagnostic, at) => {
 			for (const file of filesOf(diagnostic)) {
 				add(this.named, file, at);
 				for (const above of selfAndAncestors(file))
-					add(this.within, folded(above), at);
+					add(this.within, this.folded(above), at);
 			}
 			if (!listsItsFiles(diagnostic))
-				add(this.covering, folded(toPosix(folderOf(diagnostic))), at);
+				add(
+					this.covering,
+					this.folded(toPosix(folderOf(diagnostic))),
+					at
+				);
 			add(this.resources, toPosix(diagnostic.resource), at);
 		});
+	}
+
+	private folded(path: string): string {
+		return this.caseInsensitive ? path.toLowerCase() : path;
 	}
 
 	about(source: string, metaPaths: readonly string[]): Diagnostic[] {
@@ -61,9 +66,9 @@ export class DiagnosticIndex {
 	reaching(target: string, metaPaths: readonly string[]): Diagnostic[] {
 		const posix = toPosix(target);
 		return this.pick([
-			this.within.get(folded(posix)),
+			this.within.get(this.folded(posix)),
 			...selfAndAncestors(posix).map((above) =>
-				this.covering.get(folded(above))
+				this.covering.get(this.folded(above))
 			),
 			...metaPaths.map((meta) => this.resources.get(meta)),
 		]);
