@@ -166,29 +166,38 @@ export function HeroDemo() {
 			setActive(active);
 		};
 
+		const finish = () => {
+			stage.classList.add("play");
+			[...lines, ...arrivals, wires].forEach((el) =>
+				el.classList.add("in")
+			);
+			ready = true;
+			next();
+		};
+
 		const play = async () => {
 			stage.classList.add("play");
 			typed.textContent = "";
-			await sleep(700);
+			await sleep(250);
 			for (let i = 1; i <= COMMAND.length && !cancelled; i++) {
 				typed.textContent = COMMAND.slice(0, i);
-				await sleep(55);
+				await sleep(35);
 			}
-			for (const [i, ms] of [280, 380, 200].entries()) {
+			for (const [i, ms] of [150, 200, 120].entries()) {
 				await sleep(ms);
 				if (cancelled) return;
 				lines[i].classList.add("in");
 			}
 			for (const row of arrivals) {
-				await sleep(40);
+				await sleep(25);
 				if (cancelled) return;
 				row.classList.add("in");
 			}
-			await sleep(120);
+			await sleep(80);
 			if (cancelled) return;
 			wires.classList.add("in");
 			lines.slice(3).forEach((line) => line.classList.add("in"));
-			await sleep(900);
+			await sleep(600);
 			ready = true;
 			next();
 		};
@@ -221,7 +230,8 @@ export function HeroDemo() {
 			else clearTimeout(timer);
 		});
 		io.observe(stage);
-		play();
+		if (matchMedia("(prefers-reduced-motion: reduce)").matches) finish();
+		else play();
 
 		return () => {
 			cancelled = true;
