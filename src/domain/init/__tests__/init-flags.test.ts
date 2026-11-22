@@ -89,7 +89,6 @@ describe("init choices given as flags", () => {
 			expect(questions.decided).toEqual([]);
 			expect(asked.unwrap()?.mounts.map(({ path }) => path)).toEqual([
 				"Packages",
-				"ServerPackages",
 			]);
 		});
 	});

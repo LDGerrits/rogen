@@ -49,14 +49,10 @@ default.rogen.json:
         "node_modules": {
           "$className": "Folder",
           "@rbxts": {
-            "$path": {
-              "optional": "node_modules/@rbxts"
-            }
+            "$path": "node_modules/@rbxts"
           }
         },
-        "$path": {
-          "optional": "include"
-        }
+        "$path": "include"
       }
     }
   }
@@ -66,6 +62,9 @@ $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     rbxts_include: Folder
+      RuntimeLib: ModuleScript  <- include/RuntimeLib.lua
       node_modules: Folder
+        @rbxts: Folder
+          services: ModuleScript  <- node_modules/@rbxts/services/init.lua
   ServerScriptService: ServerScriptService
     main: Script  <- dist-ts/server/main.server.luau

@@ -53,7 +53,6 @@ const rbxts: WorkspaceSpec = {
 	robloxTs: {
 		outDir: "build",
 		rbxtsScopes: ["@rbxts"],
-		includeInstalled: true,
 	},
 	packageManager: "wally",
 	packageDirs: ["Packages"],
@@ -105,7 +104,6 @@ describe("InitQuestions askProject", () => {
 			"include",
 			"node_modules/@rbxts",
 			"Packages",
-			"ServerPackages",
 		]);
 	});
 
@@ -172,7 +170,7 @@ describe("InitQuestions askProject", () => {
 		const mountedFor = async (workspace: WorkspaceSpec) =>
 			(await asked(workspace, {})).mounts;
 
-		it("should mount the package folders when the manifest exists, installed or not", async () => {
+		it("should mount only the package folders that are installed", async () => {
 			expect(
 				await mountedFor({
 					...luau,
@@ -180,16 +178,7 @@ describe("InitQuestions askProject", () => {
 					packageDirs: new Set(["Packages"]),
 				})
 			).toEqual([
-				{
-					path: "Packages",
-					optional: false,
-					landing: "ReplicatedStorage/Packages",
-				},
-				{
-					path: "ServerPackages",
-					optional: true,
-					landing: "ServerScriptService/ServerPackages",
-				},
+				{ path: "Packages", landing: "ReplicatedStorage/Packages" },
 			]);
 		});
 
@@ -210,9 +199,17 @@ describe("InitQuestions askProject", () => {
 
 		it("should mount only pesde's folders when pesde is detected", async () => {
 			expect(
-				(await mountedFor({ ...luau, packageManager: "pesde" })).map(
-					({ path }) => path
-				)
+				(
+					await mountedFor({
+						...luau,
+						packageManager: "pesde",
+						packageDirs: new Set([
+							"Packages",
+							"roblox_packages",
+							"roblox_server_packages",
+						]),
+					})
+				).map(({ path }) => path)
 			).toEqual(["roblox_packages", "roblox_server_packages"]);
 		});
 
@@ -221,15 +218,16 @@ describe("InitQuestions askProject", () => {
 				(
 					await mountedFor(
 						withRobloxTs(
-							{ ...luau, packageManager: "wally" },
 							{
-								includeInstalled: true,
-								rbxtsScopes: ["@rbxts", "@flamework"],
-							}
+								...luau,
+								packageManager: "wally",
+								packageDirs: new Set(["Packages"]),
+							},
+							{ rbxtsScopes: ["@rbxts", "@flamework"] }
 						)
 					)
 				).map(({ path }) => path)
-			).toEqual(["Packages", "ServerPackages"]);
+			).toEqual(["Packages"]);
 		});
 
 		it("should always mount include and @rbxts for roblox-ts, with the extra scopes it found", async () => {
@@ -270,7 +268,14 @@ describe("InitQuestions askProject project file", () => {
 		const prompts = new MockPromptService({});
 		const result = await askInitChoices(
 			prompts,
-			contextOf({ ...luau, packageManager: "wally" }, existing)
+			contextOf(
+				{
+					...luau,
+					packageManager: "wally",
+					packageDirs: new Set(["Packages"]),
+				},
+				existing
+			)
 		);
 		return { prompts, result: result.unwrap() };
 	};
@@ -293,16 +298,7 @@ describe("InitQuestions askProject project file", () => {
 			from: "default.project.json",
 		});
 		expect(result?.mounts).toEqual([
-			{
-				path: "Packages",
-				optional: true,
-				landing: "ReplicatedStorage/Packages",
-			},
-			{
-				path: "ServerPackages",
-				optional: true,
-				landing: "ServerScriptService/ServerPackages",
-			},
+			{ path: "Packages", landing: "ReplicatedStorage/Packages" },
 		]);
 	});
 

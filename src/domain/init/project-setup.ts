@@ -105,16 +105,9 @@ function derivedRoutesOf(
 
 function mountsOf(directory: InitDirectory, language: Language): Mount[] {
 	return [
-		...language.alwaysMounted(),
-		...[
-			...directory.workspace.packageMounts(language),
-			...language.installedMounts(),
-		].filter(({ mounted }) => mounted),
-	].map(({ path, installed, landing }) => ({
-		path,
-		optional: !installed,
-		landing,
-	}));
+		...language.mounts(),
+		...directory.workspace.packageMounts(language),
+	];
 }
 
 function takesRoutes(tree: ProjectTree): boolean {

@@ -29,14 +29,10 @@ default.rogen.json:
         "node_modules": {
           "$className": "Folder",
           "@rbxts": {
-            "$path": {
-              "optional": "node_modules/@rbxts"
-            }
+            "$path": "node_modules/@rbxts"
           }
         },
-        "$path": {
-          "optional": "include"
-        }
+        "$path": "include"
       }
     }
   }

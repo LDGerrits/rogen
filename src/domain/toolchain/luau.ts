@@ -3,7 +3,7 @@ import {
 	Language,
 	LanguageCopy,
 	LanguageDetector,
-	MountCandidate,
+	Mount,
 	PackageManager,
 } from "./toolchain.js";
 
@@ -27,11 +27,7 @@ export class Luau implements Language, LanguageDetector {
 		return undefined;
 	}
 
-	alwaysMounted(): readonly MountCandidate[] {
-		return [];
-	}
-
-	installedMounts(): readonly MountCandidate[] {
+	mounts(): readonly Mount[] {
 		return [];
 	}
 }

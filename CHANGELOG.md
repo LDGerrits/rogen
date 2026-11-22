@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Breaking:** command names are lower case only, as in Rojo.
 - `rogen init --places --language roblox-ts` uses the same layout as Luau and works with TypeScript 6.
 - `rogen init` explains each rename and asks before it renames anything.
+- `rogen init` mounts only the package folders that are installed, each with a plain `$path`, so a missing one stops `serve` and `build` instead of failing in Studio.
 - `rogen where` fails only on an error about what you asked. `rogen check` stays the gate.
 - The agent rules are much shorter. `rogen write` and `rogen serve` keep them and the agent hook up to date, except under CI, and the hook works on Windows and in git worktrees.
 
