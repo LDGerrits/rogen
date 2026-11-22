@@ -85,7 +85,7 @@ describe("WriteValidator rules", () => {
 					resource: abs("src/SERVER"),
 				});
 				expect(error.message).toBe(
-					'"SERVER" differs from the route "server" only in letter case, so it routes nothing, and the files in it that nothing else routes go to "*". Spell it "server".'
+					'"SERVER" differs from the route "server" only in letter case, so it routes nothing, and the files in it that nothing else routes would go to "*". Spell it "server".'
 				);
 			});
 
@@ -163,7 +163,7 @@ describe("WriteValidator rules", () => {
 				expect(listed(errors)).toEqual([
 					[
 						abs("src/Lib/Net/SERVER"),
-						'"SERVER" differs from the route "server" only in letter case, so it routes nothing, and the files in it that nothing else routes go to "*". Spell it "server", or, if the script beside it requires it as a child, add a marker file @shared in it to keep it there.',
+						'"SERVER" differs from the route "server" only in letter case, so it routes nothing, and the files in it that nothing else routes would go to "*". Spell it "server", or, if the script beside it requires it as a child, add a marker file @shared in it to keep it there.',
 					],
 				]);
 				expect(fixesOf(errors)).toEqual([]);
@@ -179,7 +179,7 @@ describe("WriteValidator rules", () => {
 				expect(listed(errors)).toEqual([
 					[
 						abs("src/Lib/Net/SERVER"),
-						'"SERVER" differs from the route "server" only in letter case, so it routes nothing, and the files in it that nothing else routes go to "*". Spell it "server", or, if the script beside it requires it as a child, add the route "shared": "ReplicatedStorage/shared" and a marker file @shared in it to keep it there.',
+						'"SERVER" differs from the route "server" only in letter case, so it routes nothing, and the files in it that nothing else routes would go to "*". Spell it "server", or, if the script beside it requires it as a child, add the route "shared": "ReplicatedStorage/shared" and a marker file @shared in it to keep it there.',
 					],
 				]);
 			});
