@@ -13,7 +13,7 @@ stdout:
     ],
     "plainProjects": [],
     "agentRules": [
-      "AGENTS.md"
+      "<dir>/AGENTS.md"
     ]
   }
 

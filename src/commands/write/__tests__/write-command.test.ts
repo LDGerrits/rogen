@@ -106,7 +106,7 @@ describe("write command", () => {
 
 			expect(log.json()).toMatchObject({
 				changed: true,
-				agentRules: ["AGENTS.md"],
+				agentRules: [abs("AGENTS.md")],
 			});
 		});
 
@@ -487,7 +487,7 @@ describe("write command", () => {
 					.texts("print")
 					.map((text) => JSON.parse(text))
 					.filter((line) => "agentRules" in line)
-			).toEqual([{ agentRules: ["AGENTS.md"] }]);
+			).toEqual([{ agentRules: [abs("AGENTS.md")] }]);
 		});
 
 		it("should keep the project file of every config current", async () => {

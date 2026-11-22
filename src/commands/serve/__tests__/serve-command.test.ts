@@ -202,7 +202,9 @@ describe("serve command", () => {
 		void serve([], { json: true });
 		await settle();
 
-		expect(printed()[0]).toEqual({ agentRules: ["AGENTS.md"] });
+		expect(printed()[0]).toEqual({
+			agentRules: [path.resolve("/repo/AGENTS.md")],
+		});
 	});
 
 	it("should name the Rojo that serves only with --verbose", async () => {
