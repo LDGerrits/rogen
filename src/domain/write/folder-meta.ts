@@ -33,12 +33,7 @@ export class FolderMeta {
 			this.file,
 			this.sourcePath,
 			this.dir,
-			{
-				...(attributes !== undefined && { attributes }),
-				...(ignoreUnknownInstances !== undefined && {
-					ignoreUnknownInstances,
-				}),
-			},
+			{ attributes, ignoreUnknownInstances },
 			this.merged
 		);
 	}

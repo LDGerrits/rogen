@@ -170,10 +170,9 @@ export class Placer {
 		roots: readonly ScannedRoot[],
 		dir: string
 	): ReadonlyMap<string, FileType> {
-		const root = roots.find((candidate) =>
-			isInside(dir, toPosix(candidate.sourcePath))
-		);
-		return root?.listing(path.normalize(dir)) ?? new Map();
+		return roots
+			.find((candidate) => isInside(dir, toPosix(candidate.sourcePath)))!
+			.listing(path.normalize(dir));
 	}
 
 	private static unreadableErrors(
