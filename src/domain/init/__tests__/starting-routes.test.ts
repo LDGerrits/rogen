@@ -29,11 +29,44 @@ describe("domain/init/starting-routes", () => {
 			});
 		});
 
-		it("should spell a standard key as the code already spells it", () => {
+		it("should spell a standard key as the code already spells it, and the others in the same case", () => {
 			const routes = new StartingRoutes(
 				workspaceOf().languageFor("luau"),
 				undefined,
 				new Map([["server", "server"]])
+			);
+
+			expect(Object.keys(routes.routes)).toEqual([
+				"server",
+				"client",
+				"shared",
+				"*",
+			]);
+		});
+
+		it("should give the keys the code doesn't spell its first letter's case only", () => {
+			const routes = new StartingRoutes(
+				workspaceOf().languageFor("roblox-ts"),
+				undefined,
+				new Map([["server", "SERVER"]])
+			);
+
+			expect(Object.keys(routes.routes)).toEqual([
+				"SERVER",
+				"Client",
+				"Shared",
+				"*",
+			]);
+		});
+
+		it("should spell the keys the code doesn't spell the language's way when the code mixes cases", () => {
+			const routes = new StartingRoutes(
+				workspaceOf().languageFor("luau"),
+				undefined,
+				new Map([
+					["server", "server"],
+					["client", "Client"],
+				])
 			);
 
 			expect(Object.keys(routes.routes)).toEqual([

@@ -12,6 +12,11 @@ const ROUTES: readonly { id: StandardRouteId; target?: string }[] = [
 
 export const STANDARD_ROUTE_IDS: readonly string[] = ROUTES.map(({ id }) => id);
 
+const isLowerFirst = (key: string): boolean => key[0] === key[0].toLowerCase();
+
+const inCaseOf = (lower: boolean, id: StandardRouteId): string =>
+	lower ? id : id[0].toUpperCase() + id.slice(1);
+
 export class StartingRoutes {
 	constructor(
 		private readonly language: Language,
@@ -38,12 +43,14 @@ export class StartingRoutes {
 	private standardKey(id: StandardRouteId): string {
 		const spelled = this.spellings.get(id);
 		if (spelled !== undefined) return spelled;
+		const found = new Set(
+			[...this.spellings.values()].map((key) => isLowerFirst(key))
+		);
+		if (found.size === 1) return inCaseOf([...found][0], id);
 		const derived = [...(this.derived?.routes.keys() ?? [])];
 		if (derived.length === 0) return this.language.routeKey(id);
-		const lower = derived.filter((key) => key[0] === key[0].toLowerCase());
-		return lower.length * 2 >= derived.length
-			? id
-			: id[0].toUpperCase() + id.slice(1);
+		const lower = derived.filter(isLowerFirst);
+		return inCaseOf(lower.length * 2 >= derived.length, id);
 	}
 
 	get routes(): Record<string, string> {
