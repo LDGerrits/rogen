@@ -289,8 +289,20 @@ export class ConfigValidator {
 					`route key "${key}" is invalid: ${ConfigValidator.keyProblem(key)}${KEY_RULE}.`
 				);
 			const target = Target.parse(text, location);
-			if (target.isErr()) this.problems.add(target.error);
-			else targets.set(key, target.value);
+			if (target.isErr()) {
+				this.problems.add(target.error);
+				continue;
+			}
+			const field = target.value.folders.find((folder) =>
+				NODE_FIELDS.has(folder)
+			);
+			if (field === undefined) targets.set(key, target.value);
+			else
+				this.problems.error(
+					"roblox.invalidFolder",
+					location,
+					`the target "${text}" has "${field}" as a folder name, which the project file reads as a field of the node, not a child. Rename the folder.`
+				);
 		}
 		return targets;
 	}

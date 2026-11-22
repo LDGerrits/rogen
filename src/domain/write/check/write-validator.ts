@@ -647,12 +647,12 @@ export class WriteValidator {
 						"tree.instanceClash",
 						{ resource: loser.entry.source },
 						initFolder === undefined
-							? `becomes "${instance}", as ${winner.entry.source} does, which takes its place, so the build would lose it. ${loser.init !== undefined && winner.init !== undefined ? "Remove one of them." : "Rename one of them to keep both."}`
-							: `is an init file of ${initFolder}, as ${winner.entry.source} is, and Rojo reads only that one. ${WriteValidator.initFileFix(loser, instance)}`,
+							? `becomes "${instance}", as ${winner.source} does, which takes its place, so the build would lose it. ${loser.init !== undefined && winner.isInit ? "Remove one of them." : "Rename one of them to keep both."}`
+							: `is an init file of ${initFolder}, as ${winner.source} is, and Rojo reads only that one. ${WriteValidator.initFileFix(loser, instance)}`,
 						[],
 						[
 							{
-								resource: winner.entry.source,
+								resource: winner.source,
 								message: `takes its place as "${instance}"`,
 							},
 						]
