@@ -75,13 +75,14 @@ describe("platform/diagnostics/diagnostic-index", () => {
 
 	it("should ignore case in a folder where the file system does", () => {
 		const folding = new DiagnosticIndex(diagnostics, folderOf, true);
+		const exact = new DiagnosticIndex(diagnostics, folderOf, false);
 
 		expect(folding.reaching("/P/SRC/SHOP/Cart.luau", [])).toEqual([
 			diagnostics[0],
 			diagnostics[1],
 			diagnostics[4],
 		]);
-		expect(index.reaching("/P/SRC/SHOP/Cart.luau", [])).toEqual([]);
+		expect(exact.reaching("/P/SRC/SHOP/Cart.luau", [])).toEqual([]);
 	});
 
 	it("should list a diagnostic once, in the order given", () => {
