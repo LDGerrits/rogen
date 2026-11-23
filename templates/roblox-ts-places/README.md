@@ -49,6 +49,6 @@ rogen serve projects/lobby --port <port>
 ```
 
 ## Editor
-Open this folder in your editor. The TypeScript server and `sloptor lsp` check each file against the `tsconfig.json` of the place folder it is in, and `projects/common` is checked as part of each place.
+Open this folder in your editor. The TypeScript server checks each file against the `tsconfig.json` of the place folder it is in, and `projects/common` is checked as part of each place.
 
 For more help, check out [the Rogen documentation](https://rogen-roblox.vercel.app/).
