@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The sample Baseplate and lighting are in the config's `tree`, so `rogen init` no longer writes a `place` folder.
 - `rogen init --places` names the first place `lobby`, with `Welcome` as its own sample feature.
 - `rogen init` prints less: its next steps are the commands to start, and the README holds how to change routes, the tree and add a place. A run lists no files it wrote (`--dry-run` and `--json` still do), and its warnings are shorter.
+- Warnings and errors from `write`, `check` and `syncback` say what is wrong and what to do, and leave the explanation to the diagnostics page, which `rogen help <code>` prints.
 
 ## [2.0.0-rc.1] - 2026-11-22
 
