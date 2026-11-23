@@ -44,5 +44,3 @@ Mount a package folder with `$path` where your code requires it from, as in `req
 	}
 }
 ```
-
-With `Workspace` inline, it has no `$path`, so `rogen syncback` leaves out the instances you add there, as Rojo does for the project that `rojo init` writes. To keep them, mount a folder, as `"Workspace": { "$path": "map/Workspace" }`.

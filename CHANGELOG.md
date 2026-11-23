@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- The sample Baseplate and lighting are in the config's `tree`, so `rogen init` no longer writes a `place` folder. With `Workspace` inline, `rogen syncback` leaves out new Workspace instances, as Rojo does; mount a folder, as `"Workspace": { "$path": "map/Workspace" }`, to keep them.
+- The sample Baseplate and lighting are in the config's `tree`, so `rogen init` no longer writes a `place` folder.
 - `rogen init --places` names the first place `lobby`, with `Welcome` as its own sample feature.
 
 ## [2.0.0-rc.1] - 2026-11-22
