@@ -51,7 +51,7 @@ Each crossed boundary is an error, such as `feature Inventory requires feature S
 
 ## Selene With Places
 
-In a [multi-place](/docs/v2/multi-place) game, Selene reads only the `selene.toml` in the editor folder it runs in, and without one it reads Luau as Lua 5.1. Put a `selene.toml` in `projects/common` and in each place's folder. StyLua needs no copies, because the workspace file sets `stylua.searchParentDirectories` and so finds the `stylua.toml` at the root.
+In a [multi-place](/docs/v2/multi-place) game, Selene reads only the `selene.toml` in the editor folder it runs in, and without one it reads Luau as Lua 5.1. Put a `selene.toml` in `projects/common` and in each place's folder. StyLua needs no copies, because the workspace file sets `stylua.searchParentDirectories` and so finds a `stylua.toml` at the root, if you add one.
 
 ## roblox-ts
 
