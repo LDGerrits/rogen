@@ -23,10 +23,18 @@ import {
 	DraftFileReader,
 	FileDraft,
 } from "../../platform/fs/draft-file-reader.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import {
+	FileSystemService,
+	isDirectoryType,
+} from "../../platform/fs/file-system-service.js";
+import { ignoresPathCase } from "../../base/platform.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { ConfigService } from "../config/config-service.js";
-import { DEFAULT_PROJECT_FILE } from "../config/config.js";
+import {
+	DEFAULT_PROJECT_FILE,
+	PLACES_FOLDER,
+	isDefaultConfigFileName,
+} from "../config/config.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { WriteService } from "../write/write-service.js";
 import { CodeFinder } from "./code-finder.js";
@@ -413,9 +421,31 @@ export class CoreInitService implements InitService {
 					.createInstance(CodeFinder)
 					.layoutOf(directory, workspace),
 				entries.has(DEFAULT_PROJECT_FILE) &&
-					(await this.git.tracks(directory, DEFAULT_PROJECT_FILE))
+					(await this.git.tracks(directory, DEFAULT_PROJECT_FILE)),
+				ignoresPathCase,
+				await this.placeConfigsIn(directory)
 			)
 		);
+	}
+
+	private async placeConfigsIn(directory: string): Promise<string[]> {
+		const found: string[] = [];
+		const places = await tryWithAsync(() =>
+			this.fileSystemService.readDirectory(
+				path.join(directory, PLACES_FOLDER)
+			)
+		);
+		for (const [name, type] of places.isOk() ? places.value : []) {
+			if (!isDirectoryType(type)) continue;
+			const place = path.join(directory, PLACES_FOLDER, name);
+			const listing = await tryWithAsync(() =>
+				this.fileSystemService.readDirectory(place)
+			);
+			for (const [file] of listing.isOk() ? listing.value : [])
+				if (isDefaultConfigFileName(file))
+					found.push(path.posix.join(PLACES_FOLDER, name, file));
+		}
+		return found.sort();
 	}
 
 	private async planIn(

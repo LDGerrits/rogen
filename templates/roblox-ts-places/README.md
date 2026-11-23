@@ -14,7 +14,7 @@ The folders inside a feature decide where its code runs: `server` goes to Server
 rogen where {{source}}/Greeter/shared/Greeting.ts
 ```
 
-`rogen check` and `rogen where` find the place a path belongs to, and a file in `projects/common` belongs to every place. `rogen where {{target}}` lists the files of one place.
+`rogen check` and `rogen where` find the place a path belongs to, and a file in `projects/common` belongs to every place. `rogen where {{target}}/default.rogen.json` lists the files of one place.
 
 ## Getting Started
 To compile the TypeScript, and keep compiling it as you edit, use this in a terminal of its own:

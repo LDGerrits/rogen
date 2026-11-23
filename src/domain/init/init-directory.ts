@@ -24,9 +24,13 @@ export class InitDirectory {
 		readonly workspace: DetectedWorkspace,
 		readonly layout: DirectoryLayout,
 		readonly tracksProjectFile: boolean,
-		caseInsensitive = ignoresPathCase
+		caseInsensitive = ignoresPathCase,
+		private readonly placeConfigs: readonly string[] = []
 	) {
-		this.names = new PathSet(entries, caseInsensitive);
+		this.names = new PathSet(
+			[...entries, ...placeConfigs],
+			caseInsensitive
+		);
 	}
 
 	has(fileName: string): boolean {
@@ -38,7 +42,8 @@ export class InitDirectory {
 	}
 
 	get configFiles(): string[] {
-		return [...this.entries].filter(isConfigFileName).sort();
+		const own = [...this.entries].filter(isConfigFileName).sort();
+		return own.length > 0 ? own : [...this.placeConfigs];
 	}
 
 	otherProjectFiles(...except: string[]): string[] {

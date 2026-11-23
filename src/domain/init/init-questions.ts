@@ -12,7 +12,8 @@ import {
 	booleanFlag,
 } from "./init-service.js";
 import { ReviewPrompts } from "./review-prompts.js";
-import { COMMON_FOLDER, PLACES_FOLDER } from "./starter-places.js";
+import { COMMON_FOLDER } from "./starter-places.js";
+import { PLACES_FOLDER } from "../config/config.js";
 import { TreeChoice } from "./tree-plan.js";
 
 function oneOf<T extends string>(

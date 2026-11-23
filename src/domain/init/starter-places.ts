@@ -4,13 +4,13 @@ import {
 	DEFAULT_CONFIG_FILE,
 	DEFAULT_PROJECT_FILE,
 	DEFAULT_SOURCE_PATH,
+	PLACES_FOLDER,
 } from "../config/config.js";
 import { Language, PlannedFile } from "../toolchain/toolchain.js";
 import { RobloxTsStarter } from "./roblox-ts-starter.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 export const COMMON_FOLDER = "common";
-export const PLACES_FOLDER = "projects";
 
 const SOURCE_FOLDER = DEFAULT_SOURCE_PATH;
 const FIRST_PLACE = "game";
@@ -85,6 +85,13 @@ export class StarterPlaces {
 		const folders = [commonFolder, placeFolder];
 		const settings = StarterPlaces.workspaceSettings();
 		const present = await this.files.exists(path.join(root, workspaceFile));
+		const commonSettings = path.posix.join(commonFolder, SETTINGS_FILE);
+		const generator = {
+			"luau-lsp.sourcemap.generatorCommand": `rogen sourcemap ../${FIRST_PLACE} --watch -o sourcemap.json`,
+		};
+		const settingsPresent = await this.files.exists(
+			path.join(root, commonSettings)
+		);
 		return {
 			files: [
 				...(present
@@ -100,18 +107,27 @@ export class StarterPlaces {
 								}),
 							},
 						]),
-				{
-					fileName: path.posix.join(commonFolder, SETTINGS_FILE),
-					content: formatJsonFile({
-						"luau-lsp.sourcemap.generatorCommand": `rogen sourcemap ../${FIRST_PLACE} --watch -o sourcemap.json`,
-					}),
-				},
+				...(settingsPresent
+					? []
+					: [
+							{
+								fileName: commonSettings,
+								content: formatJsonFile(generator),
+							},
+						]),
 			],
-			notes: present
-				? [
-						`${workspaceFile} is there already: add ${folders.map((folder) => `"${folder}"`).join(" and ")} to its folders, and ${JSON.stringify(settings)} to its settings.`,
-					]
-				: [],
+			notes: [
+				...(present
+					? [
+							`${workspaceFile} is there already: add ${folders.map((folder) => `"${folder}"`).join(" and ")} to its folders, and ${JSON.stringify(settings)} to its settings.`,
+						]
+					: []),
+				...(settingsPresent
+					? [
+							`${commonSettings} is there already: add ${JSON.stringify(generator)} to it.`,
+						]
+					: []),
+			],
 			workspaceFile,
 		};
 	}

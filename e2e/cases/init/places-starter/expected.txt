@@ -61,7 +61,7 @@ The folders inside a feature decide where its code runs: `Server` goes to Server
 rogen where projects/common/src/Greeter/Shared/Greeting.luau
 ```
 
-`rogen check` and `rogen where` find the place a path belongs to, and a file in `projects/common` belongs to every place. `rogen where projects/game` lists the files of one place.
+`rogen check` and `rogen where` find the place a path belongs to, and a file in `projects/common` belongs to every place. `rogen where projects/game/default.rogen.json` lists the files of one place.
 
 ## Getting Started
 To serve the game place and connect to it from Roblox Studio, use:
@@ -92,7 +92,7 @@ rogen sourcemap --watch -o sourcemap.json
 
 to keep its `sourcemap.json` current as files come and go. `projects/common` has no project file of its own, so `projects/common/.vscode/settings.json` makes it read the sourcemap of `projects/game`; the shared code is typed as part of that place.
 
-StyLua finds the `stylua.toml` at the root from every folder. Selene reads only the `selene.toml` in the folder it runs in, so put one in `projects/common` and in each place's folder.
+StyLua finds a `stylua.toml` at the root from every folder, if you add one. Selene reads only the `selene.toml` in the folder it runs in, so put one in `projects/common` and in each place's folder.
 
 To check every place exactly at once, for an agent or CI, check each place from its own folder, against its own sourcemap:
 

@@ -208,14 +208,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					.plan(directory.path, language, starter)
 			: undefined;
 
-		if (
-			places &&
-			(await this.fileSystemService.exists(
-				path.join(directory.path, places.configFile)
-			))
-		)
-			return err([directory.taken(places.configFile)]);
-
 		const compiledPath = places?.compiledPath ?? language.compiler?.outDir;
 		const routed = takesRoutes(tree);
 		const lifted = routed ? carriedProject(tree) : undefined;

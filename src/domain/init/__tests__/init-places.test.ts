@@ -234,6 +234,19 @@ describe("init for several places", () => {
 			);
 		});
 
+		it("should leave editor settings that are there alone, and say what to add", async () => {
+			await put("projects/common/.vscode/settings.json", "{}");
+
+			const planned = await plan();
+
+			expect(
+				fileOf(planned, "projects/common/.vscode/settings.json")
+			).toBeUndefined();
+			expect(planned.notes.join("\n")).toContain(
+				'projects/common/.vscode/settings.json is there already: add {"luau-lsp.sourcemap.generatorCommand":"rogen sourcemap ../game --watch -o sourcemap.json"} to it.'
+			);
+		});
+
 		it("should ignore the project files Rogen writes", async () => {
 			const planned = await plan({ skipGit: undefined });
 

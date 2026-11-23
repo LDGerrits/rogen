@@ -281,6 +281,46 @@ describe("CoreInitService", () => {
 			}
 		);
 
+		it("should fail with init.configExists in a folder that holds only places", async () => {
+			await fileSystem.createDirectory(
+				path.join(directory, "projects/game")
+			);
+			await write("projects/game/default.rogen.json", "{}");
+
+			expect(
+				await refused(new MockPromptService([]), { ask: false })
+			).toMatchObject([
+				{
+					code: "init.configExists",
+					resource: path.join(
+						directory,
+						"projects/game/default.rogen.json"
+					),
+				},
+			]);
+		});
+
+		it("should not mistake a file or an unreadable folder under projects for a place", async () => {
+			await write("projects/notes.txt", "");
+			await fileSystem.createDirectory(
+				path.join(directory, "projects/odd")
+			);
+			const read = fileSystem.readDirectory.bind(fileSystem);
+			jest.spyOn(fileSystem, "readDirectory").mockImplementation(
+				async (folder) => {
+					if (folder.endsWith("odd")) throw new Error("denied");
+					return read(folder);
+				}
+			);
+
+			const result = await serviceFor(new MockPromptService([])).plan({
+				ask: false,
+				choices: { language: "luau" },
+			});
+
+			expect(result.isOk()).toBe(true);
+		});
+
 		it("should fail with what a folder check finds, and write nothing", async () => {
 			await write(".rogen.json", "{}");
 			configs.registerFolderCheck(async (folder) => [

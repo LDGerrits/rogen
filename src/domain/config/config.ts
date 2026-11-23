@@ -64,6 +64,8 @@ export const isSyncbackFileName = (name: string): boolean =>
 
 export const DEFAULT_SOURCE_PATH = "src";
 
+export const PLACES_FOLDER = "projects";
+
 export const DEFAULT_PROJECT_FILE = projectFileName(DEFAULT_PROJECT);
 
 export const isProjectFileConfig = (file: string): boolean =>
@@ -89,6 +91,13 @@ export const compilerFileOf = (configFile: string): string => {
 				: `${stem}.${COMPILER_STEM}`
 		)
 	);
+};
+
+export const compilerOwnerStem = (fileName: string): string => {
+	const stem = projectStem(fileName);
+	return stem === COMPILER_STEM
+		? DEFAULT_PROJECT
+		: stem.slice(0, -`.${COMPILER_STEM}`.length);
 };
 
 export const isCompilerFileName = (name: string): boolean =>
