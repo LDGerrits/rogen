@@ -1,0 +1,16 @@
+$ rogen check projects/common/src/Greeter/Shared/Greeting.luau
+exit 1
+stdout:
+  projects/common/src/Greeter/Shared/Stray.Server.luau - error: write "Stray.server.luau" (route.dotRoute)
+stderr:
+  warning: The write stops on the error above, so the paths were checked only as far as it gets; fix it and check again.
+
+$ rogen check projects/common/src/Greeter/Shared/Stray.Server.luau
+exit 1
+stdout:
+  projects/common/src/Greeter/Shared/Stray.Server.luau - error: write "Stray.server.luau" (route.dotRoute)
+
+$ rogen check projects/common/src
+exit 1
+stdout:
+  projects/common/src/Greeter/Shared/Stray.Server.luau - error: write "Stray.server.luau" (route.dotRoute)

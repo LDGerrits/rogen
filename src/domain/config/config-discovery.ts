@@ -442,7 +442,7 @@ export class ConfigDiscovery {
 		return undefined;
 	}
 
-	async namedConfigsAbove(target: string): Promise<string[]> {
+	async namedConfigsAbove(target: string, stop: string): Promise<string[]> {
 		const found: string[] = [];
 		for (const directory of await this.foldersUp(target))
 			found.push(
@@ -450,10 +450,25 @@ export class ConfigDiscovery {
 					(file) => !isDefaultConfigFileName(path.basename(file))
 				)
 			);
+		for (const directory of await this.foldersWithin(target, stop))
+			for (const child of await this.subfolders(directory))
+				found.push(...(await this.defaultConfigs(child)));
 		return found;
 	}
 
 	async configsBeside(target: string, stop: string): Promise<string[]> {
+		const found: string[] = [];
+		for (const directory of await this.foldersWithin(target, stop))
+			for (const child of await this.subfolders(directory))
+				if (!samePath(child, target) && !isInside(target, child))
+					found.push(...(await this.list(child)));
+		return found;
+	}
+
+	private async foldersWithin(
+		target: string,
+		stop: string
+	): Promise<string[]> {
 		const folders = await this.foldersUp(target);
 		const stopAt = folders.findIndex((folder) => samePath(folder, stop));
 		let last = stopAt < 0 ? folders.length - 1 : stopAt;
@@ -464,24 +479,21 @@ export class ConfigDiscovery {
 				last = Math.max(last, index);
 				break;
 			}
-		const found: string[] = [];
-		for (const directory of folders.slice(0, last + 1)) {
-			const listing = await tryWithAsync(() =>
-				this.fileSystemService.readDirectory(directory)
-			);
-			for (const [name, type] of listing.isOk() ? listing.value : []) {
-				const child = path.join(directory, name);
-				if (
+		return folders.slice(0, last + 1);
+	}
+
+	private async subfolders(directory: string): Promise<string[]> {
+		const listing = await tryWithAsync(() =>
+			this.fileSystemService.readDirectory(directory)
+		);
+		return (listing.isOk() ? listing.value : [])
+			.filter(
+				([name, type]) =>
 					isDirectoryType(type) &&
 					!name.startsWith(".") &&
-					name !== "node_modules" &&
-					!samePath(child, target) &&
-					!isInside(target, child)
-				)
-					found.push(...(await this.list(child)));
-			}
-		}
-		return found;
+					name !== "node_modules"
+			)
+			.map(([name]) => path.join(directory, name));
 	}
 
 	private async foldersUp(target: string): Promise<string[]> {

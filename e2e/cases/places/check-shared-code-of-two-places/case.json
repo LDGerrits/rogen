@@ -1,0 +1,17 @@
+{
+	"steps": [
+		[
+			"check",
+			"projects/common/src/Greeter/Shared/Greeting.luau"
+		],
+		[
+			"check",
+			"projects/common/src/Greeter/Shared/Stray.Server.luau"
+		],
+		[
+			"check",
+			"projects/common/src"
+		]
+	],
+	"rojo": false
+}

@@ -657,9 +657,10 @@ describe("ConfigDiscovery.namedConfigsAbove", () => {
 		await fs.writeFile("/repo/src/game/Main.luau", "");
 	});
 
-	const above = (target: string) =>
+	const above = (target: string, stop = "/repo") =>
 		discoveryOf(fs, new MockEnvironmentService("/repo")).namedConfigsAbove(
-			target
+			target,
+			stop
 		);
 
 	it("should list the named configs of the folder and of each folder above, nearest first, and no default", async () => {
@@ -679,7 +680,53 @@ describe("ConfigDiscovery.namedConfigsAbove", () => {
 	});
 
 	it("should list none when no folder above holds one", async () => {
-		expect(await above("/elsewhere/A.luau")).toEqual([]);
+		expect(await above("/elsewhere/A.luau", "/elsewhere")).toEqual([]);
+	});
+
+	it("should add the default config of each folder beside the target's folders, after the named ones", async () => {
+		await fs.createDirectory("/repo/projects/common/src");
+		await fs.writeFile("/repo/projects/game/default.rogen.json", "{}");
+		await fs.writeFile("/repo/projects/lobby/default.rogen.jsonc", "{}");
+		await fs.writeFile("/repo/projects/common/src/A.luau", "");
+
+		expect(await above("/repo/projects/common/src/A.luau")).toEqual([
+			"/repo/game.rogen.json",
+			"/repo/lobby.rogen.jsonc",
+			"/repo/projects/game/default.rogen.json",
+			"/repo/projects/lobby/default.rogen.jsonc",
+		]);
+	});
+
+	it("should not walk below the direct subfolders, nor into hidden ones or node_modules", async () => {
+		await fs.writeFile("/repo/projects/a/b/default.rogen.json", "{}");
+		await fs.writeFile("/repo/.hidden/default.rogen.json", "{}");
+		await fs.writeFile("/repo/node_modules/default.rogen.json", "{}");
+		await fs.writeFile("/repo/projects/a/default.rogen.json", "{}");
+
+		expect(await above("/repo/projects/a/b/A.luau")).toEqual(
+			expect.not.arrayContaining([
+				"/repo/projects/a/b/default.rogen.json",
+				"/repo/.hidden/default.rogen.json",
+				"/repo/node_modules/default.rogen.json",
+			])
+		);
+		expect(await above("/repo/projects/a/b/A.luau")).toContain(
+			"/repo/projects/a/default.rogen.json"
+		);
+	});
+
+	it("should look no higher for subfolder defaults than the stop", async () => {
+		await fs.writeFile("/repo/projects/common/src/A.luau", "");
+		await fs.writeFile("/repo/projects/game/default.rogen.json", "{}");
+		await fs.writeFile("/repo/tools/default.rogen.json", "{}");
+
+		const found = await above(
+			"/repo/projects/common/src/A.luau",
+			"/repo/projects"
+		);
+
+		expect(found).toContain("/repo/projects/game/default.rogen.json");
+		expect(found).not.toContain("/repo/tools/default.rogen.json");
 	});
 });
 

@@ -1,0 +1,5 @@
+{
+	"name": "game",
+	"sourcePaths": ["../common/src", "src"],
+	"routes": { "*": "ReplicatedStorage/Shared" }
+}
