@@ -5,7 +5,7 @@ stdout: (not shown)
 $ npx rbxtsc -p tsconfig.game.json
 exit 0
 
-$ rogen build game -o game.rbxlx
+$ rogen build projects/game -o game.rbxlx
 exit 0
 stdout: (not shown)
 
@@ -16,69 +16,32 @@ written:
   .vscode/settings.json
   AGENTS.md
   README.md
-  game.project.json
   game.rbxlx
-  game.rogen.json
   include/Promise.lua
   include/RuntimeLib.lua
-  out/game/common/Greeter/client/Greeter.client.luau
-  out/game/common/Greeter/server/Greeter.server.luau
-  out/game/common/Greeter/shared/Greeting.luau
-  out/game/game/Game/server/Game.server.luau
+  out/game/common/src/Greeter/client/Greeter.client.luau
+  out/game/common/src/Greeter/server/Greeter.server.luau
+  out/game/common/src/Greeter/shared/Greeting.luau
+  out/game/game/compiler.project.json
+  out/game/game/default.project.json
+  out/game/game/default.rogen.json
+  out/game/game/src/Main/server/Main.server.luau
+  out/game/game/tsconfig.json
   out/game/tsconfig.tsbuildinfo
   package-lock.json
   package.json
-  place/game/Lighting/init.meta.json
-  place/game/SoundService/init.meta.json
-  place/game/Workspace/Baseplate.model.json
-  place/game/Workspace/init.meta.json
-  src/common/Greeter/client/Greeter.client.ts
-  src/common/Greeter/server/Greeter.server.ts
-  src/common/Greeter/shared/Greeting.ts
-  src/game/Game/server/Game.server.ts
+  projects/common/src/Greeter/client/Greeter.client.ts
+  projects/common/src/Greeter/server/Greeter.server.ts
+  projects/common/src/Greeter/shared/Greeting.ts
+  projects/game/compiler.project.json
+  projects/game/default.project.json
+  projects/game/default.rogen.json
+  projects/game/src/Main/server/Main.server.ts
+  projects/game/tsconfig.json
   tsconfig.game.json
   tsconfig.json
 
-game.rogen.json:
-{
-  "name": "game",
-  "sourcePaths": [
-    "src/common",
-    "src/game"
-  ],
-  "routes": {
-    "server": "ServerScriptService",
-    "client": "StarterPlayer/StarterPlayerScripts",
-    "shared": "ReplicatedStorage/shared",
-    "*": "ReplicatedStorage/shared"
-  },
-  "compiledPath": "out/game",
-  "tree": {
-    "$className": "DataModel",
-    "Lighting": {
-      "$path": "place/game/Lighting"
-    },
-    "ReplicatedStorage": {
-      "rbxts_include": {
-        "node_modules": {
-          "$className": "Folder",
-          "@rbxts": {
-            "$path": "node_modules/@rbxts"
-          }
-        },
-        "$path": "include"
-      }
-    },
-    "SoundService": {
-      "$path": "place/game/SoundService"
-    },
-    "Workspace": {
-      "$path": "place/game/Workspace"
-    }
-  }
-}
-
-out/game/common/Greeter/shared/Greeting.luau:
+out/game/common/src/Greeter/shared/Greeting.luau:
 -- Compiled with roblox-ts v3.0.0
 local function greeting(who)
 	return `Hello, {who}!`
@@ -87,34 +50,238 @@ return {
 	greeting = greeting,
 }
 
-$ rojo sourcemap game.project.json
+out/game/game/default.rogen.json:
+{
+  "name": "game",
+  "sourcePaths": [
+    "../common/src",
+    "src"
+  ],
+  "routes": {
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared",
+    "*": "ReplicatedStorage/shared"
+  },
+  "compiledPath": "../../out/game",
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$properties": {
+        "Ambient": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Brightness": 2.0,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "Technology": "Voxel"
+      }
+    },
+    "ReplicatedStorage": {
+      "rbxts_include": {
+        "node_modules": {
+          "$className": "Folder",
+          "@rbxts": {
+            "$path": "../../node_modules/@rbxts"
+          }
+        },
+        "$path": "../../include"
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    },
+    "Workspace": {
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Color": {
+            "Color3uint8": [
+              99,
+              95,
+              99
+            ]
+          },
+          "Locked": true,
+          "Position": [
+            0.0,
+            -10.0,
+            0.0
+          ],
+          "Size": [
+            512.0,
+            20.0,
+            512.0
+          ]
+        }
+      },
+      "$properties": {
+        "FilteringEnabled": true
+      }
+    }
+  }
+}
+
+projects/game/default.rogen.json:
+{
+  "name": "game",
+  "sourcePaths": [
+    "../common/src",
+    "src"
+  ],
+  "routes": {
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared",
+    "*": "ReplicatedStorage/shared"
+  },
+  "compiledPath": "../../out/game",
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$properties": {
+        "Ambient": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Brightness": 2.0,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "Technology": "Voxel"
+      }
+    },
+    "ReplicatedStorage": {
+      "rbxts_include": {
+        "node_modules": {
+          "$className": "Folder",
+          "@rbxts": {
+            "$path": "../../node_modules/@rbxts"
+          }
+        },
+        "$path": "../../include"
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    },
+    "Workspace": {
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Color": {
+            "Color3uint8": [
+              99,
+              95,
+              99
+            ]
+          },
+          "Locked": true,
+          "Position": [
+            0.0,
+            -10.0,
+            0.0
+          ],
+          "Size": [
+            512.0,
+            20.0,
+            512.0
+          ]
+        }
+      },
+      "$properties": {
+        "FilteringEnabled": true
+      }
+    }
+  }
+}
+
+$ rojo sourcemap out/game/game/compiler.project.json
+exit 1
+stderr:
+  [ERROR rojo] Rojo project referred to a file using $path that could not be turned into a Roblox Instance by Rojo.
+          Check that the file exists and is a file type known by Rojo.
+          
+          Project path: <dir>/out/game/game/compiler.project.json
+          File $path: ../../include
+
+$ rojo sourcemap out/game/game/default.project.json
+exit 1
+stderr:
+  [ERROR rojo] Rojo project referred to a file using $path that could not be turned into a Roblox Instance by Rojo.
+          Check that the file exists and is a file type known by Rojo.
+          
+          Project path: <dir>/out/game/game/default.project.json
+          File $path: ../../include
+
+$ rojo sourcemap projects/game/compiler.project.json
 game: DataModel
-  Lighting: Lighting  <- place/game/Lighting/init.meta.json
+  Lighting: Lighting
   ReplicatedStorage: ReplicatedStorage
     rbxts_include: Folder
-      Promise: ModuleScript  <- include/Promise.lua
-      RuntimeLib: ModuleScript  <- include/RuntimeLib.lua
+      Promise: ModuleScript  <- ../../include/Promise.lua
+      RuntimeLib: ModuleScript  <- ../../include/RuntimeLib.lua
       node_modules: Folder
         @rbxts: Folder
           compiler-types: Folder
-            package: ModuleScript  <- node_modules/@rbxts/compiler-types/package.json
+            package: ModuleScript  <- ../../node_modules/@rbxts/compiler-types/package.json
             types: Folder
           types: Folder
             include: Folder
               generated: Folder
-            package: ModuleScript  <- node_modules/@rbxts/types/package.json
+            package: ModuleScript  <- ../../node_modules/@rbxts/types/package.json
     shared: Folder
       Greeter: Folder
-        Greeting: ModuleScript  <- out/game/common/Greeter/shared/Greeting.luau
+        Greeting: ModuleScript  <- ../../out/game/common/src/Greeter/shared/Greeting.luau
   ServerScriptService: ServerScriptService
-    Game: Folder
-      Game: Script  <- out/game/game/Game/server/Game.server.luau
     Greeter: Folder
-      Greeter: Script  <- out/game/common/Greeter/server/Greeter.server.luau
-  SoundService: SoundService  <- place/game/SoundService/init.meta.json
+      Greeter: Script  <- ../../out/game/common/src/Greeter/server/Greeter.server.luau
+    Main: Folder
+      Main: Script  <- ../../out/game/game/src/Main/server/Main.server.luau
+  SoundService: SoundService
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Greeter: Folder
-        Greeter: LocalScript  <- out/game/common/Greeter/client/Greeter.client.luau
-  Workspace: Workspace  <- place/game/Workspace/init.meta.json
-    Baseplate: Part  <- place/game/Workspace/Baseplate.model.json
+        Greeter: LocalScript  <- ../../out/game/common/src/Greeter/client/Greeter.client.luau
+  Workspace: Workspace
+    Baseplate: Part
+
+$ rojo sourcemap projects/game/default.project.json
+game: DataModel
+  Lighting: Lighting
+  ReplicatedStorage: ReplicatedStorage
+    rbxts_include: Folder
+      Promise: ModuleScript  <- ../../include/Promise.lua
+      RuntimeLib: ModuleScript  <- ../../include/RuntimeLib.lua
+      node_modules: Folder
+        @rbxts: Folder
+          compiler-types: Folder
+            package: ModuleScript  <- ../../node_modules/@rbxts/compiler-types/package.json
+            types: Folder
+          types: Folder
+            include: Folder
+              generated: Folder
+            package: ModuleScript  <- ../../node_modules/@rbxts/types/package.json
+    shared: Folder
+      Greeter: Folder
+        Greeting: ModuleScript  <- ../../out/game/common/src/Greeter/shared/Greeting.luau
+  ServerScriptService: ServerScriptService
+    Greeter: Folder
+      Greeter: Script  <- ../../out/game/common/src/Greeter/server/Greeter.server.luau
+    Main: Folder
+      Main: Script  <- ../../out/game/game/src/Main/server/Main.server.luau
+  SoundService: SoundService
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Greeter: Folder
+        Greeter: LocalScript  <- ../../out/game/common/src/Greeter/client/Greeter.client.luau
+  Workspace: Workspace
+    Baseplate: Part

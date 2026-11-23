@@ -1,20 +1,6 @@
 {
-	"extends": "./tsconfig.json",
-	"compilerOptions": {
-		"rootDir": "src",
-		"rootDirs": [
-			"src/common",
-			"src/game"
-		],
-		"outDir": "out/game",
-		"tsBuildInfoFile": "out/game/tsconfig.tsbuildinfo",
-		"composite": true
-	},
-	"include": [
-		"src/common",
-		"src/game"
-	],
+	"extends": "./projects/game/tsconfig.json",
 	"rbxts": {
-		"rojo": "game.project.json"
+		"rojo": "projects/game/compiler.project.json"
 	}
 }

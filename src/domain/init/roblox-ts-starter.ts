@@ -1,4 +1,5 @@
 import { Language, PlannedFile } from "../toolchain/toolchain.js";
+import { DEFAULT_CONFIG_FILE } from "../config/config.js";
 import { PlannedCommand, PlannedScaffold } from "./init-service.js";
 import { templateFiles } from "./template-files.js";
 
@@ -8,6 +9,7 @@ const SCRIPT_TIMEOUT = 60_000;
 const OUT_DIR = "out";
 
 const PLACES_VARIANT = "roblox-ts-places";
+const TSCONFIG = /^(projects\/[^/]+\/)?tsconfig(\.[^/]+)?\.json$/;
 
 export class RobloxTsStarter {
 	static of(language: Language): RobloxTsStarter | undefined {
@@ -66,15 +68,15 @@ export class RobloxTsStarter {
 		return `tsconfig.${place}.json`;
 	}
 
-	addPlaceStep(place: string, other: string, otherConfig: string): string {
+	addPlaceStep(place: string, other: string, folder: string): string {
 		const from = RobloxTsStarter.placeTsconfig(place);
 		const to = RobloxTsStarter.placeTsconfig(other);
-		return `Copy ${from} to ${to}, change each ${place} in it to ${other}, add it to the references in tsconfig.json, and set "compiledPath" in ${otherConfig} to ${OUT_DIR}/${other}. Add ' && rbxtsc -p ${to}' to the end of the build script in package.json. 'rbxtsc -w' runs until you stop it, so watch the place from a terminal of its own with 'npx rbxtsc -w -p ${to}'.`;
+		return `In the copy, change ${place} to ${other} in the "outDir" and "tsBuildInfoFile" of ${folder}/tsconfig.json and in the "compiledPath" of ${folder}/${DEFAULT_CONFIG_FILE}. Copy ${from} to ${to} and change ${place} in it to ${other}, add { "path": "./${folder}" } to the references in tsconfig.json, and add ' && rbxtsc -p ${to}' to the end of the build script in package.json. 'rbxtsc -w' runs until you stop it, so watch the place from a terminal of its own with 'npx rbxtsc -w -p ${to}'.`;
 	}
 
 	placesTsconfigs(): PlannedFile[] {
 		return [...templateFiles(PLACES_VARIANT)]
-			.filter(([file]) => /^tsconfig(\.[^/]+)?\.json$/.test(file))
+			.filter(([file]) => TSCONFIG.test(file))
 			.map(([fileName, content]) => ({ fileName, content }));
 	}
 }

@@ -1,0 +1,20 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"rootDir": "..",
+		"outDir": "../../out/game",
+		"tsBuildInfoFile": "../../out/game/tsconfig.tsbuildinfo",
+		"typeRoots": [
+			"node_modules/@rbxts",
+			"../../node_modules/@rbxts"
+		]
+	},
+	"include": [
+		"src",
+		"../common/src"
+	],
+	"rbxts": {
+		"rojo": "compiler.project.json",
+		"includePath": "../../include"
+	}
+}

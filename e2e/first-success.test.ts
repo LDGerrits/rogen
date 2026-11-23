@@ -24,7 +24,7 @@ const VARIANTS: readonly Variant[] = [
 		flags: ["--language", "roblox-ts", "--places"],
 		steps: [["npx", "rbxtsc", "-p", "tsconfig.game.json"]],
 		network: true,
-		project: ["game"],
+		project: ["projects/game"],
 		served: "game",
 	},
 ];

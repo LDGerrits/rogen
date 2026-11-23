@@ -84,38 +84,72 @@ describe("RobloxTsStarter", () => {
 				.map(({ fileName, content }) => [fileName, JSON.parse(content)])
 		);
 
-		it("should write a root tsconfig that holds the options and refers to each place", () => {
+		it("should write a root tsconfig that holds the options and refers to each place folder", () => {
 			const root = tsconfigs.get("tsconfig.json");
 			expect(root.compilerOptions).toMatchObject({
-				rootDir: "src",
 				typeRoots: ["node_modules/@rbxts"],
 				types: ["compiler-types", "types"],
 			});
+			expect(root.compilerOptions.rootDir).toBeUndefined();
 			expect(root.files).toEqual([]);
-			expect(root.references).toEqual([{ path: "./tsconfig.game.json" }]);
+			expect(root.references).toEqual([{ path: "./projects/game" }]);
 		});
 
-		it("should compile the place with the common code below one rootDir into its own out folder", () => {
-			const place = tsconfigs.get("tsconfig.game.json");
-			expect(place).toMatchObject({
-				extends: "./tsconfig.json",
+		it("should compile the place and the common code below projects into the place's own out folder", () => {
+			expect(tsconfigs.get("projects/game/tsconfig.json")).toEqual({
+				extends: "../../tsconfig.json",
 				compilerOptions: {
-					rootDir: "src",
-					rootDirs: ["src/common", "src/game"],
-					outDir: "out/game",
-					composite: true,
+					rootDir: "..",
+					outDir: "../../out/game",
+					tsBuildInfoFile: "../../out/game/tsconfig.tsbuildinfo",
+					typeRoots: [
+						"node_modules/@rbxts",
+						"../../node_modules/@rbxts",
+					],
 				},
-				include: ["src/common", "src/game"],
-				rbxts: { rojo: "game.project.json" },
+				include: ["src", "../common/src"],
+				rbxts: {
+					rojo: "compiler.project.json",
+					includePath: "../../include",
+				},
 			});
 		});
 
-		it("should write nothing but the two tsconfigs", () => {
+		it("should wrap the place's tsconfig at the root, pointing at the compiler's project file", () => {
+			expect(tsconfigs.get("tsconfig.game.json")).toEqual({
+				extends: "./projects/game/tsconfig.json",
+				rbxts: { rojo: "projects/game/compiler.project.json" },
+			});
+		});
+
+		it("should write nothing but the three tsconfigs", () => {
 			expect([...tsconfigs.keys()].sort()).toEqual([
+				"projects/game/tsconfig.json",
 				"tsconfig.game.json",
 				"tsconfig.json",
 			]);
 		});
+	});
+
+	it("should say how to copy a place with its tsconfigs", () => {
+		const step = new RobloxTsStarter().addPlaceStep(
+			"game",
+			"lobby",
+			"projects/lobby"
+		);
+
+		expect(step).toContain(
+			'"outDir" and "tsBuildInfoFile" of projects/lobby/tsconfig.json'
+		);
+		expect(step).toContain(
+			'"compiledPath" of projects/lobby/default.rogen.json'
+		);
+		expect(step).toContain(
+			"Copy tsconfig.game.json to tsconfig.lobby.json"
+		);
+		expect(step).toContain('{ "path": "./projects/lobby" }');
+		expect(step).toContain("' && rbxtsc -p tsconfig.lobby.json'");
+		expect(step).toContain("npx rbxtsc -w -p tsconfig.lobby.json");
 	});
 });
 

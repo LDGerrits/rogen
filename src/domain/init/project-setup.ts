@@ -28,11 +28,7 @@ import { GreeterSample } from "./greeter-sample.js";
 import { SampleGame } from "./sample-game.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
-import {
-	OutputConfigs,
-	PROCESSED_OUTPUT,
-	RELEASE_OUTPUT,
-} from "./output-configs.js";
+import { OutputConfigs, PROCESSED_OUTPUT } from "./output-configs.js";
 import { InitQuestions, UnplacedCode } from "./init-questions.js";
 import { InitSummary } from "./init-summary.js";
 import { InitKind, PlannedCommand, PlannedScaffold } from "./init-service.js";
@@ -435,23 +431,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		starter: RobloxTsStarter | undefined
 	): string {
 		const port = "from a second terminal with its own --port";
-		if (!starter) {
-			const folder = path.posix.dirname(places.configFile);
-			const lobby = path.posix.join(path.posix.dirname(folder), "lobby");
-			return `Add another place: copy ${folder} to ${lobby}, set "name" in ${path.posix.join(lobby, DEFAULT_CONFIG_FILE)} to "lobby" and add { "path": "${lobby}" } to the folders in ${places.workspaceFile}. Serve it ${port}: 'rogen serve ${lobby} --port <port>'. Selene reads only the selene.toml in the folder it runs in, so put one in ${path.posix.dirname(places.commonSourcePath)} and in each place's folder.`;
-		}
-		const { outputPrefix } = places;
-		const lobby = (file: string) => file.replace(outputPrefix, "lobby.");
-		const release = configFileName(`${outputPrefix}${RELEASE_OUTPUT}`);
-		const edited =
-			'Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common.';
-		const copy = `copy ${places.configFile} to ${lobby(places.configFile)} and make src/lobby. ${edited}`;
-		const compile = starter.addPlaceStep(
-			places.place,
-			"lobby",
-			lobby(places.configFile)
-		);
-		return `Add another place: ${copy} Do the same for ${release} if there is one. ${compile} Serve it ${port}: 'rogen serve lobby --port <port>'.`;
+		const folder = path.posix.dirname(places.configFile);
+		const lobby = path.posix.join(path.posix.dirname(folder), "lobby");
+		const copy = `Add another place: copy ${folder} to ${lobby}, set "name" in ${path.posix.join(lobby, DEFAULT_CONFIG_FILE)} to "lobby"`;
+		const serve = `Serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
+		if (starter)
+			return `${copy}. ${starter.addPlaceStep(places.place, "lobby", lobby)} ${serve}`;
+		return `${copy} and add { "path": "${lobby}" } to the folders in ${places.workspaceFile}. ${serve} Selene reads only the selene.toml in the folder it runs in, so put one in ${path.posix.dirname(places.commonSourcePath)} and in each place's folder.`;
 	}
 
 	private noPlacesBecause(
@@ -682,6 +668,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const name = path.basename(places?.place ?? this.directory.path);
 		const { unmounted } = choices;
 		const { name: ownName, ...fields } = tree.fields;
+		const configCompiledPath =
+			places && compiledPath
+				? path.posix.relative(places.configFolder, compiledPath)
+				: compiledPath;
 		const config: RogenConfig = {
 			name: typeof ownName === "string" ? ownName : name,
 			...fields,
@@ -692,7 +682,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				],
 			}),
 			...(routes && { sourcePaths: [...sourcePaths], routes }),
-			...(compiledPath && { compiledPath }),
+			...(configCompiledPath && { compiledPath: configCompiledPath }),
 		};
 		const written =
 			choices.tree.kind === "lift"
@@ -706,7 +696,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const processedPath = processedPathOf(choices);
 		for (const { stem, config: output } of OutputConfigs.of(config, {
 			processedPath,
-			releasePath: processedPath ?? compiledPath,
+			releasePath: processedPath ?? configCompiledPath,
 			releaseIgnore: this.directory.workspace.testRunner
 				? `**/*.spec.${language.extension}`
 				: undefined,

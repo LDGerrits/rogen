@@ -12,7 +12,6 @@ import {
 	booleanFlag,
 } from "./init-service.js";
 import { ReviewPrompts } from "./review-prompts.js";
-import { RobloxTsStarter } from "./roblox-ts-starter.js";
 import { COMMON_FOLDER, PLACES_FOLDER } from "./starter-places.js";
 import { TreeChoice } from "./tree-plan.js";
 
@@ -164,9 +163,8 @@ export class InitQuestions {
 		if (given !== undefined) return given;
 		if (!this.interactive)
 			return this.decide("places", false, booleanFlag("--places", true));
-		const [layout, first] = RobloxTsStarter.of(language)
-			? [`src/${COMMON_FOLDER}`, "src/game"]
-			: [`${PLACES_FOLDER}/${COMMON_FOLDER}`, `${PLACES_FOLDER}/game`];
+		const layout = `${PLACES_FOLDER}/${COMMON_FOLDER}`;
+		const first = `${PLACES_FOLDER}/game`;
 		const answer = await this.ask(
 			"places",
 			this.placesEssential(directory),

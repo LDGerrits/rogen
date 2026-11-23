@@ -6,11 +6,12 @@
 	"show": [
 		".gitignore",
 		"package.json",
-		"game.rogen.json",
+		"projects/game/default.rogen.json",
 		"tsconfig.json",
 		"tsconfig.game.json",
-		"src/common/Greeter/shared/Greeting.ts",
-		"src/game/Game/server/Game.server.ts"
+		"projects/common/src/Greeter/shared/Greeting.ts",
+		"projects/game/src/Main/server/Main.server.ts",
+		"projects/game/tsconfig.json"
 	],
 	"output": ["init"],
 	"tools": {

@@ -4,9 +4,7 @@ import {
 	DEFAULT_CONFIG_FILE,
 	DEFAULT_PROJECT_FILE,
 	DEFAULT_SOURCE_PATH,
-	configFileName,
 } from "../config/config.js";
-import { projectFileName } from "../rojo/rojo-project.js";
 import { Language, PlannedFile } from "../toolchain/toolchain.js";
 import { RobloxTsStarter } from "./roblox-ts-starter.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -44,16 +42,19 @@ export class StarterPlaces {
 		language: Language,
 		starter: RobloxTsStarter | undefined
 	): Promise<StartingPlaces> {
-		if (starter && language.compiler)
-			return StarterPlaces.compiled(language, starter);
 		const commonFolder = path.posix.join(PLACES_FOLDER, COMMON_FOLDER);
 		const placeFolder = path.posix.join(PLACES_FOLDER, FIRST_PLACE);
 		const commonSourcePath = path.posix.join(commonFolder, SOURCE_FOLDER);
 		const placeSourcePath = path.posix.join(placeFolder, SOURCE_FOLDER);
-		const workspaceFile = `${path.basename(root)}${WORKSPACE_EXTENSION}`;
-		const folders = [commonFolder, placeFolder];
-		const settings = StarterPlaces.workspaceSettings();
-		const present = await this.files.exists(path.join(root, workspaceFile));
+		const compiler = starter ? language.compiler : undefined;
+		const editor =
+			starter && compiler
+				? {
+						files: starter.placesTsconfigs(),
+						notes: [],
+						workspaceFile: "",
+					}
+				: await this.workspace(root, commonFolder, placeFolder);
 		return {
 			place: FIRST_PLACE,
 			target: placeFolder,
@@ -67,6 +68,24 @@ export class StarterPlaces {
 			],
 			commonSourcePath,
 			placeSourcePath,
+			...(compiler && {
+				compiledPath: path.posix.join(compiler.outDir, FIRST_PLACE),
+			}),
+			directories: [commonSourcePath, placeSourcePath],
+			...editor,
+		};
+	}
+
+	private async workspace(
+		root: string,
+		commonFolder: string,
+		placeFolder: string
+	): Promise<Pick<StartingPlaces, "files" | "notes" | "workspaceFile">> {
+		const workspaceFile = `${path.basename(root)}${WORKSPACE_EXTENSION}`;
+		const folders = [commonFolder, placeFolder];
+		const settings = StarterPlaces.workspaceSettings();
+		const present = await this.files.exists(path.join(root, workspaceFile));
+		return {
 			files: [
 				...(present
 					? []
@@ -88,40 +107,12 @@ export class StarterPlaces {
 					}),
 				},
 			],
-			directories: [commonSourcePath, placeSourcePath],
 			notes: present
 				? [
 						`${workspaceFile} is there already: add ${folders.map((folder) => `"${folder}"`).join(" and ")} to its folders, and ${JSON.stringify(settings)} to its settings.`,
 					]
 				: [],
 			workspaceFile,
-		};
-	}
-
-	private static compiled(
-		language: Language,
-		starter: RobloxTsStarter
-	): StartingPlaces {
-		const commonSourcePath = path.posix.join(SOURCE_FOLDER, COMMON_FOLDER);
-		const placeSourcePath = path.posix.join(SOURCE_FOLDER, FIRST_PLACE);
-		return {
-			place: FIRST_PLACE,
-			target: FIRST_PLACE,
-			configFile: configFileName(FIRST_PLACE),
-			projectFile: projectFileName(FIRST_PLACE),
-			configFolder: "",
-			outputPrefix: `${FIRST_PLACE}.`,
-			sourcePaths: [commonSourcePath, placeSourcePath],
-			commonSourcePath,
-			placeSourcePath,
-			compiledPath: path.posix.join(
-				language.compiler!.outDir,
-				FIRST_PLACE
-			),
-			files: starter.placesTsconfigs(),
-			directories: [commonSourcePath, placeSourcePath],
-			notes: [],
-			workspaceFile: "",
 		};
 	}
 
