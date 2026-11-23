@@ -1,3 +1,4 @@
+import path from "path";
 import { exampleMessage } from "../../../__tests__/diagnostic-examples.js";
 import { ResultError } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
@@ -231,7 +232,11 @@ describe("DraftRouting", () => {
 
 		const misses = await routingOf().misses([], [proposal]);
 
-		expect(`${misses.get(proposal)}`.replaceAll("/repo/", "")).toBe(
+		expect(
+			`${misses.get(proposal)}`
+				.replaceAll(`${abs()}${path.sep}`, "")
+				.replaceAll(path.sep, "/")
+		).toBe(
 			exampleMessage("syncback.unplaced", "would stop on")
 				.replace(
 					"ServerScriptService/Inventory/Types was left out: ",
