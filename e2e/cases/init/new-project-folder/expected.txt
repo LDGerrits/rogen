@@ -26,9 +26,9 @@ written:
   newproj/README.md
   newproj/default.project.json
   newproj/default.rogen.json
-  newproj/src/greeter/client/greeter.client.luau
-  newproj/src/greeter/server/greeter.server.luau
-  newproj/src/greeter/shared/greeting.luau
+  newproj/src/greeter/client/Greeter.client.luau
+  newproj/src/greeter/server/Greeter.server.luau
+  newproj/src/greeter/shared/Greeting.luau
 
 newproj/default.rogen.json:
 {
@@ -100,14 +100,14 @@ newproj: DataModel
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
       greeter: Folder
-        greeting: ModuleScript  <- src/greeter/shared/greeting.luau
+        Greeting: ModuleScript  <- src/greeter/shared/Greeting.luau
   ServerScriptService: ServerScriptService
     greeter: Folder
-      greeter: Script  <- src/greeter/server/greeter.server.luau
+      Greeter: Script  <- src/greeter/server/Greeter.server.luau
   SoundService: SoundService
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       greeter: Folder
-        greeter: LocalScript  <- src/greeter/client/greeter.client.luau
+        Greeter: LocalScript  <- src/greeter/client/Greeter.client.luau
   Workspace: Workspace
     Baseplate: Part

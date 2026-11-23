@@ -66,7 +66,7 @@ describeWithRojo("first success from an empty folder", () => {
 				expect(success.unprinted).toEqual([]);
 				for (const folder of variant.mapped ?? [])
 					expect(success.mappedPaths[folder]).toContain(
-						"ReplicatedStorage/Shared/greeter/greeting"
+						"ReplicatedStorage/Shared/greeter/Greeting"
 					);
 				expect(success.printed).toContain(
 					["rogen serve", ...(variant.project ?? [])].join(" ")

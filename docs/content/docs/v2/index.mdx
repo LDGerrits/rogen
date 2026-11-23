@@ -17,24 +17,24 @@ This game has an inventory and a shop. Its project file mounts `src/server` into
   src/
     client/
       controllers/
-        inventory-controller.luau
-        shop-controller.luau
+        InventoryController.luau
+        ShopController.luau
       ui/
-        inventory-window.luau
-        shop-window.luau
+        InventoryWindow.luau
+        ShopWindow.luau
     server/
       data/
-        inventory-store.luau
+        InventoryStore.luau
       services/
-        inventory-service.luau
-        shop-service.luau
+        InventoryService.luau
+        ShopService.luau
     shared/
       config/
-        item-config.luau
-        shop-config.luau
+        ItemConfig.luau
+        ShopConfig.luau
       types/
-        inventory-types.luau
-        shop-types.luau
+        InventoryTypes.luau
+        ShopTypes.luau
 `}
 />
 
@@ -81,47 +81,47 @@ Rogen writes those entries for you when you put each feature in one folder, with
   src/
     inventory/
       client/
-        inventory-controller.luau
-        inventory-window.luau
+        InventoryController.luau
+        InventoryWindow.luau
       server/
-        inventory-service.luau
-        inventory-store.luau
+        InventoryService.luau
+        InventoryStore.luau
       shared/
-        inventory-types.luau
-        item-config.luau
+        InventoryTypes.luau
+        ItemConfig.luau
     shop/
       client/
-        shop-controller.luau
-        shop-window.luau
+        ShopController.luau
+        ShopWindow.luau
       server/
-        shop-service.luau
+        ShopService.luau
       shared/
-        shop-config.luau
-        shop-types.luau
+        ShopConfig.luau
+        ShopTypes.luau
 `}
 	studio={`
   ReplicatedStorage
     shared/
       inventory/
-        inventory-types
-        item-config
+        InventoryTypes
+        ItemConfig
       shop/
-        shop-config
-        shop-types
+        ShopConfig
+        ShopTypes
   ServerScriptService
     inventory/
-      inventory-service
-      inventory-store
+      InventoryService
+      InventoryStore
     shop/
-      shop-service
+      ShopService
   StarterPlayer
     StarterPlayerScripts
       inventory/
-        inventory-controller
-        inventory-window
+        InventoryController
+        InventoryWindow
       shop/
-        shop-controller
-        shop-window
+        ShopController
+        ShopWindow
 `}
 />
 

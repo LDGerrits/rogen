@@ -11,7 +11,7 @@ The tree in `{{place}}.rogen.json` holds Rojo's sample Baseplate and the Lightin
 The folders inside a feature decide where its code runs: `server` goes to ServerScriptService, `client` to StarterPlayerScripts and `shared` to ReplicatedStorage/Shared. To see where a file lands, and how to require it, use:
 
 ```bash
-rogen where {{source}}/greeter/shared/greeting.luau
+rogen where {{source}}/greeter/shared/Greeting.luau
 ```
 
 `rogen check` and `rogen where` find the place a path belongs to, and a file in `src/common` belongs to every place. `rogen check` with no path checks every place. `rogen where {{place}}` lists the files of one place.

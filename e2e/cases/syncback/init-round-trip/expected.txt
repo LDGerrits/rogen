@@ -24,9 +24,9 @@ written:
   default.project.json
   default.rogen.json
   place.rbxl
-  src/greeter/client/greeter.client.luau
-  src/greeter/server/greeter.server.luau
-  src/greeter/shared/greeting.luau
+  src/greeter/client/Greeter.client.luau
+  src/greeter/server/Greeter.server.luau
+  src/greeter/shared/Greeting.luau
 
 default.rogen.json:
 {
@@ -98,14 +98,14 @@ project: DataModel
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
       greeter: Folder
-        greeting: ModuleScript  <- src/greeter/shared/greeting.luau
+        Greeting: ModuleScript  <- src/greeter/shared/Greeting.luau
   ServerScriptService: ServerScriptService
     greeter: Folder
-      greeter: Script  <- src/greeter/server/greeter.server.luau
+      Greeter: Script  <- src/greeter/server/Greeter.server.luau
   SoundService: SoundService
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       greeter: Folder
-        greeter: LocalScript  <- src/greeter/client/greeter.client.luau
+        Greeter: LocalScript  <- src/greeter/client/Greeter.client.luau
   Workspace: Workspace
     Baseplate: Part

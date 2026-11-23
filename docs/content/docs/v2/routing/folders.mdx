@@ -10,39 +10,39 @@ A folder named after a route key, such as `server/`, sends everything inside it 
   src/
     combat/
       client/
-        combat-controller.luau
+        CombatController.luau
       server/
-        damage-service.luau
+        DamageService.luau
       shared/
-        weapons.luau
+        Weapons.luau
     data/
       server/
-        player-data.luau
+        PlayerData.luau
     shop/
       client/
-        shop-ui.luau
+        ShopUI.luau
       shared/
-        prices.luau
+        Prices.luau
 `}
 	studio={`
   ReplicatedStorage
     shared/
       combat/
-        weapons
+        Weapons
       shop/
-        prices
+        Prices
   ServerScriptService
     combat/
-      damage-service
+      DamageService
     data/
-      player-data
+      PlayerData
   StarterPlayer
     StarterPlayerScripts
       combat/
-        combat-controller
+        CombatController
       shop/
-        shop-ui
+        ShopUI
 `}
 />
 
-Each feature shows up under every service it runs in, and code requires its other parts by that path, as in `require(ReplicatedStorage.Shared.combat.weapons)`. To set a routing folder apart from a feature with the same name, spell it `@server/`.
+Each feature shows up under every service it runs in, and code requires its other parts by that path, as in `require(ReplicatedStorage.Shared.combat.Weapons)`. To set a routing folder apart from a feature with the same name, spell it `@server/`.

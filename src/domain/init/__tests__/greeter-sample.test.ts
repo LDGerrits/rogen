@@ -13,9 +13,9 @@ describe("GreeterSample", () => {
 
 	it("should put the feature in the folders its routes are named after", () => {
 		expect(sample.feature("src").map(({ fileName }) => fileName)).toEqual([
-			"src/greeter/shared/greeting.luau",
-			"src/greeter/server/greeter.server.luau",
-			"src/greeter/client/greeter.client.luau",
+			"src/greeter/shared/Greeting.luau",
+			"src/greeter/server/Greeter.server.luau",
+			"src/greeter/client/Greeter.client.luau",
 		]);
 	});
 
@@ -23,11 +23,11 @@ describe("GreeterSample", () => {
 		const files = sample.feature("src");
 
 		for (const name of [
-			"src/greeter/server/greeter.server.luau",
-			"src/greeter/client/greeter.client.luau",
+			"src/greeter/server/Greeter.server.luau",
+			"src/greeter/client/Greeter.client.luau",
 		])
 			expect(fileNamed(files, name).content).toContain(
-				'local ReplicatedStorage = game:GetService("ReplicatedStorage")\n\nlocal greeting = require(ReplicatedStorage.Shared.greeter.greeting)'
+				'local ReplicatedStorage = game:GetService("ReplicatedStorage")\n\nlocal Greeting = require(ReplicatedStorage.Shared.greeter.Greeting)'
 			);
 	});
 
@@ -35,20 +35,20 @@ describe("GreeterSample", () => {
 		const files = sample.feature("src");
 
 		expect(
-			fileNamed(files, "src/greeter/server/greeter.server.luau").content
-		).toContain('print(greeting("server"))');
+			fileNamed(files, "src/greeter/server/Greeter.server.luau").content
+		).toContain('print(Greeting("server"))');
 		expect(
-			fileNamed(files, "src/greeter/client/greeter.client.luau").content
-		).toContain('print(greeting("client"))');
+			fileNamed(files, "src/greeter/client/Greeter.client.luau").content
+		).toContain('print(Greeting("client"))');
 	});
 
 	it("should put the script of a place in its own feature", () => {
 		const files = sample.place("src/lobby");
 
 		expect(files.map(({ fileName }) => fileName)).toEqual([
-			"src/lobby/welcome/server/welcome.server.luau",
+			"src/lobby/welcome/server/Welcome.server.luau",
 		]);
-		expect(files[0].content).toContain('print(greeting("lobby"))');
+		expect(files[0].content).toContain('print(Greeting("lobby"))');
 	});
 
 	it("should describe one place in the README, with the commands to build and serve it", () => {
@@ -56,7 +56,7 @@ describe("GreeterSample", () => {
 
 		expect(content).toContain("# lobby\n");
 		expect(content).toContain(
-			"rogen where src/greeter/shared/greeting.luau"
+			"rogen where src/greeter/shared/Greeting.luau"
 		);
 		expect(content).toContain('rogen build -o "lobby.rbxlx"');
 		expect(content).toContain("rogen serve");
@@ -70,7 +70,7 @@ describe("GreeterSample", () => {
 		);
 
 		expect(content).toContain(
-			"rogen where src/common/greeter/shared/greeting.luau"
+			"rogen where src/common/greeter/shared/Greeting.luau"
 		);
 		expect(content).toContain("`lobby.rogen.json`");
 		expect(content).toContain("`src/lobby`");

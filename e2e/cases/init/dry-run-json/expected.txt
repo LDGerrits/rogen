@@ -14,15 +14,15 @@ stdout:
         "outcome": "wouldWrite"
       },
       {
-        "file": "<dir>/src/greeter/shared/greeting.luau",
+        "file": "<dir>/src/greeter/shared/Greeting.luau",
         "outcome": "wouldWrite"
       },
       {
-        "file": "<dir>/src/greeter/server/greeter.server.luau",
+        "file": "<dir>/src/greeter/server/Greeter.server.luau",
         "outcome": "wouldWrite"
       },
       {
-        "file": "<dir>/src/greeter/client/greeter.client.luau",
+        "file": "<dir>/src/greeter/client/Greeter.client.luau",
         "outcome": "wouldWrite"
       },
       {

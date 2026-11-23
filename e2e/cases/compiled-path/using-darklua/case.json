@@ -7,19 +7,19 @@
 		[
 			"$",
 			"cp",
-			".page/wave.server.luau",
-			"src/greeter/server/wave.server.luau"
+			".page/Wave.server.luau",
+			"src/greeter/server/Wave.server.luau"
 		],
 		[
 			"$",
 			"cp",
-			".page/greeting.spec.luau",
-			"src/greeter/shared/greeting.spec.luau"
+			".page/Greeting.spec.luau",
+			"src/greeter/shared/Greeting.spec.luau"
 		],
 		["sourcemap", "-o", "sourcemap.json"],
 		["$", "darklua", "process", "src", "dist"],
 		["write", "dist"],
 		["write", "release"]
 	],
-	"show": [".darklua.json", "dist/greeter/server/wave.server.luau"]
+	"show": [".darklua.json", "dist/greeter/server/Wave.server.luau"]
 }

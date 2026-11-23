@@ -70,8 +70,8 @@ describe("init for several places", () => {
 			expect(names(planned)).toEqual(
 				expect.arrayContaining([
 					"lobby.rogen.json",
-					"src/common/greeter/shared/greeting.luau",
-					"src/lobby/welcome/server/welcome.server.luau",
+					"src/common/greeter/shared/Greeting.luau",
+					"src/lobby/welcome/server/Welcome.server.luau",
 				])
 			);
 			expect(names(planned)).not.toContain("default.rogen.json");

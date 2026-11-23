@@ -16,9 +16,9 @@ written:
   default.rogen.json
   place.rbxl
   place.txt
-  src/greeter/client/greeter.client.luau
-  src/greeter/server/greeter.server.luau
-  src/greeter/shared/greeting.luau
+  src/greeter/client/Greeter.client.luau
+  src/greeter/server/Greeter.server.luau
+  src/greeter/shared/Greeting.luau
 
 default.rogen.json:
 {
@@ -92,31 +92,31 @@ Lighting (Lighting)
 ReplicatedStorage (ReplicatedStorage)
 ReplicatedStorage/Shared (Folder)
 ReplicatedStorage/Shared/greeter (Folder)
-ReplicatedStorage/Shared/greeter/greeting (ModuleScript)
+ReplicatedStorage/Shared/greeter/Greeting (ModuleScript)
   Source = return function(who: string): string
 	return `Hello, {who}!`
 end
 
 ServerScriptService (ServerScriptService)
 ServerScriptService/greeter (Folder)
-ServerScriptService/greeter/greeter (Script)
+ServerScriptService/greeter/Greeter (Script)
   Source = local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local greeting = require(ReplicatedStorage.Shared.greeter.greeting)
+local Greeting = require(ReplicatedStorage.Shared.greeter.Greeting)
 
-print(greeting("server"))
+print(Greeting("server"))
 
 SoundService (SoundService)
   RespectFilteringEnabled = true
 StarterPlayer (StarterPlayer)
 StarterPlayer/StarterPlayerScripts (StarterPlayerScripts)
 StarterPlayer/StarterPlayerScripts/greeter (Folder)
-StarterPlayer/StarterPlayerScripts/greeter/greeter (LocalScript)
+StarterPlayer/StarterPlayerScripts/greeter/Greeter (LocalScript)
   Source = local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local greeting = require(ReplicatedStorage.Shared.greeter.greeting)
+local Greeting = require(ReplicatedStorage.Shared.greeter.Greeting)
 
-print(greeting("client"))
+print(Greeting("client"))
 
 Workspace (Workspace)
   CurrentCamera = Camera
@@ -133,14 +133,14 @@ project: DataModel
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
       greeter: Folder
-        greeting: ModuleScript  <- src/greeter/shared/greeting.luau
+        Greeting: ModuleScript  <- src/greeter/shared/Greeting.luau
   ServerScriptService: ServerScriptService
     greeter: Folder
-      greeter: Script  <- src/greeter/server/greeter.server.luau
+      Greeter: Script  <- src/greeter/server/Greeter.server.luau
   SoundService: SoundService
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       greeter: Folder
-        greeter: LocalScript  <- src/greeter/client/greeter.client.luau
+        Greeter: LocalScript  <- src/greeter/client/Greeter.client.luau
   Workspace: Workspace
     Baseplate: Part

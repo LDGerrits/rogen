@@ -11,8 +11,8 @@ When your files are named for their role, a pattern route sends each one where i
 		"server": "ServerScriptService",
 		"client": "StarterPlayer/StarterPlayerScripts",
 		"shared": "ReplicatedStorage/Shared",
-		"*-controller": "StarterPlayer/StarterPlayerScripts",
-		"*-service": "ServerScriptService",
+		"*Controller": "StarterPlayer/StarterPlayerScripts",
+		"*Service": "ServerScriptService",
 		"*": "ReplicatedStorage/Shared"
 	}
 }
@@ -22,31 +22,31 @@ When your files are named for their role, a pattern route sends each one where i
 	disk={`
   src/
     shop/
-      shop-controller.luau
-      shop-service.luau
-      prices.luau
+      ShopController.luau
+      ShopService.luau
+      Prices.luau
       shared/
-        price-service.luau
+        PriceService.luau
 `}
 	studio={`
   ReplicatedStorage
     shared/
       shop/
-        price-service
-        prices
+        PriceService
+        Prices
   ServerScriptService
     shop/
-      shop-service
+      ShopService
   StarterPlayer
     StarterPlayerScripts
       shop/
-        shop-controller
+        ShopController
 `}
 />
 
-`*-controller` matches the name of the instance a file makes, so `shop-controller.luau` needs no `.*` after it. The file keeps its whole name, and its feature folder comes along as it does with any route.
+`*Controller` matches the name of the instance a file makes, so `ShopController.luau` needs no `.*` after it. The file keeps its whole name, and its feature folder comes along as it does with any route. In roblox-ts, where file names are kebab-case, the keys are `*-controller` and `*-service`.
 
-A routing folder or `@` name still beats a pattern, which is why `shared/price-service.luau` stays shared. When two patterns match one file, the longer one wins, so `*.story.luau` beats `*.luau`. A pattern matches files, never folders, so route a folder script such as `input-controller/init.luau` by its folder's name, as `input-controller@client/`.
+A routing folder or `@` name still beats a pattern, which is why `shared/PriceService.luau` stays shared. When two patterns match one file, the longer one wins, so `*.story.luau` beats `*.luau`. A pattern matches files, never folders, so route a folder script such as `InputController/init.luau` by its folder's name, as `InputController@client/`.
 
 ## File Extensions
 
@@ -67,7 +67,7 @@ Patterns use Rojo's glob syntax, on a file's name:
 
 | Write | Matches | Example |
 |---|---|---|
-| `*` | any run of characters, or none | `*-controller` matches `shop-controller` |
+| `*` | any run of characters, or none | `*Controller` matches `ShopController` |
 | `?` | exactly one character | `wave-?` matches `wave-a` |
 | `[Ss]` | one character from the set | `[Hh]ud-*` matches `hud-bar` and `Hud-bar` |
 | `[0-9]` | one character in the range | `item[0-9]` matches `item7` |

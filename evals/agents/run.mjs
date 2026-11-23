@@ -118,9 +118,9 @@ function fixture(layout) {
 		const read = (file) =>
 			fs.readFileSync(path.join(feature, file), "utf8");
 		const files = {
-			"greeting@shared.luau": read("shared/greeting.luau"),
-			"greeter.server.luau": read("server/greeter.server.luau"),
-			"greeter.client.luau": read("client/greeter.client.luau"),
+			"Greeting@shared.luau": read("shared/Greeting.luau"),
+			"Greeter.server.luau": read("server/Greeter.server.luau"),
+			"Greeter.client.luau": read("client/Greeter.client.luau"),
 		};
 		fs.rmSync(feature, { recursive: true });
 		fs.mkdirSync(feature);
@@ -142,8 +142,8 @@ function fixture(layout) {
 					"The name of each file decides where it runs: `.server` and `@server` go to ServerScriptService, `.client` and `@client` to StarterPlayerScripts and `@shared` to ReplicatedStorage. To see where a file lands, and how to require it, use:"
 				)
 				.replaceAll(
-					"src/greeter/shared/greeting.luau",
-					"src/greeter/greeting@shared.luau"
+					"src/greeter/shared/Greeting.luau",
+					"src/greeter/Greeting@shared.luau"
 				)
 		);
 		rogen(dir, "write", "-q");

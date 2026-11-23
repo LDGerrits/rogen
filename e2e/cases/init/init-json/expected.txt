@@ -9,15 +9,15 @@ stdout:
         "outcome": "wrote"
       },
       {
-        "file": "<dir>/src/greeter/shared/greeting.luau",
+        "file": "<dir>/src/greeter/shared/Greeting.luau",
         "outcome": "wrote"
       },
       {
-        "file": "<dir>/src/greeter/server/greeter.server.luau",
+        "file": "<dir>/src/greeter/server/Greeter.server.luau",
         "outcome": "wrote"
       },
       {
-        "file": "<dir>/src/greeter/client/greeter.client.luau",
+        "file": "<dir>/src/greeter/client/Greeter.client.luau",
         "outcome": "wrote"
       },
       {
@@ -96,9 +96,9 @@ written:
   README.md
   default.project.json
   default.rogen.json
-  src/greeter/client/greeter.client.luau
-  src/greeter/server/greeter.server.luau
-  src/greeter/shared/greeting.luau
+  src/greeter/client/Greeter.client.luau
+  src/greeter/server/Greeter.server.luau
+  src/greeter/shared/Greeting.luau
 
 default.rogen.json:
 {

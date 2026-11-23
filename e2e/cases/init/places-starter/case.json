@@ -21,8 +21,8 @@
 		"README.md",
 		".vscode/settings.json",
 		"lobby.rogen.json",
-		"src/lobby/welcome/server/welcome.server.luau",
-		"src/common/greeter/shared/greeting.luau"
+		"src/lobby/welcome/server/Welcome.server.luau",
+		"src/common/greeter/shared/Greeting.luau"
 	],
 	"output": ["init"]
 }

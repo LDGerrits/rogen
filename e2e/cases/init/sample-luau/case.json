@@ -1,7 +1,7 @@
 {
 	"steps": [
 		["init", "--non-interactive", "--skip-git"],
-		["where", "src/greeter/shared/greeting.luau"]
+		["where", "src/greeter/shared/Greeting.luau"]
 	],
-	"show": ["README.md", "src/greeter/server/greeter.server.luau", "src/greeter/client/greeter.client.luau", "src/greeter/shared/greeting.luau"]
+	"show": ["README.md", "src/greeter/server/Greeter.server.luau", "src/greeter/client/Greeter.client.luau", "src/greeter/shared/Greeting.luau"]
 }

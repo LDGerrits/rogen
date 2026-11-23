@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- The starter and the routes `rogen init` writes use lowercase folders and file names, such as `src/greeter/server/greeter.server.luau`, with `ReplicatedStorage/Shared` as the Luau shared target, as Rojo's own project names it.
+- The starter and the routes `rogen init` writes use lowercase folders, such as `src/greeter/server`, with `ReplicatedStorage/Shared` as the Luau shared target, as Rojo's own project names it. Luau file names follow Rojo's PascalCase, as in `Greeter.server.luau`, and roblox-ts file names are kebab-case.
 - The sample Baseplate and lighting are in the config's `tree`, so `rogen init` no longer writes a `place` folder.
 - `rogen init --places` names the first place `lobby`, with `welcome` as its own sample feature.
 - `rogen init` prints less: its next steps are the commands to start, and the README holds how to change routes, the tree and add a place. A run lists no files it wrote (`--dry-run` and `--json` still do), and its warnings are shorter.

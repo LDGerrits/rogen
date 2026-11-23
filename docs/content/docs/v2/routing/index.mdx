@@ -23,23 +23,23 @@ A route's name in a file's path sends the file there. A `server/` folder sends e
   src/
     shop/
       server/
-        shop-service.luau
+        ShopService.luau
       shared/
-        prices.luau
-      shop-ui@client.luau
+        Prices.luau
+      ShopUI@client.luau
 `}
 	studio={`
   ReplicatedStorage
     shared/
       shop/
-        prices
+        Prices
   ServerScriptService
     shop/
-      shop-service
+      ShopService
   StarterPlayer
     StarterPlayerScripts
       shop/
-        shop-ui
+        ShopUI
 `}
 />
 
@@ -49,7 +49,7 @@ Each way to route has its own page: [Routing Folders](/docs/v2/routing/folders),
 
 ## Files Without a Route
 
-The `*` route takes every file that no other route matches, so `src/shop/prices.luau` lands in `ReplicatedStorage/Shared/shop`. A [pattern route](/docs/v2/routing/patterns) such as `*.tsx` takes a file by its name before `*` does. `rogen init` writes it. Without `*`, Rogen leaves such a file out and warns about it, so a server file that forgets its route never reaches clients. That suits a project where every file names its side.
+The `*` route takes every file that no other route matches, so `src/shop/Prices.luau` lands in `ReplicatedStorage/Shared/shop`. A [pattern route](/docs/v2/routing/patterns) such as `*.tsx` takes a file by its name before `*` does. `rogen init` writes it. Without `*`, Rogen leaves such a file out and warns about it, so a server file that forgets its route never reaches clients. That suits a project where every file names its side.
 
 ## The Outermost Route Wins
 
@@ -60,13 +60,13 @@ A route inside another route is an ordinary folder. Server code under `shared/` 
   src/
     shared/
       server/
-        datastore.luau
+        Datastore.luau
 `}
 	studio={`
   ReplicatedStorage
     shared/
       server/
-        datastore
+        Datastore
 `}
 />
 
@@ -75,7 +75,7 @@ A route inside another route is an ordinary folder. Server code under `shared/` 
 `rogen where` prints where a file lands in the game, and the require that reaches it:
 
 ```
-$ rogen where src/shop/server/shop-service.luau
-src/shop/server/shop-service.luau -> ServerScriptService/shop/shop-service · route server (folder)
-  require(game:GetService("ServerScriptService").shop["shop-service"])
+$ rogen where src/shop/server/ShopService.luau
+src/shop/server/ShopService.luau -> ServerScriptService/shop/ShopService · route server (folder)
+  require(game:GetService("ServerScriptService").shop.ShopService)
 ```

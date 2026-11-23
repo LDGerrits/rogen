@@ -7,32 +7,32 @@ When a feature is too small for routing folders, route by name instead.
 
 ## The `@` Suffix
 
-`@` and a route key at the end of a file or folder name route it, and come off the name. A file keeps its class, so `trade-service@server.luau` stays a ModuleScript:
+`@` and a route key at the end of a file or folder name route it, and come off the name. A file keeps its class, so `TradeService@server.luau` stays a ModuleScript:
 
 <RouteFigure
 	disk={`
   src/
     trade/
       admin@server/
-        ban.luau
-      trade-service@server.luau
-      trade-types@shared.luau
-      trade-ui@client.luau
+        Ban.luau
+      TradeService@server.luau
+      TradeTypes@shared.luau
+      TradeUI@client.luau
 `}
 	studio={`
   ReplicatedStorage
     shared/
       trade/
-        trade-types
+        TradeTypes
   ServerScriptService
     trade/
       admin/
-        ban
-      trade-service
+        Ban
+      TradeService
   StarterPlayer
     StarterPlayerScripts
       trade/
-        trade-ui
+        TradeUI
 `}
 />
 
@@ -45,20 +45,20 @@ An empty file named `@server` routes the folder it's in, and the folder keeps it
   src/
     anticheat/
       @server
-      check.luau
-      report.luau
+      Check.luau
+      Report.luau
 `}
 	studio={`
   ServerScriptService
     anticheat/
-      check
-      report
+      Check
+      Report
 `}
 />
 
 ## Rojo's Script Suffixes
 
-When your config has a `server` or `client` key, Rojo's `.server` and `.client` suffixes route a script as well as set its class, so `main.server.luau` goes to the server. A sync rule's `suffix` routes another language's scripts the same way, such as `.server.lang`.
+When your config has a `server` or `client` key, Rojo's `.server` and `.client` suffixes route a script as well as set its class, so `Main.server.luau` goes to the server. A sync rule's `suffix` routes another language's scripts the same way, such as `.server.lang`.
 
 ## Init Scripts
 
@@ -70,18 +70,18 @@ A route in an init script's name places only the script, not the folder around i
     shop/
       init@server.luau
       init@client.luau
-      shop-service@server.luau
-      shop-ui@client.luau
+      ShopService@server.luau
+      ShopUI@client.luau
 `}
 	studio={`
   ServerScriptService
     shop
-      shop-service
+      ShopService
   StarterPlayer
     StarterPlayerScripts
       shop
-        shop-ui
+        ShopUI
 `}
 />
 
-A plain `init.luau` routes the same way: it is its folder only where its own route puts it, which is `*` unless something routes it. On every other side the folder's files sit in a plain folder of the same name, so the init script reaches a server-only child by its full path, as `ServerScriptService.shop["shop-service"]`, rather than through `script`.
+A plain `init.luau` routes the same way: it is its folder only where its own route puts it, which is `*` unless something routes it. On every other side the folder's files sit in a plain folder of the same name, so the init script reaches a server-only child by its full path, as `ServerScriptService.shop.ShopService`, rather than through `script`.

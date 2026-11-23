@@ -18,56 +18,56 @@ A larger codebase can put the feature folders inside layers, where each layer re
   src/
     base/
       shared/
-        signal.luau
+        Signal.luau
     platform/
       marketplace/
         server/
-          marketplace.luau
+          Marketplace.luau
     core/
       player/
         server/
-          player-service.luau
+          PlayerService.luau
         shared/
-          player-state.luau
+          PlayerState.luau
     features/
       inventory/
         client/
-          inventory-controller.luau
+          InventoryController.luau
         server/
-          inventory-service.luau
+          InventoryService.luau
     app/
       server/
-        main.server.luau
+        Main.server.luau
       client/
-        main.client.luau
+        Main.client.luau
 `}
 	studio={`
   ReplicatedStorage
     shared/
       base/
-        signal
+        Signal
       core/
         player/
-          player-state
+          PlayerState
   ServerScriptService
     app/
-      main
+      Main
     core/
       player/
-        player-service
+        PlayerService
     platform/
       marketplace/
-        marketplace
+        Marketplace
     features/
       inventory/
-        inventory-service
+        InventoryService
   StarterPlayer
     StarterPlayerScripts
       app/
-        main
+        Main
       features/
         inventory/
-          inventory-controller
+          InventoryController
 `}
 />
 

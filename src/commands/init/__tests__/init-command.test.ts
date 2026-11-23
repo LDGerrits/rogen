@@ -557,9 +557,9 @@ describe("init command", () => {
 				"info: Greeter sample in src/greeter, Rojo's Baseplate in default.rogen.json.",
 				"info: Defaults: a place, luau, one place, the Greeter sample, a git repository, agent rules. See 'rogen init --help' to change them.",
 				"success: Would create .gitignore.",
-				"success: Would create src/greeter/shared/greeting.luau.",
-				"success: Would create src/greeter/server/greeter.server.luau.",
-				"success: Would create src/greeter/client/greeter.client.luau.",
+				"success: Would create src/greeter/shared/Greeting.luau.",
+				"success: Would create src/greeter/server/Greeter.server.luau.",
+				"success: Would create src/greeter/client/Greeter.client.luau.",
 				"success: Would create README.md.",
 				"success: Would create AGENTS.md.",
 				"success: Would create default.rogen.json.",
@@ -589,21 +589,21 @@ describe("init command", () => {
 					{
 						file: path.join(
 							cwd,
-							"src/greeter/shared/greeting.luau"
+							"src/greeter/shared/Greeting.luau"
 						),
 						outcome: "wouldWrite",
 					},
 					{
 						file: path.join(
 							cwd,
-							"src/greeter/server/greeter.server.luau"
+							"src/greeter/server/Greeter.server.luau"
 						),
 						outcome: "wouldWrite",
 					},
 					{
 						file: path.join(
 							cwd,
-							"src/greeter/client/greeter.client.luau"
+							"src/greeter/client/Greeter.client.luau"
 						),
 						outcome: "wouldWrite",
 					},

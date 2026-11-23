@@ -28,10 +28,10 @@ written:
   lobby.project.json
   lobby.rogen.json
   sourcemap.json
-  src/common/greeter/client/greeter.client.luau
-  src/common/greeter/server/greeter.server.luau
-  src/common/greeter/shared/greeting.luau
-  src/lobby/welcome/server/welcome.server.luau
+  src/common/greeter/client/Greeter.client.luau
+  src/common/greeter/server/Greeter.server.luau
+  src/common/greeter/shared/Greeting.luau
+  src/lobby/welcome/server/Welcome.server.luau
 
 .vscode/settings.json:
 {
@@ -55,7 +55,7 @@ The tree in `lobby.rogen.json` holds Rojo's sample Baseplate and the Lighting an
 The folders inside a feature decide where its code runs: `server` goes to ServerScriptService, `client` to StarterPlayerScripts and `shared` to ReplicatedStorage/Shared. To see where a file lands, and how to require it, use:
 
 ```bash
-rogen where src/common/greeter/shared/greeting.luau
+rogen where src/common/greeter/shared/Greeting.luau
 ```
 
 `rogen check` and `rogen where` find the place a path belongs to, and a file in `src/common` belongs to every place. `rogen check` with no path checks every place. `rogen where lobby` lists the files of one place.
@@ -165,17 +165,17 @@ lobby.rogen.json:
   }
 }
 
-src/common/greeter/shared/greeting.luau:
+src/common/greeter/shared/Greeting.luau:
 return function(who: string): string
 	return `Hello, {who}!`
 end
 
-src/lobby/welcome/server/welcome.server.luau:
+src/lobby/welcome/server/Welcome.server.luau:
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local greeting = require(ReplicatedStorage.Shared.greeter.greeting)
+local Greeting = require(ReplicatedStorage.Shared.greeter.Greeting)
 
-print(greeting("lobby"))
+print(Greeting("lobby"))
 
 $ rojo sourcemap lobby.project.json
 lobby: DataModel
@@ -183,16 +183,16 @@ lobby: DataModel
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
       greeter: Folder
-        greeting: ModuleScript  <- src/common/greeter/shared/greeting.luau
+        Greeting: ModuleScript  <- src/common/greeter/shared/Greeting.luau
   ServerScriptService: ServerScriptService
     greeter: Folder
-      greeter: Script  <- src/common/greeter/server/greeter.server.luau
+      Greeter: Script  <- src/common/greeter/server/Greeter.server.luau
     welcome: Folder
-      welcome: Script  <- src/lobby/welcome/server/welcome.server.luau
+      Welcome: Script  <- src/lobby/welcome/server/Welcome.server.luau
   SoundService: SoundService
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       greeter: Folder
-        greeter: LocalScript  <- src/common/greeter/client/greeter.client.luau
+        Greeter: LocalScript  <- src/common/greeter/client/Greeter.client.luau
   Workspace: Workspace
     Baseplate: Part
