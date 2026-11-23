@@ -203,7 +203,7 @@ export class TreePlan {
 					warningDiagnostic(
 						"init.settingsDropped",
 						{ resource },
-						`${node} set ${joinedWithAnd(Object.keys(mount.settings))}, which ${DEFAULT_CONFIG_FILE} doesn't carry, since no route lands on that node. Add them to the tree by hand.`
+						`${node} set ${joinedWithAnd(Object.keys(mount.settings))}, which ${DEFAULT_CONFIG_FILE} drops, since no route lands on it. Add them to its tree by hand.`
 					)
 				),
 				...TreePlan.narrowedWarnings(resource, derived, landings),
@@ -222,7 +222,7 @@ export class TreePlan {
 			...(project.takesRoutes
 				? []
 				: [
-						`The root of ${from} is not a DataModel, as in a model or a plugin, so ${DEFAULT_CONFIG_FILE} keeps the tree as Rojo reads it and adds no routes.`,
+						`The root of ${from} is not a DataModel, so ${DEFAULT_CONFIG_FILE} keeps its tree and adds no routes.`,
 					]),
 			...(leftOut.length > 0
 				? [
@@ -245,7 +245,7 @@ export class TreePlan {
 			warningDiagnostic(
 				"init.mountNarrowed",
 				{ resource: from },
-				`${narrowed.node} mounted all of ${narrowed.target}, so Rojo also put ${joinedWithAnd(folders.map(({ folder }) => folder))} inside it. Rogen routes ${one ? "that folder" : "those folders"} only to ${joinedWithAnd(folders.map(({ landing }) => landing))}, so a require that reaches ${one ? "it" : "them"} through ${narrowed.node} breaks. Check with 'rogen where ${one ? folders[0].folder : narrowed.target}'.`
+				`${narrowed.node} mounted all of ${narrowed.target}, and Rojo also put ${joinedWithAnd(folders.map(({ folder }) => folder))} inside it. Rogen routes ${one ? "it" : "them"} only to ${joinedWithAnd(folders.map(({ landing }) => landing))}, so a require through ${narrowed.node} breaks. Check with 'rogen where ${one ? folders[0].folder : narrowed.target}'.`
 			),
 		];
 	}

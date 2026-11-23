@@ -619,7 +619,7 @@ describe("LegacyMigration", () => {
 				{
 					code: "legacy.tags",
 					message:
-						"v1's tags aren't carried over, since v2 has none. Move each tag's files into a folder, and list it last in \"sourcePaths\" of the configs that want it.",
+						"v1's tags aren't carried over. Move each tag's files into a folder, and list it last in \"sourcePaths\".",
 				},
 			]);
 		});

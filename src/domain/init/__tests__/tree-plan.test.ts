@@ -331,7 +331,7 @@ describe("TreePlan", () => {
 					{
 						code: "init.mountNarrowed",
 						message:
-							"ReplicatedStorage/Common mounted all of src, so Rojo also put src/server inside it. Rogen routes that folder only to ServerScriptService/Server, so a require that reaches it through ReplicatedStorage/Common breaks. Check with 'rogen where src/server'.",
+							"ReplicatedStorage/Common mounted all of src, and Rojo also put src/server inside it. Rogen routes it only to ServerScriptService/Server, so a require through ReplicatedStorage/Common breaks. Check with 'rogen where src/server'.",
 					},
 				]);
 			});
@@ -369,7 +369,7 @@ describe("TreePlan", () => {
 					tree: { $path: "src" },
 				});
 				expect(files.notes).toContain(
-					"The root of default.project.json is not a DataModel, as in a model or a plugin, so default.rogen.json keeps the tree as Rojo reads it and adds no routes."
+					"The root of default.project.json is not a DataModel, so default.rogen.json keeps its tree and adds no routes."
 				);
 				expect(files.nextSteps.edits).not.toContainEqual(
 					expect.stringContaining("Add your own routes")

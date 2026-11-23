@@ -7,6 +7,7 @@ import {
 	Diagnostic,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
+import { DOCS_URL } from "../../platform/product/product-service.js";
 import {
 	DEFAULT_CONFIG_FILE,
 	DEFAULT_PROJECT_FILE,
@@ -17,7 +18,6 @@ import {
 import { RojoFile } from "../rojo/rojo.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import {
-	Darklua,
 	Language,
 	Mount,
 	PackageManager,
@@ -28,11 +28,7 @@ import { GreeterSample } from "./greeter-sample.js";
 import { SampleGame } from "./sample-game.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
-import {
-	OutputConfigs,
-	PROCESSED_OUTPUT,
-	RELEASE_OUTPUT,
-} from "./output-configs.js";
+import { OutputConfigs, PROCESSED_OUTPUT } from "./output-configs.js";
 import { InitQuestions, UnplacedCode } from "./init-questions.js";
 import { InitSummary } from "./init-summary.js";
 import { InitKind, PlannedCommand, PlannedScaffold } from "./init-service.js";
@@ -411,24 +407,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			: "rogen serve";
 	}
 
-	private static addPlaceStep(
-		places: StartingPlaces,
-		starter: RobloxTsStarter | undefined
-	): string {
-		const port = "from a second terminal with its own --port";
-		const { outputPrefix } = places;
-		const match = (file: string) => file.replace(outputPrefix, "match.");
-		const release = configFileName(`${outputPrefix}${RELEASE_OUTPUT}`);
-		const edited =
-			'Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common.';
-		const copied = `copy ${places.configFile} to ${match(places.configFile)}`;
-		const copy = `${copied} and make src/match. ${edited}`;
-		const compile = starter
-			? ` ${starter.addPlaceStep(places.place, "match", match(places.configFile))}`
-			: "";
-		return `Add another place: ${copy} Do the same for ${release} if there is one.${compile} Serve it ${port}: 'rogen serve match --port <port>'.`;
-	}
-
 	private noPlacesBecause(
 		kind: InitKind,
 		language: Language,
@@ -716,7 +694,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const leftOut = starting?.leftOut ?? [];
 		if (leftOut.length > 0)
 			builder.addNote(
-				`Left out the ${leftOut.length === 1 ? "route" : "routes"} ${joinedWithAnd(leftOut)}, since ${joinedWithAnd(sourcePaths)} holds folders or names spelled so, which Rojo places with the rest of their mount and a route would move. To route code that way, rename them and add the key to "routes".`
+				`Left out the ${leftOut.length === 1 ? "route" : "routes"} ${joinedWithAnd(leftOut)}, which would move folders and files of ${joinedWithAnd(sourcePaths)} named so. Rename them to route them.`
 			);
 		for (const note of tree.notes) builder.addNote(note);
 		const uninstalled = this.uninstalledPackages(choices.tree);
@@ -737,8 +715,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		if (choices.keptCode?.length)
 			builder.addNote(
 				sourcePaths.length === 0
-					? `Kept the mounts of ${joinedWithAnd(choices.keptCode)} in the tree as they are: a folder with an init file is one instance, so Rogen routes no code in it.`
-					: `Kept the mounts of ${joinedWithAnd(choices.keptCode)} in the tree as they are: only the project's own folder holds them all, and a source path is a folder below it. To route their code, move the folders into ${sourcePaths[0]}.`
+					? `Kept the mounts of ${joinedWithAnd(choices.keptCode)} in the tree, since a folder with an init file is one instance.`
+					: `Kept the mounts of ${joinedWithAnd(choices.keptCode)} in the tree. To route their code, move the folders into ${sourcePaths[0]}.`
 			);
 		const others = places
 			? []
@@ -748,13 +726,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				);
 		if (others.length > 0)
 			builder.addNote(
-				`Left alone: ${others.join(", ")}. Rojo runs a plain project file as it is, and Rogen writes only the project files its .rogen.json files name.`
+				`Left alone: ${others.join(", ")}. Rojo runs a plain project file as it is.`
 			);
 		for (const warning of tree.warnings) builder.addWarning(warning);
 		if (choices.tree.kind === "lift" && unmounted.length > 0) {
 			const them = unmounted.length === 1 ? "it" : "them";
 			builder.addNote(
-				`Left out ${joinedBriefly(unmounted, LISTED_SHOWN)} with "globIgnorePaths", since no node of ${choices.tree.from} mounts ${them}, so Rojo ignored ${them}. To have Rogen route ${them}, take ${them} out of "globIgnorePaths".`
+				`Left out ${joinedBriefly(unmounted, LISTED_SHOWN)} with "globIgnorePaths", since Rojo ignored ${them}. To route ${them}, remove ${them} from "globIgnorePaths".`
 			);
 		}
 		if (choices.outside?.length)
@@ -777,14 +755,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		if (choices.sample) {
 			const here = (...parts: string[]) =>
 				builder.fromHere(path.posix.join(...parts));
-			const flag = this.questions.interactive
-				? ""
-				: " Pass --no-sample for empty source folders and no Baseplate.";
-			const world = `Rojo's sample Baseplate and lighting are in the tree of ${here(places?.configFile ?? DEFAULT_CONFIG_FILE)}.`;
+			const configFile = here(places?.configFile ?? DEFAULT_CONFIG_FILE);
 			builder.addNote(
 				places
-					? `The Greeter sample is the feature in ${here(places.commonSourcePath)}, which every place shares, and Welcome in ${here(places.placeSourcePath)}. ${world}${flag}`
-					: `The Greeter sample is in ${here(sourcePaths[0], "Greeter")}. ${world}${flag}`
+					? `Greeter sample in ${here(places.commonSourcePath)}, Welcome in ${here(places.placeSourcePath)}, Rojo's Baseplate in ${configFile}.`
+					: `Greeter sample in ${here(sourcePaths[0], "Greeter")}, Rojo's Baseplate in ${configFile}.`
 			);
 		}
 		this.planNextSteps(builder, choices, tree);
@@ -853,8 +828,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	): string {
 		const source = joinedWithAnd(sourcePaths);
 		return config
-			? `Took ${folder} as the folder Darklua writes, since ${config} is here and the mounts of ${from} into ${folder} repeat ${source}. ${DEFAULT_CONFIG_FILE} reads ${source}, and ${configFileName(PROCESSED_OUTPUT)} reads ${folder} as its "compiledPath".`
-			: `Kept the mounts of ${from} into ${folder}, which repeat ${source}, since no ${Darklua.CONFIG_FILES[0]} says a processor writes ${folder}. Rojo now syncs a script there twice: from ${folder} and from its route. If a processor writes ${folder}, remove those mounts and serve a copy of ${DEFAULT_CONFIG_FILE} with "compiledPath": "${folder}".`;
+			? `Took ${folder} as Darklua's output, since ${config} is here. ${DEFAULT_CONFIG_FILE} reads ${source}, and ${configFileName(PROCESSED_OUTPUT)} reads ${folder}.`
+			: `Kept the mounts of ${from} into ${folder}, which repeat ${source}, so Rojo syncs a script there twice. If a processor writes ${folder}, remove them and serve a copy of ${DEFAULT_CONFIG_FILE} with "compiledPath": "${folder}".`;
 	}
 
 	private static outsideWarning(
@@ -891,24 +866,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				`Rogen writes ${chosen.from} now, so git can stop tracking it: git rm --cached ${chosen.from}`
 			);
 		const configFile = places?.configFile ?? DEFAULT_CONFIG_FILE;
-		if (takesRoutes(chosen))
-			builder.addEdit(
-				builder.configCount > 1
-					? 'To change where code goes, edit "routes" in each .rogen.json. To place a folder as it is, such as Packages, mount it in the "tree" of each.'
-					: `To change where code goes, edit "routes" in ${configFile}. To place a folder as it is, such as Packages, mount it in its "tree".`
-			);
-		const projectFile = places?.projectFile ?? DEFAULT_PROJECT_FILE;
 		builder.addEdit(
-			`Edit ${configFile} and leave ${projectFile} alone, since 'rogen write' replaces it.${takesRoutes(chosen) ? ` After you add a feature folder, run 'rogen write${places ? ` ${places.place}` : ""}' so the editor's ${projectFile} follows.` : ""}`
+			choices.sample
+				? "See README.md for routes, the tree and adding a place."
+				: `Edit ${configFile}, not ${places?.projectFile ?? DEFAULT_PROJECT_FILE}, which 'rogen write' replaces. Routes and the tree: ${DOCS_URL}/routing`
 		);
-		if (places?.settings)
-			builder.addEdit(
-				`luau-lsp reads the sourcemap of one place at a time, ${places.place} here. To switch, change the name in the generatorCommand in .vscode/settings.json.`
-			);
-		if (places)
-			builder.addEdit(
-				ProjectSetup.addPlaceStep(places, RobloxTsStarter.of(language))
-			);
 		if (chosen.kind === "lift" && !takesRoutes(chosen)) {
 			builder.addRun(
 				BUILD_COMMANDS[choices.kind === "plugin" ? "plugin" : "model"](

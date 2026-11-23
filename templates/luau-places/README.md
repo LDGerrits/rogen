@@ -29,8 +29,11 @@ To build the {{place}} place from scratch, use:
 rogen build {{place}} -o "{{name}}.rbxlx"
 ```
 
+## Changing the project
+Edit `{{place}}.rogen.json`, not `{{place}}.project.json`, which `rogen write` replaces. After you add a feature folder, run `rogen write {{place}}` so the editor's `{{place}}.project.json` follows. The `routes` in each config say where each folder's code goes, and a folder to place as it is, such as `Packages`, is mounted in the `tree` of each.
+
 ## Adding a place
-Copy `{{place}}.rogen.json` to `match.rogen.json`, change its `name` to `match` and its source path `src/{{place}}` to `src/match`, and make the `src/match` folder. A second place is served from a second terminal, with its own `--port`:
+Copy `{{place}}.rogen.json` to `match.rogen.json`, change its `name` to `match` and its source path `src/{{place}}` to `src/match`, and make the `src/match` folder. Give the copy its own `name` and source path, since Rogen errors while two configs match, and `{{place}}.release.rogen.json`, if there is one, needs the same copy. A second place is served from a second terminal, with its own `--port`:
 
 ```bash
 rogen serve match --port <port>

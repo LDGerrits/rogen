@@ -31,4 +31,7 @@ Next, open `{{name}}.rbxlx` in Roblox Studio and start the Rojo server:
 {{serve}}
 ```
 
+## Changing the project
+Edit `default.rogen.json`, not `default.project.json`, which `rogen write` replaces. After you add a feature folder, run `rogen write` so the editor's `default.project.json` follows. The `routes` in the config say where each folder's code goes, and a folder to place as it is, such as `Packages`, is mounted in its `tree`.
+
 For more help, check out [the Rogen documentation](https://rogen-roblox.vercel.app/).

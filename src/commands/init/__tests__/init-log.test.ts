@@ -93,7 +93,7 @@ const wroteConfig = () =>
 	);
 
 describe("InitLog", () => {
-	it("should name every default it took with the flag that changes it", () => {
+	it("should name every default it took, and point to the help for the flags", () => {
 		const { logService, log } = textLog();
 
 		log.begin(
@@ -130,7 +130,7 @@ describe("InitLog", () => {
 		);
 
 		expect(logService.texts("info")).toEqual([
-			"Took the defaults, each with the flag that changes it: several places (--places), one place (--no-places), the Greeter sample (--sample), no sample (--no-sample), no git (--skip-git), a git repository (--git), agent rules (--agent-rules), no agent rules (--no-agent-rules), the agent hook (--agent-hook), no agent hook (--no-agent-hook).",
+			"Defaults: several places, one place, the Greeter sample, no sample, no git, a git repository, agent rules, no agent rules, the agent hook, no agent hook. See 'rogen init --help' to change them.",
 		]);
 	});
 
@@ -185,6 +185,25 @@ describe("InitLog", () => {
 			"success: Would initialise a git repository.",
 			"success: Would rename a.json to b.json.",
 			"success: Would add x to .gitignore.",
+		]);
+	});
+
+	it("should not list a file it wrote, but list one it would write", () => {
+		const file = {
+			kind: "file" as const,
+			file: { fileName: "a.json", content: "" },
+		};
+
+		expect(writtenLines([file])).toEqual([]);
+		expect(writtenLines([file], true)).toEqual([
+			"success: Would create a.json.",
+		]);
+
+		const { logService, log } = textLog(true);
+		log.begin(planOf({ directory: path.join(cwd, "lobby") }));
+		log.written(file);
+		expect(logService.lines).toEqual([
+			"success: Would create lobby/a.json.",
 		]);
 	});
 

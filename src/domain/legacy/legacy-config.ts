@@ -56,7 +56,7 @@ export class LegacyConfig {
 					errorDiagnostic(
 						"legacy.config",
 						{ resource: file },
-						`this looks like a config for Rogen 1, which v2 doesn't read. Run 'rogen init' to migrate it, as ${LegacyConfig.MIGRATION_URL} says.`
+						`this is a Rogen 1 config. Run 'rogen init' to migrate it, as ${LegacyConfig.MIGRATION_URL} says.`
 					),
 				]
 			: [];

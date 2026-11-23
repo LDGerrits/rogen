@@ -66,12 +66,6 @@ export class RobloxTsStarter {
 		return `tsconfig.${place}.json`;
 	}
 
-	addPlaceStep(place: string, other: string, otherConfig: string): string {
-		const from = RobloxTsStarter.placeTsconfig(place);
-		const to = RobloxTsStarter.placeTsconfig(other);
-		return `Copy ${from} to ${to}, change each ${place} in it to ${other}, add it to the references in tsconfig.json, and set "compiledPath" in ${otherConfig} to ${OUT_DIR}/${other}. Add ' && rbxtsc -p ${to}' to the end of the build script in package.json. 'rbxtsc -w' runs until you stop it, so watch the place from a terminal of its own with 'npx rbxtsc -w -p ${to}'.`;
-	}
-
 	placesTsconfigs(): PlannedFile[] {
 		return [...templateFiles(PLACES_VARIANT)]
 			.filter(([file]) => /^tsconfig(\.[^/]+)?\.json$/.test(file))

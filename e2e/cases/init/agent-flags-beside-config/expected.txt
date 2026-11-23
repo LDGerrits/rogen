@@ -30,9 +30,7 @@ exit 0
 stdout:
   rogen init
   Claude Code is in use here. 'rogen init --agent-hook' adds a hook that reports Rogen's warnings when it ends its turn.
-  Took the defaults, each with the flag that changes it: no agent hook (--agent-hook).
-  Created AGENTS.md.
-  Created CLAUDE.md.
+  Defaults: no agent hook. See 'rogen init --help' to change them.
   Wrote 2 files.
 
 $ rogen init --agent-hook --skip-git -n --json

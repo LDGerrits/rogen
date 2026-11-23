@@ -2,25 +2,14 @@ $ rogen init --non-interactive --skip-git --places
 exit 0
 stdout:
   rogen init
-  The Greeter sample is the feature in src/common, which every place shares, and Welcome in src/lobby. Rojo's sample Baseplate and lighting are in the tree of lobby.rogen.json. Pass --no-sample for empty source folders and no Baseplate.
-  Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), the Greeter sample (--no-sample), agent rules (--no-agent-rules).
-  Created src/common/Greeter/Shared/Greeting.luau.
-  Created src/common/Greeter/Server/Greeter.server.luau.
-  Created src/common/Greeter/Client/Greeter.client.luau.
-  Created src/lobby/Welcome/Server/Welcome.server.luau.
-  Created README.md.
-  Created .vscode/settings.json.
-  Created AGENTS.md.
-  Created lobby.rogen.json.
+  Greeter sample in src/common, Welcome in src/lobby, Rojo's Baseplate in lobby.rogen.json.
+  Defaults: a place, luau, the Greeter sample, agent rules. See 'rogen init --help' to change them.
   Wrote lobby.project.json.
   Next steps
     Run:
       rogen serve lobby
     In Studio, press Connect in the Rojo plugin.
-    To change where code goes, edit "routes" in lobby.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".
-    Edit lobby.rogen.json and leave lobby.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write lobby' so the editor's lobby.project.json follows.
-    luau-lsp reads the sourcemap of one place at a time, lobby here. To switch, change the name in the generatorCommand in .vscode/settings.json.
-    Add another place: copy lobby.rogen.json to match.rogen.json and make src/match. Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common. Do the same for lobby.release.rogen.json if there is one. Serve it from a second terminal with its own --port: 'rogen serve match --port <port>'.
+    See README.md for routes, the tree and adding a place.
   Wrote 8 files.
 
 $ rogen write lobby
@@ -84,8 +73,11 @@ To build the lobby place from scratch, use:
 rogen build lobby -o "project.rbxlx"
 ```
 
+## Changing the project
+Edit `lobby.rogen.json`, not `lobby.project.json`, which `rogen write` replaces. After you add a feature folder, run `rogen write lobby` so the editor's `lobby.project.json` follows. The `routes` in each config say where each folder's code goes, and a folder to place as it is, such as `Packages`, is mounted in the `tree` of each.
+
 ## Adding a place
-Copy `lobby.rogen.json` to `match.rogen.json`, change its `name` to `match` and its source path `src/lobby` to `src/match`, and make the `src/match` folder. A second place is served from a second terminal, with its own `--port`:
+Copy `lobby.rogen.json` to `match.rogen.json`, change its `name` to `match` and its source path `src/lobby` to `src/match`, and make the `src/match` folder. Give the copy its own `name` and source path, since Rogen errors while two configs match, and `lobby.release.rogen.json`, if there is one, needs the same copy. A second place is served from a second terminal, with its own `--port`:
 
 ```bash
 rogen serve match --port <port>

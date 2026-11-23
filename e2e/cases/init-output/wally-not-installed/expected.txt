@@ -3,18 +3,14 @@ exit 0
 stdout:
   rogen init
   Didn't mount Packages, since it isn't installed. Once you run wally install, mount it at ReplicatedStorage/Packages.
-  Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), a git repository (--skip-git), agent rules (--no-agent-rules).
-  Created .gitignore.
-  Created AGENTS.md.
-  Created default.rogen.json.
+  Defaults: a place, luau, one place, a git repository, agent rules. See 'rogen init --help' to change them.
   Initialised a git repository.
   Wrote default.project.json.
   Next steps
     Run:
       rogen serve
     In Studio, press Connect in the Rojo plugin.
-    To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".
-    Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.
+    Edit default.rogen.json, not default.project.json, which 'rogen write' replaces. Routes and the tree: https://rogen-roblox.vercel.app/docs/v2/routing
   Wrote 3 files.
 
 $ rogen write

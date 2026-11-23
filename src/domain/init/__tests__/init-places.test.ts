@@ -111,15 +111,15 @@ describe("init for several places", () => {
 			});
 		});
 
-		it("should say nothing of a sample lobby with --no-sample", async () => {
-			const edits = (await plan({ sample: false })).nextSteps.edits.join(
-				"\n"
-			);
+		it("should send the user to the docs rather than a README with --no-sample", async () => {
+			const planned = await plan({ sample: false });
 
-			expect(edits).toContain(
-				"copy lobby.rogen.json to match.rogen.json"
-			);
-			expect(edits).not.toContain("place/lobby");
+			expect(fileOf(planned, "README.md")).toBeUndefined();
+			expect(planned.nextSteps.edits).toEqual([
+				expect.stringContaining(
+					"Edit lobby.rogen.json, not lobby.project.json"
+				),
+			]);
 		});
 
 		it("should write no config for the common code", async () => {
@@ -135,9 +135,9 @@ describe("init for several places", () => {
 			const planned = await plan();
 
 			expect(planned.nextSteps.run).toEqual(["rogen serve lobby"]);
-			expect(planned.nextSteps.edits.join("\n")).toContain(
-				"rogen write lobby"
-			);
+			expect(planned.nextSteps.edits).toEqual([
+				"See README.md for routes, the tree and adding a place.",
+			]);
 		});
 
 		it("should make the editor read the sourcemap of the first place", async () => {
@@ -176,15 +176,14 @@ describe("init for several places", () => {
 			);
 		});
 
-		it("should say how to add a place, which is a copy of the config", async () => {
-			const planned = await plan();
+		it("should leave the README to say how to add a place, which is a copy of the config", async () => {
+			const readme = fileOf(await plan(), "README.md")?.content;
 
-			expect(planned.nextSteps.edits.join("\n")).toContain(
-				"copy lobby.rogen.json to match.rogen.json"
+			expect(readme).toContain(
+				"Copy `lobby.rogen.json` to `match.rogen.json`"
 			);
-			expect(planned.nextSteps.edits.join("\n")).toContain(
-				"rogen serve match --port"
-			);
+			expect(readme).toContain("rogen serve match --port");
+			expect(readme).toContain("rogen write lobby");
 		});
 
 		it("should ignore the project files Rogen writes", async () => {
@@ -242,11 +241,11 @@ describe("init for several places", () => {
 				expect(result.nextSteps.run).toEqual(["rogen serve lobby"]);
 			});
 
-			it("should say how to add a place with its release config", async () => {
+			it("should leave the README to say a release config needs the same copy", async () => {
 				const result = await planned();
 
-				expect(result.nextSteps.edits.join("\n")).toContain(
-					"Do the same for lobby.release.rogen.json if there is one"
+				expect(fileOf(result, "README.md")?.content).toContain(
+					"`lobby.release.rogen.json`, if there is one"
 				);
 			});
 		});
@@ -384,29 +383,23 @@ describe("init for several places", () => {
 			]);
 		});
 
-		it("should build the place by its name", async () => {
+		it("should send the user to the README for the rest", async () => {
 			const result = await planned();
 
-			expect(result.nextSteps.edits.join("\n")).toContain(
-				"rogen write lobby"
-			);
+			expect(result.nextSteps.edits).toEqual([
+				"See README.md for routes, the tree and adding a place.",
+			]);
 		});
 
-		it("should say how to add a place, which copies its config and its tsconfig", async () => {
-			const edits = (await planned()).nextSteps.edits.join("\n");
+		it("should leave the README to say how to add a place, which copies its config and its tsconfig", async () => {
+			const readme = fileOf(await planned(), "README.md")?.content;
 
-			expect(edits).toContain(
-				"copy lobby.rogen.json to match.rogen.json"
+			expect(readme).toContain(
+				"Copy `lobby.rogen.json` to `match.rogen.json` and `tsconfig.lobby.json` to `tsconfig.match.json`"
 			);
-			expect(edits).toContain(
-				"Copy tsconfig.lobby.json to tsconfig.match.json, change each lobby in it to match"
-			);
-			expect(edits).toContain(
-				'set "compiledPath" in match.rogen.json to out/match'
-			);
-			expect(edits).toContain("rbxtsc -w -p tsconfig.match.json");
-			expect(edits).toContain("rogen serve match --port");
-			expect(edits).not.toContain("projects/");
+			expect(readme).toContain("rbxtsc -w -p tsconfig.match.json");
+			expect(readme).toContain("rogen serve match --port");
+			expect(readme).toContain("rogen write lobby");
 		});
 	});
 

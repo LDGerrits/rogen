@@ -73,10 +73,6 @@ export class InitPlanBuilder {
 		});
 	}
 
-	get configCount(): number {
-		return this.configFiles.length;
-	}
-
 	addAgentFile(file: AgentFile, imports: readonly PlannedFile[] = []): void {
 		this.agentFile = file.planned;
 		this.agentImports = imports;

@@ -73,7 +73,7 @@ stdout:
       }
     ],
     "notes": [
-      "The Greeter sample is in src/Greeter. Rojo's sample Baseplate and lighting are in the tree of default.rogen.json. Pass --no-sample for empty source folders and no Baseplate."
+      "Greeter sample in src/Greeter, Rojo's Baseplate in default.rogen.json."
     ],
     "nextSteps": {
       "setup": [],
@@ -81,8 +81,7 @@ stdout:
         "rogen serve"
       ],
       "edits": [
-        "To change where code goes, edit \"routes\" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its \"tree\".",
-        "Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows."
+        "See README.md for routes, the tree and adding a place."
       ]
     }
   }

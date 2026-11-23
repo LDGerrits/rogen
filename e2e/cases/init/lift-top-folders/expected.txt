@@ -3,20 +3,15 @@ exit 0
 stdout:
   rogen init
   Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every write.
-  Kept the mounts of client, server and shared in the tree as they are: only the project's own folder holds them all, and a source path is a folder below it. To route their code, move the folders into src.
-  Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), a git repository (--skip-git), agent rules (--no-agent-rules).
-  Created src/.gitkeep.
-  Created .gitignore.
-  Created AGENTS.md.
-  Created default.rogen.json.
+  Kept the mounts of client, server and shared in the tree. To route their code, move the folders into src.
+  Defaults: a place, luau, a git repository, agent rules. See 'rogen init --help' to change them.
   Initialised a git repository.
   Wrote default.project.json.
   Next steps
     Run:
       rogen serve
     In Studio, press Connect in the Rojo plugin.
-    To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".
-    Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.
+    Edit default.rogen.json, not default.project.json, which 'rogen write' replaces. Routes and the tree: https://rogen-roblox.vercel.app/docs/v2/routing
   Wrote 4 files.
 
 $ rogen write

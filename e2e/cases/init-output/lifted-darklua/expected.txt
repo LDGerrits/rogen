@@ -4,20 +4,15 @@ stdout:
   rogen init
   Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every write.
   Left out ReplicatedStorage/Shared and ServerScriptService/Server, since they point into build and Rogen generates that code now.
-  Took build as the folder Darklua writes, since .darklua.json is here and the mounts of default.project.json into build repeat src. default.rogen.json reads src, and dist.rogen.json reads build as its "compiledPath".
-  Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), a git repository (--skip-git), agent rules (--no-agent-rules).
-  Created .gitignore.
-  Created AGENTS.md.
-  Created default.rogen.json.
-  Created dist.rogen.json.
+  Took build as Darklua's output, since .darklua.json is here. default.rogen.json reads src, and dist.rogen.json reads build.
+  Defaults: a place, luau, a git repository, agent rules. See 'rogen init --help' to change them.
   Initialised a git repository.
   Wrote default.project.json.
   Next steps
     Run:
       rogen serve dist
     In Studio, press Connect in the Rojo plugin.
-    To change where code goes, edit "routes" in each .rogen.json. To place a folder as it is, such as Packages, mount it in the "tree" of each.
-    Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.
+    Edit default.rogen.json, not default.project.json, which 'rogen write' replaces. Routes and the tree: https://rogen-roblox.vercel.app/docs/v2/routing
   Wrote 4 files.
 
 $ rogen write dist

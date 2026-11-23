@@ -165,8 +165,7 @@ describe("init command", () => {
 					setup: [],
 					run: ["npx rbxtsc -w", "rogen serve"],
 					edits: [
-						'To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".',
-						"Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.",
+						"Edit default.rogen.json, not default.project.json, which 'rogen write' replaces. Routes and the tree: https://rogen-roblox.vercel.app/docs/v2/routing",
 					],
 				},
 			});
@@ -279,45 +278,35 @@ describe("init command", () => {
 			});
 		});
 
-		it("should name in the text each choice with the same flag", async () => {
+		it("should name each default in one line, and point to the help for its flags", async () => {
 			const logService = new MockLogService();
 
 			await runInit(new MockPromptService([], false), logService);
 
 			expect(
-				logService.lines.find((line) =>
-					line.includes("Took the defaults")
-				)
+				logService.lines.find((line) => line.includes("Defaults:"))
 			).toBe(
-				"info: Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules)."
+				"info: Defaults: a place, luau, one place, the Greeter sample, a git repository, agent rules. See 'rogen init --help' to change them."
 			);
 		});
 	});
 
 	describe("output", () => {
-		it("should open with a header, list each file written and close with a result", async () => {
+		it("should open with a header, leave the files unlisted and close with a result", async () => {
 			const logService = new MockLogService();
 
 			await runInit(new MockPromptService([], false), logService);
 
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: The Greeter sample is in src/Greeter. Rojo's sample Baseplate and lighting are in the tree of default.rogen.json. Pass --no-sample for empty source folders and no Baseplate.",
-				"info: Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules).",
-				"success: Created .gitignore.",
-				"success: Created src/Greeter/Shared/Greeting.luau.",
-				"success: Created src/Greeter/Server/Greeter.server.luau.",
-				"success: Created src/Greeter/Client/Greeter.client.luau.",
-				"success: Created README.md.",
-				"success: Created AGENTS.md.",
-				"success: Created default.rogen.json.",
+				"info: Greeter sample in src/Greeter, Rojo's Baseplate in default.rogen.json.",
+				"info: Defaults: a place, luau, one place, the Greeter sample, a git repository, agent rules. See 'rogen init --help' to change them.",
 				"success: Wrote default.project.json.",
 				"step: Next steps",
 				"info: Run:",
 				"info:   rogen serve",
 				"info: In Studio, press Connect in the Rojo plugin.",
-				'info: To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".',
-				"info: Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.",
+				"info: See README.md for routes, the tree and adding a place.",
 				"outro: Wrote 7 files.",
 			]);
 		});
@@ -463,18 +452,13 @@ describe("init command", () => {
 		const withHook = (logService: MockLogService) =>
 			runInit(undefined, logService, { "agent-hook": true });
 
-		it("should say it created the script and the agent's file", async () => {
+		it("should write the script and the agent's file without listing them", async () => {
 			await write(".claude/keep");
 			const logService = new MockLogService();
 
 			await withHook(logService);
 
-			expect(logService.lines).toEqual(
-				expect.arrayContaining([
-					"success: Created .agents/hooks/rogen-check.mjs.",
-					"success: Created .claude/settings.json.",
-				])
-			);
+			expect(logService.lines.join("\n")).not.toContain("Created");
 			expect(await exists(".agents/hooks/rogen-check.mjs")).toBe(true);
 		});
 
@@ -570,8 +554,8 @@ describe("init command", () => {
 			expect(await exists("default.project.json")).toBe(false);
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: The Greeter sample is in src/Greeter. Rojo's sample Baseplate and lighting are in the tree of default.rogen.json. Pass --no-sample for empty source folders and no Baseplate.",
-				"info: Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules).",
+				"info: Greeter sample in src/Greeter, Rojo's Baseplate in default.rogen.json.",
+				"info: Defaults: a place, luau, one place, the Greeter sample, a git repository, agent rules. See 'rogen init --help' to change them.",
 				"success: Would create .gitignore.",
 				"success: Would create src/Greeter/Shared/Greeting.luau.",
 				"success: Would create src/Greeter/Server/Greeter.server.luau.",
@@ -797,7 +781,7 @@ describe("init command", () => {
 				const lines = text(log);
 				expect(lines).toContain(`Ran ${NPM}.`);
 				expect(lines.indexOf(`Ran ${NPM}.`)).toBeLessThan(
-					lines.indexOf("Created default.rogen.json.")
+					lines.indexOf("Wrote default.project.json.")
 				);
 			});
 
@@ -1123,12 +1107,12 @@ describe("init command", () => {
 				expect.arrayContaining([
 					"Renamed .rogen.json to .rogen.json.v1.",
 					"Renamed src/Combat/Combat_Server.luau to src/Combat/Combat@Server.luau.",
-					"Created default.rogen.json.",
+					"Wrote default.project.json.",
 				])
 			);
 			expect(
 				lines.indexOf("Renamed .rogen.json to .rogen.json.v1.")
-			).toBeLessThan(lines.indexOf("Created default.rogen.json."));
+			).toBeLessThan(lines.indexOf("Wrote default.project.json."));
 			expect(await exists("src/Combat/Combat@Server.luau")).toBe(true);
 			expect(await exists("default.project.json")).toBe(true);
 		});
@@ -1563,7 +1547,7 @@ describe("init command", () => {
 		expect(await exists("lobby/default.rogen.json")).toBe(true);
 		expect(await exists("default.rogen.json")).toBe(false);
 		expect(logService.lines).toContain(
-			"success: Created lobby/default.rogen.json."
+			"success: Wrote lobby/default.project.json."
 		);
 		expect(await exists("lobby/default.project.json")).toBe(true);
 	});
@@ -1639,7 +1623,7 @@ describe("init command", () => {
 		]);
 
 		expect(logService.lines).toContain(
-			"info: The Greeter sample is in lobby/src/Greeter. Rojo's sample Baseplate and lighting are in the tree of lobby/default.rogen.json. Pass --no-sample for empty source folders and no Baseplate."
+			"info: Greeter sample in lobby/src/Greeter, Rojo's Baseplate in lobby/default.rogen.json."
 		);
 	});
 });

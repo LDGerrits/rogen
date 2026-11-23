@@ -4,19 +4,9 @@ stdout:
   rogen init
   Starts from create-roblox-ts, which writes package.json and the compiler's settings.
   Syncing from out/lobby, where roblox-ts compiles to.
-  The Greeter sample is the feature in src/common, which every place shares, and Welcome in src/lobby. Rojo's sample Baseplate and lighting are in the tree of lobby.rogen.json. Pass --no-sample for empty source folders and no Baseplate.
-  Took the defaults, each with the flag that changes it: a place (--kind), the Greeter sample (--no-sample), agent rules (--no-agent-rules).
+  Greeter sample in src/common, Welcome in src/lobby, Rojo's Baseplate in lobby.rogen.json.
+  Defaults: a place, the Greeter sample, agent rules. See 'rogen init --help' to change them.
   Ran npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild.
-  Created src/common/Greeter/shared/Greeting.ts.
-  Created src/common/Greeter/server/Greeter.server.ts.
-  Created src/common/Greeter/client/Greeter.client.ts.
-  Created src/lobby/Welcome/server/Welcome.server.ts.
-  Created README.md.
-  Created tsconfig.json.
-  Created tsconfig.lobby.json.
-  Created AGENTS.md.
-  Created rokit.toml.
-  Created lobby.rogen.json.
   Ran npm pkg set "scripts.build=rbxtsc -p tsconfig.lobby.json" "scripts.watch=rbxtsc -w -p tsconfig.lobby.json".
   Wrote lobby.project.json.
   Next steps
@@ -26,9 +16,7 @@ stdout:
       npm run watch
       rogen serve lobby
     In Studio, press Connect in the Rojo plugin.
-    To change where code goes, edit "routes" in lobby.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".
-    Edit lobby.rogen.json and leave lobby.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write lobby' so the editor's lobby.project.json follows.
-    Add another place: copy lobby.rogen.json to match.rogen.json and make src/match. Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common. Do the same for lobby.release.rogen.json if there is one. Copy tsconfig.lobby.json to tsconfig.match.json, change each lobby in it to match, add it to the references in tsconfig.json, and set "compiledPath" in match.rogen.json to out/match. Add ' && rbxtsc -p tsconfig.match.json' to the end of the build script in package.json. 'rbxtsc -w' runs until you stop it, so watch the place from a terminal of its own with 'npx rbxtsc -w -p tsconfig.match.json'. Serve it from a second terminal with its own --port: 'rogen serve match --port <port>'.
+    See README.md for routes, the tree and adding a place.
   Wrote 10 files.
 
 ran:

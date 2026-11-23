@@ -99,8 +99,8 @@ const VALUE_NAMES: Record<
 	agentHook: (hook) => (hook ? "the agent hook" : "no agent hook"),
 };
 
-const describedChoice = ({ question, value, flag }: InitDecision) =>
-	`${VALUE_NAMES[question](value)} (${flag})`;
+const describedChoice = ({ question, value }: InitDecision) =>
+	VALUE_NAMES[question](value);
 
 const asCommand = (
 	written: InitWritten
@@ -184,7 +184,7 @@ export class InitLog implements InitReporter {
 			this.logService.diagnostic(warning);
 		if (plan.decided.length > 0)
 			this.logService.info(
-				`Took the defaults, each with the flag that changes it: ${plan.decided.map(describedChoice).join(", ")}.`
+				`Defaults: ${plan.decided.map(describedChoice).join(", ")}. See 'rogen init --help' to change them.`
 			);
 	}
 
@@ -229,11 +229,12 @@ export class InitLog implements InitReporter {
 			return;
 		}
 		const { fileName, addition } = item.file;
-		this.logService.success(
-			addition !== undefined
-				? `${this.dryRun ? "Would add" : "Added"} ${addition} to ${this.shown(fileName)}.`
-				: `${would} ${this.shown(fileName)}.`
-		);
+		if (addition !== undefined)
+			this.logService.success(
+				`${this.dryRun ? "Would add" : "Added"} ${addition} to ${this.shown(fileName)}.`
+			);
+		else if (this.dryRun)
+			this.logService.success(`${would} ${this.shown(fileName)}.`);
 	}
 
 	failed(error: Error): Result<void, Error> {

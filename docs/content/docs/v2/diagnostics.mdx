@@ -992,7 +992,7 @@ Fix the file's permissions or its contents. To start a new project instead, move
 Warning. `init` lifted a `default.project.json` with a node that mounts a whole source path, beside nodes that mount folders inside it. Rojo puts those folders in two places. For example, `src/server` is at `ServerScriptService/Server`, and also inside the node that mounts `src`. Rogen turns the folders into routes, and the node that mounts `src` into the `*` route. Each folder is then only where its route puts it.
 
 ```
-warning: ReplicatedStorage/Common mounted all of src, so Rojo also put src/server inside it. Rogen routes that folder only to ServerScriptService/Server, so a require that reaches it through ReplicatedStorage/Common breaks. Check with 'rogen where src/server'. (init.mountNarrowed)
+warning: ReplicatedStorage/Common mounted all of src, and Rojo also put src/server inside it. Rogen routes it only to ServerScriptService/Server, so a require through ReplicatedStorage/Common breaks. Check with 'rogen where src/server'. (init.mountNarrowed)
 ```
 
 Change each require that reaches a folder through the mounted node, so that it uses the folder's own node.
@@ -1002,7 +1002,7 @@ Change each require that reaches a folder through the mounted node, so that it u
 Warning. `init` couldn't keep the settings of a node that it lifted from `default.project.json`. The node mounts a folder of your source, and no route lands on it, so `default.rogen.json` has no place for its settings. A setting is any of `$properties`, `$attributes`, `$className`, `$ignoreUnknownInstances`, `$id` or a child node.
 
 ```
-warning: Workspace/Map set $properties, which default.rogen.json doesn't carry, since no route lands on that node. Add them to the tree by hand. (init.settingsDropped)
+warning: Workspace/Map set $properties, which default.rogen.json drops, since no route lands on it. Add them to its tree by hand. (init.settingsDropped)
 ```
 
 Add the settings to the node in the `tree` of `default.rogen.json`.
@@ -1024,7 +1024,7 @@ Move the code into a source path, or add its folders to `sourcePaths` in the con
 Warning, or error. `--agent-hook` was given, and `init` found no coding agent in use in the folder. An agent is in use where its folder or file is, such as `.claude`, `CLAUDE.md`, `.codex`, `.cursor` or `.gemini`. In a new project it is a warning: `init` writes the project without the hook. Beside a config, where the hook is all that `init` was asked to add, it is an error, and `init` exits with 1.
 
 ```
-warning: --agent-hook adds the hook to the coding agents in use here, and init found none, so it adds no hook. An agent is in use where its folder or file is: .claude, CLAUDE.md, .codex, .gemini, GEMINI.md, .cursor, .github/copilot-instructions.md or .github/hooks. Once one is, run 'rogen init --agent-hook'. (init.noCodingAgent)
+warning: no coding agent is in use here (.claude, CLAUDE.md, .codex, .gemini, GEMINI.md, .cursor, .github/copilot-instructions.md or .github/hooks), so --agent-hook adds no hook. Once one is, run 'rogen init --agent-hook'. (init.noCodingAgent)
 ```
 
 Start the coding agent in the folder once, so that its folder is there, then run `rogen init --agent-hook`.
@@ -1277,7 +1277,7 @@ These diagnostics come from a config written for Rogen 1, and from `rogen init` 
 Error. A `.rogen.json` has keys from Rogen 1, such as `source`, `aliases` or a mode. It is a v1 config, which v2 doesn't read.
 
 ```
-error: this looks like a config for Rogen 1, which v2 doesn't read. Run 'rogen init' to migrate it, as https://rogen-roblox.vercel.app/docs/v1/migrating-to-v2 says. (legacy.config)
+error: this is a Rogen 1 config. Run 'rogen init' to migrate it, as https://rogen-roblox.vercel.app/docs/v1/migrating-to-v2 says. (legacy.config)
 ```
 
 Run `rogen init` in the config's folder. It writes a v2 config in its place and renames the v1 config to `.rogen.json.v1`.
@@ -1287,7 +1287,7 @@ Run `rogen init` in the config's folder. It writes a v2 config in its place and 
 Error. The v1 config's `project` names a file that `init` can't read as a project file, so `init` has no tree to start from. It writes nothing.
 
 ```
-error: its "project" names base.project.json, which couldn't be read as a project file, so init can't take its tree. Fix the path or the file, then run 'rogen init' again. (legacy.projectUnreadable)
+error: its "project" names base.project.json, which can't be read as a project file. Fix it, then run 'rogen init' again. (legacy.projectUnreadable)
 ```
 
 Fix the path in `project`, or the file it names, and run `rogen init` again.
@@ -1297,7 +1297,7 @@ Fix the path in `project`, or the file it names, and run `rogen init` again.
 Warning. An alias of the v1 config can't become a route. Its key isn't a route key, which is letters and digits that start with a letter, such as `ui-kit`. Or it sends files to something that isn't a service, where v1 couldn't place them either.
 
 ```
-warning: the alias "ui-kit" can't be a route key, which is letters and digits that start with a letter, so it has no route. Add the route you want by hand, and rename the files that use the alias. (legacy.aliasKey)
+warning: the alias "ui-kit" can't be a route key, which is letters and digits that start with a letter, so it has no route. Add the route by hand and rename the files that use it. (legacy.aliasKey)
 ```
 
 Add the route you want to `routes`, under a key that is letters and digits, such as `"UiKit": "StarterGui/client"`. Then rename the files and folders that used the alias, such as `Menu_ui-kit.luau` to `Menu@UiKit.luau`.
@@ -1307,7 +1307,7 @@ Add the route you want to `routes`, under a key that is letters and digits, such
 Warning. Two modes of the v1 config wrote the same project file, or wrote project files that come out as the same config once v1's tags are gone, so `init` writes one config for them, from the first mode.
 
 ```
-warning: its release mode wrote default.project.json, as an earlier mode did, so init writes only one default.rogen.json. To keep both, copy default.rogen.json, give the copy another name and edit it. (legacy.outputClash)
+warning: its release mode wrote default.project.json, as an earlier mode did, so init writes one default.rogen.json. To keep both, copy it under another name. (legacy.outputClash)
 ```
 
 Copy the config under another name, such as `release.rogen.json`, and change what differs, such as its `compiledPath`. Modes that differed only in their `tags` need a folder for each tag's files, as `legacy.tags` says, before their configs differ.
@@ -1317,7 +1317,7 @@ Copy the config under another name, such as `release.rogen.json`, and change wha
 Warning. The v1 config has tags, which v2 doesn't have. `init` renames none of the files that tags picked, and the message lists them.
 
 ```
-warning: v1's tags (dev) aren't carried over, since v2 has none (src/Debug/Cheats_dev.luau). Move each tag's files into a folder, and list it last in "sourcePaths" of the configs that want it. (legacy.tags)
+warning: v1's tags (dev) aren't carried over (src/Debug/Cheats_dev.luau). Move each tag's files into a folder, and list it last in "sourcePaths". (legacy.tags)
 ```
 
 Move each file into a folder of its own, such as `dev/Teleport/Teleport.luau` for `src/Teleport/TeleportDev.luau`. List that folder after `src` in the `sourcePaths` of each config that should have the file. A later source path's file replaces the one at the same path.
@@ -1337,7 +1337,7 @@ Do what the message says for the marker, then delete the file. For `.structure`,
 Warning. A roblox-ts file has a routing word in its name that v1 read and v2 doesn't, such as `CombatServer.ts`. `init` doesn't rename it, since renaming a file breaks the imports of it.
 
 ```
-warning: v1 routed this file by a word in its name, which v2 doesn't read. init leaves it as it is, since renaming it breaks the imports of it: rename it to Combat@Server.ts and update those imports. (legacy.typeScriptName)
+warning: v1 routed this file by a word in its name. init leaves it: rename it to Combat@Server.ts and update its imports. (legacy.typeScriptName)
 ```
 
 Rename the file to the name in the message, and update the imports of it.
@@ -1347,7 +1347,7 @@ Rename the file to the name in the message, and update the imports of it.
 Warning. `init` can't rename a file that v1 routed by its name. Another file already has the new name, or two v1 configs route the file to different names.
 
 ```
-warning: v1 routed this file by a word in its name, and Combat@Server.luau, the name that keeps it there in v2, is taken in its folder, so init leaves it as it is. Rename one of them. .rogen.json is the config that routed it. (legacy.renameClash)
+warning: v1 routed this file by a word in its name, and Combat@Server.luau, which keeps it there in v2, is taken. init leaves it: rename one of them. (legacy.renameClash)
 ```
 
 Rename one of the two files. When two configs route a file apart, check where it lands with `rogen where`.
@@ -1357,7 +1357,7 @@ Rename one of the two files. When two configs route a file apart, check where it
 Warning. A file lands somewhere other than where v1 put it. v1 went by the last routing word in a file's path, and v2 goes by the outermost route. So `src/Loading/ReplicatedFirst/Loader.client.luau` went to the client in v1, and goes to `ReplicatedFirst` in v2.
 
 ```
-warning: v1 put this file in StarterPlayer/StarterPlayerScripts/client, by the last routing word in its path, and v2 puts it in ReplicatedFirst/client: in v2 the outermost route governs. To keep it where it was, move it out of the folder that routes it to ReplicatedFirst/client. (legacy.outrankedRoute)
+warning: v1 put this file in StarterPlayer/StarterPlayerScripts/client, v2 puts it in ReplicatedFirst/client. To keep it there, move it out of the folder that routes to ReplicatedFirst/client. (legacy.outrankedRoute)
 ```
 
 Move the file out of the routing folder, so that its own route places it. Or keep it where v2 puts it.

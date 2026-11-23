@@ -979,7 +979,7 @@ describe("CoreInitService", () => {
 				const plan = await liftPlan();
 
 				expect(plan?.notes).toContain(
-					'Took build as the folder Darklua writes, since .darklua.json5 is here and the mounts of default.project.json into build repeat src. default.rogen.json reads src, and dist.rogen.json reads build as its "compiledPath".'
+					"Took build as Darklua's output, since .darklua.json5 is here. default.rogen.json reads src, and dist.rogen.json reads build."
 				);
 				expect(plan?.nextSteps.run).toEqual(["rogen serve dist"]);
 			});
@@ -993,7 +993,7 @@ describe("CoreInitService", () => {
 				).toEqual({ Server: { $path: "build/server" } });
 				expect(configIn(plan, "dist.rogen.json")).toBeNull();
 				expect(plan?.notes).toContain(
-					'Kept the mounts of default.project.json into build, which repeat src, since no .darklua.json says a processor writes build. Rojo now syncs a script there twice: from build and from its route. If a processor writes build, remove those mounts and serve a copy of default.rogen.json with "compiledPath": "build".'
+					'Kept the mounts of default.project.json into build, which repeat src, so Rojo syncs a script there twice. If a processor writes build, remove them and serve a copy of default.rogen.json with "compiledPath": "build".'
 				);
 				expect(plan?.nextSteps.run).toEqual(["rogen serve"]);
 				expect(plan?.warnings).toEqual([]);
@@ -1232,7 +1232,7 @@ describe("CoreInitService", () => {
 				tree: { $className: "DataModel", ...tree },
 			});
 			expect(plan?.notes).toContain(
-				"Kept the mounts of client, server and shared in the tree as they are: only the project's own folder holds them all, and a source path is a folder below it. To route their code, move the folders into src."
+				"Kept the mounts of client, server and shared in the tree. To route their code, move the folders into src."
 			);
 			expect(plan?.warnings).toEqual([]);
 		});
@@ -1250,7 +1250,7 @@ describe("CoreInitService", () => {
 				tree: { $className: "DataModel", ...tree },
 			});
 			expect(plan?.notes).toContain(
-				"Kept the mounts of src in the tree as they are: a folder with an init file is one instance, so Rogen routes no code in it."
+				"Kept the mounts of src in the tree, since a folder with an init file is one instance."
 			);
 			expect(plan?.warnings).toEqual([]);
 		});
@@ -1269,7 +1269,7 @@ describe("CoreInitService", () => {
 				"*": "ReplicatedStorage/Lib",
 			});
 			expect(plan?.notes).toContain(
-				'Left out the routes Server and Client, since src holds folders or names spelled so, which Rojo places with the rest of their mount and a route would move. To route code that way, rename them and add the key to "routes".'
+				"Left out the routes Server and Client, which would move folders and files of src named so. Rename them to route them."
 			);
 		});
 
@@ -2237,17 +2237,18 @@ describe("CoreInitService", () => {
 			);
 		});
 
-		it("should point to the sample's flag only in a run that doesn't ask", async () => {
+		it("should name the sample in one line that names no flag", async () => {
 			const asked = (
 				await review(new MockPromptService(["luau", "one", "yes"]))
 			).unwrap();
 			const unasked = (await serviceFor().plan({ ask: false })).unwrap();
 
-			expect(asked?.notes.join("\n")).toContain(
-				"The Greeter sample is in"
-			);
-			expect(asked?.notes.join("\n")).not.toContain("--no-sample");
-			expect(unasked?.notes.join("\n")).toContain("--no-sample");
+			for (const planned of [asked, unasked]) {
+				expect(planned?.notes).toContain(
+					"Greeter sample in src/Greeter, Rojo's Baseplate in default.rogen.json."
+				);
+				expect(planned?.notes.join("\n")).not.toContain("--no-sample");
+			}
 		});
 
 		it("should name the code that several places would leave unplaced", async () => {
