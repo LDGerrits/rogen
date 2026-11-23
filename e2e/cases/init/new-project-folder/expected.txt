@@ -2,16 +2,12 @@ $ rogen init newproj --non-interactive
 exit 0
 stdout:
   rogen init
-  The Greeter sample is in newproj/src/Greeter, and Rojo's sample Baseplate and lighting in newproj/place/, which the tree mounts. Pass --no-sample for an empty newproj/src/ and no newproj/place/.
+  The Greeter sample is in newproj/src/Greeter. Rojo's sample Baseplate and lighting are in the tree of newproj/default.rogen.json. Pass --no-sample for empty source folders and no Baseplate.
   Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), one place (--places), the Greeter sample (--no-sample), a git repository (--skip-git), agent rules (--no-agent-rules).
   Created newproj/.gitignore.
   Created newproj/src/Greeter/Shared/Greeting.luau.
   Created newproj/src/Greeter/Server/Greeter.server.luau.
   Created newproj/src/Greeter/Client/Greeter.client.luau.
-  Created newproj/place/Lighting/init.meta.json.
-  Created newproj/place/SoundService/init.meta.json.
-  Created newproj/place/Workspace/Baseplate.model.json.
-  Created newproj/place/Workspace/init.meta.json.
   Created newproj/README.md.
   Created newproj/AGENTS.md.
   Created newproj/default.rogen.json.
@@ -25,7 +21,7 @@ stdout:
     In Studio, press Connect in the Rojo plugin.
     To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".
     Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.
-  Wrote 11 files.
+  Wrote 7 files.
 
 $ rogen write newproj
 exit 0
@@ -38,10 +34,6 @@ written:
   newproj/README.md
   newproj/default.project.json
   newproj/default.rogen.json
-  newproj/place/Lighting/init.meta.json
-  newproj/place/SoundService/init.meta.json
-  newproj/place/Workspace/Baseplate.model.json
-  newproj/place/Workspace/init.meta.json
   newproj/src/Greeter/Client/Greeter.client.luau
   newproj/src/Greeter/Server/Greeter.server.luau
   newproj/src/Greeter/Shared/Greeting.luau
@@ -61,20 +53,58 @@ newproj/default.rogen.json:
   "tree": {
     "$className": "DataModel",
     "Lighting": {
-      "$path": "place/Lighting"
+      "$properties": {
+        "Ambient": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Brightness": 2.0,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "Technology": "Voxel"
+      }
     },
     "SoundService": {
-      "$path": "place/SoundService"
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
     },
     "Workspace": {
-      "$path": "place/Workspace"
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Color": {
+            "Color3uint8": [
+              99,
+              95,
+              99
+            ]
+          },
+          "Locked": true,
+          "Position": [
+            0.0,
+            -10.0,
+            0.0
+          ],
+          "Size": [
+            512.0,
+            20.0,
+            512.0
+          ]
+        }
+      },
+      "$properties": {
+        "FilteringEnabled": true
+      }
     }
   }
 }
 
 $ rojo sourcemap newproj/default.project.json
 newproj: DataModel
-  Lighting: Lighting  <- place/Lighting/init.meta.json
+  Lighting: Lighting
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
       Greeter: Folder
@@ -82,10 +112,10 @@ newproj: DataModel
   ServerScriptService: ServerScriptService
     Greeter: Folder
       Greeter: Script  <- src/Greeter/Server/Greeter.server.luau
-  SoundService: SoundService  <- place/SoundService/init.meta.json
+  SoundService: SoundService
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Greeter: Folder
         Greeter: LocalScript  <- src/Greeter/Client/Greeter.client.luau
-  Workspace: Workspace  <- place/Workspace/init.meta.json
-    Baseplate: Part  <- place/Workspace/Baseplate.model.json
+  Workspace: Workspace
+    Baseplate: Part

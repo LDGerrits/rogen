@@ -10,7 +10,7 @@ The folders inside it decide where its code runs: `Server` goes to ServerScriptS
 rogen where {{source}}/Greeter/Shared/Greeting.luau
 ```
 
-`place` holds Rojo's sample Baseplate and the Lighting and SoundService settings, as Rojo files: an `init.meta.json` per service and `Workspace/Baseplate.model.json`. The tree in `default.rogen.json` mounts each service's folder, and Rogen routes nothing in it.
+The tree in `default.rogen.json` holds Rojo's sample Baseplate and the Lighting and SoundService settings, as `$properties` and a `Baseplate` node, and Rogen routes nothing in it.
 
 ## Getting Started
 To build the place from scratch, use:

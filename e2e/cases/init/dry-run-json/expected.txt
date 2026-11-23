@@ -26,22 +26,6 @@ stdout:
         "outcome": "wouldWrite"
       },
       {
-        "file": "<dir>/place/Lighting/init.meta.json",
-        "outcome": "wouldWrite"
-      },
-      {
-        "file": "<dir>/place/SoundService/init.meta.json",
-        "outcome": "wouldWrite"
-      },
-      {
-        "file": "<dir>/place/Workspace/Baseplate.model.json",
-        "outcome": "wouldWrite"
-      },
-      {
-        "file": "<dir>/place/Workspace/init.meta.json",
-        "outcome": "wouldWrite"
-      },
-      {
         "file": "<dir>/README.md",
         "outcome": "wouldWrite"
       },
@@ -89,7 +73,7 @@ stdout:
       }
     ],
     "notes": [
-      "The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place/, which the tree mounts. Pass --no-sample for an empty src/ and no place/."
+      "The Greeter sample is in src/Greeter. Rojo's sample Baseplate and lighting are in the tree of default.rogen.json. Pass --no-sample for empty source folders and no Baseplate."
     ],
     "nextSteps": {
       "setup": [],

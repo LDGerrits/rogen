@@ -58,19 +58,21 @@ export class InitDirectory {
 	checkFree(fileNames: readonly string[]): Diagnostic[] {
 		return fileNames
 			.filter((fileName) => this.has(fileName))
-			.map((fileName) =>
-				isConfigFileName(fileName)
-					? errorDiagnostic(
-							"init.configExists",
-							{ resource: path.join(this.path, fileName) },
-							"this config already exists, and init never changes one. Edit it and run 'rogen check'. For agent rules or the hook, run 'rogen init --agent-rules' or 'rogen init --agent-hook'."
-						)
-					: errorDiagnostic(
-							"init.fileExists",
-							{ resource: path.join(this.path, fileName) },
-							"this file already exists, and init never overwrites one. Pick another name."
-						)
-			);
+			.map((fileName) => this.taken(fileName));
+	}
+
+	taken(fileName: string): Diagnostic {
+		return isConfigFileName(fileName)
+			? errorDiagnostic(
+					"init.configExists",
+					{ resource: path.join(this.path, fileName) },
+					"this config already exists, and init never changes one. Edit it and run 'rogen check'. For agent rules or the hook, run 'rogen init --agent-rules' or 'rogen init --agent-hook'."
+				)
+			: errorDiagnostic(
+					"init.fileExists",
+					{ resource: path.join(this.path, fileName) },
+					"this file already exists, and init never overwrites one. Pick another name."
+				);
 	}
 
 	get holdsCode(): boolean {

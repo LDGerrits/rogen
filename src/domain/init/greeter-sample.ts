@@ -13,12 +13,14 @@ export const TEMPLATE_SOURCE_PATHS = {
 } as const;
 
 const FEATURE = "Greeter";
-const PLACE_FEATURE = "Game";
+const PLACE_FEATURES: Readonly<Record<string, string>> = { luau: "Main" };
+const DEFAULT_PLACE_FEATURE = "Game";
 const README = "README.md";
 
 export class GreeterSample {
 	private readonly variant: string;
 	private readonly placesVariant: string;
+	private readonly placeFeature: string;
 
 	constructor(
 		language: Language,
@@ -26,6 +28,8 @@ export class GreeterSample {
 	) {
 		this.variant = language.id;
 		this.placesVariant = `${language.id}${PLACES_VARIANT}`;
+		this.placeFeature =
+			PLACE_FEATURES[language.id] ?? DEFAULT_PLACE_FEATURE;
 	}
 
 	feature(sourcePath: string): PlannedFile[] {
@@ -39,12 +43,16 @@ export class GreeterSample {
 	place(sourcePath: string): PlannedFile[] {
 		return this.mapped(
 			this.placesVariant,
-			`${TEMPLATE_SOURCE_PATHS.place}/${PLACE_FEATURE}`,
-			path.posix.join(sourcePath, PLACE_FEATURE)
+			`${TEMPLATE_SOURCE_PATHS.place}/${this.placeFeature}`,
+			path.posix.join(sourcePath, this.placeFeature)
 		);
 	}
 
-	readme(sourcePath: string, serve: string, place?: string): PlannedFile {
+	readme(
+		sourcePath: string,
+		serve: string,
+		place?: { readonly name: string; readonly target: string }
+	): PlannedFile {
 		const content = templateFiles(
 			place ? this.placesVariant : this.variant
 		);
@@ -54,7 +62,7 @@ export class GreeterSample {
 				name: this.name,
 				source: sourcePath,
 				serve,
-				...(place && { place }),
+				...(place && { place: place.name, target: place.target }),
 			}),
 		};
 	}

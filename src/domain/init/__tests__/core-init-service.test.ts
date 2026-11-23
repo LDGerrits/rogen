@@ -1856,8 +1856,8 @@ describe("CoreInitService", () => {
 			expect(
 				(await keptIn({ sample: false, places: true })).gitkeeps
 			).toEqual([
-				["src/common/.gitkeep", ""],
-				["src/game/.gitkeep", ""],
+				["projects/common/src/.gitkeep", ""],
+				["projects/game/src/.gitkeep", ""],
 			]);
 		});
 
@@ -1920,10 +1920,6 @@ describe("CoreInitService", () => {
 				"src/Greeter/Shared/Greeting.luau",
 				"src/Greeter/Server/Greeter.server.luau",
 				"src/Greeter/Client/Greeter.client.luau",
-				"place/Lighting/init.meta.json",
-				"place/SoundService/init.meta.json",
-				"place/Workspace/Baseplate.model.json",
-				"place/Workspace/init.meta.json",
 				"README.md",
 				"AGENTS.md",
 				"default.rogen.json",
@@ -2181,7 +2177,7 @@ describe("CoreInitService", () => {
 			const shown = prompts.prompts.at(-1)?.description ?? "";
 
 			expect(shown).toMatch(
-				/^Warning {3}src\/Combat holds code outside every source/m
+				/^Warning {3}src holds code outside every source/m
 			);
 		});
 
@@ -2271,7 +2267,7 @@ describe("CoreInitService", () => {
 			);
 
 			expect(places?.choiceHints?.several).toBe(
-				"src/common holds the shared code, src/game the first place; leaves src/Combat and src/Util.luau unplaced"
+				"projects/common holds the shared code, projects/game the first place; leaves src unplaced"
 			);
 		});
 
@@ -2302,7 +2298,7 @@ describe("CoreInitService", () => {
 			expect(places?.choiceHints).toEqual({
 				one: "the code is in src; leaves Main.server.luau unplaced",
 				several:
-					"src/common holds the shared code, src/game the first place; leaves Main.server.luau unplaced",
+					"projects/common holds the shared code, projects/game the first place; leaves Main.server.luau unplaced",
 			});
 		});
 

@@ -1,4 +1,10 @@
-export const PLACEHOLDERS = ["name", "place", "source", "serve"] as const;
+export const PLACEHOLDERS = [
+	"name",
+	"place",
+	"target",
+	"source",
+	"serve",
+] as const;
 
 export type Placeholder = (typeof PLACEHOLDERS)[number];
 

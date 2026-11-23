@@ -43,10 +43,10 @@ describe("GreeterSample", () => {
 	});
 
 	it("should put the script of a place in its own feature", () => {
-		const files = sample.place("src/game");
+		const files = sample.place("projects/game/src");
 
 		expect(files.map(({ fileName }) => fileName)).toEqual([
-			"src/game/Game/Server/Game.server.luau",
+			"projects/game/src/Main/Server/Main.server.luau",
 		]);
 		expect(files[0].content).toContain('print(Greeting("game"))');
 	});
@@ -64,23 +64,23 @@ describe("GreeterSample", () => {
 
 	it("should describe several places in the README, with the editor and how to add one", () => {
 		const { content } = sample.readme(
-			"src/common",
-			"rogen serve game",
-			"game"
+			"projects/common/src",
+			"rogen serve projects/game",
+			{ name: "game", target: "projects/game" }
 		);
 
 		expect(content).toContain(
-			"rogen where src/common/Greeter/Shared/Greeting.luau"
+			"rogen where projects/common/src/Greeter/Shared/Greeting.luau"
 		);
-		expect(content).toContain("`game.rogen.json`");
-		expect(content).toContain("`src/game`");
-		expect(content).toContain('rogen build game -o "game.rbxlx"');
-		expect(content).toContain("```bash\nrogen serve game\n```");
-		expect(content).toContain("rogen sourcemap game --watch");
+		expect(content).toContain("`projects/game/default.rogen.json`");
+		expect(content).toContain('rogen build projects/game -o "game.rbxlx"');
+		expect(content).toContain("```bash\nrogen serve projects/game\n```");
+		expect(content).toContain("`game.code-workspace`");
 		expect(content).toContain("luau-lsp analyze");
-		expect(content).toContain("rogen serve lobby --port");
-		expect(content).toContain("Copy `place/game` to `place/lobby`");
-		expect(content).not.toContain("code-workspace");
+		expect(content).toContain("rogen serve projects/lobby --port");
+		expect(content).toContain("Copy `projects/game` to `projects/lobby`");
+		expect(content).toContain("selene.toml");
+		expect(content).not.toContain("place/");
 	});
 
 	it("should print the command that serves the project", () => {
@@ -116,10 +116,9 @@ describe("GreeterSample", () => {
 			const { content } = typescript.readme(
 				"src/common",
 				"rogen serve game",
-				"game"
+				{ name: "game", target: "game" }
 			);
 
-			expect(content).toContain("Copy `place/game` to `place/lobby`");
 			expect(content).toContain(
 				"```bash\nnpx rbxtsc -w -p tsconfig.lobby.json\n```"
 			);
@@ -197,7 +196,10 @@ describe("GreeterSample", () => {
 					...sample.feature("lib"),
 					...sample.place("src/game"),
 					sample.readme("lib", "rogen serve"),
-					sample.readme("src/common", "rogen serve game", "game"),
+					sample.readme("src/common", "rogen serve game", {
+						name: "game",
+						target: "game",
+					}),
 				];
 
 				for (const { content } of files)

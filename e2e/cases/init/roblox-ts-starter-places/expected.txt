@@ -4,17 +4,13 @@ stdout:
   rogen init
   Starts from create-roblox-ts, which writes package.json and the compiler's settings.
   Syncing from out/game, where roblox-ts compiles to.
-  The Greeter sample is the feature in src/common, which every place shares, Game in src/game, and Rojo's sample Baseplate and lighting in place/game. Pass --no-sample for empty source folders.
+  The Greeter sample is the feature in src/common, which every place shares, and the place's own script is in src/game. Rojo's sample Baseplate and lighting are in the tree of game.rogen.json. Pass --no-sample for empty source folders and no Baseplate.
   Took the defaults, each with the flag that changes it: a place (--kind), the Greeter sample (--no-sample), agent rules (--no-agent-rules).
   Ran npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild.
   Created src/common/Greeter/shared/Greeting.ts.
   Created src/common/Greeter/server/Greeter.server.ts.
   Created src/common/Greeter/client/Greeter.client.ts.
   Created src/game/Game/server/Game.server.ts.
-  Created place/game/Lighting/init.meta.json.
-  Created place/game/SoundService/init.meta.json.
-  Created place/game/Workspace/Baseplate.model.json.
-  Created place/game/Workspace/init.meta.json.
   Created README.md.
   Created tsconfig.game.json.
   Created tsconfig.json.
@@ -32,8 +28,8 @@ stdout:
     In Studio, press Connect in the Rojo plugin.
     To change where code goes, edit "routes" in game.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".
     Edit game.rogen.json and leave game.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write game' so the editor's game.project.json follows.
-    Add another place: copy game.rogen.json to lobby.rogen.json, point each place/game in its tree to place/lobby, make src/lobby and copy place/game to place/lobby. Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common. Do the same for game.release.rogen.json if there is one. Copy tsconfig.game.json to tsconfig.lobby.json, change each game in it to lobby, add it to the references in tsconfig.json, and set "compiledPath" in lobby.rogen.json to out/lobby. Add ' && rbxtsc -p tsconfig.lobby.json' to the end of the build script in package.json. 'rbxtsc -w' runs until you stop it, so watch the place from a terminal of its own with 'npx rbxtsc -w -p tsconfig.lobby.json'. Serve it from a second terminal with its own --port: 'rogen serve lobby --port <port>'.
-  Wrote 14 files.
+    Add another place: copy game.rogen.json to lobby.rogen.json and make src/lobby. Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common. Do the same for game.release.rogen.json if there is one. Copy tsconfig.game.json to tsconfig.lobby.json, change each game in it to lobby, add it to the references in tsconfig.json, and set "compiledPath" in lobby.rogen.json to out/lobby. Add ' && rbxtsc -p tsconfig.lobby.json' to the end of the build script in package.json. 'rbxtsc -w' runs until you stop it, so watch the place from a terminal of its own with 'npx rbxtsc -w -p tsconfig.lobby.json'. Serve it from a second terminal with its own --port: 'rogen serve lobby --port <port>'.
+  Wrote 10 files.
 
 ran:
   npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild
@@ -45,10 +41,6 @@ written:
   game.project.json
   game.rogen.json
   package.json
-  place/game/Lighting/init.meta.json
-  place/game/SoundService/init.meta.json
-  place/game/Workspace/Baseplate.model.json
-  place/game/Workspace/init.meta.json
   rokit.toml
   src/common/Greeter/client/Greeter.client.ts
   src/common/Greeter/server/Greeter.server.ts
@@ -74,7 +66,17 @@ game.rogen.json:
   "tree": {
     "$className": "DataModel",
     "Lighting": {
-      "$path": "place/game/Lighting"
+      "$properties": {
+        "Ambient": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Brightness": 2.0,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "Technology": "Voxel"
+      }
     },
     "ReplicatedStorage": {
       "rbxts_include": {
@@ -88,10 +90,38 @@ game.rogen.json:
       }
     },
     "SoundService": {
-      "$path": "place/game/SoundService"
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
     },
     "Workspace": {
-      "$path": "place/game/Workspace"
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Color": {
+            "Color3uint8": [
+              99,
+              95,
+              99
+            ]
+          },
+          "Locked": true,
+          "Position": [
+            0.0,
+            -10.0,
+            0.0
+          ],
+          "Size": [
+            512.0,
+            20.0,
+            512.0
+          ]
+        }
+      },
+      "$properties": {
+        "FilteringEnabled": true
+      }
     }
   }
 }

@@ -66,14 +66,14 @@ const InitOptions = [
 		type: "boolean",
 		negation: "only",
 		description:
-			"Leave the Greeter sample out: empty source folders, and no place/ folder. The sample is a Greeter feature folder of three hello-world scripts, a README, and Rojo's Baseplate and lighting in place/, which the tree mounts. A new place in a folder with no code gets it.",
+			"Leave the Greeter sample out: empty source folders, and no Baseplate in the tree. The sample is a Greeter feature folder of three hello-world scripts, a README, and Rojo's Baseplate and lighting in the tree. A new place in a folder with no code gets it.",
 	},
 	{
 		name: "places",
 		type: "boolean",
 		negation: "also",
 		description:
-			"Whether a new project is several places. The code they share goes in src/common, a first place in src/game and a game.rogen.json at the root for it. Luau adds editor settings for luau-lsp, and roblox-ts a tsconfig.game.json that compiles the place into out/game. More places by copying those files. One place when not given.",
+			"Whether a new project is several places. For Luau, each place is a folder under projects: the code they share goes in projects/common/src and a first place in projects/game, with its own default.rogen.json, and a .code-workspace file at the root has luau-lsp read each folder's sourcemap. For roblox-ts, the shared code goes in src/common, a first place in src/game with a game.rogen.json at the root, and a tsconfig.game.json that compiles the place into out/game. More places by copying those files. One place when not given.",
 	},
 	{
 		name: "agent-rules",

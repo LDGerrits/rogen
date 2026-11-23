@@ -8,9 +8,9 @@ const VARIANTS: readonly Variant[] = [
 		name: "Luau, several places",
 		flags: ["--places"],
 		steps: [],
-		project: ["game"],
+		project: ["projects/game"],
 		served: "game",
-		mapped: ["game"],
+		mapped: ["projects/game"],
 	},
 	{
 		name: "roblox-ts, one place",

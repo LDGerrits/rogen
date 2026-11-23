@@ -13,10 +13,6 @@ written:
   README.md
   default.project.json
   default.rogen.json
-  place/Lighting/init.meta.json
-  place/SoundService/init.meta.json
-  place/Workspace/Baseplate.model.json
-  place/Workspace/init.meta.json
   src/Greeter/Client/Greeter.client.luau
   src/Greeter/Server/Greeter.server.luau
   src/Greeter/Shared/Greeting.luau
@@ -34,7 +30,7 @@ The folders inside it decide where its code runs: `Server` goes to ServerScriptS
 rogen where src/Greeter/Shared/Greeting.luau
 ```
 
-`place` holds Rojo's sample Baseplate and the Lighting and SoundService settings, as Rojo files: an `init.meta.json` per service and `Workspace/Baseplate.model.json`. The tree in `default.rogen.json` mounts each service's folder, and Rogen routes nothing in it.
+The tree in `default.rogen.json` holds Rojo's sample Baseplate and the Lighting and SoundService settings, as `$properties` and a `Baseplate` node, and Rogen routes nothing in it.
 
 ## Getting Started
 To build the place from scratch, use:
@@ -66,13 +62,51 @@ default.rogen.json:
   "tree": {
     "$className": "DataModel",
     "Lighting": {
-      "$path": "place/Lighting"
+      "$properties": {
+        "Ambient": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Brightness": 2.0,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "Technology": "Voxel"
+      }
     },
     "SoundService": {
-      "$path": "place/SoundService"
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
     },
     "Workspace": {
-      "$path": "place/Workspace"
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Color": {
+            "Color3uint8": [
+              99,
+              95,
+              99
+            ]
+          },
+          "Locked": true,
+          "Position": [
+            0.0,
+            -10.0,
+            0.0
+          ],
+          "Size": [
+            512.0,
+            20.0,
+            512.0
+          ]
+        }
+      },
+      "$properties": {
+        "FilteringEnabled": true
+      }
     }
   }
 }
@@ -98,7 +132,7 @@ end
 
 $ rojo sourcemap default.project.json
 project: DataModel
-  Lighting: Lighting  <- place/Lighting/init.meta.json
+  Lighting: Lighting
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
       Greeter: Folder
@@ -106,10 +140,10 @@ project: DataModel
   ServerScriptService: ServerScriptService
     Greeter: Folder
       Greeter: Script  <- src/Greeter/Server/Greeter.server.luau
-  SoundService: SoundService  <- place/SoundService/init.meta.json
+  SoundService: SoundService
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Greeter: Folder
         Greeter: LocalScript  <- src/Greeter/Client/Greeter.client.luau
-  Workspace: Workspace  <- place/Workspace/init.meta.json
-    Baseplate: Part  <- place/Workspace/Baseplate.model.json
+  Workspace: Workspace
+    Baseplate: Part
