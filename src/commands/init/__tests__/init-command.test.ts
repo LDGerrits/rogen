@@ -1547,7 +1547,7 @@ describe("init command", () => {
 		expect(await exists("lobby/default.rogen.json")).toBe(true);
 		expect(await exists("default.rogen.json")).toBe(false);
 		expect(logService.lines).toContain(
-			"success: Wrote lobby/default.project.json."
+			`success: Wrote ${path.join("lobby", "default.project.json")}.`
 		);
 		expect(await exists("lobby/default.project.json")).toBe(true);
 	});
