@@ -150,6 +150,33 @@ describe("OutcomeLog.outcome", () => {
 		return logService.entries.map(({ kind, text }) => [kind, text]);
 	};
 
+	it("should report each output file on its own line", () => {
+		const config = mockConfig();
+		const outcome = new WrittenConfig(
+			config,
+			"wrote",
+			{ warnings: [], sync: SyncWarnings.known([]) },
+			summaryOf(),
+			[],
+			[
+				{ file: config.projectFile, change: "unchanged" },
+				{
+					file: path.join(cwd, "compiler.project.json"),
+					change: "wrote",
+				},
+				{
+					file: path.join(cwd, "old.compiler.project.json"),
+					change: "removed",
+				},
+			]
+		);
+
+		expect(lines(outcome, [], "first build")).toEqual([
+			["success", "Wrote compiler.project.json (first build)."],
+			["success", "Removed old.compiler.project.json."],
+		]);
+	});
+
 	it("should say a written config wrote or was unchanged", () => {
 		expect(lines(writtenOf(summaryOf()))[0]).toEqual([
 			"success",

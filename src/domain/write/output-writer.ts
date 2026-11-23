@@ -66,6 +66,27 @@ export class OutputWriter {
 		);
 	}
 
+	async remove(
+		output: OutputFile
+	): Promise<Result<boolean, DiagnosticsError>> {
+		const removed = await tryWithAsync(async (): Promise<boolean> => {
+			if (!(await this.fileSystemService.isFile(output.path)))
+				return false;
+			await this.fileSystemService.delete(output.path);
+			return true;
+		});
+		if (removed.isOk()) return ok(removed.value);
+		return err(
+			new DiagnosticsError([
+				errorDiagnostic(
+					"output.writeFailed",
+					{ resource: output.path },
+					`the project file could not be removed: ${failureReason(removed.error)}.`
+				),
+			])
+		);
+	}
+
 	private async createPlaceholder({
 		path,
 		kind,

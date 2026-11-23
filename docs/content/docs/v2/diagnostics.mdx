@@ -883,7 +883,7 @@ warning: this file is out of date: its sources changed. Run 'rogen write'; to ch
 
 Run `rogen write`. For a project other than `default`, run `rogen write <project>`. In `--json`, the diagnostic carries the command as a `run` fix. If git tracks the project file, commit the result. If git ignores it, a stale copy does no harm.
 
-Rogen doesn't report a project file that doesn't exist yet.
+It also reports a compiler project file that the config no longer gets, which `rogen write` removes. Rogen doesn't report a project file that doesn't exist yet.
 
 ### `output.nothingEmitted` [#output-nothingemitted]
 

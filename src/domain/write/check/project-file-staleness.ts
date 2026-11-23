@@ -47,4 +47,26 @@ export class ProjectFileStaleness {
 			[{ run: { command, cwd: path.dirname(config.file) } }]
 		);
 	}
+
+	async leftover(config: ResolvedConfig): Promise<Diagnostic | undefined> {
+		const outputFile = config.leftoverCompilerFile;
+		if (
+			outputFile === undefined ||
+			!(await this.fileSystemService.isFile(outputFile))
+		)
+			return undefined;
+		const command = commandWith(
+			"rogen write",
+			await this.configService.referenceTo(
+				config.file,
+				path.dirname(config.file)
+			)
+		);
+		return warningDiagnostic(
+			"output.differs",
+			{ resource: outputFile },
+			`this file is out of date: ${path.basename(config.file)} no longer writes it. Run '${command}' to remove it.`,
+			[{ run: { command, cwd: path.dirname(config.file) } }]
+		);
+	}
 }

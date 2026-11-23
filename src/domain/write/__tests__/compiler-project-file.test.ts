@@ -105,6 +105,21 @@ describe("the compiler's project file", () => {
 		expect(await fs.exists(abs(COMPILER))).toBe(false);
 	});
 
+	it("should write none when the config's folder is the common root", async () => {
+		await fs.writeFile(abs("projects/game/tests/a.luau"), "");
+
+		await write(
+			placeOf({
+				sourcePaths: [
+					abs("projects/game/src"),
+					abs("projects/game/tests"),
+				],
+			})
+		);
+
+		expect(await fs.exists(abs(COMPILER))).toBe(false);
+	});
+
 	it("should write none without a compiled path", async () => {
 		await write(placeOf({ compiledPath: undefined }));
 
@@ -119,7 +134,41 @@ describe("the compiler's project file", () => {
 
 		expect(again.kind).toBe("unchanged");
 		expect(repaired.kind).toBe("wrote");
+		expect(repaired.kind === "wrote" && repaired.outputs).toEqual([
+			{
+				file: abs("projects/game/default.project.json"),
+				change: "unchanged",
+			},
+			{ file: abs(COMPILER), change: "wrote" },
+		]);
 		expect((await readJson(COMPILER)).tree).toBeDefined();
+	});
+
+	it("should remove a compiler file the config no longer gets, and say so", async () => {
+		await write(placeOf());
+		const [outcome] = (
+			await write(placeOf({ sourcePaths: [abs("projects/game/src")] }))
+		).outcomes;
+
+		expect(await fs.exists(abs(COMPILER))).toBe(false);
+		expect(outcome.kind === "wrote" && outcome.outputs).toEqual([
+			{
+				file: abs("projects/game/default.project.json"),
+				change: "wrote",
+			},
+			{ file: abs(COMPILER), change: "removed" },
+		]);
+	});
+
+	it("should report a leftover compiler file that cannot be removed as the config's error", async () => {
+		await write(placeOf());
+		jest.spyOn(fs, "delete").mockRejectedValue(new Error("busy"));
+
+		const [outcome] = (
+			await write(placeOf({ sourcePaths: [abs("projects/game/src")] }))
+		).outcomes;
+
+		expect(outcome.kind).toBe("failed");
 	});
 
 	it("should report a compiler file that cannot be written as the config's error", async () => {
@@ -147,6 +196,22 @@ describe("the compiler's project file", () => {
 			expect(outcomes[0].warnings).toMatchObject([
 				{ code: "output.differs", resource: abs(COMPILER) },
 			]);
+		});
+
+		it("should warn about a compiler file the config no longer gets", async () => {
+			await write(placeOf());
+			const narrowed = placeOf({
+				sourcePaths: [abs("projects/game/src")],
+			});
+
+			const { outcomes } = await service().check(selectionOf(narrowed));
+
+			expect(outcomes[0].warnings).toContainEqual(
+				expect.objectContaining({
+					code: "output.differs",
+					resource: abs(COMPILER),
+				})
+			);
 		});
 
 		it("should say nothing when it is up to date", async () => {

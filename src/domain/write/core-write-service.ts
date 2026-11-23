@@ -18,6 +18,7 @@ import {
 	CheckedConfig,
 	FailedConfig,
 	LoadedConfig,
+	OutputChange,
 	OutputFile,
 	SyncWarnings,
 	UnwrittenConfig,
@@ -388,7 +389,7 @@ export class CoreWriteService implements WriteService {
 					async () => attempt.projectFile
 				),
 				...(config.compilerFile === undefined
-					? []
+					? [await staleness.leftover(config)]
 					: [
 							await staleness.diagnostic(
 								config,
@@ -424,7 +425,7 @@ export class CoreWriteService implements WriteService {
 				continue;
 			}
 			const written = config.isAdopted
-				? ok(false)
+				? ok([])
 				: await this.writeOutputs(attempt, force);
 			if (written.isErr() && stopOnFailure) failed = config.file;
 			outcomes.push(
@@ -436,10 +437,15 @@ export class CoreWriteService implements WriteService {
 						)
 					: new WrittenConfig(
 							config,
-							written.value ? "wrote" : "unchanged",
+							written.value.some(
+								({ change }) => change !== "unchanged"
+							)
+								? "wrote"
+								: "unchanged",
 							findings,
 							summary,
-							readFiles
+							readFiles,
+							written.value.length > 0 ? written.value : undefined
 						)
 			);
 		}
@@ -449,20 +455,41 @@ export class CoreWriteService implements WriteService {
 	private async writeOutputs(
 		{ config, projectFile, compilerProject, placeholders }: PreparedConfig,
 		force: boolean | undefined
-	): Promise<Result<boolean, DiagnosticsError>> {
+	): Promise<Result<OutputChange[], DiagnosticsError>> {
 		const written = await this.writer.write(
 			new OutputFile(config.projectFile),
 			projectFile,
 			{ force, placeholders }
 		);
-		if (written.isErr() || config.compilerFile === undefined)
-			return written;
-		const compiler = await this.writer.write(
-			new OutputFile(config.compilerFile),
-			compilerProject!,
-			{ force }
-		);
-		return compiler.map((changed) => changed || written.value);
+		if (written.isErr()) return err(written.error);
+		const outputs: OutputChange[] = [
+			{
+				file: config.projectFile,
+				change: written.value ? "wrote" : "unchanged",
+			},
+		];
+		if (config.compilerFile !== undefined) {
+			const compiler = await this.writer.write(
+				new OutputFile(config.compilerFile),
+				compilerProject!,
+				{ force }
+			);
+			if (compiler.isErr()) return err(compiler.error);
+			outputs.push({
+				file: config.compilerFile,
+				change: compiler.value ? "wrote" : "unchanged",
+			});
+		} else {
+			const leftover = config.leftoverCompilerFile!;
+			const removed = await this.writer.remove(new OutputFile(leftover));
+			if (removed.isErr()) return err(removed.error);
+			if (removed.value)
+				outputs.push({
+					file: leftover,
+					change: "removed",
+				});
+		}
+		return ok(outputs);
 	}
 
 	private compiledPathWarnings(
@@ -532,7 +559,8 @@ export class CoreWriteService implements WriteService {
 					kind ?? outcome.kind,
 					findings,
 					summary,
-					readFiles
+					readFiles,
+					kind === undefined ? outcome.outputs : undefined
 				);
 		}
 	}

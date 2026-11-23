@@ -22,6 +22,14 @@ export const writeEntryShape = S.named(
 		config: S.string,
 		projectFile: S.nullable(S.string),
 		outcome: S.enum("wrote", "unchanged", "wouldWrite", "notWritten"),
+		files: S.optional(
+			S.array(
+				S.object({
+					file: S.string,
+					outcome: S.enum("wrote", "unchanged", "removed"),
+				})
+			)
+		),
 		blockedBy: S.optional(S.array(S.string)),
 		diagnostics: S.array(diagnosticShape),
 	})
@@ -61,6 +69,10 @@ export interface WriteEntry {
 	readonly config: string;
 	readonly projectFile: string | null;
 	readonly outcome: "wrote" | "unchanged" | "wouldWrite" | "notWritten";
+	readonly files?: readonly {
+		readonly file: string;
+		readonly outcome: "wrote" | "unchanged" | "removed";
+	}[];
 	readonly blockedBy?: readonly string[];
 	readonly diagnostics: readonly DiagnosticJson[];
 }
@@ -83,6 +95,15 @@ export function writeEntry(
 			isWritten(outcome) || outcome.kind === "wouldWrite"
 				? outcome.kind
 				: "notWritten",
+		...(isWritten(outcome) &&
+			outcome.outputs.some(
+				({ file }) => file !== outcome.config.projectFile
+			) && {
+				files: outcome.outputs.map(({ file, change }) => ({
+					file: toNative(file),
+					outcome: change,
+				})),
+			}),
 		...(outcome.kind === "notWritten" && {
 			blockedBy: outcome.blockedBy.map((file) => configPath(cwd, file)),
 		}),

@@ -320,11 +320,17 @@ export class OutcomeLog {
 		const line = (state: string) => [file, state, ...said].join(" · ");
 		switch (outcome.kind) {
 			case "wrote":
-				this.logService.success(
-					said.length > 0
-						? `Wrote ${file} (${said.join(", ")}).`
-						: `Wrote ${file}.`
-				);
+				for (const [index, { file: changed, change }] of outcome.outputs
+					.filter(({ change }) => change !== "unchanged")
+					.entries()) {
+					const name = relativeTo(this.cwd, changed);
+					const verb = change === "removed" ? "Removed" : "Wrote";
+					this.logService.success(
+						said.length > 0 && index === 0
+							? `${verb} ${name} (${said.join(", ")}).`
+							: `${verb} ${name}.`
+					);
+				}
 				this.details(outcome.summary);
 				break;
 			case "unchanged":

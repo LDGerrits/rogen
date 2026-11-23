@@ -20,6 +20,7 @@ stdout:
   Created projects/game/default.rogen.json.
   Ran npm pkg set "scripts.build=rbxtsc -p tsconfig.game.json" "scripts.watch=rbxtsc -w -p tsconfig.game.json".
   Wrote projects/game/default.project.json.
+  Wrote projects/game/compiler.project.json.
   Next steps
     Install Rokit with 'curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash' (https://github.com/rojo-rbx/rokit), then run 'rokit install' here.
     Run 'rogen plugin install' to install Rojo's Studio plugin.

@@ -1,7 +1,7 @@
 import path from "path";
 import {
 	commonAncestor,
-	contains,
+	isInside,
 	samePath,
 	toPosix,
 } from "../../base/path.js";
@@ -90,9 +90,15 @@ export class ResolvedConfig {
 		return !this.isAdopted &&
 			this.compiledPath !== undefined &&
 			commonRoot !== undefined &&
-			contains(commonRoot, this.projectDir)
+			isInside(this.projectDir, commonRoot)
 			? compilerFileOf(this.file)
 			: undefined;
+	}
+
+	get leftoverCompilerFile(): string | undefined {
+		return this.isAdopted || this.compilerFile !== undefined
+			? undefined
+			: compilerFileOf(this.file);
 	}
 
 	get isAdopted(): boolean {

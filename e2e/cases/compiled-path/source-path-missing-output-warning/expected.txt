@@ -5,21 +5,8 @@ stderr:
   core - warning: source path "core" has no output under "out/core". Found "out/Types.luau" — is the output of your compiler or processor rooted differently? (output.nothingEmitted)
 
 written:
-  compiler.project.json
   default.project.json
   out/core/Types.luau
-
-$ rojo sourcemap compiler.project.json
-exit 1
-stderr:
-  [ERROR rojo] Rojo crashed! You are running Rojo 7.7.1.
-  [ERROR rojo] This is probably a Rojo bug.
-  [ERROR rojo] 
-  [ERROR rojo] Please consider filing an issue: https://github.com/rojo-rbx/rojo/issues
-  [ERROR rojo] 
-  [ERROR rojo] Details: not yet implemented: set_file_name doesn't support loading project files that aren't default.project.json without a fallback provided
-  [ERROR rojo] in file src/project.rs on line 224
-  note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
 
 $ rojo sourcemap default.project.json
 project: DataModel
