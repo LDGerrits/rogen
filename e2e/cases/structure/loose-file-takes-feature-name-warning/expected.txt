@@ -2,7 +2,7 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  src/server/Inventory.luau - warning: becomes "ServerScriptService/Inventory", where src/Inventory/server/Save.luau lands too, so that file becomes a child of this one. Rename one of them to keep them apart. (tree.instanceClash)
+  src/server/Inventory.luau - warning: becomes "ServerScriptService/Inventory", and src/Inventory/server/Save.luau lands inside it as a child. Rename one of them to keep them apart. (tree.instanceClash)
 
 written:
   default.project.json

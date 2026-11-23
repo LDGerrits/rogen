@@ -2,7 +2,7 @@ $ rogen init --non-interactive
 exit 0
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: src/server/Main.server.luau holds code outside every source path and mount, so Rogen places none of it. Move it into src/server/Admin, or add its folder to "sourcePaths". (init.codeOutsideSourcePaths)
+  default.rogen.json - warning: src/server/Main.server.luau holds code outside the source paths and mounts, so it is not placed. Move it into src/server/Admin, or add its folder to "sourcePaths". (init.codeOutsideSourcePaths)
 
 $ rogen write
 exit 0

@@ -2,7 +2,7 @@ $ rogen syncback -i place.rbxl -y --list
 exit 0
 stderr:
   Wrote default.project.json.
-  default.rogen.json - warning: ReplicatedStorage/Shared/Shop/ServerBits was left out: routing would read src/Shop/ServerBits/Main.server.luau as ServerScriptService/Shop/ServerBits/Main, as it places a script by its type; make it a ModuleScript or move it to where that type runs. (syncback.unplaced)
+  default.rogen.json - warning: ReplicatedStorage/Shared/Shop/ServerBits was left out: routing would read src/Shop/ServerBits/Main.server.luau as ServerScriptService/Shop/ServerBits/Main; make it a ModuleScript, or move it to where that type runs. (syncback.unplaced)
   Syncback changed nothing.
 
 $ rogen write
@@ -12,7 +12,7 @@ stdout: (not shown)
 $ rogen syncback -i place.rbxl --dry-run
 exit 0
 stderr:
-  default.rogen.json - warning: ReplicatedStorage/Shared/Shop/ServerBits was left out: routing would read src/Shop/ServerBits/Main.server.luau as ServerScriptService/Shop/ServerBits/Main, as it places a script by its type; make it a ModuleScript or move it to where that type runs. (syncback.unplaced)
+  default.rogen.json - warning: ReplicatedStorage/Shared/Shop/ServerBits was left out: routing would read src/Shop/ServerBits/Main.server.luau as ServerScriptService/Shop/ServerBits/Main; make it a ModuleScript, or move it to where that type runs. (syncback.unplaced)
   Syncback would change nothing.
 
 written:

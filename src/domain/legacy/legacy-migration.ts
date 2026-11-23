@@ -414,7 +414,7 @@ class Migration {
 				warningDiagnostic(
 					"legacy.outputClash",
 					{ resource: this.resource(file) },
-					`its ${mode.name} mode wrote ${output}, as an earlier mode did, so init writes one ${fileName}. To keep both, copy it under another name.`
+					`its ${mode.name} mode wrote ${output}, as an earlier mode did, so init writes one ${fileName}. Copy it under another name to keep both.`
 				)
 			);
 			return;
@@ -462,7 +462,7 @@ class Migration {
 				warningDiagnostic(
 					"legacy.outputClash",
 					{ resource: this.resource(file) },
-					`its ${mode.name} mode wrote ${output}, the same as ${same.fileName} without tags, so init writes only ${same.fileName}. To keep both, copy it under another name.`
+					`its ${mode.name} mode wrote ${output}, the same as ${same.fileName} without tags, so init writes only that. Copy it under another name to keep both.`
 				)
 			);
 			return;

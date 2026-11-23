@@ -363,7 +363,7 @@ describe("where command", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(printed()).toEqual([
-				'src - warning: this source path places nothing: Rojo reads none of its files (Server/Main.lang). Add a "syncRules" entry for their extension, and a "compiledPath" if a compiler turns them into Luau. (scan.noSyncedFiles)',
+				'src - warning: this source path places nothing: Rojo reads none of its files (Server/Main.lang). Add a "syncRules" entry for their extension, and a "compiledPath" if a compiler compiles them. (scan.noSyncedFiles)',
 			]);
 		});
 

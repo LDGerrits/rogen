@@ -224,7 +224,7 @@ export class ConfigValidator {
 			this.problems.warning(
 				"tree.reservedName",
 				this.locate(...reserved),
-				`"${reserved.join(".")}": Rojo reserves keys that start with $ for its own fields, so it warns about this one on every build. Rename it without the $.`
+				`"${reserved.join(".")}": Rojo reserves keys that start with $, so it warns on every build. Rename it without the $.`
 			);
 	}
 

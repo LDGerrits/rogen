@@ -2,7 +2,7 @@ $ rogen init --non-interactive
 exit 0
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: modules holds code outside every source path and mount, so Rogen places none of it. Move it into assets, or add its folder to "sourcePaths". (init.codeOutsideSourcePaths)
+  default.rogen.json - warning: modules holds code outside the source paths and mounts, so it is not placed. Move it into assets, or add its folder to "sourcePaths". (init.codeOutsideSourcePaths)
 
 written:
   .git/

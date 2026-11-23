@@ -7,9 +7,9 @@ stdout:
   src/Net/Http.mock@Client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http.mock · route Client (suffix)
   src/Net/Http@Client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)
   src/Net/Types.lua -> replaced by src/Net/Types.luau
-    error: becomes "ReplicatedStorage/Shared/Net/Types", as src/Net/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both. (tree.instanceClash)
+    error: becomes "ReplicatedStorage/Shared/Net/Types", like src/Net/Types.luau, which takes its place. Rename one of them to keep both. (tree.instanceClash)
   src/Net/Types.luau -> ReplicatedStorage/Shared/Net/Types · route * (fallback)
-    src/Net/Types.lua - error: becomes "ReplicatedStorage/Shared/Net/Types", as src/Net/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both. (tree.instanceClash)
+    src/Net/Types.lua - error: becomes "ReplicatedStorage/Shared/Net/Types", like src/Net/Types.luau, which takes its place. Rename one of them to keep both. (tree.instanceClash)
   src/Specs -> ignored · matches src/Specs
 
 $ rogen where src/Net src/Combat/Server/Moves/Sweep.luau src/Empty README.md
@@ -18,9 +18,9 @@ stdout:
   src/Net/Http.mock@Client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http.mock · route Client (suffix)
   src/Net/Http@Client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)
   src/Net/Types.lua -> replaced by src/Net/Types.luau
-    error: becomes "ReplicatedStorage/Shared/Net/Types", as src/Net/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both. (tree.instanceClash)
+    error: becomes "ReplicatedStorage/Shared/Net/Types", like src/Net/Types.luau, which takes its place. Rename one of them to keep both. (tree.instanceClash)
   src/Net/Types.luau -> ReplicatedStorage/Shared/Net/Types · route * (fallback)
-    src/Net/Types.lua - error: becomes "ReplicatedStorage/Shared/Net/Types", as src/Net/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both. (tree.instanceClash)
+    src/Net/Types.lua - error: becomes "ReplicatedStorage/Shared/Net/Types", like src/Net/Types.luau, which takes its place. Rename one of them to keep both. (tree.instanceClash)
   src/Combat/Server/Moves/Sweep.luau -> ServerScriptService/Combat/Moves/Sweep · route Server (folder) · the file does not exist yet
     require(game:GetService("ServerScriptService").Combat.Moves.Sweep)
   src/Empty -> empty · no file in it places
@@ -34,7 +34,7 @@ stdout:
   src/Net/Http.mock@Client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http.mock · route Client (suffix)
     no require by this path: StarterPlayerScripts is cloned into each player
 stderr:
-  src/Net/Types.lua - error: becomes "ReplicatedStorage/Shared/Net/Types", as src/Net/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both. (tree.instanceClash)
+  src/Net/Types.lua - error: becomes "ReplicatedStorage/Shared/Net/Types", like src/Net/Types.luau, which takes its place. Rename one of them to keep both. (tree.instanceClash)
   The error above stops the write, but none of it is about what you asked; 'rogen check' lists everything to fix.
 
 $ rogen where ServerScriptService.Combat.Moves:4: attempt to index nil ReplicatedStorage/Shared/Nope
@@ -43,7 +43,7 @@ stdout:
   src/Combat/Server/Moves/init.luau -> ServerScriptService/Combat/Moves · route Server (folder)
   ReplicatedStorage/Shared/Nope -> no file places it · a new file goes in src/Shared/
 stderr:
-  src/Net/Types.lua - error: becomes "ReplicatedStorage/Shared/Net/Types", as src/Net/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both. (tree.instanceClash)
+  src/Net/Types.lua - error: becomes "ReplicatedStorage/Shared/Net/Types", like src/Net/Types.luau, which takes its place. Rename one of them to keep both. (tree.instanceClash)
   The error above stops the write, but none of it is about what you asked; 'rogen check' lists everything to fix.
 
 $ rogen where src/Combat/Server/Moves/Sweep.luau:12 src/Net/Http@Client.luau:3:9: unexpected symbol
@@ -54,7 +54,7 @@ stdout:
   src/Net/Http@Client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)
     no require by this path: StarterPlayerScripts is cloned into each player
 stderr:
-  src/Net/Types.lua - error: becomes "ReplicatedStorage/Shared/Net/Types", as src/Net/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both. (tree.instanceClash)
+  src/Net/Types.lua - error: becomes "ReplicatedStorage/Shared/Net/Types", like src/Net/Types.luau, which takes its place. Rename one of them to keep both. (tree.instanceClash)
   The error above stops the write, but none of it is about what you asked; 'rogen check' lists everything to fix.
 
 $ rogen where ServerScriptService.Inventory.Export ServerScriptService.Nothing.Here
@@ -63,5 +63,5 @@ stdout:
   ServerScriptService.Inventory.Export -> no file places it · a new file goes in src/Inventory/Server/
   ServerScriptService.Nothing.Here -> no file places it · a new file goes in src/Nothing/Server/
 stderr:
-  src/Net/Types.lua - error: becomes "ReplicatedStorage/Shared/Net/Types", as src/Net/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both. (tree.instanceClash)
+  src/Net/Types.lua - error: becomes "ReplicatedStorage/Shared/Net/Types", like src/Net/Types.luau, which takes its place. Rename one of them to keep both. (tree.instanceClash)
   The error above stops the write, but none of it is about what you asked; 'rogen check' lists everything to fix.

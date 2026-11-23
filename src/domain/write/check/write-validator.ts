@@ -1,11 +1,7 @@
 import path from "path";
 import { compareByCodePoint } from "../../../base/collections.js";
 import { ancestors, isInside, joinPosix, toPosix } from "../../../base/path.js";
-import {
-	capitalized,
-	joinedBriefly,
-	joinedWithOr,
-} from "../../../base/strings.js";
+import { capitalized, joinedBriefly } from "../../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticFix,
@@ -186,7 +182,7 @@ export class WriteValidator {
 			!compiled && typeScript
 				? `Set "compiledPath" to the folder roblox-ts writes, as "out".${others ? ' For the other files, add a "syncRules" entry for their extension.' : ""}`
 				: !compiled
-					? 'Add a "syncRules" entry for their extension, and a "compiledPath" if a compiler turns them into Luau.'
+					? 'Add a "syncRules" entry for their extension, and a "compiledPath" if a compiler compiles them.'
 					: 'Add a "syncRules" entry for their extension.';
 		return `Rojo reads none of its files (${listed}). ${advice}`;
 	}
@@ -330,7 +326,7 @@ export class WriteValidator {
 				return warningDiagnostic(
 					"route.folderPattern",
 					{ resource: folder },
-					`matches the pattern "${pattern}", but a pattern never routes a folder${script ? " or its init script, so it goes" : ", so the files in it that no route takes go"} to "*". ${key === undefined ? 'No name key routes to that place: add one to "routes" and name the folder for it.' : `Name it ${name}@${key} to route it there.`}`,
+					`matches the pattern "${pattern}", but a pattern never routes a folder${script ? " or its init script, so it goes" : ", so its unrouted files go"} to "*". ${key === undefined ? 'No name key routes to that place: add one to "routes" and name the folder for it.' : `Name it ${name}@${key} to route it there.`}`,
 					renamable
 						? [{ rename: { from: folder, to: `${folder}@${key}` } }]
 						: []
@@ -367,14 +363,14 @@ export class WriteValidator {
 	}
 
 	private unrouted(): Diagnostic[] {
-		const [first, ...rest] = this.config.keys.routeKeys;
+		const [first] = this.config.keys.routeKeys;
 		return this.placement.leftOut
 			.withStatus("unrouted")
 			.map(([resource]) =>
 				warningDiagnostic(
 					"route.unrouted",
 					{ resource },
-					`matched no route, so it is left out. Move it into a routing folder, as ${path.join(this.featureFolderOf(resource), first)}, end its name with a route's @ suffix (${joinedWithOr([first, ...rest].map((key) => `@${key}`))}), or declare a "*" route.`
+					`matched no route, so it is left out. Move it into a routing folder such as ${path.join(this.featureFolderOf(resource), first)}, end its name with @${first}, or declare a "*" route.`
 				)
 			);
 	}
@@ -487,8 +483,7 @@ export class WriteValidator {
 		const rule = file.ownRule;
 		if (!named || rule?.use !== "moduleScript") return undefined;
 		const extension = rule.suffix ?? path.extname(file.name);
-		const advised = `{ "pattern": "*.${named}${extension}", "use": "${named}Script", "suffix": ".${named}${extension}" }`;
-		return `the sync rule "${rule.pattern}" makes this file a ModuleScript, so it never runs. For a ${named} script, add ${advised} before that rule; for a module, remove ".${named}".`;
+		return `the sync rule "${rule.pattern}" makes this file a ModuleScript, so it never runs. Add a "${named}Script" rule for "*.${named}${extension}" before it, or remove ".${named}".`;
 	}
 
 	private static compiledClassMismatch(file: RojoFile): string | undefined {
@@ -499,12 +494,12 @@ export class WriteValidator {
 				emitted.scriptSuffix !== file.scriptSuffix ||
 				emitted.instanceName !== file.instanceName)
 		)
-			return `the sync rule "${emitted.ownRule.pattern}" also takes the compiled ${emitted.name}, so Rojo reads it by the rule, not by its name. Narrow the pattern to the source extension.`;
+			return `the sync rule "${emitted.ownRule.pattern}" also takes the compiled ${emitted.name}, so Rojo reads it by the rule. Narrow the pattern to the source extension.`;
 		const { ownRule: rule, scriptSuffix: given } = file.uncompiled;
 		if (!rule || !given || given === RojoFile.scriptSuffixOf(file.stem))
 			return undefined;
 		const renamed = `${RojoFile.scriptNameOf(file.stem)}.${given}${path.extname(file.name)}`;
-		return `the sync rule "${rule.pattern}" asks for a ${given} script, but Rojo reads the class from the compiled name ${emitted.name}. Rename it ${renamed}, or set the rule's "use" to "moduleScript".`;
+		return `the sync rule "${rule.pattern}" asks for a ${given} script, but the compiled ${emitted.name} is a ModuleScript. Rename it ${renamed}, or set the rule's "use" to "moduleScript".`;
 	}
 
 	private scriptSuffixBeforeAt(): Diagnostic[] {
@@ -531,13 +526,13 @@ export class WriteValidator {
 			const suffixRoutesHere =
 				this.config.keys.resolveDotRoute(suffix) === file.route;
 			const script = suffixRoutesHere
-				? `rename it ${named}, which the "${file.route}" route takes`
-				: `name it ${named} in a folder that routes it`;
+				? `rename it ${named}`
+				: `name it ${named} in a routing folder`;
 			return [
 				warningDiagnostic(
 					"route.scriptSuffixBeforeAt",
 					{ resource: file.entry.source },
-					`Rojo reads ".${suffix}" only at the end of a name, so this is a ModuleScript named "${file.instancePath.at(-1)}". For a Script, ${script}; for a module, remove ".${suffix}".`,
+					`Rojo reads ".${suffix}" only at the end of a name, so this is a ModuleScript. For a Script, ${script}; for a module, remove ".${suffix}".`,
 					suffixRoutesHere && !scanned.has(to)
 						? [{ rename: { from: file.entry.source, to } }]
 						: []
@@ -624,7 +619,7 @@ export class WriteValidator {
 				warningDiagnostic(
 					"tree.instanceClash",
 					{ resource: entry.source },
-					`becomes "${instance}", where ${child.entry.source} lands too, so that file becomes a child of this one. Rename one of them to keep them apart.`,
+					`becomes "${instance}", and ${child.entry.source} lands inside it as a child. Rename one of them to keep them apart.`,
 					[],
 					[
 						{
@@ -647,8 +642,8 @@ export class WriteValidator {
 						"tree.instanceClash",
 						{ resource: loser.entry.source },
 						initFolder === undefined
-							? `becomes "${instance}", as ${winner.source} does, which takes its place, so the build would lose it. ${loser.init !== undefined && winner.isInit ? "Remove one of them." : "Rename one of them to keep both."}`
-							: `is an init file of ${initFolder}, as ${winner.source} is, and Rojo reads only that one. ${WriteValidator.initFileFix(loser, instance)}`,
+							? `becomes "${instance}", like ${winner.source}, which takes its place. ${loser.init !== undefined && winner.isInit ? "Remove one of them." : "Rename one of them to keep both."}`
+							: `is an init file of ${initFolder}, like ${winner.source}, and Rojo reads only one. ${WriteValidator.initFileFix(loser, instance)}`,
 						[],
 						[
 							{

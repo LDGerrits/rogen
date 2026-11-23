@@ -3,5 +3,5 @@ exit 1
 stdout: (not shown)
 stderr:
   error: default.project.json · not written
-  src/Trade/$className.luau - error: "ReplicatedStorage/Shared/Trade/$className" has "$className" in its path, which Rojo reads as a field of a node, so the project file can't name an instance of that name. Rename it. (tree.reservedName)
-  src/Trade/$path@Server.luau - error: "ServerScriptService/Trade/$path" has "$path" in its path, which Rojo reads as a field of a node, so the project file can't name an instance of that name. Rename it. (tree.reservedName)
+  src/Trade/$className.luau - error: "ReplicatedStorage/Shared/Trade/$className" has "$className" in its path, which Rojo reads as a node field, so it can't name an instance. Rename it. (tree.reservedName)
+  src/Trade/$path@Server.luau - error: "ServerScriptService/Trade/$path" has "$path" in its path, which Rojo reads as a node field, so it can't name an instance. Rename it. (tree.reservedName)

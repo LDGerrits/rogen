@@ -2,4 +2,4 @@ $ rogen init --non-interactive
 exit 1
 stdout: (not shown)
 stderr:
-  default.rogen.json - error: "Workspace/Everything" mounts <dir>, which holds the source path code, so Rogen would place nothing there. Mount a folder inside it, or remove the source path. (tree.mountsSourcePath)
+  default.rogen.json - error: "Workspace/Everything" mounts <dir>, which holds the source path code, so nothing is placed there. Mount a folder inside it, or remove the source path. (tree.mountsSourcePath)

@@ -230,7 +230,7 @@ export class Placer {
 				errorDiagnostic(
 					"route.patternClash",
 					{ resource },
-					`${joinedWithAnd(keys.map((key) => `"${key}"`))} ${keys.length > 2 ? "all" : "both"} match this name, are as long as each other, and send it to different places. Lengthen the pattern that should win, or route the file with a folder or an @ name.`
+					`${joinedWithAnd(keys.map((key) => `"${key}"`))} ${keys.length > 2 ? "all" : "both"} match this name equally well, and send it to different routes. Lengthen the pattern that should win, or route the file with a folder or an @ name.`
 				)
 			);
 	}
@@ -270,7 +270,7 @@ export class Placer {
 				return errorDiagnostic(
 					"route.ignoredAt",
 					{ resource },
-					`${quoted} ${many ? "do" : "does"} nothing here, because the "${route}" route already governs this ${kind}. Remove ${many ? "them" : "it"}, or move the ${kind} out of the "${route}" route's files.`
+					`${quoted} ${many ? "do" : "does"} nothing here: the "${route}" route already governs this ${kind}. Remove ${many ? "them" : "it"}, or move the ${kind} out of that route.`
 				);
 			});
 	}
@@ -282,7 +282,7 @@ export class Placer {
 			errorDiagnostic(
 				"tree.initWithoutFolder",
 				{ resource: source },
-				`an init script becomes the folder it sits in, but it sits in ${folder}, which never becomes an instance. Move it into a folder of its own, or rename it.`
+				`an init script becomes its folder, but ${folder} never becomes an instance. Move it into a folder of its own, or rename it.`
 			)
 		);
 	}

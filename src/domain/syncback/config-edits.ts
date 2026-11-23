@@ -128,7 +128,7 @@ export class ConfigEdits {
 				? [
 						{
 							instance: project.projectName,
-							reason: "the project file Rojo rewrote could not be read, so its changes to the nodes of the tree are not written",
+							reason: "the project file Rojo rewrote could not be read, so its tree changes are not written",
 						},
 					]
 				: [];
@@ -235,7 +235,7 @@ export class ConfigEdits {
 			if (!handled.has(instanceKey(node)))
 				unplaced.push({
 					instance: label(node),
-					reason: `a property or attribute changed in Studio, and the tree of ${toNative(project.file)} has no node for it, since routing made it; add a node for it to the tree`,
+					reason: `a property or attribute changed in Studio, and routing made it, so the tree has no node for it; add one`,
 				});
 		if (applied.text !== current.value)
 			operations.push({

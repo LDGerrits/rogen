@@ -63,7 +63,7 @@ export class InitDirectory {
 					? errorDiagnostic(
 							"init.configExists",
 							{ resource: path.join(this.path, fileName) },
-							"this config already exists, and init never changes one. Edit it and run 'rogen check'. For agent rules or the hook, run 'rogen init --agent-rules' or 'rogen init --agent-hook'."
+							"this config already exists, and init never changes one. Edit it, or add agent files with 'rogen init --agent-rules' or '--agent-hook'."
 						)
 					: errorDiagnostic(
 							"init.fileExists",

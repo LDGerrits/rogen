@@ -1338,7 +1338,7 @@ describe("CoreInitService", () => {
 				warningDiagnostic(
 					"init.codeOutsideSourcePaths",
 					{ resource: "default.rogen.json" },
-					`game and lib hold code outside every source path and mount, so Rogen places none of it. Move it into src, or add its folder to "sourcePaths".`
+					`game and lib hold code outside the source paths and mounts, so it is not placed. Move it into src, or add its folder to "sourcePaths".`
 				),
 			]);
 		});
@@ -1358,7 +1358,7 @@ describe("CoreInitService", () => {
 			expect(configOf(plan).sourcePaths).toEqual(["src/server/Admin"]);
 			expect(plan?.warnings.map(({ message }) => message)).toEqual([
 				expect.stringMatching(
-					/^src\/server\/Main\.server\.luau holds code outside every source path/
+					/^src\/server\/Main\.server\.luau holds code outside the source paths/
 				),
 			]);
 		});
@@ -2177,7 +2177,7 @@ describe("CoreInitService", () => {
 			const shown = prompts.prompts.at(-1)?.description ?? "";
 
 			expect(shown).toMatch(
-				/^Warning {3}src\/Combat holds code outside every source/m
+				/^Warning {3}src\/Combat holds code outside the source/m
 			);
 		});
 

@@ -331,7 +331,7 @@ describe("TreePlan", () => {
 					{
 						code: "init.mountNarrowed",
 						message:
-							"ReplicatedStorage/Common mounted all of src, and Rojo also put src/server inside it. Rogen routes it only to ServerScriptService/Server, so a require through ReplicatedStorage/Common breaks. Check with 'rogen where src/server'.",
+							"ReplicatedStorage/Common mounted all of src, which holds src/server too. Rogen routes it only to ServerScriptService/Server, so a require through ReplicatedStorage/Common breaks. Check with 'rogen where src/server'.",
 					},
 				]);
 			});

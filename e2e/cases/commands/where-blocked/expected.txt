@@ -4,7 +4,7 @@ stdout:
   src/F/shared/Good.luau -> ReplicatedStorage/shared/F/Good · route shared (folder)
     require(game:GetService("ReplicatedStorage").shared.F.Good)
   src/F/shared/Bad@server.luau -> ReplicatedStorage/shared/F/Bad@server · route shared (folder)
-    error: "@server" does nothing here, because the "shared" route already governs this file. Remove it, or move the file out of the "shared" route's files. (route.ignoredAt)
+    error: "@server" does nothing here: the "shared" route already governs this file. Remove it, or move the file out of that route. (route.ignoredAt)
     require(game:GetService("ReplicatedStorage").shared.F["Bad@server"])
 
 $ rogen where src/F/shared/Good.luau --json
@@ -35,7 +35,7 @@ stdout:
         "file": "<dir>/src/F/shared/Bad@server.luau",
         "severity": "error",
         "code": "route.ignoredAt",
-        "message": "\"@server\" does nothing here, because the \"shared\" route already governs this file. Remove it, or move the file out of the \"shared\" route's files.",
+        "message": "\"@server\" does nothing here: the \"shared\" route already governs this file. Remove it, or move the file out of that route.",
         "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-ignoredat"
       }
     ]

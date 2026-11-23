@@ -170,7 +170,7 @@ describe("WriteValidator rules", () => {
 						severity: DiagnosticSeverity.Warning,
 						resource: abs("src"),
 						message:
-							'this source path places nothing: Rojo reads none of its files (Notes.md, client/main.client.lang, server/main.server.lang and 1 more). Add a "syncRules" entry for their extension, and a "compiledPath" if a compiler turns them into Luau.',
+							'this source path places nothing: Rojo reads none of its files (Notes.md, client/main.client.lang, server/main.server.lang and 1 more). Add a "syncRules" entry for their extension, and a "compiledPath" if a compiler compiles them.',
 					},
 				]);
 			});
@@ -602,7 +602,7 @@ describe("WriteValidator rules", () => {
 				).toMatchObject([
 					{
 						message: expect.stringContaining(
-							'add { "pattern": "*.server.lang", "use": "serverScript", "suffix": ".server.lang" } before that rule'
+							'Add a "serverScript" rule for "*.server.lang" before it'
 						),
 					},
 				]);
@@ -620,7 +620,7 @@ describe("WriteValidator rules", () => {
 						severity: DiagnosticSeverity.Warning,
 						resource: abs("src/Boot/Main.server.lang"),
 						message:
-							'the sync rule "*.lang" makes this file a ModuleScript, so it never runs. For a server script, add { "pattern": "*.server.lang", "use": "serverScript", "suffix": ".server.lang" } before that rule; for a module, remove ".server".',
+							'the sync rule "*.lang" makes this file a ModuleScript, so it never runs. Add a "serverScript" rule for "*.server.lang" before it, or remove ".server".',
 					},
 				]);
 			});
@@ -635,9 +635,12 @@ describe("WriteValidator rules", () => {
 				const [{ message }] = await mismatches({
 					project: { tree: {}, syncRules: [longSuffix] },
 				});
-				const advised = JSON.parse(
-					/add (\{.*\}) before/.exec(message)![1]
-				);
+				const pattern = /rule for "(.*)" before/.exec(message)![1];
+				const advised = {
+					pattern,
+					use: "serverScript",
+					suffix: pattern.slice(1),
+				};
 
 				expect(advised).toEqual({
 					pattern: "*.server.mod.lang",
@@ -658,9 +661,12 @@ describe("WriteValidator rules", () => {
 				await write("src/Boot/Main.server.lang");
 				const project = { tree: {}, syncRules: [moduleRule] };
 				const [{ message }] = await mismatches({ project });
-				const advised = JSON.parse(
-					/add (\{.*\}) before/.exec(message)![1]
-				);
+				const pattern = /rule for "(.*)" before/.exec(message)![1];
+				const advised = {
+					pattern,
+					use: "serverScript",
+					suffix: pattern.slice(1),
+				};
 
 				const fixed = {
 					project: { tree: {}, syncRules: [advised, moduleRule] },
@@ -720,7 +726,7 @@ describe("WriteValidator rules", () => {
 							severity: DiagnosticSeverity.Warning,
 							resource: abs("src/Boot.lang"),
 							message:
-								'the sync rule "*.lang" asks for a server script, but Rojo reads the class from the compiled name Boot.luau. Rename it Boot.server.lang, or set the rule\'s "use" to "moduleScript".',
+								'the sync rule "*.lang" asks for a server script, but the compiled Boot.luau is a ModuleScript. Rename it Boot.server.lang, or set the rule\'s "use" to "moduleScript".',
 						},
 					]);
 				});
@@ -743,7 +749,7 @@ describe("WriteValidator rules", () => {
 					).toMatchObject([
 						{
 							message:
-								'the sync rule "*.lang" asks for a server script, but Rojo reads the class from the compiled name Hud.client.luau. Rename it Hud.server.lang, or set the rule\'s "use" to "moduleScript".',
+								'the sync rule "*.lang" asks for a server script, but the compiled Hud.client.luau is a ModuleScript. Rename it Hud.server.lang, or set the rule\'s "use" to "moduleScript".',
 						},
 					]);
 				});
@@ -761,7 +767,7 @@ describe("WriteValidator rules", () => {
 						expect(warning).toMatchObject({
 							severity: DiagnosticSeverity.Warning,
 							resource: abs("src/Main.server.lang"),
-							message: `the sync rule "${pattern}" also takes the compiled Main.server.luau, so Rojo reads it by the rule, not by its name. Narrow the pattern to the source extension.`,
+							message: `the sync rule "${pattern}" also takes the compiled Main.server.luau, so Rojo reads it by the rule. Narrow the pattern to the source extension.`,
 						});
 					}
 				);
@@ -1226,7 +1232,7 @@ describe("WriteValidator rules", () => {
 						severity: DiagnosticSeverity.Warning,
 						code: "tree.instanceClash",
 						resource: abs("src/server/Inv.luau"),
-						message: `becomes "ServerScriptService/Inv", where ${abs("src/Inv/server/A.luau")} lands too, so that file becomes a child of this one. Rename one of them to keep them apart.`,
+						message: `becomes "ServerScriptService/Inv", and ${abs("src/Inv/server/A.luau")} lands inside it as a child. Rename one of them to keep them apart.`,
 						related: [
 							{
 								resource: abs("src/Inv/server/A.luau"),

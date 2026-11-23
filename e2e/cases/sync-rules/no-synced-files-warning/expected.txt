@@ -2,7 +2,7 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  src - warning: this source path places nothing: Rojo reads none of its files (server/main.server.lang and shared/util.lang). Add a "syncRules" entry for their extension, and a "compiledPath" if a compiler turns them into Luau. (scan.noSyncedFiles)
+  src - warning: this source path places nothing: Rojo reads none of its files (server/main.server.lang and shared/util.lang). Add a "syncRules" entry for their extension, and a "compiledPath" if a compiler compiles them. (scan.noSyncedFiles)
 
 written:
   default.project.json

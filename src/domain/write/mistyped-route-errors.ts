@@ -77,7 +77,7 @@ export function mistypedRouteErrors(
 		return errorDiagnostic(
 			"route.ignoredAt",
 			{ resource },
-			`"${written}" does nothing here, because the "${governing}" route already governs this ${kind}. Remove it, or move the ${kind} out of the "${governing}" route's files.`
+			`"${written}" does nothing here: the "${governing}" route already governs this ${kind}. Remove it, or move the ${kind} out of that route.`
 		);
 	};
 	const strays = [...readings.misspelt("strayAt")]
@@ -119,7 +119,7 @@ export function mistypedRouteErrors(
 			return errorDiagnostic(
 				"route.caseMismatch",
 				{ resource },
-				`"${written}" differs from the route "${key}" only in letter case, so it routes nothing, and the files in it that nothing else routes would go to "*". Spell it "${key}"${keep}.`,
+				`"${written}" differs from the route "${key}" only in letter case, so it routes nothing. Spell it "${key}"${keep}.`,
 				inScript ? [] : renamed(resource, spelledAs(resource, key))
 			);
 		});

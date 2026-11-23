@@ -245,7 +245,7 @@ export class TreePlan {
 			warningDiagnostic(
 				"init.mountNarrowed",
 				{ resource: from },
-				`${narrowed.node} mounted all of ${narrowed.target}, and Rojo also put ${joinedWithAnd(folders.map(({ folder }) => folder))} inside it. Rogen routes ${one ? "it" : "them"} only to ${joinedWithAnd(folders.map(({ landing }) => landing))}, so a require through ${narrowed.node} breaks. Check with 'rogen where ${one ? folders[0].folder : narrowed.target}'.`
+				`${narrowed.node} mounted all of ${narrowed.target}, which holds ${joinedWithAnd(folders.map(({ folder }) => folder))} too. Rogen routes ${one ? "it" : "them"} only to ${joinedWithAnd(folders.map(({ landing }) => landing))}, so a require through ${narrowed.node} breaks. Check with 'rogen where ${one ? folders[0].folder : narrowed.target}'.`
 			),
 		];
 	}

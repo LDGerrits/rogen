@@ -60,7 +60,7 @@ stdout:
         "file": "default.project.json",
         "severity": "warning",
         "code": "init.mountNarrowed",
-        "message": "Workspace/Map mounted all of src, and Rojo also put src/props inside it. Rogen routes it only to Workspace/Level/Props, so a require through Workspace/Map breaks. Check with 'rogen where src/props'.",
+        "message": "Workspace/Map mounted all of src, which holds src/props too. Rogen routes it only to Workspace/Level/Props, so a require through Workspace/Map breaks. Check with 'rogen where src/props'.",
         "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#init-mountnarrowed"
       }
     ],

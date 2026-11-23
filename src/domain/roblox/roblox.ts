@@ -185,7 +185,7 @@ export class Target {
 			};
 		}
 		return {
-			message: `"${service}" is not a supported service; a target must start with a service Rojo can write to, such as ServerScriptService or ReplicatedStorage.`,
+			message: `"${service}" is not a supported service. Start the target with one such as ServerScriptService or ReplicatedStorage.`,
 		};
 	}
 

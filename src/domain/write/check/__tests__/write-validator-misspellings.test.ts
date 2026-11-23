@@ -85,7 +85,7 @@ describe("WriteValidator rules", () => {
 					resource: abs("src/SERVER"),
 				});
 				expect(error.message).toBe(
-					'"SERVER" differs from the route "server" only in letter case, so it routes nothing, and the files in it that nothing else routes would go to "*". Spell it "server".'
+					'"SERVER" differs from the route "server" only in letter case, so it routes nothing. Spell it "server".'
 				);
 			});
 
@@ -163,7 +163,7 @@ describe("WriteValidator rules", () => {
 				expect(listed(errors)).toEqual([
 					[
 						abs("src/Lib/Net/SERVER"),
-						'"SERVER" differs from the route "server" only in letter case, so it routes nothing, and the files in it that nothing else routes would go to "*". Spell it "server", or, if the script beside it requires it as a child, add a marker file @shared in it to keep it there.',
+						'"SERVER" differs from the route "server" only in letter case, so it routes nothing. Spell it "server", or, if the script beside it requires it as a child, add a marker file @shared in it to keep it there.',
 					],
 				]);
 				expect(fixesOf(errors)).toEqual([]);
@@ -179,7 +179,7 @@ describe("WriteValidator rules", () => {
 				expect(listed(errors)).toEqual([
 					[
 						abs("src/Lib/Net/SERVER"),
-						'"SERVER" differs from the route "server" only in letter case, so it routes nothing, and the files in it that nothing else routes would go to "*". Spell it "server", or, if the script beside it requires it as a child, add the route "shared": "ReplicatedStorage/shared" and a marker file @shared in it to keep it there.',
+						'"SERVER" differs from the route "server" only in letter case, so it routes nothing. Spell it "server", or, if the script beside it requires it as a child, add the route "shared": "ReplicatedStorage/shared" and a marker file @shared in it to keep it there.',
 					],
 				]);
 			});
@@ -336,11 +336,11 @@ describe("WriteValidator rules", () => {
 				expect(listed(warnings)).toEqual([
 					[
 						abs("src/Shop/Server"),
-						'matches the pattern "[Ss]erver", but a pattern never routes a folder, so the files in it that no route takes go to "*". No name key routes to that place: add one to "routes" and name the folder for it.',
+						'matches the pattern "[Ss]erver", but a pattern never routes a folder, so its unrouted files go to "*". No name key routes to that place: add one to "routes" and name the folder for it.',
 					],
 					[
 						abs("src/server"),
-						'matches the pattern "[Ss]erver", but a pattern never routes a folder, so the files in it that no route takes go to "*". No name key routes to that place: add one to "routes" and name the folder for it.',
+						'matches the pattern "[Ss]erver", but a pattern never routes a folder, so its unrouted files go to "*". No name key routes to that place: add one to "routes" and name the folder for it.',
 					],
 				]);
 			});
@@ -478,14 +478,14 @@ describe("WriteValidator rules", () => {
 						code: "route.ignoredAt",
 						resource: abs("src/server/M/@CLIENT"),
 						message:
-							'"@CLIENT" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route\'s files.',
+							'"@CLIENT" does nothing here: the "server" route already governs this folder. Remove it, or move the folder out of that route.',
 						fixes: undefined,
 					},
 					{
 						code: "route.ignoredAt",
 						resource: abs("src/server/Up@clent.luau"),
 						message:
-							'"@clent" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route\'s files.',
+							'"@clent" does nothing here: the "server" route already governs this file. Remove it, or move the file out of that route.',
 						fixes: undefined,
 					},
 				]);

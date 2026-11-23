@@ -4,7 +4,7 @@ stdout:
   default.project.json · unchanged
   Built game.rbxlx with 1 warning.
 stderr:
-  default.project.json:5:37 - warning: "tree.ReplicatedStorage.$Shared": Rojo reserves keys that start with $ for its own fields, so it warns about this one on every build. Rename it without the $. (tree.reservedName)
+  default.project.json:5:37 - warning: "tree.ReplicatedStorage.$Shared": Rojo reserves keys that start with $, so it warns on every build. Rename it without the $. (tree.reservedName)
   warning: Rojo: Keys starting with '$' are reserved by Rojo to ensure forward compatibility.
   warning: Rojo: This project uses the key '$Shared', which should be renamed.
   warning: Rojo: Keys starting with '$' are reserved by Rojo to ensure forward compatibility.
@@ -13,7 +13,7 @@ stderr:
 $ rogen check
 exit 1
 stdout:
-  default.project.json:5:37 - warning: "tree.ReplicatedStorage.$Shared": Rojo reserves keys that start with $ for its own fields, so it warns about this one on every build. Rename it without the $. (tree.reservedName)
+  default.project.json:5:37 - warning: "tree.ReplicatedStorage.$Shared": Rojo reserves keys that start with $, so it warns on every build. Rename it without the $. (tree.reservedName)
 
 written:
   game.rbxlx

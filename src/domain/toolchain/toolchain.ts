@@ -177,7 +177,7 @@ export class Darklua {
 		},
 		dataReplacement: {
 			suffix: ".lua",
-			note: "Darklua converts data files and can't copy them.",
+			note: "Darklua converts data files.",
 		},
 	};
 

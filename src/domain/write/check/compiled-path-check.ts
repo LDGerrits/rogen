@@ -230,7 +230,7 @@ export class CompiledPathCheck {
 			warningDiagnostic(
 				"output.dataFileConverted",
 				{ resource: config.projectFile },
-				`${converted.length} data ${many ? "files became Lua modules" : "file became a Lua module"} under "${shown(compiledPath) || "."}" (${listed}). ${note} Copy data files into the compiled path unchanged after it runs, or require them as modules.`
+				`${converted.length} data ${many ? "files became Lua modules" : "file became a Lua module"} under "${shown(compiledPath) || "."}" (${listed}). ${note} Copy them there unchanged after it runs, or require them as modules.`
 			),
 		];
 	}

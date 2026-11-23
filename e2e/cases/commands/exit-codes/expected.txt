@@ -103,7 +103,7 @@ $ rogen init broken --non-interactive --skip-git --no-sample
 exit 1
 stdout: (not shown)
 stderr:
-  broken/default.rogen.json - error: this config already exists, and init never changes one. Edit it and run 'rogen check'. For agent rules or the hook, run 'rogen init --agent-rules' or 'rogen init --agent-hook'. (init.configExists)
+  broken/default.rogen.json - error: this config already exists, and init never changes one. Edit it, or add agent files with 'rogen init --agent-rules' or '--agent-hook'. (init.configExists)
 
 $ rogen init a b
 exit 2

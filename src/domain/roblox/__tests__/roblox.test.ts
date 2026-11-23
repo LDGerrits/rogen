@@ -110,7 +110,7 @@ describe("domain/roblox/roblox", () => {
 				const result = Target.parse(target, location);
 
 				expect(result.isErr() && result.error[0].message).toBe(
-					`"${target}" is not a supported service; a target must start with a service Rojo can write to, such as ServerScriptService or ReplicatedStorage.`
+					`"${target}" is not a supported service. Start the target with one such as ServerScriptService or ReplicatedStorage.`
 				);
 			}
 		);

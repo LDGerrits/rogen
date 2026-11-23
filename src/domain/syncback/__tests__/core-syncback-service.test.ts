@@ -1395,7 +1395,7 @@ describe("CoreSyncbackService", () => {
 			expect(done.unplaced).toEqual([
 				{
 					instance: config.projectName,
-					reason: "the project file Rojo rewrote could not be read, so its changes to the nodes of the tree are not written",
+					reason: "the project file Rojo rewrote could not be read, so its tree changes are not written",
 				},
 			]);
 			expect(
@@ -1470,7 +1470,7 @@ describe("CoreSyncbackService", () => {
 			expect(plan.unplaced).toEqual([
 				{
 					instance: "ReplicatedStorage/Remotes/Run",
-					reason: `Rojo writes it as Run.server.luau, and its parent ReplicatedStorage/Remotes is a node of the tree of ${abs("default.rogen.json")} with no $path; give that node a $path, or create the file by hand`,
+					reason: `Rojo writes it as Run.server.luau, but its parent ReplicatedStorage/Remotes is a tree node with no $path; give it a $path, or create the file by hand`,
 				},
 			]);
 		});
@@ -1790,7 +1790,7 @@ describe("CoreSyncbackService", () => {
 			expect(plan.unplaced).toEqual([
 				{
 					instance: "ServerScriptService",
-					reason: `a property or attribute changed in Studio, and the tree of ${abs("default.rogen.json")} has no node for it, since routing made it; add a node for it to the tree`,
+					reason: `a property or attribute changed in Studio, and routing made it, so the tree has no node for it; add one`,
 				},
 			]);
 		});
@@ -2458,7 +2458,7 @@ describe("CoreSyncbackService", () => {
 			expect(plan.unplaced).toEqual([
 				{
 					instance: "ServerScriptService/Inventory/init",
-					reason: `its name makes Rojo write it as ${file}, which Rojo reads as the folder ServerScriptService/Inventory itself; rename it in Studio`,
+					reason: `Rojo would write it as ${file}, the init script of ServerScriptService/Inventory; rename it in Studio`,
 				},
 			]);
 		}
@@ -2527,7 +2527,7 @@ describe("CoreSyncbackService", () => {
 		expect(plan.unplaced).toEqual([
 			{
 				instance: "ServerScriptService/Tools/init",
-				reason: "its name makes Rojo write it as init.luau, which Rojo reads as the folder ServerScriptService/Tools itself; rename it in Studio",
+				reason: "Rojo would write it as init.luau, the init script of ServerScriptService/Tools; rename it in Studio",
 			},
 		]);
 	});

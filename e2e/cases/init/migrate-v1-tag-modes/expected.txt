@@ -3,8 +3,8 @@ exit 0
 stdout: (not shown)
 stderr:
   .rogen.json - warning: v1's tags aren't carried over. Move each tag's files into a folder, and list it last in "sourcePaths". (legacy.tags)
-  .rogen.json - warning: its luau-dev mode wrote dev.project.json, the same as default.rogen.json without tags, so init writes only default.rogen.json. To keep both, copy it under another name. (legacy.outputClash)
-  .rogen.json - warning: its luau-prod mode wrote prod.project.json, the same as default.rogen.json without tags, so init writes only default.rogen.json. To keep both, copy it under another name. (legacy.outputClash)
+  .rogen.json - warning: its luau-dev mode wrote dev.project.json, the same as default.rogen.json without tags, so init writes only that. Copy it under another name to keep both. (legacy.outputClash)
+  .rogen.json - warning: its luau-prod mode wrote prod.project.json, the same as default.rogen.json without tags, so init writes only that. Copy it under another name to keep both. (legacy.outputClash)
 
 $ rogen check
 exit 0

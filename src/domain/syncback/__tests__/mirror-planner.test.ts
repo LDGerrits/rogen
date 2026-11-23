@@ -553,7 +553,7 @@ describe("MirrorPlanner", () => {
 			expect(plan.unplaced).toEqual([
 				{
 					instance: "ReplicatedStorage/Remotes/Kit",
-					reason: `Rojo writes it as the folder Kit, and its parent ReplicatedStorage/Remotes is a node of the tree of ${abs("default.rogen.json")} with no $path; give that node a $path, or create the file by hand`,
+					reason: `Rojo writes it as the folder Kit, but its parent ReplicatedStorage/Remotes is a tree node with no $path; give it a $path, or create the file by hand`,
 				},
 			]);
 		});
@@ -605,7 +605,7 @@ describe("MirrorPlanner", () => {
 				{
 					instance: "ServerScriptService",
 					reason: expect.stringContaining(
-						"no one folder of the project is this instance"
+						"no one folder holds this instance"
 					),
 				},
 			]);

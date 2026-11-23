@@ -44,8 +44,8 @@ const isAboutAny = (diagnostic: Diagnostic, paths: readonly string[]) =>
 			)
 		);
 
-const stopsOn = ({ code, resource, message }: Diagnostic) =>
-	`the write would stop on ${toNative(resource)} (${code}: ${message.replace(/\.$/, "")})`;
+const stopsOn = ({ code, resource }: Diagnostic) =>
+	`the write would stop on ${toNative(resource)} (${code}); rename it in Studio`;
 
 export function landingMiss(
 	{ file, instance, folder }: Landing,
@@ -97,7 +97,7 @@ export function landingMiss(
 	if (landed.length === 0) return `routing would make no instance of ${file}`;
 	const read = `routing would read ${file} as ${instanceKey(landed[0])}`;
 	return /\.(server|client)\.luau?$/.test(file)
-		? `${read}, as it places a script by its type; make it a ModuleScript or move it to where that type runs`
+		? `${read}; make it a ModuleScript, or move it to where that type runs`
 		: `${read}; rename it in Studio`;
 }
 

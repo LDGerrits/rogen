@@ -8,7 +8,7 @@ stdout:
   Removing src/Shop
 stderr:
   Wrote default.project.json.
-  default.rogen.json - warning: ReplicatedStorage/Shared was left out: Rojo writes it as the model file Shared.rbxm, as it does for a folder whose children share a name or have names a file can't take, and no route puts files where its parent is; rename those children in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ReplicatedStorage/Shared was left out: Rojo writes it as the model file Shared.rbxm, and no route puts files where its parent is; rename its children in Studio. (syncback.unplaced)
   Syncback wrote 5 changes.
 
 $ rogen write
@@ -18,7 +18,7 @@ stdout: (not shown)
 $ rogen syncback -i place.rbxl --dry-run
 exit 0
 stderr:
-  default.rogen.json - warning: ReplicatedStorage/Shared was left out: Rojo writes it as the model file Shared.rbxm, as it does for a folder whose children share a name or have names a file can't take, and no route puts files where its parent is; rename those children in Studio. (syncback.unplaced)
+  default.rogen.json - warning: ReplicatedStorage/Shared was left out: Rojo writes it as the model file Shared.rbxm, and no route puts files where its parent is; rename its children in Studio. (syncback.unplaced)
   Syncback would change nothing.
 
 written:
