@@ -54,8 +54,8 @@ Running several agents? Give each one a feature. A lint rule catches any agent t
   "routes": {
     "server": "ServerScriptService",
     "client": "StarterPlayer/StarterPlayerScripts",
-    "shared": "ReplicatedStorage/shared",
-    "*": "ReplicatedStorage/shared"
+    "shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
   },
   "tree": {
     "$className": "DataModel",

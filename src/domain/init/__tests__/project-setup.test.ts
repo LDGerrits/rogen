@@ -83,7 +83,7 @@ describe("ProjectSetup plan, summary", () => {
 
 		expect(planned.summary).toContainEqual({
 			area: "Code",
-			text: "src → server, client, shared; other files to ReplicatedStorage/shared",
+			text: "src → server, client, shared; other files to ReplicatedStorage/Shared",
 		});
 	});
 
@@ -106,7 +106,7 @@ describe("ProjectSetup plan, summary", () => {
 
 		expect(planned.summary).toContainEqual({
 			area: "Code",
-			text: "src, lib → Tools, Server, Client, Shared; other files to ReplicatedStorage/shared",
+			text: "src, lib → Tools, Server, Client, Shared; other files to ReplicatedStorage/Shared",
 		});
 	});
 });

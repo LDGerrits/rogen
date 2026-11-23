@@ -10,8 +10,8 @@ Your config's `routes` name the places your code can go in the game:
 	"routes": {
 		"server": "ServerScriptService",
 		"client": "StarterPlayer/StarterPlayerScripts",
-		"shared": "ReplicatedStorage/shared",
-		"*": "ReplicatedStorage/shared"
+		"shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
 	}
 }
 ```
@@ -49,7 +49,7 @@ Each way to route has its own page: [Routing Folders](/docs/v2/routing/folders),
 
 ## Files Without a Route
 
-The `*` route takes every file that no other route matches, so `src/shop/prices.luau` lands in `ReplicatedStorage/shared/shop`. A [pattern route](/docs/v2/routing/patterns) such as `*.tsx` takes a file by its name before `*` does. `rogen init` writes it. Without `*`, Rogen leaves such a file out and warns about it, so a server file that forgets its route never reaches clients. That suits a project where every file names its side.
+The `*` route takes every file that no other route matches, so `src/shop/prices.luau` lands in `ReplicatedStorage/Shared/shop`. A [pattern route](/docs/v2/routing/patterns) such as `*.tsx` takes a file by its name before `*` does. `rogen init` writes it. Without `*`, Rogen leaves such a file out and warns about it, so a server file that forgets its route never reaches clients. That suits a project where every file names its side.
 
 ## The Outermost Route Wins
 

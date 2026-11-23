@@ -1266,7 +1266,7 @@ describe("CoreInitService", () => {
 			const plan = await planOf();
 
 			expect(configOf(plan).routes).toEqual({
-				Shared: "ReplicatedStorage/shared",
+				Shared: "ReplicatedStorage/Shared",
 				"*": "ReplicatedStorage/Lib",
 			});
 			expect(plan?.notes).toContain(

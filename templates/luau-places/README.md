@@ -8,7 +8,7 @@ A place is a `<place>.rogen.json` at the root: `{{place}}.rogen.json` lists the 
 
 The tree in `{{place}}.rogen.json` holds Rojo's sample Baseplate and the Lighting and SoundService settings, as `$properties` and a `Baseplate` node, and Rogen routes nothing in it.
 
-The folders inside a feature decide where its code runs: `server` goes to ServerScriptService, `client` to StarterPlayerScripts and `shared` to ReplicatedStorage/shared. To see where a file lands, and how to require it, use:
+The folders inside a feature decide where its code runs: `server` goes to ServerScriptService, `client` to StarterPlayerScripts and `shared` to ReplicatedStorage/Shared. To see where a file lands, and how to require it, use:
 
 ```bash
 rogen where {{source}}/greeter/shared/greeting.luau

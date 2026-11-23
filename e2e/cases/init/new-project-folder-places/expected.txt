@@ -35,8 +35,8 @@ game/lobby.rogen.json:
   "routes": {
     "server": "ServerScriptService",
     "client": "StarterPlayer/StarterPlayerScripts",
-    "shared": "ReplicatedStorage/shared",
-    "*": "ReplicatedStorage/shared"
+    "shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
   },
   "tree": {
     "$className": "DataModel",
@@ -94,7 +94,7 @@ $ rojo sourcemap game/lobby.project.json
 lobby: DataModel
   Lighting: Lighting
   ReplicatedStorage: ReplicatedStorage
-    shared: Folder
+    Shared: Folder
       greeter: Folder
         greeting: ModuleScript  <- src/common/greeter/shared/greeting.luau
   ServerScriptService: ServerScriptService

@@ -39,8 +39,8 @@ newproj/default.rogen.json:
   "routes": {
     "server": "ServerScriptService",
     "client": "StarterPlayer/StarterPlayerScripts",
-    "shared": "ReplicatedStorage/shared",
-    "*": "ReplicatedStorage/shared"
+    "shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
   },
   "tree": {
     "$className": "DataModel",
@@ -98,7 +98,7 @@ $ rojo sourcemap newproj/default.project.json
 newproj: DataModel
   Lighting: Lighting
   ReplicatedStorage: ReplicatedStorage
-    shared: Folder
+    Shared: Folder
       greeter: Folder
         greeting: ModuleScript  <- src/greeter/shared/greeting.luau
   ServerScriptService: ServerScriptService

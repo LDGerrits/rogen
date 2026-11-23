@@ -18,8 +18,8 @@ describe("domain/init/starting-routes", () => {
 			expect(luau.routes).toEqual({
 				server: "ServerScriptService",
 				client: "StarterPlayer/StarterPlayerScripts",
-				shared: "ReplicatedStorage/shared",
-				"*": "ReplicatedStorage/shared",
+				shared: "ReplicatedStorage/Shared",
+				"*": "ReplicatedStorage/Shared",
 			});
 			expect(rbxts.routes).toEqual({
 				server: "ServerScriptService",

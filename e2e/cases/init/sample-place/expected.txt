@@ -29,8 +29,8 @@ default.rogen.json:
   "routes": {
     "server": "ServerScriptService",
     "client": "StarterPlayer/StarterPlayerScripts",
-    "shared": "ReplicatedStorage/shared",
-    "*": "ReplicatedStorage/shared"
+    "shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
   },
   "tree": {
     "$className": "DataModel",
@@ -90,9 +90,9 @@ Lighting (Lighting)
   Brightness = 2
   GlobalShadows = true
 ReplicatedStorage (ReplicatedStorage)
-ReplicatedStorage/shared (Folder)
-ReplicatedStorage/shared/greeter (Folder)
-ReplicatedStorage/shared/greeter/greeting (ModuleScript)
+ReplicatedStorage/Shared (Folder)
+ReplicatedStorage/Shared/greeter (Folder)
+ReplicatedStorage/Shared/greeter/greeting (ModuleScript)
   Source = return function(who: string): string
 	return `Hello, {who}!`
 end
@@ -102,7 +102,7 @@ ServerScriptService/greeter (Folder)
 ServerScriptService/greeter/greeter (Script)
   Source = local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local greeting = require(ReplicatedStorage.shared.greeter.greeting)
+local greeting = require(ReplicatedStorage.Shared.greeter.greeting)
 
 print(greeting("server"))
 
@@ -114,7 +114,7 @@ StarterPlayer/StarterPlayerScripts/greeter (Folder)
 StarterPlayer/StarterPlayerScripts/greeter/greeter (LocalScript)
   Source = local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local greeting = require(ReplicatedStorage.shared.greeter.greeting)
+local greeting = require(ReplicatedStorage.Shared.greeter.greeting)
 
 print(greeting("client"))
 
@@ -131,7 +131,7 @@ $ rojo sourcemap default.project.json
 project: DataModel
   Lighting: Lighting
   ReplicatedStorage: ReplicatedStorage
-    shared: Folder
+    Shared: Folder
       greeter: Folder
         greeting: ModuleScript  <- src/greeter/shared/greeting.luau
   ServerScriptService: ServerScriptService

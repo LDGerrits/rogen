@@ -27,7 +27,7 @@ describe("GreeterSample", () => {
 			"src/greeter/client/greeter.client.luau",
 		])
 			expect(fileNamed(files, name).content).toContain(
-				'local ReplicatedStorage = game:GetService("ReplicatedStorage")\n\nlocal greeting = require(ReplicatedStorage.shared.greeter.greeting)'
+				'local ReplicatedStorage = game:GetService("ReplicatedStorage")\n\nlocal greeting = require(ReplicatedStorage.Shared.greeter.greeting)'
 			);
 	});
 

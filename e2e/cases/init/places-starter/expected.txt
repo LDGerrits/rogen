@@ -52,7 +52,7 @@ A place is a `<place>.rogen.json` at the root: `lobby.rogen.json` lists the sour
 
 The tree in `lobby.rogen.json` holds Rojo's sample Baseplate and the Lighting and SoundService settings, as `$properties` and a `Baseplate` node, and Rogen routes nothing in it.
 
-The folders inside a feature decide where its code runs: `server` goes to ServerScriptService, `client` to StarterPlayerScripts and `shared` to ReplicatedStorage/shared. To see where a file lands, and how to require it, use:
+The folders inside a feature decide where its code runs: `server` goes to ServerScriptService, `client` to StarterPlayerScripts and `shared` to ReplicatedStorage/Shared. To see where a file lands, and how to require it, use:
 
 ```bash
 rogen where src/common/greeter/shared/greeting.luau
@@ -110,8 +110,8 @@ lobby.rogen.json:
   "routes": {
     "server": "ServerScriptService",
     "client": "StarterPlayer/StarterPlayerScripts",
-    "shared": "ReplicatedStorage/shared",
-    "*": "ReplicatedStorage/shared"
+    "shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
   },
   "tree": {
     "$className": "DataModel",
@@ -173,7 +173,7 @@ end
 src/lobby/welcome/server/welcome.server.luau:
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local greeting = require(ReplicatedStorage.shared.greeter.greeting)
+local greeting = require(ReplicatedStorage.Shared.greeter.greeting)
 
 print(greeting("lobby"))
 
@@ -181,7 +181,7 @@ $ rojo sourcemap lobby.project.json
 lobby: DataModel
   Lighting: Lighting
   ReplicatedStorage: ReplicatedStorage
-    shared: Folder
+    Shared: Folder
       greeter: Folder
         greeting: ModuleScript  <- src/common/greeter/shared/greeting.luau
   ServerScriptService: ServerScriptService

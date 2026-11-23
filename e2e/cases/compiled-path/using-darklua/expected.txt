@@ -80,8 +80,8 @@ default.rogen.json:
   "routes": {
     "server": "ServerScriptService",
     "client": "StarterPlayer/StarterPlayerScripts",
-    "shared": "ReplicatedStorage/shared",
-    "*": "ReplicatedStorage/shared"
+    "shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
   },
   "tree": {
     "$className": "DataModel",
@@ -155,7 +155,7 @@ dist.rogen.json:
 }
 
 dist/greeter/server/wave.server.luau:
-local greeting = require(game:GetService('ReplicatedStorage').shared.greeter.greeting)
+local greeting = require(game:GetService('ReplicatedStorage').Shared.greeter.greeting)
 
 print(greeting("wave"))
 
@@ -183,7 +183,7 @@ $ rojo sourcemap default.project.json
 project: DataModel
   Lighting: Lighting
   ReplicatedStorage: ReplicatedStorage
-    shared: Folder
+    Shared: Folder
       greeter: Folder
         greeting: ModuleScript  <- src/greeter/shared/greeting.luau
         greeting.spec: ModuleScript  <- src/greeter/shared/greeting.spec.luau

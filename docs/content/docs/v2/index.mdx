@@ -10,7 +10,7 @@ Rogen is a command-line tool that writes your Rojo project file for you, while R
 
 ## A Typical Roblox Project
 
-This game has an inventory and a shop. Its project file mounts `src/server` into ServerScriptService, `src/client` into StarterPlayerScripts and `src/shared` into a `shared` folder in ReplicatedStorage. Inside them, code is sorted by type:
+This game has an inventory and a shop. Its project file mounts `src/server` into ServerScriptService, `src/client` into StarterPlayerScripts and `src/shared` into a `Shared` folder in ReplicatedStorage. Inside them, code is sorted by type:
 
 <RouteFigure
 	disk={`
@@ -60,7 +60,7 @@ Sorting each side by feature helps, but the inventory still has three folders, o
       }
     },
     "ReplicatedStorage": {
-      "shared": {
+      "Shared": {
         "$className": "Folder",
         "inventory": { "$path": "src/inventory/shared" },
         "shop": { "$path": "src/shop/shared" }
@@ -137,7 +137,7 @@ You write `default.rogen.json`, a Rojo project file with [`routes`](/docs/v2/con
   "routes": {
     "server": "ServerScriptService",
     "client": "StarterPlayer/StarterPlayerScripts",
-    "shared": "ReplicatedStorage/shared"
+    "shared": "ReplicatedStorage/Shared"
   },
   "tree": { "$className": "DataModel" }
 }

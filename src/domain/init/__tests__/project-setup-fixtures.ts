@@ -20,8 +20,8 @@ import { setupOf } from "./init-of.js";
 export const LUAU_ROUTES = {
 	server: "ServerScriptService",
 	client: "StarterPlayer/StarterPlayerScripts",
-	shared: "ReplicatedStorage/shared",
-	"*": "ReplicatedStorage/shared",
+	shared: "ReplicatedStorage/Shared",
+	"*": "ReplicatedStorage/Shared",
 };
 export const ROBLOX_TS_ROUTES = {
 	server: "ServerScriptService",

@@ -8,7 +8,7 @@ Route with folders. Give each feature one folder per side, named after the confi
 
   src/inventory/server/inventory-service.luau   -> ServerScriptService/inventory/inventory-service
   src/inventory/client/inventory-controller.luau -> StarterPlayer/StarterPlayerScripts/inventory/inventory-controller
-  src/inventory/shared/inventory-types.luau     -> ReplicatedStorage/shared/inventory/inventory-types
+  src/inventory/shared/inventory-types.luau     -> ReplicatedStorage/Shared/inventory/inventory-types
 
 A key routes a file in four ways:
 
@@ -32,7 +32,7 @@ A file's instance path is its route's target, then its folders without the routi
 Requires and imports:
 
 - `shared/` code runs on both sides, so it can't require anything in `server/`: the client can't see ServerScriptService.
-- Luau: require by instance path (`ReplicatedStorage.shared.inventory["inventory-types"]`). `rogen where <file>` prints the exact expression under the file's line (`--json` has it in `require`), with names that aren't identifiers written as indexes; under the Starter containers, whose contents are cloned at runtime, and for scripts, it says why there is none, and it prints nothing for roblox-ts sources. String requires resolve against the instance tree, so `./` only reaches files routed into the same folder.
+- Luau: require by instance path (`ReplicatedStorage.Shared.inventory["inventory-types"]`). `rogen where <file>` prints the exact expression under the file's line (`--json` has it in `require`), with names that aren't identifiers written as indexes; under the Starter containers, whose contents are cloned at runtime, and for scripts, it says why there is none, and it prints nothing for roblox-ts sources. String requires resolve against the instance tree, so `./` only reaches files routed into the same folder.
 - roblox-ts: import by relative file path; `rbxtsc` resolves it through the project file, so run `rogen write` before compiling.
 - Keep the import boundaries the repo states. A crossed boundary means the code is in the wrong place: move it, don't add an exception.
 

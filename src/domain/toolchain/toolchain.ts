@@ -107,6 +107,7 @@ export interface Language {
 	readonly compiler?: Compiler;
 	readonly present: boolean;
 	readonly reservedFolders: readonly string[];
+	readonly sharedName: string;
 
 	scaffolded?(): Language;
 	routeKey(id: string): string;

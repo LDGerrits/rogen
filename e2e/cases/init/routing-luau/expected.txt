@@ -23,8 +23,8 @@ default.rogen.json:
   "routes": {
     "server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
-    "shared": "ReplicatedStorage/shared",
-    "*": "ReplicatedStorage/shared"
+    "shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
   },
   "tree": {
     "$className": "DataModel"
@@ -34,7 +34,7 @@ default.rogen.json:
 $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
-    shared: Folder
+    Shared: Folder
       Inventory: Folder
         Types: ModuleScript  <- src/Inventory/Types.luau
       Trading: Folder
