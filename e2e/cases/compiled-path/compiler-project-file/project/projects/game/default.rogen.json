@@ -1,0 +1,16 @@
+{
+	"name": "game",
+	"sourcePaths": ["../common/src", "src"],
+	"routes": {
+		"server": "ServerScriptService",
+		"*": "ReplicatedStorage/shared"
+	},
+	"compiledPath": "../../out/game",
+	"tree": {
+		"$className": "DataModel",
+		"Workspace": {
+			"$className": "Workspace",
+			"Map": { "$path": "map/Workspace" }
+		}
+	}
+}

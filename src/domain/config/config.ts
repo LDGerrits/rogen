@@ -77,6 +77,24 @@ export const projectFileOf = (configFile: string): string =>
 				projectFileName(configStem(configFile)!)
 			);
 
+const COMPILER_STEM = "compiler";
+
+export const compilerFileOf = (configFile: string): string => {
+	const stem = configStem(configFile)!;
+	return path.join(
+		path.dirname(configFile),
+		projectFileName(
+			stem === DEFAULT_PROJECT
+				? COMPILER_STEM
+				: `${stem}.${COMPILER_STEM}`
+		)
+	);
+};
+
+export const isCompilerFileName = (name: string): boolean =>
+	projectStem(name) === COMPILER_STEM ||
+	projectStem(name).endsWith(`.${COMPILER_STEM}`);
+
 export const ROGEN_KEYS: readonly (keyof RogenKeys)[] = [
 	"sourcePaths",
 	"routes",

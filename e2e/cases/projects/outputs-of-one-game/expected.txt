@@ -11,6 +11,7 @@ stderr:
 
 written:
   default.project.json
+  dist.compiler.project.json
   dist.project.json
   dist/dev/Dev.luau
   dist/src/Util.luau
@@ -21,6 +22,12 @@ Game: DataModel
   ReplicatedStorage: ReplicatedStorage
     Dev: ModuleScript  <- dev/Dev.luau
     Util: ModuleScript  <- src/Util.luau
+
+$ rojo sourcemap dist.compiler.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Dev: ModuleScript  <- dist/dev/Dev.luau
+    Util: ModuleScript  <- dist/src/Util.luau
 
 $ rojo sourcemap dist.project.json
 Game: DataModel

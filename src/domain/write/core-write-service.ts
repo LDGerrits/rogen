@@ -379,17 +379,31 @@ export class CoreWriteService implements WriteService {
 		attempt: PreparedConfig,
 		reader?: FileSystemService
 	): Promise<PreparedConfig> {
-		const stale = await this.inScope(reader, (scope) =>
-			scope
-				.createInstance(ProjectFileStaleness)
-				.diagnostic(attempt.config, async () => attempt.projectFile)
-		);
-		if (!stale) return attempt;
+		const { config, compilerProject } = attempt;
+		const stale = await this.inScope(reader, async (scope) => {
+			const staleness = scope.createInstance(ProjectFileStaleness);
+			return [
+				await staleness.diagnostic(
+					config,
+					async () => attempt.projectFile
+				),
+				...(config.compilerFile === undefined
+					? []
+					: [
+							await staleness.diagnostic(
+								config,
+								async () => compilerProject,
+								config.compilerFile
+							),
+						]),
+			].filter((found) => found !== undefined);
+		});
+		if (stale.length === 0) return attempt;
 		return {
 			...attempt,
 			findings: {
 				...attempt.findings,
-				warnings: [...attempt.findings.warnings, stale],
+				warnings: [...attempt.findings.warnings, ...stale],
 			},
 		};
 	}
@@ -404,19 +418,14 @@ export class CoreWriteService implements WriteService {
 		const outcomes: LoadedConfig[] = [];
 		let failed: string | undefined;
 		for (const attempt of prepared) {
-			const { config, projectFile, findings, summary, readFiles } =
-				attempt;
+			const { config, findings, summary, readFiles } = attempt;
 			if (failed) {
 				outcomes.push(CoreWriteService.unwritten(attempt, [failed]));
 				continue;
 			}
 			const written = config.isAdopted
 				? ok(false)
-				: await this.writer.write(
-						new OutputFile(config.projectFile),
-						projectFile,
-						{ force, placeholders: attempt.placeholders }
-					);
+				: await this.writeOutputs(attempt, force);
 			if (written.isErr() && stopOnFailure) failed = config.file;
 			outcomes.push(
 				written.isErr()
@@ -435,6 +444,25 @@ export class CoreWriteService implements WriteService {
 			);
 		}
 		return outcomes;
+	}
+
+	private async writeOutputs(
+		{ config, projectFile, compilerProject, placeholders }: PreparedConfig,
+		force: boolean | undefined
+	): Promise<Result<boolean, DiagnosticsError>> {
+		const written = await this.writer.write(
+			new OutputFile(config.projectFile),
+			projectFile,
+			{ force, placeholders }
+		);
+		if (written.isErr() || config.compilerFile === undefined)
+			return written;
+		const compiler = await this.writer.write(
+			new OutputFile(config.compilerFile),
+			compilerProject!,
+			{ force }
+		);
+		return compiler.map((changed) => changed || written.value);
 	}
 
 	private compiledPathWarnings(

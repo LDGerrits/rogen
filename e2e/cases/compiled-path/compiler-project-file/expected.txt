@@ -1,0 +1,64 @@
+$ rogen write projects/game
+exit 0
+stdout: (not shown)
+
+written:
+  projects/game/compiler.project.json
+  projects/game/default.project.json
+
+projects/game/compiler.project.json:
+{
+  "name": "game",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "shared": {
+        "$className": "Folder",
+        "Shared": {
+          "$path": {
+            "optional": "../../out/game/common/src/Shared.luau"
+          }
+        },
+        "$ignoreUnknownInstances": false
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "Main": {
+        "$path": {
+          "optional": "../../out/game/game/src/Main"
+        }
+      }
+    },
+    "Workspace": {
+      "$className": "Workspace",
+      "Map": {
+        "$className": "Folder"
+      }
+    }
+  }
+}
+
+$ rojo sourcemap projects/game/compiler.project.json
+game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Shared: ModuleScript  <- ../../out/game/common/src/Shared.luau
+  ServerScriptService: ServerScriptService
+    Main: Folder
+      Main: Script  <- ../../out/game/game/src/Main/Main.server.luau
+  Workspace: Workspace
+    Map: Folder
+
+$ rojo sourcemap projects/game/default.project.json
+game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Shared: ModuleScript  <- ../../out/game/common/src/Shared.luau
+  ServerScriptService: ServerScriptService
+    Main: Folder
+      Main: Script  <- ../../out/game/game/src/Main/Main.server.luau
+  Workspace: Workspace
+    Map: Folder
+      Board: Part  <- map/Workspace/Board.model.json

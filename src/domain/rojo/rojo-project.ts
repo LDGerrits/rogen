@@ -314,6 +314,20 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return found;
 	}
 
+	withoutPaths(matches: (target: string) => boolean): T {
+		const file = this.getFile();
+		const visit = (node: RojoNode, depth: number) => {
+			if (isRojoPath(node.$path) && matches(rojoPathTarget(node.$path))) {
+				delete node.$path;
+				if (node.$className === undefined && depth > 1)
+					node.$className = "Folder";
+			}
+			childNodes(node).forEach(([, child]) => visit(child, depth + 1));
+		};
+		visit(file.tree, 0);
+		return file;
+	}
+
 	removeNodes(matches: (target: string) => boolean): RemovedMount[] {
 		const removed: RemovedMount[] = [];
 		const visit = (node: RojoNode, instancePath: readonly string[]) => {

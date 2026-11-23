@@ -244,6 +244,23 @@ describe("domain/watch/watch-plan", () => {
 			]);
 		});
 
+		it("should ignore the project file a compiler reads", () => {
+			const plan = new WatchPlan([
+				config(
+					"/repo/game/default.rogen.json",
+					["/repo/common/src", "/repo/game/src"],
+					{ compiledPath: "/repo/out" }
+				),
+			]);
+
+			expect(
+				isIgnored(
+					onDisk("/repo/game/compiler.project.json"),
+					plan.ignored
+				)
+			).toBe(true);
+		});
+
 		it("should ignore what syncback writes beside the config while it runs", () => {
 			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo"]),

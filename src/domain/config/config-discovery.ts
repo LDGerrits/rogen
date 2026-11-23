@@ -24,6 +24,7 @@ import {
 	isConfigFileName,
 	isDefaultConfigFileName,
 	isProjectFileConfig,
+	isCompilerFileName,
 	isSyncbackFileName,
 	projectStem,
 } from "./config.js";
@@ -267,6 +268,7 @@ export class ConfigDiscovery {
 	): Promise<Result<string | undefined, Error>> {
 		const config = await this.configBeside(folder, name);
 		if (config.isErr() || config.value) return config;
+		if (isCompilerFileName(projectFileName(name))) return ok(undefined);
 		for (const suffix of ["", "c"]) {
 			const file = path.join(folder, `${projectFileName(name)}${suffix}`);
 			if (await this.fileSystemService.isFile(file)) return ok(file);
@@ -348,6 +350,7 @@ export class ConfigDiscovery {
 					isFileType(type) &&
 					isProjectFileName(name) &&
 					!isSyncbackFileName(name) &&
+					!isCompilerFileName(name) &&
 					!written.has(projectStem(name))
 			)
 			.map(([name]) => path.join(directory, name))

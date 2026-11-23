@@ -711,6 +711,14 @@ describe("ConfigDiscovery.fileNamedHere", () => {
 		expect((await named("game")).unwrap()).toEqual("/repo/game.rogen.json");
 	});
 
+	it("should be nothing for the name of a compiler's project file", async () => {
+		await fs.writeFile("/repo/compiler.project.json", "{}");
+		await fs.writeFile("/repo/game.compiler.project.json", "{}");
+
+		expect((await named("compiler")).unwrap()).toBeUndefined();
+		expect((await named("game.compiler")).unwrap()).toBeUndefined();
+	});
+
 	it("should be nothing for a name with no config or a path", async () => {
 		await fs.writeFile("/repo/game.rogen.json", "{}");
 
@@ -755,6 +763,13 @@ describe("ConfigDiscovery.plainProjects", () => {
 
 	it("should not list the file syncback writes while it runs", async () => {
 		await fs.writeFile("/repo/rogen-syncback.project.json", "{}");
+
+		expect(await plain()).toEqual([]);
+	});
+
+	it("should not list the project file a compiler reads", async () => {
+		await fs.writeFile("/repo/compiler.project.json", "{}");
+		await fs.writeFile("/repo/lobby.compiler.project.json", "{}");
 
 		expect(await plain()).toEqual([]);
 	});
