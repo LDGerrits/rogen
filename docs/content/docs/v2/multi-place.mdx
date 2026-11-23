@@ -44,7 +44,7 @@ rogen serve projects/lobby --port 34873
 rogen build projects/game -o game.rbxl
 ```
 
-`rogen check` and `rogen where` on a file in `projects/common` find every place that holds it, and `rogen check` with no path checks every place.
+`rogen check` and `rogen where` on a file in `projects/common` find every place that holds it.
 
 ## The Editor
 
@@ -113,7 +113,7 @@ Each place has a `tsconfig.json` of its own, which compiles the shared code and 
 }
 ```
 
-Rogen writes `compiler.project.json` when you run `rogen write`. It is the project file without the mounts of your source folders, which is what the compiler would reject, and Rojo never reads it. The TypeScript server checks each file against the `tsconfig.json` of the place folder it is in, and checks `projects/common` as part of each place.
+Rogen writes `compiler.project.json` when you run `rogen write`. It is the project file without the mounts inside `projects` that aren't compiled output, such as a place's map folder, which the compiler would reject. Rojo never reads it. The TypeScript server checks each file against the `tsconfig.json` of the place folder it is in, and checks `projects/common` as part of each place.
 
 The `tsconfig.game.json` at the root extends the place's config and names the compiler project file from there, because the compiler writes output only inside the folder of the tsconfig it is given and looks for `rbxts.rojo` from the folder it runs in. The `build` and `watch` scripts compile through it with `rbxtsc -p tsconfig.game.json`. The root `tsconfig.json` holds the options every place shares and a reference to each place.
 

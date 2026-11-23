@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- **Breaking:** `rogen init --places` writes each place as a folder under `projects`, for Luau and roblox-ts alike, with the shared code in `projects/common/src` and a `<name>.code-workspace` file for Luau. Each place is typed against its own code, and each roblox-ts place has a `tsconfig.json` that works with TypeScript 6 and later. Existing projects keep their layout.
+- `rogen init --places` writes each place as a folder under `projects`, for Luau and roblox-ts alike, with the shared code in `projects/common/src` and a `<name>.code-workspace` file for Luau. Each place is typed against its own code, and each roblox-ts place has a `tsconfig.json` that works with TypeScript 6 and later. Existing projects keep their layout.
 - The sample Baseplate and lighting are in the config's `tree`, so `rogen init` no longer writes a `place` folder.
 - `rogen check` and `rogen where` on a file in shared code find every place that holds it.
 
