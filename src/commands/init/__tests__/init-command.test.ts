@@ -1036,9 +1036,10 @@ describe("init command", () => {
 
 			expect(await exists("AGENTS.md")).toBe(false);
 			expect(await exists("default.rogen.json")).toBe(false);
-			expect(
-				(await readJson("projects/game/default.rogen.json")).sourcePaths
-			).toEqual(["../common/src", "src"]);
+			expect((await readJson("lobby.rogen.json")).sourcePaths).toEqual([
+				"src/common",
+				"src/lobby",
+			]);
 		});
 
 		it("should write nothing when cancelled", async () => {

@@ -1,6 +1,0 @@
-{
-	"extends": "./projects/game/tsconfig.json",
-	"rbxts": {
-		"rojo": "projects/game/compiler.project.json"
-	}
-}

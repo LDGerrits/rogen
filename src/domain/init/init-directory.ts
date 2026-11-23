@@ -24,13 +24,9 @@ export class InitDirectory {
 		readonly workspace: DetectedWorkspace,
 		readonly layout: DirectoryLayout,
 		readonly tracksProjectFile: boolean,
-		caseInsensitive = ignoresPathCase,
-		private readonly placeConfigs: readonly string[] = []
+		caseInsensitive = ignoresPathCase
 	) {
-		this.names = new PathSet(
-			[...entries, ...placeConfigs],
-			caseInsensitive
-		);
+		this.names = new PathSet(entries, caseInsensitive);
 	}
 
 	has(fileName: string): boolean {
@@ -42,8 +38,7 @@ export class InitDirectory {
 	}
 
 	get configFiles(): string[] {
-		const own = [...this.entries].filter(isConfigFileName).sort();
-		return own.length > 0 ? own : [...this.placeConfigs];
+		return [...this.entries].filter(isConfigFileName).sort();
 	}
 
 	otherProjectFiles(...except: string[]): string[] {
@@ -63,21 +58,19 @@ export class InitDirectory {
 	checkFree(fileNames: readonly string[]): Diagnostic[] {
 		return fileNames
 			.filter((fileName) => this.has(fileName))
-			.map((fileName) => this.taken(fileName));
-	}
-
-	taken(fileName: string): Diagnostic {
-		return isConfigFileName(fileName)
-			? errorDiagnostic(
-					"init.configExists",
-					{ resource: path.join(this.path, fileName) },
-					"this config already exists, and init never changes one. Edit it and run 'rogen check'. For agent rules or the hook, run 'rogen init --agent-rules' or 'rogen init --agent-hook'."
-				)
-			: errorDiagnostic(
-					"init.fileExists",
-					{ resource: path.join(this.path, fileName) },
-					"this file already exists, and init never overwrites one. Pick another name."
-				);
+			.map((fileName) =>
+				isConfigFileName(fileName)
+					? errorDiagnostic(
+							"init.configExists",
+							{ resource: path.join(this.path, fileName) },
+							"this config already exists, and init never changes one. Edit it and run 'rogen check'. For agent rules or the hook, run 'rogen init --agent-rules' or 'rogen init --agent-hook'."
+						)
+					: errorDiagnostic(
+							"init.fileExists",
+							{ resource: path.join(this.path, fileName) },
+							"this file already exists, and init never overwrites one. Pick another name."
+						)
+			);
 	}
 
 	get holdsCode(): boolean {

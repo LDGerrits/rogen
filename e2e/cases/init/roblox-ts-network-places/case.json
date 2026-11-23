@@ -2,8 +2,8 @@
 	"network": true,
 	"steps": [
 		["init", "--non-interactive", "--skip-git", "--language", "roblox-ts", "--places"],
-		["$", "npx", "rbxtsc", "-p", "tsconfig.game.json"],
-		["build", "projects/game", "-o", "game.rbxlx"]
+		["$", "npx", "rbxtsc", "-p", "tsconfig.lobby.json"],
+		["build", "lobby", "-o", "lobby.rbxlx"]
 	],
-	"show": ["out/game/common/src/Greeter/shared/Greeting.luau"]
+	"show": ["out/lobby/common/Greeter/shared/Greeting.luau"]
 }

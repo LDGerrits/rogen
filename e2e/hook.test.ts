@@ -362,7 +362,7 @@ const available = gitPath !== "";
 		expect(reply?.decision).toBe("block");
 	});
 
-	it("should answer for a changed file of a place from the repo root, and check shared code through the place that reads it", () => {
+	it("should answer for a changed file of a place from the repo root, and skip shared code that no config covers", () => {
 		fs.rmSync(path.join(dir, "project/default.rogen.json"));
 		fs.rmSync(path.join(dir, "project/src"), { recursive: true });
 		const routes = {
@@ -389,9 +389,6 @@ const available = gitPath !== "";
 		expect(report).toEqual([
 			expect.stringMatching(
 				/^places\/lobby\/src\/Buy\.client\.luau - warning: .*\(tree\.deadScript\)$/
-			),
-			expect.stringMatching(
-				/^places\/shared\/src\/Stray\.client\.luau - warning: .*\(tree\.deadScript\)$/
 			),
 		]);
 	});

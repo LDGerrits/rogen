@@ -1,4 +1,0 @@
-{
-	"steps": [["write", "projects/game"]],
-	"show": ["projects/game/compiler.project.json"]
-}

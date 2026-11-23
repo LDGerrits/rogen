@@ -64,186 +64,126 @@ describe("init for several places", () => {
 		planned.files.map(({ fileName }) => fileName);
 
 	describe("a new Luau project", () => {
-		it("should write each place as a folder under projects, with the shared code beside it", async () => {
+		it("should write a config per place at the root and the code below src", async () => {
 			const planned = await plan();
 
 			expect(names(planned)).toEqual(
 				expect.arrayContaining([
-					"projects/game/default.rogen.json",
-					"projects/common/src/Greeter/Shared/Greeting.luau",
-					"projects/common/src/Greeter/Server/Greeter.server.luau",
-					"projects/common/src/Greeter/Client/Greeter.client.luau",
-					"projects/game/src/Main/Server/Main.server.luau",
+					"lobby.rogen.json",
+					"src/common/Greeter/Shared/Greeting.luau",
+					"src/lobby/Welcome/Server/Welcome.server.luau",
 				])
 			);
-			expect(names(planned)).not.toContain("game.rogen.json");
 			expect(names(planned)).not.toContain("default.rogen.json");
-			expect(planned.directories).toEqual([
-				"projects/common/src",
-				"projects/game/src",
-			]);
-		});
-
-		it("should have the place's script greet from the place", async () => {
-			const script = fileOf(
-				await plan(),
-				"projects/game/src/Main/Server/Main.server.luau"
-			);
-
-			expect(script?.content).toContain('print(Greeting("game"))');
+			expect(
+				names(planned).filter((name) => name.startsWith("places/"))
+			).toEqual([]);
+			expect(planned.directories).toEqual(["src/common", "src/lobby"]);
 		});
 
 		it("should give the place a complete config that lists the common code and its own", async () => {
-			const config = jsonOf(
-				await plan(),
-				"projects/game/default.rogen.json"
-			);
+			const config = jsonOf(await plan(), "lobby.rogen.json");
 
-			expect(config.name).toBe("game");
+			expect(config.name).toBe("lobby");
 			expect(config.tree).toMatchObject({ $className: "DataModel" });
-			expect(config.sourcePaths).toEqual(["../common/src", "src"]);
+			expect(config.sourcePaths).toEqual(["src/common", "src/lobby"]);
 			expect(config.routes).toHaveProperty("Server");
 			expect(config).not.toHaveProperty("servePort");
 		});
 
-		it("should put the sample world in the tree, with no files for it", async () => {
+		it("should keep the place's sample world in its tree", async () => {
 			const planned = await plan();
 
 			expect(
-				names(planned).filter((name) => name.startsWith("place"))
+				names(planned).filter((name) => name.startsWith("place/"))
 			).toEqual([]);
-			expect(
-				jsonOf(planned, "projects/game/default.rogen.json").tree
-			).toMatchObject({
-				Lighting: { $properties: { Brightness: 2 } },
+			expect(jsonOf(planned, "lobby.rogen.json").tree).toMatchObject({
+				Lighting: { $properties: { Technology: "Voxel" } },
 				SoundService: {
 					$properties: { RespectFilteringEnabled: true },
 				},
 				Workspace: {
-					$properties: { FilteringEnabled: true },
 					Baseplate: {
 						$className: "Part",
-						$properties: { Size: [512, 20, 512] },
+						$properties: { Color: { Color3uint8: [99, 95, 99] } },
 					},
 				},
 			});
 		});
 
-		it("should say how to add a place, which is a copy of its folder", async () => {
-			const edits = (await plan()).nextSteps.edits.join("\n");
+		it("should say nothing of a sample lobby with --no-sample", async () => {
+			const edits = (await plan({ sample: false })).nextSteps.edits.join(
+				"\n"
+			);
 
-			expect(edits).toContain("copy projects/game to projects/lobby");
 			expect(edits).toContain(
-				'set "name" in projects/lobby/default.rogen.json to "lobby"'
+				"copy lobby.rogen.json to match.rogen.json"
 			);
-			expect(edits).toContain(
-				'add { "path": "projects/lobby" } to the folders in my-game.code-workspace'
-			);
-			expect(edits).toContain("rogen serve projects/lobby --port");
-			expect(edits).toContain("selene.toml");
-		});
-
-		it("should write the empty source folders and no sample with --no-sample", async () => {
-			const planned = await plan({ sample: false });
-
-			expect(names(planned)).toEqual(
-				expect.arrayContaining([
-					"projects/common/src/.gitkeep",
-					"projects/game/src/.gitkeep",
-				])
-			);
-			expect(
-				names(planned).filter((name) => name.endsWith(".luau"))
-			).toEqual([]);
-			expect(
-				jsonOf(planned, "projects/game/default.rogen.json").tree
-			).not.toHaveProperty("Workspace");
+			expect(edits).not.toContain("place/lobby");
 		});
 
 		it("should write no config for the common code", async () => {
 			const planned = await plan();
 
-			expect(planned.configs).toEqual([
-				"projects/game/default.rogen.json",
-			]);
+			expect(planned.configs).toEqual(["lobby.rogen.json"]);
 			expect(
 				names(planned).filter((name) => name.endsWith(".rogen.json"))
-			).toEqual(["projects/game/default.rogen.json"]);
+			).toEqual(["lobby.rogen.json"]);
 		});
 
-		it("should build the place and serve it by its folder", async () => {
+		it("should build the place and serve it by its name", async () => {
 			const planned = await plan();
 
-			expect(planned.nextSteps.run).toEqual([
-				"rogen serve projects/game",
-			]);
+			expect(planned.nextSteps.run).toEqual(["rogen serve lobby"]);
 			expect(planned.nextSteps.edits.join("\n")).toContain(
-				"rogen write projects/game"
+				"rogen write lobby"
 			);
 		});
 
-		it("should list the places in a workspace file named for the project", async () => {
-			const planned = await plan();
-
-			expect(jsonOf(planned, "my-game.code-workspace")).toEqual({
-				folders: [
-					{ path: "projects/common" },
-					{ path: "projects/game" },
-				],
-				settings: {
-					"luau-lsp.sourcemap.enabled": true,
-					"luau-lsp.sourcemap.autogenerate": true,
-					"luau-lsp.sourcemap.sourcemapFile": "sourcemap.json",
-					"luau-lsp.sourcemap.generatorCommand":
-						"rogen sourcemap --watch -o sourcemap.json",
-					"stylua.searchParentDirectories": true,
-				},
-			});
-			expect(planned.nextSteps.edits.join("\n")).toContain(
-				"Open my-game.code-workspace in your editor, not the folder"
-			);
-		});
-
-		it("should make the shared code read the sourcemap of the first place", async () => {
-			const settings = jsonOf(
-				await plan(),
-				"projects/common/.vscode/settings.json"
-			);
+		it("should make the editor read the sourcemap of the first place", async () => {
+			const settings = jsonOf(await plan(), ".vscode/settings.json");
 
 			expect(settings).toEqual({
+				"luau-lsp.sourcemap.enabled": true,
+				"luau-lsp.sourcemap.autogenerate": true,
+				"luau-lsp.sourcemap.sourcemapFile": "sourcemap.json",
 				"luau-lsp.sourcemap.generatorCommand":
-					"rogen sourcemap ../game --watch -o sourcemap.json",
+					"rogen sourcemap lobby --watch -o sourcemap.json",
 			});
 		});
 
-		it("should write no editor settings at the root", async () => {
-			expect(names(await plan())).not.toContain(".vscode/settings.json");
-		});
-
-		it("should leave a workspace file that is there alone, and say what to add", async () => {
-			await put("my-game.code-workspace", "{}");
+		it("should leave editor settings that are there alone, and say what to set", async () => {
+			await put(".vscode/settings.json", "{}");
 
 			const planned = await plan();
 
-			expect(fileOf(planned, "my-game.code-workspace")).toBeUndefined();
+			expect(fileOf(planned, ".vscode/settings.json")).toBeUndefined();
 			expect(planned.notes.join("\n")).toContain(
-				'add "projects/common" and "projects/game" to its folders'
-			);
-			expect(planned.notes.join("\n")).toContain(
-				'"rogen sourcemap --watch -o sourcemap.json"'
+				'"rogen sourcemap lobby --watch -o sourcemap.json"'
 			);
 		});
 
-		it("should leave editor settings that are there alone, and say what to add", async () => {
-			await put("projects/common/.vscode/settings.json", "{}");
-
+		it("should write no workspace file", async () => {
 			const planned = await plan();
 
 			expect(
-				fileOf(planned, "projects/common/.vscode/settings.json")
-			).toBeUndefined();
-			expect(planned.notes.join("\n")).toContain(
-				'projects/common/.vscode/settings.json is there already: add {"luau-lsp.sourcemap.generatorCommand":"rogen sourcemap ../game --watch -o sourcemap.json"} to it.'
+				names(planned).filter((name) =>
+					name.endsWith(".code-workspace")
+				)
+			).toEqual([]);
+			expect(planned.nextSteps.edits.join("\n")).not.toContain(
+				"workspace"
+			);
+		});
+
+		it("should say how to add a place, which is a copy of the config", async () => {
+			const planned = await plan();
+
+			expect(planned.nextSteps.edits.join("\n")).toContain(
+				"copy lobby.rogen.json to match.rogen.json"
+			);
+			expect(planned.nextSteps.edits.join("\n")).toContain(
+				"rogen serve match --port"
 			);
 		});
 
@@ -256,7 +196,7 @@ describe("init for several places", () => {
 		});
 
 		it("should refuse a first place that has a config", async () => {
-			await put("projects/game/default.rogen.json", "{}");
+			await put("lobby.rogen.json", "{}");
 
 			const result = await serviceFor().plan({
 				ask: false,
@@ -264,18 +204,6 @@ describe("init for several places", () => {
 			});
 
 			expect(result.isErr()).toBe(true);
-		});
-
-		it("should mount packages from the place folder", async () => {
-			await put("package.json", '{"dependencies":{}}');
-			await fileSystem.createDirectory(path.join(directory, "Packages"));
-
-			const planned = await plan();
-
-			expect(
-				jsonOf(planned, "projects/game/default.rogen.json").tree
-					.ReplicatedStorage
-			).toMatchObject({ Packages: { $path: "../../Packages" } });
 		});
 
 		it("should say only a new roblox-ts project starts with places when the folder already is one", async () => {
@@ -301,21 +229,25 @@ describe("init for several places", () => {
 				return plan();
 			};
 
-			it("should write the release output beside the config", async () => {
+			it("should write the release output beside the config, named for the place", async () => {
 				const result = await planned();
 
-				expect(names(result)).not.toContain(
-					"projects/game/dist.rogen.json"
-				);
+				expect(names(result)).not.toContain("lobby.dist.rogen.json");
 				expect(
-					jsonOf(result, "projects/game/release.rogen.json")
+					jsonOf(result, "lobby.release.rogen.json")
 				).toMatchObject({
-					sourcePaths: ["../common/src", "src"],
+					sourcePaths: ["src/common", "src/lobby"],
 					globIgnorePaths: ["**/*.spec.luau"],
 				});
-				expect(result.nextSteps.run).toEqual([
-					"rogen serve projects/game",
-				]);
+				expect(result.nextSteps.run).toEqual(["rogen serve lobby"]);
+			});
+
+			it("should say how to add a place with its release config", async () => {
+				const result = await planned();
+
+				expect(result.nextSteps.edits.join("\n")).toContain(
+					"Do the same for lobby.release.rogen.json if there is one"
+				);
 			});
 		});
 	});
@@ -333,34 +265,24 @@ describe("init for several places", () => {
 		const planned = (choices: InitChoices = {}) =>
 			plan({ language: "roblox-ts", ...choices });
 
-		it("should write each place as a folder under projects, with the shared code beside it", async () => {
+		it("should write a config per place at the root and the code below src, as for Luau", async () => {
 			const result = await planned();
 
 			expect(names(result)).toEqual(
 				expect.arrayContaining([
-					"projects/game/default.rogen.json",
-					"projects/common/src/Greeter/shared/Greeting.ts",
-					"projects/common/src/Greeter/server/Greeter.server.ts",
-					"projects/common/src/Greeter/client/Greeter.client.ts",
-					"projects/game/src/Main/server/Main.server.ts",
+					"lobby.rogen.json",
+					"src/common/Greeter/shared/Greeting.ts",
+					"src/lobby/Welcome/server/Welcome.server.ts",
 				])
 			);
-			expect(names(result)).not.toContain("game.rogen.json");
 			expect(
-				jsonOf(result, "projects/game/default.rogen.json").sourcePaths
-			).toEqual(["../common/src", "src"]);
-			expect(result.configs).toEqual([
-				"projects/game/default.rogen.json",
+				names(result).filter((name) => name.startsWith("projects/"))
+			).toEqual([]);
+			expect(jsonOf(result, "lobby.rogen.json").sourcePaths).toEqual([
+				"src/common",
+				"src/lobby",
 			]);
-		});
-
-		it("should import the shared greeting by its path from the place's script", async () => {
-			const result = await planned();
-
-			expect(
-				fileOf(result, "projects/game/src/Main/server/Main.server.ts")
-					?.content
-			).toContain('"../../../../common/src/Greeter/shared/Greeting"');
+			expect(result.configs).toEqual(["lobby.rogen.json"]);
 		});
 
 		it("should sum up the code by the folders of the places", async () => {
@@ -368,54 +290,42 @@ describe("init for several places", () => {
 
 			expect(result.summary).toContainEqual({
 				area: "Code",
-				text: "projects/common/src, projects/game/src → server, client, shared; other files to ReplicatedStorage/shared",
+				text: "src/common, src/lobby → server, client, shared; other files to ReplicatedStorage/shared",
 			});
 		});
 
-		it("should put the sample world in the tree, with no files for it", async () => {
+		it("should keep the place's sample world in its tree", async () => {
 			const result = await planned();
 
 			expect(
-				names(result).filter((name) => name.startsWith("place"))
+				names(result).filter((name) => name.startsWith("place/"))
 			).toEqual([]);
-			expect(
-				jsonOf(result, "projects/game/default.rogen.json").tree
-			).toMatchObject({
-				Lighting: { $properties: { Brightness: 2 } },
+			expect(jsonOf(result, "lobby.rogen.json").tree).toMatchObject({
+				Lighting: { $properties: { Technology: "Voxel" } },
 				Workspace: { Baseplate: { $className: "Part" } },
 			});
 		});
 
-		it("should write no workspace file and no editor settings", async () => {
+		it("should write no editor settings for luau-lsp", async () => {
 			const result = await planned();
 
 			expect(names(result)).not.toContain(".vscode/settings.json");
-			expect(
-				names(result).filter((name) => name.endsWith(".code-workspace"))
-			).toEqual([]);
 			expect(result.nextSteps.edits.join("\n")).not.toContain("luau-lsp");
 		});
 
-		it("should compile each place from its own tsconfig, which holds every source path below one rootDir", async () => {
+		it("should compile each place from a tsconfig whose rootDir holds every source path", async () => {
 			const result = await planned();
 
-			expect(jsonOf(result, "projects/game/tsconfig.json")).toMatchObject(
-				{
-					extends: "../../tsconfig.json",
-					compilerOptions: {
-						rootDir: "..",
-						outDir: "../../out/game",
-					},
-					include: ["src", "../common/src"],
-					rbxts: {
-						rojo: "compiler.project.json",
-						includePath: "../../include",
-					},
-				}
-			);
-			expect(jsonOf(result, "tsconfig.game.json")).toMatchObject({
-				extends: "./projects/game/tsconfig.json",
-				rbxts: { rojo: "projects/game/compiler.project.json" },
+			const place = jsonOf(result, "tsconfig.lobby.json");
+			expect(place).toMatchObject({
+				extends: "./tsconfig.json",
+				compilerOptions: {
+					rootDir: "src",
+					outDir: "out/lobby",
+					composite: true,
+				},
+				include: ["src/common", "src/lobby"],
+				rbxts: { rojo: "lobby.project.json" },
 			});
 		});
 
@@ -423,23 +333,23 @@ describe("init for several places", () => {
 			const root = jsonOf(await planned(), "tsconfig.json");
 
 			expect(root.files).toEqual([]);
-			expect(root.references).toEqual([{ path: "./projects/game" }]);
+			expect(root.references).toEqual([
+				{ path: "./tsconfig.lobby.json" },
+			]);
 			expect(root.compilerOptions).toMatchObject({
+				rootDir: "src",
 				types: ["compiler-types", "types"],
 			});
 		});
 
-		it("should mount the compiled place and the root's include and packages, from the place's folder", async () => {
-			const config = jsonOf(
-				await planned(),
-				"projects/game/default.rogen.json"
-			);
+		it("should mount the compiled place and the root's include and packages", async () => {
+			const config = jsonOf(await planned(), "lobby.rogen.json");
 
-			expect(config.compiledPath).toBe("../../out/game");
+			expect(config.compiledPath).toBe("out/lobby");
 			expect(config.tree.ReplicatedStorage.rbxts_include).toMatchObject({
-				$path: "../../include",
+				$path: "include",
 				node_modules: {
-					"@rbxts": { $path: "../../node_modules/@rbxts" },
+					"@rbxts": { $path: "node_modules/@rbxts" },
 				},
 			});
 		});
@@ -454,7 +364,7 @@ describe("init for several places", () => {
 			expect(ignored).not.toContain("projects/");
 		});
 
-		it("should clear the root tsconfig and src that create-roblox-ts wrote, and compile through the wrapper", async () => {
+		it("should clear the root tsconfig and src that create-roblox-ts wrote, and compile the place", async () => {
 			const result = await planned();
 
 			expect(result.scaffold?.replaces).toEqual([
@@ -465,38 +375,38 @@ describe("init for several places", () => {
 			expect(result.commands.map(({ args }) => args)).toContainEqual([
 				"pkg",
 				"set",
-				"scripts.build=rbxtsc -p tsconfig.game.json",
-				"scripts.watch=rbxtsc -w -p tsconfig.game.json",
+				"scripts.build=rbxtsc -p tsconfig.lobby.json",
+				"scripts.watch=rbxtsc -w -p tsconfig.lobby.json",
 			]);
 			expect(result.nextSteps.run).toEqual([
 				"npm run watch",
-				"rogen serve projects/game",
+				"rogen serve lobby",
 			]);
 		});
 
-		it("should build the place by its folder", async () => {
+		it("should build the place by its name", async () => {
 			const result = await planned();
 
 			expect(result.nextSteps.edits.join("\n")).toContain(
-				"rogen write projects/game"
+				"rogen write lobby"
 			);
 		});
 
-		it("should say how to add a place, which copies its folder and its tsconfig wrapper", async () => {
+		it("should say how to add a place, which copies its config and its tsconfig", async () => {
 			const edits = (await planned()).nextSteps.edits.join("\n");
 
 			expect(edits).toContain(
-				'copy projects/game to projects/lobby, set "name" in projects/lobby/default.rogen.json to "lobby"'
+				"copy lobby.rogen.json to match.rogen.json"
 			);
 			expect(edits).toContain(
-				'"compiledPath" of projects/lobby/default.rogen.json'
+				"Copy tsconfig.lobby.json to tsconfig.match.json, change each lobby in it to match"
 			);
 			expect(edits).toContain(
-				"Copy tsconfig.game.json to tsconfig.lobby.json"
+				'set "compiledPath" in match.rogen.json to out/match'
 			);
-			expect(edits).toContain("rbxtsc -w -p tsconfig.lobby.json");
-			expect(edits).toContain("rogen serve projects/lobby --port");
-			expect(edits).not.toContain("workspace");
+			expect(edits).toContain("rbxtsc -w -p tsconfig.match.json");
+			expect(edits).toContain("rogen serve match --port");
+			expect(edits).not.toContain("projects/");
 		});
 	});
 

@@ -21,12 +21,13 @@
 		"types": [
 			"compiler-types",
 			"types"
-		]
+		],
+		"rootDir": "src"
 	},
 	"files": [],
 	"references": [
 		{
-			"path": "./projects/game"
+			"path": "./tsconfig.lobby.json"
 		}
 	]
 }

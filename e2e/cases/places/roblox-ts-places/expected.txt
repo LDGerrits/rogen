@@ -7,18 +7,8 @@ exit 0
 stdout: (not shown)
 
 written:
-  places/arena/compiler.project.json
   places/arena/default.project.json
-  places/lobby/compiler.project.json
   places/lobby/default.project.json
-
-$ rojo sourcemap places/arena/compiler.project.json
-arena: DataModel
-  ReplicatedStorage: ReplicatedStorage
-    shared: Folder
-      version: ModuleScript  <- out/shared/src/shared/version.luau
-  ServerScriptService: ServerScriptService
-    main: Script  <- out/arena/src/server/main.server.luau
 
 $ rojo sourcemap places/arena/default.project.json
 arena: DataModel
@@ -27,14 +17,6 @@ arena: DataModel
       version: ModuleScript  <- out/shared/src/shared/version.luau
   ServerScriptService: ServerScriptService
     main: Script  <- out/arena/src/server/main.server.luau
-
-$ rojo sourcemap places/lobby/compiler.project.json
-lobby: DataModel
-  ReplicatedStorage: ReplicatedStorage
-    shared: Folder
-      version: ModuleScript  <- out/shared/src/shared/version.luau
-  ServerScriptService: ServerScriptService
-    main: Script  <- out/lobby/src/server/main.server.luau
 
 $ rojo sourcemap places/lobby/default.project.json
 lobby: DataModel

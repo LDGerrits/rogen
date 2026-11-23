@@ -4,7 +4,7 @@ import { DEFAULT_SOURCE_PATH } from "../../config/config.js";
 import { GreeterSample, TEMPLATE_SOURCE_PATHS } from "../greeter-sample.js";
 
 describe("GreeterSample", () => {
-	const sample = new GreeterSample(new Luau(), "game");
+	const sample = new GreeterSample(new Luau(), "lobby");
 	const fileNamed = (files: { fileName: string }[], name: string) =>
 		files.find(({ fileName }) => fileName === name) as {
 			fileName: string;
@@ -43,43 +43,45 @@ describe("GreeterSample", () => {
 	});
 
 	it("should put the script of a place in its own feature", () => {
-		const files = sample.place("projects/game/src");
+		const files = sample.place("src/lobby");
 
 		expect(files.map(({ fileName }) => fileName)).toEqual([
-			"projects/game/src/Main/Server/Main.server.luau",
+			"src/lobby/Welcome/Server/Welcome.server.luau",
 		]);
-		expect(files[0].content).toContain('print(Greeting("game"))');
+		expect(files[0].content).toContain('print(Greeting("lobby"))');
 	});
 
 	it("should describe one place in the README, with the commands to build and serve it", () => {
 		const { content } = sample.readme("src", "rogen serve");
 
-		expect(content).toContain("# game\n");
+		expect(content).toContain("# lobby\n");
 		expect(content).toContain(
 			"rogen where src/Greeter/Shared/Greeting.luau"
 		);
-		expect(content).toContain('rogen build -o "game.rbxlx"');
+		expect(content).toContain('rogen build -o "lobby.rbxlx"');
 		expect(content).toContain("rogen serve");
 	});
 
 	it("should describe several places in the README, with the editor and how to add one", () => {
 		const { content } = sample.readme(
-			"projects/common/src",
-			"rogen serve projects/game",
-			{ name: "game", target: "projects/game" }
+			"src/common",
+			"rogen serve lobby",
+			"lobby"
 		);
 
 		expect(content).toContain(
-			"rogen where projects/common/src/Greeter/Shared/Greeting.luau"
+			"rogen where src/common/Greeter/Shared/Greeting.luau"
 		);
-		expect(content).toContain("`projects/game/default.rogen.json`");
-		expect(content).toContain('rogen build projects/game -o "game.rbxlx"');
-		expect(content).toContain("```bash\nrogen serve projects/game\n```");
-		expect(content).toContain("`game.code-workspace`");
+		expect(content).toContain("`lobby.rogen.json`");
+		expect(content).toContain("`src/lobby`");
+		expect(content).toContain('rogen build lobby -o "lobby.rbxlx"');
+		expect(content).toContain("```bash\nrogen serve lobby\n```");
+		expect(content).toContain("rogen sourcemap lobby --watch");
 		expect(content).toContain("luau-lsp analyze");
-		expect(content).toContain("rogen serve projects/lobby --port");
-		expect(content).toContain("Copy `projects/game` to `projects/lobby`");
-		expect(content).toContain("selene.toml");
+		expect(content).toContain("rogen serve match --port");
+		expect(content).toContain(
+			"Copy `lobby.rogen.json` to `match.rogen.json`"
+		);
 		expect(content).not.toContain("place/");
 	});
 
@@ -92,7 +94,7 @@ describe("GreeterSample", () => {
 	describe("for roblox-ts", () => {
 		const typescript = new GreeterSample(
 			workspaceOf().languageFor("roblox-ts"),
-			"game"
+			"lobby"
 		);
 
 		it("should write TypeScript in the folders its routes are named after", () => {
@@ -115,12 +117,15 @@ describe("GreeterSample", () => {
 		it("should say how to add a place with its map, and to watch it from a terminal of its own", () => {
 			const { content } = typescript.readme(
 				"src/common",
-				"rogen serve game",
-				{ name: "game", target: "game" }
+				"rogen serve lobby",
+				"lobby"
 			);
 
 			expect(content).toContain(
-				"```bash\nnpx rbxtsc -w -p tsconfig.lobby.json\n```"
+				"Copy `lobby.rogen.json` to `match.rogen.json` and `tsconfig.lobby.json` to `tsconfig.match.json`"
+			);
+			expect(content).toContain(
+				"```bash\nnpx rbxtsc -w -p tsconfig.match.json\n```"
 			);
 		});
 
@@ -140,7 +145,7 @@ describe("GreeterSample", () => {
 		});
 
 		it("should print no Luau", () => {
-			expect(typescript.place("src/game")[0].content).not.toContain(
+			expect(typescript.place("src/lobby")[0].content).not.toContain(
 				"local "
 			);
 		});
@@ -152,14 +157,14 @@ describe("GreeterSample", () => {
 		it("should keep each variant's code where its template has it", () => {
 			expect(TEMPLATE_SOURCE_PATHS).toEqual({
 				one: DEFAULT_SOURCE_PATH,
-				place: "src/game",
+				place: "src/lobby",
 			});
 		});
 
 		it.each(languages)(
 			"should name the feature's folders after the routes of $id",
 			(language) => {
-				const folders = new GreeterSample(language, "game")
+				const folders = new GreeterSample(language, "lobby")
 					.feature("src")
 					.map(({ fileName }) => fileName.split("/")[2]);
 
@@ -174,10 +179,10 @@ describe("GreeterSample", () => {
 		it.each(languages)(
 			"should write every file of $id with its extension",
 			(language) => {
-				const sample = new GreeterSample(language, "game");
+				const sample = new GreeterSample(language, "lobby");
 				const scripts = [
 					...sample.feature("src"),
-					...sample.place("src/game"),
+					...sample.place("src/lobby"),
 				];
 
 				expect(scripts).toHaveLength(4);
@@ -191,15 +196,12 @@ describe("GreeterSample", () => {
 		it.each(languages)(
 			"should fill every placeholder of $id",
 			(language) => {
-				const sample = new GreeterSample(language, "game");
+				const sample = new GreeterSample(language, "lobby");
 				const files = [
 					...sample.feature("lib"),
-					...sample.place("src/game"),
+					...sample.place("src/lobby"),
 					sample.readme("lib", "rogen serve"),
-					sample.readme("src/common", "rogen serve game", {
-						name: "game",
-						target: "game",
-					}),
+					sample.readme("src/common", "rogen serve lobby", "lobby"),
 				];
 
 				for (const { content } of files)

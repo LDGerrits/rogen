@@ -73,7 +73,7 @@ const InitOptions = [
 		type: "boolean",
 		negation: "also",
 		description:
-			"Whether a new project is several places. For Luau, each place is a folder under projects: the code they share goes in projects/common/src and a first place in projects/game, with its own default.rogen.json, and a .code-workspace file at the root has luau-lsp read each folder's sourcemap. For roblox-ts, the folders are the same, and the place's tsconfig.json compiles it with the shared code into out/game, through a tsconfig.game.json at the root. More places by copying a place's folder. One place when not given.",
+			"Whether a new project is several places. The code they share goes in src/common, a first place in src/lobby and a lobby.rogen.json at the root for it. Luau adds editor settings for luau-lsp, and roblox-ts a tsconfig.lobby.json that compiles the place into out/lobby. More places by copying those files. One place when not given.",
 	},
 	{
 		name: "agent-rules",

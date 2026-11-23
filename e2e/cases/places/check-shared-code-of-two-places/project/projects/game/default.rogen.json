@@ -1,5 +1,0 @@
-{
-	"name": "game",
-	"sourcePaths": ["../common/src", "src"],
-	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage/Shared" }
-}

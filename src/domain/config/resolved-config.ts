@@ -1,20 +1,11 @@
 import path from "path";
-import {
-	commonAncestor,
-	isInside,
-	samePath,
-	toPosix,
-} from "../../base/path.js";
+import { commonAncestor, samePath, toPosix } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { Target } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { ParsedProjectFile, RojoProject } from "../rojo/rojo-project.js";
 import { SyncRules } from "../rojo/sync-rules.js";
-import {
-	DEFAULT_SOURCE_PATH,
-	compilerFileOf,
-	projectFileOf,
-} from "./config.js";
+import { DEFAULT_SOURCE_PATH, projectFileOf } from "./config.js";
 import { DeclaredKeys } from "./declared-keys.js";
 import { RoutePatterns } from "./route-patterns.js";
 
@@ -83,22 +74,6 @@ export class ResolvedConfig {
 				path.join(this.projectDir, DEFAULT_SOURCE_PATH)
 			)
 		);
-	}
-
-	get compilerFile(): string | undefined {
-		const { commonRoot } = this;
-		return !this.isAdopted &&
-			this.compiledPath !== undefined &&
-			commonRoot !== undefined &&
-			isInside(this.projectDir, commonRoot)
-			? compilerFileOf(this.file)
-			: undefined;
-	}
-
-	get leftoverCompilerFile(): string | undefined {
-		return this.isAdopted || this.compilerFile !== undefined
-			? undefined
-			: compilerFileOf(this.file);
 	}
 
 	get isAdopted(): boolean {

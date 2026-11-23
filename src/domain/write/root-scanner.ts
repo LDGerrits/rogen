@@ -15,11 +15,7 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import {
-	isCompilerFileName,
-	isConfigFileName,
-	isSyncbackFileName,
-} from "../config/config.js";
+import { isConfigFileName, isSyncbackFileName } from "../config/config.js";
 import { RojoFile, RojoFileKind } from "../rojo/rojo.js";
 import { ScanLeftOut } from "./write.js";
 import { TreeMounts } from "./write-tree.js";
@@ -315,8 +311,7 @@ export class RootScanner {
 			const glob = meta
 				? undefined
 				: (isFileType(type) && isConfigFileName(name)) ||
-					  isSyncbackFileName(name) ||
-					  (isFileType(type) && isCompilerFileName(name))
+					  isSyncbackFileName(name)
 					? name
 					: isFileType(type) &&
 						  this.projectFiles.some((file) =>

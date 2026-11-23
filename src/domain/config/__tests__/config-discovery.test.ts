@@ -86,21 +86,6 @@ describe("ConfigDiscovery", () => {
 			);
 		});
 
-		it("should name the places of a folder that holds only places", async () => {
-			await fs.writeFile(
-				"/repo/projects/lobby/default.rogen.jsonc",
-				"{}"
-			);
-			await fs.writeFile("/repo/projects/game/default.rogen.json", "{}");
-			await fs.writeFile("/repo/projects/common/src/A.luau", "");
-
-			const result = await discovery.discover([]);
-
-			expect(errorOf(result).message).toEqual(
-				"No default.rogen.json or default.project.json in this folder (/repo). It holds projects/game, projects/lobby. Name one of them."
-			);
-		});
-
 		it("should name the stale config a registered check finds", async () => {
 			await fs.writeFile("/repo/.rogen.json", "{}");
 			const checked = discoveryOf(
@@ -672,10 +657,9 @@ describe("ConfigDiscovery.namedConfigsAbove", () => {
 		await fs.writeFile("/repo/src/game/Main.luau", "");
 	});
 
-	const above = (target: string, stop = "/repo") =>
+	const above = (target: string) =>
 		discoveryOf(fs, new MockEnvironmentService("/repo")).namedConfigsAbove(
-			target,
-			stop
+			target
 		);
 
 	it("should list the named configs of the folder and of each folder above, nearest first, and no default", async () => {
@@ -695,72 +679,8 @@ describe("ConfigDiscovery.namedConfigsAbove", () => {
 	});
 
 	it("should list none when no folder above holds one", async () => {
-		expect(await above("/elsewhere/A.luau", "/elsewhere")).toEqual([]);
+		expect(await above("/elsewhere/A.luau")).toEqual([]);
 	});
-
-	it("should add the default config of each folder beside the target's folders, after the named ones", async () => {
-		await fs.createDirectory("/repo/projects/common/src");
-		await fs.writeFile("/repo/projects/game/default.rogen.json", "{}");
-		await fs.writeFile("/repo/projects/lobby/default.rogen.jsonc", "{}");
-		await fs.writeFile("/repo/projects/common/src/A.luau", "");
-
-		expect(await above("/repo/projects/common/src/A.luau")).toEqual([
-			"/repo/game.rogen.json",
-			"/repo/lobby.rogen.jsonc",
-			"/repo/projects/game/default.rogen.json",
-			"/repo/projects/lobby/default.rogen.jsonc",
-		]);
-	});
-
-	it("should not walk below the direct subfolders, nor into hidden ones or node_modules", async () => {
-		await fs.writeFile("/repo/projects/a/b/default.rogen.json", "{}");
-		await fs.writeFile("/repo/.hidden/default.rogen.json", "{}");
-		await fs.writeFile("/repo/node_modules/default.rogen.json", "{}");
-		await fs.writeFile("/repo/projects/a/default.rogen.json", "{}");
-
-		expect(await above("/repo/projects/a/b/A.luau")).toEqual(
-			expect.not.arrayContaining([
-				"/repo/projects/a/b/default.rogen.json",
-				"/repo/.hidden/default.rogen.json",
-				"/repo/node_modules/default.rogen.json",
-			])
-		);
-		expect(await above("/repo/projects/a/b/A.luau")).toContain(
-			"/repo/projects/a/default.rogen.json"
-		);
-	});
-
-	it("should look no higher for subfolder defaults than the stop", async () => {
-		await fs.writeFile("/repo/projects/common/src/A.luau", "");
-		await fs.writeFile("/repo/projects/game/default.rogen.json", "{}");
-		await fs.writeFile("/repo/tools/default.rogen.json", "{}");
-
-		const found = await above(
-			"/repo/projects/common/src/A.luau",
-			"/repo/projects"
-		);
-
-		expect(found).toContain("/repo/projects/game/default.rogen.json");
-		expect(found).not.toContain("/repo/tools/default.rogen.json");
-	});
-
-	it.each([".git", "rokit.toml"])(
-		"should walk up to the nearest folder with %s, whatever the stop",
-		async (marker) => {
-			await fs.writeFile("/repo/projects/common/src/A.luau", "");
-			await fs.writeFile("/repo/projects/game/default.rogen.json", "{}");
-			await fs.writeFile("/repo/projects/" + marker, "");
-			await fs.writeFile("/repo/tools/default.rogen.json", "{}");
-
-			const found = await above(
-				"/repo/projects/common/src/A.luau",
-				"/repo/projects/common"
-			);
-
-			expect(found).toContain("/repo/projects/game/default.rogen.json");
-			expect(found).not.toContain("/repo/tools/default.rogen.json");
-		}
-	);
 });
 
 describe("ConfigDiscovery.fileNamedHere", () => {
@@ -789,24 +709,6 @@ describe("ConfigDiscovery.fileNamedHere", () => {
 		await fs.writeFile("/repo/game.project.json", "{}");
 
 		expect((await named("game")).unwrap()).toEqual("/repo/game.rogen.json");
-	});
-
-	it("should be nothing for the name of a compiler's project file a config writes", async () => {
-		await fs.writeFile("/repo/default.rogen.json", "{}");
-		await fs.writeFile("/repo/game.rogen.json", "{}");
-		await fs.writeFile("/repo/compiler.project.json", "{}");
-		await fs.writeFile("/repo/game.compiler.project.json", "{}");
-
-		expect((await named("compiler")).unwrap()).toBeUndefined();
-		expect((await named("game.compiler")).unwrap()).toBeUndefined();
-	});
-
-	it("should find a compiler-named project file that no config writes", async () => {
-		await fs.writeFile("/repo/game.compiler.project.json", "{}");
-
-		expect((await named("game.compiler")).unwrap()).toEqual(
-			"/repo/game.compiler.project.json"
-		);
 	});
 
 	it("should be nothing for a name with no config or a path", async () => {
@@ -855,21 +757,6 @@ describe("ConfigDiscovery.plainProjects", () => {
 		await fs.writeFile("/repo/rogen-syncback.project.json", "{}");
 
 		expect(await plain()).toEqual([]);
-	});
-
-	it("should not list the project file a compiler reads", async () => {
-		await fs.writeFile("/repo/default.rogen.json", "{}");
-		await fs.writeFile("/repo/lobby.rogen.json", "{}");
-		await fs.writeFile("/repo/compiler.project.json", "{}");
-		await fs.writeFile("/repo/lobby.compiler.project.json", "{}");
-
-		expect(await plain()).toEqual([]);
-	});
-
-	it("should list a compiler-named project file no config writes", async () => {
-		await fs.writeFile("/repo/compiler.project.json", "{}");
-
-		expect(await plain()).toEqual(["/repo/compiler.project.json"]);
 	});
 });
 

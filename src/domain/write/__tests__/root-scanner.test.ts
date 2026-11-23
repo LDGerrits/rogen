@@ -608,18 +608,6 @@ describe("RootScanner", () => {
 				expect(files(roots[0])).toEqual(["script:Keep.luau"]);
 			});
 
-			it("should leave out the project file a compiler reads", async () => {
-				await write(
-					"src/Keep.luau",
-					"src/compiler.project.json",
-					"src/lobby.compiler.project.json"
-				);
-
-				const { roots } = await scan();
-
-				expect(files(roots[0])).toEqual(["script:Keep.luau"]);
-			});
-
 			it("should remove matching files", async () => {
 				await write("src/Keep.luau", "src/Drop.spec.luau");
 

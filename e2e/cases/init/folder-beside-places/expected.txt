@@ -2,27 +2,26 @@ $ rogen init --non-interactive --skip-git --places
 exit 0
 stdout:
   rogen init
-  The Greeter sample is the feature in projects/common/src, which every place shares, and the place's own script is in projects/game/src. Rojo's sample Baseplate and lighting are in the tree of projects/game/default.rogen.json. Pass --no-sample for empty source folders and no Baseplate.
+  The Greeter sample is the feature in src/common, which every place shares, and Welcome in src/lobby. Rojo's sample Baseplate and lighting are in the tree of lobby.rogen.json. Pass --no-sample for empty source folders and no Baseplate.
   Took the defaults, each with the flag that changes it: a place (--kind), luau (--language), the Greeter sample (--no-sample), agent rules (--no-agent-rules).
-  Created projects/common/src/Greeter/Shared/Greeting.luau.
-  Created projects/common/src/Greeter/Server/Greeter.server.luau.
-  Created projects/common/src/Greeter/Client/Greeter.client.luau.
-  Created projects/game/src/Main/Server/Main.server.luau.
+  Created src/common/Greeter/Shared/Greeting.luau.
+  Created src/common/Greeter/Server/Greeter.server.luau.
+  Created src/common/Greeter/Client/Greeter.client.luau.
+  Created src/lobby/Welcome/Server/Welcome.server.luau.
   Created README.md.
-  Created project.code-workspace.
-  Created projects/common/.vscode/settings.json.
+  Created .vscode/settings.json.
   Created AGENTS.md.
-  Created projects/game/default.rogen.json.
-  Wrote projects/game/default.project.json.
+  Created lobby.rogen.json.
+  Wrote lobby.project.json.
   Next steps
     Run:
-      rogen serve projects/game
+      rogen serve lobby
     In Studio, press Connect in the Rojo plugin.
-    To change where code goes, edit "routes" in projects/game/default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".
-    Edit projects/game/default.rogen.json and leave projects/game/default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write projects/game' so the editor's projects/game/default.project.json follows.
-    Open project.code-workspace in your editor, not the folder: luau-lsp reads one sourcemap per workspace folder, so each place is typed against its own code.
-    Add another place: copy projects/game to projects/lobby, set "name" in projects/lobby/default.rogen.json to "lobby" and add { "path": "projects/lobby" } to the folders in project.code-workspace. Serve it from a second terminal with its own --port: 'rogen serve projects/lobby --port <port>'. Selene reads only the selene.toml in the folder it runs in, so put one in projects/common and in each place's folder.
-  Wrote 9 files.
+    To change where code goes, edit "routes" in lobby.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".
+    Edit lobby.rogen.json and leave lobby.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write lobby' so the editor's lobby.project.json follows.
+    luau-lsp reads the sourcemap of one place at a time, lobby here. To switch, change the name in the generatorCommand in .vscode/settings.json.
+    Add another place: copy lobby.rogen.json to match.rogen.json and make src/match. Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common. Do the same for lobby.release.rogen.json if there is one. Serve it from a second terminal with its own --port: 'rogen serve match --port <port>'.
+  Wrote 8 files.
 
 $ rogen init lobby --non-interactive --skip-git
 exit 0
@@ -48,8 +47,11 @@ stdout:
   Wrote 6 files.
 
 written:
+  .vscode/settings.json
   AGENTS.md
   README.md
+  lobby.project.json
+  lobby.rogen.json
   lobby/AGENTS.md
   lobby/README.md
   lobby/default.project.json
@@ -57,14 +59,75 @@ written:
   lobby/src/Greeter/Client/Greeter.client.luau
   lobby/src/Greeter/Server/Greeter.server.luau
   lobby/src/Greeter/Shared/Greeting.luau
-  project.code-workspace
-  projects/common/.vscode/settings.json
-  projects/common/src/Greeter/Client/Greeter.client.luau
-  projects/common/src/Greeter/Server/Greeter.server.luau
-  projects/common/src/Greeter/Shared/Greeting.luau
-  projects/game/default.project.json
-  projects/game/default.rogen.json
-  projects/game/src/Main/Server/Main.server.luau
+  src/common/Greeter/Client/Greeter.client.luau
+  src/common/Greeter/Server/Greeter.server.luau
+  src/common/Greeter/Shared/Greeting.luau
+  src/lobby/Welcome/Server/Welcome.server.luau
+
+lobby.rogen.json:
+{
+  "name": "lobby",
+  "sourcePaths": [
+    "src/common",
+    "src/lobby"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$properties": {
+        "Ambient": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Brightness": 2.0,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "Technology": "Voxel"
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    },
+    "Workspace": {
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Color": {
+            "Color3uint8": [
+              99,
+              95,
+              99
+            ]
+          },
+          "Locked": true,
+          "Position": [
+            0.0,
+            -10.0,
+            0.0
+          ],
+          "Size": [
+            512.0,
+            20.0,
+            512.0
+          ]
+        }
+      },
+      "$properties": {
+        "FilteringEnabled": true
+      }
+    }
+  }
+}
 
 lobby/default.rogen.json:
 {
@@ -130,70 +193,25 @@ lobby/default.rogen.json:
   }
 }
 
-projects/game/default.rogen.json:
-{
-  "name": "game",
-  "sourcePaths": [
-    "../common/src",
-    "src"
-  ],
-  "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared",
-    "*": "ReplicatedStorage/Shared"
-  },
-  "tree": {
-    "$className": "DataModel",
-    "Lighting": {
-      "$properties": {
-        "Ambient": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "Brightness": 2.0,
-        "GlobalShadows": true,
-        "Outlines": false,
-        "Technology": "Voxel"
-      }
-    },
-    "SoundService": {
-      "$properties": {
-        "RespectFilteringEnabled": true
-      }
-    },
-    "Workspace": {
-      "Baseplate": {
-        "$className": "Part",
-        "$properties": {
-          "Anchored": true,
-          "Color": {
-            "Color3uint8": [
-              99,
-              95,
-              99
-            ]
-          },
-          "Locked": true,
-          "Position": [
-            0.0,
-            -10.0,
-            0.0
-          ],
-          "Size": [
-            512.0,
-            20.0,
-            512.0
-          ]
-        }
-      },
-      "$properties": {
-        "FilteringEnabled": true
-      }
-    }
-  }
-}
+$ rojo sourcemap lobby.project.json
+lobby: DataModel
+  Lighting: Lighting
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Greeter: Folder
+        Greeting: ModuleScript  <- src/common/Greeter/Shared/Greeting.luau
+  ServerScriptService: ServerScriptService
+    Greeter: Folder
+      Greeter: Script  <- src/common/Greeter/Server/Greeter.server.luau
+    Welcome: Folder
+      Welcome: Script  <- src/lobby/Welcome/Server/Welcome.server.luau
+  SoundService: SoundService
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Greeter: Folder
+        Greeter: LocalScript  <- src/common/Greeter/Client/Greeter.client.luau
+  Workspace: Workspace
+    Baseplate: Part
 
 $ rojo sourcemap lobby/default.project.json
 lobby: DataModel
@@ -210,25 +228,5 @@ lobby: DataModel
     StarterPlayerScripts: StarterPlayerScripts
       Greeter: Folder
         Greeter: LocalScript  <- src/Greeter/Client/Greeter.client.luau
-  Workspace: Workspace
-    Baseplate: Part
-
-$ rojo sourcemap projects/game/default.project.json
-game: DataModel
-  Lighting: Lighting
-  ReplicatedStorage: ReplicatedStorage
-    Shared: Folder
-      Greeter: Folder
-        Greeting: ModuleScript  <- ../common/src/Greeter/Shared/Greeting.luau
-  ServerScriptService: ServerScriptService
-    Greeter: Folder
-      Greeter: Script  <- ../common/src/Greeter/Server/Greeter.server.luau
-    Main: Folder
-      Main: Script  <- src/Main/Server/Main.server.luau
-  SoundService: SoundService
-  StarterPlayer: StarterPlayer
-    StarterPlayerScripts: StarterPlayerScripts
-      Greeter: Folder
-        Greeter: LocalScript  <- ../common/src/Greeter/Client/Greeter.client.luau
   Workspace: Workspace
     Baseplate: Part

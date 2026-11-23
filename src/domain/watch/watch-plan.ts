@@ -9,7 +9,7 @@ type WatchPlanConfig = Pick<
 	ResolvedConfig,
 	"indexedPaths" | "projectFile" | "compiledPath" | "projectDir"
 > &
-	Partial<Pick<ResolvedConfig, "isAdopted" | "compilerFile">>;
+	Partial<Pick<ResolvedConfig, "isAdopted">>;
 
 export class WatchPlan {
 	readonly roots: readonly string[];
@@ -41,11 +41,7 @@ export class WatchPlan {
 			...new Set(
 				configs
 					.filter((config) => !config.isAdopted)
-					.flatMap((config) =>
-						[config.projectFile, config.compilerFile].flatMap(
-							(file) => (file ? [path.resolve(file)] : [])
-						)
-					)
+					.map((config) => path.resolve(config.projectFile))
 			),
 		].map((projectFile) => new OutputFile(projectFile));
 		const ignoredPaths = [

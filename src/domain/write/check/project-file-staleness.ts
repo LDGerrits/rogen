@@ -20,9 +20,9 @@ export class ProjectFileStaleness {
 
 	async diagnostic(
 		config: ResolvedConfig,
-		expected: () => Promise<RojoProjectFile | undefined>,
-		outputFile = config.projectFile
+		expected: () => Promise<RojoProjectFile | undefined>
 	): Promise<Diagnostic | undefined> {
+		const { projectFile } = config;
 		if (config.isAdopted) return undefined;
 		const command = commandWith(
 			"rogen write",
@@ -32,8 +32,8 @@ export class ProjectFileStaleness {
 			)
 		);
 		const onDisk = await tryWithAsync(async () =>
-			(await this.fileSystemService.isFile(outputFile))
-				? await this.fileSystemService.readFile(outputFile)
+			(await this.fileSystemService.isFile(projectFile))
+				? await this.fileSystemService.readFile(projectFile)
 				: undefined
 		);
 		if (onDisk.isErr() || onDisk.value === undefined) return undefined;
@@ -42,30 +42,8 @@ export class ProjectFileStaleness {
 			return undefined;
 		return warningDiagnostic(
 			"output.differs",
-			{ resource: outputFile },
+			{ resource: projectFile },
 			`this file is out of date: its sources changed. Run '${command}'; to change it, edit ${path.basename(config.file)}.`,
-			[{ run: { command, cwd: path.dirname(config.file) } }]
-		);
-	}
-
-	async leftover(config: ResolvedConfig): Promise<Diagnostic | undefined> {
-		const outputFile = config.leftoverCompilerFile;
-		if (
-			outputFile === undefined ||
-			!(await this.fileSystemService.isFile(outputFile))
-		)
-			return undefined;
-		const command = commandWith(
-			"rogen write",
-			await this.configService.referenceTo(
-				config.file,
-				path.dirname(config.file)
-			)
-		);
-		return warningDiagnostic(
-			"output.differs",
-			{ resource: outputFile },
-			`this file is out of date: ${path.basename(config.file)} no longer writes it. Run '${command}' to remove it.`,
 			[{ run: { command, cwd: path.dirname(config.file) } }]
 		);
 	}

@@ -28,7 +28,11 @@ import { GreeterSample } from "./greeter-sample.js";
 import { SampleGame } from "./sample-game.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
-import { OutputConfigs, PROCESSED_OUTPUT } from "./output-configs.js";
+import {
+	OutputConfigs,
+	PROCESSED_OUTPUT,
+	RELEASE_OUTPUT,
+} from "./output-configs.js";
 import { InitQuestions, UnplacedCode } from "./init-questions.js";
 import { InitSummary } from "./init-summary.js";
 import { InitKind, PlannedCommand, PlannedScaffold } from "./init-service.js";
@@ -250,15 +254,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					...(processorConfig && { config: processorConfig }),
 				}
 			: undefined;
-		const mounts = routed
-			? mountsOf(directory, language).map((mount) => ({
-					...mount,
-					path: path.posix.relative(
-						places?.configFolder ?? "",
-						mount.path
-					),
-				}))
-			: [];
+		const mounts = routed ? mountsOf(directory, language) : [];
 
 		const unmounted =
 			lifted && tree.kind === "lift"
@@ -287,7 +283,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 		const outside = routed
 			? await this.codeOutside(
-					[...(places?.directories ?? sourcePaths), ...liftedMounts],
+					[...sourcePaths, ...liftedMounts],
 					language,
 					[compiledPath, processedFolder]
 				)
@@ -314,10 +310,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					sampleOf.readme(
 						places?.commonSourcePath ?? sourcePaths[0],
 						ProjectSetup.serveCommand(places),
-						places && {
-							name: places.place,
-							target: places.target,
-						}
+						places?.place
 					),
 				]
 			: [];
@@ -412,7 +405,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		places: StartingPlaces | undefined,
 		processedPath?: string
 	): string {
-		if (places) return `rogen serve ${places.target}`;
+		if (places) return `rogen serve ${places.place}`;
 		return processedPath
 			? `rogen serve ${PROCESSED_OUTPUT}`
 			: "rogen serve";
@@ -423,13 +416,17 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		starter: RobloxTsStarter | undefined
 	): string {
 		const port = "from a second terminal with its own --port";
-		const folder = path.posix.dirname(places.configFile);
-		const lobby = path.posix.join(path.posix.dirname(folder), "lobby");
-		const copy = `Add another place: copy ${folder} to ${lobby}, set "name" in ${path.posix.join(lobby, DEFAULT_CONFIG_FILE)} to "lobby"`;
-		const serve = `Serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
-		if (starter)
-			return `${copy}. ${starter.addPlaceStep(places.place, "lobby", lobby)} ${serve}`;
-		return `${copy} and add { "path": "${lobby}" } to the folders in ${places.workspaceFile}. ${serve} Selene reads only the selene.toml in the folder it runs in, so put one in ${path.posix.dirname(places.commonSourcePath)} and in each place's folder.`;
+		const { outputPrefix } = places;
+		const match = (file: string) => file.replace(outputPrefix, "match.");
+		const release = configFileName(`${outputPrefix}${RELEASE_OUTPUT}`);
+		const edited =
+			'Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common.';
+		const copied = `copy ${places.configFile} to ${match(places.configFile)}`;
+		const copy = `${copied} and make src/match. ${edited}`;
+		const compile = starter
+			? ` ${starter.addPlaceStep(places.place, "match", match(places.configFile))}`
+			: "";
+		return `Add another place: ${copy} Do the same for ${release} if there is one.${compile} Serve it ${port}: 'rogen serve match --port <port>'.`;
 	}
 
 	private noPlacesBecause(
@@ -483,7 +480,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const [one, several] = await Promise.all(
 			[
 				[this.directory.defaultSourcePath(language)],
-				places.directories,
+				places.sourcePaths,
 			].map((held) => this.codeOutside(held, language))
 		);
 		return {
@@ -660,10 +657,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const name = path.basename(places?.place ?? this.directory.path);
 		const { unmounted } = choices;
 		const { name: ownName, ...fields } = tree.fields;
-		const configCompiledPath =
-			places && compiledPath
-				? path.posix.relative(places.configFolder, compiledPath)
-				: compiledPath;
 		const config: RogenConfig = {
 			name: typeof ownName === "string" ? ownName : name,
 			...fields,
@@ -674,7 +667,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				],
 			}),
 			...(routes && { sourcePaths: [...sourcePaths], routes }),
-			...(configCompiledPath && { compiledPath: configCompiledPath }),
+			...(compiledPath && { compiledPath }),
 		};
 		const written =
 			choices.tree.kind === "lift"
@@ -688,7 +681,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const processedPath = processedPathOf(choices);
 		for (const { stem, config: output } of OutputConfigs.of(config, {
 			processedPath,
-			releasePath: processedPath ?? configCompiledPath,
+			releasePath: processedPath ?? compiledPath,
 			releaseIgnore: this.directory.workspace.testRunner
 				? `**/*.spec.${language.extension}`
 				: undefined,
@@ -696,10 +689,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.setConfig(
 				output,
 				written,
-				path.posix.join(
-					places?.configFolder ?? "",
-					configFileName(`${places?.outputPrefix ?? ""}${stem}`)
-				),
+				configFileName(`${places?.outputPrefix ?? ""}${stem}`),
 				false
 			);
 		this.summarise(builder, choices, routes);
@@ -771,7 +761,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addWarning(
 				ProjectSetup.outsideWarning(
 					places?.configFile ?? DEFAULT_CONFIG_FILE,
-					places?.commonSourcePath ?? sourcePaths[0],
+					sourcePaths[0],
 					choices.outside
 				)
 			);
@@ -793,7 +783,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			const world = `Rojo's sample Baseplate and lighting are in the tree of ${here(places?.configFile ?? DEFAULT_CONFIG_FILE)}.`;
 			builder.addNote(
 				places
-					? `The Greeter sample is the feature in ${here(places.commonSourcePath)}, which every place shares, and the place's own script is in ${here(places.placeSourcePath)}. ${world}${flag}`
+					? `The Greeter sample is the feature in ${here(places.commonSourcePath)}, which every place shares, and Welcome in ${here(places.placeSourcePath)}. ${world}${flag}`
 					: `The Greeter sample is in ${here(sourcePaths[0], "Greeter")}. ${world}${flag}`
 			);
 		}
@@ -909,11 +899,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 		const projectFile = places?.projectFile ?? DEFAULT_PROJECT_FILE;
 		builder.addEdit(
-			`Edit ${configFile} and leave ${projectFile} alone, since 'rogen write' replaces it.${takesRoutes(chosen) ? ` After you add a feature folder, run 'rogen write${places ? ` ${places.target}` : ""}' so the editor's ${projectFile} follows.` : ""}`
+			`Edit ${configFile} and leave ${projectFile} alone, since 'rogen write' replaces it.${takesRoutes(chosen) ? ` After you add a feature folder, run 'rogen write${places ? ` ${places.place}` : ""}' so the editor's ${projectFile} follows.` : ""}`
 		);
-		if (places?.workspaceFile)
+		if (places?.settings)
 			builder.addEdit(
-				`Open ${places.workspaceFile} in your editor, not the folder: luau-lsp reads one sourcemap per workspace folder, so each place is typed against its own code.`
+				`luau-lsp reads the sourcemap of one place at a time, ${places.place} here. To switch, change the name in the generatorCommand in .vscode/settings.json.`
 			);
 		if (places)
 			builder.addEdit(

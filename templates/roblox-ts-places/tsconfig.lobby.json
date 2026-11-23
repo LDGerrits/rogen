@@ -1,0 +1,20 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"rootDir": "src",
+		"rootDirs": [
+			"src/common",
+			"src/lobby"
+		],
+		"outDir": "out/lobby",
+		"tsBuildInfoFile": "out/lobby/tsconfig.tsbuildinfo",
+		"composite": true
+	},
+	"include": [
+		"src/common",
+		"src/lobby"
+	],
+	"rbxts": {
+		"rojo": "lobby.project.json"
+	}
+}

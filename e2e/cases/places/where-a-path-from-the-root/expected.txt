@@ -14,9 +14,8 @@ stdout:
 
 $ rogen where places/shared/src/Common/Util.luau
 exit 0
-stdout:
-  places/shared/src/Common/Util.luau -> ReplicatedStorage/Shared/Common/Util · route * (fallback)
-    require(game:GetService("ReplicatedStorage").Shared.Common.Util)
+stderr:
+  note: places/shared/src/Common/Util.luau: no config at or above it reads it, but other configs list it in their source paths. See where it lands through one: 'rogen where places/arena/default.rogen.json' or 'rogen where places/lobby/default.rogen.json'.
 
 $ rogen where places/arena/default.rogen.json
 exit 0

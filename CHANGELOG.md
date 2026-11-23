@@ -6,17 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### Added
-
-- `rogen write` also writes a compiler project file, `compiler.project.json`, when a config's source paths share a folder that holds the config's own folder and it has a `compiledPath`. It is the project file without the mounts a compiler would reject inside its `rootDir`.
-
 ### Changed
 
-- A bare command in a folder that holds only places names them, and `rogen init` there refuses rather than creating a second project.
-- `rogen write` removes a compiler project file that its config no longer gets, and says so, and `rogen check` reports one as out of date. It reports each file it writes on its own, with a `files` list in `--json` when a config writes more than its project file.
-- `rogen init --places` writes each place as a folder under `projects`, for Luau and roblox-ts alike, with the shared code in `projects/common/src` and a `<name>.code-workspace` file for Luau. Each place is typed against its own code, and each roblox-ts place has a `tsconfig.json` that works with TypeScript 6 and later. Existing projects keep their layout.
 - The sample Baseplate and lighting are in the config's `tree`, so `rogen init` no longer writes a `place` folder. With `Workspace` inline, `rogen syncback` leaves out new Workspace instances, as Rojo does; mount a folder, as `"Workspace": { "$path": "map/Workspace" }`, to keep them.
-- `rogen check` and `rogen where` on a file in shared code find every place that holds it.
+- `rogen init --places` names the first place `lobby`, with `Welcome` as its own sample feature.
 
 ## [2.0.0-rc.1] - 2026-11-22
 

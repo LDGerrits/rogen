@@ -165,65 +165,13 @@ describe("CoreConfigService selectCovering", () => {
 	it("should leave out a path that no config covers, by its position", async () => {
 		const covered = (
 			await service.selectCovering([
-				onDisk("/repo/places/shared/A.luau"),
+				onDisk("/repo/places/shared/src/A.luau"),
 				onDisk("/repo/places/lobby/src/B.luau"),
 			])
 		).unwrap();
 
 		expect(covered.uncovered).toEqual([0]);
 		expect(covered.groups).toHaveLength(1);
-	});
-
-	it("should cover shared code by every place whose source paths hold it", async () => {
-		const covered = (
-			await service.selectCovering([
-				onDisk("/repo/places/shared/src/A.luau"),
-			])
-		).unwrap();
-
-		expect(covered.uncovered).toEqual([]);
-		expect(
-			covered.groups.map(({ selection }) => selection.entries[0].file)
-		).toEqual([
-			"/repo/places/arena/default.rogen.json",
-			"/repo/places/lobby/default.rogen.json",
-		]);
-	});
-
-	it("should cover the folder of shared code by the places that hold it", async () => {
-		expect(
-			await service.coversOf(onDisk("/repo/places/shared/src"))
-		).toEqual([
-			{ file: "/repo/places/arena/default.rogen.json", whole: false },
-			{ file: "/repo/places/lobby/default.rogen.json", whole: false },
-		]);
-	});
-
-	it("should leave out a place whose source paths do not hold the shared file", async () => {
-		await fs.createDirectory("/repo/places/tools/src");
-		await write("/repo/places/tools/default.rogen.json", {
-			name: "tools",
-			routes: ROUTES,
-		});
-
-		expect(
-			(
-				await service.coversOf(onDisk("/repo/places/shared/src/A.luau"))
-			).map(({ file }) => file)
-		).not.toContain("/repo/places/tools/default.rogen.json");
-	});
-
-	it("should let a default config above the shared code win", async () => {
-		await write("/repo/places/shared/default.rogen.json", {
-			name: "shared",
-			routes: ROUTES,
-		});
-
-		expect(
-			await service.coversOf(onDisk("/repo/places/shared/src/A.luau"))
-		).toEqual([
-			{ file: "/repo/places/shared/default.rogen.json", whole: false },
-		]);
 	});
 
 	it("should name the places that read shared code through their source paths", async () => {

@@ -9,11 +9,11 @@ const PLACES_VARIANT = "-places";
 
 export const TEMPLATE_SOURCE_PATHS = {
 	one: "src",
-	place: "src/game",
+	place: "src/lobby",
 } as const;
 
 const FEATURE = "Greeter";
-const PLACE_FEATURE = "Main";
+const PLACE_FEATURE = "Welcome";
 const README = "README.md";
 
 export class GreeterSample {
@@ -44,11 +44,7 @@ export class GreeterSample {
 		);
 	}
 
-	readme(
-		sourcePath: string,
-		serve: string,
-		place?: { readonly name: string; readonly target: string }
-	): PlannedFile {
+	readme(sourcePath: string, serve: string, place?: string): PlannedFile {
 		const content = templateFiles(
 			place ? this.placesVariant : this.variant
 		);
@@ -58,7 +54,7 @@ export class GreeterSample {
 				name: this.name,
 				source: sourcePath,
 				serve,
-				...(place && { place: place.name, target: place.target }),
+				...(place && { place }),
 			}),
 		};
 	}

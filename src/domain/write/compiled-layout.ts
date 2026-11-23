@@ -140,17 +140,6 @@ export class CompiledLayout {
 		return { optional: this.compiledFolderOf(dir) };
 	}
 
-	compilerProject(projectFile: RojoProjectFile): RojoProjectFile {
-		const { compiledPath } = this;
-		return new RojoProject(projectFile).withoutPaths((target) => {
-			const mounted = path.resolve(this.projectDir, target);
-			return (
-				contains(this.commonRoot, mounted) &&
-				!contains(compiledPath!, mounted)
-			);
-		});
-	}
-
 	placeholdersOf(
 		projectFile: RojoProjectFile,
 		isSourceFolder: (source: string) => boolean

@@ -1,10 +1,5 @@
 import path from "path";
-import {
-	isInside,
-	samePath,
-	selfAndAncestors,
-	toPosix,
-} from "../../base/path.js";
+import { isInside, samePath, selfAndAncestors } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { IoError, ProjectError, UsageError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
@@ -29,9 +24,6 @@ import {
 	isConfigFileName,
 	isDefaultConfigFileName,
 	isProjectFileConfig,
-	PLACES_FOLDER,
-	compilerOwnerStem,
-	isCompilerFileName,
 	isSyncbackFileName,
 	projectStem,
 } from "./config.js";
@@ -61,8 +53,6 @@ const keepOne = (directory: string, names: readonly string[]): ProjectError =>
 		`${directory} holds both ${names.join(" and ")}.`,
 		"Keep one of them: both write the same project file."
 	);
-
-const PROJECT_ROOT_MARKERS = [".git", "rokit.toml"];
 
 const isBareName = (ref: string): boolean =>
 	ref !== "" && ref !== "." && ref !== ".." && ref === path.basename(ref);
@@ -277,8 +267,6 @@ export class ConfigDiscovery {
 	): Promise<Result<string | undefined, Error>> {
 		const config = await this.configBeside(folder, name);
 		if (config.isErr() || config.value) return config;
-		if (await this.writesCompilerFile(folder, projectFileName(name)))
-			return ok(undefined);
 		for (const suffix of ["", "c"]) {
 			const file = path.join(folder, `${projectFileName(name)}${suffix}`);
 			if (await this.fileSystemService.isFile(file)) return ok(file);
@@ -313,32 +301,20 @@ export class ConfigDiscovery {
 					)
 					.join("\n")
 			);
-		const files = (await this.list(directory)).map((file) =>
+		const others = (await this.list(directory)).map((file) =>
 			path.basename(file)
 		);
-		const places = await this.places(directory);
-		const others = [...files, ...places];
 		const where = named === undefined ? "this folder" : `"${named}"`;
 		const holds =
 			others.length > 0 ? ` It holds ${others.join(", ")}.` : "";
 		return new ProjectError(
 			`No ${DEFAULT_CONFIG_FILE} or ${DEFAULT_PROJECT}.project.json in ${where} (${directory}).${holds}`,
 			others.length > 0
-				? named === undefined && files.length > 0
+				? named === undefined
 					? "Name one of them, or run 'rogen write' to write them all."
 					: "Name one of them."
 				: "Run 'rogen init' to create one."
 		);
-	}
-
-	private async places(directory: string): Promise<string[]> {
-		const places: string[] = [];
-		for (const place of await this.subfolders(
-			path.join(directory, PLACES_FOLDER)
-		))
-			if ((await this.defaultConfigs(place)).length > 0)
-				places.push(toPosix(path.relative(directory, place)));
-		return places.sort();
 	}
 
 	async defaultConfigs(directory: string): Promise<string[]> {
@@ -366,27 +342,16 @@ export class ConfigDiscovery {
 		const written = new Set(
 			(await this.list(directory)).map((file) => configStem(file))
 		);
-		const plain: string[] = [];
-		for (const [name, type] of listing.value)
-			if (
-				isFileType(type) &&
-				isProjectFileName(name) &&
-				!isSyncbackFileName(name) &&
-				!written.has(projectStem(name)) &&
-				!(await this.writesCompilerFile(directory, name))
+		return listing.value
+			.filter(
+				([name, type]) =>
+					isFileType(type) &&
+					isProjectFileName(name) &&
+					!isSyncbackFileName(name) &&
+					!written.has(projectStem(name))
 			)
-				plain.push(path.join(directory, name));
-		return plain.sort();
-	}
-
-	private async writesCompilerFile(
-		folder: string,
-		fileName: string
-	): Promise<boolean> {
-		if (!isCompilerFileName(fileName)) return false;
-		const stem = compilerOwnerStem(fileName);
-		const owner = await this.configBeside(folder, stem);
-		return owner.isErr() || owner.value !== undefined;
+			.map(([name]) => path.join(directory, name))
+			.sort();
 	}
 
 	async adoptable(directory: string): Promise<string | undefined> {
@@ -474,7 +439,7 @@ export class ConfigDiscovery {
 		return undefined;
 	}
 
-	async namedConfigsAbove(target: string, stop: string): Promise<string[]> {
+	async namedConfigsAbove(target: string): Promise<string[]> {
 		const found: string[] = [];
 		for (const directory of await this.foldersUp(target))
 			found.push(
@@ -482,50 +447,38 @@ export class ConfigDiscovery {
 					(file) => !isDefaultConfigFileName(path.basename(file))
 				)
 			);
-		for (const directory of await this.foldersWithin(target, stop))
-			for (const child of await this.subfolders(directory))
-				found.push(...(await this.defaultConfigs(child)));
 		return found;
 	}
 
 	async configsBeside(target: string, stop: string): Promise<string[]> {
-		const found: string[] = [];
-		for (const directory of await this.foldersWithin(target, stop))
-			for (const child of await this.subfolders(directory))
-				if (!samePath(child, target) && !isInside(target, child))
-					found.push(...(await this.list(child)));
-		return found;
-	}
-
-	private async foldersWithin(
-		target: string,
-		stop: string
-	): Promise<string[]> {
 		const folders = await this.foldersUp(target);
-		for (const [index, folder] of folders.entries())
-			for (const marker of PROJECT_ROOT_MARKERS)
-				if (
-					await this.fileSystemService.exists(
-						path.join(folder, marker)
-					)
-				)
-					return folders.slice(0, index + 1);
 		const stopAt = folders.findIndex((folder) => samePath(folder, stop));
-		return stopAt < 0 ? folders : folders.slice(0, stopAt + 1);
-	}
-
-	private async subfolders(directory: string): Promise<string[]> {
-		const listing = await tryWithAsync(() =>
-			this.fileSystemService.readDirectory(directory)
-		);
-		return (listing.isOk() ? listing.value : [])
-			.filter(
-				([name, type]) =>
+		let last = stopAt < 0 ? folders.length - 1 : stopAt;
+		for (const [index, folder] of folders.entries())
+			if (
+				await this.fileSystemService.exists(path.join(folder, ".git"))
+			) {
+				last = Math.max(last, index);
+				break;
+			}
+		const found: string[] = [];
+		for (const directory of folders.slice(0, last + 1)) {
+			const listing = await tryWithAsync(() =>
+				this.fileSystemService.readDirectory(directory)
+			);
+			for (const [name, type] of listing.isOk() ? listing.value : []) {
+				const child = path.join(directory, name);
+				if (
 					isDirectoryType(type) &&
 					!name.startsWith(".") &&
-					name !== "node_modules"
-			)
-			.map(([name]) => path.join(directory, name));
+					name !== "node_modules" &&
+					!samePath(child, target) &&
+					!isInside(target, child)
+				)
+					found.push(...(await this.list(child)));
+			}
+		}
+		return found;
 	}
 
 	private async foldersUp(target: string): Promise<string[]> {

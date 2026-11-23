@@ -3,29 +3,16 @@ title: Multi-Place Games
 description: Set up Rogen for a game with more than one place
 ---
 
-Each place is a folder under `projects`, with its own code, its own config and its own project file, and the code every place shares is `projects/common/src`, which each place lists in its `sourcePaths`. Where a place and the shared folder have a file at the same path, the place's file wins.
+Each place has a config of its own, and shared code is a plain folder that every place lists in its `sourcePaths`. Where a place and the shared folder have a file at the same path, the place's file wins.
 
 ## Start a Multi-Place Game
 
-In an empty folder, `rogen init --places` writes a first place, `game`, and the Greeter sample in `projects/common/src`, plus a workspace file named for the project:
+In an empty folder, `rogen init --places` writes a first place, `lobby`, with its code in `src/lobby` and shared code in `src/common`:
 
-```text
-projects/
-  common/
-    src/Greeter/
-  game/
-    src/Main/Server/Main.server.luau
-    default.rogen.json
-    default.project.json
-my-game.code-workspace
-```
-
-The place's config lists the shared folder before its own, and its `tree` holds Rojo's sample Baseplate and lighting, left out here:
-
-```json title="projects/game/default.rogen.json"
+```json title="lobby.rogen.json"
 {
-	"name": "game",
-	"sourcePaths": ["../common/src", "src"],
+	"name": "lobby",
+	"sourcePaths": ["src/common", "src/lobby"],
 	"routes": {
 		"Server": "ServerScriptService",
 		"Client": "StarterPlayer/StarterPlayerScripts",
@@ -36,90 +23,45 @@ The place's config lists the shared folder before its own, and its `tree` holds 
 }
 ```
 
-Name the place in each command. To serve two places at once, give the second its own `--port`:
+There is no `default.rogen.json`, so name the place in each command. To serve two places at once, give the second its own `--port`:
 
 ```bash
-rogen serve projects/game
-rogen serve projects/lobby --port 34873
-rogen build projects/game -o game.rbxl
+rogen serve lobby
+rogen build lobby -o lobby.rbxl
 ```
-
-`rogen check` and `rogen where` on a file in `projects/common` find every place that holds it.
-
-## The Editor
-
-Open `my-game.code-workspace` in VS Code instead of the folder. luau-lsp reads one sourcemap for each workspace folder, so the workspace lists `projects/common` and each place, and every place's files are typed against that place alone. A file in `projects/game` that requires a module both places have then gets the game's version of it, where a sourcemap at the root would give it the type of whichever place made the sourcemap.
-
-Each folder runs `rogen sourcemap --watch -o sourcemap.json` to keep its sourcemap current. `projects/common` has no project file of its own, so its `.vscode/settings.json` makes it read the first place's sourcemap, and the shared code is typed as part of that place. This works because Rogen writes sourcemap paths relative to the project file's folder, and `../common/src` names the same files from either folder:
-
-```json title="projects/common/.vscode/settings.json"
-{
-	"luau-lsp.sourcemap.generatorCommand": "rogen sourcemap ../game --watch -o sourcemap.json"
-}
-```
-
-The workspace file also sets `stylua.searchParentDirectories`, so StyLua finds a `stylua.toml` at the root from every folder, if you add one. For Selene, see [Linting](/docs/v2/linting#selene-with-places).
 
 ## Add a Place
 
-Copy the first place's folder, then set `"name"` in the copy's `default.rogen.json` to `lobby` and add the folder to the workspace file:
+Copy the first config, then set its `"name"` to `"match"` and point `sourcePaths` at `src/match`. The copy carries the sample map in its tree:
 
 ```bash
-cp -r projects/game projects/lobby
+cp lobby.rogen.json match.rogen.json
+mkdir src/match
 ```
-
-```json title="my-game.code-workspace"
-{
-	"folders": [
-		{ "path": "projects/common" },
-		{ "path": "projects/game" },
-		{ "path": "projects/lobby" }
-	]
-}
-```
-
-Run `rogen write projects/lobby` to write the copy's project file.
 
 ## Places in roblox-ts
 
-With `--language roblox-ts`, the layout is the same, with lowercase route folders and a few more files for the compiler:
+With `--language roblox-ts`, each place also gets a tsconfig that compiles the shared code and the place's own code into the place's `compiledPath`:
 
-```text
-projects/
-  common/src/Greeter/
-  game/
-    src/Main/server/Main.server.ts
-    tsconfig.json
-    default.rogen.json
-    default.project.json
-    compiler.project.json
-tsconfig.json
-tsconfig.game.json
-```
-
-Each place has a `tsconfig.json` of its own, which compiles the shared code and the place's code into `out/game`. TypeScript 6 and later need a `rootDir` that holds every folder they compile, and the compiler refuses a folder mounted inside the `rootDir` that isn't compiled output. A place's `rootDir` is `projects`, which holds the places' folders, so the place's config names a `compiler.project.json` for the compiler and keeps the full project file for Rojo:
-
-```json title="projects/game/tsconfig.json"
+```json title="tsconfig.lobby.json"
 {
-	"extends": "../../tsconfig.json",
+	"extends": "./tsconfig.json",
 	"compilerOptions": {
-		"rootDir": "..",
-		"outDir": "../../out/game",
-		"tsBuildInfoFile": "../../out/game/tsconfig.tsbuildinfo",
-		"typeRoots": ["node_modules/@rbxts", "../../node_modules/@rbxts"]
+		"rootDir": "src",
+		"rootDirs": ["src/common", "src/lobby"],
+		"outDir": "out/lobby",
+		"composite": true
 	},
-	"include": ["src", "../common/src"],
-	"rbxts": { "rojo": "compiler.project.json", "includePath": "../../include" }
+	"include": ["src/common", "src/lobby"],
+	"rbxts": { "rojo": "lobby.project.json" }
 }
 ```
 
-Rogen writes `compiler.project.json` when you run `rogen write`. It is the project file without the mounts inside `projects` that aren't compiled output, such as a place's map folder, which the compiler would reject. Rojo never reads it. The TypeScript server checks each file against the `tsconfig.json` of the place folder it is in, and checks `projects/common` as part of each place.
+Keep `rootDir` at `src`, the folder that holds both source paths, so the compiled files keep the folders they have in `src`; TypeScript 6 and later also refuse to compile without it. The root `tsconfig.json` holds the options every place shares and lists each place under `references`, so the editor checks a file against its own place.
 
-The `tsconfig.game.json` at the root extends the place's config and names the compiler project file from there, because the compiler writes output only inside the folder of the tsconfig it is given and looks for `rbxts.rojo` from the folder it runs in. The `build` and `watch` scripts compile through it with `rbxtsc -p tsconfig.game.json`. The root `tsconfig.json` holds the options every place shares and a reference to each place.
+To add a place, after copying the config as above:
 
-To add a place, copy the folder as above, then:
-
-1. In the copy, change `game` to `lobby` in the `outDir` and `tsBuildInfoFile` of its `tsconfig.json` and in the `compiledPath` of its `default.rogen.json`.
-2. Copy `tsconfig.game.json` to `tsconfig.lobby.json` and change `game` in it to `lobby`.
-3. Add `{ "path": "./projects/lobby" }` to the `references` in `tsconfig.json`.
-4. Add ` && rbxtsc -p tsconfig.lobby.json` to the `build` script in `package.json`. `rbxtsc -w` runs until you stop it, so watch the new place from a terminal of its own with `npx rbxtsc -w -p tsconfig.lobby.json`.
+1. Set `"compiledPath"` in `match.rogen.json` to `out/match`.
+2. Copy `tsconfig.lobby.json` to `tsconfig.match.json` and change each `lobby` in it to `match`.
+3. Add `{ "path": "./tsconfig.match.json" }` to the `references` in `tsconfig.json`.
+4. Add ` && rbxtsc -p tsconfig.match.json` to the `build` script in `package.json`. `rbxtsc -w` runs until you stop it, so watch the new place from a terminal of its own with `npx rbxtsc -w -p tsconfig.match.json`.

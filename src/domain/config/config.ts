@@ -64,8 +64,6 @@ export const isSyncbackFileName = (name: string): boolean =>
 
 export const DEFAULT_SOURCE_PATH = "src";
 
-export const PLACES_FOLDER = "projects";
-
 export const DEFAULT_PROJECT_FILE = projectFileName(DEFAULT_PROJECT);
 
 export const isProjectFileConfig = (file: string): boolean =>
@@ -78,31 +76,6 @@ export const projectFileOf = (configFile: string): string =>
 				path.dirname(configFile),
 				projectFileName(configStem(configFile)!)
 			);
-
-const COMPILER_STEM = "compiler";
-
-export const compilerFileOf = (configFile: string): string => {
-	const stem = configStem(configFile)!;
-	return path.join(
-		path.dirname(configFile),
-		projectFileName(
-			stem === DEFAULT_PROJECT
-				? COMPILER_STEM
-				: `${stem}.${COMPILER_STEM}`
-		)
-	);
-};
-
-export const compilerOwnerStem = (fileName: string): string => {
-	const stem = projectStem(fileName);
-	return stem === COMPILER_STEM
-		? DEFAULT_PROJECT
-		: stem.slice(0, -`.${COMPILER_STEM}`.length);
-};
-
-export const isCompilerFileName = (name: string): boolean =>
-	projectStem(name) === COMPILER_STEM ||
-	projectStem(name).endsWith(`.${COMPILER_STEM}`);
 
 export const ROGEN_KEYS: readonly (keyof RogenKeys)[] = [
 	"sourcePaths",

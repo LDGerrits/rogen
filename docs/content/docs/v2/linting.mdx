@@ -49,10 +49,6 @@ Rogen doesn't check your requires. Because every path names its side and its fea
 
 Each crossed boundary is an error, such as `feature Inventory requires feature Shop: ServerScriptService.Shop.ShopService`, and `lute lint` exits 1, so a CI job that runs it fails.
 
-## Selene With Places
-
-In a [multi-place](/docs/v2/multi-place) game, Selene reads only the `selene.toml` in the editor folder it runs in, and without one it reads Luau as Lua 5.1. Put a `selene.toml` in `projects/common` and in each place's folder. StyLua needs no copies, because the workspace file sets `stylua.searchParentDirectories` and so finds a `stylua.toml` at the root, if you add one.
-
 ## roblox-ts
 
 An import names a file, so ESLint's [`import/no-restricted-paths`](https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-restricted-paths.md) does the same job: give each feature a zone, and each side a zone that keeps out the other side's folders.

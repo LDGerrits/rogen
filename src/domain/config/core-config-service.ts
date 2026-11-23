@@ -304,11 +304,12 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	async readersOf(target: string): Promise<string[]> {
+		const folder = (await this.fileSystemService.isDirectory(target))
+			? target
+			: path.dirname(target);
+		const stop = commonAncestor([folder, this.environmentService.cwd]);
 		const readers: string[] = [];
-		for (const file of await this.discovery.configsBeside(
-			target,
-			await this.searchStop(target)
-		)) {
+		for (const file of await this.discovery.configsBeside(target, stop)) {
 			const sourcePaths = validFile(await this.read(file))?.config
 				.sourcePaths;
 			if (sourcePaths && (await this.covers(sourcePaths, target)))
@@ -317,19 +318,9 @@ export class CoreConfigService implements ConfigService {
 		return readers;
 	}
 
-	private async searchStop(target: string): Promise<string> {
-		const folder = (await this.fileSystemService.isDirectory(target))
-			? target
-			: path.dirname(target);
-		return commonAncestor([folder, this.environmentService.cwd]);
-	}
-
 	private async namedCovers(target: string): Promise<ConfigCover[]> {
 		const covers: ConfigCover[] = [];
-		for (const file of await this.discovery.namedConfigsAbove(
-			target,
-			await this.searchStop(target)
-		)) {
+		for (const file of await this.discovery.namedConfigsAbove(target)) {
 			const entry = await this.read(file);
 			const sourcePaths =
 				entry.status === "valid"

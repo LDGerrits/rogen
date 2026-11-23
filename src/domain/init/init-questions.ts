@@ -13,7 +13,6 @@ import {
 } from "./init-service.js";
 import { ReviewPrompts } from "./review-prompts.js";
 import { COMMON_FOLDER } from "./starter-places.js";
-import { PLACES_FOLDER } from "../config/config.js";
 import { TreeChoice } from "./tree-plan.js";
 
 function oneOf<T extends string>(
@@ -164,8 +163,6 @@ export class InitQuestions {
 		if (given !== undefined) return given;
 		if (!this.interactive)
 			return this.decide("places", false, booleanFlag("--places", true));
-		const layout = `${PLACES_FOLDER}/${COMMON_FOLDER}`;
-		const first = `${PLACES_FOLDER}/game`;
 		const answer = await this.ask(
 			"places",
 			this.placesEssential(directory),
@@ -182,7 +179,7 @@ export class InitQuestions {
 						{
 							value: "several",
 							label: "Several places",
-							hint: `${layout} holds the shared code, ${first} the first place${unplaced.several ? `; leaves ${unplaced.several} unplaced` : ""}`,
+							hint: `src/${COMMON_FOLDER} holds the shared code, src/lobby the first place${unplaced.several ? `; leaves ${unplaced.several} unplaced` : ""}`,
 						},
 					],
 					initialValue: "one",

@@ -19,6 +19,16 @@ describe("AskedPaths", () => {
 		);
 	};
 
+	const place = (name: string) =>
+		fs.writeFile(
+			`/repo/places/${name}/default.rogen.json`,
+			JSON.stringify({
+				name,
+				sourcePaths: ["../shared/src", "src"],
+				routes: { "*": "ReplicatedStorage" },
+			})
+		);
+
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo/.git");
@@ -37,14 +47,7 @@ describe("AskedPaths", () => {
 	});
 
 	it("should name the configs that read a path no config lies above", async () => {
-		await fs.writeFile(
-			"/repo/places/lobby/lobby.rogen.json",
-			JSON.stringify({
-				name: "lobby",
-				sourcePaths: ["../shared/src", "src"],
-				routes: { "*": "ReplicatedStorage" },
-			})
-		);
+		await place("lobby");
 		const file = path.resolve("/repo/places/shared/src/A.luau");
 
 		const asked = (await ask("/repo", file)).unwrap();
@@ -53,7 +56,7 @@ describe("AskedPaths", () => {
 			{
 				path: file,
 				reason: "noConfig",
-				readers: ["/repo/places/lobby/lobby.rogen.json"],
+				readers: ["/repo/places/lobby/default.rogen.json"],
 			},
 		]);
 	});
@@ -90,23 +93,6 @@ describe("skippedNotes", () => {
 			])
 		).toEqual([
 			"note: shared/A.luau: no config at or above it reads it, but another config lists it in its source paths. Check it through that config: 'rogen check lobby/default.rogen.json'.",
-		]);
-	});
-
-	it("should offer each of the configs that read a path", async () => {
-		expect(
-			await notesOf([
-				{
-					path: "/repo/shared/A.luau",
-					reason: "noConfig",
-					readers: [
-						"/repo/lobby.rogen.json",
-						"/repo/game.rogen.json",
-					],
-				},
-			])
-		).toEqual([
-			"note: shared/A.luau: no config at or above it reads it, but other configs list it in their source paths. Check it through one: 'rogen check lobby.rogen.json' or 'rogen check game.rogen.json'.",
 		]);
 	});
 

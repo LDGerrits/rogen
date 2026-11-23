@@ -114,24 +114,15 @@ abstract class AbstractConfigOutcome {
 	}
 }
 
-export interface OutputChange {
-	readonly file: string;
-	readonly change: "wrote" | "unchanged" | "removed";
-}
-
 export class WrittenConfig extends AbstractConfigOutcome {
-	readonly outputs: readonly OutputChange[];
-
 	constructor(
 		config: ResolvedConfig,
 		readonly kind: "wrote" | "unchanged",
 		findings: WriteFindings,
 		readonly summary: WriteSummary,
-		readonly readFiles: readonly string[],
-		outputs?: readonly OutputChange[]
+		readonly readFiles: readonly string[]
 	) {
 		super(config, findings);
-		this.outputs = outputs ?? [{ file: config.projectFile, change: kind }];
 	}
 }
 

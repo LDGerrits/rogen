@@ -206,43 +206,6 @@ describe("OutputWriter", () => {
 			]);
 		});
 
-		describe("remove", () => {
-			it("should delete an existing file and say so", async () => {
-				await write(treeOf());
-
-				const removed = await writer.remove(
-					new OutputFile(projectFile)
-				);
-
-				expect(removed.isOk() && removed.value).toBe(true);
-				expect(await fs.exists(projectFile)).toBe(false);
-			});
-
-			it("should say false for a file that is not there", async () => {
-				const removed = await writer.remove(
-					new OutputFile(projectFile)
-				);
-
-				expect(removed.isOk() && removed.value).toBe(false);
-			});
-
-			it("should return a diagnostic when it cannot delete", async () => {
-				await write(treeOf());
-				jest.spyOn(fs, "delete").mockRejectedValue(new Error("busy"));
-
-				const removed = await writer.remove(
-					new OutputFile(projectFile)
-				);
-
-				expect(
-					removed.isErr() ? removed.error.diagnostics[0] : undefined
-				).toMatchObject({
-					code: "output.writeFailed",
-					resource: projectFile,
-				});
-			});
-		});
-
 		describe("placeholders", () => {
 			const folder = path.resolve("/repo", "out/Coins/shared");
 			const script = path.resolve("/repo", "out/Shop/Save.server.luau");

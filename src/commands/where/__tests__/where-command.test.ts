@@ -472,13 +472,7 @@ describe("where command", () => {
 					sourcePaths: ["../shared/src", "src"],
 					routes: ROUTES,
 				});
-			await writeConfig("places/extra/extra.rogen.json", {
-				name: "extra",
-				sourcePaths: ["../shared/other"],
-				routes: ROUTES,
-			});
 			await write(
-				"places/shared/other/Stray.luau",
 				"places/shared/src/Common/Util.luau",
 				"places/lobby/src/Server/Only.luau",
 				"places/arena/src/Server/Main.luau"
@@ -513,14 +507,14 @@ describe("where command", () => {
 
 		it("should skip a file that no config covers with a note, and succeed", async () => {
 			const result = await run({
-				_: ["places/shared/other/Stray.luau"],
+				_: ["places/shared/src/Common/Util.luau"],
 			});
 
 			expect(result.isOk()).toBe(true);
 			expect(printed()).toEqual([]);
 			expect(logService.texts("warn")).toEqual([]);
 			expect(logService.texts("notice")).toEqual([
-				"note: places/shared/other/Stray.luau: no config at or above it reads it, but another config lists it in its source paths. See where it lands through that config: 'rogen where places/extra/extra.rogen.json'.",
+				"note: places/shared/src/Common/Util.luau: no config at or above it reads it, but other configs list it in their source paths. See where it lands through one: 'rogen where places/arena/default.rogen.json' or 'rogen where places/lobby/default.rogen.json'.",
 			]);
 		});
 
@@ -541,14 +535,14 @@ describe("where command", () => {
 
 		it("should list a file that no config covers under skipped in the JSON document", async () => {
 			await run({
-				_: ["places/shared/other/Stray.luau"],
+				_: ["places/shared/src/Common/Util.luau"],
 				json: true,
 			});
 
 			expect(JSON.parse(printed().join("\n"))).toMatchObject({
 				skipped: [
 					{
-						path: "/repo/places/shared/other/Stray.luau",
+						path: "/repo/places/shared/src/Common/Util.luau",
 						reason: "noConfig",
 					},
 				],
@@ -558,7 +552,7 @@ describe("where command", () => {
 		it("should answer the files it can and skip the one it can't", async () => {
 			const result = await run({
 				_: [
-					"places/shared/other/Stray.luau",
+					"places/shared/src/Common/Util.luau",
 					"places/lobby/src/Server/Only.luau",
 				],
 			});

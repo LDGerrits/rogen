@@ -387,13 +387,7 @@ describe("check command", () => {
 					sourcePaths: ["../shared/src", "src"],
 					routes: ROUTES,
 				});
-			await writeConfig("places/extra/extra.rogen.json", {
-				name: "extra",
-				sourcePaths: ["../shared/other"],
-				routes: ROUTES,
-			});
 			await write(
-				"places/shared/other/Stray.client.luau",
 				"places/shared/src/Stray.client.luau",
 				"places/lobby/src/Buy.client.luau",
 				"places/lobby/src/Clean.luau",
@@ -427,13 +421,13 @@ describe("check command", () => {
 
 		it("should skip a file that no config covers with a note, and pass", async () => {
 			const result = await run({
-				_: ["places/shared/other/Stray.client.luau"],
+				_: ["places/shared/src/Stray.client.luau"],
 			});
 
 			expect(result.isOk()).toBe(true);
 			expect(logService.texts("warn")).toEqual([]);
 			expect(logService.texts("notice")).toEqual([
-				"note: places/shared/other/Stray.client.luau: no config at or above it reads it, but another config lists it in its source paths. Check it through that config: 'rogen check places/extra/extra.rogen.json'.",
+				"note: places/shared/src/Stray.client.luau: no config at or above it reads it, but other configs list it in their source paths. Check it through one: 'rogen check places/arena/default.rogen.json' or 'rogen check places/lobby/default.rogen.json'.",
 			]);
 		});
 
@@ -458,7 +452,7 @@ describe("check command", () => {
 
 		it("should list a file that no config covers under skipped in the JSON document", async () => {
 			await run({
-				_: ["places/shared/other/Stray.client.luau"],
+				_: ["places/shared/src/Stray.client.luau"],
 				json: true,
 			});
 
@@ -466,9 +460,12 @@ describe("check command", () => {
 				diagnostics: [],
 				skipped: [
 					{
-						path: "/repo/places/shared/other/Stray.client.luau",
+						path: "/repo/places/shared/src/Stray.client.luau",
 						reason: "noConfig",
-						readers: ["places/extra/extra.rogen.json"],
+						readers: [
+							"places/arena/default.rogen.json",
+							"places/lobby/default.rogen.json",
+						],
 					},
 				],
 			});
@@ -477,7 +474,7 @@ describe("check command", () => {
 		it("should check the files that have a config and skip the rest", async () => {
 			const result = await run({
 				_: [
-					"places/shared/other/Stray.client.luau",
+					"places/shared/src/Stray.client.luau",
 					"places/lobby/src/Buy.client.luau",
 				],
 			});
@@ -491,8 +488,8 @@ describe("check command", () => {
 		it("should skip no file that a config named beside it reads", async () => {
 			await run({
 				_: [
-					"places/extra/extra.rogen.json",
-					"places/shared/other/Stray.client.luau",
+					"places/lobby/default.rogen.json",
+					"places/shared/src/Stray.client.luau",
 				],
 				json: true,
 			});
@@ -576,7 +573,7 @@ describe("check command", () => {
 
 		it("should report a skipped file on stderr and still print the JSON document", async () => {
 			const result = await run({
-				_: ["places/shared/other/Stray.client.luau"],
+				_: ["places/shared/src/Stray.client.luau"],
 				json: true,
 			});
 

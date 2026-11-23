@@ -18,7 +18,6 @@ import {
 	CheckedConfig,
 	FailedConfig,
 	LoadedConfig,
-	OutputChange,
 	OutputFile,
 	SyncWarnings,
 	UnwrittenConfig,
@@ -380,31 +379,17 @@ export class CoreWriteService implements WriteService {
 		attempt: PreparedConfig,
 		reader?: FileSystemService
 	): Promise<PreparedConfig> {
-		const { config, compilerProject } = attempt;
-		const stale = await this.inScope(reader, async (scope) => {
-			const staleness = scope.createInstance(ProjectFileStaleness);
-			return [
-				await staleness.diagnostic(
-					config,
-					async () => attempt.projectFile
-				),
-				...(config.compilerFile === undefined
-					? [await staleness.leftover(config)]
-					: [
-							await staleness.diagnostic(
-								config,
-								async () => compilerProject,
-								config.compilerFile
-							),
-						]),
-			].filter((found) => found !== undefined);
-		});
-		if (stale.length === 0) return attempt;
+		const stale = await this.inScope(reader, (scope) =>
+			scope
+				.createInstance(ProjectFileStaleness)
+				.diagnostic(attempt.config, async () => attempt.projectFile)
+		);
+		if (!stale) return attempt;
 		return {
 			...attempt,
 			findings: {
 				...attempt.findings,
-				warnings: [...attempt.findings.warnings, ...stale],
+				warnings: [...attempt.findings.warnings, stale],
 			},
 		};
 	}
@@ -419,14 +404,19 @@ export class CoreWriteService implements WriteService {
 		const outcomes: LoadedConfig[] = [];
 		let failed: string | undefined;
 		for (const attempt of prepared) {
-			const { config, findings, summary, readFiles } = attempt;
+			const { config, projectFile, findings, summary, readFiles } =
+				attempt;
 			if (failed) {
 				outcomes.push(CoreWriteService.unwritten(attempt, [failed]));
 				continue;
 			}
 			const written = config.isAdopted
-				? ok([])
-				: await this.writeOutputs(attempt, force);
+				? ok(false)
+				: await this.writer.write(
+						new OutputFile(config.projectFile),
+						projectFile,
+						{ force, placeholders: attempt.placeholders }
+					);
 			if (written.isErr() && stopOnFailure) failed = config.file;
 			outcomes.push(
 				written.isErr()
@@ -437,59 +427,14 @@ export class CoreWriteService implements WriteService {
 						)
 					: new WrittenConfig(
 							config,
-							written.value.some(
-								({ change }) => change !== "unchanged"
-							)
-								? "wrote"
-								: "unchanged",
+							written.value ? "wrote" : "unchanged",
 							findings,
 							summary,
-							readFiles,
-							written.value.length > 0 ? written.value : undefined
+							readFiles
 						)
 			);
 		}
 		return outcomes;
-	}
-
-	private async writeOutputs(
-		{ config, projectFile, compilerProject, placeholders }: PreparedConfig,
-		force: boolean | undefined
-	): Promise<Result<OutputChange[], DiagnosticsError>> {
-		const written = await this.writer.write(
-			new OutputFile(config.projectFile),
-			projectFile,
-			{ force, placeholders }
-		);
-		if (written.isErr()) return err(written.error);
-		const outputs: OutputChange[] = [
-			{
-				file: config.projectFile,
-				change: written.value ? "wrote" : "unchanged",
-			},
-		];
-		if (config.compilerFile !== undefined) {
-			const compiler = await this.writer.write(
-				new OutputFile(config.compilerFile),
-				compilerProject!,
-				{ force }
-			);
-			if (compiler.isErr()) return err(compiler.error);
-			outputs.push({
-				file: config.compilerFile,
-				change: compiler.value ? "wrote" : "unchanged",
-			});
-		} else {
-			const leftover = config.leftoverCompilerFile!;
-			const removed = await this.writer.remove(new OutputFile(leftover));
-			if (removed.isErr()) return err(removed.error);
-			if (removed.value)
-				outputs.push({
-					file: leftover,
-					change: "removed",
-				});
-		}
-		return ok(outputs);
 	}
 
 	private compiledPathWarnings(
@@ -559,8 +504,7 @@ export class CoreWriteService implements WriteService {
 					kind ?? outcome.kind,
 					findings,
 					summary,
-					readFiles,
-					kind === undefined ? outcome.outputs : undefined
+					readFiles
 				);
 		}
 	}

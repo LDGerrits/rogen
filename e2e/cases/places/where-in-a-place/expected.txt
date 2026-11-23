@@ -1,8 +1,7 @@
 $ rogen where ../shared/src/Common/Util.luau
 exit 0
-stdout:
-  ../shared/src/Common/Util.luau -> ReplicatedStorage/Shared/Common/Util · route * (fallback)
-    require(game:GetService("ReplicatedStorage").Shared.Common.Util)
+stderr:
+  note: ../shared/src/Common/Util.luau: no config at or above it reads it, but other configs list it in their source paths. See where it lands through one: 'rogen where default.rogen.json' or 'rogen where ../lobby/default.rogen.json'.
 
 $ rogen where src/Main.server.luau
 exit 0

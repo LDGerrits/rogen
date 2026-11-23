@@ -22,7 +22,6 @@ import { InstantiationService } from "../../platform/instantiation/instantiation
 export interface PreparedConfig {
 	readonly config: ResolvedConfig;
 	readonly projectFile: RojoProjectFile;
-	readonly compilerProject: RojoProjectFile | undefined;
 	readonly findings: WriteFindings;
 	readonly summary: WriteSummary;
 	readonly readFiles: readonly string[];
@@ -103,10 +102,6 @@ export class WritePipeline {
 		return ok({
 			config,
 			projectFile,
-			compilerProject:
-				config.compilerFile === undefined
-					? undefined
-					: placement.layout.compilerProject(projectFile),
 			summary: placement.summary(),
 			findings: {
 				warnings,

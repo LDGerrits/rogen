@@ -8,9 +8,9 @@ const VARIANTS: readonly Variant[] = [
 		name: "Luau, several places",
 		flags: ["--places"],
 		steps: [],
-		project: ["projects/game"],
-		served: "game",
-		mapped: ["projects/game"],
+		project: ["lobby"],
+		served: "lobby",
+		mapped: ["lobby"],
 	},
 	{
 		name: "roblox-ts, one place",
@@ -22,10 +22,10 @@ const VARIANTS: readonly Variant[] = [
 	{
 		name: "roblox-ts, several places",
 		flags: ["--language", "roblox-ts", "--places"],
-		steps: [["npx", "rbxtsc", "-p", "tsconfig.game.json"]],
+		steps: [["npx", "rbxtsc", "-p", "tsconfig.lobby.json"]],
 		network: true,
-		project: ["projects/game"],
-		served: "game",
+		project: ["lobby"],
+		served: "lobby",
 	},
 ];
 
