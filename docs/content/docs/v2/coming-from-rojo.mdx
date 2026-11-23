@@ -46,7 +46,7 @@ git rm --cached default.project.json
 Then move code into [feature folders](/docs/v2/routing/folders), one feature at a time, since old folders keep working beside them. A move changes the file's path in the game, so update the requires that reach it; `rogen where <file>` prints the new one:
 
 ```bash
-git mv src/server/Services/InventoryService.luau src/Inventory/server/
-git mv src/client/Controllers/InventoryController.luau src/Inventory/client/
-git mv src/shared/Types/InventoryTypes.luau src/Inventory/shared/
+git mv src/server/services/inventory-service.luau src/inventory/server/
+git mv src/client/controllers/inventory-controller.luau src/inventory/client/
+git mv src/shared/types/inventory-types.luau src/inventory/shared/
 ```

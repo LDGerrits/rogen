@@ -22,9 +22,9 @@ default.rogen.json:
     "src/server/Admin"
   ],
   "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared",
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared",
     "*": "ServerScriptService/Admin"
   },
   "tree": {

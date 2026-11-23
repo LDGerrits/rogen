@@ -11,10 +11,10 @@ exit 0
 $ cp .page/release.json release.rogen.json
 exit 0
 
-$ cp .page/Wave.server.luau src/Greeter/Server/Wave.server.luau
+$ cp .page/wave.server.luau src/greeter/server/wave.server.luau
 exit 0
 
-$ cp .page/Greeting.spec.luau src/Greeter/Shared/Greeting.spec.luau
+$ cp .page/greeting.spec.luau src/greeter/shared/greeting.spec.luau
 exit 0
 
 $ rogen sourcemap -o sourcemap.json
@@ -42,19 +42,19 @@ written:
   default.rogen.json
   dist.project.json
   dist.rogen.json
-  dist/Greeter/Client/Greeter.client.luau
-  dist/Greeter/Server/Greeter.server.luau
-  dist/Greeter/Server/Wave.server.luau
-  dist/Greeter/Shared/Greeting.luau
-  dist/Greeter/Shared/Greeting.spec.luau
+  dist/greeter/client/greeter.client.luau
+  dist/greeter/server/greeter.server.luau
+  dist/greeter/server/wave.server.luau
+  dist/greeter/shared/greeting.luau
+  dist/greeter/shared/greeting.spec.luau
   release.project.json
   release.rogen.json
   sourcemap.json
-  src/Greeter/Client/Greeter.client.luau
-  src/Greeter/Server/Greeter.server.luau
-  src/Greeter/Server/Wave.server.luau
-  src/Greeter/Shared/Greeting.luau
-  src/Greeter/Shared/Greeting.spec.luau
+  src/greeter/client/greeter.client.luau
+  src/greeter/server/greeter.server.luau
+  src/greeter/server/wave.server.luau
+  src/greeter/shared/greeting.luau
+  src/greeter/shared/greeting.spec.luau
 
 .darklua.json:
 {
@@ -78,10 +78,10 @@ default.rogen.json:
     "src"
   ],
   "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared",
-    "*": "ReplicatedStorage/Shared"
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared",
+    "*": "ReplicatedStorage/shared"
   },
   "tree": {
     "$className": "DataModel",
@@ -140,10 +140,10 @@ dist.rogen.json:
 	"name": "my-game",
 	"sourcePaths": ["src"],
 	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
 	},
 	"compiledPath": "dist",
 	"tree": {
@@ -154,20 +154,20 @@ dist.rogen.json:
 	}
 }
 
-dist/Greeter/Server/Wave.server.luau:
-local Greeting = require(game:GetService('ReplicatedStorage').Shared.Greeter.Greeting)
+dist/greeter/server/wave.server.luau:
+local greeting = require(game:GetService('ReplicatedStorage').shared.greeter.greeting)
 
-print(Greeting("wave"))
+print(greeting("wave"))
 
 release.rogen.json:
 {
 	"name": "my-game",
 	"sourcePaths": ["src"],
 	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
 	},
 	"compiledPath": "dist",
 	"globIgnorePaths": ["**/*.spec.luau"],
@@ -183,19 +183,19 @@ $ rojo sourcemap default.project.json
 project: DataModel
   Lighting: Lighting
   ReplicatedStorage: ReplicatedStorage
-    Shared: Folder
-      Greeter: Folder
-        Greeting: ModuleScript  <- src/Greeter/Shared/Greeting.luau
-        Greeting.spec: ModuleScript  <- src/Greeter/Shared/Greeting.spec.luau
+    shared: Folder
+      greeter: Folder
+        greeting: ModuleScript  <- src/greeter/shared/greeting.luau
+        greeting.spec: ModuleScript  <- src/greeter/shared/greeting.spec.luau
   ServerScriptService: ServerScriptService
-    Greeter: Folder
-      Greeter: Script  <- src/Greeter/Server/Greeter.server.luau
-      Wave: Script  <- src/Greeter/Server/Wave.server.luau
+    greeter: Folder
+      greeter: Script  <- src/greeter/server/greeter.server.luau
+      wave: Script  <- src/greeter/server/wave.server.luau
   SoundService: SoundService
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
-      Greeter: Folder
-        Greeter: LocalScript  <- src/Greeter/Client/Greeter.client.luau
+      greeter: Folder
+        greeter: LocalScript  <- src/greeter/client/greeter.client.luau
   Workspace: Workspace
     Baseplate: Part
 
@@ -203,35 +203,35 @@ $ rojo sourcemap dist.project.json
 my-game: DataModel
   Lighting: Lighting
   ReplicatedStorage: ReplicatedStorage
-    Shared: Folder
-      Greeter: Folder
-        Greeting: ModuleScript  <- dist/Greeter/Shared/Greeting.luau
-        Greeting.spec: ModuleScript  <- dist/Greeter/Shared/Greeting.spec.luau
+    shared: Folder
+      greeter: Folder
+        greeting: ModuleScript  <- dist/greeter/shared/greeting.luau
+        greeting.spec: ModuleScript  <- dist/greeter/shared/greeting.spec.luau
   ServerScriptService: ServerScriptService
-    Greeter: Folder
-      Greeter: Script  <- dist/Greeter/Server/Greeter.server.luau
-      Wave: Script  <- dist/Greeter/Server/Wave.server.luau
+    greeter: Folder
+      greeter: Script  <- dist/greeter/server/greeter.server.luau
+      wave: Script  <- dist/greeter/server/wave.server.luau
   SoundService: SoundService
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
-      Greeter: Folder
-        Greeter: LocalScript  <- dist/Greeter/Client/Greeter.client.luau
+      greeter: Folder
+        greeter: LocalScript  <- dist/greeter/client/greeter.client.luau
   Workspace: Workspace
 
 $ rojo sourcemap release.project.json
 my-game: DataModel
   Lighting: Lighting
   ReplicatedStorage: ReplicatedStorage
-    Shared: Folder
-      Greeter: Folder
-        Greeting: ModuleScript  <- dist/Greeter/Shared/Greeting.luau
+    shared: Folder
+      greeter: Folder
+        greeting: ModuleScript  <- dist/greeter/shared/greeting.luau
   ServerScriptService: ServerScriptService
-    Greeter: Folder
-      Greeter: Script  <- dist/Greeter/Server/Greeter.server.luau
-      Wave: Script  <- dist/Greeter/Server/Wave.server.luau
+    greeter: Folder
+      greeter: Script  <- dist/greeter/server/greeter.server.luau
+      wave: Script  <- dist/greeter/server/wave.server.luau
   SoundService: SoundService
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
-      Greeter: Folder
-        Greeter: LocalScript  <- dist/Greeter/Client/Greeter.client.luau
+      greeter: Folder
+        greeter: LocalScript  <- dist/greeter/client/greeter.client.luau
   Workspace: Workspace

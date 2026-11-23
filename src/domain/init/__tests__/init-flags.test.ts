@@ -109,9 +109,9 @@ describe("init choices given as flags", () => {
 			});
 			expect(await fileNames({})).toEqual([
 				".gitignore",
-				"src/Greeter/Shared/Greeting.luau",
-				"src/Greeter/Server/Greeter.server.luau",
-				"src/Greeter/Client/Greeter.client.luau",
+				"src/greeter/shared/greeting.luau",
+				"src/greeter/server/greeter.server.luau",
+				"src/greeter/client/greeter.client.luau",
 				"README.md",
 			]);
 		});

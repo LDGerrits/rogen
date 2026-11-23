@@ -30,10 +30,10 @@ written:
   lobby.rogen.json
   package.json
   rokit.toml
-  src/common/Greeter/client/Greeter.client.ts
-  src/common/Greeter/server/Greeter.server.ts
-  src/common/Greeter/shared/Greeting.ts
-  src/lobby/Welcome/server/Welcome.server.ts
+  src/common/greeter/client/greeter.client.ts
+  src/common/greeter/server/greeter.server.ts
+  src/common/greeter/shared/greeting.ts
+  src/lobby/welcome/server/welcome.server.ts
   tsconfig.json
   tsconfig.lobby.json
 
@@ -117,13 +117,13 @@ lobby.rogen.json:
 package.json:
 {"scripts":{"build":"rbxtsc -p tsconfig.lobby.json","watch":"rbxtsc -w -p tsconfig.lobby.json"}}
 
-src/common/Greeter/shared/Greeting.ts:
+src/common/greeter/shared/greeting.ts:
 export function greeting(who: string): string {
 	return `Hello, ${who}!`;
 }
 
-src/lobby/Welcome/server/Welcome.server.ts:
-import { greeting } from "../../Greeter/shared/Greeting";
+src/lobby/welcome/server/welcome.server.ts:
+import { greeting } from "../../greeter/shared/greeting";
 
 print(greeting("lobby"));
 

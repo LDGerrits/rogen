@@ -9,15 +9,15 @@ stdout:
         "outcome": "wrote"
       },
       {
-        "file": "<dir>/src/Greeter/Shared/Greeting.luau",
+        "file": "<dir>/src/greeter/shared/greeting.luau",
         "outcome": "wrote"
       },
       {
-        "file": "<dir>/src/Greeter/Server/Greeter.server.luau",
+        "file": "<dir>/src/greeter/server/greeter.server.luau",
         "outcome": "wrote"
       },
       {
-        "file": "<dir>/src/Greeter/Client/Greeter.client.luau",
+        "file": "<dir>/src/greeter/client/greeter.client.luau",
         "outcome": "wrote"
       },
       {
@@ -76,7 +76,7 @@ stdout:
       }
     ],
     "notes": [
-      "Greeter sample in src/Greeter, Rojo's Baseplate in default.rogen.json."
+      "Greeter sample in src/greeter, Rojo's Baseplate in default.rogen.json."
     ],
     "nextSteps": {
       "setup": [],
@@ -96,9 +96,9 @@ written:
   README.md
   default.project.json
   default.rogen.json
-  src/Greeter/Client/Greeter.client.luau
-  src/Greeter/Server/Greeter.server.luau
-  src/Greeter/Shared/Greeting.luau
+  src/greeter/client/greeter.client.luau
+  src/greeter/server/greeter.server.luau
+  src/greeter/shared/greeting.luau
 
 default.rogen.json:
 {
@@ -107,10 +107,10 @@ default.rogen.json:
     "src"
   ],
   "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared",
-    "*": "ReplicatedStorage/Shared"
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared",
+    "*": "ReplicatedStorage/shared"
   },
   "tree": {
     "$className": "DataModel",

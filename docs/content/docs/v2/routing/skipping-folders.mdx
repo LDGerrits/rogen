@@ -10,40 +10,40 @@ A folder named in parentheses groups files on disk and leaves no folder in the g
 <RouteFigure
 	disk={`
   src/
-    Shop/
-      Client/
-        (Ui)/
-          Button.luau
-          Icon.luau
-        ShopController.luau
+    shop/
+      client/
+        (ui)/
+          button.luau
+          icon.luau
+        shop-controller.luau
 `}
 	studio={`
   StarterPlayer
     StarterPlayerScripts
-      Shop/
-        Button
-        Icon
-        ShopController
+      shop/
+        button
+        icon
+        shop-controller
 `}
 />
 
 ## Hoisted Names
 
-A name that starts with `^` lands directly at its route's target, without the folders in between. Roblox reads some instances only there, such as `Animate` in `StarterCharacterScripts`. With a `Character` route to `StarterPlayer/StarterCharacterScripts`:
+A name that starts with `^` lands directly at its route's target, without the folders in between. Roblox reads some instances only there, such as `Animate` in `StarterCharacterScripts`. With a `character` route to `StarterPlayer/StarterCharacterScripts`:
 
 <RouteFigure
 	disk={`
   src/
-    Player/
-      @Character
+    player/
+      @character
       ^Animate.client.luau
-      Sprint.client.luau
+      sprint.client.luau
 `}
 	studio={`
   StarterPlayer
     StarterCharacterScripts
       Animate
-      Player/
-        Sprint
+      player/
+        sprint
 `}
 />

@@ -70,8 +70,8 @@ describe("init for several places", () => {
 			expect(names(planned)).toEqual(
 				expect.arrayContaining([
 					"lobby.rogen.json",
-					"src/common/Greeter/Shared/Greeting.luau",
-					"src/lobby/Welcome/Server/Welcome.server.luau",
+					"src/common/greeter/shared/greeting.luau",
+					"src/lobby/welcome/server/welcome.server.luau",
 				])
 			);
 			expect(names(planned)).not.toContain("default.rogen.json");
@@ -87,7 +87,7 @@ describe("init for several places", () => {
 			expect(config.name).toBe("lobby");
 			expect(config.tree).toMatchObject({ $className: "DataModel" });
 			expect(config.sourcePaths).toEqual(["src/common", "src/lobby"]);
-			expect(config.routes).toHaveProperty("Server");
+			expect(config.routes).toHaveProperty("server");
 			expect(config).not.toHaveProperty("servePort");
 		});
 
@@ -260,8 +260,8 @@ describe("init for several places", () => {
 			expect(names(result)).toEqual(
 				expect.arrayContaining([
 					"lobby.rogen.json",
-					"src/common/Greeter/shared/Greeting.ts",
-					"src/lobby/Welcome/server/Welcome.server.ts",
+					"src/common/greeter/shared/greeting.ts",
+					"src/lobby/welcome/server/welcome.server.ts",
 				])
 			);
 			expect(

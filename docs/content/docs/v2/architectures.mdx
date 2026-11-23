@@ -7,7 +7,7 @@ Rogen puts each file where its route sends it, so the layout of your folders is 
 
 ## Feature Folders
 
-Give each feature one folder, with a routing folder inside for each side it runs on. The [Introduction](/docs/v2) shows how `src/Inventory` holds everything about the inventory, and [Routing Folders](/docs/v2/routing/folders) how it reaches the game.
+Give each feature one folder, with a routing folder inside for each side it runs on. The [Introduction](/docs/v2) shows how `src/inventory` holds everything about the inventory, and [Routing Folders](/docs/v2/routing/folders) how it reaches the game.
 
 ## Layers
 
@@ -17,57 +17,57 @@ A larger codebase can put the feature folders inside layers, where each layer re
 	disk={`
   src/
     base/
-      Shared/
-        Signal.luau
+      shared/
+        signal.luau
     platform/
-      Marketplace/
-        Server/
-          Marketplace.luau
+      marketplace/
+        server/
+          marketplace.luau
     core/
-      Player/
-        Server/
-          PlayerService.luau
-        Shared/
-          PlayerState.luau
+      player/
+        server/
+          player-service.luau
+        shared/
+          player-state.luau
     features/
-      Inventory/
-        Client/
-          InventoryController.luau
-        Server/
-          InventoryService.luau
+      inventory/
+        client/
+          inventory-controller.luau
+        server/
+          inventory-service.luau
     app/
-      Server/
-        Main.server.luau
-      Client/
-        Main.client.luau
+      server/
+        main.server.luau
+      client/
+        main.client.luau
 `}
 	studio={`
   ReplicatedStorage
-    Shared/
+    shared/
       base/
-        Signal
+        signal
       core/
-        Player/
-          PlayerState
+        player/
+          player-state
   ServerScriptService
     app/
-      Main
+      main
     core/
-      Player/
-        PlayerService
+      player/
+        player-service
     platform/
-      Marketplace/
-        Marketplace
+      marketplace/
+        marketplace
     features/
-      Inventory/
-        InventoryService
+      inventory/
+        inventory-service
   StarterPlayer
     StarterPlayerScripts
       app/
-        Main
+        main
       features/
-        Inventory/
-          InventoryController
+        inventory/
+          inventory-controller
 `}
 />
 

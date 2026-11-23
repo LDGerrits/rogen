@@ -5,5 +5,5 @@
 		["$", "npx", "rbxtsc", "-p", "tsconfig.lobby.json"],
 		["build", "lobby", "-o", "lobby.rbxlx"]
 	],
-	"show": ["out/lobby/common/Greeter/shared/Greeting.luau"]
+	"show": ["out/lobby/common/greeter/shared/greeting.luau"]
 }

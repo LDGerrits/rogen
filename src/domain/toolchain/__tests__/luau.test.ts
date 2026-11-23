@@ -4,8 +4,8 @@ import { Language, PackageManager } from "../toolchain.js";
 describe("Luau", () => {
 	const luau: Language & Luau = new Luau();
 
-	it("should capitalize route keys", () => {
-		expect(luau.routeKey("serverStorage")).toBe("ServerStorage");
+	it("should spell route keys in lower case", () => {
+		expect(luau.routeKey("serverStorage")).toBe("serverStorage");
 	});
 
 	it("should offer Wally when the workspace has no package manager", () => {

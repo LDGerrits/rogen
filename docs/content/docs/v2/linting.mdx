@@ -29,9 +29,9 @@ Rogen doesn't check your requires. Because every path names its side and its fea
 	            featureRoots = {
 	              "ServerScriptService",
 	              "StarterPlayer.StarterPlayerScripts",
-	              "ReplicatedStorage.Shared",
+	              "ReplicatedStorage.shared",
 	            },
-	            sharedFeatures = { "Util" },
+	            sharedFeatures = { "util" },
 	          },
 	        },
 	      },
@@ -47,7 +47,7 @@ Rogen doesn't check your requires. Because every path names its side and its fea
 	lute lint --no-default-lints src
 	```
 
-Each crossed boundary is an error, such as `feature Inventory requires feature Shop: ServerScriptService.Shop.ShopService`, and `lute lint` exits 1, so a CI job that runs it fails.
+Each crossed boundary is an error, such as `feature inventory requires feature shop: ServerScriptService.shop.shop-service`, and `lute lint` exits 1, so a CI job that runs it fails.
 
 ## roblox-ts
 

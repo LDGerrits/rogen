@@ -16,10 +16,10 @@ describe("domain/init/starting-routes", () => {
 	describe("StartingRoutes", () => {
 		it("should start with the server, client, shared and * routes, spelled the way the language does", () => {
 			expect(luau.routes).toEqual({
-				Server: "ServerScriptService",
-				Client: "StarterPlayer/StarterPlayerScripts",
-				Shared: "ReplicatedStorage/Shared",
-				"*": "ReplicatedStorage/Shared",
+				server: "ServerScriptService",
+				client: "StarterPlayer/StarterPlayerScripts",
+				shared: "ReplicatedStorage/shared",
+				"*": "ReplicatedStorage/shared",
 			});
 			expect(rbxts.routes).toEqual({
 				server: "ServerScriptService",
@@ -97,17 +97,17 @@ describe("domain/init/starting-routes", () => {
 			expect(Object.keys(routes.routes)).toEqual([
 				"server",
 				"Client",
-				"Shared",
+				"shared",
 				"*",
 			]);
 		});
 
 		it.each([
-			["server", "shared"],
-			["Server", "Shared"],
+			["server", "client", "shared"],
+			["Server", "Client", "Shared"],
 		])(
-			"should weigh a derived key with the code's spellings, so a derived %s gives %s",
-			(derivedKey, shared) => {
+			"should weigh a derived key with the code's spellings, so a derived %s beside %s gives %s",
+			(derivedKey, client, shared) => {
 				const routes = new StartingRoutes(
 					workspaceOf().languageFor("luau"),
 					lifted({
@@ -115,7 +115,7 @@ describe("domain/init/starting-routes", () => {
 							Server: { $path: `src/${derivedKey}` },
 						},
 					}),
-					new Map([["client", "client"]])
+					new Map([["client", client]])
 				);
 
 				expect(Object.keys(routes.routes)).toContain(shared);

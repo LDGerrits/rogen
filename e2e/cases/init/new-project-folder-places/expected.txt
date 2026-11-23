@@ -20,10 +20,10 @@ written:
   game/README.md
   game/lobby.project.json
   game/lobby.rogen.json
-  game/src/common/Greeter/Client/Greeter.client.luau
-  game/src/common/Greeter/Server/Greeter.server.luau
-  game/src/common/Greeter/Shared/Greeting.luau
-  game/src/lobby/Welcome/Server/Welcome.server.luau
+  game/src/common/greeter/client/greeter.client.luau
+  game/src/common/greeter/server/greeter.server.luau
+  game/src/common/greeter/shared/greeting.luau
+  game/src/lobby/welcome/server/welcome.server.luau
 
 game/lobby.rogen.json:
 {
@@ -33,10 +33,10 @@ game/lobby.rogen.json:
     "src/lobby"
   ],
   "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared",
-    "*": "ReplicatedStorage/Shared"
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared",
+    "*": "ReplicatedStorage/shared"
   },
   "tree": {
     "$className": "DataModel",
@@ -94,18 +94,18 @@ $ rojo sourcemap game/lobby.project.json
 lobby: DataModel
   Lighting: Lighting
   ReplicatedStorage: ReplicatedStorage
-    Shared: Folder
-      Greeter: Folder
-        Greeting: ModuleScript  <- src/common/Greeter/Shared/Greeting.luau
+    shared: Folder
+      greeter: Folder
+        greeting: ModuleScript  <- src/common/greeter/shared/greeting.luau
   ServerScriptService: ServerScriptService
-    Greeter: Folder
-      Greeter: Script  <- src/common/Greeter/Server/Greeter.server.luau
-    Welcome: Folder
-      Welcome: Script  <- src/lobby/Welcome/Server/Welcome.server.luau
+    greeter: Folder
+      greeter: Script  <- src/common/greeter/server/greeter.server.luau
+    welcome: Folder
+      welcome: Script  <- src/lobby/welcome/server/welcome.server.luau
   SoundService: SoundService
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
-      Greeter: Folder
-        Greeter: LocalScript  <- src/common/Greeter/Client/Greeter.client.luau
+      greeter: Folder
+        greeter: LocalScript  <- src/common/greeter/client/greeter.client.luau
   Workspace: Workspace
     Baseplate: Part

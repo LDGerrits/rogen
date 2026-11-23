@@ -7,58 +7,58 @@ When a feature is too small for routing folders, route by name instead.
 
 ## The `@` Suffix
 
-`@` and a route key at the end of a file or folder name route it, and come off the name. A file keeps its class, so `TradeService@Server.luau` stays a ModuleScript:
+`@` and a route key at the end of a file or folder name route it, and come off the name. A file keeps its class, so `trade-service@server.luau` stays a ModuleScript:
 
 <RouteFigure
 	disk={`
   src/
-    Trade/
-      Admin@Server/
-        Ban.luau
-      TradeService@Server.luau
-      TradeTypes@Shared.luau
-      TradeUi@Client.luau
+    trade/
+      admin@server/
+        ban.luau
+      trade-service@server.luau
+      trade-types@shared.luau
+      trade-ui@client.luau
 `}
 	studio={`
   ReplicatedStorage
-    Shared/
-      Trade/
-        TradeTypes
+    shared/
+      trade/
+        trade-types
   ServerScriptService
-    Trade/
-      Admin/
-        Ban
-      TradeService
+    trade/
+      admin/
+        ban
+      trade-service
   StarterPlayer
     StarterPlayerScripts
-      Trade/
-        TradeUi
+      trade/
+        trade-ui
 `}
 />
 
 ## Marker Files
 
-An empty file named `@Server` routes the folder it's in, and the folder keeps its name:
+An empty file named `@server` routes the folder it's in, and the folder keeps its name:
 
 <RouteFigure
 	disk={`
   src/
-    Anticheat/
-      @Server
-      Check.luau
-      Report.luau
+    anticheat/
+      @server
+      check.luau
+      report.luau
 `}
 	studio={`
   ServerScriptService
-    Anticheat/
-      Check
-      Report
+    anticheat/
+      check
+      report
 `}
 />
 
 ## Rojo's Script Suffixes
 
-When your config has a `Server` or `Client` key, Rojo's `.server` and `.client` suffixes route a script as well as set its class, so `Main.server.luau` goes to the server. A sync rule's `suffix` routes another language's scripts the same way, such as `.server.lang`.
+When your config has a `server` or `client` key, Rojo's `.server` and `.client` suffixes route a script as well as set its class, so `main.server.luau` goes to the server. A sync rule's `suffix` routes another language's scripts the same way, such as `.server.lang`.
 
 ## Init Scripts
 
@@ -67,21 +67,21 @@ A route in an init script's name places only the script, not the folder around i
 <RouteFigure
 	disk={`
   src/
-    Shop/
-      init@Server.luau
-      init@Client.luau
-      ShopService@Server.luau
-      ShopUi@Client.luau
+    shop/
+      init@server.luau
+      init@client.luau
+      shop-service@server.luau
+      shop-ui@client.luau
 `}
 	studio={`
   ServerScriptService
-    Shop
-      ShopService
+    shop
+      shop-service
   StarterPlayer
     StarterPlayerScripts
-      Shop
-        ShopUi
+      shop
+        shop-ui
 `}
 />
 
-A plain `init.luau` routes the same way: it is its folder only where its own route puts it, which is `*` unless something routes it. On every other side the folder's files sit in a plain folder of the same name, so the init script reaches a server-only child by its full path, as `ServerScriptService.Shop.ShopService`, rather than through `script`.
+A plain `init.luau` routes the same way: it is its folder only where its own route puts it, which is `*` unless something routes it. On every other side the folder's files sit in a plain folder of the same name, so the init script reaches a server-only child by its full path, as `ServerScriptService.shop["shop-service"]`, rather than through `script`.

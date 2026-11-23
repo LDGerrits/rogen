@@ -137,7 +137,7 @@ Error. The config lists `sourcePaths` but declares no `routes`. Rogen scans sour
 error: "sourcePaths" has no "routes" to use it. Add "routes", or remove "sourcePaths". (config.sourcePathsWithoutRoutes)
 ```
 
-Add a `routes` map. Or remove `sourcePaths`, and mount the folders in the `tree` with `$path`. `rogen init` writes the routes `Server`, `Client`, `Shared` and `*`. See [Routing](/docs/v2/routing).
+Add a `routes` map. Or remove `sourcePaths`, and mount the folders in the `tree` with `$path`. `rogen init` writes the routes `server`, `client`, `shared` and `*`. See [Routing](/docs/v2/routing).
 
 ### `config.invalidSyncRule` [#config-invalidsyncrule]
 
@@ -200,7 +200,7 @@ error: "StarterPlayerScripts" is not a supported service. Did you mean "StarterP
 error: "CoreGui" is not a supported service. Start the target with one such as ServerScriptService or ReplicatedStorage. (roblox.unsupportedService)
 ```
 
-Start the target with a service, then any folders, such as `"StarterPlayer/StarterPlayerScripts"` or `"ReplicatedStorage/Shared"`. See [Routes](/docs/v2/config#routes).
+Start the target with a service, then any folders, such as `"StarterPlayer/StarterPlayerScripts"` or `"ReplicatedStorage/shared"`. See [Routes](/docs/v2/config#routes).
 
 ### `roblox.invalidFolder` [#roblox-invalidfolder]
 
@@ -217,7 +217,7 @@ Remove the extra slash, or name the folder. See [Routes](/docs/v2/config#routes)
 Warning. No route matches the file, and the config has no `*` route, so Rogen leaves the file out of the project file.
 
 ```
-warning: matched no route, so it is left out. Move it into a routing folder such as src/Shop/Server, end its name with @Server, or declare a "*" route. (route.unrouted)
+warning: matched no route, so it is left out. Move it into a routing folder such as src/shop/server, end its name with @server, or declare a "*" route. (route.unrouted)
 ```
 
 Do one of these:
@@ -226,7 +226,7 @@ Do one of these:
 - Add an `@key` suffix to the file's name.
 - Declare a `"*"` route, if every file like this one belongs in one place.
 
-The message names a routing folder of the file's feature, from the first route key, and an `@` suffix with that key. Any other route key works the same way, as in `@Client` or `@Shared`. The feature is the folder directly inside the source path that holds the file. For a file at the top of a source path, the feature is the source path. See [Files Without a Route](/docs/v2/routing#files-without-a-route).
+The message names a routing folder of the file's feature, from the first route key, and an `@` suffix with that key. Any other route key works the same way, as in `@client` or `@shared`. The feature is the folder directly inside the source path that holds the file. For a file at the top of a source path, the feature is the source path. See [Files Without a Route](/docs/v2/routing#files-without-a-route).
 
 ### `route.strayAt` [#route-strayat]
 

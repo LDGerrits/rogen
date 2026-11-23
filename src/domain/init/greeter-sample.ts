@@ -12,8 +12,8 @@ export const TEMPLATE_SOURCE_PATHS = {
 	place: "src/lobby",
 } as const;
 
-const FEATURE = "Greeter";
-const PLACE_FEATURE = "Welcome";
+const FEATURE = "greeter";
+const PLACE_FEATURE = "welcome";
 const README = "README.md";
 
 export class GreeterSample {

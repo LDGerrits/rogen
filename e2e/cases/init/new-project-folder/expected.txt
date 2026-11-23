@@ -2,7 +2,7 @@ $ rogen init newproj --non-interactive
 exit 0
 stdout:
   rogen init
-  Greeter sample in newproj/src/Greeter, Rojo's Baseplate in newproj/default.rogen.json.
+  Greeter sample in newproj/src/greeter, Rojo's Baseplate in newproj/default.rogen.json.
   Defaults: a place, luau, one place, the Greeter sample, a git repository, agent rules. See 'rogen init --help' to change them.
   Initialised a git repository.
   Wrote newproj/default.project.json.
@@ -26,9 +26,9 @@ written:
   newproj/README.md
   newproj/default.project.json
   newproj/default.rogen.json
-  newproj/src/Greeter/Client/Greeter.client.luau
-  newproj/src/Greeter/Server/Greeter.server.luau
-  newproj/src/Greeter/Shared/Greeting.luau
+  newproj/src/greeter/client/greeter.client.luau
+  newproj/src/greeter/server/greeter.server.luau
+  newproj/src/greeter/shared/greeting.luau
 
 newproj/default.rogen.json:
 {
@@ -37,10 +37,10 @@ newproj/default.rogen.json:
     "src"
   ],
   "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared",
-    "*": "ReplicatedStorage/Shared"
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared",
+    "*": "ReplicatedStorage/shared"
   },
   "tree": {
     "$className": "DataModel",
@@ -98,16 +98,16 @@ $ rojo sourcemap newproj/default.project.json
 newproj: DataModel
   Lighting: Lighting
   ReplicatedStorage: ReplicatedStorage
-    Shared: Folder
-      Greeter: Folder
-        Greeting: ModuleScript  <- src/Greeter/Shared/Greeting.luau
+    shared: Folder
+      greeter: Folder
+        greeting: ModuleScript  <- src/greeter/shared/greeting.luau
   ServerScriptService: ServerScriptService
-    Greeter: Folder
-      Greeter: Script  <- src/Greeter/Server/Greeter.server.luau
+    greeter: Folder
+      greeter: Script  <- src/greeter/server/greeter.server.luau
   SoundService: SoundService
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
-      Greeter: Folder
-        Greeter: LocalScript  <- src/Greeter/Client/Greeter.client.luau
+      greeter: Folder
+        greeter: LocalScript  <- src/greeter/client/greeter.client.luau
   Workspace: Workspace
     Baseplate: Part

@@ -10,31 +10,31 @@ Rogen is a command-line tool that writes your Rojo project file for you, while R
 
 ## A Typical Roblox Project
 
-This game has an inventory and a shop. Its project file mounts `src/server` into ServerScriptService, `src/client` into StarterPlayerScripts and `src/shared` into a `Shared` folder in ReplicatedStorage. Inside them, code is sorted by type:
+This game has an inventory and a shop. Its project file mounts `src/server` into ServerScriptService, `src/client` into StarterPlayerScripts and `src/shared` into a `shared` folder in ReplicatedStorage. Inside them, code is sorted by type:
 
 <RouteFigure
 	disk={`
   src/
     client/
       controllers/
-        InventoryController.luau
-        ShopController.luau
+        inventory-controller.luau
+        shop-controller.luau
       ui/
-        InventoryWindow.luau
-        ShopWindow.luau
+        inventory-window.luau
+        shop-window.luau
     server/
       data/
-        InventoryStore.luau
+        inventory-store.luau
       services/
-        InventoryService.luau
-        ShopService.luau
+        inventory-service.luau
+        shop-service.luau
     shared/
       config/
-        ItemConfig.luau
-        ShopConfig.luau
+        item-config.luau
+        shop-config.luau
       types/
-        InventoryTypes.luau
-        ShopTypes.luau
+        inventory-types.luau
+        shop-types.luau
 `}
 />
 
@@ -42,7 +42,7 @@ The inventory is spread over six folders, mixed in with the shop, so changing or
 
 ## Feature Folders in Rojo
 
-Sorting each side by feature helps, but the inventory still has three folders, one each in `client`, `server` and `shared`. A single `src/Inventory` folder is better, and Rojo can do it if you give every side of every feature its own entry in `default.project.json`:
+Sorting each side by feature helps, but the inventory still has three folders, one each in `client`, `server` and `shared`. A single `src/inventory` folder is better, and Rojo can do it if you give every side of every feature its own entry in `default.project.json`:
 
 ```json title="default.project.json"
 {
@@ -50,20 +50,20 @@ Sorting each side by feature helps, but the inventory still has three folders, o
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": {
-      "Inventory": { "$path": "src/Inventory/Server" },
-      "Shop": { "$path": "src/Shop/Server" }
+      "inventory": { "$path": "src/inventory/server" },
+      "shop": { "$path": "src/shop/server" }
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "Inventory": { "$path": "src/Inventory/Client" },
-        "Shop": { "$path": "src/Shop/Client" }
+        "inventory": { "$path": "src/inventory/client" },
+        "shop": { "$path": "src/shop/client" }
       }
     },
     "ReplicatedStorage": {
-      "Shared": {
+      "shared": {
         "$className": "Folder",
-        "Inventory": { "$path": "src/Inventory/Shared" },
-        "Shop": { "$path": "src/Shop/Shared" }
+        "inventory": { "$path": "src/inventory/shared" },
+        "shop": { "$path": "src/shop/shared" }
       }
     }
   }
@@ -74,58 +74,58 @@ Every feature you add, rename or remove means editing this file by hand, and a f
 
 ## One Folder per Feature
 
-Rogen writes those entries for you when you put each feature in one folder, with `Client`, `Server` and `Shared` folders inside:
+Rogen writes those entries for you when you put each feature in one folder, with `client`, `server` and `shared` folders inside:
 
 <RouteFigure
 	disk={`
   src/
-    Inventory/
-      Client/
-        InventoryController.luau
-        InventoryWindow.luau
-      Server/
-        InventoryService.luau
-        InventoryStore.luau
-      Shared/
-        InventoryTypes.luau
-        ItemConfig.luau
-    Shop/
-      Client/
-        ShopController.luau
-        ShopWindow.luau
-      Server/
-        ShopService.luau
-      Shared/
-        ShopConfig.luau
-        ShopTypes.luau
+    inventory/
+      client/
+        inventory-controller.luau
+        inventory-window.luau
+      server/
+        inventory-service.luau
+        inventory-store.luau
+      shared/
+        inventory-types.luau
+        item-config.luau
+    shop/
+      client/
+        shop-controller.luau
+        shop-window.luau
+      server/
+        shop-service.luau
+      shared/
+        shop-config.luau
+        shop-types.luau
 `}
 	studio={`
   ReplicatedStorage
-    Shared/
-      Inventory/
-        InventoryTypes
-        ItemConfig
-      Shop/
-        ShopConfig
-        ShopTypes
+    shared/
+      inventory/
+        inventory-types
+        item-config
+      shop/
+        shop-config
+        shop-types
   ServerScriptService
-    Inventory/
-      InventoryService
-      InventoryStore
-    Shop/
-      ShopService
+    inventory/
+      inventory-service
+      inventory-store
+    shop/
+      shop-service
   StarterPlayer
     StarterPlayerScripts
-      Inventory/
-        InventoryController
-        InventoryWindow
-      Shop/
-        ShopController
-        ShopWindow
+      inventory/
+        inventory-controller
+        inventory-window
+      shop/
+        shop-controller
+        shop-window
 `}
 />
 
-Studio gets the same tree as the hand-written project file, while everything about the inventory sits in `src/Inventory` and you remove it by deleting one folder.
+Studio gets the same tree as the hand-written project file, while everything about the inventory sits in `src/inventory` and you remove it by deleting one folder.
 
 ## How Rogen Does It
 
@@ -135,9 +135,9 @@ You write `default.rogen.json`, a Rojo project file with [`routes`](/docs/v2/con
 {
   "name": "my-game",
   "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared"
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared"
   },
   "tree": { "$className": "DataModel" }
 }

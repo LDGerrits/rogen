@@ -18,10 +18,10 @@ import { questionsOf } from "./init-of.js";
 import { setupOf } from "./init-of.js";
 
 export const LUAU_ROUTES = {
-	Server: "ServerScriptService",
-	Client: "StarterPlayer/StarterPlayerScripts",
-	Shared: "ReplicatedStorage/Shared",
-	"*": "ReplicatedStorage/Shared",
+	server: "ServerScriptService",
+	client: "StarterPlayer/StarterPlayerScripts",
+	shared: "ReplicatedStorage/shared",
+	"*": "ReplicatedStorage/shared",
 };
 export const ROBLOX_TS_ROUTES = {
 	server: "ServerScriptService",

@@ -152,6 +152,7 @@ describe("CoreInitService", () => {
 		it("should rename a folder that spells a route key in the case most of the code doesn't, so the project builds", async () => {
 			await write("src/Shop/Server/A.luau", "return 1");
 			await write("src/Bag/Server/B.luau", "return 1");
+			await write("src/Cart/Server/D.luau", "return 1");
 			await write("src/Trading/server/C.luau", "return 1");
 			await write("src/Trading/server/Save@server.luau", "return 1");
 
@@ -1265,7 +1266,7 @@ describe("CoreInitService", () => {
 			const plan = await planOf();
 
 			expect(configOf(plan).routes).toEqual({
-				Shared: "ReplicatedStorage/Shared",
+				Shared: "ReplicatedStorage/shared",
 				"*": "ReplicatedStorage/Lib",
 			});
 			expect(plan?.notes).toContain(
@@ -1815,7 +1816,7 @@ describe("CoreInitService", () => {
 		const sampleFiles = (plan: InitPlan | undefined) =>
 			(plan?.files ?? [])
 				.map(({ fileName }) => fileName)
-				.filter((fileName) => /Greeter|^place\//.test(fileName));
+				.filter((fileName) => /greeter|^place\//.test(fileName));
 
 		it("should be left out where a script lies at the root of the folder", async () => {
 			await write("Main.server.luau", "print(1)");
@@ -1917,9 +1918,9 @@ describe("CoreInitService", () => {
 
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
 				".gitignore",
-				"src/Greeter/Shared/Greeting.luau",
-				"src/Greeter/Server/Greeter.server.luau",
-				"src/Greeter/Client/Greeter.client.luau",
+				"src/greeter/shared/greeting.luau",
+				"src/greeter/server/greeter.server.luau",
+				"src/greeter/client/greeter.client.luau",
 				"README.md",
 				"AGENTS.md",
 				"default.rogen.json",
@@ -2084,7 +2085,7 @@ describe("CoreInitService", () => {
 				prompts.prompts[2].description
 			);
 			expect(
-				plan?.files.some(({ fileName }) => fileName.includes("Greeter"))
+				plan?.files.some(({ fileName }) => fileName.includes("greeter"))
 			).toBe(true);
 		});
 
@@ -2104,7 +2105,7 @@ describe("CoreInitService", () => {
 			const plan = (await review(prompts)).unwrap();
 
 			expect(
-				plan?.files.some(({ fileName }) => fileName.includes("Greeter"))
+				plan?.files.some(({ fileName }) => fileName.includes("greeter"))
 			).toBe(true);
 		});
 
@@ -2153,7 +2154,7 @@ describe("CoreInitService", () => {
 				"Project"
 			);
 			expect(
-				plan?.files.some(({ fileName }) => fileName.includes("Greeter"))
+				plan?.files.some(({ fileName }) => fileName.includes("greeter"))
 			).toBe(false);
 		});
 
@@ -2245,7 +2246,7 @@ describe("CoreInitService", () => {
 
 			for (const planned of [asked, unasked]) {
 				expect(planned?.notes).toContain(
-					"Greeter sample in src/Greeter, Rojo's Baseplate in default.rogen.json."
+					"Greeter sample in src/greeter, Rojo's Baseplate in default.rogen.json."
 				);
 				expect(planned?.notes.join("\n")).not.toContain("--no-sample");
 			}
@@ -2411,7 +2412,7 @@ describe("CoreInitService", () => {
 		});
 
 		it("should fail on an error about a folder of the files it writes", async () => {
-			await write("src/Inventory/@server", "");
+			await write("src/Inventory/@Server", "");
 			const service = serviceFor();
 			const plan = (await service.plan()).unwrap();
 

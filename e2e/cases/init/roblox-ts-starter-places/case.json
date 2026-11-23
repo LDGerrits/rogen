@@ -9,8 +9,8 @@
 		"lobby.rogen.json",
 		"tsconfig.json",
 		"tsconfig.lobby.json",
-		"src/common/Greeter/shared/Greeting.ts",
-		"src/lobby/Welcome/server/Welcome.server.ts"
+		"src/common/greeter/shared/greeting.ts",
+		"src/lobby/welcome/server/welcome.server.ts"
 	],
 	"output": ["init"],
 	"tools": {

@@ -20,6 +20,6 @@
 		]
 	],
 	"show": [
-		"out/Greeter/server/Greeter.server.luau"
+		"out/greeter/server/greeter.server.luau"
 	]
 }

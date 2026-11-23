@@ -135,7 +135,7 @@ default.rogen.json:
     "props": "Workspace/Level/Props",
     "server": "ServerScriptService",
     "client": "StarterPlayer/StarterPlayerScripts",
-    "shared": "ReplicatedStorage/Shared",
+    "shared": "ReplicatedStorage/shared",
     "*": "Workspace/Map"
   },
   "tree": {

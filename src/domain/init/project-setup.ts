@@ -759,7 +759,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addNote(
 				places
 					? `Greeter sample in ${here(places.commonSourcePath)}, Welcome in ${here(places.placeSourcePath)}, Rojo's Baseplate in ${configFile}.`
-					: `Greeter sample in ${here(sourcePaths[0], "Greeter")}, Rojo's Baseplate in ${configFile}.`
+					: `Greeter sample in ${here(sourcePaths[0], "greeter")}, Rojo's Baseplate in ${configFile}.`
 			);
 		}
 		this.planNextSteps(builder, choices, tree);

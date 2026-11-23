@@ -83,7 +83,7 @@ describe("ProjectSetup plan, summary", () => {
 
 		expect(planned.summary).toContainEqual({
 			area: "Code",
-			text: "src → Server, Client, Shared; other files to ReplicatedStorage/Shared",
+			text: "src → server, client, shared; other files to ReplicatedStorage/shared",
 		});
 	});
 
@@ -106,7 +106,7 @@ describe("ProjectSetup plan, summary", () => {
 
 		expect(planned.summary).toContainEqual({
 			area: "Code",
-			text: "src, lib → Tools, Server, Client, Shared; other files to ReplicatedStorage/Shared",
+			text: "src, lib → Tools, Server, Client, Shared; other files to ReplicatedStorage/shared",
 		});
 	});
 });
@@ -283,7 +283,7 @@ describe("ProjectSetup plan", () => {
 			return configOf(files).routes;
 		};
 
-		it("should write the standard routes with capitalised keys for luau", async () => {
+		it("should write the standard routes with lowercase keys for luau", async () => {
 			expect(await routesOf({})).toEqual(LUAU_ROUTES);
 		});
 

@@ -1,4 +1,3 @@
-import { capitalized } from "../../base/strings.js";
 import {
 	Language,
 	LanguageCopy,
@@ -20,7 +19,7 @@ export class Luau implements Language, LanguageDetector {
 	}
 
 	routeKey(id: string): string {
-		return capitalized(id);
+		return id;
 	}
 
 	configuredSourcePath(): undefined {

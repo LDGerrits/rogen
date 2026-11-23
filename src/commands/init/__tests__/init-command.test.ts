@@ -299,7 +299,7 @@ describe("init command", () => {
 
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: Greeter sample in src/Greeter, Rojo's Baseplate in default.rogen.json.",
+				"info: Greeter sample in src/greeter, Rojo's Baseplate in default.rogen.json.",
 				"info: Defaults: a place, luau, one place, the Greeter sample, a git repository, agent rules. See 'rogen init --help' to change them.",
 				"success: Wrote default.project.json.",
 				"step: Next steps",
@@ -554,12 +554,12 @@ describe("init command", () => {
 			expect(await exists("default.project.json")).toBe(false);
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: Greeter sample in src/Greeter, Rojo's Baseplate in default.rogen.json.",
+				"info: Greeter sample in src/greeter, Rojo's Baseplate in default.rogen.json.",
 				"info: Defaults: a place, luau, one place, the Greeter sample, a git repository, agent rules. See 'rogen init --help' to change them.",
 				"success: Would create .gitignore.",
-				"success: Would create src/Greeter/Shared/Greeting.luau.",
-				"success: Would create src/Greeter/Server/Greeter.server.luau.",
-				"success: Would create src/Greeter/Client/Greeter.client.luau.",
+				"success: Would create src/greeter/shared/greeting.luau.",
+				"success: Would create src/greeter/server/greeter.server.luau.",
+				"success: Would create src/greeter/client/greeter.client.luau.",
 				"success: Would create README.md.",
 				"success: Would create AGENTS.md.",
 				"success: Would create default.rogen.json.",
@@ -589,21 +589,21 @@ describe("init command", () => {
 					{
 						file: path.join(
 							cwd,
-							"src/Greeter/Shared/Greeting.luau"
+							"src/greeter/shared/greeting.luau"
 						),
 						outcome: "wouldWrite",
 					},
 					{
 						file: path.join(
 							cwd,
-							"src/Greeter/Server/Greeter.server.luau"
+							"src/greeter/server/greeter.server.luau"
 						),
 						outcome: "wouldWrite",
 					},
 					{
 						file: path.join(
 							cwd,
-							"src/Greeter/Client/Greeter.client.luau"
+							"src/greeter/client/greeter.client.luau"
 						),
 						outcome: "wouldWrite",
 					},
@@ -1623,7 +1623,7 @@ describe("init command", () => {
 		]);
 
 		expect(logService.lines).toContain(
-			"info: Greeter sample in lobby/src/Greeter, Rojo's Baseplate in lobby/default.rogen.json."
+			"info: Greeter sample in lobby/src/greeter, Rojo's Baseplate in lobby/default.rogen.json."
 		);
 	});
 });

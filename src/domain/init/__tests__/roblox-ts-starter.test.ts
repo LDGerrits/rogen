@@ -182,14 +182,14 @@ describe("a new roblox-ts project", () => {
 
 			expect(planned.files.map(({ fileName }) => fileName)).toEqual(
 				expect.arrayContaining([
-					"src/Greeter/shared/Greeting.ts",
-					"src/Greeter/server/Greeter.server.ts",
-					"src/Greeter/client/Greeter.client.ts",
+					"src/greeter/shared/greeting.ts",
+					"src/greeter/server/greeter.server.ts",
+					"src/greeter/client/greeter.client.ts",
 				])
 			);
 			expect(
-				fileOf(planned, "src/Greeter/server/Greeter.server.ts")?.content
-			).toContain('import { greeting } from "../shared/Greeting"');
+				fileOf(planned, "src/greeter/server/greeter.server.ts")?.content
+			).toContain('import { greeting } from "../shared/greeting"');
 		});
 
 		it("should name the project, which roblox-ts needs, mount its runtime and sync from out", async () => {
@@ -235,7 +235,7 @@ describe("a new roblox-ts project", () => {
 
 			expect(planned.scaffold).toBeUndefined();
 			expect(planned.files.map(({ fileName }) => fileName)).not.toContain(
-				"src/Greeter/shared/Greeting.ts"
+				"src/greeter/shared/greeting.ts"
 			);
 		});
 
@@ -270,7 +270,7 @@ describe("a new roblox-ts project", () => {
 
 			expect(planned.scaffold).toBeDefined();
 			expect(planned.files.map(({ fileName }) => fileName)).not.toContain(
-				"src/Greeter/shared/Greeting.ts"
+				"src/greeter/shared/greeting.ts"
 			);
 		});
 	});
@@ -329,7 +329,7 @@ describe("a new roblox-ts project", () => {
 			])
 				expect(await present(file)).toBe(false);
 			expect(await present("package.json")).toBe(true);
-			expect(await present("src/Greeter/shared/Greeting.ts")).toBe(true);
+			expect(await present("src/greeter/shared/greeting.ts")).toBe(true);
 		});
 
 		it("should report the tool first, as a command that ran", async () => {

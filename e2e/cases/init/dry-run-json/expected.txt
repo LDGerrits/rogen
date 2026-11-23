@@ -14,15 +14,15 @@ stdout:
         "outcome": "wouldWrite"
       },
       {
-        "file": "<dir>/src/Greeter/Shared/Greeting.luau",
+        "file": "<dir>/src/greeter/shared/greeting.luau",
         "outcome": "wouldWrite"
       },
       {
-        "file": "<dir>/src/Greeter/Server/Greeter.server.luau",
+        "file": "<dir>/src/greeter/server/greeter.server.luau",
         "outcome": "wouldWrite"
       },
       {
-        "file": "<dir>/src/Greeter/Client/Greeter.client.luau",
+        "file": "<dir>/src/greeter/client/greeter.client.luau",
         "outcome": "wouldWrite"
       },
       {
@@ -73,7 +73,7 @@ stdout:
       }
     ],
     "notes": [
-      "Greeter sample in src/Greeter, Rojo's Baseplate in default.rogen.json."
+      "Greeter sample in src/greeter, Rojo's Baseplate in default.rogen.json."
     ],
     "nextSteps": {
       "setup": [],

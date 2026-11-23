@@ -14,10 +14,10 @@ In an empty folder, `rogen init --places` writes a first place, `lobby`, with it
 	"name": "lobby",
 	"sourcePaths": ["src/common", "src/lobby"],
 	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
 	},
 	"tree": { "$className": "DataModel" }
 }

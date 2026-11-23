@@ -16,7 +16,7 @@ default.rogen.json:
     "src"
   ],
   "routes": {
-    "Shared": "ReplicatedStorage/Shared",
+    "Shared": "ReplicatedStorage/shared",
     "*": "ReplicatedStorage/Lib"
   },
   "tree": {

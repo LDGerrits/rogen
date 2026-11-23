@@ -13,9 +13,9 @@ written:
   README.md
   default.project.json
   default.rogen.json
-  src/Greeter/Client/Greeter.client.luau
-  src/Greeter/Server/Greeter.server.luau
-  src/Greeter/Shared/Greeting.luau
+  src/greeter/client/greeter.client.luau
+  src/greeter/server/greeter.server.luau
+  src/greeter/shared/greeting.luau
 
 default.rogen.json:
 {
@@ -24,10 +24,10 @@ default.rogen.json:
     "src"
   ],
   "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared",
-    "*": "ReplicatedStorage/Shared"
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared",
+    "*": "ReplicatedStorage/shared"
   },
   "tree": {
     "$className": "DataModel",
@@ -85,16 +85,16 @@ $ rojo sourcemap default.project.json
 project: DataModel
   Lighting: Lighting
   ReplicatedStorage: ReplicatedStorage
-    Shared: Folder
-      Greeter: Folder
-        Greeting: ModuleScript  <- src/Greeter/Shared/Greeting.luau
+    shared: Folder
+      greeter: Folder
+        greeting: ModuleScript  <- src/greeter/shared/greeting.luau
   ServerScriptService: ServerScriptService
-    Greeter: Folder
-      Greeter: Script  <- src/Greeter/Server/Greeter.server.luau
+    greeter: Folder
+      greeter: Script  <- src/greeter/server/greeter.server.luau
   SoundService: SoundService
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
-      Greeter: Folder
-        Greeter: LocalScript  <- src/Greeter/Client/Greeter.client.luau
+      greeter: Folder
+        greeter: LocalScript  <- src/greeter/client/greeter.client.luau
   Workspace: Workspace
     Baseplate: Part

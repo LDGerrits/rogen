@@ -1,6 +1,6 @@
 ---
 title: Routing by Pattern
-description: Route files by what they're called, such as every Controller to the client
+description: Route files by what they're called, such as every controller to the client
 ---
 
 When your files are named for their role, a pattern route sends each one where it belongs, without a routing folder or an `@` on every file. A route key with a `*` is a pattern:
@@ -8,12 +8,12 @@ When your files are named for their role, a pattern route sends each one where i
 ```json title="default.rogen.json"
 {
 	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*Controller": "StarterPlayer/StarterPlayerScripts",
-		"*Service": "ServerScriptService",
-		"*": "ReplicatedStorage/Shared"
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*-controller": "StarterPlayer/StarterPlayerScripts",
+		"*-service": "ServerScriptService",
+		"*": "ReplicatedStorage/shared"
 	}
 }
 ```
@@ -21,32 +21,32 @@ When your files are named for their role, a pattern route sends each one where i
 <RouteFigure
 	disk={`
   src/
-    Shop/
-      ShopController.luau
-      ShopService.luau
-      Prices.luau
-      Shared/
-        PriceService.luau
+    shop/
+      shop-controller.luau
+      shop-service.luau
+      prices.luau
+      shared/
+        price-service.luau
 `}
 	studio={`
   ReplicatedStorage
-    Shared/
-      Shop/
-        PriceService
-        Prices
+    shared/
+      shop/
+        price-service
+        prices
   ServerScriptService
-    Shop/
-      ShopService
+    shop/
+      shop-service
   StarterPlayer
     StarterPlayerScripts
-      Shop/
-        ShopController
+      shop/
+        shop-controller
 `}
 />
 
-`*Controller` matches the name of the instance a file makes, so `ShopController.luau` needs no `.*` after it. The file keeps its whole name, and its feature folder comes along as it does with any route.
+`*-controller` matches the name of the instance a file makes, so `shop-controller.luau` needs no `.*` after it. The file keeps its whole name, and its feature folder comes along as it does with any route.
 
-A routing folder or `@` name still beats a pattern, which is why `Shared/PriceService.luau` stays shared. When two patterns match one file, the longer one wins, so `*.story.luau` beats `*.luau`. A pattern matches files, never folders, so route a folder script such as `InputController/init.luau` by its folder's name, as `InputController@Client/`.
+A routing folder or `@` name still beats a pattern, which is why `shared/price-service.luau` stays shared. When two patterns match one file, the longer one wins, so `*.story.luau` beats `*.luau`. A pattern matches files, never folders, so route a folder script such as `input-controller/init.luau` by its folder's name, as `input-controller@client/`.
 
 ## File Extensions
 
@@ -55,7 +55,7 @@ A pattern with a dot matches the file's name with its extension, so it can route
 ```json title="default.rogen.json"
 {
 	"routes": {
-		"*.story.luau": "ReplicatedStorage/Stories",
+		"*.story.luau": "ReplicatedStorage/stories",
 		"*.tsx": "StarterPlayer/StarterPlayerScripts"
 	}
 }
@@ -67,11 +67,11 @@ Patterns use Rojo's glob syntax, on a file's name:
 
 | Write | Matches | Example |
 |---|---|---|
-| `*` | any run of characters, or none | `*Controller` matches `ShopController` |
-| `?` | exactly one character | `Data?` matches `DataA` |
-| `[Ss]` | one character from the set | `[Hh]ud*` matches `HudBar` and `hudBar` |
-| `[0-9]` | one character in the range | `Item[0-9]` matches `Item7` |
-| `[!_]` | one character not in the set | `[!_]*Util` matches `MathUtil`, not `_MathUtil` |
-| `{Ui,Menu}` | either word | `{Ui,Menu}Kit` matches `UiKit` and `MenuKit` |
+| `*` | any run of characters, or none | `*-controller` matches `shop-controller` |
+| `?` | exactly one character | `wave-?` matches `wave-a` |
+| `[Ss]` | one character from the set | `[Hh]ud-*` matches `hud-bar` and `Hud-bar` |
+| `[0-9]` | one character in the range | `item[0-9]` matches `item7` |
+| `[!_]` | one character not in the set | `[!_]*-util` matches `math-util`, not `_math-util` |
+| `{ui,menu}` | either word | `{ui,menu}-kit` matches `ui-kit` and `menu-kit` |
 
 Everything else is matched as written, letter case included, and may be a letter, a digit, `.`, `_` or `-`. A pattern never holds `/` or `**`, since it matches a file's name, not its path.
