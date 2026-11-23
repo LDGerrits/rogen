@@ -650,6 +650,49 @@ describe("ProjectSetup plan, second config files", () => {
 			)
 		);
 	});
+
+	it("should name every config to edit when it writes several", async () => {
+		const planned = await plan({ ...luau, testRunner: "Jest" });
+
+		expect(planned.nextSteps.edits).toContainEqual(
+			"Edit default.rogen.json and release.rogen.json, not their project files, which 'rogen write' replaces. Routes and the tree: https://rogen-roblox.vercel.app/docs/v2/routing"
+		);
+	});
+
+	it("should send the user to the README only when it writes one", async () => {
+		const choices = await defaultProjectChoices(luau);
+		const withReadme = {
+			...choices,
+			templateFiles: [
+				...choices.templateFiles,
+				{ fileName: "README.md", content: "" },
+			],
+		};
+
+		expect(
+			planProject({ choices: withReadme }).unwrap().nextSteps.edits
+		).toContainEqual("See README.md for routes and the tree.");
+		expect(
+			planProject({ choices: { ...choices, sample: true } }).unwrap()
+				.nextSteps.edits
+		).toContainEqual(expect.stringContaining("/docs/v2/routing"));
+	});
+
+	it("should leave the routing docs out for a lift that takes no routes", async () => {
+		const choices = {
+			...(await defaultProjectChoices(luau)),
+			tree: lifted({ name: "g", tree: { $className: "Model" } }),
+		};
+
+		const { edits } = planProject({
+			choices,
+			existingFiles: new Set(["default.project.json"]),
+		}).unwrap().nextSteps;
+
+		expect(edits).toContainEqual(
+			"Edit default.rogen.json, not default.project.json, which 'rogen write' replaces."
+		);
+	});
 });
 
 describe("ProjectSetup ask", () => {

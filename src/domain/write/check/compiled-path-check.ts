@@ -173,7 +173,7 @@ export class CompiledPathCheck {
 		if (missing.length === 0) return [];
 
 		const cause = conversion
-			? conversion.note
+			? `${conversion.note} Copy the .meta.json files into the compiled path after it runs.`
 			: "Have the compiler or processor copy .meta.json files into its output.";
 		return [
 			warningDiagnostic(

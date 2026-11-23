@@ -44,8 +44,21 @@ const isAboutAny = (diagnostic: Diagnostic, paths: readonly string[]) =>
 			)
 		);
 
-const stopsOn = ({ code, resource }: Diagnostic) =>
-	`the write would stop on ${toNative(resource)} (${code}); rename it in Studio`;
+const RENAMING_FIXES: ReadonlySet<string> = new Set([
+	"tree.instanceClash",
+	"route.caseMismatch",
+	"route.ignoredAt",
+]);
+
+const stopsOn = ({ code, resource, related }: Diagnostic) => {
+	const partner = related?.[0];
+	const clash = partner ? `, like ${toNative(partner.resource)}` : "";
+	return `the write would stop on ${toNative(resource)} (${code}${clash}); ${
+		RENAMING_FIXES.has(code)
+			? "rename it in Studio"
+			: `see \`rogen help ${code}\``
+	}`;
+};
 
 export function landingMiss(
 	{ file, instance, folder }: Landing,

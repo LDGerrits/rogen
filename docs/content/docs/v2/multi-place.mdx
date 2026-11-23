@@ -39,6 +39,10 @@ cp lobby.rogen.json match.rogen.json
 mkdir src/match
 ```
 
+## Editor
+
+With Luau, `rogen init --places` also writes `.vscode/settings.json`, which pins luau-lsp to the first place. luau-lsp reads one place at a time, `lobby` here. To switch, change the name in the `generatorCommand` in `.vscode/settings.json`.
+
 ## Places in roblox-ts
 
 With `--language roblox-ts`, each place also gets a tsconfig that compiles the shared code and the place's own code into the place's `compiledPath`:

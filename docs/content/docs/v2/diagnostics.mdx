@@ -343,7 +343,7 @@ The rule to add is `{ "pattern": "*.server.lang", "use": "serverScript", "suffix
 Under a `compiledPath`, Rojo reads the class from the name of the `.luau` file the compiler writes, not from the rule's `use`.
 
 ```
-warning: the sync rule "*.lang" asks for a server script, but the compiled Main.luau is a ModuleScript. Rename it Main.server.lang, or set the rule's "use" to "moduleScript". (route.scriptClassMismatch)
+warning: the sync rule "*.lang" asks for a server script, but the compiled Main.luau makes it a ModuleScript. Rename it Main.server.lang, or set the rule's "use" to "moduleScript". (route.scriptClassMismatch)
 ```
 
 A pattern such as `src/**/*` also takes that `.luau` file, so Rojo reads it by the rule instead of by its name.
@@ -915,7 +915,7 @@ Run the compiler or processor first. If the message found the files somewhere el
 Warning. Some `.meta.json` files have no copy in the compiled path, so Rojo doesn't apply them. Either the compiler didn't copy them, or a processor converted them. Darklua turns them into `.meta.lua`, which Rojo reads as a ModuleScript.
 
 ```
-warning: 1 meta file has no copy under "dist" (src/Inventory/Save.meta.json). Darklua converts every .meta.json. (output.metaNotSynced)
+warning: 1 meta file has no copy under "dist" (src/Inventory/Save.meta.json). Darklua converts every .meta.json. Copy the .meta.json files into the compiled path after it runs. (output.metaNotSynced)
 ```
 
 After the compiler or processor runs, copy the `.meta.json` files unchanged into the compiled path.
@@ -967,7 +967,7 @@ These diagnostics come from `rogen init`, which starts projects and lifts a hand
 Error. The folder already has a `.rogen.json` or `.rogen.jsonc`, either `default` or named. `init` never overwrites or changes a config, so it stops and writes nothing. With `--agent-rules` or `--agent-hook`, `init` adds only the agent files instead. A flag that shapes a config, such as `--language`, is then an error.
 
 ```
-error: this config already exists, and init never changes one. Edit it, or add agent files with 'rogen init --agent-rules' or '--agent-hook'. (init.configExists)
+error: this config already exists, and init never changes one. Edit it, or add agent files with 'rogen init --agent-rules' or 'rogen init --agent-hook'. (init.configExists)
 ```
 
 To change the config, edit it and run `rogen check`. For a new place, copy a config and edit the copy. To add the agent rules or the agent hook later, run `rogen init --agent-rules` or `rogen init --agent-hook`. See [Working with Agents](/docs/v2/agents#add-the-rules). To set up Rojo, see [Installation](/docs/v2/installation).
@@ -1260,6 +1260,7 @@ Syncback also uses this warning for changes that it can't write:
 
 ```
 warning: ServerScriptService/Inventory/Mail was left out: files beside it are in more than one place, as many in each: src/Inventory/Server, lib/Inventory/Server. (syncback.unplaced)
+warning: ServerScriptService/Inventory/Types was left out: the write would stop on src/Inventory/Server/Types.lua (tree.instanceClash, like src/Inventory/Server/Types.luau); rename it in Studio. (syncback.unplaced)
 ```
 
 Create the file where you want it, by hand, and run `rogen syncback` again. The other changes from the same run were written.
@@ -1268,7 +1269,7 @@ The reasons that the message gives are short, so here is what they stand for.
 
 - `Rojo writes it as the model file X.rbxm, and no route puts files where its parent is`: Rojo writes a folder as a model file when its children share a name or have names a file can't take, and the model file needs a route to the parent's place like any other file. Rename those children in Studio.
 - `routing would read X as Y`: the file Rojo wrote would become another instance than the one in the place, since routing places a script by its type, as in a `.server.luau` file under a folder that routes to ReplicatedStorage. Make it a ModuleScript, or move it to where that type runs. For another file, rename the instance in Studio.
-- `the write would stop on X (code)`: the file would break a rule that the write checks, such as `route.ignoredAt`. Run `rogen help <code>` for what it means, and rename the instance in Studio.
+- `the write would stop on X (code)`: the file would break a rule that the write checks, and a file it clashes with is named. For `tree.instanceClash`, `route.caseMismatch` and `route.ignoredAt`, rename the instance in Studio. For another code, `rogen help <code>` says what to do.
 - `Rojo would write it as init.luau, the init script of F`: an instance named like an init file becomes the folder itself, so rename it in Studio.
 - `its parent X is a tree node with no $path`: the node isn't a folder of files, so Rojo's file has no place. Give the node a `$path`, or create the file by hand.
 
@@ -1361,17 +1362,17 @@ Rename the file to the name in the message, and update the imports of it.
 Warning. `init` can't rename a file that v1 routed by its name. Another file already has the new name, or two v1 configs route the file to different names.
 
 ```
-warning: v1 routed this file by a word in its name, and Combat@Server.luau, which keeps it there in v2, is taken. init leaves it: rename one of them. (legacy.renameClash)
+warning: v1 routed this file by a word in its name, and Combat@Server.luau, which keeps it there in v2, is taken. init leaves it: rename one of them. .rogen.json is the config that routed it. (legacy.renameClash)
 ```
 
 Rename one of the two files. When two configs route a file apart, check where it lands with `rogen where`.
 
 ### `legacy.outrankedRoute` [#legacy-outrankedroute]
 
-Warning. A file lands somewhere other than where v1 put it. v1 went by the last routing word in a file's path, and v2 goes by the outermost route. So `src/Loading/ReplicatedFirst/Loader.client.luau` went to the client in v1, and goes to `ReplicatedFirst` in v2.
+Warning. A file lands somewhere other than where v1 put it. v1 went by the last routing word in a file's path, and v2 goes by the outermost route. So `src/Server/Shared/Types.luau` went to `ReplicatedStorage/shared` in v1, and goes to `ServerScriptService/server` in v2.
 
 ```
-warning: v1 put this file in StarterPlayer/StarterPlayerScripts/client, v2 puts it in ReplicatedFirst/client. To keep it there, move it out of the folder that routes to ReplicatedFirst/client. (legacy.outrankedRoute)
+warning: v1 put this file in ReplicatedStorage/shared, v2 puts it in ServerScriptService/server. To keep it in ReplicatedStorage/shared, move it out of the folder that routes to ServerScriptService/server. (legacy.outrankedRoute)
 ```
 
 Move the file out of the routing folder, so that its own route places it. Or keep it where v2 puts it.

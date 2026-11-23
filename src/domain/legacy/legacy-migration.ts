@@ -508,7 +508,7 @@ class Migration {
 				warningDiagnostic(
 					"legacy.outrankedRoute",
 					{ resource: this.resource(moved) },
-					`v1 put this file in ${before}, v2 puts it in ${after}. To keep it there, move it out of the folder that routes to ${after}.`
+					`v1 put this file in ${before}, v2 puts it in ${after}. To keep it in ${before}, move it out of the folder that routes to ${after}.`
 				)
 			);
 		for (const { file: kept, name } of tree.clashes)
@@ -516,7 +516,7 @@ class Migration {
 				warningDiagnostic(
 					"legacy.renameClash",
 					{ resource: this.resource(kept) },
-					`v1 routed this file by a word in its name, and ${name}, which keeps it there in v2, is taken. init leaves it: rename one of them.`
+					`v1 routed this file by a word in its name, and ${name}, which keeps it there in v2, is taken. init leaves it: rename one of them. ${file} is the config that routed it.`
 				)
 			);
 	}

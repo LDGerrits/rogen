@@ -16,7 +16,7 @@ stdout:
       npm run watch
       rogen serve
     In Studio, press Connect in the Rojo plugin.
-    See README.md for routes, the tree and adding a place.
+    See README.md for routes and the tree.
   Wrote 8 files.
 
 $ rogen where src/Greeter/server/Greeter.server.ts

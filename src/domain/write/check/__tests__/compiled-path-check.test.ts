@@ -1,3 +1,4 @@
+import { exampleMessage } from "../../../../__tests__/diagnostic-examples.js";
 import { jest } from "@jest/globals";
 import { DisposableStore } from "../../../../base/disposable.js";
 import { Diagnostic } from "../../../../platform/diagnostics/diagnostic.js";
@@ -608,6 +609,12 @@ describe("CompiledPathCheck", () => {
 					expect(warnings[0].message).toContain(
 						"Darklua converts every .meta.json."
 					);
+					expect(
+						warnings[0].message.replace(
+							absPosix("src/Inventory/Save.meta.json"),
+							"src/Inventory/Save.meta.json"
+						)
+					).toBe(exampleMessage("output.metaNotSynced"));
 				});
 
 				it("should find the module a processor made of a .meta.jsonc", async () => {

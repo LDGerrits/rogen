@@ -464,7 +464,7 @@ export class WriteValidator {
 		return this.placement.files.flatMap(({ entry }) => {
 			const { file, source } = entry;
 			const message = file.isCompiled
-				? WriteValidator.compiledClassMismatch(file)
+				? this.compiledClassMismatch(file, source)
 				: WriteValidator.moduleRuleMismatch(file);
 			return message
 				? [
@@ -486,7 +486,10 @@ export class WriteValidator {
 		return `the sync rule "${rule.pattern}" makes this file a ModuleScript, so it never runs. Add a "${named}Script" rule for "*.${named}${extension}" before it, or remove ".${named}".`;
 	}
 
-	private static compiledClassMismatch(file: RojoFile): string | undefined {
+	private compiledClassMismatch(
+		file: RojoFile,
+		source: string
+	): string | undefined {
 		const emitted = file.renamed(`${file.stem}.luau`);
 		if (
 			emitted.ownRule &&
@@ -496,10 +499,16 @@ export class WriteValidator {
 		)
 			return `the sync rule "${emitted.ownRule.pattern}" also takes the compiled ${emitted.name}, so Rojo reads it by the rule. Narrow the pattern to the source extension.`;
 		const { ownRule: rule, scriptSuffix: given } = file.uncompiled;
-		if (!rule || !given || given === RojoFile.scriptSuffixOf(file.stem))
-			return undefined;
+		const named = RojoFile.scriptSuffixOf(file.stem);
+		if (!rule || !given || given === named) return undefined;
+		const run = scriptRunOf(
+			named,
+			!this.placement.tree.disablesLegacyScripts,
+			this.assembly.meta.runContextOf(source)
+		);
+		const makes = run ? WriteValidator.describeRun(run) : "a ModuleScript";
 		const renamed = `${RojoFile.scriptNameOf(file.stem)}.${given}${path.extname(file.name)}`;
-		return `the sync rule "${rule.pattern}" asks for a ${given} script, but the compiled ${emitted.name} is a ModuleScript. Rename it ${renamed}, or set the rule's "use" to "moduleScript".`;
+		return `the sync rule "${rule.pattern}" asks for a ${given} script, but the compiled ${emitted.name} makes it ${makes}. Rename it ${renamed}, or set the rule's "use" to "moduleScript".`;
 	}
 
 	private scriptSuffixBeforeAt(): Diagnostic[] {

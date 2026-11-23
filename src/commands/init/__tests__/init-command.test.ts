@@ -306,7 +306,7 @@ describe("init command", () => {
 				"info: Run:",
 				"info:   rogen serve",
 				"info: In Studio, press Connect in the Rojo plugin.",
-				"info: See README.md for routes, the tree and adding a place.",
+				"info: See README.md for routes and the tree.",
 				"outro: Wrote 7 files.",
 			]);
 		});

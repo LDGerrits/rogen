@@ -125,6 +125,10 @@ export class InitPlanBuilder {
 		);
 	}
 
+	get configNames(): string[] {
+		return this.configFiles.map(({ file }) => file.fileName);
+	}
+
 	addNote(note: string): void {
 		this.notes.push(note);
 	}

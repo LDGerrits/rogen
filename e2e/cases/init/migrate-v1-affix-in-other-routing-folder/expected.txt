@@ -2,7 +2,7 @@ $ rogen init
 exit 0
 stdout: (not shown)
 stderr:
-  src/Shop/client/Shop_Server.luau - warning: v1 put this file in ServerScriptService/server, v2 puts it in StarterPlayer/StarterPlayerScripts/client. To keep it there, move it out of the folder that routes to StarterPlayer/StarterPlayerScripts/client. (legacy.outrankedRoute)
+  src/Shop/client/Shop_Server.luau - warning: v1 put this file in ServerScriptService/server, v2 puts it in StarterPlayer/StarterPlayerScripts/client. To keep it in ServerScriptService/server, move it out of the folder that routes to StarterPlayer/StarterPlayerScripts/client. (legacy.outrankedRoute)
 
 $ rogen check
 exit 0

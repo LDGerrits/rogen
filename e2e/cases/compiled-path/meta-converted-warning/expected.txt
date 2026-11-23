@@ -2,7 +2,7 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  default.project.json - warning: 1 meta file has no copy under "dist" (src/Inventory/Save.meta.json). Darklua converts every .meta.json. (output.metaNotSynced)
+  default.project.json - warning: 1 meta file has no copy under "dist" (src/Inventory/Save.meta.json). Darklua converts every .meta.json. Copy the .meta.json files into the compiled path after it runs. (output.metaNotSynced)
 
 written:
   default.project.json

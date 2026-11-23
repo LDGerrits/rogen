@@ -865,11 +865,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addEdit(
 				`Rogen writes ${chosen.from} now, so git can stop tracking it: git rm --cached ${chosen.from}`
 			);
-		const configFile = places?.configFile ?? DEFAULT_CONFIG_FILE;
+		const wroteReadme = choices.templateFiles.some(
+			({ fileName }) => fileName === "README.md"
+		);
 		builder.addEdit(
-			choices.sample
-				? "See README.md for routes, the tree and adding a place."
-				: `Edit ${configFile}, not ${places?.projectFile ?? DEFAULT_PROJECT_FILE}, which 'rogen write' replaces. Routes and the tree: ${DOCS_URL}/routing`
+			wroteReadme
+				? `See README.md for ${places ? "routes, the tree and adding a place" : "routes and the tree"}.`
+				: ProjectSetup.editStep(builder, choices, places)
 		);
 		if (chosen.kind === "lift" && !takesRoutes(chosen)) {
 			builder.addRun(
@@ -883,5 +885,19 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			...(compiler ? [compiler.compileCommand] : []),
 			ProjectSetup.serveCommand(places, processedPathOf(choices))
 		);
+	}
+
+	private static editStep(
+		builder: InitPlanBuilder,
+		choices: ProjectChoices,
+		places: StartingPlaces | undefined
+	): string {
+		const configs = builder.configNames;
+		const edit =
+			configs.length > 1
+				? `Edit ${joinedWithAnd(configs)}, not their project files, which 'rogen write' replaces.`
+				: `Edit ${configs[0]}, not ${places?.projectFile ?? DEFAULT_PROJECT_FILE}, which 'rogen write' replaces.`;
+		if (!takesRoutes(choices.tree)) return edit;
+		return `${edit} Routes and the tree: ${DOCS_URL}/${places ? "multi-place" : "routing"}`;
 	}
 }

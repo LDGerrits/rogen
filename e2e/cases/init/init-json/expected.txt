@@ -84,7 +84,7 @@ stdout:
         "rogen serve"
       ],
       "edits": [
-        "See README.md for routes, the tree and adding a place."
+        "See README.md for routes and the tree."
       ]
     }
   }

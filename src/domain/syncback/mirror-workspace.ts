@@ -276,7 +276,7 @@ export class MirrorWorkspace {
 			)
 				return err(
 					new UsageError(
-						`The place holds an instance that Rojo can't write back as files, such as one named with a slash or as . or ..: it would write ${file.split("/").slice(MIRROR.split("/").length).join("/")}.`,
+						`The place holds an instance that Rojo can't write back as files, such as one named with a slash or as . or ..: it would write ${file.split("/").slice(MIRROR.split("/").length).join("/")}, so nothing was written.`,
 						"Rename the instance in Studio, then run syncback again."
 					)
 				);

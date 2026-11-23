@@ -37,7 +37,7 @@ rogen build {{place}} -o "{{name}}.rbxlx"
 Edit `{{place}}.rogen.json`, not `{{place}}.project.json`, which `rogen write` replaces. After you add a feature folder, run `rogen write {{place}}` so the editor's `{{place}}.project.json` follows. The `routes` in each config say where each folder's code goes, and a folder to place as it is, such as `Packages`, is mounted in the `tree` of each.
 
 ## Adding a place
-Copy `{{place}}.rogen.json` to `match.rogen.json` and `tsconfig.{{place}}.json` to `tsconfig.match.json`, change each `{{place}}` in both copies to `match`, and make the `src/match` folder. Give the copy its own `name` and source path, since Rogen errors while two configs match, and `{{place}}.release.rogen.json`, if there is one, needs the same copy. Add `{ "path": "./tsconfig.match.json" }` to the `references` in `tsconfig.json`, and ` && rbxtsc -p tsconfig.match.json` to the end of the `build` script in `package.json`. `rbxtsc -w` runs until you stop it, so watch the new place from a terminal of its own:
+Copy `{{place}}.rogen.json` to `match.rogen.json` and `tsconfig.{{place}}.json` to `tsconfig.match.json`, change each `{{place}}` in both copies to `match`, and make the `src/match` folder. Add `{ "path": "./tsconfig.match.json" }` to the `references` in `tsconfig.json`, and ` && rbxtsc -p tsconfig.match.json` to the end of the `build` script in `package.json`. `rbxtsc -w` runs until you stop it, so watch the new place from a terminal of its own:
 
 ```bash
 npx rbxtsc -w -p tsconfig.match.json

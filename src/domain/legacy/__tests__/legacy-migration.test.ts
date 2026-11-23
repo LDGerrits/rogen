@@ -1,4 +1,5 @@
 import { jest } from "@jest/globals";
+import { exampleMessage } from "../../../__tests__/diagnostic-examples.js";
 import path from "path";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MigratedProject } from "../../init/project-migration.js";
@@ -550,6 +551,9 @@ describe("LegacyMigration", () => {
 
 			expect(await renamesOf()).toEqual([]);
 			expect(await codesOf()).toEqual(["legacy.renameClash"]);
+			expect((await migrate()).warnings[0].message).toBe(
+				exampleMessage("legacy.renameClash")
+			);
 		});
 
 		it("should rename a shared file once, without a warning, when two configs route it alike", async () => {
@@ -688,7 +692,12 @@ describe("LegacyMigration", () => {
 			await write("src/Server/Shared/Types.luau");
 			await write("src/Server/Data.luau");
 
-			expect((await migrate()).warnings).toMatchObject([
+			const { warnings } = await migrate();
+
+			expect(warnings[1].message).toBe(
+				exampleMessage("legacy.outrankedRoute")
+			);
+			expect(warnings).toMatchObject([
 				{
 					code: "legacy.outrankedRoute",
 					resource: path.join(

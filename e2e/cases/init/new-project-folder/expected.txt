@@ -12,7 +12,7 @@ stdout:
     Run:
       rogen serve
     In Studio, press Connect in the Rojo plugin.
-    See README.md for routes, the tree and adding a place.
+    See README.md for routes and the tree.
   Wrote 7 files.
 
 $ rogen write newproj

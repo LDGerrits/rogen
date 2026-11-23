@@ -1,3 +1,4 @@
+import { exampleMessage } from "../../../__tests__/diagnostic-examples.js";
 import { ResultError } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
@@ -230,8 +231,13 @@ describe("DraftRouting", () => {
 
 		const misses = await routingOf().misses([], [proposal]);
 
-		expect(misses.get(proposal)).toMatch(
-			/^the write would stop on .*Types.* \(tree\.instanceClash\); rename it in Studio$/
+		expect(`${misses.get(proposal)}`.replaceAll("/repo/", "")).toBe(
+			exampleMessage("syncback.unplaced", "would stop on")
+				.replace(
+					"ServerScriptService/Inventory/Types was left out: ",
+					""
+				)
+				.replace(/\.$/, "")
 		);
 	});
 
@@ -254,7 +260,7 @@ describe("DraftRouting", () => {
 
 		expect(known).not.toEqual([]);
 		expect(misses.get(proposal)).toBe(
-			`the write would stop on ${known[0].resource} (${known[0].code}); rename it in Studio`
+			`the write would stop on ${known[0].resource} (${known[0].code}); see \`rogen help ${known[0].code}\``
 		);
 	});
 

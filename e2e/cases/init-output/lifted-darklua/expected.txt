@@ -12,7 +12,7 @@ stdout:
     Run:
       rogen serve dist
     In Studio, press Connect in the Rojo plugin.
-    Edit default.rogen.json, not default.project.json, which 'rogen write' replaces. Routes and the tree: https://rogen-roblox.vercel.app/docs/v2/routing
+    Edit default.rogen.json and dist.rogen.json, not their project files, which 'rogen write' replaces. Routes and the tree: https://rogen-roblox.vercel.app/docs/v2/routing
   Wrote 4 files.
 
 $ rogen write dist

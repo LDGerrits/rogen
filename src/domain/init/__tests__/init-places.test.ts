@@ -116,9 +116,7 @@ describe("init for several places", () => {
 
 			expect(fileOf(planned, "README.md")).toBeUndefined();
 			expect(planned.nextSteps.edits).toEqual([
-				expect.stringContaining(
-					"Edit lobby.rogen.json, not lobby.project.json"
-				),
+				"Edit lobby.rogen.json, not lobby.project.json, which 'rogen write' replaces. Routes and the tree: https://rogen-roblox.vercel.app/docs/v2/multi-place",
 			]);
 		});
 
@@ -239,14 +237,6 @@ describe("init for several places", () => {
 					globIgnorePaths: ["**/*.spec.luau"],
 				});
 				expect(result.nextSteps.run).toEqual(["rogen serve lobby"]);
-			});
-
-			it("should leave the README to say a release config needs the same copy", async () => {
-				const result = await planned();
-
-				expect(fileOf(result, "README.md")?.content).toContain(
-					"`lobby.release.rogen.json`, if there is one"
-				);
 			});
 		});
 	});

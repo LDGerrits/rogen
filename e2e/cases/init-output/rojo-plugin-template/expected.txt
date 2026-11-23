@@ -10,7 +10,7 @@ stdout:
   Next steps
     Run:
       rogen build -p "project.rbxm"
-    Edit default.rogen.json, not default.project.json, which 'rogen write' replaces. Routes and the tree: https://rogen-roblox.vercel.app/docs/v2/routing
+    Edit default.rogen.json, not default.project.json, which 'rogen write' replaces.
   Wrote 3 files.
 
 written:

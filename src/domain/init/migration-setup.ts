@@ -67,7 +67,7 @@ export class MigrationSetup implements Setup<MigrationChoices> {
 		if (choices.projectFilesHint) builder.addEdit(choices.projectFilesHint);
 		const files = migrated.configs.map(({ fileName }) => fileName);
 		builder.addEdit(
-			`Edit ${joinedWithAnd(files)}, not ${joinedWithAnd(files.map(MigrationSetup.projectFileOf))}, which 'rogen write' replaces.`
+			`Edit ${joinedWithAnd(files)}, not ${joinedWithAnd(files.map(MigrationSetup.projectFileOf))}, which 'rogen write' replaces. Run 'rogen write' after you add a feature folder.`
 		);
 		if (choices.serve) builder.addRun(choices.serve);
 	}

@@ -17,6 +17,7 @@ import {
 	syncTools,
 	writeFiles,
 } from "../../__tests__/fixtures.js";
+import { exampleMessage } from "../../../../__tests__/diagnostic-examples.js";
 import { metaReaderOf } from "../../__tests__/write-of.js";
 
 describe("WriteValidator", () => {
@@ -619,8 +620,10 @@ describe("WriteValidator rules", () => {
 					{
 						severity: DiagnosticSeverity.Warning,
 						resource: abs("src/Boot/Main.server.lang"),
-						message:
-							'the sync rule "*.lang" makes this file a ModuleScript, so it never runs. Add a "serverScript" rule for "*.server.lang" before it, or remove ".server".',
+						message: exampleMessage(
+							"route.scriptClassMismatch",
+							"makes this file a ModuleScript"
+						),
 					},
 				]);
 			});
@@ -717,16 +720,18 @@ describe("WriteValidator rules", () => {
 				const serverRule = { pattern: "*.lang", use: "serverScript" };
 
 				it("should warn that a run rule on a plain name gives a ModuleScript, and name the file to rename it to", async () => {
-					await write("src/Boot.lang");
+					await write("src/Main.lang");
 
 					expect(
 						await mismatches(compiled(serverRule))
 					).toMatchObject([
 						{
 							severity: DiagnosticSeverity.Warning,
-							resource: abs("src/Boot.lang"),
-							message:
-								'the sync rule "*.lang" asks for a server script, but the compiled Boot.luau is a ModuleScript. Rename it Boot.server.lang, or set the rule\'s "use" to "moduleScript".',
+							resource: abs("src/Main.lang"),
+							message: exampleMessage(
+								"route.scriptClassMismatch",
+								"the compiled Main.luau"
+							),
 						},
 					]);
 				});
@@ -749,9 +754,21 @@ describe("WriteValidator rules", () => {
 					).toMatchObject([
 						{
 							message:
-								'the sync rule "*.lang" asks for a server script, but the compiled Hud.client.luau is a ModuleScript. Rename it Hud.server.lang, or set the rule\'s "use" to "moduleScript".',
+								'the sync rule "*.lang" asks for a server script, but the compiled Hud.client.luau makes it a LocalScript. Rename it Hud.server.lang, or set the rule\'s "use" to "moduleScript".',
 						},
 					]);
+				});
+
+				it("should word the pattern that takes the .luau file as the page shows", async () => {
+					await write("src/Main.server.lang");
+
+					const [warning] = await mismatches(
+						compiled({ pattern: "src/**/*", use: "moduleScript" })
+					);
+
+					expect(warning.message).toBe(
+						exampleMessage("route.scriptClassMismatch", "src/**/*")
+					);
 				});
 
 				it.each(["src/**/*", "*.{lang,luau}"])(
