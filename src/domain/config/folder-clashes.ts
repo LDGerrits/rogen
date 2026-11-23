@@ -39,7 +39,7 @@ export function folderClashes(
 				errorDiagnostic(
 					"config.identicalConfig",
 					location,
-					`${files} are the same config: a copy that was not edited. Change "name", "sourcePaths" and what else the copy is for, or delete it.`
+					`${files} are the same config. Edit the copy, or delete it.`
 				)
 			);
 		}

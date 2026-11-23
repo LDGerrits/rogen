@@ -194,7 +194,7 @@ export class FolderMetaApplier {
 			problems.error(
 				"meta.sameNode",
 				{ resource: clash[0].file },
-				`${clash.map(({ file }) => file).join(" and ")} both apply to "${instance}" from one source path, and neither ranks above the other. Keep one of them.`
+				`${clash.map(({ file }) => file).join(" and ")} both apply to "${instance}" from one source path. Keep one of them.`
 			);
 		}
 	}
@@ -247,7 +247,7 @@ export class FolderMetaApplier {
 				problems.error(
 					"meta.idOnSeveralNodes",
 					{ resource: meta.file },
-					`id "${meta.fields.id}" would be copied onto ${instances.length} instances (${instances.join(", ")}), but a ref must be unique. Remove the id, or keep the folder's files in one service.`
+					`id "${meta.fields.id}" would be copied onto ${instances.length} instances (${instances.join(", ")}). Remove the id, or keep the folder's files in one service.`
 				);
 	}
 

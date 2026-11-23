@@ -97,7 +97,7 @@ export class WriteValidator {
 			if (key === undefined) return [];
 			const parent = path.dirname(sourcePath);
 			const fix = isInside(parent, configDir)
-				? `use "${toPosix(path.relative(configDir, parent))}" as the source path instead, so "${name}" is read as a key`
+				? `use "${toPosix(path.relative(configDir, parent))}" as the source path instead`
 				: `move it into a folder, such as src/${toPosix(path.relative(configDir, sourcePath))}, and use "sourcePaths": ["src"]`;
 			return [
 				warningDiagnostic(
@@ -163,7 +163,7 @@ export class WriteValidator {
 						warningDiagnostic(
 							"scan.uncompiled",
 							{ resource },
-							'is TypeScript, which Rojo never reads itself, and the config has no "compiledPath", so it is left out. Set "compiledPath" to the folder roblox-ts writes, as "out", or remove the file.'
+							'is TypeScript, and the config has no "compiledPath". Set "compiledPath" to the folder roblox-ts writes, as "out", or remove the file.'
 						)
 					)
 			);
@@ -184,7 +184,7 @@ export class WriteValidator {
 		const others = unsynced.some((file) => !/\.tsx?$/.test(file));
 		const advice =
 			!compiled && typeScript
-				? `Rojo reads only the Luau a compiler writes for TypeScript: set "compiledPath" to the folder roblox-ts writes, as "out".${others ? ' For the other files, add a "syncRules" entry for their extension.' : ""}`
+				? `Set "compiledPath" to the folder roblox-ts writes, as "out".${others ? ' For the other files, add a "syncRules" entry for their extension.' : ""}`
 				: !compiled
 					? 'Add a "syncRules" entry for their extension, and a "compiledPath" if a compiler turns them into Luau.'
 					: 'Add a "syncRules" entry for their extension.';
@@ -202,7 +202,7 @@ export class WriteValidator {
 							warningDiagnostic(
 								"scan.syncRuleSuffix",
 								{ resource: source },
-								`the sync rule "${rule.pattern}" cuts "${rule.suffix}" off a file name, but this name does not end with it, so Rojo names the instance after the whole file name. Make the suffix end every file the pattern matches.`
+								`the sync rule "${rule.pattern}" cuts "${rule.suffix}" off a file name, but this name does not end with it. Make the suffix end every file the pattern matches.`
 							),
 						]
 					: [];
@@ -256,7 +256,7 @@ export class WriteValidator {
 				warningDiagnostic(
 					"meta.unclaimed",
 					{ resource },
-					`belongs to no file, so Rojo ignores it. ${hint ? `${capitalized(hint)}.` : "A file's meta is named after the name Rojo gives the file, without .server, .client or .plugin."}`
+					`belongs to no file, so Rojo ignores it. ${hint ? `${capitalized(hint)}.` : "Name a meta after its file, without .server, .client or .plugin."}`
 				)
 			);
 	}
@@ -681,7 +681,7 @@ export class WriteValidator {
 				warningDiagnostic(
 					"scan.emptyName",
 					{ resource: entry.source },
-					"has no name once its suffix is taken off, so it becomes an instance with an empty name. Put a name before the suffix, as in Name.server.luau."
+					"has no name before its suffix. Put a name before it, as in Name.server.luau."
 				)
 			);
 	}
@@ -771,13 +771,13 @@ export class WriteValidator {
 			return warningDiagnostic(
 				"meta.sharedWithScript",
 				location,
-				`this folder shares "${instance}" with ${entry.source}, the init script of another folder, which is what Rojo reads there, so its meta applies to nothing. Put it in ${joinPosix(file.init.sitsIn, RojoFile.INIT_META)} instead.`
+				`this folder shares "${instance}" with ${entry.source}, the init script of another folder, so its meta applies to nothing. Put it in ${joinPosix(file.init.sitsIn, RojoFile.INIT_META)} instead.`
 			);
 		const fix = entry.file.metaFile ?? `${fileName}${RojoFile.META_SUFFIX}`;
 		return warningDiagnostic(
 			"meta.sharedWithScript",
 			location,
-			`this folder shares "${instance}" with ${fileName}, which is what Rojo reads there, so its meta applies to nothing. Put it in ${fix} beside the script, or turn the folder into an init folder.`
+			`this folder shares "${instance}" with ${fileName}, so its meta applies to nothing. Put it in ${fix} beside the script, or turn the folder into an init folder.`
 		);
 	}
 

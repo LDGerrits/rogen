@@ -110,7 +110,7 @@ describe("CompiledPathCheck", () => {
 						code: "output.nothingEmitted",
 						resource: abs("out"),
 						message:
-							'the compiled path "out" doesn\'t exist yet, so Rojo has nothing to sync. Run your compiler or processor first.',
+							'the compiled path "out" doesn\'t exist yet. Run your compiler or processor first.',
 					});
 				});
 
@@ -594,7 +594,7 @@ describe("CompiledPathCheck", () => {
 					expect(warnings[0].message).not.toContain(".meta.lua");
 				});
 
-				it("should say the processor converted a meta file it turned into .meta.lua", async () => {
+				it("should give the note of the processor that converted a meta file", async () => {
 					await write(
 						"src/Inventory/Save.server.luau",
 						"src/Inventory/Save.meta.json",
@@ -606,7 +606,7 @@ describe("CompiledPathCheck", () => {
 
 					expect(warnings).toHaveLength(1);
 					expect(warnings[0].message).toContain(
-						"The processor turned it into .meta.lua"
+						"Darklua converts every .meta.json."
 					);
 				});
 
@@ -623,23 +623,7 @@ describe("CompiledPathCheck", () => {
 					expect(warnings).toHaveLength(1);
 					expect(warnings[0].message).toContain("Save.meta.jsonc)");
 					expect(warnings[0].message).toContain(
-						"The processor turned it into .meta.lua"
-					);
-				});
-
-				it("should count only the meta files the processor converted", async () => {
-					await write(
-						"src/Inventory/Save.server.luau",
-						"src/Inventory/Save.meta.json",
-						"src/Inventory/init.meta.json",
-						"dist/Inventory/Save.server.luau",
-						"dist/Inventory/Save.meta.lua"
-					);
-
-					const warnings = await check();
-
-					expect(warnings[0].message).toContain(
-						"The processor turned 1 of them into .meta.lua"
+						"Darklua converts every .meta.json."
 					);
 				});
 
@@ -661,44 +645,7 @@ describe("CompiledPathCheck", () => {
 						},
 					]);
 
-					expect(warnings[0].message).toContain(
-						"The processor turned it into .meta.yaml"
-					);
 					expect(warnings[0].message).toContain("Yaml it is.");
-				});
-
-				it("should count only the meta files converted the way the message names", async () => {
-					await write(
-						"src/Inventory/Save.server.luau",
-						"src/Inventory/Save.meta.json",
-						"src/Inventory/Load.server.luau",
-						"src/Inventory/Load.meta.json",
-						"dist/Inventory/Save.server.luau",
-						"dist/Inventory/Save.meta.yaml",
-						"dist/Inventory/Load.server.luau",
-						"dist/Inventory/Load.meta.toml"
-					);
-
-					const warnings = await check({}, [
-						{
-							id: "yaml",
-							metaReplacement: {
-								suffix: ".meta.yaml",
-								note: "Yaml.",
-							},
-						},
-						{
-							id: "toml",
-							metaReplacement: {
-								suffix: ".meta.toml",
-								note: "Toml.",
-							},
-						},
-					]);
-
-					expect(warnings[0].message).toContain(
-						"The processor turned 1 of them into"
-					);
 				});
 
 				it("should not mention a conversion when no processor contributes one", async () => {
@@ -712,7 +659,7 @@ describe("CompiledPathCheck", () => {
 					const warnings = await check({}, []);
 
 					expect(warnings[0].message).not.toContain(
-						"The processor turned"
+						"Darklua converts"
 					);
 				});
 
@@ -785,7 +732,7 @@ describe("CompiledPathCheck", () => {
 					code: "compiled.orphan",
 					resource: abs("dist/A"),
 					message:
-						"dist/A/Old.luau is in the compiled path and no source file makes it, so Rojo may still sync it. Delete it, or compile again from a clean folder.",
+						"dist/A/Old.luau is in the compiled path and no source file makes it. Delete it, or compile again from a clean folder.",
 				});
 			});
 
@@ -893,7 +840,7 @@ describe("CompiledPathCheck", () => {
 					abs("dist/B"),
 				]);
 				expect(warnings[0].message).toEqual(
-					"dist/A/O1.luau, dist/A/O2.luau, dist/A/O3.luau, … are in the compiled path and no source file makes them, so Rojo may still sync them. Delete them, or compile again from a clean folder."
+					"dist/A/O1.luau, dist/A/O2.luau, dist/A/O3.luau, … are in the compiled path and no source file makes them. Delete them, or compile again from a clean folder."
 				);
 			});
 

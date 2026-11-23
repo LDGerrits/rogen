@@ -89,7 +89,7 @@ export class CompiledPathCheck {
 				warningDiagnostic(
 					"output.nothingEmitted",
 					{ resource: compiledPath },
-					`the compiled path "${shown(compiledPath)}" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first.`
+					`the compiled path "${shown(compiledPath)}" doesn't exist yet. Run your compiler or processor first.`
 				),
 			];
 
@@ -148,7 +148,6 @@ export class CompiledPathCheck {
 		const replacements = layout.metaReplacements;
 
 		const missing: string[] = [];
-		let converted = 0;
 		let conversion: MetaReplacement | undefined;
 
 		for (const { sourcePath, file: source } of placement.metaFiles) {
@@ -169,22 +168,18 @@ export class CompiledPathCheck {
 				),
 				replacements
 			);
-			if (replacement) {
-				conversion ??= replacement;
-				if (replacement === conversion) converted++;
-			}
+			if (replacement) conversion ??= replacement;
 		}
 		if (missing.length === 0) return [];
 
-		const them = missing.length === 1 ? "it" : "them";
 		const cause = conversion
-			? `The processor turned ${converted === missing.length ? them : `${converted} of them`} into ${conversion.suffix}, a ModuleScript to Rojo. ${conversion.note}`
+			? conversion.note
 			: "Have the compiler or processor copy .meta.json files into its output.";
 		return [
 			warningDiagnostic(
 				"output.metaNotSynced",
 				{ resource: config.projectFile },
-				`${missing.length} meta ${missing.length === 1 ? "file has" : "files have"} no copy under "${layout.relativeToProject(compiledPath) || "."}" (${listLimited(missing, LISTED_PATHS)}), so Rojo doesn't apply ${them}. ${cause}`
+				`${missing.length} meta ${missing.length === 1 ? "file has" : "files have"} no copy under "${layout.relativeToProject(compiledPath) || "."}" (${listLimited(missing, LISTED_PATHS)}). ${cause}`
 			),
 		];
 	}
@@ -235,7 +230,7 @@ export class CompiledPathCheck {
 			warningDiagnostic(
 				"output.dataFileConverted",
 				{ resource: config.projectFile },
-				`${converted.length} data ${many ? "files became Lua modules" : "file became a Lua module"} under "${shown(compiledPath) || "."}" (${listed}), so Rojo doesn't find ${many ? "them" : "it"}. ${note} Copy data files into the compiled path unchanged after it runs, or require them as modules.`
+				`${converted.length} data ${many ? "files became Lua modules" : "file became a Lua module"} under "${shown(compiledPath) || "."}" (${listed}). ${note} Copy data files into the compiled path unchanged after it runs, or require them as modules.`
 			),
 		];
 	}
@@ -271,7 +266,7 @@ export class CompiledPathCheck {
 			return warningDiagnostic(
 				"compiled.orphan",
 				{ resource: dir },
-				`${listLimited(shown, LISTED_PATHS)} ${many ? "are" : "is"} in the compiled path and no source file makes ${many ? "them" : "it"}, so Rojo may still sync ${many ? "them" : "it"}. Delete ${many ? "them" : "it"}, or compile again from a clean folder.`
+				`${listLimited(shown, LISTED_PATHS)} ${many ? "are" : "is"} in the compiled path and no source file makes ${many ? "them" : "it"}. Delete ${many ? "them" : "it"}, or compile again from a clean folder.`
 			);
 		});
 	}

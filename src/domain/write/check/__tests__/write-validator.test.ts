@@ -199,7 +199,7 @@ describe("WriteValidator rules", () => {
 				]);
 
 				expect(warning.message).toBe(
-					'this source path places nothing: Rojo reads none of its files (Hud.tsx and Main.ts). Rojo reads only the Luau a compiler writes for TypeScript: set "compiledPath" to the folder roblox-ts writes, as "out".'
+					'this source path places nothing: Rojo reads none of its files (Hud.tsx and Main.ts). Set "compiledPath" to the folder roblox-ts writes, as "out".'
 				);
 			});
 
@@ -207,7 +207,7 @@ describe("WriteValidator rules", () => {
 				const [warning] = await unsynced(["src/A.ts", "src/B.lang"]);
 
 				expect(warning.message).toBe(
-					'this source path places nothing: Rojo reads none of its files (A.ts and B.lang). Rojo reads only the Luau a compiler writes for TypeScript: set "compiledPath" to the folder roblox-ts writes, as "out". For the other files, add a "syncRules" entry for their extension.'
+					'this source path places nothing: Rojo reads none of its files (A.ts and B.lang). Set "compiledPath" to the folder roblox-ts writes, as "out". For the other files, add a "syncRules" entry for their extension.'
 				);
 			});
 
@@ -380,7 +380,7 @@ describe("WriteValidator rules", () => {
 				const [warning] = await named(["src/server"]);
 
 				expect(warning.message).toBe(
-					'named after the "server" route: use "src" as the source path instead, so "server" is read as a key'
+					'named after the "server" route: use "src" as the source path instead'
 				);
 			});
 
@@ -1275,7 +1275,9 @@ describe("WriteValidator rules", () => {
 				expect(await named("scan.emptyName")).toMatchObject([
 					{
 						resource: abs("src/.server.luau"),
-						message: expect.stringContaining("empty name"),
+						message: expect.stringContaining(
+							"has no name before its suffix"
+						),
 					},
 				]);
 			});

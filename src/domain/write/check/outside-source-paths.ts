@@ -22,7 +22,7 @@ export class OutsideSourcePaths {
 					warningDiagnostic(
 						"scan.outsideSourcePaths",
 						{ resource: file },
-						`this path is in no source path, so Rogen leaves it out of the project file, and "${folder}" differs from the source path "${name}" only in letter case. Check the spelling.`
+						`this path is in no source path, and "${folder}" differs from "${name}" only in letter case. Check the spelling.`
 					),
 				];
 			if (closestMatch(folder, [name]) !== name) continue;
@@ -30,7 +30,7 @@ export class OutsideSourcePaths {
 				warningDiagnostic(
 					"scan.outsideSourcePaths",
 					{ resource: file },
-					`this path is in no source path, so Rogen leaves it out of the project file, and "${folder}" is one edit from the source path "${name}". Check the spelling.`
+					`this path is in no source path, and "${folder}" is one edit from "${name}". Check the spelling.`
 				),
 			];
 		}

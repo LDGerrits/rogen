@@ -2,7 +2,7 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  src/Notes.md - warning: the sync rule "*.md" cuts ".txt" off a file name, but this name does not end with it, so Rojo names the instance after the whole file name. Make the suffix end every file the pattern matches. (scan.syncRuleSuffix)
+  src/Notes.md - warning: the sync rule "*.md" cuts ".txt" off a file name, but this name does not end with it. Make the suffix end every file the pattern matches. (scan.syncRuleSuffix)
 
 written:
   default.project.json

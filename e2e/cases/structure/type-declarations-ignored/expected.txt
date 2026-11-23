@@ -2,7 +2,7 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  src/Inventory/index.d.ts - warning: is TypeScript, which Rojo never reads itself, and the config has no "compiledPath", so it is left out. Set "compiledPath" to the folder roblox-ts writes, as "out", or remove the file. (scan.uncompiled)
+  src/Inventory/index.d.ts - warning: is TypeScript, and the config has no "compiledPath". Set "compiledPath" to the folder roblox-ts writes, as "out", or remove the file. (scan.uncompiled)
 
 written:
   default.project.json

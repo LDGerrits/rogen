@@ -118,7 +118,7 @@ export class MetaReader {
 				problems.error(
 					"meta.runContextOnModule",
 					{ resource: set.metaFile },
-					`sets a RunContext, but ${path.basename(entry.source)} is a ModuleScript, which has none, so Rojo refuses this meta. Name the script .server or .client to make it a Script, or remove RunContext.`
+					`sets a RunContext, but ${path.basename(entry.source)} is a ModuleScript, which has none. Name the script .server or .client, or remove RunContext.`
 				);
 		}
 		if (problems.hasErrors) return err([...problems.diagnostics]);
@@ -154,7 +154,7 @@ export class MetaReader {
 				problems.error(
 					"meta.classNameOnScript",
 					{ resource: meta.file },
-					`sets a className, but its folder holds an init script, which decides the class, so Rojo refuses this meta. Remove className, or rename the script to change its class.`
+					`sets a className, but its folder holds an init script, which decides the class. Remove className, or rename the script to change its class.`
 				);
 	}
 
@@ -263,7 +263,7 @@ export class MetaReader {
 					"meta.unreadable",
 					{ resource: file },
 					isMissingPath(text.error)
-						? "the meta file does not exist any more; it was there when the write scanned and was removed while it ran."
+						? "the meta file was removed while the write ran."
 						: `the meta file could not be read: ${failureReason(text.error)}.`
 				),
 			]);

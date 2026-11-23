@@ -212,7 +212,7 @@ export class Placer {
 				errorDiagnostic(
 					"scan.unreadable",
 					{ resource: folder },
-					"this folder could not be read: permission denied, so Rojo can't build it. Fix the folder's permissions, or add it to \"globIgnorePaths\"."
+					'this folder could not be read: permission denied. Fix the folder\'s permissions, or add it to "globIgnorePaths".'
 				)
 			)
 		);

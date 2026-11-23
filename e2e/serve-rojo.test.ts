@@ -455,7 +455,7 @@ describeWithRojo("end to end serve", () => {
 
 			await serving.waitFor(() => {
 				expect(serving.output).toContain(
-					`Port ${serve.port + 1} is held by another process (Rojo serving Other), so default.rogen.json can't be served there.`
+					`Port ${serve.port + 1} is held by another process (Rojo serving Other).`
 				);
 			}, 20_000);
 			expect(await rojoProject(serve.port)).toBe("Game");
@@ -529,7 +529,7 @@ describeWithRojo("end to end serve", () => {
 
 			expect(await refused.exited).toBe(1);
 			expect(refused.output).toContain(
-				`Port ${serve.port} is held by another process (Rojo serving Game), so default.rogen.json can't be served there.`
+				`Port ${serve.port} is held by another process (Rojo serving Game).`
 			);
 		} finally {
 			endProgram(rojo);
@@ -570,7 +570,7 @@ describeWithRojo("end to end serve", () => {
 
 		expect(await second.exited).toBe(1);
 		expect(second.output).toContain(
-			`Port ${serve.port} is taken by Rojo serving Game, which rogen serve started for default.rogen.json, so dist.rogen.json can't be served there. Stop it, set a servePort in dist.rogen.json, or run 'rogen serve dist --port`
+			`Port ${serve.port} is taken by Rojo serving Game, which rogen serve started for default.rogen.json. Stop it, set a servePort in dist.rogen.json, or run 'rogen serve dist --port`
 		);
 		expect(await rojoProject(serve.port)).toBe("Game");
 	}, 40_000);
@@ -592,7 +592,7 @@ describeWithRojo("end to end serve", () => {
 
 			expect(await serving.exited).toBe(1);
 			expect(serving.output).toContain(
-				`Port ${serve.port} is held by another process (Rojo serving Other), so default.rogen.json can't be served there.`
+				`Port ${serve.port} is held by another process (Rojo serving Other).`
 			);
 		} finally {
 			endProgram(rojo);

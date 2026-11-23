@@ -3,7 +3,7 @@ exit 0
 stdout: (not shown)
 stderr:
   src/Boot.lang - warning: the sync rule "*.lang" asks for a server script, but Rojo reads the class from the compiled name Boot.luau. Rename it Boot.server.lang, or set the rule's "use" to "moduleScript". (route.scriptClassMismatch)
-  out - warning: the compiled path "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
+  out - warning: the compiled path "out" doesn't exist yet. Run your compiler or processor first. (output.nothingEmitted)
 
 written:
   default.project.json

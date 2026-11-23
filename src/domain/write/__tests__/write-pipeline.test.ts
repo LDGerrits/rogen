@@ -415,7 +415,7 @@ describe("WritePipeline", () => {
 					"belongs to no file, so Rojo ignores it. A folder's meta is Foo/init.meta.json."
 				);
 				expect(messageAt(warnings, "src/Nothing.meta.json")).toBe(
-					"belongs to no file, so Rojo ignores it. A file's meta is named after the name Rojo gives the file, without .server, .client or .plugin."
+					"belongs to no file, so Rojo ignores it. Name a meta after its file, without .server, .client or .plugin."
 				);
 			});
 

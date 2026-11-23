@@ -736,7 +736,7 @@ describe("OutcomeLog.diagnostics", () => {
 		[
 			"scan.sourcePathNamedAfterKey",
 			1,
-			"1 source path is named after a route key, but routing starts below a source path, so its name routes nothing:",
+			"1 source path is named after a route key, so its name routes nothing:",
 			undefined,
 		],
 		[

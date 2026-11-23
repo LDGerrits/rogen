@@ -42,7 +42,9 @@ describe("MetaReader", () => {
 			expect(result.isErr() && result.error).toMatchObject([
 				{
 					code: "meta.unreadable",
-					message: expect.stringContaining("does not exist any more"),
+					message: expect.stringContaining(
+						"was removed while the write ran"
+					),
 				},
 			]);
 		});

@@ -50,7 +50,7 @@ export class RojoCompatibility {
 					errorDiagnostic(
 						"rojo.syncRulesUnsupported",
 						{ resource: file },
-						`Rojo ${version} does not read "syncRules" before ${SYNC_RULES_SINCE}, and this file has ${project.syncRules.length}. Change your Rojo pin to ${SYNC_RULES_SINCE} or later, or update the Rojo on the PATH.`
+						`Rojo ${version} does not read "syncRules" before ${SYNC_RULES_SINCE}, and this file has ${project.syncRules.length}. Update Rojo to ${SYNC_RULES_SINCE} or later.`
 					)
 				);
 			const negated = noNegation
@@ -61,7 +61,7 @@ export class RojoCompatibility {
 					errorDiagnostic(
 						"rojo.negationUnsupported",
 						{ resource: file },
-						`Rojo ${version} reads no "!" glob before ${NEGATION_SINCE}, so it ignores what this file's ${negated.length} re-include${negated.length === 1 ? "s" : ""}: ${negated.map((glob) => `"${glob}"`).join(", ")}. Change your Rojo pin to ${NEGATION_SINCE} or later, or update the Rojo on the PATH.`
+						`Rojo ${version} reads no "!" glob before ${NEGATION_SINCE}, and this file has ${negated.length}: ${negated.map((glob) => `"${glob}"`).join(", ")}. Update Rojo to ${NEGATION_SINCE} or later.`
 					)
 				);
 			const outside =
@@ -73,7 +73,7 @@ export class RojoCompatibility {
 					errorDiagnostic(
 						"rojo.windowsRules",
 						{ resource: file },
-						`Rojo ${version} on Windows applies no sync rule or ignore glob to a file under a "$path" outside this file's folder, and this file has ${outside.length}: ${outside.map((outsidePath) => `"${outsidePath}"`).join(", ")}. Rojo ${FIXED} fixed it: change your Rojo pin, or update the Rojo on the PATH.`
+						`Rojo ${version} on Windows applies no sync rule or ignore glob under a "$path" outside this file's folder, and this file has ${outside.length}: ${outside.map((outsidePath) => `"${outsidePath}"`).join(", ")}. Update Rojo to ${FIXED} or later.`
 					)
 				);
 		}

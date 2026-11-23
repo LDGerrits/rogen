@@ -168,7 +168,7 @@ describe("CoreRojoCommandService", () => {
 			{
 				code: "rojo.commandUnsupported",
 				message:
-					"Rojo 7.6.1 has no 'syncback' command; Rojo 7.7.0 added it. Change your Rojo pin to 7.7.0 or later, or update the Rojo on the PATH.",
+					"Rojo 7.6.1 has no 'syncback' command. Update Rojo to 7.7.0 or later.",
 			},
 		]);
 		expect(processes.spawned).toEqual([]);
