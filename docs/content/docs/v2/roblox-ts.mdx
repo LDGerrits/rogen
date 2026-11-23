@@ -22,6 +22,10 @@ npm run watch
 rogen serve
 ```
 
+## Several Places
+
+With `rogen init --places --language roblox-ts`, each place is a folder under `projects` with a `tsconfig.json` of its own, and the `build` and `watch` scripts compile through a `tsconfig.<place>.json` at the root. [Multi-Place Games](/docs/v2/multi-place#places-in-roblox-ts) shows the files and why they are laid out so.
+
 ## Add a Feature
 
 The routes that `init` writes for roblox-ts are lowercase. Code imports by relative file path, as in any TypeScript project:

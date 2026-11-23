@@ -28,15 +28,19 @@ Mount a package folder with `$path` where your code requires it from, as in `req
 
 ## The Place
 
-`rogen init` puts the starting map, a baseplate and Rojo's lighting, in a `place` folder and mounts it, unless you pass `--no-sample`. The folder sits outside the source paths, so Rogen doesn't route it:
+`rogen init` writes the starting map, a baseplate and Rojo's lighting, into the tree as `$properties` and a `Baseplate` node, unless you pass `--no-sample`. They are instances of their own with no folder behind them, so Rogen doesn't route them:
 
 ```json title="default.rogen.json"
 {
 	"tree": {
 		"$className": "DataModel",
-		"Lighting": { "$path": "place/Lighting" },
-		"SoundService": { "$path": "place/SoundService" },
-		"Workspace": { "$path": "place/Workspace" }
+		"Lighting": { "$properties": { "Brightness": 2, "Technology": "Voxel" } },
+		"Workspace": {
+			"Baseplate": {
+				"$className": "Part",
+				"$properties": { "Anchored": true, "Size": [512, 20, 512] }
+			}
+		}
 	}
 }
 ```
