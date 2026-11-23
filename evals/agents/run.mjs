@@ -31,7 +31,7 @@ const PROPOSED_RULES = `## Rogen
 This repo uses Rogen: each \`*.rogen.json\` generates the \`*.project.json\` beside it from folder and file names.
 
 - A file's path on disk is not its path in the game. Run \`rogen where <path>\` to see where it lands and how to require it.
-- The outermost route wins, so \`Shared/Server/Save.luau\` ships to clients. Keep server-only code under a server route.
+- The outermost route wins, so \`shared/server/save.luau\` ships to clients. Keep server-only code under a server route.
 - After you add, move or delete files, run \`rogen check <paths>\` and fix what it prints.
 - Edit the \`*.rogen.json\`, never the \`*.project.json\`. Packages go in its \`tree\`, and a change to \`routes\` goes in every \`*.rogen.json\` it concerns.
 - To sync to Studio, use the repo's serve script, or run \`rogen serve --json\` in the background.
@@ -114,13 +114,13 @@ function fixture(layout) {
 	if (layout === "rbxts") return placesFixture(dir);
 	rogen(out, "init", path.basename(dir), "--language", "luau", "-y", "-q");
 	if (layout === "suffix") {
-		const feature = path.join(dir, "src/Greeter");
+		const feature = path.join(dir, "src/greeter");
 		const read = (file) =>
 			fs.readFileSync(path.join(feature, file), "utf8");
 		const files = {
-			"Greeting@shared.luau": read("Shared/Greeting.luau"),
-			"Greeter.server.luau": read("Server/Greeter.server.luau"),
-			"Greeter.client.luau": read("Client/Greeter.client.luau"),
+			"Greeting@shared.luau": read("shared/Greeting.luau"),
+			"Greeter.server.luau": read("server/Greeter.server.luau"),
+			"Greeter.client.luau": read("client/Greeter.client.luau"),
 		};
 		fs.rmSync(feature, { recursive: true });
 		fs.mkdirSync(feature);
@@ -142,8 +142,8 @@ function fixture(layout) {
 					"The name of each file decides where it runs: `.server` and `@server` go to ServerScriptService, `.client` and `@client` to StarterPlayerScripts and `@shared` to ReplicatedStorage. To see where a file lands, and how to require it, use:"
 				)
 				.replaceAll(
-					"src/Greeter/Shared/Greeting.luau",
-					"src/Greeter/Greeting@shared.luau"
+					"src/greeter/shared/Greeting.luau",
+					"src/greeter/Greeting@shared.luau"
 				)
 		);
 		rogen(dir, "write", "-q");

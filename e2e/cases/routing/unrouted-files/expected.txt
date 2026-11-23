@@ -2,9 +2,9 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  src/Inventory/Hud.client.luau - warning: matched no route, so it is left out. Move it into a routing folder, as src/Inventory/server, end its name with a route's @ suffix (@server), or declare a "*" route. (route.unrouted)
-  src/Inventory/Types.luau - warning: matched no route, so it is left out. Move it into a routing folder, as src/Inventory/server, end its name with a route's @ suffix (@server), or declare a "*" route. (route.unrouted)
-  src/Util.luau - warning: matched no route, so it is left out. Move it into a routing folder, as src/server, end its name with a route's @ suffix (@server), or declare a "*" route. (route.unrouted)
+  src/Inventory/Hud.client.luau - warning: matched no route, so it is left out. Move it into a routing folder such as src/Inventory/server, end its name with @server, or declare a "*" route. (route.unrouted)
+  src/Inventory/Types.luau - warning: matched no route, so it is left out. Move it into a routing folder such as src/Inventory/server, end its name with @server, or declare a "*" route. (route.unrouted)
+  src/Util.luau - warning: matched no route, so it is left out. Move it into a routing folder such as src/server, end its name with @server, or declare a "*" route. (route.unrouted)
 
 written:
   default.project.json

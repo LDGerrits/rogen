@@ -126,7 +126,7 @@ describe("Placer", () => {
 					severity: DiagnosticSeverity.Error,
 					code: "tree.instanceClash",
 					resource: abs("src/Types.lua"),
-					message: `becomes "ReplicatedStorage/Types", as ${abs("src/Types.luau")} does, which takes its place, so the build would lose it. Rename one of them to keep both.`,
+					message: `becomes "ReplicatedStorage/Types", like ${abs("src/Types.luau")}, which takes its place. Rename one of them to keep both.`,
 					related: [
 						{
 							resource: abs("src/Types.luau"),
@@ -151,7 +151,7 @@ describe("Placer", () => {
 				{
 					resource: absPosix("core/Types.lua"),
 					message: expect.stringContaining(
-						`as ${absPosix("core/Types.luau")} does`
+						`like ${absPosix("core/Types.luau")},`
 					),
 				},
 			]);

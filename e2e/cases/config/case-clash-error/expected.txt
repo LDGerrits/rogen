@@ -3,4 +3,4 @@ exit 1
 stdout: (not shown)
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:7:13 - error: "Server" and "server" differ only in letter case, so a name spelled one way would read as a misspelling of the other; keep one of them. (config.ambiguousKey)
+  default.rogen.json:7:13 - error: "Server" and "server" differ only in letter case. Keep one of them. (config.ambiguousKey)

@@ -161,7 +161,7 @@ export class TreeAssembler {
 					errorDiagnostic(
 						"tree.reservedName",
 						{ resource },
-						`"${instanceKey(instancePath)}" has "${field}" in its path, which Rojo reads as a field of a node, so the project file can't name an instance of that name. Rename it.`
+						`"${instanceKey(instancePath)}" has "${field}" in its path, which Rojo reads as a node field, so it can't name an instance. Rename it.`
 					)
 				);
 			return field !== undefined;

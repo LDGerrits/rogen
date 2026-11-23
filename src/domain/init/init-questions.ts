@@ -136,7 +136,7 @@ export class InitQuestions {
 				id: "sample",
 				message: "Add the Greeter sample?",
 				description:
-					"Three hello-world scripts and a README, with Rojo's Baseplate and lighting for the place.",
+					"Three hello-world scripts and a README, with Rojo's Baseplate and lighting in the place's tree.",
 				initialValue: true,
 			})
 		);
@@ -179,7 +179,7 @@ export class InitQuestions {
 						{
 							value: "several",
 							label: "Several places",
-							hint: `src/${COMMON_FOLDER} holds the shared code, src/game the first place${unplaced.several ? `; leaves ${unplaced.several} unplaced` : ""}`,
+							hint: `src/${COMMON_FOLDER} holds the shared code, src/lobby the first place${unplaced.several ? `; leaves ${unplaced.several} unplaced` : ""}`,
 						},
 					],
 					initialValue: "one",

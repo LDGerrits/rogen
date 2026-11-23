@@ -198,7 +198,7 @@ const NUMBER_LIST_LENGTHS = new Set([2, 3, 4, 12]);
 
 export class PropertyValues {
 	static readonly READABLE_HINT =
-		'Write a boolean, number, string, list of numbers (2, 3, 4 or 12), list of strings, or { "Type": value }.';
+		'Write a boolean, number, string, list of 2, 3, 4 or 12 numbers, list of strings, or { "Type": value }.';
 
 	static isReadable(value: unknown): boolean {
 		if (

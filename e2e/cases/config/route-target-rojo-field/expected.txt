@@ -3,5 +3,5 @@ exit 1
 stdout: (not shown)
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:1:59 - error: the target "ReplicatedStorage/$className" has "$className" as a folder name, which the project file reads as a field of the node, not a child. Rename the folder. (roblox.invalidFolder)
-  default.rogen.json:1:96 - error: the target "ReplicatedStorage/$path" has "$path" as a folder name, which the project file reads as a field of the node, not a child. Rename the folder. (roblox.invalidFolder)
+  default.rogen.json:1:59 - error: the target "ReplicatedStorage/$className" has a folder named "$className", which is a node field. Rename the folder. (roblox.invalidFolder)
+  default.rogen.json:1:96 - error: the target "ReplicatedStorage/$path" has a folder named "$path", which is a node field. Rename the folder. (roblox.invalidFolder)

@@ -664,7 +664,7 @@ class MirrorPlanRun {
 								...parent,
 								RojoFile.INIT_NAME,
 							]),
-							reason: `its name makes Rojo write it as ${name}, which Rojo reads as the folder ${instanceKey(parent)} itself; rename it in Studio`,
+							reason: `Rojo would write it as ${name}, the init script of ${instanceKey(parent)}; rename it in Studio`,
 						});
 					else await takeAsFeatureMeta(added.path, parent);
 				} else fresh.push(added);
@@ -835,7 +835,7 @@ class MirrorPlanRun {
 			...metas.unplaced,
 			...metas.homeless.map(({ instance }) => ({
 				instance: instanceKey(instance),
-				reason: `Rojo wrote ${RojoFile.INIT_META} for a property or attribute changed in Studio, and no one folder of the project is this instance; set it on its node in the tree of the config`,
+				reason: `a property or attribute changed in Studio, and no one folder holds this instance; set it on its node in the tree of the config`,
 			}))
 		);
 	}
@@ -1166,7 +1166,7 @@ class MirrorPlanRun {
 			: instance.files.map((file) => file.join("/")).join(" and ");
 		return {
 			instance: instanceKey([...node, instance.name]),
-			reason: `Rojo writes it as ${written}, and its parent ${instanceKey(node)} is a node of the tree of ${toNative(this.request.project.file)} with no $path; give that node a $path, or create the file by hand`,
+			reason: `Rojo writes it as ${written}, but its parent ${instanceKey(node)} is a tree node with no $path; give it a $path, or create the file by hand`,
 		};
 	}
 
@@ -1186,7 +1186,7 @@ class MirrorPlanRun {
 			return {
 				proposals: [],
 				reason: model
-					? `Rojo writes it as the model file ${only.join("/")}, as it does for a folder whose children share a name or have names a file can't take, and ${placement.reason}; rename those children in Studio`
+					? `Rojo writes it as the model file ${only.join("/")}, and ${placement.reason}; rename its children in Studio`
 					: placement.reason,
 			};
 		}

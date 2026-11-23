@@ -1,3 +1,4 @@
+import { exampleMessage } from "../../../__tests__/diagnostic-examples.js";
 import { ResultError } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
@@ -118,7 +119,7 @@ describe("landingMiss", () => {
 				placed(file, ["ServerScriptService", "Quest", "Boot"]),
 			])
 		).toBe(
-			`routing would read ${file} as ServerScriptService/Quest/Boot, as it places a script by its type; make it a ModuleScript or move it to where that type runs`
+			`routing would read ${file} as ServerScriptService/Quest/Boot; make it a ModuleScript, or move it to where that type runs`
 		);
 	});
 
@@ -230,8 +231,13 @@ describe("DraftRouting", () => {
 
 		const misses = await routingOf().misses([], [proposal]);
 
-		expect(misses.get(proposal)).toMatch(
-			/^the write would stop on .*Types.* \(tree\.instanceClash: /
+		expect(`${misses.get(proposal)}`.replaceAll("/repo/", "")).toBe(
+			exampleMessage("syncback.unplaced", "would stop on")
+				.replace(
+					"ServerScriptService/Inventory/Types was left out: ",
+					""
+				)
+				.replace(/\.$/, "")
 		);
 	});
 
@@ -254,7 +260,7 @@ describe("DraftRouting", () => {
 
 		expect(known).not.toEqual([]);
 		expect(misses.get(proposal)).toBe(
-			`the write would stop on ${known[0].resource} (${known[0].code}: ${known[0].message.replace(/\.$/, "")})`
+			`the write would stop on ${known[0].resource} (${known[0].code}); see \`rogen help ${known[0].code}\``
 		);
 	});
 
@@ -280,7 +286,7 @@ describe("DraftRouting", () => {
 		const misses = await routingOf().misses([], [proposal]);
 
 		expect(misses.get(proposal)).toMatch(
-			/^the write would stop on .*server \(route\.caseMismatch: /
+			/^the write would stop on .*server \(route\.caseMismatch\); rename it in Studio$/
 		);
 	});
 

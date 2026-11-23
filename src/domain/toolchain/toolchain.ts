@@ -107,6 +107,7 @@ export interface Language {
 	readonly compiler?: Compiler;
 	readonly present: boolean;
 	readonly reservedFolders: readonly string[];
+	readonly sharedName: string;
 
 	scaffolded?(): Language;
 	routeKey(id: string): string;
@@ -177,7 +178,7 @@ export class Darklua {
 		},
 		dataReplacement: {
 			suffix: ".lua",
-			note: "Darklua converts data files and can't copy them.",
+			note: "Darklua converts data files.",
 		},
 	};
 

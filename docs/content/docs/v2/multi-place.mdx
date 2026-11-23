@@ -7,16 +7,16 @@ Each place has a config of its own, and shared code is a plain folder that every
 
 ## Start a Multi-Place Game
 
-In an empty folder, `rogen init --places` writes a first place, `game`, with its code in `src/game` and shared code in `src/common`:
+In an empty folder, `rogen init --places` writes a first place, `lobby`, with its code in `src/lobby` and shared code in `src/common`:
 
-```json title="game.rogen.json"
+```json title="lobby.rogen.json"
 {
-	"name": "game",
-	"sourcePaths": ["src/common", "src/game"],
+	"name": "lobby",
+	"sourcePaths": ["src/common", "src/lobby"],
 	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/Shared",
 		"*": "ReplicatedStorage/Shared"
 	},
 	"tree": { "$className": "DataModel" }
@@ -26,35 +26,38 @@ In an empty folder, `rogen init --places` writes a first place, `game`, with its
 There is no `default.rogen.json`, so name the place in each command. To serve two places at once, give the second its own `--port`:
 
 ```bash
-rogen serve game
-rogen build game -o game.rbxl
+rogen serve lobby
+rogen build lobby -o lobby.rbxl
 ```
 
 ## Add a Place
 
-Copy the first config, then set its `"name"` to `"lobby"` and point `sourcePaths` at `src/lobby`. If you kept the sample, copy its place folder too and point the tree's `$path`s at the copy:
+Copy the first config, then set its `"name"` to `"match"` and point `sourcePaths` at `src/match`. The copy carries the sample map in its tree:
 
 ```bash
-cp game.rogen.json lobby.rogen.json
-mkdir src/lobby
-cp -r place/game place/lobby
+cp lobby.rogen.json match.rogen.json
+mkdir src/match
 ```
+
+## Editor
+
+With Luau, `rogen init --places` also writes `.vscode/settings.json`, which pins luau-lsp to the first place. luau-lsp reads one place at a time, `lobby` here. To switch, change the name in the `generatorCommand` in `.vscode/settings.json`.
 
 ## Places in roblox-ts
 
 With `--language roblox-ts`, each place also gets a tsconfig that compiles the shared code and the place's own code into the place's `compiledPath`:
 
-```json title="tsconfig.game.json"
+```json title="tsconfig.lobby.json"
 {
 	"extends": "./tsconfig.json",
 	"compilerOptions": {
 		"rootDir": "src",
-		"rootDirs": ["src/common", "src/game"],
-		"outDir": "out/game",
+		"rootDirs": ["src/common", "src/lobby"],
+		"outDir": "out/lobby",
 		"composite": true
 	},
-	"include": ["src/common", "src/game"],
-	"rbxts": { "rojo": "game.project.json" }
+	"include": ["src/common", "src/lobby"],
+	"rbxts": { "rojo": "lobby.project.json" }
 }
 ```
 
@@ -62,7 +65,7 @@ Keep `rootDir` at `src`, the folder that holds both source paths, so the compile
 
 To add a place, after copying the config as above:
 
-1. Set `"compiledPath"` in `lobby.rogen.json` to `out/lobby`.
-2. Copy `tsconfig.game.json` to `tsconfig.lobby.json` and change each `game` in it to `lobby`.
-3. Add `{ "path": "./tsconfig.lobby.json" }` to the `references` in `tsconfig.json`.
-4. Add ` && rbxtsc -p tsconfig.lobby.json` to the `build` script in `package.json`. `rbxtsc -w` runs until you stop it, so watch the new place from a terminal of its own with `npx rbxtsc -w -p tsconfig.lobby.json`.
+1. Set `"compiledPath"` in `match.rogen.json` to `out/match`.
+2. Copy `tsconfig.lobby.json` to `tsconfig.match.json` and change each `lobby` in it to `match`.
+3. Add `{ "path": "./tsconfig.match.json" }` to the `references` in `tsconfig.json`.
+4. Add ` && rbxtsc -p tsconfig.match.json` to the `build` script in `package.json`. `rbxtsc -w` runs until you stop it, so watch the new place from a terminal of its own with `npx rbxtsc -w -p tsconfig.match.json`.

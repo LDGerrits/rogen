@@ -59,7 +59,7 @@ describe("RojoCompatibility", () => {
 		expect(problem.code).toBe("rojo.windowsRules");
 		expect(problem.resource).toBe("/repo/default.project.json");
 		expect(problem.message).toBe(
-			'Rojo 7.7.0 on Windows applies no sync rule or ignore glob to a file under a "$path" outside this file\'s folder, and this file has 1: "../shared/src". Rojo 7.7.1 fixed it: change your Rojo pin, or update the Rojo on the PATH.'
+			'Rojo 7.7.0 on Windows applies no sync rule or ignore glob under a "$path" outside this file\'s folder, and this file has 1: "../shared/src". Update Rojo to 7.7.1 or later.'
 		);
 	});
 
@@ -115,7 +115,7 @@ describe("RojoCompatibility", () => {
 		expect(problem.code).toBe("rojo.syncRulesUnsupported");
 		expect(problem.resource).toBe("/repo/default.project.json");
 		expect(problem.message).toBe(
-			'Rojo 7.4.4 does not read "syncRules" before 7.5.0, and this file has 2. Change your Rojo pin to 7.5.0 or later, or update the Rojo on the PATH.'
+			'Rojo 7.4.4 does not read "syncRules" before 7.5.0, and this file has 2. Update Rojo to 7.5.0 or later.'
 		);
 	});
 
@@ -130,7 +130,7 @@ describe("RojoCompatibility", () => {
 		expect(problem.code).toBe("rojo.negationUnsupported");
 		expect(problem.resource).toBe("/repo/default.project.json");
 		expect(problem.message).toBe(
-			'Rojo 7.6.1 reads no "!" glob before 7.7.0, so it ignores what this file\'s 1 re-includes: "!**/Keep.spec.luau". Change your Rojo pin to 7.7.0 or later, or update the Rojo on the PATH.'
+			'Rojo 7.6.1 reads no "!" glob before 7.7.0, and this file has 1: "!**/Keep.spec.luau". Update Rojo to 7.7.0 or later.'
 		);
 	});
 
@@ -139,9 +139,7 @@ describe("RojoCompatibility", () => {
 
 		const [problem] = await problems("7.6.1", false);
 
-		expect(problem.message).toContain(
-			'ignores what this file\'s 2 re-include: "!a", "!b".'
-		);
+		expect(problem.message).toContain('this file has 2: "!a", "!b".');
 	});
 
 	it("should say nothing of a Rojo whose version it can't read", async () => {

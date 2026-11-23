@@ -11,11 +11,11 @@ In Studio, save the place with **File > Save to File As** as `game.rbxlx`, then 
 
 ```
 $ rogen syncback --input game.rbxlx --dry-run
-Writing src/Greeter/Shared/Greeting.luau
-Writing src/Quest/Shared/QuestTypes.luau
-Writing src/Greeter/Server/Welcome.luau
-Writing src/Quest/Server/Main.server.luau
-Removing src/Greeter/Client
+Writing src/greeter/shared/Greeting.luau
+Writing src/quest/shared/QuestTypes.luau
+Writing src/greeter/server/Welcome.luau
+Writing src/quest/server/Main.server.luau
+Removing src/greeter/client
 Syncback would change 5 files (4 to write, 1 to remove).
 ```
 
@@ -25,4 +25,4 @@ Read the list before you write. Syncback also removes the files of instances the
 
 A changed instance goes back to its own file, and a new one goes where routing would put it, next to the files like it. A folder renamed in Studio is renamed on disk.
 
-Syncback skips an instance whose name Rogen would read as a route, such as `Save@Server`, with a warning. It stops without changing anything when a name has a slash or backslash, is `.` or `..`, or two instances in one folder share a name; rename them in Studio and run it again. Under a [`compiledPath`](/docs/v2/config), it leaves the compiled code alone and warns about each change for you to copy into the source.
+Syncback skips an instance whose name Rogen would read as a route, such as `save@server`, with a warning. It stops without changing anything when a name has a slash or backslash, is `.` or `..`, or two instances in one folder share a name; rename them in Studio and run it again. Under a [`compiledPath`](/docs/v2/config), it leaves the compiled code alone and warns about each change for you to copy into the source.

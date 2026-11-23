@@ -4,13 +4,12 @@ import { DEFAULT_SOURCE_PATH, configFileName } from "../config/config.js";
 import { projectFileName } from "../rojo/rojo-project.js";
 import { Language, PlannedFile } from "../toolchain/toolchain.js";
 import { RobloxTsStarter } from "./roblox-ts-starter.js";
-import { SAMPLE_GAME_FOLDER } from "./sample-game.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 export const COMMON_FOLDER = "common";
 
 const SOURCE_FOLDER = DEFAULT_SOURCE_PATH;
-const FIRST_PLACE = "game";
+const FIRST_PLACE = "lobby";
 const SETTINGS_FILE = ".vscode/settings.json";
 
 export interface StartingPlaces {
@@ -22,7 +21,6 @@ export interface StartingPlaces {
 	readonly commonSourcePath: string;
 	readonly placeSourcePath: string;
 	readonly compiledPath?: string;
-	readonly gameFolder: string;
 	readonly files: readonly PlannedFile[];
 	readonly directories: readonly string[];
 	readonly notes: readonly string[];
@@ -47,7 +45,6 @@ export class StarterPlaces {
 			sourcePaths: [commonSourcePath, placeSourcePath],
 			commonSourcePath,
 			placeSourcePath,
-			gameFolder: path.posix.join(SAMPLE_GAME_FOLDER, FIRST_PLACE),
 			directories: [commonSourcePath, placeSourcePath],
 		};
 		if (starter && language.compiler)

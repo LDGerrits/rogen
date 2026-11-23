@@ -1,4 +1,3 @@
-import { capitalized } from "../../base/strings.js";
 import {
 	Language,
 	LanguageCopy,
@@ -14,13 +13,14 @@ export class Luau implements Language, LanguageDetector {
 	readonly defaultPackageManager = PackageManager.WALLY;
 	readonly present = false;
 	readonly reservedFolders: readonly string[] = [];
+	readonly sharedName = "Shared";
 
 	async detect(): Promise<Language> {
 		return this;
 	}
 
 	routeKey(id: string): string {
-		return capitalized(id);
+		return id;
 	}
 
 	configuredSourcePath(): undefined {

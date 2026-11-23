@@ -3,4 +3,4 @@ exit 1
 stdout: (not shown)
 stderr:
   error: default.project.json · not written
-  src/Inventory/Types.lua - error: becomes "ReplicatedStorage/shared/Inventory/Types", as src/Inventory/Types.luau does, which takes its place, so the build would lose it. Rename one of them to keep both. (tree.instanceClash)
+  src/Inventory/Types.lua - error: becomes "ReplicatedStorage/shared/Inventory/Types", like src/Inventory/Types.luau, which takes its place. Rename one of them to keep both. (tree.instanceClash)

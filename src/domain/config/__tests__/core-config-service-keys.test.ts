@@ -63,7 +63,7 @@ describe("CoreConfigService", () => {
 					resource: "/repo/default.rogen.json",
 					position: { line: 2, column: 2 },
 					message: expect.stringContaining(
-						"\"bogus\" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know."
+						'"bogus" is not a Rojo or Rogen key. Remove it.'
 					),
 				},
 			]);
@@ -225,7 +225,7 @@ describe("CoreConfigService", () => {
 					resource: "/repo/default.rogen.json",
 					position: { line: 4, column: 15 },
 					message:
-						'"tree.ReplicatedStorage.$Shared": Rojo reserves keys that start with $ for its own fields, so it warns about this one on every build. Rename it without the $.',
+						'"tree.ReplicatedStorage.$Shared": Rojo reserves keys that start with $, so it warns on every build. Rename it without the $.',
 				},
 			]);
 		});
@@ -413,7 +413,9 @@ describe("CoreConfigService", () => {
 			expect(errors(0)).toMatchObject([
 				{
 					code: "config.sourcePathsWithoutRoutes",
-					message: expect.stringContaining("declares no routes"),
+					message: expect.stringContaining(
+						'has no "routes" to use it'
+					),
 				},
 			]);
 		});
@@ -473,7 +475,7 @@ describe("CoreConfigService", () => {
 		it.each([
 			[
 				null,
-				' null removes nothing: to leave a mounted node out of a project, list its folder in "globIgnorePaths".',
+				' To leave a node out, list its folder in "globIgnorePaths".',
 			],
 			[5, ""],
 		])(
@@ -505,7 +507,7 @@ describe("CoreConfigService", () => {
 			await start();
 
 			expect(errors(0)[0].message).toBe(
-				'"tree.Workspace.$zzzzzzzz" is not a field of a node, and Rojo rejects a project file with a field it doesn\'t know.'
+				'"tree.Workspace.$zzzzzzzz" is not a field of a node. Remove it.'
 			);
 		});
 

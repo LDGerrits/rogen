@@ -105,17 +105,13 @@ describe("init choices given as flags", () => {
 			expect(asked.unwrap()?.sample).toBe(true);
 			expect(asked.unwrap()?.tree).toEqual({
 				kind: "new",
-				game: new SampleGame("place"),
+				game: new SampleGame(),
 			});
 			expect(await fileNames({})).toEqual([
 				".gitignore",
-				"src/Greeter/Shared/Greeting.luau",
-				"src/Greeter/Server/Greeter.server.luau",
-				"src/Greeter/Client/Greeter.client.luau",
-				"place/Lighting/init.meta.json",
-				"place/SoundService/init.meta.json",
-				"place/Workspace/Baseplate.model.json",
-				"place/Workspace/init.meta.json",
+				"src/greeter/shared/Greeting.luau",
+				"src/greeter/server/Greeter.server.luau",
+				"src/greeter/client/Greeter.client.luau",
 				"README.md",
 			]);
 		});

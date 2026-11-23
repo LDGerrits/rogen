@@ -1,3 +1,3 @@
-local Greeting = require("../Shared/Greeting")
+local Greeting = require("../shared/Greeting")
 
 print(Greeting("wave"))

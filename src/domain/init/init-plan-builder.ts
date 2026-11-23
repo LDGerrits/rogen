@@ -73,10 +73,6 @@ export class InitPlanBuilder {
 		});
 	}
 
-	get configCount(): number {
-		return this.configFiles.length;
-	}
-
 	addAgentFile(file: AgentFile, imports: readonly PlannedFile[] = []): void {
 		this.agentFile = file.planned;
 		this.agentImports = imports;
@@ -127,6 +123,10 @@ export class InitPlanBuilder {
 		return toPosix(
 			path.relative(this.cwd, path.join(this.directory.path, relative))
 		);
+	}
+
+	get configNames(): string[] {
+		return this.configFiles.map(({ file }) => file.fileName);
 	}
 
 	addNote(note: string): void {

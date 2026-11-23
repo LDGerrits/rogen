@@ -3,46 +3,46 @@ title: Routing Folders
 description: Keep all of a feature's code in one folder
 ---
 
-A folder named after a route key, such as `Server/`, sends everything inside it to that route's target and leaves no folder of its own. Give each feature a folder, and inside it one routing folder for each side it runs on:
+A folder named after a route key, such as `server/`, sends everything inside it to that route's target and leaves no folder of its own. Give each feature a folder, and inside it one routing folder for each side it runs on:
 
 <RouteFigure
 	disk={`
   src/
-    Combat/
-      Client/
+    combat/
+      client/
         CombatController.luau
-      Server/
+      server/
         DamageService.luau
-      Shared/
+      shared/
         Weapons.luau
-    Data/
-      Server/
+    data/
+      server/
         PlayerData.luau
-    Shop/
-      Client/
-        ShopUi.luau
-      Shared/
+    shop/
+      client/
+        ShopUI.luau
+      shared/
         Prices.luau
 `}
 	studio={`
   ReplicatedStorage
-    Shared/
-      Combat/
+    shared/
+      combat/
         Weapons
-      Shop/
+      shop/
         Prices
   ServerScriptService
-    Combat/
+    combat/
       DamageService
-    Data/
+    data/
       PlayerData
   StarterPlayer
     StarterPlayerScripts
-      Combat/
+      combat/
         CombatController
-      Shop/
-        ShopUi
+      shop/
+        ShopUI
 `}
 />
 
-Each feature shows up under every service it runs in, and code requires its other parts by that path, as in `require(ReplicatedStorage.Shared.Combat.Weapons)`. To set a routing folder apart from a feature with the same name, spell it `@Server/`.
+Each feature shows up under every service it runs in, and code requires its other parts by that path, as in `require(ReplicatedStorage.Shared.combat.Weapons)`. To set a routing folder apart from a feature with the same name, spell it `@server/`.

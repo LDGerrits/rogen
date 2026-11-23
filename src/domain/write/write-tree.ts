@@ -58,7 +58,7 @@ export class TreeMounts {
 						errorDiagnostic(
 							"tree.mountsSourcePath",
 							{ resource: this.file },
-							`"${instanceKey(node)}" mounts ${mounted === sourcePath ? `the source path ${sourcePath}` : `${mounted}, which holds the source path ${sourcePath}`}, so Rogen would place nothing there. Mount a folder inside it, or remove the source path.`
+							`"${instanceKey(node)}" mounts ${mounted === sourcePath ? `the source path ${sourcePath}` : `${mounted}, which holds the source path ${sourcePath}`}, so nothing is placed there. Mount a folder inside it, or remove the source path.`
 						),
 					];
 		});

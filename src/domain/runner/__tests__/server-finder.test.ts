@@ -141,7 +141,7 @@ describe("ServerFinder", () => {
 
 		expect(diagnostic.code).toBe("rojo.notFound");
 		expect(diagnostic.message).toContain(
-			"Argon is pinned, but rogen serve only starts Rojo: run 'rogen write --watch' to keep the project files current, and 'argon serve' to serve them."
+			"Argon is pinned, but rogen serve starts only Rojo. Run 'rogen write --watch' and 'argon serve'."
 		);
 	});
 
@@ -174,7 +174,7 @@ describe("ServerFinder", () => {
 
 		expect(diagnostic.code).toBe("rojo.unusable");
 		expect(diagnostic.message).toEqual(
-			"'rojo --version' failed, so Rojo can't start: ERROR Failed to find tool 'rojo' in any project manifest file. If Rojo isn't pinned yet, run 'rokit add rojo-rbx/rojo'. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
+			"'rojo --version' failed: ERROR Failed to find tool 'rojo' in any project manifest file. If Rojo isn't pinned yet, run 'rokit add rojo-rbx/rojo'. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
 		);
 		expect(diagnostic.fixes).toEqual([
 			{ run: { command: "rokit add rojo-rbx/rojo", cwd: "/repo/game" } },
@@ -192,7 +192,7 @@ describe("ServerFinder", () => {
 
 		expect(diagnostic.resource).toEqual("/repo/game/rokit.toml");
 		expect(diagnostic.message).toEqual(
-			"'rojo --version' failed, so Rojo can't start: spawn /bin/rojo ENOENT. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
+			"'rojo --version' failed: spawn /bin/rojo ENOENT. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
 		);
 		expect(diagnostic.fixes).toBeUndefined();
 	});
@@ -208,7 +208,7 @@ describe("ServerFinder", () => {
 		const diagnostic = await diagnosticOf();
 
 		expect(diagnostic.message).toEqual(
-			"'rojo --version' printed no version, so Rojo can't start. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
+			"'rojo --version' printed no version. To set Rojo up by hand, see https://rogen-roblox.vercel.app/docs/v2/installation."
 		);
 	});
 
@@ -223,7 +223,7 @@ describe("ServerFinder", () => {
 		const diagnostic = await diagnosticOf();
 
 		expect(diagnostic.message).toContain(
-			"'rojo --version' printed no version, so Rojo can't start. "
+			"'rojo --version' printed no version. "
 		);
 	});
 });

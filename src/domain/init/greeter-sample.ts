@@ -9,11 +9,11 @@ const PLACES_VARIANT = "-places";
 
 export const TEMPLATE_SOURCE_PATHS = {
 	one: "src",
-	place: "src/game",
+	place: "src/lobby",
 } as const;
 
-const FEATURE = "Greeter";
-const PLACE_FEATURE = "Game";
+const FEATURE = "greeter";
+const PLACE_FEATURE = "welcome";
 const README = "README.md";
 
 export class GreeterSample {

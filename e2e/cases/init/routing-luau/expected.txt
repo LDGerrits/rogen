@@ -12,7 +12,7 @@ written:
   AGENTS.md
   default.project.json
   default.rogen.json
-  src/Trading/Server/Trade.luau
+  src/Inventory/server/Save.luau
 
 default.rogen.json:
 {
@@ -21,7 +21,7 @@ default.rogen.json:
     "src"
   ],
   "routes": {
-    "Server": "ServerScriptService",
+    "server": "ServerScriptService",
     "Client": "StarterPlayer/StarterPlayerScripts",
     "shared": "ReplicatedStorage/Shared",
     "*": "ReplicatedStorage/Shared"
@@ -41,9 +41,9 @@ project: DataModel
         Rules: ModuleScript  <- src/Trading/shared/Rules.luau
   ServerScriptService: ServerScriptService
     Inventory: Folder
-      Save: ModuleScript  <- src/Inventory/Server/Save.luau
+      Save: ModuleScript  <- src/Inventory/server/Save.luau
     Trading: Folder
-      Trade: ModuleScript  <- src/Trading/Server/Trade.luau
+      Trade: ModuleScript  <- src/Trading/server/Trade.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Trading: Folder

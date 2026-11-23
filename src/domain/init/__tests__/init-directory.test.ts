@@ -1,3 +1,4 @@
+import { exampleMessage } from "../../../__tests__/diagnostic-examples.js";
 import path from "path";
 import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
 import { InitDirectory } from "../init-directory.js";
@@ -36,6 +37,7 @@ describe("domain/init/init-directory", () => {
 					{
 						code: "init.configExists",
 						resource: path.join(directory, "default.rogen.json"),
+						message: exampleMessage("init.configExists"),
 					},
 				]);
 			});

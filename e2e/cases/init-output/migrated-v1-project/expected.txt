@@ -5,11 +5,9 @@ stdout:
   Took the tree v1 made for .rogen.json, which has no "project".
   The routes send each file where v1 did, such as Server files to ServerScriptService/Server, so requires keep working.
   Renames 1 file that v1 routed by a word in the name or by a marker file to v2's @ form, which keeps each instance's name.
-  Took the defaults, each with the flag that changes it: agent rules (--no-agent-rules).
+  Defaults: agent rules. See 'rogen init --help' to change them.
   Renamed src/Combat/Combat_Server.luau to src/Combat/Combat@Server.luau.
   Renamed .rogen.json to .rogen.json.v1.
-  Created AGENTS.md.
-  Created default.rogen.json.
   Wrote default.project.json.
   Next steps
     Run:
@@ -17,10 +15,10 @@ stdout:
     In Studio, press Connect in the Rojo plugin.
     Run 'rogen check' and fix what it reports.
     Serve the project and compare Studio's Explorer with your v1 build. When every script sits where it did, delete .rogen.json.v1. See https://rogen-roblox.vercel.app/docs/v1/migrating-to-v2.
-    Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's project file follows.
+    Edit default.rogen.json, not default.project.json, which 'rogen write' replaces. Run 'rogen write' after you add a feature folder.
   Wrote 2 files.
 stderr:
-  .rogen.json - warning: v1's tags (dev) aren't carried over, since v2 has none. Move each tag's files into a folder, and list it last in "sourcePaths" of the configs that want it. (legacy.tags)
+  .rogen.json - warning: v1's tags (dev) aren't carried over. Move each tag's files into a folder, and list it last in "sourcePaths". (legacy.tags)
 
 written:
   .rogen.json.v1

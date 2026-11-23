@@ -26,7 +26,7 @@ export class ConfigKeys {
 				return errorDiagnostic(
 					"config.unknownField",
 					location,
-					`"${key}" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know.${suggestion ? ` Did you mean "${suggestion}"?` : ""}`,
+					`"${key}" is not a Rojo or Rogen key.${suggestion ? ` Did you mean "${suggestion}"?` : " Remove it."}`,
 					suggestion
 						? replaceFixes(
 								location,

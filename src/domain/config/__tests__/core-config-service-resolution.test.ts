@@ -249,7 +249,7 @@ describe("CoreConfigService", () => {
 
 				expect(problems).toEqual([
 					[
-						'route key "my-key" is invalid: a name uses letters and digits only, starting with a letter, and a file-name pattern is a glob on the name, such as "*.tsx" or "*[Ss]ervice".',
+						'route key "my-key" is invalid: use a name of letters and digits, or a file-name pattern such as "*.tsx".',
 						"/repo/default.rogen.json",
 						3,
 						13,
@@ -272,26 +272,26 @@ describe("CoreConfigService", () => {
 			it.each([
 				[
 					"src/*.tsx",
-					'a pattern matches a file\'s name, never its path, so it has no "/"; ',
+					'a pattern matches a file name, so it has no "/"',
 				],
-				["**.tsx", 'a pattern matches one name, so no "**"; '],
-				["*[Ss", 'a "[" needs its "]"; '],
-				["*{Ui,Hud", 'a "{" needs its "}", with no "{" inside; '],
-				["*{a,{b,c}}", 'a "{" needs its "}", with no "{" inside; '],
+				["**.tsx", 'a pattern has no "**"'],
+				["*[Ss", 'a "[" needs its "]"'],
+				["*{Ui,Hud", 'a "{" needs its "}", with no "{" inside'],
+				["*{a,{b,c}}", 'a "{" needs its "}", with no "{" inside'],
+				["*@client", 'a key has no "@"'],
 				[
-					"*@client",
-					'a key is the name an "@" spells, so it has no "@" itself; ',
+					"Shop-Thing",
+					'use a name of letters and digits, or a file-name pattern such as "*.tsx"',
 				],
-				["Shop-Thing", ""],
 			])(
-				"should reject %j, saying what is wrong with it before the rule",
+				"should reject %j, saying what is wrong with it",
 				async (key, problem) => {
 					const problems = await diagnosticsFor({
 						routes: { [key]: "ServerScriptService" },
 					});
 
 					expect(problems.map(([message]) => message)).toEqual([
-						`route key "${key}" is invalid: ${problem}a name uses letters and digits only, starting with a letter, and a file-name pattern is a glob on the name, such as "*.tsx" or "*[Ss]ervice".`,
+						`route key "${key}" is invalid: ${problem}.`,
 					]);
 				}
 			);
@@ -341,7 +341,7 @@ describe("CoreConfigService", () => {
 
 				expect(problems).toEqual([
 					[
-						'"SERVER" and "server" differ only in letter case, so a name spelled one way would read as a misspelling of the other; keep one of them.',
+						'"SERVER" and "server" differ only in letter case. Keep one of them.',
 						"/repo/default.rogen.json",
 						2,
 						57,
@@ -374,7 +374,7 @@ describe("CoreConfigService", () => {
 
 					expect(problems).toHaveLength(1);
 					expect(problems[0][0]).toContain(
-						`"${field}" as a folder name, which the project file reads as a field of the node`
+						`a folder named "${field}", which is a node field`
 					);
 					expect(problems[0].slice(1)).toEqual([
 						"/repo/default.rogen.json",
@@ -392,7 +392,7 @@ describe("CoreConfigService", () => {
 
 				expect(problems).toEqual([
 					[
-						`source path "${onDisk("/repo/src/shared")}" is inside source path "${onDisk("/repo/src")}"; a file under it would belong to both. Remove one.`,
+						`source path "${onDisk("/repo/src/shared")}" is inside source path "${onDisk("/repo/src")}". Remove one.`,
 						"/repo/default.rogen.json",
 						3,
 						25,
@@ -408,7 +408,7 @@ describe("CoreConfigService", () => {
 
 				expect(problems).toEqual([
 					[
-						'source path "/repo/src" is listed twice; a file under it would belong to both. Remove one.',
+						'source path "/repo/src" is listed twice. Remove one.',
 						"/repo/default.rogen.json",
 						3,
 						25,
@@ -427,7 +427,7 @@ describe("CoreConfigService", () => {
 
 				expect(problems).toEqual(
 					[3, 4].map((line) => [
-						'route "Server" is written more than once, and JSON keeps only the last, so this one is lost. Remove it.',
+						'route "Server" is written more than once, and only the last counts. Remove this one.',
 						"/repo/default.rogen.json",
 						line,
 						3,
@@ -456,7 +456,7 @@ describe("CoreConfigService", () => {
 
 				expect(problems).toEqual([
 					[
-						'"routes" is written more than once, and JSON keeps only the last, so this one is lost. Remove it.',
+						'"routes" is written more than once, and only the last counts. Remove this one.',
 						"/repo/default.rogen.json",
 						2,
 						2,

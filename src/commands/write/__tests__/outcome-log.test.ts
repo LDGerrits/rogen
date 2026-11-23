@@ -714,7 +714,7 @@ describe("OutcomeLog.diagnostics", () => {
 			errorDiagnostic(
 				"route.patternClash",
 				{ resource: `/repo/src/${file}` },
-				`${keys} both match this name, are as long as each other, and send it to different places. Lengthen the pattern that should win, or route the file with a folder or an @ name.`
+				`${keys} both match this name equally well, and send it to different routes. Lengthen the pattern that should win, or route the file with a folder or an @ name.`
 			);
 
 		expect(
@@ -736,7 +736,7 @@ describe("OutcomeLog.diagnostics", () => {
 		[
 			"scan.sourcePathNamedAfterKey",
 			1,
-			"1 source path is named after a route key, but routing starts below a source path, so its name routes nothing:",
+			"1 source path is named after a route key, so its name routes nothing:",
 			undefined,
 		],
 		[

@@ -21,10 +21,10 @@ stderr:
   [debug] match/lib: 1 file
   [debug] route server -> ServerScriptService: 2 files
   [debug] left out: 4 unrouted
-  src/Util.luau - warning: matched no route, so it is left out. Move it into a routing folder, as src/server, end its name with a route's @ suffix (@server), or declare a "*" route. (route.unrouted)
-  src/Util.spec.luau - warning: matched no route, so it is left out. Move it into a routing folder, as src/server, end its name with a route's @ suffix (@server), or declare a "*" route. (route.unrouted)
-  src/client/Hud.client.luau - warning: matched no route, so it is left out. Move it into a routing folder, as src/client/server, end its name with a route's @ suffix (@server), or declare a "*" route. (route.unrouted)
-  match/lib/Signal.luau - warning: matched no route, so it is left out. Move it into a routing folder, as match/lib/server, end its name with a route's @ suffix (@server), or declare a "*" route. (route.unrouted)
+  src/Util.luau - warning: matched no route, so it is left out. Move it into a routing folder such as src/server, end its name with @server, or declare a "*" route. (route.unrouted)
+  src/Util.spec.luau - warning: matched no route, so it is left out. Move it into a routing folder such as src/server, end its name with @server, or declare a "*" route. (route.unrouted)
+  src/client/Hud.client.luau - warning: matched no route, so it is left out. Move it into a routing folder such as src/client/server, end its name with @server, or declare a "*" route. (route.unrouted)
+  match/lib/Signal.luau - warning: matched no route, so it is left out. Move it into a routing folder such as match/lib/server, end its name with @server, or declare a "*" route. (route.unrouted)
 
 written:
   lobby/default.project.json

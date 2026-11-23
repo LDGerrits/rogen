@@ -2,7 +2,7 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  default.project.json - warning: 2 data files became Lua modules under "dist" (src/Inventory/Note.txt -> dist/Inventory/Note.lua, src/Inventory/Rates.json -> dist/Inventory/Rates.lua), so Rojo doesn't find them. Darklua converts data files and can't copy them. Copy data files into the compiled path unchanged after it runs, or require them as modules. (output.dataFileConverted)
+  default.project.json - warning: 2 data files became Lua modules under "dist" (src/Inventory/Note.txt -> dist/Inventory/Note.lua, src/Inventory/Rates.json -> dist/Inventory/Rates.lua). Darklua converts data files. Copy them there unchanged after it runs, or require them as modules. (output.dataFileConverted)
 
 written:
   default.project.json

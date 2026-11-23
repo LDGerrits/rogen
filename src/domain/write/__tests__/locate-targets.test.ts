@@ -25,7 +25,7 @@ describe("LocateTargets", () => {
 		]).createInstance(LocateTargets);
 
 		const { asked, paths } = await targets.classify({
-			args: ["src/greeter/server/greeter.server.luau"],
+			args: ["src/greeter/server/Greeter.server.luau"],
 			cwd: root,
 		});
 

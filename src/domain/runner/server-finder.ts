@@ -107,7 +107,7 @@ export class ServerFinder {
 				errorDiagnostic(
 					"rojo.unusable",
 					{ resource: manifest?.file ?? resource },
-					`'${command} --version' ${exitedCleanly ? "printed no version" : "failed"}, so Rojo can't start${printed && !exitedCleanly ? `: ${printed}${/[.!?]$/.test(printed) ? "" : "."}` : "."}${pin ? ` If Rojo isn't pinned yet, run '${pin.run.command}'.` : ""} ${SET_UP}`,
+					`'${command} --version' ${exitedCleanly ? "printed no version" : "failed"}${printed && !exitedCleanly ? `: ${printed}${/[.!?]$/.test(printed) ? "" : "."}` : "."}${pin ? ` If Rojo isn't pinned yet, run '${pin.run.command}'.` : ""} ${SET_UP}`,
 					pin ? [pin] : []
 				),
 			])
@@ -146,7 +146,7 @@ export class ServerFinder {
 		const argon = manifests.some((manifest) =>
 			manifest.nameOf(ARGON_REPOSITORY)
 		)
-			? " Argon is pinned, but rogen serve only starts Rojo: run 'rogen write --watch' to keep the project files current, and 'argon serve' to serve them."
+			? " Argon is pinned, but rogen serve starts only Rojo. Run 'rogen write --watch' and 'argon serve'."
 			: "";
 		return errorDiagnostic(
 			"rojo.notFound",

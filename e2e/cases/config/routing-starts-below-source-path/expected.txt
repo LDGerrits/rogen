@@ -2,7 +2,7 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: 2 source paths are named after a route key, but routing starts below a source path, so their names route nothing: (scan.sourcePathNamedAfterKey)
+  default.rogen.json - warning: 2 source paths are named after a route key, so their names route nothing: (scan.sourcePathNamedAfterKey)
     server (named after the "server" route: move it into a folder, such as src/server, and use "sourcePaths": ["src"])
     client (named after the "client" route: move it into a folder, such as src/client, and use "sourcePaths": ["src"])
 

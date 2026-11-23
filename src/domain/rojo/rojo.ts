@@ -365,7 +365,7 @@ export class RojoMeta {
 				errorDiagnostic(
 					"meta.byteOrderMark",
 					{ resource: file, position: { line: 1, column: 1 } },
-					"starts with a byte order mark, which Rojo can't read, so it refuses the project. Save the file as UTF-8 without one."
+					"starts with a byte order mark, which Rojo can't read. Save the file as UTF-8 without one."
 				),
 			]);
 		const document = RojoMeta.documents.read(text, file, META_STRUCTURE);
@@ -417,7 +417,7 @@ export class RojoMeta {
 							resource: file,
 							position: { line: at.line, column: at.column },
 						},
-						`"${table}.${name}": Rojo can't read this value, so it refuses this meta. ${PropertyValues.READABLE_HINT}`
+						`"${table}.${name}": Rojo can't read this value. ${PropertyValues.READABLE_HINT}`
 					);
 				});
 		});

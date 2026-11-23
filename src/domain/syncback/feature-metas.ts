@@ -56,8 +56,8 @@ export function featureMetas<T>(
 		const meta = toNative(`${folder}/${RojoFile.INIT_META}`);
 		const reason =
 			missing.length > 0
-				? `${meta} would also set it on ${joinedWithAnd(missing)}; set it on all of them in Studio, or edit ${meta} by hand`
-				: `it differs between the instances ${toNative(folder)} makes, which share ${meta}; set it alike in Studio, or edit ${meta} by hand`;
+				? `${meta} would also set it on ${joinedWithAnd(missing)}; set it on all of them in Studio, or edit ${meta}`
+				: `it differs between the instances ${toNative(folder)} makes, which share ${meta}; set it alike in Studio, or edit ${meta}`;
 		for (const key of keys) unplaced.push({ instance: key, reason });
 	}
 	return { placed, unplaced, homeless };

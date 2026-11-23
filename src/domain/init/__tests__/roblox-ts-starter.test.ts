@@ -58,13 +58,13 @@ describe("RobloxTsStarter", () => {
 	});
 
 	it("should point the build and watch scripts at the place's tsconfig", () => {
-		expect(new RobloxTsStarter().scripts("game")).toMatchObject({
+		expect(new RobloxTsStarter().scripts("lobby")).toMatchObject({
 			file: "npm",
 			args: [
 				"pkg",
 				"set",
-				"scripts.build=rbxtsc -p tsconfig.game.json",
-				"scripts.watch=rbxtsc -w -p tsconfig.game.json",
+				"scripts.build=rbxtsc -p tsconfig.lobby.json",
+				"scripts.watch=rbxtsc -w -p tsconfig.lobby.json",
 			],
 		});
 	});
@@ -92,28 +92,30 @@ describe("RobloxTsStarter", () => {
 				types: ["compiler-types", "types"],
 			});
 			expect(root.files).toEqual([]);
-			expect(root.references).toEqual([{ path: "./tsconfig.game.json" }]);
+			expect(root.references).toEqual([
+				{ path: "./tsconfig.lobby.json" },
+			]);
 		});
 
 		it("should compile the place with the common code below one rootDir into its own out folder", () => {
-			const place = tsconfigs.get("tsconfig.game.json");
+			const place = tsconfigs.get("tsconfig.lobby.json");
 			expect(place).toMatchObject({
 				extends: "./tsconfig.json",
 				compilerOptions: {
 					rootDir: "src",
-					rootDirs: ["src/common", "src/game"],
-					outDir: "out/game",
+					rootDirs: ["src/common", "src/lobby"],
+					outDir: "out/lobby",
 					composite: true,
 				},
-				include: ["src/common", "src/game"],
-				rbxts: { rojo: "game.project.json" },
+				include: ["src/common", "src/lobby"],
+				rbxts: { rojo: "lobby.project.json" },
 			});
 		});
 
 		it("should write nothing but the two tsconfigs", () => {
 			expect([...tsconfigs.keys()].sort()).toEqual([
-				"tsconfig.game.json",
 				"tsconfig.json",
+				"tsconfig.lobby.json",
 			]);
 		});
 	});
@@ -180,14 +182,14 @@ describe("a new roblox-ts project", () => {
 
 			expect(planned.files.map(({ fileName }) => fileName)).toEqual(
 				expect.arrayContaining([
-					"src/Greeter/shared/Greeting.ts",
-					"src/Greeter/server/Greeter.server.ts",
-					"src/Greeter/client/Greeter.client.ts",
+					"src/greeter/shared/greeting.ts",
+					"src/greeter/server/greeter.server.ts",
+					"src/greeter/client/greeter.client.ts",
 				])
 			);
 			expect(
-				fileOf(planned, "src/Greeter/server/Greeter.server.ts")?.content
-			).toContain('import { greeting } from "../shared/Greeting"');
+				fileOf(planned, "src/greeter/server/greeter.server.ts")?.content
+			).toContain('import { greeting } from "../shared/greeting"');
 		});
 
 		it("should name the project, which roblox-ts needs, mount its runtime and sync from out", async () => {
@@ -233,7 +235,7 @@ describe("a new roblox-ts project", () => {
 
 			expect(planned.scaffold).toBeUndefined();
 			expect(planned.files.map(({ fileName }) => fileName)).not.toContain(
-				"src/Greeter/shared/Greeting.ts"
+				"src/greeter/shared/greeting.ts"
 			);
 		});
 
@@ -268,7 +270,7 @@ describe("a new roblox-ts project", () => {
 
 			expect(planned.scaffold).toBeDefined();
 			expect(planned.files.map(({ fileName }) => fileName)).not.toContain(
-				"src/Greeter/shared/Greeting.ts"
+				"src/greeter/shared/greeting.ts"
 			);
 		});
 	});
@@ -327,7 +329,7 @@ describe("a new roblox-ts project", () => {
 			])
 				expect(await present(file)).toBe(false);
 			expect(await present("package.json")).toBe(true);
-			expect(await present("src/Greeter/shared/Greeting.ts")).toBe(true);
+			expect(await present("src/greeter/shared/greeting.ts")).toBe(true);
 		});
 
 		it("should report the tool first, as a command that ran", async () => {

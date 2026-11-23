@@ -12,7 +12,7 @@ Each run costs about $0.08 with Sonnet and about $0.01 with Haiku. The default s
 ## What a run is
 
 - **Layout:**
-  - `folder`: the Greeter sample as `init` writes it, with `Server/`, `Client/` and `Shared/` folders.
+  - `folder`: the Greeter sample as `init` writes it, with `server/`, `client/` and `shared/` folders.
   - `suffix`: the same code routed by name: `Greeter.server.luau`, `Greeting@shared.luau`.
   - `rbxts`: a roblox-ts project from `rogen init --places`, with a second place, `lobby`, beside `game`, both reading the shared code in `projects/common`. It needs the network once, to install the packages, which every run then shares.
 - **Condition:**

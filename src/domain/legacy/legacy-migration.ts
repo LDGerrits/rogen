@@ -147,7 +147,7 @@ export class LegacyMigration implements ProjectMigration {
 						errorDiagnostic(
 							"legacy.projectUnreadable",
 							{ resource: path.join(folder, file) },
-							`its "project" names ${project}, which couldn't be read as a project file, so init can't take its tree. Fix the path or the file, then run 'rogen init' again.`
+							`its "project" names ${project}, which can't be read as a project file. Fix it, then run 'rogen init' again.`
 						)
 					);
 		}
@@ -357,7 +357,7 @@ class Migration {
 					warningDiagnostic(
 						"legacy.aliasKey",
 						{ resource: this.resource(file) },
-						`the alias "${key}" ${problem}, so it has no route. Add the route you want by hand, and rename the files that use the alias.`
+						`the alias "${key}" ${problem}, so it has no route. Add the route by hand and rename the files that use it.`
 					)
 				);
 		}
@@ -414,7 +414,7 @@ class Migration {
 				warningDiagnostic(
 					"legacy.outputClash",
 					{ resource: this.resource(file) },
-					`its ${mode.name} mode wrote ${output}, as an earlier mode did, so init writes only one ${fileName}. To keep both, copy ${fileName}, give the copy another name and edit it.`
+					`its ${mode.name} mode wrote ${output}, as an earlier mode did, so init writes one ${fileName}. Copy it under another name to keep both.`
 				)
 			);
 			return;
@@ -462,7 +462,7 @@ class Migration {
 				warningDiagnostic(
 					"legacy.outputClash",
 					{ resource: this.resource(file) },
-					`its ${mode.name} mode wrote ${output}, which comes out the same as ${same.fileName} once v1's tags are gone, so init writes only ${same.fileName}. To keep both, copy ${same.fileName}, give the copy another name and edit what differs.`
+					`its ${mode.name} mode wrote ${output}, the same as ${same.fileName} without tags, so init writes only that. Copy it under another name to keep both.`
 				)
 			);
 			return;
@@ -500,7 +500,7 @@ class Migration {
 				warningDiagnostic(
 					"legacy.typeScriptName",
 					{ resource: this.resource(kept) },
-					`v1 routed this file by a word in its name, which v2 doesn't read. init leaves it as it is, since renaming it breaks the imports of it: rename it to ${name} and update those imports.`
+					`v1 routed this file by a word in its name. init leaves it: rename it to ${name} and update its imports.`
 				)
 			);
 		for (const { file: moved, before, after } of tree.outranked)
@@ -508,7 +508,7 @@ class Migration {
 				warningDiagnostic(
 					"legacy.outrankedRoute",
 					{ resource: this.resource(moved) },
-					`v1 put this file in ${before}, by the last routing word in its path, and v2 puts it in ${after}: in v2 the outermost route governs. To keep it where it was, move it out of the folder that routes it to ${after}.`
+					`v1 put this file in ${before}, v2 puts it in ${after}. To keep it in ${before}, move it out of the folder that routes to ${after}.`
 				)
 			);
 		for (const { file: kept, name } of tree.clashes)
@@ -516,7 +516,7 @@ class Migration {
 				warningDiagnostic(
 					"legacy.renameClash",
 					{ resource: this.resource(kept) },
-					`v1 routed this file by a word in its name, and ${name}, the name that keeps it there in v2, is taken in its folder, so init leaves it as it is. Rename one of them. ${file} is the config that routed it.`
+					`v1 routed this file by a word in its name, and ${name}, which keeps it there in v2, is taken. init leaves it: rename one of them. ${file} is the config that routed it.`
 				)
 			);
 	}
@@ -531,7 +531,7 @@ class Migration {
 			warningDiagnostic(
 				"legacy.tags",
 				{ resource: this.resource(file) },
-				`v1's tags${tags.length > 0 ? ` (${joinedWithAnd(tags)})` : ""} aren't carried over, since v2 has none${tagged.length > 0 ? ` (${joinedBriefly(tagged, LISTED_SHOWN)})` : ""}. Move each tag's files into a folder, and list it last in "sourcePaths" of the configs that want it.`
+				`v1's tags${tags.length > 0 ? ` (${joinedWithAnd(tags)})` : ""} aren't carried over${tagged.length > 0 ? ` (${joinedBriefly(tagged, LISTED_SHOWN)})` : ""}. Move each tag's files into a folder, and list it last in "sourcePaths".`
 			)
 		);
 	}

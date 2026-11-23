@@ -14,31 +14,15 @@ stdout:
         "outcome": "wouldWrite"
       },
       {
-        "file": "<dir>/src/Greeter/Shared/Greeting.luau",
+        "file": "<dir>/src/greeter/shared/Greeting.luau",
         "outcome": "wouldWrite"
       },
       {
-        "file": "<dir>/src/Greeter/Server/Greeter.server.luau",
+        "file": "<dir>/src/greeter/server/Greeter.server.luau",
         "outcome": "wouldWrite"
       },
       {
-        "file": "<dir>/src/Greeter/Client/Greeter.client.luau",
-        "outcome": "wouldWrite"
-      },
-      {
-        "file": "<dir>/place/Lighting/init.meta.json",
-        "outcome": "wouldWrite"
-      },
-      {
-        "file": "<dir>/place/SoundService/init.meta.json",
-        "outcome": "wouldWrite"
-      },
-      {
-        "file": "<dir>/place/Workspace/Baseplate.model.json",
-        "outcome": "wouldWrite"
-      },
-      {
-        "file": "<dir>/place/Workspace/init.meta.json",
+        "file": "<dir>/src/greeter/client/Greeter.client.luau",
         "outcome": "wouldWrite"
       },
       {
@@ -89,7 +73,7 @@ stdout:
       }
     ],
     "notes": [
-      "The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place/, which the tree mounts. Pass --no-sample for an empty src/ and no place/."
+      "Greeter sample in src/greeter, Rojo's Baseplate in default.rogen.json."
     ],
     "nextSteps": {
       "setup": [],
@@ -97,8 +81,7 @@ stdout:
         "rogen serve"
       ],
       "edits": [
-        "To change where code goes, edit \"routes\" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its \"tree\".",
-        "Edit default.rogen.json and leave default.project.json alone, since 'rogen write' replaces it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows."
+        "See README.md for routes and the tree."
       ]
     }
   }

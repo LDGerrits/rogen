@@ -213,7 +213,7 @@ describe("Router", () => {
 						code: "route.patternClash",
 						resource: abs("src/Shop/MainUi.ts"),
 						message:
-							'"*.ts" and "*Ui.*" both match this name, are as long as each other, and send it to different places. Lengthen the pattern that should win, or route the file with a folder or an @ name.',
+							'"*.ts" and "*Ui.*" both match this name equally well, and send it to different routes. Lengthen the pattern that should win, or route the file with a folder or an @ name.',
 					},
 				]);
 			});
@@ -237,7 +237,7 @@ describe("Router", () => {
 					abs("src/Z/MainUi.ts"),
 				]);
 				expect(clashes[0].message).toContain(
-					"all match this name, are as long as each other"
+					"all match this name equally well"
 				);
 			});
 		});
@@ -1021,9 +1021,9 @@ describe("Router", () => {
 					.warnings.filter(({ code }) => code === "route.unrouted");
 
 				expect(warnings.map(({ message }) => message)).toEqual([
-					`matched no route, so it is left out. Move it into a routing folder, as ${abs("src/Server")}, end its name with a route's @ suffix (@Server, @Client or @Shared), or declare a "*" route.`,
-					`matched no route, so it is left out. Move it into a routing folder, as ${abs("src/Shop/Server")}, end its name with a route's @ suffix (@Server, @Client or @Shared), or declare a "*" route.`,
-					`matched no route, so it is left out. Move it into a routing folder, as ${abs("src/Shop/Server")}, end its name with a route's @ suffix (@Server, @Client or @Shared), or declare a "*" route.`,
+					`matched no route, so it is left out. Move it into a routing folder such as ${abs("src/Server")}, end its name with @Server, or declare a "*" route.`,
+					`matched no route, so it is left out. Move it into a routing folder such as ${abs("src/Shop/Server")}, end its name with @Server, or declare a "*" route.`,
+					`matched no route, so it is left out. Move it into a routing folder such as ${abs("src/Shop/Server")}, end its name with @Server, or declare a "*" route.`,
 				]);
 			});
 

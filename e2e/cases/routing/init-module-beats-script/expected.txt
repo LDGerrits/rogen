@@ -2,16 +2,16 @@ $ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  src/F/init.server.luau - warning: is an init file of src/F, as src/F/init.luau is, and Rojo reads only that one. Remove one of them. (tree.instanceClash)
+  src/F/init.server.luau - warning: is an init file of src/F, like src/F/init.luau, and Rojo reads only one. Remove one of them. (tree.instanceClash)
 
 $ rogen where src/F/init.luau src/F/init.server.luau
 exit 0
 stdout:
   src/F/init.luau -> ReplicatedStorage/F · route * (fallback)
-    src/F/init.server.luau - warning: is an init file of src/F, as src/F/init.luau is, and Rojo reads only that one. Remove one of them. (tree.instanceClash)
+    src/F/init.server.luau - warning: is an init file of src/F, like src/F/init.luau, and Rojo reads only one. Remove one of them. (tree.instanceClash)
     require(game:GetService("ReplicatedStorage").F)
   src/F/init.server.luau -> replaced by src/F/init.luau
-    warning: is an init file of src/F, as src/F/init.luau is, and Rojo reads only that one. Remove one of them. (tree.instanceClash)
+    warning: is an init file of src/F, like src/F/init.luau, and Rojo reads only one. Remove one of them. (tree.instanceClash)
 
 written:
   default.project.json

@@ -2,10 +2,10 @@
 	"name": "my-game",
 	"sourcePaths": ["src"],
 	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
 	},
 	"compiledPath": "dist",
 	"globIgnorePaths": ["**/*.spec.luau"],

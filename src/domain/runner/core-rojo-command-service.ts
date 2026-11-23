@@ -200,7 +200,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 		const version = RojoVersion.parse(executable.version);
 		const since = RojoVersion.parse(request.since);
 		if (!version || !since || !version.isBefore(since)) return undefined;
-		return `Rojo ${version} has no '${request.command}' command; Rojo ${since} added it. Change your Rojo pin to ${since} or later, or update the Rojo on the PATH.`;
+		return `Rojo ${version} has no '${request.command}' command. Update Rojo to ${since} or later.`;
 	}
 
 	async runBare(

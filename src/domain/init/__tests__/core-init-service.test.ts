@@ -152,6 +152,7 @@ describe("CoreInitService", () => {
 		it("should rename a folder that spells a route key in the case most of the code doesn't, so the project builds", async () => {
 			await write("src/Shop/Server/A.luau", "return 1");
 			await write("src/Bag/Server/B.luau", "return 1");
+			await write("src/Cart/Server/D.luau", "return 1");
 			await write("src/Trading/server/C.luau", "return 1");
 			await write("src/Trading/server/Save@server.luau", "return 1");
 
@@ -979,7 +980,7 @@ describe("CoreInitService", () => {
 				const plan = await liftPlan();
 
 				expect(plan?.notes).toContain(
-					'Took build as the folder Darklua writes, since .darklua.json5 is here and the mounts of default.project.json into build repeat src. default.rogen.json reads src, and dist.rogen.json reads build as its "compiledPath".'
+					"Took build as Darklua's output, since .darklua.json5 is here. default.rogen.json reads src, and dist.rogen.json reads build."
 				);
 				expect(plan?.nextSteps.run).toEqual(["rogen serve dist"]);
 			});
@@ -993,7 +994,7 @@ describe("CoreInitService", () => {
 				).toEqual({ Server: { $path: "build/server" } });
 				expect(configIn(plan, "dist.rogen.json")).toBeNull();
 				expect(plan?.notes).toContain(
-					'Kept the mounts of default.project.json into build, which repeat src, since no .darklua.json says a processor writes build. Rojo now syncs a script there twice: from build and from its route. If a processor writes build, remove those mounts and serve a copy of default.rogen.json with "compiledPath": "build".'
+					'Kept the mounts of default.project.json into build, which repeat src, so Rojo syncs a script there twice. If a processor writes build, remove them and serve a copy of default.rogen.json with "compiledPath": "build".'
 				);
 				expect(plan?.nextSteps.run).toEqual(["rogen serve"]);
 				expect(plan?.warnings).toEqual([]);
@@ -1232,7 +1233,7 @@ describe("CoreInitService", () => {
 				tree: { $className: "DataModel", ...tree },
 			});
 			expect(plan?.notes).toContain(
-				"Kept the mounts of client, server and shared in the tree as they are: only the project's own folder holds them all, and a source path is a folder below it. To route their code, move the folders into src."
+				"Kept the mounts of client, server and shared in the tree. To route their code, move the folders into src."
 			);
 			expect(plan?.warnings).toEqual([]);
 		});
@@ -1250,7 +1251,7 @@ describe("CoreInitService", () => {
 				tree: { $className: "DataModel", ...tree },
 			});
 			expect(plan?.notes).toContain(
-				"Kept the mounts of src in the tree as they are: a folder with an init file is one instance, so Rogen routes no code in it."
+				"Kept the mounts of src in the tree, since a folder with an init file is one instance."
 			);
 			expect(plan?.warnings).toEqual([]);
 		});
@@ -1269,7 +1270,7 @@ describe("CoreInitService", () => {
 				"*": "ReplicatedStorage/Lib",
 			});
 			expect(plan?.notes).toContain(
-				'Left out the routes Server and Client, since src holds folders or names spelled so, which Rojo places with the rest of their mount and a route would move. To route code that way, rename them and add the key to "routes".'
+				"Left out the routes Server and Client, which would move folders and files of src named so. Rename them to route them."
 			);
 		});
 
@@ -1338,7 +1339,7 @@ describe("CoreInitService", () => {
 				warningDiagnostic(
 					"init.codeOutsideSourcePaths",
 					{ resource: "default.rogen.json" },
-					`game and lib hold code outside every source path and mount, so Rogen places none of it. Move it into src, or add its folder to "sourcePaths".`
+					`game and lib hold code outside the source paths and mounts, so it is not placed. Move it into src, or add its folder to "sourcePaths".`
 				),
 			]);
 		});
@@ -1358,7 +1359,7 @@ describe("CoreInitService", () => {
 			expect(configOf(plan).sourcePaths).toEqual(["src/server/Admin"]);
 			expect(plan?.warnings.map(({ message }) => message)).toEqual([
 				expect.stringMatching(
-					/^src\/server\/Main\.server\.luau holds code outside every source path/
+					/^src\/server\/Main\.server\.luau holds code outside the source paths/
 				),
 			]);
 		});
@@ -1815,7 +1816,7 @@ describe("CoreInitService", () => {
 		const sampleFiles = (plan: InitPlan | undefined) =>
 			(plan?.files ?? [])
 				.map(({ fileName }) => fileName)
-				.filter((fileName) => /Greeter|^place\//.test(fileName));
+				.filter((fileName) => /greeter|^place\//.test(fileName));
 
 		it("should be left out where a script lies at the root of the folder", async () => {
 			await write("Main.server.luau", "print(1)");
@@ -1857,7 +1858,7 @@ describe("CoreInitService", () => {
 				(await keptIn({ sample: false, places: true })).gitkeeps
 			).toEqual([
 				["src/common/.gitkeep", ""],
-				["src/game/.gitkeep", ""],
+				["src/lobby/.gitkeep", ""],
 			]);
 		});
 
@@ -1917,13 +1918,9 @@ describe("CoreInitService", () => {
 
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
 				".gitignore",
-				"src/Greeter/Shared/Greeting.luau",
-				"src/Greeter/Server/Greeter.server.luau",
-				"src/Greeter/Client/Greeter.client.luau",
-				"place/Lighting/init.meta.json",
-				"place/SoundService/init.meta.json",
-				"place/Workspace/Baseplate.model.json",
-				"place/Workspace/init.meta.json",
+				"src/greeter/shared/Greeting.luau",
+				"src/greeter/server/Greeter.server.luau",
+				"src/greeter/client/Greeter.client.luau",
 				"README.md",
 				"AGENTS.md",
 				"default.rogen.json",
@@ -2088,7 +2085,7 @@ describe("CoreInitService", () => {
 				prompts.prompts[2].description
 			);
 			expect(
-				plan?.files.some(({ fileName }) => fileName.includes("Greeter"))
+				plan?.files.some(({ fileName }) => fileName.includes("greeter"))
 			).toBe(true);
 		});
 
@@ -2108,7 +2105,7 @@ describe("CoreInitService", () => {
 			const plan = (await review(prompts)).unwrap();
 
 			expect(
-				plan?.files.some(({ fileName }) => fileName.includes("Greeter"))
+				plan?.files.some(({ fileName }) => fileName.includes("greeter"))
 			).toBe(true);
 		});
 
@@ -2157,7 +2154,7 @@ describe("CoreInitService", () => {
 				"Project"
 			);
 			expect(
-				plan?.files.some(({ fileName }) => fileName.includes("Greeter"))
+				plan?.files.some(({ fileName }) => fileName.includes("greeter"))
 			).toBe(false);
 		});
 
@@ -2181,7 +2178,7 @@ describe("CoreInitService", () => {
 			const shown = prompts.prompts.at(-1)?.description ?? "";
 
 			expect(shown).toMatch(
-				/^Warning {3}src\/Combat holds code outside every source/m
+				/^Warning {3}src\/Combat holds code outside the source/m
 			);
 		});
 
@@ -2241,17 +2238,18 @@ describe("CoreInitService", () => {
 			);
 		});
 
-		it("should point to the sample's flag only in a run that doesn't ask", async () => {
+		it("should name the sample in one line that names no flag", async () => {
 			const asked = (
 				await review(new MockPromptService(["luau", "one", "yes"]))
 			).unwrap();
 			const unasked = (await serviceFor().plan({ ask: false })).unwrap();
 
-			expect(asked?.notes.join("\n")).toContain(
-				"The Greeter sample is in"
-			);
-			expect(asked?.notes.join("\n")).not.toContain("--no-sample");
-			expect(unasked?.notes.join("\n")).toContain("--no-sample");
+			for (const planned of [asked, unasked]) {
+				expect(planned?.notes).toContain(
+					"Greeter sample in src/greeter, Rojo's Baseplate in default.rogen.json."
+				);
+				expect(planned?.notes.join("\n")).not.toContain("--no-sample");
+			}
 		});
 
 		it("should name the code that several places would leave unplaced", async () => {
@@ -2271,7 +2269,7 @@ describe("CoreInitService", () => {
 			);
 
 			expect(places?.choiceHints?.several).toBe(
-				"src/common holds the shared code, src/game the first place; leaves src/Combat and src/Util.luau unplaced"
+				"src/common holds the shared code, src/lobby the first place; leaves src/Combat and src/Util.luau unplaced"
 			);
 		});
 
@@ -2302,7 +2300,7 @@ describe("CoreInitService", () => {
 			expect(places?.choiceHints).toEqual({
 				one: "the code is in src; leaves Main.server.luau unplaced",
 				several:
-					"src/common holds the shared code, src/game the first place; leaves Main.server.luau unplaced",
+					"src/common holds the shared code, src/lobby the first place; leaves Main.server.luau unplaced",
 			});
 		});
 
@@ -2414,7 +2412,7 @@ describe("CoreInitService", () => {
 		});
 
 		it("should fail on an error about a folder of the files it writes", async () => {
-			await write("src/Inventory/@server", "");
+			await write("src/Inventory/@Server", "");
 			const service = serviceFor();
 			const plan = (await service.plan()).unwrap();
 

@@ -8,11 +8,11 @@
 		],
 		[
 			"write",
-			"game"
+			"lobby"
 		],
 		[
 			"sourcemap",
-			"game",
+			"lobby",
 			"-o",
 			"sourcemap.json"
 		]
@@ -20,9 +20,9 @@
 	"show": [
 		"README.md",
 		".vscode/settings.json",
-		"game.rogen.json",
-		"src/game/Game/Server/Game.server.luau",
-		"src/common/Greeter/Shared/Greeting.luau"
+		"lobby.rogen.json",
+		"src/lobby/welcome/server/Welcome.server.luau",
+		"src/common/greeter/shared/Greeting.luau"
 	],
 	"output": ["init"]
 }

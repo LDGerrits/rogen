@@ -28,7 +28,7 @@ const either = (count: number, one: string, many: string) =>
 const GROUPS: Readonly<Record<string, DiagnosticGroup>> = {
 	"scan.sourcePathNamedAfterKey": {
 		headline: (count) =>
-			`${count} source ${either(count, "path is", "paths are")} named after a route key, but routing starts below a source path, so ${either(count, "its name routes", "their names route")} nothing:`,
+			`${count} source ${either(count, "path is", "paths are")} named after a route key, so ${either(count, "its name routes", "their names route")} nothing:`,
 	},
 	"route.strayAt": {
 		headline: (count) =>

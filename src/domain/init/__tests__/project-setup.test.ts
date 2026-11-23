@@ -54,7 +54,7 @@ describe("ProjectSetup plan, unmounted files", () => {
 		expect(planned.warnings).toEqual([]);
 		expect(planned.notes).toContainEqual(
 			expect.stringContaining(
-				'Left out src/Loose.luau and src/x with "globIgnorePaths", since no node of default.project.json mounts them, so Rojo ignored them.'
+				'Left out src/Loose.luau and src/x with "globIgnorePaths", since Rojo ignored them.'
 			)
 		);
 	});
@@ -83,7 +83,7 @@ describe("ProjectSetup plan, summary", () => {
 
 		expect(planned.summary).toContainEqual({
 			area: "Code",
-			text: "src → Server, Client, Shared; other files to ReplicatedStorage/Shared",
+			text: "src → server, client, shared; other files to ReplicatedStorage/Shared",
 		});
 	});
 
@@ -250,8 +250,9 @@ describe("ProjectSetup plan", () => {
 				setup: [],
 				run: ["rogen serve"],
 				edits: [
-					'To change where code goes, edit "routes" in default.rogen.json. To place a folder as it is, such as Packages, mount it in its "tree".',
-					expect.stringContaining("leave default.project.json alone"),
+					expect.stringContaining(
+						"Edit default.rogen.json, not default.project.json"
+					),
 				],
 			});
 		});
@@ -282,7 +283,7 @@ describe("ProjectSetup plan", () => {
 			return configOf(files).routes;
 		};
 
-		it("should write the standard routes with capitalised keys for luau", async () => {
+		it("should write the standard routes with lowercase keys for luau", async () => {
 			expect(await routesOf({})).toEqual(LUAU_ROUTES);
 		});
 
@@ -592,14 +593,6 @@ describe("ProjectSetup plan, second config files", () => {
 		expect(configOf(planned)).not.toHaveProperty("globIgnorePaths");
 	});
 
-	it("should say to change the routes and the tree in each config when there are several", async () => {
-		const planned = await plan({ ...luau, testRunner: "Jest" });
-
-		expect(planned.nextSteps.edits).toContain(
-			'To change where code goes, edit "routes" in each .rogen.json. To place a folder as it is, such as Packages, mount it in the "tree" of each.'
-		);
-	});
-
 	it("should have release read the compiler's folder", async () => {
 		const planned = await plan(
 			withRobloxTs(
@@ -650,11 +643,54 @@ describe("ProjectSetup plan, second config files", () => {
 		}
 	);
 
-	it("should say to edit the config, and to build after adding a feature folder", async () => {
+	it("should say to edit the config and not the project file, and link the routing docs", async () => {
 		expect((await plan(luau)).nextSteps.edits).toContainEqual(
 			expect.stringContaining(
-				"After you add a feature folder, run 'rogen write'"
+				"which 'rogen write' replaces. Routes and the tree: https://rogen-roblox.vercel.app/docs/v2/routing"
 			)
+		);
+	});
+
+	it("should name every config to edit when it writes several", async () => {
+		const planned = await plan({ ...luau, testRunner: "Jest" });
+
+		expect(planned.nextSteps.edits).toContainEqual(
+			"Edit default.rogen.json and release.rogen.json, not their project files, which 'rogen write' replaces. Routes and the tree: https://rogen-roblox.vercel.app/docs/v2/routing"
+		);
+	});
+
+	it("should send the user to the README only when it writes one", async () => {
+		const choices = await defaultProjectChoices(luau);
+		const withReadme = {
+			...choices,
+			templateFiles: [
+				...choices.templateFiles,
+				{ fileName: "README.md", content: "" },
+			],
+		};
+
+		expect(
+			planProject({ choices: withReadme }).unwrap().nextSteps.edits
+		).toContainEqual("See README.md for routes and the tree.");
+		expect(
+			planProject({ choices: { ...choices, sample: true } }).unwrap()
+				.nextSteps.edits
+		).toContainEqual(expect.stringContaining("/docs/v2/routing"));
+	});
+
+	it("should leave the routing docs out for a lift that takes no routes", async () => {
+		const choices = {
+			...(await defaultProjectChoices(luau)),
+			tree: lifted({ name: "g", tree: { $className: "Model" } }),
+		};
+
+		const { edits } = planProject({
+			choices,
+			existingFiles: new Set(["default.project.json"]),
+		}).unwrap().nextSteps;
+
+		expect(edits).toContainEqual(
+			"Edit default.rogen.json, not default.project.json, which 'rogen write' replaces."
 		);
 	});
 });

@@ -87,7 +87,7 @@ describe("Router", () => {
 					[
 						"route.ignoredAt",
 						abs("src/D/init@client.luau"),
-						'"@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route\'s files.',
+						'"@client" does nothing here: the "server" route already governs this file. Remove it, or move the file out of that route.',
 					],
 				]);
 			});
@@ -212,9 +212,9 @@ describe("Router", () => {
 					result.isErr() &&
 						result.error.diagnostics.map(({ message }) => message)
 				).toEqual([
-					'"@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route\'s files.',
-					'"@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route\'s files.',
-					'"@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route\'s files.',
+					'"@client" does nothing here: the "server" route already governs this folder. Remove it, or move the folder out of that route.',
+					'"@client" does nothing here: the "server" route already governs this folder. Remove it, or move the folder out of that route.',
+					'"@client" does nothing here: the "server" route already governs this file. Remove it, or move the file out of that route.',
 				]);
 			});
 
@@ -234,11 +234,11 @@ describe("Router", () => {
 				).toEqual([
 					[
 						abs("src/server/Net@client@ReplicatedFirst"),
-						'"@ReplicatedFirst" and "@client" do nothing here, because the "server" route already governs this folder. Remove them, or move the folder out of the "server" route\'s files.',
+						'"@ReplicatedFirst" and "@client" do nothing here: the "server" route already governs this folder. Remove them, or move the folder out of that route.',
 					],
 					[
 						abs("src/server/Util@client@ReplicatedFirst.luau"),
-						'"@ReplicatedFirst" and "@client" do nothing here, because the "server" route already governs this file. Remove them, or move the file out of the "server" route\'s files.',
+						'"@ReplicatedFirst" and "@client" do nothing here: the "server" route already governs this file. Remove them, or move the file out of that route.',
 					],
 				]);
 			});

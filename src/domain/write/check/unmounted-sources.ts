@@ -55,7 +55,7 @@ export class UnmountedSources {
 					warningDiagnostic(
 						"scan.unmountedSource",
 						{ resource: defaultPath },
-						`${plural(loose.length, "file")} here ${loose.length === 1 ? "is" : "are"} mounted by nothing in the tree (${listed}), and the config declares no routes, so Rojo never syncs ${loose.length === 1 ? "it" : "them"}. Add "routes" to place them, or mount the folder with "$path".`,
+						`${plural(loose.length, "file")} here ${loose.length === 1 ? "is" : "are"} mounted by nothing in the tree (${listed}). Add "routes" to place ${loose.length === 1 ? "it" : "them"}, or mount the folder with "$path".`,
 						[],
 						loose.map((resource) => ({
 							resource,

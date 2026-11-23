@@ -130,7 +130,7 @@ export class SyncRules {
 		if (typeof pattern !== "string")
 			return 'a sync rule needs a "pattern" string.';
 		if (!SYNC_RULE_USES.some((known) => known === use))
-			return `a sync rule needs a "use" of ${SYNC_RULE_USES.join(", ")}.`;
+			return 'a sync rule needs a "use" that Rojo knows, such as moduleScript, serverScript or ignore.';
 		if (exclude !== undefined && typeof exclude !== "string")
 			return '"exclude" of a sync rule must be a string.';
 		if (suffix !== undefined && typeof suffix !== "string")

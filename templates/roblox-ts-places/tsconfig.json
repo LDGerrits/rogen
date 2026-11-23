@@ -27,7 +27,7 @@
 	"files": [],
 	"references": [
 		{
-			"path": "./tsconfig.game.json"
+			"path": "./tsconfig.lobby.json"
 		}
 	]
 }

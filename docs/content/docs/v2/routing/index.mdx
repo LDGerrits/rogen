@@ -8,64 +8,64 @@ Your config's `routes` name the places your code can go in the game:
 ```json title="default.rogen.json"
 {
 	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/Shared",
 		"*": "ReplicatedStorage/Shared"
 	}
 }
 ```
 
-A route's name in a file's path sends the file there. A `Server/` folder sends everything inside it, and `@Client` at the end of a name sends one file:
+A route's name in a file's path sends the file there. A `server/` folder sends everything inside it, and `@client` at the end of a name sends one file:
 
 <RouteFigure
 	disk={`
   src/
-    Shop/
-      Server/
+    shop/
+      server/
         ShopService.luau
-      Shared/
+      shared/
         Prices.luau
-      ShopUi@Client.luau
+      ShopUI@client.luau
 `}
 	studio={`
   ReplicatedStorage
-    Shared/
-      Shop/
+    shared/
+      shop/
         Prices
   ServerScriptService
-    Shop/
+    shop/
       ShopService
   StarterPlayer
     StarterPlayerScripts
-      Shop/
-        ShopUi
+      shop/
+        ShopUI
 `}
 />
 
-Everything else in the path stays, so `Shop` shows up under each service. The route's name must be spelled exactly as its key: a `server/` folder or `Save@Sever.luau` under a `Server` route is an error, so a typo never sends server code somewhere else.
+Everything else in the path stays, so `shop` shows up under each service. The route's name must be spelled exactly as its key: a `Server/` folder or `save@Sever.luau` under a `server` route is an error, so a typo never sends server code somewhere else.
 
 Each way to route has its own page: [Routing Folders](/docs/v2/routing/folders), [Routing by Name](/docs/v2/routing/names) and [Routing by Pattern](/docs/v2/routing/patterns). [Skipping Folders](/docs/v2/routing/skipping-folders) shows how to leave a folder out of the game.
 
 ## Files Without a Route
 
-The `*` route takes every file that no other route matches, so `src/Shop/Prices.luau` lands in `ReplicatedStorage/Shared/Shop`. A [pattern route](/docs/v2/routing/patterns) such as `*.tsx` takes a file by its name before `*` does. `rogen init` writes it. Without `*`, Rogen leaves such a file out and warns about it, so a server file that forgets its route never reaches clients. That suits a project where every file names its side.
+The `*` route takes every file that no other route matches, so `src/shop/Prices.luau` lands in `ReplicatedStorage/Shared/shop`. A [pattern route](/docs/v2/routing/patterns) such as `*.tsx` takes a file by its name before `*` does. `rogen init` writes it. Without `*`, Rogen leaves such a file out and warns about it, so a server file that forgets its route never reaches clients. That suits a project where every file names its side.
 
 ## The Outermost Route Wins
 
-A route inside another route is an ordinary folder. Server code under `Shared/` ships to every client, and Rogen warns about it:
+A route inside another route is an ordinary folder. Server code under `shared/` ships to every client, and Rogen warns about it:
 
 <RouteFigure
 	disk={`
   src/
-    Shared/
-      Server/
+    shared/
+      server/
         Datastore.luau
 `}
 	studio={`
   ReplicatedStorage
-    Shared/
-      Server/
+    shared/
+      server/
         Datastore
 `}
 />
@@ -75,7 +75,7 @@ A route inside another route is an ordinary folder. Server code under `Shared/` 
 `rogen where` prints where a file lands in the game, and the require that reaches it:
 
 ```
-$ rogen where src/Shop/Server/ShopService.luau
-src/Shop/Server/ShopService.luau -> ServerScriptService/Shop/ShopService · route Server (folder)
-  require(game:GetService("ServerScriptService").Shop.ShopService)
+$ rogen where src/shop/server/ShopService.luau
+src/shop/server/ShopService.luau -> ServerScriptService/shop/ShopService · route server (folder)
+  require(game:GetService("ServerScriptService").shop.ShopService)
 ```

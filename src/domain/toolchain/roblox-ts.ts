@@ -91,6 +91,7 @@ export class RobloxTs implements Language {
 	};
 	readonly extension = "ts";
 	readonly compiler: RobloxTsCompiler;
+	readonly sharedName = "shared";
 	readonly reservedFolders: readonly string[];
 
 	constructor(

@@ -78,7 +78,7 @@ describe("UnmountedSources", () => {
 		const [warning] = await warningsOf();
 
 		expect(warning.message).toContain("1 file here is mounted");
-		expect(warning.message).toContain("never syncs it");
+		expect(warning.message).toContain("to place it");
 	});
 
 	it("should look in the src folder beside the config", async () => {

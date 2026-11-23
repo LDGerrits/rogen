@@ -8,9 +8,9 @@ const VARIANTS: readonly Variant[] = [
 		name: "Luau, several places",
 		flags: ["--places"],
 		steps: [],
-		project: ["game"],
-		served: "game",
-		mapped: ["game"],
+		project: ["lobby"],
+		served: "lobby",
+		mapped: ["lobby"],
 	},
 	{
 		name: "roblox-ts, one place",
@@ -22,10 +22,10 @@ const VARIANTS: readonly Variant[] = [
 	{
 		name: "roblox-ts, several places",
 		flags: ["--language", "roblox-ts", "--places"],
-		steps: [["npx", "rbxtsc", "-p", "tsconfig.game.json"]],
+		steps: [["npx", "rbxtsc", "-p", "tsconfig.lobby.json"]],
 		network: true,
-		project: ["game"],
-		served: "game",
+		project: ["lobby"],
+		served: "lobby",
 	},
 ];
 
@@ -66,7 +66,7 @@ describeWithRojo("first success from an empty folder", () => {
 				expect(success.unprinted).toEqual([]);
 				for (const folder of variant.mapped ?? [])
 					expect(success.mappedPaths[folder]).toContain(
-						"ReplicatedStorage/Shared/Greeter/Greeting"
+						"ReplicatedStorage/Shared/greeter/Greeting"
 					);
 				expect(success.printed).toContain(
 					["rogen serve", ...(variant.project ?? [])].join(" ")

@@ -18,7 +18,7 @@ describe("OutsideSourcePaths", () => {
 						code: "scan.outsideSourcePaths",
 						resource: file,
 						message: expect.stringContaining(
-							`"${folder}" is one edit from the source path "${name}"`
+							`"${folder}" is one edit from "${name}"`
 						),
 					},
 				]);
@@ -29,7 +29,7 @@ describe("OutsideSourcePaths", () => {
 			expect(outside.about("/repo/Src/A.luau")).toEqual([
 				expect.objectContaining({
 					message: expect.stringContaining(
-						'"Src" differs from the source path "src" only in letter case'
+						'"Src" differs from "src" only in letter case'
 					),
 				}),
 			]);

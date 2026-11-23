@@ -96,15 +96,15 @@ stdout:
                                 a coding agent or CI, does so anyway. --json implies it. Any flag
                                 still answers its own question.
           --[no-]places         Whether a new project is several places. The code they share goes in
-                                src/common, a first place in src/game and a game.rogen.json at the
+                                src/common, a first place in src/lobby and a lobby.rogen.json at the
                                 root for it. Luau adds editor settings for luau-lsp, and roblox-ts a
-                                tsconfig.game.json that compiles the place into out/game. More places
-                                by copying those files. One place when not given.
+                                tsconfig.lobby.json that compiles the place into out/lobby. More
+                                places by copying those files. One place when not given.
       -q, --quiet               Only print errors.
-          --no-sample           Leave the Greeter sample out: empty source folders, and no place/
-                                folder. The sample is a Greeter feature folder of three hello-world
-                                scripts, a README, and Rojo's Baseplate and lighting in place/, which
-                                the tree mounts. A new place in a folder with no code gets it.
+          --no-sample           Leave the Greeter sample out: empty source folders, and no Baseplate
+                                in the tree. The sample is a Greeter feature folder of three
+                                hello-world scripts, a README, and Rojo's Baseplate and lighting in
+                                the tree. A new place in a folder with no code gets it.
           --skip-git            Leave git out of a new project: write no .gitignore and run no git
                                 init. Otherwise a .gitignore is written where none is, and git init
                                 runs where no work tree holds the folder.

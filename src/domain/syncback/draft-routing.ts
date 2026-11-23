@@ -44,8 +44,21 @@ const isAboutAny = (diagnostic: Diagnostic, paths: readonly string[]) =>
 			)
 		);
 
-const stopsOn = ({ code, resource, message }: Diagnostic) =>
-	`the write would stop on ${toNative(resource)} (${code}: ${message.replace(/\.$/, "")})`;
+const RENAMING_FIXES: ReadonlySet<string> = new Set([
+	"tree.instanceClash",
+	"route.caseMismatch",
+	"route.ignoredAt",
+]);
+
+const stopsOn = ({ code, resource, related }: Diagnostic) => {
+	const partner = related?.[0];
+	const clash = partner ? `, like ${toNative(partner.resource)}` : "";
+	return `the write would stop on ${toNative(resource)} (${code}${clash}); ${
+		RENAMING_FIXES.has(code)
+			? "rename it in Studio"
+			: `see \`rogen help ${code}\``
+	}`;
+};
 
 export function landingMiss(
 	{ file, instance, folder }: Landing,
@@ -97,7 +110,7 @@ export function landingMiss(
 	if (landed.length === 0) return `routing would make no instance of ${file}`;
 	const read = `routing would read ${file} as ${instanceKey(landed[0])}`;
 	return /\.(server|client)\.luau?$/.test(file)
-		? `${read}, as it places a script by its type; make it a ModuleScript or move it to where that type runs`
+		? `${read}; make it a ModuleScript, or move it to where that type runs`
 		: `${read}; rename it in Studio`;
 }
 

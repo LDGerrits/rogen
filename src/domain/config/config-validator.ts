@@ -40,7 +40,7 @@ import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
 const FALLBACK_NAME = "project";
 
 const KEY_RULE =
-	'a name uses letters and digits only, starting with a letter, and a file-name pattern is a glob on the name, such as "*.tsx" or "*[Ss]ervice"';
+	'use a name of letters and digits, or a file-name pattern such as "*.tsx"';
 
 export class ConfigValidator {
 	private readonly problems = new DiagnosticCollector();
@@ -175,7 +175,7 @@ export class ConfigValidator {
 		this.problems.error(
 			"config.unnamedProjectFile",
 			{ resource: file, position: { line: 1, column: 1 } },
-			`${path.basename(file)} has no "name", and Rojo can't read ${target} without one unless it is default.project.json or default.project.jsonc. Add "name".`
+			`${path.basename(file)} has no "name", which Rojo needs here. Add "name".`
 		);
 	}
 
@@ -186,7 +186,7 @@ export class ConfigValidator {
 		this.problems.error(
 			"config.wrongType",
 			this.locate(...notNode),
-			`"${notNode.join(".")}" must be an object.${value === null ? ' null removes nothing: to leave a mounted node out of a project, list its folder in "globIgnorePaths".' : ""}`
+			`"${notNode.join(".")}" must be an object.${value === null ? ' To leave a node out, list its folder in "globIgnorePaths".' : ""}`
 		);
 	}
 
@@ -200,7 +200,7 @@ export class ConfigValidator {
 		this.problems.error(
 			"config.unknownField",
 			this.locate(...unknown),
-			`"${unknown.join(".")}" is not a field of a node, and Rojo rejects a project file with a field it doesn't know.${suggestion ? ` Did you mean "${suggestion}"?` : ""}`
+			`"${unknown.join(".")}" is not a field of a node.${suggestion ? ` Did you mean "${suggestion}"?` : " Remove it."}`
 		);
 	}
 
@@ -224,7 +224,7 @@ export class ConfigValidator {
 			this.problems.warning(
 				"tree.reservedName",
 				this.locate(...reserved),
-				`"${reserved.join(".")}": Rojo reserves keys that start with $ for its own fields, so it warns about this one on every build. Rename it without the $.`
+				`"${reserved.join(".")}": Rojo reserves keys that start with $, so it warns on every build. Rename it without the $.`
 			);
 	}
 
@@ -270,7 +270,7 @@ export class ConfigValidator {
 			this.problems.error(
 				"config.duplicateKey",
 				{ resource: this.config.file, position },
-				`${described} is written more than once, and JSON keeps only the last, so this one is lost. Remove it.`
+				`${described} is written more than once, and only the last counts. Remove this one.`
 			);
 	}
 
@@ -286,7 +286,7 @@ export class ConfigValidator {
 				this.problems.error(
 					"config.invalidRouteKey",
 					location,
-					`route key "${key}" is invalid: ${ConfigValidator.keyProblem(key)}${KEY_RULE}.`
+					`route key "${key}" is invalid: ${ConfigValidator.keyProblem(key) ?? KEY_RULE}.`
 				);
 			const target = Target.parse(text, location);
 			if (target.isErr()) {
@@ -301,7 +301,7 @@ export class ConfigValidator {
 				this.problems.error(
 					"roblox.invalidFolder",
 					location,
-					`the target "${text}" has "${field}" as a folder name, which the project file reads as a field of the node, not a child. Rename the folder.`
+					`the target "${text}" has a folder named "${field}", which is a node field. Rename the folder.`
 				);
 		}
 		return targets;
@@ -332,7 +332,7 @@ export class ConfigValidator {
 			this.problems.error(
 				"config.sourcePathsWithoutRoutes",
 				this.locate("sourcePaths"),
-				'"sourcePaths" lists what routes scan, but the config declares no routes. Add "routes", or remove "sourcePaths".'
+				'"sourcePaths" has no "routes" to use it. Add "routes", or remove "sourcePaths".'
 			);
 		this.sourcePaths.forEach((sourcePath, index) => {
 			const overlap = sourcePathOverlap(this.sourcePaths, index);
@@ -342,13 +342,13 @@ export class ConfigValidator {
 				this.problems.error(
 					"config.duplicateSourcePath",
 					location,
-					`source path "${sourcePath}" is listed twice; a file under it would belong to both. Remove one.`
+					`source path "${sourcePath}" is listed twice. Remove one.`
 				);
 			} else {
 				this.problems.error(
 					"config.nestedSourcePath",
 					location,
-					`source path "${sourcePath}" is inside source path "${overlap.outer}"; a file under it would belong to both. Remove one.`
+					`source path "${sourcePath}" is inside source path "${overlap.outer}". Remove one.`
 				);
 			}
 		});
@@ -364,7 +364,7 @@ export class ConfigValidator {
 			this.problems.error(
 				"config.compiledPathOverlapsSourcePath",
 				this.locate("compiledPath"),
-				`the compiled path "${compiledPath}" ${inside ? "is inside" : "contains"} source path "${sourcePath}", so Rogen would read what the tools write as source. Set "compiledPath" to a folder outside the source paths.`
+				`the compiled path "${compiledPath}" ${inside ? "is inside" : "contains"} source path "${sourcePath}". Set "compiledPath" to a folder outside the source paths.`
 			);
 			break;
 		}
@@ -379,21 +379,19 @@ export class ConfigValidator {
 			this.problems.error(
 				"config.ambiguousKey",
 				location,
-				`"${key}" and "${other}" differ only in letter case, so a name spelled one way would read as a misspelling of the other; keep one of them.`
+				`"${key}" and "${other}" differ only in letter case. Keep one of them.`
 			);
 		}
 	}
 
-	private static keyProblem(key: string): string {
+	private static keyProblem(key: string): string | undefined {
 		if (/[/\\]/.test(key))
-			return 'a pattern matches a file\'s name, never its path, so it has no "/"; ';
-		if (key.includes("**"))
-			return 'a pattern matches one name, so no "**"; ';
-		if (/\[[^\]]*$/.test(key)) return 'a "[" needs its "]"; ';
+			return 'a pattern matches a file name, so it has no "/"';
+		if (key.includes("**")) return 'a pattern has no "**"';
+		if (/\[[^\]]*$/.test(key)) return 'a "[" needs its "]"';
 		if (/\{[^}]*(\{|$)/.test(key))
-			return 'a "{" needs its "}", with no "{" inside; ';
-		if (key.includes("@"))
-			return 'a key is the name an "@" spells, so it has no "@" itself; ';
-		return "";
+			return 'a "{" needs its "}", with no "{" inside';
+		if (key.includes("@")) return 'a key has no "@"';
+		return undefined;
 	}
 }

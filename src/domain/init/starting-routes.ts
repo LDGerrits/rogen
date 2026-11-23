@@ -37,7 +37,7 @@ export class StartingRoutes {
 	}
 
 	get sharedTarget(): string {
-		return `ReplicatedStorage/${this.language.routeKey("shared")}`;
+		return `ReplicatedStorage/${this.language.sharedName}`;
 	}
 
 	get fallbackTarget(): string {

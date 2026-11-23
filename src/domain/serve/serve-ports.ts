@@ -175,7 +175,7 @@ export class ServePorts {
 		return errorDiagnostic(
 			"serve.portTaken",
 			{ resource: config.file },
-			`Port ${address.port} is ${by}, so ${this.nameOf(config)} can't be served there. Stop it, set a servePort in ${this.nameOf(config)}, or run '${serve} <port>${rest}'.`,
+			`Port ${address.port} is ${by}. Stop it, set a servePort in ${this.nameOf(config)}, or run '${serve} <port>${rest}'.`,
 			free === undefined
 				? []
 				: [

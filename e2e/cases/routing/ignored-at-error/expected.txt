@@ -3,12 +3,12 @@ exit 1
 stdout: (not shown)
 stderr:
   error: default.project.json · not written
-  src/Net@client@server - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
-  src/server/@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
-  src/server/Net/@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
-  src/server/Store/init@client.luau - error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files. (route.ignoredAt)
-  src/server/Ui@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
-  src/server/Util@client.luau - error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files. (route.ignoredAt)
+  src/Net@client@server - error: "@client" does nothing here: the "server" route already governs this folder. Remove it, or move the folder out of that route. (route.ignoredAt)
+  src/server/@client - error: "@client" does nothing here: the "server" route already governs this folder. Remove it, or move the folder out of that route. (route.ignoredAt)
+  src/server/Net/@client - error: "@client" does nothing here: the "server" route already governs this folder. Remove it, or move the folder out of that route. (route.ignoredAt)
+  src/server/Store/init@client.luau - error: "@client" does nothing here: the "server" route already governs this file. Remove it, or move the file out of that route. (route.ignoredAt)
+  src/server/Ui@client - error: "@client" does nothing here: the "server" route already governs this folder. Remove it, or move the folder out of that route. (route.ignoredAt)
+  src/server/Util@client.luau - error: "@client" does nothing here: the "server" route already governs this file. Remove it, or move the file out of that route. (route.ignoredAt)
 
 $ rogen write --json
 exit 1
@@ -25,42 +25,42 @@ stdout:
             "file": "<dir>/src/Net@client@server",
             "severity": "error",
             "code": "route.ignoredAt",
-            "message": "\"@client\" does nothing here, because the \"server\" route already governs this folder. Remove it, or move the folder out of the \"server\" route's files.",
+            "message": "\"@client\" does nothing here: the \"server\" route already governs this folder. Remove it, or move the folder out of that route.",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-ignoredat"
           },
           {
             "file": "<dir>/src/server/@client",
             "severity": "error",
             "code": "route.ignoredAt",
-            "message": "\"@client\" does nothing here, because the \"server\" route already governs this folder. Remove it, or move the folder out of the \"server\" route's files.",
+            "message": "\"@client\" does nothing here: the \"server\" route already governs this folder. Remove it, or move the folder out of that route.",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-ignoredat"
           },
           {
             "file": "<dir>/src/server/Net/@client",
             "severity": "error",
             "code": "route.ignoredAt",
-            "message": "\"@client\" does nothing here, because the \"server\" route already governs this folder. Remove it, or move the folder out of the \"server\" route's files.",
+            "message": "\"@client\" does nothing here: the \"server\" route already governs this folder. Remove it, or move the folder out of that route.",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-ignoredat"
           },
           {
             "file": "<dir>/src/server/Store/init@client.luau",
             "severity": "error",
             "code": "route.ignoredAt",
-            "message": "\"@client\" does nothing here, because the \"server\" route already governs this file. Remove it, or move the file out of the \"server\" route's files.",
+            "message": "\"@client\" does nothing here: the \"server\" route already governs this file. Remove it, or move the file out of that route.",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-ignoredat"
           },
           {
             "file": "<dir>/src/server/Ui@client",
             "severity": "error",
             "code": "route.ignoredAt",
-            "message": "\"@client\" does nothing here, because the \"server\" route already governs this folder. Remove it, or move the folder out of the \"server\" route's files.",
+            "message": "\"@client\" does nothing here: the \"server\" route already governs this folder. Remove it, or move the folder out of that route.",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-ignoredat"
           },
           {
             "file": "<dir>/src/server/Util@client.luau",
             "severity": "error",
             "code": "route.ignoredAt",
-            "message": "\"@client\" does nothing here, because the \"server\" route already governs this file. Remove it, or move the file out of the \"server\" route's files.",
+            "message": "\"@client\" does nothing here: the \"server\" route already governs this file. Remove it, or move the file out of that route.",
             "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#route-ignoredat"
           }
         ]
@@ -73,12 +73,12 @@ $ rogen where src/server/Util@client.luau
 exit 1
 stdout:
   src/server/Util@client.luau -> ServerScriptService/Util@client · route server (folder)
-    error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files. (route.ignoredAt)
+    error: "@client" does nothing here: the "server" route already governs this file. Remove it, or move the file out of that route. (route.ignoredAt)
     require(game:GetService("ServerScriptService")["Util@client"])
 stderr:
-  src/Net@client@server - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
-  src/server/@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
-  src/server/Net/@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
-  src/server/Store/init@client.luau - error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files. (route.ignoredAt)
-  src/server/Ui@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
+  src/Net@client@server - error: "@client" does nothing here: the "server" route already governs this folder. Remove it, or move the folder out of that route. (route.ignoredAt)
+  src/server/@client - error: "@client" does nothing here: the "server" route already governs this folder. Remove it, or move the folder out of that route. (route.ignoredAt)
+  src/server/Net/@client - error: "@client" does nothing here: the "server" route already governs this folder. Remove it, or move the folder out of that route. (route.ignoredAt)
+  src/server/Store/init@client.luau - error: "@client" does nothing here: the "server" route already governs this file. Remove it, or move the file out of that route. (route.ignoredAt)
+  src/server/Ui@client - error: "@client" does nothing here: the "server" route already governs this folder. Remove it, or move the folder out of that route. (route.ignoredAt)
   The errors above stop the write, but none of it is about what you asked; 'rogen check' lists everything to fix.

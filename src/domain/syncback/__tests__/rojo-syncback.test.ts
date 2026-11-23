@@ -150,7 +150,7 @@ describe("RojoSyncback", () => {
 					code: "syncback.removedFromProjectFile",
 					resource: config.file,
 					message:
-						"the place no longer holds Workspace/Gone, and the tree of the config defines it, which syncback cannot remove. Remove its node from the tree, then run syncback again.",
+						"Workspace/Gone is gone from the place, but the tree of the config defines it. Remove its node from the tree, then run syncback again.",
 				},
 			]);
 		});

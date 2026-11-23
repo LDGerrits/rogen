@@ -2,7 +2,7 @@ $ rogen syncback -i place.rbxl -y --list
 exit 1
 stderr:
   Wrote default.project.json.
-  default.rogen.json - error: the place no longer holds ServerScriptService/Shop, and the project file Rogen writes holds it as a node of its own, since it has a nested project file or is a service the routes make, which syncback cannot remove. Delete src/Shop/Server/Lib.project.json, src/Shop/Server/ShopService.luau, or put it back in Studio, then run syncback again. (syncback.removedFromProjectFile)
+  default.rogen.json - error: ServerScriptService/Shop is gone from the place, but the project file holds it as a node of its own. Delete src/Shop/Server/Lib.project.json, src/Shop/Server/ShopService.luau, or put it back in Studio, then run syncback again. (syncback.removedFromProjectFile)
 
 written:
   default.project.json

@@ -7,7 +7,7 @@ Rogen puts each file where its route sends it, so the layout of your folders is 
 
 ## Feature Folders
 
-Give each feature one folder, with a routing folder inside for each side it runs on. The [Introduction](/docs/v2) shows how `src/Inventory` holds everything about the inventory, and [Routing Folders](/docs/v2/routing/folders) how it reaches the game.
+Give each feature one folder, with a routing folder inside for each side it runs on. The [Introduction](/docs/v2) shows how `src/inventory` holds everything about the inventory, and [Routing Folders](/docs/v2/routing/folders) how it reaches the game.
 
 ## Layers
 
@@ -17,56 +17,56 @@ A larger codebase can put the feature folders inside layers, where each layer re
 	disk={`
   src/
     base/
-      Shared/
+      shared/
         Signal.luau
     platform/
-      Marketplace/
-        Server/
+      marketplace/
+        server/
           Marketplace.luau
     core/
-      Player/
-        Server/
+      player/
+        server/
           PlayerService.luau
-        Shared/
+        shared/
           PlayerState.luau
     features/
-      Inventory/
-        Client/
+      inventory/
+        client/
           InventoryController.luau
-        Server/
+        server/
           InventoryService.luau
     app/
-      Server/
+      server/
         Main.server.luau
-      Client/
+      client/
         Main.client.luau
 `}
 	studio={`
   ReplicatedStorage
-    Shared/
+    shared/
       base/
         Signal
       core/
-        Player/
+        player/
           PlayerState
   ServerScriptService
     app/
       Main
     core/
-      Player/
+      player/
         PlayerService
     platform/
-      Marketplace/
+      marketplace/
         Marketplace
     features/
-      Inventory/
+      inventory/
         InventoryService
   StarterPlayer
     StarterPlayerScripts
       app/
         Main
       features/
-        Inventory/
+        inventory/
           InventoryController
 `}
 />

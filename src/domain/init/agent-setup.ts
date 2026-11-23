@@ -40,7 +40,7 @@ export class AgentSetup implements Setup<AgentChoices> {
 		severity: DiagnosticSeverity
 	): Diagnostic {
 		const signs = CODING_AGENTS.flatMap(({ signs }) => signs);
-		const message = `--agent-hook adds the hook to the coding agents in use here, and init found none, so it adds no hook. An agent is in use where its folder or file is: ${joinedWithOr(signs)}. Once one is, run 'rogen init --agent-hook'.`;
+		const message = `no coding agent is in use here (${joinedWithOr(signs)}), so --agent-hook adds no hook. Once one is, run 'rogen init --agent-hook'.`;
 		return {
 			...warningDiagnostic(
 				"init.noCodingAgent",

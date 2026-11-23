@@ -42,7 +42,7 @@ The inventory is spread over six folders, mixed in with the shop, so changing or
 
 ## Feature Folders in Rojo
 
-Sorting each side by feature helps, but the inventory still has three folders, one each in `client`, `server` and `shared`. A single `src/Inventory` folder is better, and Rojo can do it if you give every side of every feature its own entry in `default.project.json`:
+Sorting each side by feature helps, but the inventory still has three folders, one each in `client`, `server` and `shared`. A single `src/inventory` folder is better, and Rojo can do it if you give every side of every feature its own entry in `default.project.json`:
 
 ```json title="default.project.json"
 {
@@ -50,20 +50,20 @@ Sorting each side by feature helps, but the inventory still has three folders, o
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": {
-      "Inventory": { "$path": "src/Inventory/Server" },
-      "Shop": { "$path": "src/Shop/Server" }
+      "inventory": { "$path": "src/inventory/server" },
+      "shop": { "$path": "src/shop/server" }
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "Inventory": { "$path": "src/Inventory/Client" },
-        "Shop": { "$path": "src/Shop/Client" }
+        "inventory": { "$path": "src/inventory/client" },
+        "shop": { "$path": "src/shop/client" }
       }
     },
     "ReplicatedStorage": {
       "Shared": {
         "$className": "Folder",
-        "Inventory": { "$path": "src/Inventory/Shared" },
-        "Shop": { "$path": "src/Shop/Shared" }
+        "inventory": { "$path": "src/inventory/shared" },
+        "shop": { "$path": "src/shop/shared" }
       }
     }
   }
@@ -74,58 +74,58 @@ Every feature you add, rename or remove means editing this file by hand, and a f
 
 ## One Folder per Feature
 
-Rogen writes those entries for you when you put each feature in one folder, with `Client`, `Server` and `Shared` folders inside:
+Rogen writes those entries for you when you put each feature in one folder, with `client`, `server` and `shared` folders inside:
 
 <RouteFigure
 	disk={`
   src/
-    Inventory/
-      Client/
+    inventory/
+      client/
         InventoryController.luau
         InventoryWindow.luau
-      Server/
+      server/
         InventoryService.luau
         InventoryStore.luau
-      Shared/
+      shared/
         InventoryTypes.luau
         ItemConfig.luau
-    Shop/
-      Client/
+    shop/
+      client/
         ShopController.luau
         ShopWindow.luau
-      Server/
+      server/
         ShopService.luau
-      Shared/
+      shared/
         ShopConfig.luau
         ShopTypes.luau
 `}
 	studio={`
   ReplicatedStorage
-    Shared/
-      Inventory/
+    shared/
+      inventory/
         InventoryTypes
         ItemConfig
-      Shop/
+      shop/
         ShopConfig
         ShopTypes
   ServerScriptService
-    Inventory/
+    inventory/
       InventoryService
       InventoryStore
-    Shop/
+    shop/
       ShopService
   StarterPlayer
     StarterPlayerScripts
-      Inventory/
+      inventory/
         InventoryController
         InventoryWindow
-      Shop/
+      shop/
         ShopController
         ShopWindow
 `}
 />
 
-Studio gets the same tree as the hand-written project file, while everything about the inventory sits in `src/Inventory` and you remove it by deleting one folder.
+Studio gets the same tree as the hand-written project file, while everything about the inventory sits in `src/inventory` and you remove it by deleting one folder.
 
 ## How Rogen Does It
 
@@ -135,9 +135,9 @@ You write `default.rogen.json`, a Rojo project file with [`routes`](/docs/v2/con
 {
   "name": "my-game",
   "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared"
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/Shared"
   },
   "tree": { "$className": "DataModel" }
 }

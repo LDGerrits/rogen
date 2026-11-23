@@ -199,13 +199,13 @@ export class RojoSyncback {
 					.map(({ source }) => toNative(source))
 			),
 		];
-		const gone = `the place no longer holds ${refused.parent}/${refused.child}`;
+		const gone = `${refused.parent}/${refused.child} is gone from the place`;
 		const advice =
 			files.length === 1
-				? `${gone}, and the tree of the config defines it, which syncback cannot remove. Delete ${toNative(files[0].source)}, then run syncback again.`
+				? `${gone}, but the tree of the config defines it. Delete ${toNative(files[0].source)}, then run syncback again.`
 				: held.length === 0
-					? `${gone}, and the tree of the config defines it, which syncback cannot remove. Remove its node from the tree, then run syncback again.`
-					: `${gone}, and the project file Rogen writes holds it as a node of its own, since it has a nested project file or is a service the routes make, which syncback cannot remove. Delete ${held.slice(0, SHOWN).join(", ")}${held.length > SHOWN ? ` and ${held.length - SHOWN} more` : ""}, or put it back in Studio, then run syncback again.`;
+					? `${gone}, but the tree of the config defines it. Remove its node from the tree, then run syncback again.`
+					: `${gone}, but the project file holds it as a node of its own. Delete ${held.slice(0, SHOWN).join(", ")}${held.length > SHOWN ? ` and ${held.length - SHOWN} more` : ""}, or put it back in Studio, then run syncback again.`;
 		return new DiagnosticsError([
 			errorDiagnostic(
 				"syncback.removedFromProjectFile",
