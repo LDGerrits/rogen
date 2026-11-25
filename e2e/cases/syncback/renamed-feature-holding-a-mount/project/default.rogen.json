@@ -1,0 +1,8 @@
+{
+	"name": "Game",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": { "Vendor": { "$path": "src/Shop/Server/Vendor" } }
+	},
+	"routes": { "Server": "ServerScriptService", "*": "ReplicatedStorage/Shared" }
+}

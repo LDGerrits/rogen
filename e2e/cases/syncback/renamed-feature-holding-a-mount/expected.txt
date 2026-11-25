@@ -1,0 +1,21 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/Store/Server/Cart.luau
+  Removing src/Shop/Server/Cart.luau
+stderr:
+  Wrote default.project.json.
+  Syncback wrote 2 changes.
+
+written:
+  default.project.json
+  src/Store/Server/Cart.luau
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Vendor: Folder
+      Lib: ModuleScript  <- src/Shop/Server/Vendor/Lib.luau
+  ServerScriptService: ServerScriptService
+    Store: Folder
+      Cart: ModuleScript  <- src/Store/Server/Cart.luau

@@ -4,6 +4,7 @@ import { containsPosix, toPosix } from "../../base/path.js";
 import { FileLocation, PlacedLocation } from "../write/write-service.js";
 import { ResolvedConfig, compiledPathOf } from "../config/resolved-config.js";
 import { configStem } from "../config/config.js";
+import { rojoPathTarget } from "../rojo/rojo-project.js";
 
 export type Style = "folder" | "suffix" | "marker" | "pattern" | "fallback";
 
@@ -24,12 +25,16 @@ export const GITKEEP = ".gitkeep";
 const isPlaced = (location: FileLocation): location is PlacedLocation =>
 	location.status === "placed";
 
+type ReplacedLocation = FileLocation & { readonly status: "replaced" };
+
+const isReplaced = (location: FileLocation): location is ReplacedLocation =>
+	location.status === "replaced";
+
 export class SyncbackLayout {
 	readonly placed: readonly PlacedLocation[];
 	private readonly roots: readonly string[];
-	private readonly replaced: readonly (FileLocation & {
-		readonly status: "replaced";
-	})[];
+	private readonly replaced: readonly ReplacedLocation[];
+	private readonly mounted: readonly string[];
 	private readonly shared: ReadonlySet<string>;
 	private features?: readonly (
 		| { readonly folder: string; readonly instance: readonly string[] }
@@ -43,9 +48,14 @@ export class SyncbackLayout {
 	) {
 		this.placed = locations.filter(isPlaced);
 		this.roots = config.sourcePaths.map(toPosix);
-		this.replaced = locations.filter(
-			(location) => location.status === "replaced"
-		);
+		this.replaced = locations.filter(isReplaced);
+		this.mounted = config.project
+			.mountedPaths()
+			.map(({ path: rojoPath }) =>
+				toPosix(
+					path.resolve(config.projectDir, rojoPathTarget(rojoPath))
+				)
+			);
 		this.shared = new Set(
 			others.flatMap((other) => other.sourcePaths.map(toPosix))
 		);
@@ -73,8 +83,13 @@ export class SyncbackLayout {
 		return own.length === 1 ? own[0] : undefined;
 	}
 
+	/** Whether the config's tree mounts something in `folder`. */
+	holdsMount(folder: string): boolean {
+		return this.mounted.some((mount) => containsPosix(folder, mount));
+	}
+
 	/** The file of another source path that `source` stands in front of. */
-	behind(source: string): string | undefined {
+	fileReplacedBy(source: string): string | undefined {
 		const root = this.rootOf(source);
 		return this.replaced.find(
 			(file) => file.by === source && this.rootOf(file.source) !== root

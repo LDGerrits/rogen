@@ -18,7 +18,6 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { instanceKey } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
-import { rojoPathTarget } from "../rojo/rojo-project.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import { AddedInstance, AddedPath, addedInstances } from "./added-instances.js";
 import { WrittenEntry, addedNode, isNodeFile } from "./added-node.js";
@@ -150,6 +149,7 @@ class MirrorPlanRun {
 	private readonly toKeep = new Map<string, string>();
 	private readonly refused = new Set<string>();
 	private readonly keptFiles = new Set<string>();
+	private readonly keptReplaced: Operation[] = [];
 	private readonly compiled: CompiledChange[] = [];
 	private readonly expected: Expected[] = [];
 	private readonly before = new Map<string, Uint8Array | undefined>();
@@ -316,15 +316,21 @@ class MirrorPlanRun {
 					...(file.length > 1 && { rel: file.slice(1).join("/") }),
 				});
 		}
-		const removals = this.operations.flatMap((operation) => {
-			const bytes = this.before.get(operation.file);
-			return operation.kind === "remove" &&
-				operation.from !== undefined &&
-				bytes !== undefined &&
-				bytes.length > 0
-				? [{ file: operation.file, from: operation.from, bytes }]
-				: [];
-		});
+		// A file kept for another it replaces still left its instance, so a
+		// refused move of that instance's folder has to find it.
+		for (const { file } of this.keptReplaced)
+			this.before.set(file, await bytesOf(this.fileSystemService, file));
+		const removals = [...this.operations, ...this.keptReplaced].flatMap(
+			(operation) => {
+				const bytes = this.before.get(operation.file);
+				return operation.kind === "remove" &&
+					operation.from !== undefined &&
+					bytes !== undefined &&
+					bytes.length > 0
+					? [{ file: operation.file, from: operation.from, bytes }]
+					: [];
+			}
+		);
 		const folders = new Set(
 			removals.flatMap(({ from }) => [...posixAncestors(from)])
 		);
@@ -450,13 +456,14 @@ class MirrorPlanRun {
 				)
 			)
 				continue;
-			const behind =
+			const replaced =
 				operation.kind === "remove" &&
-				workspace.layout.behind(toPosix(operation.file));
-			if (behind) {
+				workspace.layout.fileReplacedBy(toPosix(operation.file));
+			if (replaced) {
+				this.keptReplaced.push(operation);
 				unplaced.push({
 					instance: operation.instance,
-					reason: `${toNative(behind)} would take its place, so ${operation.file} was kept; delete both by hand`,
+					reason: `${toNative(replaced)} would take its place, so ${operation.file} was kept; delete both by hand`,
 				});
 				continue;
 			}
@@ -662,8 +669,16 @@ class MirrorPlanRun {
 				edit: { from: at, bytes: await workspace.read(at) },
 			});
 		};
+		const stillHeld = new Set(
+			this.keptReplaced.map(({ from }) => path.posix.dirname(from!))
+		);
 		for (const added of this.after) {
 			if (this.copiedPaths.has(added.path)) continue;
+			if (
+				path.posix.basename(added.path) === GITKEEP &&
+				stillHeld.has(path.posix.dirname(added.path))
+			)
+				continue;
 			const mirroredFolder = added.folder && known.has(added.path);
 			if (mirroredFolder) continue;
 			const target = mirror.targetOf(added.path);
@@ -1051,24 +1066,12 @@ class MirrorPlanRun {
 		}
 	}
 
-	private holdsMount(folder: string): boolean {
-		const { project, projectDir } = this.request.project;
-		return project
-			.mountedPaths()
-			.some(({ path: rojoPath }) =>
-				containsPosix(
-					folder,
-					toPosix(path.resolve(projectDir, rojoPathTarget(rojoPath)))
-				)
-			);
-	}
-
 	private async renameFits(
 		{ folder, files, renamed }: RenamedInstance,
 		removed: PathSet
 	): Promise<boolean> {
 		if (
-			this.holdsMount(folder) ||
+			this.workspace.layout.holdsMount(folder) ||
 			(await this.fileSystemService.exists(toNative(renamed)))
 		)
 			return false;

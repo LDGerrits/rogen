@@ -1,0 +1,6 @@
+{
+	"name": "Game",
+	"tree": { "$className": "DataModel" },
+	"routes": { "Server": "ServerScriptService", "*": "ReplicatedStorage/Shared" },
+	"globIgnorePaths": ["**/*.spec.luau"]
+}

@@ -289,7 +289,7 @@ export class MirrorWorkspace {
 				return err(
 					new UsageError(
 						`Rojo can't write the place back as files: it would write ${file.split("/").slice(MIRROR.split("/").length).join("/")}, so nothing was written.`,
-						"In Studio, rename a duplicate name there, or one no file can have, then run syncback again."
+						"Rename the duplicate, or the name no file can have, in Studio, then run syncback again."
 					)
 				);
 		}

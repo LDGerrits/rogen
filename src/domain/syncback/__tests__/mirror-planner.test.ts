@@ -815,6 +815,29 @@ describe("MirrorPlanner", () => {
 			]);
 		});
 
+		it("should keep every file of a refused rename that holds such a file", async () => {
+			await overlaid();
+			await fs.writeFile(abs("dev/Shop/Server/Cart.luau"), "return 2");
+			await writeFiles(fs, "src/Shop/Server/Till.luau");
+			await fs.writeFile(abs("src/Shop/Server/Till.luau"), "return 3");
+			rojo.say = async () => {
+				await fs.delete(mirror("ServerScriptService", "Shop"), true);
+				for (const [name, text] of [
+					["Cart", "return 2"],
+					["Till", "return 3"],
+				])
+					await fs.writeFile(
+						mirror("ServerScriptService", "Store", `${name}.luau`),
+						text
+					);
+				return [];
+			};
+
+			const plan = await planned();
+
+			expect(plan.changes).toEqual([]);
+		});
+
 		it("should write an edit to the file in front", async () => {
 			await overlaid();
 			rojo.say = async () => {
@@ -879,6 +902,25 @@ describe("MirrorPlanner", () => {
 		expect(plan.unplaced.map(({ instance }) => instance)).toEqual([
 			"ServerScriptService/Shop/Cart@Server",
 		]);
+		expect(plan.changes).toEqual([]);
+	});
+
+	it("should add no .gitkeep where the only file was kept for another it replaces", async () => {
+		await prepare(
+			["src/Shop/Server/Cart.luau", "dev/Shop/Server/Cart.luau"],
+			{ sourcePaths: [abs("src"), abs("dev")] }
+		);
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Shop", "Cart.luau"));
+			await writeFiles(
+				fs,
+				".rogen-syncback/mirror/ServerScriptService/Shop/.gitkeep"
+			);
+			return [];
+		};
+
+		const plan = await planned();
+
 		expect(plan.changes).toEqual([]);
 	});
 
