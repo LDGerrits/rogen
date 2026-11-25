@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- `rogen syncback` no longer moves a `$path` of the config's `tree` when you rename the folder that holds it, which left a project Rojo couldn't build.
+- With several source paths, `rogen syncback` keeps a file you removed in Studio when another source path's file would take its place, and says so. It used to remove one file per run.
+- `rogen syncback` warns about a new instance that `globIgnorePaths` matches instead of dropping it silently.
+- `rogen syncback` no longer adds a `.gitkeep` to a folder whose files it kept.
+- The error for a name `rogen syncback` can't write now also points at duplicate names and characters no file can have.
+
 ## [2.0.0-rc.2] - 2026-11-23
 
 ### Changed

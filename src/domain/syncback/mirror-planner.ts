@@ -18,6 +18,7 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { instanceKey } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
+import { rojoPathTarget } from "../rojo/rojo-project.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import { AddedInstance, AddedPath, addedInstances } from "./added-instances.js";
 import { WrittenEntry, addedNode, isNodeFile } from "./added-node.js";
@@ -91,6 +92,9 @@ type NoOperation = {
 	readonly file: string;
 	readonly instance: string;
 } & ({ readonly kind: "same" } | { readonly kind: "saved" });
+
+const ignoredReason = (file: string) =>
+	`${file} matches an ignore glob of the project, so it is left alone`;
 
 function instanceOf(
 	instance: AddedInstance,
@@ -276,7 +280,7 @@ class MirrorPlanRun {
 					(kind === "write" || kind === "folder") &&
 					file.startsWith(`${folder}${path.sep}`)
 			);
-			if (!fills)
+			if (!fills && (await this.isEmptied(folder)))
 				await this.add({
 					kind: "write",
 					file: path.join(folder, GITKEEP),
@@ -284,6 +288,20 @@ class MirrorPlanRun {
 					bytes: new Uint8Array(),
 				});
 		}
+	}
+
+	private async isEmptied(folder: string): Promise<boolean> {
+		const gone = new Set(
+			this.operations
+				.filter(({ kind }) => kind === "remove" || kind === "prune")
+				.map(({ file }) => file)
+		);
+		const entries = await tryWithAsync(() =>
+			this.fileSystemService.readDirectory(folder)
+		);
+		return entries
+			.unwrapOr([])
+			.every(([name]) => gone.has(path.join(folder, name)));
 	}
 
 	private async keepMovedFrom(made: AddedInstance): Promise<void> {
@@ -432,6 +450,16 @@ class MirrorPlanRun {
 				)
 			)
 				continue;
+			const behind =
+				operation.kind === "remove" &&
+				workspace.layout.behind(toPosix(operation.file));
+			if (behind) {
+				unplaced.push({
+					instance: operation.instance,
+					reason: `${toNative(behind)} would take its place, so ${operation.file} was kept; delete both by hand`,
+				});
+				continue;
+			}
 			const copy = leftAlone.get(operation.file);
 			if (operation.kind === "remove" && copy !== undefined) {
 				unplaced.push({
@@ -674,9 +702,13 @@ class MirrorPlanRun {
 				fresh.push(added);
 				continue;
 			}
-			if (workspace.isIgnored(target)) continue;
 			const file = toNative(target);
 			const instance = workspace.instanceAt(added.path);
+			if (workspace.isIgnored(target)) {
+				if (!added.folder && workspace.isUnreadInstance(target))
+					unplaced.push({ instance, reason: ignoredReason(file) });
+				continue;
+			}
 			if (this.isCompiled(file)) {
 				const folderInProject =
 					added.folder &&
@@ -1019,11 +1051,26 @@ class MirrorPlanRun {
 		}
 	}
 
+	private holdsMount(folder: string): boolean {
+		const { project, projectDir } = this.request.project;
+		return project
+			.mountedPaths()
+			.some(({ path: rojoPath }) =>
+				containsPosix(
+					folder,
+					toPosix(path.resolve(projectDir, rojoPathTarget(rojoPath)))
+				)
+			);
+	}
+
 	private async renameFits(
-		{ files, renamed }: RenamedInstance,
+		{ folder, files, renamed }: RenamedInstance,
 		removed: PathSet
 	): Promise<boolean> {
-		if (await this.fileSystemService.exists(toNative(renamed)))
+		if (
+			this.holdsMount(folder) ||
+			(await this.fileSystemService.exists(toNative(renamed)))
+		)
 			return false;
 		for (const { target } of files.values()) {
 			const to = toNative(target);
@@ -1245,8 +1292,7 @@ class MirrorPlanRun {
 		for (const to of targets) {
 			if (!removed.has(to) && (await this.fileSystemService.exists(to)))
 				return `${to} is already there`;
-			if (this.workspace.isIgnored(toPosix(to)))
-				return `${to} matches an ignore glob of the project, so it is left alone`;
+			if (this.workspace.isIgnored(toPosix(to))) return ignoredReason(to);
 		}
 		return undefined;
 	}

@@ -27,6 +27,9 @@ const isPlaced = (location: FileLocation): location is PlacedLocation =>
 export class SyncbackLayout {
 	readonly placed: readonly PlacedLocation[];
 	private readonly roots: readonly string[];
+	private readonly replaced: readonly (FileLocation & {
+		readonly status: "replaced";
+	})[];
 	private readonly shared: ReadonlySet<string>;
 	private features?: readonly (
 		| { readonly folder: string; readonly instance: readonly string[] }
@@ -40,6 +43,9 @@ export class SyncbackLayout {
 	) {
 		this.placed = locations.filter(isPlaced);
 		this.roots = config.sourcePaths.map(toPosix);
+		this.replaced = locations.filter(
+			(location) => location.status === "replaced"
+		);
 		this.shared = new Set(
 			others.flatMap((other) => other.sourcePaths.map(toPosix))
 		);
@@ -65,6 +71,14 @@ export class SyncbackLayout {
 		if (inside.length === 1) return inside[0];
 		const own = this.roots.filter((root) => !this.shared.has(root));
 		return own.length === 1 ? own[0] : undefined;
+	}
+
+	/** The file of another source path that `source` stands in front of. */
+	behind(source: string): string | undefined {
+		const root = this.rootOf(source);
+		return this.replaced.find(
+			(file) => file.by === source && this.rootOf(file.source) !== root
+		)?.source;
 	}
 
 	sourcePathHolding(folder: string): string | undefined {
