@@ -882,6 +882,24 @@ describe("MirrorPlanner", () => {
 		expect(plan.changes).toEqual([]);
 	});
 
+	it("should keep a folder with a .gitkeep when Studio removed the only folder in it", async () => {
+		await prepare(["src/Shop/Server/Util/Math.luau"]);
+		rojo.say = async () => {
+			await fs.delete(
+				mirror("ServerScriptService", "Shop", "Util"),
+				true
+			);
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.changes).toContainEqual({
+			kind: "write",
+			file: abs("src/Shop/Server/.gitkeep"),
+		});
+	});
+
 	describe("a renamed feature", () => {
 		it("should move the files of a feature Studio renamed into a folder of the new name", async () => {
 			await prepare(["src/Shop/Server/ShopService.luau"]);
