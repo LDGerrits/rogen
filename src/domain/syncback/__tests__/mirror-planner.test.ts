@@ -835,6 +835,43 @@ describe("MirrorPlanner", () => {
 			expect(plan.changes).toEqual([]);
 		});
 
+		it("should still write a plan after the kept file is edited before it is confirmed", async () => {
+			await prepare(
+				[
+					"src/Shop/Server/Cart.luau",
+					"dev/Shop/Server/Cart.luau",
+					"src/Shop/Server/Bag.luau",
+				],
+				{ sourcePaths: [abs("src"), abs("dev")] }
+			);
+			rojo.say = async () => {
+				await fs.delete(
+					mirror("ServerScriptService", "Shop", "Cart.luau")
+				);
+				await fs.writeFile(
+					mirror("ServerScriptService", "Shop", "Bag.luau"),
+					"return 2"
+				);
+				return [];
+			};
+
+			const { outcome } = await service.run(selectionOf(config), {
+				input: "game.rbxl",
+				cwd: "/repo",
+				mode: {
+					confirm: async () => {
+						await fs.writeFile(
+							abs("dev/Shop/Server/Cart.luau"),
+							"return 9"
+						);
+						return true;
+					},
+				},
+			});
+
+			expect(outcome.kind).toBe("written");
+		});
+
 		it("should write an edit to the file in front", async () => {
 			await overlaid();
 			rojo.say = async () => {
@@ -902,6 +939,24 @@ describe("MirrorPlanner", () => {
 		expect(plan.changes).toEqual([]);
 	});
 
+	it("should keep a folder with a .gitkeep when Studio removed the only folder in it", async () => {
+		await prepare(["src/Shop/Server/Util/Math.luau"]);
+		rojo.say = async () => {
+			await fs.delete(
+				mirror("ServerScriptService", "Shop", "Util"),
+				true
+			);
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.changes).toContainEqual({
+			kind: "write",
+			file: abs("src/Shop/Server/.gitkeep"),
+		});
+	});
+
 	it("should add no .gitkeep where the only file was kept for another it replaces", async () => {
 		await prepare(
 			["src/Shop/Server/Cart.luau", "dev/Shop/Server/Cart.luau"],
@@ -921,22 +976,29 @@ describe("MirrorPlanner", () => {
 		expect(plan.changes).toEqual([]);
 	});
 
-	it("should keep a folder with a .gitkeep when Studio removed the only folder in it", async () => {
-		await prepare(["src/Shop/Server/Util/Math.luau"]);
+	it("should not list a folder as removed that the plan writes into again, as Rojo does not", async () => {
+		await prepare([
+			"src/Shop/Server/Cart.luau",
+			"src/Inventory/Shared/Items.luau",
+		]);
+		await fs.writeFile(abs("src/Shop/Server/Cart.luau"), "return 1");
 		rojo.say = async () => {
-			await fs.delete(
-				mirror("ServerScriptService", "Shop", "Util"),
-				true
+			await fs.delete(mirror("ServerScriptService", "Shop"), true);
+			await fs.writeFile(
+				mirror("ReplicatedStorage", "Shared", "Shop", "Cart.luau"),
+				"return 1"
 			);
 			return [];
 		};
 
-		const plan = await planned();
+		const plan = await planned("apply");
 
-		expect(plan.changes).toContainEqual({
-			kind: "write",
-			file: abs("src/Shop/Server/.gitkeep"),
-		});
+		expect(plan.changes).toEqual([
+			{ kind: "remove", file: abs("src/Shop/Server") },
+			{ kind: "write", file: abs("src/Shop/Shared/Cart.luau") },
+		]);
+		expect(await fs.exists(abs("src/Shop/Shared/Cart.luau"))).toBe(true);
+		expect(await fs.exists(abs("src/Shop/Server"))).toBe(false);
 	});
 
 	describe("a renamed feature", () => {

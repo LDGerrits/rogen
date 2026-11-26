@@ -3,6 +3,7 @@ import { isSameJson } from "../../base/objects.js";
 import { containsPosix } from "../../base/path.js";
 import { PlacedLocation } from "../write/write-service.js";
 import { RojoFile } from "../rojo/rojo.js";
+import { SyncRules } from "../rojo/sync-rules.js";
 import { AddedInstance } from "./added-instances.js";
 import { instanceNameOf, instancePathIn } from "./reverse-router.js";
 import { GITKEEP } from "./syncback-layout.js";
@@ -52,8 +53,6 @@ function withMark(fileName: string, mark: string): string {
 
 const sameForm = (old: PlacedLocation, written: string) =>
 	path.posix.basename(old.source).replace(markOf(old), "") === written;
-
-const isScript = (file: string) => /\.luau?$/.test(file);
 
 export interface RenameInputs {
 	readonly sourceOf: (mirror: string) => string | undefined;
@@ -145,7 +144,7 @@ function renameOf(
 			files.set(key, { target: moved(old.source) });
 			continue;
 		}
-		if (!isScript(oldName)) {
+		if (!new RojoFile(oldName, SyncRules.DEFAULT).isLuau) {
 			files.set(key, { target: moved(old.source), keep: old.source });
 			continue;
 		}

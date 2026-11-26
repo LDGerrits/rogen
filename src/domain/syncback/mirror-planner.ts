@@ -4,7 +4,6 @@ import {
 	PathSet,
 	ancestors,
 	contains,
-	containsPosix,
 	toNative,
 	toPosix,
 } from "../../base/path.js";
@@ -13,12 +12,10 @@ import { isObject, isSameJson } from "../../base/objects.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	FileSystemService,
-	isDirectoryType,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import { instanceKey } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
-import { SyncRules } from "../rojo/sync-rules.js";
 import { AddedInstance, AddedPath, addedInstances } from "./added-instances.js";
 import { WrittenEntry, addedNode, isNodeFile } from "./added-node.js";
 import { ConfigEdits } from "./config-edits.js";
@@ -26,23 +23,37 @@ import { InstantiationService } from "../../platform/instantiation/instantiation
 import { MetaRequest, featureMetas } from "./feature-metas.js";
 import {
 	Expected,
+	HoldIntent,
+	Intent,
 	MirrorPlan,
+	MovedFile,
 	Operation,
+	intentOf,
+	isHold,
 	bytesOf,
 	sameBytes,
 	withoutRemovedInside,
 } from "./mirror-plan.js";
 import { MirrorRun, MirrorWorkspace, inBatches } from "./mirror-workspace.js";
-import {
-	Mark,
-	NewHome,
-	ReverseRouter,
-	instanceNameOf,
-	instancePathIn,
-} from "./reverse-router.js";
-import { DraftRouting, Landing, Proposal } from "./draft-routing.js";
+import { instanceNameOf } from "./reverse-router.js";
+import { DraftRouting, Landing } from "./draft-routing.js";
 import { GITKEEP } from "./syncback-layout.js";
-import { RenamedInstance, renamedInstances } from "./renamed-instances.js";
+import {
+	Candidate,
+	Candidates,
+	Planned,
+	ignoredReason,
+	landingOf,
+} from "./candidates.js";
+import { Choice, settle } from "./placements.js";
+import {
+	Disk,
+	PlaceView,
+	beforePlacement,
+	foldersRead,
+	retain,
+} from "./retention.js";
+import { renamedInstances } from "./renamed-instances.js";
 import { RojoSyncback } from "./rojo-syncback.js";
 import {
 	CompiledChange,
@@ -57,15 +68,6 @@ const CR = 13;
 const LF = 10;
 
 const decoder = new TextDecoder();
-
-function* posixAncestors(at: string): Generator<string> {
-	for (
-		let dir = path.posix.dirname(at);
-		dir !== ".";
-		dir = path.posix.dirname(dir)
-	)
-		yield dir;
-}
 
 const foldersOf = (at: string): string[] => {
 	const names = at.split("/");
@@ -92,69 +94,20 @@ type NoOperation = {
 	readonly instance: string;
 } & ({ readonly kind: "same" } | { readonly kind: "saved" });
 
-const ignoredReason = (file: string) =>
-	`${file} matches an ignore glob of the project, so it is left alone`;
-
-function instanceOf(
-	instance: AddedInstance,
-	file: readonly string[]
-): readonly string[] | undefined {
-	const name = file[file.length - 1];
-	if (
-		RojoFile.metaStemOf(name) !== undefined ||
-		new RojoFile(name, SyncRules.DEFAULT).kind === undefined
-	)
-		return undefined;
-	if (!instance.folder) return [...instance.parent, instance.name];
-	return instancePathIn([...instance.parent, ...file.slice(0, -1)], name);
-}
-
-function landingOf(
-	instance: AddedInstance,
-	file: readonly string[],
-	to: string,
-	folder: boolean
-): Landing | undefined {
-	const leaf = file[file.length - 1];
-	if (folder || leaf === GITKEEP || leaf === RojoFile.INIT_META)
-		return {
-			file: folder ? to : path.dirname(to),
-			instance: [
-				...instance.parent,
-				...(instance.folder ? (folder ? file : file.slice(0, -1)) : []),
-			],
-			folder: true,
-		};
-	const made = instanceOf(instance, file);
-	return made && { file: to, instance: made };
-}
-
-interface Choice {
-	readonly instance: string;
+interface Placing extends Choice<Candidate> {
 	readonly made: AddedInstance;
-	readonly proposals: readonly Proposal[];
-	readonly reason: string;
 }
-
-const clashes = (operation: Operation, other: Operation | undefined) =>
-	other !== undefined &&
-	(operation.kind === "write"
-		? other.kind !== "write" || !sameBytes(other.bytes, operation.bytes)
-		: other.kind === "write");
 
 class MirrorPlanRun {
 	private readonly request: SyncbackRequest;
-	private readonly operations: Operation[] = [];
+	private readonly intents: Intent[] = [];
 	private readonly unplaced: UnplacedInstance[];
-	private readonly toKeep = new Map<string, string>();
-	private readonly refused = new Set<string>();
-	private readonly keptFiles = new Set<string>();
-	private readonly keptReplaced: Operation[] = [];
 	private readonly compiled: CompiledChange[] = [];
 	private readonly expected: Expected[] = [];
 	private readonly before = new Map<string, Uint8Array | undefined>();
 	private readonly present: ReadonlySet<string>;
 	private readonly copiedPaths: ReadonlySet<string>;
+	private readonly place: PlaceView;
 	private readonly edits: ConfigEdits;
 	private readonly routing: DraftRouting;
 	private readonly inPlace = new Map<
@@ -174,12 +127,14 @@ class MirrorPlanRun {
 		private readonly after: readonly AddedPath[],
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
-		@InstantiationService instantiationService: InstantiationService
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
 	) {
 		this.request = workspace.request;
 		this.unplaced = [...run.skipped];
 		this.present = new Set(after.map(({ path: at }) => at));
 		this.copiedPaths = new Set(run.copied.map(({ mirror: at }) => at));
+		this.place = this.placeView();
 		this.edits = instantiationService.createInstance(
 			ConfigEdits,
 			workspace
@@ -215,24 +170,81 @@ class MirrorPlanRun {
 		return true;
 	}
 
-	private async add(operation: Operation): Promise<void> {
-		if (
-			this.operations.some(
-				(other) =>
-					other.kind === operation.kind &&
-					other.file === operation.file &&
-					(other.kind !== "write" ||
-						(operation.kind === "write" &&
-							sameBytes(other.bytes, operation.bytes)))
-			)
-		)
-			return;
-		if (!this.before.has(operation.file))
-			this.before.set(
-				operation.file,
-				await bytesOf(this.fileSystemService, operation.file)
+	private record(operation: Operation): void {
+		this.intents.push(intentOf(operation));
+	}
+
+	private hold(hold: HoldIntent): void {
+		this.intents.push(hold);
+		this.unplaced.push({ instance: hold.instance, reason: hold.reason });
+	}
+
+	private placeView(): PlaceView {
+		const { workspace, request } = this;
+		const { mirror } = workspace;
+		const held = new Set<string>();
+		for (const { path: at } of this.after)
+			for (const folder of [...foldersOf(at), at]) held.add(folder);
+		const copiedFolders = new Set(
+			mirror.entries
+				.filter(({ kind }) => kind === "folder")
+				.map(({ mirror: at }) => at)
+		);
+		for (const at of this.copiedPaths)
+			for (const folder of foldersOf(at))
+				if (
+					[...copiedFolders].some((entry) =>
+						folder.startsWith(`${entry}/`)
+					)
+				)
+					copiedFolders.add(folder);
+		return {
+			held,
+			copied: this.copiedPaths,
+			folders: new Map(
+				[...copiedFolders].map((at) => [at, mirror.targetOf(at)!])
+			),
+			sourcePaths: request.project.sourcePaths,
+			compiledPath: request.project.compiledPath,
+			instanceAt: (at) => workspace.instanceAt(at),
+		};
+	}
+
+	private async diskOf(): Promise<Disk> {
+		const entries = new Map<string, readonly string[]>();
+		for (const folder of foldersRead(this.intents, this.place)) {
+			const read = await tryWithAsync(() =>
+				this.fileSystemService.readDirectory(folder)
 			);
-		this.operations.push(operation);
+			entries.set(
+				folder,
+				read.isOk() ? read.value.map(([name]) => name) : []
+			);
+		}
+		const bytes = new Map<string, Uint8Array | undefined>();
+		for (const intent of this.intents)
+			if (
+				(intent.kind === "gone" || intent.kind === "kept") &&
+				intent.from !== undefined &&
+				!bytes.has(intent.file)
+			)
+				bytes.set(
+					intent.file,
+					await bytesOf(this.fileSystemService, intent.file)
+				);
+		return {
+			entriesOf: (folder) => entries.get(folder),
+			bytesOf: (file) => bytes.get(file),
+		};
+	}
+
+	private async readBefore(files: readonly string[]): Promise<void> {
+		for (const file of files)
+			if (!this.before.has(file))
+				this.before.set(
+					file,
+					await bytesOf(this.fileSystemService, file)
+				);
 	}
 
 	private nodeAt(folder: string): readonly string[] | undefined {
@@ -250,125 +262,55 @@ class MirrorPlanRun {
 			this.before.set(file, await bytesOf(this.fileSystemService, file));
 		const compared = await this.compareCopies();
 		if (compared.isErr()) return compared;
-		await this.pruneEmptied();
+		const disk = await this.diskOf();
 		const known = this.knownFolders();
 		const { fresh, metaFiles } = await this.readAdded(known);
 		await this.writeFeatureMetas(metaFiles);
-		const additions = await this.placeInstances(fresh, known);
+		const additions = await this.placeInstances(
+			fresh,
+			known,
+			beforePlacement(this.intents, disk, this.place)
+		);
 		const edited = await this.edits.editTree(additions);
-		for (const operation of edited.operations) await this.add(operation);
+		for (const operation of edited.operations) this.record(operation);
 		this.unplaced.push(...edited.unplaced);
-		this.keepRefused();
-		await this.keepEmptied();
+		const retained = retain(this.intents, disk, this.place);
+		const operations = [...retained.operations, ...retained.gitkeeps];
+		const movesRefused = this.intents.some(
+			({ kind }) => kind === "refusedMove"
+		);
+		await this.readBefore([
+			...this.intents.flatMap((intent) =>
+				intent.kind === "kept"
+					? movesRefused
+						? [intent.file]
+						: []
+					: isHold(intent)
+						? []
+						: [intent.file]
+			),
+			...retained.gitkeeps.map(({ file }) => file),
+		]);
+		for (const instance of retained.leftOut)
+			this.compiled.push({ instance, kind: "removed" });
 		return ok(
 			new MirrorPlan(
 				request.project,
 				this.unplaced,
 				this.compiled,
-				this.operations,
+				operations,
 				this.before,
 				this.expected,
-				this.listed()
+				this.listed(operations)
 			)
 		);
 	}
 
-	private async keepEmptied(): Promise<void> {
-		for (const [folder, instance] of this.toKeep) {
-			const fills = this.operations.some(
-				({ kind, file }) =>
-					(kind === "write" || kind === "folder") &&
-					file.startsWith(`${folder}${path.sep}`)
-			);
-			if (!fills && (await this.isEmptied(folder)))
-				await this.add({
-					kind: "write",
-					file: path.join(folder, GITKEEP),
-					instance,
-					bytes: new Uint8Array(),
-				});
-		}
-	}
-
-	private async isEmptied(folder: string): Promise<boolean> {
-		const gone = new Set(
-			this.operations
-				.filter(({ kind }) => kind === "remove" || kind === "prune")
-				.map(({ file }) => file)
-		);
-		const entries = await tryWithAsync(() =>
-			this.fileSystemService.readDirectory(folder)
-		);
-		return entries
-			.unwrapOr([])
-			.every(([name]) => gone.has(path.join(folder, name)));
-	}
-
-	private async keepMovedFrom(made: AddedInstance): Promise<void> {
-		const wanted: { rel?: string; bytes: Uint8Array }[] = [];
-		for (const file of made.files) {
-			const bytes = await this.workspace.read(
-				`${made.parentFolder}/${file.join("/")}`
-			);
-			if (bytes.length > 0)
-				wanted.push({
-					bytes,
-					...(file.length > 1 && { rel: file.slice(1).join("/") }),
-				});
-		}
-		// A file kept for another it replaces still left its instance, so a
-		// refused move of that instance's folder has to find it.
-		for (const { file } of this.keptReplaced)
-			this.before.set(file, await bytesOf(this.fileSystemService, file));
-		const removals = [...this.operations, ...this.keptReplaced].flatMap(
-			(operation) => {
-				const bytes = this.before.get(operation.file);
-				return operation.kind === "remove" &&
-					operation.from !== undefined &&
-					bytes !== undefined &&
-					bytes.length > 0
-					? [{ file: operation.file, from: operation.from, bytes }]
-					: [];
-			}
-		);
-		const folders = new Set(
-			removals.flatMap(({ from }) => [...posixAncestors(from)])
-		);
-		for (const folder of [...folders].sort((a, b) => b.length - a.length)) {
-			const found = wanted.map(({ rel, bytes }) =>
-				removals.find(
-					(removal) =>
-						sameBytes(removal.bytes, bytes) &&
-						(rel === undefined
-							? path.posix.dirname(removal.from) === folder
-							: path.posix.relative(folder, removal.from) === rel)
-				)
-			);
-			if (found.includes(undefined)) continue;
-			for (const removal of found) this.keptFiles.add(removal!.file);
-			return;
-		}
-	}
-
-	private keepRefused(): void {
-		const refused = [...this.refused];
-		const kept = this.operations.filter(
-			({ kind, file, instance }) =>
-				(kind !== "remove" && kind !== "prune") ||
-				!(
-					refused.some(
-						(key) =>
-							instance === key || instance.startsWith(`${key}/`)
-					) || [...this.keptFiles].some((at) => contains(file, at))
-				)
-		);
-		this.operations.splice(0, this.operations.length, ...kept);
-	}
-
 	private async compareCopies(): Promise<Result<void, Error>> {
-		const { workspace, operations, unplaced } = this;
+		const { workspace, unplaced } = this;
 		const { copied, started } = this.run;
 		const claimed = new Map<string, number>();
+		const copies: Operation[] = [];
 		const mountedByThemselves = new Set(
 			workspace.mirror.entries
 				.filter(({ kind }) => kind === "file")
@@ -460,9 +402,11 @@ class MirrorPlanRun {
 				operation.kind === "remove" &&
 				workspace.layout.fileReplacedBy(toPosix(operation.file));
 			if (replaced) {
-				this.keptReplaced.push(operation);
-				unplaced.push({
+				this.hold({
+					kind: "kept",
 					instance: operation.instance,
+					file: operation.file,
+					from: operation.from!,
 					reason: `${toNative(replaced)} would take its place, so ${operation.file} was kept; delete both by hand`,
 				});
 				continue;
@@ -477,11 +421,11 @@ class MirrorPlanRun {
 			}
 			const at = claimed.get(operation.file);
 			if (at === undefined) {
-				claimed.set(operation.file, operations.length);
-				await this.add(operation);
+				claimed.set(operation.file, copies.length);
+				copies.push(operation);
 				continue;
 			}
-			const first = operations[at];
+			const first = copies[at];
 			if (first.kind === "write" && operation.kind === "write") {
 				if (!sameBytes(first.bytes, operation.bytes))
 					unplaced.push({
@@ -493,139 +437,20 @@ class MirrorPlanRun {
 					first.kind === "write"
 						? [first, operation]
 						: [operation, first];
-				operations[at] = edit;
+				copies[at] = edit;
 				unplaced.push({
 					instance: removal.instance,
 					reason: `its file ${removal.file} is also ${edit.instance}, which was edited, so the file was kept`,
 				});
 			}
 		}
+		for (const operation of copies) this.record(operation);
 		return ok(undefined);
-	}
-
-	private async pruneEmptied(): Promise<void> {
-		const { workspace, operations } = this;
-		const { mirror } = workspace;
-		const heldByPlace = new Set<string>();
-		for (const { path: at } of this.after)
-			for (const folder of [...foldersOf(at), at])
-				heldByPlace.add(folder);
-		const copiedFolders = new Set(
-			mirror.entries
-				.filter(({ kind }) => kind === "folder")
-				.map(({ mirror: at }) => at)
-		);
-		for (const at of this.copiedPaths)
-			for (const folder of foldersOf(at))
-				if (
-					[...copiedFolders].some((entry) =>
-						folder.startsWith(`${entry}/`)
-					)
-				)
-					copiedFolders.add(folder);
-		const stillMounted = new Set(
-			[...copiedFolders]
-				.filter((at) => heldByPlace.has(at))
-				.map((at) => mirror.targetOf(at))
-		);
-		const gone = new Set(
-			operations
-				.filter(({ kind }) => kind === "remove" || kind === "prune")
-				.map(({ file }) => file)
-		);
-		const entries = new Map<string, string[]>();
-		const entriesOf = async (folder: string) => {
-			let names = entries.get(folder);
-			if (names) return names;
-			const read = await tryWithAsync(() =>
-				this.fileSystemService.readDirectory(folder)
-			);
-			names = read.isOk() ? read.value.map(([name]) => name) : [];
-			entries.set(folder, names);
-			return names;
-		};
-		const emptiedBy = async (folder: string) =>
-			(await entriesOf(folder)).every((name) =>
-				gone.has(path.join(folder, name))
-			);
-		for (const at of [...copiedFolders].sort(
-			(a, b) => b.length - a.length
-		)) {
-			const target = mirror.targetOf(at);
-			if (
-				target === undefined ||
-				heldByPlace.has(at) ||
-				stillMounted.has(target)
-			)
-				continue;
-			const folder = toNative(target);
-			const instance = workspace.instanceAt(at);
-			if (this.leftOut(folder, instance, "removed")) continue;
-			if (!(await emptiedBy(folder))) continue;
-			gone.add(folder);
-			operations.push({
-				kind: "prune",
-				file: folder,
-				instance,
-				from: at,
-			});
-		}
-		const readAt = new Map<string, Set<string>>();
-		const readsAt = (folder: string, at: string) =>
-			readAt.set(folder, (readAt.get(folder) ?? new Set()).add(at));
-		for (const at of copiedFolders)
-			readsAt(toNative(mirror.targetOf(at)!), at);
-		const placeStillHolds = (folder: string) =>
-			[...(readAt.get(folder) ?? [])].some((at) => heldByPlace.has(at));
-		const emptied: { file: string; instance: string; parent?: string }[] =
-			[];
-		for (const { kind, file, from } of operations) {
-			if (kind === "write" || kind === "folder" || from === undefined)
-				continue;
-			if (kind === "prune") {
-				emptied.push({ file, instance: workspace.instanceAt(from) });
-				continue;
-			}
-			const parent = path.posix.dirname(from);
-			readsAt(path.dirname(file), parent);
-			emptied.push({
-				file,
-				instance: workspace.instanceAt(parent),
-				parent,
-			});
-		}
-		for (const { file, instance, parent } of emptied) {
-			for (
-				let folder = path.dirname(file);
-				!gone.has(folder) && this.belowSource(folder);
-				folder = path.dirname(folder)
-			) {
-				if (!(await emptiedBy(folder))) break;
-				if (placeStillHolds(folder)) {
-					this.toKeep.set(folder, instance);
-					break;
-				}
-				gone.add(folder);
-				operations.push({
-					kind: "prune",
-					file: folder,
-					instance,
-					...(parent !== undefined &&
-						folder === path.dirname(file) && { from: parent }),
-				});
-			}
-		}
 	}
 
 	private isRouteTarget(instancePath: readonly string[]): boolean {
 		return [...this.request.project.routes.values()].some((route) =>
 			isSameJson(route.instancePath, instancePath)
-		);
-	}
-
-	private belowSource(folder: string): boolean {
-		return this.request.project.sourcePaths.some(
-			(source) => contains(source, folder) && !contains(folder, source)
 		);
 	}
 
@@ -670,7 +495,9 @@ class MirrorPlanRun {
 			});
 		};
 		const stillHeld = new Set(
-			this.keptReplaced.map(({ from }) => path.posix.dirname(from!))
+			this.intents.flatMap((intent) =>
+				intent.kind === "kept" ? [path.posix.dirname(intent.from)] : []
+			)
 		);
 		for (const added of this.after) {
 			if (this.copiedPaths.has(added.path)) continue;
@@ -794,7 +621,7 @@ class MirrorPlanRun {
 		const key = this.inPlaceKey(names, known);
 		const unit = key.split("/");
 		if (unit.length === 1) {
-			await this.add(operation);
+			this.record(operation);
 			return;
 		}
 		const leaf = unit[unit.length - 1];
@@ -876,7 +703,7 @@ class MirrorPlanRun {
 				edit.bytes
 			))
 				if ("reason" in written) unplaced.push(written);
-				else await this.add({ ...written, from: edit.from });
+				else this.record({ ...written, from: edit.from });
 		}
 		unplaced.push(
 			...metas.unplaced,
@@ -889,7 +716,8 @@ class MirrorPlanRun {
 
 	private async placeInstances(
 		fresh: readonly AddedPath[],
-		known: ReadonlySet<string>
+		known: ReadonlySet<string>,
+		operations: readonly Operation[]
 	): Promise<TreeChange[]> {
 		const { workspace, unplaced } = this;
 		const { mirror } = workspace;
@@ -904,284 +732,122 @@ class MirrorPlanRun {
 				instance: stray,
 				reason: "no folder of the project holds its parent",
 			});
-		const router = new ReverseRouter(workspace.layout);
-		const removed = new PathSet(
-			this.operations
-				.filter(({ kind }) => kind === "remove")
-				.map(({ file }) => file)
-		);
 		const folders = new Set(
 			fresh.filter(({ folder }) => folder).map(({ path: at }) => at)
 		);
 		const additions: TreeChange[] = [];
 		const gone = new PathSet(
-			this.operations
+			operations
 				.filter(({ kind }) => kind === "remove" || kind === "prune")
 				.map(({ file }) => file)
 		);
-		const renames = new Map(
-			(compiled
-				? []
-				: renamedInstances(
-						instances,
-						new Set(
-							this.operations.flatMap(({ kind, from }) =>
-								kind === "remove" && from !== undefined
-									? [from]
-									: []
-							)
-						),
-						{
-							sourceOf: (at) => workspace.mirror.targetOf(at),
-							placed: workspace.layout.placed,
-							isRemoved: (source) =>
-								[
-									toNative(source),
-									...ancestors(toNative(source)),
-								].some((at) => gone.has(at)),
-						}
-					)
-			).map((rename) => [rename.instance, rename])
+		const renames = compiled
+			? []
+			: renamedInstances(
+					instances,
+					new Set(
+						operations.flatMap(({ kind, from }) =>
+							kind === "remove" && from !== undefined
+								? [from]
+								: []
+						)
+					),
+					{
+						sourceOf: (at) => workspace.mirror.targetOf(at),
+						placed: workspace.layout.placed,
+						isRemoved: (source) =>
+							[
+								toNative(source),
+								...ancestors(toNative(source)),
+							].some((at) => gone.has(at)),
+					}
+				);
+		const planned: Planned = {
+			written: operations
+				.filter(({ kind }) => kind === "write")
+				.map(({ file }) => file),
+			removed: operations
+				.filter(({ kind }) => kind === "remove")
+				.map(({ file }) => file),
+		};
+		const candidates = this.instantiationService.createInstance(
+			Candidates,
+			workspace,
+			folders,
+			renames,
+			planned
 		);
-		const choices: Choice[] = [];
-		for (const held of this.inPlace.values()) {
-			const whereRojoWroteIt: Proposal = {
-				operations: held.operations,
-				landings: held.landings,
-			};
-			const whereRoutingPutsIt = await this.proposalsOf(
-				router,
-				held.made,
-				new Set([...folders, ...held.folders]),
-				removed
-			);
+		const choices: Placing[] = [];
+		for (const held of this.inPlace.values())
 			choices.push({
 				instance: held.instance,
 				made: held.made,
-				proposals: [whereRojoWroteIt, ...whereRoutingPutsIt.proposals],
-				reason: whereRoutingPutsIt.reason,
+				...(await candidates.of(held.made, held)),
 			});
-		}
 		for (const instance of instances) {
 			const node = this.nodeAt(instance.parentFolder);
 			if (node) {
 				const addition = await this.nodeOf(instance, node, folders);
-				if ("reason" in addition) {
-					unplaced.push(addition);
-					this.refused.add(addition.instance);
-				} else additions.push(addition);
+				if ("reason" in addition)
+					this.hold({ kind: "refused", ...addition });
+				else additions.push(addition);
 				continue;
 			}
 			const name = instanceKey([...instance.parent, instance.name]);
-			const rename = renames.get(instance);
-			const renamed =
-				rename && (await this.renameFits(rename, removed))
-					? [await this.renamedProposal(rename, folders)]
-					: [];
-			const placed = await this.proposalsOf(
-				router,
-				instance,
-				folders,
-				removed
-			);
+			const found = await candidates.of(instance);
 			if (compiled) {
-				if (placed.proposals.length > 0)
+				if (found.candidates.length > 0)
 					this.compiled.push({ instance: name, kind: "added" });
-				else {
-					unplaced.push({ instance: name, reason: placed.reason });
-					this.refused.add(name);
-				}
+				else
+					this.hold({
+						kind: "refused",
+						instance: name,
+						reason: found.reason,
+					});
 				continue;
 			}
-			choices.push({
-				instance: name,
-				made: instance,
-				proposals: [...renamed, ...placed.proposals],
-				reason: placed.reason,
-			});
+			choices.push({ instance: name, made: instance, ...found });
 		}
-		await this.choose(choices);
+		await this.choose(choices, operations);
 		return additions;
 	}
 
-	private async choose(choices: readonly Choice[]): Promise<void> {
-		const at = choices.map(() => 0);
-		const reasons = choices.map(({ reason }) => reason);
-		const preferredMisses: (string | undefined)[] = choices.map(
-			() => undefined
+	private async choose(
+		choices: readonly Placing[],
+		operations: readonly Operation[]
+	): Promise<void> {
+		const { placed, refused } = await settle(choices, (chosen) =>
+			this.routing.misses(operations, chosen)
 		);
-		for (;;) {
-			const taken = new Map<string, Operation>();
-			const chosen = choices.map(({ proposals }, index) => {
-				for (; at[index] < proposals.length; at[index]++) {
-					const proposal = proposals[at[index]];
-					const clash = proposal.operations.find((operation) =>
-						clashes(operation, taken.get(operation.file))
-					);
-					if (clash) {
-						reasons[index] = `${clash.file} is already there`;
-						continue;
-					}
-					for (const operation of proposal.operations)
-						if (
-							operation.kind === "write" ||
-							operation.kind === "folder"
-						)
-							taken.set(operation.file, operation);
-					return proposal;
-				}
-				return undefined;
+		for (const { choice, reason } of refused)
+			this.hold({
+				kind: "refusedMove",
+				instance: choice.instance,
+				moved: await this.movedOf(choice.made),
+				reason,
 			});
-			const misses = await this.routing.misses(
-				this.operations,
-				chosen.filter((proposal) => proposal !== undefined)
+		for (const { candidate } of placed) {
+			for (const operation of candidate.operations)
+				this.record(operation);
+			this.expected.push(
+				...candidate.landings.filter(({ folder }) => !folder)
 			);
-			let anyMissed = false;
-			chosen.forEach((proposal, index) => {
-				const miss = proposal && misses.get(proposal);
-				if (miss === undefined) return;
-				preferredMisses[index] ??= miss;
-				at[index]++;
-				anyMissed = true;
-			});
-			if (anyMissed) continue;
-			for (const [index, proposal] of chosen.entries()) {
-				if (proposal === undefined) {
-					const { instance, made } = choices[index];
-					this.unplaced.push({
-						instance,
-						reason: preferredMisses[index] ?? reasons[index],
-					});
-					this.refused.add(instance);
-					await this.keepMovedFrom(made);
-					continue;
-				}
-				for (const operation of proposal.operations)
-					await this.add(operation);
-				this.expected.push(
-					...proposal.landings.filter(({ folder }) => !folder)
-				);
-			}
-			return;
 		}
 	}
 
-	private async renameFits(
-		{ folder, files, renamed }: RenamedInstance,
-		removed: PathSet
-	): Promise<boolean> {
-		if (
-			this.workspace.layout.holdsMount(folder) ||
-			(await this.fileSystemService.exists(toNative(renamed)))
-		)
-			return false;
-		for (const { target } of files.values()) {
-			const to = toNative(target);
-			if (
-				this.workspace.isIgnored(target) ||
-				(!removed.has(to) && (await this.fileSystemService.exists(to)))
-			)
-				return false;
-		}
-		return true;
-	}
-
-	private async renamedProposal(
-		{ instance, folder, renamed, files, kept }: RenamedInstance,
-		folders: ReadonlySet<string>
-	): Promise<Proposal> {
-		const name = instanceKey([...instance.parent, instance.name]);
-		const operations: Operation[] = [];
-		const landings: Landing[] = [];
-		for (const file of instance.files) {
-			const renamedFile = files.get(file.join("/"));
-			if (renamedFile === undefined) continue;
-			const { target, keep } = renamedFile;
-			const at = `${instance.parentFolder}/${file.join("/")}`;
-			const to = toNative(target);
-			const landing = landingOf(instance, file, to, folders.has(at));
-			if (landing) landings.push(landing);
-			if (folders.has(at)) {
-				operations.push({
-					kind: "folder",
-					file: to,
-					instance: name,
-					from: at,
+	private async movedOf(made: AddedInstance): Promise<MovedFile[]> {
+		const moved: MovedFile[] = [];
+		for (const file of made.files) {
+			const bytes = await this.workspace.read(
+				`${made.parentFolder}/${file.join("/")}`
+			);
+			if (bytes.length > 0)
+				moved.push({
+					bytes,
+					...(file.length > 1 && { rel: file.slice(1).join("/") }),
 				});
-				continue;
-			}
-			operations.push({
-				kind: "write",
-				file: to,
-				instance: name,
-				from: at,
-				bytes:
-					keep === undefined
-						? await this.workspace.read(at)
-						: await this.fileSystemService.readFileBytes(
-								toNative(keep)
-							),
-			});
 		}
-		const sources = new Set(
-			this.workspace.layout.placed.map(({ source }) => source)
-		);
-		const touched = (kind: Operation["kind"]) =>
-			new Set(
-				[...this.operations, ...operations]
-					.filter((operation) => operation.kind === kind)
-					.map(({ file }) => toPosix(file))
-			);
-		const written = touched("write");
-		const removed = touched("remove");
-		const holds = (dir: string, own: boolean) =>
-			[...sources].some(
-				(source) =>
-					containsPosix(dir, source) && kept.includes(source) !== own
-			);
-		const dirs: string[] = [];
-		const walk = async (dir: string): Promise<void> => {
-			const mixed = holds(dir, false);
-			if (!mixed) dirs.push(dir);
-			const entries = await tryWithAsync(() =>
-				this.fileSystemService.readDirectory(toNative(dir))
-			);
-			if (entries.isErr()) return;
-			for (const [entry, type] of entries.value) {
-				const at = path.posix.join(dir, entry);
-				if (isDirectoryType(type)) {
-					if (!mixed || holds(at, true)) await walk(at);
-					continue;
-				}
-				if (mixed || sources.has(at) || written.has(at)) continue;
-				const to = path.posix.join(
-					renamed,
-					path.posix.relative(folder, at)
-				);
-				operations.push({
-					kind: "write",
-					file: toNative(to),
-					instance: name,
-					bytes: await this.fileSystemService.readFileBytes(
-						toNative(at)
-					),
-				});
-				if (!removed.has(at))
-					operations.push({
-						kind: "remove",
-						file: toNative(at),
-						instance: name,
-					});
-			}
-		};
-		await walk(folder);
-		for (const dir of dirs.reverse())
-			operations.push({
-				kind: "prune",
-				file: toNative(dir),
-				instance: name,
-			});
-		return { operations, landings };
+		return moved;
 	}
 
 	private async nodeOf(
@@ -1220,88 +886,8 @@ class MirrorPlanRun {
 		};
 	}
 
-	private async proposalsOf(
-		router: ReverseRouter,
-		instance: AddedInstance,
-		folders: ReadonlySet<string>,
-		removed: PathSet
-	): Promise<{ readonly proposals: Proposal[]; readonly reason: string }> {
-		const name = instanceKey([...instance.parent, instance.name]);
-		const placement = router.place(instance);
-		if (placement.kind === "conflict") {
-			const [only] = instance.files;
-			const model =
-				instance.files.length === 1 &&
-				/\.rbxmx?$/.test(only[only.length - 1]);
-			return {
-				proposals: [],
-				reason: model
-					? `Rojo writes it as the model file ${only.join("/")}, and ${placement.reason}; rename its children in Studio`
-					: placement.reason,
-			};
-		}
-		const { home } = placement;
-		const homes: NewHome[] = [
-			home,
-			...(home.mark || home.contents
-				? []
-				: router
-						.marksFor(instance.parent)
-						.map((mark: Mark) => ({ ...home, mark }))),
-		];
-		const proposals: Proposal[] = [];
-		for (const each of homes) {
-			const targets = instance.files.map((file) => ({
-				file,
-				at: `${instance.parentFolder}/${file.join("/")}`,
-				to: path.join(
-					toNative(each.dir),
-					...router.destination(instance, file, each)
-				),
-			}));
-			const forbidden = await this.forbidden(
-				targets.map(({ to }) => to),
-				removed
-			);
-			if (forbidden !== undefined)
-				return { proposals, reason: forbidden };
-			const operations: Operation[] = [];
-			const landings: Landing[] = [];
-			for (const { file, at, to } of targets) {
-				const landing = landingOf(instance, file, to, folders.has(at));
-				const isRoutingFolder = to === toNative(each.dir);
-				if (landing && !isRoutingFolder) landings.push(landing);
-				operations.push(
-					folders.has(at)
-						? { kind: "folder", file: to, instance: name, from: at }
-						: {
-								kind: "write",
-								file: to,
-								instance: name,
-								from: at,
-								bytes: await this.workspace.read(at),
-							}
-				);
-			}
-			proposals.push({ operations, landings });
-		}
-		return { proposals, reason: "routing places it nowhere" };
-	}
-
-	private async forbidden(
-		targets: readonly string[],
-		removed: PathSet
-	): Promise<string | undefined> {
-		for (const to of targets) {
-			if (!removed.has(to) && (await this.fileSystemService.exists(to)))
-				return `${to} is already there`;
-			if (this.workspace.isIgnored(toPosix(to))) return ignoredReason(to);
-		}
-		return undefined;
-	}
-
-	private listed(): SyncbackChange[] {
-		const { workspace, operations } = this;
+	private listed(operations: readonly Operation[]): SyncbackChange[] {
+		const { workspace } = this;
 		const { project } = this.request;
 		const files = new Set<string>();
 		const folders = new Set<string>();

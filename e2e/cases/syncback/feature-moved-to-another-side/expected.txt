@@ -1,0 +1,61 @@
+$ rogen syncback -i place.rbxl --dry-run --json
+exit 0
+stdout:
+  {
+    "changed": false,
+    "configs": [
+      {
+        "config": "default.rogen.json",
+        "projectFile": "<dir>/default.project.json",
+        "outcome": "wouldWrite",
+        "diagnostics": []
+      }
+    ],
+    "syncback": {
+      "outcome": "wouldWrite",
+      "config": "default.rogen.json",
+      "input": "place.rbxl",
+      "changes": [
+        {
+          "kind": "remove",
+          "file": "<dir>/src/Shop/Server"
+        },
+        {
+          "kind": "write",
+          "file": "<dir>/src/Shop/Shared/Cart.luau"
+        }
+      ],
+      "unplaced": []
+    }
+  }
+
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing src/Shop/Shared/Cart.luau
+  Removing src/Shop/Server
+stderr:
+  Wrote default.project.json.
+  Syncback wrote 2 changes.
+
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stderr:
+  Syncback would change nothing.
+
+written:
+  default.project.json
+  src/Shop/Shared/Cart.luau
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Inventory: Folder
+        ItemTypes: ModuleScript  <- src/Inventory/Shared/ItemTypes.luau
+      Shop: Folder
+        Cart: ModuleScript  <- src/Shop/Shared/Cart.luau

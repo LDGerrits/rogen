@@ -18,6 +18,7 @@ import {
 } from "../../write/write-service.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DraftRouting, Proposal, landingMiss } from "../draft-routing.js";
+import { SyncRules } from "../../rojo/sync-rules.js";
 import { SyncbackRequest } from "../syncback.js";
 import { ROUTES, abs } from "./layout-fixtures.js";
 
@@ -39,10 +40,15 @@ const placed = (
 
 describe("landingMiss", () => {
 	const quest = ["ServerScriptService", "Quest"];
+	const missOf = (
+		landing: Parameters<typeof landingMiss>[0],
+		files: readonly FileLocation[],
+		rules = SyncRules.DEFAULT
+	) => landingMiss(landing, files, rules);
 
 	it("should take a folder the project keeps empty at the instance it was written for", () => {
 		expect(
-			landingMiss({ file: posix("src/Quest"), instance: quest }, [
+			missOf({ file: posix("src/Quest"), instance: quest }, [
 				{
 					status: "empty",
 					source: posix("src/Quest"),
@@ -55,7 +61,7 @@ describe("landingMiss", () => {
 
 	it("should say no instance comes from an empty folder routing places nowhere", () => {
 		expect(
-			landingMiss({ file: posix("src/Quest"), instance: quest }, [
+			missOf({ file: posix("src/Quest"), instance: quest }, [
 				{ status: "empty", source: posix("src/Quest"), exists: true },
 			])
 		).toBe(`routing would make no instance of ${posix("src/Quest")}`);
@@ -65,7 +71,7 @@ describe("landingMiss", () => {
 		const folder = posix("src/Quest");
 
 		expect(
-			landingMiss({ file: folder, instance: quest, folder: true }, [
+			missOf({ file: folder, instance: quest, folder: true }, [
 				placed(posix("src/Other/Server/A.luau"), ["X"]),
 				placed(posix("src/Quest/Server/Start.luau"), [
 					...quest,
@@ -90,7 +96,7 @@ describe("landingMiss", () => {
 		const folder = posix("src/Quest");
 
 		expect(
-			landingMiss({ file: folder, instance: quest, folder: true }, [
+			missOf({ file: folder, instance: quest, folder: true }, [
 				placed(
 					posix("src/Quest/Shared/Log.luau"),
 					["ReplicatedStorage", "Shared", "Quest", "Log"],
@@ -115,11 +121,65 @@ describe("landingMiss", () => {
 		const file = posix("src/Quest/Boot.server.luau");
 
 		expect(
-			landingMiss({ file, instance: quest }, [
+			missOf({ file, instance: quest }, [
 				placed(file, ["ServerScriptService", "Quest", "Boot"]),
 			])
 		).toBe(
 			`routing would read ${file} as ServerScriptService/Quest/Boot; make it a ModuleScript, or move it to where that type runs`
+		);
+	});
+
+	it("should blame the script type of a plugin script routing reads as another instance", () => {
+		const file = posix("src/Quest/Tool.plugin.luau");
+
+		expect(
+			missOf({ file, instance: quest }, [
+				placed(file, ["ServerScriptService", "Quest", "Tool"]),
+			])
+		).toBe(
+			`routing would read ${file} as ServerScriptService/Quest/Tool; make it a ModuleScript, or move it to where that type runs`
+		);
+	});
+
+	it("should blame the script type of a script a sync rule reads", () => {
+		const file = posix("src/Quest/Boot.server.lang");
+		const rules = SyncRules.following(
+			[
+				{
+					use: "serverScript",
+					pattern: "*.server.lang",
+					suffix: ".server.lang",
+				},
+			],
+			posix("")
+		);
+
+		expect(
+			missOf(
+				{ file, instance: quest },
+				[placed(file, ["ServerScriptService", "Quest", "Boot"])],
+				rules
+			)
+		).toBe(
+			`routing would read ${file} as ServerScriptService/Quest/Boot; make it a ModuleScript, or move it to where that type runs`
+		);
+	});
+
+	it("should ask for a rename of a module a sync rule reads", () => {
+		const file = posix("src/Quest/Boot.lang");
+		const rules = SyncRules.following(
+			[{ use: "moduleScript", pattern: "*.lang", suffix: ".lang" }],
+			posix("")
+		);
+
+		expect(
+			missOf(
+				{ file, instance: quest },
+				[placed(file, ["ServerScriptService", "Quest", "Boot"])],
+				rules
+			)
+		).toBe(
+			`routing would read ${file} as ServerScriptService/Quest/Boot; rename it in Studio`
 		);
 	});
 
@@ -137,7 +197,7 @@ describe("landingMiss", () => {
 
 		it("should take it at the instance its empty folder implies", () => {
 			expect(
-				landingMiss(
+				missOf(
 					{ file: bag, instance: [...quest, "Bag"], folder: true },
 					inside([...quest, "Bag", "Inner"])
 				)
@@ -146,7 +206,7 @@ describe("landingMiss", () => {
 
 		it("should name the instance its empty folder implies when it is another", () => {
 			expect(
-				landingMiss(
+				missOf(
 					{ file: bag, instance: [...quest, "Bag"], folder: true },
 					inside(["ReplicatedStorage", "Bag", "Inner"])
 				)
@@ -158,7 +218,7 @@ describe("landingMiss", () => {
 
 	it("should say no instance comes from a new folder no file inside makes", () => {
 		expect(
-			landingMiss(
+			missOf(
 				{ file: posix("src/Quest"), instance: quest, folder: true },
 				[]
 			)

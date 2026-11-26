@@ -27,6 +27,79 @@ export type Operation = {
 	| { readonly kind: "prune" }
 );
 
+export interface MovedFile {
+	readonly bytes: Uint8Array;
+	readonly rel?: string;
+}
+
+export type Intent =
+	| {
+			readonly kind: "write";
+			readonly instance: string;
+			readonly file: string;
+			readonly bytes: Uint8Array;
+			readonly from?: string;
+	  }
+	| {
+			readonly kind: "folder";
+			readonly instance: string;
+			readonly file: string;
+			readonly from?: string;
+	  }
+	| {
+			readonly kind: "gone";
+			readonly instance: string;
+			readonly file: string;
+			readonly from?: string;
+			readonly folder?: true;
+	  }
+	| {
+			readonly kind: "kept";
+			readonly instance: string;
+			readonly file: string;
+			readonly from: string;
+			readonly reason: string;
+	  }
+	| {
+			readonly kind: "refused";
+			readonly instance: string;
+			readonly reason: string;
+	  }
+	| {
+			readonly kind: "refusedMove";
+			readonly instance: string;
+			readonly moved: readonly MovedFile[];
+			readonly reason: string;
+	  };
+
+export type GoneIntent = Extract<Intent, { kind: "gone" }>;
+
+export type KeptIntent = Extract<Intent, { kind: "kept" }>;
+
+export type HoldIntent = Extract<
+	Intent,
+	{ kind: "kept" | "refused" | "refusedMove" }
+>;
+
+export type ChangeIntent = Exclude<Intent, HoldIntent>;
+
+export const isHold = (intent: Intent): intent is HoldIntent =>
+	intent.kind === "kept" ||
+	intent.kind === "refused" ||
+	intent.kind === "refusedMove";
+
+export function intentOf(operation: Operation): ChangeIntent {
+	switch (operation.kind) {
+		case "write":
+		case "folder":
+			return operation;
+		case "remove":
+			return { ...operation, kind: "gone" };
+		case "prune":
+			return { ...operation, kind: "gone", folder: true };
+	}
+}
+
 export interface Expected {
 	readonly file: string;
 	readonly instance: readonly string[];
