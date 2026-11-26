@@ -1,5 +1,7 @@
+import { Disposable } from "../../base/disposable.js";
 import path from "path";
-import { toPosix } from "../../base/path.js";
+import { relativeTo, toPosix } from "../../base/path.js";
+import { joinedWithOr } from "../../base/strings.js";
 import { Result } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -11,12 +13,12 @@ import { DiagnosticIndex } from "../../platform/diagnostics/diagnostic-index.js"
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
 import { FileChange } from "../../platform/fs/file-changes.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { FileDraft } from "../../platform/fs/draft-file-reader.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { createDecorator } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig, scannedFileOf } from "../config/resolved-config.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
-import { ConfigSelection } from "../config/config-service.js";
+import { ConfigSelection, ConfigService } from "../config/config-service.js";
 import {
 	InstanceReference,
 	requireExpression,
@@ -201,6 +203,35 @@ export class LocatedDiagnosis {
 	}
 }
 
+export class LocatedVerdict {
+	readonly diagnoses: readonly LocatedDiagnosis[];
+	readonly stops: readonly Diagnostic[];
+	readonly errors: readonly Diagnostic[];
+	readonly failing: readonly Diagnostic[];
+	readonly elsewhere: readonly Diagnostic[];
+
+	constructor({ everyFile, configs, errors }: Locations) {
+		this.diagnoses = configs.map(
+			(located) => new LocatedDiagnosis(located)
+		);
+		this.stops = uniqueDiagnostics(
+			this.diagnoses.flatMap(({ stops }) => stops)
+		);
+		const unshown = uniqueDiagnostics(
+			this.diagnoses.flatMap(({ unshown }) => unshown)
+		);
+		const stoppedBy = this.diagnoses.flatMap(({ stoppedBy }) => stoppedBy);
+		this.elsewhere = everyFile
+			? []
+			: unshown.filter((error) => stoppedBy.includes(error));
+		this.errors = uniqueDiagnostics([...errors, ...unshown]);
+		this.failing = uniqueDiagnostics([
+			...errors,
+			...this.stops.filter((error) => !this.elsewhere.includes(error)),
+		]);
+	}
+}
+
 export type Asked = { readonly path: string } | { readonly instance: string };
 
 export interface Locations {
@@ -216,83 +247,51 @@ export interface LocateQuery {
 	readonly cwd: string;
 }
 
-export interface Diagnosis {
+export interface Skips {
+	readonly skipped: readonly SkippedPath[];
+	readonly named: readonly string[];
+}
+
+export interface Diagnosis extends Skips {
 	readonly diagnostics: readonly Diagnostic[];
 	readonly stoppedBy: readonly Diagnostic[];
-	readonly skipped: readonly SkippedPath[];
+	readonly failing: readonly Diagnostic[];
 }
 
-export function outsideEveryConfig(
-	configs: readonly ConfigLocations[]
+export interface AskedLocations extends Skips {
+	readonly locations: Locations;
+}
+
+export function skippedNotes(
+	{ skipped, named }: Skips,
+	cwd: string,
+	ask: { readonly command: string; readonly lead: string }
 ): string[] {
-	const [first, ...others] = configs;
-	if (!first) return [];
-	return first.files
-		.filter(({ status }) => status === "outside")
-		.map(({ source }) => source)
-		.filter((source) =>
-			others.every(({ files }) =>
-				files.some(
-					(file) =>
-						file.source === source && file.status === "outside"
-				)
-			)
-		);
-}
-
-export function skippedOutside(
-	sources: readonly string[],
-	configs: readonly ConfigLocations[]
-): SkippedPath[] {
-	return sources.flatMap((path) =>
-		configs.map(({ config }) => ({
-			path,
-			reason: "outsideSourcePaths" as const,
-			config: toPosix(config.file),
-		}))
-	);
-}
-
-export function skippedByEveryConfig(
-	configs: readonly ConfigLocations[]
-): SkippedPath[] {
-	return skippedOutside(outsideEveryConfig(configs), configs);
-}
-
-export function mergeDiagnoses(parts: readonly Diagnosis[]): Diagnosis {
-	return {
-		diagnostics: uniqueDiagnostics(
-			parts.flatMap(({ diagnostics }) => diagnostics)
-		),
-		stoppedBy: uniqueDiagnostics(
-			parts.flatMap(({ stoppedBy }) => stoppedBy)
-		),
-		skipped: uniqueSkipped(parts.flatMap(({ skipped }) => skipped)),
-	};
-}
-
-export function uniqueSkipped(skipped: readonly SkippedPath[]): SkippedPath[] {
-	const seen = new Set<string>();
-	return skipped.filter(({ path, reason, config }) => {
-		const key = `${reason}\0${path}\0${config ?? ""}`;
-		if (seen.has(key)) return false;
-		seen.add(key);
-		return true;
+	const configs = named.map((file) => relativeTo(cwd, file));
+	return skipped.map((one) => {
+		const path = relativeTo(cwd, one.path);
+		if (one.reason === "outsideSourcePaths")
+			return `note: ${path}: in no source path of ${relativeTo(cwd, one.config!)}, so Rogen leaves it out of the project file.`;
+		const readers = one.readers ?? [];
+		if (readers.length > 0) {
+			const commands = readers.map(
+				(file) => `'rogen ${ask.command} ${relativeTo(cwd, file)}'`
+			);
+			return readers.length === 1
+				? `note: ${path}: no config at or above it reads it, but another config lists it in its source paths. ${ask.lead} through that config: ${commands[0]}.`
+				: `note: ${path}: no config at or above it reads it, but other configs list it in their source paths. ${ask.lead} through one: ${joinedWithOr(commands)}.`;
+		}
+		const hint =
+			configs.length > 0
+				? ` ${ask.lead} through one: rogen ${ask.command} ${joinedWithOr(configs)}.`
+				: "";
+		return `note: ${path}: no config at or above it reads it.${hint}`;
 	});
 }
 
-export function mergeLocations(
-	parts: readonly Locations[],
-	asked: readonly Asked[]
-): Locations {
-	const configs = parts.flatMap((part) => part.configs);
-	return {
-		everyFile: false,
-		asked,
-		configs,
-		errors: uniqueDiagnostics(parts.flatMap((part) => part.errors)),
-		skipped: skippedByEveryConfig(configs),
-	};
+export interface WriteDraft extends Disposable {
+	readonly configService: ConfigService;
+	readonly writeService: WriteService;
 }
 
 export interface WriteService {
@@ -303,10 +302,7 @@ export interface WriteService {
 		options?: { readonly independent?: boolean }
 	): Promise<WriteRun>;
 
-	check(
-		selection: ConfigSelection,
-		reader?: FileSystemService
-	): Promise<WriteRun>;
+	check(selection: ConfigSelection): Promise<WriteRun>;
 
 	rewrite(
 		set: WriteSet,
@@ -324,20 +320,16 @@ export interface WriteService {
 		changes: readonly FileChange[]
 	): Promise<LoadedConfig>;
 
-	diagnose(
-		selection: ConfigSelection,
-		targets?: LocateQuery
-	): Promise<Result<Diagnosis, DiagnosticsError>>;
+	diagnose(query: LocateQuery): Promise<Result<Diagnosis, Error>>;
 
-	askedAbout(query: LocateQuery): Promise<readonly Asked[]>;
-
-	staleProjectFiles(selection: ConfigSelection): Promise<Diagnostic[]>;
+	locateAsked(query: LocateQuery): Promise<Result<AskedLocations, Error>>;
 
 	locate(
 		selection: ConfigSelection,
-		targets?: LocateQuery,
-		reader?: FileSystemService
+		targets?: LocateQuery
 	): Promise<Result<Locations, DiagnosticsError>>;
+
+	openDraft(draft: FileDraft): WriteDraft;
 }
 
 export const WriteService = createDecorator<WriteService>("writeService");

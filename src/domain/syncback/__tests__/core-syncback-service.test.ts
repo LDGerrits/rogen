@@ -3,7 +3,6 @@ import path from "path";
 import { Result, ok } from "../../../base/result.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
@@ -106,7 +105,7 @@ describe("CoreSyncbackService", () => {
 		await writeFiles(fs, ...files);
 		config = configOf({ routes: ROUTES, ...spec });
 		const selection = selectionOf(config);
-		await writeServiceOf(fs, new CoreIndexService(fs)).write(selection);
+		await writeServiceOf(fs).write(selection);
 		request = {
 			selection,
 			project: config,
@@ -163,7 +162,7 @@ describe("CoreSyncbackService", () => {
 		service = syncbackServiceOf({
 			configService: configs,
 			fileSystemService: fs,
-			writeService: writeServiceOf(fs, new CoreIndexService(fs)),
+			writeService: writeServiceOf(fs),
 			rojoService: rojo,
 			environmentService: new MockEnvironmentService("/repo"),
 			processService: processes,
@@ -2187,9 +2186,7 @@ describe("CoreSyncbackService", () => {
 				abs("default.rogen.json"),
 				'{"tree":{"$className":"DataModel"}}'
 			);
-			await writeServiceOf(fs, new CoreIndexService(fs)).write(
-				request.selection
-			);
+			await writeServiceOf(fs).write(request.selection);
 			rojo.say = async () => {
 				await rewriteNodes({ Owner: "you" }, [
 					"ServerScriptService",
@@ -2225,9 +2222,7 @@ describe("CoreSyncbackService", () => {
 				abs("default.rogen.json"),
 				'{"tree":{"$className":"DataModel"}}'
 			);
-			await writeServiceOf(fs, new CoreIndexService(fs)).write(
-				request.selection
-			);
+			await writeServiceOf(fs).write(request.selection);
 		};
 
 		it("should take a key off the feature's meta when Rojo took it off the feature's instance", async () => {
@@ -2318,9 +2313,7 @@ describe("CoreSyncbackService", () => {
 				abs("src/Combat/init.meta.jsonc"),
 				'{\n\t// kept\n\t"ignoreUnknownInstances": true\n}\n'
 			);
-			await writeServiceOf(fs, new CoreIndexService(fs)).write(
-				request.selection
-			);
+			await writeServiceOf(fs).write(request.selection);
 			rojo.say = async () => {
 				await writeMeta("ServerScriptService", "Combat");
 				return [];
@@ -2351,9 +2344,7 @@ describe("CoreSyncbackService", () => {
 				'{"attributes":{"Owner":"me"},"ignoreUnknownInstances":true}'
 			);
 			await fs.writeFile(abs("src/Combat/init.meta.jsonc"), "{}");
-			await writeServiceOf(fs, new CoreIndexService(fs)).write(
-				request.selection
-			);
+			await writeServiceOf(fs).write(request.selection);
 			rojo.say = async () => {
 				await writeMeta("ServerScriptService", "Combat");
 				return [];
@@ -2412,9 +2403,7 @@ describe("CoreSyncbackService", () => {
 				abs("default.rogen.json"),
 				'{"tree":{"$className":"DataModel"}}'
 			);
-			await writeServiceOf(fs, new CoreIndexService(fs)).write(
-				request.selection
-			);
+			await writeServiceOf(fs).write(request.selection);
 			rojo.say = async () => {
 				await rewriteNodes({ Owner: "you" }, [
 					"ServerScriptService",

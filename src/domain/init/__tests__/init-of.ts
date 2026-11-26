@@ -17,7 +17,9 @@ import { IndexService } from "../../../platform/fs/index-service.js";
 import { SyncDescriptor } from "../../../platform/instantiation/sync-descriptor.js";
 import { LifecycleService } from "../../../platform/lifecycle/lifecycle-service.js";
 import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
+import { ConfigChecks } from "../../config/config-checks.js";
 import { ConfigService } from "../../config/config-service.js";
+import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreToolLocator } from "../../toolchain/core-tool-locator.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { ToolLocator } from "../../toolchain/tool-locator.js";
@@ -85,7 +87,7 @@ export const initServiceOf = (
 	prompt: PromptService,
 	environment: EnvironmentService,
 	processes: ProcessService,
-	config: ConfigService,
+	checks: ConfigChecks,
 	lifecycle: LifecycleService = new MockLifecycleService()
 ): CoreInitService =>
 	instantiationOf(
@@ -93,7 +95,7 @@ export const initServiceOf = (
 		[PromptService, prompt],
 		[EnvironmentService, environment],
 		[ProcessService, processes],
-		[ConfigService, config],
+		[ConfigService, new SyncDescriptor(CoreConfigService, [checks])],
 		[LifecycleService, lifecycle],
 		[IndexService, new SyncDescriptor(CoreIndexService)],
 		[ToolchainService, new SyncDescriptor(CoreToolchainService)],

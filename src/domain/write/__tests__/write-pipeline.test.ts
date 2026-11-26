@@ -13,6 +13,7 @@ import {
 	configOf,
 	expectWrittenProject,
 	indexOf,
+	preparedOf,
 } from "./fixtures.js";
 import { SyncWarnings } from "../write.js";
 
@@ -21,24 +22,22 @@ describe("WritePipeline", () => {
 
 	const prepare = async (config: ResolvedConfig) => {
 		const index = await indexOf(fs, config.indexedPaths);
-		return pipelineOf(fs, index).run(config);
+		return preparedOf(await pipelineOf(fs, index).run(config));
 	};
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
 	});
 
-	describe("examine", () => {
-		it("should stop when no source path exists, as run fails", async () => {
+	describe("run", () => {
+		it("should stop at validation when no source path exists", async () => {
 			const config = configOf({ sourcePaths: [abs("srcc")] });
 			const index = await indexOf(fs, config.indexedPaths);
 
-			const examined = (
-				await pipelineOf(fs, index).examine(config)
-			).unwrap();
+			const run = await pipelineOf(fs, index).run(config);
 
-			expect(examined).toMatchObject({
-				kind: "stopped",
+			expect(run).toMatchObject({
+				stoppedAt: "validation",
 				errors: [
 					{
 						severity: DiagnosticSeverity.Error,
@@ -47,9 +46,7 @@ describe("WritePipeline", () => {
 				],
 			});
 		});
-	});
 
-	describe("run", () => {
 		it("should report the metas it read, a folder's and a data file's", async () => {
 			await fs.writeFile(abs("src/Combat/Hit.luau"), "");
 			await fs.writeFile(abs("src/Combat/init.meta.json"), "{}");
@@ -631,10 +628,11 @@ describe("WritePipeline", () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			await fs.writeFile(abs("src/init.meta.json"), "[]");
 
-			const result = await pipelineOf(
-				fs,
-				await indexOf(fs, [abs("src")])
-			).run(configOf());
+			const result = preparedOf(
+				await pipelineOf(fs, await indexOf(fs, [abs("src")])).run(
+					configOf()
+				)
+			);
 
 			expect(result.isErr() && result.error.diagnostics).toMatchObject([
 				{ code: "meta.notAnObject" },
@@ -649,8 +647,10 @@ describe("WritePipeline", () => {
 				await indexOf(fs, config.sourcePaths)
 			);
 
-			const checked = await pipeline.run(config);
-			const known = await pipeline.run(config, SyncWarnings.known([]));
+			const checked = preparedOf(await pipeline.run(config));
+			const known = preparedOf(
+				await pipeline.run(config, SyncWarnings.known([]))
+			);
 
 			expect(checked.unwrap().findings.sync).toMatchObject({
 				kind: "known",
@@ -669,7 +669,9 @@ describe("WritePipeline", () => {
 				await indexOf(fs, config.sourcePaths)
 			);
 
-			const deferred = await pipeline.run(config, SyncWarnings.deferred);
+			const deferred = preparedOf(
+				await pipeline.run(config, SyncWarnings.deferred)
+			);
 
 			expect(deferred.unwrap().findings.sync).toEqual({
 				kind: "deferred",

@@ -11,6 +11,7 @@ import { ScannedRoot } from "../root-scanner.js";
 import {
 	abs,
 	pipelineOf,
+	preparedOf,
 	configOf,
 	placeFiles,
 	syncTools,
@@ -40,7 +41,7 @@ describe("RootScanner", () => {
 			const index = await newIndex().list(scanOptions.sourcePaths);
 			const config = configOf(scanOptions);
 			const pipeline = pipelineOf(fs, index);
-			const prepared = await pipeline.run(config);
+			const prepared = preparedOf(await pipeline.run(config));
 			return {
 				roots: (await pipeline.place(config)).unwrap().roots,
 				warnings: prepared.isOk()

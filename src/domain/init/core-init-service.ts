@@ -19,10 +19,7 @@ import {
 	isRenameFix,
 } from "../../platform/diagnostics/diagnostic.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import {
-	DraftFileReader,
-	FileDraft,
-} from "../../platform/fs/draft-file-reader.js";
+import { FileDraft } from "../../platform/fs/draft-file-reader.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { ConfigService } from "../config/config-service.js";
@@ -529,15 +526,16 @@ export class CoreInitService implements InitService {
 		plan: InitPlan
 	): Promise<Result<Error | undefined, Error>> {
 		if (plan.configs.length === 0) return ok(undefined);
-		const reader = this.instantiationService.createInstance(
-			DraftFileReader,
-			draftOf(plan)
-		);
-		const selection = await this.configService.select(plan.configs, reader);
-		if (selection.isErr()) return err(selection.error);
-		return ok(
-			(await this.writeService.check(selection.value, reader)).failure()
-		);
+		const draft = this.writeService.openDraft(draftOf(plan));
+		try {
+			const selection = await draft.configService.select(plan.configs);
+			if (selection.isErr()) return err(selection.error);
+			return ok(
+				(await draft.writeService.check(selection.value)).failure()
+			);
+		} finally {
+			draft[Symbol.dispose]();
+		}
 	}
 
 	registerMigration(migration: ProjectMigration): Disposable {

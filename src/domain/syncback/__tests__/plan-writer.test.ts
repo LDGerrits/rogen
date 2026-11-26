@@ -1,6 +1,5 @@
 import { err } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { selectionOf } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
@@ -42,7 +41,7 @@ describe("PlanWriter", () => {
 		new MirrorPlan(config, [], [], operations, new Map(), [], []);
 
 	const written = (...operations: Operation[]) =>
-		new PlanWriter(fs, writeServiceOf(fs, new CoreIndexService(fs))).write(
+		new PlanWriter(fs, writeServiceOf(fs)).write(
 			request,
 			planOf(...operations)
 		);
@@ -208,10 +207,7 @@ describe("PlanWriter", () => {
 			expected: readonly Expected[],
 			...operations: Operation[]
 		) =>
-			new PlanWriter(
-				fs,
-				writeServiceOf(fs, new CoreIndexService(fs))
-			).write(
+			new PlanWriter(fs, writeServiceOf(fs)).write(
 				request,
 				new MirrorPlan(
 					config,

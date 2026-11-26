@@ -2,13 +2,8 @@ import { Result, ok } from "../../base/result.js";
 import { defanged } from "../../base/strings.js";
 import {
 	WriteService,
-	Diagnosis,
-	mergeDiagnoses,
-	uniqueSkipped,
+	skippedNotes,
 } from "../../domain/write/write-service.js";
-
-import { AskedPaths, skippedNotes } from "../../domain/write/asked-paths.js";
-import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
@@ -56,8 +51,9 @@ registerCommand(
 							description: [
 								"A file or a directory. A directory gives the files in it, and a file that doesn't exist yet is checked as if it did. A :line or :line:col after a file is ignored.",
 								"- Config: the default config of the nearest folder at or above the path; with none, every .rogen.json at or above it whose source paths cover it. Naming a .rogen.json, or a config as build reads it (game for game.rogen.json), checks that config whole.",
+								"- Findings: those of a whole check that are about the path, a folder it is in or a folder in it, and those about the config itself, such as an out-of-date project file or the compiled path. An error elsewhere that stops the write is listed under stoppedBy, and fails the check.",
 								"- Skipped: a path Rogen leaves out, in no source path of its config or covered by no config, gets a note on stderr and is listed under skipped in the JSON document.",
-								"- No path: every .rogen.json of the working directory, whole, compiled path warnings included; with none, the plain project file there.",
+								"- No path: every .rogen.json of the working directory, whole; with none, the plain project file there.",
 							].join("\n"),
 							isOptional: true,
 							isVariadic: true,
@@ -85,37 +81,21 @@ registerCommand(
 		): Promise<Result<void, Error>> {
 			const cwd = accessor.get(EnvironmentService).cwd;
 			const logService = accessor.get(LogService);
-			const configService = accessor.get(ConfigService);
-			const writeService = accessor.get(WriteService);
-
-			const found = await this.diagnose(
-				configService,
-				writeService,
-				cwd,
-				line.positionals
-			);
+			const found = await accessor
+				.get(WriteService)
+				.diagnose({ args: line.positionals, cwd });
 			if (found.isErr()) return found;
 
-			const { skipped } = found.value;
-			for (const note of await skippedNotes(
-				configService,
-				skipped,
-				cwd,
-				ASKING
-			))
+			const { diagnostics, stoppedBy, skipped } = found.value;
+			for (const note of skippedNotes(found.value, cwd, ASKING))
 				logService.notice(note);
 
-			const { stoppedBy } = found.value;
-			const aboutPaths = DiagnosticsError.of(found.value.diagnostics);
-			const failsCheck = DiagnosticsError.of([
-				...(aboutPaths?.diagnostics ?? []),
-				...stoppedBy,
-			]);
+			const failsCheck = DiagnosticsError.of(found.value.failing);
 			if (line.options.json)
 				return this.printJson(
 					logService,
 					{
-						...diagnosticsJson(aboutPaths?.diagnostics ?? [], cwd),
+						...diagnosticsJson(diagnostics, cwd),
 						...(stoppedBy.length > 0 && {
 							stoppedBy: stoppedBy.map((diagnostic) =>
 								diagnosticToJson(diagnostic, cwd)
@@ -134,55 +114,6 @@ registerCommand(
 					`The write stops on the ${stoppedBy.length === 1 ? "error" : "errors"} above, so the paths were checked only as far as it gets; fix ${stoppedBy.length === 1 ? "it" : "them"} and check again.`
 				);
 			return failsCheck ? this.reported(failsCheck) : ok(undefined);
-		}
-
-		private async diagnose(
-			configService: ConfigService,
-			writeService: WriteService,
-			cwd: string,
-			given: readonly string[]
-		): Promise<Result<Diagnosis, Error>> {
-			if (given.length === 0) {
-				const selection = await configService.select(
-					await configService.configsHere()
-				);
-				if (selection.isErr()) return selection;
-				return writeService.diagnose(selection.value);
-			}
-			const asking = await AskedPaths.of(
-				configService,
-				writeService,
-				cwd,
-				given
-			);
-			if (asking.isErr()) return asking;
-			const { groups } = asking.value;
-			const parts: Diagnosis[] = [];
-			for (const { selection, indexes, whole } of groups) {
-				const found = await writeService.diagnose(
-					selection,
-					whole
-						? undefined
-						: { args: asking.value.argsAt(indexes), cwd }
-				);
-				if (found.isErr()) return found;
-				parts.push(found.value);
-				if (!whole)
-					parts.push({
-						diagnostics:
-							await writeService.staleProjectFiles(selection),
-						stoppedBy: [],
-						skipped: [],
-					});
-			}
-			const merged = mergeDiagnoses(parts);
-			return ok({
-				...merged,
-				skipped: uniqueSkipped([
-					...asking.value.uncovered,
-					...merged.skipped,
-				]),
-			});
 		}
 	}
 );

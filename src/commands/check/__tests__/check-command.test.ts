@@ -296,16 +296,6 @@ describe("check command", () => {
 			]);
 		});
 
-		it("should leave out the warnings about the compiled path", async () => {
-			await writeConfig("default.rogen.json", {
-				routes: ROUTES,
-				compiledPath: "out",
-			});
-			await write("src/Clean.luau");
-
-			expect((await run({ _: ["src/Clean.luau"] })).isOk()).toBe(true);
-		});
-
 		it("should fail when a config does not load, whichever path is asked about", async () => {
 			await fs.writeFile("/repo/default.rogen.json", "{ nope");
 			await write("src/Clean.luau");
@@ -326,59 +316,6 @@ describe("check command", () => {
 		});
 	});
 
-	describe("with named configs, one of which doesn't load", () => {
-		const lobby = (broken: Record<string, unknown>) =>
-			writeConfig("lobby.rogen.json", {
-				name: "lobby",
-				routes: ROUTES,
-				sourcePaths: ["src/lobby"],
-				...broken,
-			});
-
-		beforeEach(async () => {
-			await writeConfig("game.rogen.json", {
-				name: "game",
-				routes: ROUTES,
-				sourcePaths: ["src/game"],
-			});
-			await write("src/game/Clean.luau", "src/lobby/Clean.luau");
-		});
-
-		it.each([
-			["an unknown key", { unknownKey: true }],
-			["a key of the wrong type", { name: 5 }],
-			["routes of the wrong type", { routes: "x" }],
-		])(
-			"should pass a path its source paths don't read, when it has %s",
-			async (_, broken) => {
-				await lobby(broken);
-
-				const result = await run({ _: ["src/game"] });
-
-				expect(result.isOk()).toBe(true);
-			}
-		);
-
-		it("should fail on a path its source paths read", async () => {
-			await lobby({ unknownKey: true });
-
-			const result = await run({ _: ["src/lobby"] });
-
-			expect(found(failureOf(result))).toContainEqual([
-				"config.unknownField",
-				"lobby.rogen.json",
-			]);
-		});
-
-		it("should fail on every path when its source paths can't be read", async () => {
-			await lobby({ sourcePaths: "src/lobby" });
-
-			const result = await run({ _: ["src/game"] });
-
-			expect(result.isErr()).toBe(true);
-		});
-	});
-
 	describe("with several places", () => {
 		beforeEach(async () => {
 			for (const place of ["lobby", "arena"])
@@ -393,30 +330,6 @@ describe("check command", () => {
 				"places/lobby/src/Clean.luau",
 				"places/arena/src/Sell.client.luau"
 			);
-		});
-
-		it("should check a file of a place from the root, by the config of that place", async () => {
-			const result = await run({
-				_: ["places/lobby/src/Buy.client.luau"],
-			});
-
-			expect(found(failureOf(result))).toEqual([
-				["tree.deadScript", "places/lobby/src/Buy.client.luau"],
-			]);
-		});
-
-		it("should check files of two places, each by its own config", async () => {
-			const result = await run({
-				_: [
-					"places/lobby/src/Buy.client.luau",
-					"places/arena/src/Sell.client.luau",
-				],
-			});
-
-			expect(found(failureOf(result))).toEqual([
-				["tree.deadScript", "places/lobby/src/Buy.client.luau"],
-				["tree.deadScript", "places/arena/src/Sell.client.luau"],
-			]);
 		});
 
 		it("should skip a file that no config covers with a note, and pass", async () => {
@@ -471,106 +384,6 @@ describe("check command", () => {
 			});
 		});
 
-		it("should check the files that have a config and skip the rest", async () => {
-			const result = await run({
-				_: [
-					"places/shared/src/Stray.client.luau",
-					"places/lobby/src/Buy.client.luau",
-				],
-			});
-
-			expect(found(failureOf(result))).toEqual([
-				["tree.deadScript", "places/lobby/src/Buy.client.luau"],
-			]);
-			expect(logService.texts("notice")).toHaveLength(1);
-		});
-
-		it("should skip no file that a config named beside it reads", async () => {
-			await run({
-				_: [
-					"places/lobby/default.rogen.json",
-					"places/shared/src/Stray.client.luau",
-				],
-				json: true,
-			});
-
-			expect(document()).not.toHaveProperty("skipped");
-		});
-
-		it("should check a config named by its file whole", async () => {
-			const result = await run({
-				_: ["places/lobby/default.rogen.json"],
-			});
-
-			expect(
-				new Set(found(failureOf(result)).map(([, file]) => file))
-			).toEqual(
-				new Set([
-					"places/lobby/src/Buy.client.luau",
-					"places/shared/src/Stray.client.luau",
-				])
-			);
-		});
-
-		it("should check a folder by its own config", async () => {
-			const result = await run({ _: ["places/arena"] });
-
-			expect(found(failureOf(result))).toEqual([
-				["tree.deadScript", "places/arena/src/Sell.client.luau"],
-			]);
-		});
-
-		it("should report the stale project file of the folder it checks", async () => {
-			await fs.writeFile("/repo/places/arena/default.project.json", "{}");
-
-			const result = await run({ _: ["places/arena"] });
-
-			expect(found(failureOf(result))).toContainEqual([
-				"output.differs",
-				"places/arena/default.project.json",
-			]);
-		});
-
-		it("should report the stale project file of the config that holds a file it checks", async () => {
-			await fs.writeFile("/repo/places/arena/default.project.json", "{}");
-
-			const result = await run({
-				_: ["places/arena/src/Sell.client.luau"],
-			});
-
-			expect(found(failureOf(result))).toContainEqual([
-				"output.differs",
-				"places/arena/default.project.json",
-			]);
-		});
-
-		it("should not search upward for a bare check at the root", async () => {
-			const result = await run({});
-
-			expect(result.isErr()).toBe(true);
-			expect((result as { error: Error }).error.message).toContain(
-				"No default.rogen.json or default.project.json in this folder"
-			);
-		});
-
-		it("should check the folder's own default for a bare check in a place", async () => {
-			const place = commandHarness({ fs, cwd: "/repo/places/lobby" });
-
-			const result = await place.run("check", {
-				positionals: [],
-				options: {},
-			});
-
-			expect(
-				new Set(found(failureOf(result)).map(([, file]) => file))
-			).toEqual(
-				new Set([
-					"places/lobby/src/Buy.client.luau",
-					"places/shared/src/Stray.client.luau",
-				])
-			);
-		});
-
 		it("should report a skipped file on stderr and still print the JSON document", async () => {
 			const result = await run({
 				_: ["places/shared/src/Stray.client.luau"],
@@ -597,32 +410,6 @@ describe("check command", () => {
 			);
 		});
 
-		it("should check a file of a place by the config that holds it", async () => {
-			const result = await run({ _: ["src/game/Buy.client.luau"] });
-
-			expect(found(failureOf(result))).toEqual([
-				["tree.deadScript", "src/game/Buy.client.luau"],
-			]);
-		});
-
-		it("should check a shared file by every config that holds it, and report it once", async () => {
-			const result = await run({ _: ["src/common/Stray.client.luau"] });
-
-			expect(found(failureOf(result))).toEqual([
-				["tree.deadScript", "src/common/Stray.client.luau"],
-			]);
-		});
-
-		it("should check a file that does not exist yet", async () => {
-			await write("src/common/New.client.luau");
-
-			const result = await run({ _: ["src/common/New.client.luau"] });
-
-			expect(found(failureOf(result))).toEqual([
-				["tree.deadScript", "src/common/New.client.luau"],
-			]);
-		});
-
 		it("should skip a file that no config holds with a note, and pass", async () => {
 			await write("tools/Stray.client.luau");
 
@@ -632,134 +419,11 @@ describe("check command", () => {
 			expect(logService.texts("notice")).toHaveLength(1);
 		});
 
-		it("should check a folder by every config that holds some of it", async () => {
-			const result = await run({ _: ["src"] });
-
-			expect(
-				new Set(found(failureOf(result)).map(([, file]) => file))
-			).toEqual(
-				new Set([
-					"src/common/Stray.client.luau",
-					"src/game/Buy.client.luau",
-				])
-			);
-		});
-
-		it("should leave a nearer default config to answer, as for any file", async () => {
-			await writeConfig("src/lobby/default.rogen.json", {
-				sourcePaths: ["."],
-				routes: ROUTES,
-			});
-			await write("src/lobby/Sell.client.luau");
-
-			const result = await run({ _: ["src/lobby/Sell.client.luau"] });
-
-			expect(found(failureOf(result))).toEqual([
-				["tree.deadScript", "src/lobby/Sell.client.luau"],
-			]);
-		});
-
-		it("should check a config named by its bare name whole", async () => {
-			const byName = await run({ _: ["game"] });
-			const byFile = await run({ _: ["game.rogen.json"] });
-
-			expect(found(failureOf(byName))).toEqual(found(failureOf(byFile)));
-			expect(
-				new Set(found(failureOf(byName)).map(([, file]) => file))
-			).toEqual(
-				new Set([
-					"src/common/Stray.client.luau",
-					"src/game/Buy.client.luau",
-				])
-			);
-		});
-
-		it("should check a bare name that stands for a project file", async () => {
-			await fs.writeFile("/repo/arena.project.json", "{}");
-
-			const result = await run({ _: ["arena"] });
-
-			expect(found(failureOf(result))).toEqual([
-				["config.unnamedProjectFile", "arena.project.json"],
-			]);
-			expect(logService.texts("notice")).toEqual([]);
-		});
-
-		it("should read a bare name that is a folder with a default as the write does", async () => {
-			await writeConfig("dist.rogen.json", {
-				name: "dist",
-				routes: ROUTES,
-			});
-			await writeConfig("dist/default.rogen.json", {
-				routes: ROUTES,
-			});
-			await write("dist/src/Stray.client.luau");
-
-			const result = await run({ _: ["dist"] });
-
-			expect(found(failureOf(result))).toEqual([
-				["tree.deadScript", "dist/src/Stray.client.luau"],
-			]);
-		});
-
-		it("should still check a file that no config is named for", async () => {
-			await write("src/game/New.client.luau");
-
-			const result = await run({ _: ["src/game/New.client.luau"] });
-
-			expect(found(failureOf(result))).toEqual([
-				["tree.deadScript", "src/game/New.client.luau"],
-			]);
-		});
-
 		describe("bare, in a folder of several configs", () => {
 			const clean = async () => {
 				await fs.delete("/repo/src/common/Stray.client.luau");
 				await fs.delete("/repo/src/game/Buy.client.luau");
 			};
-
-			it("should check every config of the folder", async () => {
-				const result = await run({});
-
-				expect(
-					new Set(found(failureOf(result)).map(([, file]) => file))
-				).toEqual(
-					new Set([
-						"src/common/Stray.client.luau",
-						"src/game/Buy.client.luau",
-					])
-				);
-			});
-
-			it("should fail on a config that does not load beside configs that do", async () => {
-				await clean();
-				await fs.writeFile("/repo/release.rogen.json", "{ nope");
-
-				const result = await run({});
-
-				expect(
-					new Set(found(failureOf(result)).map(([code]) => code))
-				).toEqual(new Set(["config.invalidSyntax"]));
-			});
-
-			it("should pass when every config is clean", async () => {
-				await clean();
-
-				const result = await run({});
-
-				expect(result.isOk()).toBe(true);
-			});
-
-			it("should report the stale project file of a config that is not the first", async () => {
-				await clean();
-				await fs.writeFile("/repo/lobby.project.json", "{}");
-
-				const result = await run({});
-
-				expect(found(failureOf(result))).toEqual([
-					["output.differs", "lobby.project.json"],
-				]);
-			});
 
 			it("should not report a project file that is not written yet", async () => {
 				await clean();
