@@ -13,6 +13,7 @@ import {
 } from "../../config/__tests__/mock-config-service.js";
 import { ConfigSelection, ConfigService } from "../../config/config-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
+import { ConfigChecks } from "../../config/config-checks.js";
 import { CoreToolLocator } from "../../toolchain/core-tool-locator.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { ToolLocator } from "../../toolchain/tool-locator.js";
@@ -75,7 +76,10 @@ describe("CoreRojoCommandService", () => {
 			[ToolchainService, new SyncDescriptor(CoreToolchainService)],
 			[ToolLocator, new SyncDescriptor(CoreToolLocator)],
 			[RojoRunner, new SyncDescriptor(CoreRojoRunner)],
-			[ConfigService, new SyncDescriptor(CoreConfigService)],
+			[
+				ConfigService,
+				new SyncDescriptor(CoreConfigService, [new ConfigChecks()]),
+			],
 			[IndexService, new SyncDescriptor(CoreIndexService)],
 			[WriteService, new SyncDescriptor(CoreWriteService)],
 			[Watcher, watcher],
