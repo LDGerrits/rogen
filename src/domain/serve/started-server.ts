@@ -3,7 +3,10 @@ import { RunOnceScheduler } from "../../base/async.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { ProcessExit } from "../../platform/process/process-service.js";
+import {
+	ProcessExit,
+	ProcessService,
+} from "../../platform/process/process-service.js";
 import {
 	RojoRunner,
 	SupervisedExitEvent,
@@ -57,7 +60,8 @@ export class StartedServer extends AbstractDisposable {
 		private readonly records: ServerRecords,
 		private readonly listener: StartedServerListener,
 		beforeRestart: (() => Promise<void>) | undefined,
-		@RojoRunner private readonly rojoRunner: RojoRunner
+		@RojoRunner rojoRunner: RojoRunner,
+		@ProcessService private readonly processService: ProcessService
 	) {
 		super();
 		this._target = target;
@@ -218,7 +222,7 @@ export class StartedServer extends AbstractDisposable {
 		return (
 			pid === undefined ||
 			pid === this.child.pid ||
-			!this.rojoRunner.isRunning(pid)
+			!this.processService.isRunning(pid)
 		);
 	}
 

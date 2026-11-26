@@ -19,7 +19,6 @@ import {
 	mockEntry,
 	selectionOf,
 } from "../../config/__tests__/mock-config-service.js";
-import { ConfigSelection } from "../../config/config-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
 	RojoCommandRequest,
@@ -47,8 +46,8 @@ class FakeRojo implements RojoCommandService {
 
 	constructor(private readonly fs: MemoryFileSystemService) {}
 
-	choose(selection: ConfigSelection): ResolvedConfig {
-		return selection.configs[0];
+	run(): never {
+		throw new Error("not used");
 	}
 
 	projects(): never {
@@ -63,7 +62,7 @@ class FakeRojo implements RojoCommandService {
 		throw new Error("not used");
 	}
 
-	async run(
+	async runOn(
 		_selection: unknown,
 		request: RojoCommandRequest
 	): Promise<Result<RojoCommandRun, Error>> {
@@ -461,22 +460,6 @@ describe("CoreSyncbackService", () => {
 			"Syncback stopped before it finished, so nothing was written."
 		);
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
-	});
-
-	it("should fail when the project Rojo is to run on is not among the configs", async () => {
-		await prepare(["src/Combat/Server/Combat.luau"]);
-		const other = configOf({
-			routes: ROUTES,
-			file: abs("other.rogen.json"),
-		});
-		rojo.choose = () => other;
-
-		const outcome = await syncback();
-
-		expect(errorOf(outcome).message).toBe(
-			`${other.label} was not found among the projects.`
-		);
-		expect(rojo.requests).toHaveLength(0);
 	});
 
 	it("should write an edit into the source file, with the line endings it had", async () => {

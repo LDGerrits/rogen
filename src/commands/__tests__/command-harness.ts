@@ -73,7 +73,6 @@ export interface CommandHarnessOptions<L extends LogService> {
 	readonly requests?: RequestService;
 	readonly browser?: BrowserService;
 	readonly product?: ProductService;
-	readonly rojoCommands?: RojoCommandService;
 }
 
 export interface CommandHarness<L extends LogService> {
@@ -120,14 +119,6 @@ export function commandHarness(
 	};
 }
 
-export async function harnessInstantiation(
-	options: CommandHarnessOptions<LogService> = {}
-): Promise<CoreInstantiationService> {
-	const { ready, instantiation } = harnessServices(options);
-	await ready;
-	return instantiation;
-}
-
 function harnessServices(options: CommandHarnessOptions<LogService>) {
 	const { cwd = "/repo" } = options;
 	const fs = options.fs ?? new MemoryFileSystemService();
@@ -170,7 +161,7 @@ function harnessServices(options: CommandHarnessOptions<LogService>) {
 	services.set(RojoRunner, new SyncDescriptor(CoreRojoRunner));
 	services.set(
 		RojoCommandService,
-		options.rojoCommands ?? new SyncDescriptor(CoreRojoCommandService)
+		new SyncDescriptor(CoreRojoCommandService)
 	);
 	services.set(SyncbackService, new SyncDescriptor(CoreSyncbackService));
 	services.set(ServeService, new SyncDescriptor(CoreServeService));

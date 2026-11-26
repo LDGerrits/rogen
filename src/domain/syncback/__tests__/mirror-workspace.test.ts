@@ -112,6 +112,33 @@ describe("MirrorWorkspace", () => {
 		expect((opened as ResultError<Error>).error).toBe(failure);
 	});
 
+	it("should fail when the project Rojo is to run on is not among the configs", async () => {
+		const config = await prepared([]);
+		const other = configOf({
+			routes: ROUTES,
+			file: abs("other.rogen.json"),
+		});
+
+		const opened = await workspaceOpenerOf(fakes()).open({
+			...requestOf(config),
+			project: other,
+		});
+
+		expect((opened as ResultError<Error>).error.message).toBe(
+			`${other.label} was not found among the projects.`
+		);
+	});
+
+	it("should fail a syncback whose workspace can't open", async () => {
+		const config = await prepared(["src/Combat/Server/Combat.luau"]);
+		const failure = new DiagnosticsError([
+			errorDiagnostic("rojo.failed", { resource: "/repo" }, "no"),
+		]);
+		jest.spyOn(writeService, "locate").mockResolvedValue(err(failure));
+
+		expect(failureOf(await syncback(config))).toBe(failure);
+	});
+
 	it("should refuse files whose instances differ only in letter case", async () => {
 		const config = await prepared([
 			"src/Inventory/Bag@Server.luau",

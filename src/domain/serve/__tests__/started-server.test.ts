@@ -1,6 +1,7 @@
 import { jest } from "@jest/globals";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
+import { ProcessService } from "../../../platform/process/process-service.js";
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
 import {
 	MockConfigSelection,
@@ -54,10 +55,10 @@ describe("StartedServer", () => {
 	);
 
 	const start = (project: ResolvedConfig = config) => {
-		server = instantiationOf([
-			RojoRunner,
-			rojoRunnerOf(fileSystem, processes),
-		]).createInstance(
+		server = instantiationOf(
+			[RojoRunner, rojoRunnerOf(fileSystem, processes)],
+			[ProcessService, processes]
+		).createInstance(
 			StartedServer,
 			{ ...target, config: project },
 			plan,

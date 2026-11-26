@@ -1,4 +1,5 @@
 import { DisposableStore } from "../../base/disposable.js";
+import { aborted } from "../../base/async.js";
 import { Result, ok } from "../../base/result.js";
 import { WriteRun } from "../../domain/write/write.js";
 import { WriteService } from "../../domain/write/write-service.js";
@@ -17,7 +18,8 @@ import { InstantiationService } from "../../platform/instantiation/instantiation
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { WatchedConfigs, WriteWatch } from "../write/write-watch.js";
+import { WatchService } from "../../domain/watch/watch-service.js";
+import { WatchJsonLog, WatchLog, WatchReporter } from "./watch-log.js";
 import {
 	writeLineShape,
 	writeDocument,
@@ -111,41 +113,72 @@ registerCommand(
 				lifecycleService: accessor.get(LifecycleService),
 				instantiationService: accessor.get(InstantiationService),
 			};
+			const watchService = line.options.watch
+				? accessor.get(WatchService)
+				: undefined;
 			const targets = await this.targets(
 				services.configService,
 				line.positionals
 			);
 			if (targets.isErr()) return targets;
 			const json = Boolean(line.options.json);
-			if (!line.options.watch)
+			if (!watchService)
 				return this.writeOnce(services, targets.value, json);
 			await services.instantiationService
 				.createInstance(RefreshAgentRules)
 				.run(json ? "lines" : "text");
 			return this.watch(
 				services,
+				watchService,
 				line.positionals.length === 0 ? "here" : line.positionals,
 				json
 			);
 		}
 
 		private async watch(
-			{ lifecycleService, instantiationService }: Services,
-			configs: WatchedConfigs,
+			{
+				configService,
+				logService,
+				cwd,
+				lifecycleService,
+				instantiationService,
+			}: Services,
+			watchService: WatchService,
+			configs: readonly string[] | "here",
 			json: boolean
 		): Promise<Result<void, Error>> {
 			const store = new DisposableStore();
 			const shutdown = this.untilShutdown(lifecycleService, store);
 			try {
-				return await instantiationService
-					.createInstance(
-						WriteWatch,
-						configs,
-						json,
-						undefined,
-						"write"
-					)
-					.run(store, shutdown);
+				const selection =
+					configs === "here"
+						? ok(await configService.selectHere())
+						: await configService.select(configs);
+				if (selection.isErr()) return selection;
+				for (const note of selection.value.notes) logService.warn(note);
+				const log: WatchReporter = json
+					? instantiationService.createInstance(WatchJsonLog, cwd)
+					: instantiationService.createInstance(
+							WatchLog,
+							cwd,
+							"write --watch"
+						);
+				const watched = watchService.watch(selection.value);
+				if (watched.isErr()) return watched;
+				const session = store.add(watched.value);
+				if (shutdown.aborted) return ok(undefined);
+				log.begin(session.configs, selection.value.home);
+				store.add(session.onDidUpdate((update) => log.update(update)));
+				store.add(session.onDidError((error) => log.error(error)));
+				try {
+					const started = await session.start();
+					if (started.isErr()) return started;
+					await aborted(shutdown);
+				} finally {
+					await session.stop();
+				}
+				log.end();
+				return ok(undefined);
 			} finally {
 				store[Symbol.dispose]();
 			}

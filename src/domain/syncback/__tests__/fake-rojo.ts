@@ -1,6 +1,5 @@
 import { Result, ok } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
-import { ConfigSelection } from "../../config/config-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
 	RojoCommandRequest,
@@ -13,8 +12,8 @@ export class FakeRojo implements RojoCommandService {
 	declare readonly _serviceBrand: undefined;
 	say: () => Promise<string[] | DiagnosticsError> = async () => [];
 
-	choose(selection: ConfigSelection): ResolvedConfig {
-		return selection.configs[0];
+	run(): never {
+		throw new Error("not used");
 	}
 
 	projects(): never {
@@ -29,7 +28,7 @@ export class FakeRojo implements RojoCommandService {
 		throw new Error("not used");
 	}
 
-	async run(
+	async runOn(
 		_selection: unknown,
 		request: RojoCommandRequest
 	): Promise<Result<RojoCommandRun, Error>> {
