@@ -112,7 +112,7 @@ export class NativeEnvironmentService implements EnvironmentService {
 		this.userHome = userHome;
 		this.tmpDir = tmpDir;
 		this.cacheDir = userCacheDir(env, platform, userHome);
-		if (env.GITHUB_ACTIONS === "true" && json !== true)
+		if (env.GITHUB_ACTIONS === "true")
 			this.annotationsIn = env.GITHUB_WORKSPACE || cwd;
 		this.pid = pid;
 		this.isWindows = platform === "win32";

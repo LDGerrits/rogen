@@ -1,22 +1,30 @@
-import { ErrorUtils } from "../../base/errors.js";
+import {
+	CancelledError,
+	ErrorUtils,
+	ReportedError,
+} from "../../base/errors.js";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
 	renderDiagnostic,
 } from "../diagnostics/diagnostic.js";
 import { diagnosticAnnotationLine } from "../diagnostics/diagnostic-annotation-line.js";
+import { DiagnosticsError } from "../diagnostics/diagnostics-error.js";
 import { defanged } from "../../base/strings.js";
 import { Styler, style, unstyled } from "../../base/style.js";
-import { LogLevel, LogService } from "./log-service.js";
+import {
+	DiagnosticsPresentation,
+	LogLevel,
+	LogService,
+	OutputStream,
+} from "./log-service.js";
 
 export type LogKind =
-	| "print"
+	| "result"
 	| "note"
 	| "notice"
 	| "intro"
 	| "step"
-	| "section"
-	| "sectionBody"
 	| "success"
 	| "outro"
 	| "info"
@@ -32,35 +40,60 @@ export interface LogServiceOptions {
 	readonly cwd?: string;
 	readonly annotationsIn?: string;
 	readonly color?: boolean;
+	readonly level?: LogLevel;
+	readonly ownLines?: OutputStream;
+}
+
+export function streamOf(
+	kind: LogKind,
+	ownLines: OutputStream,
+	framed: boolean
+): OutputStream {
+	switch (kind) {
+		case "result":
+		case "note":
+			return "stdout";
+		case "notice":
+		case "annotation":
+			return "stderr";
+		case "intro":
+		case "step":
+		case "success":
+		case "outro":
+		case "info":
+			return ownLines;
+		default:
+			return framed ? ownLines : "stderr";
+	}
 }
 
 export abstract class AbstractLogService implements LogService {
 	declare readonly _serviceBrand: undefined;
 
-	protected level: LogLevel = LogLevel.Info;
-	protected ownLinesToStderr = false;
+	protected level: LogLevel;
+	protected ownLines: OutputStream;
 	protected readonly style: Styler;
 	private readonly cwd?: string;
 	private readonly annotationsIn?: string;
 	private frameOpen = false;
 	protected abstract readonly drawsFrame: boolean;
 
-	constructor({ cwd, annotationsIn, color }: LogServiceOptions = {}) {
+	constructor({
+		cwd,
+		annotationsIn,
+		color,
+		level = LogLevel.Info,
+		ownLines = "stdout",
+	}: LogServiceOptions = {}) {
 		this.cwd = cwd;
 		this.annotationsIn = annotationsIn;
 		this.style = color ? style : unstyled;
+		this.level = level;
+		this.ownLines = ownLines;
 	}
 
 	protected get framed(): boolean {
 		return this.drawsFrame && this.frameOpen;
-	}
-
-	setLevel(level: LogLevel): void {
-		this.level = level;
-	}
-
-	sendOwnLinesToStderr(): void {
-		this.ownLinesToStderr = true;
 	}
 
 	protected canLog(level: LogLevel): boolean {
@@ -107,10 +140,18 @@ export abstract class AbstractLogService implements LogService {
 		return parts.join("\n");
 	}
 
-	protected abstract write(kind: LogKind, text: string): void;
+	protected abstract write(
+		kind: LogKind,
+		stream: OutputStream,
+		text: string
+	): void;
 
 	private emit(kind: LogKind, text: string): void {
-		this.write(kind, kind === "print" ? text : defanged(text));
+		this.put(kind, kind === "result" ? text : defanged(text));
+	}
+
+	private put(kind: LogKind, text: string): void {
+		this.write(kind, streamOf(kind, this.ownLines, this.framed), text);
 	}
 
 	error(message: string | Error, ...args: unknown[]): void {
@@ -138,8 +179,8 @@ export abstract class AbstractLogService implements LogService {
 			this.emit("trace", this.format(message, args));
 	}
 
-	print(text: string): void {
-		if (this.level !== LogLevel.Off) this.emit("print", text);
+	result(text: string): void {
+		if (this.level !== LogLevel.Off) this.emit("result", text);
 	}
 
 	note(text: string): void {
@@ -160,12 +201,6 @@ export abstract class AbstractLogService implements LogService {
 		if (this.canLog(LogLevel.Info)) this.emit("step", title);
 	}
 
-	section(title: string, body?: string): void {
-		if (this.level === LogLevel.Off) return;
-		this.emit("section", title);
-		if (body) this.emit("sectionBody", body);
-	}
-
 	success(message: string): void {
 		if (this.canLog(LogLevel.Info)) this.emit("success", message);
 	}
@@ -180,35 +215,71 @@ export abstract class AbstractLogService implements LogService {
 		if (this.frameOpen) this.outro(message);
 	}
 
-	annotate(diagnostic: Diagnostic): void {
-		const isError = diagnostic.severity === DiagnosticSeverity.Error;
-		if (
-			this.annotationsIn === undefined ||
-			!this.canLog(isError ? LogLevel.Error : LogLevel.Warn)
-		)
+	diagnostics(
+		found: readonly Diagnostic[],
+		{ present = (all) => all, asResult }: DiagnosticsPresentation = {}
+	): void {
+		for (const diagnostic of found) this.annotate(diagnostic);
+		for (const diagnostic of present(found))
+			if (asResult) this.result(this.rendered(diagnostic));
+			else this.diagnostic(diagnostic);
+	}
+
+	failure(error: Error, command?: string): void {
+		if (error instanceof ReportedError) return;
+		if (error instanceof CancelledError) {
+			this.closeFrame(error.message);
 			return;
-		this.write(
+		}
+		if (error instanceof DiagnosticsError)
+			this.diagnostics(error.diagnostics);
+		else this.error(error.message);
+		if (command) this.closeFrame(`${command} failed.`);
+	}
+
+	crash(_error: unknown): void {}
+
+	private annotate(diagnostic: Diagnostic): void {
+		if (this.annotationsIn === undefined || !this.shows(diagnostic)) return;
+		this.put(
 			"annotation",
 			diagnosticAnnotationLine(diagnostic, this.annotationsIn)
 		);
 	}
 
-	diagnostic(diagnostic: Diagnostic): void {
-		const isError = diagnostic.severity === DiagnosticSeverity.Error;
-		if (!this.canLog(isError ? LogLevel.Error : LogLevel.Warn)) return;
-		const { resource, message, details } = diagnostic;
-		this.write(
-			isError ? "diagnosticError" : "diagnosticWarning",
-			renderDiagnostic(
-				{
-					...diagnostic,
-					resource: defanged(resource),
-					message: defanged(message),
-					details: details?.map(defanged),
-				},
-				this.cwd,
-				(label) => this.style(isError ? "red" : "yellow", label)
-			)
+	private diagnostic(diagnostic: Diagnostic): void {
+		if (!this.shows(diagnostic)) return;
+		this.put(
+			diagnostic.severity === DiagnosticSeverity.Error
+				? "diagnosticError"
+				: "diagnosticWarning",
+			this.rendered(diagnostic)
+		);
+	}
+
+	private shows({ severity }: Diagnostic): boolean {
+		return this.canLog(
+			severity === DiagnosticSeverity.Error
+				? LogLevel.Error
+				: LogLevel.Warn
+		);
+	}
+
+	private rendered(diagnostic: Diagnostic): string {
+		const { resource, message, details, severity } = diagnostic;
+		return renderDiagnostic(
+			{
+				...diagnostic,
+				resource: defanged(resource),
+				message: defanged(message),
+				details: details?.map(defanged),
+			},
+			this.cwd,
+			(label) =>
+				this.style(
+					severity === DiagnosticSeverity.Error ? "red" : "yellow",
+					label
+				)
 		);
 	}
 }

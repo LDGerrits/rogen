@@ -46,8 +46,9 @@ describe("TerminalLogService", () => {
 
 	it("should write no notice under --quiet", () => {
 		const error = jest.spyOn(console, "error").mockImplementation(() => {});
-		const logService = new TerminalLogService();
-		logService.setLevel(LogLevel.Error);
+		const logService = new TerminalLogService({
+			level: LogLevel.Error,
+		});
 
 		logService.notice("Rogen 2.0.1 is out");
 
@@ -60,9 +61,9 @@ describe("TerminalLogService", () => {
 		logService.intro("rogen watch · default");
 		logService.step("12:04:31 · 2 files changed");
 		logService.success("default.project.json · 14ms");
-		logService.diagnostic(
-			warningDiagnostic("x.y", { resource: "/repo/lobby.json" }, "w")
-		);
+		logService.diagnostics([
+			warningDiagnostic("x.y", { resource: "/repo/lobby.json" }, "w"),
+		]);
 		logService.outro("Stopped.");
 
 		expect(drawn().split("\n").filter(Boolean)).toEqual([
@@ -86,9 +87,9 @@ describe("TerminalLogService", () => {
 		const logService = new TerminalLogService();
 
 		logService.success("Wrote default.project.json.");
-		logService.diagnostic(
-			warningDiagnostic("x.y", { resource: "/repo/a" }, "w")
-		);
+		logService.diagnostics([
+			warningDiagnostic("x.y", { resource: "/repo/a" }, "w"),
+		]);
 		logService.error("broken");
 		logService.outro("Built game.rbxl.");
 
@@ -123,8 +124,9 @@ describe("TerminalLogService", () => {
 
 	it("should write plain lines without colour when colour is off", () => {
 		const error = jest.spyOn(console, "error").mockImplementation(() => {});
-		const logService = new TerminalLogService();
-		logService.setLevel(LogLevel.Debug);
+		const logService = new TerminalLogService({
+			level: LogLevel.Debug,
+		});
 
 		logService.error("broken");
 		logService.debug("detail");
@@ -138,8 +140,7 @@ describe("TerminalLogService", () => {
 	it("should write plain lines on stderr once its own lines go to stderr", () => {
 		const info = jest.spyOn(console, "info").mockImplementation(() => {});
 		const error = jest.spyOn(console, "error").mockImplementation(() => {});
-		const logService = new TerminalLogService();
-		logService.sendOwnLinesToStderr();
+		const logService = new TerminalLogService({ ownLines: "stderr" });
 
 		logService.success("Wrote default.project.json.");
 		logService.info("Syncing 2 instances.");
@@ -153,16 +154,26 @@ describe("TerminalLogService", () => {
 		]);
 	});
 
-	it("should draw a section as a step with its lines under it, although only errors are asked for", () => {
-		const logService = new TerminalLogService();
-		logService.setLevel(LogLevel.Error);
+	it("should draw its frame on stderr when its own lines go there", () => {
+		let drawnOnStderr = "";
+		jest.spyOn(process.stderr, "write").mockImplementation((chunk) => {
+			drawnOnStderr += String(chunk);
+			return true;
+		});
+		const logService = new TerminalLogService({ ownLines: "stderr" });
 
-		logService.section("default.rogen.json", "source paths: src");
+		logService.intro("rogen syncback");
+		logService.step("default.rogen.json");
+		logService.warn("careful");
 
-		expect(drawn().split("\n").filter(Boolean)).toEqual([
+		expect(drawn()).toBe("");
+		expect(
+			stripVTControlCharacters(drawnOnStderr).split("\n").filter(Boolean)
+		).toEqual([
+			"┌  rogen syncback",
 			"│",
 			"◇  default.rogen.json",
-			"│  source paths: src",
+			"│  ▲ careful",
 		]);
 	});
 
@@ -183,45 +194,49 @@ describe("TerminalLogService", () => {
 
 	it("should print raw text at the error level", () => {
 		const info = jest.spyOn(console, "info").mockImplementation(() => {});
-		const logService = new TerminalLogService();
-		logService.setLevel(LogLevel.Error);
+		const logService = new TerminalLogService({
+			level: LogLevel.Error,
+		});
 
-		logService.print("rogen 2.0.0");
+		logService.result("rogen 2.0.0");
 
 		expect(info).toHaveBeenCalledWith("rogen 2.0.0");
 	});
 
 	it("should keep the severity written by the diagnostic itself", () => {
-		new TerminalLogService().diagnostic(
-			warningDiagnostic("x.y", { resource: "/repo/a" }, "w")
-		);
+		new TerminalLogService().diagnostics([
+			warningDiagnostic("x.y", { resource: "/repo/a" }, "w"),
+		]);
 
 		expect(drawn()).not.toContain("warning: /repo");
 	});
 
 	it("should write the workflow commands of a diagnostic on stderr, undrawn, when asked for a workspace", () => {
 		const error = jest.spyOn(console, "error").mockImplementation(() => {});
-
-		new TerminalLogService({
+		const logService = new TerminalLogService({
 			cwd: "/work/repo",
 			annotationsIn: "/work/repo",
-		}).annotate(
+		});
+		logService.intro("rogen build");
+
+		logService.diagnostics([
 			warningDiagnostic(
 				"tree.deadScript",
 				{ resource: "/work/repo/src/Dead.luau" },
 				"never runs."
-			)
-		);
+			),
+		]);
 
 		expect(error).toHaveBeenCalledWith(
 			"::warning file=src/Dead.luau,title=tree.deadScript::never runs."
 		);
-		expect(drawn()).toBe("");
+		expect(drawn()).not.toContain("::warning");
 	});
 
 	it("should nest warnings, information and debug lines under an open frame", () => {
-		const logService = new TerminalLogService();
-		logService.setLevel(LogLevel.Trace);
+		const logService = new TerminalLogService({
+			level: LogLevel.Trace,
+		});
 
 		logService.intro("rogen serve");
 		logService.warn("careful");

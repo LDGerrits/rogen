@@ -48,6 +48,7 @@ registerCommand(
 					options: HelpOptions,
 					output: { document: helpDocumentShape },
 					effects: [],
+					ownLinesToStderr: (line) => line.asksForNothing === true,
 					examples: [
 						"rogen help where",
 						"rogen help route.strayAt",
@@ -71,7 +72,7 @@ registerCommand(
 				const version = await productService.readVersion();
 				if (line.options.json)
 					return this.printJson(logService, { version });
-				logService.print(`rogen ${version}`);
+				logService.result(`rogen ${version}`);
 				return ok(undefined);
 			}
 
@@ -98,7 +99,6 @@ registerCommand(
 					accessor.get(EnvironmentService).logLevel === LogLevel.Error
 				)
 					return err(missing);
-				logService.sendOwnLinesToStderr();
 				logService.info(pages.overview());
 				return this.reported(missing);
 			}
@@ -111,7 +111,7 @@ registerCommand(
 							await productService.readVersion()
 						)
 					);
-				logService.print(pages.overview());
+				logService.result(pages.overview());
 				return ok(undefined);
 			}
 
@@ -141,7 +141,7 @@ registerCommand(
 									)
 								: HelpDocument.code(found.code)
 				);
-			logService.print(
+			logService.result(
 				pages.textOf(found, line.shortHelp ? "short" : "long")
 			);
 			return ok(undefined);

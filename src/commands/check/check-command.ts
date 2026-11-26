@@ -1,5 +1,4 @@
 import { Result, ok } from "../../base/result.js";
-import { defanged } from "../../base/strings.js";
 import {
 	WriteService,
 	skippedNotes,
@@ -8,7 +7,6 @@ import {
 	AbstractCommand,
 	registerCommand,
 } from "../../platform/commands/commands.js";
-import { renderDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -105,10 +103,9 @@ registerCommand(
 					},
 					failsCheck
 				);
-			for (const diagnostic of failsCheck?.diagnostics ?? []) {
-				logService.print(defanged(renderDiagnostic(diagnostic, cwd)));
-				logService.annotate(diagnostic);
-			}
+			logService.diagnostics(failsCheck?.diagnostics ?? [], {
+				asResult: true,
+			});
 			if (stoppedBy.length > 0)
 				logService.warn(
 					`The write stops on the ${stoppedBy.length === 1 ? "error" : "errors"} above, so the paths were checked only as far as it gets; fix ${stoppedBy.length === 1 ? "it" : "them"} and check again.`

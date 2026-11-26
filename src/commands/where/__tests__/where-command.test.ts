@@ -8,7 +8,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { MockInputService } from "../../../platform/input/__tests__/mock-input-service.js";
 import { UsageError } from "../../../base/errors.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
-import { ReportedError } from "../../../platform/commands/commands.js";
+import { ReportedError } from "../../../base/errors.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 
 const ROUTES = {
@@ -37,7 +37,7 @@ describe("where command", () => {
 		fs.writeFile(`/repo/${file}`, JSON.stringify(config));
 
 	const printed = () =>
-		logService.texts("print").flatMap((text) => text.split("\n"));
+		logService.texts("result").flatMap((text) => text.split("\n"));
 
 	beforeEach(async () => {
 		const harness = commandHarness();
@@ -594,7 +594,7 @@ describe("where command", () => {
 			});
 
 			expect(result.isOk()).toBe(true);
-			expect(harness.log.texts("print")).toEqual([
+			expect(harness.log.texts("result")).toEqual([
 				"src/Server/Only.luau -> ServerScriptService/Only · route Server (folder)",
 			]);
 		});
@@ -745,7 +745,7 @@ describe("where command", () => {
 				logService.entries.map(({ kind, text }) => [kind, text])
 			).toEqual([
 				[
-					"print",
+					"result",
 					expect.stringContaining(toNative("src/Util.luau ->")),
 				],
 				[
@@ -766,17 +766,17 @@ describe("where command", () => {
 
 			expect(
 				logService.entries
-					.filter(({ kind }) => kind === "print" || kind === "debug")
+					.filter(({ kind }) => kind === "result" || kind === "debug")
 					.map(({ kind, text }) => [kind, text])
 			).toEqual([
 				[
-					"print",
+					"result",
 					expect.stringContaining(
 						toNative("src/Inventory/Server/Hit.server.luau ->")
 					),
 				],
 				[
-					"print",
+					"result",
 					expect.stringContaining(toNative("src/Util.luau ->")),
 				],
 				[
@@ -891,7 +891,7 @@ describe("where command", () => {
 			await run({ json: true, verbose: [true] });
 
 			expect(
-				logService.entries.filter(({ kind }) => kind !== "print")
+				logService.entries.filter(({ kind }) => kind !== "result")
 			).toEqual([]);
 		});
 
@@ -933,7 +933,7 @@ describe("where command", () => {
 			});
 		};
 
-		const text = () => logService.texts("print").join("\n");
+		const text = () => logService.texts("result").join("\n");
 
 		const writeJson = (file: string, value: Record<string, unknown>) =>
 			fs.writeFile(`/repo/${file}`, JSON.stringify(value));
@@ -1143,7 +1143,7 @@ describe("where command", () => {
 
 			logService.clear();
 			await pipe("");
-			expect(logService.texts("print")).toEqual([]);
+			expect(logService.texts("result")).toEqual([]);
 		});
 
 		it("should print the text as it is, then fail, when no config can answer", async () => {

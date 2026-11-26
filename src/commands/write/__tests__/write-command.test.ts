@@ -5,7 +5,7 @@ import "../write-command.js";
 import { agentBlock } from "../../../domain/init/agent/agent-block.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { ResultError } from "../../../base/result.js";
-import { ReportedError } from "../../../platform/commands/commands.js";
+import { ReportedError } from "../../../base/errors.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
@@ -484,7 +484,7 @@ describe("write command", () => {
 
 			expect(
 				log
-					.texts("print")
+					.texts("result")
 					.map((text) => JSON.parse(text))
 					.filter((line) => "agentRules" in line)
 			).toEqual([{ agentRules: [abs("AGENTS.md")] }]);
@@ -544,7 +544,7 @@ describe("write command", () => {
 			await settle();
 
 			const printed = log
-				.texts("print")
+				.texts("result")
 				.map((text) => JSON.parse(text))
 				.filter((line) => "notice" in line);
 			expect(printed).toEqual([
@@ -610,7 +610,7 @@ describe("write command", () => {
 
 			expect(
 				log
-					.texts("print")
+					.texts("result")
 					.map((text) => JSON.parse(text))
 					.filter((line) => "notice" in line)
 			).toEqual([

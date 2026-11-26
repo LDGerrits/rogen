@@ -1,8 +1,8 @@
 import { DisposableStore } from "../../../base/disposable.js";
-import { UsageError } from "../../../base/errors.js";
+import { ReportedError, UsageError } from "../../../base/errors.js";
 import { ResultError, ok } from "../../../base/result.js";
 import { MockLogService } from "../../log/__tests__/mock-log-service.js";
-import { exitCodeOf } from "../command-failure.js";
+import { exitCodeOf } from "../exit-code.js";
 import { Registry } from "../../registry/registry.js";
 import {
 	AbstractCommand,
@@ -10,7 +10,6 @@ import {
 	CommandRegistry,
 	Extensions,
 	registerCommand,
-	ReportedError,
 } from "../commands.js";
 import {
 	OptionDescriptor,

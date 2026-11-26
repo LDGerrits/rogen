@@ -14,6 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- In GitHub Actions, every diagnostic Rogen prints is also a workflow annotation. `rogen where`'s errors elsewhere, `rogen syncback`'s warnings, `rogen serve`'s failures, `rogen init`'s warnings and a failed write under `--watch` used to have none. `--json` still writes no annotations.
+- `rogen check` colours its `warning:` and `error:` labels when colour is on, as the other commands do: in a colour terminal, or with `FORCE_COLOR` or `--color always`. Piped output without forced colour is unchanged.
 - A folder such as `Net.client` whose files are routed only by their own `@` or by a marker file further down now gets the rename to `Net@client`. Rogen used to say another route governed it.
 - A dot file named for a route, such as `.client`, inside a folder another route governs no longer gets a rename to `@client`, which would have done nothing there.
 - A mistyped `@` under a route that already governs it, such as `server/Ui@clent/`, is reported as doing nothing there even when no file below it is routed, as it is when one is.

@@ -38,7 +38,7 @@ describe("rogen help --json", () => {
 
 	beforeEach(() => {
 		logService = new NullLogService();
-		print = jest.spyOn(logService, "print");
+		print = jest.spyOn(logService, "result");
 	});
 
 	describe("without a name", () => {

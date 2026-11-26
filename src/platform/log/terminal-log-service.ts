@@ -6,14 +6,19 @@ import {
 	LogKind,
 	LogServiceOptions,
 } from "./abstract-log-service.js";
+import { OutputStream } from "./log-service.js";
 
-class UncolouredStdout extends Writable {
+class Uncoloured extends Writable {
+	constructor(private readonly stream: NodeJS.WriteStream) {
+		super();
+	}
+
 	override _write(
 		chunk: unknown,
 		_encoding: BufferEncoding,
 		done: (error?: Error | null) => void
 	): void {
-		process.stdout.write(stripVTControlCharacters(String(chunk)));
+		this.stream.write(stripVTControlCharacters(String(chunk)));
 		done();
 	}
 }
@@ -26,7 +31,7 @@ export class TerminalLogService extends AbstractLogService {
 	private readonly symbols: Readonly<
 		Record<"success" | "warning" | "error", string>
 	>;
-	private readonly output?: Writable;
+	private readonly outputs: Readonly<Record<OutputStream, Writable>>;
 
 	constructor(options: LogServiceOptions = {}) {
 		super(options);
@@ -35,42 +40,43 @@ export class TerminalLogService extends AbstractLogService {
 			warning: this.style("yellow", "▲"),
 			error: this.style("red", "■"),
 		};
-		if (!options.color) this.output = new UncolouredStdout();
+		this.outputs = options.color
+			? { stdout: process.stdout, stderr: process.stderr }
+			: {
+					stdout: new Uncoloured(process.stdout),
+					stderr: new Uncoloured(process.stderr),
+				};
 	}
 
-	protected write(kind: LogKind, text: string): void {
-		if (!this.framed && this.writeUnframed(kind, text)) return;
-		const { output, symbols } = this;
-		const nested = (line: string, symbol?: string) =>
-			clack.log.message(symbol ? `${symbol} ${line}` : line, {
+	protected write(kind: LogKind, stream: OutputStream, text: string): void {
+		const line = stream === "stderr" ? console.error : console.info;
+		const output = this.outputs[stream];
+		switch (kind) {
+			case "result":
+			case "annotation":
+				line(text);
+				return;
+			case "note":
+			case "notice":
+				line(this.style("dim", text));
+				return;
+			case "intro":
+				clack.intro(text, { output });
+				return;
+			case "step":
+				clack.log.step(text, { output });
+				return;
+		}
+		if (!this.framed) return this.writeUnframed(kind, line, text);
+		const { symbols } = this;
+		const nested = (message: string, symbol?: string) =>
+			clack.log.message(symbol ? `${symbol} ${message}` : message, {
 				spacing: 0,
 				output,
 			});
 		switch (kind) {
-			case "print":
-				console.info(text);
-				break;
-			case "annotation":
-				console.error(text);
-				break;
-			case "note":
-				console.info(this.style("dim", text));
-				break;
-			case "notice":
-				console.error(this.style("dim", text));
-				break;
-			case "intro":
-				clack.intro(text, { output });
-				break;
 			case "outro":
 				clack.outro(text, { output });
-				break;
-			case "step":
-			case "section":
-				clack.log.step(text, { output });
-				break;
-			case "sectionBody":
-				nested(text);
 				break;
 			case "success":
 				nested(text, symbols.success);
@@ -92,27 +98,26 @@ export class TerminalLogService extends AbstractLogService {
 		}
 	}
 
-	private writeUnframed(kind: LogKind, text: string): boolean {
+	private writeUnframed(
+		kind: LogKind,
+		line: (text: string) => void,
+		text: string
+	): void {
 		switch (kind) {
-			case "success":
-			case "info":
-			case "outro":
-				(this.ownLinesToStderr ? console.error : console.info)(text);
-				return true;
 			case "debug":
 			case "trace":
-				console.error(this.style("dim", text));
-				return true;
+				line(this.style("dim", text));
+				break;
 			case "warn":
 			case "diagnosticWarning":
-				console.error(`${this.symbols.warning} ${text}`);
-				return true;
+				line(`${this.symbols.warning} ${text}`);
+				break;
 			case "error":
 			case "diagnosticError":
-				console.error(`${this.symbols.error} ${text}`);
-				return true;
+				line(`${this.symbols.error} ${text}`);
+				break;
 			default:
-				return false;
+				line(text);
 		}
 	}
 }

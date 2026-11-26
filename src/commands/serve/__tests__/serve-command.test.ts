@@ -7,10 +7,7 @@ import { Result, err } from "../../../base/result.js";
 import { CoreServeService } from "../../../domain/serve/core-serve-service.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
-import {
-	exitCode,
-	exitCodeOf,
-} from "../../../platform/commands/command-failure.js";
+import { exitCode, exitCodeOf } from "../../../platform/commands/exit-code.js";
 import { CommandLine } from "../../../platform/environment/args.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
@@ -23,7 +20,7 @@ import { recordFile } from "../../../domain/serve/__tests__/record-fixtures.js";
 import { CoreWriteService } from "../../../domain/write/core-write-service.js";
 import { RojoCompatibility } from "../../../domain/runner/rojo-compatibility.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
-import { ReportedError } from "../../../platform/commands/commands.js";
+import { ReportedError } from "../../../base/errors.js";
 
 const ROJO_URL = "http://127.0.0.1:34872/api/rojo";
 
@@ -61,7 +58,7 @@ describe("serve command", () => {
 	};
 
 	const printed = () =>
-		logService.texts("print").map((text) => JSON.parse(text));
+		logService.texts("result").map((text) => JSON.parse(text));
 
 	const failureOf = async (result: Promise<Result<void, Error>>) => {
 		const settled = await result;
@@ -123,7 +120,7 @@ describe("serve command", () => {
 			"success: Wrote default.project.json.",
 			"success: Serving repo at localhost:34872 · http://localhost:34872/\n  In Studio, press Connect in the Rojo plugin.",
 		]);
-		expect(logService.sendsOwnLinesToStderr).toBe(false);
+		expect(logService.on("stdout")).toEqual(logService.lines);
 	});
 
 	it("should refuse to serve a config with errors, and write nothing", async () => {
@@ -860,7 +857,7 @@ describe("serve command", () => {
 			},
 		]);
 		expect(
-			logService.entries.filter(({ kind }) => kind !== "print")
+			logService.entries.filter(({ kind }) => kind !== "result")
 		).toEqual([]);
 	});
 

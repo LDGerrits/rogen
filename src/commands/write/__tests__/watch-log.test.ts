@@ -87,6 +87,7 @@ describe("WatchLog.update", () => {
 		it("should start with the time, padded to two digits", () => {
 			expect(logged({})[0]).toEqual({
 				kind: "step",
+				stream: "stdout",
 				text: "03:04:05 · initial write",
 			});
 		});
@@ -124,6 +125,7 @@ describe("WatchLog.update", () => {
 
 			expect(lines[0]).toEqual({
 				kind: "debug",
+				stream: "stderr",
 				text: "The burst stopped after 101 more changes, so every config is written again.",
 			});
 		});
@@ -140,6 +142,7 @@ describe("WatchLog.update", () => {
 
 			expect(lines).toContainEqual({
 				kind: "step",
+				stream: "stdout",
 				text: "03:04:05 · many changes · full rewrite",
 			});
 		});

@@ -199,7 +199,7 @@ export class ServeLog implements ServeReporter {
 				return;
 			case "crashed":
 			case "failed":
-				this.logService.diagnostic(stop.failure);
+				this.logService.diagnostics([stop.failure]);
 		}
 	}
 
@@ -211,7 +211,7 @@ export class ServeLog implements ServeReporter {
 				this.running(change.target);
 				return;
 			case "refused":
-				this.logService.diagnostic(change.diagnostic);
+				this.logService.diagnostics([change.diagnostic]);
 				return;
 			case "retired":
 				this.logService.info(

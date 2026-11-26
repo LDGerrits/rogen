@@ -9,7 +9,7 @@ import {
 	mockEntry,
 } from "../../../domain/config/__tests__/mock-config-service.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
-import { exitCodeOf } from "../../../platform/commands/command-failure.js";
+import { exitCodeOf } from "../../../platform/commands/exit-code.js";
 import { CommandLine } from "../../../platform/environment/args.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
@@ -75,7 +75,7 @@ describe("sourcemap command", () => {
 		rojo.exit({ code: 0, signal: null });
 		await running;
 
-		expect(log.sendsOwnLinesToStderr).toBe(false);
+		expect(log.on("stdout")).toEqual(log.lines);
 		expect(log.lines).toEqual([
 			"success: Wrote default.project.json.",
 			"outro: Wrote map.json.",
@@ -91,9 +91,11 @@ describe("sourcemap command", () => {
 		rojo.exit({ code: 0, signal: null });
 		await running;
 
-		expect(log.sendsOwnLinesToStderr).toBe(true);
+		expect(log.on("stderr")).toEqual(
+			log.lines.filter((line) => !line.startsWith("result: "))
+		);
 		expect(log.lines).toEqual([
-			'print: {"name":"repo"}',
+			'result: {"name":"repo"}',
 			"success: Wrote default.project.json.",
 		]);
 	});
@@ -111,7 +113,7 @@ describe("sourcemap command", () => {
 			"sourcemap",
 			"default.project.json",
 		]);
-		expect(log.texts("print")).toEqual(['{"name":"repo"}']);
+		expect(log.texts("result")).toEqual(['{"name":"repo"}']);
 		expect(log.texts("outro")).toEqual([]);
 		expect(await fs.exists(output)).toBe(false);
 	});
@@ -124,7 +126,7 @@ describe("sourcemap command", () => {
 		expect(((await running) as ResultError<Error>).error.message).toContain(
 			"Failed to read the sourcemap Rojo wrote"
 		);
-		expect(log.texts("print")).toEqual([]);
+		expect(log.texts("result")).toEqual([]);
 	});
 
 	it("should pass -o, --include-non-scripts and --absolute to Rojo", async () => {
@@ -223,7 +225,7 @@ describe("sourcemap command", () => {
 		rojo.exit({ code: 1, signal: null });
 
 		expect((await running).isErr()).toBe(true);
-		expect(log.texts("print")).toEqual([]);
+		expect(log.texts("result")).toEqual([]);
 	});
 
 	it("should print the sourcemap even when its file of its own can't be removed", async () => {
@@ -235,7 +237,7 @@ describe("sourcemap command", () => {
 		rojo.exit({ code: 0, signal: null });
 
 		expect((await running).isOk()).toBe(true);
-		expect(log.texts("print")).toEqual(['{"name":"repo"}']);
+		expect(log.texts("result")).toEqual(['{"name":"repo"}']);
 	});
 
 	it("should run no Rojo and exit 1 when the config has errors", async () => {

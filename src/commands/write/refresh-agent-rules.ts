@@ -23,7 +23,7 @@ export class RefreshAgentRules {
 		);
 		const line = agentRulesLine(updated);
 		if (output === "lines" && line)
-			this.logService.print(JSON.stringify(line));
+			this.logService.result(JSON.stringify(line));
 		if (output === "text")
 			for (const file of updated)
 				this.logService.notice(

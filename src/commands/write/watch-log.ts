@@ -26,7 +26,7 @@ import {
 } from "../../domain/runner/rojo-command-service.js";
 import { Result, err, ok } from "../../base/result.js";
 import { DisposableStore } from "../../base/disposable.js";
-import { ReportedError } from "../../platform/commands/commands.js";
+import { ReportedError } from "../../base/errors.js";
 import {
 	reportRojo,
 	reportRojoBesideFailure,
@@ -147,9 +147,7 @@ export class WatchLog implements WatchReporter {
 
 	error(error: Error): void {
 		if (error instanceof DiagnosticsError)
-			error.diagnostics.forEach((diagnostic) =>
-				this.logService.diagnostic(diagnostic)
-			);
+			this.logService.diagnostics(error.diagnostics);
 		else this.logService.error(error.message);
 	}
 
@@ -308,7 +306,7 @@ export class PrintedWatchLog extends WatchLog {
 	): void {
 		if (ran.isOk())
 			for (const { stdout } of ran.value.messages)
-				if (stdout !== undefined) this.logService.print(stdout);
+				if (stdout !== undefined) this.logService.result(stdout);
 		if (ran.isErr() || ran.value.failure) return super.rojo(ran, target);
 		reportRojo(
 			this.logService,
@@ -357,7 +355,7 @@ export class WatchJsonLog implements WatchReporter {
 	}
 
 	line(value: unknown): void {
-		this.logService.print(JSON.stringify(value));
+		this.logService.result(JSON.stringify(value));
 	}
 
 	private notice(notice: ConfigNotice): void {

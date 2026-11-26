@@ -185,23 +185,6 @@ describe("NativeEnvironmentService", () => {
 		])("should read it from %j", (env, workspace) => {
 			expect(inTerminal(env).annotationsIn).toBe(workspace);
 		});
-
-		it("should leave it out when the run prints JSON", () => {
-			const env = new NativeEnvironmentService(
-				{ json: true },
-				"/mock/cwd",
-				{
-					env: { GITHUB_ACTIONS: "true" },
-					isTerminal: false,
-					userHome: "/mock/home",
-					tmpDir: "/mock/tmp",
-					pid: 4242,
-					platform: "linux",
-				}
-			);
-
-			expect(env.annotationsIn).toBeUndefined();
-		});
 	});
 
 	describe("isCi", () => {

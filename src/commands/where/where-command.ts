@@ -120,7 +120,7 @@ registerCommand(
 					failure
 				);
 			new WhereLog(cwd, answers).print(logService);
-			for (const error of answers.elsewhere) logService.diagnostic(error);
+			logService.diagnostics(answers.elsewhere);
 			if (answers.elsewhere.length > 0)
 				logService.notice(
 					`The ${answers.elsewhere.length === 1 ? "error" : "errors"} above ${answers.elsewhere.length === 1 ? "stops" : "stop"} the write, but none of it is about what you asked; 'rogen check' lists everything to fix.`
@@ -177,7 +177,7 @@ registerCommand(
 			const rewritten = rewriteStudioPaths(text, paths, (name) =>
 				files.get(name)
 			).replace(/\r?\n$/, "");
-			if (rewritten !== "") logService.print(rewritten);
+			if (rewritten !== "") logService.result(rewritten);
 			if (placed.isErr()) return placed;
 			return placed.value.failure
 				? err(placed.value.failure)
