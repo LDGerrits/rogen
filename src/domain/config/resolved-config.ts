@@ -1,5 +1,10 @@
 import path from "path";
-import { commonAncestor, samePath, toPosix } from "../../base/path.js";
+import {
+	commonAncestor,
+	containsPosix,
+	samePath,
+	toPosix,
+} from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { Target } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
@@ -32,6 +37,7 @@ export class ResolvedConfig {
 	readonly keys: DeclaredKeys;
 	readonly patterns: RoutePatterns;
 	readonly syncRules: SyncRules;
+	readonly compiled: CompiledPath;
 
 	constructor(fields: ResolvedConfigFields) {
 		this.file = fields.file;
@@ -48,6 +54,7 @@ export class ResolvedConfig {
 			SyncRules.read(fields.project.syncRules).rules,
 			toPosix(this.projectDir)
 		);
+		this.compiled = CompiledPath.from(this);
 	}
 
 	get label(): string {
@@ -93,23 +100,61 @@ export class ResolvedConfig {
 	}
 }
 
-export function compiledPathOf(
-	config: Pick<ResolvedConfig, "commonRoot" | "compiledPath" | "projectDir">,
-	file: string
-): string {
-	if (config.compiledPath === undefined) return file;
-	return path.join(
-		config.compiledPath,
-		path.relative(config.commonRoot ?? config.projectDir, file)
-	);
-}
+export type CompiledPathFields = Pick<
+	ResolvedConfig,
+	"commonRoot" | "compiledPath" | "projectDir" | "syncRules"
+>;
 
-export function scannedFileOf(
-	config: Pick<ResolvedConfig, "compiledPath" | "syncRules">,
-	source: string
-): RojoFile {
-	const reading = config.compiledPath === undefined ? "rojo" : "compiled";
-	return RojoFile.at(source, config.syncRules, reading);
+export class CompiledPath {
+	constructor(
+		readonly folder: string | undefined,
+		readonly root: string,
+		readonly projectDir: string,
+		private readonly syncRules: SyncRules
+	) {}
+
+	static from(fields: CompiledPathFields): CompiledPath {
+		return new CompiledPath(
+			fields.compiledPath,
+			fields.commonRoot ?? fields.projectDir,
+			fields.projectDir,
+			fields.syncRules
+		);
+	}
+
+	of(source: string): string {
+		if (this.folder === undefined) return source;
+		return path.join(this.folder, path.relative(this.root, source));
+	}
+
+	sourceOf(compiled: string): string {
+		if (this.folder === undefined) return compiled;
+		return path.join(this.root, path.relative(this.folder, compiled));
+	}
+
+	glob(projectGlob: string): string {
+		if (this.folder === undefined) return projectGlob;
+		const root = toPosix(this.root);
+		const dir = toPosix(this.projectDir);
+		const absolute = path.posix.join(dir, projectGlob);
+		if (!containsPosix(root, absolute)) return projectGlob;
+		return path.posix.relative(
+			dir,
+			path.posix.join(
+				toPosix(this.folder),
+				path.posix.relative(root, absolute)
+			)
+		);
+	}
+
+	fileAt(target: string): RojoFile {
+		return RojoFile.at(toPosix(target), this.syncRules);
+	}
+
+	fileOf(source: string): RojoFile {
+		const reading = this.folder === undefined ? "rojo" : "compiled";
+		return RojoFile.at(source, this.syncRules, reading);
+	}
 }
 
 export interface ResolvedConfigFile {

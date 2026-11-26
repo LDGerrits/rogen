@@ -1,7 +1,6 @@
 import { toPosix } from "../../../base/path.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { Listing } from "../../../platform/fs/index-service.js";
-import { scannedFileOf } from "../../config/resolved-config.js";
 import { PlannedFilesIndex } from "../locate/planned-files-index.js";
 import { abs, configOf } from "./fixtures.js";
 
@@ -16,7 +15,7 @@ describe("PlannedFilesIndex", () => {
 			),
 			config.sourcePaths,
 			[abs("src/New/B.luau")],
-			(source) => scannedFileOf(config, source)
+			(source) => config.compiled.fileOf(source)
 		);
 
 		expect(index.getEntryType(abs("src"), "A.luau")).toBe(FileType.File);
