@@ -25,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A folder such as `Net.client` whose files are routed only by their own `@` or by a marker file further down now gets the rename to `Net@client`. Rogen used to say another route governed it.
 - A dot file named for a route, such as `.client`, inside a folder another route governs no longer gets a rename to `@client`, which would have done nothing there.
 - A mistyped `@` under a route that already governs it, such as `server/Ui@clent/`, is reported as doing nothing there even when no file below it is routed, as it is when one is.
+- `rogen init` now reads the spelling of a route key in a folder name that starts with `^` or sits in parentheses, such as `^Server/` or `(^Server)/`.
 
 ## [2.0.0-rc.2] - 2026-11-23
 

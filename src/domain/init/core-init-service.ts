@@ -26,6 +26,7 @@ import { ConfigService } from "../config/config-service.js";
 import { DEFAULT_PROJECT_FILE } from "../config/config.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { WriteService } from "../write/write-service.js";
+import { isRouteRespelling } from "../write/write.js";
 import { CodeFinder } from "./code-finder.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
@@ -92,16 +93,11 @@ function respelled(from: string, to: string): string {
 	return after.slice(start, end);
 }
 
-const ROUTE_SPELLING_CODES: ReadonlySet<string> = new Set([
-	"route.caseMismatch",
-	"route.strayAt",
-]);
-
 function routeRespellings(
 	diagnostics: readonly Diagnostic[]
 ): RenameFix["rename"][] {
 	return diagnostics
-		.filter(({ code }) => ROUTE_SPELLING_CODES.has(code))
+		.filter(isRouteRespelling)
 		.flatMap(({ fixes }) => (fixes ?? []).filter(isRenameFix))
 		.map(({ rename }) => rename)
 		.filter(({ from, to }) => from.toLowerCase() === to.toLowerCase());

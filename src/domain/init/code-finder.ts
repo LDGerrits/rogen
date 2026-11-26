@@ -6,6 +6,7 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { DEFAULT_SOURCE_PATH } from "../config/config.js";
+import { routeWordsOf } from "../write/write.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import { DetectedWorkspace } from "../toolchain/toolchain.js";
@@ -159,12 +160,13 @@ export class CodeFinder {
 					)
 				)
 					continue;
-				const at = /@([A-Za-z][A-Za-z0-9]*)(?:\.[^@]*)?$/.exec(name);
-				if (at) note(at[1]);
-				if (isDirectoryType(type)) {
-					note(name.replace(/^\((.*)\)$/, "$1"));
-					await visit(path.join(dir, name));
-				}
+				const folder = isDirectoryType(type);
+				for (const word of routeWordsOf(
+					name,
+					folder ? "folder" : "file"
+				))
+					note(word);
+				if (folder) await visit(path.join(dir, name));
 			}
 		};
 		for (const dir of dirs) await visit(path.join(cwd, dir));

@@ -13,6 +13,7 @@ import {
 	SyncWarnings,
 	UnloadedConfig,
 	WrittenConfig,
+	routeWordsOf,
 } from "../write.js";
 import {
 	brokenEntry,
@@ -234,5 +235,22 @@ describe("domain/write/write", () => {
 				abs("arena/src"),
 			]);
 		});
+	});
+});
+
+describe("routeWordsOf", () => {
+	it("should read a folder's whole name inside its parentheses and after its ^, and the word after its @", () => {
+		expect(routeWordsOf("server", "folder")).toEqual(["server"]);
+		expect(routeWordsOf("(^Server)", "folder")).toEqual(["Server"]);
+		expect(routeWordsOf("^(Net@client)", "folder")).toEqual([
+			"Net@client",
+			"client",
+		]);
+	});
+
+	it("should read only the word after a file's last @, before its extensions", () => {
+		expect(routeWordsOf("^Save@Shared.luau", "file")).toEqual(["Shared"]);
+		expect(routeWordsOf("Boot.server.luau", "file")).toEqual([]);
+		expect(routeWordsOf("Lib@1.2.0.luau", "file")).toEqual([]);
 	});
 });
