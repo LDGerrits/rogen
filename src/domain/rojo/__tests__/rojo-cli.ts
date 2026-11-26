@@ -77,3 +77,10 @@ export function classes(node: SourcemapNode, prefix = ""): string[] {
 		...(node.children ?? []).flatMap((child) => classes(child, here)),
 	];
 }
+
+export function built(dir: string, projectFile: string): string {
+	const result = runRojo(dir, ["build", projectFile, "-o", "built.rbxmx"]);
+	expect(result.stderr).toBe("");
+	expect(result.status).toBe(0);
+	return fs.readFileSync(path.join(dir, "built.rbxmx"), "utf8");
+}
