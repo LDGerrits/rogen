@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- `rogen build --watch` and `rogen sourcemap --watch` check the project file against the Rojo that runs each time they write it, as `rogen serve` does. A project that Rojo can't read, such as one with `syncRules` before Rojo 7.5, stops the watch with exit code 1 before Rojo starts, as `rojo build --watch` exits. After Rojo started, it is reported and Rojo keeps running. They used to check only when Rojo started, and kept watching without Rojo.
+
 ### Fixed
 
 - `rogen syncback` no longer moves a `$path` of the config's `tree` when you rename the folder that holds it, which left a project Rojo couldn't build.
