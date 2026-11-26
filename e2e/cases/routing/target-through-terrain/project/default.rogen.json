@@ -1,0 +1,7 @@
+{
+	"name": "game",
+	"routes": {
+		"terrain": "Workspace/Terrain",
+		"*": "ReplicatedStorage/shared"
+	}
+}

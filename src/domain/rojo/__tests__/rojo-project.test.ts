@@ -128,6 +128,90 @@ describe("RojoProject", () => {
 			});
 		});
 
+		it("should give a classless ancestor the factory's class", () => {
+			const project = new RojoProject(
+				{
+					name: "x",
+					tree: {
+						ReplicatedStorage: {
+							shared: { $properties: { Archivable: false } },
+						},
+					},
+				},
+				folders
+			);
+
+			project.insertNodeReplacingFolder(
+				["ReplicatedStorage", "shared", "Foo"],
+				{ $path: "foo.luau" }
+			);
+
+			expect(project.getFile().tree).toEqual({
+				ReplicatedStorage: {
+					shared: {
+						$className: "Folder",
+						$properties: { Archivable: false },
+						Foo: { $path: "foo.luau" },
+					},
+				},
+			});
+		});
+
+		it("should give a classless ancestor only the factory's class", () => {
+			const project = new RojoProject(
+				{ name: "x", tree: { ReplicatedStorage: { shared: {} } } },
+				() => ({ $className: "Folder", $ignoreUnknownInstances: false })
+			);
+
+			project.insertNodeReplacingFolder(
+				["ReplicatedStorage", "shared", "Foo"],
+				{ $path: "foo.luau" }
+			);
+
+			expect(project.getNode(["ReplicatedStorage", "shared"])).toEqual({
+				$className: "Folder",
+				Foo: { $path: "foo.luau" },
+			});
+		});
+
+		it("should leave a classless ancestor whose class Rojo infers", () => {
+			const project = new RojoProject(
+				{ name: "x", tree: { Workspace: { Terrain: {} } } },
+				folders
+			);
+
+			project.insertNodeReplacingFolder(["Workspace", "Terrain", "Foo"], {
+				$path: "foo.luau",
+			});
+
+			expect(project.getFile().tree).toEqual({
+				Workspace: { Terrain: { Foo: { $path: "foo.luau" } } },
+			});
+		});
+
+		it("should leave a service and a mounted ancestor without a class", () => {
+			const project = new RojoProject(
+				{
+					name: "x",
+					tree: {
+						ReplicatedStorage: { shared: { $path: "shared" } },
+					},
+				},
+				folders
+			);
+
+			project.insertNodeReplacingFolder(
+				["ReplicatedStorage", "shared", "Foo"],
+				{ $path: "foo.luau" }
+			);
+
+			expect(project.getFile().tree).toEqual({
+				ReplicatedStorage: {
+					shared: { $path: "shared", Foo: { $path: "foo.luau" } },
+				},
+			});
+		});
+
 		it("should strip a Folder class when a node gets a $path", () => {
 			const project = new RojoProject(baseTree, folders);
 

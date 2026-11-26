@@ -1,0 +1,34 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+
+written:
+  default.project.json
+
+default.project.json:
+{
+  "name": "game",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "shared": {
+        "$className": "Folder",
+        "shop": {
+          "$path": {
+            "optional": "src/shop"
+          }
+        },
+        "$properties": {
+          "Archivable": false
+        }
+      }
+    }
+  }
+}
+
+$ rojo sourcemap default.project.json
+game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      shop: Folder
+        Prices: ModuleScript  <- src/shop/Prices.luau

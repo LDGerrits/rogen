@@ -1,0 +1,14 @@
+{
+	"name": "game",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"shared": {
+				"$properties": { "Archivable": false }
+			}
+		}
+	},
+	"routes": {
+		"*": "ReplicatedStorage/shared"
+	}
+}
