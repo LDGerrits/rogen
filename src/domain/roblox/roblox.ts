@@ -293,7 +293,8 @@ const CLASSES_ROJO_INFERS_BELOW: ReadonlyMap<string, readonly string[]> =
 	]);
 
 export function rojoInfersClassName(instancePath: readonly string[]): boolean {
-	if (instancePath.length !== 2) return instancePath.length === 1;
+	if (instancePath.length === 1) return true;
+	if (instancePath.length !== 2) return false;
 	const [parent, name] = instancePath;
 	return CLASSES_ROJO_INFERS_BELOW.get(parent)?.includes(name) ?? false;
 }

@@ -1,0 +1,13 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+game: DataModel
+  Workspace: Workspace
+    Terrain: Terrain
+      water: Folder
+        Waves: ModuleScript  <- src/water/terrain/Waves.luau

@@ -405,7 +405,7 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 				);
 			} else if (RojoProject.needsClass(next, containerPath)) {
 				setOwn(current, segment, {
-					...this.createContainer(containerPath),
+					$className: this.createContainer(containerPath).$className,
 					...next,
 				});
 			}

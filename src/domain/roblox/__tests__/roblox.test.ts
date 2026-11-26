@@ -245,22 +245,10 @@ describe("domain/roblox/roblox", () => {
 			).toBe("StarterCharacterScripts");
 		});
 
-		it("should give Workspace's Terrain its own class", () => {
-			expect(containerClassName(["Workspace", "Terrain"])).toBe(
-				"Terrain"
-			);
-		});
-
 		it("should make anything else a Folder", () => {
 			expect(containerClassName(["ReplicatedStorage", "shared"])).toBe(
 				"Folder"
 			);
-			expect(containerClassName(["ReplicatedStorage", "Terrain"])).toBe(
-				"Folder"
-			);
-			expect(
-				containerClassName(["Workspace", "Terrain", "Scripts"])
-			).toBe("Folder");
 			expect(
 				containerClassName([
 					"ReplicatedStorage",

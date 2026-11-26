@@ -6,16 +6,9 @@
 			"shared": {
 				"$properties": { "Archivable": false }
 			}
-		},
-		"Workspace": {
-			"Terrain": {
-				"$properties": { "Decoration": true }
-			}
 		}
 	},
 	"routes": {
-		"server": "ServerScriptService",
-		"terrain": "Workspace/Terrain",
 		"*": "ReplicatedStorage/shared"
 	}
 }

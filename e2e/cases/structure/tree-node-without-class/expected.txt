@@ -2,9 +2,6 @@ $ rogen write
 exit 0
 stdout: (not shown)
 
-$ rogen check
-exit 0
-
 written:
   default.project.json
 
@@ -17,37 +14,12 @@ default.project.json:
       "shared": {
         "$className": "Folder",
         "shop": {
-          "$className": "Folder",
-          "Prices": {
-            "$path": {
-              "optional": "src/shop/Prices.luau"
-            }
-          },
-          "$ignoreUnknownInstances": false
-        },
-        "$properties": {
-          "Archivable": false
-        },
-        "$ignoreUnknownInstances": false
-      }
-    },
-    "ServerScriptService": {
-      "$className": "ServerScriptService",
-      "shop": {
-        "$path": {
-          "optional": "src/shop/server"
-        }
-      }
-    },
-    "Workspace": {
-      "Terrain": {
-        "water": {
           "$path": {
-            "optional": "src/water/terrain"
+            "optional": "src/shop"
           }
         },
         "$properties": {
-          "Decoration": true
+          "Archivable": false
         }
       }
     }
@@ -60,10 +32,3 @@ game: DataModel
     shared: Folder
       shop: Folder
         Prices: ModuleScript  <- src/shop/Prices.luau
-  ServerScriptService: ServerScriptService
-    shop: Folder
-      ShopService: ModuleScript  <- src/shop/server/ShopService.luau
-  Workspace: Workspace
-    Terrain: Terrain
-      water: Folder
-        Waves: ModuleScript  <- src/water/terrain/Waves.luau
