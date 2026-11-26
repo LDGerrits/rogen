@@ -1,9 +1,6 @@
 import { DisposableStore } from "../../base/disposable.js";
-import { Result, err, ok } from "../../base/result.js";
-import {
-	ProjectArgument,
-	singleProjectError,
-} from "../../domain/config/config-service.js";
+import { Result, ok } from "../../base/result.js";
+import { ProjectArgument } from "../../domain/config/config-service.js";
 import { ServeEnding, ServeService } from "../../domain/serve/serve-service.js";
 import {
 	AbstractCommand,
@@ -113,12 +110,6 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: ServeLine
 		): Promise<Result<void, Error>> {
-			const tooMany = singleProjectError(
-				"serve",
-				line.positionals,
-				"Serve a second place from a second terminal, as 'rogen serve <project> --port <port>'."
-			);
-			if (tooMany) return err(tooMany);
 			const serveService = accessor.get(ServeService);
 			const logService = accessor.get(LogService);
 			const { cwd } = accessor.get(EnvironmentService);

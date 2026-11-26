@@ -34,8 +34,7 @@ describe("CoreSyncbackService where the file system ignores case", () => {
 		const listedAt = ".rogen-syncback/mirror/ServerScriptService/Inventory";
 		let runs = 0;
 		const rojo = {
-			choose: () => config,
-			run: async () => {
+			runOn: async () => {
 				if (runs++ < 2) {
 					await fs.delete(mirror("Bag.luau")).catch(() => undefined);
 					return ok({

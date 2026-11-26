@@ -28,12 +28,8 @@ export const sourcemapLineShape = S.union(
 export function sourcemapDocument(
 	outcomes: readonly ConfigOutcome[],
 	cwd: string,
-	rojo: RojoEntry
+	rojo: RojoEntry,
+	changed: boolean
 ) {
-	const written = configsDocument(outcomes, cwd);
-	return {
-		changed: written.changed || rojo.outcome === "built",
-		configs: written.configs,
-		rojo,
-	};
+	return { changed, configs: configsDocument(outcomes, cwd).configs, rojo };
 }

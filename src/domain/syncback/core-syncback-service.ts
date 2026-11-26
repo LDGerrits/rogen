@@ -9,7 +9,6 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { WriteService } from "../write/write-service.js";
 import { didWrite } from "../write/write.js";
 import { ConfigSelection } from "../config/config-service.js";
-import { RojoCommandService } from "../runner/rojo-command-service.js";
 import {
 	SyncbackMode,
 	SyncbackOptions,
@@ -67,7 +66,6 @@ export class CoreSyncbackService implements SyncbackService {
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
 		@WriteService private readonly writeService: WriteService,
-		@RojoCommandService private readonly rojoService: RojoCommandService,
 		@InstantiationService
 		private readonly instantiationService: InstantiationService
 	) {}
@@ -80,9 +78,10 @@ export class CoreSyncbackService implements SyncbackService {
 			mode === "dryRun"
 				? await this.writeService.check(selection)
 				: await this.writeService.write(selection);
-		if (write.failure() || selection.requireValid().isErr())
+		const valid = selection.requireValid();
+		if (write.failure() || valid.isErr())
 			return { write, outcome: { kind: "notRun" } };
-		const project = this.rojoService.choose(selection);
+		const [project] = valid.value;
 		const outcome = await this.outcomeOf(
 			{ selection, project, input, cwd },
 			mode

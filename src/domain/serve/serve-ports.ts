@@ -6,9 +6,9 @@ import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
+import { ProcessService } from "../../platform/process/process-service.js";
 import { ConfigService } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
-import { RojoRunner } from "../runner/rojo-runner.js";
 import { RojoServer, ServerInfo } from "../runner/rojo-server.js";
 import { ServeFlags } from "../runner/serve-flags.js";
 import { ServeAddress } from "./serve.js";
@@ -64,7 +64,7 @@ export class ServePorts {
 		private readonly records: ServerRecords,
 		serverArgs: readonly string[],
 		private readonly cwd: string,
-		@RojoRunner private readonly runner: RojoRunner,
+		@ProcessService private readonly processService: ProcessService,
 		@ConfigService private readonly configService: ConfigService
 	) {
 		this.host = ServeFlags.hostIn(serverArgs);
@@ -147,8 +147,9 @@ export class ServePorts {
 
 	private standingOf(record: ServerRecord): RecordStanding {
 		if (record.owner === undefined) return "unowned";
-		if (this.runner.isRunning(record.owner)) return "ours";
-		return record.pid !== undefined && this.runner.isRunning(record.pid)
+		if (this.processService.isRunning(record.owner)) return "ours";
+		return record.pid !== undefined &&
+			this.processService.isRunning(record.pid)
 			? "orphan"
 			: "stale";
 	}

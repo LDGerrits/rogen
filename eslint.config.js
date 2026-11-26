@@ -25,6 +25,7 @@ const modules = {
 		legacy: ["legacy-config"],
 		roblox: ["roblox", "supported-services"],
 		runner: [
+			"rojo-children",
 			"rojo-command-service",
 			"rojo-compatibility",
 			"rojo-runner",
@@ -68,11 +69,8 @@ const modules = {
 			"refresh-agent-rules",
 			"report-rojo",
 			"rojo-entry",
-			"rojo-step",
 			"watch-log",
 			"write-document",
-			"rojo-run",
-			"write-watch",
 		],
 	},
 };
@@ -114,7 +112,7 @@ const domainDependencies = {
 	init: ["write", "config", "roblox", "rojo", "runner", "toolchain"],
 	legacy: ["config", "init", "roblox"],
 	roblox: [],
-	runner: ["config", "rojo", "toolchain"],
+	runner: ["write", "config", "rojo", "toolchain", "watch"],
 	rojo: ["roblox"],
 	serve: ["write", "config", "runner", "watch"],
 	syncback: ["write", "config", "roblox", "rojo", "runner"],

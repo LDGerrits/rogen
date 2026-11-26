@@ -8,6 +8,7 @@ import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
+import { ProcessService } from "../../../platform/process/process-service.js";
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { writeServiceOf } from "../../write/__tests__/fixtures.js";
@@ -103,6 +104,7 @@ describe("CoreServeService", () => {
 			[Watcher, watcher],
 			[WriteService, writeServiceOf(memFs, index)],
 			[RojoRunner, rojoRunnerOf(memFs, processes)],
+			[ProcessService, processes],
 			[WatchService, new SyncDescriptor(CoreWatchService)]
 		);
 		return services.createInstance(CoreServeService);
@@ -1834,7 +1836,7 @@ describe("CoreServeService", () => {
 				);
 			});
 
-			it("should serve a config that takes the place of another while it checks the Rojo that runs", async () => {
+			it("should serve only the config that took the place of another while it checked the Rojo that runs", async () => {
 				const checked = new DeferredPromise<void>();
 				const problemsIn = RojoCompatibility.prototype.problemsIn;
 				jest.spyOn(
@@ -1856,11 +1858,8 @@ describe("CoreServeService", () => {
 				await settle();
 
 				expect(ended).toBeUndefined();
-				expect(spawnedProjects()).toEqual([
-					"default.project.json (ended)",
-					"default.project.json",
-				]);
-				expect(changes).toEqual(["retired repo (removed)"]);
+				expect(spawnedProjects()).toEqual(["default.project.json"]);
+				expect(changes).toEqual([]);
 				expect(session.target?.config.label).toBe("Lobby");
 			});
 
@@ -2080,33 +2079,6 @@ describe("CoreServeService", () => {
 
 			expect(await ending).toEqual({ kind: "shutdown" });
 			expect(processes.spawned).toEqual([]);
-		});
-
-		it("should start the server of the other config when the first write of the config it serves fails", async () => {
-			await memFs.writeFile(
-				"/repo/default.rogen.json",
-				config({
-					routes: {
-						server: "ServerScriptService",
-						client: "StarterPlayer/StarterPlayerScripts",
-						"*": "ReplicatedStorage",
-					},
-				})
-			);
-			await memFs.writeFile("/repo/src/X/@server", "");
-			await memFs.writeFile("/repo/src/X/@client", "");
-			await memFs.writeFile("/repo/lobby/src/L.luau", "");
-			await memFs.writeFile(
-				"/repo/lobby/default.rogen.json",
-				config({ name: "Lobby", servePort: 34900 })
-			);
-
-			await start({ refs: [".", "lobby"] });
-
-			expect(ended).toBeUndefined();
-			expect(processes.spawned.map(({ args }) => args)).toEqual([
-				["serve", "lobby/default.project.json", "--port", "34900"],
-			]);
 		});
 
 		it("should report a write that throws once its server runs, and keep serving", async () => {

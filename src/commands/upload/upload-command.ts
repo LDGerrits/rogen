@@ -1,9 +1,7 @@
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import {
-	ProjectArgument,
-	singleProjectError,
-} from "../../domain/config/config-service.js";
+import { ProjectArgument } from "../../domain/config/config-service.js";
+import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
@@ -17,10 +15,9 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { rojoEntry } from "../write/rojo-entry.js";
-import { RojoRun } from "../write/rojo-run.js";
+import { OutcomeLog } from "../write/outcome-log.js";
+import { RojoTarget, rojoEntry } from "../write/rojo-entry.js";
 import { uploadDocument, uploadDocumentShape } from "./upload-document.js";
-import { UploadStep } from "./upload-step.js";
 
 const AssetIdOption = {
 	name: "asset_id",
@@ -94,8 +91,45 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof UploadOptions>
 		): Promise<Result<void, Error>> {
-			const tooMany = singleProjectError("upload", line.positionals);
-			if (tooMany) return err(tooMany);
+			const logService = accessor.get(LogService);
+			const cwd = accessor.get(EnvironmentService).cwd;
+			const instantiationService = accessor.get(InstantiationService);
+			const rojoCommandService = accessor.get(RojoCommandService);
+			const target: RojoTarget = {
+				command: "upload",
+				cwd,
+				asset: line.options.asset_id,
+			};
+			const done = await rojoCommandService.run({
+				refs: line.positionals,
+				command: "upload",
+				flags: this.rojoFlags(line),
+				cwd,
+			});
+			if (done.isErr()) return done;
+			for (const note of done.value.notes) logService.warn(note);
+			const { written, failure, ran, rojoFailure, changed } = done.value;
+			if (line.options.json)
+				return this.printJson(
+					logService,
+					uploadDocument(
+						written.outcomes,
+						cwd,
+						rojoEntry(target, ran),
+						changed
+					),
+					failure ?? rojoFailure
+				);
+			instantiationService
+				.createInstance(OutcomeLog, cwd)
+				.rojoRun(done.value, target);
+			if (rojoFailure) return err(rojoFailure);
+			return failure ? this.reported(failure) : ok(undefined);
+		}
+
+		private rojoFlags(
+			line: CommandLine<typeof UploadOptions>
+		): Result<readonly string[], UsageError> {
 			const { asset_id, api_key, universe_id, cookie } = line.options;
 			if (asset_id === undefined)
 				return err(
@@ -103,45 +137,14 @@ registerCommand(
 						"--asset_id names the place or model to upload to, and Rojo needs it."
 					)
 				);
-			const flags = [
+			return ok([
 				`--asset_id=${asset_id}`,
 				...(api_key === undefined ? [] : [`--api_key=${api_key}`]),
 				...(universe_id === undefined
 					? []
 					: [`--universe_id=${universe_id}`]),
 				...(cookie === undefined ? [] : [`--cookie=${cookie}`]),
-			];
-			const logService = accessor.get(LogService);
-			const cwd = accessor.get(EnvironmentService).cwd;
-			const instantiationService = accessor.get(InstantiationService);
-			const step = instantiationService.createInstance(
-				UploadStep,
-				flags,
-				cwd,
-				asset_id
-			);
-			const rojoRun = instantiationService.createInstance(
-				RojoRun,
-				line.positionals,
-				step,
-				cwd
-			);
-			const done = await rojoRun.run();
-			if (done.isErr()) return done;
-			const { written, failure, ran, rojoFailure } = done.value;
-			if (line.options.json)
-				return this.printJson(
-					logService,
-					uploadDocument(
-						written.outcomes,
-						cwd,
-						rojoEntry(step.target, ran)
-					),
-					failure ?? rojoFailure
-				);
-			rojoRun.report(done.value);
-			if (rojoFailure) return err(rojoFailure);
-			return failure ? this.reported(failure) : ok(undefined);
+			]);
 		}
 	}
 );

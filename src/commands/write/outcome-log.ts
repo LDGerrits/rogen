@@ -13,6 +13,14 @@ import {
 	DiagnosticSeverity,
 } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
+import { RojoRunOutcome } from "../../domain/runner/rojo-command-service.js";
+import { ServerMessage } from "../../domain/runner/rojo-server.js";
+import {
+	reportRojo,
+	reportRojoBesideFailure,
+	rojoDone,
+} from "./report-rojo.js";
+import { RojoTarget } from "./rojo-entry.js";
 
 const LISTED_PER_CODE = 10;
 
@@ -272,6 +280,34 @@ export class OutcomeLog {
 				quiet: quiet || outcome.kind === "wouldWrite",
 			});
 		}
+	}
+
+	rojoRun(
+		{ home, project, written, ran, rojoFailure }: RojoRunOutcome,
+		target: RojoTarget,
+		{
+			prints = false,
+			shown = (messages) => messages,
+		}: {
+			readonly prints?: boolean;
+			readonly shown?: (
+				messages: readonly ServerMessage[]
+			) => readonly ServerMessage[];
+		} = {}
+	): void {
+		const { command } = target;
+		this.outcomes(written, home, command);
+		if (ran?.isOk())
+			(rojoFailure ? reportRojoBesideFailure : reportRojo)(
+				this.logService,
+				shown(ran.value.messages),
+				this.cwd
+			);
+		if (project === undefined || !prints)
+			this.close(written, command, true, {
+				said: rojoDone(target, this.cwd),
+				failed: rojoFailure !== undefined,
+			});
 	}
 
 	close(

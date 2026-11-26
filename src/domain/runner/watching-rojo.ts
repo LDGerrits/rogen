@@ -3,11 +3,7 @@ import { Emitter, Event } from "../../base/event.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
-import {
-	RojoCommandRun,
-	RojoWatch,
-	RojoWatchExitEvent,
-} from "./rojo-command-service.js";
+import { RojoCommandRun } from "./rojo-command-service.js";
 import {
 	RojoRestartEvent,
 	SupervisedExitEvent,
@@ -17,7 +13,11 @@ import {
 } from "./rojo-runner.js";
 import { RojoServer, ServerMessage } from "./rojo-server.js";
 
-export class WatchingRojo extends AbstractDisposable implements RojoWatch {
+export interface RojoWatchExitEvent {
+	readonly failure?: DiagnosticsError;
+}
+
+export class WatchingRojo extends AbstractDisposable {
 	private readonly _onDidRun = this._register(new Emitter<RojoCommandRun>());
 	readonly onDidRun: Event<RojoCommandRun> = this._onDidRun.event;
 

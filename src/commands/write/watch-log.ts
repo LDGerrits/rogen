@@ -19,8 +19,14 @@ import {
 	diagnosticToJson,
 	failureToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
-import { RojoCommandRun } from "../../domain/runner/rojo-command-service.js";
-import { Result } from "../../base/result.js";
+import {
+	RojoCommandRun,
+	RojoCommandService,
+	RojoRunRequest,
+} from "../../domain/runner/rojo-command-service.js";
+import { Result, err, ok } from "../../base/result.js";
+import { DisposableStore } from "../../base/disposable.js";
+import { ReportedError } from "../../platform/commands/commands.js";
 import {
 	reportRojo,
 	reportRojoBesideFailure,
@@ -253,6 +259,44 @@ export class WatchLog implements WatchReporter {
 	}
 }
 
+export class RojoWatchReport {
+	constructor(
+		private readonly log: WatchReporter,
+		private readonly target: RojoTarget,
+		@LogService private readonly logService: LogService,
+		@RojoCommandService
+		private readonly rojoCommandService: RojoCommandService
+	) {}
+
+	async run(
+		request: RojoRunRequest,
+		shutdown: AbortSignal,
+		store: DisposableStore
+	): Promise<Result<void, Error>> {
+		const { log, target } = this;
+		const watched = await this.rojoCommandService.watch(request);
+		if (watched.isErr()) return watched;
+		const watch = store.add(watched.value);
+		for (const note of watch.notes) this.logService.warn(note);
+		if (shutdown.aborted) return ok(undefined);
+		log.begin(watch.configs, watch.home);
+		store.add(watch.onDidUpdate((update) => log.update(update)));
+		store.add(watch.onDidError((error) => log.error(error)));
+		store.add(watch.onDidRun((ran) => log.rojo(ran, target)));
+		store.add(watch.onDidRestart(() => log.restarted()));
+		const ended = await watch.run(shutdown);
+		if (ended.isErr()) return ended;
+		if (ended.value.kind === "stopped") {
+			log.end();
+			return ok(undefined);
+		}
+		const { error } = ended.value;
+		log.error(error);
+		log.end(`${target.command} --watch failed.`);
+		return err(new ReportedError(error));
+	}
+}
+
 export class PrintedWatchLog extends WatchLog {
 	override begin(): void {}
 
@@ -262,6 +306,9 @@ export class PrintedWatchLog extends WatchLog {
 		ran: Result<RojoCommandRun, Error>,
 		target: RojoTarget
 	): void {
+		if (ran.isOk())
+			for (const { stdout } of ran.value.messages)
+				if (stdout !== undefined) this.logService.print(stdout);
 		if (ran.isErr() || ran.value.failure) return super.rojo(ran, target);
 		reportRojo(
 			this.logService,

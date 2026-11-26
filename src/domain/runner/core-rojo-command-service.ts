@@ -4,22 +4,32 @@ import { Result, err, ok } from "../../base/result.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ProcessExit } from "../../platform/process/process-service.js";
-import { ConfigSelection } from "../config/config-service.js";
+import {
+	ConfigSelection,
+	ConfigService,
+	ReloadableSelection,
+	singleProjectError,
+} from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
+import { WatchService } from "../watch/watch-service.js";
+import { didWrite } from "../write/write.js";
+import { WriteService } from "../write/write-service.js";
 import {
 	RojoBareRequest,
 	RojoBareRun,
 	RojoCommandRequest,
 	RojoCommandRun,
 	RojoCommandService,
-	RojoWatch,
-	RojoWatchRequest,
+	RojoRunOutcome,
+	RojoRunRequest,
+	RojoRunWatch,
 } from "./rojo-command-service.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { RojoCompatibility } from "./rojo-compatibility.js";
 import { RojoVersion } from "./rojo-version.js";
 import { RojoRunner, ServerExecutable, exitHow } from "./rojo-runner.js";
 import { RojoServer, ServerMessage } from "./rojo-server.js";
+import { WatchedRojoRun } from "./watched-rojo-run.js";
 import { WatchingRojo } from "./watching-rojo.js";
 
 interface RojoFailure {
@@ -43,13 +53,116 @@ export class CoreRojoCommandService implements RojoCommandService {
 
 	constructor(
 		@RojoRunner private readonly rojoRunner: RojoRunner,
-		@InstantiationService instantiationService: InstantiationService
+		@ConfigService private readonly configService: ConfigService,
+		@WriteService private readonly writeService: WriteService,
+		@WatchService private readonly watchService: WatchService,
+		@InstantiationService
+		private readonly instantiationService: InstantiationService
 	) {
 		this.compatibility =
 			instantiationService.createInstance(RojoCompatibility);
 	}
 
-	async run(
+	async run(request: RojoRunRequest): Promise<Result<RojoRunOutcome, Error>> {
+		const entered = await this.enter(request);
+		if (entered.isErr()) return entered;
+		const { selection, flags } = entered.value;
+		const valid = selection.requireValid();
+		const project = valid.isOk() ? valid.value[0] : undefined;
+		const written = await this.writeService.write(selection);
+		const failure = written.failure();
+		const ran =
+			failure || project === undefined
+				? undefined
+				: await this.runOn(selection, {
+						command: request.command,
+						flags,
+						cwd: request.cwd,
+						project,
+						signal: request.signal,
+					});
+		const rojoFailure =
+			ran === undefined
+				? undefined
+				: ran.isErr()
+					? ran.error
+					: ran.value.failure;
+		const built = ran?.isOk() === true && rojoFailure === undefined;
+		return ok({
+			home: selection.home,
+			notes: selection.notes,
+			project,
+			written,
+			failure,
+			ran,
+			rojoFailure,
+			changed:
+				written.outcomes.some(didWrite) ||
+				(request.command !== "upload" && built),
+		});
+	}
+
+	async watch(request: RojoRunRequest): Promise<Result<RojoRunWatch, Error>> {
+		const entered = await this.enter(request);
+		if (entered.isErr()) return entered;
+		const { selection, flags } = entered.value;
+		const watched = this.watchService.watch(selection);
+		if (watched.isErr()) return watched;
+		const { command, cwd } = request;
+		return ok(
+			this.instantiationService.createInstance(
+				WatchedRojoRun,
+				selection,
+				watched.value,
+				{
+					find: (project: ResolvedConfig, signal?: AbortSignal) =>
+						this.rojoRunner.find(
+							selection.home,
+							project.file,
+							signal
+						),
+					problemsIn: (
+						executable: ServerExecutable,
+						projectFiles: readonly string[]
+					) =>
+						this.compatibility.problemsIn(
+							executable,
+							projectFiles,
+							command
+						),
+					watch: (
+						executable: ServerExecutable,
+						project: ResolvedConfig,
+						beforeRestart: () => Promise<void>
+					) =>
+						this.watching(
+							executable,
+							{ command, flags, cwd, project },
+							beforeRestart
+						),
+				}
+			)
+		);
+	}
+
+	private async enter(request: RojoRunRequest): Promise<
+		Result<
+			{
+				selection: ReloadableSelection;
+				flags: readonly string[];
+			},
+			Error
+		>
+	> {
+		const tooMany = singleProjectError(request.command, request.refs);
+		if (tooMany) return err(tooMany);
+		if (request.flags.isErr()) return request.flags;
+		const selection = await this.configService.selectForRojo(request.refs);
+		if (selection.isErr()) return selection;
+		return ok({ selection: selection.value, flags: request.flags.value });
+	}
+
+	async runOn(
 		selection: ConfigSelection,
 		request: RojoCommandRequest
 	): Promise<Result<RojoCommandRun, Error>> {
@@ -79,36 +192,31 @@ export class CoreRojoCommandService implements RojoCommandService {
 		});
 	}
 
-	async watch(
-		selection: ConfigSelection,
-		request: RojoWatchRequest
-	): Promise<Result<RojoWatch, Error>> {
-		const prepared = await this.prepare(selection, request);
-		if (prepared.isErr()) return prepared;
-		if (request.signal?.aborted)
-			return err(new Error("The watch stopped before Rojo started."));
-		const { project, executable, projectFile } = prepared.value;
-		return ok(
-			new WatchingRojo(
-				project,
-				this.rojoRunner.supervise(
-					() =>
-						this.rojoRunner.start(
-							executable,
-							request.command,
-							path.relative(request.cwd, projectFile),
-							[...request.flags, "--watch"],
-							request.cwd,
-							true
-						),
-					{ beforeRestart: request.beforeRestart }
-				),
-				(said) =>
-					this.commandFailure(request.command, project, {
-						how: "an error",
-						said,
-					})
-			)
+	private watching(
+		executable: ServerExecutable,
+		request: RojoCommandRequest,
+		beforeRestart: () => Promise<void>
+	): WatchingRojo {
+		const { command, project, cwd } = request;
+		return new WatchingRojo(
+			project,
+			this.rojoRunner.supervise(
+				() =>
+					this.rojoRunner.start(
+						executable,
+						command,
+						path.relative(cwd, project.projectFile),
+						[...request.flags, "--watch"],
+						cwd,
+						true
+					),
+				{ beforeRestart }
+			),
+			(said) =>
+				this.commandFailure(command, project, {
+					how: "an error",
+					said,
+				})
 		);
 	}
 
@@ -127,7 +235,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 	> {
 		const valid = selection.requireValid();
 		if (valid.isErr()) return valid;
-		const project = request.project ?? this.choose(selection);
+		const { project } = request;
 
 		const executable = await this.rojoRunner.find(
 			selection.home,
@@ -289,9 +397,5 @@ export class CoreRojoCommandService implements RojoCommandService {
 			failure: { how: exitHow(exit), said },
 			refusedArguments,
 		};
-	}
-
-	choose(selection: ConfigSelection): ResolvedConfig {
-		return selection.configs[0];
 	}
 }
