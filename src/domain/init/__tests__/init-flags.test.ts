@@ -4,6 +4,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { InitQuestions } from "../init-questions.js";
 import { InitChoices } from "../init-service.js";
+import { NewStarter } from "../new-starter.js";
 import { SampleGame } from "../sample-game.js";
 import { WorkspaceSpec, directory, directoryOf } from "./init-fixtures.js";
 import { questionsOf } from "./init-of.js";
@@ -36,6 +37,12 @@ async function run(
 	const asked = await setup.ask();
 	return { questions, prompts, asked };
 }
+
+const starterOf = (asked: Awaited<ReturnType<typeof run>>["asked"]) => {
+	const project = asked.unwrap();
+	if (!(project instanceof NewStarter)) throw new Error("No new starter.");
+	return project;
+};
 
 const decidedFlags = (questions: InitQuestions) =>
 	questions.decided.map(({ flag }) => flag);
@@ -87,9 +94,9 @@ describe("init choices given as flags", () => {
 
 			expect(prompts.asked).toEqual([]);
 			expect(questions.decided).toEqual([]);
-			expect(asked.unwrap()?.mounts.map(({ path }) => path)).toEqual([
-				"Packages",
-			]);
+			expect(asked.unwrap()?.code.mounts.map(({ path }) => path)).toEqual(
+				["Packages"]
+			);
 		});
 	});
 
@@ -97,12 +104,12 @@ describe("init choices given as flags", () => {
 		const fileNames = async (choices: InitChoices) =>
 			(await run(luau, choices)).asked
 				.unwrap()
-				?.templateFiles?.map(({ fileName }) => fileName);
+				?.writes.files.map(({ fileName }) => fileName);
 
 		it("should write the Greeter sample and Rojo's game in an empty folder", async () => {
 			const { asked } = await run(luau, {});
 
-			expect(asked.unwrap()?.sample).toBe(true);
+			expect(starterOf(asked).game).toBeDefined();
 			expect(asked.unwrap()?.tree).toEqual({
 				kind: "new",
 				game: new SampleGame(),
@@ -119,7 +126,7 @@ describe("init choices given as flags", () => {
 		it("should write none with --no-sample, and say nothing about it", async () => {
 			const { asked, questions } = await run(luau, { sample: false });
 
-			expect(asked.unwrap()?.sample).toBe(false);
+			expect(starterOf(asked).game).toBeUndefined();
 			expect(asked.unwrap()?.tree).toEqual({ kind: "new" });
 			expect(await fileNames({ sample: false })).toEqual([".gitignore"]);
 			expect(decidedFlags(questions)).not.toContain("--no-sample");
@@ -131,22 +138,22 @@ describe("init choices given as flags", () => {
 				{}
 			);
 
-			expect(asked.unwrap()?.sample).toBe(false);
+			expect(starterOf(asked).game).toBeUndefined();
 			expect(decidedFlags(questions)).not.toContain("--no-sample");
 		});
 
 		it("should write it in a new roblox-ts project, whose starter tool sets the folder up", async () => {
 			const { asked } = await run(luau, { language: "roblox-ts" });
 
-			expect(asked.unwrap()?.sample).toBe(true);
-			expect(asked.unwrap()?.scaffold?.tool.command.file).toBe("npm");
+			expect(starterOf(asked).game).toBeDefined();
+			expect(starterOf(asked).scaffold?.tool.command.file).toBe("npm");
 		});
 
 		it("should write none where roblox-ts is set up already", async () => {
 			const { asked } = await run(rbxts, {});
 
-			expect(asked.unwrap()?.sample).toBe(false);
-			expect(asked.unwrap()?.scaffold).toBeUndefined();
+			expect(starterOf(asked).game).toBeUndefined();
+			expect(starterOf(asked).scaffold).toBeUndefined();
 		});
 	});
 
@@ -154,7 +161,7 @@ describe("init choices given as flags", () => {
 		it("should take a language the workspace offers", async () => {
 			const { asked } = await run(luau, { language: "roblox-ts" });
 
-			expect(asked.unwrap()?.language.id).toBe("roblox-ts");
+			expect(asked.unwrap()?.code.language.id).toBe("roblox-ts");
 		});
 
 		it("should refuse another, naming the languages with the closest first", async () => {

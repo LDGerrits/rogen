@@ -13,7 +13,6 @@ import { IndexReader } from "../../platform/fs/index-service.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { ResolvedConfig, scannedFileOf } from "../config/resolved-config.js";
 import { RojoFile } from "../rojo/rojo.js";
-import { SyncRules } from "../rojo/sync-rules.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import { LeftOut } from "./write.js";
 import { WriteTree } from "./write-tree.js";
@@ -28,7 +27,7 @@ import {
 import { RootClaims } from "./dir-claims.js";
 import { MarkerClashes } from "./marker-clashes.js";
 import { CompiledLayout } from "./compiled-layout.js";
-import { InstanceResolver, initRank } from "./instance-resolver.js";
+import { InstanceResolver } from "./instance-resolver.js";
 import { DisplacedFile, LeftOutPaths, Placement } from "./placement.js";
 
 export class Placer {
@@ -181,17 +180,14 @@ export class Placer {
 		source: string,
 		nodes: readonly RoutedFile[]
 	): string | undefined {
-		const file = new RojoFile(
-			path.posix.basename(source),
-			SyncRules.DEFAULT
-		);
-		if (!file.isInit) return undefined;
+		const name = path.posix.basename(source);
+		if (!RojoFile.INIT_FILES.has(name)) return undefined;
 		const dir = path.posix.dirname(source);
 		return nodes.find(
 			(node) =>
 				node.init?.sitsIn === dir &&
 				node.entry.file.isInit &&
-				initRank(node.entry.file) > initRank(file)
+				node.entry.file.initOrder < RojoFile.initOrderOf(name)
 		)?.entry.source;
 	}
 

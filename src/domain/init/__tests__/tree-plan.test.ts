@@ -1,13 +1,12 @@
-import { ProjectChoices } from "../project-setup.js";
+import { withRobloxTs } from "../../toolchain/__tests__/workspaces.js";
 import { WorkspaceSpec } from "./init-fixtures.js";
 import {
 	LUAU_ROUTES,
+	ProjectSpec,
 	luau,
 	withPackages,
 	mounts,
-	defaultProjectChoices,
-	lifted,
-	planProject,
+	lifting,
 	plan,
 	treeOf,
 	configOf,
@@ -16,29 +15,21 @@ import {
 describe("TreePlan", () => {
 	describe("tree", () => {
 		it("should write a DataModel that mounts the packages when mounts were detected", async () => {
-			const config = configOf(await plan({ ...luau, ...withPackages }));
+			const config = configOf(
+				await plan({ workspace: { ...luau, ...withPackages } })
+			);
 
 			expect(config.tree).toEqual({ $className: "DataModel", ...mounts });
 		});
 
 		it("should write a bare DataModel when nothing was mounted", async () => {
-			expect(configOf(await plan(luau)).tree).toEqual({
+			expect(configOf(await plan()).tree).toEqual({
 				$className: "DataModel",
 			});
 		});
 
-		const lift = async (
-			content: string | object,
-			overrides: Partial<ProjectChoices> = {}
-		) =>
-			planProject({
-				choices: {
-					...(await defaultProjectChoices(luau)),
-					tree: lifted(content),
-					...overrides,
-				},
-				existingFiles: new Set(["default.project.json"]),
-			}).unwrap();
+		const lift = (content: string | object, spec: ProjectSpec = {}) =>
+			plan(lifting(content, spec));
 
 		it("should lift the name, tree and other Rojo keys of a hand-written project file", async () => {
 			const files = await lift({
@@ -129,24 +120,10 @@ describe("TreePlan", () => {
 				},
 			};
 
-			const planDerived = async (
+			const planDerived = (
 				content: object,
-				holdingInit: readonly string[] = []
-			) => {
-				const choices = await defaultProjectChoices(luau);
-				const whole = lifted({ name: "my-game", tree: content });
-				const project =
-					whole.kind === "lift"
-						? {
-								...whole,
-								project: whole.project.withInitIn(holdingInit),
-							}
-						: whole;
-				return planProject({
-					choices: { ...choices, tree: project },
-					existingFiles: new Set(["default.project.json"]),
-				}).unwrap();
-			};
+				files: Readonly<Record<string, string>> = {}
+			) => lift({ name: "my-game", tree: content }, { files });
 
 			it("should write routes that put each folder where the project file had it", async () => {
 				const files = await planDerived(tree);
@@ -227,7 +204,7 @@ describe("TreePlan", () => {
 						},
 						ReplicatedStorage: { Shared: { $path: "src/shared" } },
 					},
-					["src/server"]
+					{ "src/server/init.luau": "", "src/shared/Util.luau": "" }
 				);
 
 				expect(configOf(files).tree).toEqual({
@@ -336,28 +313,17 @@ describe("TreePlan", () => {
 				]);
 			});
 
-			it("should name each source path it couldn't route, and the first one's folder, dot and all, for its marker file", async () => {
-				const choices = await defaultProjectChoices(luau);
-				const files = planProject({
-					choices: {
-						...choices,
-						sourcePaths: ["src", "lib.v2"],
-						tree: lifted({
-							name: "my-game",
-							tree: {
-								$className: "DataModel",
-								Custom: {
-									Library: { $path: "lib.v2" },
-									Common: { $path: "src" },
-								},
-							},
-						}),
+			it("should name the source path it couldn't route, and its folder, dot and all, for its marker file", async () => {
+				const files = await planDerived(
+					{
+						$className: "DataModel",
+						Custom: { Library: { $path: "lib.v2" } },
 					},
-					existingFiles: new Set(["default.project.json"]),
-				}).unwrap();
+					{ "lib.v2/Main.server.luau": "" }
+				);
 
 				expect(files.notes).toContain(
-					"Couldn't route Custom/Library or Custom/Common, and a mount of a whole source path can't stay in the tree: no service holds the node it lands on. Give each folder a marker file such as lib.v2/@server, or move them up into a source path."
+					"Couldn't route Custom/Library, and a mount of a whole source path can't stay in the tree: no service holds the node it lands on. Give its folder a marker file such as lib.v2/@server, or move it up into a source path."
 				);
 			});
 
@@ -375,6 +341,23 @@ describe("TreePlan", () => {
 					expect.stringContaining("Add your own routes")
 				);
 				expect(files.liftedFrom).toBe("default.project.json");
+			});
+
+			it("should name each node it couldn't route", async () => {
+				const files = await planDerived(
+					{
+						$className: "DataModel",
+						Custom: {
+							Library: { $path: "lib.v2" },
+							Common: { $path: "lib.v2" },
+						},
+					},
+					{ "lib.v2/Main.server.luau": "" }
+				);
+
+				expect(files.notes).toContain(
+					"Couldn't route Custom/Library or Custom/Common, and a mount of a whole source path can't stay in the tree: no service holds the node it lands on. Give each folder a marker file such as lib.v2/@server, or move them up into a source path."
+				);
 			});
 
 			it("should say nothing about mounts it did route", async () => {
@@ -397,7 +380,13 @@ describe("TreePlan", () => {
 						},
 					},
 				},
-				{ processed: { folder: "build", config: ".darklua.json" } }
+				{
+					workspace: { ...luau, darkluaConfig: ".darklua.json" },
+					files: {
+						"src/server/Main.server.luau": "",
+						"build/server/Main.server.luau": "",
+					},
+				}
 			);
 
 			expect(files.notes[1]).toBe(
@@ -406,27 +395,18 @@ describe("TreePlan", () => {
 		});
 
 		it("should leave out of a lifted tree the nodes that point into the compiled path", async () => {
-			const files = planProject({
-				choices: {
-					...(await defaultProjectChoices({
-						...luau,
-						language: "roblox-ts",
-					})),
-					tree: lifted({
-						name: "my-game",
-						tree: {
-							$className: "DataModel",
-							ServerScriptService: {
-								TS: { $path: "out/server" },
-							},
-						},
-					}),
-					mounts: [],
+			const files = await lift(
+				{
+					name: "my-game",
+					tree: {
+						$className: "DataModel",
+						ServerScriptService: { TS: { $path: "out/server" } },
+					},
 				},
-				existingFiles: new Set(["default.project.json"]),
-			}).unwrap();
+				{ workspace: { ...luau, language: "roblox-ts" } }
+			);
 
-			expect(configOf(files).tree).toEqual({
+			expect(configOf(files).tree).toMatchObject({
 				$className: "DataModel",
 				ServerScriptService: {},
 			});
@@ -436,21 +416,16 @@ describe("TreePlan", () => {
 		});
 
 		it("should write routes for the nodes it leaves out that point into the compiled path", async () => {
-			const tsChoices = await defaultProjectChoices({
-				...luau,
-				language: "roblox-ts",
-			});
-			const project = lifted({
-				name: "my-game",
-				tree: {
-					$className: "DataModel",
-					ServerScriptService: { TS: { $path: "out/server" } },
+			const files = await lift(
+				{
+					name: "my-game",
+					tree: {
+						$className: "DataModel",
+						ServerScriptService: { TS: { $path: "out/server" } },
+					},
 				},
-			});
-			const files = planProject({
-				choices: { ...tsChoices, tree: project, mounts: [] },
-				existingFiles: new Set(["default.project.json"]),
-			}).unwrap();
+				{ workspace: { ...luau, language: "roblox-ts" } }
+			);
 
 			expect(configOf(files).routes).toMatchObject({
 				server: "ServerScriptService/TS",
@@ -473,12 +448,17 @@ describe("TreePlan", () => {
 			const tree = { Shared: { $path: "shared" } };
 			const files = await lift(
 				{ name: "my-game", tree },
-				{ sourcePaths: ["."] }
+				{
+					workspace: withRobloxTs(
+						{ ...luau, language: "roblox-ts" },
+						{ sourcePath: "." }
+					),
+				}
 			);
 
-			expect(configOf(files).tree).toEqual(tree);
+			expect(configOf(files).tree).toMatchObject(tree);
 			expect(files.nextSteps.edits[0]).toBe(
-				"Remove the nodes in the tree of default.rogen.json that point into .; Rogen generates those now."
+				"Remove the nodes in the tree of default.rogen.json that point into . or out; Rogen generates those now."
 			);
 		});
 
@@ -488,10 +468,13 @@ describe("TreePlan", () => {
 			expect(configOf(files).tree).toEqual({ $className: "DataModel" });
 		});
 
-		const liftWithMounts = async (
-			content: object,
-			mountList: ProjectChoices["mounts"]
-		) => lift(content, { mounts: mountList });
+		const wally: WorkspaceSpec = {
+			packageManager: "wally",
+			packageDirs: ["Packages", "ServerPackages"],
+		};
+		const rbxts: WorkspaceSpec = { language: "roblox-ts" };
+		const liftWithMounts = (content: object, workspace: WorkspaceSpec) =>
+			lift(content, { workspace });
 
 		it("should add the chosen package mounts a lifted tree lacks", async () => {
 			const files = await liftWithMounts(
@@ -502,16 +485,7 @@ describe("TreePlan", () => {
 						ReplicatedStorage: { Assets: { $path: "assets" } },
 					},
 				},
-				[
-					{
-						path: "Packages",
-						landing: "ReplicatedStorage/Packages",
-					},
-					{
-						path: "ServerPackages",
-						landing: "ServerScriptService/ServerPackages",
-					},
-				]
+				wally
 			);
 
 			expect(configOf(files).tree).toEqual({
@@ -530,17 +504,10 @@ describe("TreePlan", () => {
 		});
 
 		it("should name every mount it adds under one node", async () => {
-			const files = await liftWithMounts({ name: "my-game", tree: {} }, [
-				{
-					path: "include",
-					landing: "ReplicatedStorage/rbxts_include",
-				},
-				{
-					path: "node_modules/@rbxts",
-					landing:
-						"ReplicatedStorage/rbxts_include/node_modules/@rbxts",
-				},
-			]);
+			const files = await liftWithMounts(
+				{ name: "my-game", tree: {} },
+				rbxts
+			);
 
 			expect(files.notes[1]).toBe(
 				"Added include at ReplicatedStorage/rbxts_include and node_modules/@rbxts at ReplicatedStorage/rbxts_include/node_modules/@rbxts to default.rogen.json."
@@ -555,16 +522,10 @@ describe("TreePlan", () => {
 					Server: { $path: "ServerPackages" },
 				},
 			};
-			const files = await liftWithMounts({ name: "my-game", tree }, [
-				{
-					path: "Packages",
-					landing: "ReplicatedStorage/Packages",
-				},
-				{
-					path: "ServerPackages",
-					landing: "ServerScriptService/ServerPackages",
-				},
-			]);
+			const files = await liftWithMounts(
+				{ name: "my-game", tree },
+				wally
+			);
 
 			expect(configOf(files).tree).toEqual(tree);
 			expect(files.notes).toHaveLength(1);
@@ -580,17 +541,10 @@ describe("TreePlan", () => {
 					},
 				},
 			};
-			const files = await liftWithMounts({ name: "my-game", tree }, [
-				{
-					path: "include",
-					landing: "ReplicatedStorage/rbxts_include",
-				},
-				{
-					path: "node_modules/@rbxts",
-					landing:
-						"ReplicatedStorage/rbxts_include/node_modules/@rbxts",
-				},
-			]);
+			const files = await liftWithMounts(
+				{ name: "my-game", tree },
+				rbxts
+			);
 
 			expect(configOf(files).tree).toEqual(tree);
 		});
@@ -600,12 +554,10 @@ describe("TreePlan", () => {
 				$className: "DataModel",
 				ReplicatedStorage: { Packages: { $path: "vendor" } },
 			};
-			const files = await liftWithMounts({ name: "my-game", tree }, [
-				{
-					path: "Packages",
-					landing: "ReplicatedStorage/Packages",
-				},
-			]);
+			const files = await liftWithMounts(
+				{ name: "my-game", tree },
+				{ packageManager: "wally", packageDirs: ["Packages"] }
+			);
 
 			expect(configOf(files).tree).toEqual(tree);
 			expect(files.notes[1]).toBe(
@@ -615,10 +567,9 @@ describe("TreePlan", () => {
 	});
 
 	it("should say which mounts it left out when the lifted tree has nodes in the place of several", async () => {
-		const files = planProject({
-			choices: {
-				...(await defaultProjectChoices(luau)),
-				tree: lifted({
+		const files = await plan(
+			lifting(
+				{
 					name: "my-game",
 					tree: {
 						$className: "DataModel",
@@ -627,20 +578,15 @@ describe("TreePlan", () => {
 							ServerPackages: { $path: "server-vendor" },
 						},
 					},
-				}),
-				mounts: [
-					{
-						path: "Packages",
-						landing: "ReplicatedStorage/Packages",
+				},
+				{
+					workspace: {
+						packageManager: "wally",
+						packageDirs: ["Packages", "ServerPackages"],
 					},
-					{
-						path: "ServerPackages",
-						landing: "ServerScriptService/ServerPackages",
-					},
-				],
-			},
-			existingFiles: new Set(["default.project.json"]),
-		}).unwrap();
+				}
+			)
+		);
 
 		expect(files.notes[1]).toBe(
 			"Didn't add Packages at ReplicatedStorage/Packages and ServerPackages at ServerScriptService/ServerPackages to default.rogen.json, since it already has nodes there."
@@ -649,7 +595,7 @@ describe("TreePlan", () => {
 
 	describe("ignored files", () => {
 		const gitignoreOf = async (workspace: WorkspaceSpec) =>
-			(await plan({ ...luau, ...workspace })).files.find(
+			(await plan({ workspace: { ...luau, ...workspace } })).files.find(
 				({ fileName }) => fileName === ".gitignore"
 			)!.content;
 
@@ -690,30 +636,35 @@ describe("TreePlan", () => {
 
 		it("should say it left out a manager's packages folder that isn't installed", async () => {
 			expect(
-				uninstalledNote((await plan({ packageManager: "wally" })).notes)
+				uninstalledNote(
+					(await plan({ workspace: { packageManager: "wally" } }))
+						.notes
+				)
 			).toEqual([
 				"Didn't mount Packages, since it isn't installed. Once you run wally install, mount it at ReplicatedStorage/Packages.",
 			]);
 			expect(
-				uninstalledNote((await plan({ packageManager: "pesde" })).notes)
+				uninstalledNote(
+					(await plan({ workspace: { packageManager: "pesde" } }))
+						.notes
+				)
 			).toEqual([
 				"Didn't mount roblox_packages, since it isn't installed. Once you run pesde install, mount it at ReplicatedStorage/Packages.",
 			]);
 		});
 
 		it("should say nothing of packages that are installed, or without a manifest", async () => {
-			expect(uninstalledNote((await plan(withPackages)).notes)).toEqual(
-				[]
-			);
-			expect(uninstalledNote((await plan(luau)).notes)).toEqual([]);
+			expect(
+				uninstalledNote((await plan({ workspace: withPackages })).notes)
+			).toEqual([]);
+			expect(uninstalledNote((await plan()).notes)).toEqual([]);
 		});
 
 		it("should say nothing of packages a lifted tree already mounts", async () => {
 			const workspace: WorkspaceSpec = { packageManager: "wally" };
-			const files = planProject({
-				choices: {
-					...(await defaultProjectChoices(workspace)),
-					tree: lifted({
+			const files = await plan(
+				lifting(
+					{
 						name: "my-game",
 						tree: {
 							$className: "DataModel",
@@ -721,11 +672,10 @@ describe("TreePlan", () => {
 								Deps: { $path: "./Packages" },
 							},
 						},
-					}),
-				},
-				existingFiles: new Set(["default.project.json"]),
-				workspace,
-			}).unwrap();
+					},
+					{ workspace }
+				)
+			);
 
 			expect(uninstalledNote(files.notes)).toEqual([]);
 		});

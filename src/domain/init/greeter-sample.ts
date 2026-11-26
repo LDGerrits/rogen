@@ -2,15 +2,13 @@ import path from "path";
 import { Language, PlannedFile } from "../toolchain/toolchain.js";
 import { templateFiles } from "./template-files.js";
 import { fillTemplate } from "./fill-template.js";
+import { FIRST_PLACE } from "./starter-places.js";
 
 const ROUTE_ORDER: readonly string[] = ["shared", "server", "client"];
 
 const PLACES_VARIANT = "-places";
 
-export const TEMPLATE_SOURCE_PATHS = {
-	one: "src",
-	place: "src/lobby",
-} as const;
+const TEMPLATE_SOURCE = "src";
 
 const FEATURE = "greeter";
 const PLACE_FEATURE = "welcome";
@@ -31,7 +29,7 @@ export class GreeterSample {
 	feature(sourcePath: string): PlannedFile[] {
 		return this.mapped(
 			this.variant,
-			`${TEMPLATE_SOURCE_PATHS.one}/${FEATURE}`,
+			`${TEMPLATE_SOURCE}/${FEATURE}`,
 			path.posix.join(sourcePath, FEATURE)
 		);
 	}
@@ -39,7 +37,7 @@ export class GreeterSample {
 	place(sourcePath: string): PlannedFile[] {
 		return this.mapped(
 			this.placesVariant,
-			`${TEMPLATE_SOURCE_PATHS.place}/${PLACE_FEATURE}`,
+			`${TEMPLATE_SOURCE}/${FIRST_PLACE}/${PLACE_FEATURE}`,
 			path.posix.join(sourcePath, PLACE_FEATURE)
 		);
 	}

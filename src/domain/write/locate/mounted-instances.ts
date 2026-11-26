@@ -129,7 +129,7 @@ export class MountedInstances {
 
 	private async initFileIn(directory: string): Promise<string | undefined> {
 		const entries = await this.fileReader.readDirectory(directory);
-		const init = entries.find(([entry]) => RojoFile.INIT_FILES.has(entry));
-		return init && path.posix.join(directory, init[0]);
+		const init = RojoFile.initReadFirst(entries.map(([entry]) => entry));
+		return init && path.posix.join(directory, init);
 	}
 }

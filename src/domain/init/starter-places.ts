@@ -9,7 +9,7 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 export const COMMON_FOLDER = "common";
 
 const SOURCE_FOLDER = DEFAULT_SOURCE_PATH;
-const FIRST_PLACE = "lobby";
+export const FIRST_PLACE = "lobby";
 const SETTINGS_FILE = ".vscode/settings.json";
 
 export interface StartingPlaces {
@@ -22,9 +22,7 @@ export interface StartingPlaces {
 	readonly placeSourcePath: string;
 	readonly compiledPath?: string;
 	readonly files: readonly PlannedFile[];
-	readonly directories: readonly string[];
 	readonly notes: readonly string[];
-	readonly settings: boolean;
 }
 
 export class StarterPlaces {
@@ -45,7 +43,6 @@ export class StarterPlaces {
 			sourcePaths: [commonSourcePath, placeSourcePath],
 			commonSourcePath,
 			placeSourcePath,
-			directories: [commonSourcePath, placeSourcePath],
 		};
 		if (starter && language.compiler)
 			return {
@@ -56,7 +53,6 @@ export class StarterPlaces {
 				),
 				files: starter.placesTsconfigs(),
 				notes: [],
-				settings: false,
 			};
 		const command = StarterPlaces.sourcemapCommand(FIRST_PLACE);
 		const present = await this.files.exists(path.join(root, SETTINGS_FILE));
@@ -78,7 +74,6 @@ export class StarterPlaces {
 						`${SETTINGS_FILE} is there already: set "luau-lsp.sourcemap.generatorCommand" in it to "${command}", so luau-lsp reads the sourcemap of the ${FIRST_PLACE} place.`,
 					]
 				: [],
-			settings: true,
 		};
 	}
 

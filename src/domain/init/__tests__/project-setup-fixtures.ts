@@ -1,21 +1,16 @@
 import path from "path";
 import { ResultError } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
-import { RogenConfig } from "../../config/config.js";
-import { InitPlan } from "../init-service.js";
-import { ProjectChoices } from "../project-setup.js";
-import { StarterProject } from "../starter-project.js";
-import { ProjectTree } from "../tree-plan.js";
-import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import {
-	WorkspaceSpec,
-	directory,
-	directoryOf,
-	planOf,
-} from "./init-fixtures.js";
-import { questionsOf } from "./init-of.js";
-import { setupOf } from "./init-of.js";
+import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
+import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
+import { RogenConfig } from "../../config/config.js";
+import { InitDirectory } from "../init-directory.js";
+import { InitChoices, InitPlan } from "../init-service.js";
+import { ProjectSetup } from "../project-setup.js";
+import { SetupProject } from "../project-code.js";
+import { WorkspaceSpec, directory, planOf } from "./init-fixtures.js";
+import { codeFinderOf, questionsOf, setupOf } from "./init-of.js";
 
 export const LUAU_ROUTES = {
 	server: "ServerScriptService",
@@ -39,75 +34,74 @@ export const mounts = {
 	ReplicatedStorage: { Packages: { $path: "Packages" } },
 };
 
-export const defaultProjectChoices = async (
-	spec: WorkspaceSpec,
-	existingFiles: ReadonlySet<string> = new Set()
-): Promise<ProjectChoices> => {
-	const fileSystem = new MemoryFileSystemService();
-	await fileSystem.createDirectory(directory);
-	for (const file of existingFiles)
-		await fileSystem.writeFile(path.join(directory, file), "{}");
-	const setup = setupOf(
-		directoryOf({ workspace: spec, existing: [...existingFiles] }),
-		questionsOf(new MockPromptService([], false), false, {
-			sample: false,
-		}),
-		fileSystem
-	);
-	return (await setup.ask()).unwrap() as ProjectChoices;
-};
+export const PROJECT_FILE = "default.project.json";
 
-export const lifted = (content: string | object): ProjectTree => ({
-	kind: "lift",
-	from: "default.project.json",
-	project: StarterProject.parse(
-		typeof content === "string" ? content : JSON.stringify(content)
-	).unwrap(),
-});
-
-export interface ProjectPlanOptions {
-	readonly choices: ProjectChoices;
-	readonly existingFiles?: ReadonlySet<string>;
+export interface ProjectSpec {
 	readonly workspace?: WorkspaceSpec;
+	readonly files?: Readonly<Record<string, string | object>>;
+	readonly choices?: InitChoices;
 	readonly tracksProjectFile?: boolean;
+	readonly interactive?: boolean;
 }
 
-export const planProject = ({
-	choices,
-	existingFiles = new Set(),
+export const lifting = (
+	project: string | object,
+	spec: ProjectSpec = {}
+): ProjectSpec => ({
+	...spec,
+	files: { ...spec.files, [PROJECT_FILE]: project },
+});
+
+const setupIn = async ({
 	workspace,
-	tracksProjectFile,
-}: ProjectPlanOptions) => {
-	const target = directoryOf({
-		existing: [...existingFiles],
-		workspace,
-		tracksProjectFile,
-	});
-	return planOf(
-		setupOf(
-			target,
-			questionsOf(new MockPromptService([], false), false, {
-				sample: false,
-			}),
-			new MemoryFileSystemService()
+	files = {},
+	choices = { sample: false },
+	tracksProjectFile = false,
+	interactive = false,
+}: ProjectSpec): Promise<{ setup: ProjectSetup; target: InitDirectory }> => {
+	const fileSystem = new MemoryFileSystemService();
+	await fileSystem.createDirectory(directory);
+	for (const [file, content] of Object.entries(files))
+		await fileSystem.writeFile(
+			path.join(directory, file),
+			typeof content === "string" ? content : JSON.stringify(content)
+		);
+	const detected = workspaceOf(workspace);
+	const target = new InitDirectory(
+		directory,
+		new Set(
+			(await fileSystem.readDirectory(directory)).map(([name]) => name)
 		),
-		choices,
-		target
+		detected,
+		await codeFinderOf(fileSystem).layoutOf(directory, detected),
+		tracksProjectFile
 	);
+	const setup = setupOf(
+		target,
+		questionsOf(
+			new MockPromptService({}, interactive),
+			interactive,
+			choices
+		),
+		fileSystem
+	);
+	return { setup, target };
 };
 
-export const planResult = async (
-	workspace: WorkspaceSpec,
-	existingFiles: readonly string[] = []
-) =>
-	planProject({
-		choices: await defaultProjectChoices(workspace),
-		existingFiles: new Set(existingFiles),
-		workspace,
-	});
+export const askProject = async (
+	spec: ProjectSpec = {}
+): Promise<SetupProject> => {
+	const { setup } = await setupIn(spec);
+	return (await setup.ask()).unwrap()!;
+};
 
-export const plan = async (...args: Parameters<typeof planResult>) =>
-	(await planResult(...args)).unwrap();
+export const planResult = async (spec: ProjectSpec = {}) => {
+	const { setup, target } = await setupIn(spec);
+	return planOf(setup, (await setup.ask()).unwrap()!, target);
+};
+
+export const plan = async (spec: ProjectSpec = {}) =>
+	(await planResult(spec)).unwrap();
 
 export const errorsOf = (result: Awaited<ReturnType<typeof planResult>>) =>
 	(result as ResultError<Diagnostic[]>).error;
@@ -122,7 +116,7 @@ export const configOf = (planned: InitPlan): RogenConfig => {
 
 export const treeOf = async (workspace: WorkspaceSpec) =>
 	JSON.parse(
-		(await plan({ ...luau, ...workspace })).files.find(
+		(await plan({ workspace: { ...luau, ...workspace } })).files.find(
 			({ fileName }) => fileName === "default.rogen.json"
 		)!.content
 	).tree;
