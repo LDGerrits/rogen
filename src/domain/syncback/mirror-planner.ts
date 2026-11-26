@@ -92,6 +92,9 @@ type NoOperation = {
 	readonly instance: string;
 } & ({ readonly kind: "same" } | { readonly kind: "saved" });
 
+const ignoredReason = (file: string) =>
+	`${file} matches an ignore glob of the project, so it is left alone`;
+
 function instanceOf(
 	instance: AddedInstance,
 	file: readonly string[]
@@ -146,6 +149,7 @@ class MirrorPlanRun {
 	private readonly toKeep = new Map<string, string>();
 	private readonly refused = new Set<string>();
 	private readonly keptFiles = new Set<string>();
+	private readonly keptReplaced: Operation[] = [];
 	private readonly compiled: CompiledChange[] = [];
 	private readonly expected: Expected[] = [];
 	private readonly before = new Map<string, Uint8Array | undefined>();
@@ -276,7 +280,7 @@ class MirrorPlanRun {
 					(kind === "write" || kind === "folder") &&
 					file.startsWith(`${folder}${path.sep}`)
 			);
-			if (!fills)
+			if (!fills && (await this.isEmptied(folder)))
 				await this.add({
 					kind: "write",
 					file: path.join(folder, GITKEEP),
@@ -284,6 +288,20 @@ class MirrorPlanRun {
 					bytes: new Uint8Array(),
 				});
 		}
+	}
+
+	private async isEmptied(folder: string): Promise<boolean> {
+		const gone = new Set(
+			this.operations
+				.filter(({ kind }) => kind === "remove" || kind === "prune")
+				.map(({ file }) => file)
+		);
+		const entries = await tryWithAsync(() =>
+			this.fileSystemService.readDirectory(folder)
+		);
+		return entries
+			.unwrapOr([])
+			.every(([name]) => gone.has(path.join(folder, name)));
 	}
 
 	private async keepMovedFrom(made: AddedInstance): Promise<void> {
@@ -298,15 +316,21 @@ class MirrorPlanRun {
 					...(file.length > 1 && { rel: file.slice(1).join("/") }),
 				});
 		}
-		const removals = this.operations.flatMap((operation) => {
-			const bytes = this.before.get(operation.file);
-			return operation.kind === "remove" &&
-				operation.from !== undefined &&
-				bytes !== undefined &&
-				bytes.length > 0
-				? [{ file: operation.file, from: operation.from, bytes }]
-				: [];
-		});
+		// A file kept for another it replaces still left its instance, so a
+		// refused move of that instance's folder has to find it.
+		for (const { file } of this.keptReplaced)
+			this.before.set(file, await bytesOf(this.fileSystemService, file));
+		const removals = [...this.operations, ...this.keptReplaced].flatMap(
+			(operation) => {
+				const bytes = this.before.get(operation.file);
+				return operation.kind === "remove" &&
+					operation.from !== undefined &&
+					bytes !== undefined &&
+					bytes.length > 0
+					? [{ file: operation.file, from: operation.from, bytes }]
+					: [];
+			}
+		);
 		const folders = new Set(
 			removals.flatMap(({ from }) => [...posixAncestors(from)])
 		);
@@ -432,6 +456,17 @@ class MirrorPlanRun {
 				)
 			)
 				continue;
+			const replaced =
+				operation.kind === "remove" &&
+				workspace.layout.fileReplacedBy(toPosix(operation.file));
+			if (replaced) {
+				this.keptReplaced.push(operation);
+				unplaced.push({
+					instance: operation.instance,
+					reason: `${toNative(replaced)} would take its place, so ${operation.file} was kept; delete both by hand`,
+				});
+				continue;
+			}
 			const copy = leftAlone.get(operation.file);
 			if (operation.kind === "remove" && copy !== undefined) {
 				unplaced.push({
@@ -634,8 +669,16 @@ class MirrorPlanRun {
 				edit: { from: at, bytes: await workspace.read(at) },
 			});
 		};
+		const stillHeld = new Set(
+			this.keptReplaced.map(({ from }) => path.posix.dirname(from!))
+		);
 		for (const added of this.after) {
 			if (this.copiedPaths.has(added.path)) continue;
+			if (
+				path.posix.basename(added.path) === GITKEEP &&
+				stillHeld.has(path.posix.dirname(added.path))
+			)
+				continue;
 			const mirroredFolder = added.folder && known.has(added.path);
 			if (mirroredFolder) continue;
 			const target = mirror.targetOf(added.path);
@@ -674,9 +717,13 @@ class MirrorPlanRun {
 				fresh.push(added);
 				continue;
 			}
-			if (workspace.isIgnored(target)) continue;
 			const file = toNative(target);
 			const instance = workspace.instanceAt(added.path);
+			if (workspace.isIgnored(target)) {
+				if (!added.folder && workspace.isUnreadInstance(target))
+					unplaced.push({ instance, reason: ignoredReason(file) });
+				continue;
+			}
 			if (this.isCompiled(file)) {
 				const folderInProject =
 					added.folder &&
@@ -1020,10 +1067,13 @@ class MirrorPlanRun {
 	}
 
 	private async renameFits(
-		{ files, renamed }: RenamedInstance,
+		{ folder, files, renamed }: RenamedInstance,
 		removed: PathSet
 	): Promise<boolean> {
-		if (await this.fileSystemService.exists(toNative(renamed)))
+		if (
+			this.workspace.layout.holdsMount(folder) ||
+			(await this.fileSystemService.exists(toNative(renamed)))
+		)
 			return false;
 		for (const { target } of files.values()) {
 			const to = toNative(target);
@@ -1245,8 +1295,7 @@ class MirrorPlanRun {
 		for (const to of targets) {
 			if (!removed.has(to) && (await this.fileSystemService.exists(to)))
 				return `${to} is already there`;
-			if (this.workspace.isIgnored(toPosix(to)))
-				return `${to} matches an ignore glob of the project, so it is left alone`;
+			if (this.workspace.isIgnored(toPosix(to))) return ignoredReason(to);
 		}
 		return undefined;
 	}

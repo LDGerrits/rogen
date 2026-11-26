@@ -2,7 +2,7 @@ $ rogen syncback -i place.rbxl -y --list
 exit 2
 stderr:
   Wrote default.project.json.
-  error: The place holds an instance that Rojo can't write back as files, such as one named with a slash or as . or ..: it would write ServerScriptService/../Escaped/Greeter.server.luau, so nothing was written. Rename the instance in Studio, then run syncback again.
+  error: Rojo can't write the place back as files: it would write ServerScriptService/../Escaped/Greeter.server.luau, so nothing was written. Rename the duplicate, or the name no file can have, in Studio, then run syncback again.
 
 $ rogen write
 exit 0
@@ -11,7 +11,7 @@ stdout: (not shown)
 $ rogen syncback -i place.rbxl --dry-run
 exit 2
 stderr:
-  error: The place holds an instance that Rojo can't write back as files, such as one named with a slash or as . or ..: it would write ServerScriptService/../Escaped/Greeter.server.luau, so nothing was written. Rename the instance in Studio, then run syncback again.
+  error: Rojo can't write the place back as files: it would write ServerScriptService/../Escaped/Greeter.server.luau, so nothing was written. Rename the duplicate, or the name no file can have, in Studio, then run syncback again.
 
 written:
   default.project.json

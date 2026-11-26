@@ -13,6 +13,7 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { isSyncbackFileName } from "../config/config.js";
 import { instanceKey } from "../roblox/roblox.js";
+import { RojoFile } from "../rojo/rojo.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ProjectText } from "../rojo/project-text.js";
 import { ServerMessage } from "../runner/rojo-server.js";
@@ -180,6 +181,17 @@ export class MirrorWorkspace {
 		);
 	}
 
+	/** A file Rojo would make an instance of, were no ignore glob to match it. */
+	isUnreadInstance(target: string): boolean {
+		const name = path.posix.basename(target);
+		return (
+			this.isUnread(target) &&
+			RojoFile.metaStemOf(name) === undefined &&
+			RojoFile.at(target, this.request.project.syncRules).kind !==
+				undefined
+		);
+	}
+
 	instanceAt(at: string): string {
 		const names = this.mirror.instancePathOf(at);
 		return instanceKey(
@@ -276,8 +288,8 @@ export class MirrorWorkspace {
 			)
 				return err(
 					new UsageError(
-						`The place holds an instance that Rojo can't write back as files, such as one named with a slash or as . or ..: it would write ${file.split("/").slice(MIRROR.split("/").length).join("/")}, so nothing was written.`,
-						"Rename the instance in Studio, then run syncback again."
+						`Rojo can't write the place back as files: it would write ${file.split("/").slice(MIRROR.split("/").length).join("/")}, so nothing was written.`,
+						"Rename the duplicate, or the name no file can have, in Studio, then run syncback again."
 					)
 				);
 		}

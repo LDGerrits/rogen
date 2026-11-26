@@ -1,0 +1,15 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stderr:
+  Wrote default.project.json.
+  default.rogen.json - warning: ServerScriptService/Shop/Cart was left out: src/Shop/Server/Cart.luau would take its place, so dev/Shop/Server/Cart.luau was kept; delete both by hand. (syncback.unplaced)
+  Syncback changed nothing.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ServerScriptService: ServerScriptService
+    Shop: Folder
+      Cart: ModuleScript  <- dev/Shop/Server/Cart.luau

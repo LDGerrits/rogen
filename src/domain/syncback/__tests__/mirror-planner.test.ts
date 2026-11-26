@@ -788,6 +788,160 @@ describe("MirrorPlanner", () => {
 		]);
 	});
 
+	describe("a file that stands in front of another source path's", () => {
+		const overlaid = () =>
+			prepare(
+				["src/Shop/Server/Cart.luau", "dev/Shop/Server/Cart.luau"],
+				{ sourcePaths: [abs("src"), abs("dev")] }
+			);
+
+		it("should keep the file of an instance Studio removed, as the other one would take its place", async () => {
+			await overlaid();
+			rojo.say = async () => {
+				await fs.delete(
+					mirror("ServerScriptService", "Shop", "Cart.luau")
+				);
+				return [];
+			};
+
+			const plan = await planned();
+
+			expect(plan.changes).toEqual([]);
+			expect(plan.unplaced).toEqual([
+				{
+					instance: "ServerScriptService/Shop/Cart",
+					reason: `${abs("src/Shop/Server/Cart.luau")} would take its place, so ${abs("dev/Shop/Server/Cart.luau")} was kept; delete both by hand`,
+				},
+			]);
+		});
+
+		it("should keep every file of a refused rename that holds such a file", async () => {
+			await overlaid();
+			await fs.writeFile(abs("dev/Shop/Server/Cart.luau"), "return 2");
+			await writeFiles(fs, "src/Shop/Server/Till.luau");
+			await fs.writeFile(abs("src/Shop/Server/Till.luau"), "return 3");
+			rojo.say = async () => {
+				await fs.delete(mirror("ServerScriptService", "Shop"), true);
+				for (const [name, text] of [
+					["Cart", "return 2"],
+					["Till", "return 3"],
+				])
+					await fs.writeFile(
+						mirror("ServerScriptService", "Store", `${name}.luau`),
+						text
+					);
+				return [];
+			};
+
+			const plan = await planned();
+
+			expect(plan.changes).toEqual([]);
+		});
+
+		it("should write an edit to the file in front", async () => {
+			await overlaid();
+			rojo.say = async () => {
+				await fs.writeFile(
+					mirror("ServerScriptService", "Shop", "Cart.luau"),
+					"return 2"
+				);
+				return [];
+			};
+
+			const plan = await planned();
+
+			expect(plan.changes).toEqual([
+				{ kind: "write", file: abs("dev/Shop/Server/Cart.luau") },
+			]);
+		});
+	});
+
+	it("should say that a new instance an ignore glob matches was left out", async () => {
+		await prepare(["src/Shop/Server/Cart.luau"], {
+			project: {
+				tree: { $className: "DataModel" },
+				globIgnorePaths: ["**/*.spec.luau"],
+			},
+		});
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Shop", "Cart.spec.luau"),
+				""
+			);
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.changes).toEqual([]);
+		expect(plan.unplaced).toEqual([
+			{
+				instance: "ServerScriptService/Shop/Cart.spec",
+				reason: `${abs("src/Shop/Server/Cart.spec.luau")} matches an ignore glob of the project, so it is left alone`,
+			},
+		]);
+	});
+
+	it("should add no .gitkeep to a folder whose only file was kept", async () => {
+		await prepare([
+			"src/Shop/Server/Cart.luau",
+			"src/Shop/Client/Hud.luau",
+		]);
+		await fs.writeFile(abs("src/Shop/Server/Cart.luau"), "return 1");
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Shop", "Cart.luau"));
+			await fs.writeFile(
+				mirror("ServerScriptService", "Shop", "Cart@Server.luau"),
+				"return 1"
+			);
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.unplaced.map(({ instance }) => instance)).toEqual([
+			"ServerScriptService/Shop/Cart@Server",
+		]);
+		expect(plan.changes).toEqual([]);
+	});
+
+	it("should add no .gitkeep where the only file was kept for another it replaces", async () => {
+		await prepare(
+			["src/Shop/Server/Cart.luau", "dev/Shop/Server/Cart.luau"],
+			{ sourcePaths: [abs("src"), abs("dev")] }
+		);
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Shop", "Cart.luau"));
+			await writeFiles(
+				fs,
+				".rogen-syncback/mirror/ServerScriptService/Shop/.gitkeep"
+			);
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.changes).toEqual([]);
+	});
+
+	it("should keep a folder with a .gitkeep when Studio removed the only folder in it", async () => {
+		await prepare(["src/Shop/Server/Util/Math.luau"]);
+		rojo.say = async () => {
+			await fs.delete(
+				mirror("ServerScriptService", "Shop", "Util"),
+				true
+			);
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.changes).toContainEqual({
+			kind: "write",
+			file: abs("src/Shop/Server/.gitkeep"),
+		});
+	});
+
 	describe("a renamed feature", () => {
 		it("should move the files of a feature Studio renamed into a folder of the new name", async () => {
 			await prepare(["src/Shop/Server/ShopService.luau"]);
@@ -952,6 +1106,37 @@ describe("MirrorPlanner", () => {
 				false
 			);
 			expect(await fs.exists(abs("src/Shop"))).toBe(false);
+		});
+
+		it("should leave a folder the tree mounts where it is when its feature is renamed", async () => {
+			await writeFiles(fs, "src/Shop/Server/Vendor/Lib.luau");
+			await prepare(["src/Shop/Server/Cart.luau"], {
+				project: {
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: {
+							Vendor: { $path: "src/Shop/Server/Vendor" },
+						},
+					},
+				},
+			});
+			rojo.say = async () => {
+				await fs.delete(mirror("ServerScriptService", "Shop"), true);
+				await writeFiles(
+					fs,
+					".rogen-syncback/mirror/ServerScriptService/Store/Cart.luau"
+				);
+				return [];
+			};
+
+			await planned("apply");
+
+			expect(await fs.exists(abs("src/Store/Server/Cart.luau"))).toBe(
+				true
+			);
+			expect(
+				await fs.exists(abs("src/Shop/Server/Vendor/Lib.luau"))
+			).toBe(true);
 		});
 
 		it("should place a renamed feature by routing when a folder of the new name is already there", async () => {
