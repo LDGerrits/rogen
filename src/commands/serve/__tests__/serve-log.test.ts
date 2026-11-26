@@ -133,7 +133,7 @@ describe("ServeLog and ServeJsonLog events", () => {
 			planOf(target)
 		);
 		const lines = () =>
-			logService.texts("print").map((line) => JSON.parse(line));
+			logService.texts("result").map((line) => JSON.parse(line));
 		return { log, lines };
 	};
 

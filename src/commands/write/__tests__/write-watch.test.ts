@@ -17,10 +17,7 @@ import { MockLogService } from "../../../platform/log/__tests__/mock-log-service
 import { LogLevel } from "../../../platform/log/log-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { CommandLine } from "../../../platform/environment/args.js";
-import {
-	exitCode,
-	exitCodeOf,
-} from "../../../platform/commands/command-failure.js";
+import { exitCode, exitCodeOf } from "../../../platform/commands/exit-code.js";
 import { configServiceOf } from "../../../domain/config/__tests__/config-of.js";
 
 describe("watch", () => {
@@ -133,7 +130,7 @@ describe("watch", () => {
 			await settle();
 
 			expect(
-				logService.texts("print").map((line) => JSON.parse(line))
+				logService.texts("result").map((line) => JSON.parse(line))
 			).toEqual([
 				{
 					write: expect.objectContaining({
@@ -149,7 +146,7 @@ describe("watch", () => {
 				},
 			]);
 			expect(
-				logService.entries.filter(({ kind }) => kind !== "print")
+				logService.entries.filter(({ kind }) => kind !== "result")
 			).toEqual([]);
 		});
 
@@ -162,7 +159,7 @@ describe("watch", () => {
 			await settle();
 
 			expect(
-				logService.texts("print").map((line) => JSON.parse(line))
+				logService.texts("result").map((line) => JSON.parse(line))
 			).toContainEqual({
 				notice: {
 					kind: "broken",
@@ -247,7 +244,7 @@ describe("watch", () => {
 			rojo.print("Building project 'repo'\nBuilt project to game.rbxl\n");
 			await settle();
 
-			expect(logService.sendsOwnLinesToStderr).toBe(false);
+			expect(logService.on("stdout")).toEqual(logService.lines);
 			expect(logService.texts("success")).toEqual([
 				"Wrote default.project.json.",
 				"Built game.rbxl.",
@@ -370,6 +367,7 @@ describe("watch", () => {
 				expect(exitCode(result, lifecycle.signal)).toBe(code);
 				expect(logService.entries.at(-1)).toEqual({
 					kind: "outro",
+					stream: "stdout",
 					text: "Stopped watching.",
 				});
 			}
@@ -383,7 +381,7 @@ describe("watch", () => {
 			await running;
 
 			const lines = logService
-				.texts("print")
+				.texts("result")
 				.map((line) => JSON.parse(line));
 			expect(lines.at(-1)).toEqual({
 				diagnostics: [
@@ -405,7 +403,7 @@ describe("watch", () => {
 			await settle();
 
 			const lines = logService
-				.texts("print")
+				.texts("result")
 				.map((line) => JSON.parse(line));
 			expect(lines.slice(1)).toEqual([
 				{
@@ -449,8 +447,10 @@ describe("watch", () => {
 				"default.project.json",
 				"--watch",
 			]);
-			expect(logService.sendsOwnLinesToStderr).toBe(true);
-			expect(logService.texts("print")).toEqual(['{"name":"repo"}']);
+			expect(logService.on("stderr")).toEqual(
+				logService.lines.filter((line) => !line.startsWith("result: "))
+			);
+			expect(logService.texts("result")).toEqual(['{"name":"repo"}']);
 		});
 
 		it("should keep stdout for the sourcemap from the start, even when the config is broken", async () => {
@@ -466,8 +466,10 @@ describe("watch", () => {
 			}).run("sourcemap", { positionals: [], options: { watch: true } });
 
 			expect(result.isErr()).toBe(true);
-			expect(logService.sendsOwnLinesToStderr).toBe(true);
-			expect(logService.texts("print")).toEqual([]);
+			expect(logService.on("stderr")).toEqual(
+				logService.lines.filter((line) => !line.startsWith("result: "))
+			);
+			expect(logService.texts("result")).toEqual([]);
 		});
 
 		it("should leave stdout free for the sourcemap that -o writes to a file", async () => {
@@ -490,7 +492,7 @@ describe("watch", () => {
 				"--output=map.json",
 				"--watch",
 			]);
-			expect(logService.sendsOwnLinesToStderr).toBe(false);
+			expect(logService.on("stdout")).toEqual(logService.lines);
 		});
 
 		it("should run no Rojo without -o or -p", async () => {
@@ -754,6 +756,7 @@ describe("watch", () => {
 
 			expect(logService.entries[0]).toEqual({
 				kind: "intro",
+				stream: "stdout",
 				text: "rogen write --watch · lobby/default.rogen.json",
 			});
 		});
@@ -806,6 +809,7 @@ describe("watch", () => {
 
 			expect(logService.entries.at(-1)).toEqual({
 				kind: "outro",
+				stream: "stdout",
 				text: "Stopped watching.",
 			});
 		});

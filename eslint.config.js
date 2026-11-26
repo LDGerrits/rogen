@@ -13,7 +13,7 @@ const layersAbove = {
 
 const modules = {
 	domain: {
-		write: ["write", "write-service"],
+		write: ["diagnostic-groups", "write", "write-service"],
 		config: [
 			"config",
 			"config-service",

@@ -31,40 +31,21 @@ describe("PlainLogService", () => {
 		jest.restoreAllMocks();
 	});
 
-	it("should print a section as a title with its lines indented under it, although only errors are asked for", () => {
-		const logService = new PlainLogService();
-		logService.setLevel(LogLevel.Error);
-
-		logService.section(
-			"default.rogen.json",
-			"source paths: src\ncompiled path: out"
-		);
-
-		expect(out).toEqual([
-			"default.rogen.json",
-			"  source paths: src\n  compiled path: out",
-		]);
-	});
-
-	it("should write its own lines on stderr once its own lines go to stderr, and leave print and note on stdout", () => {
-		const logService = new PlainLogService();
-		logService.sendOwnLinesToStderr();
+	it("should write its own lines on stderr when they go there, and leave results and notes on stdout", () => {
+		const logService = new PlainLogService({ ownLines: "stderr" });
 
 		logService.intro("rogen build · game");
 		logService.step("building");
-		logService.section("title", "body");
 		logService.info("a line");
 		logService.success("done");
 		logService.outro("Built 1 config.");
-		logService.print("what a program reads");
+		logService.result("what a program reads");
 		logService.note("beside it");
 
 		expect(out).toEqual(["what a program reads", "beside it"]);
 		expect(errors).toEqual([
 			"rogen build · game",
 			"building",
-			"title",
-			"  body",
 			"  a line",
 			"  done",
 			"Built 1 config.",
@@ -74,14 +55,14 @@ describe("PlainLogService", () => {
 	it("should print a diagnostic without a second severity prefix", () => {
 		const logService = new PlainLogService();
 
-		logService.diagnostic(
+		logService.diagnostics([
 			warningDiagnostic(
 				"x.y",
 				{ resource: "/repo/a.project.json" },
 				"6 files matched no route."
-			)
-		);
-		logService.diagnostic(
+			),
+		]);
+		logService.diagnostics([
 			errorDiagnostic(
 				"x.z",
 				{
@@ -89,8 +70,8 @@ describe("PlainLogService", () => {
 					position: { line: 3, column: 2 },
 				},
 				"unknown field."
-			)
-		);
+			),
+		]);
 
 		expect(errors).toEqual([
 			"/repo/a.project.json - warning: 6 files matched no route. (x.y)",
@@ -106,9 +87,9 @@ describe("PlainLogService", () => {
 		logService.step("default.rogen.json");
 		logService.success("Wrote default.project.json.");
 		logService.info("source paths: src\ncompiled path: (none)");
-		logService.diagnostic(
-			warningDiagnostic("x.y", { resource: "/repo/a" }, "w")
-		);
+		logService.diagnostics([
+			warningDiagnostic("x.y", { resource: "/repo/a" }, "w"),
+		]);
 		logService.outro("1 config.");
 
 		expect(out).toEqual([
@@ -123,8 +104,7 @@ describe("PlainLogService", () => {
 	});
 
 	it("should prefix plain warnings and errors and tag debug lines, all on stderr", () => {
-		const logService = new PlainLogService();
-		logService.setLevel(LogLevel.Debug);
+		const logService = new PlainLogService({ level: LogLevel.Debug });
 
 		logService.warn("careful");
 		logService.error("broken");
@@ -139,8 +119,10 @@ describe("PlainLogService", () => {
 	});
 
 	it("should colour the prefixes and debug lines when colour is on", () => {
-		const logService = new PlainLogService({ color: true });
-		logService.setLevel(LogLevel.Debug);
+		const logService = new PlainLogService({
+			color: true,
+			level: LogLevel.Debug,
+		});
 
 		logService.warn("careful");
 		logService.error("broken");
@@ -156,12 +138,12 @@ describe("PlainLogService", () => {
 	it("should colour the severity of a diagnostic when colour is on", () => {
 		const logService = new PlainLogService({ color: true });
 
-		logService.diagnostic(
-			warningDiagnostic("x.y", { resource: "/repo/a" }, "w")
-		);
-		logService.diagnostic(
-			errorDiagnostic("x.z", { resource: "/repo/a\u001b[0m" }, "e")
-		);
+		logService.diagnostics([
+			warningDiagnostic("x.y", { resource: "/repo/a" }, "w"),
+		]);
+		logService.diagnostics([
+			errorDiagnostic("x.z", { resource: "/repo/a\u001b[0m" }, "e"),
+		]);
 
 		expect(errors).toEqual([
 			"/repo/a - \u001b[33mwarning:\u001b[39m w (x.y)",
@@ -170,8 +152,7 @@ describe("PlainLogService", () => {
 	});
 
 	it("should indent debug lines inside a step", () => {
-		const logService = new PlainLogService();
-		logService.setLevel(LogLevel.Debug);
+		const logService = new PlainLogService({ level: LogLevel.Debug });
 
 		logService.step("default.rogen.json");
 		logService.debug("detail");
@@ -181,18 +162,17 @@ describe("PlainLogService", () => {
 	});
 
 	it("should print only errors at the error level", () => {
-		const logService = new PlainLogService();
-		logService.setLevel(LogLevel.Error);
+		const logService = new PlainLogService({ level: LogLevel.Error });
 
 		logService.intro("rogen build");
 		logService.success("Wrote x.");
 		logService.warn("careful");
-		logService.diagnostic(
-			warningDiagnostic("x.y", { resource: "/repo/a" }, "w")
-		);
-		logService.diagnostic(
-			errorDiagnostic("x.z", { resource: "/repo/a" }, "e")
-		);
+		logService.diagnostics([
+			warningDiagnostic("x.y", { resource: "/repo/a" }, "w"),
+		]);
+		logService.diagnostics([
+			errorDiagnostic("x.z", { resource: "/repo/a" }, "e"),
+		]);
 		logService.outro("done");
 
 		expect(out).toEqual([]);
@@ -200,28 +180,20 @@ describe("PlainLogService", () => {
 	});
 
 	it("should print nothing at all when logging is off", () => {
-		const logService = new PlainLogService();
-		logService.setLevel(LogLevel.Off);
+		const logService = new PlainLogService({ level: LogLevel.Off });
 
 		logService.error("broken");
 		logService.info("Serving.");
 		logService.debug("detail");
 		logService.trace("more detail");
 		logService.step("12:04:31");
-		logService.section("default.rogen.json", "source paths: src");
 
 		expect(out).toEqual([]);
 		expect(errors).toEqual([]);
 	});
 
-	it("should print a section without a body as its title alone", () => {
-		new PlainLogService().section("default.rogen.json");
-
-		expect(out).toEqual(["default.rogen.json"]);
-	});
-
 	it("should print raw text as is", () => {
-		new PlainLogService().print("rogen 2.0.0");
+		new PlainLogService().result("rogen 2.0.0");
 
 		expect(out).toEqual(["rogen 2.0.0"]);
 	});
@@ -233,8 +205,7 @@ describe("PlainLogService", () => {
 	});
 
 	it("should print no note when logging is off", () => {
-		const logService = new PlainLogService();
-		logService.setLevel(LogLevel.Off);
+		const logService = new PlainLogService({ level: LogLevel.Off });
 
 		logService.note("  require(game)");
 
@@ -242,30 +213,27 @@ describe("PlainLogService", () => {
 	});
 
 	it("should print a notice on stderr, unless quiet", () => {
-		const logService = new PlainLogService();
-
-		logService.notice("Rogen 2.0.1 is out");
-		logService.setLevel(LogLevel.Error);
-		logService.notice("Rogen 2.0.2 is out");
+		new PlainLogService().notice("Rogen 2.0.1 is out");
+		new PlainLogService({ level: LogLevel.Error }).notice(
+			"Rogen 2.0.2 is out"
+		);
 
 		expect(errors).toEqual(["Rogen 2.0.1 is out"]);
 		expect(out).toEqual([]);
 	});
 
 	it("should print raw text at the error level", () => {
-		const logService = new PlainLogService();
-		logService.setLevel(LogLevel.Error);
+		const logService = new PlainLogService({ level: LogLevel.Error });
 
-		logService.print("rogen 2.0.0");
+		logService.result("rogen 2.0.0");
 
 		expect(out).toEqual(["rogen 2.0.0"]);
 	});
 
 	it("should print no raw text when logging is off", () => {
-		const logService = new PlainLogService();
-		logService.setLevel(LogLevel.Off);
+		const logService = new PlainLogService({ level: LogLevel.Off });
 
-		logService.print("rogen 2.0.0");
+		logService.result("rogen 2.0.0");
 
 		expect(out).toEqual([]);
 	});
@@ -296,8 +264,7 @@ describe("PlainLogService", () => {
 	});
 
 	it("should not close a frame whose header was silenced", () => {
-		const logService = new PlainLogService();
-		logService.setLevel(LogLevel.Error);
+		const logService = new PlainLogService({ level: LogLevel.Error });
 
 		logService.intro("rogen build");
 		logService.closeFrame("build failed.");
@@ -306,8 +273,7 @@ describe("PlainLogService", () => {
 	});
 
 	it("should write no ANSI escapes", () => {
-		const logService = new PlainLogService();
-		logService.setLevel(LogLevel.Trace);
+		const logService = new PlainLogService({ level: LogLevel.Trace });
 
 		logService.intro("a");
 		logService.success("b");
@@ -321,71 +287,116 @@ describe("PlainLogService", () => {
 	it("should print diagnostics relative to the working directory it was given", () => {
 		const logService = new PlainLogService({ cwd: "/repo" });
 
-		logService.diagnostic(
-			warningDiagnostic("x.y", { resource: "/repo/src/a.luau" }, "w")
-		);
+		logService.diagnostics([
+			warningDiagnostic("x.y", { resource: "/repo/src/a.luau" }, "w"),
+		]);
 
 		expect(errors).toEqual(["src/a.luau - warning: w (x.y)"]);
 	});
 
-	describe("annotate", () => {
+	describe("diagnostics", () => {
 		const diagnostic = warningDiagnostic(
 			"tree.deadScript",
 			{ resource: "/work/repo/src/Dead.luau" },
 			"never runs."
 		);
-
-		it("should write the workflow commands of a diagnostic on stderr, when asked for a workspace", () => {
-			const logService = new PlainLogService({
+		const annotated = (options = {}) =>
+			new PlainLogService({
 				cwd: "/work/repo",
 				annotationsIn: "/work/repo",
+				...options,
 			});
 
-			logService.annotate(diagnostic);
+		it("should write the workflow command of each diagnostic on stderr, before the diagnostics, when asked for a workspace", () => {
+			annotated().diagnostics([
+				diagnostic,
+				errorDiagnostic(
+					"meta.wrongType",
+					{ resource: "/work/repo/src/init.meta.json" },
+					"wrong."
+				),
+			]);
 
 			expect(errors).toEqual([
 				"::warning file=src/Dead.luau,title=tree.deadScript::never runs.",
+				"::error file=src/init.meta.json,title=meta.wrongType::wrong.",
+				"src/Dead.luau - warning: never runs. (tree.deadScript)",
+				"src/init.meta.json - error: wrong. (meta.wrongType)",
 			]);
 			expect(out).toEqual([]);
 		});
 
 		it("should start the line at its first column, inside a step too, or GitHub would not read it", () => {
-			const logService = new PlainLogService({
-				cwd: "/work/repo",
-				annotationsIn: "/work/repo",
-			});
-			logService.section("default.rogen.json", "source paths: src");
+			const logService = annotated();
 			logService.step("lobby");
 
-			logService.annotate(diagnostic);
+			logService.diagnostics([diagnostic]);
 
-			expect(errors.at(-1)?.startsWith("::warning ")).toBe(true);
+			expect(errors[0]).toBe(
+				"::warning file=src/Dead.luau,title=tree.deadScript::never runs."
+			);
 		});
 
-		it("should write nothing without a workspace", () => {
-			new PlainLogService({ cwd: "/work/repo" }).annotate(diagnostic);
+		it("should write no workflow command without a workspace", () => {
+			new PlainLogService({ cwd: "/work/repo" }).diagnostics([
+				diagnostic,
+			]);
 
-			expect(errors).toEqual([]);
+			expect(errors).toEqual([
+				"src/Dead.luau - warning: never runs. (tree.deadScript)",
+			]);
 		});
 
-		it("should write only the errors when only errors are shown, as --quiet asks", () => {
-			const logService = new PlainLogService({
-				cwd: "/work/repo",
-				annotationsIn: "/work/repo",
-			});
-			logService.setLevel(LogLevel.Error);
-
-			logService.annotate(diagnostic);
-			logService.annotate(
+		it("should annotate and show only the errors when only errors are shown, as --quiet asks", () => {
+			annotated({ level: LogLevel.Error }).diagnostics([
+				diagnostic,
 				errorDiagnostic(
 					"meta.wrongType",
 					{ resource: "/work/repo/src/init.meta.json" },
 					"wrong."
-				)
-			);
+				),
+			]);
 
 			expect(errors).toEqual([
 				"::error file=src/init.meta.json,title=meta.wrongType::wrong.",
+				"src/init.meta.json - error: wrong. (meta.wrongType)",
+			]);
+		});
+
+		it("should show what the presentation makes of them, and annotate each one found", () => {
+			annotated().diagnostics([diagnostic, diagnostic], {
+				present: ([first]) => [
+					{ ...first, message: "2 scripts never run." },
+				],
+			});
+
+			expect(errors).toEqual([
+				"::warning file=src/Dead.luau,title=tree.deadScript::never runs.",
+				"::warning file=src/Dead.luau,title=tree.deadScript::never runs.",
+				"src/Dead.luau - warning: 2 scripts never run. (tree.deadScript)",
+			]);
+		});
+
+		it("should print them as the result on stdout, under --quiet too, with the severity coloured when colour is on", () => {
+			annotated({ level: LogLevel.Error, color: true }).diagnostics(
+				[diagnostic],
+				{ asResult: true }
+			);
+
+			expect(out).toEqual([
+				"src/Dead.luau - \u001b[33mwarning:\u001b[39m never runs. (tree.deadScript)",
+			]);
+			expect(errors).toEqual([]);
+		});
+
+		it("should print them as the result without escapes when colour is off", () => {
+			annotated().diagnostics([diagnostic], { asResult: true });
+
+			expect(out).toEqual([
+				"src/Dead.luau - warning: never runs. (tree.deadScript)",
+			]);
+			expect(errors).toEqual([
+				"::warning file=src/Dead.luau,title=tree.deadScript::never runs.",
 			]);
 		});
 	});

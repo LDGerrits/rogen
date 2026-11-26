@@ -28,10 +28,7 @@ import {
 	MockPromptService,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { CommandLine } from "../../../platform/environment/args.js";
-import {
-	exitCode,
-	exitCodeOf,
-} from "../../../platform/commands/command-failure.js";
+import { exitCode, exitCodeOf } from "../../../platform/commands/exit-code.js";
 import { configFileReaderOf } from "../../../platform/config/__tests__/config-file-reader-of.js";
 
 const readyProcesses = () => {
@@ -122,10 +119,8 @@ describe("init command", () => {
 			const { result, logService } = await runJson();
 
 			expect(result.isOk()).toBe(true);
-			expect(logService.entries.map(({ kind }) => kind)).toEqual([
-				"print",
-			]);
-			expect(JSON.parse(logService.entries[0].text)).toEqual({
+			expect(logService.texts("result")).toHaveLength(1);
+			expect(logService.json()).toEqual({
 				changed: true,
 				files: [
 					{
@@ -185,7 +180,7 @@ describe("init command", () => {
 			const { result, logService } = await runJson();
 
 			expect(result.isErr()).toBe(true);
-			expect(JSON.parse(logService.entries[0].text)).toEqual({
+			expect(logService.json()).toEqual({
 				changed: false,
 				files: [],
 				decided: expect.any(Array),
@@ -234,13 +229,11 @@ describe("init command", () => {
 				json: true,
 			});
 
-			expect(JSON.parse(logService.entries[0].text).files).toContainEqual(
-				{
-					file: path.join(cwd, "CLAUDE.md"),
-					outcome: "wrote",
-					appended: true,
-				}
-			);
+			expect(logService.json().files).toContainEqual({
+				file: path.join(cwd, "CLAUDE.md"),
+				outcome: "wrote",
+				appended: true,
+			});
 		});
 	});
 
@@ -252,7 +245,7 @@ describe("init command", () => {
 				"dry-run": true,
 				...options,
 			});
-			const { decided } = JSON.parse(logService.entries[0].text);
+			const { decided } = logService.json();
 			return Object.fromEntries(
 				decided.map(
 					({
@@ -396,7 +389,7 @@ describe("init command", () => {
 				logService,
 				{ json: true }
 			);
-			const document = JSON.parse(logService.entries[0].text) as {
+			const document = logService.json() as {
 				projects: { diagnostics: { code: string }[] }[];
 			};
 
@@ -437,7 +430,7 @@ describe("init command", () => {
 				json: true,
 			});
 
-			expect(JSON.parse(logService.entries[0].text).projects).toEqual([
+			expect(logService.json().projects).toEqual([
 				{
 					config: "default.rogen.json",
 					projectFile: path.join(cwd, "default.project.json"),
@@ -577,7 +570,7 @@ describe("init command", () => {
 			);
 
 			expect(result.isOk()).toBe(true);
-			const document = JSON.parse(logService.entries[0].text);
+			const document = logService.json();
 			expect(document).toMatchObject({
 				changed: false,
 				dryRun: true,
@@ -640,9 +633,7 @@ describe("init command", () => {
 				"dry-run": true,
 			});
 
-			expect(JSON.parse(logService.entries[0].text).directories).toEqual(
-				[]
-			);
+			expect(logService.json().directories).toEqual([]);
 		});
 	});
 
@@ -671,9 +662,7 @@ describe("init command", () => {
 			expect(result.isOk()).toBe(true);
 			expect(await exists(".gitignore")).toBe(false);
 			expect(await exists("AGENTS.md")).toBe(false);
-			expect(JSON.parse(logService.entries[0].text)).not.toHaveProperty(
-				"decided"
-			);
+			expect(logService.json()).not.toHaveProperty("decided");
 		});
 
 		it("should add the agent hook when asked to, though it can't ask", async () => {
@@ -796,7 +785,7 @@ describe("init command", () => {
 					npmProcesses()
 				);
 
-				expect(JSON.parse(log.entries[0].text).commands).toEqual([
+				expect(log.json().commands).toEqual([
 					{ command: NPM, outcome: "ran" },
 				]);
 			});
@@ -924,7 +913,7 @@ describe("init command", () => {
 				stuck.mockRestore();
 
 				expect(exitCode(result)).toBe(1);
-				const { error } = JSON.parse(log.entries[0].text);
+				const { error } = log.json();
 				expect(error.kind).toBe("tool");
 				expect(error.message).toMatch(
 					/npm error network\. Could not put back package\.json\.$/
@@ -1124,7 +1113,7 @@ describe("init command", () => {
 				await runInit(undefined, log, { json: true, "dry-run": true })
 			).unwrap();
 
-			expect(JSON.parse(log.entries[0].text).moves).toEqual([
+			expect(log.json().moves).toEqual([
 				{
 					from: path.join(cwd, "src/Combat/Combat_Server.luau"),
 					to: path.join(cwd, "src/Combat/Combat@Server.luau"),
@@ -1412,9 +1401,7 @@ describe("init command", () => {
 
 			expect(exitCode(result, lifecycle.signal)).toBe(130);
 			expect(await tree()).toEqual(before);
-			expect(JSON.parse(log.entries[0].text).error.kind).toBe(
-				"cancelled"
-			);
+			expect(log.json().error.kind).toBe("cancelled");
 		});
 
 		it("should report a Ctrl+C as cancelled in --json when it could not put a file back", async () => {
@@ -1445,7 +1432,7 @@ describe("init command", () => {
 			stuck.mockRestore();
 
 			expect(exitCode(result, lifecycle.signal)).toBe(130);
-			expect(JSON.parse(log.entries[0].text).error).toMatchObject({
+			expect(log.json().error).toMatchObject({
 				kind: "cancelled",
 				message:
 					"init stopped before it finished. Could not put back .gitignore.",
@@ -1598,7 +1585,7 @@ describe("init command", () => {
 			["lobby"]
 		);
 
-		const { nextSteps } = JSON.parse(logService.entries[0].text);
+		const { nextSteps } = logService.json();
 		expect(nextSteps.directory).toBe("lobby");
 		expect(nextSteps.run).toEqual(["rogen serve"]);
 	});
@@ -1610,9 +1597,7 @@ describe("init command", () => {
 			json: true,
 		});
 
-		expect(
-			JSON.parse(logService.entries[0].text).nextSteps
-		).not.toHaveProperty("directory");
+		expect(logService.json().nextSteps).not.toHaveProperty("directory");
 	});
 
 	it("should name the sample where the user finds it from here, not from the new folder", async () => {

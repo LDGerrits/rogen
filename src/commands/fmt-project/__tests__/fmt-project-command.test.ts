@@ -92,7 +92,7 @@ describe("fmt-project command", () => {
 		});
 
 		const [first, second] = logService
-			.texts("print")
+			.texts("result")
 			.map((text) => JSON.parse(text));
 		expect(first).toEqual({
 			changed: true,
@@ -106,7 +106,7 @@ describe("fmt-project command", () => {
 		});
 		expect(second.changed).toBe(false);
 		expect(second.files[0].outcome).toBe("unchanged");
-		expect(logService.texts("print")).toHaveLength(2);
+		expect(logService.texts("result")).toHaveLength(2);
 	});
 
 	it("should tell a refused file in the document, and exit 1", async () => {
@@ -118,7 +118,7 @@ describe("fmt-project command", () => {
 		});
 
 		expect(result.isErr()).toBe(true);
-		const document = JSON.parse(logService.texts("print")[0]);
+		const document = JSON.parse(logService.texts("result")[0]);
 		expect(document.files[0]).toMatchObject({
 			file: "/repo/default.rogen.json",
 			outcome: "failed",

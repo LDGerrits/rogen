@@ -6,12 +6,9 @@ import {
 	CommandRegistry,
 	CommandService,
 	Extensions,
+	ownLinesOf,
 } from "./platform/commands/commands.js";
-import {
-	CommandFailure,
-	exitCode,
-	exitCodeOf,
-} from "./platform/commands/command-failure.js";
+import { exitCode, exitCodeOf } from "./platform/commands/exit-code.js";
 import { CoreCommandService } from "./platform/commands/core-command-service.js";
 import {
 	ColorOption,
@@ -34,7 +31,11 @@ import { CoreInstantiationService } from "./platform/instantiation/core-instanti
 import { ServicesAccessor } from "./platform/instantiation/instantiation.js";
 import { ServiceCollection } from "./platform/instantiation/service-collection.js";
 import { SyncDescriptor } from "./platform/instantiation/sync-descriptor.js";
-import { LogLevel, LogService } from "./platform/log/log-service.js";
+import {
+	LogLevel,
+	LogService,
+	OutputStream,
+} from "./platform/log/log-service.js";
 import { JsonLogService } from "./platform/log/json-log-service.js";
 import { LogServiceOptions } from "./platform/log/abstract-log-service.js";
 import { PlainLogService } from "./platform/log/plain-log-service.js";
@@ -248,23 +249,24 @@ class RogenMain {
 			{ ...options, json },
 			cwd ?? path.parse(process.execPath).root
 		);
-		const logService = await this.createLogService(
-			environmentService,
-			json
-		);
+		const logService = await this.createLogService(environmentService, {
+			json,
+			ownLines: argsResult.isOk()
+				? ownLinesOf(
+						commandRegistry.getCommand(argsResult.value.command),
+						argsResult.value.line
+					)
+				: "stdout",
+		});
 		const instantiationService = this.createInstantiationService(
 			environmentService,
 			logService,
 			commandRegistry
 		);
 		this.disposables.add(instantiationService);
-		const failure = instantiationService.createInstance(
-			CommandFailure,
-			json
-		);
 
 		if (argsResult.isErr()) {
-			failure.report(argsResult.error);
+			logService.failure(argsResult.error);
 			process.exitCode = exitCode(argsResult);
 			return;
 		}
@@ -274,7 +276,7 @@ class RogenMain {
 				"The current folder no longer exists.",
 				"cd to one that does, then run rogen again."
 			);
-			failure.report(gone, command);
+			logService.failure(gone, command);
 			process.exitCode = exitCodeOf(gone);
 			return;
 		}
@@ -305,43 +307,31 @@ class RogenMain {
 		try {
 			result = await commandService.executeCommand(command, line);
 		} catch (error) {
-			failure.reportCrash(error);
+			logService.crash(error);
 			if (!json || environmentService.logLevel >= LogLevel.Debug)
 				throw error;
 			process.exitCode = 1;
 			return;
 		}
 
-		if (result.isErr()) failure.report(result.error, command);
+		if (result.isErr()) logService.failure(result.error, command);
 		process.exitCode = exitCode(result, lifecycleService.signal);
 		if (!notice.printedFirst) await notice.print();
 	}
 
 	private async createLogService(
 		environmentService: EnvironmentService,
-		json: boolean
+		{ json, ownLines }: { json: boolean; ownLines: OutputStream }
 	): Promise<LogService> {
-		const logOptions = {
+		if (json) return new JsonLogService();
+		const options: LogServiceOptions = {
 			cwd: environmentService.cwd,
 			annotationsIn: environmentService.annotationsIn,
 			color: environmentService.hasColor,
+			level: environmentService.logLevel,
+			ownLines,
 		};
-		const logService = await this.logServiceOf(
-			json,
-			environmentService.isPlain,
-			logOptions
-		);
-		logService.setLevel(environmentService.logLevel);
-		return logService;
-	}
-
-	private async logServiceOf(
-		json: boolean,
-		plain: boolean,
-		options: LogServiceOptions
-	): Promise<LogService> {
-		if (json) return new JsonLogService();
-		if (plain) return new PlainLogService(options);
+		if (environmentService.isPlain) return new PlainLogService(options);
 		const { TerminalLogService } =
 			await import("./platform/log/terminal-log-service.js");
 		return new TerminalLogService(options);

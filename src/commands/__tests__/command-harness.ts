@@ -52,6 +52,7 @@ import {
 	CommandRegistry,
 	CommandService,
 	Extensions,
+	ownLinesOf,
 } from "../../platform/commands/commands.js";
 import { Registry } from "../../platform/registry/registry.js";
 import { LegacyConfig } from "../../domain/legacy/legacy-config.js";
@@ -108,12 +109,17 @@ export function commandHarness(
 		fs,
 		log,
 		run: (command, line = {}) => {
-			const execute = () =>
-				commands.executeCommand(command, {
-					positionals: [],
-					options: {},
-					...line,
-				});
+			const full: CommandLine = { positionals: [], options: {}, ...line };
+			if (log instanceof MockLogService)
+				log.sendOwnLinesTo(
+					ownLinesOf(
+						Registry.as<CommandRegistry>(
+							Extensions.Commands
+						).getCommand(command),
+						full
+					)
+				);
+			const execute = () => commands.executeCommand(command, full);
 			return ready ? ready.then(execute) : execute();
 		},
 	};
@@ -124,7 +130,7 @@ function harnessServices(options: CommandHarnessOptions<LogService>) {
 	const fs = options.fs ?? new MemoryFileSystemService();
 	const ready = options.fs ? undefined : fs.createDirectory(cwd);
 
-	const log = options.log ?? new MockLogService();
+	const log = options.log ?? new MockLogService({ cwd });
 	const environment = options.environment ?? new MockEnvironmentService(cwd);
 	const services = new ServiceCollection();
 	services.set(EnvironmentService, environment);

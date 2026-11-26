@@ -2,7 +2,14 @@ import { jest } from "@jest/globals";
 import { stripVTControlCharacters } from "util";
 import { DisposableStore } from "../base/disposable.js";
 import { err, ok } from "../base/result.js";
+import path from "path";
 import { ProjectError, onUnexpectedError } from "../base/errors.js";
+import {
+	errorDiagnostic,
+	warningDiagnostic,
+} from "../platform/diagnostics/diagnostic.js";
+import { DiagnosticsError } from "../platform/diagnostics/diagnostics-error.js";
+import { LogService } from "../platform/log/log-service.js";
 import {
 	Command,
 	CommandRegistry,
@@ -177,6 +184,140 @@ describe("run", () => {
 			error: { kind: "internal" },
 		});
 		expect(process.exitCode).toBe(1);
+	});
+
+	describe("under --json", () => {
+		const chatty =
+			(failure?: Error): Command["handler"] =>
+			async (accessor) => {
+				const logService = accessor.get(LogService);
+				logService.intro("rogen main-test");
+				logService.step("default.rogen.json");
+				logService.info("Serving.");
+				logService.success("Wrote default.project.json.");
+				logService.note("beside it");
+				logService.notice("Rogen 9.9.9 is out");
+				logService.warn("careful");
+				logService.error("broken");
+				logService.debug("detail");
+				logService.diagnostics([warning]);
+				logService.diagnostics([warning], { asResult: true });
+				logService.outro("Done.");
+				if (failure) return err(failure);
+				logService.result('{"done":true}');
+				return ok(undefined);
+			};
+		const warning = warningDiagnostic(
+			"tree.deadScript",
+			{ resource: path.resolve("src/Dead.luau") },
+			"never runs."
+		);
+
+		beforeEach(() => {
+			jest.replaceProperty(process, "env", {
+				...process.env,
+				GITHUB_ACTIONS: "true",
+			});
+		});
+
+		it("should print the document on stdout and nothing else, in a workflow and under -v too", async () => {
+			store.add(
+				registry.registerCommand(
+					testCommand("main-test-json-chatty", chatty(), {
+						options: [JsonOption],
+					})
+				)
+			);
+
+			await run(["main-test-json-chatty", "--json", "-v"]);
+
+			expect(out).toEqual(['{"done":true}']);
+			expect(errors).toEqual([]);
+			expect(process.exitCode).toBe(0);
+		});
+
+		it("should print the failure as the only document", async () => {
+			store.add(
+				registry.registerCommand(
+					testCommand(
+						"main-test-json-fails",
+						chatty(new DiagnosticsError([warning])),
+						{ options: [JsonOption] }
+					)
+				)
+			);
+
+			await run(["main-test-json-fails", "--json"]);
+
+			expect(out).toHaveLength(1);
+			expect(JSON.parse(out[0])).toMatchObject({
+				diagnostics: [{ code: "tree.deadScript" }],
+			});
+			expect(errors).toEqual([]);
+		});
+	});
+
+	it("should annotate a failure's diagnostics once in a workflow", async () => {
+		jest.replaceProperty(process, "env", {
+			...process.env,
+			GITHUB_ACTIONS: "true",
+			GITHUB_WORKSPACE: process.cwd(),
+		});
+		store.add(
+			registry.registerCommand(
+				testCommand("main-test-annotates", async () =>
+					err(
+						new DiagnosticsError([
+							errorDiagnostic(
+								"config.invalidSyntax",
+								{ resource: path.resolve("a.rogen.json") },
+								"bad."
+							),
+						])
+					)
+				)
+			)
+		);
+
+		await run(["main-test-annotates"]);
+
+		expect(errors).toEqual([
+			"::error file=a.rogen.json,title=config.invalidSyntax::bad.",
+			"a.rogen.json - error: bad. (config.invalidSyntax)",
+		]);
+	});
+
+	it("should send a command's own lines where its metadata says, for the line it got", async () => {
+		const handler: Command["handler"] = async (accessor) => {
+			accessor.get(LogService).info("Synced.");
+			accessor.get(LogService).result("{}");
+			return ok(undefined);
+		};
+		store.add(
+			registry.registerCommand(
+				testCommand("main-test-own-lines", handler, {
+					options: [JsonOption],
+					ownLinesToStderr: ({ options }) => options.json !== true,
+				})
+			)
+		);
+		store.add(
+			registry.registerCommand(
+				testCommand("main-test-stdout-lines", handler)
+			)
+		);
+
+		await run(["main-test-own-lines"]);
+
+		expect(out).toEqual(["{}"]);
+		expect(errors).toEqual(["Synced."]);
+
+		out.length = 0;
+		errors.length = 0;
+		await run(["main-test-stdout-lines"]);
+
+		expect(out).toEqual(["Synced.", "{}"]);
+		expect(errors).toEqual([]);
 	});
 
 	it("should add the stack of a crash under --json -v", async () => {

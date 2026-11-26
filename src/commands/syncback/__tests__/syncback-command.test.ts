@@ -14,7 +14,7 @@ import { CoreSyncbackService } from "../../../domain/syncback/core-syncback-serv
 import { WriteRun } from "../../../domain/write/write.js";
 import { CommandLine } from "../../../platform/environment/args.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { exitCode } from "../../../platform/commands/command-failure.js";
+import { exitCode } from "../../../platform/commands/exit-code.js";
 import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
@@ -227,8 +227,8 @@ describe("syncback command", () => {
 		await running;
 
 		expect(log.lines).toEqual([
-			"print: Removing src/Combat/Server/Combat.luau",
-			"print: Writing src/Combat/Server/Loot.luau",
+			"result: Removing src/Combat/Server/Combat.luau",
+			"result: Writing src/Combat/Server/Loot.luau",
 			"info: Syncback would change 2 files (1 to write, 1 to remove).",
 		]);
 	});
@@ -424,8 +424,10 @@ describe("syncback command", () => {
 		rojo.exit({ code: 0, signal: null });
 		await running;
 
-		expect(log.sendsOwnLinesToStderr).toBe(true);
-		expect(log.texts("print")).toEqual([
+		expect(log.on("stderr")).toEqual(
+			log.lines.filter((line) => !line.startsWith("result: "))
+		);
+		expect(log.texts("result")).toEqual([
 			"Removing src/Combat/Server/Combat.luau",
 			"Writing src/Combat/Server/Loot.luau",
 		]);

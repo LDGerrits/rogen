@@ -1,4 +1,5 @@
 import { AbstractLogService, LogKind } from "./abstract-log-service.js";
+import { OutputStream } from "./log-service.js";
 
 const indented = (text: string) =>
 	text
@@ -13,48 +14,36 @@ export class PlainLogService extends AbstractLogService {
 
 	private inStep = false;
 
-	protected write(kind: LogKind, text: string): void {
-		const own = this.ownLinesToStderr ? console.error : console.info;
+	protected write(kind: LogKind, stream: OutputStream, text: string): void {
+		const line = stream === "stderr" ? console.error : console.info;
 		switch (kind) {
 			case "intro":
 			case "outro":
 				this.inStep = false;
-				own(text);
+				line(text);
 				break;
 			case "step":
-			case "section":
 				this.inStep = true;
-				own(text);
-				break;
-			case "sectionBody":
-				own(indented(text));
+				line(text);
 				break;
 			case "success":
 			case "info":
-				own(this.inStep ? indented(text) : text);
+				line(this.inStep ? indented(text) : text);
 				break;
 			case "warn":
-				console.warn(`${this.style("yellow", "warning:")} ${text}`);
+				line(`${this.style("yellow", "warning:")} ${text}`);
 				break;
 			case "error":
-				console.error(`${this.style("red", "error:")} ${text}`);
-				break;
-			case "diagnosticWarning":
-				console.warn(text);
-				break;
-			case "diagnosticError":
-			case "annotation":
-			case "notice":
-				console.error(text);
+				line(`${this.style("red", "error:")} ${text}`);
 				break;
 			case "debug":
 			case "trace": {
-				const line = this.style("dim", `[${kind}] ${text}`);
-				console.error(this.inStep ? indented(line) : line);
+				const tagged = this.style("dim", `[${kind}] ${text}`);
+				line(this.inStep ? indented(tagged) : tagged);
 				break;
 			}
 			default:
-				console.info(text);
+				line(text);
 		}
 	}
 }

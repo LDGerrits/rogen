@@ -93,6 +93,8 @@ registerCommand(
 					},
 					effects: ["writesFiles", "runsProcesses"],
 					longRunningWith: "watch",
+					ownLinesToStderr: ({ options }) =>
+						options.output === undefined && !options.json,
 					exitCodes: {
 						"1": "the project has errors, or Rojo failed",
 						"2": "the command line is wrong, or Rojo refused it",
@@ -133,7 +135,6 @@ registerCommand(
 				flags: this.rojoFlags(line, prints && !watch ? tmp : undefined),
 				cwd,
 			};
-			if (prints) logService.sendOwnLinesToStderr();
 			if (watch) {
 				const store = new DisposableStore();
 				const shutdown = this.untilShutdown(lifecycleService, store);
@@ -171,7 +172,7 @@ registerCommand(
 					const text = await tryWithAsync(() =>
 						fileSystemService.readFile(tmp)
 					);
-					if (text.isOk()) logService.print(text.value.trimEnd());
+					if (text.isOk()) logService.result(text.value.trimEnd());
 					else
 						unread = ErrorUtils.wrap(
 							"Failed to read the sourcemap Rojo wrote",

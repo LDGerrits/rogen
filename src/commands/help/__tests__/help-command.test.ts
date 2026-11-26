@@ -36,7 +36,7 @@ import {
 	OptionDescriptor,
 	flagName,
 } from "../../../platform/environment/args.js";
-import { exitCodeOf } from "../../../platform/commands/command-failure.js";
+import { exitCodeOf } from "../../../platform/commands/exit-code.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { Registry } from "../../../platform/registry/registry.js";
 import { firstSentence } from "../help-pages.js";
@@ -60,7 +60,7 @@ describe("help command", () => {
 	beforeEach(() => {
 		store = new DisposableStore();
 		logService = new NullLogService();
-		info = jest.spyOn(logService, "print");
+		info = jest.spyOn(logService, "result");
 		harness = commandHarness({
 			log: logService,
 			product: new MockProductService("2.3.4"),
@@ -112,8 +112,10 @@ describe("help command", () => {
 				options: {},
 			});
 
-			expect(log.sendsOwnLinesToStderr).toBe(true);
-			expect(log.texts("print")).toEqual([]);
+			expect(log.on("stderr")).toEqual(
+				log.lines.filter((line) => !line.startsWith("result: "))
+			);
+			expect(log.texts("result")).toEqual([]);
 			expect(log.texts("info")[0]).toContain("USAGE:");
 			expect(exitCodeOf((result as ResultError<Error>).error)).toBe(2);
 		});

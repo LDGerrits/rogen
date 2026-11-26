@@ -69,7 +69,7 @@ registerCommand(
 						topic: topic.toLowerCase(),
 						text,
 					});
-				logService.print(text);
+				logService.result(text);
 				return ok(undefined);
 			}
 
@@ -80,7 +80,7 @@ registerCommand(
 				});
 
 			const environment = accessor.get(EnvironmentService);
-			logService.print(DOCS_URL);
+			logService.result(DOCS_URL);
 			if (
 				environment.isInteractive &&
 				!(await accessor

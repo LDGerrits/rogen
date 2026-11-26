@@ -111,7 +111,7 @@ registerCommand(
 				if (formatted.isErr()) failures.push(...formatted.error);
 				const entry = formattedFile(file, formatted, cwd);
 				files.push(entry);
-				if (!line.options.json && entry.outcome === "wrote")
+				if (entry.outcome === "wrote")
 					logService.debug(`Formatted ${relativeTo(cwd, file)}.`);
 			}
 			const failure = DiagnosticsError.of(failures);

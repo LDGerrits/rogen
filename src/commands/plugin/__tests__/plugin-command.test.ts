@@ -91,7 +91,7 @@ describe("plugin command", () => {
 			const { log, running } = start(positionals);
 
 			expect((await running).isOk()).toBe(true);
-			expect(log.texts("print").join("\n")).toContain(
+			expect(log.texts("result").join("\n")).toContain(
 				"Installs or removes Rojo's Studio plugin"
 			);
 			expect(processes.spawned).toEqual([]);
@@ -105,14 +105,14 @@ describe("plugin command", () => {
 		rojo.exit({ code: 0, signal: null });
 
 		expect((await running).isOk()).toBe(true);
-		expect(log.texts("print").map((text) => JSON.parse(text))).toEqual([
+		expect(log.texts("result").map((text) => JSON.parse(text))).toEqual([
 			{
 				action: "install",
 				outcome: "done",
 				messages: [{ severity: "info", text: "Done" }],
 			},
 		]);
-		expect(log.sendsOwnLinesToStderr).toBe(false);
+		expect(log.on("stdout")).toEqual(log.lines);
 	});
 
 	it("should print the failure as the JSON document of an error with --json", async () => {
@@ -121,7 +121,7 @@ describe("plugin command", () => {
 		rojo.exit({ code: 1, signal: null });
 
 		expect((await running).isErr()).toBe(true);
-		expect(log.texts("print").map((text) => JSON.parse(text))).toEqual([
+		expect(log.texts("result").map((text) => JSON.parse(text))).toEqual([
 			{
 				action: "install",
 				outcome: "failed",
@@ -137,7 +137,8 @@ describe("plugin command", () => {
 		rojo.exit({ code: 0, signal: null });
 		await running;
 
-		expect(log.sendsOwnLinesToStderr).toBe(false);
+		expect(log.on("stdout")).toEqual(log.lines);
+		expect(log.texts("success")).toHaveLength(1);
 	});
 
 	it("should report the failure when Rojo fails", async () => {
@@ -166,7 +167,7 @@ describe("plugin command", () => {
 		const { log, running } = start(["install"], { json: true });
 
 		expect((await running).isErr()).toBe(true);
-		expect(log.texts("print").map((text) => JSON.parse(text))).toEqual([
+		expect(log.texts("result").map((text) => JSON.parse(text))).toEqual([
 			{
 				action: "install",
 				outcome: "failed",
