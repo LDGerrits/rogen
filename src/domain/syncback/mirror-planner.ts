@@ -42,6 +42,7 @@ import {
 } from "./reverse-router.js";
 import { DraftRouting, Landing, Proposal } from "./draft-routing.js";
 import { GITKEEP } from "./syncback-layout.js";
+import { Choice, settle } from "./placements.js";
 import { RenamedInstance, renamedInstances } from "./renamed-instances.js";
 import { RojoSyncback } from "./rojo-syncback.js";
 import {
@@ -129,18 +130,9 @@ function landingOf(
 	return made && { file: to, instance: made };
 }
 
-interface Choice {
-	readonly instance: string;
+interface Placing extends Choice<Proposal> {
 	readonly made: AddedInstance;
-	readonly proposals: readonly Proposal[];
-	readonly reason: string;
 }
-
-const clashes = (operation: Operation, other: Operation | undefined) =>
-	other !== undefined &&
-	(operation.kind === "write"
-		? other.kind !== "write" || !sameBytes(other.bytes, operation.bytes)
-		: other.kind === "write");
 
 class MirrorPlanRun {
 	private readonly request: SyncbackRequest;
@@ -943,7 +935,7 @@ class MirrorPlanRun {
 					)
 			).map((rename) => [rename.instance, rename])
 		);
-		const choices: Choice[] = [];
+		const choices: Placing[] = [];
 		for (const held of this.inPlace.values()) {
 			const whereRojoWroteIt: Proposal = {
 				operations: held.operations,
@@ -958,7 +950,7 @@ class MirrorPlanRun {
 			choices.push({
 				instance: held.instance,
 				made: held.made,
-				proposals: [whereRojoWroteIt, ...whereRoutingPutsIt.proposals],
+				candidates: [whereRojoWroteIt, ...whereRoutingPutsIt.proposals],
 				reason: whereRoutingPutsIt.reason,
 			});
 		}
@@ -996,7 +988,7 @@ class MirrorPlanRun {
 			choices.push({
 				instance: name,
 				made: instance,
-				proposals: [...renamed, ...placed.proposals],
+				candidates: [...renamed, ...placed.proposals],
 				reason: placed.reason,
 			});
 		}
@@ -1004,65 +996,22 @@ class MirrorPlanRun {
 		return additions;
 	}
 
-	private async choose(choices: readonly Choice[]): Promise<void> {
-		const at = choices.map(() => 0);
-		const reasons = choices.map(({ reason }) => reason);
-		const preferredMisses: (string | undefined)[] = choices.map(
-			() => undefined
+	private async choose(choices: readonly Placing[]): Promise<void> {
+		const { placed, refused } = await settle(choices, (chosen) =>
+			this.routing.misses(this.operations, chosen)
 		);
-		for (;;) {
-			const taken = new Map<string, Operation>();
-			const chosen = choices.map(({ proposals }, index) => {
-				for (; at[index] < proposals.length; at[index]++) {
-					const proposal = proposals[at[index]];
-					const clash = proposal.operations.find((operation) =>
-						clashes(operation, taken.get(operation.file))
-					);
-					if (clash) {
-						reasons[index] = `${clash.file} is already there`;
-						continue;
-					}
-					for (const operation of proposal.operations)
-						if (
-							operation.kind === "write" ||
-							operation.kind === "folder"
-						)
-							taken.set(operation.file, operation);
-					return proposal;
-				}
-				return undefined;
-			});
-			const misses = await this.routing.misses(
-				this.operations,
-				chosen.filter((proposal) => proposal !== undefined)
+		for (const { choice, reason } of refused) {
+			const { instance, made } = choice;
+			this.unplaced.push({ instance, reason });
+			this.refused.add(instance);
+			await this.keepMovedFrom(made);
+		}
+		for (const { candidate } of placed) {
+			for (const operation of candidate.operations)
+				await this.add(operation);
+			this.expected.push(
+				...candidate.landings.filter(({ folder }) => !folder)
 			);
-			let anyMissed = false;
-			chosen.forEach((proposal, index) => {
-				const miss = proposal && misses.get(proposal);
-				if (miss === undefined) return;
-				preferredMisses[index] ??= miss;
-				at[index]++;
-				anyMissed = true;
-			});
-			if (anyMissed) continue;
-			for (const [index, proposal] of chosen.entries()) {
-				if (proposal === undefined) {
-					const { instance, made } = choices[index];
-					this.unplaced.push({
-						instance,
-						reason: preferredMisses[index] ?? reasons[index],
-					});
-					this.refused.add(instance);
-					await this.keepMovedFrom(made);
-					continue;
-				}
-				for (const operation of proposal.operations)
-					await this.add(operation);
-				this.expected.push(
-					...proposal.landings.filter(({ folder }) => !folder)
-				);
-			}
-			return;
 		}
 	}
 
