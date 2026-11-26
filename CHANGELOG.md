@@ -14,12 +14,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
-- `rogen check` with a path also gives the findings about the path's config itself, such as the compiled path's warnings, so `rogen check src` says what `rogen check` says about `src`.
-- A folder such as `Net.client` whose files are routed only by their own `@` or by a marker file further down now gets the rename to `Net@client`. Rogen used to say another route governed it.
-- A dot file named for a route, such as `.client`, inside a folder another route governs no longer gets a rename to `@client`, which would have done nothing there.
-- A mistyped `@` under a route that already governs it, such as `server/Ui@clent/`, is reported as doing nothing there even when no file below it is routed, as it is when one is.
-- `rogen init` now reads the spelling of a route key in a folder name that starts with `^` or sits in parentheses, such as `^Server/`, `(^Server)/` or `(Ui@client)/`, as the write reads them.
-- A file whose `@` does nothing under a route that already governs it is now called a file in the message, not a folder, when it isn't routed itself.
 - `rogen syncback` no longer lists a folder as removed when it writes a file into it again, such as `src/Shop` when you move a feature to another side in Studio. The folder was never removed, and Rojo's own syncback doesn't list such a folder either.
 - When `rogen syncback` can't place a plugin script or a script in a language your sync rules read, it now says to make it a ModuleScript or move it where that script type runs, as it says for server and client scripts.
 - In GitHub Actions, every diagnostic Rogen prints is also a workflow annotation. `rogen where`'s errors elsewhere, `rogen syncback`'s warnings, `rogen serve`'s failures, `rogen init`'s warnings and a failed write under `--watch` used to have none. `--json` still writes no annotations.
