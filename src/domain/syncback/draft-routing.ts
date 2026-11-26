@@ -184,7 +184,7 @@ export class DraftRouting {
 
 	private async locate(
 		args: readonly string[],
-		draft: FileDraft
+		files: FileDraft
 	): Promise<
 		| {
 				readonly files: readonly FileLocation[];
@@ -193,9 +193,9 @@ export class DraftRouting {
 		| undefined
 	> {
 		const { request } = this;
-		const scope = this.writeService.openDraft(draft);
+		const draft = this.writeService.openDraft(files);
 		try {
-			const located = await scope.writeService.locate(request.selection, {
+			const located = await draft.writeService.locate(request.selection, {
 				args,
 				cwd: request.cwd,
 			});
@@ -204,7 +204,7 @@ export class DraftRouting {
 				({ config }) => config.id === request.project.id
 			);
 		} finally {
-			scope[Symbol.dispose]();
+			draft[Symbol.dispose]();
 		}
 	}
 

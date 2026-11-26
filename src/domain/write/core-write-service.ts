@@ -125,11 +125,16 @@ export class CoreWriteService implements WriteService {
 			]),
 			{ rebuilt: [IndexService, ConfigService, WriteService] }
 		);
-		return scope.invokeFunction((accessor) => ({
-			configService: accessor.get(ConfigService),
-			writeService: accessor.get(WriteService),
-			[Symbol.dispose]: () => scope[Symbol.dispose](),
-		}));
+		try {
+			return scope.invokeFunction((accessor) => ({
+				configService: accessor.get(ConfigService),
+				writeService: accessor.get(WriteService),
+				[Symbol.dispose]: () => scope[Symbol.dispose](),
+			}));
+		} catch (error) {
+			scope[Symbol.dispose]();
+			throw error;
+		}
 	}
 
 	private async writeAll(

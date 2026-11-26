@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { IndexService } from "../../../platform/fs/index-service.js";
@@ -6,6 +7,7 @@ import { EnvironmentService } from "../../../platform/environment/environment-se
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { SyncDescriptor } from "../../../platform/instantiation/sync-descriptor.js";
 import { instantiationOf } from "../../../platform/instantiation/__tests__/instantiation-of.js";
+import { CoreInstantiationService } from "../../../platform/instantiation/core-instantiation-service.js";
 import { ConfigChecks } from "../../config/config-checks.js";
 import { ConfigService } from "../../config/config-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
@@ -183,6 +185,41 @@ describe("WriteService.openDraft", () => {
 		} finally {
 			draft[Symbol.dispose]();
 		}
+	});
+
+	it("should dispose its scope when a service of the draft can't be built", () => {
+		let builds = 0;
+		class OnceConfigService extends CoreConfigService {
+			constructor(
+				...args: ConstructorParameters<typeof CoreConfigService>
+			) {
+				super(...args);
+				if (++builds > 1) throw new Error("can't build");
+			}
+		}
+		root[Symbol.dispose]();
+		root = instantiationOf(
+			[FileSystemService, fs],
+			[EnvironmentService, new MockEnvironmentService(abs())],
+			[ToolchainService, toolchainOf(fs)],
+			[IndexService, new SyncDescriptor(CoreIndexService)],
+			[ConfigService, new SyncDescriptor(OnceConfigService, [checks])],
+			[WriteService, new SyncDescriptor(CoreWriteService)]
+		);
+		const writeService = rootWriteService();
+		const disposed = jest.spyOn(
+			CoreInstantiationService.prototype,
+			Symbol.dispose
+		);
+
+		expect(() =>
+			writeService.openDraft({
+				files: new Map(),
+				directories: [],
+				moves: [],
+			})
+		).toThrow("can't build");
+		expect(disposed).toHaveBeenCalledTimes(1);
 	});
 
 	it("should leave the services outside the draft reading the disk", async () => {
