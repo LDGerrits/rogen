@@ -685,7 +685,7 @@ describe("CoreRojoCommandService", () => {
 				await ending;
 			});
 
-			it("should end Rojo and start it again when another config takes the project's place", async () => {
+			it("should keep Rojo running when another config writes the same project file", async () => {
 				const { shutdown, ending } = await watching();
 
 				await fs.delete("/repo/default.rogen.json");
@@ -700,7 +700,7 @@ describe("CoreRojoCommandService", () => {
 
 				expect(
 					processes.spawned.map(({ terminated }) => terminated)
-				).toEqual([true, false]);
+				).toEqual([false]);
 				shutdown.abort();
 				await ending;
 			});

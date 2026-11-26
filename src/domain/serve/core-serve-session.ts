@@ -126,13 +126,6 @@ export class CoreServeSession
 				this.halt({ kind: "refused", error })
 			)
 		);
-		this._register(
-			watch.onDidError((error) => {
-				if (this.children.hasStarted || this.isHalted)
-					this._onDidError.fire(error);
-				else this.halt({ kind: "refused", error });
-			})
-		);
 	}
 
 	get target(): ServeTarget | undefined {

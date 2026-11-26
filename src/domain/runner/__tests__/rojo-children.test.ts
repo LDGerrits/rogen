@@ -21,7 +21,8 @@ class FakeWatch implements WatchSession {
 	readonly configs: readonly ResolvedConfig[] = [];
 	readonly updates = new Emitter<WatchUpdate>();
 	readonly onDidUpdate = this.updates.event;
-	readonly onDidError = new Emitter<Error>().event;
+	readonly errors = new Emitter<Error>();
+	readonly onDidError = this.errors.event;
 	constructor(private readonly events: string[]) {}
 	async start(): Promise<Result<void, Error>> {
 		return ok(undefined);
@@ -53,6 +54,7 @@ class FakeChild {
 const configs = {
 	a: mockConfig({ file: "/repo/a/default.rogen.json" }),
 	b: mockConfig({ file: "/repo/b/default.rogen.json" }),
+	aJsonc: mockConfig({ file: "/repo/a/default.rogen.jsonc" }),
 };
 
 const findings = { warnings: [], sync: SyncWarnings.unknown };
@@ -161,6 +163,16 @@ describe("RojoChildren", () => {
 			expect(children.children()[0].followed).toBe(2);
 		});
 
+		it("should keep the child when another config writes the same project file", async () => {
+			await apply(update(written(configs.a)));
+
+			wanted = [configs.aJsonc];
+			await apply(update(written(configs.aJsonc)));
+
+			expect(events).toEqual(["started a"]);
+			expect(children.children()[0].followed).toBe(1);
+		});
+
 		it("should stop the old child before it starts one on a new project", async () => {
 			await apply(update(written(configs.a)));
 
@@ -265,6 +277,27 @@ describe("RojoChildren", () => {
 	});
 
 	describe("failures", () => {
+		it("should refuse on a watch error before the first start", async () => {
+			watch.errors.fire(new Error("unreadable"));
+
+			expect(refusals.map(({ message }) => message)).toEqual([
+				"unreadable",
+			]);
+			expect(children.isHalted).toBe(true);
+		});
+
+		it("should report a watch error after the first start, and go on", async () => {
+			await apply(update(written(configs.a)));
+
+			watch.errors.fire(new Error("unreadable"));
+
+			expect(errors.map(({ message }) => message)).toEqual([
+				"unreadable",
+			]);
+			expect(refusals).toEqual([]);
+			expect(children.isHalted).toBe(false);
+		});
+
 		it("should refuse when an update throws before the first start", async () => {
 			children[Symbol.dispose]();
 			children = new RojoChildren(watch, {

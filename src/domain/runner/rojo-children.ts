@@ -38,7 +38,9 @@ interface Running<C> {
 /**
  * The Rojo children of a watched Rojo run, one per config. A child starts once
  * its config is first written and restarts only when its place changes, since
- * Rojo reloads its own project file.
+ * Rojo reloads its own project file. A config that replaces another with the
+ * same place keeps its child. Like Rojo, an error before the first start ends
+ * the run, and one after it is only reported.
  */
 export class RojoChildren<C extends RojoChild, A> extends AbstractDisposable {
 	private readonly _onDidUpdate = this._register(new Emitter<WatchUpdate>());
@@ -63,6 +65,12 @@ export class RojoChildren<C extends RojoChild, A> extends AbstractDisposable {
 		private readonly host: RojoChildHost<C, A>
 	) {
 		super();
+		this._register(
+			watch.onDidError((error) => {
+				if (this.started || this.isHalted) this._onDidError.fire(error);
+				else this.refuse(error);
+			})
+		);
 		this._register(
 			watch.onDidUpdate((update) => {
 				this._onDidUpdate.fire(update);
@@ -156,15 +164,28 @@ export class RojoChildren<C extends RojoChild, A> extends AbstractDisposable {
 		const wanted = this.host.wanted();
 		if (wanted === undefined) return;
 		const ids = new Set(wanted.map(({ id }) => id));
-		for (const [id, running] of [...this.running])
-			if (!ids.has(id)) await this.retire(id, running, "removed");
+		for (const [id, running] of [...this.running]) {
+			if (ids.has(id)) continue;
+			const heir = wanted.find(
+				(config) =>
+					!this.running.has(config.id) &&
+					this.placeOf(config) === running.place
+			);
+			this.running.delete(id);
+			if (heir) this.running.set(heir.id, running);
+			else await this.retire(running, "removed");
+		}
 		for (const config of wanted) await this.follow(config);
+	}
+
+	private placeOf(config: ResolvedConfig): string {
+		return this.host.placeOf?.(config) ?? config.projectFile;
 	}
 
 	private async follow(config: ResolvedConfig): Promise<void> {
 		if (this.isHalted) return;
 		const { host } = this;
-		const place = host.placeOf?.(config) ?? config.projectFile;
+		const place = this.placeOf(config);
 		const running = this.running.get(config.id);
 		if (running?.place === place) {
 			host.follow?.(running.child, config);
@@ -173,7 +194,10 @@ export class RojoChildren<C extends RojoChild, A> extends AbstractDisposable {
 		if (!this.written.has(config.id)) return;
 		const admission = await host.admit(config, running?.child);
 		if (this.isHalted || admission === undefined) return;
-		if (running) await this.retire(config.id, running, "moved");
+		if (running) {
+			this.running.delete(config.id);
+			await this.retire(running, "moved");
+		}
 		if (this.isHalted) return;
 		const child = await host.start(config, admission, this.halted.signal);
 		if (!child) return;
@@ -186,11 +210,9 @@ export class RojoChildren<C extends RojoChild, A> extends AbstractDisposable {
 	}
 
 	private async retire(
-		id: string,
 		running: Running<C>,
 		reason: "removed" | "moved"
 	): Promise<void> {
-		this.running.delete(id);
 		const retired = this.host.retire(running.child, reason);
 		this.retiring.add(retired);
 		try {

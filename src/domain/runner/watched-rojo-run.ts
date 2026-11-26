@@ -79,9 +79,6 @@ export class WatchedRojoRun extends AbstractDisposable implements RojoRunWatch {
 		);
 		this.onDidUpdate = this.children.onDidUpdate;
 		this._register(
-			watch.onDidError((error) => this._onDidError.fire(error))
-		);
-		this._register(
 			this.children.onDidError((error) => this._onDidError.fire(error))
 		);
 		this._register(
