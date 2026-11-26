@@ -14,6 +14,7 @@ import {
 	NameReadings,
 } from "./name-readings.js";
 import { ScannedFile, ScannedRoot } from "./root-scanner.js";
+import { RouteGovernance } from "./route-governance.js";
 
 export interface RoutedFile {
 	readonly entry: ScannedFile;
@@ -137,12 +138,6 @@ class Claims {
 	}
 }
 
-const isGovernedNearMiss = (
-	folder: FolderReading,
-	claims: Claims
-): folder is FolderReading & { readonly nearMissKey: string } =>
-	folder.nearMissKey !== undefined && claims.route !== undefined;
-
 interface LeafName {
 	readonly name: string;
 	readonly hoisted: boolean;
@@ -181,11 +176,11 @@ export interface Routing {
 	readonly unrouted: string[];
 	readonly withoutFolder: InitWithoutFolder[];
 	readonly hoistedInits: HoistedInit[];
-	readonly governedNearMisses: ReadonlySet<string>;
+	readonly governance: RouteGovernance;
 }
 
 export class Router {
-	private readonly governedNearMisses = new Set<string>();
+	private readonly governed = new Map<string, string>();
 
 	constructor(
 		private readonly config: ResolvedConfig,
@@ -199,7 +194,7 @@ export class Router {
 			unrouted: [],
 			withoutFolder: [],
 			hoistedInits: [],
-			governedNearMisses: this.governedNearMisses,
+			governance: new RouteGovernance(this.governed),
 		};
 		for (const root of roots) {
 			const dirs = claims.of(root);
@@ -394,8 +389,11 @@ export class Router {
 		readonly folders: readonly ClaimedFolder[];
 		readonly hoistAt: number | undefined;
 	} {
-		const claimDirectory = (dir: string) =>
+		const claimDirectory = (dir: string) => {
 			this.claimDirectory(dir, dirs, claims);
+			if (claims.route)
+				this.governed.set(joinPosix(sourcePath, dir), claims.route.key);
+		};
 		claimDirectory("");
 		const folders: ClaimedFolder[] = [];
 		let hoistAt: number | undefined;
@@ -406,10 +404,8 @@ export class Router {
 			const named = name !== undefined && !folder.invisible;
 			if (named) folders.push({ name, dir: folder.dir });
 			claimDirectory(folder.dir);
-			if (isGovernedNearMiss(folder, claims)) {
+			if (folder.nearMissKey !== undefined && claims.route)
 				claims.outrankNearMiss(folder.nearMissKey, depthOf(folder.dir));
-				this.governedNearMisses.add(joinPosix(sourcePath, folder.dir));
-			}
 		}
 		return { folders, hoistAt };
 	}

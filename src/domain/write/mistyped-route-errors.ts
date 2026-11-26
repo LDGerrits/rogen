@@ -1,15 +1,14 @@
 import path from "path";
 import { compareByCodePoint } from "../../base/collections.js";
+import { joinPosix } from "../../base/path.js";
+import { joinedWithAnd } from "../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticFix,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import {
-	governingRouteOf,
-	governingRouteOfMarkerFolder,
-} from "./governing-route-of.js";
 import { NameReadings } from "./name-readings.js";
+import { RouteGovernance } from "./route-governance.js";
 import { RoutedFile } from "./router.js";
 
 const byResource = (a: Diagnostic, b: Diagnostic) =>
@@ -25,9 +24,8 @@ function spelledAs(resource: string, key: string): string {
 }
 
 export interface MistypedRouteInputs {
-	readonly routed: readonly RoutedFile[];
+	readonly governance: RouteGovernance;
 	readonly displaced: ReadonlySet<string>;
-	readonly governed: ReadonlySet<string>;
 	readonly exists: (target: string) => boolean;
 	readonly fallback?: FallbackRoute;
 }
@@ -38,15 +36,13 @@ export type FallbackRoute =
 
 export function mistypedRouteErrors(
 	readings: NameReadings,
-	{ routed, displaced, governed, exists, fallback }: MistypedRouteInputs
+	{ governance, displaced, exists, fallback }: MistypedRouteInputs
 ): Diagnostic[] {
 	const isMarker = (resource: string) => readings.markers.has(resource);
 	const isDisplaced = (resource: string) => displaced.has(resource);
-	const isGovernedFolder = (resource: string) => governed.has(resource);
-	const governingRoute = (resource: string) =>
-		isMarker(resource)
-			? governingRouteOfMarkerFolder(path.posix.dirname(resource), routed)
-			: governingRouteOf(resource, routed);
+	const isGovernedFolder = (resource: string) =>
+		governance.within(resource) !== undefined;
+	const governingRoute = (resource: string) => governance.above(resource);
 	const isIgnoredAt = (
 		governing: string | undefined,
 		key: string
@@ -71,9 +67,7 @@ export function mistypedRouteErrors(
 				message,
 				renamed(resource, to)
 			);
-		const kind = routed.some(({ entry }) => entry.source === resource)
-			? "file"
-			: "folder";
+		const kind = readings.entries.has(resource) ? "file" : "folder";
 		return errorDiagnostic(
 			"route.ignoredAt",
 			{ resource },
@@ -133,6 +127,45 @@ export function mistypedRouteErrors(
 		...folders.sort(byResource),
 		...ignored.sort(byResource),
 	];
+}
+
+export function ignoredAtErrors(
+	nodes: readonly RoutedFile[],
+	clashing: ReadonlySet<string>
+): Diagnostic[] {
+	const ignored = new Map<
+		string,
+		{ keys: Set<string>; route: string; kind: string }
+	>();
+	for (const { entry, route, ignoredAts } of nodes)
+		for (const { key, dir, marker } of ignoredAts) {
+			const resource =
+				dir === undefined
+					? entry.source
+					: joinPosix(entry.sourcePath, dir, marker ?? "");
+			if (clashing.has(resource)) continue;
+			const kind = dir === undefined ? "file" : "folder";
+			const found = ignored.get(resource) ?? {
+				keys: new Set<string>(),
+				route,
+				kind,
+			};
+			found.keys.add(key);
+			ignored.set(resource, found);
+		}
+	return [...ignored]
+		.sort(([a], [b]) => compareByCodePoint(a, b))
+		.map(([resource, { keys, route, kind }]) => {
+			const many = keys.size > 1;
+			const quoted = joinedWithAnd(
+				[...keys].sort(compareByCodePoint).map((key) => `"@${key}"`)
+			);
+			return errorDiagnostic(
+				"route.ignoredAt",
+				{ resource },
+				`${quoted} ${many ? "do" : "does"} nothing here: the "${route}" route already governs this ${kind}. Remove ${many ? "them" : "it"}, or move the ${kind} out of that route.`
+			);
+		});
 }
 
 function keepAsChild(fallback: FallbackRoute): string {

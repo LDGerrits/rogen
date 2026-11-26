@@ -491,6 +491,25 @@ describe("WriteValidator rules", () => {
 				]);
 			});
 
+			it("should report a mistyped @ under a route that governs it as one that does nothing there, though no file below it is routed", async () => {
+				await write(
+					"src/server/M/@CLIENT",
+					"src/server/Ui@clent/notes.txt"
+				);
+
+				const result = await route();
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics
+							.filter(({ code }) => code.startsWith("route."))
+							.map(({ code, resource }) => [code, resource])
+				).toEqual([
+					["route.ignoredAt", abs("src/server/M/@CLIENT")],
+					["route.ignoredAt", abs("src/server/Ui@clent")],
+				]);
+			});
+
 			it("should keep the rename of a mistyped @ that restates the route governing it", async () => {
 				await write("src/server/Up@Server.luau");
 
@@ -767,6 +786,47 @@ describe("WriteValidator rules", () => {
 				expect(error.message).toBe('write "Ui@client"');
 				expect(renamesOf([error])).toEqual({
 					"Ui.client": "Ui@client",
+				});
+			});
+
+			it("should not offer a rename for a dot-file that another route's folder governs", async () => {
+				await write("src/Shared/Ui/.client", "src/Shared/Ui/A.luau");
+
+				const errors = await dotErrors({
+					routes: { ...SHARED, Shared: "ReplicatedStorage/shared" },
+				});
+
+				expect(listed(errors)).toEqual([
+					[
+						at("src/Shared/Ui/.client"),
+						'the "Shared" route governs it, so "@client" would do nothing; move it out of that route\'s files to route it',
+					],
+				]);
+				expect(renamesOf(errors)).toEqual({});
+			});
+
+			it("should offer the rename when the route of a file in the folder comes from its own suffix", async () => {
+				await write("src/Net.client/Foo@server.luau");
+
+				const [error] = await dotErrors();
+
+				expect(error.message).toBe('write "Net@client"');
+				expect(renamesOf([error])).toEqual({
+					"Net.client": "Net@client",
+				});
+			});
+
+			it("should offer the rename when the route below the folder comes from a marker file", async () => {
+				await write(
+					"src/Odd/Mk.client/Sub/@server",
+					"src/Odd/Mk.client/Sub/A.luau"
+				);
+
+				const [error] = await dotErrors();
+
+				expect(error.message).toBe('write "Mk@client"');
+				expect(renamesOf([error])).toEqual({
+					"Odd/Mk.client": "Odd/Mk@client",
 				});
 			});
 

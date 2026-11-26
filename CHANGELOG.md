@@ -22,6 +22,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A `tree` node with only `$properties` or children, such as `"shared": { "$properties": { ... } }`, now gets the Folder class when routed files land in it. Rogen used to write it without one, which Rojo refused to build. A node whose class Rojo knows from its name, such as `Workspace/Terrain`, is left as it is.
 - A route whose target passes through `Workspace/Terrain` puts its files in the place's Terrain instead of a Folder named Terrain.
 - When a folder holds several init files, Rogen now names the one Rojo reads, in Rojo's own order: a client init before a plugin init, and `init.plugin.lua` before `init.plugin.luau`. `rogen where` also names that file for a folder inside a mounted package.
+- A folder such as `Net.client` whose files are routed only by their own `@` or by a marker file further down now gets the rename to `Net@client`. Rogen used to say another route governed it.
+- A dot file named for a route, such as `.client`, inside a folder another route governs no longer gets a rename to `@client`, which would have done nothing there.
+- A mistyped `@` under a route that already governs it, such as `server/Ui@clent/`, is reported as doing nothing there even when no file below it is routed, as it is when one is.
 
 ## [2.0.0-rc.2] - 2026-11-23
 
