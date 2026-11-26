@@ -6,7 +6,7 @@ import {
 	renderDiagnostic,
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
-import { diagnosticGroups } from "../diagnostic-groups.js";
+import { diagnosticGroups } from "../write.js";
 
 describe("diagnosticGroups", () => {
 	const warnings = (count: number, code = "route.unrouted") =>

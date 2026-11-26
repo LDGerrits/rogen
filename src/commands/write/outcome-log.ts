@@ -7,7 +7,7 @@ import {
 	ConfigOutcome,
 	isUnchanged,
 } from "../../domain/write/write.js";
-import { diagnosticGroups } from "../../domain/write/diagnostic-groups.js";
+import { diagnosticGroups } from "../../domain/write/write.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { RojoRunOutcome } from "../../domain/runner/rojo-command-service.js";
