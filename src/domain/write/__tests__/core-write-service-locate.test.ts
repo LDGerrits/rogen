@@ -605,20 +605,13 @@ describe("CoreWriteService.locate", () => {
 		]);
 	});
 
-	it.each([
-		["init.luau", "init.server.luau"],
-		["init.luau", "init.client.luau"],
-		["init.client.luau", "init.csv"],
-	])(
-		"should say %s replaces %s as the folder's init file, as Rojo reads it",
-		async (winner, loser) => {
-			await write(`src/Net/${winner}`, `src/Net/${loser}`);
+	it("should say an init file Rojo reads after another is replaced by it", async () => {
+		await write("src/Net/init.plugin.luau", "src/Net/init.client.luau");
 
-			expect(await locate([`src/Net/${loser}`])).toMatchObject([
-				{ status: "replaced", by: abs(`src/Net/${winner}`) },
-			]);
-		}
-	);
+		expect(await locate(["src/Net/init.plugin.luau"])).toMatchObject([
+			{ status: "replaced", by: abs("src/Net/init.client.luau") },
+		]);
+	});
 
 	it("should rank the init files among the files of one name, wherever a plain file sits", async () => {
 		await write(

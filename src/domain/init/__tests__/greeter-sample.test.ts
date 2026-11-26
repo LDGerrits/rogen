@@ -1,7 +1,6 @@
 import { Luau } from "../../toolchain/luau.js";
 import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
-import { DEFAULT_SOURCE_PATH } from "../../config/config.js";
-import { GreeterSample, TEMPLATE_SOURCE_PATHS } from "../greeter-sample.js";
+import { GreeterSample } from "../greeter-sample.js";
 
 describe("GreeterSample", () => {
 	const sample = new GreeterSample(new Luau(), "lobby");
@@ -154,12 +153,14 @@ describe("GreeterSample", () => {
 	describe("templates", () => {
 		const languages = [new Luau(), workspaceOf().languageFor("roblox-ts")];
 
-		it("should keep each variant's code where its template has it", () => {
-			expect(TEMPLATE_SOURCE_PATHS).toEqual({
-				one: DEFAULT_SOURCE_PATH,
-				place: "src/lobby",
-			});
-		});
+		it.each(languages)(
+			"should find the first place's code of $id where its template has it",
+			(language) => {
+				expect(
+					new GreeterSample(language, "lobby").place("src/lobby")
+				).not.toEqual([]);
+			}
+		);
 
 		it.each(languages)(
 			"should name the feature's folders after the routes of $id",

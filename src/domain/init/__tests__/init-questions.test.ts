@@ -7,7 +7,7 @@ import {
 	PromptScript,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { withRobloxTs } from "../../toolchain/__tests__/workspaces.js";
-import { ProjectChoices } from "../project-setup.js";
+import { SetupProject } from "../project-code.js";
 import path from "path";
 import {
 	DirectorySpec,
@@ -23,7 +23,7 @@ type Context = DirectorySpec;
 const askInitChoices = async (
 	prompts: MockPromptService,
 	context: Context
-): Promise<Result<ProjectChoices | undefined, Diagnostic[]>> => {
+): Promise<Result<SetupProject | undefined, Diagnostic[]>> => {
 	const fileSystem = new MemoryFileSystemService();
 	await fileSystem.createDirectory(directory);
 	for (const file of context.existing ?? [])
@@ -100,7 +100,7 @@ describe("InitQuestions askProject", () => {
 		).unwrap();
 
 		expect(prompts.asked).toEqual(["Language"]);
-		expect(choices?.mounts.map(({ path }) => path)).toEqual([
+		expect(choices?.code.mounts.map(({ path }) => path)).toEqual([
 			"include",
 			"node_modules/@rbxts",
 			"Packages",
@@ -109,15 +109,15 @@ describe("InitQuestions askProject", () => {
 
 	describe("language", () => {
 		it("should preselect the detected language", async () => {
-			expect((await asked(rbxts, {})).language.id).toBe("roblox-ts");
-			expect((await asked(luau, {})).language.id).toBe("luau");
+			expect((await asked(rbxts, {})).code.language.id).toBe("roblox-ts");
+			expect((await asked(luau, {})).code.language.id).toBe("luau");
 		});
 
 		it("should take the language that was chosen", async () => {
 			const choices = await asked(luau, { Language: "roblox-ts" });
 
-			expect(choices.language.id).toBe("roblox-ts");
-			expect(choices.compiledPath).toBe("out");
+			expect(choices.code.language.id).toBe("roblox-ts");
+			expect(choices.code.compiledPath).toBe("out");
 		});
 	});
 
@@ -139,7 +139,7 @@ describe("InitQuestions askProject", () => {
 			const result = await askInitChoices(prompts, contextOf(rbxts));
 
 			expect(compiledPathPrompt(prompts)).toBeUndefined();
-			expect(result.unwrap()?.compiledPath).toBe("build");
+			expect(result.unwrap()?.code.compiledPath).toBe("build");
 		});
 	});
 
@@ -153,7 +153,7 @@ describe("InitQuestions askProject", () => {
 				{}
 			);
 
-			expect(choices.sourcePaths).toEqual(["game"]);
+			expect(choices.code.sourcePaths).toEqual(["game"]);
 		});
 
 		it("should ignore the tsconfig sourcePath for luau", async () => {
@@ -162,13 +162,13 @@ describe("InitQuestions askProject", () => {
 				{}
 			);
 
-			expect(choices.sourcePaths).toEqual(["src"]);
+			expect(choices.code.sourcePaths).toEqual(["src"]);
 		});
 	});
 
 	describe("packages", () => {
 		const mountedFor = async (workspace: WorkspaceSpec) =>
-			(await asked(workspace, {})).mounts;
+			(await asked(workspace, {})).code.mounts;
 
 		it("should mount only the package folders that are installed", async () => {
 			expect(
@@ -297,7 +297,7 @@ describe("InitQuestions askProject project file", () => {
 			kind: "lift",
 			from: "default.project.json",
 		});
-		expect(result?.mounts).toEqual([
+		expect(result?.code.mounts).toEqual([
 			{ path: "Packages", landing: "ReplicatedStorage/Packages" },
 		]);
 	});
