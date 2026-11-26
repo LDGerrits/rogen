@@ -4,7 +4,6 @@ import { toPosix } from "../../../base/path.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { fileSystemError } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
@@ -82,7 +81,7 @@ describe("MirrorWorkspace", () => {
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
 		configs = new MockConfigService([]);
-		writeService = writeServiceOf(fs, new CoreIndexService(fs));
+		writeService = writeServiceOf(fs);
 		rojo = new FakeRojo();
 	});
 

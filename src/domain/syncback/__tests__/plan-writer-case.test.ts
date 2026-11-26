@@ -5,8 +5,6 @@ jest.unstable_mockModule("../../../base/platform.js", () => ({
 	ignoresPathCase: true,
 }));
 
-const { CoreIndexService } =
-	await import("../../../platform/fs/core-index-service.js");
 const { MemoryFileSystemService } =
 	await import("../../../platform/fs/memory-file-system-service.js");
 const { selectionOf } =
@@ -22,10 +20,7 @@ describe("PlanWriter where the file system ignores case", () => {
 
 	const writeRename = (fs: InstanceType<typeof MemoryFileSystemService>) => {
 		const config = configOf();
-		return new PlanWriter(
-			fs,
-			writeServiceOf(fs, new CoreIndexService(fs))
-		).write(
+		return new PlanWriter(fs, writeServiceOf(fs)).write(
 			{
 				selection: selectionOf(config),
 				project: config,

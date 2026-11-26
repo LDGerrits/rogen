@@ -3,7 +3,6 @@ import path from "path";
 import { toPosix } from "../../../base/path.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { PlannedFilesIndex } from "../locate/planned-files-index.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import { RojoFile } from "../../rojo/rojo.js";
@@ -33,7 +32,7 @@ describe("CoreWriteService.locate", () => {
 
 	const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
-	const writeService = () => writeServiceOf(fs, new CoreIndexService(fs));
+	const writeService = () => writeServiceOf(fs);
 
 	const locate = async (
 		paths?: readonly string[],
@@ -606,20 +605,13 @@ describe("CoreWriteService.locate", () => {
 		]);
 	});
 
-	it.each([
-		["init.luau", "init.server.luau"],
-		["init.luau", "init.client.luau"],
-		["init.client.luau", "init.csv"],
-	])(
-		"should say %s replaces %s as the folder's init file, as Rojo reads it",
-		async (winner, loser) => {
-			await write(`src/Net/${winner}`, `src/Net/${loser}`);
+	it("should say an init file Rojo reads after another is replaced by it", async () => {
+		await write("src/Net/init.plugin.luau", "src/Net/init.client.luau");
 
-			expect(await locate([`src/Net/${loser}`])).toMatchObject([
-				{ status: "replaced", by: abs(`src/Net/${winner}`) },
-			]);
-		}
-	);
+		expect(await locate(["src/Net/init.plugin.luau"])).toMatchObject([
+			{ status: "replaced", by: abs("src/Net/init.client.luau") },
+		]);
+	});
 
 	it("should rank the init files among the files of one name, wherever a plain file sits", async () => {
 		await write(
@@ -1542,10 +1534,7 @@ describe("CoreWriteService.locate", () => {
 	it("should index the source paths it reads itself", async () => {
 		await write("src/A.luau");
 
-		const located = await locateIn(
-			writeServiceOf(fs, new CoreIndexService(fs)),
-			configOf()
-		);
+		const located = await locateIn(writeServiceOf(fs), configOf());
 
 		expect(located.unwrap().files).toMatchObject([
 			{ status: "placed", source: abs("src/A.luau"), exists: true },

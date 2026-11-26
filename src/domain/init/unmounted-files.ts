@@ -8,7 +8,7 @@ import {
 import { ignoringGlob, literalGlob } from "../../base/glob.js";
 import { tryWithAsync } from "../../base/result.js";
 import {
-	FileReader,
+	FileSystemService,
 	isDirectoryType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
@@ -20,8 +20,8 @@ const holds = (target: string, place: string): boolean =>
 
 export class UnmountedFiles {
 	constructor(
-		private readonly reader: FileReader,
-		private readonly directory: string
+		private readonly directory: string,
+		@FileSystemService private readonly reader: FileSystemService
 	) {}
 
 	async find(

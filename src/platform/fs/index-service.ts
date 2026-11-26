@@ -1,7 +1,7 @@
 import { toPosix } from "../../base/path.js";
 import { createDecorator } from "../instantiation/instantiation.js";
 import { FileChange } from "./file-changes.js";
-import { FileReader, FileType } from "./file-system-service.js";
+import { FileType } from "./file-system-service.js";
 
 export interface IndexReader {
 	getEntries(dirPath: string): ReadonlyMap<string, FileType> | undefined;
@@ -41,7 +41,7 @@ export class Listing implements IndexReader {
 export interface IndexService {
 	readonly _serviceBrand: undefined;
 
-	list(dirs: readonly string[], reader?: FileReader): Promise<Listing>;
+	list(dirs: readonly string[]): Promise<Listing>;
 	update(base: Listing, changes: readonly FileChange[]): Promise<Listing>;
 }
 

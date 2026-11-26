@@ -1,4 +1,3 @@
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import {
 	abs,
@@ -25,9 +24,7 @@ export async function layoutOf(
 	const fs = new MemoryFileSystemService();
 	await writeFiles(fs, ...files);
 	const config = configOf({ routes: ROUTES, ...spec });
-	const located = (
-		await locateIn(writeServiceOf(fs, new CoreIndexService(fs)), config)
-	).unwrap();
+	const located = (await locateIn(writeServiceOf(fs), config)).unwrap();
 	return new SyncbackLayout(
 		config,
 		located.files,

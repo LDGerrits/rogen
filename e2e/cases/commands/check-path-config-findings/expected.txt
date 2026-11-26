@@ -1,0 +1,41 @@
+$ rogen check src/A.luau
+exit 1
+stdout:
+  default.project.json - warning: this file is out of date: its sources changed. Run 'rogen write'; to change it, edit default.rogen.json. (output.differs)
+  out - warning: the compiled path "out" doesn't exist yet. Run your compiler or processor first. (output.nothingEmitted)
+
+$ rogen check src/A.luau --json
+exit 1
+stdout:
+  {
+    "diagnostics": [
+      {
+        "file": "<dir>/default.project.json",
+        "severity": "warning",
+        "code": "output.differs",
+        "message": "this file is out of date: its sources changed. Run 'rogen write'; to change it, edit default.rogen.json.",
+        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#output-differs",
+        "fixes": [
+          {
+            "run": {
+              "command": "rogen write",
+              "cwd": "<dir>"
+            }
+          }
+        ]
+      },
+      {
+        "file": "<dir>/out",
+        "severity": "warning",
+        "code": "output.nothingEmitted",
+        "message": "the compiled path \"out\" doesn't exist yet. Run your compiler or processor first.",
+        "url": "https://rogen-roblox.vercel.app/docs/v2/diagnostics#output-nothingemitted"
+      }
+    ]
+  }
+
+$ rogen check
+exit 1
+stdout:
+  default.project.json - warning: this file is out of date: its sources changed. Run 'rogen write'; to change it, edit default.rogen.json. (output.differs)
+  out - warning: the compiled path "out" doesn't exist yet. Run your compiler or processor first. (output.nothingEmitted)

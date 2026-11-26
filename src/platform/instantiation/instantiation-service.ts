@@ -1,6 +1,7 @@
 import { Disposable, DisposableStore } from "../../base/disposable.js";
 import {
 	BrandedService,
+	ServiceIdentifier,
 	ServicesAccessor,
 	createDecorator,
 } from "./instantiation.js";
@@ -12,6 +13,11 @@ export type LeadingNonServiceArgs<Args extends unknown[]> = Args extends []
 	: Args extends [...infer First, BrandedService]
 		? LeadingNonServiceArgs<First>
 		: Args;
+
+export interface ChildOptions {
+	readonly store?: DisposableStore;
+	readonly rebuilt?: readonly ServiceIdentifier<unknown>[];
+}
 
 export interface InstantiationService extends Disposable {
 	readonly _serviceBrand: undefined;
@@ -32,7 +38,7 @@ export interface InstantiationService extends Disposable {
 
 	createChild(
 		services: ServiceCollection,
-		store?: DisposableStore
+		options?: ChildOptions
 	): InstantiationService;
 }
 

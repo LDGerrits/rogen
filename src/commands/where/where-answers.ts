@@ -6,6 +6,7 @@ import {
 	FileLocation,
 	InstanceFix,
 	LocatedDiagnosis,
+	LocatedVerdict,
 	Locations,
 } from "../../domain/write/write-service.js";
 import {
@@ -46,18 +47,21 @@ export class WhereAnswers {
 	private readonly sorted: boolean;
 	private readonly asked: readonly Asked[];
 
-	constructor({ everyFile, asked, configs, errors }: Locations) {
+	constructor(locations: Locations) {
+		const { everyFile, asked, configs } = locations;
 		this.asked = asked;
 		this.sourcePaths = configs.flatMap(({ config }) => config.sourcePaths);
 		this.configCount = configs.length;
 		this.sorted = everyFile;
-		const diagnoses = configs.map(
-			(located) => new LocatedDiagnosis(located)
-		);
+		const verdict = new LocatedVerdict(locations);
+		const { diagnoses } = verdict;
 		this.answers = configs.flatMap((located, at) =>
 			answersOf(located, diagnoses[at])
 		);
-		this.stops = uniqueDiagnostics(diagnoses.flatMap(({ stops }) => stops));
+		this.stops = verdict.stops;
+		this.errors = verdict.errors;
+		this.failing = verdict.failing;
+		this.elsewhere = verdict.elsewhere;
 		this.whyEmpty =
 			this.answers.length > 0 || this.stops.length > 0
 				? []
@@ -66,18 +70,6 @@ export class WhereAnswers {
 							({ placingNothing }) => placingNothing
 						)
 					);
-		const unshown = uniqueDiagnostics(
-			diagnoses.flatMap(({ unshown }) => unshown)
-		);
-		const stoppedBy = diagnoses.flatMap(({ stoppedBy }) => stoppedBy);
-		this.elsewhere = everyFile
-			? []
-			: unshown.filter((error) => stoppedBy.includes(error));
-		this.errors = uniqueDiagnostics([...errors, ...unshown]);
-		this.failing = uniqueDiagnostics([
-			...errors,
-			...this.stops.filter((error) => !this.elsewhere.includes(error)),
-		]);
 	}
 
 	bySource(): Answer[][] {

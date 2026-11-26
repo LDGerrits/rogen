@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - `rogen build --watch` and `rogen sourcemap --watch` check the project file against the Rojo that runs each time they write it, as `rogen serve` does. A project that Rojo can't read, such as one with `syncRules` before Rojo 7.5, stops the watch with exit code 1 before Rojo starts, as `rojo build --watch` exits. After Rojo started, it is reported and Rojo keeps running. They used to check only when Rojo started, and kept watching without Rojo.
 - `rogen build --watch` and `rogen sourcemap --watch` stop with exit code 1 when their config can't be read before Rojo first starts, as `rogen serve` does and as `rojo build --watch` does with a project it can't read. Replacing `default.rogen.json` with a `default.rogen.jsonc` that writes the same project file no longer restarts Rojo, which reloads the file itself.
+- `rogen check` with a path also gives the findings about the path's config itself, such as the compiled path's warnings, so `rogen check src` says what `rogen check` says about `src`.
 
 ### Fixed
 
@@ -20,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The error for a name `rogen syncback` can't write now also points at duplicate names and characters no file can have.
 - A `tree` node with only `$properties` or children, such as `"shared": { "$properties": { ... } }`, now gets the Folder class when routed files land in it. Rogen used to write it without one, which Rojo refused to build. A node whose class Rojo knows from its name, such as `Workspace/Terrain`, is left as it is.
 - A route whose target passes through `Workspace/Terrain` puts its files in the place's Terrain instead of a Folder named Terrain.
+- When a folder holds several init files, Rogen now names the one Rojo reads, in Rojo's own order: a client init before a plugin init, and `init.plugin.lua` before `init.plugin.luau`. `rogen where` also names that file for a folder inside a mounted package.
 
 ## [2.0.0-rc.2] - 2026-11-23
 

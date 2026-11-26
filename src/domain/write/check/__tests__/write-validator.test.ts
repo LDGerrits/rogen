@@ -13,6 +13,7 @@ import {
 	configOf as baseConfigOf,
 	indexOf,
 	pipelineOf,
+	preparedOf,
 	placeFiles,
 	syncTools,
 	writeFiles,
@@ -1376,8 +1377,10 @@ describe("WriteValidator rules", () => {
 					])
 				);
 
-				const prepared = await pipelineOf(fs, index).run(
-					configOf({ routes: ROUTES, sourcePaths: [abs("src")] })
+				const prepared = preparedOf(
+					await pipelineOf(fs, index).run(
+						configOf({ routes: ROUTES, sourcePaths: [abs("src")] })
+					)
 				);
 
 				expect(

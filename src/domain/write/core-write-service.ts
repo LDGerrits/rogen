@@ -1,7 +1,7 @@
 import { groupBy } from "../../base/collections.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
-	Diagnostic,
+	isError,
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -9,7 +9,8 @@ import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
-import { ConfigSelection } from "../config/config-service.js";
+import { ConfigSelection, ConfigService } from "../config/config-service.js";
+import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import {
@@ -25,17 +26,25 @@ import {
 	isFailed,
 } from "./write.js";
 import {
-	Asked,
+	AskedLocations,
 	WriteService,
+	WriteDraft,
 	Diagnosis,
 	LocateQuery,
 	LocatedDiagnosis,
 	Locations,
+} from "./write-service.js";
+import {
+	AskedPaths,
 	outsideEveryConfig,
 	skippedByEveryConfig,
 	skippedOutside,
-} from "./write-service.js";
-import { PreparedConfig, WritePipeline } from "./write-pipeline.js";
+} from "./asked-paths.js";
+import {
+	PreparedConfig,
+	WritePipeline,
+	diagnosticsOf,
+} from "./write-pipeline.js";
 import { placeholderState } from "./compiled-layout.js";
 import { ProjectFileStaleness } from "./check/project-file-staleness.js";
 import { OutsideSourcePaths } from "./check/outside-source-paths.js";
@@ -44,6 +53,10 @@ import { Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { ServiceCollection } from "../../platform/instantiation/service-collection.js";
+import {
+	DraftFileReader,
+	FileDraft,
+} from "../../platform/fs/draft-file-reader.js";
 
 interface WriteOptions {
 	readonly force?: boolean;
@@ -80,7 +93,8 @@ export class CoreWriteService implements WriteService {
 		@IndexService private readonly indexService: IndexService,
 		@ToolchainService toolchainService: ToolchainService,
 		@InstantiationService
-		private readonly instantiationService: InstantiationService
+		private readonly instantiationService: InstantiationService,
+		@ConfigService private readonly configService: ConfigService
 	) {
 		this.syncTools = toolchainService.syncTools;
 		this.writer = instantiationService.createInstance(OutputWriter);
@@ -96,26 +110,30 @@ export class CoreWriteService implements WriteService {
 		});
 	}
 
-	check(
-		selection: ConfigSelection,
-		reader?: FileSystemService
-	): Promise<WriteRun> {
-		return this.writeAll(selection, { write: false, reader });
+	check(selection: ConfigSelection): Promise<WriteRun> {
+		return this.writeAll(selection, { write: false });
 	}
 
-	private async inScope<T>(
-		reader: FileSystemService | undefined,
-		run: (scope: InstantiationService) => Promise<T>
-	): Promise<T> {
-		if (!reader || reader === this.fileSystemService)
-			return run(this.instantiationService);
+	openDraft(draft: FileDraft): WriteDraft {
 		const scope = this.instantiationService.createChild(
-			new ServiceCollection([FileSystemService, reader])
+			new ServiceCollection([
+				FileSystemService,
+				this.instantiationService.createInstance(
+					DraftFileReader,
+					draft
+				),
+			]),
+			{ rebuilt: [IndexService, ConfigService, WriteService] }
 		);
 		try {
-			return await run(scope);
-		} finally {
+			return scope.invokeFunction((accessor) => ({
+				configService: accessor.get(ConfigService),
+				writeService: accessor.get(WriteService),
+				[Symbol.dispose]: () => scope[Symbol.dispose](),
+			}));
+		} catch (error) {
 			scope[Symbol.dispose]();
+			throw error;
 		}
 	}
 
@@ -125,30 +143,27 @@ export class CoreWriteService implements WriteService {
 			write,
 			independent = false,
 			advice = false,
-			reader = this.fileSystemService,
 		}: {
 			readonly write: boolean;
 			readonly independent?: boolean;
 			readonly advice?: boolean;
-			readonly reader?: FileSystemService;
 		}
 	): Promise<WriteRun> {
 		const { set, unloaded } = WriteSet.partition(selection);
-		const listing = await this.indexService.list(set.indexedPaths, reader);
+		const listing = await this.indexService.list(set.indexedPaths);
 		const attempts = await this.attempt(
 			set.configs.map((config) => ({
 				config,
 				sync: SyncWarnings.unknown,
 			})),
 			listing,
-			advice,
-			reader
+			advice
 		);
 		const settled = await this.settle(
 			attempts,
 			unloaded.map(({ file }) => file),
 			write,
-			{ independent, reader }
+			{ independent }
 		);
 		const outcomes = groupBy(
 			[...unloaded, ...settled],
@@ -209,8 +224,7 @@ export class CoreWriteService implements WriteService {
 
 	async locate(
 		selection: ConfigSelection,
-		targets?: LocateQuery,
-		reader?: FileSystemService
+		targets?: LocateQuery
 	): Promise<Result<Locations, DiagnosticsError>> {
 		const { set } = WriteSet.partition(selection);
 		const errors = uniqueDiagnostics(
@@ -219,12 +233,10 @@ export class CoreWriteService implements WriteService {
 			)
 		);
 
-		const listing = await this.indexService.list(set.indexedPaths, reader);
-		const located = await this.inScope(reader, (scope) =>
-			scope
-				.createInstance(Locator, listing, this.syncTools)
-				.locate(set.configs, targets)
-		);
+		const listing = await this.indexService.list(set.indexedPaths);
+		const located = await this.instantiationService
+			.createInstance(Locator, listing, this.syncTools)
+			.locate(set.configs, targets);
 		if (located.isErr())
 			return err(
 				new DiagnosticsError([...errors, ...located.error.diagnostics])
@@ -236,64 +248,175 @@ export class CoreWriteService implements WriteService {
 		});
 	}
 
-	askedAbout(query: LocateQuery): Promise<readonly Asked[]> {
-		return this.instantiationService
-			.createInstance(LocateTargets)
-			.classify(query)
-			.then(({ asked }) => asked);
+	async diagnose(query: LocateQuery): Promise<Result<Diagnosis, Error>> {
+		if (query.args.length === 0) {
+			const selection = await this.configService.select(
+				await this.configService.configsHere()
+			);
+			if (selection.isErr()) return selection;
+			return ok({
+				...(await this.diagnoseWhole(selection.value)),
+				named: [],
+			});
+		}
+		const asking = await this.ask(query);
+		if (asking.isErr()) return asking;
+		const parts: Omit<Diagnosis, "named">[] = [];
+		for (const { selection, indexes, whole } of asking.value.groups) {
+			const found = whole
+				? ok(await this.diagnoseWhole(selection))
+				: await this.diagnosePaths(selection, {
+						args: asking.value.argsAt(indexes),
+						cwd: query.cwd,
+					});
+			if (found.isErr()) return found;
+			parts.push(found.value);
+		}
+		const merged = asking.value.mergeDiagnoses(parts);
+		return ok({ ...merged, named: await this.namedFor(merged.skipped) });
 	}
 
-	async staleProjectFiles(selection: ConfigSelection): Promise<Diagnostic[]> {
+	async locateAsked(
+		query: LocateQuery
+	): Promise<Result<AskedLocations, Error>> {
+		if (query.args.length === 0) {
+			const selection = await this.configService.select(
+				await this.configService.configsHere()
+			);
+			if (selection.isErr()) return selection;
+			const located = await this.locate(selection.value, query);
+			return located.map((locations) => ({
+				locations,
+				skipped: [],
+				named: [],
+			}));
+		}
+		const asking = await this.ask(query);
+		if (asking.isErr()) return asking;
+		const parts: Locations[] = [];
+		for (const { selection, indexes, whole } of asking.value.groups) {
+			const located = await this.locate(selection, {
+				args: whole ? [] : asking.value.argsAt(indexes),
+				cwd: query.cwd,
+			});
+			if (located.isErr()) return located;
+			parts.push(located.value);
+		}
+		const locations = asking.value.mergeLocations(parts);
+		return ok({
+			locations,
+			skipped: locations.skipped,
+			named: await this.namedFor(locations.skipped),
+		});
+	}
+
+	private async ask({
+		args: given,
+		cwd,
+	}: LocateQuery): Promise<Result<AskedPaths, Error>> {
+		const resolved = await this.configService.resolveNames(given);
+		if (resolved.isErr()) return resolved;
+		const args = resolved.value;
+		const { asked } = await this.instantiationService
+			.createInstance(LocateTargets)
+			.classify({ args, cwd });
+		const covering = await this.configService.selectCovering(
+			asked.map((one) => ("path" in one ? one.path : undefined))
+		);
+		if (covering.isErr()) return covering;
+		const readers = new Map<number, readonly string[]>();
+		for (const index of covering.value.uncovered)
+			readers.set(
+				index,
+				await this.configService.readersOf(
+					AskedPaths.pathAt(asked, index)
+				)
+			);
+		return ok(new AskedPaths(args, asked, covering.value, readers));
+	}
+
+	private async namedFor(
+		skipped: readonly SkippedPath[]
+	): Promise<readonly string[]> {
+		return skipped.some(({ reason }) => reason === "noConfig")
+			? this.configService.namedConfigs()
+			: [];
+	}
+
+	private async diagnoseWhole(
+		selection: ConfigSelection
+	): Promise<Omit<Diagnosis, "named">> {
+		const { diagnostics } = await this.writeAll(selection, {
+			write: false,
+			advice: true,
+		});
+		return {
+			diagnostics,
+			stoppedBy: [],
+			failing: diagnostics,
+			skipped: [],
+		};
+	}
+
+	private async diagnosePaths(
+		selection: ConfigSelection,
+		targets: LocateQuery
+	): Promise<Result<Omit<Diagnosis, "named">, DiagnosticsError>> {
 		const { set } = WriteSet.partition(selection);
-		const written = await Promise.all(
-			set.configs.map(({ projectFile }) =>
-				this.fileSystemService.isFile(projectFile)
+		const errors = uniqueDiagnostics(
+			selection.entries.flatMap((entry) =>
+				entry.status === "broken" ? entry.errors : []
 			)
 		);
-		if (!written.includes(true)) return [];
-		const { diagnostics } = await this.check(selection);
-		return diagnostics.filter(({ code }) => code === "output.differs");
-	}
-
-	async diagnose(
-		selection: ConfigSelection,
-		targets?: LocateQuery
-	): Promise<Result<Diagnosis, DiagnosticsError>> {
-		if (!targets || targets.args.length === 0) {
-			const { diagnostics } = await this.writeAll(selection, {
-				write: false,
-				advice: true,
-			});
-			return ok({ diagnostics, stoppedBy: [], skipped: [] });
-		}
-		const located = await this.locate(selection, targets);
-		return located.map(({ errors, configs }) => {
-			const outside = new OutsideSourcePaths(
-				configs.flatMap(({ config }) => config.sourcePaths)
+		const listing = await this.indexService.list(set.indexedPaths);
+		const checked = await this.instantiationService
+			.createInstance(Locator, listing, this.syncTools)
+			.check(set.configs, targets);
+		if (checked.isErr())
+			return err(
+				new DiagnosticsError([...errors, ...checked.error.diagnostics])
 			);
-			const misspelt = outsideEveryConfig(configs).map((source) => ({
-				source,
-				warnings: outside.about(source),
-			}));
-			const diagnoses = configs.map(
-				(config) => new LocatedDiagnosis(config)
-			);
-			return {
-				skipped: skippedOutside(
-					misspelt
-						.filter(({ warnings }) => warnings.length === 0)
-						.map(({ source }) => source),
-					configs
+		const configs = checked.value.map(({ locations }) => locations);
+		const outside = new OutsideSourcePaths(
+			configs.flatMap(({ config }) => config.sourcePaths)
+		);
+		const misspelt = outsideEveryConfig(configs).map((source) => ({
+			source,
+			warnings: outside.about(source),
+		}));
+		const shown = checked.value.map(({ locations, findings, own }) => {
+			const reaching = new LocatedDiagnosis(locations).reaching;
+			return [
+				...reaching,
+				...findings.filter(
+					(diagnostic) =>
+						own.has(diagnostic) && !reaching.includes(diagnostic)
 				),
-				diagnostics: uniqueDiagnostics([
-					...errors,
-					...misspelt.flatMap(({ warnings }) => warnings),
-					...diagnoses.flatMap(({ reaching }) => reaching),
-				]),
-				stoppedBy: uniqueDiagnostics(
-					diagnoses.flatMap(({ stoppedBy }) => stoppedBy)
-				),
-			};
+			];
+		});
+		const diagnostics = uniqueDiagnostics([
+			...errors,
+			...misspelt.flatMap(({ warnings }) => warnings),
+			...shown.flat(),
+		]);
+		const stoppedBy = uniqueDiagnostics(
+			checked.value.flatMap(({ findings }, at) =>
+				findings.filter(
+					(diagnostic) =>
+						isError(diagnostic) && !shown[at].includes(diagnostic)
+				)
+			)
+		);
+		return ok({
+			diagnostics,
+			stoppedBy,
+			failing: uniqueDiagnostics([...diagnostics, ...stoppedBy]),
+			skipped: skippedOutside(
+				misspelt
+					.filter(({ warnings }) => warnings.length === 0)
+					.map(({ source }) => source),
+				configs
+			),
 		});
 	}
 
@@ -303,42 +426,32 @@ export class CoreWriteService implements WriteService {
 			readonly sync: SyncWarnings;
 		}[],
 		listing: IndexReader,
-		advice = false,
-		reader?: FileSystemService
+		advice = false
 	): Promise<Attempt[]> {
-		return this.inScope(reader, async (scope) => {
-			const pipeline = scope.createInstance(
-				WritePipeline,
-				listing,
-				this.syncTools
+		const pipeline = this.instantiationService.createInstance(
+			WritePipeline,
+			listing,
+			this.syncTools
+		);
+		const attempts: Attempt[] = [];
+		for (const { config, sync } of configs) {
+			const run = await pipeline.run(config, sync);
+			attempts.push(
+				run.stoppedAt === "end"
+					? advice
+						? run.prepared
+						: withoutRogenAdvice(run.prepared)
+					: FailedConfig.before(config, diagnosticsOf(run), sync)
 			);
-			const attempts: Attempt[] = [];
-			for (const { config, sync } of configs) {
-				const result = await pipeline.run(config, sync);
-				attempts.push(
-					result.isOk()
-						? advice
-							? result.value
-							: withoutRogenAdvice(result.value)
-						: FailedConfig.before(
-								config,
-								result.error.diagnostics,
-								sync
-							)
-				);
-			}
-			return attempts;
-		});
+		}
+		return attempts;
 	}
 
 	private async settle(
 		attempts: readonly Attempt[],
 		unloaded: readonly string[],
 		write: boolean,
-		options: WriteOptions & {
-			readonly independent?: boolean;
-			readonly reader?: FileSystemService;
-		}
+		options: WriteOptions & { readonly independent?: boolean }
 	): Promise<LoadedConfig[]> {
 		const prepared = attempts.filter(
 			(attempt): attempt is PreparedConfig => !isFailed(attempt)
@@ -359,10 +472,7 @@ export class CoreWriteService implements WriteService {
 			attempts.map(async (attempt) => {
 				if (isFailed(attempt)) return attempt;
 				if (write) return CoreWriteService.unwritten(attempt, failed);
-				const checked = await this.withStaleness(
-					attempt,
-					options.reader
-				);
+				const checked = await this.withStaleness(attempt);
 				return failed.length === 0
 					? new CheckedConfig(
 							checked.config,
@@ -376,14 +486,11 @@ export class CoreWriteService implements WriteService {
 	}
 
 	private async withStaleness(
-		attempt: PreparedConfig,
-		reader?: FileSystemService
+		attempt: PreparedConfig
 	): Promise<PreparedConfig> {
-		const stale = await this.inScope(reader, (scope) =>
-			scope
-				.createInstance(ProjectFileStaleness)
-				.diagnostic(attempt.config, async () => attempt.projectFile)
-		);
+		const stale = await this.instantiationService
+			.createInstance(ProjectFileStaleness)
+			.diagnostic(attempt.config, async () => attempt.projectFile);
 		if (!stale) return attempt;
 		return {
 			...attempt,
