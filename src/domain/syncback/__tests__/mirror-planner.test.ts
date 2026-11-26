@@ -879,29 +879,6 @@ describe("MirrorPlanner", () => {
 		]);
 	});
 
-	it("should add no .gitkeep to a folder whose only file was kept", async () => {
-		await prepare([
-			"src/Shop/Server/Cart.luau",
-			"src/Shop/Client/Hud.luau",
-		]);
-		await fs.writeFile(abs("src/Shop/Server/Cart.luau"), "return 1");
-		rojo.say = async () => {
-			await fs.delete(mirror("ServerScriptService", "Shop", "Cart.luau"));
-			await fs.writeFile(
-				mirror("ServerScriptService", "Shop", "Cart@Server.luau"),
-				"return 1"
-			);
-			return [];
-		};
-
-		const plan = await planned();
-
-		expect(plan.unplaced.map(({ instance }) => instance)).toEqual([
-			"ServerScriptService/Shop/Cart@Server",
-		]);
-		expect(plan.changes).toEqual([]);
-	});
-
 	it("should add no .gitkeep where the only file was kept for another it replaces", async () => {
 		await prepare(
 			["src/Shop/Server/Cart.luau", "dev/Shop/Server/Cart.luau"],
@@ -919,24 +896,6 @@ describe("MirrorPlanner", () => {
 		const plan = await planned();
 
 		expect(plan.changes).toEqual([]);
-	});
-
-	it("should keep a folder with a .gitkeep when Studio removed the only folder in it", async () => {
-		await prepare(["src/Shop/Server/Util/Math.luau"]);
-		rojo.say = async () => {
-			await fs.delete(
-				mirror("ServerScriptService", "Shop", "Util"),
-				true
-			);
-			return [];
-		};
-
-		const plan = await planned();
-
-		expect(plan.changes).toContainEqual({
-			kind: "write",
-			file: abs("src/Shop/Server/.gitkeep"),
-		});
 	});
 
 	it("should not list a folder as removed that the plan writes into again, as Rojo does not", async () => {

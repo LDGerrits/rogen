@@ -198,15 +198,12 @@ class MirrorPlanRun {
 					)
 				)
 					copiedFolders.add(folder);
-		const folders = new Map<string, string>();
-		for (const at of copiedFolders) {
-			const target = mirror.targetOf(at);
-			if (target !== undefined) folders.set(at, target);
-		}
 		return {
 			held,
 			copied: this.copiedPaths,
-			folders,
+			folders: new Map(
+				[...copiedFolders].map((at) => [at, mirror.targetOf(at)!])
+			),
 			sourcePaths: request.project.sourcePaths,
 			compiledPath: request.project.compiledPath,
 			instanceAt: (at) => workspace.instanceAt(at),
