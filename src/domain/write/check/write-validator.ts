@@ -265,29 +265,12 @@ export class WriteValidator {
 				`write "${path.posix.basename(renamedTo!)}"`,
 			(resource, { key, respelling }) => {
 				if (!respelling.spelling.startsWith("@")) return undefined;
-				const governing = this.governingRoute(resource, key);
-				return governing === undefined
+				const governing = this.placement.governance.above(resource);
+				return governing === undefined || governing === key
 					? undefined
 					: `the "${governing}" route governs it, so "@${key}" would do nothing; move it out of that route's files to route it`;
 			}
 		);
-	}
-
-	private governingRoute(resource: string, key: string): string | undefined {
-		return this.placement.files.find(({ entry, route }) => {
-			if (route === key || !DeclaredKeys.isName(route)) return false;
-			if (entry.source === resource) return true;
-			if (!entry.source.startsWith(`${resource}/`)) return false;
-			return entry.source
-				.slice(resource.length + 1)
-				.split("/")
-				.slice(0, -1)
-				.every(
-					(folder) =>
-						!folder.includes("@") &&
-						this.config.keys.resolve(folder) === undefined
-				);
-		})?.route;
 	}
 
 	private folderPattern(): Diagnostic[] {

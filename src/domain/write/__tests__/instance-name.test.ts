@@ -1,45 +1,5 @@
 import { InstanceName } from "../instance-name.js";
 
-describe("unwrapInvisibleFolder", () => {
-	it("removes the parentheses and marks the folder invisible", () => {
-		expect(InstanceName.unwrapInvisibleFolder("(mock)")).toEqual({
-			name: "mock",
-			invisible: true,
-		});
-	});
-
-	it("leaves an ordinary name alone", () => {
-		expect(InstanceName.unwrapInvisibleFolder("mock")).toEqual({
-			name: "mock",
-			invisible: false,
-		});
-	});
-
-	it("ignores empty or unbalanced parentheses", () => {
-		for (const name of ["()", "(mock", "mock)"])
-			expect(InstanceName.unwrapInvisibleFolder(name)).toEqual({
-				name,
-				invisible: false,
-			});
-	});
-});
-
-describe("unhoisted", () => {
-	it("should leave a lone ^ as a name", () => {
-		expect(InstanceName.unhoisted("^")).toEqual({
-			name: "^",
-			hoisted: false,
-		});
-	});
-
-	it("should take the ^ off a longer name", () => {
-		expect(InstanceName.unhoisted("^Animate")).toEqual({
-			name: "Animate",
-			hoisted: true,
-		});
-	});
-});
-
 describe("leafName", () => {
 	it("should take the script class off a script and the ^ off what is left", () => {
 		expect(InstanceName.leafName("script", "^Save.server")).toEqual({

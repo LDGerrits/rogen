@@ -1,6 +1,10 @@
-import { FallbackRoute, mistypedRouteErrors } from "./mistyped-route-errors.js";
+import {
+	FallbackRoute,
+	ignoredAtErrors,
+	mistypedRouteErrors,
+} from "./mistyped-route-errors.js";
 import { compareByCodePoint } from "../../base/collections.js";
-import { isInside, joinPosix, toPosix } from "../../base/path.js";
+import { isInside, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import path from "path";
@@ -67,25 +71,24 @@ export class Placer {
 			unrouted,
 			withoutFolder,
 			hoistedInits,
-			governedNearMisses,
+			governance,
 		} = new Router(this.config, readings).route(roots, claims);
 		const markerClashes = new MarkerClashes(claims);
 		const routeErrors = [
 			...mistypedRouteErrors(readings, {
-				routed,
+				governance,
 				displaced: new Set(
 					routed
 						.filter((file) => this.tree.displacing(file))
 						.map(({ entry }) => entry.source)
 				),
-				governed: governedNearMisses,
 				exists: (target) => Placer.listed(roots, target),
 				fallback: this.fallbackRoute(),
 			}),
 			...markerClashes.diagnostics(),
-			...this.ignoredAtErrors(
+			...ignoredAtErrors(
 				routed.filter((file) => !this.tree.displacing(file)),
-				markerClashes
+				markerClashes.files
 			),
 			...this.withoutFolderErrors(withoutFolder),
 			...this.hoistedInitErrors(hoistedInits),
@@ -122,6 +125,7 @@ export class Placer {
 				readings,
 				routed,
 				files: templating.nodes,
+				governance,
 				emptyFolders,
 				leftOut,
 				clashes: resolved.clashes,
@@ -229,46 +233,6 @@ export class Placer {
 					`${joinedWithAnd(keys.map((key) => `"${key}"`))} ${keys.length > 2 ? "all" : "both"} match this name equally well, and send it to different routes. Lengthen the pattern that should win, or route the file with a folder or an @ name.`
 				)
 			);
-	}
-
-	private ignoredAtErrors(
-		nodes: readonly RoutedFile[],
-		markerClashes: MarkerClashes
-	): Diagnostic[] {
-		const clashing = markerClashes.files;
-		const ignored = new Map<
-			string,
-			{ keys: Set<string>; route: string; kind: string }
-		>();
-		for (const { entry, route, ignoredAts } of nodes)
-			for (const { key, dir, marker } of ignoredAts) {
-				const resource =
-					dir === undefined
-						? entry.source
-						: joinPosix(entry.sourcePath, dir, marker ?? "");
-				if (clashing.has(resource)) continue;
-				const kind = dir === undefined ? "file" : "folder";
-				const found = ignored.get(resource) ?? {
-					keys: new Set<string>(),
-					route,
-					kind,
-				};
-				found.keys.add(key);
-				ignored.set(resource, found);
-			}
-		return [...ignored]
-			.sort(([a], [b]) => compareByCodePoint(a, b))
-			.map(([resource, { keys, route, kind }]) => {
-				const many = keys.size > 1;
-				const quoted = joinedWithAnd(
-					[...keys].sort(compareByCodePoint).map((key) => `"@${key}"`)
-				);
-				return errorDiagnostic(
-					"route.ignoredAt",
-					{ resource },
-					`${quoted} ${many ? "do" : "does"} nothing here: the "${route}" route already governs this ${kind}. Remove ${many ? "them" : "it"}, or move the ${kind} out of that route.`
-				);
-			});
 	}
 
 	private withoutFolderErrors(

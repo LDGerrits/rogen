@@ -15,6 +15,7 @@ import { ScannedRoot, UnclaimedMeta } from "./root-scanner.js";
 import { RoutedFile, RoutedFolder } from "./router.js";
 import { CompiledLayout } from "./compiled-layout.js";
 import { InstanceClash } from "./instance-resolver.js";
+import { RouteGovernance } from "./route-governance.js";
 
 export class LeftOutPaths implements Iterable<[string, LeftOut]> {
 	private readonly reasons = new Map<string, LeftOut>();
@@ -60,6 +61,7 @@ interface PlacementParts {
 	readonly readings: NameReadings;
 	readonly routed: readonly RoutedFile[];
 	readonly files: readonly RoutedFile[];
+	readonly governance: RouteGovernance;
 	readonly emptyFolders: readonly RoutedFolder[];
 	readonly leftOut: LeftOutPaths;
 	readonly clashes: readonly InstanceClash[];
@@ -86,6 +88,7 @@ export class Placement {
 	readonly errors: readonly Diagnostic[];
 	readonly routed: readonly RoutedFile[];
 	readonly files: readonly RoutedFile[];
+	readonly governance: RouteGovernance;
 	private unclaimed: UnclaimedMeta[] | undefined;
 
 	constructor(parts: PlacementParts) {
@@ -101,6 +104,7 @@ export class Placement {
 		this.errors = parts.errors;
 		this.routed = parts.routed;
 		this.files = parts.files;
+		this.governance = parts.governance;
 	}
 
 	readingOf(file: RoutedFile): EntryReading {

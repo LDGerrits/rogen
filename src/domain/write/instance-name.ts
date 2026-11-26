@@ -1,30 +1,10 @@
 import { RojoFile, RojoFileKind } from "../rojo/rojo.js";
-
-const INVISIBLE_FOLDER = /^\((.+)\)$/;
+import { unhoisted } from "./write.js";
 
 export interface SuffixSpan {
 	readonly key: string;
 	readonly start: number;
 	readonly length: number;
-}
-
-function unwrapInvisibleFolder(folderName: string): {
-	readonly name: string;
-	readonly invisible: boolean;
-} {
-	const inner = INVISIBLE_FOLDER.exec(folderName)?.[1];
-	return inner === undefined
-		? { name: folderName, invisible: false }
-		: { name: inner, invisible: true };
-}
-
-function unhoisted(name: string): {
-	readonly name: string;
-	readonly hoisted: boolean;
-} {
-	return name.length > 1 && name.startsWith("^")
-		? { name: name.slice(1), hoisted: true }
-		: { name, hoisted: false };
 }
 
 function leafName(
@@ -51,8 +31,6 @@ function withoutSpans(name: string, spans: readonly SuffixSpan[]): string {
 }
 
 export const InstanceName = {
-	unwrapInvisibleFolder,
-	unhoisted,
 	leafName,
 	withoutSpans,
 } as const;

@@ -9,6 +9,75 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { ConfigSelection, validConfigs } from "../config/config-service.js";
 
+const INVISIBLE_FOLDER = /^\((.+)\)$/;
+
+export function unwrapInvisibleFolder(folderName: string): {
+	readonly name: string;
+	readonly invisible: boolean;
+} {
+	const inner = INVISIBLE_FOLDER.exec(folderName)?.[1];
+	return inner === undefined
+		? { name: folderName, invisible: false }
+		: { name: inner, invisible: true };
+}
+
+export function unhoisted(name: string): {
+	readonly name: string;
+	readonly hoisted: boolean;
+} {
+	return name.length > 1 && name.startsWith("^")
+		? { name: name.slice(1), hoisted: true }
+		: { name, hoisted: false };
+}
+
+export function readFolderName(written: string): {
+	readonly name: string;
+	readonly invisible: boolean;
+	readonly hoisted: boolean;
+	readonly offset: number;
+} {
+	const outer = unwrapInvisibleFolder(written);
+	const hoisted = unhoisted(outer.name);
+	const inner = hoisted.hoisted
+		? unwrapInvisibleFolder(hoisted.name)
+		: { name: hoisted.name, invisible: false };
+	const invisible = outer.invisible || inner.invisible;
+	return {
+		name: inner.name,
+		invisible,
+		hoisted: hoisted.hoisted,
+		offset: (invisible ? 1 : 0) + (hoisted.hoisted ? 1 : 0),
+	};
+}
+
+const TRAILING_AT = /@([A-Za-z][A-Za-z0-9]*)(?:\.[^@]*)?$/;
+
+const wordAfterAt = (name: string): string[] =>
+	TRAILING_AT.exec(name)?.slice(1) ?? [];
+
+export function routeWordsOf(name: string, kind: "file" | "folder"): string[] {
+	if (kind === "file") return wordAfterAt(name);
+	const { name: bare } = readFolderName(name);
+	return [bare, ...wordAfterAt(bare)];
+}
+
+const ROUTE_RESPELLING_CODES: ReadonlySet<string> = new Set([
+	"route.caseMismatch",
+	"route.strayAt",
+]);
+
+export const isRouteRespelling = ({ code }: Diagnostic): boolean =>
+	ROUTE_RESPELLING_CODES.has(code);
+
+const STUDIO_RENAMING_CODES: ReadonlySet<string> = new Set([
+	"tree.instanceClash",
+	"route.caseMismatch",
+	"route.ignoredAt",
+]);
+
+export const isFixedByRenaming = ({ code }: Diagnostic): boolean =>
+	STUDIO_RENAMING_CODES.has(code);
+
 type MatchForm = "folder" | "marker" | "suffix";
 
 export type RouteMatch = MatchForm | "pattern" | "fallback";

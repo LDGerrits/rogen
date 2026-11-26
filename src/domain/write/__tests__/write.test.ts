@@ -13,6 +13,9 @@ import {
 	SyncWarnings,
 	UnloadedConfig,
 	WrittenConfig,
+	routeWordsOf,
+	unhoisted,
+	unwrapInvisibleFolder,
 } from "../write.js";
 import {
 	brokenEntry,
@@ -233,6 +236,63 @@ describe("domain/write/write", () => {
 				abs("lobby/shared"),
 				abs("arena/src"),
 			]);
+		});
+	});
+});
+
+describe("routeWordsOf", () => {
+	it("should read a folder's whole name inside its parentheses and after its ^, and the word after its @", () => {
+		expect(routeWordsOf("server", "folder")).toEqual(["server"]);
+		expect(routeWordsOf("(^Server)", "folder")).toEqual(["Server"]);
+		expect(routeWordsOf("^(Net@client)", "folder")).toEqual([
+			"Net@client",
+			"client",
+		]);
+	});
+
+	it("should read only the word after a file's last @, before its extensions", () => {
+		expect(routeWordsOf("^Save@Shared.luau", "file")).toEqual(["Shared"]);
+		expect(routeWordsOf("Boot.server.luau", "file")).toEqual([]);
+		expect(routeWordsOf("Lib@1.2.0.luau", "file")).toEqual([]);
+	});
+});
+
+describe("unwrapInvisibleFolder", () => {
+	it("removes the parentheses and marks the folder invisible", () => {
+		expect(unwrapInvisibleFolder("(mock)")).toEqual({
+			name: "mock",
+			invisible: true,
+		});
+	});
+
+	it("leaves an ordinary name alone", () => {
+		expect(unwrapInvisibleFolder("mock")).toEqual({
+			name: "mock",
+			invisible: false,
+		});
+	});
+
+	it("ignores empty or unbalanced parentheses", () => {
+		for (const name of ["()", "(mock", "mock)"])
+			expect(unwrapInvisibleFolder(name)).toEqual({
+				name,
+				invisible: false,
+			});
+	});
+});
+
+describe("unhoisted", () => {
+	it("should leave a lone ^ as a name", () => {
+		expect(unhoisted("^")).toEqual({
+			name: "^",
+			hoisted: false,
+		});
+	});
+
+	it("should take the ^ off a longer name", () => {
+		expect(unhoisted("^Animate")).toEqual({
+			name: "Animate",
+			hoisted: true,
 		});
 	});
 });

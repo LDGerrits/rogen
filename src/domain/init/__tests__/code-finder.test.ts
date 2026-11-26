@@ -149,6 +149,19 @@ describe("CodeFinder.keySpellings", () => {
 		});
 	});
 
+	it("should read a key through a hoisting ^ and an invisible folder's parentheses", async () => {
+		await write("src/Shop/^Server/A.luau");
+		await write("src/Bag/(^Server)/B.luau");
+		await write("src/Hud/(Ui@Client)/C.luau");
+		await write("src/Hud/^Save@Shared.luau");
+
+		expect(Object.fromEntries(await spellings())).toEqual({
+			server: "Server",
+			client: "Client",
+			shared: "Shared",
+		});
+	});
+
 	it("should break a tie with the spelling it was given", async () => {
 		await write("src/Shop/server/A.luau");
 		await write("src/Bag/Server/B.luau");

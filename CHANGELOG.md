@@ -14,6 +14,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- A folder such as `Net.client` whose files are routed only by their own `@` or by a marker file further down now gets the rename to `Net@client`. Rogen used to say another route governed it.
+- A dot file named for a route, such as `.client`, inside a folder another route governs no longer gets a rename to `@client`, which would have done nothing there.
+- A mistyped `@` under a route that already governs it, such as `server/Ui@clent/`, is reported as doing nothing there even when no file below it is routed, as it is when one is.
+- `rogen init` now reads the spelling of a route key in a folder name that starts with `^` or sits in parentheses, such as `^Server/`, `(^Server)/` or `(Ui@client)/`, as the write reads them.
+- A file whose `@` does nothing under a route that already governs it is now called a file in the message, not a folder, when it isn't routed itself.
 - `rogen syncback` no longer moves a `$path` of the config's `tree` when you rename the folder that holds it, which left a project Rojo couldn't build.
 - With several source paths, `rogen syncback` keeps a file you removed in Studio when another source path's file would take its place, and says so. It used to remove one file per run.
 - `rogen syncback` warns about a new instance that `globIgnorePaths` matches instead of dropping it silently.

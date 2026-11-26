@@ -5,6 +5,7 @@ import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { FileDraft } from "../../platform/fs/draft-file-reader.js";
 import { instanceKey } from "../roblox/roblox.js";
 import { FileLocation, WriteService } from "../write/write-service.js";
+import { isFixedByRenaming } from "../write/write.js";
 import { Expected, Operation } from "./mirror-plan.js";
 import { SyncbackRequest } from "./syncback.js";
 
@@ -43,17 +44,12 @@ const isAboutAny = (diagnostic: Diagnostic, paths: readonly string[]) =>
 			)
 		);
 
-const RENAMING_FIXES: ReadonlySet<string> = new Set([
-	"tree.instanceClash",
-	"route.caseMismatch",
-	"route.ignoredAt",
-]);
-
-const stopsOn = ({ code, resource, related }: Diagnostic) => {
+const stopsOn = (diagnostic: Diagnostic) => {
+	const { code, resource, related } = diagnostic;
 	const partner = related?.[0];
 	const clash = partner ? `, like ${toNative(partner.resource)}` : "";
 	return `the write would stop on ${toNative(resource)} (${code}${clash}); ${
-		RENAMING_FIXES.has(code)
+		isFixedByRenaming(diagnostic)
 			? "rename it in Studio"
 			: `see \`rogen help ${code}\``
 	}`;
