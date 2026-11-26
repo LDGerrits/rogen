@@ -128,6 +128,71 @@ describe("RojoProject", () => {
 			});
 		});
 
+		it("should give a classless ancestor the factory's class", () => {
+			const project = new RojoProject(
+				{
+					name: "x",
+					tree: {
+						ReplicatedStorage: {
+							shared: { $properties: { Archivable: false } },
+						},
+					},
+				},
+				folders
+			);
+
+			project.insertNodeReplacingFolder(
+				["ReplicatedStorage", "shared", "Foo"],
+				{ $path: "foo.luau" }
+			);
+
+			expect(project.getFile().tree).toEqual({
+				ReplicatedStorage: {
+					shared: {
+						$className: "Folder",
+						$properties: { Archivable: false },
+						Foo: { $path: "foo.luau" },
+					},
+				},
+			});
+		});
+
+		it("should leave a service and a mounted ancestor without a class", () => {
+			const project = new RojoProject(
+				{
+					name: "x",
+					tree: {
+						ReplicatedStorage: { shared: { $path: "shared" } },
+					},
+				},
+				folders
+			);
+
+			project.insertNodeReplacingFolder(
+				["ReplicatedStorage", "shared", "Foo"],
+				{ $path: "foo.luau" }
+			);
+
+			expect(project.getFile().tree).toEqual({
+				ReplicatedStorage: {
+					shared: { $path: "shared", Foo: { $path: "foo.luau" } },
+				},
+			});
+		});
+
+		it("should leave a classless ancestor alone when the factory gives no class", () => {
+			const project = new RojoProject(
+				{ name: "x", tree: { A: { B: {} } } },
+				() => ({})
+			);
+
+			project.insertNodeReplacingFolder(["A", "B", "C"], { $path: "c" });
+
+			expect(project.getFile().tree).toStrictEqual({
+				A: { B: { C: { $path: "c" } } },
+			});
+		});
+
 		it("should strip a Folder class when a node gets a $path", () => {
 			const project = new RojoProject(baseTree, folders);
 

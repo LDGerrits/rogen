@@ -395,6 +395,15 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 				throw new Error(
 					`Can't insert below "${instanceKey(instancePath.slice(0, depth + 1))}": it isn't a node.`
 				);
+			} else if (
+				depth > 0 &&
+				next.$className === undefined &&
+				next.$path === undefined
+			) {
+				const { $className } = this.createContainer(
+					instancePath.slice(0, depth + 1)
+				);
+				if ($className !== undefined) next.$className = $className;
 			}
 			current = getOwn(current, segment) as RojoNode;
 		});
