@@ -256,8 +256,9 @@ class ConfigLocator {
 	}
 
 	async projectFile(): Promise<RojoProjectFile | undefined> {
-		const existing = await this.locatorOf(this.listing);
-		return existing.isOk() ? existing.value.projectFile : undefined;
+		return (await this.locatorOf(this.listing))
+			.map(({ projectFile }) => projectFile)
+			.unwrapOr(undefined);
 	}
 
 	private async blocked(
