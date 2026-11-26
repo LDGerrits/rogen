@@ -166,6 +166,38 @@ describe("domain/rojo/rojo", () => {
 			});
 		});
 
+		describe("initReadFirst", () => {
+			it.each([
+				[["init.client.lua", "init.plugin.luau"], "init.client.lua"],
+				[["init.plugin.luau", "init.plugin.lua"], "init.plugin.lua"],
+				[["init.csv", "Hud.luau"], "init.csv"],
+				[["Hud.luau"], undefined],
+			])("should read first of %j %s", (names, first) => {
+				expect(RojoFile.initReadFirst(names)).toBe(first);
+			});
+		});
+
+		describe("initOrder", () => {
+			it.each([
+				["init@server.luau", "init.luau"],
+				["Hud.client.lua", "init.client.lua"],
+				["Tool.plugin.luau", "init.plugin.luau"],
+				["Strings.csv", "init.csv"],
+				["init.ts", undefined],
+				["Config.json", undefined],
+			])("should stand %s where %s stands", (name, init) => {
+				expect(new RojoFile(name, SyncRules.DEFAULT).initOrder).toBe(
+					RojoFile.initOrderOf(init)
+				);
+			});
+
+			it("should stand anything but an init file last", () => {
+				expect(RojoFile.initOrderOf("init.json")).toBe(
+					RojoFile.INIT_FILES.size
+				);
+			});
+		});
+
 		describe("with sync rules of the project", () => {
 			const rules = (...own: SyncRule[]) =>
 				SyncRules.following(own, "/repo");

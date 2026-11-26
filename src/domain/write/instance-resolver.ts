@@ -1,7 +1,6 @@
 import path from "path";
 import { groupBy } from "../../base/collections.js";
 import { RojoFile } from "../rojo/rojo.js";
-import { SyncRules } from "../rojo/sync-rules.js";
 import { LeftOut } from "./write.js";
 import { RoutedFile } from "./router.js";
 import { InstanceMap, instanceKey } from "../roblox/roblox.js";
@@ -24,20 +23,10 @@ interface InstanceResolution {
 	readonly clashes: InstanceClash[];
 }
 
-/**
- * Rojo reads an init file in this order when a folder has several: a module,
- * then a script that isn't a LocalScript, then a LocalScript, then any other.
- */
-export const initRank = ({ isLuauModule, scriptSuffix }: RojoFile): number => {
-	if (isLuauModule) return 4;
-	if (scriptSuffix === "client") return 2;
-	return scriptSuffix ? 3 : 1;
-};
-
-const byInitRank = (claimants: readonly RoutedFile[]): RoutedFile[] => {
+const byInitOrder = (claimants: readonly RoutedFile[]): RoutedFile[] => {
 	const inits = claimants
 		.filter((file) => file.init)
-		.sort((a, b) => initRank(a.entry.file) - initRank(b.entry.file));
+		.sort((a, b) => b.entry.file.initOrder - a.entry.file.initOrder);
 	return claimants.map((file) => (file.init ? inits.shift()! : file));
 };
 
@@ -64,7 +53,7 @@ export class InstanceResolver {
 			for (const [instance, claimed] of groupBy(root, (file) =>
 				instanceKey(file.instancePath)
 			)) {
-				const claimants = byInitRank(claimed);
+				const claimants = byInitOrder(claimed);
 				const winner = claimants[claimants.length - 1];
 				if (claimants.length > 1)
 					clashes.push({
@@ -106,21 +95,14 @@ export class InstanceResolver {
 		routedSources: ReadonlySet<string>
 	): string | undefined {
 		const dir = file.init!.sitsIn;
-		const own = initRank(file.entry.file);
-		let shadow: { source: string; rank: number } | undefined;
-		for (const name of [...this.listing(dir).keys()].sort()) {
-			const source = path.posix.join(dir, name);
-			const candidate = new RojoFile(name, SyncRules.DEFAULT);
-			const rank = initRank(candidate);
-			if (
-				candidate.isInit &&
-				rank > own &&
-				rank > (shadow?.rank ?? 0) &&
-				!routedSources.has(source)
+		const first = RojoFile.initReadFirst(
+			[...this.listing(dir).keys()].filter(
+				(name) => !routedSources.has(path.posix.join(dir, name))
 			)
-				shadow = { source, rank };
-		}
-		return shadow?.source;
+		);
+		return RojoFile.initOrderOf(first) < file.entry.file.initOrder
+			? path.posix.join(dir, first!)
+			: undefined;
 	}
 
 	private onePerFolder(routed: readonly RoutedFile[]): {
@@ -158,7 +140,7 @@ export class InstanceResolver {
 				).values(),
 			];
 			if (bySource.length < 2) continue;
-			const ranked = byInitRank(bySource);
+			const ranked = byInitOrder(bySource);
 			const winner = ranked[ranked.length - 1];
 			const losers = ranked.slice(0, -1);
 			clashes.push({

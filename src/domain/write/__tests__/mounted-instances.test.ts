@@ -80,6 +80,18 @@ describe("MountedInstances", () => {
 			]);
 		});
 
+		it("should name a folder inside a mount by the init file Rojo reads", async () => {
+			await writeFiles(
+				fs,
+				"lib/Net/init.client.luau",
+				"lib/Net/init.server.luau"
+			);
+
+			expect(await sourcesAt("ReplicatedStorage.Lib.Net")).toEqual([
+				absPosix("lib/Net/init.server.luau"),
+			]);
+		});
+
 		it("should find nothing below a folder the mount doesn't hold", async () => {
 			expect(await sourcesAt("ReplicatedStorage.Lib.Gone.Http")).toEqual(
 				[]
