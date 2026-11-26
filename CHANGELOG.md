@@ -8,12 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- `rogen check` with a path also gives the findings about the path's config itself, such as the compiled path's warnings, so `rogen check src` says what `rogen check` says about `src`.
 - `rogen build --watch` and `rogen sourcemap --watch` check the project file against the Rojo that runs each time they write it, as `rogen serve` does. A project that Rojo can't read, such as one with `syncRules` before Rojo 7.5, stops the watch with exit code 1 before Rojo starts, as `rojo build --watch` exits. After Rojo started, it is reported and Rojo keeps running. They used to check only when Rojo started, and kept watching without Rojo.
 - `rogen build --watch` and `rogen sourcemap --watch` stop with exit code 1 when their config can't be read before Rojo first starts, as `rogen serve` does and as `rojo build --watch` does with a project it can't read. Replacing `default.rogen.json` with a `default.rogen.jsonc` that writes the same project file no longer restarts Rojo, which reloads the file itself.
+- `rogen check` with a path also gives the findings about the path's config itself, such as the compiled path's warnings, so `rogen check src` says what `rogen check` says about `src`.
 
 ### Fixed
 
+- A folder such as `Net.client` whose files are routed only by their own `@` or by a marker file further down now gets the rename to `Net@client`. Rogen used to say another route governed it.
+- A dot file named for a route, such as `.client`, inside a folder another route governs no longer gets a rename to `@client`, which would have done nothing there.
+- A mistyped `@` under a route that already governs it, such as `server/Ui@clent/`, is reported as doing nothing there even when no file below it is routed, as it is when one is.
+- `rogen init` now reads the spelling of a route key in a folder name that starts with `^` or sits in parentheses, such as `^Server/`, `(^Server)/` or `(Ui@client)/`, as the write reads them.
+- A file whose `@` does nothing under a route that already governs it is now called a file in the message, not a folder, when it isn't routed itself.
 - `rogen syncback` no longer moves a `$path` of the config's `tree` when you rename the folder that holds it, which left a project Rojo couldn't build.
 - With several source paths, `rogen syncback` keeps a file you removed in Studio when another source path's file would take its place, and says so. It used to remove one file per run.
 - `rogen syncback` warns about a new instance that `globIgnorePaths` matches instead of dropping it silently.
@@ -22,11 +27,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A `tree` node with only `$properties` or children, such as `"shared": { "$properties": { ... } }`, now gets the Folder class when routed files land in it. Rogen used to write it without one, which Rojo refused to build. A node whose class Rojo knows from its name, such as `Workspace/Terrain`, is left as it is.
 - A route whose target passes through `Workspace/Terrain` puts its files in the place's Terrain instead of a Folder named Terrain.
 - When a folder holds several init files, Rogen now names the one Rojo reads, in Rojo's own order: a client init before a plugin init, and `init.plugin.lua` before `init.plugin.luau`. `rogen where` also names that file for a folder inside a mounted package.
-- A folder such as `Net.client` whose files are routed only by their own `@` or by a marker file further down now gets the rename to `Net@client`. Rogen used to say another route governed it.
-- A dot file named for a route, such as `.client`, inside a folder another route governs no longer gets a rename to `@client`, which would have done nothing there.
-- A mistyped `@` under a route that already governs it, such as `server/Ui@clent/`, is reported as doing nothing there even when no file below it is routed, as it is when one is.
-- `rogen init` now reads the spelling of a route key in a folder name that starts with `^` or sits in parentheses, such as `^Server/`, `(^Server)/` or `(Ui@client)/`, as the write reads them.
-- A file whose `@` does nothing under a route that already governs it is now called a file in the message, not a folder, when it isn't routed itself.
 
 ## [2.0.0-rc.2] - 2026-11-23
 
