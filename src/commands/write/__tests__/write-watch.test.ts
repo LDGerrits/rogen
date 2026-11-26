@@ -516,6 +516,22 @@ describe("watch", () => {
 			expect(logService.lines).toEqual([]);
 		});
 
+		it("should write nothing when asked to shut down while it selects the configs", async () => {
+			const selectHere = configService.selectHere.bind(configService);
+			jest.spyOn(configService, "selectHere").mockImplementation(
+				async () => {
+					lifecycle.shutdown();
+					return selectHere();
+				}
+			);
+			const watch = jest.spyOn(watcher, "watch");
+
+			const result = await startWatch();
+
+			expect(result.isOk()).toBe(true);
+			expect(watch).not.toHaveBeenCalled();
+		});
+
 		it.each([[[]], [["default.rogen.json"]]])(
 			"should refuse to start when a config is invalid, named %j",
 			async (names: string[]) => {
