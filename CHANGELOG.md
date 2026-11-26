@@ -27,6 +27,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A mistyped `@` under a route that already governs it, such as `server/Ui@clent/`, is reported as doing nothing there even when no file below it is routed, as it is when one is.
 - `rogen init` now reads the spelling of a route key in a folder name that starts with `^` or sits in parentheses, such as `^Server/`, `(^Server)/` or `(Ui@client)/`, as the write reads them.
 - A file whose `@` does nothing under a route that already governs it is now called a file in the message, not a folder, when it isn't routed itself.
+- `rogen syncback` no longer lists a folder as removed when it writes a file into it again, such as `src/Shop` when you move a feature to another side in Studio. The folder was never removed, and Rojo's own syncback doesn't list such a folder either.
+- When `rogen syncback` can't place a plugin script or a script in a language your sync rules read, it now says to make it a ModuleScript or move it where that script type runs, as it says for server and client scripts.
 
 ## [2.0.0-rc.2] - 2026-11-23
 

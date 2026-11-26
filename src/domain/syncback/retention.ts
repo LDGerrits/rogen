@@ -12,8 +12,11 @@ import { GITKEEP } from "./syncback-layout.js";
 
 /** What retention reads of the project's folders, read before it runs. */
 export interface Disk {
-	/** The names in a folder; none when it can't be read. */
-	entriesOf(folder: string): readonly string[];
+	/**
+	 * The names in a folder, none when it can't be read, and undefined when
+	 * it wasn't read, which keeps the folder.
+	 */
+	entriesOf(folder: string): readonly string[] | undefined;
 	bytesOf(file: string): Uint8Array | undefined;
 }
 
@@ -82,6 +85,18 @@ const isBelowSource = (folder: string, place: PlaceView) =>
 		(source) => contains(source, folder) && !contains(folder, source)
 	);
 
+function isEmptiedBy(
+	removed: ReadonlySet<string>,
+	folder: string,
+	disk: Disk
+): boolean {
+	const names = disk.entriesOf(folder);
+	return (
+		names !== undefined &&
+		names.every((name) => removed.has(path.join(folder, name)))
+	);
+}
+
 const isCompiled = (folder: string, place: PlaceView) =>
 	place.compiledPath !== undefined && contains(place.compiledPath, folder);
 
@@ -121,10 +136,7 @@ function pruningOf(
 			.filter(([at]) => place.held.has(at))
 			.map(([, target]) => target)
 	);
-	const emptiedBy = (folder: string) =>
-		disk
-			.entriesOf(folder)
-			.every((name) => removed.has(path.join(folder, name)));
+	const emptiedBy = (folder: string) => isEmptiedBy(removed, folder, disk);
 	const prunes: Operation[] = [];
 	const leftOut: string[] = [];
 	for (const [at, target] of [...place.folders].sort(
@@ -220,22 +232,12 @@ function movedFrom(
 	return [];
 }
 
-/** The folders the project would lose before anything is placed. */
-export function wouldPrune(
-	intents: readonly Intent[],
-	disk: Disk,
-	place: PlaceView
-): readonly string[] {
-	return pruningOf(copiesGone(intents, place), disk, place).prunes.map(
-		({ file }) => file
-	);
-}
-
 /**
  * The plan's operations from the run's intents: Studio's edits and removals
  * of copied files, then the folders those removals empty, then the rest in
  * the order they were recorded. A hold keeps what a removal would take,
- * whenever it was recorded.
+ * whenever it was recorded, and as in Rojo's syncback, a folder something is
+ * written into is never pruned.
  */
 export function retain(
 	intents: readonly Intent[],
@@ -273,28 +275,26 @@ export function retain(
 			intent.kind !== "hold" &&
 			!(intent.kind === "gone" && named.has(intent.file))
 	);
-	const operations = withoutRepeats([
+	const listed = withoutRepeats([
 		...placed.filter((intent) => isCopy(intent, place)).map(operationOf),
 		...pruning.prunes,
 		...placed.filter((intent) => !isCopy(intent, place)).map(operationOf),
 	]).filter((operation) => !isKept(operation));
 	const fills = (folder: string) =>
-		operations.some(
+		listed.some(
 			(operation) =>
 				isFilling(operation) &&
 				operation.file.startsWith(`${folder}${path.sep}`)
 		);
+	const operations = listed.filter(
+		(operation) => operation.kind !== "prune" || !fills(operation.file)
+	);
 	const removed = new Set(
 		operations.filter(isRemoving).map(({ file }) => file)
 	);
 	const gitkeeps: Operation[] = [];
 	for (const [folder, instance] of pruning.keeps)
-		if (
-			!fills(folder) &&
-			disk
-				.entriesOf(folder)
-				.every((name) => removed.has(path.join(folder, name)))
-		)
+		if (!fills(folder) && isEmptiedBy(removed, folder, disk))
 			gitkeeps.push({
 				kind: "write",
 				file: path.join(folder, GITKEEP),

@@ -939,6 +939,31 @@ describe("MirrorPlanner", () => {
 		});
 	});
 
+	it("should not list a folder as removed that the plan writes into again, as Rojo does not", async () => {
+		await prepare([
+			"src/Shop/Server/Cart.luau",
+			"src/Inventory/Shared/Items.luau",
+		]);
+		await fs.writeFile(abs("src/Shop/Server/Cart.luau"), "return 1");
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Shop"), true);
+			await fs.writeFile(
+				mirror("ReplicatedStorage", "Shared", "Shop", "Cart.luau"),
+				"return 1"
+			);
+			return [];
+		};
+
+		const plan = await planned("apply");
+
+		expect(plan.changes).toEqual([
+			{ kind: "remove", file: abs("src/Shop/Server") },
+			{ kind: "write", file: abs("src/Shop/Shared/Cart.luau") },
+		]);
+		expect(await fs.exists(abs("src/Shop/Shared/Cart.luau"))).toBe(true);
+		expect(await fs.exists(abs("src/Shop/Server"))).toBe(false);
+	});
+
 	describe("a renamed feature", () => {
 		it("should move the files of a feature Studio renamed into a folder of the new name", async () => {
 			await prepare(["src/Shop/Server/ShopService.luau"]);

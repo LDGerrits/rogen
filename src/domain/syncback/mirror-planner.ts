@@ -232,12 +232,7 @@ class MirrorPlanRun {
 		await this.readBefore();
 		const { before } = this;
 		return {
-			entriesOf: (folder) => {
-				const names = entries.get(folder);
-				if (names === undefined)
-					throw new Error(`${folder} was not read before retention`);
-				return names;
-			},
+			entriesOf: (folder) => entries.get(folder),
 			bytesOf: (file) => before.get(file),
 		};
 	}
