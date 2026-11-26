@@ -27,10 +27,6 @@ export interface PreparedConfig {
 	readonly placeholders: readonly Placeholder[];
 }
 
-/**
- * One run of the pipeline over a config, and the phase it stopped at: the
- * placement, the assembly or the validation, or the end, prepared to write.
- */
 export type PipelineRun =
 	| {
 			readonly stoppedAt: "placement";

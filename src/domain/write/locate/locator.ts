@@ -64,10 +64,6 @@ export class Locator {
 		}));
 	}
 
-	/**
-	 * Locates as `locate` does, and gives each config the findings a whole
-	 * check of it raises and those of them that are about the config itself.
-	 */
 	async check(
 		configs: readonly ResolvedConfig[],
 		query: LocateQuery

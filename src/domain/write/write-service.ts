@@ -202,11 +202,6 @@ export class LocatedDiagnosis {
 	}
 }
 
-/**
- * What fails a look at where files land: a config's errors, and the errors
- * that stop a write when they are about what was asked. Errors about other
- * files only stop it, and are `elsewhere`.
- */
 export class LocatedVerdict {
 	readonly diagnoses: readonly LocatedDiagnosis[];
 	readonly stops: readonly Diagnostic[];
