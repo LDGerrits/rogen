@@ -1,3 +1,4 @@
+import { Disposable } from "../../base/disposable.js";
 import path from "path";
 import { relativeTo, toPosix } from "../../base/path.js";
 import { joinedWithOr } from "../../base/strings.js";
@@ -12,12 +13,12 @@ import { DiagnosticIndex } from "../../platform/diagnostics/diagnostic-index.js"
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
 import { FileChange } from "../../platform/fs/file-changes.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { FileDraft } from "../../platform/fs/draft-file-reader.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { createDecorator } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig, scannedFileOf } from "../config/resolved-config.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
-import { ConfigSelection } from "../config/config-service.js";
+import { ConfigSelection, ConfigService } from "../config/config-service.js";
 import {
 	InstanceReference,
 	requireExpression,
@@ -288,6 +289,11 @@ export function skippedNotes(
 	});
 }
 
+export interface WriteDraft extends Disposable {
+	readonly configService: ConfigService;
+	readonly writeService: WriteService;
+}
+
 export interface WriteService {
 	readonly _serviceBrand: undefined;
 
@@ -296,10 +302,7 @@ export interface WriteService {
 		options?: { readonly independent?: boolean }
 	): Promise<WriteRun>;
 
-	check(
-		selection: ConfigSelection,
-		reader?: FileSystemService
-	): Promise<WriteRun>;
+	check(selection: ConfigSelection): Promise<WriteRun>;
 
 	rewrite(
 		set: WriteSet,
@@ -323,9 +326,10 @@ export interface WriteService {
 
 	locate(
 		selection: ConfigSelection,
-		targets?: LocateQuery,
-		reader?: FileSystemService
+		targets?: LocateQuery
 	): Promise<Result<Locations, DiagnosticsError>>;
+
+	openDraft(draft: FileDraft): WriteDraft;
 }
 
 export const WriteService = createDecorator<WriteService>("writeService");

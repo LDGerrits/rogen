@@ -70,6 +70,7 @@ import { UpdateService } from "./domain/update/update-service.js";
 import { CoreWatchService } from "./domain/watch/core-watch-service.js";
 import { WatchService } from "./domain/watch/watch-service.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
+import { ConfigChecks } from "./domain/config/config-checks.js";
 import { CoreRojoRunner } from "./domain/runner/core-rojo-runner.js";
 import { RojoRunner } from "./domain/runner/rojo-runner.js";
 import { CoreRojoCommandService } from "./domain/runner/core-rojo-command-service.js";
@@ -188,7 +189,10 @@ function registerDomainServices(
 	commandRegistry: CommandRegistry
 ): void {
 	services.set(ReleaseService, new SyncDescriptor(CoreReleaseService));
-	services.set(ConfigService, new SyncDescriptor(CoreConfigService));
+	services.set(
+		ConfigService,
+		new SyncDescriptor(CoreConfigService, [new ConfigChecks()])
+	);
 	services.set(ToolchainService, new SyncDescriptor(CoreToolchainService));
 	services.set(ToolLocator, new SyncDescriptor(CoreToolLocator));
 	services.set(WriteService, new SyncDescriptor(CoreWriteService));

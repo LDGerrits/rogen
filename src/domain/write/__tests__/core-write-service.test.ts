@@ -26,7 +26,7 @@ import { abs, writeServiceOf, configOf, locateIn } from "./fixtures.js";
 describe("CoreWriteService", () => {
 	let fs: MemoryFileSystemService;
 
-	const writeServiceOfFs = () => writeServiceOf(fs, new CoreIndexService(fs));
+	const writeServiceOfFs = () => writeServiceOf(fs);
 
 	const diagnoseOf = (
 		{ entries }: MockConfigSelection,

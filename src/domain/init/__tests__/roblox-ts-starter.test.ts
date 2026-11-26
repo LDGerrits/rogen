@@ -10,7 +10,7 @@ import { InitPlan, InitWritten } from "../init-service.js";
 import { RobloxTsStarter } from "../roblox-ts-starter.js";
 import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 import { initServiceOf } from "./init-of.js";
-import { configServiceOf } from "../../config/__tests__/config-of.js";
+import { ConfigChecks } from "../../config/config-checks.js";
 
 const robloxTs = workspaceOf().languageFor("roblox-ts");
 const luau = workspaceOf().languageFor("luau");
@@ -141,13 +141,12 @@ describe("a new roblox-ts project", () => {
 
 	const serviceFor = () => {
 		const environmentService = new NativeEnvironmentService({}, directory);
-		const configs = configServiceOf(fileSystem, environmentService);
 		return initServiceOf(
 			fileSystem,
 			new MockPromptService([], false),
 			environmentService,
 			processes,
-			configs,
+			new ConfigChecks(),
 			new MockLifecycleService()
 		);
 	};

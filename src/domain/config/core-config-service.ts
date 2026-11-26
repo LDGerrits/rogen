@@ -1,5 +1,5 @@
 import path from "path";
-import { Disposable, toDisposable } from "../../base/disposable.js";
+import { Disposable } from "../../base/disposable.js";
 import {
 	commonAncestor,
 	isInside,
@@ -37,7 +37,7 @@ import { CoreConfigSelection, PickedFolder } from "./core-config-selection.js";
 import { DefaultFolder } from "./default-folder.js";
 import { ManagedConfig } from "./managed-config.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
-import { ServiceCollection } from "../../platform/instantiation/service-collection.js";
+import { ConfigChecks } from "./config-checks.js";
 
 export class CoreConfigService implements ConfigService {
 	declare readonly _serviceBrand: undefined;
@@ -45,24 +45,22 @@ export class CoreConfigService implements ConfigService {
 	private readonly discovery: ConfigDiscovery;
 	private readonly loader: ConfigLoader;
 	private readonly formatter: ConfigFormatter;
-	private readonly fileChecks = new Set<ConfigFileCheck>();
-	private readonly folderChecks = new Set<ConfigFolderCheck>();
 
 	constructor(
+		private readonly checks: ConfigChecks,
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
 		@EnvironmentService
 		private readonly environmentService: EnvironmentService,
-		@InstantiationService
-		private readonly instantiationService: InstantiationService
+		@InstantiationService instantiationService: InstantiationService
 	) {
 		this.discovery = instantiationService.createInstance(
 			ConfigDiscovery,
-			this.folderChecks
+			checks.folder
 		);
 		this.loader = instantiationService.createInstance(
 			ConfigLoader,
-			this.fileChecks
+			checks.file
 		);
 		this.formatter = instantiationService.createInstance(ConfigFormatter);
 	}
@@ -71,39 +69,23 @@ export class CoreConfigService implements ConfigService {
 		return this.formatter.format(file);
 	}
 
-	async select(
-		refs: readonly string[],
-		reader?: FileSystemService
+	select(
+		refs: readonly string[]
 	): Promise<Result<ReloadableSelection, Error>> {
-		if (!reader) {
-			return this.open(this.discovery, this.loader, refs);
-		}
-		const scope = this.instantiationService.createChild(
-			new ServiceCollection([FileSystemService, reader])
-		);
-		const discovery = scope.createInstance(
-			ConfigDiscovery,
-			this.folderChecks
-		);
-		return this.open(
-			discovery,
-			scope.createInstance(ConfigLoader, this.fileChecks),
-			refs
-		);
+		return this.open(refs);
 	}
 
 	async selectForRojo(
 		refs: readonly string[]
 	): Promise<Result<ReloadableSelection, Error>> {
-		return this.open(this.discovery, this.loader, refs, true);
+		return this.open(refs, true);
 	}
 
 	private async open(
-		discovery: ConfigDiscovery,
-		loader: ConfigLoader,
 		refs: readonly string[],
 		withWriters = false
 	): Promise<Result<ReloadableSelection, Error>> {
+		const { discovery } = this;
 		const discovered = await discovery.discover(refs);
 		if (discovered.isErr()) return err(discovered.error);
 
@@ -128,7 +110,6 @@ export class CoreConfigService implements ConfigService {
 						)
 					: undefined,
 				notes,
-				loader,
 				writers
 			)
 		);
@@ -152,15 +133,14 @@ export class CoreConfigService implements ConfigService {
 		directory: string,
 		folder: PickedFolder | undefined,
 		notes?: readonly string[],
-		loader: ConfigLoader = this.loader,
 		nestedWriters: readonly string[] = []
 	): Promise<ReloadableSelection> {
 		const opened = await Promise.all(
-			files.map((file) => ManagedConfig.open(file, loader))
+			files.map((file) => ManagedConfig.open(file, this.loader))
 		);
 		return new CoreConfigSelection(
 			opened,
-			loader,
+			this.loader,
 			directory,
 			folder,
 			notes,
@@ -369,8 +349,7 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	registerFolderCheck(check: ConfigFolderCheck): Disposable {
-		this.folderChecks.add(check);
-		return toDisposable(() => this.folderChecks.delete(check));
+		return this.checks.registerFolderCheck(check);
 	}
 
 	staleConfigsIn(folder: string): Promise<readonly Diagnostic[]> {
@@ -378,8 +357,7 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	registerFileCheck(check: ConfigFileCheck): Disposable {
-		this.fileChecks.add(check);
-		return toDisposable(() => this.fileChecks.delete(check));
+		return this.checks.registerFileCheck(check);
 	}
 }
 

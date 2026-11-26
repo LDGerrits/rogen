@@ -2,7 +2,6 @@ import path from "path";
 import { exampleMessage } from "../../../__tests__/diagnostic-examples.js";
 import { ResultError } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { instantiationOf } from "../../../platform/instantiation/__tests__/instantiation-of.js";
@@ -180,16 +179,16 @@ describe("DraftRouting", () => {
 
 	const routingOf = (known: readonly Diagnostic[] = []) =>
 		instantiationOf(
-			[WriteService, writeServiceOf(fs, new CoreIndexService(fs))],
+			[WriteService, writeServiceOf(fs)],
 			[FileSystemService, fs]
 		).createInstance(DraftRouting, request, known);
 
 	const projectErrors = async () =>
 		(
-			(await writeServiceOf(fs, new CoreIndexService(fs)).locate(
-				request.selection,
-				{ args: [], cwd: request.cwd }
-			)) as ResultError<DiagnosticsError>
+			(await writeServiceOf(fs).locate(request.selection, {
+				args: [],
+				cwd: request.cwd,
+			})) as ResultError<DiagnosticsError>
 		).error.diagnostics;
 
 	const mountSourcePath = () => {

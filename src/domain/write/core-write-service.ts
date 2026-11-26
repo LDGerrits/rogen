@@ -28,6 +28,7 @@ import {
 import {
 	AskedLocations,
 	WriteService,
+	WriteDraft,
 	Diagnosis,
 	LocateQuery,
 	LocatedDiagnosis,
@@ -52,6 +53,10 @@ import { Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { ServiceCollection } from "../../platform/instantiation/service-collection.js";
+import {
+	DraftFileReader,
+	FileDraft,
+} from "../../platform/fs/draft-file-reader.js";
 
 interface WriteOptions {
 	readonly force?: boolean;
@@ -105,27 +110,26 @@ export class CoreWriteService implements WriteService {
 		});
 	}
 
-	check(
-		selection: ConfigSelection,
-		reader?: FileSystemService
-	): Promise<WriteRun> {
-		return this.writeAll(selection, { write: false, reader });
+	check(selection: ConfigSelection): Promise<WriteRun> {
+		return this.writeAll(selection, { write: false });
 	}
 
-	private async inScope<T>(
-		reader: FileSystemService | undefined,
-		run: (scope: InstantiationService) => Promise<T>
-	): Promise<T> {
-		if (!reader || reader === this.fileSystemService)
-			return run(this.instantiationService);
+	openDraft(draft: FileDraft): WriteDraft {
 		const scope = this.instantiationService.createChild(
-			new ServiceCollection([FileSystemService, reader])
+			new ServiceCollection([
+				FileSystemService,
+				this.instantiationService.createInstance(
+					DraftFileReader,
+					draft
+				),
+			]),
+			{ rebuilt: [IndexService, ConfigService, WriteService] }
 		);
-		try {
-			return await run(scope);
-		} finally {
-			scope[Symbol.dispose]();
-		}
+		return scope.invokeFunction((accessor) => ({
+			configService: accessor.get(ConfigService),
+			writeService: accessor.get(WriteService),
+			[Symbol.dispose]: () => scope[Symbol.dispose](),
+		}));
 	}
 
 	private async writeAll(
@@ -134,30 +138,27 @@ export class CoreWriteService implements WriteService {
 			write,
 			independent = false,
 			advice = false,
-			reader = this.fileSystemService,
 		}: {
 			readonly write: boolean;
 			readonly independent?: boolean;
 			readonly advice?: boolean;
-			readonly reader?: FileSystemService;
 		}
 	): Promise<WriteRun> {
 		const { set, unloaded } = WriteSet.partition(selection);
-		const listing = await this.indexService.list(set.indexedPaths, reader);
+		const listing = await this.indexService.list(set.indexedPaths);
 		const attempts = await this.attempt(
 			set.configs.map((config) => ({
 				config,
 				sync: SyncWarnings.unknown,
 			})),
 			listing,
-			advice,
-			reader
+			advice
 		);
 		const settled = await this.settle(
 			attempts,
 			unloaded.map(({ file }) => file),
 			write,
-			{ independent, reader }
+			{ independent }
 		);
 		const outcomes = groupBy(
 			[...unloaded, ...settled],
@@ -218,8 +219,7 @@ export class CoreWriteService implements WriteService {
 
 	async locate(
 		selection: ConfigSelection,
-		targets?: LocateQuery,
-		reader?: FileSystemService
+		targets?: LocateQuery
 	): Promise<Result<Locations, DiagnosticsError>> {
 		const { set } = WriteSet.partition(selection);
 		const errors = uniqueDiagnostics(
@@ -228,12 +228,10 @@ export class CoreWriteService implements WriteService {
 			)
 		);
 
-		const listing = await this.indexService.list(set.indexedPaths, reader);
-		const located = await this.inScope(reader, (scope) =>
-			scope
-				.createInstance(Locator, listing, this.syncTools)
-				.locate(set.configs, targets)
-		);
+		const listing = await this.indexService.list(set.indexedPaths);
+		const located = await this.instantiationService
+			.createInstance(Locator, listing, this.syncTools)
+			.locate(set.configs, targets);
 		if (located.isErr())
 			return err(
 				new DiagnosticsError([...errors, ...located.error.diagnostics])
@@ -423,38 +421,32 @@ export class CoreWriteService implements WriteService {
 			readonly sync: SyncWarnings;
 		}[],
 		listing: IndexReader,
-		advice = false,
-		reader?: FileSystemService
+		advice = false
 	): Promise<Attempt[]> {
-		return this.inScope(reader, async (scope) => {
-			const pipeline = scope.createInstance(
-				WritePipeline,
-				listing,
-				this.syncTools
+		const pipeline = this.instantiationService.createInstance(
+			WritePipeline,
+			listing,
+			this.syncTools
+		);
+		const attempts: Attempt[] = [];
+		for (const { config, sync } of configs) {
+			const run = await pipeline.run(config, sync);
+			attempts.push(
+				run.stoppedAt === "end"
+					? advice
+						? run.prepared
+						: withoutRogenAdvice(run.prepared)
+					: FailedConfig.before(config, diagnosticsOf(run), sync)
 			);
-			const attempts: Attempt[] = [];
-			for (const { config, sync } of configs) {
-				const run = await pipeline.run(config, sync);
-				attempts.push(
-					run.stoppedAt === "end"
-						? advice
-							? run.prepared
-							: withoutRogenAdvice(run.prepared)
-						: FailedConfig.before(config, diagnosticsOf(run), sync)
-				);
-			}
-			return attempts;
-		});
+		}
+		return attempts;
 	}
 
 	private async settle(
 		attempts: readonly Attempt[],
 		unloaded: readonly string[],
 		write: boolean,
-		options: WriteOptions & {
-			readonly independent?: boolean;
-			readonly reader?: FileSystemService;
-		}
+		options: WriteOptions & { readonly independent?: boolean }
 	): Promise<LoadedConfig[]> {
 		const prepared = attempts.filter(
 			(attempt): attempt is PreparedConfig => !isFailed(attempt)
@@ -475,10 +467,7 @@ export class CoreWriteService implements WriteService {
 			attempts.map(async (attempt) => {
 				if (isFailed(attempt)) return attempt;
 				if (write) return CoreWriteService.unwritten(attempt, failed);
-				const checked = await this.withStaleness(
-					attempt,
-					options.reader
-				);
+				const checked = await this.withStaleness(attempt);
 				return failed.length === 0
 					? new CheckedConfig(
 							checked.config,
@@ -492,14 +481,11 @@ export class CoreWriteService implements WriteService {
 	}
 
 	private async withStaleness(
-		attempt: PreparedConfig,
-		reader?: FileSystemService
+		attempt: PreparedConfig
 	): Promise<PreparedConfig> {
-		const stale = await this.inScope(reader, (scope) =>
-			scope
-				.createInstance(ProjectFileStaleness)
-				.diagnostic(attempt.config, async () => attempt.projectFile)
-		);
+		const stale = await this.instantiationService
+			.createInstance(ProjectFileStaleness)
+			.diagnostic(attempt.config, async () => attempt.projectFile);
 		if (!stale) return attempt;
 		return {
 			...attempt,

@@ -3,7 +3,6 @@ import path from "path";
 import { toPosix } from "../../../base/path.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { PlannedFilesIndex } from "../locate/planned-files-index.js";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import { RojoFile } from "../../rojo/rojo.js";
@@ -33,7 +32,7 @@ describe("CoreWriteService.locate", () => {
 
 	const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
-	const writeService = () => writeServiceOf(fs, new CoreIndexService(fs));
+	const writeService = () => writeServiceOf(fs);
 
 	const locate = async (
 		paths?: readonly string[],
@@ -1542,10 +1541,7 @@ describe("CoreWriteService.locate", () => {
 	it("should index the source paths it reads itself", async () => {
 		await write("src/A.luau");
 
-		const located = await locateIn(
-			writeServiceOf(fs, new CoreIndexService(fs)),
-			configOf()
-		);
+		const located = await locateIn(writeServiceOf(fs), configOf());
 
 		expect(located.unwrap().files).toMatchObject([
 			{ status: "placed", source: abs("src/A.luau"), exists: true },

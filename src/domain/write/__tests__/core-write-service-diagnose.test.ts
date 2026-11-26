@@ -21,7 +21,7 @@ describe("CoreWriteService.diagnose", () => {
 
 	const diagnose = async (...args: string[]) =>
 		(
-			await writeServiceOf(fs, new CoreIndexService(fs)).diagnose({
+			await writeServiceOf(fs).diagnose({
 				args,
 				cwd: abs(),
 			})
@@ -175,7 +175,7 @@ describe("CoreWriteService.diagnose", () => {
 			);
 
 		const ask = (...args: string[]) =>
-			writeServiceOf(fs, new CoreIndexService(fs)).diagnose({
+			writeServiceOf(fs).diagnose({
 				args,
 				cwd: abs(),
 			});

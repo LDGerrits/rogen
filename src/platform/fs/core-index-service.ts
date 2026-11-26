@@ -1,6 +1,5 @@
 import path from "path";
 import {
-	FileReader,
 	FileSystemService,
 	FileType,
 	isDirectoryType,
@@ -84,25 +83,19 @@ export class CoreIndexService implements IndexService {
 		@FileSystemService private readonly fileSystemService: FileSystemService
 	) {}
 
-	async list(
-		dirs: readonly string[],
-		reader: FileReader = this.fileSystemService
-	): Promise<Listing> {
+	async list(dirs: readonly string[]): Promise<Listing> {
 		const draft = new ListingDraft(Listing.EMPTY);
 		await Promise.all(
-			outermostDirs(dirs).map((root) =>
-				this.traverse(root, draft, reader)
-			)
+			outermostDirs(dirs).map((root) => this.traverse(root, draft))
 		);
 		return draft.toListing();
 	}
 
 	private async traverse(
 		currentDir: string,
-		draft: ListingDraft,
-		reader: FileReader = this.fileSystemService
+		draft: ListingDraft
 	): Promise<void> {
-		const entries = await this.readDirectory(currentDir, draft, reader);
+		const entries = await this.readDirectory(currentDir, draft);
 		if (!entries) return;
 
 		const children = new Map<string, FileType>();
@@ -116,19 +109,18 @@ export class CoreIndexService implements IndexService {
 		}
 
 		await Promise.all(
-			subdirs.map((subdir) => this.traverse(subdir, draft, reader))
+			subdirs.map((subdir) => this.traverse(subdir, draft))
 		);
 	}
 
 	private async readDirectory(
 		dir: string,
-		draft: ListingDraft,
-		reader: FileReader = this.fileSystemService
+		draft: ListingDraft
 	): Promise<[string, FileType][] | undefined> {
 		const posixDir = toPosix(dir);
 		draft.unreadable.delete(posixDir);
 		try {
-			return await reader.readDirectory(dir);
+			return await this.fileSystemService.readDirectory(dir);
 		} catch (error) {
 			if (ErrorUtils.hasCode(error, "EACCES", "EPERM"))
 				draft.markUnreadable(posixDir);

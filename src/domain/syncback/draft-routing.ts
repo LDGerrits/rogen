@@ -2,8 +2,7 @@ import path from "path";
 import { isSameJson } from "../../base/objects.js";
 import { containsPosix, toNative, toPosix } from "../../base/path.js";
 import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
-import { DraftFileReader } from "../../platform/fs/draft-file-reader.js";
-import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
+import { FileDraft } from "../../platform/fs/draft-file-reader.js";
 import { instanceKey } from "../roblox/roblox.js";
 import { FileLocation, WriteService } from "../write/write-service.js";
 import { Expected, Operation } from "./mirror-plan.js";
@@ -120,9 +119,7 @@ export class DraftRouting {
 	constructor(
 		private readonly request: SyncbackRequest,
 		known: readonly Diagnostic[],
-		@WriteService private readonly writeService: WriteService,
-		@InstantiationService
-		private readonly instantiationService: InstantiationService
+		@WriteService private readonly writeService: WriteService
 	) {
 		this.known = new Set(known.map(keyOf));
 	}
@@ -187,7 +184,7 @@ export class DraftRouting {
 
 	private async locate(
 		args: readonly string[],
-		reader?: DraftFileReader
+		draft: FileDraft
 	): Promise<
 		| {
 				readonly files: readonly FileLocation[];
@@ -196,18 +193,22 @@ export class DraftRouting {
 		| undefined
 	> {
 		const { request } = this;
-		const located = await this.writeService.locate(
-			request.selection,
-			{ args, cwd: request.cwd },
-			reader
-		);
-		if (located.isErr()) return undefined;
-		return located.value.configs.find(
-			({ config }) => config.id === request.project.id
-		);
+		const scope = this.writeService.openDraft(draft);
+		try {
+			const located = await scope.writeService.locate(request.selection, {
+				args,
+				cwd: request.cwd,
+			});
+			if (located.isErr()) return undefined;
+			return located.value.configs.find(
+				({ config }) => config.id === request.project.id
+			);
+		} finally {
+			scope[Symbol.dispose]();
+		}
 	}
 
-	private draftOf(operations: readonly Operation[]): DraftFileReader {
+	private draftOf(operations: readonly Operation[]): FileDraft {
 		const files = new Map<string, string>();
 		const directories: string[] = [];
 		const removed: string[] = [];
@@ -220,11 +221,6 @@ export class DraftRouting {
 			else if (operation.kind === "folder")
 				directories.push(toNative(this.absolute(operation.file)));
 			else removed.push(toNative(this.absolute(operation.file)));
-		return this.instantiationService.createInstance(DraftFileReader, {
-			files,
-			directories,
-			moves: [],
-			removed,
-		});
+		return { files, directories, moves: [], removed };
 	}
 }

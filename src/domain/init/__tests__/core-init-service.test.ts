@@ -20,6 +20,7 @@ import {
 	SelectPromptOptions,
 } from "../../../platform/prompt/prompt-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
+import { ConfigChecks } from "../../config/config-checks.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreWriteService } from "../../write/core-write-service.js";
 import {
@@ -33,7 +34,6 @@ import { StarterPlaces } from "../starter-places.js";
 import { InitChoices, InitPlan, InitWritten } from "../init-service.js";
 import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 import { initServiceOf } from "./init-of.js";
-import { configServiceOf } from "../../config/__tests__/config-of.js";
 
 const directory = path.resolve("/mock/my-game");
 
@@ -82,10 +82,7 @@ describe("CoreInitService", () => {
 	beforeEach(async () => {
 		fileSystem = new MemoryFileSystemService();
 		processes = new MockProcessService();
-		configs = configServiceOf(
-			fileSystem,
-			new NativeEnvironmentService({}, directory)
-		);
+		checks = new ConfigChecks();
 		processes.installed.set("rojo", "/bin/rojo");
 		processes.outputs.set("/bin/rojo", ROJO_VERSION);
 		await fileSystem.createDirectory(directory);
@@ -95,7 +92,7 @@ describe("CoreInitService", () => {
 		jest.restoreAllMocks();
 	});
 
-	let configs: CoreConfigService;
+	let checks: ConfigChecks;
 
 	const serviceFor = (
 		promptService: PromptService = new MockPromptService([], false),
@@ -107,7 +104,7 @@ describe("CoreInitService", () => {
 			promptService,
 			environmentService,
 			processes,
-			configs,
+			checks,
 			new MockLifecycleService()
 		);
 		return service;
@@ -284,7 +281,7 @@ describe("CoreInitService", () => {
 
 		it("should fail with what a folder check finds, and write nothing", async () => {
 			await write(".rogen.json", "{}");
-			configs.registerFolderCheck(async (folder) => [
+			checks.registerFolderCheck(async (folder) => [
 				errorDiagnostic(
 					"stale.config",
 					{ resource: path.join(folder, ".rogen.json") },
@@ -2718,7 +2715,7 @@ describe("CoreInitService", () => {
 		});
 
 		it("should come before the folder's stale configs that it covers", async () => {
-			configs.registerFolderCheck(async (folder) => [
+			checks.registerFolderCheck(async (folder) => [
 				errorDiagnostic(
 					"stale.config",
 					{ resource: path.join(folder, "old.rogen.json") },
@@ -2732,7 +2729,7 @@ describe("CoreInitService", () => {
 		});
 
 		it("should still stop for a stale config it doesn't cover", async () => {
-			configs.registerFolderCheck(async (folder) => [
+			checks.registerFolderCheck(async (folder) => [
 				errorDiagnostic(
 					"stale.config",
 					{ resource: path.join(folder, "other.rogen.json") },
@@ -2882,9 +2879,10 @@ describe("CoreInitService", () => {
 
 	describe("when something fails", () => {
 		it("should throw an error that is not about how it was called", async () => {
-			jest.spyOn(configs, "staleConfigsIn").mockRejectedValue(
-				new Error("disk on fire")
-			);
+			jest.spyOn(
+				CoreConfigService.prototype,
+				"staleConfigsIn"
+			).mockRejectedValue(new Error("disk on fire"));
 
 			await expect(serviceFor().plan()).rejects.toThrow("disk on fire");
 		});
@@ -2918,7 +2916,7 @@ describe("CoreInitService", () => {
 			const plan = (
 				await service.plan({ choices: { sample: false } })
 			).unwrap()!;
-			jest.spyOn(configs, "select").mockResolvedValue(
+			jest.spyOn(CoreConfigService.prototype, "select").mockResolvedValue(
 				err(new UsageError("no such config"))
 			);
 

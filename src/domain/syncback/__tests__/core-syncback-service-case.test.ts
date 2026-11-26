@@ -6,8 +6,6 @@ jest.unstable_mockModule("../../../base/platform.js", () => ({
 	ignoresPathCase: true,
 }));
 
-const { CoreIndexService } =
-	await import("../../../platform/fs/core-index-service.js");
 const { MemoryFileSystemService } =
 	await import("../../../platform/fs/memory-file-system-service.js");
 const { MockEnvironmentService } =
@@ -67,7 +65,7 @@ describe("CoreSyncbackService where the file system ignores case", () => {
 		const service = syncbackServiceOf({
 			configService: new MockConfigService([]),
 			fileSystemService: fs,
-			writeService: writeServiceOf(fs, new CoreIndexService(fs)),
+			writeService: writeServiceOf(fs),
 			rojoService: rojo as never,
 			environmentService: new MockEnvironmentService("/repo"),
 			processService: new MockProcessService(),
