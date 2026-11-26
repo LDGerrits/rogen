@@ -145,7 +145,14 @@ export class PlanWriter {
 		);
 		for (const landing of expected) {
 			const { file, instance } = landing;
-			if (landingMiss(landing, here?.files ?? []) === undefined) continue;
+			if (
+				landingMiss(
+					landing,
+					here?.files ?? [],
+					request.project.syncRules
+				) === undefined
+			)
+				continue;
 			const location = here?.files.find(
 				({ source }) => toNative(source) === file
 			);

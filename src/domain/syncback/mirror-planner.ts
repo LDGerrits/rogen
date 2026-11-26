@@ -1232,7 +1232,8 @@ class MirrorPlanRun {
 			const [only] = instance.files;
 			const model =
 				instance.files.length === 1 &&
-				/\.rbxmx?$/.test(only[only.length - 1]);
+				new RojoFile(only[only.length - 1], SyncRules.DEFAULT).kind ===
+					"model";
 			return {
 				proposals: [],
 				reason: model

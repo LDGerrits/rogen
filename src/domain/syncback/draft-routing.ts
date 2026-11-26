@@ -4,6 +4,8 @@ import { containsPosix, toNative, toPosix } from "../../base/path.js";
 import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { FileDraft } from "../../platform/fs/draft-file-reader.js";
 import { instanceKey } from "../roblox/roblox.js";
+import { RojoFile } from "../rojo/rojo.js";
+import { SyncRules } from "../rojo/sync-rules.js";
 import { FileLocation, WriteService } from "../write/write-service.js";
 import { isFixedByRenaming } from "../write/write.js";
 import { Expected, Operation } from "./mirror-plan.js";
@@ -57,7 +59,8 @@ const stopsOn = (diagnostic: Diagnostic) => {
 
 export function landingMiss(
 	{ file, instance, folder }: Landing,
-	files: readonly FileLocation[]
+	files: readonly FileLocation[],
+	rules: SyncRules
 ): string | undefined {
 	const source = toPosix(file);
 	const found = files.find((location) => location.source === source);
@@ -104,7 +107,7 @@ export function landingMiss(
 	if (landed.some((at) => isSameJson(at, instance))) return undefined;
 	if (landed.length === 0) return `routing would make no instance of ${file}`;
 	const read = `routing would read ${file} as ${instanceKey(landed[0])}`;
-	return /\.(server|client)\.luau?$/.test(file)
+	return RojoFile.at(file, rules).scriptSuffix !== undefined
 		? `${read}; make it a ModuleScript, or move it to where that type runs`
 		: `${read}; rename it in Studio`;
 }
@@ -164,7 +167,8 @@ export class DraftRouting {
 				}
 				const why = landingMiss(
 					{ ...landing, file: this.absolute(landing.file) },
-					located.files
+					located.files,
+					this.request.project.syncRules
 				);
 				if (why === undefined) continue;
 				misses.set(proposal, why);
