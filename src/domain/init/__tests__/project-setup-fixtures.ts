@@ -7,7 +7,8 @@ import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
 import { RogenConfig } from "../../config/config.js";
 import { InitDirectory } from "../init-directory.js";
 import { InitChoices, InitPlan } from "../init-service.js";
-import { ProjectSetup, SetupProject } from "../project-setup.js";
+import { ProjectSetup } from "../project-setup.js";
+import { SetupProject } from "../project-code.js";
 import { WorkspaceSpec, directory, planOf } from "./init-fixtures.js";
 import { codeFinderOf, questionsOf, setupOf } from "./init-of.js";
 

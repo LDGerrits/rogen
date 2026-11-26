@@ -10,7 +10,7 @@ describe("UnmountedFiles", () => {
 		sourcePaths = ["src"],
 		compiled: string[] = []
 	) =>
-		new UnmountedFiles(fs, "/repo").find(
+		new UnmountedFiles("/repo", fs).find(
 			sourcePaths,
 			mounted,
 			ignored,

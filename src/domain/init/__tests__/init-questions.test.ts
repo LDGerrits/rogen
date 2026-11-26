@@ -7,7 +7,7 @@ import {
 	PromptScript,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { withRobloxTs } from "../../toolchain/__tests__/workspaces.js";
-import { SetupProject } from "../project-setup.js";
+import { SetupProject } from "../project-code.js";
 import path from "path";
 import {
 	DirectorySpec,

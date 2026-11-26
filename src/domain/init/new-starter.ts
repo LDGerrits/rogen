@@ -3,7 +3,12 @@ import { DOCS_URL } from "../../platform/product/product-service.js";
 import { DEFAULT_CONFIG_FILE, DEFAULT_PROJECT_FILE } from "../config/config.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
 import { PlannedCommand, PlannedScaffold } from "./init-service.js";
-import { CodePlan, ProjectCode, ProjectWrites } from "./project-code.js";
+import {
+	CodePlan,
+	ProjectCode,
+	ProjectWrites,
+	SetupProject,
+} from "./project-code.js";
 import { SampleGame } from "./sample-game.js";
 import { StartingPlaces } from "./starter-places.js";
 import { ProjectTree } from "./tree-plan.js";
@@ -13,14 +18,10 @@ export interface StarterScaffold {
 	readonly after: readonly PlannedCommand[];
 }
 
-export class NewStarter {
+export class NewStarter implements SetupProject {
 	readonly kind = "place";
 	readonly takesRoutes = true;
 	readonly mountedFolders: readonly string[] = [];
-	readonly capturedKeys: readonly string[] = [];
-	readonly unmounted: readonly string[] = [];
-	readonly written = undefined;
-	readonly processedPath = undefined;
 
 	constructor(
 		readonly code: ProjectCode,
@@ -54,10 +55,6 @@ export class NewStarter {
 		return this.places?.outputPrefix ?? "";
 	}
 
-	derivedRoutes(): undefined {
-		return undefined;
-	}
-
 	summarise(builder: InitPlanBuilder, shown: ReadonlySet<string>): void {
 		const project = [
 			...(shown.has("places")
@@ -72,14 +69,12 @@ export class NewStarter {
 	}
 
 	plan(builder: InitPlanBuilder, code: CodePlan): void {
-		const { places, scaffold, writes } = this;
+		const { places, scaffold } = this;
 		for (const note of places?.notes ?? []) builder.addNote(note);
 		if (scaffold) {
 			builder.setScaffold(scaffold.tool);
 			for (const command of scaffold.after) builder.addCommand(command);
 		}
-		for (const file of writes.files) builder.addFile(file);
-		if (!writes.skipGit) builder.requestGitInit();
 		for (const note of code.notes) builder.addNote(note);
 		if (!places && code.othersNote) builder.addNote(code.othersNote);
 		if (scaffold)

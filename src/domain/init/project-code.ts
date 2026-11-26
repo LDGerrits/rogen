@@ -1,4 +1,9 @@
 import { Language, Mount, PlannedFile } from "../toolchain/toolchain.js";
+import { WrittenTree } from "../rojo/project-text.js";
+import { DerivedRoutes } from "./derived-routes.js";
+import { InitPlanBuilder } from "./init-plan-builder.js";
+import { InitKind } from "./init-service.js";
+import { ProjectTree } from "./tree-plan.js";
 
 export const LISTED_SHOWN = 5;
 
@@ -26,4 +31,24 @@ export interface CodePlan {
 	readonly configEdit: string;
 	readonly folderName: string;
 	readonly tracksProjectFile: boolean;
+}
+
+export interface SetupProject {
+	readonly kind: InitKind;
+	readonly tree: ProjectTree;
+	readonly code: ProjectCode;
+	readonly writes: ProjectWrites;
+	readonly takesRoutes: boolean;
+	readonly mountedFolders: readonly string[];
+	readonly configFile: string;
+	readonly projectFile: string;
+	readonly name?: string;
+	readonly outputPrefix?: string;
+	readonly written?: WrittenTree;
+	readonly processedPath?: string;
+	readonly capturedKeys?: readonly string[];
+	readonly unmounted?: readonly string[];
+	derivedRoutes?(dirs: readonly string[]): DerivedRoutes | undefined;
+	summarise(builder: InitPlanBuilder, shown: ReadonlySet<string>): void;
+	plan(builder: InitPlanBuilder, code: CodePlan): void;
 }

@@ -15,6 +15,7 @@ import {
 	LISTED_SHOWN,
 	ProjectCode,
 	ProjectWrites,
+	SetupProject,
 } from "./project-code.js";
 import { ProjectTree } from "./tree-plan.js";
 
@@ -39,11 +40,9 @@ const BUILD_COMMANDS: Readonly<
 	plugin: (name) => `rogen build -p "${name}.rbxm"`,
 };
 
-export class CarriedProject {
-	readonly name = undefined;
+export class CarriedProject implements SetupProject {
 	readonly configFile = DEFAULT_CONFIG_FILE;
 	readonly projectFile = DEFAULT_PROJECT_FILE;
-	readonly outputPrefix = "";
 
 	constructor(
 		readonly kind: InitKind,
@@ -97,11 +96,9 @@ export class CarriedProject {
 	}
 
 	plan(builder: InitPlanBuilder, code: CodePlan): void {
-		const { tree, writes } = this;
+		const { tree } = this;
 		const { processed, keptCode, unmounted } = this.carried;
 		const { sourcePaths } = this.code;
-		for (const file of writes.files) builder.addFile(file);
-		if (!writes.skipGit) builder.requestGitInit();
 		if (tree.kind === "lift") {
 			builder.setLiftedFrom(tree.from);
 			builder.setAction("lift");

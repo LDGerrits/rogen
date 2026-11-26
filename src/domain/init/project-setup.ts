@@ -26,7 +26,7 @@ import { InitQuestions, UnplacedCode } from "./init-questions.js";
 import { InitSummary } from "./init-summary.js";
 import { InitKind } from "./init-service.js";
 import { NewStarter } from "./new-starter.js";
-import { LISTED_SHOWN, ProjectCode } from "./project-code.js";
+import { LISTED_SHOWN, ProjectCode, SetupProject } from "./project-code.js";
 import { ProjectFiles } from "./project-files.js";
 import { IgnoredFiles, ProjectTemplate } from "./project-template.js";
 import { StarterProject } from "./starter-project.js";
@@ -50,8 +50,6 @@ type ReadChoice =
 			readonly from: string;
 			readonly project: StarterProject;
 	  };
-
-export type SetupProject = CarriedProject | NewStarter;
 
 function mountsOf(directory: InitDirectory, language: Language): Mount[] {
 	return [
@@ -175,15 +173,14 @@ export class ProjectSetup implements Setup<SetupProject> {
 		const processorConfig = directory.workspace.darkluaConfig;
 		const unmounted =
 			lifted && tree.kind === "lift"
-				? await new UnmountedFiles(
-						this.fileSystemService,
-						directory.path
-					).find(
-						sourcePaths,
-						liftedMounts,
-						lifted.toConfig().globIgnorePaths ?? [],
-						[compiledPath, processedFolder].filter(defined)
-					)
+				? await this.instantiationService
+						.createInstance(UnmountedFiles, directory.path)
+						.find(
+							sourcePaths,
+							liftedMounts,
+							lifted.toConfig().globIgnorePaths ?? [],
+							[compiledPath, processedFolder].filter(defined)
+						)
 				: [];
 		const keptCode =
 			code && !code.processed
@@ -563,13 +560,13 @@ export class ProjectSetup implements Setup<SetupProject> {
 			compiledPath,
 			project.processedPath,
 		].filter(defined);
-		const derived = project.derivedRoutes(dirs);
+		const derived = project.derivedRoutes?.(dirs);
 		const starting = project.takesRoutes
 			? new StartingRoutes(
 					language,
 					derived,
 					code.keySpellings,
-					new Set(project.capturedKeys)
+					new Set(project.capturedKeys ?? [])
 				)
 			: undefined;
 		const routes = starting?.routes;
@@ -580,7 +577,7 @@ export class ProjectSetup implements Setup<SetupProject> {
 			derived,
 			landings: Object.values(routes ?? {}),
 		});
-		const { unmounted, written, processedPath } = project;
+		const { unmounted = [], written, processedPath } = project;
 		const { name: ownName, ...fields } = tree.fields;
 		const config: RogenConfig = {
 			name:
@@ -608,7 +605,7 @@ export class ProjectSetup implements Setup<SetupProject> {
 			builder.setConfig(
 				output,
 				written,
-				configFileName(`${project.outputPrefix}${stem}`),
+				configFileName(`${project.outputPrefix ?? ""}${stem}`),
 				false
 			);
 		this.summarise(builder, project, routes);
@@ -636,6 +633,8 @@ export class ProjectSetup implements Setup<SetupProject> {
 		);
 		const { compiler } = language;
 		const configs = builder.configNames;
+		for (const file of project.writes.files) builder.addFile(file);
+		if (!project.writes.skipGit) builder.requestGitInit();
 		project.plan(builder, {
 			notes: [
 				...(leftOut.length > 0
