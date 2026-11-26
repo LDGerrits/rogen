@@ -12,7 +12,7 @@ import {
 	booleanFlag,
 } from "./init-service.js";
 import { ReviewPrompts } from "./review-prompts.js";
-import { COMMON_FOLDER } from "./starter-places.js";
+import { COMMON_FOLDER, FIRST_PLACE } from "./starter-places.js";
 import { TreeChoice } from "./tree-plan.js";
 
 function oneOf<T extends string>(
@@ -179,7 +179,7 @@ export class InitQuestions {
 						{
 							value: "several",
 							label: "Several places",
-							hint: `src/${COMMON_FOLDER} holds the shared code, src/lobby the first place${unplaced.several ? `; leaves ${unplaced.several} unplaced` : ""}`,
+							hint: `src/${COMMON_FOLDER} holds the shared code, src/${FIRST_PLACE} the first place${unplaced.several ? `; leaves ${unplaced.several} unplaced` : ""}`,
 						},
 					],
 					initialValue: "one",

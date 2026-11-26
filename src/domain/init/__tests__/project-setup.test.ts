@@ -1,10 +1,6 @@
 import path from "path";
-import {
-	withRobloxTs,
-	workspaceOf,
-} from "../../toolchain/__tests__/workspaces.js";
+import { withRobloxTs } from "../../toolchain/__tests__/workspaces.js";
 import { InitPlan } from "../init-service.js";
-import { ProjectChoices } from "../project-setup.js";
 import {
 	CANCEL,
 	MockPromptService,
@@ -16,36 +12,30 @@ import {
 	ROBLOX_TS_ROUTES,
 	luau,
 	withPackages,
-	defaultProjectChoices,
-	planProject,
+	askProject,
+	lifting,
 	planResult,
 	plan,
 	errorsOf,
 	configOf,
-	lifted,
 } from "./project-setup-fixtures.js";
 import { questionsOf } from "./init-of.js";
 import { setupOf } from "./init-of.js";
 import { formatterOf } from "../../config/__tests__/config-of.js";
 
 describe("ProjectSetup plan, unmounted files", () => {
-	const lift = (unmounted: readonly string[]) =>
-		defaultProjectChoices(luau).then((choices) =>
-			planProject({
-				choices: {
-					...choices,
-					tree: lifted({
-						name: "g",
-						tree: { $className: "DataModel" },
-					}),
-					unmounted,
-				},
-				existingFiles: new Set(["default.project.json"]),
-			}).unwrap()
+	const lift = (files: readonly string[]) =>
+		plan(
+			lifting(
+				{ name: "g", tree: { $className: "DataModel" } },
+				{
+					files: Object.fromEntries(files.map((file) => [file, ""])),
+				}
+			)
 		);
 
 	it("should leave out what Rojo ignored with globIgnorePaths, and say so", async () => {
-		const planned = await lift(["src/Loose.luau", "src/x"]);
+		const planned = await lift(["src/Loose.luau", "src/x/Thing.luau"]);
 
 		expect(configOf(planned).globIgnorePaths).toEqual([
 			"src/Loose.luau",
@@ -79,7 +69,7 @@ describe("ProjectSetup plan, unmounted files", () => {
 
 describe("ProjectSetup plan, summary", () => {
 	it("should sum up the code as its source paths, their routes and where other files go", async () => {
-		const planned = await plan(luau);
+		const planned = await plan();
 
 		expect(planned.summary).toContainEqual({
 			area: "Code",
@@ -88,54 +78,117 @@ describe("ProjectSetup plan, summary", () => {
 	});
 
 	it("should list the routes a lift derives before the standard ones", async () => {
-		const choices = await defaultProjectChoices(luau);
-		const planned = planProject({
-			choices: {
-				...choices,
-				sourcePaths: ["src", "lib"],
-				tree: lifted({
-					name: "g",
-					tree: {
-						$className: "DataModel",
-						ServerStorage: { Tools: { $path: "src/Tools" } },
-					},
-				}),
-			},
-			existingFiles: new Set(["default.project.json"]),
-		}).unwrap();
+		const planned = await plan(
+			lifting({
+				name: "g",
+				tree: {
+					$className: "DataModel",
+					ServerStorage: { Tools: { $path: "src/Tools" } },
+				},
+			})
+		);
 
 		expect(planned.summary).toContainEqual({
 			area: "Code",
-			text: "src, lib → Tools, Server, Client, Shared; other files to ReplicatedStorage/Shared",
+			text: "src → Tools, Server, Client, Shared; other files to ReplicatedStorage/Shared",
+		});
+	});
+});
+
+describe("ProjectSetup plan, a lifted project", () => {
+	const project = { name: "g", tree: { $className: "DataModel" } };
+
+	it("should sum it up as one place, leaving out the language it asked", async () => {
+		const planned = await plan(lifting(project, { interactive: true }));
+
+		expect(planned.summary).toContainEqual({
+			area: "Project",
+			text: "one place, lifting default.project.json",
+		});
+	});
+
+	it("should sum up a lifted model with its language", async () => {
+		const planned = await plan(lifting({ tree: { $className: "Folder" } }));
+
+		expect(planned.summary).toContainEqual({
+			area: "Project",
+			text: "a model, Luau, lifting default.project.json",
+		});
+	});
+
+	it("should name the other project files it leaves alone", async () => {
+		const planned = await plan(
+			lifting(project, { files: { "test.project.json": "{}" } })
+		);
+
+		expect(planned.notes).toContain(
+			"Left alone: test.project.json. Rojo runs a plain project file as it is."
+		);
+	});
+
+	it("should say to ignore the project files when .gitignore doesn't", async () => {
+		const planned = await plan(
+			lifting(project, { files: { ".gitignore": "node_modules\n" } })
+		);
+
+		expect(planned.nextSteps.edits).toContain(
+			"Add *.project.json to .gitignore: Rogen writes those files, and they change with the tree. A clone runs 'rogen write' to make them."
+		);
+	});
+});
+
+describe("ProjectSetup ask, --places", () => {
+	it("should refuse it for a model", async () => {
+		await expect(
+			askProject({ choices: { kind: "model", places: true } })
+		).rejects.toMatchObject({
+			message: "--places is for a place, not for a model.",
+		});
+	});
+
+	it("should refuse it where src is laid out as Rojo's place template", async () => {
+		await expect(
+			askProject({
+				files: {
+					"src/server/init.server.luau": "",
+					"src/shared/Hello.luau": "",
+				},
+				choices: { places: true },
+			})
+		).rejects.toMatchObject({
+			message:
+				"--places starts a new tree, and src is laid out as Rojo's place template, which init keeps. Leave --places out.",
 		});
 	});
 });
 
 describe("ProjectSetup plan", () => {
 	it("should plan every source path it writes", async () => {
-		const choices = {
-			...(await defaultProjectChoices(luau)),
-			sourcePaths: ["core", "shared"],
-		};
+		const planned = await plan({
+			files: {
+				"src/common/Util.luau": "",
+				"src/lobby/Main.server.luau": "",
+			},
+			choices: { places: true },
+		});
 
-		expect(planProject({ choices }).unwrap().directories).toEqual([
-			"core",
-			"shared",
-		]);
+		expect(planned.directories).toEqual(["src/common", "src/lobby"]);
 	});
 
 	it("should write default.rogen.json", async () => {
-		const { configs } = await plan(luau);
+		const { configs } = await plan();
 
 		expect(configs).toEqual(["default.rogen.json"]);
 	});
 
 	describe("other project files in the folder", () => {
 		it("should name them in a note, and say they are left alone", async () => {
-			const { notes } = await plan(luau, [
-				"test.project.json",
-				"place.project.json",
-			]);
+			const { notes } = await plan({
+				files: {
+					"test.project.json": "{}",
+					"place.project.json": "{}",
+				},
+			});
 
 			expect(notes).toEqual([
 				expect.stringContaining(
@@ -145,31 +198,31 @@ describe("ProjectSetup plan", () => {
 		});
 
 		it("should not name default.project.json, which init replaces or lifts", async () => {
-			const { notes } = await plan(luau, ["default.project.json"]);
+			const { notes } = await plan(lifting({}));
 
 			expect(notes.join("\n")).not.toContain("Left alone");
 		});
 
 		it("should say nothing when there are none", async () => {
-			const { notes } = await plan(luau);
+			const { notes } = await plan();
 
 			expect(notes.join("\n")).not.toContain("Left alone");
 		});
 	});
 
 	it("should write the starting routes explicitly", async () => {
-		const config = configOf(await plan(luau));
+		const config = configOf(await plan());
 
 		expect(config.routes).toEqual(LUAU_ROUTES);
 	});
 
 	it("should write fields in pipeline order", async () => {
-		const planned = await plan(
-			withRobloxTs(
+		const planned = await plan({
+			workspace: withRobloxTs(
 				{ ...luau, ...withPackages, language: "roblox-ts" },
 				{ outDir: "out" }
-			)
-		);
+			),
+		});
 
 		expect(Object.keys(configOf(planned))).toEqual([
 			"name",
@@ -181,7 +234,7 @@ describe("ProjectSetup plan", () => {
 	});
 
 	it("should write strict JSON as fmt-project writes it, name included, so formatting it changes nothing", async () => {
-		const { files } = await plan(luau);
+		const { files } = await plan();
 		const { content } = files.find(
 			({ fileName }) => fileName === "default.rogen.json"
 		)!;
@@ -197,7 +250,7 @@ describe("ProjectSetup plan", () => {
 	});
 
 	it("should write a bare DataModel tree, no compiled path and the folder's name for plain luau", async () => {
-		const config = configOf(await plan(luau));
+		const config = configOf(await plan());
 
 		expect(config.tree).toEqual({ $className: "DataModel" });
 		expect(config.compiledPath).toBeUndefined();
@@ -205,24 +258,25 @@ describe("ProjectSetup plan", () => {
 	});
 
 	it("should write the detected outDir as compiledPath for roblox-ts", async () => {
-		const files = await plan(
-			withRobloxTs(
+		const files = await plan({
+			workspace: withRobloxTs(
 				{ ...luau, language: "roblox-ts" },
 				{ outDir: "build" }
-			)
-		);
+			),
+		});
 
 		expect(files.configs).toEqual(["default.rogen.json"]);
 		expect(configOf(files).compiledPath).toBe("build");
 	});
 
 	describe("language", () => {
-		const planFor = async (language: WorkspaceSpec["language"]) =>
-			planProject({
-				choices: await defaultProjectChoices(
-					withRobloxTs({ ...luau, language }, { outDir: "build" })
+		const planFor = (language: WorkspaceSpec["language"]) =>
+			plan({
+				workspace: withRobloxTs(
+					{ ...luau, language },
+					{ outDir: "build" }
 				),
-			}).unwrap();
+			});
 
 		it("should write one config without a compiled path for luau", async () => {
 			const files = await planFor("luau");
@@ -266,107 +320,48 @@ describe("ProjectSetup plan", () => {
 	});
 
 	describe("routes", () => {
-		const routesOf = async (
-			choices: Partial<ProjectChoices>,
-			language = "luau"
-		) => {
-			const workspace = {
-				...luau,
-				language,
-			} as WorkspaceSpec;
-			const files = planProject({
-				choices: {
-					...(await defaultProjectChoices(workspace)),
-					...choices,
-				},
-			}).unwrap();
-			return configOf(files).routes;
-		};
+		const routesOf = async (language: WorkspaceSpec["language"]) =>
+			configOf(await plan({ workspace: { ...luau, language } })).routes;
 
 		it("should write the standard routes with lowercase keys for luau", async () => {
-			expect(await routesOf({})).toEqual(LUAU_ROUTES);
+			expect(await routesOf("luau")).toEqual(LUAU_ROUTES);
 		});
 
 		it("should write the standard routes with lowercase keys for roblox-ts", async () => {
-			expect(await routesOf({}, "roblox-ts")).toEqual(ROBLOX_TS_ROUTES);
+			expect(await routesOf("roblox-ts")).toEqual(ROBLOX_TS_ROUTES);
 		});
 	});
 
-	describe("choices", () => {
-		const planChoices = async (choices: Partial<ProjectChoices>) =>
-			planProject({
-				choices: {
-					...(await defaultProjectChoices(luau)),
-					...choices,
-				},
-			}).unwrap();
+	it("should take the one folder that holds code as the source path", async () => {
+		const files = await plan({ files: { "game/Main.server.luau": "" } });
 
-		it("should write the chosen source paths", async () => {
-			const files = await planChoices({ sourcePaths: ["src", "shared"] });
-
-			expect(configOf(files).sourcePaths).toEqual(["src", "shared"]);
-		});
-
-		it("should write the chosen compiled path", async () => {
-			const files = await planChoices({
-				language: workspaceOf().languageFor("roblox-ts"),
-				compiledPath: "lib",
-			});
-
-			expect(configOf(files).compiledPath).toBe("lib");
-		});
-
-		it("should write each mount as a plain path where it lands", async () => {
-			const files = await planChoices({
-				mounts: [
-					{ path: "Packages", landing: "ReplicatedStorage/Packages" },
-					{
-						path: "ServerPackages",
-						landing: "ServerScriptService/ServerPackages",
-					},
-				],
-			});
-
-			expect(configOf(files).tree).toEqual({
-				$className: "DataModel",
-				ReplicatedStorage: {
-					Packages: { $path: "Packages" },
-				},
-				ServerScriptService: {
-					ServerPackages: { $path: "ServerPackages" },
-				},
-			});
-		});
-
-		it("should write a bare DataModel when no mount was chosen", async () => {
-			const files = await planChoices({ mounts: [] });
-
-			expect(configOf(files).tree).toEqual({ $className: "DataModel" });
-		});
+		expect(configOf(files).sourcePaths).toEqual(["game"]);
 	});
 
 	describe("notes", () => {
 		it("should say where roblox-ts syncs from", async () => {
 			expect(
 				(
-					await plan(
-						withRobloxTs(
+					await plan({
+						workspace: withRobloxTs(
 							{ ...luau, language: "roblox-ts" },
 							{ outDir: "out" }
-						)
-					)
+						),
+					})
 				).notes
 			).toEqual(["Syncing from out, where roblox-ts compiles to."]);
 		});
 
 		it("should say nothing for plain luau", async () => {
-			expect((await plan(luau)).notes).toEqual([]);
+			expect((await plan()).notes).toEqual([]);
 		});
 	});
 
 	describe("existing files", () => {
 		it("should fail when the config it would write exists", async () => {
-			const result = await planResult(luau, ["default.rogen.json"]);
+			const result = await planResult({
+				files: { "default.rogen.json": "{}" },
+			});
 
 			expect(result.isErr()).toBe(true);
 			expect(errorsOf(result)).toMatchObject([
@@ -378,9 +373,9 @@ describe("ProjectSetup plan", () => {
 		});
 
 		it("should not fail over an existing project file", async () => {
-			const result = await planResult({ ...luau, ...withPackages }, [
-				"default.project.json",
-			]);
+			const result = await planResult(
+				lifting({}, { workspace: { ...luau, ...withPackages } })
+			);
 
 			expect(result.isOk()).toBe(true);
 		});
@@ -389,11 +384,7 @@ describe("ProjectSetup plan", () => {
 
 describe("ProjectSetup plan, a lifted tree", () => {
 	const liftedConfig = async (text: string) => {
-		const choices = await defaultProjectChoices(luau);
-		const planned = planProject({
-			choices: { ...choices, tree: lifted(text) },
-			existingFiles: new Set(["default.project.json"]),
-		}).unwrap();
+		const planned = await plan(lifting(text));
 		return planned.files.find(
 			({ fileName }) => fileName === "default.rogen.json"
 		)!.content;
@@ -429,19 +420,16 @@ describe("ProjectSetup plan, a lifted tree", () => {
 
 describe("an unattended run", () => {
 	it("should lift a hand-written project file the config would replace", async () => {
-		const choices = await defaultProjectChoices(
-			luau,
-			new Set(["default.project.json"])
-		);
+		const project = await askProject(lifting({}));
 
-		expect(choices.tree).toMatchObject({
+		expect(project.tree).toMatchObject({
 			kind: "lift",
 			from: "default.project.json",
 		});
 	});
 
 	it("should start a new tree when there is no project file", async () => {
-		expect((await defaultProjectChoices(luau)).tree).toEqual({
+		expect((await askProject()).tree).toEqual({
 			kind: "new",
 		});
 	});
@@ -506,38 +494,39 @@ describe("ProjectSetup plan with a test runner", () => {
 	});
 
 	it("should leave the description with the specs in it, for the tests to run", async () => {
-		expect(configOf(await plan(withJest(luau)))).not.toHaveProperty(
-			"globIgnorePaths"
-		);
+		expect(
+			configOf(await plan({ workspace: withJest(luau) }))
+		).not.toHaveProperty("globIgnorePaths");
 	});
 
 	it("should keep the globs a lifted project file ignores", async () => {
-		const choices = {
-			...(await defaultProjectChoices(withJest(luau))),
-			tree: lifted({
-				tree: { $className: "DataModel" },
-				globIgnorePaths: ["**/*.draft.luau"],
-			}),
-		};
-
 		const config = configOf(
-			planProject({ choices, workspace: withJest(luau) }).unwrap()
+			await plan(
+				lifting(
+					{
+						tree: { $className: "DataModel" },
+						globIgnorePaths: ["**/*.draft.luau"],
+					},
+					{ workspace: withJest(luau) }
+				)
+			)
 		);
 
 		expect(config.globIgnorePaths).toEqual(["**/*.draft.luau"]);
 	});
 
 	it("should add what Rojo ignored after the globs of the lifted file", async () => {
-		const choices = {
-			...(await defaultProjectChoices(luau)),
-			tree: lifted({
-				tree: { $className: "DataModel" },
-				globIgnorePaths: ["**/*.draft.luau"],
-			}),
-			unmounted: ["src/dev"],
-		};
-
-		const config = configOf(planProject({ choices }).unwrap());
+		const config = configOf(
+			await plan(
+				lifting(
+					{
+						tree: { $className: "DataModel" },
+						globIgnorePaths: ["**/*.draft.luau"],
+					},
+					{ files: { "src/dev/Tool.luau": "" } }
+				)
+			)
+		);
 
 		expect(config.globIgnorePaths).toEqual(["**/*.draft.luau", "src/dev"]);
 	});
@@ -556,7 +545,7 @@ describe("ProjectSetup plan, second config files", () => {
 		);
 
 	it("should set up no Darklua in a new project, even beside a .darklua.json", async () => {
-		const planned = await plan(darkluaLuau);
+		const planned = await plan({ workspace: darkluaLuau });
 
 		expect(files(planned)).toEqual([
 			"src/.gitkeep",
@@ -572,14 +561,16 @@ describe("ProjectSetup plan, second config files", () => {
 	});
 
 	it("should write no second file without a test runner", async () => {
-		const planned = await plan(luau);
+		const planned = await plan();
 
 		expect(files(planned)).not.toContain("dist.rogen.json");
 		expect(files(planned)).not.toContain("release.rogen.json");
 	});
 
 	it("should write a complete release.rogen.json that leaves the specs out when a test runner is detected", async () => {
-		const planned = await plan({ ...luau, testRunner: "Jest" });
+		const planned = await plan({
+			workspace: { ...luau, testRunner: "Jest" },
+		});
 
 		expect(contentOf(planned, "release.rogen.json")).toMatchObject({
 			name: "my-game",
@@ -594,12 +585,12 @@ describe("ProjectSetup plan, second config files", () => {
 	});
 
 	it("should have release read the compiler's folder", async () => {
-		const planned = await plan(
-			withRobloxTs(
+		const planned = await plan({
+			workspace: withRobloxTs(
 				{ ...luau, language: "roblox-ts", testRunner: "Jest" },
 				{ outDir: "build" }
-			)
-		);
+			),
+		});
 
 		expect(contentOf(planned, "release.rogen.json")).toMatchObject({
 			globIgnorePaths: ["**/*.spec.ts"],
@@ -608,9 +599,9 @@ describe("ProjectSetup plan, second config files", () => {
 	});
 
 	it("should ignore every project file Rogen writes", async () => {
-		const planned = planProject({
-			choices: { ...(await defaultProjectChoices(luau)), kind: "place" },
-		}).unwrap();
+		const planned = await plan({
+			choices: { kind: "place", sample: false },
+		});
 
 		expect(
 			planned.files.find(({ fileName }) => fileName === ".gitignore")
@@ -624,16 +615,12 @@ describe("ProjectSetup plan, second config files", () => {
 	])(
 		"should tell a lifted project to stop tracking the file Rogen writes now when git tracks it (tracked: %s)",
 		async (tracksProjectFile, told) => {
-			const choices = {
-				...(await defaultProjectChoices(luau)),
-				tree: lifted({ name: "g", tree: { $className: "DataModel" } }),
-			};
-
-			const planned = planProject({
-				choices,
-				existingFiles: new Set(["default.project.json"]),
-				tracksProjectFile,
-			}).unwrap();
+			const planned = await plan(
+				lifting(
+					{ name: "g", tree: { $className: "DataModel" } },
+					{ tracksProjectFile }
+				)
+			);
 
 			expect(
 				planned.nextSteps.edits.some((edit) =>
@@ -644,7 +631,7 @@ describe("ProjectSetup plan, second config files", () => {
 	);
 
 	it("should say to edit the config and not the project file, and link the routing docs", async () => {
-		expect((await plan(luau)).nextSteps.edits).toContainEqual(
+		expect((await plan()).nextSteps.edits).toContainEqual(
 			expect.stringContaining(
 				"which 'rogen write' replaces. Routes and the tree: https://rogen-roblox.vercel.app/docs/v2/routing"
 			)
@@ -652,7 +639,9 @@ describe("ProjectSetup plan, second config files", () => {
 	});
 
 	it("should name every config to edit when it writes several", async () => {
-		const planned = await plan({ ...luau, testRunner: "Jest" });
+		const planned = await plan({
+			workspace: { ...luau, testRunner: "Jest" },
+		});
 
 		expect(planned.nextSteps.edits).toContainEqual(
 			"Edit default.rogen.json and release.rogen.json, not their project files, which 'rogen write' replaces. Routes and the tree: https://rogen-roblox.vercel.app/docs/v2/routing"
@@ -660,34 +649,21 @@ describe("ProjectSetup plan, second config files", () => {
 	});
 
 	it("should send the user to the README only when it writes one", async () => {
-		const choices = await defaultProjectChoices(luau);
-		const withReadme = {
-			...choices,
-			templateFiles: [
-				...choices.templateFiles,
-				{ fileName: "README.md", content: "" },
-			],
-		};
+		const withSample = { choices: {} };
 
+		expect((await plan(withSample)).nextSteps.edits).toContainEqual(
+			"See README.md for routes and the tree."
+		);
 		expect(
-			planProject({ choices: withReadme }).unwrap().nextSteps.edits
-		).toContainEqual("See README.md for routes and the tree.");
-		expect(
-			planProject({ choices: { ...choices, sample: true } }).unwrap()
+			(await plan({ ...withSample, files: { "README.md": "# Mine" } }))
 				.nextSteps.edits
 		).toContainEqual(expect.stringContaining("/docs/v2/routing"));
 	});
 
 	it("should leave the routing docs out for a lift that takes no routes", async () => {
-		const choices = {
-			...(await defaultProjectChoices(luau)),
-			tree: lifted({ name: "g", tree: { $className: "Model" } }),
-		};
-
-		const { edits } = planProject({
-			choices,
-			existingFiles: new Set(["default.project.json"]),
-		}).unwrap().nextSteps;
+		const { edits } = (
+			await plan(lifting({ name: "g", tree: { $className: "Model" } }))
+		).nextSteps;
 
 		expect(edits).toContainEqual(
 			"Edit default.rogen.json, not default.project.json, which 'rogen write' replaces."
@@ -726,24 +702,11 @@ describe("ProjectSetup ask", () => {
 			"plugin",
 		],
 	])("should lift %s as a %s", async (_, tree, kind) => {
-		const choices = await askIn({
-			"default.project.json": JSON.stringify({ tree }),
-		});
-
-		expect(choices?.kind).toBe(kind);
+		expect((await askProject(lifting({ tree }))).kind).toBe(kind);
 	});
 
 	it("should build a lifted model under the folder's name when the project file names none", async () => {
-		const choices = await askIn({
-			"default.project.json": JSON.stringify({
-				tree: { $className: "Folder" },
-			}),
-		});
-
-		const planned = planProject({
-			choices: choices!,
-			existingFiles: new Set(["default.project.json"]),
-		}).unwrap();
+		const planned = await plan(lifting({ tree: { $className: "Folder" } }));
 
 		expect(planned.nextSteps.run).toEqual([
 			'rogen build -o "my-game.rbxmx"',
@@ -756,9 +719,7 @@ describe("ProjectSetup ask", () => {
 	])(
 		"should say to ignore the project files when .gitignore holds %j (told: %s)",
 		async (gitignore, told) => {
-			const choices = await askIn({ ".gitignore": gitignore });
-
-			const planned = planProject({ choices: choices! }).unwrap();
+			const planned = await plan({ files: { ".gitignore": gitignore } });
 
 			expect(
 				planned.nextSteps.edits.includes(
