@@ -12,7 +12,7 @@ import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-erro
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../../platform/fs/index-service.js";
 import { DeclaredKeys } from "../../config/declared-keys.js";
-import { ResolvedConfig, scannedFileOf } from "../../config/resolved-config.js";
+import { ResolvedConfig } from "../../config/resolved-config.js";
 import { InstanceReference } from "../../roblox/roblox.js";
 import { SyncTool } from "../../toolchain/toolchain.js";
 import {
@@ -298,7 +298,7 @@ class ConfigLocator {
 			this.listing,
 			this.config.sourcePaths,
 			paths,
-			(source) => scannedFileOf(this.config, source)
+			(source) => this.config.compiled.fileOf(source)
 		);
 		const planned = await this.locatorOf(
 			index,
@@ -493,7 +493,7 @@ class ConfigLocator {
 			this.listing,
 			this.config.sourcePaths,
 			[file],
-			(source) => scannedFileOf(this.config, source)
+			(source) => this.config.compiled.fileOf(source)
 		);
 		const placement = await this.pipelineOf(index).place(this.config);
 		return new PlacementLocator(

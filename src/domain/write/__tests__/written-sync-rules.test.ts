@@ -1,4 +1,3 @@
-import { scannedFileOf } from "../../config/resolved-config.js";
 import { SyncRule } from "../../rojo/sync-rules.js";
 import { ScannedFile } from "../root-scanner.js";
 import { CompiledLayout } from "../compiled-layout.js";
@@ -26,7 +25,7 @@ const writtenBy = (
 	const layout = new CompiledLayout(config, syncTools);
 	const entries: ScannedFile[] = sources.map((source) => ({
 		kind: "data",
-		file: scannedFileOf(config, absPosix(source)),
+		file: config.compiled.fileOf(absPosix(source)),
 		sourcePath: abs("src"),
 		relativePath: source,
 		source: absPosix(source),

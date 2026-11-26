@@ -11,7 +11,7 @@ import {
 import { FileType } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
-import { ResolvedConfig, scannedFileOf } from "../config/resolved-config.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import { LeftOut } from "./write.js";
@@ -40,7 +40,7 @@ export class Placer {
 		tools: readonly SyncTool[],
 		private readonly projectNames: ReadonlyMap<string, string> = new Map()
 	) {
-		this.layout = new CompiledLayout(config, tools);
+		this.layout = new CompiledLayout(config.compiled, tools);
 		this.tree = new WriteTree(config, this.layout);
 	}
 
@@ -151,7 +151,7 @@ export class Placer {
 			this.config.ignored,
 			this.tree.mounts,
 			[this.config.projectFile],
-			(source) => scannedFileOf(this.config, source)
+			(source) => this.config.compiled.fileOf(source)
 		);
 		return this.config.sourcePaths.map((sourcePath) =>
 			scanner.scan(sourcePath)
