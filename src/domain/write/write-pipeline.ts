@@ -1,6 +1,5 @@
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
-import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
@@ -28,20 +27,37 @@ export interface PreparedConfig {
 	readonly placeholders: readonly Placeholder[];
 }
 
-type ExaminedConfig =
+/**
+ * One run of the pipeline over a config, and the phase it stopped at: the
+ * placement, the assembly or the validation, or the end, prepared to write.
+ */
+export type PipelineRun =
 	| {
-			readonly kind: "assembled";
-			readonly placement: Placement;
-			readonly projectFile: RojoProjectFile;
-			readonly readFiles: readonly string[];
-			readonly warnings: readonly Diagnostic[];
+			readonly stoppedAt: "placement";
+			readonly errors: readonly Diagnostic[];
 	  }
 	| {
-			readonly kind: "stopped";
+			readonly stoppedAt: "assembly" | "validation";
 			readonly placement: Placement;
 			readonly errors: readonly Diagnostic[];
 			readonly warnings: readonly Diagnostic[];
+	  }
+	| {
+			readonly stoppedAt: "end";
+			readonly placement: Placement;
+			readonly prepared: PreparedConfig;
 	  };
+
+export function diagnosticsOf(run: PipelineRun): readonly Diagnostic[] {
+	switch (run.stoppedAt) {
+		case "placement":
+			return run.errors;
+		case "end":
+			return run.prepared.findings.warnings;
+		default:
+			return [...run.errors, ...run.warnings];
+	}
+}
 
 export class WritePipeline {
 	private readonly metaReader: MetaReader;
@@ -87,62 +103,27 @@ export class WritePipeline {
 	async run(
 		config: ResolvedConfig,
 		sync: SyncWarnings = SyncWarnings.unknown
-	): Promise<Result<PreparedConfig, DiagnosticsError>> {
-		const examined = await this.examine(config);
-		if (examined.isErr()) return examined;
-		const examinedConfig = examined.value;
-		if (examinedConfig.kind === "stopped")
-			return err(
-				new DiagnosticsError([
-					...examinedConfig.errors,
-					...examinedConfig.warnings,
-				])
-			);
-		const { placement, projectFile, readFiles, warnings } = examinedConfig;
-		return ok({
-			config,
-			projectFile,
-			summary: placement.summary(),
-			findings: {
-				warnings,
-				sync:
-					sync.kind === "unknown"
-						? SyncWarnings.known(
-								await this.compiledPathCheck.check(placement)
-							)
-						: sync,
-			},
-			readFiles,
-			placeholders: placement.layout.placeholdersOf(
-				projectFile,
-				(source) => placement.isFolder(source)
-			),
-		});
-	}
-
-	async examine(
-		config: ResolvedConfig
-	): Promise<Result<ExaminedConfig, DiagnosticsError>> {
+	): Promise<PipelineRun> {
 		const placement = await this.place(config);
 		if (placement.isErr())
-			return err(new DiagnosticsError(placement.error));
+			return { stoppedAt: "placement", errors: placement.error };
 		const { errors } = placement.value;
 		const assembled = await this.assemble(placement.value);
 		if (assembled.isErr())
-			return ok({
-				kind: "stopped",
+			return {
+				stoppedAt: "assembly",
 				placement: placement.value,
 				errors: [...errors, ...assembled.error],
 				warnings: [],
-			});
+			};
 		const missing = WritePipeline.missingOf(config, placement.value);
 		if (missing.stopsWrite)
-			return ok({
-				kind: "stopped",
+			return {
+				stoppedAt: "validation",
 				placement: placement.value,
 				errors: [...errors, ...missing.errors()],
 				warnings: [],
-			});
+			};
 		const { meta, assembly } = assembled.value;
 		const raised = [
 			...config.warnings,
@@ -154,19 +135,38 @@ export class WritePipeline {
 		const warnings = raised.filter((diagnostic) => !isError(diagnostic));
 		const stopping = [...errors, ...raised.filter(isError)];
 		if (stopping.length > 0)
-			return ok({
-				kind: "stopped",
+			return {
+				stoppedAt: "validation",
 				placement: placement.value,
 				errors: stopping,
 				warnings,
-			});
-		return ok({
-			kind: "assembled",
+			};
+		const { projectFile } = assembly;
+		return {
+			stoppedAt: "end",
 			placement: placement.value,
-			projectFile: assembly.projectFile,
-			readFiles: meta.files,
-			warnings,
-		});
+			prepared: {
+				config,
+				projectFile,
+				summary: placement.value.summary(),
+				findings: {
+					warnings,
+					sync:
+						sync.kind === "unknown"
+							? SyncWarnings.known(
+									await this.compiledPathCheck.check(
+										placement.value
+									)
+								)
+							: sync,
+				},
+				readFiles: meta.files,
+				placeholders: placement.value.layout.placeholdersOf(
+					projectFile,
+					(source) => placement.value.isFolder(source)
+				),
+			},
+		};
 	}
 
 	private static missingOf(

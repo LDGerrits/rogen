@@ -8,8 +8,7 @@ import {
 	ConfigLocations,
 	FileLocation,
 	LocatedDiagnosis,
-	outsideEveryConfig,
-	uniqueSkipped,
+	skippedNotes,
 } from "../write-service.js";
 import { abs, absPosix, configOf } from "./fixtures.js";
 
@@ -222,28 +221,42 @@ describe("LocatedDiagnosis of an instance asked about", () => {
 	});
 });
 
-describe("outsideEveryConfig", () => {
-	const outside = (source: string): FileLocation => ({
-		status: "outside",
-		source: abs(source),
-		exists: true,
+describe("skippedNotes", () => {
+	const ask = { command: "check", lead: "Check it" };
+
+	const notesOf = (
+		skipped: Parameters<typeof skippedNotes>[0]["skipped"],
+		named: string[] = []
+	) => skippedNotes({ skipped, named }, "/repo", ask);
+
+	it("should point at the one config that reads a path", () => {
+		expect(
+			notesOf([
+				{
+					path: "/repo/shared/A.luau",
+					reason: "noConfig",
+					readers: ["/repo/lobby/default.rogen.json"],
+				},
+			])
+		).toEqual([
+			"note: shared/A.luau: no config at or above it reads it, but another config lists it in its source paths. Check it through that config: 'rogen check lobby/default.rogen.json'.",
+		]);
 	});
 
-	it("should keep a path only when every config leaves it outside", () => {
-		const lobby = located([outside("a.luau"), outside("b.luau")], []);
-		const arena = located([outside("a.luau"), placed("b.luau")], []);
-
-		expect(outsideEveryConfig([lobby, arena])).toEqual([abs("a.luau")]);
+	it("should name no config to go through when there is none", () => {
+		expect(
+			notesOf([{ path: "/repo/shared/A.luau", reason: "noConfig" }])
+		).toEqual(["note: shared/A.luau: no config at or above it reads it."]);
 	});
-});
 
-describe("uniqueSkipped", () => {
-	it("should keep each skipped path once", () => {
-		const skipped = {
-			path: abs("a.luau"),
-			reason: "noConfig" as const,
-		};
-
-		expect(uniqueSkipped([skipped, { ...skipped }])).toEqual([skipped]);
+	it("should name the configs here to go through", () => {
+		expect(
+			notesOf(
+				[{ path: "/repo/shared/A.luau", reason: "noConfig" }],
+				["/repo/game.rogen.json", "/repo/lobby.rogen.json"]
+			)
+		).toEqual([
+			"note: shared/A.luau: no config at or above it reads it. Check it through one: rogen check game.rogen.json or lobby.rogen.json.",
+		]);
 	});
 });

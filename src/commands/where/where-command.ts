@@ -4,19 +4,14 @@ import { relativeTo } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	WriteService,
-	Locations,
-	mergeLocations,
-	uniqueSkipped,
+	skippedNotes,
 } from "../../domain/write/write-service.js";
-
-import { AskedPaths, skippedNotes } from "../../domain/write/asked-paths.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
 } from "../../platform/commands/commands.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
@@ -41,11 +36,6 @@ interface Services {
 	readonly logService: LogService;
 	readonly inputService: InputService;
 	readonly cwd: string;
-}
-
-interface Located {
-	readonly locations: Locations;
-	readonly skipped: readonly SkippedPath[];
 }
 
 registerCommand(
@@ -111,21 +101,14 @@ registerCommand(
 					line
 				);
 
-			const found = await this.locate(
-				configService,
-				writeService,
+			const found = await writeService.locateAsked({
+				args: line.positionals,
 				cwd,
-				line.positionals
-			);
+			});
 			if (found.isErr()) return found;
 			const { locations, skipped } = found.value;
 
-			for (const note of await skippedNotes(
-				configService,
-				skipped,
-				cwd,
-				ASKING
-			))
+			for (const note of skippedNotes(found.value, cwd, ASKING))
 				logService.notice(note);
 
 			const answers = new WhereAnswers(locations);
@@ -151,49 +134,6 @@ registerCommand(
 				)
 			);
 			return unprinted ? err(unprinted) : this.reported(failure);
-		}
-
-		private async locate(
-			configService: ConfigService,
-			writeService: WriteService,
-			cwd: string,
-			given: readonly string[]
-		): Promise<Result<Located, Error>> {
-			if (given.length === 0) {
-				const selection = await configService.select(
-					await configService.configsHere()
-				);
-				if (selection.isErr()) return selection;
-				const located = await writeService.locate(selection.value, {
-					args: given,
-					cwd,
-				});
-				return located.map((locations) => ({ locations, skipped: [] }));
-			}
-			const asking = await AskedPaths.of(
-				configService,
-				writeService,
-				cwd,
-				given
-			);
-			if (asking.isErr()) return asking;
-			const parts: Locations[] = [];
-			for (const { selection, indexes, whole } of asking.value.groups) {
-				const located = await writeService.locate(selection, {
-					args: whole ? [] : asking.value.argsAt(indexes),
-					cwd,
-				});
-				if (located.isErr()) return located;
-				parts.push(located.value);
-			}
-			const locations = mergeLocations(parts, asking.value.covered);
-			return ok({
-				locations,
-				skipped: uniqueSkipped([
-					...asking.value.uncovered,
-					...locations.skipped,
-				]),
-			});
 		}
 
 		private async rewriteInput(

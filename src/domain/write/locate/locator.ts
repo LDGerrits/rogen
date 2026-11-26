@@ -24,7 +24,13 @@ import {
 	Locations,
 	RaisedDiagnostics,
 } from "../write-service.js";
-import { WritePipeline } from "../write-pipeline.js";
+import {
+	PipelineRun,
+	WritePipeline,
+	diagnosticsOf,
+} from "../write-pipeline.js";
+import { ProjectFileStaleness } from "../check/project-file-staleness.js";
+import { CheckedConfig, FailedConfig, SyncWarnings } from "../write.js";
 import { MountedInstances } from "./mounted-instances.js";
 import { PlacementLocator, placesInstance } from "./placement-locator.js";
 import { LocateTargets, Targets } from "./locate-targets.js";
@@ -50,23 +56,111 @@ export class Locator {
 		configs: readonly ResolvedConfig[],
 		query?: LocateQuery
 	): Promise<Result<Located, DiagnosticsError>> {
+		const located = await this.run(configs, query, SyncWarnings.deferred);
+		return located.map(({ targets, runs }) => ({
+			everyFile: targets.asked.length === 0,
+			asked: targets.asked,
+			configs: runs.map(({ locations }) => locations),
+		}));
+	}
+
+	/**
+	 * Locates as `locate` does, and gives each config the findings a whole
+	 * check of it raises and those of them that are about the config itself.
+	 */
+	async check(
+		configs: readonly ResolvedConfig[],
+		query: LocateQuery
+	): Promise<Result<CheckedLocations[], DiagnosticsError>> {
+		const located = await this.run(configs, query, SyncWarnings.unknown);
+		if (located.isErr()) return located;
+		const staleness =
+			this.instantiationService.createInstance(ProjectFileStaleness);
+		const checked: CheckedLocations[] = [];
+		for (const { locations, run, planned } of located.value.runs) {
+			const { config } = locations;
+			const raised = diagnosticsOf(run);
+			let findings = FailedConfig.before(
+				config,
+				raised,
+				SyncWarnings.unknown
+			).diagnostics;
+			if (run.stoppedAt === "end") {
+				const { prepared } = run;
+				const stale = planned
+					? undefined
+					: await staleness.diagnostic(
+							config,
+							async () => prepared.projectFile
+						);
+				findings = new CheckedConfig(
+					config,
+					{
+						...prepared.findings,
+						warnings: [
+							...prepared.findings.warnings,
+							...(stale ? [stale] : []),
+						],
+					},
+					prepared.summary,
+					prepared.readFiles
+				).diagnostics;
+			}
+			checked.push({
+				locations,
+				findings,
+				own: new Set([
+					...config.warnings,
+					...findings.filter(
+						(diagnostic) => !raised.includes(diagnostic)
+					),
+				]),
+			});
+		}
+		return ok(checked);
+	}
+
+	private async run(
+		configs: readonly ResolvedConfig[],
+		query: LocateQuery | undefined,
+		sync: SyncWarnings
+	): Promise<
+		Result<
+			{ readonly targets: Targets; readonly runs: LocatedRun[] },
+			DiagnosticsError
+		>
+	> {
 		const targets = await this.targets.classify(
 			query ?? { args: [], cwd: "" }
 		);
-		const located: ConfigLocations[] = [];
+		const runs: LocatedRun[] = [];
 		for (const config of configs) {
-			const locations = await this.instantiationService
-				.createInstance(ConfigLocator, config, this.listing, this.tools)
+			const located = await this.instantiationService
+				.createInstance(
+					ConfigLocator,
+					config,
+					this.listing,
+					this.tools,
+					sync
+				)
 				.locate(targets);
-			if (locations.isErr()) return locations;
-			located.push(locations.value);
+			if (located.isErr()) return located;
+			runs.push(located.value);
 		}
-		return ok({
-			everyFile: targets.asked.length === 0,
-			asked: targets.asked,
-			configs: located,
-		});
+		return ok({ targets, runs });
 	}
+}
+
+export interface CheckedLocations {
+	readonly locations: ConfigLocations;
+	readonly findings: readonly Diagnostic[];
+	readonly own: ReadonlySet<Diagnostic>;
+}
+
+interface LocatedRun {
+	readonly locations: ConfigLocations;
+	readonly run: PipelineRun;
+	readonly planned: boolean;
 }
 
 class ConfigLocator {
@@ -74,6 +168,7 @@ class ConfigLocator {
 		private readonly config: ResolvedConfig,
 		private readonly listing: IndexReader,
 		private readonly tools: readonly SyncTool[],
+		private readonly sync: SyncWarnings,
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
 		@InstantiationService
@@ -84,32 +179,41 @@ class ConfigLocator {
 		paths,
 		folders,
 		instances,
-	}: Targets): Promise<Result<ConfigLocations, DiagnosticsError>> {
+	}: Targets): Promise<Result<LocatedRun, DiagnosticsError>> {
 		const queried = paths.map(toPosix);
 		let files: FileLocation[] = [];
 		let raised: RaisedDiagnostics = { diagnostics: [], markers: [] };
+		let pathsRun: { run: PipelineRun; planned: boolean } | undefined;
 		if (paths.length > 0) {
 			const planned = await this.locatePaths(paths, folders);
 			if (planned.isErr()) {
 				if (instances.length > 0) return err(planned.error);
 				const { diagnostics } = planned.error;
 				return ok({
-					config: this.config,
-					files: await this.blocked(paths, diagnostics),
-					instances: [],
-					queried,
-					diagnostics,
-					markers: [],
+					locations: {
+						config: this.config,
+						files: await this.blocked(paths, diagnostics),
+						instances: [],
+						queried,
+						diagnostics,
+						markers: [],
+					},
+					run: { stoppedAt: "placement", errors: diagnostics },
+					planned: false,
 				});
 			}
 			({ files, raised } = planned.value);
+			pathsRun = planned.value;
 			if (instances.length === 0)
 				return ok({
-					config: this.config,
-					files,
-					instances: [],
-					queried,
-					...raised,
+					locations: {
+						config: this.config,
+						files,
+						instances: [],
+						queried,
+						...raised,
+					},
+					...pathsRun,
 				});
 		}
 
@@ -117,28 +221,32 @@ class ConfigLocator {
 		if (existing.isErr()) return err(existing.error);
 		const { locator } = existing.value;
 		return ok({
-			config: this.config,
-			files:
-				paths.length > 0 || instances.length > 0
-					? files
-					: await this.withMountedInstances(
-							locator.locate(),
-							locator
-						),
-			instances: await Promise.all(
-				instances.map((reference) =>
-					this.locateInstance(
-						locator,
-						existing.value.raised.diagnostics,
-						reference
+			run: pathsRun?.run ?? existing.value.run,
+			planned: pathsRun?.planned ?? false,
+			locations: {
+				config: this.config,
+				files:
+					paths.length > 0 || instances.length > 0
+						? files
+						: await this.withMountedInstances(
+								locator.locate(),
+								locator
+							),
+				instances: await Promise.all(
+					instances.map((reference) =>
+						this.locateInstance(
+							locator,
+							existing.value.raised.diagnostics,
+							reference
+						)
 					)
-				)
-			),
-			queried,
-			...(paths.length > 0 ? raised : existing.value.raised),
-			...(existing.value.projectFile && {
-				projectFile: existing.value.projectFile,
-			}),
+				),
+				queried,
+				...(paths.length > 0 ? raised : existing.value.raised),
+				...(existing.value.projectFile && {
+					projectFile: existing.value.projectFile,
+				}),
+			},
 		});
 	}
 
@@ -169,6 +277,8 @@ class ConfigLocator {
 			{
 				readonly files: FileLocation[];
 				readonly raised: RaisedDiagnostics;
+				readonly run: PipelineRun;
+				readonly planned: boolean;
 			},
 			DiagnosticsError
 		>
@@ -184,13 +294,15 @@ class ConfigLocator {
 			await this.existsOnDisk(index, paths)
 		);
 		if (planned.isErr()) return planned;
-		const { locator, raised } = planned.value;
+		const { locator, raised, run } = planned.value;
 		return ok({
 			files: await this.withMountedInstances(
 				locator.locate(paths, folders),
 				locator
 			),
 			raised,
+			run,
+			planned: paths.some((target) => index.isPlanned(target)),
 		});
 	}
 
@@ -389,31 +501,25 @@ class ConfigLocator {
 				readonly locator: PlacementLocator;
 				readonly raised: RaisedDiagnostics;
 				readonly projectFile?: RojoProjectFile;
+				readonly run: PipelineRun;
 			},
 			DiagnosticsError
 		>
 	> {
-		const pipeline = this.pipelineOf(index);
-		const examined = await pipeline.examine(this.config);
-		return examined.map((result) => {
-			const locator = new PlacementLocator(
-				result.placement,
-				index,
-				exists
-			);
-			return {
-				locator,
-				raised: {
-					diagnostics:
-						result.kind === "assembled"
-							? result.warnings
-							: [...result.errors, ...result.warnings],
-					markers: locator.markers,
-				},
-				...(result.kind === "assembled" && {
-					projectFile: result.projectFile,
-				}),
-			};
+		const run = await this.pipelineOf(index).run(this.config, this.sync);
+		if (run.stoppedAt === "placement")
+			return err(new DiagnosticsError(run.errors));
+		const locator = new PlacementLocator(run.placement, index, exists);
+		return ok({
+			locator,
+			run,
+			raised: {
+				diagnostics: diagnosticsOf(run),
+				markers: locator.markers,
+			},
+			...(run.stoppedAt === "end" && {
+				projectFile: run.prepared.projectFile,
+			}),
 		});
 	}
 

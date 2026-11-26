@@ -296,16 +296,6 @@ describe("check command", () => {
 			]);
 		});
 
-		it("should leave out the warnings about the compiled path", async () => {
-			await writeConfig("default.rogen.json", {
-				routes: ROUTES,
-				compiledPath: "out",
-			});
-			await write("src/Clean.luau");
-
-			expect((await run({ _: ["src/Clean.luau"] })).isOk()).toBe(true);
-		});
-
 		it("should fail when a config does not load, whichever path is asked about", async () => {
 			await fs.writeFile("/repo/default.rogen.json", "{ nope");
 			await write("src/Clean.luau");

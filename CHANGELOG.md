@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- `rogen check` with a path also gives the findings about the path's config itself, such as the compiled path's warnings, so `rogen check src` says what `rogen check` says about `src`.
+
 ### Fixed
 
 - `rogen syncback` no longer moves a `$path` of the config's `tree` when you rename the folder that holds it, which left a project Rojo couldn't build.

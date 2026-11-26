@@ -25,7 +25,12 @@ import {
 	ConfigLocations,
 	LocateQuery,
 } from "../write-service.js";
-import { PreparedConfig, WritePipeline } from "../write-pipeline.js";
+import {
+	PipelineRun,
+	PreparedConfig,
+	WritePipeline,
+	diagnosticsOf,
+} from "../write-pipeline.js";
 import { CoreWriteService } from "../core-write-service.js";
 import { Placement } from "../placement.js";
 import { Placer } from "../placer.js";
@@ -37,6 +42,13 @@ import { ToolchainService } from "../../toolchain/toolchain-service.js";
 import { ConfigService } from "../../config/config-service.js";
 
 export const { syncTools } = toolchainOf(new MemoryFileSystemService());
+
+export const preparedOf = (
+	run: PipelineRun
+): Result<PreparedConfig, DiagnosticsError> =>
+	run.stoppedAt === "end"
+		? ok(run.prepared)
+		: err(new DiagnosticsError([...diagnosticsOf(run)]));
 
 export const placeFiles = (
 	index: IndexReader,
@@ -58,7 +70,11 @@ export const pipelineOf = (
 export const writeServiceOf = (
 	fs: FileSystemService,
 	index: IndexService,
-	extraTools: readonly SyncTool[] = []
+	extraTools: readonly SyncTool[] = [],
+	configService: ConfigService = configServiceOf(
+		fs,
+		new MockEnvironmentService("/repo")
+	)
 ) =>
 	instantiationOf(
 		[FileSystemService, fs],
@@ -69,10 +85,7 @@ export const writeServiceOf = (
 				syncTools: [...syncTools, ...extraTools],
 			}),
 		],
-		[
-			ConfigService,
-			configServiceOf(fs, new MockEnvironmentService("/repo")),
-		]
+		[ConfigService, configService]
 	).createInstance(CoreWriteService);
 
 export async function locateIn(
@@ -130,7 +143,7 @@ export async function prepareAndPlace(
 	await withSourceFolders(fs, config);
 	const index = await indexOf(fs, config.sourcePaths);
 	const pipeline = pipelineOf(fs, index);
-	const prepared = await pipeline.run(config);
+	const prepared = preparedOf(await pipeline.run(config));
 	if (prepared.isErr()) return err(prepared.error);
 	const placement = (await pipeline.place(config)).unwrap();
 	return ok({ ...prepared.value, placement });
@@ -188,7 +201,7 @@ export async function assembleResultOf(
 	const config = configOf(overrides);
 	await withSourceFolders(fs, config);
 	const index = await indexOf(fs, config.sourcePaths);
-	return pipelineOf(fs, index, extraTools).run(config);
+	return preparedOf(await pipelineOf(fs, index, extraTools).run(config));
 }
 
 export const expectWrittenProject = (file: RojoProjectFile): void =>
