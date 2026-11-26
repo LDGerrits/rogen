@@ -1,6 +1,7 @@
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { RUN_SCRIPT_SUFFIXES } from "../rojo/rojo.js";
 import { InstanceName, SuffixSpan } from "./instance-name.js";
+import { readFolderName } from "./write.js";
 import { Misspelling, MisspellingFinder } from "./misspelling-finder.js";
 
 export interface FolderNameReading {
@@ -28,29 +29,8 @@ export class NameReader {
 		this.finder = new MisspellingFinder(keys);
 	}
 
-	private static readFolderName(folderName: string): {
-		readonly name: string;
-		readonly invisible: boolean;
-		readonly hoisted: boolean;
-		readonly offset: number;
-	} {
-		const outer = InstanceName.unwrapInvisibleFolder(folderName);
-		const hoisted = InstanceName.unhoisted(outer.name);
-		const inner = hoisted.hoisted
-			? InstanceName.unwrapInvisibleFolder(hoisted.name)
-			: { name: hoisted.name, invisible: false };
-		const invisible = outer.invisible || inner.invisible;
-		return {
-			name: inner.name,
-			invisible,
-			hoisted: hoisted.hoisted,
-			offset: (invisible ? 1 : 0) + (hoisted.hoisted ? 1 : 0),
-		};
-	}
-
 	folder(folderName: string): FolderNameReading {
-		const { name, invisible, hoisted, offset } =
-			NameReader.readFolderName(folderName);
+		const { name, invisible, hoisted, offset } = readFolderName(folderName);
 		const bareRoute = this.keys.resolve(name);
 		const route =
 			bareRoute ??

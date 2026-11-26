@@ -2,7 +2,7 @@ import path from "path";
 import { isSameJson } from "../../base/objects.js";
 import { containsPosix, toPosix } from "../../base/path.js";
 import { FileLocation, PlacedLocation } from "../write/write-service.js";
-import { ResolvedConfig, compiledPathOf } from "../config/resolved-config.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { configStem } from "../config/config.js";
 import { rojoPathTarget } from "../rojo/rojo-project.js";
 
@@ -62,7 +62,7 @@ export class SyncbackLayout {
 	}
 
 	synced(dir: string): string {
-		return toPosix(compiledPathOf(this.config, dir));
+		return toPosix(this.config.compiled.of(dir));
 	}
 
 	get sourcePaths(): readonly string[] {

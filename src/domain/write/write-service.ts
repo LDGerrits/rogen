@@ -16,7 +16,7 @@ import { FileChange } from "../../platform/fs/file-changes.js";
 import { FileDraft } from "../../platform/fs/draft-file-reader.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { createDecorator } from "../../platform/instantiation/instantiation.js";
-import { ResolvedConfig, scannedFileOf } from "../config/resolved-config.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ConfigSelection, ConfigService } from "../config/config-service.js";
 import {
@@ -197,9 +197,9 @@ export class LocatedDiagnosis {
 	private metaPathsOf(source: string): string[] {
 		const posixSource = toPosix(source);
 		const dir = path.posix.dirname(posixSource);
-		return scannedFileOf(this.located.config, posixSource).metaFiles.map(
-			(name) => path.posix.join(dir, name)
-		);
+		return this.located.config.compiled
+			.fileOf(posixSource)
+			.metaFiles.map((name) => path.posix.join(dir, name));
 	}
 }
 
