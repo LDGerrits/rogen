@@ -22,6 +22,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A `tree` node with only `$properties` or children, such as `"shared": { "$properties": { ... } }`, now gets the Folder class when routed files land in it. Rogen used to write it without one, which Rojo refused to build. A node whose class Rojo knows from its name, such as `Workspace/Terrain`, is left as it is.
 - A route whose target passes through `Workspace/Terrain` puts its files in the place's Terrain instead of a Folder named Terrain.
 - When a folder holds several init files, Rogen now names the one Rojo reads, in Rojo's own order: a client init before a plugin init, and `init.plugin.lua` before `init.plugin.luau`. `rogen where` also names that file for a folder inside a mounted package.
+- In GitHub Actions, every diagnostic Rogen prints is also a workflow annotation. `rogen where`'s errors elsewhere, `rogen syncback`'s warnings, `rogen serve`'s failures, `rogen init`'s warnings and a failed write under `--watch` used to have none. `--json` still writes no annotations.
+- `rogen check` colours its `warning:` and `error:` labels in a colour terminal, as the other commands do. Piped output is unchanged.
 
 ## [2.0.0-rc.2] - 2026-11-23
 
