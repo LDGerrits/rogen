@@ -12,6 +12,7 @@ import { FileType } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import {
 	MockConfigSelection,
+	MockConfigService,
 	ResolvedConfigSpec,
 	selectionOf,
 	brokenEntry,
@@ -26,6 +27,21 @@ describe("CoreWriteService", () => {
 	let fs: MemoryFileSystemService;
 
 	const writeServiceOfFs = () => writeServiceOf(fs, new CoreIndexService(fs));
+
+	const diagnoseOf = (
+		{ entries }: MockConfigSelection,
+		args: readonly string[] = []
+	) => {
+		const configService = new MockConfigService(entries);
+		configService.covers = () =>
+			entries.map(({ file }) => ({ file, whole: false }));
+		return writeServiceOf(
+			fs,
+			new CoreIndexService(fs),
+			[],
+			configService
+		).diagnose({ args, cwd: abs() });
+	};
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
@@ -419,16 +435,18 @@ describe("CoreWriteService", () => {
 			expect(checked.kind).toBe("failed");
 		});
 
-		describe("staleProjectFiles", () => {
-			it("should list the project files that differ, and only those", async () => {
-				const config = configOf();
+		describe("a project file out of date, diagnosed by path", () => {
+			const staleOf = async (config: ResolvedConfig, asked: string) =>
+				(await diagnoseOf(selectionOf(config), [asked]))
+					.unwrap()
+					.diagnostics.filter(
+						({ code }) => code === "output.differs"
+					);
+
+			it("should name the project file that differs", async () => {
 				await fs.writeFile(abs("default.project.json"), "{}");
 
-				const stale = await writeServiceOfFs().staleProjectFiles(
-					selectionOf(config)
-				);
-
-				expect(stale).toMatchObject([
+				expect(await staleOf(configOf(), "src/A.luau")).toMatchObject([
 					{
 						code: "output.differs",
 						resource: abs("default.project.json"),
@@ -437,11 +455,7 @@ describe("CoreWriteService", () => {
 			});
 
 			it("should find nothing when no project file is on disk", async () => {
-				expect(
-					await writeServiceOfFs().staleProjectFiles(
-						selectionOf(configOf())
-					)
-				).toEqual([]);
+				expect(await staleOf(configOf(), "src/A.luau")).toEqual([]);
 			});
 		});
 
@@ -527,9 +541,7 @@ describe("CoreWriteService", () => {
 				});
 
 				it("should still warn of them when diagnosed", async () => {
-					const diagnosis = await writeServiceOfFs().diagnose(
-						selectionOf(plain())
-					);
+					const diagnosis = await diagnoseOf(selectionOf(plain()));
 
 					expect(
 						diagnosis.isOk() && codesOf(diagnosis.value.diagnostics)
@@ -541,10 +553,10 @@ describe("CoreWriteService", () => {
 				await fs.writeFile(abs("default.project.json"), "{}");
 
 				expect(
-					await writeServiceOfFs().staleProjectFiles(
-						selectionOf(adopted())
-					)
-				).toEqual([]);
+					(await diagnoseOf(selectionOf(adopted()), ["src/A.luau"]))
+						.unwrap()
+						.diagnostics.map(({ code }) => code)
+				).not.toContain("output.differs");
 			});
 		});
 
@@ -1259,10 +1271,9 @@ describe("CoreWriteService", () => {
 
 		it("should check a path as far as the write gets, and say what stops it", async () => {
 			const found = (
-				await writeServiceOfFs().diagnose(
-					selectionOf(configOf({ routes })),
-					{ args: ["src/F/shared/Good.luau"], cwd: abs() }
-				)
+				await diagnoseOf(selectionOf(configOf({ routes })), [
+					"src/F/shared/Good.luau",
+				])
 			).unwrap();
 
 			expect(found.diagnostics).toEqual([]);
@@ -1273,10 +1284,7 @@ describe("CoreWriteService", () => {
 
 		it("should report the error as the path's own, not as what stops the build", async () => {
 			const found = (
-				await writeServiceOfFs().diagnose(
-					selectionOf(configOf({ routes })),
-					{ args: [ignoredAt], cwd: abs() }
-				)
+				await diagnoseOf(selectionOf(configOf({ routes })), [ignoredAt])
 			).unwrap();
 
 			expect(found.diagnostics).toMatchObject([
@@ -1295,10 +1303,7 @@ describe("CoreWriteService", () => {
 			};
 			const diagnose = async (arg: string) =>
 				(
-					await writeServiceOfFs().diagnose(
-						selectionOf(configOf({ routes })),
-						{ args: [arg], cwd: abs() }
-					)
+					await diagnoseOf(selectionOf(configOf({ routes })), [arg])
 				).unwrap().diagnostics;
 
 			expect(await diagnose("src/F/Net.Server/A.luau")).toMatchObject([
@@ -1313,7 +1318,7 @@ describe("CoreWriteService", () => {
 			await fs.writeFile(abs("src/F/Net.Server/A.luau"), "");
 
 			const found = (
-				await writeServiceOfFs().diagnose(
+				await diagnoseOf(
 					selectionOf(
 						configOf({
 							routes: {
@@ -1336,11 +1341,11 @@ describe("CoreWriteService", () => {
 			await fs.writeFile(abs("src/I/B.luau"), "");
 			const diagnose = async (arg: string) =>
 				(
-					await writeServiceOfFs().diagnose(
+					await diagnoseOf(
 						selectionOf(
 							configOf({ routes: { "*": "ReplicatedStorage" } })
 						),
-						{ args: [arg], cwd: abs() }
+						[arg]
 					)
 				).unwrap().diagnostics;
 
@@ -1356,10 +1361,7 @@ describe("CoreWriteService", () => {
 			await fs.writeFile(abs("src/B.luau"), "");
 
 			const found = (
-				await writeServiceOfFs().diagnose(selectionOf(configOf()), {
-					args: ["src/B.luau"],
-					cwd: abs(),
-				})
+				await diagnoseOf(selectionOf(configOf()), ["src/B.luau"])
 			).unwrap();
 
 			expect(found.diagnostics).toEqual([]);
@@ -1379,10 +1381,7 @@ describe("CoreWriteService", () => {
 			};
 			const diagnose = async (arg: string) =>
 				(
-					await writeServiceOfFs().diagnose(
-						selectionOf(configOf({ routes })),
-						{ args: [arg], cwd: abs() }
-					)
+					await diagnoseOf(selectionOf(configOf({ routes })), [arg])
 				).unwrap();
 
 			it("should report a clash against the file that wins it", async () => {
@@ -1415,12 +1414,7 @@ describe("CoreWriteService", () => {
 			await fs.writeFile(abs("src/Save.meta.json"), '{"properties": 5}');
 			await fs.writeFile(abs("src/B.luau"), "");
 			const diagnose = async (arg: string) =>
-				(
-					await writeServiceOfFs().diagnose(selectionOf(configOf()), {
-						args: [arg],
-						cwd: abs(),
-					})
-				).unwrap();
+				(await diagnoseOf(selectionOf(configOf()), [arg])).unwrap();
 
 			for (const arg of ["src/Save.luau", "src/Save.meta.json"]) {
 				const found = await diagnose(arg);
@@ -1446,7 +1440,7 @@ describe("CoreWriteService", () => {
 			);
 
 			const result = (
-				await writeServiceOfFs().diagnose(
+				await diagnoseOf(
 					new MockConfigSelection([
 						brokenEntry(
 							[failure],
@@ -1460,7 +1454,7 @@ describe("CoreWriteService", () => {
 							},
 						}),
 					]),
-					{ args: ["src/F/Net.Server/A.luau"], cwd: abs() }
+					["src/F/Net.Server/A.luau"]
 				)
 			).unwrap();
 

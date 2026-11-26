@@ -1,0 +1,1 @@
+{ "steps": [["check", "src/A.luau"], ["check", "src/A.luau", "--json"], ["check"]], "rojo": false }

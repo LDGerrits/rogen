@@ -38,6 +38,7 @@ $ rogen check warn
 exit 1
 stdout:
   warn/src/Inventory/Save.client.luau - warning: a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing (tree.deadScript)
+  warn/out - warning: the compiled path "out" doesn't exist yet. Run your compiler or processor first. (output.nothingEmitted)
 
 $ rogen check --nope
 exit 2
