@@ -83,12 +83,14 @@ export class Locator {
 			).diagnostics;
 			if (run.stoppedAt === "end") {
 				const { prepared } = run;
-				const stale = planned
-					? undefined
-					: await staleness.diagnostic(
-							config,
-							async () => prepared.projectFile
-						);
+				const stale = await staleness.diagnostic(config, async () =>
+					planned
+						? this.configLocator(
+								config,
+								SyncWarnings.unknown
+							).projectFile()
+						: prepared.projectFile
+				);
 				findings = new CheckedConfig(
 					config,
 					{
@@ -116,6 +118,19 @@ export class Locator {
 		return ok(checked);
 	}
 
+	private configLocator(
+		config: ResolvedConfig,
+		sync: SyncWarnings
+	): ConfigLocator {
+		return this.instantiationService.createInstance(
+			ConfigLocator,
+			config,
+			this.listing,
+			this.tools,
+			sync
+		);
+	}
+
 	private async run(
 		configs: readonly ResolvedConfig[],
 		query: LocateQuery | undefined,
@@ -131,15 +146,9 @@ export class Locator {
 		);
 		const runs: LocatedRun[] = [];
 		for (const config of configs) {
-			const located = await this.instantiationService
-				.createInstance(
-					ConfigLocator,
-					config,
-					this.listing,
-					this.tools,
-					sync
-				)
-				.locate(targets);
+			const located = await this.configLocator(config, sync).locate(
+				targets
+			);
 			if (located.isErr()) return located;
 			runs.push(located.value);
 		}
@@ -244,6 +253,11 @@ class ConfigLocator {
 				}),
 			},
 		});
+	}
+
+	async projectFile(): Promise<RojoProjectFile | undefined> {
+		const existing = await this.locatorOf(this.listing);
+		return existing.isOk() ? existing.value.projectFile : undefined;
 	}
 
 	private async blocked(

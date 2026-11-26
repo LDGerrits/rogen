@@ -457,12 +457,6 @@ describe("CoreWriteService", () => {
 			it("should find nothing when no project file is on disk", async () => {
 				expect(await staleOf(configOf(), "src/A.luau")).toEqual([]);
 			});
-
-			it("should not judge it by a file that does not exist yet", async () => {
-				await fs.writeFile(abs("default.project.json"), "{}");
-
-				expect(await staleOf(configOf(), "src/New.luau")).toEqual([]);
-			});
 		});
 
 		describe("a Rojo project file adopted as the config", () => {
