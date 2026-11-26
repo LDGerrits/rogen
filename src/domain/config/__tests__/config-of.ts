@@ -5,6 +5,7 @@ import { ConfigDiscovery } from "../config-discovery.js";
 import { ConfigFormatter } from "../config-formatter.js";
 import { ConfigFolderCheck } from "../config-service.js";
 import { CoreConfigService } from "../core-config-service.js";
+import { ConfigChecks } from "../config-checks.js";
 
 export const configServiceOf = (
 	fs: FileSystemService,
@@ -13,7 +14,7 @@ export const configServiceOf = (
 	instantiationOf(
 		[FileSystemService, fs],
 		[EnvironmentService, environment]
-	).createInstance(CoreConfigService);
+	).createInstance(CoreConfigService, new ConfigChecks());
 
 export const discoveryOf = (
 	fs: FileSystemService,

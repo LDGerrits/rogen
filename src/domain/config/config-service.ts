@@ -2,10 +2,7 @@ import { Disposable } from "../../base/disposable.js";
 import { UsageError } from "../../base/errors.js";
 import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import {
-	FileReader,
-	FileSystemService,
-} from "../../platform/fs/file-system-service.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createDecorator } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
@@ -135,8 +132,7 @@ export interface ConfigService {
 	readonly _serviceBrand: undefined;
 
 	select(
-		refs: readonly string[],
-		reader?: FileSystemService
+		refs: readonly string[]
 	): Promise<Result<ReloadableSelection, Error>>;
 	selectForRojo(
 		refs: readonly string[]

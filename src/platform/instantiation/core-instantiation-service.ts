@@ -1,6 +1,7 @@
-import { Disposable, DisposableStore } from "../../base/disposable.js";
+import { Disposable } from "../../base/disposable.js";
 import { Graph } from "../../base/graph.js";
 import {
+	ChildOptions,
 	InstantiationService,
 	LeadingNonServiceArgs,
 } from "./instantiation-service.js";
@@ -31,6 +32,10 @@ export class CoreInstantiationService
 	declare readonly _serviceBrand: undefined;
 
 	private readonly services: ServiceCollection;
+	private readonly descriptors = new Map<
+		ServiceIdentifier<unknown>,
+		SyncDescriptor<unknown>
+	>();
 	private readonly strict: boolean;
 	private readonly parent: CoreInstantiationService | undefined;
 	private readonly children = new Set<CoreInstantiationService>();
@@ -48,14 +53,21 @@ export class CoreInstantiationService
 		this.services = services;
 		this.strict = strict;
 		this.parent = parent;
+		for (const id of services.ids()) {
+			const entry = services.get(id);
+			if (entry instanceof SyncDescriptor)
+				this.descriptors.set(id, entry);
+		}
 		this.services.set(InstantiationService, this);
 	}
 
 	createChild(
 		services: ServiceCollection,
-		store?: DisposableStore
+		{ store, rebuilt = [] }: ChildOptions = {}
 	): InstantiationService {
 		this.throwIfDisposed();
+		for (const id of rebuilt)
+			if (!services.has(id)) services.set(id, this.descriptorOf(id));
 		const siblings = this.children;
 		const child: CoreInstantiationService =
 			new (class extends CoreInstantiationService {
@@ -144,6 +156,18 @@ export class CoreInstantiationService
 				"Several services failed to dispose."
 			);
 		}
+	}
+
+	private descriptorOf(
+		id: ServiceIdentifier<unknown>
+	): SyncDescriptor<unknown> {
+		const descriptor = this.descriptors.get(id);
+		if (descriptor) return descriptor;
+		if (this.parent && !this.services.has(id))
+			return this.parent.descriptorOf(id);
+		throw new Error(
+			`[createChild] cannot rebuild ${id}: it was not registered as a descriptor.`
+		);
 	}
 
 	private throwIfDisposed(): void {

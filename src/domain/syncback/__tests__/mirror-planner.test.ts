@@ -1,5 +1,4 @@
 import { jest } from "@jest/globals";
-import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
@@ -44,9 +43,7 @@ describe("MirrorPlanner", () => {
 	) => {
 		await writeFiles(fs, ...files);
 		config = configOf({ routes: ROUTES, ...spec });
-		await writeServiceOf(fs, new CoreIndexService(fs)).write(
-			selectionOf(config)
-		);
+		await writeServiceOf(fs).write(selectionOf(config));
 	};
 
 	const planned = async (
@@ -95,7 +92,7 @@ describe("MirrorPlanner", () => {
 		service = syncbackServiceOf({
 			configService: new MockConfigService([]),
 			fileSystemService: fs,
-			writeService: writeServiceOf(fs, new CoreIndexService(fs)),
+			writeService: writeServiceOf(fs),
 			rojoService: rojo,
 			environmentService: new MockEnvironmentService("/repo"),
 			processService: new MockProcessService(),
@@ -1285,7 +1282,7 @@ describe("MirrorPlanner", () => {
 		});
 		const instantiation = instantiationOf(
 			[FileSystemService, fs],
-			[WriteService, writeServiceOf(fs, new CoreIndexService(fs))]
+			[WriteService, writeServiceOf(fs)]
 		);
 		const workspace = instantiation.createInstance(
 			MirrorWorkspace,

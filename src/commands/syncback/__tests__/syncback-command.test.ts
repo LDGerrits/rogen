@@ -1,3 +1,4 @@
+import { SyncDescriptor } from "../../../platform/instantiation/sync-descriptor.js";
 import { jest } from "@jest/globals";
 import path from "path";
 import "../syncback-command.js";
@@ -48,7 +49,7 @@ describe("syncback command", () => {
 		const running = commandHarness({
 			fs,
 			log,
-			config: new MockConfigService([validEntry()]),
+			config: new SyncDescriptor(MockConfigService, [[validEntry()]]),
 			processes,
 			prompt,
 			lifecycle,
@@ -136,16 +137,18 @@ describe("syncback command", () => {
 		const running = commandHarness({
 			fs,
 			log,
-			config: new MockConfigService([
-				mockEntry(
-					{
-						name: "repo",
-						sourcePaths: [abs("src")],
-						routes: { Server: "ServerScriptService" },
-						compiledPath: abs("dist"),
-					},
-					abs("default.rogen.json")
-				),
+			config: new SyncDescriptor(MockConfigService, [
+				[
+					mockEntry(
+						{
+							name: "repo",
+							sourcePaths: [abs("src")],
+							routes: { Server: "ServerScriptService" },
+							compiledPath: abs("dist"),
+						},
+						abs("default.rogen.json")
+					),
+				],
 			]),
 			processes,
 			prompt: new MockPromptService([], false),
@@ -469,24 +472,26 @@ describe("syncback command", () => {
 		const running = commandHarness({
 			fs,
 			log,
-			config: new MockConfigService([
-				mockEntry(
-					{
-						name: "repo",
-						sourcePaths: [abs("src")],
-						routes: { Server: "ServerScriptService" },
-						compiledPath: abs("dist"),
-						project: {
-							tree: {
-								$className: "DataModel",
-								ReplicatedStorage: {
-									Packages: { $path: "Packages" },
+			config: new SyncDescriptor(MockConfigService, [
+				[
+					mockEntry(
+						{
+							name: "repo",
+							sourcePaths: [abs("src")],
+							routes: { Server: "ServerScriptService" },
+							compiledPath: abs("dist"),
+							project: {
+								tree: {
+									$className: "DataModel",
+									ReplicatedStorage: {
+										Packages: { $path: "Packages" },
+									},
 								},
 							},
 						},
-					},
-					abs("default.rogen.json")
-				),
+						abs("default.rogen.json")
+					),
+				],
 			]),
 			processes,
 			prompt,

@@ -13,10 +13,10 @@ import {
 } from "../../../platform/fs/file-system-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { ReloadableSelection } from "../../../domain/config/config-service.js";
+import { ConfigChecks } from "../../../domain/config/config-checks.js";
+import { SyncDescriptor } from "../../../platform/instantiation/sync-descriptor.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
 import { InstantiationService } from "../../../platform/instantiation/instantiation-service.js";
-import { instantiationOf } from "../../../platform/instantiation/__tests__/instantiation-of.js";
-import { LogService } from "../../../platform/log/log-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
@@ -1633,39 +1633,37 @@ describe("init command when the config can't be read", () => {
 
 	class SelectFailing extends CoreConfigService {
 		constructor(
-			private readonly failsWith: (reader?: FileSystemService) => boolean,
-			@FileSystemService fileSystemService: FileSystemService,
+			private readonly failsIn: (files: FileSystemService) => boolean,
+			@FileSystemService private readonly files: FileSystemService,
 			@EnvironmentService environmentService: EnvironmentService,
 			@InstantiationService instantiationService: InstantiationService
 		) {
-			super(fileSystemService, environmentService, instantiationService);
+			super(
+				new ConfigChecks(),
+				files,
+				environmentService,
+				instantiationService
+			);
 		}
 
 		override async select(
-			refs: readonly string[],
-			reader?: FileSystemService
+			refs: readonly string[]
 		): Promise<Result<ReloadableSelection, Error>> {
-			if (this.failsWith(reader)) return err(new Error("unreadable"));
-			return super.select(refs, reader);
+			if (this.failsIn(this.files)) return err(new Error("unreadable"));
+			return super.select(refs);
 		}
 	}
 
-	const runWith = async (
-		failsWith: (reader?: FileSystemService) => boolean
-	) => {
+	const runWith = async (failsInDraft: boolean) => {
 		const fs = new MemoryFileSystemService();
 		await fs.createDirectory(cwd);
-		const environment = new NativeEnvironmentService({}, cwd);
-		const config = instantiationOf(
-			[FileSystemService, fs],
-			[EnvironmentService, environment],
-			[LogService, new MockLogService()]
-		).createInstance(SelectFailing, failsWith);
 		const harness = commandHarness({
 			cwd,
 			fs,
-			config,
-			environment,
+			config: new SyncDescriptor(SelectFailing, [
+				(files: FileSystemService) => (files !== fs) === failsInDraft,
+			]),
+			environment: new NativeEnvironmentService({}, cwd),
 			processes: readyProcesses(),
 		});
 		const result = await harness.run("init");
@@ -1673,7 +1671,7 @@ describe("init command when the config can't be read", () => {
 	};
 
 	it("should stop before it writes when the planned config can't be checked", async () => {
-		const { result, fs } = await runWith((reader) => reader !== undefined);
+		const { result, fs } = await runWith(true);
 
 		expect((result as ResultError<Error>).error.message).toBe("unreadable");
 		expect(await fs.exists(path.join(cwd, "default.rogen.json"))).toBe(
@@ -1682,7 +1680,7 @@ describe("init command when the config can't be read", () => {
 	});
 
 	it("should fail after it writes its files when the written config can't be read", async () => {
-		const { result, fs } = await runWith((reader) => reader === undefined);
+		const { result, fs } = await runWith(false);
 
 		expect((result as ResultError<Error>).error.message).toBe("unreadable");
 		expect(await fs.exists(path.join(cwd, "default.rogen.json"))).toBe(

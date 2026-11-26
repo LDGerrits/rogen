@@ -1,3 +1,4 @@
+import { DisposableStore } from "../../../base/disposable.js";
 import { createDecorator } from "../instantiation.js";
 import { CoreInstantiationService } from "../core-instantiation-service.js";
 import { InstantiationService } from "../instantiation-service.js";
@@ -553,6 +554,114 @@ describe("CoreInstantiationService", () => {
 			expect(greeting).toBe("Hello, Ada!");
 			expect(again).toBe("Hello, Ada!");
 			expect(created).toEqual(["names", "greeting"]);
+		});
+
+		it("should rebuild a service the parent built over the child's services", () => {
+			const parent = new CoreInstantiationService(collection());
+			const greet = (scope: InstantiationService) =>
+				scope.invokeFunction((accessor) =>
+					accessor.get(GreetingService).greet()
+				);
+			greet(parent);
+			const child = parent.createChild(
+				new ServiceCollection([NameService, { name: "Grace" }]),
+				{ rebuilt: [GreetingService] }
+			);
+
+			expect(greet(child)).toBe("Hello, Grace!");
+			expect(greet(parent)).toBe("Hello, Ada!");
+		});
+
+		it("should rebuild from the descriptor of the nearest scope", () => {
+			const parent = new CoreInstantiationService(collection());
+			const middle = parent.createChild(
+				new ServiceCollection([
+					GreetingService,
+					new SyncDescriptor(Greeting, ["?"]),
+				])
+			);
+			const child = middle.createChild(
+				new ServiceCollection([NameService, { name: "Grace" }]),
+				{ rebuilt: [GreetingService] }
+			);
+
+			const greeting = child.invokeFunction((accessor) =>
+				accessor.get(GreetingService).greet()
+			);
+
+			expect(greeting).toBe("Hello, Grace?");
+		});
+
+		it("should keep the child's own service over a rebuilt one", () => {
+			const parent = new CoreInstantiationService(collection());
+			const child = parent.createChild(
+				new ServiceCollection([NameService, { name: "Grace" }]),
+				{ rebuilt: [NameService] }
+			);
+
+			const name = child.invokeFunction(
+				(accessor) => accessor.get(NameService).name
+			);
+
+			expect(name).toBe("Grace");
+		});
+
+		it("should rebuild from the descriptor of a scope further up", () => {
+			const parent = new CoreInstantiationService(collection());
+			const child = parent
+				.createChild(new ServiceCollection())
+				.createChild(
+					new ServiceCollection([NameService, { name: "Grace" }]),
+					{ rebuilt: [GreetingService] }
+				);
+
+			const greeting = child.invokeFunction((accessor) =>
+				accessor.get(GreetingService).greet()
+			);
+
+			expect(greeting).toBe("Hello, Grace!");
+		});
+
+		it("should refuse to rebuild a service a nearer scope registered as an instance", () => {
+			const parent = new CoreInstantiationService(collection());
+			const middle = parent.createChild(
+				new ServiceCollection([
+					GreetingService,
+					{ greet: () => "Hi" } as GreetingService,
+				])
+			);
+
+			expect(() =>
+				middle.createChild(new ServiceCollection(), {
+					rebuilt: [GreetingService],
+				})
+			).toThrow("cannot rebuild greetingService");
+		});
+
+		it("should refuse to rebuild a service registered as an instance", () => {
+			const parent = new CoreInstantiationService(
+				new ServiceCollection([NameService, { name: "Ada" }])
+			);
+
+			expect(() =>
+				parent.createChild(new ServiceCollection(), {
+					rebuilt: [NameService],
+				})
+			).toThrow("cannot rebuild nameService");
+		});
+
+		it("should add itself to the store it is given", () => {
+			const parent = new CoreInstantiationService(collection());
+			const store = new DisposableStore();
+			const child = parent.createChild(new ServiceCollection(), {
+				store,
+			});
+
+			store[Symbol.dispose]();
+
+			expect(() =>
+				child.invokeFunction((accessor) => accessor.get(NameService))
+			).toThrow("disposed");
 		});
 
 		it("should dispose with its parent", () => {

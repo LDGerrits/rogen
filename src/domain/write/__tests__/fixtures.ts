@@ -36,10 +36,13 @@ import { Placement } from "../placement.js";
 import { Placer } from "../placer.js";
 import { RoutedFile } from "../router.js";
 import { toolchainOf } from "../../toolchain/__tests__/toolchain-of.js";
-import { configServiceOf } from "../../config/__tests__/config-of.js";
 import { instantiationOf } from "../../../platform/instantiation/__tests__/instantiation-of.js";
 import { ToolchainService } from "../../toolchain/toolchain-service.js";
 import { ConfigService } from "../../config/config-service.js";
+import { ConfigChecks } from "../../config/config-checks.js";
+import { CoreConfigService } from "../../config/core-config-service.js";
+import { EnvironmentService } from "../../../platform/environment/environment-service.js";
+import { SyncDescriptor } from "../../../platform/instantiation/sync-descriptor.js";
 
 export const { syncTools } = toolchainOf(new MemoryFileSystemService());
 
@@ -69,15 +72,19 @@ export const pipelineOf = (
 
 export const writeServiceOf = (
 	fs: FileSystemService,
-	index: IndexService,
+	index: IndexService | SyncDescriptor<IndexService> = new SyncDescriptor(
+		CoreIndexService
+	),
 	extraTools: readonly SyncTool[] = [],
-	configService: ConfigService = configServiceOf(
-		fs,
-		new MockEnvironmentService("/repo")
+	configService:
+		ConfigService | SyncDescriptor<ConfigService> = new SyncDescriptor(
+		CoreConfigService,
+		[new ConfigChecks()]
 	)
 ) =>
 	instantiationOf(
 		[FileSystemService, fs],
+		[EnvironmentService, new MockEnvironmentService("/repo")],
 		[IndexService, index],
 		[
 			ToolchainService,
@@ -85,8 +92,9 @@ export const writeServiceOf = (
 				syncTools: [...syncTools, ...extraTools],
 			}),
 		],
-		[ConfigService, configService]
-	).createInstance(CoreWriteService);
+		[ConfigService, configService],
+		[WriteService, new SyncDescriptor(CoreWriteService)]
+	).invokeFunction((accessor) => accessor.get(WriteService));
 
 export async function locateIn(
 	writeService: WriteService,

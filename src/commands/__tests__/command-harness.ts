@@ -24,6 +24,7 @@ import { MemoryFileSystemService } from "../../platform/fs/memory-file-system-se
 import { CoreInstantiationService } from "../../platform/instantiation/core-instantiation-service.js";
 import { ServiceCollection } from "../../platform/instantiation/service-collection.js";
 import { SyncDescriptor } from "../../platform/instantiation/sync-descriptor.js";
+import { ConfigChecks } from "../../domain/config/config-checks.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { MockLogService } from "../../platform/log/__tests__/mock-log-service.js";
 import { InputService } from "../../platform/input/input-service.js";
@@ -64,7 +65,7 @@ export interface CommandHarnessOptions<L extends LogService> {
 	readonly log?: L;
 	readonly prompt?: PromptService;
 	readonly input?: InputService;
-	readonly config?: ConfigService;
+	readonly config?: ConfigService | SyncDescriptor<ConfigService>;
 	readonly index?: IndexService;
 	readonly lifecycle?: LifecycleService;
 	readonly watcher?: Watcher;
@@ -145,7 +146,8 @@ function harnessServices(options: CommandHarnessOptions<LogService>) {
 	services.set(FileSystemService, fs);
 	services.set(
 		ConfigService,
-		options.config ?? new SyncDescriptor(CoreConfigService)
+		options.config ??
+			new SyncDescriptor(CoreConfigService, [new ConfigChecks()])
 	);
 	services.set(
 		IndexService,
