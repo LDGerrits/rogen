@@ -7,9 +7,7 @@ import {
 	Diagnostic,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { DOCS_URL } from "../../platform/product/product-service.js";
 import {
-	DEFAULT_CONFIG_FILE,
 	DEFAULT_PROJECT_FILE,
 	DEFAULT_SOURCE_PATH,
 	RogenConfig,
@@ -17,21 +15,18 @@ import {
 } from "../config/config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { SyncRules } from "../rojo/sync-rules.js";
-import {
-	Language,
-	Mount,
-	PackageManager,
-	PlannedFile,
-} from "../toolchain/toolchain.js";
-import { DerivedRoutes } from "./derived-routes.js";
+import { Language, Mount, PlannedFile } from "../toolchain/toolchain.js";
+import { CarriedProject, CarriedTree } from "./carried-project.js";
 import { GreeterSample } from "./greeter-sample.js";
 import { SampleGame } from "./sample-game.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
-import { OutputConfigs, PROCESSED_OUTPUT } from "./output-configs.js";
+import { OutputConfigs } from "./output-configs.js";
 import { InitQuestions, UnplacedCode } from "./init-questions.js";
 import { InitSummary } from "./init-summary.js";
-import { InitKind, PlannedCommand, PlannedScaffold } from "./init-service.js";
+import { InitKind } from "./init-service.js";
+import { NewStarter } from "./new-starter.js";
+import { LISTED_SHOWN, ProjectCode } from "./project-code.js";
 import { ProjectFiles } from "./project-files.js";
 import { IgnoredFiles, ProjectTemplate } from "./project-template.js";
 import { StarterProject } from "./starter-project.js";
@@ -56,49 +51,7 @@ type ReadChoice =
 			readonly project: StarterProject;
 	  };
 
-export interface ProcessedOutput {
-	readonly folder: string;
-	readonly config?: string;
-}
-
-export interface ProjectChoices {
-	readonly language: Language;
-	readonly sourcePaths: readonly string[];
-	readonly keySpellings?: Readonly<Record<string, string>>;
-	readonly capturedKeys?: readonly string[];
-	readonly compiledPath?: string;
-	readonly processed?: ProcessedOutput;
-	readonly tree: ProjectTree;
-	readonly mounts: readonly Mount[];
-	readonly keptCode?: readonly string[];
-	readonly outside?: readonly string[];
-	readonly unmounted: readonly string[];
-	readonly kind?: InitKind;
-	readonly skipGit?: boolean;
-	readonly templateFiles: readonly PlannedFile[];
-	readonly emptyFolders?: readonly string[];
-	readonly sample?: boolean;
-	readonly places?: StartingPlaces;
-	readonly scaffold?: {
-		readonly tool: PlannedScaffold;
-		readonly after: readonly PlannedCommand[];
-	};
-	readonly projectFilesHint?: string;
-}
-
-function carriedProject(tree: ProjectTree): StarterProject | undefined {
-	return tree.kind === "lift" || tree.kind === "rojoTemplate"
-		? tree.project
-		: undefined;
-}
-
-function derivedRoutesOf(
-	tree: ProjectTree,
-	dirs: readonly string[]
-): DerivedRoutes | undefined {
-	const carried = carriedProject(tree);
-	return carried ? DerivedRoutes.of(carried, dirs) : undefined;
-}
+export type SetupProject = CarriedProject | NewStarter;
 
 function mountsOf(directory: InitDirectory, language: Language): Mount[] {
 	return [
@@ -124,34 +77,7 @@ function ignoredFilesOf(
 	};
 }
 
-function takesRoutes(tree: ProjectTree): boolean {
-	return tree.kind === "new" || carriedProject(tree)?.takesRoutes === true;
-}
-
-const BUILD_COMMANDS: Readonly<
-	Record<Exclude<InitKind, "place">, (name: string) => string>
-> = {
-	model: (name) => `rogen build -o "${name}.rbxmx"`,
-	plugin: (name) => `rogen build -p "${name}.rbxm"`,
-};
-
-function processedPathOf({
-	processed,
-}: Pick<ProjectChoices, "processed">): string | undefined {
-	return processed?.config ? processed.folder : undefined;
-}
-
-function generatedDirs(
-	choices: Pick<ProjectChoices, "sourcePaths" | "compiledPath" | "processed">
-): string[] {
-	return [
-		...choices.sourcePaths,
-		choices.compiledPath,
-		processedPathOf(choices),
-	].filter((dir) => dir !== undefined);
-}
-
-const LISTED_SHOWN = 5;
+const defined = <T>(value: T | undefined): value is T => value !== undefined;
 
 const GITKEEP = ".gitkeep";
 
@@ -162,7 +88,7 @@ const isServerScript = (name: string): boolean => {
 
 const LIFTED_HERE = `${DEFAULT_PROJECT_FILE} is here, which init lifts.`;
 
-export class ProjectSetup implements Setup<ProjectChoices> {
+export class ProjectSetup implements Setup<SetupProject> {
 	private readonly files: ProjectFiles;
 	private readonly reader: ProjectReader;
 
@@ -184,7 +110,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		);
 	}
 
-	async ask(): Promise<Result<ProjectChoices | undefined, Diagnostic[]>> {
+	async ask(): Promise<Result<SetupProject | undefined, Diagnostic[]>> {
 		const { directory, questions } = this;
 		const chosen = await this.read(questions.tree(directory));
 		if (chosen.isErr()) return chosen;
@@ -195,22 +121,30 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				: undefined
 		);
 		const tree = await this.resolveTree(chosen.value, kind);
-		const picked = await questions.language(directory);
-		if (picked === undefined) return ok(undefined);
-		const starter = this.starterFor(kind, picked);
-		const language = starter ? picked.scaffolded!() : picked;
+		const language = await questions.language(directory);
+		if (language === undefined) return ok(undefined);
+		return ok(
+			tree.kind === "new"
+				? await this.newStarter(language)
+				: await this.carried(tree, kind, language)
+		);
+	}
 
-		const several = await this.severalPlaces(kind, language, starter);
-		if (several === undefined) return ok(undefined);
-		const places = several
-			? await this.instantiationService
-					.createInstance(StarterPlaces)
-					.plan(directory.path, language, starter)
-			: undefined;
-
-		const compiledPath = places?.compiledPath ?? language.compiler?.outDir;
-		const routed = takesRoutes(tree);
-		const lifted = routed ? carriedProject(tree) : undefined;
+	private async carried(
+		tree: CarriedTree,
+		kind: InitKind,
+		language: Language
+	): Promise<CarriedProject> {
+		const { directory, questions } = this;
+		if (questions.choices.places === true)
+			throw new UsageError(
+				`--places ${this.noPlacesBecause(kind, language, false)}`
+			);
+		const compiledPath = language.compiler?.outDir;
+		const lifted =
+			tree.kind !== "template" && tree.project.takesRoutes
+				? tree.project
+				: undefined;
 		const liftedMounts = lifted?.mountedFolders() ?? [];
 		const code =
 			lifted && !language.compiler
@@ -222,14 +156,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 							directory.layout.codeFolders
 						)
 				: undefined;
-		const sourcePaths = places
-			? [...places.sourcePaths]
-			: !routed
-				? []
-				: code && (code.sourcePaths.length > 0 || code.keptOnly)
-					? [...code.sourcePaths]
-					: [directory.defaultSourcePath(language)];
-
+		const sourcePaths = !lifted
+			? []
+			: code && (code.sourcePaths.length > 0 || code.keptOnly)
+				? [...code.sourcePaths]
+				: [directory.defaultSourcePath(language)];
 		const processedFolder = code
 			? code.processed
 			: lifted
@@ -238,20 +169,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 						.find(
 							sourcePaths,
 							liftedMounts,
-							[compiledPath].filter(
-								(folder) => folder !== undefined
-							)
+							[compiledPath].filter(defined)
 						)
 				: undefined;
 		const processorConfig = directory.workspace.darkluaConfig;
-		const processed = processedFolder
-			? {
-					folder: processedFolder,
-					...(processorConfig && { config: processorConfig }),
-				}
-			: undefined;
-		const mounts = routed ? mountsOf(directory, language) : [];
-
 		const unmounted =
 			lifted && tree.kind === "lift"
 				? await new UnmountedFiles(
@@ -261,12 +182,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 						sourcePaths,
 						liftedMounts,
 						lifted.toConfig().globIgnorePaths ?? [],
-						[compiledPath, processedFolder].filter(
-							(folder) => folder !== undefined
-						)
+						[compiledPath, processedFolder].filter(defined)
 					)
 				: [];
-
 		const keptCode =
 			code && !code.processed
 				? code.folders.filter(
@@ -276,69 +194,33 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 							)
 					)
 				: [];
-
-		const outside = routed
+		const outside = lifted
 			? await this.codeOutside(
 					[...sourcePaths, ...liftedMounts],
 					language,
 					[compiledPath, processedFolder]
 				)
 			: [];
-
-		const sample = await this.wantsSample(
-			kind,
-			tree,
-			language,
-			starter !== undefined
-		);
-		if (sample === undefined) return ok(undefined);
-		const sampleOf = new GreeterSample(
-			language,
-			path.basename(directory.path)
-		);
-		const game = sample ? new SampleGame() : undefined;
-		const sampleFiles = game
-			? [
-					...sampleOf.feature(
-						places?.commonSourcePath ?? sourcePaths[0]
-					),
-					...(places ? sampleOf.place(places.placeSourcePath) : []),
-					sampleOf.readme(
-						places?.commonSourcePath ?? sourcePaths[0],
-						ProjectSetup.serveCommand(places),
-						places?.place
-					),
-				]
-			: [];
-
 		const skipGit = questions.skipGit();
-		const templateFiles = await this.absent([
-			...ProjectSetup.templateFiles(
-				new ProjectTemplate(
-					kind,
-					path.basename(directory.path),
-					ignoredFilesOf(directory, language)
-				),
-				tree,
-				skipGit,
-				directory.moduleRoot !== undefined
-			),
-			...sampleFiles,
-			...(places?.files ?? []),
+		const template = this.templateOf(kind, language);
+		const readme = tree.kind === "lift" ? undefined : template.readme;
+		const script =
+			tree.kind === "template" && directory.moduleRoot === undefined
+				? template.script
+				: undefined;
+		const files = await this.absent([
+			...(readme ? [readme] : []),
+			...(skipGit ? [] : [template.gitignore]),
+			...(script ? [script] : []),
 		]);
-		const finder = this.instantiationService.createInstance(CodeFinder);
 		const routeKeys = STANDARD_ROUTE_IDS.map((id) => language.routeKey(id));
-		const keySpellings = await finder.keySpellings(
-			this.directory.path,
-			places?.directories ?? sourcePaths,
-			routeKeys
-		);
+		const finder = this.instantiationService.createInstance(CodeFinder);
 		const capturedKeys =
 			tree.kind === "lift"
 				? [
 						...(
 							await finder.keySpellings(
-								this.directory.path,
+								directory.path,
 								sourcePaths,
 								routeKeys,
 								liftedMounts
@@ -346,37 +228,138 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 						).keys(),
 					]
 				: [];
-		return ok({
-			language,
-			sourcePaths: [...sourcePaths],
-			...(keySpellings.size > 0 && {
-				keySpellings: Object.fromEntries(keySpellings),
-			}),
-			...(capturedKeys.length > 0 && { capturedKeys }),
-			...(compiledPath && { compiledPath }),
-			...(processed && { processed }),
-			tree: game && tree.kind === "new" ? { ...tree, game } : tree,
-			mounts,
-			keptCode,
-			outside,
-			unmounted,
+		return new CarriedProject(
 			kind,
-			skipGit,
-			sample,
-			...(places && { places }),
-			...(starter && {
-				scaffold: {
-					tool: starter.scaffold(places !== undefined),
-					after: places ? [starter.scripts(places.place)] : [],
-				},
-			}),
-			projectFilesHint: await this.files.projectFilesHint(),
-			templateFiles,
-			emptyFolders: await this.emptyFolders(
-				places?.directories ?? sourcePaths,
-				templateFiles
+			tree,
+			await this.codeOf(
+				language,
+				sourcePaths,
+				compiledPath,
+				lifted ? mountsOf(directory, language) : [],
+				outside
 			),
-		});
+			{
+				files,
+				emptyFolders: await this.emptyFolders(sourcePaths, files),
+				skipGit,
+				projectFilesHint: await this.files.projectFilesHint(),
+			},
+			{
+				capturedKeys,
+				...(processedFolder && {
+					processed: {
+						folder: processedFolder,
+						...(processorConfig && { config: processorConfig }),
+					},
+				}),
+				keptCode,
+				unmounted,
+			}
+		);
+	}
+
+	private async newStarter(
+		picked: Language
+	): Promise<NewStarter | undefined> {
+		const { directory, questions } = this;
+		const starter = this.starterFor(picked);
+		const language = starter ? picked.scaffolded!() : picked;
+		const several = await this.severalPlaces(language, starter);
+		if (several === undefined) return undefined;
+		const places = several
+			? await this.instantiationService
+					.createInstance(StarterPlaces)
+					.plan(directory.path, language, starter)
+			: undefined;
+		const compiledPath = places?.compiledPath ?? language.compiler?.outDir;
+		const sourcePaths = places
+			? [...places.sourcePaths]
+			: [directory.defaultSourcePath(language)];
+		const outside = await this.codeOutside(sourcePaths, language, [
+			compiledPath,
+		]);
+		const sample = await this.wantsSample(language, starter !== undefined);
+		if (sample === undefined) return undefined;
+		const skipGit = questions.skipGit();
+		const files = await this.absent([
+			...(skipGit ? [] : [this.templateOf("place", language).gitignore]),
+			...(sample ? this.sampleFiles(language, sourcePaths, places) : []),
+			...(places?.files ?? []),
+		]);
+		return new NewStarter(
+			await this.codeOf(
+				language,
+				sourcePaths,
+				compiledPath,
+				mountsOf(directory, language),
+				outside
+			),
+			{
+				files,
+				emptyFolders: await this.emptyFolders(sourcePaths, files),
+				skipGit,
+				projectFilesHint: await this.files.projectFilesHint(),
+			},
+			places,
+			sample ? new SampleGame() : undefined,
+			starter && {
+				tool: starter.scaffold(places !== undefined),
+				after: places ? [starter.scripts(places.place)] : [],
+			}
+		);
+	}
+
+	private async codeOf(
+		language: Language,
+		sourcePaths: readonly string[],
+		compiledPath: string | undefined,
+		mounts: readonly Mount[],
+		outside: readonly string[]
+	): Promise<ProjectCode> {
+		const keySpellings = await this.instantiationService
+			.createInstance(CodeFinder)
+			.keySpellings(
+				this.directory.path,
+				sourcePaths,
+				STANDARD_ROUTE_IDS.map((id) => language.routeKey(id))
+			);
+		return {
+			language,
+			sourcePaths,
+			...(compiledPath && { compiledPath }),
+			mounts,
+			keySpellings,
+			outside,
+		};
+	}
+
+	private templateOf(kind: InitKind, language: Language): ProjectTemplate {
+		return new ProjectTemplate(
+			kind,
+			path.basename(this.directory.path),
+			ignoredFilesOf(this.directory, language)
+		);
+	}
+
+	private sampleFiles(
+		language: Language,
+		sourcePaths: readonly string[],
+		places: StartingPlaces | undefined
+	): PlannedFile[] {
+		const sample = new GreeterSample(
+			language,
+			path.basename(this.directory.path)
+		);
+		const common = places?.commonSourcePath ?? sourcePaths[0];
+		return [
+			...sample.feature(common),
+			...(places ? sample.place(places.placeSourcePath) : []),
+			sample.readme(
+				common,
+				NewStarter.serveCommand(places),
+				places?.place
+			),
+		];
 	}
 
 	private async emptyFolders(
@@ -397,16 +380,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		);
 	}
 
-	private static serveCommand(
-		places: StartingPlaces | undefined,
-		processedPath?: string
-	): string {
-		if (places) return `rogen serve ${places.place}`;
-		return processedPath
-			? `rogen serve ${PROCESSED_OUTPUT}`
-			: "rogen serve";
-	}
-
 	private noPlacesBecause(
 		kind: InitKind,
 		language: Language,
@@ -425,12 +398,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	}
 
 	private async severalPlaces(
-		kind: InitKind,
 		language: Language,
 		starter: RobloxTsStarter | undefined
 	): Promise<boolean | undefined> {
 		const problem = this.noPlacesBecause(
-			kind,
+			"place",
 			language,
 			starter !== undefined
 		);
@@ -484,18 +456,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					...language.reservedFolders,
 					...skipped,
 				]
-					.filter((folder) => folder !== undefined)
+					.filter(defined)
 					.map(normalizeDir)
 			);
 	}
 
-	private starterFor(
-		kind: InitKind,
-		language: Language
-	): RobloxTsStarter | undefined {
+	private starterFor(language: Language): RobloxTsStarter | undefined {
 		const { directory } = this;
-		return kind === "place" &&
-			!directory.hasHandWrittenProject &&
+		return !directory.hasHandWrittenProject &&
 			!directory.has("package.json") &&
 			!language.present &&
 			!directory.holdsCode
@@ -504,35 +472,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	}
 
 	private async wantsSample(
-		kind: InitKind,
-		tree: ProjectTree,
 		language: Language,
 		scaffolded: boolean
 	): Promise<boolean | undefined> {
 		const writable =
-			kind === "place" &&
-			tree.kind === "new" &&
-			(!language.compiler || scaffolded) &&
-			!this.directory.holdsCode;
+			(!language.compiler || scaffolded) && !this.directory.holdsCode;
 		return writable && this.questions.sample();
-	}
-
-	private static templateFiles(
-		template: ProjectTemplate,
-		tree: ProjectTree,
-		skipGit: boolean,
-		hasModule: boolean
-	): PlannedFile[] {
-		const readme = tree.kind === "lift" ? undefined : template.readme;
-		const script =
-			tree.kind === "template" && !hasModule
-				? template.script
-				: undefined;
-		return [
-			...(readme ? [readme] : []),
-			...(skipGit ? [] : [template.gitignore]),
-			...(script ? [script] : []),
-		];
 	}
 
 	private async absent(
@@ -610,33 +555,38 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		};
 	}
 
-	plan(choices: ProjectChoices, builder: InitPlanBuilder): void {
-		const { language, sourcePaths, compiledPath, places } = choices;
-		const dirs = generatedDirs(choices);
-		const derived = derivedRoutesOf(choices.tree, dirs);
-		const spellings = new Map(Object.entries(choices.keySpellings ?? {}));
-		const starting = takesRoutes(choices.tree)
+	plan(project: SetupProject, builder: InitPlanBuilder): void {
+		const { code } = project;
+		const { language, sourcePaths, compiledPath } = code;
+		const dirs = [
+			...sourcePaths,
+			compiledPath,
+			project.processedPath,
+		].filter(defined);
+		const derived = project.derivedRoutes(dirs);
+		const starting = project.takesRoutes
 			? new StartingRoutes(
 					language,
 					derived,
-					spellings,
-					new Set(choices.capturedKeys)
+					code.keySpellings,
+					new Set(project.capturedKeys)
 				)
 			: undefined;
 		const routes = starting?.routes;
 		const tree = TreePlan.of({
-			tree: choices.tree,
-			mounts: choices.mounts,
+			tree: project.tree,
+			mounts: code.mounts,
 			dirs,
 			derived,
 			landings: Object.values(routes ?? {}),
 		});
-		const { compiler } = language;
-		const name = path.basename(places?.place ?? this.directory.path);
-		const { unmounted } = choices;
+		const { unmounted, written, processedPath } = project;
 		const { name: ownName, ...fields } = tree.fields;
 		const config: RogenConfig = {
-			name: typeof ownName === "string" ? ownName : name,
+			name:
+				typeof ownName === "string"
+					? ownName
+					: (project.name ?? path.basename(this.directory.path)),
 			...fields,
 			...(unmounted.length > 0 && {
 				globIgnorePaths: [
@@ -647,16 +597,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			...(routes && { sourcePaths: [...sourcePaths], routes }),
 			...(compiledPath && { compiledPath }),
 		};
-		const written =
-			choices.tree.kind === "lift"
-				? choices.tree.project.written
-				: undefined;
-		builder.setConfig(
-			config,
-			written,
-			places?.configFile ?? DEFAULT_CONFIG_FILE
-		);
-		const processedPath = processedPathOf(choices);
+		builder.setConfig(config, written, project.configFile);
 		for (const { stem, config: output } of OutputConfigs.of(config, {
 			processedPath,
 			releasePath: processedPath ?? compiledPath,
@@ -667,151 +608,86 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.setConfig(
 				output,
 				written,
-				configFileName(`${places?.outputPrefix ?? ""}${stem}`),
+				configFileName(`${project.outputPrefix}${stem}`),
 				false
 			);
-		this.summarise(builder, choices, routes);
-		for (const sourcePath of places?.directories ?? sourcePaths)
-			if (choices.emptyFolders?.includes(sourcePath))
+		this.summarise(builder, project, routes);
+		for (const sourcePath of sourcePaths)
+			if (project.writes.emptyFolders.includes(sourcePath))
 				builder.addFile({
 					fileName: path.posix.join(sourcePath, GITKEEP),
 					content: "",
 				});
 			else builder.addDirectory(sourcePath);
-		for (const note of places?.notes ?? []) builder.addNote(note);
-		if (choices.scaffold) {
-			builder.setScaffold(choices.scaffold.tool);
-			for (const command of choices.scaffold.after)
-				builder.addCommand(command);
-		}
-		for (const file of choices.templateFiles) builder.addFile(file);
-		if (choices.kind !== undefined && !choices.skipGit)
-			builder.requestGitInit();
-		if (choices.tree.kind === "lift") {
-			builder.setLiftedFrom(choices.tree.from);
-			builder.setAction("lift");
-		}
-		const leftOut = starting?.leftOut ?? [];
-		if (leftOut.length > 0)
-			builder.addNote(
-				`Left out the ${leftOut.length === 1 ? "route" : "routes"} ${joinedWithAnd(leftOut)}, which would move folders and files of ${joinedWithAnd(sourcePaths)} named so. Rename them to route them.`
-			);
-		for (const note of tree.notes) builder.addNote(note);
-		const uninstalled = this.uninstalledPackages(choices.tree);
-		if (uninstalled) {
-			const { path: folder, landing } = uninstalled.sharedMount;
-			builder.addNote(
-				`Didn't mount ${folder}, since it isn't installed. Once you run ${uninstalled.id} install, mount it at ${landing}.`
-			);
-		}
-		if (choices.tree.kind === "lift" && choices.processed)
-			builder.addNote(
-				ProjectSetup.processedNote(
-					choices.tree.from,
-					sourcePaths,
-					choices.processed
-				)
-			);
-		if (choices.keptCode?.length)
-			builder.addNote(
-				sourcePaths.length === 0
-					? `Kept the mounts of ${joinedWithAnd(choices.keptCode)} in the tree, since a folder with an init file is one instance.`
-					: `Kept the mounts of ${joinedWithAnd(choices.keptCode)} in the tree. To route their code, move the folders into ${sourcePaths[0]}.`
-			);
-		const others = places
-			? []
-			: this.directory.otherProjectFiles(
-					DEFAULT_PROJECT_FILE,
-					...(choices.tree.kind === "lift" ? [choices.tree.from] : [])
-				);
-		if (others.length > 0)
-			builder.addNote(
-				`Left alone: ${others.join(", ")}. Rojo runs a plain project file as it is.`
-			);
 		for (const warning of tree.warnings) builder.addWarning(warning);
-		if (choices.tree.kind === "lift" && unmounted.length > 0) {
-			const them = unmounted.length === 1 ? "it" : "them";
-			builder.addNote(
-				`Left out ${joinedBriefly(unmounted, LISTED_SHOWN)} with "globIgnorePaths", since Rojo ignored ${them}. To route ${them}, remove ${them} from "globIgnorePaths".`
-			);
-		}
-		if (choices.outside?.length)
+		if (code.outside.length > 0)
 			builder.addWarning(
 				ProjectSetup.outsideWarning(
-					places?.configFile ?? DEFAULT_CONFIG_FILE,
+					project.configFile,
 					sourcePaths[0],
-					choices.outside
+					code.outside
 				)
 			);
-		if (choices.scaffold)
-			builder.addNote(
-				`Starts from create-roblox-ts, which writes package.json${places ? "" : ", tsconfig.json"} and the compiler's settings.`
-			);
-		if (compiler && compiledPath) {
-			builder.addNote(
-				`Syncing from ${compiledPath}, where ${compiler.name} compiles to.`
-			);
-		}
-		if (choices.sample) {
-			const here = (...parts: string[]) =>
-				builder.fromHere(path.posix.join(...parts));
-			const configFile = here(places?.configFile ?? DEFAULT_CONFIG_FILE);
-			builder.addNote(
-				places
-					? `Greeter sample in ${here(places.commonSourcePath)}, Welcome in ${here(places.placeSourcePath)}, Rojo's Baseplate in ${configFile}.`
-					: `Greeter sample in ${here(sourcePaths[0], "greeter")}, Rojo's Baseplate in ${configFile}.`
-			);
-		}
-		this.planNextSteps(builder, choices, tree);
+		const leftOut = starting?.leftOut ?? [];
+		const uninstalled = this.uninstalledPackages(project);
+		const others = this.directory.otherProjectFiles(
+			DEFAULT_PROJECT_FILE,
+			...(project.tree.kind === "lift" ? [project.tree.from] : [])
+		);
+		const { compiler } = language;
+		const configs = builder.configNames;
+		project.plan(builder, {
+			notes: [
+				...(leftOut.length > 0
+					? [
+							`Left out the ${leftOut.length === 1 ? "route" : "routes"} ${joinedWithAnd(leftOut)}, which would move folders and files of ${joinedWithAnd(sourcePaths)} named so. Rename them to route them.`,
+						]
+					: []),
+				...tree.notes,
+				...(uninstalled
+					? [
+							`Didn't mount ${uninstalled.sharedMount.path}, since it isn't installed. Once you run ${uninstalled.id} install, mount it at ${uninstalled.sharedMount.landing}.`,
+						]
+					: []),
+			],
+			...(others.length > 0 && {
+				othersNote: `Left alone: ${others.join(", ")}. Rojo runs a plain project file as it is.`,
+			}),
+			...(compiler &&
+				compiledPath && {
+					compilerNote: `Syncing from ${compiledPath}, where ${compiler.name} compiles to.`,
+				}),
+			edits: tree.edits,
+			configEdit:
+				configs.length > 1
+					? `Edit ${joinedWithAnd(configs)}, not their project files, which 'rogen write' replaces.`
+					: `Edit ${configs[0]}, not ${project.projectFile}, which 'rogen write' replaces.`,
+			folderName: path.basename(this.directory.path),
+			tracksProjectFile: this.directory.tracksProjectFile,
+		});
 	}
 
-	private uninstalledPackages(tree: ProjectTree): PackageManager | undefined {
+	private uninstalledPackages(project: SetupProject) {
 		const { packageManager, packageDirs } = this.directory.workspace;
 		if (
 			!packageManager ||
 			packageDirs.has(packageManager.shared) ||
-			!takesRoutes(tree)
+			!project.takesRoutes ||
+			project.mountedFolders.includes(packageManager.shared)
 		)
 			return undefined;
-		return carriedProject(tree)
-			?.mountedFolders()
-			.includes(packageManager.shared)
-			? undefined
-			: packageManager;
+		return packageManager;
 	}
 
 	private summarise(
 		builder: InitPlanBuilder,
-		{
-			kind,
-			language,
-			sourcePaths,
-			tree,
-			mounts,
-			places,
-			sample,
-		}: ProjectChoices,
+		project: SetupProject,
 		routes: Record<string, string> | undefined
 	): void {
-		const { shown } = this.questions;
-		const project = [
-			...(kind !== "place"
-				? [`a ${kind}`]
-				: shown.has("places")
-					? []
-					: [places ? "several places" : "one place"]),
-			...(shown.has("language") ? [] : [language.copy.label]),
-			...(tree.kind === "lift" ? [`lifting ${tree.from}`] : []),
-		];
-		if (project.length > 0)
-			builder.addSummary("Project", project.join(", "));
-		if (sample && !shown.has("sample"))
-			builder.addSummary("Sample", "Greeter");
+		const { sourcePaths, mounts } = project.code;
+		project.summarise(builder, this.questions.shown);
 		if (routes)
-			builder.addSummary(
-				"Code",
-				InitSummary.code(places?.directories ?? sourcePaths, routes)
-			);
+			builder.addSummary("Code", InitSummary.code(sourcePaths, routes));
 		if (mounts.length > 0)
 			builder.addSummary(
 				"Packages",
@@ -819,17 +695,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					.map((mount) => `${mount.path} → ${mount.landing}`)
 					.join(", ")
 			);
-	}
-
-	private static processedNote(
-		from: string,
-		sourcePaths: readonly string[],
-		{ folder, config }: ProcessedOutput
-	): string {
-		const source = joinedWithAnd(sourcePaths);
-		return config
-			? `Took ${folder} as Darklua's output, since ${config} is here. ${DEFAULT_CONFIG_FILE} reads ${source}, and ${configFileName(PROCESSED_OUTPUT)} reads ${folder}.`
-			: `Kept the mounts of ${from} into ${folder}, which repeat ${source}, so Rojo syncs a script there twice. If a processor writes ${folder}, remove them and serve a copy of ${DEFAULT_CONFIG_FILE} with "compiledPath": "${folder}".`;
 	}
 
 	private static outsideWarning(
@@ -842,62 +707,5 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			{ resource: configFile },
 			`${joinedBriefly(found, LISTED_SHOWN)} ${found.length === 1 ? "holds" : "hold"} code outside the source paths and mounts, so it is not placed. Move it into ${sourcePath}, or add its folder to "sourcePaths".`
 		);
-	}
-
-	private planNextSteps(
-		builder: InitPlanBuilder,
-		choices: ProjectChoices,
-		tree: TreePlan
-	): void {
-		const { language, tree: chosen, places, projectFilesHint } = choices;
-		const { compiler } = language;
-		if (chosen.kind === "template") {
-			builder.addRun(
-				BUILD_COMMANDS[chosen.template](
-					path.basename(this.directory.path)
-				)
-			);
-			return;
-		}
-		builder.addEdit(...tree.edits);
-		if (projectFilesHint) builder.addEdit(projectFilesHint);
-		if (chosen.kind === "lift" && this.directory.tracksProjectFile)
-			builder.addEdit(
-				`Rogen writes ${chosen.from} now, so git can stop tracking it: git rm --cached ${chosen.from}`
-			);
-		const wroteReadme = choices.templateFiles.some(
-			({ fileName }) => fileName === "README.md"
-		);
-		builder.addEdit(
-			wroteReadme
-				? `See README.md for ${places ? "routes, the tree and adding a place" : "routes and the tree"}.`
-				: ProjectSetup.editStep(builder, choices, places)
-		);
-		if (chosen.kind === "lift" && !takesRoutes(chosen)) {
-			builder.addRun(
-				BUILD_COMMANDS[choices.kind === "plugin" ? "plugin" : "model"](
-					chosen.project.name ?? path.basename(this.directory.path)
-				)
-			);
-			return;
-		}
-		builder.addRun(
-			...(compiler ? [compiler.compileCommand] : []),
-			ProjectSetup.serveCommand(places, processedPathOf(choices))
-		);
-	}
-
-	private static editStep(
-		builder: InitPlanBuilder,
-		choices: ProjectChoices,
-		places: StartingPlaces | undefined
-	): string {
-		const configs = builder.configNames;
-		const edit =
-			configs.length > 1
-				? `Edit ${joinedWithAnd(configs)}, not their project files, which 'rogen write' replaces.`
-				: `Edit ${configs[0]}, not ${places?.projectFile ?? DEFAULT_PROJECT_FILE}, which 'rogen write' replaces.`;
-		if (!takesRoutes(choices.tree)) return edit;
-		return `${edit} Routes and the tree: ${DOCS_URL}/${places ? "multi-place" : "routing"}`;
 	}
 }
