@@ -114,6 +114,46 @@ describe("CoreWriteService.diagnose", () => {
 		);
 	});
 
+	describe("a path that does not exist yet", () => {
+		beforeEach(async () => {
+			await configure({
+				sourcePaths: ["src"],
+				routes: { "*": "ReplicatedStorage" },
+			});
+			await fs.writeFile(abs("src/G/C.luau"), "");
+		});
+
+		const writeProjectFile = async () => {
+			const configService = configServiceOf(
+				fs,
+				new MockEnvironmentService(abs())
+			);
+			const selection = (
+				await configService.select(await configService.configsHere())
+			).unwrap();
+			await writeServiceOf(
+				fs,
+				new CoreIndexService(fs),
+				[],
+				configService
+			).write(selection);
+		};
+
+		it("should give a project file that is out of date without it", async () => {
+			await fs.writeFile(abs("default.project.json"), "{}");
+
+			expect(
+				codesOf((await diagnose("src/H/New.luau")).diagnostics)
+			).toEqual(["output.differs"]);
+		});
+
+		it("should not give a project file that only it would change", async () => {
+			await writeProjectFile();
+
+			expect((await diagnose("src/H/New.luau")).diagnostics).toEqual([]);
+		});
+	});
+
 	describe("a path of a config that errors stop", () => {
 		beforeEach(async () => {
 			await configure({
