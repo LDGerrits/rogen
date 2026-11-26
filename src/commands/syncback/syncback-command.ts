@@ -101,6 +101,7 @@ registerCommand(
 					options: SyncbackOptions,
 					output: { document: syncbackDocumentShape },
 					effects: ["writesFiles", "runsProcesses"],
+					ownLinesToStderr: ({ options }) => !options.json,
 					exitCodes: {
 						"1": "the project has errors, or Rojo failed",
 						"2": "the command line is wrong, or a run with no terminal got neither --non-interactive nor --dry-run",
@@ -137,7 +138,6 @@ registerCommand(
 			const ask = !dryRun && line.options["non-interactive"] !== true;
 			const promptService = accessor.get(PromptService);
 			const logService = accessor.get(LogService);
-			if (!json) logService.sendOwnLinesToStderr();
 			if (ask && (!promptService.isInteractive || json))
 				return err(
 					new UsageError(
@@ -220,7 +220,7 @@ registerCommand(
 			cwd: string
 		): void {
 			for (const { kind, file } of plan.listed)
-				logService.print(
+				logService.result(
 					defanged(
 						`${kind === "write" ? "Writing" : "Removing"} ${toPosix(path.relative(cwd, file))}`
 					)
@@ -232,16 +232,16 @@ registerCommand(
 			plan: SyncbackPlan,
 			cwd: string
 		): void {
-			for (const { instance, reason } of plan.unplaced)
-				logService.diagnostic(
+			logService.diagnostics([
+				...plan.unplaced.map(({ instance, reason }) =>
 					warningDiagnostic(
 						"syncback.unplaced",
 						{ resource: plan.project.file },
 						`${instance} was left out: ${messageRelativeTo(reason, cwd)}.`
 					)
-				);
-			for (const warning of compiledDiagnostics(plan))
-				logService.diagnostic(warning);
+				),
+				...compiledDiagnostics(plan),
+			]);
 		}
 
 		private report(
@@ -255,8 +255,7 @@ registerCommand(
 				if (list) this.listChanges(logService, plan, cwd);
 				this.warnLeftOut(logService, plan, cwd);
 			}
-			for (const warning of outcome.warnings)
-				logService.diagnostic(warning);
+			logService.diagnostics(outcome.warnings);
 			if (outcome.kind === "written")
 				logService.info(
 					plan.changes.length === 0

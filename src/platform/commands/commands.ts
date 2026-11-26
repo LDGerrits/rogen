@@ -4,6 +4,7 @@ import {
 	toDisposable,
 } from "../../base/disposable.js";
 import { formatJsonDocument } from "../../base/json.js";
+import { ReportedError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	CommandLine,
@@ -15,17 +16,9 @@ import {
 	createDecorator,
 } from "../instantiation/instantiation.js";
 import { LifecycleService } from "../lifecycle/lifecycle-service.js";
-import { LogService } from "../log/log-service.js";
+import { LogService, OutputStream } from "../log/log-service.js";
 import { Registry } from "../registry/registry.js";
 import { OutputDeclaration } from "../output/output-shape.js";
-
-export class ReportedError extends Error {
-	override readonly name = "ReportedError";
-
-	constructor(cause: Error) {
-		super(cause.message, { cause });
-	}
-}
 
 export interface CommandService {
 	readonly _serviceBrand: undefined;
@@ -73,7 +66,15 @@ interface CommandMetadata<
 	readonly unknownWordOffer?: string;
 	readonly longRunning?: boolean;
 	readonly longRunningWith?: string;
+	ownLinesToStderr?(line: CommandLine<O>): boolean;
 	readonly formerCommands?: Readonly<Record<string, string>>;
+}
+
+export function ownLinesOf(
+	command: Command | undefined,
+	line: CommandLine
+): OutputStream {
+	return command?.metadata.ownLinesToStderr?.(line) ? "stderr" : "stdout";
 }
 
 export interface CommandRegistry {
@@ -195,7 +196,7 @@ export abstract class AbstractCommand<
 		document: unknown,
 		failure?: Error
 	): Result<void, Error> {
-		logService.print(formatJsonDocument(document));
+		logService.result(formatJsonDocument(document));
 		return failure ? this.reported(failure) : ok(undefined);
 	}
 }

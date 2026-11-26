@@ -11,7 +11,7 @@ import {
 	NextSteps,
 } from "../../domain/init/init-service.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { ReportedError } from "../../platform/commands/commands.js";
+import { ReportedError } from "../../base/errors.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 import {
 	DiagnosticJson,
@@ -180,8 +180,7 @@ export class InitLog implements InitReporter {
 		this.within = toPosix(path.relative(this.cwd, plan.directory));
 		if (plan.asked) this.logService.info("");
 		for (const note of plan.notes) this.logService.info(note);
-		for (const warning of plan.warnings)
-			this.logService.diagnostic(warning);
+		this.logService.diagnostics(plan.warnings);
 		if (plan.decided.length > 0)
 			this.logService.info(
 				`Defaults: ${plan.decided.map(describedChoice).join(", ")}. See 'rogen init --help' to change them.`
@@ -415,7 +414,7 @@ export class InitJsonLog implements InitReporter {
 		document: InitDocument,
 		failure?: Error
 	): Result<void, Error> {
-		this.logService.print(formatJsonDocument(document));
+		this.logService.result(formatJsonDocument(document));
 		return failure ? err(new ReportedError(failure)) : ok(undefined);
 	}
 

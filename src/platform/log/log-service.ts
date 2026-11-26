@@ -10,12 +10,15 @@ export enum LogLevel {
 	Trace = 5,
 }
 
+export type OutputStream = "stdout" | "stderr";
+
+export interface DiagnosticsPresentation {
+	readonly present?: (found: readonly Diagnostic[]) => readonly Diagnostic[];
+	readonly asResult?: true;
+}
+
 export interface LogService {
 	readonly _serviceBrand: undefined;
-
-	setLevel(level: LogLevel): void;
-
-	sendOwnLinesToStderr(): void;
 
 	error(message: string | Error, ...args: unknown[]): void;
 	warn(message: string, ...args: unknown[]): void;
@@ -23,17 +26,20 @@ export interface LogService {
 	debug(message: string, ...args: unknown[]): void;
 	trace(message: string, ...args: unknown[]): void;
 
-	print(text: string): void;
+	result(text: string): void;
 	note(text: string): void;
 	notice(text: string): void;
 	intro(title: string): void;
 	step(title: string): void;
-	section(title: string, body?: string): void;
 	success(message: string): void;
 	outro(message: string): void;
 	closeFrame(message: string): void;
-	diagnostic(diagnostic: Diagnostic): void;
-	annotate(diagnostic: Diagnostic): void;
+	diagnostics(
+		found: readonly Diagnostic[],
+		how?: DiagnosticsPresentation
+	): void;
+	failure(error: Error, command?: string): void;
+	crash(error: unknown): void;
 }
 
 export const LogService = createDecorator<LogService>("logService");

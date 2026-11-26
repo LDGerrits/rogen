@@ -105,7 +105,7 @@ export class WriteTree {
 		return new TreeMounts(
 			project.mountedPaths().map(({ path: rojoPath, instancePath }) => ({
 				path: path.resolve(
-					this.layout.projectDir,
+					this.layout.compiled.projectDir,
 					rojoPathTarget(rojoPath)
 				),
 				node: instancePath,

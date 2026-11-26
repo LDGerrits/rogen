@@ -12,7 +12,7 @@ import { CommandLine } from "../../../platform/environment/args.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { LogLevel } from "../../../platform/log/log-service.js";
-import { ReportedError } from "../../../platform/commands/commands.js";
+import { ReportedError } from "../../../base/errors.js";
 
 const ROUTES = {
 	Server: "ServerScriptService",
@@ -49,7 +49,7 @@ describe("check command", () => {
 
 	const document = () =>
 		JSON.parse(
-			logService.entries.find(({ kind }) => kind === "print")?.text ?? ""
+			logService.entries.find(({ kind }) => kind === "result")?.text ?? ""
 		) as {
 			diagnostics: { code: string; file: string }[];
 			skipped?: { path: string; reason: string; config?: string }[];
@@ -63,7 +63,7 @@ describe("check command", () => {
 			harness.run("check", { positionals: _, options });
 	});
 
-	const printed = () => logService.texts("print");
+	const printed = () => logService.texts("result");
 
 	describe("with paths", () => {
 		beforeEach(async () => {
@@ -235,7 +235,7 @@ describe("check command", () => {
 				'src/Save.client.luau - warning: a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing (tree.deadScript)',
 			]);
 			expect(logService.entries.map(({ kind }) => kind)).toEqual([
-				"print",
+				"result",
 			]);
 		});
 
@@ -683,7 +683,7 @@ describe("check command", () => {
 		it("should annotate each finding beside printing it", async () => {
 			await runAnnotated({ _: ["src/Save.client.luau"] });
 
-			expect(annotated.texts("print")).toEqual([
+			expect(annotated.texts("result")).toEqual([
 				'src/Save.client.luau - warning: a LocalScript never runs in ReplicatedStorage: no route is named "client", so ".client" routes nothing (tree.deadScript)',
 			]);
 			expect(annotated.texts("annotation")).toEqual([

@@ -10,7 +10,6 @@ import {
 	isDirectoryType,
 	isFileType,
 } from "../../../platform/fs/file-system-service.js";
-import { compiledPathOf } from "../../config/resolved-config.js";
 import { RojoFile } from "../../rojo/rojo.js";
 import { MetaReplacement } from "../../toolchain/toolchain.js";
 import { Placement } from "../placement.js";
@@ -42,7 +41,7 @@ export class CompiledPathCheck {
 	) {}
 
 	async check(placement: Placement): Promise<Diagnostic[]> {
-		const { compiledPath } = placement.layout;
+		const compiledPath = placement.layout.compiled.folder;
 		if (compiledPath === undefined) return [];
 		const run: CompiledPathRun = {
 			placement,
@@ -98,10 +97,7 @@ export class CompiledPathCheck {
 			if (!tops || tops.paths.length === 0 || tops.synced) continue;
 			const emitted = tops.paths;
 
-			const expected = path.join(
-				compiledPath,
-				path.relative(layout.commonRoot, sourcePath)
-			);
+			const expected = layout.compiled.of(sourcePath);
 			const found = await this.findShifted(compiledPath, emitted[0]);
 			const nearest = found
 				? undefined
@@ -242,7 +238,7 @@ export class CompiledPathCheck {
 		const orphans = new Map<string, string[]>();
 		for (const sourcePath of config.sourcePaths) {
 			if (!emittedTops.get(sourcePath)?.synced) continue;
-			const compiledDir = compiledPathOf(layout, sourcePath);
+			const compiledDir = layout.compiled.of(sourcePath);
 			const made = await this.madeBy(sourcePath, layout);
 			for (const file of await this.filesUnder(compiledDir, true)) {
 				if (
@@ -337,7 +333,7 @@ export class CompiledPathCheck {
 			.filter(([name]) => !name.startsWith("."))
 			.map(([name, type]) =>
 				isDirectoryType(type)
-					? compiledPathOf(layout, path.join(sourcePath, name))
+					? layout.compiled.of(path.join(sourcePath, name))
 					: layout.emittedPath(path.join(sourcePath, name))
 			);
 	}

@@ -20,7 +20,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { LogLevel, LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
-import { ReportedError } from "../../../platform/commands/commands.js";
+import { ReportedError } from "../../../base/errors.js";
 import {
 	MockChildProcess,
 	MockProcessService,
@@ -410,7 +410,7 @@ describe("build command", () => {
 				result,
 				logService,
 				document:
-					logService.texts("print").length === 0
+					logService.texts("result").length === 0
 						? undefined
 						: logService.json(),
 			};
@@ -532,7 +532,7 @@ describe("build command", () => {
 			);
 
 			expect(
-				logService.entries.filter(({ kind }) => kind !== "print")
+				logService.entries.filter(({ kind }) => kind !== "result")
 			).toEqual([]);
 		});
 
@@ -654,7 +654,7 @@ describe("build command", () => {
 			rojo.exit({ code: 0, signal: null });
 			await running;
 
-			expect(log.sendsOwnLinesToStderr).toBe(false);
+			expect(log.on("stdout")).toEqual(log.lines);
 			expect(log.lines).toEqual([
 				"success: Wrote default.project.json.",
 				"outro: Built game.rbxl.",
@@ -696,6 +696,7 @@ describe("build command", () => {
 
 			expect(log.entries).toContainEqual({
 				kind: "info",
+				stream: "stdout",
 				text: "Rojo: Something new",
 			});
 		});
@@ -709,6 +710,7 @@ describe("build command", () => {
 
 			expect(log.entries).toContainEqual({
 				kind: "notice",
+				stream: "stderr",
 				text: "Rojo: Something new",
 			});
 		});
@@ -751,6 +753,7 @@ describe("build command", () => {
 
 			expect(log.entries).toContainEqual({
 				kind: "warn",
+				stream: "stderr",
 				text: "Rojo: a warning",
 			});
 		});
@@ -779,6 +782,7 @@ describe("build command", () => {
 
 			expect(log.entries).toContainEqual({
 				kind: "warn",
+				stream: "stderr",
 				text: "Rojo: odd file",
 			});
 			expect(
@@ -808,7 +812,7 @@ describe("build command", () => {
 
 		describe("with --json", () => {
 			const document = (log: MockLogService) =>
-				JSON.parse(log.texts("print")[0]);
+				JSON.parse(log.texts("result")[0]);
 
 			it("should tell Rojo's build beside the configs", async () => {
 				const { running, log } = await withRojo({

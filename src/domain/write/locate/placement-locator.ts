@@ -246,8 +246,8 @@ export class PlacementLocator {
 	private compiledIn(target: string): CompiledLocation[] {
 		const { layout, files } = this.placement;
 		if (
-			layout.compiledPath === undefined ||
-			!contains(toPosix(layout.compiledPath), target)
+			layout.compiled.folder === undefined ||
+			!contains(toPosix(layout.compiled.folder), target)
 		)
 			return [];
 		return files

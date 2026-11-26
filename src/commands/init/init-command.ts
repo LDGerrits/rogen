@@ -164,7 +164,7 @@ registerCommand(
 			);
 			const ask = !line.options["non-interactive"] && !line.options.json;
 
-			if (!line.options.json) log.intro();
+			log.intro();
 			const planned = await initService.plan({
 				ask,
 				place: line.positionals[0],

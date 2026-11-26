@@ -127,6 +127,14 @@ export class IoError extends KindedError {
 	readonly kind = "io";
 }
 
+export class ReportedError extends Error {
+	override readonly name = "ReportedError";
+
+	constructor(cause: Error) {
+		super(cause.message, { cause });
+	}
+}
+
 export function errorKind(error: Error): ErrorKind {
 	if (error instanceof KindedError) return error.kind;
 	return ErrorUtils.isSystemError(error) ? "io" : "internal";

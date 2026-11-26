@@ -161,14 +161,13 @@ export class WhereLog {
 			const { whyEmpty } = this.answers;
 			if (whyEmpty.length === 0) {
 				const empty = this.emptyLine();
-				if (empty) logService.print(defanged(empty));
+				if (empty) logService.result(defanged(empty));
 			}
-			for (const warning of whyEmpty)
-				logService.print(defanged(renderDiagnostic(warning, this.cwd)));
+			logService.diagnostics(whyEmpty, { asResult: true });
 			return;
 		}
 		for (const block of blocks) {
-			logService.print(defanged(block.lines.join("\n")));
+			logService.result(defanged(block.lines.join("\n")));
 			if (block.requireLines.length > 0)
 				logService.note(block.requireLines.join("\n"));
 			else

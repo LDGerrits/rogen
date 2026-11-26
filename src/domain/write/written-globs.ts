@@ -27,7 +27,7 @@ export class WrittenGlobs {
 	moved(glob: string, from?: string): string | undefined {
 		if (this.isAbsolute(glob) || glob.startsWith("*")) return glob;
 		const inProject = this.inProject(glob, from);
-		if (this.layout.compiledPath === undefined) return inProject;
+		if (this.layout.compiled.folder === undefined) return inProject;
 		if (GLOB_MAGIC.test(glob.split("/")[0])) return undefined;
 		return this.layout.syncedGlob(inProject);
 	}
@@ -44,7 +44,7 @@ export class WrittenGlobs {
 	inProject(glob: string, from?: string): string {
 		if (this.isAbsolute(glob) || from === undefined) return glob;
 		const prefix = path.posix.relative(
-			toPosix(this.layout.projectDir),
+			toPosix(this.layout.compiled.projectDir),
 			from
 		);
 		return prefix === "" ? glob : path.posix.join(prefix, glob);
@@ -58,7 +58,7 @@ export class WrittenGlobs {
 		const segments = glob.split("/");
 		const magic = segments.findIndex((segment) => GLOB_MAGIC.test(segment));
 		const base = path.posix.join(
-			toPosix(this.layout.projectDir),
+			toPosix(this.layout.compiled.projectDir),
 			...(magic === -1 ? segments : segments.slice(0, magic))
 		);
 		return this.mounts.some(

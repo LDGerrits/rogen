@@ -34,7 +34,7 @@ describe("doc command", () => {
 
 	beforeEach(() => {
 		logService = new NullLogService();
-		print = jest.spyOn(logService, "print");
+		print = jest.spyOn(logService, "result");
 		browser = new MockBrowserService();
 	});
 

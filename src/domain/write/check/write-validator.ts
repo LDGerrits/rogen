@@ -149,7 +149,7 @@ export class WriteValidator {
 	}
 
 	private uncompiled(): Diagnostic[] {
-		if (this.placement.layout.compiledPath !== undefined) return [];
+		if (this.placement.layout.compiled.folder !== undefined) return [];
 		return this.placement.roots
 			.filter(({ entries }) => entries.length > 0)
 			.flatMap(({ unsynced }) =>
@@ -175,7 +175,7 @@ export class WriteValidator {
 			),
 			LISTED_FILES
 		);
-		const compiled = this.placement.layout.compiledPath !== undefined;
+		const compiled = this.placement.layout.compiled.folder !== undefined;
 		const typeScript = unsynced.some((file) => /\.tsx?$/.test(file));
 		const others = unsynced.some((file) => !/\.tsx?$/.test(file));
 		const advice =

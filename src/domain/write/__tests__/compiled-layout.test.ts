@@ -1,5 +1,6 @@
 import { SyncTool } from "../../toolchain/toolchain.js";
 import { SyncRules } from "../../rojo/sync-rules.js";
+import { CompiledPath } from "../../config/resolved-config.js";
 import {
 	CompiledLayout,
 	PLACEHOLDER_SOURCE,
@@ -18,7 +19,10 @@ interface LayoutSpec {
 }
 
 const layoutOf = ({ tools, ...config }: LayoutSpec) =>
-	new CompiledLayout({ ...config, syncRules: SyncRules.DEFAULT }, tools);
+	new CompiledLayout(
+		CompiledPath.from({ ...config, syncRules: SyncRules.DEFAULT }),
+		tools
+	);
 
 describe("CompiledLayout", () => {
 	it("should take the project dir from the config's folder and the common root from the source paths", () => {
@@ -27,13 +31,13 @@ describe("CompiledLayout", () => {
 				sourcePaths: [abs("src/server"), abs("src/shared")],
 				compiledPath: abs("out"),
 				file: abs("game/default.rogen.json"),
-			}),
+			}).compiled,
 			syncTools
 		);
 
-		expect(layout).toMatchObject({
-			commonRoot: abs("src"),
-			compiledPath: abs("out"),
+		expect(layout.compiled).toMatchObject({
+			root: abs("src"),
+			folder: abs("out"),
 			projectDir: abs("game"),
 		});
 	});
@@ -47,14 +51,14 @@ describe("CompiledLayout", () => {
 				],
 				compiledPath: abs("places/lobby/out"),
 				file: abs("places/lobby/default.rogen.json"),
-			}),
+			}).compiled,
 			[]
 		);
 		const one = new CompiledLayout(
 			configOf({
 				sourcePaths: [abs("src")],
 				compiledPath: abs("out"),
-			}),
+			}).compiled,
 			[]
 		);
 
@@ -69,25 +73,25 @@ describe("CompiledLayout", () => {
 
 	it("should leave the compiled path out when there is none", () => {
 		const layout = new CompiledLayout(
-			configOf({ sourcePaths: [abs("src")] }),
+			configOf({ sourcePaths: [abs("src")] }).compiled,
 			syncTools
 		);
 
-		expect(layout.compiledPath).toBeUndefined();
+		expect(layout.compiled.folder).toBeUndefined();
 	});
 
 	it("should write in the project dir when there are no source paths", () => {
 		const layout = new CompiledLayout(
-			configOf({ sourcePaths: [] }),
+			configOf({ sourcePaths: [] }).compiled,
 			syncTools
 		);
 
-		expect(layout.commonRoot).toBe(abs("."));
+		expect(layout.compiled.root).toBe(abs("."));
 	});
 
 	it("should say which tools convert a meta file and to what", () => {
 		expect(
-			new CompiledLayout(configOf(), syncTools).metaReplacements
+			new CompiledLayout(configOf().compiled, syncTools).metaReplacements
 		).toEqual([
 			{
 				suffix: ".meta.lua",
@@ -97,7 +101,7 @@ describe("CompiledLayout", () => {
 	});
 
 	it("should know which sources a tool only reads", () => {
-		const layout = new CompiledLayout(configOf(), syncTools);
+		const layout = new CompiledLayout(configOf().compiled, syncTools);
 
 		expect(layout.isReadOnly(abs("src/types.d.ts"))).toBe(true);
 		expect(layout.isReadOnly(abs("src/Foo.ts"))).toBe(false);
@@ -105,7 +109,7 @@ describe("CompiledLayout", () => {
 
 	describe("relativeToProject", () => {
 		it("should write posix separators", () => {
-			const layout = new CompiledLayout(configOf(), syncTools);
+			const layout = new CompiledLayout(configOf().compiled, syncTools);
 
 			expect(layout.relativeToProject(abs("roblox_packages/lib"))).toBe(
 				"roblox_packages/lib"
@@ -239,7 +243,7 @@ describe("CompiledLayout", () => {
 							{ pattern: "*.note", use: "text" },
 						],
 					},
-				}),
+				}).compiled,
 				[]
 			);
 
@@ -399,7 +403,7 @@ describe("CompiledLayout", () => {
 
 		it("should name the folders and Luau files that the project mounts in the compiled path", () => {
 			const layout = new CompiledLayout(
-				configOf({ compiledPath: abs("out") }),
+				configOf({ compiledPath: abs("out") }).compiled,
 				syncTools
 			);
 
@@ -421,7 +425,7 @@ describe("CompiledLayout", () => {
 
 		it("should name the folder roblox-ts writes its runtime library to", () => {
 			const layout = new CompiledLayout(
-				configOf({ compiledPath: abs("out") }),
+				configOf({ compiledPath: abs("out") }).compiled,
 				syncTools
 			);
 
@@ -431,7 +435,7 @@ describe("CompiledLayout", () => {
 		});
 
 		it("should name nothing without a compiled path", () => {
-			const layout = new CompiledLayout(configOf(), syncTools);
+			const layout = new CompiledLayout(configOf().compiled, syncTools);
 
 			expect(
 				layout.placeholdersOf(
