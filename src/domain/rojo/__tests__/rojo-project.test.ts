@@ -157,6 +157,66 @@ describe("RojoProject", () => {
 			});
 		});
 
+		it("should fill in every field the factory gives that a classless ancestor lacks", () => {
+			const project = new RojoProject(
+				{
+					name: "x",
+					tree: {
+						ReplicatedStorage: {
+							shared: { $ignoreUnknownInstances: true },
+						},
+					},
+				},
+				() => ({ $className: "Folder", $ignoreUnknownInstances: false })
+			);
+
+			project.insertNodeReplacingFolder(
+				["ReplicatedStorage", "shared", "Foo"],
+				{ $path: "foo.luau" }
+			);
+
+			expect(project.getNode(["ReplicatedStorage", "shared"])).toEqual({
+				$className: "Folder",
+				$ignoreUnknownInstances: true,
+				Foo: { $path: "foo.luau" },
+			});
+		});
+
+		it("should leave a classless ancestor whose class Rojo infers", () => {
+			const project = new RojoProject(
+				{
+					name: "x",
+					tree: {
+						Workspace: {
+							Terrain: { $properties: { Decoration: true } },
+						},
+						StarterPlayer: { StarterPlayerScripts: {} },
+					},
+				},
+				folders
+			);
+
+			project.insertNodeReplacingFolder(["Workspace", "Terrain", "Foo"], {
+				$path: "foo.luau",
+			});
+			project.insertNodeReplacingFolder(
+				["StarterPlayer", "StarterPlayerScripts", "Bar"],
+				{ $path: "bar.luau" }
+			);
+
+			expect(project.getFile().tree).toEqual({
+				Workspace: {
+					Terrain: {
+						$properties: { Decoration: true },
+						Foo: { $path: "foo.luau" },
+					},
+				},
+				StarterPlayer: {
+					StarterPlayerScripts: { Bar: { $path: "bar.luau" } },
+				},
+			});
+		});
+
 		it("should leave a service and a mounted ancestor without a class", () => {
 			const project = new RojoProject(
 				{
@@ -177,19 +237,6 @@ describe("RojoProject", () => {
 				ReplicatedStorage: {
 					shared: { $path: "shared", Foo: { $path: "foo.luau" } },
 				},
-			});
-		});
-
-		it("should leave a classless ancestor alone when the factory gives no class", () => {
-			const project = new RojoProject(
-				{ name: "x", tree: { A: { B: {} } } },
-				() => ({})
-			);
-
-			project.insertNodeReplacingFolder(["A", "B", "C"], { $path: "c" });
-
-			expect(project.getFile().tree).toStrictEqual({
-				A: { B: { C: { $path: "c" } } },
 			});
 		});
 

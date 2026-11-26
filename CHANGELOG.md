@@ -13,7 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `rogen syncback` warns about a new instance that `globIgnorePaths` matches instead of dropping it silently.
 - `rogen syncback` no longer adds a `.gitkeep` to a folder whose files it kept.
 - The error for a name `rogen syncback` can't write now also points at duplicate names and characters no file can have.
-- A `tree` node with only `$properties` or children, such as `"Shared": { "$properties": { ... } }`, now gets the Folder class when routed files land in it. Rogen used to write it without one, which Rojo refused to build.
+- A `tree` node with only `$properties` or children, such as `"Shared": { "$properties": { ... } }`, now gets the Folder class when routed files land in it. Rogen used to write it without one, which Rojo refused to build. A node whose class Rojo knows from its name, such as `Workspace/Terrain`, is left as it is.
+- A route whose target passes through `Workspace/Terrain` puts its files in the place's Terrain instead of a Folder named Terrain.
 
 ## [2.0.0-rc.2] - 2026-11-23
 

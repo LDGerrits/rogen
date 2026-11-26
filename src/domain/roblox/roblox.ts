@@ -286,11 +286,22 @@ export function requireExpression(
 	].join("");
 }
 
+const CLASSES_ROJO_INFERS_BELOW: ReadonlyMap<string, readonly string[]> =
+	new Map([
+		["StarterPlayer", PLAYER_SCRIPT_CONTAINERS],
+		["Workspace", ["Terrain"]],
+	]);
+
+export function rojoInfersClassName(instancePath: readonly string[]): boolean {
+	if (instancePath.length !== 2) return instancePath.length === 1;
+	const [parent, name] = instancePath;
+	return CLASSES_ROJO_INFERS_BELOW.get(parent)?.includes(name) ?? false;
+}
+
 export function containerClassName(instancePath: readonly string[]): string {
-	if (instancePath.length === 1) return instancePath[0];
-	if (instancePath.length === 2 && isPlayerScriptContainer(instancePath))
-		return instancePath[1];
-	return "Folder";
+	return rojoInfersClassName(instancePath)
+		? instancePath[instancePath.length - 1]
+		: "Folder";
 }
 
 export class InstanceReference {

@@ -1,7 +1,7 @@
 import { getOwn, isObject, setOwn } from "../../base/objects.js";
 import { parse } from "../../base/jsonc.js";
 import { Result, err, ok } from "../../base/result.js";
-import { instanceKey } from "../roblox/roblox.js";
+import { instanceKey, rojoInfersClassName } from "../roblox/roblox.js";
 import { PropertyValues } from "./property-values.js";
 import { SyncRule } from "./sync-rules.js";
 
@@ -381,29 +381,33 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return { added, skipped };
 	}
 
+	private static needsClass(
+		node: RojoNode,
+		instancePath: readonly string[]
+	): boolean {
+		return (
+			node.$className === undefined &&
+			node.$path === undefined &&
+			!rojoInfersClassName(instancePath)
+		);
+	}
+
 	ensureContainer(instancePath: readonly string[]): RojoNode {
 		let current = this.project.tree;
 		instancePath.forEach((segment, depth) => {
+			const containerPath = instancePath.slice(0, depth + 1);
 			const next = getOwn(current, segment);
 			if (next === undefined) {
-				setOwn(
-					current,
-					segment,
-					this.createContainer(instancePath.slice(0, depth + 1))
-				);
+				setOwn(current, segment, this.createContainer(containerPath));
 			} else if (!isObject(next)) {
 				throw new Error(
-					`Can't insert below "${instanceKey(instancePath.slice(0, depth + 1))}": it isn't a node.`
+					`Can't insert below "${instanceKey(containerPath)}": it isn't a node.`
 				);
-			} else if (
-				depth > 0 &&
-				next.$className === undefined &&
-				next.$path === undefined
-			) {
-				const { $className } = this.createContainer(
-					instancePath.slice(0, depth + 1)
-				);
-				if ($className !== undefined) next.$className = $className;
+			} else if (RojoProject.needsClass(next, containerPath)) {
+				setOwn(current, segment, {
+					...this.createContainer(containerPath),
+					...next,
+				});
 			}
 			current = getOwn(current, segment) as RojoNode;
 		});

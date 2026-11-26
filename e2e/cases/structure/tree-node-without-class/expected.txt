@@ -1,0 +1,69 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+
+$ rogen check
+exit 0
+
+written:
+  default.project.json
+
+default.project.json:
+{
+  "name": "game",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "shared": {
+        "$className": "Folder",
+        "shop": {
+          "$className": "Folder",
+          "Prices": {
+            "$path": {
+              "optional": "src/shop/Prices.luau"
+            }
+          },
+          "$ignoreUnknownInstances": false
+        },
+        "$properties": {
+          "Archivable": false
+        },
+        "$ignoreUnknownInstances": false
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "shop": {
+        "$path": {
+          "optional": "src/shop/server"
+        }
+      }
+    },
+    "Workspace": {
+      "Terrain": {
+        "water": {
+          "$path": {
+            "optional": "src/water/terrain"
+          }
+        },
+        "$properties": {
+          "Decoration": true
+        }
+      }
+    }
+  }
+}
+
+$ rojo sourcemap default.project.json
+game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      shop: Folder
+        Prices: ModuleScript  <- src/shop/Prices.luau
+  ServerScriptService: ServerScriptService
+    shop: Folder
+      ShopService: ModuleScript  <- src/shop/server/ShopService.luau
+  Workspace: Workspace
+    Terrain: Terrain
+      water: Folder
+        Waves: ModuleScript  <- src/water/terrain/Waves.luau

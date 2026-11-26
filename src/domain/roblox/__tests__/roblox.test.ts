@@ -4,6 +4,7 @@ import {
 	Target,
 	WHERE_SCRIPTS_RUN,
 	containerClassName,
+	rojoInfersClassName,
 	isPlayerScriptContainer,
 	requireExpression,
 	scriptFate,
@@ -244,16 +245,48 @@ describe("domain/roblox/roblox", () => {
 			).toBe("StarterCharacterScripts");
 		});
 
+		it("should give Workspace's Terrain its own class", () => {
+			expect(containerClassName(["Workspace", "Terrain"])).toBe(
+				"Terrain"
+			);
+		});
+
 		it("should make anything else a Folder", () => {
 			expect(containerClassName(["ReplicatedStorage", "shared"])).toBe(
 				"Folder"
 			);
+			expect(containerClassName(["ReplicatedStorage", "Terrain"])).toBe(
+				"Folder"
+			);
+			expect(
+				containerClassName(["Workspace", "Terrain", "Scripts"])
+			).toBe("Folder");
 			expect(
 				containerClassName([
 					"ReplicatedStorage",
 					"StarterPlayerScripts",
 				])
 			).toBe("Folder");
+		});
+	});
+
+	describe("rojoInfersClassName", () => {
+		it.each([
+			[["Workspace"]],
+			[["StarterPlayer", "StarterPlayerScripts"]],
+			[["StarterPlayer", "StarterCharacterScripts"]],
+			[["Workspace", "Terrain"]],
+		])("should say Rojo names the class of %j", (instancePath) => {
+			expect(rojoInfersClassName(instancePath)).toBe(true);
+		});
+
+		it.each([
+			[["ReplicatedStorage", "Lighting"]],
+			[["Workspace", "Camera"]],
+			[["__proto__", "Terrain"]],
+			[["StarterPlayer", "StarterPlayerScripts", "Client"]],
+		])("should say Rojo needs a class for %j", (instancePath) => {
+			expect(rojoInfersClassName(instancePath)).toBe(false);
 		});
 	});
 
