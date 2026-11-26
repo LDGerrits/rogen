@@ -225,10 +225,8 @@ describe("domain/rojo/sync-rules", () => {
 	});
 
 	describeWithRojoSource("RojoFile.INIT_FILES", () => {
-		it("should list the init files of the pinned Rojo", () => {
-			expect([...RojoFile.INIT_FILES].sort()).toEqual(
-				initFilesIn(source ?? "").sort()
-			);
+		it("should list the init files of the pinned Rojo, in its order", () => {
+			expect([...RojoFile.INIT_FILES]).toEqual(initFilesIn(source ?? ""));
 		});
 	});
 });

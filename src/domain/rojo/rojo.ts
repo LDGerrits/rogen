@@ -81,13 +81,21 @@ export class RojoFile {
 	static readonly INIT_NAME = "init";
 	static readonly INIT_META = `${RojoFile.INIT_NAME}${RojoFile.META_SUFFIX}`;
 	static readonly INIT_META_JSONC = `${RojoFile.INIT_NAME}${RojoFile.META_SUFFIX_JSONC}`;
+	/**
+	 * Rojo looks for a folder's init file in this order and reads the first
+	 * it finds. A project's sync rules play no part, and `.plugin.lua` comes
+	 * before `.plugin.luau`.
+	 */
 	static readonly INIT_FILES: ReadonlySet<string> = new Set([
-		...["", ".server", ".client", ".plugin"].flatMap((suffix) =>
-			LUAU_EXTENSIONS.map(
-				(extension) => `${RojoFile.INIT_NAME}${suffix}${extension}`
-			)
-		),
-		`${RojoFile.INIT_NAME}.csv`,
+		"init.luau",
+		"init.lua",
+		"init.server.luau",
+		"init.server.lua",
+		"init.client.luau",
+		"init.client.lua",
+		"init.plugin.lua",
+		"init.plugin.luau",
+		"init.csv",
 	]);
 	static readonly DEFAULT_PROJECTS: readonly string[] = [
 		"default.project.json",
@@ -128,6 +136,16 @@ export class RojoFile {
 			this.ownRule && this.match
 				? `${this.match.name}${spelled ? `.${spelled}` : ""}`
 				: stemOf(name);
+	}
+
+	static initReadFirst(names: Iterable<string>): string | undefined {
+		const present = new Set(names);
+		return [...RojoFile.INIT_FILES].find((name) => present.has(name));
+	}
+
+	static initOrderOf(name: string | undefined): number {
+		const at = [...RojoFile.INIT_FILES].findIndex((init) => init === name);
+		return at === -1 ? RojoFile.INIT_FILES.size : at;
 	}
 
 	static at(source: string, rules: SyncRules, reading?: Reading): RojoFile {
@@ -271,6 +289,18 @@ export class RojoFile {
 
 	get isInit(): boolean {
 		return RojoFile.INIT_FILES.has(this.name);
+	}
+
+	get initOrder(): number {
+		return RojoFile.initOrderOf(this.initFileOfKind);
+	}
+
+	private get initFileOfKind(): string | undefined {
+		if (this.isCsv) return `${RojoFile.INIT_NAME}.csv`;
+		const suffix = this.scriptSuffix;
+		if (suffix === undefined && !this.isLuau) return undefined;
+		const extension = path.extname(this.name) === ".lua" ? ".lua" : ".luau";
+		return `${RojoFile.INIT_NAME}${suffix ? `.${suffix}` : ""}${extension}`;
 	}
 
 	get instanceName(): string {
