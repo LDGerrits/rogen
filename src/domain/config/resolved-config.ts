@@ -54,7 +54,7 @@ export class ResolvedConfig {
 			SyncRules.read(fields.project.syncRules).rules,
 			toPosix(this.projectDir)
 		);
-		this.compiled = CompiledPath.of(this);
+		this.compiled = CompiledPath.from(this);
 	}
 
 	get label(): string {
@@ -110,10 +110,10 @@ export class CompiledPath {
 		readonly folder: string | undefined,
 		readonly root: string,
 		readonly projectDir: string,
-		readonly syncRules: SyncRules
+		private readonly syncRules: SyncRules
 	) {}
 
-	static of(fields: CompiledPathFields): CompiledPath {
+	static from(fields: CompiledPathFields): CompiledPath {
 		return new CompiledPath(
 			fields.compiledPath,
 			fields.commonRoot ?? fields.projectDir,
@@ -145,6 +145,10 @@ export class CompiledPath {
 				path.posix.relative(root, absolute)
 			)
 		);
+	}
+
+	fileAt(target: string): RojoFile {
+		return RojoFile.at(toPosix(target), this.syncRules);
 	}
 
 	fileOf(source: string): RojoFile {

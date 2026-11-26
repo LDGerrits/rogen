@@ -22,7 +22,7 @@ const writtenBy = (
 		project: { tree: {}, syncRules: rules },
 		...overrides,
 	});
-	const layout = new CompiledLayout(config, syncTools);
+	const layout = new CompiledLayout(config.compiled, syncTools);
 	const entries: ScannedFile[] = sources.map((source) => ({
 		kind: "data",
 		file: config.compiled.fileOf(absPosix(source)),

@@ -4,7 +4,10 @@ import { abs, configOf, syncTools } from "./fixtures.js";
 
 const treeOf = (spec: Parameters<typeof configOf>[0] = {}) => {
 	const config = configOf(spec);
-	return new WriteTree(config, new CompiledLayout(config, syncTools));
+	return new WriteTree(
+		config,
+		new CompiledLayout(config.compiled, syncTools)
+	);
 };
 
 const mounting = (target: string) => ({

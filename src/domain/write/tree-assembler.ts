@@ -344,7 +344,7 @@ export class TreeAssembler {
 			return found;
 		};
 		return (dir) =>
-			placement.layout.compiledPath === undefined && holds(dir);
+			placement.layout.compiled.folder === undefined && holds(dir);
 	}
 
 	private instancePathOf(

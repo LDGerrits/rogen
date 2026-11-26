@@ -41,7 +41,7 @@ export class CompiledPathCheck {
 	) {}
 
 	async check(placement: Placement): Promise<Diagnostic[]> {
-		const { compiledPath } = placement.layout;
+		const compiledPath = placement.layout.compiled.folder;
 		if (compiledPath === undefined) return [];
 		const run: CompiledPathRun = {
 			placement,
