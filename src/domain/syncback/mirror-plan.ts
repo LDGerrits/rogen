@@ -27,18 +27,11 @@ export type Operation = {
 	| { readonly kind: "prune" }
 );
 
-/** A file of the instance that a refused move came from, as Studio left it. */
 export interface MovedFile {
 	readonly bytes: Uint8Array;
-	/** Its path below the instance's folder, unless it is the instance's file. */
 	readonly rel?: string;
 }
 
-/**
- * What a syncback run means to do with one file or instance. A run records
- * them in order and never takes one back; a hold keeps what a removal would
- * have taken, whenever it was recorded.
- */
 export type Intent =
 	| {
 			readonly kind: "write";
@@ -58,28 +51,44 @@ export type Intent =
 			readonly instance: string;
 			readonly file: string;
 			readonly from?: string;
-			/** A folder, removed only once it is empty. */
 			readonly folder?: true;
 	  }
 	| {
-			readonly kind: "hold";
+			readonly kind: "kept";
 			readonly instance: string;
-			readonly files: readonly string[];
+			readonly file: string;
+			readonly from: string;
 			readonly reason: string;
 	  }
 	| {
-			readonly kind: "hold";
+			readonly kind: "refused";
 			readonly instance: string;
-			readonly files: "movedFrom";
+			readonly reason: string;
+	  }
+	| {
+			readonly kind: "refusedMove";
+			readonly instance: string;
 			readonly moved: readonly MovedFile[];
 			readonly reason: string;
 	  };
 
 export type GoneIntent = Extract<Intent, { kind: "gone" }>;
 
-export type HoldIntent = Extract<Intent, { kind: "hold" }>;
+export type KeptIntent = Extract<Intent, { kind: "kept" }>;
 
-export function intentOf(operation: Operation): Intent {
+export type HoldIntent = Extract<
+	Intent,
+	{ kind: "kept" | "refused" | "refusedMove" }
+>;
+
+export type ChangeIntent = Exclude<Intent, HoldIntent>;
+
+export const isHold = (intent: Intent): intent is HoldIntent =>
+	intent.kind === "kept" ||
+	intent.kind === "refused" ||
+	intent.kind === "refusedMove";
+
+export function intentOf(operation: Operation): ChangeIntent {
 	switch (operation.kind) {
 		case "write":
 		case "folder":

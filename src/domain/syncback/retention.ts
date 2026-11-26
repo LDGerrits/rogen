@@ -1,32 +1,24 @@
 import path from "path";
 import { contains, toNative } from "../../base/path.js";
 import {
+	ChangeIntent,
 	GoneIntent,
-	HoldIntent,
 	Intent,
 	MovedFile,
 	Operation,
+	isHold,
 	sameBytes,
 } from "./mirror-plan.js";
 import { GITKEEP } from "./syncback-layout.js";
 
-/** What retention reads of the project's folders, read before it runs. */
 export interface Disk {
-	/**
-	 * The names in a folder, none when it can't be read, and undefined when
-	 * it wasn't read, which keeps the folder.
-	 */
 	entriesOf(folder: string): readonly string[] | undefined;
 	bytesOf(file: string): Uint8Array | undefined;
 }
 
-/** What the place and its mirror say about the project's folders. */
 export interface PlaceView {
-	/** Mirror paths the place still holds, and every folder above them. */
 	readonly held: ReadonlySet<string>;
-	/** Mirror paths of the project's files that were copied in. */
 	readonly copied: ReadonlySet<string>;
-	/** Each mirror folder copied from the project, with the folder it copies. */
 	readonly folders: ReadonlyMap<string, string>;
 	readonly sourcePaths: readonly string[];
 	readonly compiledPath?: string;
@@ -34,13 +26,8 @@ export interface PlaceView {
 }
 
 export interface Retention {
-	/** What the plan does, a `.gitkeep` aside. */
 	readonly operations: readonly Operation[];
-	/** The `.gitkeep`s that keep folders the place still holds. */
 	readonly gitkeeps: readonly Operation[];
-	/** Removals a hold kept for a file it names. */
-	readonly kept: readonly GoneIntent[];
-	/** Instances of compiled folders the place no longer holds. */
 	readonly leftOut: readonly string[];
 }
 
@@ -50,13 +37,18 @@ interface Pruning {
 	readonly leftOut: readonly string[];
 }
 
+interface Listing {
+	readonly listed: readonly Operation[];
+	readonly pruning: Pruning;
+}
+
 const isFilling = ({ kind }: Operation) =>
 	kind === "write" || kind === "folder";
 
 const isRemoving = ({ kind }: Operation) =>
 	kind === "remove" || kind === "prune";
 
-function operationOf(intent: Exclude<Intent, HoldIntent>): Operation {
+function operationOf(intent: ChangeIntent): Operation {
 	if (intent.kind !== "gone") return intent;
 	const { folder, ...rest } = intent;
 	return { ...rest, kind: folder ? "prune" : "remove" };
@@ -75,10 +67,8 @@ function withoutRepeats(operations: readonly Operation[]): Operation[] {
 	return seen;
 }
 
-const isCopy = (intent: Intent, place: PlaceView) =>
-	intent.kind !== "hold" &&
-	intent.from !== undefined &&
-	place.copied.has(intent.from);
+const isCopy = (intent: ChangeIntent, place: PlaceView) =>
+	intent.from !== undefined && place.copied.has(intent.from);
 
 const isBelowSource = (folder: string, place: PlaceView) =>
 	place.sourcePaths.some(
@@ -100,31 +90,6 @@ function isEmptiedBy(
 const isCompiled = (folder: string, place: PlaceView) =>
 	place.compiledPath !== undefined && contains(place.compiledPath, folder);
 
-/** The removals Studio made of copied files that no hold names. */
-function copiesGone(
-	intents: readonly Intent[],
-	place: PlaceView
-): GoneIntent[] {
-	const held = new Set(
-		intents.flatMap((intent) =>
-			intent.kind === "hold" && intent.files !== "movedFrom"
-				? intent.files
-				: []
-		)
-	);
-	return intents.filter(
-		(intent): intent is GoneIntent =>
-			intent.kind === "gone" &&
-			isCopy(intent, place) &&
-			!held.has(intent.file)
-	);
-}
-
-/**
- * The folders of the project that the removals Studio made of copied files
- * empty, deepest first, and the folders the place still holds that they
- * would have emptied.
- */
 function pruningOf(
 	gone: readonly GoneIntent[],
 	disk: Disk,
@@ -192,17 +157,17 @@ function pruningOf(
 	return { prunes, keeps, leftOut };
 }
 
-/**
- * The files a refused move's instance came from: the removals, in the
- * deepest folder that holds one for each of its files, whose bytes match.
- */
 function movedFrom(
 	moved: readonly MovedFile[],
-	gone: readonly Intent[],
+	intents: readonly Intent[],
 	disk: Disk
 ): string[] {
-	const removals = gone.flatMap((intent) => {
-		if (intent.kind !== "gone" || intent.from === undefined) return [];
+	const removals = intents.flatMap((intent) => {
+		if (
+			(intent.kind !== "gone" && intent.kind !== "kept") ||
+			intent.from === undefined
+		)
+			return [];
 		const bytes = disk.bytesOf(intent.file);
 		return bytes !== undefined && bytes.length > 0
 			? [{ file: intent.file, from: intent.from, bytes }]
@@ -232,29 +197,32 @@ function movedFrom(
 	return [];
 }
 
-/**
- * The plan's operations from the run's intents: Studio's edits and removals
- * of copied files, then the folders those removals empty, then the rest in
- * the order they were recorded. A hold keeps what a removal would take,
- * whenever it was recorded, and as in Rojo's syncback, a folder something is
- * written into is never pruned.
- */
-export function retain(
+function listingOf(
 	intents: readonly Intent[],
 	disk: Disk,
 	place: PlaceView
-): Retention {
-	const gone = copiesGone(intents, place);
-	const pruning = pruningOf(gone, disk, place);
-	const holds = intents.filter(
-		(intent): intent is HoldIntent => intent.kind === "hold"
+): Listing {
+	const changes = intents.filter(
+		(intent): intent is ChangeIntent => !isHold(intent)
 	);
-	const keptFiles = holds.flatMap((hold) =>
-		hold.files === "movedFrom" ? movedFrom(hold.moved, intents, disk) : []
+	const pruning = pruningOf(
+		changes.filter(
+			(intent): intent is GoneIntent =>
+				intent.kind === "gone" && isCopy(intent, place)
+		),
+		disk,
+		place
 	);
-	const refused = holds
-		.filter(({ files }) => files === "movedFrom")
-		.map(({ instance }) => instance);
+	const refused = intents.flatMap((intent) =>
+		intent.kind === "refused" || intent.kind === "refusedMove"
+			? [intent.instance]
+			: []
+	);
+	const keptFiles = intents.flatMap((intent) =>
+		intent.kind === "refusedMove"
+			? movedFrom(intent.moved, intents, disk)
+			: []
+	);
 	const isKept = (operation: Operation) =>
 		isRemoving(operation) &&
 		(refused.some(
@@ -263,38 +231,51 @@ export function retain(
 				operation.instance.startsWith(`${key}/`)
 		) ||
 			keptFiles.some((at) => contains(operation.file, at)));
-	const named = new Set(
-		holds.flatMap(({ files }) => (files === "movedFrom" ? [] : files))
-	);
-	const kept = intents.filter(
-		(intent): intent is GoneIntent =>
-			intent.kind === "gone" && named.has(intent.file)
-	);
-	const placed = intents.filter(
-		(intent): intent is Exclude<Intent, HoldIntent> =>
-			intent.kind !== "hold" &&
-			!(intent.kind === "gone" && named.has(intent.file))
-	);
 	const listed = withoutRepeats([
-		...placed.filter((intent) => isCopy(intent, place)).map(operationOf),
+		...changes.filter((intent) => isCopy(intent, place)).map(operationOf),
 		...pruning.prunes,
-		...placed.filter((intent) => !isCopy(intent, place)).map(operationOf),
+		...changes.filter((intent) => !isCopy(intent, place)).map(operationOf),
 	]).filter((operation) => !isKept(operation));
-	const fills = (folder: string) =>
+	return { listed, pruning };
+}
+
+export function beforePlacement(
+	intents: readonly Intent[],
+	disk: Disk,
+	place: PlaceView
+): readonly Operation[] {
+	return listingOf(intents, disk, place).listed;
+}
+
+export function retain(
+	intents: readonly Intent[],
+	disk: Disk,
+	place: PlaceView
+): Retention {
+	const { listed, pruning } = listingOf(intents, disk, place);
+	const fillsBelow = (folder: string) =>
 		listed.some(
 			(operation) =>
 				isFilling(operation) &&
 				operation.file.startsWith(`${folder}${path.sep}`)
 		);
+	// Rojo's syncback lists no removal of a folder it writes into.
 	const operations = listed.filter(
-		(operation) => operation.kind !== "prune" || !fills(operation.file)
+		(operation) =>
+			operation.kind !== "prune" ||
+			!(
+				fillsBelow(operation.file) ||
+				listed.some(
+					(other) => isFilling(other) && other.file === operation.file
+				)
+			)
 	);
 	const removed = new Set(
 		operations.filter(isRemoving).map(({ file }) => file)
 	);
 	const gitkeeps: Operation[] = [];
 	for (const [folder, instance] of pruning.keeps)
-		if (!fills(folder) && isEmptiedBy(removed, folder, disk))
+		if (!fillsBelow(folder) && isEmptiedBy(removed, folder, disk))
 			gitkeeps.push({
 				kind: "write",
 				file: path.join(folder, GITKEEP),
@@ -306,12 +287,10 @@ export function retain(
 		gitkeeps: gitkeeps.filter(
 			(gitkeep) => !operations.some((other) => isSame(other, gitkeep))
 		),
-		kept,
 		leftOut: pruning.leftOut,
 	};
 }
 
-/** Every folder retention may read, for the removals recorded so far. */
 export function foldersRead(
 	intents: readonly Intent[],
 	place: PlaceView

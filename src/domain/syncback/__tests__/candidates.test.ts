@@ -59,14 +59,15 @@ describe("Candidates", () => {
 
 	const candidatesOf = (
 		workspace: MirrorWorkspace,
-		folders: readonly string[] = [],
-		renames: readonly RenamedInstance[] = []
+		renames: readonly RenamedInstance[] = [],
+		planned: Planned = NOTHING
 	) =>
 		instantiationOf([FileSystemService, fs]).createInstance(
 			Candidates,
 			workspace,
-			new Set(folders),
-			renames
+			new Set<string>(),
+			renames,
+			planned
 		);
 
 	const mirrored = async (at: string, text = "return 1") =>
@@ -93,8 +94,7 @@ describe("Candidates", () => {
 		await mirrored("ServerScriptService/Shop/Cart.luau");
 
 		const { candidates } = await candidatesOf(workspace).of(
-			script(["ServerScriptService", "Shop"], "Cart"),
-			NOTHING
+			script(["ServerScriptService", "Shop"], "Cart")
 		);
 
 		expect(
@@ -136,7 +136,7 @@ describe("Candidates", () => {
 			folders: [],
 		};
 
-		const found = await candidatesOf(workspace).of(made, NOTHING, rojo);
+		const found = await candidatesOf(workspace).of(made, rojo);
 
 		expect(summary(found).map(({ source }) => source)).toEqual([
 			"rojo",
@@ -170,10 +170,10 @@ describe("Candidates", () => {
 			kept: [],
 		};
 
-		const found = await candidatesOf(workspace, [], [rename]).of(made, {
+		const found = await candidatesOf(workspace, [rename], {
 			written: [],
 			removed: [abs("src/Shop/Server/Main.luau")],
-		});
+		}).of(made);
 
 		expect(summary(found)[0]).toEqual({
 			source: "rename",
@@ -202,7 +202,7 @@ describe("Candidates", () => {
 
 		const found = await candidatesOf(
 			workspace,
-			[],
+
 			[
 				{
 					instance: made,
@@ -218,7 +218,7 @@ describe("Candidates", () => {
 					kept: [],
 				},
 			]
-		).of(made, NOTHING);
+		).of(made);
 
 		expect(summary(found).map(({ source }) => source)).not.toContain(
 			"rename"
@@ -233,8 +233,7 @@ describe("Candidates", () => {
 		await mirrored("ServerScriptService/Shop/Cart.luau");
 
 		const found = await candidatesOf(workspace).of(
-			script(["ServerScriptService", "Shop"], "Cart"),
-			NOTHING
+			script(["ServerScriptService", "Shop"], "Cart")
 		);
 
 		expect(found).toEqual({
@@ -250,10 +249,10 @@ describe("Candidates", () => {
 		]);
 		await mirrored("ServerScriptService/Shop/Cart.luau");
 
-		const found = await candidatesOf(workspace).of(
-			script(["ServerScriptService", "Shop"], "Cart"),
-			{ written: [], removed: [abs("src/Shop/Server/Cart.luau")] }
-		);
+		const found = await candidatesOf(workspace, [], {
+			written: [],
+			removed: [abs("src/Shop/Server/Cart.luau")],
+		}).of(script(["ServerScriptService", "Shop"], "Cart"));
 
 		expect(summary(found)[0].files).toEqual([
 			`write ${abs("src/Shop/Server/Cart.luau")}`,
@@ -270,8 +269,7 @@ describe("Candidates", () => {
 		await mirrored("ServerScriptService/Shop/Cart.spec.luau");
 
 		const found = await candidatesOf(workspace).of(
-			script(["ServerScriptService", "Shop"], "Cart.spec"),
-			NOTHING
+			script(["ServerScriptService", "Shop"], "Cart.spec")
 		);
 
 		expect(found).toEqual({

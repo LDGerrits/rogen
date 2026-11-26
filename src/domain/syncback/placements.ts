@@ -15,7 +15,6 @@ export interface Placements<C extends Proposal, H extends Choice<C>> {
 	}[];
 }
 
-/** Why each candidate it was given would not land as proposed. */
 export type Verify<C extends Proposal> = (
 	chosen: readonly C[]
 ) => Promise<ReadonlyMap<C, string>>;
@@ -26,12 +25,6 @@ const clashes = (operation: Operation, other: Operation | undefined) =>
 		? other.kind !== "write" || !sameBytes(other.bytes, operation.bytes)
 		: other.kind === "write");
 
-/**
- * Takes each choice's first candidate that clashes with no earlier choice's
- * files and that verify passes, verifying every pick together until none
- * misses. A choice left without a candidate is refused for its first miss,
- * else for its last clash, else for its own reason.
- */
 export async function settle<C extends Proposal, H extends Choice<C>>(
 	choices: readonly H[],
 	verify: Verify<C>

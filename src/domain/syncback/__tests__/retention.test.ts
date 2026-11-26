@@ -1,5 +1,11 @@
 import { Intent } from "../mirror-plan.js";
-import { Disk, PlaceView, foldersRead, retain } from "../retention.js";
+import {
+	Disk,
+	PlaceView,
+	beforePlacement,
+	foldersRead,
+	retain,
+} from "../retention.js";
 import { abs } from "./layout-fixtures.js";
 
 const encoder = new TextEncoder();
@@ -40,7 +46,8 @@ const placeOf = (
 	held: new Set<string>(),
 	copied: new Set(
 		intents.flatMap((intent) =>
-			intent.kind !== "hold" && intent.from !== undefined
+			(intent.kind === "write" || intent.kind === "gone") &&
+			intent.from !== undefined
 				? [intent.from]
 				: []
 		)
@@ -89,7 +96,7 @@ const CASES: readonly Case[] = [
 		],
 	},
 	{
-		name: "keeps a folder that couldn't be listed",
+		name: "keeps a folder it never read",
 		intents: [gone("src/Shop/Server/Cart.luau", `${SHOP}/Cart.luau`)],
 		disk: {},
 		operations: [`remove ${abs("src/Shop/Server/Cart.luau")}`],
@@ -154,21 +161,35 @@ const CASES: readonly Case[] = [
 		operations: [],
 	},
 	{
-		name: "keeps a file a hold names, and the folders above it, whichever comes first",
+		name: "keeps a copy's removal that another file would take the place of, and its folder",
 		intents: [
 			{
-				kind: "hold",
+				kind: "kept",
 				instance: SHOP,
-				files: [abs("src/Shop/Server/Cart.luau")],
+				file: abs("src/Shop/Server/Cart.luau"),
+				from: `${SHOP}/Cart.luau`,
 				reason: "kept",
 			},
-			gone("src/Shop/Server/Cart.luau", `${SHOP}/Cart.luau`),
 		],
 		disk: {
 			[abs("src/Shop/Server")]: ["Cart.luau"],
 			[abs("src/Shop")]: ["Server"],
 		},
 		operations: [],
+	},
+	{
+		name: "keeps the removals of a refused instance",
+		intents: [
+			{
+				kind: "gone",
+				instance: `${SHOP}/Cart`,
+				file: abs("src/Shop/Server/Cart.luau"),
+			},
+			gone("src/Log.luau", "ServerScriptService/Log.luau"),
+			{ kind: "refused", instance: `${SHOP}/Cart`, reason: "refused" },
+		],
+		disk: {},
+		operations: [`remove ${abs("src/Log.luau")}`],
 	},
 	{
 		name: "keeps the removals of a refused instance and the files it was moved from",
@@ -179,9 +200,8 @@ const CASES: readonly Case[] = [
 			),
 			gone("src/Log.luau", "ServerScriptService/Log.luau"),
 			{
-				kind: "hold",
+				kind: "refusedMove",
 				instance: "ReplicatedStorage/Shared/Shop/Main",
-				files: "movedFrom",
 				moved: [{ bytes: encoder.encode("print(1)") }],
 				reason: "refused",
 			},
@@ -200,6 +220,44 @@ const CASES: readonly Case[] = [
 			[abs("src/Shop")]: ["Server"],
 		},
 		operations: [`remove ${abs("src/Log.luau")}`],
+	},
+	{
+		name: "keeps only the copy's removal it kept, not another step's removal of that file",
+		intents: [
+			{
+				kind: "kept",
+				instance: SHOP,
+				file: abs("src/Shop/Server/Data.json"),
+				from: `${SHOP}/Data.json`,
+				reason: "kept",
+			},
+			{
+				kind: "gone",
+				instance: "ServerScriptService/Store",
+				file: abs("src/Shop/Server/Data.json"),
+			},
+		],
+		disk: { [abs("src/Shop/Server")]: ["Data.json", "Cart.luau"] },
+		operations: [`remove ${abs("src/Shop/Server/Data.json")}`],
+	},
+	{
+		name: "never prunes a folder the plan makes again",
+		intents: [
+			gone("src/Shop/Server/Cart.luau", `${SHOP}/Cart.luau`),
+			{
+				kind: "folder",
+				instance: SHOP,
+				file: abs("src/Shop/Server"),
+			},
+		],
+		disk: {
+			[abs("src/Shop/Server")]: ["Cart.luau"],
+			[abs("src/Shop")]: ["Server", "Client"],
+		},
+		operations: [
+			`remove ${abs("src/Shop/Server/Cart.luau")}`,
+			`folder ${abs("src/Shop/Server")}`,
+		],
 	},
 	{
 		name: "never prunes a folder the plan writes into again",
@@ -266,24 +324,6 @@ describe("retain", () => {
 		}
 	);
 
-	it("should name the removals a hold kept for a file", () => {
-		const replaced = gone("dev/Shop/Server/Cart.luau", `${SHOP}/Cart.luau`);
-		const intents: Intent[] = [
-			replaced,
-			gone("src/Shop/Server/Bag.luau", `${SHOP}/Bag.luau`),
-			{
-				kind: "hold",
-				instance: SHOP,
-				files: [abs("dev/Shop/Server/Cart.luau")],
-				reason: "kept",
-			},
-		];
-
-		expect(retain(intents, diskOf({}), placeOf(intents)).kept).toEqual([
-			replaced,
-		]);
-	});
-
 	it("should name the compiled folders it left out", () => {
 		const place = placeOf([], {
 			folders: new Map([["ServerScriptService/Out", posix("dist/Out")]]),
@@ -292,6 +332,32 @@ describe("retain", () => {
 
 		expect(retain([], diskOf({}), place).leftOut).toEqual([
 			"ServerScriptService/Out",
+		]);
+	});
+});
+
+describe("beforePlacement", () => {
+	it("should keep the prune of a folder that is written into again, for placement to read", () => {
+		const intents = [
+			gone("src/Shop/Server/Cart.luau", `${SHOP}/Cart.luau`),
+			write("src/Shop/Server/Bag.luau"),
+		];
+
+		expect(
+			shown(
+				beforePlacement(
+					intents,
+					diskOf({
+						[abs("src/Shop/Server")]: ["Cart.luau"],
+						[abs("src/Shop")]: ["Server", "Client"],
+					}),
+					placeOf(intents)
+				)
+			)
+		).toEqual([
+			`remove ${abs("src/Shop/Server/Cart.luau")}`,
+			`prune ${abs("src/Shop/Server")}`,
+			`write ${abs("src/Shop/Server/Bag.luau")}`,
 		]);
 	});
 });

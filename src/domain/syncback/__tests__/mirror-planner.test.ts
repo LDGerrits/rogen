@@ -835,6 +835,43 @@ describe("MirrorPlanner", () => {
 			expect(plan.changes).toEqual([]);
 		});
 
+		it("should still write a plan after the kept file is edited before it is confirmed", async () => {
+			await prepare(
+				[
+					"src/Shop/Server/Cart.luau",
+					"dev/Shop/Server/Cart.luau",
+					"src/Shop/Server/Bag.luau",
+				],
+				{ sourcePaths: [abs("src"), abs("dev")] }
+			);
+			rojo.say = async () => {
+				await fs.delete(
+					mirror("ServerScriptService", "Shop", "Cart.luau")
+				);
+				await fs.writeFile(
+					mirror("ServerScriptService", "Shop", "Bag.luau"),
+					"return 2"
+				);
+				return [];
+			};
+
+			const { outcome } = await service.run(selectionOf(config), {
+				input: "game.rbxl",
+				cwd: "/repo",
+				mode: {
+					confirm: async () => {
+						await fs.writeFile(
+							abs("dev/Shop/Server/Cart.luau"),
+							"return 9"
+						);
+						return true;
+					},
+				},
+			});
+
+			expect(outcome.kind).toBe("written");
+		});
+
 		it("should write an edit to the file in front", async () => {
 			await overlaid();
 			rojo.say = async () => {
@@ -877,6 +914,47 @@ describe("MirrorPlanner", () => {
 				reason: `${abs("src/Shop/Server/Cart.spec.luau")} matches an ignore glob of the project, so it is left alone`,
 			},
 		]);
+	});
+
+	it("should add no .gitkeep to a folder whose only file was kept", async () => {
+		await prepare([
+			"src/Shop/Server/Cart.luau",
+			"src/Shop/Client/Hud.luau",
+		]);
+		await fs.writeFile(abs("src/Shop/Server/Cart.luau"), "return 1");
+		rojo.say = async () => {
+			await fs.delete(mirror("ServerScriptService", "Shop", "Cart.luau"));
+			await fs.writeFile(
+				mirror("ServerScriptService", "Shop", "Cart@Server.luau"),
+				"return 1"
+			);
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.unplaced.map(({ instance }) => instance)).toEqual([
+			"ServerScriptService/Shop/Cart@Server",
+		]);
+		expect(plan.changes).toEqual([]);
+	});
+
+	it("should keep a folder with a .gitkeep when Studio removed the only folder in it", async () => {
+		await prepare(["src/Shop/Server/Util/Math.luau"]);
+		rojo.say = async () => {
+			await fs.delete(
+				mirror("ServerScriptService", "Shop", "Util"),
+				true
+			);
+			return [];
+		};
+
+		const plan = await planned();
+
+		expect(plan.changes).toContainEqual({
+			kind: "write",
+			file: abs("src/Shop/Server/.gitkeep"),
+		});
 	});
 
 	it("should add no .gitkeep where the only file was kept for another it replaces", async () => {

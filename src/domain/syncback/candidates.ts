@@ -21,19 +21,16 @@ import {
 } from "./reverse-router.js";
 import { GITKEEP } from "./syncback-layout.js";
 
-/** Where a candidate comes from, in the order a choice tries them. */
 export type CandidateSource = "rojo" | "rename" | "route" | "mark";
 
 export interface Candidate extends Proposal {
 	readonly source: CandidateSource;
 }
 
-/** An instance Rojo wrote inside a folder the project already has. */
 export interface WrittenInPlace extends Proposal {
 	readonly folders: readonly string[];
 }
 
-/** Files the plan already writes or removes, as native paths. */
 export interface Planned {
 	readonly written: readonly string[];
 	readonly removed: readonly string[];
@@ -76,19 +73,17 @@ export function landingOf(
 	return made && { file: to, instance: made };
 }
 
-/**
- * The places an instance Studio added could go: where Rojo wrote it, where a
- * renamed feature's files move, where routing puts it, and beside each mark
- * that routes its parent, in that order.
- */
 export class Candidates {
 	private readonly router: ReverseRouter;
 	private readonly renames: ReadonlyMap<AddedInstance, RenamedInstance>;
 
+	private readonly removed: PathSet;
+
 	constructor(
 		private readonly workspace: MirrorWorkspace,
-		private readonly folders: ReadonlySet<string>,
+		private readonly addedFolders: ReadonlySet<string>,
 		renames: readonly RenamedInstance[],
+		private readonly planned: Planned,
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService
 	) {
@@ -96,24 +91,24 @@ export class Candidates {
 		this.renames = new Map(
 			renames.map((rename) => [rename.instance, rename])
 		);
+		this.removed = new PathSet(planned.removed);
 	}
 
 	async of(
 		made: AddedInstance,
-		planned: Planned,
 		inPlace?: WrittenInPlace
 	): Promise<{ readonly candidates: Candidate[]; readonly reason: string }> {
-		const removed = new PathSet(planned.removed);
+		const { removed } = this;
 		const rename = this.renames.get(made);
 		const renamed =
 			!inPlace && rename && (await this.renameFits(rename, removed))
-				? [await this.renamedCandidate(rename, planned)]
+				? [await this.renamedCandidate(rename)]
 				: [];
 		const routed = await this.routedCandidates(
 			made,
 			inPlace
-				? new Set([...this.folders, ...inPlace.folders])
-				: this.folders,
+				? new Set([...this.addedFolders, ...inPlace.folders])
+				: this.addedFolders,
 			removed
 		);
 		const rojo: Candidate[] = inPlace
@@ -151,11 +146,14 @@ export class Candidates {
 		return true;
 	}
 
-	private async renamedCandidate(
-		{ instance, folder, renamed, files, kept }: RenamedInstance,
-		planned: Planned
-	): Promise<Candidate> {
-		const { folders } = this;
+	private async renamedCandidate({
+		instance,
+		folder,
+		renamed,
+		files,
+		kept,
+	}: RenamedInstance): Promise<Candidate> {
+		const { addedFolders: folders, planned } = this;
 		const name = instanceKey([...instance.parent, instance.name]);
 		const operations: Operation[] = [];
 		const landings: Landing[] = [];
