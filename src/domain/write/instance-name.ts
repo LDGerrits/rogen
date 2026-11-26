@@ -1,5 +1,5 @@
 import { RojoFile, RojoFileKind } from "../rojo/rojo.js";
-import { readFolderName, unhoisted, unwrapInvisibleFolder } from "./write.js";
+import { unhoisted } from "./write.js";
 
 export interface SuffixSpan {
 	readonly key: string;
@@ -31,9 +31,6 @@ function withoutSpans(name: string, spans: readonly SuffixSpan[]): string {
 }
 
 export const InstanceName = {
-	unwrapInvisibleFolder,
-	unhoisted,
-	folderName: readFolderName,
 	leafName,
 	withoutSpans,
 } as const;

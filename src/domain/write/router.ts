@@ -4,7 +4,7 @@ import { DeclaredKeys } from "../config/declared-keys.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { PatternMatch } from "../config/route-patterns.js";
 import { RojoScriptSuffix } from "../rojo/rojo.js";
-import { FolderNode, RouteMatch } from "./write.js";
+import { FolderNode, RouteMatch, unhoisted } from "./write.js";
 import { DirClaims, RootClaims } from "./dir-claims.js";
 import { InstanceName, SuffixSpan } from "./instance-name.js";
 import {
@@ -314,7 +314,7 @@ export class Router {
 		if (isInit) return undefined;
 		const match = this.config.patterns.match(
 			...[path.posix.basename(entry.source), entry.file.instanceName].map(
-				(name) => InstanceName.unhoisted(name).name
+				(name) => unhoisted(name).name
 			)
 		);
 		return match ? { match, at: entry.source } : undefined;

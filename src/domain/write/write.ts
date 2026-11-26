@@ -69,11 +69,14 @@ const ROUTE_RESPELLING_CODES: ReadonlySet<string> = new Set([
 export const isRouteRespelling = ({ code }: Diagnostic): boolean =>
 	ROUTE_RESPELLING_CODES.has(code);
 
-export const RENAMING_CODES: ReadonlySet<string> = new Set([
+const STUDIO_RENAMING_CODES: ReadonlySet<string> = new Set([
 	"tree.instanceClash",
 	"route.caseMismatch",
 	"route.ignoredAt",
 ]);
+
+export const isFixedByRenaming = ({ code }: Diagnostic): boolean =>
+	STUDIO_RENAMING_CODES.has(code);
 
 type MatchForm = "folder" | "marker" | "suffix";
 
