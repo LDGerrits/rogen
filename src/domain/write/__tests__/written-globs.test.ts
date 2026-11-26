@@ -7,7 +7,7 @@ const globsOf = (compiledPath?: string, mounts: readonly string[] = []) => {
 		compiledPath: compiledPath && abs(compiledPath),
 	});
 	return new WrittenGlobs(
-		new CompiledLayout(config, syncTools),
+		new CompiledLayout(config.compiled, syncTools),
 		mounts.map((mount) => absPosix(mount))
 	);
 };
@@ -66,7 +66,7 @@ describe("WrittenGlobs", () => {
 			file: abs("places/lobby/default.rogen.json"),
 		});
 		const globs = new WrittenGlobs(
-			new CompiledLayout(config, syncTools),
+			new CompiledLayout(config.compiled, syncTools),
 			[]
 		);
 

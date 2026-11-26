@@ -1,11 +1,7 @@
 import path from "path";
-import { contains, containsPosix, samePath, toPosix } from "../../base/path.js";
+import { contains, samePath, toPosix } from "../../base/path.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import {
-	ResolvedConfig,
-	compiledPathOf,
-	scannedFileOf,
-} from "../config/resolved-config.js";
+import { CompiledPath } from "../config/resolved-config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import {
 	OptionalRojoPath,
@@ -13,7 +9,6 @@ import {
 	RojoProjectFile,
 	rojoPathTarget,
 } from "../rojo/rojo-project.js";
-import { SyncRules } from "../rojo/sync-rules.js";
 import {
 	DataReplacement,
 	MetaReplacement,
@@ -51,23 +46,10 @@ export async function placeholderState(
 }
 
 export class CompiledLayout {
-	readonly commonRoot: string;
-	readonly compiledPath: string | undefined;
-	readonly projectDir: string;
-	readonly syncRules: SyncRules;
-
 	constructor(
-		config: Pick<
-			ResolvedConfig,
-			"commonRoot" | "compiledPath" | "projectDir" | "syncRules"
-		>,
+		readonly compiled: CompiledPath,
 		private readonly tools: readonly SyncTool[]
-	) {
-		this.commonRoot = config.commonRoot ?? config.projectDir;
-		this.compiledPath = config.compiledPath;
-		this.projectDir = config.projectDir;
-		this.syncRules = config.syncRules;
-	}
+	) {}
 
 	get initNames(): ReadonlySet<string> {
 		return new Set([
@@ -89,13 +71,13 @@ export class CompiledLayout {
 	}
 
 	relativeToProject(absolutePath: string): string {
-		return toPosix(path.relative(this.projectDir, absolutePath));
+		return toPosix(path.relative(this.compiled.projectDir, absolutePath));
 	}
 
 	emittedPath(filePath: string): string {
-		if (this.compiledPath === undefined) return filePath;
-		const compiled = compiledPathOf(this, filePath);
-		if (scannedFileOf(this, toPosix(filePath)).isCompiled)
+		if (this.compiled.folder === undefined) return filePath;
+		const compiled = this.compiled.of(filePath);
+		if (this.compiled.fileOf(toPosix(filePath)).isCompiled)
 			return `${compiled.slice(0, compiled.length - path.extname(compiled).length)}.luau`;
 		return this.tools.reduce(
 			(emitted, tool) => tool.emittedPath?.(emitted) ?? emitted,
@@ -104,26 +86,15 @@ export class CompiledLayout {
 	}
 
 	private compiledFolderOf(dir: string): string {
-		return this.relativeToProject(compiledPathOf(this, dir));
+		return this.relativeToProject(this.compiled.of(dir));
 	}
 
 	syncedGlob(glob: string): string {
-		if (this.compiledPath === undefined) return glob;
-		const root = toPosix(this.commonRoot);
-		const dir = toPosix(this.projectDir);
-		const absolute = path.posix.join(dir, glob);
-		if (!containsPosix(root, absolute)) return glob;
-		return path.posix.relative(
-			dir,
-			path.posix.join(
-				toPosix(this.compiledPath),
-				path.posix.relative(root, absolute)
-			)
-		);
+		return this.compiled.glob(glob);
 	}
 
 	isCacheFile(file: string): boolean {
-		if (!samePath(path.dirname(file), this.compiledPath!)) return false;
+		if (!samePath(path.dirname(file), this.compiled.folder!)) return false;
 		const name = path.basename(file);
 		return this.tools.some(({ cacheFiles }) => cacheFiles?.includes(name));
 	}
@@ -144,30 +115,26 @@ export class CompiledLayout {
 		projectFile: RojoProjectFile,
 		isSourceFolder: (source: string) => boolean
 	): Placeholder[] {
-		const { compiledPath } = this;
+		const compiledPath = this.compiled.folder;
 		if (compiledPath === undefined) return [];
 		const written = [
 			compiledPath,
 			...this.tools.flatMap(({ runtimeFolder }) =>
 				runtimeFolder
-					? path.resolve(this.projectDir, runtimeFolder)
+					? path.resolve(this.compiled.projectDir, runtimeFolder)
 					: []
 			),
 		];
 		return new RojoProject(projectFile)
 			.mountedPaths()
 			.map(({ path: rojoPath }) =>
-				path.resolve(this.projectDir, rojoPathTarget(rojoPath))
+				path.resolve(this.compiled.projectDir, rojoPathTarget(rojoPath))
 			)
 			.filter((target) => written.some((dir) => contains(dir, target)))
 			.flatMap((target): Placeholder[] => {
-				const source = path.join(
-					this.commonRoot,
-					path.relative(compiledPath, target)
-				);
-				if (isSourceFolder(toPosix(source)))
+				if (isSourceFolder(toPosix(this.compiled.sourceOf(target))))
 					return [{ path: target, kind: "folder" }];
-				const file = RojoFile.at(toPosix(target), this.syncRules);
+				const file = this.compiled.fileAt(target);
 				if (file.isLuau) return [{ path: target, kind: "script" }];
 				return file.isSyncedByRojo
 					? []

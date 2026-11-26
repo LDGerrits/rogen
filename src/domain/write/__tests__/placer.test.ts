@@ -37,7 +37,7 @@ describe("Placer", () => {
 				file: abs("out/default.rogen.json"),
 			}).unwrap();
 
-			expect(layout.projectDir).toEqual(abs("out"));
+			expect(layout.compiled.projectDir).toEqual(abs("out"));
 		});
 
 		it("should hold the config's tree, and nothing else of its project", () => {
