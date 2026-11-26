@@ -185,10 +185,24 @@ describe("domain/rojo/rojo", () => {
 				["Strings.csv", "init.csv"],
 				["init.ts", undefined],
 				["Config.json", undefined],
-			])("should stand %s where %s stands", (name, init) => {
+			])("should rank %s as %s", (name, init) => {
 				expect(new RojoFile(name, SyncRules.DEFAULT).initOrder).toBe(
 					RojoFile.initOrderOf(init)
 				);
+			});
+
+			it("should rank an init file by its name whatever the project's rules say", () => {
+				const rules = SyncRules.following(
+					[
+						{ pattern: "*.lua", use: "serverScript" },
+						{ pattern: "*.luau", use: "clientScript" },
+					],
+					"/repo"
+				);
+
+				expect(
+					new RojoFile("init.lua", rules, "/repo/src/Net").initOrder
+				).toBe(RojoFile.initOrderOf("init.lua"));
 			});
 
 			it("should stand anything but an init file last", () => {

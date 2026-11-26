@@ -100,8 +100,9 @@ export class InstanceResolver {
 				(name) => !routedSources.has(path.posix.join(dir, name))
 			)
 		);
+		if (first === undefined) return undefined;
 		return RojoFile.initOrderOf(first) < file.entry.file.initOrder
-			? path.posix.join(dir, first!)
+			? path.posix.join(dir, first)
 			: undefined;
 	}
 
