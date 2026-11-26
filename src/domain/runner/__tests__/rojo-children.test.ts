@@ -207,6 +207,20 @@ describe("RojoChildren", () => {
 			]);
 		});
 
+		it("should end and dispose a child it retires when the host leaves that to it", async () => {
+			children[Symbol.dispose]();
+			const { retire: _retire, ...rest } = host();
+			children = new RojoChildren(watch, rest);
+			await apply(update(written(configs.a)));
+			const [first] = children.children();
+
+			wanted = [configs.b];
+			await apply(update(written(configs.b)));
+
+			expect(events).toEqual(["started a", "stopped a", "started b"]);
+			expect(first.disposed).toBe(true);
+		});
+
 		it("should stop the child of a config that goes away", async () => {
 			wanted = [configs.a, configs.b];
 			await apply(update(written(configs.a), written(configs.b)));

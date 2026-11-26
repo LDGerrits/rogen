@@ -26,7 +26,7 @@ export interface RojoChildHost<C extends RojoChild, A> {
 		admission: A,
 		signal: AbortSignal
 	): Promise<C | undefined>;
-	retire(child: C, reason: "removed" | "moved"): Promise<void>;
+	retire?(child: C, reason: "removed" | "moved"): Promise<void>;
 	stopped?(children: readonly C[]): Promise<void>;
 }
 
@@ -123,6 +123,11 @@ export class RojoChildren<C extends RojoChild, A> extends AbstractDisposable {
 		super[Symbol.dispose]();
 	}
 
+	private static async end(child: RojoChild): Promise<void> {
+		await child.terminate();
+		child[Symbol.dispose]();
+	}
+
 	private failed(thrown: unknown): void {
 		const error = ErrorUtils.fromUnknown(thrown);
 		if (this.started) this._onDidError.fire(error);
@@ -202,8 +207,7 @@ export class RojoChildren<C extends RojoChild, A> extends AbstractDisposable {
 		const child = await host.start(config, admission, this.halted.signal);
 		if (!child) return;
 		if (this.isHalted) {
-			await child.terminate();
-			child[Symbol.dispose]();
+			await RojoChildren.end(child);
 			return;
 		}
 		this.running.set(config.id, { child, place });
@@ -213,7 +217,9 @@ export class RojoChildren<C extends RojoChild, A> extends AbstractDisposable {
 		running: Running<C>,
 		reason: "removed" | "moved"
 	): Promise<void> {
-		const retired = this.host.retire(running.child, reason);
+		const retired =
+			this.host.retire?.(running.child, reason) ??
+			RojoChildren.end(running.child);
 		this.retiring.add(retired);
 		try {
 			await retired;

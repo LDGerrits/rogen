@@ -70,11 +70,6 @@ export class WatchedRojoRun extends AbstractDisposable implements RojoRunWatch {
 				admit: async () => true,
 				start: (project, _admitted, signal) =>
 					this.start(project, signal),
-				retire: async (child) => {
-					this.listeners.clear();
-					await child.terminate();
-					child[Symbol.dispose]();
-				},
 			})
 		);
 		this.onDidUpdate = this.children.onDidUpdate;

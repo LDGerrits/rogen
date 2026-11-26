@@ -205,6 +205,21 @@ describe("watch", () => {
 			expect(processes.spawned[0].terminated).toBe(false);
 		});
 
+		it("should report a write that throws once Rojo runs, and go on watching", async () => {
+			void startWatch([], { output: "game.rbxl" });
+			await settle();
+			jest.spyOn(
+				CoreWriteService.prototype,
+				"rewrite"
+			).mockRejectedValueOnce(new Error("disk on fire"));
+
+			await memFs.writeFile("/repo/src/A.luau", "");
+			await settle();
+
+			expect(logService.texts("error")).toEqual(["disk on fire"]);
+			expect(processes.spawned[0].terminated).toBe(false);
+		});
+
 		it("should refuse to start when Rojo has several projects to run on", async () => {
 			await memFs.createDirectory("/repo/a");
 			await memFs.createDirectory("/repo/b");
