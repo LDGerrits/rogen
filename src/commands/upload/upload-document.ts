@@ -14,7 +14,8 @@ export const uploadDocumentShape = S.object({
 export function uploadDocument(
 	outcomes: readonly ConfigOutcome[],
 	cwd: string,
-	rojo: RojoEntry
+	rojo: RojoEntry,
+	changed: boolean
 ) {
-	return { ...configsDocument(outcomes, cwd), rojo };
+	return { changed, configs: configsDocument(outcomes, cwd).configs, rojo };
 }

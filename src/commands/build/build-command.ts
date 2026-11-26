@@ -1,10 +1,11 @@
 import { DisposableStore } from "../../base/disposable.js";
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
+import { ProjectArgument } from "../../domain/config/config-service.js";
 import {
-	ProjectArgument,
-	singleProjectError,
-} from "../../domain/config/config-service.js";
+	RojoCommandService,
+	RojoRunRequest,
+} from "../../domain/runner/rojo-command-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
@@ -20,15 +21,18 @@ import { ServicesAccessor } from "../../platform/instantiation/instantiation.js"
 import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
-import { buildRojoEntryShape, rojoEntry } from "../write/rojo-entry.js";
+import {
+	RojoTarget,
+	buildRojoEntryShape,
+	rojoEntry,
+} from "../write/rojo-entry.js";
 import {
 	configsDocument,
 	watchLineShapes,
 	writeEntryShape,
 } from "../write/write-document.js";
-import { RojoRun } from "../write/rojo-run.js";
-import { WriteWatch } from "../write/write-watch.js";
-import { BuildStep } from "./build-step.js";
+import { OutcomeLog } from "../write/outcome-log.js";
+import { RojoWatchReport, WatchJsonLog, WatchLog } from "../write/watch-log.js";
 
 const S = OutputShape;
 
@@ -118,62 +122,60 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof BuildOptions>
 		): Promise<Result<void, Error>> {
-			const tooMany = singleProjectError("build", line.positionals);
-			if (tooMany) return err(tooMany);
-			const flags = this.rojoFlags(line);
-			if (flags.isErr()) return flags;
 			const cwd = accessor.get(EnvironmentService).cwd;
 			const instantiationService = accessor.get(InstantiationService);
 			const lifecycleService = accessor.get(LifecycleService);
 			const logService = accessor.get(LogService);
-			const step = instantiationService.createInstance(
-				BuildStep,
-				flags.value,
+			const rojoCommandService = accessor.get(RojoCommandService);
+			const { output, plugin, json } = line.options;
+			const target: RojoTarget = {
+				command: "build",
 				cwd,
-				line.options.output,
-				line.options.plugin
-			);
+				output,
+				plugin,
+			};
+			const request: RojoRunRequest = {
+				refs: line.positionals,
+				command: "build",
+				flags: this.rojoFlags(line),
+				cwd,
+			};
 			if (line.options.watch) {
 				const store = new DisposableStore();
 				const shutdown = this.untilShutdown(lifecycleService, store);
 				try {
+					const log = json
+						? instantiationService.createInstance(WatchJsonLog, cwd)
+						: instantiationService.createInstance(
+								WatchLog,
+								cwd,
+								"build --watch"
+							);
 					return await instantiationService
-						.createInstance(
-							WriteWatch,
-							line.positionals,
-							Boolean(line.options.json),
-							step,
-							"build"
-						)
-						.run(store, shutdown);
+						.createInstance(RojoWatchReport, log, target)
+						.run(request, shutdown, store);
 				} finally {
 					store[Symbol.dispose]();
 				}
 			}
 
-			const rojoRun = instantiationService.createInstance(
-				RojoRun,
-				line.positionals,
-				step,
-				cwd
-			);
-			const done = await rojoRun.run();
+			const done = await rojoCommandService.run(request);
 			if (done.isErr()) return done;
-			const { written, failure, ran, rojoFailure } = done.value;
-			if (line.options.json) {
-				const configs = configsDocument(written.outcomes, cwd);
-				const rojo = rojoEntry(step.target, ran);
+			for (const note of done.value.notes) logService.warn(note);
+			const { written, failure, ran, rojoFailure, changed } = done.value;
+			if (json)
 				return this.printJson(
 					logService,
 					{
-						changed: configs.changed || rojo.outcome === "built",
-						configs: configs.configs,
-						rojo,
+						changed,
+						configs: configsDocument(written.outcomes, cwd).configs,
+						rojo: rojoEntry(target, ran),
 					},
 					failure ?? rojoFailure
 				);
-			}
-			rojoRun.report(done.value);
+			instantiationService
+				.createInstance(OutcomeLog, cwd)
+				.rojoRun(done.value, target);
 			if (rojoFailure) return err(rojoFailure);
 			return failure ? this.reported(failure) : ok(undefined);
 		}

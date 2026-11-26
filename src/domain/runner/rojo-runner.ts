@@ -92,10 +92,6 @@ export interface RojoRunner {
 		signal?: AbortSignal
 	): Promise<Result<ServerExecutable, DiagnosticsError>>;
 
-	isRunning(pid: number): boolean;
-
-	terminateTree(pid: number): Promise<void>;
-
 	start(
 		executable: ServerExecutable,
 		command: string,

@@ -161,7 +161,7 @@ export class RojoSyncback {
 		signal?: AbortSignal
 	): Promise<Result<readonly ServerMessage[], Error>> {
 		const { request } = this;
-		const ran = await this.rojoService.run(request.selection, {
+		const ran = await this.rojoService.runOn(request.selection, {
 			command: "syncback",
 			flags: ["--input", request.input, "--non-interactive", ...flags],
 			cwd: request.cwd,

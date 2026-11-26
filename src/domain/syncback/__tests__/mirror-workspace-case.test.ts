@@ -38,8 +38,7 @@ describe("MirrorWorkspace where the file system ignores case", () => {
 		]);
 		let runs = 0;
 		const rojo = {
-			choose: () => config,
-			run: async () =>
+			runOn: async () =>
 				ok(
 					runs++ < 2
 						? {

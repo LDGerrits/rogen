@@ -3,7 +3,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 
-import { ConfigService } from "../config/config-service.js";
+import { ConfigService, singleProjectError } from "../config/config-service.js";
 import { WatchService } from "../watch/watch-service.js";
 import { CoreServeSession } from "./core-serve-session.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
@@ -57,6 +57,12 @@ export class CoreServeService implements ServeService {
 	}
 
 	async prepare(request: ServeRequest): Promise<Result<ServePlan, Error>> {
+		const tooMany = singleProjectError(
+			"serve",
+			request.refs,
+			"Serve a second place from a second terminal, as 'rogen serve <project> --port <port>'."
+		);
+		if (tooMany) return err(tooMany);
 		const selected = await this.configService.selectForRojo(request.refs);
 		if (selected.isErr()) return selected;
 		const selection = selected.value;

@@ -2,13 +2,11 @@ import { DeferredPromise, Sequencer, timeout } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
-import { Result, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { isWritten } from "../write/write.js";
+import { ok } from "../../base/result.js";
+import { ProcessService } from "../../platform/process/process-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
+import { RojoChildren } from "../runner/rojo-children.js";
 import { RojoCompatibility } from "../runner/rojo-compatibility.js";
-import { RojoRunner } from "../runner/rojo-runner.js";
 import { ServerInfo } from "../runner/rojo-server.js";
 import { WatchSession, WatchUpdate } from "../watch/watch-service.js";
 import {
@@ -76,16 +74,12 @@ export class CoreServeSession
 	);
 	readonly onDidChange: Event<ServeChangeEvent> = this._onDidChange.event;
 
-	private readonly servers = new Map<string, StartedServer>();
-	private readonly retirements = new Set<Promise<void>>();
+	private readonly children: RojoChildren<StartedServer, Admitted>;
 	private readonly declined = new Map<
 		string,
 		{ readonly kind: "refused" | "elsewhere"; readonly address: string }
 	>();
-	private readonly writtenConfigs = new Set<string>();
-	private readonly reconciling = new Sequencer();
 	private readonly exits = new Sequencer();
-	private launched = false;
 	private readonly halted = new AbortController();
 	private readonly ending = new DeferredPromise<ServeEnding>();
 	private stopped: Promise<void> | undefined;
@@ -96,26 +90,45 @@ export class CoreServeSession
 		private readonly probe: ServerProbe,
 		private readonly records: ServerRecords,
 		private readonly ports: ServePorts,
-		private readonly compatibility: RojoCompatibility,
-		@RojoRunner private readonly rojoRunner: RojoRunner,
+		compatibility: RojoCompatibility,
+		@ProcessService private readonly processService: ProcessService,
 		@InstantiationService
 		private readonly instantiationService: InstantiationService
 	) {
 		super();
 		this._register(watch);
-		this._register(
-			watch.onDidUpdate((update) => {
-				this._onDidUpdate.fire(update);
-				this.reconciling
-					.queue(() => this.applyUpdate(update))
-					.catch((error) =>
-						this._onDidError.fire(ErrorUtils.fromUnknown(error))
-					);
+		this.children = this._register(
+			new RojoChildren<StartedServer, Admitted>(watch, {
+				wanted: () => this.wanted(),
+				problemsIn: (files) =>
+					compatibility.problemsIn(plan.executable, files, "serve"),
+				placeOf: (config) =>
+					`${config.projectFile}\n${ports.targetOf(config).address.toString()}`,
+				follow: (server, config) =>
+					server.follow(ports.targetOf(config)),
+				admit: (config, running) => this.admit(config, running),
+				start: (config, admitted, signal) =>
+					this.start(config, admitted, signal),
+				retire: (server, reason) => this.retire(server, reason),
+				stopped: (servers) => this.unrecord(servers),
 			})
 		);
 		this._register(
+			this.children.onDidUpdate((update) =>
+				this._onDidUpdate.fire(update)
+			)
+		);
+		this._register(
+			this.children.onDidError((error) => this._onDidError.fire(error))
+		);
+		this._register(
+			this.children.onDidRefuse((error) =>
+				this.halt({ kind: "refused", error })
+			)
+		);
+		this._register(
 			watch.onDidError((error) => {
-				if (this.launched || this.isHalted)
+				if (this.children.hasStarted || this.isHalted)
 					this._onDidError.fire(error);
 				else this.halt({ kind: "refused", error });
 			})
@@ -123,7 +136,7 @@ export class CoreServeSession
 	}
 
 	get target(): ServeTarget | undefined {
-		return [...this.servers.values()][0]?.target;
+		return this.children.children()[0]?.target;
 	}
 
 	async run(shutdown: AbortSignal): Promise<ServeEnding> {
@@ -151,6 +164,7 @@ export class CoreServeSession
 	private halt(ending: ServeEnding): void {
 		if (this.isHalted) return;
 		this.halted.abort();
+		this.children.halt();
 		this.ending.complete(ending);
 	}
 
@@ -171,138 +185,50 @@ export class CoreServeSession
 
 	private stop(): Promise<void> {
 		this.halt({ kind: "shutdown" });
-		this.stopped ??= (async () => {
-			const servers = [...this.servers.values()];
-			await Promise.all([
-				...servers.map((server) => server.terminate()),
-				...this.retirements,
-			]);
-			await Promise.all(servers.map((server) => server.unrecord()));
-			await this.exits.queue(async () => undefined);
-			await this.watch.stop();
-		})();
+		this.stopped ??= this.children.stop();
 		return this.stopped;
 	}
 
 	override [Symbol.dispose](): void {
 		this.stop().catch(onUnexpectedError);
-		for (const server of this.servers.values()) server[Symbol.dispose]();
 		super[Symbol.dispose]();
 	}
 
-	private async applyUpdate(update: WatchUpdate): Promise<void> {
-		for (const { outcome } of update.reports) {
-			if (!isWritten(outcome)) {
-				this.writtenConfigs.delete(outcome.config.id);
-				continue;
-			}
-			this.writtenConfigs.add(outcome.config.id);
-		}
-		if (this.isHalted) return;
-		if (this.launched) {
-			await this.reportIncompatible(update);
-			await this.reconcile();
-			return;
-		}
-		try {
-			await this.launchFirst(update);
-		} catch (error) {
-			this.halt({
-				kind: "refused",
-				error: ErrorUtils.fromUnknown(error),
-			});
-		}
+	private async unrecord(servers: readonly StartedServer[]): Promise<void> {
+		await Promise.all(servers.map((server) => server.unrecord()));
+		await this.exits.queue(async () => undefined);
 	}
 
-	private async launchFirst(update: WatchUpdate): Promise<void> {
-		const incompatible = await this.problemsIn(update);
-		if (this.isHalted) return;
-		if (incompatible.length > 0) {
-			this.halt({
-				kind: "refused",
-				error: new DiagnosticsError(incompatible),
-			});
-			return;
-		}
-		if (this.writtenConfigs.size === 0) return;
-		const { target } = this.plan;
-		if (!this.writtenConfigs.has(target.config.id)) await this.reconcile();
-		else if (!isServed(target)) {
-			await this.endOrphanOf(target);
-			if (this.isHalted) return;
-			this.launch(target);
-		} else
-			this.declined.set(target.config.id, {
-				kind: "elsewhere",
-				address: target.address.toString(),
-			});
-		this.launched = true;
-	}
-
-	private problemsIn(update: WatchUpdate): Promise<Diagnostic[]> {
-		return this.compatibility.problemsIn(
-			this.plan.executable,
-			update.reports.flatMap(({ outcome }) =>
-				isWritten(outcome) ? [outcome.config.projectFile] : []
-			),
-			"serve"
-		);
-	}
-
-	private async reportIncompatible(update: WatchUpdate): Promise<void> {
-		const problems = await this.problemsIn(update);
-		if (problems.length > 0)
-			this._onDidError.fire(new DiagnosticsError(problems));
-	}
-
-	private async reconcile(): Promise<void> {
+	private wanted(): readonly ResolvedConfig[] {
 		const { selection } = this.plan;
 		const configs = selection.configs.filter(
 			({ file }) => !selection.nestedWriters.has(file)
 		);
 		const wanted = new Set(configs.map(({ id }) => id));
-		for (const [file, server] of this.servers) {
-			if (this.isHalted) return;
-			if (!wanted.has(file)) await this.retire(server, "removed");
-		}
 		for (const file of [...this.declined.keys()])
 			if (!wanted.has(file)) this.declined.delete(file);
-		for (const config of configs) {
-			if (this.isHalted) return;
-			await this.follow(config);
-		}
+		return configs;
 	}
 
-	private async follow(config: ResolvedConfig): Promise<void> {
+	private async admit(
+		config: ResolvedConfig,
+		running: StartedServer | undefined
+	): Promise<Admitted | undefined> {
+		const planned = this.plan.target;
+		if (!this.children.hasStarted && config.id === planned.config.id) {
+			return { target: planned, quiet: true };
+		}
 		const target = this.ports.targetOf(config);
 		const address = target.address.toString();
-		const started = this.servers.get(config.id);
-		if (started?.target.address.toString() === address) {
-			started.follow(target);
-			return;
-		}
-		if (!this.writtenConfigs.has(config.id)) return;
-
 		const prior = this.declined.get(config.id);
 		const declinedHere =
 			prior?.address === address ? prior.kind : undefined;
 		if (declinedHere && (await this.stillDeclined(target, declinedHere)))
-			return;
-		const samePort = started?.target.address.port === target.address.port;
+			return undefined;
+		const samePort = running?.target.address.port === target.address.port;
 		const checked =
-			started && samePort ? ok(target) : await this.ports.check(target);
-		if (this.isHalted) return;
-		await this.settle(target, started, declinedHere, checked);
-	}
-
-	private async settle(
-		target: ServeTarget,
-		started: StartedServer | undefined,
-		declinedHere: "refused" | "elsewhere" | undefined,
-		checked: Result<ServeTarget, Diagnostic>
-	): Promise<void> {
-		const file = target.config.id;
-		const address = target.address.toString();
+			running && samePort ? ok(target) : await this.ports.check(target);
+		if (this.isHalted) return undefined;
 		if (checked.isErr()) {
 			if (declinedHere !== "refused")
 				this._onDidChange.fire({
@@ -310,22 +236,29 @@ export class CoreServeSession
 					target,
 					diagnostic: checked.error,
 				});
-			this.declined.set(file, { kind: "refused", address });
-			return;
+			this.declined.set(config.id, { kind: "refused", address });
+			return undefined;
 		}
-		if (started) await this.retire(started, "moved");
-		if (isServed(checked.value)) {
-			if (declinedHere !== "elsewhere")
-				this._onDidChange.fire({
-					kind: "servedElsewhere",
-					target: checked.value,
-				});
-			this.declined.set(file, { kind: "elsewhere", address });
-			return;
+		return { target: checked.value, quiet: declinedHere === "elsewhere" };
+	}
+
+	private async start(
+		config: ResolvedConfig,
+		admitted: Admitted,
+		signal: AbortSignal
+	): Promise<StartedServer | undefined> {
+		const { target, quiet } = admitted;
+		const address = target.address.toString();
+		if (isServed(target)) {
+			if (!quiet)
+				this._onDidChange.fire({ kind: "servedElsewhere", target });
+			this.declined.set(config.id, { kind: "elsewhere", address });
+			return undefined;
 		}
-		this.declined.delete(file);
-		await this.endOrphanOf(checked.value);
-		this.launch(checked.value);
+		this.declined.delete(config.id);
+		await this.endOrphanOf(target);
+		if (signal.aborted) return undefined;
+		return this.launch(target);
 	}
 
 	private async stillDeclined(
@@ -341,14 +274,7 @@ export class CoreServeSession
 		reason: "removed" | "moved"
 	): Promise<void> {
 		const { target } = server;
-		this.servers.delete(target.config.id);
-		const retired = server.retire();
-		this.retirements.add(retired);
-		try {
-			await retired;
-		} finally {
-			this.retirements.delete(retired);
-		}
+		await server.retire();
 		this._onDidChange.fire({ kind: "retired", target, reason });
 	}
 
@@ -357,7 +283,7 @@ export class CoreServeSession
 		if (
 			!orphan?.pid ||
 			this.isHalted ||
-			!this.rojoRunner.isRunning(orphan.pid)
+			!this.processService.isRunning(orphan.pid)
 		)
 			return;
 		const state = await this.probe.probe(target.address);
@@ -365,7 +291,7 @@ export class CoreServeSession
 			return;
 		let error: string | undefined;
 		try {
-			await this.rojoRunner.terminateTree(orphan.pid);
+			await this.processService.terminateTree(orphan.pid);
 		} catch (thrown) {
 			error = ErrorUtils.fromUnknown(thrown).message;
 		}
@@ -420,8 +346,7 @@ export class CoreServeSession
 		return undefined;
 	}
 
-	private launch(target: ServeTarget): void {
-		if (this.isHalted) return;
+	private launch(target: ServeTarget): StartedServer {
 		const server: StartedServer = this.instantiationService.createInstance(
 			StartedServer,
 			target,
@@ -438,6 +363,11 @@ export class CoreServeSession
 			},
 			() => this.watch.refresh()
 		);
-		this.servers.set(target.config.id, server);
+		return server;
 	}
+}
+
+interface Admitted {
+	readonly target: ServeTarget;
+	readonly quiet: boolean;
 }

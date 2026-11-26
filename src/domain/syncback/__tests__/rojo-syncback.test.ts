@@ -2,7 +2,6 @@ import { UsageError } from "../../../base/errors.js";
 import { Result, ResultError, err, ok } from "../../../base/result.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
-import { ConfigSelection } from "../../config/config-service.js";
 import { selectionOf } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
@@ -23,8 +22,8 @@ class FakeRojo implements RojoCommandService {
 		) => Result<RojoCommandRun, Error>
 	) {}
 
-	choose(selection: ConfigSelection): ResolvedConfig {
-		return selection.configs[0];
+	run(): never {
+		throw new Error("not used");
 	}
 
 	projects(): never {
@@ -39,7 +38,7 @@ class FakeRojo implements RojoCommandService {
 		throw new Error("not used");
 	}
 
-	async run(
+	async runOn(
 		_selection: unknown,
 		{ project }: { project?: unknown }
 	): Promise<Result<RojoCommandRun, Error>> {

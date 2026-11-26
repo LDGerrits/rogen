@@ -2,6 +2,7 @@ import { jest } from "@jest/globals";
 import "../../build/build-command.js";
 import "../write-command.js";
 import "../../sourcemap/sourcemap-command.js";
+import "../../upload/upload-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { DeferredPromise } from "../../../base/async.js";
 import { ResultError } from "../../../base/result.js";
@@ -423,9 +424,11 @@ describe("watch", () => {
 
 			await memFs.writeFile("/repo/src/A.luau", "");
 			await settle();
+			rojo.printError("[WARN librojo::snapshot] careful\n");
 			rojo.print('{"name":"repo"}\n');
 			await settle();
 
+			expect(logService.texts("warn")).toEqual(["Rojo: careful"]);
 			expect(rojo.args).toEqual([
 				"sourcemap",
 				"default.project.json",
@@ -513,11 +516,36 @@ describe("watch", () => {
 			expect(logService.lines).toEqual([]);
 		});
 
-		it("should refuse to start when a config is invalid", async () => {
-			await write("/repo/default.rogen.json", { bogus: "base" });
+		it.each([[[]], [["default.rogen.json"]]])(
+			"should refuse to start when a config is invalid, named %j",
+			async (names: string[]) => {
+				await write("/repo/default.rogen.json", { bogus: "base" });
+				const watch = jest.spyOn(watcher, "watch");
+
+				const result = await startWatch(names);
+
+				expect(result.isErr()).toBe(true);
+				expect(watch).not.toHaveBeenCalled();
+			}
+		);
+
+		it("should refuse to start when one of the configs here is invalid", async () => {
+			await write("/repo/lobby.rogen.json", { bogus: "base" });
 			const watch = jest.spyOn(watcher, "watch");
 
 			const result = await startWatch();
+
+			expect((result as ResultError<Error>).error.message).toContain(
+				'"bogus" is not a Rojo or Rogen key'
+			);
+			expect(watch).not.toHaveBeenCalled();
+		});
+
+		it("should refuse to build when a config is invalid", async () => {
+			await write("/repo/default.rogen.json", { bogus: "base" });
+			const watch = jest.spyOn(watcher, "watch");
+
+			const result = await startWatch([], { output: "game.rbxl" });
 
 			expect(result.isErr()).toBe(true);
 			expect(watch).not.toHaveBeenCalled();
@@ -567,6 +595,36 @@ describe("watch", () => {
 			]);
 		});
 
+		it.each([
+			["build", { output: "game.rbxl" }],
+			["build", { output: "game.rbxl", watch: true }],
+			["sourcemap", { output: "map.json" }],
+			["upload", { asset_id: "1" }],
+		])(
+			"should warn which config %s %j took when a name is both a folder and a file",
+			async (command, options) => {
+				await writeProjects(["lobby"]);
+				await write("/repo/lobby.rogen.json", config());
+
+				void commandHarness({
+					fs: memFs,
+					log: logService,
+					config: configService,
+					lifecycle,
+					watcher,
+					processes,
+				}).run(command, { positionals: ["lobby"], options });
+				await settle();
+				if (!("watch" in options))
+					processes.spawned[0].exit({ code: 0, signal: null });
+				await settle();
+
+				expect(logService.texts("warn")).toEqual([
+					'"lobby" is a folder with a default config and also lobby.rogen.json: using the folder. To use the file, name it: lobby.rogen.json.',
+				]);
+			}
+		);
+
 		it("should refuse to watch a printed sourcemap with --json", async () => {
 			const watch = jest.spyOn(watcher, "watch");
 
@@ -588,16 +646,19 @@ describe("watch", () => {
 			expect(watch).not.toHaveBeenCalled();
 		});
 
-		it("should report a write that throws as an error line", async () => {
-			jest.spyOn(
-				CoreWriteService.prototype,
-				"rewrite"
-			).mockRejectedValueOnce(new Error("disk on fire"));
+		it.each([[{}], [{ output: "game.rbxl" }]])(
+			"should report a write that throws as an error line, with %j",
+			async (options: CommandLine["options"]) => {
+				jest.spyOn(
+					CoreWriteService.prototype,
+					"rewrite"
+				).mockRejectedValueOnce(new Error("disk on fire"));
 
-			await run();
+				await run([], options);
 
-			expect(logService.texts("error")).toEqual(["disk on fire"]);
-		});
+				expect(logService.texts("error")).toEqual(["disk on fire"]);
+			}
+		);
 
 		const restartUnchanged = async (
 			options: CommandLine["options"] = {}
@@ -762,15 +823,20 @@ describe("watch", () => {
 			expect(await placed()).toEqual([]);
 		});
 
-		it("should return an error and stop the watcher when watching fails", async () => {
-			jest.spyOn(watcher, "watch").mockRejectedValue(new Error("boom"));
-			const stop = jest.spyOn(watcher, "stop");
+		it.each([[{}], [{ output: "game.rbxl" }]])(
+			"should return an error and stop the watcher when watching fails, with %j",
+			async (options: CommandLine["options"]) => {
+				jest.spyOn(watcher, "watch").mockRejectedValue(
+					new Error("boom")
+				);
+				const stop = jest.spyOn(watcher, "stop");
 
-			const result = await startWatch();
+				const result = await startWatch([], options);
 
-			expect(result.isErr()).toBe(true);
-			expect(stop).toHaveBeenCalled();
-		});
+				expect(result.isErr()).toBe(true);
+				expect(stop).toHaveBeenCalled();
+			}
+		);
 
 		it("should leave no subscription behind when watching fails", async () => {
 			const watch = watcher.watch.bind(watcher);

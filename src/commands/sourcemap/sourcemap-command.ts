@@ -3,10 +3,12 @@ import path from "path";
 import { DisposableStore } from "../../base/disposable.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
+import { UsageError } from "../../base/errors.js";
+import { ProjectArgument } from "../../domain/config/config-service.js";
 import {
-	ProjectArgument,
-	singleProjectError,
-} from "../../domain/config/config-service.js";
+	RojoCommandService,
+	RojoRunRequest,
+} from "../../domain/runner/rojo-command-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
@@ -22,15 +24,19 @@ import { InstantiationService } from "../../platform/instantiation/instantiation
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { rojoEntry } from "../write/rojo-entry.js";
-import { RojoRun } from "../write/rojo-run.js";
-import { WriteWatch } from "../write/write-watch.js";
+import { OutcomeLog } from "../write/outcome-log.js";
+import { RojoTarget, rojoEntry } from "../write/rojo-entry.js";
+import {
+	PrintedWatchLog,
+	RojoWatchReport,
+	WatchJsonLog,
+	WatchLog,
+} from "../write/watch-log.js";
 import {
 	sourcemapDocument,
 	sourcemapDocumentShape,
 	sourcemapLineShape,
 } from "./sourcemap-document.js";
-import { SourcemapStep } from "./sourcemap-step.js";
 
 const OutputOption = {
 	name: "output",
@@ -108,60 +114,57 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof SourcemapOptions>
 		): Promise<Result<void, Error>> {
-			const tooMany = singleProjectError("sourcemap", line.positionals);
-			if (tooMany) return err(tooMany);
 			const { json, watch, output } = line.options;
 			const { cwd, tmpDir } = accessor.get(EnvironmentService);
 			const instantiationService = accessor.get(InstantiationService);
 			const lifecycleService = accessor.get(LifecycleService);
 			const logService = accessor.get(LogService);
 			const fileSystemService = accessor.get(FileSystemService);
-			const step = instantiationService.createInstance(
-				SourcemapStep,
-				{
-					output,
-					includeNonScripts: Boolean(
-						line.options["include-non-scripts"]
-					),
-					absolute: Boolean(line.options.absolute),
-				},
-				cwd,
-				!json
+			const rojoCommandService = accessor.get(RojoCommandService);
+			const prints = output === undefined && !json;
+			const target: RojoTarget = { command: "sourcemap", cwd, output };
+			const tmp = path.join(
+				tmpDir,
+				`rogen-sourcemap-${randomUUID()}.json`
 			);
+			const request: RojoRunRequest = {
+				refs: line.positionals,
+				command: "sourcemap",
+				flags: this.rojoFlags(line, prints && !watch ? tmp : undefined),
+				cwd,
+			};
+			if (prints) logService.sendOwnLinesToStderr();
 			if (watch) {
 				const store = new DisposableStore();
 				const shutdown = this.untilShutdown(lifecycleService, store);
 				try {
+					const log = json
+						? instantiationService.createInstance(WatchJsonLog, cwd)
+						: prints
+							? instantiationService.createInstance(
+									PrintedWatchLog,
+									cwd,
+									"watch"
+								)
+							: instantiationService.createInstance(
+									WatchLog,
+									cwd,
+									"sourcemap --watch"
+								);
 					return await instantiationService
-						.createInstance(
-							WriteWatch,
-							line.positionals,
-							Boolean(json),
-							step,
-							"build"
-						)
-						.run(store, shutdown);
+						.createInstance(RojoWatchReport, log, target)
+						.run(request, shutdown, store);
 				} finally {
 					store[Symbol.dispose]();
 				}
 			}
 
-			const rojoRun = instantiationService.createInstance(
-				RojoRun,
-				line.positionals,
-				step,
-				cwd
-			);
-			const tmp = path.join(
-				tmpDir,
-				`rogen-sourcemap-${randomUUID()}.json`
-			);
-			const done = await rojoRun.run(
-				step.prints ? ["--output", tmp] : []
-			);
+			const done = await rojoCommandService.run(request);
 			if (done.isErr()) return done;
-			const { plan, written, failure, ran, rojoFailure } = done.value;
-			const printed = plan !== undefined && step.prints;
+			for (const note of done.value.notes) logService.warn(note);
+			const { project, written, failure, ran, rojoFailure, changed } =
+				done.value;
+			const printed = project !== undefined && prints;
 			let unread: Error | undefined;
 			if (printed) {
 				if (!rojoFailure && !failure) {
@@ -184,21 +187,47 @@ registerCommand(
 					sourcemapDocument(
 						written.outcomes,
 						cwd,
-						rojoEntry(step.target, ran)
+						rojoEntry(target, ran),
+						changed
 					),
 					failure ?? rojoFailure
 				);
-			rojoRun.report(done.value, (messages) =>
-				messages.filter(
-					({ severity, stdout }) =>
-						(stdout !== undefined && !step.prints) ||
-						severity === "warning" ||
-						severity === "error"
-				)
-			);
+			instantiationService
+				.createInstance(OutcomeLog, cwd)
+				.rojoRun(done.value, target, {
+					prints,
+					shown: (messages) =>
+						messages.filter(
+							({ severity, stdout }) =>
+								(stdout !== undefined && !prints) ||
+								severity === "warning" ||
+								severity === "error"
+						),
+				});
 			const rojoProblem = rojoFailure ?? unread;
 			if (rojoProblem) return err(rojoProblem);
 			return failure ? this.reported(failure) : ok(undefined);
+		}
+
+		private rojoFlags(
+			line: CommandLine<typeof SourcemapOptions>,
+			printedTo: string | undefined
+		): Result<readonly string[], UsageError> {
+			const { output, json } = line.options;
+			if (output === undefined && json)
+				return err(
+					new UsageError(
+						"Without -o the sourcemap is printed, which leaves no room for --json: give -o <file>."
+					)
+				);
+			return ok([
+				...(line.options["include-non-scripts"]
+					? ["--include-non-scripts"]
+					: []),
+				...(line.options.absolute ? ["--absolute"] : []),
+				...(output === undefined ? [] : [`--output=${output}`]),
+				...(printedTo === undefined ? [] : ["--output", printedTo]),
+			]);
 		}
 	}
 );
