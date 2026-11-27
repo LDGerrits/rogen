@@ -4,10 +4,10 @@ import {
 	isAbout,
 	reaches,
 	warningDiagnostic,
-} from "../diagnostic.js";
+} from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticIndex } from "../diagnostic-index.js";
 
-describe("platform/diagnostics/diagnostic-index", () => {
+describe("domain/write/diagnostic-index", () => {
 	const diagnostics: Diagnostic[] = [
 		warningDiagnostic("a.folder", { resource: "/p/src/Shop" }, "folder"),
 		warningDiagnostic(

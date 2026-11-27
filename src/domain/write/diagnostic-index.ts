@@ -1,6 +1,10 @@
 import { toPosix } from "../../base/path.js";
 import { ignoresPathCase } from "../../base/platform.js";
-import { Diagnostic, filesOf, listsItsFiles } from "./diagnostic.js";
+import {
+	Diagnostic,
+	filesOf,
+	listsItsFiles,
+} from "../../platform/diagnostics/diagnostic.js";
 
 type Positions = Map<string, number[]>;
 
