@@ -33,10 +33,13 @@ export function unhoisted(name: string): {
 		: { name, hoisted: false };
 }
 
-export function readFolderName(written: string): {
+export interface FolderNameParts {
 	readonly name: string;
 	readonly invisible: boolean;
 	readonly hoisted: boolean;
+}
+
+export function readFolderName(written: string): FolderNameParts & {
 	readonly offset: number;
 } {
 	const outer = unwrapInvisibleFolder(written);
@@ -52,6 +55,19 @@ export function readFolderName(written: string): {
 		offset: (invisible ? 1 : 0) + (hoisted.hoisted ? 1 : 0),
 	};
 }
+
+export function folderNameOf({
+	name,
+	invisible,
+	hoisted,
+}: FolderNameParts): string {
+	const lead = hoisted ? `^${name}` : name;
+	return invisible ? `(${lead})` : lead;
+}
+
+export const ROUTE_MARK = "@";
+
+export const routeMarkOf = (route: string): string => `${ROUTE_MARK}${route}`;
 
 const TRAILING_AT = /@([A-Za-z][A-Za-z0-9]*)(?:\.[^@]*)?$/;
 
