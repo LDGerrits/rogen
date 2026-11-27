@@ -12,12 +12,13 @@ export interface EnvironmentService {
 	readonly isWindows: boolean;
 	readonly pid: number;
 
+	readVariable(name: string): string | undefined;
+
 	readonly logLevel: LogLevel;
 	readonly isCi: boolean;
 	readonly isInteractive: boolean;
 	readonly isPlain: boolean;
 	readonly hasColor: boolean;
-	readonly checksForUpdates: boolean;
 }
 
 export const EnvironmentService =

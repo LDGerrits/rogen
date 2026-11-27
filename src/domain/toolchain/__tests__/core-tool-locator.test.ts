@@ -15,7 +15,6 @@ const environment = (isWindows: boolean) =>
 		undefined,
 		undefined,
 		undefined,
-		false,
 		isWindows
 	);
 

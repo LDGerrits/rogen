@@ -1,6 +1,7 @@
 import { closestMatches } from "../../base/strings.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { RUN_SCRIPT_SUFFIXES } from "../rojo/rojo.js";
+import { routeMarkOf } from "./write.js";
 
 interface StrayAt {
 	readonly kind: "strayAt";
@@ -78,7 +79,7 @@ export class MisspellingFinder {
 						written: `.${text}${after}`,
 						spelling: `${after}.${rojo}`,
 					}
-				: { start, written: `.${text}`, spelling: `@${key}` };
+				: { start, written: `.${text}`, spelling: routeMarkOf(key) };
 		return { kind: "dotRoute", text, key, respelling };
 	}
 
@@ -96,7 +97,7 @@ export class MisspellingFinder {
 		const closest = closestMatches(text, this.keys.routeKeys);
 		const notLast = this.keys.resolve(text) !== undefined;
 		if (closest.length === 0 || (at === 0 && notLast)) return undefined;
-		const suggestion = `@${closest[0]}`;
+		const suggestion = routeMarkOf(closest[0]);
 		return {
 			kind: "strayAt",
 			text,

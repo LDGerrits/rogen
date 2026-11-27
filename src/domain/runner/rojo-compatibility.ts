@@ -1,12 +1,11 @@
 import path from "path";
-import { isObject } from "../../base/objects.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { childNodes } from "../rojo/rojo-project.js";
+import { RojoProject, rojoPathTarget } from "../rojo/rojo-project.js";
 import { RojoVersion } from "./rojo-version.js";
 import { ServerExecutable } from "./rojo-runner.js";
 
@@ -86,41 +85,31 @@ export class RojoCompatibility {
 		ignored: string[];
 		outsidePaths: string[];
 	}> {
-		let project: unknown;
+		let text: string;
 		try {
-			project = JSON.parse(await this.fileReader.readFile(file));
+			text = await this.fileReader.readFile(file);
 		} catch {
 			return NOTHING;
 		}
-		if (!isObject(project)) return NOTHING;
-		const { globIgnorePaths, syncRules, tree } = project;
-		const rules = Array.isArray(syncRules) ? syncRules : [];
-		const ignored = (
-			Array.isArray(globIgnorePaths) ? globIgnorePaths : []
-		).filter((glob): glob is string => typeof glob === "string");
+		const parsed = RojoProject.parse(text);
+		if (parsed.isErr()) return NOTHING;
+		const project = parsed.value;
+		const { syncRules, globIgnorePaths: ignored } = project;
+		const folder = path.dirname(file);
 		return {
-			syncRules: rules,
-			patterns: rules.length + ignored.length,
+			syncRules,
+			patterns: syncRules.length + ignored.length,
 			ignored,
-			outsidePaths: pathsOutside(path.dirname(file), tree),
+			outsidePaths: project
+				.mountedPaths()
+				.map(({ path: mounted }) => rojoPathTarget(mounted))
+				.filter((target) => leavesFolder(folder, target)),
 		};
 	}
 }
 
 const isBroken = (version: RojoVersion): boolean =>
 	!version.isBefore(BROKEN) && version.isBefore(FIXED);
-
-function pathsOutside(folder: string, node: unknown): string[] {
-	if (!isObject(node)) return [];
-	const { $path: target } = node;
-	const own = isObject(target) ? target.optional : target;
-	const outside =
-		typeof own === "string" && leavesFolder(folder, own) ? [own] : [];
-	return [
-		...outside,
-		...childNodes(node).flatMap(([, child]) => pathsOutside(folder, child)),
-	];
-}
 
 function leavesFolder(folder: string, target: string): boolean {
 	const relative = path.relative(folder, path.resolve(folder, target));
