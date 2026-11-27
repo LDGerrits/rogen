@@ -1,14 +1,8 @@
-import { randomUUID } from "crypto";
-import path from "path";
 import { DisposableStore } from "../../base/disposable.js";
-import { ErrorUtils } from "../../base/errors.js";
-import { Result, err, ok, tryWithAsync } from "../../base/result.js";
+import { Result, err, ok } from "../../base/result.js";
 import { UsageError } from "../../base/errors.js";
 import { ProjectArgument } from "../../domain/config/config-service.js";
-import {
-	RojoCommandService,
-	RojoRunRequest,
-} from "../../domain/runner/rojo-command-service.js";
+import { RojoRunRequest } from "../../domain/runner/rojo-command-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
@@ -17,26 +11,37 @@ import {
 	CommandLine,
 	JsonOption,
 	OptionDescriptor,
+	forwardedFlags,
 } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
-import { LogService } from "../../platform/log/log-service.js";
-import { OutcomeLog } from "../write/outcome-log.js";
-import { RojoTarget, rojoEntry } from "../write/rojo-entry.js";
+import { RojoTarget, rojoEntryShape } from "../write/rojo-entry.js";
+import {
+	RojoRunReport,
+	rojoRunDocumentShape,
+} from "../write/rojo-run-report.js";
+import { watchLineShapes } from "../write/write-document.js";
+import { OutputShape } from "../../platform/output/output-shape.js";
 import {
 	PrintedWatchLog,
 	RojoWatchReport,
 	WatchJsonLog,
 	WatchLog,
 } from "../write/watch-log.js";
-import {
-	sourcemapDocument,
-	sourcemapDocumentShape,
-	sourcemapLineShape,
-} from "./sourcemap-document.js";
+
+const S = OutputShape;
+
+const sourcemapEntryShape = rojoEntryShape("sourcemap");
+
+const sourcemapLineShape = S.union(
+	watchLineShapes.write,
+	S.object({ rojo: sourcemapEntryShape }),
+	watchLineShapes.notice,
+	watchLineShapes.error,
+	watchLineShapes.diagnostics
+);
 
 const OutputOption = {
 	name: "output",
@@ -88,7 +93,7 @@ registerCommand(
 					args: ProjectArgument,
 					options: SourcemapOptions,
 					output: {
-						document: sourcemapDocumentShape,
+						document: rojoRunDocumentShape(sourcemapEntryShape),
 						lines: sourcemapLineShape,
 					},
 					effects: ["writesFiles", "runsProcesses"],
@@ -117,23 +122,17 @@ registerCommand(
 			line: CommandLine<typeof SourcemapOptions>
 		): Promise<Result<void, Error>> {
 			const { json, watch, output } = line.options;
-			const { cwd, tmpDir } = accessor.get(EnvironmentService);
+			const cwd = accessor.get(EnvironmentService).cwd;
 			const instantiationService = accessor.get(InstantiationService);
 			const lifecycleService = accessor.get(LifecycleService);
-			const logService = accessor.get(LogService);
-			const fileSystemService = accessor.get(FileSystemService);
-			const rojoCommandService = accessor.get(RojoCommandService);
 			const prints = output === undefined && !json;
 			const target: RojoTarget = { command: "sourcemap", cwd, output };
-			const tmp = path.join(
-				tmpDir,
-				`rogen-sourcemap-${randomUUID()}.json`
-			);
 			const request: RojoRunRequest = {
 				refs: line.positionals,
 				command: "sourcemap",
-				flags: this.rojoFlags(line, prints && !watch ? tmp : undefined),
+				flags: this.rojoFlags(line),
 				cwd,
+				prints,
 			};
 			if (watch) {
 				const store = new DisposableStore();
@@ -160,59 +159,13 @@ registerCommand(
 				}
 			}
 
-			const done = await rojoCommandService.run(request);
-			if (done.isErr()) return done;
-			for (const note of done.value.notes) logService.warn(note);
-			const { project, written, failure, ran, rojoFailure, changed } =
-				done.value;
-			const printed = project !== undefined && prints;
-			let unread: Error | undefined;
-			if (printed) {
-				if (!rojoFailure && !failure) {
-					const text = await tryWithAsync(() =>
-						fileSystemService.readFile(tmp)
-					);
-					if (text.isOk()) logService.result(text.value.trimEnd());
-					else
-						unread = ErrorUtils.wrap(
-							"Failed to read the sourcemap Rojo wrote",
-							text.error
-						);
-				}
-				await fileSystemService.delete(tmp).catch(() => undefined);
-			}
-
-			if (json)
-				return this.printJson(
-					logService,
-					sourcemapDocument(
-						written.outcomes,
-						cwd,
-						rojoEntry(target, ran),
-						changed
-					),
-					failure ?? rojoFailure
-				);
-			instantiationService
-				.createInstance(OutcomeLog, cwd)
-				.rojoRun(done.value, target, {
-					prints,
-					shown: (messages) =>
-						messages.filter(
-							({ severity, stdout }) =>
-								(stdout !== undefined && !prints) ||
-								severity === "warning" ||
-								severity === "error"
-						),
-				});
-			const rojoProblem = rojoFailure ?? unread;
-			if (rojoProblem) return err(rojoProblem);
-			return failure ? this.reported(failure) : ok(undefined);
+			return instantiationService
+				.createInstance(RojoRunReport, target)
+				.run(request, Boolean(json));
 		}
 
 		private rojoFlags(
-			line: CommandLine<typeof SourcemapOptions>,
-			printedTo: string | undefined
+			line: CommandLine<typeof SourcemapOptions>
 		): Result<readonly string[], UsageError> {
 			const { output, json } = line.options;
 			if (output === undefined && json)
@@ -221,14 +174,13 @@ registerCommand(
 						"Without -o the sourcemap is printed, which leaves no room for --json: give -o <file>."
 					)
 				);
-			return ok([
-				...(line.options["include-non-scripts"]
-					? ["--include-non-scripts"]
-					: []),
-				...(line.options.absolute ? ["--absolute"] : []),
-				...(output === undefined ? [] : [`--output=${output}`]),
-				...(printedTo === undefined ? [] : ["--output", printedTo]),
-			]);
+			return ok(
+				forwardedFlags(line.options, [
+					IncludeNonScriptsOption,
+					AbsoluteOption,
+					OutputOption,
+				])
+			);
 		}
 	}
 );

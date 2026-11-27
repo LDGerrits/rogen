@@ -35,7 +35,8 @@ export class WatchingRojo extends AbstractDisposable {
 	constructor(
 		private readonly project: ResolvedConfig,
 		child: SupervisedRojoProcess,
-		private readonly failed: (said: readonly string[]) => DiagnosticsError
+		private readonly failed: (said: readonly string[]) => DiagnosticsError,
+		private readonly prints = false
 	) {
 		super();
 		this.child = this._register(child);
@@ -79,11 +80,14 @@ export class WatchingRojo extends AbstractDisposable {
 	}
 
 	private finish(failure?: DiagnosticsError): void {
-		const messages = this.messages;
+		const { messages, printed } = this.prints
+			? RojoServer.printedBy(this.messages)
+			: { messages: this.messages, printed: undefined };
 		this.messages = [];
 		this._onDidRun.fire({
 			project: this.project,
 			messages,
+			...(printed !== undefined && { printed }),
 			...(failure && { failure }),
 		});
 	}
