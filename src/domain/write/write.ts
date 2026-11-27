@@ -361,6 +361,10 @@ export class WriteRun {
 		return this.outcomes.some(isFailed);
 	}
 
+	get changed(): boolean {
+		return this.outcomes.some(didWrite);
+	}
+
 	get errors(): Diagnostic[] {
 		return this.outcomes.flatMap(({ errors }) => errors);
 	}

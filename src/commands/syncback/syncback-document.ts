@@ -118,14 +118,12 @@ export function syncbackEntry(
 export function syncbackDocument(
 	outcomes: readonly ConfigOutcome[],
 	cwd: string,
-	syncback: SyncbackEntry
+	syncback: SyncbackEntry,
+	changed: boolean
 ) {
-	const written = configsDocument(outcomes, cwd);
 	return {
-		changed:
-			written.changed ||
-			(syncback.outcome === "written" && syncback.changes.length > 0),
-		configs: written.configs,
+		changed,
+		configs: configsDocument(outcomes, cwd).configs,
 		syncback,
 	};
 }
