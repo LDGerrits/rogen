@@ -170,11 +170,21 @@ export class WrittenTree {
 		);
 		const fresh = ProjectText.node(added).entries;
 		const heads = (key: string) => NODE_KEYS_BEFORE.includes(key);
-		return new Ordered([
-			...fresh.filter(([key]) => heads(key)),
-			...entries,
-			...fresh.filter(([key]) => !heads(key)),
-		]);
+		const merged: (readonly [string, unknown])[] = [...entries];
+		for (const entry of fresh.filter(([key]) => !heads(key))) {
+			const after = merged.findIndex(
+				([key]) => WrittenTree.rank(key) > WrittenTree.rank(entry[0])
+			);
+			merged.splice(after < 0 ? merged.length : after, 0, entry);
+		}
+		return new Ordered([...fresh.filter(([key]) => heads(key)), ...merged]);
+	}
+
+	private static rank(key: string): number {
+		if (NODE_KEYS_BEFORE.includes(key)) return 0;
+		const after = NODE_KEYS_AFTER.indexOf(key);
+		if (after >= 0) return 2 + after;
+		return key.startsWith("$") ? NODE_KEYS_AFTER.length + 2 : 1;
 	}
 
 	private raw({ start, end }: JsoncSpan): Raw {

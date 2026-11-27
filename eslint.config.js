@@ -69,6 +69,7 @@ const modules = {
 			"refresh-agent-rules",
 			"report-rojo",
 			"rojo-entry",
+			"rojo-run-report",
 			"watch-log",
 			"write-document",
 		],

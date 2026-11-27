@@ -513,7 +513,7 @@ describe("CoreRojoCommandService", () => {
 				expect(done.project?.file).toBe("/repo/default.rogen.json");
 				expect(done.home).toBe("/repo");
 				expect(done.changed).toBe(true);
-				expect(done.rojoFailure).toBeUndefined();
+				expect(done.failure).toBeUndefined();
 			});
 
 			it("should refuse a second project before it reads any config", async () => {
@@ -543,6 +543,57 @@ describe("CoreRojoCommandService", () => {
 				expect(await fs.exists("/repo/default.project.json")).toBe(
 					false
 				);
+			});
+
+			it("should hand back what Rojo prints apart from its messages when the request prints", async () => {
+				const running = service.run(
+					request({
+						command: "sourcemap",
+						flags: ok([]),
+						prints: true,
+					})
+				);
+				await new Promise((resolve) => setTimeout(resolve, 20));
+				await finish(['{"name":"repo"}', "ERROR: odd file"], 0);
+
+				const done = (await running).unwrap();
+				const ran = done.ran?.unwrap();
+
+				expect(ran?.printed).toBe('{"name":"repo"}');
+				expect(ran?.messages.some(({ stdout }) => stdout)).toBe(false);
+			});
+
+			it("should keep what Rojo prints in the messages unless the request prints", async () => {
+				const running = service.run(
+					request({ command: "sourcemap", flags: ok([]) })
+				);
+				await new Promise((resolve) => setTimeout(resolve, 20));
+				await finish(['{"name":"repo"}'], 0);
+
+				const ran = (await running).unwrap().ran?.unwrap();
+
+				expect(ran?.printed).toBeUndefined();
+				expect(ran?.messages).toHaveLength(1);
+			});
+
+			it("should name the Rojo run as where a failure came from", async () => {
+				const running = service.run(request());
+				await new Promise((resolve) => setTimeout(resolve, 20));
+				await finish(["ERROR: boom"], 1);
+
+				const { failure } = (await running).unwrap();
+
+				expect(failure?.at).toBe("rojo");
+				expect(failure?.error).toBeInstanceOf(DiagnosticsError);
+			});
+
+			it("should name the write as where a failure came from, and run no Rojo", async () => {
+				await config({ sourcePaths: 3 });
+
+				const { failure } = (await service.run(request())).unwrap();
+
+				expect(failure?.at).toBe("write");
+				expect(processes.spawned).toEqual([]);
 			});
 
 			it("should run no Rojo when the project has errors", async () => {

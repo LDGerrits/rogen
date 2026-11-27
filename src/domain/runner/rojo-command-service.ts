@@ -18,7 +18,13 @@ export interface RojoRunRequest {
 	readonly command: RojoVerb;
 	readonly flags: Result<readonly string[], UsageError>;
 	readonly cwd: string;
+	readonly prints?: boolean;
 	readonly signal?: AbortSignal;
+}
+
+export interface RojoRunFailure {
+	readonly at: "write" | "rojo";
+	readonly error: Error;
 }
 
 export interface RojoRunOutcome {
@@ -26,9 +32,8 @@ export interface RojoRunOutcome {
 	readonly notes: readonly string[];
 	readonly project: ResolvedConfig | undefined;
 	readonly written: WriteRun;
-	readonly failure: Error | undefined;
 	readonly ran: Result<RojoCommandRun, Error> | undefined;
-	readonly rojoFailure: Error | undefined;
+	readonly failure: RojoRunFailure | undefined;
 	readonly changed: boolean;
 }
 
@@ -55,6 +60,7 @@ export interface RojoCommandRequest {
 	readonly project: ResolvedConfig;
 	readonly projectFile?: string;
 	readonly since?: string;
+	readonly prints?: boolean;
 	readonly signal?: AbortSignal;
 }
 
@@ -71,6 +77,7 @@ export interface RojoBareRun {
 
 export interface RojoCommandRun extends RojoBareRun {
 	readonly project: ResolvedConfig;
+	readonly printed?: string;
 	readonly failure?: DiagnosticsError | UsageError;
 }
 

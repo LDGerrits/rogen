@@ -14,6 +14,9 @@ import {
 	UnloadedConfig,
 	WrittenConfig,
 	routeWordsOf,
+	folderNameOf,
+	readFolderName,
+	routeMarkOf,
 	unhoisted,
 	unwrapInvisibleFolder,
 } from "../write.js";
@@ -294,5 +297,60 @@ describe("unhoisted", () => {
 			name: "Animate",
 			hoisted: true,
 		});
+	});
+});
+
+describe("folderNameOf", () => {
+	const NAMES = [
+		"Animate",
+		"Net@client",
+		"Net.server",
+		".server",
+		"@client",
+		"Main.client.luau",
+		"init.server.luau",
+		"^",
+		"a b",
+	];
+	const parts = NAMES.flatMap((name) =>
+		[false, true].flatMap((hoisted) =>
+			[false, true].map((invisible) => ({ name, hoisted, invisible }))
+		)
+	);
+
+	it.each(parts)("should read back what it writes: %j", (given) => {
+		const { offset, ...read } = readFolderName(folderNameOf(given));
+		expect(read).toEqual(given);
+		expect(offset).toBe(
+			(given.invisible ? 1 : 0) + (given.hoisted ? 1 : 0)
+		);
+	});
+
+	it.each([
+		"Animate",
+		"^Animate",
+		"(Animate)",
+		"(^Animate)",
+		"^Net@client",
+		"(^.server)",
+		"^Main.client.luau",
+		"^",
+		"(^)",
+		"@client",
+	])("should write what it reads: %s", (written) => {
+		const { offset: _offset, ...read } = readFolderName(written);
+		expect(folderNameOf(read)).toBe(written);
+	});
+
+	it("should write the hoist inside the parentheses", () => {
+		expect(
+			folderNameOf({ name: "Animate", hoisted: true, invisible: true })
+		).toBe("(^Animate)");
+	});
+});
+
+describe("routeMarkOf", () => {
+	it("should put an at sign before the route", () => {
+		expect(routeMarkOf("client")).toBe("@client");
 	});
 });

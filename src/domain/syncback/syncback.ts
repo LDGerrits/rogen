@@ -67,6 +67,7 @@ export type SyncbackOutcome =
 export interface SyncbackRun {
 	readonly write: WriteRun;
 	readonly outcome: SyncbackOutcome;
+	readonly changed: boolean;
 }
 
 const PLACE_FILE = /\.rbxlx?$|\.rbxmx?$/i;

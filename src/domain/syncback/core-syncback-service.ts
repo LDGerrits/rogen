@@ -7,7 +7,6 @@ import {
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { WriteService } from "../write/write-service.js";
-import { didWrite } from "../write/write.js";
 import {
 	ConfigSelection,
 	ConfigService,
@@ -123,20 +122,27 @@ export class CoreSyncbackService implements SyncbackService {
 				: await this.writeService.write(selection);
 		const valid = selection.requireValid();
 		if (write.failure() || valid.isErr())
-			return { write, outcome: { kind: "notRun" } };
+			return {
+				write,
+				outcome: { kind: "notRun" },
+				changed: write.changed,
+			};
 		const [project] = valid.value;
 		const outcome = await this.outcomeOf(
 			{ selection, project, input, cwd },
 			mode
 		);
-		if (outcome.kind !== "written") return { write, outcome };
+		if (outcome.kind !== "written")
+			return { write, outcome, changed: write.changed };
 		const afterSyncback = await this.writeService.write(selection);
+		const final =
+			afterSyncback.failure() || afterSyncback.changed
+				? afterSyncback
+				: write;
 		return {
-			write:
-				afterSyncback.failure() || afterSyncback.outcomes.some(didWrite)
-					? afterSyncback
-					: write,
+			write: final,
 			outcome,
+			changed: final.changed || outcome.plan.changes.length > 0,
 		};
 	}
 

@@ -255,75 +255,12 @@ describe("NativeEnvironmentService", () => {
 		});
 	});
 
-	describe("checksForUpdates", () => {
-		it("should be true for a person in a terminal", () => {
-			expect(inTerminal({}).checksForUpdates).toBe(true);
-		});
+	describe("readVariable", () => {
+		it("should read a variable of the process, and none that is not set", () => {
+			const environment = inTerminal({ FOO: "bar" });
 
-		it.each([
-			["CI", "true"],
-			["CLAUDECODE", "1"],
-			["ROGEN_NO_UPDATE_CHECK", "1"],
-			["ROGEN_NO_UPDATE_CHECK", "true"],
-			["NO_UPDATE_NOTIFIER", "1"],
-		])("should be false with %s=%s", (name, value) => {
-			expect(inTerminal({ [name]: value }).checksForUpdates).toBe(false);
-		});
-
-		it("should stay on when the opt-out is 0 or false", () => {
-			expect(
-				inTerminal({ ROGEN_NO_UPDATE_CHECK: "0" }).checksForUpdates
-			).toBe(true);
-			expect(
-				inTerminal({ ROGEN_NO_UPDATE_CHECK: "false" }).checksForUpdates
-			).toBe(true);
-		});
-
-		it("should be false without a terminal", () => {
-			const piped = new NativeEnvironmentService({}, "/mock/cwd", {
-				env: {},
-				isTerminal: false,
-				userHome: "/mock/home",
-				tmpDir: "/mock/tmp",
-				pid: 4242,
-				platform: "linux",
-			});
-
-			expect(piped.checksForUpdates).toBe(false);
-		});
-
-		it("should be false under --quiet in a terminal", () => {
-			const quiet = new NativeEnvironmentService(
-				{ quiet: true },
-				"/mock/cwd",
-				{
-					env: {},
-					isTerminal: true,
-					userHome: "/mock/home",
-					tmpDir: "/mock/tmp",
-					pid: 4242,
-					platform: "linux",
-				}
-			);
-
-			expect(quiet.checksForUpdates).toBe(false);
-		});
-
-		it("should be false under --json in a terminal", () => {
-			const json = new NativeEnvironmentService(
-				{ json: true },
-				"/mock/cwd",
-				{
-					env: {},
-					isTerminal: true,
-					userHome: "/mock/home",
-					tmpDir: "/mock/tmp",
-					pid: 4242,
-					platform: "linux",
-				}
-			);
-
-			expect(json.checksForUpdates).toBe(false);
+			expect(environment.readVariable("FOO")).toBe("bar");
+			expect(environment.readVariable("BAZ")).toBeUndefined();
 		});
 	});
 

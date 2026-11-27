@@ -614,6 +614,7 @@ describe("syncback command", () => {
 		const project = validEntry().config;
 		jest.spyOn(CoreSyncbackService.prototype, "run").mockResolvedValueOnce({
 			write: new WriteRun([]),
+			changed: false,
 			outcome: {
 				kind: "planned",
 				plan: {

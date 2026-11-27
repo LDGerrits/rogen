@@ -205,6 +205,26 @@ describe("RojoCompatibility", () => {
 		expect(await problems("7.7.0")).toEqual([]);
 	});
 
+	it("should read a project file with a comment and a trailing comma, as Rojo does", async () => {
+		await fs.writeFile(
+			"/repo/default.project.json",
+			`{
+	// shared code lives beside the repo
+	"name": "game",
+	"globIgnorePaths": ["**/*.draft.luau",],
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": { "Shared": { "$path": "../shared/src" } },
+	},
+}`
+		);
+
+		const [problem] = await problems("7.7.0");
+
+		expect(problem.code).toBe("rojo.windowsRules");
+		expect(problem.message).toContain('"../shared/src"');
+	});
+
 	it("should skip a file that isn't there, isn't JSON or isn't an object", async () => {
 		await fs.writeFile("/repo/other.project.json", "{");
 		await fs.writeFile("/repo/list.project.json", "[]");

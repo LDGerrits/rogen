@@ -10,6 +10,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import {
 	CommandLine,
 	JsonOption,
+	forwardedFlags,
 	OptionDescriptor,
 } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -65,17 +66,6 @@ type ServeLine = CommandLine<typeof ServeOptions>;
 
 const ServerFlags = [AddressOption, PortOption, AllowedHostsOption] as const;
 
-function serverArgsOf(line: ServeLine): string[] {
-	const given: string[] = [];
-	for (const { name } of ServerFlags) {
-		const value = line.options[name];
-		if (value === undefined) continue;
-		for (const one of typeof value === "string" ? [value] : value)
-			given.push(`--${name}=${one}`);
-	}
-	return given;
-}
-
 registerCommand(
 	class ServeCommand extends AbstractCommand<typeof ServeOptions> {
 		constructor() {
@@ -124,7 +114,7 @@ registerCommand(
 				const plan = await serveService.prepare({
 					signal: shutdown,
 					refs: line.positionals,
-					serverArgs: serverArgsOf(line),
+					serverArgs: forwardedFlags(line.options, ServerFlags),
 				});
 				if (shutdown.aborted) return ok(undefined);
 				if (plan.isErr()) return plan;

@@ -438,6 +438,7 @@ describe("watch", () => {
 			await memFs.writeFile("/repo/src/A.luau", "");
 			await settle();
 			rojo.printError("[WARN librojo::snapshot] careful\n");
+			rojo.printError("[INFO rojo] Created sourcemap\n");
 			rojo.print('{"name":"repo"}\n');
 			await settle();
 

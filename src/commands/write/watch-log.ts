@@ -304,9 +304,8 @@ export class PrintedWatchLog extends WatchLog {
 		ran: Result<RojoCommandRun, Error>,
 		target: RojoTarget
 	): void {
-		if (ran.isOk())
-			for (const { stdout } of ran.value.messages)
-				if (stdout !== undefined) this.logService.result(stdout);
+		if (ran.isOk() && ran.value.printed !== undefined)
+			this.logService.result(ran.value.printed);
 		if (ran.isErr() || ran.value.failure) return super.rojo(ran, target);
 		reportRojo(
 			this.logService,
