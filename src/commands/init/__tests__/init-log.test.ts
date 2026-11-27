@@ -258,6 +258,27 @@ describe("InitLog", () => {
 		]);
 	});
 
+	it("should name each config that failed to write", () => {
+		const { logService, log } = textLog();
+		const failed = (file: string) =>
+			new FailedConfig(mockConfig({ file }), [
+				errorDiagnostic("E", { resource: file }, "Broken."),
+			]);
+
+		log.done(
+			planOf(),
+			new WriteRun([
+				failed("/repo/lobby.rogen.json"),
+				failed("/repo/match.rogen.json"),
+			]),
+			false
+		);
+
+		expect(logService.texts("outro")).toEqual([
+			"Wrote 0 files, but writing the project file failed. Fix lobby.rogen.json and match.rogen.json and run 'rogen write'.",
+		]);
+	});
+
 	it("should list next steps without a run step or a Studio step when there is nothing to run", () => {
 		const { logService, log } = textLog();
 

@@ -47,10 +47,13 @@ const starterOf = (asked: Awaited<ReturnType<typeof run>>["asked"]) => {
 const decidedFlags = (questions: InitQuestions) =>
 	questions.decided.map(({ flag }) => flag);
 
-const refused = async (promise: Promise<unknown>) => {
-	const error = await promise.catch((caught: unknown) => caught);
-	expect(error).toBeInstanceOf(UsageError);
-	return error as UsageError;
+const refused = async (
+	promise: Promise<{ asked: { isErr(): boolean; error?: unknown } }>
+) => {
+	const { asked } = await promise;
+	expect(asked.isErr()).toBe(true);
+	expect(asked.error).toBeInstanceOf(UsageError);
+	return asked.error as UsageError;
 };
 
 describe("init choices given as flags", () => {

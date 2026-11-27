@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- When `rogen init` can't write a project file, it names the config that failed, such as `lobby.rogen.json` with `--places`, and not always `default.rogen.json`.
 - `rogen syncback` no longer lists a folder as removed when it writes a file into it again, such as `src/Shop` when you move a feature to another side in Studio. The folder was never removed, and Rojo's own syncback doesn't list such a folder either.
 - When `rogen syncback` can't place a plugin script or a script in a language your sync rules read, it now says to make it a ModuleScript or move it where that script type runs, as it says for server and client scripts.
 - In GitHub Actions, every diagnostic Rogen prints is also a workflow annotation. `rogen where`'s errors elsewhere, `rogen syncback`'s warnings, `rogen serve`'s failures, `rogen init`'s warnings and a failed write under `--watch` used to have none. `--json` still writes no annotations.
