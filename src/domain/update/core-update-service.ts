@@ -2,43 +2,87 @@ import path from "path";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
 	PACKAGE_NAME,
+	PRODUCT_NAME,
 	ProductService,
 	REPOSITORY,
 } from "../../platform/product/product-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { ReleaseService } from "../../platform/release/release-service.js";
+import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
+import { ReleaseFeed } from "./release-feed.js";
+import { UpdateCache } from "./update-cache.js";
 import { UpdateService } from "./update-service.js";
+import { UpdateSwitch } from "./update-switch.js";
 import { Version } from "./version.js";
 
 export class CoreUpdateService implements UpdateService {
 	declare readonly _serviceBrand: undefined;
 
+	private readonly cache: UpdateCache;
+	private readonly feed: ReleaseFeed;
+	private readonly updateSwitch: UpdateSwitch;
+	private refreshing: Promise<void> | undefined;
+
 	constructor(
 		private readonly installDir: string,
-		@ReleaseService private readonly releaseService: ReleaseService,
+		now: () => number = Date.now,
+		@InstantiationService instantiationService: InstantiationService,
 		@ProductService private readonly productService: ProductService,
 		@EnvironmentService
 		private readonly environmentService: EnvironmentService,
 		@ToolchainService private readonly toolchainService: ToolchainService,
 		@FileSystemService private readonly fileReader: FileSystemService
-	) {}
+	) {
+		this.cache = instantiationService.createInstance(
+			UpdateCache,
+			path.join(
+				environmentService.cacheDir,
+				PRODUCT_NAME,
+				"update-check.json"
+			),
+			now
+		);
+		this.feed = instantiationService.createInstance(ReleaseFeed);
+		this.updateSwitch = instantiationService.createInstance(UpdateSwitch);
+	}
+
+	/**
+	 * Settles when the background check that `check` may have started has
+	 * written its result. `check` doesn't wait for it: a check that is due
+	 * answers from the cache beside it.
+	 */
+	whenRefreshed(): Promise<void> {
+		return this.refreshing ?? Promise.resolve();
+	}
 
 	async check(): Promise<string | undefined> {
-		if (!this.environmentService.checksForUpdates) return undefined;
+		if (!this.updateSwitch.isOn) return undefined;
 		const [installed, published] = await Promise.all([
 			this.productService.readVersion(),
-			this.releaseService.published(),
+			this.published(),
 		]);
 		const current = Version.parse(installed);
 		if (!current) return undefined;
 
 		const newest = this.newestVisibleTo(current, published);
 		if (!newest || newest.compareTo(current) <= 0) return undefined;
-		if (!(await this.releaseService.announce(newest.toString())))
-			return undefined;
+		if (!(await this.cache.announce(newest.toString()))) return undefined;
 
 		return `Rogen ${newest} is out (you have ${current}). ${await this.fix(newest)}`;
+	}
+
+	private async published(): Promise<readonly string[]> {
+		this.refreshing ??= this.refreshIfDue();
+		return this.cache.versions();
+	}
+
+	private async refreshIfDue(): Promise<void> {
+		try {
+			if (await this.cache.isDue())
+				await this.cache.recordCheck(await this.feed.fetch());
+		} finally {
+			this.refreshing = undefined;
+		}
 	}
 
 	private newestVisibleTo(
