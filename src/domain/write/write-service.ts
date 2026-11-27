@@ -9,7 +9,6 @@ import {
 	isError,
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
-import { DiagnosticIndex } from "./diagnostic-index.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 import { FileChange } from "../../platform/fs/file-changes.js";
@@ -31,6 +30,7 @@ import {
 	LoadedConfig,
 	RouteMatch,
 	FolderNode,
+	DiagnosticIndex,
 } from "./write.js";
 
 interface Located {

@@ -5,7 +5,7 @@ import {
 	reaches,
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
-import { DiagnosticIndex } from "../diagnostic-index.js";
+import { DiagnosticIndex } from "../write.js";
 
 describe("domain/write/diagnostic-index", () => {
 	const diagnostics: Diagnostic[] = [
