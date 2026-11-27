@@ -92,10 +92,10 @@ export class NativeEnvironmentService implements EnvironmentService {
 	readonly userHome: string;
 	readonly tmpDir: string;
 	readonly cacheDir: string;
-	readonly checksForUpdates: boolean;
 	readonly annotationsIn?: string;
 	readonly pid: number;
 	readonly isWindows: boolean;
+	private readonly variables: Variables;
 
 	constructor(
 		{ json, verbose = [], quiet, color }: OutputFlags,
@@ -109,6 +109,7 @@ export class NativeEnvironmentService implements EnvironmentService {
 			platform,
 		}: ProcessContext = nativeProcess()
 	) {
+		this.variables = env;
 		this.userHome = userHome;
 		this.tmpDir = tmpDir;
 		this.cacheDir = userCacheDir(env, platform, userHome);
@@ -134,11 +135,9 @@ export class NativeEnvironmentService implements EnvironmentService {
 				(env.FORCE_COLOR !== undefined
 					? FORCED_COLOR.has(env.FORCE_COLOR.toLowerCase())
 					: !this.isPlain && !isSet(env.NO_COLOR)));
-		this.checksForUpdates =
-			this.isInteractive &&
-			json !== true &&
-			!quiet &&
-			!isOn(env.ROGEN_NO_UPDATE_CHECK) &&
-			!isSet(env.NO_UPDATE_NOTIFIER);
+	}
+
+	readVariable(name: string): string | undefined {
+		return this.variables[name];
 	}
 }

@@ -166,6 +166,38 @@ describe.each(fixtures)("%s: contract", (name, create) => {
 			).toBe("return 1\r\n");
 		});
 
+		it("should keep the bytes of a byte order mark and of non-UTF-8 data", async () => {
+			const bytes = new Uint8Array([0xef, 0xbb, 0xbf, 0x41, 0xff, 0x00]);
+
+			await fixture.fileSystem.writeFileBytes(at("a.bin"), bytes);
+
+			expect(
+				Array.from(await fixture.fileSystem.readFileBytes(at("a.bin")))
+			).toEqual(Array.from(bytes));
+		});
+
+		it("should keep the bytes of a copied file that is not UTF-8", async () => {
+			const bytes = new Uint8Array([0xff, 0xfe, 0x00, 0x80]);
+			await fixture.fileSystem.writeFileBytes(at("a.bin"), bytes);
+
+			await fixture.fileSystem.copyFile(at("a.bin"), at("b.bin"));
+
+			expect(
+				Array.from(await fixture.fileSystem.readFileBytes(at("b.bin")))
+			).toEqual(Array.from(bytes));
+		});
+
+		it("should read a byte order mark as part of the text", async () => {
+			await fixture.fileSystem.writeFileBytes(
+				at("a.txt"),
+				new Uint8Array([0xef, 0xbb, 0xbf, 0x41])
+			);
+
+			expect(await fixture.fileSystem.readFile(at("a.txt"))).toBe(
+				"\uFEFFA"
+			);
+		});
+
 		it("should copy a file into a folder it creates, leaving the original", async () => {
 			await fixture.fileSystem.writeFile(at("a.luau"), "return 1");
 

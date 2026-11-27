@@ -20,7 +20,7 @@ import {
 import {
 	skippedJson,
 	skippedPathShape,
-} from "../../platform/diagnostics/skipped-path.js";
+} from "../../domain/write/write-service.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 
 const CheckOptions = [JsonOption] as const;

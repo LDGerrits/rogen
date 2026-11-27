@@ -6,7 +6,6 @@ export class MockEnvironmentService implements EnvironmentService {
 	declare readonly _serviceBrand: undefined;
 
 	readonly cwd: string;
-	readonly isPlain: boolean;
 	readonly hasColor: boolean;
 
 	constructor(
@@ -18,12 +17,16 @@ export class MockEnvironmentService implements EnvironmentService {
 		public readonly pid: number = 4242,
 		public readonly annotationsIn?: string,
 		public readonly cacheDir: string = "/mock/cache",
-		public readonly checksForUpdates: boolean = false,
 		public readonly isWindows: boolean = false,
-		public readonly isCi: boolean = false
+		public readonly isCi: boolean = false,
+		private readonly variables: Readonly<Record<string, string>> = {},
+		public readonly isPlain: boolean = !isInteractive
 	) {
 		this.cwd = path.isAbsolute(cwd) ? path.resolve(cwd) : cwd;
-		this.isPlain = !isInteractive;
 		this.hasColor = isInteractive;
+	}
+
+	readVariable(name: string): string | undefined {
+		return this.variables[name];
 	}
 }
