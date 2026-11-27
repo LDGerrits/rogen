@@ -10,6 +10,7 @@ import {
 import { NameReadings } from "./name-readings.js";
 import { RouteGovernance } from "./route-governance.js";
 import { RoutedFile } from "./router.js";
+import { routeMarkOf } from "./write.js";
 
 const byResource = (a: Diagnostic, b: Diagnostic) =>
 	compareByCodePoint(a.resource, b.resource);
@@ -95,7 +96,7 @@ export function mistypedRouteErrors(
 				resource,
 				written,
 				key,
-				`"${written}" names no route; did you mean "@${key}"?`,
+				`"${written}" names no route; did you mean "${routeMarkOf(key)}"?`,
 				spelledAs(resource, key)
 			);
 		});
@@ -158,7 +159,9 @@ export function ignoredAtErrors(
 		.map(([resource, { keys, route, kind }]) => {
 			const many = keys.size > 1;
 			const quoted = joinedWithAnd(
-				[...keys].sort(compareByCodePoint).map((key) => `"@${key}"`)
+				[...keys]
+					.sort(compareByCodePoint)
+					.map((key) => `"${routeMarkOf(key)}"`)
 			);
 			return errorDiagnostic(
 				"route.ignoredAt",
@@ -171,9 +174,9 @@ export function ignoredAtErrors(
 function keepAsChild(fallback: FallbackRoute): string {
 	const add =
 		"key" in fallback
-			? `a marker file @${fallback.key}`
+			? `a marker file ${routeMarkOf(fallback.key)}`
 			: fallback.freeKey !== undefined
-				? `the route "${fallback.freeKey}": "${fallback.target}" and a marker file @${fallback.freeKey}`
+				? `the route "${fallback.freeKey}": "${fallback.target}" and a marker file ${routeMarkOf(fallback.freeKey)}`
 				: `a route key for "${fallback.target}" and a marker file of @ and that key`;
 	return `, or, if the script beside it requires it as a child, add ${add} in it to keep it there`;
 }
