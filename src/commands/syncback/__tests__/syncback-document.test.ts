@@ -1,37 +1,18 @@
 import path from "path";
 import { mockConfig } from "../../../domain/config/__tests__/mock-config-service.js";
-import {
-	CompiledChange,
-	SyncbackPlan,
-} from "../../../domain/syncback/syncback.js";
+import { SyncbackPlan } from "../../../domain/syncback/syncback.js";
 import { warningDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
-import { compiledDiagnostics, syncbackEntry } from "../syncback-document.js";
+import { syncbackEntry } from "../syncback-document.js";
 
 const cwd = path.resolve("/repo");
 const file = path.join(cwd, "default.rogen.json");
 
-const planOf = (compiled: CompiledChange[] = []): SyncbackPlan => ({
+const planOf = (): SyncbackPlan => ({
 	project: mockConfig({ file, compiledPath: path.join(cwd, "out") }),
 	changes: [{ kind: "write", file: path.join(cwd, "src/A.luau") }],
 	listed: [],
 	unplaced: [],
-	compiled,
-});
-
-describe("compiledDiagnostics", () => {
-	it("should say how to make each kind of change to compiled code", () => {
-		expect(
-			compiledDiagnostics(
-				planOf([
-					{ instance: "ReplicatedStorage.A", kind: "changed" },
-					{ instance: "ReplicatedStorage.B", kind: "added" },
-				])
-			).map(({ message }) => message)
-		).toEqual([
-			"ReplicatedStorage.A changed in the place, but it is compiled into out, so syncback left it out. Make the change in the source files.",
-			"ReplicatedStorage.B is new in the place, but the project compiles into out, so syncback left it out. Add it to the source files.",
-		]);
-	});
+	compiled: [],
 });
 
 describe("syncbackEntry", () => {
@@ -54,6 +35,8 @@ describe("syncbackEntry", () => {
 				warnings: [
 					warningDiagnostic("x.warn", { resource: file }, "Careful."),
 				],
+				unplaced: [],
+				compiled: [],
 				asked: false,
 			},
 			cwd

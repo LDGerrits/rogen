@@ -173,6 +173,30 @@ describe("CoreSyncbackService", () => {
 		jest.restoreAllMocks();
 	});
 
+	describe("prepare", () => {
+		it("should take one project and the input", async () => {
+			const prepared = await service.prepare([], "game.rbxl");
+
+			expect(prepared.unwrap().input).toBe("game.rbxl");
+		});
+
+		it("should refuse a second project", async () => {
+			const prepared = await service.prepare(["a", "b"], "game.rbxl");
+
+			expect(prepared.isErr() && prepared.error.message).toBe(
+				"unexpected argument 'b' found: syncback takes one [PROJECT]. Usage: rogen syncback [OPTIONS] [PROJECT]"
+			);
+		});
+
+		it("should say to pass a place file as --input when it is given as the project", async () => {
+			const prepared = await service.prepare(["game.rbxl"], undefined);
+
+			expect(prepared.isErr() && prepared.error).toMatchObject({
+				hint: "'game.rbxl' is a place or model file, not a project: pass it as --input game.rbxl.",
+			});
+		});
+	});
+
 	it("should run Rojo's syncback once, on a project file that mounts a mirror of the files by instance", async () => {
 		await prepare(["src/Inventory/Bag@Server.luau"]);
 		let copied: string | undefined;
