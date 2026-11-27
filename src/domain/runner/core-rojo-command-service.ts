@@ -12,7 +12,6 @@ import {
 } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { WatchService } from "../watch/watch-service.js";
-import { didWrite } from "../write/write.js";
 import { WriteService } from "../write/write-service.js";
 import {
 	RojoBareRequest,
@@ -79,6 +78,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 						flags,
 						cwd: request.cwd,
 						project,
+						prints: request.prints,
 						signal: request.signal,
 					});
 		const rojoFailure =
@@ -93,12 +93,11 @@ export class CoreRojoCommandService implements RojoCommandService {
 			notes: selection.notes,
 			project,
 			written,
-			failure,
 			ran,
-			rojoFailure,
-			changed:
-				written.outcomes.some(didWrite) ||
-				(request.command !== "upload" && built),
+			failure: failure
+				? { at: "write", error: failure }
+				: rojoFailure && { at: "rojo", error: rojoFailure },
+			changed: written.changed || (request.command !== "upload" && built),
 		});
 	}
 
@@ -108,7 +107,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 		const { selection, flags } = entered.value;
 		const watched = this.watchService.watch(selection);
 		if (watched.isErr()) return watched;
-		const { command, cwd } = request;
+		const { command, cwd, prints } = request;
 		return ok(
 			this.instantiationService.createInstance(
 				WatchedRojoRun,
@@ -137,7 +136,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 					) =>
 						this.watching(
 							executable,
-							{ command, flags, cwd, project },
+							{ command, flags, cwd, project, prints },
 							beforeRestart
 						),
 				}
@@ -175,11 +174,16 @@ export class CoreRojoCommandService implements RojoCommandService {
 			path.relative(request.cwd, projectFile),
 			request.flags,
 			request.cwd,
-			request.signal
+			request.signal,
+			request.prints
 		);
+		const { messages, printed } = request.prints
+			? RojoServer.printedBy(ran.messages)
+			: { messages: ran.messages, printed: undefined };
 		return ok({
 			project,
-			messages: ran.messages,
+			messages,
+			...(printed !== undefined && { printed }),
 			...(ran.failure && {
 				failure: ran.refusedArguments
 					? CoreRojoCommandService.refused(ran.failure)
@@ -216,7 +220,8 @@ export class CoreRojoCommandService implements RojoCommandService {
 				this.commandFailure(command, project, {
 					how: "an error",
 					said,
-				})
+				}),
+			request.prints
 		);
 	}
 
@@ -357,7 +362,8 @@ export class CoreRojoCommandService implements RojoCommandService {
 		projectFile: string | undefined,
 		flags: readonly string[],
 		cwd: string,
-		signal: AbortSignal | undefined
+		signal: AbortSignal | undefined,
+		keepStdoutWhenQuiet = false
 	): Promise<{
 		messages: ServerMessage[];
 		failure?: RojoFailure;
@@ -369,7 +375,8 @@ export class CoreRojoCommandService implements RojoCommandService {
 			command,
 			projectFile,
 			flags,
-			cwd
+			cwd,
+			keepStdoutWhenQuiet
 		);
 		const messages: ServerMessage[] = [];
 		rojo.onDidMessage((message) => messages.push(message));

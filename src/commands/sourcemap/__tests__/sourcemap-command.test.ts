@@ -2,7 +2,6 @@ import path from "path";
 import "../sourcemap-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { ResultError } from "../../../base/result.js";
-import { jest } from "@jest/globals";
 import {
 	MockConfigService,
 	brokenEntry,
@@ -85,9 +84,7 @@ describe("sourcemap command", () => {
 	it("should keep stdout for the sourcemap it prints, and say on stderr that it wrote the project file", async () => {
 		const { log, running } = start(new MockConfigService([validEntry()]));
 		const [rojo] = await spawnedCount(1);
-		const output = rojo.args[rojo.args.indexOf("--output") + 1];
-		await fs.writeFile(output, '{"name":"repo"}\n');
-		rojo.print(`Created sourcemap at ${output}\n`);
+		rojo.print('{"name":"repo"}\n');
 		rojo.exit({ code: 0, signal: null });
 		await running;
 
@@ -100,12 +97,10 @@ describe("sourcemap command", () => {
 		]);
 	});
 
-	it("should print what Rojo writes to a file of its own, and nothing else on stdout", async () => {
+	it("should print what Rojo prints, and nothing else on stdout", async () => {
 		const { log, running } = start(new MockConfigService([validEntry()]));
 		const [rojo] = await spawnedCount(1);
-		const output = rojo.args[rojo.args.indexOf("--output") + 1];
-		await fs.writeFile(output, '{"name":"repo"}\n');
-		rojo.print(`Created sourcemap at ${output}\n`);
+		rojo.print('{"name":"repo"}\n');
 		rojo.exit({ code: 0, signal: null });
 
 		expect((await running).isOk()).toBe(true);
@@ -115,18 +110,6 @@ describe("sourcemap command", () => {
 		]);
 		expect(log.texts("result")).toEqual(['{"name":"repo"}']);
 		expect(log.texts("outro")).toEqual([]);
-		expect(await fs.exists(output)).toBe(false);
-	});
-
-	it("should fail when Rojo succeeds but leaves no sourcemap to print", async () => {
-		const { log, running } = start(new MockConfigService([validEntry()]));
-		const [rojo] = await spawnedCount(1);
-		rojo.exit({ code: 0, signal: null });
-
-		expect(((await running) as ResultError<Error>).error.message).toContain(
-			"Failed to read the sourcemap Rojo wrote"
-		);
-		expect(log.texts("result")).toEqual([]);
 	});
 
 	it("should pass -o, --include-non-scripts and --absolute to Rojo", async () => {
@@ -226,18 +209,6 @@ describe("sourcemap command", () => {
 
 		expect((await running).isErr()).toBe(true);
 		expect(log.texts("result")).toEqual([]);
-	});
-
-	it("should print the sourcemap even when its file of its own can't be removed", async () => {
-		const { log, running } = start(new MockConfigService([validEntry()]));
-		const [rojo] = await spawnedCount(1);
-		const output = rojo.args[rojo.args.indexOf("--output") + 1];
-		await fs.writeFile(output, '{"name":"repo"}\n');
-		jest.spyOn(fs, "delete").mockRejectedValueOnce(new Error("EBUSY"));
-		rojo.exit({ code: 0, signal: null });
-
-		expect((await running).isOk()).toBe(true);
-		expect(log.texts("result")).toEqual(['{"name":"repo"}']);
 	});
 
 	it("should run no Rojo and exit 1 when the config has errors", async () => {

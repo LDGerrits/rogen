@@ -376,6 +376,20 @@ const ownArgs = (argv: readonly string[]): readonly string[] => {
 	return end === -1 ? argv : argv.slice(0, end);
 };
 
+export function forwardedFlags(
+	options: Readonly<Record<string, unknown>>,
+	descriptors: readonly OptionDescriptor[]
+): string[] {
+	return descriptors.flatMap(({ name }) => {
+		const value = options[name];
+		if (value === undefined || value === false) return [];
+		if (value === true) return [`--${name}`];
+		return (Array.isArray(value) ? value : [value]).map(
+			(one) => `--${name}=${one}`
+		);
+	});
+}
+
 export function hasFlag(
 	argv: readonly string[],
 	option: OptionDescriptor

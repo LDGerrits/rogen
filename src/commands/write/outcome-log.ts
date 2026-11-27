@@ -150,22 +150,22 @@ export class OutcomeLog {
 	}
 
 	rojoRun(
-		{ home, project, written, ran, rojoFailure }: RojoRunOutcome,
+		{ home, project, written, ran, failure }: RojoRunOutcome,
 		target: RojoTarget,
 		{
-			prints = false,
+			prints,
 			shown = (messages) => messages,
 		}: {
-			readonly prints?: boolean;
+			readonly prints: boolean;
 			readonly shown?: (
 				messages: readonly ServerMessage[]
 			) => readonly ServerMessage[];
-		} = {}
+		}
 	): void {
 		const { command } = target;
 		this.outcomes(written, home, command);
 		if (ran?.isOk())
-			(rojoFailure ? reportRojoBesideFailure : reportRojo)(
+			(failure?.at === "rojo" ? reportRojoBesideFailure : reportRojo)(
 				this.logService,
 				shown(ran.value.messages),
 				this.cwd
@@ -173,7 +173,7 @@ export class OutcomeLog {
 		if (project === undefined || !prints)
 			this.close(written, command, true, {
 				said: rojoDone(target, this.cwd),
-				failed: rojoFailure !== undefined,
+				failed: failure?.at === "rojo",
 			});
 	}
 

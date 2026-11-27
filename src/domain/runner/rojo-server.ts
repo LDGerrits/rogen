@@ -115,6 +115,21 @@ export class RojoServer {
 		return groups && { level: groups.level, text: groups.text };
 	}
 
+	static printedBy(messages: readonly ServerMessage[]): {
+		readonly messages: readonly ServerMessage[];
+		readonly printed?: string;
+	} {
+		const printed = messages
+			.map(({ stdout }) => stdout)
+			.filter((line) => line !== undefined);
+		return {
+			messages: messages.filter(({ stdout }) => stdout === undefined),
+			...(printed.length > 0 && {
+				printed: printed.join("\n").trimEnd(),
+			}),
+		};
+	}
+
 	static tidied(line: string): string | undefined {
 		const tidy = line.trim();
 		return NOISE.some((noise) => noise.test(tidy)) ? undefined : tidy;

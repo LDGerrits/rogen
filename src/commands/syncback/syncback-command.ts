@@ -167,10 +167,15 @@ registerCommand(
 			if (selection.isErr()) return selection;
 			for (const note of selection.value.notes) logService.warn(note);
 
-			const { write: run, outcome } = await syncbackService.run(
-				selection.value,
-				{ input, cwd, mode }
-			);
+			const {
+				write: run,
+				outcome,
+				changed,
+			} = await syncbackService.run(selection.value, {
+				input,
+				cwd,
+				mode,
+			});
 			const failure = run.failure();
 			const stopped =
 				outcome.kind === "failed" ? outcome.error : undefined;
@@ -181,7 +186,8 @@ registerCommand(
 					syncbackDocument(
 						run.outcomes,
 						cwd,
-						syncbackEntry(input, outcome, cwd)
+						syncbackEntry(input, outcome, cwd),
+						changed
 					),
 					failure ?? stopped
 				);

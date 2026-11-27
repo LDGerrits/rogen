@@ -2,10 +2,7 @@ import { DisposableStore } from "../../base/disposable.js";
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { ProjectArgument } from "../../domain/config/config-service.js";
-import {
-	RojoCommandService,
-	RojoRunRequest,
-} from "../../domain/runner/rojo-command-service.js";
+import { RojoRunRequest } from "../../domain/runner/rojo-command-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
@@ -15,32 +12,25 @@ import {
 	CommandLine,
 	JsonOption,
 	OptionDescriptor,
+	forwardedFlags,
 } from "../../platform/environment/args.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
-import { LogService } from "../../platform/log/log-service.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
+import { RojoTarget, buildRojoEntryShape } from "../write/rojo-entry.js";
+import { watchLineShapes } from "../write/write-document.js";
 import {
-	RojoTarget,
-	buildRojoEntryShape,
-	rojoEntry,
-} from "../write/rojo-entry.js";
-import {
-	configsDocument,
-	watchLineShapes,
-	writeEntryShape,
-} from "../write/write-document.js";
-import { OutcomeLog } from "../write/outcome-log.js";
+	RojoRunReport,
+	rojoRunDocumentShape,
+} from "../write/rojo-run-report.js";
 import { RojoWatchReport, WatchJsonLog, WatchLog } from "../write/watch-log.js";
 
 const S = OutputShape;
 
-const buildDocumentShape = S.object({
-	changed: S.boolean,
-	configs: S.array(writeEntryShape),
-	rojo: S.optional(buildRojoEntryShape),
-});
+const buildDocumentShape = rojoRunDocumentShape(
+	S.optional(buildRojoEntryShape)
+);
 
 const buildLineShape = S.union(
 	watchLineShapes.write,
@@ -125,8 +115,6 @@ registerCommand(
 			const cwd = accessor.get(EnvironmentService).cwd;
 			const instantiationService = accessor.get(InstantiationService);
 			const lifecycleService = accessor.get(LifecycleService);
-			const logService = accessor.get(LogService);
-			const rojoCommandService = accessor.get(RojoCommandService);
 			const { output, plugin, json } = line.options;
 			const target: RojoTarget = {
 				command: "build",
@@ -159,25 +147,9 @@ registerCommand(
 				}
 			}
 
-			const done = await rojoCommandService.run(request);
-			if (done.isErr()) return done;
-			for (const note of done.value.notes) logService.warn(note);
-			const { written, failure, ran, rojoFailure, changed } = done.value;
-			if (json)
-				return this.printJson(
-					logService,
-					{
-						changed,
-						configs: configsDocument(written.outcomes, cwd).configs,
-						rojo: rojoEntry(target, ran),
-					},
-					failure ?? rojoFailure
-				);
-			instantiationService
-				.createInstance(OutcomeLog, cwd)
-				.rojoRun(done.value, target);
-			if (rojoFailure) return err(rojoFailure);
-			return failure ? this.reported(failure) : ok(undefined);
+			return instantiationService
+				.createInstance(RojoRunReport, target)
+				.run(request, Boolean(json));
 		}
 
 		private rojoFlags(
@@ -190,8 +162,10 @@ registerCommand(
 						"-o builds a place or model file and -p a plugin: give one of them."
 					)
 				);
-			if (output !== undefined) return ok([`--output=${output}`]);
-			if (plugin !== undefined) return ok([`--plugin=${plugin}`]);
+			if (output !== undefined || plugin !== undefined)
+				return ok(
+					forwardedFlags(line.options, [OutputOption, PluginOption])
+				);
 			return err(
 				new UsageError(
 					"build needs -o <file> or -p <name>, as 'rojo build' does.",
