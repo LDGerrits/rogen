@@ -51,8 +51,6 @@ import { NativeRequestService } from "./platform/request/native-request-service.
 import { RequestService } from "./platform/request/request-service.js";
 import { BrowserService } from "./platform/browser/browser-service.js";
 import { CoreBrowserService } from "./platform/browser/core-browser-service.js";
-import { CoreReleaseService } from "./platform/release/core-release-service.js";
-import { ReleaseService } from "./platform/release/release-service.js";
 import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
 import { Watcher } from "./platform/watcher/watcher.js";
 import { WriteService } from "./domain/write/write-service.js";
@@ -189,7 +187,6 @@ function registerDomainServices(
 	services: ServiceCollection,
 	commandRegistry: CommandRegistry
 ): void {
-	services.set(ReleaseService, new SyncDescriptor(CoreReleaseService));
 	services.set(
 		ConfigService,
 		new SyncDescriptor(CoreConfigService, [new ConfigChecks()])

@@ -1,5 +1,8 @@
-import { isObject } from "../../base/objects.js";
-import { parse, setJsoncValue } from "../../base/jsonc.js";
+import { isObject, isSameJson, setOwn } from "../../base/objects.js";
+import { JsoncComments } from "../../base/jsonc-comments.js";
+import { parse } from "../../base/jsonc.js";
+import { ROGEN_KEYS } from "../config/config.js";
+import { ProjectText, WrittenTree } from "../rojo/project-text.js";
 import { NODE_FIELDS, RojoNode, childNodes } from "../rojo/rojo-project.js";
 
 export interface TreeChange {
@@ -13,21 +16,6 @@ export interface TreeChange {
 }
 
 const isKey = (key: string) => NODE_FIELDS.has(key) && key !== "$path";
-
-const same = (a: unknown, b: unknown): boolean => {
-	if (isObject(a) && isObject(b)) {
-		const keys = Object.keys(a);
-		return (
-			keys.length === Object.keys(b).length &&
-			keys.every((key) => Object.hasOwn(b, key) && same(a[key], b[key]))
-		);
-	}
-	if (Array.isArray(a) && Array.isArray(b))
-		return (
-			a.length === b.length && a.every((item, at) => same(item, b[at]))
-		);
-	return a === b;
-};
 
 const CLEARABLE = ["$properties", "$attributes"];
 
@@ -43,7 +31,7 @@ export function treeChanges(
 	const set: Record<string, unknown> = {};
 	const remove: string[] = [];
 	for (const key of Object.keys(after).filter(isKey))
-		if (!same(before[key], after[key])) set[key] = after[key];
+		if (!isSameJson(before[key], after[key])) set[key] = after[key];
 	for (const key of CLEARABLE)
 		if (key in before && !(key in after)) remove.push(key);
 	const known = new Map(childNodes(before));
@@ -70,28 +58,44 @@ export function applyTreeChanges(
 ): { readonly text: string; readonly unhomed: (readonly string[])[] } {
 	if (changes.length === 0) return { text, unhomed: [] };
 	const parsed = parse(text);
-	if (parsed.isErr())
+	if (parsed.isErr() || !isObject(parsed.value))
 		return { text, unhomed: changes.map(({ node }) => node) };
-	let edited = text;
+	const config = structuredClone(parsed.value);
 	const unhomed: (readonly string[])[] = [];
+	let applied = false;
 	for (const { node, set, remove, added } of changes) {
-		const found = nodeAt(parsed.value, [...treeAt, ...node]);
+		const found = nodeAt(config, [...treeAt, ...node]);
 		if (!found) {
 			unhomed.push(node);
 			continue;
 		}
-		const at = [...treeAt, ...node];
-		for (const [key, value] of Object.entries(set))
-			edited = setJsoncValue(edited, [...at, key], value);
+		for (const [key, value] of Object.entries(set)) {
+			setOwn(found, key, value);
+			applied = true;
+		}
 		for (const key of remove)
-			if (key in found)
-				edited = setJsoncValue(edited, [...at, key], undefined);
+			if (key in found) {
+				delete found[key];
+				applied = true;
+			}
 		for (const { name, node: child } of added) {
 			if (holdsPath(child)) unhomed.push([...node, name]);
-			else edited = setJsoncValue(edited, [...at, name], child);
+			else {
+				setOwn(found, name, child);
+				applied = true;
+			}
 		}
 	}
-	return { text: edited, unhomed };
+	if (!applied) return { text, unhomed };
+	return {
+		text: ProjectText.ofConfig(
+			config,
+			ROGEN_KEYS,
+			WrittenTree.of(text),
+			JsoncComments.of(text)
+		),
+		unhomed,
+	};
 }
 
 function nodeAt(

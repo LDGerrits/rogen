@@ -6,6 +6,8 @@ export const DOCS_URL = `${SITE_URL}/docs/v2`;
 
 export const REPOSITORY = "LDGerrits/rogen";
 
+export const PRODUCT_NAME = "rogen";
+
 export const PACKAGE_NAME = "@ldgerrits/rogen";
 
 export interface ProductService {
