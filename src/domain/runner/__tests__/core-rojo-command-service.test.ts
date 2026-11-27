@@ -1,3 +1,4 @@
+import path from "path";
 import { jest } from "@jest/globals";
 import { DeferredPromise } from "../../../base/async.js";
 import { UsageError, errorKind } from "../../../base/errors.js";
@@ -510,8 +511,10 @@ describe("CoreRojoCommandService", () => {
 					"default.project.json",
 					"--output=a.rbxl",
 				]);
-				expect(done.project?.file).toBe("/repo/default.rogen.json");
-				expect(done.home).toBe("/repo");
+				expect(done.project?.file).toBe(
+					path.resolve("/repo/default.rogen.json")
+				);
+				expect(done.home).toBe(path.resolve("/repo"));
 				expect(done.changed).toBe(true);
 				expect(done.failure).toBeUndefined();
 			});
