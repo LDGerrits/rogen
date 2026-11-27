@@ -184,7 +184,9 @@ describe("CoreWriteService.diagnose", () => {
 			expect(scoped.diagnostics).toEqual([]);
 			expect(scoped.stoppedBy).toEqual(whole.diagnostics);
 			expect(
-				scoped.stoppedBy.map(({ resource }) => resource).sort()
+				scoped.stoppedBy
+					.map(({ resource }) => path.normalize(resource))
+					.sort()
 			).toEqual([abs("src/Combat/init.meta.json"), abs("src/F/Server")]);
 			expect(scoped.failing).toEqual(scoped.stoppedBy);
 		});

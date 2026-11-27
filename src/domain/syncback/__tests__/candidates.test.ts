@@ -25,6 +25,7 @@ import { MirrorWorkspace } from "../mirror-workspace.js";
 import { MirrorWorkspaceOpener } from "../mirror-workspace-opener.js";
 import { RenamedInstance } from "../renamed-instances.js";
 import { ROUTES } from "./layout-fixtures.js";
+import { toPosix } from "../../../base/path.js";
 
 const NOTHING: Planned = { written: [], removed: [] };
 
@@ -159,8 +160,8 @@ describe("Candidates", () => {
 		const rename: RenamedInstance = {
 			instance: made,
 			from: "Shop",
-			folder: abs("src/Shop"),
-			renamed: abs("src/Store"),
+			folder: toPosix(abs("src/Shop")),
+			renamed: toPosix(abs("src/Store")),
 			files: new Map([
 				[
 					"Store/Main.luau",
@@ -207,8 +208,8 @@ describe("Candidates", () => {
 				{
 					instance: made,
 					from: "Shop",
-					folder: abs("src/Shop"),
-					renamed: abs("src/Store"),
+					folder: toPosix(abs("src/Shop")),
+					renamed: toPosix(abs("src/Store")),
 					files: new Map([
 						[
 							"Store/Main.luau",
