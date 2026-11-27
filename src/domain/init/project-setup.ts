@@ -108,7 +108,9 @@ export class ProjectSetup implements Setup<SetupProject> {
 		);
 	}
 
-	async ask(): Promise<Result<SetupProject | undefined, Diagnostic[]>> {
+	async ask(): Promise<
+		Result<SetupProject | undefined, Diagnostic[] | UsageError>
+	> {
 		const { directory, questions } = this;
 		const chosen = await this.read(questions.tree(directory));
 		if (chosen.isErr()) return chosen;
@@ -119,24 +121,26 @@ export class ProjectSetup implements Setup<SetupProject> {
 				: undefined
 		);
 		const tree = await this.resolveTree(chosen.value, kind);
+		if (tree.isErr()) return tree;
 		const language = await questions.language(directory);
-		if (language === undefined) return ok(undefined);
-		return ok(
-			tree.kind === "new"
-				? await this.newStarter(language)
-				: await this.carried(tree, kind, language)
-		);
+		if (language.isErr()) return language;
+		if (language.value === undefined) return ok(undefined);
+		return tree.value.kind === "new"
+			? this.newStarter(language.value)
+			: this.carried(tree.value, kind, language.value);
 	}
 
 	private async carried(
 		tree: CarriedTree,
 		kind: InitKind,
 		language: Language
-	): Promise<CarriedProject> {
+	): Promise<Result<CarriedProject, UsageError>> {
 		const { directory, questions } = this;
 		if (questions.choices.places === true)
-			throw new UsageError(
-				`--places ${this.noPlacesBecause(kind, language, false)}`
+			return err(
+				new UsageError(
+					`--places ${this.noPlacesBecause(kind, language, false)}`
+				)
 			);
 		const compiledPath = language.compiler?.outDir;
 		const lifted =
@@ -225,45 +229,48 @@ export class ProjectSetup implements Setup<SetupProject> {
 						).keys(),
 					]
 				: [];
-		return new CarriedProject(
-			kind,
-			tree,
-			await this.codeOf(
-				language,
-				sourcePaths,
-				compiledPath,
-				lifted ? mountsOf(directory, language) : [],
-				outside
-			),
-			{
-				files,
-				emptyFolders: await this.emptyFolders(sourcePaths, files),
-				skipGit,
-				projectFilesHint: await this.files.projectFilesHint(),
-			},
-			{
-				capturedKeys,
-				...(processedFolder && {
-					processed: {
-						folder: processedFolder,
-						...(processorConfig && { config: processorConfig }),
-					},
-				}),
-				keptCode,
-				unmounted,
-			}
+		return ok(
+			new CarriedProject(
+				kind,
+				tree,
+				await this.codeOf(
+					language,
+					sourcePaths,
+					compiledPath,
+					lifted ? mountsOf(directory, language) : [],
+					outside
+				),
+				{
+					files,
+					emptyFolders: await this.emptyFolders(sourcePaths, files),
+					skipGit,
+					projectFilesHint: await this.files.projectFilesHint(),
+				},
+				{
+					capturedKeys,
+					...(processedFolder && {
+						processed: {
+							folder: processedFolder,
+							...(processorConfig && { config: processorConfig }),
+						},
+					}),
+					keptCode,
+					unmounted,
+				}
+			)
 		);
 	}
 
 	private async newStarter(
 		picked: Language
-	): Promise<NewStarter | undefined> {
+	): Promise<Result<NewStarter | undefined, UsageError>> {
 		const { directory, questions } = this;
 		const starter = this.starterFor(picked);
 		const language = starter ? picked.scaffolded!() : picked;
 		const several = await this.severalPlaces(language, starter);
-		if (several === undefined) return undefined;
-		const places = several
+		if (several.isErr()) return several;
+		if (several.value === undefined) return ok(undefined);
+		const places = several.value
 			? await this.instantiationService
 					.createInstance(StarterPlaces)
 					.plan(directory.path, language, starter)
@@ -276,33 +283,35 @@ export class ProjectSetup implements Setup<SetupProject> {
 			compiledPath,
 		]);
 		const sample = await this.wantsSample(language, starter !== undefined);
-		if (sample === undefined) return undefined;
+		if (sample === undefined) return ok(undefined);
 		const skipGit = questions.skipGit();
 		const files = await this.absent([
 			...(skipGit ? [] : [this.templateOf("place", language).gitignore]),
 			...(sample ? this.sampleFiles(language, sourcePaths, places) : []),
 			...(places?.files ?? []),
 		]);
-		return new NewStarter(
-			await this.codeOf(
-				language,
-				sourcePaths,
-				compiledPath,
-				mountsOf(directory, language),
-				outside
-			),
-			{
-				files,
-				emptyFolders: await this.emptyFolders(sourcePaths, files),
-				skipGit,
-				projectFilesHint: await this.files.projectFilesHint(),
-			},
-			places,
-			sample ? new SampleGame() : undefined,
-			starter && {
-				tool: starter.scaffold(places !== undefined),
-				after: places ? [starter.scripts(places.place)] : [],
-			}
+		return ok(
+			new NewStarter(
+				await this.codeOf(
+					language,
+					sourcePaths,
+					compiledPath,
+					mountsOf(directory, language),
+					outside
+				),
+				{
+					files,
+					emptyFolders: await this.emptyFolders(sourcePaths, files),
+					skipGit,
+					projectFilesHint: await this.files.projectFilesHint(),
+				},
+				places,
+				sample ? new SampleGame() : undefined,
+				starter && {
+					tool: starter.scaffold(places !== undefined),
+					after: places ? [starter.scripts(places.place)] : [],
+				}
+			)
 		);
 	}
 
@@ -397,23 +406,25 @@ export class ProjectSetup implements Setup<SetupProject> {
 	private async severalPlaces(
 		language: Language,
 		starter: RobloxTsStarter | undefined
-	): Promise<boolean | undefined> {
+	): Promise<Result<boolean | undefined, UsageError>> {
 		const problem = this.noPlacesBecause(
 			"place",
 			language,
 			starter !== undefined
 		);
 		if (problem === undefined)
-			return this.questions.places(
-				this.directory,
-				language,
-				this.questions.showsPlaces(this.directory)
-					? await this.unplacedBy(language, starter)
-					: {}
+			return ok(
+				await this.questions.places(
+					this.directory,
+					language,
+					this.questions.showsPlaces(this.directory)
+						? await this.unplacedBy(language, starter)
+						: {}
+				)
 			);
 		if (this.questions.choices.places === true)
-			throw new UsageError(`--places ${problem}`);
-		return false;
+			return err(new UsageError(`--places ${problem}`));
+		return ok(false);
 	}
 
 	private async unplacedBy(
@@ -522,34 +533,38 @@ export class ProjectSetup implements Setup<SetupProject> {
 	private async resolveTree(
 		chosen: ReadChoice,
 		kind: InitKind
-	): Promise<ProjectTree> {
+	): Promise<Result<ProjectTree, UsageError>> {
 		const { reader } = this;
 		const { templateFolders } = this.directory.layout;
 		if (chosen.kind === "new" && kind === "place" && templateFolders.length)
-			return {
+			return ok({
 				kind: "rojoTemplate",
 				project: await reader.withInitFolders(
 					StarterProject.ofRojoTemplate(templateFolders)
 				),
-			};
+			});
 		if (chosen.kind === "new")
-			return kind === "place"
-				? chosen
-				: {
-						kind: "template",
-						template: kind,
-						project: StarterProject.ofScript(
-							this.directory.moduleRoot
-						),
-					};
-		if (kind !== "place" && chosen.project.takesRoutes)
-			throw new UsageError(
-				`--kind ${kind} starts a new ${kind}, and ${DEFAULT_PROJECT_FILE} is here, which init lifts as a place. Move ${DEFAULT_PROJECT_FILE} away first, or leave --kind out.`
+			return ok(
+				kind === "place"
+					? chosen
+					: {
+							kind: "template",
+							template: kind,
+							project: StarterProject.ofScript(
+								this.directory.moduleRoot
+							),
+						}
 			);
-		return {
+		if (kind !== "place" && chosen.project.takesRoutes)
+			return err(
+				new UsageError(
+					`--kind ${kind} starts a new ${kind}, and ${DEFAULT_PROJECT_FILE} is here, which init lifts as a place. Move ${DEFAULT_PROJECT_FILE} away first, or leave --kind out.`
+				)
+			);
+		return ok({
 			...chosen,
 			project: await reader.withInitFolders(chosen.project),
-		};
+		});
 	}
 
 	plan(project: SetupProject, builder: InitPlanBuilder): void {

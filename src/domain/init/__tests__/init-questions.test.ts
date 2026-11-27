@@ -1,13 +1,10 @@
-import { Result } from "../../../base/result.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import {
 	CANCEL,
 	MockPromptService,
 	PromptScript,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { withRobloxTs } from "../../toolchain/__tests__/workspaces.js";
-import { SetupProject } from "../project-code.js";
 import path from "path";
 import {
 	DirectorySpec,
@@ -20,10 +17,7 @@ import { setupOf } from "./init-of.js";
 
 type Context = DirectorySpec;
 
-const askInitChoices = async (
-	prompts: MockPromptService,
-	context: Context
-): Promise<Result<SetupProject | undefined, Diagnostic[]>> => {
+const askInitChoices = async (prompts: MockPromptService, context: Context) => {
 	const fileSystem = new MemoryFileSystemService();
 	await fileSystem.createDirectory(directory);
 	for (const file of context.existing ?? [])

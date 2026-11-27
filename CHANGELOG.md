@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- When `rogen init` can't write a project file, it names the config that failed, such as `lobby.rogen.json` with `--places`, and not always `default.rogen.json`.
 - `rogen syncback` writes the config's tree changes in the form `rogen fmt-project` prints, such as `$properties` before `$path` and `100.0` for a float, so `rogen fmt-project` has nothing to change in a config it just edited.
 - The Rojo version checks, such as the one for Rojo 7.7.0 on Windows, now also run on a project file with comments or trailing commas, which they used to skip.
 - The update notice now knows a release whose tag has a hyphen in its prerelease part, such as `v2.1.0-rc-1`. It used to skip that release.

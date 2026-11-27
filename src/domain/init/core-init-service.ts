@@ -170,17 +170,6 @@ export class CoreInitService implements InitService {
 	async plan(
 		options: InitOptions = {}
 	): Promise<Result<InitPlan | undefined, Error>> {
-		try {
-			return await this.review(options);
-		} catch (error) {
-			if (error instanceof UsageError) return err(error);
-			throw error;
-		}
-	}
-
-	private async review(
-		options: InitOptions
-	): Promise<Result<InitPlan | undefined, Error>> {
 		const { ask = true, choices = {} } = options;
 		const read = await this.read(options);
 		if (read.isErr()) return read;
@@ -307,9 +296,11 @@ export class CoreInitService implements InitService {
 		const { directory } = read;
 		const [shaping] = shapingFlagsOf(questions.choices);
 		if (shaping !== undefined)
-			throw new UsageError(
-				`${shaping} shapes a new config, and init migrates ${migrated.label} here.`,
-				"Leave the flag out; edit the configs init writes, then run 'rogen check'."
+			return err(
+				new UsageError(
+					`${shaping} shapes a new config, and init migrates ${migrated.label} here.`,
+					"Leave the flag out; edit the configs init writes, then run 'rogen check'."
+				)
 			);
 		const agents = await this.agentSetupIn(read, questions);
 		if (agents.isErr()) return agents;
@@ -335,9 +326,11 @@ export class CoreInitService implements InitService {
 			return err(new DiagnosticsError(directory.checkFree(configFiles)));
 		const [shaping] = shapingFlagsOf(choices);
 		if (shaping !== undefined)
-			throw new UsageError(
-				`${shaping} shapes a new config, and ${configFiles.join(", ")} is here already.`,
-				"Beside a config, --agent-rules and --agent-hook add only the agent files. To change the config, edit it and run 'rogen check'."
+			return err(
+				new UsageError(
+					`${shaping} shapes a new config, and ${configFiles.join(", ")} is here already.`,
+					"Beside a config, --agent-rules and --agent-hook add only the agent files. To change the config, edit it and run 'rogen check'."
+				)
 			);
 		const agents = await this.agentSetupIn(read, questions);
 		if (agents.isErr()) return agents;
@@ -465,7 +458,12 @@ export class CoreInitService implements InitService {
 		const answered: { setup: Setup<unknown>; choices: unknown }[] = [];
 		for (const setup of setups) {
 			const asked = await setup.ask();
-			if (asked.isErr()) return err(new DiagnosticsError(asked.error));
+			if (asked.isErr())
+				return err(
+					asked.error instanceof UsageError
+						? asked.error
+						: new DiagnosticsError(asked.error)
+				);
 			if (asked.value === undefined) return ok(undefined);
 			answered.push({ setup, choices: asked.value });
 		}

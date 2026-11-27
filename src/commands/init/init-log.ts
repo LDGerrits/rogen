@@ -2,8 +2,8 @@ import path from "path";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { toPosix, toShellWord } from "../../base/path.js";
-import { plural } from "../../base/strings.js";
-import { WriteRun, ConfigOutcome } from "../../domain/write/write.js";
+import { joinedWithAnd, plural } from "../../base/strings.js";
+import { WriteRun, ConfigOutcome, isFailed } from "../../domain/write/write.js";
 import {
 	InitDecision,
 	InitPlan,
@@ -261,7 +261,7 @@ export class InitLog implements InitReporter {
 					plan.liftedFrom
 						? ` ${plan.liftedFrom} is as it was, so Rojo still reads it.`
 						: ""
-				} ${inCode ? "Fix the errors above" : "Fix default.rogen.json"} and run 'rogen write'.`
+				} ${inCode ? "Fix the errors above" : `Fix ${joinedWithAnd(run.outcomes.filter(isFailed).map(({ file }) => path.basename(file)))}`} and run 'rogen write'.`
 			);
 			return err(new ReportedError(new DiagnosticsError(run.errors)));
 		}

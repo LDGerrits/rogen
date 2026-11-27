@@ -1,4 +1,5 @@
 import { UsageError } from "../../base/errors.js";
+import { Result, err, ok } from "../../base/result.js";
 import { joinedClosestFirst, joinedWithAnd } from "../../base/strings.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { DEFAULT_PROJECT_FILE } from "../config/config.js";
@@ -20,12 +21,14 @@ function oneOf<T extends string>(
 	known: readonly T[],
 	what: string,
 	flag: string
-): T {
+): Result<T, UsageError> {
 	const found = known.find((candidate) => candidate === value);
-	if (found !== undefined) return found;
-	throw new UsageError(
-		`'${value}' is not ${what}.`,
-		`The values of ${flag} are ${joinedClosestFirst(value, known)}.`
+	if (found !== undefined) return ok(found);
+	return err(
+		new UsageError(
+			`'${value}' is not ${what}.`,
+			`The values of ${flag} are ${joinedClosestFirst(value, known)}.`
+		)
 	);
 }
 
@@ -188,21 +191,21 @@ export class InitQuestions {
 		return answer === undefined ? undefined : answer === "several";
 	}
 
-	async language(directory: InitDirectory): Promise<Language | undefined> {
+	async language(
+		directory: InitDirectory
+	): Promise<Result<Language | undefined, UsageError>> {
 		const { workspace } = directory;
 		const given = this.choices.language;
 		if (given !== undefined)
-			return workspace.languageFor(
-				oneOf(
-					given,
-					workspace.languages.map(({ id }) => id),
-					"a language",
-					"--language"
-				)
-			);
+			return oneOf(
+				given,
+				workspace.languages.map(({ id }) => id),
+				"a language",
+				"--language"
+			).map((id) => workspace.languageFor(id));
 		if (!this.interactive) {
 			this.decide("language", workspace.language.id, "--language");
-			return workspace.language;
+			return ok(workspace.language);
 		}
 		const detected =
 			workspace.languages.some(({ present }) => present) ||
@@ -223,7 +226,7 @@ export class InitQuestions {
 				initialValue: workspace.language.id,
 			})
 		);
-		return id === undefined ? undefined : workspace.languageFor(id);
+		return ok(id === undefined ? undefined : workspace.languageFor(id));
 	}
 
 	tree(directory: InitDirectory): TreeChoice {
