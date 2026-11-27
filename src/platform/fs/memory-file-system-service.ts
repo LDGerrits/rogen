@@ -10,6 +10,8 @@ import { Emitter, Event } from "../../base/event.js";
 import { containsPosix, toPosix } from "../../base/path.js";
 import { FileChange, FileChangeType } from "./file-changes.js";
 
+const utf8 = new TextDecoder("utf-8", { ignoreBOM: true });
+
 let lastWrite = 0;
 
 const increasingWriteTime = () =>
@@ -18,7 +20,13 @@ const increasingWriteTime = () =>
 class FileNode {
 	readonly type = FileType.File;
 	modified = increasingWriteTime();
-	constructor(public content: string) {}
+	readonly content: Uint8Array;
+	constructor(content: string | Uint8Array) {
+		this.content =
+			typeof content === "string"
+				? new TextEncoder().encode(content)
+				: content;
+	}
 }
 
 class DirectoryNode {
@@ -291,15 +299,16 @@ export class MemoryFileSystemService
 				`EISDIR: illegal operation on a directory, read '${filePath}'`
 			);
 		}
-		return (node as FileNode).content;
+		return utf8.decode((node as FileNode).content);
 	}
 
 	async readFileBytes(filePath: string): Promise<Uint8Array> {
-		return new TextEncoder().encode(await this.readFile(filePath));
+		await this.readFile(filePath);
+		return new Uint8Array((this.lookup(filePath) as FileNode).content);
 	}
 
 	async writeFileBytes(filePath: string, bytes: Uint8Array): Promise<void> {
-		await this.writeFile(filePath, new TextDecoder().decode(bytes));
+		await this.store(filePath, new Uint8Array(bytes));
 	}
 
 	async lastModified(filePath: string): Promise<number> {
@@ -309,12 +318,19 @@ export class MemoryFileSystemService
 
 	async copyFile(from: string, to: string): Promise<void> {
 		const source = this.lookupOrThrow(from) as FileNode;
-		await this.writeFile(to, await this.readFile(from));
+		await this.store(to, source.content);
 		const copy = this.lookupOrThrow(to) as FileNode;
 		copy.modified = source.modified;
 	}
 
 	async writeFile(filePath: string, content: string): Promise<void> {
+		await this.store(filePath, content);
+	}
+
+	private async store(
+		filePath: string,
+		content: string | Uint8Array
+	): Promise<void> {
 		const parts = splitPath(filePath);
 		const name = parts.pop()!;
 		const leading = toPosix(filePath).startsWith("/") ? "/" : "";
@@ -324,7 +340,7 @@ export class MemoryFileSystemService
 
 		const node = parent.entries.get(name);
 		if (node?.type === FileType.SymbolicLink) {
-			return this.writeFile(node.target, content);
+			return this.store(node.target, content);
 		}
 		const type = node ? FileChangeType.UPDATED : FileChangeType.ADDED;
 

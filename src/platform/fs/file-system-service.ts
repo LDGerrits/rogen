@@ -84,21 +84,6 @@ export function renameRefusal(
 	return undefined;
 }
 
-export async function replaceFile(
-	fileSystemService: FileSystemService,
-	file: string,
-	staging: string,
-	content: string
-): Promise<void> {
-	try {
-		await fileSystemService.writeFile(staging, content);
-		await fileSystemService.rename(staging, file, true);
-	} catch (error) {
-		await fileSystemService.delete(staging).catch(() => undefined);
-		throw error;
-	}
-}
-
 export function isMissingPath(error: Error): boolean {
 	return ErrorUtils.hasCode(error, "ENOENT");
 }
