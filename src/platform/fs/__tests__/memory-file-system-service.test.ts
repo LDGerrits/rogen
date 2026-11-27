@@ -1,3 +1,4 @@
+import { FileReplacer } from "../file-replacer.js";
 import { jest } from "@jest/globals";
 import { failureReason } from "../../../base/errors.js";
 import { MemoryFileSystemService } from "../memory-file-system-service.js";
@@ -5,7 +6,6 @@ import {
 	FileType,
 	fileSystemError,
 	isMissingPath,
-	replaceFile,
 } from "../file-system-service.js";
 import { FileChange, FileChangeType } from "../file-changes.js";
 
@@ -343,7 +343,11 @@ describe("file system failures", () => {
 		await memFs.writeFile("/repo/file", "");
 
 		await expect(
-			replaceFile(memFs, "/repo/a.json", "/repo/file/staging", "new")
+			new FileReplacer(memFs).replace(
+				"/repo/a.json",
+				"/repo/file/staging",
+				"new"
+			)
 		).rejects.toThrow("ENOTDIR");
 		expect(await memFs.readFile("/repo/a.json")).toBe("old");
 	});

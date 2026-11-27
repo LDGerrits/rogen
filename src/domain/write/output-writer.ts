@@ -2,10 +2,8 @@ import { failureReason } from "../../base/errors.js";
 import { randomUUID } from "crypto";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import {
-	FileSystemService,
-	replaceFile,
-} from "../../platform/fs/file-system-service.js";
+import { FileReplacer } from "../../platform/fs/file-replacer.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ProjectText } from "../rojo/project-text.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -22,9 +20,13 @@ export interface OutputWriteOptions {
 }
 
 export class OutputWriter {
+	private readonly replacer: FileReplacer;
+
 	constructor(
 		@FileSystemService private readonly fileSystemService: FileSystemService
-	) {}
+	) {
+		this.replacer = new FileReplacer(fileSystemService);
+	}
 
 	static textOf(projectFile: RojoProjectFile): string {
 		return ProjectText.of(projectFile);
@@ -46,8 +48,7 @@ export class OutputWriter {
 				? await this.fileSystemService.readFile(projectFile)
 				: undefined;
 			if (onDisk === content && !force) return false;
-			await replaceFile(
-				this.fileSystemService,
+			await this.replacer.replace(
 				projectFile,
 				output.stagingFile(randomUUID()),
 				content

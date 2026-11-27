@@ -1,6 +1,6 @@
 import { Disposable } from "../../base/disposable.js";
 import path from "path";
-import { relativeTo, toPosix } from "../../base/path.js";
+import { relativeTo, toNative, toPosix } from "../../base/path.js";
 import { joinedWithOr } from "../../base/strings.js";
 import { Result } from "../../base/result.js";
 import {
@@ -9,9 +9,8 @@ import {
 	isError,
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
-import { DiagnosticIndex } from "../../platform/diagnostics/diagnostic-index.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
+import { OutputShape } from "../../platform/output/output-shape.js";
 import { FileChange } from "../../platform/fs/file-changes.js";
 import { FileDraft } from "../../platform/fs/draft-file-reader.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
@@ -31,6 +30,7 @@ import {
 	LoadedConfig,
 	RouteMatch,
 	FolderNode,
+	DiagnosticIndex,
 } from "./write.js";
 
 interface Located {
@@ -233,6 +233,55 @@ export class LocatedVerdict {
 }
 
 export type Asked = { readonly path: string } | { readonly instance: string };
+
+export interface SkippedPath {
+	readonly path: string;
+	readonly reason: "outsideSourcePaths" | "noConfig";
+	readonly config?: string;
+	readonly readers?: readonly string[];
+}
+
+export interface SkippedPathJson {
+	readonly path: string;
+	readonly reason: SkippedPath["reason"];
+	readonly config?: string;
+	readonly readers?: string[];
+}
+
+export const skippedPathShape = OutputShape.named(
+	"SkippedPath",
+	OutputShape.object({
+		path: OutputShape.string,
+		reason: OutputShape.enum("outsideSourcePaths", "noConfig"),
+		config: OutputShape.optional(OutputShape.string),
+		readers: OutputShape.optional(OutputShape.array(OutputShape.string)),
+	})
+);
+
+function skippedPathToJson(
+	{ path, reason, config, readers }: SkippedPath,
+	cwd: string
+): SkippedPathJson {
+	return {
+		path: toNative(path),
+		reason,
+		...(config && { config: relativeTo(cwd, config) }),
+		...(readers?.length && {
+			readers: readers.map((file) => relativeTo(cwd, file)),
+		}),
+	};
+}
+
+export function skippedJson(
+	skipped: readonly SkippedPath[],
+	cwd: string
+): {
+	readonly skipped?: SkippedPathJson[];
+} {
+	return skipped.length > 0
+		? { skipped: skipped.map((one) => skippedPathToJson(one, cwd)) }
+		: {};
+}
 
 export interface Locations {
 	readonly everyFile: boolean;
