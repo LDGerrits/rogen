@@ -1,12 +1,8 @@
-import path from "path";
-import { toNative } from "../../base/path.js";
 import { configPath } from "../../platform/config/config-path.js";
 import { ConfigOutcome } from "../../domain/write/write.js";
 import {
-	CompiledChange,
 	SyncbackChange,
 	SyncbackOutcome,
-	SyncbackPlan,
 	UnplacedInstance,
 } from "../../domain/syncback/syncback.js";
 import {
@@ -16,10 +12,6 @@ import {
 	errorShape,
 	failureToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
-import {
-	Diagnostic,
-	warningDiagnostic,
-} from "../../platform/diagnostics/diagnostic.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 import { configsDocument, writeEntryShape } from "../write/write-document.js";
 
@@ -56,30 +48,6 @@ interface SyncbackEntry {
 	readonly error?: unknown;
 }
 
-export function compiledDiagnostics(plan: SyncbackPlan): Diagnostic[] {
-	const { compiledPath, projectDir, file } = plan.project;
-	if (compiledPath === undefined) return [];
-	const folder = toNative(path.relative(projectDir, compiledPath));
-	const messages: Record<
-		CompiledChange["kind"],
-		(instance: string) => string
-	> = {
-		changed: (instance) =>
-			`${instance} changed in the place, but it is compiled into ${folder}, so syncback left it out. Make the change in the source files.`,
-		removed: (instance) =>
-			`${instance} was removed from the place, but it is compiled into ${folder}, so syncback left it out. Remove it from the source files.`,
-		added: (instance) =>
-			`${instance} is new in the place, but the project compiles into ${folder}, so syncback left it out. Add it to the source files.`,
-	};
-	return plan.compiled.map(({ instance, kind }) =>
-		warningDiagnostic(
-			"syncback.compiledPath",
-			{ resource: file },
-			messages[kind](instance)
-		)
-	);
-}
-
 export function syncbackEntry(
 	input: string,
 	outcome: SyncbackOutcome,
@@ -97,10 +65,7 @@ export function syncbackEntry(
 			unplaced: [],
 			...(outcome.kind === "failed" && failureToJson(outcome.error)),
 		};
-	const diagnostics = [
-		...compiledDiagnostics(outcome.plan),
-		...outcome.warnings,
-	];
+	const diagnostics = [...outcome.compiled, ...outcome.warnings];
 	return {
 		outcome: outcome.kind === "written" ? "written" : "wouldWrite",
 		config: configPath(cwd, outcome.plan.project.file),

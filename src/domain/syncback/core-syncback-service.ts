@@ -7,7 +7,12 @@ import {
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { WriteService } from "../write/write-service.js";
-import { ConfigSelection } from "../config/config-service.js";
+import {
+	ConfigSelection,
+	ConfigService,
+	ReloadableSelection,
+	singleProjectError,
+} from "../config/config-service.js";
 import {
 	SyncbackMode,
 	SyncbackOptions,
@@ -16,7 +21,9 @@ import {
 	SyncbackRequest,
 	SyncbackResult,
 	SyncbackRun,
+	placeFileAmong,
 } from "./syncback.js";
+import { leftOutDiagnostics } from "./left-out-diagnostics.js";
 import { SyncbackService } from "./syncback-service.js";
 import { MirrorPlan } from "./mirror-plan.js";
 import { PlanWriter } from "./plan-writer.js";
@@ -32,28 +39,40 @@ function stopped(): CancelledError {
 	);
 }
 
-const listed = (plan: SyncbackPlan): SyncbackOutcome => ({
-	kind: "planned",
+const leftOut = (plan: SyncbackPlan, cwd: string) => ({
 	plan,
+	...leftOutDiagnostics(plan, cwd),
+});
+
+const listed = (plan: SyncbackPlan, cwd: string): SyncbackOutcome => ({
+	kind: "planned",
+	...leftOut(plan, cwd),
 	warnings: [],
 	asked: false,
 });
 
 async function declined(
 	mode: Extract<SyncbackMode, object>,
-	plan: SyncbackPlan
+	plan: SyncbackPlan,
+	cwd: string
 ): Promise<SyncbackOutcome | undefined> {
 	const asked = plan.changes.length > 0;
-	if (asked && (await mode.confirm(plan))) return undefined;
-	return { kind: "declined", plan, warnings: [], asked };
+	const omitted = leftOut(plan, cwd);
+	if (
+		asked &&
+		(await mode.confirm(plan, [...omitted.unplaced, ...omitted.compiled]))
+	)
+		return undefined;
+	return { kind: "declined", ...omitted, warnings: [], asked };
 }
 
 const written = (
 	result: SyncbackResult,
-	mode: SyncbackMode
+	mode: SyncbackMode,
+	cwd: string
 ): SyncbackOutcome => ({
 	kind: "written",
-	plan: result,
+	...leftOut(result, cwd),
 	warnings: result.warnings,
 	asked: mode !== "apply",
 });
@@ -62,12 +81,36 @@ export class CoreSyncbackService implements SyncbackService {
 	declare readonly _serviceBrand: undefined;
 
 	constructor(
+		@ConfigService private readonly configService: ConfigService,
 		@FileSystemService
 		private readonly fileSystemService: FileSystemService,
 		@WriteService private readonly writeService: WriteService,
 		@InstantiationService
 		private readonly instantiationService: InstantiationService
 	) {}
+
+	async prepare(
+		refs: readonly string[],
+		input: string | undefined
+	): Promise<
+		Result<{ selection: ReloadableSelection; input: string }, Error>
+	> {
+		const tooMany = singleProjectError("syncback", refs);
+		if (tooMany) return err(tooMany);
+		if (input === undefined) {
+			const placeFile = placeFileAmong(refs);
+			return err(
+				new UsageError(
+					"--input names the place or model file to bring changes from, and Rojo needs it.",
+					placeFile &&
+						`'${placeFile}' is a place or model file, not a project: pass it as --input ${placeFile}.`
+				)
+			);
+		}
+		const selection = await this.configService.select(refs);
+		if (selection.isErr()) return selection;
+		return ok({ selection: selection.value, input });
+	}
 
 	async run(
 		selection: ConfigSelection,
@@ -130,12 +173,15 @@ export class CoreSyncbackService implements SyncbackService {
 		if (mode !== "apply") {
 			const planned = await rojo.plain(true);
 			if (planned.isErr()) return planned;
-			if (mode === "dryRun") return ok(listed(planned.value));
-			const no = await declined(mode, planned.value);
+			if (mode === "dryRun")
+				return ok(listed(planned.value, request.cwd));
+			const no = await declined(mode, planned.value, request.cwd);
 			if (no) return ok(no);
 		}
 		const result = await rojo.plain(false);
-		return result.isErr() ? result : ok(written(result.value, mode));
+		return result.isErr()
+			? result
+			: ok(written(result.value, mode, request.cwd));
 	}
 
 	private async mirroredOutcome(
@@ -150,9 +196,9 @@ export class CoreSyncbackService implements SyncbackService {
 			const planned = await this.planIn(workspace.value, signal);
 			if (planned.isErr()) return planned;
 			const plan = planned.value;
-			if (mode === "dryRun") return ok(listed(plan));
+			if (mode === "dryRun") return ok(listed(plan, request.cwd));
 			if (mode !== "apply") {
-				const no = await declined(mode, plan);
+				const no = await declined(mode, plan, request.cwd);
 				if (signal.aborted) return err(stopped());
 				if (no) return ok(no);
 				if (!(await plan.isCurrent(this.fileSystemService)))
@@ -177,7 +223,7 @@ export class CoreSyncbackService implements SyncbackService {
 		const result = await this.instantiationService
 			.createInstance(PlanWriter)
 			.write(request, plan);
-		return ok(written(result, mode));
+		return ok(written(result, mode, request.cwd));
 	}
 
 	private async planIn(

@@ -641,6 +641,14 @@ describe("syncback command", () => {
 						"Careful."
 					),
 				],
+				unplaced: [
+					warningDiagnostic(
+						"syncback.unplaced",
+						{ resource: project.file },
+						"Workspace.Part was left out: it has no route."
+					),
+				],
+				compiled: [],
 				asked: false,
 			},
 		});

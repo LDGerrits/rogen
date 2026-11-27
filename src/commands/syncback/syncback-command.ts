@@ -3,17 +3,12 @@ import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
-import {
-	ProjectArgument,
-	singleProjectError,
-	ConfigService,
-} from "../../domain/config/config-service.js";
+import { ProjectArgument } from "../../domain/config/config-service.js";
 import { SyncbackService } from "../../domain/syncback/syncback-service.js";
 import {
 	SyncbackMode,
 	SyncbackOutcome,
 	SyncbackPlan,
-	placeFileAmong,
 } from "../../domain/syncback/syncback.js";
 import {
 	AbstractCommand,
@@ -27,15 +22,11 @@ import {
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { InstantiationService } from "../../platform/instantiation/instantiation-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
-import {
-	warningDiagnostic,
-	messageRelativeTo,
-} from "../../platform/diagnostics/diagnostic.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { OutcomeLog } from "../write/outcome-log.js";
 import {
-	compiledDiagnostics,
 	syncbackDocument,
 	syncbackDocumentShape,
 	syncbackEntry,
@@ -121,23 +112,20 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof SyncbackOptions>
 		): Promise<Result<void, Error>> {
-			const tooMany = singleProjectError("syncback", line.positionals);
-			if (tooMany) return err(tooMany);
-			const { input, json } = line.options;
-			if (input === undefined) {
-				const placeFile = placeFileAmong(line.positionals);
-				return err(
-					new UsageError(
-						"--input names the place or model file to bring changes from, and Rojo needs it.",
-						placeFile &&
-							`'${placeFile}' is a place or model file, not a project: pass it as --input ${placeFile}.`
-					)
-				);
-			}
-			const dryRun = line.options["dry-run"] === true;
-			const ask = !dryRun && line.options["non-interactive"] !== true;
+			const syncbackService = accessor.get(SyncbackService);
 			const promptService = accessor.get(PromptService);
 			const logService = accessor.get(LogService);
+			const cwd = accessor.get(EnvironmentService).cwd;
+			const instantiationService = accessor.get(InstantiationService);
+			const prepared = await syncbackService.prepare(
+				line.positionals,
+				line.options.input
+			);
+			if (prepared.isErr()) return prepared;
+			const { selection, input } = prepared.value;
+			const { json } = line.options;
+			const dryRun = line.options["dry-run"] === true;
+			const ask = !dryRun && line.options["non-interactive"] !== true;
 			if (ask && (!promptService.isInteractive || json))
 				return err(
 					new UsageError(
@@ -145,33 +133,28 @@ registerCommand(
 						"Pass -y/--non-interactive to write without asking, or --dry-run to list what it would do."
 					)
 				);
-			const cwd = accessor.get(EnvironmentService).cwd;
-			const configService = accessor.get(ConfigService);
-			const syncbackService = accessor.get(SyncbackService);
-			const instantiationService = accessor.get(InstantiationService);
 			const mode: SyncbackMode = dryRun
 				? "dryRun"
 				: ask
 					? {
-							confirm: (plan) =>
+							confirm: (plan, leftOut) =>
 								this.confirmed(
 									logService,
 									promptService,
 									plan,
+									leftOut,
 									cwd
 								),
 						}
 					: "apply";
 
-			const selection = await configService.select(line.positionals);
-			if (selection.isErr()) return selection;
-			for (const note of selection.value.notes) logService.warn(note);
+			for (const note of selection.notes) logService.warn(note);
 
 			const {
 				write: run,
 				outcome,
 				changed,
-			} = await syncbackService.run(selection.value, {
+			} = await syncbackService.run(selection, {
 				input,
 				cwd,
 				mode,
@@ -193,7 +176,7 @@ registerCommand(
 				);
 			instantiationService
 				.createInstance(OutcomeLog, cwd)
-				.report(run, selection.value.home, "syncback", !dryRun);
+				.report(run, selection.home, "syncback", !dryRun);
 			if ("plan" in outcome)
 				this.report(
 					logService,
@@ -209,10 +192,11 @@ registerCommand(
 			logService: LogService,
 			promptService: PromptService,
 			plan: SyncbackPlan,
+			leftOut: readonly Diagnostic[],
 			cwd: string
 		): Promise<boolean> {
 			this.listChanges(logService, plan, cwd);
-			this.warnLeftOut(logService, plan, cwd);
+			logService.diagnostics(leftOut);
 			const answer = await promptService.confirm({
 				message: `Write and remove files (${counts(plan)})?`,
 				initialValue: false,
@@ -233,23 +217,6 @@ registerCommand(
 				);
 		}
 
-		private warnLeftOut(
-			logService: LogService,
-			plan: SyncbackPlan,
-			cwd: string
-		): void {
-			logService.diagnostics([
-				...plan.unplaced.map(({ instance, reason }) =>
-					warningDiagnostic(
-						"syncback.unplaced",
-						{ resource: plan.project.file },
-						`${instance} was left out: ${messageRelativeTo(reason, cwd)}.`
-					)
-				),
-				...compiledDiagnostics(plan),
-			]);
-		}
-
 		private report(
 			logService: LogService,
 			outcome: Extract<SyncbackOutcome, { plan: SyncbackPlan }>,
@@ -259,7 +226,10 @@ registerCommand(
 			const { plan } = outcome;
 			if (!outcome.asked) {
 				if (list) this.listChanges(logService, plan, cwd);
-				this.warnLeftOut(logService, plan, cwd);
+				logService.diagnostics([
+					...outcome.unplaced,
+					...outcome.compiled,
+				]);
 			}
 			logService.diagnostics(outcome.warnings);
 			if (outcome.kind === "written")
