@@ -1,10 +1,8 @@
 import path from "path";
 import { isObject } from "../../base/objects.js";
 import { samePath } from "../../base/path.js";
-import {
-	FileSystemService,
-	replaceFile,
-} from "../../platform/fs/file-system-service.js";
+import { FileReplacer } from "../../platform/fs/file-replacer.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ServerInfo } from "../runner/rojo-server.js";
 import { ServeAddress } from "./serve.js";
 
@@ -51,11 +49,14 @@ function recordIn(value: unknown): ServerRecord | undefined {
 export class ServerRecords {
 	private readonly dir: string;
 
+	private readonly replacer: FileReplacer;
+
 	constructor(
 		tmpDir: string,
 		private readonly owner: number,
 		@FileSystemService private readonly fileSystemService: FileSystemService
 	) {
+		this.replacer = new FileReplacer(fileSystemService);
 		this.dir = path.join(tmpDir, "rogen-serve");
 	}
 
@@ -95,8 +96,7 @@ export class ServerRecords {
 		info: ServerInfo,
 		served: ServedProject
 	): Promise<void> {
-		await replaceFile(
-			this.fileSystemService,
+		await this.replacer.replace(
 			this.fileOf(address.port),
 			this.stagingFileOf(address.port),
 			JSON.stringify({

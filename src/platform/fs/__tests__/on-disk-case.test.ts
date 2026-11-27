@@ -1,10 +1,10 @@
 import path from "path";
 import { FileSystemService, FileType } from "../file-system-service.js";
-import { onDiskCase } from "../on-disk-case.js";
+import { OnDiskCase } from "../on-disk-case.js";
 import { MemoryFileSystemService } from "../memory-file-system-service.js";
 import { caseFoldingReader } from "./case-folding-reader.js";
 
-describe("onDiskCase", () => {
+describe("OnDiskCase", () => {
 	const at = (...parts: string[]) => path.resolve("/project", ...parts);
 	let disk: MemoryFileSystemService;
 	let folding: FileSystemService;
@@ -17,23 +17,27 @@ describe("onDiskCase", () => {
 
 	it("should give every name the case it has on disk", async () => {
 		expect(
-			await onDiskCase(folding, at("SRC", "greeter", "server.LUAU"))
+			await new OnDiskCase(folding).of(
+				at("SRC", "greeter", "server.LUAU")
+			)
 		).toBe(at("src", "Greeter", "Server.luau"));
 	});
 
 	it("should keep the names that match, and the rest of a path that does not exist", async () => {
 		expect(
-			await onDiskCase(folding, at("src", "greeter", "New", "a.luau"))
+			await new OnDiskCase(folding).of(
+				at("src", "greeter", "New", "a.luau")
+			)
 		).toBe(at("src", "Greeter", "New", "a.luau"));
 	});
 
 	it("should leave a path alone where case matters", async () => {
 		await disk.writeFile(at("lib", "Util.luau"), "");
 
-		expect(await onDiskCase(disk, at("lib", "util.luau"))).toBe(
+		expect(await new OnDiskCase(disk).of(at("lib", "util.luau"))).toBe(
 			at("lib", "util.luau")
 		);
-		expect(await onDiskCase(disk, at("lib", "Util.luau"))).toBe(
+		expect(await new OnDiskCase(disk).of(at("lib", "Util.luau"))).toBe(
 			at("lib", "Util.luau")
 		);
 	});
@@ -41,7 +45,7 @@ describe("onDiskCase", () => {
 	it("should keep a name inside a folder it cannot list", async () => {
 		disk.refuseListing(at("src"), "EACCES");
 
-		expect(await onDiskCase(disk, at("src", "Greeter"))).toBe(
+		expect(await new OnDiskCase(disk).of(at("src", "Greeter"))).toBe(
 			at("src", "Greeter")
 		);
 	});
@@ -54,6 +58,8 @@ describe("onDiskCase", () => {
 			],
 		};
 
-		expect(await onDiskCase(unlisted as never, at("src"))).toBe(at("src"));
+		expect(await new OnDiskCase(unlisted as never).of(at("src"))).toBe(
+			at("src")
+		);
 	});
 });
