@@ -882,6 +882,49 @@ describe("domain/rojo/project-text", () => {
 			]);
 		});
 
+		it("should put a key the file lacks where the printer puts it among the keys that are written", () => {
+			const text = ProjectText.ofConfig(
+				{
+					tree: {
+						$className: "Folder",
+						Kept: {
+							$path: "kept",
+							$custom: 1,
+							$properties: { A: 1 },
+						},
+						Aaa: {},
+						$properties: { Size: 1 },
+					},
+				},
+				[],
+				WrittenTree.of(
+					[
+						"{",
+						'  "tree": {',
+						'    "$className": "Folder",',
+						'    "Kept": {',
+						'      "$custom": 1,',
+						'      "$path": "kept"',
+						"    }",
+						"  }",
+						"}",
+					].join("\n")
+				)
+			);
+
+			expect(Object.keys(JSON.parse(text).tree)).toEqual([
+				"$className",
+				"Kept",
+				"Aaa",
+				"$properties",
+			]);
+			expect(Object.keys(JSON.parse(text).tree.Kept)).toEqual([
+				"$properties",
+				"$custom",
+				"$path",
+			]);
+		});
+
 		it("should drop a node the tree no longer has", () => {
 			const tree = {
 				$className: "DataModel",

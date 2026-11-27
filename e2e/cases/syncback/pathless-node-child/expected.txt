@@ -19,14 +19,24 @@ written:
 default.rogen.json:
 {
   "name": "game",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService"
+  },
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
-      "Remotes": { "$className": "Folder", "Hit": { "$className": "RemoteEvent" }, "Buy": { "$className": "RemoteEvent" } }
+      "Remotes": {
+        "$className": "Folder",
+        "Hit": { "$className": "RemoteEvent" },
+        "Buy": {
+          "$className": "RemoteEvent"
+        }
+      }
     }
-  },
-  "sourcePaths": ["src"],
-  "routes": { "Server": "ServerScriptService" }
+  }
 }
 
 $ rojo sourcemap default.project.json

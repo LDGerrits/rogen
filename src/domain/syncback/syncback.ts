@@ -35,7 +35,12 @@ export interface SyncbackResult extends SyncbackPlan {
 export type SyncbackMode =
 	| "dryRun"
 	| "apply"
-	| { readonly confirm: (plan: SyncbackPlan) => Promise<boolean> };
+	| {
+			readonly confirm: (
+				plan: SyncbackPlan,
+				leftOut: readonly Diagnostic[]
+			) => Promise<boolean>;
+	  };
 
 export interface SyncbackOptions {
 	readonly input: string;
@@ -54,12 +59,15 @@ export type SyncbackOutcome =
 			readonly kind: "planned" | "declined" | "written";
 			readonly plan: SyncbackPlan;
 			readonly warnings: readonly Diagnostic[];
+			readonly unplaced: readonly Diagnostic[];
+			readonly compiled: readonly Diagnostic[];
 			readonly asked: boolean;
 	  };
 
 export interface SyncbackRun {
 	readonly write: WriteRun;
 	readonly outcome: SyncbackOutcome;
+	readonly changed: boolean;
 }
 
 const PLACE_FILE = /\.rbxlx?$|\.rbxmx?$/i;

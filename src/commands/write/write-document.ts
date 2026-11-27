@@ -3,6 +3,7 @@ import { toNative } from "../../base/path.js";
 import {
 	WriteRun,
 	ConfigOutcome,
+	didWrite,
 	isWritten,
 } from "../../domain/write/write.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -103,7 +104,7 @@ export function configsDocument(
 		writeEntry(outcome, cwd, diagnosticsOf(outcome))
 	);
 	return {
-		changed: configs.some(({ outcome }) => outcome === "wrote"),
+		changed: outcomes.some(didWrite),
 		configs,
 	};
 }

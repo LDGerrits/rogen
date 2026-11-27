@@ -2,6 +2,12 @@ import path from "path";
 import { isSameJson } from "../../base/objects.js";
 import { containsPosix } from "../../base/path.js";
 import { PlacedLocation } from "../write/write-service.js";
+import {
+	folderNameOf,
+	ROUTE_MARK,
+	routeMarkOf,
+	unhoisted,
+} from "../write/write.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import { AddedInstance } from "./added-instances.js";
@@ -29,16 +35,19 @@ function renamedSegment(
 	from: string,
 	to: string
 ): string | undefined {
-	const hoisted = segment.startsWith("^") ? "^" : "";
-	const name = segment.slice(hoisted.length);
-	if (name === from) return `${hoisted}${to}`;
-	if (name.startsWith(`${from}@`))
-		return `${hoisted}${to}${name.slice(from.length)}`;
+	const { name, hoisted } = unhoisted(segment);
+	const lead = { invisible: false, hoisted };
+	if (name === from) return folderNameOf({ ...lead, name: to });
+	if (name.startsWith(`${from}${ROUTE_MARK}`))
+		return folderNameOf({
+			...lead,
+			name: `${to}${name.slice(from.length)}`,
+		});
 	return undefined;
 }
 
 function markOf(file: PlacedLocation): string {
-	const mark = `@${file.route}`;
+	const mark = routeMarkOf(file.route);
 	return file.routeMatch === "suffix" &&
 		file.routedBy === file.source &&
 		instanceNameOf(path.posix.basename(file.source)).endsWith(mark)

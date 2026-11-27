@@ -1,0 +1,1 @@
+{"place": "place.rbxl", "steps": [["syncback", "-i", "place.rbxl", "-y", "--list"], ["$", "cp", "default.rogen.json", "after-syncback.rogen.json"], ["fmt-project"]], "show": ["default.rogen.json", "after-syncback.rogen.json"]}

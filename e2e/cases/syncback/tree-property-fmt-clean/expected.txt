@@ -1,0 +1,66 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  Writing default.rogen.json
+stderr:
+  Wrote default.project.json.
+  Syncback wrote 1 change.
+
+$ cp default.rogen.json after-syncback.rogen.json
+exit 0
+
+$ rogen fmt-project
+exit 0
+
+written:
+  after-syncback.rogen.json
+  default.project.json
+  default.rogen.json
+
+after-syncback.rogen.json:
+{
+  "name": "game",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService"
+  },
+  "tree": {
+    "$className": "DataModel",
+    "Workspace": {
+      "$properties": {
+        "Gravity": 100.0
+      },
+      "$path": "world"
+    }
+  }
+}
+
+default.rogen.json:
+{
+  "name": "game",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService"
+  },
+  "tree": {
+    "$className": "DataModel",
+    "Workspace": {
+      "$properties": {
+        "Gravity": 100.0
+      },
+      "$path": "world"
+    }
+  }
+}
+
+$ rojo sourcemap default.project.json
+game: DataModel
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Hit: ModuleScript  <- src/Combat/Server/Hit.luau
+  Workspace: Workspace
+    Part: ModuleScript  <- world/Part.luau

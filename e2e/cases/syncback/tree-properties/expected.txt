@@ -14,6 +14,12 @@ written:
 default.rogen.json:
 {
   "name": "game",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService"
+  },
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
@@ -25,14 +31,12 @@ default.rogen.json:
         },
         "$attributes": {
           "Build": {
-            "Float32": 7
+            "Float32": 7.0
           }
         }
       }
     }
-  },
-  "sourcePaths": ["src"],
-  "routes": { "Server": "ServerScriptService" }
+  }
 }
 
 $ rojo sourcemap default.project.json

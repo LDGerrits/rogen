@@ -614,6 +614,7 @@ describe("syncback command", () => {
 		const project = validEntry().config;
 		jest.spyOn(CoreSyncbackService.prototype, "run").mockResolvedValueOnce({
 			write: new WriteRun([]),
+			changed: false,
 			outcome: {
 				kind: "planned",
 				plan: {
@@ -640,6 +641,14 @@ describe("syncback command", () => {
 						"Careful."
 					),
 				],
+				unplaced: [
+					warningDiagnostic(
+						"syncback.unplaced",
+						{ resource: project.file },
+						"Workspace.Part was left out: it has no route."
+					),
+				],
+				compiled: [],
 				asked: false,
 			},
 		});

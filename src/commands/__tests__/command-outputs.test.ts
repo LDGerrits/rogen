@@ -15,6 +15,10 @@ import "../help/help-command.js";
 import "../init/init-command.js";
 import "../plugin/plugin-command.js";
 import "../serve/serve-command.js";
+import "../sourcemap/sourcemap-command.js";
+import "../syncback/syncback-command.js";
+import "../upload/upload-command.js";
+import "../write/write-command.js";
 import "../where/where-command.js";
 
 const commands = [
@@ -35,7 +39,11 @@ describe("the output of the commands", () => {
 			"init",
 			"plugin",
 			"serve",
+			"sourcemap",
+			"syncback",
+			"upload",
 			"where",
+			"write",
 		]);
 	});
 

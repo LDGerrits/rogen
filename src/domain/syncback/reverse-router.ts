@@ -1,6 +1,7 @@
 import path from "path";
 import { RojoFile } from "../rojo/rojo.js";
 import { PlacedLocation } from "../write/write-service.js";
+import { routeMarkOf } from "../write/write.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import {
@@ -94,7 +95,7 @@ export class ReverseRouter {
 			.sort(
 				([, a], [, b]) => b.instancePath.length - a.instancePath.length
 			)
-			.map(([key]) => ({ text: `@${key}`, route: key }));
+			.map(([key]) => ({ text: routeMarkOf(key), route: key }));
 	}
 
 	private patternAdvice(maker: PlacedLocation): string {
@@ -103,7 +104,7 @@ export class ReverseRouter {
 		const folder = instanceNameOf(path.posix.basename(maker.source));
 		return key === undefined
 			? `, and route that folder by its name, since the pattern ${maker.route} matches no folder`
-			: `, named ${folder}@${key}/ to keep its route, since the pattern ${maker.route} matches no folder`;
+			: `, named ${folder}${routeMarkOf(key)}/ to keep its route, since the pattern ${maker.route} matches no folder`;
 	}
 
 	destination(
@@ -172,7 +173,7 @@ export class ReverseRouter {
 						contents: false,
 						...(maker.routeMatch === "suffix" && {
 							mark: {
-								text: `@${maker.route}`,
+								text: routeMarkOf(maker.route),
 								route: maker.route,
 							},
 						}),
@@ -220,7 +221,7 @@ export class ReverseRouter {
 				contents: false,
 				...(donor.style === "suffix" && {
 					mark: {
-						text: `@${donor.route}`,
+						text: routeMarkOf(donor.route),
 						route: donor.route,
 					},
 				}),
@@ -311,7 +312,7 @@ export class ReverseRouter {
 					dir: path.posix.join(root, ...below),
 					contents: false,
 					mark: {
-						text: `@${route.key}`,
+						text: routeMarkOf(route.key),
 						route: route.key,
 					},
 				},

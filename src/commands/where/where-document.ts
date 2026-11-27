@@ -21,7 +21,7 @@ import {
 	SkippedPathJson,
 	skippedJson,
 	skippedPathShape,
-} from "../../platform/diagnostics/skipped-path.js";
+} from "../../domain/write/write-service.js";
 import { Answer, WhereAnswers } from "./where-answers.js";
 
 const S = OutputShape;
