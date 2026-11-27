@@ -1,6 +1,6 @@
 import { samePath, toPosix } from "../../base/path.js";
 import { uniqueDiagnostics } from "../../platform/diagnostics/diagnostic.js";
-import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
+import { SkippedPath } from "./write-service.js";
 import { CoveredTargets } from "../config/config-service.js";
 import {
 	Asked,

@@ -10,7 +10,7 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { ConfigSelection, ConfigService } from "../config/config-service.js";
-import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
+import { SkippedPath } from "./write-service.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import {
