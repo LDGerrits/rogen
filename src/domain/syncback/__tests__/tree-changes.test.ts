@@ -1,4 +1,7 @@
 import { RojoNode } from "../../rojo/rojo-project.js";
+import { JsoncComments } from "../../../base/jsonc-comments.js";
+import { ROGEN_KEYS } from "../../config/config.js";
+import { ProjectText } from "../../rojo/project-text.js";
 import { applyTreeChanges, treeChanges } from "../tree-changes.js";
 
 describe("treeChanges", () => {
@@ -141,7 +144,7 @@ describe("applyTreeChanges", () => {
 		added: [],
 	});
 
-	it("should set a property on a node the tree has, keeping the rest of the file", () => {
+	it("should set a property on a node the tree has, keeping the rest of its nodes", () => {
 		const applied = applyTreeChanges(
 			TEXT,
 			["tree"],
@@ -152,7 +155,7 @@ describe("applyTreeChanges", () => {
 			$className: "StringValue",
 			$properties: { Value: "x" },
 		});
-		expect(applied.text).toContain('"File": { "$path": "src/a.txt" }');
+		expect(applied.text).toContain('"$path": "src/a.txt"');
 		expect(applied.unhomed).toEqual([]);
 	});
 
@@ -260,8 +263,23 @@ describe("applyTreeChanges", () => {
 			[set(["Value"], { $properties: { Value: "x" } })]
 		);
 
-		expect(applied.text).toContain('\n        "Value": {');
-		expect(applied.text).toContain('\n            "$properties": {');
+		expect(applied.text).toBe(
+			[
+				"/*",
+				" * a config",
+				" */",
+				"{",
+				'  "tree": {',
+				'    "Value": {',
+				'      "$className": "StringValue",',
+				'      "$properties": {',
+				'        "Value": "x"',
+				"      }",
+				"    }",
+				"  }",
+				"}",
+			].join("\n")
+		);
 	});
 
 	it("should edit the tree of a project of the file", () => {
@@ -314,6 +332,41 @@ describe("applyTreeChanges", () => {
 			text: TEXT,
 			unhomed: [],
 		});
+	});
+
+	it("should print what ProjectText prints, so fmt-project has nothing to change", () => {
+		const text = [
+			"{",
+			'  "name": "game",',
+			'  "tree": {',
+			'    "$className": "DataModel",',
+			'    "Workspace": {',
+			'      "$path": "world"',
+			"    }",
+			"  }",
+			"}",
+		].join("\n");
+
+		const applied = applyTreeChanges(
+			text,
+			["tree"],
+			[set(["Workspace"], { $properties: { Gravity: 100 } })]
+		);
+
+		expect(applied.text).toBe(
+			text.replace(
+				'      "$path": "world"',
+				'      "$properties": {\n        "Gravity": 100.0\n      },\n      "$path": "world"'
+			)
+		);
+		expect(
+			ProjectText.ofConfig(
+				JSON.parse(applied.text),
+				ROGEN_KEYS,
+				undefined,
+				JsoncComments.of(applied.text)
+			)
+		).toBe(applied.text);
 	});
 
 	it("should leave out every change when the text is not JSON", () => {
