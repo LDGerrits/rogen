@@ -13,12 +13,23 @@ written:
 default.rogen.json:
 {
   "name": "game",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService"
+  },
   "tree": {
     "$className": "DataModel",
-    "Lighting": { "$properties": { "ClockTime": 6 }, "$attributes": { "Season": "winter" } }
-  },
-  "sourcePaths": ["src"],
-  "routes": { "Server": "ServerScriptService" }
+    "Lighting": {
+      "$properties": {
+        "ClockTime": 6
+      },
+      "$attributes": {
+        "Season": "winter"
+      }
+    }
+  }
 }
 
 $ rojo sourcemap default.project.json

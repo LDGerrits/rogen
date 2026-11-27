@@ -1,0 +1,15 @@
+{
+  "name": "game",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService"
+  },
+  "tree": {
+    "$className": "DataModel",
+    "Workspace": {
+      "$path": "world"
+    }
+  }
+}

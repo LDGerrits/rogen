@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- `rogen syncback` writes the config's tree changes in the form `rogen fmt-project` prints, such as `$properties` before `$path` and `100.0` for a float, so `rogen fmt-project` has nothing to change in a config it just edited.
 - The Rojo version checks, such as the one for Rojo 7.7.0 on Windows, now also run on a project file with comments or trailing commas, which they used to skip.
 - The update notice now knows a release whose tag has a hyphen in its prerelease part, such as `v2.1.0-rc-1`. It used to skip that release.
 - `rogen syncback` no longer lists a folder as removed when it writes a file into it again, such as `src/Shop` when you move a feature to another side in Studio. The folder was never removed, and Rojo's own syncback doesn't list such a folder either.
